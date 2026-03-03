@@ -295,7 +295,7 @@ echo "  Config:  $CONFIG_FILE"
 echo "  Env:     $ENV_FILE"
 echo "  Logs:    $LOG_DIR/"
 echo ""
-echo "  ${BOLD}Next steps:${NC}"
+echo -e "  ${BOLD}Next steps:${NC}"
 echo "  1. Edit $ENV_FILE and add your API key"
 if [ "$OS" = "darwin" ]; then
     echo "  2. Check service status: launchctl print gui/\$(id -u)/$PLIST_LABEL"
