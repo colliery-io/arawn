@@ -120,11 +120,17 @@ impl FsGate for WorkstreamFsGate {
             config = config.with_timeout(t);
         }
 
-        let output = self
-            .sandbox_manager
-            .execute(command, &config)
-            .await
-            .map_err(|e| FsGateError::SandboxError(e.to_string()))?;
+        // Run sandbox execution via block_in_place because the sandbox-runtime
+        // crate holds a parking_lot RwLockWriteGuard (which is !Send) across
+        // internal awaits. This prevents the future from being Send, which
+        // async_trait requires. block_in_place lets us drive the future on the
+        // current thread without requiring Send.
+        let manager = self.sandbox_manager.clone();
+        let command = command.to_string();
+        let output = tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current().block_on(manager.execute(&command, &config))
+        })
+        .map_err(|e| FsGateError::SandboxError(e.to_string()))?;
 
         Ok(SandboxOutput {
             stdout: output.stdout,
