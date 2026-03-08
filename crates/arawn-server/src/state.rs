@@ -1650,6 +1650,311 @@ mod tests {
         let _pending_reconnects: &PendingReconnects = state.pending_reconnects();
     }
 
+    // ── Active Connection Tracking Tests ─────────────────────────────────
+
+    #[tokio::test]
+    async fn test_register_connection_adds_to_set() {
+        let state = create_test_state();
+        let conn = ConnectionId::new();
+
+        assert!(!state.is_connection_active(conn).await);
+        state.register_connection(conn).await;
+        assert!(state.is_connection_active(conn).await);
+    }
+
+    #[tokio::test]
+    async fn test_unregister_connection_removes_from_set() {
+        let state = create_test_state();
+        let conn = ConnectionId::new();
+
+        state.register_connection(conn).await;
+        assert!(state.is_connection_active(conn).await);
+
+        state.unregister_connection(conn).await;
+        assert!(!state.is_connection_active(conn).await);
+    }
+
+    #[tokio::test]
+    async fn test_is_connection_active_multiple_connections() {
+        let state = create_test_state();
+        let conn_a = ConnectionId::new();
+        let conn_b = ConnectionId::new();
+        let conn_c = ConnectionId::new();
+
+        state.register_connection(conn_a).await;
+        state.register_connection(conn_b).await;
+
+        assert!(state.is_connection_active(conn_a).await);
+        assert!(state.is_connection_active(conn_b).await);
+        assert!(!state.is_connection_active(conn_c).await);
+
+        state.unregister_connection(conn_a).await;
+        assert!(!state.is_connection_active(conn_a).await);
+        assert!(state.is_connection_active(conn_b).await);
+    }
+
+    // ── Dead Owner Eviction Tests ─────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_dead_owner_multiple_sessions_evicted() {
+        let state = create_test_state();
+        let session_1 = SessionId::new();
+        let session_2 = SessionId::new();
+        let conn_a = ConnectionId::new();
+        let conn_b = ConnectionId::new();
+
+        state.register_connection(conn_a).await;
+        assert!(state.try_claim_session_ownership(session_1, conn_a).await);
+        assert!(state.try_claim_session_ownership(session_2, conn_a).await);
+
+        // conn_a dies without releasing
+        state.unregister_connection(conn_a).await;
+
+        // conn_b can evict dead owner from both sessions
+        state.register_connection(conn_b).await;
+        assert!(state.try_claim_session_ownership(session_1, conn_b).await);
+        assert!(state.try_claim_session_ownership(session_2, conn_b).await);
+        assert!(state.is_session_owner(session_1, conn_b).await);
+        assert!(state.is_session_owner(session_2, conn_b).await);
+    }
+
+    #[tokio::test]
+    async fn test_live_owner_blocks_claim() {
+        let state = create_test_state();
+        let session_id = SessionId::new();
+        let conn_a = ConnectionId::new();
+        let conn_b = ConnectionId::new();
+
+        state.register_connection(conn_a).await;
+        state.register_connection(conn_b).await;
+
+        assert!(state.try_claim_session_ownership(session_id, conn_a).await);
+
+        // conn_a is still active, so conn_b is blocked
+        assert!(!state.try_claim_session_ownership(session_id, conn_b).await);
+        assert!(state.is_session_owner(session_id, conn_a).await);
+        assert!(!state.is_session_owner(session_id, conn_b).await);
+    }
+
+    // ── Full Ownership Lifecycle Tests ────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_lifecycle_claim_die_evict() {
+        let state = create_test_state();
+        let session_id = SessionId::new();
+        let conn_a = ConnectionId::new();
+        let conn_b = ConnectionId::new();
+
+        // conn_a claims ownership
+        state.register_connection(conn_a).await;
+        assert!(state.try_claim_session_ownership(session_id, conn_a).await);
+        assert!(state.is_session_owner(session_id, conn_a).await);
+
+        // conn_a dies (unregister without release)
+        state.unregister_connection(conn_a).await;
+
+        // conn_b arrives, claims via dead-owner eviction
+        state.register_connection(conn_b).await;
+        assert!(state.try_claim_session_ownership(session_id, conn_b).await);
+        assert!(state.is_session_owner(session_id, conn_b).await);
+        assert!(!state.is_session_owner(session_id, conn_a).await);
+    }
+
+    #[tokio::test]
+    async fn test_lifecycle_expired_token_then_new_claim() {
+        use std::time::Duration;
+
+        let backend = MockBackend::with_text("Test");
+        let agent = Agent::builder()
+            .with_backend(backend)
+            .with_tools(ToolRegistry::new())
+            .build()
+            .unwrap();
+        let config = ServerConfig::new(Some("test-token".to_string()))
+            .with_reconnect_grace_period(Duration::from_millis(10));
+        let state = AppState::new(agent, config);
+
+        let session_id = SessionId::new();
+        let conn_a = ConnectionId::new();
+        let conn_b = ConnectionId::new();
+
+        // conn_a owns, disconnects with token
+        state.register_connection(conn_a).await;
+        assert!(state.try_claim_session_ownership(session_id, conn_a).await);
+
+        let mut tokens = HashMap::new();
+        tokens.insert(session_id, "token-a".to_string());
+        state.release_all_session_ownerships(conn_a, &tokens).await;
+        state.unregister_connection(conn_a).await;
+
+        // Wait for grace period to expire
+        tokio::time::sleep(Duration::from_millis(20)).await;
+
+        // Expired token reclaim fails
+        let result = state
+            .try_reclaim_with_token(session_id, "token-a", conn_a)
+            .await;
+        assert!(result.is_none());
+
+        // Cleanup expired entries
+        state.cleanup_expired_pending_reconnects().await;
+
+        // New client can now claim
+        state.register_connection(conn_b).await;
+        assert!(state.try_claim_session_ownership(session_id, conn_b).await);
+        assert!(state.is_session_owner(session_id, conn_b).await);
+    }
+
+    #[tokio::test]
+    async fn test_release_without_tokens_no_pending_reconnect() {
+        let state = create_test_state();
+        let session_id = SessionId::new();
+        let conn_a = ConnectionId::new();
+        let conn_b = ConnectionId::new();
+
+        state.register_connection(conn_a).await;
+        assert!(state.try_claim_session_ownership(session_id, conn_a).await);
+
+        // Release with empty tokens map — no pending reconnect created
+        let empty_tokens = HashMap::new();
+        state
+            .release_all_session_ownerships(conn_a, &empty_tokens)
+            .await;
+
+        // No pending reconnect
+        assert!(!state.has_pending_reconnect(session_id).await);
+
+        // Another connection can immediately claim
+        state.register_connection(conn_b).await;
+        assert!(state.try_claim_session_ownership(session_id, conn_b).await);
+    }
+
+    #[tokio::test]
+    async fn test_claim_unowned_session_no_active_connections_needed() {
+        let state = create_test_state();
+        let session_id = SessionId::new();
+        let conn = ConnectionId::new();
+
+        // Even without registering as active, can claim unowned session
+        // (active_connections is only checked for existing owners)
+        assert!(state.try_claim_session_ownership(session_id, conn).await);
+        assert!(state.is_session_owner(session_id, conn).await);
+    }
+
+    #[tokio::test]
+    async fn test_ownership_independent_sessions() {
+        let state = create_test_state();
+        let session_1 = SessionId::new();
+        let session_2 = SessionId::new();
+        let conn_a = ConnectionId::new();
+        let conn_b = ConnectionId::new();
+
+        state.register_connection(conn_a).await;
+        state.register_connection(conn_b).await;
+
+        // Different connections can own different sessions
+        assert!(state.try_claim_session_ownership(session_1, conn_a).await);
+        assert!(state.try_claim_session_ownership(session_2, conn_b).await);
+
+        assert!(state.is_session_owner(session_1, conn_a).await);
+        assert!(!state.is_session_owner(session_1, conn_b).await);
+        assert!(!state.is_session_owner(session_2, conn_a).await);
+        assert!(state.is_session_owner(session_2, conn_b).await);
+    }
+
+    #[tokio::test]
+    async fn test_pending_reconnect_blocks_dead_owner_eviction() {
+        let state = create_test_state();
+        let session_id = SessionId::new();
+        let conn_a = ConnectionId::new();
+        let conn_b = ConnectionId::new();
+
+        state.register_connection(conn_a).await;
+        assert!(state.try_claim_session_ownership(session_id, conn_a).await);
+
+        // conn_a disconnects with token (creates pending reconnect)
+        let mut tokens = HashMap::new();
+        tokens.insert(session_id, "reconnect-token".to_string());
+        state.release_all_session_ownerships(conn_a, &tokens).await;
+        state.unregister_connection(conn_a).await;
+
+        // conn_b cannot claim — pending reconnect blocks even though no active owner
+        state.register_connection(conn_b).await;
+        assert!(!state.try_claim_session_ownership(session_id, conn_b).await);
+    }
+
+    #[tokio::test]
+    async fn test_reclaim_generates_new_token() {
+        let state = create_test_state();
+        let session_id = SessionId::new();
+        let conn_a = ConnectionId::new();
+        let conn_a_new = ConnectionId::new();
+
+        state.register_connection(conn_a).await;
+        assert!(state.try_claim_session_ownership(session_id, conn_a).await);
+
+        let mut tokens = HashMap::new();
+        tokens.insert(session_id, "original-token".to_string());
+        state.release_all_session_ownerships(conn_a, &tokens).await;
+
+        // Reclaim with correct token returns a NEW token (not the original)
+        state.register_connection(conn_a_new).await;
+        let new_token = state
+            .try_reclaim_with_token(session_id, "original-token", conn_a_new)
+            .await;
+        assert!(new_token.is_some());
+        assert_ne!(new_token.unwrap(), "original-token");
+    }
+
+    #[tokio::test]
+    async fn test_cleanup_only_removes_expired() {
+        use std::time::Duration;
+
+        let backend = MockBackend::with_text("Test");
+        let agent = Agent::builder()
+            .with_backend(backend)
+            .with_tools(ToolRegistry::new())
+            .build()
+            .unwrap();
+        let config = ServerConfig::new(Some("test-token".to_string()))
+            .with_reconnect_grace_period(Duration::from_secs(300));
+        let state = AppState::new(agent, config);
+
+        let session_1 = SessionId::new();
+        let session_2 = SessionId::new();
+        let conn = ConnectionId::new();
+
+        state.register_connection(conn).await;
+        assert!(state.try_claim_session_ownership(session_1, conn).await);
+        assert!(state.try_claim_session_ownership(session_2, conn).await);
+
+        let mut tokens = HashMap::new();
+        tokens.insert(session_1, "t1".to_string());
+        tokens.insert(session_2, "t2".to_string());
+        state.release_all_session_ownerships(conn, &tokens).await;
+
+        // Both pending reconnects exist with long grace period
+        assert!(state.has_pending_reconnect(session_1).await);
+        assert!(state.has_pending_reconnect(session_2).await);
+
+        // Cleanup should remove nothing (not expired yet)
+        let cleaned = state.cleanup_expired_pending_reconnects().await;
+        assert_eq!(cleaned, 0);
+
+        // Both still exist
+        assert!(state.has_pending_reconnect(session_1).await);
+        assert!(state.has_pending_reconnect(session_2).await);
+    }
+
+    #[tokio::test]
+    async fn test_is_session_owner_nonexistent_session() {
+        let state = create_test_state();
+        let conn = ConnectionId::new();
+
+        // No one owns a session that was never claimed
+        assert!(!state.is_session_owner(SessionId::new(), conn).await);
+    }
+
     // ── WebSocket Rate Limiting Tests ──────────────────────────────────────
 
     #[tokio::test]

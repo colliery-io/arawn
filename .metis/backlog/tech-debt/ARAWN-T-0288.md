@@ -4,15 +4,15 @@ level: task
 title: "Add session ownership and WebSocket reconnection tests"
 short_code: "ARAWN-T-0288"
 created_at: 2026-03-08T03:17:33.020566+00:00
-updated_at: 2026-03-08T03:17:33.020566+00:00
+updated_at: 2026-03-08T19:24:44.148716+00:00
 parent: 
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/backlog"
   - "#tech-debt"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -38,6 +38,12 @@ This complements ARAWN-T-0281 (WebSocket E2E) but focuses specifically on the ow
 - `release_all_session_ownerships` creates pending reconnects but the full cycle (release → pending → expire → new claim) is untested
 - `register_connection`/`unregister_connection` not tested
 - The interaction between `active_connections` and `try_claim_session_ownership` not tested
+
+## Acceptance Criteria
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
@@ -101,4 +107,10 @@ The chat handler tests could be inline in `handlers.rs` or in a separate integra
 
 ## Status Updates
 
-*To be added during implementation*
+### Session 1
+- Added 15 new tests to `state.rs` (was 22, now 37):
+  - Active connection tracking: register/unregister/is_active, multiple connections
+  - Dead owner eviction: multiple sessions, live owner blocks claim
+  - Full lifecycle: claim→die→evict, expired token→new claim, release without tokens
+  - Edge cases: unowned session claim, independent sessions, pending reconnect blocks eviction, reclaim generates new token, cleanup only removes expired, nonexistent session owner check
+- All 37 state tests pass, clippy and fmt clean
