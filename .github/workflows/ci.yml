@@ -51,6 +51,9 @@ jobs:
       - name: Run tests
         run: cargo test --workspace -- --test-threads=1
 
+      - name: Run integration tests (ignored)
+        run: cargo test --workspace -- --ignored --test-threads=1
+
   coverage:
     name: Coverage
     runs-on: ubuntu-latest

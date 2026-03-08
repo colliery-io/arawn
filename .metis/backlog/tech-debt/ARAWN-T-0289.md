@@ -4,15 +4,15 @@ level: task
 title: "Enable and fix sandbox execution tests (currently #[ignore])"
 short_code: "ARAWN-T-0289"
 created_at: 2026-03-08T03:17:34.015303+00:00
-updated_at: 2026-03-08T03:17:34.015303+00:00
+updated_at: 2026-03-08T19:56:25.051756+00:00
 parent: 
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/backlog"
   - "#tech-debt"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -41,6 +41,12 @@ initiative_id: NULL
 - 4 tests in `arawn-pipeline/src/loader.rs` are `#[ignore]` due to filesystem timing (debounce)
 - 2 tests in `arawn-plugin/src/subscription.rs` are `#[ignore]` — require hook dispatcher
 - `angreal test integration` runs `cargo test -- --ignored --test-threads=1` but it's unclear if these pass
+
+## Acceptance Criteria
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
@@ -93,4 +99,10 @@ fn test_sandboxed_echo() {
 
 ## Status Updates
 
-*To be added during implementation*
+### Session 1
+- **Sandbox tests (3)**: Removed `#[ignore]` — tests already self-skip via `check_availability()` when sandbox unavailable. All 3 pass on macOS, now run in regular `cargo test`.
+- **Pipeline loader tests (4)**: Keep `#[ignore]` — timing-sensitive filesystem watcher tests. All 4 pass with `--test-threads=1`. Now run in CI via integration test step.
+- **Plugin subscription tests (2)**: Keep `#[ignore]` — require network for git clone/pull. Both pass. Now run in CI via integration test step.
+- **CI**: Added integration test step (`cargo test --workspace -- --ignored --test-threads=1`) to run all 9 ignored tests.
+- `can_sandbox()` helper: Already exists as `SandboxManager::check_availability().is_available()` — no new wrapper needed.
+- All 17 sandbox tests pass (0 ignored), fmt and clippy clean.

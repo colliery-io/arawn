@@ -363,7 +363,7 @@ mod tests {
     // These only run if sandbox is available
 
     #[tokio::test]
-    #[ignore] // Run with --ignored flag
+    // Self-skips via check_availability() when sandbox is unavailable
     async fn test_sandboxed_echo() {
         let status = SandboxManager::check_availability();
         if !status.is_available() {
@@ -383,7 +383,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore] // Run with --ignored flag
+    // Self-skips via check_availability() when sandbox is unavailable
     async fn test_sandboxed_write_allowed() {
         let status = SandboxManager::check_availability();
         if !status.is_available() {
@@ -408,7 +408,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore] // Run with --ignored flag
+    // Self-skips via check_availability() when sandbox is unavailable
     async fn test_sandboxed_write_denied() {
         let status = SandboxManager::check_availability();
         if !status.is_available() {
