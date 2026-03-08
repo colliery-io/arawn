@@ -333,14 +333,17 @@ async fn handle_chat(
         if !is_owner {
             // Check if session has any owner at all
             let owners = app_state.session_owners().read().await;
-            if owners.contains_key(&sid) {
-                return MessageResponse::Single(ServerMessage::error(
-                    "session_not_owned",
-                    "Session is owned by another client. Subscribe first to become a reader, or wait for the owner to disconnect.",
-                ));
+            if let Some(&owner_conn) = owners.get(&sid) {
+                // Check if the owning connection is still alive
+                if app_state.is_connection_active(owner_conn).await {
+                    return MessageResponse::Single(ServerMessage::error(
+                        "session_not_owned",
+                        "Session is owned by another client. Subscribe first to become a reader, or wait for the owner to disconnect.",
+                    ));
+                }
+                // Owner's connection is dead — fall through to claim ownership
             }
-            // No owner - this is a new chat to an existing session without prior subscribe
-            // Allow it and claim ownership
+            // No live owner - claim ownership
             drop(owners);
             app_state
                 .try_claim_session_ownership(sid, conn_state.id)

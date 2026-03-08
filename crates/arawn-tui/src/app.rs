@@ -178,6 +178,8 @@ pub struct App {
     pub pending_delete_session: Option<String>,
     /// Cached panel areas from the last render, used for mouse hit-testing.
     pub panel_areas: PanelAreas,
+    /// Last time a WebSocket keepalive ping was sent.
+    last_ping: std::time::Instant,
 }
 
 /// Cached layout rectangles for mouse hit-testing.
@@ -342,6 +344,7 @@ impl App {
             pending_delete_workstream: None,
             pending_delete_session: None,
             panel_areas: PanelAreas::default(),
+            last_ping: std::time::Instant::now(),
         })
     }
 
@@ -377,11 +380,23 @@ impl App {
                                 let was_connected = self.connection_status == ConnectionStatus::Connected;
                                 self.connection_status = status;
 
+                                // Reset waiting state if connection dropped while waiting for response
+                                if was_connected && status != ConnectionStatus::Connected && self.waiting {
+                                    self.waiting = false;
+                                    self.status_message = Some("Connection lost — message may not have been delivered".to_string());
+                                }
+
                                 // Load data when we first connect
                                 if !was_connected && status == ConnectionStatus::Connected && !data_loaded {
                                     data_loaded = true;
                                     self.refresh_sidebar_data().await;
                                 }
+                            }
+
+                            // Send WebSocket keepalive ping every 30 seconds
+                            if self.last_ping.elapsed() >= std::time::Duration::from_secs(30) {
+                                let _ = self.ws_client.send_ping();
+                                self.last_ping = std::time::Instant::now();
                             }
                         }
                         Event::Resize(_, _) => {

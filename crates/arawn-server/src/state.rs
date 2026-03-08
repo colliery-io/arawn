@@ -24,7 +24,7 @@
 //! - Keep critical sections short — clone data out, then drop the guard.
 //! - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::net::IpAddr;
 use std::sync::Arc;
 use std::time::Instant;
@@ -80,6 +80,10 @@ impl PendingReconnect {
 
 /// Pending reconnects storage - maps session IDs to pending reconnect entries.
 pub type PendingReconnects = Arc<RwLock<HashMap<SessionId, PendingReconnect>>>;
+
+/// Active WebSocket connections — tracks which connection IDs are currently alive.
+/// Used to detect stale session ownership from dead connections.
+pub type ActiveConnections = Arc<RwLock<HashSet<ConnectionId>>>;
 
 /// Thread-safe MCP manager.
 pub type SharedMcpManager = Arc<RwLock<McpManager>>;
@@ -486,6 +490,11 @@ pub struct RuntimeState {
     /// Lock order: 1 (first — acquire before all other locks).
     pub pending_reconnects: PendingReconnects,
 
+    /// Active WebSocket connections — tracks live connection IDs.
+    /// Used to detect and evict stale session ownership from dead connections.
+    /// Independent lock — does not nest with ownership locks.
+    pub active_connections: ActiveConnections,
+
     /// WebSocket connection rate limiter per IP address.
     /// Independent lock — does not nest with any other locks.
     pub ws_connection_tracker: WsConnectionTracker,
@@ -499,6 +508,7 @@ impl RuntimeState {
             tasks: Arc::new(RwLock::new(HashMap::new())),
             session_owners: Arc::new(RwLock::new(HashMap::new())),
             pending_reconnects: Arc::new(RwLock::new(HashMap::new())),
+            active_connections: Arc::new(RwLock::new(HashSet::new())),
             ws_connection_tracker: WsConnectionTracker::new(),
         }
     }
@@ -510,6 +520,7 @@ impl RuntimeState {
             tasks: Arc::new(RwLock::new(HashMap::new())),
             session_owners: Arc::new(RwLock::new(HashMap::new())),
             pending_reconnects: Arc::new(RwLock::new(HashMap::new())),
+            active_connections: Arc::new(RwLock::new(HashSet::new())),
             ws_connection_tracker: WsConnectionTracker::new(),
         }
     }
@@ -728,6 +739,39 @@ impl AppState {
     #[inline]
     pub fn pending_reconnects(&self) -> &PendingReconnects {
         &self.runtime.pending_reconnects
+    }
+
+    /// Get the active connections set.
+    #[inline]
+    pub fn active_connections(&self) -> &ActiveConnections {
+        &self.runtime.active_connections
+    }
+
+    /// Register a WebSocket connection as active.
+    pub async fn register_connection(&self, connection_id: ConnectionId) {
+        self.runtime
+            .active_connections
+            .write()
+            .await
+            .insert(connection_id);
+    }
+
+    /// Unregister a WebSocket connection (called on disconnect).
+    pub async fn unregister_connection(&self, connection_id: ConnectionId) {
+        self.runtime
+            .active_connections
+            .write()
+            .await
+            .remove(&connection_id);
+    }
+
+    /// Check if a connection is still active.
+    pub async fn is_connection_active(&self, connection_id: ConnectionId) -> bool {
+        self.runtime
+            .active_connections
+            .read()
+            .await
+            .contains(&connection_id)
     }
 
     /// Get the WebSocket connection tracker.
@@ -994,6 +1038,9 @@ impl AppState {
             }
         }
 
+        // Check if the existing owner (if any) is still alive
+        let active_conns = self.runtime.active_connections.read().await;
+
         let mut owners: tokio::sync::RwLockWriteGuard<'_, HashMap<SessionId, ConnectionId>> =
             self.runtime.session_owners.write().await;
         match owners.get(&session_id) {
@@ -1001,9 +1048,21 @@ impl AppState {
                 // Already the owner
                 true
             }
-            Some(_) => {
-                // Another connection owns it
-                false
+            Some(&existing_owner) => {
+                if !active_conns.contains(&existing_owner) {
+                    // Owner's connection is dead — evict and claim
+                    debug!(
+                        session_id = %session_id,
+                        dead_owner = %existing_owner,
+                        new_owner = %connection_id,
+                        "Evicting dead connection's session ownership"
+                    );
+                    owners.insert(session_id, connection_id);
+                    true
+                } else {
+                    // Another live connection owns it
+                    false
+                }
             }
             None => {
                 // No owner - claim it

@@ -93,6 +93,9 @@ pub async fn handle_socket(socket: WebSocket, state: AppState, addr: SocketAddr)
         "WebSocket connection established"
     );
 
+    // Register this connection as active (for stale ownership detection)
+    state.register_connection(conn_state.id).await;
+
     // Auto-authenticate if no auth token is configured (localhost mode)
     if state.config().auth_token.is_none() {
         conn_state.authenticated = true;
@@ -183,6 +186,9 @@ pub async fn handle_socket(socket: WebSocket, state: AppState, addr: SocketAddr)
             MessageResponse::None => {}
         }
     }
+
+    // Unregister this connection so ownership checks know it's dead
+    state.unregister_connection(conn_state.id).await;
 
     // Release all session ownerships held by this connection, creating pending reconnects
     state
