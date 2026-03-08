@@ -250,6 +250,197 @@ mod tests {
         let _ = result;
         engine.shutdown().await.unwrap();
     }
+
+    #[tokio::test]
+    async fn test_register_duplicate_workflow() {
+        let dir = TempDir::new().unwrap();
+        let engine = test_engine(dir.path()).await;
+
+        let task1 = crate::task::DynamicTask::new(
+            "t1",
+            std::sync::Arc::new(|ctx| Box::pin(async move { Ok(ctx) })),
+        );
+        engine
+            .register_dynamic_workflow("dup-wf", "first", vec![task1])
+            .await
+            .unwrap();
+
+        // Register again with the same name — should overwrite or succeed
+        let task2 = crate::task::DynamicTask::new(
+            "t2",
+            std::sync::Arc::new(|ctx| Box::pin(async move { Ok(ctx) })),
+        );
+        let result = engine
+            .register_dynamic_workflow("dup-wf", "second", vec![task2])
+            .await;
+        // Should not panic; may succeed (overwrites) or error
+        let _ = result;
+
+        assert!(engine.has_workflow("dup-wf").await);
+        engine.shutdown().await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_register_multiple_workflows() {
+        let dir = TempDir::new().unwrap();
+        let engine = test_engine(dir.path()).await;
+
+        for i in 0..5 {
+            let name = format!("wf-{}", i);
+            let task = crate::task::DynamicTask::new(
+                &format!("t-{}", i),
+                std::sync::Arc::new(|ctx| Box::pin(async move { Ok(ctx) })),
+            );
+            engine
+                .register_dynamic_workflow(&name, "desc", vec![task])
+                .await
+                .unwrap();
+        }
+
+        assert_eq!(engine.list_workflows().await.len(), 5);
+        for i in 0..5 {
+            assert!(engine.has_workflow(&format!("wf-{}", i)).await);
+        }
+        engine.shutdown().await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_execution_result_has_id() {
+        let dir = TempDir::new().unwrap();
+        let engine = test_engine(dir.path()).await;
+
+        let task = crate::task::DynamicTask::new(
+            "noop",
+            std::sync::Arc::new(|ctx| Box::pin(async move { Ok(ctx) })),
+        );
+        engine
+            .register_dynamic_workflow("id-test", "desc", vec![task])
+            .await
+            .unwrap();
+
+        let ctx = cloacina_workflow::context::Context::new();
+        let result = engine.execute("id-test", ctx).await.unwrap();
+        assert!(!result.execution_id.is_empty());
+        assert_eq!(result.status, ExecutionStatus::Completed);
+        engine.shutdown().await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_execution_preserves_initial_context() {
+        let dir = TempDir::new().unwrap();
+        let engine = test_engine(dir.path()).await;
+
+        let task = crate::task::DynamicTask::new(
+            "passthrough",
+            std::sync::Arc::new(|ctx| Box::pin(async move { Ok(ctx) })),
+        );
+        engine
+            .register_dynamic_workflow("ctx-test", "desc", vec![task])
+            .await
+            .unwrap();
+
+        let mut ctx = cloacina_workflow::context::Context::new();
+        ctx.insert("key", serde_json::json!("value")).unwrap();
+
+        let result = engine.execute("ctx-test", ctx).await.unwrap();
+        assert_eq!(result.status, ExecutionStatus::Completed);
+
+        let output = result.output.unwrap();
+        assert_eq!(output["key"], serde_json::json!("value"));
+        engine.shutdown().await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_task_failure_returns_failed_status() {
+        let dir = TempDir::new().unwrap();
+        let engine = test_engine(dir.path()).await;
+
+        let task = crate::task::DynamicTask::new(
+            "failing",
+            std::sync::Arc::new(|_ctx| {
+                Box::pin(async move {
+                    Err(cloacina_workflow::error::TaskError::ExecutionFailed {
+                        message: "task exploded".to_string(),
+                        task_id: "failing".to_string(),
+                        timestamp: chrono::Utc::now(),
+                    })
+                })
+            }),
+        );
+        engine
+            .register_dynamic_workflow("fail-wf", "desc", vec![task])
+            .await
+            .unwrap();
+
+        let ctx = cloacina_workflow::context::Context::new();
+        let result = engine.execute("fail-wf", ctx).await.unwrap();
+        assert!(
+            matches!(result.status, ExecutionStatus::Failed(_)),
+            "Expected Failed status, got: {:?}",
+            result.status
+        );
+        engine.shutdown().await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_list_schedules_empty() {
+        let dir = TempDir::new().unwrap();
+        let config = PipelineConfig {
+            cron_enabled: true,
+            triggers_enabled: false,
+            ..Default::default()
+        };
+        let db_path = dir.path().join("test.db");
+        let engine = PipelineEngine::new(&db_path, config).await.unwrap();
+
+        let schedules = engine.list_schedules().await.unwrap();
+        assert!(schedules.is_empty());
+        engine.shutdown().await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_execute_nonexistent_returns_error() {
+        let dir = TempDir::new().unwrap();
+        let engine = test_engine(dir.path()).await;
+
+        let ctx = cloacina_workflow::context::Context::new();
+        let err = engine.execute("no-such-workflow", ctx).await;
+        assert!(err.is_err());
+        engine.shutdown().await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_trigger_delegates_to_execute() {
+        let dir = TempDir::new().unwrap();
+        let engine = test_engine(dir.path()).await;
+
+        let task = crate::task::DynamicTask::new(
+            "noop",
+            std::sync::Arc::new(|ctx| Box::pin(async move { Ok(ctx) })),
+        );
+        engine
+            .register_dynamic_workflow("trigger-wf", "desc", vec![task])
+            .await
+            .unwrap();
+
+        let ctx = cloacina_workflow::context::Context::new();
+        let result = engine.trigger("trigger-wf", ctx).await.unwrap();
+        assert_eq!(result.status, ExecutionStatus::Completed);
+        engine.shutdown().await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_schedule_info_fields() {
+        // Verify ScheduleInfo default construction
+        let info = ScheduleInfo {
+            id: "test-id".to_string(),
+            workflow_name: "wf".to_string(),
+            cron_expr: "0 * * * *".to_string(),
+            enabled: true,
+        };
+        assert_eq!(info.id, "test-id");
+        assert!(info.enabled);
+    }
 }
 
 /// The pipeline engine — Arawn's execution backbone.
@@ -382,7 +573,25 @@ impl PipelineEngine {
             .map_err(|e| PipelineError::ExecutionFailed(e.to_string()))?;
 
         let status = match result.status {
-            PipelineStatus::Completed => ExecutionStatus::Completed,
+            PipelineStatus::Completed => {
+                // Cloacina marks a pipeline "Completed" when all tasks reach a terminal
+                // state, even if some tasks failed. Check task_results to surface failures.
+                let failed_msgs: Vec<String> = result
+                    .task_results
+                    .iter()
+                    .filter(|t| t.status.is_failed())
+                    .filter_map(|t| {
+                        t.error_message
+                            .clone()
+                            .or_else(|| Some(format!("Task '{}' failed", t.task_name)))
+                    })
+                    .collect();
+                if failed_msgs.is_empty() {
+                    ExecutionStatus::Completed
+                } else {
+                    ExecutionStatus::Failed(failed_msgs.join("; "))
+                }
+            }
             PipelineStatus::Failed => {
                 ExecutionStatus::Failed(result.error_message.unwrap_or_default())
             }

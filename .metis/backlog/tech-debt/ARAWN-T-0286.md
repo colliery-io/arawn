@@ -4,15 +4,15 @@ level: task
 title: "Add pipeline engine execution and scheduling tests"
 short_code: "ARAWN-T-0286"
 created_at: 2026-03-08T03:17:31.240706+00:00
-updated_at: 2026-03-08T03:17:31.240706+00:00
+updated_at: 2026-03-08T19:08:19.656845+00:00
 parent: 
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/backlog"
   - "#tech-debt"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -38,6 +38,12 @@ initiative_id: NULL
 - No tests for concurrent workflow execution
 - Workflow registration validation is minimal
 - Context propagation between dependent tasks barely tested
+
+## Acceptance Criteria
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
@@ -109,4 +115,12 @@ async fn test_task_failure_skips_dependents() {
 
 ## Status Updates
 
-*To be added during implementation*
+### Session 1
+- Added 9 inline tests to `engine.rs`: config defaults, status equality, register/list, duplicate workflow, multiple workflows, execution result ID, context preservation, list schedules empty, schedule info fields
+- Added 9 integration tests to `engine_test.rs`: three-step dependency chain, parallel independent tasks, task failure status, failed dependency downstream, concurrent workflow execution, context pass-through, execute same workflow twice, schedule and list cron
+- Fixed `TaskError::ExecutionError` → `TaskError::ExecutionFailed { message, task_id, timestamp }`
+
+### Session 2
+- Fixed `test_task_failure_returns_failed_status`: Cloacina marks pipelines "Completed" even when tasks fail. Fixed `PipelineEngine::execute()` to check `task_results` for failed tasks and return `ExecutionStatus::Failed`.
+- Fixed `test_three_step_dependency_chain`: `Context::insert` errors on duplicate keys (`KeyExists`). Changed to unique keys per step (`a_done`, `b_saw_a`, `c_saw_b`).
+- All 121 lib tests + 14 integration tests pass, 0 failures.
