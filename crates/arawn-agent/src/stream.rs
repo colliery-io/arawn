@@ -195,6 +195,11 @@ pub fn create_turn_stream(
             state.iterations += 1;
 
             if state.iterations > state.config.max_iterations {
+                tracing::debug!(
+                    iterations = state.iterations,
+                    max = state.config.max_iterations,
+                    "Max iterations reached — truncating streaming turn"
+                );
                 yield StreamChunk::error("Max iterations exceeded");
                 yield StreamChunk::done(state.iterations);
                 return;

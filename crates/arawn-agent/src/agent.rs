@@ -210,7 +210,7 @@ impl Agent {
             iterations += 1;
 
             if iterations > self.config.max_iterations {
-                tracing::warn!(%session_id, %turn_id, iterations, "Max iterations exceeded");
+                tracing::debug!(%session_id, %turn_id, iterations, max = self.config.max_iterations, "Max iterations reached — truncating turn");
                 // Mark turn as truncated
                 let turn = session.current_turn_mut().unwrap();
                 turn.complete("[Response truncated: max iterations exceeded]");

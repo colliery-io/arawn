@@ -359,10 +359,9 @@ impl WorkstreamStore {
 
     /// Delete a session record from the database.
     pub fn delete_session(&self, id: &str) -> Result<()> {
-        let deleted = self.conn().execute(
-            "DELETE FROM sessions WHERE id = ?1",
-            params![id],
-        )?;
+        let deleted = self
+            .conn()
+            .execute("DELETE FROM sessions WHERE id = ?1", params![id])?;
         if deleted == 0 {
             return Err(WorkstreamError::NotFound(id.to_string()));
         }

@@ -1385,11 +1385,15 @@ mod tests {
         let conn_a = ConnectionId::new();
         let conn_b = ConnectionId::new();
 
+        // Register both connections as active
+        state.register_connection(conn_a).await;
+        state.register_connection(conn_b).await;
+
         // First connection claims ownership
         assert!(state.try_claim_session_ownership(session_id, conn_a).await);
         assert!(state.is_session_owner(session_id, conn_a).await);
 
-        // Second connection cannot claim
+        // Second connection cannot claim (first is still active)
         assert!(!state.try_claim_session_ownership(session_id, conn_b).await);
         assert!(!state.is_session_owner(session_id, conn_b).await);
 
@@ -1403,6 +1407,9 @@ mod tests {
         let session_id = SessionId::new();
         let conn_a = ConnectionId::new();
         let conn_b = ConnectionId::new();
+
+        state.register_connection(conn_a).await;
+        state.register_connection(conn_b).await;
 
         // Claim ownership
         assert!(state.try_claim_session_ownership(session_id, conn_a).await);
@@ -1428,6 +1435,9 @@ mod tests {
         let session_3 = SessionId::new();
         let conn_a = ConnectionId::new();
         let conn_b = ConnectionId::new();
+
+        state.register_connection(conn_a).await;
+        state.register_connection(conn_b).await;
 
         // conn_a owns sessions 1 and 2
         assert!(state.try_claim_session_ownership(session_1, conn_a).await);
@@ -1466,10 +1476,33 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_dead_owner_eviction() {
+        let state = create_test_state();
+        let session_id = SessionId::new();
+        let conn_a = ConnectionId::new();
+        let conn_b = ConnectionId::new();
+
+        state.register_connection(conn_a).await;
+
+        // conn_a claims ownership
+        assert!(state.try_claim_session_ownership(session_id, conn_a).await);
+
+        // conn_a disconnects (unregistered but ownership not explicitly released)
+        state.unregister_connection(conn_a).await;
+
+        // conn_b should be able to evict the dead owner and claim
+        state.register_connection(conn_b).await;
+        assert!(state.try_claim_session_ownership(session_id, conn_b).await);
+        assert!(state.is_session_owner(session_id, conn_b).await);
+    }
+
+    #[tokio::test]
     async fn test_session_ownership_same_connection_reclaim() {
         let state = create_test_state();
         let session_id = SessionId::new();
         let conn_a = ConnectionId::new();
+
+        state.register_connection(conn_a).await;
 
         // First claim
         assert!(state.try_claim_session_ownership(session_id, conn_a).await);
@@ -1485,6 +1518,9 @@ mod tests {
         let session_id = SessionId::new();
         let conn_a = ConnectionId::new();
         let conn_b = ConnectionId::new();
+
+        state.register_connection(conn_a).await;
+        state.register_connection(conn_b).await;
 
         // conn_a owns session
         assert!(state.try_claim_session_ownership(session_id, conn_a).await);
@@ -1510,6 +1546,9 @@ mod tests {
         let session_id = SessionId::new();
         let conn_a = ConnectionId::new();
         let conn_a_new = ConnectionId::new(); // New connection (same client, new WebSocket)
+
+        state.register_connection(conn_a).await;
+        state.register_connection(conn_a_new).await;
 
         // conn_a owns session
         assert!(state.try_claim_session_ownership(session_id, conn_a).await);
@@ -1546,6 +1585,8 @@ mod tests {
         let session_id = SessionId::new();
         let conn_a = ConnectionId::new();
 
+        state.register_connection(conn_a).await;
+
         // conn_a owns session
         assert!(state.try_claim_session_ownership(session_id, conn_a).await);
 
@@ -1566,6 +1607,7 @@ mod tests {
 
         // Now another connection can claim
         let conn_b = ConnectionId::new();
+        state.register_connection(conn_b).await;
         assert!(state.try_claim_session_ownership(session_id, conn_b).await);
     }
 

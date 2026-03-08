@@ -76,23 +76,61 @@ pub trait HasRateLimitConfig: ConfigProvider {
 // Default implementations for common types
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Default session configuration values.
+/// Default configuration values used across the system.
+///
+/// These constants are the fallback values when no config file or explicit
+/// override is provided. They can be overridden in `config.toml` under
+/// their respective sections (e.g., `[server]`, `[agent.default]`, `[tools]`).
 pub mod defaults {
     use std::time::Duration;
 
+    // ── Session / Cache ──────────────────────────────────────────────
+    /// Maximum number of sessions held in the in-memory cache.
+    /// Override: `[session] max_sessions`
     pub const MAX_SESSIONS: usize = 10_000;
+    /// Interval between session timeout sweeps (seconds).
+    /// Override: `[session] cleanup_interval_secs`
     pub const CLEANUP_INTERVAL_SECS: u64 = 60;
+
+    // ── Tool Execution ───────────────────────────────────────────────
+    /// Shell/bash command timeout (seconds). Commands running longer are killed.
+    /// Override: `[tools.shell] timeout_secs`
     pub const SHELL_TIMEOUT_SECS: u64 = 30;
+    /// HTTP fetch timeout for web_fetch tool (seconds).
+    /// Override: `[tools.web] timeout_secs`
     pub const WEB_TIMEOUT_SECS: u64 = 30;
-    pub const MAX_OUTPUT_BYTES: usize = 102_400; // 100KB
+    /// Global default max tool output size before truncation (bytes, 100KB).
+    /// Per-tool overrides: shell=100KB, file_read=500KB, web_fetch=200KB, search=50KB.
+    /// Override: `[tools.output] max_size_bytes`
+    pub const MAX_OUTPUT_BYTES: usize = 102_400;
+
+    // ── Agent Loop ───────────────────────────────────────────────────
+    /// Maximum tool-call iterations per agent turn before the turn is truncated.
+    /// The orchestrator (RLM) intentionally uses 1 to regain control after each tool call.
+    /// Override: `[agent.default] max_iterations`
     pub const MAX_ITERATIONS: u32 = 25;
+
+    // ── Rate Limiting ────────────────────────────────────────────────
+    /// LLM API requests per minute (per-session token bucket).
+    /// Override: `[server] api_rpm`
     pub const REQUESTS_PER_MINUTE: u32 = 120;
+    /// Token bucket burst allowance above the per-minute rate.
     pub const BURST_SIZE: u32 = 10;
+
+    // ── Server ───────────────────────────────────────────────────────
+    /// Default HTTP server port.
+    /// Override: `[server] port`
     pub const DEFAULT_PORT: u16 = 8080;
+    /// Default bind address (localhost only).
+    /// Override: `[server] bind`
     pub const DEFAULT_BIND: &str = "127.0.0.1";
-    /// Context usage warning threshold (percentage).
+
+    // ── Context Management ───────────────────────────────────────────
+    /// Context usage warning threshold (percentage of max_context_tokens).
+    /// When exceeded, the agent logs a warning and may request compaction.
     pub const CONTEXT_WARNING_PERCENT: u8 = 70;
-    /// Context usage critical threshold (percentage).
+    /// Context usage critical threshold (percentage of max_context_tokens).
+    /// When exceeded, compaction is forced to avoid exceeding the model's window.
     pub const CONTEXT_CRITICAL_PERCENT: u8 = 90;
 
     pub fn cleanup_interval() -> Duration {

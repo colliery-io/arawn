@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-03-08T03:10:58Z | 308 files | Rust
+> Generated: 2026-03-08T14:30:00Z | 308 files | Rust
 
 ## Project Structure
 
@@ -500,15 +500,15 @@
 -  `cmd_set_secret` function L224-255 — `(backend_str: &str) -> Result<()>` — Config command - configuration management.
 -  `cmd_delete_secret` function L257-273 — `(backend_str: &str) -> Result<()>` — Config command - configuration management.
 -  `cmd_edit` function L275-295 — `() -> Result<()>` — Config command - configuration management.
--  `cmd_init` function L297-358 — `(local: bool) -> Result<()>` — Config command - configuration management.
--  `cmd_path` function L360-367 — `() -> Result<()>` — Config command - configuration management.
--  `parse_backend` function L369-382 — `(s: &str) -> Result<Backend>` — Config command - configuration management.
--  `key_status_for` function L384-400 — `(backend: &Backend) -> &'static str` — Config command - configuration management.
--  `cmd_current_context` function L406-421 — `() -> Result<()>` — Config command - configuration management.
--  `cmd_get_contexts` function L423-448 — `() -> Result<()>` — Config command - configuration management.
--  `cmd_use_context` function L450-459 — `(name: &str) -> Result<()>` — Config command - configuration management.
--  `cmd_set_context` function L461-513 — `( name: &str, server: Option<String>, workstream: Option<String>, timeout: Optio...` — Config command - configuration management.
--  `cmd_delete_context` function L515-534 — `(name: &str) -> Result<()>` — Config command - configuration management.
+-  `cmd_init` function L297-385 — `(local: bool) -> Result<()>` — Config command - configuration management.
+-  `cmd_path` function L387-394 — `() -> Result<()>` — Config command - configuration management.
+-  `parse_backend` function L396-409 — `(s: &str) -> Result<Backend>` — Config command - configuration management.
+-  `key_status_for` function L411-427 — `(backend: &Backend) -> &'static str` — Config command - configuration management.
+-  `cmd_current_context` function L433-448 — `() -> Result<()>` — Config command - configuration management.
+-  `cmd_get_contexts` function L450-475 — `() -> Result<()>` — Config command - configuration management.
+-  `cmd_use_context` function L477-486 — `(name: &str) -> Result<()>` — Config command - configuration management.
+-  `cmd_set_context` function L488-540 — `( name: &str, server: Option<String>, workstream: Option<String>, timeout: Optio...` — Config command - configuration management.
+-  `cmd_delete_context` function L542-561 — `(name: &str) -> Result<()>` — Config command - configuration management.
 
 #### crates/arawn/src/commands/logs.rs
 
@@ -1068,18 +1068,18 @@
 - pub `done` function L120-122 — `(iterations: u32) -> Self` — Create a done chunk.
 - pub `error` function L125-129 — `(message: impl Into<String>) -> Self` — Create an error chunk.
 - pub `AgentStream` type L137 — `= Pin<Box<dyn Stream<Item = StreamChunk> + Send + 'static>>` — A boxed stream of chunks.
-- pub `create_turn_stream` function L160-357 — `( backend: SharedBackend, tools: Arc<ToolRegistry>, config: AgentConfig, message...` — Create a streaming response for an agent turn.
+- pub `create_turn_stream` function L160-362 — `( backend: SharedBackend, tools: Arc<ToolRegistry>, config: AgentConfig, message...` — Create a streaming response for an agent turn.
 -  `StreamChunk` type L81-130 — `= StreamChunk` — token-by-token output during agent responses.
 -  `StreamState` struct L140-153 — `{ backend: SharedBackend, tools: Arc<ToolRegistry>, config: AgentConfig, message...` — State for streaming agent responses.
--  `build_stream_request` function L359-381 — `(state: &StreamState) -> CompletionRequest` — token-by-token output during agent responses.
--  `build_sync_request` function L383-404 — `(state: &StreamState) -> CompletionRequest` — token-by-token output during agent responses.
--  `tests` module L411-465 — `-` — token-by-token output during agent responses.
--  `test_stream_chunk_text` function L415-418 — `()` — token-by-token output during agent responses.
--  `test_stream_chunk_tool_start` function L421-428 — `()` — token-by-token output during agent responses.
--  `test_stream_chunk_tool_end` function L431-438 — `()` — token-by-token output during agent responses.
--  `test_stream_chunk_done` function L441-444 — `()` — token-by-token output during agent responses.
--  `test_stream_chunk_error` function L447-453 — `()` — token-by-token output during agent responses.
--  `test_stream_chunk_serialization` function L456-464 — `()` — token-by-token output during agent responses.
+-  `build_stream_request` function L364-386 — `(state: &StreamState) -> CompletionRequest` — token-by-token output during agent responses.
+-  `build_sync_request` function L388-409 — `(state: &StreamState) -> CompletionRequest` — token-by-token output during agent responses.
+-  `tests` module L416-470 — `-` — token-by-token output during agent responses.
+-  `test_stream_chunk_text` function L420-423 — `()` — token-by-token output during agent responses.
+-  `test_stream_chunk_tool_start` function L426-433 — `()` — token-by-token output during agent responses.
+-  `test_stream_chunk_tool_end` function L436-443 — `()` — token-by-token output during agent responses.
+-  `test_stream_chunk_done` function L446-449 — `()` — token-by-token output during agent responses.
+-  `test_stream_chunk_error` function L452-458 — `()` — token-by-token output during agent responses.
+-  `test_stream_chunk_serialization` function L461-469 — `()` — token-by-token output during agent responses.
 
 #### crates/arawn-agent/src/types.rs
 
@@ -5911,7 +5911,7 @@
 -  `AppState` type L565-1238 — `= AppState` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
 -  `session_to_messages` function L1245-1254 — `(session: &Session) -> Vec<(String, String)>` — Convert a session's turns into owned `(role, content)` pairs.
 -  `messages_as_refs` function L1257-1262 — `(messages: &[(String, String)]) -> Vec<(&str, &str)>` — Convert owned message pairs to borrowed slices for the indexer API.
--  `tests` module L1265-1671 — `-` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
+-  `tests` module L1265-1713 — `-` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
 -  `create_test_state` function L1270-1278 — `() -> AppState` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
 -  `test_session_to_messages_empty` function L1281-1285 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
 -  `test_session_to_messages_with_turns` function L1288-1310 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
@@ -5921,20 +5921,21 @@
 -  `test_close_session_nonexistent_returns_false` function L1349-1353 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
 -  `test_close_session_without_indexer` function L1356-1373 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
 -  `test_default_state_has_no_indexer` function L1376-1379 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_session_ownership_first_claimer_wins` function L1382-1398 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_session_ownership_release` function L1401-1421 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_session_ownership_release_all_on_disconnect` function L1424-1466 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_session_ownership_same_connection_reclaim` function L1469-1480 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_reconnect_token_wrong_token_rejected` function L1483-1505 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_reconnect_token_new_connection_can_reclaim` function L1508-1529 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_reconnect_cleanup_expired` function L1532-1570 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_shared_services_builder` function L1573-1587 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_runtime_state_defaults` function L1590-1595 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_convenience_accessors` function L1598-1609 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_ws_connection_tracker_allows_under_limit` function L1614-1623 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_ws_connection_tracker_rate_limits` function L1626-1638 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_ws_connection_tracker_per_ip` function L1641-1656 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_ws_connection_tracker_cleanup` function L1659-1670 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
+-  `test_session_ownership_first_claimer_wins` function L1382-1402 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
+-  `test_session_ownership_release` function L1405-1428 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
+-  `test_session_ownership_release_all_on_disconnect` function L1431-1476 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
+-  `test_dead_owner_eviction` function L1479-1497 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
+-  `test_session_ownership_same_connection_reclaim` function L1500-1513 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
+-  `test_reconnect_token_wrong_token_rejected` function L1516-1541 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
+-  `test_reconnect_token_new_connection_can_reclaim` function L1544-1568 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
+-  `test_reconnect_cleanup_expired` function L1571-1612 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
+-  `test_shared_services_builder` function L1615-1629 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
+-  `test_runtime_state_defaults` function L1632-1637 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
+-  `test_convenience_accessors` function L1640-1651 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
+-  `test_ws_connection_tracker_allows_under_limit` function L1656-1665 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
+-  `test_ws_connection_tracker_rate_limits` function L1668-1680 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
+-  `test_ws_connection_tracker_per_ip` function L1683-1698 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
+-  `test_ws_connection_tracker_cleanup` function L1701-1712 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
 
 ### crates/arawn-server/src/routes
 
@@ -7248,53 +7249,53 @@
 - pub `HasToolConfig` interface L35-44 — `{ fn shell_timeout(), fn web_timeout(), fn max_output_bytes() }` — Tool execution configuration.
 - pub `HasAgentConfig` interface L49-57 — `{ fn max_iterations(), fn default_timeout() }` — Agent execution configuration.
 - pub `HasRateLimitConfig` interface L62-73 — `{ fn rate_limiting_enabled(), fn requests_per_minute(), fn burst_size() }` — Rate limiting configuration.
-- pub `defaults` module L80-109 — `-` — Default session configuration values.
-- pub `MAX_SESSIONS` variable L83 — `: usize` — represents a specific configuration capability.
-- pub `CLEANUP_INTERVAL_SECS` variable L84 — `: u64` — represents a specific configuration capability.
-- pub `SHELL_TIMEOUT_SECS` variable L85 — `: u64` — represents a specific configuration capability.
-- pub `WEB_TIMEOUT_SECS` variable L86 — `: u64` — represents a specific configuration capability.
-- pub `MAX_OUTPUT_BYTES` variable L87 — `: usize` — represents a specific configuration capability.
-- pub `MAX_ITERATIONS` variable L88 — `: u32` — represents a specific configuration capability.
-- pub `REQUESTS_PER_MINUTE` variable L89 — `: u32` — represents a specific configuration capability.
-- pub `BURST_SIZE` variable L90 — `: u32` — represents a specific configuration capability.
-- pub `DEFAULT_PORT` variable L91 — `: u16` — represents a specific configuration capability.
-- pub `DEFAULT_BIND` variable L92 — `: &str` — represents a specific configuration capability.
-- pub `CONTEXT_WARNING_PERCENT` variable L94 — `: u8` — Context usage warning threshold (percentage).
-- pub `CONTEXT_CRITICAL_PERCENT` variable L96 — `: u8` — Context usage critical threshold (percentage).
-- pub `cleanup_interval` function L98-100 — `() -> Duration` — represents a specific configuration capability.
-- pub `shell_timeout` function L102-104 — `() -> Duration` — represents a specific configuration capability.
-- pub `web_timeout` function L106-108 — `() -> Duration` — represents a specific configuration capability.
-- pub `SessionConfigProvider` struct L127-131 — `{ max_sessions: usize, cleanup_interval: Duration, session_ttl: Option<Duration>...` — Standalone session configuration.
-- pub `ToolConfigProvider` struct L175-179 — `{ shell_timeout: Duration, web_timeout: Duration, max_output_bytes: usize }` — Standalone tool configuration.
-- pub `AgentConfigProvider` struct L219-222 — `{ max_iterations: u32, default_timeout: Duration }` — Standalone agent configuration.
+- pub `defaults` module L84-147 — `-` — Default configuration values used across the system.
+- pub `MAX_SESSIONS` variable L90 — `: usize` — Maximum number of sessions held in the in-memory cache.
+- pub `CLEANUP_INTERVAL_SECS` variable L93 — `: u64` — Interval between session timeout sweeps (seconds).
+- pub `SHELL_TIMEOUT_SECS` variable L98 — `: u64` — Shell/bash command timeout (seconds).
+- pub `WEB_TIMEOUT_SECS` variable L101 — `: u64` — HTTP fetch timeout for web_fetch tool (seconds).
+- pub `MAX_OUTPUT_BYTES` variable L105 — `: usize` — Global default max tool output size before truncation (bytes, 100KB).
+- pub `MAX_ITERATIONS` variable L111 — `: u32` — Maximum tool-call iterations per agent turn before the turn is truncated.
+- pub `REQUESTS_PER_MINUTE` variable L116 — `: u32` — LLM API requests per minute (per-session token bucket).
+- pub `BURST_SIZE` variable L118 — `: u32` — Token bucket burst allowance above the per-minute rate.
+- pub `DEFAULT_PORT` variable L123 — `: u16` — Default HTTP server port.
+- pub `DEFAULT_BIND` variable L126 — `: &str` — Default bind address (localhost only).
+- pub `CONTEXT_WARNING_PERCENT` variable L131 — `: u8` — Context usage warning threshold (percentage of max_context_tokens).
+- pub `CONTEXT_CRITICAL_PERCENT` variable L134 — `: u8` — Context usage critical threshold (percentage of max_context_tokens).
+- pub `cleanup_interval` function L136-138 — `() -> Duration` — represents a specific configuration capability.
+- pub `shell_timeout` function L140-142 — `() -> Duration` — represents a specific configuration capability.
+- pub `web_timeout` function L144-146 — `() -> Duration` — represents a specific configuration capability.
+- pub `SessionConfigProvider` struct L165-169 — `{ max_sessions: usize, cleanup_interval: Duration, session_ttl: Option<Duration>...` — Standalone session configuration.
+- pub `ToolConfigProvider` struct L213-217 — `{ shell_timeout: Duration, web_timeout: Duration, max_output_bytes: usize }` — Standalone tool configuration.
+- pub `AgentConfigProvider` struct L257-260 — `{ max_iterations: u32, default_timeout: Duration }` — Standalone agent configuration.
 -  `session_ttl` function L27-29 — `(&self) -> Option<Duration>` — Optional TTL for sessions (None = no expiry).
 -  `default_timeout` function L54-56 — `(&self) -> Duration` — Default timeout for agent operations.
 -  `burst_size` function L70-72 — `(&self) -> u32` — Burst allowance above steady rate.
--  `SessionConfigProvider` type L133-141 — `impl Default for SessionConfigProvider` — represents a specific configuration capability.
--  `default` function L134-140 — `() -> Self` — represents a specific configuration capability.
--  `SessionConfigProvider` type L143 — `impl ConfigProvider for SessionConfigProvider` — represents a specific configuration capability.
--  `SessionConfigProvider` type L145-157 — `impl HasSessionConfig for SessionConfigProvider` — represents a specific configuration capability.
--  `max_sessions` function L146-148 — `(&self) -> usize` — represents a specific configuration capability.
--  `cleanup_interval` function L150-152 — `(&self) -> Duration` — represents a specific configuration capability.
--  `session_ttl` function L154-156 — `(&self) -> Option<Duration>` — represents a specific configuration capability.
--  `ToolConfigProvider` type L181-189 — `impl Default for ToolConfigProvider` — represents a specific configuration capability.
--  `default` function L182-188 — `() -> Self` — represents a specific configuration capability.
--  `ToolConfigProvider` type L191 — `impl ConfigProvider for ToolConfigProvider` — represents a specific configuration capability.
--  `ToolConfigProvider` type L193-205 — `impl HasToolConfig for ToolConfigProvider` — represents a specific configuration capability.
--  `shell_timeout` function L194-196 — `(&self) -> Duration` — represents a specific configuration capability.
--  `web_timeout` function L198-200 — `(&self) -> Duration` — represents a specific configuration capability.
--  `max_output_bytes` function L202-204 — `(&self) -> usize` — represents a specific configuration capability.
--  `AgentConfigProvider` type L224-231 — `impl Default for AgentConfigProvider` — represents a specific configuration capability.
--  `default` function L225-230 — `() -> Self` — represents a specific configuration capability.
--  `AgentConfigProvider` type L233 — `impl ConfigProvider for AgentConfigProvider` — represents a specific configuration capability.
--  `AgentConfigProvider` type L235-243 — `impl HasAgentConfig for AgentConfigProvider` — represents a specific configuration capability.
--  `max_iterations` function L236-238 — `(&self) -> u32` — represents a specific configuration capability.
--  `default_timeout` function L240-242 — `(&self) -> Duration` — represents a specific configuration capability.
--  `tests` module L246-282 — `-` — represents a specific configuration capability.
--  `test_session_config_defaults` function L250-255 — `()` — represents a specific configuration capability.
--  `test_tool_config_defaults` function L258-263 — `()` — represents a specific configuration capability.
--  `test_agent_config_defaults` function L266-269 — `()` — represents a specific configuration capability.
--  `test_custom_session_config` function L272-281 — `()` — represents a specific configuration capability.
+-  `SessionConfigProvider` type L171-179 — `impl Default for SessionConfigProvider` — represents a specific configuration capability.
+-  `default` function L172-178 — `() -> Self` — represents a specific configuration capability.
+-  `SessionConfigProvider` type L181 — `impl ConfigProvider for SessionConfigProvider` — represents a specific configuration capability.
+-  `SessionConfigProvider` type L183-195 — `impl HasSessionConfig for SessionConfigProvider` — represents a specific configuration capability.
+-  `max_sessions` function L184-186 — `(&self) -> usize` — represents a specific configuration capability.
+-  `cleanup_interval` function L188-190 — `(&self) -> Duration` — represents a specific configuration capability.
+-  `session_ttl` function L192-194 — `(&self) -> Option<Duration>` — represents a specific configuration capability.
+-  `ToolConfigProvider` type L219-227 — `impl Default for ToolConfigProvider` — represents a specific configuration capability.
+-  `default` function L220-226 — `() -> Self` — represents a specific configuration capability.
+-  `ToolConfigProvider` type L229 — `impl ConfigProvider for ToolConfigProvider` — represents a specific configuration capability.
+-  `ToolConfigProvider` type L231-243 — `impl HasToolConfig for ToolConfigProvider` — represents a specific configuration capability.
+-  `shell_timeout` function L232-234 — `(&self) -> Duration` — represents a specific configuration capability.
+-  `web_timeout` function L236-238 — `(&self) -> Duration` — represents a specific configuration capability.
+-  `max_output_bytes` function L240-242 — `(&self) -> usize` — represents a specific configuration capability.
+-  `AgentConfigProvider` type L262-269 — `impl Default for AgentConfigProvider` — represents a specific configuration capability.
+-  `default` function L263-268 — `() -> Self` — represents a specific configuration capability.
+-  `AgentConfigProvider` type L271 — `impl ConfigProvider for AgentConfigProvider` — represents a specific configuration capability.
+-  `AgentConfigProvider` type L273-281 — `impl HasAgentConfig for AgentConfigProvider` — represents a specific configuration capability.
+-  `max_iterations` function L274-276 — `(&self) -> u32` — represents a specific configuration capability.
+-  `default_timeout` function L278-280 — `(&self) -> Duration` — represents a specific configuration capability.
+-  `tests` module L284-320 — `-` — represents a specific configuration capability.
+-  `test_session_config_defaults` function L288-293 — `()` — represents a specific configuration capability.
+-  `test_tool_config_defaults` function L296-301 — `()` — represents a specific configuration capability.
+-  `test_agent_config_defaults` function L304-307 — `()` — represents a specific configuration capability.
+-  `test_custom_session_config` function L310-319 — `()` — represents a specific configuration capability.
 
 #### crates/arawn-types/src/delegation.rs
 
@@ -7718,40 +7719,40 @@
 - pub `get_session` function L323-333 — `(&self, id: &str) -> Result<Session>`
 - pub `get_active_session` function L335-346 — `(&self, workstream_id: &str) -> Result<Option<Session>>`
 - pub `end_session` function L348-358 — `(&self, id: &str, turn_count: i32) -> Result<()>`
-- pub `delete_session` function L361-370 — `(&self, id: &str) -> Result<()>` — Delete a session record from the database.
-- pub `update_session_summary` function L372-381 — `(&self, id: &str, summary: &str) -> Result<()>`
-- pub `reassign_session` function L384-438 — `(&self, session_id: &str, new_workstream_id: &str) -> Result<Session>` — Move a session to a different workstream.
-- pub `list_sessions` function L440-452 — `(&self, workstream_id: &str) -> Result<Vec<Session>>`
-- pub `ensure_scratch` function L457-463 — `(&self) -> Result<Workstream>` — Ensure the well-known scratch workstream exists, creating it if missing.
+- pub `delete_session` function L361-369 — `(&self, id: &str) -> Result<()>` — Delete a session record from the database.
+- pub `update_session_summary` function L371-380 — `(&self, id: &str, summary: &str) -> Result<()>`
+- pub `reassign_session` function L383-437 — `(&self, session_id: &str, new_workstream_id: &str) -> Result<Session>` — Move a session to a different workstream.
+- pub `list_sessions` function L439-451 — `(&self, workstream_id: &str) -> Result<Vec<Session>>`
+- pub `ensure_scratch` function L456-462 — `(&self) -> Result<Workstream>` — Ensure the well-known scratch workstream exists, creating it if missing.
 -  `embedded` module L12-15 — `-`
--  `WorkstreamStore` type L49-464 — `= WorkstreamStore`
+-  `WorkstreamStore` type L49-463 — `= WorkstreamStore`
 -  `run_migrations` function L74-80 — `(&mut self) -> Result<()>`
 -  `conn` function L83-85 — `(&self) -> parking_lot::MutexGuard<'_, Connection>` — Lock the connection for use.
--  `parse_dt` function L468-479 — `(s: &str) -> DateTime<Utc>`
--  `row_to_workstream` function L481-492 — `(row: &rusqlite::Row<'_>) -> rusqlite::Result<Workstream>`
--  `row_to_session` function L494-504 — `(row: &rusqlite::Row<'_>) -> rusqlite::Result<Session>`
--  `WorkstreamStore` type L510-575 — `= WorkstreamStore`
--  `create_workstream` function L511-518 — `( &self, title: &str, default_model: Option<&str>, is_scratch: bool, ) -> Result...`
--  `get_workstream` function L520-522 — `(&self, id: &str) -> Result<Workstream>`
--  `list_workstreams` function L524-526 — `(&self, state_filter: Option<&str>) -> Result<Vec<Workstream>>`
--  `update_workstream` function L528-537 — `( &self, id: &str, title: Option<&str>, summary: Option<&str>, state: Option<&st...`
--  `set_tags` function L539-541 — `(&self, workstream_id: &str, tags: &[String]) -> Result<()>`
--  `get_tags` function L543-545 — `(&self, workstream_id: &str) -> Result<Vec<String>>`
--  `create_session` function L547-549 — `(&self, workstream_id: &str) -> Result<Session>`
--  `create_session_with_id` function L551-553 — `(&self, session_id: &str, workstream_id: &str) -> Result<Session>`
--  `get_active_session` function L555-557 — `(&self, workstream_id: &str) -> Result<Option<Session>>`
--  `list_sessions` function L559-561 — `(&self, workstream_id: &str) -> Result<Vec<Session>>`
--  `end_session` function L563-566 — `(&self, session_id: &str) -> Result<()>`
--  `delete_session` function L568-570 — `(&self, session_id: &str) -> Result<()>`
--  `reassign_session` function L572-574 — `(&self, session_id: &str, new_workstream_id: &str) -> Result<Session>`
--  `tests` module L578-681 — `-`
--  `test_store` function L581-583 — `() -> WorkstreamStore`
--  `test_migrations_run` function L586-588 — `()`
--  `test_workstream_crud` function L591-618 — `()`
--  `test_tags` function L621-635 — `()`
--  `test_session_lifecycle` function L638-660 — `()`
--  `test_scratch_auto_creation` function L663-673 — `()`
--  `test_not_found` function L676-680 — `()`
+-  `parse_dt` function L467-478 — `(s: &str) -> DateTime<Utc>`
+-  `row_to_workstream` function L480-491 — `(row: &rusqlite::Row<'_>) -> rusqlite::Result<Workstream>`
+-  `row_to_session` function L493-503 — `(row: &rusqlite::Row<'_>) -> rusqlite::Result<Session>`
+-  `WorkstreamStore` type L509-574 — `= WorkstreamStore`
+-  `create_workstream` function L510-517 — `( &self, title: &str, default_model: Option<&str>, is_scratch: bool, ) -> Result...`
+-  `get_workstream` function L519-521 — `(&self, id: &str) -> Result<Workstream>`
+-  `list_workstreams` function L523-525 — `(&self, state_filter: Option<&str>) -> Result<Vec<Workstream>>`
+-  `update_workstream` function L527-536 — `( &self, id: &str, title: Option<&str>, summary: Option<&str>, state: Option<&st...`
+-  `set_tags` function L538-540 — `(&self, workstream_id: &str, tags: &[String]) -> Result<()>`
+-  `get_tags` function L542-544 — `(&self, workstream_id: &str) -> Result<Vec<String>>`
+-  `create_session` function L546-548 — `(&self, workstream_id: &str) -> Result<Session>`
+-  `create_session_with_id` function L550-552 — `(&self, session_id: &str, workstream_id: &str) -> Result<Session>`
+-  `get_active_session` function L554-556 — `(&self, workstream_id: &str) -> Result<Option<Session>>`
+-  `list_sessions` function L558-560 — `(&self, workstream_id: &str) -> Result<Vec<Session>>`
+-  `end_session` function L562-565 — `(&self, session_id: &str) -> Result<()>`
+-  `delete_session` function L567-569 — `(&self, session_id: &str) -> Result<()>`
+-  `reassign_session` function L571-573 — `(&self, session_id: &str, new_workstream_id: &str) -> Result<Session>`
+-  `tests` module L577-680 — `-`
+-  `test_store` function L580-582 — `() -> WorkstreamStore`
+-  `test_migrations_run` function L585-587 — `()`
+-  `test_workstream_crud` function L590-617 — `()`
+-  `test_tags` function L620-634 — `()`
+-  `test_session_lifecycle` function L637-659 — `()`
+-  `test_scratch_auto_creation` function L662-672 — `()`
+-  `test_not_found` function L675-679 — `()`
 
 #### crates/arawn-workstream/src/types.rs
 

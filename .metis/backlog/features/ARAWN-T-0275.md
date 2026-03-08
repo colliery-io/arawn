@@ -4,15 +4,15 @@ level: task
 title: "TUI: Delete workstreams and sessions"
 short_code: "ARAWN-T-0275"
 created_at: 2026-03-06T13:50:03.049077+00:00
-updated_at: 2026-03-06T13:50:03.049077+00:00
+updated_at: 2026-03-08T12:26:38.076391+00:00
 parent: 
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/backlog"
   - "#feature"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -30,6 +30,12 @@ Allow users to delete workstreams and sessions from the TUI interface. Currently
 
 ### Priority
 - [x] P2 - Medium (nice to have)
+
+## Acceptance Criteria
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
