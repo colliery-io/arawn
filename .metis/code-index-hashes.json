@@ -272,6 +272,7 @@
     "crates/arawn/src/commands/tui.rs": "a4a425f9f336d85676f6bd787b918d5dd567e3cebffaad038c81a936ce4fffd1",
     "crates/arawn/src/main.rs": "35fa64892744f9fc08e18770d30f12a035c70fe1c45c8e9568661c7efdf6402a",
     "crates/arawn/tests/cli_integration.rs": "a8b364374f5d9ba400df774b12b9aa84eff134dd8c7108454421aec5feae1ef5",
+    "crates/arawn/tests/command_integration.rs": "0b6c1a9bb4e6ac2bae2e65ba106327566989d43b9fcef35cfbc8def375321523",
     "crates/gline-rs-vendored/src/lib.rs": "8563f62adc38d1a7d56352e9a96f1a1afe50b9ea0f46da1852bb5baa666faf44",
     "crates/gline-rs-vendored/src/model/input/encoded.rs": "cf2f54f954fa12225d924b1ebedcb684bc66a515f57523048d910be2dd80cd37",
     "crates/gline-rs-vendored/src/model/input/mod.rs": "924ad9e45d858f73ba190be456722ceea3fffb0d7d308b7a12fe71830f1b9d04",

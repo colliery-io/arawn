@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-03-08T16:03:13Z | 322 files | Rust
+> Generated: 2026-03-08T16:41:27Z | 323 files | Rust
 
 ## Project Structure
 
@@ -31,7 +31,8 @@
 │   │   │   │   └── tui.rs
 │   │   │   └── main.rs
 │   │   └── tests/
-│   │       └── cli_integration.rs
+│   │       ├── cli_integration.rs
+│   │       └── command_integration.rs
 │   ├── arawn-agent/
 │   │   └── src/
 │   │       ├── agent.rs
@@ -754,6 +755,54 @@
 -  `test_auth_subcommands_listed` function L242-244 — `()` — CLI parsing and help output only.
 -  `test_plugin_subcommands_listed` function L251-253 — `()` — CLI parsing and help output only.
 -  `test_mcp_subcommands_listed` function L260-262 — `()` — CLI parsing and help output only.
+
+#### crates/arawn/tests/command_integration.rs
+
+-  `arawn_with_config` function L17-25 — `(config_dir: &TempDir) -> Command` — Get a command for the arawn binary with an isolated config directory.
+-  `write_config` function L28-30 — `(dir: &TempDir, content: &str)` — Write a config file into the temp config dir.
+-  `test_config_show_defaults` function L37-46 — `()` — and secret state per test.
+-  `test_config_show_with_config_file` function L49-73 — `()` — and secret state per test.
+-  `test_config_show_verbose_includes_raw` function L76-92 — `()` — and secret state per test.
+-  `test_config_show_invalid_toml_warns` function L95-105 — `()` — and secret state per test.
+-  `test_config_which_no_files` function L112-121 — `()` — and secret state per test.
+-  `test_config_which_with_file` function L124-133 — `()` — and secret state per test.
+-  `test_config_init_creates_file` function L140-150 — `()` — and secret state per test.
+-  `test_config_init_existing_file` function L153-162 — `()` — and secret state per test.
+-  `test_config_init_local` function L165-177 — `()` — and secret state per test.
+-  `test_config_path_shows_path` function L184-192 — `()` — and secret state per test.
+-  `test_config_set_context_creates_new` function L199-213 — `()` — and secret state per test.
+-  `test_config_set_context_without_server_creates_with_empty_url` function L216-228 — `()` — and secret state per test.
+-  `test_config_get_contexts_empty` function L231-239 — `()` — and secret state per test.
+-  `test_config_context_roundtrip` function L242-292 — `()` — and secret state per test.
+-  `test_config_use_nonexistent_context` function L295-302 — `()` — and secret state per test.
+-  `test_config_delete_nonexistent_context` function L305-313 — `()` — and secret state per test.
+-  `test_config_current_context_when_none` function L316-324 — `()` — and secret state per test.
+-  `test_config_set_context_with_workstream` function L327-343 — `()` — and secret state per test.
+-  `test_config_update_existing_context` function L346-380 — `()` — and secret state per test.
+-  `test_status_no_server` function L387-395 — `()` — and secret state per test.
+-  `test_status_json_no_server` function L398-411 — `()` — and secret state per test.
+-  `test_secrets_list_empty` function L418-426 — `()` — and secret state per test.
+-  `test_secrets_delete_nonexistent` function L429-437 — `()` — and secret state per test.
+-  `test_secrets_help` function L440-450 — `()` — and secret state per test.
+-  `test_plugin_list_no_plugins` function L457-471 — `()` — and secret state per test.
+-  `test_plugin_list_json` function L474-510 — `()` — and secret state per test.
+-  `test_plugin_list_subscribed_filter` function L513-523 — `()` — and secret state per test.
+-  `test_logs_no_log_directory` function L530-543 — `()` — and secret state per test.
+-  `test_logs_empty_log_directory` function L546-557 — `()` — and secret state per test.
+-  `test_logs_reads_log_file` function L560-578 — `()` — and secret state per test.
+-  `test_logs_specific_file` function L581-592 — `()` — and secret state per test.
+-  `test_logs_missing_file` function L595-609 — `()` — and secret state per test.
+-  `test_logs_line_count` function L612-634 — `()` — and secret state per test.
+-  `test_session_list_no_server` function L641-650 — `()` — and secret state per test.
+-  `test_session_show_no_server` function L653-661 — `()` — and secret state per test.
+-  `test_logs_remote_no_server` function L664-672 — `()` — and secret state per test.
+-  `test_logs_remote_list_files_no_server` function L675-683 — `()` — and secret state per test.
+-  `test_server_flag_overrides_env` function L690-699 — `()` — and secret state per test.
+-  `test_context_flag_uses_context_url` function L702-729 — `()` — and secret state per test.
+-  `test_config_set_secret_invalid_backend` function L736-744 — `()` — and secret state per test.
+-  `test_config_delete_secret_invalid_backend` function L747-755 — `()` — and secret state per test.
+-  `test_config_show_multiple_profiles` function L762-790 — `()` — and secret state per test.
+-  `test_config_show_agent_bindings` function L797-818 — `()` — and secret state per test.
 
 ### crates/arawn-agent/src
 
