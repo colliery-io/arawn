@@ -4,12 +4,13 @@
 const CONTEXT_WARNING_PERCENT: u8 = 70;
 const CONTEXT_CRITICAL_PERCENT: u8 = 90;
 
+use super::theme;
 use crate::sessions::format_relative_time;
 use crate::sidebar::{Sidebar, SidebarSection};
 use ratatui::{
     Frame,
     layout::{Constraint, Layout, Rect},
-    style::{Color, Modifier, Style},
+    style::{Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Paragraph},
 };
@@ -31,10 +32,7 @@ pub fn render_sidebar(sidebar: &Sidebar, frame: &mut Frame, area: Rect) {
 /// Render the closed sidebar hint (minimal indicator).
 fn render_closed_hint(frame: &mut Frame, area: Rect) {
     // Just a thin vertical line with a hint character
-    let hint = Paragraph::new(vec![Line::from(Span::styled(
-        "│",
-        Style::default().fg(Color::DarkGray),
-    ))]);
+    let hint = Paragraph::new(vec![Line::from(Span::styled("│", theme::border()))]);
     frame.render_widget(hint, area);
 }
 
@@ -42,7 +40,7 @@ fn render_closed_hint(frame: &mut Frame, area: Rect) {
 fn render_open_sidebar(sidebar: &Sidebar, frame: &mut Frame, area: Rect) {
     let block = Block::default()
         .borders(Borders::RIGHT)
-        .border_style(Style::default().fg(Color::DarkGray));
+        .border_style(theme::border());
 
     let inner = block.inner(area);
     frame.render_widget(block, area);
@@ -67,11 +65,9 @@ fn render_open_sidebar(sidebar: &Sidebar, frame: &mut Frame, area: Rect) {
 /// Render the workstreams section header.
 fn render_workstreams_header(sidebar: &Sidebar, frame: &mut Frame, area: Rect) {
     let style = if sidebar.section == SidebarSection::Workstreams {
-        Style::default()
-            .fg(Color::Cyan)
-            .add_modifier(Modifier::BOLD)
+        theme::header()
     } else {
-        Style::default().fg(Color::DarkGray)
+        theme::list_item_dim()
     };
 
     let header = Paragraph::new(Line::from(Span::styled("WORKSTREAMS", style)));
@@ -105,10 +101,7 @@ fn render_workstreams_list(sidebar: &Sidebar, frame: &mut Frame, area: Rect) {
             label,
             "─".repeat(separator_width.saturating_sub(dash_count + label.len()))
         );
-        lines.push(Line::from(Span::styled(
-            separator,
-            Style::default().fg(Color::DarkGray),
-        )));
+        lines.push(Line::from(Span::styled(separator, theme::separator())));
 
         // Render archived workstreams
         for (is_selected, ws) in sidebar.visible_archived_workstreams() {
@@ -125,7 +118,7 @@ fn render_workstreams_list(sidebar: &Sidebar, frame: &mut Frame, area: Rect) {
     if lines.is_empty() {
         lines.push(Line::from(Span::styled(
             "  Loading...",
-            Style::default().fg(Color::DarkGray),
+            theme::empty_state(),
         )));
     }
 
@@ -171,40 +164,38 @@ fn render_workstream_line(
         // Archived workstreams: dimmed and italic
         if is_selected && sidebar.section == SidebarSection::Workstreams {
             Style::default()
-                .fg(Color::DarkGray)
+                .fg(theme::TEXT_SECONDARY)
                 .add_modifier(Modifier::ITALIC | Modifier::BOLD)
         } else {
             Style::default()
-                .fg(Color::DarkGray)
+                .fg(theme::TEXT_SECONDARY)
                 .add_modifier(Modifier::ITALIC)
         }
     } else if is_selected && sidebar.section == SidebarSection::Workstreams {
-        Style::default()
-            .fg(Color::Cyan)
-            .add_modifier(Modifier::BOLD)
+        theme::selected()
     } else if ws.is_current {
         Style::default().add_modifier(Modifier::BOLD)
     } else if ws.is_scratch {
-        Style::default().fg(Color::Yellow) // Scratch workstreams in yellow
+        Style::default().fg(theme::WARN) // Scratch workstreams in yellow
     } else {
-        Style::default()
+        theme::list_item()
     };
 
-    // Active workstream gets a dark dot indicator
-    let prefix_style = Style::default().fg(Color::DarkGray);
+    // Active workstream indicator
+    let prefix_style = theme::list_item_dim();
 
     // Usage color based on percentage
     let usage_color = if let (Some(usage), Some(limit)) = (ws.usage_bytes, ws.limit_bytes) {
         let percent = (usage as f64 / limit as f64 * 100.0) as u8;
         if percent >= CONTEXT_CRITICAL_PERCENT {
-            Color::Red
+            theme::ERR
         } else if percent >= CONTEXT_WARNING_PERCENT {
-            Color::Yellow
+            theme::WARN
         } else {
-            Color::DarkGray
+            theme::TEXT_SECONDARY
         }
     } else {
-        Color::DarkGray
+        theme::TEXT_SECONDARY
     };
 
     let mut spans = vec![
@@ -238,11 +229,9 @@ fn format_size(bytes: u64) -> String {
 /// Render the sessions section header.
 fn render_sessions_header(sidebar: &Sidebar, frame: &mut Frame, area: Rect) {
     let style = if sidebar.section == SidebarSection::Sessions {
-        Style::default()
-            .fg(Color::Cyan)
-            .add_modifier(Modifier::BOLD)
+        theme::header()
     } else {
-        Style::default().fg(Color::DarkGray)
+        theme::list_item_dim()
     };
 
     // Show workstream name in header
@@ -267,11 +256,9 @@ fn render_sessions_list(sidebar: &Sidebar, frame: &mut Frame, area: Rect) {
     let new_session_selected =
         sidebar.is_new_session_selected() && sidebar.section == SidebarSection::Sessions;
     let new_session_style = if new_session_selected {
-        Style::default()
-            .fg(Color::Cyan)
-            .add_modifier(Modifier::BOLD)
+        theme::selected()
     } else {
-        Style::default().fg(Color::DarkGray)
+        theme::list_item_dim()
     };
     lines.push(Line::from(vec![
         Span::styled("+ ", new_session_style),
@@ -286,17 +273,15 @@ fn render_sessions_list(sidebar: &Sidebar, frame: &mut Frame, area: Rect) {
         let title = truncate_str(&session.title, title_width);
 
         let style = if is_selected && sidebar.section == SidebarSection::Sessions {
-            Style::default()
-                .fg(Color::Cyan)
-                .add_modifier(Modifier::BOLD)
+            theme::selected()
         } else if session.is_current {
             Style::default().add_modifier(Modifier::BOLD)
         } else {
-            Style::default()
+            theme::list_item()
         };
 
-        // Active session gets a dark dot indicator (consistent with workstreams)
-        let prefix_style = Style::default().fg(Color::DarkGray);
+        // Active session indicator (consistent with workstreams)
+        let prefix_style = theme::list_item_dim();
 
         // Calculate spacing
         let spacer_width = title_width.saturating_sub(title.len());
@@ -306,10 +291,7 @@ fn render_sessions_list(sidebar: &Sidebar, frame: &mut Frame, area: Rect) {
             Span::styled(prefix, prefix_style),
             Span::styled(title, style),
             Span::raw(spacer),
-            Span::styled(
-                format!(" {}", time_str),
-                Style::default().fg(Color::DarkGray),
-            ),
+            Span::styled(format!(" {}", time_str), theme::list_item_dim()),
         ]));
     }
 
@@ -320,8 +302,8 @@ fn render_sessions_list(sidebar: &Sidebar, frame: &mut Frame, area: Rect) {
 /// Render the sidebar footer with keybinding hints.
 fn render_sidebar_footer(frame: &mut Frame, area: Rect) {
     let footer = Paragraph::new(Line::from(vec![
-        Span::styled("Tab", Style::default().fg(Color::DarkGray)),
-        Span::styled(" switch", Style::default().fg(Color::DarkGray)),
+        Span::styled("Tab", theme::key_hint()),
+        Span::styled(" switch", theme::key_desc()),
     ]));
     frame.render_widget(footer, area);
 }

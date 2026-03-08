@@ -66,8 +66,7 @@ struct CreateNoteRequest {
 }
 
 /// Session info.
-#[derive(Debug, Deserialize)]
-#[allow(dead_code)] // Used by list_sessions/delete_session (not yet wired to CLI)
+#[derive(Debug, Deserialize, Serialize)]
 pub struct SessionInfo {
     pub id: String,
     pub created_at: String,
@@ -76,9 +75,54 @@ pub struct SessionInfo {
 
 /// Session list response.
 #[derive(Debug, Deserialize)]
-#[allow(dead_code)] // Used by list_sessions (not yet wired to CLI)
 pub struct SessionListResponse {
     pub sessions: Vec<SessionInfo>,
+}
+
+/// Message info for conversation history.
+#[derive(Debug, Deserialize, Serialize)]
+pub struct MessageInfo {
+    pub role: String,
+    pub content: String,
+    pub timestamp: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metadata: Option<serde_json::Value>,
+}
+
+/// Session messages response.
+#[derive(Debug, Deserialize)]
+#[allow(dead_code)] // session_id used by serde deserialization
+pub struct SessionMessagesResponse {
+    pub session_id: String,
+    pub messages: Vec<MessageInfo>,
+    pub count: usize,
+}
+
+/// A log entry from the server.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct LogEntry {
+    pub line: String,
+}
+
+/// Server logs response.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct LogsResponse {
+    pub file: String,
+    pub count: usize,
+    pub entries: Vec<LogEntry>,
+}
+
+/// Info about a server log file.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct LogFileInfo {
+    pub name: String,
+    pub size: u64,
+}
+
+/// Response listing available server log files.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct LogFilesResponse {
+    pub files: Vec<LogFileInfo>,
 }
 
 /// Notes list response.
@@ -509,8 +553,80 @@ impl Client {
         Ok(response.sessions)
     }
 
+    /// Get messages for a session.
+    pub async fn get_session_messages(&self, session_id: &str) -> Result<SessionMessagesResponse> {
+        let url = self
+            .base_url
+            .join(&format!("/api/v1/sessions/{}/messages", session_id))?;
+
+        let mut request = self.http.get(url);
+
+        if let Some(ref token) = self.token {
+            request = request.bearer_auth(token);
+        }
+
+        let response = request.send().await?;
+
+        if !response.status().is_success() {
+            anyhow::bail!("Server returned error: {}", response.status());
+        }
+
+        let response: SessionMessagesResponse = response.json().await?;
+        Ok(response)
+    }
+
+    /// Get recent server log entries.
+    pub async fn get_logs(&self, lines: Option<usize>, file: Option<&str>) -> Result<LogsResponse> {
+        let mut url = self.base_url.join("/api/v1/logs")?;
+
+        {
+            let mut query = url.query_pairs_mut();
+            if let Some(n) = lines {
+                query.append_pair("lines", &n.to_string());
+            }
+            if let Some(f) = file {
+                query.append_pair("file", f);
+            }
+        }
+
+        let mut request = self.http.get(url);
+
+        if let Some(ref token) = self.token {
+            request = request.bearer_auth(token);
+        }
+
+        let response = request.send().await?;
+
+        if !response.status().is_success() {
+            anyhow::bail!("Server returned error: {}", response.status());
+        }
+
+        let result: LogsResponse = response.json().await?;
+        Ok(result)
+    }
+
+    /// List available server log files.
+    pub async fn list_log_files(&self) -> Result<LogFilesResponse> {
+        let url = self.base_url.join("/api/v1/logs/files")?;
+
+        let mut request = self.http.get(url);
+
+        if let Some(ref token) = self.token {
+            request = request.bearer_auth(token);
+        }
+
+        let response = request.send().await?;
+
+        if !response.status().is_success() {
+            anyhow::bail!("Server returned error: {}", response.status());
+        }
+
+        let result: LogFilesResponse = response.json().await?;
+        Ok(result)
+    }
+
     /// Delete a session.
-    #[allow(dead_code)] // Not yet wired to CLI command
+    #[allow(dead_code)]
     pub async fn delete_session(&self, session_id: &str) -> Result<()> {
         let url = self
             .base_url

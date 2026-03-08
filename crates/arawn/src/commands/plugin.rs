@@ -178,7 +178,7 @@ async fn run_add(args: AddArgs, ctx: &Context) -> Result<()> {
         }
         SyncAction::CloneFailed | SyncAction::UpdateFailed => {
             let err = result.error.unwrap_or_else(|| "unknown error".to_string());
-            eprintln!("Failed to clone plugin: {}", err);
+            tracing::error!("Failed to clone plugin: {}", err);
             return Err(anyhow::anyhow!("Clone failed: {}", err));
         }
     }
@@ -260,7 +260,7 @@ async fn run_update(args: UpdateArgs, ctx: &Context) -> Result<()> {
             SyncAction::CloneFailed | SyncAction::UpdateFailed => {
                 failed += 1;
                 let err = result.error.as_deref().unwrap_or("unknown error");
-                eprintln!("  Failed: {} - {}", result.subscription_id, err);
+                tracing::error!("Plugin sync failed: {} - {}", result.subscription_id, err);
             }
         }
     }

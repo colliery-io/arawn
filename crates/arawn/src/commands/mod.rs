@@ -5,6 +5,7 @@ pub mod ask;
 pub mod auth;
 pub mod chat;
 pub mod config;
+pub mod logs;
 pub mod mcp;
 pub mod memory;
 pub mod notes;
@@ -12,6 +13,7 @@ pub mod output;
 pub mod plugin;
 pub mod repl;
 pub mod secrets;
+pub mod session;
 pub mod start;
 pub mod status;
 pub mod tui;
@@ -147,6 +149,7 @@ pub fn print_cli_error(error: &anyhow::Error, server_url: &str, verbose: bool) {
         // Show the full error chain for debugging
         let full = format!("{:#}", error);
         if full != friendly && full != format!("{error}") {
+            tracing::debug!("Error details: {}", full);
             eprintln!();
             eprintln!(
                 "{}",

@@ -1,10 +1,11 @@
 //! Chat view rendering with streaming support.
 
+use super::theme;
 use crate::app::{App, ChatMessage, ToolExecution};
 use ratatui::{
     Frame,
     layout::Rect,
-    style::{Color, Modifier, Style},
+    style::Style,
     text::{Line, Span},
     widgets::{Paragraph, Wrap},
 };
@@ -13,7 +14,7 @@ use ratatui::{
 const STREAMING_CURSOR: &str = "▌";
 
 /// Render the chat view with all messages.
-pub fn render_chat(app: &App, frame: &mut Frame, area: Rect) {
+pub fn render_chat(app: &mut App, frame: &mut Frame, area: Rect) {
     // If no messages, show welcome screen
     if app.messages.is_empty() {
         render_welcome(frame, area);
@@ -54,13 +55,15 @@ pub fn render_chat(app: &App, frame: &mut Frame, area: Rect) {
     let content_height = lines.len();
     let view_height = area.height as usize;
 
+    let max_scroll = content_height.saturating_sub(view_height);
     let scroll_offset = if app.chat_auto_scroll {
         // Auto-scroll: show the bottom of the content
-        content_height.saturating_sub(view_height)
+        max_scroll
     } else {
-        // Manual scroll: use the stored offset, clamped to valid range
-        app.chat_scroll
-            .min(content_height.saturating_sub(view_height))
+        // Manual scroll: clamp to valid range and write back to prevent overshoot
+        let clamped = app.chat_scroll.min(max_scroll);
+        app.chat_scroll = clamped;
+        clamped
     };
 
     let chat = Paragraph::new(lines)
@@ -68,12 +71,27 @@ pub fn render_chat(app: &App, frame: &mut Frame, area: Rect) {
         .scroll((scroll_offset as u16, 0));
 
     frame.render_widget(chat, area);
+
+    // Render scroll position indicator when not at the bottom
+    if max_scroll > 0 && scroll_offset < max_scroll {
+        let percent = (scroll_offset * 100) / max_scroll;
+        let indicator = format!(" {}% ↓ ", percent);
+        let indicator_width = indicator.len() as u16;
+        let indicator_area = Rect::new(
+            area.x + area.width.saturating_sub(indicator_width + 1),
+            area.y,
+            indicator_width,
+            1,
+        );
+        let indicator_widget = Paragraph::new(Span::styled(indicator, theme::scroll_indicator()));
+        frame.render_widget(indicator_widget, indicator_area);
+    }
 }
 
 /// Render user message with > prefix.
 fn render_user_message(lines: &mut Vec<Line<'static>>, msg: &ChatMessage) {
-    let prefix = Span::styled("> ", Style::default().fg(Color::Cyan));
-    let content = Span::styled(msg.content.clone(), Style::default().fg(Color::White));
+    let prefix = Span::styled("> ", theme::user_prefix());
+    let content = Span::styled(msg.content.clone(), theme::user_text());
     lines.push(Line::from(vec![prefix, content]));
 }
 
@@ -88,9 +106,9 @@ fn render_assistant_message(lines: &mut Vec<Line<'static>>, msg: &ChatMessage, _
     // Split content by newlines and add each as a line
     for line_text in content.lines() {
         let style = if msg.streaming {
-            Style::default().fg(Color::White)
+            theme::streaming_text()
         } else {
-            Style::default().fg(Color::Gray)
+            theme::assistant_text()
         };
         lines.push(Line::from(Span::styled(line_text.to_string(), style)));
     }
@@ -99,7 +117,7 @@ fn render_assistant_message(lines: &mut Vec<Line<'static>>, msg: &ChatMessage, _
     if (content.ends_with('\n') || content.is_empty()) && msg.streaming {
         lines.push(Line::from(Span::styled(
             STREAMING_CURSOR.to_string(),
-            Style::default().fg(Color::White),
+            theme::streaming_text(),
         )));
     }
 }
@@ -119,24 +137,19 @@ fn render_tools(lines: &mut Vec<Line<'static>>, tools: &[ToolExecution]) {
         // Top separator
         lines.push(Line::from(Span::styled(
             TOOL_SEPARATOR.repeat(48),
-            Style::default().fg(Color::DarkGray),
+            theme::separator(),
         )));
 
         // Build one-liner: [name] args... status duration
         let status_indicator = if tool.running {
-            Span::styled("◐", Style::default().fg(Color::Yellow))
+            Span::styled("◐", Style::default().fg(theme::WARN))
         } else if tool.success == Some(true) {
-            Span::styled("✓", Style::default().fg(Color::Green))
+            Span::styled("✓", Style::default().fg(theme::OK))
         } else {
-            Span::styled("✗", Style::default().fg(Color::Red))
+            Span::styled("✗", Style::default().fg(theme::ERR))
         };
 
-        let tool_name = Span::styled(
-            format!("[{}]", tool.name),
-            Style::default()
-                .fg(Color::Cyan)
-                .add_modifier(Modifier::BOLD),
-        );
+        let tool_name = Span::styled(format!("[{}]", tool.name), theme::tool_name());
 
         // Format args or output preview (truncated)
         let preview = if !tool.args.is_empty() {
@@ -160,7 +173,7 @@ fn render_tools(lines: &mut Vec<Line<'static>>, tools: &[ToolExecution]) {
         // Build the line with proper spacing
         let mut spans = vec![tool_name, Span::raw(" ")];
         if !preview.is_empty() {
-            spans.push(Span::styled(preview, Style::default().fg(Color::Gray)));
+            spans.push(Span::styled(preview, theme::tool_preview()));
         }
         // Add spacing before status
         spans.push(Span::raw(" "));
@@ -168,7 +181,7 @@ fn render_tools(lines: &mut Vec<Line<'static>>, tools: &[ToolExecution]) {
         if !duration_str.is_empty() {
             spans.push(Span::styled(
                 format!(" {}", duration_str),
-                Style::default().fg(Color::DarkGray),
+                theme::tool_duration(),
             ));
         }
 
@@ -177,7 +190,7 @@ fn render_tools(lines: &mut Vec<Line<'static>>, tools: &[ToolExecution]) {
         // Bottom separator
         lines.push(Line::from(Span::styled(
             TOOL_SEPARATOR.repeat(48),
-            Style::default().fg(Color::DarkGray),
+            theme::separator(),
         )));
     }
 }
@@ -209,34 +222,53 @@ fn format_duration(ms: u64) -> String {
 fn render_welcome(frame: &mut Frame, area: Rect) {
     let content = Paragraph::new(vec![
         Line::from(""),
-        Line::from(Span::styled(
-            "  Welcome to Arawn TUI",
-            Style::default()
-                .fg(Color::Cyan)
-                .add_modifier(Modifier::BOLD),
-        )),
+        Line::from(Span::styled("  Welcome to Arawn TUI", theme::header())),
         Line::from(""),
         Line::from("  Type a message and press Enter to send."),
         Line::from(""),
-        Line::from(Span::styled(
-            "  Keyboard shortcuts:",
-            Style::default().add_modifier(Modifier::BOLD),
-        )),
-        Line::from("    Ctrl+K  Command palette"),
-        Line::from("    Ctrl+S  Sessions"),
-        Line::from("    Ctrl+W  Workstreams"),
-        Line::from("    Ctrl+E  Tool output pane"),
-        Line::from("    Ctrl+Q  Quit"),
+        Line::from(Span::styled("  Keyboard shortcuts:", theme::subheader())),
+        Line::from(vec![
+            Span::styled("    Ctrl+K  ", theme::key_hint()),
+            Span::styled("Command palette", theme::key_desc()),
+        ]),
+        Line::from(vec![
+            Span::styled("    Ctrl+S  ", theme::key_hint()),
+            Span::styled("Sessions", theme::key_desc()),
+        ]),
+        Line::from(vec![
+            Span::styled("    Ctrl+W  ", theme::key_hint()),
+            Span::styled("Workstreams", theme::key_desc()),
+        ]),
+        Line::from(vec![
+            Span::styled("    Ctrl+E  ", theme::key_hint()),
+            Span::styled("Tool output pane", theme::key_desc()),
+        ]),
+        Line::from(vec![
+            Span::styled("    Ctrl+Q  ", theme::key_hint()),
+            Span::styled("Quit", theme::key_desc()),
+        ]),
         Line::from(""),
-        Line::from(Span::styled(
-            "  Chat navigation:",
-            Style::default().add_modifier(Modifier::BOLD),
-        )),
-        Line::from("    ↑/↓     Scroll chat history"),
-        Line::from("    PgUp    Scroll up one page"),
-        Line::from("    PgDn    Scroll down one page"),
-        Line::from("    Home    Scroll to top"),
-        Line::from("    End     Scroll to bottom (auto-scroll)"),
+        Line::from(Span::styled("  Chat navigation:", theme::subheader())),
+        Line::from(vec![
+            Span::styled("    ↑/↓     ", theme::key_hint()),
+            Span::styled("Scroll chat history", theme::key_desc()),
+        ]),
+        Line::from(vec![
+            Span::styled("    PgUp    ", theme::key_hint()),
+            Span::styled("Scroll up one page", theme::key_desc()),
+        ]),
+        Line::from(vec![
+            Span::styled("    PgDn    ", theme::key_hint()),
+            Span::styled("Scroll down one page", theme::key_desc()),
+        ]),
+        Line::from(vec![
+            Span::styled("    Home    ", theme::key_hint()),
+            Span::styled("Scroll to top", theme::key_desc()),
+        ]),
+        Line::from(vec![
+            Span::styled("    End     ", theme::key_hint()),
+            Span::styled("Scroll to bottom (auto-scroll)", theme::key_desc()),
+        ]),
     ])
     .wrap(Wrap { trim: false });
 

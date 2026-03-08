@@ -1,10 +1,11 @@
 //! Tool output pane rendering.
 
+use super::theme;
 use crate::app::{App, ToolExecution};
 use ratatui::{
     Frame,
     layout::Rect,
-    style::{Color, Modifier, Style},
+    style::Style,
     text::{Line, Span},
     widgets::{Block, Borders, Paragraph, Wrap},
 };
@@ -16,16 +17,16 @@ pub fn render_tool_pane(app: &App, frame: &mut Frame, area: Rect) {
     // Build title with tool selector
     let title = build_title(app);
 
-    let border_color = if is_focused {
-        Color::Cyan
+    let border_style = if is_focused {
+        theme::border_focused()
     } else {
-        Color::DarkGray
+        theme::border()
     };
 
     let block = Block::default()
         .title(title)
         .borders(Borders::ALL)
-        .border_style(Style::default().fg(border_color));
+        .border_style(border_style);
 
     let inner = block.inner(area);
     frame.render_widget(block, area);
@@ -43,10 +44,7 @@ pub fn render_tool_pane(app: &App, frame: &mut Frame, area: Rect) {
 /// Build the title line with tool selector.
 fn build_title(app: &App) -> Line<'static> {
     if app.tools.is_empty() {
-        return Line::from(Span::styled(
-            " tools ",
-            Style::default().add_modifier(Modifier::BOLD),
-        ));
+        return Line::from(Span::styled(" tools ", theme::header()));
     }
 
     let mut spans = vec![Span::raw(" ")];
@@ -56,20 +54,18 @@ fn build_title(app: &App) -> Line<'static> {
 
         // Status indicator
         let status = if tool.running {
-            Span::styled("◐", Style::default().fg(Color::Yellow))
+            Span::styled("◐", Style::default().fg(theme::WARN))
         } else if tool.success == Some(true) {
-            Span::styled("✓", Style::default().fg(Color::Green))
+            Span::styled("✓", Style::default().fg(theme::OK))
         } else {
-            Span::styled("✗", Style::default().fg(Color::Red))
+            Span::styled("✗", Style::default().fg(theme::ERR))
         };
 
         // Tool name (highlighted if selected)
         let name_style = if is_selected {
-            Style::default()
-                .fg(Color::Cyan)
-                .add_modifier(Modifier::BOLD | Modifier::UNDERLINED)
+            theme::selected()
         } else {
-            Style::default().fg(Color::Gray)
+            theme::list_item()
         };
 
         let name = Span::styled(tool.name.to_string(), name_style);
@@ -79,7 +75,7 @@ fn build_title(app: &App) -> Line<'static> {
         spans.push(name);
 
         if i < app.tools.len() - 1 {
-            spans.push(Span::styled(" │ ", Style::default().fg(Color::DarkGray)));
+            spans.push(Span::styled(" │ ", theme::separator()));
         }
     }
 
@@ -101,17 +97,14 @@ fn render_tool_output(tool: &ToolExecution, scroll: usize, frame: &mut Frame, ar
                 Line::from(""),
                 Line::from(Span::styled(
                     "  Running...",
-                    Style::default().fg(Color::Yellow),
+                    Style::default().fg(theme::WARN),
                 )),
             ]);
             frame.render_widget(content, area);
         } else {
             let content = Paragraph::new(vec![
                 Line::from(""),
-                Line::from(Span::styled(
-                    "  (no output)",
-                    Style::default().fg(Color::DarkGray),
-                )),
+                Line::from(Span::styled("  (no output)", theme::empty_state())),
             ]);
             frame.render_widget(content, area);
         }
@@ -145,12 +138,12 @@ fn render_no_tools(frame: &mut Frame, area: Rect) {
         Line::from(""),
         Line::from(Span::styled(
             "  No tools executed yet",
-            Style::default().fg(Color::DarkGray),
+            theme::empty_state(),
         )),
         Line::from(""),
         Line::from(Span::styled(
             "  Tool output will appear here when the assistant uses tools.",
-            Style::default().fg(Color::DarkGray),
+            theme::empty_state(),
         )),
     ]);
     frame.render_widget(content, area);
@@ -162,7 +155,7 @@ fn render_no_selection(frame: &mut Frame, area: Rect) {
         Line::from(""),
         Line::from(Span::styled(
             "  Use ←/→ to select a tool",
-            Style::default().fg(Color::DarkGray),
+            theme::empty_state(),
         )),
     ]);
     frame.render_widget(content, area);
@@ -171,16 +164,16 @@ fn render_no_selection(frame: &mut Frame, area: Rect) {
 /// Render help footer for tool pane.
 pub fn render_tool_pane_footer(frame: &mut Frame, area: Rect) {
     let help = Line::from(vec![
-        Span::styled("←→", Style::default().fg(Color::Cyan)),
-        Span::raw(" tools "),
-        Span::styled("↑↓", Style::default().fg(Color::Cyan)),
-        Span::raw(" scroll "),
-        Span::styled("^O", Style::default().fg(Color::Cyan)),
-        Span::raw(" editor "),
-        Span::styled("Esc", Style::default().fg(Color::Cyan)),
-        Span::raw(" close"),
+        Span::styled("←→", theme::key_hint()),
+        Span::styled(" tools ", theme::key_desc()),
+        Span::styled("↑↓", theme::key_hint()),
+        Span::styled(" scroll ", theme::key_desc()),
+        Span::styled("^O", theme::key_hint()),
+        Span::styled(" editor ", theme::key_desc()),
+        Span::styled("Esc", theme::key_hint()),
+        Span::styled(" close", theme::key_desc()),
     ]);
 
-    let footer = Paragraph::new(help).style(Style::default().fg(Color::DarkGray));
+    let footer = Paragraph::new(help);
     frame.render_widget(footer, area);
 }

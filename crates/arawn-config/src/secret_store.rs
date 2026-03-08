@@ -309,7 +309,7 @@ mod tests {
         let identity_path = dir.path().join("identity.age");
         let secrets_path = dir.path().join("secrets.age");
 
-        let key = "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";
+        let key = "gsk_test00000000000000000000000000000000000000000000fake";
 
         // Store
         {

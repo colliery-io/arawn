@@ -357,6 +357,18 @@ impl WorkstreamStore {
         Ok(())
     }
 
+    /// Delete a session record from the database.
+    pub fn delete_session(&self, id: &str) -> Result<()> {
+        let deleted = self.conn().execute(
+            "DELETE FROM sessions WHERE id = ?1",
+            params![id],
+        )?;
+        if deleted == 0 {
+            return Err(WorkstreamError::NotFound(id.to_string()));
+        }
+        Ok(())
+    }
+
     pub fn update_session_summary(&self, id: &str, summary: &str) -> Result<()> {
         let updated = self.conn().execute(
             "UPDATE sessions SET summary = ?1, compressed = 1 WHERE id = ?2",
@@ -551,6 +563,10 @@ impl crate::storage::WorkstreamStorage for WorkstreamStore {
     fn end_session(&self, session_id: &str) -> Result<()> {
         // The trait doesn't take turn_count, so we use 0 as default
         WorkstreamStore::end_session(self, session_id, 0)
+    }
+
+    fn delete_session(&self, session_id: &str) -> Result<()> {
+        WorkstreamStore::delete_session(self, session_id)
     }
 
     fn reassign_session(&self, session_id: &str, new_workstream_id: &str) -> Result<Session> {

@@ -4,15 +4,15 @@ level: task
 title: "Bug: Tool arguments and results stored as null/empty in session log"
 short_code: "ARAWN-T-0270"
 created_at: 2026-03-06T03:14:15.589393+00:00
-updated_at: 2026-03-06T03:14:15.589393+00:00
+updated_at: 2026-03-08T01:39:01.641393+00:00
 parent: 
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/backlog"
   - "#bug"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -58,6 +58,12 @@ The `shell` tool was called with null arguments (causing failure), and `web_fetc
 
 ## Acceptance Criteria
 
+## Acceptance Criteria
+
+## Acceptance Criteria
+
+## Acceptance Criteria
+
 - [ ] `tool_use` entries in messages.jsonl include the full arguments JSON
 - [ ] `tool_result` entries include the tool output content
 - [ ] Existing session replay works with populated fields
@@ -71,4 +77,19 @@ The `shell` tool was called with null arguments (causing failure), and `web_fetc
 
 ## Status Updates
 
-*To be added during implementation*
+### Investigation Result: Already Fixed
+
+**Root Cause (confirmed):** In the WS handler's `handle_chat` function (handlers.rs), the pre-fix code:
+- `StreamChunk::ToolStart { id, name }` — destructured WITHOUT `arguments`, hardcoded `arguments: serde_json::Value::Null`
+- `StreamChunk::ToolEnd { id, success, .. }` — destructured WITHOUT `content`, used only streaming output (empty when no streaming)
+
+**Fix (already applied in commit `19907b8`):**
+- `ToolStart` now captures `arguments` from the stream chunk
+- `ToolEnd` now falls back to the chunk's `content` when no streaming output was accumulated
+
+**Data Validation:**
+- All existing tool data in messages.jsonl is from March 6 (before server was rebuilt with fix)
+- The server hasn't processed any new tool-using messages since the fix was deployed
+- Code review confirms the fix is correct — `StreamChunk::ToolStart` carries `tool_use.input.clone()` from the LLM response, and `ToolEnd` carries the tool execution output
+
+**Note:** There is a separate design concern where `stream.rs` makes a redundant sync API call after streaming to get tool uses (double cost). This is a separate optimization issue, not related to the persistence bug.

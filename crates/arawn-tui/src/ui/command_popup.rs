@@ -1,9 +1,10 @@
 //! Command autocomplete popup component.
 
+use super::theme;
 use ratatui::{
     Frame,
     layout::Rect,
-    style::{Color, Modifier, Style},
+    style::{Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Clear, List, ListItem, ListState},
 };
@@ -159,14 +160,9 @@ impl CommandPopup {
             .map(|&idx| {
                 let cmd = &self.commands[idx];
                 let line = Line::from(vec![
-                    Span::styled(
-                        format!("/{}", cmd.name),
-                        Style::default()
-                            .fg(Color::Cyan)
-                            .add_modifier(Modifier::BOLD),
-                    ),
+                    Span::styled(format!("/{}", cmd.name), theme::tool_name()),
                     Span::raw(" - "),
-                    Span::styled(&cmd.description, Style::default().fg(Color::Gray)),
+                    Span::styled(&cmd.description, theme::list_item()),
                 ]);
                 ListItem::new(line)
             })
@@ -177,11 +173,11 @@ impl CommandPopup {
                 Block::default()
                     .borders(Borders::ALL)
                     .title(" Commands ")
-                    .border_style(Style::default().fg(Color::Blue)),
+                    .border_style(Style::default().fg(theme::ACCENT2)),
             )
             .highlight_style(
                 Style::default()
-                    .bg(Color::DarkGray)
+                    .fg(theme::TEXT_PRIMARY)
                     .add_modifier(Modifier::BOLD),
             );
 

@@ -1,10 +1,11 @@
 //! Command palette overlay rendering.
 
+use super::theme;
 use crate::palette::CommandPalette;
 use ratatui::{
     Frame,
     layout::{Constraint, Layout, Rect},
-    style::{Color, Modifier, Style},
+    style::Style,
     text::{Line, Span},
     widgets::{Block, Borders, Clear, Paragraph},
 };
@@ -18,7 +19,7 @@ pub fn render_palette_overlay(palette: &CommandPalette, frame: &mut Frame, area:
     let block = Block::default()
         .title(" command ")
         .borders(Borders::ALL)
-        .border_style(Style::default().fg(Color::Cyan));
+        .border_style(theme::border_focused());
 
     let inner = block.inner(overlay_area);
     frame.render_widget(block, overlay_area);
@@ -42,14 +43,11 @@ pub fn render_palette_overlay(palette: &CommandPalette, frame: &mut Frame, area:
 fn render_search_box(palette: &CommandPalette, frame: &mut Frame, area: Rect) {
     let filter = palette.filter();
     let line = if filter.is_empty() {
-        Line::from(Span::styled(
-            " > type to search...",
-            Style::default().fg(Color::DarkGray),
-        ))
+        Line::from(Span::styled(" > type to search...", theme::search_prompt()))
     } else {
         Line::from(vec![
-            Span::styled(" > ", Style::default().fg(Color::Cyan)),
-            Span::styled(filter.to_string(), Style::default().fg(Color::White)),
+            Span::styled(" > ", Style::default().fg(theme::ACCENT)),
+            Span::styled(filter.to_string(), theme::user_text()),
         ])
     };
     let search = Paragraph::new(line);
@@ -60,7 +58,7 @@ fn render_search_box(palette: &CommandPalette, frame: &mut Frame, area: Rect) {
 fn render_separator(frame: &mut Frame, area: Rect) {
     let sep = Paragraph::new(Line::from(Span::styled(
         "─".repeat(area.width as usize),
-        Style::default().fg(Color::DarkGray),
+        theme::separator(),
     )));
     frame.render_widget(sep, area);
 }
@@ -72,7 +70,7 @@ fn render_action_list(palette: &CommandPalette, frame: &mut Frame, area: Rect) {
     if palette.visible_count() == 0 {
         lines.push(Line::from(Span::styled(
             "  No matching commands",
-            Style::default().fg(Color::DarkGray),
+            theme::empty_state(),
         )));
     } else {
         let mut prev_category: Option<&str> = None;
@@ -82,7 +80,7 @@ fn render_action_list(palette: &CommandPalette, frame: &mut Frame, area: Rect) {
             if is_first_in_category && prev_category.is_some() {
                 lines.push(Line::from(Span::styled(
                     format!("  {}", "─".repeat(area.width.saturating_sub(4) as usize)),
-                    Style::default().fg(Color::DarkGray),
+                    theme::separator(),
                 )));
             }
             prev_category = Some(action.category);
@@ -120,17 +118,15 @@ fn format_action_line(
 
     // Build the line
     let prefix = if is_selected {
-        Span::styled(" > ", Style::default().fg(Color::Cyan))
+        Span::styled(" > ", Style::default().fg(theme::ACCENT))
     } else {
         Span::raw("   ")
     };
 
     let label_style = if is_selected {
-        Style::default()
-            .fg(Color::Cyan)
-            .add_modifier(Modifier::BOLD)
+        theme::selected()
     } else {
-        Style::default()
+        theme::list_item()
     };
     let label_span = Span::styled(display_label.clone(), label_style);
 
@@ -138,10 +134,7 @@ fn format_action_line(
     let spacer_width = label_width.saturating_sub(display_label.len());
     let spacer = Span::raw(" ".repeat(spacer_width));
 
-    let shortcut_span = Span::styled(
-        format!("  {}", shortcut),
-        Style::default().fg(Color::DarkGray),
-    );
+    let shortcut_span = Span::styled(format!("  {}", shortcut), theme::list_item_dim());
 
     Line::from(vec![prefix, label_span, spacer, shortcut_span])
 }
@@ -149,14 +142,14 @@ fn format_action_line(
 /// Render the footer with keyboard hints.
 fn render_footer(frame: &mut Frame, area: Rect) {
     let footer = Paragraph::new(Line::from(vec![
-        Span::styled("  ↑↓", Style::default().fg(Color::DarkGray)),
-        Span::styled(" navigate", Style::default().fg(Color::DarkGray)),
-        Span::styled(" │ ", Style::default().fg(Color::DarkGray)),
-        Span::styled("enter", Style::default().fg(Color::DarkGray)),
-        Span::styled(" execute", Style::default().fg(Color::DarkGray)),
-        Span::styled(" │ ", Style::default().fg(Color::DarkGray)),
-        Span::styled("esc", Style::default().fg(Color::DarkGray)),
-        Span::styled(" close", Style::default().fg(Color::DarkGray)),
+        Span::styled("  ↑↓", theme::key_hint()),
+        Span::styled(" navigate", theme::key_desc()),
+        Span::styled(" │ ", theme::separator()),
+        Span::styled("enter", theme::key_hint()),
+        Span::styled(" execute", theme::key_desc()),
+        Span::styled(" │ ", theme::separator()),
+        Span::styled("esc", theme::key_hint()),
+        Span::styled(" close", theme::key_desc()),
     ]));
     frame.render_widget(footer, area);
 }

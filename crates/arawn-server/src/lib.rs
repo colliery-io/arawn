@@ -204,6 +204,9 @@ impl Server {
                 "/mcp/servers/{name}/disconnect",
                 post(routes::disconnect_server_handler),
             )
+            // Logs endpoints
+            .route("/logs", get(routes::get_logs_handler))
+            .route("/logs/files", get(routes::list_log_files_handler))
             // Command endpoints
             .route("/commands", get(routes::list_commands_handler))
             .route("/commands/compact", post(routes::compact_command_handler))

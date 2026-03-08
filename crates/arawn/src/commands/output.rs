@@ -25,7 +25,10 @@ pub fn success(msg: impl Display) {
 }
 
 /// Print an error message to stderr with red "Error:" prefix.
+/// Also logs via tracing so it appears in log files with timestamps.
 pub fn error(msg: impl Display) {
+    let msg = msg.to_string();
+    tracing::error!("{}", msg);
     eprintln!("{} {}", Style::new().red().apply_to("Error:"), msg);
 }
 

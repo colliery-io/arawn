@@ -25,7 +25,7 @@ def docs_build():
 
 @docs()
 @angreal.command(name="serve", about="Serve the documentation locally")
-@angreal.argument(name="--port", short="p", takes_value=True, help="Port to serve on (default: 3000)")
+@angreal.argument(name="port", short="p", long="port", help="Port to serve on (default: 3000)")
 def docs_serve(port="3000"):
     """Build and serve the documentation with live reload."""
     docs_dir = os.path.join(os.getcwd(), "docs")

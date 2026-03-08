@@ -81,6 +81,9 @@ pub trait WorkstreamStorage: Send + Sync {
     /// End a session (set ended_at).
     fn end_session(&self, session_id: &str) -> Result<()>;
 
+    /// Delete a session record permanently.
+    fn delete_session(&self, session_id: &str) -> Result<()>;
+
     /// Move a session to a different workstream.
     fn reassign_session(&self, session_id: &str, new_workstream_id: &str) -> Result<Session>;
 }
@@ -289,6 +292,15 @@ impl WorkstreamStorage for MockWorkstreamStorage {
         let mut sessions = self.sessions.lock().unwrap();
         if let Some(session) = sessions.get_mut(session_id) {
             session.ended_at = Some(Utc::now());
+            Ok(())
+        } else {
+            Err(crate::WorkstreamError::NotFound(session_id.to_string()))
+        }
+    }
+
+    fn delete_session(&self, session_id: &str) -> Result<()> {
+        let mut sessions = self.sessions.lock().unwrap();
+        if sessions.remove(session_id).is_some() {
             Ok(())
         } else {
             Err(crate::WorkstreamError::NotFound(session_id.to_string()))

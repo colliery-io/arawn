@@ -5,6 +5,7 @@ pub mod chat;
 pub mod commands;
 pub mod config;
 pub mod health;
+pub mod logs;
 pub mod mcp;
 pub mod memory;
 pub mod openapi;
@@ -26,6 +27,10 @@ pub use commands::{
 };
 pub use config::{ConfigFeatures, ConfigLimits, ConfigResponse, get_config_handler};
 pub use health::health_routes;
+pub use logs::{
+    LogEntry, LogFileInfo, LogFilesResponse, LogsQuery, LogsResponse, get_logs_handler,
+    list_log_files_handler,
+};
 pub use mcp::{
     AddServerRequest, AddServerResponse, ListServersResponse, ListToolsResponse,
     RemoveServerResponse, ServerInfo, ToolInfo, add_server_handler, connect_server_handler,

@@ -4,15 +4,15 @@ level: task
 title: "Startup errors logged to stderr without timestamps"
 short_code: "ARAWN-T-0268"
 created_at: 2026-03-06T02:27:45.186703+00:00
-updated_at: 2026-03-06T02:27:45.186703+00:00
+updated_at: 2026-03-07T18:59:21.867413+00:00
 parent: 
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/backlog"
   - "#bug"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -48,6 +48,12 @@ Startup errors from `arawn start` are written to stderr via `anyhow`'s default `
 
 ## Acceptance Criteria
 
+## Acceptance Criteria
+
+## Acceptance Criteria
+
+## Acceptance Criteria
+
 - [ ] Startup errors are logged with timestamps and log level (ERROR) matching the tracing format used on stdout
 - [ ] `launchd-stderr.log` entries have timestamps so old vs new errors can be distinguished
 - [ ] Existing stdout tracing output is unaffected
@@ -63,4 +69,10 @@ Route fatal startup errors through the `tracing` infrastructure (`tracing::error
 
 ## Status Updates
 
-*To be added during implementation*
+### Fix Applied
+
+**`main.rs`**: Added `tracing::error!` call before the `eprintln!` fallback in the top-level error handler. This ensures fatal errors are logged to the rotating log file with timestamps, log level, and target — matching the format of all other tracing output.
+
+**`start.rs`**: Converted all 46 `eprintln!("warning: ...")` and `eprintln!("error: ...")` calls to `tracing::warn!()` / `tracing::error!()`. These were non-fatal startup warnings (failed to load backends, missing configs, fallback paths, etc.) that previously went to stderr as bare text. Now they go through the tracing infrastructure with timestamps, appearing in both the console and the rotating JSON log file.
+
+**Result**: All startup output now has timestamps. `launchd-stderr.log` will still receive the `eprintln!` fallback from `main()` for fatal errors, but the same error also appears in the structured `arawn.log` with full temporal context.

@@ -9,7 +9,8 @@ mod client;
 mod commands;
 
 use commands::{
-    agent, ask, auth, chat, config, mcp, memory, notes, plugin, secrets, start, status, tui,
+    agent, ask, auth, chat, config, logs, mcp, memory, notes, plugin, secrets, session, start,
+    status, tui,
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -86,6 +87,12 @@ pub enum Commands {
     /// Manage encrypted secret store
     Secrets(secrets::SecretsArgs),
 
+    /// View and manage chat sessions
+    Session(session::SessionArgs),
+
+    /// View operational logs
+    Logs(logs::LogsArgs),
+
     /// Launch Terminal UI
     Tui(tui::TuiArgs),
 }
@@ -140,8 +147,12 @@ fn resolve_server_url(server_flag: Option<&str>, context_flag: Option<&str>) -> 
 #[tokio::main]
 async fn main() {
     if let Err(e) = run().await {
-        // The individual commands handle their own user-friendly error printing.
-        // This top-level handler catches anything that wasn't formatted by a command.
+        // Log through tracing so the error appears in log files with timestamps.
+        // tracing may not be initialized if the error occurred during setup,
+        // but tracing::error! is a no-op in that case — safe to call unconditionally.
+        tracing::error!("{:#}", e);
+
+        // Also print to stderr for immediate visibility (console/launchd-stderr.log).
         let red = console::Style::new().red();
         eprintln!("{} {:#}", red.apply_to("Error:"), e);
         std::process::exit(1);
@@ -215,6 +226,8 @@ async fn run() -> Result<()> {
         Commands::Agent(args) => agent::run(args, &ctx).await,
         Commands::Mcp(args) => mcp::run(args, &ctx).await,
         Commands::Secrets(args) => secrets::run(args).await,
+        Commands::Session(args) => session::run(args, &ctx).await,
+        Commands::Logs(args) => logs::run(args, &ctx).await,
         Commands::Tui(args) => tui::run(args, &ctx).await,
     }
 }

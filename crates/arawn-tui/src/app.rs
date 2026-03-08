@@ -176,6 +176,21 @@ pub struct App {
     /// Pending delete confirmation for session (id).
     /// Set on first 'd' press, cleared on second 'd' (executes delete) or any other action.
     pub pending_delete_session: Option<String>,
+    /// Cached panel areas from the last render, used for mouse hit-testing.
+    pub panel_areas: PanelAreas,
+}
+
+/// Cached layout rectangles for mouse hit-testing.
+#[derive(Debug, Clone, Default)]
+pub struct PanelAreas {
+    /// Chat message area.
+    pub chat: Option<ratatui::layout::Rect>,
+    /// Tool pane area.
+    pub tool_pane: Option<ratatui::layout::Rect>,
+    /// Logs panel area.
+    pub logs: Option<ratatui::layout::Rect>,
+    /// Sidebar area.
+    pub sidebar: Option<ratatui::layout::Rect>,
 }
 
 /// Context usage state for display in status bar.
@@ -326,6 +341,7 @@ impl App {
             is_session_owner: true, // Default to owner until told otherwise
             pending_delete_workstream: None,
             pending_delete_session: None,
+            panel_areas: PanelAreas::default(),
         })
     }
 
@@ -354,6 +370,7 @@ impl App {
                 event = events.next() => {
                     match event? {
                         Event::Key(key) => self.handle_key(key),
+                        Event::Mouse(mouse) => self.handle_mouse(mouse),
                         Event::Tick => {
                             // Poll for connection status updates
                             if let Some(status) = self.ws_client.poll_status() {
@@ -510,7 +527,7 @@ impl App {
                 tracing::info!("Deleted session: {}", id);
                 self.status_message = Some("Session deleted".to_string());
 
-                // Remove from sidebar
+                // Remove from sidebar immediately for responsiveness
                 self.sidebar.sessions.retain(|s| s.id != id);
 
                 // If we deleted the current session, clear it
@@ -519,6 +536,9 @@ impl App {
                     self.messages.clear();
                     self.tools.clear();
                 }
+
+                // Full refresh to sync session counts and state
+                self.refresh_sidebar_data().await;
             }
             Err(e) => {
                 tracing::error!("Failed to delete session: {}", e);
@@ -534,16 +554,19 @@ impl App {
                 tracing::info!("Deleted workstream: {}", id);
                 self.status_message = Some("Workstream deleted".to_string());
 
-                // Remove from sidebar
-                self.sidebar.workstreams.retain(|ws| ws.name != id);
+                // Remove from sidebar immediately for responsiveness
+                self.sidebar.workstreams.retain(|ws| ws.id != id);
 
                 // If we deleted the current workstream, switch to scratch
-                if self.workstream == id {
+                if self.workstream_id.as_deref() == Some(id) {
                     self.workstream = "scratch".to_string();
                     self.messages.clear();
                     self.tools.clear();
                     self.session_id = None;
                 }
+
+                // Full refresh to sync state
+                self.refresh_sidebar_data().await;
             }
             Err(e) => {
                 tracing::error!("Failed to delete workstream: {}", e);
@@ -1286,6 +1309,82 @@ impl App {
         self.chat_auto_scroll = false;
         self.chat_scroll = self.chat_scroll.saturating_add(lines);
         // Note: actual clamping happens in render_chat based on content height
+    }
+
+    /// Handle mouse events (scroll wheel on panels).
+    fn handle_mouse(&mut self, mouse: crossterm::event::MouseEvent) {
+        use crossterm::event::MouseEventKind;
+
+        let scroll_lines = 3;
+
+        match mouse.kind {
+            MouseEventKind::ScrollUp => {
+                let target = self.panel_at(mouse.column, mouse.row);
+                match target {
+                    Some(FocusTarget::Input) | None => self.scroll_chat_up(scroll_lines),
+                    Some(FocusTarget::Sidebar) => {
+                        // Sidebar scroll handled by sidebar's own navigation
+                    }
+                    Some(FocusTarget::ToolPane) => {
+                        self.tool_scroll = self.tool_scroll.saturating_sub(scroll_lines);
+                    }
+                    Some(FocusTarget::Logs) => {
+                        self.log_scroll = self.log_scroll.saturating_sub(scroll_lines);
+                    }
+                    _ => self.scroll_chat_up(scroll_lines),
+                }
+            }
+            MouseEventKind::ScrollDown => {
+                let target = self.panel_at(mouse.column, mouse.row);
+                match target {
+                    Some(FocusTarget::Input) | None => self.scroll_chat_down(scroll_lines),
+                    Some(FocusTarget::Sidebar) => {
+                        // Sidebar scroll handled by sidebar's own navigation
+                    }
+                    Some(FocusTarget::ToolPane) => {
+                        self.tool_scroll = self.tool_scroll.saturating_add(scroll_lines);
+                    }
+                    Some(FocusTarget::Logs) => {
+                        self.log_scroll = self.log_scroll.saturating_add(scroll_lines);
+                    }
+                    _ => self.scroll_chat_down(scroll_lines),
+                }
+            }
+            _ => {}
+        }
+    }
+
+    /// Determine which panel contains the given screen coordinates.
+    fn panel_at(&self, col: u16, row: u16) -> Option<FocusTarget> {
+        let contains = |rect: &ratatui::layout::Rect| {
+            col >= rect.x
+                && col < rect.x + rect.width
+                && row >= rect.y
+                && row < rect.y + rect.height
+        };
+
+        // Check in order: sidebar, logs, tool pane, chat (most specific first)
+        if let Some(ref r) = self.panel_areas.sidebar
+            && contains(r)
+        {
+            return Some(FocusTarget::Sidebar);
+        }
+        if let Some(ref r) = self.panel_areas.logs
+            && contains(r)
+        {
+            return Some(FocusTarget::Logs);
+        }
+        if let Some(ref r) = self.panel_areas.tool_pane
+            && contains(r)
+        {
+            return Some(FocusTarget::ToolPane);
+        }
+        if let Some(ref r) = self.panel_areas.chat
+            && contains(r)
+        {
+            return Some(FocusTarget::Input); // Chat area scrolls chat
+        }
+        None
     }
 
     /// Update the command popup based on current input.

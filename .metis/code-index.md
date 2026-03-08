@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-03-06T04:24:48Z | 304 files | Rust
+> Generated: 2026-03-08T02:29:19Z | 308 files | Rust
 
 ## Project Structure
 
@@ -16,6 +16,7 @@
 │   │   │   │   ├── auth.rs
 │   │   │   │   ├── chat.rs
 │   │   │   │   ├── config.rs
+│   │   │   │   ├── logs.rs
 │   │   │   │   ├── mcp.rs
 │   │   │   │   ├── memory.rs
 │   │   │   │   ├── mod.rs
@@ -24,6 +25,7 @@
 │   │   │   │   ├── plugin.rs
 │   │   │   │   ├── repl.rs
 │   │   │   │   ├── secrets.rs
+│   │   │   │   ├── session.rs
 │   │   │   │   ├── start.rs
 │   │   │   │   ├── status.rs
 │   │   │   │   └── tui.rs
@@ -226,6 +228,7 @@
 │   │   │   │   ├── commands.rs
 │   │   │   │   ├── config.rs
 │   │   │   │   ├── health.rs
+│   │   │   │   ├── logs.rs
 │   │   │   │   ├── mcp.rs
 │   │   │   │   ├── memory.rs
 │   │   │   │   ├── mod.rs
@@ -281,6 +284,7 @@
 │   │           ├── palette.rs
 │   │           ├── sessions.rs
 │   │           ├── sidebar.rs
+│   │           ├── theme.rs
 │   │           └── tools.rs
 │   ├── arawn-types/
 │   │   └── src/
@@ -406,34 +410,43 @@
 - pub `MemoryResult` struct L27-36 — `{ id: String, content_type: String, content: String, score: f32, source: String ...` — Memory search result.
 - pub `MemorySearchResponse` struct L41-47 — `{ results: Vec<MemoryResult>, query: String, count: usize }` — Memory search response.
 - pub `Note` struct L51-60 — `{ id: String, title: Option<String>, content: String, tags: Vec<String>, created...` — Note from the server.
-- pub `SessionInfo` struct L71-75 — `{ id: String, created_at: String, message_count: usize }` — Session info.
-- pub `SessionListResponse` struct L80-82 — `{ sessions: Vec<SessionInfo> }` — Session list response.
-- pub `NotesResponse` struct L87-95 — `{ notes: Vec<Note>, total: usize, limit: usize, offset: usize }` — Notes list response.
-- pub `WsServerMessage` enum L120-148 — `AuthResult | SessionCreated | ChatChunk | ToolStart | ToolEnd | Error | Pong` — Messages received from the server via WebSocket.
-- pub `ChatEvent` enum L157-168 — `Text | ToolStart | ToolEnd | Done | Error` — Events from streaming chat responses.
-- pub `ChatStream` struct L171-173 — `{ receiver: Pin<Box<dyn Stream<Item = Result<ChatEvent>> + Send>> }` — Streaming chat response.
-- pub `next` function L178-193 — `(&mut self) -> Option<Result<String>>` — Get the next event from the stream (simplified text-only).
-- pub `next_event` function L196-198 — `(&mut self) -> Option<Result<ChatEvent>>` — Get the next raw event from the stream.
-- pub `Client` struct L206-210 — `{ base_url: Url, http: reqwest::Client, token: Option<String> }` — HTTP/WebSocket client for the Arawn server.
-- pub `new` function L214-223 — `(base_url: &str) -> Result<Self>` — Create a new client for the given server URL.
-- pub `health` function L226-237 — `(&self) -> Result<HealthResponse>` — Check server health.
-- pub `chat_stream` function L240-343 — `(&self, message: &str, session_id: Option<&str>) -> Result<ChatStream>` — Send a chat message and get a streaming response via WebSocket.
-- pub `memory_search` function L346-366 — `(&self, query: &str, limit: usize) -> Result<Vec<MemoryResult>>` — Search memories.
-- pub `create_note` function L369-388 — `(&self, content: &str) -> Result<Note>` — Create a note.
-- pub `list_notes` function L391-408 — `(&self) -> Result<Vec<Note>>` — List all notes.
-- pub `get_note` function L411-432 — `(&self, id: &str) -> Result<Note>` — Get a single note by ID.
-- pub `delete_note` function L435-455 — `(&self, id: &str) -> Result<()>` — Delete a note by ID.
-- pub `search_notes` function L458-489 — `(&self, query: &str, limit: usize) -> Result<Vec<MemoryResult>>` — Search notes via memory search endpoint, filtering for note results.
-- pub `list_sessions` function L493-510 — `(&self) -> Result<Vec<SessionInfo>>` — List sessions.
-- pub `delete_session` function L514-532 — `(&self, session_id: &str) -> Result<()>` — Delete a session.
+- pub `SessionInfo` struct L70-74 — `{ id: String, created_at: String, message_count: usize }` — Session info.
+- pub `SessionListResponse` struct L78-80 — `{ sessions: Vec<SessionInfo> }` — Session list response.
+- pub `MessageInfo` struct L84-90 — `{ role: String, content: String, timestamp: String, metadata: Option<serde_json:...` — Message info for conversation history.
+- pub `SessionMessagesResponse` struct L95-99 — `{ session_id: String, messages: Vec<MessageInfo>, count: usize }` — Session messages response.
+- pub `LogEntry` struct L103-105 — `{ line: String }` — A log entry from the server.
+- pub `LogsResponse` struct L109-113 — `{ file: String, count: usize, entries: Vec<LogEntry> }` — Server logs response.
+- pub `LogFileInfo` struct L117-120 — `{ name: String, size: u64 }` — Info about a server log file.
+- pub `LogFilesResponse` struct L124-126 — `{ files: Vec<LogFileInfo> }` — Response listing available server log files.
+- pub `NotesResponse` struct L131-139 — `{ notes: Vec<Note>, total: usize, limit: usize, offset: usize }` — Notes list response.
+- pub `WsServerMessage` enum L164-192 — `AuthResult | SessionCreated | ChatChunk | ToolStart | ToolEnd | Error | Pong` — Messages received from the server via WebSocket.
+- pub `ChatEvent` enum L201-212 — `Text | ToolStart | ToolEnd | Done | Error` — Events from streaming chat responses.
+- pub `ChatStream` struct L215-217 — `{ receiver: Pin<Box<dyn Stream<Item = Result<ChatEvent>> + Send>> }` — Streaming chat response.
+- pub `next` function L222-237 — `(&mut self) -> Option<Result<String>>` — Get the next event from the stream (simplified text-only).
+- pub `next_event` function L240-242 — `(&mut self) -> Option<Result<ChatEvent>>` — Get the next raw event from the stream.
+- pub `Client` struct L250-254 — `{ base_url: Url, http: reqwest::Client, token: Option<String> }` — HTTP/WebSocket client for the Arawn server.
+- pub `new` function L258-267 — `(base_url: &str) -> Result<Self>` — Create a new client for the given server URL.
+- pub `health` function L270-281 — `(&self) -> Result<HealthResponse>` — Check server health.
+- pub `chat_stream` function L284-387 — `(&self, message: &str, session_id: Option<&str>) -> Result<ChatStream>` — Send a chat message and get a streaming response via WebSocket.
+- pub `memory_search` function L390-410 — `(&self, query: &str, limit: usize) -> Result<Vec<MemoryResult>>` — Search memories.
+- pub `create_note` function L413-432 — `(&self, content: &str) -> Result<Note>` — Create a note.
+- pub `list_notes` function L435-452 — `(&self) -> Result<Vec<Note>>` — List all notes.
+- pub `get_note` function L455-476 — `(&self, id: &str) -> Result<Note>` — Get a single note by ID.
+- pub `delete_note` function L479-499 — `(&self, id: &str) -> Result<()>` — Delete a note by ID.
+- pub `search_notes` function L502-533 — `(&self, query: &str, limit: usize) -> Result<Vec<MemoryResult>>` — Search notes via memory search endpoint, filtering for note results.
+- pub `list_sessions` function L537-554 — `(&self) -> Result<Vec<SessionInfo>>` — List sessions.
+- pub `get_session_messages` function L557-576 — `(&self, session_id: &str) -> Result<SessionMessagesResponse>` — Get messages for a session.
+- pub `get_logs` function L579-606 — `(&self, lines: Option<usize>, file: Option<&str>) -> Result<LogsResponse>` — Get recent server log entries.
+- pub `list_log_files` function L609-626 — `(&self) -> Result<LogFilesResponse>` — List available server log files.
+- pub `delete_session` function L630-648 — `(&self, session_id: &str) -> Result<()>` — Delete a session.
 -  `CreateNoteRequest` struct L64-66 — `{ content: String }` — Create note request.
--  `WsClientMessage` enum L105-114 — `Auth | Chat | Ping` — Messages sent to the server via WebSocket.
--  `ChatStream` type L175-199 — `= ChatStream` — REST API and WebSocket endpoints.
--  `Client` type L212-533 — `= Client` — REST API and WebSocket endpoints.
--  `tests` module L540-581 — `-` — REST API and WebSocket endpoints.
--  `test_client_creation` function L544-547 — `()` — REST API and WebSocket endpoints.
--  `test_ws_client_message_serialization` function L550-565 — `()` — REST API and WebSocket endpoints.
--  `test_ws_server_message_deserialization` function L568-580 — `()` — REST API and WebSocket endpoints.
+-  `WsClientMessage` enum L149-158 — `Auth | Chat | Ping` — Messages sent to the server via WebSocket.
+-  `ChatStream` type L219-243 — `= ChatStream` — REST API and WebSocket endpoints.
+-  `Client` type L256-649 — `= Client` — REST API and WebSocket endpoints.
+-  `tests` module L656-697 — `-` — REST API and WebSocket endpoints.
+-  `test_client_creation` function L660-663 — `()` — REST API and WebSocket endpoints.
+-  `test_ws_client_message_serialization` function L666-681 — `()` — REST API and WebSocket endpoints.
+-  `test_ws_server_message_deserialization` function L684-696 — `()` — REST API and WebSocket endpoints.
 
 ### crates/arawn/src/commands
 
@@ -497,6 +510,19 @@
 -  `cmd_set_context` function L461-513 — `( name: &str, server: Option<String>, workstream: Option<String>, timeout: Optio...` — Config command - configuration management.
 -  `cmd_delete_context` function L515-534 — `(name: &str) -> Result<()>` — Config command - configuration management.
 
+#### crates/arawn/src/commands/logs.rs
+
+- pub `LogsArgs` struct L22-42 — `{ lines: usize, follow: bool, file: Option<String>, remote: bool, list_files: bo...` — Logs command - view and tail operational logs.
+- pub `run` function L45-86 — `(args: LogsArgs, ctx: &Context) -> Result<()>` — Run the logs command.
+-  `find_latest_log` function L88-100 — `(log_dir: &std::path::Path) -> Result<PathBuf>` — Logs command - view and tail operational logs.
+-  `list_log_files` function L102-115 — `(log_dir: &std::path::Path) -> Result<()>` — Logs command - view and tail operational logs.
+-  `tail_lines` function L117-128 — `(path: &std::path::Path, n: usize) -> Result<()>` — Logs command - view and tail operational logs.
+-  `tail_follow` function L130-169 — `(path: &std::path::Path, initial_lines: usize) -> Result<()>` — Logs command - view and tail operational logs.
+-  `run_remote` function L171-230 — `(args: LogsArgs, ctx: &Context) -> Result<()>` — Logs command - view and tail operational logs.
+-  `format_size` function L232-240 — `(bytes: u64) -> String` — Logs command - view and tail operational logs.
+-  `print_log_line` function L242-246 — `(line: &str)` — Logs command - view and tail operational logs.
+-  `strip_ansi_escapes` function L249-271 — `(s: &str) -> String` — Simple ANSI escape code stripper.
+
 #### crates/arawn/src/commands/mcp.rs
 
 - pub `McpArgs` struct L30-33 — `{ command: McpCommand }` — - `arawn mcp test` - Test connection to an MCP server
@@ -536,36 +562,38 @@
 - pub `auth` module L5 — `-` — CLI command handlers.
 - pub `chat` module L6 — `-` — CLI command handlers.
 - pub `config` module L7 — `-` — CLI command handlers.
-- pub `mcp` module L8 — `-` — CLI command handlers.
-- pub `memory` module L9 — `-` — CLI command handlers.
-- pub `notes` module L10 — `-` — CLI command handlers.
-- pub `output` module L11 — `-` — CLI command handlers.
-- pub `plugin` module L12 — `-` — CLI command handlers.
-- pub `repl` module L13 — `-` — CLI command handlers.
-- pub `secrets` module L14 — `-` — CLI command handlers.
-- pub `start` module L15 — `-` — CLI command handlers.
-- pub `status` module L16 — `-` — CLI command handlers.
-- pub `tui` module L17 — `-` — CLI command handlers.
-- pub `Context` struct L23-30 — `{ server_url: String, json_output: bool, verbose: bool }` — Shared context for all commands.
-- pub `format_user_error` function L36-134 — `(error: &anyhow::Error, server_url: &str) -> String` — Format an error into a user-friendly message with actionable suggestions.
-- pub `print_cli_error` function L140-157 — `(error: &anyhow::Error, server_url: &str, verbose: bool)` — Print a CLI error with optional verbose details.
--  `tests` module L160-277 — `-` — CLI command handlers.
--  `make_error` function L163-165 — `(msg: &str) -> anyhow::Error` — CLI command handlers.
--  `URL` variable L167 — `: &str` — CLI command handlers.
--  `test_connection_refused` function L170-176 — `()` — CLI command handlers.
--  `test_tcp_connect_error` function L179-183 — `()` — CLI command handlers.
--  `test_dns_error` function L186-191 — `()` — CLI command handlers.
--  `test_auth_failed` function L194-200 — `()` — CLI command handlers.
--  `test_401` function L203-207 — `()` — CLI command handlers.
--  `test_403` function L210-215 — `()` — CLI command handlers.
--  `test_404` function L218-222 — `()` — CLI command handlers.
--  `test_note_not_found` function L225-230 — `()` — CLI command handlers.
--  `test_500` function L233-238 — `()` — CLI command handlers.
--  `test_timeout` function L241-246 — `()` — CLI command handlers.
--  `test_toml_parse_error` function L249-254 — `()` — CLI command handlers.
--  `test_websocket_handshake` function L257-262 — `()` — CLI command handlers.
--  `test_unknown_error_passes_through` function L265-269 — `()` — CLI command handlers.
--  `test_server_url_included_in_connection_error` function L272-276 — `()` — CLI command handlers.
+- pub `logs` module L8 — `-` — CLI command handlers.
+- pub `mcp` module L9 — `-` — CLI command handlers.
+- pub `memory` module L10 — `-` — CLI command handlers.
+- pub `notes` module L11 — `-` — CLI command handlers.
+- pub `output` module L12 — `-` — CLI command handlers.
+- pub `plugin` module L13 — `-` — CLI command handlers.
+- pub `repl` module L14 — `-` — CLI command handlers.
+- pub `secrets` module L15 — `-` — CLI command handlers.
+- pub `session` module L16 — `-` — CLI command handlers.
+- pub `start` module L17 — `-` — CLI command handlers.
+- pub `status` module L18 — `-` — CLI command handlers.
+- pub `tui` module L19 — `-` — CLI command handlers.
+- pub `Context` struct L25-32 — `{ server_url: String, json_output: bool, verbose: bool }` — Shared context for all commands.
+- pub `format_user_error` function L38-136 — `(error: &anyhow::Error, server_url: &str) -> String` — Format an error into a user-friendly message with actionable suggestions.
+- pub `print_cli_error` function L142-160 — `(error: &anyhow::Error, server_url: &str, verbose: bool)` — Print a CLI error with optional verbose details.
+-  `tests` module L163-280 — `-` — CLI command handlers.
+-  `make_error` function L166-168 — `(msg: &str) -> anyhow::Error` — CLI command handlers.
+-  `URL` variable L170 — `: &str` — CLI command handlers.
+-  `test_connection_refused` function L173-179 — `()` — CLI command handlers.
+-  `test_tcp_connect_error` function L182-186 — `()` — CLI command handlers.
+-  `test_dns_error` function L189-194 — `()` — CLI command handlers.
+-  `test_auth_failed` function L197-203 — `()` — CLI command handlers.
+-  `test_401` function L206-210 — `()` — CLI command handlers.
+-  `test_403` function L213-218 — `()` — CLI command handlers.
+-  `test_404` function L221-225 — `()` — CLI command handlers.
+-  `test_note_not_found` function L228-233 — `()` — CLI command handlers.
+-  `test_500` function L236-241 — `()` — CLI command handlers.
+-  `test_timeout` function L244-249 — `()` — CLI command handlers.
+-  `test_toml_parse_error` function L252-257 — `()` — CLI command handlers.
+-  `test_websocket_handshake` function L260-265 — `()` — CLI command handlers.
+-  `test_unknown_error_passes_through` function L268-272 — `()` — CLI command handlers.
+-  `test_server_url_included_in_connection_error` function L275-279 — `()` — CLI command handlers.
 
 #### crates/arawn/src/commands/notes.rs
 
@@ -577,11 +605,11 @@
 
 - pub `header` function L16-20 — `(title: &str)` — Print a section header: bold title + dim separator line.
 - pub `success` function L23-25 — `(msg: impl Display)` — Print a success message with a green checkmark.
-- pub `error` function L28-30 — `(msg: impl Display)` — Print an error message to stderr with red "Error:" prefix.
-- pub `kv` function L37-43 — `(label: &str, value: impl Display)` — Print a dim-labeled key-value pair, indented.
-- pub `hint` function L46-48 — `(msg: impl Display)` — Print a dim hint/note line.
-- pub `truncate` function L51-58 — `(s: &str, max_len: usize) -> String` — Truncate a string to a maximum length, collapsing newlines to spaces.
-- pub `truncate_multiline` function L61-71 — `(s: &str, max_len: usize) -> String` — Truncate a multiline string, preserving indentation on continuation.
+- pub `error` function L29-33 — `(msg: impl Display)` — Print an error message to stderr with red "Error:" prefix.
+- pub `kv` function L40-46 — `(label: &str, value: impl Display)` — Print a dim-labeled key-value pair, indented.
+- pub `hint` function L49-51 — `(msg: impl Display)` — Print a dim hint/note line.
+- pub `truncate` function L54-61 — `(s: &str, max_len: usize) -> String` — Truncate a string to a maximum length, collapsing newlines to spaces.
+- pub `truncate_multiline` function L64-74 — `(s: &str, max_len: usize) -> String` — Truncate a multiline string, preserving indentation on continuation.
 
 #### crates/arawn/src/commands/plugin.rs
 
@@ -629,20 +657,28 @@
 -  `cmd_list` function L71-91 — `() -> Result<()>` — Secrets command - manage age-encrypted secret store.
 -  `cmd_delete` function L93-104 — `(name: &str) -> Result<()>` — Secrets command - manage age-encrypted secret store.
 
+#### crates/arawn/src/commands/session.rs
+
+- pub `SessionArgs` struct L17-20 — `{ command: SessionCommands }` — Session command - view and manage chat sessions.
+- pub `SessionCommands` enum L23-31 — `List | Show` — Session command - view and manage chat sessions.
+- pub `run` function L34-39 — `(args: SessionArgs, ctx: &Context) -> Result<()>` — Run the session command.
+-  `list_sessions` function L41-73 — `(ctx: &Context) -> Result<()>` — Session command - view and manage chat sessions.
+-  `show_session` function L75-158 — `(session_id: &str, ctx: &Context) -> Result<()>` — Session command - view and manage chat sessions.
+
 #### crates/arawn/src/commands/start.rs
 
 - pub `StartArgs` struct L49-101 — `{ daemon: bool, port: Option<u16>, bind: Option<String>, token: Option<String>, ...` — Start command - launches the Arawn server.
-- pub `run` function L104-1453 — `(args: StartArgs, ctx: &Context) -> Result<()>` — Run the start command.
--  `resolve_with_cli_overrides` function L1456-1506 — `( config: &arawn_config::ArawnConfig, args: &StartArgs, ) -> Result<ResolvedLlm>` — Resolve LLM config, applying CLI overrides on top of config file values.
--  `make_api_key_provider` function L1512-1516 — `(backend: Backend, config_value: Option<String>) -> ApiKeyProvider` — Build an `ApiKeyProvider` that re-resolves from the secret store on each request.
--  `create_backend` function L1519-1653 — `( resolved: &ResolvedLlm, oauth_overrides: Option<&arawn_config::OAuthConfigOver...` — Create an LLM backend from a resolved config.
--  `parse_backend` function L1655-1668 — `(s: &str) -> Result<Backend>` — Start command - launches the Arawn server.
--  `load_or_generate_server_token` function L1671-1687 — `() -> Result<String>` — Load a persisted server token, or generate and save a new one.
--  `resolve_profile` function L1690-1721 — `(name: &str, llm_config: &LlmConfig) -> Result<ResolvedLlm>` — Resolve a named LLM profile into a ResolvedLlm ready for backend creation.
--  `build_embedder_spec` function L1724-1770 — `(config: &arawn_config::EmbeddingConfig) -> EmbedderSpec` — Build an `EmbedderSpec` from the application's `EmbeddingConfig`.
--  `default_model` function L1772-1780 — `(backend: &Backend) -> String` — Start command - launches the Arawn server.
--  `register_builtin_runtimes` function L1787-1871 — `( runtimes_src_dir: &std::path::Path, executor: &Arc<ScriptExecutor>, catalog: &...` — Compile and register built-in WASM runtimes from source crate directories.
--  `seed_test_data` function L1874-1967 — `(manager: &WorkstreamManager, verbose: bool)` — Seed the database with test workstreams and sessions for development.
+- pub `run` function L104-1458 — `(args: StartArgs, ctx: &Context) -> Result<()>` — Run the start command.
+-  `resolve_with_cli_overrides` function L1461-1511 — `( config: &arawn_config::ArawnConfig, args: &StartArgs, ) -> Result<ResolvedLlm>` — Resolve LLM config, applying CLI overrides on top of config file values.
+-  `make_api_key_provider` function L1517-1521 — `(backend: Backend, config_value: Option<String>) -> ApiKeyProvider` — Build an `ApiKeyProvider` that re-resolves from the secret store on each request.
+-  `create_backend` function L1524-1658 — `( resolved: &ResolvedLlm, oauth_overrides: Option<&arawn_config::OAuthConfigOver...` — Create an LLM backend from a resolved config.
+-  `parse_backend` function L1660-1673 — `(s: &str) -> Result<Backend>` — Start command - launches the Arawn server.
+-  `load_or_generate_server_token` function L1676-1692 — `() -> Result<String>` — Load a persisted server token, or generate and save a new one.
+-  `resolve_profile` function L1695-1726 — `(name: &str, llm_config: &LlmConfig) -> Result<ResolvedLlm>` — Resolve a named LLM profile into a ResolvedLlm ready for backend creation.
+-  `build_embedder_spec` function L1729-1775 — `(config: &arawn_config::EmbeddingConfig) -> EmbedderSpec` — Build an `EmbedderSpec` from the application's `EmbeddingConfig`.
+-  `default_model` function L1777-1785 — `(backend: &Backend) -> String` — Start command - launches the Arawn server.
+-  `register_builtin_runtimes` function L1792-1870 — `( runtimes_src_dir: &std::path::Path, executor: &Arc<ScriptExecutor>, catalog: &...` — Compile and register built-in WASM runtimes from source crate directories.
+-  `seed_test_data` function L1873-1966 — `(manager: &WorkstreamManager, verbose: bool)` — Seed the database with test workstreams and sessions for development.
 
 #### crates/arawn/src/commands/status.rs
 
@@ -661,13 +697,13 @@
 
 #### crates/arawn/src/main.rs
 
-- pub `Cli` struct L30-49 — `{ verbose: bool, json: bool, server: Option<String>, context: Option<String>, co...` — Main entry point for the Arawn CLI.
-- pub `Commands` enum L52-91 — `Start | Status | Ask | Chat | Memory | Notes | Config | Auth | Plugin | Agent | ...` — Main entry point for the Arawn CLI.
+- pub `Cli` struct L31-50 — `{ verbose: bool, json: bool, server: Option<String>, context: Option<String>, co...` — Main entry point for the Arawn CLI.
+- pub `Commands` enum L53-98 — `Start | Status | Ask | Chat | Memory | Notes | Config | Auth | Plugin | Agent | ...` — Main entry point for the Arawn CLI.
 -  `client` module L8 — `-` — Main entry point for the Arawn CLI.
 -  `commands` module L9 — `-` — Main entry point for the Arawn CLI.
--  `resolve_server_url` function L105-134 — `(server_flag: Option<&str>, context_flag: Option<&str>) -> String` — Resolve the server URL from various sources.
--  `main` function L141-149 — `()` — Main entry point for the Arawn CLI.
--  `run` function L151-220 — `() -> Result<()>` — Main entry point for the Arawn CLI.
+-  `resolve_server_url` function L112-141 — `(server_flag: Option<&str>, context_flag: Option<&str>) -> String` — Resolve the server URL from various sources.
+-  `main` function L148-160 — `()` — Main entry point for the Arawn CLI.
+-  `run` function L162-233 — `() -> Result<()>` — Main entry point for the Arawn CLI.
 
 ### crates/arawn/tests
 
@@ -716,84 +752,84 @@
 - pub `tools` function L112-114 — `(&self) -> &ToolRegistry` — Get the tool registry.
 - pub `backend` function L117-119 — `(&self) -> SharedBackend` — Get the LLM backend.
 - pub `system_prompt` function L125-127 — `(&self) -> Option<String>` — Get the current system prompt (built dynamically if a builder is present).
-- pub `turn` function L167-410 — `( &self, session: &mut Session, user_message: &str, workstream_id: Option<&str>,...` — Execute a single turn of conversation.
-- pub `turn_stream` function L424-460 — `( &self, session: &mut Session, user_message: &str, cancellation: CancellationTo...` — Execute a single turn of conversation with streaming output.
-- pub `AgentBuilder` struct L803-817 — `{ backend: Option<SharedBackend>, tools: ToolRegistry, config: AgentConfig, prom...` — Builder for constructing an Agent with fluent API.
-- pub `new` function L821-837 — `() -> Self` — Create a new builder with defaults.
-- pub `with_backend` function L840-843 — `(mut self, backend: impl LlmBackend + 'static) -> Self` — Set the LLM backend.
-- pub `with_shared_backend` function L846-849 — `(mut self, backend: SharedBackend) -> Self` — Set the LLM backend from a shared reference.
-- pub `with_tools` function L852-855 — `(mut self, tools: ToolRegistry) -> Self` — Set the tool registry.
-- pub `with_tool` function L858-861 — `(mut self, tool: T) -> Self` — Register a single tool.
-- pub `with_config` function L864-867 — `(mut self, config: AgentConfig) -> Self` — Set the configuration.
-- pub `with_model` function L870-873 — `(mut self, model: impl Into<String>) -> Self` — Set the model.
-- pub `with_system_prompt` function L876-879 — `(mut self, prompt: impl Into<String>) -> Self` — Set the system prompt.
-- pub `with_max_tokens` function L882-885 — `(mut self, max_tokens: u32) -> Self` — Set max tokens.
-- pub `with_max_iterations` function L888-891 — `(mut self, max_iterations: u32) -> Self` — Set max iterations.
-- pub `with_max_total_tokens` function L897-900 — `(mut self, max_total_tokens: usize) -> Self` — Set cumulative token budget (input + output).
-- pub `with_workspace` function L905-908 — `(mut self, path: impl Into<std::path::PathBuf>) -> Self` — Set the workspace path.
-- pub `with_prompt_builder` function L916-919 — `(mut self, builder: SystemPromptBuilder) -> Self` — Set a prompt builder for dynamic system prompt generation.
-- pub `with_bootstrap_dir` function L935-961 — `(mut self, path: impl AsRef<std::path::Path>) -> Self` — Load bootstrap context files from a directory.
-- pub `with_prompt_file` function L977-1004 — `(mut self, path: impl AsRef<std::path::Path>) -> Self` — Load a custom prompt file and add it to the bootstrap context.
-- pub `with_memory_store` function L1007-1010 — `(mut self, store: Arc<MemoryStore>) -> Self` — Set the memory store for active recall.
-- pub `with_embedder` function L1013-1016 — `(mut self, embedder: SharedEmbedder) -> Self` — Set the embedder for active recall.
-- pub `with_recall_config` function L1019-1022 — `(mut self, config: RecallConfig) -> Self` — Set the recall configuration.
-- pub `with_interaction_logger` function L1025-1028 — `(mut self, logger: Arc<InteractionLogger>) -> Self` — Set the interaction logger for structured JSONL capture.
-- pub `with_plugin_prompts` function L1034-1037 — `(mut self, prompts: Vec<(String, String)>) -> Self` — Add plugin prompt fragments to the system prompt.
-- pub `with_hook_dispatcher` function L1046-1049 — `(mut self, dispatcher: SharedHookDispatcher) -> Self` — Set the hook dispatcher for plugin lifecycle events.
-- pub `build` function L1052-1102 — `(mut self) -> Result<Agent>` — Build the agent.
-- pub `with_fs_gate_resolver` function L1105-1108 — `(mut self, resolver: FsGateResolver) -> Self` — Set the filesystem gate resolver for workstream sandbox enforcement.
-- pub `with_secret_resolver` function L1111-1114 — `(mut self, resolver: SharedSecretResolver) -> Self` — Set the secret resolver for `${{secrets.*}}` handle resolution in tool params.
+- pub `turn` function L163-406 — `( &self, session: &mut Session, user_message: &str, workstream_id: Option<&str>,...` — Execute a single turn of conversation.
+- pub `turn_stream` function L420-456 — `( &self, session: &mut Session, user_message: &str, cancellation: CancellationTo...` — Execute a single turn of conversation with streaming output.
+- pub `AgentBuilder` struct L799-813 — `{ backend: Option<SharedBackend>, tools: ToolRegistry, config: AgentConfig, prom...` — Builder for constructing an Agent with fluent API.
+- pub `new` function L817-833 — `() -> Self` — Create a new builder with defaults.
+- pub `with_backend` function L836-839 — `(mut self, backend: impl LlmBackend + 'static) -> Self` — Set the LLM backend.
+- pub `with_shared_backend` function L842-845 — `(mut self, backend: SharedBackend) -> Self` — Set the LLM backend from a shared reference.
+- pub `with_tools` function L848-851 — `(mut self, tools: ToolRegistry) -> Self` — Set the tool registry.
+- pub `with_tool` function L854-857 — `(mut self, tool: T) -> Self` — Register a single tool.
+- pub `with_config` function L860-863 — `(mut self, config: AgentConfig) -> Self` — Set the configuration.
+- pub `with_model` function L866-869 — `(mut self, model: impl Into<String>) -> Self` — Set the model.
+- pub `with_system_prompt` function L872-875 — `(mut self, prompt: impl Into<String>) -> Self` — Set the system prompt.
+- pub `with_max_tokens` function L878-881 — `(mut self, max_tokens: u32) -> Self` — Set max tokens.
+- pub `with_max_iterations` function L884-887 — `(mut self, max_iterations: u32) -> Self` — Set max iterations.
+- pub `with_max_total_tokens` function L893-896 — `(mut self, max_total_tokens: usize) -> Self` — Set cumulative token budget (input + output).
+- pub `with_workspace` function L901-904 — `(mut self, path: impl Into<std::path::PathBuf>) -> Self` — Set the workspace path.
+- pub `with_prompt_builder` function L912-915 — `(mut self, builder: SystemPromptBuilder) -> Self` — Set a prompt builder for dynamic system prompt generation.
+- pub `with_bootstrap_dir` function L931-957 — `(mut self, path: impl AsRef<std::path::Path>) -> Self` — Load bootstrap context files from a directory.
+- pub `with_prompt_file` function L973-1000 — `(mut self, path: impl AsRef<std::path::Path>) -> Self` — Load a custom prompt file and add it to the bootstrap context.
+- pub `with_memory_store` function L1003-1006 — `(mut self, store: Arc<MemoryStore>) -> Self` — Set the memory store for active recall.
+- pub `with_embedder` function L1009-1012 — `(mut self, embedder: SharedEmbedder) -> Self` — Set the embedder for active recall.
+- pub `with_recall_config` function L1015-1018 — `(mut self, config: RecallConfig) -> Self` — Set the recall configuration.
+- pub `with_interaction_logger` function L1021-1024 — `(mut self, logger: Arc<InteractionLogger>) -> Self` — Set the interaction logger for structured JSONL capture.
+- pub `with_plugin_prompts` function L1030-1033 — `(mut self, prompts: Vec<(String, String)>) -> Self` — Add plugin prompt fragments to the system prompt.
+- pub `with_hook_dispatcher` function L1042-1045 — `(mut self, dispatcher: SharedHookDispatcher) -> Self` — Set the hook dispatcher for plugin lifecycle events.
+- pub `build` function L1048-1098 — `(mut self) -> Result<Agent>` — Build the agent.
+- pub `with_fs_gate_resolver` function L1101-1104 — `(mut self, resolver: FsGateResolver) -> Self` — Set the filesystem gate resolver for workstream sandbox enforcement.
+- pub `with_secret_resolver` function L1107-1110 — `(mut self, resolver: SharedSecretResolver) -> Self` — Set the secret resolver for `${{secrets.*}}` handle resolution in tool params.
 -  `RecallConfig` type L43-51 — `impl Default for RecallConfig` — conversation loop, handles tool execution, and manages context.
 -  `default` function L44-50 — `() -> Self` — conversation loop, handles tool execution, and manages context.
--  `Agent` type L83-781 — `= Agent` — conversation loop, handles tool execution, and manages context.
--  `build_system_prompt` function L134-161 — `(&self, context_preamble: Option<&str>) -> Option<String>` — Build the system prompt dynamically.
--  `estimate_messages_tokens` function L463-468 — `(&self, messages: &[Message]) -> usize` — Estimate total tokens for a list of messages.
--  `estimate_message_tokens` function L471-498 — `(&self, message: &Message) -> usize` — Estimate tokens for a single message.
--  `build_messages` function L501-561 — `(&self, session: &Session) -> Vec<Message>` — Build messages from session history.
--  `build_request` function L568-596 — `( &self, messages: &[Message], context_preamble: Option<&str>, ) -> CompletionRe...` — Build a completion request.
--  `execute_tools` function L599-714 — `( &self, response: &CompletionResponse, session_id: crate::types::SessionId, tur...` — Execute tool calls from an LLM response.
--  `perform_recall` function L721-780 — `(&self, user_message: &str) -> Option<Message>` — Perform active recall for a user message.
--  `format_recall_context` function L784-796 — `(matches: &[arawn_memory::store::RecallMatch]) -> String` — Format recall matches into a concise context string for injection.
--  `AgentBuilder` type L819-1115 — `= AgentBuilder` — conversation loop, handles tool execution, and manages context.
--  `AgentBuilder` type L1117-1121 — `impl Default for AgentBuilder` — conversation loop, handles tool execution, and manages context.
--  `default` function L1118-1120 — `() -> Self` — conversation loop, handles tool execution, and manages context.
--  `tests` module L1128-1807 — `-` — conversation loop, handles tool execution, and manages context.
--  `mock_text_response` function L1133-1144 — `(text: &str) -> CompletionResponse` — conversation loop, handles tool execution, and manages context.
--  `mock_tool_use_response` function L1146-1163 — `( tool_id: &str, tool_name: &str, args: serde_json::Value, ) -> CompletionRespon...` — conversation loop, handles tool execution, and manages context.
--  `test_agent_builder_no_backend` function L1166-1169 — `()` — conversation loop, handles tool execution, and manages context.
--  `test_agent_builder_with_backend` function L1172-1186 — `()` — conversation loop, handles tool execution, and manages context.
--  `test_simple_turn_no_tools` function L1189-1201 — `()` — conversation loop, handles tool execution, and manages context.
--  `test_turn_with_tool_use` function L1204-1233 — `()` — conversation loop, handles tool execution, and manages context.
--  `test_turn_max_iterations` function L1236-1264 — `()` — conversation loop, handles tool execution, and manages context.
--  `test_turn_token_budget_exceeded` function L1267-1295 — `()` — conversation loop, handles tool execution, and manages context.
--  `test_turn_no_token_budget` function L1298-1311 — `()` — conversation loop, handles tool execution, and manages context.
--  `test_turn_tool_error_handling` function L1314-1346 — `()` — conversation loop, handles tool execution, and manages context.
--  `test_turn_unknown_tool` function L1349-1366 — `()` — conversation loop, handles tool execution, and manages context.
--  `test_tool_validation_error_retry` function L1369-1391 — `()` — conversation loop, handles tool execution, and manages context.
--  `test_tool_validation_error_exhausts_retries` function L1394-1419 — `()` — conversation loop, handles tool execution, and manages context.
--  `test_multi_turn_conversation` function L1422-1442 — `()` — conversation loop, handles tool execution, and manages context.
--  `test_agent_with_prompt_builder` function L1445-1468 — `()` — conversation loop, handles tool execution, and manages context.
--  `test_agent_prompt_builder_with_static_fallback` function L1471-1485 — `()` — conversation loop, handles tool execution, and manages context.
--  `test_agent_prompt_builder_overrides_static` function L1488-1508 — `()` — conversation loop, handles tool execution, and manages context.
--  `test_agent_with_bootstrap_dir` function L1511-1541 — `()` — conversation loop, handles tool execution, and manages context.
--  `test_agent_bootstrap_dir_creates_builder_if_none` function L1544-1567 — `()` — conversation loop, handles tool execution, and manages context.
--  `test_agent_bootstrap_dir_nonexistent_is_ok` function L1570-1582 — `()` — conversation loop, handles tool execution, and manages context.
--  `test_agent_with_prompt_file` function L1585-1605 — `()` — conversation loop, handles tool execution, and manages context.
--  `test_agent_with_multiple_prompt_files` function L1608-1631 — `()` — conversation loop, handles tool execution, and manages context.
--  `test_agent_combine_bootstrap_dir_and_prompt_file` function L1634-1664 — `()` — conversation loop, handles tool execution, and manages context.
--  `recall_tests` module L1668-1806 — `-` — conversation loop, handles tool execution, and manages context.
--  `FixedEmbedder` struct L1676-1678 — `{ dims: usize }` — Simple mock embedder that returns a fixed vector.
--  `FixedEmbedder` type L1680-1684 — `= FixedEmbedder` — conversation loop, handles tool execution, and manages context.
--  `new` function L1681-1683 — `(dims: usize) -> Self` — conversation loop, handles tool execution, and manages context.
--  `FixedEmbedder` type L1687-1699 — `impl Embedder for FixedEmbedder` — conversation loop, handles tool execution, and manages context.
--  `embed` function L1688-1690 — `(&self, _text: &str) -> arawn_llm::Result<Vec<f32>>` — conversation loop, handles tool execution, and manages context.
--  `dimensions` function L1692-1694 — `(&self) -> usize` — conversation loop, handles tool execution, and manages context.
--  `name` function L1696-1698 — `(&self) -> &str` — conversation loop, handles tool execution, and manages context.
--  `create_recall_store` function L1701-1706 — `(dims: usize) -> Arc<MemoryStore>` — conversation loop, handles tool execution, and manages context.
--  `test_recall_injects_context` function L1710-1742 — `()` — conversation loop, handles tool execution, and manages context.
--  `test_recall_no_results` function L1746-1768 — `()` — conversation loop, handles tool execution, and manages context.
--  `test_recall_disabled_config` function L1771-1786 — `()` — conversation loop, handles tool execution, and manages context.
--  `test_recall_no_embedder` function L1789-1805 — `()` — conversation loop, handles tool execution, and manages context.
+-  `Agent` type L83-777 — `= Agent` — conversation loop, handles tool execution, and manages context.
+-  `build_system_prompt` function L134-157 — `(&self, context_preamble: Option<&str>) -> Option<String>` — Build the system prompt dynamically.
+-  `estimate_messages_tokens` function L459-464 — `(&self, messages: &[Message]) -> usize` — Estimate total tokens for a list of messages.
+-  `estimate_message_tokens` function L467-494 — `(&self, message: &Message) -> usize` — Estimate tokens for a single message.
+-  `build_messages` function L497-557 — `(&self, session: &Session) -> Vec<Message>` — Build messages from session history.
+-  `build_request` function L564-592 — `( &self, messages: &[Message], context_preamble: Option<&str>, ) -> CompletionRe...` — Build a completion request.
+-  `execute_tools` function L595-710 — `( &self, response: &CompletionResponse, session_id: crate::types::SessionId, tur...` — Execute tool calls from an LLM response.
+-  `perform_recall` function L717-776 — `(&self, user_message: &str) -> Option<Message>` — Perform active recall for a user message.
+-  `format_recall_context` function L780-792 — `(matches: &[arawn_memory::store::RecallMatch]) -> String` — Format recall matches into a concise context string for injection.
+-  `AgentBuilder` type L815-1111 — `= AgentBuilder` — conversation loop, handles tool execution, and manages context.
+-  `AgentBuilder` type L1113-1117 — `impl Default for AgentBuilder` — conversation loop, handles tool execution, and manages context.
+-  `default` function L1114-1116 — `() -> Self` — conversation loop, handles tool execution, and manages context.
+-  `tests` module L1124-1803 — `-` — conversation loop, handles tool execution, and manages context.
+-  `mock_text_response` function L1129-1140 — `(text: &str) -> CompletionResponse` — conversation loop, handles tool execution, and manages context.
+-  `mock_tool_use_response` function L1142-1159 — `( tool_id: &str, tool_name: &str, args: serde_json::Value, ) -> CompletionRespon...` — conversation loop, handles tool execution, and manages context.
+-  `test_agent_builder_no_backend` function L1162-1165 — `()` — conversation loop, handles tool execution, and manages context.
+-  `test_agent_builder_with_backend` function L1168-1182 — `()` — conversation loop, handles tool execution, and manages context.
+-  `test_simple_turn_no_tools` function L1185-1197 — `()` — conversation loop, handles tool execution, and manages context.
+-  `test_turn_with_tool_use` function L1200-1229 — `()` — conversation loop, handles tool execution, and manages context.
+-  `test_turn_max_iterations` function L1232-1260 — `()` — conversation loop, handles tool execution, and manages context.
+-  `test_turn_token_budget_exceeded` function L1263-1291 — `()` — conversation loop, handles tool execution, and manages context.
+-  `test_turn_no_token_budget` function L1294-1307 — `()` — conversation loop, handles tool execution, and manages context.
+-  `test_turn_tool_error_handling` function L1310-1342 — `()` — conversation loop, handles tool execution, and manages context.
+-  `test_turn_unknown_tool` function L1345-1362 — `()` — conversation loop, handles tool execution, and manages context.
+-  `test_tool_validation_error_retry` function L1365-1387 — `()` — conversation loop, handles tool execution, and manages context.
+-  `test_tool_validation_error_exhausts_retries` function L1390-1415 — `()` — conversation loop, handles tool execution, and manages context.
+-  `test_multi_turn_conversation` function L1418-1438 — `()` — conversation loop, handles tool execution, and manages context.
+-  `test_agent_with_prompt_builder` function L1441-1464 — `()` — conversation loop, handles tool execution, and manages context.
+-  `test_agent_prompt_builder_with_static_fallback` function L1467-1481 — `()` — conversation loop, handles tool execution, and manages context.
+-  `test_agent_prompt_builder_overrides_static` function L1484-1504 — `()` — conversation loop, handles tool execution, and manages context.
+-  `test_agent_with_bootstrap_dir` function L1507-1537 — `()` — conversation loop, handles tool execution, and manages context.
+-  `test_agent_bootstrap_dir_creates_builder_if_none` function L1540-1563 — `()` — conversation loop, handles tool execution, and manages context.
+-  `test_agent_bootstrap_dir_nonexistent_is_ok` function L1566-1578 — `()` — conversation loop, handles tool execution, and manages context.
+-  `test_agent_with_prompt_file` function L1581-1601 — `()` — conversation loop, handles tool execution, and manages context.
+-  `test_agent_with_multiple_prompt_files` function L1604-1627 — `()` — conversation loop, handles tool execution, and manages context.
+-  `test_agent_combine_bootstrap_dir_and_prompt_file` function L1630-1660 — `()` — conversation loop, handles tool execution, and manages context.
+-  `recall_tests` module L1664-1802 — `-` — conversation loop, handles tool execution, and manages context.
+-  `FixedEmbedder` struct L1672-1674 — `{ dims: usize }` — Simple mock embedder that returns a fixed vector.
+-  `FixedEmbedder` type L1676-1680 — `= FixedEmbedder` — conversation loop, handles tool execution, and manages context.
+-  `new` function L1677-1679 — `(dims: usize) -> Self` — conversation loop, handles tool execution, and manages context.
+-  `FixedEmbedder` type L1683-1695 — `impl Embedder for FixedEmbedder` — conversation loop, handles tool execution, and manages context.
+-  `embed` function L1684-1686 — `(&self, _text: &str) -> arawn_llm::Result<Vec<f32>>` — conversation loop, handles tool execution, and manages context.
+-  `dimensions` function L1688-1690 — `(&self) -> usize` — conversation loop, handles tool execution, and manages context.
+-  `name` function L1692-1694 — `(&self) -> &str` — conversation loop, handles tool execution, and manages context.
+-  `create_recall_store` function L1697-1702 — `(dims: usize) -> Arc<MemoryStore>` — conversation loop, handles tool execution, and manages context.
+-  `test_recall_injects_context` function L1706-1738 — `()` — conversation loop, handles tool execution, and manages context.
+-  `test_recall_no_results` function L1742-1764 — `()` — conversation loop, handles tool execution, and manages context.
+-  `test_recall_disabled_config` function L1767-1782 — `()` — conversation loop, handles tool execution, and manages context.
+-  `test_recall_no_embedder` function L1785-1801 — `()` — conversation loop, handles tool execution, and manages context.
 
 #### crates/arawn-agent/src/compaction.rs
 
@@ -2512,58 +2548,58 @@
 - pub `SessionSummary` struct L39-51 — `{ id: String, title: Option<String>, turn_count: usize, created_at: String, upda...` — Summary info for a session.
 - pub `SessionDetail` struct L55-67 — `{ id: String, turns: Vec<TurnInfo>, created_at: String, updated_at: String, meta...` — Full session details.
 - pub `TurnInfo` struct L71-84 — `{ id: String, user_message: String, assistant_response: Option<String>, tool_cal...` — Turn info within a session.
-- pub `MessageInfo` struct L88-95 — `{ role: String, content: String, timestamp: String }` — Message info for conversation history.
-- pub `SessionMessagesResponse` struct L99-106 — `{ session_id: String, messages: Vec<MessageInfo>, count: usize }` — Response containing session messages.
-- pub `ListSessionsResponse` struct L110-115 — `{ sessions: Vec<SessionSummary>, total: usize }` — Response for list sessions.
-- pub `CreateWorkstreamRequest` struct L123-132 — `{ title: String, default_model: Option<String>, tags: Vec<String> }` — Request to create a workstream.
-- pub `UpdateWorkstreamRequest` struct L136-149 — `{ title: Option<String>, summary: Option<String>, default_model: Option<String>,...` — Request to update a workstream.
-- pub `Workstream` struct L153-175 — `{ id: String, title: String, summary: Option<String>, state: String, default_mod...` — Workstream details.
-- pub `ListWorkstreamsResponse` struct L179-182 — `{ workstreams: Vec<Workstream> }` — Response for list workstreams.
-- pub `SendMessageRequest` struct L186-195 — `{ role: Option<String>, content: String, metadata: Option<String> }` — Request to send a message.
-- pub `WorkstreamMessage` struct L199-216 — `{ id: String, workstream_id: String, session_id: Option<String>, role: String, c...` — Workstream message.
-- pub `ListMessagesResponse` struct L220-223 — `{ messages: Vec<WorkstreamMessage> }` — Response for list messages.
-- pub `WorkstreamSession` struct L227-239 — `{ id: String, workstream_id: String, started_at: String, ended_at: Option<String...` — Workstream session info.
-- pub `ListWorkstreamSessionsResponse` struct L243-246 — `{ sessions: Vec<WorkstreamSession> }` — Response for list workstream sessions.
-- pub `PromoteRequest` struct L250-259 — `{ title: String, tags: Vec<String>, default_model: Option<String> }` — Request to promote scratch workstream.
-- pub `ChatRequest` struct L267-285 — `{ message: String, session_id: Option<String>, model: Option<String>, system_pro...` — Chat request.
-- pub `new` function L289-298 — `(message: impl Into<String>) -> Self` — Create a new chat request with just a message.
-- pub `with_session` function L301-304 — `(mut self, session_id: impl Into<String>) -> Self` — Set the session ID.
-- pub `with_model` function L307-310 — `(mut self, model: impl Into<String>) -> Self` — Set the model.
-- pub `ChatResponse` struct L315-331 — `{ response: String, session_id: String, turn_id: String, tool_calls: Vec<ToolCal...` — Chat response.
-- pub `ToolCallInfo` struct L335-342 — `{ name: String, id: String, success: bool }` — Tool call information.
-- pub `TokenUsage` struct L346-353 — `{ prompt_tokens: u32, completion_tokens: u32, total_tokens: u32 }` — Token usage information.
-- pub `StreamEvent` enum L358-383 — `SessionStart | Content | ToolStart | ToolOutput | ToolEnd | Done | Error` — Streaming chat event.
-- pub `ConfigResponse` struct L391-405 — `{ version: String, api_version: Option<String>, features: ConfigFeatures, limits...` — Server configuration response.
-- pub `ConfigFeatures` struct L409-420 — `{ workstreams_enabled: bool, memory_enabled: bool, mcp_enabled: bool, rate_limit...` — Server feature flags.
-- pub `ConfigLimits` struct L424-428 — `{ max_concurrent_requests: Option<u32> }` — Server limits.
-- pub `AgentSummary` struct L436-445 — `{ id: String, name: String, is_default: bool, tool_count: usize }` — Agent summary.
-- pub `AgentDetail` struct L449-460 — `{ id: String, name: String, is_default: bool, tools: Vec<AgentToolInfo>, capabil...` — Agent details.
-- pub `AgentToolInfo` struct L464-469 — `{ name: String, description: String }` — Tool info for an agent.
-- pub `AgentCapabilities` struct L473-481 — `{ streaming: bool, tool_use: bool, max_context_length: Option<usize> }` — Agent capabilities.
-- pub `ListAgentsResponse` struct L485-490 — `{ agents: Vec<AgentSummary>, total: usize }` — Response for list agents.
-- pub `Note` struct L498-508 — `{ id: String, content: String, tags: Vec<String>, created_at: String }` — A note.
-- pub `CreateNoteRequest` struct L512-518 — `{ content: String, tags: Vec<String> }` — Request to create a note.
-- pub `UpdateNoteRequest` struct L522-529 — `{ content: Option<String>, tags: Option<Vec<String>> }` — Request to update a note.
-- pub `ListNotesResponse` struct L533-538 — `{ notes: Vec<Note>, total: usize }` — Response for list notes.
-- pub `NoteResponse` struct L542-545 — `{ note: Note }` — Response for single note operations.
-- pub `StoreMemoryRequest` struct L553-568 — `{ content: String, content_type: String, session_id: Option<String>, metadata: H...` — Request to store a memory.
-- pub `StoreMemoryResponse` struct L580-587 — `{ id: String, content_type: String, message: String }` — Response after storing a memory.
-- pub `MemorySearchResult` struct L591-608 — `{ id: String, content_type: String, content: String, session_id: Option<String>,...` — Memory search result.
-- pub `MemorySearchResponse` struct L612-619 — `{ results: Vec<MemorySearchResult>, query: String, count: usize }` — Response for memory search.
-- pub `TaskStatus` enum L628-639 — `Pending | Running | Completed | Failed | Cancelled` — Task status.
-- pub `TaskSummary` struct L643-655 — `{ id: String, task_type: String, status: TaskStatus, progress: Option<u8>, creat...` — Task summary.
-- pub `TaskDetail` struct L659-686 — `{ id: String, task_type: String, status: TaskStatus, progress: Option<u8>, messa...` — Task details.
-- pub `ListTasksResponse` struct L690-695 — `{ tasks: Vec<TaskSummary>, total: usize }` — Response for list tasks.
-- pub `AddServerRequest` struct L703-721 — `{ name: String, command: Option<String>, args: Vec<String>, env: HashMap<String,...` — Request to add an MCP server.
-- pub `AddServerResponse` struct L725-733 — `{ name: String, connected: bool, tools: Vec<String> }` — Response after adding a server.
-- pub `ServerInfo` struct L737-747 — `{ name: String, server_type: String, connected: bool, tool_count: Option<usize> ...` — MCP server info.
-- pub `ListServersResponse` struct L751-754 — `{ servers: Vec<ServerInfo> }` — Response for list servers.
-- pub `McpToolInfo` struct L758-764 — `{ name: String, description: Option<String> }` — Tool info from MCP server.
-- pub `ListToolsResponse` struct L768-773 — `{ server: String, tools: Vec<McpToolInfo> }` — Response for list server tools.
-- pub `HealthResponse` struct L781-787 — `{ status: String, version: Option<String> }` — Health check response.
--  `ChatRequest` type L287-311 — `= ChatRequest` — These types mirror the server's API contract.
--  `default_content_type` function L570-572 — `() -> String` — These types mirror the server's API contract.
--  `default_confidence` function L574-576 — `() -> f32` — These types mirror the server's API contract.
+- pub `MessageInfo` struct L88-98 — `{ role: String, content: String, timestamp: String, metadata: Option<serde_json:...` — Message info for conversation history.
+- pub `SessionMessagesResponse` struct L102-109 — `{ session_id: String, messages: Vec<MessageInfo>, count: usize }` — Response containing session messages.
+- pub `ListSessionsResponse` struct L113-118 — `{ sessions: Vec<SessionSummary>, total: usize }` — Response for list sessions.
+- pub `CreateWorkstreamRequest` struct L126-135 — `{ title: String, default_model: Option<String>, tags: Vec<String> }` — Request to create a workstream.
+- pub `UpdateWorkstreamRequest` struct L139-152 — `{ title: Option<String>, summary: Option<String>, default_model: Option<String>,...` — Request to update a workstream.
+- pub `Workstream` struct L156-178 — `{ id: String, title: String, summary: Option<String>, state: String, default_mod...` — Workstream details.
+- pub `ListWorkstreamsResponse` struct L182-185 — `{ workstreams: Vec<Workstream> }` — Response for list workstreams.
+- pub `SendMessageRequest` struct L189-198 — `{ role: Option<String>, content: String, metadata: Option<String> }` — Request to send a message.
+- pub `WorkstreamMessage` struct L202-219 — `{ id: String, workstream_id: String, session_id: Option<String>, role: String, c...` — Workstream message.
+- pub `ListMessagesResponse` struct L223-226 — `{ messages: Vec<WorkstreamMessage> }` — Response for list messages.
+- pub `WorkstreamSession` struct L230-242 — `{ id: String, workstream_id: String, started_at: String, ended_at: Option<String...` — Workstream session info.
+- pub `ListWorkstreamSessionsResponse` struct L246-249 — `{ sessions: Vec<WorkstreamSession> }` — Response for list workstream sessions.
+- pub `PromoteRequest` struct L253-262 — `{ title: String, tags: Vec<String>, default_model: Option<String> }` — Request to promote scratch workstream.
+- pub `ChatRequest` struct L270-288 — `{ message: String, session_id: Option<String>, model: Option<String>, system_pro...` — Chat request.
+- pub `new` function L292-301 — `(message: impl Into<String>) -> Self` — Create a new chat request with just a message.
+- pub `with_session` function L304-307 — `(mut self, session_id: impl Into<String>) -> Self` — Set the session ID.
+- pub `with_model` function L310-313 — `(mut self, model: impl Into<String>) -> Self` — Set the model.
+- pub `ChatResponse` struct L318-334 — `{ response: String, session_id: String, turn_id: String, tool_calls: Vec<ToolCal...` — Chat response.
+- pub `ToolCallInfo` struct L338-345 — `{ name: String, id: String, success: bool }` — Tool call information.
+- pub `TokenUsage` struct L349-356 — `{ prompt_tokens: u32, completion_tokens: u32, total_tokens: u32 }` — Token usage information.
+- pub `StreamEvent` enum L361-386 — `SessionStart | Content | ToolStart | ToolOutput | ToolEnd | Done | Error` — Streaming chat event.
+- pub `ConfigResponse` struct L394-408 — `{ version: String, api_version: Option<String>, features: ConfigFeatures, limits...` — Server configuration response.
+- pub `ConfigFeatures` struct L412-423 — `{ workstreams_enabled: bool, memory_enabled: bool, mcp_enabled: bool, rate_limit...` — Server feature flags.
+- pub `ConfigLimits` struct L427-431 — `{ max_concurrent_requests: Option<u32> }` — Server limits.
+- pub `AgentSummary` struct L439-448 — `{ id: String, name: String, is_default: bool, tool_count: usize }` — Agent summary.
+- pub `AgentDetail` struct L452-463 — `{ id: String, name: String, is_default: bool, tools: Vec<AgentToolInfo>, capabil...` — Agent details.
+- pub `AgentToolInfo` struct L467-472 — `{ name: String, description: String }` — Tool info for an agent.
+- pub `AgentCapabilities` struct L476-484 — `{ streaming: bool, tool_use: bool, max_context_length: Option<usize> }` — Agent capabilities.
+- pub `ListAgentsResponse` struct L488-493 — `{ agents: Vec<AgentSummary>, total: usize }` — Response for list agents.
+- pub `Note` struct L501-511 — `{ id: String, content: String, tags: Vec<String>, created_at: String }` — A note.
+- pub `CreateNoteRequest` struct L515-521 — `{ content: String, tags: Vec<String> }` — Request to create a note.
+- pub `UpdateNoteRequest` struct L525-532 — `{ content: Option<String>, tags: Option<Vec<String>> }` — Request to update a note.
+- pub `ListNotesResponse` struct L536-541 — `{ notes: Vec<Note>, total: usize }` — Response for list notes.
+- pub `NoteResponse` struct L545-548 — `{ note: Note }` — Response for single note operations.
+- pub `StoreMemoryRequest` struct L556-571 — `{ content: String, content_type: String, session_id: Option<String>, metadata: H...` — Request to store a memory.
+- pub `StoreMemoryResponse` struct L583-590 — `{ id: String, content_type: String, message: String }` — Response after storing a memory.
+- pub `MemorySearchResult` struct L594-611 — `{ id: String, content_type: String, content: String, session_id: Option<String>,...` — Memory search result.
+- pub `MemorySearchResponse` struct L615-622 — `{ results: Vec<MemorySearchResult>, query: String, count: usize }` — Response for memory search.
+- pub `TaskStatus` enum L631-642 — `Pending | Running | Completed | Failed | Cancelled` — Task status.
+- pub `TaskSummary` struct L646-658 — `{ id: String, task_type: String, status: TaskStatus, progress: Option<u8>, creat...` — Task summary.
+- pub `TaskDetail` struct L662-689 — `{ id: String, task_type: String, status: TaskStatus, progress: Option<u8>, messa...` — Task details.
+- pub `ListTasksResponse` struct L693-698 — `{ tasks: Vec<TaskSummary>, total: usize }` — Response for list tasks.
+- pub `AddServerRequest` struct L706-724 — `{ name: String, command: Option<String>, args: Vec<String>, env: HashMap<String,...` — Request to add an MCP server.
+- pub `AddServerResponse` struct L728-736 — `{ name: String, connected: bool, tools: Vec<String> }` — Response after adding a server.
+- pub `ServerInfo` struct L740-750 — `{ name: String, server_type: String, connected: bool, tool_count: Option<usize> ...` — MCP server info.
+- pub `ListServersResponse` struct L754-757 — `{ servers: Vec<ServerInfo> }` — Response for list servers.
+- pub `McpToolInfo` struct L761-767 — `{ name: String, description: Option<String> }` — Tool info from MCP server.
+- pub `ListToolsResponse` struct L771-776 — `{ server: String, tools: Vec<McpToolInfo> }` — Response for list server tools.
+- pub `HealthResponse` struct L784-790 — `{ status: String, version: Option<String> }` — Health check response.
+-  `ChatRequest` type L290-314 — `= ChatRequest` — These types mirror the server's API contract.
+-  `default_content_type` function L573-575 — `() -> String` — These types mirror the server's API contract.
+-  `default_confidence` function L577-579 — `() -> f32` — These types mirror the server's API contract.
 
 ### crates/arawn-config/src
 
@@ -5688,15 +5724,15 @@
 - pub `new` function L62-66 — `(agent: Agent, config: ServerConfig) -> Self` — Create a new server with the given agent and configuration.
 - pub `from_state` function L69-71 — `(state: AppState) -> Self` — Create a server from a pre-built application state.
 - pub `router` function L74-101 — `(&self) -> Router` — Build the router with all routes and middleware.
-- pub `run` function L222-241 — `(self) -> Result<()>` — Run the server.
-- pub `run_on` function L244-262 — `(self, addr: SocketAddr) -> Result<()>` — Run the server on a specific address (useful for testing).
-- pub `bind_address` function L265-267 — `(&self) -> SocketAddr` — Get the configured bind address.
--  `Server` type L60-268 — `= Server` — ```
--  `api_routes` function L106-219 — `(&self) -> Router<AppState>` — API routes (v1).
--  `tests` module L271-323 — `-` — ```
--  `create_test_agent` function L281-288 — `() -> Agent` — ```
--  `test_server_health_endpoint` function L291-309 — `()` — ```
--  `test_server_config_builder` function L312-322 — `()` — ```
+- pub `run` function L225-244 — `(self) -> Result<()>` — Run the server.
+- pub `run_on` function L247-265 — `(self, addr: SocketAddr) -> Result<()>` — Run the server on a specific address (useful for testing).
+- pub `bind_address` function L268-270 — `(&self) -> SocketAddr` — Get the configured bind address.
+-  `Server` type L60-271 — `= Server` — ```
+-  `api_routes` function L106-222 — `(&self) -> Router<AppState>` — API routes (v1).
+-  `tests` module L274-326 — `-` — ```
+-  `create_test_agent` function L284-291 — `() -> Agent` — ```
+-  `test_server_health_endpoint` function L294-312 — `()` — ```
+-  `test_server_config_builder` function L315-325 — `()` — ```
 
 #### crates/arawn-server/src/ratelimit.rs
 
@@ -6016,6 +6052,20 @@
 -  `tests` module L40-72 — `-` — Health check endpoints.
 -  `test_health_endpoint` function L49-71 — `()` — Health check endpoints.
 
+#### crates/arawn-server/src/routes/logs.rs
+
+- pub `LogsQuery` struct L23-28 — `{ lines: Option<usize>, file: Option<String> }` — Query parameters for the logs endpoint.
+- pub `LogEntry` struct L32-35 — `{ line: String }` — A single log entry.
+- pub `LogsResponse` struct L39-46 — `{ file: String, count: usize, entries: Vec<LogEntry> }` — Response for the logs endpoint.
+- pub `LogFilesResponse` struct L50-53 — `{ files: Vec<LogFileInfo> }` — Response listing available log files.
+- pub `LogFileInfo` struct L57-62 — `{ name: String, size: u64 }` — Info about a log file.
+- pub `get_logs_handler` function L150-177 — `( State(_state): State<AppState>, Extension(_identity): Extension<Identity>, Que...` — can fetch recent server log entries without direct filesystem access.
+- pub `list_log_files_handler` function L190-213 — `( State(_state): State<AppState>, Extension(_identity): Extension<Identity>, ) -...` — can fetch recent server log entries without direct filesystem access.
+-  `log_dir` function L68-83 — `() -> Result<PathBuf, ServerError>` — can fetch recent server log entries without direct filesystem access.
+-  `find_latest_log` function L85-98 — `(log_dir: &std::path::Path) -> Result<PathBuf, ServerError>` — can fetch recent server log entries without direct filesystem access.
+-  `resolve_log_file` function L100-118 — `(log_dir: &std::path::Path, name: Option<&str>) -> Result<PathBuf, ServerError>` — can fetch recent server log entries without direct filesystem access.
+-  `tail_lines` function L120-131 — `(path: &std::path::Path, n: usize) -> Result<Vec<String>, ServerError>` — can fetch recent server log entries without direct filesystem access.
+
 #### crates/arawn-server/src/routes/mcp.rs
 
 - pub `AddServerRequest` struct L43-95 — `{ name: String, transport: String, command: String, url: Option<String>, args: V...` — Request to add a new MCP server.
@@ -6103,14 +6153,15 @@
 - pub `commands` module L5 — `-` — API routes.
 - pub `config` module L6 — `-` — API routes.
 - pub `health` module L7 — `-` — API routes.
-- pub `mcp` module L8 — `-` — API routes.
-- pub `memory` module L9 — `-` — API routes.
-- pub `openapi` module L10 — `-` — API routes.
-- pub `pagination` module L11 — `-` — API routes.
-- pub `sessions` module L12 — `-` — API routes.
-- pub `tasks` module L13 — `-` — API routes.
-- pub `workstreams` module L14 — `-` — API routes.
-- pub `ws` module L15 — `-` — API routes.
+- pub `logs` module L8 — `-` — API routes.
+- pub `mcp` module L9 — `-` — API routes.
+- pub `memory` module L10 — `-` — API routes.
+- pub `openapi` module L11 — `-` — API routes.
+- pub `pagination` module L12 — `-` — API routes.
+- pub `sessions` module L13 — `-` — API routes.
+- pub `tasks` module L14 — `-` — API routes.
+- pub `workstreams` module L15 — `-` — API routes.
+- pub `ws` module L16 — `-` — API routes.
 
 #### crates/arawn-server/src/routes/openapi.rs
 
@@ -6146,38 +6197,38 @@
 
 - pub `CreateSessionRequest` struct L25-33 — `{ title: Option<String>, metadata: HashMap<String, serde_json::Value> }` — Request to create a new session.
 - pub `UpdateSessionRequest` struct L37-48 — `{ title: Option<String>, metadata: Option<HashMap<String, serde_json::Value>>, w...` — Request to update a session.
-- pub `MessageInfo` struct L52-59 — `{ role: String, content: String, timestamp: String }` — Message info for conversation history.
-- pub `SessionMessagesResponse` struct L63-70 — `{ session_id: String, messages: Vec<MessageInfo>, count: usize }` — Response containing session messages.
-- pub `SessionSummary` struct L74-86 — `{ id: String, title: Option<String>, turn_count: usize, created_at: String, upda...` — Summary info for a session.
-- pub `SessionDetail` struct L90-112 — `{ id: String, turns: Vec<TurnInfo>, created_at: String, updated_at: String, meta...` — Full session details.
-- pub `TurnInfo` struct L116-129 — `{ id: String, user_message: String, assistant_response: Option<String>, tool_cal...` — Turn info for API responses.
-- pub `ListSessionsResponse` struct L133-142 — `{ sessions: Vec<SessionSummary>, total: usize, limit: usize, offset: usize }` — Response for list sessions.
-- pub `create_session_handler` function L160-214 — `( State(state): State<AppState>, Extension(_identity): Extension<Identity>, Json...` — Session management endpoints.
-- pub `list_sessions_handler` function L228-293 — `( State(state): State<AppState>, Extension(_identity): Extension<Identity>, Quer...` — Session management endpoints.
-- pub `get_session_handler` function L308-365 — `( State(state): State<AppState>, Extension(_identity): Extension<Identity>, Path...` — Session management endpoints.
-- pub `delete_session_handler` function L382-397 — `( State(state): State<AppState>, Extension(_identity): Extension<Identity>, Path...` — Session management endpoints.
-- pub `update_session_handler` function L414-620 — `( State(state): State<AppState>, Extension(_identity): Extension<Identity>, Path...` — Session management endpoints.
-- pub `get_session_messages_handler` function L635-696 — `( State(state): State<AppState>, Extension(_identity): Extension<Identity>, Path...` — Session management endpoints.
--  `parse_session_id` function L702-706 — `(s: &str) -> Result<SessionId, ServerError>` — Session management endpoints.
--  `session_to_detail` function L708-710 — `(session: &Session) -> SessionDetail` — Session management endpoints.
--  `session_to_detail_with_migration` function L712-739 — `( session: &Session, workstream_id: Option<String>, files_migrated: Option<usize...` — Session management endpoints.
--  `tests` module L746-1156 — `-` — Session management endpoints.
--  `create_test_state` function L761-770 — `() -> AppState` — Session management endpoints.
--  `create_test_router` function L772-790 — `(state: AppState) -> Router` — Session management endpoints.
--  `test_list_sessions_empty` function L793-818 — `()` — Session management endpoints.
--  `test_list_sessions_with_data` function L821-848 — `()` — Session management endpoints.
--  `test_get_session` function L851-876 — `()` — Session management endpoints.
--  `test_get_session_not_found` function L879-895 — `()` — Session management endpoints.
--  `test_get_session_invalid_id` function L898-914 — `()` — Session management endpoints.
--  `test_delete_session` function L917-939 — `()` — Session management endpoints.
--  `test_delete_session_not_found` function L942-959 — `()` — Session management endpoints.
--  `test_create_session` function L962-988 — `()` — Session management endpoints.
--  `test_create_session_with_metadata` function L991-1017 — `()` — Session management endpoints.
--  `test_update_session` function L1020-1046 — `()` — Session management endpoints.
--  `test_update_session_not_found` function L1049-1067 — `()` — Session management endpoints.
--  `test_get_session_messages_empty` function L1070-1096 — `()` — Session management endpoints.
--  `test_get_session_messages_with_data` function L1099-1136 — `()` — Session management endpoints.
--  `test_get_session_messages_not_found` function L1139-1155 — `()` — Session management endpoints.
+- pub `MessageInfo` struct L52-63 — `{ role: String, content: String, timestamp: String, metadata: Option<serde_json:...` — Message info for conversation history.
+- pub `SessionMessagesResponse` struct L67-74 — `{ session_id: String, messages: Vec<MessageInfo>, count: usize }` — Response containing session messages.
+- pub `SessionSummary` struct L78-90 — `{ id: String, title: Option<String>, turn_count: usize, created_at: String, upda...` — Summary info for a session.
+- pub `SessionDetail` struct L94-116 — `{ id: String, turns: Vec<TurnInfo>, created_at: String, updated_at: String, meta...` — Full session details.
+- pub `TurnInfo` struct L120-133 — `{ id: String, user_message: String, assistant_response: Option<String>, tool_cal...` — Turn info for API responses.
+- pub `ListSessionsResponse` struct L137-146 — `{ sessions: Vec<SessionSummary>, total: usize, limit: usize, offset: usize }` — Response for list sessions.
+- pub `create_session_handler` function L164-218 — `( State(state): State<AppState>, Extension(_identity): Extension<Identity>, Json...` — Session management endpoints.
+- pub `list_sessions_handler` function L232-297 — `( State(state): State<AppState>, Extension(_identity): Extension<Identity>, Quer...` — Session management endpoints.
+- pub `get_session_handler` function L312-369 — `( State(state): State<AppState>, Extension(_identity): Extension<Identity>, Path...` — Session management endpoints.
+- pub `delete_session_handler` function L386-424 — `( State(state): State<AppState>, Extension(_identity): Extension<Identity>, Path...` — Session management endpoints.
+- pub `update_session_handler` function L441-647 — `( State(state): State<AppState>, Extension(_identity): Extension<Identity>, Path...` — Session management endpoints.
+- pub `get_session_messages_handler` function L662-754 — `( State(state): State<AppState>, Extension(_identity): Extension<Identity>, Path...` — Session management endpoints.
+-  `parse_session_id` function L760-764 — `(s: &str) -> Result<SessionId, ServerError>` — Session management endpoints.
+-  `session_to_detail` function L766-768 — `(session: &Session) -> SessionDetail` — Session management endpoints.
+-  `session_to_detail_with_migration` function L770-797 — `( session: &Session, workstream_id: Option<String>, files_migrated: Option<usize...` — Session management endpoints.
+-  `tests` module L804-1214 — `-` — Session management endpoints.
+-  `create_test_state` function L819-828 — `() -> AppState` — Session management endpoints.
+-  `create_test_router` function L830-848 — `(state: AppState) -> Router` — Session management endpoints.
+-  `test_list_sessions_empty` function L851-876 — `()` — Session management endpoints.
+-  `test_list_sessions_with_data` function L879-906 — `()` — Session management endpoints.
+-  `test_get_session` function L909-934 — `()` — Session management endpoints.
+-  `test_get_session_not_found` function L937-953 — `()` — Session management endpoints.
+-  `test_get_session_invalid_id` function L956-972 — `()` — Session management endpoints.
+-  `test_delete_session` function L975-997 — `()` — Session management endpoints.
+-  `test_delete_session_not_found` function L1000-1017 — `()` — Session management endpoints.
+-  `test_create_session` function L1020-1046 — `()` — Session management endpoints.
+-  `test_create_session_with_metadata` function L1049-1075 — `()` — Session management endpoints.
+-  `test_update_session` function L1078-1104 — `()` — Session management endpoints.
+-  `test_update_session_not_found` function L1107-1125 — `()` — Session management endpoints.
+-  `test_get_session_messages_empty` function L1128-1154 — `()` — Session management endpoints.
+-  `test_get_session_messages_with_data` function L1157-1194 — `()` — Session management endpoints.
+-  `test_get_session_messages_not_found` function L1197-1213 — `()` — Session management endpoints.
 
 #### crates/arawn-server/src/routes/tasks.rs
 
@@ -6283,12 +6334,12 @@
 -  `handle_cancel` function L180-202 — `(session_id: String, conn_state: &mut ConnectionState) -> MessageResponse` — Handle cancellation request.
 -  `handle_command` function L205-278 — `( command: String, args: serde_json::Value, conn_state: &ConnectionState, app_st...` — Handle command execution.
 -  `inject_session_context` function L281-304 — `( mut args: serde_json::Value, conn_state: &ConnectionState, ) -> serde_json::Va...` — Inject session context from the connection state if not provided in args.
--  `handle_chat` function L310-525 — `( session_id: Option<String>, workstream_id: Option<String>, message: String, co...` — Handle chat message.
--  `tests` module L528-586 — `-` — WebSocket message handlers.
--  `test_inject_session_context_null_args` function L532-540 — `()` — WebSocket message handlers.
--  `test_inject_session_context_with_subscription` function L543-557 — `()` — WebSocket message handlers.
--  `test_inject_session_context_preserves_existing` function L560-571 — `()` — WebSocket message handlers.
--  `test_inject_session_context_preserves_other_args` function L574-585 — `()` — WebSocket message handlers.
+-  `handle_chat` function L310-522 — `( session_id: Option<String>, workstream_id: Option<String>, message: String, co...` — Handle chat message.
+-  `tests` module L525-583 — `-` — WebSocket message handlers.
+-  `test_inject_session_context_null_args` function L529-537 — `()` — WebSocket message handlers.
+-  `test_inject_session_context_with_subscription` function L540-554 — `()` — WebSocket message handlers.
+-  `test_inject_session_context_preserves_existing` function L557-568 — `()` — WebSocket message handlers.
+-  `test_inject_session_context_preserves_other_args` function L571-582 — `()` — WebSocket message handlers.
 
 #### crates/arawn-server/src/routes/ws/mod.rs
 
@@ -6624,56 +6675,59 @@
 - pub `InputMode` enum L50-58 — `Chat | NewWorkstream | RenameWorkstream` — Input mode determines what the input field is being used for.
 - pub `ChatMessage` struct L63-70 — `{ is_user: bool, content: String, streaming: bool }` — A chat message for display.
 - pub `ToolExecution` struct L74-91 — `{ id: String, name: String, args: String, output: String, running: bool, success...` — A tool execution for display.
-- pub `App` struct L94-179 — `{ server_url: String, ws_client: WsClient, api: ArawnClient, connection_status: ...` — Main application state.
-- pub `ContextState` struct L183-192 — `{ current_tokens: usize, max_tokens: usize, percent: u8, status: String }` — Context usage state for display in status bar.
-- pub `UsageStats` struct L196-213 — `{ workstream_id: String, workstream_name: String, is_scratch: bool, production_b...` — Disk usage statistics for a workstream.
-- pub `format_size` function L217-227 — `(bytes: u64) -> String` — Format size as human-readable string.
-- pub `production_size` function L230-232 — `(&self) -> String` — Get formatted production size.
-- pub `work_size` function L235-237 — `(&self) -> String` — Get formatted work size.
-- pub `total_size` function L240-242 — `(&self) -> String` — Get formatted total size.
-- pub `limit_size` function L245-251 — `(&self) -> String` — Get formatted limit.
-- pub `DiskWarning` struct L256-269 — `{ workstream: String, level: String, usage_bytes: u64, limit_bytes: u64, percent...` — A disk usage warning.
-- pub `new` function L276-330 — `(server_url: String, log_buffer: LogBuffer) -> Result<Self>` — Create a new App instance.
-- pub `run` function L343-389 — `(&mut self, terminal: &mut Tui) -> Result<()>` — Run the main application loop.
+- pub `App` struct L94-181 — `{ server_url: String, ws_client: WsClient, api: ArawnClient, connection_status: ...` — Main application state.
+- pub `PanelAreas` struct L185-194 — `{ chat: Option<ratatui::layout::Rect>, tool_pane: Option<ratatui::layout::Rect>,...` — Cached layout rectangles for mouse hit-testing.
+- pub `ContextState` struct L198-207 — `{ current_tokens: usize, max_tokens: usize, percent: u8, status: String }` — Context usage state for display in status bar.
+- pub `UsageStats` struct L211-228 — `{ workstream_id: String, workstream_name: String, is_scratch: bool, production_b...` — Disk usage statistics for a workstream.
+- pub `format_size` function L232-242 — `(bytes: u64) -> String` — Format size as human-readable string.
+- pub `production_size` function L245-247 — `(&self) -> String` — Get formatted production size.
+- pub `work_size` function L250-252 — `(&self) -> String` — Get formatted work size.
+- pub `total_size` function L255-257 — `(&self) -> String` — Get formatted total size.
+- pub `limit_size` function L260-266 — `(&self) -> String` — Get formatted limit.
+- pub `DiskWarning` struct L271-284 — `{ workstream: String, level: String, usage_bytes: u64, limit_bytes: u64, percent...` — A disk usage warning.
+- pub `new` function L291-346 — `(server_url: String, log_buffer: LogBuffer) -> Result<Self>` — Create a new App instance.
+- pub `run` function L359-406 — `(&mut self, terminal: &mut Tui) -> Result<()>` — Run the main application loop.
 -  `MAX_MESSAGES` variable L8 — `: usize` — Maximum number of chat messages to retain (prevents unbounded memory growth).
 -  `MAX_TOOLS` variable L11 — `: usize` — Maximum number of tool executions to retain per response.
--  `UsageStats` type L215-252 — `= UsageStats` — Application state and main loop.
--  `App` type L271-2105 — `= App` — Application state and main loop.
--  `push_message` function L333-335 — `(&mut self, message: ChatMessage)` — Push a message (BoundedVec handles eviction automatically).
--  `push_tool` function L338-340 — `(&mut self, tool: ToolExecution)` — Push a tool execution (BoundedVec handles eviction automatically).
--  `process_pending_actions` function L392-434 — `(&mut self)` — Process pending async actions.
--  `do_create_workstream` function L437-473 — `(&mut self, title: &str)` — Create a workstream via API.
--  `do_rename_workstream` function L476-504 — `(&mut self, id: &str, new_title: &str)` — Rename a workstream via API.
--  `do_delete_session` function L507-528 — `(&mut self, id: &str)` — Delete a session via API.
--  `do_delete_workstream` function L531-553 — `(&mut self, id: &str)` — Delete a workstream via API.
--  `do_fetch_workstream_sessions` function L556-612 — `(&mut self, workstream_id: &str)` — Fetch sessions for a specific workstream.
--  `do_fetch_session_messages` function L615-645 — `(&mut self, session_id: &str)` — Fetch message history for a session.
--  `do_move_session_to_workstream` function L648-685 — `(&mut self, session_id: &str, workstream_id: &str)` — Move a session to a different workstream via API.
--  `refresh_sidebar_data` function L688-737 — `(&mut self)` — Refresh sidebar data from the server API.
--  `handle_server_message` function L740-971 — `(&mut self, msg: ServerMessage)` — Handle a message from the server.
--  `handle_key` function L974-1068 — `(&mut self, key: crossterm::event::KeyEvent)` — Handle keyboard input.
--  `handle_input_key` function L1071-1269 — `(&mut self, key: crossterm::event::KeyEvent)` — Handle input-focused key events.
--  `scroll_chat_up` function L1276-1279 — `(&mut self, lines: usize)` — Scroll chat up by the given number of lines.
--  `scroll_chat_down` function L1285-1289 — `(&mut self, lines: usize)` — Scroll chat down by the given number of lines.
--  `update_command_popup` function L1292-1302 — `(&mut self)` — Update the command popup based on current input.
--  `send_command` function L1305-1342 — `(&mut self)` — Send the current input as a command.
--  `build_command_args` function L1345-1369 — `(&self, cmd: &crate::input::ParsedCommand) -> serde_json::Value` — Build command arguments JSON from parsed command.
--  `get_help_text` function L1372-1378 — `(&self) -> String` — Get help text for available commands.
--  `send_message` function L1381-1415 — `(&mut self)` — Send the current input as a chat message.
--  `handle_sessions_key` function L1418-1462 — `(&mut self, key: crossterm::event::KeyEvent)` — Handle sessions overlay key events.
--  `handle_palette_key` function L1465-1503 — `(&mut self, key: crossterm::event::KeyEvent)` — Handle command palette key events.
--  `execute_action` function L1506-1553 — `(&mut self, action_id: ActionId)` — Execute a palette action.
--  `switch_to_session` function L1556-1586 — `(&mut self, session_id: &str)` — Switch to a different session.
--  `create_new_session` function L1589-1596 — `(&mut self)` — Create a new session.
--  `open_sessions_panel` function L1599-1605 — `(&mut self)` — Open the sessions panel.
--  `handle_overlay_key` function L1608-1644 — `(&mut self, key: crossterm::event::KeyEvent)` — Handle workstreams overlay key events.
--  `handle_tool_pane_key` function L1647-1716 — `(&mut self, key: crossterm::event::KeyEvent)` — Handle tool pane key events.
--  `open_tool_in_editor` function L1722-1751 — `(&mut self)` — Open the selected tool's output in an external pager.
--  `run_pager` function L1754-1788 — `(&self, pager: &str, content: &str) -> std::io::Result<()>` — Run a pager with the given content, suspending and restoring the TUI.
--  `handle_logs_key` function L1791-1823 — `(&mut self, key: crossterm::event::KeyEvent)` — Handle logs panel key events.
--  `clear_pending_deletes` function L1826-1829 — `(&mut self)` — Clear any pending delete confirmations.
--  `handle_sidebar_key` function L1832-2067 — `(&mut self, key: crossterm::event::KeyEvent)` — Handle sidebar key events.
--  `switch_to_workstream` function L2070-2104 — `(&mut self, workstream_name: &str)` — Switch to a different workstream.
+-  `UsageStats` type L230-267 — `= UsageStats` — Application state and main loop.
+-  `App` type L286-2204 — `= App` — Application state and main loop.
+-  `push_message` function L349-351 — `(&mut self, message: ChatMessage)` — Push a message (BoundedVec handles eviction automatically).
+-  `push_tool` function L354-356 — `(&mut self, tool: ToolExecution)` — Push a tool execution (BoundedVec handles eviction automatically).
+-  `process_pending_actions` function L409-451 — `(&mut self)` — Process pending async actions.
+-  `do_create_workstream` function L454-490 — `(&mut self, title: &str)` — Create a workstream via API.
+-  `do_rename_workstream` function L493-521 — `(&mut self, id: &str, new_title: &str)` — Rename a workstream via API.
+-  `do_delete_session` function L524-548 — `(&mut self, id: &str)` — Delete a session via API.
+-  `do_delete_workstream` function L551-576 — `(&mut self, id: &str)` — Delete a workstream via API.
+-  `do_fetch_workstream_sessions` function L579-635 — `(&mut self, workstream_id: &str)` — Fetch sessions for a specific workstream.
+-  `do_fetch_session_messages` function L638-668 — `(&mut self, session_id: &str)` — Fetch message history for a session.
+-  `do_move_session_to_workstream` function L671-708 — `(&mut self, session_id: &str, workstream_id: &str)` — Move a session to a different workstream via API.
+-  `refresh_sidebar_data` function L711-760 — `(&mut self)` — Refresh sidebar data from the server API.
+-  `handle_server_message` function L763-994 — `(&mut self, msg: ServerMessage)` — Handle a message from the server.
+-  `handle_key` function L997-1091 — `(&mut self, key: crossterm::event::KeyEvent)` — Handle keyboard input.
+-  `handle_input_key` function L1094-1292 — `(&mut self, key: crossterm::event::KeyEvent)` — Handle input-focused key events.
+-  `scroll_chat_up` function L1299-1302 — `(&mut self, lines: usize)` — Scroll chat up by the given number of lines.
+-  `scroll_chat_down` function L1308-1312 — `(&mut self, lines: usize)` — Scroll chat down by the given number of lines.
+-  `handle_mouse` function L1315-1355 — `(&mut self, mouse: crossterm::event::MouseEvent)` — Handle mouse events (scroll wheel on panels).
+-  `panel_at` function L1358-1388 — `(&self, col: u16, row: u16) -> Option<FocusTarget>` — Determine which panel contains the given screen coordinates.
+-  `update_command_popup` function L1391-1401 — `(&mut self)` — Update the command popup based on current input.
+-  `send_command` function L1404-1441 — `(&mut self)` — Send the current input as a command.
+-  `build_command_args` function L1444-1468 — `(&self, cmd: &crate::input::ParsedCommand) -> serde_json::Value` — Build command arguments JSON from parsed command.
+-  `get_help_text` function L1471-1477 — `(&self) -> String` — Get help text for available commands.
+-  `send_message` function L1480-1514 — `(&mut self)` — Send the current input as a chat message.
+-  `handle_sessions_key` function L1517-1561 — `(&mut self, key: crossterm::event::KeyEvent)` — Handle sessions overlay key events.
+-  `handle_palette_key` function L1564-1602 — `(&mut self, key: crossterm::event::KeyEvent)` — Handle command palette key events.
+-  `execute_action` function L1605-1652 — `(&mut self, action_id: ActionId)` — Execute a palette action.
+-  `switch_to_session` function L1655-1685 — `(&mut self, session_id: &str)` — Switch to a different session.
+-  `create_new_session` function L1688-1695 — `(&mut self)` — Create a new session.
+-  `open_sessions_panel` function L1698-1704 — `(&mut self)` — Open the sessions panel.
+-  `handle_overlay_key` function L1707-1743 — `(&mut self, key: crossterm::event::KeyEvent)` — Handle workstreams overlay key events.
+-  `handle_tool_pane_key` function L1746-1815 — `(&mut self, key: crossterm::event::KeyEvent)` — Handle tool pane key events.
+-  `open_tool_in_editor` function L1821-1850 — `(&mut self)` — Open the selected tool's output in an external pager.
+-  `run_pager` function L1853-1887 — `(&self, pager: &str, content: &str) -> std::io::Result<()>` — Run a pager with the given content, suspending and restoring the TUI.
+-  `handle_logs_key` function L1890-1922 — `(&mut self, key: crossterm::event::KeyEvent)` — Handle logs panel key events.
+-  `clear_pending_deletes` function L1925-1928 — `(&mut self)` — Clear any pending delete confirmations.
+-  `handle_sidebar_key` function L1931-2166 — `(&mut self, key: crossterm::event::KeyEvent)` — Handle sidebar key events.
+-  `switch_to_workstream` function L2169-2203 — `(&mut self, workstream_name: &str)` — Switch to a different workstream.
 
 #### crates/arawn-tui/src/bounded.rs
 
@@ -6742,13 +6796,13 @@
 
 #### crates/arawn-tui/src/events.rs
 
-- pub `Event` enum L12-19 — `Key | Resize | Tick` — Terminal events.
-- pub `EventHandler` struct L22-28 — `{ rx: mpsc::UnboundedReceiver<Event>, task: tokio::task::JoinHandle<()> }` — Handles terminal events using crossterm's async event stream.
-- pub `new` function L32-79 — `() -> Self` — Create a new event handler.
-- pub `next` function L82-87 — `(&mut self) -> Result<Event>` — Wait for the next event.
--  `EventHandler` type L30-88 — `= EventHandler` — Event handling for the TUI.
--  `EventHandler` type L90-94 — `impl Default for EventHandler` — Event handling for the TUI.
--  `default` function L91-93 — `() -> Self` — Event handling for the TUI.
+- pub `Event` enum L12-21 — `Key | Mouse | Resize | Tick` — Terminal events.
+- pub `EventHandler` struct L24-30 — `{ rx: mpsc::UnboundedReceiver<Event>, task: tokio::task::JoinHandle<()> }` — Handles terminal events using crossterm's async event stream.
+- pub `new` function L34-82 — `() -> Self` — Create a new event handler.
+- pub `next` function L85-90 — `(&mut self) -> Result<Event>` — Wait for the next event.
+-  `EventHandler` type L32-91 — `= EventHandler` — Event handling for the TUI.
+-  `EventHandler` type L93-97 — `impl Default for EventHandler` — Event handling for the TUI.
+-  `default` function L94-96 — `() -> Self` — Event handling for the TUI.
 
 #### crates/arawn-tui/src/focus.rs
 
@@ -7013,69 +7067,69 @@
 
 #### crates/arawn-tui/src/ui/chat.rs
 
-- pub `render_chat` function L16-71 — `(app: &App, frame: &mut Frame, area: Rect)` — Render the chat view with all messages.
--  `STREAMING_CURSOR` variable L13 — `: &str` — Streaming cursor indicator.
--  `render_user_message` function L74-78 — `(lines: &mut Vec<Line<'static>>, msg: &ChatMessage)` — Render user message with > prefix.
--  `render_assistant_message` function L81-105 — `(lines: &mut Vec<Line<'static>>, msg: &ChatMessage, _width: usize)` — Render assistant message with word wrapping and streaming cursor.
--  `TOOL_SEPARATOR` variable L108 — `: &str` — Dotted separator character for tool display.
--  `render_tools` function L111-183 — `(lines: &mut Vec<Line<'static>>, tools: &[ToolExecution])` — Render tool executions between messages.
--  `truncate_str` function L186-192 — `(s: &str, max_len: usize) -> String` — Truncate a string to max length, adding "..." if truncated.
--  `format_duration` function L195-206 — `(ms: u64) -> String` — Format duration in human-readable form.
--  `render_welcome` function L209-244 — `(frame: &mut Frame, area: Rect)` — Render the welcome screen when there are no messages.
+- pub `render_chat` function L17-89 — `(app: &mut App, frame: &mut Frame, area: Rect)` — Render the chat view with all messages.
+-  `STREAMING_CURSOR` variable L14 — `: &str` — Streaming cursor indicator.
+-  `render_user_message` function L92-96 — `(lines: &mut Vec<Line<'static>>, msg: &ChatMessage)` — Render user message with > prefix.
+-  `render_assistant_message` function L99-123 — `(lines: &mut Vec<Line<'static>>, msg: &ChatMessage, _width: usize)` — Render assistant message with word wrapping and streaming cursor.
+-  `TOOL_SEPARATOR` variable L126 — `: &str` — Dotted separator character for tool display.
+-  `render_tools` function L129-196 — `(lines: &mut Vec<Line<'static>>, tools: &[ToolExecution])` — Render tool executions between messages.
+-  `truncate_str` function L199-205 — `(s: &str, max_len: usize) -> String` — Truncate a string to max length, adding "..." if truncated.
+-  `format_duration` function L208-219 — `(ms: u64) -> String` — Format duration in human-readable form.
+-  `render_welcome` function L222-276 — `(frame: &mut Frame, area: Rect)` — Render the welcome screen when there are no messages.
 
 #### crates/arawn-tui/src/ui/command_popup.rs
 
-- pub `CommandInfo` struct L13-18 — `{ name: String, description: String }` — A command available for execution.
-- pub `new` function L21-26 — `(name: impl Into<String>, description: impl Into<String>) -> Self` — Command autocomplete popup component.
-- pub `CommandPopup` struct L31-40 — `{ commands: Vec<CommandInfo>, filtered: Vec<usize>, selected: usize, visible: bo...` — State for the command autocomplete popup.
-- pub `new` function L44-51 — `() -> Self` — Create a new command popup with available commands.
-- pub `set_commands` function L66-70 — `(&mut self, commands: Vec<CommandInfo>)` — Set the available commands (fetched from server).
-- pub `show` function L73-76 — `(&mut self, prefix: &str)` — Show the popup and filter by prefix.
-- pub `hide` function L79-82 — `(&mut self)` — Hide the popup.
-- pub `is_visible` function L85-87 — `(&self) -> bool` — Check if the popup is visible.
-- pub `filter` function L90-104 — `(&mut self, prefix: &str)` — Filter commands by prefix.
-- pub `select_prev` function L107-111 — `(&mut self)` — Select previous item.
-- pub `select_next` function L114-118 — `(&mut self)` — Select next item.
-- pub `selected_command` function L121-125 — `(&self) -> Option<&CommandInfo>` — Get the currently selected command.
-- pub `filtered_count` function L128-130 — `(&self) -> usize` — Get the number of filtered commands.
-- pub `render` function L133-192 — `(&self, frame: &mut Frame, area: Rect)` — Render the popup.
--  `CommandInfo` type L20-27 — `= CommandInfo` — Command autocomplete popup component.
--  `CommandPopup` type L42-193 — `= CommandPopup` — Command autocomplete popup component.
--  `default_commands` function L55-63 — `() -> Vec<CommandInfo>` — Get the default list of commands.
--  `tests` module L196-279 — `-` — Command autocomplete popup component.
--  `test_command_popup_filter` function L200-221 — `()` — Command autocomplete popup component.
--  `test_command_popup_navigation` function L224-247 — `()` — Command autocomplete popup component.
--  `test_command_popup_visibility` function L250-260 — `()` — Command autocomplete popup component.
--  `test_command_popup_set_commands` function L263-278 — `()` — Command autocomplete popup component.
+- pub `CommandInfo` struct L14-19 — `{ name: String, description: String }` — A command available for execution.
+- pub `new` function L22-27 — `(name: impl Into<String>, description: impl Into<String>) -> Self` — Command autocomplete popup component.
+- pub `CommandPopup` struct L32-41 — `{ commands: Vec<CommandInfo>, filtered: Vec<usize>, selected: usize, visible: bo...` — State for the command autocomplete popup.
+- pub `new` function L45-52 — `() -> Self` — Create a new command popup with available commands.
+- pub `set_commands` function L67-71 — `(&mut self, commands: Vec<CommandInfo>)` — Set the available commands (fetched from server).
+- pub `show` function L74-77 — `(&mut self, prefix: &str)` — Show the popup and filter by prefix.
+- pub `hide` function L80-83 — `(&mut self)` — Hide the popup.
+- pub `is_visible` function L86-88 — `(&self) -> bool` — Check if the popup is visible.
+- pub `filter` function L91-105 — `(&mut self, prefix: &str)` — Filter commands by prefix.
+- pub `select_prev` function L108-112 — `(&mut self)` — Select previous item.
+- pub `select_next` function L115-119 — `(&mut self)` — Select next item.
+- pub `selected_command` function L122-126 — `(&self) -> Option<&CommandInfo>` — Get the currently selected command.
+- pub `filtered_count` function L129-131 — `(&self) -> usize` — Get the number of filtered commands.
+- pub `render` function L134-188 — `(&self, frame: &mut Frame, area: Rect)` — Render the popup.
+-  `CommandInfo` type L21-28 — `= CommandInfo` — Command autocomplete popup component.
+-  `CommandPopup` type L43-189 — `= CommandPopup` — Command autocomplete popup component.
+-  `default_commands` function L56-64 — `() -> Vec<CommandInfo>` — Get the default list of commands.
+-  `tests` module L192-275 — `-` — Command autocomplete popup component.
+-  `test_command_popup_filter` function L196-217 — `()` — Command autocomplete popup component.
+-  `test_command_popup_navigation` function L220-243 — `()` — Command autocomplete popup component.
+-  `test_command_popup_visibility` function L246-256 — `()` — Command autocomplete popup component.
+-  `test_command_popup_set_commands` function L259-274 — `()` — Command autocomplete popup component.
 
 #### crates/arawn-tui/src/ui/input.rs
 
-- pub `MIN_INPUT_HEIGHT` variable L13 — `: u16` — Minimum height for the input area (in lines).
-- pub `MAX_INPUT_FRACTION` variable L16 — `: f32` — Maximum height for the input area as fraction of screen (30%).
-- pub `calculate_input_height` function L19-26 — `(input: &InputState, available_height: u16) -> u16` — Calculate the desired height for the input area based on content.
-- pub `render_input` function L29-109 — `( input: &InputState, waiting: bool, read_only: bool, frame: &mut Frame, area: R...` — Render the input area with multi-line support.
+- pub `MIN_INPUT_HEIGHT` variable L14 — `: u16` — Minimum height for the input area (in lines).
+- pub `MAX_INPUT_FRACTION` variable L17 — `: f32` — Maximum height for the input area as fraction of screen (30%).
+- pub `calculate_input_height` function L20-27 — `(input: &InputState, available_height: u16) -> u16` — Calculate the desired height for the input area based on content.
+- pub `render_input` function L30-107 — `( input: &InputState, waiting: bool, read_only: bool, frame: &mut Frame, area: R...` — Render the input area with multi-line support.
 
 #### crates/arawn-tui/src/ui/layout.rs
 
-- pub `render` function L26-128 — `(app: &App, frame: &mut Frame)` — Render the entire application UI.
+- pub `render` function L27-133 — `(app: &mut App, frame: &mut Frame)` — Render the entire application UI.
 -  `CONTEXT_WARNING_PERCENT` variable L4 — `: u8` — Main layout rendering.
 -  `CONTEXT_CRITICAL_PERCENT` variable L5 — `: u8` — Main layout rendering.
--  `render_header` function L131-206 — `(app: &App, frame: &mut Frame, area: Rect)` — Render the header bar.
--  `render_content` function L209-226 — `(app: &App, frame: &mut Frame, area: Rect)` — Render the main content area (chat messages + optional tool pane).
--  `render_input` function L229-232 — `(app: &App, frame: &mut Frame, area: Rect)` — Render the input area.
--  `render_status_bar` function L235-292 — `(app: &App, frame: &mut Frame, area: Rect)` — Render the status bar.
--  `format_context_indicator` function L295-313 — `(ctx: &crate::app::ContextState) -> (String, Color)` — Format the context indicator with appropriate color.
--  `render_sessions_overlay` function L316-318 — `(app: &App, frame: &mut Frame, area: Rect)` — Render the sessions overlay.
--  `render_workstreams_overlay` function L321-399 — `(app: &App, frame: &mut Frame, area: Rect)` — Render the workstreams overlay.
--  `render_command_palette` function L402-404 — `(app: &App, frame: &mut Frame, area: Rect)` — Render the command palette.
--  `centered_rect` function L407-421 — `(percent_x: u16, percent_y: u16, area: Rect) -> Rect` — Create a centered rectangle within the given area.
--  `render_warning_banner` function L424-448 — `(app: &App, frame: &mut Frame, area: Rect)` — Render the disk warning banner.
--  `render_usage_popup` function L451-574 — `(app: &App, frame: &mut Frame, area: Rect)` — Render the usage stats popup (Ctrl+U).
+-  `render_header` function L136-208 — `(app: &App, frame: &mut Frame, area: Rect)` — Render the header bar.
+-  `render_content` function L211-234 — `(app: &mut App, frame: &mut Frame, area: Rect)` — Render the main content area (chat messages + optional tool pane).
+-  `render_input` function L237-240 — `(app: &App, frame: &mut Frame, area: Rect)` — Render the input area.
+-  `render_status_bar` function L243-300 — `(app: &App, frame: &mut Frame, area: Rect)` — Render the status bar.
+-  `format_context_indicator` function L303-321 — `(ctx: &crate::app::ContextState) -> (String, Color)` — Format the context indicator with appropriate color.
+-  `render_sessions_overlay` function L324-326 — `(app: &App, frame: &mut Frame, area: Rect)` — Render the sessions overlay.
+-  `render_workstreams_overlay` function L329-409 — `(app: &App, frame: &mut Frame, area: Rect)` — Render the workstreams overlay.
+-  `render_command_palette` function L412-414 — `(app: &App, frame: &mut Frame, area: Rect)` — Render the command palette.
+-  `centered_rect` function L417-431 — `(percent_x: u16, percent_y: u16, area: Rect) -> Rect` — Create a centered rectangle within the given area.
+-  `render_warning_banner` function L434-457 — `(app: &App, frame: &mut Frame, area: Rect)` — Render the disk warning banner.
+-  `render_usage_popup` function L460-583 — `(app: &App, frame: &mut Frame, area: Rect)` — Render the usage stats popup (Ctrl+U).
 
 #### crates/arawn-tui/src/ui/logs.rs
 
-- pub `render_logs_panel` function L13-72 — `(log_buffer: &LogBuffer, scroll: usize, frame: &mut Frame, area: Rect)` — Render the logs panel.
-- pub `render_logs_footer` function L75-87 — `(frame: &mut Frame, area: Rect)` — Render the logs footer with keyboard hints.
+- pub `render_logs_panel` function L14-70 — `(log_buffer: &LogBuffer, scroll: usize, frame: &mut Frame, area: Rect)` — Render the logs panel.
+- pub `render_logs_footer` function L73-85 — `(frame: &mut Frame, area: Rect)` — Render the logs footer with keyboard hints.
 
 #### crates/arawn-tui/src/ui/mod.rs
 
@@ -7086,58 +7140,97 @@
 - pub `palette` module L8 — `-` — UI rendering components.
 - pub `sessions` module L9 — `-` — UI rendering components.
 - pub `sidebar` module L10 — `-` — UI rendering components.
-- pub `tools` module L11 — `-` — UI rendering components.
+- pub `theme` module L11 — `-` — UI rendering components.
+- pub `tools` module L12 — `-` — UI rendering components.
 -  `layout` module L6 — `-` — UI rendering components.
 
 #### crates/arawn-tui/src/ui/palette.rs
 
-- pub `render_palette_overlay` function L13-39 — `(palette: &CommandPalette, frame: &mut Frame, area: Rect)` — Render the command palette overlay.
--  `render_search_box` function L42-57 — `(palette: &CommandPalette, frame: &mut Frame, area: Rect)` — Render the search/filter box.
--  `render_separator` function L60-66 — `(frame: &mut Frame, area: Rect)` — Render a separator line.
--  `render_action_list` function L69-98 — `(palette: &CommandPalette, frame: &mut Frame, area: Rect)` — Render the action list.
--  `format_action_line` function L101-147 — `( action: &crate::palette::Action, is_selected: bool, width: usize, ) -> Line<'s...` — Format a single action line.
--  `render_footer` function L150-162 — `(frame: &mut Frame, area: Rect)` — Render the footer with keyboard hints.
--  `centered_rect` function L165-179 — `(percent_x: u16, percent_y: u16, area: Rect) -> Rect` — Create a centered rectangle within the given area.
+- pub `render_palette_overlay` function L14-40 — `(palette: &CommandPalette, frame: &mut Frame, area: Rect)` — Render the command palette overlay.
+-  `render_search_box` function L43-55 — `(palette: &CommandPalette, frame: &mut Frame, area: Rect)` — Render the search/filter box.
+-  `render_separator` function L58-64 — `(frame: &mut Frame, area: Rect)` — Render a separator line.
+-  `render_action_list` function L67-96 — `(palette: &CommandPalette, frame: &mut Frame, area: Rect)` — Render the action list.
+-  `format_action_line` function L99-140 — `( action: &crate::palette::Action, is_selected: bool, width: usize, ) -> Line<'s...` — Format a single action line.
+-  `render_footer` function L143-155 — `(frame: &mut Frame, area: Rect)` — Render the footer with keyboard hints.
+-  `centered_rect` function L158-172 — `(percent_x: u16, percent_y: u16, area: Rect) -> Rect` — Create a centered rectangle within the given area.
 
 #### crates/arawn-tui/src/ui/sessions.rs
 
-- pub `render_sessions_overlay` function L13-39 — `(sessions: &SessionList, frame: &mut Frame, area: Rect)` — Render the sessions overlay.
--  `render_search_box` function L42-51 — `(sessions: &SessionList, frame: &mut Frame, area: Rect)` — Render the search/filter box.
--  `render_separator` function L54-60 — `(frame: &mut Frame, area: Rect)` — Render a separator line.
--  `render_session_list` function L63-97 — `(sessions: &SessionList, frame: &mut Frame, area: Rect)` — Render the session list.
--  `format_session_line` function L100-146 — `( session: &crate::sessions::SessionSummary, is_selected: bool, width: usize, ) ...` — Format a single session line.
--  `render_footer` function L149-164 — `(frame: &mut Frame, area: Rect)` — Render the footer with keyboard hints.
--  `centered_rect` function L167-181 — `(percent_x: u16, percent_y: u16, area: Rect) -> Rect` — Create a centered rectangle within the given area.
+- pub `render_sessions_overlay` function L14-40 — `(sessions: &SessionList, frame: &mut Frame, area: Rect)` — Render the sessions overlay.
+-  `render_search_box` function L43-52 — `(sessions: &SessionList, frame: &mut Frame, area: Rect)` — Render the search/filter box.
+-  `render_separator` function L55-61 — `(frame: &mut Frame, area: Rect)` — Render a separator line.
+-  `render_session_list` function L64-98 — `(sessions: &SessionList, frame: &mut Frame, area: Rect)` — Render the session list.
+-  `format_session_line` function L101-142 — `( session: &crate::sessions::SessionSummary, is_selected: bool, width: usize, ) ...` — Format a single session line.
+-  `render_footer` function L145-160 — `(frame: &mut Frame, area: Rect)` — Render the footer with keyboard hints.
+-  `centered_rect` function L163-177 — `(percent_x: u16, percent_y: u16, area: Rect) -> Rect` — Create a centered rectangle within the given area.
 
 #### crates/arawn-tui/src/ui/sidebar.rs
 
-- pub `SIDEBAR_WIDTH` variable L18 — `: u16` — Width of the expanded sidebar (when open).
-- pub `SIDEBAR_HINT_WIDTH` variable L20 — `: u16` — Width of the closed sidebar hint.
-- pub `render_sidebar` function L23-29 — `(sidebar: &Sidebar, frame: &mut Frame, area: Rect)` — Render the sidebar panel based on open/closed state.
+- pub `SIDEBAR_WIDTH` variable L19 — `: u16` — Width of the expanded sidebar (when open).
+- pub `SIDEBAR_HINT_WIDTH` variable L21 — `: u16` — Width of the closed sidebar hint.
+- pub `render_sidebar` function L24-30 — `(sidebar: &Sidebar, frame: &mut Frame, area: Rect)` — Render the sidebar panel based on open/closed state.
 -  `CONTEXT_WARNING_PERCENT` variable L4 — `: u8` — Sidebar panel rendering for workstreams and sessions.
 -  `CONTEXT_CRITICAL_PERCENT` variable L5 — `: u8` — Sidebar panel rendering for workstreams and sessions.
--  `render_closed_hint` function L32-39 — `(frame: &mut Frame, area: Rect)` — Render the closed sidebar hint (minimal indicator).
--  `render_open_sidebar` function L42-65 — `(sidebar: &Sidebar, frame: &mut Frame, area: Rect)` — Render the open sidebar with full content (has focus).
--  `render_workstreams_header` function L68-79 — `(sidebar: &Sidebar, frame: &mut Frame, area: Rect)` — Render the workstreams section header.
--  `render_workstreams_list` function L82-134 — `(sidebar: &Sidebar, frame: &mut Frame, area: Rect)` — Render the workstreams list.
--  `render_workstream_line` function L137-223 — `( sidebar: &Sidebar, ws: &crate::sidebar::WorkstreamEntry, is_selected: bool, wi...` — Render a single workstream line.
--  `format_size` function L226-236 — `(bytes: u64) -> String` — Format byte size as human-readable string.
--  `render_sessions_header` function L239-260 — `(sidebar: &Sidebar, frame: &mut Frame, area: Rect)` — Render the sessions section header.
--  `render_sessions_list` function L263-318 — `(sidebar: &Sidebar, frame: &mut Frame, area: Rect)` — Render the sessions list.
--  `render_sidebar_footer` function L321-327 — `(frame: &mut Frame, area: Rect)` — Render the sidebar footer with keybinding hints.
--  `truncate_str` function L330-338 — `(s: &str, max_width: usize) -> String` — Truncate a string to fit within the given width.
--  `tests` module L341-351 — `-` — Sidebar panel rendering for workstreams and sessions.
--  `test_truncate_str` function L345-350 — `()` — Sidebar panel rendering for workstreams and sessions.
+-  `render_closed_hint` function L33-37 — `(frame: &mut Frame, area: Rect)` — Render the closed sidebar hint (minimal indicator).
+-  `render_open_sidebar` function L40-63 — `(sidebar: &Sidebar, frame: &mut Frame, area: Rect)` — Render the open sidebar with full content (has focus).
+-  `render_workstreams_header` function L66-75 — `(sidebar: &Sidebar, frame: &mut Frame, area: Rect)` — Render the workstreams section header.
+-  `render_workstreams_list` function L78-127 — `(sidebar: &Sidebar, frame: &mut Frame, area: Rect)` — Render the workstreams list.
+-  `render_workstream_line` function L130-214 — `( sidebar: &Sidebar, ws: &crate::sidebar::WorkstreamEntry, is_selected: bool, wi...` — Render a single workstream line.
+-  `format_size` function L217-227 — `(bytes: u64) -> String` — Format byte size as human-readable string.
+-  `render_sessions_header` function L230-249 — `(sidebar: &Sidebar, frame: &mut Frame, area: Rect)` — Render the sessions section header.
+-  `render_sessions_list` function L252-300 — `(sidebar: &Sidebar, frame: &mut Frame, area: Rect)` — Render the sessions list.
+-  `render_sidebar_footer` function L303-309 — `(frame: &mut Frame, area: Rect)` — Render the sidebar footer with keybinding hints.
+-  `truncate_str` function L312-320 — `(s: &str, max_width: usize) -> String` — Truncate a string to fit within the given width.
+-  `tests` module L323-333 — `-` — Sidebar panel rendering for workstreams and sessions.
+-  `test_truncate_str` function L327-332 — `()` — Sidebar panel rendering for workstreams and sessions.
+
+#### crates/arawn-tui/src/ui/theme.rs
+
+- pub `ACCENT` variable L16 — `: Color` — Primary accent color (interactive elements, focused borders, user prefix).
+- pub `ACCENT2` variable L20 — `: Color` — Secondary accent (tool pane headers, panel-specific highlights).
+- pub `ACCENT3` variable L24 — `: Color` — Tertiary accent (sidebar section labels, tags).
+- pub `OK` variable L27 — `: Color` — Status: success.
+- pub `WARN` variable L30 — `: Color` — Status: warning.
+- pub `ERR` variable L33 — `: Color` — Status: error / danger.
+- pub `TEXT_PRIMARY` variable L41 — `: Color` — Primary text — user messages, important content.
+- pub `TEXT_NORMAL` variable L45 — `: Color` — Normal text — assistant messages, list items, readable body.
+- pub `TEXT_SECONDARY` variable L49 — `: Color` — Secondary text — labels, metadata, timestamps.
+- pub `TEXT_MUTED` variable L53 — `: Color` — Muted text — hints, disabled items, truly de-emphasized.
+- pub `BORDER` variable L60 — `: Color` — Default border color (unfocused panels).
+- pub `BORDER_FOCUSED` variable L63 — `: Color` — Focused border color.
+- pub `SEPARATOR` variable L66 — `: Color` — Separator lines between messages / tool cards.
+- pub `header` function L74-76 — `() -> Style` — Section header style (panel titles, section labels).
+- pub `subheader` function L79-81 — `() -> Style` — Subheader or category label.
+- pub `selected` function L84-86 — `() -> Style` — Selected / highlighted item in a list.
+- pub `list_item` function L89-91 — `() -> Style` — Normal list item.
+- pub `list_item_dim` function L94-96 — `() -> Style` — Dimmed / secondary list item.
+- pub `key_hint` function L99-101 — `() -> Style` — Keyboard shortcut label in help text.
+- pub `key_desc` function L104-106 — `() -> Style` — Description text next to a key hint.
+- pub `user_prefix` function L109-111 — `() -> Style` — User message prefix style (the `> `).
+- pub `user_text` function L114-116 — `() -> Style` — User message content.
+- pub `assistant_text` function L119-121 — `() -> Style` — Assistant message text.
+- pub `streaming_text` function L124-126 — `() -> Style` — Streaming (in-progress) assistant text.
+- pub `tool_name` function L129-131 — `() -> Style` — Tool name badge.
+- pub `tool_preview` function L134-136 — `() -> Style` — Tool arguments / preview text.
+- pub `tool_duration` function L139-141 — `() -> Style` — Tool duration / timing info.
+- pub `status_bar` function L144-146 — `() -> Style` — Status bar text.
+- pub `search_prompt` function L149-151 — `() -> Style` — Search / filter prompt text.
+- pub `empty_state` function L154-156 — `() -> Style` — Empty state / placeholder text.
+- pub `scroll_indicator` function L159-161 — `() -> Style` — Scroll position indicator.
+- pub `border` function L164-166 — `() -> Style` — Border style for an unfocused panel.
+- pub `border_focused` function L169-171 — `() -> Style` — Border style for a focused panel.
+- pub `separator` function L174-176 — `() -> Style` — Separator line between items.
+- pub `warning_banner` function L179-181 — `() -> Style` — Warning banner style.
 
 #### crates/arawn-tui/src/ui/tools.rs
 
-- pub `render_tool_pane` function L13-41 — `(app: &App, frame: &mut Frame, area: Rect)` — Render the tool output pane (split view at bottom of screen).
-- pub `render_tool_pane_footer` function L172-186 — `(frame: &mut Frame, area: Rect)` — Render help footer for tool pane.
--  `build_title` function L44-89 — `(app: &App) -> Line<'static>` — Build the title line with tool selector.
--  `get_selected_tool` function L92-94 — `(app: &App) -> Option<&ToolExecution>` — Get the currently selected tool.
--  `render_tool_output` function L97-140 — `(tool: &ToolExecution, scroll: usize, frame: &mut Frame, area: Rect)` — Render the output of a tool.
--  `render_no_tools` function L143-157 — `(frame: &mut Frame, area: Rect)` — Render placeholder when no tools exist.
--  `render_no_selection` function L160-169 — `(frame: &mut Frame, area: Rect)` — Render placeholder when no tool is selected.
+- pub `render_tool_pane` function L14-42 — `(app: &App, frame: &mut Frame, area: Rect)` — Render the tool output pane (split view at bottom of screen).
+- pub `render_tool_pane_footer` function L165-179 — `(frame: &mut Frame, area: Rect)` — Render help footer for tool pane.
+-  `build_title` function L45-85 — `(app: &App) -> Line<'static>` — Build the title line with tool selector.
+-  `get_selected_tool` function L88-90 — `(app: &App) -> Option<&ToolExecution>` — Get the currently selected tool.
+-  `render_tool_output` function L93-133 — `(tool: &ToolExecution, scroll: usize, frame: &mut Frame, area: Rect)` — Render the output of a tool.
+-  `render_no_tools` function L136-150 — `(frame: &mut Frame, area: Rect)` — Render placeholder when no tools exist.
+-  `render_no_selection` function L153-162 — `(frame: &mut Frame, area: Rect)` — Render placeholder when no tool is selected.
 
 ### crates/arawn-types/src
 
@@ -7414,26 +7507,27 @@
 - pub `get_messages_since` function L239-245 — `( &self, workstream_id: &str, since: chrono::DateTime<chrono::Utc>, ) -> Result<...` — Read messages since a given timestamp.
 - pub `get_active_session` function L249-251 — `(&self, workstream_id: &str) -> Result<Option<Session>>`
 - pub `end_session` function L253-255 — `(&self, session_id: &str) -> Result<()>`
-- pub `list_sessions` function L257-259 — `(&self, workstream_id: &str) -> Result<Vec<Session>>`
-- pub `reassign_session` function L262-286 — `(&self, session_id: &str, new_workstream_id: &str) -> Result<Session>` — Move a session to a different workstream.
-- pub `timeout_check` function L289-291 — `(&self) -> Result<usize>` — Run a timeout check across all workstreams.
-- pub `promote_scratch` function L295-303 — `( &self, new_title: &str, tags: &[String], default_model: Option<&str>, ) -> Res...`
-- pub `store` function L335-337 — `(&self) -> &WorkstreamStore` — Access the underlying store (for advanced operations).
-- pub `message_store` function L340-342 — `(&self) -> &MessageStore` — Access the underlying message store.
--  `WorkstreamManager` type L34-343 — `= WorkstreamManager`
--  `resolve_workstream` function L308-320 — `(&self, workstream_id: Option<&str>) -> Result<String>` — Resolve workstream_id, defaulting to scratch.
--  `session_manager` function L322-328 — `(&self) -> SessionManager<'_>`
--  `scratch_manager` function L330-332 — `(&self) -> ScratchManager<'_>`
--  `tests` module L346-495 — `-`
--  `test_manager` function L349-355 — `() -> (tempfile::TempDir, WorkstreamManager)`
--  `test_create_and_list_workstreams` function L358-372 — `()`
--  `test_send_message_full_cycle` function L375-403 — `()`
--  `test_scratch_auto_create_on_send` function L406-417 — `()`
--  `test_agent_push` function L420-433 — `()`
--  `test_archive_workstream` function L436-449 — `()`
--  `test_cannot_archive_scratch` function L452-461 — `()`
--  `test_send_to_nonexistent_workstream_fails` function L464-471 — `()`
--  `test_promote_scratch_via_manager` function L474-494 — `()`
+- pub `delete_session` function L258-260 — `(&self, session_id: &str) -> Result<()>` — Delete a session record permanently from the store.
+- pub `list_sessions` function L262-264 — `(&self, workstream_id: &str) -> Result<Vec<Session>>`
+- pub `reassign_session` function L267-291 — `(&self, session_id: &str, new_workstream_id: &str) -> Result<Session>` — Move a session to a different workstream.
+- pub `timeout_check` function L294-296 — `(&self) -> Result<usize>` — Run a timeout check across all workstreams.
+- pub `promote_scratch` function L300-308 — `( &self, new_title: &str, tags: &[String], default_model: Option<&str>, ) -> Res...`
+- pub `store` function L340-342 — `(&self) -> &WorkstreamStore` — Access the underlying store (for advanced operations).
+- pub `message_store` function L345-347 — `(&self) -> &MessageStore` — Access the underlying message store.
+-  `WorkstreamManager` type L34-348 — `= WorkstreamManager`
+-  `resolve_workstream` function L313-325 — `(&self, workstream_id: Option<&str>) -> Result<String>` — Resolve workstream_id, defaulting to scratch.
+-  `session_manager` function L327-333 — `(&self) -> SessionManager<'_>`
+-  `scratch_manager` function L335-337 — `(&self) -> ScratchManager<'_>`
+-  `tests` module L351-500 — `-`
+-  `test_manager` function L354-360 — `() -> (tempfile::TempDir, WorkstreamManager)`
+-  `test_create_and_list_workstreams` function L363-377 — `()`
+-  `test_send_message_full_cycle` function L380-408 — `()`
+-  `test_scratch_auto_create_on_send` function L411-422 — `()`
+-  `test_agent_push` function L425-438 — `()`
+-  `test_archive_workstream` function L441-454 — `()`
+-  `test_cannot_archive_scratch` function L457-466 — `()`
+-  `test_send_to_nonexistent_workstream_fails` function L469-476 — `()`
+-  `test_promote_scratch_via_manager` function L479-499 — `()`
 
 #### crates/arawn-workstream/src/message_store.rs
 
@@ -7565,38 +7659,39 @@
 
 #### crates/arawn-workstream/src/storage.rs
 
-- pub `WorkstreamStorage` interface L29-86 — `{ fn create_workstream(), fn get_workstream(), fn list_workstreams(), fn update_...` — Trait for workstream metadata storage.
-- pub `MessageStorage` interface L92-118 — `{ fn append(), fn read_all(), fn read_range(), fn move_messages(), fn delete_all...` — Trait for message storage (conversation history).
-- pub `MockWorkstreamStorage` struct L123-127 — `{ workstreams: std::sync::Mutex<std::collections::HashMap<String, Workstream>>, ...` — Mock implementation of WorkstreamStorage for testing.
-- pub `new` function L132-134 — `() -> Self` — Create a new empty mock storage.
-- pub `MockMessageStorage` struct L324-326 — `{ messages: std::sync::Mutex<std::collections::HashMap<String, Vec<WorkstreamMes...` — Mock implementation of MessageStorage for testing.
-- pub `new` function L331-333 — `() -> Self` — Create a new empty mock storage.
--  `MockWorkstreamStorage` type L130-135 — `= MockWorkstreamStorage` — ```
--  `MockWorkstreamStorage` type L138-319 — `impl WorkstreamStorage for MockWorkstreamStorage` — ```
--  `create_workstream` function L139-168 — `( &self, title: &str, default_model: Option<&str>, is_scratch: bool, ) -> Result...` — ```
--  `get_workstream` function L170-177 — `(&self, id: &str) -> Result<Workstream>` — ```
--  `list_workstreams` function L179-188 — `(&self, state_filter: Option<&str>) -> Result<Vec<Workstream>>` — ```
--  `update_workstream` function L190-217 — `( &self, id: &str, title: Option<&str>, summary: Option<&str>, state: Option<&st...` — ```
--  `set_tags` function L219-229 — `(&self, workstream_id: &str, tags: &[String]) -> Result<()>` — ```
--  `get_tags` function L231-239 — `(&self, workstream_id: &str) -> Result<Vec<String>>` — ```
--  `create_session` function L241-244 — `(&self, workstream_id: &str) -> Result<Session>` — ```
--  `create_session_with_id` function L246-267 — `(&self, session_id: &str, workstream_id: &str) -> Result<Session>` — ```
--  `get_active_session` function L269-275 — `(&self, workstream_id: &str) -> Result<Option<Session>>` — ```
--  `list_sessions` function L277-286 — `(&self, workstream_id: &str) -> Result<Vec<Session>>` — ```
--  `end_session` function L288-296 — `(&self, session_id: &str) -> Result<()>` — ```
--  `reassign_session` function L298-318 — `(&self, session_id: &str, new_workstream_id: &str) -> Result<Session>` — ```
--  `MockMessageStorage` type L329-334 — `= MockMessageStorage` — ```
--  `MockMessageStorage` type L337-412 — `impl MessageStorage for MockMessageStorage` — ```
--  `append` function L338-364 — `( &self, workstream_id: &str, session_id: Option<&str>, role: crate::types::Mess...` — ```
--  `read_all` function L366-374 — `(&self, workstream_id: &str) -> Result<Vec<WorkstreamMessage>>` — ```
--  `read_range` function L376-393 — `( &self, workstream_id: &str, since: DateTime<Utc>, ) -> Result<Vec<WorkstreamMe...` — ```
--  `move_messages` function L395-406 — `(&self, from_workstream: &str, to_workstream: &str) -> Result<()>` — ```
--  `delete_all` function L408-411 — `(&self, workstream_id: &str) -> Result<()>` — ```
--  `tests` module L415-515 — `-` — ```
--  `test_mock_workstream_storage_crud` function L420-444 — `()` — ```
--  `test_mock_workstream_storage_tags` function L447-460 — `()` — ```
--  `test_mock_workstream_storage_sessions` function L463-483 — `()` — ```
--  `test_mock_message_storage` function L486-514 — `()` — ```
+- pub `WorkstreamStorage` interface L29-89 — `{ fn create_workstream(), fn get_workstream(), fn list_workstreams(), fn update_...` — Trait for workstream metadata storage.
+- pub `MessageStorage` interface L95-121 — `{ fn append(), fn read_all(), fn read_range(), fn move_messages(), fn delete_all...` — Trait for message storage (conversation history).
+- pub `MockWorkstreamStorage` struct L126-130 — `{ workstreams: std::sync::Mutex<std::collections::HashMap<String, Workstream>>, ...` — Mock implementation of WorkstreamStorage for testing.
+- pub `new` function L135-137 — `() -> Self` — Create a new empty mock storage.
+- pub `MockMessageStorage` struct L336-338 — `{ messages: std::sync::Mutex<std::collections::HashMap<String, Vec<WorkstreamMes...` — Mock implementation of MessageStorage for testing.
+- pub `new` function L343-345 — `() -> Self` — Create a new empty mock storage.
+-  `MockWorkstreamStorage` type L133-138 — `= MockWorkstreamStorage` — ```
+-  `MockWorkstreamStorage` type L141-331 — `impl WorkstreamStorage for MockWorkstreamStorage` — ```
+-  `create_workstream` function L142-171 — `( &self, title: &str, default_model: Option<&str>, is_scratch: bool, ) -> Result...` — ```
+-  `get_workstream` function L173-180 — `(&self, id: &str) -> Result<Workstream>` — ```
+-  `list_workstreams` function L182-191 — `(&self, state_filter: Option<&str>) -> Result<Vec<Workstream>>` — ```
+-  `update_workstream` function L193-220 — `( &self, id: &str, title: Option<&str>, summary: Option<&str>, state: Option<&st...` — ```
+-  `set_tags` function L222-232 — `(&self, workstream_id: &str, tags: &[String]) -> Result<()>` — ```
+-  `get_tags` function L234-242 — `(&self, workstream_id: &str) -> Result<Vec<String>>` — ```
+-  `create_session` function L244-247 — `(&self, workstream_id: &str) -> Result<Session>` — ```
+-  `create_session_with_id` function L249-270 — `(&self, session_id: &str, workstream_id: &str) -> Result<Session>` — ```
+-  `get_active_session` function L272-278 — `(&self, workstream_id: &str) -> Result<Option<Session>>` — ```
+-  `list_sessions` function L280-289 — `(&self, workstream_id: &str) -> Result<Vec<Session>>` — ```
+-  `end_session` function L291-299 — `(&self, session_id: &str) -> Result<()>` — ```
+-  `delete_session` function L301-308 — `(&self, session_id: &str) -> Result<()>` — ```
+-  `reassign_session` function L310-330 — `(&self, session_id: &str, new_workstream_id: &str) -> Result<Session>` — ```
+-  `MockMessageStorage` type L341-346 — `= MockMessageStorage` — ```
+-  `MockMessageStorage` type L349-424 — `impl MessageStorage for MockMessageStorage` — ```
+-  `append` function L350-376 — `( &self, workstream_id: &str, session_id: Option<&str>, role: crate::types::Mess...` — ```
+-  `read_all` function L378-386 — `(&self, workstream_id: &str) -> Result<Vec<WorkstreamMessage>>` — ```
+-  `read_range` function L388-405 — `( &self, workstream_id: &str, since: DateTime<Utc>, ) -> Result<Vec<WorkstreamMe...` — ```
+-  `move_messages` function L407-418 — `(&self, from_workstream: &str, to_workstream: &str) -> Result<()>` — ```
+-  `delete_all` function L420-423 — `(&self, workstream_id: &str) -> Result<()>` — ```
+-  `tests` module L427-527 — `-` — ```
+-  `test_mock_workstream_storage_crud` function L432-456 — `()` — ```
+-  `test_mock_workstream_storage_tags` function L459-472 — `()` — ```
+-  `test_mock_workstream_storage_sessions` function L475-495 — `()` — ```
+-  `test_mock_message_storage` function L498-526 — `()` — ```
 
 #### crates/arawn-workstream/src/store.rs
 
@@ -7618,38 +7713,40 @@
 - pub `get_session` function L323-333 — `(&self, id: &str) -> Result<Session>`
 - pub `get_active_session` function L335-346 — `(&self, workstream_id: &str) -> Result<Option<Session>>`
 - pub `end_session` function L348-358 — `(&self, id: &str, turn_count: i32) -> Result<()>`
-- pub `update_session_summary` function L360-369 — `(&self, id: &str, summary: &str) -> Result<()>`
-- pub `reassign_session` function L372-426 — `(&self, session_id: &str, new_workstream_id: &str) -> Result<Session>` — Move a session to a different workstream.
-- pub `list_sessions` function L428-440 — `(&self, workstream_id: &str) -> Result<Vec<Session>>`
-- pub `ensure_scratch` function L445-451 — `(&self) -> Result<Workstream>` — Ensure the well-known scratch workstream exists, creating it if missing.
+- pub `delete_session` function L361-370 — `(&self, id: &str) -> Result<()>` — Delete a session record from the database.
+- pub `update_session_summary` function L372-381 — `(&self, id: &str, summary: &str) -> Result<()>`
+- pub `reassign_session` function L384-438 — `(&self, session_id: &str, new_workstream_id: &str) -> Result<Session>` — Move a session to a different workstream.
+- pub `list_sessions` function L440-452 — `(&self, workstream_id: &str) -> Result<Vec<Session>>`
+- pub `ensure_scratch` function L457-463 — `(&self) -> Result<Workstream>` — Ensure the well-known scratch workstream exists, creating it if missing.
 -  `embedded` module L12-15 — `-`
--  `WorkstreamStore` type L49-452 — `= WorkstreamStore`
+-  `WorkstreamStore` type L49-464 — `= WorkstreamStore`
 -  `run_migrations` function L74-80 — `(&mut self) -> Result<()>`
 -  `conn` function L83-85 — `(&self) -> parking_lot::MutexGuard<'_, Connection>` — Lock the connection for use.
--  `parse_dt` function L456-467 — `(s: &str) -> DateTime<Utc>`
--  `row_to_workstream` function L469-480 — `(row: &rusqlite::Row<'_>) -> rusqlite::Result<Workstream>`
--  `row_to_session` function L482-492 — `(row: &rusqlite::Row<'_>) -> rusqlite::Result<Session>`
--  `WorkstreamStore` type L498-559 — `= WorkstreamStore`
--  `create_workstream` function L499-506 — `( &self, title: &str, default_model: Option<&str>, is_scratch: bool, ) -> Result...`
--  `get_workstream` function L508-510 — `(&self, id: &str) -> Result<Workstream>`
--  `list_workstreams` function L512-514 — `(&self, state_filter: Option<&str>) -> Result<Vec<Workstream>>`
--  `update_workstream` function L516-525 — `( &self, id: &str, title: Option<&str>, summary: Option<&str>, state: Option<&st...`
--  `set_tags` function L527-529 — `(&self, workstream_id: &str, tags: &[String]) -> Result<()>`
--  `get_tags` function L531-533 — `(&self, workstream_id: &str) -> Result<Vec<String>>`
--  `create_session` function L535-537 — `(&self, workstream_id: &str) -> Result<Session>`
--  `create_session_with_id` function L539-541 — `(&self, session_id: &str, workstream_id: &str) -> Result<Session>`
--  `get_active_session` function L543-545 — `(&self, workstream_id: &str) -> Result<Option<Session>>`
--  `list_sessions` function L547-549 — `(&self, workstream_id: &str) -> Result<Vec<Session>>`
--  `end_session` function L551-554 — `(&self, session_id: &str) -> Result<()>`
--  `reassign_session` function L556-558 — `(&self, session_id: &str, new_workstream_id: &str) -> Result<Session>`
--  `tests` module L562-665 — `-`
--  `test_store` function L565-567 — `() -> WorkstreamStore`
--  `test_migrations_run` function L570-572 — `()`
--  `test_workstream_crud` function L575-602 — `()`
--  `test_tags` function L605-619 — `()`
--  `test_session_lifecycle` function L622-644 — `()`
--  `test_scratch_auto_creation` function L647-657 — `()`
--  `test_not_found` function L660-664 — `()`
+-  `parse_dt` function L468-479 — `(s: &str) -> DateTime<Utc>`
+-  `row_to_workstream` function L481-492 — `(row: &rusqlite::Row<'_>) -> rusqlite::Result<Workstream>`
+-  `row_to_session` function L494-504 — `(row: &rusqlite::Row<'_>) -> rusqlite::Result<Session>`
+-  `WorkstreamStore` type L510-575 — `= WorkstreamStore`
+-  `create_workstream` function L511-518 — `( &self, title: &str, default_model: Option<&str>, is_scratch: bool, ) -> Result...`
+-  `get_workstream` function L520-522 — `(&self, id: &str) -> Result<Workstream>`
+-  `list_workstreams` function L524-526 — `(&self, state_filter: Option<&str>) -> Result<Vec<Workstream>>`
+-  `update_workstream` function L528-537 — `( &self, id: &str, title: Option<&str>, summary: Option<&str>, state: Option<&st...`
+-  `set_tags` function L539-541 — `(&self, workstream_id: &str, tags: &[String]) -> Result<()>`
+-  `get_tags` function L543-545 — `(&self, workstream_id: &str) -> Result<Vec<String>>`
+-  `create_session` function L547-549 — `(&self, workstream_id: &str) -> Result<Session>`
+-  `create_session_with_id` function L551-553 — `(&self, session_id: &str, workstream_id: &str) -> Result<Session>`
+-  `get_active_session` function L555-557 — `(&self, workstream_id: &str) -> Result<Option<Session>>`
+-  `list_sessions` function L559-561 — `(&self, workstream_id: &str) -> Result<Vec<Session>>`
+-  `end_session` function L563-566 — `(&self, session_id: &str) -> Result<()>`
+-  `delete_session` function L568-570 — `(&self, session_id: &str) -> Result<()>`
+-  `reassign_session` function L572-574 — `(&self, session_id: &str, new_workstream_id: &str) -> Result<Session>`
+-  `tests` module L578-681 — `-`
+-  `test_store` function L581-583 — `() -> WorkstreamStore`
+-  `test_migrations_run` function L586-588 — `()`
+-  `test_workstream_crud` function L591-618 — `()`
+-  `test_tags` function L621-635 — `()`
+-  `test_session_lifecycle` function L638-660 — `()`
+-  `test_scratch_auto_creation` function L663-673 — `()`
+-  `test_not_found` function L676-680 — `()`
 
 #### crates/arawn-workstream/src/types.rs
 

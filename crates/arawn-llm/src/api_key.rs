@@ -130,7 +130,7 @@ mod tests {
     #[test]
     fn test_dynamic_preserves_exact_value() {
         // Simulate a real Groq key format — must round-trip exactly
-        let key = "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";
+        let key = "gsk_test00000000000000000000000000000000000000000000fake";
         let owned = key.to_string();
         let provider = ApiKeyProvider::dynamic(move || Some(owned.clone()));
         assert_eq!(provider.resolve().unwrap(), key);

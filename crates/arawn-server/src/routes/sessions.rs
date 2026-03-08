@@ -50,12 +50,16 @@ pub struct UpdateSessionRequest {
 /// Message info for conversation history.
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct MessageInfo {
-    /// Role of the message sender.
+    /// Role of the message sender (user, assistant, tool_use, tool_result).
     pub role: String,
     /// Content of the message.
     pub content: String,
     /// Timestamp of the message.
     pub timestamp: String,
+    /// Optional metadata (tool name, arguments, success, etc.).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[schema(value_type = Option<Object>)]
+    pub metadata: Option<serde_json::Value>,
 }
 
 /// Response containing session messages.
@@ -386,14 +390,37 @@ pub async fn delete_session_handler(
 ) -> Result<StatusCode, ServerError> {
     let id = parse_session_id(&session_id)?;
 
-    if state.close_session(id).await {
-        Ok(StatusCode::NO_CONTENT)
-    } else {
-        Err(ServerError::NotFound(format!(
-            "Session {} not found",
-            session_id
-        )))
+    // Try removing from the in-memory cache first (handles active sessions)
+    let was_in_cache = state.close_session(id).await;
+
+    // Also delete from persistent workstream storage (whether or not it was in cache)
+    if let Some(workstreams) = state.workstreams() {
+        match workstreams.delete_session(&session_id) {
+            Ok(()) => {
+                tracing::info!(session_id = %session_id, was_in_cache, "Session deleted from store");
+                return Ok(StatusCode::NO_CONTENT);
+            }
+            Err(e) => {
+                tracing::debug!(
+                    session_id = %session_id,
+                    was_in_cache,
+                    error = %e,
+                    "Session not found in store"
+                );
+                // If it was at least in cache, that's still a success
+                if was_in_cache {
+                    return Ok(StatusCode::NO_CONTENT);
+                }
+            }
+        }
+    } else if was_in_cache {
+        return Ok(StatusCode::NO_CONTENT);
     }
+
+    Err(ServerError::NotFound(format!(
+        "Session {} not found",
+        session_id
+    )))
 }
 
 /// PATCH /api/v1/sessions/:id - Update session metadata.
@@ -673,7 +700,37 @@ pub async fn get_session_messages_handler(
             role: "user".to_string(),
             content: turn.user_message.clone(),
             timestamp: turn.started_at.to_rfc3339(),
+            metadata: None,
         });
+        // Emit tool calls and their results
+        for tool_call in &turn.tool_calls {
+            messages.push(MessageInfo {
+                role: "tool_use".to_string(),
+                content: String::new(),
+                timestamp: turn.started_at.to_rfc3339(),
+                metadata: Some(serde_json::json!({
+                    "tool_id": tool_call.id,
+                    "name": tool_call.name,
+                    "arguments": tool_call.arguments,
+                })),
+            });
+            // Find matching result
+            if let Some(result) = turn
+                .tool_results
+                .iter()
+                .find(|r| r.tool_call_id == tool_call.id)
+            {
+                messages.push(MessageInfo {
+                    role: "tool_result".to_string(),
+                    content: result.content.clone(),
+                    timestamp: turn.started_at.to_rfc3339(),
+                    metadata: Some(serde_json::json!({
+                        "tool_call_id": result.tool_call_id,
+                        "success": result.success,
+                    })),
+                });
+            }
+        }
         if let Some(ref response) = turn.assistant_response {
             messages.push(MessageInfo {
                 role: "assistant".to_string(),
@@ -682,6 +739,7 @@ pub async fn get_session_messages_handler(
                     .completed_at
                     .map(|dt| dt.to_rfc3339())
                     .unwrap_or_else(|| turn.started_at.to_rfc3339()),
+                metadata: None,
             });
         }
     }

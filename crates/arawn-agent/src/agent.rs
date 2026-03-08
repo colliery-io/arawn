@@ -146,16 +146,12 @@ impl Agent {
 
         // Merge with context preamble
         match (base_prompt, context_preamble) {
-            (Some(prompt), Some(preamble)) => {
-                Some(format!(
-                    "[Session Context]\n{}\n\n---\n\n{}",
-                    preamble, prompt
-                ))
-            }
+            (Some(prompt), Some(preamble)) => Some(format!(
+                "[Session Context]\n{}\n\n---\n\n{}",
+                preamble, prompt
+            )),
             (Some(prompt), None) => Some(prompt),
-            (None, Some(preamble)) => {
-                Some(format!("[Session Context]\n{}", preamble))
-            }
+            (None, Some(preamble)) => Some(format!("[Session Context]\n{}", preamble)),
             (None, None) => None,
         }
     }

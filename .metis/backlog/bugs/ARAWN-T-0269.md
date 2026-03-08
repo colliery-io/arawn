@@ -4,15 +4,15 @@ level: task
 title: "Bug: User messages stored twice in session log"
 short_code: "ARAWN-T-0269"
 created_at: 2026-03-06T03:14:14.909494+00:00
-updated_at: 2026-03-06T03:14:14.909494+00:00
+updated_at: 2026-03-07T21:24:52.473880+00:00
 parent: 
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/backlog"
   - "#bug"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -56,6 +56,12 @@ Every user message in both workstreams exhibits this pattern.
 
 ## Acceptance Criteria
 
+## Acceptance Criteria
+
+## Acceptance Criteria
+
+## Acceptance Criteria
+
 - [ ] Each user message produces exactly one entry in messages.jsonl
 - [ ] Existing conversation replay is not broken by the fix
 
@@ -68,4 +74,15 @@ Every user message in both workstreams exhibits this pattern.
 
 ## Status Updates
 
-*To be added during implementation*
+### Investigation Result: Already Fixed
+
+**Root Cause (confirmed):** The WS handler in `handlers.rs` was calling `ws_manager.send_message()` to store the user message immediately when received, AND then `save_turn()` was storing it again when the agent completed. Two writes per user message.
+
+**Fix (already applied in commit `19907b8`):** Removed the immediate `send_message()` call. Only `save_turn()` now persists user messages, along with tool calls, results, and assistant response — all in one atomic write.
+
+**Validation:**
+- Session `9dec55cc` (before fix, `03:03 UTC`): Every user message duplicated, deltas match agent processing time (0.5–6s)
+- Session `772df0cf` (after fix, `13:38 UTC`): No duplicates — one user + one assistant per turn
+- The existing data still contains old duplicates but new messages are clean
+
+**No code changes needed.** The bug was fixed in the same commit that added the explanatory comment at line 371-373 of `handlers.rs`.

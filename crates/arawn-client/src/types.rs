@@ -86,12 +86,15 @@ pub struct TurnInfo {
 /// Message info for conversation history.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MessageInfo {
-    /// Role of the message sender.
+    /// Role of the message sender (user, assistant, tool_use, tool_result).
     pub role: String,
     /// Content of the message.
     pub content: String,
     /// Timestamp of the message.
     pub timestamp: String,
+    /// Optional metadata (tool name, arguments, success, etc.).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metadata: Option<serde_json::Value>,
 }
 
 /// Response containing session messages.

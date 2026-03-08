@@ -4,6 +4,7 @@
 const CONTEXT_WARNING_PERCENT: u8 = 70;
 const CONTEXT_CRITICAL_PERCENT: u8 = 90;
 
+use super::theme;
 use crate::app::App;
 use crate::client::ConnectionStatus;
 use crate::focus::FocusTarget;
@@ -23,7 +24,7 @@ use ratatui::{
 };
 
 /// Render the entire application UI.
-pub fn render(app: &App, frame: &mut Frame) {
+pub fn render(app: &mut App, frame: &mut Frame) {
     let area = frame.area();
 
     // Determine sidebar width based on open/closed state
@@ -49,6 +50,9 @@ pub fn render(app: &App, frame: &mut Frame) {
             .split(area);
         (Some(chunks[0]), chunks[1], None)
     };
+
+    // Store sidebar area for mouse hit-testing
+    app.panel_areas.sidebar = sidebar_area;
 
     // Render sidebar if visible
     if let Some(sidebar_area) = sidebar_area {
@@ -101,7 +105,8 @@ pub fn render(app: &App, frame: &mut Frame) {
         app.command_popup.render(frame, chunks[2]);
     }
 
-    // Render logs panel if visible
+    // Store and render logs panel if visible
+    app.panel_areas.logs = logs_area;
     if let Some(logs_area) = logs_area {
         let logs_chunks = Layout::vertical([
             Constraint::Min(3),    // Logs content
@@ -133,10 +138,10 @@ fn render_header(app: &App, frame: &mut Frame, area: Rect) {
 
     // Connection status indicator
     let (status_text, status_color) = match app.connection_status {
-        ConnectionStatus::Connected => ("●", Color::Green),
-        ConnectionStatus::Connecting => ("◐", Color::Yellow),
-        ConnectionStatus::Reconnecting { .. } => ("◐", Color::Yellow),
-        ConnectionStatus::Disconnected => ("○", Color::Red),
+        ConnectionStatus::Connected => ("●", theme::OK),
+        ConnectionStatus::Connecting => ("◐", theme::WARN),
+        ConnectionStatus::Reconnecting { .. } => ("◐", theme::WARN),
+        ConnectionStatus::Disconnected => ("○", theme::ERR),
     };
     let status = Span::styled(
         format!("{} ", status_text),
@@ -145,10 +150,7 @@ fn render_header(app: &App, frame: &mut Frame, area: Rect) {
 
     // Context indicator (if set)
     let context_span = if let Some(ref ctx) = app.context_name {
-        Span::styled(
-            format!("ctx:{} ", ctx),
-            Style::default().fg(Color::DarkGray),
-        )
+        Span::styled(format!("ctx:{} ", ctx), theme::list_item_dim())
     } else {
         Span::raw("")
     };
@@ -167,11 +169,11 @@ fn render_header(app: &App, frame: &mut Frame, area: Rect) {
 
         // Color based on usage percentage
         let usage_color = if usage.percent >= CONTEXT_CRITICAL_PERCENT {
-            Color::Red
+            theme::ERR
         } else if usage.percent >= CONTEXT_WARNING_PERCENT {
-            Color::Yellow
+            theme::WARN
         } else {
-            Color::DarkGray
+            theme::TEXT_SECONDARY
         };
 
         (
@@ -182,7 +184,7 @@ fn render_header(app: &App, frame: &mut Frame, area: Rect) {
         (format!("ws:{} ", app.workstream), Span::raw(""))
     };
 
-    let workstream = Span::styled(workstream_text, Style::default().fg(Color::DarkGray));
+    let workstream = Span::styled(workstream_text, theme::list_item_dim());
 
     // Create spans that fill the line
     let right_width =
@@ -200,17 +202,20 @@ fn render_header(app: &App, frame: &mut Frame, area: Rect) {
         workstream,
         usage_span,
     ]);
-    let header = Paragraph::new(line).style(Style::default().fg(Color::Cyan));
+    let header = Paragraph::new(line).style(Style::default().fg(theme::ACCENT));
 
     frame.render_widget(header, area);
 }
 
 /// Render the main content area (chat messages + optional tool pane).
-fn render_content(app: &App, frame: &mut Frame, area: Rect) {
+fn render_content(app: &mut App, frame: &mut Frame, area: Rect) {
     if app.show_tool_pane {
         // Split vertically: chat (top 70%), tool pane (bottom 30%)
         let chunks =
             Layout::vertical([Constraint::Percentage(70), Constraint::Percentage(30)]).split(area);
+
+        app.panel_areas.chat = Some(chunks[0]);
+        app.panel_areas.tool_pane = Some(chunks[1]);
 
         render_chat(app, frame, chunks[0]);
 
@@ -221,6 +226,9 @@ fn render_content(app: &App, frame: &mut Frame, area: Rect) {
         render_tool_pane(app, frame, tool_chunks[0]);
         render_tool_pane_footer(frame, tool_chunks[1]);
     } else {
+        app.panel_areas.chat = Some(area);
+        app.panel_areas.tool_pane = None;
+
         render_chat(app, frame, area);
     }
 }
@@ -269,14 +277,14 @@ fn render_status_bar(app: &App, frame: &mut Frame, area: Rect) {
         status => {
             right_spans.push(Span::styled(
                 format!(" {} ", status),
-                Style::default().fg(Color::Yellow),
+                Style::default().fg(theme::WARN),
             ));
         }
     }
 
     // Calculate widths for spacing
     let right_text_len: usize = right_spans.iter().map(|s| s.width()).sum();
-    let left = Span::styled(&left_text, Style::default().fg(Color::DarkGray));
+    let left = Span::styled(&left_text, theme::status_bar());
     let spacer_width = area
         .width
         .saturating_sub(left_text.len() as u16 + right_text_len as u16);
@@ -294,9 +302,9 @@ fn render_status_bar(app: &App, frame: &mut Frame, area: Rect) {
 /// Format the context indicator with appropriate color.
 fn format_context_indicator(ctx: &crate::app::ContextState) -> (String, Color) {
     let color = match ctx.status.as_str() {
-        "ok" => Color::Green,
-        "warning" => Color::Yellow,
-        "critical" => Color::Red,
+        "ok" => theme::OK,
+        "warning" => theme::WARN,
+        "critical" => theme::ERR,
         _ => Color::Gray,
     };
 
@@ -332,7 +340,7 @@ fn render_workstreams_overlay(app: &App, frame: &mut Frame, area: Rect) {
     let block = Block::default()
         .title(title)
         .borders(Borders::ALL)
-        .border_style(Style::default().fg(Color::Cyan));
+        .border_style(theme::border_focused());
 
     let mut lines = Vec::new();
 
@@ -344,7 +352,7 @@ fn render_workstreams_overlay(app: &App, frame: &mut Frame, area: Rect) {
     };
     lines.push(Line::from(Span::styled(
         search_text,
-        Style::default().fg(Color::DarkGray),
+        theme::search_prompt(),
     )));
     lines.push(Line::from(""));
 
@@ -353,7 +361,7 @@ fn render_workstreams_overlay(app: &App, frame: &mut Frame, area: Rect) {
     if workstreams.is_empty() {
         lines.push(Line::from(Span::styled(
             "  No workstreams found",
-            Style::default().fg(Color::DarkGray),
+            theme::empty_state(),
         )));
     } else {
         for (is_selected, ws) in &workstreams {
@@ -374,13 +382,11 @@ fn render_workstreams_overlay(app: &App, frame: &mut Frame, area: Rect) {
             let label = format!(" {} {:<24} {}", marker, ws.name, sessions_text);
 
             let style = if *is_selected {
-                Style::default()
-                    .fg(Color::Cyan)
-                    .add_modifier(Modifier::BOLD)
+                theme::selected()
             } else if ws.is_current {
                 Style::default().add_modifier(Modifier::BOLD)
             } else {
-                Style::default()
+                theme::list_item()
             };
 
             lines.push(Line::from(Span::styled(label, style)));
@@ -389,10 +395,14 @@ fn render_workstreams_overlay(app: &App, frame: &mut Frame, area: Rect) {
 
     // Footer hints
     lines.push(Line::from(""));
-    lines.push(Line::from(Span::styled(
-        " ↑↓ navigate  Enter select  Esc close",
-        Style::default().fg(Color::DarkGray),
-    )));
+    lines.push(Line::from(vec![
+        Span::styled(" ↑↓", theme::key_hint()),
+        Span::styled(" navigate  ", theme::key_desc()),
+        Span::styled("Enter", theme::key_hint()),
+        Span::styled(" select  ", theme::key_desc()),
+        Span::styled("Esc", theme::key_hint()),
+        Span::styled(" close", theme::key_desc()),
+    ]));
 
     let content = Paragraph::new(lines).block(block);
     frame.render_widget(content, overlay_area);
@@ -424,9 +434,9 @@ fn centered_rect(percent_x: u16, percent_y: u16, area: Rect) -> Rect {
 fn render_warning_banner(app: &App, frame: &mut Frame, area: Rect) {
     if let Some(warning) = app.disk_warnings.first() {
         let (icon, color) = if warning.level == "critical" {
-            ("⛔", Color::Red)
+            ("⛔", theme::ERR)
         } else {
-            ("⚠", Color::Yellow)
+            ("⚠", theme::WARN)
         };
 
         let usage_str = crate::app::UsageStats::format_size(warning.usage_bytes);
@@ -440,8 +450,7 @@ fn render_warning_banner(app: &App, frame: &mut Frame, area: Rect) {
         let banner = Paragraph::new(Line::from(vec![Span::styled(
             text,
             Style::default().fg(color).add_modifier(Modifier::BOLD),
-        )]))
-        .style(Style::default().bg(Color::DarkGray));
+        )]));
 
         frame.render_widget(banner, area);
     }
@@ -455,7 +464,7 @@ fn render_usage_popup(app: &App, frame: &mut Frame, area: Rect) {
     let block = Block::default()
         .title(" Disk Usage (^U to close) ")
         .borders(Borders::ALL)
-        .border_style(Style::default().fg(Color::Cyan));
+        .border_style(theme::border_focused());
 
     let inner = block.inner(popup_area);
     frame.render_widget(block, popup_area);
@@ -478,14 +487,14 @@ fn render_usage_popup(app: &App, frame: &mut Frame, area: Rect) {
             Span::raw("   production/  "),
             Span::styled(
                 format!("{:>10}", usage.production_size()),
-                Style::default().fg(Color::Green),
+                Style::default().fg(theme::OK),
             ),
         ]));
         lines.push(Line::from(vec![
             Span::raw("   work/        "),
             Span::styled(
                 format!("{:>10}", usage.work_size()),
-                Style::default().fg(Color::Yellow),
+                Style::default().fg(theme::WARN),
             ),
         ]));
         lines.push(Line::from(vec![Span::raw("   ─────────────────────")]));
@@ -499,11 +508,11 @@ fn render_usage_popup(app: &App, frame: &mut Frame, area: Rect) {
 
         if usage.limit_bytes > 0 {
             let color = if usage.percent >= CONTEXT_CRITICAL_PERCENT {
-                Color::Red
+                theme::ERR
             } else if usage.percent >= CONTEXT_WARNING_PERCENT {
-                Color::Yellow
+                theme::WARN
             } else {
-                Color::Green
+                theme::OK
             };
 
             lines.push(Line::from(""));
@@ -511,7 +520,7 @@ fn render_usage_popup(app: &App, frame: &mut Frame, area: Rect) {
                 Span::raw("   limit        "),
                 Span::styled(
                     format!("{:>10}", usage.limit_size()),
-                    Style::default().fg(Color::DarkGray),
+                    theme::list_item_dim(),
                 ),
             ]));
             lines.push(Line::from(vec![
@@ -526,7 +535,7 @@ fn render_usage_popup(app: &App, frame: &mut Frame, area: Rect) {
             lines.push(Line::from(vec![
                 Span::raw("   ["),
                 Span::styled("█".repeat(filled), Style::default().fg(color)),
-                Span::styled("░".repeat(empty), Style::default().fg(Color::DarkGray)),
+                Span::styled("░".repeat(empty), theme::list_item_dim()),
                 Span::raw("]"),
             ]));
         }
@@ -538,11 +547,11 @@ fn render_usage_popup(app: &App, frame: &mut Frame, area: Rect) {
         lines.push(Line::from(""));
         lines.push(Line::from(Span::styled(
             "   No usage data available",
-            Style::default().fg(Color::DarkGray),
+            theme::empty_state(),
         )));
         lines.push(Line::from(Span::styled(
             "   (requires server support)",
-            Style::default().fg(Color::DarkGray),
+            theme::empty_state(),
         )));
     }
 
@@ -552,15 +561,15 @@ fn render_usage_popup(app: &App, frame: &mut Frame, area: Rect) {
         lines.push(Line::from(vec![Span::styled(
             " Active Warnings ",
             Style::default()
-                .fg(Color::Yellow)
+                .fg(theme::WARN)
                 .add_modifier(Modifier::BOLD),
         )]));
 
         for warning in &app.disk_warnings {
             let (icon, color) = if warning.level == "critical" {
-                ("⛔", Color::Red)
+                ("⛔", theme::ERR)
             } else {
-                ("⚠", Color::Yellow)
+                ("⚠", theme::WARN)
             };
             lines.push(Line::from(vec![
                 Span::styled(format!("   {} ", icon), Style::default().fg(color)),

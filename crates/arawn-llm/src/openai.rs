@@ -1052,7 +1052,7 @@ mod tests {
     #[test]
     fn test_add_headers_real_groq_key_format() {
         // Exact format of a real 56-char Groq key
-        let key = "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";
+        let key = "gsk_test00000000000000000000000000000000000000000000fake";
         let mut config = OpenAiConfig::groq("placeholder");
         config.api_key = ApiKeyProvider::dynamic(move || Some(key.to_string()));
         let backend = OpenAiBackend::new(config).unwrap();

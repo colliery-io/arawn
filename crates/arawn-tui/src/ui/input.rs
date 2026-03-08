@@ -1,5 +1,6 @@
 //! Input area rendering with multi-line support.
 
+use super::theme;
 use crate::input::InputState;
 use ratatui::{
     Frame,
@@ -35,7 +36,7 @@ pub fn render_input(
 ) {
     let input_block = Block::default()
         .borders(Borders::TOP)
-        .border_style(Style::default().fg(Color::DarkGray));
+        .border_style(theme::border());
 
     let inner = input_block.inner(area);
     frame.render_widget(input_block, area);
@@ -49,10 +50,7 @@ pub fn render_input(
                 .bg(Color::Yellow)
                 .add_modifier(Modifier::BOLD),
         );
-        let hint = Span::styled(
-            " Another client owns this session",
-            Style::default().fg(Color::DarkGray),
-        );
+        let hint = Span::styled(" Another client owns this session", theme::empty_state());
         let line = Line::from(vec![badge, hint]);
         let paragraph = Paragraph::new(line);
         frame.render_widget(paragraph, inner);
@@ -67,9 +65,9 @@ pub fn render_input(
     if content.is_empty() {
         // Empty input - just show prompt
         let prompt_style = if waiting {
-            Style::default().fg(Color::DarkGray)
+            theme::empty_state()
         } else {
-            Style::default().fg(Color::Cyan)
+            theme::user_prefix()
         };
         lines.push(Line::from(Span::styled("> ", prompt_style)));
     } else {
@@ -78,13 +76,13 @@ pub fn render_input(
             if i == 0 {
                 // First line gets prompt
                 lines.push(Line::from(vec![
-                    Span::styled("> ", Style::default().fg(Color::Cyan)),
+                    Span::styled("> ", theme::user_prefix()),
                     Span::raw(line_text.to_string()),
                 ]));
             } else {
                 // Continuation lines get indent
                 lines.push(Line::from(vec![
-                    Span::styled("  ", Style::default().fg(Color::DarkGray)),
+                    Span::styled("  ", theme::empty_state()),
                     Span::raw(line_text.to_string()),
                 ]));
             }

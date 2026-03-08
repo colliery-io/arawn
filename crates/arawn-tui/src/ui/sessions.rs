@@ -1,10 +1,11 @@
 //! Session list overlay rendering.
 
+use super::theme;
 use crate::sessions::{SessionList, format_relative_time};
 use ratatui::{
     Frame,
     layout::{Constraint, Layout, Rect},
-    style::{Color, Modifier, Style},
+    style::{Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Clear, Paragraph},
 };
@@ -18,7 +19,7 @@ pub fn render_sessions_overlay(sessions: &SessionList, frame: &mut Frame, area: 
     let block = Block::default()
         .title(" sessions ")
         .borders(Borders::ALL)
-        .border_style(Style::default().fg(Color::Cyan));
+        .border_style(theme::border_focused());
 
     let inner = block.inner(overlay_area);
     frame.render_widget(block, overlay_area);
@@ -42,9 +43,9 @@ pub fn render_sessions_overlay(sessions: &SessionList, frame: &mut Frame, area: 
 fn render_search_box(sessions: &SessionList, frame: &mut Frame, area: Rect) {
     let filter = sessions.filter();
     let prompt = if filter.is_empty() {
-        Span::styled(" > search...", Style::default().fg(Color::DarkGray))
+        Span::styled(" > search...", theme::search_prompt())
     } else {
-        Span::styled(format!(" > {}", filter), Style::default().fg(Color::White))
+        Span::styled(format!(" > {}", filter), theme::user_text())
     };
     let search = Paragraph::new(Line::from(prompt));
     frame.render_widget(search, area);
@@ -54,7 +55,7 @@ fn render_search_box(sessions: &SessionList, frame: &mut Frame, area: Rect) {
 fn render_separator(frame: &mut Frame, area: Rect) {
     let sep = Paragraph::new(Line::from(Span::styled(
         "─".repeat(area.width as usize),
-        Style::default().fg(Color::DarkGray),
+        theme::separator(),
     )));
     frame.render_widget(sep, area);
 }
@@ -66,23 +67,23 @@ fn render_session_list(sessions: &SessionList, frame: &mut Frame, area: Rect) {
     if sessions.is_loading() {
         lines.push(Line::from(Span::styled(
             "  Loading...",
-            Style::default().fg(Color::DarkGray),
+            theme::empty_state(),
         )));
     } else if sessions.visible_count() == 0 {
         if sessions.filter().is_empty() {
             lines.push(Line::from(Span::styled(
                 "  No sessions yet",
-                Style::default().fg(Color::DarkGray),
+                theme::empty_state(),
             )));
             lines.push(Line::from(""));
             lines.push(Line::from(Span::styled(
                 "  Press Ctrl+N to create a new session",
-                Style::default().fg(Color::DarkGray),
+                theme::empty_state(),
             )));
         } else {
             lines.push(Line::from(Span::styled(
                 "  No matching sessions",
-                Style::default().fg(Color::DarkGray),
+                theme::empty_state(),
             )));
         }
     } else {
@@ -117,19 +118,17 @@ fn format_session_line(
 
     // Build the line
     let prefix = if session.is_current {
-        Span::styled(" • ", Style::default().fg(Color::Cyan))
+        Span::styled(" • ", Style::default().fg(theme::ACCENT))
     } else {
         Span::raw("   ")
     };
 
     let title_style = if is_selected {
-        Style::default()
-            .fg(Color::Cyan)
-            .add_modifier(Modifier::BOLD)
+        theme::selected()
     } else if session.is_current {
         Style::default().add_modifier(Modifier::BOLD)
     } else {
-        Style::default()
+        theme::list_item()
     };
     let title_span = Span::styled(title.clone(), title_style);
 
@@ -137,10 +136,7 @@ fn format_session_line(
     let spacer_width = title_width.saturating_sub(title.len());
     let spacer = Span::raw(" ".repeat(spacer_width));
 
-    let time_span = Span::styled(
-        format!("  {}", time_str),
-        Style::default().fg(Color::DarkGray),
-    );
+    let time_span = Span::styled(format!("  {}", time_str), theme::list_item_dim());
 
     Line::from(vec![prefix, title_span, spacer, time_span])
 }
@@ -148,17 +144,17 @@ fn format_session_line(
 /// Render the footer with keyboard hints.
 fn render_footer(frame: &mut Frame, area: Rect) {
     let footer = Paragraph::new(Line::from(vec![
-        Span::styled("  ↑↓", Style::default().fg(Color::DarkGray)),
-        Span::styled(" navigate", Style::default().fg(Color::DarkGray)),
-        Span::styled(" │ ", Style::default().fg(Color::DarkGray)),
-        Span::styled("enter", Style::default().fg(Color::DarkGray)),
-        Span::styled(" select", Style::default().fg(Color::DarkGray)),
-        Span::styled(" │ ", Style::default().fg(Color::DarkGray)),
-        Span::styled("^N", Style::default().fg(Color::DarkGray)),
-        Span::styled(" new", Style::default().fg(Color::DarkGray)),
-        Span::styled(" │ ", Style::default().fg(Color::DarkGray)),
-        Span::styled("esc", Style::default().fg(Color::DarkGray)),
-        Span::styled(" close", Style::default().fg(Color::DarkGray)),
+        Span::styled("  ↑↓", theme::key_hint()),
+        Span::styled(" navigate", theme::key_desc()),
+        Span::styled(" │ ", theme::separator()),
+        Span::styled("enter", theme::key_hint()),
+        Span::styled(" select", theme::key_desc()),
+        Span::styled(" │ ", theme::separator()),
+        Span::styled("^N", theme::key_hint()),
+        Span::styled(" new", theme::key_desc()),
+        Span::styled(" │ ", theme::separator()),
+        Span::styled("esc", theme::key_hint()),
+        Span::styled(" close", theme::key_desc()),
     ]));
     frame.render_widget(footer, area);
 }

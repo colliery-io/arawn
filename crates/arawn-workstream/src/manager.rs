@@ -254,6 +254,11 @@ impl WorkstreamManager {
         self.session_manager().end_session(session_id)
     }
 
+    /// Delete a session record permanently from the store.
+    pub fn delete_session(&self, session_id: &str) -> Result<()> {
+        self.store.delete_session(session_id)
+    }
+
     pub fn list_sessions(&self, workstream_id: &str) -> Result<Vec<Session>> {
         self.store.list_sessions(workstream_id)
     }

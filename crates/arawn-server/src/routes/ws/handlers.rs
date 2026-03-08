@@ -373,15 +373,12 @@ async fn handle_chat(
     // Do NOT store it here — that causes duplicate entries in messages.jsonl.
 
     // Inject session context (workstream + session ID) into preamble
-    if let Some(mut session) = app_state.session_cache().get(&session_id).await {
-        if session.context_preamble().is_none() {
-            let preamble = format!(
-                "Session: {}\nWorkstream: {}",
-                session_id, ws_id
-            );
-            session.set_context_preamble(preamble);
-            app_state.update_session(session_id, session).await;
-        }
+    if let Some(mut session) = app_state.session_cache().get(&session_id).await
+        && session.context_preamble().is_none()
+    {
+        let preamble = format!("Session: {}\nWorkstream: {}", session_id, ws_id);
+        session.set_context_preamble(preamble);
+        app_state.update_session(session_id, session).await;
     }
 
     // Get the agent stream

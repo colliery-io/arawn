@@ -1,7 +1,7 @@
 //! Event handling for the TUI.
 
 use anyhow::Result;
-use crossterm::event::{self, Event as CrosstermEvent, KeyEvent};
+use crossterm::event::{self, Event as CrosstermEvent, KeyEvent, MouseEvent};
 use futures::StreamExt;
 use std::time::Duration;
 use tokio::sync::mpsc;
@@ -12,6 +12,8 @@ use tracing;
 pub enum Event {
     /// Keyboard input.
     Key(KeyEvent),
+    /// Mouse input.
+    Mouse(MouseEvent),
     /// Terminal resize.
     Resize(u16, u16),
     /// Tick for periodic updates.
@@ -45,6 +47,7 @@ impl EventHandler {
                             Some(Ok(evt)) => {
                                 let event = match evt {
                                     CrosstermEvent::Key(key) => Some(Event::Key(key)),
+                                    CrosstermEvent::Mouse(mouse) => Some(Event::Mouse(mouse)),
                                     CrosstermEvent::Resize(w, h) => Some(Event::Resize(w, h)),
                                     _ => None,
                                 };

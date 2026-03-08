@@ -1,10 +1,11 @@
 //! Logs panel rendering.
 
+use super::theme;
 use crate::logs::LogBuffer;
 use ratatui::{
     Frame,
     layout::Rect,
-    style::{Color, Modifier, Style},
+    style::{Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Paragraph, Wrap},
 };
@@ -16,7 +17,7 @@ pub fn render_logs_panel(log_buffer: &LogBuffer, scroll: usize, frame: &mut Fram
     let block = Block::default()
         .title(format!(" logs ({}) ", entries.len()))
         .borders(Borders::ALL)
-        .border_style(Style::default().fg(Color::Cyan));
+        .border_style(theme::border_focused());
 
     let inner = block.inner(area);
     frame.render_widget(block, area);
@@ -24,7 +25,7 @@ pub fn render_logs_panel(log_buffer: &LogBuffer, scroll: usize, frame: &mut Fram
     if entries.is_empty() {
         let empty = Paragraph::new(Line::from(Span::styled(
             "  No log entries yet...",
-            Style::default().fg(Color::DarkGray),
+            theme::empty_state(),
         )));
         frame.render_widget(empty, inner);
         return;
@@ -43,10 +44,7 @@ pub fn render_logs_panel(log_buffer: &LogBuffer, scroll: usize, frame: &mut Fram
 
         // Shorten target to last component for readability
         let target_short = entry.target.rsplit("::").next().unwrap_or(&entry.target);
-        let target_span = Span::styled(
-            format!(" {}: ", target_short),
-            Style::default().fg(Color::DarkGray),
-        );
+        let target_span = Span::styled(format!(" {}: ", target_short), theme::list_item_dim());
 
         let message_span = Span::styled(&entry.message, Style::default());
 
@@ -74,14 +72,14 @@ pub fn render_logs_panel(log_buffer: &LogBuffer, scroll: usize, frame: &mut Fram
 /// Render the logs footer with keyboard hints.
 pub fn render_logs_footer(frame: &mut Frame, area: Rect) {
     let footer = Paragraph::new(Line::from(vec![
-        Span::styled("  ↑↓", Style::default().fg(Color::DarkGray)),
-        Span::styled(" scroll", Style::default().fg(Color::DarkGray)),
-        Span::styled(" │ ", Style::default().fg(Color::DarkGray)),
-        Span::styled("^C", Style::default().fg(Color::DarkGray)),
-        Span::styled(" clear", Style::default().fg(Color::DarkGray)),
-        Span::styled(" │ ", Style::default().fg(Color::DarkGray)),
-        Span::styled("esc", Style::default().fg(Color::DarkGray)),
-        Span::styled(" close", Style::default().fg(Color::DarkGray)),
+        Span::styled("  ↑↓", theme::key_hint()),
+        Span::styled(" scroll", theme::key_desc()),
+        Span::styled(" │ ", theme::separator()),
+        Span::styled("^C", theme::key_hint()),
+        Span::styled(" clear", theme::key_desc()),
+        Span::styled(" │ ", theme::separator()),
+        Span::styled("esc", theme::key_hint()),
+        Span::styled(" close", theme::key_desc()),
     ]));
     frame.render_widget(footer, area);
 }

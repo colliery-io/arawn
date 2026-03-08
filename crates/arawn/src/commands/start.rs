@@ -129,7 +129,7 @@ pub async fn run(args: StartArgs, ctx: &Context) -> Result<()> {
 
     // Print warnings (plaintext keys, parse errors, etc.)
     for warning in &loaded.warnings {
-        eprintln!("warning: {}", warning);
+        tracing::warn!("{}", warning);
     }
 
     if ctx.verbose {
@@ -179,12 +179,12 @@ pub async fn run(args: StartArgs, ctx: &Context) -> Result<()> {
                         backends.insert(name.clone(), profile_backend);
                     }
                     Err(e) => {
-                        eprintln!("warning: failed to create backend '{}': {}", name, e);
+                        tracing::warn!("failed to create backend '{}': {}", name, e);
                     }
                 }
             }
             Err(e) => {
-                eprintln!("warning: failed to resolve profile '{}': {}", name, e);
+                tracing::warn!("failed to resolve profile '{}': {}", name, e);
             }
         }
     }
@@ -292,7 +292,7 @@ pub async fn run(args: StartArgs, ctx: &Context) -> Result<()> {
 
         // Ensure workflow directory exists
         if let Err(e) = std::fs::create_dir_all(&pipeline_workflow_dir) {
-            eprintln!("warning: failed to create workflow directory: {}", e);
+            tracing::warn!("failed to create workflow directory: {}", e);
         }
 
         match PipelineEngine::new(&pipeline_db_path, engine_config).await {
@@ -310,7 +310,7 @@ pub async fn run(args: StartArgs, ctx: &Context) -> Result<()> {
                 Some(engine)
             }
             Err(e) => {
-                eprintln!("warning: failed to start pipeline engine: {}", e);
+                tracing::warn!("failed to start pipeline engine: {}", e);
                 None
             }
         }
@@ -335,10 +335,10 @@ pub async fn run(args: StartArgs, ctx: &Context) -> Result<()> {
         Ok(mut store) => {
             let graph_db_path = memory_db_path.with_extension("graph.db");
             if let Err(e) = store.init_graph_at_path(&graph_db_path) {
-                eprintln!("warning: failed to init knowledge graph: {}", e);
+                tracing::warn!("failed to init knowledge graph: {}", e);
             }
             if let Err(e) = store.init_vectors(embedder.dimensions(), embedder.name()) {
-                eprintln!("warning: failed to init vector store: {}", e);
+                tracing::warn!("failed to init vector store: {}", e);
             }
             if ctx.verbose {
                 println!("Memory store: {}", memory_db_path.display());
@@ -346,7 +346,7 @@ pub async fn run(args: StartArgs, ctx: &Context) -> Result<()> {
             Some(Arc::new(store))
         }
         Err(e) => {
-            eprintln!("warning: failed to open memory store: {}", e);
+            tracing::warn!("failed to open memory store: {}", e);
             None
         }
     };
@@ -425,20 +425,20 @@ pub async fn run(args: StartArgs, ctx: &Context) -> Result<()> {
                     Arc::new(RwLock::new(c))
                 }
                 Err(e) => {
-                    eprintln!(
-                        "warning: failed to load runtime catalog at {}: {}",
+                    tracing::warn!(
+                        " failed to load runtime catalog at {}: {}",
                         runtimes_dir.display(),
                         e
                     );
                     let fallback = std::env::temp_dir().join("arawn-runtimes");
                     match RuntimeCatalog::load(&fallback) {
                         Ok(c) => {
-                            eprintln!("warning: using fallback catalog at {}", fallback.display());
+                            tracing::warn!("using fallback catalog at {}", fallback.display());
                             Arc::new(RwLock::new(c))
                         }
                         Err(e2) => {
-                            eprintln!("error: failed to create fallback catalog: {}", e2);
-                            eprintln!("warning: pipeline tools will not be available");
+                            tracing::error!("failed to create fallback catalog: {}", e2);
+                            tracing::warn!("pipeline tools will not be available");
                             break 'pipeline None;
                         }
                     }
@@ -457,16 +457,16 @@ pub async fn run(args: StartArgs, ctx: &Context) -> Result<()> {
                     Arc::new(e)
                 }
                 Err(e) => {
-                    eprintln!("warning: failed to create script executor: {}", e);
+                    tracing::warn!("failed to create script executor: {}", e);
                     let fallback_cache = std::env::temp_dir().join("arawn-wasm-cache");
                     match ScriptExecutor::new(fallback_cache, std::time::Duration::from_secs(30)) {
                         Ok(e2) => {
-                            eprintln!("warning: using fallback WASM cache");
+                            tracing::warn!("using fallback WASM cache");
                             Arc::new(e2)
                         }
                         Err(e2) => {
-                            eprintln!("error: failed to create fallback executor: {}", e2);
-                            eprintln!("warning: pipeline tools will not be available");
+                            tracing::error!("failed to create fallback executor: {}", e2);
+                            tracing::warn!("pipeline tools will not be available");
                             break 'pipeline None;
                         }
                     }
@@ -509,8 +509,8 @@ pub async fn run(args: StartArgs, ctx: &Context) -> Result<()> {
                             let wf = match arawn_pipeline::WorkflowFile::from_file(path) {
                                 Ok(wf) => wf,
                                 Err(e) => {
-                                    eprintln!(
-                                        "warning: failed to parse workflow {}: {}",
+                                    tracing::warn!(
+                                        " failed to parse workflow {}: {}",
                                         path.display(),
                                         e
                                     );
@@ -527,16 +527,18 @@ pub async fn run(args: StartArgs, ctx: &Context) -> Result<()> {
                                         )
                                         .await
                                     {
-                                        eprintln!(
-                                            "warning: failed to register workflow {}: {}",
-                                            name, e
+                                        tracing::warn!(
+                                            " failed to register workflow {}: {}",
+                                            name,
+                                            e
                                         );
                                     }
                                 }
                                 Err(e) => {
-                                    eprintln!(
-                                        "warning: failed to convert workflow {} tasks: {}",
-                                        name, e
+                                    tracing::warn!(
+                                        " failed to convert workflow {} tasks: {}",
+                                        name,
+                                        e
                                     );
                                 }
                             }
@@ -633,12 +635,12 @@ pub async fn run(args: StartArgs, ctx: &Context) -> Result<()> {
                             }
                         }
                         Err(e) => {
-                            eprintln!("warning: failed to start workflow watcher: {}", e);
+                            tracing::warn!("failed to start workflow watcher: {}", e);
                         }
                     }
                 }
                 Err(e) => {
-                    eprintln!("warning: failed to create workflow loader: {}", e);
+                    tracing::warn!("failed to create workflow loader: {}", e);
                 }
             }
         }
@@ -701,9 +703,11 @@ pub async fn run(args: StartArgs, ctx: &Context) -> Result<()> {
                                 }
                                 SyncAction::CloneFailed | SyncAction::UpdateFailed => {
                                     let err = result.error.as_deref().unwrap_or("unknown error");
-                                    eprintln!(
-                                        "warning: {} {}: {}",
-                                        result.action, result.subscription_id, err
+                                    tracing::warn!(
+                                        " {} {}: {}",
+                                        result.action,
+                                        result.subscription_id,
+                                        err
                                     );
                                 }
                             }
@@ -734,7 +738,7 @@ pub async fn run(args: StartArgs, ctx: &Context) -> Result<()> {
                     plugin_dirs.extend(sub_manager.plugin_dirs());
                 }
                 Err(e) => {
-                    eprintln!("warning: failed to load plugin subscriptions: {}", e);
+                    tracing::warn!("failed to load plugin subscriptions: {}", e);
                 }
             }
         }
@@ -830,7 +834,7 @@ pub async fn run(args: StartArgs, ctx: &Context) -> Result<()> {
                     Some(handle)
                 }
                 Err(e) => {
-                    eprintln!("warning: failed to start plugin watcher: {}", e);
+                    tracing::warn!("failed to start plugin watcher: {}", e);
                     None
                 }
             }
@@ -875,8 +879,8 @@ pub async fn run(args: StartArgs, ctx: &Context) -> Result<()> {
                         let url = match &entry.url {
                             Some(u) => u.clone(),
                             None => {
-                                eprintln!(
-                                    "warning: MCP server '{}' is HTTP but has no URL, skipping",
+                                tracing::warn!(
+                                    " MCP server '{}' is HTTP but has no URL, skipping",
                                     entry.name
                                 );
                                 return None;
@@ -941,9 +945,10 @@ pub async fn run(args: StartArgs, ctx: &Context) -> Result<()> {
                                                     }
                                                 }
                                                 Err(e) => {
-                                                    eprintln!(
-                                                        "warning: failed to create adapters for {}: {}",
-                                                        server_name, e
+                                                    tracing::warn!(
+                                                        " failed to create adapters for {}: {}",
+                                                        server_name,
+                                                        e
                                                     );
                                                 }
                                             }
@@ -956,15 +961,15 @@ pub async fn run(args: StartArgs, ctx: &Context) -> Result<()> {
                                     );
                                 }
                                 Err(e) => {
-                                    eprintln!("warning: failed to list MCP tools: {}", e);
+                                    tracing::warn!("failed to list MCP tools: {}", e);
                                 }
                             }
                         } else {
-                            eprintln!("warning: no MCP servers could be connected");
+                            tracing::warn!("no MCP servers could be connected");
                         }
                     }
                     Err(e) => {
-                        eprintln!("warning: MCP connection failed: {}", e);
+                        tracing::warn!("MCP connection failed: {}", e);
                     }
                 }
             }
@@ -1222,8 +1227,8 @@ pub async fn run(args: StartArgs, ctx: &Context) -> Result<()> {
                                         t.to_string_lossy().into_owned(),
                                     )),
                                     None => {
-                                        eprintln!(
-                                            "warning: GLiNER model download failed, NER disabled"
+                                        tracing::warn!(
+                                            " GLiNER model download failed, NER disabled"
                                         );
                                         None
                                     }
@@ -1244,7 +1249,7 @@ pub async fn run(args: StartArgs, ctx: &Context) -> Result<()> {
                                         }
                                     }
                                     Err(e) => {
-                                        eprintln!("warning: failed to load GLiNER model: {}", e);
+                                        tracing::warn!("failed to load GLiNER model: {}", e);
                                     }
                                 }
                             }
@@ -1262,8 +1267,8 @@ pub async fn run(args: StartArgs, ctx: &Context) -> Result<()> {
                         Some(idx)
                     }
                     None => {
-                        eprintln!(
-                            "warning: indexing backend '{}' not found, indexer disabled",
+                        tracing::warn!(
+                            " indexing backend '{}' not found, indexer disabled",
                             indexing_backend_name
                         );
                         None
@@ -1271,7 +1276,7 @@ pub async fn run(args: StartArgs, ctx: &Context) -> Result<()> {
                 }
             }
             None => {
-                eprintln!("warning: memory store not available, indexer disabled");
+                tracing::warn!("memory store not available, indexer disabled");
                 None
             }
         }
@@ -1371,7 +1376,7 @@ pub async fn run(args: StartArgs, ctx: &Context) -> Result<()> {
             }
         }
         Err(e) => {
-            eprintln!("warning: failed to init workstreams: {}", e);
+            tracing::warn!("failed to init workstreams: {}", e);
         }
     }
 
@@ -1415,8 +1420,8 @@ pub async fn run(args: StartArgs, ctx: &Context) -> Result<()> {
                 }
             }
             None => {
-                eprintln!(
-                    "warning: compression backend '{}' not found, compression disabled",
+                tracing::warn!(
+                    " compression backend '{}' not found, compression disabled",
                     compression_cfg.backend
                 );
             }
@@ -1436,7 +1441,7 @@ pub async fn run(args: StartArgs, ctx: &Context) -> Result<()> {
         && let Ok(engine) = Arc::try_unwrap(engine)
         && let Err(e) = engine.shutdown().await
     {
-        eprintln!("warning: pipeline shutdown error: {}", e);
+        tracing::warn!("pipeline shutdown error: {}", e);
     }
 
     // Shutdown MCP servers
@@ -1445,7 +1450,7 @@ pub async fn run(args: StartArgs, ctx: &Context) -> Result<()> {
             println!("Shutting down MCP servers...");
         }
         if let Err(e) = manager.shutdown_all() {
-            eprintln!("warning: MCP shutdown error: {}", e);
+            tracing::warn!("MCP shutdown error: {}", e);
         }
     }
 
@@ -1793,7 +1798,7 @@ async fn register_builtin_runtimes(
     let entries = match std::fs::read_dir(runtimes_src_dir) {
         Ok(e) => e,
         Err(e) => {
-            eprintln!("warning: cannot read runtimes source dir: {e}");
+            tracing::warn!("cannot read runtimes source dir: {e}");
             return;
         }
     };
@@ -1827,10 +1832,7 @@ async fn register_builtin_runtimes(
         let wasm_path = match executor.compile_crate(&path).await {
             Ok(p) => p,
             Err(e) => {
-                eprintln!(
-                    "warning: failed to compile runtime '{}': {}",
-                    runtime_name, e
-                );
+                tracing::warn!(" failed to compile runtime '{}': {}", runtime_name, e);
                 continue;
             }
         };
@@ -1839,13 +1841,13 @@ async fn register_builtin_runtimes(
         let mut cat = catalog.write().await;
         let builtin_dir = cat.root().join("builtin");
         if let Err(e) = std::fs::create_dir_all(&builtin_dir) {
-            eprintln!("warning: cannot create builtin dir: {e}");
+            tracing::warn!("cannot create builtin dir: {e}");
             continue;
         }
 
         let dest = builtin_dir.join(format!("{runtime_name}.wasm"));
         if let Err(e) = std::fs::copy(&wasm_path, &dest) {
-            eprintln!("warning: failed to copy wasm for '{}': {}", runtime_name, e);
+            tracing::warn!("failed to copy wasm for '{}': {}", runtime_name, e);
             continue;
         }
 
@@ -1857,10 +1859,7 @@ async fn register_builtin_runtimes(
                 category: RuntimeCategory::Builtin,
             },
         ) {
-            eprintln!(
-                "warning: failed to register runtime '{}': {}",
-                runtime_name, e
-            );
+            tracing::warn!(" failed to register runtime '{}': {}", runtime_name, e);
             continue;
         }
 
@@ -1899,7 +1898,7 @@ fn seed_test_data(manager: &WorkstreamManager, verbose: bool) {
                 if let Err(e) = manager.update_workstream(&ws.id, None, Some(summary), None)
                     && verbose
                 {
-                    eprintln!("  Seed: failed to set summary for '{}': {}", title, e);
+                    tracing::warn!("Seed: failed to set summary for '{}': {}", title, e);
                 }
 
                 // Add some test messages (sessions are created automatically)
@@ -1928,7 +1927,7 @@ fn seed_test_data(manager: &WorkstreamManager, verbose: bool) {
                         None,
                     ) {
                         if verbose {
-                            eprintln!("  Seed: failed to add user message: {}", e);
+                            tracing::warn!("Seed: failed to add user message: {}", e);
                         }
                         continue;
                     }
@@ -1942,7 +1941,7 @@ fn seed_test_data(manager: &WorkstreamManager, verbose: bool) {
                         None,
                     ) && verbose
                     {
-                        eprintln!("  Seed: failed to add assistant message: {}", e);
+                        tracing::warn!("Seed: failed to add assistant message: {}", e);
                     }
                 }
 
@@ -1953,7 +1952,7 @@ fn seed_test_data(manager: &WorkstreamManager, verbose: bool) {
             }
             Err(e) => {
                 if verbose {
-                    eprintln!("  Seed: failed to create workstream '{}': {}", title, e);
+                    tracing::warn!("Seed: failed to create workstream '{}': {}", title, e);
                 }
             }
         }
