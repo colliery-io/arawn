@@ -47,6 +47,10 @@ pub struct WsClient {
     /// Task handle for the connection loop.
     #[allow(dead_code)]
     task: tokio::task::JoinHandle<()>,
+    /// Holds the client receiver in mock mode so the sender channel stays open.
+    #[cfg(test)]
+    #[allow(dead_code)]
+    mock_client_rx: Option<mpsc::UnboundedReceiver<ClientMessage>>,
 }
 
 impl WsClient {
@@ -66,6 +70,8 @@ impl WsClient {
             status_rx,
             current_status: ConnectionStatus::Connecting,
             task,
+            #[cfg(test)]
+            mock_client_rx: None,
         }
     }
 
@@ -154,6 +160,30 @@ impl WsClient {
         self.tx
             .send(ClientMessage::Command { command, args })
             .context("Failed to send command")
+    }
+
+    /// Create a disconnected mock client for testing.
+    ///
+    /// Messages sent via `send_chat` etc. go to a buffered channel (won't error)
+    /// but are not delivered anywhere. No connection task is spawned.
+    #[cfg(test)]
+    pub(crate) fn mock() -> Self {
+        let (client_tx, client_rx) = mpsc::unbounded_channel::<ClientMessage>();
+        let (_server_tx, server_rx) = mpsc::unbounded_channel::<ServerMessage>();
+        let (_status_tx, status_rx) = mpsc::unbounded_channel::<ConnectionStatus>();
+
+        // Spawn a no-op task to satisfy the JoinHandle requirement
+        let task = tokio::spawn(async {});
+
+        Self {
+            server_url: "ws://test:0".to_string(),
+            tx: client_tx,
+            rx: server_rx,
+            status_rx,
+            current_status: ConnectionStatus::Connected,
+            task,
+            mock_client_rx: Some(client_rx),
+        }
     }
 }
 

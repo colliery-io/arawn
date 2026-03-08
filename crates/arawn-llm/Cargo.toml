@@ -48,5 +48,6 @@ tokenizers = { workspace = true, optional = true }
 ndarray = { version = "0.16.1", optional = true }
 
 [dev-dependencies]
+arawn-test-utils = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
 tempfile = "3"

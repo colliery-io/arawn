@@ -4,15 +4,15 @@ level: task
 title: "Add arawn-client API endpoint tests using wiremock"
 short_code: "ARAWN-T-0280"
 created_at: 2026-03-08T03:17:25.010273+00:00
-updated_at: 2026-03-08T03:17:25.010273+00:00
+updated_at: 2026-03-08T15:24:35.060898+00:00
 parent: 
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/backlog"
   - "#tech-debt"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -35,6 +35,12 @@ initiative_id: NULL
 - SSE streaming (`ChatApi::stream()`) untested
 - Auth header injection untested
 - Error responses (4xx, 5xx) untested
+
+## Acceptance Criteria
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
@@ -90,4 +96,15 @@ async fn test_sessions_list() {
 
 ## Status Updates
 
-*To be added during implementation*
+### Completed
+- Created 4 test files with 92 new wiremock tests (96 total including 4 existing):
+  - `tests/api_health_config_agents.rs` — 14 tests (health, config, agents)
+  - `tests/api_sessions.rs` — 18 tests (list, get, create, update, delete, messages, auth)
+  - `tests/api_workstreams_chat.rs` — 24 tests (workstreams CRUD, messages, sessions, promote; chat send, stream SSE)
+  - `tests/api_notes_memory_tasks_mcp.rs` — 36 tests (notes CRUD, memory search/store, tasks list/cancel, MCP servers/tools/connect)
+- Every API module covered: health, config, agents, sessions, chat, workstreams, notes, memory, tasks, mcp
+- Each method tested for: happy path, error responses (404, 500, 401 where applicable)
+- Auth header verified via wiremock matchers
+- SSE streaming tested with multi-event mock
+- Request body/query params verified via wiremock matchers
+- All 96 tests pass

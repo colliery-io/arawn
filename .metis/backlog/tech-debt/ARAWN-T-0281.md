@@ -4,15 +4,15 @@ level: task
 title: "Add WebSocket E2E integration tests for chat flow"
 short_code: "ARAWN-T-0281"
 created_at: 2026-03-08T03:17:25.921539+00:00
-updated_at: 2026-03-08T03:17:25.921539+00:00
+updated_at: 2026-03-08T15:30:04.165275+00:00
 parent: 
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/backlog"
   - "#tech-debt"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -37,6 +37,12 @@ This would have caught the session ownership bug, the idle timeout disconnect, a
 - Reconnection behavior untested
 - Concurrent client behavior (ownership conflict) untested
 - Chat message routing through workstreams untested over WS
+
+## Acceptance Criteria
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
@@ -100,4 +106,25 @@ assert_eq!(response.type_, "chat_response");
 
 ## Status Updates
 
-*To be added during implementation*
+### Completed
+- Created 2 test files with 21 WebSocket E2E tests:
+  - `tests/websocket_integration.rs` — 13 tests (auth, subscribe, chat flow, ping, errors, malformed JSON)
+  - `tests/websocket_ownership.rs` — 8 tests (reader vs owner, reconnect tokens, non-owner rejection, unsubscribe)
+- Tests use `TestWsClient` and `TestServer` from `arawn-test-utils`
+- Scenarios covered:
+  - [x] Connect and authenticate (no-auth + token mode)
+  - [x] Subscribe → `subscribe_ack` with `is_owner: true`
+  - [x] Send chat → receive agent response with SessionCreated + ChatChunks
+  - [x] Multi-turn in same session
+  - [x] Second client subscribes → `is_owner: false`
+  - [x] Owner disconnects → pending reconnect blocks new owner
+  - [x] Reconnect with valid token → reclaims ownership
+  - [x] Reconnect with invalid token → denied
+  - [x] Unsubscribe releases ownership (no pending reconnect)
+  - [x] Non-owner chat → `session_not_owned` error
+  - [x] Invalid session ID → error
+  - [x] Unauthenticated operations → `unauthorized` error
+  - [x] Malformed JSON → `parse_error`
+  - [x] Ping/pong keepalive
+  - [x] Multiple independent session subscriptions
+- All 21 tests pass

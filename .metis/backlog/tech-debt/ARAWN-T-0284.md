@@ -4,15 +4,15 @@ level: task
 title: "Add TUI app state machine and event handling tests"
 short_code: "ARAWN-T-0284"
 created_at: 2026-03-08T03:17:29.036824+00:00
-updated_at: 2026-03-08T03:17:29.036824+00:00
+updated_at: 2026-03-08T16:05:35.532518+00:00
 parent: 
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/backlog"
   - "#tech-debt"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -36,6 +36,12 @@ initiative_id: NULL
 - Message sending logic (with waiting state management) untested
 - Connection status polling and recovery untested
 - Every TUI bug fix is a "change and pray" situation
+
+## Acceptance Criteria
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
@@ -99,4 +105,10 @@ Option A is preferred — it decouples state logic from I/O, making every state 
 
 ## Status Updates
 
-*To be added during implementation*
+### Session 1 — Implementation Complete
+- Used Option B (Mock WsClient) — added `WsClient::mock()` in `client.rs` and `App::test_new()` in `app.rs`
+- Added 42 test functions in `#[cfg(test)] mod tests` inside `app.rs`
+- Tests cover: server message handling, key events, input handling, connection state, session switching, workstream switching, command detection, disk warnings, tool lifecycle, full message flow
+- Fixed bug: `WsClient::mock()` was dropping `_client_rx` causing all `send_chat`/`subscribe` calls to fail (channel closed). Added `mock_client_rx: Option<...>` field to keep receiver alive.
+- Fixed bug: `DiskPressure` handler used `retain(|w| w.workstream != workstream_id)` but stored `workstream_name` in `w.workstream`. Added `workstream_id` field to `DiskWarning` for proper deduplication.
+- All 96 TUI tests pass, clippy clean, fmt clean

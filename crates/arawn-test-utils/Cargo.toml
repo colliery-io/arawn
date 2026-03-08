@@ -1,0 +1,27 @@
+[package]
+name = "arawn-test-utils"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Shared test utilities for the Arawn workspace"
+
+[dependencies]
+arawn-agent = { workspace = true }
+arawn-domain = { workspace = true }
+arawn-llm = { workspace = true, features = ["testing"] }
+arawn-memory = { workspace = true }
+arawn-server = { workspace = true }
+arawn-types = { workspace = true }
+arawn-workstream = { workspace = true }
+
+anyhow = { workspace = true }
+async-stream = "0.3"
+async-trait = "0.1"
+futures = "0.3"
+reqwest = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tempfile = "3"
+tokio = { workspace = true }
+tokio-tungstenite = { workspace = true }

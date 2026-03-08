@@ -4,15 +4,15 @@ level: task
 title: "Add streaming MockBackend and SSE response tests"
 short_code: "ARAWN-T-0283"
 created_at: 2026-03-08T03:17:27.702283+00:00
-updated_at: 2026-03-08T03:17:27.702283+00:00
+updated_at: 2026-03-08T15:50:26.286609+00:00
 parent: 
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/backlog"
   - "#tech-debt"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -36,6 +36,12 @@ The existing `MockBackend` in `arawn-llm` only returns complete `CompletionRespo
 - WebSocket chat response streaming never tested
 - Agent `turn_stream()` tested minimally — `stream.rs` has only 6 tests
 - TUI response rendering during streaming untestable
+
+## Acceptance Criteria
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
@@ -100,4 +106,11 @@ async fn test_chat_sse_streaming() {
 
 ## Status Updates
 
-*To be added during implementation*
+### Session 1 - 2026-03-08
+- Enhanced `StreamingMockBackend` with `StreamingMockEvent` enum supporting `Text` and `ToolUse` variants
+- Added `from_events()` and `tool_then_text()` constructors
+- `complete_stream()` now yields proper tool_use streaming events (ContentBlockStart, InputJsonDelta, ContentBlockStop)
+- Added `with_streaming_backend()` to `TestServerBuilder` + `patch()` method to `TestServer`
+- Created `crates/arawn-server/tests/streaming_integration.rs` with 10 SSE tests (session events, text chunks, auth, message size limit, multi-chunk)
+- Added 5 `create_turn_stream()` integration tests in `arawn-agent/src/stream.rs` (text response, cancellation, max iterations, done chunk, multi-chunk)
+- All workspace tests pass (56 test result blocks, 0 failures)

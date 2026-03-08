@@ -19,6 +19,7 @@ members = [
     "crates/arawn-session",
     "crates/arawn-tui",
     "crates/arawn-sandbox",
+    "crates/arawn-test-utils",
 ]
 exclude = [
     "crates/orp-vendored",
@@ -105,6 +106,7 @@ arawn-mcp = { path = "crates/arawn-mcp" }
 arawn-session = { path = "crates/arawn-session" }
 arawn-tui = { path = "crates/arawn-tui" }
 arawn-sandbox = { path = "crates/arawn-sandbox" }
+arawn-test-utils = { path = "crates/arawn-test-utils" }
 arawn-domain = { path = "crates/arawn-domain" }
 orp-vendored = { path = "crates/orp-vendored" }
 gline-rs-vendored = { path = "crates/gline-rs-vendored", default-features = false }

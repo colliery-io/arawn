@@ -183,6 +183,7 @@ dependencies = [
  "arawn-oauth",
  "arawn-pipeline",
  "arawn-plugin",
+ "arawn-sandbox",
  "arawn-server",
  "arawn-tui",
  "arawn-types",
@@ -220,6 +221,7 @@ dependencies = [
  "arawn-mcp",
  "arawn-memory",
  "arawn-pipeline",
+ "arawn-test-utils",
  "arawn-types",
  "async-stream",
  "async-trait",
@@ -304,6 +306,7 @@ dependencies = [
 name = "arawn-llm"
 version = "0.0.0"
 dependencies = [
+ "arawn-test-utils",
  "arawn-types",
  "async-trait",
  "bytes",
@@ -464,6 +467,7 @@ dependencies = [
  "arawn-llm",
  "arawn-memory",
  "arawn-plugin",
+ "arawn-test-utils",
  "arawn-types",
  "async-stream",
  "async-trait",
@@ -500,6 +504,29 @@ dependencies = [
  "thiserror 2.0.18",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "arawn-test-utils"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "arawn-agent",
+ "arawn-domain",
+ "arawn-llm",
+ "arawn-memory",
+ "arawn-server",
+ "arawn-types",
+ "arawn-workstream",
+ "async-stream",
+ "async-trait",
+ "futures",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "tokio-tungstenite 0.26.2",
 ]
 
 [[package]]

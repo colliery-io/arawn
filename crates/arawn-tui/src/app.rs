@@ -271,7 +271,9 @@ impl UsageStats {
 /// A disk usage warning.
 #[derive(Debug, Clone)]
 pub struct DiskWarning {
-    /// Workstream that triggered the warning.
+    /// Workstream ID for deduplication.
+    pub workstream_id: String,
+    /// Workstream display name.
     pub workstream: String,
     /// Warning level: "warning" or "critical".
     pub level: String,
@@ -775,7 +777,8 @@ impl App {
     }
 
     /// Handle a message from the server.
-    fn handle_server_message(&mut self, msg: ServerMessage) {
+    /// Process a server message and update app state accordingly.
+    pub fn handle_server_message(&mut self, msg: ServerMessage) {
         match msg {
             ServerMessage::SessionCreated { session_id } => {
                 self.session_id = Some(session_id);
@@ -941,8 +944,10 @@ impl App {
                 percent,
             } => {
                 // Add warning, replacing any existing warning for same workstream
-                self.disk_warnings.retain(|w| w.workstream != workstream_id);
+                self.disk_warnings
+                    .retain(|w| w.workstream_id != workstream_id);
                 self.disk_warnings.push(DiskWarning {
+                    workstream_id: workstream_id.clone(),
                     workstream: workstream_name.clone(),
                     level,
                     usage_bytes,
@@ -1009,7 +1014,7 @@ impl App {
     }
 
     /// Handle keyboard input.
-    fn handle_key(&mut self, key: crossterm::event::KeyEvent) {
+    pub fn handle_key(&mut self, key: crossterm::event::KeyEvent) {
         // Global shortcuts first
         if key.modifiers.contains(KeyModifiers::CONTROL) {
             match key.code {
@@ -1492,7 +1497,7 @@ impl App {
     }
 
     /// Send the current input as a chat message.
-    fn send_message(&mut self) {
+    pub fn send_message(&mut self) {
         // Check read-only mode
         if !self.is_session_owner {
             self.status_message = Some("Read-only mode: cannot send messages".to_string());
@@ -1667,7 +1672,7 @@ impl App {
     }
 
     /// Switch to a different session.
-    fn switch_to_session(&mut self, session_id: &str) {
+    pub fn switch_to_session(&mut self, session_id: &str) {
         // Subscribe to the new session FIRST to avoid missing messages
         // that might arrive between subscribe and fetch
         // Use reconnect token if we have one to reclaim ownership
@@ -2181,7 +2186,7 @@ impl App {
     }
 
     /// Switch to a different workstream.
-    fn switch_to_workstream(&mut self, workstream_name: &str) {
+    pub fn switch_to_workstream(&mut self, workstream_name: &str) {
         self.workstream = workstream_name.to_string();
 
         // Mark the new workstream as current in sidebar and get the ID
@@ -2215,5 +2220,743 @@ impl App {
         }
 
         self.status_message = Some(format!("Switched to workstream: {}", workstream_name));
+    }
+}
+
+#[cfg(test)]
+impl App {
+    /// Create a test App with a mock WsClient and no real connections.
+    fn test_new() -> Self {
+        use crate::client::WsClient;
+
+        let api = ArawnClient::builder()
+            .base_url("http://test:0")
+            .build()
+            .expect("test API client");
+
+        Self {
+            server_url: "http://test:0".to_string(),
+            ws_client: WsClient::mock(),
+            api,
+            connection_status: ConnectionStatus::Connected,
+            focus: FocusManager::new(),
+            should_quit: false,
+            input: InputState::new(),
+            input_mode: InputMode::default(),
+            status_message: None,
+            workstream: "scratch".to_string(),
+            workstream_id: None,
+            session_id: None,
+            messages: BoundedVec::with_capacity(MAX_MESSAGES, 1024),
+            tools: BoundedVec::with_capacity(MAX_TOOLS, 64),
+            waiting: false,
+            chat_scroll: 0,
+            chat_auto_scroll: true,
+            sessions: SessionList::new(),
+            palette: CommandPalette::new(),
+            context_name: None,
+            log_buffer: LogBuffer::new(),
+            log_scroll: 0,
+            show_logs: false,
+            sidebar: Sidebar::new(),
+            moving_session_to_workstream: false,
+            tool_scroll: 0,
+            selected_tool_index: None,
+            show_tool_pane: false,
+            pending_actions: Vec::new(),
+            command_popup: CommandPopup::new(),
+            command_executing: false,
+            command_progress: None,
+            context_info: None,
+            workstream_usage: None,
+            disk_warnings: Vec::new(),
+            show_usage_popup: false,
+            reconnect_tokens: std::collections::HashMap::new(),
+            is_session_owner: true,
+            pending_delete_workstream: None,
+            pending_delete_session: None,
+            panel_areas: PanelAreas::default(),
+            last_ping: std::time::Instant::now(),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crossterm::event::{KeyEvent, KeyEventKind, KeyEventState};
+
+    fn key(code: KeyCode) -> KeyEvent {
+        KeyEvent {
+            code,
+            modifiers: KeyModifiers::NONE,
+            kind: KeyEventKind::Press,
+            state: KeyEventState::NONE,
+        }
+    }
+
+    fn key_mod(code: KeyCode, modifiers: KeyModifiers) -> KeyEvent {
+        KeyEvent {
+            code,
+            modifiers,
+            kind: KeyEventKind::Press,
+            state: KeyEventState::NONE,
+        }
+    }
+
+    // ── Server Message Handling ──────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_session_created_sets_session_id() {
+        let mut app = App::test_new();
+        assert!(app.session_id.is_none());
+
+        app.handle_server_message(ServerMessage::SessionCreated {
+            session_id: "sess-123".to_string(),
+        });
+
+        assert_eq!(app.session_id.as_deref(), Some("sess-123"));
+    }
+
+    #[tokio::test]
+    async fn test_chat_chunk_creates_assistant_message() {
+        let mut app = App::test_new();
+
+        app.handle_server_message(ServerMessage::ChatChunk {
+            session_id: "s1".to_string(),
+            chunk: "Hello ".to_string(),
+            done: false,
+        });
+
+        assert_eq!(app.messages.len(), 1);
+        assert!(!app.messages[0].is_user);
+        assert_eq!(app.messages[0].content, "Hello ");
+        assert!(app.messages[0].streaming);
+    }
+
+    #[tokio::test]
+    async fn test_chat_chunk_appends_to_streaming() {
+        let mut app = App::test_new();
+
+        app.handle_server_message(ServerMessage::ChatChunk {
+            session_id: "s1".to_string(),
+            chunk: "Hello ".to_string(),
+            done: false,
+        });
+        app.handle_server_message(ServerMessage::ChatChunk {
+            session_id: "s1".to_string(),
+            chunk: "world!".to_string(),
+            done: false,
+        });
+
+        assert_eq!(app.messages.len(), 1);
+        assert_eq!(app.messages[0].content, "Hello world!");
+    }
+
+    #[tokio::test]
+    async fn test_chat_done_clears_waiting() {
+        let mut app = App::test_new();
+        app.waiting = true;
+
+        app.handle_server_message(ServerMessage::ChatChunk {
+            session_id: "s1".to_string(),
+            chunk: "Response".to_string(),
+            done: false,
+        });
+        assert!(app.waiting);
+
+        app.handle_server_message(ServerMessage::ChatChunk {
+            session_id: "s1".to_string(),
+            chunk: String::new(),
+            done: true,
+        });
+
+        assert!(!app.waiting);
+        assert!(!app.messages[0].streaming);
+    }
+
+    #[tokio::test]
+    async fn test_error_clears_waiting() {
+        let mut app = App::test_new();
+        app.waiting = true;
+
+        app.handle_server_message(ServerMessage::Error {
+            code: "internal".to_string(),
+            message: "broke".to_string(),
+        });
+
+        assert!(!app.waiting);
+        assert!(app.status_message.is_some());
+    }
+
+    #[tokio::test]
+    async fn test_session_not_owned_sets_read_only() {
+        let mut app = App::test_new();
+        assert!(app.is_session_owner);
+
+        app.handle_server_message(ServerMessage::Error {
+            code: "session_not_owned".to_string(),
+            message: "not yours".to_string(),
+        });
+
+        assert!(!app.is_session_owner);
+        assert!(app.status_message.as_deref().unwrap().contains("Read-only"));
+    }
+
+    #[tokio::test]
+    async fn test_subscribe_ack_owner() {
+        let mut app = App::test_new();
+        app.is_session_owner = false;
+
+        app.handle_server_message(ServerMessage::SubscribeAck {
+            session_id: "s1".to_string(),
+            owner: true,
+            reconnect_token: Some("tok".to_string()),
+        });
+
+        assert!(app.is_session_owner);
+        assert_eq!(
+            app.reconnect_tokens.get("s1").map(String::as_str),
+            Some("tok")
+        );
+    }
+
+    #[tokio::test]
+    async fn test_subscribe_ack_reader() {
+        let mut app = App::test_new();
+
+        app.handle_server_message(ServerMessage::SubscribeAck {
+            session_id: "s1".to_string(),
+            owner: false,
+            reconnect_token: None,
+        });
+
+        assert!(!app.is_session_owner);
+    }
+
+    #[tokio::test]
+    async fn test_auth_success() {
+        let mut app = App::test_new();
+
+        app.handle_server_message(ServerMessage::AuthResult {
+            success: true,
+            error: None,
+        });
+
+        assert_eq!(app.status_message.as_deref(), Some("Authenticated"));
+    }
+
+    #[tokio::test]
+    async fn test_auth_failure() {
+        let mut app = App::test_new();
+
+        app.handle_server_message(ServerMessage::AuthResult {
+            success: false,
+            error: Some("bad token".to_string()),
+        });
+
+        assert!(
+            app.status_message
+                .as_deref()
+                .unwrap()
+                .contains("Auth failed")
+        );
+    }
+
+    #[tokio::test]
+    async fn test_context_info_updates() {
+        let mut app = App::test_new();
+
+        app.handle_server_message(ServerMessage::ContextInfo {
+            session_id: "s1".to_string(),
+            current_tokens: 5000,
+            max_tokens: 100000,
+            percent: 5,
+            status: "ok".to_string(),
+        });
+
+        let ctx = app.context_info.as_ref().unwrap();
+        assert_eq!(ctx.current_tokens, 5000);
+        assert_eq!(ctx.percent, 5);
+    }
+
+    // ── Tool Lifecycle ──────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_tool_lifecycle() {
+        let mut app = App::test_new();
+
+        app.handle_server_message(ServerMessage::ToolStart {
+            session_id: "s1".to_string(),
+            tool_id: "c1".to_string(),
+            tool_name: "read_file".to_string(),
+        });
+        assert_eq!(app.tools.len(), 1);
+        assert!(app.tools[0].running);
+
+        app.handle_server_message(ServerMessage::ToolOutput {
+            session_id: "s1".to_string(),
+            tool_id: "c1".to_string(),
+            content: "file data".to_string(),
+        });
+        assert_eq!(app.tools[0].output, "file data");
+
+        app.handle_server_message(ServerMessage::ToolEnd {
+            session_id: "s1".to_string(),
+            tool_id: "c1".to_string(),
+            success: true,
+        });
+        assert!(!app.tools[0].running);
+        assert_eq!(app.tools[0].success, Some(true));
+        assert!(app.tools[0].duration_ms.is_some());
+    }
+
+    // ── Command Handling ────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_command_progress_and_result() {
+        let mut app = App::test_new();
+
+        app.handle_server_message(ServerMessage::CommandProgress {
+            command: "compact".to_string(),
+            message: "Working...".to_string(),
+            percent: Some(50),
+        });
+        assert!(app.command_executing);
+
+        app.handle_server_message(ServerMessage::CommandResult {
+            command: "compact".to_string(),
+            success: true,
+            result: serde_json::json!({"message": "Done"}),
+        });
+        assert!(!app.command_executing);
+        assert!(app.command_progress.is_none());
+    }
+
+    // ── Key Handling — Global Shortcuts ──────────────────────────────
+
+    #[tokio::test]
+    async fn test_ctrl_q_quits() {
+        let mut app = App::test_new();
+        app.handle_key(key_mod(KeyCode::Char('q'), KeyModifiers::CONTROL));
+        assert!(app.should_quit);
+    }
+
+    #[tokio::test]
+    async fn test_ctrl_c_quits_when_idle() {
+        let mut app = App::test_new();
+        app.handle_key(key_mod(KeyCode::Char('c'), KeyModifiers::CONTROL));
+        assert!(app.should_quit);
+    }
+
+    #[tokio::test]
+    async fn test_ctrl_c_cancels_when_waiting() {
+        let mut app = App::test_new();
+        app.waiting = true;
+        app.session_id = Some("s1".to_string());
+
+        app.handle_key(key_mod(KeyCode::Char('c'), KeyModifiers::CONTROL));
+
+        assert!(!app.waiting);
+        assert!(!app.should_quit);
+        assert_eq!(app.status_message.as_deref(), Some("Cancelled"));
+    }
+
+    #[tokio::test]
+    async fn test_ctrl_k_opens_palette() {
+        let mut app = App::test_new();
+        app.handle_key(key_mod(KeyCode::Char('k'), KeyModifiers::CONTROL));
+        assert!(app.focus.has_overlay());
+        assert_eq!(app.focus.current(), FocusTarget::CommandPalette);
+    }
+
+    #[tokio::test]
+    async fn test_ctrl_w_toggles_sidebar() {
+        let mut app = App::test_new();
+        assert!(!app.sidebar.is_open());
+
+        app.handle_key(key_mod(KeyCode::Char('w'), KeyModifiers::CONTROL));
+        assert!(app.sidebar.is_open());
+        assert_eq!(app.focus.current(), FocusTarget::Sidebar);
+
+        app.handle_key(key_mod(KeyCode::Char('w'), KeyModifiers::CONTROL));
+        assert!(!app.sidebar.is_open());
+        assert_eq!(app.focus.current(), FocusTarget::Input);
+    }
+
+    #[tokio::test]
+    async fn test_ctrl_e_toggles_tool_pane() {
+        let mut app = App::test_new();
+        app.handle_key(key_mod(KeyCode::Char('e'), KeyModifiers::CONTROL));
+        assert!(app.show_tool_pane);
+        assert_eq!(app.focus.current(), FocusTarget::ToolPane);
+
+        app.handle_key(key_mod(KeyCode::Char('e'), KeyModifiers::CONTROL));
+        assert!(!app.show_tool_pane);
+    }
+
+    #[tokio::test]
+    async fn test_ctrl_l_toggles_logs() {
+        let mut app = App::test_new();
+        app.handle_key(key_mod(KeyCode::Char('l'), KeyModifiers::CONTROL));
+        assert!(app.show_logs);
+
+        app.handle_key(key_mod(KeyCode::Char('l'), KeyModifiers::CONTROL));
+        assert!(!app.show_logs);
+    }
+
+    #[tokio::test]
+    async fn test_ctrl_u_toggles_usage() {
+        let mut app = App::test_new();
+        app.handle_key(key_mod(KeyCode::Char('u'), KeyModifiers::CONTROL));
+        assert!(app.show_usage_popup);
+
+        app.handle_key(key_mod(KeyCode::Char('u'), KeyModifiers::CONTROL));
+        assert!(!app.show_usage_popup);
+    }
+
+    // ── Input Handling — Chat ───────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_typing_adds_to_input() {
+        let mut app = App::test_new();
+        app.handle_key(key(KeyCode::Char('h')));
+        app.handle_key(key(KeyCode::Char('i')));
+        assert_eq!(app.input.content(), "hi");
+    }
+
+    #[tokio::test]
+    async fn test_enter_sends_message() {
+        let mut app = App::test_new();
+        app.input.set_text("hello");
+        app.handle_key(key(KeyCode::Enter));
+
+        assert!(app.input.is_empty());
+        assert_eq!(app.messages.len(), 1);
+        assert!(app.messages[0].is_user);
+        assert_eq!(app.messages[0].content, "hello");
+        assert!(app.waiting);
+    }
+
+    #[tokio::test]
+    async fn test_enter_blocked_when_waiting() {
+        let mut app = App::test_new();
+        app.waiting = true;
+        app.input.set_text("hi");
+
+        app.handle_key(key(KeyCode::Enter));
+
+        assert_eq!(app.input.content(), "hi");
+        assert!(app.messages.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_send_blocked_in_read_only() {
+        let mut app = App::test_new();
+        app.is_session_owner = false;
+        app.input.set_text("hi");
+
+        app.send_message();
+
+        assert!(app.messages.is_empty());
+        assert!(app.status_message.as_deref().unwrap().contains("Read-only"));
+    }
+
+    #[tokio::test]
+    async fn test_enter_on_empty_does_nothing() {
+        let mut app = App::test_new();
+        app.handle_key(key(KeyCode::Enter));
+        assert!(app.messages.is_empty());
+        assert!(!app.waiting);
+    }
+
+    #[tokio::test]
+    async fn test_shift_enter_inserts_newline() {
+        let mut app = App::test_new();
+        app.handle_key(key(KeyCode::Char('a')));
+        app.handle_key(key_mod(KeyCode::Enter, KeyModifiers::SHIFT));
+        app.handle_key(key(KeyCode::Char('b')));
+        assert!(app.input.content().contains('\n'));
+    }
+
+    // ── Connection State ────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_waiting_cleared_on_disconnect() {
+        let mut app = App::test_new();
+        app.connection_status = ConnectionStatus::Connected;
+        app.waiting = true;
+
+        // Simulate the tick handler logic
+        let was_connected = app.connection_status == ConnectionStatus::Connected;
+        app.connection_status = ConnectionStatus::Disconnected;
+        if was_connected && app.connection_status != ConnectionStatus::Connected && app.waiting {
+            app.waiting = false;
+            app.status_message =
+                Some("Connection lost — message may not have been delivered".to_string());
+        }
+
+        assert!(!app.waiting);
+        assert!(
+            app.status_message
+                .as_deref()
+                .unwrap()
+                .contains("Connection lost")
+        );
+    }
+
+    #[tokio::test]
+    async fn test_waiting_not_cleared_if_not_previously_connected() {
+        let mut app = App::test_new();
+        app.connection_status = ConnectionStatus::Connecting;
+        app.waiting = true;
+
+        let was_connected = app.connection_status == ConnectionStatus::Connected;
+        app.connection_status = ConnectionStatus::Disconnected;
+        if was_connected && app.connection_status != ConnectionStatus::Connected && app.waiting {
+            app.waiting = false;
+        }
+
+        assert!(app.waiting, "Should still be waiting — was never connected");
+    }
+
+    // ── Session Switching ───────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_switch_session_clears_state() {
+        let mut app = App::test_new();
+        app.push_message(ChatMessage {
+            is_user: true,
+            content: "old".to_string(),
+            streaming: false,
+        });
+        app.push_tool(ToolExecution {
+            id: "t1".to_string(),
+            name: "tool".to_string(),
+            args: String::new(),
+            output: String::new(),
+            running: false,
+            success: Some(true),
+            started_at: std::time::Instant::now(),
+            duration_ms: Some(100),
+        });
+
+        app.switch_to_session("new-sess");
+
+        assert!(app.messages.is_empty());
+        assert!(app.tools.is_empty());
+        assert_eq!(app.session_id.as_deref(), Some("new-sess"));
+        assert!(!app.is_session_owner);
+    }
+
+    // ── Workstream Switching ────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_switch_workstream_clears_session() {
+        let mut app = App::test_new();
+        app.session_id = Some("old".to_string());
+        app.push_message(ChatMessage {
+            is_user: true,
+            content: "msg".to_string(),
+            streaming: false,
+        });
+
+        app.switch_to_workstream("project-x");
+
+        assert_eq!(app.workstream, "project-x");
+        assert!(app.session_id.is_none());
+        assert!(app.messages.is_empty());
+    }
+
+    // ── Command Detection ───────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_slash_command_detected() {
+        let mut app = App::test_new();
+        app.input.set_text("/help");
+        assert!(app.input.is_command());
+    }
+
+    #[tokio::test]
+    async fn test_regular_text_not_command() {
+        let mut app = App::test_new();
+        app.input.set_text("hello");
+        assert!(!app.input.is_command());
+    }
+
+    // ── Disk Warnings ───────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_disk_pressure_stored() {
+        let mut app = App::test_new();
+
+        app.handle_server_message(ServerMessage::DiskPressure {
+            workstream_id: "ws-1".to_string(),
+            workstream_name: "proj".to_string(),
+            level: "warning".to_string(),
+            usage_bytes: 500_000_000,
+            limit_bytes: 1_000_000_000,
+            percent: 50,
+        });
+
+        assert_eq!(app.disk_warnings.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_disk_pressure_replaces_existing() {
+        let mut app = App::test_new();
+
+        app.handle_server_message(ServerMessage::DiskPressure {
+            workstream_id: "ws-1".to_string(),
+            workstream_name: "proj".to_string(),
+            level: "warning".to_string(),
+            usage_bytes: 500_000_000,
+            limit_bytes: 1_000_000_000,
+            percent: 50,
+        });
+        app.handle_server_message(ServerMessage::DiskPressure {
+            workstream_id: "ws-1".to_string(),
+            workstream_name: "proj".to_string(),
+            level: "critical".to_string(),
+            usage_bytes: 900_000_000,
+            limit_bytes: 1_000_000_000,
+            percent: 90,
+        });
+
+        assert_eq!(app.disk_warnings.len(), 1);
+        assert_eq!(app.disk_warnings[0].percent, 90);
+    }
+
+    #[tokio::test]
+    async fn test_disk_critical_sets_status() {
+        let mut app = App::test_new();
+
+        app.handle_server_message(ServerMessage::DiskPressure {
+            workstream_id: "ws-1".to_string(),
+            workstream_name: "proj".to_string(),
+            level: "critical".to_string(),
+            usage_bytes: 900_000_000,
+            limit_bytes: 1_000_000_000,
+            percent: 90,
+        });
+
+        assert!(app.status_message.as_deref().unwrap().contains("critical"));
+    }
+
+    // ── Workstream Usage ────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_usage_updates_for_current_workstream() {
+        let mut app = App::test_new();
+        app.workstream_id = Some("ws-1".to_string());
+
+        app.handle_server_message(ServerMessage::WorkstreamUsage {
+            workstream_id: "ws-1".to_string(),
+            workstream_name: "proj".to_string(),
+            is_scratch: false,
+            production_bytes: 1000,
+            work_bytes: 2000,
+            total_bytes: 3000,
+            limit_bytes: 10000,
+            percent: 30,
+        });
+
+        assert_eq!(app.workstream_usage.as_ref().unwrap().total_bytes, 3000);
+    }
+
+    #[tokio::test]
+    async fn test_usage_ignored_for_other_workstream() {
+        let mut app = App::test_new();
+        app.workstream_id = Some("ws-1".to_string());
+
+        app.handle_server_message(ServerMessage::WorkstreamUsage {
+            workstream_id: "ws-OTHER".to_string(),
+            workstream_name: "other".to_string(),
+            is_scratch: false,
+            production_bytes: 1000,
+            work_bytes: 2000,
+            total_bytes: 3000,
+            limit_bytes: 10000,
+            percent: 30,
+        });
+
+        assert!(app.workstream_usage.is_none());
+    }
+
+    // ── Palette ─────────────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_palette_esc_closes() {
+        let mut app = App::test_new();
+        app.handle_key(key_mod(KeyCode::Char('k'), KeyModifiers::CONTROL));
+        assert!(app.focus.has_overlay());
+
+        app.handle_key(key(KeyCode::Esc));
+        assert!(!app.focus.has_overlay());
+    }
+
+    // ── Full Message Flow ───────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_full_message_flow() {
+        let mut app = App::test_new();
+        app.input.set_text("hello");
+        app.handle_key(key(KeyCode::Enter));
+
+        assert!(app.waiting);
+        assert_eq!(app.messages.len(), 1);
+        assert!(app.messages[0].is_user);
+
+        app.handle_server_message(ServerMessage::SessionCreated {
+            session_id: "new-sess".to_string(),
+        });
+        assert_eq!(app.session_id.as_deref(), Some("new-sess"));
+
+        app.handle_server_message(ServerMessage::ChatChunk {
+            session_id: "new-sess".to_string(),
+            chunk: "Hi!".to_string(),
+            done: false,
+        });
+        assert_eq!(app.messages.len(), 2);
+        assert!(app.waiting);
+
+        app.handle_server_message(ServerMessage::ChatChunk {
+            session_id: "new-sess".to_string(),
+            chunk: String::new(),
+            done: true,
+        });
+        assert!(!app.waiting);
+        assert!(!app.messages[1].streaming);
+    }
+
+    #[tokio::test]
+    async fn test_send_clears_tools() {
+        let mut app = App::test_new();
+        app.push_tool(ToolExecution {
+            id: "old".to_string(),
+            name: "tool".to_string(),
+            args: String::new(),
+            output: String::new(),
+            running: false,
+            success: Some(true),
+            started_at: std::time::Instant::now(),
+            duration_ms: Some(100),
+        });
+
+        app.input.set_text("new question");
+        app.send_message();
+
+        assert!(app.tools.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_send_enables_auto_scroll() {
+        let mut app = App::test_new();
+        app.chat_auto_scroll = false;
+
+        app.input.set_text("msg");
+        app.send_message();
+
+        assert!(app.chat_auto_scroll);
     }
 }

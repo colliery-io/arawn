@@ -48,11 +48,7 @@ impl WorkstreamFsGate {
     /// File tools (file_read, file_write, glob, grep) work normally with
     /// path validation. Shell commands return a clear error explaining that
     /// the sandbox is unavailable.
-    pub fn path_only(
-        dm: &DirectoryManager,
-        workstream_id: &str,
-        session_id: &str,
-    ) -> Self {
+    pub fn path_only(dm: &DirectoryManager, workstream_id: &str, session_id: &str) -> Self {
         Self::build(dm, None, workstream_id, session_id)
     }
 

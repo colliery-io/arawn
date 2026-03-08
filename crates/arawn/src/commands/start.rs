@@ -1198,11 +1198,7 @@ pub async fn run(args: StartArgs, ctx: &Context) -> Result<()> {
                         workstream_id,
                         session_id,
                     )),
-                    None => Arc::new(WorkstreamFsGate::path_only(
-                        &dm,
-                        workstream_id,
-                        session_id,
-                    )),
+                    None => Arc::new(WorkstreamFsGate::path_only(&dm, workstream_id, session_id)),
                 };
                 Some(gate)
             });

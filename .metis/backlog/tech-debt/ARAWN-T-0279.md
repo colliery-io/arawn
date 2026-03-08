@@ -4,15 +4,15 @@ level: task
 title: "Create shared test utilities crate (arawn-test-utils)"
 short_code: "ARAWN-T-0279"
 created_at: 2026-03-08T03:17:23.703939+00:00
-updated_at: 2026-03-08T03:17:23.703939+00:00
+updated_at: 2026-03-08T15:15:06.389825+00:00
 parent: 
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/backlog"
   - "#tech-debt"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -35,6 +35,12 @@ Create a shared `arawn-test-utils` crate that consolidates test infrastructure c
 - Each crate re-invents setup helpers (`setup()`, `test_manager()`, `test_engine()`)
 - No shared fixtures for configs, workstreams, sessions, or agent contexts
 - No WebSocket test client for E2E testing
+
+## Acceptance Criteria
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
@@ -91,4 +97,18 @@ crates/arawn-test-utils/
 
 ## Status Updates
 
-*To be added during implementation*
+### Session 2
+- Refactored `arawn-server/tests/common/mod.rs` to delegate to shared `arawn_test_utils::TestServer`
+- Added `arawn-test-utils` as dev-dependency to 3 crates: `arawn-server`, `arawn-agent`, `arawn-llm`
+- All 57 arawn-server tests pass (including 13 integration tests using refactored common module)
+- All 3 arawn-test-utils unit tests pass
+
+### Final Checklist
+- [x] `arawn-test-utils` crate added to workspace
+- [x] `TestServer` extracted with builder pattern (configurable auth, workstreams, memory, responses)
+- [x] `TestWsClient` created (connect, authenticate, subscribe, chat, ping, cancel, recv)
+- [x] `TestFixtures` factory (server_config, mock_backend, agent, memory_store, session, app_state, etc.)
+- [x] `StreamingMockBackend` with configurable chunks and delays
+- [x] `assert_json_contains!`, `assert_status!`, `assert_contains!` macros
+- [x] `arawn-server/tests/common/mod.rs` refactored to re-export from shared crate
+- [x] 3 crates consume as dev-dependency: arawn-server, arawn-agent, arawn-llm

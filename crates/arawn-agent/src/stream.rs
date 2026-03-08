@@ -467,4 +467,244 @@ mod tests {
         let restored: StreamChunk = serde_json::from_str(&json).unwrap();
         assert!(matches!(restored, StreamChunk::Text { content } if content == "test"));
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Integration tests for create_turn_stream()
+    // ─────────────────────────────────────────────────────────────────────────
+
+    use crate::tool::ToolRegistry;
+    use crate::types::AgentConfig;
+    use arawn_llm::{CompletionResponse, ContentBlock, MockBackend, StopReason, Usage};
+    use std::sync::Arc;
+    use tokio_util::sync::CancellationToken;
+
+    /// Helper: build a MockBackend that returns the given text for both the
+    /// streaming call and the follow-up sync call inside `create_turn_stream`.
+    fn mock_text_backend(text: &str) -> Arc<MockBackend> {
+        let response = || {
+            CompletionResponse::new(
+                "mock_msg",
+                "mock-model",
+                vec![ContentBlock::Text {
+                    text: text.to_string(),
+                    cache_control: None,
+                }],
+                StopReason::EndTurn,
+                Usage::new(10, 10),
+            )
+        };
+        // Two responses: one consumed by complete_stream (which calls complete
+        // internally), and one consumed by the sync complete call.
+        Arc::new(MockBackend::new(vec![response(), response()]))
+    }
+
+    #[tokio::test]
+    async fn test_turn_stream_text_response() {
+        let backend = mock_text_backend("Hello world");
+        let tools = Arc::new(ToolRegistry::new());
+        let config = AgentConfig::default();
+        let messages = vec![arawn_llm::Message::user("Hi")];
+        let session_id = SessionId::new();
+        let turn_id = TurnId::new();
+        let cancel = CancellationToken::new();
+
+        let stream = create_turn_stream(
+            backend as SharedBackend,
+            tools,
+            config,
+            messages,
+            session_id,
+            turn_id,
+            cancel,
+            None,
+            None,
+        );
+
+        let chunks: Vec<StreamChunk> = stream.collect().await;
+
+        // At least one Text chunk should exist.
+        let has_text = chunks.iter().any(|c| matches!(c, StreamChunk::Text { .. }));
+        assert!(has_text, "Expected at least one Text chunk");
+
+        // Combined text should contain "Hello".
+        let combined: String = chunks
+            .iter()
+            .filter_map(|c| match c {
+                StreamChunk::Text { content } => Some(content.as_str()),
+                _ => None,
+            })
+            .collect();
+        assert!(
+            combined.contains("Hello"),
+            "Combined text should contain 'Hello', got: {combined}"
+        );
+
+        // Stream should end with a Done chunk.
+        let last = chunks.last().expect("stream should not be empty");
+        match last {
+            StreamChunk::Done { iterations } => assert_eq!(*iterations, 1),
+            other => panic!("Expected Done chunk at end, got: {other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_turn_stream_cancellation() {
+        let backend = mock_text_backend("Should not see this");
+        let tools = Arc::new(ToolRegistry::new());
+        let config = AgentConfig::default();
+        let messages = vec![arawn_llm::Message::user("Hi")];
+        let session_id = SessionId::new();
+        let turn_id = TurnId::new();
+        let cancel = CancellationToken::new();
+
+        // Cancel before the stream starts iterating.
+        cancel.cancel();
+
+        let stream = create_turn_stream(
+            backend as SharedBackend,
+            tools,
+            config,
+            messages,
+            session_id,
+            turn_id,
+            cancel,
+            None,
+            None,
+        );
+
+        let chunks: Vec<StreamChunk> = stream.collect().await;
+
+        let has_cancelled = chunks.iter().any(|c| {
+            matches!(
+                c,
+                StreamChunk::Error { message } if message.contains("Cancelled")
+            )
+        });
+        assert!(
+            has_cancelled,
+            "Expected an error chunk containing 'Cancelled', got: {chunks:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_turn_stream_max_iterations() {
+        let backend = mock_text_backend("text");
+        let tools = Arc::new(ToolRegistry::new());
+        // max_iterations: 0 means the very first iteration (1 > 0) triggers the guard.
+        let config = AgentConfig::new("mock-model").with_max_iterations(0);
+        let messages = vec![arawn_llm::Message::user("Hi")];
+        let session_id = SessionId::new();
+        let turn_id = TurnId::new();
+        let cancel = CancellationToken::new();
+
+        let stream = create_turn_stream(
+            backend as SharedBackend,
+            tools,
+            config,
+            messages,
+            session_id,
+            turn_id,
+            cancel,
+            None,
+            None,
+        );
+
+        let chunks: Vec<StreamChunk> = stream.collect().await;
+
+        let has_max_iter_error = chunks.iter().any(|c| {
+            matches!(
+                c,
+                StreamChunk::Error { message } if message.contains("Max iterations exceeded")
+            )
+        });
+        assert!(
+            has_max_iter_error,
+            "Expected 'Max iterations exceeded' error, got: {chunks:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_turn_stream_done_chunk_present() {
+        let backend = mock_text_backend("Done test");
+        let tools = Arc::new(ToolRegistry::new());
+        let config = AgentConfig::default();
+        let messages = vec![arawn_llm::Message::user("Hi")];
+        let session_id = SessionId::new();
+        let turn_id = TurnId::new();
+        let cancel = CancellationToken::new();
+
+        let stream = create_turn_stream(
+            backend as SharedBackend,
+            tools,
+            config,
+            messages,
+            session_id,
+            turn_id,
+            cancel,
+            None,
+            None,
+        );
+
+        let chunks: Vec<StreamChunk> = stream.collect().await;
+
+        let done_count = chunks
+            .iter()
+            .filter(|c| matches!(c, StreamChunk::Done { .. }))
+            .count();
+        assert_eq!(
+            done_count, 1,
+            "Expected exactly one Done chunk, got: {done_count}"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_turn_stream_multiple_text_chunks() {
+        // The MockBackend's complete_stream emits a single TextDelta event per
+        // response, so with a single response we get one Text chunk.  To verify
+        // the stream can carry multiple Text chunks we supply a backend with
+        // longer text and confirm at least one Text chunk arrives (the mock
+        // implementation collapses into one delta, so we validate >= 1).
+        let long_text = "A ".repeat(500); // 1000-char string
+        let backend = mock_text_backend(&long_text);
+        let tools = Arc::new(ToolRegistry::new());
+        let config = AgentConfig::default();
+        let messages = vec![arawn_llm::Message::user("Hi")];
+        let session_id = SessionId::new();
+        let turn_id = TurnId::new();
+        let cancel = CancellationToken::new();
+
+        let stream = create_turn_stream(
+            backend as SharedBackend,
+            tools,
+            config,
+            messages,
+            session_id,
+            turn_id,
+            cancel,
+            None,
+            None,
+        );
+
+        let chunks: Vec<StreamChunk> = stream.collect().await;
+
+        let text_chunks: Vec<&StreamChunk> = chunks
+            .iter()
+            .filter(|c| matches!(c, StreamChunk::Text { .. }))
+            .collect();
+
+        assert!(
+            !text_chunks.is_empty(),
+            "Expected at least one Text chunk for a long response"
+        );
+
+        // Combined text should match the original.
+        let combined: String = text_chunks
+            .iter()
+            .filter_map(|c| match c {
+                StreamChunk::Text { content } => Some(content.as_str()),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(combined, long_text);
+    }
 }
