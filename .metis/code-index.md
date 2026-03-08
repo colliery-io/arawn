@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-03-08T16:41:27Z | 323 files | Rust
+> Generated: 2026-03-08T19:55:28Z | 323 files | Rust
 
 ## Project Structure
 
@@ -4949,21 +4949,21 @@
 - pub `ExecutionResult` struct L64-71 — `{ execution_id: String, status: ExecutionStatus, output: Option<serde_json::Valu...` — Result of a workflow execution.
 - pub `ExecutionStatus` enum L75-84 — `Completed | Failed | Running | TimedOut` — Status of an execution.
 - pub `ScheduleInfo` struct L88-97 — `{ id: String, workflow_name: String, cron_expr: String, enabled: bool }` — Information about a scheduled workflow.
-- pub `PipelineEngine` struct L272-276 — `{ runner: DefaultRunner, workflows: Arc<RwLock<HashMap<String, Workflow>>> }` — The pipeline engine — Arawn's execution backbone.
-- pub `new` function L285-307 — `(db_path: &Path, config: PipelineConfig) -> Result<Self, PipelineError>` — Initialize the pipeline engine with a SQLite database.
-- pub `register_workflow` function L313-326 — `(&self, workflow: Workflow) -> Result<(), PipelineError>` — Register a dynamically constructed workflow.
-- pub `register_dynamic_workflow` function L332-361 — `( &self, name: &str, description: &str, tasks: Vec<DynamicTask>, ) -> Result<(),...` — Build and register a workflow from dynamic tasks.
-- pub `execute` function L367-408 — `( &self, workflow_name: &str, context: Context<serde_json::Value>, ) -> Result<E...` — Execute a registered workflow.
-- pub `trigger` function L414-421 — `( &self, workflow_name: &str, context: Context<serde_json::Value>, ) -> Result<E...` — Execute a workflow via push trigger.
-- pub `schedule_cron` function L430-454 — `( &self, workflow_name: &str, cron_expr: &str, timezone: &str, ) -> Result<Strin...` — Register a cron schedule for a workflow.
-- pub `list_schedules` function L457-473 — `(&self) -> Result<Vec<ScheduleInfo>, PipelineError>` — List all cron schedules.
-- pub `cancel_schedule` function L476-486 — `(&self, schedule_id: &str) -> Result<(), PipelineError>` — Cancel a cron schedule.
-- pub `list_workflows` function L489-491 — `(&self) -> Vec<String>` — List registered workflow names.
-- pub `has_workflow` function L494-496 — `(&self, name: &str) -> bool` — Check if a workflow is registered.
-- pub `shutdown` function L501-511 — `(self) -> Result<(), PipelineError>` — Gracefully shut down the engine.
+- pub `PipelineEngine` struct L463-467 — `{ runner: DefaultRunner, workflows: Arc<RwLock<HashMap<String, Workflow>>> }` — The pipeline engine — Arawn's execution backbone.
+- pub `new` function L476-498 — `(db_path: &Path, config: PipelineConfig) -> Result<Self, PipelineError>` — Initialize the pipeline engine with a SQLite database.
+- pub `register_workflow` function L504-517 — `(&self, workflow: Workflow) -> Result<(), PipelineError>` — Register a dynamically constructed workflow.
+- pub `register_dynamic_workflow` function L523-552 — `( &self, name: &str, description: &str, tasks: Vec<DynamicTask>, ) -> Result<(),...` — Build and register a workflow from dynamic tasks.
+- pub `execute` function L558-617 — `( &self, workflow_name: &str, context: Context<serde_json::Value>, ) -> Result<E...` — Execute a registered workflow.
+- pub `trigger` function L623-630 — `( &self, workflow_name: &str, context: Context<serde_json::Value>, ) -> Result<E...` — Execute a workflow via push trigger.
+- pub `schedule_cron` function L639-663 — `( &self, workflow_name: &str, cron_expr: &str, timezone: &str, ) -> Result<Strin...` — Register a cron schedule for a workflow.
+- pub `list_schedules` function L666-682 — `(&self) -> Result<Vec<ScheduleInfo>, PipelineError>` — List all cron schedules.
+- pub `cancel_schedule` function L685-695 — `(&self, schedule_id: &str) -> Result<(), PipelineError>` — Cancel a cron schedule.
+- pub `list_workflows` function L698-700 — `(&self) -> Vec<String>` — List registered workflow names.
+- pub `has_workflow` function L703-705 — `(&self, name: &str) -> bool` — Check if a workflow is registered.
+- pub `shutdown` function L710-720 — `(self) -> Result<(), PipelineError>` — Gracefully shut down the engine.
 -  `PipelineConfig` type L50-60 — `impl Default for PipelineConfig` — cron scheduling, push triggers, and graceful shutdown.
 -  `default` function L51-59 — `() -> Self` — cron scheduling, push triggers, and graceful shutdown.
--  `tests` module L100-253 — `-` — cron scheduling, push triggers, and graceful shutdown.
+-  `tests` module L100-444 — `-` — cron scheduling, push triggers, and graceful shutdown.
 -  `test_engine` function L104-112 — `(dir: &Path) -> PipelineEngine` — cron scheduling, push triggers, and graceful shutdown.
 -  `test_pipeline_config_defaults` function L115-122 — `()` — cron scheduling, push triggers, and graceful shutdown.
 -  `test_execution_status_eq` function L125-137 — `()` — cron scheduling, push triggers, and graceful shutdown.
@@ -4976,7 +4976,16 @@
 -  `test_cancel_schedule_nonexistent_uuid` function L208-218 — `()` — cron scheduling, push triggers, and graceful shutdown.
 -  `test_register_and_has_workflow` function L221-238 — `()` — cron scheduling, push triggers, and graceful shutdown.
 -  `test_register_empty_tasks` function L241-252 — `()` — cron scheduling, push triggers, and graceful shutdown.
--  `PipelineEngine` type L278-512 — `= PipelineEngine` — cron scheduling, push triggers, and graceful shutdown.
+-  `test_register_duplicate_workflow` function L255-281 — `()` — cron scheduling, push triggers, and graceful shutdown.
+-  `test_register_multiple_workflows` function L284-305 — `()` — cron scheduling, push triggers, and graceful shutdown.
+-  `test_execution_result_has_id` function L308-326 — `()` — cron scheduling, push triggers, and graceful shutdown.
+-  `test_execution_preserves_initial_context` function L329-351 — `()` — cron scheduling, push triggers, and graceful shutdown.
+-  `test_task_failure_returns_failed_status` function L354-383 — `()` — cron scheduling, push triggers, and graceful shutdown.
+-  `test_list_schedules_empty` function L386-399 — `()` — cron scheduling, push triggers, and graceful shutdown.
+-  `test_execute_nonexistent_returns_error` function L402-410 — `()` — cron scheduling, push triggers, and graceful shutdown.
+-  `test_trigger_delegates_to_execute` function L413-430 — `()` — cron scheduling, push triggers, and graceful shutdown.
+-  `test_schedule_info_fields` function L433-443 — `()` — cron scheduling, push triggers, and graceful shutdown.
+-  `PipelineEngine` type L469-721 — `= PipelineEngine` — cron scheduling, push triggers, and graceful shutdown.
 
 #### crates/arawn-pipeline/src/error.rs
 
@@ -5152,6 +5161,14 @@
 -  `test_execute_nonexistent_workflow` function L96-105 — `()` — Integration tests for PipelineEngine.
 -  `test_trigger_is_execute` function L108-124 — `()` — Integration tests for PipelineEngine.
 -  `test_dynamic_task_with_dependencies` function L127-166 — `()` — Integration tests for PipelineEngine.
+-  `test_three_step_dependency_chain` function L169-222 — `()` — Integration tests for PipelineEngine.
+-  `test_parallel_independent_tasks` function L225-260 — `()` — Integration tests for PipelineEngine.
+-  `test_task_failure_produces_failed_status` function L263-295 — `()` — Integration tests for PipelineEngine.
+-  `test_failed_dependency_affects_downstream` function L298-342 — `()` — Integration tests for PipelineEngine.
+-  `test_concurrent_workflow_execution` function L345-390 — `()` — Integration tests for PipelineEngine.
+-  `test_context_passed_through_execution` function L393-422 — `()` — Integration tests for PipelineEngine.
+-  `test_execute_same_workflow_twice` function L425-452 — `()` — Integration tests for PipelineEngine.
+-  `test_schedule_and_list_cron` function L455-489 — `()` — Integration tests for PipelineEngine.
 
 ### crates/arawn-plugin/src
 
@@ -6098,7 +6115,7 @@
 -  `AppState` type L565-1238 — `= AppState` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
 -  `session_to_messages` function L1245-1254 — `(session: &Session) -> Vec<(String, String)>` — Convert a session's turns into owned `(role, content)` pairs.
 -  `messages_as_refs` function L1257-1262 — `(messages: &[(String, String)]) -> Vec<(&str, &str)>` — Convert owned message pairs to borrowed slices for the indexer API.
--  `tests` module L1265-1713 — `-` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
+-  `tests` module L1265-2018 — `-` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
 -  `create_test_state` function L1270-1278 — `() -> AppState` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
 -  `test_session_to_messages_empty` function L1281-1285 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
 -  `test_session_to_messages_with_turns` function L1288-1310 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
@@ -6119,10 +6136,24 @@
 -  `test_shared_services_builder` function L1615-1629 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
 -  `test_runtime_state_defaults` function L1632-1637 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
 -  `test_convenience_accessors` function L1640-1651 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_ws_connection_tracker_allows_under_limit` function L1656-1665 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_ws_connection_tracker_rate_limits` function L1668-1680 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_ws_connection_tracker_per_ip` function L1683-1698 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_ws_connection_tracker_cleanup` function L1701-1712 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
+-  `test_register_connection_adds_to_set` function L1656-1663 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
+-  `test_unregister_connection_removes_from_set` function L1666-1675 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
+-  `test_is_connection_active_multiple_connections` function L1678-1694 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
+-  `test_dead_owner_multiple_sessions_evicted` function L1699-1719 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
+-  `test_live_owner_blocks_claim` function L1722-1737 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
+-  `test_lifecycle_claim_die_evict` function L1742-1761 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
+-  `test_lifecycle_expired_token_then_new_claim` function L1764-1806 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
+-  `test_release_without_tokens_no_pending_reconnect` function L1809-1830 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
+-  `test_claim_unowned_session_no_active_connections_needed` function L1833-1842 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
+-  `test_ownership_independent_sessions` function L1845-1863 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
+-  `test_pending_reconnect_blocks_dead_owner_eviction` function L1866-1884 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
+-  `test_reclaim_generates_new_token` function L1887-1907 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
+-  `test_cleanup_only_removes_expired` function L1910-1947 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
+-  `test_is_session_owner_nonexistent_session` function L1950-1956 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
+-  `test_ws_connection_tracker_allows_under_limit` function L1961-1970 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
+-  `test_ws_connection_tracker_rate_limits` function L1973-1985 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
+-  `test_ws_connection_tracker_per_ip` function L1988-2003 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
+-  `test_ws_connection_tracker_cleanup` function L2006-2017 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
 
 ### crates/arawn-server/src/routes
 
