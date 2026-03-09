@@ -667,3 +667,305 @@ mod tests {
         );
     }
 }
+
+#[cfg(test)]
+mod concurrency_tests {
+    use super::*;
+    use crate::types::{ContentType, Memory, Note};
+    use std::sync::{Arc, Barrier};
+
+    fn create_test_store() -> MemoryStore {
+        MemoryStore::open_in_memory().unwrap()
+    }
+
+    #[test]
+    fn test_concurrent_writes_no_data_loss() {
+        let store = Arc::new(create_test_store());
+        let num_threads = 8;
+        let writes_per_thread = 20;
+        let barrier = Arc::new(Barrier::new(num_threads));
+
+        let handles: Vec<_> = (0..num_threads)
+            .map(|t| {
+                let store = Arc::clone(&store);
+                let barrier = Arc::clone(&barrier);
+                std::thread::spawn(move || {
+                    barrier.wait();
+                    for i in 0..writes_per_thread {
+                        let memory = Memory::new(
+                            ContentType::Note,
+                            format!("thread-{}-item-{}", t, i),
+                        );
+                        store.insert_memory(&memory).unwrap();
+                    }
+                })
+            })
+            .collect();
+
+        for h in handles {
+            h.join().unwrap();
+        }
+
+        let total = store.count_memories(None).unwrap();
+        assert_eq!(
+            total,
+            num_threads * writes_per_thread,
+            "All concurrent writes should be persisted"
+        );
+    }
+
+    #[test]
+    fn test_concurrent_reads_during_writes() {
+        let store = Arc::new(create_test_store());
+
+        // Pre-populate with some data.
+        for i in 0..10 {
+            store
+                .insert_memory(&Memory::new(ContentType::Note, format!("seed-{}", i)))
+                .unwrap();
+        }
+
+        let num_writers = 4;
+        let num_readers = 4;
+        let ops_per_thread = 20;
+        let barrier = Arc::new(Barrier::new(num_writers + num_readers));
+
+        let mut handles = Vec::new();
+
+        // Writers
+        for t in 0..num_writers {
+            let store = Arc::clone(&store);
+            let barrier = Arc::clone(&barrier);
+            handles.push(std::thread::spawn(move || {
+                barrier.wait();
+                for i in 0..ops_per_thread {
+                    let memory = Memory::new(
+                        ContentType::Fact,
+                        format!("writer-{}-item-{}", t, i),
+                    );
+                    store.insert_memory(&memory).unwrap();
+                }
+            }));
+        }
+
+        // Readers
+        for _ in 0..num_readers {
+            let store = Arc::clone(&store);
+            let barrier = Arc::clone(&barrier);
+            handles.push(std::thread::spawn(move || {
+                barrier.wait();
+                for _ in 0..ops_per_thread {
+                    let memories = store.list_memories(None, 100, 0).unwrap();
+                    // Should always have at least the seed data.
+                    assert!(
+                        memories.len() >= 10,
+                        "Readers should see at least seed data, got {}",
+                        memories.len()
+                    );
+                }
+            }));
+        }
+
+        for h in handles {
+            h.join().unwrap();
+        }
+
+        let total = store.count_memories(None).unwrap();
+        let expected = 10 + num_writers * ops_per_thread;
+        assert_eq!(total, expected);
+    }
+
+    #[test]
+    fn test_concurrent_delete_and_read_no_panic() {
+        let store = Arc::new(create_test_store());
+
+        // Insert memories we'll try to delete concurrently.
+        let mut ids = Vec::new();
+        for i in 0..20 {
+            let memory = Memory::new(ContentType::Note, format!("deletable-{}", i));
+            let id = memory.id;
+            store.insert_memory(&memory).unwrap();
+            ids.push(id);
+        }
+
+        let barrier = Arc::new(Barrier::new(2));
+
+        // Thread 1: delete all memories
+        let store1 = Arc::clone(&store);
+        let barrier1 = Arc::clone(&barrier);
+        let ids_clone = ids.clone();
+        let deleter = std::thread::spawn(move || {
+            barrier1.wait();
+            for id in &ids_clone {
+                let _ = store1.delete_memory(*id);
+            }
+        });
+
+        // Thread 2: read all memories (some may already be deleted)
+        let store2 = Arc::clone(&store);
+        let barrier2 = Arc::clone(&barrier);
+        let reader = std::thread::spawn(move || {
+            barrier2.wait();
+            for id in &ids {
+                // Should not panic — returns Ok(Some(...)) or Ok(None).
+                let result = store2.get_memory(*id);
+                assert!(result.is_ok(), "get_memory should not error: {:?}", result);
+            }
+        });
+
+        deleter.join().unwrap();
+        reader.join().unwrap();
+    }
+
+    #[test]
+    fn test_concurrent_search_returns_valid_results() {
+        let store = Arc::new(create_test_store());
+
+        // Populate with searchable content.
+        for i in 0..30 {
+            let content = if i % 2 == 0 {
+                format!("alpha-keyword-{}", i)
+            } else {
+                format!("beta-keyword-{}", i)
+            };
+            store
+                .insert_memory(&Memory::new(ContentType::Fact, content))
+                .unwrap();
+        }
+
+        let num_threads = 6;
+        let barrier = Arc::new(Barrier::new(num_threads));
+
+        let handles: Vec<_> = (0..num_threads)
+            .map(|t| {
+                let store = Arc::clone(&store);
+                let barrier = Arc::clone(&barrier);
+                std::thread::spawn(move || {
+                    barrier.wait();
+                    let query = if t % 2 == 0 { "alpha" } else { "beta" };
+                    for _ in 0..10 {
+                        let results = store.search_memories(query, 50).unwrap();
+                        assert!(
+                            !results.is_empty(),
+                            "Search for '{}' should return results",
+                            query
+                        );
+                        // Every returned result should contain the query term.
+                        for mem in &results {
+                            assert!(
+                                mem.content.contains(query),
+                                "Result '{}' should contain '{}'",
+                                mem.content,
+                                query
+                            );
+                        }
+                    }
+                })
+            })
+            .collect();
+
+        for h in handles {
+            h.join().unwrap();
+        }
+    }
+
+    #[test]
+    fn test_concurrent_note_writes_no_data_loss() {
+        let store = Arc::new(create_test_store());
+        let num_threads = 6;
+        let writes_per_thread = 15;
+        let barrier = Arc::new(Barrier::new(num_threads));
+
+        let handles: Vec<_> = (0..num_threads)
+            .map(|t| {
+                let store = Arc::clone(&store);
+                let barrier = Arc::clone(&barrier);
+                std::thread::spawn(move || {
+                    barrier.wait();
+                    for i in 0..writes_per_thread {
+                        let note = Note::new(format!("note-{}-{}", t, i))
+                            .with_title(format!("Title {}-{}", t, i))
+                            .with_tag("concurrent");
+                        store.insert_note(&note).unwrap();
+                    }
+                })
+            })
+            .collect();
+
+        for h in handles {
+            h.join().unwrap();
+        }
+
+        let stats = store.stats().unwrap();
+        assert_eq!(
+            stats.note_count,
+            num_threads * writes_per_thread,
+            "All concurrent note writes should be persisted"
+        );
+    }
+
+    #[test]
+    fn test_concurrent_mixed_operations_no_deadlock() {
+        // Exercises multiple operation types simultaneously to detect deadlocks.
+        let store = Arc::new(create_test_store());
+        let barrier = Arc::new(Barrier::new(4));
+
+        // Seed data
+        for i in 0..5 {
+            store
+                .insert_memory(&Memory::new(ContentType::Note, format!("seed-{}", i)))
+                .unwrap();
+            store
+                .insert_note(&Note::new(format!("seed-note-{}", i)))
+                .unwrap();
+        }
+
+        let s1 = Arc::clone(&store);
+        let b1 = Arc::clone(&barrier);
+        let t1 = std::thread::spawn(move || {
+            b1.wait();
+            for i in 0..20 {
+                s1.insert_memory(&Memory::new(ContentType::Fact, format!("t1-{}", i)))
+                    .unwrap();
+            }
+        });
+
+        let s2 = Arc::clone(&store);
+        let b2 = Arc::clone(&barrier);
+        let t2 = std::thread::spawn(move || {
+            b2.wait();
+            for _ in 0..20 {
+                let _ = s2.list_memories(None, 50, 0).unwrap();
+            }
+        });
+
+        let s3 = Arc::clone(&store);
+        let b3 = Arc::clone(&barrier);
+        let t3 = std::thread::spawn(move || {
+            b3.wait();
+            for i in 0..20 {
+                s3.insert_note(&Note::new(format!("t3-note-{}", i)))
+                    .unwrap();
+            }
+        });
+
+        let s4 = Arc::clone(&store);
+        let b4 = Arc::clone(&barrier);
+        let t4 = std::thread::spawn(move || {
+            b4.wait();
+            for _ in 0..20 {
+                let _ = s4.stats().unwrap();
+            }
+        });
+
+        t1.join().unwrap();
+        t2.join().unwrap();
+        t3.join().unwrap();
+        t4.join().unwrap();
+
+        // Verify final state is consistent.
+        let stats = store.stats().unwrap();
+        assert_eq!(stats.memory_count, 5 + 20); // seed + t1
+        assert_eq!(stats.note_count, 5 + 20); // seed + t3
+    }
+}

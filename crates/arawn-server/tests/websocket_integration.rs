@@ -340,3 +340,259 @@ async fn test_ws_multiple_sessions() -> Result<()> {
     ws.close().await?;
     Ok(())
 }
+
+// ---------------------------------------------------------------------------
+// Command dispatch
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn test_ws_command_unknown() -> Result<()> {
+    let server = TestServer::start().await?;
+    let mut ws = TestWsClient::connect(&server.ws_url()).await?;
+
+    let _ = ws.authenticate("test-token").await?;
+
+    let messages = ws
+        .command("nonexistent_command", serde_json::json!({}))
+        .await?;
+
+    // Should contain a CommandResult with success: false
+    let has_failure = messages.iter().any(|m| match m {
+        WsServerMessage::CommandResult {
+            command,
+            success,
+            result,
+        } => {
+            command == "nonexistent_command"
+                && !success
+                && result
+                    .get("error")
+                    .and_then(|e| e.as_str())
+                    .map_or(false, |e| e.contains("Unknown command"))
+        }
+        _ => false,
+    });
+
+    assert!(
+        has_failure,
+        "Unknown command should produce CommandResult with success=false. Got: {:?}",
+        messages
+    );
+
+    ws.close().await?;
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_ws_command_requires_auth() -> Result<()> {
+    let server = TestServer::start().await?;
+    let mut ws = TestWsClient::connect(&server.ws_url()).await?;
+
+    // Do NOT authenticate — send command immediately.
+    ws.send_json(&serde_json::json!({
+        "type": "command",
+        "command": "compact"
+    }))
+    .await?;
+
+    let msg = ws.recv().await?;
+
+    match msg {
+        WsServerMessage::Error { code, .. } => {
+            assert_eq!(code, "unauthorized", "Expected unauthorized error");
+        }
+        other => panic!("Expected Error, got: {:?}", other),
+    }
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_ws_command_compact_with_progress() -> Result<()> {
+    let server = TestServer::start().await?;
+    let mut ws = TestWsClient::connect(&server.ws_url()).await?;
+
+    let _ = ws.authenticate("test-token").await?;
+
+    // First create a session via chat so the compact command has a valid session
+    let chat_messages = ws.chat("Hello", None, None).await?;
+    let session_id = match &chat_messages[0] {
+        WsServerMessage::SessionCreated { session_id } => session_id.clone(),
+        other => panic!("Expected SessionCreated, got: {:?}", other),
+    };
+
+    // Now send compact command for that session
+    let messages = ws
+        .command("compact", serde_json::json!({ "session_id": session_id }))
+        .await?;
+
+    // Should contain a CommandProgress message
+    let has_progress = messages.iter().any(
+        |m| matches!(m, WsServerMessage::CommandProgress { command, .. } if command == "compact"),
+    );
+    assert!(
+        has_progress,
+        "Compact command should produce CommandProgress. Got: {:?}",
+        messages
+    );
+
+    // Should end with CommandResult
+    let has_result = messages.iter().any(
+        |m| matches!(m, WsServerMessage::CommandResult { command, .. } if command == "compact"),
+    );
+    assert!(
+        has_result,
+        "Compact command should produce CommandResult. Got: {:?}",
+        messages
+    );
+
+    ws.close().await?;
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_ws_command_compact_invalid_session() -> Result<()> {
+    let server = TestServer::start().await?;
+    let mut ws = TestWsClient::connect(&server.ws_url()).await?;
+
+    let _ = ws.authenticate("test-token").await?;
+
+    // Send compact with an invalid session_id
+    let messages = ws
+        .command("compact", serde_json::json!({ "session_id": "not-a-uuid" }))
+        .await?;
+
+    // Should end with a failed CommandResult
+    let has_failure = messages.iter().any(|m| match m {
+        WsServerMessage::CommandResult {
+            command, success, ..
+        } => command == "compact" && !success,
+        _ => false,
+    });
+    assert!(
+        has_failure,
+        "Compact with invalid session should fail. Got: {:?}",
+        messages
+    );
+
+    ws.close().await?;
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Tool call forwarding
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn test_ws_chat_tool_call_events_forwarded() -> Result<()> {
+    // Use the streaming mock backend which handles both complete_stream and complete
+    // consistently, producing tool_use events followed by text.
+    let server = TestServer::builder()
+        .with_streaming_backend(arawn_test_utils::StreamingMockBackend::tool_then_text(
+            "read_file",
+            "tool_call_1",
+            serde_json::json!({"path": "/foo.rs"}),
+            "Here is the file content.",
+        ))
+        .build()
+        .await?;
+
+    let mut ws = TestWsClient::connect(&server.ws_url()).await?;
+
+    let _ = ws.authenticate("test-token").await?;
+
+    let messages = ws.chat("Read foo.rs", None, None).await?;
+
+    // Should have a SessionCreated
+    assert!(
+        matches!(&messages[0], WsServerMessage::SessionCreated { .. }),
+        "First message should be SessionCreated"
+    );
+
+    // Should have ToolStart events
+    let has_tool_start = messages.iter().any(|m| match m {
+        WsServerMessage::ToolStart { tool_name, .. } => tool_name == "read_file",
+        _ => false,
+    });
+    assert!(
+        has_tool_start,
+        "Should see ToolStart for read_file. Got: {:?}",
+        messages
+    );
+
+    // Should have ToolEnd events
+    let has_tool_end = messages
+        .iter()
+        .any(|m| matches!(m, WsServerMessage::ToolEnd { .. }));
+    assert!(
+        has_tool_end,
+        "Should see ToolEnd event. Got: {:?}",
+        messages
+    );
+
+    ws.close().await?;
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Session-scoped message isolation
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn test_ws_session_scoped_isolation() -> Result<()> {
+    let server = TestServer::start_with_responses(vec![
+        "Response for client A".into(),
+        "Response for client B".into(),
+    ])
+    .await?;
+
+    // Client A
+    let mut ws_a = TestWsClient::connect(&server.ws_url()).await?;
+    let _ = ws_a.authenticate("test-token").await?;
+
+    let messages_a = ws_a.chat("Hello from A", None, None).await?;
+    let sid_a = match &messages_a[0] {
+        WsServerMessage::SessionCreated { session_id } => session_id.clone(),
+        other => panic!("Expected SessionCreated, got: {:?}", other),
+    };
+
+    // Client B
+    let mut ws_b = TestWsClient::connect(&server.ws_url()).await?;
+    let _ = ws_b.authenticate("test-token").await?;
+
+    let messages_b = ws_b.chat("Hello from B", None, None).await?;
+    let sid_b = match &messages_b[0] {
+        WsServerMessage::SessionCreated { session_id } => session_id.clone(),
+        other => panic!("Expected SessionCreated, got: {:?}", other),
+    };
+
+    // Sessions should be different
+    assert_ne!(
+        sid_a, sid_b,
+        "Different clients should get different sessions"
+    );
+
+    // All ChatChunks in A's messages should reference A's session
+    for msg in &messages_a {
+        if let WsServerMessage::ChatChunk { session_id, .. } = msg {
+            assert_eq!(
+                session_id, &sid_a,
+                "Client A's chunks should reference session A"
+            );
+        }
+    }
+
+    // All ChatChunks in B's messages should reference B's session
+    for msg in &messages_b {
+        if let WsServerMessage::ChatChunk { session_id, .. } = msg {
+            assert_eq!(
+                session_id, &sid_b,
+                "Client B's chunks should reference session B"
+            );
+        }
+    }
+
+    ws_a.close().await?;
+    ws_b.close().await?;
+    Ok(())
+}

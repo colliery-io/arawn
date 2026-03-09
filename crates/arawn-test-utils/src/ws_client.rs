@@ -68,6 +68,17 @@ pub enum WsServerMessage {
         percent: u8,
         status: String,
     },
+    CommandProgress {
+        command: String,
+        message: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        percent: Option<u8>,
+    },
+    CommandResult {
+        command: String,
+        success: bool,
+        result: serde_json::Value,
+    },
     #[serde(other)]
     Unknown,
 }
@@ -155,6 +166,21 @@ impl TestWsClient {
         }
     }
 
+    /// Send a command message and collect all response messages until a CommandResult is received.
+    pub async fn command(
+        &mut self,
+        command: &str,
+        args: serde_json::Value,
+    ) -> Result<Vec<WsServerMessage>> {
+        let msg = serde_json::json!({
+            "type": "command",
+            "command": command,
+            "args": args,
+        });
+        self.send_json(&msg).await?;
+        self.collect_until_command_done().await
+    }
+
     /// Send a cancel message.
     pub async fn cancel(&mut self, session_id: &str) -> Result<()> {
         let msg = serde_json::json!({
@@ -235,6 +261,32 @@ impl TestWsClient {
                 // Return what we collected so far
                 Ok(messages)
             }
+        }
+    }
+
+    /// Collect messages until a CommandResult or Error is received.
+    async fn collect_until_command_done(&mut self) -> Result<Vec<WsServerMessage>> {
+        let mut messages = Vec::new();
+        let deadline = Duration::from_secs(30);
+
+        let result = timeout(deadline, async {
+            loop {
+                let msg = self.recv().await?;
+                let is_done = matches!(&msg, WsServerMessage::CommandResult { .. });
+                let is_error = matches!(&msg, WsServerMessage::Error { .. });
+                messages.push(msg);
+                if is_done || is_error {
+                    break;
+                }
+            }
+            Ok::<(), anyhow::Error>(())
+        })
+        .await;
+
+        match result {
+            Ok(Ok(())) => Ok(messages),
+            Ok(Err(e)) => Err(e),
+            Err(_) => Ok(messages),
         }
     }
 

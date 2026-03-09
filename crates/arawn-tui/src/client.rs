@@ -185,6 +185,35 @@ impl WsClient {
             mock_client_rx: Some(client_rx),
         }
     }
+
+    /// Create a controllable mock client for testing reconnection flows.
+    ///
+    /// Returns `(WsClient, status_sender, message_sender)` so tests can inject
+    /// connection status changes and server messages.
+    #[cfg(test)]
+    pub(crate) fn mock_controllable() -> (
+        Self,
+        mpsc::UnboundedSender<ConnectionStatus>,
+        mpsc::UnboundedSender<ServerMessage>,
+    ) {
+        let (client_tx, client_rx) = mpsc::unbounded_channel::<ClientMessage>();
+        let (server_tx, server_rx) = mpsc::unbounded_channel::<ServerMessage>();
+        let (status_tx, status_rx) = mpsc::unbounded_channel::<ConnectionStatus>();
+
+        let task = tokio::spawn(async {});
+
+        let client = Self {
+            server_url: "ws://test:0".to_string(),
+            tx: client_tx,
+            rx: server_rx,
+            status_rx,
+            current_status: ConnectionStatus::Connected,
+            task,
+            mock_client_rx: Some(client_rx),
+        };
+
+        (client, status_tx, server_tx)
+    }
 }
 
 /// Connection loop that handles reconnection with exponential backoff.

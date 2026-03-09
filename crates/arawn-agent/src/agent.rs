@@ -1659,6 +1659,309 @@ mod tests {
         assert!(system_prompt.contains("Additional guidelines"));
     }
 
+    // ── End-to-End Agent Loop Tests ──────────────────────────────────
+
+    mod e2e_tests {
+        use super::*;
+        use std::sync::Arc;
+
+        /// Verify that tool output is sent back to the LLM as a tool result message.
+        #[tokio::test]
+        async fn test_tool_output_flows_back_to_llm() {
+            let backend = Arc::new(MockBackend::new(vec![
+                mock_tool_use_response(
+                    "call_1",
+                    "echo",
+                    serde_json::json!({"text": "hello world"}),
+                ),
+                mock_text_response("The echo tool returned: hello world"),
+            ]));
+
+            let mut tools = ToolRegistry::new();
+            tools.register(
+                MockTool::new("echo").with_response(ToolResult::text("ECHO: hello world")),
+            );
+
+            let agent = Agent::builder()
+                .with_shared_backend(backend.clone())
+                .with_tools(tools)
+                .build()
+                .unwrap();
+
+            let mut session = Session::new();
+            agent
+                .turn(&mut session, "Echo hello world", None)
+                .await
+                .unwrap();
+
+            // The second request should contain the tool result from the first call
+            let requests = backend.requests();
+            assert_eq!(requests.len(), 2);
+
+            // Inspect the second request's messages for tool result content
+            let second_req_messages = &requests[1].messages;
+            let has_tool_result = second_req_messages.iter().any(|msg| {
+                msg.content.blocks().iter().any(|block| match block {
+                    ContentBlock::ToolResult {
+                        content: Some(arawn_llm::ToolResultContent::Text(text)),
+                        ..
+                    } => text.contains("ECHO: hello world"),
+                    _ => false,
+                })
+            });
+            assert!(
+                has_tool_result,
+                "Tool output should appear in the follow-up LLM request"
+            );
+        }
+
+        /// Verify tool arguments are passed through to the tool exactly as the LLM specified.
+        #[tokio::test]
+        async fn test_tool_arguments_pass_through() {
+            let echo_tool = Arc::new(MockTool::new("echo").with_response(ToolResult::text("done")));
+
+            let backend = MockBackend::new(vec![
+                mock_tool_use_response(
+                    "call_1",
+                    "echo",
+                    serde_json::json!({"message": "test input", "count": 3}),
+                ),
+                mock_text_response("Done."),
+            ]);
+
+            let mut tools = ToolRegistry::new();
+            tools.register_arc(echo_tool.clone());
+
+            let agent = Agent::builder()
+                .with_backend(backend)
+                .with_tools(tools)
+                .build()
+                .unwrap();
+
+            let mut session = Session::new();
+            agent.turn(&mut session, "Echo it", None).await.unwrap();
+
+            assert_eq!(echo_tool.call_count(), 1);
+            let args = &echo_tool.calls()[0];
+            assert_eq!(args["message"], "test input");
+            assert_eq!(args["count"], 3);
+        }
+
+        /// Multi-turn conversation with tools: first turn uses a tool, second turn follows up.
+        #[tokio::test]
+        async fn test_multi_turn_with_tool_then_followup() {
+            let backend = Arc::new(MockBackend::new(vec![
+                // Turn 1: tool call
+                mock_tool_use_response("call_1", "lookup", serde_json::json!({"key": "user_name"})),
+                // Turn 1: final response after tool
+                mock_text_response("Your name is Alice."),
+                // Turn 2: text-only response referencing previous context
+                mock_text_response("Yes, I already told you — your name is Alice."),
+            ]));
+
+            let mut tools = ToolRegistry::new();
+            tools.register(MockTool::new("lookup").with_response(ToolResult::text("Alice")));
+
+            let agent = Agent::builder()
+                .with_shared_backend(backend.clone())
+                .with_tools(tools)
+                .build()
+                .unwrap();
+
+            let mut session = Session::new();
+
+            // Turn 1: uses tool
+            let r1 = agent
+                .turn(&mut session, "What is my name?", None)
+                .await
+                .unwrap();
+            assert_eq!(r1.text, "Your name is Alice.");
+            assert_eq!(r1.tool_calls.len(), 1);
+            assert_eq!(r1.iterations, 2);
+
+            // Turn 2: follow-up without tools
+            let r2 = agent
+                .turn(&mut session, "Can you repeat that?", None)
+                .await
+                .unwrap();
+            assert_eq!(r2.text, "Yes, I already told you — your name is Alice.");
+            assert!(r2.tool_calls.is_empty());
+            assert_eq!(r2.iterations, 1);
+
+            // Verify the third LLM request includes the full history:
+            // user msg 1, assistant (tool_use), tool result, assistant text, user msg 2
+            let requests = backend.requests();
+            assert_eq!(requests.len(), 3);
+            let third_req = &requests[2];
+            // Should have: user("What is my name?"), assistant(tool_use), user(tool_result),
+            //              assistant("Your name is Alice."), user("Can you repeat that?") -- but
+            //              build_messages reconstructs from session turns, so check message count
+            assert!(
+                third_req.messages.len() >= 3,
+                "Third request should have full conversation history"
+            );
+        }
+
+        /// Session state records tool calls and results correctly after a turn.
+        #[tokio::test]
+        async fn test_session_records_tool_state() {
+            let backend = MockBackend::new(vec![
+                mock_tool_use_response("call_abc", "greet", serde_json::json!({"name": "Bob"})),
+                mock_text_response("Hello, Bob!"),
+            ]);
+
+            let mut tools = ToolRegistry::new();
+            tools.register(
+                MockTool::new("greet").with_response(ToolResult::text("Greeting sent to Bob")),
+            );
+
+            let agent = Agent::builder()
+                .with_backend(backend)
+                .with_tools(tools)
+                .build()
+                .unwrap();
+
+            let mut session = Session::new();
+            let response = agent.turn(&mut session, "Greet Bob", None).await.unwrap();
+
+            // Verify session turn state
+            assert_eq!(session.turn_count(), 1);
+            let turn = &session.all_turns()[0];
+            assert_eq!(turn.user_message, "Greet Bob");
+            assert_eq!(turn.assistant_response.as_deref(), Some("Hello, Bob!"));
+
+            // Turn should record tool calls and results
+            assert_eq!(turn.tool_calls.len(), 1);
+            assert_eq!(turn.tool_calls[0].id, "call_abc");
+            assert_eq!(turn.tool_calls[0].name, "greet");
+            assert_eq!(turn.tool_calls[0].arguments["name"], "Bob");
+
+            assert_eq!(turn.tool_results.len(), 1);
+            assert!(turn.tool_results[0].success);
+            assert!(
+                turn.tool_results[0]
+                    .content
+                    .contains("Greeting sent to Bob")
+            );
+
+            // AgentResponse should match
+            assert_eq!(response.tool_calls.len(), 1);
+            assert_eq!(response.tool_results.len(), 1);
+        }
+
+        /// Tool error result flows back to the LLM and the agent produces a graceful response.
+        #[tokio::test]
+        async fn test_tool_error_flows_back_to_llm() {
+            let backend = Arc::new(MockBackend::new(vec![
+                mock_tool_use_response("call_1", "risky_op", serde_json::json!({})),
+                mock_text_response("The operation failed, but I can help you recover."),
+            ]));
+
+            let mut tools = ToolRegistry::new();
+            tools.register(
+                MockTool::new("risky_op").with_response(ToolResult::error("Permission denied")),
+            );
+
+            let agent = Agent::builder()
+                .with_shared_backend(backend.clone())
+                .with_tools(tools)
+                .build()
+                .unwrap();
+
+            let mut session = Session::new();
+            let response = agent
+                .turn(&mut session, "Do the risky thing", None)
+                .await
+                .unwrap();
+
+            assert_eq!(
+                response.text,
+                "The operation failed, but I can help you recover."
+            );
+            assert!(!response.tool_results[0].success);
+
+            // Verify the error was sent back to the LLM in the second request
+            let requests = backend.requests();
+            let second_messages = &requests[1].messages;
+            let has_error_result = second_messages.iter().any(|msg| {
+                msg.content
+                    .blocks()
+                    .iter()
+                    .any(|block| matches!(block, ContentBlock::ToolResult { is_error: true, .. }))
+            });
+            assert!(
+                has_error_result,
+                "Error tool result should be sent back to LLM"
+            );
+        }
+
+        /// Multiple sequential tool calls within a single turn.
+        #[tokio::test]
+        async fn test_multiple_sequential_tool_calls() {
+            let backend = MockBackend::new(vec![
+                // First iteration: call tool A
+                mock_tool_use_response("call_1", "step_one", serde_json::json!({})),
+                // Second iteration: call tool B
+                mock_tool_use_response("call_2", "step_two", serde_json::json!({})),
+                // Third iteration: final text
+                mock_text_response("Both steps completed."),
+            ]);
+
+            let mut tools = ToolRegistry::new();
+            tools
+                .register(MockTool::new("step_one").with_response(ToolResult::text("step 1 done")));
+            tools
+                .register(MockTool::new("step_two").with_response(ToolResult::text("step 2 done")));
+
+            let agent = Agent::builder()
+                .with_backend(backend)
+                .with_tools(tools)
+                .build()
+                .unwrap();
+
+            let mut session = Session::new();
+            let response = agent
+                .turn(&mut session, "Do both steps", None)
+                .await
+                .unwrap();
+
+            assert_eq!(response.text, "Both steps completed.");
+            assert_eq!(response.tool_calls.len(), 2);
+            assert_eq!(response.tool_calls[0].name, "step_one");
+            assert_eq!(response.tool_calls[1].name, "step_two");
+            assert_eq!(response.iterations, 3);
+
+            // Both tool results should be successful
+            assert!(response.tool_results.iter().all(|r| r.success));
+        }
+
+        /// Usage tokens accumulate correctly across tool-call iterations.
+        #[tokio::test]
+        async fn test_usage_accumulates_across_iterations() {
+            let backend = MockBackend::new(vec![
+                mock_tool_use_response("call_1", "echo", serde_json::json!({})),
+                mock_text_response("Done"),
+            ]);
+
+            let mut tools = ToolRegistry::new();
+            tools.register(MockTool::new("echo"));
+
+            let agent = Agent::builder()
+                .with_backend(backend)
+                .with_tools(tools)
+                .build()
+                .unwrap();
+
+            let mut session = Session::new();
+            let response = agent.turn(&mut session, "Go", None).await.unwrap();
+
+            // Each mock response uses Usage::new(10, 20), so 2 iterations = 20 input, 40 output
+            assert_eq!(response.usage.input_tokens, 20);
+            assert_eq!(response.usage.output_tokens, 40);
+            assert_eq!(response.usage.total(), 60);
+        }
+    }
+
     // ── Active Recall Tests ──────────────────────────────────────────
 
     mod recall_tests {

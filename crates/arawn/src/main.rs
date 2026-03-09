@@ -159,6 +159,488 @@ async fn main() {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ── Ask Subcommand ──────────────────────────────────────────────
+
+    #[test]
+    fn test_ask_with_prompt() {
+        let cli = Cli::try_parse_from(["arawn", "ask", "What is Rust?"]).unwrap();
+        match cli.command {
+            Commands::Ask(args) => {
+                assert_eq!(args.prompt, "What is Rust?");
+                assert!(args.session.is_none());
+                assert!(!args.no_memory);
+            }
+            _ => panic!("Expected Ask command"),
+        }
+    }
+
+    #[test]
+    fn test_ask_with_session() {
+        let cli = Cli::try_parse_from(["arawn", "ask", "-s", "sess-123", "Follow up"]).unwrap();
+        match cli.command {
+            Commands::Ask(args) => {
+                assert_eq!(args.prompt, "Follow up");
+                assert_eq!(args.session.as_deref(), Some("sess-123"));
+            }
+            _ => panic!("Expected Ask command"),
+        }
+    }
+
+    #[test]
+    fn test_ask_with_no_memory() {
+        let cli = Cli::try_parse_from(["arawn", "ask", "--no-memory", "Quick question"]).unwrap();
+        match cli.command {
+            Commands::Ask(args) => {
+                assert!(args.no_memory);
+                assert_eq!(args.prompt, "Quick question");
+            }
+            _ => panic!("Expected Ask command"),
+        }
+    }
+
+    #[test]
+    fn test_ask_missing_prompt() {
+        let result = Cli::try_parse_from(["arawn", "ask"]);
+        assert!(result.is_err());
+    }
+
+    // ── Memory Subcommand ───────────────────────────────────────────
+
+    #[test]
+    fn test_memory_search() {
+        let cli = Cli::try_parse_from(["arawn", "memory", "search", "Rust ownership"]).unwrap();
+        match cli.command {
+            Commands::Memory(args) => match args.command {
+                memory::MemoryCommand::Search { query, limit } => {
+                    assert_eq!(query, "Rust ownership");
+                    assert_eq!(limit, 10); // default
+                }
+                _ => panic!("Expected Search"),
+            },
+            _ => panic!("Expected Memory command"),
+        }
+    }
+
+    #[test]
+    fn test_memory_search_with_limit() {
+        let cli = Cli::try_parse_from(["arawn", "memory", "search", "test", "-l", "5"]).unwrap();
+        match cli.command {
+            Commands::Memory(args) => match args.command {
+                memory::MemoryCommand::Search { query, limit } => {
+                    assert_eq!(query, "test");
+                    assert_eq!(limit, 5);
+                }
+                _ => panic!("Expected Search"),
+            },
+            _ => panic!("Expected Memory command"),
+        }
+    }
+
+    #[test]
+    fn test_memory_recent() {
+        let cli = Cli::try_parse_from(["arawn", "memory", "recent"]).unwrap();
+        match cli.command {
+            Commands::Memory(args) => match args.command {
+                memory::MemoryCommand::Recent { limit } => {
+                    assert_eq!(limit, 10); // default
+                }
+                _ => panic!("Expected Recent"),
+            },
+            _ => panic!("Expected Memory command"),
+        }
+    }
+
+    #[test]
+    fn test_memory_recent_with_limit() {
+        let cli = Cli::try_parse_from(["arawn", "memory", "recent", "-l", "3"]).unwrap();
+        match cli.command {
+            Commands::Memory(args) => match args.command {
+                memory::MemoryCommand::Recent { limit } => {
+                    assert_eq!(limit, 3);
+                }
+                _ => panic!("Expected Recent"),
+            },
+            _ => panic!("Expected Memory command"),
+        }
+    }
+
+    #[test]
+    fn test_memory_stats() {
+        let cli = Cli::try_parse_from(["arawn", "memory", "stats"]).unwrap();
+        match cli.command {
+            Commands::Memory(args) => {
+                assert!(matches!(args.command, memory::MemoryCommand::Stats));
+            }
+            _ => panic!("Expected Memory command"),
+        }
+    }
+
+    #[test]
+    fn test_memory_reindex_defaults() {
+        let cli = Cli::try_parse_from(["arawn", "memory", "reindex"]).unwrap();
+        match cli.command {
+            Commands::Memory(args) => match args.command {
+                memory::MemoryCommand::Reindex { dry_run, yes } => {
+                    assert!(!dry_run);
+                    assert!(!yes);
+                }
+                _ => panic!("Expected Reindex"),
+            },
+            _ => panic!("Expected Memory command"),
+        }
+    }
+
+    #[test]
+    fn test_memory_reindex_dry_run() {
+        let cli = Cli::try_parse_from(["arawn", "memory", "reindex", "--dry-run"]).unwrap();
+        match cli.command {
+            Commands::Memory(args) => match args.command {
+                memory::MemoryCommand::Reindex { dry_run, yes } => {
+                    assert!(dry_run);
+                    assert!(!yes);
+                }
+                _ => panic!("Expected Reindex"),
+            },
+            _ => panic!("Expected Memory command"),
+        }
+    }
+
+    #[test]
+    fn test_memory_reindex_yes() {
+        let cli = Cli::try_parse_from(["arawn", "memory", "reindex", "-y"]).unwrap();
+        match cli.command {
+            Commands::Memory(args) => match args.command {
+                memory::MemoryCommand::Reindex { dry_run, yes } => {
+                    assert!(!dry_run);
+                    assert!(yes);
+                }
+                _ => panic!("Expected Reindex"),
+            },
+            _ => panic!("Expected Memory command"),
+        }
+    }
+
+    #[test]
+    fn test_memory_export_no_output() {
+        let cli = Cli::try_parse_from(["arawn", "memory", "export"]).unwrap();
+        match cli.command {
+            Commands::Memory(args) => match args.command {
+                memory::MemoryCommand::Export { output } => {
+                    assert!(output.is_none());
+                }
+                _ => panic!("Expected Export"),
+            },
+            _ => panic!("Expected Memory command"),
+        }
+    }
+
+    #[test]
+    fn test_memory_export_with_output() {
+        let cli = Cli::try_parse_from(["arawn", "memory", "export", "-o", "out.json"]).unwrap();
+        match cli.command {
+            Commands::Memory(args) => match args.command {
+                memory::MemoryCommand::Export { output } => {
+                    assert_eq!(output.as_deref(), Some("out.json"));
+                }
+                _ => panic!("Expected Export"),
+            },
+            _ => panic!("Expected Memory command"),
+        }
+    }
+
+    #[test]
+    fn test_memory_search_missing_query() {
+        let result = Cli::try_parse_from(["arawn", "memory", "search"]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_memory_missing_subcommand() {
+        let result = Cli::try_parse_from(["arawn", "memory"]);
+        assert!(result.is_err());
+    }
+
+    // ── Notes Subcommand ────────────────────────────────────────────
+
+    #[test]
+    fn test_notes_add() {
+        let cli = Cli::try_parse_from(["arawn", "notes", "add", "Remember to refactor"]).unwrap();
+        match cli.command {
+            Commands::Notes(args) => match args.command {
+                notes::NotesCommand::Add { content, tags } => {
+                    assert_eq!(content, "Remember to refactor");
+                    assert!(tags.is_empty());
+                }
+                _ => panic!("Expected Add"),
+            },
+            _ => panic!("Expected Notes command"),
+        }
+    }
+
+    #[test]
+    fn test_notes_add_with_tags() {
+        let cli = Cli::try_parse_from([
+            "arawn", "notes", "add", "Fix auth", "-t", "todo", "-t", "backend",
+        ])
+        .unwrap();
+        match cli.command {
+            Commands::Notes(args) => match args.command {
+                notes::NotesCommand::Add { content, tags } => {
+                    assert_eq!(content, "Fix auth");
+                    assert_eq!(tags, vec!["todo", "backend"]);
+                }
+                _ => panic!("Expected Add"),
+            },
+            _ => panic!("Expected Notes command"),
+        }
+    }
+
+    #[test]
+    fn test_notes_list_default() {
+        let cli = Cli::try_parse_from(["arawn", "notes", "list"]).unwrap();
+        match cli.command {
+            Commands::Notes(args) => match args.command {
+                notes::NotesCommand::List { limit } => {
+                    assert_eq!(limit, 20); // default
+                }
+                _ => panic!("Expected List"),
+            },
+            _ => panic!("Expected Notes command"),
+        }
+    }
+
+    #[test]
+    fn test_notes_list_with_limit() {
+        let cli = Cli::try_parse_from(["arawn", "notes", "list", "-l", "5"]).unwrap();
+        match cli.command {
+            Commands::Notes(args) => match args.command {
+                notes::NotesCommand::List { limit } => {
+                    assert_eq!(limit, 5);
+                }
+                _ => panic!("Expected List"),
+            },
+            _ => panic!("Expected Notes command"),
+        }
+    }
+
+    #[test]
+    fn test_notes_search() {
+        let cli = Cli::try_parse_from(["arawn", "notes", "search", "refactor"]).unwrap();
+        match cli.command {
+            Commands::Notes(args) => match args.command {
+                notes::NotesCommand::Search { query } => {
+                    assert_eq!(query, "refactor");
+                }
+                _ => panic!("Expected Search"),
+            },
+            _ => panic!("Expected Notes command"),
+        }
+    }
+
+    #[test]
+    fn test_notes_show() {
+        let cli = Cli::try_parse_from(["arawn", "notes", "show", "abc123"]).unwrap();
+        match cli.command {
+            Commands::Notes(args) => match args.command {
+                notes::NotesCommand::Show { id } => {
+                    assert_eq!(id, "abc123");
+                }
+                _ => panic!("Expected Show"),
+            },
+            _ => panic!("Expected Notes command"),
+        }
+    }
+
+    #[test]
+    fn test_notes_delete() {
+        let cli = Cli::try_parse_from(["arawn", "notes", "delete", "abc123"]).unwrap();
+        match cli.command {
+            Commands::Notes(args) => match args.command {
+                notes::NotesCommand::Delete { id } => {
+                    assert_eq!(id, "abc123");
+                }
+                _ => panic!("Expected Delete"),
+            },
+            _ => panic!("Expected Notes command"),
+        }
+    }
+
+    #[test]
+    fn test_notes_add_missing_content() {
+        let result = Cli::try_parse_from(["arawn", "notes", "add"]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_notes_show_missing_id() {
+        let result = Cli::try_parse_from(["arawn", "notes", "show"]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_notes_delete_missing_id() {
+        let result = Cli::try_parse_from(["arawn", "notes", "delete"]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_notes_search_missing_query() {
+        let result = Cli::try_parse_from(["arawn", "notes", "search"]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_notes_missing_subcommand() {
+        let result = Cli::try_parse_from(["arawn", "notes"]);
+        assert!(result.is_err());
+    }
+
+    // ── Auth Subcommand ─────────────────────────────────────────────
+
+    #[test]
+    fn test_auth_login() {
+        let cli = Cli::try_parse_from(["arawn", "auth", "login"]).unwrap();
+        match cli.command {
+            Commands::Auth(args) => {
+                assert!(matches!(args.command, auth::AuthCommand::Login));
+            }
+            _ => panic!("Expected Auth command"),
+        }
+    }
+
+    #[test]
+    fn test_auth_status() {
+        let cli = Cli::try_parse_from(["arawn", "auth", "status"]).unwrap();
+        match cli.command {
+            Commands::Auth(args) => {
+                assert!(matches!(args.command, auth::AuthCommand::Status));
+            }
+            _ => panic!("Expected Auth command"),
+        }
+    }
+
+    #[test]
+    fn test_auth_logout() {
+        let cli = Cli::try_parse_from(["arawn", "auth", "logout"]).unwrap();
+        match cli.command {
+            Commands::Auth(args) => {
+                assert!(matches!(args.command, auth::AuthCommand::Logout));
+            }
+            _ => panic!("Expected Auth command"),
+        }
+    }
+
+    #[test]
+    fn test_auth_token_default() {
+        let cli = Cli::try_parse_from(["arawn", "auth", "token"]).unwrap();
+        match cli.command {
+            Commands::Auth(args) => match args.command {
+                auth::AuthCommand::Token { generate } => {
+                    assert!(!generate);
+                }
+                _ => panic!("Expected Token"),
+            },
+            _ => panic!("Expected Auth command"),
+        }
+    }
+
+    #[test]
+    fn test_auth_token_generate() {
+        let cli = Cli::try_parse_from(["arawn", "auth", "token", "--generate"]).unwrap();
+        match cli.command {
+            Commands::Auth(args) => match args.command {
+                auth::AuthCommand::Token { generate } => {
+                    assert!(generate);
+                }
+                _ => panic!("Expected Token"),
+            },
+            _ => panic!("Expected Auth command"),
+        }
+    }
+
+    #[test]
+    fn test_auth_missing_subcommand() {
+        let result = Cli::try_parse_from(["arawn", "auth"]);
+        assert!(result.is_err());
+    }
+
+    // ── Session Subcommand ──────────────────────────────────────────
+
+    #[test]
+    fn test_session_list() {
+        let cli = Cli::try_parse_from(["arawn", "session", "list"]).unwrap();
+        match cli.command {
+            Commands::Session(args) => {
+                assert!(matches!(args.command, session::SessionCommands::List));
+            }
+            _ => panic!("Expected Session command"),
+        }
+    }
+
+    #[test]
+    fn test_session_show() {
+        let cli = Cli::try_parse_from(["arawn", "session", "show", "sess-abc"]).unwrap();
+        match cli.command {
+            Commands::Session(args) => match args.command {
+                session::SessionCommands::Show { id } => {
+                    assert_eq!(id, "sess-abc");
+                }
+                _ => panic!("Expected Show"),
+            },
+            _ => panic!("Expected Session command"),
+        }
+    }
+
+    #[test]
+    fn test_session_show_missing_id() {
+        let result = Cli::try_parse_from(["arawn", "session", "show"]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_session_missing_subcommand() {
+        let result = Cli::try_parse_from(["arawn", "session"]);
+        assert!(result.is_err());
+    }
+
+    // ── Global Flags ────────────────────────────────────────────────
+
+    #[test]
+    fn test_global_verbose_flag() {
+        let cli = Cli::try_parse_from(["arawn", "-v", "ask", "test"]).unwrap();
+        assert!(cli.verbose);
+    }
+
+    #[test]
+    fn test_global_json_flag() {
+        let cli = Cli::try_parse_from(["arawn", "--json", "ask", "test"]).unwrap();
+        assert!(cli.json);
+    }
+
+    #[test]
+    fn test_global_server_flag() {
+        let cli =
+            Cli::try_parse_from(["arawn", "--server", "http://other:9090", "ask", "test"]).unwrap();
+        assert_eq!(cli.server.as_deref(), Some("http://other:9090"));
+    }
+
+    #[test]
+    fn test_global_context_flag() {
+        let cli = Cli::try_parse_from(["arawn", "--context", "staging", "ask", "test"]).unwrap();
+        assert_eq!(cli.context.as_deref(), Some("staging"));
+    }
+
+    #[test]
+    fn test_no_command() {
+        let result = Cli::try_parse_from(["arawn"]);
+        assert!(result.is_err());
+    }
+}
+
 async fn run() -> Result<()> {
     let cli = Cli::parse();
 

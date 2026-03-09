@@ -435,4 +435,241 @@ mod tests {
         let watcher = PluginWatcher::new(manager).with_debounce(Duration::from_millis(100));
         assert_eq!(watcher.debounce, Duration::from_millis(100));
     }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Hot-reload state preservation tests
+    // ─────────────────────────────────────────────────────────────────────
+
+    /// Create a plugin with a skill file for reload testing.
+    fn create_plugin_with_skill(base_dir: &Path, name: &str, skill_body: &str) -> PathBuf {
+        let plugin_dir = base_dir.join(name);
+        fs::create_dir_all(plugin_dir.join(".claude-plugin")).unwrap();
+        fs::create_dir_all(plugin_dir.join("skills").join("my-skill")).unwrap();
+
+        fs::write(
+            plugin_dir.join(MANIFEST_PATH),
+            format!(
+                r#"{{
+  "name": "{name}",
+  "version": "1.0.0",
+  "description": "Test plugin",
+  "skills": "./skills/"
+}}"#
+            ),
+        )
+        .unwrap();
+
+        fs::write(
+            plugin_dir.join("skills/my-skill/SKILL.md"),
+            format!("---\nname: my-skill\ndescription: A skill\n---\n\n{skill_body}"),
+        )
+        .unwrap();
+
+        plugin_dir
+    }
+
+    #[tokio::test]
+    async fn test_reload_updates_skill_content() {
+        let tmp = TempDir::new().unwrap();
+        let plugin_dir = create_plugin_with_skill(tmp.path(), "myplug", "Version 1 content");
+
+        let manager = PluginManager::new(vec![tmp.path().to_path_buf()]);
+        let watcher = PluginWatcher::new(manager);
+        watcher.load_initial().await;
+
+        // Verify initial content
+        {
+            let state = watcher.state();
+            let st = state.read().await;
+            let p = st.get_by_name("myplug").unwrap();
+            assert_eq!(p.skill_contents.len(), 1);
+            assert!(p.skill_contents[0].content.contains("Version 1 content"));
+        }
+
+        // Modify skill content on disk
+        fs::write(
+            plugin_dir.join("skills/my-skill/SKILL.md"),
+            "---\nname: my-skill\ndescription: Updated\n---\n\nVersion 2 content",
+        )
+        .unwrap();
+
+        // Reload
+        let event = watcher.reload_plugin(&plugin_dir).await;
+        assert!(matches!(event, PluginEvent::Reloaded { .. }));
+
+        // Verify updated content
+        let state = watcher.state();
+        let st = state.read().await;
+        let p = st.get_by_name("myplug").unwrap();
+        assert!(p.skill_contents[0].content.contains("Version 2 content"));
+        assert!(!p.skill_contents[0].content.contains("Version 1 content"));
+    }
+
+    #[tokio::test]
+    async fn test_reload_updates_version() {
+        let tmp = TempDir::new().unwrap();
+        let plugin_dir = create_test_plugin(tmp.path(), "vtest");
+
+        let manager = PluginManager::new(vec![tmp.path().to_path_buf()]);
+        let watcher = PluginWatcher::new(manager);
+        watcher.load_initial().await;
+
+        {
+            let state = watcher.state();
+            let st = state.read().await;
+            assert_eq!(
+                st.get_by_name("vtest").unwrap().manifest.version.as_deref(),
+                Some("0.1.0")
+            );
+        }
+
+        // Update version on disk
+        fs::write(
+            plugin_dir.join(MANIFEST_PATH),
+            r#"{ "name": "vtest", "version": "2.0.0", "description": "Updated" }"#,
+        )
+        .unwrap();
+
+        watcher.reload_plugin(&plugin_dir).await;
+
+        let state = watcher.state();
+        let st = state.read().await;
+        assert_eq!(
+            st.get_by_name("vtest").unwrap().manifest.version.as_deref(),
+            Some("2.0.0")
+        );
+    }
+
+    #[tokio::test]
+    async fn test_reload_added_skill_appears() {
+        let tmp = TempDir::new().unwrap();
+        let plugin_dir = create_test_plugin(tmp.path(), "addskill");
+
+        let manager = PluginManager::new(vec![tmp.path().to_path_buf()]);
+        let watcher = PluginWatcher::new(manager);
+        watcher.load_initial().await;
+
+        // Initially no skills (create_test_plugin doesn't add skills dir)
+        {
+            let state = watcher.state();
+            let st = state.read().await;
+            let p = st.get_by_name("addskill").unwrap();
+            assert_eq!(p.skill_contents.len(), 0);
+        }
+
+        // Add a skill on disk and update manifest
+        fs::write(
+            plugin_dir.join(MANIFEST_PATH),
+            r#"{ "name": "addskill", "version": "0.1.0", "skills": "./skills/" }"#,
+        )
+        .unwrap();
+        fs::create_dir_all(plugin_dir.join("skills/new-skill")).unwrap();
+        fs::write(
+            plugin_dir.join("skills/new-skill/SKILL.md"),
+            "---\nname: new-skill\ndescription: Brand new\n---\n\nNew skill body.",
+        )
+        .unwrap();
+
+        watcher.reload_plugin(&plugin_dir).await;
+
+        let state = watcher.state();
+        let st = state.read().await;
+        let p = st.get_by_name("addskill").unwrap();
+        assert_eq!(p.skill_contents.len(), 1);
+        assert_eq!(p.skill_contents[0].def.name, "new-skill");
+    }
+
+    #[tokio::test]
+    async fn test_remove_and_readd_plugin() {
+        let tmp = TempDir::new().unwrap();
+        let plugin_dir = create_test_plugin(tmp.path(), "bounce");
+
+        let manager = PluginManager::new(vec![tmp.path().to_path_buf()]);
+        let watcher = PluginWatcher::new(manager);
+        watcher.load_initial().await;
+
+        assert_eq!(watcher.state().read().await.len(), 1);
+
+        // Remove
+        watcher.remove_plugin(&plugin_dir).await;
+        assert_eq!(watcher.state().read().await.len(), 0);
+
+        // Re-add via reload
+        let event = watcher.reload_plugin(&plugin_dir).await;
+        assert!(matches!(event, PluginEvent::Reloaded { .. }));
+        assert_eq!(watcher.state().read().await.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_reload_other_plugins_unaffected() {
+        let tmp = TempDir::new().unwrap();
+        let _dir_a = create_plugin_with_skill(tmp.path(), "alpha", "Alpha content");
+        let dir_b = create_plugin_with_skill(tmp.path(), "beta", "Beta content");
+
+        let manager = PluginManager::new(vec![tmp.path().to_path_buf()]);
+        let watcher = PluginWatcher::new(manager);
+        watcher.load_initial().await;
+
+        // Reload only beta
+        fs::write(
+            dir_b.join("skills/my-skill/SKILL.md"),
+            "---\nname: my-skill\ndescription: Updated\n---\n\nBeta v2 content",
+        )
+        .unwrap();
+        watcher.reload_plugin(&dir_b).await;
+
+        let state = watcher.state();
+        let st = state.read().await;
+
+        // Alpha should be unchanged
+        let alpha = st.get_by_name("alpha").unwrap();
+        assert!(alpha.skill_contents[0].content.contains("Alpha content"));
+
+        // Beta should be updated
+        let beta = st.get_by_name("beta").unwrap();
+        assert!(beta.skill_contents[0].content.contains("Beta v2 content"));
+    }
+
+    #[tokio::test]
+    async fn test_concurrent_read_during_reload() {
+        let tmp = TempDir::new().unwrap();
+        let plugin_dir = create_plugin_with_skill(tmp.path(), "concurrent", "Initial");
+
+        let manager = PluginManager::new(vec![tmp.path().to_path_buf()]);
+        let watcher = PluginWatcher::new(manager);
+        watcher.load_initial().await;
+
+        let state = watcher.state();
+
+        // Simulate an "active session" reading state
+        let state_clone = state.clone();
+        let reader = tokio::spawn(async move {
+            // Read state multiple times — should never panic
+            for _ in 0..10 {
+                {
+                    let st = state_clone.read().await;
+                    let _ = st.plugins();
+                    let _ = st.get_by_name("concurrent");
+                }
+                tokio::task::yield_now().await;
+            }
+        });
+
+        // Simultaneously reload the plugin
+        fs::write(
+            plugin_dir.join("skills/my-skill/SKILL.md"),
+            "---\nname: my-skill\ndescription: Updated\n---\n\nReloaded content",
+        )
+        .unwrap();
+        watcher.reload_plugin(&plugin_dir).await;
+
+        // Reader should complete without panicking
+        reader.await.unwrap();
+
+        // State should be consistent after concurrent operations
+        let state_ref = state.clone();
+        let st = state_ref.read().await;
+        let p = st.get_by_name("concurrent").unwrap();
+        assert!(p.skill_contents[0].content.contains("Reloaded content"));
+    }
 }

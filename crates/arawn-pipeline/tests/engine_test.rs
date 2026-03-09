@@ -451,6 +451,211 @@ async fn test_execute_same_workflow_twice() {
     engine.shutdown().await.unwrap();
 }
 
+// ── Timeout Enforcement Tests ──────────────────────────────────────
+
+/// Helper to create an engine with a short task timeout.
+async fn test_engine_with_timeout(dir: &Path, task_timeout_secs: u64) -> PipelineEngine {
+    let db_path = dir.join("timeout_test.db");
+    let config = PipelineConfig {
+        cron_enabled: false,
+        triggers_enabled: false,
+        task_timeout_secs,
+        ..Default::default()
+    };
+    PipelineEngine::new(&db_path, config)
+        .await
+        .expect("engine init failed")
+}
+
+#[tokio::test]
+async fn test_task_timeout_produces_failed_status() {
+    let dir = tempfile::tempdir().unwrap();
+    // 1-second timeout
+    let engine = test_engine_with_timeout(dir.path(), 1).await;
+
+    // Task sleeps for 5 seconds — well past the 1s timeout
+    let slow_task = DynamicTask::new(
+        "slow_task",
+        Arc::new(|ctx| {
+            Box::pin(async move {
+                tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+                Ok(ctx)
+            })
+        }),
+    );
+
+    engine
+        .register_dynamic_workflow("timeout-wf", "Should timeout", vec![slow_task])
+        .await
+        .unwrap();
+
+    let ctx = Context::new();
+    let result = engine.execute("timeout-wf", ctx).await.unwrap();
+
+    assert!(
+        matches!(result.status, ExecutionStatus::Failed(_)),
+        "Expected Failed status from timeout, got: {:?}",
+        result.status
+    );
+
+    // Verify the failure message mentions timeout
+    if let ExecutionStatus::Failed(msg) = &result.status {
+        let lower = msg.to_lowercase();
+        assert!(
+            lower.contains("timeout") || lower.contains("timed out") || lower.contains("cancelled"),
+            "Expected timeout-related error message, got: {}",
+            msg
+        );
+    }
+
+    engine.shutdown().await.unwrap();
+}
+
+#[tokio::test]
+async fn test_fast_task_unaffected_by_short_timeout() {
+    let dir = tempfile::tempdir().unwrap();
+    // 5-second timeout — plenty of time for a fast task
+    let engine = test_engine_with_timeout(dir.path(), 5).await;
+
+    let fast_task = DynamicTask::new(
+        "fast_task",
+        Arc::new(|mut ctx| {
+            Box::pin(async move {
+                ctx.insert("completed", serde_json::json!(true)).unwrap();
+                Ok(ctx)
+            })
+        }),
+    );
+
+    engine
+        .register_dynamic_workflow("fast-wf", "Should complete", vec![fast_task])
+        .await
+        .unwrap();
+
+    let ctx = Context::new();
+    let result = engine.execute("fast-wf", ctx).await.unwrap();
+
+    assert_eq!(result.status, ExecutionStatus::Completed);
+    engine.shutdown().await.unwrap();
+}
+
+#[tokio::test]
+async fn test_one_task_timeout_does_not_block_pipeline_result() {
+    let dir = tempfile::tempdir().unwrap();
+    // 1-second timeout
+    let engine = test_engine_with_timeout(dir.path(), 1).await;
+
+    // Task A: fast, completes immediately
+    let fast_task = DynamicTask::new(
+        "fast_independent",
+        Arc::new(|mut ctx| {
+            Box::pin(async move {
+                ctx.insert("fast_done", serde_json::json!(true)).unwrap();
+                Ok(ctx)
+            })
+        }),
+    );
+
+    // Task B: slow, will timeout (no dependency on A — runs in parallel)
+    let slow_task = DynamicTask::new(
+        "slow_independent",
+        Arc::new(|ctx| {
+            Box::pin(async move {
+                tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+                Ok(ctx)
+            })
+        }),
+    );
+
+    engine
+        .register_dynamic_workflow("mixed-wf", "One fast, one slow", vec![fast_task, slow_task])
+        .await
+        .unwrap();
+
+    let ctx = Context::new();
+    let result = engine.execute("mixed-wf", ctx).await.unwrap();
+
+    // The pipeline should report failure because the slow task timed out
+    assert!(
+        matches!(result.status, ExecutionStatus::Failed(_)),
+        "Expected Failed from timed-out task, got: {:?}",
+        result.status
+    );
+
+    engine.shutdown().await.unwrap();
+}
+
+#[tokio::test]
+async fn test_pipeline_timeout_kills_long_workflow() {
+    let dir = tempfile::tempdir().unwrap();
+    let db_path = dir.path().join("pipeline_timeout.db");
+    let config = PipelineConfig {
+        cron_enabled: false,
+        triggers_enabled: false,
+        task_timeout_secs: 60,    // individual tasks have long timeout
+        pipeline_timeout_secs: 1, // but entire pipeline times out in 1s
+        ..Default::default()
+    };
+    let engine = PipelineEngine::new(&db_path, config).await.unwrap();
+
+    // Chain of slow tasks — each within task timeout but total exceeds pipeline timeout
+    let task_a = DynamicTask::new(
+        "chain_a",
+        Arc::new(|ctx| {
+            Box::pin(async move {
+                tokio::time::sleep(std::time::Duration::from_millis(800)).await;
+                Ok(ctx)
+            })
+        }),
+    );
+
+    let task_b = DynamicTask::new(
+        "chain_b",
+        Arc::new(|ctx| {
+            Box::pin(async move {
+                tokio::time::sleep(std::time::Duration::from_millis(800)).await;
+                Ok(ctx)
+            })
+        }),
+    )
+    .with_dependency_id("chain_a");
+
+    engine
+        .register_dynamic_workflow(
+            "slow-chain",
+            "Exceeds pipeline timeout",
+            vec![task_a, task_b],
+        )
+        .await
+        .unwrap();
+
+    let ctx = Context::new();
+    let result = engine.execute("slow-chain", ctx).await;
+
+    // Pipeline timeout surfaces as either:
+    // - Err(ExecutionFailed("Pipeline timeout ..."))
+    // - Ok(ExecutionResult { status: Failed(...) })
+    match result {
+        Err(e) => {
+            let msg = e.to_string().to_lowercase();
+            assert!(
+                msg.contains("timeout"),
+                "Expected timeout error, got: {}",
+                e
+            );
+        }
+        Ok(r) => {
+            assert!(
+                matches!(r.status, ExecutionStatus::Failed(_)),
+                "Expected Failed status, got: {:?}",
+                r.status
+            );
+        }
+    }
+
+    engine.shutdown().await.unwrap();
+}
+
 #[tokio::test]
 async fn test_schedule_and_list_cron() {
     let dir = tempfile::tempdir().unwrap();

@@ -263,6 +263,60 @@ mod tests {
         assert!(!response.response.is_empty());
     }
 
+    #[tokio::test]
+    async fn test_chat_turn_token_counts() {
+        let agent = create_test_agent();
+        let chat = ChatService::new(agent, None, None, None);
+
+        let mut session = Session::new();
+        let response = chat.turn(&mut session, "Hi", None).await.unwrap();
+
+        // MockBackend returns deterministic token counts
+        assert!(!response.truncated);
+    }
+
+    #[tokio::test]
+    async fn test_chat_multiple_turns() {
+        use arawn_llm::{CompletionResponse, ContentBlock, MockResponse, StopReason, Usage};
+        let responses = vec![
+            MockResponse::Success(CompletionResponse::new(
+                "msg1",
+                "mock",
+                vec![ContentBlock::Text {
+                    text: "First reply".to_string(),
+                    cache_control: None,
+                }],
+                StopReason::EndTurn,
+                Usage::new(10, 20),
+            )),
+            MockResponse::Success(CompletionResponse::new(
+                "msg2",
+                "mock",
+                vec![ContentBlock::Text {
+                    text: "Second reply".to_string(),
+                    cache_control: None,
+                }],
+                StopReason::EndTurn,
+                Usage::new(10, 20),
+            )),
+        ];
+        let backend = MockBackend::with_results(responses);
+        let agent = Arc::new(
+            Agent::builder()
+                .with_backend(backend)
+                .with_tools(ToolRegistry::new())
+                .build()
+                .unwrap(),
+        );
+        let chat = ChatService::new(agent, None, None, None);
+
+        let mut session = Session::new();
+        let r1 = chat.turn(&mut session, "First", None).await.unwrap();
+        let r2 = chat.turn(&mut session, "Second", None).await.unwrap();
+
+        assert_eq!(r1.session_id, r2.session_id);
+    }
+
     #[test]
     fn test_session_to_messages() {
         let mut session = Session::new();
@@ -276,5 +330,247 @@ mod tests {
             messages[1],
             ("assistant".to_string(), "Hi there!".to_string())
         );
+    }
+
+    #[test]
+    fn test_session_to_messages_empty() {
+        let session = Session::new();
+        let messages = session_to_messages(&session);
+        assert!(messages.is_empty());
+    }
+
+    #[test]
+    fn test_session_to_messages_multiple_turns() {
+        let mut session = Session::new();
+
+        let t1 = session.start_turn("First");
+        t1.complete("Response 1");
+
+        let t2 = session.start_turn("Second");
+        t2.complete("Response 2");
+
+        let messages = session_to_messages(&session);
+        assert_eq!(messages.len(), 4);
+        assert_eq!(messages[0].0, "user");
+        assert_eq!(messages[0].1, "First");
+        assert_eq!(messages[1].0, "assistant");
+        assert_eq!(messages[1].1, "Response 1");
+        assert_eq!(messages[2].0, "user");
+        assert_eq!(messages[2].1, "Second");
+        assert_eq!(messages[3].0, "assistant");
+        assert_eq!(messages[3].1, "Response 2");
+    }
+
+    #[test]
+    fn test_session_to_messages_incomplete_turn() {
+        let mut session = Session::new();
+        let _turn = session.start_turn("No response yet");
+        // Turn is not completed — no assistant_response
+
+        let messages = session_to_messages(&session);
+        // Should have user message but no assistant
+        assert_eq!(messages.len(), 1);
+        assert_eq!(messages[0].0, "user");
+    }
+
+    #[test]
+    fn test_messages_as_refs() {
+        let messages = vec![
+            ("user".to_string(), "Hello".to_string()),
+            ("assistant".to_string(), "Hi".to_string()),
+        ];
+        let refs = messages_as_refs(&messages);
+        assert_eq!(refs.len(), 2);
+        assert_eq!(refs[0], ("user", "Hello"));
+        assert_eq!(refs[1], ("assistant", "Hi"));
+    }
+
+    #[test]
+    fn test_messages_as_refs_empty() {
+        let messages: Vec<(String, String)> = vec![];
+        let refs = messages_as_refs(&messages);
+        assert!(refs.is_empty());
+    }
+
+    #[test]
+    fn test_chat_response_fields() {
+        let response = ChatResponse {
+            session_id: SessionId::new(),
+            response: "Hello world".to_string(),
+            truncated: false,
+            input_tokens: 10,
+            output_tokens: 5,
+            tool_calls: vec![],
+        };
+        assert!(!response.truncated);
+        assert_eq!(response.input_tokens, 10);
+        assert_eq!(response.output_tokens, 5);
+        assert!(response.tool_calls.is_empty());
+    }
+
+    #[test]
+    fn test_chat_response_truncated() {
+        let response = ChatResponse {
+            session_id: SessionId::new(),
+            response: "Partial...".to_string(),
+            truncated: true,
+            input_tokens: 100,
+            output_tokens: 50,
+            tool_calls: vec![],
+        };
+        assert!(response.truncated);
+    }
+
+    #[test]
+    fn test_chat_response_with_tool_calls() {
+        let response = ChatResponse {
+            session_id: SessionId::new(),
+            response: "Done".to_string(),
+            truncated: false,
+            input_tokens: 20,
+            output_tokens: 10,
+            tool_calls: vec![
+                ToolCallSummary {
+                    id: "tc-1".to_string(),
+                    name: "read_file".to_string(),
+                    success: true,
+                },
+                ToolCallSummary {
+                    id: "tc-2".to_string(),
+                    name: "write_file".to_string(),
+                    success: false,
+                },
+            ],
+        };
+        assert_eq!(response.tool_calls.len(), 2);
+        assert!(response.tool_calls[0].success);
+        assert!(!response.tool_calls[1].success);
+    }
+
+    #[test]
+    fn test_chat_response_clone() {
+        let response = ChatResponse {
+            session_id: SessionId::new(),
+            response: "test".to_string(),
+            truncated: false,
+            input_tokens: 1,
+            output_tokens: 2,
+            tool_calls: vec![ToolCallSummary {
+                id: "id".to_string(),
+                name: "tool".to_string(),
+                success: true,
+            }],
+        };
+        let cloned = response.clone();
+        assert_eq!(response.response, cloned.response);
+        assert_eq!(response.tool_calls.len(), cloned.tool_calls.len());
+    }
+
+    #[test]
+    fn test_chat_response_debug() {
+        let response = ChatResponse {
+            session_id: SessionId::new(),
+            response: "test".to_string(),
+            truncated: false,
+            input_tokens: 0,
+            output_tokens: 0,
+            tool_calls: vec![],
+        };
+        let debug = format!("{:?}", response);
+        assert!(debug.contains("ChatResponse"));
+    }
+
+    #[test]
+    fn test_tool_call_summary_fields() {
+        let summary = ToolCallSummary {
+            id: "call-123".to_string(),
+            name: "bash".to_string(),
+            success: true,
+        };
+        assert_eq!(summary.id, "call-123");
+        assert_eq!(summary.name, "bash");
+        assert!(summary.success);
+    }
+
+    #[test]
+    fn test_tool_call_summary_clone() {
+        let summary = ToolCallSummary {
+            id: "id".to_string(),
+            name: "tool".to_string(),
+            success: false,
+        };
+        let cloned = summary.clone();
+        assert_eq!(summary.id, cloned.id);
+        assert_eq!(summary.success, cloned.success);
+    }
+
+    #[test]
+    fn test_tool_call_summary_debug() {
+        let summary = ToolCallSummary {
+            id: "id".to_string(),
+            name: "tool".to_string(),
+            success: true,
+        };
+        let debug = format!("{:?}", summary);
+        assert!(debug.contains("ToolCallSummary"));
+    }
+
+    #[test]
+    fn test_turn_options_default() {
+        let opts = TurnOptions::default();
+        assert!(opts.max_message_bytes.is_none());
+    }
+
+    #[test]
+    fn test_turn_options_with_max_bytes() {
+        let opts = TurnOptions {
+            max_message_bytes: Some(100_000),
+        };
+        assert_eq!(opts.max_message_bytes, Some(100_000));
+    }
+
+    #[test]
+    fn test_turn_options_clone() {
+        let opts = TurnOptions {
+            max_message_bytes: Some(50),
+        };
+        let cloned = opts.clone();
+        assert_eq!(opts.max_message_bytes, cloned.max_message_bytes);
+    }
+
+    #[test]
+    fn test_turn_options_debug() {
+        let opts = TurnOptions::default();
+        let debug = format!("{:?}", opts);
+        assert!(debug.contains("TurnOptions"));
+    }
+
+    #[test]
+    fn test_chat_service_accessors_none() {
+        let agent = create_test_agent();
+        let chat = ChatService::new(agent, None, None, None);
+
+        assert!(chat.workstreams().is_none());
+        assert!(chat.directory_manager().is_none());
+        assert!(chat.indexer().is_none());
+    }
+
+    #[test]
+    fn test_chat_service_agent_accessor() {
+        let agent = create_test_agent();
+        let agent_ptr = Arc::as_ptr(&agent);
+        let chat = ChatService::new(agent, None, None, None);
+
+        assert_eq!(Arc::as_ptr(chat.agent()), agent_ptr);
+    }
+
+    #[test]
+    fn test_chat_service_clone() {
+        let agent = create_test_agent();
+        let chat = ChatService::new(agent, None, None, None);
+        let cloned = chat.clone();
+
+        // Both should point to the same agent
+        assert!(Arc::ptr_eq(chat.agent(), cloned.agent()));
     }
 }

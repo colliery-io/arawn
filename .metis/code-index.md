@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-03-08T19:55:28Z | 323 files | Rust
+> Generated: 2026-03-09T01:21:43Z | 324 files | Rust
 
 ## Project Structure
 
@@ -256,6 +256,7 @@
 │   │       │   └── mod.rs
 │   │       ├── context_management.rs
 │   │       ├── memory_integration.rs
+│   │       ├── ratelimit_integration.rs
 │   │       ├── server_integration.rs
 │   │       ├── streaming_integration.rs
 │   │       ├── validation_integration.rs
@@ -721,7 +722,51 @@
 -  `commands` module L9 — `-` — Main entry point for the Arawn CLI.
 -  `resolve_server_url` function L112-141 — `(server_flag: Option<&str>, context_flag: Option<&str>) -> String` — Resolve the server URL from various sources.
 -  `main` function L148-160 — `()` — Main entry point for the Arawn CLI.
--  `run` function L162-233 — `() -> Result<()>` — Main entry point for the Arawn CLI.
+-  `tests` module L163-642 — `-` — Main entry point for the Arawn CLI.
+-  `test_ask_with_prompt` function L169-179 — `()` — Main entry point for the Arawn CLI.
+-  `test_ask_with_session` function L182-191 — `()` — Main entry point for the Arawn CLI.
+-  `test_ask_with_no_memory` function L194-203 — `()` — Main entry point for the Arawn CLI.
+-  `test_ask_missing_prompt` function L206-209 — `()` — Main entry point for the Arawn CLI.
+-  `test_memory_search` function L214-226 — `()` — Main entry point for the Arawn CLI.
+-  `test_memory_search_with_limit` function L229-241 — `()` — Main entry point for the Arawn CLI.
+-  `test_memory_recent` function L244-255 — `()` — Main entry point for the Arawn CLI.
+-  `test_memory_recent_with_limit` function L258-269 — `()` — Main entry point for the Arawn CLI.
+-  `test_memory_stats` function L272-280 — `()` — Main entry point for the Arawn CLI.
+-  `test_memory_reindex_defaults` function L283-295 — `()` — Main entry point for the Arawn CLI.
+-  `test_memory_reindex_dry_run` function L298-310 — `()` — Main entry point for the Arawn CLI.
+-  `test_memory_reindex_yes` function L313-325 — `()` — Main entry point for the Arawn CLI.
+-  `test_memory_export_no_output` function L328-339 — `()` — Main entry point for the Arawn CLI.
+-  `test_memory_export_with_output` function L342-353 — `()` — Main entry point for the Arawn CLI.
+-  `test_memory_search_missing_query` function L356-359 — `()` — Main entry point for the Arawn CLI.
+-  `test_memory_missing_subcommand` function L362-365 — `()` — Main entry point for the Arawn CLI.
+-  `test_notes_add` function L370-382 — `()` — Main entry point for the Arawn CLI.
+-  `test_notes_add_with_tags` function L385-400 — `()` — Main entry point for the Arawn CLI.
+-  `test_notes_list_default` function L403-414 — `()` — Main entry point for the Arawn CLI.
+-  `test_notes_list_with_limit` function L417-428 — `()` — Main entry point for the Arawn CLI.
+-  `test_notes_search` function L431-442 — `()` — Main entry point for the Arawn CLI.
+-  `test_notes_show` function L445-456 — `()` — Main entry point for the Arawn CLI.
+-  `test_notes_delete` function L459-470 — `()` — Main entry point for the Arawn CLI.
+-  `test_notes_add_missing_content` function L473-476 — `()` — Main entry point for the Arawn CLI.
+-  `test_notes_show_missing_id` function L479-482 — `()` — Main entry point for the Arawn CLI.
+-  `test_notes_delete_missing_id` function L485-488 — `()` — Main entry point for the Arawn CLI.
+-  `test_notes_search_missing_query` function L491-494 — `()` — Main entry point for the Arawn CLI.
+-  `test_notes_missing_subcommand` function L497-500 — `()` — Main entry point for the Arawn CLI.
+-  `test_auth_login` function L505-513 — `()` — Main entry point for the Arawn CLI.
+-  `test_auth_status` function L516-524 — `()` — Main entry point for the Arawn CLI.
+-  `test_auth_logout` function L527-535 — `()` — Main entry point for the Arawn CLI.
+-  `test_auth_token_default` function L538-549 — `()` — Main entry point for the Arawn CLI.
+-  `test_auth_token_generate` function L552-563 — `()` — Main entry point for the Arawn CLI.
+-  `test_auth_missing_subcommand` function L566-569 — `()` — Main entry point for the Arawn CLI.
+-  `test_session_list` function L574-582 — `()` — Main entry point for the Arawn CLI.
+-  `test_session_show` function L585-596 — `()` — Main entry point for the Arawn CLI.
+-  `test_session_show_missing_id` function L599-602 — `()` — Main entry point for the Arawn CLI.
+-  `test_session_missing_subcommand` function L605-608 — `()` — Main entry point for the Arawn CLI.
+-  `test_global_verbose_flag` function L613-616 — `()` — Main entry point for the Arawn CLI.
+-  `test_global_json_flag` function L619-622 — `()` — Main entry point for the Arawn CLI.
+-  `test_global_server_flag` function L625-629 — `()` — Main entry point for the Arawn CLI.
+-  `test_global_context_flag` function L632-635 — `()` — Main entry point for the Arawn CLI.
+-  `test_no_command` function L638-641 — `()` — Main entry point for the Arawn CLI.
+-  `run` function L644-715 — `() -> Result<()>` — Main entry point for the Arawn CLI.
 
 ### crates/arawn/tests
 
@@ -859,7 +904,7 @@
 -  `AgentBuilder` type L815-1111 — `= AgentBuilder` — conversation loop, handles tool execution, and manages context.
 -  `AgentBuilder` type L1113-1117 — `impl Default for AgentBuilder` — conversation loop, handles tool execution, and manages context.
 -  `default` function L1114-1116 — `() -> Self` — conversation loop, handles tool execution, and manages context.
--  `tests` module L1124-1803 — `-` — conversation loop, handles tool execution, and manages context.
+-  `tests` module L1124-2106 — `-` — conversation loop, handles tool execution, and manages context.
 -  `mock_text_response` function L1129-1140 — `(text: &str) -> CompletionResponse` — conversation loop, handles tool execution, and manages context.
 -  `mock_tool_use_response` function L1142-1159 — `( tool_id: &str, tool_name: &str, args: serde_json::Value, ) -> CompletionRespon...` — conversation loop, handles tool execution, and manages context.
 -  `test_agent_builder_no_backend` function L1162-1165 — `()` — conversation loop, handles tool execution, and manages context.
@@ -883,19 +928,27 @@
 -  `test_agent_with_prompt_file` function L1581-1601 — `()` — conversation loop, handles tool execution, and manages context.
 -  `test_agent_with_multiple_prompt_files` function L1604-1627 — `()` — conversation loop, handles tool execution, and manages context.
 -  `test_agent_combine_bootstrap_dir_and_prompt_file` function L1630-1660 — `()` — conversation loop, handles tool execution, and manages context.
--  `recall_tests` module L1664-1802 — `-` — conversation loop, handles tool execution, and manages context.
--  `FixedEmbedder` struct L1672-1674 — `{ dims: usize }` — Simple mock embedder that returns a fixed vector.
--  `FixedEmbedder` type L1676-1680 — `= FixedEmbedder` — conversation loop, handles tool execution, and manages context.
--  `new` function L1677-1679 — `(dims: usize) -> Self` — conversation loop, handles tool execution, and manages context.
--  `FixedEmbedder` type L1683-1695 — `impl Embedder for FixedEmbedder` — conversation loop, handles tool execution, and manages context.
--  `embed` function L1684-1686 — `(&self, _text: &str) -> arawn_llm::Result<Vec<f32>>` — conversation loop, handles tool execution, and manages context.
--  `dimensions` function L1688-1690 — `(&self) -> usize` — conversation loop, handles tool execution, and manages context.
--  `name` function L1692-1694 — `(&self) -> &str` — conversation loop, handles tool execution, and manages context.
--  `create_recall_store` function L1697-1702 — `(dims: usize) -> Arc<MemoryStore>` — conversation loop, handles tool execution, and manages context.
--  `test_recall_injects_context` function L1706-1738 — `()` — conversation loop, handles tool execution, and manages context.
--  `test_recall_no_results` function L1742-1764 — `()` — conversation loop, handles tool execution, and manages context.
--  `test_recall_disabled_config` function L1767-1782 — `()` — conversation loop, handles tool execution, and manages context.
--  `test_recall_no_embedder` function L1785-1801 — `()` — conversation loop, handles tool execution, and manages context.
+-  `e2e_tests` module L1664-1963 — `-` — conversation loop, handles tool execution, and manages context.
+-  `test_tool_output_flows_back_to_llm` function L1670-1716 — `()` — Verify that tool output is sent back to the LLM as a tool result message.
+-  `test_tool_arguments_pass_through` function L1720-1748 — `()` — Verify tool arguments are passed through to the tool exactly as the LLM specified.
+-  `test_multi_turn_with_tool_then_followup` function L1752-1803 — `()` — Multi-turn conversation with tools: first turn uses a tool, second turn follows up.
+-  `test_session_records_tool_state` function L1807-1850 — `()` — Session state records tool calls and results correctly after a turn.
+-  `test_tool_error_flows_back_to_llm` function L1854-1896 — `()` — Tool error result flows back to the LLM and the agent produces a graceful response.
+-  `test_multiple_sequential_tool_calls` function L1900-1936 — `()` — Multiple sequential tool calls within a single turn.
+-  `test_usage_accumulates_across_iterations` function L1940-1962 — `()` — Usage tokens accumulate correctly across tool-call iterations.
+-  `recall_tests` module L1967-2105 — `-` — conversation loop, handles tool execution, and manages context.
+-  `FixedEmbedder` struct L1975-1977 — `{ dims: usize }` — Simple mock embedder that returns a fixed vector.
+-  `FixedEmbedder` type L1979-1983 — `= FixedEmbedder` — conversation loop, handles tool execution, and manages context.
+-  `new` function L1980-1982 — `(dims: usize) -> Self` — conversation loop, handles tool execution, and manages context.
+-  `FixedEmbedder` type L1986-1998 — `impl Embedder for FixedEmbedder` — conversation loop, handles tool execution, and manages context.
+-  `embed` function L1987-1989 — `(&self, _text: &str) -> arawn_llm::Result<Vec<f32>>` — conversation loop, handles tool execution, and manages context.
+-  `dimensions` function L1991-1993 — `(&self) -> usize` — conversation loop, handles tool execution, and manages context.
+-  `name` function L1995-1997 — `(&self) -> &str` — conversation loop, handles tool execution, and manages context.
+-  `create_recall_store` function L2000-2005 — `(dims: usize) -> Arc<MemoryStore>` — conversation loop, handles tool execution, and manages context.
+-  `test_recall_injects_context` function L2009-2041 — `()` — conversation loop, handles tool execution, and manages context.
+-  `test_recall_no_results` function L2045-2067 — `()` — conversation loop, handles tool execution, and manages context.
+-  `test_recall_disabled_config` function L2070-2085 — `()` — conversation loop, handles tool execution, and manages context.
+-  `test_recall_no_embedder` function L2088-2104 — `()` — conversation loop, handles tool execution, and manages context.
 
 #### crates/arawn-agent/src/compaction.rs
 
@@ -3268,6 +3321,17 @@
 
 - pub `DomainError` enum L7-35 — `SessionNotFound | WorkstreamNotFound | Agent | Mcp | Workstream | Config | Inter...` — Domain-level errors.
 - pub `Result` type L38 — `= std::result::Result<T, DomainError>` — Result type for domain operations.
+-  `tests` module L41-110 — `-` — Domain error types.
+-  `test_session_not_found_display` function L45-48 — `()` — Domain error types.
+-  `test_workstream_not_found_display` function L51-54 — `()` — Domain error types.
+-  `test_mcp_error_display` function L57-60 — `()` — Domain error types.
+-  `test_config_error_display` function L63-66 — `()` — Domain error types.
+-  `test_internal_error_display` function L69-72 — `()` — Domain error types.
+-  `test_error_debug_impl` function L75-79 — `()` — Domain error types.
+-  `test_empty_string_variants` function L82-88 — `()` — Domain error types.
+-  `test_special_chars_in_error` function L91-97 — `()` — Domain error types.
+-  `test_result_type_ok` function L100-103 — `()` — Domain error types.
+-  `test_result_type_err` function L106-109 — `()` — Domain error types.
 
 #### crates/arawn-domain/src/lib.rs
 
@@ -3297,10 +3361,32 @@
 -  `build_response` function L188-214 — `(&self, session_id: SessionId, response: &AgentResponse) -> ChatResponse` — Build a ChatResponse from an AgentResponse.
 -  `session_to_messages` function L218-227 — `(session: &Session) -> Vec<(String, String)>` — Convert a session's turns into owned `(role, content)` pairs.
 -  `messages_as_refs` function L230-235 — `(messages: &[(String, String)]) -> Vec<(&str, &str)>` — Convert owned message pairs to borrowed slices for the indexer API.
--  `tests` module L238-280 — `-` — and workstream persistence.
+-  `tests` module L238-576 — `-` — and workstream persistence.
 -  `create_test_agent` function L243-252 — `() -> Arc<Agent>` — and workstream persistence.
 -  `test_chat_turn` function L255-264 — `()` — and workstream persistence.
--  `test_session_to_messages` function L267-279 — `()` — and workstream persistence.
+-  `test_chat_turn_token_counts` function L267-276 — `()` — and workstream persistence.
+-  `test_chat_multiple_turns` function L279-318 — `()` — and workstream persistence.
+-  `test_session_to_messages` function L321-333 — `()` — and workstream persistence.
+-  `test_session_to_messages_empty` function L336-340 — `()` — and workstream persistence.
+-  `test_session_to_messages_multiple_turns` function L343-362 — `()` — and workstream persistence.
+-  `test_session_to_messages_incomplete_turn` function L365-374 — `()` — and workstream persistence.
+-  `test_messages_as_refs` function L377-386 — `()` — and workstream persistence.
+-  `test_messages_as_refs_empty` function L389-393 — `()` — and workstream persistence.
+-  `test_chat_response_fields` function L396-409 — `()` — and workstream persistence.
+-  `test_chat_response_truncated` function L412-422 — `()` — and workstream persistence.
+-  `test_chat_response_with_tool_calls` function L425-448 — `()` — and workstream persistence.
+-  `test_chat_response_clone` function L451-467 — `()` — and workstream persistence.
+-  `test_chat_response_debug` function L470-481 — `()` — and workstream persistence.
+-  `test_tool_call_summary_fields` function L484-493 — `()` — and workstream persistence.
+-  `test_tool_call_summary_clone` function L496-505 — `()` — and workstream persistence.
+-  `test_tool_call_summary_debug` function L508-516 — `()` — and workstream persistence.
+-  `test_turn_options_default` function L519-522 — `()` — and workstream persistence.
+-  `test_turn_options_with_max_bytes` function L525-530 — `()` — and workstream persistence.
+-  `test_turn_options_clone` function L533-539 — `()` — and workstream persistence.
+-  `test_turn_options_debug` function L542-546 — `()` — and workstream persistence.
+-  `test_chat_service_accessors_none` function L549-556 — `()` — and workstream persistence.
+-  `test_chat_service_agent_accessor` function L559-565 — `()` — and workstream persistence.
+-  `test_chat_service_clone` function L568-575 — `()` — and workstream persistence.
 
 #### crates/arawn-domain/src/services/mcp.rs
 
@@ -3318,8 +3404,28 @@
 - pub `connect_all` function L120-133 — `(&self) -> Result<()>` — Connect to all configured MCP servers.
 - pub `shutdown_all` function L136-149 — `(&self) -> Result<()>` — Shutdown all MCP server connections.
 -  `McpService` type L47-150 — `= McpService` — and their tools.
--  `tests` module L153-161 — `-` — and their tools.
--  `test_mcp_service_disabled` function L157-160 — `()` — and their tools.
+-  `tests` module L153-359 — `-` — and their tools.
+-  `test_mcp_service_disabled` function L157-161 — `()` — and their tools.
+-  `test_mcp_service_enabled` function L164-169 — `()` — and their tools.
+-  `test_mcp_service_clone` function L172-177 — `()` — and their tools.
+-  `test_list_server_names_disabled` function L180-185 — `()` — and their tools.
+-  `test_list_server_names_empty` function L188-193 — `()` — and their tools.
+-  `test_is_server_connected_disabled` function L196-200 — `()` — and their tools.
+-  `test_is_server_connected_unknown` function L203-208 — `()` — and their tools.
+-  `test_add_server_disabled` function L211-216 — `()` — and their tools.
+-  `test_add_and_list_server` function L219-229 — `()` — and their tools.
+-  `test_remove_server_disabled` function L232-236 — `()` — and their tools.
+-  `test_remove_nonexistent_server` function L239-244 — `()` — and their tools.
+-  `test_add_then_remove_server` function L247-259 — `()` — and their tools.
+-  `test_connect_all_disabled` function L262-266 — `()` — and their tools.
+-  `test_shutdown_all_disabled` function L269-273 — `()` — and their tools.
+-  `test_mcp_server_info_fields` function L276-287 — `()` — and their tools.
+-  `test_mcp_server_info_clone` function L290-300 — `()` — and their tools.
+-  `test_mcp_tool_info_fields` function L303-312 — `()` — and their tools.
+-  `test_mcp_tool_info_no_description` function L315-322 — `()` — and their tools.
+-  `test_mcp_tool_info_clone` function L325-334 — `()` — and their tools.
+-  `test_mcp_server_info_debug` function L337-347 — `()` — and their tools.
+-  `test_mcp_tool_info_debug` function L350-358 — `()` — and their tools.
 
 #### crates/arawn-domain/src/services/memory.rs
 
@@ -3328,6 +3434,11 @@
 - pub `is_enabled` function L28-30 — `(&self) -> bool` — Whether the memory store is available.
 - pub `store` function L35-37 — `(&self) -> Option<&Arc<MemoryStore>>` — Get the underlying memory store.
 -  `MemoryService` type L21-38 — `= MemoryService` — agent's internal memory share the same backing store.
+-  `tests` module L41-78 — `-` — agent's internal memory share the same backing store.
+-  `test_memory_service_disabled` function L45-49 — `()` — agent's internal memory share the same backing store.
+-  `test_memory_service_enabled` function L52-57 — `()` — agent's internal memory share the same backing store.
+-  `test_memory_service_clone` function L60-70 — `()` — agent's internal memory share the same backing store.
+-  `test_memory_service_clone_disabled` function L73-77 — `()` — agent's internal memory share the same backing store.
 
 #### crates/arawn-domain/src/services/mod.rs
 
@@ -3341,11 +3452,16 @@
 - pub `memory` function L81-83 — `(&self) -> &MemoryService` — Get the memory service.
 - pub `agent` function L86-88 — `(&self) -> &Arc<Agent>` — Get the underlying agent.
 -  `DomainServices` type L43-89 — `= DomainServices` — Arawn's functionality.
--  `tests` module L92-134 — `-` — Arawn's functionality.
+-  `tests` module L92-178 — `-` — Arawn's functionality.
 -  `create_test_agent` function L97-106 — `() -> Arc<Agent>` — Arawn's functionality.
 -  `test_domain_services_creation` function L109-116 — `()` — Arawn's functionality.
 -  `test_domain_services_memory_disabled` function L119-124 — `()` — Arawn's functionality.
 -  `test_domain_services_memory_enabled` function L127-133 — `()` — Arawn's functionality.
+-  `test_domain_services_clone` function L136-143 — `()` — Arawn's functionality.
+-  `test_domain_services_mcp_disabled` function L146-150 — `()` — Arawn's functionality.
+-  `test_domain_services_mcp_enabled` function L153-158 — `()` — Arawn's functionality.
+-  `test_domain_services_chat_accessor` function L161-169 — `()` — Arawn's functionality.
+-  `test_domain_services_agent_accessor` function L172-177 — `()` — Arawn's functionality.
 
 ### crates/arawn-llm/src
 
@@ -4498,6 +4614,14 @@
 -  `test_meta_operations` function L614-630 — `()` — - `update_indexed()`: Update a memory and re-index its embedding/entities
 -  `test_store_stats` function L633-649 — `()` — - `update_indexed()`: Update a memory and re-index its embedding/entities
 -  `test_with_transaction` function L652-668 — `()` — - `update_indexed()`: Update a memory and re-index its embedding/entities
+-  `concurrency_tests` module L672-971 — `-` — - `update_indexed()`: Update a memory and re-index its embedding/entities
+-  `create_test_store` function L677-679 — `() -> MemoryStore` — - `update_indexed()`: Update a memory and re-index its embedding/entities
+-  `test_concurrent_writes_no_data_loss` function L682-715 — `()` — - `update_indexed()`: Update a memory and re-index its embedding/entities
+-  `test_concurrent_reads_during_writes` function L718-776 — `()` — - `update_indexed()`: Update a memory and re-index its embedding/entities
+-  `test_concurrent_delete_and_read_no_panic` function L779-818 — `()` — - `update_indexed()`: Update a memory and re-index its embedding/entities
+-  `test_concurrent_search_returns_valid_results` function L821-870 — `()` — - `update_indexed()`: Update a memory and re-index its embedding/entities
+-  `test_concurrent_note_writes_no_data_loss` function L873-905 — `()` — - `update_indexed()`: Update a memory and re-index its embedding/entities
+-  `test_concurrent_mixed_operations_no_deadlock` function L908-970 — `()` — - `update_indexed()`: Update a memory and re-index its embedding/entities
 
 #### crates/arawn-memory/src/store/note_ops.rs
 
@@ -4916,7 +5040,7 @@
 -  `WorkflowDefinition` type L295-417 — `= WorkflowDefinition` — ```
 -  `detect_cycles` function L375-416 — `(&self) -> Result<(), PipelineError>` — Detect cycles in the task dependency graph using Kahn's algorithm.
 -  `WorkflowDefinition` type L430-497 — `= WorkflowDefinition` — ```
--  `tests` module L500-913 — `-` — ```
+-  `tests` module L500-1385 — `-` — ```
 -  `VALID_WORKFLOW` variable L503-527 — `: &str` — ```
 -  `test_parse_valid_workflow` function L530-548 — `()` — ```
 -  `test_parse_tool_action` function L551-567 — `()` — ```
@@ -4942,6 +5066,32 @@
 -  `test_mixed_runtime_and_action_tasks` function L865-882 — `()` — ```
 -  `test_task_with_neither_runtime_nor_action` function L885-895 — `()` — ```
 -  `test_runtime_to_dynamic_tasks` function L898-912 — `()` — ```
+-  `test_to_dynamic_tasks_preserves_dependencies` function L917-950 — `()` — ```
+-  `test_to_dynamic_tasks_invalid_workflow_fails` function L953-966 — `()` — ```
+-  `test_to_dynamic_tasks_single_task` function L969-986 — `()` — ```
+-  `test_to_dynamic_tasks_runtime_synthesizes_tool_action` function L989-1026 — `()` — ```
+-  `test_effective_runtime_script` function L1031-1046 — `()` — ```
+-  `test_effective_runtime_llm` function L1049-1064 — `()` — ```
+-  `test_effective_runtime_none` function L1067-1079 — `()` — ```
+-  `test_effective_runtime_prefers_runtime_field` function L1082-1097 — `()` — ```
+-  `test_effective_config_script` function L1100-1117 — `()` — ```
+-  `test_effective_config_llm` function L1120-1137 — `()` — ```
+-  `test_effective_config_none` function L1140-1154 — `()` — ```
+-  `test_effective_config_prefers_config_field` function L1157-1173 — `()` — ```
+-  `test_validate_empty_task_id` function L1178-1189 — `()` — ```
+-  `test_validate_three_node_cycle` function L1192-1212 — `()` — ```
+-  `test_validate_linear_chain_no_cycle` function L1215-1237 — `()` — ```
+-  `test_from_file_nonexistent` function L1242-1246 — `()` — ```
+-  `test_from_file_valid` function L1249-1254 — `()` — ```
+-  `test_from_file_invalid_toml` function L1257-1262 — `()` — ```
+-  `test_parse_llm_with_model` function L1267-1283 — `()` — ```
+-  `test_parse_script_with_explicit_language` function L1286-1296 — `()` — ```
+-  `test_schedule_default_timezone` function L1299-1311 — `()` — ```
+-  `test_capabilities_defaults` function L1314-1327 — `()` — ```
+-  `test_retry_default_delay` function L1330-1342 — `()` — ```
+-  `test_workflow_definition_debug` function L1347-1358 — `()` — ```
+-  `test_action_definition_debug` function L1361-1369 — `()` — ```
+-  `test_workflow_definition_clone` function L1372-1384 — `()` — ```
 
 #### crates/arawn-pipeline/src/engine.rs
 
@@ -5168,7 +5318,12 @@
 -  `test_concurrent_workflow_execution` function L345-390 — `()` — Integration tests for PipelineEngine.
 -  `test_context_passed_through_execution` function L393-422 — `()` — Integration tests for PipelineEngine.
 -  `test_execute_same_workflow_twice` function L425-452 — `()` — Integration tests for PipelineEngine.
--  `test_schedule_and_list_cron` function L455-489 — `()` — Integration tests for PipelineEngine.
+-  `test_engine_with_timeout` function L457-468 — `(dir: &Path, task_timeout_secs: u64) -> PipelineEngine` — Helper to create an engine with a short task timeout.
+-  `test_task_timeout_produces_failed_status` function L471-512 — `()` — Integration tests for PipelineEngine.
+-  `test_fast_task_unaffected_by_short_timeout` function L515-540 — `()` — Integration tests for PipelineEngine.
+-  `test_one_task_timeout_does_not_block_pipeline_result` function L543-586 — `()` — Integration tests for PipelineEngine.
+-  `test_pipeline_timeout_kills_long_workflow` function L589-657 — `()` — Integration tests for PipelineEngine.
+-  `test_schedule_and_list_cron` function L660-694 — `()` — Integration tests for PipelineEngine.
 
 ### crates/arawn-plugin/src
 
@@ -5286,7 +5441,7 @@
 -  `matches_hook` function L511-542 — `( hook: &CompiledHook, tool_name: Option<&str>, params: Option<&serde_json::Valu...` — (PreToolUse) or provide informational side effects.
 -  `HookRunResult` enum L548-555 — `Success | Blocked | Error` — (PreToolUse) or provide informational side effects.
 -  `run_hook_command` function L557-607 — `( command: &std::path::Path, plugin_dir: &std::path::Path, stdin_data: &str, tim...` — (PreToolUse) or provide informational side effects.
--  `tests` module L610-1021 — `-` — (PreToolUse) or provide informational side effects.
+-  `tests` module L610-1161 — `-` — (PreToolUse) or provide informational side effects.
 -  `create_hook_script` function L616-621 — `(dir: &std::path::Path, name: &str, script: &str) -> PathBuf` — (PreToolUse) or provide informational side effects.
 -  `make_hook` function L623-630 — `(event: HookEvent, command: PathBuf) -> HookDef` — (PreToolUse) or provide informational side effects.
 -  `test_pre_tool_use_allow` function L633-647 — `()` — (PreToolUse) or provide informational side effects.
@@ -5306,7 +5461,10 @@
 -  `test_subagent_started_event` function L911-937 — `()` — (PreToolUse) or provide informational side effects.
 -  `test_subagent_completed_event` function L940-974 — `()` — (PreToolUse) or provide informational side effects.
 -  `test_subagent_completed_failure_event` function L977-1004 — `()` — (PreToolUse) or provide informational side effects.
--  `test_subagent_events_no_hooks_registered` function L1007-1020 — `()` — (PreToolUse) or provide informational side effects.
+-  `test_two_plugins_same_event_both_fire` function L1011-1049 — `()` — (PreToolUse) or provide informational side effects.
+-  `test_two_plugins_pre_tool_use_first_blocker_wins` function L1052-1093 — `()` — (PreToolUse) or provide informational side effects.
+-  `test_two_plugins_different_tool_match_no_interference` function L1096-1144 — `()` — (PreToolUse) or provide informational side effects.
+-  `test_subagent_events_no_hooks_registered` function L1147-1160 — `()` — (PreToolUse) or provide informational side effects.
 
 #### crates/arawn-plugin/src/lib.rs
 
@@ -5455,7 +5613,7 @@
 -  `SkillFrontmatter` struct L62-70 — `{ name: String, description: String, uses_tools: Vec<String>, args: Vec<SkillArg...` — Frontmatter parsed from a skill markdown file.
 -  `split_frontmatter` function L102-125 — `(content: &str) -> Result<(String, String)>` — Split markdown content into frontmatter and body.
 -  `SkillRegistry` type L236-333 — `= SkillRegistry` — ```
--  `tests` module L336-616 — `-` — ```
+-  `tests` module L336-727 — `-` — ```
 -  `SAMPLE_SKILL` variable L339-362 — `: &str` — ```
 -  `test_parse_skill` function L365-377 — `()` — ```
 -  `test_parse_skill_no_frontmatter` function L380-383 — `()` — ```
@@ -5480,6 +5638,12 @@
 -  `test_skill_registry_namespaced_lookup` function L571-589 — `()` — ```
 -  `test_skill_registry_invoke_namespaced` function L592-605 — `()` — ```
 -  `test_skill_registry_invoke_simple` function L608-615 — `()` — ```
+-  `test_skill_conflict_two_plugins_same_name_simple_lookup_returns_none` function L622-639 — `()` — ```
+-  `test_skill_conflict_invoke_simple_ambiguous_returns_none` function L642-655 — `()` — ```
+-  `test_skill_conflict_three_plugins_same_name` function L658-676 — `()` — ```
+-  `test_skill_conflict_different_names_no_conflict` function L679-689 — `()` — ```
+-  `test_skill_conflict_qualified_invocation_resolves_ambiguity` function L692-706 — `()` — ```
+-  `test_skill_conflict_same_plugin_overwrites` function L709-726 — `()` — ```
 
 #### crates/arawn-plugin/src/subscription.rs
 
@@ -5647,7 +5811,7 @@
 -  `PluginWatcher` type L66-229 — `= PluginWatcher` — Uses debouncing to coalesce rapid file edits (e.g., editor save patterns).
 -  `find_plugin_dir` function L235-248 — `(path: &Path, plugin_dirs: &[PathBuf]) -> Option<PathBuf>` — Find the plugin directory containing a given path.
 -  `reload_from_dir` function L251-274 — `(state: &Arc<RwLock<PluginState>>, plugin_dir: &Path) -> PluginEvent` — Reload a plugin from its directory into the shared state.
--  `tests` module L282-438 — `-` — Uses debouncing to coalesce rapid file edits (e.g., editor save patterns).
+-  `tests` module L282-675 — `-` — Uses debouncing to coalesce rapid file edits (e.g., editor save patterns).
 -  `create_test_plugin` function L287-304 — `(base_dir: &Path, name: &str) -> PathBuf` — Uses debouncing to coalesce rapid file edits (e.g., editor save patterns).
 -  `test_load_initial` function L307-323 — `()` — Uses debouncing to coalesce rapid file edits (e.g., editor save patterns).
 -  `test_reload_plugin` function L326-352 — `()` — Uses debouncing to coalesce rapid file edits (e.g., editor save patterns).
@@ -5657,6 +5821,13 @@
 -  `test_state_get_by_name` function L397-409 — `()` — Uses debouncing to coalesce rapid file edits (e.g., editor save patterns).
 -  `test_find_plugin_dir` function L412-430 — `()` — Uses debouncing to coalesce rapid file edits (e.g., editor save patterns).
 -  `test_debounce_config` function L433-437 — `()` — Uses debouncing to coalesce rapid file edits (e.g., editor save patterns).
+-  `create_plugin_with_skill` function L444-469 — `(base_dir: &Path, name: &str, skill_body: &str) -> PathBuf` — Create a plugin with a skill file for reload testing.
+-  `test_reload_updates_skill_content` function L472-506 — `()` — Uses debouncing to coalesce rapid file edits (e.g., editor save patterns).
+-  `test_reload_updates_version` function L509-541 — `()` — Uses debouncing to coalesce rapid file edits (e.g., editor save patterns).
+-  `test_reload_added_skill_appears` function L544-580 — `()` — Uses debouncing to coalesce rapid file edits (e.g., editor save patterns).
+-  `test_remove_and_readd_plugin` function L583-601 — `()` — Uses debouncing to coalesce rapid file edits (e.g., editor save patterns).
+-  `test_reload_other_plugins_unaffected` function L604-631 — `()` — Uses debouncing to coalesce rapid file edits (e.g., editor save patterns).
+-  `test_concurrent_read_during_reload` function L634-674 — `()` — Uses debouncing to coalesce rapid file edits (e.g., editor save patterns).
 
 ### crates/arawn-sandbox/src
 
@@ -6665,6 +6836,18 @@
 -  `test_memory_search_endpoint` function L159-186 — `() -> Result<()>` — isolated.
 -  `test_memory_search_finds_matching_notes` function L189-229 — `() -> Result<()>` — isolated.
 
+#### crates/arawn-server/tests/ratelimit_integration.rs
+
+-  `common` module L6 — `-` — These tests verify that rate limiting works through the actual HTTP request path,
+-  `rate_limited_server` function L13-19 — `(api_rpm: u32) -> Result<TestServer>` — Helper: build a test server with rate limiting enabled and a specific RPM.
+-  `test_requests_within_limit_succeed` function L22-37 — `() -> Result<()>` — returning 429 when limits are exceeded and 200 when within limits.
+-  `test_requests_exceeding_limit_return_429` function L40-62 — `() -> Result<()>` — returning 429 when limits are exceeded and 200 when within limits.
+-  `test_429_response_has_retry_after_header` function L65-85 — `() -> Result<()>` — returning 429 when limits are exceeded and 200 when within limits.
+-  `test_429_response_body_is_json` function L88-107 — `() -> Result<()>` — returning 429 when limits are exceeded and 200 when within limits.
+-  `test_rate_limit_resets_after_window` function L110-159 — `() -> Result<()>` — returning 429 when limits are exceeded and 200 when within limits.
+-  `test_different_ips_have_independent_limits` function L162-199 — `() -> Result<()>` — returning 429 when limits are exceeded and 200 when within limits.
+-  `test_rate_limiting_disabled_allows_all_requests` function L202-220 — `() -> Result<()>` — returning 429 when limits are exceeded and 200 when within limits.
+
 #### crates/arawn-server/tests/server_integration.rs
 
 -  `common` module L5 — `-` — These tests verify the server starts correctly and handles requests.
@@ -6786,6 +6969,12 @@
 -  `test_ws_chat_response_contains_text` function L262-283 — `() -> Result<()>` — and error handling using the shared test utilities.
 -  `test_ws_malformed_json` function L290-308 — `() -> Result<()>` — and error handling using the shared test utilities.
 -  `test_ws_multiple_sessions` function L315-342 — `() -> Result<()>` — and error handling using the shared test utilities.
+-  `test_ws_command_unknown` function L349-384 — `() -> Result<()>` — and error handling using the shared test utilities.
+-  `test_ws_command_requires_auth` function L387-408 — `() -> Result<()>` — and error handling using the shared test utilities.
+-  `test_ws_command_compact_with_progress` function L411-451 — `() -> Result<()>` — and error handling using the shared test utilities.
+-  `test_ws_command_compact_invalid_session` function L454-480 — `() -> Result<()>` — and error handling using the shared test utilities.
+-  `test_ws_chat_tool_call_events_forwarded` function L487-535 — `() -> Result<()>` — and error handling using the shared test utilities.
+-  `test_ws_session_scoped_isolation` function L542-598 — `() -> Result<()>` — and error handling using the shared test utilities.
 
 #### crates/arawn-server/tests/websocket_ownership.rs
 
@@ -7028,41 +7217,45 @@
 - pub `put` function L93-99 — `(&self, path: &str) -> reqwest::RequestBuilder` — Get an authenticated PUT request builder.
 - pub `patch` function L102-108 — `(&self, path: &str) -> reqwest::RequestBuilder` — Get an authenticated PATCH request builder.
 - pub `health` function L111-118 — `(&self) -> Result<bool>` — Check if the server is healthy.
-- pub `TestServerBuilder` struct L122-130 — `{ token: Option<String>, responses: Vec<MockResponse>, streaming_backend: Option...` — Builder for configuring a TestServer.
-- pub `new` function L134-153 — `() -> Self` — Create a new builder with sensible defaults.
-- pub `with_auth` function L156-159 — `(mut self, token: Option<&str>) -> Self` — Set the auth token.
-- pub `with_text_responses` function L162-180 — `(mut self, responses: Vec<String>) -> Self` — Set text responses for the mock backend.
-- pub `with_mock_responses` function L183-186 — `(mut self, responses: Vec<MockResponse>) -> Self` — Set raw mock responses (for tool_use, errors, etc.).
-- pub `with_streaming_backend` function L189-192 — `(mut self, backend: StreamingMockBackend) -> Self` — Set a streaming mock backend directly.
-- pub `with_workstreams` function L195-198 — `(mut self) -> Self` — Enable in-memory workstream manager.
-- pub `without_memory` function L201-204 — `(mut self) -> Self` — Disable the in-memory store.
-- pub `build` function L207-273 — `(self) -> Result<TestServer>` — Build and start the test server.
-- pub `find_available_port` function L283-288 — `() -> Result<SocketAddr>` — Find an available port for the test server.
-- pub `wait_for_server` function L291-309 — `(client: &Client, addr: SocketAddr) -> Result<()>` — Wait for a server to become ready by polling its health endpoint.
+- pub `TestServerBuilder` struct L122-131 — `{ token: Option<String>, responses: Vec<MockResponse>, streaming_backend: Option...` — Builder for configuring a TestServer.
+- pub `new` function L135-155 — `() -> Self` — Create a new builder with sensible defaults.
+- pub `with_auth` function L158-161 — `(mut self, token: Option<&str>) -> Self` — Set the auth token.
+- pub `with_text_responses` function L164-182 — `(mut self, responses: Vec<String>) -> Self` — Set text responses for the mock backend.
+- pub `with_mock_responses` function L185-188 — `(mut self, responses: Vec<MockResponse>) -> Self` — Set raw mock responses (for tool_use, errors, etc.).
+- pub `with_streaming_backend` function L191-194 — `(mut self, backend: StreamingMockBackend) -> Self` — Set a streaming mock backend directly.
+- pub `with_workstreams` function L197-200 — `(mut self) -> Self` — Enable in-memory workstream manager.
+- pub `with_rate_limiting` function L203-206 — `(mut self, enabled: bool) -> Self` — Enable rate limiting.
+- pub `with_api_rpm` function L209-212 — `(mut self, rpm: u32) -> Self` — Set the API rate limit (requests per minute).
+- pub `without_memory` function L215-218 — `(mut self) -> Self` — Disable the in-memory store.
+- pub `build` function L221-291 — `(self) -> Result<TestServer>` — Build and start the test server.
+- pub `find_available_port` function L301-306 — `() -> Result<SocketAddr>` — Find an available port for the test server.
+- pub `wait_for_server` function L309-327 — `(client: &Client, addr: SocketAddr) -> Result<()>` — Wait for a server to become ready by polling its health endpoint.
 -  `TestServer` type L36-119 — `= TestServer` — with a builder pattern for flexible configuration.
--  `TestServerBuilder` type L132-274 — `= TestServerBuilder` — with a builder pattern for flexible configuration.
--  `TestServerBuilder` type L276-280 — `impl Default for TestServerBuilder` — with a builder pattern for flexible configuration.
--  `default` function L277-279 — `() -> Self` — with a builder pattern for flexible configuration.
+-  `TestServerBuilder` type L133-292 — `= TestServerBuilder` — with a builder pattern for flexible configuration.
+-  `TestServerBuilder` type L294-298 — `impl Default for TestServerBuilder` — with a builder pattern for flexible configuration.
+-  `default` function L295-297 — `() -> Self` — with a builder pattern for flexible configuration.
 
 #### crates/arawn-test-utils/src/ws_client.rs
 
 - pub `TestWsClient` struct L15-19 — `{ ws: WsStream, recv_timeout: Duration }` — A WebSocket test client for interacting with the Arawn server.
-- pub `WsServerMessage` enum L24-73 — `AuthResult | SessionCreated | ChatChunk | ToolStart | ToolOutput | ToolEnd | Err...` — Server message received over WebSocket (subset for test assertions).
-- pub `connect` function L77-83 — `(url: &str) -> Result<Self>` — Connect to a WebSocket server at the given URL.
-- pub `with_timeout` function L86-89 — `(mut self, timeout: Duration) -> Self` — Set the default receive timeout.
-- pub `authenticate` function L92-99 — `(&mut self, token: &str) -> Result<WsServerMessage>` — Send an authentication message.
-- pub `subscribe` function L102-109 — `(&mut self, session_id: &str) -> Result<WsServerMessage>` — Subscribe to a session.
-- pub `subscribe_with_token` function L112-124 — `( &mut self, session_id: &str, token: &str, ) -> Result<WsServerMessage>` — Subscribe with a reconnect token.
-- pub `chat` function L127-145 — `( &mut self, message: &str, session_id: Option<&str>, workstream_id: Option<&str...` — Send a chat message and collect all response messages until done.
-- pub `ping` function L148-156 — `(&mut self) -> Result<()>` — Send a ping and wait for pong.
-- pub `cancel` function L159-165 — `(&mut self, session_id: &str) -> Result<()>` — Send a cancel message.
-- pub `send_json` function L168-172 — `(&mut self, msg: &serde_json::Value) -> Result<()>` — Send a raw JSON message.
-- pub `recv` function L175-201 — `(&mut self) -> Result<WsServerMessage>` — Receive and parse the next server message.
-- pub `try_recv` function L204-210 — `(&mut self, wait: Duration) -> Result<Option<WsServerMessage>>` — Try to receive a message with a short timeout.
-- pub `close` function L242-245 — `(mut self) -> Result<()>` — Close the WebSocket connection.
+- pub `WsServerMessage` enum L24-84 — `AuthResult | SessionCreated | ChatChunk | ToolStart | ToolOutput | ToolEnd | Err...` — Server message received over WebSocket (subset for test assertions).
+- pub `connect` function L88-94 — `(url: &str) -> Result<Self>` — Connect to a WebSocket server at the given URL.
+- pub `with_timeout` function L97-100 — `(mut self, timeout: Duration) -> Self` — Set the default receive timeout.
+- pub `authenticate` function L103-110 — `(&mut self, token: &str) -> Result<WsServerMessage>` — Send an authentication message.
+- pub `subscribe` function L113-120 — `(&mut self, session_id: &str) -> Result<WsServerMessage>` — Subscribe to a session.
+- pub `subscribe_with_token` function L123-135 — `( &mut self, session_id: &str, token: &str, ) -> Result<WsServerMessage>` — Subscribe with a reconnect token.
+- pub `chat` function L138-156 — `( &mut self, message: &str, session_id: Option<&str>, workstream_id: Option<&str...` — Send a chat message and collect all response messages until done.
+- pub `ping` function L159-167 — `(&mut self) -> Result<()>` — Send a ping and wait for pong.
+- pub `command` function L170-182 — `( &mut self, command: &str, args: serde_json::Value, ) -> Result<Vec<WsServerMes...` — Send a command message and collect all response messages until a CommandResult is received.
+- pub `cancel` function L185-191 — `(&mut self, session_id: &str) -> Result<()>` — Send a cancel message.
+- pub `send_json` function L194-198 — `(&mut self, msg: &serde_json::Value) -> Result<()>` — Send a raw JSON message.
+- pub `recv` function L201-227 — `(&mut self) -> Result<WsServerMessage>` — Receive and parse the next server message.
+- pub `try_recv` function L230-236 — `(&mut self, wait: Duration) -> Result<Option<WsServerMessage>>` — Try to receive a message with a short timeout.
+- pub `close` function L294-297 — `(mut self) -> Result<()>` — Close the WebSocket connection.
 -  `WsStream` type L11-12 — `= tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::ne...` — TestWsClient — WebSocket test client for E2E testing.
--  `TestWsClient` type L75-246 — `= TestWsClient` — TestWsClient — WebSocket test client for E2E testing.
--  `collect_until_done` function L213-239 — `(&mut self) -> Result<Vec<WsServerMessage>>` — Collect messages until a ChatChunk with `done: true` is received.
+-  `TestWsClient` type L86-298 — `= TestWsClient` — TestWsClient — WebSocket test client for E2E testing.
+-  `collect_until_done` function L239-265 — `(&mut self) -> Result<Vec<WsServerMessage>>` — Collect messages until a ChatChunk with `done: true` is received.
+-  `collect_until_command_done` function L268-291 — `(&mut self) -> Result<Vec<WsServerMessage>>` — Collect messages until a CommandResult or Error is received.
 
 ### crates/arawn-tui/src
 
@@ -7129,7 +7322,7 @@
 -  `handle_sidebar_key` function L1951-2186 — `(&mut self, key: crossterm::event::KeyEvent)` — Handle sidebar key events.
 -  `App` type L2227-2282 — `= App` — Application state and main loop.
 -  `test_new` function L2229-2281 — `() -> Self` — Create a test App with a mock WsClient and no real connections.
--  `tests` module L2285-2962 — `-` — Application state and main loop.
+-  `tests` module L2285-3274 — `-` — Application state and main loop.
 -  `key` function L2289-2296 — `(code: KeyCode) -> KeyEvent` — Application state and main loop.
 -  `key_mod` function L2298-2305 — `(code: KeyCode, modifiers: KeyModifiers) -> KeyEvent` — Application state and main loop.
 -  `test_session_created_sets_session_id` function L2310-2319 — `()` — Application state and main loop.
@@ -7174,6 +7367,16 @@
 -  `test_full_message_flow` function L2901-2930 — `()` — Application state and main loop.
 -  `test_send_clears_tools` function L2933-2950 — `()` — Application state and main loop.
 -  `test_send_enables_auto_scroll` function L2953-2961 — `()` — Application state and main loop.
+-  `simulate_status_poll` function L2966-2977 — `(app: &mut App)` — Helper: simulate the tick handler's connection status poll logic.
+-  `test_app_controllable` function L2979-3039 — `() -> ( App, tokio::sync::mpsc::UnboundedSender<ConnectionStatus>, tokio::sync::...` — Application state and main loop.
+-  `test_disconnect_shows_status_indicator` function L3042-3050 — `()` — Application state and main loop.
+-  `test_reconnecting_shows_attempt_count` function L3053-3073 — `()` — Application state and main loop.
+-  `test_full_reconnection_lifecycle` function L3076-3105 — `()` — Application state and main loop.
+-  `test_session_state_preserved_across_reconnect` function L3108-3157 — `()` — Application state and main loop.
+-  `test_rapid_disconnect_reconnect_cycles_no_panic` function L3160-3188 — `()` — Application state and main loop.
+-  `test_disconnect_during_streaming_marks_message_not_streaming` function L3191-3216 — `()` — Application state and main loop.
+-  `test_messages_received_after_reconnect_handled_correctly` function L3219-3255 — `()` — Application state and main loop.
+-  `test_disconnect_while_not_waiting_no_status_change` function L3258-3273 — `()` — Application state and main loop.
 
 #### crates/arawn-tui/src/bounded.rs
 
@@ -7232,14 +7435,15 @@
 - pub `send_command` function L159-163 — `(&self, command: String, args: serde_json::Value) -> Result<()>` — Send a command to the server.
 -  `ConnectionStatus` type L24-33 — `= ConnectionStatus` — WebSocket client for connecting to the Arawn server.
 -  `fmt` function L25-32 — `(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result` — WebSocket client for connecting to the Arawn server.
--  `WsClient` type L56-188 — `= WsClient` — WebSocket client for connecting to the Arawn server.
+-  `WsClient` type L56-217 — `= WsClient` — WebSocket client for connecting to the Arawn server.
 -  `mock` function L170-187 — `() -> Self` — Create a disconnected mock client for testing.
--  `connection_loop` function L191-251 — `( server_url: String, mut client_rx: mpsc::UnboundedReceiver<ClientMessage>, ser...` — Connection loop that handles reconnection with exponential backoff.
--  `handle_connection` function L255-323 — `( ws_stream: tokio_tungstenite::WebSocketStream< tokio_tungstenite::MaybeTlsStre...` — Handle an active WebSocket connection.
--  `http_to_ws_url` function L326-343 — `(http_url: &str) -> Result<String>` — Convert an HTTP URL to a WebSocket URL with /ws path.
--  `tests` module L346-379 — `-` — WebSocket client for connecting to the Arawn server.
--  `test_http_to_ws_url` function L350-367 — `()` — WebSocket client for connecting to the Arawn server.
--  `test_connection_status_display` function L370-378 — `()` — WebSocket client for connecting to the Arawn server.
+-  `mock_controllable` function L194-216 — `() -> ( Self, mpsc::UnboundedSender<ConnectionStatus>, mpsc::UnboundedSender<Ser...` — Create a controllable mock client for testing reconnection flows.
+-  `connection_loop` function L220-280 — `( server_url: String, mut client_rx: mpsc::UnboundedReceiver<ClientMessage>, ser...` — Connection loop that handles reconnection with exponential backoff.
+-  `handle_connection` function L284-352 — `( ws_stream: tokio_tungstenite::WebSocketStream< tokio_tungstenite::MaybeTlsStre...` — Handle an active WebSocket connection.
+-  `http_to_ws_url` function L355-372 — `(http_url: &str) -> Result<String>` — Convert an HTTP URL to a WebSocket URL with /ws path.
+-  `tests` module L375-408 — `-` — WebSocket client for connecting to the Arawn server.
+-  `test_http_to_ws_url` function L379-396 — `()` — WebSocket client for connecting to the Arawn server.
+-  `test_connection_status_display` function L399-407 — `()` — WebSocket client for connecting to the Arawn server.
 
 #### crates/arawn-tui/src/events.rs
 

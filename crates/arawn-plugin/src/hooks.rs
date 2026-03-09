@@ -1003,6 +1003,146 @@ mod tests {
         }
     }
 
+    // ─────────────────────────────────────────────────────────────────────
+    // Hook conflict tests (multiple plugins, same event)
+    // ─────────────────────────────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_two_plugins_same_event_both_fire() {
+        let tmp1 = TempDir::new().unwrap();
+        let tmp2 = TempDir::new().unwrap();
+
+        let script1 = create_hook_script(
+            tmp1.path(),
+            "hook1.sh",
+            "#!/bin/bash\necho 'plugin-alpha'\n",
+        );
+        let script2 =
+            create_hook_script(tmp2.path(), "hook2.sh", "#!/bin/bash\necho 'plugin-beta'\n");
+
+        let mut dispatcher = HookDispatcher::new();
+        dispatcher.register(
+            make_hook(HookEvent::SessionStart, script1),
+            tmp1.path().to_path_buf(),
+        );
+        dispatcher.register(
+            make_hook(HookEvent::SessionStart, script2),
+            tmp2.path().to_path_buf(),
+        );
+
+        assert_eq!(dispatcher.count_for_event(HookEvent::SessionStart), 2);
+
+        let outcome = dispatcher.dispatch_session_start("sess").await;
+        match outcome {
+            HookOutcome::Info { output } => {
+                assert!(
+                    output.contains("plugin-alpha"),
+                    "Output should contain plugin-alpha"
+                );
+                assert!(
+                    output.contains("plugin-beta"),
+                    "Output should contain plugin-beta"
+                );
+            }
+            other => panic!("Expected Info, got {:?}", other),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_two_plugins_pre_tool_use_first_blocker_wins() {
+        let tmp1 = TempDir::new().unwrap();
+        let tmp2 = TempDir::new().unwrap();
+
+        // Plugin alpha blocks with reason
+        let script1 = create_hook_script(
+            tmp1.path(),
+            "block1.sh",
+            "#!/bin/bash\necho 'blocked by alpha'\nexit 1\n",
+        );
+        // Plugin beta also blocks (should never be reached)
+        let script2 = create_hook_script(
+            tmp2.path(),
+            "block2.sh",
+            "#!/bin/bash\necho 'blocked by beta'\nexit 1\n",
+        );
+
+        let mut dispatcher = HookDispatcher::new();
+        dispatcher.register(
+            make_hook(HookEvent::PreToolUse, script1),
+            tmp1.path().to_path_buf(),
+        );
+        dispatcher.register(
+            make_hook(HookEvent::PreToolUse, script2),
+            tmp2.path().to_path_buf(),
+        );
+
+        let outcome = dispatcher
+            .dispatch_pre_tool_use("shell", &serde_json::json!({}))
+            .await;
+        match outcome {
+            HookOutcome::Block { reason } => {
+                // First blocker wins
+                assert!(
+                    reason.contains("blocked by alpha"),
+                    "First blocker should win, got: {}",
+                    reason
+                );
+            }
+            other => panic!("Expected Block, got {:?}", other),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_two_plugins_different_tool_match_no_interference() {
+        let tmp1 = TempDir::new().unwrap();
+        let tmp2 = TempDir::new().unwrap();
+
+        let script1 = create_hook_script(
+            tmp1.path(),
+            "shell_hook.sh",
+            "#!/bin/bash\necho 'shell blocked'\nexit 1\n",
+        );
+        let script2 = create_hook_script(
+            tmp2.path(),
+            "file_hook.sh",
+            "#!/bin/bash\necho 'file blocked'\nexit 1\n",
+        );
+
+        let mut dispatcher = HookDispatcher::new();
+
+        let mut hook1 = make_hook(HookEvent::PreToolUse, script1);
+        hook1.tool_match = Some("shell".to_string());
+        dispatcher.register(hook1, tmp1.path().to_path_buf());
+
+        let mut hook2 = make_hook(HookEvent::PreToolUse, script2);
+        hook2.tool_match = Some("file_*".to_string());
+        dispatcher.register(hook2, tmp2.path().to_path_buf());
+
+        // shell → only plugin1's hook fires
+        let outcome = dispatcher
+            .dispatch_pre_tool_use("shell", &serde_json::json!({}))
+            .await;
+        match outcome {
+            HookOutcome::Block { reason } => assert!(reason.contains("shell blocked")),
+            other => panic!("Expected Block for shell, got {:?}", other),
+        }
+
+        // file_read → only plugin2's hook fires
+        let outcome = dispatcher
+            .dispatch_pre_tool_use("file_read", &serde_json::json!({}))
+            .await;
+        match outcome {
+            HookOutcome::Block { reason } => assert!(reason.contains("file blocked")),
+            other => panic!("Expected Block for file_read, got {:?}", other),
+        }
+
+        // other_tool → neither fires
+        let outcome = dispatcher
+            .dispatch_pre_tool_use("other_tool", &serde_json::json!({}))
+            .await;
+        assert!(matches!(outcome, HookOutcome::Allow));
+    }
+
     #[tokio::test]
     async fn test_subagent_events_no_hooks_registered() {
         let dispatcher = HookDispatcher::new();

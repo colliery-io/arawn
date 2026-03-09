@@ -613,4 +613,115 @@ Mood: {mood}
         let result = registry.invoke_simple("greet", "").unwrap().unwrap();
         assert_eq!(result, "Hello!");
     }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Conflict detection tests
+    // ─────────────────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_skill_conflict_two_plugins_same_name_simple_lookup_returns_none() {
+        let mut registry = SkillRegistry::new();
+        let s1 = parse_skill("---\nname: deploy\n---\nDeploy via alpha.", "alpha").unwrap();
+        let s2 = parse_skill("---\nname: deploy\n---\nDeploy via beta.", "beta").unwrap();
+        registry.register(s1);
+        registry.register(s2);
+
+        // Simple lookup is ambiguous → None
+        assert!(
+            registry.get("deploy").is_none(),
+            "Ambiguous simple name should return None"
+        );
+
+        // Both are still accessible via qualified name
+        assert!(registry.get("alpha:deploy").is_some());
+        assert!(registry.get("beta:deploy").is_some());
+        assert_eq!(registry.len(), 2);
+    }
+
+    #[test]
+    fn test_skill_conflict_invoke_simple_ambiguous_returns_none() {
+        let mut registry = SkillRegistry::new();
+        let s1 = parse_skill("---\nname: build\n---\nBuild alpha.", "alpha").unwrap();
+        let s2 = parse_skill("---\nname: build\n---\nBuild beta.", "beta").unwrap();
+        registry.register(s1);
+        registry.register(s2);
+
+        // invoke_simple with ambiguous name returns None (not an error)
+        let result = registry.invoke_simple("build", "").unwrap();
+        assert!(
+            result.is_none(),
+            "invoke_simple with ambiguous name should return None"
+        );
+    }
+
+    #[test]
+    fn test_skill_conflict_three_plugins_same_name() {
+        let mut registry = SkillRegistry::new();
+        for name in &["alpha", "beta", "gamma"] {
+            let skill = parse_skill(
+                &format!("---\nname: deploy\n---\nDeploy via {}.", name),
+                name,
+            )
+            .unwrap();
+            registry.register(skill);
+        }
+
+        assert_eq!(registry.len(), 3);
+        // Simple lookup ambiguous
+        assert!(registry.get("deploy").is_none());
+        // All accessible via qualified name
+        assert!(registry.get("alpha:deploy").is_some());
+        assert!(registry.get("beta:deploy").is_some());
+        assert!(registry.get("gamma:deploy").is_some());
+    }
+
+    #[test]
+    fn test_skill_conflict_different_names_no_conflict() {
+        let mut registry = SkillRegistry::new();
+        let s1 = parse_skill("---\nname: build\n---\nBuild it.", "alpha").unwrap();
+        let s2 = parse_skill("---\nname: deploy\n---\nDeploy it.", "beta").unwrap();
+        registry.register(s1);
+        registry.register(s2);
+
+        // No conflict — simple lookups work
+        assert!(registry.get("build").is_some());
+        assert!(registry.get("deploy").is_some());
+    }
+
+    #[test]
+    fn test_skill_conflict_qualified_invocation_resolves_ambiguity() {
+        let mut registry = SkillRegistry::new();
+        let s1 = parse_skill("---\nname: run\n---\nAlpha run.", "alpha").unwrap();
+        let s2 = parse_skill("---\nname: run\n---\nBeta run.", "beta").unwrap();
+        registry.register(s1);
+        registry.register(s2);
+
+        let inv = SkillInvocation {
+            name: "run".to_string(),
+            plugin: Some("beta".to_string()),
+            raw_args: String::new(),
+        };
+        let result = registry.invoke(&inv).unwrap().unwrap();
+        assert_eq!(result, "Beta run.");
+    }
+
+    #[test]
+    fn test_skill_conflict_same_plugin_overwrites() {
+        let mut registry = SkillRegistry::new();
+
+        // Register same skill name from same plugin twice (e.g., hot-reload)
+        let s1 = parse_skill("---\nname: greet\n---\nVersion 1.", "myplugin").unwrap();
+        registry.register(s1);
+
+        let s2 = parse_skill("---\nname: greet\n---\nVersion 2.", "myplugin").unwrap();
+        registry.register(s2);
+
+        // Should have the updated version (last-wins for same qualified name)
+        let skill = registry.get("myplugin:greet").unwrap();
+        assert_eq!(skill.body, "Version 2.");
+
+        // simple_name index now has duplicates, but qualified map has 1
+        // The total count by qualified name is 1
+        assert_eq!(registry.skills.len(), 1);
+    }
 }

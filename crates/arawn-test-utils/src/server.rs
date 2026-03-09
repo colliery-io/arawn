@@ -126,6 +126,7 @@ pub struct TestServerBuilder {
     with_memory: bool,
     with_workstreams: bool,
     rate_limiting: bool,
+    api_rpm: Option<u32>,
     request_logging: bool,
 }
 
@@ -134,6 +135,7 @@ impl TestServerBuilder {
     pub fn new() -> Self {
         Self {
             token: Some("test-token".to_string()),
+            api_rpm: None,
             streaming_backend: None,
             responses: vec![MockResponse::Success(CompletionResponse::new(
                 "mock_msg_0",
@@ -197,6 +199,18 @@ impl TestServerBuilder {
         self
     }
 
+    /// Enable rate limiting.
+    pub fn with_rate_limiting(mut self, enabled: bool) -> Self {
+        self.rate_limiting = enabled;
+        self
+    }
+
+    /// Set the API rate limit (requests per minute).
+    pub fn with_api_rpm(mut self, rpm: u32) -> Self {
+        self.api_rpm = Some(rpm);
+        self
+    }
+
     /// Disable the in-memory store.
     pub fn without_memory(mut self) -> Self {
         self.with_memory = false;
@@ -231,10 +245,14 @@ impl TestServerBuilder {
                 .build()?
         };
 
-        let config = ServerConfig::new(self.token.clone())
+        let mut config = ServerConfig::new(self.token.clone())
             .with_bind_address(addr)
             .with_rate_limiting(self.rate_limiting)
             .with_request_logging(self.request_logging);
+
+        if let Some(rpm) = self.api_rpm {
+            config = config.with_api_rpm(rpm);
+        }
 
         let mut state = AppState::new(agent, config);
 

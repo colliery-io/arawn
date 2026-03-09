@@ -131,4 +131,48 @@ mod tests {
         assert!(services.memory().is_enabled());
         assert!(services.memory().store().is_some());
     }
+
+    #[test]
+    fn test_domain_services_clone() {
+        let agent = create_test_agent();
+        let services = DomainServices::new(agent, None, None, None, None, None);
+        let cloned = services.clone();
+
+        // Both should share the same agent
+        assert!(Arc::ptr_eq(services.agent(), cloned.agent()));
+    }
+
+    #[test]
+    fn test_domain_services_mcp_disabled() {
+        let agent = create_test_agent();
+        let services = DomainServices::new(agent, None, None, None, None, None);
+        assert!(!services.mcp().is_enabled());
+    }
+
+    #[test]
+    fn test_domain_services_mcp_enabled() {
+        let agent = create_test_agent();
+        let manager = Arc::new(tokio::sync::RwLock::new(arawn_mcp::McpManager::new()));
+        let services = DomainServices::new(agent, None, None, None, Some(manager), None);
+        assert!(services.mcp().is_enabled());
+    }
+
+    #[test]
+    fn test_domain_services_chat_accessor() {
+        let agent = create_test_agent();
+        let services = DomainServices::new(agent, None, None, None, None, None);
+        let chat = services.chat();
+        // chat service should have no optional components
+        assert!(chat.workstreams().is_none());
+        assert!(chat.directory_manager().is_none());
+        assert!(chat.indexer().is_none());
+    }
+
+    #[test]
+    fn test_domain_services_agent_accessor() {
+        let agent = create_test_agent();
+        let agent_ptr = Arc::as_ptr(&agent);
+        let services = DomainServices::new(agent, None, None, None, None, None);
+        assert_eq!(Arc::as_ptr(services.agent()), agent_ptr);
+    }
 }

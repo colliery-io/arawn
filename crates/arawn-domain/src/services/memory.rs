@@ -36,3 +36,43 @@ impl MemoryService {
         self.store.as_ref()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_memory_service_disabled() {
+        let service = MemoryService::new(None);
+        assert!(!service.is_enabled());
+        assert!(service.store().is_none());
+    }
+
+    #[test]
+    fn test_memory_service_enabled() {
+        let store = Arc::new(MemoryStore::open_in_memory().unwrap());
+        let service = MemoryService::new(Some(store));
+        assert!(service.is_enabled());
+        assert!(service.store().is_some());
+    }
+
+    #[test]
+    fn test_memory_service_clone() {
+        let store = Arc::new(MemoryStore::open_in_memory().unwrap());
+        let service = MemoryService::new(Some(store));
+        let cloned = service.clone();
+        assert!(cloned.is_enabled());
+        // Both point to the same store
+        assert!(Arc::ptr_eq(
+            service.store().unwrap(),
+            cloned.store().unwrap()
+        ));
+    }
+
+    #[test]
+    fn test_memory_service_clone_disabled() {
+        let service = MemoryService::new(None);
+        let cloned = service.clone();
+        assert!(!cloned.is_enabled());
+    }
+}

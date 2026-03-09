@@ -157,5 +157,203 @@ mod tests {
     fn test_mcp_service_disabled() {
         let service = McpService::new(None);
         assert!(!service.is_enabled());
+        assert!(service.manager().is_none());
+    }
+
+    #[test]
+    fn test_mcp_service_enabled() {
+        let manager = Arc::new(RwLock::new(McpManager::new()));
+        let service = McpService::new(Some(manager));
+        assert!(service.is_enabled());
+        assert!(service.manager().is_some());
+    }
+
+    #[test]
+    fn test_mcp_service_clone() {
+        let manager = Arc::new(RwLock::new(McpManager::new()));
+        let service = McpService::new(Some(manager));
+        let cloned = service.clone();
+        assert!(cloned.is_enabled());
+    }
+
+    #[tokio::test]
+    async fn test_list_server_names_disabled() {
+        let service = McpService::new(None);
+        let result = service.list_server_names().await;
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("MCP not enabled"));
+    }
+
+    #[tokio::test]
+    async fn test_list_server_names_empty() {
+        let manager = Arc::new(RwLock::new(McpManager::new()));
+        let service = McpService::new(Some(manager));
+        let names = service.list_server_names().await.unwrap();
+        assert!(names.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_is_server_connected_disabled() {
+        let service = McpService::new(None);
+        let result = service.is_server_connected("test").await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_is_server_connected_unknown() {
+        let manager = Arc::new(RwLock::new(McpManager::new()));
+        let service = McpService::new(Some(manager));
+        let connected = service.is_server_connected("nonexistent").await.unwrap();
+        assert!(!connected);
+    }
+
+    #[tokio::test]
+    async fn test_add_server_disabled() {
+        let service = McpService::new(None);
+        let config = McpServerConfig::new("test", "echo");
+        let result = service.add_server(config).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_add_and_list_server() {
+        let manager = Arc::new(RwLock::new(McpManager::new()));
+        let service = McpService::new(Some(manager));
+
+        let config = McpServerConfig::new("my-server", "echo");
+        service.add_server(config).await.unwrap();
+
+        let names = service.list_server_names().await.unwrap();
+        assert_eq!(names.len(), 1);
+        assert_eq!(names[0], "my-server");
+    }
+
+    #[tokio::test]
+    async fn test_remove_server_disabled() {
+        let service = McpService::new(None);
+        let result = service.remove_server("test").await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_remove_nonexistent_server() {
+        let manager = Arc::new(RwLock::new(McpManager::new()));
+        let service = McpService::new(Some(manager));
+        let removed = service.remove_server("nonexistent").await.unwrap();
+        assert!(!removed);
+    }
+
+    #[tokio::test]
+    async fn test_add_then_remove_server() {
+        let manager = Arc::new(RwLock::new(McpManager::new()));
+        let service = McpService::new(Some(manager));
+
+        let config = McpServerConfig::new("removable", "echo");
+        service.add_server(config).await.unwrap();
+
+        let removed = service.remove_server("removable").await.unwrap();
+        assert!(removed);
+
+        let names = service.list_server_names().await.unwrap();
+        assert!(names.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_connect_all_disabled() {
+        let service = McpService::new(None);
+        let result = service.connect_all().await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_shutdown_all_disabled() {
+        let service = McpService::new(None);
+        let result = service.shutdown_all().await;
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_mcp_server_info_fields() {
+        let info = McpServerInfo {
+            name: "test-server".to_string(),
+            command: "/usr/bin/test".to_string(),
+            connected: true,
+            tool_count: 5,
+        };
+        assert_eq!(info.name, "test-server");
+        assert_eq!(info.command, "/usr/bin/test");
+        assert!(info.connected);
+        assert_eq!(info.tool_count, 5);
+    }
+
+    #[test]
+    fn test_mcp_server_info_clone() {
+        let info = McpServerInfo {
+            name: "srv".to_string(),
+            command: "cmd".to_string(),
+            connected: false,
+            tool_count: 0,
+        };
+        let cloned = info.clone();
+        assert_eq!(info.name, cloned.name);
+        assert_eq!(info.connected, cloned.connected);
+    }
+
+    #[test]
+    fn test_mcp_tool_info_fields() {
+        let info = McpToolInfo {
+            name: "read_file".to_string(),
+            description: Some("Read a file".to_string()),
+            server: "filesystem".to_string(),
+        };
+        assert_eq!(info.name, "read_file");
+        assert_eq!(info.description.as_deref(), Some("Read a file"));
+        assert_eq!(info.server, "filesystem");
+    }
+
+    #[test]
+    fn test_mcp_tool_info_no_description() {
+        let info = McpToolInfo {
+            name: "tool".to_string(),
+            description: None,
+            server: "srv".to_string(),
+        };
+        assert!(info.description.is_none());
+    }
+
+    #[test]
+    fn test_mcp_tool_info_clone() {
+        let info = McpToolInfo {
+            name: "tool".to_string(),
+            description: Some("desc".to_string()),
+            server: "srv".to_string(),
+        };
+        let cloned = info.clone();
+        assert_eq!(info.name, cloned.name);
+        assert_eq!(info.description, cloned.description);
+    }
+
+    #[test]
+    fn test_mcp_server_info_debug() {
+        let info = McpServerInfo {
+            name: "srv".to_string(),
+            command: "cmd".to_string(),
+            connected: true,
+            tool_count: 3,
+        };
+        let debug = format!("{:?}", info);
+        assert!(debug.contains("srv"));
+        assert!(debug.contains("cmd"));
+    }
+
+    #[test]
+    fn test_mcp_tool_info_debug() {
+        let info = McpToolInfo {
+            name: "tool".to_string(),
+            description: None,
+            server: "srv".to_string(),
+        };
+        let debug = format!("{:?}", info);
+        assert!(debug.contains("tool"));
     }
 }

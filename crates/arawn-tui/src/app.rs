@@ -2959,4 +2959,316 @@ mod tests {
 
         assert!(app.chat_auto_scroll);
     }
+
+    // ── Reconnection Resilience ────────────────────────────────────
+
+    /// Helper: simulate the tick handler's connection status poll logic.
+    fn simulate_status_poll(app: &mut App) {
+        if let Some(status) = app.ws_client.poll_status() {
+            let was_connected = app.connection_status == ConnectionStatus::Connected;
+            app.connection_status = status;
+
+            if was_connected && status != ConnectionStatus::Connected && app.waiting {
+                app.waiting = false;
+                app.status_message =
+                    Some("Connection lost — message may not have been delivered".to_string());
+            }
+        }
+    }
+
+    fn test_app_controllable() -> (
+        App,
+        tokio::sync::mpsc::UnboundedSender<ConnectionStatus>,
+        tokio::sync::mpsc::UnboundedSender<crate::protocol::ServerMessage>,
+    ) {
+        use crate::client::WsClient;
+
+        let (ws_client, status_tx, msg_tx) = WsClient::mock_controllable();
+
+        let api = ArawnClient::builder()
+            .base_url("http://test:0")
+            .build()
+            .expect("test API client");
+
+        let app = App {
+            server_url: "http://test:0".to_string(),
+            ws_client,
+            api,
+            connection_status: ConnectionStatus::Connected,
+            focus: FocusManager::new(),
+            should_quit: false,
+            input: InputState::new(),
+            input_mode: InputMode::default(),
+            status_message: None,
+            workstream: "scratch".to_string(),
+            workstream_id: None,
+            session_id: None,
+            messages: BoundedVec::with_capacity(MAX_MESSAGES, 1024),
+            tools: BoundedVec::with_capacity(MAX_TOOLS, 64),
+            waiting: false,
+            chat_scroll: 0,
+            chat_auto_scroll: true,
+            sessions: SessionList::new(),
+            palette: CommandPalette::new(),
+            context_name: None,
+            log_buffer: LogBuffer::new(),
+            log_scroll: 0,
+            show_logs: false,
+            sidebar: Sidebar::new(),
+            moving_session_to_workstream: false,
+            tool_scroll: 0,
+            selected_tool_index: None,
+            show_tool_pane: false,
+            pending_actions: Vec::new(),
+            command_popup: CommandPopup::new(),
+            command_executing: false,
+            command_progress: None,
+            context_info: None,
+            workstream_usage: None,
+            disk_warnings: Vec::new(),
+            show_usage_popup: false,
+            reconnect_tokens: std::collections::HashMap::new(),
+            is_session_owner: true,
+            pending_delete_workstream: None,
+            pending_delete_session: None,
+            panel_areas: PanelAreas::default(),
+            last_ping: std::time::Instant::now(),
+        };
+
+        (app, status_tx, msg_tx)
+    }
+
+    #[tokio::test]
+    async fn test_disconnect_shows_status_indicator() {
+        let (mut app, status_tx, _msg_tx) = test_app_controllable();
+        assert_eq!(app.connection_status, ConnectionStatus::Connected);
+
+        status_tx.send(ConnectionStatus::Disconnected).unwrap();
+        simulate_status_poll(&mut app);
+
+        assert_eq!(app.connection_status, ConnectionStatus::Disconnected);
+    }
+
+    #[tokio::test]
+    async fn test_reconnecting_shows_attempt_count() {
+        let (mut app, status_tx, _msg_tx) = test_app_controllable();
+
+        status_tx
+            .send(ConnectionStatus::Reconnecting { attempt: 1 })
+            .unwrap();
+        simulate_status_poll(&mut app);
+        assert_eq!(
+            app.connection_status,
+            ConnectionStatus::Reconnecting { attempt: 1 }
+        );
+
+        status_tx
+            .send(ConnectionStatus::Reconnecting { attempt: 2 })
+            .unwrap();
+        simulate_status_poll(&mut app);
+        assert_eq!(
+            app.connection_status,
+            ConnectionStatus::Reconnecting { attempt: 2 }
+        );
+    }
+
+    #[tokio::test]
+    async fn test_full_reconnection_lifecycle() {
+        let (mut app, status_tx, _msg_tx) = test_app_controllable();
+        app.waiting = true;
+
+        // Connected → Disconnected: clears waiting, sets status message
+        status_tx.send(ConnectionStatus::Disconnected).unwrap();
+        simulate_status_poll(&mut app);
+        assert!(!app.waiting);
+        assert!(
+            app.status_message
+                .as_deref()
+                .unwrap()
+                .contains("Connection lost")
+        );
+
+        // Disconnected → Reconnecting(1)
+        status_tx
+            .send(ConnectionStatus::Reconnecting { attempt: 1 })
+            .unwrap();
+        simulate_status_poll(&mut app);
+        assert_eq!(
+            app.connection_status,
+            ConnectionStatus::Reconnecting { attempt: 1 }
+        );
+
+        // Reconnecting → Connected: connection restored
+        status_tx.send(ConnectionStatus::Connected).unwrap();
+        simulate_status_poll(&mut app);
+        assert_eq!(app.connection_status, ConnectionStatus::Connected);
+    }
+
+    #[tokio::test]
+    async fn test_session_state_preserved_across_reconnect() {
+        let (mut app, status_tx, msg_tx) = test_app_controllable();
+
+        // Set up session state
+        app.session_id = Some("sess-42".to_string());
+        app.reconnect_tokens
+            .insert("sess-42".to_string(), "tok-abc".to_string());
+        app.push_message(ChatMessage {
+            is_user: true,
+            content: "hello".to_string(),
+            streaming: false,
+        });
+
+        // Disconnect
+        status_tx.send(ConnectionStatus::Disconnected).unwrap();
+        simulate_status_poll(&mut app);
+
+        // Session ID and messages should be preserved
+        assert_eq!(app.session_id.as_deref(), Some("sess-42"));
+        assert_eq!(app.messages.len(), 1);
+        assert_eq!(
+            app.reconnect_tokens.get("sess-42").map(String::as_str),
+            Some("tok-abc")
+        );
+
+        // Reconnect
+        status_tx.send(ConnectionStatus::Connected).unwrap();
+        simulate_status_poll(&mut app);
+
+        // Session data still intact after reconnection
+        assert_eq!(app.session_id.as_deref(), Some("sess-42"));
+        assert_eq!(app.messages.len(), 1);
+
+        // Server can send a subscribe ack to restore ownership
+        msg_tx
+            .send(ServerMessage::SubscribeAck {
+                session_id: "sess-42".to_string(),
+                owner: true,
+                reconnect_token: Some("tok-new".to_string()),
+            })
+            .unwrap();
+        if let Some(msg) = app.ws_client.try_recv() {
+            app.handle_server_message(msg);
+        }
+        assert!(app.is_session_owner);
+        assert_eq!(
+            app.reconnect_tokens.get("sess-42").map(String::as_str),
+            Some("tok-new")
+        );
+    }
+
+    #[tokio::test]
+    async fn test_rapid_disconnect_reconnect_cycles_no_panic() {
+        let (mut app, status_tx, _msg_tx) = test_app_controllable();
+
+        // Rapid cycles: Connected→Disconnected→Connected×10
+        for cycle in 0..10 {
+            app.waiting = cycle % 2 == 0; // alternate waiting state
+            status_tx.send(ConnectionStatus::Disconnected).unwrap();
+            simulate_status_poll(&mut app);
+            assert_eq!(app.connection_status, ConnectionStatus::Disconnected);
+
+            status_tx
+                .send(ConnectionStatus::Reconnecting {
+                    attempt: cycle + 1,
+                })
+                .unwrap();
+            simulate_status_poll(&mut app);
+
+            status_tx.send(ConnectionStatus::Connected).unwrap();
+            simulate_status_poll(&mut app);
+            assert_eq!(app.connection_status, ConnectionStatus::Connected);
+        }
+
+        // App should still be functional
+        assert!(!app.should_quit);
+        app.input.set_text("still works");
+        app.send_message();
+        assert_eq!(app.messages.len(), 1);
+        assert!(app.messages[0].is_user);
+    }
+
+    #[tokio::test]
+    async fn test_disconnect_during_streaming_marks_message_not_streaming() {
+        let (mut app, status_tx, msg_tx) = test_app_controllable();
+
+        // Start a streaming response
+        msg_tx
+            .send(ServerMessage::ChatChunk {
+                session_id: "s1".to_string(),
+                chunk: "partial res".to_string(),
+                done: false,
+            })
+            .unwrap();
+        if let Some(msg) = app.ws_client.try_recv() {
+            app.handle_server_message(msg);
+        }
+        app.waiting = true;
+        assert!(app.messages[0].streaming);
+
+        // Disconnect mid-stream
+        status_tx.send(ConnectionStatus::Disconnected).unwrap();
+        simulate_status_poll(&mut app);
+
+        // Waiting should be cleared
+        assert!(!app.waiting);
+        // The partial message content is preserved
+        assert_eq!(app.messages[0].content, "partial res");
+    }
+
+    #[tokio::test]
+    async fn test_messages_received_after_reconnect_handled_correctly() {
+        let (mut app, status_tx, msg_tx) = test_app_controllable();
+        app.session_id = Some("s1".to_string());
+
+        // Disconnect and reconnect
+        status_tx.send(ConnectionStatus::Disconnected).unwrap();
+        simulate_status_poll(&mut app);
+        status_tx.send(ConnectionStatus::Connected).unwrap();
+        simulate_status_poll(&mut app);
+
+        // Server sends new messages after reconnect
+        msg_tx
+            .send(ServerMessage::ChatChunk {
+                session_id: "s1".to_string(),
+                chunk: "post-reconnect".to_string(),
+                done: false,
+            })
+            .unwrap();
+        if let Some(msg) = app.ws_client.try_recv() {
+            app.handle_server_message(msg);
+        }
+
+        assert_eq!(app.messages.len(), 1);
+        assert_eq!(app.messages[0].content, "post-reconnect");
+
+        msg_tx
+            .send(ServerMessage::ChatChunk {
+                session_id: "s1".to_string(),
+                chunk: String::new(),
+                done: true,
+            })
+            .unwrap();
+        if let Some(msg) = app.ws_client.try_recv() {
+            app.handle_server_message(msg);
+        }
+        assert!(!app.messages[0].streaming);
+    }
+
+    #[tokio::test]
+    async fn test_disconnect_while_not_waiting_no_status_change() {
+        let (mut app, status_tx, _msg_tx) = test_app_controllable();
+        app.waiting = false;
+        app.status_message = None;
+
+        status_tx.send(ConnectionStatus::Disconnected).unwrap();
+        simulate_status_poll(&mut app);
+
+        // Status changes to disconnected but no "Connection lost" message
+        // since we weren't waiting for a response
+        assert_eq!(app.connection_status, ConnectionStatus::Disconnected);
+        assert!(
+            app.status_message.is_none(),
+            "No status message when not waiting"
+        );
+    }
 }
