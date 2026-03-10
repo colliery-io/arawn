@@ -488,4 +488,187 @@ mod tests {
         // Still connected (stateless)
         assert!(transport.is_connected());
     }
+
+    // ── Stdio Content-Length Framing Tests ──────────────────────────────
+
+    #[test]
+    fn test_stdio_send_and_receive_content_length_framing() {
+        // Spawn a bash script that reads Content-Length framed input,
+        // then writes a Content-Length framed JSON-RPC response back
+        let script = r#"#!/bin/bash
+# Read headers until empty line
+content_length=0
+while IFS= read -r line; do
+    line=$(echo "$line" | tr -d '\r')
+    if [ -z "$line" ]; then
+        break
+    fi
+    if [[ "$line" == Content-Length:* ]]; then
+        content_length=${line#Content-Length: }
+    fi
+done
+# Read body
+body=$(head -c "$content_length")
+# Write a JSON-RPC response with Content-Length framing
+response='{"jsonrpc":"2.0","id":1,"result":{"echo":true}}'
+echo -ne "Content-Length: ${#response}\r\n\r\n${response}"
+"#;
+
+        // Use bash -c to avoid "Text file busy" issues with temp script files on Linux
+        let mut transport =
+            McpTransport::spawn_stdio("bash", &["-c".to_string(), script.to_string()], None).unwrap();
+
+        let request = JsonRpcRequest::new(1, "test/echo", None);
+        let response = transport.send_request(&request).unwrap();
+
+        assert_eq!(response.id, 1);
+        assert!(response.result.is_some());
+        let result = response.result.unwrap();
+        assert_eq!(result["echo"], true);
+    }
+
+    #[test]
+    fn test_stdio_send_notification() {
+        // Spawn cat to consume the notification (we don't expect a response)
+        let mut transport = McpTransport::spawn_stdio("cat", &[], None).unwrap();
+
+        let notification = JsonRpcNotification::new("test/notify", None);
+        let result = transport.send_notification(&notification);
+        assert!(result.is_ok());
+
+        transport.shutdown().unwrap();
+    }
+
+    #[test]
+    fn test_stdio_is_connected_after_exit() {
+        // Spawn 'true' which exits immediately
+        let mut transport = McpTransport::spawn_stdio("true", &[], None).unwrap();
+
+        // Give it a moment to exit
+        std::thread::sleep(Duration::from_millis(100));
+
+        // Should report disconnected
+        assert!(!transport.is_connected());
+    }
+
+    #[test]
+    fn test_stdio_shutdown_kills_child() {
+        let mut transport = McpTransport::spawn_stdio("cat", &[], None).unwrap();
+        assert!(transport.is_connected());
+
+        transport.shutdown().unwrap();
+
+        // After shutdown, process should be dead
+        assert!(!transport.is_connected());
+    }
+
+    // ── Spawn with Environment Variables ────────────────────────────────
+
+    #[test]
+    fn test_spawn_with_env_vars() {
+        let env_vars = vec![
+            ("TEST_VAR_1".to_string(), "value1".to_string()),
+            ("TEST_VAR_2".to_string(), "value2".to_string()),
+        ];
+
+        // Spawn 'env' to print environment, or just verify spawn succeeds
+        let result = McpTransport::spawn_stdio("cat", &[], Some(&env_vars));
+        assert!(result.is_ok());
+
+        let mut transport = result.unwrap();
+        transport.shutdown().unwrap();
+    }
+
+    // ── Error Path Tests ───────────────────────────────────────────────
+
+    #[test]
+    fn test_receive_response_stdio_connection_closed() {
+        // Spawn 'true' which exits immediately, so reading from stdout gives EOF
+        let mut transport = McpTransport::spawn_stdio("true", &[], None).unwrap();
+
+        // Give it a moment to exit
+        std::thread::sleep(Duration::from_millis(100));
+
+        // send_message_stdio should fail because stdin is broken
+        let request = JsonRpcRequest::new(1, "test", None);
+        let result = transport.send_request(&request);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_http_config_multiple_headers() {
+        let config = HttpTransportConfig::new("http://localhost:8080")
+            .with_header("Authorization", "Bearer token")
+            .with_header("X-Custom", "value1")
+            .with_header("X-Another", "value2");
+
+        assert_eq!(config.headers.len(), 3);
+        assert_eq!(config.headers[0].0, "Authorization");
+        assert_eq!(config.headers[1].0, "X-Custom");
+        assert_eq!(config.headers[2].0, "X-Another");
+    }
+
+    #[test]
+    fn test_http_config_debug() {
+        let config = HttpTransportConfig::new("http://example.com");
+        let debug = format!("{:?}", config);
+        assert!(debug.contains("http://example.com"));
+    }
+
+    #[test]
+    fn test_http_config_clone() {
+        let config = HttpTransportConfig::new("http://example.com")
+            .with_timeout(Duration::from_secs(10))
+            .with_retries(2)
+            .with_header("Key", "Val");
+
+        let cloned = config.clone();
+        assert_eq!(cloned.url, "http://example.com");
+        assert_eq!(cloned.timeout, Duration::from_secs(10));
+        assert_eq!(cloned.retries, 2);
+        assert_eq!(cloned.headers.len(), 1);
+    }
+
+    #[test]
+    fn test_stdio_receive_missing_content_length() {
+        // Spawn a script that writes an empty line (no Content-Length header)
+        let script = "#!/bin/bash\necho -ne '\\r\\n'\n";
+
+        // Use bash -c to avoid "Text file busy" issues with temp script files on Linux
+        let mut transport =
+            McpTransport::spawn_stdio("bash", &["-c".to_string(), script.to_string()], None).unwrap();
+
+        let request = JsonRpcRequest::new(1, "test", None);
+        let result = transport.send_request(&request);
+
+        // Should fail with "missing Content-Length header"
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(
+            err.to_string().contains("Content-Length")
+                || err.to_string().contains("connection closed")
+                || err.to_string().contains("Broken pipe"),
+            "Expected Content-Length or connection error, got: {}",
+            err
+        );
+    }
+
+    #[test]
+    fn test_http_connect_with_various_urls() {
+        // Valid HTTPS URL
+        let config = HttpTransportConfig::new("https://api.example.com/mcp");
+        assert!(McpTransport::connect_http(config).is_ok());
+
+        // Valid with port
+        let config = HttpTransportConfig::new("http://localhost:3000/v1/mcp");
+        assert!(McpTransport::connect_http(config).is_ok());
+
+        // Invalid: empty string
+        let config = HttpTransportConfig::new("");
+        assert!(McpTransport::connect_http(config).is_err());
+
+        // Invalid: just a path
+        let config = HttpTransportConfig::new("/just/a/path");
+        assert!(McpTransport::connect_http(config).is_err());
+    }
 }
