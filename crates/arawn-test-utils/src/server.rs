@@ -14,7 +14,9 @@ use tokio::task::JoinHandle;
 use tokio::time::timeout;
 
 use arawn_domain::{Agent, MemoryStore, ToolRegistry};
-use arawn_llm::{CompletionResponse, ContentBlock, MockBackend, MockResponse, StopReason, Usage};
+use arawn_llm::{
+    CompletionResponse, ContentBlock, LlmBackend, MockBackend, MockResponse, StopReason, Usage,
+};
 use arawn_server::{AppState, Server, ServerConfig};
 
 use crate::StreamingMockBackend;
@@ -123,6 +125,9 @@ pub struct TestServerBuilder {
     token: Option<String>,
     responses: Vec<MockResponse>,
     streaming_backend: Option<StreamingMockBackend>,
+    /// Generic LLM backend (takes priority over streaming_backend and responses).
+    generic_backend: Option<Box<dyn LlmBackend>>,
+    tools: Option<ToolRegistry>,
     with_memory: bool,
     with_workstreams: bool,
     rate_limiting: bool,
@@ -137,6 +142,8 @@ impl TestServerBuilder {
             token: Some("test-token".to_string()),
             api_rpm: None,
             streaming_backend: None,
+            generic_backend: None,
+            tools: None,
             responses: vec![MockResponse::Success(CompletionResponse::new(
                 "mock_msg_0",
                 "mock-model",
@@ -211,6 +218,23 @@ impl TestServerBuilder {
         self
     }
 
+    /// Set a generic LLM backend (e.g., `ScriptedMockBackend`).
+    ///
+    /// Takes priority over `with_streaming_backend` and `with_text_responses`.
+    pub fn with_backend(mut self, backend: impl LlmBackend + 'static) -> Self {
+        self.generic_backend = Some(Box::new(backend));
+        self
+    }
+
+    /// Set the tool registry for the agent.
+    ///
+    /// By default the agent has an empty `ToolRegistry`. Use this to inject
+    /// mock tools so the agent's tool-execution pipeline is exercised.
+    pub fn with_tools(mut self, tools: ToolRegistry) -> Self {
+        self.tools = Some(tools);
+        self
+    }
+
     /// Disable the in-memory store.
     pub fn without_memory(mut self) -> Self {
         self.with_memory = false;
@@ -222,10 +246,17 @@ impl TestServerBuilder {
         let temp_dir = TempDir::new()?;
         let addr = find_available_port().await?;
 
-        let agent = if let Some(streaming) = self.streaming_backend {
+        let tools = self.tools.unwrap_or_default();
+
+        let agent = if let Some(backend) = self.generic_backend {
+            Agent::builder()
+                .with_shared_backend(Arc::from(backend))
+                .with_tools(tools)
+                .build()?
+        } else if let Some(streaming) = self.streaming_backend {
             Agent::builder()
                 .with_backend(streaming)
-                .with_tools(ToolRegistry::new())
+                .with_tools(tools)
                 .build()?
         } else {
             let completion_responses: Vec<CompletionResponse> = self
@@ -241,7 +272,7 @@ impl TestServerBuilder {
 
             Agent::builder()
                 .with_backend(backend)
-                .with_tools(ToolRegistry::new())
+                .with_tools(tools)
                 .build()?
         };
 

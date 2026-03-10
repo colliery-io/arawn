@@ -3168,9 +3168,7 @@ mod tests {
             assert_eq!(app.connection_status, ConnectionStatus::Disconnected);
 
             status_tx
-                .send(ConnectionStatus::Reconnecting {
-                    attempt: cycle + 1,
-                })
+                .send(ConnectionStatus::Reconnecting { attempt: cycle + 1 })
                 .unwrap();
             simulate_status_poll(&mut app);
 

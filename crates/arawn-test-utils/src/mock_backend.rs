@@ -240,6 +240,321 @@ impl LlmBackend for StreamingMockBackend {
     }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// ScriptedMockBackend
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// A single scripted invocation: either a set of events or an error.
+#[derive(Debug, Clone)]
+pub enum ScriptedInvocation {
+    /// Return these events as a successful response.
+    Events(Vec<StreamingMockEvent>),
+    /// Return this error from both `complete()` and `complete_stream()`.
+    Error(String),
+}
+
+impl From<Vec<StreamingMockEvent>> for ScriptedInvocation {
+    fn from(events: Vec<StreamingMockEvent>) -> Self {
+        Self::Events(events)
+    }
+}
+
+/// A mock backend that returns different responses on each logical invocation.
+///
+/// Unlike `StreamingMockBackend` which returns the same events every time,
+/// this backend advances through a scripted sequence of responses, enabling
+/// multi-turn tool-execution flows where the agent calls the LLM multiple
+/// times per turn.
+///
+/// **Important**: The agent's streaming loop calls both `complete_stream()` and
+/// `complete()` for each iteration (stream for deltas, sync for tool-use check).
+/// This backend tracks whether the last call was a stream call so that the
+/// paired sync call returns the same events without advancing the index.
+///
+/// # Example: Tool-use flow
+/// ```rust,ignore
+/// let backend = ScriptedMockBackend::new(vec![
+///     // Invocation 0: LLM requests tool use
+///     vec![StreamingMockEvent::ToolUse {
+///         id: "tc-1".into(),
+///         name: "echo".into(),
+///         input: json!({"message": "hello"}),
+///     }],
+///     // Invocation 1: LLM responds with text after seeing tool result
+///     vec![StreamingMockEvent::Text("The tool said hello.".into())],
+/// ]);
+/// ```
+#[derive(Debug)]
+pub struct ScriptedMockBackend {
+    /// List of invocations (indexed, not consumed).
+    invocations: Vec<ScriptedInvocation>,
+    /// Current invocation index.
+    index: std::sync::Mutex<usize>,
+    /// Whether the last call was `complete_stream` — if so, a subsequent
+    /// `complete()` returns the same invocation without advancing.
+    last_was_stream: std::sync::atomic::AtomicBool,
+    /// Delay between chunks.
+    chunk_delay: Option<Duration>,
+    /// Model name.
+    model: String,
+}
+
+impl ScriptedMockBackend {
+    /// Create from a sequence of invocations.
+    ///
+    /// Each inner `Vec<StreamingMockEvent>` represents one logical LLM invocation.
+    /// Both `complete_stream()` and `complete()` return the same events within
+    /// a single invocation.
+    pub fn new(invocations: Vec<Vec<StreamingMockEvent>>) -> Self {
+        Self {
+            invocations: invocations
+                .into_iter()
+                .map(ScriptedInvocation::Events)
+                .collect(),
+            index: std::sync::Mutex::new(0),
+            last_was_stream: std::sync::atomic::AtomicBool::new(false),
+            chunk_delay: None,
+            model: "scripted-mock".to_string(),
+        }
+    }
+
+    /// Create from a sequence of invocations that may include errors.
+    pub fn from_invocations(invocations: Vec<ScriptedInvocation>) -> Self {
+        Self {
+            invocations,
+            index: std::sync::Mutex::new(0),
+            last_was_stream: std::sync::atomic::AtomicBool::new(false),
+            chunk_delay: None,
+            model: "scripted-mock".to_string(),
+        }
+    }
+
+    /// Convenience: tool call on first invocation, text on second.
+    pub fn tool_then_text(
+        tool_name: &str,
+        tool_id: &str,
+        args: serde_json::Value,
+        response_text: &str,
+    ) -> Self {
+        Self::new(vec![
+            vec![StreamingMockEvent::ToolUse {
+                id: tool_id.to_string(),
+                name: tool_name.to_string(),
+                input: args,
+            }],
+            vec![StreamingMockEvent::Text(response_text.to_string())],
+        ])
+    }
+
+    /// Convenience: returns an error on every call.
+    pub fn always_error(message: &str) -> Self {
+        Self::from_invocations(vec![ScriptedInvocation::Error(message.to_string())])
+    }
+
+    /// Set delay between chunks.
+    pub fn with_delay(mut self, delay: Duration) -> Self {
+        self.chunk_delay = Some(delay);
+        self
+    }
+
+    /// Set the model name.
+    pub fn with_model(mut self, model: impl Into<String>) -> Self {
+        self.model = model.into();
+        self
+    }
+
+    /// Get the invocation for a streaming call.
+    ///
+    /// Returns the invocation at the current index and marks that the last call
+    /// was a stream call. Does NOT advance the index — the subsequent `complete()`
+    /// call will return the same invocation and then advance.
+    fn invocation_for_stream(&self) -> ScriptedInvocation {
+        self.last_was_stream
+            .store(true, std::sync::atomic::Ordering::SeqCst);
+        let index = *self.index.lock().unwrap();
+        if index < self.invocations.len() {
+            self.invocations[index].clone()
+        } else {
+            ScriptedInvocation::Events(vec![StreamingMockEvent::Text(
+                "(no more scripted responses)".to_string(),
+            )])
+        }
+    }
+
+    /// Get the invocation for a sync (complete) call.
+    ///
+    /// Returns the invocation at the current index and always advances.
+    fn invocation_for_sync(&self) -> ScriptedInvocation {
+        self.last_was_stream
+            .store(false, std::sync::atomic::Ordering::SeqCst);
+        let mut idx = self.index.lock().unwrap();
+        let index = *idx;
+        let invocation = if index < self.invocations.len() {
+            self.invocations[index].clone()
+        } else {
+            ScriptedInvocation::Events(vec![StreamingMockEvent::Text(
+                "(no more scripted responses)".to_string(),
+            )])
+        };
+        *idx += 1;
+        invocation
+    }
+
+    /// Check if any event in a list is a ToolUse.
+    fn events_have_tool_use(events: &[StreamingMockEvent]) -> bool {
+        events
+            .iter()
+            .any(|e| matches!(e, StreamingMockEvent::ToolUse { .. }))
+    }
+}
+
+#[async_trait]
+impl LlmBackend for ScriptedMockBackend {
+    async fn complete(&self, _request: CompletionRequest) -> Result<CompletionResponse> {
+        let invocation = self.invocation_for_sync();
+
+        let events = match invocation {
+            ScriptedInvocation::Events(events) => events,
+            ScriptedInvocation::Error(msg) => {
+                return Err(arawn_llm::LlmError::Backend(msg));
+            }
+        };
+
+        let has_tool_use = Self::events_have_tool_use(&events);
+
+        let mut content = Vec::new();
+        for event in &events {
+            match event {
+                StreamingMockEvent::Text(text) => {
+                    content.push(ContentBlock::Text {
+                        text: text.clone(),
+                        cache_control: None,
+                    });
+                }
+                StreamingMockEvent::ToolUse { id, name, input } => {
+                    content.push(ContentBlock::ToolUse {
+                        id: id.clone(),
+                        name: name.clone(),
+                        input: input.clone(),
+                        cache_control: None,
+                    });
+                }
+            }
+        }
+
+        let stop_reason = if has_tool_use {
+            StopReason::ToolUse
+        } else {
+            StopReason::EndTurn
+        };
+
+        Ok(CompletionResponse::new(
+            "scripted_mock_msg",
+            &self.model,
+            content,
+            stop_reason,
+            Usage::new(10, 20),
+        ))
+    }
+
+    async fn complete_stream(&self, _request: CompletionRequest) -> Result<ResponseStream> {
+        let invocation = self.invocation_for_stream();
+
+        let events_list = match invocation {
+            ScriptedInvocation::Events(events) => events,
+            ScriptedInvocation::Error(msg) => {
+                return Err(arawn_llm::LlmError::Backend(msg));
+            }
+        };
+        let has_tool_use = Self::events_have_tool_use(&events_list);
+        let model = self.model.clone();
+        let delay = self.chunk_delay;
+
+        let mut stream_events: Vec<arawn_llm::Result<StreamEvent>> = Vec::new();
+
+        stream_events.push(Ok(StreamEvent::MessageStart {
+            id: "scripted_mock_msg".to_string(),
+            model,
+        }));
+
+        let mut block_index: usize = 0;
+        for mock_event in &events_list {
+            match mock_event {
+                StreamingMockEvent::Text(text) => {
+                    stream_events.push(Ok(StreamEvent::ContentBlockStart {
+                        index: block_index,
+                        content_type: "text".to_string(),
+                    }));
+                    stream_events.push(Ok(StreamEvent::ContentBlockDelta {
+                        index: block_index,
+                        delta: ContentDelta::TextDelta(text.clone()),
+                    }));
+                    stream_events.push(Ok(StreamEvent::ContentBlockStop { index: block_index }));
+                    block_index += 1;
+                }
+                StreamingMockEvent::ToolUse {
+                    id: _,
+                    name: _,
+                    input,
+                } => {
+                    stream_events.push(Ok(StreamEvent::ContentBlockStart {
+                        index: block_index,
+                        content_type: "tool_use".to_string(),
+                    }));
+                    let json_str = serde_json::to_string(input).unwrap_or_default();
+                    let chunk_size = 20;
+                    let mut pos = 0;
+                    while pos < json_str.len() {
+                        let end = (pos + chunk_size).min(json_str.len());
+                        let chunk = &json_str[pos..end];
+                        stream_events.push(Ok(StreamEvent::ContentBlockDelta {
+                            index: block_index,
+                            delta: ContentDelta::InputJsonDelta(chunk.to_string()),
+                        }));
+                        pos = end;
+                    }
+                    if json_str.is_empty() {
+                        stream_events.push(Ok(StreamEvent::ContentBlockDelta {
+                            index: block_index,
+                            delta: ContentDelta::InputJsonDelta("{}".to_string()),
+                        }));
+                    }
+                    stream_events.push(Ok(StreamEvent::ContentBlockStop { index: block_index }));
+                    block_index += 1;
+                }
+            }
+        }
+
+        let stop_reason = if has_tool_use {
+            StopReason::ToolUse
+        } else {
+            StopReason::EndTurn
+        };
+
+        stream_events.push(Ok(StreamEvent::MessageDelta {
+            stop_reason,
+            usage: Usage::new(10, 20),
+        }));
+        stream_events.push(Ok(StreamEvent::MessageStop));
+
+        if let Some(delay) = delay {
+            let stream = async_stream::stream! {
+                for event in stream_events {
+                    tokio::time::sleep(delay).await;
+                    yield event;
+                }
+            };
+            Ok(Box::pin(stream))
+        } else {
+            Ok(Box::pin(stream::iter(stream_events)))
+        }
+    }
+
+    fn name(&self) -> &str {
+        "scripted-mock"
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

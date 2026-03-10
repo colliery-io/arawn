@@ -323,6 +323,9 @@ pub fn create_turn_stream(
                     let success = result.is_success();
                     let content = result.to_llm_content();
 
+                    // Emit tool output before tool end so consumers can see results incrementally
+                    yield StreamChunk::tool_output(&tool_use.id, &content);
+
                     state.tool_results.push(ToolResultRecord {
                         tool_call_id: tool_use.id.clone(),
                         success,

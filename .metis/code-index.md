@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-03-09T01:21:43Z | 324 files | Rust
+> Generated: 2026-03-10T00:54:21Z | 333 files | Rust
 
 ## Project Structure
 
@@ -255,6 +255,13 @@
 │   │       ├── common/
 │   │       │   └── mod.rs
 │   │       ├── context_management.rs
+│   │       ├── e2e_commands.rs
+│   │       ├── e2e_logs.rs
+│   │       ├── e2e_scenarios.rs
+│   │       ├── e2e_sessions.rs
+│   │       ├── e2e_stress.rs
+│   │       ├── e2e_websocket.rs
+│   │       ├── e2e_workstreams.rs
 │   │       ├── memory_integration.rs
 │   │       ├── ratelimit_integration.rs
 │   │       ├── server_integration.rs
@@ -277,7 +284,9 @@
 │   │       ├── fixtures.rs
 │   │       ├── lib.rs
 │   │       ├── mock_backend.rs
+│   │       ├── mock_tools.rs
 │   │       ├── server.rs
+│   │       ├── sse.rs
 │   │       └── ws_client.rs
 │   ├── arawn-tui/
 │   │   └── src/
@@ -1187,24 +1196,24 @@
 - pub `done` function L120-122 — `(iterations: u32) -> Self` — Create a done chunk.
 - pub `error` function L125-129 — `(message: impl Into<String>) -> Self` — Create an error chunk.
 - pub `AgentStream` type L137 — `= Pin<Box<dyn Stream<Item = StreamChunk> + Send + 'static>>` — A boxed stream of chunks.
-- pub `create_turn_stream` function L160-362 — `( backend: SharedBackend, tools: Arc<ToolRegistry>, config: AgentConfig, message...` — Create a streaming response for an agent turn.
+- pub `create_turn_stream` function L160-365 — `( backend: SharedBackend, tools: Arc<ToolRegistry>, config: AgentConfig, message...` — Create a streaming response for an agent turn.
 -  `StreamChunk` type L81-130 — `= StreamChunk` — token-by-token output during agent responses.
 -  `StreamState` struct L140-153 — `{ backend: SharedBackend, tools: Arc<ToolRegistry>, config: AgentConfig, message...` — State for streaming agent responses.
--  `build_stream_request` function L364-386 — `(state: &StreamState) -> CompletionRequest` — token-by-token output during agent responses.
--  `build_sync_request` function L388-409 — `(state: &StreamState) -> CompletionRequest` — token-by-token output during agent responses.
--  `tests` module L416-710 — `-` — token-by-token output during agent responses.
--  `test_stream_chunk_text` function L420-423 — `()` — token-by-token output during agent responses.
--  `test_stream_chunk_tool_start` function L426-433 — `()` — token-by-token output during agent responses.
--  `test_stream_chunk_tool_end` function L436-443 — `()` — token-by-token output during agent responses.
--  `test_stream_chunk_done` function L446-449 — `()` — token-by-token output during agent responses.
--  `test_stream_chunk_error` function L452-458 — `()` — token-by-token output during agent responses.
--  `test_stream_chunk_serialization` function L461-469 — `()` — token-by-token output during agent responses.
--  `mock_text_backend` function L483-499 — `(text: &str) -> Arc<MockBackend>` — Helper: build a MockBackend that returns the given text for both the
--  `test_turn_stream_text_response` function L502-548 — `()` — token-by-token output during agent responses.
--  `test_turn_stream_cancellation` function L551-587 — `()` — token-by-token output during agent responses.
--  `test_turn_stream_max_iterations` function L590-624 — `()` — token-by-token output during agent responses.
--  `test_turn_stream_done_chunk_present` function L627-658 — `()` — token-by-token output during agent responses.
--  `test_turn_stream_multiple_text_chunks` function L661-709 — `()` — token-by-token output during agent responses.
+-  `build_stream_request` function L367-389 — `(state: &StreamState) -> CompletionRequest` — token-by-token output during agent responses.
+-  `build_sync_request` function L391-412 — `(state: &StreamState) -> CompletionRequest` — token-by-token output during agent responses.
+-  `tests` module L419-713 — `-` — token-by-token output during agent responses.
+-  `test_stream_chunk_text` function L423-426 — `()` — token-by-token output during agent responses.
+-  `test_stream_chunk_tool_start` function L429-436 — `()` — token-by-token output during agent responses.
+-  `test_stream_chunk_tool_end` function L439-446 — `()` — token-by-token output during agent responses.
+-  `test_stream_chunk_done` function L449-452 — `()` — token-by-token output during agent responses.
+-  `test_stream_chunk_error` function L455-461 — `()` — token-by-token output during agent responses.
+-  `test_stream_chunk_serialization` function L464-472 — `()` — token-by-token output during agent responses.
+-  `mock_text_backend` function L486-502 — `(text: &str) -> Arc<MockBackend>` — Helper: build a MockBackend that returns the given text for both the
+-  `test_turn_stream_text_response` function L505-551 — `()` — token-by-token output during agent responses.
+-  `test_turn_stream_cancellation` function L554-590 — `()` — token-by-token output during agent responses.
+-  `test_turn_stream_max_iterations` function L593-627 — `()` — token-by-token output during agent responses.
+-  `test_turn_stream_done_chunk_present` function L630-661 — `()` — token-by-token output during agent responses.
+-  `test_turn_stream_multiple_text_chunks` function L664-712 — `()` — token-by-token output during agent responses.
 
 #### crates/arawn-agent/src/types.rs
 
@@ -3519,7 +3528,7 @@
 -  `MessageDeltaUsage` struct L585-587 — `{ output_tokens: u32 }` — Messages API for Claude completions.
 -  `StreamErrorEvent` struct L590-592 — `{ error: StreamErrorDetail }` — Messages API for Claude completions.
 -  `StreamErrorDetail` struct L595-597 — `{ message: String }` — Messages API for Claude completions.
--  `tests` module L604-788 — `-` — Messages API for Claude completions.
+-  `tests` module L604-1199 — `-` — Messages API for Claude completions.
 -  `test_config_new` function L608-613 — `()` — Messages API for Claude completions.
 -  `test_config_with_base_url` function L616-619 — `()` — Messages API for Claude completions.
 -  `test_config_with_timeout` function L622-625 — `()` — Messages API for Claude completions.
@@ -3534,6 +3543,37 @@
 -  `test_messages_url_custom_base` function L769-773 — `()` — Messages API for Claude completions.
 -  `test_backend_name` function L776-780 — `()` — Messages API for Claude completions.
 -  `test_supports_native_tools` function L783-787 — `()` — Messages API for Claude completions.
+-  `test_config_with_max_retries` function L790-793 — `()` — Messages API for Claude completions.
+-  `test_config_with_retry_backoff` function L796-799 — `()` — Messages API for Claude completions.
+-  `test_api_response_max_tokens_stop_reason` function L802-820 — `()` — Messages API for Claude completions.
+-  `test_api_response_stop_sequence_stop_reason` function L823-839 — `()` — Messages API for Claude completions.
+-  `test_api_response_unknown_stop_reason` function L842-858 — `()` — Messages API for Claude completions.
+-  `test_api_response_none_stop_reason` function L861-877 — `()` — Messages API for Claude completions.
+-  `test_parse_stream_event_message_start` function L882-892 — `()` — Messages API for Claude completions.
+-  `test_parse_stream_event_message_start_invalid` function L895-898 — `()` — Messages API for Claude completions.
+-  `test_parse_stream_event_content_block_start` function L901-914 — `()` — Messages API for Claude completions.
+-  `test_parse_stream_event_content_block_start_invalid` function L917-919 — `()` — Messages API for Claude completions.
+-  `test_parse_stream_event_text_delta` function L922-935 — `()` — Messages API for Claude completions.
+-  `test_parse_stream_event_input_json_delta` function L938-952 — `()` — Messages API for Claude completions.
+-  `test_parse_stream_event_content_block_delta_invalid` function L955-957 — `()` — Messages API for Claude completions.
+-  `test_parse_stream_event_content_block_stop` function L960-967 — `()` — Messages API for Claude completions.
+-  `test_parse_stream_event_content_block_stop_invalid` function L970-972 — `()` — Messages API for Claude completions.
+-  `test_parse_stream_event_message_delta_end_turn` function L975-985 — `()` — Messages API for Claude completions.
+-  `test_parse_stream_event_message_delta_tool_use` function L988-997 — `()` — Messages API for Claude completions.
+-  `test_parse_stream_event_message_delta_max_tokens` function L1000-1009 — `()` — Messages API for Claude completions.
+-  `test_parse_stream_event_message_delta_stop_sequence` function L1012-1021 — `()` — Messages API for Claude completions.
+-  `test_parse_stream_event_message_delta_unknown_reason` function L1024-1033 — `()` — Messages API for Claude completions.
+-  `test_parse_stream_event_message_delta_null_reason` function L1036-1045 — `()` — Messages API for Claude completions.
+-  `test_parse_stream_event_message_delta_invalid` function L1048-1050 — `()` — Messages API for Claude completions.
+-  `test_parse_stream_event_message_stop` function L1053-1056 — `()` — Messages API for Claude completions.
+-  `test_parse_stream_event_ping` function L1059-1062 — `()` — Messages API for Claude completions.
+-  `test_parse_stream_event_error` function L1065-1072 — `()` — Messages API for Claude completions.
+-  `test_parse_stream_event_error_invalid_json` function L1075-1083 — `()` — Messages API for Claude completions.
+-  `test_parse_stream_event_unknown_type` function L1086-1088 — `()` — Messages API for Claude completions.
+-  `test_parse_sse_line_invalid_prefix` function L1091-1095 — `()` — Messages API for Claude completions.
+-  `test_parse_sse_stream_full_sequence` function L1100-1163 — `()` — Messages API for Claude completions.
+-  `test_parse_sse_stream_network_error` function L1166-1180 — `()` — Messages API for Claude completions.
+-  `test_parse_sse_stream_with_ping` function L1183-1198 — `()` — Messages API for Claude completions.
 
 #### crates/arawn-llm/src/api_key.rs
 
@@ -3900,7 +3940,7 @@
 -  `OpenAiStreamDelta` struct L819-822 — `{ content: Option<String>, tool_calls: Option<Vec<OpenAiStreamToolCall>> }` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
 -  `OpenAiStreamToolCall` struct L825-828 — `{ index: Option<usize>, function: Option<OpenAiStreamFunction> }` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
 -  `OpenAiStreamFunction` struct L831-833 — `{ arguments: Option<String> }` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `tests` module L840-1090 — `-` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `tests` module L840-1594 — `-` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
 -  `test_openai_config` function L845-850 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
 -  `test_groq_config` function L853-859 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
 -  `test_ollama_config` function L862-868 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
@@ -3918,6 +3958,27 @@
 -  `test_add_headers_preserves_special_chars` function L1035-1050 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
 -  `test_add_headers_real_groq_key_format` function L1053-1074 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
 -  `test_to_openai_request` function L1077-1089 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_to_openai_request_with_system` function L1092-1107 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_to_openai_request_uses_request_model_when_no_config_model` function L1110-1116 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_to_openai_request_with_tools` function L1119-1140 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_to_openai_request_with_tool_calls_and_results` function L1143-1181 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_to_openai_request_with_tool_result_blocks` function L1184-1210 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_to_openai_request_with_tool_result_none_content` function L1213-1233 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_to_openai_request_with_stop_sequences` function L1236-1248 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_to_openai_request_with_temperature` function L1251-1260 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_openai_response_no_choices` function L1263-1275 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_openai_response_length_finish_reason` function L1278-1296 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_openai_response_empty_text_omitted` function L1299-1318 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_openai_response_unknown_finish_reason` function L1321-1336 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_config_with_max_retries` function L1339-1342 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_config_with_retry_backoff` function L1345-1348 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_parse_openai_sse_stream_text` function L1351-1418 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_parse_openai_sse_stream_tool_calls` function L1421-1466 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_parse_openai_sse_stream_network_error` function L1469-1483 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_parse_openai_sse_stream_length_finish_reason` function L1486-1512 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_openai_response_tool_call_with_invalid_json_args` function L1515-1538 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_openai_response_none_content` function L1541-1559 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_to_openai_request_assistant_with_text_and_tool_call` function L1562-1593 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
 
 #### crates/arawn-llm/src/types.rs
 
@@ -4614,14 +4675,14 @@
 -  `test_meta_operations` function L614-630 — `()` — - `update_indexed()`: Update a memory and re-index its embedding/entities
 -  `test_store_stats` function L633-649 — `()` — - `update_indexed()`: Update a memory and re-index its embedding/entities
 -  `test_with_transaction` function L652-668 — `()` — - `update_indexed()`: Update a memory and re-index its embedding/entities
--  `concurrency_tests` module L672-971 — `-` — - `update_indexed()`: Update a memory and re-index its embedding/entities
+-  `concurrency_tests` module L672-966 — `-` — - `update_indexed()`: Update a memory and re-index its embedding/entities
 -  `create_test_store` function L677-679 — `() -> MemoryStore` — - `update_indexed()`: Update a memory and re-index its embedding/entities
--  `test_concurrent_writes_no_data_loss` function L682-715 — `()` — - `update_indexed()`: Update a memory and re-index its embedding/entities
--  `test_concurrent_reads_during_writes` function L718-776 — `()` — - `update_indexed()`: Update a memory and re-index its embedding/entities
--  `test_concurrent_delete_and_read_no_panic` function L779-818 — `()` — - `update_indexed()`: Update a memory and re-index its embedding/entities
--  `test_concurrent_search_returns_valid_results` function L821-870 — `()` — - `update_indexed()`: Update a memory and re-index its embedding/entities
--  `test_concurrent_note_writes_no_data_loss` function L873-905 — `()` — - `update_indexed()`: Update a memory and re-index its embedding/entities
--  `test_concurrent_mixed_operations_no_deadlock` function L908-970 — `()` — - `update_indexed()`: Update a memory and re-index its embedding/entities
+-  `test_concurrent_writes_no_data_loss` function L682-713 — `()` — - `update_indexed()`: Update a memory and re-index its embedding/entities
+-  `test_concurrent_reads_during_writes` function L716-771 — `()` — - `update_indexed()`: Update a memory and re-index its embedding/entities
+-  `test_concurrent_delete_and_read_no_panic` function L774-813 — `()` — - `update_indexed()`: Update a memory and re-index its embedding/entities
+-  `test_concurrent_search_returns_valid_results` function L816-865 — `()` — - `update_indexed()`: Update a memory and re-index its embedding/entities
+-  `test_concurrent_note_writes_no_data_loss` function L868-900 — `()` — - `update_indexed()`: Update a memory and re-index its embedding/entities
+-  `test_concurrent_mixed_operations_no_deadlock` function L903-965 — `()` — - `update_indexed()`: Update a memory and re-index its embedding/entities
 
 #### crates/arawn-memory/src/store/note_ops.rs
 
@@ -5695,7 +5756,7 @@
 -  `SyncResult` type L722-738 — `= SyncResult` — ```
 -  `SyncAction` type L755-765 — `= SyncAction` — ```
 -  `fmt` function L756-764 — `(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result` — ```
--  `tests` module L768-1234 — `-` — ```
+-  `tests` module L768-1790 — `-` — ```
 -  `test_runtime_config_parse` function L774-801 — `()` — ```
 -  `test_runtime_config_empty` function L804-809 — `()` — ```
 -  `test_runtime_config_roundtrip` function L812-822 — `()` — ```
@@ -5727,8 +5788,45 @@
 -  `EnvGuard` type L1140-1145 — `impl Drop for EnvGuard` — ```
 -  `drop` function L1141-1144 — `(&mut self)` — ```
 -  `test_sync_all_async_local_skipped` function L1162-1178 — `()` — ```
--  `test_git_clone_real_repo` function L1183-1209 — `()` — ```
--  `test_git_pull_real_repo` function L1213-1233 — `()` — ```
+-  `test_runtime_config_remove_subscription` function L1183-1192 — `()` — ```
+-  `test_runtime_config_remove_nonexistent_subscription` function L1195-1200 — `()` — ```
+-  `test_runtime_config_add_duplicate_subscription` function L1203-1208 — `()` — ```
+-  `test_runtime_config_is_enabled` function L1211-1220 — `()` — ```
+-  `test_runtime_config_from_json_invalid` function L1223-1226 — `()` — ```
+-  `test_runtime_config_save_creates_parent_dirs` function L1229-1236 — `()` — ```
+-  `test_subscription_manager_no_project_dir` function L1241-1247 — `()` — ```
+-  `test_subscription_manager_accessors` function L1250-1270 — `()` — ```
+-  `test_subscription_manager_mut_accessors` function L1273-1288 — `()` — ```
+-  `test_subscription_manager_add_global_subscription` function L1291-1298 — `()` — ```
+-  `test_subscription_manager_add_project_subscription` function L1301-1314 — `()` — ```
+-  `test_subscription_manager_set_global_enabled` function L1317-1338 — `()` — ```
+-  `test_subscription_manager_set_project_enabled` function L1341-1355 — `()` — ```
+-  `test_subscription_manager_project_overrides_global_enabled` function L1358-1378 — `()` — ```
+-  `test_subscription_manager_enabled_falls_through_to_subscription_flag` function L1381-1391 — `()` — ```
+-  `test_subscription_manager_global_enabled_filter` function L1394-1406 — `()` — ```
+-  `test_subscription_manager_save_global_config` function L1409-1418 — `()` — ```
+-  `test_subscription_manager_save_project_config` function L1421-1436 — `()` — ```
+-  `test_subscription_manager_save_project_config_no_project` function L1439-1453 — `()` — ```
+-  `test_subscription_manager_cache_dir_for` function L1456-1462 — `()` — ```
+-  `test_subscription_manager_plugin_dirs` function L1465-1485 — `()` — ```
+-  `test_subscription_manager_all_subscriptions_priority` function L1488-1509 — `()` — ```
+-  `test_sync_result_with_all_fields` function L1514-1526 — `()` — ```
+-  `test_git_current_commit_nonexistent_dir` function L1531-1534 — `()` — ```
+-  `test_git_current_branch_nonexistent_dir` function L1537-1540 — `()` — ```
+-  `test_git_current_commit_on_real_git_repo` function L1543-1554 — `()` — ```
+-  `test_git_current_branch_on_real_git_repo` function L1557-1565 — `()` — ```
+-  `test_sync_all_async_no_subscriptions` function L1570-1577 — `()` — ```
+-  `test_sync_all_async_no_clone_url` function L1580-1599 — `()` — ```
+-  `clone_hello_world` function L1605-1616 — `() -> (TempDir, PathBuf)` — Helper: clone octocat/Hello-World into a temp dir, returning (TempDir, dest_path).
+-  `test_git_clone_real_repo` function L1619-1630 — `()` — ```
+-  `test_git_pull_real_repo` function L1633-1638 — `()` — ```
+-  `test_git_clone_replaces_non_git_dir` function L1641-1662 — `()` — ```
+-  `test_git_clone_invalid_url` function L1665-1675 — `()` — ```
+-  `test_git_pull_invalid_ref` function L1678-1684 — `()` — ```
+-  `test_sync_subscription_clone_real_repo` function L1687-1714 — `()` — ```
+-  `test_sync_all_real_repos` function L1717-1741 — `()` — ```
+-  `test_plugin_dir_for_remote_synced` function L1744-1768 — `()` — ```
+-  `test_sync_all_async_real_repo` function L1771-1789 — `()` — ```
 
 #### crates/arawn-plugin/src/types.rs
 
@@ -6429,15 +6527,15 @@
 
 #### crates/arawn-server/src/routes/config.rs
 
-- pub `ConfigFeatures` struct L19-30 — `{ workstreams_enabled: bool, memory_enabled: bool, mcp_enabled: bool, rate_limit...` — Server feature flags.
-- pub `ConfigLimits` struct L34-37 — `{ max_concurrent_requests: Option<u32> }` — Server limits configuration.
-- pub `ConfigResponse` struct L41-57 — `{ version: String, api_version: String, features: ConfigFeatures, limits: Config...` — Server configuration response.
-- pub `get_config_handler` function L74-106 — `( State(state): State<AppState>, Extension(_identity): Extension<Identity>, ) ->...` — Exposes non-sensitive server configuration for clients.
--  `tests` module L113-195 — `-` — Exposes non-sensitive server configuration for clients.
--  `create_test_state` function L128-137 — `() -> AppState` — Exposes non-sensitive server configuration for clients.
--  `create_test_router` function L139-147 — `(state: AppState) -> Router` — Exposes non-sensitive server configuration for clients.
--  `test_get_config` function L150-176 — `()` — Exposes non-sensitive server configuration for clients.
--  `test_get_config_requires_auth` function L179-194 — `()` — Exposes non-sensitive server configuration for clients.
+- pub `ConfigFeatures` struct L19-32 — `{ workstreams_enabled: bool, memory_enabled: bool, embeddings_enabled: bool, mcp...` — Server feature flags.
+- pub `ConfigLimits` struct L36-39 — `{ max_concurrent_requests: Option<u32> }` — Server limits configuration.
+- pub `ConfigResponse` struct L43-59 — `{ version: String, api_version: String, features: ConfigFeatures, limits: Config...` — Server configuration response.
+- pub `get_config_handler` function L76-109 — `( State(state): State<AppState>, Extension(_identity): Extension<Identity>, ) ->...` — Exposes non-sensitive server configuration for clients.
+-  `tests` module L116-199 — `-` — Exposes non-sensitive server configuration for clients.
+-  `create_test_state` function L131-140 — `() -> AppState` — Exposes non-sensitive server configuration for clients.
+-  `create_test_router` function L142-150 — `(state: AppState) -> Router` — Exposes non-sensitive server configuration for clients.
+-  `test_get_config` function L153-180 — `()` — Exposes non-sensitive server configuration for clients.
+-  `test_get_config_requires_auth` function L183-198 — `()` — Exposes non-sensitive server configuration for clients.
 
 #### crates/arawn-server/src/routes/health.rs
 
@@ -6824,6 +6922,218 @@
 -  `test_compact_same_session_concurrent` function L458-494 — `() -> Result<()>` — These tests verify context tracking, session compaction, and the /compact command.
 -  `test_command_list_via_api` function L505-524 — `() -> Result<()>` — These tests verify context tracking, session compaction, and the /compact command.
 
+#### crates/arawn-server/tests/e2e_commands.rs
+
+-  `common` module L6 — `-` — These tests exercise GET /api/v1/commands, POST /api/v1/commands/compact,
+-  `backend_for_turns` function L20-30 — `(n: usize) -> ScriptedMockBackend` — Build a ScriptedMockBackend with N text responses (for chat turns)
+-  `create_session_with_turns` function L33-58 — `(server: &arawn_test_utils::TestServer, turns: usize) -> String` — Create a session with the given number of turns via chat, returning the session ID.
+-  `scenario_list_commands` function L65-86 — `() -> Result<()>` — and POST /api/v1/commands/compact/stream.
+-  `scenario_compact_invalid_session_id` function L93-108 — `() -> Result<()>` — and POST /api/v1/commands/compact/stream.
+-  `scenario_compact_session_not_found` function L115-126 — `() -> Result<()>` — and POST /api/v1/commands/compact/stream.
+-  `scenario_compact_not_needed` function L133-151 — `() -> Result<()>` — and POST /api/v1/commands/compact/stream.
+-  `scenario_compact_with_force` function L158-184 — `() -> Result<()>` — and POST /api/v1/commands/compact/stream.
+-  `scenario_compact_stream_invalid_session_id` function L191-202 — `() -> Result<()>` — and POST /api/v1/commands/compact/stream.
+-  `scenario_compact_stream_session_not_found` function L209-220 — `() -> Result<()>` — and POST /api/v1/commands/compact/stream.
+-  `scenario_compact_stream_not_needed` function L227-253 — `() -> Result<()>` — and POST /api/v1/commands/compact/stream.
+-  `scenario_compact_stream_with_turns` function L260-298 — `() -> Result<()>` — and POST /api/v1/commands/compact/stream.
+-  `scenario_compact_natural_threshold` function L305-327 — `() -> Result<()>` — and POST /api/v1/commands/compact/stream.
+-  `parse_compact_sse` function L337-348 — `(text: &str) -> Vec<serde_json::Value>` — Parse compact SSE response text into JSON events.
+
+#### crates/arawn-server/tests/e2e_logs.rs
+
+-  `common` module L6 — `-` — These tests exercise GET /api/v1/logs and GET /api/v1/logs/files
+-  `setup_log_dir` function L19-34 — `(files: &[(&str, &str)]) -> TempDir` — Create a temp dir that mimics the arawn config structure with log files,
+-  `teardown_log_dir` function L37-41 — `()` — Clear the env var after a test.
+-  `scenario_list_log_files` function L48-80 — `() -> Result<()>` — by creating temporary log directories and setting ARAWN_CONFIG_DIR.
+-  `scenario_list_log_files_empty` function L87-101 — `() -> Result<()>` — by creating temporary log directories and setting ARAWN_CONFIG_DIR.
+-  `scenario_list_log_files_filters_non_log` function L108-127 — `() -> Result<()>` — by creating temporary log directories and setting ARAWN_CONFIG_DIR.
+-  `scenario_get_logs_latest` function L134-162 — `() -> Result<()>` — by creating temporary log directories and setting ARAWN_CONFIG_DIR.
+-  `scenario_get_logs_specific_file` function L169-191 — `() -> Result<()>` — by creating temporary log directories and setting ARAWN_CONFIG_DIR.
+-  `scenario_get_logs_with_lines_limit` function L198-221 — `() -> Result<()>` — by creating temporary log directories and setting ARAWN_CONFIG_DIR.
+-  `scenario_get_logs_file_not_found` function L228-242 — `() -> Result<()>` — by creating temporary log directories and setting ARAWN_CONFIG_DIR.
+-  `scenario_get_logs_no_files_returns_404` function L249-263 — `() -> Result<()>` — by creating temporary log directories and setting ARAWN_CONFIG_DIR.
+-  `scenario_get_logs_no_directory_returns_404` function L270-289 — `() -> Result<()>` — by creating temporary log directories and setting ARAWN_CONFIG_DIR.
+-  `scenario_list_log_files_no_directory_returns_empty` function L296-316 — `() -> Result<()>` — by creating temporary log directories and setting ARAWN_CONFIG_DIR.
+-  `scenario_get_logs_lines_capped_at_1000` function L323-346 — `() -> Result<()>` — by creating temporary log directories and setting ARAWN_CONFIG_DIR.
+-  `scenario_get_logs_full_filename` function L353-368 — `() -> Result<()>` — by creating temporary log directories and setting ARAWN_CONFIG_DIR.
+
+#### crates/arawn-server/tests/e2e_scenarios.rs
+
+-  `common` module L7 — `-` — These tests exercise the full Arawn system with mocked LLM backends,
+-  `scenario_chat_with_tool_execution` function L23-68 — `() -> Result<()>` — workstreams) working together.
+-  `scenario_tool_execution_with_read_file` function L71-103 — `() -> Result<()>` — workstreams) working together.
+-  `scenario_tool_failure_is_reported` function L106-141 — `() -> Result<()>` — workstreams) working together.
+-  `scenario_multi_turn_conversation` function L148-207 — `() -> Result<()>` — workstreams) working together.
+-  `scenario_memory_store_and_search` function L214-256 — `() -> Result<()>` — workstreams) working together.
+-  `scenario_memory_search_includes_notes` function L259-301 — `() -> Result<()>` — workstreams) working together.
+-  `scenario_notes_full_lifecycle` function L308-380 — `() -> Result<()>` — workstreams) working together.
+-  `scenario_session_create_list_delete` function L387-446 — `() -> Result<()>` — workstreams) working together.
+-  `scenario_workstream_create_and_list` function L453-511 — `() -> Result<()>` — workstreams) working together.
+-  `scenario_workstream_messaging` function L514-557 — `() -> Result<()>` — workstreams) working together.
+-  `scenario_streaming_chat_with_tool` function L564-633 — `() -> Result<()>` — workstreams) working together.
+-  `scenario_streaming_text_only` function L636-667 — `() -> Result<()>` — workstreams) working together.
+-  `scenario_oversized_message_rejected` function L674-689 — `() -> Result<()>` — workstreams) working together.
+-  `scenario_nonexistent_session_returns_404` function L692-704 — `() -> Result<()>` — workstreams) working together.
+-  `scenario_note_not_found` function L707-719 — `() -> Result<()>` — workstreams) working together.
+-  `scenario_unauthenticated_requests_rejected` function L722-744 — `() -> Result<()>` — workstreams) working together.
+-  `scenario_memory_without_store_returns_503` function L747-765 — `() -> Result<()>` — workstreams) working together.
+-  `scenario_chat_then_store_memory_then_search` function L772-826 — `() -> Result<()>` — workstreams) working together.
+-  `scenario_multiple_sessions_independent` function L829-891 — `() -> Result<()>` — workstreams) working together.
+-  `scenario_config_reflects_server_state` function L898-927 — `() -> Result<()>` — workstreams) working together.
+
+#### crates/arawn-server/tests/e2e_sessions.rs
+
+-  `common` module L6 — `-` — These tests exercise POST/GET/PATCH/DELETE /api/v1/sessions
+-  `scenario_create_session_with_title` function L18-36 — `() -> Result<()>` — and GET /api/v1/sessions/:id/messages.
+-  `scenario_create_session_with_metadata` function L43-65 — `() -> Result<()>` — and GET /api/v1/sessions/:id/messages.
+-  `scenario_create_session_minimal` function L72-86 — `() -> Result<()>` — and GET /api/v1/sessions/:id/messages.
+-  `scenario_list_sessions_empty` function L93-106 — `() -> Result<()>` — and GET /api/v1/sessions/:id/messages.
+-  `scenario_list_sessions_with_data` function L113-142 — `() -> Result<()>` — and GET /api/v1/sessions/:id/messages.
+-  `scenario_list_sessions_with_limit` function L149-175 — `() -> Result<()>` — and GET /api/v1/sessions/:id/messages.
+-  `scenario_list_sessions_with_offset` function L182-210 — `() -> Result<()>` — and GET /api/v1/sessions/:id/messages.
+-  `scenario_get_session_by_id` function L217-242 — `() -> Result<()>` — and GET /api/v1/sessions/:id/messages.
+-  `scenario_get_session_not_found` function L249-259 — `() -> Result<()>` — and GET /api/v1/sessions/:id/messages.
+-  `scenario_get_session_invalid_id` function L266-277 — `() -> Result<()>` — and GET /api/v1/sessions/:id/messages.
+-  `scenario_delete_session` function L284-311 — `() -> Result<()>` — and GET /api/v1/sessions/:id/messages.
+-  `scenario_delete_nonexistent_session` function L318-328 — `() -> Result<()>` — and GET /api/v1/sessions/:id/messages.
+-  `scenario_delete_session_invalid_id` function L335-342 — `() -> Result<()>` — and GET /api/v1/sessions/:id/messages.
+-  `scenario_update_session_title` function L349-373 — `() -> Result<()>` — and GET /api/v1/sessions/:id/messages.
+-  `scenario_update_session_metadata` function L380-412 — `() -> Result<()>` — and GET /api/v1/sessions/:id/messages.
+-  `scenario_update_nonexistent_session` function L419-430 — `() -> Result<()>` — and GET /api/v1/sessions/:id/messages.
+-  `scenario_update_session_invalid_id` function L437-448 — `() -> Result<()>` — and GET /api/v1/sessions/:id/messages.
+-  `scenario_get_messages_empty_session` function L455-479 — `() -> Result<()>` — and GET /api/v1/sessions/:id/messages.
+-  `scenario_get_messages_with_conversation` function L486-524 — `() -> Result<()>` — and GET /api/v1/sessions/:id/messages.
+-  `scenario_get_messages_not_found` function L531-541 — `() -> Result<()>` — and GET /api/v1/sessions/:id/messages.
+-  `scenario_get_messages_invalid_id` function L548-558 — `() -> Result<()>` — and GET /api/v1/sessions/:id/messages.
+-  `scenario_delete_session_then_list` function L565-600 — `() -> Result<()>` — and GET /api/v1/sessions/:id/messages.
+-  `scenario_chat_session_appears_in_list` function L607-632 — `() -> Result<()>` — and GET /api/v1/sessions/:id/messages.
+-  `scenario_session_detail_with_turns` function L639-669 — `() -> Result<()>` — and GET /api/v1/sessions/:id/messages.
+-  `scenario_update_session_title_and_metadata` function L676-703 — `() -> Result<()>` — and GET /api/v1/sessions/:id/messages.
+-  `scenario_update_session_workstream_without_workstreams` function L710-735 — `() -> Result<()>` — and GET /api/v1/sessions/:id/messages.
+-  `scenario_update_session_invalid_workstream_id` function L742-766 — `() -> Result<()>` — and GET /api/v1/sessions/:id/messages.
+-  `scenario_create_session_with_workstreams` function L773-790 — `() -> Result<()>` — and GET /api/v1/sessions/:id/messages.
+-  `scenario_list_sessions_with_workstreams` function L797-815 — `() -> Result<()>` — and GET /api/v1/sessions/:id/messages.
+-  `scenario_get_session_with_workstreams` function L822-846 — `() -> Result<()>` — and GET /api/v1/sessions/:id/messages.
+-  `scenario_delete_session_with_workstreams` function L853-880 — `() -> Result<()>` — and GET /api/v1/sessions/:id/messages.
+-  `scenario_get_messages_with_workstreams` function L887-910 — `() -> Result<()>` — and GET /api/v1/sessions/:id/messages.
+-  `scenario_reassign_session_nonexistent_workstream` function L917-942 — `() -> Result<()>` — and GET /api/v1/sessions/:id/messages.
+-  `scenario_list_sessions_summary_fields` function L949-975 — `() -> Result<()>` — and GET /api/v1/sessions/:id/messages.
+
+#### crates/arawn-server/tests/e2e_stress.rs
+
+-  `common` module L6 — `-` — These tests exercise failure modes, recovery paths, concurrent operations,
+-  `stress_llm_backend_error_returns_500` function L22-45 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_llm_backend_error_in_stream_returns_error_event` function L48-77 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_tool_error_then_recovery` function L80-117 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_multiple_tool_calls_in_sequence` function L120-163 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_tool_fail_then_tool_succeed_then_text` function L166-206 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_empty_message_accepted` function L213-231 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_message_exactly_at_limit` function L234-253 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_message_one_over_limit` function L256-273 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_unicode_heavy_message` function L276-291 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_special_chars_in_message` function L294-307 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_missing_message_field` function L310-328 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_invalid_json_body` function L331-350 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_chat_with_invalid_session_id` function L357-375 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_chat_with_nonexistent_valid_uuid_session` function L378-393 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_delete_session_twice` function L396-424 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_get_messages_empty_session` function L427-452 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_concurrent_chat_requests` function L459-505 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_concurrent_session_operations` function L508-581 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_wrong_auth_token` function L588-601 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_no_auth_mode` function L604-617 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_health_endpoint_no_auth` function L620-635 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_rate_limiting_enforced` function L642-674 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_memory_empty_search` function L681-695 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_note_update_preserves_unset_fields` function L698-728 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_memory_store_large_content` function L731-747 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_delete_nonexistent_memory` function L750-767 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_workstream_path_traversal_rejected` function L774-800 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_workstream_nonexistent_returns_404` function L803-814 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_list_agents` function L821-832 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_get_main_agent_details` function L835-855 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_get_nonexistent_agent` function L858-866 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_streaming_tool_failure_still_completes` function L873-920 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_streaming_oversized_message_rejected` function L923-937 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_streaming_multiple_tool_calls` function L940-992 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_ws_auth_failure` function L999-1015 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_ws_chat_without_auth` function L1018-1037 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_ws_backend_error_during_chat` function L1040-1062 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_ws_multiple_sequential_chats` function L1065-1111 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_session_survives_tool_failure_and_memory_store` function L1118-1187 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_rapid_session_create_list_delete` function L1190-1231 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_tool_reads_nonexistent_file` function L1238-1275 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_notes_empty_tags` function L1282-1299 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_notes_no_tags_field` function L1302-1315 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_notes_many_tags` function L1318-1336 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_session_update_metadata` function L1343-1374 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_patch_nonexistent_session` function L1377-1390 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+
+#### crates/arawn-server/tests/e2e_websocket.rs
+
+-  `scenario_ws_chat_with_tool_execution` function L19-89 — `() -> Result<()>` — WebSocket E2E scenarios exercising tool execution and full message flows.
+-  `scenario_ws_chat_with_tool_failure` function L96-135 — `() -> Result<()>` — WebSocket E2E scenarios exercising tool execution and full message flows.
+-  `scenario_ws_multi_turn_with_subscribe` function L142-189 — `() -> Result<()>` — WebSocket E2E scenarios exercising tool execution and full message flows.
+-  `scenario_ws_ping_between_operations` function L196-213 — `() -> Result<()>` — WebSocket E2E scenarios exercising tool execution and full message flows.
+-  `scenario_ws_auth_failure` function L220-236 — `() -> Result<()>` — WebSocket E2E scenarios exercising tool execution and full message flows.
+-  `scenario_ws_chat_without_auth` function L243-262 — `() -> Result<()>` — WebSocket E2E scenarios exercising tool execution and full message flows.
+-  `scenario_ws_subscribe_without_auth` function L269-284 — `() -> Result<()>` — WebSocket E2E scenarios exercising tool execution and full message flows.
+-  `scenario_ws_subscribe_invalid_session_id` function L291-307 — `() -> Result<()>` — WebSocket E2E scenarios exercising tool execution and full message flows.
+-  `scenario_ws_invalid_json` function L314-337 — `() -> Result<()>` — WebSocket E2E scenarios exercising tool execution and full message flows.
+-  `scenario_ws_command_session_not_found` function L344-369 — `() -> Result<()>` — WebSocket E2E scenarios exercising tool execution and full message flows.
+-  `scenario_ws_unknown_command` function L376-399 — `() -> Result<()>` — WebSocket E2E scenarios exercising tool execution and full message flows.
+-  `scenario_ws_command_without_auth` function L406-422 — `() -> Result<()>` — WebSocket E2E scenarios exercising tool execution and full message flows.
+-  `scenario_ws_cancel` function L429-453 — `() -> Result<()>` — WebSocket E2E scenarios exercising tool execution and full message flows.
+-  `scenario_ws_unsubscribe` function L460-498 — `() -> Result<()>` — WebSocket E2E scenarios exercising tool execution and full message flows.
+-  `scenario_ws_concurrent_connections` function L505-546 — `() -> Result<()>` — WebSocket E2E scenarios exercising tool execution and full message flows.
+-  `scenario_ws_subscribe_ownership` function L553-588 — `() -> Result<()>` — WebSocket E2E scenarios exercising tool execution and full message flows.
+-  `scenario_ws_chat_invalid_workstream_id` function L595-614 — `() -> Result<()>` — WebSocket E2E scenarios exercising tool execution and full message flows.
+-  `scenario_ws_command_compact_not_needed` function L621-669 — `() -> Result<()>` — WebSocket E2E scenarios exercising tool execution and full message flows.
+-  `scenario_ws_try_recv_no_message` function L676-688 — `() -> Result<()>` — WebSocket E2E scenarios exercising tool execution and full message flows.
+-  `scenario_ws_auto_auth_no_token` function L695-716 — `() -> Result<()>` — WebSocket E2E scenarios exercising tool execution and full message flows.
+-  `scenario_ws_cancel_without_auth` function L723-744 — `() -> Result<()>` — WebSocket E2E scenarios exercising tool execution and full message flows.
+-  `scenario_ws_subscribe_reconnect_token` function L751-806 — `() -> Result<()>` — WebSocket E2E scenarios exercising tool execution and full message flows.
+-  `scenario_ws_binary_utf8_frame` function L813-843 — `() -> Result<()>` — WebSocket E2E scenarios exercising tool execution and full message flows.
+-  `scenario_ws_binary_non_utf8_frame` function L850-874 — `() -> Result<()>` — WebSocket E2E scenarios exercising tool execution and full message flows.
+-  `scenario_ws_cancel_invalid_session_id` function L881-901 — `() -> Result<()>` — WebSocket E2E scenarios exercising tool execution and full message flows.
+
+#### crates/arawn-server/tests/e2e_workstreams.rs
+
+-  `common` module L8 — `-` — Covers CRUD operations, sessions, messaging, pagination, and error paths
+-  `create_workstream` function L20-30 — `(server: &arawn_test_utils::TestServer, title: &str) -> String` — Create a workstream and return its ID.
+-  `scenario_update_workstream_title` function L37-53 — `() -> Result<()>` — available in the test server.
+-  `scenario_update_workstream_summary` function L56-74 — `() -> Result<()>` — available in the test server.
+-  `scenario_update_workstream_tags` function L77-93 — `() -> Result<()>` — available in the test server.
+-  `scenario_update_workstream_multiple_fields` function L96-117 — `() -> Result<()>` — available in the test server.
+-  `scenario_update_nonexistent_workstream_returns_404` function L120-131 — `() -> Result<()>` — available in the test server.
+-  `scenario_delete_workstream` function L138-164 — `() -> Result<()>` — available in the test server.
+-  `scenario_delete_nonexistent_workstream_returns_404` function L167-178 — `() -> Result<()>` — available in the test server.
+-  `scenario_list_workstreams_with_pagination` function L185-218 — `() -> Result<()>` — available in the test server.
+-  `scenario_list_workstreams_include_archived` function L225-266 — `() -> Result<()>` — available in the test server.
+-  `scenario_list_workstream_sessions` function L273-297 — `() -> Result<()>` — available in the test server.
+-  `scenario_list_sessions_nonexistent_workstream_returns_empty` function L300-313 — `() -> Result<()>` — available in the test server.
+-  `scenario_list_sessions_with_pagination` function L316-341 — `() -> Result<()>` — available in the test server.
+-  `scenario_send_message_with_roles` function L348-364 — `() -> Result<()>` — available in the test server.
+-  `scenario_send_message_invalid_role_returns_400` function L367-379 — `() -> Result<()>` — available in the test server.
+-  `scenario_send_message_default_role_is_user` function L382-397 — `() -> Result<()>` — available in the test server.
+-  `scenario_send_message_with_metadata` function L400-418 — `() -> Result<()>` — available in the test server.
+-  `scenario_list_messages_with_pagination` function L425-455 — `() -> Result<()>` — available in the test server.
+-  `scenario_list_messages_with_since_filter` function L458-501 — `() -> Result<()>` — available in the test server.
+-  `scenario_list_messages_invalid_since_returns_400` function L504-518 — `() -> Result<()>` — available in the test server.
+-  `scenario_workstreams_not_configured_returns_503` function L525-537 — `() -> Result<()>` — available in the test server.
+-  `scenario_workstream_create_not_configured_returns_503` function L540-551 — `() -> Result<()>` — available in the test server.
+-  `scenario_create_workstream_with_all_fields` function L558-581 — `() -> Result<()>` — available in the test server.
+-  `scenario_get_workstream_has_full_details` function L588-606 — `() -> Result<()>` — available in the test server.
+-  `scenario_invalid_workstream_id_returns_400` function L613-624 — `() -> Result<()>` — available in the test server.
+-  `scenario_send_message_nonexistent_ws_returns_404` function L631-642 — `() -> Result<()>` — available in the test server.
+-  `scenario_promote_file_no_directory_manager_returns_503` function L649-661 — `() -> Result<()>` — available in the test server.
+-  `scenario_export_file_no_directory_manager_returns_503` function L664-676 — `() -> Result<()>` — available in the test server.
+-  `scenario_clone_repo_no_directory_manager_returns_503` function L679-691 — `() -> Result<()>` — available in the test server.
+-  `scenario_usage_no_directory_manager_returns_503` function L694-705 — `() -> Result<()>` — available in the test server.
+-  `scenario_cleanup_no_directory_manager_returns_503` function L708-720 — `() -> Result<()>` — available in the test server.
+-  `scenario_compress_no_compressor_returns_503` function L723-734 — `() -> Result<()>` — available in the test server.
+-  `scenario_promote_non_scratch_returns_400` function L741-757 — `() -> Result<()>` — available in the test server.
+
 #### crates/arawn-server/tests/memory_integration.rs
 
 -  `common` module L8 — `-` — These tests verify memory persistence through the server API.
@@ -7178,8 +7488,10 @@
 - pub `assertions` module L7 — `-` — Provides common infrastructure for integration and unit tests
 - pub `fixtures` module L8 — `-` — and streaming mock backends.
 - pub `mock_backend` module L9 — `-` — and streaming mock backends.
-- pub `server` module L10 — `-` — and streaming mock backends.
-- pub `ws_client` module L11 — `-` — and streaming mock backends.
+- pub `mock_tools` module L10 — `-` — and streaming mock backends.
+- pub `server` module L11 — `-` — and streaming mock backends.
+- pub `sse` module L12 — `-` — and streaming mock backends.
+- pub `ws_client` module L13 — `-` — and streaming mock backends.
 
 #### crates/arawn-test-utils/src/mock_backend.rs
 
@@ -7191,49 +7503,136 @@
 - pub `tool_then_text` function L68-83 — `( tool_name: &str, tool_id: &str, args: serde_json::Value, text: &str, ) -> Self` — Convenience constructor: a tool call followed by a text response.
 - pub `with_delay` function L86-89 — `(mut self, delay: Duration) -> Self` — Set delay between chunks.
 - pub `with_model` function L92-95 — `(mut self, model: impl Into<String>) -> Self` — Set the model name.
+- pub `ScriptedInvocation` enum L249-254 — `Events | Error` — A single scripted invocation: either a set of events or an error.
+- pub `ScriptedMockBackend` struct L288-300 — `{ invocations: Vec<ScriptedInvocation>, index: std::sync::Mutex<usize>, last_was...` — A mock backend that returns different responses on each logical invocation.
+- pub `new` function L308-319 — `(invocations: Vec<Vec<StreamingMockEvent>>) -> Self` — Create from a sequence of invocations.
+- pub `from_invocations` function L322-330 — `(invocations: Vec<ScriptedInvocation>) -> Self` — Create from a sequence of invocations that may include errors.
+- pub `tool_then_text` function L333-347 — `( tool_name: &str, tool_id: &str, args: serde_json::Value, response_text: &str, ...` — Convenience: tool call on first invocation, text on second.
+- pub `always_error` function L350-352 — `(message: &str) -> Self` — Convenience: returns an error on every call.
+- pub `with_delay` function L355-358 — `(mut self, delay: Duration) -> Self` — Set delay between chunks.
+- pub `with_model` function L361-364 — `(mut self, model: impl Into<String>) -> Self` — Set the model name.
 -  `StreamingMockBackend` type L41-103 — `= StreamingMockBackend` — StreamingMockBackend — mock that yields proper streaming chunks.
 -  `has_tool_use` function L98-102 — `(&self) -> bool` — Returns true if any event is a ToolUse.
 -  `StreamingMockBackend` type L106-241 — `impl LlmBackend for StreamingMockBackend` — StreamingMockBackend — mock that yields proper streaming chunks.
 -  `complete` function L107-142 — `(&self, _request: CompletionRequest) -> Result<CompletionResponse>` — StreamingMockBackend — mock that yields proper streaming chunks.
 -  `complete_stream` function L144-236 — `(&self, _request: CompletionRequest) -> Result<ResponseStream>` — StreamingMockBackend — mock that yields proper streaming chunks.
 -  `name` function L238-240 — `(&self) -> &str` — StreamingMockBackend — mock that yields proper streaming chunks.
--  `tests` module L244-358 — `-` — StreamingMockBackend — mock that yields proper streaming chunks.
--  `test_streaming_mock_yields_chunks` function L249-268 — `()` — StreamingMockBackend — mock that yields proper streaming chunks.
--  `test_streaming_mock_complete_combines` function L271-279 — `()` — StreamingMockBackend — mock that yields proper streaming chunks.
--  `test_streaming_mock_from_text` function L282-301 — `()` — StreamingMockBackend — mock that yields proper streaming chunks.
--  `test_tool_then_text` function L304-357 — `()` — StreamingMockBackend — mock that yields proper streaming chunks.
+-  `ScriptedInvocation` type L256-260 — `= ScriptedInvocation` — StreamingMockBackend — mock that yields proper streaming chunks.
+-  `from` function L257-259 — `(events: Vec<StreamingMockEvent>) -> Self` — StreamingMockBackend — mock that yields proper streaming chunks.
+-  `ScriptedMockBackend` type L302-409 — `= ScriptedMockBackend` — StreamingMockBackend — mock that yields proper streaming chunks.
+-  `invocation_for_stream` function L371-382 — `(&self) -> ScriptedInvocation` — Get the invocation for a streaming call.
+-  `invocation_for_sync` function L387-401 — `(&self) -> ScriptedInvocation` — Get the invocation for a sync (complete) call.
+-  `events_have_tool_use` function L404-408 — `(events: &[StreamingMockEvent]) -> bool` — Check if any event in a list is a ToolUse.
+-  `ScriptedMockBackend` type L412-556 — `impl LlmBackend for ScriptedMockBackend` — StreamingMockBackend — mock that yields proper streaming chunks.
+-  `complete` function L413-458 — `(&self, _request: CompletionRequest) -> Result<CompletionResponse>` — StreamingMockBackend — mock that yields proper streaming chunks.
+-  `complete_stream` function L460-551 — `(&self, _request: CompletionRequest) -> Result<ResponseStream>` — StreamingMockBackend — mock that yields proper streaming chunks.
+-  `name` function L553-555 — `(&self) -> &str` — StreamingMockBackend — mock that yields proper streaming chunks.
+-  `tests` module L559-673 — `-` — StreamingMockBackend — mock that yields proper streaming chunks.
+-  `test_streaming_mock_yields_chunks` function L564-583 — `()` — StreamingMockBackend — mock that yields proper streaming chunks.
+-  `test_streaming_mock_complete_combines` function L586-594 — `()` — StreamingMockBackend — mock that yields proper streaming chunks.
+-  `test_streaming_mock_from_text` function L597-616 — `()` — StreamingMockBackend — mock that yields proper streaming chunks.
+-  `test_tool_then_text` function L619-672 — `()` — StreamingMockBackend — mock that yields proper streaming chunks.
+
+#### crates/arawn-test-utils/src/mock_tools.rs
+
+- pub `EchoTool` struct L19 — `-` — A tool that echoes its input back.
+- pub `MockReadFileTool` struct L63-66 — `{ files: std::collections::HashMap<String, String> }` — A mock file reader that returns canned content based on path.
+- pub `new` function L70-81 — `() -> Self` — Create a new mock file reader with default files.
+- pub `with_file` function L84-87 — `(mut self, path: impl Into<String>, content: impl Into<String>) -> Self` — Add a file to the mock filesystem.
+- pub `FailTool` struct L139 — `-` — A tool that always returns an error.
+- pub `SlowTool` struct L183-185 — `{ delay: std::time::Duration }` — A tool that sleeps for a configurable duration before responding.
+- pub `new` function L188-190 — `(delay: std::time::Duration) -> Self` — the full tool-execution pipeline.
+- pub `LargeOutputTool` struct L236-238 — `{ output_size: usize }` — A tool that returns a very large output.
+- pub `new` function L241-243 — `(output_size: usize) -> Self` — the full tool-execution pipeline.
+- pub `mock_tool_registry` function L278-284 — `() -> arawn_agent::ToolRegistry` — Create a `ToolRegistry` pre-loaded with all mock tools (echo, read_file, fail_tool).
+-  `EchoTool` type L22-55 — `impl Tool for EchoTool` — the full tool-execution pipeline.
+-  `name` function L23-25 — `(&self) -> &str` — the full tool-execution pipeline.
+-  `description` function L27-29 — `(&self) -> &str` — the full tool-execution pipeline.
+-  `parameters` function L31-42 — `(&self) -> serde_json::Value` — the full tool-execution pipeline.
+-  `execute` function L44-54 — `( &self, params: serde_json::Value, _ctx: &ToolContext, ) -> arawn_agent::Result...` — the full tool-execution pipeline.
+-  `MockReadFileTool` type L68-88 — `= MockReadFileTool` — the full tool-execution pipeline.
+-  `MockReadFileTool` type L90-94 — `impl Default for MockReadFileTool` — the full tool-execution pipeline.
+-  `default` function L91-93 — `() -> Self` — the full tool-execution pipeline.
+-  `MockReadFileTool` type L97-131 — `impl Tool for MockReadFileTool` — the full tool-execution pipeline.
+-  `name` function L98-100 — `(&self) -> &str` — the full tool-execution pipeline.
+-  `description` function L102-104 — `(&self) -> &str` — the full tool-execution pipeline.
+-  `parameters` function L106-117 — `(&self) -> serde_json::Value` — the full tool-execution pipeline.
+-  `execute` function L119-130 — `( &self, params: serde_json::Value, _ctx: &ToolContext, ) -> arawn_agent::Result...` — the full tool-execution pipeline.
+-  `FailTool` type L142-174 — `impl Tool for FailTool` — the full tool-execution pipeline.
+-  `name` function L143-145 — `(&self) -> &str` — the full tool-execution pipeline.
+-  `description` function L147-149 — `(&self) -> &str` — the full tool-execution pipeline.
+-  `parameters` function L151-161 — `(&self) -> serde_json::Value` — the full tool-execution pipeline.
+-  `execute` function L163-173 — `( &self, params: serde_json::Value, _ctx: &ToolContext, ) -> arawn_agent::Result...` — the full tool-execution pipeline.
+-  `SlowTool` type L187-191 — `= SlowTool` — the full tool-execution pipeline.
+-  `SlowTool` type L194-227 — `impl Tool for SlowTool` — the full tool-execution pipeline.
+-  `name` function L195-197 — `(&self) -> &str` — the full tool-execution pipeline.
+-  `description` function L199-201 — `(&self) -> &str` — the full tool-execution pipeline.
+-  `parameters` function L203-213 — `(&self) -> serde_json::Value` — the full tool-execution pipeline.
+-  `execute` function L215-226 — `( &self, params: serde_json::Value, _ctx: &ToolContext, ) -> arawn_agent::Result...` — the full tool-execution pipeline.
+-  `LargeOutputTool` type L240-244 — `= LargeOutputTool` — the full tool-execution pipeline.
+-  `LargeOutputTool` type L247-271 — `impl Tool for LargeOutputTool` — the full tool-execution pipeline.
+-  `name` function L248-250 — `(&self) -> &str` — the full tool-execution pipeline.
+-  `description` function L252-254 — `(&self) -> &str` — the full tool-execution pipeline.
+-  `parameters` function L256-261 — `(&self) -> serde_json::Value` — the full tool-execution pipeline.
+-  `execute` function L263-270 — `( &self, _params: serde_json::Value, _ctx: &ToolContext, ) -> arawn_agent::Resul...` — the full tool-execution pipeline.
+-  `tests` module L287-362 — `-` — the full tool-execution pipeline.
+-  `test_context` function L291-293 — `() -> ToolContext` — the full tool-execution pipeline.
+-  `test_echo_tool` function L296-305 — `()` — the full tool-execution pipeline.
+-  `test_read_file_found` function L308-317 — `()` — the full tool-execution pipeline.
+-  `test_read_file_not_found` function L320-328 — `()` — the full tool-execution pipeline.
+-  `test_read_file_custom` function L331-340 — `()` — the full tool-execution pipeline.
+-  `test_fail_tool` function L343-352 — `()` — the full tool-execution pipeline.
+-  `test_mock_registry` function L355-361 — `()` — the full tool-execution pipeline.
 
 #### crates/arawn-test-utils/src/server.rs
 
-- pub `TestServer` struct L23-34 — `{ addr: SocketAddr, token: Option<String>, client: Client, _handle: JoinHandle<(...` — A test server that runs in the background with configurable options.
-- pub `start` function L38-40 — `() -> Result<Self>` — Start a test server with default configuration.
-- pub `start_with_responses` function L43-48 — `(responses: Vec<String>) -> Result<Self>` — Start a test server with pre-configured text responses.
-- pub `builder` function L51-53 — `() -> TestServerBuilder` — Create a builder for more control over server configuration.
-- pub `base_url` function L56-58 — `(&self) -> String` — Get the base URL for the server.
-- pub `ws_url` function L61-63 — `(&self) -> String` — Get the WebSocket URL for the server.
-- pub `get` function L66-72 — `(&self, path: &str) -> reqwest::RequestBuilder` — Get an authenticated GET request builder.
-- pub `post` function L75-81 — `(&self, path: &str) -> reqwest::RequestBuilder` — Get an authenticated POST request builder.
-- pub `delete` function L84-90 — `(&self, path: &str) -> reqwest::RequestBuilder` — Get an authenticated DELETE request builder.
-- pub `put` function L93-99 — `(&self, path: &str) -> reqwest::RequestBuilder` — Get an authenticated PUT request builder.
-- pub `patch` function L102-108 — `(&self, path: &str) -> reqwest::RequestBuilder` — Get an authenticated PATCH request builder.
-- pub `health` function L111-118 — `(&self) -> Result<bool>` — Check if the server is healthy.
-- pub `TestServerBuilder` struct L122-131 — `{ token: Option<String>, responses: Vec<MockResponse>, streaming_backend: Option...` — Builder for configuring a TestServer.
-- pub `new` function L135-155 — `() -> Self` — Create a new builder with sensible defaults.
-- pub `with_auth` function L158-161 — `(mut self, token: Option<&str>) -> Self` — Set the auth token.
-- pub `with_text_responses` function L164-182 — `(mut self, responses: Vec<String>) -> Self` — Set text responses for the mock backend.
-- pub `with_mock_responses` function L185-188 — `(mut self, responses: Vec<MockResponse>) -> Self` — Set raw mock responses (for tool_use, errors, etc.).
-- pub `with_streaming_backend` function L191-194 — `(mut self, backend: StreamingMockBackend) -> Self` — Set a streaming mock backend directly.
-- pub `with_workstreams` function L197-200 — `(mut self) -> Self` — Enable in-memory workstream manager.
-- pub `with_rate_limiting` function L203-206 — `(mut self, enabled: bool) -> Self` — Enable rate limiting.
-- pub `with_api_rpm` function L209-212 — `(mut self, rpm: u32) -> Self` — Set the API rate limit (requests per minute).
-- pub `without_memory` function L215-218 — `(mut self) -> Self` — Disable the in-memory store.
-- pub `build` function L221-291 — `(self) -> Result<TestServer>` — Build and start the test server.
-- pub `find_available_port` function L301-306 — `() -> Result<SocketAddr>` — Find an available port for the test server.
-- pub `wait_for_server` function L309-327 — `(client: &Client, addr: SocketAddr) -> Result<()>` — Wait for a server to become ready by polling its health endpoint.
--  `TestServer` type L36-119 — `= TestServer` — with a builder pattern for flexible configuration.
--  `TestServerBuilder` type L133-292 — `= TestServerBuilder` — with a builder pattern for flexible configuration.
--  `TestServerBuilder` type L294-298 — `impl Default for TestServerBuilder` — with a builder pattern for flexible configuration.
--  `default` function L295-297 — `() -> Self` — with a builder pattern for flexible configuration.
+- pub `TestServer` struct L25-36 — `{ addr: SocketAddr, token: Option<String>, client: Client, _handle: JoinHandle<(...` — A test server that runs in the background with configurable options.
+- pub `start` function L40-42 — `() -> Result<Self>` — Start a test server with default configuration.
+- pub `start_with_responses` function L45-50 — `(responses: Vec<String>) -> Result<Self>` — Start a test server with pre-configured text responses.
+- pub `builder` function L53-55 — `() -> TestServerBuilder` — Create a builder for more control over server configuration.
+- pub `base_url` function L58-60 — `(&self) -> String` — Get the base URL for the server.
+- pub `ws_url` function L63-65 — `(&self) -> String` — Get the WebSocket URL for the server.
+- pub `get` function L68-74 — `(&self, path: &str) -> reqwest::RequestBuilder` — Get an authenticated GET request builder.
+- pub `post` function L77-83 — `(&self, path: &str) -> reqwest::RequestBuilder` — Get an authenticated POST request builder.
+- pub `delete` function L86-92 — `(&self, path: &str) -> reqwest::RequestBuilder` — Get an authenticated DELETE request builder.
+- pub `put` function L95-101 — `(&self, path: &str) -> reqwest::RequestBuilder` — Get an authenticated PUT request builder.
+- pub `patch` function L104-110 — `(&self, path: &str) -> reqwest::RequestBuilder` — Get an authenticated PATCH request builder.
+- pub `health` function L113-120 — `(&self) -> Result<bool>` — Check if the server is healthy.
+- pub `TestServerBuilder` struct L124-136 — `{ token: Option<String>, responses: Vec<MockResponse>, streaming_backend: Option...` — Builder for configuring a TestServer.
+- pub `new` function L140-162 — `() -> Self` — Create a new builder with sensible defaults.
+- pub `with_auth` function L165-168 — `(mut self, token: Option<&str>) -> Self` — Set the auth token.
+- pub `with_text_responses` function L171-189 — `(mut self, responses: Vec<String>) -> Self` — Set text responses for the mock backend.
+- pub `with_mock_responses` function L192-195 — `(mut self, responses: Vec<MockResponse>) -> Self` — Set raw mock responses (for tool_use, errors, etc.).
+- pub `with_streaming_backend` function L198-201 — `(mut self, backend: StreamingMockBackend) -> Self` — Set a streaming mock backend directly.
+- pub `with_workstreams` function L204-207 — `(mut self) -> Self` — Enable in-memory workstream manager.
+- pub `with_rate_limiting` function L210-213 — `(mut self, enabled: bool) -> Self` — Enable rate limiting.
+- pub `with_api_rpm` function L216-219 — `(mut self, rpm: u32) -> Self` — Set the API rate limit (requests per minute).
+- pub `with_backend` function L224-227 — `(mut self, backend: impl LlmBackend + 'static) -> Self` — Set a generic LLM backend (e.g., `ScriptedMockBackend`).
+- pub `with_tools` function L233-236 — `(mut self, tools: ToolRegistry) -> Self` — Set the tool registry for the agent.
+- pub `without_memory` function L239-242 — `(mut self) -> Self` — Disable the in-memory store.
+- pub `build` function L245-322 — `(self) -> Result<TestServer>` — Build and start the test server.
+- pub `find_available_port` function L332-337 — `() -> Result<SocketAddr>` — Find an available port for the test server.
+- pub `wait_for_server` function L340-358 — `(client: &Client, addr: SocketAddr) -> Result<()>` — Wait for a server to become ready by polling its health endpoint.
+-  `TestServer` type L38-121 — `= TestServer` — with a builder pattern for flexible configuration.
+-  `TestServerBuilder` type L138-323 — `= TestServerBuilder` — with a builder pattern for flexible configuration.
+-  `TestServerBuilder` type L325-329 — `impl Default for TestServerBuilder` — with a builder pattern for flexible configuration.
+-  `default` function L326-328 — `() -> Self` — with a builder pattern for flexible configuration.
+
+#### crates/arawn-test-utils/src/sse.rs
+
+- pub `SseEvent` struct L10-15 — `{ event: String, data: Value }` — A parsed SSE event.
+- pub `is` function L19-21 — `(&self, event_type: &str) -> bool` — Check if this is a specific event type.
+- pub `get_str` function L24-26 — `(&self, field: &str) -> Option<&str>` — Get a string field from the data payload.
+- pub `get_bool` function L29-31 — `(&self, field: &str) -> Option<bool>` — Get a bool field from the data payload.
+- pub `collect_sse_events` function L37-40 — `(resp: reqwest::Response) -> Vec<SseEvent>` — Collect all SSE events from a streaming response.
+- pub `parse_sse_text` function L43-66 — `(text: &str) -> Vec<SseEvent>` — Parse SSE text into events (useful for testing without HTTP).
+- pub `reconstruct_text` function L69-76 — `(events: &[SseEvent]) -> String` — Reconstruct full text content from SSE text events.
+- pub `events_of_type` function L79-81 — `(events: &'a [SseEvent], event_type: &str) -> Vec<&'a SseEvent>` — Find all events of a specific type.
+-  `SseEvent` type L17-32 — `= SseEvent` — from the `/api/v1/chat/stream` endpoint.
+-  `tests` module L84-151 — `-` — from the `/api/v1/chat/stream` endpoint.
+-  `test_parse_sse_text` function L88-106 — `()` — from the `/api/v1/chat/stream` endpoint.
+-  `test_reconstruct_text` function L109-129 — `()` — from the `/api/v1/chat/stream` endpoint.
+-  `test_events_of_type` function L132-150 — `()` — from the `/api/v1/chat/stream` endpoint.
 
 #### crates/arawn-test-utils/src/ws_client.rs
 
@@ -7322,7 +7721,7 @@
 -  `handle_sidebar_key` function L1951-2186 — `(&mut self, key: crossterm::event::KeyEvent)` — Handle sidebar key events.
 -  `App` type L2227-2282 — `= App` — Application state and main loop.
 -  `test_new` function L2229-2281 — `() -> Self` — Create a test App with a mock WsClient and no real connections.
--  `tests` module L2285-3274 — `-` — Application state and main loop.
+-  `tests` module L2285-3272 — `-` — Application state and main loop.
 -  `key` function L2289-2296 — `(code: KeyCode) -> KeyEvent` — Application state and main loop.
 -  `key_mod` function L2298-2305 — `(code: KeyCode, modifiers: KeyModifiers) -> KeyEvent` — Application state and main loop.
 -  `test_session_created_sets_session_id` function L2310-2319 — `()` — Application state and main loop.
@@ -7373,10 +7772,10 @@
 -  `test_reconnecting_shows_attempt_count` function L3053-3073 — `()` — Application state and main loop.
 -  `test_full_reconnection_lifecycle` function L3076-3105 — `()` — Application state and main loop.
 -  `test_session_state_preserved_across_reconnect` function L3108-3157 — `()` — Application state and main loop.
--  `test_rapid_disconnect_reconnect_cycles_no_panic` function L3160-3188 — `()` — Application state and main loop.
--  `test_disconnect_during_streaming_marks_message_not_streaming` function L3191-3216 — `()` — Application state and main loop.
--  `test_messages_received_after_reconnect_handled_correctly` function L3219-3255 — `()` — Application state and main loop.
--  `test_disconnect_while_not_waiting_no_status_change` function L3258-3273 — `()` — Application state and main loop.
+-  `test_rapid_disconnect_reconnect_cycles_no_panic` function L3160-3186 — `()` — Application state and main loop.
+-  `test_disconnect_during_streaming_marks_message_not_streaming` function L3189-3214 — `()` — Application state and main loop.
+-  `test_messages_received_after_reconnect_handled_correctly` function L3217-3253 — `()` — Application state and main loop.
+-  `test_disconnect_while_not_waiting_no_status_change` function L3256-3271 — `()` — Application state and main loop.
 
 #### crates/arawn-tui/src/bounded.rs
 

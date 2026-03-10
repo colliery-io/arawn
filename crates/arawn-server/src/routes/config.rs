@@ -19,8 +19,10 @@ use crate::state::AppState;
 pub struct ConfigFeatures {
     /// Whether workstreams are enabled.
     pub workstreams_enabled: bool,
-    /// Whether memory/indexing is enabled.
+    /// Whether the memory store is available (notes, search, storage).
     pub memory_enabled: bool,
+    /// Whether semantic embedding/indexing is available.
+    pub embeddings_enabled: bool,
     /// Whether MCP is enabled.
     pub mcp_enabled: bool,
     /// Whether rate limiting is enabled.
@@ -79,7 +81,8 @@ pub async fn get_config_handler(
 
     let features = ConfigFeatures {
         workstreams_enabled: state.workstreams().is_some(),
-        memory_enabled: state.indexer().is_some(),
+        memory_enabled: state.memory_store().is_some(),
+        embeddings_enabled: state.indexer().is_some(),
         mcp_enabled: state.mcp_manager().is_some(),
         rate_limiting: config.rate_limiting,
         request_logging: config.request_logging,
@@ -172,6 +175,7 @@ mod tests {
         assert!(result.auth_required);
         assert!(!result.features.workstreams_enabled);
         assert!(!result.features.memory_enabled);
+        assert!(!result.features.embeddings_enabled);
         assert!(!result.features.mcp_enabled);
     }
 

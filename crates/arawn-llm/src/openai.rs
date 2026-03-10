@@ -1087,4 +1087,508 @@ mod tests {
         assert_eq!(openai_req.messages[0].role, "user");
         assert_eq!(openai_req.max_tokens, Some(100));
     }
+
+    #[test]
+    fn test_to_openai_request_with_system() {
+        let config = OpenAiConfig::openai("key");
+        let backend = OpenAiBackend::new(config).unwrap();
+
+        let request = CompletionRequest::new("gpt-4", vec![Message::user("Hi")], 100)
+            .with_system("Be helpful.");
+
+        let openai_req = backend.to_openai_request(&request);
+        assert_eq!(openai_req.messages.len(), 2);
+        assert_eq!(openai_req.messages[0].role, "system");
+        if let Some(OpenAiContent::Text(ref t)) = openai_req.messages[0].content {
+            assert_eq!(t, "Be helpful.");
+        } else {
+            panic!("Expected text content for system message");
+        }
+    }
+
+    #[test]
+    fn test_to_openai_request_uses_request_model_when_no_config_model() {
+        let config = OpenAiConfig::openai("key");
+        let backend = OpenAiBackend::new(config).unwrap();
+        let request = CompletionRequest::new("gpt-3.5-turbo", vec![Message::user("Hi")], 50);
+        let openai_req = backend.to_openai_request(&request);
+        assert_eq!(openai_req.model, "gpt-3.5-turbo");
+    }
+
+    #[test]
+    fn test_to_openai_request_with_tools() {
+        use crate::types::ToolDefinition;
+
+        let config = OpenAiConfig::openai("key");
+        let backend = OpenAiBackend::new(config).unwrap();
+
+        let tools = vec![ToolDefinition {
+            name: "read_file".to_string(),
+            description: "Read a file".to_string(),
+            input_schema: serde_json::json!({"type": "object", "properties": {"path": {"type": "string"}}}),
+        }];
+
+        let request = CompletionRequest::new("gpt-4", vec![Message::user("Read foo.rs")], 100)
+            .with_tools(tools);
+
+        let openai_req = backend.to_openai_request(&request);
+        assert!(openai_req.tools.is_some());
+        let tools = openai_req.tools.unwrap();
+        assert_eq!(tools.len(), 1);
+        assert_eq!(tools[0].function.name, "read_file");
+        assert_eq!(tools[0].tool_type, "function");
+    }
+
+    #[test]
+    fn test_to_openai_request_with_tool_calls_and_results() {
+        let config = OpenAiConfig::openai("key");
+        let backend = OpenAiBackend::new(config).unwrap();
+
+        let messages = vec![
+            Message::user("Read the file"),
+            // Assistant message with tool call
+            Message::assistant_blocks(vec![ContentBlock::ToolUse {
+                id: "call_1".to_string(),
+                name: "read_file".to_string(),
+                input: serde_json::json!({"path": "/foo.rs"}),
+                cache_control: None,
+            }]),
+            // User message with tool result
+            Message {
+                role: Role::User,
+                content: crate::types::Content::Blocks(vec![ContentBlock::ToolResult {
+                    tool_use_id: "call_1".to_string(),
+                    content: Some(ToolResultContent::Text("file contents".to_string())),
+                    is_error: false,
+                    cache_control: None,
+                }]),
+            },
+        ];
+
+        let request = CompletionRequest::new("gpt-4", messages, 100);
+        let openai_req = backend.to_openai_request(&request);
+
+        // 3 messages: user, assistant w/ tool_calls, tool result
+        assert_eq!(openai_req.messages.len(), 3);
+        assert_eq!(openai_req.messages[0].role, "user");
+        assert_eq!(openai_req.messages[1].role, "assistant");
+        assert!(openai_req.messages[1].tool_calls.is_some());
+        assert_eq!(openai_req.messages[2].role, "tool");
+        assert_eq!(
+            openai_req.messages[2].tool_call_id,
+            Some("call_1".to_string())
+        );
+    }
+
+    #[test]
+    fn test_to_openai_request_with_tool_result_blocks() {
+        let config = OpenAiConfig::openai("key");
+        let backend = OpenAiBackend::new(config).unwrap();
+
+        // Tool result with Blocks variant
+        let messages = vec![Message {
+            role: Role::User,
+            content: crate::types::Content::Blocks(vec![ContentBlock::ToolResult {
+                tool_use_id: "call_2".to_string(),
+                content: Some(ToolResultContent::Blocks(vec![
+                    serde_json::json!({"type": "text", "text": "line 1"}),
+                    serde_json::json!({"type": "text", "text": "line 2"}),
+                ])),
+                is_error: false,
+                cache_control: None,
+            }]),
+        }];
+
+        let request = CompletionRequest::new("gpt-4", messages, 100);
+        let openai_req = backend.to_openai_request(&request);
+
+        assert_eq!(openai_req.messages.len(), 1);
+        assert_eq!(openai_req.messages[0].role, "tool");
+        if let Some(OpenAiContent::Text(ref t)) = openai_req.messages[0].content {
+            assert_eq!(t, "line 1\nline 2");
+        }
+    }
+
+    #[test]
+    fn test_to_openai_request_with_tool_result_none_content() {
+        let config = OpenAiConfig::openai("key");
+        let backend = OpenAiBackend::new(config).unwrap();
+
+        let messages = vec![Message {
+            role: Role::User,
+            content: crate::types::Content::Blocks(vec![ContentBlock::ToolResult {
+                tool_use_id: "call_3".to_string(),
+                content: None,
+                is_error: false,
+                cache_control: None,
+            }]),
+        }];
+
+        let request = CompletionRequest::new("gpt-4", messages, 100);
+        let openai_req = backend.to_openai_request(&request);
+        assert_eq!(openai_req.messages[0].role, "tool");
+        if let Some(OpenAiContent::Text(ref t)) = openai_req.messages[0].content {
+            assert!(t.is_empty());
+        }
+    }
+
+    #[test]
+    fn test_to_openai_request_with_stop_sequences() {
+        let config = OpenAiConfig::openai("key");
+        let backend = OpenAiBackend::new(config).unwrap();
+
+        let mut request = CompletionRequest::new("gpt-4", vec![Message::user("Hi")], 100);
+        request.stop_sequences = vec!["STOP".to_string(), "END".to_string()];
+
+        let openai_req = backend.to_openai_request(&request);
+        assert_eq!(
+            openai_req.stop,
+            Some(vec!["STOP".to_string(), "END".to_string()])
+        );
+    }
+
+    #[test]
+    fn test_to_openai_request_with_temperature() {
+        let config = OpenAiConfig::openai("key");
+        let backend = OpenAiBackend::new(config).unwrap();
+
+        let request =
+            CompletionRequest::new("gpt-4", vec![Message::user("Hi")], 100).with_temperature(0.7);
+
+        let openai_req = backend.to_openai_request(&request);
+        assert_eq!(openai_req.temperature, Some(0.7));
+    }
+
+    #[test]
+    fn test_openai_response_no_choices() {
+        let resp = OpenAiChatResponse {
+            id: "id".to_string(),
+            choices: vec![],
+            model: "gpt-4".to_string(),
+            usage: None,
+        };
+        let response: CompletionResponse = resp.into();
+        assert!(response.content.is_empty());
+        assert_eq!(response.stop_reason, Some(StopReason::EndTurn));
+        assert_eq!(response.usage.input_tokens, 0);
+        assert_eq!(response.usage.output_tokens, 0);
+    }
+
+    #[test]
+    fn test_openai_response_length_finish_reason() {
+        let resp = OpenAiChatResponse {
+            id: "id".to_string(),
+            choices: vec![OpenAiChoice {
+                message: OpenAiResponseMessage {
+                    content: Some("truncated".to_string()),
+                    tool_calls: None,
+                },
+                finish_reason: Some("length".to_string()),
+            }],
+            model: "gpt-4".to_string(),
+            usage: Some(OpenAiUsage {
+                prompt_tokens: 100,
+                completion_tokens: 4096,
+            }),
+        };
+        let response: CompletionResponse = resp.into();
+        assert_eq!(response.stop_reason, Some(StopReason::MaxTokens));
+    }
+
+    #[test]
+    fn test_openai_response_empty_text_omitted() {
+        let resp = OpenAiChatResponse {
+            id: "id".to_string(),
+            choices: vec![OpenAiChoice {
+                message: OpenAiResponseMessage {
+                    content: Some("".to_string()),
+                    tool_calls: None,
+                },
+                finish_reason: Some("stop".to_string()),
+            }],
+            model: "gpt-4".to_string(),
+            usage: Some(OpenAiUsage {
+                prompt_tokens: 1,
+                completion_tokens: 0,
+            }),
+        };
+        let response: CompletionResponse = resp.into();
+        // Empty text should not be added as a content block
+        assert!(response.content.is_empty());
+    }
+
+    #[test]
+    fn test_openai_response_unknown_finish_reason() {
+        let resp = OpenAiChatResponse {
+            id: "id".to_string(),
+            choices: vec![OpenAiChoice {
+                message: OpenAiResponseMessage {
+                    content: Some("text".to_string()),
+                    tool_calls: None,
+                },
+                finish_reason: Some("content_filter".to_string()),
+            }],
+            model: "gpt-4".to_string(),
+            usage: None,
+        };
+        let response: CompletionResponse = resp.into();
+        assert_eq!(response.stop_reason, Some(StopReason::EndTurn));
+    }
+
+    #[test]
+    fn test_config_with_max_retries() {
+        let config = OpenAiConfig::openai("key").with_max_retries(5);
+        assert_eq!(config.max_retries, 5);
+    }
+
+    #[test]
+    fn test_config_with_retry_backoff() {
+        let config = OpenAiConfig::openai("key").with_retry_backoff(Duration::from_secs(2));
+        assert_eq!(config.retry_backoff, Duration::from_secs(2));
+    }
+
+    #[tokio::test]
+    async fn test_parse_openai_sse_stream_text() {
+        use bytes::Bytes;
+
+        let chunks = vec![
+            Ok(Bytes::from(
+                "data: {\"id\":\"chatcmpl-1\",\"model\":\"gpt-4\",\"choices\":[{\"delta\":{\"role\":\"assistant\"},\"finish_reason\":null}]}\n\n",
+            )),
+            Ok(Bytes::from(
+                "data: {\"id\":\"chatcmpl-1\",\"model\":\"gpt-4\",\"choices\":[{\"delta\":{\"content\":\"Hello\"},\"finish_reason\":null}]}\n\n",
+            )),
+            Ok(Bytes::from(
+                "data: {\"id\":\"chatcmpl-1\",\"model\":\"gpt-4\",\"choices\":[{\"delta\":{\"content\":\" world\"},\"finish_reason\":null}]}\n\n",
+            )),
+            Ok(Bytes::from(
+                "data: {\"id\":\"chatcmpl-1\",\"model\":\"gpt-4\",\"choices\":[{\"delta\":{},\"finish_reason\":\"stop\"}]}\n\n",
+            )),
+            Ok(Bytes::from("data: [DONE]\n\n")),
+        ];
+
+        let stream = futures::stream::iter(chunks);
+        let mut sse_stream = parse_openai_sse_stream(stream);
+
+        // First event: MessageStart
+        let event = sse_stream.next().await.unwrap().unwrap();
+        match event {
+            StreamEvent::MessageStart { id, model } => {
+                assert_eq!(id, "chatcmpl-1");
+                assert_eq!(model, "gpt-4");
+            }
+            other => panic!("Expected MessageStart, got {:?}", other),
+        }
+
+        // Second: text delta "Hello"
+        let event = sse_stream.next().await.unwrap().unwrap();
+        match event {
+            StreamEvent::ContentBlockDelta {
+                index: 0,
+                delta: ContentDelta::TextDelta(text),
+            } => assert_eq!(text, "Hello"),
+            other => panic!("Expected TextDelta 'Hello', got {:?}", other),
+        }
+
+        // Third: text delta " world"
+        let event = sse_stream.next().await.unwrap().unwrap();
+        match event {
+            StreamEvent::ContentBlockDelta {
+                index: 0,
+                delta: ContentDelta::TextDelta(text),
+            } => assert_eq!(text, " world"),
+            other => panic!("Expected TextDelta ' world', got {:?}", other),
+        }
+
+        // Fourth: MessageDelta with stop reason
+        let event = sse_stream.next().await.unwrap().unwrap();
+        match event {
+            StreamEvent::MessageDelta { stop_reason, .. } => {
+                assert_eq!(stop_reason, StopReason::EndTurn);
+            }
+            other => panic!("Expected MessageDelta, got {:?}", other),
+        }
+
+        // Fifth: MessageStop from [DONE]
+        let event = sse_stream.next().await.unwrap().unwrap();
+        assert!(matches!(event, StreamEvent::MessageStop));
+
+        // Stream should end
+        assert!(sse_stream.next().await.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_parse_openai_sse_stream_tool_calls() {
+        use bytes::Bytes;
+
+        let chunks = vec![
+            Ok(Bytes::from(
+                "data: {\"id\":\"chatcmpl-2\",\"model\":\"gpt-4\",\"choices\":[{\"delta\":{\"role\":\"assistant\"},\"finish_reason\":null}]}\n\n",
+            )),
+            Ok(Bytes::from(
+                "data: {\"id\":\"chatcmpl-2\",\"model\":\"gpt-4\",\"choices\":[{\"delta\":{\"tool_calls\":[{\"index\":0,\"function\":{\"arguments\":\"{\\\"path\\\"\"}}]},\"finish_reason\":null}]}\n\n",
+            )),
+            Ok(Bytes::from(
+                "data: {\"id\":\"chatcmpl-2\",\"model\":\"gpt-4\",\"choices\":[{\"delta\":{},\"finish_reason\":\"tool_calls\"}]}\n\n",
+            )),
+            Ok(Bytes::from("data: [DONE]\n\n")),
+        ];
+
+        let stream = futures::stream::iter(chunks);
+        let mut sse_stream = parse_openai_sse_stream(stream);
+
+        // MessageStart
+        let event = sse_stream.next().await.unwrap().unwrap();
+        assert!(matches!(event, StreamEvent::MessageStart { .. }));
+
+        // Tool call delta
+        let event = sse_stream.next().await.unwrap().unwrap();
+        match event {
+            StreamEvent::ContentBlockDelta {
+                index: 0,
+                delta: ContentDelta::InputJsonDelta(json),
+            } => assert_eq!(json, "{\"path\""),
+            other => panic!("Expected InputJsonDelta, got {:?}", other),
+        }
+
+        // Finish: tool_calls
+        let event = sse_stream.next().await.unwrap().unwrap();
+        match event {
+            StreamEvent::MessageDelta { stop_reason, .. } => {
+                assert_eq!(stop_reason, StopReason::ToolUse);
+            }
+            other => panic!("Expected MessageDelta with ToolUse, got {:?}", other),
+        }
+
+        // [DONE]
+        let event = sse_stream.next().await.unwrap().unwrap();
+        assert!(matches!(event, StreamEvent::MessageStop));
+    }
+
+    #[tokio::test]
+    async fn test_parse_openai_sse_stream_network_error() {
+        use bytes::Bytes;
+
+        let chunks: Vec<reqwest::Result<Bytes>> = vec![Err(reqwest::Client::new()
+            .get("http://0.0.0.0:1")
+            .send()
+            .await
+            .unwrap_err())];
+
+        let stream = futures::stream::iter(chunks);
+        let mut sse_stream = parse_openai_sse_stream(stream);
+
+        let event = sse_stream.next().await.unwrap();
+        assert!(event.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_parse_openai_sse_stream_length_finish_reason() {
+        use bytes::Bytes;
+
+        let chunks = vec![
+            Ok(Bytes::from(
+                "data: {\"id\":\"c\",\"model\":\"m\",\"choices\":[{\"delta\":{\"role\":\"assistant\"},\"finish_reason\":null}]}\n\n",
+            )),
+            Ok(Bytes::from(
+                "data: {\"id\":\"c\",\"model\":\"m\",\"choices\":[{\"delta\":{},\"finish_reason\":\"length\"}]}\n\n",
+            )),
+            Ok(Bytes::from("data: [DONE]\n\n")),
+        ];
+
+        let stream = futures::stream::iter(chunks);
+        let mut sse_stream = parse_openai_sse_stream(stream);
+
+        // MessageStart
+        sse_stream.next().await;
+        // MessageDelta with MaxTokens
+        let event = sse_stream.next().await.unwrap().unwrap();
+        match event {
+            StreamEvent::MessageDelta { stop_reason, .. } => {
+                assert_eq!(stop_reason, StopReason::MaxTokens);
+            }
+            other => panic!("Expected MessageDelta MaxTokens, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_openai_response_tool_call_with_invalid_json_args() {
+        let resp = OpenAiChatResponse {
+            id: "id".to_string(),
+            choices: vec![OpenAiChoice {
+                message: OpenAiResponseMessage {
+                    content: None,
+                    tool_calls: Some(vec![OpenAiToolCall {
+                        id: "call_1".to_string(),
+                        call_type: "function".to_string(),
+                        function: OpenAiFunctionCall {
+                            name: "test".to_string(),
+                            arguments: "not valid json".to_string(),
+                        },
+                    }]),
+                },
+                finish_reason: Some("tool_calls".to_string()),
+            }],
+            model: "gpt-4".to_string(),
+            usage: None,
+        };
+        let response: CompletionResponse = resp.into();
+        // Should still produce a tool use block with default value
+        assert!(response.has_tool_use());
+    }
+
+    #[test]
+    fn test_openai_response_none_content() {
+        let resp = OpenAiChatResponse {
+            id: "id".to_string(),
+            choices: vec![OpenAiChoice {
+                message: OpenAiResponseMessage {
+                    content: None,
+                    tool_calls: None,
+                },
+                finish_reason: None,
+            }],
+            model: "gpt-4".to_string(),
+            usage: Some(OpenAiUsage {
+                prompt_tokens: 5,
+                completion_tokens: 0,
+            }),
+        };
+        let response: CompletionResponse = resp.into();
+        assert!(response.content.is_empty());
+    }
+
+    #[test]
+    fn test_to_openai_request_assistant_with_text_and_tool_call() {
+        let config = OpenAiConfig::openai("key");
+        let backend = OpenAiBackend::new(config).unwrap();
+
+        let messages = vec![Message::assistant_blocks(vec![
+            ContentBlock::Text {
+                text: "I'll read that.".to_string(),
+                cache_control: None,
+            },
+            ContentBlock::ToolUse {
+                id: "call_1".to_string(),
+                name: "read_file".to_string(),
+                input: serde_json::json!({"path": "a.rs"}),
+                cache_control: None,
+            },
+        ])];
+
+        let request = CompletionRequest::new("gpt-4", messages, 100);
+        let openai_req = backend.to_openai_request(&request);
+
+        assert_eq!(openai_req.messages.len(), 1);
+        let msg = &openai_req.messages[0];
+        assert_eq!(msg.role, "assistant");
+        // Should have text content
+        assert!(msg.content.is_some());
+        if let Some(OpenAiContent::Text(ref t)) = msg.content {
+            assert_eq!(t, "I'll read that.");
+        }
+        // Should have tool calls
+        assert!(msg.tool_calls.is_some());
+        assert_eq!(msg.tool_calls.as_ref().unwrap().len(), 1);
+    }
 }

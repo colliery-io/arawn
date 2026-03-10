@@ -1177,58 +1177,614 @@ mod tests {
         assert!(results[0].is_success());
     }
 
-    // Integration test that requires git - marked as ignored for CI
-    #[test]
-    #[ignore]
-    fn test_git_clone_real_repo() {
-        if !GitOps::is_available() {
-            println!("Skipping: git not available");
-            return;
-        }
+    // ── RuntimePluginsConfig additional tests ─────────────────────────────
 
+    #[test]
+    fn test_runtime_config_remove_subscription() {
+        let mut config = RuntimePluginsConfig::default();
+        config.add_subscription(PluginSubscription::github("owner/repo1"));
+        config.add_subscription(PluginSubscription::github("owner/repo2"));
+        assert_eq!(config.subscriptions.len(), 2);
+
+        config.remove_subscription("github/owner-repo1");
+        assert_eq!(config.subscriptions.len(), 1);
+        assert_eq!(config.subscriptions[0].repo.as_deref(), Some("owner/repo2"));
+    }
+
+    #[test]
+    fn test_runtime_config_remove_nonexistent_subscription() {
+        let mut config = RuntimePluginsConfig::default();
+        config.add_subscription(PluginSubscription::github("owner/repo"));
+        config.remove_subscription("nonexistent/id");
+        assert_eq!(config.subscriptions.len(), 1);
+    }
+
+    #[test]
+    fn test_runtime_config_add_duplicate_subscription() {
+        let mut config = RuntimePluginsConfig::default();
+        config.add_subscription(PluginSubscription::github("owner/repo"));
+        config.add_subscription(PluginSubscription::github("owner/repo"));
+        assert_eq!(config.subscriptions.len(), 1);
+    }
+
+    #[test]
+    fn test_runtime_config_is_enabled() {
+        let mut config = RuntimePluginsConfig::default();
+        assert_eq!(config.is_enabled("test"), None);
+
+        config.set_enabled("test", true);
+        assert_eq!(config.is_enabled("test"), Some(true));
+
+        config.set_enabled("test", false);
+        assert_eq!(config.is_enabled("test"), Some(false));
+    }
+
+    #[test]
+    fn test_runtime_config_from_json_invalid() {
+        let result = RuntimePluginsConfig::from_json("not valid json");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_runtime_config_save_creates_parent_dirs() {
+        let tmp = TempDir::new().unwrap();
+        let path = tmp.path().join("nested").join("deep").join("plugins.json");
+
+        let config = RuntimePluginsConfig::default();
+        config.save(&path).unwrap();
+        assert!(path.exists());
+    }
+
+    // ── SubscriptionManager additional tests ────────────────────────────
+
+    #[test]
+    fn test_subscription_manager_no_project_dir() {
+        let config_subs = vec![PluginSubscription::github("owner/repo")];
+        let manager = SubscriptionManager::new(config_subs, None).unwrap();
+
+        let all = manager.all_subscriptions();
+        assert_eq!(all.len(), 1);
+    }
+
+    #[test]
+    fn test_subscription_manager_accessors() {
+        let tmp = TempDir::new().unwrap();
+        let project_dir = tmp.path();
+        std::fs::create_dir_all(project_dir.join(".arawn")).unwrap();
+
+        let mut project_config = RuntimePluginsConfig::default();
+        project_config.set_enabled("test@local", true);
+        project_config
+            .save(&project_dir.join(".arawn/plugins.json"))
+            .unwrap();
+
+        let manager = SubscriptionManager::new(vec![], Some(project_dir)).unwrap();
+
+        // Test read accessors
+        assert!(manager.global_config().subscriptions.is_empty());
+        assert_eq!(
+            manager.project_config().is_enabled("test@local"),
+            Some(true)
+        );
+        assert!(!manager.cache_dir().as_os_str().is_empty());
+    }
+
+    #[test]
+    fn test_subscription_manager_mut_accessors() {
+        let tmp = TempDir::new().unwrap();
+        let project_dir = tmp.path();
+        std::fs::create_dir_all(project_dir.join(".arawn")).unwrap();
+        RuntimePluginsConfig::default()
+            .save(&project_dir.join(".arawn/plugins.json"))
+            .unwrap();
+
+        let mut manager = SubscriptionManager::new(vec![], Some(project_dir)).unwrap();
+
+        manager.global_config_mut().set_enabled("g_plugin", true);
+        assert_eq!(manager.global_config().is_enabled("g_plugin"), Some(true));
+
+        manager.project_config_mut().set_enabled("p_plugin", false);
+        assert_eq!(manager.project_config().is_enabled("p_plugin"), Some(false));
+    }
+
+    #[test]
+    fn test_subscription_manager_add_global_subscription() {
+        let mut manager = SubscriptionManager::new(vec![], None).unwrap();
+        manager.add_global_subscription(PluginSubscription::github("owner/repo"));
+
+        let all = manager.all_subscriptions();
+        assert_eq!(all.len(), 1);
+        assert_eq!(all[0].repo.as_deref(), Some("owner/repo"));
+    }
+
+    #[test]
+    fn test_subscription_manager_add_project_subscription() {
+        let tmp = TempDir::new().unwrap();
+        let project_dir = tmp.path();
+        std::fs::create_dir_all(project_dir.join(".arawn")).unwrap();
+        RuntimePluginsConfig::default()
+            .save(&project_dir.join(".arawn/plugins.json"))
+            .unwrap();
+
+        let mut manager = SubscriptionManager::new(vec![], Some(project_dir)).unwrap();
+        manager.add_project_subscription(PluginSubscription::github("owner/repo"));
+
+        let all = manager.all_subscriptions();
+        assert_eq!(all.len(), 1);
+    }
+
+    #[test]
+    fn test_subscription_manager_set_global_enabled() {
+        let tmp = TempDir::new().unwrap();
+        let project_dir = tmp.path();
+        std::fs::create_dir_all(project_dir.join(".arawn")).unwrap();
+        RuntimePluginsConfig::default()
+            .save(&project_dir.join(".arawn/plugins.json"))
+            .unwrap();
+
+        let config_subs = vec![PluginSubscription::github("owner/repo")];
+        let mut manager = SubscriptionManager::new(config_subs, Some(project_dir)).unwrap();
+
+        // Initially enabled
+        assert_eq!(manager.all_subscriptions().len(), 1);
+
+        // Disable globally
+        manager.set_global_enabled("github/owner-repo", false);
+        assert_eq!(manager.all_subscriptions().len(), 0);
+
+        // Re-enable
+        manager.set_global_enabled("github/owner-repo", true);
+        assert_eq!(manager.all_subscriptions().len(), 1);
+    }
+
+    #[test]
+    fn test_subscription_manager_set_project_enabled() {
+        let tmp = TempDir::new().unwrap();
+        let project_dir = tmp.path();
+        std::fs::create_dir_all(project_dir.join(".arawn")).unwrap();
+        RuntimePluginsConfig::default()
+            .save(&project_dir.join(".arawn/plugins.json"))
+            .unwrap();
+
+        let config_subs = vec![PluginSubscription::github("owner/repo")];
+        let mut manager = SubscriptionManager::new(config_subs, Some(project_dir)).unwrap();
+
+        // Disable at project level
+        manager.set_project_enabled("github/owner-repo", false);
+        assert_eq!(manager.all_subscriptions().len(), 0);
+    }
+
+    #[test]
+    fn test_subscription_manager_project_overrides_global_enabled() {
+        let tmp = TempDir::new().unwrap();
+        let project_dir = tmp.path();
+        std::fs::create_dir_all(project_dir.join(".arawn")).unwrap();
+
+        let mut project_config = RuntimePluginsConfig::default();
+        project_config.set_enabled("github/owner-repo", true); // Project re-enables
+        project_config
+            .save(&project_dir.join(".arawn/plugins.json"))
+            .unwrap();
+
+        let config_subs = vec![PluginSubscription::github("owner/repo")];
+        let mut manager = SubscriptionManager::new(config_subs, Some(project_dir)).unwrap();
+
+        // Disable globally
+        manager.set_global_enabled("github/owner-repo", false);
+
+        // Project override should take precedence
+        let all = manager.all_subscriptions();
+        assert_eq!(all.len(), 1);
+    }
+
+    #[test]
+    fn test_subscription_manager_enabled_falls_through_to_subscription_flag() {
+        let config_subs = vec![{
+            let mut sub = PluginSubscription::github("owner/repo");
+            sub.enabled = false; // Subscription itself is disabled
+            sub
+        }];
+
+        let manager = SubscriptionManager::new(config_subs, None).unwrap();
+        // No global or project config overrides, so subscription's own enabled=false applies
+        assert_eq!(manager.all_subscriptions().len(), 0);
+    }
+
+    #[test]
+    fn test_subscription_manager_global_enabled_filter() {
+        let config_subs = vec![
+            PluginSubscription::github("owner/repo1"),
+            PluginSubscription::github("owner/repo2"),
+        ];
+
+        let mut manager = SubscriptionManager::new(config_subs, None).unwrap();
+        manager.set_global_enabled("github/owner-repo1", false);
+
+        let all = manager.all_subscriptions();
+        assert_eq!(all.len(), 1);
+        assert_eq!(all[0].repo.as_deref(), Some("owner/repo2"));
+    }
+
+    #[test]
+    fn test_subscription_manager_save_global_config() {
+        let tmp = TempDir::new().unwrap();
+        // We can't easily test save_global_config because it uses dirs::config_dir(),
+        // but we can test that it doesn't panic for a fresh manager
+        let mut manager = SubscriptionManager::new(vec![], None).unwrap();
+        manager.global_config_mut().set_enabled("test", true);
+        // save_global_config may fail if it can't write to the real global config dir
+        // which is acceptable - we're testing the path through the code
+        let _ = manager.save_global_config();
+    }
+
+    #[test]
+    fn test_subscription_manager_save_project_config() {
+        let tmp = TempDir::new().unwrap();
+        let project_dir = tmp.path();
+        std::fs::create_dir_all(project_dir.join(".arawn")).unwrap();
+        RuntimePluginsConfig::default()
+            .save(&project_dir.join(".arawn/plugins.json"))
+            .unwrap();
+
+        let mut manager = SubscriptionManager::new(vec![], Some(project_dir)).unwrap();
+        manager.project_config_mut().set_enabled("test", true);
+        manager.save_project_config().unwrap();
+
+        // Verify it persisted
+        let loaded = RuntimePluginsConfig::load(&project_dir.join(".arawn/plugins.json")).unwrap();
+        assert_eq!(loaded.is_enabled("test"), Some(true));
+    }
+
+    #[test]
+    fn test_subscription_manager_save_project_config_no_project() {
+        let tmp = TempDir::new().unwrap();
+        let project_dir = tmp.path();
+        std::fs::create_dir_all(project_dir.join(".arawn")).unwrap();
+        RuntimePluginsConfig::default()
+            .save(&project_dir.join(".arawn/plugins.json"))
+            .unwrap();
+
+        // Create manager with project dir, then verify save_project_config when
+        // project_config_path is None returns Ok(())
+        let mut manager = SubscriptionManager::new(vec![], Some(project_dir)).unwrap();
+        // Manually set project_config_path to None to test the no-project branch
+        manager.project_config_path = None;
+        manager.save_project_config().unwrap();
+    }
+
+    #[test]
+    fn test_subscription_manager_cache_dir_for() {
+        let sub = PluginSubscription::github("owner/repo");
+        let manager = SubscriptionManager::new(vec![sub.clone()], None).unwrap();
+
+        let cache = manager.cache_dir_for(&sub);
+        assert!(cache.to_string_lossy().contains("github/owner-repo"));
+    }
+
+    #[test]
+    fn test_subscription_manager_plugin_dirs() {
+        let tmp = TempDir::new().unwrap();
+        let local1 = tmp.path().join("plugin1");
+        let local2 = tmp.path().join("plugin2");
+        std::fs::create_dir_all(&local1).unwrap();
+        std::fs::create_dir_all(&local2).unwrap();
+
+        let config_subs = vec![
+            PluginSubscription::local(&local1),
+            PluginSubscription::local(&local2),
+            PluginSubscription::github("owner/remote"), // Not synced, won't appear
+        ];
+
+        let manager = SubscriptionManager::new(config_subs, None).unwrap();
+        let dirs = manager.plugin_dirs();
+
+        // Only local plugins should appear (remote not synced)
+        assert_eq!(dirs.len(), 2);
+        assert!(dirs.contains(&local1));
+        assert!(dirs.contains(&local2));
+    }
+
+    #[test]
+    fn test_subscription_manager_all_subscriptions_priority() {
+        let tmp = TempDir::new().unwrap();
+        let project_dir = tmp.path();
+        std::fs::create_dir_all(project_dir.join(".arawn")).unwrap();
+
+        let mut project_config = RuntimePluginsConfig::default();
+        project_config
+            .add_subscription(PluginSubscription::github("shared/plugin").with_ref("v2.0.0"));
+        project_config
+            .save(&project_dir.join(".arawn/plugins.json"))
+            .unwrap();
+
+        // Config has same subscription with different ref
+        let config_subs = vec![PluginSubscription::github("shared/plugin").with_ref("v1.0.0")];
+
+        let manager = SubscriptionManager::new(config_subs, Some(project_dir)).unwrap();
+        let all = manager.all_subscriptions();
+
+        // Should have exactly one (deduplicated), config version wins because it's seen first
+        assert_eq!(all.len(), 1);
+        assert_eq!(all[0].git_ref.as_deref(), Some("v1.0.0"));
+    }
+
+    // ── SyncResult additional tests ─────────────────────────────────────
+
+    #[test]
+    fn test_sync_result_with_all_fields() {
+        let result = SyncResult {
+            subscription_id: "github/owner-repo".to_string(),
+            action: SyncAction::Cloned,
+            path: Some(PathBuf::from("/tmp/plugins/repo")),
+            error: None,
+        };
+        assert!(result.is_success());
+        assert!(!result.is_failure());
+        assert_eq!(result.subscription_id, "github/owner-repo");
+        assert!(result.path.is_some());
+        assert!(result.error.is_none());
+    }
+
+    // ── GitOps unit tests (no network) ──────────────────────────────────
+
+    #[test]
+    fn test_git_current_commit_nonexistent_dir() {
+        let commit = GitOps::current_commit(Path::new("/nonexistent/repo"));
+        assert!(commit.is_none());
+    }
+
+    #[test]
+    fn test_git_current_branch_nonexistent_dir() {
+        let branch = GitOps::current_branch(Path::new("/nonexistent/repo"));
+        assert!(branch.is_none());
+    }
+
+    #[test]
+    fn test_git_current_commit_on_real_git_repo() {
+        // This project itself is a git repo
+        let commit = GitOps::current_commit(Path::new(env!("CARGO_MANIFEST_DIR")));
+        // Should return a commit hash if git is available
+        if GitOps::is_available() {
+            assert!(commit.is_some());
+            let hash = commit.unwrap();
+            assert!(!hash.is_empty());
+            // Git SHA hashes are 40 hex characters
+            assert!(hash.len() >= 7);
+        }
+    }
+
+    #[test]
+    fn test_git_current_branch_on_real_git_repo() {
+        if GitOps::is_available() {
+            let branch = GitOps::current_branch(Path::new(env!("CARGO_MANIFEST_DIR")));
+            // Should return a branch name (e.g., "main") or None if detached
+            if let Some(ref b) = branch {
+                assert!(!b.is_empty());
+            }
+        }
+    }
+
+    // ── Async sync tests ────────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_sync_all_async_no_subscriptions() {
+        // SAFETY: Test context
+        unsafe { std::env::remove_var("ARAWN_DISABLE_PLUGIN_UPDATES") };
+
+        let manager = SubscriptionManager::new(vec![], None).unwrap();
+        let results = manager.sync_all_async().await;
+        assert!(results.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_sync_all_async_no_clone_url() {
+        // SAFETY: Test context
+        unsafe { std::env::remove_var("ARAWN_DISABLE_PLUGIN_UPDATES") };
+
+        let sub = PluginSubscription {
+            source: PluginSource::Url,
+            repo: None,
+            url: None,
+            path: None,
+            git_ref: None,
+            enabled: true,
+        };
+
+        let manager = SubscriptionManager::new(vec![sub], None).unwrap();
+        let results = manager.sync_all_async().await;
+
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].action, SyncAction::CloneFailed);
+        assert!(results[0].error.as_ref().unwrap().contains("No clone URL"));
+    }
+
+    // ── Git integration tests (use octocat/Hello-World) ────────────────
+
+    /// Helper: clone octocat/Hello-World into a temp dir, returning (TempDir, dest_path).
+    /// Panics if git is not available.
+    fn clone_hello_world() -> (TempDir, PathBuf) {
+        assert!(GitOps::is_available(), "git must be available");
         let tmp = TempDir::new().unwrap();
         let dest = tmp.path().join("repo");
-
-        // Clone a small public repo
-        let result = GitOps::clone(
+        GitOps::clone(
             "https://github.com/octocat/Hello-World.git",
             &dest,
             "master",
-        );
+        )
+        .expect("Failed to clone octocat/Hello-World");
+        (tmp, dest)
+    }
 
-        assert!(result.is_ok(), "Clone failed: {:?}", result);
+    #[test]
+    fn test_git_clone_real_repo() {
+        let (_tmp, dest) = clone_hello_world();
         assert!(dest.join(".git").exists());
         assert!(dest.join("README").exists());
 
-        // Check commit info
         let commit = GitOps::current_commit(&dest);
         assert!(commit.is_some());
+        assert!(!commit.unwrap().is_empty());
 
         let branch = GitOps::current_branch(&dest);
         assert_eq!(branch, Some("master".to_string()));
     }
 
     #[test]
-    #[ignore]
     fn test_git_pull_real_repo() {
-        if !GitOps::is_available() {
-            println!("Skipping: git not available");
-            return;
-        }
+        let (_tmp, dest) = clone_hello_world();
 
+        let result = GitOps::pull(&dest, "master");
+        assert!(result.is_ok(), "Pull failed: {:?}", result);
+    }
+
+    #[test]
+    fn test_git_clone_replaces_non_git_dir() {
         let tmp = TempDir::new().unwrap();
         let dest = tmp.path().join("repo");
 
-        // Clone first
-        GitOps::clone(
+        // Create a non-git directory at the destination
+        std::fs::create_dir_all(&dest).unwrap();
+        std::fs::write(dest.join("junk.txt"), "not a repo").unwrap();
+        assert!(!dest.join(".git").exists());
+
+        // Clone should replace it
+        let result = GitOps::clone(
             "https://github.com/octocat/Hello-World.git",
             &dest,
             "master",
-        )
-        .unwrap();
+        );
+        assert!(
+            result.is_ok(),
+            "Clone over non-git dir failed: {:?}",
+            result
+        );
+        assert!(dest.join(".git").exists());
+    }
 
-        // Then pull
-        let result = GitOps::pull(&dest, "master");
-        assert!(result.is_ok(), "Pull failed: {:?}", result);
+    #[test]
+    fn test_git_clone_invalid_url() {
+        let tmp = TempDir::new().unwrap();
+        let dest = tmp.path().join("repo");
+
+        let result = GitOps::clone(
+            "https://github.com/nonexistent-user-xyz/nonexistent-repo-xyz.git",
+            &dest,
+            "main",
+        );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_git_pull_invalid_ref() {
+        let (_tmp, dest) = clone_hello_world();
+
+        // Pull with a ref that doesn't exist
+        let result = GitOps::pull(&dest, "nonexistent-branch-xyz");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_sync_subscription_clone_real_repo() {
+        let tmp = TempDir::new().unwrap();
+        let cache_dir = tmp.path().join("cache");
+
+        let sub = PluginSubscription {
+            source: PluginSource::GitHub,
+            repo: Some("octocat/Hello-World".to_string()),
+            url: None,
+            path: None,
+            git_ref: Some("master".to_string()),
+            enabled: true,
+        };
+
+        // Build a manager with a custom cache dir
+        let mut manager = SubscriptionManager::new(vec![sub.clone()], None).unwrap();
+        manager.cache_dir = cache_dir;
+
+        let result = manager.sync_subscription(&sub);
+        assert_eq!(result.action, SyncAction::Cloned);
+        assert!(result.is_success());
+        assert!(result.path.is_some());
+        assert!(result.error.is_none());
+
+        // Sync again — should update (pull)
+        let result2 = manager.sync_subscription(&sub);
+        assert_eq!(result2.action, SyncAction::Updated);
+        assert!(result2.is_success());
+    }
+
+    #[test]
+    fn test_sync_all_real_repos() {
+        let tmp = TempDir::new().unwrap();
+        let cache_dir = tmp.path().join("cache");
+        let local_path = tmp.path().join("local-plugin");
+        std::fs::create_dir_all(&local_path).unwrap();
+
+        let config_subs = vec![PluginSubscription::local(&local_path), {
+            let mut sub = PluginSubscription::github("octocat/Hello-World");
+            sub.git_ref = Some("master".to_string());
+            sub
+        }];
+
+        let mut manager = SubscriptionManager::new(config_subs, None).unwrap();
+        manager.cache_dir = cache_dir;
+
+        let results = manager.sync_all();
+        assert_eq!(results.len(), 2);
+
+        // Local should be skipped
+        assert_eq!(results[0].action, SyncAction::Skipped);
+
+        // Remote should be cloned
+        assert_eq!(results[1].action, SyncAction::Cloned);
+        assert!(results[1].path.is_some());
+    }
+
+    #[test]
+    fn test_plugin_dir_for_remote_synced() {
+        let tmp = TempDir::new().unwrap();
+        let cache_dir = tmp.path().join("cache");
+
+        let sub = PluginSubscription {
+            source: PluginSource::GitHub,
+            repo: Some("octocat/Hello-World".to_string()),
+            url: None,
+            path: None,
+            git_ref: Some("master".to_string()),
+            enabled: true,
+        };
+
+        let mut manager = SubscriptionManager::new(vec![sub.clone()], None).unwrap();
+        manager.cache_dir = cache_dir;
+
+        // Before sync — no dir
+        assert!(manager.plugin_dir_for(&sub).is_none());
+
+        // After sync — should have a dir
+        manager.sync_subscription(&sub);
+        let dir = manager.plugin_dir_for(&sub);
+        assert!(dir.is_some());
+        assert!(dir.unwrap().join(".git").exists());
+    }
+
+    #[tokio::test]
+    async fn test_sync_all_async_real_repo() {
+        // SAFETY: Test context
+        unsafe { std::env::remove_var("ARAWN_DISABLE_PLUGIN_UPDATES") };
+
+        let tmp = TempDir::new().unwrap();
+        let cache_dir = tmp.path().join("cache");
+
+        let mut sub = PluginSubscription::github("octocat/Hello-World");
+        sub.git_ref = Some("master".to_string());
+
+        let mut manager = SubscriptionManager::new(vec![sub], None).unwrap();
+        manager.cache_dir = cache_dir;
+
+        let results = manager.sync_all_async().await;
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].action, SyncAction::Cloned);
+        assert!(results[0].is_success());
+        assert!(results[0].path.is_some());
     }
 }

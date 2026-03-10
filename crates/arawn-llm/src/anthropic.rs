@@ -785,4 +785,415 @@ mod tests {
         let backend = AnthropicBackend::new(config).unwrap();
         assert!(backend.supports_native_tools());
     }
+
+    #[test]
+    fn test_config_with_max_retries() {
+        let config = AnthropicConfig::new("key").with_max_retries(5);
+        assert_eq!(config.max_retries, 5);
+    }
+
+    #[test]
+    fn test_config_with_retry_backoff() {
+        let config = AnthropicConfig::new("key").with_retry_backoff(Duration::from_secs(2));
+        assert_eq!(config.retry_backoff, Duration::from_secs(2));
+    }
+
+    #[test]
+    fn test_api_response_max_tokens_stop_reason() {
+        let api_response = ApiResponse {
+            id: "msg".to_string(),
+            response_type: "message".to_string(),
+            content: vec![ApiContentBlock::Text {
+                text: "truncated".to_string(),
+            }],
+            model: "claude-3".to_string(),
+            stop_reason: Some("max_tokens".to_string()),
+            usage: ApiUsage {
+                input_tokens: 10,
+                output_tokens: 4096,
+                cache_creation_input_tokens: None,
+                cache_read_input_tokens: None,
+            },
+        };
+        let response: CompletionResponse = api_response.into();
+        assert_eq!(response.stop_reason, Some(StopReason::MaxTokens));
+    }
+
+    #[test]
+    fn test_api_response_stop_sequence_stop_reason() {
+        let api_response = ApiResponse {
+            id: "msg".to_string(),
+            response_type: "message".to_string(),
+            content: vec![],
+            model: "claude-3".to_string(),
+            stop_reason: Some("stop_sequence".to_string()),
+            usage: ApiUsage {
+                input_tokens: 5,
+                output_tokens: 1,
+                cache_creation_input_tokens: None,
+                cache_read_input_tokens: None,
+            },
+        };
+        let response: CompletionResponse = api_response.into();
+        assert_eq!(response.stop_reason, Some(StopReason::StopSequence));
+    }
+
+    #[test]
+    fn test_api_response_unknown_stop_reason() {
+        let api_response = ApiResponse {
+            id: "msg".to_string(),
+            response_type: "message".to_string(),
+            content: vec![],
+            model: "claude-3".to_string(),
+            stop_reason: Some("content_filter".to_string()),
+            usage: ApiUsage {
+                input_tokens: 5,
+                output_tokens: 1,
+                cache_creation_input_tokens: None,
+                cache_read_input_tokens: None,
+            },
+        };
+        let response: CompletionResponse = api_response.into();
+        assert_eq!(response.stop_reason, Some(StopReason::EndTurn));
+    }
+
+    #[test]
+    fn test_api_response_none_stop_reason() {
+        let api_response = ApiResponse {
+            id: "msg".to_string(),
+            response_type: "message".to_string(),
+            content: vec![],
+            model: "claude-3".to_string(),
+            stop_reason: None,
+            usage: ApiUsage {
+                input_tokens: 5,
+                output_tokens: 1,
+                cache_creation_input_tokens: None,
+                cache_read_input_tokens: None,
+            },
+        };
+        let response: CompletionResponse = api_response.into();
+        assert_eq!(response.stop_reason, None);
+    }
+
+    // ─── parse_stream_event tests ─────────────────────────────────────────
+
+    #[test]
+    fn test_parse_stream_event_message_start() {
+        let data = r#"{"message":{"id":"msg_123","model":"claude-3-sonnet","role":"assistant","content":[],"stop_reason":null,"usage":{"input_tokens":10,"output_tokens":0}}}"#;
+        let event = parse_stream_event("message_start", data).unwrap();
+        match event {
+            StreamEvent::MessageStart { id, model } => {
+                assert_eq!(id, "msg_123");
+                assert_eq!(model, "claude-3-sonnet");
+            }
+            other => panic!("Expected MessageStart, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_parse_stream_event_message_start_invalid() {
+        let event = parse_stream_event("message_start", "not json");
+        assert!(event.is_none());
+    }
+
+    #[test]
+    fn test_parse_stream_event_content_block_start() {
+        let data = r#"{"index":0,"content_block":{"type":"text","text":""}}"#;
+        let event = parse_stream_event("content_block_start", data).unwrap();
+        match event {
+            StreamEvent::ContentBlockStart {
+                index,
+                content_type,
+            } => {
+                assert_eq!(index, 0);
+                assert_eq!(content_type, "text");
+            }
+            other => panic!("Expected ContentBlockStart, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_parse_stream_event_content_block_start_invalid() {
+        assert!(parse_stream_event("content_block_start", "bad").is_none());
+    }
+
+    #[test]
+    fn test_parse_stream_event_text_delta() {
+        let data = r#"{"index":0,"delta":{"type":"text_delta","text":"Hello"}}"#;
+        let event = parse_stream_event("content_block_delta", data).unwrap();
+        match event {
+            StreamEvent::ContentBlockDelta {
+                index,
+                delta: ContentDelta::TextDelta(text),
+            } => {
+                assert_eq!(index, 0);
+                assert_eq!(text, "Hello");
+            }
+            other => panic!("Expected TextDelta, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_parse_stream_event_input_json_delta() {
+        let data =
+            r#"{"index":1,"delta":{"type":"input_json_delta","partial_json":"{\"path\":\"a\"}"}}"#;
+        let event = parse_stream_event("content_block_delta", data).unwrap();
+        match event {
+            StreamEvent::ContentBlockDelta {
+                index,
+                delta: ContentDelta::InputJsonDelta(json),
+            } => {
+                assert_eq!(index, 1);
+                assert_eq!(json, "{\"path\":\"a\"}");
+            }
+            other => panic!("Expected InputJsonDelta, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_parse_stream_event_content_block_delta_invalid() {
+        assert!(parse_stream_event("content_block_delta", "bad").is_none());
+    }
+
+    #[test]
+    fn test_parse_stream_event_content_block_stop() {
+        let data = r#"{"index":0}"#;
+        let event = parse_stream_event("content_block_stop", data).unwrap();
+        match event {
+            StreamEvent::ContentBlockStop { index } => assert_eq!(index, 0),
+            other => panic!("Expected ContentBlockStop, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_parse_stream_event_content_block_stop_invalid() {
+        assert!(parse_stream_event("content_block_stop", "bad").is_none());
+    }
+
+    #[test]
+    fn test_parse_stream_event_message_delta_end_turn() {
+        let data = r#"{"delta":{"stop_reason":"end_turn"},"usage":{"output_tokens":42}}"#;
+        let event = parse_stream_event("message_delta", data).unwrap();
+        match event {
+            StreamEvent::MessageDelta { stop_reason, usage } => {
+                assert_eq!(stop_reason, StopReason::EndTurn);
+                assert_eq!(usage.output_tokens, 42);
+            }
+            other => panic!("Expected MessageDelta, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_parse_stream_event_message_delta_tool_use() {
+        let data = r#"{"delta":{"stop_reason":"tool_use"},"usage":{"output_tokens":10}}"#;
+        let event = parse_stream_event("message_delta", data).unwrap();
+        match event {
+            StreamEvent::MessageDelta { stop_reason, .. } => {
+                assert_eq!(stop_reason, StopReason::ToolUse);
+            }
+            other => panic!("Expected MessageDelta tool_use, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_parse_stream_event_message_delta_max_tokens() {
+        let data = r#"{"delta":{"stop_reason":"max_tokens"},"usage":{"output_tokens":4096}}"#;
+        let event = parse_stream_event("message_delta", data).unwrap();
+        match event {
+            StreamEvent::MessageDelta { stop_reason, .. } => {
+                assert_eq!(stop_reason, StopReason::MaxTokens);
+            }
+            other => panic!("Expected MessageDelta max_tokens, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_parse_stream_event_message_delta_stop_sequence() {
+        let data = r#"{"delta":{"stop_reason":"stop_sequence"},"usage":{"output_tokens":5}}"#;
+        let event = parse_stream_event("message_delta", data).unwrap();
+        match event {
+            StreamEvent::MessageDelta { stop_reason, .. } => {
+                assert_eq!(stop_reason, StopReason::StopSequence);
+            }
+            other => panic!("Expected MessageDelta stop_sequence, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_parse_stream_event_message_delta_unknown_reason() {
+        let data = r#"{"delta":{"stop_reason":"something_new"},"usage":{"output_tokens":1}}"#;
+        let event = parse_stream_event("message_delta", data).unwrap();
+        match event {
+            StreamEvent::MessageDelta { stop_reason, .. } => {
+                assert_eq!(stop_reason, StopReason::EndTurn);
+            }
+            other => panic!("Expected MessageDelta default, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_parse_stream_event_message_delta_null_reason() {
+        let data = r#"{"delta":{"stop_reason":null},"usage":{"output_tokens":0}}"#;
+        let event = parse_stream_event("message_delta", data).unwrap();
+        match event {
+            StreamEvent::MessageDelta { stop_reason, .. } => {
+                assert_eq!(stop_reason, StopReason::EndTurn);
+            }
+            other => panic!("Expected MessageDelta null, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_parse_stream_event_message_delta_invalid() {
+        assert!(parse_stream_event("message_delta", "bad").is_none());
+    }
+
+    #[test]
+    fn test_parse_stream_event_message_stop() {
+        let event = parse_stream_event("message_stop", "{}").unwrap();
+        assert!(matches!(event, StreamEvent::MessageStop));
+    }
+
+    #[test]
+    fn test_parse_stream_event_ping() {
+        let event = parse_stream_event("ping", "{}").unwrap();
+        assert!(matches!(event, StreamEvent::Ping));
+    }
+
+    #[test]
+    fn test_parse_stream_event_error() {
+        let data = r#"{"error":{"type":"overloaded_error","message":"Overloaded"}}"#;
+        let event = parse_stream_event("error", data).unwrap();
+        match event {
+            StreamEvent::Error { message } => assert_eq!(message, "Overloaded"),
+            other => panic!("Expected Error, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_parse_stream_event_error_invalid_json() {
+        let event = parse_stream_event("error", "not json").unwrap();
+        match event {
+            StreamEvent::Error { message } => {
+                assert_eq!(message, "Unknown streaming error");
+            }
+            other => panic!("Expected Error with fallback, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_parse_stream_event_unknown_type() {
+        assert!(parse_stream_event("unknown_event_type", "{}").is_none());
+    }
+
+    #[test]
+    fn test_parse_sse_line_invalid_prefix() {
+        assert_eq!(parse_sse_line("id: 123"), None);
+        assert_eq!(parse_sse_line("retry: 5000"), None);
+        assert_eq!(parse_sse_line(""), None);
+    }
+
+    // ─── SSE stream integration test ──────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_parse_sse_stream_full_sequence() {
+        use bytes::Bytes;
+
+        let chunks = vec![
+            Ok(Bytes::from(
+                "event: message_start\ndata: {\"message\":{\"id\":\"msg_1\",\"model\":\"claude-3\",\"role\":\"assistant\",\"content\":[],\"stop_reason\":null,\"usage\":{\"input_tokens\":5,\"output_tokens\":0}}}\n\n",
+            )),
+            Ok(Bytes::from(
+                "event: content_block_start\ndata: {\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}\n\n",
+            )),
+            Ok(Bytes::from(
+                "event: content_block_delta\ndata: {\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"Hi!\"}}\n\n",
+            )),
+            Ok(Bytes::from(
+                "event: content_block_stop\ndata: {\"index\":0}\n\n",
+            )),
+            Ok(Bytes::from(
+                "event: message_delta\ndata: {\"delta\":{\"stop_reason\":\"end_turn\"},\"usage\":{\"output_tokens\":3}}\n\n",
+            )),
+            Ok(Bytes::from("event: message_stop\ndata: {}\n\n")),
+        ];
+
+        let stream = futures::stream::iter(chunks);
+        let mut sse_stream = parse_sse_stream(stream);
+
+        // MessageStart
+        let event = sse_stream.next().await.unwrap().unwrap();
+        assert!(matches!(event, StreamEvent::MessageStart { .. }));
+
+        // ContentBlockStart
+        let event = sse_stream.next().await.unwrap().unwrap();
+        assert!(matches!(event, StreamEvent::ContentBlockStart { .. }));
+
+        // TextDelta
+        let event = sse_stream.next().await.unwrap().unwrap();
+        match &event {
+            StreamEvent::ContentBlockDelta {
+                delta: ContentDelta::TextDelta(t),
+                ..
+            } => assert_eq!(t, "Hi!"),
+            other => panic!("Expected TextDelta, got {:?}", other),
+        }
+
+        // ContentBlockStop
+        let event = sse_stream.next().await.unwrap().unwrap();
+        assert!(matches!(event, StreamEvent::ContentBlockStop { index: 0 }));
+
+        // MessageDelta
+        let event = sse_stream.next().await.unwrap().unwrap();
+        assert!(matches!(
+            event,
+            StreamEvent::MessageDelta {
+                stop_reason: StopReason::EndTurn,
+                ..
+            }
+        ));
+
+        // MessageStop
+        let event = sse_stream.next().await.unwrap().unwrap();
+        assert!(matches!(event, StreamEvent::MessageStop));
+
+        // Done
+        assert!(sse_stream.next().await.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_parse_sse_stream_network_error() {
+        use bytes::Bytes;
+
+        let chunks: Vec<reqwest::Result<Bytes>> = vec![Err(reqwest::Client::new()
+            .get("http://0.0.0.0:1")
+            .send()
+            .await
+            .unwrap_err())];
+
+        let stream = futures::stream::iter(chunks);
+        let mut sse_stream = parse_sse_stream(stream);
+
+        let event = sse_stream.next().await.unwrap();
+        assert!(event.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_parse_sse_stream_with_ping() {
+        use bytes::Bytes;
+
+        let chunks = vec![Ok(Bytes::from(
+            "event: ping\ndata: {}\n\nevent: message_stop\ndata: {}\n\n",
+        ))];
+
+        let stream = futures::stream::iter(chunks);
+        let mut sse_stream = parse_sse_stream(stream);
+
+        let event = sse_stream.next().await.unwrap().unwrap();
+        assert!(matches!(event, StreamEvent::Ping));
+
+        let event = sse_stream.next().await.unwrap().unwrap();
+        assert!(matches!(event, StreamEvent::MessageStop));
+    }
 }

@@ -692,10 +692,8 @@ mod concurrency_tests {
                 std::thread::spawn(move || {
                     barrier.wait();
                     for i in 0..writes_per_thread {
-                        let memory = Memory::new(
-                            ContentType::Note,
-                            format!("thread-{}-item-{}", t, i),
-                        );
+                        let memory =
+                            Memory::new(ContentType::Note, format!("thread-{}-item-{}", t, i));
                         store.insert_memory(&memory).unwrap();
                     }
                 })
@@ -739,10 +737,7 @@ mod concurrency_tests {
             handles.push(std::thread::spawn(move || {
                 barrier.wait();
                 for i in 0..ops_per_thread {
-                    let memory = Memory::new(
-                        ContentType::Fact,
-                        format!("writer-{}-item-{}", t, i),
-                    );
+                    let memory = Memory::new(ContentType::Fact, format!("writer-{}-item-{}", t, i));
                     store.insert_memory(&memory).unwrap();
                 }
             }));
