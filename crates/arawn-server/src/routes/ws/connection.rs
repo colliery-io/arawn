@@ -172,15 +172,23 @@ pub async fn handle_socket(socket: WebSocket, state: AppState, addr: SocketAddr)
         match response {
             MessageResponse::Single(msg) => {
                 if send_message(&mut sender, msg).await.is_err() {
+                    tracing::warn!(conn_id = %conn_state.id, "WebSocket send failed, closing connection");
                     break;
                 }
             }
             MessageResponse::Stream(stream) => {
                 let mut stream = std::pin::pin!(stream);
+                let mut send_failed = false;
                 while let Some(msg) = stream.next().await {
                     if send_message(&mut sender, msg).await.is_err() {
+                        tracing::warn!(conn_id = %conn_state.id, "WebSocket send failed during stream, aborting stream");
+                        send_failed = true;
                         break;
                     }
+                }
+                if send_failed {
+                    // Connection is dead — exit the outer loop too
+                    break;
                 }
             }
             MessageResponse::None => {}

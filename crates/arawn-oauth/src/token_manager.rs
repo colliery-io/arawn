@@ -70,6 +70,9 @@ pub struct FileTokenManager {
     token_path: PathBuf,
     config: OAuthConfig,
     cached_tokens: Arc<RwLock<Option<OAuthTokens>>>,
+    /// Mutex to serialize token refresh operations, preventing two concurrent
+    /// callers from both refreshing with the same (single-use) refresh token.
+    refresh_lock: tokio::sync::Mutex<()>,
 }
 
 impl FileTokenManager {
@@ -79,6 +82,7 @@ impl FileTokenManager {
             token_path: data_dir.join(TOKEN_FILE),
             config: OAuthConfig::default(),
             cached_tokens: Arc::new(RwLock::new(None)),
+            refresh_lock: tokio::sync::Mutex::new(()),
         }
     }
 
@@ -88,6 +92,7 @@ impl FileTokenManager {
             token_path,
             config: OAuthConfig::default(),
             cached_tokens: Arc::new(RwLock::new(None)),
+            refresh_lock: tokio::sync::Mutex::new(()),
         }
     }
 
@@ -133,8 +138,24 @@ impl TokenManager for FileTokenManager {
         let json = serde_json::to_string_pretty(tokens)
             .map_err(|e| OAuthError::Serialization(format!("Failed to serialize tokens: {}", e)))?;
 
-        std::fs::write(&self.token_path, json)
-            .map_err(|e| OAuthError::Config(format!("Failed to write token file: {}", e)))?;
+        // Atomic write: write to temp file, set permissions, then rename.
+        // Prevents data corruption if the process crashes mid-write.
+        let tmp_path = self.token_path.with_extension("json.tmp");
+        std::fs::write(&tmp_path, &json)
+            .map_err(|e| OAuthError::Config(format!("Failed to write temp token file: {}", e)))?;
+
+        // Set restrictive permissions before rename (tokens are sensitive)
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let perms = std::fs::Permissions::from_mode(0o600);
+            if let Err(e) = std::fs::set_permissions(&tmp_path, perms) {
+                tracing::warn!(error = %e, "Failed to set 0o600 permissions on token file — tokens may be world-readable");
+            }
+        }
+
+        std::fs::rename(&tmp_path, &self.token_path)
+            .map_err(|e| OAuthError::Config(format!("Failed to rename temp token file: {}", e)))?;
 
         let mut cache = self.cached_tokens.write().await;
         *cache = Some(tokens.clone());
@@ -155,6 +176,24 @@ impl TokenManager for FileTokenManager {
             return Ok(None);
         }
 
+        // Warn if token file has overly permissive permissions
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            if let Ok(metadata) = std::fs::metadata(&self.token_path) {
+                let mode = metadata.permissions().mode() & 0o777;
+                if mode & 0o077 != 0 {
+                    tracing::warn!(
+                        path = %self.token_path.display(),
+                        mode = format!("{:o}", mode),
+                        "OAuth token file has overly permissive permissions (expected 0o600). \
+                         Run: chmod 600 {}",
+                        self.token_path.display()
+                    );
+                }
+            }
+        }
+
         let content = std::fs::read_to_string(&self.token_path)
             .map_err(|e| OAuthError::Config(format!("Failed to read token file: {}", e)))?;
 
@@ -168,6 +207,11 @@ impl TokenManager for FileTokenManager {
     }
 
     async fn get_valid_access_token(&self) -> Result<String> {
+        // Serialize refresh operations: if two callers both see an expired token,
+        // only the first will refresh. The second will re-check after acquiring
+        // the lock and find the token is already refreshed.
+        let _refresh_guard = self.refresh_lock.lock().await;
+
         let tokens = self.load_tokens().await?.ok_or_else(|| {
             OAuthError::Config("No OAuth tokens found. Run 'arawn oauth' first.".to_string())
         })?;

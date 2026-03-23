@@ -9,7 +9,7 @@ impl MemoryStore {
     /// Add an entity to the knowledge graph.
     pub fn add_graph_entity(&self, node: &GraphNode) -> Result<()> {
         match &self.graph {
-            Some(graph) => graph.add_entity(node),
+            Some(graph) => graph.lock().unwrap().add_entity(node),
             None => Err(MemoryError::Query("Graph not initialized".to_string())),
         }
     }
@@ -17,7 +17,7 @@ impl MemoryStore {
     /// Add a relationship to the knowledge graph.
     pub fn add_graph_relationship(&self, rel: &GraphRelationship) -> Result<()> {
         match &self.graph {
-            Some(graph) => graph.add_relationship(rel),
+            Some(graph) => graph.lock().unwrap().add_relationship(rel),
             None => Err(MemoryError::Query("Graph not initialized".to_string())),
         }
     }
@@ -25,7 +25,7 @@ impl MemoryStore {
     /// Delete an entity from the knowledge graph.
     pub fn delete_graph_entity(&self, id: &str) -> Result<bool> {
         match &self.graph {
-            Some(graph) => graph.delete_entity(id),
+            Some(graph) => graph.lock().unwrap().delete_entity(id),
             None => Err(MemoryError::Query("Graph not initialized".to_string())),
         }
     }
@@ -33,7 +33,7 @@ impl MemoryStore {
     /// Get neighbors of an entity in the knowledge graph.
     pub fn get_graph_neighbors(&self, id: &str) -> Result<Vec<String>> {
         match &self.graph {
-            Some(graph) => graph.get_neighbors(id),
+            Some(graph) => graph.lock().unwrap().get_neighbors(id),
             None => Err(MemoryError::Query("Graph not initialized".to_string())),
         }
     }
@@ -41,7 +41,7 @@ impl MemoryStore {
     /// Get knowledge graph statistics.
     pub fn graph_stats(&self) -> Result<GraphStats> {
         match &self.graph {
-            Some(graph) => graph.stats(),
+            Some(graph) => graph.lock().unwrap().stats(),
             None => Err(MemoryError::Query("Graph not initialized".to_string())),
         }
     }

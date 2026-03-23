@@ -103,10 +103,47 @@ impl CommandValidator {
 
     /// Normalize a command for pattern matching.
     ///
-    /// Lowercases to defeat trivial blocklist bypasses like `RM -RF /`.
-    /// Whitespace is preserved for regex `\s+` matching.
+    /// Applies multiple normalization passes to defeat common bypass techniques:
+    /// 1. Lowercase to defeat case-based bypasses (`RM -RF /`)
+    /// 2. Remove shell quotes (`"rm"` → `rm`, `'rm'` → `rm`)
+    /// 3. Remove backslash escapes (`r\m` → `rm`)
+    /// 4. Collapse whitespace (double spaces → single)
+    /// 5. Extract basenames from absolute paths (`/bin/rm` → `rm`)
+    ///
+    /// Note: This is defense-in-depth. The OS-level sandbox is the primary
+    /// security boundary.
     fn normalize(command: &str) -> String {
-        command.to_lowercase()
+        let mut s = command.to_lowercase();
+
+        // Remove single and double quotes (shell quoting bypass)
+        s = s.replace('"', "").replace('\'', "");
+
+        // Remove backslash escapes (e.g., r\m → rm)
+        s = s.replace('\\', "");
+
+        // Collapse multiple whitespace to single space
+        let parts: Vec<&str> = s.split_whitespace().collect();
+        s = parts.join(" ");
+
+        // Replace absolute paths with basenames for the first token
+        // e.g., `/usr/bin/rm -rf /` → `rm -rf /`
+        if let Some(first_space) = s.find(' ') {
+            let (cmd, rest) = s.split_at(first_space);
+            if let Some(basename) = cmd.rsplit('/').next() {
+                if !basename.is_empty() && cmd.contains('/') {
+                    s = format!("{}{}", basename, rest);
+                }
+            }
+        } else if s.contains('/') {
+            // Single token with path, extract basename
+            if let Some(basename) = s.rsplit('/').next() {
+                if !basename.is_empty() {
+                    s = basename.to_string();
+                }
+            }
+        }
+
+        s
     }
 }
 
@@ -369,6 +406,54 @@ mod tests {
         ));
         assert!(matches!(
             v.validate("true && shutdown -h now"),
+            CommandValidation::Blocked(_)
+        ));
+    }
+
+    #[test]
+    fn test_normalize_strips_quotes() {
+        assert_eq!(CommandValidator::normalize(r#""rm" "-rf" "/""#), "rm -rf /");
+        assert_eq!(CommandValidator::normalize("'rm' '-rf' '/'"), "rm -rf /");
+    }
+
+    #[test]
+    fn test_normalize_strips_backslash_escapes() {
+        assert_eq!(CommandValidator::normalize(r"r\m -rf /"), "rm -rf /");
+    }
+
+    #[test]
+    fn test_normalize_extracts_basename_from_absolute_path() {
+        assert_eq!(CommandValidator::normalize("/bin/rm -rf /"), "rm -rf /");
+        assert_eq!(CommandValidator::normalize("/usr/bin/rm -rf /"), "rm -rf /");
+        assert_eq!(CommandValidator::normalize("/sbin/shutdown -h now"), "shutdown -h now");
+    }
+
+    #[test]
+    fn test_normalize_collapses_whitespace() {
+        assert_eq!(CommandValidator::normalize("rm  -rf   /"), "rm -rf /");
+    }
+
+    #[test]
+    fn test_bypass_attempts_blocked() {
+        let v = CommandValidator::default();
+        // Quoted bypass
+        assert!(matches!(
+            v.validate(r#""rm" "-rf" "/""#),
+            CommandValidation::Blocked(_)
+        ));
+        // Absolute path bypass
+        assert!(matches!(
+            v.validate("/bin/rm -rf /"),
+            CommandValidation::Blocked(_)
+        ));
+        // Backslash bypass
+        assert!(matches!(
+            v.validate(r"r\m -rf /"),
+            CommandValidation::Blocked(_)
+        ));
+        // Double-space bypass
+        assert!(matches!(
+            v.validate("rm  -rf  /"),
             CommandValidation::Blocked(_)
         ));
     }

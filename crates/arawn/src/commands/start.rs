@@ -101,10 +101,90 @@ pub struct StartArgs {
 }
 
 /// Run the start command.
+/// Get the path to the PID file.
+pub fn pid_file_path() -> std::path::PathBuf {
+    arawn_config::xdg_config_dir()
+        .unwrap_or_else(|| std::path::PathBuf::from("."))
+        .join("arawn.pid")
+}
+
+/// Stop a running daemon by sending SIGTERM to the PID in the PID file.
+pub fn stop_daemon() -> Result<()> {
+    let pid_path = pid_file_path();
+    if !pid_path.exists() {
+        anyhow::bail!("No PID file found at {}. Is the daemon running?", pid_path.display());
+    }
+
+    let pid_str = std::fs::read_to_string(&pid_path)
+        .map_err(|e| anyhow::anyhow!("Failed to read PID file: {}", e))?;
+    let pid: i32 = pid_str.trim().parse()
+        .map_err(|e| anyhow::anyhow!("Invalid PID in {}: {}", pid_path.display(), e))?;
+
+    // Send SIGTERM via the kill command
+    let status = std::process::Command::new("kill")
+        .arg("-TERM")
+        .arg(pid.to_string())
+        .status();
+
+    match status {
+        Ok(s) if s.success() => {
+            println!("Sent SIGTERM to Arawn server (PID {})", pid);
+            let _ = std::fs::remove_file(&pid_path);
+        }
+        _ => {
+            let _ = std::fs::remove_file(&pid_path);
+            anyhow::bail!("Process {} not running (stale PID file removed)", pid);
+        }
+    }
+
+    Ok(())
+}
+
 pub async fn run(args: StartArgs, ctx: &Context) -> Result<()> {
     if args.daemon {
-        println!("Daemon mode not yet implemented");
-        println!("Run without --daemon to start in foreground");
+        // Re-exec ourselves without --daemon, in the background
+        let exe = std::env::current_exe()
+            .map_err(|e| anyhow::anyhow!("Failed to get current executable: {}", e))?;
+
+        // Rebuild args without --daemon
+        let mut new_args: Vec<String> = vec!["start".to_string()];
+        if let Some(ref port) = args.port {
+            new_args.extend(["--port".to_string(), port.to_string()]);
+        }
+        if let Some(ref bind) = args.bind {
+            new_args.extend(["--bind".to_string(), bind.clone()]);
+        }
+        if let Some(ref config) = args.config {
+            new_args.extend(["--config".to_string(), config.to_string_lossy().to_string()]);
+        }
+
+        // Redirect stdout/stderr to log files
+        let log_dir = arawn_config::xdg_config_dir()
+            .map(|d| d.join("logs"))
+            .unwrap_or_else(|| std::path::PathBuf::from("logs"));
+        std::fs::create_dir_all(&log_dir)?;
+
+        let stdout_file = std::fs::File::create(log_dir.join("daemon-stdout.log"))?;
+        let stderr_file = std::fs::File::create(log_dir.join("daemon-stderr.log"))?;
+
+        let child = std::process::Command::new(&exe)
+            .args(&new_args)
+            .stdout(stdout_file)
+            .stderr(stderr_file)
+            .stdin(std::process::Stdio::null())
+            .spawn()
+            .map_err(|e| anyhow::anyhow!("Failed to spawn daemon: {}", e))?;
+
+        let pid = child.id();
+
+        // Write PID file
+        let pid_path = pid_file_path();
+        std::fs::write(&pid_path, pid.to_string())
+            .map_err(|e| anyhow::anyhow!("Failed to write PID file: {}", e))?;
+
+        println!("Arawn daemon started (PID {})", pid);
+        println!("PID file: {}", pid_path.display());
+        println!("Stop with: arawn stop");
         return Ok(());
     }
 
@@ -144,6 +224,14 @@ pub async fn run(args: StartArgs, ctx: &Context) -> Result<()> {
     }
 
     let config = &loaded.config;
+
+    // ── Validate configuration ──────────────────────────────────────────
+    validate_config(config)?;
+
+    // ── Clean up old log files ──────────────────────────────────────────
+    if let Some(log_dir) = arawn_config::xdg_config_dir().map(|d| d.join("logs")) {
+        cleanup_old_logs(&log_dir, 30, ctx.verbose);
+    }
 
     // ── Resolve LLM backend ─────────────────────────────────────────────
 
@@ -340,6 +428,10 @@ pub async fn run(args: StartArgs, ctx: &Context) -> Result<()> {
             if let Err(e) = store.init_vectors(embedder.dimensions(), embedder.name()) {
                 tracing::warn!("failed to init vector store: {}", e);
             }
+
+            // WAL checkpoint on startup to reclaim disk space
+            store.wal_checkpoint();
+
             if ctx.verbose {
                 println!("Memory store: {}", memory_db_path.display());
             }
@@ -382,7 +474,8 @@ pub async fn run(args: StartArgs, ctx: &Context) -> Result<()> {
     tool_registry.register(tools::FileWriteTool::new());
     tool_registry.register(tools::GlobTool::new());
     tool_registry.register(tools::GrepTool::new());
-    tool_registry.register(tools::WebFetchTool::with_config(web_config));
+    tool_registry.register(tools::WebFetchTool::with_config(web_config)?);
+    tool_registry.register(tools::WebSearchTool::new()?);
     tool_registry.register(tools::NoteTool::new());
     match &memory_store {
         Some(store) => tool_registry.register(tools::MemorySearchTool::with_store(store.clone())),
@@ -649,7 +742,7 @@ pub async fn run(args: StartArgs, ctx: &Context) -> Result<()> {
     // ── Plugin system ────────────────────────────────────────────────────
 
     let plugins_cfg = config.plugins.clone().unwrap_or_default();
-    let plugin_prompts: Vec<(String, String)> = Vec::new();
+    let mut plugin_prompts: Vec<(String, String)> = Vec::new();
     let mut hook_dispatcher = HookDispatcher::new();
     // Collect agent configs from plugins for delegate tool
     let mut plugin_agent_configs: HashMap<String, arawn_plugin::PluginAgentConfig> = HashMap::new();
@@ -786,8 +879,27 @@ pub async fn run(args: StartArgs, ctx: &Context) -> Result<()> {
                     }
                 }
 
-                // Note: CLI tools (commands/) and prompt fragments are not yet implemented
-                // in the Claude plugin format migration. Those will be handled in future tasks.
+                // Collect prompt fragments from plugin skills
+                if !plugin.skill_contents.is_empty() {
+                    let mut prompt_parts: Vec<String> = Vec::new();
+                    prompt_parts.push("Available skills:".to_string());
+                    for skill in &plugin.skill_contents {
+                        let desc = &skill.def.description;
+                        let name = &skill.def.name;
+                        prompt_parts.push(format!("- `/{name}`: {desc}"));
+                    }
+                    plugin_prompts.push((
+                        plugin.manifest.name.clone(),
+                        prompt_parts.join("\n"),
+                    ));
+                    if ctx.verbose {
+                        println!(
+                            "  Plugin '{}': {} skill prompt(s) registered",
+                            plugin.manifest.name,
+                            plugin.skill_contents.len()
+                        );
+                    }
+                }
             }
 
             if ctx.verbose || !st.is_empty() {
@@ -1366,7 +1478,8 @@ pub async fn run(args: StartArgs, ctx: &Context) -> Result<()> {
         .with_bind_address(addr)
         .with_rate_limiting(rate_limiting)
         .with_request_logging(request_logging)
-        .with_api_rpm(api_rpm);
+        .with_api_rpm(api_rpm)
+        .with_trust_proxy(server_cfg.as_ref().map(|s| s.trust_proxy).unwrap_or(false));
 
     if !ws_allowed_origins.is_empty() {
         server_config = server_config.with_ws_allowed_origins(ws_allowed_origins);
@@ -2014,4 +2127,78 @@ fn seed_test_data(manager: &WorkstreamManager, verbose: bool) {
     } else if verbose {
         println!("Seed: no new workstreams created (already seeded)");
     }
+}
+
+/// Delete log files older than `max_age_days` from the log directory.
+///
+/// Runs on server startup to prevent disk exhaustion from accumulated logs.
+/// Only deletes files matching `arawn.log.*` (the daily-rotated log files).
+fn cleanup_old_logs(log_dir: &std::path::Path, max_age_days: u64, verbose: bool) {
+    let Ok(entries) = std::fs::read_dir(log_dir) else {
+        return;
+    };
+
+    let cutoff = std::time::SystemTime::now()
+        - std::time::Duration::from_secs(max_age_days * 24 * 60 * 60);
+
+    let mut deleted = 0u32;
+    let mut errors = 0u32;
+
+    for entry in entries.flatten() {
+        let path = entry.path();
+
+        // Only clean up rotated log files (arawn.log.YYYY-MM-DD)
+        let name = entry.file_name();
+        let name_str = name.to_string_lossy();
+        if !name_str.starts_with("arawn.log.") {
+            continue;
+        }
+
+        let Ok(metadata) = entry.metadata() else {
+            continue;
+        };
+
+        let Ok(modified) = metadata.modified() else {
+            continue;
+        };
+
+        if modified < cutoff {
+            match std::fs::remove_file(&path) {
+                Ok(()) => {
+                    deleted += 1;
+                    if verbose {
+                        println!("Log cleanup: deleted {}", path.display());
+                    }
+                }
+                Err(e) => {
+                    errors += 1;
+                    tracing::warn!(path = %path.display(), error = %e, "Failed to delete old log file");
+                }
+            }
+        }
+    }
+
+    if deleted > 0 || errors > 0 {
+        tracing::info!(deleted, errors, max_age_days, "Log cleanup complete");
+    }
+}
+
+/// Validate configuration values at startup, failing fast with clear errors.
+fn validate_config(config: &arawn_config::ArawnConfig) -> Result<()> {
+    if let Some(ref server) = config.server {
+        if server.port == 0 {
+            anyhow::bail!("Invalid config: server.port cannot be 0");
+        }
+        if server.api_rpm == 0 {
+            anyhow::bail!("Invalid config: server.api_rpm must be > 0");
+        }
+    }
+
+    if let Some(ref embedding) = config.embedding {
+        if embedding.dimensions == Some(0) {
+            anyhow::bail!("Invalid config: embedding.dimensions must be > 0");
+        }
+    }
+
+    Ok(())
 }

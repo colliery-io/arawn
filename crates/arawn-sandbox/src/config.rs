@@ -194,8 +194,11 @@ impl SandboxConfig {
                 paths.push(home.join("Library/Cookies"));
             }
 
-            // Arawn config (credentials, API keys)
-            paths.push(home.join(".arawn/config"));
+            // Arawn's own secrets and credentials
+            paths.push(home.join(".config/arawn/secrets"));
+            paths.push(home.join(".config/arawn/identity.age"));
+            paths.push(home.join(".config/arawn/oauth-tokens.json"));
+            paths.push(home.join(".config/arawn/env"));
         }
 
         paths

@@ -144,16 +144,24 @@ impl AgeSecretStore {
                 .map_err(|e| SecretStoreError::Io(format!("creating secrets directory: {}", e)))?;
         }
 
-        std::fs::write(&self.secrets_path, &encrypted)
-            .map_err(|e| SecretStoreError::Io(format!("writing secrets file: {}", e)))?;
+        // Atomic write: write to a temp file in the same directory, then rename.
+        // This prevents data corruption if the process crashes mid-write.
+        let tmp_path = self.secrets_path.with_extension("age.tmp");
+        std::fs::write(&tmp_path, &encrypted)
+            .map_err(|e| SecretStoreError::Io(format!("writing temp secrets file: {}", e)))?;
 
-        // Restrictive permissions
+        // Set restrictive permissions on temp file before rename
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
             let perms = std::fs::Permissions::from_mode(0o600);
-            let _ = std::fs::set_permissions(&self.secrets_path, perms);
+            std::fs::set_permissions(&tmp_path, perms)
+                .map_err(|e| SecretStoreError::Io(format!("setting secrets file permissions: {}", e)))?;
         }
+
+        // Atomic rename (on POSIX, rename is atomic within the same filesystem)
+        std::fs::rename(&tmp_path, &self.secrets_path)
+            .map_err(|e| SecretStoreError::Io(format!("renaming temp secrets file: {}", e)))?;
 
         Ok(())
     }

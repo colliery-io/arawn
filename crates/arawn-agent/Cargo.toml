@@ -39,7 +39,7 @@ walkdir = "2.5"
 
 # For shell/PTY
 portable-pty = "0.8"
-dirs = "5.0"
+dirs = { workspace = true }
 
 # NER (GLiNER)
 gline-rs-vendored = { workspace = true, optional = true }

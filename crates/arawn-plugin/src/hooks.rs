@@ -578,8 +578,12 @@ async fn run_hook_command(
     };
 
     if let Some(mut stdin) = child.stdin.take() {
-        let _ = stdin.write_all(stdin_data.as_bytes()).await;
-        let _ = stdin.shutdown().await;
+        if let Err(e) = stdin.write_all(stdin_data.as_bytes()).await {
+            tracing::warn!(error = %e, "Failed to write stdin to hook process");
+        }
+        if let Err(e) = stdin.shutdown().await {
+            tracing::warn!(error = %e, "Failed to shutdown hook stdin");
+        }
     }
 
     let output = match tokio::time::timeout(timeout, child.wait_with_output()).await {

@@ -88,8 +88,10 @@ impl MemoryStore {
 
             // Get graph context if enabled
             let related_entities = if query.include_graph_context {
-                if let Some(graph) = &self.graph {
-                    graph
+                if let Some(graph_mutex) = &self.graph {
+                    graph_mutex
+                        .lock()
+                        .unwrap()
                         .get_neighbors(&memory.id.to_string())
                         .unwrap_or_default()
                 } else {

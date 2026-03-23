@@ -6,6 +6,7 @@
 mod common;
 
 use anyhow::Result;
+use serial_test::serial;
 use tempfile::TempDir;
 
 use arawn_test_utils::server::TestServerBuilder;
@@ -45,6 +46,7 @@ fn teardown_log_dir() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 #[tokio::test]
+#[serial]
 async fn scenario_list_log_files() -> Result<()> {
     let _tmp = setup_log_dir(&[
         ("2026-03-09.log", "line one\nline two\n"),
@@ -84,6 +86,7 @@ async fn scenario_list_log_files() -> Result<()> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 #[tokio::test]
+#[serial]
 async fn scenario_list_log_files_empty() -> Result<()> {
     let _tmp = setup_log_dir(&[]);
 
@@ -105,6 +108,7 @@ async fn scenario_list_log_files_empty() -> Result<()> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 #[tokio::test]
+#[serial]
 async fn scenario_list_log_files_filters_non_log() -> Result<()> {
     let _tmp = setup_log_dir(&[
         ("server.log", "log content\n"),
@@ -131,6 +135,7 @@ async fn scenario_list_log_files_filters_non_log() -> Result<()> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 #[tokio::test]
+#[serial]
 async fn scenario_get_logs_latest() -> Result<()> {
     let _tmp = setup_log_dir(&[
         (
@@ -166,6 +171,7 @@ async fn scenario_get_logs_latest() -> Result<()> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 #[tokio::test]
+#[serial]
 async fn scenario_get_logs_specific_file() -> Result<()> {
     let _tmp = setup_log_dir(&[
         ("2026-03-09.log", "today\n"),
@@ -195,6 +201,7 @@ async fn scenario_get_logs_specific_file() -> Result<()> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 #[tokio::test]
+#[serial]
 async fn scenario_get_logs_with_lines_limit() -> Result<()> {
     // Create a file with 10 lines
     let content: String = (1..=10).map(|i| format!("line {}\n", i)).collect();
@@ -225,6 +232,7 @@ async fn scenario_get_logs_with_lines_limit() -> Result<()> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 #[tokio::test]
+#[serial]
 async fn scenario_get_logs_file_not_found() -> Result<()> {
     let _tmp = setup_log_dir(&[("server.log", "content\n")]);
 
@@ -246,6 +254,7 @@ async fn scenario_get_logs_file_not_found() -> Result<()> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 #[tokio::test]
+#[serial]
 async fn scenario_get_logs_no_files_returns_404() -> Result<()> {
     let _tmp = setup_log_dir(&[]);
 
@@ -267,6 +276,7 @@ async fn scenario_get_logs_no_files_returns_404() -> Result<()> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 #[tokio::test]
+#[serial]
 async fn scenario_get_logs_no_directory_returns_404() -> Result<()> {
     // Set ARAWN_CONFIG_DIR to a path that exists but has no logs subdir
     let tmp = TempDir::new()?;
@@ -293,6 +303,7 @@ async fn scenario_get_logs_no_directory_returns_404() -> Result<()> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 #[tokio::test]
+#[serial]
 async fn scenario_list_log_files_no_directory_returns_empty() -> Result<()> {
     let tmp = TempDir::new()?;
     unsafe {
@@ -320,6 +331,7 @@ async fn scenario_list_log_files_no_directory_returns_empty() -> Result<()> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 #[tokio::test]
+#[serial]
 async fn scenario_get_logs_lines_capped_at_1000() -> Result<()> {
     // Create a file with 1500 lines
     let content: String = (1..=1500).map(|i| format!("line {}\n", i)).collect();
@@ -350,6 +362,7 @@ async fn scenario_get_logs_lines_capped_at_1000() -> Result<()> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 #[tokio::test]
+#[serial]
 async fn scenario_get_logs_full_filename() -> Result<()> {
     let _tmp = setup_log_dir(&[("server.log", "full name test\n")]);
 

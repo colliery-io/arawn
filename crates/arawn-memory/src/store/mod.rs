@@ -58,17 +58,18 @@ const SCHEMA_VERSION: i32 = 4;
 pub struct MemoryStore {
     /// The SQLite connection (wrapped in Mutex for thread safety).
     pub(crate) conn: Mutex<Connection>,
-    /// Optional graph store for knowledge graph operations.
-    pub(crate) graph: Option<GraphStore>,
+    /// Optional graph store for knowledge graph operations (wrapped in Mutex
+    /// because GraphStore's inner graphqlite::Graph is not Send+Sync).
+    pub(crate) graph: Option<Mutex<GraphStore>>,
     /// Whether vectors have been initialized.
     pub(crate) vectors_initialized: Mutex<bool>,
     /// Whether stored embeddings are stale (dimension/provider mismatch).
     pub(crate) vectors_stale: Mutex<bool>,
 }
 
-// SAFETY: All access to the inner Connection is through Mutex<Connection>,
-// and GraphStore's internal connection is only accessed through &self methods
-// that are serialized by the single-threaded access pattern.
+// SAFETY: All fields are either Mutex-wrapped (conn, graph, vectors_initialized,
+// vectors_stale) or are inherently Send+Sync. The Mutex wrappers ensure that
+// all access is properly serialized.
 unsafe impl Send for MemoryStore {}
 unsafe impl Sync for MemoryStore {}
 
@@ -186,7 +187,7 @@ impl MemoryStore {
     /// use `init_graph_at_path`.
     pub fn init_graph(&mut self) -> Result<()> {
         let graph = GraphStore::open_in_memory()?;
-        self.graph = Some(graph);
+        self.graph = Some(Mutex::new(graph));
         info!("Knowledge graph initialized (in-memory)");
         Ok(())
     }
@@ -194,7 +195,7 @@ impl MemoryStore {
     /// Initialize knowledge graph at a specific path.
     pub fn init_graph_at_path(&mut self, path: impl AsRef<Path>) -> Result<()> {
         let graph = GraphStore::open(path)?;
-        self.graph = Some(graph);
+        self.graph = Some(Mutex::new(graph));
         info!("Knowledge graph initialized");
         Ok(())
     }
@@ -209,9 +210,15 @@ impl MemoryStore {
         *self.vectors_initialized.lock().unwrap()
     }
 
-    /// Get a reference to the graph store (if initialized).
-    pub fn graph(&self) -> Option<&GraphStore> {
-        self.graph.as_ref()
+    /// Run a WAL checkpoint to reclaim disk space from the WAL file.
+    /// Safe to call while the database is in use; uses TRUNCATE mode
+    /// to reset the WAL file to zero size.
+    pub fn wal_checkpoint(&self) {
+        let conn = self.conn.lock().unwrap();
+        match conn.pragma_update(None, "wal_checkpoint", "TRUNCATE") {
+            Ok(()) => tracing::debug!("WAL checkpoint completed"),
+            Err(e) => tracing::warn!(error = %e, "WAL checkpoint failed"),
+        }
     }
 
     /// Initialize the database with schema and pragmas.
@@ -671,7 +678,7 @@ mod tests {
     fn test_has_graph_false_by_default() {
         let store = create_test_store();
         assert!(!store.has_graph());
-        assert!(store.graph().is_none());
+        assert!(!store.has_graph());
     }
 
     #[test]
@@ -681,7 +688,7 @@ mod tests {
 
         store.init_graph().unwrap();
         assert!(store.has_graph());
-        assert!(store.graph().is_some());
+        assert!(store.has_graph());
     }
 
     #[test]
@@ -767,6 +774,7 @@ mod tests {
 mod concurrency_tests {
     use super::*;
     use crate::types::{ContentType, Memory, Note};
+    use serial_test::serial;
     use std::sync::{Arc, Barrier};
 
     fn create_test_store() -> MemoryStore {
@@ -1057,5 +1065,102 @@ mod concurrency_tests {
         let stats = store.stats().unwrap();
         assert_eq!(stats.memory_count, 5 + 20); // seed + t1
         assert_eq!(stats.note_count, 5 + 20); // seed + t3
+    }
+
+    mod prop_tests {
+        use super::*;
+        use proptest::prelude::*;
+
+        proptest! {
+            /// Any non-empty string should be storable and retrievable.
+            #[test]
+            fn store_and_retrieve_arbitrary_content(content in ".{1,500}") {
+                let store = create_test_store();
+                let memory = Memory::new(ContentType::Note, &content);
+                let id = memory.id;
+                store.insert_memory(&memory).unwrap();
+                let retrieved = store.get_memory(id).unwrap().unwrap();
+                prop_assert_eq!(retrieved.content, content);
+            }
+
+            /// Store count should equal number of inserts.
+            #[test]
+            fn insert_count_matches_stats(count in 1usize..=20usize) {
+                let store = create_test_store();
+                for i in 0..count {
+                    store.insert_memory(&Memory::new(ContentType::Fact, format!("fact-{}", i))).unwrap();
+                }
+                let stats = store.stats().unwrap();
+                prop_assert_eq!(stats.memory_count, count);
+            }
+
+            /// Notes should survive insert + list roundtrip.
+            #[test]
+            fn note_roundtrip(content in ".{1,200}") {
+                let store = create_test_store();
+                let note = Note::new(&content);
+                let id = note.id;
+                store.insert_note(&note).unwrap();
+                let retrieved = store.get_note(id).unwrap().unwrap();
+                prop_assert_eq!(retrieved.content, content);
+            }
+        }
+    }
+
+    #[test]
+    #[serial]
+    fn test_concurrent_graph_operations_no_deadlock() {
+        // Exercises the Mutex-wrapped GraphStore under concurrent access.
+        let mut store = MemoryStore::open_in_memory().unwrap();
+        store.init_graph().unwrap();
+        let store = Arc::new(store);
+
+        let barrier = Arc::new(Barrier::new(3));
+
+        // Thread 1: Add entities
+        let s1 = Arc::clone(&store);
+        let b1 = Arc::clone(&barrier);
+        let t1 = std::thread::spawn(move || {
+            b1.wait();
+            for i in 0..20 {
+                let node = crate::graph::GraphNode::new(
+                    format!("entity-t1-{}", i),
+                    "TestEntity",
+                );
+                let _ = s1.add_graph_entity(&node);
+            }
+        });
+
+        // Thread 2: Add entities and relationships
+        let s2 = Arc::clone(&store);
+        let b2 = Arc::clone(&barrier);
+        let t2 = std::thread::spawn(move || {
+            b2.wait();
+            for i in 0..20 {
+                let node = crate::graph::GraphNode::new(
+                    format!("entity-t2-{}", i),
+                    "TestEntity",
+                );
+                let _ = s2.add_graph_entity(&node);
+            }
+        });
+
+        // Thread 3: Read graph stats
+        let s3 = Arc::clone(&store);
+        let b3 = Arc::clone(&barrier);
+        let t3 = std::thread::spawn(move || {
+            b3.wait();
+            for _ in 0..20 {
+                let _ = s3.graph_stats();
+            }
+        });
+
+        t1.join().unwrap();
+        t2.join().unwrap();
+        t3.join().unwrap();
+
+        // Verify graph has entities from both threads
+        let stats = store.graph_stats().unwrap();
+        assert!(stats.node_count > 0, "Expected some graph nodes, got 0");
     }
 }

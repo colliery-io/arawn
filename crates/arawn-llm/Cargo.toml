@@ -40,7 +40,7 @@ thiserror = { workspace = true }
 tracing = { workspace = true }
 
 # Filesystem
-dirs = "5"
+dirs = { workspace = true }
 
 # Local embeddings (optional)
 ort = { workspace = true, optional = true }

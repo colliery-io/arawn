@@ -212,10 +212,11 @@ impl Agent {
             if iterations > self.config.max_iterations {
                 tracing::debug!(%session_id, %turn_id, iterations, max = self.config.max_iterations, "Max iterations reached — truncating turn");
                 // Mark turn as truncated
-                let turn = session.current_turn_mut().unwrap();
-                turn.complete("[Response truncated: max iterations exceeded]");
-                turn.tool_calls = all_tool_calls.clone();
-                turn.tool_results = all_tool_results.clone();
+                if let Some(turn) = session.current_turn_mut() {
+                    turn.complete("[Response truncated: max iterations exceeded]");
+                    turn.tool_calls = all_tool_calls.clone();
+                    turn.tool_results = all_tool_results.clone();
+                }
 
                 return Ok(AgentResponse {
                     text: "[Response truncated: max iterations exceeded]".to_string(),
@@ -288,10 +289,11 @@ impl Agent {
                         "Token budget exceeded"
                     );
                     let text = response.text();
-                    let turn = session.current_turn_mut().unwrap();
-                    turn.complete(&text);
-                    turn.tool_calls = all_tool_calls.clone();
-                    turn.tool_results = all_tool_results.clone();
+                    if let Some(turn) = session.current_turn_mut() {
+                        turn.complete(&text);
+                        turn.tool_calls = all_tool_calls.clone();
+                        turn.tool_results = all_tool_results.clone();
+                    }
 
                     return Ok(AgentResponse {
                         text,
@@ -389,10 +391,11 @@ impl Agent {
             );
 
             // Complete the turn
-            let turn = session.current_turn_mut().unwrap();
-            turn.complete(&text);
-            turn.tool_calls = all_tool_calls.clone();
-            turn.tool_results = all_tool_results.clone();
+            if let Some(turn) = session.current_turn_mut() {
+                turn.complete(&text);
+                turn.tool_calls = all_tool_calls.clone();
+                turn.tool_results = all_tool_results.clone();
+            }
 
             return Ok(AgentResponse {
                 text,

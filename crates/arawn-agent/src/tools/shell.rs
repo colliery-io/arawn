@@ -1317,4 +1317,129 @@ mod tests {
         assert!(result.is_error());
         assert!(result.to_llm_content().contains("cancelled"));
     }
+
+    // ── Security Tests ─────────────────────────────────────────────────
+
+    #[test]
+    fn test_blocklist_bypass_via_quoting() {
+        let tool = ShellTool::new();
+        // Double-quoted bypass
+        assert!(!tool.is_command_allowed(r#""rm" "-rf" "/""#));
+        // Single-quoted bypass
+        assert!(!tool.is_command_allowed("'rm' '-rf' '/'"));
+    }
+
+    #[test]
+    fn test_blocklist_bypass_via_absolute_path() {
+        let tool = ShellTool::new();
+        assert!(!tool.is_command_allowed("/bin/rm -rf /"));
+        assert!(!tool.is_command_allowed("/usr/bin/rm -rf /"));
+        assert!(!tool.is_command_allowed("/sbin/shutdown -h now"));
+        assert!(!tool.is_command_allowed("/sbin/reboot"));
+    }
+
+    #[test]
+    fn test_blocklist_bypass_via_backslash() {
+        let tool = ShellTool::new();
+        assert!(!tool.is_command_allowed(r"r\m -rf /"));
+    }
+
+    #[test]
+    fn test_blocklist_bypass_via_whitespace() {
+        let tool = ShellTool::new();
+        assert!(!tool.is_command_allowed("rm  -rf  /"));
+        assert!(!tool.is_command_allowed("rm\t-rf\t/"));
+    }
+
+    #[test]
+    fn test_fork_bomb_blocked() {
+        let tool = ShellTool::new();
+        assert!(!tool.is_command_allowed(":(){ :|:& };:"));
+    }
+
+    #[test]
+    fn test_dangerous_dd_blocked() {
+        let tool = ShellTool::new();
+        assert!(!tool.is_command_allowed("dd if=/dev/zero of=/dev/sda"));
+    }
+
+    #[test]
+    fn test_process_tracing_blocked() {
+        let tool = ShellTool::new();
+        assert!(!tool.is_command_allowed("ptrace some_process"));
+        assert!(!tool.is_command_allowed("strace -p 1234"));
+    }
+
+    #[test]
+    fn test_safe_commands_allowed() {
+        let tool = ShellTool::new();
+        assert!(tool.is_command_allowed("ls -la"));
+        assert!(tool.is_command_allowed("echo hello world"));
+        assert!(tool.is_command_allowed("cat /etc/hostname"));
+        assert!(tool.is_command_allowed("grep -r 'pattern' src/"));
+        assert!(tool.is_command_allowed("cargo test"));
+        assert!(tool.is_command_allowed("git status"));
+        assert!(tool.is_command_allowed("python3 script.py"));
+    }
+
+    #[tokio::test]
+    async fn test_blocked_command_returns_error() {
+        let tool = ShellTool::new();
+        let ctx = ToolContext::default();
+
+        let result = tool
+            .execute(json!({"command": "rm -rf /"}), &ctx)
+            .await
+            .unwrap();
+
+        assert!(result.is_error());
+        let content = result.to_llm_content();
+        assert!(
+            content.contains("blocked") || content.contains("Blocked") || content.contains("not allowed"),
+            "Expected blocked/not-allowed message, got: {}",
+            content
+        );
+    }
+
+    #[tokio::test]
+    async fn test_timeout_enforcement() {
+        let config = ShellConfig::new().with_timeout(Duration::from_secs(1));
+        let tool = ShellTool::with_config(config);
+        let ctx = ToolContext::default();
+
+        let result = tool
+            .execute(json!({"command": "sleep 10"}), &ctx)
+            .await
+            .unwrap();
+
+        let content = result.to_llm_content();
+        assert!(
+            content.contains("timed out") || content.contains("timeout") || content.contains("Timeout"),
+            "Expected timeout message, got: {}",
+            content
+        );
+    }
+
+    #[tokio::test]
+    async fn test_output_truncation_security() {
+        let config = ShellConfig::new().with_max_output_size(50);
+        let tool = ShellTool::with_config(config);
+        let ctx = ToolContext::default();
+
+        let result = tool
+            .execute(
+                json!({"command": "python3 -c \"print('x' * 200)\""}),
+                &ctx,
+            )
+            .await
+            .unwrap();
+
+        let content = result.to_llm_content();
+        // Output should be truncated, not the full 200 chars
+        assert!(
+            content.len() < 300,
+            "Output should be truncated, got {} bytes",
+            content.len()
+        );
+    }
 }

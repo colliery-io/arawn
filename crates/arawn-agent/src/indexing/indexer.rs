@@ -295,10 +295,9 @@ impl SessionIndexer {
         entities: &[ExtractedEntity],
         report: &mut IndexReport,
     ) {
-        let graph = match self.store.graph() {
-            Some(g) => g,
-            None => return,
-        };
+        if !self.store.has_graph() {
+            return;
+        }
 
         for entity in entities {
             let mut node = GraphNode::new(
@@ -310,7 +309,7 @@ impl SessionIndexer {
             }
             node = node.with_property("source_session", session_id);
 
-            match graph.add_entity(&node) {
+            match self.store.add_graph_entity(&node) {
                 Ok(()) => report.entities_stored += 1,
                 Err(e) => {
                     warn!(entity = %entity.name, error = %e, "Failed to store entity");
@@ -373,10 +372,9 @@ impl SessionIndexer {
         relationships: &[ExtractedRelationship],
         report: &mut IndexReport,
     ) {
-        let graph = match self.store.graph() {
-            Some(g) => g,
-            None => return,
-        };
+        if !self.store.has_graph() {
+            return;
+        }
 
         for rel in relationships {
             let from_id = rel.from.to_lowercase().replace(' ', "_");
@@ -386,7 +384,7 @@ impl SessionIndexer {
             let graph_rel = GraphRelationship::new(&from_id, &to_id, rel_type)
                 .with_property("label", &rel.relation);
 
-            match graph.add_relationship(&graph_rel) {
+            match self.store.add_graph_relationship(&graph_rel) {
                 Ok(()) => report.relationships_stored += 1,
                 Err(e) => {
                     warn!(

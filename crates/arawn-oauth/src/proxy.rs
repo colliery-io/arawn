@@ -14,7 +14,7 @@ use futures::StreamExt;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpListener;
-use tower_http::cors::{Any, CorsLayer};
+use tower_http::cors::{AllowOrigin, Any, CorsLayer};
 
 use crate::error::OAuthError;
 use crate::passthrough::{Passthrough, PassthroughConfig, extract_api_key};
@@ -87,9 +87,22 @@ impl ProxyServer {
             .with_state(self.state.clone());
 
         if self.config.enable_cors {
+            // Restrict CORS to localhost origins only to prevent cross-origin
+            // attacks from arbitrary websites making authenticated requests.
+            let allowed_origins = AllowOrigin::predicate(|origin, _| {
+                if let Ok(origin_str) = origin.to_str() {
+                    origin_str.starts_with("http://127.0.0.1")
+                        || origin_str.starts_with("http://localhost")
+                        || origin_str.starts_with("https://127.0.0.1")
+                        || origin_str.starts_with("https://localhost")
+                        || origin_str.starts_with("http://[::1]")
+                } else {
+                    false
+                }
+            });
             router = router.layer(
                 CorsLayer::new()
-                    .allow_origin(Any)
+                    .allow_origin(allowed_origins)
                     .allow_methods(Any)
                     .allow_headers(Any),
             );

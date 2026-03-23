@@ -95,6 +95,19 @@ pub enum Commands {
 
     /// Launch Terminal UI
     Tui(tui::TuiArgs),
+
+    /// Stop the Arawn daemon
+    Stop,
+
+    /// Backup all Arawn data (databases, config, workstreams)
+    Backup {
+        /// Backup destination directory (default: ~/.arawn-backups)
+        #[arg(short, long)]
+        output: Option<String>,
+        /// Number of backups to keep (default: 30)
+        #[arg(short, long, default_value = "30")]
+        keep: u32,
+    },
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -711,5 +724,35 @@ async fn run() -> Result<()> {
         Commands::Session(args) => session::run(args, &ctx).await,
         Commands::Logs(args) => logs::run(args, &ctx).await,
         Commands::Tui(args) => tui::run(args, &ctx).await,
+        Commands::Stop => start::stop_daemon(),
+        Commands::Backup { output, keep } => {
+            let mut cmd = std::process::Command::new("bash");
+            // Find the backup script relative to the binary or use PATH
+            let script = std::env::current_exe()
+                .ok()
+                .and_then(|p| p.parent().map(|d| d.join("../scripts/backup.sh")))
+                .filter(|p| p.exists())
+                .or_else(|| {
+                    // Try workspace root
+                    std::env::current_dir()
+                        .ok()
+                        .map(|d| d.join("scripts/backup.sh"))
+                        .filter(|p| p.exists())
+                })
+                .unwrap_or_else(|| std::path::PathBuf::from("arawn-backup"));
+
+            if let Some(ref out) = output {
+                cmd.arg(&script).arg(out);
+            } else {
+                cmd.arg(&script);
+            }
+            cmd.env("ARAWN_KEEP_BACKUPS", keep.to_string());
+
+            let status = cmd.status().map_err(|e| anyhow::anyhow!("Failed to run backup script: {}", e))?;
+            if !status.success() {
+                anyhow::bail!("Backup failed with exit code: {}", status.code().unwrap_or(-1));
+            }
+            Ok(())
+        }
     }
 }

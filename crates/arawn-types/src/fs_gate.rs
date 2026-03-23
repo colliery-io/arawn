@@ -86,7 +86,7 @@ pub type SharedFsGate = Arc<dyn FsGate>;
 pub type FsGateResolver = Arc<dyn Fn(&str, &str) -> Option<Arc<dyn FsGate>> + Send + Sync>;
 
 /// Tool names that require filesystem gate enforcement.
-pub const GATED_TOOLS: &[&str] = &["file_read", "file_write", "glob", "grep", "shell"];
+pub const GATED_TOOLS: &[&str] = &["file_read", "file_write", "glob", "grep", "shell", "web_fetch"];
 
 /// Check if a tool name requires filesystem gate enforcement.
 ///

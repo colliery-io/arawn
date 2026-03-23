@@ -221,25 +221,38 @@ impl Server {
             ))
     }
 
-    /// Run the server.
+    /// Run the server with graceful shutdown on SIGTERM/SIGINT.
     pub async fn run(self) -> Result<()> {
         let addr = self.state.config().bind_address;
         let router = self.router();
 
         info!("Starting server on {}", addr);
 
+        // Warn if auth is disabled and the server is not bound to localhost
+        if self.state.config().auth_token.is_none() && !addr.ip().is_loopback() {
+            tracing::warn!(
+                bind_addr = %addr,
+                "Authentication is DISABLED and server is bound to a non-loopback address. \
+                 The server is accessible without authentication to any client that can reach {}. \
+                 Set an auth token or bind to 127.0.0.1 for safe operation.",
+                addr
+            );
+        }
+
         let listener = TcpListener::bind(addr)
             .await
             .map_err(|e| ServerError::Internal(format!("Failed to bind: {}", e)))?;
 
-        // Serve with ConnectInfo to provide client IP to handlers (for rate limiting)
+        // Serve with graceful shutdown on SIGTERM/SIGINT
         axum::serve(
             listener,
             router.into_make_service_with_connect_info::<SocketAddr>(),
         )
+        .with_graceful_shutdown(shutdown_signal())
         .await
         .map_err(|e| ServerError::Internal(format!("Server error: {}", e)))?;
 
+        info!("Server shut down gracefully");
         Ok(())
     }
 
@@ -267,6 +280,39 @@ impl Server {
     /// Get the configured bind address.
     pub fn bind_address(&self) -> SocketAddr {
         self.state.config().bind_address
+    }
+}
+
+/// Create a future that resolves when a shutdown signal is received.
+///
+/// Listens for SIGINT (Ctrl+C) and SIGTERM (kill). On the first signal,
+/// the server begins graceful shutdown — draining in-flight requests
+/// before exiting.
+async fn shutdown_signal() {
+    let ctrl_c = async {
+        tokio::signal::ctrl_c()
+            .await
+            .expect("failed to install Ctrl+C handler");
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+            .expect("failed to install SIGTERM handler")
+            .recv()
+            .await;
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => {
+            info!("Received SIGINT, initiating graceful shutdown...");
+        }
+        _ = terminate => {
+            info!("Received SIGTERM, initiating graceful shutdown...");
+        }
     }
 }
 

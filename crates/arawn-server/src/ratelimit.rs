@@ -69,35 +69,39 @@ pub fn create_rate_limiter(requests_per_minute: u32) -> SharedRateLimiter {
     Arc::new(RateLimiter::keyed(quota))
 }
 
-/// Extract client IP address from request headers.
+/// Extract client IP address from request.
 ///
-/// Checks in order:
+/// When `trust_proxy` is true, checks proxy headers in order:
 /// 1. X-Forwarded-For header (first IP if multiple)
 /// 2. X-Real-IP header
 /// 3. ConnectInfo socket address
-/// 4. Falls back to 127.0.0.1 if nothing found
-fn extract_client_ip(request: &Request<Body>) -> IpAddr {
-    // Check X-Forwarded-For first (common with reverse proxies)
-    if let Some(forwarded_for) = request.headers().get("x-forwarded-for")
-        && let Ok(value) = forwarded_for.to_str()
-    {
-        // Take the first IP (original client) if multiple are present
-        if let Some(first_ip) = value.split(',').next()
-            && let Ok(ip) = first_ip.trim().parse::<IpAddr>()
+///
+/// When `trust_proxy` is false (default), only uses ConnectInfo.
+/// This prevents attackers from spoofing X-Forwarded-For to bypass rate limits.
+fn extract_client_ip(request: &Request<Body>, trust_proxy: bool) -> IpAddr {
+    if trust_proxy {
+        // Check X-Forwarded-For first (common with reverse proxies)
+        if let Some(forwarded_for) = request.headers().get("x-forwarded-for")
+            && let Ok(value) = forwarded_for.to_str()
+        {
+            // Take the first IP (original client) if multiple are present
+            if let Some(first_ip) = value.split(',').next()
+                && let Ok(ip) = first_ip.trim().parse::<IpAddr>()
+            {
+                return ip;
+            }
+        }
+
+        // Check X-Real-IP header
+        if let Some(real_ip) = request.headers().get("x-real-ip")
+            && let Ok(value) = real_ip.to_str()
+            && let Ok(ip) = value.trim().parse::<IpAddr>()
         {
             return ip;
         }
     }
 
-    // Check X-Real-IP header
-    if let Some(real_ip) = request.headers().get("x-real-ip")
-        && let Ok(value) = real_ip.to_str()
-        && let Ok(ip) = value.trim().parse::<IpAddr>()
-    {
-        return ip;
-    }
-
-    // Try to get from ConnectInfo extension (set by axum when using into_make_service_with_connect_info)
+    // Use ConnectInfo (actual TCP connection address)
     if let Some(connect_info) = request
         .extensions()
         .get::<ConnectInfo<std::net::SocketAddr>>()
@@ -130,8 +134,8 @@ pub async fn rate_limit_middleware(
         return next.run(request).await;
     }
 
-    // Extract client IP
-    let client_ip = extract_client_ip(&request);
+    // Extract client IP (only trust proxy headers if configured)
+    let client_ip = extract_client_ip(&request, state.config().trust_proxy);
 
     // Check rate limit for this IP using the configured limiter
     match state.rate_limiter().check_key(&client_ip) {

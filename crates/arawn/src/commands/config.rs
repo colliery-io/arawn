@@ -311,66 +311,23 @@ async fn cmd_init(local: bool) -> Result<()> {
     }
 
     let template = r#"# Arawn Configuration
-# See: https://github.com/dstorey/arawn
+# Full reference: arawn.example.toml in the project root
 
 # ── LLM Backend ─────────────────────────────────────────────────────
-# Default LLM backend used for all agent interactions.
+# Supports: anthropic, openai, groq, ollama
 [llm]
 backend = "groq"
-model = "llama-3.1-70b-versatile"
-
-# Named profiles — reference these from [agent.*] sections via `llm = "profile_name"`.
-# [llm.claude]
-# backend = "anthropic"
-# model = "claude-sonnet-4-20250514"
-
-# [llm.fast]
-# backend = "groq"
-# model = "llama-3.1-8b-instant"
-
-# [llm.local]
-# backend = "ollama"
-# model = "llama3.2"
-# base_url = "http://localhost:11434/v1"
-
-# [llm.max]
-# backend = "claude-oauth"
-# model = "claude-sonnet-4-20250514"
-
-# ── Agent ────────────────────────────────────────────────────────────
-# Default agent configuration. These values apply to all agents unless
-# overridden by a named profile (e.g., [agent.summarizer]).
-# [agent.default]
-# llm = "claude"                  # LLM profile to use (references [llm.*])
-# max_iterations = 25             # Max tool-call iterations per turn (1-100)
-# max_tokens = 4096               # Max tokens per LLM response
-
-# Named agent profiles inherit from [agent.default] and override specific values.
-# [agent.summarizer]
-# llm = "fast"
-# max_iterations = 5
-# max_tokens = 2048
+model = "llama-3.3-70b-versatile"
+# api_key = "..."                  # Or use env: GROQ_API_KEY
 
 # ── Server ───────────────────────────────────────────────────────────
 # [server]
-# port = 8080                     # HTTP/WebSocket port
-# bind = "127.0.0.1"              # Bind address (use 0.0.0.0 for remote access)
-# rate_limiting = true            # Enable per-session rate limiting
-# api_rpm = 120                   # LLM API requests per minute per session
+# port = 8080
+# bind = "127.0.0.1"
 
-# ── Tools ────────────────────────────────────────────────────────────
-# [tools.shell]
-# timeout_secs = 30               # Max seconds before shell commands are killed
-
-# [tools.web]
-# timeout_secs = 30               # Max seconds for HTTP fetch requests
-
-# [tools.output]
-# max_size_bytes = 102400          # Global default max tool output (100KB)
-# shell = 102400                   # Shell output limit (100KB)
-# file_read = 512000               # File read limit (500KB)
-# web_fetch = 204800               # Web fetch limit (200KB)
-# search = 51200                   # Search/grep/glob limit (50KB)
+# ── Plugins ──────────────────────────────────────────────────────────
+[plugins]
+enabled = true
 "#;
 
     std::fs::write(&path, template)?;

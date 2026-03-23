@@ -1,0 +1,120 @@
+# ============================================================================
+# Arawn Configuration
+# ============================================================================
+#
+# Copy this file to one of:
+#   ~/.config/arawn/config.toml   (global config)
+#   ./arawn.toml                  (project-local config)
+#
+# Or run `arawn config init` for interactive setup.
+# All sections are optional — Arawn works with zero config if you set
+# ANTHROPIC_API_KEY, GROQ_API_KEY, or OPENAI_API_KEY in your environment.
+
+# ── LLM Backend ─────────────────────────────────────────────────────────────
+# Default LLM provider. Supports: anthropic, openai, groq, ollama.
+[llm]
+backend = "groq"                   # Provider name
+model = "llama-3.3-70b-versatile"  # Model ID
+# api_key = "..."                  # Or use env: GROQ_API_KEY, ANTHROPIC_API_KEY, etc.
+# base_url = "..."                 # Custom API endpoint (for proxies or self-hosted)
+
+# Named LLM profiles for multi-provider setups:
+# [llm_profiles.claude]
+# backend = "anthropic"
+# model = "claude-sonnet-4-20250514"
+#
+# [llm_profiles.local]
+# backend = "ollama"
+# model = "llama3"
+# base_url = "http://localhost:11434"
+
+# ── Server ──────────────────────────────────────────────────────────────────
+[server]
+port = 8080                        # HTTP server port
+bind = "127.0.0.1"                 # Bind address (use 0.0.0.0 for network access)
+rate_limiting = true               # Enable per-IP rate limiting
+api_rpm = 120                      # API requests per minute per IP
+request_logging = true             # Log HTTP requests
+trust_proxy = false                # Trust X-Forwarded-For (only behind reverse proxy)
+# ws_allowed_origins = []          # WebSocket allowed origins (empty = auto from auth)
+
+# ── Embedding ───────────────────────────────────────────────────────────────
+# Embeddings for semantic memory search. Default: local ONNX (no API needed).
+[embedding]
+provider = "local"                 # "local" (ONNX) or "openai"
+# model = "all-MiniLM-L6-v2"      # Local model name
+# dimensions = 384                 # Embedding dimensions (auto-detected for local)
+# api_key = "..."                  # Only needed for openai provider
+
+# ── Memory ──────────────────────────────────────────────────────────────────
+[memory]
+# db_path = "memory.db"            # SQLite database path (relative to data dir)
+# active_recall = true             # Auto-inject relevant memories into prompts
+# recall_threshold = 0.6           # Minimum similarity score for recall (0.0-1.0)
+# recall_limit = 5                 # Max memories to inject per turn
+
+# ── Tools ───────────────────────────────────────────────────────────────────
+[tools]
+# [tools.shell]
+# timeout_secs = 30                # Shell command timeout
+# blocked_commands = []             # Additional blocked commands
+
+# [tools.output]                   # Per-tool output size limits (bytes)
+# shell = 100000
+# file_read = 200000
+# web_fetch = 100000
+
+# ── Workstream ──────────────────────────────────────────────────────────────
+# [workstream]
+# data_dir = "workstreams"         # Workstream data directory
+# db_path = "workstreams.db"       # Workstream metadata DB
+
+# ── Session ─────────────────────────────────────────────────────────────────
+# [session]
+# max_sessions = 10000             # LRU cache capacity
+# ttl_secs = 3600                  # Session TTL (1 hour)
+
+# ── Plugins ─────────────────────────────────────────────────────────────────
+[plugins]
+enabled = true                     # Enable plugin system
+# dirs = ["./plugins"]             # Additional plugin directories
+# auto_update = true               # Auto-update git-subscribed plugins
+
+# Plugin subscriptions (auto-cloned from git):
+# [[plugins.subscriptions]]
+# source = "https://github.com/user/plugin.git"
+# ref = "main"
+
+# ── MCP Servers ─────────────────────────────────────────────────────────────
+# Connect to Model Context Protocol servers for external tool access.
+# [mcp.servers.filesystem]
+# command = "mcp-server-filesystem"
+# args = ["/home/user/documents"]
+#
+# [mcp.servers.sqlite]
+# command = "mcp-server-sqlite"
+# args = ["--db", "data.db"]
+
+# ── Pipeline ────────────────────────────────────────────────────────────────
+# WASM-sandboxed task execution engine.
+# [pipeline]
+# enabled = true
+# workflow_dir = "workflows"       # Directory for workflow TOML definitions
+
+# ── OAuth ───────────────────────────────────────────────────────────────────
+# Override OAuth settings for Anthropic MAX plan authentication.
+# [oauth]
+# client_id = "..."
+# auth_url = "..."
+# token_url = "..."
+
+# ── RLM (Exploration Agent) ────────────────────────────────────────────────
+# [rlm]
+# enabled = true
+# max_iterations = 5               # Max explore-compact-continue cycles
+# compaction_threshold = 80000     # Token threshold for compaction
+
+# ── Paths ───────────────────────────────────────────────────────────────────
+# [paths]
+# data_dir = "~/.config/arawn"     # Base data directory
+# log_dir = "~/.config/arawn/logs" # Log directory

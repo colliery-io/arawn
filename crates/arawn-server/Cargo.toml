@@ -29,6 +29,7 @@ governor = "0.10"
 tower_governor = "0.8"
 subtle = "2.5"
 dirs = { workspace = true }
+fs2 = "0.4"
 
 # OpenAPI documentation
 utoipa = { version = "5", features = ["axum_extras", "chrono", "uuid"] }
@@ -45,4 +46,5 @@ arawn-workstream = { workspace = true }
 reqwest = { workspace = true }
 anyhow = { workspace = true }
 tempfile = "3.10"
+serial_test = "3.2"
 uuid = { workspace = true }

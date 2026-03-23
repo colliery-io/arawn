@@ -45,7 +45,8 @@ impl MemoryStore {
 
         // 3. Create graph entities and relationships if graph is initialized
         if !options.entities.is_empty() {
-            if let Some(graph) = &self.graph {
+            if let Some(graph_mutex) = &self.graph {
+                let graph = graph_mutex.lock().unwrap();
                 let memory_node = GraphNode::new(memory.id.to_string(), "Memory")
                     .with_property("content_type", memory.content_type.as_str());
                 graph.add_entity(&memory_node)?;
@@ -96,8 +97,8 @@ impl MemoryStore {
             false
         };
 
-        let related_entities = if let Some(graph) = &self.graph {
-            match graph.get_neighbors(&id.to_string()) {
+        let related_entities = if let Some(graph_mutex) = &self.graph {
+            match graph_mutex.lock().unwrap().get_neighbors(&id.to_string()) {
                 Ok(neighbor_ids) => neighbor_ids
                     .into_iter()
                     .map(|entity_id| RelatedEntity {
@@ -128,8 +129,8 @@ impl MemoryStore {
     /// Returns `true` if the memory was found and deleted.
     pub fn delete_cascade(&self, id: MemoryId) -> Result<bool> {
         // 1. Delete from graph if initialized
-        if let Some(graph) = &self.graph
-            && let Err(e) = graph.delete_entity(&id.to_string())
+        if let Some(graph_mutex) = &self.graph
+            && let Err(e) = graph_mutex.lock().unwrap().delete_entity(&id.to_string())
         {
             debug!("Graph delete for {} failed (may not exist): {}", id, e);
         }
@@ -166,8 +167,9 @@ impl MemoryStore {
 
         // 3. Update graph if entities provided
         if !options.entities.is_empty()
-            && let Some(graph) = &self.graph
+            && let Some(graph_mutex) = &self.graph
         {
+            let graph = graph_mutex.lock().unwrap();
             let _ = graph.delete_entity(&memory.id.to_string());
 
             let memory_node = GraphNode::new(memory.id.to_string(), "Memory")

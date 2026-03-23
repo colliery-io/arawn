@@ -324,19 +324,6 @@ impl Tool for FileWriteTool {
         // Resolve and validate path
         let resolved_path = self.resolve_path(&file_params.path)?;
 
-        // Check permissions
-        let file_exists = resolved_path.exists();
-
-        if !file_exists && !self.allow_create {
-            return Ok(ToolResult::error("Creating new files is not allowed"));
-        }
-
-        if file_exists && !append && !self.allow_overwrite {
-            return Ok(ToolResult::error(
-                "Overwriting existing files is not allowed",
-            ));
-        }
-
         // Create parent directories if needed
         if let Some(parent) = resolved_path.parent()
             && !parent.exists()
@@ -348,18 +335,67 @@ impl Tool for FileWriteTool {
             )));
         }
 
-        // Write the file
-        let result = if append && file_exists {
-            // Read existing content and append
-            match fs::read_to_string(&resolved_path).await {
-                Ok(existing) => {
-                    let new_content = format!("{}{}", existing, content);
-                    fs::write(&resolved_path, new_content).await
+        // Use OpenOptions to atomically enforce create/overwrite policies,
+        // avoiding TOCTOU races between exists() checks and writes.
+        use tokio::io::AsyncWriteExt;
+        let result = if append {
+            // Append mode: open existing file or create if allowed
+            let open_result = tokio::fs::OpenOptions::new()
+                .write(true)
+                .append(true)
+                .create(self.allow_create)
+                .open(&resolved_path)
+                .await;
+            match open_result {
+                Ok(mut file) => file.write_all(content.as_bytes()).await,
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                    return Ok(ToolResult::error("Creating new files is not allowed"));
                 }
                 Err(e) => Err(e),
             }
+        } else if self.allow_overwrite {
+            // Overwrite allowed: create or truncate
+            if !self.allow_create {
+                // Must exist — open without create flag
+                match tokio::fs::OpenOptions::new()
+                    .write(true)
+                    .truncate(true)
+                    .create(false)
+                    .open(&resolved_path)
+                    .await
+                {
+                    Ok(mut file) => file.write_all(content.as_bytes()).await,
+                    Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                        return Ok(ToolResult::error("Creating new files is not allowed"));
+                    }
+                    Err(e) => Err(e),
+                }
+            } else {
+                fs::write(&resolved_path, content).await
+            }
         } else {
-            fs::write(&resolved_path, content).await
+            // Overwrite NOT allowed: use create_new to fail if file exists
+            if self.allow_create {
+                match tokio::fs::OpenOptions::new()
+                    .write(true)
+                    .create_new(true)
+                    .open(&resolved_path)
+                    .await
+                {
+                    Ok(mut file) => file.write_all(content.as_bytes()).await,
+                    Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
+                        return Ok(ToolResult::error(
+                            "Overwriting existing files is not allowed",
+                        ));
+                    }
+                    Err(e) => Err(e),
+                }
+            } else {
+                // Can't create, can't overwrite — nothing to do
+                return Ok(ToolResult::error(
+                    "Neither creating nor overwriting files is allowed",
+                ));
+            }
         };
 
         match result {

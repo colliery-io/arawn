@@ -227,7 +227,7 @@ dependencies = [
  "async-trait",
  "chrono",
  "cloacina-workflow",
- "dirs 5.0.1",
+ "dirs 6.0.0",
  "futures",
  "gline-rs-vendored",
  "glob",
@@ -275,6 +275,7 @@ dependencies = [
  "arawn-types",
  "dirs 6.0.0",
  "keyring",
+ "proptest",
  "serde",
  "serde_json",
  "serde_yaml",
@@ -311,7 +312,7 @@ dependencies = [
  "async-trait",
  "bytes",
  "chrono",
- "dirs 5.0.1",
+ "dirs 6.0.0",
  "futures",
  "ndarray 0.16.1",
  "ort",
@@ -348,6 +349,7 @@ dependencies = [
  "arawn-types",
  "chrono",
  "graphqlite",
+ "proptest",
  "rusqlite",
  "serde",
  "serde_json",
@@ -475,11 +477,13 @@ dependencies = [
  "axum",
  "chrono",
  "dirs 6.0.0",
+ "fs2",
  "futures",
  "governor",
  "reqwest",
  "serde",
  "serde_json",
+ "serial_test",
  "subtle",
  "tempfile",
  "thiserror 2.0.18",
@@ -2306,6 +2310,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "fs2"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9564fc758e15025b46aa6643b1b77d047d1a56a1aea6e01002ac0c7026876213"
+dependencies = [
+ "libc",
+ "winapi",
+]
+
+[[package]]
 name = "fsevent-sys"
 version = "4.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3960,9 +3974,9 @@ dependencies = [
 
 [[package]]
 name = "ort"
-version = "2.0.0-rc.11"
+version = "2.0.0-rc.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4a5df903c0d2c07b56950f1058104ab0c8557159f2741782223704de9be73c3c"
+checksum = "d7de3af33d24a745ffb8fab904b13478438d1cd52868e6f17735ef6e1f8bf133"
 dependencies = [
  "ndarray 0.17.2",
  "ort-sys",
@@ -3973,9 +3987,9 @@ dependencies = [
 
 [[package]]
 name = "ort-sys"
-version = "2.0.0-rc.11"
+version = "2.0.0-rc.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "06503bb33f294c5f1ba484011e053bfa6ae227074bdb841e9863492dc5960d4b"
+checksum = "d7b497d21a8b6fbb4b5a544f8fadb77e801a09ae0add9e411d31c6f89e3c1e90"
 dependencies = [
  "hmac-sha256",
  "lzma-rust2",

@@ -8,12 +8,13 @@
 
 use axum::{
     body::Body,
-    extract::{Request, State},
+    extract::{ConnectInfo, Request, State},
     http::{StatusCode, header::AUTHORIZATION},
     middleware::Next,
     response::{IntoResponse, Response},
 };
 use serde::{Deserialize, Serialize};
+use std::net::{IpAddr, SocketAddr};
 use subtle::ConstantTimeEq;
 
 use crate::state::AppState;
@@ -116,7 +117,27 @@ pub const TAILSCALE_USER_HEADER: &str = "Tailscale-User-Login";
 /// This prevents timing attacks by ensuring the comparison takes the same
 /// amount of time regardless of how many characters match. The strings are
 /// first padded to the same length to avoid leaking length information.
-fn constant_time_eq(a: &str, b: &str) -> bool {
+/// Check if an IP address is in the Tailscale CGNAT range (100.64.0.0/10)
+/// or is loopback. Tailscale assigns IPs in this range to connected devices.
+/// Loopback is also allowed since Tailscale proxy may run on the same machine.
+fn is_tailscale_or_loopback(ip: IpAddr) -> bool {
+    match ip {
+        IpAddr::V4(v4) => {
+            v4.is_loopback()
+                // 100.64.0.0/10 — CGNAT range used by Tailscale
+                || (v4.octets()[0] == 100 && (v4.octets()[1] & 0xC0) == 64)
+        }
+        IpAddr::V6(v6) => {
+            v6.is_loopback()
+                // fd7a:115c:a1e0::/48 — Tailscale IPv6 ULA range
+                || (v6.segments()[0] == 0xfd7a
+                    && v6.segments()[1] == 0x115c
+                    && v6.segments()[2] == 0xa1e0)
+        }
+    }
+}
+
+pub(crate) fn constant_time_eq(a: &str, b: &str) -> bool {
     let a_bytes = a.as_bytes();
     let b_bytes = b.as_bytes();
 
@@ -185,6 +206,22 @@ fn validate_request(request: &Request<Body>, state: &AppState) -> Result<Identit
     if let Some(allowed_users) = &state.config().tailscale_users
         && let Some(ts_header) = request.headers().get(TAILSCALE_USER_HEADER)
     {
+        // Verify the request comes from the Tailscale network or loopback.
+        // Without this check, any client can set the Tailscale-User-Login header
+        // to impersonate a Tailscale user if the server is reachable directly.
+        let source_ip = request
+            .extensions()
+            .get::<ConnectInfo<SocketAddr>>()
+            .map(|ci| ci.0.ip());
+
+        if !source_ip.map_or(false, |ip| is_tailscale_or_loopback(ip)) {
+            tracing::warn!(
+                source_ip = ?source_ip,
+                "Tailscale-User-Login header from non-Tailscale source IP — rejecting"
+            );
+            return Err(AuthError::InvalidToken);
+        }
+
         let ts_user = ts_header.to_str().map_err(|_| AuthError::InvalidFormat)?;
 
         if allowed_users.iter().any(|u| u == ts_user) {
@@ -364,16 +401,17 @@ mod tests {
         let state = create_test_state(Some(vec!["alice@example.com".to_string()]));
         let app = create_test_router(state);
 
-        let response = app
-            .oneshot(
-                Request::builder()
-                    .uri("/protected")
-                    .header(TAILSCALE_USER_HEADER, "alice@example.com")
-                    .body(Body::empty())
-                    .unwrap(),
-            )
-            .await
+        // Simulate request from Tailscale CGNAT range (100.100.x.x)
+        let mut request = Request::builder()
+            .uri("/protected")
+            .header(TAILSCALE_USER_HEADER, "alice@example.com")
+            .body(Body::empty())
             .unwrap();
+        request
+            .extensions_mut()
+            .insert(ConnectInfo("100.100.1.1:12345".parse::<SocketAddr>().unwrap()));
+
+        let response = app.oneshot(request).await.unwrap();
 
         assert_eq!(response.status(), StatusCode::OK);
 
@@ -388,16 +426,16 @@ mod tests {
         let state = create_test_state(Some(vec!["alice@example.com".to_string()]));
         let app = create_test_router(state);
 
-        let response = app
-            .oneshot(
-                Request::builder()
-                    .uri("/protected")
-                    .header(TAILSCALE_USER_HEADER, "bob@example.com")
-                    .body(Body::empty())
-                    .unwrap(),
-            )
-            .await
+        let mut request = Request::builder()
+            .uri("/protected")
+            .header(TAILSCALE_USER_HEADER, "bob@example.com")
+            .body(Body::empty())
             .unwrap();
+        request
+            .extensions_mut()
+            .insert(ConnectInfo("100.100.1.1:12345".parse::<SocketAddr>().unwrap()));
+
+        let response = app.oneshot(request).await.unwrap();
 
         assert_eq!(response.status(), StatusCode::FORBIDDEN);
     }

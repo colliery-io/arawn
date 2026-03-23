@@ -22,7 +22,7 @@ path = "src/lib.rs"
 composable = "0.9.0"
 orp = { package = "orp-vendored", path = "../orp-vendored" }
 regex = "1.11.1"
-ort = { version = "2.0.0-rc.11" }
+ort = { version = "2.0.0-rc.12" }
 tokenizers = { version="0.21.0", features=["http"] }
 ndarray = "0.17.0"
 csv = "1.3"

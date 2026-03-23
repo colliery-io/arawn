@@ -11,6 +11,10 @@ use std::time::Duration;
 use crate::error::{McpError, Result};
 use crate::protocol::{JsonRpcNotification, JsonRpcRequest, JsonRpcResponse};
 
+/// Maximum allowed Content-Length for MCP stdio messages (64 MB).
+/// Prevents OOM from malicious or buggy MCP servers sending huge Content-Length values.
+const MAX_MCP_MESSAGE_SIZE: usize = 64 * 1024 * 1024;
+
 /// Configuration for HTTP transport.
 #[derive(Debug, Clone)]
 pub struct HttpTransportConfig {
@@ -325,6 +329,14 @@ impl McpTransport {
 
                 let content_length = content_length
                     .ok_or_else(|| McpError::protocol("missing Content-Length header"))?;
+
+                // Reject excessively large messages to prevent OOM
+                if content_length > MAX_MCP_MESSAGE_SIZE {
+                    return Err(McpError::protocol(format!(
+                        "Content-Length {} exceeds maximum allowed size of {} bytes",
+                        content_length, MAX_MCP_MESSAGE_SIZE
+                    )));
+                }
 
                 // Read the JSON body
                 let mut body = vec![0u8; content_length];

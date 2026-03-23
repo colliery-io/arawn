@@ -62,6 +62,11 @@ pub struct ServerConfig {
     /// Maximum WebSocket connections per minute per IP address.
     /// Prevents connection flood attacks. Default: 30.
     pub ws_connections_per_minute: u32,
+
+    /// Trust proxy headers (X-Forwarded-For, X-Real-IP) for client IP extraction.
+    /// Only enable when running behind a trusted reverse proxy.
+    /// When false (default), client IP is always taken from the TCP connection.
+    pub trust_proxy: bool,
 }
 
 impl Default for ServerConfig {
@@ -79,6 +84,7 @@ impl Default for ServerConfig {
             max_body_size: DEFAULT_MAX_BODY_SIZE,
             ws_allowed_origins: Vec::new(),
             ws_connections_per_minute: DEFAULT_WS_CONNECTIONS_PER_MINUTE,
+            trust_proxy: false,
         }
     }
 }
@@ -156,6 +162,12 @@ impl ServerConfig {
     /// Set the maximum WebSocket connections per minute per IP.
     pub fn with_ws_connections_per_minute(mut self, rate: u32) -> Self {
         self.ws_connections_per_minute = rate;
+        self
+    }
+
+    /// Set whether to trust proxy headers for client IP extraction.
+    pub fn with_trust_proxy(mut self, trust: bool) -> Self {
+        self.trust_proxy = trust;
         self
     }
 }

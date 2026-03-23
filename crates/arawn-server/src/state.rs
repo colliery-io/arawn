@@ -232,6 +232,16 @@ impl WsConnectionTracker {
         // Remove old timestamps outside the window
         timestamps.retain(|&t| t > cutoff);
 
+        // Clean up IPs with no recent connections to prevent unbounded HashMap growth
+        if timestamps.is_empty() {
+            connections.remove(&ip);
+            // Also periodically purge other stale entries
+            connections.retain(|_, ts| !ts.is_empty());
+        }
+
+        // Re-get entry (may have been removed above)
+        let timestamps = connections.entry(ip).or_insert_with(Vec::new);
+
         // Check rate
         if timestamps.len() >= max_per_minute as usize {
             tracing::warn!(
@@ -1006,7 +1016,9 @@ impl AppState {
 
     /// Update session in cache.
     pub async fn update_session(&self, session_id: SessionId, session: Session) {
-        let _ = self.runtime.session_cache.update(session_id, session).await;
+        if let Err(e) = self.runtime.session_cache.update(session_id, session).await {
+            tracing::warn!(session_id = %session_id, error = %e, "Failed to update session cache");
+        }
     }
 
     /// Invalidate a cached session (e.g., after workstream reassignment).
@@ -1171,7 +1183,7 @@ impl AppState {
                 return None;
             }
 
-            if entry.token != token {
+            if !crate::auth::constant_time_eq(&entry.token, token) {
                 // Wrong token
                 debug!(session_id = %session_id, "Reconnect token mismatch");
                 return None;

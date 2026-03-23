@@ -7,6 +7,7 @@ use reqwest::Client;
 use scraper::{Html, Selector};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
+use std::net::IpAddr;
 use std::path::Path;
 use std::time::Duration;
 use tokio::io::AsyncWriteExt;
@@ -14,6 +15,69 @@ use url::Url;
 
 use crate::error::Result;
 use crate::tool::{Tool, ToolContext, ToolResult};
+
+/// Check if an IP address is private, loopback, link-local, or otherwise
+/// internal. Used to prevent SSRF attacks where the agent could be tricked
+/// into fetching internal resources or cloud metadata endpoints.
+fn is_restricted_ip(ip: &IpAddr) -> bool {
+    match ip {
+        IpAddr::V4(v4) => {
+            v4.is_loopback()              // 127.0.0.0/8
+                || v4.is_private()        // 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16
+                || v4.is_link_local()     // 169.254.0.0/16 (includes cloud metadata)
+                || v4.is_broadcast()      // 255.255.255.255
+                || v4.is_unspecified()    // 0.0.0.0
+                || v4.octets()[0] == 100 && (v4.octets()[1] & 0xC0) == 64  // 100.64.0.0/10 (CGNAT / Tailscale)
+        }
+        IpAddr::V6(v6) => {
+            v6.is_loopback()              // ::1
+                || v6.is_unspecified()    // ::
+                // fd00::/8 — unique local addresses
+                || (v6.segments()[0] & 0xfe00) == 0xfc00
+                // fe80::/10 — link-local
+                || (v6.segments()[0] & 0xffc0) == 0xfe80
+        }
+    }
+}
+
+/// Resolve a URL's hostname and check that none of its IP addresses are
+/// restricted. Returns an error message if the URL targets a restricted IP.
+async fn validate_url_not_ssrf(url: &Url) -> std::result::Result<(), String> {
+    let host = match url.host_str() {
+        Some(h) => h,
+        None => return Err("URL has no host".to_string()),
+    };
+
+    // If the host is a raw IP literal, check it directly
+    if let Ok(ip) = host.parse::<IpAddr>() {
+        if is_restricted_ip(&ip) {
+            return Err(format!(
+                "Blocked: URL resolves to restricted IP address {}",
+                ip
+            ));
+        }
+        return Ok(());
+    }
+
+    // Otherwise resolve the hostname and check all returned addresses
+    let port = url.port_or_known_default().unwrap_or(80);
+    let addr = format!("{}:{}", host, port);
+    match tokio::net::lookup_host(&addr).await {
+        Ok(addrs) => {
+            for sock_addr in addrs {
+                if is_restricted_ip(&sock_addr.ip()) {
+                    return Err(format!(
+                        "Blocked: hostname '{}' resolves to restricted IP address {}",
+                        host,
+                        sock_addr.ip()
+                    ));
+                }
+            }
+            Ok(())
+        }
+        Err(e) => Err(format!("Failed to resolve hostname '{}': {}", host, e)),
+    }
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Web Fetch Tool
@@ -56,26 +120,18 @@ pub struct WebFetchTool {
 
 impl WebFetchTool {
     /// Create a new web fetch tool with default configuration.
-    pub fn new() -> Self {
-        let config = WebFetchConfig::default();
-        let client = Client::builder()
-            .timeout(config.timeout)
-            .user_agent(&config.user_agent)
-            .build()
-            .expect("Failed to build HTTP client");
-
-        Self { client, config }
+    pub fn new() -> std::result::Result<Self, reqwest::Error> {
+        Self::with_config(WebFetchConfig::default())
     }
 
     /// Create a web fetch tool with custom configuration.
-    pub fn with_config(config: WebFetchConfig) -> Self {
+    pub fn with_config(config: WebFetchConfig) -> std::result::Result<Self, reqwest::Error> {
         let client = Client::builder()
             .timeout(config.timeout)
             .user_agent(&config.user_agent)
-            .build()
-            .expect("Failed to build HTTP client");
+            .build()?;
 
-        Self { client, config }
+        Ok(Self { client, config })
     }
 
     /// Extract readable text from HTML.
@@ -170,7 +226,7 @@ impl WebFetchTool {
 
 impl Default for WebFetchTool {
     fn default() -> Self {
-        Self::new()
+        Self::new().expect("failed to build default HTTP client")
     }
 }
 
@@ -270,6 +326,11 @@ impl Tool for WebFetchTool {
             return Ok(ToolResult::error("Only HTTP and HTTPS URLs are supported"));
         }
 
+        // SSRF protection: reject private/loopback/link-local/cloud-metadata IPs
+        if let Err(msg) = validate_url_not_ssrf(&url).await {
+            return Ok(ToolResult::error(msg));
+        }
+
         // Build the request with the appropriate method
         let mut request = match method.as_str() {
             "GET" => self.client.get(url.as_str()),
@@ -351,6 +412,26 @@ impl Tool for WebFetchTool {
         // Handle download to file - stream directly to disk, bypassing size limits
         if let Some(path_str) = download_path {
             let path = Path::new(path_str);
+
+            // Reject path traversal attempts (e.g., ../../etc/passwd)
+            for component in path.components() {
+                if matches!(component, std::path::Component::ParentDir) {
+                    return Ok(ToolResult::error(format!(
+                        "Path traversal not allowed in download path: {}",
+                        path.display()
+                    )));
+                }
+            }
+
+            // FsGate validation: check if the download path is allowed
+            if let Some(gate) = &ctx.fs_gate {
+                if let Err(e) = gate.validate_write(path) {
+                    return Ok(ToolResult::error(format!(
+                        "Download path denied by filesystem gate: {}",
+                        e
+                    )));
+                }
+            }
 
             // Create parent directories if needed
             if let Some(parent) = path.parent()
@@ -710,28 +791,21 @@ pub struct WebSearchTool {
 
 impl WebSearchTool {
     /// Create a new web search tool with default configuration (DuckDuckGo).
-    pub fn new() -> Self {
-        let config = WebSearchConfig::default();
-        let client = Client::builder()
-            .timeout(config.timeout)
-            .build()
-            .expect("Failed to build HTTP client");
-
-        Self { client, config }
+    pub fn new() -> std::result::Result<Self, reqwest::Error> {
+        Self::with_config(WebSearchConfig::default())
     }
 
     /// Create a web search tool with custom configuration.
-    pub fn with_config(config: WebSearchConfig) -> Self {
+    pub fn with_config(config: WebSearchConfig) -> std::result::Result<Self, reqwest::Error> {
         let client = Client::builder()
             .timeout(config.timeout)
-            .build()
-            .expect("Failed to build HTTP client");
+            .build()?;
 
-        Self { client, config }
+        Ok(Self { client, config })
     }
 
     /// Create a web search tool with Brave Search.
-    pub fn brave(api_key: impl Into<String>) -> Self {
+    pub fn brave(api_key: impl Into<String>) -> std::result::Result<Self, reqwest::Error> {
         Self::with_config(WebSearchConfig {
             provider: SearchProvider::Brave {
                 api_key: api_key.into(),
@@ -741,7 +815,7 @@ impl WebSearchTool {
     }
 
     /// Create a web search tool with Serper.
-    pub fn serper(api_key: impl Into<String>) -> Self {
+    pub fn serper(api_key: impl Into<String>) -> std::result::Result<Self, reqwest::Error> {
         Self::with_config(WebSearchConfig {
             provider: SearchProvider::Serper {
                 api_key: api_key.into(),
@@ -751,7 +825,7 @@ impl WebSearchTool {
     }
 
     /// Create a web search tool with Tavily.
-    pub fn tavily(api_key: impl Into<String>) -> Self {
+    pub fn tavily(api_key: impl Into<String>) -> std::result::Result<Self, reqwest::Error> {
         Self::with_config(WebSearchConfig {
             provider: SearchProvider::Tavily {
                 api_key: api_key.into(),
@@ -947,7 +1021,7 @@ impl WebSearchTool {
 
 impl Default for WebSearchTool {
     fn default() -> Self {
-        Self::new()
+        Self::new().expect("failed to build default HTTP client")
     }
 }
 
@@ -1020,7 +1094,7 @@ mod tests {
 
     #[test]
     fn test_web_fetch_tool_metadata() {
-        let tool = WebFetchTool::new();
+        let tool = WebFetchTool::new().unwrap();
         assert_eq!(tool.name(), "web_fetch");
         assert!(!tool.description().is_empty());
 
@@ -1043,7 +1117,7 @@ mod tests {
 
     #[test]
     fn test_web_search_tool_metadata() {
-        let tool = WebSearchTool::new();
+        let tool = WebSearchTool::new().unwrap();
         assert_eq!(tool.name(), "web_search");
         assert!(!tool.description().is_empty());
 
@@ -1053,7 +1127,7 @@ mod tests {
 
     #[test]
     fn test_extract_text_from_html() {
-        let tool = WebFetchTool::new();
+        let tool = WebFetchTool::new().unwrap();
         let html = r#"
             <html>
             <head><title>Test Page</title></head>
@@ -1075,14 +1149,14 @@ mod tests {
 
     #[test]
     fn test_extract_title() {
-        let tool = WebFetchTool::new();
+        let tool = WebFetchTool::new().unwrap();
         let html = "<html><head><title>My Title</title></head><body></body></html>";
         assert_eq!(tool.extract_title(html), Some("My Title".to_string()));
     }
 
     #[test]
     fn test_extract_description() {
-        let tool = WebFetchTool::new();
+        let tool = WebFetchTool::new().unwrap();
         let html =
             r#"<html><head><meta name="description" content="My description"></head></html>"#;
         assert_eq!(
@@ -1097,12 +1171,12 @@ mod tests {
         let _brave = WebSearchTool::brave("test_key");
         let _serper = WebSearchTool::serper("test_key");
         let _tavily = WebSearchTool::tavily("test_key");
-        let _ddg = WebSearchTool::new(); // DuckDuckGo default
+        let _ddg = WebSearchTool::new().unwrap(); // DuckDuckGo default
     }
 
     #[tokio::test]
     async fn test_web_fetch_invalid_url() {
-        let tool = WebFetchTool::new();
+        let tool = WebFetchTool::new().unwrap();
         let ctx = ToolContext::default();
 
         let result = tool
@@ -1116,7 +1190,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_web_fetch_non_http() {
-        let tool = WebFetchTool::new();
+        let tool = WebFetchTool::new().unwrap();
         let ctx = ToolContext::default();
 
         let result = tool
@@ -1130,7 +1204,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_web_fetch_unsupported_method() {
-        let tool = WebFetchTool::new();
+        let tool = WebFetchTool::new().unwrap();
         let ctx = ToolContext::default();
 
         let result = tool
@@ -1149,7 +1223,7 @@ mod tests {
     fn test_method_case_insensitivity() {
         // The method should be uppercased in execute, so "get" becomes "GET"
         // This is tested via the parameters which show the expected format
-        let tool = WebFetchTool::new();
+        let tool = WebFetchTool::new().unwrap();
         let params = tool.parameters();
         let default = &params["properties"]["method"]["default"];
         assert_eq!(default, "GET");
@@ -1158,7 +1232,7 @@ mod tests {
     #[tokio::test]
     async fn test_web_fetch_with_custom_headers_invalid_url() {
         // Test that headers parameter is properly parsed even with an invalid URL
-        let tool = WebFetchTool::new();
+        let tool = WebFetchTool::new().unwrap();
         let ctx = ToolContext::default();
 
         let result = tool
@@ -1183,7 +1257,7 @@ mod tests {
     #[tokio::test]
     async fn test_web_fetch_with_body_invalid_url() {
         // Test that body parameter is accepted even with an invalid URL
-        let tool = WebFetchTool::new();
+        let tool = WebFetchTool::new().unwrap();
         let ctx = ToolContext::default();
 
         let result = tool
@@ -1205,7 +1279,7 @@ mod tests {
 
     #[test]
     fn test_download_parameter_in_schema() {
-        let tool = WebFetchTool::new();
+        let tool = WebFetchTool::new().unwrap();
         let params = tool.parameters();
 
         assert!(params["properties"].get("download").is_some());
@@ -1222,7 +1296,7 @@ mod tests {
     #[tokio::test]
     async fn test_web_fetch_download_invalid_url() {
         // Test that download parameter is accepted even with an invalid URL
-        let tool = WebFetchTool::new();
+        let tool = WebFetchTool::new().unwrap();
         let ctx = ToolContext::default();
 
         let result = tool
@@ -1245,7 +1319,7 @@ mod tests {
 
     #[test]
     fn test_extract_text_article_content() {
-        let tool = WebFetchTool::new();
+        let tool = WebFetchTool::new().unwrap();
         let html = r#"
             <html><body>
                 <nav>Skip this nav</nav>
@@ -1263,7 +1337,7 @@ mod tests {
 
     #[test]
     fn test_extract_text_fallback_to_body() {
-        let tool = WebFetchTool::new();
+        let tool = WebFetchTool::new().unwrap();
         let html = r#"
             <html><body>
                 <div>Plain body content without article/main tags.</div>
@@ -1275,7 +1349,7 @@ mod tests {
 
     #[test]
     fn test_extract_text_empty_html() {
-        let tool = WebFetchTool::new();
+        let tool = WebFetchTool::new().unwrap();
         let text = tool.extract_text_from_html("");
         assert!(text.is_empty() || text.trim().is_empty());
     }
@@ -1286,7 +1360,7 @@ mod tests {
             max_text_length: 20,
             ..Default::default()
         };
-        let tool = WebFetchTool::with_config(config);
+        let tool = WebFetchTool::with_config(config).unwrap();
         let html = r#"<html><body><main><p>This is a long text that should be truncated because it exceeds the max length.</p></main></body></html>"#;
         let text = tool.extract_text_from_html(html);
         assert!(text.contains("[truncated]"));
@@ -1294,7 +1368,7 @@ mod tests {
 
     #[test]
     fn test_extract_text_content_class() {
-        let tool = WebFetchTool::new();
+        let tool = WebFetchTool::new().unwrap();
         let html =
             r#"<html><body><div class="content"><p>Content class text</p></div></body></html>"#;
         let text = tool.extract_text_from_html(html);
@@ -1303,21 +1377,21 @@ mod tests {
 
     #[test]
     fn test_extract_title_missing() {
-        let tool = WebFetchTool::new();
+        let tool = WebFetchTool::new().unwrap();
         let html = "<html><body>No title here</body></html>";
         assert_eq!(tool.extract_title(html), None);
     }
 
     #[test]
     fn test_extract_description_missing() {
-        let tool = WebFetchTool::new();
+        let tool = WebFetchTool::new().unwrap();
         let html = "<html><head></head><body></body></html>";
         assert_eq!(tool.extract_description(html), None);
     }
 
     #[test]
     fn test_extract_description_wrong_meta() {
-        let tool = WebFetchTool::new();
+        let tool = WebFetchTool::new().unwrap();
         let html = r#"<html><head><meta name="keywords" content="foo,bar"></head></html>"#;
         assert_eq!(tool.extract_description(html), None);
     }
@@ -1342,7 +1416,7 @@ mod tests {
             extract_text: false,
             max_text_length: 100,
         };
-        let tool = WebFetchTool::with_config(config);
+        let tool = WebFetchTool::with_config(config).unwrap();
         assert_eq!(tool.config.timeout, Duration::from_secs(5));
         assert_eq!(tool.config.max_size, 1024);
         assert!(!tool.config.extract_text);
@@ -1390,7 +1464,7 @@ mod tests {
     #[tokio::test]
     async fn test_web_fetch_cancelled() {
         use tokio_util::sync::CancellationToken;
-        let tool = WebFetchTool::new();
+        let tool = WebFetchTool::new().unwrap();
         let token = CancellationToken::new();
         let ctx = ToolContext::with_cancellation(
             crate::SessionId::new(),
@@ -1410,7 +1484,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_web_fetch_missing_url() {
-        let tool = WebFetchTool::new();
+        let tool = WebFetchTool::new().unwrap();
         let ctx = ToolContext::default();
 
         let result = tool.execute(json!({}), &ctx).await;

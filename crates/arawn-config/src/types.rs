@@ -579,6 +579,10 @@ pub struct ServerConfig {
     /// Set to `["*"]` to allow all origins (not recommended for production).
     #[serde(default)]
     pub ws_allowed_origins: Vec<String>,
+    /// Trust proxy headers (X-Forwarded-For, X-Real-IP) for client IP extraction.
+    /// Only enable when running behind a trusted reverse proxy.
+    #[serde(default)]
+    pub trust_proxy: bool,
 }
 
 impl Default for ServerConfig {
@@ -592,6 +596,7 @@ impl Default for ServerConfig {
             bootstrap_dir: None,
             workspace: None,
             ws_allowed_origins: Vec::new(),
+            trust_proxy: false,
         }
     }
 }
@@ -3081,5 +3086,57 @@ compaction_threshold = 0.8
         assert_eq!(rlm.compaction_threshold, Some(0.8));
         // Note: merge replaces the whole Option, so base-only fields are lost
         // This is consistent with how other config sections merge
+    }
+
+    // ── Property-Based Tests ────────────────────────────────────────────
+
+    mod prop_tests {
+        use super::*;
+        use proptest::prelude::*;
+
+        proptest! {
+            /// Any valid port/bind combination should produce a valid ServerConfig.
+            #[test]
+            fn server_config_roundtrip(port in 1u16..=65535u16, bind in "[a-z0-9.]{1,15}") {
+                let toml_str = format!(
+                    "[server]\nport = {}\nbind = \"{}\"\n",
+                    port, bind
+                );
+                let config: ArawnConfig = toml::from_str(&toml_str).unwrap();
+                let server = config.server.unwrap();
+                prop_assert_eq!(server.port, port);
+                prop_assert_eq!(server.bind, bind);
+            }
+
+            /// ArawnConfig default should always serialize/deserialize roundtrip.
+            #[test]
+            fn default_config_roundtrip(_dummy in 0..1u8) {
+                let config = ArawnConfig::default();
+                let toml_str = toml::to_string(&config).unwrap();
+                let reparsed: ArawnConfig = toml::from_str(&toml_str).unwrap();
+                // Both should have no LLM section
+                prop_assert!(reparsed.llm.is_none());
+            }
+
+            /// Arbitrary embedding dimensions should parse correctly.
+            #[test]
+            fn embedding_dimensions_parse(dims in 1usize..=4096usize) {
+                let toml_str = format!(
+                    "[embedding]\ndimensions = {}\nprovider = \"local\"\n",
+                    dims
+                );
+                let config: ArawnConfig = toml::from_str(&toml_str).unwrap();
+                let emb = config.embedding.unwrap();
+                prop_assert_eq!(emb.dimensions, Some(dims));
+            }
+
+            /// Empty config string should parse to defaults.
+            #[test]
+            fn empty_config_is_valid(_dummy in 0..1u8) {
+                let config: ArawnConfig = toml::from_str("").unwrap();
+                prop_assert!(config.llm.is_none());
+                prop_assert!(config.server.is_none());
+            }
+        }
     }
 }

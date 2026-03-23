@@ -144,36 +144,34 @@ impl<P: PersistenceHook> SessionCache<P> {
     ///
     /// This marks the session as recently used in the LRU cache
     /// and resets its TTL timer.
+    ///
+    /// Uses a single write lock for the entire check-load-insert sequence
+    /// to prevent race conditions where two concurrent callers both miss
+    /// the cache and load the same session from persistence.
     pub async fn get_or_load(&self, session_id: &str, context_id: &str) -> Result<P::Value> {
-        // First check cache
-        {
-            let mut inner = self.inner.write().await;
+        let mut inner = self.inner.write().await;
 
-            // Check if expired
-            if inner.ttl.is_expired(session_id) {
-                debug!(session_id = %session_id, "Session expired, removing from cache");
-                if let Some(entry) = inner.lru.pop(session_id) {
-                    let _ = inner.persistence.on_evict(session_id, &entry.context_id);
+        // Check if expired
+        if inner.ttl.is_expired(session_id) {
+            debug!(session_id = %session_id, "Session expired, removing from cache");
+            if let Some(entry) = inner.lru.pop(session_id) {
+                if let Err(e) = inner.persistence.on_evict(session_id, &entry.context_id) {
+                    tracing::warn!(session_id = %session_id, error = %e, "Eviction callback failed");
                 }
-                inner.ttl.remove(session_id);
-            } else if let Some(entry) = inner.lru.get(session_id) {
-                trace!(session_id = %session_id, "Session found in cache");
-                let value = entry.value.clone();
-                inner.ttl.touch(session_id);
-                return Ok(value);
             }
+            inner.ttl.remove(session_id);
+        } else if let Some(entry) = inner.lru.get(session_id) {
+            trace!(session_id = %session_id, "Session found in cache");
+            let value = entry.value.clone();
+            inner.ttl.touch(session_id);
+            return Ok(value);
         }
 
-        // Cache miss - try to load from persistence
+        // Cache miss - try to load from persistence (under the same lock)
         debug!(session_id = %session_id, context_id = %context_id, "Session cache miss, loading from persistence");
 
-        let inner = self.inner.read().await;
         match inner.persistence.load(session_id, context_id)? {
             Some(value) => {
-                drop(inner);
-
-                // Insert into cache
-                let mut inner = self.inner.write().await;
                 let entry = CacheEntry::new(value.clone(), context_id.to_string());
                 inner.lru.put(session_id.to_string(), entry);
                 inner.ttl.touch(session_id);
@@ -207,7 +205,9 @@ impl<P: PersistenceHook> SessionCache<P> {
                     session_id = %evicted_id,
                     "Evicting LRU session to make room"
                 );
-                let _ = inner.persistence.on_evict(&evicted_id, &evicted_context);
+                if let Err(e) = inner.persistence.on_evict(&evicted_id, &evicted_context) {
+                    tracing::warn!(session_id = %evicted_id, error = %e, "Eviction callback failed");
+                }
                 inner.ttl.remove(&evicted_id);
             }
         }
@@ -331,7 +331,9 @@ impl<P: PersistenceHook> SessionCache<P> {
         inner.ttl.remove(session_id);
         if let Some(entry) = inner.lru.pop(session_id) {
             debug!(session_id = %session_id, "Session invalidated from cache");
-            let _ = inner.persistence.on_evict(session_id, &entry.context_id);
+            if let Err(e) = inner.persistence.on_evict(session_id, &entry.context_id) {
+                        tracing::warn!(session_id = %session_id, error = %e, "Eviction callback failed");
+                    }
         }
     }
 
@@ -347,7 +349,9 @@ impl<P: PersistenceHook> SessionCache<P> {
         for session_id in expired {
             if let Some(entry) = inner.lru.pop(&session_id) {
                 debug!(session_id = %session_id, "Cleaning up expired session");
-                let _ = inner.persistence.on_evict(&session_id, &entry.context_id);
+                if let Err(e) = inner.persistence.on_evict(&session_id, &entry.context_id) {
+                    tracing::warn!(session_id = %session_id, error = %e, "Eviction callback failed");
+                }
             }
         }
 

@@ -35,3 +35,4 @@ zerocopy = { version = "0.8", features = ["derive"] }
 tokio = { workspace = true }
 tempfile = "3.10"
 serial_test = "3.2"
+proptest = "1.4"
