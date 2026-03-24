@@ -1,8 +1,11 @@
-//! Mock tools for E2E testing.
+//! Mock tools for testing.
 //!
 //! These tools implement the `Tool` trait from `arawn-agent` and can be
 //! registered in a `ToolRegistry` for integration tests that exercise
 //! the full tool-execution pipeline.
+//!
+//! For the general-purpose `MockTool`, use `arawn_agent::tool::MockTool`
+//! (re-exported from this crate as `arawn_test_utils::MockTool`).
 
 use async_trait::async_trait;
 use serde_json::json;

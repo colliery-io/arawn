@@ -4,14 +4,14 @@ level: task
 title: "Phase 1: Move indexing/*.rs to arawn-agent-indexing, update imports, verify 51 tests pass"
 short_code: "ARAWN-T-0387"
 created_at: 2026-03-23T13:58:52.851156+00:00
-updated_at: 2026-03-23T13:58:52.851156+00:00
+updated_at: 2026-03-23T20:21:45.298541+00:00
 parent: ARAWN-I-0038
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -63,6 +63,10 @@ initiative_id: ARAWN-I-0038
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria **[REQUIRED]**
 
@@ -133,4 +137,11 @@ initiative_id: ARAWN-I-0038
 
 ## Status Updates **[REQUIRED]**
 
-*To be added during implementation*
+### 2026-03-23: Completed
+- Copied all 7 indexing files (types.rs, extraction.rs, summarization.rs, report.rs, ner.rs, indexer.rs, gliner.rs) to arawn-agent-indexing/src/
+- Created lib.rs with module declarations and re-exports matching original mod.rs
+- Updated all `use super::` → `use crate::` (6 files affected)
+- Fixed `super::super::ner::` → `crate::ner::` in indexer test module
+- Fixed test module import: `use crate::*` → `use super::*` (brings in async_trait and other imports)
+- **55 tests pass** (single-threaded; 2 flaky under parallel — pre-existing SQLite contention)
+- `cargo check -p arawn-agent-indexing` clean

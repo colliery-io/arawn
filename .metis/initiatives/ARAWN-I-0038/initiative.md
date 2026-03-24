@@ -4,14 +4,14 @@ level: initiative
 title: "Split arawn-agent into Focused Sub-Crates"
 short_code: "ARAWN-I-0038"
 created_at: 2026-03-23T12:40:51.059782+00:00
-updated_at: 2026-03-23T13:58:37.266886+00:00
+updated_at: 2026-03-24T16:22:13.725483+00:00
 parent: ARAWN-V-0001
 blocked_by: []
 archived: false
 
 tags:
   - "#initiative"
-  - "#phase/decompose"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -43,17 +43,17 @@ Identified by the complexity analysis (March 2026) as the single highest-impact 
 ## Goals & Non-Goals
 
 **Goals:**
-- Split into 3-4 focused crates with clear boundaries
-- Reduce compile-time coupling — tools and indexing become opt-in dependencies
+- Split into 3 focused crates with clear boundaries
+- Reduce compile-time coupling — tools and indexing are separate crates
 - Each sub-crate independently testable
-- Maintain the existing `arawn-agent` crate as a facade that re-exports everything (backward compatibility)
 - Zero behavior changes — pure structural refactoring
+- Breaking import changes are acceptable — consumers update their `use` statements
 
 **Non-Goals:**
+- Backward-compatible facade (breaking changes are fine)
 - Changing the `Tool` trait or agent loop behavior
 - Adding new tools or agent features
 - Removing any existing functionality
-- Changing the public API surface (consumers import from `arawn-agent` as before)
 
 ## Detailed Design
 
@@ -178,40 +178,39 @@ arawn-agent-indexing ───────────────────�
 
 **MockTool problem**: `MockTool` is defined in `tool/registry.rs` behind `#[cfg(test)]` but used by 10+ test modules across the crate. Must be extracted to a shared test location (either `arawn-test-utils` or a `testing` feature).
 
-## Implementation Plan (Incremental, Test-First)
+## Revised Implementation Plan (Breaking Changes OK — No Facade)
 
-### Phase 0: Safety Nets (before any code moves)
-- **Task 1**: Extract MockTool to arawn-test-utils (unblocks test sharing across sub-crates)
-- **Task 2**: Add ~40 facade safety-net tests (re-export surface tests, pipeline smoke tests, per-tool smoke tests)
-- **Task 3**: Verify full workspace test baseline — record exact test counts per crate
+Since backward-compatible imports are not required, the plan is dramatically simpler. `arawn-agent` stays as-is and becomes "core" by subtraction — we just extract tools out of it and remove the indexing re-exports. Consumers update their `use` statements.
 
-### Phase 1: Extract indexing (zero risk)
-- **Task 4**: Create arawn-agent-indexing crate scaffold (Cargo.toml, lib.rs)
-- **Task 5**: Move indexing/*.rs files, update internal imports from `use super::` to `use crate::`
-- **Task 6**: Update arawn-agent lib.rs to depend on + re-export arawn-agent-indexing. Verify 51 indexing tests + full workspace pass.
+### Completed
+- **Phase 0** (T-0383, T-0384, T-0385): MockTool behind `testing` feature, 33 safety-net tests, baseline recorded (3,233 tests)
+- **Phase 1** (T-0386, T-0387, T-0388): arawn-agent-indexing extracted (55 tests), currently re-exported via facade alias
 
-### Phase 2: Extract tool framework + core (the big move)
-- **Task 7**: Create arawn-agent-core crate scaffold (Cargo.toml, lib.rs with module declarations)
-- **Task 8**: Move error.rs + types.rs (leaf types, no internal deps). Verify compilation.
-- **Task 9**: Move tool/ directory (Tool trait, ToolRegistry, params, validation, output, gate, execution, command_validator). Update `use crate::error` → `use crate::error`. Verify 136 tool framework tests.
-- **Task 10**: Move context.rs + prompt/ (depend on tool/ and types). Verify prompt + context tests.
-- **Task 11**: Move compaction.rs + orchestrator.rs (depend on agent types + context). Verify compaction + orchestrator tests.
-- **Task 12**: Move stream.rs + agent.rs (depend on everything above). Verify agent + stream tests.
-- **Task 13**: Move rlm/ + mcp.rs (depend on agent + tool). Verify rlm + mcp tests.
-- **Task 14**: Full arawn-agent-core test pass — verify all ~282 core+framework tests pass.
+### Final Target State
+```
+arawn-agent           — Core: Agent, Session, Tool trait, ToolRegistry, prompt,
+                        compaction, orchestrator, stream, rlm, mcp, types, error
+arawn-agent-tools     — Built-in tools: shell, file, web, search, memory, note,
+                        think, explore, delegate, catalog, workflow
+arawn-agent-indexing  — Session indexing, fact extraction, NER (DONE)
+```
 
-### Phase 3: Extract built-in tools
-- **Task 15**: Create arawn-agent-tools crate scaffold, add dep on arawn-agent-core
-- **Task 16**: Move tools/*.rs files. Update `use crate::error` → `use arawn_agent_core::error`, `use crate::tool` → `use arawn_agent_core::tool`. Verify 196 tool tests.
-- **Task 17**: Feature-gate pipeline tools (catalog.rs, workflow.rs depend on arawn-pipeline)
+No facade. Consumers import directly from the crate they need.
 
-### Phase 4: Convert arawn-agent to facade
-- **Task 18**: Replace arawn-agent/src/lib.rs with re-exports from sub-crates. Re-export module paths (tool, types, error, tools, indexing, prompt, rlm, mcp) for backward compatibility.
-- **Task 19**: Verify all downstream consumers compile: arawn (binary), arawn-domain, arawn-plugin, arawn-test-utils, arawn-server
-- **Task 20**: Run facade safety-net tests (from Task 2). Verify full workspace test pass.
+### Remaining Tasks
 
-### Phase 5: Clean up
-- **Task 21**: Update arawn-plugin and arawn-test-utils to depend on specific sub-crates instead of facade (optional optimization)
-- **Task 22**: Update workspace Cargo.toml, CI, code-index. Final full test pass.
+**Phase 2A: Clean up indexing extraction (remove facade pattern)**
+- **Task**: Remove `pub use arawn_agent_indexing as indexing;` re-export and all indexing re-exports from arawn-agent lib.rs. Remove arawn-agent-indexing dependency from arawn-agent. Update consumers (arawn binary, arawn-domain) to depend on arawn-agent-indexing directly.
 
-Every task runs in a worktree. Every task ends with `cargo test --workspace`. No task should be larger than ~1 hour of work.
+**Phase 2B: Extract tools**
+- **Task**: Create arawn-agent-tools crate scaffold (Cargo.toml, lib.rs)
+- **Task**: Move tools/*.rs to arawn-agent-tools. Update `use crate::` → `use arawn_agent::` for tool framework imports. Verify ~196 tool tests.
+- **Task**: Remove tools module + tool re-exports from arawn-agent lib.rs. Feature-gate pipeline tools behind `arawn-pipeline` dep.
+
+**Phase 3: Update all consumers**
+- **Task**: Update all 5 consumer crates (arawn, arawn-domain, arawn-plugin, arawn-test-utils, arawn-server) to import from the correct sub-crate. Full workspace test pass.
+
+**Phase 4: Final cleanup**
+- **Task**: Update CI, code-index, verify total test count >= 3,233. Commit.
+
+**6 tasks total** (down from 16). Each ends with `cargo test --workspace`.

@@ -4,12 +4,12 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use super::context::Tool;
-#[cfg(test)]
+#[cfg(any(test, feature = "testing"))]
 use super::context::{ToolContext, ToolResult};
 use super::output::OutputConfig;
-#[cfg(test)]
+#[cfg(any(test, feature = "testing"))]
 use crate::error::Result;
-#[cfg(test)]
+#[cfg(any(test, feature = "testing"))]
 use async_trait::async_trait;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -178,8 +178,12 @@ impl std::fmt::Debug for ToolRegistry {
 
 /// A mock tool for testing.
 ///
+/// A configurable mock tool for testing.
+///
 /// Returns configurable responses and tracks calls for verification.
-#[cfg(test)]
+/// Available via `cfg(test)` within this crate, and via the `testing`
+/// feature flag for external crates (e.g., arawn-test-utils, sub-crates).
+#[cfg(any(test, feature = "testing"))]
 #[derive(Debug)]
 pub struct MockTool {
     name: String,
@@ -189,7 +193,7 @@ pub struct MockTool {
     calls: std::sync::Mutex<Vec<serde_json::Value>>,
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "testing"))]
 impl MockTool {
     /// Create a new mock tool.
     pub fn new(name: impl Into<String>) -> Self {
@@ -239,7 +243,7 @@ impl MockTool {
     }
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "testing"))]
 #[async_trait]
 impl Tool for MockTool {
     fn name(&self) -> &str {
@@ -255,10 +259,7 @@ impl Tool for MockTool {
     }
 
     async fn execute(&self, params: serde_json::Value, _ctx: &ToolContext) -> Result<ToolResult> {
-        // Record the call
         self.calls.lock().unwrap().push(params);
-
-        // Return configured response or default
         Ok(self
             .response
             .lock()

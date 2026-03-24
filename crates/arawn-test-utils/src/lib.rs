@@ -19,6 +19,8 @@ pub use mock_backend::{
 pub use mock_tools::{
     EchoTool, FailTool, LargeOutputTool, MockReadFileTool, SlowTool, mock_tool_registry,
 };
+// Re-export MockTool from arawn-agent's testing feature for convenience
+pub use arawn_agent::tool::MockTool;
 pub use server::TestServer;
 pub use sse::{SseEvent, collect_sse_events, events_of_type, reconstruct_text};
 pub use ws_client::TestWsClient;

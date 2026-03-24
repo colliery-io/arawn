@@ -32,14 +32,12 @@ pub mod agent;
 pub mod compaction;
 pub mod context;
 pub mod error;
-pub mod indexing;
 pub mod mcp;
 pub mod orchestrator;
 pub mod prompt;
 pub mod rlm;
 pub mod stream;
 pub mod tool;
-pub mod tools;
 pub mod types;
 
 // Re-export filesystem gate (defined in arawn-types)
@@ -95,14 +93,6 @@ pub use prompt::{BootstrapContext, BootstrapFile, PromptMode, SystemPromptBuilde
 // Re-export streaming types
 pub use stream::{AgentStream, StreamChunk, create_turn_stream};
 
-// Re-export indexing types
-#[cfg(feature = "gliner")]
-pub use indexing::GlinerEngine;
-pub use indexing::{
-    IndexReport, IndexerConfig, NerConfig, NerEngine, NerExtraction, NerOutput, NerRelation,
-    NerSpan, SessionIndexer,
-};
-
 // Re-export RLM types
 pub use rlm::{
     DEFAULT_READ_ONLY_TOOLS, ExplorationMetadata, ExplorationResult, RLM_SYSTEM_PROMPT, RlmConfig,
@@ -114,33 +104,5 @@ pub use mcp::{
     MCP_PREFIX, McpToolAdapter, NAMESPACE_DELIMITER, is_mcp_tool, parse_namespaced_name,
 };
 
-// Re-export built-in tools
-pub use tools::{
-    // Explore tool
-    ExploreTool,
-    // File tools
-    FileReadTool,
-    FileWriteTool,
-    // Search tools
-    GlobTool,
-    GrepTool,
-    // Memory tool
-    MemorySearchTool,
-    Note,
-    NoteStorage,
-    // Note tool
-    NoteTool,
-    SearchProvider,
-    SearchResult,
-    // Shell tool
-    ShellConfig,
-    ShellTool,
-    // Think tool
-    ThinkTool,
-    WebFetchConfig,
-    // Web tools
-    WebFetchTool,
-    WebSearchConfig,
-    WebSearchTool,
-    new_note_storage,
-};
+// Built-in tools have moved to arawn-agent-tools crate.
+// Import from arawn_agent_tools::{ShellTool, FileReadTool, ...} directly.

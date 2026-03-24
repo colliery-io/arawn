@@ -5,7 +5,8 @@
 
 use std::sync::Arc;
 
-use arawn_agent::{Agent, AgentResponse, Session, SessionId, SessionIndexer};
+use arawn_agent::{Agent, AgentResponse, Session, SessionId};
+use arawn_agent_indexing::SessionIndexer;
 use arawn_workstream::{DirectoryManager, WorkstreamManager};
 use tracing::{debug, info, warn};
 

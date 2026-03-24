@@ -4,14 +4,14 @@ level: task
 title: "Phase 0: Extract MockTool from #[cfg(test)] to arawn-test-utils for cross-crate sharing"
 short_code: "ARAWN-T-0383"
 created_at: 2026-03-23T13:58:47.902100+00:00
-updated_at: 2026-03-23T13:58:47.902100+00:00
+updated_at: 2026-03-23T16:28:46.658350+00:00
 parent: ARAWN-I-0038
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -63,6 +63,10 @@ initiative_id: ARAWN-I-0038
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria **[REQUIRED]**
 
@@ -133,4 +137,10 @@ initiative_id: ARAWN-I-0038
 
 ## Status Updates **[REQUIRED]**
 
-*To be added during implementation*
+### 2026-03-23: Completed
+- **Approach changed**: Instead of moving MockTool to arawn-test-utils (circular dev-dep trait orphan issue), kept MockTool in arawn-agent behind a `testing` feature flag: `#[cfg(any(test, feature = "testing"))]`
+- Added `testing = []` feature to arawn-agent/Cargo.toml
+- Changed all MockTool-related `#[cfg(test)]` annotations to `#[cfg(any(test, feature = "testing"))]` in registry.rs and tool/mod.rs
+- arawn-test-utils now depends on `arawn-agent = { features = ["testing"] }` and re-exports `MockTool` via `pub use arawn_agent::tool::MockTool`
+- This means after the crate split, arawn-agent-core can have the same `testing` feature and sub-crates can enable it via dev-dep
+- 578 arawn-agent tests pass, 13 arawn-test-utils tests pass

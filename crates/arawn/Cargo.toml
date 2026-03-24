@@ -16,6 +16,8 @@ arawn-types = { workspace = true }
 arawn-memory = { workspace = true }
 arawn-llm = { workspace = true, features = ["local-embeddings"] }
 arawn-agent = { workspace = true }
+arawn-agent-indexing = { path = "../arawn-agent-indexing" }
+arawn-agent-tools = { path = "../arawn-agent-tools" }
 arawn-server = { workspace = true }
 arawn-oauth = { workspace = true }
 arawn-pipeline = { workspace = true }
@@ -52,4 +54,4 @@ predicates = "3.1"
 tempfile = "3"
 
 [features]
-gliner = ["arawn-agent/gliner"]
+gliner = ["arawn-agent-indexing/gliner"]

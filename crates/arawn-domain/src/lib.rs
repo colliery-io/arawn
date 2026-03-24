@@ -36,8 +36,9 @@ pub use services::memory::MemoryService;
 // Agent: core agent, session, streaming types, and errors
 pub use arawn_agent::{
     Agent, AgentError, CompactionResult, CompactorConfig, Session, SessionCompactor, SessionId,
-    SessionIndexer, StreamChunk, ToolCall, ToolRegistry, ToolResultRecord, Turn, TurnId,
+    StreamChunk, ToolCall, ToolRegistry, ToolResultRecord, Turn, TurnId,
 };
+pub use arawn_agent_indexing::SessionIndexer;
 
 // Config: configuration errors
 pub use arawn_config::ConfigError;

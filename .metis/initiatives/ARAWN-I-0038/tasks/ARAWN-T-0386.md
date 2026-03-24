@@ -4,14 +4,14 @@ level: task
 title: "Phase 1: Create arawn-agent-indexing crate scaffold — Cargo.toml, lib.rs, workspace member"
 short_code: "ARAWN-T-0386"
 created_at: 2026-03-23T13:58:51.721076+00:00
-updated_at: 2026-03-23T13:58:51.721076+00:00
+updated_at: 2026-03-23T20:17:21.220270+00:00
 parent: ARAWN-I-0038
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -63,6 +63,10 @@ initiative_id: ARAWN-I-0038
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria **[REQUIRED]**
 
@@ -133,4 +137,9 @@ initiative_id: ARAWN-I-0038
 
 ## Status Updates **[REQUIRED]**
 
-*To be added during implementation*
+### 2026-03-23: Completed
+- Created `crates/arawn-agent-indexing/` with Cargo.toml and empty lib.rs
+- Dependencies: arawn-llm, arawn-memory, async-trait, serde, serde_json, tracing
+- Feature-gated: `gliner` feature for optional GLiNER NER engine (gline-rs-vendored, orp-vendored)
+- Added to workspace members in root Cargo.toml
+- `cargo check -p arawn-agent-indexing` passes

@@ -18,8 +18,7 @@
 mod prompt;
 pub mod types;
 
-#[cfg(test)]
-mod integration_tests;
+// Integration tests moved to arawn-agent-tools/src/explore_integration_tests.rs
 
 pub use prompt::RLM_SYSTEM_PROMPT;
 pub use types::{ExplorationMetadata, ExplorationResult, RlmConfig};

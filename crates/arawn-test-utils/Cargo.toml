@@ -7,7 +7,7 @@ license.workspace = true
 description = "Shared test utilities for the Arawn workspace"
 
 [dependencies]
-arawn-agent = { workspace = true }
+arawn-agent = { workspace = true, features = ["testing"] }
 arawn-domain = { workspace = true }
 arawn-llm = { workspace = true, features = ["testing"] }
 arawn-memory = { workspace = true }

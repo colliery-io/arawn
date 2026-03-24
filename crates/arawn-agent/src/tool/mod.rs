@@ -59,5 +59,5 @@ pub use registry::ToolRegistry;
 pub use command_validator::{CommandValidation, CommandValidator};
 
 // Re-export test utilities
-#[cfg(test)]
+#[cfg(any(test, feature = "testing"))]
 pub use registry::MockTool;

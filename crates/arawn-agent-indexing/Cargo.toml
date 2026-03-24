@@ -1,0 +1,27 @@
+[package]
+name = "arawn-agent-indexing"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Session indexing, fact extraction, and NER for Arawn agent"
+
+[dependencies]
+arawn-llm = { workspace = true }
+arawn-memory = { workspace = true }
+
+async-trait = "0.1"
+serde = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+
+# Optional GLiNER NER engine
+gline-rs-vendored = { path = "../gline-rs-vendored", optional = true }
+orp = { package = "orp-vendored", path = "../orp-vendored", optional = true }
+
+[features]
+default = []
+gliner = ["dep:gline-rs-vendored", "dep:orp"]
+
+[dev-dependencies]
+tokio = { workspace = true }

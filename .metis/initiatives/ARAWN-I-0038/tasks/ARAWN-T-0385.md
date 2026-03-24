@@ -4,14 +4,14 @@ level: task
 title: "Phase 0: Record full workspace test baseline — exact counts per crate before any moves"
 short_code: "ARAWN-T-0385"
 created_at: 2026-03-23T13:58:50.606026+00:00
-updated_at: 2026-03-23T13:58:50.606026+00:00
+updated_at: 2026-03-23T19:46:44.119738+00:00
 parent: ARAWN-I-0038
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -63,6 +63,10 @@ initiative_id: ARAWN-I-0038
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria **[REQUIRED]**
 
@@ -133,4 +137,29 @@ initiative_id: ARAWN-I-0038
 
 ## Status Updates **[REQUIRED]**
 
-*To be added during implementation*
+### 2026-03-23: Completed — Baseline Recorded
+
+**Total: 3,233 tests across 18 crates**
+
+| Crate | Tests |
+|-------|------:|
+| arawn-agent | 639 |
+| arawn-server | 634 |
+| arawn-plugin | 281 |
+| arawn-llm | 218 |
+| arawn-workstream | 215 |
+| arawn-pipeline | 202 |
+| arawn-config | 191 |
+| arawn-memory | 181 |
+| arawn-tui | 157 |
+| arawn | 128 |
+| arawn-client | 98 |
+| arawn-domain | 71 |
+| arawn-mcp | 68 |
+| arawn-oauth | 54 |
+| arawn-sandbox | 34 |
+| arawn-types | 24 |
+| arawn-session | 22 |
+| arawn-test-utils | 16 |
+
+After the crate split, the total should remain >= 3,233. arawn-agent's 639 tests should be distributed across arawn-agent-core, arawn-agent-tools, arawn-agent-indexing, and the arawn-agent facade.

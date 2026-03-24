@@ -9,7 +9,8 @@ pub mod memory;
 
 use std::sync::Arc;
 
-use arawn_agent::{Agent, SessionIndexer};
+use arawn_agent::Agent;
+use arawn_agent_indexing::SessionIndexer;
 use arawn_memory::MemoryStore;
 use arawn_workstream::{DirectoryManager, WorkstreamManager};
 use tracing::info;

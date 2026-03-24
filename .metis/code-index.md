@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-03-22T23:49:01Z | 333 files | Rust
+> Generated: 2026-03-24T16:21:02Z | 334 files | Rust
 
 ## Project Structure
 
@@ -34,58 +34,62 @@
 │   │       ├── cli_integration.rs
 │   │       └── command_integration.rs
 │   ├── arawn-agent/
+│   │   ├── src/
+│   │   │   ├── agent.rs
+│   │   │   ├── compaction.rs
+│   │   │   ├── context.rs
+│   │   │   ├── error.rs
+│   │   │   ├── lib.rs
+│   │   │   ├── mcp.rs
+│   │   │   ├── orchestrator.rs
+│   │   │   ├── prompt/
+│   │   │   │   ├── bootstrap.rs
+│   │   │   │   ├── builder.rs
+│   │   │   │   ├── mod.rs
+│   │   │   │   └── mode.rs
+│   │   │   ├── rlm/
+│   │   │   │   ├── mod.rs
+│   │   │   │   ├── prompt.rs
+│   │   │   │   └── types.rs
+│   │   │   ├── stream.rs
+│   │   │   ├── tool/
+│   │   │   │   ├── command_validator.rs
+│   │   │   │   ├── context.rs
+│   │   │   │   ├── execution.rs
+│   │   │   │   ├── gate.rs
+│   │   │   │   ├── mod.rs
+│   │   │   │   ├── output.rs
+│   │   │   │   ├── params.rs
+│   │   │   │   ├── registry.rs
+│   │   │   │   └── validation.rs
+│   │   │   └── types.rs
+│   │   └── tests/
+│   │       └── facade_safety_net.rs
+│   ├── arawn-agent-indexing/
 │   │   └── src/
-│   │       ├── agent.rs
-│   │       ├── compaction.rs
-│   │       ├── context.rs
-│   │       ├── error.rs
-│   │       ├── indexing/
-│   │       │   ├── extraction.rs
-│   │       │   ├── gliner.rs
-│   │       │   ├── indexer.rs
-│   │       │   ├── mod.rs
-│   │       │   ├── ner.rs
-│   │       │   ├── report.rs
-│   │       │   ├── summarization.rs
-│   │       │   └── types.rs
+│   │       ├── extraction.rs
+│   │       ├── gliner.rs
+│   │       ├── indexer.rs
 │   │       ├── lib.rs
-│   │       ├── mcp.rs
-│   │       ├── orchestrator.rs
-│   │       ├── prompt/
-│   │       │   ├── bootstrap.rs
-│   │       │   ├── builder.rs
-│   │       │   ├── mod.rs
-│   │       │   └── mode.rs
-│   │       ├── rlm/
-│   │       │   ├── integration_tests.rs
-│   │       │   ├── mod.rs
-│   │       │   ├── prompt.rs
-│   │       │   └── types.rs
-│   │       ├── stream.rs
-│   │       ├── tool/
-│   │       │   ├── command_validator.rs
-│   │       │   ├── context.rs
-│   │       │   ├── execution.rs
-│   │       │   ├── gate.rs
-│   │       │   ├── mod.rs
-│   │       │   ├── output.rs
-│   │       │   ├── params.rs
-│   │       │   ├── registry.rs
-│   │       │   └── validation.rs
-│   │       ├── tools/
-│   │       │   ├── catalog.rs
-│   │       │   ├── delegate.rs
-│   │       │   ├── explore.rs
-│   │       │   ├── file.rs
-│   │       │   ├── memory.rs
-│   │       │   ├── mod.rs
-│   │       │   ├── note.rs
-│   │       │   ├── search.rs
-│   │       │   ├── shell.rs
-│   │       │   ├── think.rs
-│   │       │   ├── web.rs
-│   │       │   └── workflow.rs
+│   │       ├── ner.rs
+│   │       ├── report.rs
+│   │       ├── summarization.rs
 │   │       └── types.rs
+│   ├── arawn-agent-tools/
+│   │   └── src/
+│   │       ├── catalog.rs
+│   │       ├── delegate.rs
+│   │       ├── explore.rs
+│   │       ├── explore_integration_tests.rs
+│   │       ├── file.rs
+│   │       ├── lib.rs
+│   │       ├── memory.rs
+│   │       ├── note.rs
+│   │       ├── search.rs
+│   │       ├── shell.rs
+│   │       ├── think.rs
+│   │       ├── web.rs
+│   │       └── workflow.rs
 │   ├── arawn-client/
 │   │   ├── src/
 │   │   │   ├── api/
@@ -695,22 +699,22 @@
 
 #### crates/arawn/src/commands/start.rs
 
-- pub `StartArgs` struct L49-101 — `{ daemon: bool, port: Option<u16>, bind: Option<String>, token: Option<String>, ...` — Start command - launches the Arawn server.
-- pub `pid_file_path` function L105-109 — `() -> std::path::PathBuf` — Run the start command.
-- pub `stop_daemon` function L112-141 — `() -> Result<()>` — Stop a running daemon by sending SIGTERM to the PID in the PID file.
-- pub `run` function L143-1622 — `(args: StartArgs, ctx: &Context) -> Result<()>` — Start command - launches the Arawn server.
--  `resolve_with_cli_overrides` function L1625-1675 — `( config: &arawn_config::ArawnConfig, args: &StartArgs, ) -> Result<ResolvedLlm>` — Resolve LLM config, applying CLI overrides on top of config file values.
--  `make_api_key_provider` function L1681-1685 — `(backend: Backend, config_value: Option<String>) -> ApiKeyProvider` — Build an `ApiKeyProvider` that re-resolves from the secret store on each request.
--  `create_backend` function L1688-1822 — `( resolved: &ResolvedLlm, oauth_overrides: Option<&arawn_config::OAuthConfigOver...` — Create an LLM backend from a resolved config.
--  `parse_backend` function L1824-1837 — `(s: &str) -> Result<Backend>` — Start command - launches the Arawn server.
--  `load_or_generate_server_token` function L1840-1856 — `() -> Result<String>` — Load a persisted server token, or generate and save a new one.
--  `resolve_profile` function L1859-1890 — `(name: &str, llm_config: &LlmConfig) -> Result<ResolvedLlm>` — Resolve a named LLM profile into a ResolvedLlm ready for backend creation.
--  `build_embedder_spec` function L1893-1939 — `(config: &arawn_config::EmbeddingConfig) -> EmbedderSpec` — Build an `EmbedderSpec` from the application's `EmbeddingConfig`.
--  `default_model` function L1941-1949 — `(backend: &Backend) -> String` — Start command - launches the Arawn server.
--  `register_builtin_runtimes` function L1956-2034 — `( runtimes_src_dir: &std::path::Path, executor: &Arc<ScriptExecutor>, catalog: &...` — Compile and register built-in WASM runtimes from source crate directories.
--  `seed_test_data` function L2037-2130 — `(manager: &WorkstreamManager, verbose: bool)` — Seed the database with test workstreams and sessions for development.
--  `cleanup_old_logs` function L2136-2184 — `(log_dir: &std::path::Path, max_age_days: u64, verbose: bool)` — Delete log files older than `max_age_days` from the log directory.
--  `validate_config` function L2187-2204 — `(config: &arawn_config::ArawnConfig) -> Result<()>` — Validate configuration values at startup, failing fast with clear errors.
+- pub `StartArgs` struct L50-102 — `{ daemon: bool, port: Option<u16>, bind: Option<String>, token: Option<String>, ...` — Start command - launches the Arawn server.
+- pub `pid_file_path` function L106-110 — `() -> std::path::PathBuf` — Run the start command.
+- pub `stop_daemon` function L113-142 — `() -> Result<()>` — Stop a running daemon by sending SIGTERM to the PID in the PID file.
+- pub `run` function L144-1624 — `(args: StartArgs, ctx: &Context) -> Result<()>` — Start command - launches the Arawn server.
+-  `resolve_with_cli_overrides` function L1627-1677 — `( config: &arawn_config::ArawnConfig, args: &StartArgs, ) -> Result<ResolvedLlm>` — Resolve LLM config, applying CLI overrides on top of config file values.
+-  `make_api_key_provider` function L1683-1687 — `(backend: Backend, config_value: Option<String>) -> ApiKeyProvider` — Build an `ApiKeyProvider` that re-resolves from the secret store on each request.
+-  `create_backend` function L1690-1824 — `( resolved: &ResolvedLlm, oauth_overrides: Option<&arawn_config::OAuthConfigOver...` — Create an LLM backend from a resolved config.
+-  `parse_backend` function L1826-1839 — `(s: &str) -> Result<Backend>` — Start command - launches the Arawn server.
+-  `load_or_generate_server_token` function L1842-1858 — `() -> Result<String>` — Load a persisted server token, or generate and save a new one.
+-  `resolve_profile` function L1861-1892 — `(name: &str, llm_config: &LlmConfig) -> Result<ResolvedLlm>` — Resolve a named LLM profile into a ResolvedLlm ready for backend creation.
+-  `build_embedder_spec` function L1895-1941 — `(config: &arawn_config::EmbeddingConfig) -> EmbedderSpec` — Build an `EmbedderSpec` from the application's `EmbeddingConfig`.
+-  `default_model` function L1943-1951 — `(backend: &Backend) -> String` — Start command - launches the Arawn server.
+-  `register_builtin_runtimes` function L1958-2036 — `( runtimes_src_dir: &std::path::Path, executor: &Arc<ScriptExecutor>, catalog: &...` — Compile and register built-in WASM runtimes from source crate directories.
+-  `seed_test_data` function L2039-2132 — `(manager: &WorkstreamManager, verbose: bool)` — Seed the database with test workstreams and sessions for development.
+-  `cleanup_old_logs` function L2138-2186 — `(log_dir: &std::path::Path, max_age_days: u64, verbose: bool)` — Delete log files older than `max_age_days` from the log directory.
+-  `validate_config` function L2189-2206 — `(config: &arawn_config::ArawnConfig) -> Result<()>` — Validate configuration values at startup, failing fast with clear errors.
 
 #### crates/arawn/src/commands/status.rs
 
@@ -1120,15 +1124,13 @@
 - pub `compaction` module L32 — `-` — - [`AgentResponse`]: Output from an agent turn
 - pub `context` module L33 — `-` — - [`AgentResponse`]: Output from an agent turn
 - pub `error` module L34 — `-` — - [`AgentResponse`]: Output from an agent turn
-- pub `indexing` module L35 — `-` — - [`AgentResponse`]: Output from an agent turn
-- pub `mcp` module L36 — `-` — - [`AgentResponse`]: Output from an agent turn
-- pub `orchestrator` module L37 — `-` — - [`AgentResponse`]: Output from an agent turn
-- pub `prompt` module L38 — `-` — - [`AgentResponse`]: Output from an agent turn
-- pub `rlm` module L39 — `-` — - [`AgentResponse`]: Output from an agent turn
-- pub `stream` module L40 — `-` — - [`AgentResponse`]: Output from an agent turn
-- pub `tool` module L41 — `-` — - [`AgentResponse`]: Output from an agent turn
-- pub `tools` module L42 — `-` — - [`AgentResponse`]: Output from an agent turn
-- pub `types` module L43 — `-` — - [`AgentResponse`]: Output from an agent turn
+- pub `mcp` module L35 — `-` — - [`AgentResponse`]: Output from an agent turn
+- pub `orchestrator` module L36 — `-` — - [`AgentResponse`]: Output from an agent turn
+- pub `prompt` module L37 — `-` — - [`AgentResponse`]: Output from an agent turn
+- pub `rlm` module L38 — `-` — - [`AgentResponse`]: Output from an agent turn
+- pub `stream` module L39 — `-` — - [`AgentResponse`]: Output from an agent turn
+- pub `tool` module L40 — `-` — - [`AgentResponse`]: Output from an agent turn
+- pub `types` module L41 — `-` — - [`AgentResponse`]: Output from an agent turn
 
 #### crates/arawn-agent/src/mcp.rs
 
@@ -1321,200 +1323,6 @@
 -  `test_session_context_tracker_not_serialized` function L788-799 — `()` — - [`AgentResponse`]: Agent output from a turn
 -  `humantime_serde` module L802-820 — `-` — - [`AgentResponse`]: Agent output from a turn
 
-### crates/arawn-agent/src/indexing
-
-> *Semantic summary to be generated by AI agent.*
-
-#### crates/arawn-agent/src/indexing/extraction.rs
-
-- pub `ExtractionPrompt` struct L9 — `-` — Builds the extraction prompt for an LLM to extract entities, facts, and
-- pub `build` function L15-30 — `(messages: &[(&str, &str)]) -> String` — Format a conversation history into an extraction prompt.
-- pub `FactsOnlyPrompt` struct L96 — `-` — Builds a facts-only extraction prompt for hybrid mode.
-- pub `build` function L103-123 — `(messages: &[(&str, &str)], entity_names: &[&str]) -> String` — Build a facts-only extraction prompt with NER entity context.
-- pub `parse_extraction` function L155-172 — `(raw: &str) -> ExtractionResult` — Parse LLM output into an ExtractionResult.
--  `ExtractionPrompt` type L11-31 — `= ExtractionPrompt` — LLM extraction prompt and JSON parser.
--  `SYSTEM_INSTRUCTION` variable L33-60 — `: &str` — LLM extraction prompt and JSON parser.
--  `FEW_SHOT_EXAMPLE` variable L62-89 — `: &str` — LLM extraction prompt and JSON parser.
--  `FactsOnlyPrompt` type L98-124 — `= FactsOnlyPrompt` — LLM extraction prompt and JSON parser.
--  `FACTS_ONLY_INSTRUCTION` variable L126-147 — `: &str` — LLM extraction prompt and JSON parser.
--  `strip_code_fences` function L175-191 — `(s: &str) -> &str` — Strip markdown code fences from LLM output.
--  `extract_json_object` function L194-202 — `(s: &str) -> Option<&str>` — Try to find a top-level JSON object `{...}` in the text.
--  `tests` module L205-332 — `-` — LLM extraction prompt and JSON parser.
--  `test_build_prompt` function L209-219 — `()` — LLM extraction prompt and JSON parser.
--  `test_parse_valid_json` function L222-233 — `()` — LLM extraction prompt and JSON parser.
--  `test_parse_with_code_fences` function L236-248 — `()` — LLM extraction prompt and JSON parser.
--  `test_parse_with_surrounding_text` function L251-265 — `()` — LLM extraction prompt and JSON parser.
--  `test_parse_malformed_returns_empty` function L268-273 — `()` — LLM extraction prompt and JSON parser.
--  `test_parse_partial_json_missing_sections` function L276-281 — `()` — LLM extraction prompt and JSON parser.
--  `test_parse_empty_object` function L284-289 — `()` — LLM extraction prompt and JSON parser.
--  `test_strip_code_fences_plain` function L292-294 — `()` — LLM extraction prompt and JSON parser.
--  `test_strip_code_fences_json` function L297-299 — `()` — LLM extraction prompt and JSON parser.
--  `test_strip_code_fences_bare` function L302-304 — `()` — LLM extraction prompt and JSON parser.
--  `test_facts_only_prompt_build` function L307-314 — `()` — LLM extraction prompt and JSON parser.
--  `test_facts_only_prompt_no_entities` function L317-322 — `()` — LLM extraction prompt and JSON parser.
--  `test_extract_json_object` function L325-331 — `()` — LLM extraction prompt and JSON parser.
-
-#### crates/arawn-agent/src/indexing/gliner.rs
-
-- pub `GlinerEngine` struct L20-23 — `{ model: Mutex<GLiNER<SpanMode>>, threshold: f32 }` — GLiNER-based NER engine using span mode.
-- pub `new` function L27-42 — `(config: &NerConfig) -> Result<Self, String>` — Create a new GlinerEngine from model and tokenizer file paths.
--  `GlinerEngine` type L25-43 — `= GlinerEngine` — This module is only compiled when the `gliner` feature is enabled.
--  `GlinerEngine` type L45-76 — `impl NerEngine for GlinerEngine` — This module is only compiled when the `gliner` feature is enabled.
--  `extract` function L46-75 — `(&self, texts: &[&str], entity_labels: &[&str]) -> Result<NerOutput, String>` — This module is only compiled when the `gliner` feature is enabled.
-
-#### crates/arawn-agent/src/indexing/indexer.rs
-
-- pub `IndexerConfig` struct L33-40 — `{ model: String, max_extraction_tokens: u32, max_summary_tokens: u32 }` — Configuration for the session indexer.
-- pub `Completer` interface L54-56 — `{ fn complete() }` — Trait for LLM completion, enabling test mocking.
-- pub `BackendCompleter` struct L59-61 — `{ backend: SharedBackend }` — Production completer that uses the real LLM backend.
-- pub `new` function L64-66 — `(backend: SharedBackend) -> Self` — 5.
-- pub `SessionIndexer` struct L96-102 — `{ store: Arc<MemoryStore>, completer: Arc<dyn Completer>, embedder: Option<Share...` — Orchestrates post-session indexing: extraction, graph storage, and summarization.
-- pub `new` function L106-119 — `( store: Arc<MemoryStore>, completer: Arc<dyn Completer>, embedder: Option<Share...` — Create a new SessionIndexer with the given dependencies.
-- pub `with_backend` function L122-134 — `( store: Arc<MemoryStore>, backend: SharedBackend, embedder: Option<SharedEmbedd...` — Create a SessionIndexer using a real LLM backend.
-- pub `store` function L137-139 — `(&self) -> &Arc<MemoryStore>` — Get a reference to the underlying MemoryStore.
-- pub `with_ner_engine` function L145-148 — `(mut self, engine: Arc<dyn NerEngine>) -> Self` — Set a local NER engine for hybrid extraction.
-- pub `index_session` function L157-204 — `(&self, session_id: &str, messages: &[(&str, &str)]) -> IndexReport` — Run the full indexing pipeline for a session.
--  `IndexerConfig` type L42-50 — `impl Default for IndexerConfig` — 5.
--  `default` function L43-49 — `() -> Self` — 5.
--  `BackendCompleter` type L63-67 — `= BackendCompleter` — 5.
--  `BackendCompleter` type L70-93 — `impl Completer for BackendCompleter` — 5.
--  `complete` function L71-92 — `(&self, model: &str, prompt: &str, max_tokens: u32) -> Result<String, String>` — 5.
--  `SessionIndexer` type L104-469 — `= SessionIndexer` — 5.
--  `run_extraction` function L206-217 — `(&self, messages: &[(&str, &str)]) -> Result<ExtractionResult, String>` — 5.
--  `run_hybrid_extraction` function L220-290 — `( &self, ner: &dyn NerEngine, messages: &[(&str, &str)], ) -> ExtractionResult` — Hybrid extraction: NER for entities/relationships, LLM for facts only.
--  `store_entities` function L292-320 — `( &self, session_id: &str, entities: &[ExtractedEntity], report: &mut IndexRepor...` — 5.
--  `store_facts` function L322-368 — `( &self, session_id: &str, facts: &[ExtractedFact], report: &mut IndexReport, )` — 5.
--  `store_relationships` function L370-400 — `( &self, relationships: &[ExtractedRelationship], report: &mut IndexReport, )` — 5.
--  `store_summary` function L402-455 — `( &self, session_id: &str, messages: &[(&str, &str)], report: &mut IndexReport, ...` — 5.
--  `embed_text` function L457-468 — `(&self, text: &str) -> Option<Vec<f32>>` — 5.
--  `map_relationship_type` function L472-483 — `(label: &str) -> RelationshipType` — Map an extracted relationship label to a `RelationshipType`.
--  `tests` module L486-973 — `-` — 5.
--  `MockCompleter` struct L490-493 — `{ extraction_response: String, summary_response: String }` — Mock completer that returns pre-configured responses.
--  `MockCompleter` type L495-509 — `= MockCompleter` — 5.
--  `new` function L496-501 — `(extraction_json: &str, summary: &str) -> Self` — 5.
--  `failing` function L503-508 — `() -> Self` — 5.
--  `MockCompleter` type L512-536 — `impl Completer for MockCompleter` — 5.
--  `complete` function L513-535 — `( &self, _model: &str, prompt: &str, _max_tokens: u32, ) -> Result<String, Strin...` — 5.
--  `test_extraction_json` function L538-554 — `() -> String` — 5.
--  `test_indexer_config` function L556-561 — `() -> IndexerConfig` — 5.
--  `make_indexer` function L563-571 — `(completer: impl Completer + 'static) -> SessionIndexer` — 5.
--  `make_indexer_with_graph` function L573-582 — `(completer: impl Completer + 'static) -> SessionIndexer` — 5.
--  `test_index_session_empty_messages` function L585-592 — `()` — 5.
--  `test_index_session_facts_stored` function L595-627 — `()` — 5.
--  `test_index_session_with_graph` function L630-643 — `()` — 5.
--  `test_index_session_no_graph_skips_entities` function L646-658 — `()` — 5.
--  `test_index_session_extraction_failure_continues` function L661-673 — `()` — 5.
--  `test_index_session_fact_confidence_mapping` function L676-698 — `()` — 5.
--  `test_index_session_fact_reinforcement` function L701-739 — `()` — 5.
--  `test_index_session_fact_supersession` function L742-785 — `()` — 5.
--  `MockNer` struct L789-792 — `{ output: NerOutput, supports_rels: bool }` — 5.
--  `MockNer` type L794-811 — `impl NerEngine for MockNer` — 5.
--  `extract` function L795-797 — `(&self, _texts: &[&str], _entity_labels: &[&str]) -> Result<NerOutput, String>` — 5.
--  `supports_relations` function L799-801 — `(&self) -> bool` — 5.
--  `extract_relations` function L803-810 — `( &self, _texts: &[&str], _entity_labels: &[&str], _relation_labels: &[&str], ) ...` — 5.
--  `FailingNer` struct L813 — `-` — 5.
--  `FailingNer` type L815-819 — `impl NerEngine for FailingNer` — 5.
--  `extract` function L816-818 — `(&self, _texts: &[&str], _entity_labels: &[&str]) -> Result<NerOutput, String>` — 5.
--  `make_indexer_with_ner` function L821-833 — `( completer: impl Completer + 'static, ner: impl NerEngine + 'static, ) -> Sessi...` — 5.
--  `make_indexer_with_ner_and_graph` function L835-848 — `( completer: impl Completer + 'static, ner: impl NerEngine + 'static, ) -> Sessi...` — 5.
--  `test_hybrid_extraction_entities_from_ner` function L851-890 — `()` — 5.
--  `test_hybrid_extraction_with_graph_stores_ner_entities` function L893-922 — `()` — 5.
--  `test_hybrid_extraction_ner_failure_falls_back_to_llm` function L925-935 — `()` — 5.
--  `test_map_relationship_type` function L938-972 — `()` — 5.
-
-#### crates/arawn-agent/src/indexing/mod.rs
-
-- pub `extraction` module L3 — `-` — Session indexing pipeline: extraction, summarization, and memory storage.
-- pub `gliner` module L5 — `-` — Session indexing pipeline: extraction, summarization, and memory storage.
-- pub `indexer` module L6 — `-` — Session indexing pipeline: extraction, summarization, and memory storage.
-- pub `ner` module L7 — `-` — Session indexing pipeline: extraction, summarization, and memory storage.
-- pub `summarization` module L9 — `-` — Session indexing pipeline: extraction, summarization, and memory storage.
--  `report` module L8 — `-` — Session indexing pipeline: extraction, summarization, and memory storage.
--  `types` module L10 — `-` — Session indexing pipeline: extraction, summarization, and memory storage.
-
-#### crates/arawn-agent/src/indexing/ner.rs
-
-- pub `NerSpan` struct L13-20 — `{ text: String, label: String, score: f32 }` — A recognized entity span from NER inference.
-- pub `NerRelation` struct L24-33 — `{ subject: String, relation: String, object: String, score: f32 }` — A recognized relationship between two entities.
-- pub `NerOutput` struct L37-42 — `{ entities: Vec<NerSpan>, relations: Vec<NerRelation> }` — Output from NER engine inference.
-- pub `ENTITY_LABELS` variable L45-54 — `: &[&str]` — Entity labels used for NER inference in Arawn's domain.
-- pub `RELATION_LABELS` variable L57-66 — `: &[&str]` — Relation labels for relation extraction.
-- pub `NerEngine` interface L72-100 — `{ fn extract(), fn supports_relations(), fn extract_relations() }` — Trait for local NER inference engines.
-- pub `NerConfig` struct L104-111 — `{ model_path: String, tokenizer_path: String, threshold: f32 }` — Configuration for the NER engine.
-- pub `ner_output_to_extracted` function L127-179 — `(output: &NerOutput, threshold: f32) -> NerExtraction` — Convert NER output to Arawn's extraction types.
-- pub `NerExtraction` struct L183-186 — `{ entities: Vec<ExtractedEntity>, relationships: Vec<ExtractedRelationship> }` — Entities and relationships extracted by the NER engine.
--  `supports_relations` function L82-84 — `(&self) -> bool` — Whether this engine supports relation extraction.
--  `extract_relations` function L90-99 — `( &self, texts: &[&str], entity_labels: &[&str], relation_labels: &[&str], ) -> ...` — Run relation extraction on the given texts.
--  `NerConfig` type L113-121 — `impl Default for NerConfig` — extraction: fast local NER for entities/relationships, LLM for facts only.
--  `default` function L114-120 — `() -> Self` — extraction: fast local NER for entities/relationships, LLM for facts only.
--  `tests` module L189-412 — `-` — extraction: fast local NER for entities/relationships, LLM for facts only.
--  `MockNerEngine` struct L192-195 — `{ output: NerOutput, supports_rels: bool }` — extraction: fast local NER for entities/relationships, LLM for facts only.
--  `MockNerEngine` type L197-209 — `= MockNerEngine` — extraction: fast local NER for entities/relationships, LLM for facts only.
--  `new` function L198-203 — `(output: NerOutput) -> Self` — extraction: fast local NER for entities/relationships, LLM for facts only.
--  `with_relations` function L205-208 — `(mut self) -> Self` — extraction: fast local NER for entities/relationships, LLM for facts only.
--  `MockNerEngine` type L211-228 — `impl NerEngine for MockNerEngine` — extraction: fast local NER for entities/relationships, LLM for facts only.
--  `extract` function L212-214 — `(&self, _texts: &[&str], _entity_labels: &[&str]) -> Result<NerOutput, String>` — extraction: fast local NER for entities/relationships, LLM for facts only.
--  `supports_relations` function L216-218 — `(&self) -> bool` — extraction: fast local NER for entities/relationships, LLM for facts only.
--  `extract_relations` function L220-227 — `( &self, _texts: &[&str], _entity_labels: &[&str], _relation_labels: &[&str], ) ...` — extraction: fast local NER for entities/relationships, LLM for facts only.
--  `test_ner_output_to_extracted_entities` function L231-255 — `()` — extraction: fast local NER for entities/relationships, LLM for facts only.
--  `test_ner_output_filters_by_threshold` function L258-293 — `()` — extraction: fast local NER for entities/relationships, LLM for facts only.
--  `test_ner_output_deduplicates_entities` function L296-315 — `()` — extraction: fast local NER for entities/relationships, LLM for facts only.
--  `test_ner_output_empty` function L318-323 — `()` — extraction: fast local NER for entities/relationships, LLM for facts only.
--  `test_mock_ner_engine_extract` function L326-340 — `()` — extraction: fast local NER for entities/relationships, LLM for facts only.
--  `test_mock_ner_engine_relations` function L343-372 — `()` — extraction: fast local NER for entities/relationships, LLM for facts only.
--  `test_entity_labels_defined` function L375-381 — `()` — extraction: fast local NER for entities/relationships, LLM for facts only.
--  `test_relation_labels_defined` function L384-388 — `()` — extraction: fast local NER for entities/relationships, LLM for facts only.
--  `test_ner_config_default` function L391-395 — `()` — extraction: fast local NER for entities/relationships, LLM for facts only.
--  `test_context_cleaned_in_output` function L398-411 — `()` — extraction: fast local NER for entities/relationships, LLM for facts only.
-
-#### crates/arawn-agent/src/indexing/report.rs
-
-- pub `IndexReport` struct L5-20 — `{ entities_stored: usize, facts_inserted: usize, facts_reinforced: usize, facts_...` — Report summarizing the results of indexing a session.
-- pub `total_facts` function L24-26 — `(&self) -> usize` — Total number of facts processed (inserted + reinforced + superseded).
-- pub `has_errors` function L29-31 — `(&self) -> bool` — Whether any errors occurred during indexing.
--  `IndexReport` type L22-32 — `= IndexReport` — Index report types for session indexing pipeline results.
--  `IndexReport` type L34-49 — `= IndexReport` — Index report types for session indexing pipeline results.
--  `fmt` function L35-48 — `(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result` — Index report types for session indexing pipeline results.
--  `tests` module L52-100 — `-` — Index report types for session indexing pipeline results.
--  `test_report_default` function L56-62 — `()` — Index report types for session indexing pipeline results.
--  `test_report_total_facts` function L65-73 — `()` — Index report types for session indexing pipeline results.
--  `test_report_has_errors` function L76-81 — `()` — Index report types for session indexing pipeline results.
--  `test_report_display` function L84-99 — `()` — Index report types for session indexing pipeline results.
-
-#### crates/arawn-agent/src/indexing/summarization.rs
-
-- pub `SummarizationPrompt` struct L4 — `-` — Builds the summarization prompt for an LLM to generate a concise session summary.
-- pub `build` function L11-30 — `(messages: &[(&str, &str)]) -> Option<String>` — Format a conversation history into a summarization prompt.
-- pub `clean_summary` function L53-84 — `(raw: &str) -> String` — Clean up LLM summary output by stripping common wrapper patterns.
--  `SummarizationPrompt` type L6-31 — `= SummarizationPrompt` — Session summarization prompt and parser.
--  `SYSTEM_INSTRUCTION` variable L33-45 — `: &str` — Session summarization prompt and parser.
--  `tests` module L87-180 — `-` — Session summarization prompt and parser.
--  `test_build_prompt_basic` function L91-106 — `()` — Session summarization prompt and parser.
--  `test_build_prompt_empty_returns_none` function L109-111 — `()` — Session summarization prompt and parser.
--  `test_build_prompt_single_message` function L114-118 — `()` — Session summarization prompt and parser.
--  `test_build_prompt_contains_instructions` function L121-128 — `()` — Session summarization prompt and parser.
--  `test_clean_summary_plain` function L131-136 — `()` — Session summarization prompt and parser.
--  `test_clean_summary_strips_summary_prefix` function L139-141 — `()` — Session summarization prompt and parser.
--  `test_clean_summary_strips_markdown_header` function L144-149 — `()` — Session summarization prompt and parser.
--  `test_clean_summary_strips_code_fences` function L152-154 — `()` — Session summarization prompt and parser.
--  `test_clean_summary_trims_whitespace` function L157-162 — `()` — Session summarization prompt and parser.
--  `test_clean_summary_preserves_word_containing_summary` function L165-171 — `()` — Session summarization prompt and parser.
--  `test_clean_summary_strips_hash_summary_colon` function L174-179 — `()` — Session summarization prompt and parser.
-
-#### crates/arawn-agent/src/indexing/types.rs
-
-- pub `ExtractionResult` struct L7-17 — `{ entities: Vec<ExtractedEntity>, facts: Vec<ExtractedFact>, relationships: Vec<...` — Result of LLM extraction from a conversation.
-- pub `ExtractedEntity` struct L21-29 — `{ name: String, entity_type: String, context: Option<String> }` — An entity extracted from conversation.
-- pub `ExtractedFact` struct L33-43 — `{ subject: String, predicate: String, object: String, confidence: String }` — A fact extracted from conversation.
-- pub `ExtractedRelationship` struct L51-58 — `{ from: String, relation: String, to: String }` — A relationship between two entities.
--  `default_confidence` function L45-47 — `() -> String` — Types for the extraction pipeline.
--  `tests` module L61-118 — `-` — Types for the extraction pipeline.
--  `test_extraction_result_deserialize` function L65-85 — `()` — Types for the extraction pipeline.
--  `test_extraction_result_missing_sections_default` function L88-94 — `()` — Types for the extraction pipeline.
--  `test_extraction_result_empty` function L97-103 — `()` — Types for the extraction pipeline.
--  `test_fact_default_confidence` function L106-110 — `()` — Types for the extraction pipeline.
--  `test_entity_optional_context` function L113-117 — `()` — Types for the extraction pipeline.
-
 ### crates/arawn-agent/src/prompt
 
 > *Semantic summary to be generated by AI agent.*
@@ -1624,55 +1432,27 @@
 
 > *Semantic summary to be generated by AI agent.*
 
-#### crates/arawn-agent/src/rlm/integration_tests.rs
-
--  `mock_text_response` function L22-33 — `(text: &str) -> CompletionResponse` — together correctly.
--  `mock_text_response_with_usage` function L35-46 — `(text: &str, input: u32, output: u32) -> CompletionResponse` — together correctly.
--  `mock_tool_use_response` function L48-65 — `( tool_id: &str, tool_name: &str, args: serde_json::Value, ) -> CompletionRespon...` — together correctly.
--  `make_full_registry` function L68-86 — `() -> ToolRegistry` — Create a full tool registry with both read-only and write tools.
--  `make_spawner` function L88-90 — `(backend: MockBackend) -> Arc<RlmSpawner>` — together correctly.
--  `make_spawner_with_config` function L92-94 — `(backend: MockBackend, config: RlmConfig) -> Arc<RlmSpawner>` — together correctly.
--  `test_explore_tool_full_pipeline` function L101-124 — `()` — together correctly.
--  `test_explore_tool_multi_tool_research` function L127-149 — `()` — together correctly.
--  `test_explore_compaction_cycle` function L156-196 — `()` — together correctly.
--  `test_explore_multiple_compaction_cycles` function L199-242 — `()` — together correctly.
--  `test_explore_max_turns_enforced` function L249-272 — `()` — together correctly.
--  `test_explore_max_compactions_enforced` function L275-320 — `()` — together correctly.
--  `test_explore_token_budget_enforced` function L323-348 — `()` — together correctly.
--  `test_explore_excludes_write_tools` function L355-375 — `()` — together correctly.
--  `test_explore_includes_read_only_tools` function L378-397 — `()` — together correctly.
--  `test_explore_no_recursive_spawning` function L400-415 — `()` — together correctly.
--  `test_explore_custom_model_config` function L422-447 — `()` — together correctly.
--  `test_rlm_config_to_agent_config_model` function L450-465 — `()` — together correctly.
--  `test_rlm_default_config_model` function L468-479 — `()` — together correctly.
--  `test_rlm_toml_config_to_rlm_config` function L486-532 — `()` — together correctly.
--  `test_rlm_toml_defaults_preserve_agent_defaults` function L535-557 — `()` — together correctly.
--  `test_explore_tool_metadata_footer_format` function L564-586 — `()` — together correctly.
--  `test_explore_tool_compaction_metadata` function L589-627 — `()` — together correctly.
--  `test_explore_tool_truncated_metadata` function L630-654 — `()` — together correctly.
-
 #### crates/arawn-agent/src/rlm/mod.rs
 
 - pub `types` module L19 — `-` — ```
-- pub `DEFAULT_READ_ONLY_TOOLS` variable L40-48 — `: &[&str]` — Default set of read-only tool names available to the RLM agent.
-- pub `RlmSpawner` struct L59-68 — `{ backend: SharedBackend, compaction_backend: Option<SharedBackend>, tools: Tool...` — Spawns isolated RLM exploration agents.
-- pub `new` function L72-79 — `(backend: SharedBackend, tools: ToolRegistry) -> Self` — Create a new spawner with default configuration.
-- pub `with_config` function L82-85 — `(mut self, config: RlmConfig) -> Self` — Set the exploration configuration.
-- pub `with_compaction_backend` function L88-91 — `(mut self, backend: SharedBackend) -> Self` — Set a separate backend for compaction (e.g., a cheaper model).
-- pub `explore` function L98-157 — `(&self, query: &str) -> Result<ExplorationResult>` — Run an exploration for the given query.
+- pub `DEFAULT_READ_ONLY_TOOLS` variable L39-47 — `: &[&str]` — Default set of read-only tool names available to the RLM agent.
+- pub `RlmSpawner` struct L58-67 — `{ backend: SharedBackend, compaction_backend: Option<SharedBackend>, tools: Tool...` — Spawns isolated RLM exploration agents.
+- pub `new` function L71-78 — `(backend: SharedBackend, tools: ToolRegistry) -> Self` — Create a new spawner with default configuration.
+- pub `with_config` function L81-84 — `(mut self, config: RlmConfig) -> Self` — Set the exploration configuration.
+- pub `with_compaction_backend` function L87-90 — `(mut self, backend: SharedBackend) -> Self` — Set a separate backend for compaction (e.g., a cheaper model).
+- pub `explore` function L97-156 — `(&self, query: &str) -> Result<ExplorationResult>` — Run an exploration for the given query.
 -  `prompt` module L18 — `-` — The RLM module provides an isolated sub-agent that explores information
--  `integration_tests` module L22 — `-` — ```
--  `RlmSpawner` type L70-158 — `= RlmSpawner` — ```
--  `tests` module L165-326 — `-` — ```
--  `mock_text_response` function L170-181 — `(text: &str) -> CompletionResponse` — ```
--  `mock_tool_use_response` function L183-200 — `( tool_id: &str, tool_name: &str, args: serde_json::Value, ) -> CompletionRespon...` — ```
--  `make_full_registry` function L202-214 — `() -> ToolRegistry` — ```
--  `test_explore_simple_query` function L217-236 — `()` — ```
--  `test_explore_with_tool_calls` function L239-253 — `()` — ```
--  `test_explore_filters_tools` function L256-282 — `()` — ```
--  `test_explore_with_custom_config` function L285-301 — `()` — ```
--  `test_explore_metadata_tokens` function L304-315 — `()` — ```
--  `test_system_prompt_is_set` function L318-325 — `()` — ```
+-  `RlmSpawner` type L69-157 — `= RlmSpawner` — ```
+-  `tests` module L164-325 — `-` — ```
+-  `mock_text_response` function L169-180 — `(text: &str) -> CompletionResponse` — ```
+-  `mock_tool_use_response` function L182-199 — `( tool_id: &str, tool_name: &str, args: serde_json::Value, ) -> CompletionRespon...` — ```
+-  `make_full_registry` function L201-213 — `() -> ToolRegistry` — ```
+-  `test_explore_simple_query` function L216-235 — `()` — ```
+-  `test_explore_with_tool_calls` function L238-252 — `()` — ```
+-  `test_explore_filters_tools` function L255-281 — `()` — ```
+-  `test_explore_with_custom_config` function L284-300 — `()` — ```
+-  `test_explore_metadata_tokens` function L303-314 — `()` — ```
+-  `test_system_prompt_is_set` function L317-324 — `()` — ```
 
 #### crates/arawn-agent/src/rlm/prompt.rs
 
@@ -1964,41 +1744,41 @@
 - pub `to_llm_definitions` function L107-114 — `(&self) -> Vec<arawn_llm::ToolDefinition>` — Convert all tools to LLM tool definitions.
 - pub `filtered_by_names` function L121-144 — `(&self, names: &[&str]) -> ToolRegistry` — Create a new registry containing only tools whose names are in the allowlist.
 - pub `output_config_for` function L150-164 — `(&self, name: &str) -> OutputConfig` — Get the output config for a tool by name.
-- pub `MockTool` struct L184-190 — `{ name: String, description: String, parameters: serde_json::Value, response: st...` — A mock tool for testing.
-- pub `new` function L195-206 — `(name: impl Into<String>) -> Self` — Create a new mock tool.
-- pub `with_description` function L209-212 — `(mut self, description: impl Into<String>) -> Self` — Set the description.
-- pub `with_parameters` function L215-218 — `(mut self, parameters: serde_json::Value) -> Self` — Set the parameters schema.
-- pub `with_response` function L221-224 — `(self, response: ToolResult) -> Self` — Set the response to return.
-- pub `calls` function L227-229 — `(&self) -> Vec<serde_json::Value>` — Get the calls that were made to this tool.
-- pub `call_count` function L232-234 — `(&self) -> usize` — Get the number of calls made.
-- pub `clear_calls` function L237-239 — `(&self)` — Clear recorded calls.
+- pub `MockTool` struct L188-194 — `{ name: String, description: String, parameters: serde_json::Value, response: st...` — A mock tool for testing.
+- pub `new` function L199-210 — `(name: impl Into<String>) -> Self` — Create a new mock tool.
+- pub `with_description` function L213-216 — `(mut self, description: impl Into<String>) -> Self` — Set the description.
+- pub `with_parameters` function L219-222 — `(mut self, parameters: serde_json::Value) -> Self` — Set the parameters schema.
+- pub `with_response` function L225-228 — `(self, response: ToolResult) -> Self` — Set the response to return.
+- pub `calls` function L231-233 — `(&self) -> Vec<serde_json::Value>` — Get the calls that were made to this tool.
+- pub `call_count` function L236-238 — `(&self) -> usize` — Get the number of calls made.
+- pub `clear_calls` function L241-243 — `(&self)` — Clear recorded calls.
 -  `ToolRegistry` type L30-165 — `= ToolRegistry` — Tool registry for managing available tools.
 -  `ToolRegistry` type L167-173 — `= ToolRegistry` — Tool registry for managing available tools.
 -  `fmt` function L168-172 — `(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result` — Tool registry for managing available tools.
--  `MockTool` type L193-240 — `= MockTool` — Tool registry for managing available tools.
--  `MockTool` type L244-269 — `impl Tool for MockTool` — Tool registry for managing available tools.
--  `name` function L245-247 — `(&self) -> &str` — Tool registry for managing available tools.
--  `description` function L249-251 — `(&self) -> &str` — Tool registry for managing available tools.
--  `parameters` function L253-255 — `(&self) -> serde_json::Value` — Tool registry for managing available tools.
--  `execute` function L257-268 — `(&self, params: serde_json::Value, _ctx: &ToolContext) -> Result<ToolResult>` — Tool registry for managing available tools.
--  `tests` module L272-517 — `-` — Tool registry for managing available tools.
--  `test_registry_empty` function L278-283 — `()` — Tool registry for managing available tools.
--  `test_registry_register_and_get` function L286-300 — `()` — Tool registry for managing available tools.
--  `test_registry_names` function L303-312 — `()` — Tool registry for managing available tools.
--  `test_registry_to_llm_definitions` function L315-333 — `()` — Tool registry for managing available tools.
--  `test_mock_tool_execution` function L336-347 — `()` — Tool registry for managing available tools.
--  `test_registry_execute` function L350-366 — `()` — Tool registry for managing available tools.
--  `test_mock_tool_clear_calls` function L369-376 — `()` — Tool registry for managing available tools.
--  `test_registry_output_config_for` function L378-389 — `()` — Tool registry for managing available tools.
--  `test_registry_output_config_override` function L392-409 — `()` — Tool registry for managing available tools.
--  `test_registry_output_config_override_all_aliases` function L412-428 — `()` — Tool registry for managing available tools.
--  `test_filtered_by_names_includes_matching` function L430-444 — `()` — Tool registry for managing available tools.
--  `test_filtered_by_names_excludes_non_matching` function L447-455 — `()` — Tool registry for managing available tools.
--  `test_filtered_by_names_ignores_unknown` function L458-466 — `()` — Tool registry for managing available tools.
--  `test_filtered_by_names_preserves_original` function L469-480 — `()` — Tool registry for managing available tools.
--  `test_filtered_by_names_carries_output_overrides` function L483-493 — `()` — Tool registry for managing available tools.
--  `test_filtered_by_names_llm_definitions` function L496-506 — `()` — Tool registry for managing available tools.
--  `test_filtered_by_names_empty_allowlist` function L509-516 — `()` — Tool registry for managing available tools.
+-  `MockTool` type L197-244 — `= MockTool` — Tool registry for managing available tools.
+-  `MockTool` type L248-270 — `impl Tool for MockTool` — Tool registry for managing available tools.
+-  `name` function L249-251 — `(&self) -> &str` — Tool registry for managing available tools.
+-  `description` function L253-255 — `(&self) -> &str` — Tool registry for managing available tools.
+-  `parameters` function L257-259 — `(&self) -> serde_json::Value` — Tool registry for managing available tools.
+-  `execute` function L261-269 — `(&self, params: serde_json::Value, _ctx: &ToolContext) -> Result<ToolResult>` — Tool registry for managing available tools.
+-  `tests` module L273-518 — `-` — Tool registry for managing available tools.
+-  `test_registry_empty` function L279-284 — `()` — Tool registry for managing available tools.
+-  `test_registry_register_and_get` function L287-301 — `()` — Tool registry for managing available tools.
+-  `test_registry_names` function L304-313 — `()` — Tool registry for managing available tools.
+-  `test_registry_to_llm_definitions` function L316-334 — `()` — Tool registry for managing available tools.
+-  `test_mock_tool_execution` function L337-348 — `()` — Tool registry for managing available tools.
+-  `test_registry_execute` function L351-367 — `()` — Tool registry for managing available tools.
+-  `test_mock_tool_clear_calls` function L370-377 — `()` — Tool registry for managing available tools.
+-  `test_registry_output_config_for` function L379-390 — `()` — Tool registry for managing available tools.
+-  `test_registry_output_config_override` function L393-410 — `()` — Tool registry for managing available tools.
+-  `test_registry_output_config_override_all_aliases` function L413-429 — `()` — Tool registry for managing available tools.
+-  `test_filtered_by_names_includes_matching` function L431-445 — `()` — Tool registry for managing available tools.
+-  `test_filtered_by_names_excludes_non_matching` function L448-456 — `()` — Tool registry for managing available tools.
+-  `test_filtered_by_names_ignores_unknown` function L459-467 — `()` — Tool registry for managing available tools.
+-  `test_filtered_by_names_preserves_original` function L470-481 — `()` — Tool registry for managing available tools.
+-  `test_filtered_by_names_carries_output_overrides` function L484-494 — `()` — Tool registry for managing available tools.
+-  `test_filtered_by_names_llm_definitions` function L497-507 — `()` — Tool registry for managing available tools.
+-  `test_filtered_by_names_empty_allowlist` function L510-517 — `()` — Tool registry for managing available tools.
 
 #### crates/arawn-agent/src/tool/validation.rs
 
@@ -2038,11 +1818,246 @@
 -  `test_param_ext_optional_array` function L342-346 — `()` — Parameter validation error types and helper traits.
 -  `test_param_validation_error_into_agent_error` function L349-353 — `()` — Parameter validation error types and helper traits.
 
-### crates/arawn-agent/src/tools
+### crates/arawn-agent/tests
 
 > *Semantic summary to be generated by AI agent.*
 
-#### crates/arawn-agent/src/tools/catalog.rs
+#### crates/arawn-agent/tests/facade_safety_net.rs
+
+-  `reexport_core_types` function L15-28 — `()` — would also fail to compile.
+-  `reexport_error_types` function L31-40 — `()` — would also fail to compile.
+-  `reexport_tool_framework` function L43-62 — `()` — would also fail to compile.
+-  `reexport_output_config` function L65-76 — `()` — would also fail to compile.
+-  `reexport_command_validator` function L79-86 — `()` — would also fail to compile.
+-  `reexport_param_types` function L89-100 — `()` — would also fail to compile.
+-  `_check_param_ext` function L99 — `()` — would also fail to compile.
+-  `reexport_compaction_types` function L103-110 — `()` — would also fail to compile.
+-  `reexport_orchestrator_types` function L113-117 — `()` — would also fail to compile.
+-  `reexport_context_types` function L120-123 — `()` — would also fail to compile.
+-  `reexport_prompt_types` function L126-133 — `()` — would also fail to compile.
+-  `reexport_stream_types` function L136-138 — `()` — would also fail to compile.
+-  `indexing_types_accessible` function L141-146 — `()` — would also fail to compile.
+-  `reexport_rlm_types` function L149-153 — `()` — would also fail to compile.
+-  `reexport_mcp_types` function L156-162 — `()` — would also fail to compile.
+-  `reexport_fs_gate_types` function L165-171 — `()` — would also fail to compile.
+-  `smoke_shell_tool` function L178-181 — `()` — would also fail to compile.
+-  `smoke_shell_tool_with_config` function L184-188 — `()` — would also fail to compile.
+-  `smoke_file_read_tool` function L191-194 — `()` — would also fail to compile.
+-  `smoke_file_write_tool` function L197-200 — `()` — would also fail to compile.
+-  `smoke_glob_tool` function L203-206 — `()` — would also fail to compile.
+-  `smoke_grep_tool` function L209-212 — `()` — would also fail to compile.
+-  `smoke_web_fetch_tool` function L215-218 — `()` — would also fail to compile.
+-  `smoke_web_search_tool` function L221-224 — `()` — would also fail to compile.
+-  `smoke_think_tool` function L227-229 — `()` — would also fail to compile.
+-  `smoke_note_tool` function L232-235 — `()` — would also fail to compile.
+-  `smoke_memory_search_tool` function L238-240 — `()` — would also fail to compile.
+-  `module_path_tool` function L247-251 — `()` — would also fail to compile.
+-  `module_path_types` function L254-258 — `()` — would also fail to compile.
+-  `module_path_error` function L261-264 — `()` — would also fail to compile.
+-  `module_path_tools` function L267-270 — `()` — would also fail to compile.
+-  `module_path_prompt` function L273-275 — `()` — would also fail to compile.
+-  `module_path_indexing` function L278-280 — `()` — would also fail to compile.
+-  `smoke_agent_builder` function L287-300 — `()` — would also fail to compile.
+
+### crates/arawn-agent-indexing/src
+
+> *Semantic summary to be generated by AI agent.*
+
+#### crates/arawn-agent-indexing/src/extraction.rs
+
+- pub `ExtractionPrompt` struct L9 — `-` — Builds the extraction prompt for an LLM to extract entities, facts, and
+- pub `build` function L15-30 — `(messages: &[(&str, &str)]) -> String` — Format a conversation history into an extraction prompt.
+- pub `FactsOnlyPrompt` struct L96 — `-` — Builds a facts-only extraction prompt for hybrid mode.
+- pub `build` function L103-123 — `(messages: &[(&str, &str)], entity_names: &[&str]) -> String` — Build a facts-only extraction prompt with NER entity context.
+- pub `parse_extraction` function L155-172 — `(raw: &str) -> ExtractionResult` — Parse LLM output into an ExtractionResult.
+-  `ExtractionPrompt` type L11-31 — `= ExtractionPrompt` — LLM extraction prompt and JSON parser.
+-  `SYSTEM_INSTRUCTION` variable L33-60 — `: &str` — LLM extraction prompt and JSON parser.
+-  `FEW_SHOT_EXAMPLE` variable L62-89 — `: &str` — LLM extraction prompt and JSON parser.
+-  `FactsOnlyPrompt` type L98-124 — `= FactsOnlyPrompt` — LLM extraction prompt and JSON parser.
+-  `FACTS_ONLY_INSTRUCTION` variable L126-147 — `: &str` — LLM extraction prompt and JSON parser.
+-  `strip_code_fences` function L175-191 — `(s: &str) -> &str` — Strip markdown code fences from LLM output.
+-  `extract_json_object` function L194-202 — `(s: &str) -> Option<&str>` — Try to find a top-level JSON object `{...}` in the text.
+-  `tests` module L205-332 — `-` — LLM extraction prompt and JSON parser.
+-  `test_build_prompt` function L209-219 — `()` — LLM extraction prompt and JSON parser.
+-  `test_parse_valid_json` function L222-233 — `()` — LLM extraction prompt and JSON parser.
+-  `test_parse_with_code_fences` function L236-248 — `()` — LLM extraction prompt and JSON parser.
+-  `test_parse_with_surrounding_text` function L251-265 — `()` — LLM extraction prompt and JSON parser.
+-  `test_parse_malformed_returns_empty` function L268-273 — `()` — LLM extraction prompt and JSON parser.
+-  `test_parse_partial_json_missing_sections` function L276-281 — `()` — LLM extraction prompt and JSON parser.
+-  `test_parse_empty_object` function L284-289 — `()` — LLM extraction prompt and JSON parser.
+-  `test_strip_code_fences_plain` function L292-294 — `()` — LLM extraction prompt and JSON parser.
+-  `test_strip_code_fences_json` function L297-299 — `()` — LLM extraction prompt and JSON parser.
+-  `test_strip_code_fences_bare` function L302-304 — `()` — LLM extraction prompt and JSON parser.
+-  `test_facts_only_prompt_build` function L307-314 — `()` — LLM extraction prompt and JSON parser.
+-  `test_facts_only_prompt_no_entities` function L317-322 — `()` — LLM extraction prompt and JSON parser.
+-  `test_extract_json_object` function L325-331 — `()` — LLM extraction prompt and JSON parser.
+
+#### crates/arawn-agent-indexing/src/gliner.rs
+
+- pub `GlinerEngine` struct L20-23 — `{ model: Mutex<GLiNER<SpanMode>>, threshold: f32 }` — GLiNER-based NER engine using span mode.
+- pub `new` function L27-42 — `(config: &NerConfig) -> Result<Self, String>` — Create a new GlinerEngine from model and tokenizer file paths.
+-  `GlinerEngine` type L25-43 — `= GlinerEngine` — This module is only compiled when the `gliner` feature is enabled.
+-  `GlinerEngine` type L45-76 — `impl NerEngine for GlinerEngine` — This module is only compiled when the `gliner` feature is enabled.
+-  `extract` function L46-75 — `(&self, texts: &[&str], entity_labels: &[&str]) -> Result<NerOutput, String>` — This module is only compiled when the `gliner` feature is enabled.
+
+#### crates/arawn-agent-indexing/src/indexer.rs
+
+- pub `IndexerConfig` struct L33-40 — `{ model: String, max_extraction_tokens: u32, max_summary_tokens: u32 }` — Configuration for the session indexer.
+- pub `Completer` interface L54-56 — `{ fn complete() }` — Trait for LLM completion, enabling test mocking.
+- pub `BackendCompleter` struct L59-61 — `{ backend: SharedBackend }` — Production completer that uses the real LLM backend.
+- pub `new` function L64-66 — `(backend: SharedBackend) -> Self` — 5.
+- pub `SessionIndexer` struct L96-102 — `{ store: Arc<MemoryStore>, completer: Arc<dyn Completer>, embedder: Option<Share...` — Orchestrates post-session indexing: extraction, graph storage, and summarization.
+- pub `new` function L106-119 — `( store: Arc<MemoryStore>, completer: Arc<dyn Completer>, embedder: Option<Share...` — Create a new SessionIndexer with the given dependencies.
+- pub `with_backend` function L122-134 — `( store: Arc<MemoryStore>, backend: SharedBackend, embedder: Option<SharedEmbedd...` — Create a SessionIndexer using a real LLM backend.
+- pub `store` function L137-139 — `(&self) -> &Arc<MemoryStore>` — Get a reference to the underlying MemoryStore.
+- pub `with_ner_engine` function L145-148 — `(mut self, engine: Arc<dyn NerEngine>) -> Self` — Set a local NER engine for hybrid extraction.
+- pub `index_session` function L157-204 — `(&self, session_id: &str, messages: &[(&str, &str)]) -> IndexReport` — Run the full indexing pipeline for a session.
+-  `IndexerConfig` type L42-50 — `impl Default for IndexerConfig` — 5.
+-  `default` function L43-49 — `() -> Self` — 5.
+-  `BackendCompleter` type L63-67 — `= BackendCompleter` — 5.
+-  `BackendCompleter` type L70-93 — `impl Completer for BackendCompleter` — 5.
+-  `complete` function L71-92 — `(&self, model: &str, prompt: &str, max_tokens: u32) -> Result<String, String>` — 5.
+-  `SessionIndexer` type L104-469 — `= SessionIndexer` — 5.
+-  `run_extraction` function L206-217 — `(&self, messages: &[(&str, &str)]) -> Result<ExtractionResult, String>` — 5.
+-  `run_hybrid_extraction` function L220-290 — `( &self, ner: &dyn NerEngine, messages: &[(&str, &str)], ) -> ExtractionResult` — Hybrid extraction: NER for entities/relationships, LLM for facts only.
+-  `store_entities` function L292-320 — `( &self, session_id: &str, entities: &[ExtractedEntity], report: &mut IndexRepor...` — 5.
+-  `store_facts` function L322-368 — `( &self, session_id: &str, facts: &[ExtractedFact], report: &mut IndexReport, )` — 5.
+-  `store_relationships` function L370-400 — `( &self, relationships: &[ExtractedRelationship], report: &mut IndexReport, )` — 5.
+-  `store_summary` function L402-455 — `( &self, session_id: &str, messages: &[(&str, &str)], report: &mut IndexReport, ...` — 5.
+-  `embed_text` function L457-468 — `(&self, text: &str) -> Option<Vec<f32>>` — 5.
+-  `map_relationship_type` function L472-483 — `(label: &str) -> RelationshipType` — Map an extracted relationship label to a `RelationshipType`.
+-  `tests` module L486-973 — `-` — 5.
+-  `MockCompleter` struct L490-493 — `{ extraction_response: String, summary_response: String }` — Mock completer that returns pre-configured responses.
+-  `MockCompleter` type L495-509 — `= MockCompleter` — 5.
+-  `new` function L496-501 — `(extraction_json: &str, summary: &str) -> Self` — 5.
+-  `failing` function L503-508 — `() -> Self` — 5.
+-  `MockCompleter` type L512-536 — `impl Completer for MockCompleter` — 5.
+-  `complete` function L513-535 — `( &self, _model: &str, prompt: &str, _max_tokens: u32, ) -> Result<String, Strin...` — 5.
+-  `test_extraction_json` function L538-554 — `() -> String` — 5.
+-  `test_indexer_config` function L556-561 — `() -> IndexerConfig` — 5.
+-  `make_indexer` function L563-571 — `(completer: impl Completer + 'static) -> SessionIndexer` — 5.
+-  `make_indexer_with_graph` function L573-582 — `(completer: impl Completer + 'static) -> SessionIndexer` — 5.
+-  `test_index_session_empty_messages` function L585-592 — `()` — 5.
+-  `test_index_session_facts_stored` function L595-627 — `()` — 5.
+-  `test_index_session_with_graph` function L630-643 — `()` — 5.
+-  `test_index_session_no_graph_skips_entities` function L646-658 — `()` — 5.
+-  `test_index_session_extraction_failure_continues` function L661-673 — `()` — 5.
+-  `test_index_session_fact_confidence_mapping` function L676-698 — `()` — 5.
+-  `test_index_session_fact_reinforcement` function L701-739 — `()` — 5.
+-  `test_index_session_fact_supersession` function L742-785 — `()` — 5.
+-  `MockNer` struct L789-792 — `{ output: NerOutput, supports_rels: bool }` — 5.
+-  `MockNer` type L794-811 — `impl NerEngine for MockNer` — 5.
+-  `extract` function L795-797 — `(&self, _texts: &[&str], _entity_labels: &[&str]) -> Result<NerOutput, String>` — 5.
+-  `supports_relations` function L799-801 — `(&self) -> bool` — 5.
+-  `extract_relations` function L803-810 — `( &self, _texts: &[&str], _entity_labels: &[&str], _relation_labels: &[&str], ) ...` — 5.
+-  `FailingNer` struct L813 — `-` — 5.
+-  `FailingNer` type L815-819 — `impl NerEngine for FailingNer` — 5.
+-  `extract` function L816-818 — `(&self, _texts: &[&str], _entity_labels: &[&str]) -> Result<NerOutput, String>` — 5.
+-  `make_indexer_with_ner` function L821-833 — `( completer: impl Completer + 'static, ner: impl NerEngine + 'static, ) -> Sessi...` — 5.
+-  `make_indexer_with_ner_and_graph` function L835-848 — `( completer: impl Completer + 'static, ner: impl NerEngine + 'static, ) -> Sessi...` — 5.
+-  `test_hybrid_extraction_entities_from_ner` function L851-890 — `()` — 5.
+-  `test_hybrid_extraction_with_graph_stores_ner_entities` function L893-922 — `()` — 5.
+-  `test_hybrid_extraction_ner_failure_falls_back_to_llm` function L925-935 — `()` — 5.
+-  `test_map_relationship_type` function L938-972 — `()` — 5.
+
+#### crates/arawn-agent-indexing/src/lib.rs
+
+- pub `extraction` module L10 — `-` — This crate provides post-conversation processing: extracting facts,
+- pub `gliner` module L12 — `-` — dependency on the agent core or tool framework.
+- pub `indexer` module L13 — `-` — dependency on the agent core or tool framework.
+- pub `ner` module L14 — `-` — dependency on the agent core or tool framework.
+- pub `summarization` module L16 — `-` — dependency on the agent core or tool framework.
+-  `report` module L15 — `-` — dependency on the agent core or tool framework.
+-  `types` module L17 — `-` — dependency on the agent core or tool framework.
+
+#### crates/arawn-agent-indexing/src/ner.rs
+
+- pub `NerSpan` struct L13-20 — `{ text: String, label: String, score: f32 }` — A recognized entity span from NER inference.
+- pub `NerRelation` struct L24-33 — `{ subject: String, relation: String, object: String, score: f32 }` — A recognized relationship between two entities.
+- pub `NerOutput` struct L37-42 — `{ entities: Vec<NerSpan>, relations: Vec<NerRelation> }` — Output from NER engine inference.
+- pub `ENTITY_LABELS` variable L45-54 — `: &[&str]` — Entity labels used for NER inference in Arawn's domain.
+- pub `RELATION_LABELS` variable L57-66 — `: &[&str]` — Relation labels for relation extraction.
+- pub `NerEngine` interface L72-100 — `{ fn extract(), fn supports_relations(), fn extract_relations() }` — Trait for local NER inference engines.
+- pub `NerConfig` struct L104-111 — `{ model_path: String, tokenizer_path: String, threshold: f32 }` — Configuration for the NER engine.
+- pub `ner_output_to_extracted` function L127-179 — `(output: &NerOutput, threshold: f32) -> NerExtraction` — Convert NER output to Arawn's extraction types.
+- pub `NerExtraction` struct L183-186 — `{ entities: Vec<ExtractedEntity>, relationships: Vec<ExtractedRelationship> }` — Entities and relationships extracted by the NER engine.
+-  `supports_relations` function L82-84 — `(&self) -> bool` — Whether this engine supports relation extraction.
+-  `extract_relations` function L90-99 — `( &self, texts: &[&str], entity_labels: &[&str], relation_labels: &[&str], ) -> ...` — Run relation extraction on the given texts.
+-  `NerConfig` type L113-121 — `impl Default for NerConfig` — extraction: fast local NER for entities/relationships, LLM for facts only.
+-  `default` function L114-120 — `() -> Self` — extraction: fast local NER for entities/relationships, LLM for facts only.
+-  `tests` module L189-412 — `-` — extraction: fast local NER for entities/relationships, LLM for facts only.
+-  `MockNerEngine` struct L192-195 — `{ output: NerOutput, supports_rels: bool }` — extraction: fast local NER for entities/relationships, LLM for facts only.
+-  `MockNerEngine` type L197-209 — `= MockNerEngine` — extraction: fast local NER for entities/relationships, LLM for facts only.
+-  `new` function L198-203 — `(output: NerOutput) -> Self` — extraction: fast local NER for entities/relationships, LLM for facts only.
+-  `with_relations` function L205-208 — `(mut self) -> Self` — extraction: fast local NER for entities/relationships, LLM for facts only.
+-  `MockNerEngine` type L211-228 — `impl NerEngine for MockNerEngine` — extraction: fast local NER for entities/relationships, LLM for facts only.
+-  `extract` function L212-214 — `(&self, _texts: &[&str], _entity_labels: &[&str]) -> Result<NerOutput, String>` — extraction: fast local NER for entities/relationships, LLM for facts only.
+-  `supports_relations` function L216-218 — `(&self) -> bool` — extraction: fast local NER for entities/relationships, LLM for facts only.
+-  `extract_relations` function L220-227 — `( &self, _texts: &[&str], _entity_labels: &[&str], _relation_labels: &[&str], ) ...` — extraction: fast local NER for entities/relationships, LLM for facts only.
+-  `test_ner_output_to_extracted_entities` function L231-255 — `()` — extraction: fast local NER for entities/relationships, LLM for facts only.
+-  `test_ner_output_filters_by_threshold` function L258-293 — `()` — extraction: fast local NER for entities/relationships, LLM for facts only.
+-  `test_ner_output_deduplicates_entities` function L296-315 — `()` — extraction: fast local NER for entities/relationships, LLM for facts only.
+-  `test_ner_output_empty` function L318-323 — `()` — extraction: fast local NER for entities/relationships, LLM for facts only.
+-  `test_mock_ner_engine_extract` function L326-340 — `()` — extraction: fast local NER for entities/relationships, LLM for facts only.
+-  `test_mock_ner_engine_relations` function L343-372 — `()` — extraction: fast local NER for entities/relationships, LLM for facts only.
+-  `test_entity_labels_defined` function L375-381 — `()` — extraction: fast local NER for entities/relationships, LLM for facts only.
+-  `test_relation_labels_defined` function L384-388 — `()` — extraction: fast local NER for entities/relationships, LLM for facts only.
+-  `test_ner_config_default` function L391-395 — `()` — extraction: fast local NER for entities/relationships, LLM for facts only.
+-  `test_context_cleaned_in_output` function L398-411 — `()` — extraction: fast local NER for entities/relationships, LLM for facts only.
+
+#### crates/arawn-agent-indexing/src/report.rs
+
+- pub `IndexReport` struct L5-20 — `{ entities_stored: usize, facts_inserted: usize, facts_reinforced: usize, facts_...` — Report summarizing the results of indexing a session.
+- pub `total_facts` function L24-26 — `(&self) -> usize` — Total number of facts processed (inserted + reinforced + superseded).
+- pub `has_errors` function L29-31 — `(&self) -> bool` — Whether any errors occurred during indexing.
+-  `IndexReport` type L22-32 — `= IndexReport` — Index report types for session indexing pipeline results.
+-  `IndexReport` type L34-49 — `= IndexReport` — Index report types for session indexing pipeline results.
+-  `fmt` function L35-48 — `(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result` — Index report types for session indexing pipeline results.
+-  `tests` module L52-100 — `-` — Index report types for session indexing pipeline results.
+-  `test_report_default` function L56-62 — `()` — Index report types for session indexing pipeline results.
+-  `test_report_total_facts` function L65-73 — `()` — Index report types for session indexing pipeline results.
+-  `test_report_has_errors` function L76-81 — `()` — Index report types for session indexing pipeline results.
+-  `test_report_display` function L84-99 — `()` — Index report types for session indexing pipeline results.
+
+#### crates/arawn-agent-indexing/src/summarization.rs
+
+- pub `SummarizationPrompt` struct L4 — `-` — Builds the summarization prompt for an LLM to generate a concise session summary.
+- pub `build` function L11-30 — `(messages: &[(&str, &str)]) -> Option<String>` — Format a conversation history into a summarization prompt.
+- pub `clean_summary` function L53-84 — `(raw: &str) -> String` — Clean up LLM summary output by stripping common wrapper patterns.
+-  `SummarizationPrompt` type L6-31 — `= SummarizationPrompt` — Session summarization prompt and parser.
+-  `SYSTEM_INSTRUCTION` variable L33-45 — `: &str` — Session summarization prompt and parser.
+-  `tests` module L87-180 — `-` — Session summarization prompt and parser.
+-  `test_build_prompt_basic` function L91-106 — `()` — Session summarization prompt and parser.
+-  `test_build_prompt_empty_returns_none` function L109-111 — `()` — Session summarization prompt and parser.
+-  `test_build_prompt_single_message` function L114-118 — `()` — Session summarization prompt and parser.
+-  `test_build_prompt_contains_instructions` function L121-128 — `()` — Session summarization prompt and parser.
+-  `test_clean_summary_plain` function L131-136 — `()` — Session summarization prompt and parser.
+-  `test_clean_summary_strips_summary_prefix` function L139-141 — `()` — Session summarization prompt and parser.
+-  `test_clean_summary_strips_markdown_header` function L144-149 — `()` — Session summarization prompt and parser.
+-  `test_clean_summary_strips_code_fences` function L152-154 — `()` — Session summarization prompt and parser.
+-  `test_clean_summary_trims_whitespace` function L157-162 — `()` — Session summarization prompt and parser.
+-  `test_clean_summary_preserves_word_containing_summary` function L165-171 — `()` — Session summarization prompt and parser.
+-  `test_clean_summary_strips_hash_summary_colon` function L174-179 — `()` — Session summarization prompt and parser.
+
+#### crates/arawn-agent-indexing/src/types.rs
+
+- pub `ExtractionResult` struct L7-17 — `{ entities: Vec<ExtractedEntity>, facts: Vec<ExtractedFact>, relationships: Vec<...` — Result of LLM extraction from a conversation.
+- pub `ExtractedEntity` struct L21-29 — `{ name: String, entity_type: String, context: Option<String> }` — An entity extracted from conversation.
+- pub `ExtractedFact` struct L33-43 — `{ subject: String, predicate: String, object: String, confidence: String }` — A fact extracted from conversation.
+- pub `ExtractedRelationship` struct L51-58 — `{ from: String, relation: String, to: String }` — A relationship between two entities.
+-  `default_confidence` function L45-47 — `() -> String` — Types for the extraction pipeline.
+-  `tests` module L61-118 — `-` — Types for the extraction pipeline.
+-  `test_extraction_result_deserialize` function L65-85 — `()` — Types for the extraction pipeline.
+-  `test_extraction_result_missing_sections_default` function L88-94 — `()` — Types for the extraction pipeline.
+-  `test_extraction_result_empty` function L97-103 — `()` — Types for the extraction pipeline.
+-  `test_fact_default_confidence` function L106-110 — `()` — Types for the extraction pipeline.
+-  `test_entity_optional_context` function L113-117 — `()` — Types for the extraction pipeline.
+
+### crates/arawn-agent-tools/src
+
+> *Semantic summary to be generated by AI agent.*
+
+#### crates/arawn-agent-tools/src/catalog.rs
 
 - pub `CatalogTool` struct L45-48 — `{ catalog: Arc<RwLock<RuntimeCatalog>>, executor: Arc<ScriptExecutor> }` — Agent-facing tool for runtime catalog management.
 - pub `new` function L52-54 — `(catalog: Arc<RwLock<RuntimeCatalog>>, executor: Arc<ScriptExecutor>) -> Self` — Create a new catalog tool backed by the given catalog and executor.
@@ -2086,7 +2101,7 @@
 -  `test_compile_nonexistent_source` function L753-773 — `()` — from the runtime catalog.
 -  `test_action_is_number` function L776-782 — `()` — from the runtime catalog.
 
-#### crates/arawn-agent/src/tools/delegate.rs
+#### crates/arawn-agent-tools/src/delegate.rs
 
 - pub `DelegateTool` struct L34-36 — `{ spawner: SharedSubagentSpawner }` — Tool for delegating tasks to subagents.
 - pub `new` function L48-50 — `(spawner: SharedSubagentSpawner) -> Self` — Create a new delegate tool with the given subagent spawner.
@@ -2119,7 +2134,7 @@
 -  `test_format_available_agents_empty` function L420-423 — `()` — with constrained tool sets and custom system prompts.
 -  `test_format_available_agents` function L426-430 — `()` — with constrained tool sets and custom system prompts.
 
-#### crates/arawn-agent/src/tools/explore.rs
+#### crates/arawn-agent-tools/src/explore.rs
 
 - pub `ExploreTool` struct L23-25 — `{ spawner: Arc<RlmSpawner> }` — Tool that spawns an RLM exploration agent to research a query.
 - pub `new` function L29-31 — `(spawner: Arc<RlmSpawner>) -> Self` — Create a new explore tool backed by the given spawner.
@@ -2138,7 +2153,34 @@
 -  `test_explore_empty_query` function L192-200 — `()` — delegate research tasks to an isolated exploration sub-agent.
 -  `test_explore_registerable` function L203-211 — `()` — delegate research tasks to an isolated exploration sub-agent.
 
-#### crates/arawn-agent/src/tools/file.rs
+#### crates/arawn-agent-tools/src/explore_integration_tests.rs
+
+-  `mock_text_response` function L22-33 — `(text: &str) -> CompletionResponse` — together correctly.
+-  `mock_text_response_with_usage` function L35-46 — `(text: &str, input: u32, output: u32) -> CompletionResponse` — together correctly.
+-  `mock_tool_use_response` function L48-65 — `( tool_id: &str, tool_name: &str, args: serde_json::Value, ) -> CompletionRespon...` — together correctly.
+-  `make_full_registry` function L68-86 — `() -> ToolRegistry` — Create a full tool registry with both read-only and write tools.
+-  `make_spawner` function L88-90 — `(backend: MockBackend) -> Arc<RlmSpawner>` — together correctly.
+-  `make_spawner_with_config` function L92-94 — `(backend: MockBackend, config: RlmConfig) -> Arc<RlmSpawner>` — together correctly.
+-  `test_explore_tool_full_pipeline` function L101-124 — `()` — together correctly.
+-  `test_explore_tool_multi_tool_research` function L127-149 — `()` — together correctly.
+-  `test_explore_compaction_cycle` function L156-196 — `()` — together correctly.
+-  `test_explore_multiple_compaction_cycles` function L199-242 — `()` — together correctly.
+-  `test_explore_max_turns_enforced` function L249-272 — `()` — together correctly.
+-  `test_explore_max_compactions_enforced` function L275-320 — `()` — together correctly.
+-  `test_explore_token_budget_enforced` function L323-348 — `()` — together correctly.
+-  `test_explore_excludes_write_tools` function L355-375 — `()` — together correctly.
+-  `test_explore_includes_read_only_tools` function L378-397 — `()` — together correctly.
+-  `test_explore_no_recursive_spawning` function L400-415 — `()` — together correctly.
+-  `test_explore_custom_model_config` function L422-447 — `()` — together correctly.
+-  `test_rlm_config_to_agent_config_model` function L450-465 — `()` — together correctly.
+-  `test_rlm_default_config_model` function L468-479 — `()` — together correctly.
+-  `test_rlm_toml_config_to_rlm_config` function L486-532 — `()` — together correctly.
+-  `test_rlm_toml_defaults_preserve_agent_defaults` function L535-557 — `()` — together correctly.
+-  `test_explore_tool_metadata_footer_format` function L564-586 — `()` — together correctly.
+-  `test_explore_tool_compaction_metadata` function L589-627 — `()` — together correctly.
+-  `test_explore_tool_truncated_metadata` function L630-654 — `()` — together correctly.
+
+#### crates/arawn-agent-tools/src/file.rs
 
 - pub `FileReadTool` struct L60-63 — `{ base_dir: Option<String> }` — Tool for reading file contents.
 - pub `new` function L67-69 — `() -> Self` — Create a new file read tool.
@@ -2148,7 +2190,7 @@
 - pub `with_base_dir` function L202-205 — `(mut self, base_dir: impl Into<String>) -> Self` — Create a file write tool restricted to a base directory.
 - pub `allow_create` function L208-211 — `(mut self, allow: bool) -> Self` — Set whether creating new files is allowed.
 - pub `allow_overwrite` function L214-217 — `(mut self, allow: bool) -> Self` — Set whether overwriting existing files is allowed.
--  `reject_traversal` function L19-29 — `(path: &Path) -> std::result::Result<(), crate::error::AgentError>` — Reject paths that contain `..` (parent directory) traversal components.
+-  `reject_traversal` function L19-29 — `(path: &Path) -> std::result::Result<(), arawn_agent::AgentError>` — Reject paths that contain `..` (parent directory) traversal components.
 -  `normalize_path` function L35-52 — `(path: &Path) -> PathBuf` — Resolve `..` and `.` components lexically (without filesystem access).
 -  `FileReadTool` type L65-112 — `= FileReadTool` — Provides tools for reading and writing files.
 -  `resolve_path` function L79-111 — `(&self, path: &str) -> Result<std::path::PathBuf>` — Validate and resolve the file path.
@@ -2182,7 +2224,22 @@
 -  `test_file_read_traversal_rejected` function L671-681 — `()` — Provides tools for reading and writing files.
 -  `test_file_write_base_dir_traversal_nonexistent_parent` function L684-702 — `()` — Provides tools for reading and writing files.
 
-#### crates/arawn-agent/src/tools/memory.rs
+#### crates/arawn-agent-tools/src/lib.rs
+
+-  `catalog` module L10 — `-` — Each tool implements `arawn_agent::Tool` and provides a specific capability:
+-  `delegate` module L11 — `-` — Pipeline-dependent tools (catalog, workflow) are behind the `pipeline` feature.
+-  `explore` module L12 — `-` — Pipeline-dependent tools (catalog, workflow) are behind the `pipeline` feature.
+-  `file` module L13 — `-` — Pipeline-dependent tools (catalog, workflow) are behind the `pipeline` feature.
+-  `memory` module L14 — `-` — Pipeline-dependent tools (catalog, workflow) are behind the `pipeline` feature.
+-  `note` module L15 — `-` — Pipeline-dependent tools (catalog, workflow) are behind the `pipeline` feature.
+-  `search` module L16 — `-` — Pipeline-dependent tools (catalog, workflow) are behind the `pipeline` feature.
+-  `shell` module L17 — `-` — Pipeline-dependent tools (catalog, workflow) are behind the `pipeline` feature.
+-  `think` module L18 — `-` — Pipeline-dependent tools (catalog, workflow) are behind the `pipeline` feature.
+-  `web` module L19 — `-` — Pipeline-dependent tools (catalog, workflow) are behind the `pipeline` feature.
+-  `workflow` module L21 — `-` — Pipeline-dependent tools (catalog, workflow) are behind the `pipeline` feature.
+-  `explore_integration_tests` module L60 — `-` — Pipeline-dependent tools (catalog, workflow) are behind the `pipeline` feature.
+
+#### crates/arawn-agent-tools/src/memory.rs
 
 - pub `MemorySearchTool` struct L27-30 — `{ store: Option<Arc<MemoryStore>> }` — Tool for searching the agent's memory/knowledge store.
 - pub `new` function L40-42 — `() -> Self` — Create a new memory search tool (disconnected).
@@ -2207,21 +2264,7 @@
 -  `test_parse_time_range` function L323-329 — `()` — Provides a tool for searching the agent's memory/knowledge store.
 -  `test_parse_content_type_filter` function L332-345 — `()` — Provides a tool for searching the agent's memory/knowledge store.
 
-#### crates/arawn-agent/src/tools/mod.rs
-
--  `catalog` module L12 — `-` — This module provides the core tools that give the agent basic capabilities:
--  `delegate` module L13 — `-` — - Subagent delegation
--  `explore` module L14 — `-` — - Subagent delegation
--  `file` module L15 — `-` — - Subagent delegation
--  `memory` module L16 — `-` — - Subagent delegation
--  `note` module L17 — `-` — - Subagent delegation
--  `search` module L18 — `-` — - Subagent delegation
--  `shell` module L19 — `-` — - Subagent delegation
--  `think` module L20 — `-` — - Subagent delegation
--  `web` module L21 — `-` — - Subagent delegation
--  `workflow` module L22 — `-` — - Subagent delegation
-
-#### crates/arawn-agent/src/tools/note.rs
+#### crates/arawn-agent-tools/src/note.rs
 
 - pub `Note` struct L20-29 — `{ title: String, content: String, created_at: chrono::DateTime<chrono::Utc>, upd...` — A single note entry.
 - pub `new` function L33-41 — `(title: impl Into<String>, content: impl Into<String>) -> Self` — Create a new note.
@@ -2263,7 +2306,7 @@
 -  `test_delete_note` function L518-551 — `()` — Provides a tool for creating and managing notes/memory during a session.
 -  `test_shared_storage` function L554-576 — `()` — Provides a tool for creating and managing notes/memory during a session.
 
-#### crates/arawn-agent/src/tools/search.rs
+#### crates/arawn-agent-tools/src/search.rs
 
 - pub `GlobTool` struct L20-27 — `{ base_dir: Option<PathBuf>, max_results: usize, max_depth: usize }` — Tool for finding files matching glob patterns.
 - pub `new` function L31-37 — `() -> Self` — Create a new glob tool.
@@ -2313,7 +2356,7 @@
 -  `test_grep_invalid_regex` function L746-757 — `()` — Provides tools for searching files by pattern and content.
 -  `test_should_search_file` function L760-776 — `()` — Provides tools for searching files by pattern and content.
 
-#### crates/arawn-agent/src/tools/shell.rs
+#### crates/arawn-agent-tools/src/shell.rs
 
 - pub `ShellConfig` struct L29-42 — `{ timeout: Duration, working_dir: Option<String>, allowed_commands: Vec<String>,...` — Configuration for shell command execution.
 - pub `new` function L70-72 — `() -> Self` — Create a new shell configuration with defaults.
@@ -2402,7 +2445,7 @@
 -  `test_timeout_enforcement` function L1405-1421 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
 -  `test_output_truncation_security` function L1424-1444 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
 
-#### crates/arawn-agent/src/tools/think.rs
+#### crates/arawn-agent-tools/src/think.rs
 
 - pub `ThinkTool` struct L25-27 — `{ store: Arc<MemoryStore> }` — Tool for persisting internal reasoning as Thought memories.
 - pub `new` function L31-33 — `(store: Arc<MemoryStore>) -> Self` — Create a new think tool backed by the given memory store.
@@ -2419,7 +2462,7 @@
 -  `test_think_missing_param` function L138-150 — `()` — for recall in subsequent turns but not shown to the user.
 -  `test_think_empty_thought` function L153-160 — `()` — for recall in subsequent turns but not shown to the user.
 
-#### crates/arawn-agent/src/tools/web.rs
+#### crates/arawn-agent-tools/src/web.rs
 
 - pub `WebFetchConfig` struct L88-99 — `{ timeout: Duration, max_size: usize, user_agent: String, extract_text: bool, ma...` — Configuration for web fetching.
 - pub `WebFetchTool` struct L116-119 — `{ client: Client, config: WebFetchConfig }` — Tool for fetching web page content.
@@ -2496,7 +2539,7 @@
 -  `test_web_fetch_cancelled` function L1465-1483 — `()` — Provides tools for web search and URL fetching.
 -  `test_web_fetch_missing_url` function L1486-1492 — `()` — Provides tools for web search and URL fetching.
 
-#### crates/arawn-agent/src/tools/workflow.rs
+#### crates/arawn-agent-tools/src/workflow.rs
 
 - pub `WorkflowTool` struct L43-48 — `{ engine: Arc<PipelineEngine>, workflow_dir: PathBuf, executor: Arc<ScriptExecut...` — Agent-facing tool for workflow management.
 - pub `new` function L52-64 — `( engine: Arc<PipelineEngine>, workflow_dir: PathBuf, executor: Arc<ScriptExecut...` — Create a new workflow tool backed by the given engine, executor, and catalog.
@@ -3439,49 +3482,49 @@
 
 #### crates/arawn-domain/src/services/chat.rs
 
-- pub `ChatResponse` struct L24-37 — `{ session_id: SessionId, response: String, truncated: bool, input_tokens: u32, o...` — Response from a chat turn.
-- pub `ToolCallSummary` struct L41-48 — `{ id: String, name: String, success: bool }` — Summary of a tool call.
-- pub `TurnOptions` struct L60-63 — `{ max_message_bytes: Option<usize> }` — Options for executing a turn.
-- pub `ChatService` struct L67-72 — `{ agent: Arc<Agent>, workstreams: Option<Arc<WorkstreamManager>>, directory_mana...` — Chat service for conversation orchestration.
-- pub `new` function L76-88 — `( agent: Arc<Agent>, workstreams: Option<Arc<WorkstreamManager>>, directory_mana...` — Create a new chat service.
-- pub `agent` function L91-93 — `(&self) -> &Arc<Agent>` — Get the underlying agent.
-- pub `workstreams` function L96-98 — `(&self) -> Option<&Arc<WorkstreamManager>>` — Get the workstream manager.
-- pub `directory_manager` function L101-103 — `(&self) -> Option<&Arc<DirectoryManager>>` — Get the directory manager.
-- pub `indexer` function L106-108 — `(&self) -> Option<&Arc<SessionIndexer>>` — Get the session indexer.
-- pub `turn` function L117-141 — `( &self, session: &mut Session, message: &str, workstream_id: Option<&str>, ) ->...` — Execute a chat turn with an existing session.
-- pub `create_scratch_session` function L144-150 — `(&self, session_id: &str) -> Result<()>` — Create a scratch session directory.
-- pub `allowed_paths` function L153-161 — `( &self, workstream_id: &str, session_id: &str, ) -> Option<Vec<std::path::PathB...` — Get allowed paths for a session.
-- pub `index_session` function L164-185 — `(&self, session_id: &str, session: &Session)` — Index a closed session for memory search.
--  `ChatService` type L74-215 — `= ChatService` — and workstream persistence.
--  `build_response` function L188-214 — `(&self, session_id: SessionId, response: &AgentResponse) -> ChatResponse` — Build a ChatResponse from an AgentResponse.
--  `session_to_messages` function L218-227 — `(session: &Session) -> Vec<(String, String)>` — Convert a session's turns into owned `(role, content)` pairs.
--  `messages_as_refs` function L230-235 — `(messages: &[(String, String)]) -> Vec<(&str, &str)>` — Convert owned message pairs to borrowed slices for the indexer API.
--  `tests` module L238-576 — `-` — and workstream persistence.
--  `create_test_agent` function L243-252 — `() -> Arc<Agent>` — and workstream persistence.
--  `test_chat_turn` function L255-264 — `()` — and workstream persistence.
--  `test_chat_turn_token_counts` function L267-276 — `()` — and workstream persistence.
--  `test_chat_multiple_turns` function L279-318 — `()` — and workstream persistence.
--  `test_session_to_messages` function L321-333 — `()` — and workstream persistence.
--  `test_session_to_messages_empty` function L336-340 — `()` — and workstream persistence.
--  `test_session_to_messages_multiple_turns` function L343-362 — `()` — and workstream persistence.
--  `test_session_to_messages_incomplete_turn` function L365-374 — `()` — and workstream persistence.
--  `test_messages_as_refs` function L377-386 — `()` — and workstream persistence.
--  `test_messages_as_refs_empty` function L389-393 — `()` — and workstream persistence.
--  `test_chat_response_fields` function L396-409 — `()` — and workstream persistence.
--  `test_chat_response_truncated` function L412-422 — `()` — and workstream persistence.
--  `test_chat_response_with_tool_calls` function L425-448 — `()` — and workstream persistence.
--  `test_chat_response_clone` function L451-467 — `()` — and workstream persistence.
--  `test_chat_response_debug` function L470-481 — `()` — and workstream persistence.
--  `test_tool_call_summary_fields` function L484-493 — `()` — and workstream persistence.
--  `test_tool_call_summary_clone` function L496-505 — `()` — and workstream persistence.
--  `test_tool_call_summary_debug` function L508-516 — `()` — and workstream persistence.
--  `test_turn_options_default` function L519-522 — `()` — and workstream persistence.
--  `test_turn_options_with_max_bytes` function L525-530 — `()` — and workstream persistence.
--  `test_turn_options_clone` function L533-539 — `()` — and workstream persistence.
--  `test_turn_options_debug` function L542-546 — `()` — and workstream persistence.
--  `test_chat_service_accessors_none` function L549-556 — `()` — and workstream persistence.
--  `test_chat_service_agent_accessor` function L559-565 — `()` — and workstream persistence.
--  `test_chat_service_clone` function L568-575 — `()` — and workstream persistence.
+- pub `ChatResponse` struct L25-38 — `{ session_id: SessionId, response: String, truncated: bool, input_tokens: u32, o...` — Response from a chat turn.
+- pub `ToolCallSummary` struct L42-49 — `{ id: String, name: String, success: bool }` — Summary of a tool call.
+- pub `TurnOptions` struct L61-64 — `{ max_message_bytes: Option<usize> }` — Options for executing a turn.
+- pub `ChatService` struct L68-73 — `{ agent: Arc<Agent>, workstreams: Option<Arc<WorkstreamManager>>, directory_mana...` — Chat service for conversation orchestration.
+- pub `new` function L77-89 — `( agent: Arc<Agent>, workstreams: Option<Arc<WorkstreamManager>>, directory_mana...` — Create a new chat service.
+- pub `agent` function L92-94 — `(&self) -> &Arc<Agent>` — Get the underlying agent.
+- pub `workstreams` function L97-99 — `(&self) -> Option<&Arc<WorkstreamManager>>` — Get the workstream manager.
+- pub `directory_manager` function L102-104 — `(&self) -> Option<&Arc<DirectoryManager>>` — Get the directory manager.
+- pub `indexer` function L107-109 — `(&self) -> Option<&Arc<SessionIndexer>>` — Get the session indexer.
+- pub `turn` function L118-142 — `( &self, session: &mut Session, message: &str, workstream_id: Option<&str>, ) ->...` — Execute a chat turn with an existing session.
+- pub `create_scratch_session` function L145-151 — `(&self, session_id: &str) -> Result<()>` — Create a scratch session directory.
+- pub `allowed_paths` function L154-162 — `( &self, workstream_id: &str, session_id: &str, ) -> Option<Vec<std::path::PathB...` — Get allowed paths for a session.
+- pub `index_session` function L165-186 — `(&self, session_id: &str, session: &Session)` — Index a closed session for memory search.
+-  `ChatService` type L75-216 — `= ChatService` — and workstream persistence.
+-  `build_response` function L189-215 — `(&self, session_id: SessionId, response: &AgentResponse) -> ChatResponse` — Build a ChatResponse from an AgentResponse.
+-  `session_to_messages` function L219-228 — `(session: &Session) -> Vec<(String, String)>` — Convert a session's turns into owned `(role, content)` pairs.
+-  `messages_as_refs` function L231-236 — `(messages: &[(String, String)]) -> Vec<(&str, &str)>` — Convert owned message pairs to borrowed slices for the indexer API.
+-  `tests` module L239-577 — `-` — and workstream persistence.
+-  `create_test_agent` function L244-253 — `() -> Arc<Agent>` — and workstream persistence.
+-  `test_chat_turn` function L256-265 — `()` — and workstream persistence.
+-  `test_chat_turn_token_counts` function L268-277 — `()` — and workstream persistence.
+-  `test_chat_multiple_turns` function L280-319 — `()` — and workstream persistence.
+-  `test_session_to_messages` function L322-334 — `()` — and workstream persistence.
+-  `test_session_to_messages_empty` function L337-341 — `()` — and workstream persistence.
+-  `test_session_to_messages_multiple_turns` function L344-363 — `()` — and workstream persistence.
+-  `test_session_to_messages_incomplete_turn` function L366-375 — `()` — and workstream persistence.
+-  `test_messages_as_refs` function L378-387 — `()` — and workstream persistence.
+-  `test_messages_as_refs_empty` function L390-394 — `()` — and workstream persistence.
+-  `test_chat_response_fields` function L397-410 — `()` — and workstream persistence.
+-  `test_chat_response_truncated` function L413-423 — `()` — and workstream persistence.
+-  `test_chat_response_with_tool_calls` function L426-449 — `()` — and workstream persistence.
+-  `test_chat_response_clone` function L452-468 — `()` — and workstream persistence.
+-  `test_chat_response_debug` function L471-482 — `()` — and workstream persistence.
+-  `test_tool_call_summary_fields` function L485-494 — `()` — and workstream persistence.
+-  `test_tool_call_summary_clone` function L497-506 — `()` — and workstream persistence.
+-  `test_tool_call_summary_debug` function L509-517 — `()` — and workstream persistence.
+-  `test_turn_options_default` function L520-523 — `()` — and workstream persistence.
+-  `test_turn_options_with_max_bytes` function L526-531 — `()` — and workstream persistence.
+-  `test_turn_options_clone` function L534-540 — `()` — and workstream persistence.
+-  `test_turn_options_debug` function L543-547 — `()` — and workstream persistence.
+-  `test_chat_service_accessors_none` function L550-557 — `()` — and workstream persistence.
+-  `test_chat_service_agent_accessor` function L560-566 — `()` — and workstream persistence.
+-  `test_chat_service_clone` function L569-576 — `()` — and workstream persistence.
 
 #### crates/arawn-domain/src/services/mcp.rs
 
@@ -3540,23 +3583,23 @@
 - pub `chat` module L6 — `-` — This module contains the core domain services that orchestrate
 - pub `mcp` module L7 — `-` — Arawn's functionality.
 - pub `memory` module L8 — `-` — Arawn's functionality.
-- pub `DomainServices` struct L34-41 — `{ chat: chat::ChatService, mcp: mcp::McpService, memory: MemoryService }` — Domain services facade.
-- pub `new` function L47-68 — `( agent: Arc<Agent>, workstreams: Option<Arc<WorkstreamManager>>, directory_mana...` — Create new domain services with the given components.
-- pub `chat` function L71-73 — `(&self) -> &chat::ChatService` — Get the chat service.
-- pub `mcp` function L76-78 — `(&self) -> &mcp::McpService` — Get the MCP service.
-- pub `memory` function L81-83 — `(&self) -> &MemoryService` — Get the memory service.
-- pub `agent` function L86-88 — `(&self) -> &Arc<Agent>` — Get the underlying agent.
--  `DomainServices` type L43-89 — `= DomainServices` — Arawn's functionality.
--  `tests` module L92-178 — `-` — Arawn's functionality.
--  `create_test_agent` function L97-106 — `() -> Arc<Agent>` — Arawn's functionality.
--  `test_domain_services_creation` function L109-116 — `()` — Arawn's functionality.
--  `test_domain_services_memory_disabled` function L119-124 — `()` — Arawn's functionality.
--  `test_domain_services_memory_enabled` function L127-133 — `()` — Arawn's functionality.
--  `test_domain_services_clone` function L136-143 — `()` — Arawn's functionality.
--  `test_domain_services_mcp_disabled` function L146-150 — `()` — Arawn's functionality.
--  `test_domain_services_mcp_enabled` function L153-158 — `()` — Arawn's functionality.
--  `test_domain_services_chat_accessor` function L161-169 — `()` — Arawn's functionality.
--  `test_domain_services_agent_accessor` function L172-177 — `()` — Arawn's functionality.
+- pub `DomainServices` struct L35-42 — `{ chat: chat::ChatService, mcp: mcp::McpService, memory: MemoryService }` — Domain services facade.
+- pub `new` function L48-69 — `( agent: Arc<Agent>, workstreams: Option<Arc<WorkstreamManager>>, directory_mana...` — Create new domain services with the given components.
+- pub `chat` function L72-74 — `(&self) -> &chat::ChatService` — Get the chat service.
+- pub `mcp` function L77-79 — `(&self) -> &mcp::McpService` — Get the MCP service.
+- pub `memory` function L82-84 — `(&self) -> &MemoryService` — Get the memory service.
+- pub `agent` function L87-89 — `(&self) -> &Arc<Agent>` — Get the underlying agent.
+-  `DomainServices` type L44-90 — `= DomainServices` — Arawn's functionality.
+-  `tests` module L93-179 — `-` — Arawn's functionality.
+-  `create_test_agent` function L98-107 — `() -> Arc<Agent>` — Arawn's functionality.
+-  `test_domain_services_creation` function L110-117 — `()` — Arawn's functionality.
+-  `test_domain_services_memory_disabled` function L120-125 — `()` — Arawn's functionality.
+-  `test_domain_services_memory_enabled` function L128-134 — `()` — Arawn's functionality.
+-  `test_domain_services_clone` function L137-144 — `()` — Arawn's functionality.
+-  `test_domain_services_mcp_disabled` function L147-151 — `()` — Arawn's functionality.
+-  `test_domain_services_mcp_enabled` function L154-159 — `()` — Arawn's functionality.
+-  `test_domain_services_chat_accessor` function L162-170 — `()` — Arawn's functionality.
+-  `test_domain_services_agent_accessor` function L173-178 — `()` — Arawn's functionality.
 
 ### crates/arawn-llm/src
 
@@ -7941,54 +7984,54 @@
 
 #### crates/arawn-test-utils/src/mock_tools.rs
 
-- pub `EchoTool` struct L19 — `-` — A tool that echoes its input back.
-- pub `MockReadFileTool` struct L63-66 — `{ files: std::collections::HashMap<String, String> }` — A mock file reader that returns canned content based on path.
-- pub `new` function L70-81 — `() -> Self` — Create a new mock file reader with default files.
-- pub `with_file` function L84-87 — `(mut self, path: impl Into<String>, content: impl Into<String>) -> Self` — Add a file to the mock filesystem.
-- pub `FailTool` struct L139 — `-` — A tool that always returns an error.
-- pub `SlowTool` struct L183-185 — `{ delay: std::time::Duration }` — A tool that sleeps for a configurable duration before responding.
-- pub `new` function L188-190 — `(delay: std::time::Duration) -> Self` — the full tool-execution pipeline.
-- pub `LargeOutputTool` struct L236-238 — `{ output_size: usize }` — A tool that returns a very large output.
-- pub `new` function L241-243 — `(output_size: usize) -> Self` — the full tool-execution pipeline.
-- pub `mock_tool_registry` function L278-284 — `() -> arawn_agent::ToolRegistry` — Create a `ToolRegistry` pre-loaded with all mock tools (echo, read_file, fail_tool).
--  `EchoTool` type L22-55 — `impl Tool for EchoTool` — the full tool-execution pipeline.
--  `name` function L23-25 — `(&self) -> &str` — the full tool-execution pipeline.
--  `description` function L27-29 — `(&self) -> &str` — the full tool-execution pipeline.
--  `parameters` function L31-42 — `(&self) -> serde_json::Value` — the full tool-execution pipeline.
--  `execute` function L44-54 — `( &self, params: serde_json::Value, _ctx: &ToolContext, ) -> arawn_agent::Result...` — the full tool-execution pipeline.
--  `MockReadFileTool` type L68-88 — `= MockReadFileTool` — the full tool-execution pipeline.
--  `MockReadFileTool` type L90-94 — `impl Default for MockReadFileTool` — the full tool-execution pipeline.
--  `default` function L91-93 — `() -> Self` — the full tool-execution pipeline.
--  `MockReadFileTool` type L97-131 — `impl Tool for MockReadFileTool` — the full tool-execution pipeline.
--  `name` function L98-100 — `(&self) -> &str` — the full tool-execution pipeline.
--  `description` function L102-104 — `(&self) -> &str` — the full tool-execution pipeline.
--  `parameters` function L106-117 — `(&self) -> serde_json::Value` — the full tool-execution pipeline.
--  `execute` function L119-130 — `( &self, params: serde_json::Value, _ctx: &ToolContext, ) -> arawn_agent::Result...` — the full tool-execution pipeline.
--  `FailTool` type L142-174 — `impl Tool for FailTool` — the full tool-execution pipeline.
--  `name` function L143-145 — `(&self) -> &str` — the full tool-execution pipeline.
--  `description` function L147-149 — `(&self) -> &str` — the full tool-execution pipeline.
--  `parameters` function L151-161 — `(&self) -> serde_json::Value` — the full tool-execution pipeline.
--  `execute` function L163-173 — `( &self, params: serde_json::Value, _ctx: &ToolContext, ) -> arawn_agent::Result...` — the full tool-execution pipeline.
--  `SlowTool` type L187-191 — `= SlowTool` — the full tool-execution pipeline.
--  `SlowTool` type L194-227 — `impl Tool for SlowTool` — the full tool-execution pipeline.
--  `name` function L195-197 — `(&self) -> &str` — the full tool-execution pipeline.
--  `description` function L199-201 — `(&self) -> &str` — the full tool-execution pipeline.
--  `parameters` function L203-213 — `(&self) -> serde_json::Value` — the full tool-execution pipeline.
--  `execute` function L215-226 — `( &self, params: serde_json::Value, _ctx: &ToolContext, ) -> arawn_agent::Result...` — the full tool-execution pipeline.
--  `LargeOutputTool` type L240-244 — `= LargeOutputTool` — the full tool-execution pipeline.
--  `LargeOutputTool` type L247-271 — `impl Tool for LargeOutputTool` — the full tool-execution pipeline.
--  `name` function L248-250 — `(&self) -> &str` — the full tool-execution pipeline.
--  `description` function L252-254 — `(&self) -> &str` — the full tool-execution pipeline.
--  `parameters` function L256-261 — `(&self) -> serde_json::Value` — the full tool-execution pipeline.
--  `execute` function L263-270 — `( &self, _params: serde_json::Value, _ctx: &ToolContext, ) -> arawn_agent::Resul...` — the full tool-execution pipeline.
--  `tests` module L287-362 — `-` — the full tool-execution pipeline.
--  `test_context` function L291-293 — `() -> ToolContext` — the full tool-execution pipeline.
--  `test_echo_tool` function L296-305 — `()` — the full tool-execution pipeline.
--  `test_read_file_found` function L308-317 — `()` — the full tool-execution pipeline.
--  `test_read_file_not_found` function L320-328 — `()` — the full tool-execution pipeline.
--  `test_read_file_custom` function L331-340 — `()` — the full tool-execution pipeline.
--  `test_fail_tool` function L343-352 — `()` — the full tool-execution pipeline.
--  `test_mock_registry` function L355-361 — `()` — the full tool-execution pipeline.
+- pub `EchoTool` struct L22 — `-` — A tool that echoes its input back.
+- pub `MockReadFileTool` struct L66-69 — `{ files: std::collections::HashMap<String, String> }` — A mock file reader that returns canned content based on path.
+- pub `new` function L73-84 — `() -> Self` — Create a new mock file reader with default files.
+- pub `with_file` function L87-90 — `(mut self, path: impl Into<String>, content: impl Into<String>) -> Self` — Add a file to the mock filesystem.
+- pub `FailTool` struct L142 — `-` — A tool that always returns an error.
+- pub `SlowTool` struct L186-188 — `{ delay: std::time::Duration }` — A tool that sleeps for a configurable duration before responding.
+- pub `new` function L191-193 — `(delay: std::time::Duration) -> Self` — (re-exported from this crate as `arawn_test_utils::MockTool`).
+- pub `LargeOutputTool` struct L239-241 — `{ output_size: usize }` — A tool that returns a very large output.
+- pub `new` function L244-246 — `(output_size: usize) -> Self` — (re-exported from this crate as `arawn_test_utils::MockTool`).
+- pub `mock_tool_registry` function L281-287 — `() -> arawn_agent::ToolRegistry` — Create a `ToolRegistry` pre-loaded with all mock tools (echo, read_file, fail_tool).
+-  `EchoTool` type L25-58 — `impl Tool for EchoTool` — (re-exported from this crate as `arawn_test_utils::MockTool`).
+-  `name` function L26-28 — `(&self) -> &str` — (re-exported from this crate as `arawn_test_utils::MockTool`).
+-  `description` function L30-32 — `(&self) -> &str` — (re-exported from this crate as `arawn_test_utils::MockTool`).
+-  `parameters` function L34-45 — `(&self) -> serde_json::Value` — (re-exported from this crate as `arawn_test_utils::MockTool`).
+-  `execute` function L47-57 — `( &self, params: serde_json::Value, _ctx: &ToolContext, ) -> arawn_agent::Result...` — (re-exported from this crate as `arawn_test_utils::MockTool`).
+-  `MockReadFileTool` type L71-91 — `= MockReadFileTool` — (re-exported from this crate as `arawn_test_utils::MockTool`).
+-  `MockReadFileTool` type L93-97 — `impl Default for MockReadFileTool` — (re-exported from this crate as `arawn_test_utils::MockTool`).
+-  `default` function L94-96 — `() -> Self` — (re-exported from this crate as `arawn_test_utils::MockTool`).
+-  `MockReadFileTool` type L100-134 — `impl Tool for MockReadFileTool` — (re-exported from this crate as `arawn_test_utils::MockTool`).
+-  `name` function L101-103 — `(&self) -> &str` — (re-exported from this crate as `arawn_test_utils::MockTool`).
+-  `description` function L105-107 — `(&self) -> &str` — (re-exported from this crate as `arawn_test_utils::MockTool`).
+-  `parameters` function L109-120 — `(&self) -> serde_json::Value` — (re-exported from this crate as `arawn_test_utils::MockTool`).
+-  `execute` function L122-133 — `( &self, params: serde_json::Value, _ctx: &ToolContext, ) -> arawn_agent::Result...` — (re-exported from this crate as `arawn_test_utils::MockTool`).
+-  `FailTool` type L145-177 — `impl Tool for FailTool` — (re-exported from this crate as `arawn_test_utils::MockTool`).
+-  `name` function L146-148 — `(&self) -> &str` — (re-exported from this crate as `arawn_test_utils::MockTool`).
+-  `description` function L150-152 — `(&self) -> &str` — (re-exported from this crate as `arawn_test_utils::MockTool`).
+-  `parameters` function L154-164 — `(&self) -> serde_json::Value` — (re-exported from this crate as `arawn_test_utils::MockTool`).
+-  `execute` function L166-176 — `( &self, params: serde_json::Value, _ctx: &ToolContext, ) -> arawn_agent::Result...` — (re-exported from this crate as `arawn_test_utils::MockTool`).
+-  `SlowTool` type L190-194 — `= SlowTool` — (re-exported from this crate as `arawn_test_utils::MockTool`).
+-  `SlowTool` type L197-230 — `impl Tool for SlowTool` — (re-exported from this crate as `arawn_test_utils::MockTool`).
+-  `name` function L198-200 — `(&self) -> &str` — (re-exported from this crate as `arawn_test_utils::MockTool`).
+-  `description` function L202-204 — `(&self) -> &str` — (re-exported from this crate as `arawn_test_utils::MockTool`).
+-  `parameters` function L206-216 — `(&self) -> serde_json::Value` — (re-exported from this crate as `arawn_test_utils::MockTool`).
+-  `execute` function L218-229 — `( &self, params: serde_json::Value, _ctx: &ToolContext, ) -> arawn_agent::Result...` — (re-exported from this crate as `arawn_test_utils::MockTool`).
+-  `LargeOutputTool` type L243-247 — `= LargeOutputTool` — (re-exported from this crate as `arawn_test_utils::MockTool`).
+-  `LargeOutputTool` type L250-274 — `impl Tool for LargeOutputTool` — (re-exported from this crate as `arawn_test_utils::MockTool`).
+-  `name` function L251-253 — `(&self) -> &str` — (re-exported from this crate as `arawn_test_utils::MockTool`).
+-  `description` function L255-257 — `(&self) -> &str` — (re-exported from this crate as `arawn_test_utils::MockTool`).
+-  `parameters` function L259-264 — `(&self) -> serde_json::Value` — (re-exported from this crate as `arawn_test_utils::MockTool`).
+-  `execute` function L266-273 — `( &self, _params: serde_json::Value, _ctx: &ToolContext, ) -> arawn_agent::Resul...` — (re-exported from this crate as `arawn_test_utils::MockTool`).
+-  `tests` module L290-365 — `-` — (re-exported from this crate as `arawn_test_utils::MockTool`).
+-  `test_context` function L294-296 — `() -> ToolContext` — (re-exported from this crate as `arawn_test_utils::MockTool`).
+-  `test_echo_tool` function L299-308 — `()` — (re-exported from this crate as `arawn_test_utils::MockTool`).
+-  `test_read_file_found` function L311-320 — `()` — (re-exported from this crate as `arawn_test_utils::MockTool`).
+-  `test_read_file_not_found` function L323-331 — `()` — (re-exported from this crate as `arawn_test_utils::MockTool`).
+-  `test_read_file_custom` function L334-343 — `()` — (re-exported from this crate as `arawn_test_utils::MockTool`).
+-  `test_fail_tool` function L346-355 — `()` — (re-exported from this crate as `arawn_test_utils::MockTool`).
+-  `test_mock_registry` function L358-364 — `()` — (re-exported from this crate as `arawn_test_utils::MockTool`).
 
 #### crates/arawn-test-utils/src/server.rs
 

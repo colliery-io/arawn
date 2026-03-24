@@ -1,0 +1,50 @@
+[package]
+name = "arawn-agent-tools"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Built-in tool implementations for the Arawn agent"
+
+[dependencies]
+# Core agent (for Tool trait, ToolContext, ToolResult, params, error)
+arawn-agent = { path = "../arawn-agent" }
+
+# External arawn crates used by specific tools
+arawn-types = { workspace = true }
+arawn-memory = { workspace = true }
+arawn-pipeline = { workspace = true, optional = true }
+
+# Common deps
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+async-trait = "0.1"
+tracing = { workspace = true }
+dirs = { workspace = true }
+
+# Tool-specific deps
+reqwest = { workspace = true }         # web.rs
+scraper = "0.23"                       # web.rs
+url = "2"                              # web.rs
+urlencoding = "2"                      # web.rs
+futures = "0.3"                        # web.rs (streaming)
+regex = "1"                            # search.rs
+walkdir = "2"                          # search.rs
+glob = "0.3"                           # search.rs
+portable-pty = "0.8"                   # shell.rs
+chrono = { workspace = true }          # note.rs
+uuid = { workspace = true }            # note.rs
+cloacina-workflow = { version = "0.3.1", optional = true }  # workflow.rs
+
+[features]
+default = ["pipeline"]
+pipeline = ["dep:arawn-pipeline", "dep:cloacina-workflow"]  # catalog.rs, workflow.rs
+
+[dev-dependencies]
+arawn-agent = { path = "../arawn-agent", features = ["testing"] }
+arawn-config = { workspace = true }
+arawn-llm = { workspace = true, features = ["testing"] }
+tempfile = "3.10"
+tokio = { workspace = true }
+tokio-util = "0.7"

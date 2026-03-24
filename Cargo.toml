@@ -9,6 +9,8 @@ members = [
     "crates/arawn-memory",
     "crates/arawn-llm",
     "crates/arawn-agent",
+    "crates/arawn-agent-indexing",
+    "crates/arawn-agent-tools",
     "crates/arawn-server",
     "crates/arawn-oauth",
     "crates/arawn-workstream",

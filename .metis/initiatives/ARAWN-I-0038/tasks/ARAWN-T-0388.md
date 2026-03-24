@@ -4,14 +4,14 @@ level: task
 title: "Phase 1: Update arawn-agent to re-export arawn-agent-indexing, verify full workspace pass"
 short_code: "ARAWN-T-0388"
 created_at: 2026-03-23T13:58:53.780094+00:00
-updated_at: 2026-03-23T13:58:53.780094+00:00
+updated_at: 2026-03-23T20:24:40.995480+00:00
 parent: ARAWN-I-0038
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -63,6 +63,10 @@ initiative_id: ARAWN-I-0038
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria **[REQUIRED]**
 
@@ -133,4 +137,13 @@ initiative_id: ARAWN-I-0038
 
 ## Status Updates **[REQUIRED]**
 
-*To be added during implementation*
+### 2026-03-23: Completed
+- Added `arawn-agent-indexing` as dependency of arawn-agent
+- Replaced `pub mod indexing;` with `pub use arawn_agent_indexing as indexing;` — maintains `arawn_agent::indexing::*` path compatibility
+- Forwarded `gliner` feature flag: arawn-agent's `gliner` feature now enables `arawn-agent-indexing/gliner`
+- Removed old `crates/arawn-agent/src/indexing/` directory
+- **Full workspace compiles clean**
+- **33 facade safety-net tests pass** — re-exports work correctly through the alias
+- **Test count preserved**: arawn-agent 584 + arawn-agent-indexing 55 = 639 (matches baseline)
+
+This is the first successful crate extraction for I-0038.

@@ -10,11 +10,12 @@ use anyhow::Result;
 use clap::Args;
 
 use arawn_agent::{
-    Agent, IndexerConfig, McpToolAdapter, PromptMode, SessionIndexer, SystemPromptBuilder, Tool,
-    ToolRegistry, tools,
+    Agent, McpToolAdapter, PromptMode, SystemPromptBuilder, Tool, ToolRegistry,
 };
+use arawn_agent_tools as tools;
+use arawn_agent_indexing::{IndexerConfig, SessionIndexer};
 #[cfg(feature = "gliner")]
-use arawn_agent::{GlinerEngine, NerConfig};
+use arawn_agent_indexing::{GlinerEngine, NerConfig};
 use arawn_config::EmbeddingProvider;
 use arawn_config::{self, Backend, LlmConfig, ResolvedLlm};
 use arawn_llm::{
@@ -1104,7 +1105,8 @@ pub async fn run(args: StartArgs, ctx: &Context) -> Result<()> {
     // ── Explore tool (RLM exploration agent) ────────────────────────────────
 
     {
-        use arawn_agent::{ExploreTool, RlmConfig, RlmSpawner};
+        use arawn_agent::{RlmConfig, RlmSpawner};
+        use arawn_agent_tools::ExploreTool;
 
         let mut rlm_config = RlmConfig::default();
 
