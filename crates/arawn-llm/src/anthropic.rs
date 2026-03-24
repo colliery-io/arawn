@@ -128,10 +128,7 @@ pub struct AnthropicBackend {
 impl AnthropicBackend {
     /// Create a new Anthropic backend with the given configuration.
     pub fn new(config: AnthropicConfig) -> Result<Self> {
-        let client = Client::builder()
-            .timeout(config.timeout)
-            .build()
-            .map_err(|e| LlmError::Internal(format!("Failed to create HTTP client: {}", e)))?;
+        let client = crate::common::build_http_client(config.timeout)?;
 
         Ok(Self { client, config })
     }
@@ -177,32 +174,20 @@ impl AnthropicBackend {
     async fn handle_error_response(response: Response) -> LlmError {
         let status = response.status();
 
-        // Extract Retry-After header before consuming response
-        let retry_after_header = response
-            .headers()
-            .get("retry-after")
-            .and_then(|v| v.to_str().ok())
-            .map(|s| s.to_string());
+        use crate::common::{ProviderErrorResponse, extract_retry_after, map_error_response, map_raw_error};
 
+        let retry_after = extract_retry_after(response.headers());
         let body = response.text().await.unwrap_or_default();
 
-        // Try to parse as API error
-        if let Ok(error) = serde_json::from_str::<ApiError>(&body) {
-            match status.as_u16() {
-                401 => LlmError::Auth(format!("Authentication failed: {}", error.error.message)),
-                429 => {
-                    // Parse rate limit info with Retry-After header
-                    let info = crate::error::RateLimitInfo::parse_openai(
-                        &error.error.message,
-                        retry_after_header.as_deref(),
-                    );
-                    LlmError::RateLimit(info)
-                }
-                500..=599 => LlmError::Backend(format!("Server error: {}", error.error.message)),
-                _ => LlmError::Backend(error.error.message),
-            }
+        if let Ok(error) = serde_json::from_str::<ProviderErrorResponse>(&body) {
+            map_error_response(
+                status.as_u16(),
+                &error.error.message,
+                retry_after.as_deref(),
+                false, // Anthropic doesn't use Groq-style retry
+            )
         } else {
-            LlmError::Backend(format!("HTTP {}: {}", status, body))
+            map_raw_error(status, &body)
         }
     }
 }
@@ -298,13 +283,7 @@ impl From<ApiResponse> for CompletionResponse {
             })
             .collect();
 
-        let stop_reason = api.stop_reason.as_deref().map(|s| match s {
-            "end_turn" => StopReason::EndTurn,
-            "tool_use" => StopReason::ToolUse,
-            "max_tokens" => StopReason::MaxTokens,
-            "stop_sequence" => StopReason::StopSequence,
-            _ => StopReason::EndTurn,
-        });
+        let stop_reason = api.stop_reason.as_deref().map(crate::common::map_stop_reason);
 
         CompletionResponse {
             id: api.id,
@@ -493,13 +472,9 @@ fn parse_stream_event(event_type: &str, data: &str) -> Option<StreamEvent> {
         }
         "message_delta" => {
             if let Ok(parsed) = serde_json::from_str::<MessageDeltaEvent>(data) {
-                let stop_reason = match parsed.delta.stop_reason.as_deref() {
-                    Some("end_turn") => StopReason::EndTurn,
-                    Some("tool_use") => StopReason::ToolUse,
-                    Some("max_tokens") => StopReason::MaxTokens,
-                    Some("stop_sequence") => StopReason::StopSequence,
-                    _ => StopReason::EndTurn,
-                };
+                let stop_reason = parsed.delta.stop_reason.as_deref()
+                    .map(crate::common::map_stop_reason)
+                    .unwrap_or(StopReason::EndTurn);
                 Some(StreamEvent::MessageDelta {
                     stop_reason,
                     usage: Usage::new(0, parsed.usage.output_tokens),

@@ -3,14 +3,12 @@
 project_path: "/Users/dstorey/Desktop/arawn/.metis"
 mode: tasks
 tasks:
-  - "ARAWN-T-0405"
-  - "ARAWN-T-0406"
-  - "ARAWN-T-0407"
-  - "ARAWN-T-0408"
-  - "ARAWN-T-0409"
-  - "ARAWN-T-0410"
+  - "ARAWN-T-0411"
+  - "ARAWN-T-0412"
+  - "ARAWN-T-0413"
+  - "ARAWN-T-0414"
 current_task_index: 0
 iteration: 1
 max_iterations: 0
 completion_promise: "ALL TASKS COMPLETE"
-started_at: "2026-03-23T23:26:56Z"
+started_at: "2026-03-24T16:40:44Z"

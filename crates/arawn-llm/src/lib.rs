@@ -30,6 +30,9 @@ pub mod error;
 pub mod interaction_log;
 pub mod types;
 
+// Shared backend utilities
+pub mod common;
+
 // Provider implementations
 pub mod anthropic;
 pub mod openai;

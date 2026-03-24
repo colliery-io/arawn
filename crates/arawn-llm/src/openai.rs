@@ -180,10 +180,7 @@ pub struct OpenAiBackend {
 impl OpenAiBackend {
     /// Create a new OpenAI-compatible backend with the given configuration.
     pub fn new(config: OpenAiConfig) -> Result<Self> {
-        let client = Client::builder()
-            .timeout(config.timeout)
-            .build()
-            .map_err(|e| LlmError::Internal(format!("Failed to create HTTP client: {}", e)))?;
+        let client = crate::common::build_http_client(config.timeout)?;
 
         Ok(Self { client, config })
     }
@@ -393,40 +390,20 @@ impl OpenAiBackend {
     async fn handle_error_response(response: Response) -> LlmError {
         let status = response.status();
 
-        // Extract Retry-After header before consuming response
-        let retry_after_header = response
-            .headers()
-            .get("retry-after")
-            .and_then(|v| v.to_str().ok())
-            .map(|s| s.to_string());
+        use crate::common::{ProviderErrorResponse, extract_retry_after, map_error_response, map_raw_error};
 
+        let retry_after = extract_retry_after(response.headers());
         let body = response.text().await.unwrap_or_default();
 
-        if let Ok(error) = serde_json::from_str::<OpenAiErrorResponse>(&body) {
-            match status.as_u16() {
-                401 => LlmError::Auth(format!("Authentication failed: {}", error.error.message)),
-                429 => {
-                    // Parse rate limit info based on provider patterns
-                    let message = &error.error.message;
-
-                    // Groq includes timing in the message body
-                    if message.contains("try again in") || message.contains("Try again in") {
-                        let info = crate::error::RateLimitInfo::parse_groq(message);
-                        LlmError::RateLimit(info)
-                    } else {
-                        // OpenAI/others may use Retry-After header
-                        let info = crate::error::RateLimitInfo::parse_openai(
-                            message,
-                            retry_after_header.as_deref(),
-                        );
-                        LlmError::RateLimit(info)
-                    }
-                }
-                500..=599 => LlmError::Backend(format!("Server error: {}", error.error.message)),
-                _ => LlmError::Backend(error.error.message),
-            }
+        if let Ok(error) = serde_json::from_str::<ProviderErrorResponse>(&body) {
+            map_error_response(
+                status.as_u16(),
+                &error.error.message,
+                retry_after.as_deref(),
+                true, // OpenAI backend also handles Groq-style retry
+            )
         } else {
-            LlmError::Backend(format!("HTTP {}: {}", status, body))
+            map_raw_error(status, &body)
         }
     }
 }
@@ -604,12 +581,9 @@ impl From<OpenAiChatResponse> for CompletionResponse {
                 }
             }
 
-            let stop = match c.finish_reason.as_deref() {
-                Some("stop") => Some(StopReason::EndTurn),
-                Some("tool_calls") => Some(StopReason::ToolUse),
-                Some("length") => Some(StopReason::MaxTokens),
-                _ => Some(StopReason::EndTurn),
-            };
+            let stop = Some(c.finish_reason.as_deref()
+                .map(crate::common::map_stop_reason)
+                .unwrap_or(StopReason::EndTurn));
 
             (blocks, stop)
         } else {
@@ -754,12 +728,7 @@ fn parse_openai_sse_stream(
 
                                 // Check for finish
                                 if let Some(reason) = choice.finish_reason {
-                                    let stop_reason = match reason.as_str() {
-                                        "stop" => StopReason::EndTurn,
-                                        "tool_calls" => StopReason::ToolUse,
-                                        "length" => StopReason::MaxTokens,
-                                        _ => StopReason::EndTurn,
-                                    };
+                                    let stop_reason = crate::common::map_stop_reason(reason.as_str());
                                     return Some((
                                         Ok(StreamEvent::MessageDelta {
                                             stop_reason,
