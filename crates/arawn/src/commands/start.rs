@@ -190,327 +190,46 @@ pub async fn run(args: StartArgs, ctx: &Context) -> Result<()> {
     }
 
     // ── Load configuration ──────────────────────────────────────────────
-
-    let loaded = if let Some(ref config_path) = args.config {
-        // Explicit config file
-        let config = arawn_config::load_config_file(config_path)?;
-        let source = arawn_config::discovery::ConfigSource {
-            path: config_path.clone(),
-            loaded: true,
-        };
-        arawn_config::LoadedConfig {
-            config,
-            sources: vec![source.clone()],
-            source: Some(source),
-            warnings: Vec::new(),
-        }
-    } else {
-        arawn_config::load_config(args.workspace.as_deref())?
-    };
-
-    // Print warnings (plaintext keys, parse errors, etc.)
-    for warning in &loaded.warnings {
-        tracing::warn!("{}", warning);
-    }
-
-    if ctx.verbose {
-        let sources = loaded.loaded_from();
-        if sources.is_empty() {
-            println!("No config files found, using defaults + CLI args");
-        } else {
-            for source in sources {
-                println!("Loaded config: {}", source.display());
-            }
-        }
-    }
-
+    let loaded = load_and_validate_config(&args, ctx)?;
     let config = &loaded.config;
-
-    // ── Validate configuration ──────────────────────────────────────────
-    validate_config(config)?;
 
     // ── Clean up old log files ──────────────────────────────────────────
     if let Some(log_dir) = arawn_config::xdg_config_dir().map(|d| d.join("logs")) {
         cleanup_old_logs(&log_dir, 30, ctx.verbose);
     }
 
-    // ── Resolve LLM backend ─────────────────────────────────────────────
+    // ── Resolve LLM backends ────────────────────────────────────────────
+    let (resolved, backend, backends) = init_llm_backends(config, &args, ctx).await?;
 
-    let resolved = resolve_with_cli_overrides(config, &args)?;
-
-    if ctx.verbose {
-        println!("Backend: {}", resolved.backend);
-        println!("Model: {}", resolved.model);
-        println!("Resolved via: {}", resolved.resolved_from);
-        if let Some(ref source) = resolved.api_key_source {
-            println!("API key from: {}", source);
-        }
-    }
-
-    let backend = create_backend(&resolved, config.oauth.as_ref()).await?;
-
-    // ── Create named backends from profiles ──────────────────────────────
-
-    let mut backends: HashMap<String, SharedBackend> = HashMap::new();
-    backends.insert("default".to_string(), backend.clone());
-
-    for (name, llm_config) in &config.llm_profiles {
-        match resolve_profile(name, llm_config) {
-            Ok(profile_resolved) => {
-                match create_backend(&profile_resolved, config.oauth.as_ref()).await {
-                    Ok(profile_backend) => {
-                        if ctx.verbose {
-                            println!(
-                                "Backend '{}': {} / {}",
-                                name, profile_resolved.backend, profile_resolved.model
-                            );
-                        }
-                        backends.insert(name.clone(), profile_backend);
-                    }
-                    Err(e) => {
-                        tracing::warn!("failed to create backend '{}': {}", name, e);
-                    }
-                }
-            }
-            Err(e) => {
-                tracing::warn!("failed to resolve profile '{}': {}", name, e);
-            }
-        }
-    }
-
-    if ctx.verbose && backends.len() > 1 {
-        println!(
-            "Available backends: {}",
-            backends
-                .keys()
-                .map(|s| s.as_str())
-                .collect::<Vec<_>>()
-                .join(", ")
-        );
-    }
-
-    // ── Server settings ─────────────────────────────────────────────────
-
+    // ── Server settings + auth ──────────────────────────────────────────
+    let (addr, workspace, bootstrap_dir, auth_token) =
+        resolve_server_settings(config, &args, ctx)?;
     let server_cfg = config.server.as_ref();
-    let port = args
-        .port
-        .or_else(|| server_cfg.map(|s| s.port))
-        .unwrap_or(arawn_types::config::defaults::DEFAULT_PORT);
-    let bind = args
-        .bind
-        .clone()
-        .or_else(|| server_cfg.map(|s| s.bind.clone()))
-        .unwrap_or_else(|| arawn_types::config::defaults::DEFAULT_BIND.to_string());
-    let addr: SocketAddr = format!("{}:{}", bind, port).parse()?;
-
-    let workspace = args
-        .workspace
-        .clone()
-        .or_else(|| server_cfg.and_then(|s| s.workspace.clone()));
-    let bootstrap_dir = args
-        .bootstrap_dir
-        .clone()
-        .or_else(|| server_cfg.and_then(|s| s.bootstrap_dir.clone()));
-
-    // ── Auth token ──────────────────────────────────────────────────────
-
-    let explicit_token = args.token.or_else(|| std::env::var("ARAWN_API_TOKEN").ok());
-
-    let auth_token: Option<String> = if let Some(token) = explicit_token {
-        // Explicit token always wins
-        Some(token)
-    } else if addr.ip().is_loopback() {
-        // Localhost — no auth needed
-        None
-    } else {
-        // Non-loopback — load or generate a persisted token
-        let token = load_or_generate_server_token()?;
-        println!("Server auth token: {}", token);
-        Some(token)
-    };
-
-    if ctx.verbose {
-        println!("Bind address: {}", addr);
-        match &auth_token {
-            Some(t) => println!("Auth token: {}...", &t[..8.min(t.len())]),
-            None => println!("Auth: disabled (localhost)"),
-        }
-    }
 
     // ── Build embedder ────────────────────────────────────────────────────
+    let embedder = init_embedder(config, ctx).await?;
 
-    let embedding_config = config.embedding.clone().unwrap_or_default();
-    let embedder_spec = build_embedder_spec(&embedding_config);
-
-    if ctx.verbose {
-        println!(
-            "Embedding provider: {:?} ({}d)",
-            embedding_config.provider,
-            embedding_config.effective_dimensions()
-        );
-    }
-
-    let embedder = arawn_llm::build_embedder(&embedder_spec).await?;
-
-    if ctx.verbose {
-        println!("Embedder: {} ({}d)", embedder.name(), embedder.dimensions());
-    }
-
-    // ── Pipeline engine ────────────────────────────────────────────────
-
-    let pipeline_cfg = config.pipeline.clone().unwrap_or_default();
+    // ── Infrastructure init ─────────────────────────────────────────────
     let data_dir = arawn_config::xdg_config_dir().unwrap_or_else(|| PathBuf::from("."));
 
-    let resolve_path = |p: Option<PathBuf>, default: &str| -> PathBuf {
-        let p = p.unwrap_or_else(|| PathBuf::from(default));
-        if p.is_relative() { data_dir.join(p) } else { p }
-    };
+    let pipeline_cfg = config.pipeline.clone().unwrap_or_default();
+    let (pipeline_engine, pipeline_workflow_dir, mut _workflow_watcher_handle) =
+        init_pipeline(&pipeline_cfg, &data_dir, ctx).await;
 
-    let pipeline_db_path = resolve_path(pipeline_cfg.database.clone(), "pipeline.db");
-    let pipeline_workflow_dir = resolve_path(pipeline_cfg.workflow_dir.clone(), "workflows");
-    let mut _workflow_watcher_handle: Option<arawn_pipeline::WatcherHandle> = None;
-
-    let pipeline_engine: Option<Arc<PipelineEngine>> = if pipeline_cfg.enabled {
-        let engine_config = PipelineConfig {
-            max_concurrent_tasks: pipeline_cfg.max_concurrent_tasks,
-            task_timeout_secs: pipeline_cfg.task_timeout_secs,
-            pipeline_timeout_secs: pipeline_cfg.pipeline_timeout_secs,
-            cron_enabled: pipeline_cfg.cron_enabled,
-            triggers_enabled: pipeline_cfg.triggers_enabled,
-        };
-
-        // Ensure workflow directory exists
-        if let Err(e) = std::fs::create_dir_all(&pipeline_workflow_dir) {
-            tracing::warn!("failed to create workflow directory: {}", e);
-        }
-
-        match PipelineEngine::new(&pipeline_db_path, engine_config).await {
-            Ok(engine) => {
-                let engine = Arc::new(engine);
-
-                if ctx.verbose {
-                    println!(
-                        "Pipeline engine: enabled (db: {}, workflows: {})",
-                        pipeline_db_path.display(),
-                        pipeline_workflow_dir.display(),
-                    );
-                }
-
-                Some(engine)
-            }
-            Err(e) => {
-                tracing::warn!("failed to start pipeline engine: {}", e);
-                None
-            }
-        }
-    } else {
-        if ctx.verbose {
-            println!("Pipeline engine: disabled");
-        }
-        None
-    };
-
-    // ── Memory store (early init for tool registration) ────────────────
-
+    // ── Memory store ───────────────────────────────────────────────────
     let memory_cfg = config.memory.clone().unwrap_or_default();
-    let memory_db_path = memory_cfg
-        .database
-        .clone()
-        .map(|p| if p.is_relative() { data_dir.join(p) } else { p })
-        .unwrap_or_else(|| data_dir.join("memory.db"));
+    let memory_store = init_memory_store(&memory_cfg, &data_dir, &embedder, ctx);
 
-    init_vector_extension();
-    let memory_store: Option<Arc<MemoryStore>> = match MemoryStore::open(&memory_db_path) {
-        Ok(mut store) => {
-            let graph_db_path = memory_db_path.with_extension("graph.db");
-            if let Err(e) = store.init_graph_at_path(&graph_db_path) {
-                tracing::warn!("failed to init knowledge graph: {}", e);
-            }
-            if let Err(e) = store.init_vectors(embedder.dimensions(), embedder.name()) {
-                tracing::warn!("failed to init vector store: {}", e);
-            }
-
-            // WAL checkpoint on startup to reclaim disk space
-            store.wal_checkpoint();
-
-            if ctx.verbose {
-                println!("Memory store: {}", memory_db_path.display());
-            }
-            Some(Arc::new(store))
-        }
-        Err(e) => {
-            tracing::warn!("failed to open memory store: {}", e);
-            None
-        }
-    };
-
-    // ── Build agent ─────────────────────────────────────────────────────
-
-    // Get tool configuration
+    // ── Tool registry ──────────────────────────────────────────────────
     let tools_cfg = config.tools.clone().unwrap_or_default();
-    tracing::debug!(
-        shell_timeout_secs = tools_cfg.shell.timeout_secs,
-        web_timeout_secs = tools_cfg.web.timeout_secs,
-        max_output_bytes = tools_cfg.output.max_size_bytes,
-        "Tool configuration loaded"
-    );
-
-    // Create shell tool with configured timeout and output limit
-    let shell_output_limit = tools_cfg.output.shell.unwrap_or(100 * 1024);
-    let shell_config = tools::ShellConfig::new()
-        .with_timeout(Duration::from_secs(tools_cfg.shell.timeout_secs))
-        .with_max_output_size(shell_output_limit);
-
-    // Create web fetch tool with configured timeout and output limit
-    let web_output_limit = tools_cfg.output.web_fetch.unwrap_or(200 * 1024);
-    let web_config = tools::WebFetchConfig {
-        timeout: Duration::from_secs(tools_cfg.web.timeout_secs),
-        max_text_length: web_output_limit,
-        ..Default::default()
-    };
-
-    let mut tool_registry = ToolRegistry::new();
-    tool_registry.register(tools::ShellTool::with_config(shell_config));
-    tool_registry.register(tools::FileReadTool::new());
-    tool_registry.register(tools::FileWriteTool::new());
-    tool_registry.register(tools::GlobTool::new());
-    tool_registry.register(tools::GrepTool::new());
-    tool_registry.register(tools::WebFetchTool::with_config(web_config)?);
-    tool_registry.register(tools::WebSearchTool::new()?);
-    tool_registry.register(tools::NoteTool::new());
-    match &memory_store {
-        Some(store) => tool_registry.register(tools::MemorySearchTool::with_store(store.clone())),
-        None => tool_registry.register(tools::MemorySearchTool::new()),
-    }
-
-    // Wire per-tool output config overrides from [tools.output]
-    use arawn_agent::OutputConfig;
-    let output_cfg = &tools_cfg.output;
-    if let Some(v) = output_cfg.shell {
-        tool_registry.set_output_config("shell", OutputConfig::with_max_size(v));
-        tool_registry.set_output_config("bash", OutputConfig::with_max_size(v));
-    }
-    if let Some(v) = output_cfg.file_read {
-        tool_registry.set_output_config("file_read", OutputConfig::with_max_size(v));
-        tool_registry.set_output_config("read_file", OutputConfig::with_max_size(v));
-    }
-    if let Some(v) = output_cfg.web_fetch {
-        tool_registry.set_output_config("web_fetch", OutputConfig::with_max_size(v));
-        tool_registry.set_output_config("fetch", OutputConfig::with_max_size(v));
-    }
-    if let Some(v) = output_cfg.search {
-        tool_registry.set_output_config("grep", OutputConfig::with_max_size(v));
-        tool_registry.set_output_config("glob", OutputConfig::with_max_size(v));
-        tool_registry.set_output_config("search", OutputConfig::with_max_size(v));
-        tool_registry.set_output_config("memory_search", OutputConfig::with_max_size(v));
-    }
+    let mut tool_registry = init_tool_registry(&tools_cfg, &memory_store)?;
 
     // Register workflow tool if pipeline is enabled.
     // Uses a labeled block so fallback failures skip tool registration
     // without aborting the entire server startup.
     if let Some(ref engine) = pipeline_engine {
         let pipeline_tools: Option<(Arc<ScriptExecutor>, Arc<RwLock<RuntimeCatalog>>)> = 'pipeline: {
-            let runtimes_dir = resolve_path(None, "runtimes");
+            let runtimes_dir = data_dir.join("runtimes");
             let catalog = match RuntimeCatalog::load(&runtimes_dir) {
                 Ok(c) => {
                     if ctx.verbose {
@@ -1425,7 +1144,7 @@ pub async fn run(args: StartArgs, ctx: &Context) -> Result<()> {
                                 "Session indexer: enabled (backend={}, model={}, db={})",
                                 indexing_backend_name,
                                 memory_cfg.indexing.model,
-                                memory_db_path.display(),
+                                data_dir.join("memory.db").display(),
                             );
                         }
 
@@ -1621,6 +1340,333 @@ pub async fn run(args: StartArgs, ctx: &Context) -> Result<()> {
     }
 
     Ok(())
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Extracted initialization phases
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Phase 1-2: Load config from file or discovery, print warnings, validate.
+fn load_and_validate_config(
+    args: &StartArgs,
+    ctx: &Context,
+) -> Result<arawn_config::LoadedConfig> {
+    let loaded = if let Some(ref config_path) = args.config {
+        let config = arawn_config::load_config_file(config_path)?;
+        let source = arawn_config::discovery::ConfigSource {
+            path: config_path.clone(),
+            loaded: true,
+        };
+        arawn_config::LoadedConfig {
+            config,
+            sources: vec![source.clone()],
+            source: Some(source),
+            warnings: Vec::new(),
+        }
+    } else {
+        arawn_config::load_config(args.workspace.as_deref())?
+    };
+
+    for warning in &loaded.warnings {
+        tracing::warn!("{}", warning);
+    }
+
+    if ctx.verbose {
+        let sources = loaded.loaded_from();
+        if sources.is_empty() {
+            println!("No config files found, using defaults + CLI args");
+        } else {
+            for source in sources {
+                println!("Loaded config: {}", source.display());
+            }
+        }
+    }
+
+    validate_config(&loaded.config)?;
+    Ok(loaded)
+}
+
+/// Phase 3: Resolve LLM backends (default + named profiles).
+async fn init_llm_backends(
+    config: &arawn_config::ArawnConfig,
+    args: &StartArgs,
+    ctx: &Context,
+) -> Result<(ResolvedLlm, SharedBackend, HashMap<String, SharedBackend>)> {
+    let resolved = resolve_with_cli_overrides(config, args)?;
+
+    if ctx.verbose {
+        println!("Backend: {}", resolved.backend);
+        println!("Model: {}", resolved.model);
+        println!("Resolved via: {}", resolved.resolved_from);
+        if let Some(ref source) = resolved.api_key_source {
+            println!("API key from: {}", source);
+        }
+    }
+
+    let backend = create_backend(&resolved, config.oauth.as_ref()).await?;
+
+    let mut backends: HashMap<String, SharedBackend> = HashMap::new();
+    backends.insert("default".to_string(), backend.clone());
+
+    for (name, llm_config) in &config.llm_profiles {
+        match resolve_profile(name, llm_config) {
+            Ok(profile_resolved) => {
+                match create_backend(&profile_resolved, config.oauth.as_ref()).await {
+                    Ok(profile_backend) => {
+                        if ctx.verbose {
+                            println!(
+                                "Backend '{}': {} / {}",
+                                name, profile_resolved.backend, profile_resolved.model
+                            );
+                        }
+                        backends.insert(name.clone(), profile_backend);
+                    }
+                    Err(e) => {
+                        tracing::warn!("failed to create backend '{}': {}", name, e);
+                    }
+                }
+            }
+            Err(e) => {
+                tracing::warn!("failed to resolve profile '{}': {}", name, e);
+            }
+        }
+    }
+
+    if ctx.verbose && backends.len() > 1 {
+        println!(
+            "Available backends: {}",
+            backends.keys().map(|s| s.as_str()).collect::<Vec<_>>().join(", ")
+        );
+    }
+
+    Ok((resolved, backend, backends))
+}
+
+/// Phase 4: Resolve server bind address, workspace, bootstrap dir, and auth token.
+fn resolve_server_settings(
+    config: &arawn_config::ArawnConfig,
+    args: &StartArgs,
+    ctx: &Context,
+) -> Result<(SocketAddr, Option<PathBuf>, Option<PathBuf>, Option<String>)> {
+    let server_cfg = config.server.as_ref();
+    let port = args
+        .port
+        .or_else(|| server_cfg.map(|s| s.port))
+        .unwrap_or(arawn_types::config::defaults::DEFAULT_PORT);
+    let bind = args
+        .bind
+        .clone()
+        .or_else(|| server_cfg.map(|s| s.bind.clone()))
+        .unwrap_or_else(|| arawn_types::config::defaults::DEFAULT_BIND.to_string());
+    let addr: SocketAddr = format!("{}:{}", bind, port).parse()?;
+
+    let workspace = args
+        .workspace
+        .clone()
+        .or_else(|| server_cfg.and_then(|s| s.workspace.clone()));
+    let bootstrap_dir = args
+        .bootstrap_dir
+        .clone()
+        .or_else(|| server_cfg.and_then(|s| s.bootstrap_dir.clone()));
+
+    let explicit_token = args.token.clone().or_else(|| std::env::var("ARAWN_API_TOKEN").ok());
+    let auth_token: Option<String> = if let Some(token) = explicit_token {
+        Some(token)
+    } else if addr.ip().is_loopback() {
+        None
+    } else {
+        let token = load_or_generate_server_token()?;
+        println!("Server auth token: {}", token);
+        Some(token)
+    };
+
+    if ctx.verbose {
+        println!("Bind address: {}", addr);
+        match &auth_token {
+            Some(t) => println!("Auth token: {}...", &t[..8.min(t.len())]),
+            None => println!("Auth: disabled (localhost)"),
+        }
+    }
+
+    Ok((addr, workspace, bootstrap_dir, auth_token))
+}
+
+/// Phase 8: Create tool registry with all built-in tools and output config.
+fn init_tool_registry(
+    tools_cfg: &arawn_config::ToolsConfig,
+    memory_store: &Option<Arc<MemoryStore>>,
+) -> Result<ToolRegistry> {
+    use arawn_agent::OutputConfig;
+
+    tracing::debug!(
+        shell_timeout_secs = tools_cfg.shell.timeout_secs,
+        web_timeout_secs = tools_cfg.web.timeout_secs,
+        max_output_bytes = tools_cfg.output.max_size_bytes,
+        "Tool configuration loaded"
+    );
+
+    let shell_output_limit = tools_cfg.output.shell.unwrap_or(100 * 1024);
+    let shell_config = tools::ShellConfig::new()
+        .with_timeout(Duration::from_secs(tools_cfg.shell.timeout_secs))
+        .with_max_output_size(shell_output_limit);
+
+    let web_output_limit = tools_cfg.output.web_fetch.unwrap_or(200 * 1024);
+    let web_config = tools::WebFetchConfig {
+        timeout: Duration::from_secs(tools_cfg.web.timeout_secs),
+        max_text_length: web_output_limit,
+        ..Default::default()
+    };
+
+    let mut registry = ToolRegistry::new();
+    registry.register(tools::ShellTool::with_config(shell_config));
+    registry.register(tools::FileReadTool::new());
+    registry.register(tools::FileWriteTool::new());
+    registry.register(tools::GlobTool::new());
+    registry.register(tools::GrepTool::new());
+    registry.register(tools::WebFetchTool::with_config(web_config)?);
+    registry.register(tools::WebSearchTool::new()?);
+    registry.register(tools::NoteTool::new());
+    match memory_store {
+        Some(store) => registry.register(tools::MemorySearchTool::with_store(store.clone())),
+        None => registry.register(tools::MemorySearchTool::new()),
+    }
+
+    // Wire per-tool output config overrides
+    let output_cfg = &tools_cfg.output;
+    if let Some(v) = output_cfg.shell {
+        registry.set_output_config("shell", OutputConfig::with_max_size(v));
+        registry.set_output_config("bash", OutputConfig::with_max_size(v));
+    }
+    if let Some(v) = output_cfg.file_read {
+        registry.set_output_config("file_read", OutputConfig::with_max_size(v));
+        registry.set_output_config("read_file", OutputConfig::with_max_size(v));
+    }
+    if let Some(v) = output_cfg.web_fetch {
+        registry.set_output_config("web_fetch", OutputConfig::with_max_size(v));
+        registry.set_output_config("fetch", OutputConfig::with_max_size(v));
+    }
+    if let Some(v) = output_cfg.search {
+        registry.set_output_config("grep", OutputConfig::with_max_size(v));
+        registry.set_output_config("glob", OutputConfig::with_max_size(v));
+        registry.set_output_config("search", OutputConfig::with_max_size(v));
+        registry.set_output_config("memory_search", OutputConfig::with_max_size(v));
+    }
+
+    Ok(registry)
+}
+
+/// Phase 5: Initialize the embedding provider.
+async fn init_embedder(
+    config: &arawn_config::ArawnConfig,
+    ctx: &Context,
+) -> Result<Arc<dyn arawn_llm::Embedder>> {
+    let embedding_config = config.embedding.clone().unwrap_or_default();
+    let embedder_spec = build_embedder_spec(&embedding_config);
+
+    if ctx.verbose {
+        println!(
+            "Embedding provider: {:?} ({}d)",
+            embedding_config.provider,
+            embedding_config.effective_dimensions()
+        );
+    }
+
+    let embedder = arawn_llm::build_embedder(&embedder_spec).await?;
+
+    if ctx.verbose {
+        println!("Embedder: {} ({}d)", embedder.name(), embedder.dimensions());
+    }
+
+    Ok(embedder)
+}
+
+/// Phase 6: Initialize the pipeline engine.
+async fn init_pipeline(
+    pipeline_cfg: &arawn_config::PipelineSection,
+    data_dir: &std::path::Path,
+    ctx: &Context,
+) -> (Option<Arc<PipelineEngine>>, PathBuf, Option<arawn_pipeline::WatcherHandle>) {
+    let resolve_path = |p: Option<PathBuf>, default: &str| -> PathBuf {
+        let p = p.unwrap_or_else(|| PathBuf::from(default));
+        if p.is_relative() { data_dir.join(p) } else { p }
+    };
+
+    let pipeline_db_path = resolve_path(pipeline_cfg.database.clone(), "pipeline.db");
+    let pipeline_workflow_dir = resolve_path(pipeline_cfg.workflow_dir.clone(), "workflows");
+
+    if !pipeline_cfg.enabled {
+        if ctx.verbose {
+            println!("Pipeline engine: disabled");
+        }
+        return (None, pipeline_workflow_dir, None);
+    }
+
+    let engine_config = PipelineConfig {
+        max_concurrent_tasks: pipeline_cfg.max_concurrent_tasks,
+        task_timeout_secs: pipeline_cfg.task_timeout_secs,
+        pipeline_timeout_secs: pipeline_cfg.pipeline_timeout_secs,
+        cron_enabled: pipeline_cfg.cron_enabled,
+        triggers_enabled: pipeline_cfg.triggers_enabled,
+    };
+
+    if let Err(e) = std::fs::create_dir_all(&pipeline_workflow_dir) {
+        tracing::warn!("failed to create workflow directory: {}", e);
+    }
+
+    match PipelineEngine::new(&pipeline_db_path, engine_config).await {
+        Ok(engine) => {
+            let engine = Arc::new(engine);
+            if ctx.verbose {
+                println!(
+                    "Pipeline engine: enabled (db: {}, workflows: {})",
+                    pipeline_db_path.display(),
+                    pipeline_workflow_dir.display(),
+                );
+            }
+            (Some(engine), pipeline_workflow_dir, None)
+        }
+        Err(e) => {
+            tracing::warn!("failed to start pipeline engine: {}", e);
+            (None, pipeline_workflow_dir, None)
+        }
+    }
+}
+
+/// Phase 7: Initialize the memory store with graph + vector extensions.
+fn init_memory_store(
+    memory_cfg: &arawn_config::MemoryConfig,
+    data_dir: &std::path::Path,
+    embedder: &Arc<dyn arawn_llm::Embedder>,
+    ctx: &Context,
+) -> Option<Arc<MemoryStore>> {
+    let memory_db_path = memory_cfg
+        .database
+        .clone()
+        .map(|p| if p.is_relative() { data_dir.join(p) } else { p })
+        .unwrap_or_else(|| data_dir.join("memory.db"));
+
+    init_vector_extension();
+    match MemoryStore::open(&memory_db_path) {
+        Ok(mut store) => {
+            let graph_db_path = memory_db_path.with_extension("graph.db");
+            if let Err(e) = store.init_graph_at_path(&graph_db_path) {
+                tracing::warn!("failed to init knowledge graph: {}", e);
+            }
+            if let Err(e) = store.init_vectors(embedder.dimensions(), embedder.name()) {
+                tracing::warn!("failed to init vector store: {}", e);
+            }
+            store.wal_checkpoint();
+
+            if ctx.verbose {
+                println!("Memory store: {}", memory_db_path.display());
+            }
+            Some(Arc::new(store))
+        }
+        Err(e) => {
+            tracing::warn!("failed to open memory store: {}", e);
+            None
+        }
+    }
 }
 
 /// Resolve LLM config, applying CLI overrides on top of config file values.

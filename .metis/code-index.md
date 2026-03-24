@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-03-24T16:21:02Z | 334 files | Rust
+> Generated: 2026-03-24T16:50:12Z | 335 files | Rust
 
 ## Project Structure
 
@@ -140,6 +140,7 @@
 │   │       ├── api_key.rs
 │   │       ├── backend.rs
 │   │       ├── client.rs
+│   │       ├── common.rs
 │   │       ├── embeddings.rs
 │   │       ├── error.rs
 │   │       ├── interaction_log.rs
@@ -3615,94 +3616,94 @@
 - pub `with_max_retries` function L106-109 — `(mut self, retries: u32) -> Self` — Set max retries.
 - pub `with_retry_backoff` function L112-115 — `(mut self, backoff: Duration) -> Self` — Set retry backoff.
 - pub `AnthropicBackend` struct L123-126 — `{ client: Client, config: AnthropicConfig }` — Anthropic API backend.
-- pub `new` function L130-137 — `(config: AnthropicConfig) -> Result<Self>` — Create a new Anthropic backend with the given configuration.
-- pub `from_env` function L140-142 — `() -> Result<Self>` — Create a backend from environment configuration.
-- pub `create_shared_backend` function L262-264 — `(config: AnthropicConfig) -> Result<Arc<dyn LlmBackend>>` — Create a shared Anthropic backend.
+- pub `new` function L130-134 — `(config: AnthropicConfig) -> Result<Self>` — Create a new Anthropic backend with the given configuration.
+- pub `from_env` function L137-139 — `() -> Result<Self>` — Create a backend from environment configuration.
+- pub `create_shared_backend` function L247-249 — `(config: AnthropicConfig) -> Result<Arc<dyn LlmBackend>>` — Create a shared Anthropic backend.
 -  `DEFAULT_API_BASE` variable L20 — `: &str` — Default API base URL.
 -  `DEFAULT_API_VERSION` variable L23 — `: &str` — Default API version.
 -  `DEFAULT_TIMEOUT_SECS` variable L26 — `: u64` — Default timeout for requests.
 -  `DEFAULT_MAX_RETRIES` variable L29 — `: u32` — Default maximum retries for transient errors.
 -  `DEFAULT_RETRY_BACKOFF_MS` variable L32 — `: u64` — Default initial backoff between retries.
 -  `AnthropicConfig` type L72-116 — `= AnthropicConfig` — Messages API for Claude completions.
--  `AnthropicBackend` type L128-208 — `= AnthropicBackend` — Messages API for Claude completions.
--  `messages_url` function L145-147 — `(&self) -> String` — Build the messages endpoint URL.
--  `add_headers` function L150-161 — `(&self, builder: reqwest::RequestBuilder) -> Result<reqwest::RequestBuilder>` — Add authentication and API headers to a request.
--  `handle_response` function L164-174 — `(response: Response) -> Result<CompletionResponse>` — Handle a successful response.
--  `handle_error_response` function L177-207 — `(response: Response) -> LlmError` — Handle an error response.
--  `AnthropicBackend` type L211-259 — `impl LlmBackend for AnthropicBackend` — Messages API for Claude completions.
--  `complete` function L212-232 — `(&self, request: CompletionRequest) -> Result<CompletionResponse>` — Messages API for Claude completions.
--  `complete_stream` function L234-250 — `(&self, request: CompletionRequest) -> Result<ResponseStream>` — Messages API for Claude completions.
--  `name` function L252-254 — `(&self) -> &str` — Messages API for Claude completions.
--  `supports_native_tools` function L256-258 — `(&self) -> bool` — Messages API for Claude completions.
--  `ApiResponse` struct L272-280 — `{ id: String, response_type: String, content: Vec<ApiContentBlock>, model: Strin...` — Internal API response structure.
--  `CompletionResponse` type L282-324 — `= CompletionResponse` — Messages API for Claude completions.
--  `from` function L283-323 — `(api: ApiResponse) -> Self` — Messages API for Claude completions.
--  `ApiContentBlock` enum L328-337 — `Text | ToolUse` — Messages API for Claude completions.
--  `ApiUsage` struct L340-345 — `{ input_tokens: u32, output_tokens: u32, cache_creation_input_tokens: Option<u32...` — Messages API for Claude completions.
--  `ApiError` struct L348-350 — `{ error: ApiErrorDetail }` — Messages API for Claude completions.
--  `ApiErrorDetail` struct L353-355 — `{ message: String }` — Messages API for Claude completions.
--  `parse_sse_stream` function L362-428 — `( byte_stream: impl Stream<Item = reqwest::Result<Bytes>> + Send + 'static, ) ->...` — Parse SSE events from a byte stream and convert to StreamEvents.
--  `SseState` struct L430-435 — `{ byte_stream: Pin<Box<dyn Stream<Item = reqwest::Result<Bytes>> + Send>>, buffe...` — Messages API for Claude completions.
--  `parse_sse_line` function L437-445 — `(line: &str) -> Option<(&str, &str)>` — Messages API for Claude completions.
--  `parse_stream_event` function L447-526 — `(event_type: &str, data: &str) -> Option<StreamEvent>` — Messages API for Claude completions.
--  `MessageStartEvent` struct L533-535 — `{ message: MessageStartMessage }` — Messages API for Claude completions.
--  `MessageStartMessage` struct L538-541 — `{ id: String, model: String }` — Messages API for Claude completions.
--  `ContentBlockStartEvent` struct L544-547 — `{ index: usize, content_block: ContentBlockType }` — Messages API for Claude completions.
--  `ContentBlockType` struct L550-553 — `{ block_type: String }` — Messages API for Claude completions.
--  `ContentBlockDeltaEvent` struct L556-559 — `{ index: usize, delta: DeltaContent }` — Messages API for Claude completions.
--  `DeltaContent` enum L563-566 — `TextDelta | InputJsonDelta` — Messages API for Claude completions.
--  `ContentBlockStopEvent` struct L569-571 — `{ index: usize }` — Messages API for Claude completions.
--  `MessageDeltaEvent` struct L574-577 — `{ delta: MessageDelta, usage: MessageDeltaUsage }` — Messages API for Claude completions.
--  `MessageDelta` struct L580-582 — `{ stop_reason: Option<String> }` — Messages API for Claude completions.
--  `MessageDeltaUsage` struct L585-587 — `{ output_tokens: u32 }` — Messages API for Claude completions.
--  `StreamErrorEvent` struct L590-592 — `{ error: StreamErrorDetail }` — Messages API for Claude completions.
--  `StreamErrorDetail` struct L595-597 — `{ message: String }` — Messages API for Claude completions.
--  `tests` module L604-1199 — `-` — Messages API for Claude completions.
--  `test_config_new` function L608-613 — `()` — Messages API for Claude completions.
--  `test_config_with_base_url` function L616-619 — `()` — Messages API for Claude completions.
--  `test_config_with_timeout` function L622-625 — `()` — Messages API for Claude completions.
--  `test_parse_sse_line` function L628-638 — `()` — Messages API for Claude completions.
--  `test_api_response_conversion` function L641-664 — `()` — Messages API for Claude completions.
--  `test_api_response_with_tool_use` function L667-700 — `()` — Messages API for Claude completions.
--  `test_add_headers_static_key` function L703-713 — `()` — Messages API for Claude completions.
--  `test_add_headers_dynamic_provider` function L716-727 — `()` — Messages API for Claude completions.
--  `test_add_headers_none_returns_error` function L730-738 — `()` — Messages API for Claude completions.
--  `test_add_headers_preserves_api_version` function L741-756 — `()` — Messages API for Claude completions.
--  `test_messages_url` function L759-766 — `()` — Messages API for Claude completions.
--  `test_messages_url_custom_base` function L769-773 — `()` — Messages API for Claude completions.
--  `test_backend_name` function L776-780 — `()` — Messages API for Claude completions.
--  `test_supports_native_tools` function L783-787 — `()` — Messages API for Claude completions.
--  `test_config_with_max_retries` function L790-793 — `()` — Messages API for Claude completions.
--  `test_config_with_retry_backoff` function L796-799 — `()` — Messages API for Claude completions.
--  `test_api_response_max_tokens_stop_reason` function L802-820 — `()` — Messages API for Claude completions.
--  `test_api_response_stop_sequence_stop_reason` function L823-839 — `()` — Messages API for Claude completions.
--  `test_api_response_unknown_stop_reason` function L842-858 — `()` — Messages API for Claude completions.
--  `test_api_response_none_stop_reason` function L861-877 — `()` — Messages API for Claude completions.
--  `test_parse_stream_event_message_start` function L882-892 — `()` — Messages API for Claude completions.
--  `test_parse_stream_event_message_start_invalid` function L895-898 — `()` — Messages API for Claude completions.
--  `test_parse_stream_event_content_block_start` function L901-914 — `()` — Messages API for Claude completions.
--  `test_parse_stream_event_content_block_start_invalid` function L917-919 — `()` — Messages API for Claude completions.
--  `test_parse_stream_event_text_delta` function L922-935 — `()` — Messages API for Claude completions.
--  `test_parse_stream_event_input_json_delta` function L938-952 — `()` — Messages API for Claude completions.
--  `test_parse_stream_event_content_block_delta_invalid` function L955-957 — `()` — Messages API for Claude completions.
--  `test_parse_stream_event_content_block_stop` function L960-967 — `()` — Messages API for Claude completions.
--  `test_parse_stream_event_content_block_stop_invalid` function L970-972 — `()` — Messages API for Claude completions.
--  `test_parse_stream_event_message_delta_end_turn` function L975-985 — `()` — Messages API for Claude completions.
--  `test_parse_stream_event_message_delta_tool_use` function L988-997 — `()` — Messages API for Claude completions.
--  `test_parse_stream_event_message_delta_max_tokens` function L1000-1009 — `()` — Messages API for Claude completions.
--  `test_parse_stream_event_message_delta_stop_sequence` function L1012-1021 — `()` — Messages API for Claude completions.
--  `test_parse_stream_event_message_delta_unknown_reason` function L1024-1033 — `()` — Messages API for Claude completions.
--  `test_parse_stream_event_message_delta_null_reason` function L1036-1045 — `()` — Messages API for Claude completions.
--  `test_parse_stream_event_message_delta_invalid` function L1048-1050 — `()` — Messages API for Claude completions.
--  `test_parse_stream_event_message_stop` function L1053-1056 — `()` — Messages API for Claude completions.
--  `test_parse_stream_event_ping` function L1059-1062 — `()` — Messages API for Claude completions.
--  `test_parse_stream_event_error` function L1065-1072 — `()` — Messages API for Claude completions.
--  `test_parse_stream_event_error_invalid_json` function L1075-1083 — `()` — Messages API for Claude completions.
--  `test_parse_stream_event_unknown_type` function L1086-1088 — `()` — Messages API for Claude completions.
--  `test_parse_sse_line_invalid_prefix` function L1091-1095 — `()` — Messages API for Claude completions.
--  `test_parse_sse_stream_full_sequence` function L1100-1163 — `()` — Messages API for Claude completions.
--  `test_parse_sse_stream_network_error` function L1166-1180 — `()` — Messages API for Claude completions.
--  `test_parse_sse_stream_with_ping` function L1183-1198 — `()` — Messages API for Claude completions.
+-  `AnthropicBackend` type L128-193 — `= AnthropicBackend` — Messages API for Claude completions.
+-  `messages_url` function L142-144 — `(&self) -> String` — Build the messages endpoint URL.
+-  `add_headers` function L147-158 — `(&self, builder: reqwest::RequestBuilder) -> Result<reqwest::RequestBuilder>` — Add authentication and API headers to a request.
+-  `handle_response` function L161-171 — `(response: Response) -> Result<CompletionResponse>` — Handle a successful response.
+-  `handle_error_response` function L174-192 — `(response: Response) -> LlmError` — Handle an error response.
+-  `AnthropicBackend` type L196-244 — `impl LlmBackend for AnthropicBackend` — Messages API for Claude completions.
+-  `complete` function L197-217 — `(&self, request: CompletionRequest) -> Result<CompletionResponse>` — Messages API for Claude completions.
+-  `complete_stream` function L219-235 — `(&self, request: CompletionRequest) -> Result<ResponseStream>` — Messages API for Claude completions.
+-  `name` function L237-239 — `(&self) -> &str` — Messages API for Claude completions.
+-  `supports_native_tools` function L241-243 — `(&self) -> bool` — Messages API for Claude completions.
+-  `ApiResponse` struct L257-265 — `{ id: String, response_type: String, content: Vec<ApiContentBlock>, model: Strin...` — Internal API response structure.
+-  `CompletionResponse` type L267-303 — `= CompletionResponse` — Messages API for Claude completions.
+-  `from` function L268-302 — `(api: ApiResponse) -> Self` — Messages API for Claude completions.
+-  `ApiContentBlock` enum L307-316 — `Text | ToolUse` — Messages API for Claude completions.
+-  `ApiUsage` struct L319-324 — `{ input_tokens: u32, output_tokens: u32, cache_creation_input_tokens: Option<u32...` — Messages API for Claude completions.
+-  `ApiError` struct L327-329 — `{ error: ApiErrorDetail }` — Messages API for Claude completions.
+-  `ApiErrorDetail` struct L332-334 — `{ message: String }` — Messages API for Claude completions.
+-  `parse_sse_stream` function L341-407 — `( byte_stream: impl Stream<Item = reqwest::Result<Bytes>> + Send + 'static, ) ->...` — Parse SSE events from a byte stream and convert to StreamEvents.
+-  `SseState` struct L409-414 — `{ byte_stream: Pin<Box<dyn Stream<Item = reqwest::Result<Bytes>> + Send>>, buffe...` — Messages API for Claude completions.
+-  `parse_sse_line` function L416-424 — `(line: &str) -> Option<(&str, &str)>` — Messages API for Claude completions.
+-  `parse_stream_event` function L426-501 — `(event_type: &str, data: &str) -> Option<StreamEvent>` — Messages API for Claude completions.
+-  `MessageStartEvent` struct L508-510 — `{ message: MessageStartMessage }` — Messages API for Claude completions.
+-  `MessageStartMessage` struct L513-516 — `{ id: String, model: String }` — Messages API for Claude completions.
+-  `ContentBlockStartEvent` struct L519-522 — `{ index: usize, content_block: ContentBlockType }` — Messages API for Claude completions.
+-  `ContentBlockType` struct L525-528 — `{ block_type: String }` — Messages API for Claude completions.
+-  `ContentBlockDeltaEvent` struct L531-534 — `{ index: usize, delta: DeltaContent }` — Messages API for Claude completions.
+-  `DeltaContent` enum L538-541 — `TextDelta | InputJsonDelta` — Messages API for Claude completions.
+-  `ContentBlockStopEvent` struct L544-546 — `{ index: usize }` — Messages API for Claude completions.
+-  `MessageDeltaEvent` struct L549-552 — `{ delta: MessageDelta, usage: MessageDeltaUsage }` — Messages API for Claude completions.
+-  `MessageDelta` struct L555-557 — `{ stop_reason: Option<String> }` — Messages API for Claude completions.
+-  `MessageDeltaUsage` struct L560-562 — `{ output_tokens: u32 }` — Messages API for Claude completions.
+-  `StreamErrorEvent` struct L565-567 — `{ error: StreamErrorDetail }` — Messages API for Claude completions.
+-  `StreamErrorDetail` struct L570-572 — `{ message: String }` — Messages API for Claude completions.
+-  `tests` module L579-1174 — `-` — Messages API for Claude completions.
+-  `test_config_new` function L583-588 — `()` — Messages API for Claude completions.
+-  `test_config_with_base_url` function L591-594 — `()` — Messages API for Claude completions.
+-  `test_config_with_timeout` function L597-600 — `()` — Messages API for Claude completions.
+-  `test_parse_sse_line` function L603-613 — `()` — Messages API for Claude completions.
+-  `test_api_response_conversion` function L616-639 — `()` — Messages API for Claude completions.
+-  `test_api_response_with_tool_use` function L642-675 — `()` — Messages API for Claude completions.
+-  `test_add_headers_static_key` function L678-688 — `()` — Messages API for Claude completions.
+-  `test_add_headers_dynamic_provider` function L691-702 — `()` — Messages API for Claude completions.
+-  `test_add_headers_none_returns_error` function L705-713 — `()` — Messages API for Claude completions.
+-  `test_add_headers_preserves_api_version` function L716-731 — `()` — Messages API for Claude completions.
+-  `test_messages_url` function L734-741 — `()` — Messages API for Claude completions.
+-  `test_messages_url_custom_base` function L744-748 — `()` — Messages API for Claude completions.
+-  `test_backend_name` function L751-755 — `()` — Messages API for Claude completions.
+-  `test_supports_native_tools` function L758-762 — `()` — Messages API for Claude completions.
+-  `test_config_with_max_retries` function L765-768 — `()` — Messages API for Claude completions.
+-  `test_config_with_retry_backoff` function L771-774 — `()` — Messages API for Claude completions.
+-  `test_api_response_max_tokens_stop_reason` function L777-795 — `()` — Messages API for Claude completions.
+-  `test_api_response_stop_sequence_stop_reason` function L798-814 — `()` — Messages API for Claude completions.
+-  `test_api_response_unknown_stop_reason` function L817-833 — `()` — Messages API for Claude completions.
+-  `test_api_response_none_stop_reason` function L836-852 — `()` — Messages API for Claude completions.
+-  `test_parse_stream_event_message_start` function L857-867 — `()` — Messages API for Claude completions.
+-  `test_parse_stream_event_message_start_invalid` function L870-873 — `()` — Messages API for Claude completions.
+-  `test_parse_stream_event_content_block_start` function L876-889 — `()` — Messages API for Claude completions.
+-  `test_parse_stream_event_content_block_start_invalid` function L892-894 — `()` — Messages API for Claude completions.
+-  `test_parse_stream_event_text_delta` function L897-910 — `()` — Messages API for Claude completions.
+-  `test_parse_stream_event_input_json_delta` function L913-927 — `()` — Messages API for Claude completions.
+-  `test_parse_stream_event_content_block_delta_invalid` function L930-932 — `()` — Messages API for Claude completions.
+-  `test_parse_stream_event_content_block_stop` function L935-942 — `()` — Messages API for Claude completions.
+-  `test_parse_stream_event_content_block_stop_invalid` function L945-947 — `()` — Messages API for Claude completions.
+-  `test_parse_stream_event_message_delta_end_turn` function L950-960 — `()` — Messages API for Claude completions.
+-  `test_parse_stream_event_message_delta_tool_use` function L963-972 — `()` — Messages API for Claude completions.
+-  `test_parse_stream_event_message_delta_max_tokens` function L975-984 — `()` — Messages API for Claude completions.
+-  `test_parse_stream_event_message_delta_stop_sequence` function L987-996 — `()` — Messages API for Claude completions.
+-  `test_parse_stream_event_message_delta_unknown_reason` function L999-1008 — `()` — Messages API for Claude completions.
+-  `test_parse_stream_event_message_delta_null_reason` function L1011-1020 — `()` — Messages API for Claude completions.
+-  `test_parse_stream_event_message_delta_invalid` function L1023-1025 — `()` — Messages API for Claude completions.
+-  `test_parse_stream_event_message_stop` function L1028-1031 — `()` — Messages API for Claude completions.
+-  `test_parse_stream_event_ping` function L1034-1037 — `()` — Messages API for Claude completions.
+-  `test_parse_stream_event_error` function L1040-1047 — `()` — Messages API for Claude completions.
+-  `test_parse_stream_event_error_invalid_json` function L1050-1058 — `()` — Messages API for Claude completions.
+-  `test_parse_stream_event_unknown_type` function L1061-1063 — `()` — Messages API for Claude completions.
+-  `test_parse_sse_line_invalid_prefix` function L1066-1070 — `()` — Messages API for Claude completions.
+-  `test_parse_sse_stream_full_sequence` function L1075-1138 — `()` — Messages API for Claude completions.
+-  `test_parse_sse_stream_network_error` function L1141-1155 — `()` — Messages API for Claude completions.
+-  `test_parse_sse_stream_with_ping` function L1158-1173 — `()` — Messages API for Claude completions.
 
 #### crates/arawn-llm/src/api_key.rs
 
@@ -3853,6 +3854,26 @@
 -  `test_config_determine_primary_prefers_anthropic` function L798-804 — `()` — ```
 -  `test_fallbacks_filtered_to_configured` function L807-818 — `()` — ```
 -  `test_client_config_default` function L821-830 — `()` — ```
+
+#### crates/arawn-llm/src/common.rs
+
+- pub `build_http_client` function L22-27 — `(timeout: Duration) -> Result<Client, LlmError>` — Build a reqwest HTTP client with the given timeout.
+- pub `ProviderErrorResponse` struct L38-40 — `{ error: ProviderErrorDetail }` — Generic provider error response shape.
+- pub `ProviderErrorDetail` struct L44-46 — `{ message: String }` — Error detail with a human-readable message.
+- pub `extract_retry_after` function L55-60 — `(headers: &reqwest::header::HeaderMap) -> Option<String>` — Extract the `Retry-After` header value from response headers.
+- pub `map_error_response` function L70-94 — `( status: u16, error_message: &str, retry_after: Option<&str>, groq_style_retry:...` — Map an HTTP error status + parsed error body to an `LlmError`.
+- pub `map_raw_error` function L97-99 — `(status: reqwest::StatusCode, body: &str) -> LlmError` — Map an HTTP error response when the body couldn't be parsed as a provider error.
+- pub `map_stop_reason` function L109-123 — `(reason: &str) -> StopReason` — Map a provider-specific stop reason string to a `StopReason`.
+-  `tests` module L130-194 — `-` — extraction, and stop reason mapping.
+-  `test_build_http_client` function L134-137 — `()` — extraction, and stop reason mapping.
+-  `test_provider_error_response_parse` function L140-144 — `()` — extraction, and stop reason mapping.
+-  `test_map_stop_reason_openai` function L147-151 — `()` — extraction, and stop reason mapping.
+-  `test_map_stop_reason_anthropic` function L154-159 — `()` — extraction, and stop reason mapping.
+-  `test_map_stop_reason_unknown_defaults_to_end_turn` function L162-165 — `()` — extraction, and stop reason mapping.
+-  `test_map_error_response_auth` function L168-171 — `()` — extraction, and stop reason mapping.
+-  `test_map_error_response_rate_limit` function L174-177 — `()` — extraction, and stop reason mapping.
+-  `test_map_error_response_server_error` function L180-184 — `()` — extraction, and stop reason mapping.
+-  `test_extract_retry_after` function L187-193 — `()` — extraction, and stop reason mapping.
 
 #### crates/arawn-llm/src/embeddings.rs
 
@@ -4047,8 +4068,9 @@
 - pub `error` module L29 — `-` — ```
 - pub `interaction_log` module L30 — `-` — ```
 - pub `types` module L31 — `-` — ```
-- pub `anthropic` module L34 — `-` — ```
-- pub `openai` module L35 — `-` — ```
+- pub `common` module L34 — `-` — ```
+- pub `anthropic` module L37 — `-` — ```
+- pub `openai` module L38 — `-` — ```
 
 #### crates/arawn-llm/src/openai.rs
 
@@ -4065,88 +4087,88 @@
 - pub `with_max_retries` function L158-161 — `(mut self, retries: u32) -> Self` — Set max retries.
 - pub `with_retry_backoff` function L164-167 — `(mut self, backoff: Duration) -> Self` — Set retry backoff.
 - pub `OpenAiBackend` struct L175-178 — `{ client: Client, config: OpenAiConfig }` — OpenAI-compatible API backend.
-- pub `new` function L182-189 — `(config: OpenAiConfig) -> Result<Self>` — Create a new OpenAI-compatible backend with the given configuration.
-- pub `openai_from_env` function L192-194 — `() -> Result<Self>` — Create an OpenAI backend from environment.
-- pub `groq_from_env` function L197-199 — `() -> Result<Self>` — Create a Groq backend from environment.
-- pub `ollama` function L202-204 — `() -> Result<Self>` — Create an Ollama backend with default local settings.
-- pub `create_shared_backend` function L496-498 — `(config: OpenAiConfig) -> Result<Arc<dyn LlmBackend>>` — Create a shared OpenAI-compatible backend.
+- pub `new` function L182-186 — `(config: OpenAiConfig) -> Result<Self>` — Create a new OpenAI-compatible backend with the given configuration.
+- pub `openai_from_env` function L189-191 — `() -> Result<Self>` — Create an OpenAI backend from environment.
+- pub `groq_from_env` function L194-196 — `() -> Result<Self>` — Create a Groq backend from environment.
+- pub `ollama` function L199-201 — `() -> Result<Self>` — Create an Ollama backend with default local settings.
+- pub `create_shared_backend` function L473-475 — `(config: OpenAiConfig) -> Result<Arc<dyn LlmBackend>>` — Create a shared OpenAI-compatible backend.
 -  `DEFAULT_OPENAI_BASE` variable L22 — `: &str` — Default OpenAI API base URL.
 -  `DEFAULT_TIMEOUT_SECS` variable L25 — `: u64` — Default timeout for requests.
 -  `DEFAULT_MAX_RETRIES` variable L28 — `: u32` — Default maximum retries for transient errors.
 -  `DEFAULT_RETRY_BACKOFF_MS` variable L31 — `: u64` — Default initial backoff between retries.
 -  `OpenAiConfig` type L77-168 — `= OpenAiConfig` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `OpenAiBackend` type L180-432 — `= OpenAiBackend` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `completions_url` function L207-209 — `(&self) -> String` — Build the chat completions endpoint URL.
--  `add_headers` function L212-220 — `(&self, builder: reqwest::RequestBuilder) -> reqwest::RequestBuilder` — Add authentication headers to a request.
--  `to_openai_request` function L223-377 — `(&self, request: &CompletionRequest) -> OpenAiChatRequest` — Convert our CompletionRequest to OpenAI-compatible format.
--  `handle_response` function L380-390 — `(response: Response) -> Result<CompletionResponse>` — Handle a successful response.
--  `handle_error_response` function L393-431 — `(response: Response) -> LlmError` — Handle an error response.
--  `OpenAiBackend` type L435-493 — `impl LlmBackend for OpenAiBackend` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `complete` function L436-465 — `(&self, request: CompletionRequest) -> Result<CompletionResponse>` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `complete_stream` function L467-484 — `(&self, request: CompletionRequest) -> Result<ResponseStream>` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `name` function L486-488 — `(&self) -> &str` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `supports_native_tools` function L490-492 — `(&self) -> bool` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `OpenAiChatRequest` struct L505-520 — `{ model: String, messages: Vec<OpenAiMessage>, max_tokens: Option<u32>, temperat...` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `OpenAiMessage` struct L523-531 — `{ role: String, content: Option<OpenAiContent>, tool_calls: Option<Vec<OpenAiToo...` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `OpenAiContent` enum L535-537 — `Text` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `OpenAiTool` struct L540-544 — `{ tool_type: String, function: OpenAiFunction }` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `OpenAiFunction` struct L547-552 — `{ name: String, description: Option<String>, parameters: serde_json::Value }` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `OpenAiToolCall` struct L555-560 — `{ id: String, call_type: String, function: OpenAiFunctionCall }` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `OpenAiFunctionCall` struct L563-566 — `{ name: String, arguments: String }` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `OpenAiChatResponse` struct L569-574 — `{ id: String, choices: Vec<OpenAiChoice>, model: String, usage: Option<OpenAiUsa...` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `CompletionResponse` type L576-639 — `= CompletionResponse` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `from` function L577-638 — `(resp: OpenAiChatResponse) -> Self` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `OpenAiChoice` struct L642-645 — `{ message: OpenAiResponseMessage, finish_reason: Option<String> }` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `OpenAiResponseMessage` struct L648-651 — `{ content: Option<String>, tool_calls: Option<Vec<OpenAiToolCall>> }` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `OpenAiUsage` struct L654-657 — `{ prompt_tokens: u32, completion_tokens: u32 }` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `OpenAiErrorResponse` struct L660-662 — `{ error: OpenAiError }` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `OpenAiError` struct L665-667 — `{ message: String }` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `parse_openai_sse_stream` function L673-794 — `( byte_stream: impl Stream<Item = reqwest::Result<Bytes>> + Send + 'static, ) ->...` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `OpenAiSseState` struct L796-803 — `{ byte_stream: Pin<Box<dyn Stream<Item = reqwest::Result<Bytes>> + Send>>, buffe...` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `OpenAiStreamChunk` struct L806-810 — `{ id: String, model: String, choices: Vec<OpenAiStreamChoice> }` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `OpenAiStreamChoice` struct L813-816 — `{ delta: Option<OpenAiStreamDelta>, finish_reason: Option<String> }` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `OpenAiStreamDelta` struct L819-822 — `{ content: Option<String>, tool_calls: Option<Vec<OpenAiStreamToolCall>> }` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `OpenAiStreamToolCall` struct L825-828 — `{ index: Option<usize>, function: Option<OpenAiStreamFunction> }` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `OpenAiStreamFunction` struct L831-833 — `{ arguments: Option<String> }` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `tests` module L840-1594 — `-` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_openai_config` function L845-850 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_groq_config` function L853-859 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_ollama_config` function L862-868 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_config_builder` function L871-882 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_completions_url` function L885-892 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_groq_completions_url` function L895-902 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_ollama_completions_url` function L905-912 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_backend_name` function L915-919 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_supports_native_tools` function L922-926 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_openai_response_conversion` function L929-952 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_openai_response_with_tool_calls` function L955-986 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_add_headers_static_key` function L989-1003 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_add_headers_dynamic_provider` function L1006-1021 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_add_headers_no_key` function L1024-1032 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_add_headers_preserves_special_chars` function L1035-1050 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_add_headers_real_groq_key_format` function L1053-1074 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_to_openai_request` function L1077-1089 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_to_openai_request_with_system` function L1092-1107 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_to_openai_request_uses_request_model_when_no_config_model` function L1110-1116 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_to_openai_request_with_tools` function L1119-1140 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_to_openai_request_with_tool_calls_and_results` function L1143-1181 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_to_openai_request_with_tool_result_blocks` function L1184-1210 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_to_openai_request_with_tool_result_none_content` function L1213-1233 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_to_openai_request_with_stop_sequences` function L1236-1248 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_to_openai_request_with_temperature` function L1251-1260 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_openai_response_no_choices` function L1263-1275 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_openai_response_length_finish_reason` function L1278-1296 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_openai_response_empty_text_omitted` function L1299-1318 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_openai_response_unknown_finish_reason` function L1321-1336 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_config_with_max_retries` function L1339-1342 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_config_with_retry_backoff` function L1345-1348 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_parse_openai_sse_stream_text` function L1351-1418 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_parse_openai_sse_stream_tool_calls` function L1421-1466 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_parse_openai_sse_stream_network_error` function L1469-1483 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_parse_openai_sse_stream_length_finish_reason` function L1486-1512 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_openai_response_tool_call_with_invalid_json_args` function L1515-1538 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_openai_response_none_content` function L1541-1559 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_to_openai_request_assistant_with_text_and_tool_call` function L1562-1593 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `OpenAiBackend` type L180-409 — `= OpenAiBackend` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `completions_url` function L204-206 — `(&self) -> String` — Build the chat completions endpoint URL.
+-  `add_headers` function L209-217 — `(&self, builder: reqwest::RequestBuilder) -> reqwest::RequestBuilder` — Add authentication headers to a request.
+-  `to_openai_request` function L220-374 — `(&self, request: &CompletionRequest) -> OpenAiChatRequest` — Convert our CompletionRequest to OpenAI-compatible format.
+-  `handle_response` function L377-387 — `(response: Response) -> Result<CompletionResponse>` — Handle a successful response.
+-  `handle_error_response` function L390-408 — `(response: Response) -> LlmError` — Handle an error response.
+-  `OpenAiBackend` type L412-470 — `impl LlmBackend for OpenAiBackend` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `complete` function L413-442 — `(&self, request: CompletionRequest) -> Result<CompletionResponse>` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `complete_stream` function L444-461 — `(&self, request: CompletionRequest) -> Result<ResponseStream>` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `name` function L463-465 — `(&self) -> &str` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `supports_native_tools` function L467-469 — `(&self) -> bool` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `OpenAiChatRequest` struct L482-497 — `{ model: String, messages: Vec<OpenAiMessage>, max_tokens: Option<u32>, temperat...` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `OpenAiMessage` struct L500-508 — `{ role: String, content: Option<OpenAiContent>, tool_calls: Option<Vec<OpenAiToo...` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `OpenAiContent` enum L512-514 — `Text` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `OpenAiTool` struct L517-521 — `{ tool_type: String, function: OpenAiFunction }` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `OpenAiFunction` struct L524-529 — `{ name: String, description: Option<String>, parameters: serde_json::Value }` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `OpenAiToolCall` struct L532-537 — `{ id: String, call_type: String, function: OpenAiFunctionCall }` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `OpenAiFunctionCall` struct L540-543 — `{ name: String, arguments: String }` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `OpenAiChatResponse` struct L546-551 — `{ id: String, choices: Vec<OpenAiChoice>, model: String, usage: Option<OpenAiUsa...` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `CompletionResponse` type L553-613 — `= CompletionResponse` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `from` function L554-612 — `(resp: OpenAiChatResponse) -> Self` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `OpenAiChoice` struct L616-619 — `{ message: OpenAiResponseMessage, finish_reason: Option<String> }` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `OpenAiResponseMessage` struct L622-625 — `{ content: Option<String>, tool_calls: Option<Vec<OpenAiToolCall>> }` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `OpenAiUsage` struct L628-631 — `{ prompt_tokens: u32, completion_tokens: u32 }` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `OpenAiErrorResponse` struct L634-636 — `{ error: OpenAiError }` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `OpenAiError` struct L639-641 — `{ message: String }` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `parse_openai_sse_stream` function L647-763 — `( byte_stream: impl Stream<Item = reqwest::Result<Bytes>> + Send + 'static, ) ->...` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `OpenAiSseState` struct L765-772 — `{ byte_stream: Pin<Box<dyn Stream<Item = reqwest::Result<Bytes>> + Send>>, buffe...` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `OpenAiStreamChunk` struct L775-779 — `{ id: String, model: String, choices: Vec<OpenAiStreamChoice> }` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `OpenAiStreamChoice` struct L782-785 — `{ delta: Option<OpenAiStreamDelta>, finish_reason: Option<String> }` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `OpenAiStreamDelta` struct L788-791 — `{ content: Option<String>, tool_calls: Option<Vec<OpenAiStreamToolCall>> }` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `OpenAiStreamToolCall` struct L794-797 — `{ index: Option<usize>, function: Option<OpenAiStreamFunction> }` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `OpenAiStreamFunction` struct L800-802 — `{ arguments: Option<String> }` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `tests` module L809-1563 — `-` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_openai_config` function L814-819 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_groq_config` function L822-828 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_ollama_config` function L831-837 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_config_builder` function L840-851 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_completions_url` function L854-861 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_groq_completions_url` function L864-871 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_ollama_completions_url` function L874-881 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_backend_name` function L884-888 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_supports_native_tools` function L891-895 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_openai_response_conversion` function L898-921 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_openai_response_with_tool_calls` function L924-955 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_add_headers_static_key` function L958-972 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_add_headers_dynamic_provider` function L975-990 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_add_headers_no_key` function L993-1001 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_add_headers_preserves_special_chars` function L1004-1019 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_add_headers_real_groq_key_format` function L1022-1043 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_to_openai_request` function L1046-1058 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_to_openai_request_with_system` function L1061-1076 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_to_openai_request_uses_request_model_when_no_config_model` function L1079-1085 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_to_openai_request_with_tools` function L1088-1109 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_to_openai_request_with_tool_calls_and_results` function L1112-1150 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_to_openai_request_with_tool_result_blocks` function L1153-1179 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_to_openai_request_with_tool_result_none_content` function L1182-1202 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_to_openai_request_with_stop_sequences` function L1205-1217 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_to_openai_request_with_temperature` function L1220-1229 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_openai_response_no_choices` function L1232-1244 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_openai_response_length_finish_reason` function L1247-1265 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_openai_response_empty_text_omitted` function L1268-1287 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_openai_response_unknown_finish_reason` function L1290-1305 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_config_with_max_retries` function L1308-1311 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_config_with_retry_backoff` function L1314-1317 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_parse_openai_sse_stream_text` function L1320-1387 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_parse_openai_sse_stream_tool_calls` function L1390-1435 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_parse_openai_sse_stream_network_error` function L1438-1452 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_parse_openai_sse_stream_length_finish_reason` function L1455-1481 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_openai_response_tool_call_with_invalid_json_args` function L1484-1507 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_openai_response_none_content` function L1510-1528 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_to_openai_request_assistant_with_text_and_tool_call` function L1531-1562 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
 
 #### crates/arawn-llm/src/types.rs
 
