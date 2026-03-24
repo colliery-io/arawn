@@ -581,149 +581,11 @@ pub async fn run(args: StartArgs, ctx: &Context) -> Result<()> {
     // ── Session indexer ──────────────────────────────────────────────────
     let indexer = init_session_indexer(&memory_cfg, &memory_store, &backends, &embedder, &data_dir, ctx).await;
 
-    // ── Start server ────────────────────────────────────────────────────
-
-    // Use config values with defaults (rate_limiting=true, request_logging=true, api_rpm=120)
-    let rate_limiting = server_cfg.map(|s| s.rate_limiting).unwrap_or(true);
-    let request_logging = server_cfg.map(|s| s.request_logging).unwrap_or(true);
-    let api_rpm = server_cfg
-        .map(|s| s.api_rpm)
-        .unwrap_or(arawn_types::config::defaults::REQUESTS_PER_MINUTE);
-
-    // Resolve WebSocket allowed origins:
-    // 1. Explicit config (ws_allowed_origins in [server]) takes priority
-    //    - Set to ["*"] to allow all origins (disables validation)
-    // 2. If auth is enabled and no origins configured, default to localhost variants
-    // 3. If auth is disabled (localhost-only mode), allow all origins
-    let ws_allowed_origins = server_cfg
-        .and_then(|s| {
-            if s.ws_allowed_origins.is_empty() {
-                None
-            } else {
-                Some(s.ws_allowed_origins.clone())
-            }
-        })
-        .unwrap_or_default();
-
-    let mut server_config = ServerConfig::new(auth_token)
-        .with_bind_address(addr)
-        .with_rate_limiting(rate_limiting)
-        .with_request_logging(request_logging)
-        .with_api_rpm(api_rpm)
-        .with_trust_proxy(server_cfg.as_ref().map(|s| s.trust_proxy).unwrap_or(false));
-
-    if !ws_allowed_origins.is_empty() {
-        server_config = server_config.with_ws_allowed_origins(ws_allowed_origins);
-    } else if server_config.auth_token.is_some() {
-        // Auth enabled but no explicit origins — default to localhost variants
-        server_config = server_config.with_ws_allowed_origins(vec![
-            "http://localhost".to_string(),
-            "http://127.0.0.1".to_string(),
-            "http://[::1]".to_string(),
-            "https://localhost".to_string(),
-            "https://127.0.0.1".to_string(),
-            "https://[::1]".to_string(),
-        ]);
-    }
-
-    let mut app_state = AppState::new(agent, server_config);
-    if let Some(idx) = indexer {
-        app_state = app_state.with_indexer(idx);
-    }
-    if let Some(store) = memory_store {
-        app_state.services.memory_store = Some(store);
-    }
-    if let Some(dispatcher) = shared_hook_dispatcher {
-        app_state = app_state.with_hook_dispatcher(dispatcher);
-    }
-    if let Some(manager) = mcp_manager.take() {
-        app_state = app_state.with_mcp_manager(manager);
-    }
-
-    // ── Workstream manager ────────────────────────────────────────────────
-    let ws_cfg = config.workstream.clone().unwrap_or_default();
-    let ws_config = WsConfig {
-        db_path: ws_cfg
-            .database
-            .map(|p| if p.is_relative() { data_dir.join(p) } else { p })
-            .unwrap_or_else(|| data_dir.join("workstreams.db")),
-        data_dir: ws_cfg
-            .data_dir
-            .map(|p| if p.is_relative() { data_dir.join(p) } else { p })
-            .unwrap_or_else(|| data_dir.join("workstreams")),
-        session_timeout_minutes: ws_cfg.session_timeout_minutes,
-    };
-
-    match WorkstreamManager::new(&ws_config) {
-        Ok(mgr) => {
-            // Seed test data if requested
-            if args.seed {
-                seed_test_data(&mgr, ctx.verbose);
-            }
-
-            app_state = app_state.with_workstreams(mgr);
-            if ctx.verbose {
-                println!(
-                    "Workstreams: db={}, data={}",
-                    ws_config.db_path.display(),
-                    ws_config.data_dir.display()
-                );
-            }
-        }
-        Err(e) => {
-            tracing::warn!("failed to init workstreams: {}", e);
-        }
-    }
-
-    // Apply session cache configuration (must be after workstreams so cache is recreated with manager)
-    let session_cfg = config.session.clone().unwrap_or_default();
-    app_state = app_state.with_session_config(&session_cfg);
-    tracing::debug!(
-        max_sessions = session_cfg.max_sessions,
-        cleanup_interval_secs = session_cfg.cleanup_interval_secs,
-        "Session cache configured"
-    );
-
-    // ── Session compressor (requires workstreams + LLM backend) ─────────
-    if let Some(compression_cfg) = config
-        .workstream
-        .as_ref()
-        .and_then(|ws| ws.compression.as_ref())
-        && compression_cfg.enabled
-        && app_state.workstreams().is_some()
-    {
-        let compression_backend = backends
-            .get(&compression_cfg.backend)
-            .or_else(|| backends.get("default"))
-            .cloned();
-
-        match compression_backend {
-            Some(cb) => {
-                let compressor_config = arawn_workstream::CompressorConfig {
-                    model: compression_cfg.model.clone(),
-                    max_summary_tokens: compression_cfg.max_summary_tokens,
-                    token_threshold_chars: compression_cfg.token_threshold_chars,
-                };
-                let compressor = arawn_workstream::Compressor::new(cb, compressor_config);
-                app_state = app_state.with_compressor(compressor);
-
-                if ctx.verbose {
-                    println!(
-                        "Session compression: enabled (backend={}, model={})",
-                        compression_cfg.backend, compression_cfg.model,
-                    );
-                }
-            }
-            None => {
-                tracing::warn!(
-                    " compression backend '{}' not found, compression disabled",
-                    compression_cfg.backend
-                );
-            }
-        }
-    }
-
-    let server = Server::from_state(app_state);
+    // ── Assemble + start server ─────────────────────────────────────────
+    let server = assemble_server(
+        config, server_cfg, addr, auth_token, agent, indexer, memory_store,
+        shared_hook_dispatcher, &mut mcp_manager, &backends, &data_dir, args.seed, ctx,
+    ).await;
 
     println!("Arawn server starting on http://{}", addr);
     println!("Press Ctrl+C to stop");
@@ -1086,6 +948,103 @@ struct PluginInitResult {
     agent_configs: HashMap<String, arawn_plugin::PluginAgentConfig>,
     agent_sources: HashMap<String, String>,
     _watcher: Option<arawn_plugin::WatcherHandle>,
+}
+
+/// Phase 15: Assemble server config, AppState, workstreams, session cache, and compressor.
+#[allow(clippy::too_many_arguments)]
+async fn assemble_server(
+    config: &arawn_config::ArawnConfig,
+    server_cfg: Option<&arawn_config::ServerConfig>,
+    addr: SocketAddr,
+    auth_token: Option<String>,
+    agent: arawn_agent::Agent,
+    indexer: Option<SessionIndexer>,
+    memory_store: Option<Arc<MemoryStore>>,
+    shared_hook_dispatcher: Option<arawn_types::SharedHookDispatcher>,
+    mcp_manager: &mut Option<McpManager>,
+    backends: &HashMap<String, arawn_llm::SharedBackend>,
+    data_dir: &std::path::Path,
+    seed: bool,
+    ctx: &Context,
+) -> Server {
+    let rate_limiting = server_cfg.map(|s| s.rate_limiting).unwrap_or(true);
+    let request_logging = server_cfg.map(|s| s.request_logging).unwrap_or(true);
+    let api_rpm = server_cfg.map(|s| s.api_rpm).unwrap_or(arawn_types::config::defaults::REQUESTS_PER_MINUTE);
+
+    let ws_allowed_origins = server_cfg
+        .and_then(|s| if s.ws_allowed_origins.is_empty() { None } else { Some(s.ws_allowed_origins.clone()) })
+        .unwrap_or_default();
+
+    let mut server_config = ServerConfig::new(auth_token)
+        .with_bind_address(addr)
+        .with_rate_limiting(rate_limiting)
+        .with_request_logging(request_logging)
+        .with_api_rpm(api_rpm)
+        .with_trust_proxy(server_cfg.map(|s| s.trust_proxy).unwrap_or(false));
+
+    if !ws_allowed_origins.is_empty() {
+        server_config = server_config.with_ws_allowed_origins(ws_allowed_origins);
+    } else if server_config.auth_token.is_some() {
+        server_config = server_config.with_ws_allowed_origins(vec![
+            "http://localhost".to_string(), "http://127.0.0.1".to_string(), "http://[::1]".to_string(),
+            "https://localhost".to_string(), "https://127.0.0.1".to_string(), "https://[::1]".to_string(),
+        ]);
+    }
+
+    let mut app_state = AppState::new(agent, server_config);
+    if let Some(idx) = indexer { app_state = app_state.with_indexer(idx); }
+    if let Some(store) = memory_store { app_state.services.memory_store = Some(store); }
+    if let Some(dispatcher) = shared_hook_dispatcher { app_state = app_state.with_hook_dispatcher(dispatcher); }
+    if let Some(manager) = mcp_manager.take() { app_state = app_state.with_mcp_manager(manager); }
+
+    // Workstreams
+    let ws_cfg = config.workstream.clone().unwrap_or_default();
+    let ws_config = WsConfig {
+        db_path: ws_cfg.database.map(|p| if p.is_relative() { data_dir.join(p) } else { p })
+            .unwrap_or_else(|| data_dir.join("workstreams.db")),
+        data_dir: ws_cfg.data_dir.map(|p| if p.is_relative() { data_dir.join(p) } else { p })
+            .unwrap_or_else(|| data_dir.join("workstreams")),
+        session_timeout_minutes: ws_cfg.session_timeout_minutes,
+    };
+
+    match WorkstreamManager::new(&ws_config) {
+        Ok(mgr) => {
+            if seed { seed_test_data(&mgr, ctx.verbose); }
+            app_state = app_state.with_workstreams(mgr);
+            if ctx.verbose {
+                println!("Workstreams: db={}, data={}", ws_config.db_path.display(), ws_config.data_dir.display());
+            }
+        }
+        Err(e) => tracing::warn!("failed to init workstreams: {}", e),
+    }
+
+    // Session cache
+    let session_cfg = config.session.clone().unwrap_or_default();
+    app_state = app_state.with_session_config(&session_cfg);
+    tracing::debug!(max_sessions = session_cfg.max_sessions, "Session cache configured");
+
+    // Session compressor
+    if let Some(compression_cfg) = config.workstream.as_ref().and_then(|ws| ws.compression.as_ref())
+        && compression_cfg.enabled
+        && app_state.workstreams().is_some()
+    {
+        let compression_backend = backends.get(&compression_cfg.backend)
+            .or_else(|| backends.get("default")).cloned();
+        match compression_backend {
+            Some(cb) => {
+                let compressor_config = arawn_workstream::CompressorConfig {
+                    model: compression_cfg.model.clone(),
+                    max_summary_tokens: compression_cfg.max_summary_tokens,
+                    token_threshold_chars: compression_cfg.token_threshold_chars,
+                };
+                app_state = app_state.with_compressor(arawn_workstream::Compressor::new(cb, compressor_config));
+                if ctx.verbose { println!("Session compression: enabled (backend={}, model={})", compression_cfg.backend, compression_cfg.model); }
+            }
+            None => tracing::warn!(" compression backend '{}' not found", compression_cfg.backend),
+        }
+    }
+
+    Server::from_state(app_state)
 }
 
 /// Phase 13: Build the agent with all configuration, tools, prompts, hooks, and sandboxing.
