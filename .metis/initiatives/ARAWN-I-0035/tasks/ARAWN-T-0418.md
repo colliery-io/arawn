@@ -143,3 +143,9 @@ Plugin (~222 lines), MCP (~126 lines), and explore/delegate (~70 lines) are well
 The real wins were in T-0415/T-0416/T-0417 which extracted the cleanly separable initialization phases. These remaining blocks are already readable due to clear section markers and self-contained scoping (labeled blocks, inner scopes).
 
 Decision: leave these in run() — they're well-structured as-is. The initiative's goal of making each phase "independently understandable" is met by the section markers.
+
+### 2026-03-24: Reopened and completed
+- Extracted `init_plugins()` (223 lines) with `PluginInitResult` struct — plugin loading, subscription sync, hook registration, agent config collection, skill prompt collection, hot-reload watcher
+- run() reduced from 1,200 to 985 lines
+- All 128 tests pass
+- Next: MCP, explore/delegate, agent builder, session indexer, server assembly

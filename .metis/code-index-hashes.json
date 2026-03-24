@@ -279,7 +279,7 @@
     "crates/arawn/src/commands/repl.rs": "3a08bfa0d941f98fa9c4a3802bacde357569f5d39bb7319a417e6898cd42722b",
     "crates/arawn/src/commands/secrets.rs": "536a932017336583fddbbe31592929de9d48d4ee08ab68925cee108176b5eeca",
     "crates/arawn/src/commands/session.rs": "7bf7a5b863a109eedd8e19bfb57eacd321fded88f49dcd95fc338864f787c497",
-    "crates/arawn/src/commands/start.rs": "84c32da5ad79bbfa860bc48c31e86c5cb2ff206b8cd866060f1de86bb8ca058b",
+    "crates/arawn/src/commands/start.rs": "a4517c80d3db08b05bdcd4c53df1c2941c8386d1e86346b4ae95ac951ce4f5b3",
     "crates/arawn/src/commands/status.rs": "10e11c5eb651fa588aec4169ea2a68cdd44caaff02cd0ecfd9626bbe166782da",
     "crates/arawn/src/commands/tui.rs": "a4a425f9f336d85676f6bd787b918d5dd567e3cebffaad038c81a936ce4fffd1",
     "crates/arawn/src/main.rs": "507fe7727c3bd067f9cb91a6caf873d3325b07c0f13cd41ececc4e691f3957d4",

@@ -460,355 +460,17 @@ pub async fn run(args: StartArgs, ctx: &Context) -> Result<()> {
     }
 
     // ── Plugin system ────────────────────────────────────────────────────
-
     let plugins_cfg = config.plugins.clone().unwrap_or_default();
-    let mut plugin_prompts: Vec<(String, String)> = Vec::new();
-    let mut hook_dispatcher = HookDispatcher::new();
-    // Collect agent configs from plugins for delegate tool
-    let mut plugin_agent_configs: HashMap<String, arawn_plugin::PluginAgentConfig> = HashMap::new();
-    let mut plugin_agent_sources: HashMap<String, String> = HashMap::new();
-    let _watcher_handle: Option<arawn_plugin::WatcherHandle> = if plugins_cfg.enabled {
-        // Build plugin directories: defaults + any user-configured dirs
-        let mut plugin_dirs: Vec<PathBuf> = Vec::new();
-        if let Some(config_dir) = dirs::config_dir() {
-            plugin_dirs.push(config_dir.join("arawn").join("plugins"));
-        }
-        plugin_dirs.push(PathBuf::from("./plugins"));
-        plugin_dirs.extend(plugins_cfg.dirs.clone());
+    let plugins = init_plugins(&plugins_cfg, workspace.as_deref(), ctx).await;
+    let plugin_prompts = plugins.prompts;
+    let hook_dispatcher = plugins.hook_dispatcher;
+    let plugin_agent_configs = plugins.agent_configs;
+    let plugin_agent_sources = plugins.agent_sources;
+    let _watcher_handle = plugins._watcher;
 
-        // Sync subscribed plugins (clone/update from git)
-        if !plugins_cfg.subscriptions.is_empty() {
-            let workspace_dir = workspace.as_deref();
-            match SubscriptionManager::new(plugins_cfg.subscriptions.clone(), workspace_dir) {
-                Ok(sub_manager) => {
-                    // Check if auto-update is enabled
-                    let should_update =
-                        plugins_cfg.auto_update && !SubscriptionManager::is_auto_update_disabled();
-
-                    if should_update {
-                        if ctx.verbose {
-                            println!(
-                                "Syncing {} subscribed plugin(s)...",
-                                sub_manager.all_subscriptions().len()
-                            );
-                        }
-
-                        let results = sub_manager.sync_all_async().await;
-
-                        // Log results
-                        for result in &results {
-                            match result.action {
-                                SyncAction::Cloned => {
-                                    if ctx.verbose {
-                                        println!("  Cloned: {}", result.subscription_id);
-                                    }
-                                }
-                                SyncAction::Updated => {
-                                    if ctx.verbose {
-                                        println!("  Updated: {}", result.subscription_id);
-                                    }
-                                }
-                                SyncAction::Skipped => {
-                                    // Silent unless verbose
-                                    if ctx.verbose {
-                                        println!("  Skipped: {}", result.subscription_id);
-                                    }
-                                }
-                                SyncAction::CloneFailed | SyncAction::UpdateFailed => {
-                                    let err = result.error.as_deref().unwrap_or("unknown error");
-                                    tracing::warn!(
-                                        " {} {}: {}",
-                                        result.action,
-                                        result.subscription_id,
-                                        err
-                                    );
-                                }
-                            }
-                        }
-
-                        // Summary
-                        let cloned = results
-                            .iter()
-                            .filter(|r| r.action == SyncAction::Cloned)
-                            .count();
-                        let updated = results
-                            .iter()
-                            .filter(|r| r.action == SyncAction::Updated)
-                            .count();
-                        let failed = results.iter().filter(|r| r.is_failure()).count();
-
-                        if ctx.verbose || failed > 0 {
-                            println!(
-                                "Plugin sync: {} cloned, {} updated, {} failed",
-                                cloned, updated, failed
-                            );
-                        }
-                    } else if ctx.verbose {
-                        println!("Plugin auto-update: disabled");
-                    }
-
-                    // Add synced plugin directories
-                    plugin_dirs.extend(sub_manager.plugin_dirs());
-                }
-                Err(e) => {
-                    tracing::warn!("failed to load plugin subscriptions: {}", e);
-                }
-            }
-        }
-
-        let manager = PluginManager::new(plugin_dirs);
-        let watcher = PluginWatcher::new(manager);
-        let _events = watcher.load_initial().await;
-
-        // Register plugin CLI tools, hooks, and collect prompt fragments
-        {
-            let state = watcher.state();
-            let st = state.read().await;
-
-            for plugin in st.plugins() {
-                // Register hooks from this plugin
-                if let Some(ref hooks_config) = plugin.hooks_config {
-                    hook_dispatcher.register_from_config(hooks_config, &plugin.plugin_dir);
-                    if ctx.verbose {
-                        let hook_count =
-                            hooks_config.hooks.values().map(|v| v.len()).sum::<usize>();
-                        if hook_count > 0 {
-                            println!(
-                                "  Plugin '{}': {} hook(s) registered",
-                                plugin.manifest.name, hook_count
-                            );
-                        }
-                    }
-                }
-
-                // Collect agent configs for delegate tool
-                for loaded_agent in &plugin.agent_configs {
-                    plugin_agent_configs.insert(
-                        loaded_agent.config.agent.name.clone(),
-                        loaded_agent.config.clone(),
-                    );
-                    plugin_agent_sources.insert(
-                        loaded_agent.config.agent.name.clone(),
-                        plugin.manifest.name.clone(),
-                    );
-                    if ctx.verbose {
-                        println!(
-                            "  Plugin '{}': agent '{}' registered",
-                            plugin.manifest.name, loaded_agent.config.agent.name
-                        );
-                    }
-                }
-
-                // Collect prompt fragments from plugin skills
-                if !plugin.skill_contents.is_empty() {
-                    let mut prompt_parts: Vec<String> = Vec::new();
-                    prompt_parts.push("Available skills:".to_string());
-                    for skill in &plugin.skill_contents {
-                        let desc = &skill.def.description;
-                        let name = &skill.def.name;
-                        prompt_parts.push(format!("- `/{name}`: {desc}"));
-                    }
-                    plugin_prompts.push((
-                        plugin.manifest.name.clone(),
-                        prompt_parts.join("\n"),
-                    ));
-                    if ctx.verbose {
-                        println!(
-                            "  Plugin '{}': {} skill prompt(s) registered",
-                            plugin.manifest.name,
-                            plugin.skill_contents.len()
-                        );
-                    }
-                }
-            }
-
-            if ctx.verbose || !st.is_empty() {
-                println!(
-                    "Plugins: {} loaded ({})",
-                    st.len(),
-                    st.plugins()
-                        .iter()
-                        .map(|p| p.manifest.name.as_str())
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                );
-            }
-
-            if !hook_dispatcher.is_empty() && ctx.verbose {
-                println!("Hooks: {} total registered", hook_dispatcher.len());
-            }
-        }
-
-        // Start hot-reload watcher if enabled
-        if plugins_cfg.hot_reload {
-            match watcher.watch() {
-                Ok((mut rx, handle)) => {
-                    // Spawn background task to log reload events
-                    tokio::spawn(async move {
-                        while let Some(event) = rx.recv().await {
-                            match event {
-                                arawn_plugin::PluginEvent::Reloaded { name, .. } => {
-                                    tracing::info!(plugin = %name, "plugin reloaded");
-                                }
-                                arawn_plugin::PluginEvent::Removed { name, .. } => {
-                                    tracing::info!(plugin = %name, "plugin removed");
-                                }
-                                arawn_plugin::PluginEvent::Error { plugin_dir, error } => {
-                                    tracing::warn!(
-                                        dir = %plugin_dir.display(),
-                                        error = %error,
-                                        "plugin reload failed"
-                                    );
-                                }
-                            }
-                        }
-                    });
-                    Some(handle)
-                }
-                Err(e) => {
-                    tracing::warn!("failed to start plugin watcher: {}", e);
-                    None
-                }
-            }
-        } else {
-            if ctx.verbose {
-                println!("Plugin hot-reload: disabled");
-            }
-            None
-        }
-    } else {
-        if ctx.verbose {
-            println!("Plugin system: disabled");
-        }
-        None
-    };
-
-    // ── MCP (Model Context Protocol) servers ────────────────────────────────
-
+    // ── MCP servers ──────────────────────────────────────────────────────
     let mcp_cfg = config.mcp.clone().unwrap_or_default();
-
-    // Create MCP manager if enabled (allows runtime additions via API even with no initial servers)
-    let mut mcp_manager: Option<McpManager> = if mcp_cfg.enabled {
-        Some(McpManager::new())
-    } else {
-        if ctx.verbose {
-            println!("MCP: disabled");
-        }
-        None
-    };
-
-    // Connect pre-configured servers if any
-    if let Some(ref mut manager) = mcp_manager {
-        if !mcp_cfg.servers.is_empty() {
-            // Convert config entries to McpServerConfig
-            let enabled_servers: Vec<McpServerConfig> = mcp_cfg
-                .servers
-                .iter()
-                .filter(|s| s.enabled)
-                .filter_map(|entry| {
-                    if entry.is_http() {
-                        // HTTP transport
-                        let url = match &entry.url {
-                            Some(u) => u.clone(),
-                            None => {
-                                tracing::warn!(
-                                    " MCP server '{}' is HTTP but has no URL, skipping",
-                                    entry.name
-                                );
-                                return None;
-                            }
-                        };
-                        let mut config = McpServerConfig::http(&entry.name, &url);
-                        for (k, v) in entry.header_tuples() {
-                            config = config.with_header(k, v);
-                        }
-                        if let Some(timeout) = entry.timeout_secs {
-                            config = config.with_timeout(std::time::Duration::from_secs(timeout));
-                        }
-                        if let Some(retries) = entry.retries {
-                            config = config.with_retries(retries);
-                        }
-                        Some(config)
-                    } else {
-                        // Stdio transport
-                        Some(
-                            McpServerConfig::new(&entry.name, &entry.command)
-                                .with_args(entry.args.clone())
-                                .with_env(entry.env_tuples()),
-                        )
-                    }
-                })
-                .collect();
-
-            if enabled_servers.is_empty() {
-                if ctx.verbose {
-                    println!("MCP: enabled (no servers configured)");
-                }
-            } else {
-                // Add configs to manager
-                for config in enabled_servers {
-                    manager.add_server(config);
-                }
-
-                if ctx.verbose {
-                    println!("MCP: connecting to {} server(s)...", manager.config_count());
-                }
-
-                match manager.connect_all() {
-                    Ok(connected) => {
-                        if connected > 0 {
-                            // Register MCP tools in the tool registry
-                            match manager.list_all_tools() {
-                                Ok(all_tools) => {
-                                    let mut total_tools = 0;
-                                    for server_name in all_tools.keys() {
-                                        if let Some(client) = manager.get_client(server_name) {
-                                            match McpToolAdapter::from_client(client) {
-                                                Ok(adapters) => {
-                                                    for adapter in adapters {
-                                                        if ctx.verbose {
-                                                            println!(
-                                                                "  Registered: {}",
-                                                                adapter.name()
-                                                            );
-                                                        }
-                                                        tool_registry.register(adapter);
-                                                        total_tools += 1;
-                                                    }
-                                                }
-                                                Err(e) => {
-                                                    tracing::warn!(
-                                                        " failed to create adapters for {}: {}",
-                                                        server_name,
-                                                        e
-                                                    );
-                                                }
-                                            }
-                                        }
-                                    }
-
-                                    println!(
-                                        "MCP: {} server(s) connected, {} tool(s) registered",
-                                        connected, total_tools
-                                    );
-                                }
-                                Err(e) => {
-                                    tracing::warn!("failed to list MCP tools: {}", e);
-                                }
-                            }
-                        } else {
-                            tracing::warn!("no MCP servers could be connected");
-                        }
-                    }
-                    Err(e) => {
-                        tracing::warn!("MCP connection failed: {}", e);
-                    }
-                }
-            }
-        } else {
-            println!("MCP: enabled (no servers configured)");
-        }
-    };
+    let mut mcp_manager = init_mcp(&mcp_cfg, &mut tool_registry, ctx);
 
     // ── Hook dispatcher (shared between agent and subagent spawner) ─────────
 
@@ -909,267 +571,15 @@ pub async fn run(args: StartArgs, ctx: &Context) -> Result<()> {
         tool_registry = new_registry;
     }
 
-    // ── System prompt builder ────────────────────────────────────────────
-    // Build a dynamic prompt builder that gets rebuilt per-turn for fresh
-    // datetime, plugin context, etc.
-
-    let agent_profile = config.agent.get("default");
-
-    let agent_name = agent_profile
-        .and_then(|a| a.name.as_deref())
-        .unwrap_or("Arawn");
-    let agent_description = agent_profile
-        .and_then(|a| a.description.as_deref())
-        .unwrap_or("a capable AI assistant running on the user's local machine");
-
-    let prompt_builder = SystemPromptBuilder::new()
-        .with_mode(PromptMode::Full)
-        .with_identity(agent_name, agent_description)
-        .with_datetime(None)
-        .with_memory_hints();
-
-    if ctx.verbose {
-        println!("Agent identity: {} — {}", agent_name, agent_description);
-    }
-
-    let mut builder = Agent::builder()
-        .with_shared_backend(backend)
-        .with_tools(tool_registry)
-        .with_plugin_prompts(plugin_prompts)
-        .with_prompt_builder(prompt_builder)
-        .with_model(&resolved.model);
-
-    // Wire max_iterations from [agent.default] config (fallback to hardcoded default in AgentConfig)
-    if let Some(max_iter) = agent_profile.and_then(|a| a.max_iterations) {
-        builder = builder.with_max_iterations(max_iter);
-    }
-
-    // Wire max_tokens (per-response limit) from [agent.default] config
-    if let Some(max_tok) = agent_profile.and_then(|a| a.max_tokens) {
-        builder = builder.with_max_tokens(max_tok);
-    }
-
-    // Wire up hook dispatcher to the agent
-    if let Some(ref dispatcher) = shared_hook_dispatcher {
-        builder = builder.with_hook_dispatcher(dispatcher.clone());
-    }
-
-    if let Some(ref ws) = workspace {
-        if ctx.verbose {
-            println!("Workspace: {}", ws.display());
-        }
-        builder = builder.with_workspace(ws);
-    }
-
-    if let Some(ref dir) = bootstrap_dir {
-        if ctx.verbose {
-            println!("Loading bootstrap files from: {}", dir.display());
-        }
-        builder = builder.with_bootstrap_dir(dir);
-    }
-
-    for file in &args.prompt_file {
-        if ctx.verbose {
-            println!("Loading prompt file: {}", file.display());
-        }
-        builder = builder.with_prompt_file(file);
-    }
-
-    // Wire age-encrypted secret resolver for ${{secrets.*}} handle resolution
-    match arawn_config::AgeSecretStore::open_default() {
-        Ok(store) => {
-            builder = builder.with_secret_resolver(std::sync::Arc::new(store));
-        }
-        Err(e) => {
-            tracing::warn!(
-                "Failed to open secret store (handles will not resolve): {}",
-                e
-            );
-        }
-    }
-
-    // Wire filesystem gate resolver for workstream-scoped tool execution
-    {
-        use arawn_workstream::DirectoryManager;
-
-        let ws_data_dir = config
-            .workstream
-            .as_ref()
-            .and_then(|w| w.data_dir.clone())
-            .map(|p| if p.is_relative() { data_dir.join(p) } else { p })
-            .unwrap_or_else(|| data_dir.join("workstreams"));
-
-        let dm = Arc::new(DirectoryManager::new(&ws_data_dir));
-
-        // Try to initialize the sandbox manager (may fail if dependencies missing)
-        let sandbox: Option<Arc<arawn_sandbox::SandboxManager>> =
-            match arawn_sandbox::SandboxManager::new().await {
-                Ok(mgr) => {
-                    if ctx.verbose {
-                        println!("Sandbox: {} platform detected", mgr.platform());
-                    }
-                    Some(Arc::new(mgr))
-                }
-                Err(e) => {
-                    tracing::warn!(
-                        "Sandbox unavailable (shell tool disabled, file tools still work): {}",
-                        e
-                    );
-                    if ctx.verbose {
-                        println!("Sandbox: unavailable — {}", e);
-                    }
-                    None
-                }
-            };
-
-        let resolver: arawn_types::FsGateResolver =
-            Arc::new(move |session_id: &str, workstream_id: &str| {
-                let gate: Arc<dyn arawn_types::FsGate> = match &sandbox {
-                    Some(sandbox) => Arc::new(WorkstreamFsGate::new(
-                        &dm,
-                        Arc::clone(sandbox),
-                        workstream_id,
-                        session_id,
-                    )),
-                    None => Arc::new(WorkstreamFsGate::path_only(&dm, workstream_id, session_id)),
-                };
-                Some(gate)
-            });
-
-        builder = builder.with_fs_gate_resolver(resolver);
-    }
-
-    // Wire memory store and embedder for active recall
-    if let Some(ref store) = memory_store {
-        builder = builder.with_memory_store(store.clone());
-        if ctx.verbose {
-            println!("Active recall: memory store wired");
-        }
-    }
-    builder = builder.with_embedder(embedder.clone());
-
-    let agent = builder.build()?;
+    // ── Build agent ──────────────────────────────────────────────────────
+    let agent = build_agent(
+        config, &resolved, backend, tool_registry, plugin_prompts,
+        &shared_hook_dispatcher, &workspace, &bootstrap_dir, &args.prompt_file,
+        &memory_store, &embedder, &data_dir, ctx,
+    ).await?;
 
     // ── Session indexer ──────────────────────────────────────────────────
-
-    let indexer: Option<SessionIndexer> = if memory_cfg.indexing.enabled {
-        match &memory_store {
-            Some(store) => {
-                // Resolve the indexing LLM backend
-                let indexing_backend_name = &memory_cfg.indexing.backend;
-                let indexing_backend = backends
-                    .get(indexing_backend_name)
-                    .or_else(|| backends.get("default"))
-                    .cloned();
-
-                match indexing_backend {
-                    Some(ib) => {
-                        let indexer_config = IndexerConfig {
-                            model: memory_cfg.indexing.model.clone(),
-                            ..Default::default()
-                        };
-
-                        #[allow(unused_mut)]
-                        let mut idx = SessionIndexer::with_backend(
-                            store.clone(),
-                            ib,
-                            Some(embedder.clone()),
-                            indexer_config,
-                        );
-
-                        // Optionally attach GLiNER NER engine
-                        #[cfg(feature = "gliner")]
-                        {
-                            // Resolve model + tokenizer paths: explicit config, or auto-download
-                            let ner_paths: Option<(String, String)> = if let Some(ref model_path) =
-                                memory_cfg.indexing.ner_model_path
-                            {
-                                // Explicit path provided
-                                let tok = memory_cfg
-                                    .indexing
-                                    .ner_tokenizer_path
-                                    .clone()
-                                    .unwrap_or_else(|| {
-                                        std::path::Path::new(model_path)
-                                            .parent()
-                                            .map(|p| {
-                                                p.join("tokenizer.json").to_string_lossy().into()
-                                            })
-                                            .unwrap_or_else(|| "tokenizer.json".to_string())
-                                    });
-                                Some((model_path.clone(), tok))
-                            } else {
-                                // Auto-download from HuggingFace
-                                match arawn_llm::ensure_ner_model_files(
-                                    memory_cfg.indexing.ner_model_url.as_deref(),
-                                    memory_cfg.indexing.ner_tokenizer_url.as_deref(),
-                                )
-                                .await
-                                {
-                                    Some((m, t)) => Some((
-                                        m.to_string_lossy().into_owned(),
-                                        t.to_string_lossy().into_owned(),
-                                    )),
-                                    None => {
-                                        tracing::warn!(
-                                            " GLiNER model download failed, NER disabled"
-                                        );
-                                        None
-                                    }
-                                }
-                            };
-
-                            if let Some((model_path, tokenizer_path)) = ner_paths {
-                                let ner_config = NerConfig {
-                                    model_path: model_path.clone(),
-                                    tokenizer_path,
-                                    threshold: memory_cfg.indexing.ner_threshold,
-                                };
-                                match GlinerEngine::new(&ner_config) {
-                                    Ok(engine) => {
-                                        idx = idx.with_ner_engine(Arc::new(engine));
-                                        if ctx.verbose {
-                                            println!("NER engine: GLiNER ({})", model_path);
-                                        }
-                                    }
-                                    Err(e) => {
-                                        tracing::warn!("failed to load GLiNER model: {}", e);
-                                    }
-                                }
-                            }
-                        }
-
-                        if ctx.verbose {
-                            println!(
-                                "Session indexer: enabled (backend={}, model={}, db={})",
-                                indexing_backend_name,
-                                memory_cfg.indexing.model,
-                                data_dir.join("memory.db").display(),
-                            );
-                        }
-
-                        Some(idx)
-                    }
-                    None => {
-                        tracing::warn!(
-                            " indexing backend '{}' not found, indexer disabled",
-                            indexing_backend_name
-                        );
-                        None
-                    }
-                }
-            }
-            None => {
-                tracing::warn!("memory store not available, indexer disabled");
-                None
-            }
-        }
-    } else {
-        if ctx.verbose {
-            println!("Session indexer: disabled");
-        }
-        None
-    };
+    let indexer = init_session_indexer(&memory_cfg, &memory_store, &backends, &embedder, &data_dir, ctx).await;
 
     // ── Start server ────────────────────────────────────────────────────
 
@@ -1667,6 +1077,433 @@ fn init_memory_store(
             None
         }
     }
+}
+
+/// Result of plugin system initialization.
+struct PluginInitResult {
+    prompts: Vec<(String, String)>,
+    hook_dispatcher: HookDispatcher,
+    agent_configs: HashMap<String, arawn_plugin::PluginAgentConfig>,
+    agent_sources: HashMap<String, String>,
+    _watcher: Option<arawn_plugin::WatcherHandle>,
+}
+
+/// Phase 13: Build the agent with all configuration, tools, prompts, hooks, and sandboxing.
+#[allow(clippy::too_many_arguments)]
+async fn build_agent(
+    config: &arawn_config::ArawnConfig,
+    resolved: &ResolvedLlm,
+    backend: arawn_llm::SharedBackend,
+    tool_registry: arawn_agent::ToolRegistry,
+    plugin_prompts: Vec<(String, String)>,
+    shared_hook_dispatcher: &Option<arawn_types::SharedHookDispatcher>,
+    workspace: &Option<PathBuf>,
+    bootstrap_dir: &Option<PathBuf>,
+    prompt_files: &[PathBuf],
+    memory_store: &Option<Arc<MemoryStore>>,
+    embedder: &Arc<dyn arawn_llm::Embedder>,
+    data_dir: &std::path::Path,
+    ctx: &Context,
+) -> Result<arawn_agent::Agent> {
+    let agent_profile = config.agent.get("default");
+
+    let agent_name = agent_profile.and_then(|a| a.name.as_deref()).unwrap_or("Arawn");
+    let agent_description = agent_profile.and_then(|a| a.description.as_deref())
+        .unwrap_or("a capable AI assistant running on the user's local machine");
+
+    let prompt_builder = SystemPromptBuilder::new()
+        .with_mode(PromptMode::Full)
+        .with_identity(agent_name, agent_description)
+        .with_datetime(None)
+        .with_memory_hints();
+
+    if ctx.verbose { println!("Agent identity: {} — {}", agent_name, agent_description); }
+
+    let mut builder = Agent::builder()
+        .with_shared_backend(backend)
+        .with_tools(tool_registry)
+        .with_plugin_prompts(plugin_prompts)
+        .with_prompt_builder(prompt_builder)
+        .with_model(&resolved.model);
+
+    if let Some(max_iter) = agent_profile.and_then(|a| a.max_iterations) {
+        builder = builder.with_max_iterations(max_iter);
+    }
+    if let Some(max_tok) = agent_profile.and_then(|a| a.max_tokens) {
+        builder = builder.with_max_tokens(max_tok);
+    }
+    if let Some(dispatcher) = shared_hook_dispatcher {
+        builder = builder.with_hook_dispatcher(dispatcher.clone());
+    }
+    if let Some(ws) = workspace {
+        if ctx.verbose { println!("Workspace: {}", ws.display()); }
+        builder = builder.with_workspace(ws);
+    }
+    if let Some(dir) = bootstrap_dir {
+        if ctx.verbose { println!("Loading bootstrap files from: {}", dir.display()); }
+        builder = builder.with_bootstrap_dir(dir);
+    }
+    for file in prompt_files {
+        if ctx.verbose { println!("Loading prompt file: {}", file.display()); }
+        builder = builder.with_prompt_file(file);
+    }
+
+    // Secret resolver
+    match arawn_config::AgeSecretStore::open_default() {
+        Ok(store) => { builder = builder.with_secret_resolver(std::sync::Arc::new(store)); }
+        Err(e) => { tracing::warn!("Failed to open secret store (handles will not resolve): {}", e); }
+    }
+
+    // Filesystem gate resolver
+    {
+        use arawn_workstream::DirectoryManager;
+
+        let ws_data_dir = config.workstream.as_ref()
+            .and_then(|w| w.data_dir.clone())
+            .map(|p| if p.is_relative() { data_dir.join(p) } else { p })
+            .unwrap_or_else(|| data_dir.join("workstreams"));
+
+        let dm = Arc::new(DirectoryManager::new(&ws_data_dir));
+
+        let sandbox: Option<Arc<arawn_sandbox::SandboxManager>> =
+            match arawn_sandbox::SandboxManager::new().await {
+                Ok(mgr) => {
+                    if ctx.verbose { println!("Sandbox: {} platform detected", mgr.platform()); }
+                    Some(Arc::new(mgr))
+                }
+                Err(e) => {
+                    tracing::warn!("Sandbox unavailable (shell tool disabled, file tools still work): {}", e);
+                    if ctx.verbose { println!("Sandbox: unavailable — {}", e); }
+                    None
+                }
+            };
+
+        let resolver: arawn_types::FsGateResolver =
+            Arc::new(move |session_id: &str, workstream_id: &str| {
+                let gate: Arc<dyn arawn_types::FsGate> = match &sandbox {
+                    Some(sandbox) => Arc::new(WorkstreamFsGate::new(&dm, Arc::clone(sandbox), workstream_id, session_id)),
+                    None => Arc::new(WorkstreamFsGate::path_only(&dm, workstream_id, session_id)),
+                };
+                Some(gate)
+            });
+
+        builder = builder.with_fs_gate_resolver(resolver);
+    }
+
+    if let Some(store) = memory_store {
+        builder = builder.with_memory_store(store.clone());
+        if ctx.verbose { println!("Active recall: memory store wired"); }
+    }
+    builder = builder.with_embedder(embedder.clone());
+
+    Ok(builder.build()?)
+}
+
+/// Phase 14: Create the session indexer for background summarization.
+async fn init_session_indexer(
+    memory_cfg: &arawn_config::MemoryConfig,
+    memory_store: &Option<Arc<MemoryStore>>,
+    backends: &HashMap<String, arawn_llm::SharedBackend>,
+    embedder: &Arc<dyn arawn_llm::Embedder>,
+    data_dir: &std::path::Path,
+    ctx: &Context,
+) -> Option<SessionIndexer> {
+    if !memory_cfg.indexing.enabled {
+        if ctx.verbose { println!("Session indexer: disabled"); }
+        return None;
+    }
+
+    let store = match memory_store {
+        Some(s) => s,
+        None => {
+            tracing::warn!("memory store not available, indexer disabled");
+            return None;
+        }
+    };
+
+    let indexing_backend_name = &memory_cfg.indexing.backend;
+    let indexing_backend = backends
+        .get(indexing_backend_name)
+        .or_else(|| backends.get("default"))
+        .cloned();
+
+    let ib = match indexing_backend {
+        Some(ib) => ib,
+        None => {
+            tracing::warn!(" indexing backend '{}' not found, indexer disabled", indexing_backend_name);
+            return None;
+        }
+    };
+
+    let indexer_config = IndexerConfig {
+        model: memory_cfg.indexing.model.clone(),
+        ..Default::default()
+    };
+
+    #[allow(unused_mut)]
+    let mut idx = SessionIndexer::with_backend(store.clone(), ib, Some(embedder.clone()), indexer_config);
+
+    #[cfg(feature = "gliner")]
+    {
+        let ner_paths: Option<(String, String)> = if let Some(ref model_path) = memory_cfg.indexing.ner_model_path {
+            let tok = memory_cfg.indexing.ner_tokenizer_path.clone().unwrap_or_else(|| {
+                std::path::Path::new(model_path)
+                    .parent()
+                    .map(|p| p.join("tokenizer.json").to_string_lossy().into())
+                    .unwrap_or_else(|| "tokenizer.json".to_string())
+            });
+            Some((model_path.clone(), tok))
+        } else {
+            match arawn_llm::ensure_ner_model_files(
+                memory_cfg.indexing.ner_model_url.as_deref(),
+                memory_cfg.indexing.ner_tokenizer_url.as_deref(),
+            ).await {
+                Some((m, t)) => Some((m.to_string_lossy().into_owned(), t.to_string_lossy().into_owned())),
+                None => { tracing::warn!(" GLiNER model download failed, NER disabled"); None }
+            }
+        };
+
+        if let Some((model_path, tokenizer_path)) = ner_paths {
+            let ner_config = NerConfig {
+                model_path: model_path.clone(),
+                tokenizer_path,
+                threshold: memory_cfg.indexing.ner_threshold,
+            };
+            match GlinerEngine::new(&ner_config) {
+                Ok(engine) => {
+                    idx = idx.with_ner_engine(Arc::new(engine));
+                    if ctx.verbose { println!("NER engine: GLiNER ({})", model_path); }
+                }
+                Err(e) => tracing::warn!("failed to load GLiNER model: {}", e),
+            }
+        }
+    }
+
+    if ctx.verbose {
+        println!("Session indexer: enabled (backend={}, model={}, db={})",
+            indexing_backend_name, memory_cfg.indexing.model, data_dir.join("memory.db").display());
+    }
+
+    Some(idx)
+}
+
+/// Phase 11: Connect to MCP servers and register discovered tools.
+fn init_mcp(
+    mcp_cfg: &arawn_config::McpConfig,
+    tool_registry: &mut ToolRegistry,
+    ctx: &Context,
+) -> Option<McpManager> {
+    if !mcp_cfg.enabled {
+        if ctx.verbose { println!("MCP: disabled"); }
+        return None;
+    }
+
+    let mut manager = McpManager::new();
+
+    if mcp_cfg.servers.is_empty() {
+        if ctx.verbose { println!("MCP: enabled (no servers configured)"); }
+        return Some(manager);
+    }
+
+    let enabled_servers: Vec<McpServerConfig> = mcp_cfg.servers.iter()
+        .filter(|s| s.enabled)
+        .filter_map(|entry| {
+            if entry.is_http() {
+                let url = match &entry.url {
+                    Some(u) => u.clone(),
+                    None => {
+                        tracing::warn!(" MCP server '{}' is HTTP but has no URL, skipping", entry.name);
+                        return None;
+                    }
+                };
+                let mut config = McpServerConfig::http(&entry.name, &url);
+                for (k, v) in entry.header_tuples() { config = config.with_header(k, v); }
+                if let Some(timeout) = entry.timeout_secs {
+                    config = config.with_timeout(std::time::Duration::from_secs(timeout));
+                }
+                if let Some(retries) = entry.retries { config = config.with_retries(retries); }
+                Some(config)
+            } else {
+                Some(McpServerConfig::new(&entry.name, &entry.command)
+                    .with_args(entry.args.clone())
+                    .with_env(entry.env_tuples()))
+            }
+        })
+        .collect();
+
+    if enabled_servers.is_empty() {
+        if ctx.verbose { println!("MCP: enabled (no servers configured)"); }
+        return Some(manager);
+    }
+
+    for config in enabled_servers { manager.add_server(config); }
+    if ctx.verbose { println!("MCP: connecting to {} server(s)...", manager.config_count()); }
+
+    match manager.connect_all() {
+        Ok(connected) if connected > 0 => {
+            match manager.list_all_tools() {
+                Ok(all_tools) => {
+                    let mut total_tools = 0;
+                    for server_name in all_tools.keys() {
+                        if let Some(client) = manager.get_client(server_name) {
+                            match McpToolAdapter::from_client(client) {
+                                Ok(adapters) => {
+                                    for adapter in adapters {
+                                        if ctx.verbose { println!("  Registered: {}", adapter.name()); }
+                                        tool_registry.register(adapter);
+                                        total_tools += 1;
+                                    }
+                                }
+                                Err(e) => tracing::warn!(" failed to create adapters for {}: {}", server_name, e),
+                            }
+                        }
+                    }
+                    println!("MCP: {} server(s) connected, {} tool(s) registered", connected, total_tools);
+                }
+                Err(e) => tracing::warn!("failed to list MCP tools: {}", e),
+            }
+        }
+        Ok(_) => tracing::warn!("no MCP servers could be connected"),
+        Err(e) => tracing::warn!("MCP connection failed: {}", e),
+    }
+
+    Some(manager)
+}
+
+/// Phase 10: Load plugins, sync subscriptions, collect hooks + agent configs + skill prompts.
+async fn init_plugins(
+    plugins_cfg: &arawn_config::PluginsConfig,
+    workspace: Option<&std::path::Path>,
+    ctx: &Context,
+) -> PluginInitResult {
+    let mut prompts: Vec<(String, String)> = Vec::new();
+    let mut hook_dispatcher = HookDispatcher::new();
+    let mut agent_configs: HashMap<String, arawn_plugin::PluginAgentConfig> = HashMap::new();
+    let mut agent_sources: HashMap<String, String> = HashMap::new();
+
+    let watcher_handle: Option<arawn_plugin::WatcherHandle> = if plugins_cfg.enabled {
+        let mut plugin_dirs: Vec<PathBuf> = Vec::new();
+        if let Some(config_dir) = dirs::config_dir() {
+            plugin_dirs.push(config_dir.join("arawn").join("plugins"));
+        }
+        plugin_dirs.push(PathBuf::from("./plugins"));
+        plugin_dirs.extend(plugins_cfg.dirs.clone());
+
+        if !plugins_cfg.subscriptions.is_empty() {
+            match SubscriptionManager::new(plugins_cfg.subscriptions.clone(), workspace) {
+                Ok(sub_manager) => {
+                    let should_update =
+                        plugins_cfg.auto_update && !SubscriptionManager::is_auto_update_disabled();
+                    if should_update {
+                        if ctx.verbose {
+                            println!("Syncing {} subscribed plugin(s)...", sub_manager.all_subscriptions().len());
+                        }
+                        let results = sub_manager.sync_all_async().await;
+                        for result in &results {
+                            match result.action {
+                                SyncAction::Cloned => { if ctx.verbose { println!("  Cloned: {}", result.subscription_id); } }
+                                SyncAction::Updated => { if ctx.verbose { println!("  Updated: {}", result.subscription_id); } }
+                                SyncAction::Skipped => { if ctx.verbose { println!("  Skipped: {}", result.subscription_id); } }
+                                SyncAction::CloneFailed | SyncAction::UpdateFailed => {
+                                    let err = result.error.as_deref().unwrap_or("unknown error");
+                                    tracing::warn!(" {} {}: {}", result.action, result.subscription_id, err);
+                                }
+                            }
+                        }
+                        let cloned = results.iter().filter(|r| r.action == SyncAction::Cloned).count();
+                        let updated = results.iter().filter(|r| r.action == SyncAction::Updated).count();
+                        let failed = results.iter().filter(|r| r.is_failure()).count();
+                        if ctx.verbose || failed > 0 {
+                            println!("Plugin sync: {} cloned, {} updated, {} failed", cloned, updated, failed);
+                        }
+                    } else if ctx.verbose {
+                        println!("Plugin auto-update: disabled");
+                    }
+                    plugin_dirs.extend(sub_manager.plugin_dirs());
+                }
+                Err(e) => { tracing::warn!("failed to load plugin subscriptions: {}", e); }
+            }
+        }
+
+        let manager = PluginManager::new(plugin_dirs);
+        let watcher = PluginWatcher::new(manager);
+        let _events = watcher.load_initial().await;
+
+        {
+            let state = watcher.state();
+            let st = state.read().await;
+
+            for plugin in st.plugins() {
+                if let Some(ref hooks_config) = plugin.hooks_config {
+                    hook_dispatcher.register_from_config(hooks_config, &plugin.plugin_dir);
+                    if ctx.verbose {
+                        let hook_count = hooks_config.hooks.values().map(|v| v.len()).sum::<usize>();
+                        if hook_count > 0 {
+                            println!("  Plugin '{}': {} hook(s) registered", plugin.manifest.name, hook_count);
+                        }
+                    }
+                }
+                for loaded_agent in &plugin.agent_configs {
+                    agent_configs.insert(loaded_agent.config.agent.name.clone(), loaded_agent.config.clone());
+                    agent_sources.insert(loaded_agent.config.agent.name.clone(), plugin.manifest.name.clone());
+                    if ctx.verbose {
+                        println!("  Plugin '{}': agent '{}' registered", plugin.manifest.name, loaded_agent.config.agent.name);
+                    }
+                }
+                if !plugin.skill_contents.is_empty() {
+                    let mut prompt_parts: Vec<String> = Vec::new();
+                    prompt_parts.push("Available skills:".to_string());
+                    for skill in &plugin.skill_contents {
+                        prompt_parts.push(format!("- `/{name}`: {desc}", name = skill.def.name, desc = skill.def.description));
+                    }
+                    prompts.push((plugin.manifest.name.clone(), prompt_parts.join("\n")));
+                    if ctx.verbose {
+                        println!("  Plugin '{}': {} skill prompt(s) registered", plugin.manifest.name, plugin.skill_contents.len());
+                    }
+                }
+            }
+
+            if ctx.verbose || !st.is_empty() {
+                println!("Plugins: {} loaded ({})", st.len(),
+                    st.plugins().iter().map(|p| p.manifest.name.as_str()).collect::<Vec<_>>().join(", "));
+            }
+            if !hook_dispatcher.is_empty() && ctx.verbose {
+                println!("Hooks: {} total registered", hook_dispatcher.len());
+            }
+        }
+
+        if plugins_cfg.hot_reload {
+            match watcher.watch() {
+                Ok((mut rx, handle)) => {
+                    tokio::spawn(async move {
+                        while let Some(event) = rx.recv().await {
+                            match event {
+                                arawn_plugin::PluginEvent::Reloaded { name, .. } => {
+                                    tracing::info!(plugin = %name, "plugin reloaded");
+                                }
+                                arawn_plugin::PluginEvent::Removed { name, .. } => {
+                                    tracing::info!(plugin = %name, "plugin removed");
+                                }
+                                arawn_plugin::PluginEvent::Error { plugin_dir, error } => {
+                                    tracing::warn!(dir = %plugin_dir.display(), error = %error, "plugin reload failed");
+                                }
+                            }
+                        }
+                    });
+                    Some(handle)
+                }
+                Err(e) => { tracing::warn!("failed to start plugin watcher: {}", e); None }
+            }
+        } else {
+            if ctx.verbose { println!("Plugin hot-reload: disabled"); }
+            None
+        }
+    } else {
+        if ctx.verbose { println!("Plugin system: disabled"); }
+        None
+    };
+
+    PluginInitResult { prompts, hook_dispatcher, agent_configs, agent_sources, _watcher: watcher_handle }
 }
 
 /// Resolve LLM config, applying CLI overrides on top of config file values.
