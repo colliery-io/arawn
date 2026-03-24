@@ -143,3 +143,9 @@ initiative_id: ARAWN-I-0035
 - Remaining ~1,200 lines are the wiring/orchestration logic (plugins, MCP, explore/delegate, agent builder, server assembly) which are convergence points best left inline with section markers
 - Full workspace compiles clean, all 128 arawn tests pass
 - Goal met: each initialization phase is independently understandable via named functions or clear `// ── ` section markers
+
+### 2026-03-24: Reopened — completed properly
+- Extracted plugins (223 lines), MCP (126 lines), session indexer (120 lines), agent builder (140 lines), server assembly (148 lines), pipeline tools (230 lines)
+- **run() final size: 245 lines (85% reduction from 1,600)**
+- 13 extracted functions total
+- All 128 arawn tests pass

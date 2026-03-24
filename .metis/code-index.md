@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-03-24T21:13:54Z | 335 files | Rust
+> Generated: 2026-03-24T21:17:59Z | 335 files | Rust
 
 ## Project Structure
 
@@ -703,32 +703,33 @@
 - pub `StartArgs` struct L50-102 — `{ daemon: bool, port: Option<u16>, bind: Option<String>, token: Option<String>, ...` — Start command - launches the Arawn server.
 - pub `pid_file_path` function L106-110 — `() -> std::path::PathBuf` — Run the start command.
 - pub `stop_daemon` function L113-142 — `() -> Result<()>` — Stop a running daemon by sending SIGTERM to the PID in the PID file.
-- pub `run` function L144-615 — `(args: StartArgs, ctx: &Context) -> Result<()>` — Start command - launches the Arawn server.
--  `load_and_validate_config` function L622-659 — `( args: &StartArgs, ctx: &Context, ) -> Result<arawn_config::LoadedConfig>` — Phase 1-2: Load config from file or discovery, print warnings, validate.
--  `init_llm_backends` function L662-715 — `( config: &arawn_config::ArawnConfig, args: &StartArgs, ctx: &Context, ) -> Resu...` — Phase 3: Resolve LLM backends (default + named profiles).
--  `resolve_server_settings` function L718-764 — `( config: &arawn_config::ArawnConfig, args: &StartArgs, ctx: &Context, ) -> Resu...` — Phase 4: Resolve server bind address, workspace, bootstrap dir, and auth token.
--  `init_tool_registry` function L767-828 — `( tools_cfg: &arawn_config::ToolsConfig, memory_store: &Option<Arc<MemoryStore>>...` — Phase 8: Create tool registry with all built-in tools and output config.
--  `init_embedder` function L831-853 — `( config: &arawn_config::ArawnConfig, ctx: &Context, ) -> Result<Arc<dyn arawn_l...` — Phase 5: Initialize the embedding provider.
--  `init_pipeline` function L856-905 — `( pipeline_cfg: &arawn_config::PipelineSection, data_dir: &std::path::Path, ctx:...` — Phase 6: Initialize the pipeline engine.
--  `init_memory_store` function L908-942 — `( memory_cfg: &arawn_config::MemoryConfig, data_dir: &std::path::Path, embedder:...` — Phase 7: Initialize the memory store with graph + vector extensions.
--  `PluginInitResult` struct L945-951 — `{ prompts: Vec<(String, String)>, hook_dispatcher: HookDispatcher, agent_configs...` — Result of plugin system initialization.
--  `assemble_server` function L955-1048 — `( config: &arawn_config::ArawnConfig, server_cfg: Option<&arawn_config::ServerCo...` — Phase 15: Assemble server config, AppState, workstreams, session cache, and compressor.
--  `build_agent` function L1052-1159 — `( config: &arawn_config::ArawnConfig, resolved: &ResolvedLlm, backend: arawn_llm...` — Phase 13: Build the agent with all configuration, tools, prompts, hooks, and sandboxing.
--  `init_session_indexer` function L1162-1247 — `( memory_cfg: &arawn_config::MemoryConfig, memory_store: &Option<Arc<MemoryStore...` — Phase 14: Create the session indexer for background summarization.
--  `init_mcp` function L1250-1330 — `( mcp_cfg: &arawn_config::McpConfig, tool_registry: &mut ToolRegistry, ctx: &Con...` — Phase 11: Connect to MCP servers and register discovered tools.
--  `init_plugins` function L1333-1466 — `( plugins_cfg: &arawn_config::PluginsConfig, workspace: Option<&std::path::Path>...` — Phase 10: Load plugins, sync subscriptions, collect hooks + agent configs + skill prompts.
--  `resolve_with_cli_overrides` function L1469-1519 — `( config: &arawn_config::ArawnConfig, args: &StartArgs, ) -> Result<ResolvedLlm>` — Resolve LLM config, applying CLI overrides on top of config file values.
--  `make_api_key_provider` function L1525-1529 — `(backend: Backend, config_value: Option<String>) -> ApiKeyProvider` — Build an `ApiKeyProvider` that re-resolves from the secret store on each request.
--  `create_backend` function L1532-1666 — `( resolved: &ResolvedLlm, oauth_overrides: Option<&arawn_config::OAuthConfigOver...` — Create an LLM backend from a resolved config.
--  `parse_backend` function L1668-1681 — `(s: &str) -> Result<Backend>` — Start command - launches the Arawn server.
--  `load_or_generate_server_token` function L1684-1700 — `() -> Result<String>` — Load a persisted server token, or generate and save a new one.
--  `resolve_profile` function L1703-1734 — `(name: &str, llm_config: &LlmConfig) -> Result<ResolvedLlm>` — Resolve a named LLM profile into a ResolvedLlm ready for backend creation.
--  `build_embedder_spec` function L1737-1783 — `(config: &arawn_config::EmbeddingConfig) -> EmbedderSpec` — Build an `EmbedderSpec` from the application's `EmbeddingConfig`.
--  `default_model` function L1785-1793 — `(backend: &Backend) -> String` — Start command - launches the Arawn server.
--  `register_builtin_runtimes` function L1800-1878 — `( runtimes_src_dir: &std::path::Path, executor: &Arc<ScriptExecutor>, catalog: &...` — Compile and register built-in WASM runtimes from source crate directories.
--  `seed_test_data` function L1881-1974 — `(manager: &WorkstreamManager, verbose: bool)` — Seed the database with test workstreams and sessions for development.
--  `cleanup_old_logs` function L1980-2028 — `(log_dir: &std::path::Path, max_age_days: u64, verbose: bool)` — Delete log files older than `max_age_days` from the log directory.
--  `validate_config` function L2031-2048 — `(config: &arawn_config::ArawnConfig) -> Result<()>` — Validate configuration values at startup, failing fast with clear errors.
+- pub `run` function L144-388 — `(args: StartArgs, ctx: &Context) -> Result<()>` — Start command - launches the Arawn server.
+-  `load_and_validate_config` function L395-432 — `( args: &StartArgs, ctx: &Context, ) -> Result<arawn_config::LoadedConfig>` — Phase 1-2: Load config from file or discovery, print warnings, validate.
+-  `init_llm_backends` function L435-488 — `( config: &arawn_config::ArawnConfig, args: &StartArgs, ctx: &Context, ) -> Resu...` — Phase 3: Resolve LLM backends (default + named profiles).
+-  `resolve_server_settings` function L491-537 — `( config: &arawn_config::ArawnConfig, args: &StartArgs, ctx: &Context, ) -> Resu...` — Phase 4: Resolve server bind address, workspace, bootstrap dir, and auth token.
+-  `init_tool_registry` function L540-601 — `( tools_cfg: &arawn_config::ToolsConfig, memory_store: &Option<Arc<MemoryStore>>...` — Phase 8: Create tool registry with all built-in tools and output config.
+-  `init_embedder` function L604-626 — `( config: &arawn_config::ArawnConfig, ctx: &Context, ) -> Result<Arc<dyn arawn_l...` — Phase 5: Initialize the embedding provider.
+-  `init_pipeline` function L629-678 — `( pipeline_cfg: &arawn_config::PipelineSection, data_dir: &std::path::Path, ctx:...` — Phase 6: Initialize the pipeline engine.
+-  `init_memory_store` function L681-715 — `( memory_cfg: &arawn_config::MemoryConfig, data_dir: &std::path::Path, embedder:...` — Phase 7: Initialize the memory store with graph + vector extensions.
+-  `PluginInitResult` struct L718-724 — `{ prompts: Vec<(String, String)>, hook_dispatcher: HookDispatcher, agent_configs...` — Result of plugin system initialization.
+-  `register_pipeline_tools` function L727-853 — `( engine: &Arc<PipelineEngine>, pipeline_cfg: &arawn_config::PipelineSection, pi...` — Phase 9: Register pipeline tools (CatalogTool, WorkflowTool) and start workflow hot-reload watcher.
+-  `assemble_server` function L857-950 — `( config: &arawn_config::ArawnConfig, server_cfg: Option<&arawn_config::ServerCo...` — Phase 15: Assemble server config, AppState, workstreams, session cache, and compressor.
+-  `build_agent` function L954-1061 — `( config: &arawn_config::ArawnConfig, resolved: &ResolvedLlm, backend: arawn_llm...` — Phase 13: Build the agent with all configuration, tools, prompts, hooks, and sandboxing.
+-  `init_session_indexer` function L1064-1149 — `( memory_cfg: &arawn_config::MemoryConfig, memory_store: &Option<Arc<MemoryStore...` — Phase 14: Create the session indexer for background summarization.
+-  `init_mcp` function L1152-1232 — `( mcp_cfg: &arawn_config::McpConfig, tool_registry: &mut ToolRegistry, ctx: &Con...` — Phase 11: Connect to MCP servers and register discovered tools.
+-  `init_plugins` function L1235-1368 — `( plugins_cfg: &arawn_config::PluginsConfig, workspace: Option<&std::path::Path>...` — Phase 10: Load plugins, sync subscriptions, collect hooks + agent configs + skill prompts.
+-  `resolve_with_cli_overrides` function L1371-1421 — `( config: &arawn_config::ArawnConfig, args: &StartArgs, ) -> Result<ResolvedLlm>` — Resolve LLM config, applying CLI overrides on top of config file values.
+-  `make_api_key_provider` function L1427-1431 — `(backend: Backend, config_value: Option<String>) -> ApiKeyProvider` — Build an `ApiKeyProvider` that re-resolves from the secret store on each request.
+-  `create_backend` function L1434-1568 — `( resolved: &ResolvedLlm, oauth_overrides: Option<&arawn_config::OAuthConfigOver...` — Create an LLM backend from a resolved config.
+-  `parse_backend` function L1570-1583 — `(s: &str) -> Result<Backend>` — Start command - launches the Arawn server.
+-  `load_or_generate_server_token` function L1586-1602 — `() -> Result<String>` — Load a persisted server token, or generate and save a new one.
+-  `resolve_profile` function L1605-1636 — `(name: &str, llm_config: &LlmConfig) -> Result<ResolvedLlm>` — Resolve a named LLM profile into a ResolvedLlm ready for backend creation.
+-  `build_embedder_spec` function L1639-1685 — `(config: &arawn_config::EmbeddingConfig) -> EmbedderSpec` — Build an `EmbedderSpec` from the application's `EmbeddingConfig`.
+-  `default_model` function L1687-1695 — `(backend: &Backend) -> String` — Start command - launches the Arawn server.
+-  `register_builtin_runtimes` function L1702-1780 — `( runtimes_src_dir: &std::path::Path, executor: &Arc<ScriptExecutor>, catalog: &...` — Compile and register built-in WASM runtimes from source crate directories.
+-  `seed_test_data` function L1783-1876 — `(manager: &WorkstreamManager, verbose: bool)` — Seed the database with test workstreams and sessions for development.
+-  `cleanup_old_logs` function L1882-1930 — `(log_dir: &std::path::Path, max_age_days: u64, verbose: bool)` — Delete log files older than `max_age_days` from the log directory.
+-  `validate_config` function L1933-1950 — `(config: &arawn_config::ArawnConfig) -> Result<()>` — Validate configuration values at startup, failing fast with clear errors.
 
 #### crates/arawn/src/commands/status.rs
 
