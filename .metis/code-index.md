@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-03-25T20:45:14Z | 352 files | Rust
+> Generated: 2026-03-25T21:22:31Z | 352 files | Rust
 
 ## Project Structure
 
@@ -747,36 +747,37 @@
 
 #### crates/arawn/src/commands/start.rs
 
-- pub `StartArgs` struct L50-102 — `{ daemon: bool, port: Option<u16>, bind: Option<String>, token: Option<String>, ...` — Start command - launches the Arawn server.
-- pub `pid_file_path` function L106-110 — `() -> std::path::PathBuf` — Run the start command.
-- pub `stop_daemon` function L113-142 — `() -> Result<()>` — Stop a running daemon by sending SIGTERM to the PID in the PID file.
-- pub `run` function L144-388 — `(args: StartArgs, ctx: &Context) -> Result<()>` — Start command - launches the Arawn server.
--  `load_and_validate_config` function L395-432 — `( args: &StartArgs, ctx: &Context, ) -> Result<arawn_config::LoadedConfig>` — Phase 1-2: Load config from file or discovery, print warnings, validate.
--  `init_llm_backends` function L435-488 — `( config: &arawn_config::ArawnConfig, args: &StartArgs, ctx: &Context, ) -> Resu...` — Phase 3: Resolve LLM backends (default + named profiles).
--  `resolve_server_settings` function L491-537 — `( config: &arawn_config::ArawnConfig, args: &StartArgs, ctx: &Context, ) -> Resu...` — Phase 4: Resolve server bind address, workspace, bootstrap dir, and auth token.
--  `init_tool_registry` function L540-601 — `( tools_cfg: &arawn_config::ToolsConfig, memory_store: &Option<Arc<MemoryStore>>...` — Phase 8: Create tool registry with all built-in tools and output config.
--  `init_embedder` function L604-626 — `( config: &arawn_config::ArawnConfig, ctx: &Context, ) -> Result<Arc<dyn arawn_l...` — Phase 5: Initialize the embedding provider.
--  `init_pipeline` function L629-678 — `( pipeline_cfg: &arawn_config::PipelineSection, data_dir: &std::path::Path, ctx:...` — Phase 6: Initialize the pipeline engine.
--  `init_memory_store` function L681-715 — `( memory_cfg: &arawn_config::MemoryConfig, data_dir: &std::path::Path, embedder:...` — Phase 7: Initialize the memory store with graph + vector extensions.
--  `PluginInitResult` struct L718-724 — `{ prompts: Vec<(String, String)>, hook_dispatcher: HookDispatcher, agent_configs...` — Result of plugin system initialization.
--  `register_pipeline_tools` function L727-853 — `( engine: &Arc<PipelineEngine>, pipeline_cfg: &arawn_config::PipelineSection, pi...` — Phase 9: Register pipeline tools (CatalogTool, WorkflowTool) and start workflow hot-reload watcher.
--  `assemble_server` function L857-950 — `( config: &arawn_config::ArawnConfig, server_cfg: Option<&arawn_config::ServerCo...` — Phase 15: Assemble server config, AppState, workstreams, session cache, and compressor.
--  `build_agent` function L954-1061 — `( config: &arawn_config::ArawnConfig, resolved: &ResolvedLlm, backend: arawn_llm...` — Phase 13: Build the agent with all configuration, tools, prompts, hooks, and sandboxing.
--  `init_session_indexer` function L1064-1149 — `( memory_cfg: &arawn_config::MemoryConfig, memory_store: &Option<Arc<MemoryStore...` — Phase 14: Create the session indexer for background summarization.
--  `init_mcp` function L1152-1232 — `( mcp_cfg: &arawn_config::McpConfig, tool_registry: &mut ToolRegistry, ctx: &Con...` — Phase 11: Connect to MCP servers and register discovered tools.
--  `init_plugins` function L1235-1368 — `( plugins_cfg: &arawn_config::PluginsConfig, workspace: Option<&std::path::Path>...` — Phase 10: Load plugins, sync subscriptions, collect hooks + agent configs + skill prompts.
--  `resolve_with_cli_overrides` function L1371-1421 — `( config: &arawn_config::ArawnConfig, args: &StartArgs, ) -> Result<ResolvedLlm>` — Resolve LLM config, applying CLI overrides on top of config file values.
--  `make_api_key_provider` function L1427-1431 — `(backend: Backend, config_value: Option<String>) -> ApiKeyProvider` — Build an `ApiKeyProvider` that re-resolves from the secret store on each request.
--  `create_backend` function L1434-1577 — `( resolved: &ResolvedLlm, oauth_overrides: Option<&arawn_config::OAuthConfigOver...` — Create an LLM backend from a resolved config.
--  `parse_backend` function L1579-1592 — `(s: &str) -> Result<Backend>` — Start command - launches the Arawn server.
--  `load_or_generate_server_token` function L1595-1611 — `() -> Result<String>` — Load a persisted server token, or generate and save a new one.
--  `resolve_profile` function L1614-1645 — `(name: &str, llm_config: &LlmConfig) -> Result<ResolvedLlm>` — Resolve a named LLM profile into a ResolvedLlm ready for backend creation.
--  `build_embedder_spec` function L1648-1694 — `(config: &arawn_config::EmbeddingConfig) -> EmbedderSpec` — Build an `EmbedderSpec` from the application's `EmbeddingConfig`.
--  `default_model` function L1696-1704 — `(backend: &Backend) -> String` — Start command - launches the Arawn server.
--  `register_builtin_runtimes` function L1711-1789 — `( runtimes_src_dir: &std::path::Path, executor: &Arc<ScriptExecutor>, catalog: &...` — Compile and register built-in WASM runtimes from source crate directories.
--  `seed_test_data` function L1792-1885 — `(manager: &WorkstreamManager, verbose: bool)` — Seed the database with test workstreams and sessions for development.
--  `cleanup_old_logs` function L1891-1939 — `(log_dir: &std::path::Path, max_age_days: u64, verbose: bool)` — Delete log files older than `max_age_days` from the log directory.
--  `validate_config` function L1942-1959 — `(config: &arawn_config::ArawnConfig) -> Result<()>` — Validate configuration values at startup, failing fast with clear errors.
+- pub `StartArgs` struct L48-100 — `{ daemon: bool, port: Option<u16>, bind: Option<String>, token: Option<String>, ...` — Start command - launches the Arawn server.
+- pub `pid_file_path` function L104-108 — `() -> std::path::PathBuf` — Run the start command.
+- pub `stop_daemon` function L111-145 — `() -> Result<()>` — Stop a running daemon by sending SIGTERM to the PID in the PID file.
+- pub `run` function L147-426 — `(args: StartArgs, ctx: &Context) -> Result<()>` — Start command - launches the Arawn server.
+-  `load_and_validate_config` function L433-467 — `(args: &StartArgs, ctx: &Context) -> Result<arawn_config::LoadedConfig>` — Phase 1-2: Load config from file or discovery, print warnings, validate.
+-  `init_llm_backends` function L470-527 — `( config: &arawn_config::ArawnConfig, args: &StartArgs, ctx: &Context, ) -> Resu...` — Phase 3: Resolve LLM backends (default + named profiles).
+-  `ServerSettings` type L531 — `= (SocketAddr, Option<PathBuf>, Option<PathBuf>, Option<String>)` — Phase 4: Resolve server bind address, workspace, bootstrap dir, and auth token.
+-  `resolve_server_settings` function L533-582 — `( config: &arawn_config::ArawnConfig, args: &StartArgs, ctx: &Context, ) -> Resu...` — Start command - launches the Arawn server.
+-  `init_tool_registry` function L585-646 — `( tools_cfg: &arawn_config::ToolsConfig, memory_store: &Option<Arc<MemoryStore>>...` — Phase 8: Create tool registry with all built-in tools and output config.
+-  `init_embedder` function L649-671 — `( config: &arawn_config::ArawnConfig, ctx: &Context, ) -> Result<Arc<dyn arawn_l...` — Phase 5: Initialize the embedding provider.
+-  `init_pipeline` function L674-727 — `( pipeline_cfg: &arawn_config::PipelineSection, data_dir: &std::path::Path, ctx:...` — Phase 6: Initialize the pipeline engine.
+-  `init_memory_store` function L730-764 — `( memory_cfg: &arawn_config::MemoryConfig, data_dir: &std::path::Path, embedder:...` — Phase 7: Initialize the memory store with graph + vector extensions.
+-  `PluginInitResult` struct L767-773 — `{ prompts: Vec<(String, String)>, hook_dispatcher: HookDispatcher, agent_configs...` — Result of plugin system initialization.
+-  `register_pipeline_tools` function L776-984 — `( engine: &Arc<PipelineEngine>, pipeline_cfg: &arawn_config::PipelineSection, pi...` — Phase 9: Register pipeline tools (CatalogTool, WorkflowTool) and start workflow hot-reload watcher.
+-  `assemble_server` function L988-1128 — `( config: &arawn_config::ArawnConfig, server_cfg: Option<&arawn_config::ServerCo...` — Phase 15: Assemble server config, AppState, workstreams, session cache, and compressor.
+-  `build_agent` function L1132-1273 — `( config: &arawn_config::ArawnConfig, resolved: &ResolvedLlm, backend: arawn_llm...` — Phase 13: Build the agent with all configuration, tools, prompts, hooks, and sandboxing.
+-  `init_session_indexer` function L1276-1386 — `( memory_cfg: &arawn_config::MemoryConfig, memory_store: &Option<Arc<MemoryStore...` — Phase 14: Create the session indexer for background summarization.
+-  `init_mcp` function L1389-1497 — `( mcp_cfg: &arawn_config::McpConfig, tool_registry: &mut ToolRegistry, ctx: &Con...` — Phase 11: Connect to MCP servers and register discovered tools.
+-  `init_plugins` function L1500-1705 — `( plugins_cfg: &arawn_config::PluginsConfig, workspace: Option<&std::path::Path>...` — Phase 10: Load plugins, sync subscriptions, collect hooks + agent configs + skill prompts.
+-  `resolve_with_cli_overrides` function L1708-1758 — `( config: &arawn_config::ArawnConfig, args: &StartArgs, ) -> Result<ResolvedLlm>` — Resolve LLM config, applying CLI overrides on top of config file values.
+-  `make_api_key_provider` function L1764-1768 — `(backend: Backend, config_value: Option<String>) -> ApiKeyProvider` — Build an `ApiKeyProvider` that re-resolves from the secret store on each request.
+-  `create_backend` function L1771-1914 — `( resolved: &ResolvedLlm, oauth_overrides: Option<&arawn_config::OAuthConfigOver...` — Create an LLM backend from a resolved config.
+-  `parse_backend` function L1916-1929 — `(s: &str) -> Result<Backend>` — Start command - launches the Arawn server.
+-  `load_or_generate_server_token` function L1932-1948 — `() -> Result<String>` — Load a persisted server token, or generate and save a new one.
+-  `resolve_profile` function L1951-1982 — `(name: &str, llm_config: &LlmConfig) -> Result<ResolvedLlm>` — Resolve a named LLM profile into a ResolvedLlm ready for backend creation.
+-  `build_embedder_spec` function L1985-2031 — `(config: &arawn_config::EmbeddingConfig) -> EmbedderSpec` — Build an `EmbedderSpec` from the application's `EmbeddingConfig`.
+-  `default_model` function L2033-2041 — `(backend: &Backend) -> String` — Start command - launches the Arawn server.
+-  `register_builtin_runtimes` function L2048-2126 — `( runtimes_src_dir: &std::path::Path, executor: &Arc<ScriptExecutor>, catalog: &...` — Compile and register built-in WASM runtimes from source crate directories.
+-  `seed_test_data` function L2129-2222 — `(manager: &WorkstreamManager, verbose: bool)` — Seed the database with test workstreams and sessions for development.
+-  `cleanup_old_logs` function L2228-2276 — `(log_dir: &std::path::Path, max_age_days: u64, verbose: bool)` — Delete log files older than `max_age_days` from the log directory.
+-  `validate_config` function L2279-2296 — `(config: &arawn_config::ArawnConfig) -> Result<()>` — Validate configuration values at startup, failing fast with clear errors.
 
 #### crates/arawn/src/commands/status.rs
 
@@ -852,7 +853,7 @@
 -  `test_global_server_flag` function L638-642 — `()` — Main entry point for the Arawn CLI.
 -  `test_global_context_flag` function L645-648 — `()` — Main entry point for the Arawn CLI.
 -  `test_no_command` function L651-654 — `()` — Main entry point for the Arawn CLI.
--  `run` function L657-758 — `() -> Result<()>` — Main entry point for the Arawn CLI.
+-  `run` function L657-763 — `() -> Result<()>` — Main entry point for the Arawn CLI.
 
 ### crates/arawn/tests
 
@@ -1595,30 +1596,30 @@
 
 - pub `CommandValidator` struct L16-19 — `{ blocked_patterns: Vec<(regex::Regex, String)> }` — Validates shell commands before execution as a defense-in-depth layer.
 - pub `CommandValidation` enum L23-28 — `Allowed | Blocked` — Result of command validation.
-- pub `validate` function L92-105 — `(&self, command: &str) -> CommandValidation` — Validate a shell command.
--  `CommandValidator` type L30-85 — `impl Default for CommandValidator` — Shell command validation as a defense-in-depth layer.
--  `default` function L31-84 — `() -> Self` — Shell command validation as a defense-in-depth layer.
--  `CommandValidator` type L87-151 — `= CommandValidator` — Shell command validation as a defense-in-depth layer.
--  `normalize` function L118-150 — `(command: &str) -> String` — Normalize a command for pattern matching.
--  `tests` module L154-463 — `-` — Shell command validation as a defense-in-depth layer.
--  `test_validator_blocks_rm_rf_root` function L158-176 — `()` — Shell command validation as a defense-in-depth layer.
--  `test_validator_blocks_system_control` function L179-202 — `()` — Shell command validation as a defense-in-depth layer.
--  `test_validator_blocks_sandbox_escape` function L205-227 — `()` — Shell command validation as a defense-in-depth layer.
--  `test_validator_blocks_kernel_module_manipulation` function L230-244 — `()` — Shell command validation as a defense-in-depth layer.
--  `test_validator_blocks_process_tracing` function L247-269 — `()` — Shell command validation as a defense-in-depth layer.
--  `test_validator_blocks_destructive_fs` function L272-282 — `()` — Shell command validation as a defense-in-depth layer.
--  `test_validator_blocks_fork_bomb` function L285-291 — `()` — Shell command validation as a defense-in-depth layer.
--  `test_validator_normalizes_whitespace` function L294-310 — `()` — Shell command validation as a defense-in-depth layer.
--  `test_validator_normalizes_case` function L313-331 — `()` — Shell command validation as a defense-in-depth layer.
--  `test_validator_allows_legitimate_commands` function L334-365 — `()` — Shell command validation as a defense-in-depth layer.
--  `test_validator_allows_rm_in_subdirectory` function L368-383 — `()` — Shell command validation as a defense-in-depth layer.
--  `test_validator_allows_piped_commands` function L386-400 — `()` — Shell command validation as a defense-in-depth layer.
--  `test_validator_blocks_dangerous_in_pipe` function L403-414 — `()` — Shell command validation as a defense-in-depth layer.
--  `test_normalize_strips_quotes` function L417-420 — `()` — Shell command validation as a defense-in-depth layer.
--  `test_normalize_strips_backslash_escapes` function L423-425 — `()` — Shell command validation as a defense-in-depth layer.
--  `test_normalize_extracts_basename_from_absolute_path` function L428-432 — `()` — Shell command validation as a defense-in-depth layer.
--  `test_normalize_collapses_whitespace` function L435-437 — `()` — Shell command validation as a defense-in-depth layer.
--  `test_bypass_attempts_blocked` function L440-462 — `()` — Shell command validation as a defense-in-depth layer.
+- pub `validate` function L90-103 — `(&self, command: &str) -> CommandValidation` — Validate a shell command.
+-  `CommandValidator` type L30-83 — `impl Default for CommandValidator` — Shell command validation as a defense-in-depth layer.
+-  `default` function L31-82 — `() -> Self` — Shell command validation as a defense-in-depth layer.
+-  `CommandValidator` type L85-150 — `= CommandValidator` — Shell command validation as a defense-in-depth layer.
+-  `normalize` function L116-149 — `(command: &str) -> String` — Normalize a command for pattern matching.
+-  `tests` module L153-465 — `-` — Shell command validation as a defense-in-depth layer.
+-  `test_validator_blocks_rm_rf_root` function L157-175 — `()` — Shell command validation as a defense-in-depth layer.
+-  `test_validator_blocks_system_control` function L178-201 — `()` — Shell command validation as a defense-in-depth layer.
+-  `test_validator_blocks_sandbox_escape` function L204-226 — `()` — Shell command validation as a defense-in-depth layer.
+-  `test_validator_blocks_kernel_module_manipulation` function L229-243 — `()` — Shell command validation as a defense-in-depth layer.
+-  `test_validator_blocks_process_tracing` function L246-268 — `()` — Shell command validation as a defense-in-depth layer.
+-  `test_validator_blocks_destructive_fs` function L271-281 — `()` — Shell command validation as a defense-in-depth layer.
+-  `test_validator_blocks_fork_bomb` function L284-290 — `()` — Shell command validation as a defense-in-depth layer.
+-  `test_validator_normalizes_whitespace` function L293-309 — `()` — Shell command validation as a defense-in-depth layer.
+-  `test_validator_normalizes_case` function L312-330 — `()` — Shell command validation as a defense-in-depth layer.
+-  `test_validator_allows_legitimate_commands` function L333-364 — `()` — Shell command validation as a defense-in-depth layer.
+-  `test_validator_allows_rm_in_subdirectory` function L367-382 — `()` — Shell command validation as a defense-in-depth layer.
+-  `test_validator_allows_piped_commands` function L385-399 — `()` — Shell command validation as a defense-in-depth layer.
+-  `test_validator_blocks_dangerous_in_pipe` function L402-413 — `()` — Shell command validation as a defense-in-depth layer.
+-  `test_normalize_strips_quotes` function L416-419 — `()` — Shell command validation as a defense-in-depth layer.
+-  `test_normalize_strips_backslash_escapes` function L422-424 — `()` — Shell command validation as a defense-in-depth layer.
+-  `test_normalize_extracts_basename_from_absolute_path` function L427-434 — `()` — Shell command validation as a defense-in-depth layer.
+-  `test_normalize_collapses_whitespace` function L437-439 — `()` — Shell command validation as a defense-in-depth layer.
+-  `test_bypass_attempts_blocked` function L442-464 — `()` — Shell command validation as a defense-in-depth layer.
 
 #### crates/arawn-agent/src/tool/context.rs
 
@@ -1960,26 +1961,26 @@
 -  `reexport_stream_types` function L136-138 — `()` — would also fail to compile.
 -  `indexing_types_accessible` function L141-146 — `()` — would also fail to compile.
 -  `reexport_rlm_types` function L149-153 — `()` — would also fail to compile.
--  `reexport_mcp_types` function L156-162 — `()` — would also fail to compile.
--  `reexport_fs_gate_types` function L165-171 — `()` — would also fail to compile.
--  `smoke_shell_tool` function L178-181 — `()` — would also fail to compile.
--  `smoke_shell_tool_with_config` function L184-188 — `()` — would also fail to compile.
--  `smoke_file_read_tool` function L191-194 — `()` — would also fail to compile.
--  `smoke_file_write_tool` function L197-200 — `()` — would also fail to compile.
--  `smoke_glob_tool` function L203-206 — `()` — would also fail to compile.
--  `smoke_grep_tool` function L209-212 — `()` — would also fail to compile.
--  `smoke_web_fetch_tool` function L215-218 — `()` — would also fail to compile.
--  `smoke_web_search_tool` function L221-224 — `()` — would also fail to compile.
--  `smoke_think_tool` function L227-229 — `()` — would also fail to compile.
--  `smoke_note_tool` function L232-235 — `()` — would also fail to compile.
--  `smoke_memory_search_tool` function L238-240 — `()` — would also fail to compile.
--  `module_path_tool` function L247-251 — `()` — would also fail to compile.
--  `module_path_types` function L254-258 — `()` — would also fail to compile.
--  `module_path_error` function L261-264 — `()` — would also fail to compile.
--  `module_path_tools` function L267-270 — `()` — would also fail to compile.
--  `module_path_prompt` function L273-275 — `()` — would also fail to compile.
--  `module_path_indexing` function L278-280 — `()` — would also fail to compile.
--  `smoke_agent_builder` function L287-300 — `()` — would also fail to compile.
+-  `reexport_mcp_types` function L156-166 — `()` — would also fail to compile.
+-  `reexport_fs_gate_types` function L169-175 — `()` — would also fail to compile.
+-  `smoke_shell_tool` function L182-185 — `()` — would also fail to compile.
+-  `smoke_shell_tool_with_config` function L188-192 — `()` — would also fail to compile.
+-  `smoke_file_read_tool` function L195-198 — `()` — would also fail to compile.
+-  `smoke_file_write_tool` function L201-204 — `()` — would also fail to compile.
+-  `smoke_glob_tool` function L207-210 — `()` — would also fail to compile.
+-  `smoke_grep_tool` function L213-216 — `()` — would also fail to compile.
+-  `smoke_web_fetch_tool` function L219-222 — `()` — would also fail to compile.
+-  `smoke_web_search_tool` function L225-228 — `()` — would also fail to compile.
+-  `smoke_think_tool` function L231-233 — `()` — would also fail to compile.
+-  `smoke_note_tool` function L236-239 — `()` — would also fail to compile.
+-  `smoke_memory_search_tool` function L242-244 — `()` — would also fail to compile.
+-  `module_path_tool` function L251-255 — `()` — would also fail to compile.
+-  `module_path_types` function L258-262 — `()` — would also fail to compile.
+-  `module_path_error` function L265-268 — `()` — would also fail to compile.
+-  `module_path_tools` function L271-274 — `()` — would also fail to compile.
+-  `module_path_prompt` function L277-279 — `()` — would also fail to compile.
+-  `module_path_indexing` function L282-284 — `()` — would also fail to compile.
+-  `smoke_agent_builder` function L291-304 — `()` — would also fail to compile.
 
 ### crates/arawn-agent-indexing/src
 
@@ -2538,63 +2539,63 @@
 -  `description` function L341-343 — `(&self) -> &str` — for commands that need terminal emulation (colored output, interactive prompts).
 -  `parameters` function L345-372 — `(&self) -> Value` — for commands that need terminal emulation (colored output, interactive prompts).
 -  `execute` function L374-492 — `(&self, params: Value, ctx: &ToolContext) -> Result<ToolResult>` — for commands that need terminal emulation (colored output, interactive prompts).
--  `ShellTool` type L495-755 — `= ShellTool` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `ShellTool` type L495-750 — `= ShellTool` — for commands that need terminal emulation (colored output, interactive prompts).
 -  `extract_cd_target` function L498-514 — `(&self, command: &str) -> Option<String>` — Extract the target path from a cd command, if it is one.
 -  `resolve_cd_path` function L517-546 — `(&self, target: &str, current_dir: &Option<PathBuf>) -> PathBuf` — Resolve a cd target path to an absolute path.
 -  `parse_cd_command` function L551-555 — `(&self, command: &str, current_dir: &Option<PathBuf>) -> Option<PathBuf>` — Check if this is a cd command and return the new directory path.
 -  `execute_standard` function L558-622 — `( &self, command: &str, working_dir: Option<&PathBuf>, timeout_duration: Duratio...` — Standard process execution (non-PTY).
--  `execute_standard_streaming` function L626-754 — `( &self, command: &str, working_dir: Option<&PathBuf>, timeout_duration: Duratio...` — Streaming standard process execution.
--  `tests` module L762-1445 — `-` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_shell_tool_metadata` function L766-778 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_shell_config_defaults` function L781-787 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_command_blocking` function L790-802 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_command_whitelist` function L805-821 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_shell_echo` function L824-835 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_shell_pwd` function L838-846 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_shell_working_dir` function L849-861 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_shell_explicit_cwd` function L864-883 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_shell_cd_persistence` function L886-909 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_shell_cd_nonexistent` function L912-926 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_shell_blocked_command` function L929-940 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_shell_failed_command` function L943-954 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_shell_timeout` function L957-969 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_shell_custom_timeout` function L972-989 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_shell_pty_echo` function L992-1009 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_shell_pty_colored_output` function L1012-1032 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_shell_streaming` function L1035-1067 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_shell_streaming_pty` function L1070-1101 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_output_truncation` function L1104-1113 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_parse_cd_command` function L1116-1127 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_pty_size_config` function L1130-1133 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_shell_config_builders` function L1138-1149 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_shell_tool_default` function L1152-1155 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_extract_cd_target_bare_cd` function L1160-1163 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_extract_cd_target_with_path` function L1166-1169 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_extract_cd_target_empty_path` function L1172-1175 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_extract_cd_target_not_cd` function L1178-1183 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_resolve_cd_path_home` function L1188-1192 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_resolve_cd_path_absolute` function L1195-1199 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_resolve_cd_path_relative` function L1202-1207 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_resolve_cd_path_tilde_subpath` function L1210-1215 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_get_set_working_dir` function L1220-1229 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_get_working_dir_falls_back_to_config` function L1232-1236 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_truncate_output_within_limit` function L1241-1246 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_is_command_allowed_fork_bomb` function L1251-1254 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_is_command_allowed_custom_block` function L1257-1262 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_shell_command_with_stderr` function L1267-1282 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_shell_no_output` function L1285-1296 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_shell_cancelled` function L1301-1319 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_blocklist_bypass_via_quoting` function L1324-1330 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_blocklist_bypass_via_absolute_path` function L1333-1339 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_blocklist_bypass_via_backslash` function L1342-1345 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_blocklist_bypass_via_whitespace` function L1348-1352 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_fork_bomb_blocked` function L1355-1358 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_dangerous_dd_blocked` function L1361-1364 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_process_tracing_blocked` function L1367-1371 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_safe_commands_allowed` function L1374-1383 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_blocked_command_returns_error` function L1386-1402 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_timeout_enforcement` function L1405-1421 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_output_truncation_security` function L1424-1444 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `execute_standard_streaming` function L626-749 — `( &self, command: &str, working_dir: Option<&PathBuf>, timeout_duration: Duratio...` — Streaming standard process execution.
+-  `tests` module L757-1441 — `-` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_shell_tool_metadata` function L761-773 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_shell_config_defaults` function L776-782 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_command_blocking` function L785-797 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_command_whitelist` function L800-816 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_shell_echo` function L819-830 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_shell_pwd` function L833-841 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_shell_working_dir` function L844-856 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_shell_explicit_cwd` function L859-878 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_shell_cd_persistence` function L881-904 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_shell_cd_nonexistent` function L907-921 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_shell_blocked_command` function L924-935 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_shell_failed_command` function L938-949 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_shell_timeout` function L952-964 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_shell_custom_timeout` function L967-984 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_shell_pty_echo` function L987-1004 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_shell_pty_colored_output` function L1007-1027 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_shell_streaming` function L1030-1062 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_shell_streaming_pty` function L1065-1096 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_output_truncation` function L1099-1108 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_parse_cd_command` function L1111-1122 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_pty_size_config` function L1125-1128 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_shell_config_builders` function L1133-1144 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_shell_tool_default` function L1147-1150 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_extract_cd_target_bare_cd` function L1155-1158 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_extract_cd_target_with_path` function L1161-1164 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_extract_cd_target_empty_path` function L1167-1170 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_extract_cd_target_not_cd` function L1173-1178 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_resolve_cd_path_home` function L1183-1187 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_resolve_cd_path_absolute` function L1190-1194 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_resolve_cd_path_relative` function L1197-1202 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_resolve_cd_path_tilde_subpath` function L1205-1210 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_get_set_working_dir` function L1215-1224 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_get_working_dir_falls_back_to_config` function L1227-1231 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_truncate_output_within_limit` function L1236-1241 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_is_command_allowed_fork_bomb` function L1246-1249 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_is_command_allowed_custom_block` function L1252-1257 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_shell_command_with_stderr` function L1262-1277 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_shell_no_output` function L1280-1291 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_shell_cancelled` function L1296-1314 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_blocklist_bypass_via_quoting` function L1319-1325 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_blocklist_bypass_via_absolute_path` function L1328-1334 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_blocklist_bypass_via_backslash` function L1337-1340 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_blocklist_bypass_via_whitespace` function L1343-1347 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_fork_bomb_blocked` function L1350-1353 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_dangerous_dd_blocked` function L1356-1359 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_process_tracing_blocked` function L1362-1366 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_safe_commands_allowed` function L1369-1378 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_blocked_command_returns_error` function L1381-1399 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_timeout_enforcement` function L1402-1420 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_output_truncation_security` function L1423-1440 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
 
 #### crates/arawn-agent-tools/src/think.rs
 
@@ -2624,10 +2625,10 @@
 - pub `SearchResult` struct L787-791 — `{ title: String, url: String, snippet: String }` — A single search result.
 - pub `WebSearchTool` struct L795-798 — `{ client: Client, config: WebSearchConfig }` — Tool for searching the web.
 - pub `new` function L802-804 — `() -> std::result::Result<Self, reqwest::Error>` — Create a new web search tool with default configuration (DuckDuckGo).
-- pub `with_config` function L807-813 — `(config: WebSearchConfig) -> std::result::Result<Self, reqwest::Error>` — Create a web search tool with custom configuration.
-- pub `brave` function L816-823 — `(api_key: impl Into<String>) -> std::result::Result<Self, reqwest::Error>` — Create a web search tool with Brave Search.
-- pub `serper` function L826-833 — `(api_key: impl Into<String>) -> std::result::Result<Self, reqwest::Error>` — Create a web search tool with Serper.
-- pub `tavily` function L836-843 — `(api_key: impl Into<String>) -> std::result::Result<Self, reqwest::Error>` — Create a web search tool with Tavily.
+- pub `with_config` function L807-811 — `(config: WebSearchConfig) -> std::result::Result<Self, reqwest::Error>` — Create a web search tool with custom configuration.
+- pub `brave` function L814-821 — `(api_key: impl Into<String>) -> std::result::Result<Self, reqwest::Error>` — Create a web search tool with Brave Search.
+- pub `serper` function L824-831 — `(api_key: impl Into<String>) -> std::result::Result<Self, reqwest::Error>` — Create a web search tool with Serper.
+- pub `tavily` function L834-841 — `(api_key: impl Into<String>) -> std::result::Result<Self, reqwest::Error>` — Create a web search tool with Tavily.
 -  `is_restricted_ip` function L22-41 — `(ip: &IpAddr) -> bool` — Check if an IP address is private, loopback, link-local, or otherwise
 -  `validate_url_not_ssrf` function L45-80 — `(url: &Url) -> std::result::Result<(), String>` — Resolve a URL's hostname and check that none of its IP addresses are
 -  `WebFetchConfig` type L101-112 — `impl Default for WebFetchConfig` — Provides tools for web search and URL fetching.
@@ -2645,50 +2646,50 @@
 -  `execute` function L299-743 — `(&self, params: Value, ctx: &ToolContext) -> Result<ToolResult>` — Provides tools for web search and URL fetching.
 -  `WebSearchConfig` type L775-783 — `impl Default for WebSearchConfig` — Provides tools for web search and URL fetching.
 -  `default` function L776-782 — `() -> Self` — Provides tools for web search and URL fetching.
--  `WebSearchTool` type L800-1028 — `= WebSearchTool` — Provides tools for web search and URL fetching.
--  `search_brave` function L845-888 — `(&self, query: &str, api_key: &str) -> Result<Vec<SearchResult>>` — Provides tools for web search and URL fetching.
--  `search_serper` function L890-931 — `(&self, query: &str, api_key: &str) -> Result<Vec<SearchResult>>` — Provides tools for web search and URL fetching.
--  `search_tavily` function L933-974 — `(&self, query: &str, api_key: &str) -> Result<Vec<SearchResult>>` — Provides tools for web search and URL fetching.
--  `search_duckduckgo` function L976-1027 — `(&self, query: &str) -> Result<Vec<SearchResult>>` — Provides tools for web search and URL fetching.
--  `WebSearchTool` type L1030-1040 — `impl Default for WebSearchTool` — Provides tools for web search and URL fetching.
--  `default` function L1031-1039 — `() -> Self` — Provides tools for web search and URL fetching.
--  `WebSearchTool` type L1043-1099 — `impl Tool for WebSearchTool` — Provides tools for web search and URL fetching.
--  `name` function L1044-1046 — `(&self) -> &str` — Provides tools for web search and URL fetching.
--  `description` function L1048-1050 — `(&self) -> &str` — Provides tools for web search and URL fetching.
--  `parameters` function L1052-1063 — `(&self) -> Value` — Provides tools for web search and URL fetching.
--  `execute` function L1065-1098 — `(&self, params: Value, ctx: &ToolContext) -> Result<ToolResult>` — Provides tools for web search and URL fetching.
--  `tests` module L1106-1507 — `-` — Provides tools for web search and URL fetching.
--  `test_web_fetch_tool_metadata` function L1110-1130 — `()` — Provides tools for web search and URL fetching.
--  `test_web_search_tool_metadata` function L1133-1140 — `()` — Provides tools for web search and URL fetching.
--  `test_extract_text_from_html` function L1143-1162 — `()` — Provides tools for web search and URL fetching.
--  `test_extract_title` function L1165-1169 — `()` — Provides tools for web search and URL fetching.
--  `test_extract_description` function L1172-1180 — `()` — Provides tools for web search and URL fetching.
--  `test_search_providers` function L1183-1189 — `()` — Provides tools for web search and URL fetching.
--  `test_web_fetch_invalid_url` function L1192-1203 — `()` — Provides tools for web search and URL fetching.
--  `test_web_fetch_non_http` function L1206-1217 — `()` — Provides tools for web search and URL fetching.
--  `test_web_fetch_unsupported_method` function L1220-1234 — `()` — Provides tools for web search and URL fetching.
--  `test_method_case_insensitivity` function L1237-1244 — `()` — Provides tools for web search and URL fetching.
--  `test_web_fetch_with_custom_headers_invalid_url` function L1247-1269 — `()` — Provides tools for web search and URL fetching.
--  `test_web_fetch_with_body_invalid_url` function L1272-1292 — `()` — Provides tools for web search and URL fetching.
--  `test_download_parameter_in_schema` function L1295-1301 — `()` — Provides tools for web search and URL fetching.
--  `test_max_size_config` function L1304-1308 — `()` — Provides tools for web search and URL fetching.
--  `test_web_fetch_download_invalid_url` function L1311-1330 — `()` — Provides tools for web search and URL fetching.
--  `test_extract_text_article_content` function L1335-1350 — `()` — Provides tools for web search and URL fetching.
--  `test_extract_text_fallback_to_body` function L1353-1362 — `()` — Provides tools for web search and URL fetching.
--  `test_extract_text_empty_html` function L1365-1369 — `()` — Provides tools for web search and URL fetching.
--  `test_extract_text_truncation` function L1372-1381 — `()` — Provides tools for web search and URL fetching.
--  `test_extract_text_content_class` function L1384-1390 — `()` — Provides tools for web search and URL fetching.
--  `test_extract_title_missing` function L1393-1397 — `()` — Provides tools for web search and URL fetching.
--  `test_extract_description_missing` function L1400-1404 — `()` — Provides tools for web search and URL fetching.
--  `test_extract_description_wrong_meta` function L1407-1411 — `()` — Provides tools for web search and URL fetching.
--  `test_web_fetch_config_default` function L1416-1422 — `()` — Provides tools for web search and URL fetching.
--  `test_web_fetch_tool_with_config` function L1425-1437 — `()` — Provides tools for web search and URL fetching.
--  `test_web_fetch_tool_default` function L1440-1443 — `()` — Provides tools for web search and URL fetching.
--  `test_web_search_config_default` function L1448-1453 — `()` — Provides tools for web search and URL fetching.
--  `test_web_search_tool_default` function L1456-1459 — `()` — Provides tools for web search and URL fetching.
--  `test_search_result_serialization` function L1464-1474 — `()` — Provides tools for web search and URL fetching.
--  `test_web_fetch_cancelled` function L1479-1497 — `()` — Provides tools for web search and URL fetching.
--  `test_web_fetch_missing_url` function L1500-1506 — `()` — Provides tools for web search and URL fetching.
+-  `WebSearchTool` type L800-1026 — `= WebSearchTool` — Provides tools for web search and URL fetching.
+-  `search_brave` function L843-886 — `(&self, query: &str, api_key: &str) -> Result<Vec<SearchResult>>` — Provides tools for web search and URL fetching.
+-  `search_serper` function L888-929 — `(&self, query: &str, api_key: &str) -> Result<Vec<SearchResult>>` — Provides tools for web search and URL fetching.
+-  `search_tavily` function L931-972 — `(&self, query: &str, api_key: &str) -> Result<Vec<SearchResult>>` — Provides tools for web search and URL fetching.
+-  `search_duckduckgo` function L974-1025 — `(&self, query: &str) -> Result<Vec<SearchResult>>` — Provides tools for web search and URL fetching.
+-  `WebSearchTool` type L1028-1038 — `impl Default for WebSearchTool` — Provides tools for web search and URL fetching.
+-  `default` function L1029-1037 — `() -> Self` — Provides tools for web search and URL fetching.
+-  `WebSearchTool` type L1041-1097 — `impl Tool for WebSearchTool` — Provides tools for web search and URL fetching.
+-  `name` function L1042-1044 — `(&self) -> &str` — Provides tools for web search and URL fetching.
+-  `description` function L1046-1048 — `(&self) -> &str` — Provides tools for web search and URL fetching.
+-  `parameters` function L1050-1061 — `(&self) -> Value` — Provides tools for web search and URL fetching.
+-  `execute` function L1063-1096 — `(&self, params: Value, ctx: &ToolContext) -> Result<ToolResult>` — Provides tools for web search and URL fetching.
+-  `tests` module L1104-1505 — `-` — Provides tools for web search and URL fetching.
+-  `test_web_fetch_tool_metadata` function L1108-1128 — `()` — Provides tools for web search and URL fetching.
+-  `test_web_search_tool_metadata` function L1131-1138 — `()` — Provides tools for web search and URL fetching.
+-  `test_extract_text_from_html` function L1141-1160 — `()` — Provides tools for web search and URL fetching.
+-  `test_extract_title` function L1163-1167 — `()` — Provides tools for web search and URL fetching.
+-  `test_extract_description` function L1170-1178 — `()` — Provides tools for web search and URL fetching.
+-  `test_search_providers` function L1181-1187 — `()` — Provides tools for web search and URL fetching.
+-  `test_web_fetch_invalid_url` function L1190-1201 — `()` — Provides tools for web search and URL fetching.
+-  `test_web_fetch_non_http` function L1204-1215 — `()` — Provides tools for web search and URL fetching.
+-  `test_web_fetch_unsupported_method` function L1218-1232 — `()` — Provides tools for web search and URL fetching.
+-  `test_method_case_insensitivity` function L1235-1242 — `()` — Provides tools for web search and URL fetching.
+-  `test_web_fetch_with_custom_headers_invalid_url` function L1245-1267 — `()` — Provides tools for web search and URL fetching.
+-  `test_web_fetch_with_body_invalid_url` function L1270-1290 — `()` — Provides tools for web search and URL fetching.
+-  `test_download_parameter_in_schema` function L1293-1299 — `()` — Provides tools for web search and URL fetching.
+-  `test_max_size_config` function L1302-1306 — `()` — Provides tools for web search and URL fetching.
+-  `test_web_fetch_download_invalid_url` function L1309-1328 — `()` — Provides tools for web search and URL fetching.
+-  `test_extract_text_article_content` function L1333-1348 — `()` — Provides tools for web search and URL fetching.
+-  `test_extract_text_fallback_to_body` function L1351-1360 — `()` — Provides tools for web search and URL fetching.
+-  `test_extract_text_empty_html` function L1363-1367 — `()` — Provides tools for web search and URL fetching.
+-  `test_extract_text_truncation` function L1370-1379 — `()` — Provides tools for web search and URL fetching.
+-  `test_extract_text_content_class` function L1382-1388 — `()` — Provides tools for web search and URL fetching.
+-  `test_extract_title_missing` function L1391-1395 — `()` — Provides tools for web search and URL fetching.
+-  `test_extract_description_missing` function L1398-1402 — `()` — Provides tools for web search and URL fetching.
+-  `test_extract_description_wrong_meta` function L1405-1409 — `()` — Provides tools for web search and URL fetching.
+-  `test_web_fetch_config_default` function L1414-1420 — `()` — Provides tools for web search and URL fetching.
+-  `test_web_fetch_tool_with_config` function L1423-1435 — `()` — Provides tools for web search and URL fetching.
+-  `test_web_fetch_tool_default` function L1438-1441 — `()` — Provides tools for web search and URL fetching.
+-  `test_web_search_config_default` function L1446-1451 — `()` — Provides tools for web search and URL fetching.
+-  `test_web_search_tool_default` function L1454-1457 — `()` — Provides tools for web search and URL fetching.
+-  `test_search_result_serialization` function L1462-1472 — `()` — Provides tools for web search and URL fetching.
+-  `test_web_fetch_cancelled` function L1477-1495 — `()` — Provides tools for web search and URL fetching.
+-  `test_web_fetch_missing_url` function L1498-1504 — `()` — Provides tools for web search and URL fetching.
 
 #### crates/arawn-agent-tools/src/workflow.rs
 
@@ -3368,28 +3369,28 @@
 - pub `get` function L107-110 — `(&self, name: &str) -> Option<String>` — Get a secret value by name.
 - pub `list` function L113-118 — `(&self) -> Vec<String>` — List all secret names (never values).
 - pub `contains` function L121-126 — `(&self, name: &str) -> bool` — Check if a secret exists.
-- pub `SecretStoreError` enum L192-201 — `Io | Age | Format` — Errors from the secret store.
--  `AgeSecretStore` type L34-168 — `= AgeSecretStore` — be injected into the agent's `ToolContext` for handle resolution.
--  `flush` function L129-167 — `(&self) -> Result<(), SecretStoreError>` — Flush the in-memory cache to the encrypted file.
--  `AgeSecretStore` type L170-178 — `impl SecretResolver for AgeSecretStore` — be injected into the agent's `ToolContext` for handle resolution.
--  `resolve` function L171-173 — `(&self, name: &str) -> Option<String>` — be injected into the agent's `ToolContext` for handle resolution.
--  `names` function L175-177 — `(&self) -> Vec<String>` — be injected into the agent's `ToolContext` for handle resolution.
--  `AgeSecretStore` type L180-188 — `= AgeSecretStore` — be injected into the agent's `ToolContext` for handle resolution.
--  `fmt` function L181-187 — `(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result` — be injected into the agent's `ToolContext` for handle resolution.
--  `tests` module L204-409 — `-` — be injected into the agent's `ToolContext` for handle resolution.
--  `setup` function L207-213 — `() -> (tempfile::TempDir, AgeSecretStore)` — be injected into the agent's `ToolContext` for handle resolution.
--  `test_empty_store` function L216-221 — `()` — be injected into the agent's `ToolContext` for handle resolution.
--  `test_set_and_get` function L224-231 — `()` — be injected into the agent's `ToolContext` for handle resolution.
--  `test_set_overwrite` function L234-241 — `()` — be injected into the agent's `ToolContext` for handle resolution.
--  `test_delete` function L244-255 — `()` — be injected into the agent's `ToolContext` for handle resolution.
--  `test_multiple_secrets` function L258-268 — `()` — be injected into the agent's `ToolContext` for handle resolution.
--  `test_persistence_across_reopen` function L271-290 — `()` — be injected into the agent's `ToolContext` for handle resolution.
--  `test_secret_resolver_trait` function L293-302 — `()` — be injected into the agent's `ToolContext` for handle resolution.
--  `test_special_characters_in_values` function L305-310 — `()` — be injected into the agent's `ToolContext` for handle resolution.
--  `test_groq_key_roundtrip_exact` function L313-339 — `()` — be injected into the agent's `ToolContext` for handle resolution.
--  `test_all_backend_key_names_roundtrip` function L342-371 — `()` — be injected into the agent's `ToolContext` for handle resolution.
--  `test_key_no_trailing_newline` function L374-398 — `()` — be injected into the agent's `ToolContext` for handle resolution.
--  `test_debug_hides_values` function L401-408 — `()` — be injected into the agent's `ToolContext` for handle resolution.
+- pub `SecretStoreError` enum L193-202 — `Io | Age | Format` — Errors from the secret store.
+-  `AgeSecretStore` type L34-169 — `= AgeSecretStore` — be injected into the agent's `ToolContext` for handle resolution.
+-  `flush` function L129-168 — `(&self) -> Result<(), SecretStoreError>` — Flush the in-memory cache to the encrypted file.
+-  `AgeSecretStore` type L171-179 — `impl SecretResolver for AgeSecretStore` — be injected into the agent's `ToolContext` for handle resolution.
+-  `resolve` function L172-174 — `(&self, name: &str) -> Option<String>` — be injected into the agent's `ToolContext` for handle resolution.
+-  `names` function L176-178 — `(&self) -> Vec<String>` — be injected into the agent's `ToolContext` for handle resolution.
+-  `AgeSecretStore` type L181-189 — `= AgeSecretStore` — be injected into the agent's `ToolContext` for handle resolution.
+-  `fmt` function L182-188 — `(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result` — be injected into the agent's `ToolContext` for handle resolution.
+-  `tests` module L205-410 — `-` — be injected into the agent's `ToolContext` for handle resolution.
+-  `setup` function L208-214 — `() -> (tempfile::TempDir, AgeSecretStore)` — be injected into the agent's `ToolContext` for handle resolution.
+-  `test_empty_store` function L217-222 — `()` — be injected into the agent's `ToolContext` for handle resolution.
+-  `test_set_and_get` function L225-232 — `()` — be injected into the agent's `ToolContext` for handle resolution.
+-  `test_set_overwrite` function L235-242 — `()` — be injected into the agent's `ToolContext` for handle resolution.
+-  `test_delete` function L245-256 — `()` — be injected into the agent's `ToolContext` for handle resolution.
+-  `test_multiple_secrets` function L259-269 — `()` — be injected into the agent's `ToolContext` for handle resolution.
+-  `test_persistence_across_reopen` function L272-291 — `()` — be injected into the agent's `ToolContext` for handle resolution.
+-  `test_secret_resolver_trait` function L294-303 — `()` — be injected into the agent's `ToolContext` for handle resolution.
+-  `test_special_characters_in_values` function L306-311 — `()` — be injected into the agent's `ToolContext` for handle resolution.
+-  `test_groq_key_roundtrip_exact` function L314-340 — `()` — be injected into the agent's `ToolContext` for handle resolution.
+-  `test_all_backend_key_names_roundtrip` function L343-372 — `()` — be injected into the agent's `ToolContext` for handle resolution.
+-  `test_key_no_trailing_newline` function L375-399 — `()` — be injected into the agent's `ToolContext` for handle resolution.
+-  `test_debug_hides_values` function L402-409 — `()` — be injected into the agent's `ToolContext` for handle resolution.
 
 #### crates/arawn-config/src/secrets.rs
 
@@ -3839,92 +3840,90 @@
 - pub `AnthropicBackend` struct L123-126 — `{ client: Client, config: AnthropicConfig }` — Anthropic API backend.
 - pub `new` function L130-134 — `(config: AnthropicConfig) -> Result<Self>` — Create a new Anthropic backend with the given configuration.
 - pub `from_env` function L137-139 — `() -> Result<Self>` — Create a backend from environment configuration.
-- pub `create_shared_backend` function L247-249 — `(config: AnthropicConfig) -> Result<Arc<dyn LlmBackend>>` — Create a shared Anthropic backend.
+- pub `create_shared_backend` function L249-251 — `(config: AnthropicConfig) -> Result<Arc<dyn LlmBackend>>` — Create a shared Anthropic backend.
 -  `DEFAULT_API_BASE` variable L20 — `: &str` — Default API base URL.
 -  `DEFAULT_API_VERSION` variable L23 — `: &str` — Default API version.
 -  `DEFAULT_TIMEOUT_SECS` variable L26 — `: u64` — Default timeout for requests.
 -  `DEFAULT_MAX_RETRIES` variable L29 — `: u32` — Default maximum retries for transient errors.
 -  `DEFAULT_RETRY_BACKOFF_MS` variable L32 — `: u64` — Default initial backoff between retries.
 -  `AnthropicConfig` type L72-116 — `= AnthropicConfig` — Messages API for Claude completions.
--  `AnthropicBackend` type L128-193 — `= AnthropicBackend` — Messages API for Claude completions.
+-  `AnthropicBackend` type L128-195 — `= AnthropicBackend` — Messages API for Claude completions.
 -  `messages_url` function L142-144 — `(&self) -> String` — Build the messages endpoint URL.
 -  `add_headers` function L147-158 — `(&self, builder: reqwest::RequestBuilder) -> Result<reqwest::RequestBuilder>` — Add authentication and API headers to a request.
 -  `handle_response` function L161-171 — `(response: Response) -> Result<CompletionResponse>` — Handle a successful response.
--  `handle_error_response` function L174-192 — `(response: Response) -> LlmError` — Handle an error response.
--  `AnthropicBackend` type L196-244 — `impl LlmBackend for AnthropicBackend` — Messages API for Claude completions.
--  `complete` function L197-217 — `(&self, request: CompletionRequest) -> Result<CompletionResponse>` — Messages API for Claude completions.
--  `complete_stream` function L219-235 — `(&self, request: CompletionRequest) -> Result<ResponseStream>` — Messages API for Claude completions.
--  `name` function L237-239 — `(&self) -> &str` — Messages API for Claude completions.
--  `supports_native_tools` function L241-243 — `(&self) -> bool` — Messages API for Claude completions.
--  `ApiResponse` struct L257-265 — `{ id: String, response_type: String, content: Vec<ApiContentBlock>, model: Strin...` — Internal API response structure.
--  `CompletionResponse` type L267-303 — `= CompletionResponse` — Messages API for Claude completions.
--  `from` function L268-302 — `(api: ApiResponse) -> Self` — Messages API for Claude completions.
--  `ApiContentBlock` enum L307-316 — `Text | ToolUse` — Messages API for Claude completions.
--  `ApiUsage` struct L319-324 — `{ input_tokens: u32, output_tokens: u32, cache_creation_input_tokens: Option<u32...` — Messages API for Claude completions.
--  `ApiError` struct L327-329 — `{ error: ApiErrorDetail }` — Messages API for Claude completions.
--  `ApiErrorDetail` struct L332-334 — `{ message: String }` — Messages API for Claude completions.
--  `parse_sse_stream` function L341-407 — `( byte_stream: impl Stream<Item = reqwest::Result<Bytes>> + Send + 'static, ) ->...` — Parse SSE events from a byte stream and convert to StreamEvents.
--  `SseState` struct L409-414 — `{ byte_stream: Pin<Box<dyn Stream<Item = reqwest::Result<Bytes>> + Send>>, buffe...` — Messages API for Claude completions.
--  `parse_sse_line` function L416-424 — `(line: &str) -> Option<(&str, &str)>` — Messages API for Claude completions.
--  `parse_stream_event` function L426-501 — `(event_type: &str, data: &str) -> Option<StreamEvent>` — Messages API for Claude completions.
--  `MessageStartEvent` struct L508-510 — `{ message: MessageStartMessage }` — Messages API for Claude completions.
--  `MessageStartMessage` struct L513-516 — `{ id: String, model: String }` — Messages API for Claude completions.
--  `ContentBlockStartEvent` struct L519-522 — `{ index: usize, content_block: ContentBlockType }` — Messages API for Claude completions.
--  `ContentBlockType` struct L525-528 — `{ block_type: String }` — Messages API for Claude completions.
--  `ContentBlockDeltaEvent` struct L531-534 — `{ index: usize, delta: DeltaContent }` — Messages API for Claude completions.
--  `DeltaContent` enum L538-541 — `TextDelta | InputJsonDelta` — Messages API for Claude completions.
--  `ContentBlockStopEvent` struct L544-546 — `{ index: usize }` — Messages API for Claude completions.
--  `MessageDeltaEvent` struct L549-552 — `{ delta: MessageDelta, usage: MessageDeltaUsage }` — Messages API for Claude completions.
--  `MessageDelta` struct L555-557 — `{ stop_reason: Option<String> }` — Messages API for Claude completions.
--  `MessageDeltaUsage` struct L560-562 — `{ output_tokens: u32 }` — Messages API for Claude completions.
--  `StreamErrorEvent` struct L565-567 — `{ error: StreamErrorDetail }` — Messages API for Claude completions.
--  `StreamErrorDetail` struct L570-572 — `{ message: String }` — Messages API for Claude completions.
--  `tests` module L579-1174 — `-` — Messages API for Claude completions.
--  `test_config_new` function L583-588 — `()` — Messages API for Claude completions.
--  `test_config_with_base_url` function L591-594 — `()` — Messages API for Claude completions.
--  `test_config_with_timeout` function L597-600 — `()` — Messages API for Claude completions.
--  `test_parse_sse_line` function L603-613 — `()` — Messages API for Claude completions.
--  `test_api_response_conversion` function L616-639 — `()` — Messages API for Claude completions.
--  `test_api_response_with_tool_use` function L642-675 — `()` — Messages API for Claude completions.
--  `test_add_headers_static_key` function L678-688 — `()` — Messages API for Claude completions.
--  `test_add_headers_dynamic_provider` function L691-702 — `()` — Messages API for Claude completions.
--  `test_add_headers_none_returns_error` function L705-713 — `()` — Messages API for Claude completions.
--  `test_add_headers_preserves_api_version` function L716-731 — `()` — Messages API for Claude completions.
--  `test_messages_url` function L734-741 — `()` — Messages API for Claude completions.
--  `test_messages_url_custom_base` function L744-748 — `()` — Messages API for Claude completions.
--  `test_backend_name` function L751-755 — `()` — Messages API for Claude completions.
--  `test_supports_native_tools` function L758-762 — `()` — Messages API for Claude completions.
--  `test_config_with_max_retries` function L765-768 — `()` — Messages API for Claude completions.
--  `test_config_with_retry_backoff` function L771-774 — `()` — Messages API for Claude completions.
--  `test_api_response_max_tokens_stop_reason` function L777-795 — `()` — Messages API for Claude completions.
--  `test_api_response_stop_sequence_stop_reason` function L798-814 — `()` — Messages API for Claude completions.
--  `test_api_response_unknown_stop_reason` function L817-833 — `()` — Messages API for Claude completions.
--  `test_api_response_none_stop_reason` function L836-852 — `()` — Messages API for Claude completions.
--  `test_parse_stream_event_message_start` function L857-867 — `()` — Messages API for Claude completions.
--  `test_parse_stream_event_message_start_invalid` function L870-873 — `()` — Messages API for Claude completions.
--  `test_parse_stream_event_content_block_start` function L876-889 — `()` — Messages API for Claude completions.
--  `test_parse_stream_event_content_block_start_invalid` function L892-894 — `()` — Messages API for Claude completions.
--  `test_parse_stream_event_text_delta` function L897-910 — `()` — Messages API for Claude completions.
--  `test_parse_stream_event_input_json_delta` function L913-927 — `()` — Messages API for Claude completions.
--  `test_parse_stream_event_content_block_delta_invalid` function L930-932 — `()` — Messages API for Claude completions.
--  `test_parse_stream_event_content_block_stop` function L935-942 — `()` — Messages API for Claude completions.
--  `test_parse_stream_event_content_block_stop_invalid` function L945-947 — `()` — Messages API for Claude completions.
--  `test_parse_stream_event_message_delta_end_turn` function L950-960 — `()` — Messages API for Claude completions.
--  `test_parse_stream_event_message_delta_tool_use` function L963-972 — `()` — Messages API for Claude completions.
--  `test_parse_stream_event_message_delta_max_tokens` function L975-984 — `()` — Messages API for Claude completions.
--  `test_parse_stream_event_message_delta_stop_sequence` function L987-996 — `()` — Messages API for Claude completions.
--  `test_parse_stream_event_message_delta_unknown_reason` function L999-1008 — `()` — Messages API for Claude completions.
--  `test_parse_stream_event_message_delta_null_reason` function L1011-1020 — `()` — Messages API for Claude completions.
--  `test_parse_stream_event_message_delta_invalid` function L1023-1025 — `()` — Messages API for Claude completions.
--  `test_parse_stream_event_message_stop` function L1028-1031 — `()` — Messages API for Claude completions.
--  `test_parse_stream_event_ping` function L1034-1037 — `()` — Messages API for Claude completions.
--  `test_parse_stream_event_error` function L1040-1047 — `()` — Messages API for Claude completions.
--  `test_parse_stream_event_error_invalid_json` function L1050-1058 — `()` — Messages API for Claude completions.
--  `test_parse_stream_event_unknown_type` function L1061-1063 — `()` — Messages API for Claude completions.
--  `test_parse_sse_line_invalid_prefix` function L1066-1070 — `()` — Messages API for Claude completions.
--  `test_parse_sse_stream_full_sequence` function L1075-1138 — `()` — Messages API for Claude completions.
--  `test_parse_sse_stream_network_error` function L1141-1155 — `()` — Messages API for Claude completions.
--  `test_parse_sse_stream_with_ping` function L1158-1173 — `()` — Messages API for Claude completions.
+-  `handle_error_response` function L174-194 — `(response: Response) -> LlmError` — Handle an error response.
+-  `AnthropicBackend` type L198-246 — `impl LlmBackend for AnthropicBackend` — Messages API for Claude completions.
+-  `complete` function L199-219 — `(&self, request: CompletionRequest) -> Result<CompletionResponse>` — Messages API for Claude completions.
+-  `complete_stream` function L221-237 — `(&self, request: CompletionRequest) -> Result<ResponseStream>` — Messages API for Claude completions.
+-  `name` function L239-241 — `(&self) -> &str` — Messages API for Claude completions.
+-  `supports_native_tools` function L243-245 — `(&self) -> bool` — Messages API for Claude completions.
+-  `ApiResponse` struct L259-267 — `{ id: String, response_type: String, content: Vec<ApiContentBlock>, model: Strin...` — Internal API response structure.
+-  `CompletionResponse` type L269-308 — `= CompletionResponse` — Messages API for Claude completions.
+-  `from` function L270-307 — `(api: ApiResponse) -> Self` — Messages API for Claude completions.
+-  `ApiContentBlock` enum L312-321 — `Text | ToolUse` — Messages API for Claude completions.
+-  `ApiUsage` struct L324-329 — `{ input_tokens: u32, output_tokens: u32, cache_creation_input_tokens: Option<u32...` — Messages API for Claude completions.
+-  `parse_sse_stream` function L336-402 — `( byte_stream: impl Stream<Item = reqwest::Result<Bytes>> + Send + 'static, ) ->...` — Parse SSE events from a byte stream and convert to StreamEvents.
+-  `SseState` struct L404-409 — `{ byte_stream: Pin<Box<dyn Stream<Item = reqwest::Result<Bytes>> + Send>>, buffe...` — Messages API for Claude completions.
+-  `parse_sse_line` function L411-419 — `(line: &str) -> Option<(&str, &str)>` — Messages API for Claude completions.
+-  `parse_stream_event` function L421-499 — `(event_type: &str, data: &str) -> Option<StreamEvent>` — Messages API for Claude completions.
+-  `MessageStartEvent` struct L506-508 — `{ message: MessageStartMessage }` — Messages API for Claude completions.
+-  `MessageStartMessage` struct L511-514 — `{ id: String, model: String }` — Messages API for Claude completions.
+-  `ContentBlockStartEvent` struct L517-520 — `{ index: usize, content_block: ContentBlockType }` — Messages API for Claude completions.
+-  `ContentBlockType` struct L523-526 — `{ block_type: String }` — Messages API for Claude completions.
+-  `ContentBlockDeltaEvent` struct L529-532 — `{ index: usize, delta: DeltaContent }` — Messages API for Claude completions.
+-  `DeltaContent` enum L536-539 — `TextDelta | InputJsonDelta` — Messages API for Claude completions.
+-  `ContentBlockStopEvent` struct L542-544 — `{ index: usize }` — Messages API for Claude completions.
+-  `MessageDeltaEvent` struct L547-550 — `{ delta: MessageDelta, usage: MessageDeltaUsage }` — Messages API for Claude completions.
+-  `MessageDelta` struct L553-555 — `{ stop_reason: Option<String> }` — Messages API for Claude completions.
+-  `MessageDeltaUsage` struct L558-560 — `{ output_tokens: u32 }` — Messages API for Claude completions.
+-  `StreamErrorEvent` struct L563-565 — `{ error: StreamErrorDetail }` — Messages API for Claude completions.
+-  `StreamErrorDetail` struct L568-570 — `{ message: String }` — Messages API for Claude completions.
+-  `tests` module L577-1172 — `-` — Messages API for Claude completions.
+-  `test_config_new` function L581-586 — `()` — Messages API for Claude completions.
+-  `test_config_with_base_url` function L589-592 — `()` — Messages API for Claude completions.
+-  `test_config_with_timeout` function L595-598 — `()` — Messages API for Claude completions.
+-  `test_parse_sse_line` function L601-611 — `()` — Messages API for Claude completions.
+-  `test_api_response_conversion` function L614-637 — `()` — Messages API for Claude completions.
+-  `test_api_response_with_tool_use` function L640-673 — `()` — Messages API for Claude completions.
+-  `test_add_headers_static_key` function L676-686 — `()` — Messages API for Claude completions.
+-  `test_add_headers_dynamic_provider` function L689-700 — `()` — Messages API for Claude completions.
+-  `test_add_headers_none_returns_error` function L703-711 — `()` — Messages API for Claude completions.
+-  `test_add_headers_preserves_api_version` function L714-729 — `()` — Messages API for Claude completions.
+-  `test_messages_url` function L732-739 — `()` — Messages API for Claude completions.
+-  `test_messages_url_custom_base` function L742-746 — `()` — Messages API for Claude completions.
+-  `test_backend_name` function L749-753 — `()` — Messages API for Claude completions.
+-  `test_supports_native_tools` function L756-760 — `()` — Messages API for Claude completions.
+-  `test_config_with_max_retries` function L763-766 — `()` — Messages API for Claude completions.
+-  `test_config_with_retry_backoff` function L769-772 — `()` — Messages API for Claude completions.
+-  `test_api_response_max_tokens_stop_reason` function L775-793 — `()` — Messages API for Claude completions.
+-  `test_api_response_stop_sequence_stop_reason` function L796-812 — `()` — Messages API for Claude completions.
+-  `test_api_response_unknown_stop_reason` function L815-831 — `()` — Messages API for Claude completions.
+-  `test_api_response_none_stop_reason` function L834-850 — `()` — Messages API for Claude completions.
+-  `test_parse_stream_event_message_start` function L855-865 — `()` — Messages API for Claude completions.
+-  `test_parse_stream_event_message_start_invalid` function L868-871 — `()` — Messages API for Claude completions.
+-  `test_parse_stream_event_content_block_start` function L874-887 — `()` — Messages API for Claude completions.
+-  `test_parse_stream_event_content_block_start_invalid` function L890-892 — `()` — Messages API for Claude completions.
+-  `test_parse_stream_event_text_delta` function L895-908 — `()` — Messages API for Claude completions.
+-  `test_parse_stream_event_input_json_delta` function L911-925 — `()` — Messages API for Claude completions.
+-  `test_parse_stream_event_content_block_delta_invalid` function L928-930 — `()` — Messages API for Claude completions.
+-  `test_parse_stream_event_content_block_stop` function L933-940 — `()` — Messages API for Claude completions.
+-  `test_parse_stream_event_content_block_stop_invalid` function L943-945 — `()` — Messages API for Claude completions.
+-  `test_parse_stream_event_message_delta_end_turn` function L948-958 — `()` — Messages API for Claude completions.
+-  `test_parse_stream_event_message_delta_tool_use` function L961-970 — `()` — Messages API for Claude completions.
+-  `test_parse_stream_event_message_delta_max_tokens` function L973-982 — `()` — Messages API for Claude completions.
+-  `test_parse_stream_event_message_delta_stop_sequence` function L985-994 — `()` — Messages API for Claude completions.
+-  `test_parse_stream_event_message_delta_unknown_reason` function L997-1006 — `()` — Messages API for Claude completions.
+-  `test_parse_stream_event_message_delta_null_reason` function L1009-1018 — `()` — Messages API for Claude completions.
+-  `test_parse_stream_event_message_delta_invalid` function L1021-1023 — `()` — Messages API for Claude completions.
+-  `test_parse_stream_event_message_stop` function L1026-1029 — `()` — Messages API for Claude completions.
+-  `test_parse_stream_event_ping` function L1032-1035 — `()` — Messages API for Claude completions.
+-  `test_parse_stream_event_error` function L1038-1045 — `()` — Messages API for Claude completions.
+-  `test_parse_stream_event_error_invalid_json` function L1048-1056 — `()` — Messages API for Claude completions.
+-  `test_parse_stream_event_unknown_type` function L1059-1061 — `()` — Messages API for Claude completions.
+-  `test_parse_sse_line_invalid_prefix` function L1064-1068 — `()` — Messages API for Claude completions.
+-  `test_parse_sse_stream_full_sequence` function L1073-1136 — `()` — Messages API for Claude completions.
+-  `test_parse_sse_stream_network_error` function L1139-1153 — `()` — Messages API for Claude completions.
+-  `test_parse_sse_stream_with_ping` function L1156-1171 — `()` — Messages API for Claude completions.
 
 #### crates/arawn-llm/src/api_key.rs
 
@@ -4082,19 +4081,19 @@
 - pub `ProviderErrorResponse` struct L38-40 — `{ error: ProviderErrorDetail }` — Generic provider error response shape.
 - pub `ProviderErrorDetail` struct L44-46 — `{ message: String }` — Error detail with a human-readable message.
 - pub `extract_retry_after` function L55-60 — `(headers: &reqwest::header::HeaderMap) -> Option<String>` — Extract the `Retry-After` header value from response headers.
-- pub `map_error_response` function L70-94 — `( status: u16, error_message: &str, retry_after: Option<&str>, groq_style_retry:...` — Map an HTTP error status + parsed error body to an `LlmError`.
-- pub `map_raw_error` function L97-99 — `(status: reqwest::StatusCode, body: &str) -> LlmError` — Map an HTTP error response when the body couldn't be parsed as a provider error.
-- pub `map_stop_reason` function L109-123 — `(reason: &str) -> StopReason` — Map a provider-specific stop reason string to a `StopReason`.
--  `tests` module L130-194 — `-` — extraction, and stop reason mapping.
--  `test_build_http_client` function L134-137 — `()` — extraction, and stop reason mapping.
--  `test_provider_error_response_parse` function L140-144 — `()` — extraction, and stop reason mapping.
--  `test_map_stop_reason_openai` function L147-151 — `()` — extraction, and stop reason mapping.
--  `test_map_stop_reason_anthropic` function L154-159 — `()` — extraction, and stop reason mapping.
--  `test_map_stop_reason_unknown_defaults_to_end_turn` function L162-165 — `()` — extraction, and stop reason mapping.
--  `test_map_error_response_auth` function L168-171 — `()` — extraction, and stop reason mapping.
--  `test_map_error_response_rate_limit` function L174-177 — `()` — extraction, and stop reason mapping.
--  `test_map_error_response_server_error` function L180-184 — `()` — extraction, and stop reason mapping.
--  `test_extract_retry_after` function L187-193 — `()` — extraction, and stop reason mapping.
+- pub `map_error_response` function L70-93 — `( status: u16, error_message: &str, retry_after: Option<&str>, groq_style_retry:...` — Map an HTTP error status + parsed error body to an `LlmError`.
+- pub `map_raw_error` function L96-98 — `(status: reqwest::StatusCode, body: &str) -> LlmError` — Map an HTTP error response when the body couldn't be parsed as a provider error.
+- pub `map_stop_reason` function L108-122 — `(reason: &str) -> StopReason` — Map a provider-specific stop reason string to a `StopReason`.
+-  `tests` module L129-199 — `-` — extraction, and stop reason mapping.
+-  `test_build_http_client` function L133-136 — `()` — extraction, and stop reason mapping.
+-  `test_provider_error_response_parse` function L139-143 — `()` — extraction, and stop reason mapping.
+-  `test_map_stop_reason_openai` function L146-150 — `()` — extraction, and stop reason mapping.
+-  `test_map_stop_reason_anthropic` function L153-164 — `()` — extraction, and stop reason mapping.
+-  `test_map_stop_reason_unknown_defaults_to_end_turn` function L167-170 — `()` — extraction, and stop reason mapping.
+-  `test_map_error_response_auth` function L173-176 — `()` — extraction, and stop reason mapping.
+-  `test_map_error_response_rate_limit` function L179-182 — `()` — extraction, and stop reason mapping.
+-  `test_map_error_response_server_error` function L185-189 — `()` — extraction, and stop reason mapping.
+-  `test_extract_retry_after` function L192-198 — `()` — extraction, and stop reason mapping.
 
 #### crates/arawn-llm/src/embeddings.rs
 
@@ -4312,84 +4311,82 @@
 - pub `openai_from_env` function L189-191 — `() -> Result<Self>` — Create an OpenAI backend from environment.
 - pub `groq_from_env` function L194-196 — `() -> Result<Self>` — Create a Groq backend from environment.
 - pub `ollama` function L199-201 — `() -> Result<Self>` — Create an Ollama backend with default local settings.
-- pub `create_shared_backend` function L473-475 — `(config: OpenAiConfig) -> Result<Arc<dyn LlmBackend>>` — Create a shared OpenAI-compatible backend.
+- pub `create_shared_backend` function L475-477 — `(config: OpenAiConfig) -> Result<Arc<dyn LlmBackend>>` — Create a shared OpenAI-compatible backend.
 -  `DEFAULT_OPENAI_BASE` variable L22 — `: &str` — Default OpenAI API base URL.
 -  `DEFAULT_TIMEOUT_SECS` variable L25 — `: u64` — Default timeout for requests.
 -  `DEFAULT_MAX_RETRIES` variable L28 — `: u32` — Default maximum retries for transient errors.
 -  `DEFAULT_RETRY_BACKOFF_MS` variable L31 — `: u64` — Default initial backoff between retries.
 -  `OpenAiConfig` type L77-168 — `= OpenAiConfig` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `OpenAiBackend` type L180-409 — `= OpenAiBackend` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `OpenAiBackend` type L180-411 — `= OpenAiBackend` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
 -  `completions_url` function L204-206 — `(&self) -> String` — Build the chat completions endpoint URL.
 -  `add_headers` function L209-217 — `(&self, builder: reqwest::RequestBuilder) -> reqwest::RequestBuilder` — Add authentication headers to a request.
 -  `to_openai_request` function L220-374 — `(&self, request: &CompletionRequest) -> OpenAiChatRequest` — Convert our CompletionRequest to OpenAI-compatible format.
 -  `handle_response` function L377-387 — `(response: Response) -> Result<CompletionResponse>` — Handle a successful response.
--  `handle_error_response` function L390-408 — `(response: Response) -> LlmError` — Handle an error response.
--  `OpenAiBackend` type L412-470 — `impl LlmBackend for OpenAiBackend` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `complete` function L413-442 — `(&self, request: CompletionRequest) -> Result<CompletionResponse>` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `complete_stream` function L444-461 — `(&self, request: CompletionRequest) -> Result<ResponseStream>` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `name` function L463-465 — `(&self) -> &str` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `supports_native_tools` function L467-469 — `(&self) -> bool` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `OpenAiChatRequest` struct L482-497 — `{ model: String, messages: Vec<OpenAiMessage>, max_tokens: Option<u32>, temperat...` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `OpenAiMessage` struct L500-508 — `{ role: String, content: Option<OpenAiContent>, tool_calls: Option<Vec<OpenAiToo...` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `OpenAiContent` enum L512-514 — `Text` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `OpenAiTool` struct L517-521 — `{ tool_type: String, function: OpenAiFunction }` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `OpenAiFunction` struct L524-529 — `{ name: String, description: Option<String>, parameters: serde_json::Value }` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `OpenAiToolCall` struct L532-537 — `{ id: String, call_type: String, function: OpenAiFunctionCall }` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `OpenAiFunctionCall` struct L540-543 — `{ name: String, arguments: String }` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `OpenAiChatResponse` struct L546-551 — `{ id: String, choices: Vec<OpenAiChoice>, model: String, usage: Option<OpenAiUsa...` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `CompletionResponse` type L553-613 — `= CompletionResponse` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `from` function L554-612 — `(resp: OpenAiChatResponse) -> Self` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `OpenAiChoice` struct L616-619 — `{ message: OpenAiResponseMessage, finish_reason: Option<String> }` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `OpenAiResponseMessage` struct L622-625 — `{ content: Option<String>, tool_calls: Option<Vec<OpenAiToolCall>> }` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `OpenAiUsage` struct L628-631 — `{ prompt_tokens: u32, completion_tokens: u32 }` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `OpenAiErrorResponse` struct L634-636 — `{ error: OpenAiError }` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `OpenAiError` struct L639-641 — `{ message: String }` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `parse_openai_sse_stream` function L647-763 — `( byte_stream: impl Stream<Item = reqwest::Result<Bytes>> + Send + 'static, ) ->...` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `OpenAiSseState` struct L765-772 — `{ byte_stream: Pin<Box<dyn Stream<Item = reqwest::Result<Bytes>> + Send>>, buffe...` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `OpenAiStreamChunk` struct L775-779 — `{ id: String, model: String, choices: Vec<OpenAiStreamChoice> }` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `OpenAiStreamChoice` struct L782-785 — `{ delta: Option<OpenAiStreamDelta>, finish_reason: Option<String> }` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `OpenAiStreamDelta` struct L788-791 — `{ content: Option<String>, tool_calls: Option<Vec<OpenAiStreamToolCall>> }` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `OpenAiStreamToolCall` struct L794-797 — `{ index: Option<usize>, function: Option<OpenAiStreamFunction> }` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `OpenAiStreamFunction` struct L800-802 — `{ arguments: Option<String> }` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `tests` module L809-1563 — `-` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_openai_config` function L814-819 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_groq_config` function L822-828 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_ollama_config` function L831-837 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_config_builder` function L840-851 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_completions_url` function L854-861 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_groq_completions_url` function L864-871 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_ollama_completions_url` function L874-881 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_backend_name` function L884-888 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_supports_native_tools` function L891-895 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_openai_response_conversion` function L898-921 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_openai_response_with_tool_calls` function L924-955 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_add_headers_static_key` function L958-972 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_add_headers_dynamic_provider` function L975-990 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_add_headers_no_key` function L993-1001 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_add_headers_preserves_special_chars` function L1004-1019 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_add_headers_real_groq_key_format` function L1022-1043 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_to_openai_request` function L1046-1058 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_to_openai_request_with_system` function L1061-1076 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_to_openai_request_uses_request_model_when_no_config_model` function L1079-1085 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_to_openai_request_with_tools` function L1088-1109 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_to_openai_request_with_tool_calls_and_results` function L1112-1150 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_to_openai_request_with_tool_result_blocks` function L1153-1179 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_to_openai_request_with_tool_result_none_content` function L1182-1202 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_to_openai_request_with_stop_sequences` function L1205-1217 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_to_openai_request_with_temperature` function L1220-1229 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_openai_response_no_choices` function L1232-1244 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_openai_response_length_finish_reason` function L1247-1265 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_openai_response_empty_text_omitted` function L1268-1287 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_openai_response_unknown_finish_reason` function L1290-1305 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_config_with_max_retries` function L1308-1311 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_config_with_retry_backoff` function L1314-1317 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_parse_openai_sse_stream_text` function L1320-1387 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_parse_openai_sse_stream_tool_calls` function L1390-1435 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_parse_openai_sse_stream_network_error` function L1438-1452 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_parse_openai_sse_stream_length_finish_reason` function L1455-1481 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_openai_response_tool_call_with_invalid_json_args` function L1484-1507 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_openai_response_none_content` function L1510-1528 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
--  `test_to_openai_request_assistant_with_text_and_tool_call` function L1531-1562 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `handle_error_response` function L390-410 — `(response: Response) -> LlmError` — Handle an error response.
+-  `OpenAiBackend` type L414-472 — `impl LlmBackend for OpenAiBackend` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `complete` function L415-444 — `(&self, request: CompletionRequest) -> Result<CompletionResponse>` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `complete_stream` function L446-463 — `(&self, request: CompletionRequest) -> Result<ResponseStream>` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `name` function L465-467 — `(&self) -> &str` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `supports_native_tools` function L469-471 — `(&self) -> bool` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `OpenAiChatRequest` struct L484-499 — `{ model: String, messages: Vec<OpenAiMessage>, max_tokens: Option<u32>, temperat...` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `OpenAiMessage` struct L502-510 — `{ role: String, content: Option<OpenAiContent>, tool_calls: Option<Vec<OpenAiToo...` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `OpenAiContent` enum L514-516 — `Text` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `OpenAiTool` struct L519-523 — `{ tool_type: String, function: OpenAiFunction }` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `OpenAiFunction` struct L526-531 — `{ name: String, description: Option<String>, parameters: serde_json::Value }` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `OpenAiToolCall` struct L534-539 — `{ id: String, call_type: String, function: OpenAiFunctionCall }` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `OpenAiFunctionCall` struct L542-545 — `{ name: String, arguments: String }` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `OpenAiChatResponse` struct L548-553 — `{ id: String, choices: Vec<OpenAiChoice>, model: String, usage: Option<OpenAiUsa...` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `CompletionResponse` type L555-618 — `= CompletionResponse` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `from` function L556-617 — `(resp: OpenAiChatResponse) -> Self` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `OpenAiChoice` struct L621-624 — `{ message: OpenAiResponseMessage, finish_reason: Option<String> }` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `OpenAiResponseMessage` struct L627-630 — `{ content: Option<String>, tool_calls: Option<Vec<OpenAiToolCall>> }` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `OpenAiUsage` struct L633-636 — `{ prompt_tokens: u32, completion_tokens: u32 }` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `parse_openai_sse_stream` function L642-759 — `( byte_stream: impl Stream<Item = reqwest::Result<Bytes>> + Send + 'static, ) ->...` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `OpenAiSseState` struct L761-768 — `{ byte_stream: Pin<Box<dyn Stream<Item = reqwest::Result<Bytes>> + Send>>, buffe...` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `OpenAiStreamChunk` struct L771-775 — `{ id: String, model: String, choices: Vec<OpenAiStreamChoice> }` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `OpenAiStreamChoice` struct L778-781 — `{ delta: Option<OpenAiStreamDelta>, finish_reason: Option<String> }` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `OpenAiStreamDelta` struct L784-787 — `{ content: Option<String>, tool_calls: Option<Vec<OpenAiStreamToolCall>> }` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `OpenAiStreamToolCall` struct L790-793 — `{ index: Option<usize>, function: Option<OpenAiStreamFunction> }` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `OpenAiStreamFunction` struct L796-798 — `{ arguments: Option<String> }` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `tests` module L805-1559 — `-` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_openai_config` function L810-815 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_groq_config` function L818-824 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_ollama_config` function L827-833 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_config_builder` function L836-847 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_completions_url` function L850-857 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_groq_completions_url` function L860-867 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_ollama_completions_url` function L870-877 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_backend_name` function L880-884 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_supports_native_tools` function L887-891 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_openai_response_conversion` function L894-917 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_openai_response_with_tool_calls` function L920-951 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_add_headers_static_key` function L954-968 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_add_headers_dynamic_provider` function L971-986 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_add_headers_no_key` function L989-997 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_add_headers_preserves_special_chars` function L1000-1015 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_add_headers_real_groq_key_format` function L1018-1039 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_to_openai_request` function L1042-1054 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_to_openai_request_with_system` function L1057-1072 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_to_openai_request_uses_request_model_when_no_config_model` function L1075-1081 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_to_openai_request_with_tools` function L1084-1105 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_to_openai_request_with_tool_calls_and_results` function L1108-1146 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_to_openai_request_with_tool_result_blocks` function L1149-1175 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_to_openai_request_with_tool_result_none_content` function L1178-1198 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_to_openai_request_with_stop_sequences` function L1201-1213 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_to_openai_request_with_temperature` function L1216-1225 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_openai_response_no_choices` function L1228-1240 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_openai_response_length_finish_reason` function L1243-1261 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_openai_response_empty_text_omitted` function L1264-1283 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_openai_response_unknown_finish_reason` function L1286-1301 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_config_with_max_retries` function L1304-1307 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_config_with_retry_backoff` function L1310-1313 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_parse_openai_sse_stream_text` function L1316-1383 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_parse_openai_sse_stream_tool_calls` function L1386-1431 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_parse_openai_sse_stream_network_error` function L1434-1448 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_parse_openai_sse_stream_length_finish_reason` function L1451-1477 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_openai_response_tool_call_with_invalid_json_args` function L1480-1503 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_openai_response_none_content` function L1506-1524 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
+-  `test_to_openai_request_assistant_with_text_and_tool_call` function L1527-1558 — `()` — or any OpenAI-compatible service (Groq, Ollama, local LLMs, etc.).
 
 #### crates/arawn-llm/src/types.rs
 
@@ -5164,7 +5161,7 @@
 -  `test_store_options_default` function L738-742 — `()` — - `update_indexed()`: Update a memory and re-index its embedding/entities
 -  `test_with_transaction_rollback` function L745-760 — `()` — - `update_indexed()`: Update a memory and re-index its embedding/entities
 -  `test_init_graph_at_path` function L763-770 — `()` — - `update_indexed()`: Update a memory and re-index its embedding/entities
--  `concurrency_tests` module L774-1166 — `-` — - `update_indexed()`: Update a memory and re-index its embedding/entities
+-  `concurrency_tests` module L774-1160 — `-` — - `update_indexed()`: Update a memory and re-index its embedding/entities
 -  `create_test_store` function L780-782 — `() -> MemoryStore` — - `update_indexed()`: Update a memory and re-index its embedding/entities
 -  `test_concurrent_writes_no_data_loss` function L785-816 — `()` — - `update_indexed()`: Update a memory and re-index its embedding/entities
 -  `test_concurrent_reads_during_writes` function L819-874 — `()` — - `update_indexed()`: Update a memory and re-index its embedding/entities
@@ -5173,7 +5170,7 @@
 -  `test_concurrent_note_writes_no_data_loss` function L971-1003 — `()` — - `update_indexed()`: Update a memory and re-index its embedding/entities
 -  `test_concurrent_mixed_operations_no_deadlock` function L1006-1068 — `()` — - `update_indexed()`: Update a memory and re-index its embedding/entities
 -  `prop_tests` module L1070-1108 — `-` — - `update_indexed()`: Update a memory and re-index its embedding/entities
--  `test_concurrent_graph_operations_no_deadlock` function L1112-1165 — `()` — - `update_indexed()`: Update a memory and re-index its embedding/entities
+-  `test_concurrent_graph_operations_no_deadlock` function L1112-1159 — `()` — - `update_indexed()`: Update a memory and re-index its embedding/entities
 
 #### crates/arawn-memory/src/store/note_ops.rs
 
@@ -5776,51 +5773,51 @@
 #### crates/arawn-pipeline/src/loader.rs
 
 - pub `WorkflowEvent` enum L21-28 — `Loaded | Removed | Error` — Event emitted when workflow files change.
-- pub `WorkflowLoader` struct L38-45 — `{ workflow_dir: PathBuf, workflows: Arc<RwLock<HashMap<String, LoadedWorkflow>>>...` — Manages loading and hot-reloading of workflow TOML files from a directory.
-- pub `new` function L51-80 — `(workflow_dir: impl Into<PathBuf>) -> Result<Self, PipelineError>` — Create a new loader for the given workflow directory.
-- pub `load_all` function L86-117 — `(&self) -> Vec<WorkflowEvent>` — Load all TOML workflow files from the directory.
-- pub `get` function L199-205 — `(&self, name: &str) -> Option<crate::definition::WorkflowDefinition>` — Get a loaded workflow definition by name.
-- pub `list_names` function L208-210 — `(&self) -> Vec<String>` — List all loaded workflow names.
-- pub `len` function L213-215 — `(&self) -> usize` — Get the number of loaded workflows.
-- pub `is_empty` function L218-220 — `(&self) -> bool` — Check if any workflows are loaded.
-- pub `watch` function L229-316 — `( &self, ) -> Result<(tokio::sync::mpsc::Receiver<WorkflowEvent>, WatcherHandle)...` — Start watching the workflow directory for changes.
-- pub `WatcherHandle` struct L393-395 — `{ _thread: std::thread::JoinHandle<()> }` — Handle that keeps the file watcher alive.
--  `LoadedWorkflow` struct L32-35 — `{ definition: crate::definition::WorkflowDefinition, path: PathBuf }` — In-memory cache of loaded workflow definitions.
--  `WorkflowLoader` type L47-322 — `= WorkflowLoader` — picked up without restarting the server.
--  `normalize_path` function L124-130 — `(&self, path: &Path) -> PathBuf` — Normalize a path to use the canonical `workflow_dir` prefix.
--  `load_file` function L133-177 — `(&self, path: &Path) -> WorkflowEvent` — Load or reload a single workflow file.
--  `remove_file` function L181-196 — `(&self, path: &Path) -> Option<WorkflowEvent>` — Handle a file being removed.
--  `is_workflow_file` function L319-321 — `(path: &Path) -> bool` — Check if a path is a workflow TOML file.
--  `WorkflowLoaderView` struct L325-328 — `{ workflows: Arc<RwLock<HashMap<String, LoadedWorkflow>>>, path_to_name: Arc<RwL...` — Internal view used by the watcher thread to update workflow state.
--  `WorkflowLoaderView` type L330-388 — `= WorkflowLoaderView` — picked up without restarting the server.
--  `load_file` function L331-371 — `(&self, path: &Path) -> WorkflowEvent` — picked up without restarting the server.
--  `remove_file` function L373-387 — `(&self, path: &Path) -> Option<WorkflowEvent>` — picked up without restarting the server.
--  `tests` module L398-800 — `-` — picked up without restarting the server.
--  `write_workflow` function L401-414 — `(dir: &Path, filename: &str, name: &str)` — picked up without restarting the server.
--  `write_invalid` function L416-418 — `(dir: &Path, filename: &str)` — picked up without restarting the server.
--  `test_load_empty_directory` function L421-427 — `()` — picked up without restarting the server.
--  `test_load_single_workflow` function L430-443 — `()` — picked up without restarting the server.
--  `test_load_multiple_workflows` function L446-460 — `()` — picked up without restarting the server.
--  `test_invalid_file_doesnt_crash` function L463-481 — `()` — picked up without restarting the server.
--  `test_skips_non_toml_files` function L484-495 — `()` — picked up without restarting the server.
--  `test_creates_directory_if_missing` function L498-505 — `()` — picked up without restarting the server.
--  `test_reload_modified_file` function L508-522 — `()` — picked up without restarting the server.
--  `test_remove_file` function L525-536 — `()` — picked up without restarting the server.
--  `test_get_nonexistent` function L539-543 — `()` — picked up without restarting the server.
--  `test_watch_detects_new_file` function L547-573 — `()` — picked up without restarting the server.
--  `test_watch_detects_modified_file` function L577-603 — `()` — picked up without restarting the server.
--  `test_watch_detects_deleted_file` function L607-633 — `()` — picked up without restarting the server.
--  `test_is_workflow_file` function L636-645 — `()` — picked up without restarting the server.
--  `test_normalize_path` function L648-655 — `()` — picked up without restarting the server.
--  `test_normalize_path_no_filename` function L658-664 — `()` — picked up without restarting the server.
--  `test_remove_nonexistent_file` function L667-672 — `()` — picked up without restarting the server.
--  `test_workflow_event_debug` function L675-695 — `()` — picked up without restarting the server.
--  `test_loader_view_load_file` function L698-715 — `()` — picked up without restarting the server.
--  `test_loader_view_load_invalid_file` function L718-733 — `()` — picked up without restarting the server.
--  `test_loader_view_remove_file` function L736-756 — `()` — picked up without restarting the server.
--  `test_loader_view_remove_nonexistent` function L759-770 — `()` — picked up without restarting the server.
--  `test_watch_returns_handle` function L773-780 — `()` — picked up without restarting the server.
--  `test_watch_ignores_non_toml` function L784-799 — `()` — picked up without restarting the server.
+- pub `WorkflowLoader` struct L39-46 — `{ workflow_dir: PathBuf, workflows: Arc<RwLock<HashMap<String, LoadedWorkflow>>>...` — Manages loading and hot-reloading of workflow TOML files from a directory.
+- pub `new` function L52-81 — `(workflow_dir: impl Into<PathBuf>) -> Result<Self, PipelineError>` — Create a new loader for the given workflow directory.
+- pub `load_all` function L87-118 — `(&self) -> Vec<WorkflowEvent>` — Load all TOML workflow files from the directory.
+- pub `get` function L200-206 — `(&self, name: &str) -> Option<crate::definition::WorkflowDefinition>` — Get a loaded workflow definition by name.
+- pub `list_names` function L209-211 — `(&self) -> Vec<String>` — List all loaded workflow names.
+- pub `len` function L214-216 — `(&self) -> usize` — Get the number of loaded workflows.
+- pub `is_empty` function L219-221 — `(&self) -> bool` — Check if any workflows are loaded.
+- pub `watch` function L230-317 — `( &self, ) -> Result<(tokio::sync::mpsc::Receiver<WorkflowEvent>, WatcherHandle)...` — Start watching the workflow directory for changes.
+- pub `WatcherHandle` struct L394-396 — `{ _thread: std::thread::JoinHandle<()> }` — Handle that keeps the file watcher alive.
+-  `LoadedWorkflow` struct L32-36 — `{ definition: crate::definition::WorkflowDefinition, path: PathBuf }` — In-memory cache of loaded workflow definitions.
+-  `WorkflowLoader` type L48-323 — `= WorkflowLoader` — picked up without restarting the server.
+-  `normalize_path` function L125-131 — `(&self, path: &Path) -> PathBuf` — Normalize a path to use the canonical `workflow_dir` prefix.
+-  `load_file` function L134-178 — `(&self, path: &Path) -> WorkflowEvent` — Load or reload a single workflow file.
+-  `remove_file` function L182-197 — `(&self, path: &Path) -> Option<WorkflowEvent>` — Handle a file being removed.
+-  `is_workflow_file` function L320-322 — `(path: &Path) -> bool` — Check if a path is a workflow TOML file.
+-  `WorkflowLoaderView` struct L326-329 — `{ workflows: Arc<RwLock<HashMap<String, LoadedWorkflow>>>, path_to_name: Arc<RwL...` — Internal view used by the watcher thread to update workflow state.
+-  `WorkflowLoaderView` type L331-389 — `= WorkflowLoaderView` — picked up without restarting the server.
+-  `load_file` function L332-372 — `(&self, path: &Path) -> WorkflowEvent` — picked up without restarting the server.
+-  `remove_file` function L374-388 — `(&self, path: &Path) -> Option<WorkflowEvent>` — picked up without restarting the server.
+-  `tests` module L399-801 — `-` — picked up without restarting the server.
+-  `write_workflow` function L402-415 — `(dir: &Path, filename: &str, name: &str)` — picked up without restarting the server.
+-  `write_invalid` function L417-419 — `(dir: &Path, filename: &str)` — picked up without restarting the server.
+-  `test_load_empty_directory` function L422-428 — `()` — picked up without restarting the server.
+-  `test_load_single_workflow` function L431-444 — `()` — picked up without restarting the server.
+-  `test_load_multiple_workflows` function L447-461 — `()` — picked up without restarting the server.
+-  `test_invalid_file_doesnt_crash` function L464-482 — `()` — picked up without restarting the server.
+-  `test_skips_non_toml_files` function L485-496 — `()` — picked up without restarting the server.
+-  `test_creates_directory_if_missing` function L499-506 — `()` — picked up without restarting the server.
+-  `test_reload_modified_file` function L509-523 — `()` — picked up without restarting the server.
+-  `test_remove_file` function L526-537 — `()` — picked up without restarting the server.
+-  `test_get_nonexistent` function L540-544 — `()` — picked up without restarting the server.
+-  `test_watch_detects_new_file` function L548-574 — `()` — picked up without restarting the server.
+-  `test_watch_detects_modified_file` function L578-604 — `()` — picked up without restarting the server.
+-  `test_watch_detects_deleted_file` function L608-634 — `()` — picked up without restarting the server.
+-  `test_is_workflow_file` function L637-646 — `()` — picked up without restarting the server.
+-  `test_normalize_path` function L649-656 — `()` — picked up without restarting the server.
+-  `test_normalize_path_no_filename` function L659-665 — `()` — picked up without restarting the server.
+-  `test_remove_nonexistent_file` function L668-673 — `()` — picked up without restarting the server.
+-  `test_workflow_event_debug` function L676-696 — `()` — picked up without restarting the server.
+-  `test_loader_view_load_file` function L699-716 — `()` — picked up without restarting the server.
+-  `test_loader_view_load_invalid_file` function L719-734 — `()` — picked up without restarting the server.
+-  `test_loader_view_remove_file` function L737-757 — `()` — picked up without restarting the server.
+-  `test_loader_view_remove_nonexistent` function L760-771 — `()` — picked up without restarting the server.
+-  `test_watch_returns_handle` function L774-781 — `()` — picked up without restarting the server.
+-  `test_watch_ignores_non_toml` function L785-800 — `()` — picked up without restarting the server.
 
 #### crates/arawn-pipeline/src/protocol.rs
 
@@ -7313,11 +7310,11 @@
 - pub `health_deep` function L71-146 — `(State(state): State<AppState>) -> Json<DeepHealthResponse>` — Health check endpoints.
 - pub `MetricsResponse` struct L150-163 — `{ uptime_seconds: u64, active_ws_connections: usize, cached_sessions: usize, mem...` — Basic runtime metrics response.
 - pub `MemoryMetrics` struct L167-172 — `{ memories: usize, sessions: usize, notes: usize, embeddings: usize }` — Memory subsystem metrics.
-- pub `metrics` function L183-212 — `(State(state): State<AppState>) -> Json<MetricsResponse>` — Health check endpoints.
-- pub `health_routes` function L221-226 — `() -> Router<AppState>` — Create health check routes.
--  `fs_available_bytes` function L215-218 — `(path: &std::path::Path) -> Option<u64>` — Get available bytes on the filesystem containing the given path.
--  `tests` module L229-261 — `-` — Health check endpoints.
--  `test_health_endpoint` function L238-260 — `()` — Health check endpoints.
+- pub `metrics` function L183-208 — `(State(state): State<AppState>) -> Json<MetricsResponse>` — Health check endpoints.
+- pub `health_routes` function L217-222 — `() -> Router<AppState>` — Create health check routes.
+-  `fs_available_bytes` function L211-214 — `(path: &std::path::Path) -> Option<u64>` — Get available bytes on the filesystem containing the given path.
+-  `tests` module L225-257 — `-` — Health check endpoints.
+-  `test_health_endpoint` function L234-256 — `()` — Health check endpoints.
 
 #### crates/arawn-server/src/routes/logs.rs
 
@@ -8591,7 +8588,7 @@
 
 #### crates/arawn-tui/src/app/api_ops.rs
 
--  `App` type L10-364 — `= App` — Async API operations — workstream/session CRUD via HTTP API.
+-  `App` type L10-363 — `= App` — Async API operations — workstream/session CRUD via HTTP API.
 -  `process_pending_actions` function L11-53 — `(&mut self)` — Async API operations — workstream/session CRUD via HTTP API.
 -  `do_create_workstream` function L56-92 — `(&mut self, title: &str)` — Create a workstream via API.
 -  `do_rename_workstream` function L95-123 — `(&mut self, id: &str, new_title: &str)` — Rename a workstream via API.
@@ -8614,13 +8611,13 @@
 
 #### crates/arawn-tui/src/app/input_handler.rs
 
--  `App` type L11-375 — `= App` — Input key handling, command popup, slash commands, mouse.
--  `handle_input_key` function L12-210 — `(&mut self, key: crossterm::event::KeyEvent)` — Input key handling, command popup, slash commands, mouse.
--  `handle_mouse` function L220-260 — `(&mut self, mouse: crossterm::event::MouseEvent)` — Handle mouse events (scroll wheel on panels).
--  `panel_at` function L263-293 — `(&self, col: u16, row: u16) -> Option<FocusTarget>` — Determine which panel contains the given screen coordinates.
--  `update_command_popup` function L296-306 — `(&mut self)` — Update the command popup based on current input.
--  `send_command` function L309-346 — `(&mut self)` — Send the current input as a command.
--  `build_command_args` function L349-373 — `(&self, cmd: &crate::input::ParsedCommand) -> serde_json::Value` — Build command arguments JSON from parsed command.
+-  `App` type L9-365 — `= App` — Input key handling, command popup, slash commands, mouse.
+-  `handle_input_key` function L10-208 — `(&mut self, key: crossterm::event::KeyEvent)` — Input key handling, command popup, slash commands, mouse.
+-  `handle_mouse` function L211-251 — `(&mut self, mouse: crossterm::event::MouseEvent)` — Handle mouse events (scroll wheel on panels).
+-  `panel_at` function L254-284 — `(&self, col: u16, row: u16) -> Option<FocusTarget>` — Determine which panel contains the given screen coordinates.
+-  `update_command_popup` function L287-297 — `(&mut self)` — Update the command popup based on current input.
+-  `send_command` function L300-337 — `(&mut self)` — Send the current input as a command.
+-  `build_command_args` function L340-364 — `(&self, cmd: &crate::input::ParsedCommand) -> serde_json::Value` — Build command arguments JSON from parsed command.
 
 #### crates/arawn-tui/src/app/logs_handler.rs
 
@@ -8629,10 +8626,10 @@
 
 #### crates/arawn-tui/src/app/mod.rs
 
-- pub `App` struct L42-131 — `{ server_url: String, ws_client: WsClient, api: ArawnClient, connection_status: ...` — Main application state.
-- pub `new` function L140-196 — `(server_url: String, log_buffer: LogBuffer) -> Result<Self>` — Create a new App instance.
-- pub `run` function L202-261 — `(&mut self, terminal: &mut Tui) -> Result<()>` — Run the main application loop.
-- pub `handle_key` function L264-358 — `(&mut self, key: crossterm::event::KeyEvent)` — Handle keyboard input.
+- pub `App` struct L41-130 — `{ server_url: String, ws_client: WsClient, api: ArawnClient, connection_status: ...` — Main application state.
+- pub `new` function L139-195 — `(server_url: String, log_buffer: LogBuffer) -> Result<Self>` — Create a new App instance.
+- pub `run` function L198-257 — `(&mut self, terminal: &mut Tui) -> Result<()>` — Run the main application loop.
+- pub `handle_key` function L260-354 — `(&mut self, key: crossterm::event::KeyEvent)` — Handle keyboard input.
 -  `api_ops` module L3 — `-` — Application state and main loop.
 -  `chat_handler` module L4 — `-` — Application state and main loop.
 -  `input_handler` module L5 — `-` — Application state and main loop.
@@ -8643,94 +8640,94 @@
 -  `tool_pane_handler` module L10 — `-` — Application state and main loop.
 -  `MAX_MESSAGES` variable L17 — `: usize` — Maximum number of chat messages to retain (prevents unbounded memory growth).
 -  `MAX_TOOLS` variable L20 — `: usize` — Maximum number of tool executions to retain per response.
--  `App` type L135-450 — `= App` — Application state and main loop.
--  `handle_palette_key` function L361-399 — `(&mut self, key: crossterm::event::KeyEvent)` — Handle command palette key events.
--  `execute_action` function L402-449 — `(&mut self, action_id: ActionId)` — Execute a palette action.
--  `App` type L453-508 — `= App` — Application state and main loop.
--  `test_new` function L455-507 — `() -> Self` — Create a test App with a mock WsClient and no real connections.
--  `tests` module L511-1498 — `-` — Application state and main loop.
--  `key` function L515-522 — `(code: KeyCode) -> KeyEvent` — Application state and main loop.
--  `key_mod` function L524-531 — `(code: KeyCode, modifiers: KeyModifiers) -> KeyEvent` — Application state and main loop.
--  `test_session_created_sets_session_id` function L536-545 — `()` — Application state and main loop.
--  `test_chat_chunk_creates_assistant_message` function L548-561 — `()` — Application state and main loop.
--  `test_chat_chunk_appends_to_streaming` function L564-580 — `()` — Application state and main loop.
--  `test_chat_done_clears_waiting` function L583-602 — `()` — Application state and main loop.
--  `test_error_clears_waiting` function L605-616 — `()` — Application state and main loop.
--  `test_session_not_owned_sets_read_only` function L619-630 — `()` — Application state and main loop.
--  `test_subscribe_ack_owner` function L633-648 — `()` — Application state and main loop.
--  `test_subscribe_ack_reader` function L651-661 — `()` — Application state and main loop.
--  `test_auth_success` function L664-673 — `()` — Application state and main loop.
--  `test_auth_failure` function L676-690 — `()` — Application state and main loop.
--  `test_context_info_updates` function L693-707 — `()` — Application state and main loop.
--  `test_tool_lifecycle` function L712-738 — `()` — Application state and main loop.
--  `test_command_progress_and_result` function L743-760 — `()` — Application state and main loop.
--  `test_ctrl_q_quits` function L765-769 — `()` — Application state and main loop.
--  `test_ctrl_c_quits_when_idle` function L772-776 — `()` — Application state and main loop.
--  `test_ctrl_c_cancels_when_waiting` function L779-789 — `()` — Application state and main loop.
--  `test_ctrl_k_opens_palette` function L792-797 — `()` — Application state and main loop.
--  `test_ctrl_w_toggles_sidebar` function L800-811 — `()` — Application state and main loop.
--  `test_ctrl_e_toggles_tool_pane` function L814-822 — `()` — Application state and main loop.
--  `test_ctrl_l_toggles_logs` function L825-832 — `()` — Application state and main loop.
--  `test_ctrl_u_toggles_usage` function L835-842 — `()` — Application state and main loop.
--  `test_typing_adds_to_input` function L847-852 — `()` — Application state and main loop.
--  `test_enter_sends_message` function L855-865 — `()` — Application state and main loop.
--  `test_enter_blocked_when_waiting` function L868-877 — `()` — Application state and main loop.
--  `test_send_blocked_in_read_only` function L880-889 — `()` — Application state and main loop.
--  `test_enter_on_empty_does_nothing` function L892-897 — `()` — Application state and main loop.
--  `test_shift_enter_inserts_newline` function L900-906 — `()` — Application state and main loop.
--  `test_waiting_cleared_on_disconnect` function L911-932 — `()` — Application state and main loop.
--  `test_waiting_not_cleared_if_not_previously_connected` function L935-947 — `()` — Application state and main loop.
--  `test_switch_session_clears_state` function L952-976 — `()` — Application state and main loop.
--  `test_switch_workstream_clears_session` function L981-995 — `()` — Application state and main loop.
--  `test_slash_command_detected` function L1000-1004 — `()` — Application state and main loop.
--  `test_regular_text_not_command` function L1007-1011 — `()` — Application state and main loop.
--  `test_disk_pressure_stored` function L1016-1029 — `()` — Application state and main loop.
--  `test_disk_pressure_replaces_existing` function L1032-1054 — `()` — Application state and main loop.
--  `test_disk_critical_sets_status` function L1057-1070 — `()` — Application state and main loop.
--  `test_usage_updates_for_current_workstream` function L1075-1091 — `()` — Application state and main loop.
--  `test_usage_ignored_for_other_workstream` function L1094-1110 — `()` — Application state and main loop.
--  `test_palette_esc_closes` function L1115-1122 — `()` — Application state and main loop.
--  `test_full_message_flow` function L1127-1156 — `()` — Application state and main loop.
--  `test_send_clears_tools` function L1159-1176 — `()` — Application state and main loop.
--  `test_send_enables_auto_scroll` function L1179-1187 — `()` — Application state and main loop.
--  `simulate_status_poll` function L1192-1203 — `(app: &mut App)` — Helper: simulate the tick handler's connection status poll logic.
--  `test_app_controllable` function L1205-1265 — `() -> ( App, tokio::sync::mpsc::UnboundedSender<ConnectionStatus>, tokio::sync::...` — Application state and main loop.
--  `test_disconnect_shows_status_indicator` function L1268-1276 — `()` — Application state and main loop.
--  `test_reconnecting_shows_attempt_count` function L1279-1299 — `()` — Application state and main loop.
--  `test_full_reconnection_lifecycle` function L1302-1331 — `()` — Application state and main loop.
--  `test_session_state_preserved_across_reconnect` function L1334-1383 — `()` — Application state and main loop.
--  `test_rapid_disconnect_reconnect_cycles_no_panic` function L1386-1412 — `()` — Application state and main loop.
--  `test_disconnect_during_streaming_marks_message_not_streaming` function L1415-1440 — `()` — Application state and main loop.
--  `test_messages_received_after_reconnect_handled_correctly` function L1443-1479 — `()` — Application state and main loop.
--  `test_disconnect_while_not_waiting_no_status_change` function L1482-1497 — `()` — Application state and main loop.
+-  `App` type L134-446 — `= App` — Application state and main loop.
+-  `handle_palette_key` function L357-395 — `(&mut self, key: crossterm::event::KeyEvent)` — Handle command palette key events.
+-  `execute_action` function L398-445 — `(&mut self, action_id: ActionId)` — Execute a palette action.
+-  `App` type L449-504 — `= App` — Application state and main loop.
+-  `test_new` function L451-503 — `() -> Self` — Create a test App with a mock WsClient and no real connections.
+-  `tests` module L507-1495 — `-` — Application state and main loop.
+-  `key` function L512-519 — `(code: KeyCode) -> KeyEvent` — Application state and main loop.
+-  `key_mod` function L521-528 — `(code: KeyCode, modifiers: KeyModifiers) -> KeyEvent` — Application state and main loop.
+-  `test_session_created_sets_session_id` function L533-542 — `()` — Application state and main loop.
+-  `test_chat_chunk_creates_assistant_message` function L545-558 — `()` — Application state and main loop.
+-  `test_chat_chunk_appends_to_streaming` function L561-577 — `()` — Application state and main loop.
+-  `test_chat_done_clears_waiting` function L580-599 — `()` — Application state and main loop.
+-  `test_error_clears_waiting` function L602-613 — `()` — Application state and main loop.
+-  `test_session_not_owned_sets_read_only` function L616-627 — `()` — Application state and main loop.
+-  `test_subscribe_ack_owner` function L630-645 — `()` — Application state and main loop.
+-  `test_subscribe_ack_reader` function L648-658 — `()` — Application state and main loop.
+-  `test_auth_success` function L661-670 — `()` — Application state and main loop.
+-  `test_auth_failure` function L673-687 — `()` — Application state and main loop.
+-  `test_context_info_updates` function L690-704 — `()` — Application state and main loop.
+-  `test_tool_lifecycle` function L709-735 — `()` — Application state and main loop.
+-  `test_command_progress_and_result` function L740-757 — `()` — Application state and main loop.
+-  `test_ctrl_q_quits` function L762-766 — `()` — Application state and main loop.
+-  `test_ctrl_c_quits_when_idle` function L769-773 — `()` — Application state and main loop.
+-  `test_ctrl_c_cancels_when_waiting` function L776-786 — `()` — Application state and main loop.
+-  `test_ctrl_k_opens_palette` function L789-794 — `()` — Application state and main loop.
+-  `test_ctrl_w_toggles_sidebar` function L797-808 — `()` — Application state and main loop.
+-  `test_ctrl_e_toggles_tool_pane` function L811-819 — `()` — Application state and main loop.
+-  `test_ctrl_l_toggles_logs` function L822-829 — `()` — Application state and main loop.
+-  `test_ctrl_u_toggles_usage` function L832-839 — `()` — Application state and main loop.
+-  `test_typing_adds_to_input` function L844-849 — `()` — Application state and main loop.
+-  `test_enter_sends_message` function L852-862 — `()` — Application state and main loop.
+-  `test_enter_blocked_when_waiting` function L865-874 — `()` — Application state and main loop.
+-  `test_send_blocked_in_read_only` function L877-886 — `()` — Application state and main loop.
+-  `test_enter_on_empty_does_nothing` function L889-894 — `()` — Application state and main loop.
+-  `test_shift_enter_inserts_newline` function L897-903 — `()` — Application state and main loop.
+-  `test_waiting_cleared_on_disconnect` function L908-929 — `()` — Application state and main loop.
+-  `test_waiting_not_cleared_if_not_previously_connected` function L932-944 — `()` — Application state and main loop.
+-  `test_switch_session_clears_state` function L949-973 — `()` — Application state and main loop.
+-  `test_switch_workstream_clears_session` function L978-992 — `()` — Application state and main loop.
+-  `test_slash_command_detected` function L997-1001 — `()` — Application state and main loop.
+-  `test_regular_text_not_command` function L1004-1008 — `()` — Application state and main loop.
+-  `test_disk_pressure_stored` function L1013-1026 — `()` — Application state and main loop.
+-  `test_disk_pressure_replaces_existing` function L1029-1051 — `()` — Application state and main loop.
+-  `test_disk_critical_sets_status` function L1054-1067 — `()` — Application state and main loop.
+-  `test_usage_updates_for_current_workstream` function L1072-1088 — `()` — Application state and main loop.
+-  `test_usage_ignored_for_other_workstream` function L1091-1107 — `()` — Application state and main loop.
+-  `test_palette_esc_closes` function L1112-1119 — `()` — Application state and main loop.
+-  `test_full_message_flow` function L1124-1153 — `()` — Application state and main loop.
+-  `test_send_clears_tools` function L1156-1173 — `()` — Application state and main loop.
+-  `test_send_enables_auto_scroll` function L1176-1184 — `()` — Application state and main loop.
+-  `simulate_status_poll` function L1189-1200 — `(app: &mut App)` — Helper: simulate the tick handler's connection status poll logic.
+-  `test_app_controllable` function L1202-1262 — `() -> ( App, tokio::sync::mpsc::UnboundedSender<ConnectionStatus>, tokio::sync::...` — Application state and main loop.
+-  `test_disconnect_shows_status_indicator` function L1265-1273 — `()` — Application state and main loop.
+-  `test_reconnecting_shows_attempt_count` function L1276-1296 — `()` — Application state and main loop.
+-  `test_full_reconnection_lifecycle` function L1299-1328 — `()` — Application state and main loop.
+-  `test_session_state_preserved_across_reconnect` function L1331-1380 — `()` — Application state and main loop.
+-  `test_rapid_disconnect_reconnect_cycles_no_panic` function L1383-1409 — `()` — Application state and main loop.
+-  `test_disconnect_during_streaming_marks_message_not_streaming` function L1412-1437 — `()` — Application state and main loop.
+-  `test_messages_received_after_reconnect_handled_correctly` function L1440-1476 — `()` — Application state and main loop.
+-  `test_disconnect_while_not_waiting_no_status_change` function L1479-1494 — `()` — Application state and main loop.
 
 #### crates/arawn-tui/src/app/server_msg_handler.rs
 
 - pub `handle_server_message` function L8-241 — `(&mut self, msg: ServerMessage)` — Server message dispatch.
--  `App` type L7-243 — `= App` — Server message dispatch.
+-  `App` type L7-242 — `= App` — Server message dispatch.
 
 #### crates/arawn-tui/src/app/session_handler.rs
 
-- pub `switch_to_session` function L58-88 — `(&mut self, session_id: &str)` — Handle command palette key events.
--  `App` type L9-113 — `= App` — Session management — session switching, creation, sessions overlay.
+- pub `switch_to_session` function L56-86 — `(&mut self, session_id: &str)` — Session management — session switching, creation, sessions overlay.
+-  `App` type L9-111 — `= App` — Session management — session switching, creation, sessions overlay.
 -  `handle_sessions_key` function L10-54 — `(&mut self, key: crossterm::event::KeyEvent)` — Session management — session switching, creation, sessions overlay.
--  `create_new_session` function L91-98 — `(&mut self)` — Create a new session.
--  `open_sessions_panel` function L101-107 — `(&mut self)` — Open the sessions panel.
+-  `create_new_session` function L89-96 — `(&mut self)` — Create a new session.
+-  `open_sessions_panel` function L99-105 — `(&mut self)` — Open the sessions panel.
 
 #### crates/arawn-tui/src/app/sidebar_handler.rs
 
-- pub `switch_to_workstream` function L297-331 — `(&mut self, workstream_name: &str)` — Switch to a different workstream.
--  `App` type L9-332 — `= App` — Sidebar key handling, overlay navigation, and workstream switching.
+- pub `switch_to_workstream` function L293-327 — `(&mut self, workstream_name: &str)` — Switch to a different workstream.
+-  `App` type L9-328 — `= App` — Sidebar key handling, overlay navigation, and workstream switching.
 -  `handle_overlay_key` function L10-46 — `(&mut self, key: crossterm::event::KeyEvent)` — Sidebar key handling, overlay navigation, and workstream switching.
--  `clear_pending_deletes` function L53-56 — `(&mut self)` — Clear any pending delete confirmations.
--  `handle_sidebar_key` function L59-294 — `(&mut self, key: crossterm::event::KeyEvent)` — Handle sidebar key events.
+-  `clear_pending_deletes` function L49-52 — `(&mut self)` — Clear any pending delete confirmations.
+-  `handle_sidebar_key` function L55-290 — `(&mut self, key: crossterm::event::KeyEvent)` — Handle sidebar key events.
 
 #### crates/arawn-tui/src/app/tool_pane_handler.rs
 
--  `App` type L7-130 — `= App` — Tool pane key handling and external editor support.
+-  `App` type L7-133 — `= App` — Tool pane key handling and external editor support.
 -  `handle_tool_pane_key` function L9-70 — `(&mut self, key: crossterm::event::KeyEvent)` — Handle keyboard events when the tool pane is focused.
 -  `open_tool_in_editor` function L73-100 — `(&mut self)` — Open the selected tool's output in an external pager.
--  `run_pager` function L103-129 — `(&self, pager: &str, content: &str) -> std::io::Result<()>` — Run a pager with the given content, suspending and restoring the TUI.
+-  `run_pager` function L103-132 — `(&self, pager: &str, content: &str) -> std::io::Result<()>` — Run a pager with the given content, suspending and restoring the TUI.
 
 ### crates/arawn-tui/src
 
@@ -9431,8 +9428,8 @@
 - pub `FsGate` interface L50-76 — `{ fn validate_read(), fn validate_write(), fn working_dir(), fn sandbox_execute(...` — Filesystem access gate that enforces workstream boundaries.
 - pub `SharedFsGate` type L79 — `= Arc<dyn FsGate>` — Type alias for a shared filesystem gate.
 - pub `FsGateResolver` type L86 — `= Arc<dyn Fn(&str, &str) -> Option<Arc<dyn FsGate>> + Send + Sync>` — Resolver that creates an FsGate for a given session and workstream.
-- pub `GATED_TOOLS` variable L89 — `: &[&str]` — Tool names that require filesystem gate enforcement.
-- pub `is_gated_tool` function L102-104 — `(name: &str) -> bool` — Check if a tool name requires filesystem gate enforcement.
+- pub `GATED_TOOLS` variable L89-96 — `: &[&str]` — Tool names that require filesystem gate enforcement.
+- pub `is_gated_tool` function L109-111 — `(name: &str) -> bool` — Check if a tool name requires filesystem gate enforcement.
 
 #### crates/arawn-types/src/hooks.rs
 
@@ -10799,7 +10796,7 @@
 -  `check_schema` function L90-119 — `( &self, pipeline: &P, params: &P::Parameters, ) -> Result<()>` — Check model schema wrt.
 -  `run` function L121-123 — `(&mut self, input: SessionInputs<'_, '_>) -> Result<SessionOutputs<'_>>`
 -  `ComposableModel` struct L127-131 — `{ model: &'a mut Model, pipeline: &'a P, params: &'a P::Parameters }` — References a model, a pipeline and some parameters to implement `Composable`
--  `apply` function L144-148 — `(&self, _input: P::Input) -> Result<P::Output>`
+-  `apply` function L144-150 — `(&self, _input: P::Input) -> Result<P::Output>`
 
 #### crates/orp-vendored/src/params.rs
 
@@ -10826,7 +10823,7 @@
 -  `T` type L49 — `= T`
 -  `T` type L53 — `= T`
 -  `ComposablePipeline` struct L56-60 — `{ pipeline: P, params: &'a P::Parameters, model: &'a mut Model }` — Owns a pipeline, and references a model and some parameters to implement `Composable`
--  `apply` function L73-75 — `(&self, _input: P::Input) -> Result<P::Output>`
+-  `apply` function L73-77 — `(&self, _input: P::Input) -> Result<P::Output>`
 
 ### runtimes/file_read/src
 

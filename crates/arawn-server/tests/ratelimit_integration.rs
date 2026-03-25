@@ -162,7 +162,13 @@ async fn test_rate_limit_resets_after_window() -> Result<()> {
 async fn test_different_ips_have_independent_limits() -> Result<()> {
     // Rate limiting is per-IP. Two different X-Forwarded-For IPs
     // should each get their own burst budget.
-    let server = rate_limited_server(5).await?;
+    // Must enable trust_proxy so the server reads X-Forwarded-For headers.
+    let server = TestServerBuilder::new()
+        .with_rate_limiting(true)
+        .with_api_rpm(5)
+        .with_trust_proxy(true)
+        .build()
+        .await?;
 
     // Exhaust the limit for IP "10.0.0.1".
     let mut exhausted_ip1 = false;

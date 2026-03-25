@@ -132,6 +132,7 @@ pub struct TestServerBuilder {
     with_workstreams: bool,
     rate_limiting: bool,
     api_rpm: Option<u32>,
+    trust_proxy: bool,
     request_logging: bool,
 }
 
@@ -157,6 +158,7 @@ impl TestServerBuilder {
             with_memory: true,
             with_workstreams: false,
             rate_limiting: false,
+            trust_proxy: false,
             request_logging: false,
         }
     }
@@ -215,6 +217,12 @@ impl TestServerBuilder {
     /// Set the API rate limit (requests per minute).
     pub fn with_api_rpm(mut self, rpm: u32) -> Self {
         self.api_rpm = Some(rpm);
+        self
+    }
+
+    /// Trust proxy headers (X-Forwarded-For) for client IP extraction.
+    pub fn with_trust_proxy(mut self, trust: bool) -> Self {
+        self.trust_proxy = trust;
         self
     }
 
@@ -279,6 +287,7 @@ impl TestServerBuilder {
         let mut config = ServerConfig::new(self.token.clone())
             .with_bind_address(addr)
             .with_rate_limiting(self.rate_limiting)
+            .with_trust_proxy(self.trust_proxy)
             .with_request_logging(self.request_logging);
 
         if let Some(rpm) = self.api_rpm {
