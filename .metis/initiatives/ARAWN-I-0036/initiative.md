@@ -4,14 +4,14 @@ level: initiative
 title: "Decompose TUI App Architecture"
 short_code: "ARAWN-I-0036"
 created_at: 2026-03-22T23:50:09.908575+00:00
-updated_at: 2026-03-24T21:22:20.058196+00:00
+updated_at: 2026-03-25T02:00:36.469921+00:00
 parent: ARAWN-V-0001
 blocked_by: []
 archived: false
 
 tags:
   - "#initiative"
-  - "#phase/decompose"
+  - "#phase/completed"
 
 
 exit_criteria_met: false

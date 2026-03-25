@@ -4,14 +4,14 @@ level: task
 title: "Extract session management — switch_to_session, switch_to_workstream, create_new_session, open_sessions_panel"
 short_code: "ARAWN-T-0428"
 created_at: 2026-03-25T00:36:18.048548+00:00
-updated_at: 2026-03-25T01:31:04.602303+00:00
+updated_at: 2026-03-25T01:59:44.176170+00:00
 parent: ARAWN-I-0036
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -63,6 +63,8 @@ initiative_id: ARAWN-I-0036
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
