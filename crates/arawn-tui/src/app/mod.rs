@@ -506,6 +506,7 @@ impl App {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::protocol::ServerMessage;
     use crossterm::event::{KeyEvent, KeyEventKind, KeyEventState};
 
     fn key(code: KeyCode) -> KeyEvent {
