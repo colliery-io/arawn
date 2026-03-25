@@ -14,7 +14,7 @@ tasks:
   - "ARAWN-T-0430"
   - "ARAWN-T-0427"
 current_task_index: 0
-iteration: 1
+iteration: 2
 max_iterations: 0
 completion_promise: "ALL TASKS COMPLETE"
 started_at: "2026-03-25T00:39:28Z"
