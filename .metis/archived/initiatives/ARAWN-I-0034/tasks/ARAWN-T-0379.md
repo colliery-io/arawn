@@ -70,6 +70,8 @@ initiative_id: ARAWN-I-0034
 
 ## Acceptance Criteria
 
+## Acceptance Criteria
+
 ## Acceptance Criteria **[REQUIRED]**
 
 - [ ] {Specific, testable requirement 1}

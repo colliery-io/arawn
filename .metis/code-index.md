@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-03-25T17:35:50Z | 352 files | Rust
+> Generated: 2026-03-25T20:45:14Z | 352 files | Rust
 
 ## Project Structure
 
@@ -558,12 +558,12 @@
 - pub `AuthArgs` struct L16-19 — `{ command: AuthCommand }` — Auth command - authentication management.
 - pub `AuthCommand` enum L22-38 — `Login | Status | Logout | Token` — Auth command - authentication management.
 - pub `run` function L41-48 — `(args: AuthArgs, ctx: &Context) -> Result<()>` — Run the auth command.
--  `cmd_login` function L50-135 — `(_ctx: &Context) -> Result<()>` — Auth command - authentication management.
--  `cmd_status` function L137-183 — `(_ctx: &Context) -> Result<()>` — Auth command - authentication management.
--  `cmd_logout` function L185-202 — `() -> Result<()>` — Auth command - authentication management.
--  `cmd_token` function L204-219 — `(generate: bool, _ctx: &Context) -> Result<()>` — Auth command - authentication management.
--  `build_oauth_config` function L222-239 — `() -> arawn_oauth::OAuthConfig` — Build an OAuthConfig applying any `[oauth]` overrides from arawn config.
--  `open_url` function L242-258 — `(url: &str) -> std::io::Result<()>` — Try to open a URL in the default browser.
+-  `cmd_login` function L50-137 — `(_ctx: &Context) -> Result<()>` — Auth command - authentication management.
+-  `cmd_status` function L139-185 — `(_ctx: &Context) -> Result<()>` — Auth command - authentication management.
+-  `cmd_logout` function L187-204 — `() -> Result<()>` — Auth command - authentication management.
+-  `cmd_token` function L206-221 — `(generate: bool, _ctx: &Context) -> Result<()>` — Auth command - authentication management.
+-  `build_oauth_config` function L224-241 — `() -> arawn_oauth::OAuthConfig` — Build an OAuthConfig applying any `[oauth]` overrides from arawn config.
+-  `open_url` function L244-260 — `(url: &str) -> std::io::Result<()>` — Try to open a URL in the default browser.
 
 #### crates/arawn/src/commands/chat.rs
 
@@ -767,16 +767,16 @@
 -  `init_plugins` function L1235-1368 — `( plugins_cfg: &arawn_config::PluginsConfig, workspace: Option<&std::path::Path>...` — Phase 10: Load plugins, sync subscriptions, collect hooks + agent configs + skill prompts.
 -  `resolve_with_cli_overrides` function L1371-1421 — `( config: &arawn_config::ArawnConfig, args: &StartArgs, ) -> Result<ResolvedLlm>` — Resolve LLM config, applying CLI overrides on top of config file values.
 -  `make_api_key_provider` function L1427-1431 — `(backend: Backend, config_value: Option<String>) -> ApiKeyProvider` — Build an `ApiKeyProvider` that re-resolves from the secret store on each request.
--  `create_backend` function L1434-1568 — `( resolved: &ResolvedLlm, oauth_overrides: Option<&arawn_config::OAuthConfigOver...` — Create an LLM backend from a resolved config.
--  `parse_backend` function L1570-1583 — `(s: &str) -> Result<Backend>` — Start command - launches the Arawn server.
--  `load_or_generate_server_token` function L1586-1602 — `() -> Result<String>` — Load a persisted server token, or generate and save a new one.
--  `resolve_profile` function L1605-1636 — `(name: &str, llm_config: &LlmConfig) -> Result<ResolvedLlm>` — Resolve a named LLM profile into a ResolvedLlm ready for backend creation.
--  `build_embedder_spec` function L1639-1685 — `(config: &arawn_config::EmbeddingConfig) -> EmbedderSpec` — Build an `EmbedderSpec` from the application's `EmbeddingConfig`.
--  `default_model` function L1687-1695 — `(backend: &Backend) -> String` — Start command - launches the Arawn server.
--  `register_builtin_runtimes` function L1702-1780 — `( runtimes_src_dir: &std::path::Path, executor: &Arc<ScriptExecutor>, catalog: &...` — Compile and register built-in WASM runtimes from source crate directories.
--  `seed_test_data` function L1783-1876 — `(manager: &WorkstreamManager, verbose: bool)` — Seed the database with test workstreams and sessions for development.
--  `cleanup_old_logs` function L1882-1930 — `(log_dir: &std::path::Path, max_age_days: u64, verbose: bool)` — Delete log files older than `max_age_days` from the log directory.
--  `validate_config` function L1933-1950 — `(config: &arawn_config::ArawnConfig) -> Result<()>` — Validate configuration values at startup, failing fast with clear errors.
+-  `create_backend` function L1434-1577 — `( resolved: &ResolvedLlm, oauth_overrides: Option<&arawn_config::OAuthConfigOver...` — Create an LLM backend from a resolved config.
+-  `parse_backend` function L1579-1592 — `(s: &str) -> Result<Backend>` — Start command - launches the Arawn server.
+-  `load_or_generate_server_token` function L1595-1611 — `() -> Result<String>` — Load a persisted server token, or generate and save a new one.
+-  `resolve_profile` function L1614-1645 — `(name: &str, llm_config: &LlmConfig) -> Result<ResolvedLlm>` — Resolve a named LLM profile into a ResolvedLlm ready for backend creation.
+-  `build_embedder_spec` function L1648-1694 — `(config: &arawn_config::EmbeddingConfig) -> EmbedderSpec` — Build an `EmbedderSpec` from the application's `EmbeddingConfig`.
+-  `default_model` function L1696-1704 — `(backend: &Backend) -> String` — Start command - launches the Arawn server.
+-  `register_builtin_runtimes` function L1711-1789 — `( runtimes_src_dir: &std::path::Path, executor: &Arc<ScriptExecutor>, catalog: &...` — Compile and register built-in WASM runtimes from source crate directories.
+-  `seed_test_data` function L1792-1885 — `(manager: &WorkstreamManager, verbose: bool)` — Seed the database with test workstreams and sessions for development.
+-  `cleanup_old_logs` function L1891-1939 — `(log_dir: &std::path::Path, max_age_days: u64, verbose: bool)` — Delete log files older than `max_age_days` from the log directory.
+-  `validate_config` function L1942-1959 — `(config: &arawn_config::ArawnConfig) -> Result<()>` — Validate configuration values at startup, failing fast with clear errors.
 
 #### crates/arawn/src/commands/status.rs
 
