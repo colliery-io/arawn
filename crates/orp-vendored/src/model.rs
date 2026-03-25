@@ -144,6 +144,6 @@ impl<'a, P: Pipeline<'a>> Composable<P::Input, P::Output> for ComposableModel<'a
     fn apply(&self, _input: P::Input) -> Result<P::Output> {
         // NOTE: Cannot call inference(&mut self) from &self context.
         // ComposableModel is rarely used; callers should use Model::inference directly.
-        unimplemented!("ComposableModel requires mutable access; use Model::inference() directly")
+        Err(anyhow::anyhow!("ComposableModel requires mutable access; use Model::inference() directly"))
     }
 }

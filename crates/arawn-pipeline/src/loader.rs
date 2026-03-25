@@ -29,7 +29,6 @@ pub enum WorkflowEvent {
 
 /// In-memory cache of loaded workflow definitions.
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
 struct LoadedWorkflow {
     definition: crate::definition::WorkflowDefinition,
     path: PathBuf,
@@ -178,7 +177,7 @@ impl WorkflowLoader {
     }
 
     /// Handle a file being removed.
-    #[allow(dead_code)]
+    #[cfg_attr(not(test), allow(dead_code))] // Called via LoaderView in production, directly in tests
     async fn remove_file(&self, path: &Path) -> Option<WorkflowEvent> {
         let path = self.normalize_path(path);
         let mut path_to_name = self.path_to_name.write().await;

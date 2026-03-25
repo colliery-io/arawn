@@ -533,7 +533,6 @@ impl Client {
     }
 
     /// List sessions.
-    #[allow(dead_code)] // Not yet wired to CLI command
     pub async fn list_sessions(&self) -> Result<Vec<SessionInfo>> {
         let url = self.base_url.join("/api/v1/sessions")?;
 

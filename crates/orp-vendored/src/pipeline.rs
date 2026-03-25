@@ -71,8 +71,6 @@ impl<'a, P: Pipeline<'a>> ComposablePipeline<'a, P> {
 
 impl<'a, P: Pipeline<'a>> Composable<P::Input, P::Output> for ComposablePipeline<'a, P> {
     fn apply(&self, _input: P::Input) -> Result<P::Output> {
-        unimplemented!(
-            "ComposablePipeline requires mutable access; use Model::inference() directly"
-        )
+        Err(anyhow::anyhow!("ComposablePipeline requires mutable access; use Model::inference() directly"))
     }
 }

@@ -687,7 +687,7 @@ pub async fn build_embedder(spec: &EmbedderSpec) -> Result<SharedEmbedder> {
 }
 
 /// Default directory for local embedding model files.
-#[allow(dead_code)]
+#[cfg(feature = "local-embeddings")]
 fn default_local_model_dir() -> Option<std::path::PathBuf> {
     dirs::data_dir().map(|d| d.join("arawn").join("models").join("embeddings"))
 }
