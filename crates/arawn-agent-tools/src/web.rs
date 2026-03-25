@@ -226,7 +226,15 @@ impl WebFetchTool {
 
 impl Default for WebFetchTool {
     fn default() -> Self {
-        Self::new().expect("failed to build default HTTP client")
+        Self::new().unwrap_or_else(|e| {
+            tracing::error!("failed to build default HTTP client: {e}");
+            // Construct with a bare client — requests will fail at call time
+            // rather than panicking the entire server at startup
+            Self {
+                client: reqwest::Client::new(),
+                config: Default::default(),
+            }
+        })
     }
 }
 
@@ -1021,7 +1029,13 @@ impl WebSearchTool {
 
 impl Default for WebSearchTool {
     fn default() -> Self {
-        Self::new().expect("failed to build default HTTP client")
+        Self::new().unwrap_or_else(|e| {
+            tracing::error!("failed to build default HTTP client: {e}");
+            Self {
+                client: reqwest::Client::new(),
+                config: Default::default(),
+            }
+        })
     }
 }
 

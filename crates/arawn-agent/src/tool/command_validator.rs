@@ -70,11 +70,14 @@ impl Default for CommandValidator {
         Self {
             blocked_patterns: patterns
                 .into_iter()
-                .map(|(pat, desc)| {
-                    (
-                        regex::Regex::new(pat).expect("invalid blocked pattern regex"),
-                        desc.to_string(),
-                    )
+                .filter_map(|(pat, desc)| {
+                    match regex::Regex::new(pat) {
+                        Ok(re) => Some((re, desc.to_string())),
+                        Err(e) => {
+                            tracing::error!("invalid blocked pattern regex '{}': {}", pat, e);
+                            None
+                        }
+                    }
                 })
                 .collect(),
         }

@@ -12,7 +12,7 @@ arawn-types = { workspace = true }
 # Database
 rusqlite = { workspace = true }
 sqlite-vec = "0.1.6"
-graphqlite = "0.3.2"
+graphqlite = "0.3.10"
 
 # Serialization
 serde = { workspace = true }

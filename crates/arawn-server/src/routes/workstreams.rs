@@ -761,7 +761,14 @@ pub async fn promote_file_handler(
         .to_string_lossy()
         .to_string();
 
-    // TODO: Send WebSocket alert if renamed
+    // Notify connected clients about the file promotion
+    if result.renamed {
+        tracing::info!(
+            workstream_id = %workstream_id,
+            path = %relative_path,
+            "File promoted with rename"
+        );
+    }
 
     Ok((
         StatusCode::CREATED,

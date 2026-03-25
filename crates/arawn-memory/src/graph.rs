@@ -258,8 +258,8 @@ impl GraphStore {
             .map_err(|e| MemoryError::Query(e.to_string()))?;
 
         Ok(GraphStats {
-            node_count: stats.nodes as usize,
-            relationship_count: stats.edges as usize,
+            node_count: stats.node_count as usize,
+            relationship_count: stats.edge_count as usize,
         })
     }
 }

@@ -759,7 +759,7 @@ async fn register_pipeline_tools(
             Err(e) => {
                 tracing::warn!("failed to create script executor: {}", e);
                 let fallback_cache = std::env::temp_dir().join("arawn-wasm-cache");
-                match ScriptExecutor::new(fallback_cache, std::time::Duration::from_secs(30)) {
+                match ScriptExecutor::new(fallback_cache, std::time::Duration::from_secs(pipeline_cfg.task_timeout_secs)) {
                     Ok(e2) => { tracing::warn!("using fallback WASM cache"); Arc::new(e2) }
                     Err(e2) => { tracing::error!("failed to create fallback executor: {}", e2); return None; }
                 }

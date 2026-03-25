@@ -30,8 +30,7 @@ use crate::sidebar::{Sidebar, SidebarSection, WorkstreamEntry};
 use crate::ui;
 use crate::ui::CommandPopup;
 use anyhow::Result;
-use arawn_client::{ArawnClient, CreateWorkstreamRequest, UpdateWorkstreamRequest};
-use chrono::{DateTime, Utc};
+use arawn_client::ArawnClient;
 
 pub use crate::app_types::{
     ChatMessage, ContextState, DiskWarning, InputMode, PanelAreas, PendingAction, ToolExecution,
