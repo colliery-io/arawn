@@ -174,7 +174,9 @@ impl AnthropicBackend {
     async fn handle_error_response(response: Response) -> LlmError {
         let status = response.status();
 
-        use crate::common::{ProviderErrorResponse, extract_retry_after, map_error_response, map_raw_error};
+        use crate::common::{
+            ProviderErrorResponse, extract_retry_after, map_error_response, map_raw_error,
+        };
 
         let retry_after = extract_retry_after(response.headers());
         let body = response.text().await.unwrap_or_default();
@@ -283,7 +285,10 @@ impl From<ApiResponse> for CompletionResponse {
             })
             .collect();
 
-        let stop_reason = api.stop_reason.as_deref().map(crate::common::map_stop_reason);
+        let stop_reason = api
+            .stop_reason
+            .as_deref()
+            .map(crate::common::map_stop_reason);
 
         CompletionResponse {
             id: api.id,
@@ -472,7 +477,10 @@ fn parse_stream_event(event_type: &str, data: &str) -> Option<StreamEvent> {
         }
         "message_delta" => {
             if let Ok(parsed) = serde_json::from_str::<MessageDeltaEvent>(data) {
-                let stop_reason = parsed.delta.stop_reason.as_deref()
+                let stop_reason = parsed
+                    .delta
+                    .stop_reason
+                    .as_deref()
                     .map(crate::common::map_stop_reason)
                     .unwrap_or(StopReason::EndTurn);
                 Some(StreamEvent::MessageDelta {

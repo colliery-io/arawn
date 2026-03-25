@@ -332,8 +332,8 @@ impl<P: PersistenceHook> SessionCache<P> {
         if let Some(entry) = inner.lru.pop(session_id) {
             debug!(session_id = %session_id, "Session invalidated from cache");
             if let Err(e) = inner.persistence.on_evict(session_id, &entry.context_id) {
-                        tracing::warn!(session_id = %session_id, error = %e, "Eviction callback failed");
-                    }
+                tracing::warn!(session_id = %session_id, error = %e, "Eviction callback failed");
+            }
         }
     }
 

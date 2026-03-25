@@ -407,9 +407,9 @@ mod tests {
             .header(TAILSCALE_USER_HEADER, "alice@example.com")
             .body(Body::empty())
             .unwrap();
-        request
-            .extensions_mut()
-            .insert(ConnectInfo("100.100.1.1:12345".parse::<SocketAddr>().unwrap()));
+        request.extensions_mut().insert(ConnectInfo(
+            "100.100.1.1:12345".parse::<SocketAddr>().unwrap(),
+        ));
 
         let response = app.oneshot(request).await.unwrap();
 
@@ -431,9 +431,9 @@ mod tests {
             .header(TAILSCALE_USER_HEADER, "bob@example.com")
             .body(Body::empty())
             .unwrap();
-        request
-            .extensions_mut()
-            .insert(ConnectInfo("100.100.1.1:12345".parse::<SocketAddr>().unwrap()));
+        request.extensions_mut().insert(ConnectInfo(
+            "100.100.1.1:12345".parse::<SocketAddr>().unwrap(),
+        ));
 
         let response = app.oneshot(request).await.unwrap();
 

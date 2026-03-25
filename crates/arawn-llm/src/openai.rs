@@ -390,7 +390,9 @@ impl OpenAiBackend {
     async fn handle_error_response(response: Response) -> LlmError {
         let status = response.status();
 
-        use crate::common::{ProviderErrorResponse, extract_retry_after, map_error_response, map_raw_error};
+        use crate::common::{
+            ProviderErrorResponse, extract_retry_after, map_error_response, map_raw_error,
+        };
 
         let retry_after = extract_retry_after(response.headers());
         let body = response.text().await.unwrap_or_default();
@@ -581,9 +583,12 @@ impl From<OpenAiChatResponse> for CompletionResponse {
                 }
             }
 
-            let stop = Some(c.finish_reason.as_deref()
-                .map(crate::common::map_stop_reason)
-                .unwrap_or(StopReason::EndTurn));
+            let stop = Some(
+                c.finish_reason
+                    .as_deref()
+                    .map(crate::common::map_stop_reason)
+                    .unwrap_or(StopReason::EndTurn),
+            );
 
             (blocks, stop)
         } else {
@@ -728,7 +733,8 @@ fn parse_openai_sse_stream(
 
                                 // Check for finish
                                 if let Some(reason) = choice.finish_reason {
-                                    let stop_reason = crate::common::map_stop_reason(reason.as_str());
+                                    let stop_reason =
+                                        crate::common::map_stop_reason(reason.as_str());
                                     return Some((
                                         Ok(StreamEvent::MessageDelta {
                                             stop_reason,

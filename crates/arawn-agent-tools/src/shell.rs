@@ -727,14 +727,9 @@ impl ShellTool {
         )
         .await
         .map_err(|_| {
-            arawn_agent::AgentError::Tool(format!(
-                "Command timed out after {:?}",
-                timeout_duration
-            ))
+            arawn_agent::AgentError::Tool(format!("Command timed out after {:?}", timeout_duration))
         })?
-        .map_err(|e| {
-            arawn_agent::AgentError::Tool(format!("Failed to wait for command: {}", e))
-        })?;
+        .map_err(|e| arawn_agent::AgentError::Tool(format!("Failed to wait for command: {}", e)))?;
 
         if all_output.is_empty() {
             all_output = "(no output)".to_string();
@@ -1395,7 +1390,9 @@ mod tests {
         assert!(result.is_error());
         let content = result.to_llm_content();
         assert!(
-            content.contains("blocked") || content.contains("Blocked") || content.contains("not allowed"),
+            content.contains("blocked")
+                || content.contains("Blocked")
+                || content.contains("not allowed"),
             "Expected blocked/not-allowed message, got: {}",
             content
         );
@@ -1414,7 +1411,9 @@ mod tests {
 
         let content = result.to_llm_content();
         assert!(
-            content.contains("timed out") || content.contains("timeout") || content.contains("Timeout"),
+            content.contains("timed out")
+                || content.contains("timeout")
+                || content.contains("Timeout"),
             "Expected timeout message, got: {}",
             content
         );
@@ -1427,10 +1426,7 @@ mod tests {
         let ctx = ToolContext::default();
 
         let result = tool
-            .execute(
-                json!({"command": "python3 -c \"print('x' * 200)\""}),
-                &ctx,
-            )
+            .execute(json!({"command": "python3 -c \"print('x' * 200)\""}), &ctx)
             .await
             .unwrap();
 

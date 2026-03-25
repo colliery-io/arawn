@@ -181,11 +181,7 @@ pub struct MemoryMetrics {
     tag = "health"
 )]
 pub async fn metrics(State(state): State<AppState>) -> Json<MetricsResponse> {
-    let active_ws = state
-        .active_connections()
-        .read()
-        .await
-        .len();
+    let active_ws = state.active_connections().read().await.len();
 
     let cached_sessions = state.session_cache().len().await;
 

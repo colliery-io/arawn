@@ -10,10 +10,10 @@ use serde_json::json;
 
 use arawn_llm::{CompletionResponse, ContentBlock, MockBackend, StopReason, Usage};
 
-use arawn_agent::{Tool, ToolContext, ToolRegistry, ToolResult};
+use crate::ExploreTool;
 use arawn_agent::rlm::{DEFAULT_READ_ONLY_TOOLS, RlmConfig, RlmSpawner};
 use arawn_agent::tool::MockTool;
-use crate::ExploreTool;
+use arawn_agent::{Tool, ToolContext, ToolRegistry, ToolResult};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers

@@ -27,7 +27,7 @@ fn is_restricted_ip(ip: &IpAddr) -> bool {
                 || v4.is_link_local()     // 169.254.0.0/16 (includes cloud metadata)
                 || v4.is_broadcast()      // 255.255.255.255
                 || v4.is_unspecified()    // 0.0.0.0
-                || v4.octets()[0] == 100 && (v4.octets()[1] & 0xC0) == 64  // 100.64.0.0/10 (CGNAT / Tailscale)
+                || v4.octets()[0] == 100 && (v4.octets()[1] & 0xC0) == 64 // 100.64.0.0/10 (CGNAT / Tailscale)
         }
         IpAddr::V6(v6) => {
             v6.is_loopback()              // ::1
@@ -805,9 +805,7 @@ impl WebSearchTool {
 
     /// Create a web search tool with custom configuration.
     pub fn with_config(config: WebSearchConfig) -> std::result::Result<Self, reqwest::Error> {
-        let client = Client::builder()
-            .timeout(config.timeout)
-            .build()?;
+        let client = Client::builder().timeout(config.timeout).build()?;
 
         Ok(Self { client, config })
     }

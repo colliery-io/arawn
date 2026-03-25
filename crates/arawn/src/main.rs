@@ -748,9 +748,14 @@ async fn run() -> Result<()> {
             }
             cmd.env("ARAWN_KEEP_BACKUPS", keep.to_string());
 
-            let status = cmd.status().map_err(|e| anyhow::anyhow!("Failed to run backup script: {}", e))?;
+            let status = cmd
+                .status()
+                .map_err(|e| anyhow::anyhow!("Failed to run backup script: {}", e))?;
             if !status.success() {
-                anyhow::bail!("Backup failed with exit code: {}", status.code().unwrap_or(-1));
+                anyhow::bail!(
+                    "Backup failed with exit code: {}",
+                    status.code().unwrap_or(-1)
+                );
             }
             Ok(())
         }

@@ -1,7 +1,7 @@
 //! Session management — session switching, creation, sessions overlay.
 
-use crossterm::event::{KeyCode, KeyModifiers};
 use crate::focus::FocusTarget;
+use crossterm::event::{KeyCode, KeyModifiers};
 
 use super::App;
 use crate::app_types::{ChatMessage, PendingAction};

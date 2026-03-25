@@ -360,5 +360,4 @@ impl App {
             self.sidebar.session_index = 0;
         }
     }
-
 }

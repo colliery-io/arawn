@@ -70,13 +70,11 @@ impl Default for CommandValidator {
         Self {
             blocked_patterns: patterns
                 .into_iter()
-                .filter_map(|(pat, desc)| {
-                    match regex::Regex::new(pat) {
-                        Ok(re) => Some((re, desc.to_string())),
-                        Err(e) => {
-                            tracing::error!("invalid blocked pattern regex '{}': {}", pat, e);
-                            None
-                        }
+                .filter_map(|(pat, desc)| match regex::Regex::new(pat) {
+                    Ok(re) => Some((re, desc.to_string())),
+                    Err(e) => {
+                        tracing::error!("invalid blocked pattern regex '{}': {}", pat, e);
+                        None
                     }
                 })
                 .collect(),
@@ -428,7 +426,10 @@ mod tests {
     fn test_normalize_extracts_basename_from_absolute_path() {
         assert_eq!(CommandValidator::normalize("/bin/rm -rf /"), "rm -rf /");
         assert_eq!(CommandValidator::normalize("/usr/bin/rm -rf /"), "rm -rf /");
-        assert_eq!(CommandValidator::normalize("/sbin/shutdown -h now"), "shutdown -h now");
+        assert_eq!(
+            CommandValidator::normalize("/sbin/shutdown -h now"),
+            "shutdown -h now"
+        );
     }
 
     #[test]

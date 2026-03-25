@@ -1123,10 +1123,7 @@ mod concurrency_tests {
         let t1 = std::thread::spawn(move || {
             b1.wait();
             for i in 0..20 {
-                let node = crate::graph::GraphNode::new(
-                    format!("entity-t1-{}", i),
-                    "TestEntity",
-                );
+                let node = crate::graph::GraphNode::new(format!("entity-t1-{}", i), "TestEntity");
                 let _ = s1.add_graph_entity(&node);
             }
         });
@@ -1137,10 +1134,7 @@ mod concurrency_tests {
         let t2 = std::thread::spawn(move || {
             b2.wait();
             for i in 0..20 {
-                let node = crate::graph::GraphNode::new(
-                    format!("entity-t2-{}", i),
-                    "TestEntity",
-                );
+                let node = crate::graph::GraphNode::new(format!("entity-t2-{}", i), "TestEntity");
                 let _ = s2.add_graph_entity(&node);
             }
         });

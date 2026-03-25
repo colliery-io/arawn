@@ -123,7 +123,10 @@ impl App {
 
         match status {
             Ok(exit) if exit.success() => Ok(()),
-            Ok(exit) => Err(std::io::Error::other(format!("Pager exited with status: {}", exit))),
+            Ok(exit) => Err(std::io::Error::other(format!(
+                "Pager exited with status: {}",
+                exit
+            ))),
             Err(e) => Err(e),
         }
     }

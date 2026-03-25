@@ -155,8 +155,9 @@ impl AgeSecretStore {
         {
             use std::os::unix::fs::PermissionsExt;
             let perms = std::fs::Permissions::from_mode(0o600);
-            std::fs::set_permissions(&tmp_path, perms)
-                .map_err(|e| SecretStoreError::Io(format!("setting secrets file permissions: {}", e)))?;
+            std::fs::set_permissions(&tmp_path, perms).map_err(|e| {
+                SecretStoreError::Io(format!("setting secrets file permissions: {}", e))
+            })?;
         }
 
         // Atomic rename (on POSIX, rename is atomic within the same filesystem)

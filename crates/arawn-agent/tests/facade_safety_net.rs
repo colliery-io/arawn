@@ -158,7 +158,11 @@ fn reexport_mcp_types() {
     assert!(!arawn_agent::NAMESPACE_DELIMITER.is_empty());
 
     assert!(!arawn_agent::is_mcp_tool("shell"));
-    assert!(arawn_agent::is_mcp_tool(&format!("{}server{}tool", arawn_agent::MCP_PREFIX, arawn_agent::NAMESPACE_DELIMITER)));
+    assert!(arawn_agent::is_mcp_tool(&format!(
+        "{}server{}tool",
+        arawn_agent::MCP_PREFIX,
+        arawn_agent::NAMESPACE_DELIMITER
+    )));
 }
 
 #[test]

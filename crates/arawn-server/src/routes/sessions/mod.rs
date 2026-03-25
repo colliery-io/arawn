@@ -6,12 +6,12 @@ pub use types::*;
 #[cfg(test)]
 mod tests;
 
+use arawn_domain::{Session, SessionId};
 use axum::{
     Extension, Json,
     extract::{Path, Query, State},
     http::StatusCode,
 };
-use arawn_domain::{Session, SessionId};
 
 use super::pagination::PaginationParams;
 use crate::auth::Identity;

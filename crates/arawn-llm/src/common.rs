@@ -83,8 +83,7 @@ pub fn map_error_response(
                 let info = crate::error::RateLimitInfo::parse_groq(error_message);
                 LlmError::RateLimit(info)
             } else {
-                let info =
-                    crate::error::RateLimitInfo::parse_openai(error_message, retry_after);
+                let info = crate::error::RateLimitInfo::parse_openai(error_message, retry_after);
                 LlmError::RateLimit(info)
             }
         }
@@ -154,8 +153,14 @@ mod tests {
     fn test_map_stop_reason_anthropic() {
         assert!(matches!(map_stop_reason("end_turn"), StopReason::EndTurn));
         assert!(matches!(map_stop_reason("tool_use"), StopReason::ToolUse));
-        assert!(matches!(map_stop_reason("max_tokens"), StopReason::MaxTokens));
-        assert!(matches!(map_stop_reason("stop_sequence"), StopReason::StopSequence));
+        assert!(matches!(
+            map_stop_reason("max_tokens"),
+            StopReason::MaxTokens
+        ));
+        assert!(matches!(
+            map_stop_reason("stop_sequence"),
+            StopReason::StopSequence
+        ));
     }
 
     #[test]
