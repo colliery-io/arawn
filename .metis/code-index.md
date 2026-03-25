@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-03-25T13:39:33Z | 344 files | Rust
+> Generated: 2026-03-25T16:54:29Z | 352 files | Rust
 
 ## Project Structure
 
@@ -240,14 +240,26 @@
 │   │   │   │   ├── config.rs
 │   │   │   │   ├── health.rs
 │   │   │   │   ├── logs.rs
-│   │   │   │   ├── mcp.rs
-│   │   │   │   ├── memory.rs
+│   │   │   │   ├── mcp/
+│   │   │   │   │   ├── mod.rs
+│   │   │   │   │   ├── tests.rs
+│   │   │   │   │   └── types.rs
+│   │   │   │   ├── memory/
+│   │   │   │   │   ├── mod.rs
+│   │   │   │   │   ├── tests.rs
+│   │   │   │   │   └── types.rs
 │   │   │   │   ├── mod.rs
 │   │   │   │   ├── openapi.rs
 │   │   │   │   ├── pagination.rs
-│   │   │   │   ├── sessions.rs
+│   │   │   │   ├── sessions/
+│   │   │   │   │   ├── mod.rs
+│   │   │   │   │   ├── tests.rs
+│   │   │   │   │   └── types.rs
 │   │   │   │   ├── tasks.rs
-│   │   │   │   ├── workstreams.rs
+│   │   │   │   ├── workstreams/
+│   │   │   │   │   ├── mod.rs
+│   │   │   │   │   ├── tests.rs
+│   │   │   │   │   └── types.rs
 │   │   │   │   └── ws/
 │   │   │   │       ├── connection.rs
 │   │   │   │       ├── handlers.rs
@@ -7006,86 +7018,6 @@
 -  `resolve_log_file` function L100-118 — `(log_dir: &std::path::Path, name: Option<&str>) -> Result<PathBuf, ServerError>` — can fetch recent server log entries without direct filesystem access.
 -  `tail_lines` function L120-131 — `(path: &std::path::Path, n: usize) -> Result<Vec<String>, ServerError>` — can fetch recent server log entries without direct filesystem access.
 
-#### crates/arawn-server/src/routes/mcp.rs
-
-- pub `AddServerRequest` struct L43-95 — `{ name: String, transport: String, command: String, url: Option<String>, args: V...` — Request to add a new MCP server.
-- pub `AddServerResponse` struct L103-112 — `{ name: String, connected: bool, tool_count: Option<usize>, error: Option<String...` — Response after adding a server.
-- pub `ServerInfo` struct L116-125 — `{ name: String, connected: bool, tool_count: usize, tools: Vec<String> }` — Information about a connected MCP server.
-- pub `ListServersResponse` struct L129-136 — `{ servers: Vec<ServerInfo>, total: usize, connected: usize }` — Response for listing servers.
-- pub `ToolInfo` struct L140-149 — `{ name: String, description: Option<String>, input_schema: Option<serde_json::Va...` — Information about a tool.
-- pub `ListToolsResponse` struct L153-158 — `{ server: String, tools: Vec<ToolInfo> }` — Response for listing tools from a server.
-- pub `RemoveServerResponse` struct L162-167 — `{ name: String, removed: bool }` — Response after removing a server.
-- pub `add_server_handler` function L187-284 — `( State(state): State<AppState>, Extension(_identity): Extension<Identity>, Json...` — - `GET /api/v1/mcp/servers/:name/tools` - List tools for a specific server
-- pub `remove_server_handler` function L304-329 — `( State(state): State<AppState>, Extension(_identity): Extension<Identity>, Path...` — - `GET /api/v1/mcp/servers/:name/tools` - List tools for a specific server
-- pub `list_servers_handler` function L345-388 — `( State(state): State<AppState>, Extension(_identity): Extension<Identity>, ) ->...` — - `GET /api/v1/mcp/servers/:name/tools` - List tools for a specific server
-- pub `list_server_tools_handler` function L410-459 — `( State(state): State<AppState>, Extension(_identity): Extension<Identity>, Path...` — - `GET /api/v1/mcp/servers/:name/tools` - List tools for a specific server
-- pub `connect_server_handler` function L480-507 — `( State(state): State<AppState>, Extension(_identity): Extension<Identity>, Path...` — - `GET /api/v1/mcp/servers/:name/tools` - List tools for a specific server
-- pub `disconnect_server_handler` function L528-548 — `( State(state): State<AppState>, Extension(_identity): Extension<Identity>, Path...` — - `GET /api/v1/mcp/servers/:name/tools` - List tools for a specific server
--  `default_connect` function L97-99 — `() -> bool` — - `GET /api/v1/mcp/servers/:name/tools` - List tools for a specific server
--  `tests` module L555-989 — `-` — - `GET /api/v1/mcp/servers/:name/tools` - List tools for a specific server
--  `create_test_state_with_mcp` function L571-581 — `() -> AppState` — - `GET /api/v1/mcp/servers/:name/tools` - List tools for a specific server
--  `create_test_state_without_mcp` function L583-592 — `() -> AppState` — - `GET /api/v1/mcp/servers/:name/tools` - List tools for a specific server
--  `create_test_router` function L594-612 — `(state: AppState) -> Router` — - `GET /api/v1/mcp/servers/:name/tools` - List tools for a specific server
--  `test_list_servers_empty` function L615-639 — `()` — - `GET /api/v1/mcp/servers/:name/tools` - List tools for a specific server
--  `test_list_servers_mcp_disabled` function L642-658 — `()` — - `GET /api/v1/mcp/servers/:name/tools` - List tools for a specific server
--  `test_add_server_missing_name` function L661-679 — `()` — - `GET /api/v1/mcp/servers/:name/tools` - List tools for a specific server
--  `test_add_server_missing_command` function L682-702 — `()` — - `GET /api/v1/mcp/servers/:name/tools` - List tools for a specific server
--  `test_add_server_success_no_connect` function L705-733 — `()` — - `GET /api/v1/mcp/servers/:name/tools` - List tools for a specific server
--  `test_add_server_duplicate` function L736-763 — `()` — - `GET /api/v1/mcp/servers/:name/tools` - List tools for a specific server
--  `test_remove_server_not_found` function L766-783 — `()` — - `GET /api/v1/mcp/servers/:name/tools` - List tools for a specific server
--  `test_remove_server_success` function L786-814 — `()` — - `GET /api/v1/mcp/servers/:name/tools` - List tools for a specific server
--  `test_list_server_tools_not_found` function L817-833 — `()` — - `GET /api/v1/mcp/servers/:name/tools` - List tools for a specific server
--  `test_list_server_tools_not_connected` function L836-859 — `()` — - `GET /api/v1/mcp/servers/:name/tools` - List tools for a specific server
--  `test_connect_server_not_found` function L862-879 — `()` — - `GET /api/v1/mcp/servers/:name/tools` - List tools for a specific server
--  `test_disconnect_server_not_found` function L882-899 — `()` — - `GET /api/v1/mcp/servers/:name/tools` - List tools for a specific server
--  `test_disconnect_server_success` function L902-926 — `()` — - `GET /api/v1/mcp/servers/:name/tools` - List tools for a specific server
--  `test_add_http_server` function L929-961 — `()` — - `GET /api/v1/mcp/servers/:name/tools` - List tools for a specific server
--  `test_add_http_server_missing_url` function L964-988 — `()` — - `GET /api/v1/mcp/servers/:name/tools` - List tools for a specific server
-
-#### crates/arawn-server/src/routes/memory.rs
-
-- pub `Note` struct L29-44 — `{ id: String, title: Option<String>, content: String, tags: Vec<String>, created...` — A note (API representation).
-- pub `CreateNoteRequest` struct L48-57 — `{ content: String, title: Option<String>, tags: Vec<String> }` — Request to create a note.
-- pub `ListNotesQuery` struct L61-64 — `{ tag: Option<String> }` — Query params for listing notes.
-- pub `UpdateNoteRequest` struct L68-78 — `{ title: Option<String>, content: Option<String>, tags: Option<Vec<String>> }` — Request to update a note.
-- pub `ListNotesResponse` struct L82-91 — `{ notes: Vec<Note>, total: usize, limit: usize, offset: usize }` — Response for listing notes.
-- pub `MemorySearchQuery` struct L95-103 — `{ q: String, limit: usize, session_id: Option<String> }` — Query params for memory search.
-- pub `MemorySearchResult` struct L111-129 — `{ id: String, content_type: String, content: String, session_id: Option<String>,...` — Memory search result item.
-- pub `MemorySearchResponse` struct L133-145 — `{ results: Vec<MemorySearchResult>, query: String, count: usize, degraded: bool ...` — Response for memory search.
-- pub `StoreMemoryRequest` struct L153-175 — `{ content: String, content_type: String, session_id: Option<String>, metadata: H...` — Request to store a memory directly.
-- pub `StoreMemoryResponse` struct L187-194 — `{ id: String, content_type: String, message: String }` — Response after storing a memory.
-- pub `create_note_handler` function L236-256 — `( State(state): State<AppState>, Extension(_identity): Extension<Identity>, Json...` — backed by `arawn-memory::MemoryStore` for persistent storage.
-- pub `list_notes_handler` function L274-309 — `( State(state): State<AppState>, Extension(_identity): Extension<Identity>, Quer...` — backed by `arawn-memory::MemoryStore` for persistent storage.
-- pub `get_note_handler` function L327-343 — `( State(state): State<AppState>, Extension(_identity): Extension<Identity>, Path...` — backed by `arawn-memory::MemoryStore` for persistent storage.
-- pub `update_note_handler` function L362-394 — `( State(state): State<AppState>, Extension(_identity): Extension<Identity>, Path...` — backed by `arawn-memory::MemoryStore` for persistent storage.
-- pub `delete_note_handler` function L412-431 — `( State(state): State<AppState>, Extension(_identity): Extension<Identity>, Path...` — backed by `arawn-memory::MemoryStore` for persistent storage.
-- pub `memory_search_handler` function L457-531 — `( State(state): State<AppState>, Extension(_identity): Extension<Identity>, Quer...` — backed by `arawn-memory::MemoryStore` for persistent storage.
-- pub `store_memory_handler` function L546-578 — `( State(state): State<AppState>, Extension(_identity): Extension<Identity>, Json...` — backed by `arawn-memory::MemoryStore` for persistent storage.
-- pub `delete_memory_handler` function L596-614 — `( State(state): State<AppState>, Extension(_identity): Extension<Identity>, Path...` — backed by `arawn-memory::MemoryStore` for persistent storage.
--  `default_limit` function L105-107 — `() -> usize` — backed by `arawn-memory::MemoryStore` for persistent storage.
--  `default_content_type` function L177-179 — `() -> String` — backed by `arawn-memory::MemoryStore` for persistent storage.
--  `default_confidence` function L181-183 — `() -> f32` — backed by `arawn-memory::MemoryStore` for persistent storage.
--  `require_memory_store` function L201-205 — `(state: &AppState) -> Result<&Arc<MemoryStore>, ServerError>` — Get the memory store from app state, returning 503 if not configured.
--  `to_api_note` function L208-217 — `(note: MemoryNote) -> Note` — Convert an `arawn_memory::Note` to the API `Note` type.
--  `tests` module L621-1107 — `-` — backed by `arawn-memory::MemoryStore` for persistent storage.
--  `create_test_state` function L636-648 — `() -> AppState` — backed by `arawn-memory::MemoryStore` for persistent storage.
--  `create_test_router` function L650-667 — `(state: AppState) -> Router` — backed by `arawn-memory::MemoryStore` for persistent storage.
--  `test_create_note` function L670-698 — `()` — backed by `arawn-memory::MemoryStore` for persistent storage.
--  `test_create_note_with_title` function L701-727 — `()` — backed by `arawn-memory::MemoryStore` for persistent storage.
--  `test_get_note` function L730-760 — `()` — backed by `arawn-memory::MemoryStore` for persistent storage.
--  `test_get_note_not_found` function L763-779 — `()` — backed by `arawn-memory::MemoryStore` for persistent storage.
--  `test_update_note` function L782-815 — `()` — backed by `arawn-memory::MemoryStore` for persistent storage.
--  `test_delete_note` function L818-844 — `()` — backed by `arawn-memory::MemoryStore` for persistent storage.
--  `test_list_notes` function L847-879 — `()` — backed by `arawn-memory::MemoryStore` for persistent storage.
--  `test_list_notes_with_tag_filter` function L882-912 — `()` — backed by `arawn-memory::MemoryStore` for persistent storage.
--  `test_memory_search` function L915-938 — `()` — backed by `arawn-memory::MemoryStore` for persistent storage.
--  `test_memory_search_with_store` function L941-972 — `()` — backed by `arawn-memory::MemoryStore` for persistent storage.
--  `test_memory_search_includes_notes` function L975-1005 — `()` — backed by `arawn-memory::MemoryStore` for persistent storage.
--  `test_memory_search_requires_auth` function L1008-1023 — `()` — backed by `arawn-memory::MemoryStore` for persistent storage.
--  `test_notes_require_memory_store` function L1026-1051 — `()` — backed by `arawn-memory::MemoryStore` for persistent storage.
--  `test_store_memory` function L1054-1080 — `()` — backed by `arawn-memory::MemoryStore` for persistent storage.
--  `test_delete_memory` function L1083-1106 — `()` — backed by `arawn-memory::MemoryStore` for persistent storage.
-
 #### crates/arawn-server/src/routes/mod.rs
 
 - pub `agents` module L3 — `-` — API routes.
@@ -7133,62 +7065,6 @@
 -  `test_paginate_offset_beyond_end` function L149-158 — `()` — Shared pagination types for list endpoints.
 -  `test_paginate_empty` function L161-167 — `()` — Shared pagination types for list endpoints.
 
-#### crates/arawn-server/src/routes/sessions.rs
-
-- pub `CreateSessionRequest` struct L25-33 — `{ title: Option<String>, metadata: HashMap<String, serde_json::Value> }` — Request to create a new session.
-- pub `UpdateSessionRequest` struct L37-48 — `{ title: Option<String>, metadata: Option<HashMap<String, serde_json::Value>>, w...` — Request to update a session.
-- pub `MessageInfo` struct L52-63 — `{ role: String, content: String, timestamp: String, metadata: Option<serde_json:...` — Message info for conversation history.
-- pub `SessionMessagesResponse` struct L67-74 — `{ session_id: String, messages: Vec<MessageInfo>, count: usize }` — Response containing session messages.
-- pub `SessionSummary` struct L78-90 — `{ id: String, title: Option<String>, turn_count: usize, created_at: String, upda...` — Summary info for a session.
-- pub `SessionDetail` struct L94-116 — `{ id: String, turns: Vec<TurnInfo>, created_at: String, updated_at: String, meta...` — Full session details.
-- pub `TurnInfo` struct L120-133 — `{ id: String, user_message: String, assistant_response: Option<String>, tool_cal...` — Turn info for API responses.
-- pub `ListSessionsResponse` struct L137-146 — `{ sessions: Vec<SessionSummary>, total: usize, limit: usize, offset: usize }` — Response for list sessions.
-- pub `create_session_handler` function L164-218 — `( State(state): State<AppState>, Extension(_identity): Extension<Identity>, Json...` — Session management endpoints.
-- pub `list_sessions_handler` function L232-297 — `( State(state): State<AppState>, Extension(_identity): Extension<Identity>, Quer...` — Session management endpoints.
-- pub `get_session_handler` function L312-369 — `( State(state): State<AppState>, Extension(_identity): Extension<Identity>, Path...` — Session management endpoints.
-- pub `delete_session_handler` function L386-424 — `( State(state): State<AppState>, Extension(_identity): Extension<Identity>, Path...` — Session management endpoints.
-- pub `update_session_handler` function L441-647 — `( State(state): State<AppState>, Extension(_identity): Extension<Identity>, Path...` — Session management endpoints.
-- pub `get_session_messages_handler` function L662-754 — `( State(state): State<AppState>, Extension(_identity): Extension<Identity>, Path...` — Session management endpoints.
--  `parse_session_id` function L760-764 — `(s: &str) -> Result<SessionId, ServerError>` — Session management endpoints.
--  `session_to_detail` function L766-768 — `(session: &Session) -> SessionDetail` — Session management endpoints.
--  `session_to_detail_with_migration` function L770-797 — `( session: &Session, workstream_id: Option<String>, files_migrated: Option<usize...` — Session management endpoints.
--  `tests` module L804-1557 — `-` — Session management endpoints.
--  `create_test_state` function L819-828 — `() -> AppState` — Session management endpoints.
--  `create_test_router` function L830-848 — `(state: AppState) -> Router` — Session management endpoints.
--  `test_list_sessions_empty` function L851-876 — `()` — Session management endpoints.
--  `test_list_sessions_with_data` function L879-906 — `()` — Session management endpoints.
--  `test_get_session` function L909-934 — `()` — Session management endpoints.
--  `test_get_session_not_found` function L937-953 — `()` — Session management endpoints.
--  `test_get_session_invalid_id` function L956-972 — `()` — Session management endpoints.
--  `test_delete_session` function L975-997 — `()` — Session management endpoints.
--  `test_delete_session_not_found` function L1000-1017 — `()` — Session management endpoints.
--  `test_create_session` function L1020-1046 — `()` — Session management endpoints.
--  `test_create_session_with_metadata` function L1049-1075 — `()` — Session management endpoints.
--  `test_update_session` function L1078-1104 — `()` — Session management endpoints.
--  `test_update_session_not_found` function L1107-1125 — `()` — Session management endpoints.
--  `test_get_session_messages_empty` function L1128-1154 — `()` — Session management endpoints.
--  `test_get_session_messages_with_data` function L1157-1194 — `()` — Session management endpoints.
--  `test_get_session_messages_not_found` function L1197-1213 — `()` — Session management endpoints.
--  `test_create_session_empty_body` function L1216-1240 — `()` — Session management endpoints.
--  `test_list_sessions_with_pagination` function L1243-1273 — `()` — Session management endpoints.
--  `test_list_sessions_with_offset` function L1276-1303 — `()` — Session management endpoints.
--  `test_unauthorized_request` function L1306-1321 — `()` — Session management endpoints.
--  `test_unauthorized_wrong_token` function L1324-1340 — `()` — Session management endpoints.
--  `test_delete_session_invalid_id` function L1343-1360 — `()` — Session management endpoints.
--  `test_update_session_merge_metadata` function L1363-1401 — `()` — Session management endpoints.
--  `test_update_session_workstream_without_workstreams` function L1404-1424 — `()` — Session management endpoints.
--  `test_get_session_messages_invalid_id` function L1427-1443 — `()` — Session management endpoints.
--  `test_parse_session_id_valid` function L1448-1452 — `()` — Session management endpoints.
--  `test_parse_session_id_invalid` function L1455-1458 — `()` — Session management endpoints.
--  `test_session_to_detail_empty_session` function L1461-1469 — `()` — Session management endpoints.
--  `test_session_to_detail_with_migration_info` function L1472-1483 — `()` — Session management endpoints.
--  `test_session_to_detail_with_turns` function L1486-1497 — `()` — Session management endpoints.
--  `test_create_session_request_deserialize` function L1502-1507 — `()` — Session management endpoints.
--  `test_create_session_request_deserialize_minimal` function L1510-1515 — `()` — Session management endpoints.
--  `test_update_session_request_deserialize` function L1518-1524 — `()` — Session management endpoints.
--  `test_list_sessions_response_serialization` function L1527-1537 — `()` — Session management endpoints.
--  `test_session_messages_response_serialization` function L1540-1556 — `()` — Session management endpoints.
-
 #### crates/arawn-server/src/routes/tasks.rs
 
 - pub `ListTasksQuery` struct L23-33 — `{ status: Option<String>, session_id: Option<String>, limit: usize }` — Query params for listing tasks.
@@ -7213,80 +7089,260 @@
 -  `test_cancel_completed_task_fails` function L462-488 — `()` — Provides endpoints for listing, viewing, and cancelling long-running tasks.
 -  `test_list_tasks_filter_by_status` function L491-527 — `()` — Provides endpoints for listing, viewing, and cancelling long-running tasks.
 
-#### crates/arawn-server/src/routes/workstreams.rs
+### crates/arawn-server/src/routes/mcp
 
-- pub `CreateWorkstreamRequest` struct L37-46 — `{ title: String, default_model: Option<String>, tags: Vec<String> }`
-- pub `WorkstreamResponse` struct L49-69 — `{ id: String, title: String, summary: Option<String>, state: String, default_mod...`
-- pub `WorkstreamListResponse` struct L72-81 — `{ workstreams: Vec<WorkstreamResponse>, total: usize, limit: usize, offset: usiz...`
-- pub `SendMessageRequest` struct L84-99 — `{ role: Option<String>, content: String, metadata: Option<String> }`
-- pub `MessageResponse` struct L102-118 — `{ id: String, workstream_id: String, session_id: Option<String>, role: String, c...`
-- pub `MessageListResponse` struct L121-130 — `{ messages: Vec<MessageResponse>, total: usize, limit: usize, offset: usize }`
-- pub `MessageQuery` struct L133-135 — `{ since: Option<String> }`
-- pub `ListWorkstreamsQuery` struct L138-142 — `{ include_archived: bool }`
-- pub `PromoteRequest` struct L145-154 — `{ title: String, tags: Vec<String>, default_model: Option<String> }`
-- pub `PromoteFileRequest` struct L158-163 — `{ source: String, destination: String }` — Request to promote a file from work/ to production/.
-- pub `PromoteFileResponse` struct L167-175 — `{ path: String, bytes: u64, renamed: bool }` — Response from file promotion.
-- pub `ExportFileRequest` struct L179-184 — `{ source: String, destination: String }` — Request to export a file from production/ to external path.
-- pub `ExportFileResponse` struct L188-193 — `{ exported_to: String, bytes: u64 }` — Response from file export.
-- pub `CloneRepoRequest` struct L197-203 — `{ url: String, name: Option<String> }` — Request to clone a git repository into production/.
-- pub `CloneRepoResponse` struct L207-212 — `{ path: String, commit: String }` — Response from git clone operation.
-- pub `SessionUsageResponse` struct L216-221 — `{ id: String, mb: f64 }` — Per-session disk usage info.
-- pub `UsageResponse` struct L225-238 — `{ production_mb: f64, work_mb: f64, sessions: Vec<SessionUsageResponse>, total_m...` — Response from usage stats endpoint.
-- pub `CleanupRequest` struct L242-249 — `{ older_than_days: Option<u32>, confirm: bool }` — Request to clean up work directory files.
-- pub `CleanupResponse` struct L253-264 — `{ deleted_files: usize, freed_mb: f64, pending_files: usize, requires_confirmati...` — Response from cleanup operation.
-- pub `UpdateWorkstreamRequest` struct L271-284 — `{ title: Option<String>, summary: Option<String>, default_model: Option<String>,...`
-- pub `SessionResponse` struct L287-298 — `{ id: String, workstream_id: String, started_at: String, ended_at: Option<String...`
-- pub `SessionListResponse` struct L301-310 — `{ sessions: Vec<SessionResponse>, total: usize, limit: usize, offset: usize }`
-- pub `create_workstream_handler` function L364-382 — `( State(state): State<AppState>, Json(req): Json<CreateWorkstreamRequest>, ) -> ...`
-- pub `list_workstreams_handler` function L400-425 — `( State(state): State<AppState>, Query(query): Query<ListWorkstreamsQuery>, Quer...`
-- pub `get_workstream_handler` function L443-454 — `( State(state): State<AppState>, Path(id): Path<String>, ) -> Result<Json<Workst...`
-- pub `delete_workstream_handler` function L472-482 — `( State(state): State<AppState>, Path(id): Path<String>, ) -> Result<StatusCode,...`
-- pub `update_workstream_handler` function L501-524 — `( State(state): State<AppState>, Path(id): Path<String>, Json(req): Json<UpdateW...`
-- pub `list_workstream_sessions_handler` function L543-571 — `( State(state): State<AppState>, Path(id): Path<String>, Query(pagination): Quer...`
-- pub `send_message_handler` function L591-612 — `( State(state): State<AppState>, Path(id): Path<String>, Json(req): Json<SendMes...`
-- pub `list_messages_handler` function L633-662 — `( State(state): State<AppState>, Path(id): Path<String>, Query(query): Query<Mes...`
-- pub `promote_handler` function L681-699 — `( State(state): State<AppState>, Path(id): Path<String>, Json(req): Json<Promote...`
-- pub `promote_file_handler` function L719-781 — `( State(state): State<AppState>, Path(workstream_id): Path<String>, Json(req): J...`
-- pub `export_file_handler` function L801-844 — `( State(state): State<AppState>, Path(workstream_id): Path<String>, Json(req): J...`
-- pub `clone_repo_handler` function L865-916 — `( State(state): State<AppState>, Path(workstream_id): Path<String>, Json(req): J...`
-- pub `get_usage_handler` function L934-974 — `( State(state): State<AppState>, Path(workstream_id): Path<String>, ) -> Result<...`
-- pub `cleanup_handler` function L996-1028 — `( State(state): State<AppState>, Path(workstream_id): Path<String>, Json(req): J...`
-- pub `CompressResponse` struct L1032-1037 — `{ summary: String, sessions_compressed: usize }` — Response from compression operation.
-- pub `compress_workstream_handler` function L1057-1100 — `( State(state): State<AppState>, Path(id): Path<String>, ) -> Result<Json<Compre...`
--  `validate_id` function L25-32 — `(id: &str) -> Result<(), ServerError>` — Validate a workstream ID from a URL path parameter.
--  `is_zero` function L266-268 — `(v: &usize) -> bool`
--  `get_manager` function L314-318 — `(state: &AppState) -> Result<&Arc<WorkstreamManager>, ServerError>`
--  `to_workstream_response` function L320-335 — `( ws: &arawn_domain::Workstream, tags: Option<Vec<String>>, ) -> WorkstreamRespo...`
--  `to_message_response` function L337-347 — `(msg: &WorkstreamMessage) -> MessageResponse`
--  `tests` module L1103-1667 — `-`
--  `create_state_with_workstreams` function L1118-1138 — `() -> (AppState, tempfile::TempDir)`
--  `create_state_without_workstreams` function L1140-1148 — `() -> AppState`
--  `create_test_router` function L1150-1176 — `(state: AppState) -> Router`
--  `auth_header` function L1178-1180 — `() -> (&'static str, &'static str)`
--  `test_validate_id_valid` function L1185-1189 — `()`
--  `test_validate_id_invalid` function L1192-1196 — `()`
--  `test_is_zero` function L1201-1205 — `()`
--  `test_list_workstreams_empty` function L1210-1233 — `()`
--  `test_create_workstream` function L1236-1262 — `()`
--  `test_get_workstream_scratch` function L1265-1294 — `()`
--  `test_get_workstream_not_found` function L1297-1314 — `()`
--  `test_get_workstream_invalid_id` function L1317-1335 — `()`
--  `test_update_workstream` function L1338-1366 — `()`
--  `test_delete_workstream` function L1369-1390 — `()`
--  `test_delete_workstream_not_found` function L1393-1411 — `()`
--  `test_list_workstream_sessions_empty` function L1414-1436 — `()`
--  `test_send_message` function L1439-1468 — `()`
--  `test_send_message_invalid_role` function L1471-1492 — `()`
--  `test_list_messages_empty` function L1495-1519 — `()`
--  `test_list_messages_invalid_since` function L1522-1541 — `()`
--  `test_promote_non_scratch` function L1544-1566 — `()`
--  `test_list_workstreams_not_configured` function L1571-1588 — `()`
--  `test_create_workstream_request_deserialize` function L1593-1599 — `()`
--  `test_send_message_request_deserialize` function L1602-1608 — `()`
--  `test_update_workstream_request_deserialize` function L1611-1618 — `()`
--  `test_workstream_response_serialization` function L1621-1638 — `()`
--  `test_promote_file_response_serialization` function L1641-1651 — `()`
--  `test_cleanup_response_serialization` function L1654-1666 — `()`
+> *Semantic summary to be generated by AI agent.*
+
+#### crates/arawn-server/src/routes/mcp/mod.rs
+
+- pub `add_server_handler` function L45-142 — `( State(state): State<AppState>, Extension(_identity): Extension<Identity>, Json...` — - `GET /api/v1/mcp/servers/:name/tools` - List tools for a specific server
+- pub `remove_server_handler` function L162-187 — `( State(state): State<AppState>, Extension(_identity): Extension<Identity>, Path...` — - `GET /api/v1/mcp/servers/:name/tools` - List tools for a specific server
+- pub `list_servers_handler` function L203-246 — `( State(state): State<AppState>, Extension(_identity): Extension<Identity>, ) ->...` — - `GET /api/v1/mcp/servers/:name/tools` - List tools for a specific server
+- pub `list_server_tools_handler` function L268-317 — `( State(state): State<AppState>, Extension(_identity): Extension<Identity>, Path...` — - `GET /api/v1/mcp/servers/:name/tools` - List tools for a specific server
+- pub `connect_server_handler` function L338-365 — `( State(state): State<AppState>, Extension(_identity): Extension<Identity>, Path...` — - `GET /api/v1/mcp/servers/:name/tools` - List tools for a specific server
+- pub `disconnect_server_handler` function L386-406 — `( State(state): State<AppState>, Extension(_identity): Extension<Identity>, Path...` — - `GET /api/v1/mcp/servers/:name/tools` - List tools for a specific server
+-  `types` module L9 — `-` — Provides REST API for runtime MCP server registration and management:
+-  `tests` module L13 — `-` — - `GET /api/v1/mcp/servers/:name/tools` - List tools for a specific server
+
+#### crates/arawn-server/src/routes/mcp/tests.rs
+
+-  `create_test_state_with_mcp` function L16-26 — `() -> AppState`
+-  `create_test_state_without_mcp` function L28-37 — `() -> AppState`
+-  `create_test_router` function L39-57 — `(state: AppState) -> Router`
+-  `test_list_servers_empty` function L60-84 — `()`
+-  `test_list_servers_mcp_disabled` function L87-103 — `()`
+-  `test_add_server_missing_name` function L106-124 — `()`
+-  `test_add_server_missing_command` function L127-147 — `()`
+-  `test_add_server_success_no_connect` function L150-178 — `()`
+-  `test_add_server_duplicate` function L181-208 — `()`
+-  `test_remove_server_not_found` function L211-228 — `()`
+-  `test_remove_server_success` function L231-259 — `()`
+-  `test_list_server_tools_not_found` function L262-278 — `()`
+-  `test_list_server_tools_not_connected` function L281-304 — `()`
+-  `test_connect_server_not_found` function L307-324 — `()`
+-  `test_disconnect_server_not_found` function L327-344 — `()`
+-  `test_disconnect_server_success` function L347-371 — `()`
+-  `test_add_http_server` function L374-406 — `()`
+-  `test_add_http_server_missing_url` function L409-433 — `()`
+
+#### crates/arawn-server/src/routes/mcp/types.rs
+
+- pub `AddServerRequest` struct L20-72 — `{ name: String, transport: String, command: String, url: Option<String>, args: V...` — Request to add a new MCP server.
+- pub `AddServerResponse` struct L80-89 — `{ name: String, connected: bool, tool_count: Option<usize>, error: Option<String...` — Response after adding a server.
+- pub `ServerInfo` struct L93-102 — `{ name: String, connected: bool, tool_count: usize, tools: Vec<String> }` — Information about a connected MCP server.
+- pub `ListServersResponse` struct L106-113 — `{ servers: Vec<ServerInfo>, total: usize, connected: usize }` — Response for listing servers.
+- pub `ToolInfo` struct L117-126 — `{ name: String, description: Option<String>, input_schema: Option<serde_json::Va...` — Information about a tool.
+- pub `ListToolsResponse` struct L130-135 — `{ server: String, tools: Vec<ToolInfo> }` — Response for listing tools from a server.
+- pub `RemoveServerResponse` struct L139-144 — `{ name: String, removed: bool }` — Response after removing a server.
+-  `default_connect` function L74-76 — `() -> bool`
+
+### crates/arawn-server/src/routes/memory
+
+> *Semantic summary to be generated by AI agent.*
+
+#### crates/arawn-server/src/routes/memory/mod.rs
+
+- pub `create_note_handler` function L66-86 — `( State(state): State<AppState>, Extension(_identity): Extension<Identity>, Json...` — backed by `arawn-memory::MemoryStore` for persistent storage.
+- pub `list_notes_handler` function L104-139 — `( State(state): State<AppState>, Extension(_identity): Extension<Identity>, Quer...` — backed by `arawn-memory::MemoryStore` for persistent storage.
+- pub `get_note_handler` function L157-173 — `( State(state): State<AppState>, Extension(_identity): Extension<Identity>, Path...` — backed by `arawn-memory::MemoryStore` for persistent storage.
+- pub `update_note_handler` function L192-224 — `( State(state): State<AppState>, Extension(_identity): Extension<Identity>, Path...` — backed by `arawn-memory::MemoryStore` for persistent storage.
+- pub `delete_note_handler` function L242-261 — `( State(state): State<AppState>, Extension(_identity): Extension<Identity>, Path...` — backed by `arawn-memory::MemoryStore` for persistent storage.
+- pub `memory_search_handler` function L287-361 — `( State(state): State<AppState>, Extension(_identity): Extension<Identity>, Quer...` — backed by `arawn-memory::MemoryStore` for persistent storage.
+- pub `store_memory_handler` function L376-408 — `( State(state): State<AppState>, Extension(_identity): Extension<Identity>, Json...` — backed by `arawn-memory::MemoryStore` for persistent storage.
+- pub `delete_memory_handler` function L426-444 — `( State(state): State<AppState>, Extension(_identity): Extension<Identity>, Path...` — backed by `arawn-memory::MemoryStore` for persistent storage.
+-  `types` module L6 — `-` — These endpoints provide access to the memory search and notes functionality,
+-  `tests` module L10 — `-` — backed by `arawn-memory::MemoryStore` for persistent storage.
+-  `require_memory_store` function L31-35 — `(state: &AppState) -> Result<&Arc<MemoryStore>, ServerError>` — Get the memory store from app state, returning 503 if not configured.
+-  `to_api_note` function L38-47 — `(note: MemoryNote) -> Note` — Convert an `arawn_memory::Note` to the API `Note` type.
+
+#### crates/arawn-server/src/routes/memory/tests.rs
+
+-  `create_test_state` function L15-27 — `() -> AppState`
+-  `create_test_router` function L29-46 — `(state: AppState) -> Router`
+-  `test_create_note` function L49-77 — `()`
+-  `test_create_note_with_title` function L80-106 — `()`
+-  `test_get_note` function L109-139 — `()`
+-  `test_get_note_not_found` function L142-158 — `()`
+-  `test_update_note` function L161-194 — `()`
+-  `test_delete_note` function L197-223 — `()`
+-  `test_list_notes` function L226-258 — `()`
+-  `test_list_notes_with_tag_filter` function L261-291 — `()`
+-  `test_memory_search` function L294-317 — `()`
+-  `test_memory_search_with_store` function L320-351 — `()`
+-  `test_memory_search_includes_notes` function L354-384 — `()`
+-  `test_memory_search_requires_auth` function L387-402 — `()`
+-  `test_notes_require_memory_store` function L405-430 — `()`
+-  `test_store_memory` function L433-459 — `()`
+-  `test_delete_memory` function L462-485 — `()`
+
+#### crates/arawn-server/src/routes/memory/types.rs
+
+- pub `Note` struct L11-26 — `{ id: String, title: Option<String>, content: String, tags: Vec<String>, created...` — A note (API representation).
+- pub `CreateNoteRequest` struct L30-39 — `{ content: String, title: Option<String>, tags: Vec<String> }` — Request to create a note.
+- pub `ListNotesQuery` struct L43-46 — `{ tag: Option<String> }` — Query params for listing notes.
+- pub `UpdateNoteRequest` struct L50-60 — `{ title: Option<String>, content: Option<String>, tags: Option<Vec<String>> }` — Request to update a note.
+- pub `ListNotesResponse` struct L64-73 — `{ notes: Vec<Note>, total: usize, limit: usize, offset: usize }` — Response for listing notes.
+- pub `MemorySearchQuery` struct L77-85 — `{ q: String, limit: usize, session_id: Option<String> }` — Query params for memory search.
+- pub `MemorySearchResult` struct L93-111 — `{ id: String, content_type: String, content: String, session_id: Option<String>,...` — Memory search result item.
+- pub `MemorySearchResponse` struct L115-127 — `{ results: Vec<MemorySearchResult>, query: String, count: usize, degraded: bool ...` — Response for memory search.
+- pub `StoreMemoryRequest` struct L135-157 — `{ content: String, content_type: String, session_id: Option<String>, metadata: H...` — Request to store a memory directly.
+- pub `StoreMemoryResponse` struct L169-176 — `{ id: String, content_type: String, message: String }` — Response after storing a memory.
+-  `default_limit` function L87-89 — `() -> usize`
+-  `default_content_type` function L159-161 — `() -> String`
+-  `default_confidence` function L163-165 — `() -> f32`
+
+### crates/arawn-server/src/routes/sessions
+
+> *Semantic summary to be generated by AI agent.*
+
+#### crates/arawn-server/src/routes/sessions/mod.rs
+
+- pub `create_session_handler` function L37-91 — `( State(state): State<AppState>, Extension(_identity): Extension<Identity>, Json...` — Session management endpoints.
+- pub `list_sessions_handler` function L105-170 — `( State(state): State<AppState>, Extension(_identity): Extension<Identity>, Quer...` — Session management endpoints.
+- pub `get_session_handler` function L185-242 — `( State(state): State<AppState>, Extension(_identity): Extension<Identity>, Path...` — Session management endpoints.
+- pub `delete_session_handler` function L259-297 — `( State(state): State<AppState>, Extension(_identity): Extension<Identity>, Path...` — Session management endpoints.
+- pub `update_session_handler` function L314-520 — `( State(state): State<AppState>, Extension(_identity): Extension<Identity>, Path...` — Session management endpoints.
+- pub `get_session_messages_handler` function L535-627 — `( State(state): State<AppState>, Extension(_identity): Extension<Identity>, Path...` — Session management endpoints.
+-  `types` module L3 — `-` — Session management endpoints.
+-  `tests` module L7 — `-` — Session management endpoints.
+-  `parse_session_id` function L633-637 — `(s: &str) -> Result<SessionId, ServerError>` — Session management endpoints.
+-  `session_to_detail` function L639-641 — `(session: &Session) -> SessionDetail` — Session management endpoints.
+-  `session_to_detail_with_migration` function L643-670 — `( session: &Session, workstream_id: Option<String>, files_migrated: Option<usize...` — Session management endpoints.
+
+#### crates/arawn-server/src/routes/sessions/tests.rs
+
+-  `create_test_state` function L15-24 — `() -> AppState`
+-  `create_test_router` function L26-44 — `(state: AppState) -> Router`
+-  `test_list_sessions_empty` function L47-72 — `()`
+-  `test_list_sessions_with_data` function L75-102 — `()`
+-  `test_get_session` function L105-130 — `()`
+-  `test_get_session_not_found` function L133-149 — `()`
+-  `test_get_session_invalid_id` function L152-168 — `()`
+-  `test_delete_session` function L171-193 — `()`
+-  `test_delete_session_not_found` function L196-213 — `()`
+-  `test_create_session` function L216-242 — `()`
+-  `test_create_session_with_metadata` function L245-271 — `()`
+-  `test_update_session` function L274-300 — `()`
+-  `test_update_session_not_found` function L303-321 — `()`
+-  `test_get_session_messages_empty` function L324-350 — `()`
+-  `test_get_session_messages_with_data` function L353-390 — `()`
+-  `test_get_session_messages_not_found` function L393-409 — `()`
+-  `test_create_session_empty_body` function L412-436 — `()`
+-  `test_list_sessions_with_pagination` function L439-469 — `()`
+-  `test_list_sessions_with_offset` function L472-499 — `()`
+-  `test_unauthorized_request` function L502-517 — `()`
+-  `test_unauthorized_wrong_token` function L520-536 — `()`
+-  `test_delete_session_invalid_id` function L539-556 — `()`
+-  `test_update_session_merge_metadata` function L559-597 — `()`
+-  `test_update_session_workstream_without_workstreams` function L600-620 — `()`
+-  `test_get_session_messages_invalid_id` function L623-639 — `()`
+-  `test_parse_session_id_valid` function L644-648 — `()`
+-  `test_parse_session_id_invalid` function L651-654 — `()`
+-  `test_session_to_detail_empty_session` function L657-665 — `()`
+-  `test_session_to_detail_with_migration_info` function L668-679 — `()`
+-  `test_session_to_detail_with_turns` function L682-693 — `()`
+-  `test_create_session_request_deserialize` function L698-703 — `()`
+-  `test_create_session_request_deserialize_minimal` function L706-711 — `()`
+-  `test_update_session_request_deserialize` function L714-720 — `()`
+-  `test_list_sessions_response_serialization` function L723-733 — `()`
+-  `test_session_messages_response_serialization` function L736-752 — `()`
+
+#### crates/arawn-server/src/routes/sessions/types.rs
+
+- pub `CreateSessionRequest` struct L11-19 — `{ title: Option<String>, metadata: HashMap<String, serde_json::Value> }` — Request to create a new session.
+- pub `UpdateSessionRequest` struct L23-34 — `{ title: Option<String>, metadata: Option<HashMap<String, serde_json::Value>>, w...` — Request to update a session.
+- pub `MessageInfo` struct L38-49 — `{ role: String, content: String, timestamp: String, metadata: Option<serde_json:...` — Message info for conversation history.
+- pub `SessionMessagesResponse` struct L53-60 — `{ session_id: String, messages: Vec<MessageInfo>, count: usize }` — Response containing session messages.
+- pub `SessionSummary` struct L64-76 — `{ id: String, title: Option<String>, turn_count: usize, created_at: String, upda...` — Summary info for a session.
+- pub `SessionDetail` struct L80-102 — `{ id: String, turns: Vec<TurnInfo>, created_at: String, updated_at: String, meta...` — Full session details.
+- pub `TurnInfo` struct L106-119 — `{ id: String, user_message: String, assistant_response: Option<String>, tool_cal...` — Turn info for API responses.
+- pub `ListSessionsResponse` struct L123-132 — `{ sessions: Vec<SessionSummary>, total: usize, limit: usize, offset: usize }` — Response for list sessions.
+
+### crates/arawn-server/src/routes/workstreams
+
+> *Semantic summary to be generated by AI agent.*
+
+#### crates/arawn-server/src/routes/workstreams/mod.rs
+
+- pub `create_workstream_handler` function L90-108 — `( State(state): State<AppState>, Json(req): Json<CreateWorkstreamRequest>, ) -> ...`
+- pub `list_workstreams_handler` function L126-151 — `( State(state): State<AppState>, Query(query): Query<ListWorkstreamsQuery>, Quer...`
+- pub `get_workstream_handler` function L169-180 — `( State(state): State<AppState>, Path(id): Path<String>, ) -> Result<Json<Workst...`
+- pub `delete_workstream_handler` function L198-208 — `( State(state): State<AppState>, Path(id): Path<String>, ) -> Result<StatusCode,...`
+- pub `update_workstream_handler` function L227-250 — `( State(state): State<AppState>, Path(id): Path<String>, Json(req): Json<UpdateW...`
+- pub `list_workstream_sessions_handler` function L269-297 — `( State(state): State<AppState>, Path(id): Path<String>, Query(pagination): Quer...`
+- pub `send_message_handler` function L317-338 — `( State(state): State<AppState>, Path(id): Path<String>, Json(req): Json<SendMes...`
+- pub `list_messages_handler` function L359-388 — `( State(state): State<AppState>, Path(id): Path<String>, Query(query): Query<Mes...`
+- pub `promote_handler` function L407-425 — `( State(state): State<AppState>, Path(id): Path<String>, Json(req): Json<Promote...`
+- pub `promote_file_handler` function L445-507 — `( State(state): State<AppState>, Path(workstream_id): Path<String>, Json(req): J...`
+- pub `export_file_handler` function L527-570 — `( State(state): State<AppState>, Path(workstream_id): Path<String>, Json(req): J...`
+- pub `clone_repo_handler` function L591-642 — `( State(state): State<AppState>, Path(workstream_id): Path<String>, Json(req): J...`
+- pub `get_usage_handler` function L660-700 — `( State(state): State<AppState>, Path(workstream_id): Path<String>, ) -> Result<...`
+- pub `cleanup_handler` function L722-754 — `( State(state): State<AppState>, Path(workstream_id): Path<String>, Json(req): J...`
+- pub `compress_workstream_handler` function L774-817 — `( State(state): State<AppState>, Path(id): Path<String>, ) -> Result<Json<Compre...`
+-  `types` module L15 — `-`
+-  `tests` module L19 — `-`
+-  `validate_id` function L29-36 — `(id: &str) -> Result<(), ServerError>` — Validate a workstream ID from a URL path parameter.
+-  `get_manager` function L40-44 — `(state: &AppState) -> Result<&Arc<WorkstreamManager>, ServerError>`
+-  `to_workstream_response` function L46-61 — `( ws: &arawn_domain::Workstream, tags: Option<Vec<String>>, ) -> WorkstreamRespo...`
+-  `to_message_response` function L63-73 — `(msg: &WorkstreamMessage) -> MessageResponse`
+
+#### crates/arawn-server/src/routes/workstreams/tests.rs
+
+-  `create_state_with_workstreams` function L15-35 — `() -> (AppState, tempfile::TempDir)`
+-  `create_state_without_workstreams` function L37-45 — `() -> AppState`
+-  `create_test_router` function L47-73 — `(state: AppState) -> Router`
+-  `auth_header` function L75-77 — `() -> (&'static str, &'static str)`
+-  `test_validate_id_valid` function L82-86 — `()`
+-  `test_validate_id_invalid` function L89-93 — `()`
+-  `test_is_zero` function L98-102 — `()`
+-  `test_list_workstreams_empty` function L107-130 — `()`
+-  `test_create_workstream` function L133-159 — `()`
+-  `test_get_workstream_scratch` function L162-191 — `()`
+-  `test_get_workstream_not_found` function L194-211 — `()`
+-  `test_get_workstream_invalid_id` function L214-232 — `()`
+-  `test_update_workstream` function L235-263 — `()`
+-  `test_delete_workstream` function L266-287 — `()`
+-  `test_delete_workstream_not_found` function L290-308 — `()`
+-  `test_list_workstream_sessions_empty` function L311-333 — `()`
+-  `test_send_message` function L336-365 — `()`
+-  `test_send_message_invalid_role` function L368-389 — `()`
+-  `test_list_messages_empty` function L392-416 — `()`
+-  `test_list_messages_invalid_since` function L419-438 — `()`
+-  `test_promote_non_scratch` function L441-463 — `()`
+-  `test_list_workstreams_not_configured` function L468-485 — `()`
+-  `test_create_workstream_request_deserialize` function L490-496 — `()`
+-  `test_send_message_request_deserialize` function L499-505 — `()`
+-  `test_update_workstream_request_deserialize` function L508-515 — `()`
+-  `test_workstream_response_serialization` function L518-535 — `()`
+-  `test_promote_file_response_serialization` function L538-548 — `()`
+-  `test_cleanup_response_serialization` function L551-563 — `()`
+
+#### crates/arawn-server/src/routes/workstreams/types.rs
+
+- pub `CreateWorkstreamRequest` struct L7-16 — `{ title: String, default_model: Option<String>, tags: Vec<String> }`
+- pub `WorkstreamResponse` struct L19-39 — `{ id: String, title: String, summary: Option<String>, state: String, default_mod...`
+- pub `WorkstreamListResponse` struct L42-51 — `{ workstreams: Vec<WorkstreamResponse>, total: usize, limit: usize, offset: usiz...`
+- pub `SendMessageRequest` struct L54-69 — `{ role: Option<String>, content: String, metadata: Option<String> }`
+- pub `MessageResponse` struct L72-88 — `{ id: String, workstream_id: String, session_id: Option<String>, role: String, c...`
+- pub `MessageListResponse` struct L91-100 — `{ messages: Vec<MessageResponse>, total: usize, limit: usize, offset: usize }`
+- pub `MessageQuery` struct L103-105 — `{ since: Option<String> }`
+- pub `ListWorkstreamsQuery` struct L108-112 — `{ include_archived: bool }`
+- pub `PromoteRequest` struct L115-124 — `{ title: String, tags: Vec<String>, default_model: Option<String> }`
+- pub `PromoteFileRequest` struct L128-133 — `{ source: String, destination: String }` — Request to promote a file from work/ to production/.
+- pub `PromoteFileResponse` struct L137-145 — `{ path: String, bytes: u64, renamed: bool }` — Response from file promotion.
+- pub `ExportFileRequest` struct L149-154 — `{ source: String, destination: String }` — Request to export a file from production/ to external path.
+- pub `ExportFileResponse` struct L158-163 — `{ exported_to: String, bytes: u64 }` — Response from file export.
+- pub `CloneRepoRequest` struct L167-173 — `{ url: String, name: Option<String> }` — Request to clone a git repository into production/.
+- pub `CloneRepoResponse` struct L177-182 — `{ path: String, commit: String }` — Response from git clone operation.
+- pub `SessionUsageResponse` struct L186-191 — `{ id: String, mb: f64 }` — Per-session disk usage info.
+- pub `UsageResponse` struct L195-208 — `{ production_mb: f64, work_mb: f64, sessions: Vec<SessionUsageResponse>, total_m...` — Response from usage stats endpoint.
+- pub `CleanupRequest` struct L212-219 — `{ older_than_days: Option<u32>, confirm: bool }` — Request to clean up work directory files.
+- pub `CleanupResponse` struct L223-234 — `{ deleted_files: usize, freed_mb: f64, pending_files: usize, requires_confirmati...` — Response from cleanup operation.
+- pub `UpdateWorkstreamRequest` struct L241-254 — `{ title: Option<String>, summary: Option<String>, default_model: Option<String>,...`
+- pub `SessionResponse` struct L257-268 — `{ id: String, workstream_id: String, started_at: String, ended_at: Option<String...`
+- pub `SessionListResponse` struct L271-280 — `{ sessions: Vec<SessionResponse>, total: usize, limit: usize, offset: usize }`
+- pub `CompressResponse` struct L284-289 — `{ summary: String, sessions_compressed: usize }` — Response from compression operation.
+-  `is_zero` function L236-238 — `(v: &usize) -> bool`
 
 ### crates/arawn-server/src/routes/ws
 
@@ -7816,24 +7872,6 @@
 -  `test_workstreams_not_configured` function L569-582 — `() -> Result<()>` — through the HTTP server.
 -  `test_delete_nonexistent_workstream_id` function L585-600 — `() -> Result<()>` — through the HTTP server.
 -  `test_create_and_get_roundtrip` function L603-655 — `() -> Result<()>` — through the HTTP server.
-
-### crates/arawn-server/tests/common
-
-> *Semantic summary to be generated by AI agent.*
-
-#### crates/arawn-server/tests/common/mod.rs
-
-- pub `TestServer` struct L19-30 — `{ addr: SocketAddr, token: String, client: Client, _handle: JoinHandle<()>, temp...` — A test server that runs in the background.
-- pub `start` function L34-36 — `() -> Result<Self>` — Start a new test server with default configuration.
-- pub `start_with_responses` function L39-101 — `(responses: Vec<String>) -> Result<Self>` — Start a new test server with mock responses.
-- pub `base_url` function L104-106 — `(&self) -> String` — Get the base URL for the server.
-- pub `get` function L109-113 — `(&self, path: &str) -> reqwest::RequestBuilder` — Get an authenticated request builder.
-- pub `post` function L116-120 — `(&self, path: &str) -> reqwest::RequestBuilder` — Get an authenticated POST request builder.
-- pub `delete` function L123-127 — `(&self, path: &str) -> reqwest::RequestBuilder` — Get an authenticated DELETE request builder.
-- pub `health` function L130-137 — `(&self) -> Result<bool>` — Check if server is healthy.
--  `TestServer` type L32-138 — `= TestServer` — Common test utilities for integration tests.
--  `find_available_port` function L141-146 — `() -> Result<SocketAddr>` — Find an available port for the test server.
--  `wait_for_server` function L149-167 — `(client: &Client, addr: SocketAddr) -> Result<()>` — Wait for the server to become ready.
 
 ### crates/arawn-session/src
 
