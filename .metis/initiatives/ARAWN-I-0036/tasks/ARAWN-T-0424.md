@@ -4,14 +4,14 @@ level: task
 title: "Extract handle_sidebar_key + delete-confirm fields to sidebar handler (~250 lines)"
 short_code: "ARAWN-T-0424"
 created_at: 2026-03-24T21:22:35.190074+00:00
-updated_at: 2026-03-25T00:50:21.924633+00:00
+updated_at: 2026-03-25T01:01:22.389510+00:00
 parent: ARAWN-I-0036
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -63,6 +63,8 @@ initiative_id: ARAWN-I-0036
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
@@ -135,4 +137,7 @@ initiative_id: ARAWN-I-0036
 
 ## Status Updates **[REQUIRED]**
 
-*To be added during implementation*
+### 2026-03-25: Completed
+- Created `app/sidebar_handler.rs` with handle_overlay_key, clear_pending_deletes, handle_sidebar_key, switch_to_workstream (~322 lines)
+- mod.rs: 2,875 → 2,558 (~317 lines extracted)
+- 153 tests pass

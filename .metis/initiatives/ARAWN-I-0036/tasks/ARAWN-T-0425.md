@@ -4,14 +4,14 @@ level: task
 title: "Split handle_server_message into typed dispatch — chat chunks, tool events, session events (~230 lines)"
 short_code: "ARAWN-T-0425"
 created_at: 2026-03-24T21:22:36.952678+00:00
-updated_at: 2026-03-24T21:22:36.952678+00:00
+updated_at: 2026-03-25T01:14:03.654264+00:00
 parent: ARAWN-I-0036
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -63,6 +63,10 @@ initiative_id: ARAWN-I-0036
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria **[REQUIRED]**
 
@@ -133,4 +137,7 @@ initiative_id: ARAWN-I-0036
 
 ## Status Updates **[REQUIRED]**
 
-*To be added during implementation*
+### 2026-03-25: Completed
+- Created `app/server_msg_handler.rs` with handle_server_message (~236 lines)
+- mod.rs: 2,558 → 2,324
+- 153 tests pass

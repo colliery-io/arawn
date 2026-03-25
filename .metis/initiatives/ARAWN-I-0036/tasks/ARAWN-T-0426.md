@@ -4,14 +4,14 @@ level: task
 title: "Extract async API operations to api_ops module — 9 do_* methods (~300 lines)"
 short_code: "ARAWN-T-0426"
 created_at: 2026-03-24T21:22:37.893216+00:00
-updated_at: 2026-03-24T21:22:37.893216+00:00
+updated_at: 2026-03-25T01:30:56.240821+00:00
 parent: ARAWN-I-0036
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -63,6 +63,10 @@ initiative_id: ARAWN-I-0036
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria **[REQUIRED]**
 
@@ -133,4 +137,7 @@ initiative_id: ARAWN-I-0036
 
 ## Status Updates **[REQUIRED]**
 
-*To be added during implementation*
+### 2026-03-25: Completed
+- Created `app/api_ops.rs` with process_pending_actions + 8 do_* methods + refresh_sidebar_data (~355 lines)
+- mod.rs: 2,324 → 1,971
+- 153 tests pass

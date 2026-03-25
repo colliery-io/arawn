@@ -6,3 +6,7 @@
 /Users/dstorey/Desktop/arawn/crates/arawn-tui/src/app/tool_pane_handler.rs
 /Users/dstorey/Desktop/arawn/crates/arawn-tui/src/app/mod.rs
 /Users/dstorey/Desktop/arawn/crates/arawn-tui/src/app/chat_handler.rs
+/Users/dstorey/Desktop/arawn/crates/arawn-tui/src/app/server_msg_handler.rs
+/Users/dstorey/Desktop/arawn/crates/arawn-tui/src/app/api_ops.rs
+/Users/dstorey/Desktop/arawn/crates/arawn-tui/src/app/input_handler.rs
+/Users/dstorey/Desktop/arawn/crates/arawn-tui/src/app/session_handler.rs
