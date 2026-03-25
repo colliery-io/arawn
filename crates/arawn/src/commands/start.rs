@@ -1513,6 +1513,15 @@ async fn create_backend(
             Ok(Arc::new(OpenAiBackend::new(config)?))
         }
         Backend::ClaudeOauth => {
+            // IMPORTANT: The claude-oauth backend proxies through Claude Code's OAuth
+            // infrastructure. It supports conversation only — tool use is NOT available.
+            // This backend cannot drive agentic workflows (tool calling, file operations,
+            // etc.). For full agent capabilities, use the `anthropic` backend with an
+            // API key.
+            //
+            // WARNING: Using this backend outside of Claude Code may violate Anthropic's
+            // Terms of Service. Use at your own risk.
+            //
             // Start the OAuth proxy on a random port, then point AnthropicBackend at it
             let data_dir = arawn_config::xdg_config_dir()
                 .ok_or_else(|| anyhow::anyhow!("Could not determine config directory"))?;

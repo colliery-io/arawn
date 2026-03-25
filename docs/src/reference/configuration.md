@@ -708,3 +708,7 @@ API keys are resolved in this order for each backend:
 5. `[llm] api_key` or `[llm.<profile>] api_key` in config (lowest priority)
 
 The `claude-oauth` backend uses OAuth tokens instead of API keys. Authenticate via `arawn auth login`.
+
+> **Note:** `claude-oauth` supports conversation only — no tool use. It cannot drive agentic workflows. Use the `anthropic` backend with an API key for full agent capabilities.
+>
+> **Warning:** Using the Claude OAuth backend outside of Claude Code may violate Anthropic's Terms of Service. The Arawn project assumes no responsibility for account restrictions or bans. Use at your own risk.

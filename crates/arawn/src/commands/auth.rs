@@ -130,6 +130,8 @@ async fn cmd_login(_ctx: &Context) -> Result<()> {
     println!("Scope: {}", tokens.scope);
     println!();
     output::hint("You can now use backend = \"claude-oauth\" in your config.");
+    output::hint("Note: claude-oauth supports conversation only (no tool use).");
+    output::hint("Warning: Using this outside Claude Code may violate Anthropic's ToS.");
 
     Ok(())
 }

@@ -106,7 +106,7 @@ export LLM_API_KEY="your-key-here"
 
 ### Claude OAuth
 
-Use a Claude MAX subscription instead of an API key. No key is needed -- authentication happens through a browser-based OAuth PKCE flow:
+Use a Claude MAX subscription instead of an API key. No key is needed — authentication happens through a browser-based OAuth PKCE flow:
 
 ```toml
 [llm]
@@ -122,6 +122,17 @@ arawn auth login
 ```
 
 Your browser opens, you authorize Arawn, and the token is stored automatically.
+
+> **Limitation:** The `claude-oauth` backend is tightly coupled to the Claude Code
+> execution framework. It supports **conversation only** — tool use is not available.
+> This means it cannot be used for agentic workflows (tool calling, file operations,
+> shell commands, etc.). It is still useful for pure conversation tasks where you
+> provide sufficient context in the prompt, but for full agent capabilities use the
+> `anthropic` backend with an API key instead.
+>
+> **Warning:** Using the Claude OAuth backend outside of Claude Code may violate
+> Anthropic's Terms of Service. The Arawn project assumes no responsibility for
+> account restrictions or bans resulting from its use. Proceed at your own risk.
 
 ## Create named profiles
 
