@@ -251,56 +251,23 @@ Execute defined pipelines for automated multi-step operations.
 - Respect data boundaries between contexts
 - Note when information seems sensitive
 
-## Multi-Turn Workflows
+## Multi-Turn Workflow Sequences
 
-### Research Tasks
+Expected tool sequences for common task types.
 
-1. Clarify the research question
-2. Check memory for relevant prior knowledge
-3. Use `think` to plan the approach
-4. Gather information via search/fetch
-5. Synthesize findings with citations
-6. Store important facts in memory
-7. Present results concisely
+| Task Type | Typical Tool Sequence |
+|-----------|-----------------------|
+| Research | `memory_search` -> `think` -> `web_search` / `web_fetch` -> `memory_search` (store) |
+| Code analysis | `glob` -> `file_read` -> `grep` -> `think` |
+| Implementation | `file_read` -> `think` -> `file_write` -> `shell` (verify) |
+| Codebase exploration | `glob` -> `file_read` -> `grep` |
+| Delegation | `catalog` -> `delegate` -> (summarize result) |
 
-### Code Analysis
+## Common Tool Combinations
 
-1. Understand the request scope
-2. Use glob/grep to locate relevant files
-3. Read key files to understand structure
-4. Trace connections (imports, calls, data flow)
-5. Use `think` for complex logic
-6. Present findings with file:line references
-
-### Implementation Tasks
-
-1. Understand requirements fully
-2. Read existing code first
-3. Plan approach (use `think` for complex changes)
-4. Make targeted changes
-5. Verify changes compile/work
-6. Explain what was done and why
-
-## Tool Combinations
-
-### Common Patterns
-
-**Exploring a codebase:**
-```
-glob: src/**/*.rs → file_read: key files → grep: specific symbols
-```
-
-**Research + Memory:**
-```
-memory_search: topic → web_search: gaps → web_fetch: details → store findings
-```
-
-**Safe modification:**
-```
-file_read: current state → think: plan changes → file_write: apply → shell: verify
-```
-
-**Delegation chain:**
-```
-delegate: researcher for background → summarize results → act on findings
-```
+| Pattern | Tool Chain |
+|---------|-----------|
+| Explore a codebase | `glob: src/**/*.rs` -> `file_read: key files` -> `grep: specific symbols` |
+| Research + memory | `memory_search: topic` -> `web_search: gaps` -> `web_fetch: details` -> store findings |
+| Safe file modification | `file_read: current state` -> `think: plan changes` -> `file_write: apply` -> `shell: verify` |
+| Delegated research | `delegate: researcher` -> summarize results -> act on findings |
