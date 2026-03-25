@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-03-25T02:01:01Z | 344 files | Rust
+> Generated: 2026-03-25T13:39:33Z | 344 files | Rust
 
 ## Project Structure
 
@@ -477,19 +477,19 @@
 - pub `get_note` function L455-476 — `(&self, id: &str) -> Result<Note>` — Get a single note by ID.
 - pub `delete_note` function L479-499 — `(&self, id: &str) -> Result<()>` — Delete a note by ID.
 - pub `search_notes` function L502-533 — `(&self, query: &str, limit: usize) -> Result<Vec<MemoryResult>>` — Search notes via memory search endpoint, filtering for note results.
-- pub `list_sessions` function L537-554 — `(&self) -> Result<Vec<SessionInfo>>` — List sessions.
-- pub `get_session_messages` function L557-576 — `(&self, session_id: &str) -> Result<SessionMessagesResponse>` — Get messages for a session.
-- pub `get_logs` function L579-606 — `(&self, lines: Option<usize>, file: Option<&str>) -> Result<LogsResponse>` — Get recent server log entries.
-- pub `list_log_files` function L609-626 — `(&self) -> Result<LogFilesResponse>` — List available server log files.
-- pub `delete_session` function L630-648 — `(&self, session_id: &str) -> Result<()>` — Delete a session.
+- pub `list_sessions` function L536-553 — `(&self) -> Result<Vec<SessionInfo>>` — List sessions.
+- pub `get_session_messages` function L556-575 — `(&self, session_id: &str) -> Result<SessionMessagesResponse>` — Get messages for a session.
+- pub `get_logs` function L578-605 — `(&self, lines: Option<usize>, file: Option<&str>) -> Result<LogsResponse>` — Get recent server log entries.
+- pub `list_log_files` function L608-625 — `(&self) -> Result<LogFilesResponse>` — List available server log files.
+- pub `delete_session` function L629-647 — `(&self, session_id: &str) -> Result<()>` — Delete a session.
 -  `CreateNoteRequest` struct L64-66 — `{ content: String }` — Create note request.
 -  `WsClientMessage` enum L149-158 — `Auth | Chat | Ping` — Messages sent to the server via WebSocket.
 -  `ChatStream` type L219-243 — `= ChatStream` — REST API and WebSocket endpoints.
--  `Client` type L256-649 — `= Client` — REST API and WebSocket endpoints.
--  `tests` module L656-697 — `-` — REST API and WebSocket endpoints.
--  `test_client_creation` function L660-663 — `()` — REST API and WebSocket endpoints.
--  `test_ws_client_message_serialization` function L666-681 — `()` — REST API and WebSocket endpoints.
--  `test_ws_server_message_deserialization` function L684-696 — `()` — REST API and WebSocket endpoints.
+-  `Client` type L256-648 — `= Client` — REST API and WebSocket endpoints.
+-  `tests` module L655-696 — `-` — REST API and WebSocket endpoints.
+-  `test_client_creation` function L659-662 — `()` — REST API and WebSocket endpoints.
+-  `test_ws_client_message_serialization` function L665-680 — `()` — REST API and WebSocket endpoints.
+-  `test_ws_server_message_deserialization` function L683-695 — `()` — REST API and WebSocket endpoints.
 
 ### crates/arawn/src/commands
 
@@ -1501,30 +1501,30 @@
 
 - pub `CommandValidator` struct L16-19 — `{ blocked_patterns: Vec<(regex::Regex, String)> }` — Validates shell commands before execution as a defense-in-depth layer.
 - pub `CommandValidation` enum L23-28 — `Allowed | Blocked` — Result of command validation.
-- pub `validate` function L89-102 — `(&self, command: &str) -> CommandValidation` — Validate a shell command.
--  `CommandValidator` type L30-82 — `impl Default for CommandValidator` — Shell command validation as a defense-in-depth layer.
--  `default` function L31-81 — `() -> Self` — Shell command validation as a defense-in-depth layer.
--  `CommandValidator` type L84-148 — `= CommandValidator` — Shell command validation as a defense-in-depth layer.
--  `normalize` function L115-147 — `(command: &str) -> String` — Normalize a command for pattern matching.
--  `tests` module L151-460 — `-` — Shell command validation as a defense-in-depth layer.
--  `test_validator_blocks_rm_rf_root` function L155-173 — `()` — Shell command validation as a defense-in-depth layer.
--  `test_validator_blocks_system_control` function L176-199 — `()` — Shell command validation as a defense-in-depth layer.
--  `test_validator_blocks_sandbox_escape` function L202-224 — `()` — Shell command validation as a defense-in-depth layer.
--  `test_validator_blocks_kernel_module_manipulation` function L227-241 — `()` — Shell command validation as a defense-in-depth layer.
--  `test_validator_blocks_process_tracing` function L244-266 — `()` — Shell command validation as a defense-in-depth layer.
--  `test_validator_blocks_destructive_fs` function L269-279 — `()` — Shell command validation as a defense-in-depth layer.
--  `test_validator_blocks_fork_bomb` function L282-288 — `()` — Shell command validation as a defense-in-depth layer.
--  `test_validator_normalizes_whitespace` function L291-307 — `()` — Shell command validation as a defense-in-depth layer.
--  `test_validator_normalizes_case` function L310-328 — `()` — Shell command validation as a defense-in-depth layer.
--  `test_validator_allows_legitimate_commands` function L331-362 — `()` — Shell command validation as a defense-in-depth layer.
--  `test_validator_allows_rm_in_subdirectory` function L365-380 — `()` — Shell command validation as a defense-in-depth layer.
--  `test_validator_allows_piped_commands` function L383-397 — `()` — Shell command validation as a defense-in-depth layer.
--  `test_validator_blocks_dangerous_in_pipe` function L400-411 — `()` — Shell command validation as a defense-in-depth layer.
--  `test_normalize_strips_quotes` function L414-417 — `()` — Shell command validation as a defense-in-depth layer.
--  `test_normalize_strips_backslash_escapes` function L420-422 — `()` — Shell command validation as a defense-in-depth layer.
--  `test_normalize_extracts_basename_from_absolute_path` function L425-429 — `()` — Shell command validation as a defense-in-depth layer.
--  `test_normalize_collapses_whitespace` function L432-434 — `()` — Shell command validation as a defense-in-depth layer.
--  `test_bypass_attempts_blocked` function L437-459 — `()` — Shell command validation as a defense-in-depth layer.
+- pub `validate` function L92-105 — `(&self, command: &str) -> CommandValidation` — Validate a shell command.
+-  `CommandValidator` type L30-85 — `impl Default for CommandValidator` — Shell command validation as a defense-in-depth layer.
+-  `default` function L31-84 — `() -> Self` — Shell command validation as a defense-in-depth layer.
+-  `CommandValidator` type L87-151 — `= CommandValidator` — Shell command validation as a defense-in-depth layer.
+-  `normalize` function L118-150 — `(command: &str) -> String` — Normalize a command for pattern matching.
+-  `tests` module L154-463 — `-` — Shell command validation as a defense-in-depth layer.
+-  `test_validator_blocks_rm_rf_root` function L158-176 — `()` — Shell command validation as a defense-in-depth layer.
+-  `test_validator_blocks_system_control` function L179-202 — `()` — Shell command validation as a defense-in-depth layer.
+-  `test_validator_blocks_sandbox_escape` function L205-227 — `()` — Shell command validation as a defense-in-depth layer.
+-  `test_validator_blocks_kernel_module_manipulation` function L230-244 — `()` — Shell command validation as a defense-in-depth layer.
+-  `test_validator_blocks_process_tracing` function L247-269 — `()` — Shell command validation as a defense-in-depth layer.
+-  `test_validator_blocks_destructive_fs` function L272-282 — `()` — Shell command validation as a defense-in-depth layer.
+-  `test_validator_blocks_fork_bomb` function L285-291 — `()` — Shell command validation as a defense-in-depth layer.
+-  `test_validator_normalizes_whitespace` function L294-310 — `()` — Shell command validation as a defense-in-depth layer.
+-  `test_validator_normalizes_case` function L313-331 — `()` — Shell command validation as a defense-in-depth layer.
+-  `test_validator_allows_legitimate_commands` function L334-365 — `()` — Shell command validation as a defense-in-depth layer.
+-  `test_validator_allows_rm_in_subdirectory` function L368-383 — `()` — Shell command validation as a defense-in-depth layer.
+-  `test_validator_allows_piped_commands` function L386-400 — `()` — Shell command validation as a defense-in-depth layer.
+-  `test_validator_blocks_dangerous_in_pipe` function L403-414 — `()` — Shell command validation as a defense-in-depth layer.
+-  `test_normalize_strips_quotes` function L417-420 — `()` — Shell command validation as a defense-in-depth layer.
+-  `test_normalize_strips_backslash_escapes` function L423-425 — `()` — Shell command validation as a defense-in-depth layer.
+-  `test_normalize_extracts_basename_from_absolute_path` function L428-432 — `()` — Shell command validation as a defense-in-depth layer.
+-  `test_normalize_collapses_whitespace` function L435-437 — `()` — Shell command validation as a defense-in-depth layer.
+-  `test_bypass_attempts_blocked` function L440-462 — `()` — Shell command validation as a defense-in-depth layer.
 
 #### crates/arawn-agent/src/tool/context.rs
 
@@ -2493,15 +2493,15 @@
 - pub `WebFetchTool` struct L116-119 — `{ client: Client, config: WebFetchConfig }` — Tool for fetching web page content.
 - pub `new` function L123-125 — `() -> std::result::Result<Self, reqwest::Error>` — Create a new web fetch tool with default configuration.
 - pub `with_config` function L128-135 — `(config: WebFetchConfig) -> std::result::Result<Self, reqwest::Error>` — Create a web fetch tool with custom configuration.
-- pub `SearchProvider` enum L745-754 — `Brave | Serper | Tavily | DuckDuckGo` — Web search provider configuration.
-- pub `WebSearchConfig` struct L758-765 — `{ provider: SearchProvider, max_results: usize, timeout: Duration }` — Configuration for web search.
-- pub `SearchResult` struct L779-783 — `{ title: String, url: String, snippet: String }` — A single search result.
-- pub `WebSearchTool` struct L787-790 — `{ client: Client, config: WebSearchConfig }` — Tool for searching the web.
-- pub `new` function L794-796 — `() -> std::result::Result<Self, reqwest::Error>` — Create a new web search tool with default configuration (DuckDuckGo).
-- pub `with_config` function L799-805 — `(config: WebSearchConfig) -> std::result::Result<Self, reqwest::Error>` — Create a web search tool with custom configuration.
-- pub `brave` function L808-815 — `(api_key: impl Into<String>) -> std::result::Result<Self, reqwest::Error>` — Create a web search tool with Brave Search.
-- pub `serper` function L818-825 — `(api_key: impl Into<String>) -> std::result::Result<Self, reqwest::Error>` — Create a web search tool with Serper.
-- pub `tavily` function L828-835 — `(api_key: impl Into<String>) -> std::result::Result<Self, reqwest::Error>` — Create a web search tool with Tavily.
+- pub `SearchProvider` enum L753-762 — `Brave | Serper | Tavily | DuckDuckGo` — Web search provider configuration.
+- pub `WebSearchConfig` struct L766-773 — `{ provider: SearchProvider, max_results: usize, timeout: Duration }` — Configuration for web search.
+- pub `SearchResult` struct L787-791 — `{ title: String, url: String, snippet: String }` — A single search result.
+- pub `WebSearchTool` struct L795-798 — `{ client: Client, config: WebSearchConfig }` — Tool for searching the web.
+- pub `new` function L802-804 — `() -> std::result::Result<Self, reqwest::Error>` — Create a new web search tool with default configuration (DuckDuckGo).
+- pub `with_config` function L807-813 — `(config: WebSearchConfig) -> std::result::Result<Self, reqwest::Error>` — Create a web search tool with custom configuration.
+- pub `brave` function L816-823 — `(api_key: impl Into<String>) -> std::result::Result<Self, reqwest::Error>` — Create a web search tool with Brave Search.
+- pub `serper` function L826-833 — `(api_key: impl Into<String>) -> std::result::Result<Self, reqwest::Error>` — Create a web search tool with Serper.
+- pub `tavily` function L836-843 — `(api_key: impl Into<String>) -> std::result::Result<Self, reqwest::Error>` — Create a web search tool with Tavily.
 -  `is_restricted_ip` function L22-41 — `(ip: &IpAddr) -> bool` — Check if an IP address is private, loopback, link-local, or otherwise
 -  `validate_url_not_ssrf` function L45-80 — `(url: &Url) -> std::result::Result<(), String>` — Resolve a URL's hostname and check that none of its IP addresses are
 -  `WebFetchConfig` type L101-112 — `impl Default for WebFetchConfig` — Provides tools for web search and URL fetching.
@@ -2510,59 +2510,59 @@
 -  `extract_text_from_html` function L138-198 — `(&self, html: &str) -> String` — Extract readable text from HTML.
 -  `extract_title` function L201-211 — `(&self, html: &str) -> Option<String>` — Extract title from HTML.
 -  `extract_description` function L214-224 — `(&self, html: &str) -> Option<String>` — Extract meta description from HTML.
--  `WebFetchTool` type L227-231 — `impl Default for WebFetchTool` — Provides tools for web search and URL fetching.
--  `default` function L228-230 — `() -> Self` — Provides tools for web search and URL fetching.
--  `WebFetchTool` type L234-736 — `impl Tool for WebFetchTool` — Provides tools for web search and URL fetching.
--  `name` function L235-237 — `(&self) -> &str` — Provides tools for web search and URL fetching.
--  `description` function L239-241 — `(&self) -> &str` — Provides tools for web search and URL fetching.
--  `parameters` function L243-289 — `(&self) -> Value` — Provides tools for web search and URL fetching.
--  `execute` function L291-735 — `(&self, params: Value, ctx: &ToolContext) -> Result<ToolResult>` — Provides tools for web search and URL fetching.
--  `WebSearchConfig` type L767-775 — `impl Default for WebSearchConfig` — Provides tools for web search and URL fetching.
--  `default` function L768-774 — `() -> Self` — Provides tools for web search and URL fetching.
--  `WebSearchTool` type L792-1020 — `= WebSearchTool` — Provides tools for web search and URL fetching.
--  `search_brave` function L837-880 — `(&self, query: &str, api_key: &str) -> Result<Vec<SearchResult>>` — Provides tools for web search and URL fetching.
--  `search_serper` function L882-923 — `(&self, query: &str, api_key: &str) -> Result<Vec<SearchResult>>` — Provides tools for web search and URL fetching.
--  `search_tavily` function L925-966 — `(&self, query: &str, api_key: &str) -> Result<Vec<SearchResult>>` — Provides tools for web search and URL fetching.
--  `search_duckduckgo` function L968-1019 — `(&self, query: &str) -> Result<Vec<SearchResult>>` — Provides tools for web search and URL fetching.
--  `WebSearchTool` type L1022-1026 — `impl Default for WebSearchTool` — Provides tools for web search and URL fetching.
--  `default` function L1023-1025 — `() -> Self` — Provides tools for web search and URL fetching.
--  `WebSearchTool` type L1029-1085 — `impl Tool for WebSearchTool` — Provides tools for web search and URL fetching.
--  `name` function L1030-1032 — `(&self) -> &str` — Provides tools for web search and URL fetching.
--  `description` function L1034-1036 — `(&self) -> &str` — Provides tools for web search and URL fetching.
--  `parameters` function L1038-1049 — `(&self) -> Value` — Provides tools for web search and URL fetching.
--  `execute` function L1051-1084 — `(&self, params: Value, ctx: &ToolContext) -> Result<ToolResult>` — Provides tools for web search and URL fetching.
--  `tests` module L1092-1493 — `-` — Provides tools for web search and URL fetching.
--  `test_web_fetch_tool_metadata` function L1096-1116 — `()` — Provides tools for web search and URL fetching.
--  `test_web_search_tool_metadata` function L1119-1126 — `()` — Provides tools for web search and URL fetching.
--  `test_extract_text_from_html` function L1129-1148 — `()` — Provides tools for web search and URL fetching.
--  `test_extract_title` function L1151-1155 — `()` — Provides tools for web search and URL fetching.
--  `test_extract_description` function L1158-1166 — `()` — Provides tools for web search and URL fetching.
--  `test_search_providers` function L1169-1175 — `()` — Provides tools for web search and URL fetching.
--  `test_web_fetch_invalid_url` function L1178-1189 — `()` — Provides tools for web search and URL fetching.
--  `test_web_fetch_non_http` function L1192-1203 — `()` — Provides tools for web search and URL fetching.
--  `test_web_fetch_unsupported_method` function L1206-1220 — `()` — Provides tools for web search and URL fetching.
--  `test_method_case_insensitivity` function L1223-1230 — `()` — Provides tools for web search and URL fetching.
--  `test_web_fetch_with_custom_headers_invalid_url` function L1233-1255 — `()` — Provides tools for web search and URL fetching.
--  `test_web_fetch_with_body_invalid_url` function L1258-1278 — `()` — Provides tools for web search and URL fetching.
--  `test_download_parameter_in_schema` function L1281-1287 — `()` — Provides tools for web search and URL fetching.
--  `test_max_size_config` function L1290-1294 — `()` — Provides tools for web search and URL fetching.
--  `test_web_fetch_download_invalid_url` function L1297-1316 — `()` — Provides tools for web search and URL fetching.
--  `test_extract_text_article_content` function L1321-1336 — `()` — Provides tools for web search and URL fetching.
--  `test_extract_text_fallback_to_body` function L1339-1348 — `()` — Provides tools for web search and URL fetching.
--  `test_extract_text_empty_html` function L1351-1355 — `()` — Provides tools for web search and URL fetching.
--  `test_extract_text_truncation` function L1358-1367 — `()` — Provides tools for web search and URL fetching.
--  `test_extract_text_content_class` function L1370-1376 — `()` — Provides tools for web search and URL fetching.
--  `test_extract_title_missing` function L1379-1383 — `()` — Provides tools for web search and URL fetching.
--  `test_extract_description_missing` function L1386-1390 — `()` — Provides tools for web search and URL fetching.
--  `test_extract_description_wrong_meta` function L1393-1397 — `()` — Provides tools for web search and URL fetching.
--  `test_web_fetch_config_default` function L1402-1408 — `()` — Provides tools for web search and URL fetching.
--  `test_web_fetch_tool_with_config` function L1411-1423 — `()` — Provides tools for web search and URL fetching.
--  `test_web_fetch_tool_default` function L1426-1429 — `()` — Provides tools for web search and URL fetching.
--  `test_web_search_config_default` function L1434-1439 — `()` — Provides tools for web search and URL fetching.
--  `test_web_search_tool_default` function L1442-1445 — `()` — Provides tools for web search and URL fetching.
--  `test_search_result_serialization` function L1450-1460 — `()` — Provides tools for web search and URL fetching.
--  `test_web_fetch_cancelled` function L1465-1483 — `()` — Provides tools for web search and URL fetching.
--  `test_web_fetch_missing_url` function L1486-1492 — `()` — Provides tools for web search and URL fetching.
+-  `WebFetchTool` type L227-239 — `impl Default for WebFetchTool` — Provides tools for web search and URL fetching.
+-  `default` function L228-238 — `() -> Self` — Provides tools for web search and URL fetching.
+-  `WebFetchTool` type L242-744 — `impl Tool for WebFetchTool` — Provides tools for web search and URL fetching.
+-  `name` function L243-245 — `(&self) -> &str` — Provides tools for web search and URL fetching.
+-  `description` function L247-249 — `(&self) -> &str` — Provides tools for web search and URL fetching.
+-  `parameters` function L251-297 — `(&self) -> Value` — Provides tools for web search and URL fetching.
+-  `execute` function L299-743 — `(&self, params: Value, ctx: &ToolContext) -> Result<ToolResult>` — Provides tools for web search and URL fetching.
+-  `WebSearchConfig` type L775-783 — `impl Default for WebSearchConfig` — Provides tools for web search and URL fetching.
+-  `default` function L776-782 — `() -> Self` — Provides tools for web search and URL fetching.
+-  `WebSearchTool` type L800-1028 — `= WebSearchTool` — Provides tools for web search and URL fetching.
+-  `search_brave` function L845-888 — `(&self, query: &str, api_key: &str) -> Result<Vec<SearchResult>>` — Provides tools for web search and URL fetching.
+-  `search_serper` function L890-931 — `(&self, query: &str, api_key: &str) -> Result<Vec<SearchResult>>` — Provides tools for web search and URL fetching.
+-  `search_tavily` function L933-974 — `(&self, query: &str, api_key: &str) -> Result<Vec<SearchResult>>` — Provides tools for web search and URL fetching.
+-  `search_duckduckgo` function L976-1027 — `(&self, query: &str) -> Result<Vec<SearchResult>>` — Provides tools for web search and URL fetching.
+-  `WebSearchTool` type L1030-1040 — `impl Default for WebSearchTool` — Provides tools for web search and URL fetching.
+-  `default` function L1031-1039 — `() -> Self` — Provides tools for web search and URL fetching.
+-  `WebSearchTool` type L1043-1099 — `impl Tool for WebSearchTool` — Provides tools for web search and URL fetching.
+-  `name` function L1044-1046 — `(&self) -> &str` — Provides tools for web search and URL fetching.
+-  `description` function L1048-1050 — `(&self) -> &str` — Provides tools for web search and URL fetching.
+-  `parameters` function L1052-1063 — `(&self) -> Value` — Provides tools for web search and URL fetching.
+-  `execute` function L1065-1098 — `(&self, params: Value, ctx: &ToolContext) -> Result<ToolResult>` — Provides tools for web search and URL fetching.
+-  `tests` module L1106-1507 — `-` — Provides tools for web search and URL fetching.
+-  `test_web_fetch_tool_metadata` function L1110-1130 — `()` — Provides tools for web search and URL fetching.
+-  `test_web_search_tool_metadata` function L1133-1140 — `()` — Provides tools for web search and URL fetching.
+-  `test_extract_text_from_html` function L1143-1162 — `()` — Provides tools for web search and URL fetching.
+-  `test_extract_title` function L1165-1169 — `()` — Provides tools for web search and URL fetching.
+-  `test_extract_description` function L1172-1180 — `()` — Provides tools for web search and URL fetching.
+-  `test_search_providers` function L1183-1189 — `()` — Provides tools for web search and URL fetching.
+-  `test_web_fetch_invalid_url` function L1192-1203 — `()` — Provides tools for web search and URL fetching.
+-  `test_web_fetch_non_http` function L1206-1217 — `()` — Provides tools for web search and URL fetching.
+-  `test_web_fetch_unsupported_method` function L1220-1234 — `()` — Provides tools for web search and URL fetching.
+-  `test_method_case_insensitivity` function L1237-1244 — `()` — Provides tools for web search and URL fetching.
+-  `test_web_fetch_with_custom_headers_invalid_url` function L1247-1269 — `()` — Provides tools for web search and URL fetching.
+-  `test_web_fetch_with_body_invalid_url` function L1272-1292 — `()` — Provides tools for web search and URL fetching.
+-  `test_download_parameter_in_schema` function L1295-1301 — `()` — Provides tools for web search and URL fetching.
+-  `test_max_size_config` function L1304-1308 — `()` — Provides tools for web search and URL fetching.
+-  `test_web_fetch_download_invalid_url` function L1311-1330 — `()` — Provides tools for web search and URL fetching.
+-  `test_extract_text_article_content` function L1335-1350 — `()` — Provides tools for web search and URL fetching.
+-  `test_extract_text_fallback_to_body` function L1353-1362 — `()` — Provides tools for web search and URL fetching.
+-  `test_extract_text_empty_html` function L1365-1369 — `()` — Provides tools for web search and URL fetching.
+-  `test_extract_text_truncation` function L1372-1381 — `()` — Provides tools for web search and URL fetching.
+-  `test_extract_text_content_class` function L1384-1390 — `()` — Provides tools for web search and URL fetching.
+-  `test_extract_title_missing` function L1393-1397 — `()` — Provides tools for web search and URL fetching.
+-  `test_extract_description_missing` function L1400-1404 — `()` — Provides tools for web search and URL fetching.
+-  `test_extract_description_wrong_meta` function L1407-1411 — `()` — Provides tools for web search and URL fetching.
+-  `test_web_fetch_config_default` function L1416-1422 — `()` — Provides tools for web search and URL fetching.
+-  `test_web_fetch_tool_with_config` function L1425-1437 — `()` — Provides tools for web search and URL fetching.
+-  `test_web_fetch_tool_default` function L1440-1443 — `()` — Provides tools for web search and URL fetching.
+-  `test_web_search_config_default` function L1448-1453 — `()` — Provides tools for web search and URL fetching.
+-  `test_web_search_tool_default` function L1456-1459 — `()` — Provides tools for web search and URL fetching.
+-  `test_search_result_serialization` function L1464-1474 — `()` — Provides tools for web search and URL fetching.
+-  `test_web_fetch_cancelled` function L1479-1497 — `()` — Provides tools for web search and URL fetching.
+-  `test_web_fetch_missing_url` function L1500-1506 — `()` — Provides tools for web search and URL fetching.
 
 #### crates/arawn-agent-tools/src/workflow.rs
 
@@ -5510,51 +5510,51 @@
 #### crates/arawn-pipeline/src/loader.rs
 
 - pub `WorkflowEvent` enum L21-28 — `Loaded | Removed | Error` — Event emitted when workflow files change.
-- pub `WorkflowLoader` struct L39-46 — `{ workflow_dir: PathBuf, workflows: Arc<RwLock<HashMap<String, LoadedWorkflow>>>...` — Manages loading and hot-reloading of workflow TOML files from a directory.
-- pub `new` function L52-81 — `(workflow_dir: impl Into<PathBuf>) -> Result<Self, PipelineError>` — Create a new loader for the given workflow directory.
-- pub `load_all` function L87-118 — `(&self) -> Vec<WorkflowEvent>` — Load all TOML workflow files from the directory.
-- pub `get` function L200-206 — `(&self, name: &str) -> Option<crate::definition::WorkflowDefinition>` — Get a loaded workflow definition by name.
-- pub `list_names` function L209-211 — `(&self) -> Vec<String>` — List all loaded workflow names.
-- pub `len` function L214-216 — `(&self) -> usize` — Get the number of loaded workflows.
-- pub `is_empty` function L219-221 — `(&self) -> bool` — Check if any workflows are loaded.
-- pub `watch` function L230-317 — `( &self, ) -> Result<(tokio::sync::mpsc::Receiver<WorkflowEvent>, WatcherHandle)...` — Start watching the workflow directory for changes.
-- pub `WatcherHandle` struct L394-396 — `{ _thread: std::thread::JoinHandle<()> }` — Handle that keeps the file watcher alive.
--  `LoadedWorkflow` struct L33-36 — `{ definition: crate::definition::WorkflowDefinition, path: PathBuf }` — In-memory cache of loaded workflow definitions.
--  `WorkflowLoader` type L48-323 — `= WorkflowLoader` — picked up without restarting the server.
--  `normalize_path` function L125-131 — `(&self, path: &Path) -> PathBuf` — Normalize a path to use the canonical `workflow_dir` prefix.
--  `load_file` function L134-178 — `(&self, path: &Path) -> WorkflowEvent` — Load or reload a single workflow file.
--  `remove_file` function L182-197 — `(&self, path: &Path) -> Option<WorkflowEvent>` — Handle a file being removed.
--  `is_workflow_file` function L320-322 — `(path: &Path) -> bool` — Check if a path is a workflow TOML file.
--  `WorkflowLoaderView` struct L326-329 — `{ workflows: Arc<RwLock<HashMap<String, LoadedWorkflow>>>, path_to_name: Arc<RwL...` — Internal view used by the watcher thread to update workflow state.
--  `WorkflowLoaderView` type L331-389 — `= WorkflowLoaderView` — picked up without restarting the server.
--  `load_file` function L332-372 — `(&self, path: &Path) -> WorkflowEvent` — picked up without restarting the server.
--  `remove_file` function L374-388 — `(&self, path: &Path) -> Option<WorkflowEvent>` — picked up without restarting the server.
--  `tests` module L399-801 — `-` — picked up without restarting the server.
--  `write_workflow` function L402-415 — `(dir: &Path, filename: &str, name: &str)` — picked up without restarting the server.
--  `write_invalid` function L417-419 — `(dir: &Path, filename: &str)` — picked up without restarting the server.
--  `test_load_empty_directory` function L422-428 — `()` — picked up without restarting the server.
--  `test_load_single_workflow` function L431-444 — `()` — picked up without restarting the server.
--  `test_load_multiple_workflows` function L447-461 — `()` — picked up without restarting the server.
--  `test_invalid_file_doesnt_crash` function L464-482 — `()` — picked up without restarting the server.
--  `test_skips_non_toml_files` function L485-496 — `()` — picked up without restarting the server.
--  `test_creates_directory_if_missing` function L499-506 — `()` — picked up without restarting the server.
--  `test_reload_modified_file` function L509-523 — `()` — picked up without restarting the server.
--  `test_remove_file` function L526-537 — `()` — picked up without restarting the server.
--  `test_get_nonexistent` function L540-544 — `()` — picked up without restarting the server.
--  `test_watch_detects_new_file` function L548-574 — `()` — picked up without restarting the server.
--  `test_watch_detects_modified_file` function L578-604 — `()` — picked up without restarting the server.
--  `test_watch_detects_deleted_file` function L608-634 — `()` — picked up without restarting the server.
--  `test_is_workflow_file` function L637-646 — `()` — picked up without restarting the server.
--  `test_normalize_path` function L649-656 — `()` — picked up without restarting the server.
--  `test_normalize_path_no_filename` function L659-665 — `()` — picked up without restarting the server.
--  `test_remove_nonexistent_file` function L668-673 — `()` — picked up without restarting the server.
--  `test_workflow_event_debug` function L676-696 — `()` — picked up without restarting the server.
--  `test_loader_view_load_file` function L699-716 — `()` — picked up without restarting the server.
--  `test_loader_view_load_invalid_file` function L719-734 — `()` — picked up without restarting the server.
--  `test_loader_view_remove_file` function L737-757 — `()` — picked up without restarting the server.
--  `test_loader_view_remove_nonexistent` function L760-771 — `()` — picked up without restarting the server.
--  `test_watch_returns_handle` function L774-781 — `()` — picked up without restarting the server.
--  `test_watch_ignores_non_toml` function L785-800 — `()` — picked up without restarting the server.
+- pub `WorkflowLoader` struct L38-45 — `{ workflow_dir: PathBuf, workflows: Arc<RwLock<HashMap<String, LoadedWorkflow>>>...` — Manages loading and hot-reloading of workflow TOML files from a directory.
+- pub `new` function L51-80 — `(workflow_dir: impl Into<PathBuf>) -> Result<Self, PipelineError>` — Create a new loader for the given workflow directory.
+- pub `load_all` function L86-117 — `(&self) -> Vec<WorkflowEvent>` — Load all TOML workflow files from the directory.
+- pub `get` function L199-205 — `(&self, name: &str) -> Option<crate::definition::WorkflowDefinition>` — Get a loaded workflow definition by name.
+- pub `list_names` function L208-210 — `(&self) -> Vec<String>` — List all loaded workflow names.
+- pub `len` function L213-215 — `(&self) -> usize` — Get the number of loaded workflows.
+- pub `is_empty` function L218-220 — `(&self) -> bool` — Check if any workflows are loaded.
+- pub `watch` function L229-316 — `( &self, ) -> Result<(tokio::sync::mpsc::Receiver<WorkflowEvent>, WatcherHandle)...` — Start watching the workflow directory for changes.
+- pub `WatcherHandle` struct L393-395 — `{ _thread: std::thread::JoinHandle<()> }` — Handle that keeps the file watcher alive.
+-  `LoadedWorkflow` struct L32-35 — `{ definition: crate::definition::WorkflowDefinition, path: PathBuf }` — In-memory cache of loaded workflow definitions.
+-  `WorkflowLoader` type L47-322 — `= WorkflowLoader` — picked up without restarting the server.
+-  `normalize_path` function L124-130 — `(&self, path: &Path) -> PathBuf` — Normalize a path to use the canonical `workflow_dir` prefix.
+-  `load_file` function L133-177 — `(&self, path: &Path) -> WorkflowEvent` — Load or reload a single workflow file.
+-  `remove_file` function L181-196 — `(&self, path: &Path) -> Option<WorkflowEvent>` — Handle a file being removed.
+-  `is_workflow_file` function L319-321 — `(path: &Path) -> bool` — Check if a path is a workflow TOML file.
+-  `WorkflowLoaderView` struct L325-328 — `{ workflows: Arc<RwLock<HashMap<String, LoadedWorkflow>>>, path_to_name: Arc<RwL...` — Internal view used by the watcher thread to update workflow state.
+-  `WorkflowLoaderView` type L330-388 — `= WorkflowLoaderView` — picked up without restarting the server.
+-  `load_file` function L331-371 — `(&self, path: &Path) -> WorkflowEvent` — picked up without restarting the server.
+-  `remove_file` function L373-387 — `(&self, path: &Path) -> Option<WorkflowEvent>` — picked up without restarting the server.
+-  `tests` module L398-800 — `-` — picked up without restarting the server.
+-  `write_workflow` function L401-414 — `(dir: &Path, filename: &str, name: &str)` — picked up without restarting the server.
+-  `write_invalid` function L416-418 — `(dir: &Path, filename: &str)` — picked up without restarting the server.
+-  `test_load_empty_directory` function L421-427 — `()` — picked up without restarting the server.
+-  `test_load_single_workflow` function L430-443 — `()` — picked up without restarting the server.
+-  `test_load_multiple_workflows` function L446-460 — `()` — picked up without restarting the server.
+-  `test_invalid_file_doesnt_crash` function L463-481 — `()` — picked up without restarting the server.
+-  `test_skips_non_toml_files` function L484-495 — `()` — picked up without restarting the server.
+-  `test_creates_directory_if_missing` function L498-505 — `()` — picked up without restarting the server.
+-  `test_reload_modified_file` function L508-522 — `()` — picked up without restarting the server.
+-  `test_remove_file` function L525-536 — `()` — picked up without restarting the server.
+-  `test_get_nonexistent` function L539-543 — `()` — picked up without restarting the server.
+-  `test_watch_detects_new_file` function L547-573 — `()` — picked up without restarting the server.
+-  `test_watch_detects_modified_file` function L577-603 — `()` — picked up without restarting the server.
+-  `test_watch_detects_deleted_file` function L607-633 — `()` — picked up without restarting the server.
+-  `test_is_workflow_file` function L636-645 — `()` — picked up without restarting the server.
+-  `test_normalize_path` function L648-655 — `()` — picked up without restarting the server.
+-  `test_normalize_path_no_filename` function L658-664 — `()` — picked up without restarting the server.
+-  `test_remove_nonexistent_file` function L667-672 — `()` — picked up without restarting the server.
+-  `test_workflow_event_debug` function L675-695 — `()` — picked up without restarting the server.
+-  `test_loader_view_load_file` function L698-715 — `()` — picked up without restarting the server.
+-  `test_loader_view_load_invalid_file` function L718-733 — `()` — picked up without restarting the server.
+-  `test_loader_view_remove_file` function L736-756 — `()` — picked up without restarting the server.
+-  `test_loader_view_remove_nonexistent` function L759-770 — `()` — picked up without restarting the server.
+-  `test_watch_returns_handle` function L773-780 — `()` — picked up without restarting the server.
+-  `test_watch_ignores_non_toml` function L784-799 — `()` — picked up without restarting the server.
 
 #### crates/arawn-pipeline/src/protocol.rs
 
@@ -7246,47 +7246,47 @@
 - pub `send_message_handler` function L591-612 — `( State(state): State<AppState>, Path(id): Path<String>, Json(req): Json<SendMes...`
 - pub `list_messages_handler` function L633-662 — `( State(state): State<AppState>, Path(id): Path<String>, Query(query): Query<Mes...`
 - pub `promote_handler` function L681-699 — `( State(state): State<AppState>, Path(id): Path<String>, Json(req): Json<Promote...`
-- pub `promote_file_handler` function L719-774 — `( State(state): State<AppState>, Path(workstream_id): Path<String>, Json(req): J...`
-- pub `export_file_handler` function L794-837 — `( State(state): State<AppState>, Path(workstream_id): Path<String>, Json(req): J...`
-- pub `clone_repo_handler` function L858-909 — `( State(state): State<AppState>, Path(workstream_id): Path<String>, Json(req): J...`
-- pub `get_usage_handler` function L927-967 — `( State(state): State<AppState>, Path(workstream_id): Path<String>, ) -> Result<...`
-- pub `cleanup_handler` function L989-1021 — `( State(state): State<AppState>, Path(workstream_id): Path<String>, Json(req): J...`
-- pub `CompressResponse` struct L1025-1030 — `{ summary: String, sessions_compressed: usize }` — Response from compression operation.
-- pub `compress_workstream_handler` function L1050-1093 — `( State(state): State<AppState>, Path(id): Path<String>, ) -> Result<Json<Compre...`
+- pub `promote_file_handler` function L719-781 — `( State(state): State<AppState>, Path(workstream_id): Path<String>, Json(req): J...`
+- pub `export_file_handler` function L801-844 — `( State(state): State<AppState>, Path(workstream_id): Path<String>, Json(req): J...`
+- pub `clone_repo_handler` function L865-916 — `( State(state): State<AppState>, Path(workstream_id): Path<String>, Json(req): J...`
+- pub `get_usage_handler` function L934-974 — `( State(state): State<AppState>, Path(workstream_id): Path<String>, ) -> Result<...`
+- pub `cleanup_handler` function L996-1028 — `( State(state): State<AppState>, Path(workstream_id): Path<String>, Json(req): J...`
+- pub `CompressResponse` struct L1032-1037 — `{ summary: String, sessions_compressed: usize }` — Response from compression operation.
+- pub `compress_workstream_handler` function L1057-1100 — `( State(state): State<AppState>, Path(id): Path<String>, ) -> Result<Json<Compre...`
 -  `validate_id` function L25-32 — `(id: &str) -> Result<(), ServerError>` — Validate a workstream ID from a URL path parameter.
 -  `is_zero` function L266-268 — `(v: &usize) -> bool`
 -  `get_manager` function L314-318 — `(state: &AppState) -> Result<&Arc<WorkstreamManager>, ServerError>`
 -  `to_workstream_response` function L320-335 — `( ws: &arawn_domain::Workstream, tags: Option<Vec<String>>, ) -> WorkstreamRespo...`
 -  `to_message_response` function L337-347 — `(msg: &WorkstreamMessage) -> MessageResponse`
--  `tests` module L1096-1660 — `-`
--  `create_state_with_workstreams` function L1111-1131 — `() -> (AppState, tempfile::TempDir)`
--  `create_state_without_workstreams` function L1133-1141 — `() -> AppState`
--  `create_test_router` function L1143-1169 — `(state: AppState) -> Router`
--  `auth_header` function L1171-1173 — `() -> (&'static str, &'static str)`
--  `test_validate_id_valid` function L1178-1182 — `()`
--  `test_validate_id_invalid` function L1185-1189 — `()`
--  `test_is_zero` function L1194-1198 — `()`
--  `test_list_workstreams_empty` function L1203-1226 — `()`
--  `test_create_workstream` function L1229-1255 — `()`
--  `test_get_workstream_scratch` function L1258-1287 — `()`
--  `test_get_workstream_not_found` function L1290-1307 — `()`
--  `test_get_workstream_invalid_id` function L1310-1328 — `()`
--  `test_update_workstream` function L1331-1359 — `()`
--  `test_delete_workstream` function L1362-1383 — `()`
--  `test_delete_workstream_not_found` function L1386-1404 — `()`
--  `test_list_workstream_sessions_empty` function L1407-1429 — `()`
--  `test_send_message` function L1432-1461 — `()`
--  `test_send_message_invalid_role` function L1464-1485 — `()`
--  `test_list_messages_empty` function L1488-1512 — `()`
--  `test_list_messages_invalid_since` function L1515-1534 — `()`
--  `test_promote_non_scratch` function L1537-1559 — `()`
--  `test_list_workstreams_not_configured` function L1564-1581 — `()`
--  `test_create_workstream_request_deserialize` function L1586-1592 — `()`
--  `test_send_message_request_deserialize` function L1595-1601 — `()`
--  `test_update_workstream_request_deserialize` function L1604-1611 — `()`
--  `test_workstream_response_serialization` function L1614-1631 — `()`
--  `test_promote_file_response_serialization` function L1634-1644 — `()`
--  `test_cleanup_response_serialization` function L1647-1659 — `()`
+-  `tests` module L1103-1667 — `-`
+-  `create_state_with_workstreams` function L1118-1138 — `() -> (AppState, tempfile::TempDir)`
+-  `create_state_without_workstreams` function L1140-1148 — `() -> AppState`
+-  `create_test_router` function L1150-1176 — `(state: AppState) -> Router`
+-  `auth_header` function L1178-1180 — `() -> (&'static str, &'static str)`
+-  `test_validate_id_valid` function L1185-1189 — `()`
+-  `test_validate_id_invalid` function L1192-1196 — `()`
+-  `test_is_zero` function L1201-1205 — `()`
+-  `test_list_workstreams_empty` function L1210-1233 — `()`
+-  `test_create_workstream` function L1236-1262 — `()`
+-  `test_get_workstream_scratch` function L1265-1294 — `()`
+-  `test_get_workstream_not_found` function L1297-1314 — `()`
+-  `test_get_workstream_invalid_id` function L1317-1335 — `()`
+-  `test_update_workstream` function L1338-1366 — `()`
+-  `test_delete_workstream` function L1369-1390 — `()`
+-  `test_delete_workstream_not_found` function L1393-1411 — `()`
+-  `test_list_workstream_sessions_empty` function L1414-1436 — `()`
+-  `test_send_message` function L1439-1468 — `()`
+-  `test_send_message_invalid_role` function L1471-1492 — `()`
+-  `test_list_messages_empty` function L1495-1519 — `()`
+-  `test_list_messages_invalid_since` function L1522-1541 — `()`
+-  `test_promote_non_scratch` function L1544-1566 — `()`
+-  `test_list_workstreams_not_configured` function L1571-1588 — `()`
+-  `test_create_workstream_request_deserialize` function L1593-1599 — `()`
+-  `test_send_message_request_deserialize` function L1602-1608 — `()`
+-  `test_update_workstream_request_deserialize` function L1611-1618 — `()`
+-  `test_workstream_response_serialization` function L1621-1638 — `()`
+-  `test_promote_file_response_serialization` function L1641-1651 — `()`
+-  `test_cleanup_response_serialization` function L1654-1666 — `()`
 
 ### crates/arawn-server/src/routes/ws
 
@@ -8195,10 +8195,10 @@
 
 #### crates/arawn-tui/src/app/mod.rs
 
-- pub `App` struct L43-132 — `{ server_url: String, ws_client: WsClient, api: ArawnClient, connection_status: ...` — Main application state.
-- pub `new` function L141-197 — `(server_url: String, log_buffer: LogBuffer) -> Result<Self>` — Create a new App instance.
-- pub `run` function L203-262 — `(&mut self, terminal: &mut Tui) -> Result<()>` — Run the main application loop.
-- pub `handle_key` function L265-359 — `(&mut self, key: crossterm::event::KeyEvent)` — Handle keyboard input.
+- pub `App` struct L42-131 — `{ server_url: String, ws_client: WsClient, api: ArawnClient, connection_status: ...` — Main application state.
+- pub `new` function L140-196 — `(server_url: String, log_buffer: LogBuffer) -> Result<Self>` — Create a new App instance.
+- pub `run` function L202-261 — `(&mut self, terminal: &mut Tui) -> Result<()>` — Run the main application loop.
+- pub `handle_key` function L264-358 — `(&mut self, key: crossterm::event::KeyEvent)` — Handle keyboard input.
 -  `api_ops` module L3 — `-` — Application state and main loop.
 -  `chat_handler` module L4 — `-` — Application state and main loop.
 -  `input_handler` module L5 — `-` — Application state and main loop.
@@ -8209,66 +8209,66 @@
 -  `tool_pane_handler` module L10 — `-` — Application state and main loop.
 -  `MAX_MESSAGES` variable L17 — `: usize` — Maximum number of chat messages to retain (prevents unbounded memory growth).
 -  `MAX_TOOLS` variable L20 — `: usize` — Maximum number of tool executions to retain per response.
--  `App` type L136-451 — `= App` — Application state and main loop.
--  `handle_palette_key` function L362-400 — `(&mut self, key: crossterm::event::KeyEvent)` — Handle command palette key events.
--  `execute_action` function L403-450 — `(&mut self, action_id: ActionId)` — Execute a palette action.
--  `App` type L454-509 — `= App` — Application state and main loop.
--  `test_new` function L456-508 — `() -> Self` — Create a test App with a mock WsClient and no real connections.
--  `tests` module L512-1499 — `-` — Application state and main loop.
--  `key` function L516-523 — `(code: KeyCode) -> KeyEvent` — Application state and main loop.
--  `key_mod` function L525-532 — `(code: KeyCode, modifiers: KeyModifiers) -> KeyEvent` — Application state and main loop.
--  `test_session_created_sets_session_id` function L537-546 — `()` — Application state and main loop.
--  `test_chat_chunk_creates_assistant_message` function L549-562 — `()` — Application state and main loop.
--  `test_chat_chunk_appends_to_streaming` function L565-581 — `()` — Application state and main loop.
--  `test_chat_done_clears_waiting` function L584-603 — `()` — Application state and main loop.
--  `test_error_clears_waiting` function L606-617 — `()` — Application state and main loop.
--  `test_session_not_owned_sets_read_only` function L620-631 — `()` — Application state and main loop.
--  `test_subscribe_ack_owner` function L634-649 — `()` — Application state and main loop.
--  `test_subscribe_ack_reader` function L652-662 — `()` — Application state and main loop.
--  `test_auth_success` function L665-674 — `()` — Application state and main loop.
--  `test_auth_failure` function L677-691 — `()` — Application state and main loop.
--  `test_context_info_updates` function L694-708 — `()` — Application state and main loop.
--  `test_tool_lifecycle` function L713-739 — `()` — Application state and main loop.
--  `test_command_progress_and_result` function L744-761 — `()` — Application state and main loop.
--  `test_ctrl_q_quits` function L766-770 — `()` — Application state and main loop.
--  `test_ctrl_c_quits_when_idle` function L773-777 — `()` — Application state and main loop.
--  `test_ctrl_c_cancels_when_waiting` function L780-790 — `()` — Application state and main loop.
--  `test_ctrl_k_opens_palette` function L793-798 — `()` — Application state and main loop.
--  `test_ctrl_w_toggles_sidebar` function L801-812 — `()` — Application state and main loop.
--  `test_ctrl_e_toggles_tool_pane` function L815-823 — `()` — Application state and main loop.
--  `test_ctrl_l_toggles_logs` function L826-833 — `()` — Application state and main loop.
--  `test_ctrl_u_toggles_usage` function L836-843 — `()` — Application state and main loop.
--  `test_typing_adds_to_input` function L848-853 — `()` — Application state and main loop.
--  `test_enter_sends_message` function L856-866 — `()` — Application state and main loop.
--  `test_enter_blocked_when_waiting` function L869-878 — `()` — Application state and main loop.
--  `test_send_blocked_in_read_only` function L881-890 — `()` — Application state and main loop.
--  `test_enter_on_empty_does_nothing` function L893-898 — `()` — Application state and main loop.
--  `test_shift_enter_inserts_newline` function L901-907 — `()` — Application state and main loop.
--  `test_waiting_cleared_on_disconnect` function L912-933 — `()` — Application state and main loop.
--  `test_waiting_not_cleared_if_not_previously_connected` function L936-948 — `()` — Application state and main loop.
--  `test_switch_session_clears_state` function L953-977 — `()` — Application state and main loop.
--  `test_switch_workstream_clears_session` function L982-996 — `()` — Application state and main loop.
--  `test_slash_command_detected` function L1001-1005 — `()` — Application state and main loop.
--  `test_regular_text_not_command` function L1008-1012 — `()` — Application state and main loop.
--  `test_disk_pressure_stored` function L1017-1030 — `()` — Application state and main loop.
--  `test_disk_pressure_replaces_existing` function L1033-1055 — `()` — Application state and main loop.
--  `test_disk_critical_sets_status` function L1058-1071 — `()` — Application state and main loop.
--  `test_usage_updates_for_current_workstream` function L1076-1092 — `()` — Application state and main loop.
--  `test_usage_ignored_for_other_workstream` function L1095-1111 — `()` — Application state and main loop.
--  `test_palette_esc_closes` function L1116-1123 — `()` — Application state and main loop.
--  `test_full_message_flow` function L1128-1157 — `()` — Application state and main loop.
--  `test_send_clears_tools` function L1160-1177 — `()` — Application state and main loop.
--  `test_send_enables_auto_scroll` function L1180-1188 — `()` — Application state and main loop.
--  `simulate_status_poll` function L1193-1204 — `(app: &mut App)` — Helper: simulate the tick handler's connection status poll logic.
--  `test_app_controllable` function L1206-1266 — `() -> ( App, tokio::sync::mpsc::UnboundedSender<ConnectionStatus>, tokio::sync::...` — Application state and main loop.
--  `test_disconnect_shows_status_indicator` function L1269-1277 — `()` — Application state and main loop.
--  `test_reconnecting_shows_attempt_count` function L1280-1300 — `()` — Application state and main loop.
--  `test_full_reconnection_lifecycle` function L1303-1332 — `()` — Application state and main loop.
--  `test_session_state_preserved_across_reconnect` function L1335-1384 — `()` — Application state and main loop.
--  `test_rapid_disconnect_reconnect_cycles_no_panic` function L1387-1413 — `()` — Application state and main loop.
--  `test_disconnect_during_streaming_marks_message_not_streaming` function L1416-1441 — `()` — Application state and main loop.
--  `test_messages_received_after_reconnect_handled_correctly` function L1444-1480 — `()` — Application state and main loop.
--  `test_disconnect_while_not_waiting_no_status_change` function L1483-1498 — `()` — Application state and main loop.
+-  `App` type L135-450 — `= App` — Application state and main loop.
+-  `handle_palette_key` function L361-399 — `(&mut self, key: crossterm::event::KeyEvent)` — Handle command palette key events.
+-  `execute_action` function L402-449 — `(&mut self, action_id: ActionId)` — Execute a palette action.
+-  `App` type L453-508 — `= App` — Application state and main loop.
+-  `test_new` function L455-507 — `() -> Self` — Create a test App with a mock WsClient and no real connections.
+-  `tests` module L511-1498 — `-` — Application state and main loop.
+-  `key` function L515-522 — `(code: KeyCode) -> KeyEvent` — Application state and main loop.
+-  `key_mod` function L524-531 — `(code: KeyCode, modifiers: KeyModifiers) -> KeyEvent` — Application state and main loop.
+-  `test_session_created_sets_session_id` function L536-545 — `()` — Application state and main loop.
+-  `test_chat_chunk_creates_assistant_message` function L548-561 — `()` — Application state and main loop.
+-  `test_chat_chunk_appends_to_streaming` function L564-580 — `()` — Application state and main loop.
+-  `test_chat_done_clears_waiting` function L583-602 — `()` — Application state and main loop.
+-  `test_error_clears_waiting` function L605-616 — `()` — Application state and main loop.
+-  `test_session_not_owned_sets_read_only` function L619-630 — `()` — Application state and main loop.
+-  `test_subscribe_ack_owner` function L633-648 — `()` — Application state and main loop.
+-  `test_subscribe_ack_reader` function L651-661 — `()` — Application state and main loop.
+-  `test_auth_success` function L664-673 — `()` — Application state and main loop.
+-  `test_auth_failure` function L676-690 — `()` — Application state and main loop.
+-  `test_context_info_updates` function L693-707 — `()` — Application state and main loop.
+-  `test_tool_lifecycle` function L712-738 — `()` — Application state and main loop.
+-  `test_command_progress_and_result` function L743-760 — `()` — Application state and main loop.
+-  `test_ctrl_q_quits` function L765-769 — `()` — Application state and main loop.
+-  `test_ctrl_c_quits_when_idle` function L772-776 — `()` — Application state and main loop.
+-  `test_ctrl_c_cancels_when_waiting` function L779-789 — `()` — Application state and main loop.
+-  `test_ctrl_k_opens_palette` function L792-797 — `()` — Application state and main loop.
+-  `test_ctrl_w_toggles_sidebar` function L800-811 — `()` — Application state and main loop.
+-  `test_ctrl_e_toggles_tool_pane` function L814-822 — `()` — Application state and main loop.
+-  `test_ctrl_l_toggles_logs` function L825-832 — `()` — Application state and main loop.
+-  `test_ctrl_u_toggles_usage` function L835-842 — `()` — Application state and main loop.
+-  `test_typing_adds_to_input` function L847-852 — `()` — Application state and main loop.
+-  `test_enter_sends_message` function L855-865 — `()` — Application state and main loop.
+-  `test_enter_blocked_when_waiting` function L868-877 — `()` — Application state and main loop.
+-  `test_send_blocked_in_read_only` function L880-889 — `()` — Application state and main loop.
+-  `test_enter_on_empty_does_nothing` function L892-897 — `()` — Application state and main loop.
+-  `test_shift_enter_inserts_newline` function L900-906 — `()` — Application state and main loop.
+-  `test_waiting_cleared_on_disconnect` function L911-932 — `()` — Application state and main loop.
+-  `test_waiting_not_cleared_if_not_previously_connected` function L935-947 — `()` — Application state and main loop.
+-  `test_switch_session_clears_state` function L952-976 — `()` — Application state and main loop.
+-  `test_switch_workstream_clears_session` function L981-995 — `()` — Application state and main loop.
+-  `test_slash_command_detected` function L1000-1004 — `()` — Application state and main loop.
+-  `test_regular_text_not_command` function L1007-1011 — `()` — Application state and main loop.
+-  `test_disk_pressure_stored` function L1016-1029 — `()` — Application state and main loop.
+-  `test_disk_pressure_replaces_existing` function L1032-1054 — `()` — Application state and main loop.
+-  `test_disk_critical_sets_status` function L1057-1070 — `()` — Application state and main loop.
+-  `test_usage_updates_for_current_workstream` function L1075-1091 — `()` — Application state and main loop.
+-  `test_usage_ignored_for_other_workstream` function L1094-1110 — `()` — Application state and main loop.
+-  `test_palette_esc_closes` function L1115-1122 — `()` — Application state and main loop.
+-  `test_full_message_flow` function L1127-1156 — `()` — Application state and main loop.
+-  `test_send_clears_tools` function L1159-1176 — `()` — Application state and main loop.
+-  `test_send_enables_auto_scroll` function L1179-1187 — `()` — Application state and main loop.
+-  `simulate_status_poll` function L1192-1203 — `(app: &mut App)` — Helper: simulate the tick handler's connection status poll logic.
+-  `test_app_controllable` function L1205-1265 — `() -> ( App, tokio::sync::mpsc::UnboundedSender<ConnectionStatus>, tokio::sync::...` — Application state and main loop.
+-  `test_disconnect_shows_status_indicator` function L1268-1276 — `()` — Application state and main loop.
+-  `test_reconnecting_shows_attempt_count` function L1279-1299 — `()` — Application state and main loop.
+-  `test_full_reconnection_lifecycle` function L1302-1331 — `()` — Application state and main loop.
+-  `test_session_state_preserved_across_reconnect` function L1334-1383 — `()` — Application state and main loop.
+-  `test_rapid_disconnect_reconnect_cycles_no_panic` function L1386-1412 — `()` — Application state and main loop.
+-  `test_disconnect_during_streaming_marks_message_not_streaming` function L1415-1440 — `()` — Application state and main loop.
+-  `test_messages_received_after_reconnect_handled_correctly` function L1443-1479 — `()` — Application state and main loop.
+-  `test_disconnect_while_not_waiting_no_status_change` function L1482-1497 — `()` — Application state and main loop.
 
 #### crates/arawn-tui/src/app/server_msg_handler.rs
 
@@ -10209,7 +10209,7 @@
 -  `T` type L49 — `= T`
 -  `T` type L53 — `= T`
 -  `ComposablePipeline` struct L56-60 — `{ pipeline: P, params: &'a P::Parameters, model: &'a mut Model }` — Owns a pipeline, and references a model and some parameters to implement `Composable`
--  `apply` function L73-77 — `(&self, _input: P::Input) -> Result<P::Output>`
+-  `apply` function L73-75 — `(&self, _input: P::Input) -> Result<P::Output>`
 
 ### runtimes/file_read/src
 

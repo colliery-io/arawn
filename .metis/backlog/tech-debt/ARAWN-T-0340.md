@@ -4,15 +4,15 @@ level: task
 title: "Tech Debt Audit: Comprehensive Code Quality Report (March 2026)"
 short_code: "ARAWN-T-0340"
 created_at: 2026-03-22T00:34:45.586498+00:00
-updated_at: 2026-03-22T00:34:45.586498+00:00
-parent:
+updated_at: 2026-03-25T13:39:25.025932+00:00
+parent: 
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/backlog"
   - "#tech-debt"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -314,6 +314,38 @@ Two vendored crates (`orp-vendored`, `gline-rs-vendored`) are excluded from the 
 | Production `unwrap()`/`expect()` calls | ~12 |
 | TODO/FIXME comments | 2 |
 | `unimplemented!()` calls | 2 |
+
+## Status Updates
+
+### 2026-03-25: Triage + Quick Fixes
+
+Most items from the original audit are already resolved by initiatives I-0029 through I-0038:
+- **C1** (unwrap in agent turn): Fixed in I-0030
+- **C4** (daemon mode): Implemented in I-0032
+- **H1** (start.rs 1,405 lines): Decomposed to 245 lines in I-0035
+- **H2** (TUI App 3,272 lines): Decomposed to 452 lines in I-0036
+- **H3** (LLM backend duplication): Deduplicated in I-0037
+- **H4** (dirs crate versions): Consolidated in I-0034
+- **H5** (ort RC): Noted, awaiting stable release
+- **H6** (28 error types): Partially cleaned in I-0034
+- **M1** (WsConnectionTracker leak): Fixed in I-0034
+- **M2** (hardcoded server URL): Fixed in I-0034
+
+Fixed today:
+- **C2**: Removed `expect()` from WebFetchTool/WebSearchTool Default impls → graceful fallback
+- **C3**: Removed `expect()` from CommandValidator regex → log + skip
+- **M3**: Fixed hardcoded 30s fallback timeout → uses `pipeline_cfg.task_timeout_secs`
+- **M4**: Removed stale TODO, added tracing for file promotion renames
+- **graphqlite**: Upgraded 0.3.2 → 0.3.10, fixing 2 broken graph store tests
+
+**Also fixed:**
+- M5: Replaced `unimplemented!()` with `Err()` in vendored orp Composable impls
+- M6: Audited 16 annotations → removed 4 incorrect, 12 remaining are legitimate (serde + JoinHandle)
+- graphqlite upgraded 0.3.2 → 0.3.10 fixing 2 graph store test failures
+
+**Deferred (structural refactors, own initiative if pursued):**
+- M7: Large server route files (1.1K-1.7K lines) — future decomposition candidate
+- M8: Inline tests in large production files — cosmetic
 
 ## Recommended Priority Order
 

@@ -7,7 +7,7 @@ created_at: 2026-03-23T02:17:52.200606+00:00
 updated_at: 2026-03-23T02:17:52.200606+00:00
 parent: ARAWN-I-0037
 blocked_by: []
-archived: false
+archived: true
 
 tags:
   - "#specification"
