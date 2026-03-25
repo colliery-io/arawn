@@ -31,6 +31,7 @@ pub enum WorkflowEvent {
 #[derive(Debug, Clone)]
 struct LoadedWorkflow {
     definition: crate::definition::WorkflowDefinition,
+    #[allow(dead_code)] // Retained for future workflow file tracking
     path: PathBuf,
 }
 

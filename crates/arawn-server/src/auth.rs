@@ -214,7 +214,7 @@ fn validate_request(request: &Request<Body>, state: &AppState) -> Result<Identit
             .get::<ConnectInfo<SocketAddr>>()
             .map(|ci| ci.0.ip());
 
-        if !source_ip.map_or(false, |ip| is_tailscale_or_loopback(ip)) {
+        if !source_ip.is_some_and(is_tailscale_or_loopback) {
             tracing::warn!(
                 source_ip = ?source_ip,
                 "Tailscale-User-Login header from non-Tailscale source IP — rejecting"

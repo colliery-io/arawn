@@ -154,10 +154,10 @@ impl<P: PersistenceHook> SessionCache<P> {
         // Check if expired
         if inner.ttl.is_expired(session_id) {
             debug!(session_id = %session_id, "Session expired, removing from cache");
-            if let Some(entry) = inner.lru.pop(session_id) {
-                if let Err(e) = inner.persistence.on_evict(session_id, &entry.context_id) {
-                    tracing::warn!(session_id = %session_id, error = %e, "Eviction callback failed");
-                }
+            if let Some(entry) = inner.lru.pop(session_id)
+                && let Err(e) = inner.persistence.on_evict(session_id, &entry.context_id)
+            {
+                tracing::warn!(session_id = %session_id, error = %e, "Eviction callback failed");
             }
             inner.ttl.remove(session_id);
         } else if let Some(entry) = inner.lru.get(session_id) {

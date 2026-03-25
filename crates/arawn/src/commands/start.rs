@@ -527,11 +527,14 @@ async fn init_llm_backends(
 }
 
 /// Phase 4: Resolve server bind address, workspace, bootstrap dir, and auth token.
+/// Resolved server settings from config + CLI args.
+type ServerSettings = (SocketAddr, Option<PathBuf>, Option<PathBuf>, Option<String>);
+
 fn resolve_server_settings(
     config: &arawn_config::ArawnConfig,
     args: &StartArgs,
     ctx: &Context,
-) -> Result<(SocketAddr, Option<PathBuf>, Option<PathBuf>, Option<String>)> {
+) -> Result<ServerSettings> {
     let server_cfg = config.server.as_ref();
     let port = args
         .port
@@ -846,10 +849,10 @@ async fn register_pipeline_tools(
         .ancestors()
         .nth(2)
         .map(|p| p.join("runtimes"));
-    if let Some(ref src_dir) = runtimes_src_dir {
-        if src_dir.is_dir() {
-            register_builtin_runtimes(src_dir, &executor, &catalog, ctx.verbose).await;
-        }
+    if let Some(ref src_dir) = runtimes_src_dir
+        && src_dir.is_dir()
+    {
+        register_builtin_runtimes(src_dir, &executor, &catalog, ctx.verbose).await;
     }
 
     // Register CatalogTool + WorkflowTool
@@ -862,7 +865,8 @@ async fn register_pipeline_tools(
     ));
 
     // Load existing workflows + start hot-reload watcher
-    let watcher_handle = match WorkflowLoader::new(pipeline_workflow_dir) {
+
+    match WorkflowLoader::new(pipeline_workflow_dir) {
         Ok(loader) => {
             let factory = build_executor_factory(executor.clone(), catalog.clone());
 
@@ -976,9 +980,7 @@ async fn register_pipeline_tools(
             tracing::warn!("failed to create workflow loader: {}", e);
             None
         }
-    };
-
-    watcher_handle
+    }
 }
 
 /// Phase 15: Assemble server config, AppState, workstreams, session cache, and compressor.
@@ -2284,10 +2286,10 @@ fn validate_config(config: &arawn_config::ArawnConfig) -> Result<()> {
         }
     }
 
-    if let Some(ref embedding) = config.embedding {
-        if embedding.dimensions == Some(0) {
-            anyhow::bail!("Invalid config: embedding.dimensions must be > 0");
-        }
+    if let Some(ref embedding) = config.embedding
+        && embedding.dimensions == Some(0)
+    {
+        anyhow::bail!("Invalid config: embedding.dimensions must be > 0");
     }
 
     Ok(())

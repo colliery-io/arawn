@@ -5,8 +5,6 @@ use crossterm::event::{KeyCode, KeyModifiers};
 use super::App;
 use crate::app_types::{ChatMessage, InputMode, PendingAction};
 use crate::focus::FocusTarget;
-use crate::palette::ActionId;
-use crate::sidebar::SidebarSection;
 
 impl App {
     pub(crate) fn handle_input_key(&mut self, key: crossterm::event::KeyEvent) {
@@ -208,13 +206,6 @@ impl App {
             _ => {}
         }
     }
-
-    /// Scroll chat up by the given number of lines.
-    ///
-    /// Disables auto-scroll so the user can read history without
-    /// being snapped back to the bottom during streaming. Auto-scroll
-    /// is only re-enabled when the user sends a new message.
-    // scroll_chat_up, scroll_chat_down → chat_handler.rs
 
     /// Handle mouse events (scroll wheel on panels).
     pub(crate) fn handle_mouse(&mut self, mouse: crossterm::event::MouseEvent) {

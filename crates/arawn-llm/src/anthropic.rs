@@ -328,16 +328,6 @@ struct ApiUsage {
     cache_read_input_tokens: Option<u32>,
 }
 
-#[derive(Debug, serde::Deserialize)]
-struct ApiError {
-    error: ApiErrorDetail,
-}
-
-#[derive(Debug, serde::Deserialize)]
-struct ApiErrorDetail {
-    message: String,
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // SSE Stream Parsing
 // ─────────────────────────────────────────────────────────────────────────────

@@ -635,16 +635,6 @@ struct OpenAiUsage {
     completion_tokens: u32,
 }
 
-#[derive(Debug, serde::Deserialize)]
-struct OpenAiErrorResponse {
-    error: OpenAiError,
-}
-
-#[derive(Debug, serde::Deserialize)]
-struct OpenAiError {
-    message: String,
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // SSE Streaming
 // ─────────────────────────────────────────────────────────────────────────────

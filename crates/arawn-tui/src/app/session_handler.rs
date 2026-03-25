@@ -4,7 +4,7 @@ use crate::focus::FocusTarget;
 use crossterm::event::{KeyCode, KeyModifiers};
 
 use super::App;
-use crate::app_types::{ChatMessage, PendingAction};
+use crate::app_types::PendingAction;
 
 impl App {
     pub(crate) fn handle_sessions_key(&mut self, key: crossterm::event::KeyEvent) {
@@ -52,8 +52,6 @@ impl App {
             _ => {}
         }
     }
-
-    /// Handle command palette key events.
 
     pub fn switch_to_session(&mut self, session_id: &str) {
         // Subscribe to the new session FIRST to avoid missing messages

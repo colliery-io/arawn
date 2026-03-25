@@ -24,9 +24,8 @@ use crate::events::{Event, EventHandler};
 use crate::input::InputState;
 use crate::logs::LogBuffer;
 use crate::palette::{ActionId, CommandPalette};
-use crate::protocol::ServerMessage;
-use crate::sessions::{SessionList, SessionSummary};
-use crate::sidebar::{Sidebar, SidebarSection, WorkstreamEntry};
+use crate::sessions::SessionList;
+use crate::sidebar::{Sidebar, SidebarSection};
 use crate::ui;
 use crate::ui::CommandPopup;
 use anyhow::Result;
@@ -194,9 +193,6 @@ impl App {
             last_ping: std::time::Instant::now(),
         })
     }
-
-    /// Push a message (BoundedVec handles eviction automatically).
-    // push_message, push_tool → chat_handler.rs
 
     /// Run the main application loop.
     pub async fn run(&mut self, terminal: &mut Tui) -> Result<()> {

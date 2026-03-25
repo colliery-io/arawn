@@ -1,6 +1,6 @@
 //! Sidebar key handling, overlay navigation, and workstream switching.
 
-use crossterm::event::{KeyCode, KeyModifiers};
+use crossterm::event::KeyCode;
 
 use super::App;
 use crate::app_types::{InputMode, PendingAction};
@@ -44,10 +44,6 @@ impl App {
             _ => {}
         }
     }
-
-    /// Handle tool pane key events.
-    // handle_tool_pane_key, open_tool_in_editor, run_pager → tool_pane_handler.rs
-    // handle_logs_key → logs_handler.rs
 
     /// Clear any pending delete confirmations.
     pub(crate) fn clear_pending_deletes(&mut self) {

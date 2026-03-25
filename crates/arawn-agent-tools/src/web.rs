@@ -432,13 +432,13 @@ impl Tool for WebFetchTool {
             }
 
             // FsGate validation: check if the download path is allowed
-            if let Some(gate) = &ctx.fs_gate {
-                if let Err(e) = gate.validate_write(path) {
-                    return Ok(ToolResult::error(format!(
-                        "Download path denied by filesystem gate: {}",
-                        e
-                    )));
-                }
+            if let Some(gate) = &ctx.fs_gate
+                && let Err(e) = gate.validate_write(path)
+            {
+                return Ok(ToolResult::error(format!(
+                    "Download path denied by filesystem gate: {}",
+                    e
+                )));
             }
 
             // Create parent directories if needed

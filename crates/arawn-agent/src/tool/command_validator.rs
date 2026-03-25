@@ -117,7 +117,7 @@ impl CommandValidator {
         let mut s = command.to_lowercase();
 
         // Remove single and double quotes (shell quoting bypass)
-        s = s.replace('"', "").replace('\'', "");
+        s = s.replace(['"', '\''], "");
 
         // Remove backslash escapes (e.g., r\m → rm)
         s = s.replace('\\', "");
@@ -130,17 +130,18 @@ impl CommandValidator {
         // e.g., `/usr/bin/rm -rf /` → `rm -rf /`
         if let Some(first_space) = s.find(' ') {
             let (cmd, rest) = s.split_at(first_space);
-            if let Some(basename) = cmd.rsplit('/').next() {
-                if !basename.is_empty() && cmd.contains('/') {
-                    s = format!("{}{}", basename, rest);
-                }
+            if let Some(basename) = cmd.rsplit('/').next()
+                && !basename.is_empty()
+                && cmd.contains('/')
+            {
+                s = format!("{}{}", basename, rest);
             }
         } else if s.contains('/') {
             // Single token with path, extract basename
-            if let Some(basename) = s.rsplit('/').next() {
-                if !basename.is_empty() {
-                    s = basename.to_string();
-                }
+            if let Some(basename) = s.rsplit('/').next()
+                && !basename.is_empty()
+            {
+                s = basename.to_string();
             }
         }
 

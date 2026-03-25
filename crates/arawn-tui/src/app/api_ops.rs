@@ -3,7 +3,7 @@
 use super::App;
 use crate::app_types::{ChatMessage, PendingAction};
 use crate::sessions::SessionSummary;
-use crate::sidebar::{SidebarSection, WorkstreamEntry};
+use crate::sidebar::WorkstreamEntry;
 use arawn_client::{CreateWorkstreamRequest, UpdateWorkstreamRequest};
 use chrono::{DateTime, Utc};
 
