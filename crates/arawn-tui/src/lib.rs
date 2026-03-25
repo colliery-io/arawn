@@ -3,6 +3,7 @@
 //! A minimal, keyboard-driven terminal interface for Arawn.
 
 pub mod app;
+pub mod app_types;
 pub mod bounded;
 pub mod client;
 pub mod events;
