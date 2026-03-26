@@ -703,4 +703,128 @@ mod tests {
         assert!(!ToolResult::json(serde_json::json!({})).was_truncated());
         assert!(ToolResult::error("err [Output truncated").was_truncated());
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // validate_against_schema tests
+    // ─────────────────────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_validate_schema_missing_required_field() {
+        let schema = serde_json::json!({
+            "type": "object",
+            "properties": {
+                "path": { "type": "string" }
+            },
+            "required": ["path"]
+        });
+        let params = serde_json::json!({});
+        let err = validate_against_schema(&params, &schema).unwrap_err();
+        assert!(err.is_error());
+        let msg = err.to_llm_content();
+        assert!(
+            msg.contains("path"),
+            "Error should mention the missing field name, got: {}",
+            msg
+        );
+    }
+
+    #[test]
+    fn test_validate_schema_unknown_param() {
+        let schema = serde_json::json!({
+            "type": "object",
+            "properties": {
+                "path": { "type": "string" }
+            },
+            "required": ["path"]
+        });
+        let params = serde_json::json!({"path": "/tmp", "bogus": 42});
+        let err = validate_against_schema(&params, &schema).unwrap_err();
+        let msg = err.to_llm_content();
+        assert!(
+            msg.contains("Unknown parameter"),
+            "Expected unknown-param error, got: {}",
+            msg
+        );
+        assert!(
+            msg.contains("bogus"),
+            "Error should name the unknown param, got: {}",
+            msg
+        );
+        assert!(
+            msg.contains("path"),
+            "Error should list valid params, got: {}",
+            msg
+        );
+    }
+
+    #[test]
+    fn test_validate_schema_wrong_type() {
+        let schema = serde_json::json!({
+            "type": "object",
+            "properties": {
+                "limit": { "type": "integer" }
+            }
+        });
+        let params = serde_json::json!({"limit": "not_a_number"});
+        let err = validate_against_schema(&params, &schema).unwrap_err();
+        let msg = err.to_llm_content();
+        assert!(
+            msg.contains("expected type"),
+            "Expected type error, got: {}",
+            msg
+        );
+        assert!(
+            msg.contains("integer"),
+            "Should mention expected type, got: {}",
+            msg
+        );
+        assert!(
+            msg.contains("string"),
+            "Should mention actual type, got: {}",
+            msg
+        );
+    }
+
+    #[test]
+    fn test_validate_schema_valid_params() {
+        let schema = serde_json::json!({
+            "type": "object",
+            "properties": {
+                "path": { "type": "string" },
+                "limit": { "type": "integer" }
+            },
+            "required": ["path"]
+        });
+        let params = serde_json::json!({"path": "/tmp/file.txt", "limit": 10});
+        assert!(validate_against_schema(&params, &schema).is_ok());
+    }
+
+    #[test]
+    fn test_validate_schema_empty_properties_accepts_anything() {
+        let schema = serde_json::json!({
+            "type": "object",
+            "properties": {}
+        });
+        let params = serde_json::json!({"any_key": "any_value", "another": 42});
+        assert!(validate_against_schema(&params, &schema).is_ok());
+    }
+
+    #[test]
+    fn test_validate_schema_no_required_accepts_subset() {
+        let schema = serde_json::json!({
+            "type": "object",
+            "properties": {
+                "path": { "type": "string" },
+                "content": { "type": "string" },
+                "append": { "type": "boolean" }
+            }
+        });
+        // Only pass one optional param — should be fine
+        let params = serde_json::json!({"path": "/tmp"});
+        assert!(validate_against_schema(&params, &schema).is_ok());
+
+        // Empty is also fine when nothing is required
+        let params = serde_json::json!({});
+        assert!(validate_against_schema(&params, &schema).is_ok());
+    }
 }

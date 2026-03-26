@@ -260,12 +260,13 @@ mod tests {
 
     #[tokio::test]
     async fn test_gate_deny_by_default_no_gate() {
-        let mut registry = ToolRegistry::new();
-        registry.register(
+        let mock = Arc::new(
             MockTool::new("file_read")
                 .with_gated_params(vec![GatedParam::ReadPath("path")])
                 .with_response(ToolResult::text("secret")),
         );
+        let mut registry = ToolRegistry::new();
+        registry.register_arc(mock.clone());
 
         // ToolContext with no fs_gate (default)
         let ctx = ToolContext::default();
@@ -282,6 +283,7 @@ mod tests {
                 .to_llm_content()
                 .contains("requires a filesystem gate")
         );
+        assert_eq!(mock.call_count(), 0, "Tool should not have been called");
     }
 
     #[tokio::test]
@@ -329,8 +331,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_gate_non_gated_tool_passes_through_without_gate() {
+        let mock = Arc::new(MockTool::new("think").with_response(ToolResult::text("thought")));
         let mut registry = ToolRegistry::new();
-        registry.register(MockTool::new("think").with_response(ToolResult::text("thought")));
+        registry.register_arc(mock.clone());
 
         // No gate set — non-gated tool should work fine
         let ctx = ToolContext::default();
@@ -346,16 +349,18 @@ mod tests {
 
         assert!(result.is_success());
         assert_eq!(result.to_llm_content(), "thought");
+        assert_eq!(mock.call_count(), 1, "Tool should have been called once");
     }
 
     #[tokio::test]
     async fn test_gate_file_read_allowed() {
-        let mut registry = ToolRegistry::new();
-        registry.register(
+        let mock = Arc::new(
             MockTool::new("file_read")
                 .with_gated_params(vec![GatedParam::ReadPath("path")])
                 .with_response(ToolResult::text("file contents")),
         );
+        let mut registry = ToolRegistry::new();
+        registry.register_arc(mock.clone());
 
         let gate = MockFsGate::new("/work").allow_read("/work");
         let ctx = ctx_with_gate(gate);
@@ -368,16 +373,18 @@ mod tests {
 
         assert!(result.is_success());
         assert_eq!(result.to_llm_content(), "file contents");
+        assert_eq!(mock.call_count(), 1, "Tool should have been called once");
     }
 
     #[tokio::test]
     async fn test_gate_file_read_denied() {
-        let mut registry = ToolRegistry::new();
-        registry.register(
+        let mock = Arc::new(
             MockTool::new("file_read")
                 .with_gated_params(vec![GatedParam::ReadPath("path")])
                 .with_response(ToolResult::text("should not see")),
         );
+        let mut registry = ToolRegistry::new();
+        registry.register_arc(mock.clone());
 
         let gate = MockFsGate::new("/work").allow_read("/work");
         let ctx = ctx_with_gate(gate);
@@ -390,16 +397,18 @@ mod tests {
 
         assert!(result.is_error());
         assert!(result.to_llm_content().contains("Access denied"));
+        assert_eq!(mock.call_count(), 0, "Tool should not have been called");
     }
 
     #[tokio::test]
     async fn test_gate_file_write_allowed() {
-        let mut registry = ToolRegistry::new();
-        registry.register(
+        let mock = Arc::new(
             MockTool::new("file_write")
                 .with_gated_params(vec![GatedParam::WritePath("path")])
                 .with_response(ToolResult::text("written")),
         );
+        let mut registry = ToolRegistry::new();
+        registry.register_arc(mock.clone());
 
         let gate = MockFsGate::new("/work").allow_write("/work");
         let ctx = ctx_with_gate(gate);
@@ -411,16 +420,18 @@ mod tests {
             .unwrap();
 
         assert!(result.is_success());
+        assert_eq!(mock.call_count(), 1, "Tool should have been called once");
     }
 
     #[tokio::test]
     async fn test_gate_file_write_denied() {
-        let mut registry = ToolRegistry::new();
-        registry.register(
+        let mock = Arc::new(
             MockTool::new("file_write")
                 .with_gated_params(vec![GatedParam::WritePath("path")])
                 .with_response(ToolResult::text("should not")),
         );
+        let mut registry = ToolRegistry::new();
+        registry.register_arc(mock.clone());
 
         let gate = MockFsGate::new("/work").allow_write("/work");
         let ctx = ctx_with_gate(gate);
@@ -433,16 +444,18 @@ mod tests {
 
         assert!(result.is_error());
         assert!(result.to_llm_content().contains("Access denied"));
+        assert_eq!(mock.call_count(), 0, "Tool should not have been called");
     }
 
     #[tokio::test]
     async fn test_gate_glob_allowed() {
-        let mut registry = ToolRegistry::new();
-        registry.register(
+        let mock = Arc::new(
             MockTool::new("glob")
                 .with_gated_params(vec![GatedParam::ReadPath("directory")])
                 .with_response(ToolResult::text("file1.rs\nfile2.rs")),
         );
+        let mut registry = ToolRegistry::new();
+        registry.register_arc(mock.clone());
 
         let gate = MockFsGate::new("/work").allow_read("/work");
         let ctx = ctx_with_gate(gate);
@@ -454,16 +467,18 @@ mod tests {
             .unwrap();
 
         assert!(result.is_success());
+        assert_eq!(mock.call_count(), 1, "Tool should have been called once");
     }
 
     #[tokio::test]
     async fn test_gate_glob_denied() {
-        let mut registry = ToolRegistry::new();
-        registry.register(
+        let mock = Arc::new(
             MockTool::new("glob")
                 .with_gated_params(vec![GatedParam::ReadPath("directory")])
                 .with_response(ToolResult::text("should not")),
         );
+        let mut registry = ToolRegistry::new();
+        registry.register_arc(mock.clone());
 
         let gate = MockFsGate::new("/work").allow_read("/work");
         let ctx = ctx_with_gate(gate);
@@ -479,16 +494,18 @@ mod tests {
             "Glob to /home/user/.ssh should be denied"
         );
         assert!(result.to_llm_content().contains("Access denied"));
+        assert_eq!(mock.call_count(), 0, "Tool should not have been called");
     }
 
     #[tokio::test]
     async fn test_gate_grep_denied() {
-        let mut registry = ToolRegistry::new();
-        registry.register(
+        let mock = Arc::new(
             MockTool::new("grep")
                 .with_gated_params(vec![GatedParam::ReadPath("directory")])
                 .with_response(ToolResult::text("should not")),
         );
+        let mut registry = ToolRegistry::new();
+        registry.register_arc(mock.clone());
 
         let gate = MockFsGate::new("/work").allow_read("/work");
         let ctx = ctx_with_gate(gate);
@@ -504,6 +521,7 @@ mod tests {
             "Grep in /var/log/secure should be denied"
         );
         assert!(result.to_llm_content().contains("Access denied"));
+        assert_eq!(mock.call_count(), 0, "Tool should not have been called");
     }
 
     #[tokio::test]
@@ -570,10 +588,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_gate_execute_raw_deny_by_default() {
-        let mut registry = ToolRegistry::new();
-        registry.register(
+        let mock = Arc::new(
             MockTool::new("file_read").with_gated_params(vec![GatedParam::ReadPath("path")]),
         );
+        let mut registry = ToolRegistry::new();
+        registry.register_arc(mock.clone());
 
         let ctx = ToolContext::default();
         let result = registry
@@ -591,16 +610,18 @@ mod tests {
                 .to_llm_content()
                 .contains("requires a filesystem gate")
         );
+        assert_eq!(mock.call_count(), 0, "Tool should not have been called");
     }
 
     #[tokio::test]
     async fn test_gate_execute_raw_allowed_with_gate() {
-        let mut registry = ToolRegistry::new();
-        registry.register(
+        let mock = Arc::new(
             MockTool::new("file_read")
                 .with_gated_params(vec![GatedParam::ReadPath("path")])
                 .with_response(ToolResult::text("raw contents")),
         );
+        let mut registry = ToolRegistry::new();
+        registry.register_arc(mock.clone());
 
         let gate = MockFsGate::new("/work").allow_read("/work");
         let ctx = ctx_with_gate(gate);
@@ -614,12 +635,14 @@ mod tests {
         assert!(result.is_success());
         // execute_raw skips sanitization, so raw content comes through
         assert_eq!(result.to_llm_content(), "raw contents");
+        assert_eq!(mock.call_count(), 1, "Tool should have been called once");
     }
 
     #[tokio::test]
     async fn test_gate_execute_raw_non_gated_passes_through() {
+        let mock = Arc::new(MockTool::new("think").with_response(ToolResult::text("deep thought")));
         let mut registry = ToolRegistry::new();
-        registry.register(MockTool::new("think").with_response(ToolResult::text("deep thought")));
+        registry.register_arc(mock.clone());
 
         let ctx = ToolContext::default();
         let result = registry
@@ -629,16 +652,18 @@ mod tests {
 
         assert!(result.is_success());
         assert_eq!(result.to_llm_content(), "deep thought");
+        assert_eq!(mock.call_count(), 1, "Tool should have been called once");
     }
 
     #[tokio::test]
     async fn test_gate_file_read_no_path_param_passes_through() {
-        let mut registry = ToolRegistry::new();
-        registry.register(
+        let mock = Arc::new(
             MockTool::new("file_read")
                 .with_gated_params(vec![GatedParam::ReadPath("path")])
                 .with_response(ToolResult::text("ok")),
         );
+        let mut registry = ToolRegistry::new();
+        registry.register_arc(mock.clone());
 
         // Gate is present but params have no "path" key — validation is skipped
         let gate = MockFsGate::new("/work").allow_read("/work");
@@ -652,6 +677,7 @@ mod tests {
 
         // Tool executes without path validation (no path to validate)
         assert!(result.is_success());
+        assert_eq!(mock.call_count(), 1, "Tool should have been called once");
     }
 
     #[tokio::test]
@@ -707,10 +733,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_gate_shell_blocked_command_rejected() {
+        let mock =
+            Arc::new(MockTool::new("shell").with_gated_params(vec![GatedParam::WorkingDir("cwd")]));
         let mut registry = ToolRegistry::new();
-        registry.register(
-            MockTool::new("shell").with_gated_params(vec![GatedParam::WorkingDir("cwd")]),
-        );
+        registry.register_arc(mock.clone());
 
         let gate = MockFsGate::new("/work")
             .allow_read("/work")
@@ -731,14 +757,15 @@ mod tests {
         assert!(result.is_error());
         assert!(result.to_llm_content().contains("not allowed"));
         assert!(!result.to_llm_content().contains("SHOULD NOT REACH"));
+        assert_eq!(mock.call_count(), 0, "Tool should not have been called");
     }
 
     #[tokio::test]
     async fn test_gate_shell_blocked_command_case_bypass() {
+        let mock =
+            Arc::new(MockTool::new("shell").with_gated_params(vec![GatedParam::WorkingDir("cwd")]));
         let mut registry = ToolRegistry::new();
-        registry.register(
-            MockTool::new("shell").with_gated_params(vec![GatedParam::WorkingDir("cwd")]),
-        );
+        registry.register_arc(mock.clone());
 
         let gate = MockFsGate::new("/work").allow_read("/work");
         let ctx = ctx_with_gate(gate);
@@ -752,14 +779,15 @@ mod tests {
 
         assert!(result.is_error());
         assert!(result.to_llm_content().contains("not allowed"));
+        assert_eq!(mock.call_count(), 0, "Tool should not have been called");
     }
 
     #[tokio::test]
     async fn test_gate_shell_blocked_command_whitespace_bypass() {
+        let mock =
+            Arc::new(MockTool::new("shell").with_gated_params(vec![GatedParam::WorkingDir("cwd")]));
         let mut registry = ToolRegistry::new();
-        registry.register(
-            MockTool::new("shell").with_gated_params(vec![GatedParam::WorkingDir("cwd")]),
-        );
+        registry.register_arc(mock.clone());
 
         let gate = MockFsGate::new("/work").allow_read("/work");
         let ctx = ctx_with_gate(gate);
@@ -773,5 +801,98 @@ mod tests {
 
         assert!(result.is_error());
         assert!(result.to_llm_content().contains("not allowed"));
+        assert_eq!(mock.call_count(), 0, "Tool should not have been called");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Gated Params Declaration Enforcement Tests
+    // ─────────────────────────────────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_gated_params_custom_param_name_drives_enforcement() {
+        // Tool declares gated_params with a custom param name "custom_dir"
+        // Proves the gate reads the declaration, not a hardcoded name
+        let mock = Arc::new(
+            MockTool::new("custom_reader")
+                .with_gated_params(vec![GatedParam::ReadPath("custom_dir")])
+                .with_response(ToolResult::text("should not see")),
+        );
+        let mut registry = ToolRegistry::new();
+        registry.register_arc(mock.clone());
+
+        let gate = MockFsGate::new("/work").allow_read("/work");
+        let ctx = ctx_with_gate(gate);
+        let params = serde_json::json!({"custom_dir": "/etc/passwd"});
+
+        let result = registry
+            .execute_with_config("custom_reader", params, &ctx, &OutputConfig::default())
+            .await
+            .unwrap();
+
+        assert!(
+            result.is_error(),
+            "Access to /etc/passwd should be denied via custom_dir param"
+        );
+        assert!(result.to_llm_content().contains("Access denied"));
+        assert_eq!(mock.call_count(), 0, "Tool should not have been called");
+    }
+
+    #[tokio::test]
+    async fn test_empty_gated_params_tool_passes_with_any_paths() {
+        // Tool with empty gated_params() — ungated tool with path-like params
+        let mock = Arc::new(
+            MockTool::new("ungated_tool")
+                // No .with_gated_params() — default is empty vec
+                .with_response(ToolResult::text("passed")),
+        );
+        let mut registry = ToolRegistry::new();
+        registry.register_arc(mock.clone());
+
+        let ctx = ToolContext::default(); // No gate needed for ungated tools
+        let params = serde_json::json!({
+            "path": "/etc/passwd",
+            "directory": "/root/.ssh"
+        });
+
+        let result = registry
+            .execute_with_config("ungated_tool", params, &ctx, &OutputConfig::default())
+            .await
+            .unwrap();
+
+        assert!(
+            result.is_success(),
+            "Ungated tool should pass regardless of path-like params"
+        );
+        assert_eq!(result.to_llm_content(), "passed");
+        assert_eq!(mock.call_count(), 1, "Tool should have been called once");
+    }
+
+    #[tokio::test]
+    async fn test_gated_params_no_fs_gate_denied_with_message() {
+        // Tool with gated_params but no ctx.fs_gate — should deny with specific message
+        let mock = Arc::new(
+            MockTool::new("gated_no_gate")
+                .with_gated_params(vec![GatedParam::ReadPath("target")])
+                .with_response(ToolResult::text("should not see")),
+        );
+        let mut registry = ToolRegistry::new();
+        registry.register_arc(mock.clone());
+
+        let ctx = ToolContext::default(); // No fs_gate
+        let params = serde_json::json!({"target": "/work/file.txt"});
+
+        let result = registry
+            .execute_with_config("gated_no_gate", params, &ctx, &OutputConfig::default())
+            .await
+            .unwrap();
+
+        assert!(result.is_error());
+        let msg = result.to_llm_content();
+        assert!(
+            msg.contains("requires a filesystem gate"),
+            "Error should mention missing gate, got: {}",
+            msg
+        );
+        assert_eq!(mock.call_count(), 0, "Tool should not have been called");
     }
 }

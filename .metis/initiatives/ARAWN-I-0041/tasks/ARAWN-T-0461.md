@@ -4,14 +4,14 @@ level: task
 title: "Audit and fix all tool tests — validate params against schemas, add negative tests for wrong params"
 short_code: "ARAWN-T-0461"
 created_at: 2026-03-26T17:34:35.103694+00:00
-updated_at: 2026-03-26T17:34:35.103694+00:00
+updated_at: 2026-03-26T17:59:39.449808+00:00
 parent: ARAWN-I-0041
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/active"
 
 
 exit_criteria_met: false
@@ -63,6 +63,8 @@ Audit all tool tests to ensure params match declared schemas. Now that validate(
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
 
 ## Acceptance Criteria **[REQUIRED]**
 
