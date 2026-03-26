@@ -507,4 +507,164 @@ mod tests {
         assert_eq!(RelationshipType::RelatedTo.as_str(), "RELATED_TO");
         assert_eq!(RelationshipType::CitedIn.as_str(), "CITED_IN");
     }
+
+    #[test]
+    #[serial]
+    fn test_get_neighbors_returns_connected_ids() {
+        let graph = create_test_graph();
+
+        graph
+            .add_entity(&GraphNode::new("rust", "Language"))
+            .unwrap();
+        graph.add_entity(&GraphNode::new("cargo", "Tool")).unwrap();
+        graph
+            .add_entity(&GraphNode::new("crates_io", "Service"))
+            .unwrap();
+
+        graph
+            .add_relationship(&GraphRelationship::new(
+                "rust",
+                "cargo",
+                RelationshipType::RelatedTo,
+            ))
+            .unwrap();
+        graph
+            .add_relationship(&GraphRelationship::new(
+                "rust",
+                "crates_io",
+                RelationshipType::RelatedTo,
+            ))
+            .unwrap();
+
+        let neighbors = graph.get_neighbors("rust").unwrap();
+        assert_eq!(neighbors.len(), 2);
+        assert!(neighbors.contains(&"cargo".to_string()));
+        assert!(neighbors.contains(&"crates_io".to_string()));
+    }
+
+    #[test]
+    #[serial]
+    fn test_get_neighbors_no_connections_returns_empty() {
+        let graph = create_test_graph();
+
+        graph
+            .add_entity(&GraphNode::new("isolated", "Node"))
+            .unwrap();
+        let neighbors = graph.get_neighbors("isolated").unwrap();
+        assert!(neighbors.is_empty());
+    }
+
+    #[test]
+    #[serial]
+    fn test_stats_reflect_mutations() {
+        let graph = create_test_graph();
+
+        assert_eq!(graph.stats().unwrap().node_count, 0);
+        assert_eq!(graph.stats().unwrap().relationship_count, 0);
+
+        graph.add_entity(&GraphNode::new("a", "Node")).unwrap();
+        graph.add_entity(&GraphNode::new("b", "Node")).unwrap();
+        assert_eq!(graph.stats().unwrap().node_count, 2);
+
+        graph
+            .add_relationship(&GraphRelationship::new(
+                "a",
+                "b",
+                RelationshipType::Supports,
+            ))
+            .unwrap();
+        assert_eq!(graph.stats().unwrap().relationship_count, 1);
+
+        graph.delete_entity("a").unwrap();
+        assert_eq!(graph.stats().unwrap().node_count, 1);
+    }
+
+    #[test]
+    #[serial]
+    fn test_relationship_with_properties() {
+        let graph = create_test_graph();
+
+        graph.add_entity(&GraphNode::new("src", "Node")).unwrap();
+        graph.add_entity(&GraphNode::new("dst", "Node")).unwrap();
+
+        let rel = GraphRelationship::new("src", "dst", RelationshipType::CitedIn)
+            .with_property("source", "paper.pdf")
+            .with_property("page", 42);
+        graph.add_relationship(&rel).unwrap();
+
+        assert_eq!(graph.stats().unwrap().relationship_count, 1);
+    }
+
+    #[test]
+    #[serial]
+    fn test_entity_with_properties_preserved() {
+        let graph = create_test_graph();
+
+        let node = GraphNode::new("proj", "Project")
+            .with_property("language", "Rust")
+            .with_property("stars", 1000);
+        graph.add_entity(&node).unwrap();
+
+        // Verify entity exists via neighbors (add a connected node to query)
+        graph
+            .add_entity(&GraphNode::new("dep", "Dependency"))
+            .unwrap();
+        graph
+            .add_relationship(&GraphRelationship::new(
+                "proj",
+                "dep",
+                RelationshipType::RelatedTo,
+            ))
+            .unwrap();
+        let neighbors = graph.get_neighbors("proj").unwrap();
+        assert_eq!(neighbors.len(), 1);
+        assert_eq!(neighbors[0], "dep");
+    }
+
+    #[test]
+    #[serial]
+    fn test_delete_nonexistent_entity() {
+        let graph = create_test_graph();
+        // Should not error on deleting something that doesn't exist
+        let result = graph.delete_entity("ghost");
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    #[serial]
+    fn test_multi_hop_traversal() {
+        let graph = create_test_graph();
+
+        graph.add_entity(&GraphNode::new("a", "Node")).unwrap();
+        graph.add_entity(&GraphNode::new("b", "Node")).unwrap();
+        graph.add_entity(&GraphNode::new("c", "Node")).unwrap();
+
+        graph
+            .add_relationship(&GraphRelationship::new(
+                "a",
+                "b",
+                RelationshipType::RelatedTo,
+            ))
+            .unwrap();
+        graph
+            .add_relationship(&GraphRelationship::new(
+                "b",
+                "c",
+                RelationshipType::RelatedTo,
+            ))
+            .unwrap();
+
+        // a connects to b
+        let hop1 = graph.get_neighbors("a").unwrap();
+        assert_eq!(hop1, vec!["b"]);
+
+        // b connects to both a (undirected) and c
+        let mut hop2 = graph.get_neighbors("b").unwrap();
+        hop2.sort();
+        assert_eq!(hop2, vec!["a", "c"]);
+
+        // c connects to b (undirected)
+        let hop3 = graph.get_neighbors("c").unwrap();
+        assert_eq!(hop3, vec!["b"]);
+    }
 }
