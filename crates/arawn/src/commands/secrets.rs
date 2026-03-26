@@ -9,6 +9,7 @@ use super::output;
 #[derive(Args, Debug)]
 #[command(after_help = "\x1b[1mExamples:\x1b[0m
   arawn secrets set github_token    Store a secret (prompts for value)
+  arawn secrets get github_token    Retrieve a secret value
   arawn secrets list                List stored secret names
   arawn secrets delete github_token")]
 pub struct SecretsArgs {
@@ -21,6 +22,12 @@ pub enum SecretsCommand {
     /// Store a secret in the encrypted store
     Set {
         /// Secret name (e.g., github_token, anthropic_api_key)
+        name: String,
+    },
+
+    /// Retrieve a secret value from the encrypted store
+    Get {
+        /// Secret name to retrieve
         name: String,
     },
 
@@ -38,6 +45,7 @@ pub enum SecretsCommand {
 pub async fn run(args: SecretsArgs) -> Result<()> {
     match args.command {
         SecretsCommand::Set { name } => cmd_set(&name).await,
+        SecretsCommand::Get { name } => cmd_get(&name).await,
         SecretsCommand::List => cmd_list().await,
         SecretsCommand::Delete { name } => cmd_delete(&name).await,
     }
@@ -65,6 +73,22 @@ async fn cmd_set(name: &str) -> Result<()> {
         }
         Err(e) => {
             output::error(format!("Failed to store secret: {}", e));
+        }
+    }
+
+    Ok(())
+}
+
+async fn cmd_get(name: &str) -> Result<()> {
+    match arawn_config::secrets::get_named_secret(name) {
+        Ok(Some(value)) => {
+            println!("{}", value);
+        }
+        Ok(None) => {
+            output::error(format!("Secret '{}' not found.", name));
+        }
+        Err(e) => {
+            output::error(format!("Failed to retrieve secret: {}", e));
         }
     }
 

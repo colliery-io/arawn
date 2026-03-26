@@ -142,6 +142,13 @@ pub fn delete_named_secret(name: &str) -> std::result::Result<(), String> {
     Ok(())
 }
 
+/// Retrieve a named secret from the age-encrypted store.
+pub fn get_named_secret(name: &str) -> std::result::Result<Option<String>, String> {
+    let store = crate::AgeSecretStore::open_default()
+        .map_err(|e| format!("opening secret store: {}", e))?;
+    Ok(store.get(name))
+}
+
 /// List all secret names in the age store.
 ///
 /// # Examples
