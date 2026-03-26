@@ -347,7 +347,11 @@ impl Tool for FileWriteTool {
                 .open(&resolved_path)
                 .await;
             match open_result {
-                Ok(mut file) => file.write_all(content.as_bytes()).await,
+                Ok(mut file) => {
+                    let r = file.write_all(content.as_bytes()).await;
+                    file.shutdown().await.ok();
+                    r
+                }
                 Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
                     return Ok(ToolResult::error("Creating new files is not allowed"));
                 }
@@ -364,7 +368,11 @@ impl Tool for FileWriteTool {
                     .open(&resolved_path)
                     .await
                 {
-                    Ok(mut file) => file.write_all(content.as_bytes()).await,
+                    Ok(mut file) => {
+                        let r = file.write_all(content.as_bytes()).await;
+                        file.shutdown().await.ok();
+                        r
+                    }
                     Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
                         return Ok(ToolResult::error("Creating new files is not allowed"));
                     }
@@ -382,7 +390,11 @@ impl Tool for FileWriteTool {
                     .open(&resolved_path)
                     .await
                 {
-                    Ok(mut file) => file.write_all(content.as_bytes()).await,
+                    Ok(mut file) => {
+                        let r = file.write_all(content.as_bytes()).await;
+                        file.shutdown().await.ok();
+                        r
+                    }
                     Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
                         return Ok(ToolResult::error(
                             "Overwriting existing files is not allowed",

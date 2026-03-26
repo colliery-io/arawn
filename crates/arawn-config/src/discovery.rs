@@ -369,32 +369,6 @@ port = 3000
     }
 
     #[test]
-    fn test_plaintext_key_warning() {
-        let dir = TempDir::new().unwrap();
-        let path = dir.path().join("arawn.toml");
-        fs::write(
-            &path,
-            r#"
-[llm]
-backend = "groq"
-model = "model"
-api_key = "gsk_secret"
-
-[llm.claude]
-backend = "anthropic"
-model = "claude"
-api_key = "sk-ant-secret"
-"#,
-        )
-        .unwrap();
-
-        let loaded = load_config(Some(dir.path())).unwrap();
-        assert_eq!(loaded.warnings.len(), 2);
-        assert!(loaded.warnings[0].contains("plaintext"));
-        assert!(loaded.warnings[1].contains("[llm.claude]"));
-    }
-
-    #[test]
     fn test_no_warnings_without_keys() {
         let dir = TempDir::new().unwrap();
         let path = dir.path().join("arawn.toml");

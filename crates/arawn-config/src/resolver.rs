@@ -385,16 +385,16 @@ base_url = "http://localhost:11434/v1"
     }
 
     #[test]
-    fn test_resolve_api_key_from_config() {
+    fn test_resolve_api_key_ref_from_config() {
         let toml = r#"
 [llm]
 backend = "groq"
 model = "model"
-api_key = "config-key"
+api_key_ref = "GROQ_API_KEY"
 "#;
         let config = ArawnConfig::from_toml(toml).unwrap();
         let resolved = resolve_for_agent(&config, "agent").unwrap();
-        assert_eq!(resolved.api_key.as_deref(), Some("config-key"));
+        assert_eq!(resolved.api_key_ref.as_deref(), Some("GROQ_API_KEY"));
     }
 
     #[test]
