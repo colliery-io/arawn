@@ -13,7 +13,7 @@ use predicates::prelude::*;
 
 /// Get a command for the arawn binary.
 fn arawn() -> Command {
-    Command::cargo_bin("arawn").unwrap()
+    assert_cmd::cargo_bin_cmd!("arawn")
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

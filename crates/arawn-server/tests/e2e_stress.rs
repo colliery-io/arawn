@@ -357,19 +357,14 @@ async fn stress_invalid_json_body() -> Result<()> {
 async fn stress_chat_with_invalid_session_id() -> Result<()> {
     let server = TestServer::start().await?;
 
-    // Non-UUID session_id should be treated as new session (invalid UUIDs are ignored)
+    // Non-UUID session_id should be rejected with 400
     let resp = server
         .post("/api/v1/chat")
         .json(&json!({"message": "Hello", "session_id": "not-a-uuid"}))
         .send()
         .await?;
 
-    assert_eq!(resp.status().as_u16(), 200);
-    let body: serde_json::Value = resp.json().await?;
-
-    // Should have created a new session (invalid UUID silently ignored)
-    let session_id = body["session_id"].as_str().unwrap();
-    assert_ne!(session_id, "not-a-uuid");
+    assert_eq!(resp.status().as_u16(), 400);
 
     Ok(())
 }

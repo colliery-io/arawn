@@ -134,12 +134,15 @@ pub async fn chat_handler(
         "Chat request received"
     );
 
-    // Parse session ID if provided
-    let session_id = request
-        .session_id
-        .as_ref()
-        .and_then(|s| Uuid::parse_str(s).ok())
-        .map(SessionId::from_uuid);
+    // Parse session ID if provided — reject invalid UUIDs explicitly
+    let session_id = match &request.session_id {
+        Some(s) => Some(
+            Uuid::parse_str(s)
+                .map(SessionId::from_uuid)
+                .map_err(|_| ServerError::BadRequest(format!("Invalid session ID: {s}")))?,
+        ),
+        None => None,
+    };
 
     // Get or create session
     let session_id = state.get_or_create_session(session_id).await;
@@ -250,12 +253,15 @@ pub async fn chat_stream_handler(
         "Chat stream request received"
     );
 
-    // Parse session ID if provided
-    let session_id = request
-        .session_id
-        .as_ref()
-        .and_then(|s| Uuid::parse_str(s).ok())
-        .map(SessionId::from_uuid);
+    // Parse session ID if provided — reject invalid UUIDs explicitly
+    let session_id = match &request.session_id {
+        Some(s) => Some(
+            Uuid::parse_str(s)
+                .map(SessionId::from_uuid)
+                .map_err(|_| ServerError::BadRequest(format!("Invalid session ID: {s}")))?,
+        ),
+        None => None,
+    };
 
     // Get or create session
     let session_id = state.get_or_create_session(session_id).await;

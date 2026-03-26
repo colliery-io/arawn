@@ -149,7 +149,7 @@
     "crates/arawn-sandbox/src/config.rs": "1c166ac26e91648983ada491a1d48bfdc30e688d695ef267440f34b110938522",
     "crates/arawn-sandbox/src/error.rs": "d0d2a0093366ba18ffb66e4b5d42d403a866d120d5edb62e55ce77deda24aafe",
     "crates/arawn-sandbox/src/lib.rs": "eb9aadfa239b5d2552d2c1929f78b735f45cd22b0c252517792d1f6807e7e6a2",
-    "crates/arawn-sandbox/src/manager.rs": "e3bcfd603918e373b6b5a1c200f5de5c2b62e361394ba044ba88ee3808e248ad",
+    "crates/arawn-sandbox/src/manager.rs": "4dbe2602f4fdcf8aedc2b1819d4cca790e8140232dd4156f90144c038744b0fc",
     "crates/arawn-sandbox/src/platform.rs": "6f9879a4a5b5fa4f0a98d82ccf4dfb95cedce8f31642184e686d1f129c11f0a7",
     "crates/arawn-script-sdk/src/context.rs": "b243636b5717ff4a2d85e808f11c803771ebaf0ed7824ca97943c1733b6799c6",
     "crates/arawn-script-sdk/src/error.rs": "c349dba07fee264bfc02762ea5403504ede05a27bb586c10cfb2a17ebac51887",

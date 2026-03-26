@@ -15,7 +15,7 @@ use tempfile::TempDir;
 /// Also sets `HOME` and `XDG_CONFIG_HOME` to prevent the binary from
 /// picking up any user-level plugins or configs.
 fn arawn_with_config(config_dir: &TempDir) -> Command {
-    let mut cmd = Command::cargo_bin("arawn").unwrap();
+    let mut cmd = assert_cmd::cargo_bin_cmd!("arawn");
     cmd.env("ARAWN_CONFIG_DIR", config_dir.path());
     cmd.env("ARAWN_SERVER_URL", "http://localhost:19999");
     // Isolate from user's global plugins and config
@@ -717,7 +717,7 @@ fn test_context_flag_uses_context_url() {
     // Use --context flag with --server to override ARAWN_SERVER_URL
     // but since --server also overrides --context in priority, we test
     // that --context at least works when no --server or ARAWN_SERVER_URL is set
-    let mut cmd = Command::cargo_bin("arawn").unwrap();
+    let mut cmd = assert_cmd::cargo_bin_cmd!("arawn");
     cmd.env("ARAWN_CONFIG_DIR", dir.path());
     cmd.env("HOME", dir.path());
     cmd.env("XDG_CONFIG_HOME", dir.path());

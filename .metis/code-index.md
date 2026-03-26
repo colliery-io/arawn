@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-03-26T02:02:11Z | 352 files | Rust
+> Generated: 2026-03-26T02:14:52Z | 352 files | Rust
 
 ## Project Structure
 
@@ -6604,29 +6604,29 @@
 -  `SandboxManager` type L89-298 — `= SandboxManager` — Sandbox manager for command execution.
 -  `execute_wrapped` function L179-221 — `( &self, wrapped_command: &str, config: &SandboxConfig, ) -> SandboxResult<Comma...` — Execute the already-wrapped command.
 -  `build_runtime_config` function L224-252 — `(&self, config: &SandboxConfig) -> SandboxResult<SandboxRuntimeConfig>` — Build the sandbox-runtime configuration from our config.
--  `tests` module L301-677 — `-` — Sandbox manager for command execution.
--  `test_command_output_success` function L305-310 — `()` — Sandbox manager for command execution.
--  `test_command_output_error` function L313-318 — `()` — Sandbox manager for command execution.
--  `test_command_output_combined` function L321-327 — `()` — Sandbox manager for command execution.
--  `test_sandbox_manager_creation` function L330-341 — `()` — Sandbox manager for command execution.
--  `test_validate_config_working_dir` function L344-360 — `()` — Sandbox manager for command execution.
--  `test_sandboxed_echo` function L367-383 — `()` — Sandbox manager for command execution.
--  `test_sandboxed_write_allowed` function L387-408 — `()` — Sandbox manager for command execution.
--  `test_sandboxed_write_denied` function L412-435 — `()` — Sandbox manager for command execution.
--  `test_command_output_error_constructor` function L440-447 — `()` — Sandbox manager for command execution.
--  `test_command_output_new_nonzero_exit` function L450-458 — `()` — Sandbox manager for command execution.
--  `test_command_output_empty_both` function L461-465 — `()` — Sandbox manager for command execution.
--  `test_command_output_debug` function L468-473 — `()` — Sandbox manager for command execution.
--  `test_command_output_clone` function L476-483 — `()` — Sandbox manager for command execution.
--  `test_build_runtime_config_default` function L488-500 — `()` — Sandbox manager for command execution.
--  `test_build_runtime_config_with_paths` function L503-543 — `()` — Sandbox manager for command execution.
--  `test_validate_config_valid` function L548-563 — `()` — Sandbox manager for command execution.
--  `test_validate_config_nonexistent_working_dir` function L566-583 — `()` — Sandbox manager for command execution.
--  `test_validate_config_nonexistent_write_path_warns_but_ok` function L586-598 — `()` — Sandbox manager for command execution.
--  `test_sandbox_manager_platform` function L603-618 — `()` — Sandbox manager for command execution.
--  `test_check_availability_returns_status` function L621-629 — `()` — Sandbox manager for command execution.
--  `test_execute_with_paths` function L634-655 — `()` — Sandbox manager for command execution.
--  `test_sandbox_execute_timeout` function L660-676 — `()` — Sandbox manager for command execution.
+-  `tests` module L301-680 — `-` — Sandbox manager for command execution.
+-  `test_command_output_success` function L306-311 — `()` — Sandbox manager for command execution.
+-  `test_command_output_error` function L314-319 — `()` — Sandbox manager for command execution.
+-  `test_command_output_combined` function L322-328 — `()` — Sandbox manager for command execution.
+-  `test_sandbox_manager_creation` function L331-342 — `()` — Sandbox manager for command execution.
+-  `test_validate_config_working_dir` function L345-361 — `()` — Sandbox manager for command execution.
+-  `test_sandboxed_echo` function L368-384 — `()` — Sandbox manager for command execution.
+-  `test_sandboxed_write_allowed` function L388-409 — `()` — Sandbox manager for command execution.
+-  `test_sandboxed_write_denied` function L413-436 — `()` — Sandbox manager for command execution.
+-  `test_command_output_error_constructor` function L441-448 — `()` — Sandbox manager for command execution.
+-  `test_command_output_new_nonzero_exit` function L451-459 — `()` — Sandbox manager for command execution.
+-  `test_command_output_empty_both` function L462-466 — `()` — Sandbox manager for command execution.
+-  `test_command_output_debug` function L469-474 — `()` — Sandbox manager for command execution.
+-  `test_command_output_clone` function L477-484 — `()` — Sandbox manager for command execution.
+-  `test_build_runtime_config_default` function L489-501 — `()` — Sandbox manager for command execution.
+-  `test_build_runtime_config_with_paths` function L504-544 — `()` — Sandbox manager for command execution.
+-  `test_validate_config_valid` function L549-564 — `()` — Sandbox manager for command execution.
+-  `test_validate_config_nonexistent_working_dir` function L567-584 — `()` — Sandbox manager for command execution.
+-  `test_validate_config_nonexistent_write_path_warns_but_ok` function L587-599 — `()` — Sandbox manager for command execution.
+-  `test_sandbox_manager_platform` function L604-619 — `()` — Sandbox manager for command execution.
+-  `test_check_availability_returns_status` function L622-630 — `()` — Sandbox manager for command execution.
+-  `test_execute_with_paths` function L636-657 — `()` — Sandbox manager for command execution.
+-  `test_sandbox_execute_timeout` function L663-679 — `()` — Sandbox manager for command execution.
 
 #### crates/arawn-sandbox/src/platform.rs
 

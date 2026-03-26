@@ -376,6 +376,7 @@ mod tests {
         assert_eq!(tool.call_count(), 0);
     }
 
+    #[test]
     fn test_registry_output_config_for() {
         let registry = ToolRegistry::new();
 
@@ -428,6 +429,7 @@ mod tests {
         );
     }
 
+    #[test]
     fn test_filtered_by_names_includes_matching() {
         let mut registry = ToolRegistry::new();
         registry.register(MockTool::new("glob"));

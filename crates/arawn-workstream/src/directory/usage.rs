@@ -408,6 +408,7 @@ mod tests {
         (dir, manager)
     }
 
+    #[test]
     fn test_get_usage_basic() {
         let (_dir, manager) = setup();
 
