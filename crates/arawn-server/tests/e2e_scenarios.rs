@@ -925,3 +925,130 @@ async fn scenario_config_reflects_server_state() -> Result<()> {
 
     Ok(())
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Scenario: Memory store → chat recall integration
+// ─────────────────────────────────────────────────────────────────────────────
+
+#[tokio::test]
+async fn scenario_memory_store_then_chat() -> Result<()> {
+    // Given: a server with memory enabled
+    let server = TestServerBuilder::new().build().await?;
+
+    // When: store a memory via API
+    let resp = server
+        .post("/api/v1/memory")
+        .json(&json!({
+            "content": "The project uses Rust and SQLite",
+            "content_type": "fact"
+        }))
+        .send()
+        .await?;
+    assert_eq!(resp.status().as_u16(), 201);
+
+    // And: chat (the agent should have access to memory store)
+    let resp = server
+        .post("/api/v1/chat")
+        .json(&json!({"message": "What do you know?"}))
+        .send()
+        .await?;
+    assert_eq!(resp.status().as_u16(), 200);
+
+    let body: serde_json::Value = resp.json().await?;
+    assert!(body["session_id"].is_string());
+    assert!(body["response"].is_string());
+
+    Ok(())
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Scenario: Multi-turn session continuity
+// ─────────────────────────────────────────────────────────────────────────────
+
+#[tokio::test]
+async fn scenario_multi_turn_session_continuity() -> Result<()> {
+    // Given: a server with scripted responses for two turns
+    use arawn_test_utils::StreamingMockEvent;
+    let backend = ScriptedMockBackend::new(vec![
+        vec![StreamingMockEvent::Text("First turn response.".to_string())],
+        vec![StreamingMockEvent::Text(
+            "Second turn, I remember the first.".to_string(),
+        )],
+    ]);
+    let server = TestServerBuilder::new()
+        .with_backend(backend)
+        .build()
+        .await?;
+
+    // When: first turn creates a session
+    let resp1 = server
+        .post("/api/v1/chat")
+        .json(&json!({"message": "Hello, start a conversation"}))
+        .send()
+        .await?;
+    assert_eq!(resp1.status().as_u16(), 200);
+    let body1: serde_json::Value = resp1.json().await?;
+    let session_id = body1["session_id"].as_str().unwrap().to_string();
+    assert_eq!(body1["response"].as_str().unwrap(), "First turn response.");
+
+    // And: second turn continues the same session
+    let resp2 = server
+        .post("/api/v1/chat")
+        .json(&json!({
+            "message": "Continue our conversation",
+            "session_id": session_id
+        }))
+        .send()
+        .await?;
+    assert_eq!(resp2.status().as_u16(), 200);
+    let body2: serde_json::Value = resp2.json().await?;
+
+    // Then: same session ID, different response
+    assert_eq!(body2["session_id"].as_str().unwrap(), session_id);
+    assert_eq!(
+        body2["response"].as_str().unwrap(),
+        "Second turn, I remember the first."
+    );
+
+    Ok(())
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Scenario: Tool execution result flows back to client
+// ─────────────────────────────────────────────────────────────────────────────
+
+#[tokio::test]
+async fn scenario_tool_execution_visible_in_response() -> Result<()> {
+    // Given: a server where the LLM calls a tool then responds
+    let backend = ScriptedMockBackend::tool_then_text(
+        "echo",
+        "tc-42",
+        json!({"message": "integration test"}),
+        "Tool executed successfully.",
+    );
+    let server = TestServerBuilder::new()
+        .with_backend(backend)
+        .with_tools(mock_tool_registry())
+        .build()
+        .await?;
+
+    // When: chat
+    let resp = server
+        .post("/api/v1/chat")
+        .json(&json!({"message": "Run the echo tool"}))
+        .send()
+        .await?;
+    assert_eq!(resp.status().as_u16(), 200);
+    let body: serde_json::Value = resp.json().await?;
+
+    // Then: response includes tool call info
+    assert_eq!(
+        body["response"].as_str().unwrap(),
+        "Tool executed successfully."
+    );
+    let tool_calls = body["tool_calls"].as_array().unwrap();
+    assert!(!tool_calls.is_empty());
+    assert_eq!(tool_calls[0]["name"].as_str().unwrap(), "echo");
+
+    Ok(())
+}
