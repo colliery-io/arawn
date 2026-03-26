@@ -1,2 +1,4 @@
-/Users/dstorey/Desktop/arawn/crates/arawn-test-utils/src/server.rs
-/Users/dstorey/Desktop/arawn/crates/arawn-server/tests/ratelimit_integration.rs
+/Users/dstorey/Desktop/arawn/crates/arawn/src/commands/config.rs
+/Users/dstorey/Desktop/arawn/crates/arawn/src/commands/secrets.rs
+/Users/dstorey/Desktop/arawn/crates/arawn-config/src/secrets.rs
+/Users/dstorey/Desktop/arawn/crates/arawn/tests/command_integration.rs

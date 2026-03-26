@@ -22,10 +22,10 @@ No prefix syntax is needed. Arawn walks the chain silently and uses the first va
 
 ## Store an API key for a backend
 
-Use `arawn config set-secret` to store a key in the age-encrypted store. The command prompts for the value interactively so it never appears in your shell history:
+Use `arawn secrets set` to store a key in the age-encrypted store. The command prompts for the value interactively so it never appears in your shell history:
 
 ```bash
-arawn config set-secret anthropic
+arawn secrets set anthropic
 # Enter value for 'anthropic_api_key' (input hidden): ****
 # Secret 'anthropic_api_key' stored in encrypted store.
 ```
@@ -34,14 +34,14 @@ Supported backend names: `anthropic`, `openai`, `groq`, `ollama`, `custom`, `cla
 
 The key name is derived automatically from the backend (e.g., `anthropic` becomes `anthropic_api_key`). You do not choose the name.
 
-## Delete a backend API key
+## Delete a secret
 
 ```bash
-arawn config delete-secret groq
+arawn secrets delete groq_api_key
 # Secret 'groq_api_key' deleted.
 ```
 
-This removes the key from the age-encrypted store only. It does not affect environment variables or keyring entries.
+This removes the key from the age-encrypted store only. It does not affect environment variables.
 
 ## Store a general-purpose secret
 
@@ -134,7 +134,7 @@ To rotate a key, store the new value under the same name. The old value is overw
 
 ```bash
 # Rotate your Anthropic key
-arawn config set-secret anthropic
+arawn secrets set anthropic
 # Enter value for 'anthropic_api_key' (input hidden): ****
 
 # Or rotate a general secret
@@ -161,8 +161,8 @@ If you previously stored keys in the OS keyring, those entries still work (prior
 2. Store each key in the age store:
 
    ```bash
-   arawn config set-secret anthropic
-   arawn config set-secret groq
+   arawn secrets set anthropic
+   arawn secrets set groq
    ```
 
 3. Optionally remove old keyring entries:
@@ -177,7 +177,7 @@ If you previously stored keys in the OS keyring, those entries still work (prior
 
 ## Best practices
 
-- **Prefer `set-secret` or environment variables** over plaintext `api_key` in `config.toml`.
+- **Prefer `arawn secrets set` or environment variables** over plaintext `api_key` in `config.toml`.
 - **Never commit secrets to version control.** Add `config.toml` to `.gitignore` if it contains keys.
 - **Use `${{secrets.name}}` in tool parameters** instead of hardcoding tokens.
 - **Restrict file permissions.** Arawn sets `0o600` automatically, but verify with `ls -la ~/.config/arawn/`.

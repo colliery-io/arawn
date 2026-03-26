@@ -196,7 +196,7 @@ Avoid putting API keys directly in your config file. Arawn resolves keys using a
 | Priority | Source | Method |
 |----------|--------|--------|
 | 1 (highest) | Age-encrypted store | `arawn secrets set <name>` |
-| 2 | System keyring | `arawn config set-secret <backend>` (legacy) |
+| 2 | System keyring | `arawn secrets set <backend>` (legacy) |
 | 3 | Environment variable | `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, etc. |
 | 4 (lowest) | Config file | Plaintext `api_key` field (not recommended) |
 
@@ -215,7 +215,7 @@ You will be prompted for the key. It is encrypted with `age` and stored at `~/.c
 ### Store a key in the system keyring (legacy)
 
 ```bash
-arawn config set-secret anthropic
+arawn secrets set anthropic
 ```
 
 You will be prompted for the key. It is stored in your OS keychain (macOS Keychain, Linux Secret Service, or Windows Credential Manager).

@@ -732,28 +732,6 @@ fn test_context_flag_uses_context_url() {
 // Config Set-Secret (invalid backend)
 // ─────────────────────────────────────────────────────────────────────────────
 
-#[test]
-fn test_config_set_secret_invalid_backend() {
-    let dir = TempDir::new().unwrap();
-
-    arawn_with_config(&dir)
-        .args(["config", "set-secret", "invalid_backend_name"])
-        .assert()
-        .failure()
-        .stderr(predicate::str::contains("Unknown backend"));
-}
-
-#[test]
-fn test_config_delete_secret_invalid_backend() {
-    let dir = TempDir::new().unwrap();
-
-    arawn_with_config(&dir)
-        .args(["config", "delete-secret", "invalid_backend_name"])
-        .assert()
-        .failure()
-        .stderr(predicate::str::contains("Unknown backend"));
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Config multiple profiles
 // ─────────────────────────────────────────────────────────────────────────────

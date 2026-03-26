@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-03-25T21:22:31Z | 352 files | Rust
+> Generated: 2026-03-26T00:54:11Z | 352 files | Rust
 
 ## Project Structure
 
@@ -730,12 +730,14 @@
 
 #### crates/arawn/src/commands/secrets.rs
 
-- pub `SecretsArgs` struct L14-17 — `{ command: SecretsCommand }` — Secrets command - manage age-encrypted secret store.
-- pub `SecretsCommand` enum L20-35 — `Set | List | Delete` — Secrets command - manage age-encrypted secret store.
-- pub `run` function L38-44 — `(args: SecretsArgs) -> Result<()>` — Run the secrets command.
--  `cmd_set` function L46-69 — `(name: &str) -> Result<()>` — Secrets command - manage age-encrypted secret store.
--  `cmd_list` function L71-91 — `() -> Result<()>` — Secrets command - manage age-encrypted secret store.
--  `cmd_delete` function L93-104 — `(name: &str) -> Result<()>` — Secrets command - manage age-encrypted secret store.
+- pub `SecretsArgs` struct L15-18 — `{ command: SecretsCommand }` — Secrets command - manage age-encrypted secret store.
+- pub `SecretsCommand` enum L21-42 — `Set | Get | List | Delete` — Secrets command - manage age-encrypted secret store.
+- pub `run` function L45-52 — `(args: SecretsArgs) -> Result<()>` — Run the secrets command.
+-  `BACKEND_NAMES` variable L55-62 — `: &[(&str, &str)]` — Backend names that users commonly confuse with `secrets set`.
+-  `cmd_set` function L64-105 — `(name: &str) -> Result<()>` — Secrets command - manage age-encrypted secret store.
+-  `cmd_get` function L107-121 — `(name: &str) -> Result<()>` — Secrets command - manage age-encrypted secret store.
+-  `cmd_list` function L123-143 — `() -> Result<()>` — Secrets command - manage age-encrypted secret store.
+-  `cmd_delete` function L145-156 — `(name: &str) -> Result<()>` — Secrets command - manage age-encrypted secret store.
 
 #### crates/arawn/src/commands/session.rs
 
@@ -3402,32 +3404,33 @@
 - pub `store_named_secret` function L121-127 — `(name: &str, value: &str) -> std::result::Result<(), String>` — Store a named secret in the age-encrypted secret store.
 - pub `delete_secret` function L130-133 — `(backend: &Backend) -> std::result::Result<(), String>` — Delete an API key from the age-encrypted secret store.
 - pub `delete_named_secret` function L136-143 — `(name: &str) -> std::result::Result<(), String>` — Delete a named secret from the age-encrypted secret store.
-- pub `list_secrets` function L156-160 — `() -> std::result::Result<Vec<String>, String>` — List all secret names in the age store.
-- pub `has_keyring_entry` function L163-165 — `(backend: &Backend) -> bool` — Check if an entry exists (age store or keyring).
-- pub `store_in_keyring` function L168-171 — `(backend: &Backend, api_key: &str) -> std::result::Result<(), String>` — Store an API key in the system keyring (legacy).
-- pub `delete_from_keyring` function L174-177 — `(backend: &Backend) -> std::result::Result<(), String>` — Delete an API key from the system keyring (legacy).
+- pub `get_named_secret` function L146-150 — `(name: &str) -> std::result::Result<Option<String>, String>` — Retrieve a named secret from the age-encrypted store.
+- pub `list_secrets` function L163-167 — `() -> std::result::Result<Vec<String>, String>` — List all secret names in the age store.
+- pub `has_keyring_entry` function L170-172 — `(backend: &Backend) -> bool` — Check if an entry exists (age store or keyring).
+- pub `store_in_keyring` function L175-178 — `(backend: &Backend, api_key: &str) -> std::result::Result<(), String>` — Store an API key in the system keyring (legacy).
+- pub `delete_from_keyring` function L181-184 — `(backend: &Backend) -> std::result::Result<(), String>` — Delete an API key from the system keyring (legacy).
 -  `ResolvedSecret` type L26-33 — `= ResolvedSecret` — as a legacy fallback but disabled by default.
 -  `fmt` function L27-32 — `(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result` — as a legacy fallback but disabled by default.
 -  `SecretSource` type L48-57 — `= SecretSource` — as a legacy fallback but disabled by default.
 -  `fmt` function L49-56 — `(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result` — as a legacy fallback but disabled by default.
--  `age_store_name` function L186-188 — `(backend: &Backend) -> String` — The secret name used for backend API keys in the age store.
--  `get_from_age_store` function L190-208 — `(backend: &Backend) -> Option<ResolvedSecret>` — as a legacy fallback but disabled by default.
--  `KEYRING_SERVICE` variable L215 — `: &str` — Keyring service name (legacy).
--  `keyring_user` function L218-220 — `(backend: &Backend) -> String` — Keyring user name for a backend (legacy).
--  `get_from_keyring` function L223-238 — `(backend: &Backend) -> Option<ResolvedSecret>` — as a legacy fallback but disabled by default.
--  `store_keyring_entry` function L241-249 — `(service: &str, user: &str, secret: &str) -> std::result::Result<(), String>` — as a legacy fallback but disabled by default.
--  `delete_keyring_entry` function L252-260 — `(service: &str, user: &str) -> std::result::Result<(), String>` — as a legacy fallback but disabled by default.
--  `get_from_keyring` function L267-269 — `(_backend: &Backend) -> Option<ResolvedSecret>` — as a legacy fallback but disabled by default.
--  `store_keyring_entry` function L272-278 — `( _service: &str, _user: &str, _secret: &str, ) -> std::result::Result<(), Strin...` — as a legacy fallback but disabled by default.
--  `delete_keyring_entry` function L281-283 — `(_service: &str, _user: &str) -> std::result::Result<(), String>` — as a legacy fallback but disabled by default.
--  `tests` module L290-358 — `-` — as a legacy fallback but disabled by default.
--  `test_age_store_name_format` function L294-298 — `()` — as a legacy fallback but disabled by default.
--  `test_resolve_from_config_value` function L301-308 — `()` — as a legacy fallback but disabled by default.
--  `test_resolve_none_when_nothing_available` function L311-315 — `()` — as a legacy fallback but disabled by default.
--  `test_secret_source_display` function L318-329 — `()` — as a legacy fallback but disabled by default.
--  `test_has_keyring_entry_no_panic` function L332-334 — `()` — as a legacy fallback but disabled by default.
--  `test_store_keyring_disabled` function L338-342 — `()` — as a legacy fallback but disabled by default.
--  `test_resolved_secret_debug_redacts_value` function L345-357 — `()` — as a legacy fallback but disabled by default.
+-  `age_store_name` function L193-195 — `(backend: &Backend) -> String` — The secret name used for backend API keys in the age store.
+-  `get_from_age_store` function L197-215 — `(backend: &Backend) -> Option<ResolvedSecret>` — as a legacy fallback but disabled by default.
+-  `KEYRING_SERVICE` variable L222 — `: &str` — Keyring service name (legacy).
+-  `keyring_user` function L225-227 — `(backend: &Backend) -> String` — Keyring user name for a backend (legacy).
+-  `get_from_keyring` function L230-245 — `(backend: &Backend) -> Option<ResolvedSecret>` — as a legacy fallback but disabled by default.
+-  `store_keyring_entry` function L248-256 — `(service: &str, user: &str, secret: &str) -> std::result::Result<(), String>` — as a legacy fallback but disabled by default.
+-  `delete_keyring_entry` function L259-267 — `(service: &str, user: &str) -> std::result::Result<(), String>` — as a legacy fallback but disabled by default.
+-  `get_from_keyring` function L274-276 — `(_backend: &Backend) -> Option<ResolvedSecret>` — as a legacy fallback but disabled by default.
+-  `store_keyring_entry` function L279-285 — `( _service: &str, _user: &str, _secret: &str, ) -> std::result::Result<(), Strin...` — as a legacy fallback but disabled by default.
+-  `delete_keyring_entry` function L288-290 — `(_service: &str, _user: &str) -> std::result::Result<(), String>` — as a legacy fallback but disabled by default.
+-  `tests` module L297-365 — `-` — as a legacy fallback but disabled by default.
+-  `test_age_store_name_format` function L301-305 — `()` — as a legacy fallback but disabled by default.
+-  `test_resolve_from_config_value` function L308-315 — `()` — as a legacy fallback but disabled by default.
+-  `test_resolve_none_when_nothing_available` function L318-322 — `()` — as a legacy fallback but disabled by default.
+-  `test_secret_source_display` function L325-336 — `()` — as a legacy fallback but disabled by default.
+-  `test_has_keyring_entry_no_panic` function L339-341 — `()` — as a legacy fallback but disabled by default.
+-  `test_store_keyring_disabled` function L345-349 — `()` — as a legacy fallback but disabled by default.
+-  `test_resolved_secret_debug_redacts_value` function L352-364 — `()` — as a legacy fallback but disabled by default.
 
 #### crates/arawn-config/src/types.rs
 
@@ -8060,8 +8063,8 @@
 -  `test_429_response_has_retry_after_header` function L65-85 — `() -> Result<()>` — returning 429 when limits are exceeded and 200 when within limits.
 -  `test_429_response_body_is_json` function L88-107 — `() -> Result<()>` — returning 429 when limits are exceeded and 200 when within limits.
 -  `test_rate_limit_resets_after_window` function L110-159 — `() -> Result<()>` — returning 429 when limits are exceeded and 200 when within limits.
--  `test_different_ips_have_independent_limits` function L162-199 — `() -> Result<()>` — returning 429 when limits are exceeded and 200 when within limits.
--  `test_rate_limiting_disabled_allows_all_requests` function L202-220 — `() -> Result<()>` — returning 429 when limits are exceeded and 200 when within limits.
+-  `test_different_ips_have_independent_limits` function L162-205 — `() -> Result<()>` — returning 429 when limits are exceeded and 200 when within limits.
+-  `test_rate_limiting_disabled_allows_all_requests` function L208-226 — `() -> Result<()>` — returning 429 when limits are exceeded and 200 when within limits.
 
 #### crates/arawn-server/tests/server_integration.rs
 
@@ -8513,25 +8516,26 @@
 - pub `put` function L95-101 — `(&self, path: &str) -> reqwest::RequestBuilder` — Get an authenticated PUT request builder.
 - pub `patch` function L104-110 — `(&self, path: &str) -> reqwest::RequestBuilder` — Get an authenticated PATCH request builder.
 - pub `health` function L113-120 — `(&self) -> Result<bool>` — Check if the server is healthy.
-- pub `TestServerBuilder` struct L124-136 — `{ token: Option<String>, responses: Vec<MockResponse>, streaming_backend: Option...` — Builder for configuring a TestServer.
-- pub `new` function L140-162 — `() -> Self` — Create a new builder with sensible defaults.
-- pub `with_auth` function L165-168 — `(mut self, token: Option<&str>) -> Self` — Set the auth token.
-- pub `with_text_responses` function L171-189 — `(mut self, responses: Vec<String>) -> Self` — Set text responses for the mock backend.
-- pub `with_mock_responses` function L192-195 — `(mut self, responses: Vec<MockResponse>) -> Self` — Set raw mock responses (for tool_use, errors, etc.).
-- pub `with_streaming_backend` function L198-201 — `(mut self, backend: StreamingMockBackend) -> Self` — Set a streaming mock backend directly.
-- pub `with_workstreams` function L204-207 — `(mut self) -> Self` — Enable in-memory workstream manager.
-- pub `with_rate_limiting` function L210-213 — `(mut self, enabled: bool) -> Self` — Enable rate limiting.
-- pub `with_api_rpm` function L216-219 — `(mut self, rpm: u32) -> Self` — Set the API rate limit (requests per minute).
-- pub `with_backend` function L224-227 — `(mut self, backend: impl LlmBackend + 'static) -> Self` — Set a generic LLM backend (e.g., `ScriptedMockBackend`).
-- pub `with_tools` function L233-236 — `(mut self, tools: ToolRegistry) -> Self` — Set the tool registry for the agent.
-- pub `without_memory` function L239-242 — `(mut self) -> Self` — Disable the in-memory store.
-- pub `build` function L245-322 — `(self) -> Result<TestServer>` — Build and start the test server.
-- pub `find_available_port` function L332-337 — `() -> Result<SocketAddr>` — Find an available port for the test server.
-- pub `wait_for_server` function L340-358 — `(client: &Client, addr: SocketAddr) -> Result<()>` — Wait for a server to become ready by polling its health endpoint.
+- pub `TestServerBuilder` struct L124-137 — `{ token: Option<String>, responses: Vec<MockResponse>, streaming_backend: Option...` — Builder for configuring a TestServer.
+- pub `new` function L141-164 — `() -> Self` — Create a new builder with sensible defaults.
+- pub `with_auth` function L167-170 — `(mut self, token: Option<&str>) -> Self` — Set the auth token.
+- pub `with_text_responses` function L173-191 — `(mut self, responses: Vec<String>) -> Self` — Set text responses for the mock backend.
+- pub `with_mock_responses` function L194-197 — `(mut self, responses: Vec<MockResponse>) -> Self` — Set raw mock responses (for tool_use, errors, etc.).
+- pub `with_streaming_backend` function L200-203 — `(mut self, backend: StreamingMockBackend) -> Self` — Set a streaming mock backend directly.
+- pub `with_workstreams` function L206-209 — `(mut self) -> Self` — Enable in-memory workstream manager.
+- pub `with_rate_limiting` function L212-215 — `(mut self, enabled: bool) -> Self` — Enable rate limiting.
+- pub `with_api_rpm` function L218-221 — `(mut self, rpm: u32) -> Self` — Set the API rate limit (requests per minute).
+- pub `with_trust_proxy` function L224-227 — `(mut self, trust: bool) -> Self` — Trust proxy headers (X-Forwarded-For) for client IP extraction.
+- pub `with_backend` function L232-235 — `(mut self, backend: impl LlmBackend + 'static) -> Self` — Set a generic LLM backend (e.g., `ScriptedMockBackend`).
+- pub `with_tools` function L241-244 — `(mut self, tools: ToolRegistry) -> Self` — Set the tool registry for the agent.
+- pub `without_memory` function L247-250 — `(mut self) -> Self` — Disable the in-memory store.
+- pub `build` function L253-331 — `(self) -> Result<TestServer>` — Build and start the test server.
+- pub `find_available_port` function L341-346 — `() -> Result<SocketAddr>` — Find an available port for the test server.
+- pub `wait_for_server` function L349-367 — `(client: &Client, addr: SocketAddr) -> Result<()>` — Wait for a server to become ready by polling its health endpoint.
 -  `TestServer` type L38-121 — `= TestServer` — with a builder pattern for flexible configuration.
--  `TestServerBuilder` type L138-323 — `= TestServerBuilder` — with a builder pattern for flexible configuration.
--  `TestServerBuilder` type L325-329 — `impl Default for TestServerBuilder` — with a builder pattern for flexible configuration.
--  `default` function L326-328 — `() -> Self` — with a builder pattern for flexible configuration.
+-  `TestServerBuilder` type L139-332 — `= TestServerBuilder` — with a builder pattern for flexible configuration.
+-  `TestServerBuilder` type L334-338 — `impl Default for TestServerBuilder` — with a builder pattern for flexible configuration.
+-  `default` function L335-337 — `() -> Self` — with a builder pattern for flexible configuration.
 
 #### crates/arawn-test-utils/src/sse.rs
 

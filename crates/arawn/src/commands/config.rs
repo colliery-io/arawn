@@ -16,7 +16,6 @@ use super::output;
   arawn config edit                 Open config in $EDITOR
   arawn config init                 Create default user config
   arawn config init --local         Create project-local config
-  arawn config set-secret anthropic Store Anthropic API key in keyring
   arawn config set-context prod --server http://prod:8080
   arawn config use-context prod     Switch to prod context
   arawn config get-contexts         List available contexts")]
@@ -32,18 +31,6 @@ pub enum ConfigCommand {
 
     /// Show which config files are loaded and their precedence
     Which,
-
-    /// Store an API key in the system keyring
-    SetSecret {
-        /// Backend name: anthropic, openai, groq, ollama, custom
-        backend: String,
-    },
-
-    /// Remove an API key from the system keyring
-    DeleteSecret {
-        /// Backend name: anthropic, openai, groq, ollama, custom
-        backend: String,
-    },
 
     /// Open configuration file in $EDITOR
     Edit,
@@ -101,8 +88,6 @@ pub async fn run(args: ConfigArgs, ctx: &Context) -> Result<()> {
     match args.command {
         ConfigCommand::Show => cmd_show(ctx).await,
         ConfigCommand::Which => cmd_which(ctx).await,
-        ConfigCommand::SetSecret { backend } => cmd_set_secret(&backend).await,
-        ConfigCommand::DeleteSecret { backend } => cmd_delete_secret(&backend).await,
         ConfigCommand::Edit => cmd_edit().await,
         ConfigCommand::Init { local } => cmd_init(local).await,
         ConfigCommand::Path => cmd_path().await,
@@ -221,57 +206,6 @@ async fn cmd_which(_ctx: &Context) -> Result<()> {
     Ok(())
 }
 
-async fn cmd_set_secret(backend_str: &str) -> Result<()> {
-    let backend = parse_backend(backend_str)?;
-
-    print!("Enter API key for {}: ", backend.display_name());
-    std::io::Write::flush(&mut std::io::stdout())?;
-    let mut api_key = String::new();
-    std::io::BufRead::read_line(&mut std::io::stdin().lock(), &mut api_key)?;
-    let api_key = api_key.trim();
-
-    if api_key.is_empty() {
-        output::hint("No key provided, aborting.");
-        return Ok(());
-    }
-
-    match arawn_config::secrets::store_secret(&backend, api_key) {
-        Ok(()) => {
-            output::success(format!(
-                "API key stored in encrypted secret store for {}.",
-                backend.display_name()
-            ));
-        }
-        Err(e) => {
-            output::error(format!("Failed to store secret: {}", e));
-            output::hint(format!(
-                "Fallback: set the {} environment variable instead.",
-                backend.env_var()
-            ));
-        }
-    }
-
-    Ok(())
-}
-
-async fn cmd_delete_secret(backend_str: &str) -> Result<()> {
-    let backend = parse_backend(backend_str)?;
-
-    match arawn_config::secrets::delete_secret(&backend) {
-        Ok(()) => {
-            output::success(format!(
-                "API key removed from encrypted secret store for {}.",
-                backend.display_name()
-            ));
-        }
-        Err(e) => {
-            output::error(format!("Failed to delete secret: {}", e));
-        }
-    }
-
-    Ok(())
-}
-
 async fn cmd_edit() -> Result<()> {
     let config_path = arawn_config::xdg_config_path()
         .ok_or_else(|| anyhow::anyhow!("Could not determine config directory"))?;
@@ -334,7 +268,7 @@ enabled = true
     output::success(format!("Created config file: {}", path.display()));
     println!();
     println!("Next steps:");
-    println!("  arawn config set-secret groq    # store API key in keyring");
+    println!("  arawn secrets set groq_api_key   # store API key");
     println!("  arawn config edit               # customize config");
     println!("  arawn config show               # verify configuration");
 
@@ -348,21 +282,6 @@ async fn cmd_path() -> Result<()> {
         output::error("Could not determine config directory");
     }
     Ok(())
-}
-
-fn parse_backend(s: &str) -> Result<Backend> {
-    match s.to_lowercase().as_str() {
-        "anthropic" => Ok(Backend::Anthropic),
-        "openai" => Ok(Backend::Openai),
-        "groq" => Ok(Backend::Groq),
-        "ollama" => Ok(Backend::Ollama),
-        "custom" => Ok(Backend::Custom),
-        "claude-oauth" | "claudeoauth" => Ok(Backend::ClaudeOauth),
-        other => Err(anyhow::anyhow!(
-            "Unknown backend '{}'. Valid: anthropic, openai, groq, ollama, custom, claude-oauth",
-            other
-        )),
-    }
 }
 
 fn key_status_for(backend: &Backend) -> &'static str {

@@ -34,7 +34,7 @@ max_context_tokens = 200000
 |-------|------|---------|-------------|
 | `backend` | string | *(required)* | LLM provider: `anthropic`, `openai`, `groq`, `ollama`, `custom`, `claude-oauth` |
 | `model` | string | *(required)* | Model identifier (e.g., `claude-sonnet-4-20250514`) |
-| `api_key` | string | | API key. **Not recommended in config files.** Use `arawn config set-secret` or env vars. |
+| `api_key` | string | | API key. **Not recommended in config files.** Use `arawn secrets set` or env vars. |
 | `base_url` | string | *(provider default)* | Custom API base URL for proxies or self-hosted endpoints |
 | `retry_max` | u32 | | Max retry attempts for transient failures |
 | `retry_backoff_ms` | u64 | | Millisecond delay between retries |
@@ -703,7 +703,7 @@ API keys are resolved in this order for each backend:
 
 1. `--api-key` CLI flag (highest priority, overrides all below)
 2. Age-encrypted secret store (`arawn secrets set <name>`)
-3. System keyring (set via `arawn config set-secret <backend>`)
+3. System keyring (set via `arawn secrets set <backend>`)
 4. Environment variable (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, etc.)
 5. `[llm] api_key` or `[llm.<profile>] api_key` in config (lowest priority)
 

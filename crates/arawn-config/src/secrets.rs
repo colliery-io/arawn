@@ -201,12 +201,15 @@ fn get_from_age_store(backend: &Backend) -> Option<ResolvedSecret> {
     }
 
     let store = crate::AgeSecretStore::open_default().ok()?;
-    let name = age_store_name(backend);
-    let value = store.get(&name)?;
 
-    if value.is_empty() {
-        return None;
-    }
+    // Check the canonical name first (e.g. "groq_api_key"), then fall back
+    // to the bare backend name (e.g. "groq") so both naming conventions work.
+    let canonical = age_store_name(backend);
+    let bare = backend.display_name().to_lowercase();
+    let value = store
+        .get(&canonical)
+        .or_else(|| store.get(&bare))
+        .filter(|v| !v.is_empty())?;
 
     Some(ResolvedSecret {
         value,

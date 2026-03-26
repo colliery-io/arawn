@@ -157,7 +157,7 @@ Arawn uses age encryption to store secrets at rest. Secrets (API keys, tokens) a
 ### Store a secret
 
 ```sh
-arawn config set-secret anthropic
+arawn secrets set anthropic
 ```
 
 You will be prompted for the API key, which is encrypted and stored. The decrypted value is never logged or written to disk in plaintext.

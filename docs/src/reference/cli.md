@@ -334,28 +334,6 @@ arawn config init [FLAGS]
 
 Print the configuration file path to stdout.
 
-### arawn config set-secret
-
-Store an API key in the system keyring.
-
-```
-arawn config set-secret <backend>
-```
-
-| Argument | Description |
-|----------|-------------|
-| `<backend>` | Backend name: `anthropic`, `openai`, `groq`, `ollama`, `custom`, `claude-oauth` |
-
-Prompts interactively for the API key (input hidden).
-
-### arawn config delete-secret
-
-Remove an API key from the system keyring.
-
-```
-arawn config delete-secret <backend>
-```
-
 ### arawn config current-context
 
 Print the current context name.
@@ -403,7 +381,6 @@ arawn config which
 arawn config edit
 arawn config init
 arawn config init --local
-arawn config set-secret anthropic
 arawn config set-context prod --server http://prod:8080
 arawn config use-context prod
 arawn config get-contexts

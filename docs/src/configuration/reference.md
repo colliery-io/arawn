@@ -31,7 +31,7 @@ max_context_tokens = 200000    # Max context window size in tokens
 | `retry_backoff_ms` | u64 | — | Millisecond delay between retries |
 | `max_context_tokens` | usize | — | Max context window size in tokens |
 
-> **Warning:** Setting `api_key` in the config file is insecure. Use `arawn config set-secret`
+> **Warning:** Setting `api_key` in the config file is insecure. Use `arawn secrets set`
 > or environment variables instead. See [Secret Management](secrets.md).
 
 ### Named LLM Profiles
