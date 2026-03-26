@@ -66,7 +66,7 @@ async fn test_baseline_ws_client_chat() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_tui_ws_client_receives_messages() -> anyhow::Result<()> {
-    let server = text_server("tui client test").await?;
+    let server = noauth_text_server("tui client test").await?;
 
     // Create the actual TUI WsClient (what the real app uses)
     let mut ws_client = WsClient::new(&server.base_url());

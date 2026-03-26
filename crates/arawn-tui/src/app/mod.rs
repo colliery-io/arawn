@@ -194,54 +194,58 @@ impl App {
         })
     }
 
+    /// Process a tick event: poll connection status and send keepalive pings.
+    ///
+    /// Returns `true` if sidebar data should be loaded (first connection).
+    pub fn process_tick(&mut self) -> bool {
+        let mut should_load_data = false;
+
+        if let Some(status) = self.ws_client.poll_status() {
+            let was_connected = self.connection_status == ConnectionStatus::Connected;
+            self.connection_status = status;
+
+            if was_connected && status != ConnectionStatus::Connected && self.waiting {
+                self.waiting = false;
+                self.status_message =
+                    Some("Connection lost — message may not have been delivered".to_string());
+            }
+
+            if !was_connected && status == ConnectionStatus::Connected {
+                should_load_data = true;
+            }
+        }
+
+        if self.last_ping.elapsed() >= std::time::Duration::from_secs(30) {
+            let _ = self.ws_client.send_ping();
+            self.last_ping = std::time::Instant::now();
+        }
+
+        should_load_data
+    }
+
     /// Run the main application loop.
     pub async fn run(&mut self, terminal: &mut Tui) -> Result<()> {
         let mut events = EventHandler::new();
         let mut data_loaded = false;
 
         while !self.should_quit {
-            // Render the UI
             terminal.draw(|frame| ui::render(self, frame))?;
 
-            // Handle events
             tokio::select! {
-                // Terminal events
                 event = events.next() => {
                     match event? {
                         Event::Key(key) => self.handle_key(key),
                         Event::Mouse(mouse) => self.handle_mouse(mouse),
                         Event::Tick => {
-                            // Poll for connection status updates
-                            if let Some(status) = self.ws_client.poll_status() {
-                                let was_connected = self.connection_status == ConnectionStatus::Connected;
-                                self.connection_status = status;
-
-                                // Reset waiting state if connection dropped while waiting for response
-                                if was_connected && status != ConnectionStatus::Connected && self.waiting {
-                                    self.waiting = false;
-                                    self.status_message = Some("Connection lost — message may not have been delivered".to_string());
-                                }
-
-                                // Load data when we first connect
-                                if !was_connected && status == ConnectionStatus::Connected && !data_loaded {
-                                    data_loaded = true;
-                                    self.refresh_sidebar_data().await;
-                                }
-                            }
-
-                            // Send WebSocket keepalive ping every 30 seconds
-                            if self.last_ping.elapsed() >= std::time::Duration::from_secs(30) {
-                                let _ = self.ws_client.send_ping();
-                                self.last_ping = std::time::Instant::now();
+                            if self.process_tick() && !data_loaded {
+                                data_loaded = true;
+                                self.refresh_sidebar_data().await;
                             }
                         }
-                        Event::Resize(_, _) => {
-                            // Terminal resized, will re-render on next iteration
-                        }
+                        Event::Resize(_, _) => {}
                     }
                 }
 
-                // WebSocket messages
                 msg = self.ws_client.recv() => {
                     if let Some(msg) = msg {
                         self.handle_server_message(msg);
@@ -249,7 +253,6 @@ impl App {
                 }
             }
 
-            // Process any pending async actions
             self.process_pending_actions().await;
         }
 

@@ -1,4 +1,2 @@
-/Users/dstorey/Desktop/arawn/crates/arawn-server/src/state/mod.rs
-/Users/dstorey/Desktop/arawn/crates/arawn-server/src/routes/sessions/mod.rs
-/Users/dstorey/Desktop/arawn/crates/arawn-server/src/lib.rs
-/Users/dstorey/Desktop/arawn/crates/arawn-server/src/routes/mod.rs
+/Users/dstorey/Desktop/arawn/crates/arawn-tui/src/app/mod.rs
+/Users/dstorey/Desktop/arawn/crates/arawn-tui/tests/ws_integration.rs

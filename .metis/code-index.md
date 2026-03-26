@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-03-26T05:38:35Z | 368 files | Rust
+> Generated: 2026-03-26T15:21:57Z | 369 files | Rust
 
 ## Project Structure
 
@@ -326,41 +326,43 @@
 │   │       ├── sse.rs
 │   │       └── ws_client.rs
 │   ├── arawn-tui/
-│   │   └── src/
-│   │       ├── app/
-│   │       │   ├── api_ops.rs
-│   │       │   ├── chat_handler.rs
-│   │       │   ├── input_handler.rs
-│   │       │   ├── logs_handler.rs
-│   │       │   ├── mod.rs
-│   │       │   ├── server_msg_handler.rs
-│   │       │   ├── session_handler.rs
-│   │       │   ├── sidebar_handler.rs
-│   │       │   └── tool_pane_handler.rs
-│   │       ├── app_types.rs
-│   │       ├── bounded.rs
-│   │       ├── client.rs
-│   │       ├── events.rs
-│   │       ├── focus.rs
-│   │       ├── input.rs
-│   │       ├── lib.rs
-│   │       ├── logs.rs
-│   │       ├── palette.rs
-│   │       ├── protocol.rs
-│   │       ├── sessions.rs
-│   │       ├── sidebar.rs
-│   │       └── ui/
-│   │           ├── chat.rs
-│   │           ├── command_popup.rs
-│   │           ├── input.rs
-│   │           ├── layout.rs
-│   │           ├── logs.rs
-│   │           ├── mod.rs
-│   │           ├── palette.rs
-│   │           ├── sessions.rs
-│   │           ├── sidebar.rs
-│   │           ├── theme.rs
-│   │           └── tools.rs
+│   │   ├── src/
+│   │   │   ├── app/
+│   │   │   │   ├── api_ops.rs
+│   │   │   │   ├── chat_handler.rs
+│   │   │   │   ├── input_handler.rs
+│   │   │   │   ├── logs_handler.rs
+│   │   │   │   ├── mod.rs
+│   │   │   │   ├── server_msg_handler.rs
+│   │   │   │   ├── session_handler.rs
+│   │   │   │   ├── sidebar_handler.rs
+│   │   │   │   └── tool_pane_handler.rs
+│   │   │   ├── app_types.rs
+│   │   │   ├── bounded.rs
+│   │   │   ├── client.rs
+│   │   │   ├── events.rs
+│   │   │   ├── focus.rs
+│   │   │   ├── input.rs
+│   │   │   ├── lib.rs
+│   │   │   ├── logs.rs
+│   │   │   ├── palette.rs
+│   │   │   ├── protocol.rs
+│   │   │   ├── sessions.rs
+│   │   │   ├── sidebar.rs
+│   │   │   └── ui/
+│   │   │       ├── chat.rs
+│   │   │       ├── command_popup.rs
+│   │   │       ├── input.rs
+│   │   │       ├── layout.rs
+│   │   │       ├── logs.rs
+│   │   │       ├── mod.rs
+│   │   │       ├── palette.rs
+│   │   │       ├── sessions.rs
+│   │   │       ├── sidebar.rs
+│   │   │       ├── theme.rs
+│   │   │       └── tools.rs
+│   │   └── tests/
+│   │       └── ws_integration.rs
 │   ├── arawn-types/
 │   │   └── src/
 │   │       ├── config.rs
@@ -6970,16 +6972,16 @@
 - pub `new` function L62-66 — `(agent: Agent, config: ServerConfig) -> Self` — Create a new server with the given agent and configuration.
 - pub `from_state` function L69-71 — `(state: AppState) -> Self` — Create a server from a pre-built application state.
 - pub `router` function L74-101 — `(&self) -> Router` — Build the router with all routes and middleware.
-- pub `run` function L225-257 — `(self) -> Result<()>` — Run the server with graceful shutdown on SIGTERM/SIGINT.
-- pub `run_on` function L260-278 — `(self, addr: SocketAddr) -> Result<()>` — Run the server on a specific address (useful for testing).
-- pub `bind_address` function L281-283 — `(&self) -> SocketAddr` — Get the configured bind address.
--  `Server` type L60-284 — `= Server` — ```
--  `api_routes` function L106-222 — `(&self) -> Router<AppState>` — API routes (v1).
--  `shutdown_signal` function L291-317 — `()` — Create a future that resolves when a shutdown signal is received.
--  `tests` module L320-372 — `-` — ```
--  `create_test_agent` function L330-337 — `() -> Agent` — ```
--  `test_server_health_endpoint` function L340-358 — `()` — ```
--  `test_server_config_builder` function L361-371 — `()` — ```
+- pub `run` function L226-258 — `(self) -> Result<()>` — Run the server with graceful shutdown on SIGTERM/SIGINT.
+- pub `run_on` function L261-279 — `(self, addr: SocketAddr) -> Result<()>` — Run the server on a specific address (useful for testing).
+- pub `bind_address` function L282-284 — `(&self) -> SocketAddr` — Get the configured bind address.
+-  `Server` type L60-285 — `= Server` — ```
+-  `api_routes` function L106-223 — `(&self) -> Router<AppState>` — API routes (v1).
+-  `shutdown_signal` function L292-318 — `()` — Create a future that resolves when a shutdown signal is received.
+-  `tests` module L321-373 — `-` — ```
+-  `create_test_agent` function L331-338 — `() -> Agent` — ```
+-  `test_server_health_endpoint` function L341-359 — `()` — ```
+-  `test_server_config_builder` function L362-372 — `()` — ```
 
 #### crates/arawn-server/src/ratelimit.rs
 
@@ -7425,6 +7427,7 @@
 - pub `delete_session_handler` function L259-297 — `( State(state): State<AppState>, Extension(_identity): Extension<Identity>, Path...` — Session management endpoints.
 - pub `update_session_handler` function L314-520 — `( State(state): State<AppState>, Extension(_identity): Extension<Identity>, Path...` — Session management endpoints.
 - pub `get_session_messages_handler` function L535-627 — `( State(state): State<AppState>, Extension(_identity): Extension<Identity>, Path...` — Session management endpoints.
+- pub `index_session_handler` function L691-722 — `( State(state): State<AppState>, Extension(_identity): Extension<Identity>, Path...` — Session management endpoints.
 -  `types` module L3 — `-` — Session management endpoints.
 -  `tests` module L7 — `-` — Session management endpoints.
 -  `parse_session_id` function L633-637 — `(s: &str) -> Result<SessionId, ServerError>` — Session management endpoints.
@@ -9424,6 +9427,19 @@
 -  `render_tool_output` function L93-133 — `(tool: &ToolExecution, scroll: usize, frame: &mut Frame, area: Rect)` — Render the output of a tool.
 -  `render_no_tools` function L136-150 — `(frame: &mut Frame, area: Rect)` — Render placeholder when no tools exist.
 -  `render_no_selection` function L153-162 — `(frame: &mut Frame, area: Rect)` — Render placeholder when no tool is selected.
+
+### crates/arawn-tui/tests
+
+> *Semantic summary to be generated by AI agent.*
+
+#### crates/arawn-tui/tests/ws_integration.rs
+
+-  `text_server` function L15-19 — `(response: &str) -> anyhow::Result<arawn_test_utils::TestServer>` — Helper: create a test server WITH auth that responds with a single text message.
+-  `noauth_text_server` function L22-30 — `(response: &str) -> anyhow::Result<arawn_test_utils::TestServer>` — Helper: create a test server WITHOUT auth (localhost mode).
+-  `test_baseline_ws_client_chat` function L37-61 — `() -> anyhow::Result<()>` — connect → (auth) → send chat → receive response.
+-  `test_tui_ws_client_receives_messages` function L68-140 — `() -> anyhow::Result<()>` — connect → (auth) → send chat → receive response.
+-  `test_tui_ws_client_noauth_server` function L147-181 — `() -> anyhow::Result<()>` — connect → (auth) → send chat → receive response.
+-  `test_tui_app_message_flow` function L188-258 — `() -> anyhow::Result<()>` — connect → (auth) → send chat → receive response.
 
 ### crates/arawn-types/src
 

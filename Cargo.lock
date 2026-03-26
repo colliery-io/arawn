@@ -584,6 +584,7 @@ dependencies = [
  "anyhow",
  "arawn-client",
  "arawn-config",
+ "arawn-test-utils",
  "chrono",
  "crossterm",
  "futures",
