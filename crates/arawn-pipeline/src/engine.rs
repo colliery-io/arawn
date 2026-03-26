@@ -431,7 +431,6 @@ mod tests {
 
     #[tokio::test]
     async fn test_schedule_info_fields() {
-        // Verify ScheduleInfo default construction
         let info = ScheduleInfo {
             id: "test-id".to_string(),
             workflow_name: "wf".to_string(),
@@ -440,6 +439,98 @@ mod tests {
         };
         assert_eq!(info.id, "test-id");
         assert!(info.enabled);
+    }
+
+    async fn cron_engine(dir: &Path) -> PipelineEngine {
+        let db_path = dir.join("cron_test.db");
+        let config = PipelineConfig {
+            cron_enabled: true,
+            triggers_enabled: true,
+            ..Default::default()
+        };
+        PipelineEngine::new(&db_path, config).await.unwrap()
+    }
+
+    #[tokio::test]
+    async fn test_schedule_cron_nonexistent_workflow() {
+        let dir = TempDir::new().unwrap();
+        let engine = cron_engine(dir.path()).await;
+
+        let err = engine
+            .schedule_cron("no-such-workflow", "0 9 * * *", "UTC")
+            .await;
+        assert!(err.is_err());
+        assert!(
+            matches!(err, Err(PipelineError::WorkflowNotFound(_))),
+            "Expected WorkflowNotFound, got: {:?}",
+            err
+        );
+        engine.shutdown().await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_schedule_cron_and_list() {
+        let dir = TempDir::new().unwrap();
+        let engine = cron_engine(dir.path()).await;
+
+        let task = crate::task::DynamicTask::new(
+            "noop",
+            std::sync::Arc::new(|ctx| Box::pin(async move { Ok(ctx) })),
+        );
+        engine
+            .register_dynamic_workflow("cron-wf", "runs on schedule", vec![task])
+            .await
+            .unwrap();
+
+        let schedule_id = engine
+            .schedule_cron("cron-wf", "0 9 * * *", "UTC")
+            .await
+            .unwrap();
+        assert!(!schedule_id.is_empty());
+
+        let schedules = engine.list_schedules().await.unwrap();
+        assert_eq!(schedules.len(), 1);
+        assert_eq!(schedules[0].workflow_name, "cron-wf");
+        assert_eq!(schedules[0].cron_expr, "0 9 * * *");
+        assert!(schedules[0].enabled);
+        engine.shutdown().await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_trigger_with_triggers_enabled() {
+        let dir = TempDir::new().unwrap();
+        let engine = cron_engine(dir.path()).await;
+
+        let task = crate::task::DynamicTask::new(
+            "echo",
+            std::sync::Arc::new(|ctx| Box::pin(async move { Ok(ctx) })),
+        );
+        engine
+            .register_dynamic_workflow("trigger-enabled-wf", "triggerable", vec![task])
+            .await
+            .unwrap();
+
+        let result = engine
+            .trigger(
+                "trigger-enabled-wf",
+                cloacina_workflow::context::Context::new(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(result.status, ExecutionStatus::Completed);
+        engine.shutdown().await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_trigger_nonexistent_workflow() {
+        let dir = TempDir::new().unwrap();
+        let engine = cron_engine(dir.path()).await;
+
+        let err = engine
+            .trigger("ghost-wf", cloacina_workflow::context::Context::new())
+            .await;
+        assert!(err.is_err());
+        engine.shutdown().await.unwrap();
     }
 }
 
