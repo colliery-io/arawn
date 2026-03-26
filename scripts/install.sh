@@ -263,6 +263,7 @@ ENVFILE
 [llm]
 # backend = "groq"            # groq | anthropic | openai | ollama
 # model = "openai/gpt-oss-20b"
+# api_key_ref = "GROQ_API_KEY" # variable name — checked in secrets store, then env
 # max_context_tokens = 131072
 
 # Uncomment for ollama:
@@ -408,14 +409,15 @@ print_next_steps() {
     printf "     Example for Groq:\n\n"
     printf "     ${DIM}[llm]${RESET}\n"
     printf "     ${DIM}backend = \"groq\"${RESET}\n"
-    printf "     ${DIM}model = \"openai/gpt-oss-20b\"${RESET}\n\n"
+    printf "     ${DIM}model = \"openai/gpt-oss-20b\"${RESET}\n"
+    printf "     ${DIM}api_key_ref = \"GROQ_API_KEY\"${RESET}\n\n"
     NEXT_STEP=$((NEXT_STEP + 1))
 
     # API key
     printf "  ${YELLOW}${BOLD}${NEXT_STEP}. Set your API key${RESET}\n\n"
     printf "     Pick one method:\n\n"
     printf "     ${DIM}# Encrypted store (recommended)${RESET}\n"
-    printf "     arawn secrets set groq\n\n"
+    printf "     arawn secrets set GROQ_API_KEY\n\n"
     printf "     ${DIM}# Or set in the service env file${RESET}\n"
     printf "     echo 'GROQ_API_KEY=gsk_...' >> %s\n\n" "${ENV_FILE}"
     printf "     ${DIM}# Or export directly${RESET}\n"

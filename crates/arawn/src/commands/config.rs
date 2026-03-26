@@ -252,7 +252,7 @@ async fn cmd_init(local: bool) -> Result<()> {
 [llm]
 backend = "groq"
 model = "llama-3.3-70b-versatile"
-# api_key = "..."                  # Or use env: GROQ_API_KEY
+# api_key_ref = "GROQ_API_KEY"     # Variable name — checked in secrets store, then env
 
 # ── Server ───────────────────────────────────────────────────────────
 # [server]
