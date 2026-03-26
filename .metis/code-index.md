@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-03-26T02:51:49Z | 352 files | Rust
+> Generated: 2026-03-26T03:00:15Z | 352 files | Rust
 
 ## Project Structure
 
@@ -1698,7 +1698,7 @@
 -  `ToolRegistry` type L13-112 — `= ToolRegistry` — Validates file paths and routes shell commands through the OS-level sandbox.
 -  `validate_tool_paths` function L18-56 — `( &self, tool_name: &str, mut params: serde_json::Value, gate: &SharedFsGate, ) ...` — Validate and rewrite file paths in tool params against the filesystem gate.
 -  `execute_shell_sandboxed` function L62-111 — `( &self, _tool: &dyn Tool, params: &serde_json::Value, _ctx: &ToolContext, gate:...` — Execute a shell tool through the OS-level sandbox.
--  `tests` module L115-714 — `-` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `tests` module L115-681 — `-` — Validates file paths and routes shell commands through the OS-level sandbox.
 -  `MockFsGate` struct L130-139 — `{ allowed_read: Vec<std::path::PathBuf>, allowed_write: Vec<std::path::PathBuf>,...` — Mock filesystem gate for testing enforcement logic.
 -  `MockFsGate` type L141-165 — `= MockFsGate` — Validates file paths and routes shell commands through the OS-level sandbox.
 -  `new` function L142-149 — `(work_dir: impl Into<std::path::PathBuf>) -> Self` — Validates file paths and routes shell commands through the OS-level sandbox.
@@ -1730,16 +1730,9 @@
 -  `test_gate_file_read_no_path_param_passes_through` function L557-573 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
 -  `test_gate_shell_sandbox_combined_output` function L576-599 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
 -  `test_gate_shell_timeout_passed` function L602-618 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `MockSecretResolver` struct L622-624 — `{ secrets: std::collections::HashMap<String, String> }` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `MockSecretResolver` type L626-635 — `= MockSecretResolver` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `new` function L627-634 — `(pairs: &[(&str, &str)]) -> Self` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `MockSecretResolver` type L637-644 — `= MockSecretResolver` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `resolve` function L638-640 — `(&self, name: &str) -> Option<String>` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `names` function L641-643 — `(&self) -> Vec<String>` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `ctx_with_resolver` function L646-651 — `(resolver: MockSecretResolver) -> ToolContext` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `test_gate_shell_blocked_command_rejected` function L654-675 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `test_gate_shell_blocked_command_case_bypass` function L678-694 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `test_gate_shell_blocked_command_whitespace_bypass` function L697-713 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `test_gate_shell_blocked_command_rejected` function L621-642 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `test_gate_shell_blocked_command_case_bypass` function L645-661 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `test_gate_shell_blocked_command_whitespace_bypass` function L664-680 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
 
 #### crates/arawn-agent/src/tool/mod.rs
 
@@ -5727,12 +5720,12 @@
 #### crates/arawn-pipeline/src/factory.rs
 
 - pub `build_executor_factory` function L24-120 — `( executor: Arc<ScriptExecutor>, catalog: Arc<RwLock<RuntimeCatalog>>, ) -> Acti...` — Build an `ActionExecutorFactory` that dispatches to WASM runtimes via
--  `tests` module L123-277 — `-` — definitions to WASM runtime execution via `ScriptExecutor`.
--  `setup_with_passthrough` function L132-168 — `() -> (Arc<ScriptExecutor>, Arc<RwLock<RuntimeCatalog>>, TempDir)` — Helper: set up executor, compile a simple passthrough wasm, register in catalog.
--  `can_compile_wasm` function L170-177 — `() -> bool` — definitions to WASM runtime execution via `ScriptExecutor`.
--  `test_factory_produces_working_task_fn` function L180-203 — `()` — definitions to WASM runtime execution via `ScriptExecutor`.
--  `test_factory_context_propagation` function L206-244 — `()` — definitions to WASM runtime execution via `ScriptExecutor`.
--  `test_factory_unknown_runtime_error` function L247-276 — `()` — definitions to WASM runtime execution via `ScriptExecutor`.
+-  `tests` module L123-276 — `-` — definitions to WASM runtime execution via `ScriptExecutor`.
+-  `setup_with_passthrough` function L131-167 — `() -> (Arc<ScriptExecutor>, Arc<RwLock<RuntimeCatalog>>, TempDir)` — Helper: set up executor, compile a simple passthrough wasm, register in catalog.
+-  `can_compile_wasm` function L169-176 — `() -> bool` — definitions to WASM runtime execution via `ScriptExecutor`.
+-  `test_factory_produces_working_task_fn` function L179-202 — `()` — definitions to WASM runtime execution via `ScriptExecutor`.
+-  `test_factory_context_propagation` function L205-243 — `()` — definitions to WASM runtime execution via `ScriptExecutor`.
+-  `test_factory_unknown_runtime_error` function L246-275 — `()` — definitions to WASM runtime execution via `ScriptExecutor`.
 
 #### crates/arawn-pipeline/src/lib.rs
 
@@ -5827,7 +5820,7 @@
 -  `check_wasm_target` function L387-405 — `() -> Result<(), PipelineError>` — Check if the `wasm32-wasip1` target is installed.
 -  `execute_sync` function L408-499 — `( engine: &Engine, module: &Module, context_json: &str, capabilities: &Capabilit...` — Synchronous WASM execution with Wasmtime + WASI Preview 1.
 -  `sha256_hex` function L503-507 — `(input: &str) -> String` — Compute SHA-256 hex digest of a string.
--  `tests` module L510-1109 — `-` — 5.
+-  `tests` module L510-1090 — `-` — 5.
 -  `test_executor` function L514-519 — `() -> (ScriptExecutor, TempDir)` — 5.
 -  `test_sha256_deterministic` function L522-527 — `()` — 5.
 -  `test_sha256_different_inputs` function L530-534 — `()` — 5.
@@ -5842,23 +5835,23 @@
 -  `test_execute_exit_code` function L682-701 — `()` — 5.
 -  `test_execute_runtime_unknown_name` function L704-716 — `()` — 5.
 -  `test_execute_runtime_missing_wasm` function L719-739 — `()` — 5.
--  `test_execute_runtime_passthrough` function L742-815 — `()` — 5.
--  `test_execute_runtime_caches_module` function L818-871 — `()` — 5.
--  `test_sha256_empty_string` function L874-882 — `()` — 5.
--  `test_sha256_unicode` function L885-890 — `()` — 5.
--  `test_script_config_custom_values` function L893-906 — `()` — 5.
--  `test_script_config_no_memory_limit` function L909-915 — `()` — 5.
--  `test_compile_result_debug` function L918-928 — `()` — 5.
--  `test_script_output_debug` function L931-941 — `()` — 5.
--  `test_compile_crate_missing_cargo_toml` function L944-956 — `()` — 5.
--  `test_executor_creates_cache_dir` function L959-965 — `()` — 5.
--  `test_executor_default_timeout_used` function L968-973 — `()` — 5.
--  `test_compile_hash_matches_sha256` function L976-997 — `()` — 5.
--  `test_compile_and_execute_combined` function L1000-1018 — `()` — 5.
--  `test_execute_with_custom_timeout` function L1021-1044 — `()` — 5.
--  `test_execute_captures_stderr` function L1047-1070 — `()` — 5.
--  `test_clear_cache_on_empty` function L1073-1079 — `()` — 5.
--  `test_clear_cache` function L1082-1108 — `()` — 5.
+-  `test_execute_runtime_passthrough` function L742-796 — `()` — 5.
+-  `test_execute_runtime_caches_module` function L799-852 — `()` — 5.
+-  `test_sha256_empty_string` function L855-863 — `()` — 5.
+-  `test_sha256_unicode` function L866-871 — `()` — 5.
+-  `test_script_config_custom_values` function L874-887 — `()` — 5.
+-  `test_script_config_no_memory_limit` function L890-896 — `()` — 5.
+-  `test_compile_result_debug` function L899-909 — `()` — 5.
+-  `test_script_output_debug` function L912-922 — `()` — 5.
+-  `test_compile_crate_missing_cargo_toml` function L925-937 — `()` — 5.
+-  `test_executor_creates_cache_dir` function L940-946 — `()` — 5.
+-  `test_executor_default_timeout_used` function L949-954 — `()` — 5.
+-  `test_compile_hash_matches_sha256` function L957-978 — `()` — 5.
+-  `test_compile_and_execute_combined` function L981-999 — `()` — 5.
+-  `test_execute_with_custom_timeout` function L1002-1025 — `()` — 5.
+-  `test_execute_captures_stderr` function L1028-1051 — `()` — 5.
+-  `test_clear_cache_on_empty` function L1054-1060 — `()` — 5.
+-  `test_clear_cache` function L1063-1089 — `()` — 5.
 
 #### crates/arawn-pipeline/src/task.rs
 

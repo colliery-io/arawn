@@ -1,8 +1,1 @@
-/Users/dstorey/Desktop/arawn/crates/arawn-agent/src/tool/gate.rs
-/Users/dstorey/Desktop/arawn/crates/arawn-pipeline/src/factory.rs
-/Users/dstorey/Desktop/arawn/crates/arawn-pipeline/src/sandbox.rs
-/Users/dstorey/Desktop/arawn/crates/arawn-workstream/src/path_validator.rs
-/Users/dstorey/Desktop/arawn/crates/arawn-plugin/src/subscription.rs
-/Users/dstorey/Desktop/arawn/crates/arawn-server/tests/common/mod.rs
-/Users/dstorey/Desktop/arawn/crates/arawn-server/src/routes/memory/tests.rs
-/Users/dstorey/Desktop/arawn/crates/arawn/tests/command_integration.rs
+/Users/dstorey/Desktop/arawn/crates/arawn-config/src/secrets.rs

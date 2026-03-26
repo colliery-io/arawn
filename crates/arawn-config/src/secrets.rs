@@ -51,28 +51,26 @@ impl std::fmt::Display for SecretSource {
 /// Returns `None` if not found anywhere.
 pub fn resolve_api_key_ref(ref_name: &str) -> Option<ResolvedSecret> {
     // 1. Secrets store (lowercase lookup — store normalizes on write)
-    if !cfg!(test) {
-        if let Ok(store) = crate::AgeSecretStore::open_default() {
-            if let Some(value) = store.get(ref_name) {
-                if !value.is_empty() {
-                    return Some(ResolvedSecret {
-                        value,
-                        source: SecretSource::AgeStore,
-                    });
-                }
-            }
-        }
+    if !cfg!(test)
+        && let Ok(store) = crate::AgeSecretStore::open_default()
+        && let Some(value) = store.get(ref_name)
+        && !value.is_empty()
+    {
+        return Some(ResolvedSecret {
+            value,
+            source: SecretSource::AgeStore,
+        });
     }
 
     // 2. Environment variable (as-is, then uppercased)
     for var_name in [ref_name.to_string(), ref_name.to_uppercase()] {
-        if let Ok(value) = std::env::var(&var_name) {
-            if !value.is_empty() {
-                return Some(ResolvedSecret {
-                    value,
-                    source: SecretSource::EnvVar(var_name),
-                });
-            }
+        if let Ok(value) = std::env::var(&var_name)
+            && !value.is_empty()
+        {
+            return Some(ResolvedSecret {
+                value,
+                source: SecretSource::EnvVar(var_name),
+            });
         }
     }
 
