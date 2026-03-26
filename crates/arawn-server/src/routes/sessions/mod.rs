@@ -668,3 +668,55 @@ fn session_to_detail_with_migration(
         allowed_paths,
     }
 }
+
+/// POST /api/v1/sessions/:id/index - Trigger session indexing.
+///
+/// Runs the memory indexer on the session's conversation history,
+/// extracting facts and generating embeddings. Normally this happens
+/// automatically when a session is deleted, but this endpoint allows
+/// triggering it on a live session.
+#[utoipa::path(
+    post,
+    path = "/api/v1/sessions/{id}/index",
+    params(("id" = String, Path, description = "Session ID")),
+    responses(
+        (status = 200, description = "Indexing complete"),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Session not found"),
+        (status = 503, description = "Indexer not configured"),
+    ),
+    security(("bearer_auth" = [])),
+    tag = "sessions"
+)]
+pub async fn index_session_handler(
+    State(state): State<AppState>,
+    Extension(_identity): Extension<Identity>,
+    Path(session_id): Path<String>,
+) -> Result<Json<serde_json::Value>, ServerError> {
+    let id = parse_session_id(&session_id)?;
+
+    let indexer = state
+        .indexer()
+        .ok_or_else(|| ServerError::ServiceUnavailable("Session indexer not configured".into()))?
+        .clone();
+
+    let session = state
+        .session_cache()
+        .get(&id)
+        .await
+        .ok_or_else(|| ServerError::NotFound(format!("Session {} not found", session_id)))?;
+
+    let messages = crate::state::session_to_messages(&session);
+    let refs = crate::state::messages_as_refs(&messages);
+
+    let report = indexer.index_session(&session_id, &refs).await;
+
+    Ok(Json(serde_json::json!({
+        "session_id": session_id,
+        "entities_stored": report.entities_stored,
+        "facts_inserted": report.facts_inserted,
+        "facts_reinforced": report.facts_reinforced,
+        "summary_stored": report.summary_stored,
+        "errors": report.errors,
+    })))
+}

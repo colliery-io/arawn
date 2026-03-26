@@ -1,13 +1,11 @@
 #!/bin/bash
 # Arawn Conversational Test
-# Simulates natural developer interactions with the system
+# Exercises the full API with verification round-trips
 
 set -e
 
 SERVER="${ARAWN_SERVER:-http://localhost:8080}"
 LOG_FILE="conversation-test-$(date +%Y%m%d-%H%M%S).log"
-
-# Auth token (empty means no auth required, which is the default)
 AUTH_TOKEN="${ARAWN_TOKEN:-}"
 
 # Colors
@@ -18,25 +16,12 @@ RED='\033[0;31m'
 DIM='\033[2m'
 NC='\033[0m'
 
-# Track state
 SESSION_ID=""
 WORKSTREAM_ID=""
 ERROR_COUNT=0
+PASS_COUNT=0
 
 # Build auth header if token is set
-auth_header() {
-    if [ -n "$AUTH_TOKEN" ]; then
-        echo "-H" "Authorization: Bearer $AUTH_TOKEN"
-    fi
-}
-
-log() {
-    echo -e "${BLUE}►${NC} $1"
-    echo ">>> $1" >> "$LOG_FILE"
-}
-
-# Make a curl request with error handling
-# Usage: api_call METHOD URL [DATA]
 api_call() {
     local method="$1"
     local url="$2"
@@ -60,303 +45,329 @@ api_call() {
     local raw_response
     raw_response=$(curl "${curl_args[@]}" "${auth_args[@]}" "$url" 2>&1)
 
-    # Split response and status code
     local body="${raw_response%__HTTP_STATUS__:*}"
     local status="${raw_response##*__HTTP_STATUS__:}"
 
-    # Log raw response
-    echo "RAW RESPONSE ($method $url):" >> "$LOG_FILE"
-    echo "Status: $status" >> "$LOG_FILE"
-    echo "Body: $body" >> "$LOG_FILE"
+    echo "RAW ($method $url): status=$status" >> "$LOG_FILE"
+    echo "$body" >> "$LOG_FILE"
     echo "---" >> "$LOG_FILE"
 
-    # Check for errors
     if [[ ! "$status" =~ ^2 ]]; then
         echo -e "${RED}[HTTP $status]${NC}" >&2
         ((ERROR_COUNT++)) || true
     fi
 
-    # Return just the body
     echo "$body"
 }
 
-chat() {
-    local msg="$1"
-    local session_arg=""
-
-    echo -e "${GREEN}You:${NC} $msg"
-    echo "USER: $msg" >> "$LOG_FILE"
-
-    if [ -n "$SESSION_ID" ]; then
-        session_arg="\"session_id\": \"$SESSION_ID\","
-    fi
-
-    local response
-    response=$(api_call POST "$SERVER/api/v1/chat" "{$session_arg \"message\": \"$msg\"}")
-
-    # Check if response is valid JSON
-    if ! echo "$response" | jq -e . >/dev/null 2>&1; then
-        echo -e "${RED}Invalid JSON response:${NC} ${response:0:200}"
-        echo "INVALID RESPONSE: $response" >> "$LOG_FILE"
-        ((ERROR_COUNT++)) || true
-        return 1
-    fi
-
-    # Extract and store session_id
-    SESSION_ID=$(echo "$response" | jq -r '.session_id // empty')
-
-    # Check for error in response
-    local error=$(echo "$response" | jq -r '.error // empty')
-    if [ -n "$error" ]; then
-        echo -e "${RED}Error:${NC} $error"
-        echo "ERROR: $error" >> "$LOG_FILE"
-        ((ERROR_COUNT++)) || true
-        return 1
-    fi
-
-    # Display response
-    local text=$(echo "$response" | jq -r '.response // "No response field"')
-    local tokens=$(echo "$response" | jq -r '.usage.input_tokens // "?"')
-
-    echo -e "${YELLOW}Assistant:${NC} ${text:0:500}"
-    [ ${#text} -gt 500 ] && echo -e "${DIM}... (truncated)${NC}"
-    echo -e "${DIM}[tokens: $tokens, session: ${SESSION_ID:0:8}...]${NC}"
-    echo ""
-
-    echo "ASSISTANT: $text" >> "$LOG_FILE"
-    echo "SESSION: $SESSION_ID" >> "$LOG_FILE"
-    echo "TOKENS: $tokens" >> "$LOG_FILE"
-
-    sleep 1  # Be nice to the API
+pass() {
+    echo -e "  ${GREEN}✓${NC} $1"
+    ((PASS_COUNT++)) || true
 }
 
-note() {
-    local content="$1"
-    echo -e "${BLUE}[Creating note]${NC}"
+fail() {
+    echo -e "  ${RED}✗${NC} $1"
+    ((ERROR_COUNT++)) || true
+}
 
-    local response
-    response=$(api_call POST "$SERVER/api/v1/notes" "{\"content\": \"$content\"}")
-
-    local note_id=$(echo "$response" | jq -r '.note.id // empty')
-    if [ -n "$note_id" ]; then
-        echo -e "${DIM}[Note created: ${note_id:0:8}...]${NC}"
+check_field() {
+    local json="$1"
+    local field="$2"
+    local label="$3"
+    local value
+    value=$(echo "$json" | jq -r "$field // empty")
+    if [ -n "$value" ]; then
+        pass "$label: $value"
     else
-        echo -e "${RED}[Note creation may have failed]${NC}"
+        fail "$label: missing"
     fi
-}
-
-search_memory() {
-    local query="$1"
-    echo -e "${BLUE}[Searching: $query]${NC}"
-
-    local encoded_query
-    # Use printf to avoid trailing newline that echo adds
-    encoded_query=$(printf '%s' "$query" | jq -sRr @uri)
-
-    local response
-    response=$(api_call GET "$SERVER/api/v1/memory/search?q=$encoded_query&limit=5")
-
-    local count=$(echo "$response" | jq -r '.count // 0')
-    local degraded=$(echo "$response" | jq -r '.degraded // false')
-
-    if [ "$count" -gt 0 ]; then
-        echo -e "${GREEN}Found $count results:${NC}"
-        echo "$response" | jq -r '.results[]?.content // empty' | head -3 | while read -r line; do
-            echo "  - ${line:0:80}..."
-        done
-    else
-        echo -e "${DIM}No results found${NC}"
-    fi
-
-    [ "$degraded" = "true" ] && echo -e "${YELLOW}(search was degraded)${NC}"
-}
-
-new_session() {
-    SESSION_ID=""
-    echo -e "${DIM}[Starting fresh session]${NC}"
-    echo "=== NEW SESSION ===" >> "$LOG_FILE"
 }
 
 # ============================================================================
-echo "Arawn Conversational Test"
-echo "========================="
+echo "Arawn Functional Test"
+echo "====================="
 echo -e "${DIM}Server: $SERVER | Log: $LOG_FILE${NC}"
-[ -n "$AUTH_TOKEN" ] && echo -e "${DIM}Auth: token configured${NC}"
 echo ""
 
-# Initialize log
-echo "Arawn Conversation Test - $(date)" > "$LOG_FILE"
-echo "Server: $SERVER" >> "$LOG_FILE"
-echo "" >> "$LOG_FILE"
+echo "Arawn Functional Test - $(date)" > "$LOG_FILE"
 
-# Quick health check
-echo -e "${DIM}Checking server health...${NC}"
-health_response=$(api_call GET "$SERVER/health")
-if echo "$health_response" | jq -e '.status == "healthy"' >/dev/null 2>&1; then
-    echo -e "${GREEN}Server is healthy${NC}"
+# ----------------------------------------------------------------------------
+echo -e "${YELLOW}1. Health Check${NC}"
+# ----------------------------------------------------------------------------
+
+health=$(api_call GET "$SERVER/health")
+check_field "$health" '.status' "status"
+check_field "$health" '.version' "version"
+echo ""
+
+# ----------------------------------------------------------------------------
+echo -e "${YELLOW}2. Deep Health Check${NC}"
+# ----------------------------------------------------------------------------
+
+deep=$(api_call GET "$SERVER/health/deep")
+check_field "$deep" '.status' "overall status"
+checks=$(echo "$deep" | jq -r '.checks[]?.name // empty' 2>/dev/null | tr '\n' ', ')
+[ -n "$checks" ] && pass "checks: $checks" || fail "no checks returned"
+echo ""
+
+# ----------------------------------------------------------------------------
+echo -e "${YELLOW}3. Chat — create session${NC}"
+# ----------------------------------------------------------------------------
+
+chat1=$(api_call POST "$SERVER/api/v1/chat" '{"message": "Hello! Reply with exactly: ARAWN_TEST_OK"}')
+SESSION_ID=$(echo "$chat1" | jq -r '.session_id // empty')
+check_field "$chat1" '.session_id' "session_id"
+check_field "$chat1" '.response' "response"
+response_text=$(echo "$chat1" | jq -r '.response // empty')
+echo -e "  ${DIM}Response: ${response_text:0:100}${NC}"
+echo ""
+sleep 1
+
+# ----------------------------------------------------------------------------
+echo -e "${YELLOW}4. Chat — continue session${NC}"
+# ----------------------------------------------------------------------------
+
+chat2=$(api_call POST "$SERVER/api/v1/chat" "{\"message\": \"What did I just say?\", \"session_id\": \"$SESSION_ID\"}")
+session2=$(echo "$chat2" | jq -r '.session_id // empty')
+if [ "$session2" = "$SESSION_ID" ]; then
+    pass "same session ID preserved"
 else
-    echo -e "${RED}Server health check failed - continuing anyway${NC}"
+    fail "session ID changed: $session2 != $SESSION_ID"
 fi
+check_field "$chat2" '.response' "response"
 echo ""
+sleep 1
 
 # ----------------------------------------------------------------------------
-log "Scene 1: Getting oriented in a new codebase"
+echo -e "${YELLOW}5. Verify session via GET${NC}"
 # ----------------------------------------------------------------------------
 
-chat "Hey, I just cloned this repo. What kind of project is this?"
-
-chat "What are the main components?"
-
-# ----------------------------------------------------------------------------
-log "Scene 2: Exploring specific functionality"
-# ----------------------------------------------------------------------------
-
-chat "I need to understand how sessions work here. Where should I look?"
-
-chat "How does cleanup work? Want to make sure there's no memory leak."
-
-# ----------------------------------------------------------------------------
-log "Scene 3: Taking notes for later"
-# ----------------------------------------------------------------------------
-
-note "Session management: Uses LRU cache with configurable max_sessions. Cleanup runs on interval. Check session_cache.rs for implementation details."
-
-chat "What patterns does the glob tool support? Just curious."
-
-# ----------------------------------------------------------------------------
-log "Scene 4: New session - different context"
-# ----------------------------------------------------------------------------
-new_session
-
-chat "Working on a perf issue - file listing feels slow. What might cause that?"
-
-chat "Any TODOs in the codebase mentioning performance?"
-
-# ----------------------------------------------------------------------------
-log "Scene 5: Workstream organization"
-# ----------------------------------------------------------------------------
-
-log "Creating a workstream for this investigation..."
-ws_response=$(api_call POST "$SERVER/api/v1/workstreams" '{"title": "perf-investigation", "tags": ["debugging", "performance"]}')
-WORKSTREAM_ID=$(echo "$ws_response" | jq -r '.id // empty')
-
-if [ -n "$WORKSTREAM_ID" ]; then
-    echo -e "${DIM}[Workstream created: ${WORKSTREAM_ID:0:8}...]${NC}"
-
-    # Send a message to the workstream
-    api_call POST "$SERVER/api/v1/workstreams/$WORKSTREAM_ID/messages" \
-        '{"content": "Investigating slow file listing. Suspect glob tool depth issue."}' > /dev/null
-fi
-
-# ----------------------------------------------------------------------------
-log "Scene 6: Memory recall"
-# ----------------------------------------------------------------------------
-
-echo -e "${BLUE}Can we find our earlier notes?${NC}"
-search_memory "session"
-
-echo ""
-search_memory "LRU cache"
-
-# ----------------------------------------------------------------------------
-log "Scene 7: Continued conversation with context"
-# ----------------------------------------------------------------------------
-new_session
-
-chat "Found the issue - glob was walking too deep. Fixed it to calculate depth from the pattern."
-
-chat "What config options exist for tuning session behavior?"
-
-# ----------------------------------------------------------------------------
-log "Scene 8: Context management"
-# ----------------------------------------------------------------------------
-
-# Check available commands
-echo -e "${BLUE}[Checking available commands]${NC}"
-cmd_response=$(api_call GET "$SERVER/api/v1/commands")
-has_compact=$(echo "$cmd_response" | jq -r '.commands[]? | select(.name == "compact") | .name // empty')
-if [ "$has_compact" = "compact" ]; then
-    echo -e "${GREEN}Compact command available${NC}"
+session_detail=$(api_call GET "$SERVER/api/v1/sessions/$SESSION_ID")
+check_field "$session_detail" '.id' "session id"
+turn_count=$(echo "$session_detail" | jq '.turns | length // 0' 2>/dev/null)
+if [ "$turn_count" -ge 2 ]; then
+    pass "turn count: $turn_count (expected >= 2)"
 else
-    echo -e "${RED}Compact command not found in command list${NC}"
-    ((ERROR_COUNT++)) || true
+    fail "turn count: $turn_count (expected >= 2)"
 fi
+echo ""
 
-# Try compact on current session (should say not needed - too few turns)
-if [ -n "$SESSION_ID" ]; then
-    echo -e "${BLUE}[Testing compact command - expects 'not needed']${NC}"
-    compact_response=$(api_call POST "$SERVER/api/v1/commands/compact" "{\"session_id\": \"$SESSION_ID\"}")
-    compacted=$(echo "$compact_response" | jq -r '.compacted // empty')
-    message=$(echo "$compact_response" | jq -r '.message // empty')
+# ----------------------------------------------------------------------------
+echo -e "${YELLOW}6. List sessions${NC}"
+# ----------------------------------------------------------------------------
 
-    if [ "$compacted" = "false" ]; then
-        echo -e "${GREEN}Correctly reported: $message${NC}"
-    elif [ "$compacted" = "true" ]; then
-        echo -e "${YELLOW}Compaction performed (unexpected with few turns)${NC}"
+sessions=$(api_call GET "$SERVER/api/v1/sessions")
+total=$(echo "$sessions" | jq -r '.total // 0')
+if [ "$total" -ge 1 ]; then
+    pass "sessions total: $total"
+else
+    fail "sessions total: $total (expected >= 1)"
+fi
+echo ""
+
+# ----------------------------------------------------------------------------
+echo -e "${YELLOW}7. Create note${NC}"
+# ----------------------------------------------------------------------------
+
+note=$(api_call POST "$SERVER/api/v1/notes" '{"content": "Test note about purple elephants", "tags": ["test", "functional"]}')
+NOTE_ID=$(echo "$note" | jq -r '.id // empty')
+check_field "$note" '.id' "note id"
+check_field "$note" '.content' "content"
+echo ""
+
+# ----------------------------------------------------------------------------
+echo -e "${YELLOW}8. Verify note via GET${NC}"
+# ----------------------------------------------------------------------------
+
+if [ -n "$NOTE_ID" ]; then
+    note_get=$(api_call GET "$SERVER/api/v1/notes/$NOTE_ID")
+    content=$(echo "$note_get" | jq -r '.content // empty')
+    if [ "$content" = "Test note about purple elephants" ]; then
+        pass "note content matches"
     else
-        echo -e "${RED}Unexpected compact response${NC}"
+        fail "note content mismatch: $content"
+    fi
+    tags=$(echo "$note_get" | jq -r '.tags | join(", ") // empty')
+    pass "tags: $tags"
+else
+    fail "no note ID to verify"
+fi
+echo ""
+
+# ----------------------------------------------------------------------------
+echo -e "${YELLOW}9. List notes${NC}"
+# ----------------------------------------------------------------------------
+
+notes_list=$(api_call GET "$SERVER/api/v1/notes")
+notes_total=$(echo "$notes_list" | jq -r '.total // 0')
+if [ "$notes_total" -ge 1 ]; then
+    pass "notes total: $notes_total"
+else
+    fail "notes total: $notes_total (expected >= 1)"
+fi
+echo ""
+
+# ----------------------------------------------------------------------------
+echo -e "${YELLOW}10. Store memory${NC}"
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}10. Trigger session indexing${NC}"
+# ----------------------------------------------------------------------------
+
+if [ -n "$SESSION_ID" ]; then
+    index_result=$(api_call POST "$SERVER/api/v1/sessions/$SESSION_ID/index")
+    check_field "$index_result" '.session_id' "indexed session"
+    facts=$(echo "$index_result" | jq -r '.facts_inserted // 0')
+    summary=$(echo "$index_result" | jq -r '.summary_stored // false')
+    echo -e "  ${DIM}facts: $facts, summary: $summary${NC}"
+    errors=$(echo "$index_result" | jq -r '.errors | length // 0')
+    if [ "$errors" -eq 0 ]; then
+        pass "no indexing errors"
+    else
+        fail "indexing errors: $errors"
     fi
 fi
+echo ""
 
-# Build up a longer session for context testing
-echo -e "${BLUE}[Building longer conversation for context test]${NC}"
-new_session
+# ----------------------------------------------------------------------------
+echo -e "${YELLOW}11. Search memory (text)${NC}"
+# ----------------------------------------------------------------------------
 
-# Send several messages to accumulate context
-for i in $(seq 1 5); do
-    chat "Tell me about topic $i - keep it brief"
-done
+mem_search=$(api_call GET "$SERVER/api/v1/memory/search?q=ARAWN_TEST_OK&limit=5")
+mem_count=$(echo "$mem_search" | jq -r '.count // 0')
+if [ "$mem_count" -ge 1 ]; then
+    pass "text search results: $mem_count"
+    first_result=$(echo "$mem_search" | jq -r '.results[0].content // empty')
+    echo -e "  ${DIM}First: ${first_result:0:80}${NC}"
+else
+    fail "text search returned 0 results"
+fi
+echo ""
 
-# Now try force compact
-if [ -n "$SESSION_ID" ]; then
-    echo -e "${BLUE}[Testing force compact]${NC}"
-    compact_response=$(api_call POST "$SERVER/api/v1/commands/compact" "{\"session_id\": \"$SESSION_ID\", \"force\": true}")
-    compacted=$(echo "$compact_response" | jq -r '.compacted // "unknown"')
-    echo -e "${DIM}Force compact result: compacted=$compacted${NC}"
+# ----------------------------------------------------------------------------
+echo -e "${YELLOW}12. Create workstream${NC}"
+# ----------------------------------------------------------------------------
 
-    # Log compact result
-    echo "COMPACT: compacted=$compacted" >> "$LOG_FILE"
+ws=$(api_call POST "$SERVER/api/v1/workstreams" '{"title": "test-functional", "tags": ["test"]}')
+WORKSTREAM_ID=$(echo "$ws" | jq -r '.id // empty')
+check_field "$ws" '.id' "workstream id"
+check_field "$ws" '.title' "title"
+echo ""
+
+# ----------------------------------------------------------------------------
+echo -e "${YELLOW}13. Verify workstream via GET${NC}"
+# ----------------------------------------------------------------------------
+
+if [ -n "$WORKSTREAM_ID" ]; then
+    ws_get=$(api_call GET "$SERVER/api/v1/workstreams/$WORKSTREAM_ID")
+    ws_title=$(echo "$ws_get" | jq -r '.title // empty')
+    if [ "$ws_title" = "test-functional" ]; then
+        pass "workstream title matches"
+    else
+        fail "workstream title mismatch: $ws_title"
+    fi
+    ws_tags=$(echo "$ws_get" | jq -r '.tags | join(", ") // empty')
+    pass "tags: $ws_tags"
+else
+    fail "no workstream ID to verify"
+fi
+echo ""
+
+# ----------------------------------------------------------------------------
+echo -e "${YELLOW}14. Send message to workstream${NC}"
+# ----------------------------------------------------------------------------
+
+if [ -n "$WORKSTREAM_ID" ]; then
+    ws_msg=$(api_call POST "$SERVER/api/v1/workstreams/$WORKSTREAM_ID/messages" '{"content": "Functional test message"}')
+    check_field "$ws_msg" '.id' "message id"
+fi
+echo ""
+
+# ----------------------------------------------------------------------------
+echo -e "${YELLOW}15. Verify workstream messages${NC}"
+# ----------------------------------------------------------------------------
+
+if [ -n "$WORKSTREAM_ID" ]; then
+    ws_msgs=$(api_call GET "$SERVER/api/v1/workstreams/$WORKSTREAM_ID/messages")
+    msg_count=$(echo "$ws_msgs" | jq '.messages | length // 0' 2>/dev/null)
+    if [ "$msg_count" -ge 1 ]; then
+        pass "workstream messages: $msg_count"
+    else
+        fail "workstream messages: $msg_count (expected >= 1)"
+    fi
+fi
+echo ""
+
+# ----------------------------------------------------------------------------
+echo -e "${YELLOW}16. List workstreams${NC}"
+# ----------------------------------------------------------------------------
+
+ws_list=$(api_call GET "$SERVER/api/v1/workstreams")
+ws_total=$(echo "$ws_list" | jq '.workstreams | length // 0' 2>/dev/null)
+if [ "$ws_total" -ge 1 ]; then
+    pass "workstreams count: $ws_total"
+else
+    fail "workstreams count: $ws_total (expected >= 1)"
+fi
+echo ""
+
+# ----------------------------------------------------------------------------
+echo -e "${YELLOW}17. Commands endpoint${NC}"
+# ----------------------------------------------------------------------------
+
+cmds=$(api_call GET "$SERVER/api/v1/commands")
+has_compact=$(echo "$cmds" | jq -r '.commands[]? | select(.name == "compact") | .name // empty')
+if [ "$has_compact" = "compact" ]; then
+    pass "compact command available"
+else
+    fail "compact command not found"
+fi
+echo ""
+
+# ----------------------------------------------------------------------------
+echo -e "${YELLOW}18. Metrics endpoint${NC}"
+# ----------------------------------------------------------------------------
+
+metrics=$(api_call GET "$SERVER/metrics")
+check_field "$metrics" '.uptime_seconds' "uptime"
+check_field "$metrics" '.active_ws_connections' "ws connections"
+check_field "$metrics" '.cached_sessions' "cached sessions"
+echo ""
+
+# ----------------------------------------------------------------------------
+echo -e "${YELLOW}19. Config endpoint${NC}"
+# ----------------------------------------------------------------------------
+
+config=$(api_call GET "$SERVER/api/v1/config")
+check_field "$config" '.version' "version"
+check_field "$config" '.features.memory_enabled' "memory enabled"
+echo ""
+
+# ----------------------------------------------------------------------------
+echo -e "${YELLOW}20. Cleanup — delete test objects${NC}"
+# ----------------------------------------------------------------------------
+
+if [ -n "$NOTE_ID" ]; then
+    api_call DELETE "$SERVER/api/v1/notes/$NOTE_ID" > /dev/null
+    pass "deleted note $NOTE_ID"
 fi
 
-# ----------------------------------------------------------------------------
-log "Scene 9: Wrapping up"
-# ----------------------------------------------------------------------------
+if [ -n "$SESSION_ID" ]; then
+    api_call DELETE "$SERVER/api/v1/sessions/$SESSION_ID" > /dev/null
+    pass "deleted session $SESSION_ID"
+fi
 
-chat "Quick summary of what we discussed today?"
-
-# ----------------------------------------------------------------------------
-# Cleanup & Summary
-# ----------------------------------------------------------------------------
+if [ -n "$WORKSTREAM_ID" ]; then
+    api_call DELETE "$SERVER/api/v1/workstreams/$WORKSTREAM_ID" > /dev/null
+    pass "deleted workstream $WORKSTREAM_ID"
+fi
 echo ""
-echo "========================="
-echo "Test complete!"
+
+# ============================================================================
+echo "====================="
+echo -e "Results: ${GREEN}$PASS_COUNT passed${NC}, ${RED}$ERROR_COUNT failed${NC}"
 echo -e "${DIM}Log: $LOG_FILE${NC}"
 
-# Stats
-MESSAGES=$(grep -c "^USER:" "$LOG_FILE" 2>/dev/null || echo 0)
-SESSIONS=$(grep -c "=== NEW SESSION ===" "$LOG_FILE" 2>/dev/null || echo 0)
-echo ""
-echo "Stats:"
-echo "  Messages sent: $MESSAGES"
-echo "  Sessions used: $((SESSIONS + 1))"
-[ -n "$WORKSTREAM_ID" ] && echo "  Workstream: $WORKSTREAM_ID"
-
 if [ "$ERROR_COUNT" -gt 0 ]; then
-    echo -e "  ${RED}Errors: $ERROR_COUNT (check log for details)${NC}"
-else
-    echo -e "  ${GREEN}Errors: 0${NC}"
+    exit 1
 fi
-
-# Token usage summary
-echo ""
-echo "Token usage by message:"
-grep "^TOKENS:" "$LOG_FILE" | awk -F': ' '{print "  " NR ": " $2 " tokens"}' | head -10
-
-# Context management summary
-echo ""
-echo "Context management:"
-COMPACT_COUNT=$(grep -c "^COMPACT:" "$LOG_FILE" 2>/dev/null || echo 0)
-echo "  Compact operations: $COMPACT_COUNT"
-grep "^COMPACT:" "$LOG_FILE" | while read -r line; do
-    echo "  - $line"
-done

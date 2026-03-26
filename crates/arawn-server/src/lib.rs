@@ -125,6 +125,7 @@ impl Server {
                 "/sessions/{id}/messages",
                 get(routes::get_session_messages_handler),
             )
+            .route("/sessions/{id}/index", post(routes::index_session_handler))
             // Memory endpoints
             .route("/memory", post(routes::store_memory_handler))
             .route("/memory/search", get(routes::memory_search_handler))

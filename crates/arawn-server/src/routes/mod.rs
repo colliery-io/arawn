@@ -47,7 +47,7 @@ pub use sessions::{
     CreateSessionRequest, ListSessionsResponse, MessageInfo, SessionDetail,
     SessionMessagesResponse, SessionSummary, UpdateSessionRequest, create_session_handler,
     delete_session_handler, get_session_handler, get_session_messages_handler,
-    list_sessions_handler, update_session_handler,
+    index_session_handler, list_sessions_handler, update_session_handler,
 };
 pub use tasks::{
     ListTasksResponse, TaskDetail, TaskSummary, cancel_task_handler, get_task_handler,

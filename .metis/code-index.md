@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-03-26T03:00:15Z | 352 files | Rust
+> Generated: 2026-03-26T05:38:35Z | 368 files | Rust
 
 ## Project Structure
 
@@ -26,7 +26,14 @@
 │   │   │   │   ├── repl.rs
 │   │   │   │   ├── secrets.rs
 │   │   │   │   ├── session.rs
-│   │   │   │   ├── start.rs
+│   │   │   │   ├── start/
+│   │   │   │   │   ├── agent.rs
+│   │   │   │   │   ├── config.rs
+│   │   │   │   │   ├── llm.rs
+│   │   │   │   │   ├── mod.rs
+│   │   │   │   │   ├── pipeline.rs
+│   │   │   │   │   ├── server.rs
+│   │   │   │   │   └── storage.rs
 │   │   │   │   ├── status.rs
 │   │   │   │   └── tui.rs
 │   │   │   └── main.rs
@@ -35,7 +42,12 @@
 │   │       └── command_integration.rs
 │   ├── arawn-agent/
 │   │   ├── src/
-│   │   │   ├── agent.rs
+│   │   │   ├── agent/
+│   │   │   │   ├── builder.rs
+│   │   │   │   ├── execution.rs
+│   │   │   │   ├── mod.rs
+│   │   │   │   ├── recall.rs
+│   │   │   │   └── tests.rs
 │   │   │   ├── compaction.rs
 │   │   │   ├── context.rs
 │   │   │   ├── error.rs
@@ -88,7 +100,11 @@
 │   │       ├── search.rs
 │   │       ├── shell.rs
 │   │       ├── think.rs
-│   │       ├── web.rs
+│   │       ├── web/
+│   │       │   ├── fetch.rs
+│   │       │   ├── mod.rs
+│   │       │   ├── search.rs
+│   │       │   └── tests.rs
 │   │       └── workflow.rs
 │   ├── arawn-client/
 │   │   ├── src/
@@ -266,7 +282,11 @@
 │   │   │   │       ├── mod.rs
 │   │   │   │       └── protocol.rs
 │   │   │   ├── session_cache.rs
-│   │   │   └── state.rs
+│   │   │   └── state/
+│   │   │       ├── mod.rs
+│   │   │       ├── tasks.rs
+│   │   │       ├── tests.rs
+│   │   │       └── ws_tracker.rs
 │   │   └── tests/
 │   │       ├── chat_integration.rs
 │   │       ├── common/
@@ -743,40 +763,6 @@
 -  `list_sessions` function L41-73 — `(ctx: &Context) -> Result<()>` — Session command - view and manage chat sessions.
 -  `show_session` function L75-158 — `(session_id: &str, ctx: &Context) -> Result<()>` — Session command - view and manage chat sessions.
 
-#### crates/arawn/src/commands/start.rs
-
-- pub `StartArgs` struct L48-100 — `{ daemon: bool, port: Option<u16>, bind: Option<String>, token: Option<String>, ...` — Start command - launches the Arawn server.
-- pub `pid_file_path` function L104-108 — `() -> std::path::PathBuf` — Run the start command.
-- pub `stop_daemon` function L111-145 — `() -> Result<()>` — Stop a running daemon by sending SIGTERM to the PID in the PID file.
-- pub `run` function L147-426 — `(args: StartArgs, ctx: &Context) -> Result<()>` — Start command - launches the Arawn server.
--  `load_and_validate_config` function L433-467 — `(args: &StartArgs, ctx: &Context) -> Result<arawn_config::LoadedConfig>` — Phase 1-2: Load config from file or discovery, print warnings, validate.
--  `init_llm_backends` function L470-527 — `( config: &arawn_config::ArawnConfig, args: &StartArgs, ctx: &Context, ) -> Resu...` — Phase 3: Resolve LLM backends (default + named profiles).
--  `ServerSettings` type L531 — `= (SocketAddr, Option<PathBuf>, Option<PathBuf>, Option<String>)` — Phase 4: Resolve server bind address, workspace, bootstrap dir, and auth token.
--  `resolve_server_settings` function L533-582 — `( config: &arawn_config::ArawnConfig, args: &StartArgs, ctx: &Context, ) -> Resu...` — Start command - launches the Arawn server.
--  `init_tool_registry` function L585-646 — `( tools_cfg: &arawn_config::ToolsConfig, memory_store: &Option<Arc<MemoryStore>>...` — Phase 8: Create tool registry with all built-in tools and output config.
--  `init_embedder` function L649-671 — `( config: &arawn_config::ArawnConfig, ctx: &Context, ) -> Result<Arc<dyn arawn_l...` — Phase 5: Initialize the embedding provider.
--  `init_pipeline` function L674-727 — `( pipeline_cfg: &arawn_config::PipelineSection, data_dir: &std::path::Path, ctx:...` — Phase 6: Initialize the pipeline engine.
--  `init_memory_store` function L730-764 — `( memory_cfg: &arawn_config::MemoryConfig, data_dir: &std::path::Path, embedder:...` — Phase 7: Initialize the memory store with graph + vector extensions.
--  `PluginInitResult` struct L767-773 — `{ prompts: Vec<(String, String)>, hook_dispatcher: HookDispatcher, agent_configs...` — Result of plugin system initialization.
--  `register_pipeline_tools` function L776-984 — `( engine: &Arc<PipelineEngine>, pipeline_cfg: &arawn_config::PipelineSection, pi...` — Phase 9: Register pipeline tools (CatalogTool, WorkflowTool) and start workflow hot-reload watcher.
--  `assemble_server` function L988-1128 — `( config: &arawn_config::ArawnConfig, server_cfg: Option<&arawn_config::ServerCo...` — Phase 15: Assemble server config, AppState, workstreams, session cache, and compressor.
--  `build_agent` function L1132-1273 — `( config: &arawn_config::ArawnConfig, resolved: &ResolvedLlm, backend: arawn_llm...` — Phase 13: Build the agent with all configuration, tools, prompts, hooks, and sandboxing.
--  `init_session_indexer` function L1276-1386 — `( memory_cfg: &arawn_config::MemoryConfig, memory_store: &Option<Arc<MemoryStore...` — Phase 14: Create the session indexer for background summarization.
--  `init_mcp` function L1389-1497 — `( mcp_cfg: &arawn_config::McpConfig, tool_registry: &mut ToolRegistry, ctx: &Con...` — Phase 11: Connect to MCP servers and register discovered tools.
--  `init_plugins` function L1500-1705 — `( plugins_cfg: &arawn_config::PluginsConfig, workspace: Option<&std::path::Path>...` — Phase 10: Load plugins, sync subscriptions, collect hooks + agent configs + skill prompts.
--  `resolve_with_cli_overrides` function L1708-1759 — `( config: &arawn_config::ArawnConfig, args: &StartArgs, ) -> Result<ResolvedLlm>` — Resolve LLM config, applying CLI overrides on top of config file values.
--  `make_api_key_provider` function L1765-1769 — `(ref_name: String) -> ApiKeyProvider` — Build an `ApiKeyProvider` that re-resolves from the secret store on each request.
--  `create_backend` function L1772-1930 — `( resolved: &ResolvedLlm, oauth_overrides: Option<&arawn_config::OAuthConfigOver...` — Create an LLM backend from a resolved config.
--  `parse_backend` function L1932-1945 — `(s: &str) -> Result<Backend>` — Start command - launches the Arawn server.
--  `load_or_generate_server_token` function L1948-1964 — `() -> Result<String>` — Load a persisted server token, or generate and save a new one.
--  `resolve_profile` function L1967-2002 — `(name: &str, llm_config: &LlmConfig) -> Result<ResolvedLlm>` — Resolve a named LLM profile into a ResolvedLlm ready for backend creation.
--  `build_embedder_spec` function L2005-2046 — `(config: &arawn_config::EmbeddingConfig) -> EmbedderSpec` — Build an `EmbedderSpec` from the application's `EmbeddingConfig`.
--  `default_model` function L2048-2056 — `(backend: &Backend) -> String` — Start command - launches the Arawn server.
--  `register_builtin_runtimes` function L2063-2141 — `( runtimes_src_dir: &std::path::Path, executor: &Arc<ScriptExecutor>, catalog: &...` — Compile and register built-in WASM runtimes from source crate directories.
--  `seed_test_data` function L2144-2237 — `(manager: &WorkstreamManager, verbose: bool)` — Seed the database with test workstreams and sessions for development.
--  `cleanup_old_logs` function L2243-2291 — `(log_dir: &std::path::Path, max_age_days: u64, verbose: bool)` — Delete log files older than `max_age_days` from the log directory.
--  `validate_config` function L2294-2311 — `(config: &arawn_config::ArawnConfig) -> Result<()>` — Validate configuration values at startup, failing fast with clear errors.
-
 #### crates/arawn/src/commands/status.rs
 
 - pub `StatusArgs` struct L18 — `-` — Status command - shows server status and resource usage.
@@ -787,6 +773,68 @@
 
 - pub `TuiArgs` struct L13-17 — `{ workstream: Option<String> }` — TUI command handler.
 - pub `run` function L20-50 — `(args: TuiArgs, ctx: &Context) -> Result<()>` — Run the TUI.
+
+### crates/arawn/src/commands/start
+
+> *Semantic summary to be generated by AI agent.*
+
+#### crates/arawn/src/commands/start/agent.rs
+
+-  `PluginInitResult` struct L24-30 — `{ prompts: Vec<(String, String)>, hook_dispatcher: HookDispatcher, agent_configs...` — Result of plugin system initialization.
+-  `build_agent` function L34-175 — `( config: &arawn_config::ArawnConfig, resolved: &ResolvedLlm, backend: arawn_llm...` — Phase 13: Build the agent with all configuration, tools, prompts, hooks, and sandboxing.
+-  `init_session_indexer` function L178-288 — `( memory_cfg: &arawn_config::MemoryConfig, memory_store: &Option<Arc<MemoryStore...` — Phase 14: Create the session indexer for background summarization.
+-  `init_mcp` function L291-399 — `( mcp_cfg: &arawn_config::McpConfig, tool_registry: &mut ToolRegistry, ctx: &Con...` — Phase 11: Connect to MCP servers and register discovered tools.
+-  `init_plugins` function L402-607 — `( plugins_cfg: &arawn_config::PluginsConfig, workspace: Option<&std::path::Path>...` — Phase 10: Load plugins, sync subscriptions, collect hooks + agent configs + skill prompts.
+-  `init_tool_registry` function L610-671 — `( tools_cfg: &arawn_config::ToolsConfig, memory_store: &Option<Arc<MemoryStore>>...` — Phase 8: Create tool registry with all built-in tools and output config.
+
+#### crates/arawn/src/commands/start/config.rs
+
+-  `ServerSettings` type L13 — `= (SocketAddr, Option<PathBuf>, Option<PathBuf>, Option<String>)` — Resolved server settings from config + CLI args.
+-  `load_and_validate_config` function L16-53 — `( args: &StartArgs, ctx: &Context, ) -> Result<arawn_config::LoadedConfig>` — Phase 1-2: Load config from file or discovery, print warnings, validate.
+-  `resolve_server_settings` function L56-105 — `( config: &arawn_config::ArawnConfig, args: &StartArgs, ctx: &Context, ) -> Resu...` — Phase 4: Resolve server bind address, workspace, bootstrap dir, and auth token.
+-  `resolve_with_cli_overrides` function L108-159 — `( config: &arawn_config::ArawnConfig, args: &StartArgs, ) -> Result<ResolvedLlm>` — Resolve LLM config, applying CLI overrides on top of config file values.
+-  `validate_config` function L162-179 — `(config: &arawn_config::ArawnConfig) -> Result<()>` — Validate configuration values at startup, failing fast with clear errors.
+
+#### crates/arawn/src/commands/start/llm.rs
+
+-  `init_llm_backends` function L18-75 — `( config: &arawn_config::ArawnConfig, args: &StartArgs, ctx: &Context, ) -> Resu...` — Phase 3: Resolve LLM backends (default + named profiles).
+-  `create_backend` function L78-236 — `( resolved: &ResolvedLlm, oauth_overrides: Option<&arawn_config::OAuthConfigOver...` — Create an LLM backend from a resolved config.
+-  `make_api_key_provider` function L242-246 — `(ref_name: String) -> ApiKeyProvider` — Build an `ApiKeyProvider` that re-resolves from the secret store on each request.
+-  `resolve_profile` function L249-284 — `(name: &str, llm_config: &LlmConfig) -> Result<ResolvedLlm>` — Resolve a named LLM profile into a ResolvedLlm ready for backend creation.
+-  `parse_backend` function L286-299 — `(s: &str) -> Result<Backend>` — LLM backend initialization and resolution for the start command.
+-  `default_model` function L301-309 — `(backend: &Backend) -> String` — LLM backend initialization and resolution for the start command.
+
+#### crates/arawn/src/commands/start/mod.rs
+
+- pub `StartArgs` struct L31-83 — `{ daemon: bool, port: Option<u16>, bind: Option<String>, token: Option<String>, ...` — Start command - launches the Arawn server.
+- pub `pid_file_path` function L87-91 — `() -> std::path::PathBuf` — Run the start command.
+- pub `stop_daemon` function L94-128 — `() -> Result<()>` — Stop a running daemon by sending SIGTERM to the PID in the PID file.
+- pub `run` function L130-410 — `(args: StartArgs, ctx: &Context) -> Result<()>` — Start command - launches the Arawn server.
+-  `agent` module L3 — `-` — Start command - launches the Arawn server.
+-  `config` module L4 — `-` — Start command - launches the Arawn server.
+-  `llm` module L5 — `-` — Start command - launches the Arawn server.
+-  `pipeline` module L6 — `-` — Start command - launches the Arawn server.
+-  `server` module L7 — `-` — Start command - launches the Arawn server.
+-  `storage` module L8 — `-` — Start command - launches the Arawn server.
+
+#### crates/arawn/src/commands/start/pipeline.rs
+
+-  `init_pipeline` function L18-71 — `( pipeline_cfg: &arawn_config::PipelineSection, data_dir: &std::path::Path, ctx:...` — Phase 6: Initialize the pipeline engine.
+-  `register_pipeline_tools` function L74-282 — `( engine: &Arc<PipelineEngine>, pipeline_cfg: &arawn_config::PipelineSection, pi...` — Phase 9: Register pipeline tools (CatalogTool, WorkflowTool) and start workflow hot-reload watcher.
+-  `register_builtin_runtimes` function L289-367 — `( runtimes_src_dir: &std::path::Path, executor: &Arc<ScriptExecutor>, catalog: &...` — Compile and register built-in WASM runtimes from source crate directories.
+
+#### crates/arawn/src/commands/start/server.rs
+
+-  `assemble_server` function L19-159 — `( config: &arawn_config::ArawnConfig, server_cfg: Option<&arawn_config::ServerCo...` — Phase 15: Assemble server config, AppState, workstreams, session cache, and compressor.
+-  `load_or_generate_server_token` function L162-178 — `() -> Result<String>` — Load a persisted server token, or generate and save a new one.
+-  `seed_test_data` function L181-274 — `(manager: &WorkstreamManager, verbose: bool)` — Seed the database with test workstreams and sessions for development.
+-  `cleanup_old_logs` function L280-328 — `(log_dir: &std::path::Path, max_age_days: u64, verbose: bool)` — Delete log files older than `max_age_days` from the log directory.
+
+#### crates/arawn/src/commands/start/storage.rs
+
+-  `init_embedder` function L14-36 — `( config: &arawn_config::ArawnConfig, ctx: &Context, ) -> Result<Arc<dyn arawn_l...` — Phase 5: Initialize the embedding provider.
+-  `init_memory_store` function L39-73 — `( memory_cfg: &arawn_config::MemoryConfig, data_dir: &std::path::Path, embedder:...` — Phase 7: Initialize the memory store with graph + vector extensions.
+-  `build_embedder_spec` function L76-117 — `(config: &arawn_config::EmbeddingConfig) -> EmbedderSpec` — Build an `EmbedderSpec` from the application's `EmbeddingConfig`.
 
 ### crates/arawn/src
 
@@ -938,6 +986,124 @@
 -  `test_config_show_multiple_profiles` function L740-768 — `()` — and secret state per test.
 -  `test_config_show_agent_bindings` function L775-796 — `()` — and secret state per test.
 
+### crates/arawn-agent/src/agent
+
+> *Semantic summary to be generated by AI agent.*
+
+#### crates/arawn-agent/src/agent/builder.rs
+
+- pub `AgentBuilder` struct L22-36 — `{ backend: Option<SharedBackend>, tools: ToolRegistry, config: AgentConfig, prom...` — Builder for constructing an Agent with fluent API.
+- pub `new` function L40-56 — `() -> Self` — Create a new builder with defaults.
+- pub `with_backend` function L59-62 — `(mut self, backend: impl LlmBackend + 'static) -> Self` — Set the LLM backend.
+- pub `with_shared_backend` function L65-68 — `(mut self, backend: SharedBackend) -> Self` — Set the LLM backend from a shared reference.
+- pub `with_tools` function L71-74 — `(mut self, tools: ToolRegistry) -> Self` — Set the tool registry.
+- pub `with_tool` function L77-80 — `(mut self, tool: T) -> Self` — Register a single tool.
+- pub `with_config` function L83-86 — `(mut self, config: AgentConfig) -> Self` — Set the configuration.
+- pub `with_model` function L89-92 — `(mut self, model: impl Into<String>) -> Self` — Set the model.
+- pub `with_system_prompt` function L95-98 — `(mut self, prompt: impl Into<String>) -> Self` — Set the system prompt.
+- pub `with_max_tokens` function L101-104 — `(mut self, max_tokens: u32) -> Self` — Set max tokens.
+- pub `with_max_iterations` function L107-110 — `(mut self, max_iterations: u32) -> Self` — Set max iterations.
+- pub `with_max_total_tokens` function L116-119 — `(mut self, max_total_tokens: usize) -> Self` — Set cumulative token budget (input + output).
+- pub `with_workspace` function L124-127 — `(mut self, path: impl Into<std::path::PathBuf>) -> Self` — Set the workspace path.
+- pub `with_prompt_builder` function L135-138 — `(mut self, builder: SystemPromptBuilder) -> Self` — Set a prompt builder for dynamic system prompt generation.
+- pub `with_bootstrap_dir` function L154-180 — `(mut self, path: impl AsRef<std::path::Path>) -> Self` — Load bootstrap context files from a directory.
+- pub `with_prompt_file` function L196-223 — `(mut self, path: impl AsRef<std::path::Path>) -> Self` — Load a custom prompt file and add it to the bootstrap context.
+- pub `with_memory_store` function L226-229 — `(mut self, store: Arc<MemoryStore>) -> Self` — Set the memory store for active recall.
+- pub `with_embedder` function L232-235 — `(mut self, embedder: SharedEmbedder) -> Self` — Set the embedder for active recall.
+- pub `with_recall_config` function L238-241 — `(mut self, config: RecallConfig) -> Self` — Set the recall configuration.
+- pub `with_interaction_logger` function L244-247 — `(mut self, logger: Arc<InteractionLogger>) -> Self` — Set the interaction logger for structured JSONL capture.
+- pub `with_plugin_prompts` function L253-256 — `(mut self, prompts: Vec<(String, String)>) -> Self` — Add plugin prompt fragments to the system prompt.
+- pub `with_hook_dispatcher` function L265-268 — `(mut self, dispatcher: SharedHookDispatcher) -> Self` — Set the hook dispatcher for plugin lifecycle events.
+- pub `build` function L271-321 — `(mut self) -> Result<Agent>` — Build the agent.
+- pub `with_fs_gate_resolver` function L324-327 — `(mut self, resolver: FsGateResolver) -> Self` — Set the filesystem gate resolver for workstream sandbox enforcement.
+- pub `with_secret_resolver` function L330-333 — `(mut self, resolver: SharedSecretResolver) -> Self` — Set the secret resolver for `${{secrets.*}}` handle resolution in tool params.
+-  `AgentBuilder` type L38-334 — `= AgentBuilder` — AgentBuilder for fluent Agent construction.
+-  `AgentBuilder` type L336-340 — `impl Default for AgentBuilder` — AgentBuilder for fluent Agent construction.
+-  `default` function L337-339 — `() -> Self` — AgentBuilder for fluent Agent construction.
+
+#### crates/arawn-agent/src/agent/execution.rs
+
+-  `Agent` type L15-269 — `= Agent` — Message building, request construction, and tool execution for the Agent.
+-  `estimate_messages_tokens` function L17-22 — `(&self, messages: &[Message]) -> usize` — Estimate total tokens for a list of messages.
+-  `estimate_message_tokens` function L25-52 — `(&self, message: &Message) -> usize` — Estimate tokens for a single message.
+-  `build_messages` function L55-115 — `(&self, session: &crate::types::Session) -> Vec<Message>` — Build messages from session history.
+-  `build_request` function L122-150 — `( &self, messages: &[Message], context_preamble: Option<&str>, ) -> CompletionRe...` — Build a completion request.
+-  `execute_tools` function L153-268 — `( &self, response: &CompletionResponse, session_id: crate::types::SessionId, tur...` — Execute tool calls from an LLM response.
+
+#### crates/arawn-agent/src/agent/mod.rs
+
+- pub `RecallConfig` struct L39-46 — `{ enabled: bool, threshold: f32, limit: usize }` — Configuration for active recall behavior in the agent turn loop.
+- pub `Agent` struct L63-86 — `{ backend: SharedBackend, tools: Arc<ToolRegistry>, config: AgentConfig, prompt_...` — The core agent that orchestrates LLM calls and tool execution.
+- pub `new` function L90-104 — `(backend: SharedBackend, tools: ToolRegistry, config: AgentConfig) -> Self` — Create a new agent with the given backend and tools.
+- pub `builder` function L107-109 — `() -> AgentBuilder` — Create an agent builder for fluent construction.
+- pub `config` function L112-114 — `(&self) -> &AgentConfig` — Get the agent configuration.
+- pub `tools` function L117-119 — `(&self) -> &ToolRegistry` — Get the tool registry.
+- pub `backend` function L122-124 — `(&self) -> SharedBackend` — Get the LLM backend.
+- pub `system_prompt` function L130-132 — `(&self) -> Option<String>` — Get the current system prompt (built dynamically if a builder is present).
+- pub `turn` function L138-384 — `( &self, session: &mut Session, user_message: &str, workstream_id: Option<&str>,...` — Execute a single turn of conversation.
+- pub `turn_stream` function L398-434 — `( &self, session: &mut Session, user_message: &str, cancellation: CancellationTo...` — Execute a single turn of conversation with streaming output.
+-  `builder` module L6 — `-` — The [`Agent`] struct is the brain of the system - it orchestrates the
+-  `execution` module L7 — `-` — conversation loop, handles tool execution, and manages context.
+-  `recall` module L8 — `-` — conversation loop, handles tool execution, and manages context.
+-  `tests` module L11 — `-` — conversation loop, handles tool execution, and manages context.
+-  `RecallConfig` type L48-56 — `impl Default for RecallConfig` — conversation loop, handles tool execution, and manages context.
+-  `default` function L49-55 — `() -> Self` — conversation loop, handles tool execution, and manages context.
+-  `Agent` type L88-435 — `= Agent` — conversation loop, handles tool execution, and manages context.
+
+#### crates/arawn-agent/src/agent/recall.rs
+
+-  `format_recall_context` function L9-21 — `(matches: &[arawn_memory::store::RecallMatch]) -> String` — Format recall matches into a concise context string for injection.
+-  `Agent` type L23-119 — `= Agent` — Active recall and system prompt building for the Agent.
+-  `build_system_prompt` function L29-52 — `(&self, context_preamble: Option<&str>) -> Option<String>` — Build the system prompt dynamically.
+-  `perform_recall` function L59-118 — `(&self, user_message: &str) -> Option<Message>` — Perform active recall for a user message.
+
+#### crates/arawn-agent/src/agent/tests.rs
+
+-  `mock_text_response` function L5-16 — `(text: &str) -> CompletionResponse`
+-  `mock_tool_use_response` function L18-35 — `( tool_id: &str, tool_name: &str, args: serde_json::Value, ) -> CompletionRespon...`
+-  `test_agent_builder_no_backend` function L38-41 — `()`
+-  `test_agent_builder_with_backend` function L44-58 — `()`
+-  `test_simple_turn_no_tools` function L61-73 — `()`
+-  `test_turn_with_tool_use` function L76-105 — `()`
+-  `test_turn_max_iterations` function L108-134 — `()`
+-  `test_turn_token_budget_exceeded` function L137-163 — `()`
+-  `test_turn_no_token_budget` function L166-179 — `()`
+-  `test_turn_tool_error_handling` function L182-214 — `()`
+-  `test_turn_unknown_tool` function L217-234 — `()`
+-  `test_tool_validation_error_retry` function L237-259 — `()`
+-  `test_tool_validation_error_exhausts_retries` function L262-287 — `()`
+-  `test_multi_turn_conversation` function L290-310 — `()`
+-  `test_agent_with_prompt_builder` function L313-336 — `()`
+-  `test_agent_prompt_builder_with_static_fallback` function L339-353 — `()`
+-  `test_agent_prompt_builder_overrides_static` function L356-376 — `()`
+-  `test_agent_with_bootstrap_dir` function L379-409 — `()`
+-  `test_agent_bootstrap_dir_creates_builder_if_none` function L412-435 — `()`
+-  `test_agent_bootstrap_dir_nonexistent_is_ok` function L438-450 — `()`
+-  `test_agent_with_prompt_file` function L453-473 — `()`
+-  `test_agent_with_multiple_prompt_files` function L476-499 — `()`
+-  `test_agent_combine_bootstrap_dir_and_prompt_file` function L502-532 — `()`
+-  `e2e_tests` module L536-827 — `-`
+-  `test_tool_output_flows_back_to_llm` function L542-582 — `()` — Verify that tool output is sent back to the LLM as a tool result message.
+-  `test_tool_arguments_pass_through` function L586-614 — `()` — Verify tool arguments are passed through to the tool exactly as the LLM specified.
+-  `test_multi_turn_with_tool_then_followup` function L618-669 — `()` — Multi-turn conversation with tools: first turn uses a tool, second turn follows up.
+-  `test_session_records_tool_state` function L673-716 — `()` — Session state records tool calls and results correctly after a turn.
+-  `test_tool_error_flows_back_to_llm` function L720-762 — `()` — Tool error result flows back to the LLM and the agent produces a graceful response.
+-  `test_multiple_sequential_tool_calls` function L766-800 — `()` — Multiple sequential tool calls within a single turn.
+-  `test_usage_accumulates_across_iterations` function L804-826 — `()` — Usage tokens accumulate correctly across tool-call iterations.
+-  `recall_tests` module L831-969 — `-`
+-  `FixedEmbedder` struct L839-841 — `{ dims: usize }` — Simple mock embedder that returns a fixed vector.
+-  `FixedEmbedder` type L843-847 — `= FixedEmbedder`
+-  `new` function L844-846 — `(dims: usize) -> Self`
+-  `FixedEmbedder` type L850-862 — `impl Embedder for FixedEmbedder`
+-  `embed` function L851-853 — `(&self, _text: &str) -> arawn_llm::Result<Vec<f32>>`
+-  `dimensions` function L855-857 — `(&self) -> usize`
+-  `name` function L859-861 — `(&self) -> &str`
+-  `create_recall_store` function L864-869 — `(dims: usize) -> Arc<MemoryStore>`
+-  `test_recall_injects_context` function L873-905 — `()`
+-  `test_recall_no_results` function L909-931 — `()`
+-  `test_recall_disabled_config` function L934-949 — `()`
+-  `test_recall_no_embedder` function L952-968 — `()`
+
 ### crates/arawn-agent/src
 
 **Role**: The core agent runtime — orchestrates LLM calls, tool execution, context management, session compaction, and streaming output.
@@ -955,103 +1121,6 @@
 **Mixed concerns / gotchas**: `agent.rs` is ~2100 lines including a large test suite. The `rlm/` submodule is a consumer of `agent.rs` infrastructure, not a peer. `stream.rs` duplicates the tool execution loop from `agent.rs` but for streaming; keeping the two in sync is a maintenance risk.
 
 **Dependencies**: `arawn-llm` for LLM backends and types, `arawn-memory` for active recall, `arawn-types` for `FsGate`, `SharedSecretResolver`, and `HookDispatcher`.
-
-#### crates/arawn-agent/src/agent.rs
-
-- pub `RecallConfig` struct L34-41 — `{ enabled: bool, threshold: f32, limit: usize }` — Configuration for active recall behavior in the agent turn loop.
-- pub `Agent` struct L58-81 — `{ backend: SharedBackend, tools: Arc<ToolRegistry>, config: AgentConfig, prompt_...` — The core agent that orchestrates LLM calls and tool execution.
-- pub `new` function L85-99 — `(backend: SharedBackend, tools: ToolRegistry, config: AgentConfig) -> Self` — Create a new agent with the given backend and tools.
-- pub `builder` function L102-104 — `() -> AgentBuilder` — Create an agent builder for fluent construction.
-- pub `config` function L107-109 — `(&self) -> &AgentConfig` — Get the agent configuration.
-- pub `tools` function L112-114 — `(&self) -> &ToolRegistry` — Get the tool registry.
-- pub `backend` function L117-119 — `(&self) -> SharedBackend` — Get the LLM backend.
-- pub `system_prompt` function L125-127 — `(&self) -> Option<String>` — Get the current system prompt (built dynamically if a builder is present).
-- pub `turn` function L163-409 — `( &self, session: &mut Session, user_message: &str, workstream_id: Option<&str>,...` — Execute a single turn of conversation.
-- pub `turn_stream` function L423-459 — `( &self, session: &mut Session, user_message: &str, cancellation: CancellationTo...` — Execute a single turn of conversation with streaming output.
-- pub `AgentBuilder` struct L802-816 — `{ backend: Option<SharedBackend>, tools: ToolRegistry, config: AgentConfig, prom...` — Builder for constructing an Agent with fluent API.
-- pub `new` function L820-836 — `() -> Self` — Create a new builder with defaults.
-- pub `with_backend` function L839-842 — `(mut self, backend: impl LlmBackend + 'static) -> Self` — Set the LLM backend.
-- pub `with_shared_backend` function L845-848 — `(mut self, backend: SharedBackend) -> Self` — Set the LLM backend from a shared reference.
-- pub `with_tools` function L851-854 — `(mut self, tools: ToolRegistry) -> Self` — Set the tool registry.
-- pub `with_tool` function L857-860 — `(mut self, tool: T) -> Self` — Register a single tool.
-- pub `with_config` function L863-866 — `(mut self, config: AgentConfig) -> Self` — Set the configuration.
-- pub `with_model` function L869-872 — `(mut self, model: impl Into<String>) -> Self` — Set the model.
-- pub `with_system_prompt` function L875-878 — `(mut self, prompt: impl Into<String>) -> Self` — Set the system prompt.
-- pub `with_max_tokens` function L881-884 — `(mut self, max_tokens: u32) -> Self` — Set max tokens.
-- pub `with_max_iterations` function L887-890 — `(mut self, max_iterations: u32) -> Self` — Set max iterations.
-- pub `with_max_total_tokens` function L896-899 — `(mut self, max_total_tokens: usize) -> Self` — Set cumulative token budget (input + output).
-- pub `with_workspace` function L904-907 — `(mut self, path: impl Into<std::path::PathBuf>) -> Self` — Set the workspace path.
-- pub `with_prompt_builder` function L915-918 — `(mut self, builder: SystemPromptBuilder) -> Self` — Set a prompt builder for dynamic system prompt generation.
-- pub `with_bootstrap_dir` function L934-960 — `(mut self, path: impl AsRef<std::path::Path>) -> Self` — Load bootstrap context files from a directory.
-- pub `with_prompt_file` function L976-1003 — `(mut self, path: impl AsRef<std::path::Path>) -> Self` — Load a custom prompt file and add it to the bootstrap context.
-- pub `with_memory_store` function L1006-1009 — `(mut self, store: Arc<MemoryStore>) -> Self` — Set the memory store for active recall.
-- pub `with_embedder` function L1012-1015 — `(mut self, embedder: SharedEmbedder) -> Self` — Set the embedder for active recall.
-- pub `with_recall_config` function L1018-1021 — `(mut self, config: RecallConfig) -> Self` — Set the recall configuration.
-- pub `with_interaction_logger` function L1024-1027 — `(mut self, logger: Arc<InteractionLogger>) -> Self` — Set the interaction logger for structured JSONL capture.
-- pub `with_plugin_prompts` function L1033-1036 — `(mut self, prompts: Vec<(String, String)>) -> Self` — Add plugin prompt fragments to the system prompt.
-- pub `with_hook_dispatcher` function L1045-1048 — `(mut self, dispatcher: SharedHookDispatcher) -> Self` — Set the hook dispatcher for plugin lifecycle events.
-- pub `build` function L1051-1101 — `(mut self) -> Result<Agent>` — Build the agent.
-- pub `with_fs_gate_resolver` function L1104-1107 — `(mut self, resolver: FsGateResolver) -> Self` — Set the filesystem gate resolver for workstream sandbox enforcement.
-- pub `with_secret_resolver` function L1110-1113 — `(mut self, resolver: SharedSecretResolver) -> Self` — Set the secret resolver for `${{secrets.*}}` handle resolution in tool params.
--  `RecallConfig` type L43-51 — `impl Default for RecallConfig` — conversation loop, handles tool execution, and manages context.
--  `default` function L44-50 — `() -> Self` — conversation loop, handles tool execution, and manages context.
--  `Agent` type L83-780 — `= Agent` — conversation loop, handles tool execution, and manages context.
--  `build_system_prompt` function L134-157 — `(&self, context_preamble: Option<&str>) -> Option<String>` — Build the system prompt dynamically.
--  `estimate_messages_tokens` function L462-467 — `(&self, messages: &[Message]) -> usize` — Estimate total tokens for a list of messages.
--  `estimate_message_tokens` function L470-497 — `(&self, message: &Message) -> usize` — Estimate tokens for a single message.
--  `build_messages` function L500-560 — `(&self, session: &Session) -> Vec<Message>` — Build messages from session history.
--  `build_request` function L567-595 — `( &self, messages: &[Message], context_preamble: Option<&str>, ) -> CompletionRe...` — Build a completion request.
--  `execute_tools` function L598-713 — `( &self, response: &CompletionResponse, session_id: crate::types::SessionId, tur...` — Execute tool calls from an LLM response.
--  `perform_recall` function L720-779 — `(&self, user_message: &str) -> Option<Message>` — Perform active recall for a user message.
--  `format_recall_context` function L783-795 — `(matches: &[arawn_memory::store::RecallMatch]) -> String` — Format recall matches into a concise context string for injection.
--  `AgentBuilder` type L818-1114 — `= AgentBuilder` — conversation loop, handles tool execution, and manages context.
--  `AgentBuilder` type L1116-1120 — `impl Default for AgentBuilder` — conversation loop, handles tool execution, and manages context.
--  `default` function L1117-1119 — `() -> Self` — conversation loop, handles tool execution, and manages context.
--  `tests` module L1127-2109 — `-` — conversation loop, handles tool execution, and manages context.
--  `mock_text_response` function L1132-1143 — `(text: &str) -> CompletionResponse` — conversation loop, handles tool execution, and manages context.
--  `mock_tool_use_response` function L1145-1162 — `( tool_id: &str, tool_name: &str, args: serde_json::Value, ) -> CompletionRespon...` — conversation loop, handles tool execution, and manages context.
--  `test_agent_builder_no_backend` function L1165-1168 — `()` — conversation loop, handles tool execution, and manages context.
--  `test_agent_builder_with_backend` function L1171-1185 — `()` — conversation loop, handles tool execution, and manages context.
--  `test_simple_turn_no_tools` function L1188-1200 — `()` — conversation loop, handles tool execution, and manages context.
--  `test_turn_with_tool_use` function L1203-1232 — `()` — conversation loop, handles tool execution, and manages context.
--  `test_turn_max_iterations` function L1235-1263 — `()` — conversation loop, handles tool execution, and manages context.
--  `test_turn_token_budget_exceeded` function L1266-1294 — `()` — conversation loop, handles tool execution, and manages context.
--  `test_turn_no_token_budget` function L1297-1310 — `()` — conversation loop, handles tool execution, and manages context.
--  `test_turn_tool_error_handling` function L1313-1345 — `()` — conversation loop, handles tool execution, and manages context.
--  `test_turn_unknown_tool` function L1348-1365 — `()` — conversation loop, handles tool execution, and manages context.
--  `test_tool_validation_error_retry` function L1368-1390 — `()` — conversation loop, handles tool execution, and manages context.
--  `test_tool_validation_error_exhausts_retries` function L1393-1418 — `()` — conversation loop, handles tool execution, and manages context.
--  `test_multi_turn_conversation` function L1421-1441 — `()` — conversation loop, handles tool execution, and manages context.
--  `test_agent_with_prompt_builder` function L1444-1467 — `()` — conversation loop, handles tool execution, and manages context.
--  `test_agent_prompt_builder_with_static_fallback` function L1470-1484 — `()` — conversation loop, handles tool execution, and manages context.
--  `test_agent_prompt_builder_overrides_static` function L1487-1507 — `()` — conversation loop, handles tool execution, and manages context.
--  `test_agent_with_bootstrap_dir` function L1510-1540 — `()` — conversation loop, handles tool execution, and manages context.
--  `test_agent_bootstrap_dir_creates_builder_if_none` function L1543-1566 — `()` — conversation loop, handles tool execution, and manages context.
--  `test_agent_bootstrap_dir_nonexistent_is_ok` function L1569-1581 — `()` — conversation loop, handles tool execution, and manages context.
--  `test_agent_with_prompt_file` function L1584-1604 — `()` — conversation loop, handles tool execution, and manages context.
--  `test_agent_with_multiple_prompt_files` function L1607-1630 — `()` — conversation loop, handles tool execution, and manages context.
--  `test_agent_combine_bootstrap_dir_and_prompt_file` function L1633-1663 — `()` — conversation loop, handles tool execution, and manages context.
--  `e2e_tests` module L1667-1966 — `-` — conversation loop, handles tool execution, and manages context.
--  `test_tool_output_flows_back_to_llm` function L1673-1719 — `()` — Verify that tool output is sent back to the LLM as a tool result message.
--  `test_tool_arguments_pass_through` function L1723-1751 — `()` — Verify tool arguments are passed through to the tool exactly as the LLM specified.
--  `test_multi_turn_with_tool_then_followup` function L1755-1806 — `()` — Multi-turn conversation with tools: first turn uses a tool, second turn follows up.
--  `test_session_records_tool_state` function L1810-1853 — `()` — Session state records tool calls and results correctly after a turn.
--  `test_tool_error_flows_back_to_llm` function L1857-1899 — `()` — Tool error result flows back to the LLM and the agent produces a graceful response.
--  `test_multiple_sequential_tool_calls` function L1903-1939 — `()` — Multiple sequential tool calls within a single turn.
--  `test_usage_accumulates_across_iterations` function L1943-1965 — `()` — Usage tokens accumulate correctly across tool-call iterations.
--  `recall_tests` module L1970-2108 — `-` — conversation loop, handles tool execution, and manages context.
--  `FixedEmbedder` struct L1978-1980 — `{ dims: usize }` — Simple mock embedder that returns a fixed vector.
--  `FixedEmbedder` type L1982-1986 — `= FixedEmbedder` — conversation loop, handles tool execution, and manages context.
--  `new` function L1983-1985 — `(dims: usize) -> Self` — conversation loop, handles tool execution, and manages context.
--  `FixedEmbedder` type L1989-2001 — `impl Embedder for FixedEmbedder` — conversation loop, handles tool execution, and manages context.
--  `embed` function L1990-1992 — `(&self, _text: &str) -> arawn_llm::Result<Vec<f32>>` — conversation loop, handles tool execution, and manages context.
--  `dimensions` function L1994-1996 — `(&self) -> usize` — conversation loop, handles tool execution, and manages context.
--  `name` function L1998-2000 — `(&self) -> &str` — conversation loop, handles tool execution, and manages context.
--  `create_recall_store` function L2003-2008 — `(dims: usize) -> Arc<MemoryStore>` — conversation loop, handles tool execution, and manages context.
--  `test_recall_injects_context` function L2012-2044 — `()` — conversation loop, handles tool execution, and manages context.
--  `test_recall_no_results` function L2048-2070 — `()` — conversation loop, handles tool execution, and manages context.
--  `test_recall_disabled_config` function L2073-2088 — `()` — conversation loop, handles tool execution, and manages context.
--  `test_recall_no_embedder` function L2091-2107 — `()` — conversation loop, handles tool execution, and manages context.
 
 #### crates/arawn-agent/src/compaction.rs
 
@@ -2603,83 +2672,6 @@
 -  `test_think_missing_param` function L138-150 — `()` — for recall in subsequent turns but not shown to the user.
 -  `test_think_empty_thought` function L153-160 — `()` — for recall in subsequent turns but not shown to the user.
 
-#### crates/arawn-agent-tools/src/web.rs
-
-- pub `WebFetchConfig` struct L88-99 — `{ timeout: Duration, max_size: usize, user_agent: String, extract_text: bool, ma...` — Configuration for web fetching.
-- pub `WebFetchTool` struct L116-119 — `{ client: Client, config: WebFetchConfig }` — Tool for fetching web page content.
-- pub `new` function L123-125 — `() -> std::result::Result<Self, reqwest::Error>` — Create a new web fetch tool with default configuration.
-- pub `with_config` function L128-135 — `(config: WebFetchConfig) -> std::result::Result<Self, reqwest::Error>` — Create a web fetch tool with custom configuration.
-- pub `SearchProvider` enum L753-762 — `Brave | Serper | Tavily | DuckDuckGo` — Web search provider configuration.
-- pub `WebSearchConfig` struct L766-773 — `{ provider: SearchProvider, max_results: usize, timeout: Duration }` — Configuration for web search.
-- pub `SearchResult` struct L787-791 — `{ title: String, url: String, snippet: String }` — A single search result.
-- pub `WebSearchTool` struct L795-798 — `{ client: Client, config: WebSearchConfig }` — Tool for searching the web.
-- pub `new` function L802-804 — `() -> std::result::Result<Self, reqwest::Error>` — Create a new web search tool with default configuration (DuckDuckGo).
-- pub `with_config` function L807-811 — `(config: WebSearchConfig) -> std::result::Result<Self, reqwest::Error>` — Create a web search tool with custom configuration.
-- pub `brave` function L814-821 — `(api_key: impl Into<String>) -> std::result::Result<Self, reqwest::Error>` — Create a web search tool with Brave Search.
-- pub `serper` function L824-831 — `(api_key: impl Into<String>) -> std::result::Result<Self, reqwest::Error>` — Create a web search tool with Serper.
-- pub `tavily` function L834-841 — `(api_key: impl Into<String>) -> std::result::Result<Self, reqwest::Error>` — Create a web search tool with Tavily.
--  `is_restricted_ip` function L22-41 — `(ip: &IpAddr) -> bool` — Check if an IP address is private, loopback, link-local, or otherwise
--  `validate_url_not_ssrf` function L45-80 — `(url: &Url) -> std::result::Result<(), String>` — Resolve a URL's hostname and check that none of its IP addresses are
--  `WebFetchConfig` type L101-112 — `impl Default for WebFetchConfig` — Provides tools for web search and URL fetching.
--  `default` function L102-111 — `() -> Self` — Provides tools for web search and URL fetching.
--  `WebFetchTool` type L121-225 — `= WebFetchTool` — Provides tools for web search and URL fetching.
--  `extract_text_from_html` function L138-198 — `(&self, html: &str) -> String` — Extract readable text from HTML.
--  `extract_title` function L201-211 — `(&self, html: &str) -> Option<String>` — Extract title from HTML.
--  `extract_description` function L214-224 — `(&self, html: &str) -> Option<String>` — Extract meta description from HTML.
--  `WebFetchTool` type L227-239 — `impl Default for WebFetchTool` — Provides tools for web search and URL fetching.
--  `default` function L228-238 — `() -> Self` — Provides tools for web search and URL fetching.
--  `WebFetchTool` type L242-744 — `impl Tool for WebFetchTool` — Provides tools for web search and URL fetching.
--  `name` function L243-245 — `(&self) -> &str` — Provides tools for web search and URL fetching.
--  `description` function L247-249 — `(&self) -> &str` — Provides tools for web search and URL fetching.
--  `parameters` function L251-297 — `(&self) -> Value` — Provides tools for web search and URL fetching.
--  `execute` function L299-743 — `(&self, params: Value, ctx: &ToolContext) -> Result<ToolResult>` — Provides tools for web search and URL fetching.
--  `WebSearchConfig` type L775-783 — `impl Default for WebSearchConfig` — Provides tools for web search and URL fetching.
--  `default` function L776-782 — `() -> Self` — Provides tools for web search and URL fetching.
--  `WebSearchTool` type L800-1026 — `= WebSearchTool` — Provides tools for web search and URL fetching.
--  `search_brave` function L843-886 — `(&self, query: &str, api_key: &str) -> Result<Vec<SearchResult>>` — Provides tools for web search and URL fetching.
--  `search_serper` function L888-929 — `(&self, query: &str, api_key: &str) -> Result<Vec<SearchResult>>` — Provides tools for web search and URL fetching.
--  `search_tavily` function L931-972 — `(&self, query: &str, api_key: &str) -> Result<Vec<SearchResult>>` — Provides tools for web search and URL fetching.
--  `search_duckduckgo` function L974-1025 — `(&self, query: &str) -> Result<Vec<SearchResult>>` — Provides tools for web search and URL fetching.
--  `WebSearchTool` type L1028-1038 — `impl Default for WebSearchTool` — Provides tools for web search and URL fetching.
--  `default` function L1029-1037 — `() -> Self` — Provides tools for web search and URL fetching.
--  `WebSearchTool` type L1041-1097 — `impl Tool for WebSearchTool` — Provides tools for web search and URL fetching.
--  `name` function L1042-1044 — `(&self) -> &str` — Provides tools for web search and URL fetching.
--  `description` function L1046-1048 — `(&self) -> &str` — Provides tools for web search and URL fetching.
--  `parameters` function L1050-1061 — `(&self) -> Value` — Provides tools for web search and URL fetching.
--  `execute` function L1063-1096 — `(&self, params: Value, ctx: &ToolContext) -> Result<ToolResult>` — Provides tools for web search and URL fetching.
--  `tests` module L1104-1505 — `-` — Provides tools for web search and URL fetching.
--  `test_web_fetch_tool_metadata` function L1108-1128 — `()` — Provides tools for web search and URL fetching.
--  `test_web_search_tool_metadata` function L1131-1138 — `()` — Provides tools for web search and URL fetching.
--  `test_extract_text_from_html` function L1141-1160 — `()` — Provides tools for web search and URL fetching.
--  `test_extract_title` function L1163-1167 — `()` — Provides tools for web search and URL fetching.
--  `test_extract_description` function L1170-1178 — `()` — Provides tools for web search and URL fetching.
--  `test_search_providers` function L1181-1187 — `()` — Provides tools for web search and URL fetching.
--  `test_web_fetch_invalid_url` function L1190-1201 — `()` — Provides tools for web search and URL fetching.
--  `test_web_fetch_non_http` function L1204-1215 — `()` — Provides tools for web search and URL fetching.
--  `test_web_fetch_unsupported_method` function L1218-1232 — `()` — Provides tools for web search and URL fetching.
--  `test_method_case_insensitivity` function L1235-1242 — `()` — Provides tools for web search and URL fetching.
--  `test_web_fetch_with_custom_headers_invalid_url` function L1245-1267 — `()` — Provides tools for web search and URL fetching.
--  `test_web_fetch_with_body_invalid_url` function L1270-1290 — `()` — Provides tools for web search and URL fetching.
--  `test_download_parameter_in_schema` function L1293-1299 — `()` — Provides tools for web search and URL fetching.
--  `test_max_size_config` function L1302-1306 — `()` — Provides tools for web search and URL fetching.
--  `test_web_fetch_download_invalid_url` function L1309-1328 — `()` — Provides tools for web search and URL fetching.
--  `test_extract_text_article_content` function L1333-1348 — `()` — Provides tools for web search and URL fetching.
--  `test_extract_text_fallback_to_body` function L1351-1360 — `()` — Provides tools for web search and URL fetching.
--  `test_extract_text_empty_html` function L1363-1367 — `()` — Provides tools for web search and URL fetching.
--  `test_extract_text_truncation` function L1370-1379 — `()` — Provides tools for web search and URL fetching.
--  `test_extract_text_content_class` function L1382-1388 — `()` — Provides tools for web search and URL fetching.
--  `test_extract_title_missing` function L1391-1395 — `()` — Provides tools for web search and URL fetching.
--  `test_extract_description_missing` function L1398-1402 — `()` — Provides tools for web search and URL fetching.
--  `test_extract_description_wrong_meta` function L1405-1409 — `()` — Provides tools for web search and URL fetching.
--  `test_web_fetch_config_default` function L1414-1420 — `()` — Provides tools for web search and URL fetching.
--  `test_web_fetch_tool_with_config` function L1423-1435 — `()` — Provides tools for web search and URL fetching.
--  `test_web_fetch_tool_default` function L1438-1441 — `()` — Provides tools for web search and URL fetching.
--  `test_web_search_config_default` function L1446-1451 — `()` — Provides tools for web search and URL fetching.
--  `test_web_search_tool_default` function L1454-1457 — `()` — Provides tools for web search and URL fetching.
--  `test_search_result_serialization` function L1462-1472 — `()` — Provides tools for web search and URL fetching.
--  `test_web_fetch_cancelled` function L1477-1495 — `()` — Provides tools for web search and URL fetching.
--  `test_web_fetch_missing_url` function L1498-1504 — `()` — Provides tools for web search and URL fetching.
-
 #### crates/arawn-agent-tools/src/workflow.rs
 
 - pub `WorkflowTool` struct L43-48 — `{ engine: Arc<PipelineEngine>, workflow_dir: PathBuf, executor: Arc<ScriptExecut...` — Agent-facing tool for workflow management.
@@ -2721,6 +2713,98 @@
 -  `test_status_missing_name` function L754-764 — `()` — workflows via the pipeline engine.
 -  `test_action_is_number` function L767-774 — `()` — workflows via the pipeline engine.
 -  `test_create_empty_definition` function L777-793 — `()` — workflows via the pipeline engine.
+
+### crates/arawn-agent-tools/src/web
+
+> *Semantic summary to be generated by AI agent.*
+
+#### crates/arawn-agent-tools/src/web/fetch.rs
+
+- pub `WebFetchConfig` struct L17-28 — `{ timeout: Duration, max_size: usize, user_agent: String, extract_text: bool, ma...` — Configuration for web fetching.
+- pub `WebFetchTool` struct L45-48 — `{ client: Client, config: WebFetchConfig }` — Tool for fetching web page content.
+- pub `new` function L52-54 — `() -> std::result::Result<Self, reqwest::Error>` — Create a new web fetch tool with default configuration.
+- pub `with_config` function L57-64 — `(config: WebFetchConfig) -> std::result::Result<Self, reqwest::Error>` — Create a web fetch tool with custom configuration.
+-  `WebFetchConfig` type L30-41 — `impl Default for WebFetchConfig`
+-  `default` function L31-40 — `() -> Self`
+-  `WebFetchTool` type L50-154 — `= WebFetchTool`
+-  `extract_text_from_html` function L67-127 — `(&self, html: &str) -> String` — Extract readable text from HTML.
+-  `extract_title` function L130-140 — `(&self, html: &str) -> Option<String>` — Extract title from HTML.
+-  `extract_description` function L143-153 — `(&self, html: &str) -> Option<String>` — Extract meta description from HTML.
+-  `WebFetchTool` type L156-168 — `impl Default for WebFetchTool`
+-  `default` function L157-167 — `() -> Self`
+-  `WebFetchTool` type L171-673 — `impl Tool for WebFetchTool`
+-  `name` function L172-174 — `(&self) -> &str`
+-  `description` function L176-178 — `(&self) -> &str`
+-  `parameters` function L180-226 — `(&self) -> Value`
+-  `execute` function L228-672 — `(&self, params: Value, ctx: &ToolContext) -> Result<ToolResult>`
+
+#### crates/arawn-agent-tools/src/web/mod.rs
+
+-  `fetch` module L5 — `-` — Provides tools for web search and URL fetching.
+-  `search` module L6 — `-` — Provides tools for web search and URL fetching.
+-  `tests` module L9 — `-` — Provides tools for web search and URL fetching.
+-  `is_restricted_ip` function L20-39 — `(ip: &IpAddr) -> bool` — Check if an IP address is private, loopback, link-local, or otherwise
+-  `validate_url_not_ssrf` function L43-78 — `(url: &Url) -> std::result::Result<(), String>` — Resolve a URL's hostname and check that none of its IP addresses are
+
+#### crates/arawn-agent-tools/src/web/search.rs
+
+- pub `SearchProvider` enum L13-22 — `Brave | Serper | Tavily | DuckDuckGo` — Web search provider configuration.
+- pub `WebSearchConfig` struct L26-33 — `{ provider: SearchProvider, max_results: usize, timeout: Duration }` — Configuration for web search.
+- pub `SearchResult` struct L47-51 — `{ title: String, url: String, snippet: String }` — A single search result.
+- pub `WebSearchTool` struct L55-58 — `{ client: Client, config: WebSearchConfig }` — Tool for searching the web.
+- pub `new` function L62-64 — `() -> std::result::Result<Self, reqwest::Error>` — Create a new web search tool with default configuration (DuckDuckGo).
+- pub `with_config` function L67-71 — `(config: WebSearchConfig) -> std::result::Result<Self, reqwest::Error>` — Create a web search tool with custom configuration.
+- pub `brave` function L74-81 — `(api_key: impl Into<String>) -> std::result::Result<Self, reqwest::Error>` — Create a web search tool with Brave Search.
+- pub `serper` function L84-91 — `(api_key: impl Into<String>) -> std::result::Result<Self, reqwest::Error>` — Create a web search tool with Serper.
+- pub `tavily` function L94-101 — `(api_key: impl Into<String>) -> std::result::Result<Self, reqwest::Error>` — Create a web search tool with Tavily.
+-  `WebSearchConfig` type L35-43 — `impl Default for WebSearchConfig`
+-  `default` function L36-42 — `() -> Self`
+-  `WebSearchTool` type L60-286 — `= WebSearchTool`
+-  `search_brave` function L103-146 — `(&self, query: &str, api_key: &str) -> Result<Vec<SearchResult>>`
+-  `search_serper` function L148-189 — `(&self, query: &str, api_key: &str) -> Result<Vec<SearchResult>>`
+-  `search_tavily` function L191-232 — `(&self, query: &str, api_key: &str) -> Result<Vec<SearchResult>>`
+-  `search_duckduckgo` function L234-285 — `(&self, query: &str) -> Result<Vec<SearchResult>>`
+-  `WebSearchTool` type L288-298 — `impl Default for WebSearchTool`
+-  `default` function L289-297 — `() -> Self`
+-  `WebSearchTool` type L301-357 — `impl Tool for WebSearchTool`
+-  `name` function L302-304 — `(&self) -> &str`
+-  `description` function L306-308 — `(&self) -> &str`
+-  `parameters` function L310-321 — `(&self) -> Value`
+-  `execute` function L323-356 — `(&self, params: Value, ctx: &ToolContext) -> Result<ToolResult>`
+
+#### crates/arawn-agent-tools/src/web/tests.rs
+
+-  `test_web_fetch_tool_metadata` function L8-28 — `()`
+-  `test_web_search_tool_metadata` function L31-38 — `()`
+-  `test_extract_text_from_html` function L41-60 — `()`
+-  `test_extract_title` function L63-67 — `()`
+-  `test_extract_description` function L70-77 — `()`
+-  `test_search_providers` function L80-86 — `()`
+-  `test_web_fetch_invalid_url` function L89-100 — `()`
+-  `test_web_fetch_non_http` function L103-114 — `()`
+-  `test_web_fetch_unsupported_method` function L117-131 — `()`
+-  `test_method_case_insensitivity` function L134-141 — `()`
+-  `test_web_fetch_with_custom_headers_invalid_url` function L144-166 — `()`
+-  `test_web_fetch_with_body_invalid_url` function L169-189 — `()`
+-  `test_download_parameter_in_schema` function L192-198 — `()`
+-  `test_max_size_config` function L201-205 — `()`
+-  `test_web_fetch_download_invalid_url` function L208-227 — `()`
+-  `test_extract_text_article_content` function L232-247 — `()`
+-  `test_extract_text_fallback_to_body` function L250-259 — `()`
+-  `test_extract_text_empty_html` function L262-266 — `()`
+-  `test_extract_text_truncation` function L269-278 — `()`
+-  `test_extract_text_content_class` function L281-286 — `()`
+-  `test_extract_title_missing` function L289-293 — `()`
+-  `test_extract_description_missing` function L296-300 — `()`
+-  `test_extract_description_wrong_meta` function L303-307 — `()`
+-  `test_web_fetch_config_default` function L312-318 — `()`
+-  `test_web_fetch_tool_with_config` function L321-333 — `()`
+-  `test_web_fetch_tool_default` function L336-339 — `()`
+-  `test_web_search_config_default` function L344-349 — `()`
+-  `test_web_search_tool_default` function L352-355 — `()`
+-  `test_search_result_serialization` function L360-370 — `()`
+-  `test_web_fetch_cancelled` function L375-393 — `()`
+-  `test_web_fetch_missing_url` function L396-402 — `()`
 
 ### crates/arawn-client/src/api
 
@@ -3384,21 +3468,21 @@
 
 - pub `ResolvedSecret` struct L12-17 — `{ value: String, source: SecretSource }` — Result of API key resolution with provenance.
 - pub `SecretSource` enum L30-35 — `AgeStore | EnvVar` — Where a secret was resolved from.
-- pub `resolve_api_key_ref` function L52-80 — `(ref_name: &str) -> Option<ResolvedSecret>` — Resolve an API key by reference name.
-- pub `store_named_secret` function L88-94 — `(name: &str, value: &str) -> std::result::Result<(), String>` — Store a named secret in the age-encrypted secret store.
-- pub `delete_named_secret` function L98-105 — `(name: &str) -> std::result::Result<(), String>` — Delete a named secret from the age-encrypted secret store.
-- pub `get_named_secret` function L109-113 — `(name: &str) -> std::result::Result<Option<String>, String>` — Retrieve a named secret from the age-encrypted store.
-- pub `list_secrets` function L116-120 — `() -> std::result::Result<Vec<String>, String>` — List all secret names in the age store.
+- pub `resolve_api_key_ref` function L52-78 — `(ref_name: &str) -> Option<ResolvedSecret>` — Resolve an API key by reference name.
+- pub `store_named_secret` function L86-92 — `(name: &str, value: &str) -> std::result::Result<(), String>` — Store a named secret in the age-encrypted secret store.
+- pub `delete_named_secret` function L96-103 — `(name: &str) -> std::result::Result<(), String>` — Delete a named secret from the age-encrypted secret store.
+- pub `get_named_secret` function L107-111 — `(name: &str) -> std::result::Result<Option<String>, String>` — Retrieve a named secret from the age-encrypted store.
+- pub `list_secrets` function L114-118 — `() -> std::result::Result<Vec<String>, String>` — List all secret names in the age store.
 -  `ResolvedSecret` type L19-26 — `= ResolvedSecret` — 2.
 -  `fmt` function L20-25 — `(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result` — 2.
 -  `SecretSource` type L37-44 — `= SecretSource` — 2.
 -  `fmt` function L38-43 — `(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result` — 2.
--  `tests` module L127-188 — `-` — 2.
--  `test_resolve_from_env_var` function L131-144 — `()` — 2.
--  `test_resolve_uppercases_env_var` function L147-157 — `()` — 2.
--  `test_resolve_none_when_nothing_available` function L160-163 — `()` — 2.
--  `test_secret_source_display` function L166-172 — `()` — 2.
--  `test_resolved_secret_debug_redacts_value` function L175-187 — `()` — 2.
+-  `tests` module L125-186 — `-` — 2.
+-  `test_resolve_from_env_var` function L129-142 — `()` — 2.
+-  `test_resolve_uppercases_env_var` function L145-155 — `()` — 2.
+-  `test_resolve_none_when_nothing_available` function L158-161 — `()` — 2.
+-  `test_secret_source_display` function L164-170 — `()` — 2.
+-  `test_resolved_secret_debug_redacts_value` function L173-185 — `()` — 2.
 
 #### crates/arawn-config/src/types.rs
 
@@ -4790,7 +4874,7 @@
 -  `RelationshipType` type L69-83 — `= RelationshipType` — and Cypher query support.
 -  `GraphRelationship` type L98-118 — `= GraphRelationship` — and Cypher query support.
 -  `GraphStore` type L138-265 — `= GraphStore` — and Cypher query support.
--  `tests` module L281-510 — `-` — and Cypher query support.
+-  `tests` module L281-670 — `-` — and Cypher query support.
 -  `create_test_graph` function L285-287 — `() -> GraphStore` — and Cypher query support.
 -  `test_open_in_memory` function L291-296 — `()` — and Cypher query support.
 -  `test_add_entity` function L300-311 — `()` — and Cypher query support.
@@ -4802,6 +4886,13 @@
 -  `test_knowledge_graph_integration` function L434-489 — `()` — and Cypher query support.
 -  `test_graph_node_builder` function L492-501 — `()` — and Cypher query support.
 -  `test_relationship_type_as_str` function L504-509 — `()` — and Cypher query support.
+-  `test_get_neighbors_returns_connected_ids` function L513-543 — `()` — and Cypher query support.
+-  `test_get_neighbors_no_connections_returns_empty` function L547-555 — `()` — and Cypher query support.
+-  `test_stats_reflect_mutations` function L559-580 — `()` — and Cypher query support.
+-  `test_relationship_with_properties` function L584-596 — `()` — and Cypher query support.
+-  `test_entity_with_properties_preserved` function L600-622 — `()` — and Cypher query support.
+-  `test_delete_nonexistent_entity` function L626-631 — `()` — and Cypher query support.
+-  `test_multi_hop_traversal` function L635-669 — `()` — and Cypher query support.
 
 #### crates/arawn-memory/src/lib.rs
 
@@ -5672,21 +5763,21 @@
 - pub `ExecutionResult` struct L64-71 — `{ execution_id: String, status: ExecutionStatus, output: Option<serde_json::Valu...` — Result of a workflow execution.
 - pub `ExecutionStatus` enum L75-84 — `Completed | Failed | Running | TimedOut` — Status of an execution.
 - pub `ScheduleInfo` struct L88-97 — `{ id: String, workflow_name: String, cron_expr: String, enabled: bool }` — Information about a scheduled workflow.
-- pub `PipelineEngine` struct L463-467 — `{ runner: DefaultRunner, workflows: Arc<RwLock<HashMap<String, Workflow>>> }` — The pipeline engine — Arawn's execution backbone.
-- pub `new` function L476-498 — `(db_path: &Path, config: PipelineConfig) -> Result<Self, PipelineError>` — Initialize the pipeline engine with a SQLite database.
-- pub `register_workflow` function L504-517 — `(&self, workflow: Workflow) -> Result<(), PipelineError>` — Register a dynamically constructed workflow.
-- pub `register_dynamic_workflow` function L523-552 — `( &self, name: &str, description: &str, tasks: Vec<DynamicTask>, ) -> Result<(),...` — Build and register a workflow from dynamic tasks.
-- pub `execute` function L558-617 — `( &self, workflow_name: &str, context: Context<serde_json::Value>, ) -> Result<E...` — Execute a registered workflow.
-- pub `trigger` function L623-630 — `( &self, workflow_name: &str, context: Context<serde_json::Value>, ) -> Result<E...` — Execute a workflow via push trigger.
-- pub `schedule_cron` function L639-663 — `( &self, workflow_name: &str, cron_expr: &str, timezone: &str, ) -> Result<Strin...` — Register a cron schedule for a workflow.
-- pub `list_schedules` function L666-682 — `(&self) -> Result<Vec<ScheduleInfo>, PipelineError>` — List all cron schedules.
-- pub `cancel_schedule` function L685-695 — `(&self, schedule_id: &str) -> Result<(), PipelineError>` — Cancel a cron schedule.
-- pub `list_workflows` function L698-700 — `(&self) -> Vec<String>` — List registered workflow names.
-- pub `has_workflow` function L703-705 — `(&self, name: &str) -> bool` — Check if a workflow is registered.
-- pub `shutdown` function L710-720 — `(self) -> Result<(), PipelineError>` — Gracefully shut down the engine.
+- pub `PipelineEngine` struct L554-558 — `{ runner: DefaultRunner, workflows: Arc<RwLock<HashMap<String, Workflow>>> }` — The pipeline engine — Arawn's execution backbone.
+- pub `new` function L567-589 — `(db_path: &Path, config: PipelineConfig) -> Result<Self, PipelineError>` — Initialize the pipeline engine with a SQLite database.
+- pub `register_workflow` function L595-608 — `(&self, workflow: Workflow) -> Result<(), PipelineError>` — Register a dynamically constructed workflow.
+- pub `register_dynamic_workflow` function L614-643 — `( &self, name: &str, description: &str, tasks: Vec<DynamicTask>, ) -> Result<(),...` — Build and register a workflow from dynamic tasks.
+- pub `execute` function L649-708 — `( &self, workflow_name: &str, context: Context<serde_json::Value>, ) -> Result<E...` — Execute a registered workflow.
+- pub `trigger` function L714-721 — `( &self, workflow_name: &str, context: Context<serde_json::Value>, ) -> Result<E...` — Execute a workflow via push trigger.
+- pub `schedule_cron` function L730-754 — `( &self, workflow_name: &str, cron_expr: &str, timezone: &str, ) -> Result<Strin...` — Register a cron schedule for a workflow.
+- pub `list_schedules` function L757-773 — `(&self) -> Result<Vec<ScheduleInfo>, PipelineError>` — List all cron schedules.
+- pub `cancel_schedule` function L776-786 — `(&self, schedule_id: &str) -> Result<(), PipelineError>` — Cancel a cron schedule.
+- pub `list_workflows` function L789-791 — `(&self) -> Vec<String>` — List registered workflow names.
+- pub `has_workflow` function L794-796 — `(&self, name: &str) -> bool` — Check if a workflow is registered.
+- pub `shutdown` function L801-811 — `(self) -> Result<(), PipelineError>` — Gracefully shut down the engine.
 -  `PipelineConfig` type L50-60 — `impl Default for PipelineConfig` — cron scheduling, push triggers, and graceful shutdown.
 -  `default` function L51-59 — `() -> Self` — cron scheduling, push triggers, and graceful shutdown.
--  `tests` module L100-444 — `-` — cron scheduling, push triggers, and graceful shutdown.
+-  `tests` module L100-535 — `-` — cron scheduling, push triggers, and graceful shutdown.
 -  `test_engine` function L104-112 — `(dir: &Path) -> PipelineEngine` — cron scheduling, push triggers, and graceful shutdown.
 -  `test_pipeline_config_defaults` function L115-122 — `()` — cron scheduling, push triggers, and graceful shutdown.
 -  `test_execution_status_eq` function L125-137 — `()` — cron scheduling, push triggers, and graceful shutdown.
@@ -5707,8 +5798,13 @@
 -  `test_list_schedules_empty` function L386-399 — `()` — cron scheduling, push triggers, and graceful shutdown.
 -  `test_execute_nonexistent_returns_error` function L402-410 — `()` — cron scheduling, push triggers, and graceful shutdown.
 -  `test_trigger_delegates_to_execute` function L413-430 — `()` — cron scheduling, push triggers, and graceful shutdown.
--  `test_schedule_info_fields` function L433-443 — `()` — cron scheduling, push triggers, and graceful shutdown.
--  `PipelineEngine` type L469-721 — `= PipelineEngine` — cron scheduling, push triggers, and graceful shutdown.
+-  `test_schedule_info_fields` function L433-442 — `()` — cron scheduling, push triggers, and graceful shutdown.
+-  `cron_engine` function L444-452 — `(dir: &Path) -> PipelineEngine` — cron scheduling, push triggers, and graceful shutdown.
+-  `test_schedule_cron_nonexistent_workflow` function L455-469 — `()` — cron scheduling, push triggers, and graceful shutdown.
+-  `test_schedule_cron_and_list` function L472-497 — `()` — cron scheduling, push triggers, and graceful shutdown.
+-  `test_trigger_with_triggers_enabled` function L500-522 — `()` — cron scheduling, push triggers, and graceful shutdown.
+-  `test_trigger_nonexistent_workflow` function L525-534 — `()` — cron scheduling, push triggers, and graceful shutdown.
+-  `PipelineEngine` type L560-812 — `= PipelineEngine` — cron scheduling, push triggers, and graceful shutdown.
 
 #### crates/arawn-pipeline/src/error.rs
 
@@ -6972,177 +7068,6 @@
 -  `test_parse_session_id_invalid` function L781-784 — `()` — workstream JSONL storage.
 -  `test_session_cache_error_display` function L787-793 — `()` — workstream JSONL storage.
 
-#### crates/arawn-server/src/state.rs
-
-- pub `SessionOwners` type L55 — `= Arc<RwLock<HashMap<SessionId, ConnectionId>>>` — Session ownership tracking - maps session IDs to owning connection IDs.
-- pub `PendingReconnect` struct L59-64 — `{ token: String, expires_at: std::time::Instant }` — Pending reconnect entry for session ownership recovery after disconnect.
-- pub `new` function L68-73 — `(token: String, grace_period: std::time::Duration) -> Self` — Create a new pending reconnect with the given grace period.
-- pub `is_expired` function L76-78 — `(&self) -> bool` — Check if this pending reconnect has expired.
-- pub `PendingReconnects` type L82 — `= Arc<RwLock<HashMap<SessionId, PendingReconnect>>>` — Pending reconnects storage - maps session IDs to pending reconnect entries.
-- pub `ActiveConnections` type L86 — `= Arc<RwLock<HashSet<ConnectionId>>>` — Active WebSocket connections — tracks which connection IDs are currently alive.
-- pub `SharedMcpManager` type L89 — `= Arc<RwLock<McpManager>>` — Thread-safe MCP manager.
-- pub `TaskStatus` enum L98-109 — `Pending | Running | Completed | Failed | Cancelled` — Task status.
-- pub `TrackedTask` struct L113-134 — `{ id: String, task_type: String, status: TaskStatus, progress: Option<u8>, messa...` — A tracked task/operation.
-- pub `new` function L138-151 — `(id: impl Into<String>, task_type: impl Into<String>) -> Self` — Create a new pending task.
-- pub `with_session` function L154-157 — `(mut self, session_id: impl Into<String>) -> Self` — Set the session ID.
-- pub `start` function L160-163 — `(&mut self)` — Mark the task as running.
-- pub `update_progress` function L166-169 — `(&mut self, progress: u8, message: Option<String>)` — Update progress.
-- pub `complete` function L172-177 — `(&mut self, message: Option<String>)` — Mark the task as completed.
-- pub `fail` function L180-184 — `(&mut self, error: impl Into<String>)` — Mark the task as failed.
-- pub `cancel` function L187-190 — `(&mut self)` — Mark the task as cancelled.
-- pub `TaskStore` type L194 — `= Arc<RwLock<HashMap<String, TrackedTask>>>` — In-memory task store.
-- pub `WsConnectionTracker` struct L205-208 — `{ connections: Arc<RwLock<HashMap<IpAddr, Vec<Instant>>>> }` — Tracks WebSocket connection attempts per IP address.
-- pub `new` function L212-216 — `() -> Self` — Create a new connection tracker.
-- pub `check_rate` function L222-264 — `(&self, ip: IpAddr, max_per_minute: u32) -> Result<(), Response>` — Check if a new connection from this IP should be allowed.
-- pub `cleanup` function L267-279 — `(&self)` — Cleanup old entries from all IPs.
-- pub `SharedServices` struct L297-336 — `{ agent: Arc<Agent>, config: Arc<ServerConfig>, rate_limiter: SharedRateLimiter,...` — Immutable services created at startup.
-- pub `new` function L340-358 — `(agent: Agent, config: ServerConfig) -> Self` — Create new shared services with the given agent and config.
-- pub `with_workstreams` function L361-364 — `(mut self, manager: WorkstreamManager) -> Self` — Configure workstream support.
-- pub `with_indexer` function L367-370 — `(mut self, indexer: SessionIndexer) -> Self` — Configure session indexer.
-- pub `with_hook_dispatcher` function L373-376 — `(mut self, dispatcher: SharedHookDispatcher) -> Self` — Configure hook dispatcher for lifecycle events.
-- pub `with_mcp_manager` function L379-382 — `(mut self, manager: McpManager) -> Self` — Configure MCP manager.
-- pub `with_directory_manager` function L385-388 — `(mut self, manager: DirectoryManager) -> Self` — Configure directory manager for path management.
-- pub `with_sandbox_manager` function L391-394 — `(mut self, manager: SandboxManager) -> Self` — Configure sandbox manager for shell execution.
-- pub `with_file_watcher` function L397-400 — `(mut self, watcher: WatcherHandle) -> Self` — Configure file watcher for filesystem monitoring.
-- pub `with_memory_store` function L403-406 — `(mut self, store: Arc<MemoryStore>) -> Self` — Configure memory store for persistent notes and memories.
-- pub `with_compressor` function L409-412 — `(mut self, compressor: Compressor) -> Self` — Configure session/workstream compressor.
-- pub `build_domain_services` function L418-429 — `(mut self) -> Self` — Build domain services from the configured components.
-- pub `domain` function L434-436 — `(&self) -> Option<&Arc<DomainServices>>` — Get the domain services facade.
-- pub `allowed_paths` function L441-449 — `( &self, workstream_id: &str, session_id: &str, ) -> Option<Vec<std::path::PathB...` — Get allowed paths for a session based on its workstream.
-- pub `path_validator` function L454-462 — `( &self, workstream_id: &str, session_id: &str, ) -> Option<arawn_domain::PathVa...` — Get a PathValidator for a session.
-- pub `RuntimeState` struct L482-511 — `{ session_cache: SessionCache, tasks: TaskStore, session_owners: SessionOwners, ...` — Mutable state that changes during operation.
-- pub `new` function L515-524 — `() -> Self` — Create new runtime state.
-- pub `with_workstream_cache` function L527-536 — `(workstreams: Arc<WorkstreamManager>) -> Self` — Create runtime state with workstream-backed session cache.
-- pub `with_session_config` function L539-546 — `( mut self, workstreams: Option<Arc<WorkstreamManager>>, config: &C, ) -> Self` — Configure session cache using a config provider.
-- pub `AppState` struct L567-573 — `{ services: SharedServices, runtime: RuntimeState }` — Application state shared across all handlers.
-- pub `new` function L577-582 — `(agent: Agent, config: ServerConfig) -> Self` — Create a new application state.
-- pub `with_workstreams` function L585-590 — `(mut self, manager: WorkstreamManager) -> Self` — Create application state with workstream support.
-- pub `with_indexer` function L593-596 — `(mut self, indexer: SessionIndexer) -> Self` — Create application state with session indexer.
-- pub `with_hook_dispatcher` function L599-602 — `(mut self, dispatcher: SharedHookDispatcher) -> Self` — Create application state with hook dispatcher for lifecycle events.
-- pub `with_mcp_manager` function L605-608 — `(mut self, manager: McpManager) -> Self` — Create application state with MCP manager.
-- pub `with_directory_manager` function L611-614 — `(mut self, manager: DirectoryManager) -> Self` — Create application state with directory manager for path management.
-- pub `with_sandbox_manager` function L617-620 — `(mut self, manager: SandboxManager) -> Self` — Create application state with sandbox manager for shell execution.
-- pub `with_file_watcher` function L623-626 — `(mut self, watcher: WatcherHandle) -> Self` — Create application state with file watcher for filesystem monitoring.
-- pub `with_compressor` function L629-632 — `(mut self, compressor: Compressor) -> Self` — Create application state with session/workstream compressor.
-- pub `with_session_config` function L635-639 — `(mut self, config: &C) -> Self` — Configure session cache using a config provider.
-- pub `build_domain_services` function L645-648 — `(mut self) -> Self` — Build domain services from the configured components.
-- pub `agent` function L654-656 — `(&self) -> &Arc<Agent>` — Get the agent.
-- pub `config` function L660-662 — `(&self) -> &Arc<ServerConfig>` — Get the server config.
-- pub `rate_limiter` function L666-668 — `(&self) -> &SharedRateLimiter` — Get the rate limiter.
-- pub `workstreams` function L672-674 — `(&self) -> Option<&Arc<WorkstreamManager>>` — Get the workstream manager.
-- pub `indexer` function L678-680 — `(&self) -> Option<&Arc<SessionIndexer>>` — Get the session indexer.
-- pub `hook_dispatcher` function L684-686 — `(&self) -> Option<&SharedHookDispatcher>` — Get the hook dispatcher.
-- pub `mcp_manager` function L690-692 — `(&self) -> Option<&SharedMcpManager>` — Get the MCP manager.
-- pub `directory_manager` function L696-698 — `(&self) -> Option<&Arc<DirectoryManager>>` — Get the directory manager.
-- pub `sandbox_manager` function L702-704 — `(&self) -> Option<&Arc<SandboxManager>>` — Get the sandbox manager.
-- pub `file_watcher` function L708-710 — `(&self) -> Option<&Arc<WatcherHandle>>` — Get the file watcher.
-- pub `memory_store` function L714-716 — `(&self) -> Option<&Arc<MemoryStore>>` — Get the memory store.
-- pub `domain` function L720-722 — `(&self) -> Option<&Arc<DomainServices>>` — Get the domain services facade.
-- pub `compressor` function L726-728 — `(&self) -> Option<&Arc<Compressor>>` — Get the compressor.
-- pub `session_cache` function L732-734 — `(&self) -> &SessionCache` — Get the session cache.
-- pub `tasks` function L738-740 — `(&self) -> &TaskStore` — Get the task store.
-- pub `session_owners` function L744-746 — `(&self) -> &SessionOwners` — Get the session owners.
-- pub `pending_reconnects` function L750-752 — `(&self) -> &PendingReconnects` — Get the pending reconnects.
-- pub `active_connections` function L756-758 — `(&self) -> &ActiveConnections` — Get the active connections set.
-- pub `register_connection` function L761-767 — `(&self, connection_id: ConnectionId)` — Register a WebSocket connection as active.
-- pub `unregister_connection` function L770-776 — `(&self, connection_id: ConnectionId)` — Unregister a WebSocket connection (called on disconnect).
-- pub `is_connection_active` function L779-785 — `(&self, connection_id: ConnectionId) -> bool` — Check if a connection is still active.
-- pub `ws_connection_tracker` function L789-791 — `(&self) -> &WsConnectionTracker` — Get the WebSocket connection tracker.
-- pub `check_ws_connection_rate` function L796-801 — `(&self, ip: IpAddr) -> Result<(), Response>` — Check WebSocket connection rate for an IP address.
-- pub `allowed_paths` function L809-815 — `( &self, workstream_id: &str, session_id: &str, ) -> Option<Vec<std::path::PathB...` — Get allowed paths for a session based on its workstream.
-- pub `path_validator` function L820-826 — `( &self, workstream_id: &str, session_id: &str, ) -> Option<arawn_domain::PathVa...` — Get a PathValidator for a session.
-- pub `get_or_create_session` function L834-837 — `(&self, session_id: Option<SessionId>) -> SessionId` — Get or create a session by ID.
-- pub `get_or_create_session_in_workstream` function L843-884 — `( &self, session_id: Option<SessionId>, workstream_id: &str, ) -> SessionId` — Get or create a session in a specific workstream.
-- pub `close_session` function L890-1002 — `(&self, session_id: SessionId) -> bool` — Close a session: remove it from the cache and trigger background indexing/compression.
-- pub `get_session` function L1005-1015 — `(&self, session_id: SessionId, workstream_id: &str) -> Option<Session>` — Get session from cache (loading from workstream if needed).
-- pub `update_session` function L1018-1022 — `(&self, session_id: SessionId, session: Session)` — Update session in cache.
-- pub `invalidate_session` function L1025-1027 — `(&self, session_id: SessionId)` — Invalidate a cached session (e.g., after workstream reassignment).
-- pub `try_claim_session_ownership` function L1037-1086 — `( &self, session_id: SessionId, connection_id: ConnectionId, ) -> bool` — Try to claim ownership of a session for a connection.
-- pub `is_session_owner` function L1089-1096 — `( &self, session_id: SessionId, connection_id: ConnectionId, ) -> bool` — Check if a connection owns a session.
-- pub `release_session_ownership` function L1102-1115 — `( &self, session_id: SessionId, connection_id: ConnectionId, ) -> bool` — Release ownership of a session.
-- pub `release_all_session_ownerships` function L1124-1163 — `( &self, connection_id: ConnectionId, reconnect_tokens: &HashMap<SessionId, Stri...` — Release all session ownerships held by a connection, creating pending reconnects.
-- pub `try_reclaim_with_token` function L1169-1213 — `( &self, session_id: SessionId, token: &str, connection_id: ConnectionId, ) -> O...` — Try to reclaim session ownership using a reconnect token.
-- pub `cleanup_expired_pending_reconnects` function L1218-1239 — `(&self) -> usize` — Clean up expired pending reconnects.
-- pub `has_pending_reconnect` function L1242-1249 — `(&self, session_id: SessionId) -> bool` — Check if a session has a pending reconnect (ownership held for reconnection).
--  `PendingReconnect` type L66-79 — `= PendingReconnect` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `TrackedTask` type L136-191 — `= TrackedTask` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `WS_RATE_WINDOW` variable L201 — `: std::time::Duration` — Sliding window duration for WebSocket rate limiting.
--  `WsConnectionTracker` type L210-280 — `= WsConnectionTracker` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `WsConnectionTracker` type L282-286 — `impl Default for WsConnectionTracker` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `default` function L283-285 — `() -> Self` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `SharedServices` type L338-463 — `= SharedServices` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `RuntimeState` type L513-547 — `= RuntimeState` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `RuntimeState` type L549-553 — `impl Default for RuntimeState` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `default` function L550-552 — `() -> Self` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `AppState` type L575-1250 — `= AppState` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `session_to_messages` function L1257-1266 — `(session: &Session) -> Vec<(String, String)>` — Convert a session's turns into owned `(role, content)` pairs.
--  `messages_as_refs` function L1269-1274 — `(messages: &[(String, String)]) -> Vec<(&str, &str)>` — Convert owned message pairs to borrowed slices for the indexer API.
--  `tests` module L1277-2310 — `-` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `create_test_state` function L1282-1290 — `() -> AppState` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_session_to_messages_empty` function L1293-1297 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_session_to_messages_with_turns` function L1300-1322 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_session_to_messages_incomplete_turn` function L1325-1333 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_messages_as_refs` function L1336-1343 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_close_session_removes_session` function L1346-1358 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_close_session_nonexistent_returns_false` function L1361-1365 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_close_session_without_indexer` function L1368-1385 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_default_state_has_no_indexer` function L1388-1391 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_session_ownership_first_claimer_wins` function L1394-1414 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_session_ownership_release` function L1417-1440 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_session_ownership_release_all_on_disconnect` function L1443-1488 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_dead_owner_eviction` function L1491-1509 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_session_ownership_same_connection_reclaim` function L1512-1525 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_reconnect_token_wrong_token_rejected` function L1528-1553 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_reconnect_token_new_connection_can_reclaim` function L1556-1580 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_reconnect_cleanup_expired` function L1583-1624 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_shared_services_builder` function L1627-1641 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_runtime_state_defaults` function L1644-1649 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_convenience_accessors` function L1652-1663 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_register_connection_adds_to_set` function L1668-1675 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_unregister_connection_removes_from_set` function L1678-1687 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_is_connection_active_multiple_connections` function L1690-1706 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_dead_owner_multiple_sessions_evicted` function L1711-1731 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_live_owner_blocks_claim` function L1734-1749 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_lifecycle_claim_die_evict` function L1754-1773 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_lifecycle_expired_token_then_new_claim` function L1776-1818 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_release_without_tokens_no_pending_reconnect` function L1821-1842 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_claim_unowned_session_no_active_connections_needed` function L1845-1854 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_ownership_independent_sessions` function L1857-1875 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_pending_reconnect_blocks_dead_owner_eviction` function L1878-1896 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_reclaim_generates_new_token` function L1899-1919 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_cleanup_only_removes_expired` function L1922-1959 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_is_session_owner_nonexistent_session` function L1962-1968 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_ws_connection_tracker_allows_under_limit` function L1973-1982 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_ws_connection_tracker_rate_limits` function L1985-1997 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_ws_connection_tracker_per_ip` function L2000-2015 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_ws_connection_tracker_cleanup` function L2018-2029 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_ws_connection_tracker_default` function L2032-2036 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_tracked_task_new` function L2041-2052 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_tracked_task_with_session` function L2055-2059 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_tracked_task_start` function L2062-2069 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_tracked_task_update_progress` function L2072-2079 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_tracked_task_update_progress_clamps_to_100` function L2082-2086 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_tracked_task_complete` function L2089-2098 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_tracked_task_fail` function L2101-2109 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_tracked_task_cancel` function L2112-2119 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_task_status_serde` function L2122-2129 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_task_status_all_variants_serialize` function L2132-2144 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_tracked_task_serializes` function L2147-2157 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_pending_reconnect_new_not_expired` function L2162-2166 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_pending_reconnect_zero_duration_expired` function L2169-2176 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_pending_reconnect_debug` function L2179-2183 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_shared_services_build_domain_services` function L2188-2202 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_shared_services_optional_fields_all_none` function L2205-2225 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_app_state_build_domain_services` function L2230-2233 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_app_state_convenience_accessors_optional_none` function L2236-2248 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_app_state_allowed_paths_no_directory_manager` function L2251-2254 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_app_state_path_validator_no_directory_manager` function L2257-2260 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_app_state_get_or_create_session_returns_existing` function L2263-2270 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_app_state_update_and_get_session` function L2273-2280 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_app_state_invalidate_session` function L2283-2290 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_check_ws_connection_rate_delegates` function L2293-2300 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
--  `test_runtime_state_default_trait` function L2303-2309 — `()` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
-
 ### crates/arawn-server/src/routes
 
 **Role**: All HTTP route handlers — organized by resource area after the recent route file decomposition refactor.
@@ -7754,6 +7679,192 @@
 -  `test_fs_change_serialization` function L536-560 — `()` — WebSocket protocol types for client-server communication.
 -  `test_disk_pressure_serialization` function L563-590 — `()` — WebSocket protocol types for client-server communication.
 
+### crates/arawn-server/src/state
+
+> *Semantic summary to be generated by AI agent.*
+
+#### crates/arawn-server/src/state/mod.rs
+
+- pub `SessionOwners` type L57 — `= Arc<RwLock<HashMap<SessionId, ConnectionId>>>` — Session ownership tracking - maps session IDs to owning connection IDs.
+- pub `PendingReconnect` struct L61-66 — `{ token: String, expires_at: std::time::Instant }` — Pending reconnect entry for session ownership recovery after disconnect.
+- pub `new` function L70-75 — `(token: String, grace_period: std::time::Duration) -> Self` — Create a new pending reconnect with the given grace period.
+- pub `is_expired` function L78-80 — `(&self) -> bool` — Check if this pending reconnect has expired.
+- pub `PendingReconnects` type L84 — `= Arc<RwLock<HashMap<SessionId, PendingReconnect>>>` — Pending reconnects storage - maps session IDs to pending reconnect entries.
+- pub `ActiveConnections` type L88 — `= Arc<RwLock<HashSet<ConnectionId>>>` — Active WebSocket connections — tracks which connection IDs are currently alive.
+- pub `SharedMcpManager` type L91 — `= Arc<RwLock<McpManager>>` — Thread-safe MCP manager.
+- pub `SharedServices` struct L102-141 — `{ agent: Arc<Agent>, config: Arc<ServerConfig>, rate_limiter: SharedRateLimiter,...` — Immutable services created at startup.
+- pub `new` function L145-163 — `(agent: Agent, config: ServerConfig) -> Self` — Create new shared services with the given agent and config.
+- pub `with_workstreams` function L166-169 — `(mut self, manager: WorkstreamManager) -> Self` — Configure workstream support.
+- pub `with_indexer` function L172-175 — `(mut self, indexer: SessionIndexer) -> Self` — Configure session indexer.
+- pub `with_hook_dispatcher` function L178-181 — `(mut self, dispatcher: SharedHookDispatcher) -> Self` — Configure hook dispatcher for lifecycle events.
+- pub `with_mcp_manager` function L184-187 — `(mut self, manager: McpManager) -> Self` — Configure MCP manager.
+- pub `with_directory_manager` function L190-193 — `(mut self, manager: DirectoryManager) -> Self` — Configure directory manager for path management.
+- pub `with_sandbox_manager` function L196-199 — `(mut self, manager: SandboxManager) -> Self` — Configure sandbox manager for shell execution.
+- pub `with_file_watcher` function L202-205 — `(mut self, watcher: WatcherHandle) -> Self` — Configure file watcher for filesystem monitoring.
+- pub `with_memory_store` function L208-211 — `(mut self, store: Arc<MemoryStore>) -> Self` — Configure memory store for persistent notes and memories.
+- pub `with_compressor` function L214-217 — `(mut self, compressor: Compressor) -> Self` — Configure session/workstream compressor.
+- pub `build_domain_services` function L223-234 — `(mut self) -> Self` — Build domain services from the configured components.
+- pub `domain` function L239-241 — `(&self) -> Option<&Arc<DomainServices>>` — Get the domain services facade.
+- pub `allowed_paths` function L246-254 — `( &self, workstream_id: &str, session_id: &str, ) -> Option<Vec<std::path::PathB...` — Get allowed paths for a session based on its workstream.
+- pub `path_validator` function L259-267 — `( &self, workstream_id: &str, session_id: &str, ) -> Option<arawn_domain::PathVa...` — Get a PathValidator for a session.
+- pub `RuntimeState` struct L287-316 — `{ session_cache: SessionCache, tasks: TaskStore, session_owners: SessionOwners, ...` — Mutable state that changes during operation.
+- pub `new` function L320-329 — `() -> Self` — Create new runtime state.
+- pub `with_workstream_cache` function L332-341 — `(workstreams: Arc<WorkstreamManager>) -> Self` — Create runtime state with workstream-backed session cache.
+- pub `with_session_config` function L344-351 — `( mut self, workstreams: Option<Arc<WorkstreamManager>>, config: &C, ) -> Self` — Configure session cache using a config provider.
+- pub `AppState` struct L372-378 — `{ services: SharedServices, runtime: RuntimeState }` — Application state shared across all handlers.
+- pub `new` function L382-387 — `(agent: Agent, config: ServerConfig) -> Self` — Create a new application state.
+- pub `with_workstreams` function L390-395 — `(mut self, manager: WorkstreamManager) -> Self` — Create application state with workstream support.
+- pub `with_indexer` function L398-401 — `(mut self, indexer: SessionIndexer) -> Self` — Create application state with session indexer.
+- pub `with_hook_dispatcher` function L404-407 — `(mut self, dispatcher: SharedHookDispatcher) -> Self` — Create application state with hook dispatcher for lifecycle events.
+- pub `with_mcp_manager` function L410-413 — `(mut self, manager: McpManager) -> Self` — Create application state with MCP manager.
+- pub `with_directory_manager` function L416-419 — `(mut self, manager: DirectoryManager) -> Self` — Create application state with directory manager for path management.
+- pub `with_sandbox_manager` function L422-425 — `(mut self, manager: SandboxManager) -> Self` — Create application state with sandbox manager for shell execution.
+- pub `with_file_watcher` function L428-431 — `(mut self, watcher: WatcherHandle) -> Self` — Create application state with file watcher for filesystem monitoring.
+- pub `with_compressor` function L434-437 — `(mut self, compressor: Compressor) -> Self` — Create application state with session/workstream compressor.
+- pub `with_session_config` function L440-444 — `(mut self, config: &C) -> Self` — Configure session cache using a config provider.
+- pub `build_domain_services` function L450-453 — `(mut self) -> Self` — Build domain services from the configured components.
+- pub `agent` function L459-461 — `(&self) -> &Arc<Agent>` — Get the agent.
+- pub `config` function L465-467 — `(&self) -> &Arc<ServerConfig>` — Get the server config.
+- pub `rate_limiter` function L471-473 — `(&self) -> &SharedRateLimiter` — Get the rate limiter.
+- pub `workstreams` function L477-479 — `(&self) -> Option<&Arc<WorkstreamManager>>` — Get the workstream manager.
+- pub `indexer` function L483-485 — `(&self) -> Option<&Arc<SessionIndexer>>` — Get the session indexer.
+- pub `hook_dispatcher` function L489-491 — `(&self) -> Option<&SharedHookDispatcher>` — Get the hook dispatcher.
+- pub `mcp_manager` function L495-497 — `(&self) -> Option<&SharedMcpManager>` — Get the MCP manager.
+- pub `directory_manager` function L501-503 — `(&self) -> Option<&Arc<DirectoryManager>>` — Get the directory manager.
+- pub `sandbox_manager` function L507-509 — `(&self) -> Option<&Arc<SandboxManager>>` — Get the sandbox manager.
+- pub `file_watcher` function L513-515 — `(&self) -> Option<&Arc<WatcherHandle>>` — Get the file watcher.
+- pub `memory_store` function L519-521 — `(&self) -> Option<&Arc<MemoryStore>>` — Get the memory store.
+- pub `domain` function L525-527 — `(&self) -> Option<&Arc<DomainServices>>` — Get the domain services facade.
+- pub `compressor` function L531-533 — `(&self) -> Option<&Arc<Compressor>>` — Get the compressor.
+- pub `session_cache` function L537-539 — `(&self) -> &SessionCache` — Get the session cache.
+- pub `tasks` function L543-545 — `(&self) -> &TaskStore` — Get the task store.
+- pub `session_owners` function L549-551 — `(&self) -> &SessionOwners` — Get the session owners.
+- pub `pending_reconnects` function L555-557 — `(&self) -> &PendingReconnects` — Get the pending reconnects.
+- pub `active_connections` function L561-563 — `(&self) -> &ActiveConnections` — Get the active connections set.
+- pub `register_connection` function L566-572 — `(&self, connection_id: ConnectionId)` — Register a WebSocket connection as active.
+- pub `unregister_connection` function L575-581 — `(&self, connection_id: ConnectionId)` — Unregister a WebSocket connection (called on disconnect).
+- pub `is_connection_active` function L584-590 — `(&self, connection_id: ConnectionId) -> bool` — Check if a connection is still active.
+- pub `ws_connection_tracker` function L594-596 — `(&self) -> &WsConnectionTracker` — Get the WebSocket connection tracker.
+- pub `check_ws_connection_rate` function L601-606 — `(&self, ip: IpAddr) -> Result<(), Response>` — Check WebSocket connection rate for an IP address.
+- pub `allowed_paths` function L614-620 — `( &self, workstream_id: &str, session_id: &str, ) -> Option<Vec<std::path::PathB...` — Get allowed paths for a session based on its workstream.
+- pub `path_validator` function L625-631 — `( &self, workstream_id: &str, session_id: &str, ) -> Option<arawn_domain::PathVa...` — Get a PathValidator for a session.
+- pub `get_or_create_session` function L639-642 — `(&self, session_id: Option<SessionId>) -> SessionId` — Get or create a session by ID.
+- pub `get_or_create_session_in_workstream` function L648-689 — `( &self, session_id: Option<SessionId>, workstream_id: &str, ) -> SessionId` — Get or create a session in a specific workstream.
+- pub `close_session` function L695-807 — `(&self, session_id: SessionId) -> bool` — Close a session: remove it from the cache and trigger background indexing/compression.
+- pub `get_session` function L810-820 — `(&self, session_id: SessionId, workstream_id: &str) -> Option<Session>` — Get session from cache (loading from workstream if needed).
+- pub `update_session` function L823-827 — `(&self, session_id: SessionId, session: Session)` — Update session in cache.
+- pub `invalidate_session` function L830-832 — `(&self, session_id: SessionId)` — Invalidate a cached session (e.g., after workstream reassignment).
+- pub `try_claim_session_ownership` function L842-891 — `( &self, session_id: SessionId, connection_id: ConnectionId, ) -> bool` — Try to claim ownership of a session for a connection.
+- pub `is_session_owner` function L894-901 — `( &self, session_id: SessionId, connection_id: ConnectionId, ) -> bool` — Check if a connection owns a session.
+- pub `release_session_ownership` function L907-920 — `( &self, session_id: SessionId, connection_id: ConnectionId, ) -> bool` — Release ownership of a session.
+- pub `release_all_session_ownerships` function L929-968 — `( &self, connection_id: ConnectionId, reconnect_tokens: &HashMap<SessionId, Stri...` — Release all session ownerships held by a connection, creating pending reconnects.
+- pub `try_reclaim_with_token` function L974-1018 — `( &self, session_id: SessionId, token: &str, connection_id: ConnectionId, ) -> O...` — Try to reclaim session ownership using a reconnect token.
+- pub `cleanup_expired_pending_reconnects` function L1023-1044 — `(&self) -> usize` — Clean up expired pending reconnects.
+- pub `has_pending_reconnect` function L1047-1054 — `(&self, session_id: SessionId) -> bool` — Check if a session has a pending reconnect (ownership held for reconnection).
+-  `tasks` module L27 — `-` — State is separated into two layers:
+-  `ws_tracker` module L28 — `-` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
+-  `PendingReconnect` type L68-81 — `= PendingReconnect` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
+-  `SharedServices` type L143-268 — `= SharedServices` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
+-  `RuntimeState` type L318-352 — `= RuntimeState` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
+-  `RuntimeState` type L354-358 — `impl Default for RuntimeState` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
+-  `default` function L355-357 — `() -> Self` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
+-  `AppState` type L380-1055 — `= AppState` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
+-  `session_to_messages` function L1062-1071 — `(session: &Session) -> Vec<(String, String)>` — Convert a session's turns into owned `(role, content)` pairs.
+-  `messages_as_refs` function L1074-1079 — `(messages: &[(String, String)]) -> Vec<(&str, &str)>` — Convert owned message pairs to borrowed slices for the indexer API.
+-  `tests` module L1082 — `-` — - See `docs/src/architecture/concurrency.md` for the full concurrency guide.
+
+#### crates/arawn-server/src/state/tasks.rs
+
+- pub `TaskStatus` enum L13-24 — `Pending | Running | Completed | Failed | Cancelled` — Task status.
+- pub `TrackedTask` struct L28-49 — `{ id: String, task_type: String, status: TaskStatus, progress: Option<u8>, messa...` — A tracked task/operation.
+- pub `new` function L53-66 — `(id: impl Into<String>, task_type: impl Into<String>) -> Self` — Create a new pending task.
+- pub `with_session` function L69-72 — `(mut self, session_id: impl Into<String>) -> Self` — Set the session ID.
+- pub `start` function L75-78 — `(&mut self)` — Mark the task as running.
+- pub `update_progress` function L81-84 — `(&mut self, progress: u8, message: Option<String>)` — Update progress.
+- pub `complete` function L87-92 — `(&mut self, message: Option<String>)` — Mark the task as completed.
+- pub `fail` function L95-99 — `(&mut self, error: impl Into<String>)` — Mark the task as failed.
+- pub `cancel` function L102-105 — `(&mut self)` — Mark the task as cancelled.
+- pub `TaskStore` type L109 — `= Arc<RwLock<HashMap<String, TrackedTask>>>` — In-memory task store.
+-  `TrackedTask` type L51-106 — `= TrackedTask` — Task tracking types for long-running operations.
+
+#### crates/arawn-server/src/state/tests.rs
+
+-  `create_test_state` function L5-13 — `() -> AppState`
+-  `test_session_to_messages_empty` function L16-20 — `()`
+-  `test_session_to_messages_with_turns` function L23-45 — `()`
+-  `test_session_to_messages_incomplete_turn` function L48-56 — `()`
+-  `test_messages_as_refs` function L59-66 — `()`
+-  `test_close_session_removes_session` function L69-81 — `()`
+-  `test_close_session_nonexistent_returns_false` function L84-88 — `()`
+-  `test_close_session_without_indexer` function L91-108 — `()`
+-  `test_default_state_has_no_indexer` function L111-114 — `()`
+-  `test_session_ownership_first_claimer_wins` function L117-137 — `()`
+-  `test_session_ownership_release` function L140-163 — `()`
+-  `test_session_ownership_release_all_on_disconnect` function L166-211 — `()`
+-  `test_dead_owner_eviction` function L214-232 — `()`
+-  `test_session_ownership_same_connection_reclaim` function L235-248 — `()`
+-  `test_reconnect_token_wrong_token_rejected` function L251-276 — `()`
+-  `test_reconnect_token_new_connection_can_reclaim` function L279-303 — `()`
+-  `test_reconnect_cleanup_expired` function L306-347 — `()`
+-  `test_shared_services_builder` function L350-364 — `()`
+-  `test_runtime_state_defaults` function L367-372 — `()`
+-  `test_convenience_accessors` function L375-386 — `()`
+-  `test_register_connection_adds_to_set` function L391-398 — `()`
+-  `test_unregister_connection_removes_from_set` function L401-410 — `()`
+-  `test_is_connection_active_multiple_connections` function L413-429 — `()`
+-  `test_dead_owner_multiple_sessions_evicted` function L434-454 — `()`
+-  `test_live_owner_blocks_claim` function L457-472 — `()`
+-  `test_lifecycle_claim_die_evict` function L477-496 — `()`
+-  `test_lifecycle_expired_token_then_new_claim` function L499-541 — `()`
+-  `test_release_without_tokens_no_pending_reconnect` function L544-565 — `()`
+-  `test_claim_unowned_session_no_active_connections_needed` function L568-577 — `()`
+-  `test_ownership_independent_sessions` function L580-598 — `()`
+-  `test_pending_reconnect_blocks_dead_owner_eviction` function L601-619 — `()`
+-  `test_reclaim_generates_new_token` function L622-642 — `()`
+-  `test_cleanup_only_removes_expired` function L645-682 — `()`
+-  `test_is_session_owner_nonexistent_session` function L685-691 — `()`
+-  `test_ws_connection_tracker_allows_under_limit` function L696-705 — `()`
+-  `test_ws_connection_tracker_rate_limits` function L708-720 — `()`
+-  `test_ws_connection_tracker_per_ip` function L723-738 — `()`
+-  `test_ws_connection_tracker_cleanup` function L741-752 — `()`
+-  `test_ws_connection_tracker_default` function L755-759 — `()`
+-  `test_tracked_task_new` function L764-775 — `()`
+-  `test_tracked_task_with_session` function L778-782 — `()`
+-  `test_tracked_task_start` function L785-792 — `()`
+-  `test_tracked_task_update_progress` function L795-802 — `()`
+-  `test_tracked_task_update_progress_clamps_to_100` function L805-809 — `()`
+-  `test_tracked_task_complete` function L812-821 — `()`
+-  `test_tracked_task_fail` function L824-832 — `()`
+-  `test_tracked_task_cancel` function L835-842 — `()`
+-  `test_task_status_serde` function L845-852 — `()`
+-  `test_task_status_all_variants_serialize` function L855-867 — `()`
+-  `test_tracked_task_serializes` function L870-880 — `()`
+-  `test_pending_reconnect_new_not_expired` function L885-889 — `()`
+-  `test_pending_reconnect_zero_duration_expired` function L892-898 — `()`
+-  `test_pending_reconnect_debug` function L901-905 — `()`
+-  `test_shared_services_build_domain_services` function L910-924 — `()`
+-  `test_shared_services_optional_fields_all_none` function L927-947 — `()`
+-  `test_app_state_build_domain_services` function L952-955 — `()`
+-  `test_app_state_convenience_accessors_optional_none` function L958-970 — `()`
+-  `test_app_state_allowed_paths_no_directory_manager` function L973-976 — `()`
+-  `test_app_state_path_validator_no_directory_manager` function L979-982 — `()`
+-  `test_app_state_get_or_create_session_returns_existing` function L985-992 — `()`
+-  `test_app_state_update_and_get_session` function L995-1002 — `()`
+-  `test_app_state_invalidate_session` function L1005-1012 — `()`
+-  `test_check_ws_connection_rate_delegates` function L1015-1022 — `()`
+-  `test_runtime_state_default_trait` function L1025-1031 — `()`
+
+#### crates/arawn-server/src/state/ws_tracker.rs
+
+- pub `WsConnectionTracker` struct L17-20 — `{ connections: Arc<RwLock<HashMap<IpAddr, Vec<Instant>>>> }` — Tracks WebSocket connection attempts per IP address.
+- pub `new` function L24-28 — `() -> Self` — Create a new connection tracker.
+- pub `check_rate` function L34-76 — `(&self, ip: IpAddr, max_per_minute: u32) -> Result<(), Response>` — Check if a new connection from this IP should be allowed.
+- pub `cleanup` function L79-91 — `(&self)` — Cleanup old entries from all IPs.
+-  `WS_RATE_WINDOW` variable L13 — `: std::time::Duration` — Sliding window duration for WebSocket rate limiting.
+-  `WsConnectionTracker` type L22-92 — `= WsConnectionTracker` — WebSocket connection rate limiting per IP address.
+-  `WsConnectionTracker` type L94-98 — `impl Default for WsConnectionTracker` — WebSocket connection rate limiting per IP address.
+-  `default` function L95-97 — `() -> Self` — WebSocket connection rate limiting per IP address.
+
 ### crates/arawn-server/tests
 
 **Role**: End-to-end and integration test suite for `arawn-server`, exercising the full HTTP and WebSocket API against a live in-process server with mocked LLM backends.
@@ -7855,6 +7966,9 @@
 -  `scenario_chat_then_store_memory_then_search` function L772-826 — `() -> Result<()>` — workstreams) working together.
 -  `scenario_multiple_sessions_independent` function L829-891 — `() -> Result<()>` — workstreams) working together.
 -  `scenario_config_reflects_server_state` function L898-927 — `() -> Result<()>` — workstreams) working together.
+-  `scenario_memory_store_then_chat` function L934-962 — `() -> Result<()>` — workstreams) working together.
+-  `scenario_multi_turn_session_continuity` function L969-1014 — `() -> Result<()>` — workstreams) working together.
+-  `scenario_tool_execution_visible_in_response` function L1021-1054 — `() -> Result<()>` — workstreams) working together.
 
 #### crates/arawn-server/tests/e2e_sessions.rs
 
