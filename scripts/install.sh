@@ -204,15 +204,22 @@ download_binary() {
         wget -qO "${tmpfile}" "${url}" || { err "Download failed."; detail "Check https://github.com/${REPO}/releases"; return 1; }
     fi
 
-    mkdir -p "${INSTALL_DIR}"
+    mkdir -p "${INSTALL_DIR}" 2>/dev/null || {
+        warn "Cannot create ${INSTALL_DIR} — trying with sudo"
+        sudo mkdir -p "${INSTALL_DIR}"
+        sudo chown "$(id -u):$(id -g)" "${INSTALL_DIR}"
+    }
     tar -xzf "${tmpfile}" -C "${TMPDIR_INSTALL}"
 
     local binary=""
     binary="$(find "${TMPDIR_INSTALL}" -name arawn -type f | head -1)"
     [ -z "$binary" ] && { err "Could not find arawn binary in archive"; return 1; }
 
-    cp "${binary}" "${INSTALL_DIR}/arawn"
-    chmod +x "${INSTALL_DIR}/arawn"
+    cp "${binary}" "${INSTALL_DIR}/arawn" 2>/dev/null || {
+        warn "Cannot write to ${INSTALL_DIR} — trying with sudo"
+        sudo cp "${binary}" "${INSTALL_DIR}/arawn"
+    }
+    chmod +x "${INSTALL_DIR}/arawn" 2>/dev/null || sudo chmod +x "${INSTALL_DIR}/arawn"
     ok "Installed ${INSTALL_DIR}/arawn"
 }
 
