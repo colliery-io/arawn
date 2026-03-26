@@ -33,6 +33,17 @@ pub trait Tool: Send + Sync {
     /// Should return a JSON Schema object describing the expected input.
     fn parameters(&self) -> serde_json::Value;
 
+    /// Validate params against this tool's declared schema.
+    ///
+    /// Default impl checks required fields are present, types are correct,
+    /// and rejects unknown fields. Tools can override to add domain-specific
+    /// validation (URL format checks, etc).
+    ///
+    /// Called before gate enforcement and before execute.
+    fn validate(&self, params: &serde_json::Value) -> std::result::Result<(), ToolResult> {
+        validate_against_schema(params, &self.parameters())
+    }
+
     /// Execute the tool with the given parameters.
     ///
     /// # Arguments
@@ -42,6 +53,98 @@ pub trait Tool: Send + Sync {
     /// # Returns
     /// A `ToolResult` indicating success or failure
     async fn execute(&self, params: serde_json::Value, ctx: &ToolContext) -> Result<ToolResult>;
+}
+
+/// Validate a JSON value against a JSON Schema object.
+///
+/// Checks:
+/// - Required fields are present
+/// - Field types match (string, number, integer, boolean, array, object)
+/// - Unknown fields (not in schema properties) are rejected
+///
+/// Returns `Ok(())` if valid, `Err(ToolResult)` with a structured error message.
+pub fn validate_against_schema(
+    params: &serde_json::Value,
+    schema: &serde_json::Value,
+) -> std::result::Result<(), ToolResult> {
+    let properties = schema.get("properties").and_then(|p| p.as_object());
+    let required = schema
+        .get("required")
+        .and_then(|r| r.as_array())
+        .map(|arr| arr.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>())
+        .unwrap_or_default();
+
+    let params_obj = match params.as_object() {
+        Some(obj) => obj,
+        None => {
+            return Err(ToolResult::error(format!(
+                "Expected JSON object, got {}. Schema: {}",
+                params,
+                serde_json::to_string_pretty(schema).unwrap_or_default()
+            )));
+        }
+    };
+
+    // Check required fields
+    for field in &required {
+        if !params_obj.contains_key(*field) {
+            return Err(ToolResult::error(format!(
+                "Missing required parameter '{}'. Required: [{}]",
+                field,
+                required.join(", ")
+            )));
+        }
+    }
+
+    // Check for unknown fields and type validation
+    // Skip if no properties defined or properties is empty (tool accepts any params)
+    if let Some(props) = properties.filter(|p| !p.is_empty()) {
+        for (key, value) in params_obj {
+            if !props.contains_key(key) {
+                let known: Vec<&String> = props.keys().collect();
+                return Err(ToolResult::error(format!(
+                    "Unknown parameter '{}'. Valid parameters: {:?}",
+                    key, known
+                )));
+            }
+
+            // Type check
+            if let Some(prop_schema) = props.get(key) {
+                if let Some(expected_type) = prop_schema.get("type").and_then(|t| t.as_str()) {
+                    let type_ok = match expected_type {
+                        "string" => value.is_string(),
+                        "number" => value.is_number(),
+                        "integer" => value.is_i64() || value.is_u64(),
+                        "boolean" => value.is_boolean(),
+                        "array" => value.is_array(),
+                        "object" => value.is_object(),
+                        _ => true, // Unknown type — don't reject
+                    };
+                    if !type_ok {
+                        return Err(ToolResult::error(format!(
+                            "Parameter '{}' expected type '{}', got {}",
+                            key,
+                            expected_type,
+                            value_type_name(value)
+                        )));
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn value_type_name(v: &serde_json::Value) -> &'static str {
+    match v {
+        serde_json::Value::Null => "null",
+        serde_json::Value::Bool(_) => "boolean",
+        serde_json::Value::Number(_) => "number",
+        serde_json::Value::String(_) => "string",
+        serde_json::Value::Array(_) => "array",
+        serde_json::Value::Object(_) => "object",
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

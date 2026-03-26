@@ -35,7 +35,7 @@ mod registry;
 mod validation;
 
 // Re-export core types
-pub use context::{OutputSender, Tool, ToolContext, ToolResult};
+pub use context::{OutputSender, Tool, ToolContext, ToolResult, validate_against_schema};
 
 // Re-export parameter validation types
 pub use validation::{ParamExt, ParamResult, ParameterValidationError};

@@ -56,6 +56,16 @@ impl ToolRegistry {
         // Resolve ${{secrets.*}} handles in params (if resolver present)
         let params = self.resolve_secret_handles(params, ctx);
 
+        // Schema validation — tool checks its own params
+        if let Err(validation_error) = tool.validate(&params) {
+            tracing::warn!(
+                tool = %name,
+                error = %validation_error.to_llm_content(),
+                "Tool parameter validation failed"
+            );
+            return Ok(validation_error);
+        }
+
         // Filesystem gate enforcement for gated tools
         if is_gated_tool(name) {
             if let Some(ref gate) = ctx.fs_gate {
@@ -104,6 +114,11 @@ impl ToolRegistry {
 
         // Resolve ${{secrets.*}} handles in params (if resolver present)
         let params = self.resolve_secret_handles(params, ctx);
+
+        // Schema validation
+        if let Err(validation_error) = tool.validate(&params) {
+            return Ok(validation_error);
+        }
 
         // Gate enforcement applies even for raw execution
         if is_gated_tool(name) {

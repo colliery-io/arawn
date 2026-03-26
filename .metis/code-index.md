@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-03-26T16:46:29Z | 375 files | Rust
+> Generated: 2026-03-26T17:05:30Z | 375 files | Rust
 
 ## Project Structure
 
@@ -1772,44 +1772,44 @@
 
 #### crates/arawn-agent/src/tool/gate.rs
 
--  `ToolRegistry` type L13-112 — `= ToolRegistry` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `validate_tool_paths` function L18-56 — `( &self, tool_name: &str, mut params: serde_json::Value, gate: &SharedFsGate, ) ...` — Validate and rewrite file paths in tool params against the filesystem gate.
--  `execute_shell_sandboxed` function L62-111 — `( &self, _tool: &dyn Tool, params: &serde_json::Value, _ctx: &ToolContext, gate:...` — Execute a shell tool through the OS-level sandbox.
--  `tests` module L115-681 — `-` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `MockFsGate` struct L130-139 — `{ allowed_read: Vec<std::path::PathBuf>, allowed_write: Vec<std::path::PathBuf>,...` — Mock filesystem gate for testing enforcement logic.
--  `MockFsGate` type L141-165 — `= MockFsGate` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `new` function L142-149 — `(work_dir: impl Into<std::path::PathBuf>) -> Self` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `allow_read` function L151-154 — `(mut self, path: impl Into<std::path::PathBuf>) -> Self` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `allow_write` function L156-159 — `(mut self, path: impl Into<std::path::PathBuf>) -> Self` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `with_shell_result` function L161-164 — `(self, result: arawn_types::SandboxOutput) -> Self` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `MockFsGate` type L168-218 — `= MockFsGate` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `validate_read` function L169-182 — `( &self, path: &std::path::Path, ) -> std::result::Result<std::path::PathBuf, ar...` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `validate_write` function L184-197 — `( &self, path: &std::path::Path, ) -> std::result::Result<std::path::PathBuf, ar...` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `working_dir` function L199-201 — `(&self) -> &std::path::Path` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `sandbox_execute` function L203-217 — `( &self, _command: &str, _timeout: Option<std::time::Duration>, ) -> std::result...` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `ctx_with_gate` function L220-225 — `(gate: impl arawn_types::FsGate + 'static) -> ToolContext` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `test_is_gated_tool` function L228-240 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `test_gate_deny_by_default_no_gate` function L243-262 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `test_gate_deny_by_default_all_gated_tools` function L265-295 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `test_gate_non_gated_tool_passes_through_without_gate` function L298-316 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `test_gate_file_read_allowed` function L319-335 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `test_gate_file_read_denied` function L338-354 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `test_gate_file_write_allowed` function L357-371 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `test_gate_file_write_denied` function L374-390 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `test_gate_glob_allowed` function L393-408 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `test_gate_glob_denied` function L411-426 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `test_gate_grep_denied` function L429-444 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `test_gate_shell_routed_through_sandbox` function L447-473 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `test_gate_shell_sandbox_failure` function L476-496 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `test_gate_execute_raw_deny_by_default` function L499-519 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `test_gate_execute_raw_allowed_with_gate` function L522-539 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `test_gate_execute_raw_non_gated_passes_through` function L542-554 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `test_gate_file_read_no_path_param_passes_through` function L557-573 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `test_gate_shell_sandbox_combined_output` function L576-599 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `test_gate_shell_timeout_passed` function L602-618 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `test_gate_shell_blocked_command_rejected` function L621-642 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `test_gate_shell_blocked_command_case_bypass` function L645-661 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `test_gate_shell_blocked_command_whitespace_bypass` function L664-680 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `ToolRegistry` type L13-132 — `= ToolRegistry` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `validate_tool_paths` function L18-76 — `( &self, tool_name: &str, mut params: serde_json::Value, gate: &SharedFsGate, ) ...` — Validate and rewrite file paths in tool params against the filesystem gate.
+-  `execute_shell_sandboxed` function L82-131 — `( &self, _tool: &dyn Tool, params: &serde_json::Value, _ctx: &ToolContext, gate:...` — Execute a shell tool through the OS-level sandbox.
+-  `tests` module L135-707 — `-` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `MockFsGate` struct L150-159 — `{ allowed_read: Vec<std::path::PathBuf>, allowed_write: Vec<std::path::PathBuf>,...` — Mock filesystem gate for testing enforcement logic.
+-  `MockFsGate` type L161-185 — `= MockFsGate` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `new` function L162-169 — `(work_dir: impl Into<std::path::PathBuf>) -> Self` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `allow_read` function L171-174 — `(mut self, path: impl Into<std::path::PathBuf>) -> Self` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `allow_write` function L176-179 — `(mut self, path: impl Into<std::path::PathBuf>) -> Self` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `with_shell_result` function L181-184 — `(self, result: arawn_types::SandboxOutput) -> Self` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `MockFsGate` type L188-238 — `= MockFsGate` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `validate_read` function L189-202 — `( &self, path: &std::path::Path, ) -> std::result::Result<std::path::PathBuf, ar...` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `validate_write` function L204-217 — `( &self, path: &std::path::Path, ) -> std::result::Result<std::path::PathBuf, ar...` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `working_dir` function L219-221 — `(&self) -> &std::path::Path` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `sandbox_execute` function L223-237 — `( &self, _command: &str, _timeout: Option<std::time::Duration>, ) -> std::result...` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `ctx_with_gate` function L240-245 — `(gate: impl arawn_types::FsGate + 'static) -> ToolContext` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `test_is_gated_tool` function L248-260 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `test_gate_deny_by_default_no_gate` function L263-282 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `test_gate_deny_by_default_all_gated_tools` function L285-315 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `test_gate_non_gated_tool_passes_through_without_gate` function L318-336 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `test_gate_file_read_allowed` function L339-355 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `test_gate_file_read_denied` function L358-374 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `test_gate_file_write_allowed` function L377-391 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `test_gate_file_write_denied` function L394-410 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `test_gate_glob_allowed` function L413-428 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `test_gate_glob_denied` function L431-449 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `test_gate_grep_denied` function L452-470 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `test_gate_shell_routed_through_sandbox` function L473-499 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `test_gate_shell_sandbox_failure` function L502-522 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `test_gate_execute_raw_deny_by_default` function L525-545 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `test_gate_execute_raw_allowed_with_gate` function L548-565 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `test_gate_execute_raw_non_gated_passes_through` function L568-580 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `test_gate_file_read_no_path_param_passes_through` function L583-599 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `test_gate_shell_sandbox_combined_output` function L602-625 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `test_gate_shell_timeout_passed` function L628-644 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `test_gate_shell_blocked_command_rejected` function L647-668 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `test_gate_shell_blocked_command_case_bypass` function L671-687 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `test_gate_shell_blocked_command_whitespace_bypass` function L690-706 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
 
 #### crates/arawn-agent/src/tool/mod.rs
 

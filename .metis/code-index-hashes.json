@@ -46,7 +46,7 @@
     "crates/arawn-agent/src/tool/command_validator.rs": "fd4ecab3edd0f5d93e1b02caaa2a8545b73b585c03adc5a6e6f058a83f9d2263",
     "crates/arawn-agent/src/tool/context.rs": "c7316e67f8b62bcb9117968e1221a7e1feb254d39ec9dc8fe9dcb828d62cb069",
     "crates/arawn-agent/src/tool/execution.rs": "242c4480600d5a86a010363f3e5446d52cb6ee11034c2c3e69ff927c7b95c0d6",
-    "crates/arawn-agent/src/tool/gate.rs": "4467f02e3fac56f65a74dea4745b84456667f9d1e85e14e090aacf64e8a7d3e5",
+    "crates/arawn-agent/src/tool/gate.rs": "60a61cd45fd7ab0aefef2f642e63960b044be948ebcd3bdc94f1fda7b692ff97",
     "crates/arawn-agent/src/tool/mod.rs": "8863c4b37b55f5c77f10f04e0ce3d0d4eff3a6923f9ec71292aa1a6099176ddc",
     "crates/arawn-agent/src/tool/output.rs": "a9b670e8127936bd79975b94fe80de068920fb6fa136917c91f84e7c83e466e1",
     "crates/arawn-agent/src/tool/params.rs": "7e5925edbdce08dae2fc8ac7976606774bb3f2147a0b4cd7fa2093e7cbf41670",
