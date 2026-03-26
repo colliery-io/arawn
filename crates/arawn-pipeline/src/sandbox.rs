@@ -743,25 +743,6 @@ fn main() {
         // Compile a minimal passthrough runtime inline
         let (executor, tmp) = test_executor();
 
-        let source = r#"
-use std::io::Read;
-fn main() {
-    let mut input = String::new();
-    std::io::stdin().read_to_string(&mut input).unwrap();
-    // Parse as JSON, extract config and context, echo back as RuntimeOutput
-    let v: serde_json::Value = serde_json::from_str(&input).unwrap();
-    let out = serde_json::json!({
-        "status": "ok",
-        "output": {
-            "config": v["config"],
-            "context": v["context"],
-        }
-    });
-    print!("{}", out);
-}
-"#;
-        // Need serde_json — compile with rustc won't have it.
-        // Instead, do a raw string echo approach:
         let simple_source = r#"
 use std::io::Read;
 fn main() {

@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-03-26T02:14:52Z | 352 files | Rust
+> Generated: 2026-03-26T02:51:49Z | 352 files | Rust
 
 ## Project Structure
 
@@ -1877,7 +1877,7 @@
 -  `description` function L253-255 — `(&self) -> &str` — Tool registry for managing available tools.
 -  `parameters` function L257-259 — `(&self) -> serde_json::Value` — Tool registry for managing available tools.
 -  `execute` function L261-269 — `(&self, params: serde_json::Value, _ctx: &ToolContext) -> Result<ToolResult>` — Tool registry for managing available tools.
--  `tests` module L273-518 — `-` — Tool registry for managing available tools.
+-  `tests` module L273-520 — `-` — Tool registry for managing available tools.
 -  `test_registry_empty` function L279-284 — `()` — Tool registry for managing available tools.
 -  `test_registry_register_and_get` function L287-301 — `()` — Tool registry for managing available tools.
 -  `test_registry_names` function L304-313 — `()` — Tool registry for managing available tools.
@@ -1885,16 +1885,16 @@
 -  `test_mock_tool_execution` function L337-348 — `()` — Tool registry for managing available tools.
 -  `test_registry_execute` function L351-367 — `()` — Tool registry for managing available tools.
 -  `test_mock_tool_clear_calls` function L370-377 — `()` — Tool registry for managing available tools.
--  `test_registry_output_config_for` function L379-390 — `()` — Tool registry for managing available tools.
--  `test_registry_output_config_override` function L393-410 — `()` — Tool registry for managing available tools.
--  `test_registry_output_config_override_all_aliases` function L413-429 — `()` — Tool registry for managing available tools.
--  `test_filtered_by_names_includes_matching` function L431-445 — `()` — Tool registry for managing available tools.
--  `test_filtered_by_names_excludes_non_matching` function L448-456 — `()` — Tool registry for managing available tools.
--  `test_filtered_by_names_ignores_unknown` function L459-467 — `()` — Tool registry for managing available tools.
--  `test_filtered_by_names_preserves_original` function L470-481 — `()` — Tool registry for managing available tools.
--  `test_filtered_by_names_carries_output_overrides` function L484-494 — `()` — Tool registry for managing available tools.
--  `test_filtered_by_names_llm_definitions` function L497-507 — `()` — Tool registry for managing available tools.
--  `test_filtered_by_names_empty_allowlist` function L510-517 — `()` — Tool registry for managing available tools.
+-  `test_registry_output_config_for` function L380-391 — `()` — Tool registry for managing available tools.
+-  `test_registry_output_config_override` function L394-411 — `()` — Tool registry for managing available tools.
+-  `test_registry_output_config_override_all_aliases` function L414-430 — `()` — Tool registry for managing available tools.
+-  `test_filtered_by_names_includes_matching` function L433-447 — `()` — Tool registry for managing available tools.
+-  `test_filtered_by_names_excludes_non_matching` function L450-458 — `()` — Tool registry for managing available tools.
+-  `test_filtered_by_names_ignores_unknown` function L461-469 — `()` — Tool registry for managing available tools.
+-  `test_filtered_by_names_preserves_original` function L472-483 — `()` — Tool registry for managing available tools.
+-  `test_filtered_by_names_carries_output_overrides` function L486-496 — `()` — Tool registry for managing available tools.
+-  `test_filtered_by_names_llm_definitions` function L499-509 — `()` — Tool registry for managing available tools.
+-  `test_filtered_by_names_empty_allowlist` function L512-519 — `()` — Tool registry for managing available tools.
 
 #### crates/arawn-agent/src/tool/validation.rs
 
@@ -7192,25 +7192,25 @@
 - pub `ChatResponse` struct L50-66 — `{ session_id: String, response: String, tool_calls: Vec<ToolCallInfo>, truncated...` — Response from the synchronous chat endpoint.
 - pub `ToolCallInfo` struct L70-77 — `{ id: String, name: String, success: bool }` — Simplified tool call info for API response.
 - pub `UsageInfo` struct L81-86 — `{ input_tokens: u32, output_tokens: u32 }` — Token usage info.
-- pub `chat_handler` function L111-210 — `( State(state): State<AppState>, Extension(identity): Extension<Identity>, Json(...` — Provides both synchronous and streaming (SSE) endpoints for chat.
-- pub `chat_stream_handler` function L227-347 — `( State(state): State<AppState>, Extension(identity): Extension<Identity>, Json(...` — Provides both synchronous and streaming (SSE) endpoints for chat.
+- pub `chat_handler` function L111-213 — `( State(state): State<AppState>, Extension(identity): Extension<Identity>, Json(...` — Provides both synchronous and streaming (SSE) endpoints for chat.
+- pub `chat_stream_handler` function L230-353 — `( State(state): State<AppState>, Extension(identity): Extension<Identity>, Json(...` — Provides both synchronous and streaming (SSE) endpoints for chat.
 -  `MAX_MESSAGE_BYTES` variable L93 — `: usize` — Maximum message size in bytes (100KB).
--  `SseSessionEvent` struct L354-356 — `{ session_id: String }` — Provides both synchronous and streaming (SSE) endpoints for chat.
--  `SseTextEvent` struct L359-361 — `{ content: String }` — Provides both synchronous and streaming (SSE) endpoints for chat.
--  `SseToolStartEvent` struct L364-367 — `{ id: String, name: String }` — Provides both synchronous and streaming (SSE) endpoints for chat.
--  `SseToolOutputEvent` struct L370-373 — `{ id: String, content: String }` — Provides both synchronous and streaming (SSE) endpoints for chat.
--  `SseToolEndEvent` struct L376-380 — `{ id: String, success: bool, content: String }` — Provides both synchronous and streaming (SSE) endpoints for chat.
--  `SseDoneEvent` struct L383-385 — `{ iterations: u32 }` — Provides both synchronous and streaming (SSE) endpoints for chat.
--  `SseErrorEvent` struct L388-390 — `{ message: String }` — Provides both synchronous and streaming (SSE) endpoints for chat.
--  `tests` module L397-607 — `-` — Provides both synchronous and streaming (SSE) endpoints for chat.
--  `create_test_state` function L412-421 — `() -> AppState` — Provides both synchronous and streaming (SSE) endpoints for chat.
--  `create_test_router` function L423-432 — `(state: AppState) -> Router` — Provides both synchronous and streaming (SSE) endpoints for chat.
--  `test_chat_new_session` function L435-462 — `()` — Provides both synchronous and streaming (SSE) endpoints for chat.
--  `test_chat_existing_session` function L465-530 — `()` — Provides both synchronous and streaming (SSE) endpoints for chat.
--  `test_chat_requires_auth` function L533-550 — `()` — Provides both synchronous and streaming (SSE) endpoints for chat.
--  `test_chat_stream_returns_sse` function L553-575 — `()` — Provides both synchronous and streaming (SSE) endpoints for chat.
--  `test_chat_request_parsing` function L578-587 — `()` — Provides both synchronous and streaming (SSE) endpoints for chat.
--  `test_chat_response_serialization` function L590-606 — `()` — Provides both synchronous and streaming (SSE) endpoints for chat.
+-  `SseSessionEvent` struct L360-362 — `{ session_id: String }` — Provides both synchronous and streaming (SSE) endpoints for chat.
+-  `SseTextEvent` struct L365-367 — `{ content: String }` — Provides both synchronous and streaming (SSE) endpoints for chat.
+-  `SseToolStartEvent` struct L370-373 — `{ id: String, name: String }` — Provides both synchronous and streaming (SSE) endpoints for chat.
+-  `SseToolOutputEvent` struct L376-379 — `{ id: String, content: String }` — Provides both synchronous and streaming (SSE) endpoints for chat.
+-  `SseToolEndEvent` struct L382-386 — `{ id: String, success: bool, content: String }` — Provides both synchronous and streaming (SSE) endpoints for chat.
+-  `SseDoneEvent` struct L389-391 — `{ iterations: u32 }` — Provides both synchronous and streaming (SSE) endpoints for chat.
+-  `SseErrorEvent` struct L394-396 — `{ message: String }` — Provides both synchronous and streaming (SSE) endpoints for chat.
+-  `tests` module L403-613 — `-` — Provides both synchronous and streaming (SSE) endpoints for chat.
+-  `create_test_state` function L418-427 — `() -> AppState` — Provides both synchronous and streaming (SSE) endpoints for chat.
+-  `create_test_router` function L429-438 — `(state: AppState) -> Router` — Provides both synchronous and streaming (SSE) endpoints for chat.
+-  `test_chat_new_session` function L441-468 — `()` — Provides both synchronous and streaming (SSE) endpoints for chat.
+-  `test_chat_existing_session` function L471-536 — `()` — Provides both synchronous and streaming (SSE) endpoints for chat.
+-  `test_chat_requires_auth` function L539-556 — `()` — Provides both synchronous and streaming (SSE) endpoints for chat.
+-  `test_chat_stream_returns_sse` function L559-581 — `()` — Provides both synchronous and streaming (SSE) endpoints for chat.
+-  `test_chat_request_parsing` function L584-593 — `()` — Provides both synchronous and streaming (SSE) endpoints for chat.
+-  `test_chat_response_serialization` function L596-612 — `()` — Provides both synchronous and streaming (SSE) endpoints for chat.
 
 #### crates/arawn-server/src/routes/commands.rs
 
@@ -7916,40 +7916,40 @@
 -  `stress_special_chars_in_message` function L294-307 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
 -  `stress_missing_message_field` function L310-328 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
 -  `stress_invalid_json_body` function L331-350 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
--  `stress_chat_with_invalid_session_id` function L357-375 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
--  `stress_chat_with_nonexistent_valid_uuid_session` function L378-393 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
--  `stress_delete_session_twice` function L396-424 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
--  `stress_get_messages_empty_session` function L427-452 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
--  `stress_concurrent_chat_requests` function L459-505 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
--  `stress_concurrent_session_operations` function L508-581 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
--  `stress_wrong_auth_token` function L588-601 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
--  `stress_no_auth_mode` function L604-617 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
--  `stress_health_endpoint_no_auth` function L620-635 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
--  `stress_rate_limiting_enforced` function L642-674 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
--  `stress_memory_empty_search` function L681-695 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
--  `stress_note_update_preserves_unset_fields` function L698-728 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
--  `stress_memory_store_large_content` function L731-747 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
--  `stress_delete_nonexistent_memory` function L750-767 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
--  `stress_workstream_path_traversal_rejected` function L774-800 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
--  `stress_workstream_nonexistent_returns_404` function L803-814 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
--  `stress_list_agents` function L821-832 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
--  `stress_get_main_agent_details` function L835-855 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
--  `stress_get_nonexistent_agent` function L858-866 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
--  `stress_streaming_tool_failure_still_completes` function L873-920 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
--  `stress_streaming_oversized_message_rejected` function L923-937 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
--  `stress_streaming_multiple_tool_calls` function L940-992 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
--  `stress_ws_auth_failure` function L999-1015 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
--  `stress_ws_chat_without_auth` function L1018-1037 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
--  `stress_ws_backend_error_during_chat` function L1040-1062 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
--  `stress_ws_multiple_sequential_chats` function L1065-1111 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
--  `stress_session_survives_tool_failure_and_memory_store` function L1118-1187 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
--  `stress_rapid_session_create_list_delete` function L1190-1231 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
--  `stress_tool_reads_nonexistent_file` function L1238-1275 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
--  `stress_notes_empty_tags` function L1282-1299 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
--  `stress_notes_no_tags_field` function L1302-1315 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
--  `stress_notes_many_tags` function L1318-1336 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
--  `stress_session_update_metadata` function L1343-1374 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
--  `stress_patch_nonexistent_session` function L1377-1390 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_chat_with_invalid_session_id` function L357-370 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_chat_with_nonexistent_valid_uuid_session` function L373-388 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_delete_session_twice` function L391-419 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_get_messages_empty_session` function L422-447 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_concurrent_chat_requests` function L454-500 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_concurrent_session_operations` function L503-576 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_wrong_auth_token` function L583-596 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_no_auth_mode` function L599-612 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_health_endpoint_no_auth` function L615-630 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_rate_limiting_enforced` function L637-669 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_memory_empty_search` function L676-690 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_note_update_preserves_unset_fields` function L693-723 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_memory_store_large_content` function L726-742 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_delete_nonexistent_memory` function L745-762 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_workstream_path_traversal_rejected` function L769-795 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_workstream_nonexistent_returns_404` function L798-809 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_list_agents` function L816-827 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_get_main_agent_details` function L830-850 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_get_nonexistent_agent` function L853-861 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_streaming_tool_failure_still_completes` function L868-915 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_streaming_oversized_message_rejected` function L918-932 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_streaming_multiple_tool_calls` function L935-987 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_ws_auth_failure` function L994-1010 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_ws_chat_without_auth` function L1013-1032 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_ws_backend_error_during_chat` function L1035-1057 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_ws_multiple_sequential_chats` function L1060-1106 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_session_survives_tool_failure_and_memory_store` function L1113-1182 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_rapid_session_create_list_delete` function L1185-1226 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_tool_reads_nonexistent_file` function L1233-1270 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_notes_empty_tags` function L1277-1294 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_notes_no_tags_field` function L1297-1310 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_notes_many_tags` function L1313-1331 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_session_update_metadata` function L1338-1369 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
+-  `stress_patch_nonexistent_session` function L1372-1385 — `() -> Result<()>` — and boundary conditions that the happy-path tests don't cover.
 
 #### crates/arawn-server/tests/e2e_websocket.rs
 
@@ -10127,26 +10127,26 @@
 -  `dir_size` function L160-178 — `(path: &Path) -> DirectoryResult<u64>` — Calculate the total size of a directory recursively.
 -  `CLEANUP_CONFIRMATION_THRESHOLD` variable L183 — `: usize` — Threshold for requiring confirmation (>100 files).
 -  `remove_empty_dirs` function L376-395 — `(path: &Path)` — Remove empty directories recursively (bottom-up).
--  `tests` module L399-730 — `-` — Usage statistics and cleanup operations.
+-  `tests` module L399-731 — `-` — Usage statistics and cleanup operations.
 -  `setup` function L405-409 — `() -> (tempfile::TempDir, DirectoryManager)` — Usage statistics and cleanup operations.
--  `test_get_usage_basic` function L411-438 — `()` — Usage statistics and cleanup operations.
--  `test_get_usage_scratch_with_sessions` function L441-470 — `()` — Usage statistics and cleanup operations.
--  `test_get_usage_empty_workstream` function L473-486 — `()` — Usage statistics and cleanup operations.
--  `test_get_usage_nonexistent_workstream` function L489-494 — `()` — Usage statistics and cleanup operations.
--  `test_get_usage_invalid_name` function L497-502 — `()` — Usage statistics and cleanup operations.
--  `test_get_usage_nested_directories` function L505-523 — `()` — Usage statistics and cleanup operations.
--  `test_usage_stats_mb_conversions` function L526-539 — `()` — Usage statistics and cleanup operations.
--  `test_dir_size_nonexistent` function L542-546 — `()` — Usage statistics and cleanup operations.
--  `test_cleanup_work_basic` function L551-571 — `()` — Usage statistics and cleanup operations.
--  `test_cleanup_work_with_age_filter` function L574-588 — `()` — Usage statistics and cleanup operations.
--  `test_cleanup_work_requires_confirmation` function L591-618 — `()` — Usage statistics and cleanup operations.
--  `test_cleanup_work_nested_directories` function L621-641 — `()` — Usage statistics and cleanup operations.
--  `test_cleanup_work_scratch_sessions` function L644-664 — `()` — Usage statistics and cleanup operations.
--  `test_cleanup_work_preserves_production` function L667-684 — `()` — Usage statistics and cleanup operations.
--  `test_cleanup_work_empty_workstream` function L687-697 — `()` — Usage statistics and cleanup operations.
--  `test_cleanup_work_workstream_not_found` function L700-707 — `()` — Usage statistics and cleanup operations.
--  `test_cleanup_work_invalid_name` function L710-717 — `()` — Usage statistics and cleanup operations.
--  `test_manual_cleanup_result_freed_mb` function L720-729 — `()` — Usage statistics and cleanup operations.
+-  `test_get_usage_basic` function L412-439 — `()` — Usage statistics and cleanup operations.
+-  `test_get_usage_scratch_with_sessions` function L442-471 — `()` — Usage statistics and cleanup operations.
+-  `test_get_usage_empty_workstream` function L474-487 — `()` — Usage statistics and cleanup operations.
+-  `test_get_usage_nonexistent_workstream` function L490-495 — `()` — Usage statistics and cleanup operations.
+-  `test_get_usage_invalid_name` function L498-503 — `()` — Usage statistics and cleanup operations.
+-  `test_get_usage_nested_directories` function L506-524 — `()` — Usage statistics and cleanup operations.
+-  `test_usage_stats_mb_conversions` function L527-540 — `()` — Usage statistics and cleanup operations.
+-  `test_dir_size_nonexistent` function L543-547 — `()` — Usage statistics and cleanup operations.
+-  `test_cleanup_work_basic` function L552-572 — `()` — Usage statistics and cleanup operations.
+-  `test_cleanup_work_with_age_filter` function L575-589 — `()` — Usage statistics and cleanup operations.
+-  `test_cleanup_work_requires_confirmation` function L592-619 — `()` — Usage statistics and cleanup operations.
+-  `test_cleanup_work_nested_directories` function L622-642 — `()` — Usage statistics and cleanup operations.
+-  `test_cleanup_work_scratch_sessions` function L645-665 — `()` — Usage statistics and cleanup operations.
+-  `test_cleanup_work_preserves_production` function L668-685 — `()` — Usage statistics and cleanup operations.
+-  `test_cleanup_work_empty_workstream` function L688-698 — `()` — Usage statistics and cleanup operations.
+-  `test_cleanup_work_workstream_not_found` function L701-708 — `()` — Usage statistics and cleanup operations.
+-  `test_cleanup_work_invalid_name` function L711-718 — `()` — Usage statistics and cleanup operations.
+-  `test_manual_cleanup_result_freed_mb` function L721-730 — `()` — Usage statistics and cleanup operations.
 
 ### crates/gline-rs-vendored/src
 

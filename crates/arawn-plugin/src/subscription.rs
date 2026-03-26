@@ -1407,7 +1407,7 @@ mod tests {
 
     #[test]
     fn test_subscription_manager_save_global_config() {
-        let tmp = TempDir::new().unwrap();
+        let _tmp = TempDir::new().unwrap();
         // We can't easily test save_global_config because it uses dirs::config_dir(),
         // but we can test that it doesn't panic for a fresh manager
         let mut manager = SubscriptionManager::new(vec![], None).unwrap();

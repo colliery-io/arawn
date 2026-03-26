@@ -490,7 +490,7 @@ mod tests {
 
     #[test]
     fn test_path_outside_allowed_rejected() {
-        let (dir, validator) = setup();
+        let (_dir, validator) = setup();
 
         // Try to access a file outside the allowed directory
         let outside_path = PathBuf::from("/tmp/outside.txt");

@@ -123,7 +123,6 @@ pub fn build_executor_factory(
 mod tests {
     use super::*;
     use crate::catalog::{CatalogEntry, RuntimeCategory};
-    use crate::protocol::RuntimeOutput;
     use cloacina_workflow::context::Context;
     use std::time::Duration;
     use tempfile::TempDir;

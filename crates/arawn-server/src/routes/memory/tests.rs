@@ -8,7 +8,7 @@ use axum::{
     body::Body,
     http::{Request, StatusCode},
     middleware,
-    routing::{delete, get, post, put},
+    routing::{delete, get, post},
 };
 use tower::ServiceExt;
 

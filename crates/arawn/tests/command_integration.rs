@@ -432,8 +432,8 @@ fn test_secrets_delete_nonexistent() {
     // Deleting a secret that doesn't exist should not crash
     arawn_with_config(&dir)
         .args(["secrets", "delete", "nonexistent_key"])
-        .assert();
-    // Just verify it doesn't panic
+        .assert()
+        .success();
 }
 
 #[test]

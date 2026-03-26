@@ -1,6 +1,8 @@
-/Users/dstorey/Desktop/arawn/crates/arawn-workstream/src/directory/usage.rs
-/Users/dstorey/Desktop/arawn/crates/arawn-agent/src/tool/registry.rs
-/Users/dstorey/Desktop/arawn/crates/arawn-server/src/routes/chat.rs
-/Users/dstorey/Desktop/arawn/crates/arawn/tests/cli_integration.rs
+/Users/dstorey/Desktop/arawn/crates/arawn-agent/src/tool/gate.rs
+/Users/dstorey/Desktop/arawn/crates/arawn-pipeline/src/factory.rs
+/Users/dstorey/Desktop/arawn/crates/arawn-pipeline/src/sandbox.rs
+/Users/dstorey/Desktop/arawn/crates/arawn-workstream/src/path_validator.rs
+/Users/dstorey/Desktop/arawn/crates/arawn-plugin/src/subscription.rs
+/Users/dstorey/Desktop/arawn/crates/arawn-server/tests/common/mod.rs
+/Users/dstorey/Desktop/arawn/crates/arawn-server/src/routes/memory/tests.rs
 /Users/dstorey/Desktop/arawn/crates/arawn/tests/command_integration.rs
-/Users/dstorey/Desktop/arawn/crates/arawn-server/tests/e2e_stress.rs

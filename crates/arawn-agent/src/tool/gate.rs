@@ -617,39 +617,6 @@ mod tests {
         assert!(result.is_success());
     }
 
-    // ─── Secret handle resolution tests ────────────────────────────────
-
-    struct MockSecretResolver {
-        secrets: std::collections::HashMap<String, String>,
-    }
-
-    impl MockSecretResolver {
-        fn new(pairs: &[(&str, &str)]) -> Self {
-            Self {
-                secrets: pairs
-                    .iter()
-                    .map(|(k, v)| (k.to_string(), v.to_string()))
-                    .collect(),
-            }
-        }
-    }
-
-    impl arawn_types::SecretResolver for MockSecretResolver {
-        fn resolve(&self, name: &str) -> Option<String> {
-            self.secrets.get(name).cloned()
-        }
-        fn names(&self) -> Vec<String> {
-            self.secrets.keys().cloned().collect()
-        }
-    }
-
-    fn ctx_with_resolver(resolver: MockSecretResolver) -> ToolContext {
-        ToolContext {
-            secret_resolver: Some(Arc::new(resolver)),
-            ..ToolContext::default()
-        }
-    }
-
     #[tokio::test]
     async fn test_gate_shell_blocked_command_rejected() {
         let mut registry = ToolRegistry::new();
