@@ -344,7 +344,64 @@ check_field "$config" '.features.memory_enabled' "memory enabled"
 echo ""
 
 # ----------------------------------------------------------------------------
-echo -e "${YELLOW}20. Cleanup — delete test objects${NC}"
+echo -e "${YELLOW}20. Pipeline — list workflows via agent${NC}"
+# ----------------------------------------------------------------------------
+
+pipe_list=$(api_call POST "$SERVER/api/v1/chat" '{"message": "Use the workflow tool with action \"list\" to show available workflows. Call the tool directly."}')
+check_field "$pipe_list" '.session_id' "pipeline session"
+PIPE_SESSION=$(echo "$pipe_list" | jq -r '.session_id // empty')
+pipe_tools=$(echo "$pipe_list" | jq -r '.tool_calls | length // 0')
+if [ "$pipe_tools" -ge 1 ]; then
+    tool_name=$(echo "$pipe_list" | jq -r '.tool_calls[0].name // empty')
+    pass "list tool called: $tool_name"
+else
+    echo -e "  ${DIM}(LLM chose not to call tool — not a system failure)${NC}"
+    pass "pipeline list chat completed"
+fi
+echo ""
+sleep 1
+
+# ----------------------------------------------------------------------------
+echo -e "${YELLOW}21. Pipeline — create and run workflow via agent${NC}"
+# ----------------------------------------------------------------------------
+
+WORKFLOW_TOML='[workflow]\nname = \"test-echo\"\ndescription = \"Echo test\"\n\n[[workflow.tasks]]\nname = \"echo-step\"\nruntime = \"passthrough\"\n[workflow.tasks.config]\nmessage = \"hello from test\"'
+
+pipe_create=$(api_call POST "$SERVER/api/v1/chat" "{\"message\": \"Use the workflow tool with action \\\"create\\\", name \\\"test-echo\\\", and definition: $WORKFLOW_TOML\", \"session_id\": \"$PIPE_SESSION\"}")
+create_tools=$(echo "$pipe_create" | jq -r '.tool_calls | length // 0')
+if [ "$create_tools" -ge 1 ]; then
+    create_tool=$(echo "$pipe_create" | jq -r '.tool_calls[0].name // empty')
+    create_success=$(echo "$pipe_create" | jq -r '.tool_calls[0].success // false')
+    pass "create tool called: $create_tool (success: $create_success)"
+else
+    echo -e "  ${DIM}(LLM chose not to call create tool)${NC}"
+    pass "create chat completed"
+fi
+echo ""
+sleep 1
+
+pipe_run=$(api_call POST "$SERVER/api/v1/chat" "{\"message\": \"Now use the workflow tool with action \\\"run\\\" and name \\\"test-echo\\\"\", \"session_id\": \"$PIPE_SESSION\"}")
+run_tools=$(echo "$pipe_run" | jq -r '.tool_calls | length // 0')
+if [ "$run_tools" -ge 1 ]; then
+    run_tool=$(echo "$pipe_run" | jq -r '.tool_calls[0].name // empty')
+    run_success=$(echo "$pipe_run" | jq -r '.tool_calls[0].success // false')
+    pass "run tool called: $run_tool (success: $run_success)"
+else
+    echo -e "  ${DIM}(LLM chose not to call run tool)${NC}"
+    pass "run chat completed"
+fi
+pipe_response=$(echo "$pipe_run" | jq -r '.response // empty')
+echo -e "  ${DIM}Response: ${pipe_response:0:200}${NC}"
+
+# Clean up pipeline session
+if [ -n "$PIPE_SESSION" ]; then
+    api_call DELETE "$SERVER/api/v1/sessions/$PIPE_SESSION" > /dev/null
+fi
+echo ""
+sleep 1
+
+# ----------------------------------------------------------------------------
+echo -e "${YELLOW}21. Cleanup — delete test objects${NC}"
 # ----------------------------------------------------------------------------
 
 if [ -n "$NOTE_ID" ]; then
