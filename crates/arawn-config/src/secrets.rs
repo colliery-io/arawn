@@ -1,15 +1,8 @@
-//! Secrets management — API key storage and retrieval.
+//! Secrets management — storage and retrieval via age-encrypted store.
 //!
-//! Resolution order:
-//! 1. Age-encrypted store (`~/.config/arawn/secrets.age`)
-//! 2. System keyring (if `keyring` feature enabled — legacy)
-//! 3. Environment variable
-//! 4. Config file (with warning)
-//!
-//! The age store is the primary storage. Keyring support is retained
-//! as a legacy fallback but disabled by default.
-
-use crate::Backend;
+//! Resolution for `api_key_ref`:
+//! 1. Check secrets store (name lowercased)
+//! 2. Check environment variable (as-is, then uppercased)
 
 /// Result of API key resolution with provenance.
 ///
@@ -37,87 +30,61 @@ impl std::fmt::Debug for ResolvedSecret {
 pub enum SecretSource {
     /// Age-encrypted secret store.
     AgeStore,
-    /// OS keyring (legacy — macOS Keychain, Linux secret-service, Windows Credential Manager).
-    Keyring,
     /// Environment variable.
     EnvVar(String),
-    /// Config file (plaintext — not recommended).
-    ConfigFile,
 }
 
 impl std::fmt::Display for SecretSource {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             SecretSource::AgeStore => write!(f, "secret store"),
-            SecretSource::Keyring => write!(f, "system keyring (legacy)"),
             SecretSource::EnvVar(var) => write!(f, "env var {}", var),
-            SecretSource::ConfigFile => write!(f, "config file (plaintext)"),
         }
     }
 }
 
-/// Resolve an API key for a backend using the full resolution chain.
+/// Resolve an API key by reference name.
 ///
-/// Checks in order:
-/// 1. Age-encrypted secret store
-/// 2. System keyring (if feature enabled — legacy)
-/// 3. Environment variable (backend-specific)
-/// 4. Config file value (passed in)
-pub fn resolve_api_key(backend: &Backend, config_value: Option<&str>) -> Option<ResolvedSecret> {
-    // 1. Age secret store
-    if let Some(secret) = get_from_age_store(backend) {
-        return Some(secret);
+/// 1. Lowercase the name → check secrets store
+/// 2. Check env var as-is, then uppercased
+///
+/// Returns `None` if not found anywhere.
+pub fn resolve_api_key_ref(ref_name: &str) -> Option<ResolvedSecret> {
+    // 1. Secrets store (lowercase lookup — store normalizes on write)
+    if !cfg!(test) {
+        if let Ok(store) = crate::AgeSecretStore::open_default() {
+            if let Some(value) = store.get(ref_name) {
+                if !value.is_empty() {
+                    return Some(ResolvedSecret {
+                        value,
+                        source: SecretSource::AgeStore,
+                    });
+                }
+            }
+        }
     }
 
-    // 2. Keyring (legacy)
-    if let Some(secret) = get_from_keyring(backend) {
-        return Some(secret);
+    // 2. Environment variable (as-is, then uppercased)
+    for var_name in [ref_name.to_string(), ref_name.to_uppercase()] {
+        if let Ok(value) = std::env::var(&var_name) {
+            if !value.is_empty() {
+                return Some(ResolvedSecret {
+                    value,
+                    source: SecretSource::EnvVar(var_name),
+                });
+            }
+        }
     }
 
-    // 3. Environment variable
-    let env_var = backend.env_var();
-    if let Ok(value) = std::env::var(env_var)
-        && !value.is_empty()
-    {
-        return Some(ResolvedSecret {
-            value,
-            source: SecretSource::EnvVar(env_var.to_string()),
-        });
-    }
-
-    // 4. Config file
-    config_value.map(|v| ResolvedSecret {
-        value: v.to_string(),
-        source: SecretSource::ConfigFile,
-    })
+    None
 }
 
-/// Check if the age store has a key for this backend.
-pub fn has_age_store_entry(backend: &Backend) -> bool {
-    get_from_age_store(backend).is_some()
-}
-
-/// Store an API key in the age-encrypted secret store.
-///
-/// # Examples
-///
-/// ```rust,ignore
-/// use arawn_config::{Backend, secrets};
-/// secrets::store_secret(&Backend::Anthropic, "sk-ant-...")?;
-/// ```
-pub fn store_secret(backend: &Backend, api_key: &str) -> std::result::Result<(), String> {
-    let name = age_store_name(backend);
-    store_named_secret(&name, api_key)
-}
+// ─────────────────────────────────────────────────────────────────────────────
+// Named secret CRUD (used by `arawn secrets` CLI)
+// ─────────────────────────────────────────────────────────────────────────────
 
 /// Store a named secret in the age-encrypted secret store.
-///
-/// # Examples
-///
-/// ```rust,ignore
-/// use arawn_config::secrets;
-/// secrets::store_named_secret("my_custom_token", "tok-abc123")?;
-/// ```
+/// Names are normalized to lowercase.
 pub fn store_named_secret(name: &str, value: &str) -> std::result::Result<(), String> {
     let store = crate::AgeSecretStore::open_default()
         .map_err(|e| format!("opening secret store: {}", e))?;
@@ -126,13 +93,8 @@ pub fn store_named_secret(name: &str, value: &str) -> std::result::Result<(), St
         .map_err(|e| format!("storing secret: {}", e))
 }
 
-/// Delete an API key from the age-encrypted secret store.
-pub fn delete_secret(backend: &Backend) -> std::result::Result<(), String> {
-    let name = age_store_name(backend);
-    delete_named_secret(&name)
-}
-
 /// Delete a named secret from the age-encrypted secret store.
+/// Names are normalized to lowercase.
 pub fn delete_named_secret(name: &str) -> std::result::Result<(), String> {
     let store = crate::AgeSecretStore::open_default()
         .map_err(|e| format!("opening secret store: {}", e))?;
@@ -143,6 +105,7 @@ pub fn delete_named_secret(name: &str) -> std::result::Result<(), String> {
 }
 
 /// Retrieve a named secret from the age-encrypted store.
+/// Names are normalized to lowercase.
 pub fn get_named_secret(name: &str) -> std::result::Result<Option<String>, String> {
     let store = crate::AgeSecretStore::open_default()
         .map_err(|e| format!("opening secret store: {}", e))?;
@@ -150,146 +113,10 @@ pub fn get_named_secret(name: &str) -> std::result::Result<Option<String>, Strin
 }
 
 /// List all secret names in the age store.
-///
-/// # Examples
-///
-/// ```rust,ignore
-/// use arawn_config::secrets;
-/// let names = secrets::list_secrets()?;
-/// for name in &names {
-///     println!("stored secret: {}", name);
-/// }
-/// ```
 pub fn list_secrets() -> std::result::Result<Vec<String>, String> {
     let store = crate::AgeSecretStore::open_default()
         .map_err(|e| format!("opening secret store: {}", e))?;
     Ok(store.list())
-}
-
-/// Check if an entry exists (age store or keyring).
-pub fn has_keyring_entry(backend: &Backend) -> bool {
-    has_age_store_entry(backend) || get_from_keyring(backend).is_some()
-}
-
-/// Store an API key in the system keyring (legacy).
-pub fn store_in_keyring(backend: &Backend, api_key: &str) -> std::result::Result<(), String> {
-    let user = keyring_user(backend);
-    store_keyring_entry(KEYRING_SERVICE, &user, api_key)
-}
-
-/// Delete an API key from the system keyring (legacy).
-pub fn delete_from_keyring(backend: &Backend) -> std::result::Result<(), String> {
-    let user = keyring_user(backend);
-    delete_keyring_entry(KEYRING_SERVICE, &user)
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Age store implementation
-// ─────────────────────────────────────────────────────────────────────────────
-
-/// The secret name used for backend API keys in the age store.
-///
-/// Uses the env var name lowercased (e.g., `GROQ_API_KEY` → `groq_api_key`).
-fn age_store_name(backend: &Backend) -> String {
-    backend.env_var().to_lowercase()
-}
-
-fn get_from_age_store(backend: &Backend) -> Option<ResolvedSecret> {
-    // Skip during tests to avoid touching real config files
-    if cfg!(test) {
-        return None;
-    }
-
-    let store = crate::AgeSecretStore::open_default().ok()?;
-
-    // Check the canonical name first (e.g. "groq_api_key"), then fall back
-    // to the bare backend name (e.g. "groq") so both naming conventions work.
-    let canonical = age_store_name(backend);
-    let bare = backend.display_name().to_lowercase();
-    let value = store
-        .get(&canonical)
-        .or_else(|| store.get(&bare))
-        .filter(|v| !v.is_empty())?;
-
-    Some(ResolvedSecret {
-        value,
-        source: SecretSource::AgeStore,
-    })
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Keyring implementation (feature-gated, legacy)
-// ─────────────────────────────────────────────────────────────────────────────
-
-/// Keyring service name (legacy).
-const KEYRING_SERVICE: &str = "arawn";
-
-/// Keyring user name for a backend (legacy).
-fn keyring_user(backend: &Backend) -> String {
-    backend.env_var().to_lowercase()
-}
-
-#[cfg(feature = "keyring")]
-fn get_from_keyring(backend: &Backend) -> Option<ResolvedSecret> {
-    if cfg!(test) {
-        return None;
-    }
-
-    let user = keyring_user(backend);
-    let entry = keyring::Entry::new(KEYRING_SERVICE, &user).ok()?;
-    let value = entry.get_password().ok()?;
-    if value.is_empty() {
-        return None;
-    }
-    Some(ResolvedSecret {
-        value,
-        source: SecretSource::Keyring,
-    })
-}
-
-#[cfg(feature = "keyring")]
-fn store_keyring_entry(service: &str, user: &str, secret: &str) -> std::result::Result<(), String> {
-    if cfg!(test) {
-        return Err("keyring access disabled in tests".to_string());
-    }
-    let entry = keyring::Entry::new(service, user).map_err(|e| format!("keyring error: {}", e))?;
-    entry
-        .set_password(secret)
-        .map_err(|e| format!("failed to store in keyring: {}", e))
-}
-
-#[cfg(feature = "keyring")]
-fn delete_keyring_entry(service: &str, user: &str) -> std::result::Result<(), String> {
-    if cfg!(test) {
-        return Err("keyring access disabled in tests".to_string());
-    }
-    let entry = keyring::Entry::new(service, user).map_err(|e| format!("keyring error: {}", e))?;
-    entry
-        .delete_credential()
-        .map_err(|e| format!("failed to delete from keyring: {}", e))
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// No-op stubs when keyring feature is disabled
-// ─────────────────────────────────────────────────────────────────────────────
-
-#[cfg(not(feature = "keyring"))]
-fn get_from_keyring(_backend: &Backend) -> Option<ResolvedSecret> {
-    None
-}
-
-#[cfg(not(feature = "keyring"))]
-fn store_keyring_entry(
-    _service: &str,
-    _user: &str,
-    _secret: &str,
-) -> std::result::Result<(), String> {
-    Err("keyring support not compiled in (enable the 'keyring' feature)".to_string())
-}
-
-#[cfg(not(feature = "keyring"))]
-fn delete_keyring_entry(_service: &str, _user: &str) -> std::result::Result<(), String> {
-    Err("keyring support not compiled in (enable the 'keyring' feature)".to_string())
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -301,54 +128,45 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_age_store_name_format() {
-        let name = age_store_name(&Backend::Groq);
-        assert!(name.contains("groq"));
-        assert!(name.ends_with("_api_key"));
+    fn test_resolve_from_env_var() {
+        std::env::set_var("TEST_ARAWN_SECRET_ABC", "test-value");
+        let resolved = resolve_api_key_ref("TEST_ARAWN_SECRET_ABC");
+        std::env::remove_var("TEST_ARAWN_SECRET_ABC");
+
+        assert!(resolved.is_some());
+        let r = resolved.unwrap();
+        assert_eq!(r.value, "test-value");
+        assert_eq!(
+            r.source,
+            SecretSource::EnvVar("TEST_ARAWN_SECRET_ABC".to_string())
+        );
     }
 
     #[test]
-    fn test_resolve_from_config_value() {
-        // No age store, no keyring, no env var — should fall back to config
-        let resolved = resolve_api_key(&Backend::Custom, Some("my-key"));
+    fn test_resolve_uppercases_env_var() {
+        std::env::set_var("GROQ_API_KEY", "gsk-test");
+        let resolved = resolve_api_key_ref("groq_api_key");
+        std::env::remove_var("GROQ_API_KEY");
+
         assert!(resolved.is_some());
         let r = resolved.unwrap();
-        assert_eq!(r.value, "my-key");
-        assert_eq!(r.source, SecretSource::ConfigFile);
+        assert_eq!(r.value, "gsk-test");
+        assert_eq!(r.source, SecretSource::EnvVar("GROQ_API_KEY".to_string()));
     }
 
     #[test]
     fn test_resolve_none_when_nothing_available() {
-        let resolved = resolve_api_key(&Backend::Custom, None);
-        // Just verify it doesn't panic
-        let _ = resolved;
+        let resolved = resolve_api_key_ref("nonexistent_key_xyz_12345");
+        assert!(resolved.is_none());
     }
 
     #[test]
     fn test_secret_source_display() {
         assert_eq!(SecretSource::AgeStore.to_string(), "secret store");
-        assert_eq!(SecretSource::Keyring.to_string(), "system keyring (legacy)");
         assert_eq!(
             SecretSource::EnvVar("GROQ_API_KEY".to_string()).to_string(),
             "env var GROQ_API_KEY"
         );
-        assert_eq!(
-            SecretSource::ConfigFile.to_string(),
-            "config file (plaintext)"
-        );
-    }
-
-    #[test]
-    fn test_has_keyring_entry_no_panic() {
-        let _ = has_keyring_entry(&Backend::Custom);
-    }
-
-    #[cfg(not(feature = "keyring"))]
-    #[test]
-    fn test_store_keyring_disabled() {
-        let result = store_in_keyring(&Backend::Groq, "test-key");
-        assert!(result.is_err());
-        assert!(result.unwrap_err().contains("not compiled"));
     }
 
     #[test]

@@ -331,10 +331,11 @@ fn build_embedder_spec(config: &arawn_config::EmbeddingConfig) -> arawn_llm::Emb
     let openai_config = config.openai.as_ref();
     let local_config = config.local.as_ref();
 
-    // Resolve OpenAI API key: config → env var
-    let openai_api_key = openai_config
-        .and_then(|c| c.api_key.clone())
-        .or_else(|| std::env::var("OPENAI_API_KEY").ok());
+    // Resolve OpenAI API key via ref
+    let ref_name = openai_config
+        .and_then(|c| c.api_key_ref.as_deref())
+        .unwrap_or("OPENAI_API_KEY");
+    let openai_api_key = arawn_config::secrets::resolve_api_key_ref(ref_name).map(|r| r.value);
 
     arawn_llm::EmbedderSpec {
         provider: provider.to_string(),

@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-03-26T00:54:11Z | 352 files | Rust
+> Generated: 2026-03-26T01:03:42Z | 352 files | Rust
 
 ## Project Structure
 
@@ -572,23 +572,20 @@
 
 #### crates/arawn/src/commands/config.rs
 
-- pub `ConfigArgs` struct L23-26 — `{ command: ConfigCommand }` — Config command - configuration management.
-- pub `ConfigCommand` enum L29-97 — `Show | Which | SetSecret | DeleteSecret | Edit | Init | Path | CurrentContext | ...` — Config command - configuration management.
-- pub `run` function L100-120 — `(args: ConfigArgs, ctx: &Context) -> Result<()>` — Run the config command.
--  `cmd_show` function L122-197 — `(ctx: &Context) -> Result<()>` — Config command - configuration management.
--  `cmd_which` function L199-222 — `(_ctx: &Context) -> Result<()>` — Config command - configuration management.
--  `cmd_set_secret` function L224-255 — `(backend_str: &str) -> Result<()>` — Config command - configuration management.
--  `cmd_delete_secret` function L257-273 — `(backend_str: &str) -> Result<()>` — Config command - configuration management.
--  `cmd_edit` function L275-295 — `() -> Result<()>` — Config command - configuration management.
--  `cmd_init` function L297-342 — `(local: bool) -> Result<()>` — Config command - configuration management.
--  `cmd_path` function L344-351 — `() -> Result<()>` — Config command - configuration management.
--  `parse_backend` function L353-366 — `(s: &str) -> Result<Backend>` — Config command - configuration management.
--  `key_status_for` function L368-384 — `(backend: &Backend) -> &'static str` — Config command - configuration management.
--  `cmd_current_context` function L390-405 — `() -> Result<()>` — Config command - configuration management.
--  `cmd_get_contexts` function L407-432 — `() -> Result<()>` — Config command - configuration management.
--  `cmd_use_context` function L434-443 — `(name: &str) -> Result<()>` — Config command - configuration management.
--  `cmd_set_context` function L445-497 — `( name: &str, server: Option<String>, workstream: Option<String>, timeout: Optio...` — Config command - configuration management.
--  `cmd_delete_context` function L499-518 — `(name: &str) -> Result<()>` — Config command - configuration management.
+- pub `ConfigArgs` struct L22-25 — `{ command: ConfigCommand }` — Config command - configuration management.
+- pub `ConfigCommand` enum L28-84 — `Show | Which | Edit | Init | Path | CurrentContext | GetContexts | UseContext | ...` — Config command - configuration management.
+- pub `run` function L87-105 — `(args: ConfigArgs, ctx: &Context) -> Result<()>` — Run the config command.
+-  `cmd_show` function L107-182 — `(ctx: &Context) -> Result<()>` — Config command - configuration management.
+-  `cmd_which` function L184-207 — `(_ctx: &Context) -> Result<()>` — Config command - configuration management.
+-  `cmd_edit` function L209-229 — `() -> Result<()>` — Config command - configuration management.
+-  `cmd_init` function L231-276 — `(local: bool) -> Result<()>` — Config command - configuration management.
+-  `cmd_path` function L278-285 — `() -> Result<()>` — Config command - configuration management.
+-  `key_status_for` function L287-303 — `(backend: &Backend) -> &'static str` — Config command - configuration management.
+-  `cmd_current_context` function L309-324 — `() -> Result<()>` — Config command - configuration management.
+-  `cmd_get_contexts` function L326-351 — `() -> Result<()>` — Config command - configuration management.
+-  `cmd_use_context` function L353-362 — `(name: &str) -> Result<()>` — Config command - configuration management.
+-  `cmd_set_context` function L364-416 — `( name: &str, server: Option<String>, workstream: Option<String>, timeout: Optio...` — Config command - configuration management.
+-  `cmd_delete_context` function L418-437 — `(name: &str) -> Result<()>` — Config command - configuration management.
 
 #### crates/arawn/src/commands/logs.rs
 
@@ -733,11 +730,10 @@
 - pub `SecretsArgs` struct L15-18 — `{ command: SecretsCommand }` — Secrets command - manage age-encrypted secret store.
 - pub `SecretsCommand` enum L21-42 — `Set | Get | List | Delete` — Secrets command - manage age-encrypted secret store.
 - pub `run` function L45-52 — `(args: SecretsArgs) -> Result<()>` — Run the secrets command.
--  `BACKEND_NAMES` variable L55-62 — `: &[(&str, &str)]` — Backend names that users commonly confuse with `secrets set`.
--  `cmd_set` function L64-105 — `(name: &str) -> Result<()>` — Secrets command - manage age-encrypted secret store.
--  `cmd_get` function L107-121 — `(name: &str) -> Result<()>` — Secrets command - manage age-encrypted secret store.
--  `cmd_list` function L123-143 — `() -> Result<()>` — Secrets command - manage age-encrypted secret store.
--  `cmd_delete` function L145-156 — `(name: &str) -> Result<()>` — Secrets command - manage age-encrypted secret store.
+-  `cmd_set` function L54-80 — `(name: &str) -> Result<()>` — Secrets command - manage age-encrypted secret store.
+-  `cmd_get` function L82-96 — `(name: &str) -> Result<()>` — Secrets command - manage age-encrypted secret store.
+-  `cmd_list` function L98-118 — `() -> Result<()>` — Secrets command - manage age-encrypted secret store.
+-  `cmd_delete` function L120-131 — `(name: &str) -> Result<()>` — Secrets command - manage age-encrypted secret store.
 
 #### crates/arawn/src/commands/session.rs
 
@@ -939,10 +935,8 @@
 -  `test_logs_remote_list_files_no_server` function L675-683 — `()` — and secret state per test.
 -  `test_server_flag_overrides_env` function L690-699 — `()` — and secret state per test.
 -  `test_context_flag_uses_context_url` function L702-729 — `()` — and secret state per test.
--  `test_config_set_secret_invalid_backend` function L736-744 — `()` — and secret state per test.
--  `test_config_delete_secret_invalid_backend` function L747-755 — `()` — and secret state per test.
--  `test_config_show_multiple_profiles` function L762-790 — `()` — and secret state per test.
--  `test_config_show_agent_bindings` function L797-818 — `()` — and secret state per test.
+-  `test_config_show_multiple_profiles` function L740-768 — `()` — and secret state per test.
+-  `test_config_show_agent_bindings` function L775-796 — `()` — and secret state per test.
 
 ### crates/arawn-agent/src
 
@@ -3414,23 +3408,23 @@
 -  `SecretSource` type L48-57 — `= SecretSource` — as a legacy fallback but disabled by default.
 -  `fmt` function L49-56 — `(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result` — as a legacy fallback but disabled by default.
 -  `age_store_name` function L193-195 — `(backend: &Backend) -> String` — The secret name used for backend API keys in the age store.
--  `get_from_age_store` function L197-215 — `(backend: &Backend) -> Option<ResolvedSecret>` — as a legacy fallback but disabled by default.
--  `KEYRING_SERVICE` variable L222 — `: &str` — Keyring service name (legacy).
--  `keyring_user` function L225-227 — `(backend: &Backend) -> String` — Keyring user name for a backend (legacy).
--  `get_from_keyring` function L230-245 — `(backend: &Backend) -> Option<ResolvedSecret>` — as a legacy fallback but disabled by default.
--  `store_keyring_entry` function L248-256 — `(service: &str, user: &str, secret: &str) -> std::result::Result<(), String>` — as a legacy fallback but disabled by default.
--  `delete_keyring_entry` function L259-267 — `(service: &str, user: &str) -> std::result::Result<(), String>` — as a legacy fallback but disabled by default.
--  `get_from_keyring` function L274-276 — `(_backend: &Backend) -> Option<ResolvedSecret>` — as a legacy fallback but disabled by default.
--  `store_keyring_entry` function L279-285 — `( _service: &str, _user: &str, _secret: &str, ) -> std::result::Result<(), Strin...` — as a legacy fallback but disabled by default.
--  `delete_keyring_entry` function L288-290 — `(_service: &str, _user: &str) -> std::result::Result<(), String>` — as a legacy fallback but disabled by default.
--  `tests` module L297-365 — `-` — as a legacy fallback but disabled by default.
--  `test_age_store_name_format` function L301-305 — `()` — as a legacy fallback but disabled by default.
--  `test_resolve_from_config_value` function L308-315 — `()` — as a legacy fallback but disabled by default.
--  `test_resolve_none_when_nothing_available` function L318-322 — `()` — as a legacy fallback but disabled by default.
--  `test_secret_source_display` function L325-336 — `()` — as a legacy fallback but disabled by default.
--  `test_has_keyring_entry_no_panic` function L339-341 — `()` — as a legacy fallback but disabled by default.
--  `test_store_keyring_disabled` function L345-349 — `()` — as a legacy fallback but disabled by default.
--  `test_resolved_secret_debug_redacts_value` function L352-364 — `()` — as a legacy fallback but disabled by default.
+-  `get_from_age_store` function L197-218 — `(backend: &Backend) -> Option<ResolvedSecret>` — as a legacy fallback but disabled by default.
+-  `KEYRING_SERVICE` variable L225 — `: &str` — Keyring service name (legacy).
+-  `keyring_user` function L228-230 — `(backend: &Backend) -> String` — Keyring user name for a backend (legacy).
+-  `get_from_keyring` function L233-248 — `(backend: &Backend) -> Option<ResolvedSecret>` — as a legacy fallback but disabled by default.
+-  `store_keyring_entry` function L251-259 — `(service: &str, user: &str, secret: &str) -> std::result::Result<(), String>` — as a legacy fallback but disabled by default.
+-  `delete_keyring_entry` function L262-270 — `(service: &str, user: &str) -> std::result::Result<(), String>` — as a legacy fallback but disabled by default.
+-  `get_from_keyring` function L277-279 — `(_backend: &Backend) -> Option<ResolvedSecret>` — as a legacy fallback but disabled by default.
+-  `store_keyring_entry` function L282-288 — `( _service: &str, _user: &str, _secret: &str, ) -> std::result::Result<(), Strin...` — as a legacy fallback but disabled by default.
+-  `delete_keyring_entry` function L291-293 — `(_service: &str, _user: &str) -> std::result::Result<(), String>` — as a legacy fallback but disabled by default.
+-  `tests` module L300-368 — `-` — as a legacy fallback but disabled by default.
+-  `test_age_store_name_format` function L304-308 — `()` — as a legacy fallback but disabled by default.
+-  `test_resolve_from_config_value` function L311-318 — `()` — as a legacy fallback but disabled by default.
+-  `test_resolve_none_when_nothing_available` function L321-325 — `()` — as a legacy fallback but disabled by default.
+-  `test_secret_source_display` function L328-339 — `()` — as a legacy fallback but disabled by default.
+-  `test_has_keyring_entry_no_panic` function L342-344 — `()` — as a legacy fallback but disabled by default.
+-  `test_store_keyring_disabled` function L348-352 — `()` — as a legacy fallback but disabled by default.
+-  `test_resolved_secret_debug_redacts_value` function L355-367 — `()` — as a legacy fallback but disabled by default.
 
 #### crates/arawn-config/src/types.rs
 

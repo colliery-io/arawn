@@ -1722,8 +1722,8 @@ fn resolve_with_cli_overrides(
                 .unwrap_or_else(|| default_model(&backend));
 
             let api_key = args.api_key.clone().or_else(|| {
-                let resolved = arawn_config::secrets::resolve_api_key(&backend, None);
-                resolved.map(|r| r.value)
+                let ref_name = backend.env_var();
+                arawn_config::secrets::resolve_api_key_ref(ref_name).map(|r| r.value)
             });
 
             ResolvedLlm {
@@ -1732,6 +1732,7 @@ fn resolve_with_cli_overrides(
                 base_url: args.base_url.clone(),
                 api_key,
                 api_key_source: None,
+                api_key_ref: Some(backend.env_var().to_string()),
                 resolved_from: arawn_config::ResolvedFrom::GlobalDefault,
                 retry_max: None,
                 retry_backoff_ms: None,
@@ -1761,9 +1762,9 @@ fn resolve_with_cli_overrides(
 ///
 /// This enables hot-loading: secrets stored after server startup are picked up
 /// automatically without a restart.
-fn make_api_key_provider(backend: Backend, config_value: Option<String>) -> ApiKeyProvider {
+fn make_api_key_provider(ref_name: String) -> ApiKeyProvider {
     ApiKeyProvider::dynamic(move || {
-        arawn_config::secrets::resolve_api_key(&backend, config_value.as_deref()).map(|r| r.value)
+        arawn_config::secrets::resolve_api_key_ref(&ref_name).map(|r| r.value)
     })
 }
 
@@ -1774,7 +1775,12 @@ async fn create_backend(
 ) -> Result<SharedBackend> {
     match resolved.backend {
         Backend::Anthropic => {
-            let provider = make_api_key_provider(resolved.backend, resolved.api_key.clone());
+            let provider = make_api_key_provider(
+                resolved
+                    .api_key_ref
+                    .clone()
+                    .unwrap_or_else(|| resolved.backend.env_var().to_string()),
+            );
             let mut config = AnthropicConfig::new("placeholder");
             config.api_key = provider;
             if let Some(max) = resolved.retry_max {
@@ -1786,7 +1792,12 @@ async fn create_backend(
             Ok(Arc::new(AnthropicBackend::new(config)?))
         }
         Backend::Openai => {
-            let provider = make_api_key_provider(resolved.backend, resolved.api_key.clone());
+            let provider = make_api_key_provider(
+                resolved
+                    .api_key_ref
+                    .clone()
+                    .unwrap_or_else(|| resolved.backend.env_var().to_string()),
+            );
             let mut config = OpenAiConfig::openai("placeholder");
             config.api_key = provider;
             if let Some(ref base_url) = resolved.base_url {
@@ -1802,7 +1813,12 @@ async fn create_backend(
             Ok(Arc::new(OpenAiBackend::new(config)?))
         }
         Backend::Groq => {
-            let provider = make_api_key_provider(resolved.backend, resolved.api_key.clone());
+            let provider = make_api_key_provider(
+                resolved
+                    .api_key_ref
+                    .clone()
+                    .unwrap_or_else(|| resolved.backend.env_var().to_string()),
+            );
             let mut config = OpenAiConfig::groq("placeholder");
             config.api_key = provider;
             config = config.with_model(&resolved.model);
@@ -1958,8 +1974,11 @@ fn resolve_profile(name: &str, llm_config: &LlmConfig) -> Result<ResolvedLlm> {
         .clone()
         .ok_or_else(|| anyhow::anyhow!("Profile '{}' is missing 'model' field", name))?;
 
-    let resolved_secret =
-        arawn_config::secrets::resolve_api_key(&backend, llm_config.api_key.as_deref());
+    let api_key_ref = llm_config
+        .api_key_ref
+        .as_deref()
+        .unwrap_or(backend.env_var());
+    let resolved_secret = arawn_config::secrets::resolve_api_key_ref(api_key_ref);
 
     let (api_key, api_key_source) = match resolved_secret {
         Some(s) => (Some(s.value), Some(s.source)),
@@ -1972,6 +1991,7 @@ fn resolve_profile(name: &str, llm_config: &LlmConfig) -> Result<ResolvedLlm> {
         base_url: llm_config.base_url.clone(),
         api_key,
         api_key_source,
+        api_key_ref: Some(api_key_ref.to_string()),
         resolved_from: arawn_config::ResolvedFrom::AgentSpecific {
             agent: "profile".to_string(),
             profile: name.to_string(),
@@ -1993,13 +2013,8 @@ fn build_embedder_spec(config: &arawn_config::EmbeddingConfig) -> EmbedderSpec {
         .openai
         .as_ref()
         .map(|c| {
-            // Try config api_key, then env var, then keyring
-            let api_key = c.api_key.clone().or_else(|| {
-                std::env::var("OPENAI_API_KEY").ok().or_else(|| {
-                    arawn_config::secrets::resolve_api_key(&arawn_config::Backend::Openai, None)
-                        .map(|r| r.value)
-                })
-            });
+            let ref_name = c.api_key_ref.as_deref().unwrap_or("OPENAI_API_KEY");
+            let api_key = arawn_config::secrets::resolve_api_key_ref(ref_name).map(|r| r.value);
             (api_key, Some(c.model.clone()), c.base_url.clone())
         })
         .unwrap_or((None, None, None));

@@ -1,4 +1,8 @@
-/Users/dstorey/Desktop/arawn/crates/arawn/src/commands/config.rs
-/Users/dstorey/Desktop/arawn/crates/arawn/src/commands/secrets.rs
+/Users/dstorey/Desktop/arawn/crates/arawn-config/src/secret_store.rs
 /Users/dstorey/Desktop/arawn/crates/arawn-config/src/secrets.rs
-/Users/dstorey/Desktop/arawn/crates/arawn/tests/command_integration.rs
+/Users/dstorey/Desktop/arawn/crates/arawn-config/src/types.rs
+/Users/dstorey/Desktop/arawn/crates/arawn-config/src/resolver.rs
+/Users/dstorey/Desktop/arawn/crates/arawn-config/src/discovery.rs
+/Users/dstorey/Desktop/arawn/crates/arawn/src/commands/config.rs
+/Users/dstorey/Desktop/arawn/crates/arawn/src/commands/start.rs
+/Users/dstorey/Desktop/arawn/crates/arawn/src/commands/memory.rs

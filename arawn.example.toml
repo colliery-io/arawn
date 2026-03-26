@@ -15,7 +15,7 @@
 [llm]
 backend = "groq"                   # Provider name
 model = "llama-3.3-70b-versatile"  # Model ID
-# api_key = "..."                  # Or use env: GROQ_API_KEY, ANTHROPIC_API_KEY, etc.
+# api_key_ref = "GROQ_API_KEY"     # Variable name — checked in secrets store, then env
 # base_url = "..."                 # Custom API endpoint (for proxies or self-hosted)
 
 # Named LLM profiles for multi-provider setups:
@@ -44,7 +44,7 @@ trust_proxy = false                # Trust X-Forwarded-For (only behind reverse 
 provider = "local"                 # "local" (ONNX) or "openai"
 # model = "all-MiniLM-L6-v2"      # Local model name
 # dimensions = 384                 # Embedding dimensions (auto-detected for local)
-# api_key = "..."                  # Only needed for openai provider
+# api_key_ref = "OPENAI_API_KEY"   # Variable name — checked in secrets store, then env
 
 # ── Memory ──────────────────────────────────────────────────────────────────
 [memory]

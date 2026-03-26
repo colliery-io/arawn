@@ -210,28 +210,10 @@ fn load_layer(
     }
 }
 
-/// Check for plaintext API keys in the config and emit warnings.
-fn check_plaintext_keys(config: &ArawnConfig, warnings: &mut Vec<String>) {
-    if let Some(ref llm) = config.llm
-        && llm.has_plaintext_api_key()
-    {
-        warnings.push(
-            "Default [llm] config contains a plaintext API key. \
-                 Consider using the system keyring (arawn config set-secret) \
-                 or an environment variable instead."
-                .to_string(),
-        );
-    }
-
-    for (name, llm) in &config.llm_profiles {
-        if llm.has_plaintext_api_key() {
-            warnings.push(format!(
-                "[llm.{}] contains a plaintext API key. \
-                 Consider using the system keyring or an environment variable instead.",
-                name
-            ));
-        }
-    }
+/// Placeholder for config validation warnings.
+fn check_plaintext_keys(_config: &ArawnConfig, _warnings: &mut Vec<String>) {
+    // api_key_ref is always a reference name, never a raw secret.
+    // No plaintext key warnings needed.
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

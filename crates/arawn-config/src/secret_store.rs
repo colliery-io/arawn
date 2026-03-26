@@ -74,28 +74,30 @@ impl AgeSecretStore {
         Self::open(&identity_path, &secrets_path)
     }
 
-    /// Store a secret.
+    /// Store a secret. Names are normalized to lowercase.
     pub fn set(&self, name: &str, value: &str) -> Result<(), SecretStoreError> {
+        let name = name.to_lowercase();
         {
             let mut cache = self
                 .cache
                 .write()
                 .map_err(|_| SecretStoreError::Io("lock poisoned".to_string()))?;
-            cache.insert(name.to_string(), value.to_string());
+            cache.insert(name, value.to_string());
         }
         self.flush()
     }
 
-    /// Delete a secret.
+    /// Delete a secret. Names are normalized to lowercase.
     ///
     /// Returns `true` if the secret existed.
     pub fn delete(&self, name: &str) -> Result<bool, SecretStoreError> {
+        let name = name.to_lowercase();
         let existed = {
             let mut cache = self
                 .cache
                 .write()
                 .map_err(|_| SecretStoreError::Io("lock poisoned".to_string()))?;
-            cache.remove(name).is_some()
+            cache.remove(&name).is_some()
         };
         if existed {
             self.flush()?;
@@ -103,10 +105,11 @@ impl AgeSecretStore {
         Ok(existed)
     }
 
-    /// Get a secret value by name.
+    /// Get a secret value by name. Names are normalized to lowercase.
     pub fn get(&self, name: &str) -> Option<String> {
+        let name = name.to_lowercase();
         let cache = self.cache.read().ok()?;
-        cache.get(name).cloned()
+        cache.get(&name).cloned()
     }
 
     /// List all secret names (never values).
@@ -117,11 +120,12 @@ impl AgeSecretStore {
             .unwrap_or_default()
     }
 
-    /// Check if a secret exists.
+    /// Check if a secret exists. Names are normalized to lowercase.
     pub fn contains(&self, name: &str) -> bool {
+        let name = name.to_lowercase();
         self.cache
             .read()
-            .map(|c| c.contains_key(name))
+            .map(|c| c.contains_key(&name))
             .unwrap_or(false)
     }
 

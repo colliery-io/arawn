@@ -31,10 +31,12 @@ pub struct ResolvedLlm {
     pub model: String,
     /// API base URL (if custom).
     pub base_url: Option<String>,
-    /// Resolved API key.
+    /// Resolved API key value (for initial validation).
     pub api_key: Option<String>,
     /// Where the API key was resolved from.
     pub api_key_source: Option<SecretSource>,
+    /// The reference name used for dynamic resolution (secrets store / env var).
+    pub api_key_ref: Option<String>,
     /// How the config was resolved.
     pub resolved_from: ResolvedFrom,
     /// Maximum retry attempts for failed requests.
@@ -128,8 +130,12 @@ pub fn resolve_for_agent(config: &ArawnConfig, agent_name: &str) -> Result<Resol
             context: format!("LLM config (resolved via {})", resolved_from),
         })?;
 
-    // Resolve API key via secrets module (keyring → env var → config file)
-    let resolved_secret = secrets::resolve_api_key(&backend, llm_config.api_key.as_deref());
+    // Resolve API key via ref name (secrets store → env var)
+    let api_key_ref = llm_config
+        .api_key_ref
+        .as_deref()
+        .or_else(|| Some(backend.env_var()));
+    let resolved_secret = api_key_ref.and_then(secrets::resolve_api_key_ref);
 
     let (api_key, api_key_source) = match resolved_secret {
         Some(s) => (Some(s.value), Some(s.source)),
@@ -142,6 +148,7 @@ pub fn resolve_for_agent(config: &ArawnConfig, agent_name: &str) -> Result<Resol
         base_url: llm_config.base_url.clone(),
         api_key,
         api_key_source,
+        api_key_ref: api_key_ref.map(|s| s.to_string()),
         resolved_from,
         retry_max: llm_config.retry_max,
         retry_backoff_ms: llm_config.retry_backoff_ms,

@@ -304,8 +304,8 @@ struct RawLlmSection {
     model: Option<String>,
     /// Default base URL.
     base_url: Option<String>,
-    /// Default API key (will warn if present).
-    api_key: Option<String>,
+    /// Variable name for API key resolution (checked in secrets store, then env).
+    api_key_ref: Option<String>,
     /// Maximum retry attempts for failed requests.
     retry_max: Option<u32>,
     /// Backoff delay between retries in milliseconds.
@@ -327,7 +327,7 @@ impl From<RawConfig> for ArawnConfig {
                         backend: section.backend,
                         model: section.model,
                         base_url: section.base_url,
-                        api_key: section.api_key,
+                        api_key_ref: section.api_key_ref,
                         retry_max: section.retry_max,
                         retry_backoff_ms: section.retry_backoff_ms,
                         max_context_tokens: section.max_context_tokens,
@@ -370,7 +370,7 @@ impl From<ArawnConfig> for RawConfig {
                 backend: default.backend,
                 model: default.model,
                 base_url: default.base_url,
-                api_key: default.api_key,
+                api_key_ref: default.api_key_ref,
                 retry_max: default.retry_max,
                 retry_backoff_ms: default.retry_backoff_ms,
                 max_context_tokens: default.max_context_tokens,
@@ -426,8 +426,8 @@ pub struct LlmConfig {
     pub model: Option<String>,
     /// Custom API base URL (for proxies, custom endpoints).
     pub base_url: Option<String>,
-    /// API key (prefer keyring or env var; warns if set here).
-    pub api_key: Option<String>,
+    /// Variable name for API key resolution (checked in secrets store, then env).
+    pub api_key_ref: Option<String>,
     /// Maximum retry attempts for failed requests.
     pub retry_max: Option<u32>,
     /// Backoff delay between retries in milliseconds.
@@ -438,14 +438,9 @@ pub struct LlmConfig {
 }
 
 impl LlmConfig {
-    /// Returns true if an API key is stored directly in the config file.
-    pub fn has_plaintext_api_key(&self) -> bool {
-        self.api_key.is_some()
-    }
-
-    /// Get the environment variable name for this backend's API key.
-    pub fn api_key_env_var(&self) -> Option<&'static str> {
-        self.backend.as_ref().map(|b| b.env_var())
+    /// Returns the configured API key reference name, if any.
+    pub fn api_key_ref(&self) -> Option<&str> {
+        self.api_key_ref.as_deref()
     }
 
     /// Get the maximum context tokens, returning an error if not configured.
@@ -718,8 +713,8 @@ pub struct EmbeddingOpenAiConfig {
     pub dimensions: Option<usize>,
     /// Custom base URL (for proxies).
     pub base_url: Option<String>,
-    /// API key (prefer keyring or env var).
-    pub api_key: Option<String>,
+    /// Variable name for API key resolution (checked in secrets store, then env).
+    pub api_key_ref: Option<String>,
 }
 
 impl Default for EmbeddingOpenAiConfig {
@@ -728,7 +723,7 @@ impl Default for EmbeddingOpenAiConfig {
             model: "text-embedding-3-small".to_string(),
             dimensions: None,
             base_url: None,
-            api_key: None,
+            api_key_ref: None,
         }
     }
 }
@@ -1915,15 +1910,18 @@ model = "fast-model"
     }
 
     #[test]
-    fn test_plaintext_api_key_warning() {
+    fn test_api_key_ref_parsed() {
         let toml = r#"
 [llm]
 backend = "groq"
 model = "model"
-api_key = "gsk_secret123"
+api_key_ref = "GROQ_API_KEY"
 "#;
         let config = ArawnConfig::from_toml(toml).unwrap();
-        assert!(config.llm.as_ref().unwrap().has_plaintext_api_key());
+        assert_eq!(
+            config.llm.as_ref().unwrap().api_key_ref(),
+            Some("GROQ_API_KEY")
+        );
     }
 
     #[test]

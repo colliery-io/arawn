@@ -286,17 +286,15 @@ async fn cmd_path() -> Result<()> {
 
 fn key_status_for(backend: &Backend) -> &'static str {
     if *backend == Backend::ClaudeOauth {
-        // OAuth doesn't use API keys — check token file
         let data_dir = arawn_config::xdg_config_dir().unwrap_or_default();
         if data_dir.join("oauth-tokens.json").exists() {
             return "(oauth ✓)";
         }
         return "(no oauth token)";
     }
-    if arawn_config::secrets::has_keyring_entry(backend) {
-        "(keyring ✓)"
-    } else if std::env::var(backend.env_var()).is_ok() {
-        "(env var ✓)"
+    let ref_name = backend.env_var();
+    if arawn_config::secrets::resolve_api_key_ref(ref_name).is_some() {
+        "(✓)"
     } else {
         "(no key)"
     }
