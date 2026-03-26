@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-03-26T01:30:20Z | 352 files | Rust
+> Generated: 2026-03-26T02:02:11Z | 352 files | Rust
 
 ## Project Structure
 
@@ -2349,28 +2349,28 @@
 -  `execute` function L137-173 — `(&self, params: Value, ctx: &ToolContext) -> Result<ToolResult>` — Provides tools for reading and writing files.
 -  `FileWriteTool` type L191-275 — `= FileWriteTool` — Provides tools for reading and writing files.
 -  `resolve_path` function L220-274 — `(&self, path: &str) -> Result<std::path::PathBuf>` — Validate and resolve the file path for writing.
--  `FileWriteTool` type L278-413 — `impl Tool for FileWriteTool` — Provides tools for reading and writing files.
+-  `FileWriteTool` type L278-425 — `impl Tool for FileWriteTool` — Provides tools for reading and writing files.
 -  `name` function L279-281 — `(&self) -> &str` — Provides tools for reading and writing files.
 -  `description` function L283-285 — `(&self) -> &str` — Provides tools for reading and writing files.
 -  `parameters` function L287-307 — `(&self) -> Value` — Provides tools for reading and writing files.
--  `execute` function L309-412 — `(&self, params: Value, ctx: &ToolContext) -> Result<ToolResult>` — Provides tools for reading and writing files.
--  `tests` module L420-703 — `-` — Provides tools for reading and writing files.
--  `test_file_read_tool_metadata` function L425-433 — `()` — Provides tools for reading and writing files.
--  `test_file_write_tool_metadata` function L436-445 — `()` — Provides tools for reading and writing files.
--  `test_file_read_success` function L448-463 — `()` — Provides tools for reading and writing files.
--  `test_file_read_not_found` function L466-477 — `()` — Provides tools for reading and writing files.
--  `test_file_read_with_base_dir` function L480-494 — `()` — Provides tools for reading and writing files.
--  `test_file_write_success` function L497-518 — `()` — Provides tools for reading and writing files.
--  `test_file_write_append` function L521-543 — `()` — Provides tools for reading and writing files.
--  `test_file_write_no_create` function L546-566 — `()` — Provides tools for reading and writing files.
--  `test_file_write_no_overwrite` function L569-590 — `()` — Provides tools for reading and writing files.
--  `test_reject_traversal_blocks_dotdot` function L597-601 — `()` — Provides tools for reading and writing files.
--  `test_reject_traversal_allows_normal_paths` function L604-608 — `()` — Provides tools for reading and writing files.
--  `test_normalize_path_resolves_dotdot` function L611-624 — `()` — Provides tools for reading and writing files.
--  `test_file_write_traversal_rejected_no_base` function L627-648 — `()` — Provides tools for reading and writing files.
--  `test_file_write_traversal_rejected_with_base` function L651-668 — `()` — Provides tools for reading and writing files.
--  `test_file_read_traversal_rejected` function L671-681 — `()` — Provides tools for reading and writing files.
--  `test_file_write_base_dir_traversal_nonexistent_parent` function L684-702 — `()` — Provides tools for reading and writing files.
+-  `execute` function L309-424 — `(&self, params: Value, ctx: &ToolContext) -> Result<ToolResult>` — Provides tools for reading and writing files.
+-  `tests` module L432-715 — `-` — Provides tools for reading and writing files.
+-  `test_file_read_tool_metadata` function L437-445 — `()` — Provides tools for reading and writing files.
+-  `test_file_write_tool_metadata` function L448-457 — `()` — Provides tools for reading and writing files.
+-  `test_file_read_success` function L460-475 — `()` — Provides tools for reading and writing files.
+-  `test_file_read_not_found` function L478-489 — `()` — Provides tools for reading and writing files.
+-  `test_file_read_with_base_dir` function L492-506 — `()` — Provides tools for reading and writing files.
+-  `test_file_write_success` function L509-530 — `()` — Provides tools for reading and writing files.
+-  `test_file_write_append` function L533-555 — `()` — Provides tools for reading and writing files.
+-  `test_file_write_no_create` function L558-578 — `()` — Provides tools for reading and writing files.
+-  `test_file_write_no_overwrite` function L581-602 — `()` — Provides tools for reading and writing files.
+-  `test_reject_traversal_blocks_dotdot` function L609-613 — `()` — Provides tools for reading and writing files.
+-  `test_reject_traversal_allows_normal_paths` function L616-620 — `()` — Provides tools for reading and writing files.
+-  `test_normalize_path_resolves_dotdot` function L623-636 — `()` — Provides tools for reading and writing files.
+-  `test_file_write_traversal_rejected_no_base` function L639-660 — `()` — Provides tools for reading and writing files.
+-  `test_file_write_traversal_rejected_with_base` function L663-680 — `()` — Provides tools for reading and writing files.
+-  `test_file_read_traversal_rejected` function L683-693 — `()` — Provides tools for reading and writing files.
+-  `test_file_write_base_dir_traversal_nonexistent_parent` function L696-714 — `()` — Provides tools for reading and writing files.
 
 #### crates/arawn-agent-tools/src/lib.rs
 
@@ -3259,7 +3259,7 @@
 -  `CONFIG_DIR_ENV` variable L151 — `: &str` — Environment variable to override the config directory.
 -  `load_layer` function L183-211 — `( config: &mut ArawnConfig, path: &Path, warnings: &mut Vec<String>, ) -> Result...` — Try to load a config file and merge it into the existing config.
 -  `check_plaintext_keys` function L214-217 — `(_config: &ArawnConfig, _warnings: &mut Vec<String>)` — Placeholder for config validation warnings.
--  `tests` module L224-445 — `-` — 3.
+-  `tests` module L224-419 — `-` — 3.
 -  `test_xdg_config_path_exists` function L232-239 — `()` — 3.
 -  `test_load_config_file` function L242-257 — `()` — 3.
 -  `test_load_config_file_not_found` function L260-263 — `()` — 3.
@@ -3267,10 +3267,9 @@
 -  `test_load_config_project_only` function L276-303 — `()` — 3.
 -  `test_load_config_no_files` function L306-314 — `()` — 3.
 -  `test_load_config_layered_merge` function L317-369 — `()` — 3.
--  `test_plaintext_key_warning` function L372-395 — `()` — 3.
--  `test_no_warnings_without_keys` function L398-413 — `()` — 3.
--  `test_malformed_config_warns_but_continues` function L416-425 — `()` — 3.
--  `test_loaded_from_tracks_sources` function L428-444 — `()` — 3.
+-  `test_no_warnings_without_keys` function L372-387 — `()` — 3.
+-  `test_malformed_config_warns_but_continues` function L390-399 — `()` — 3.
+-  `test_loaded_from_tracks_sources` function L402-418 — `()` — 3.
 
 #### crates/arawn-config/src/error.rs
 
@@ -3337,7 +3336,7 @@
 -  `ResolvedFrom` type L74-86 — `= ResolvedFrom` — a given agent, handling cascading defaults and API key lookup.
 -  `fmt` function L75-85 — `(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result` — a given agent, handling cascading defaults and API key lookup.
 -  `resolve_llm_config` function L188-236 — `( config: &'a ArawnConfig, agent_name: &str, ) -> Result<(&'a LlmConfig, Resolve...` — Inner resolution that returns both the config ref and how it was resolved.
--  `tests` module L243-466 — `-` — a given agent, handling cascading defaults and API key lookup.
+-  `tests` module L243-468 — `-` — a given agent, handling cascading defaults and API key lookup.
 -  `test_config` function L246-274 — `() -> ArawnConfig` — a given agent, handling cascading defaults and API key lookup.
 -  `test_resolve_agent_specific` function L277-288 — `()` — a given agent, handling cascading defaults and API key lookup.
 -  `test_resolve_agent_default_fallback` function L291-301 — `()` — a given agent, handling cascading defaults and API key lookup.
@@ -3348,11 +3347,11 @@
 -  `test_resolve_missing_profile_reference` function L348-360 — `()` — a given agent, handling cascading defaults and API key lookup.
 -  `test_resolve_with_base_url` function L363-369 — `()` — a given agent, handling cascading defaults and API key lookup.
 -  `test_resolve_ollama_no_api_key_needed` function L372-385 — `()` — a given agent, handling cascading defaults and API key lookup.
--  `test_resolve_api_key_from_config` function L388-398 — `()` — a given agent, handling cascading defaults and API key lookup.
+-  `test_resolve_api_key_ref_from_config` function L388-398 — `()` — a given agent, handling cascading defaults and API key lookup.
 -  `test_resolve_all_profiles` function L401-409 — `()` — a given agent, handling cascading defaults and API key lookup.
 -  `test_resolved_from_display` function L412-426 — `()` — a given agent, handling cascading defaults and API key lookup.
--  `test_resolved_llm_debug_redacts_api_key` function L429-448 — `()` — a given agent, handling cascading defaults and API key lookup.
--  `test_resolved_llm_debug_no_key` function L451-465 — `()` — a given agent, handling cascading defaults and API key lookup.
+-  `test_resolved_llm_debug_redacts_api_key` function L429-449 — `()` — a given agent, handling cascading defaults and API key lookup.
+-  `test_resolved_llm_debug_no_key` function L452-467 — `()` — a given agent, handling cascading defaults and API key lookup.
 
 #### crates/arawn-config/src/secret_store.rs
 
@@ -3401,12 +3400,12 @@
 -  `fmt` function L20-25 — `(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result` — 2.
 -  `SecretSource` type L37-44 — `= SecretSource` — 2.
 -  `fmt` function L38-43 — `(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result` — 2.
--  `tests` module L127-186 — `-` — 2.
--  `test_resolve_from_env_var` function L131-143 — `()` — 2.
--  `test_resolve_uppercases_env_var` function L146-155 — `()` — 2.
--  `test_resolve_none_when_nothing_available` function L158-161 — `()` — 2.
--  `test_secret_source_display` function L164-170 — `()` — 2.
--  `test_resolved_secret_debug_redacts_value` function L173-185 — `()` — 2.
+-  `tests` module L127-188 — `-` — 2.
+-  `test_resolve_from_env_var` function L131-144 — `()` — 2.
+-  `test_resolve_uppercases_env_var` function L147-157 — `()` — 2.
+-  `test_resolve_none_when_nothing_available` function L160-163 — `()` — 2.
+-  `test_secret_source_display` function L166-172 — `()` — 2.
+-  `test_resolved_secret_debug_redacts_value` function L175-187 — `()` — 2.
 
 #### crates/arawn-config/src/types.rs
 

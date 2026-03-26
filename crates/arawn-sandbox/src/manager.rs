@@ -300,6 +300,7 @@ impl SandboxManager {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serial_test::serial;
 
     #[test]
     fn test_command_output_success() {
@@ -363,7 +364,7 @@ mod tests {
     // These only run if sandbox is available
 
     #[tokio::test]
-    // Self-skips via check_availability() when sandbox is unavailable
+    #[serial]
     async fn test_sandboxed_echo() {
         let status = SandboxManager::check_availability();
         if !status.is_available() {
@@ -383,7 +384,7 @@ mod tests {
     }
 
     #[tokio::test]
-    // Self-skips via check_availability() when sandbox is unavailable
+    #[serial]
     async fn test_sandboxed_write_allowed() {
         let status = SandboxManager::check_availability();
         if !status.is_available() {
@@ -408,7 +409,7 @@ mod tests {
     }
 
     #[tokio::test]
-    // Self-skips via check_availability() when sandbox is unavailable
+    #[serial]
     async fn test_sandboxed_write_denied() {
         let status = SandboxManager::check_availability();
         if !status.is_available() {
@@ -631,6 +632,7 @@ mod tests {
     // ── execute_with_paths Tests ────────────────────────────────────────
 
     #[tokio::test]
+    #[serial]
     async fn test_execute_with_paths() {
         let status = SandboxManager::check_availability();
         if !status.is_available() {
@@ -657,6 +659,7 @@ mod tests {
     // ── Timeout Tests ──────────────────────────────────────────────────
 
     #[tokio::test]
+    #[serial]
     async fn test_sandbox_execute_timeout() {
         let status = SandboxManager::check_availability();
         if !status.is_available() {
