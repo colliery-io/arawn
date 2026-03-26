@@ -4,14 +4,14 @@ level: initiative
 title: "TUI End-to-End Testing: Headless Mode, Render Tests, and Live Server Validation"
 short_code: "ARAWN-I-0040"
 created_at: 2026-03-26T15:23:09.108288+00:00
-updated_at: 2026-03-26T15:26:01.701352+00:00
+updated_at: 2026-03-26T16:48:35.714720+00:00
 parent: 
 blocked_by: []
 archived: false
 
 tags:
   - "#initiative"
-  - "#phase/decompose"
+  - "#phase/completed"
 
 
 exit_criteria_met: false

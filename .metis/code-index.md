@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-03-26T15:21:57Z | 369 files | Rust
+> Generated: 2026-03-26T16:46:29Z | 375 files | Rust
 
 ## Project Structure
 
@@ -362,6 +362,12 @@
 │   │   │       ├── theme.rs
 │   │   │       └── tools.rs
 │   │   └── tests/
+│   │       ├── bug_hang.rs
+│   │       ├── e2e_tui.rs
+│   │       ├── headless.rs
+│   │       ├── helpers.rs
+│   │       ├── render_helpers_test.rs
+│   │       ├── render_tests.rs
 │   │       └── ws_integration.rs
 │   ├── arawn-types/
 │   │   └── src/
@@ -8716,8 +8722,10 @@
 
 - pub `App` struct L41-130 — `{ server_url: String, ws_client: WsClient, api: ArawnClient, connection_status: ...` — Main application state.
 - pub `new` function L139-195 — `(server_url: String, log_buffer: LogBuffer) -> Result<Self>` — Create a new App instance.
-- pub `run` function L198-257 — `(&mut self, terminal: &mut Tui) -> Result<()>` — Run the main application loop.
-- pub `handle_key` function L260-354 — `(&mut self, key: crossterm::event::KeyEvent)` — Handle keyboard input.
+- pub `process_tick` function L200-224 — `(&mut self) -> bool` — Process a tick event: poll connection status and send keepalive pings.
+- pub `run` function L227-260 — `(&mut self, terminal: &mut Tui) -> Result<()>` — Run the main application loop.
+- pub `run_headless` function L267-310 — `( &mut self, terminal: &mut ratatui::Terminal<B>, mut event_rx: tokio::sync::mps...` — Run the application in headless mode for testing.
+- pub `handle_key` function L313-407 — `(&mut self, key: crossterm::event::KeyEvent)` — Handle keyboard input.
 -  `api_ops` module L3 — `-` — Application state and main loop.
 -  `chat_handler` module L4 — `-` — Application state and main loop.
 -  `input_handler` module L5 — `-` — Application state and main loop.
@@ -8728,66 +8736,66 @@
 -  `tool_pane_handler` module L10 — `-` — Application state and main loop.
 -  `MAX_MESSAGES` variable L17 — `: usize` — Maximum number of chat messages to retain (prevents unbounded memory growth).
 -  `MAX_TOOLS` variable L20 — `: usize` — Maximum number of tool executions to retain per response.
--  `App` type L134-446 — `= App` — Application state and main loop.
--  `handle_palette_key` function L357-395 — `(&mut self, key: crossterm::event::KeyEvent)` — Handle command palette key events.
--  `execute_action` function L398-445 — `(&mut self, action_id: ActionId)` — Execute a palette action.
--  `App` type L449-504 — `= App` — Application state and main loop.
--  `test_new` function L451-503 — `() -> Self` — Create a test App with a mock WsClient and no real connections.
--  `tests` module L507-1495 — `-` — Application state and main loop.
--  `key` function L512-519 — `(code: KeyCode) -> KeyEvent` — Application state and main loop.
--  `key_mod` function L521-528 — `(code: KeyCode, modifiers: KeyModifiers) -> KeyEvent` — Application state and main loop.
--  `test_session_created_sets_session_id` function L533-542 — `()` — Application state and main loop.
--  `test_chat_chunk_creates_assistant_message` function L545-558 — `()` — Application state and main loop.
--  `test_chat_chunk_appends_to_streaming` function L561-577 — `()` — Application state and main loop.
--  `test_chat_done_clears_waiting` function L580-599 — `()` — Application state and main loop.
--  `test_error_clears_waiting` function L602-613 — `()` — Application state and main loop.
--  `test_session_not_owned_sets_read_only` function L616-627 — `()` — Application state and main loop.
--  `test_subscribe_ack_owner` function L630-645 — `()` — Application state and main loop.
--  `test_subscribe_ack_reader` function L648-658 — `()` — Application state and main loop.
--  `test_auth_success` function L661-670 — `()` — Application state and main loop.
--  `test_auth_failure` function L673-687 — `()` — Application state and main loop.
--  `test_context_info_updates` function L690-704 — `()` — Application state and main loop.
--  `test_tool_lifecycle` function L709-735 — `()` — Application state and main loop.
--  `test_command_progress_and_result` function L740-757 — `()` — Application state and main loop.
--  `test_ctrl_q_quits` function L762-766 — `()` — Application state and main loop.
--  `test_ctrl_c_quits_when_idle` function L769-773 — `()` — Application state and main loop.
--  `test_ctrl_c_cancels_when_waiting` function L776-786 — `()` — Application state and main loop.
--  `test_ctrl_k_opens_palette` function L789-794 — `()` — Application state and main loop.
--  `test_ctrl_w_toggles_sidebar` function L797-808 — `()` — Application state and main loop.
--  `test_ctrl_e_toggles_tool_pane` function L811-819 — `()` — Application state and main loop.
--  `test_ctrl_l_toggles_logs` function L822-829 — `()` — Application state and main loop.
--  `test_ctrl_u_toggles_usage` function L832-839 — `()` — Application state and main loop.
--  `test_typing_adds_to_input` function L844-849 — `()` — Application state and main loop.
--  `test_enter_sends_message` function L852-862 — `()` — Application state and main loop.
--  `test_enter_blocked_when_waiting` function L865-874 — `()` — Application state and main loop.
--  `test_send_blocked_in_read_only` function L877-886 — `()` — Application state and main loop.
--  `test_enter_on_empty_does_nothing` function L889-894 — `()` — Application state and main loop.
--  `test_shift_enter_inserts_newline` function L897-903 — `()` — Application state and main loop.
--  `test_waiting_cleared_on_disconnect` function L908-929 — `()` — Application state and main loop.
--  `test_waiting_not_cleared_if_not_previously_connected` function L932-944 — `()` — Application state and main loop.
--  `test_switch_session_clears_state` function L949-973 — `()` — Application state and main loop.
--  `test_switch_workstream_clears_session` function L978-992 — `()` — Application state and main loop.
--  `test_slash_command_detected` function L997-1001 — `()` — Application state and main loop.
--  `test_regular_text_not_command` function L1004-1008 — `()` — Application state and main loop.
--  `test_disk_pressure_stored` function L1013-1026 — `()` — Application state and main loop.
--  `test_disk_pressure_replaces_existing` function L1029-1051 — `()` — Application state and main loop.
--  `test_disk_critical_sets_status` function L1054-1067 — `()` — Application state and main loop.
--  `test_usage_updates_for_current_workstream` function L1072-1088 — `()` — Application state and main loop.
--  `test_usage_ignored_for_other_workstream` function L1091-1107 — `()` — Application state and main loop.
--  `test_palette_esc_closes` function L1112-1119 — `()` — Application state and main loop.
--  `test_full_message_flow` function L1124-1153 — `()` — Application state and main loop.
--  `test_send_clears_tools` function L1156-1173 — `()` — Application state and main loop.
--  `test_send_enables_auto_scroll` function L1176-1184 — `()` — Application state and main loop.
--  `simulate_status_poll` function L1189-1200 — `(app: &mut App)` — Helper: simulate the tick handler's connection status poll logic.
--  `test_app_controllable` function L1202-1262 — `() -> ( App, tokio::sync::mpsc::UnboundedSender<ConnectionStatus>, tokio::sync::...` — Application state and main loop.
--  `test_disconnect_shows_status_indicator` function L1265-1273 — `()` — Application state and main loop.
--  `test_reconnecting_shows_attempt_count` function L1276-1296 — `()` — Application state and main loop.
--  `test_full_reconnection_lifecycle` function L1299-1328 — `()` — Application state and main loop.
--  `test_session_state_preserved_across_reconnect` function L1331-1380 — `()` — Application state and main loop.
--  `test_rapid_disconnect_reconnect_cycles_no_panic` function L1383-1409 — `()` — Application state and main loop.
--  `test_disconnect_during_streaming_marks_message_not_streaming` function L1412-1437 — `()` — Application state and main loop.
--  `test_messages_received_after_reconnect_handled_correctly` function L1440-1476 — `()` — Application state and main loop.
--  `test_disconnect_while_not_waiting_no_status_change` function L1479-1494 — `()` — Application state and main loop.
+-  `App` type L134-499 — `= App` — Application state and main loop.
+-  `handle_palette_key` function L410-448 — `(&mut self, key: crossterm::event::KeyEvent)` — Handle command palette key events.
+-  `execute_action` function L451-498 — `(&mut self, action_id: ActionId)` — Execute a palette action.
+-  `App` type L502-557 — `= App` — Application state and main loop.
+-  `test_new` function L504-556 — `() -> Self` — Create a test App with a mock WsClient and no real connections.
+-  `tests` module L560-1548 — `-` — Application state and main loop.
+-  `key` function L565-572 — `(code: KeyCode) -> KeyEvent` — Application state and main loop.
+-  `key_mod` function L574-581 — `(code: KeyCode, modifiers: KeyModifiers) -> KeyEvent` — Application state and main loop.
+-  `test_session_created_sets_session_id` function L586-595 — `()` — Application state and main loop.
+-  `test_chat_chunk_creates_assistant_message` function L598-611 — `()` — Application state and main loop.
+-  `test_chat_chunk_appends_to_streaming` function L614-630 — `()` — Application state and main loop.
+-  `test_chat_done_clears_waiting` function L633-652 — `()` — Application state and main loop.
+-  `test_error_clears_waiting` function L655-666 — `()` — Application state and main loop.
+-  `test_session_not_owned_sets_read_only` function L669-680 — `()` — Application state and main loop.
+-  `test_subscribe_ack_owner` function L683-698 — `()` — Application state and main loop.
+-  `test_subscribe_ack_reader` function L701-711 — `()` — Application state and main loop.
+-  `test_auth_success` function L714-723 — `()` — Application state and main loop.
+-  `test_auth_failure` function L726-740 — `()` — Application state and main loop.
+-  `test_context_info_updates` function L743-757 — `()` — Application state and main loop.
+-  `test_tool_lifecycle` function L762-788 — `()` — Application state and main loop.
+-  `test_command_progress_and_result` function L793-810 — `()` — Application state and main loop.
+-  `test_ctrl_q_quits` function L815-819 — `()` — Application state and main loop.
+-  `test_ctrl_c_quits_when_idle` function L822-826 — `()` — Application state and main loop.
+-  `test_ctrl_c_cancels_when_waiting` function L829-839 — `()` — Application state and main loop.
+-  `test_ctrl_k_opens_palette` function L842-847 — `()` — Application state and main loop.
+-  `test_ctrl_w_toggles_sidebar` function L850-861 — `()` — Application state and main loop.
+-  `test_ctrl_e_toggles_tool_pane` function L864-872 — `()` — Application state and main loop.
+-  `test_ctrl_l_toggles_logs` function L875-882 — `()` — Application state and main loop.
+-  `test_ctrl_u_toggles_usage` function L885-892 — `()` — Application state and main loop.
+-  `test_typing_adds_to_input` function L897-902 — `()` — Application state and main loop.
+-  `test_enter_sends_message` function L905-915 — `()` — Application state and main loop.
+-  `test_enter_blocked_when_waiting` function L918-927 — `()` — Application state and main loop.
+-  `test_send_blocked_in_read_only` function L930-939 — `()` — Application state and main loop.
+-  `test_enter_on_empty_does_nothing` function L942-947 — `()` — Application state and main loop.
+-  `test_shift_enter_inserts_newline` function L950-956 — `()` — Application state and main loop.
+-  `test_waiting_cleared_on_disconnect` function L961-982 — `()` — Application state and main loop.
+-  `test_waiting_not_cleared_if_not_previously_connected` function L985-997 — `()` — Application state and main loop.
+-  `test_switch_session_clears_state` function L1002-1026 — `()` — Application state and main loop.
+-  `test_switch_workstream_clears_session` function L1031-1045 — `()` — Application state and main loop.
+-  `test_slash_command_detected` function L1050-1054 — `()` — Application state and main loop.
+-  `test_regular_text_not_command` function L1057-1061 — `()` — Application state and main loop.
+-  `test_disk_pressure_stored` function L1066-1079 — `()` — Application state and main loop.
+-  `test_disk_pressure_replaces_existing` function L1082-1104 — `()` — Application state and main loop.
+-  `test_disk_critical_sets_status` function L1107-1120 — `()` — Application state and main loop.
+-  `test_usage_updates_for_current_workstream` function L1125-1141 — `()` — Application state and main loop.
+-  `test_usage_ignored_for_other_workstream` function L1144-1160 — `()` — Application state and main loop.
+-  `test_palette_esc_closes` function L1165-1172 — `()` — Application state and main loop.
+-  `test_full_message_flow` function L1177-1206 — `()` — Application state and main loop.
+-  `test_send_clears_tools` function L1209-1226 — `()` — Application state and main loop.
+-  `test_send_enables_auto_scroll` function L1229-1237 — `()` — Application state and main loop.
+-  `simulate_status_poll` function L1242-1253 — `(app: &mut App)` — Helper: simulate the tick handler's connection status poll logic.
+-  `test_app_controllable` function L1255-1315 — `() -> ( App, tokio::sync::mpsc::UnboundedSender<ConnectionStatus>, tokio::sync::...` — Application state and main loop.
+-  `test_disconnect_shows_status_indicator` function L1318-1326 — `()` — Application state and main loop.
+-  `test_reconnecting_shows_attempt_count` function L1329-1349 — `()` — Application state and main loop.
+-  `test_full_reconnection_lifecycle` function L1352-1381 — `()` — Application state and main loop.
+-  `test_session_state_preserved_across_reconnect` function L1384-1433 — `()` — Application state and main loop.
+-  `test_rapid_disconnect_reconnect_cycles_no_panic` function L1436-1462 — `()` — Application state and main loop.
+-  `test_disconnect_during_streaming_marks_message_not_streaming` function L1465-1490 — `()` — Application state and main loop.
+-  `test_messages_received_after_reconnect_handled_correctly` function L1493-1529 — `()` — Application state and main loop.
+-  `test_disconnect_while_not_waiting_no_status_change` function L1532-1547 — `()` — Application state and main loop.
 
 #### crates/arawn-tui/src/app/server_msg_handler.rs
 
@@ -9431,6 +9439,62 @@
 ### crates/arawn-tui/tests
 
 > *Semantic summary to be generated by AI agent.*
+
+#### crates/arawn-tui/tests/bug_hang.rs
+
+-  `helpers` module L6 — `-` — User reports: TUI connects, sends message, no response appears.
+-  `test_reproduce_hang_with_workstream` function L22-93 — `() -> anyhow::Result<()>` — Reproduce: user creates a workstream via the REST API, TUI shows it,
+-  `test_chat_in_scratch_workstream` function L97-133 — `() -> anyhow::Result<()>` — Reproduce: user is in the default scratch workstream (no explicit workstream_id).
+-  `send_ticks` function L135-139 — `(tx: &mpsc::UnboundedSender<Event>, count: usize)` — Server logs show the turn completed but TUI never renders it.
+
+#### crates/arawn-tui/tests/e2e_tui.rs
+
+-  `helpers` module L3 — `-` — End-to-end TUI tests — full flow from TestServer through headless App to rendered buffer.
+-  `noauth_server` function L17-26 — `( responses: Vec<Vec<StreamingMockEvent>>, ) -> anyhow::Result<arawn_test_utils:...` — End-to-end TUI tests — full flow from TestServer through headless App to rendered buffer.
+-  `make_terminal` function L28-30 — `() -> Terminal<TestBackend>` — End-to-end TUI tests — full flow from TestServer through headless App to rendered buffer.
+-  `send_ticks` function L33-37 — `(tx: &mpsc::UnboundedSender<Event>, count: usize)` — Helper: send ticks then close the channel.
+-  `e2e_single_message_renders` function L44-74 — `() -> anyhow::Result<()>` — End-to-end TUI tests — full flow from TestServer through headless App to rendered buffer.
+-  `e2e_multi_turn_renders` function L81-125 — `() -> anyhow::Result<()>` — End-to-end TUI tests — full flow from TestServer through headless App to rendered buffer.
+-  `e2e_tool_execution_renders` function L132-165 — `() -> anyhow::Result<()>` — End-to-end TUI tests — full flow from TestServer through headless App to rendered buffer.
+-  `e2e_connection_status_renders` function L172-191 — `() -> anyhow::Result<()>` — End-to-end TUI tests — full flow from TestServer through headless App to rendered buffer.
+
+#### crates/arawn-tui/tests/headless.rs
+
+-  `noauth_server` function L15-23 — `(response: &str) -> anyhow::Result<arawn_test_utils::TestServer>` — Helper: create a noauth test server with a single text response.
+-  `test_headless_renders_without_panic` function L26-50 — `() -> anyhow::Result<()>` — Headless TUI tests — run the App event loop without a real terminal.
+-  `test_headless_chat_flow` function L53-105 — `() -> anyhow::Result<()>` — Headless TUI tests — run the App event loop without a real terminal.
+
+#### crates/arawn-tui/tests/helpers.rs
+
+- pub `buffer_to_string` function L11-23 — `(buffer: &Buffer) -> String` — Extract all visible text from a terminal buffer, row by row.
+- pub `buffer_contains_text` function L26-29 — `(buffer: &Buffer, text: &str) -> bool` — Check if the terminal buffer contains the given text substring.
+- pub `assert_rendered` function L35-44 — `(terminal: &Terminal<TestBackend>, text: &str)` — Assert that the terminal buffer contains the given text.
+- pub `assert_not_rendered` function L48-57 — `(terminal: &Terminal<TestBackend>, text: &str)` — Assert that the terminal buffer does NOT contain the given text.
+
+#### crates/arawn-tui/tests/render_helpers_test.rs
+
+-  `helpers` module L3 — `-` — Tests for render assertion helpers.
+-  `test_buffer_to_string_not_empty` function L13-24 — `()` — Tests for render assertion helpers.
+-  `test_assert_rendered_finds_user_message` function L27-39 — `()` — Tests for render assertion helpers.
+-  `test_assert_not_rendered_works` function L42-49 — `()` — Tests for render assertion helpers.
+-  `test_buffer_contains_text` function L52-72 — `()` — Tests for render assertion helpers.
+
+#### crates/arawn-tui/tests/render_tests.rs
+
+-  `helpers` module L3 — `-` — Render tests — verify visible TUI output using TestBackend.
+-  `app` function L13-15 — `() -> App` — Render tests — verify visible TUI output using TestBackend.
+-  `term` function L17-19 — `() -> Terminal<TestBackend>` — Render tests — verify visible TUI output using TestBackend.
+-  `render` function L21-23 — `(app: &mut App, terminal: &mut Terminal<TestBackend>)` — Render tests — verify visible TUI output using TestBackend.
+-  `test_empty_state_renders` function L28-39 — `()` — Render tests — verify visible TUI output using TestBackend.
+-  `test_user_message_renders` function L42-54 — `()` — Render tests — verify visible TUI output using TestBackend.
+-  `test_assistant_response_renders` function L57-69 — `()` — Render tests — verify visible TUI output using TestBackend.
+-  `test_streaming_message_renders` function L72-84 — `()` — Render tests — verify visible TUI output using TestBackend.
+-  `test_error_status_renders` function L87-95 — `()` — Render tests — verify visible TUI output using TestBackend.
+-  `test_workstream_renders_in_header` function L98-106 — `()` — Render tests — verify visible TUI output using TestBackend.
+-  `test_disconnected_status_renders` function L109-122 — `()` — Render tests — verify visible TUI output using TestBackend.
+-  `test_tool_execution_renders` function L125-143 — `()` — Render tests — verify visible TUI output using TestBackend.
+-  `test_context_info_renders` function L146-160 — `()` — Render tests — verify visible TUI output using TestBackend.
+-  `test_multiple_messages_render` function L163-187 — `()` — Render tests — verify visible TUI output using TestBackend.
 
 #### crates/arawn-tui/tests/ws_integration.rs
 

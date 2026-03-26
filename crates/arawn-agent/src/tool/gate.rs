@@ -22,7 +22,7 @@ impl ToolRegistry {
         gate: &SharedFsGate,
     ) -> std::result::Result<serde_json::Value, ToolResult> {
         match tool_name {
-            "file_read" | "glob" | "grep" => {
+            "file_read" => {
                 if let Some(path_str) = params.get("path").and_then(|v| v.as_str()) {
                     let path = std::path::Path::new(path_str);
                     match gate.validate_read(path) {
@@ -34,6 +34,26 @@ impl ToolRegistry {
                             return Err(ToolResult::error(format!("Access denied: {}", e)));
                         }
                     }
+                }
+            }
+            "glob" | "grep" => {
+                // Glob and grep use "directory" param, not "path"
+                let dir_key = "directory";
+                if let Some(dir_str) = params.get(dir_key).and_then(|v| v.as_str()) {
+                    let path = std::path::Path::new(dir_str);
+                    match gate.validate_read(path) {
+                        Ok(canonical) => {
+                            params[dir_key] =
+                                serde_json::Value::String(canonical.to_string_lossy().to_string());
+                        }
+                        Err(e) => {
+                            return Err(ToolResult::error(format!("Access denied: {}", e)));
+                        }
+                    }
+                } else {
+                    // No directory specified — force it to the working directory
+                    let wd = gate.working_dir();
+                    params[dir_key] = serde_json::Value::String(wd.to_string_lossy().to_string());
                 }
             }
             "file_write" => {
@@ -414,14 +434,17 @@ mod tests {
 
         let gate = MockFsGate::new("/work").allow_read("/work");
         let ctx = ctx_with_gate(gate);
-        let params = serde_json::json!({"path": "/home/user/.ssh"});
+        let params = serde_json::json!({"pattern": "*.rs", "directory": "/home/user/.ssh"});
 
         let result = registry
             .execute_with_config("glob", params, &ctx, &OutputConfig::default())
             .await
             .unwrap();
 
-        assert!(result.is_error());
+        assert!(
+            result.is_error(),
+            "Glob to /home/user/.ssh should be denied"
+        );
         assert!(result.to_llm_content().contains("Access denied"));
     }
 
@@ -432,14 +455,17 @@ mod tests {
 
         let gate = MockFsGate::new("/work").allow_read("/work");
         let ctx = ctx_with_gate(gate);
-        let params = serde_json::json!({"path": "/var/log/secure", "pattern": "password"});
+        let params = serde_json::json!({"pattern": "password", "directory": "/var/log/secure"});
 
         let result = registry
             .execute_with_config("grep", params, &ctx, &OutputConfig::default())
             .await
             .unwrap();
 
-        assert!(result.is_error());
+        assert!(
+            result.is_error(),
+            "Grep in /var/log/secure should be denied"
+        );
         assert!(result.to_llm_content().contains("Access denied"));
     }
 

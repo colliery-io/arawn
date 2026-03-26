@@ -4,14 +4,14 @@ level: task
 title: "Reproduce and fix TUI hang bug using headless test infrastructure"
 short_code: "ARAWN-T-0458"
 created_at: 2026-03-26T15:26:18.887738+00:00
-updated_at: 2026-03-26T16:41:24.919113+00:00
+updated_at: 2026-03-26T16:48:17.599576+00:00
 parent: ARAWN-I-0040
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -63,6 +63,8 @@ Using the headless test infrastructure from T-0453/T-0454, reproduce the exact b
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
@@ -153,4 +155,6 @@ Root cause candidates still open:
 3. Terminal emulator interaction (WezTerm-specific?)
 4. The `process_tick()` refactor may have fixed a subtle ordering issue as a side effect
 
-**Next step: user needs to rebuild and test the real TUI to see if the refactoring fixed it.**
+**RESOLVED.** The `process_tick()` extraction in T-0453 fixed it. The original inline tick handler had an `async` call to `self.refresh_sidebar_data().await` inside the select arm, which blocked the event loop from processing WS messages while the HTTP request was in flight. Extracting it made the data-load conditional return a bool, with the await happening outside the tick processing — unblocking WS message polling.
+
+User confirmed: TUI works after rebuild.

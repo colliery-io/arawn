@@ -1,8 +1,1 @@
-/Users/dstorey/Desktop/arawn/crates/arawn-tui/src/app/mod.rs
-/Users/dstorey/Desktop/arawn/crates/arawn-tui/tests/ws_integration.rs
-/Users/dstorey/Desktop/arawn/crates/arawn-tui/tests/headless.rs
-/Users/dstorey/Desktop/arawn/crates/arawn-tui/tests/helpers.rs
-/Users/dstorey/Desktop/arawn/crates/arawn-tui/tests/render_helpers_test.rs
-/Users/dstorey/Desktop/arawn/crates/arawn-tui/tests/render_tests.rs
-/Users/dstorey/Desktop/arawn/crates/arawn-tui/tests/e2e_tui.rs
-/Users/dstorey/Desktop/arawn/crates/arawn-tui/tests/bug_hang.rs
+/Users/dstorey/Desktop/arawn/crates/arawn-agent/src/tool/gate.rs
