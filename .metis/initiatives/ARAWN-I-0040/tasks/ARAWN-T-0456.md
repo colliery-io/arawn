@@ -4,14 +4,14 @@ level: task
 title: "Write render tests — chat messages, assistant responses, tool pane, error states, empty state"
 short_code: "ARAWN-T-0456"
 created_at: 2026-03-26T15:26:16.656956+00:00
-updated_at: 2026-03-26T15:26:16.656956+00:00
+updated_at: 2026-03-26T16:33:21.154194+00:00
 parent: ARAWN-I-0040
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/active"
 
 
 exit_criteria_met: false
@@ -63,6 +63,8 @@ Write render tests using TestBackend that verify the TUI actually displays what 
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
 
 ## Acceptance Criteria **[REQUIRED]**
 

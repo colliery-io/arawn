@@ -4,14 +4,14 @@ level: task
 title: "Build render assertion helpers — buffer_contains_text, assert_rendered, assert_not_rendered"
 short_code: "ARAWN-T-0455"
 created_at: 2026-03-26T15:26:15.342011+00:00
-updated_at: 2026-03-26T16:30:42.189978+00:00
+updated_at: 2026-03-26T16:33:10.564033+00:00
 parent: ARAWN-I-0040
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -63,6 +63,8 @@ Build reusable test helper functions for asserting on rendered terminal output. 
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
