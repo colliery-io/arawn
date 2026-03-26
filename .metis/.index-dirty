@@ -5,3 +5,4 @@
 /Users/dstorey/Desktop/arawn/crates/arawn-tui/tests/render_helpers_test.rs
 /Users/dstorey/Desktop/arawn/crates/arawn-tui/tests/render_tests.rs
 /Users/dstorey/Desktop/arawn/crates/arawn-tui/tests/e2e_tui.rs
+/Users/dstorey/Desktop/arawn/crates/arawn-tui/tests/bug_hang.rs

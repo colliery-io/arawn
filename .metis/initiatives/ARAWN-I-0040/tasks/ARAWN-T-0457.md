@@ -4,14 +4,14 @@ level: task
 title: "Write live server e2e tests — type message, verify response renders; multi-turn; tool execution; connection drop"
 short_code: "ARAWN-T-0457"
 created_at: 2026-03-26T15:26:18.744786+00:00
-updated_at: 2026-03-26T16:37:50.821298+00:00
+updated_at: 2026-03-26T16:41:15.017557+00:00
 parent: ARAWN-I-0040
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -63,6 +63,8 @@ Write end-to-end tests that start a real TestServer, create a real App with run_
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

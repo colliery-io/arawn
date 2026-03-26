@@ -4,14 +4,14 @@ level: task
 title: "Reproduce and fix TUI hang bug using headless test infrastructure"
 short_code: "ARAWN-T-0458"
 created_at: 2026-03-26T15:26:18.887738+00:00
-updated_at: 2026-03-26T15:26:18.887738+00:00
+updated_at: 2026-03-26T16:41:24.919113+00:00
 parent: ARAWN-I-0040
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/active"
 
 
 exit_criteria_met: false
@@ -63,6 +63,8 @@ Using the headless test infrastructure from T-0453/T-0454, reproduce the exact b
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
 
 ## Acceptance Criteria **[REQUIRED]**
 
@@ -137,4 +139,18 @@ Using the headless test infrastructure from T-0453/T-0454, reproduce the exact b
 
 ## Status Updates **[REQUIRED]**
 
-*To be added during implementation*
+### 2026-03-26
+
+**Cannot reproduce in headless tests.** Both scratch and named workstream flows pass — messages send, responses arrive, render correctly. The bug is specific to the real terminal event loop + crossterm interaction.
+
+Tests written:
+- `test_reproduce_hang_with_workstream` — creates workstream, switches to it, sends message → PASSES
+- `test_chat_in_scratch_workstream` — default scratch context → PASSES
+
+Root cause candidates still open:
+1. Groq API latency causing timeout in real usage
+2. macOS-specific crossterm event stream behavior
+3. Terminal emulator interaction (WezTerm-specific?)
+4. The `process_tick()` refactor may have fixed a subtle ordering issue as a side effect
+
+**Next step: user needs to rebuild and test the real TUI to see if the refactoring fixed it.**
