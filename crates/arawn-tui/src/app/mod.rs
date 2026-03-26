@@ -259,6 +259,56 @@ impl App {
         Ok(())
     }
 
+    /// Run the application in headless mode for testing.
+    ///
+    /// Uses a provided terminal (typically `Terminal<TestBackend>`) and receives
+    /// events from a channel instead of crossterm. Exits after `max_ticks`
+    /// iterations, when the event channel closes, or when `should_quit` is set.
+    pub async fn run_headless<B: ratatui::backend::Backend>(
+        &mut self,
+        terminal: &mut ratatui::Terminal<B>,
+        mut event_rx: tokio::sync::mpsc::UnboundedReceiver<crate::events::Event>,
+        max_ticks: usize,
+    ) -> Result<()> {
+        let mut data_loaded = false;
+        let mut ticks = 0;
+
+        while !self.should_quit && ticks < max_ticks {
+            terminal.draw(|frame| ui::render(self, frame))?;
+
+            tokio::select! {
+                event = event_rx.recv() => {
+                    match event {
+                        Some(crate::events::Event::Key(key)) => self.handle_key(key),
+                        Some(crate::events::Event::Mouse(mouse)) => self.handle_mouse(mouse),
+                        Some(crate::events::Event::Tick) => {
+                            ticks += 1;
+                            if self.process_tick() && !data_loaded {
+                                data_loaded = true;
+                                self.refresh_sidebar_data().await;
+                            }
+                        }
+                        Some(crate::events::Event::Resize(_, _)) => {}
+                        None => break, // Channel closed
+                    }
+                }
+
+                msg = self.ws_client.recv() => {
+                    if let Some(msg) = msg {
+                        self.handle_server_message(msg);
+                    }
+                }
+            }
+
+            self.process_pending_actions().await;
+        }
+
+        // Final render so tests can inspect the buffer
+        terminal.draw(|frame| ui::render(self, frame))?;
+
+        Ok(())
+    }
+
     /// Handle keyboard input.
     pub fn handle_key(&mut self, key: crossterm::event::KeyEvent) {
         // Global shortcuts first

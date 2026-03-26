@@ -4,14 +4,14 @@ level: task
 title: "Extract event loop body from app.run() into testable process methods"
 short_code: "ARAWN-T-0453"
 created_at: 2026-03-26T15:26:12.695993+00:00
-updated_at: 2026-03-26T16:19:51.083121+00:00
+updated_at: 2026-03-26T16:26:25.658365+00:00
 parent: ARAWN-I-0040
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -29,6 +29,8 @@ Extract into:
 - `process_ws_message(&mut self, msg: ServerMessage)` — already exists as `handle_server_message`, confirm
 - `process_tick(&mut self)` — extract the tick handler (connection status polling, ping) from the select arm
 - Make `ui::render()` generic over `Backend` — currently takes `&mut Frame` which is already generic, verify it works with TestBackend
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
