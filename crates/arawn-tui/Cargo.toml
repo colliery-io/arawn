@@ -45,3 +45,8 @@ parking_lot = { workspace = true }
 
 # Temporary files (for pager integration)
 tempfile = "3"
+
+[dev-dependencies]
+arawn-test-utils = { path = "../arawn-test-utils" }
+tokio = { workspace = true, features = ["full", "test-util"] }
+serde_json = { workspace = true }
