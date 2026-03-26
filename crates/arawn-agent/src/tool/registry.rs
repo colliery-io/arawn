@@ -191,6 +191,7 @@ pub struct MockTool {
     parameters: serde_json::Value,
     response: std::sync::Mutex<Option<ToolResult>>,
     calls: std::sync::Mutex<Vec<serde_json::Value>>,
+    gated: Vec<super::context::GatedParam>,
 }
 
 #[cfg(any(test, feature = "testing"))]
@@ -206,7 +207,14 @@ impl MockTool {
             }),
             response: std::sync::Mutex::new(None),
             calls: std::sync::Mutex::new(Vec::new()),
+            gated: Vec::new(),
         }
+    }
+
+    /// Set the gated parameters for this mock tool.
+    pub fn with_gated_params(mut self, gated: Vec<super::context::GatedParam>) -> Self {
+        self.gated = gated;
+        self
     }
 
     /// Set the description.
@@ -256,6 +264,10 @@ impl Tool for MockTool {
 
     fn parameters(&self) -> serde_json::Value {
         self.parameters.clone()
+    }
+
+    fn gated_params(&self) -> Vec<super::context::GatedParam> {
+        self.gated.clone()
     }
 
     async fn execute(&self, params: serde_json::Value, _ctx: &ToolContext) -> Result<ToolResult> {

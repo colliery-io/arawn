@@ -4,14 +4,14 @@ level: task
 title: "Add validate() to Tool trait with default schema validation and wire into execute_with_config"
 short_code: "ARAWN-T-0459"
 created_at: 2026-03-26T17:34:32.399007+00:00
-updated_at: 2026-03-26T17:37:11.751260+00:00
+updated_at: 2026-03-26T17:44:55.332296+00:00
 parent: ARAWN-I-0041
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -63,6 +63,8 @@ Add `fn validate(&self, params: &Value) -> Result<(), ToolResult>` to the Tool t
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

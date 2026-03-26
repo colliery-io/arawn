@@ -8,7 +8,7 @@ use tokio::io::AsyncWriteExt;
 use url::Url;
 
 use arawn_agent::Result;
-use arawn_agent::tool::{Tool, ToolContext, ToolResult};
+use arawn_agent::tool::{GatedParam, Tool, ToolContext, ToolResult};
 
 use super::validate_url_not_ssrf;
 
@@ -223,6 +223,10 @@ impl Tool for WebFetchTool {
             },
             "required": ["url"]
         })
+    }
+
+    fn gated_params(&self) -> Vec<GatedParam> {
+        vec![GatedParam::WritePath("download")]
     }
 
     async fn execute(&self, params: Value, ctx: &ToolContext) -> Result<ToolResult> {

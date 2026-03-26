@@ -8,7 +8,9 @@ use std::path::{Component, Path, PathBuf};
 use tokio::fs;
 
 use arawn_agent::Result;
-use arawn_agent::tool::{FileReadParams, FileWriteParams, Tool, ToolContext, ToolResult};
+use arawn_agent::tool::{
+    FileReadParams, FileWriteParams, GatedParam, Tool, ToolContext, ToolResult,
+};
 
 /// Reject paths that contain `..` (parent directory) traversal components.
 ///
@@ -132,6 +134,10 @@ impl Tool for FileReadTool {
             },
             "required": ["path"]
         })
+    }
+
+    fn gated_params(&self) -> Vec<GatedParam> {
+        vec![GatedParam::ReadPath("path")]
     }
 
     async fn execute(&self, params: Value, ctx: &ToolContext) -> Result<ToolResult> {
@@ -304,6 +310,10 @@ impl Tool for FileWriteTool {
             },
             "required": ["path", "content"]
         })
+    }
+
+    fn gated_params(&self) -> Vec<GatedParam> {
+        vec![GatedParam::WritePath("path")]
     }
 
     async fn execute(&self, params: Value, ctx: &ToolContext) -> Result<ToolResult> {

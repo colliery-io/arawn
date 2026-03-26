@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
 use arawn_agent::Result;
-use arawn_agent::tool::{Tool, ToolContext, ToolResult};
+use arawn_agent::tool::{GatedParam, Tool, ToolContext, ToolResult};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Glob Tool
@@ -125,6 +125,10 @@ impl Tool for GlobTool {
             },
             "required": ["pattern"]
         })
+    }
+
+    fn gated_params(&self) -> Vec<GatedParam> {
+        vec![GatedParam::ReadPath("directory")]
     }
 
     async fn execute(&self, params: Value, ctx: &ToolContext) -> Result<ToolResult> {
@@ -381,6 +385,10 @@ impl Tool for GrepTool {
             },
             "required": ["pattern"]
         })
+    }
+
+    fn gated_params(&self) -> Vec<GatedParam> {
+        vec![GatedParam::ReadPath("directory")]
     }
 
     async fn execute(&self, params: Value, ctx: &ToolContext) -> Result<ToolResult> {

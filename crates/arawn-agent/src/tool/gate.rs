@@ -5,29 +5,29 @@
 use arawn_types::SharedFsGate;
 
 use super::command_validator::{CommandValidation, CommandValidator};
-use super::context::{Tool, ToolContext, ToolResult};
+use super::context::{GatedParam, Tool, ToolContext, ToolResult};
 use super::output::OutputConfig;
 use super::registry::ToolRegistry;
 use crate::error::Result;
 
-impl ToolRegistry {
-    /// Validate and rewrite file paths in tool params against the filesystem gate.
-    ///
-    /// Returns `Ok(params)` with canonicalized paths on success, or
-    /// `Err(ToolResult)` with an error message if access is denied.
-    pub(super) fn validate_tool_paths(
-        &self,
-        tool_name: &str,
-        mut params: serde_json::Value,
-        gate: &SharedFsGate,
-    ) -> std::result::Result<serde_json::Value, ToolResult> {
-        match tool_name {
-            "file_read" => {
-                if let Some(path_str) = params.get("path").and_then(|v| v.as_str()) {
+/// Validate and rewrite filesystem paths in tool params against the gate.
+///
+/// Iterates over the tool's declared `GatedParam`s, validating each
+/// path parameter against the filesystem gate. Returns `Ok(params)` with
+/// canonicalized paths on success, or `Err(ToolResult)` on access denial.
+pub(super) fn enforce_gate_params(
+    gated: &[GatedParam],
+    mut params: serde_json::Value,
+    gate: &SharedFsGate,
+) -> std::result::Result<serde_json::Value, ToolResult> {
+    for gp in gated {
+        match gp {
+            GatedParam::ReadPath(name) => {
+                if let Some(path_str) = params.get(*name).and_then(|v| v.as_str()) {
                     let path = std::path::Path::new(path_str);
                     match gate.validate_read(path) {
                         Ok(canonical) => {
-                            params["path"] =
+                            params[*name] =
                                 serde_json::Value::String(canonical.to_string_lossy().to_string());
                         }
                         Err(e) => {
@@ -36,14 +36,26 @@ impl ToolRegistry {
                     }
                 }
             }
-            "glob" | "grep" => {
-                // Glob and grep use "directory" param, not "path"
-                let dir_key = "directory";
-                if let Some(dir_str) = params.get(dir_key).and_then(|v| v.as_str()) {
-                    let path = std::path::Path::new(dir_str);
+            GatedParam::WritePath(name) => {
+                if let Some(path_str) = params.get(*name).and_then(|v| v.as_str()) {
+                    let path = std::path::Path::new(path_str);
+                    match gate.validate_write(path) {
+                        Ok(canonical) => {
+                            params[*name] =
+                                serde_json::Value::String(canonical.to_string_lossy().to_string());
+                        }
+                        Err(e) => {
+                            return Err(ToolResult::error(format!("Access denied: {}", e)));
+                        }
+                    }
+                }
+            }
+            GatedParam::WorkingDir(name) => {
+                if let Some(path_str) = params.get(*name).and_then(|v| v.as_str()) {
+                    let path = std::path::Path::new(path_str);
                     match gate.validate_read(path) {
                         Ok(canonical) => {
-                            params[dir_key] =
+                            params[*name] =
                                 serde_json::Value::String(canonical.to_string_lossy().to_string());
                         }
                         Err(e) => {
@@ -51,30 +63,17 @@ impl ToolRegistry {
                         }
                     }
                 } else {
-                    // No directory specified — force it to the working directory
+                    // Default to working directory
                     let wd = gate.working_dir();
-                    params[dir_key] = serde_json::Value::String(wd.to_string_lossy().to_string());
+                    params[*name] = serde_json::Value::String(wd.to_string_lossy().to_string());
                 }
             }
-            "file_write" => {
-                if let Some(path_str) = params.get("path").and_then(|v| v.as_str()) {
-                    let path = std::path::Path::new(path_str);
-                    match gate.validate_write(path) {
-                        Ok(validated) => {
-                            params["path"] =
-                                serde_json::Value::String(validated.to_string_lossy().to_string());
-                        }
-                        Err(e) => {
-                            return Err(ToolResult::error(format!("Access denied: {}", e)));
-                        }
-                    }
-                }
-            }
-            _ => {}
         }
-        Ok(params)
     }
+    Ok(params)
+}
 
+impl ToolRegistry {
     /// Execute a shell tool through the OS-level sandbox.
     ///
     /// Validates the command against blocked patterns before passing it to
@@ -137,7 +136,7 @@ mod tests {
 
     use async_trait::async_trait;
 
-    use super::super::context::{ToolContext, ToolResult};
+    use super::super::context::{GatedParam, ToolContext, ToolResult};
     use super::super::output::OutputConfig;
     use super::super::registry::{MockTool, ToolRegistry};
     use arawn_types::is_gated_tool;
@@ -262,7 +261,11 @@ mod tests {
     #[tokio::test]
     async fn test_gate_deny_by_default_no_gate() {
         let mut registry = ToolRegistry::new();
-        registry.register(MockTool::new("file_read").with_response(ToolResult::text("secret")));
+        registry.register(
+            MockTool::new("file_read")
+                .with_gated_params(vec![GatedParam::ReadPath("path")])
+                .with_response(ToolResult::text("secret")),
+        );
 
         // ToolContext with no fs_gate (default)
         let ctx = ToolContext::default();
@@ -285,9 +288,19 @@ mod tests {
     async fn test_gate_deny_by_default_all_gated_tools() {
         let ctx = ToolContext::default();
 
-        for tool_name in arawn_types::GATED_TOOLS {
+        // Each gated tool name with its corresponding gated params
+        let gated_tools: Vec<(&str, Vec<GatedParam>)> = vec![
+            ("file_read", vec![GatedParam::ReadPath("path")]),
+            ("file_write", vec![GatedParam::WritePath("path")]),
+            ("glob", vec![GatedParam::ReadPath("directory")]),
+            ("grep", vec![GatedParam::ReadPath("directory")]),
+            ("shell", vec![GatedParam::WorkingDir("cwd")]),
+            ("web_fetch", vec![GatedParam::WritePath("download")]),
+        ];
+
+        for (tool_name, gated_params) in gated_tools {
             let mut registry = ToolRegistry::new();
-            registry.register(MockTool::new(*tool_name));
+            registry.register(MockTool::new(tool_name).with_gated_params(gated_params));
 
             let result = registry
                 .execute_with_config(
@@ -338,8 +351,11 @@ mod tests {
     #[tokio::test]
     async fn test_gate_file_read_allowed() {
         let mut registry = ToolRegistry::new();
-        registry
-            .register(MockTool::new("file_read").with_response(ToolResult::text("file contents")));
+        registry.register(
+            MockTool::new("file_read")
+                .with_gated_params(vec![GatedParam::ReadPath("path")])
+                .with_response(ToolResult::text("file contents")),
+        );
 
         let gate = MockFsGate::new("/work").allow_read("/work");
         let ctx = ctx_with_gate(gate);
@@ -357,8 +373,11 @@ mod tests {
     #[tokio::test]
     async fn test_gate_file_read_denied() {
         let mut registry = ToolRegistry::new();
-        registry
-            .register(MockTool::new("file_read").with_response(ToolResult::text("should not see")));
+        registry.register(
+            MockTool::new("file_read")
+                .with_gated_params(vec![GatedParam::ReadPath("path")])
+                .with_response(ToolResult::text("should not see")),
+        );
 
         let gate = MockFsGate::new("/work").allow_read("/work");
         let ctx = ctx_with_gate(gate);
@@ -376,7 +395,11 @@ mod tests {
     #[tokio::test]
     async fn test_gate_file_write_allowed() {
         let mut registry = ToolRegistry::new();
-        registry.register(MockTool::new("file_write").with_response(ToolResult::text("written")));
+        registry.register(
+            MockTool::new("file_write")
+                .with_gated_params(vec![GatedParam::WritePath("path")])
+                .with_response(ToolResult::text("written")),
+        );
 
         let gate = MockFsGate::new("/work").allow_write("/work");
         let ctx = ctx_with_gate(gate);
@@ -393,8 +416,11 @@ mod tests {
     #[tokio::test]
     async fn test_gate_file_write_denied() {
         let mut registry = ToolRegistry::new();
-        registry
-            .register(MockTool::new("file_write").with_response(ToolResult::text("should not")));
+        registry.register(
+            MockTool::new("file_write")
+                .with_gated_params(vec![GatedParam::WritePath("path")])
+                .with_response(ToolResult::text("should not")),
+        );
 
         let gate = MockFsGate::new("/work").allow_write("/work");
         let ctx = ctx_with_gate(gate);
@@ -412,12 +438,15 @@ mod tests {
     #[tokio::test]
     async fn test_gate_glob_allowed() {
         let mut registry = ToolRegistry::new();
-        registry
-            .register(MockTool::new("glob").with_response(ToolResult::text("file1.rs\nfile2.rs")));
+        registry.register(
+            MockTool::new("glob")
+                .with_gated_params(vec![GatedParam::ReadPath("directory")])
+                .with_response(ToolResult::text("file1.rs\nfile2.rs")),
+        );
 
         let gate = MockFsGate::new("/work").allow_read("/work");
         let ctx = ctx_with_gate(gate);
-        let params = serde_json::json!({"path": "/work/src"});
+        let params = serde_json::json!({"directory": "/work/src"});
 
         let result = registry
             .execute_with_config("glob", params, &ctx, &OutputConfig::default())
@@ -430,7 +459,11 @@ mod tests {
     #[tokio::test]
     async fn test_gate_glob_denied() {
         let mut registry = ToolRegistry::new();
-        registry.register(MockTool::new("glob").with_response(ToolResult::text("should not")));
+        registry.register(
+            MockTool::new("glob")
+                .with_gated_params(vec![GatedParam::ReadPath("directory")])
+                .with_response(ToolResult::text("should not")),
+        );
 
         let gate = MockFsGate::new("/work").allow_read("/work");
         let ctx = ctx_with_gate(gate);
@@ -451,7 +484,11 @@ mod tests {
     #[tokio::test]
     async fn test_gate_grep_denied() {
         let mut registry = ToolRegistry::new();
-        registry.register(MockTool::new("grep").with_response(ToolResult::text("should not")));
+        registry.register(
+            MockTool::new("grep")
+                .with_gated_params(vec![GatedParam::ReadPath("directory")])
+                .with_response(ToolResult::text("should not")),
+        );
 
         let gate = MockFsGate::new("/work").allow_read("/work");
         let ctx = ctx_with_gate(gate);
@@ -473,14 +510,20 @@ mod tests {
     async fn test_gate_shell_routed_through_sandbox() {
         let mut registry = ToolRegistry::new();
         // The mock tool should NOT be called — shell goes through sandbox
-        registry.register(MockTool::new("shell").with_response(ToolResult::text("SHOULD NOT SEE")));
+        registry.register(
+            MockTool::new("shell")
+                .with_gated_params(vec![GatedParam::WorkingDir("cwd")])
+                .with_response(ToolResult::text("SHOULD NOT SEE")),
+        );
 
-        let gate = MockFsGate::new("/work").with_shell_result(arawn_types::SandboxOutput {
-            stdout: "sandboxed ls output".to_string(),
-            stderr: String::new(),
-            exit_code: 0,
-            success: true,
-        });
+        let gate = MockFsGate::new("/work")
+            .allow_read("/work")
+            .with_shell_result(arawn_types::SandboxOutput {
+                stdout: "sandboxed ls output".to_string(),
+                stderr: String::new(),
+                exit_code: 0,
+                success: true,
+            });
         let ctx = ctx_with_gate(gate);
         let params = serde_json::json!({"command": "ls -la"});
 
@@ -501,14 +544,18 @@ mod tests {
     #[tokio::test]
     async fn test_gate_shell_sandbox_failure() {
         let mut registry = ToolRegistry::new();
-        registry.register(MockTool::new("shell"));
+        registry.register(
+            MockTool::new("shell").with_gated_params(vec![GatedParam::WorkingDir("cwd")]),
+        );
 
-        let gate = MockFsGate::new("/work").with_shell_result(arawn_types::SandboxOutput {
-            stdout: String::new(),
-            stderr: "permission denied".to_string(),
-            exit_code: 1,
-            success: false,
-        });
+        let gate = MockFsGate::new("/work")
+            .allow_read("/work")
+            .with_shell_result(arawn_types::SandboxOutput {
+                stdout: String::new(),
+                stderr: "permission denied".to_string(),
+                exit_code: 1,
+                success: false,
+            });
         let ctx = ctx_with_gate(gate);
         let params = serde_json::json!({"command": "cat /etc/shadow"});
 
@@ -524,7 +571,9 @@ mod tests {
     #[tokio::test]
     async fn test_gate_execute_raw_deny_by_default() {
         let mut registry = ToolRegistry::new();
-        registry.register(MockTool::new("file_read"));
+        registry.register(
+            MockTool::new("file_read").with_gated_params(vec![GatedParam::ReadPath("path")]),
+        );
 
         let ctx = ToolContext::default();
         let result = registry
@@ -547,8 +596,11 @@ mod tests {
     #[tokio::test]
     async fn test_gate_execute_raw_allowed_with_gate() {
         let mut registry = ToolRegistry::new();
-        registry
-            .register(MockTool::new("file_read").with_response(ToolResult::text("raw contents")));
+        registry.register(
+            MockTool::new("file_read")
+                .with_gated_params(vec![GatedParam::ReadPath("path")])
+                .with_response(ToolResult::text("raw contents")),
+        );
 
         let gate = MockFsGate::new("/work").allow_read("/work");
         let ctx = ctx_with_gate(gate);
@@ -582,7 +634,11 @@ mod tests {
     #[tokio::test]
     async fn test_gate_file_read_no_path_param_passes_through() {
         let mut registry = ToolRegistry::new();
-        registry.register(MockTool::new("file_read").with_response(ToolResult::text("ok")));
+        registry.register(
+            MockTool::new("file_read")
+                .with_gated_params(vec![GatedParam::ReadPath("path")])
+                .with_response(ToolResult::text("ok")),
+        );
 
         // Gate is present but params have no "path" key — validation is skipped
         let gate = MockFsGate::new("/work").allow_read("/work");
@@ -601,14 +657,18 @@ mod tests {
     #[tokio::test]
     async fn test_gate_shell_sandbox_combined_output() {
         let mut registry = ToolRegistry::new();
-        registry.register(MockTool::new("shell"));
+        registry.register(
+            MockTool::new("shell").with_gated_params(vec![GatedParam::WorkingDir("cwd")]),
+        );
 
-        let gate = MockFsGate::new("/work").with_shell_result(arawn_types::SandboxOutput {
-            stdout: "stdout content".to_string(),
-            stderr: "stderr content".to_string(),
-            exit_code: 0,
-            success: true,
-        });
+        let gate = MockFsGate::new("/work")
+            .allow_read("/work")
+            .with_shell_result(arawn_types::SandboxOutput {
+                stdout: "stdout content".to_string(),
+                stderr: "stderr content".to_string(),
+                exit_code: 0,
+                success: true,
+            });
         let ctx = ctx_with_gate(gate);
         let params = serde_json::json!({"command": "make build"});
 
@@ -627,9 +687,11 @@ mod tests {
     #[tokio::test]
     async fn test_gate_shell_timeout_passed() {
         let mut registry = ToolRegistry::new();
-        registry.register(MockTool::new("shell"));
+        registry.register(
+            MockTool::new("shell").with_gated_params(vec![GatedParam::WorkingDir("cwd")]),
+        );
 
-        let gate = MockFsGate::new("/work");
+        let gate = MockFsGate::new("/work").allow_read("/work");
         let ctx = ctx_with_gate(gate);
         // The timeout param is extracted from params and passed to sandbox_execute
         let params = serde_json::json!({"command": "sleep 100", "timeout": 30});
@@ -646,14 +708,18 @@ mod tests {
     #[tokio::test]
     async fn test_gate_shell_blocked_command_rejected() {
         let mut registry = ToolRegistry::new();
-        registry.register(MockTool::new("shell"));
+        registry.register(
+            MockTool::new("shell").with_gated_params(vec![GatedParam::WorkingDir("cwd")]),
+        );
 
-        let gate = MockFsGate::new("/work").with_shell_result(arawn_types::SandboxOutput {
-            stdout: "SHOULD NOT REACH".to_string(),
-            stderr: String::new(),
-            exit_code: 0,
-            success: true,
-        });
+        let gate = MockFsGate::new("/work")
+            .allow_read("/work")
+            .with_shell_result(arawn_types::SandboxOutput {
+                stdout: "SHOULD NOT REACH".to_string(),
+                stderr: String::new(),
+                exit_code: 0,
+                success: true,
+            });
         let ctx = ctx_with_gate(gate);
         let params = serde_json::json!({"command": "rm -rf /"});
 
@@ -670,9 +736,11 @@ mod tests {
     #[tokio::test]
     async fn test_gate_shell_blocked_command_case_bypass() {
         let mut registry = ToolRegistry::new();
-        registry.register(MockTool::new("shell"));
+        registry.register(
+            MockTool::new("shell").with_gated_params(vec![GatedParam::WorkingDir("cwd")]),
+        );
 
-        let gate = MockFsGate::new("/work");
+        let gate = MockFsGate::new("/work").allow_read("/work");
         let ctx = ctx_with_gate(gate);
         // Try to bypass with mixed case
         let params = serde_json::json!({"command": "RM -RF /"});
@@ -689,9 +757,11 @@ mod tests {
     #[tokio::test]
     async fn test_gate_shell_blocked_command_whitespace_bypass() {
         let mut registry = ToolRegistry::new();
-        registry.register(MockTool::new("shell"));
+        registry.register(
+            MockTool::new("shell").with_gated_params(vec![GatedParam::WorkingDir("cwd")]),
+        );
 
-        let gate = MockFsGate::new("/work");
+        let gate = MockFsGate::new("/work").allow_read("/work");
         let ctx = ctx_with_gate(gate);
         // Try to bypass with extra whitespace
         let params = serde_json::json!({"command": "rm   -rf   /"});

@@ -12,6 +12,21 @@ use crate::types::{SessionId, TurnId};
 use super::output::{OutputConfig, sanitize_output, validate_json_output};
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Gated Parameters
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Filesystem path parameters that the security gate should enforce.
+#[derive(Debug, Clone)]
+pub enum GatedParam {
+    /// Parameter contains a path that requires read access.
+    ReadPath(&'static str),
+    /// Parameter contains a path that requires write access.
+    WritePath(&'static str),
+    /// Parameter contains a working directory (defaults to gate working_dir if absent).
+    WorkingDir(&'static str),
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Tool Trait
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -42,6 +57,12 @@ pub trait Tool: Send + Sync {
     /// Called before gate enforcement and before execute.
     fn validate(&self, params: &serde_json::Value) -> std::result::Result<(), ToolResult> {
         validate_against_schema(params, &self.parameters())
+    }
+
+    /// Declare which params are filesystem paths the gate should enforce.
+    /// Default: none (tool is not gated).
+    fn gated_params(&self) -> Vec<GatedParam> {
+        vec![]
     }
 
     /// Execute the tool with the given parameters.

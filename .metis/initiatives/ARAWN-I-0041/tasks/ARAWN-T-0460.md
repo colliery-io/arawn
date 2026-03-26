@@ -4,14 +4,14 @@ level: task
 title: "Add gated_params() to Tool trait and rewrite gate.enforce() to read declarations instead of hardcoded names"
 short_code: "ARAWN-T-0460"
 created_at: 2026-03-26T17:34:33.791526+00:00
-updated_at: 2026-03-26T17:34:33.791526+00:00
+updated_at: 2026-03-26T17:45:04.070376+00:00
 parent: ARAWN-I-0041
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/active"
 
 
 exit_criteria_met: false
@@ -63,6 +63,8 @@ Add `fn gated_params(&self) -> Vec<GatedParam>` to the Tool trait with a default
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
 
 ## Acceptance Criteria **[REQUIRED]**
 

@@ -17,7 +17,7 @@ use tokio::time::timeout;
 
 use arawn_agent::Result;
 use arawn_agent::tool::{
-    CommandValidation, CommandValidator, ShellParams, Tool, ToolContext, ToolResult,
+    CommandValidation, CommandValidator, GatedParam, ShellParams, Tool, ToolContext, ToolResult,
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -369,6 +369,10 @@ impl Tool for ShellTool {
             },
             "required": ["command"]
         })
+    }
+
+    fn gated_params(&self) -> Vec<GatedParam> {
+        vec![GatedParam::WorkingDir("cwd")]
     }
 
     async fn execute(&self, params: Value, ctx: &ToolContext) -> Result<ToolResult> {

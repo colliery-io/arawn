@@ -2,7 +2,9 @@
 //!
 //! Implements execute, execute_with_config, execute_raw, and secret handle resolution.
 
-use arawn_types::{contains_secret_handle, is_gated_tool, resolve_handles_in_json};
+use arawn_types::{contains_secret_handle, resolve_handles_in_json};
+
+use super::context::GatedParam;
 
 use super::context::{ToolContext, ToolResult};
 use super::output::OutputConfig;
@@ -66,29 +68,28 @@ impl ToolRegistry {
             return Ok(validation_error);
         }
 
-        // Filesystem gate enforcement for gated tools
-        if is_gated_tool(name) {
+        // Gate enforcement — driven by tool declarations
+        let gated = tool.gated_params();
+        if !gated.is_empty() {
             if let Some(ref gate) = ctx.fs_gate {
-                // Shell tools get routed through the OS-level sandbox
-                if name == "shell" {
+                let params = match super::gate::enforce_gate_params(&gated, params, gate) {
+                    Ok(p) => p,
+                    Err(denied) => return Ok(denied),
+                };
+
+                // Shell tools additionally go through the sandbox
+                if gated.iter().any(|g| matches!(g, GatedParam::WorkingDir(_))) {
                     return self
                         .execute_shell_sandboxed(tool.as_ref(), &params, ctx, gate, output_config)
                         .await;
                 }
 
-                // File/search tools get path validation
-                let params = match self.validate_tool_paths(name, params, gate) {
-                    Ok(p) => p,
-                    Err(denied) => return Ok(denied),
-                };
                 let result = tool.execute(params, ctx).await?;
                 return Ok(result.sanitize(output_config));
             } else {
-                // Deny by default: no gate configured for a gated tool
                 tracing::warn!(tool = %name, "Gated tool denied: no filesystem gate configured");
                 return Ok(ToolResult::error(format!(
-                    "Tool '{}' requires a filesystem gate but none is configured. \
-                     This tool can only be used within a workstream context.",
+                    "Tool '{}' requires a filesystem gate but none is configured.",
                     name
                 )));
             }
@@ -121,9 +122,15 @@ impl ToolRegistry {
         }
 
         // Gate enforcement applies even for raw execution
-        if is_gated_tool(name) {
+        let gated = tool.gated_params();
+        if !gated.is_empty() {
             if let Some(ref gate) = ctx.fs_gate {
-                if name == "shell" {
+                let params = match super::gate::enforce_gate_params(&gated, params, gate) {
+                    Ok(p) => p,
+                    Err(denied) => return Ok(denied),
+                };
+
+                if gated.iter().any(|g| matches!(g, GatedParam::WorkingDir(_))) {
                     return self
                         .execute_shell_sandboxed(
                             tool.as_ref(),
@@ -134,10 +141,6 @@ impl ToolRegistry {
                         )
                         .await;
                 }
-                let params = match self.validate_tool_paths(name, params, gate) {
-                    Ok(p) => p,
-                    Err(denied) => return Ok(denied),
-                };
                 return tool.execute(params, ctx).await;
             } else {
                 tracing::warn!(tool = %name, "Gated tool denied (raw): no filesystem gate configured");
