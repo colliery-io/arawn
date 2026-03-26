@@ -4,7 +4,7 @@ level: task
 title: "Explicit API key resolution via api_key_ref config field"
 short_code: "ARAWN-T-0431"
 created_at: 2026-03-26T01:15:08.252620+00:00
-updated_at: 2026-03-26T01:18:14.761779+00:00
+updated_at: 2026-03-26T01:25:39.363106+00:00
 parent: 
 blocked_by: []
 archived: false
@@ -12,7 +12,7 @@ archived: false
 tags:
   - "#task"
   - "#feature"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -51,6 +51,8 @@ All secret names lowercased at storage time:
 ### No backward compatibility
 
 Breaking change. `api_key` field removed entirely. `api_key_ref` is the only way. No shims, no aliases, no defaults.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

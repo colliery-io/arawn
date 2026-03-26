@@ -129,9 +129,10 @@ mod tests {
 
     #[test]
     fn test_resolve_from_env_var() {
-        std::env::set_var("TEST_ARAWN_SECRET_ABC", "test-value");
+        // SAFETY: test-only, single-threaded access to unique env var name
+        unsafe { std::env::set_var("TEST_ARAWN_SECRET_ABC", "test-value") };
         let resolved = resolve_api_key_ref("TEST_ARAWN_SECRET_ABC");
-        std::env::remove_var("TEST_ARAWN_SECRET_ABC");
+        unsafe { std::env::remove_var("TEST_ARAWN_SECRET_ABC") };
 
         assert!(resolved.is_some());
         let r = resolved.unwrap();
@@ -144,9 +145,10 @@ mod tests {
 
     #[test]
     fn test_resolve_uppercases_env_var() {
-        std::env::set_var("GROQ_API_KEY", "gsk-test");
+        // SAFETY: test-only, single-threaded access to unique env var name
+        unsafe { std::env::set_var("GROQ_API_KEY", "gsk-test") };
         let resolved = resolve_api_key_ref("groq_api_key");
-        std::env::remove_var("GROQ_API_KEY");
+        unsafe { std::env::remove_var("GROQ_API_KEY") };
 
         assert!(resolved.is_some());
         let r = resolved.unwrap();

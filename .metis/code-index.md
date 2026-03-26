@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-03-26T01:03:42Z | 352 files | Rust
+> Generated: 2026-03-26T01:30:20Z | 352 files | Rust
 
 ## Project Structure
 
@@ -580,12 +580,12 @@
 -  `cmd_edit` function L209-229 — `() -> Result<()>` — Config command - configuration management.
 -  `cmd_init` function L231-276 — `(local: bool) -> Result<()>` — Config command - configuration management.
 -  `cmd_path` function L278-285 — `() -> Result<()>` — Config command - configuration management.
--  `key_status_for` function L287-303 — `(backend: &Backend) -> &'static str` — Config command - configuration management.
--  `cmd_current_context` function L309-324 — `() -> Result<()>` — Config command - configuration management.
--  `cmd_get_contexts` function L326-351 — `() -> Result<()>` — Config command - configuration management.
--  `cmd_use_context` function L353-362 — `(name: &str) -> Result<()>` — Config command - configuration management.
--  `cmd_set_context` function L364-416 — `( name: &str, server: Option<String>, workstream: Option<String>, timeout: Optio...` — Config command - configuration management.
--  `cmd_delete_context` function L418-437 — `(name: &str) -> Result<()>` — Config command - configuration management.
+-  `key_status_for` function L287-301 — `(backend: &Backend) -> &'static str` — Config command - configuration management.
+-  `cmd_current_context` function L307-322 — `() -> Result<()>` — Config command - configuration management.
+-  `cmd_get_contexts` function L324-349 — `() -> Result<()>` — Config command - configuration management.
+-  `cmd_use_context` function L351-360 — `(name: &str) -> Result<()>` — Config command - configuration management.
+-  `cmd_set_context` function L362-414 — `( name: &str, server: Option<String>, workstream: Option<String>, timeout: Optio...` — Config command - configuration management.
+-  `cmd_delete_context` function L416-435 — `(name: &str) -> Result<()>` — Config command - configuration management.
 
 #### crates/arawn/src/commands/logs.rs
 
@@ -630,7 +630,7 @@
 -  `cmd_reindex` function L187-272 — `(dry_run: bool, yes: bool, _ctx: &Context) -> Result<()>` — Memory command - memory operations.
 -  `cmd_export` function L274-310 — `(output: Option<String>, ctx: &Context) -> Result<()>` — Memory command - memory operations.
 -  `open_memory_store` function L313-319 — `() -> Result<arawn_memory::MemoryStore>` — Open the memory store at the default data directory.
--  `build_embedder_spec` function L322-350 — `(config: &arawn_config::EmbeddingConfig) -> arawn_llm::EmbedderSpec` — Build an EmbedderSpec from EmbeddingConfig (same logic as start.rs).
+-  `build_embedder_spec` function L322-351 — `(config: &arawn_config::EmbeddingConfig) -> arawn_llm::EmbedderSpec` — Build an EmbedderSpec from EmbeddingConfig (same logic as start.rs).
 
 #### crates/arawn/src/commands/mod.rs
 
@@ -764,18 +764,18 @@
 -  `init_session_indexer` function L1276-1386 — `( memory_cfg: &arawn_config::MemoryConfig, memory_store: &Option<Arc<MemoryStore...` — Phase 14: Create the session indexer for background summarization.
 -  `init_mcp` function L1389-1497 — `( mcp_cfg: &arawn_config::McpConfig, tool_registry: &mut ToolRegistry, ctx: &Con...` — Phase 11: Connect to MCP servers and register discovered tools.
 -  `init_plugins` function L1500-1705 — `( plugins_cfg: &arawn_config::PluginsConfig, workspace: Option<&std::path::Path>...` — Phase 10: Load plugins, sync subscriptions, collect hooks + agent configs + skill prompts.
--  `resolve_with_cli_overrides` function L1708-1758 — `( config: &arawn_config::ArawnConfig, args: &StartArgs, ) -> Result<ResolvedLlm>` — Resolve LLM config, applying CLI overrides on top of config file values.
--  `make_api_key_provider` function L1764-1768 — `(backend: Backend, config_value: Option<String>) -> ApiKeyProvider` — Build an `ApiKeyProvider` that re-resolves from the secret store on each request.
--  `create_backend` function L1771-1914 — `( resolved: &ResolvedLlm, oauth_overrides: Option<&arawn_config::OAuthConfigOver...` — Create an LLM backend from a resolved config.
--  `parse_backend` function L1916-1929 — `(s: &str) -> Result<Backend>` — Start command - launches the Arawn server.
--  `load_or_generate_server_token` function L1932-1948 — `() -> Result<String>` — Load a persisted server token, or generate and save a new one.
--  `resolve_profile` function L1951-1982 — `(name: &str, llm_config: &LlmConfig) -> Result<ResolvedLlm>` — Resolve a named LLM profile into a ResolvedLlm ready for backend creation.
--  `build_embedder_spec` function L1985-2031 — `(config: &arawn_config::EmbeddingConfig) -> EmbedderSpec` — Build an `EmbedderSpec` from the application's `EmbeddingConfig`.
--  `default_model` function L2033-2041 — `(backend: &Backend) -> String` — Start command - launches the Arawn server.
--  `register_builtin_runtimes` function L2048-2126 — `( runtimes_src_dir: &std::path::Path, executor: &Arc<ScriptExecutor>, catalog: &...` — Compile and register built-in WASM runtimes from source crate directories.
--  `seed_test_data` function L2129-2222 — `(manager: &WorkstreamManager, verbose: bool)` — Seed the database with test workstreams and sessions for development.
--  `cleanup_old_logs` function L2228-2276 — `(log_dir: &std::path::Path, max_age_days: u64, verbose: bool)` — Delete log files older than `max_age_days` from the log directory.
--  `validate_config` function L2279-2296 — `(config: &arawn_config::ArawnConfig) -> Result<()>` — Validate configuration values at startup, failing fast with clear errors.
+-  `resolve_with_cli_overrides` function L1708-1759 — `( config: &arawn_config::ArawnConfig, args: &StartArgs, ) -> Result<ResolvedLlm>` — Resolve LLM config, applying CLI overrides on top of config file values.
+-  `make_api_key_provider` function L1765-1769 — `(ref_name: String) -> ApiKeyProvider` — Build an `ApiKeyProvider` that re-resolves from the secret store on each request.
+-  `create_backend` function L1772-1930 — `( resolved: &ResolvedLlm, oauth_overrides: Option<&arawn_config::OAuthConfigOver...` — Create an LLM backend from a resolved config.
+-  `parse_backend` function L1932-1945 — `(s: &str) -> Result<Backend>` — Start command - launches the Arawn server.
+-  `load_or_generate_server_token` function L1948-1964 — `() -> Result<String>` — Load a persisted server token, or generate and save a new one.
+-  `resolve_profile` function L1967-2002 — `(name: &str, llm_config: &LlmConfig) -> Result<ResolvedLlm>` — Resolve a named LLM profile into a ResolvedLlm ready for backend creation.
+-  `build_embedder_spec` function L2005-2046 — `(config: &arawn_config::EmbeddingConfig) -> EmbedderSpec` — Build an `EmbedderSpec` from the application's `EmbeddingConfig`.
+-  `default_model` function L2048-2056 — `(backend: &Backend) -> String` — Start command - launches the Arawn server.
+-  `register_builtin_runtimes` function L2063-2141 — `( runtimes_src_dir: &std::path::Path, executor: &Arc<ScriptExecutor>, catalog: &...` — Compile and register built-in WASM runtimes from source crate directories.
+-  `seed_test_data` function L2144-2237 — `(manager: &WorkstreamManager, verbose: bool)` — Seed the database with test workstreams and sessions for development.
+-  `cleanup_old_logs` function L2243-2291 — `(log_dir: &std::path::Path, max_age_days: u64, verbose: bool)` — Delete log files older than `max_age_days` from the log directory.
+-  `validate_config` function L2294-2311 — `(config: &arawn_config::ArawnConfig) -> Result<()>` — Validate configuration values at startup, failing fast with clear errors.
 
 #### crates/arawn/src/commands/status.rs
 
@@ -3258,19 +3258,19 @@
 -  `LoadedConfig` type L43-52 — `= LoadedConfig` — 3.
 -  `CONFIG_DIR_ENV` variable L151 — `: &str` — Environment variable to override the config directory.
 -  `load_layer` function L183-211 — `( config: &mut ArawnConfig, path: &Path, warnings: &mut Vec<String>, ) -> Result...` — Try to load a config file and merge it into the existing config.
--  `check_plaintext_keys` function L214-235 — `(config: &ArawnConfig, warnings: &mut Vec<String>)` — Check for plaintext API keys in the config and emit warnings.
--  `tests` module L242-463 — `-` — 3.
--  `test_xdg_config_path_exists` function L250-257 — `()` — 3.
--  `test_load_config_file` function L260-275 — `()` — 3.
--  `test_load_config_file_not_found` function L278-281 — `()` — 3.
--  `test_load_config_invalid_toml` function L284-291 — `()` — 3.
--  `test_load_config_project_only` function L294-321 — `()` — 3.
--  `test_load_config_no_files` function L324-332 — `()` — 3.
--  `test_load_config_layered_merge` function L335-387 — `()` — 3.
--  `test_plaintext_key_warning` function L390-413 — `()` — 3.
--  `test_no_warnings_without_keys` function L416-431 — `()` — 3.
--  `test_malformed_config_warns_but_continues` function L434-443 — `()` — 3.
--  `test_loaded_from_tracks_sources` function L446-462 — `()` — 3.
+-  `check_plaintext_keys` function L214-217 — `(_config: &ArawnConfig, _warnings: &mut Vec<String>)` — Placeholder for config validation warnings.
+-  `tests` module L224-445 — `-` — 3.
+-  `test_xdg_config_path_exists` function L232-239 — `()` — 3.
+-  `test_load_config_file` function L242-257 — `()` — 3.
+-  `test_load_config_file_not_found` function L260-263 — `()` — 3.
+-  `test_load_config_invalid_toml` function L266-273 — `()` — 3.
+-  `test_load_config_project_only` function L276-303 — `()` — 3.
+-  `test_load_config_no_files` function L306-314 — `()` — 3.
+-  `test_load_config_layered_merge` function L317-369 — `()` — 3.
+-  `test_plaintext_key_warning` function L372-395 — `()` — 3.
+-  `test_no_warnings_without_keys` function L398-413 — `()` — 3.
+-  `test_malformed_config_warns_but_continues` function L416-425 — `()` — 3.
+-  `test_loaded_from_tracks_sources` function L428-444 — `()` — 3.
 
 #### crates/arawn-config/src/error.rs
 
@@ -3327,32 +3327,32 @@
 
 #### crates/arawn-config/src/resolver.rs
 
-- pub `ResolvedLlm` struct L27-44 — `{ backend: Backend, model: String, base_url: Option<String>, api_key: Option<Str...` — A fully resolved LLM configuration ready to construct a backend.
-- pub `ResolvedFrom` enum L63-70 — `AgentSpecific | AgentDefault | GlobalDefault` — Tracks how the LLM config was resolved for diagnostics.
-- pub `ApiKeySource` enum L88-97 — `Keyring | EnvVar | ConfigFile | NotFound` — How an API key was resolved.
-- pub `resolve_for_agent` function L113-149 — `(config: &ArawnConfig, agent_name: &str) -> Result<ResolvedLlm>` — Resolve the LLM config for a given agent name.
-- pub `resolve_all_profiles` function L161-178 — `(config: &ArawnConfig) -> Vec<(String, Backend, String)>` — Resolve all named LLM configs into a summary for diagnostics.
--  `ResolvedLlm` type L46-59 — `= ResolvedLlm` — a given agent, handling cascading defaults and API key lookup.
--  `fmt` function L47-58 — `(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result` — a given agent, handling cascading defaults and API key lookup.
--  `ResolvedFrom` type L72-84 — `= ResolvedFrom` — a given agent, handling cascading defaults and API key lookup.
--  `fmt` function L73-83 — `(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result` — a given agent, handling cascading defaults and API key lookup.
--  `resolve_llm_config` function L181-229 — `( config: &'a ArawnConfig, agent_name: &str, ) -> Result<(&'a LlmConfig, Resolve...` — Inner resolution that returns both the config ref and how it was resolved.
--  `tests` module L236-459 — `-` — a given agent, handling cascading defaults and API key lookup.
--  `test_config` function L239-267 — `() -> ArawnConfig` — a given agent, handling cascading defaults and API key lookup.
--  `test_resolve_agent_specific` function L270-281 — `()` — a given agent, handling cascading defaults and API key lookup.
--  `test_resolve_agent_default_fallback` function L284-294 — `()` — a given agent, handling cascading defaults and API key lookup.
--  `test_resolve_global_default` function L297-309 — `()` — a given agent, handling cascading defaults and API key lookup.
--  `test_resolve_no_config` function L312-316 — `()` — a given agent, handling cascading defaults and API key lookup.
--  `test_resolve_missing_backend` function L319-327 — `()` — a given agent, handling cascading defaults and API key lookup.
--  `test_resolve_missing_model` function L330-338 — `()` — a given agent, handling cascading defaults and API key lookup.
--  `test_resolve_missing_profile_reference` function L341-353 — `()` — a given agent, handling cascading defaults and API key lookup.
--  `test_resolve_with_base_url` function L356-362 — `()` — a given agent, handling cascading defaults and API key lookup.
--  `test_resolve_ollama_no_api_key_needed` function L365-378 — `()` — a given agent, handling cascading defaults and API key lookup.
--  `test_resolve_api_key_from_config` function L381-391 — `()` — a given agent, handling cascading defaults and API key lookup.
--  `test_resolve_all_profiles` function L394-402 — `()` — a given agent, handling cascading defaults and API key lookup.
--  `test_resolved_from_display` function L405-419 — `()` — a given agent, handling cascading defaults and API key lookup.
--  `test_resolved_llm_debug_redacts_api_key` function L422-441 — `()` — a given agent, handling cascading defaults and API key lookup.
--  `test_resolved_llm_debug_no_key` function L444-458 — `()` — a given agent, handling cascading defaults and API key lookup.
+- pub `ResolvedLlm` struct L27-46 — `{ backend: Backend, model: String, base_url: Option<String>, api_key: Option<Str...` — A fully resolved LLM configuration ready to construct a backend.
+- pub `ResolvedFrom` enum L65-72 — `AgentSpecific | AgentDefault | GlobalDefault` — Tracks how the LLM config was resolved for diagnostics.
+- pub `ApiKeySource` enum L90-99 — `Keyring | EnvVar | ConfigFile | NotFound` — How an API key was resolved.
+- pub `resolve_for_agent` function L115-156 — `(config: &ArawnConfig, agent_name: &str) -> Result<ResolvedLlm>` — Resolve the LLM config for a given agent name.
+- pub `resolve_all_profiles` function L168-185 — `(config: &ArawnConfig) -> Vec<(String, Backend, String)>` — Resolve all named LLM configs into a summary for diagnostics.
+-  `ResolvedLlm` type L48-61 — `= ResolvedLlm` — a given agent, handling cascading defaults and API key lookup.
+-  `fmt` function L49-60 — `(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result` — a given agent, handling cascading defaults and API key lookup.
+-  `ResolvedFrom` type L74-86 — `= ResolvedFrom` — a given agent, handling cascading defaults and API key lookup.
+-  `fmt` function L75-85 — `(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result` — a given agent, handling cascading defaults and API key lookup.
+-  `resolve_llm_config` function L188-236 — `( config: &'a ArawnConfig, agent_name: &str, ) -> Result<(&'a LlmConfig, Resolve...` — Inner resolution that returns both the config ref and how it was resolved.
+-  `tests` module L243-466 — `-` — a given agent, handling cascading defaults and API key lookup.
+-  `test_config` function L246-274 — `() -> ArawnConfig` — a given agent, handling cascading defaults and API key lookup.
+-  `test_resolve_agent_specific` function L277-288 — `()` — a given agent, handling cascading defaults and API key lookup.
+-  `test_resolve_agent_default_fallback` function L291-301 — `()` — a given agent, handling cascading defaults and API key lookup.
+-  `test_resolve_global_default` function L304-316 — `()` — a given agent, handling cascading defaults and API key lookup.
+-  `test_resolve_no_config` function L319-323 — `()` — a given agent, handling cascading defaults and API key lookup.
+-  `test_resolve_missing_backend` function L326-334 — `()` — a given agent, handling cascading defaults and API key lookup.
+-  `test_resolve_missing_model` function L337-345 — `()` — a given agent, handling cascading defaults and API key lookup.
+-  `test_resolve_missing_profile_reference` function L348-360 — `()` — a given agent, handling cascading defaults and API key lookup.
+-  `test_resolve_with_base_url` function L363-369 — `()` — a given agent, handling cascading defaults and API key lookup.
+-  `test_resolve_ollama_no_api_key_needed` function L372-385 — `()` — a given agent, handling cascading defaults and API key lookup.
+-  `test_resolve_api_key_from_config` function L388-398 — `()` — a given agent, handling cascading defaults and API key lookup.
+-  `test_resolve_all_profiles` function L401-409 — `()` — a given agent, handling cascading defaults and API key lookup.
+-  `test_resolved_from_display` function L412-426 — `()` — a given agent, handling cascading defaults and API key lookup.
+-  `test_resolved_llm_debug_redacts_api_key` function L429-448 — `()` — a given agent, handling cascading defaults and API key lookup.
+-  `test_resolved_llm_debug_no_key` function L451-465 — `()` — a given agent, handling cascading defaults and API key lookup.
 
 #### crates/arawn-config/src/secret_store.rs
 
@@ -3360,71 +3360,53 @@
 - pub `AgeSecretStore` struct L27-32 — `{ identity: age::x25519::Identity, secrets_path: PathBuf, cache: RwLock<BTreeMap...` — An age-encrypted secret store.
 - pub `open` function L39-65 — `(identity_path: &Path, secrets_path: &Path) -> Result<Self, SecretStoreError>` — Open or create a secret store.
 - pub `open_default` function L68-75 — `() -> Result<Self, SecretStoreError>` — Open using default paths (`~/.config/arawn/identity.age` and `secrets.age`).
-- pub `set` function L78-87 — `(&self, name: &str, value: &str) -> Result<(), SecretStoreError>` — Store a secret.
-- pub `delete` function L92-104 — `(&self, name: &str) -> Result<bool, SecretStoreError>` — Delete a secret.
-- pub `get` function L107-110 — `(&self, name: &str) -> Option<String>` — Get a secret value by name.
-- pub `list` function L113-118 — `(&self) -> Vec<String>` — List all secret names (never values).
-- pub `contains` function L121-126 — `(&self, name: &str) -> bool` — Check if a secret exists.
-- pub `SecretStoreError` enum L193-202 — `Io | Age | Format` — Errors from the secret store.
--  `AgeSecretStore` type L34-169 — `= AgeSecretStore` — be injected into the agent's `ToolContext` for handle resolution.
--  `flush` function L129-168 — `(&self) -> Result<(), SecretStoreError>` — Flush the in-memory cache to the encrypted file.
--  `AgeSecretStore` type L171-179 — `impl SecretResolver for AgeSecretStore` — be injected into the agent's `ToolContext` for handle resolution.
--  `resolve` function L172-174 — `(&self, name: &str) -> Option<String>` — be injected into the agent's `ToolContext` for handle resolution.
--  `names` function L176-178 — `(&self) -> Vec<String>` — be injected into the agent's `ToolContext` for handle resolution.
--  `AgeSecretStore` type L181-189 — `= AgeSecretStore` — be injected into the agent's `ToolContext` for handle resolution.
--  `fmt` function L182-188 — `(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result` — be injected into the agent's `ToolContext` for handle resolution.
--  `tests` module L205-410 — `-` — be injected into the agent's `ToolContext` for handle resolution.
--  `setup` function L208-214 — `() -> (tempfile::TempDir, AgeSecretStore)` — be injected into the agent's `ToolContext` for handle resolution.
--  `test_empty_store` function L217-222 — `()` — be injected into the agent's `ToolContext` for handle resolution.
--  `test_set_and_get` function L225-232 — `()` — be injected into the agent's `ToolContext` for handle resolution.
--  `test_set_overwrite` function L235-242 — `()` — be injected into the agent's `ToolContext` for handle resolution.
--  `test_delete` function L245-256 — `()` — be injected into the agent's `ToolContext` for handle resolution.
--  `test_multiple_secrets` function L259-269 — `()` — be injected into the agent's `ToolContext` for handle resolution.
--  `test_persistence_across_reopen` function L272-291 — `()` — be injected into the agent's `ToolContext` for handle resolution.
--  `test_secret_resolver_trait` function L294-303 — `()` — be injected into the agent's `ToolContext` for handle resolution.
--  `test_special_characters_in_values` function L306-311 — `()` — be injected into the agent's `ToolContext` for handle resolution.
--  `test_groq_key_roundtrip_exact` function L314-340 — `()` — be injected into the agent's `ToolContext` for handle resolution.
--  `test_all_backend_key_names_roundtrip` function L343-372 — `()` — be injected into the agent's `ToolContext` for handle resolution.
--  `test_key_no_trailing_newline` function L375-399 — `()` — be injected into the agent's `ToolContext` for handle resolution.
--  `test_debug_hides_values` function L402-409 — `()` — be injected into the agent's `ToolContext` for handle resolution.
+- pub `set` function L78-88 — `(&self, name: &str, value: &str) -> Result<(), SecretStoreError>` — Store a secret.
+- pub `delete` function L93-106 — `(&self, name: &str) -> Result<bool, SecretStoreError>` — Delete a secret.
+- pub `get` function L109-113 — `(&self, name: &str) -> Option<String>` — Get a secret value by name.
+- pub `list` function L116-121 — `(&self) -> Vec<String>` — List all secret names (never values).
+- pub `contains` function L124-130 — `(&self, name: &str) -> bool` — Check if a secret exists.
+- pub `SecretStoreError` enum L197-206 — `Io | Age | Format` — Errors from the secret store.
+-  `AgeSecretStore` type L34-173 — `= AgeSecretStore` — be injected into the agent's `ToolContext` for handle resolution.
+-  `flush` function L133-172 — `(&self) -> Result<(), SecretStoreError>` — Flush the in-memory cache to the encrypted file.
+-  `AgeSecretStore` type L175-183 — `impl SecretResolver for AgeSecretStore` — be injected into the agent's `ToolContext` for handle resolution.
+-  `resolve` function L176-178 — `(&self, name: &str) -> Option<String>` — be injected into the agent's `ToolContext` for handle resolution.
+-  `names` function L180-182 — `(&self) -> Vec<String>` — be injected into the agent's `ToolContext` for handle resolution.
+-  `AgeSecretStore` type L185-193 — `= AgeSecretStore` — be injected into the agent's `ToolContext` for handle resolution.
+-  `fmt` function L186-192 — `(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result` — be injected into the agent's `ToolContext` for handle resolution.
+-  `tests` module L209-414 — `-` — be injected into the agent's `ToolContext` for handle resolution.
+-  `setup` function L212-218 — `() -> (tempfile::TempDir, AgeSecretStore)` — be injected into the agent's `ToolContext` for handle resolution.
+-  `test_empty_store` function L221-226 — `()` — be injected into the agent's `ToolContext` for handle resolution.
+-  `test_set_and_get` function L229-236 — `()` — be injected into the agent's `ToolContext` for handle resolution.
+-  `test_set_overwrite` function L239-246 — `()` — be injected into the agent's `ToolContext` for handle resolution.
+-  `test_delete` function L249-260 — `()` — be injected into the agent's `ToolContext` for handle resolution.
+-  `test_multiple_secrets` function L263-273 — `()` — be injected into the agent's `ToolContext` for handle resolution.
+-  `test_persistence_across_reopen` function L276-295 — `()` — be injected into the agent's `ToolContext` for handle resolution.
+-  `test_secret_resolver_trait` function L298-307 — `()` — be injected into the agent's `ToolContext` for handle resolution.
+-  `test_special_characters_in_values` function L310-315 — `()` — be injected into the agent's `ToolContext` for handle resolution.
+-  `test_groq_key_roundtrip_exact` function L318-344 — `()` — be injected into the agent's `ToolContext` for handle resolution.
+-  `test_all_backend_key_names_roundtrip` function L347-376 — `()` — be injected into the agent's `ToolContext` for handle resolution.
+-  `test_key_no_trailing_newline` function L379-403 — `()` — be injected into the agent's `ToolContext` for handle resolution.
+-  `test_debug_hides_values` function L406-413 — `()` — be injected into the agent's `ToolContext` for handle resolution.
 
 #### crates/arawn-config/src/secrets.rs
 
-- pub `ResolvedSecret` struct L19-24 — `{ value: String, source: SecretSource }` — Result of API key resolution with provenance.
-- pub `SecretSource` enum L37-46 — `AgeStore | Keyring | EnvVar | ConfigFile` — Where a secret was resolved from.
-- pub `resolve_api_key` function L66-93 — `(backend: &Backend, config_value: Option<&str>) -> Option<ResolvedSecret>` — Resolve an API key for a backend using the full resolution chain.
-- pub `has_age_store_entry` function L96-98 — `(backend: &Backend) -> bool` — Check if the age store has a key for this backend.
-- pub `store_secret` function L108-111 — `(backend: &Backend, api_key: &str) -> std::result::Result<(), String>` — Store an API key in the age-encrypted secret store.
-- pub `store_named_secret` function L121-127 — `(name: &str, value: &str) -> std::result::Result<(), String>` — Store a named secret in the age-encrypted secret store.
-- pub `delete_secret` function L130-133 — `(backend: &Backend) -> std::result::Result<(), String>` — Delete an API key from the age-encrypted secret store.
-- pub `delete_named_secret` function L136-143 — `(name: &str) -> std::result::Result<(), String>` — Delete a named secret from the age-encrypted secret store.
-- pub `get_named_secret` function L146-150 — `(name: &str) -> std::result::Result<Option<String>, String>` — Retrieve a named secret from the age-encrypted store.
-- pub `list_secrets` function L163-167 — `() -> std::result::Result<Vec<String>, String>` — List all secret names in the age store.
-- pub `has_keyring_entry` function L170-172 — `(backend: &Backend) -> bool` — Check if an entry exists (age store or keyring).
-- pub `store_in_keyring` function L175-178 — `(backend: &Backend, api_key: &str) -> std::result::Result<(), String>` — Store an API key in the system keyring (legacy).
-- pub `delete_from_keyring` function L181-184 — `(backend: &Backend) -> std::result::Result<(), String>` — Delete an API key from the system keyring (legacy).
--  `ResolvedSecret` type L26-33 — `= ResolvedSecret` — as a legacy fallback but disabled by default.
--  `fmt` function L27-32 — `(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result` — as a legacy fallback but disabled by default.
--  `SecretSource` type L48-57 — `= SecretSource` — as a legacy fallback but disabled by default.
--  `fmt` function L49-56 — `(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result` — as a legacy fallback but disabled by default.
--  `age_store_name` function L193-195 — `(backend: &Backend) -> String` — The secret name used for backend API keys in the age store.
--  `get_from_age_store` function L197-218 — `(backend: &Backend) -> Option<ResolvedSecret>` — as a legacy fallback but disabled by default.
--  `KEYRING_SERVICE` variable L225 — `: &str` — Keyring service name (legacy).
--  `keyring_user` function L228-230 — `(backend: &Backend) -> String` — Keyring user name for a backend (legacy).
--  `get_from_keyring` function L233-248 — `(backend: &Backend) -> Option<ResolvedSecret>` — as a legacy fallback but disabled by default.
--  `store_keyring_entry` function L251-259 — `(service: &str, user: &str, secret: &str) -> std::result::Result<(), String>` — as a legacy fallback but disabled by default.
--  `delete_keyring_entry` function L262-270 — `(service: &str, user: &str) -> std::result::Result<(), String>` — as a legacy fallback but disabled by default.
--  `get_from_keyring` function L277-279 — `(_backend: &Backend) -> Option<ResolvedSecret>` — as a legacy fallback but disabled by default.
--  `store_keyring_entry` function L282-288 — `( _service: &str, _user: &str, _secret: &str, ) -> std::result::Result<(), Strin...` — as a legacy fallback but disabled by default.
--  `delete_keyring_entry` function L291-293 — `(_service: &str, _user: &str) -> std::result::Result<(), String>` — as a legacy fallback but disabled by default.
--  `tests` module L300-368 — `-` — as a legacy fallback but disabled by default.
--  `test_age_store_name_format` function L304-308 — `()` — as a legacy fallback but disabled by default.
--  `test_resolve_from_config_value` function L311-318 — `()` — as a legacy fallback but disabled by default.
--  `test_resolve_none_when_nothing_available` function L321-325 — `()` — as a legacy fallback but disabled by default.
--  `test_secret_source_display` function L328-339 — `()` — as a legacy fallback but disabled by default.
--  `test_has_keyring_entry_no_panic` function L342-344 — `()` — as a legacy fallback but disabled by default.
--  `test_store_keyring_disabled` function L348-352 — `()` — as a legacy fallback but disabled by default.
--  `test_resolved_secret_debug_redacts_value` function L355-367 — `()` — as a legacy fallback but disabled by default.
+- pub `ResolvedSecret` struct L12-17 — `{ value: String, source: SecretSource }` — Result of API key resolution with provenance.
+- pub `SecretSource` enum L30-35 — `AgeStore | EnvVar` — Where a secret was resolved from.
+- pub `resolve_api_key_ref` function L52-80 — `(ref_name: &str) -> Option<ResolvedSecret>` — Resolve an API key by reference name.
+- pub `store_named_secret` function L88-94 — `(name: &str, value: &str) -> std::result::Result<(), String>` — Store a named secret in the age-encrypted secret store.
+- pub `delete_named_secret` function L98-105 — `(name: &str) -> std::result::Result<(), String>` — Delete a named secret from the age-encrypted secret store.
+- pub `get_named_secret` function L109-113 — `(name: &str) -> std::result::Result<Option<String>, String>` — Retrieve a named secret from the age-encrypted store.
+- pub `list_secrets` function L116-120 — `() -> std::result::Result<Vec<String>, String>` — List all secret names in the age store.
+-  `ResolvedSecret` type L19-26 — `= ResolvedSecret` — 2.
+-  `fmt` function L20-25 — `(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result` — 2.
+-  `SecretSource` type L37-44 — `= SecretSource` — 2.
+-  `fmt` function L38-43 — `(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result` — 2.
+-  `tests` module L127-186 — `-` — 2.
+-  `test_resolve_from_env_var` function L131-143 — `()` — 2.
+-  `test_resolve_uppercases_env_var` function L146-155 — `()` — 2.
+-  `test_resolve_none_when_nothing_available` function L158-161 — `()` — 2.
+-  `test_secret_source_display` function L164-170 — `()` — 2.
+-  `test_resolved_secret_debug_redacts_value` function L173-185 — `()` — 2.
 
 #### crates/arawn-config/src/types.rs
 
@@ -3436,63 +3418,62 @@
 - pub `resolve_llm` function L226-243 — `(&self, agent_name: &str) -> crate::Result<&LlmConfig>` — Resolve the LLM config for a given agent name.
 - pub `llm_names` function L256-264 — `(&self) -> Vec<String>` — Get all defined LLM config names (including "default" for the bare [llm]).
 - pub `LlmConfig` struct L422-438 — `{ backend: Option<Backend>, model: Option<String>, base_url: Option<String>, api...` — Configuration for an LLM backend.
-- pub `has_plaintext_api_key` function L442-444 — `(&self) -> bool` — Returns true if an API key is stored directly in the config file.
-- pub `api_key_env_var` function L447-449 — `(&self) -> Option<&'static str>` — Get the environment variable name for this backend's API key.
-- pub `require_max_context_tokens` function L452-459 — `(&self) -> crate::Result<usize>` — Get the maximum context tokens, returning an error if not configured.
-- pub `Backend` enum L465-473 — `Anthropic | Openai | Groq | Ollama | Custom | ClaudeOauth` — Supported LLM backend providers.
-- pub `env_var` function L477-486 — `(&self) -> &'static str` — Environment variable name for this backend's API key.
-- pub `display_name` function L489-498 — `(&self) -> &'static str` — Human-readable name.
-- pub `AgentProfileConfig` struct L527-540 — `{ llm: Option<String>, name: Option<String>, description: Option<String>, system...` — Per-agent configuration.
-- pub `ServerConfig` struct L562-586 — `{ port: u16, bind: String, rate_limiting: bool, api_rpm: u32, request_logging: b...` — Server configuration.
-- pub `LoggingConfig` struct L611-614 — `{ interactions: InteractionLogConfig }` — Logging configuration section.
-- pub `InteractionLogConfig` struct L619-626 — `{ enabled: bool, path: Option<PathBuf>, retention_days: u32 }` — Settings for structured interaction logging (JSONL).
-- pub `EmbeddingConfig` struct L657-666 — `{ provider: EmbeddingProvider, dimensions: Option<usize>, openai: Option<Embeddi...` — Embedding provider configuration.
-- pub `effective_dimensions` function L681-696 — `(&self) -> usize` — Effective dimensions for the configured provider.
-- pub `EmbeddingProvider` enum L702-709 — `Local | OpenAi | Mock` — Supported embedding providers.
-- pub `EmbeddingOpenAiConfig` struct L714-723 — `{ model: String, dimensions: Option<usize>, base_url: Option<String>, api_key: O...` — OpenAI embedding provider settings.
-- pub `EmbeddingLocalConfig` struct L740-751 — `{ model_path: Option<PathBuf>, tokenizer_path: Option<PathBuf>, model_url: Optio...` — Local ONNX embedding settings.
-- pub `MemoryConfig` struct L768-778 — `{ database: Option<PathBuf>, recall: RecallConfig, indexing: IndexingConfig, con...` — Memory subsystem configuration.
-- pub `RecallConfig` struct L786-793 — `{ enabled: bool, threshold: f32, limit: usize }` — Configuration for active recall behavior.
-- pub `IndexingConfig` struct L817-839 — `{ enabled: bool, backend: String, model: String, ner_model_path: Option<String>,...` — Configuration for session indexing pipeline.
-- pub `ConfidenceConfig` struct L867-876 — `{ fresh_days: f32, staleness_days: f32, staleness_floor: f32, reinforcement_cap:...` — Configuration for confidence scoring parameters.
-- pub `DelegationConfig` struct L910-915 — `{ max_result_len: usize, compaction: CompactionConfig }` — Subagent delegation configuration.
-- pub `CompactionConfig` struct L933-945 — `{ enabled: bool, threshold: usize, backend: String, model: String, target_len: u...` — Configuration for LLM-based result compaction.
-- pub `PluginsConfig` struct L978-991 — `{ enabled: bool, dirs: Vec<PathBuf>, hot_reload: bool, auto_update: bool, subscr...` — Plugin system configuration.
-- pub `PluginSubscription` struct L1012-1030 — `{ source: PluginSource, repo: Option<String>, url: Option<String>, path: Option<...` — A plugin subscription defining where to fetch a plugin from.
-- pub `github` function L1038-1047 — `(repo: impl Into<String>) -> Self` — Create a GitHub subscription.
-- pub `url` function L1050-1059 — `(url: impl Into<String>) -> Self` — Create a URL subscription.
-- pub `local` function L1062-1071 — `(path: impl Into<PathBuf>) -> Self` — Create a local path subscription.
-- pub `with_ref` function L1074-1077 — `(mut self, git_ref: impl Into<String>) -> Self` — Set the git ref (branch, tag, or commit).
-- pub `effective_ref` function L1080-1082 — `(&self) -> &str` — Get the effective git ref, defaulting to "main".
-- pub `id` function L1087-1109 — `(&self) -> String` — Generate a unique identifier for this subscription.
-- pub `clone_url` function L1112-1121 — `(&self) -> Option<String>` — Get the clone URL for this subscription.
-- pub `PluginSource` enum L1136-1143 — `GitHub | Url | Local` — Source type for plugin subscriptions.
-- pub `PipelineSection` struct L1164-1183 — `{ enabled: bool, database: Option<PathBuf>, workflow_dir: Option<PathBuf>, max_c...` — Pipeline / workflow engine configuration.
-- pub `McpConfig` struct L1226-1232 — `{ enabled: bool, servers: Vec<McpServerEntry> }` — MCP (Model Context Protocol) configuration.
-- pub `McpTransportType` enum L1246-1252 — `Stdio | Http` — Transport type for MCP server connections.
-- pub `McpServerEntry` struct L1258-1285 — `{ name: String, transport: McpTransportType, command: String, url: Option<String...` — Configuration for a single MCP server.
-- pub `new` function L1289-1302 — `(name: impl Into<String>, command: impl Into<String>) -> Self` — Create a new MCP server entry for stdio transport.
-- pub `http` function L1305-1318 — `(name: impl Into<String>, url: impl Into<String>) -> Self` — Create a new MCP server entry for HTTP transport.
-- pub `with_arg` function L1321-1324 — `(mut self, arg: impl Into<String>) -> Self` — Add an argument (for stdio transport).
-- pub `with_args` function L1327-1330 — `(mut self, args: Vec<String>) -> Self` — Add arguments (for stdio transport).
-- pub `with_env` function L1333-1336 — `(mut self, key: impl Into<String>, value: impl Into<String>) -> Self` — Add an environment variable (for stdio transport).
-- pub `with_header` function L1339-1342 — `(mut self, key: impl Into<String>, value: impl Into<String>) -> Self` — Add an HTTP header (for HTTP transport).
-- pub `with_timeout_secs` function L1345-1348 — `(mut self, timeout: u64) -> Self` — Set request timeout in seconds (for HTTP transport).
-- pub `with_retries` function L1351-1354 — `(mut self, retries: u32) -> Self` — Set number of retries (for HTTP transport).
-- pub `with_enabled` function L1357-1360 — `(mut self, enabled: bool) -> Self` — Set enabled state.
-- pub `is_http` function L1363-1365 — `(&self) -> bool` — Check if this is an HTTP transport.
-- pub `is_stdio` function L1368-1370 — `(&self) -> bool` — Check if this is a stdio transport.
-- pub `env_tuples` function L1373-1378 — `(&self) -> Vec<(String, String)>` — Convert environment variables to the tuple format expected by McpServerConfig.
-- pub `header_tuples` function L1381-1386 — `(&self) -> Vec<(String, String)>` — Convert HTTP headers to the tuple format.
-- pub `WorkstreamConfig` struct L1398-1409 — `{ database: Option<PathBuf>, data_dir: Option<PathBuf>, session_timeout_minutes:...` — Configuration for workstreams (persistent conversation contexts).
-- pub `CompressionConfig` struct L1437-1449 — `{ enabled: bool, backend: String, model: String, max_summary_tokens: u32, token_...` — Configuration for automatic session/workstream compression.
-- pub `SessionConfig` struct L1479-1484 — `{ max_sessions: usize, cleanup_interval_secs: u64 }` — Session cache configuration.
-- pub `ToolsConfig` struct L1528-1535 — `{ output: ToolOutputConfig, shell: ShellToolConfig, web: WebToolConfig }` — Tool execution configuration.
-- pub `ToolOutputConfig` struct L1545-1557 — `{ max_size_bytes: usize, shell: Option<usize>, file_read: Option<usize>, web_fet...` — Tool output configuration.
-- pub `ShellToolConfig` struct L1574-1577 — `{ timeout_secs: u64 }` — Shell tool configuration.
-- pub `WebToolConfig` struct L1588-1591 — `{ timeout_secs: u64 }` — Web tool configuration.
-- pub `RlmTomlConfig` struct L1636-1651 — `{ model: Option<String>, max_turns: Option<u32>, max_context_tokens: Option<usiz...` — Configuration for the RLM (Recursive Language Model) exploration agent.
-- pub `OAuthConfigOverride` struct L1674-1685 — `{ client_id: Option<String>, authorize_url: Option<String>, token_url: Option<St...` — OAuth configuration overrides for the `[oauth]` TOML section.
+- pub `api_key_ref` function L442-444 — `(&self) -> Option<&str>` — Returns the configured API key reference name, if any.
+- pub `require_max_context_tokens` function L447-454 — `(&self) -> crate::Result<usize>` — Get the maximum context tokens, returning an error if not configured.
+- pub `Backend` enum L460-468 — `Anthropic | Openai | Groq | Ollama | Custom | ClaudeOauth` — Supported LLM backend providers.
+- pub `env_var` function L472-481 — `(&self) -> &'static str` — Environment variable name for this backend's API key.
+- pub `display_name` function L484-493 — `(&self) -> &'static str` — Human-readable name.
+- pub `AgentProfileConfig` struct L522-535 — `{ llm: Option<String>, name: Option<String>, description: Option<String>, system...` — Per-agent configuration.
+- pub `ServerConfig` struct L557-581 — `{ port: u16, bind: String, rate_limiting: bool, api_rpm: u32, request_logging: b...` — Server configuration.
+- pub `LoggingConfig` struct L606-609 — `{ interactions: InteractionLogConfig }` — Logging configuration section.
+- pub `InteractionLogConfig` struct L614-621 — `{ enabled: bool, path: Option<PathBuf>, retention_days: u32 }` — Settings for structured interaction logging (JSONL).
+- pub `EmbeddingConfig` struct L652-661 — `{ provider: EmbeddingProvider, dimensions: Option<usize>, openai: Option<Embeddi...` — Embedding provider configuration.
+- pub `effective_dimensions` function L676-691 — `(&self) -> usize` — Effective dimensions for the configured provider.
+- pub `EmbeddingProvider` enum L697-704 — `Local | OpenAi | Mock` — Supported embedding providers.
+- pub `EmbeddingOpenAiConfig` struct L709-718 — `{ model: String, dimensions: Option<usize>, base_url: Option<String>, api_key_re...` — OpenAI embedding provider settings.
+- pub `EmbeddingLocalConfig` struct L735-746 — `{ model_path: Option<PathBuf>, tokenizer_path: Option<PathBuf>, model_url: Optio...` — Local ONNX embedding settings.
+- pub `MemoryConfig` struct L763-773 — `{ database: Option<PathBuf>, recall: RecallConfig, indexing: IndexingConfig, con...` — Memory subsystem configuration.
+- pub `RecallConfig` struct L781-788 — `{ enabled: bool, threshold: f32, limit: usize }` — Configuration for active recall behavior.
+- pub `IndexingConfig` struct L812-834 — `{ enabled: bool, backend: String, model: String, ner_model_path: Option<String>,...` — Configuration for session indexing pipeline.
+- pub `ConfidenceConfig` struct L862-871 — `{ fresh_days: f32, staleness_days: f32, staleness_floor: f32, reinforcement_cap:...` — Configuration for confidence scoring parameters.
+- pub `DelegationConfig` struct L905-910 — `{ max_result_len: usize, compaction: CompactionConfig }` — Subagent delegation configuration.
+- pub `CompactionConfig` struct L928-940 — `{ enabled: bool, threshold: usize, backend: String, model: String, target_len: u...` — Configuration for LLM-based result compaction.
+- pub `PluginsConfig` struct L973-986 — `{ enabled: bool, dirs: Vec<PathBuf>, hot_reload: bool, auto_update: bool, subscr...` — Plugin system configuration.
+- pub `PluginSubscription` struct L1007-1025 — `{ source: PluginSource, repo: Option<String>, url: Option<String>, path: Option<...` — A plugin subscription defining where to fetch a plugin from.
+- pub `github` function L1033-1042 — `(repo: impl Into<String>) -> Self` — Create a GitHub subscription.
+- pub `url` function L1045-1054 — `(url: impl Into<String>) -> Self` — Create a URL subscription.
+- pub `local` function L1057-1066 — `(path: impl Into<PathBuf>) -> Self` — Create a local path subscription.
+- pub `with_ref` function L1069-1072 — `(mut self, git_ref: impl Into<String>) -> Self` — Set the git ref (branch, tag, or commit).
+- pub `effective_ref` function L1075-1077 — `(&self) -> &str` — Get the effective git ref, defaulting to "main".
+- pub `id` function L1082-1104 — `(&self) -> String` — Generate a unique identifier for this subscription.
+- pub `clone_url` function L1107-1116 — `(&self) -> Option<String>` — Get the clone URL for this subscription.
+- pub `PluginSource` enum L1131-1138 — `GitHub | Url | Local` — Source type for plugin subscriptions.
+- pub `PipelineSection` struct L1159-1178 — `{ enabled: bool, database: Option<PathBuf>, workflow_dir: Option<PathBuf>, max_c...` — Pipeline / workflow engine configuration.
+- pub `McpConfig` struct L1221-1227 — `{ enabled: bool, servers: Vec<McpServerEntry> }` — MCP (Model Context Protocol) configuration.
+- pub `McpTransportType` enum L1241-1247 — `Stdio | Http` — Transport type for MCP server connections.
+- pub `McpServerEntry` struct L1253-1280 — `{ name: String, transport: McpTransportType, command: String, url: Option<String...` — Configuration for a single MCP server.
+- pub `new` function L1284-1297 — `(name: impl Into<String>, command: impl Into<String>) -> Self` — Create a new MCP server entry for stdio transport.
+- pub `http` function L1300-1313 — `(name: impl Into<String>, url: impl Into<String>) -> Self` — Create a new MCP server entry for HTTP transport.
+- pub `with_arg` function L1316-1319 — `(mut self, arg: impl Into<String>) -> Self` — Add an argument (for stdio transport).
+- pub `with_args` function L1322-1325 — `(mut self, args: Vec<String>) -> Self` — Add arguments (for stdio transport).
+- pub `with_env` function L1328-1331 — `(mut self, key: impl Into<String>, value: impl Into<String>) -> Self` — Add an environment variable (for stdio transport).
+- pub `with_header` function L1334-1337 — `(mut self, key: impl Into<String>, value: impl Into<String>) -> Self` — Add an HTTP header (for HTTP transport).
+- pub `with_timeout_secs` function L1340-1343 — `(mut self, timeout: u64) -> Self` — Set request timeout in seconds (for HTTP transport).
+- pub `with_retries` function L1346-1349 — `(mut self, retries: u32) -> Self` — Set number of retries (for HTTP transport).
+- pub `with_enabled` function L1352-1355 — `(mut self, enabled: bool) -> Self` — Set enabled state.
+- pub `is_http` function L1358-1360 — `(&self) -> bool` — Check if this is an HTTP transport.
+- pub `is_stdio` function L1363-1365 — `(&self) -> bool` — Check if this is a stdio transport.
+- pub `env_tuples` function L1368-1373 — `(&self) -> Vec<(String, String)>` — Convert environment variables to the tuple format expected by McpServerConfig.
+- pub `header_tuples` function L1376-1381 — `(&self) -> Vec<(String, String)>` — Convert HTTP headers to the tuple format.
+- pub `WorkstreamConfig` struct L1393-1404 — `{ database: Option<PathBuf>, data_dir: Option<PathBuf>, session_timeout_minutes:...` — Configuration for workstreams (persistent conversation contexts).
+- pub `CompressionConfig` struct L1432-1444 — `{ enabled: bool, backend: String, model: String, max_summary_tokens: u32, token_...` — Configuration for automatic session/workstream compression.
+- pub `SessionConfig` struct L1474-1479 — `{ max_sessions: usize, cleanup_interval_secs: u64 }` — Session cache configuration.
+- pub `ToolsConfig` struct L1523-1530 — `{ output: ToolOutputConfig, shell: ShellToolConfig, web: WebToolConfig }` — Tool execution configuration.
+- pub `ToolOutputConfig` struct L1540-1552 — `{ max_size_bytes: usize, shell: Option<usize>, file_read: Option<usize>, web_fet...` — Tool output configuration.
+- pub `ShellToolConfig` struct L1569-1572 — `{ timeout_secs: u64 }` — Shell tool configuration.
+- pub `WebToolConfig` struct L1583-1586 — `{ timeout_secs: u64 }` — Web tool configuration.
+- pub `RlmTomlConfig` struct L1631-1646 — `{ model: Option<String>, max_turns: Option<u32>, max_context_tokens: Option<usiz...` — Configuration for the RLM (Recursive Language Model) exploration agent.
+- pub `OAuthConfigOverride` struct L1669-1680 — `{ client_id: Option<String>, authorize_url: Option<String>, token_url: Option<St...` — OAuth configuration overrides for the `[oauth]` TOML section.
 -  `ArawnConfig` type L83-265 — `= ArawnConfig` — ```
 -  `lookup_llm` function L246-253 — `(&'a self, name: &str, context: &str) -> crate::Result<&'a LlmConfig>` — Look up a named LLM config.
 -  `RawConfig` struct L277-295 — `{ llm: Option<RawLlmSection>, agent: HashMap<String, AgentProfileConfig>, server...` — Internal raw config matching the actual TOML layout.
@@ -3501,141 +3482,141 @@
 -  `from` function L322-362 — `(raw: RawConfig) -> Self` — ```
 -  `RawConfig` type L365-402 — `= RawConfig` — ```
 -  `from` function L366-401 — `(config: ArawnConfig) -> Self` — ```
--  `LlmConfig` type L440-460 — `= LlmConfig` — ```
--  `Backend` type L475-499 — `= Backend` — ```
--  `Backend` type L501-505 — `= Backend` — ```
--  `fmt` function L502-504 — `(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result` — ```
--  `ServerConfig` type L588-602 — `impl Default for ServerConfig` — ```
--  `default` function L589-601 — `() -> Self` — ```
--  `InteractionLogConfig` type L628-636 — `impl Default for InteractionLogConfig` — ```
--  `default` function L629-635 — `() -> Self` — ```
--  `EmbeddingConfig` type L668-677 — `impl Default for EmbeddingConfig` — ```
--  `default` function L669-676 — `() -> Self` — ```
--  `EmbeddingConfig` type L679-697 — `= EmbeddingConfig` — ```
--  `EmbeddingOpenAiConfig` type L725-734 — `impl Default for EmbeddingOpenAiConfig` — ```
--  `default` function L726-733 — `() -> Self` — ```
--  `RecallConfig` type L795-803 — `impl Default for RecallConfig` — ```
--  `default` function L796-802 — `() -> Self` — ```
--  `IndexingConfig` type L841-854 — `impl Default for IndexingConfig` — ```
--  `default` function L842-853 — `() -> Self` — ```
--  `ConfidenceConfig` type L878-887 — `impl Default for ConfidenceConfig` — ```
--  `default` function L879-886 — `() -> Self` — ```
--  `DelegationConfig` type L917-924 — `impl Default for DelegationConfig` — ```
--  `default` function L918-923 — `() -> Self` — ```
--  `CompactionConfig` type L947-957 — `impl Default for CompactionConfig` — ```
--  `default` function L948-956 — `() -> Self` — ```
--  `PluginsConfig` type L993-1003 — `impl Default for PluginsConfig` — ```
--  `default` function L994-1002 — `() -> Self` — ```
--  `default_enabled` function L1032-1034 — `() -> bool` — ```
--  `PluginSubscription` type L1036-1122 — `= PluginSubscription` — ```
--  `simple_hash` function L1125-1131 — `(s: &str) -> u64` — Simple hash function for generating stable identifiers.
--  `PipelineSection` type L1185-1198 — `impl Default for PipelineSection` — ```
--  `default` function L1186-1197 — `() -> Self` — ```
--  `McpConfig` type L1234-1241 — `impl Default for McpConfig` — ```
--  `default` function L1235-1240 — `() -> Self` — ```
--  `McpServerEntry` type L1287-1387 — `= McpServerEntry` — ```
--  `WorkstreamConfig` type L1411-1420 — `impl Default for WorkstreamConfig` — ```
--  `default` function L1412-1419 — `() -> Self` — ```
--  `CompressionConfig` type L1451-1461 — `impl Default for CompressionConfig` — ```
--  `default` function L1452-1460 — `() -> Self` — ```
--  `SessionConfig` type L1486-1493 — `impl Default for SessionConfig` — ```
--  `default` function L1487-1492 — `() -> Self` — ```
--  `SessionConfig` type L1495 — `= SessionConfig` — ```
--  `SessionConfig` type L1497-1505 — `= SessionConfig` — ```
--  `max_sessions` function L1498-1500 — `(&self) -> usize` — ```
--  `cleanup_interval` function L1502-1504 — `(&self) -> std::time::Duration` — ```
--  `ToolOutputConfig` type L1559-1569 — `impl Default for ToolOutputConfig` — ```
--  `default` function L1560-1568 — `() -> Self` — ```
--  `ShellToolConfig` type L1579-1583 — `impl Default for ShellToolConfig` — ```
--  `default` function L1580-1582 — `() -> Self` — ```
--  `WebToolConfig` type L1593-1597 — `impl Default for WebToolConfig` — ```
--  `default` function L1594-1596 — `() -> Self` — ```
--  `ToolsConfig` type L1599 — `= ToolsConfig` — ```
--  `ToolsConfig` type L1601-1613 — `= ToolsConfig` — ```
--  `shell_timeout` function L1602-1604 — `(&self) -> std::time::Duration` — ```
--  `web_timeout` function L1606-1608 — `(&self) -> std::time::Duration` — ```
--  `max_output_bytes` function L1610-1612 — `(&self) -> usize` — ```
--  `tests` module L1692-3142 — `-` — ```
--  `test_empty_config` function L1696-1702 — `()` — ```
--  `test_parse_minimal` function L1705-1715 — `()` — ```
--  `test_parse_named_profiles` function L1718-1742 — `()` — ```
--  `test_parse_agents` function L1745-1768 — `()` — ```
--  `test_resolve_llm_agent_specific` function L1771-1787 — `()` — ```
--  `test_resolve_llm_agent_default` function L1790-1807 — `()` — ```
--  `test_resolve_llm_global_default` function L1810-1819 — `()` — ```
--  `test_resolve_llm_no_default` function L1822-1826 — `()` — ```
--  `test_resolve_llm_missing_reference` function L1829-1841 — `()` — ```
--  `test_merge_override` function L1844-1869 — `()` — ```
--  `test_merge_adds_profiles` function L1872-1896 — `()` — ```
--  `test_server_defaults` function L1899-1908 — `()` — ```
--  `test_backend_env_var` function L1911-1915 — `()` — ```
--  `test_plaintext_api_key_warning` function L1918-1927 — `()` — ```
--  `test_llm_names` function L1930-1947 — `()` — ```
--  `test_parse_full_example` function L1950-2010 — `()` — ```
--  `test_roundtrip_toml` function L2013-2029 — `()` — ```
--  `test_embedding_defaults` function L2034-2038 — `()` — ```
--  `test_embedding_explicit_dimensions` function L2041-2048 — `()` — ```
--  `test_embedding_openai_default_dimensions` function L2051-2059 — `()` — ```
--  `test_embedding_openai_provider_dimensions` function L2062-2073 — `()` — ```
--  `test_parse_embedding_config` function L2076-2094 — `()` — ```
--  `test_parse_embedding_local_default` function L2097-2106 — `()` — ```
--  `test_no_embedding_section_uses_default` function L2109-2120 — `()` — ```
--  `test_merge_embedding_override` function L2123-2140 — `()` — ```
--  `test_pipeline_defaults` function L2145-2153 — `()` — ```
--  `test_parse_pipeline_config` function L2156-2181 — `()` — ```
--  `test_parse_pipeline_disabled` function L2184-2192 — `()` — ```
--  `test_no_pipeline_section_uses_default` function L2195-2205 — `()` — ```
--  `test_recall_defaults` function L2210-2215 — `()` — ```
--  `test_parse_recall_config` function L2218-2230 — `()` — ```
--  `test_no_memory_section_uses_default` function L2233-2245 — `()` — ```
--  `test_merge_memory_override` function L2248-2269 — `()` — ```
--  `test_memory_indexing_defaults` function L2272-2281 — `()` — ```
--  `test_memory_confidence_defaults` function L2284-2294 — `()` — ```
--  `test_memory_indexing_override` function L2297-2309 — `()` — ```
--  `test_memory_confidence_override` function L2312-2326 — `()` — ```
--  `test_memory_partial_sections` function L2329-2342 — `()` — ```
--  `test_merge_memory_with_indexing` function L2345-2364 — `()` — ```
--  `test_merge_pipeline_override` function L2367-2386 — `()` — ```
--  `test_plugins_defaults` function L2391-2398 — `()` — ```
--  `test_plugin_subscription_github` function L2401-2407 — `()` — ```
--  `test_plugin_subscription_url` function L2410-2417 — `()` — ```
--  `test_plugin_subscription_local` function L2420-2427 — `()` — ```
--  `test_plugin_subscription_with_ref` function L2430-2434 — `()` — ```
--  `test_plugin_subscription_id` function L2437-2446 — `()` — ```
--  `test_plugin_subscription_clone_url` function L2449-2464 — `()` — ```
--  `test_parse_plugin_subscriptions` function L2467-2517 — `()` — ```
--  `test_parse_plugins_no_subscriptions` function L2520-2529 — `()` — ```
--  `test_delegation_defaults` function L2534-2542 — `()` — ```
--  `test_compaction_defaults` function L2545-2552 — `()` — ```
--  `test_parse_delegation_config` function L2555-2575 — `()` — ```
--  `test_parse_delegation_compaction_disabled` function L2578-2593 — `()` — ```
--  `test_no_delegation_section_uses_default` function L2596-2607 — `()` — ```
--  `test_merge_delegation_override` function L2610-2637 — `()` — ```
--  `test_mcp_defaults` function L2642-2646 — `()` — ```
--  `test_mcp_server_entry_new` function L2649-2656 — `()` — ```
--  `test_mcp_server_entry_builder` function L2659-2668 — `()` — ```
--  `test_mcp_server_entry_env_tuples` function L2671-2683 — `()` — ```
--  `test_parse_mcp_config` function L2686-2720 — `()` — ```
--  `test_parse_mcp_disabled` function L2723-2732 — `()` — ```
--  `test_no_mcp_section_uses_default` function L2735-2746 — `()` — ```
--  `test_merge_mcp_override` function L2749-2775 — `()` — ```
--  `test_model_config_parses_max_context_tokens` function L2780-2790 — `()` — ```
--  `test_model_config_context_tokens_in_profile` function L2793-2812 — `()` — ```
--  `test_require_max_context_tokens_success` function L2815-2822 — `()` — ```
--  `test_require_max_context_tokens_error` function L2825-2836 — `()` — ```
--  `test_model_context_roundtrip` function L2839-2853 — `()` — ```
--  `test_parse_paths_config` function L2858-2891 — `()` — ```
--  `test_no_paths_section_uses_default` function L2894-2906 — `()` — ```
--  `test_merge_paths_override` function L2909-2934 — `()` — ```
--  `test_paths_roundtrip` function L2937-2968 — `()` — ```
--  `test_tool_output_config_per_tool_fields` function L2971-2987 — `()` — ```
--  `test_tool_output_config_defaults_none` function L2990-3002 — `()` — ```
--  `test_rlm_config_deserialization` function L3005-3028 — `()` — ```
--  `test_rlm_config_defaults` function L3031-3044 — `()` — ```
--  `test_rlm_config_partial` function L3047-3059 — `()` — ```
--  `test_rlm_config_absent` function L3062-3065 — `()` — ```
--  `test_rlm_config_merge` function L3068-3089 — `()` — ```
--  `prop_tests` module L3093-3141 — `-` — ```
+-  `LlmConfig` type L440-455 — `= LlmConfig` — ```
+-  `Backend` type L470-494 — `= Backend` — ```
+-  `Backend` type L496-500 — `= Backend` — ```
+-  `fmt` function L497-499 — `(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result` — ```
+-  `ServerConfig` type L583-597 — `impl Default for ServerConfig` — ```
+-  `default` function L584-596 — `() -> Self` — ```
+-  `InteractionLogConfig` type L623-631 — `impl Default for InteractionLogConfig` — ```
+-  `default` function L624-630 — `() -> Self` — ```
+-  `EmbeddingConfig` type L663-672 — `impl Default for EmbeddingConfig` — ```
+-  `default` function L664-671 — `() -> Self` — ```
+-  `EmbeddingConfig` type L674-692 — `= EmbeddingConfig` — ```
+-  `EmbeddingOpenAiConfig` type L720-729 — `impl Default for EmbeddingOpenAiConfig` — ```
+-  `default` function L721-728 — `() -> Self` — ```
+-  `RecallConfig` type L790-798 — `impl Default for RecallConfig` — ```
+-  `default` function L791-797 — `() -> Self` — ```
+-  `IndexingConfig` type L836-849 — `impl Default for IndexingConfig` — ```
+-  `default` function L837-848 — `() -> Self` — ```
+-  `ConfidenceConfig` type L873-882 — `impl Default for ConfidenceConfig` — ```
+-  `default` function L874-881 — `() -> Self` — ```
+-  `DelegationConfig` type L912-919 — `impl Default for DelegationConfig` — ```
+-  `default` function L913-918 — `() -> Self` — ```
+-  `CompactionConfig` type L942-952 — `impl Default for CompactionConfig` — ```
+-  `default` function L943-951 — `() -> Self` — ```
+-  `PluginsConfig` type L988-998 — `impl Default for PluginsConfig` — ```
+-  `default` function L989-997 — `() -> Self` — ```
+-  `default_enabled` function L1027-1029 — `() -> bool` — ```
+-  `PluginSubscription` type L1031-1117 — `= PluginSubscription` — ```
+-  `simple_hash` function L1120-1126 — `(s: &str) -> u64` — Simple hash function for generating stable identifiers.
+-  `PipelineSection` type L1180-1193 — `impl Default for PipelineSection` — ```
+-  `default` function L1181-1192 — `() -> Self` — ```
+-  `McpConfig` type L1229-1236 — `impl Default for McpConfig` — ```
+-  `default` function L1230-1235 — `() -> Self` — ```
+-  `McpServerEntry` type L1282-1382 — `= McpServerEntry` — ```
+-  `WorkstreamConfig` type L1406-1415 — `impl Default for WorkstreamConfig` — ```
+-  `default` function L1407-1414 — `() -> Self` — ```
+-  `CompressionConfig` type L1446-1456 — `impl Default for CompressionConfig` — ```
+-  `default` function L1447-1455 — `() -> Self` — ```
+-  `SessionConfig` type L1481-1488 — `impl Default for SessionConfig` — ```
+-  `default` function L1482-1487 — `() -> Self` — ```
+-  `SessionConfig` type L1490 — `= SessionConfig` — ```
+-  `SessionConfig` type L1492-1500 — `= SessionConfig` — ```
+-  `max_sessions` function L1493-1495 — `(&self) -> usize` — ```
+-  `cleanup_interval` function L1497-1499 — `(&self) -> std::time::Duration` — ```
+-  `ToolOutputConfig` type L1554-1564 — `impl Default for ToolOutputConfig` — ```
+-  `default` function L1555-1563 — `() -> Self` — ```
+-  `ShellToolConfig` type L1574-1578 — `impl Default for ShellToolConfig` — ```
+-  `default` function L1575-1577 — `() -> Self` — ```
+-  `WebToolConfig` type L1588-1592 — `impl Default for WebToolConfig` — ```
+-  `default` function L1589-1591 — `() -> Self` — ```
+-  `ToolsConfig` type L1594 — `= ToolsConfig` — ```
+-  `ToolsConfig` type L1596-1608 — `= ToolsConfig` — ```
+-  `shell_timeout` function L1597-1599 — `(&self) -> std::time::Duration` — ```
+-  `web_timeout` function L1601-1603 — `(&self) -> std::time::Duration` — ```
+-  `max_output_bytes` function L1605-1607 — `(&self) -> usize` — ```
+-  `tests` module L1687-3140 — `-` — ```
+-  `test_empty_config` function L1691-1697 — `()` — ```
+-  `test_parse_minimal` function L1700-1710 — `()` — ```
+-  `test_parse_named_profiles` function L1713-1737 — `()` — ```
+-  `test_parse_agents` function L1740-1763 — `()` — ```
+-  `test_resolve_llm_agent_specific` function L1766-1782 — `()` — ```
+-  `test_resolve_llm_agent_default` function L1785-1802 — `()` — ```
+-  `test_resolve_llm_global_default` function L1805-1814 — `()` — ```
+-  `test_resolve_llm_no_default` function L1817-1821 — `()` — ```
+-  `test_resolve_llm_missing_reference` function L1824-1836 — `()` — ```
+-  `test_merge_override` function L1839-1864 — `()` — ```
+-  `test_merge_adds_profiles` function L1867-1891 — `()` — ```
+-  `test_server_defaults` function L1894-1903 — `()` — ```
+-  `test_backend_env_var` function L1906-1910 — `()` — ```
+-  `test_api_key_ref_parsed` function L1913-1925 — `()` — ```
+-  `test_llm_names` function L1928-1945 — `()` — ```
+-  `test_parse_full_example` function L1948-2008 — `()` — ```
+-  `test_roundtrip_toml` function L2011-2027 — `()` — ```
+-  `test_embedding_defaults` function L2032-2036 — `()` — ```
+-  `test_embedding_explicit_dimensions` function L2039-2046 — `()` — ```
+-  `test_embedding_openai_default_dimensions` function L2049-2057 — `()` — ```
+-  `test_embedding_openai_provider_dimensions` function L2060-2071 — `()` — ```
+-  `test_parse_embedding_config` function L2074-2092 — `()` — ```
+-  `test_parse_embedding_local_default` function L2095-2104 — `()` — ```
+-  `test_no_embedding_section_uses_default` function L2107-2118 — `()` — ```
+-  `test_merge_embedding_override` function L2121-2138 — `()` — ```
+-  `test_pipeline_defaults` function L2143-2151 — `()` — ```
+-  `test_parse_pipeline_config` function L2154-2179 — `()` — ```
+-  `test_parse_pipeline_disabled` function L2182-2190 — `()` — ```
+-  `test_no_pipeline_section_uses_default` function L2193-2203 — `()` — ```
+-  `test_recall_defaults` function L2208-2213 — `()` — ```
+-  `test_parse_recall_config` function L2216-2228 — `()` — ```
+-  `test_no_memory_section_uses_default` function L2231-2243 — `()` — ```
+-  `test_merge_memory_override` function L2246-2267 — `()` — ```
+-  `test_memory_indexing_defaults` function L2270-2279 — `()` — ```
+-  `test_memory_confidence_defaults` function L2282-2292 — `()` — ```
+-  `test_memory_indexing_override` function L2295-2307 — `()` — ```
+-  `test_memory_confidence_override` function L2310-2324 — `()` — ```
+-  `test_memory_partial_sections` function L2327-2340 — `()` — ```
+-  `test_merge_memory_with_indexing` function L2343-2362 — `()` — ```
+-  `test_merge_pipeline_override` function L2365-2384 — `()` — ```
+-  `test_plugins_defaults` function L2389-2396 — `()` — ```
+-  `test_plugin_subscription_github` function L2399-2405 — `()` — ```
+-  `test_plugin_subscription_url` function L2408-2415 — `()` — ```
+-  `test_plugin_subscription_local` function L2418-2425 — `()` — ```
+-  `test_plugin_subscription_with_ref` function L2428-2432 — `()` — ```
+-  `test_plugin_subscription_id` function L2435-2444 — `()` — ```
+-  `test_plugin_subscription_clone_url` function L2447-2462 — `()` — ```
+-  `test_parse_plugin_subscriptions` function L2465-2515 — `()` — ```
+-  `test_parse_plugins_no_subscriptions` function L2518-2527 — `()` — ```
+-  `test_delegation_defaults` function L2532-2540 — `()` — ```
+-  `test_compaction_defaults` function L2543-2550 — `()` — ```
+-  `test_parse_delegation_config` function L2553-2573 — `()` — ```
+-  `test_parse_delegation_compaction_disabled` function L2576-2591 — `()` — ```
+-  `test_no_delegation_section_uses_default` function L2594-2605 — `()` — ```
+-  `test_merge_delegation_override` function L2608-2635 — `()` — ```
+-  `test_mcp_defaults` function L2640-2644 — `()` — ```
+-  `test_mcp_server_entry_new` function L2647-2654 — `()` — ```
+-  `test_mcp_server_entry_builder` function L2657-2666 — `()` — ```
+-  `test_mcp_server_entry_env_tuples` function L2669-2681 — `()` — ```
+-  `test_parse_mcp_config` function L2684-2718 — `()` — ```
+-  `test_parse_mcp_disabled` function L2721-2730 — `()` — ```
+-  `test_no_mcp_section_uses_default` function L2733-2744 — `()` — ```
+-  `test_merge_mcp_override` function L2747-2773 — `()` — ```
+-  `test_model_config_parses_max_context_tokens` function L2778-2788 — `()` — ```
+-  `test_model_config_context_tokens_in_profile` function L2791-2810 — `()` — ```
+-  `test_require_max_context_tokens_success` function L2813-2820 — `()` — ```
+-  `test_require_max_context_tokens_error` function L2823-2834 — `()` — ```
+-  `test_model_context_roundtrip` function L2837-2851 — `()` — ```
+-  `test_parse_paths_config` function L2856-2889 — `()` — ```
+-  `test_no_paths_section_uses_default` function L2892-2904 — `()` — ```
+-  `test_merge_paths_override` function L2907-2932 — `()` — ```
+-  `test_paths_roundtrip` function L2935-2966 — `()` — ```
+-  `test_tool_output_config_per_tool_fields` function L2969-2985 — `()` — ```
+-  `test_tool_output_config_defaults_none` function L2988-3000 — `()` — ```
+-  `test_rlm_config_deserialization` function L3003-3026 — `()` — ```
+-  `test_rlm_config_defaults` function L3029-3042 — `()` — ```
+-  `test_rlm_config_partial` function L3045-3057 — `()` — ```
+-  `test_rlm_config_absent` function L3060-3063 — `()` — ```
+-  `test_rlm_config_merge` function L3066-3087 — `()` — ```
+-  `prop_tests` module L3091-3139 — `-` — ```
 
 ### crates/arawn-domain/src
 
