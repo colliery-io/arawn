@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-03-26T17:05:30Z | 375 files | Rust
+> Generated: 2026-03-26T18:18:25Z | 375 files | Rust
 
 ## Project Structure
 
@@ -1696,120 +1696,134 @@
 
 #### crates/arawn-agent/src/tool/context.rs
 
-- pub `Tool` interface L24-45 — `{ fn name(), fn description(), fn parameters(), fn execute() }` — Trait for agent tools.
-- pub `OutputSender` type L52 — `= tokio::sync::mpsc::UnboundedSender<String>` — Sender for streaming tool output chunks.
-- pub `ToolContext` struct L67-82 — `{ session_id: SessionId, turn_id: TurnId, cancellation: CancellationToken, outpu...` — Context provided to tools during execution.
-- pub `new` function L101-111 — `(session_id: SessionId, turn_id: TurnId) -> Self` — Create a new tool context.
-- pub `with_cancellation` function L114-128 — `( session_id: SessionId, turn_id: TurnId, cancellation: CancellationToken, ) -> ...` — Create a context with a cancellation token.
-- pub `with_fs_gate` function L131-134 — `(mut self, gate: SharedFsGate) -> Self` — Set the filesystem gate for workstream sandbox enforcement.
-- pub `with_secret_resolver` function L137-140 — `(mut self, resolver: SharedSecretResolver) -> Self` — Set the secret resolver for `${{secrets.*}}` handle resolution.
-- pub `with_streaming` function L143-147 — `(mut self, sender: OutputSender, tool_call_id: impl Into<String>) -> Self` — Add streaming output support to this context.
-- pub `is_cancelled` function L150-152 — `(&self) -> bool` — Check if execution has been cancelled.
-- pub `is_streaming` function L155-157 — `(&self) -> bool` — Check if streaming output is enabled.
-- pub `send_output` function L161-167 — `(&self, content: impl Into<String>) -> bool` — Send streaming output chunk.
-- pub `ToolResult` enum L203-221 — `Text | Json | Error` — Result of a tool execution.
-- pub `text` function L225-229 — `(content: impl Into<String>) -> Self` — Create a text result.
-- pub `json` function L232-234 — `(content: serde_json::Value) -> Self` — Create a JSON result.
-- pub `error` function L237-242 — `(message: impl Into<String>) -> Self` — Create a recoverable error result.
-- pub `fatal_error` function L245-250 — `(message: impl Into<String>) -> Self` — Create a non-recoverable error result.
-- pub `is_error` function L253-255 — `(&self) -> bool` — Check if this result is an error.
-- pub `is_success` function L258-260 — `(&self) -> bool` — Check if this result is successful.
-- pub `to_llm_content` function L263-271 — `(&self) -> String` — Get the content as a string for LLM consumption.
-- pub `sanitize` function L282-341 — `(self, config: &OutputConfig) -> Self` — Sanitize this result according to the given configuration.
-- pub `sanitize_default` function L344-346 — `(self) -> Self` — Sanitize this result with default configuration.
-- pub `was_truncated` function L349-355 — `(&self) -> bool` — Check if this result was truncated (looks for truncation indicator).
-- pub `content_size` function L358-364 — `(&self) -> usize` — Get the size of the content in bytes.
--  `ToolContext` type L84-97 — `= ToolContext` — Core tool types: the Tool trait, ToolContext, and ToolResult.
--  `fmt` function L85-96 — `(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result` — Core tool types: the Tool trait, ToolContext, and ToolResult.
--  `ToolContext` type L99-168 — `= ToolContext` — Core tool types: the Tool trait, ToolContext, and ToolResult.
--  `ToolContext` type L170-182 — `impl Default for ToolContext` — Core tool types: the Tool trait, ToolContext, and ToolResult.
--  `default` function L171-181 — `() -> Self` — Core tool types: the Tool trait, ToolContext, and ToolResult.
--  `ToolResult` type L223-365 — `= ToolResult` — Core tool types: the Tool trait, ToolContext, and ToolResult.
--  `tests` module L368-582 — `-` — Core tool types: the Tool trait, ToolContext, and ToolResult.
--  `test_tool_result_text` function L372-377 — `()` — Core tool types: the Tool trait, ToolContext, and ToolResult.
--  `test_tool_result_json` function L380-386 — `()` — Core tool types: the Tool trait, ToolContext, and ToolResult.
--  `test_tool_result_error` function L389-394 — `()` — Core tool types: the Tool trait, ToolContext, and ToolResult.
--  `test_tool_result_serialization` function L397-402 — `()` — Core tool types: the Tool trait, ToolContext, and ToolResult.
--  `test_tool_context` function L405-414 — `()` — Core tool types: the Tool trait, ToolContext, and ToolResult.
--  `test_tool_result_sanitize_text` function L417-427 — `()` — Core tool types: the Tool trait, ToolContext, and ToolResult.
--  `test_tool_result_sanitize_text_truncated` function L430-435 — `()` — Core tool types: the Tool trait, ToolContext, and ToolResult.
--  `test_tool_result_sanitize_json` function L438-448 — `()` — Core tool types: the Tool trait, ToolContext, and ToolResult.
--  `test_tool_result_sanitize_json_truncated_becomes_text` function L451-460 — `()` — Core tool types: the Tool trait, ToolContext, and ToolResult.
--  `test_tool_result_sanitize_error` function L463-473 — `()` — Core tool types: the Tool trait, ToolContext, and ToolResult.
--  `test_tool_result_sanitize_binary_becomes_error` function L476-483 — `()` — Core tool types: the Tool trait, ToolContext, and ToolResult.
--  `test_tool_result_content_size` function L486-495 — `()` — Core tool types: the Tool trait, ToolContext, and ToolResult.
--  `test_tool_result_sanitize_default` function L498-507 — `()` — Core tool types: the Tool trait, ToolContext, and ToolResult.
--  `test_tool_context_new` function L510-520 — `()` — Core tool types: the Tool trait, ToolContext, and ToolResult.
--  `test_tool_context_with_streaming` function L523-528 — `()` — Core tool types: the Tool trait, ToolContext, and ToolResult.
--  `test_tool_context_send_output` function L531-541 — `()` — Core tool types: the Tool trait, ToolContext, and ToolResult.
--  `test_tool_context_send_output_closed_channel` function L544-549 — `()` — Core tool types: the Tool trait, ToolContext, and ToolResult.
--  `test_tool_context_debug` function L552-557 — `()` — Core tool types: the Tool trait, ToolContext, and ToolResult.
--  `test_tool_result_fatal_error` function L560-573 — `()` — Core tool types: the Tool trait, ToolContext, and ToolResult.
--  `test_tool_result_was_truncated` function L576-581 — `()` — Core tool types: the Tool trait, ToolContext, and ToolResult.
+- pub `GatedParam` enum L20-27 — `ReadPath | WritePath | WorkingDir` — Filesystem path parameters that the security gate should enforce.
+- pub `Tool` interface L39-77 — `{ fn name(), fn description(), fn parameters(), fn validate(), fn gated_params()...` — Trait for agent tools.
+- pub `validate_against_schema` function L87-158 — `( params: &serde_json::Value, schema: &serde_json::Value, ) -> std::result::Resu...` — Validate a JSON value against a JSON Schema object.
+- pub `OutputSender` type L176 — `= tokio::sync::mpsc::UnboundedSender<String>` — Sender for streaming tool output chunks.
+- pub `ToolContext` struct L191-206 — `{ session_id: SessionId, turn_id: TurnId, cancellation: CancellationToken, outpu...` — Context provided to tools during execution.
+- pub `new` function L225-235 — `(session_id: SessionId, turn_id: TurnId) -> Self` — Create a new tool context.
+- pub `with_cancellation` function L238-252 — `( session_id: SessionId, turn_id: TurnId, cancellation: CancellationToken, ) -> ...` — Create a context with a cancellation token.
+- pub `with_fs_gate` function L255-258 — `(mut self, gate: SharedFsGate) -> Self` — Set the filesystem gate for workstream sandbox enforcement.
+- pub `with_secret_resolver` function L261-264 — `(mut self, resolver: SharedSecretResolver) -> Self` — Set the secret resolver for `${{secrets.*}}` handle resolution.
+- pub `with_streaming` function L267-271 — `(mut self, sender: OutputSender, tool_call_id: impl Into<String>) -> Self` — Add streaming output support to this context.
+- pub `is_cancelled` function L274-276 — `(&self) -> bool` — Check if execution has been cancelled.
+- pub `is_streaming` function L279-281 — `(&self) -> bool` — Check if streaming output is enabled.
+- pub `send_output` function L285-291 — `(&self, content: impl Into<String>) -> bool` — Send streaming output chunk.
+- pub `ToolResult` enum L327-345 — `Text | Json | Error` — Result of a tool execution.
+- pub `text` function L349-353 — `(content: impl Into<String>) -> Self` — Create a text result.
+- pub `json` function L356-358 — `(content: serde_json::Value) -> Self` — Create a JSON result.
+- pub `error` function L361-366 — `(message: impl Into<String>) -> Self` — Create a recoverable error result.
+- pub `fatal_error` function L369-374 — `(message: impl Into<String>) -> Self` — Create a non-recoverable error result.
+- pub `is_error` function L377-379 — `(&self) -> bool` — Check if this result is an error.
+- pub `is_success` function L382-384 — `(&self) -> bool` — Check if this result is successful.
+- pub `to_llm_content` function L387-395 — `(&self) -> String` — Get the content as a string for LLM consumption.
+- pub `sanitize` function L406-465 — `(self, config: &OutputConfig) -> Self` — Sanitize this result according to the given configuration.
+- pub `sanitize_default` function L468-470 — `(self) -> Self` — Sanitize this result with default configuration.
+- pub `was_truncated` function L473-479 — `(&self) -> bool` — Check if this result was truncated (looks for truncation indicator).
+- pub `content_size` function L482-488 — `(&self) -> usize` — Get the size of the content in bytes.
+-  `validate` function L58-60 — `(&self, params: &serde_json::Value) -> std::result::Result<(), ToolResult>` — Validate params against this tool's declared schema.
+-  `gated_params` function L64-66 — `(&self) -> Vec<GatedParam>` — Declare which params are filesystem paths the gate should enforce.
+-  `value_type_name` function L160-169 — `(v: &serde_json::Value) -> &'static str` — Core tool types: the Tool trait, ToolContext, and ToolResult.
+-  `ToolContext` type L208-221 — `= ToolContext` — Core tool types: the Tool trait, ToolContext, and ToolResult.
+-  `fmt` function L209-220 — `(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result` — Core tool types: the Tool trait, ToolContext, and ToolResult.
+-  `ToolContext` type L223-292 — `= ToolContext` — Core tool types: the Tool trait, ToolContext, and ToolResult.
+-  `ToolContext` type L294-306 — `impl Default for ToolContext` — Core tool types: the Tool trait, ToolContext, and ToolResult.
+-  `default` function L295-305 — `() -> Self` — Core tool types: the Tool trait, ToolContext, and ToolResult.
+-  `ToolResult` type L347-489 — `= ToolResult` — Core tool types: the Tool trait, ToolContext, and ToolResult.
+-  `tests` module L492-830 — `-` — Core tool types: the Tool trait, ToolContext, and ToolResult.
+-  `test_tool_result_text` function L496-501 — `()` — Core tool types: the Tool trait, ToolContext, and ToolResult.
+-  `test_tool_result_json` function L504-510 — `()` — Core tool types: the Tool trait, ToolContext, and ToolResult.
+-  `test_tool_result_error` function L513-518 — `()` — Core tool types: the Tool trait, ToolContext, and ToolResult.
+-  `test_tool_result_serialization` function L521-526 — `()` — Core tool types: the Tool trait, ToolContext, and ToolResult.
+-  `test_tool_context` function L529-538 — `()` — Core tool types: the Tool trait, ToolContext, and ToolResult.
+-  `test_tool_result_sanitize_text` function L541-551 — `()` — Core tool types: the Tool trait, ToolContext, and ToolResult.
+-  `test_tool_result_sanitize_text_truncated` function L554-559 — `()` — Core tool types: the Tool trait, ToolContext, and ToolResult.
+-  `test_tool_result_sanitize_json` function L562-572 — `()` — Core tool types: the Tool trait, ToolContext, and ToolResult.
+-  `test_tool_result_sanitize_json_truncated_becomes_text` function L575-584 — `()` — Core tool types: the Tool trait, ToolContext, and ToolResult.
+-  `test_tool_result_sanitize_error` function L587-597 — `()` — Core tool types: the Tool trait, ToolContext, and ToolResult.
+-  `test_tool_result_sanitize_binary_becomes_error` function L600-607 — `()` — Core tool types: the Tool trait, ToolContext, and ToolResult.
+-  `test_tool_result_content_size` function L610-619 — `()` — Core tool types: the Tool trait, ToolContext, and ToolResult.
+-  `test_tool_result_sanitize_default` function L622-631 — `()` — Core tool types: the Tool trait, ToolContext, and ToolResult.
+-  `test_tool_context_new` function L634-644 — `()` — Core tool types: the Tool trait, ToolContext, and ToolResult.
+-  `test_tool_context_with_streaming` function L647-652 — `()` — Core tool types: the Tool trait, ToolContext, and ToolResult.
+-  `test_tool_context_send_output` function L655-665 — `()` — Core tool types: the Tool trait, ToolContext, and ToolResult.
+-  `test_tool_context_send_output_closed_channel` function L668-673 — `()` — Core tool types: the Tool trait, ToolContext, and ToolResult.
+-  `test_tool_context_debug` function L676-681 — `()` — Core tool types: the Tool trait, ToolContext, and ToolResult.
+-  `test_tool_result_fatal_error` function L684-697 — `()` — Core tool types: the Tool trait, ToolContext, and ToolResult.
+-  `test_tool_result_was_truncated` function L700-705 — `()` — Core tool types: the Tool trait, ToolContext, and ToolResult.
+-  `test_validate_schema_missing_required_field` function L712-729 — `()` — Core tool types: the Tool trait, ToolContext, and ToolResult.
+-  `test_validate_schema_unknown_param` function L732-758 — `()` — Core tool types: the Tool trait, ToolContext, and ToolResult.
+-  `test_validate_schema_wrong_type` function L761-786 — `()` — Core tool types: the Tool trait, ToolContext, and ToolResult.
+-  `test_validate_schema_valid_params` function L789-800 — `()` — Core tool types: the Tool trait, ToolContext, and ToolResult.
+-  `test_validate_schema_empty_properties_accepts_anything` function L803-810 — `()` — Core tool types: the Tool trait, ToolContext, and ToolResult.
+-  `test_validate_schema_no_required_accepts_subset` function L813-829 — `()` — Core tool types: the Tool trait, ToolContext, and ToolResult.
 
 #### crates/arawn-agent/src/tool/execution.rs
 
-- pub `execute` function L25-33 — `( &self, name: &str, params: serde_json::Value, ctx: &ToolContext, ) -> Result<T...` — Execute a tool by name.
-- pub `execute_with_config` function L45-89 — `( &self, name: &str, params: serde_json::Value, ctx: &ToolContext, output_config...` — Execute a tool by name with custom output configuration.
-- pub `execute_raw` function L95-137 — `( &self, name: &str, params: serde_json::Value, ctx: &ToolContext, ) -> Result<T...` — Execute a tool by name without sanitization.
--  `ToolRegistry` type L12-157 — `= ToolRegistry` — Implements execute, execute_with_config, execute_raw, and secret handle resolution.
--  `resolve_secret_handles` function L144-156 — `( &self, params: serde_json::Value, ctx: &ToolContext, ) -> serde_json::Value` — Resolve `${{secrets.*}}` handles in tool parameters.
--  `tests` module L160-334 — `-` — Implements execute, execute_with_config, execute_raw, and secret handle resolution.
--  `MockSecretResolver` struct L168-170 — `{ secrets: std::collections::HashMap<String, String> }` — Implements execute, execute_with_config, execute_raw, and secret handle resolution.
--  `MockSecretResolver` type L172-181 — `= MockSecretResolver` — Implements execute, execute_with_config, execute_raw, and secret handle resolution.
--  `new` function L173-180 — `(pairs: &[(&str, &str)]) -> Self` — Implements execute, execute_with_config, execute_raw, and secret handle resolution.
--  `MockSecretResolver` type L183-190 — `= MockSecretResolver` — Implements execute, execute_with_config, execute_raw, and secret handle resolution.
--  `resolve` function L184-186 — `(&self, name: &str) -> Option<String>` — Implements execute, execute_with_config, execute_raw, and secret handle resolution.
--  `names` function L187-189 — `(&self) -> Vec<String>` — Implements execute, execute_with_config, execute_raw, and secret handle resolution.
--  `ctx_with_resolver` function L192-197 — `(resolver: MockSecretResolver) -> ToolContext` — Implements execute, execute_with_config, execute_raw, and secret handle resolution.
--  `test_registry_execute_sanitizes` function L200-219 — `()` — Implements execute, execute_with_config, execute_raw, and secret handle resolution.
--  `test_registry_execute_raw_no_sanitize` function L222-240 — `()` — Implements execute, execute_with_config, execute_raw, and secret handle resolution.
--  `test_secret_handles_resolved_in_params` function L247-261 — `()` — Implements execute, execute_with_config, execute_raw, and secret handle resolution.
--  `test_secret_handles_no_resolver_passes_through` function L264-277 — `()` — Implements execute, execute_with_config, execute_raw, and secret handle resolution.
--  `test_secret_handles_no_handles_in_params` function L280-293 — `()` — Implements execute, execute_with_config, execute_raw, and secret handle resolution.
--  `test_secret_handles_resolved_in_execute_with_config` function L296-313 — `()` — Implements execute, execute_with_config, execute_raw, and secret handle resolution.
--  `test_secret_handles_unknown_secret_left_as_is` function L316-329 — `()` — Implements execute, execute_with_config, execute_raw, and secret handle resolution.
+- pub `execute` function L27-35 — `( &self, name: &str, params: serde_json::Value, ctx: &ToolContext, ) -> Result<T...` — Execute a tool by name.
+- pub `execute_with_config` function L47-100 — `( &self, name: &str, params: serde_json::Value, ctx: &ToolContext, output_config...` — Execute a tool by name with custom output configuration.
+- pub `execute_raw` function L106-155 — `( &self, name: &str, params: serde_json::Value, ctx: &ToolContext, ) -> Result<T...` — Execute a tool by name without sanitization.
+-  `ToolRegistry` type L14-175 — `= ToolRegistry` — Implements execute, execute_with_config, execute_raw, and secret handle resolution.
+-  `resolve_secret_handles` function L162-174 — `( &self, params: serde_json::Value, ctx: &ToolContext, ) -> serde_json::Value` — Resolve `${{secrets.*}}` handles in tool parameters.
+-  `tests` module L178-352 — `-` — Implements execute, execute_with_config, execute_raw, and secret handle resolution.
+-  `MockSecretResolver` struct L186-188 — `{ secrets: std::collections::HashMap<String, String> }` — Implements execute, execute_with_config, execute_raw, and secret handle resolution.
+-  `MockSecretResolver` type L190-199 — `= MockSecretResolver` — Implements execute, execute_with_config, execute_raw, and secret handle resolution.
+-  `new` function L191-198 — `(pairs: &[(&str, &str)]) -> Self` — Implements execute, execute_with_config, execute_raw, and secret handle resolution.
+-  `MockSecretResolver` type L201-208 — `= MockSecretResolver` — Implements execute, execute_with_config, execute_raw, and secret handle resolution.
+-  `resolve` function L202-204 — `(&self, name: &str) -> Option<String>` — Implements execute, execute_with_config, execute_raw, and secret handle resolution.
+-  `names` function L205-207 — `(&self) -> Vec<String>` — Implements execute, execute_with_config, execute_raw, and secret handle resolution.
+-  `ctx_with_resolver` function L210-215 — `(resolver: MockSecretResolver) -> ToolContext` — Implements execute, execute_with_config, execute_raw, and secret handle resolution.
+-  `test_registry_execute_sanitizes` function L218-237 — `()` — Implements execute, execute_with_config, execute_raw, and secret handle resolution.
+-  `test_registry_execute_raw_no_sanitize` function L240-258 — `()` — Implements execute, execute_with_config, execute_raw, and secret handle resolution.
+-  `test_secret_handles_resolved_in_params` function L265-279 — `()` — Implements execute, execute_with_config, execute_raw, and secret handle resolution.
+-  `test_secret_handles_no_resolver_passes_through` function L282-295 — `()` — Implements execute, execute_with_config, execute_raw, and secret handle resolution.
+-  `test_secret_handles_no_handles_in_params` function L298-311 — `()` — Implements execute, execute_with_config, execute_raw, and secret handle resolution.
+-  `test_secret_handles_resolved_in_execute_with_config` function L314-331 — `()` — Implements execute, execute_with_config, execute_raw, and secret handle resolution.
+-  `test_secret_handles_unknown_secret_left_as_is` function L334-347 — `()` — Implements execute, execute_with_config, execute_raw, and secret handle resolution.
 
 #### crates/arawn-agent/src/tool/gate.rs
 
--  `ToolRegistry` type L13-132 — `= ToolRegistry` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `validate_tool_paths` function L18-76 — `( &self, tool_name: &str, mut params: serde_json::Value, gate: &SharedFsGate, ) ...` — Validate and rewrite file paths in tool params against the filesystem gate.
--  `execute_shell_sandboxed` function L82-131 — `( &self, _tool: &dyn Tool, params: &serde_json::Value, _ctx: &ToolContext, gate:...` — Execute a shell tool through the OS-level sandbox.
--  `tests` module L135-707 — `-` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `MockFsGate` struct L150-159 — `{ allowed_read: Vec<std::path::PathBuf>, allowed_write: Vec<std::path::PathBuf>,...` — Mock filesystem gate for testing enforcement logic.
--  `MockFsGate` type L161-185 — `= MockFsGate` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `new` function L162-169 — `(work_dir: impl Into<std::path::PathBuf>) -> Self` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `allow_read` function L171-174 — `(mut self, path: impl Into<std::path::PathBuf>) -> Self` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `allow_write` function L176-179 — `(mut self, path: impl Into<std::path::PathBuf>) -> Self` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `with_shell_result` function L181-184 — `(self, result: arawn_types::SandboxOutput) -> Self` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `MockFsGate` type L188-238 — `= MockFsGate` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `validate_read` function L189-202 — `( &self, path: &std::path::Path, ) -> std::result::Result<std::path::PathBuf, ar...` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `validate_write` function L204-217 — `( &self, path: &std::path::Path, ) -> std::result::Result<std::path::PathBuf, ar...` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `working_dir` function L219-221 — `(&self) -> &std::path::Path` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `sandbox_execute` function L223-237 — `( &self, _command: &str, _timeout: Option<std::time::Duration>, ) -> std::result...` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `ctx_with_gate` function L240-245 — `(gate: impl arawn_types::FsGate + 'static) -> ToolContext` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `test_is_gated_tool` function L248-260 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `test_gate_deny_by_default_no_gate` function L263-282 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `test_gate_deny_by_default_all_gated_tools` function L285-315 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `test_gate_non_gated_tool_passes_through_without_gate` function L318-336 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `test_gate_file_read_allowed` function L339-355 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `test_gate_file_read_denied` function L358-374 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `test_gate_file_write_allowed` function L377-391 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `test_gate_file_write_denied` function L394-410 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `test_gate_glob_allowed` function L413-428 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `test_gate_glob_denied` function L431-449 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `test_gate_grep_denied` function L452-470 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `test_gate_shell_routed_through_sandbox` function L473-499 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `test_gate_shell_sandbox_failure` function L502-522 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `test_gate_execute_raw_deny_by_default` function L525-545 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `test_gate_execute_raw_allowed_with_gate` function L548-565 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `test_gate_execute_raw_non_gated_passes_through` function L568-580 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `test_gate_file_read_no_path_param_passes_through` function L583-599 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `test_gate_shell_sandbox_combined_output` function L602-625 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `test_gate_shell_timeout_passed` function L628-644 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `test_gate_shell_blocked_command_rejected` function L647-668 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `test_gate_shell_blocked_command_case_bypass` function L671-687 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
--  `test_gate_shell_blocked_command_whitespace_bypass` function L690-706 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `enforce_gate_params` function L18-74 — `( gated: &[GatedParam], mut params: serde_json::Value, gate: &SharedFsGate, ) ->...` — Validate and rewrite filesystem paths in tool params against the gate.
+-  `ToolRegistry` type L76-131 — `= ToolRegistry` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `execute_shell_sandboxed` function L81-130 — `( &self, _tool: &dyn Tool, params: &serde_json::Value, _ctx: &ToolContext, gate:...` — Execute a shell tool through the OS-level sandbox.
+-  `tests` module L134-898 — `-` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `MockFsGate` struct L149-158 — `{ allowed_read: Vec<std::path::PathBuf>, allowed_write: Vec<std::path::PathBuf>,...` — Mock filesystem gate for testing enforcement logic.
+-  `MockFsGate` type L160-184 — `= MockFsGate` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `new` function L161-168 — `(work_dir: impl Into<std::path::PathBuf>) -> Self` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `allow_read` function L170-173 — `(mut self, path: impl Into<std::path::PathBuf>) -> Self` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `allow_write` function L175-178 — `(mut self, path: impl Into<std::path::PathBuf>) -> Self` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `with_shell_result` function L180-183 — `(self, result: arawn_types::SandboxOutput) -> Self` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `MockFsGate` type L187-237 — `= MockFsGate` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `validate_read` function L188-201 — `( &self, path: &std::path::Path, ) -> std::result::Result<std::path::PathBuf, ar...` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `validate_write` function L203-216 — `( &self, path: &std::path::Path, ) -> std::result::Result<std::path::PathBuf, ar...` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `working_dir` function L218-220 — `(&self) -> &std::path::Path` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `sandbox_execute` function L222-236 — `( &self, _command: &str, _timeout: Option<std::time::Duration>, ) -> std::result...` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `ctx_with_gate` function L239-244 — `(gate: impl arawn_types::FsGate + 'static) -> ToolContext` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `test_is_gated_tool` function L247-259 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `test_gate_deny_by_default_no_gate` function L262-287 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `test_gate_deny_by_default_all_gated_tools` function L290-330 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `test_gate_non_gated_tool_passes_through_without_gate` function L333-353 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `test_gate_file_read_allowed` function L356-377 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `test_gate_file_read_denied` function L380-401 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `test_gate_file_write_allowed` function L404-424 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `test_gate_file_write_denied` function L427-448 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `test_gate_glob_allowed` function L451-471 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `test_gate_glob_denied` function L474-498 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `test_gate_grep_denied` function L501-525 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `test_gate_shell_routed_through_sandbox` function L528-560 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `test_gate_shell_sandbox_failure` function L563-587 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `test_gate_execute_raw_deny_by_default` function L590-614 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `test_gate_execute_raw_allowed_with_gate` function L617-639 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `test_gate_execute_raw_non_gated_passes_through` function L642-656 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `test_gate_file_read_no_path_param_passes_through` function L659-681 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `test_gate_shell_sandbox_combined_output` function L684-711 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `test_gate_shell_timeout_passed` function L714-732 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `test_gate_shell_blocked_command_rejected` function L735-761 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `test_gate_shell_blocked_command_case_bypass` function L764-783 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `test_gate_shell_blocked_command_whitespace_bypass` function L786-805 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `test_gated_params_custom_param_name_drives_enforcement` function L812-838 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `test_empty_gated_params_tool_passes_with_any_paths` function L841-868 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
+-  `test_gated_params_no_fs_gate_denied_with_message` function L871-897 — `()` — Validates file paths and routes shell commands through the OS-level sandbox.
 
 #### crates/arawn-agent/src/tool/mod.rs
 
@@ -1930,41 +1944,43 @@
 - pub `to_llm_definitions` function L107-114 — `(&self) -> Vec<arawn_llm::ToolDefinition>` — Convert all tools to LLM tool definitions.
 - pub `filtered_by_names` function L121-144 — `(&self, names: &[&str]) -> ToolRegistry` — Create a new registry containing only tools whose names are in the allowlist.
 - pub `output_config_for` function L150-164 — `(&self, name: &str) -> OutputConfig` — Get the output config for a tool by name.
-- pub `MockTool` struct L188-194 — `{ name: String, description: String, parameters: serde_json::Value, response: st...` — A mock tool for testing.
-- pub `new` function L199-210 — `(name: impl Into<String>) -> Self` — Create a new mock tool.
-- pub `with_description` function L213-216 — `(mut self, description: impl Into<String>) -> Self` — Set the description.
-- pub `with_parameters` function L219-222 — `(mut self, parameters: serde_json::Value) -> Self` — Set the parameters schema.
-- pub `with_response` function L225-228 — `(self, response: ToolResult) -> Self` — Set the response to return.
-- pub `calls` function L231-233 — `(&self) -> Vec<serde_json::Value>` — Get the calls that were made to this tool.
-- pub `call_count` function L236-238 — `(&self) -> usize` — Get the number of calls made.
-- pub `clear_calls` function L241-243 — `(&self)` — Clear recorded calls.
+- pub `MockTool` struct L188-195 — `{ name: String, description: String, parameters: serde_json::Value, response: st...` — A mock tool for testing.
+- pub `new` function L200-212 — `(name: impl Into<String>) -> Self` — Create a new mock tool.
+- pub `with_gated_params` function L215-218 — `(mut self, gated: Vec<super::context::GatedParam>) -> Self` — Set the gated parameters for this mock tool.
+- pub `with_description` function L221-224 — `(mut self, description: impl Into<String>) -> Self` — Set the description.
+- pub `with_parameters` function L227-230 — `(mut self, parameters: serde_json::Value) -> Self` — Set the parameters schema.
+- pub `with_response` function L233-236 — `(self, response: ToolResult) -> Self` — Set the response to return.
+- pub `calls` function L239-241 — `(&self) -> Vec<serde_json::Value>` — Get the calls that were made to this tool.
+- pub `call_count` function L244-246 — `(&self) -> usize` — Get the number of calls made.
+- pub `clear_calls` function L249-251 — `(&self)` — Clear recorded calls.
 -  `ToolRegistry` type L30-165 — `= ToolRegistry` — Tool registry for managing available tools.
 -  `ToolRegistry` type L167-173 — `= ToolRegistry` — Tool registry for managing available tools.
 -  `fmt` function L168-172 — `(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result` — Tool registry for managing available tools.
--  `MockTool` type L197-244 — `= MockTool` — Tool registry for managing available tools.
--  `MockTool` type L248-270 — `impl Tool for MockTool` — Tool registry for managing available tools.
--  `name` function L249-251 — `(&self) -> &str` — Tool registry for managing available tools.
--  `description` function L253-255 — `(&self) -> &str` — Tool registry for managing available tools.
--  `parameters` function L257-259 — `(&self) -> serde_json::Value` — Tool registry for managing available tools.
--  `execute` function L261-269 — `(&self, params: serde_json::Value, _ctx: &ToolContext) -> Result<ToolResult>` — Tool registry for managing available tools.
--  `tests` module L273-520 — `-` — Tool registry for managing available tools.
--  `test_registry_empty` function L279-284 — `()` — Tool registry for managing available tools.
--  `test_registry_register_and_get` function L287-301 — `()` — Tool registry for managing available tools.
--  `test_registry_names` function L304-313 — `()` — Tool registry for managing available tools.
--  `test_registry_to_llm_definitions` function L316-334 — `()` — Tool registry for managing available tools.
--  `test_mock_tool_execution` function L337-348 — `()` — Tool registry for managing available tools.
--  `test_registry_execute` function L351-367 — `()` — Tool registry for managing available tools.
--  `test_mock_tool_clear_calls` function L370-377 — `()` — Tool registry for managing available tools.
--  `test_registry_output_config_for` function L380-391 — `()` — Tool registry for managing available tools.
--  `test_registry_output_config_override` function L394-411 — `()` — Tool registry for managing available tools.
--  `test_registry_output_config_override_all_aliases` function L414-430 — `()` — Tool registry for managing available tools.
--  `test_filtered_by_names_includes_matching` function L433-447 — `()` — Tool registry for managing available tools.
--  `test_filtered_by_names_excludes_non_matching` function L450-458 — `()` — Tool registry for managing available tools.
--  `test_filtered_by_names_ignores_unknown` function L461-469 — `()` — Tool registry for managing available tools.
--  `test_filtered_by_names_preserves_original` function L472-483 — `()` — Tool registry for managing available tools.
--  `test_filtered_by_names_carries_output_overrides` function L486-496 — `()` — Tool registry for managing available tools.
--  `test_filtered_by_names_llm_definitions` function L499-509 — `()` — Tool registry for managing available tools.
--  `test_filtered_by_names_empty_allowlist` function L512-519 — `()` — Tool registry for managing available tools.
+-  `MockTool` type L198-252 — `= MockTool` — Tool registry for managing available tools.
+-  `MockTool` type L256-282 — `impl Tool for MockTool` — Tool registry for managing available tools.
+-  `name` function L257-259 — `(&self) -> &str` — Tool registry for managing available tools.
+-  `description` function L261-263 — `(&self) -> &str` — Tool registry for managing available tools.
+-  `parameters` function L265-267 — `(&self) -> serde_json::Value` — Tool registry for managing available tools.
+-  `gated_params` function L269-271 — `(&self) -> Vec<super::context::GatedParam>` — Tool registry for managing available tools.
+-  `execute` function L273-281 — `(&self, params: serde_json::Value, _ctx: &ToolContext) -> Result<ToolResult>` — Tool registry for managing available tools.
+-  `tests` module L285-532 — `-` — Tool registry for managing available tools.
+-  `test_registry_empty` function L291-296 — `()` — Tool registry for managing available tools.
+-  `test_registry_register_and_get` function L299-313 — `()` — Tool registry for managing available tools.
+-  `test_registry_names` function L316-325 — `()` — Tool registry for managing available tools.
+-  `test_registry_to_llm_definitions` function L328-346 — `()` — Tool registry for managing available tools.
+-  `test_mock_tool_execution` function L349-360 — `()` — Tool registry for managing available tools.
+-  `test_registry_execute` function L363-379 — `()` — Tool registry for managing available tools.
+-  `test_mock_tool_clear_calls` function L382-389 — `()` — Tool registry for managing available tools.
+-  `test_registry_output_config_for` function L392-403 — `()` — Tool registry for managing available tools.
+-  `test_registry_output_config_override` function L406-423 — `()` — Tool registry for managing available tools.
+-  `test_registry_output_config_override_all_aliases` function L426-442 — `()` — Tool registry for managing available tools.
+-  `test_filtered_by_names_includes_matching` function L445-459 — `()` — Tool registry for managing available tools.
+-  `test_filtered_by_names_excludes_non_matching` function L462-470 — `()` — Tool registry for managing available tools.
+-  `test_filtered_by_names_ignores_unknown` function L473-481 — `()` — Tool registry for managing available tools.
+-  `test_filtered_by_names_preserves_original` function L484-495 — `()` — Tool registry for managing available tools.
+-  `test_filtered_by_names_carries_output_overrides` function L498-508 — `()` — Tool registry for managing available tools.
+-  `test_filtered_by_names_llm_definitions` function L511-521 — `()` — Tool registry for managing available tools.
+-  `test_filtered_by_names_empty_allowlist` function L524-531 — `()` — Tool registry for managing available tools.
 
 #### crates/arawn-agent/src/tool/validation.rs
 
@@ -2400,47 +2416,49 @@
 
 #### crates/arawn-agent-tools/src/file.rs
 
-- pub `FileReadTool` struct L60-63 — `{ base_dir: Option<String> }` — Tool for reading file contents.
-- pub `new` function L67-69 — `() -> Self` — Create a new file read tool.
-- pub `with_base_dir` function L72-76 — `(base_dir: impl Into<String>) -> Self` — Create a file read tool restricted to a base directory.
-- pub `FileWriteTool` struct L182-189 — `{ base_dir: Option<String>, allow_create: bool, allow_overwrite: bool }` — Tool for writing file contents.
-- pub `new` function L193-199 — `() -> Self` — Create a new file write tool with default settings.
-- pub `with_base_dir` function L202-205 — `(mut self, base_dir: impl Into<String>) -> Self` — Create a file write tool restricted to a base directory.
-- pub `allow_create` function L208-211 — `(mut self, allow: bool) -> Self` — Set whether creating new files is allowed.
-- pub `allow_overwrite` function L214-217 — `(mut self, allow: bool) -> Self` — Set whether overwriting existing files is allowed.
--  `reject_traversal` function L19-29 — `(path: &Path) -> std::result::Result<(), arawn_agent::AgentError>` — Reject paths that contain `..` (parent directory) traversal components.
--  `normalize_path` function L35-52 — `(path: &Path) -> PathBuf` — Resolve `..` and `.` components lexically (without filesystem access).
--  `FileReadTool` type L65-112 — `= FileReadTool` — Provides tools for reading and writing files.
--  `resolve_path` function L79-111 — `(&self, path: &str) -> Result<std::path::PathBuf>` — Validate and resolve the file path.
--  `FileReadTool` type L115-174 — `impl Tool for FileReadTool` — Provides tools for reading and writing files.
--  `name` function L116-118 — `(&self) -> &str` — Provides tools for reading and writing files.
--  `description` function L120-122 — `(&self) -> &str` — Provides tools for reading and writing files.
--  `parameters` function L124-135 — `(&self) -> Value` — Provides tools for reading and writing files.
--  `execute` function L137-173 — `(&self, params: Value, ctx: &ToolContext) -> Result<ToolResult>` — Provides tools for reading and writing files.
--  `FileWriteTool` type L191-275 — `= FileWriteTool` — Provides tools for reading and writing files.
--  `resolve_path` function L220-274 — `(&self, path: &str) -> Result<std::path::PathBuf>` — Validate and resolve the file path for writing.
--  `FileWriteTool` type L278-425 — `impl Tool for FileWriteTool` — Provides tools for reading and writing files.
--  `name` function L279-281 — `(&self) -> &str` — Provides tools for reading and writing files.
--  `description` function L283-285 — `(&self) -> &str` — Provides tools for reading and writing files.
--  `parameters` function L287-307 — `(&self) -> Value` — Provides tools for reading and writing files.
--  `execute` function L309-424 — `(&self, params: Value, ctx: &ToolContext) -> Result<ToolResult>` — Provides tools for reading and writing files.
--  `tests` module L432-715 — `-` — Provides tools for reading and writing files.
--  `test_file_read_tool_metadata` function L437-445 — `()` — Provides tools for reading and writing files.
--  `test_file_write_tool_metadata` function L448-457 — `()` — Provides tools for reading and writing files.
--  `test_file_read_success` function L460-475 — `()` — Provides tools for reading and writing files.
--  `test_file_read_not_found` function L478-489 — `()` — Provides tools for reading and writing files.
--  `test_file_read_with_base_dir` function L492-506 — `()` — Provides tools for reading and writing files.
--  `test_file_write_success` function L509-530 — `()` — Provides tools for reading and writing files.
--  `test_file_write_append` function L533-555 — `()` — Provides tools for reading and writing files.
--  `test_file_write_no_create` function L558-578 — `()` — Provides tools for reading and writing files.
--  `test_file_write_no_overwrite` function L581-602 — `()` — Provides tools for reading and writing files.
--  `test_reject_traversal_blocks_dotdot` function L609-613 — `()` — Provides tools for reading and writing files.
--  `test_reject_traversal_allows_normal_paths` function L616-620 — `()` — Provides tools for reading and writing files.
--  `test_normalize_path_resolves_dotdot` function L623-636 — `()` — Provides tools for reading and writing files.
--  `test_file_write_traversal_rejected_no_base` function L639-660 — `()` — Provides tools for reading and writing files.
--  `test_file_write_traversal_rejected_with_base` function L663-680 — `()` — Provides tools for reading and writing files.
--  `test_file_read_traversal_rejected` function L683-693 — `()` — Provides tools for reading and writing files.
--  `test_file_write_base_dir_traversal_nonexistent_parent` function L696-714 — `()` — Provides tools for reading and writing files.
+- pub `FileReadTool` struct L62-65 — `{ base_dir: Option<String> }` — Tool for reading file contents.
+- pub `new` function L69-71 — `() -> Self` — Create a new file read tool.
+- pub `with_base_dir` function L74-78 — `(base_dir: impl Into<String>) -> Self` — Create a file read tool restricted to a base directory.
+- pub `FileWriteTool` struct L188-195 — `{ base_dir: Option<String>, allow_create: bool, allow_overwrite: bool }` — Tool for writing file contents.
+- pub `new` function L199-205 — `() -> Self` — Create a new file write tool with default settings.
+- pub `with_base_dir` function L208-211 — `(mut self, base_dir: impl Into<String>) -> Self` — Create a file write tool restricted to a base directory.
+- pub `allow_create` function L214-217 — `(mut self, allow: bool) -> Self` — Set whether creating new files is allowed.
+- pub `allow_overwrite` function L220-223 — `(mut self, allow: bool) -> Self` — Set whether overwriting existing files is allowed.
+-  `reject_traversal` function L21-31 — `(path: &Path) -> std::result::Result<(), arawn_agent::AgentError>` — Reject paths that contain `..` (parent directory) traversal components.
+-  `normalize_path` function L37-54 — `(path: &Path) -> PathBuf` — Resolve `..` and `.` components lexically (without filesystem access).
+-  `FileReadTool` type L67-114 — `= FileReadTool` — Provides tools for reading and writing files.
+-  `resolve_path` function L81-113 — `(&self, path: &str) -> Result<std::path::PathBuf>` — Validate and resolve the file path.
+-  `FileReadTool` type L117-180 — `impl Tool for FileReadTool` — Provides tools for reading and writing files.
+-  `name` function L118-120 — `(&self) -> &str` — Provides tools for reading and writing files.
+-  `description` function L122-124 — `(&self) -> &str` — Provides tools for reading and writing files.
+-  `parameters` function L126-137 — `(&self) -> Value` — Provides tools for reading and writing files.
+-  `gated_params` function L139-141 — `(&self) -> Vec<GatedParam>` — Provides tools for reading and writing files.
+-  `execute` function L143-179 — `(&self, params: Value, ctx: &ToolContext) -> Result<ToolResult>` — Provides tools for reading and writing files.
+-  `FileWriteTool` type L197-281 — `= FileWriteTool` — Provides tools for reading and writing files.
+-  `resolve_path` function L226-280 — `(&self, path: &str) -> Result<std::path::PathBuf>` — Validate and resolve the file path for writing.
+-  `FileWriteTool` type L284-435 — `impl Tool for FileWriteTool` — Provides tools for reading and writing files.
+-  `name` function L285-287 — `(&self) -> &str` — Provides tools for reading and writing files.
+-  `description` function L289-291 — `(&self) -> &str` — Provides tools for reading and writing files.
+-  `parameters` function L293-313 — `(&self) -> Value` — Provides tools for reading and writing files.
+-  `gated_params` function L315-317 — `(&self) -> Vec<GatedParam>` — Provides tools for reading and writing files.
+-  `execute` function L319-434 — `(&self, params: Value, ctx: &ToolContext) -> Result<ToolResult>` — Provides tools for reading and writing files.
+-  `tests` module L442-725 — `-` — Provides tools for reading and writing files.
+-  `test_file_read_tool_metadata` function L447-455 — `()` — Provides tools for reading and writing files.
+-  `test_file_write_tool_metadata` function L458-467 — `()` — Provides tools for reading and writing files.
+-  `test_file_read_success` function L470-485 — `()` — Provides tools for reading and writing files.
+-  `test_file_read_not_found` function L488-499 — `()` — Provides tools for reading and writing files.
+-  `test_file_read_with_base_dir` function L502-516 — `()` — Provides tools for reading and writing files.
+-  `test_file_write_success` function L519-540 — `()` — Provides tools for reading and writing files.
+-  `test_file_write_append` function L543-565 — `()` — Provides tools for reading and writing files.
+-  `test_file_write_no_create` function L568-588 — `()` — Provides tools for reading and writing files.
+-  `test_file_write_no_overwrite` function L591-612 — `()` — Provides tools for reading and writing files.
+-  `test_reject_traversal_blocks_dotdot` function L619-623 — `()` — Provides tools for reading and writing files.
+-  `test_reject_traversal_allows_normal_paths` function L626-630 — `()` — Provides tools for reading and writing files.
+-  `test_normalize_path_resolves_dotdot` function L633-646 — `()` — Provides tools for reading and writing files.
+-  `test_file_write_traversal_rejected_no_base` function L649-670 — `()` — Provides tools for reading and writing files.
+-  `test_file_write_traversal_rejected_with_base` function L673-690 — `()` — Provides tools for reading and writing files.
+-  `test_file_read_traversal_rejected` function L693-703 — `()` — Provides tools for reading and writing files.
+-  `test_file_write_base_dir_traversal_nonexistent_parent` function L706-724 — `()` — Provides tools for reading and writing files.
 
 #### crates/arawn-agent-tools/src/lib.rs
 
@@ -2531,48 +2549,50 @@
 - pub `with_base_dir` function L40-43 — `(mut self, dir: impl Into<PathBuf>) -> Self` — Create a glob tool restricted to a base directory.
 - pub `with_max_results` function L46-49 — `(mut self, max: usize) -> Self` — Set maximum number of results.
 - pub `with_max_depth` function L52-55 — `(mut self, depth: usize) -> Self` — Set maximum traversal depth.
-- pub `GrepTool` struct L221-232 — `{ base_dir: Option<PathBuf>, max_results: usize, max_depth: usize, max_file_size...` — Tool for searching file contents with regex.
-- pub `new` function L236-244 — `() -> Self` — Create a new grep tool.
-- pub `with_base_dir` function L247-250 — `(mut self, dir: impl Into<PathBuf>) -> Self` — Create a grep tool restricted to a base directory.
-- pub `with_max_results` function L253-256 — `(mut self, max: usize) -> Self` — Set maximum number of results.
-- pub `with_context_lines` function L259-262 — `(mut self, lines: usize) -> Self` — Set context lines to show before/after matches.
+- pub `GrepTool` struct L225-236 — `{ base_dir: Option<PathBuf>, max_results: usize, max_depth: usize, max_file_size...` — Tool for searching file contents with regex.
+- pub `new` function L240-248 — `() -> Self` — Create a new grep tool.
+- pub `with_base_dir` function L251-254 — `(mut self, dir: impl Into<PathBuf>) -> Self` — Create a grep tool restricted to a base directory.
+- pub `with_max_results` function L257-260 — `(mut self, max: usize) -> Self` — Set maximum number of results.
+- pub `with_context_lines` function L263-266 — `(mut self, lines: usize) -> Self` — Set context lines to show before/after matches.
 -  `GlobTool` type L29-95 — `= GlobTool` — Provides tools for searching files by pattern and content.
 -  `resolve_dir` function L58-73 — `(&self, dir: Option<&str>) -> PathBuf` — Resolve the search directory.
 -  `calculate_walk_depth` function L80-94 — `(&self, pattern: &str) -> usize` — Calculate the optimal walk depth for a pattern.
 -  `GlobTool` type L97-101 — `impl Default for GlobTool` — Provides tools for searching files by pattern and content.
 -  `default` function L98-100 — `() -> Self` — Provides tools for searching files by pattern and content.
--  `GlobTool` type L104-205 — `impl Tool for GlobTool` — Provides tools for searching files by pattern and content.
+-  `GlobTool` type L104-209 — `impl Tool for GlobTool` — Provides tools for searching files by pattern and content.
 -  `name` function L105-107 — `(&self) -> &str` — Provides tools for searching files by pattern and content.
 -  `description` function L109-111 — `(&self) -> &str` — Provides tools for searching files by pattern and content.
 -  `parameters` function L113-128 — `(&self) -> Value` — Provides tools for searching files by pattern and content.
--  `execute` function L130-204 — `(&self, params: Value, ctx: &ToolContext) -> Result<ToolResult>` — Provides tools for searching files by pattern and content.
--  `GrepMatch` struct L213-217 — `{ file: String, line_number: usize, line: String }` — A single grep match.
--  `GrepTool` type L234-342 — `= GrepTool` — Provides tools for searching files by pattern and content.
--  `resolve_dir` function L265-280 — `(&self, dir: Option<&str>) -> PathBuf` — Resolve the search directory.
--  `should_search_file` function L283-313 — `(&self, path: &Path) -> bool` — Check if a file should be searched.
--  `search_file` function L316-341 — `(&self, path: &Path, regex: &Regex, base_dir: &Path) -> Vec<GrepMatch>` — Search a single file.
--  `GrepTool` type L344-348 — `impl Default for GrepTool` — Provides tools for searching files by pattern and content.
--  `default` function L345-347 — `() -> Self` — Provides tools for searching files by pattern and content.
--  `GrepTool` type L351-494 — `impl Tool for GrepTool` — Provides tools for searching files by pattern and content.
--  `name` function L352-354 — `(&self) -> &str` — Provides tools for searching files by pattern and content.
--  `description` function L356-358 — `(&self) -> &str` — Provides tools for searching files by pattern and content.
--  `parameters` function L360-384 — `(&self) -> Value` — Provides tools for searching files by pattern and content.
--  `execute` function L386-493 — `(&self, params: Value, ctx: &ToolContext) -> Result<ToolResult>` — Provides tools for searching files by pattern and content.
--  `tests` module L501-777 — `-` — Provides tools for searching files by pattern and content.
--  `test_glob_tool_metadata` function L507-514 — `()` — Provides tools for searching files by pattern and content.
--  `test_grep_tool_metadata` function L517-524 — `()` — Provides tools for searching files by pattern and content.
--  `test_calculate_walk_depth` function L527-546 — `()` — Provides tools for searching files by pattern and content.
--  `test_calculate_walk_depth_respects_max` function L549-557 — `()` — Provides tools for searching files by pattern and content.
--  `test_glob_find_files` function L560-581 — `()` — Provides tools for searching files by pattern and content.
--  `test_glob_recursive` function L584-605 — `()` — Provides tools for searching files by pattern and content.
--  `test_glob_non_recursive_excludes_nested` function L608-633 — `()` — Provides tools for searching files by pattern and content.
--  `test_glob_invalid_pattern` function L636-646 — `()` — Provides tools for searching files by pattern and content.
--  `test_grep_find_matches` function L649-668 — `()` — Provides tools for searching files by pattern and content.
--  `test_grep_case_insensitive` function L671-697 — `()` — Provides tools for searching files by pattern and content.
--  `test_grep_file_pattern` function L700-724 — `()` — Provides tools for searching files by pattern and content.
--  `test_grep_regex` function L727-743 — `()` — Provides tools for searching files by pattern and content.
--  `test_grep_invalid_regex` function L746-757 — `()` — Provides tools for searching files by pattern and content.
--  `test_should_search_file` function L760-776 — `()` — Provides tools for searching files by pattern and content.
+-  `gated_params` function L130-132 — `(&self) -> Vec<GatedParam>` — Provides tools for searching files by pattern and content.
+-  `execute` function L134-208 — `(&self, params: Value, ctx: &ToolContext) -> Result<ToolResult>` — Provides tools for searching files by pattern and content.
+-  `GrepMatch` struct L217-221 — `{ file: String, line_number: usize, line: String }` — A single grep match.
+-  `GrepTool` type L238-346 — `= GrepTool` — Provides tools for searching files by pattern and content.
+-  `resolve_dir` function L269-284 — `(&self, dir: Option<&str>) -> PathBuf` — Resolve the search directory.
+-  `should_search_file` function L287-317 — `(&self, path: &Path) -> bool` — Check if a file should be searched.
+-  `search_file` function L320-345 — `(&self, path: &Path, regex: &Regex, base_dir: &Path) -> Vec<GrepMatch>` — Search a single file.
+-  `GrepTool` type L348-352 — `impl Default for GrepTool` — Provides tools for searching files by pattern and content.
+-  `default` function L349-351 — `() -> Self` — Provides tools for searching files by pattern and content.
+-  `GrepTool` type L355-502 — `impl Tool for GrepTool` — Provides tools for searching files by pattern and content.
+-  `name` function L356-358 — `(&self) -> &str` — Provides tools for searching files by pattern and content.
+-  `description` function L360-362 — `(&self) -> &str` — Provides tools for searching files by pattern and content.
+-  `parameters` function L364-388 — `(&self) -> Value` — Provides tools for searching files by pattern and content.
+-  `gated_params` function L390-392 — `(&self) -> Vec<GatedParam>` — Provides tools for searching files by pattern and content.
+-  `execute` function L394-501 — `(&self, params: Value, ctx: &ToolContext) -> Result<ToolResult>` — Provides tools for searching files by pattern and content.
+-  `tests` module L509-785 — `-` — Provides tools for searching files by pattern and content.
+-  `test_glob_tool_metadata` function L515-522 — `()` — Provides tools for searching files by pattern and content.
+-  `test_grep_tool_metadata` function L525-532 — `()` — Provides tools for searching files by pattern and content.
+-  `test_calculate_walk_depth` function L535-554 — `()` — Provides tools for searching files by pattern and content.
+-  `test_calculate_walk_depth_respects_max` function L557-565 — `()` — Provides tools for searching files by pattern and content.
+-  `test_glob_find_files` function L568-589 — `()` — Provides tools for searching files by pattern and content.
+-  `test_glob_recursive` function L592-613 — `()` — Provides tools for searching files by pattern and content.
+-  `test_glob_non_recursive_excludes_nested` function L616-641 — `()` — Provides tools for searching files by pattern and content.
+-  `test_glob_invalid_pattern` function L644-654 — `()` — Provides tools for searching files by pattern and content.
+-  `test_grep_find_matches` function L657-676 — `()` — Provides tools for searching files by pattern and content.
+-  `test_grep_case_insensitive` function L679-705 — `()` — Provides tools for searching files by pattern and content.
+-  `test_grep_file_pattern` function L708-732 — `()` — Provides tools for searching files by pattern and content.
+-  `test_grep_regex` function L735-751 — `()` — Provides tools for searching files by pattern and content.
+-  `test_grep_invalid_regex` function L754-765 — `()` — Provides tools for searching files by pattern and content.
+-  `test_should_search_file` function L768-784 — `()` — Provides tools for searching files by pattern and content.
 
 #### crates/arawn-agent-tools/src/shell.rs
 
@@ -2600,68 +2620,69 @@
 -  `truncate_output` function L316-326 — `(&self, output: String) -> String` — Truncate output if it exceeds the maximum size.
 -  `ShellTool` type L329-333 — `impl Default for ShellTool` — for commands that need terminal emulation (colored output, interactive prompts).
 -  `default` function L330-332 — `() -> Self` — for commands that need terminal emulation (colored output, interactive prompts).
--  `ShellTool` type L336-493 — `impl Tool for ShellTool` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `ShellTool` type L336-497 — `impl Tool for ShellTool` — for commands that need terminal emulation (colored output, interactive prompts).
 -  `name` function L337-339 — `(&self) -> &str` — for commands that need terminal emulation (colored output, interactive prompts).
 -  `description` function L341-343 — `(&self) -> &str` — for commands that need terminal emulation (colored output, interactive prompts).
 -  `parameters` function L345-372 — `(&self) -> Value` — for commands that need terminal emulation (colored output, interactive prompts).
--  `execute` function L374-492 — `(&self, params: Value, ctx: &ToolContext) -> Result<ToolResult>` — for commands that need terminal emulation (colored output, interactive prompts).
--  `ShellTool` type L495-750 — `= ShellTool` — for commands that need terminal emulation (colored output, interactive prompts).
--  `extract_cd_target` function L498-514 — `(&self, command: &str) -> Option<String>` — Extract the target path from a cd command, if it is one.
--  `resolve_cd_path` function L517-546 — `(&self, target: &str, current_dir: &Option<PathBuf>) -> PathBuf` — Resolve a cd target path to an absolute path.
--  `parse_cd_command` function L551-555 — `(&self, command: &str, current_dir: &Option<PathBuf>) -> Option<PathBuf>` — Check if this is a cd command and return the new directory path.
--  `execute_standard` function L558-622 — `( &self, command: &str, working_dir: Option<&PathBuf>, timeout_duration: Duratio...` — Standard process execution (non-PTY).
--  `execute_standard_streaming` function L626-749 — `( &self, command: &str, working_dir: Option<&PathBuf>, timeout_duration: Duratio...` — Streaming standard process execution.
--  `tests` module L757-1441 — `-` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_shell_tool_metadata` function L761-773 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_shell_config_defaults` function L776-782 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_command_blocking` function L785-797 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_command_whitelist` function L800-816 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_shell_echo` function L819-830 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_shell_pwd` function L833-841 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_shell_working_dir` function L844-856 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_shell_explicit_cwd` function L859-878 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_shell_cd_persistence` function L881-904 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_shell_cd_nonexistent` function L907-921 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_shell_blocked_command` function L924-935 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_shell_failed_command` function L938-949 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_shell_timeout` function L952-964 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_shell_custom_timeout` function L967-984 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_shell_pty_echo` function L987-1004 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_shell_pty_colored_output` function L1007-1027 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_shell_streaming` function L1030-1062 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_shell_streaming_pty` function L1065-1096 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_output_truncation` function L1099-1108 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_parse_cd_command` function L1111-1122 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_pty_size_config` function L1125-1128 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_shell_config_builders` function L1133-1144 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_shell_tool_default` function L1147-1150 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_extract_cd_target_bare_cd` function L1155-1158 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_extract_cd_target_with_path` function L1161-1164 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_extract_cd_target_empty_path` function L1167-1170 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_extract_cd_target_not_cd` function L1173-1178 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_resolve_cd_path_home` function L1183-1187 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_resolve_cd_path_absolute` function L1190-1194 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_resolve_cd_path_relative` function L1197-1202 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_resolve_cd_path_tilde_subpath` function L1205-1210 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_get_set_working_dir` function L1215-1224 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_get_working_dir_falls_back_to_config` function L1227-1231 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_truncate_output_within_limit` function L1236-1241 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_is_command_allowed_fork_bomb` function L1246-1249 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_is_command_allowed_custom_block` function L1252-1257 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_shell_command_with_stderr` function L1262-1277 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_shell_no_output` function L1280-1291 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_shell_cancelled` function L1296-1314 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_blocklist_bypass_via_quoting` function L1319-1325 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_blocklist_bypass_via_absolute_path` function L1328-1334 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_blocklist_bypass_via_backslash` function L1337-1340 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_blocklist_bypass_via_whitespace` function L1343-1347 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_fork_bomb_blocked` function L1350-1353 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_dangerous_dd_blocked` function L1356-1359 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_process_tracing_blocked` function L1362-1366 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_safe_commands_allowed` function L1369-1378 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_blocked_command_returns_error` function L1381-1399 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_timeout_enforcement` function L1402-1420 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
--  `test_output_truncation_security` function L1423-1440 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `gated_params` function L374-376 — `(&self) -> Vec<GatedParam>` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `execute` function L378-496 — `(&self, params: Value, ctx: &ToolContext) -> Result<ToolResult>` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `ShellTool` type L499-754 — `= ShellTool` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `extract_cd_target` function L502-518 — `(&self, command: &str) -> Option<String>` — Extract the target path from a cd command, if it is one.
+-  `resolve_cd_path` function L521-550 — `(&self, target: &str, current_dir: &Option<PathBuf>) -> PathBuf` — Resolve a cd target path to an absolute path.
+-  `parse_cd_command` function L555-559 — `(&self, command: &str, current_dir: &Option<PathBuf>) -> Option<PathBuf>` — Check if this is a cd command and return the new directory path.
+-  `execute_standard` function L562-626 — `( &self, command: &str, working_dir: Option<&PathBuf>, timeout_duration: Duratio...` — Standard process execution (non-PTY).
+-  `execute_standard_streaming` function L630-753 — `( &self, command: &str, working_dir: Option<&PathBuf>, timeout_duration: Duratio...` — Streaming standard process execution.
+-  `tests` module L761-1445 — `-` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_shell_tool_metadata` function L765-777 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_shell_config_defaults` function L780-786 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_command_blocking` function L789-801 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_command_whitelist` function L804-820 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_shell_echo` function L823-834 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_shell_pwd` function L837-845 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_shell_working_dir` function L848-860 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_shell_explicit_cwd` function L863-882 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_shell_cd_persistence` function L885-908 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_shell_cd_nonexistent` function L911-925 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_shell_blocked_command` function L928-939 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_shell_failed_command` function L942-953 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_shell_timeout` function L956-968 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_shell_custom_timeout` function L971-988 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_shell_pty_echo` function L991-1008 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_shell_pty_colored_output` function L1011-1031 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_shell_streaming` function L1034-1066 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_shell_streaming_pty` function L1069-1100 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_output_truncation` function L1103-1112 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_parse_cd_command` function L1115-1126 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_pty_size_config` function L1129-1132 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_shell_config_builders` function L1137-1148 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_shell_tool_default` function L1151-1154 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_extract_cd_target_bare_cd` function L1159-1162 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_extract_cd_target_with_path` function L1165-1168 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_extract_cd_target_empty_path` function L1171-1174 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_extract_cd_target_not_cd` function L1177-1182 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_resolve_cd_path_home` function L1187-1191 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_resolve_cd_path_absolute` function L1194-1198 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_resolve_cd_path_relative` function L1201-1206 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_resolve_cd_path_tilde_subpath` function L1209-1214 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_get_set_working_dir` function L1219-1228 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_get_working_dir_falls_back_to_config` function L1231-1235 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_truncate_output_within_limit` function L1240-1245 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_is_command_allowed_fork_bomb` function L1250-1253 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_is_command_allowed_custom_block` function L1256-1261 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_shell_command_with_stderr` function L1266-1281 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_shell_no_output` function L1284-1295 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_shell_cancelled` function L1300-1318 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_blocklist_bypass_via_quoting` function L1323-1329 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_blocklist_bypass_via_absolute_path` function L1332-1338 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_blocklist_bypass_via_backslash` function L1341-1344 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_blocklist_bypass_via_whitespace` function L1347-1351 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_fork_bomb_blocked` function L1354-1357 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_dangerous_dd_blocked` function L1360-1363 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_process_tracing_blocked` function L1366-1370 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_safe_commands_allowed` function L1373-1382 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_blocked_command_returns_error` function L1385-1403 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_timeout_enforcement` function L1406-1424 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
+-  `test_output_truncation_security` function L1427-1444 — `()` — for commands that need terminal emulation (colored output, interactive prompts).
 
 #### crates/arawn-agent-tools/src/think.rs
 
@@ -2740,11 +2761,12 @@
 -  `extract_description` function L143-153 — `(&self, html: &str) -> Option<String>` — Extract meta description from HTML.
 -  `WebFetchTool` type L156-168 — `impl Default for WebFetchTool`
 -  `default` function L157-167 — `() -> Self`
--  `WebFetchTool` type L171-673 — `impl Tool for WebFetchTool`
+-  `WebFetchTool` type L171-677 — `impl Tool for WebFetchTool`
 -  `name` function L172-174 — `(&self) -> &str`
 -  `description` function L176-178 — `(&self) -> &str`
 -  `parameters` function L180-226 — `(&self) -> Value`
--  `execute` function L228-672 — `(&self, params: Value, ctx: &ToolContext) -> Result<ToolResult>`
+-  `gated_params` function L228-230 — `(&self) -> Vec<GatedParam>`
+-  `execute` function L232-676 — `(&self, params: Value, ctx: &ToolContext) -> Result<ToolResult>`
 
 #### crates/arawn-agent-tools/src/web/mod.rs
 
