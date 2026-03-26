@@ -44,7 +44,10 @@ pub async fn run(args: SecretsArgs) -> Result<()> {
 }
 
 async fn cmd_set(name: &str) -> Result<()> {
-    let value = rpassword::prompt_password(format!("Enter value for '{}' (input hidden): ", name))?;
+    print!("Enter value for '{}': ", name);
+    std::io::Write::flush(&mut std::io::stdout())?;
+    let mut value = String::new();
+    std::io::BufRead::read_line(&mut std::io::stdin().lock(), &mut value)?;
     let value = value.trim();
 
     if value.is_empty() {

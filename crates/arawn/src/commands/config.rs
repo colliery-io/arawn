@@ -224,10 +224,10 @@ async fn cmd_which(_ctx: &Context) -> Result<()> {
 async fn cmd_set_secret(backend_str: &str) -> Result<()> {
     let backend = parse_backend(backend_str)?;
 
-    let api_key = rpassword::prompt_password(format!(
-        "Enter API key for {} (input hidden): ",
-        backend.display_name()
-    ))?;
+    print!("Enter API key for {}: ", backend.display_name());
+    std::io::Write::flush(&mut std::io::stdout())?;
+    let mut api_key = String::new();
+    std::io::BufRead::read_line(&mut std::io::stdin().lock(), &mut api_key)?;
     let api_key = api_key.trim();
 
     if api_key.is_empty() {
