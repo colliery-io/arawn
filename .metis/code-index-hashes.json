@@ -230,7 +230,7 @@
     "crates/arawn-test-utils/src/server.rs": "fb800941313457a9544f9adaf0ac0f10ce39971e70b6823f77f41caf4b63951d",
     "crates/arawn-test-utils/src/sse.rs": "5a6b8613699d0779327e9cd62c73b47201f9e8b680b06edc72d2d53355491e2e",
     "crates/arawn-test-utils/src/ws_client.rs": "0003a71067e52da5b38aae2608bed58a4145bd14323cc0e67b57a18794a0657c",
-    "crates/arawn-tui/src/app.rs": "ed0088802b78f874ceca44b98d52d4de9ead5662dadaede64b844bf23508b587",
+    "crates/arawn-tui/src/app.rs": "a6f0f616c1af9f813222a85759355895b36c5f29f22263bb0a0a6dc4b852e7a4",
     "crates/arawn-tui/src/config.rs": "ce03bed480ab29dcc59ec45b42549eb9ac6ad5f1abb185217dad9cb21cd6b6b6",
     "crates/arawn-tui/src/events.rs": "4cc7128744b783606786327d689911d045b8794fee6dd5493e6b3ba8fcfe2844",
     "crates/arawn-tui/src/lib.rs": "f0d4ae448026f51288287c0cea472ba61ea75901d53a566d9a5a7138254aa8a8",

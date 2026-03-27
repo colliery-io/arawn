@@ -2,7 +2,8 @@
 
 use std::time::Duration;
 
-use crossterm::event::{self, Event as CrosstermEvent, KeyEvent};
+use crossterm::event::{Event as CrosstermEvent, EventStream, KeyEvent};
+use futures::StreamExt;
 use tokio::sync::mpsc;
 
 /// Application events.
@@ -10,35 +11,50 @@ use tokio::sync::mpsc;
 pub enum Event {
     /// A key press.
     Key(KeyEvent),
+    /// Pasted text.
+    Paste(String),
     /// A periodic tick (drives UI updates).
     Tick,
 }
 
 /// Spawn an event-reading loop that sends events via an unbounded channel.
 ///
-/// Returns the receiver. The background task reads crossterm events with a
-/// 100ms tick interval.
+/// Uses crossterm's async `EventStream` instead of synchronous poll/read
+/// to avoid blocking the tokio runtime.
 pub fn spawn() -> mpsc::UnboundedReceiver<Event> {
     let (tx, rx) = mpsc::unbounded_channel();
     let tick_rate = Duration::from_millis(100);
 
     tokio::spawn(async move {
+        let mut reader = EventStream::new();
+        let mut tick = tokio::time::interval(tick_rate);
+
         loop {
-            if event::poll(tick_rate).unwrap_or(false) {
-                if let Ok(evt) = event::read() {
-                    match evt {
-                        CrosstermEvent::Key(key) => {
+            tokio::select! {
+                maybe_event = reader.next() => {
+                    match maybe_event {
+                        Some(Ok(CrosstermEvent::Key(key))) => {
                             if tx.send(Event::Key(key)).is_err() {
                                 return;
                             }
                         }
-                        _ => {} // Ignore mouse, resize, etc. for now
+                        Some(Ok(CrosstermEvent::Paste(text))) => {
+                            if tx.send(Event::Paste(text)).is_err() {
+                                return;
+                            }
+                        }
+                        Some(Ok(_)) => {} // Ignore mouse, resize, focus, etc.
+                        Some(Err(e)) => {
+                            tracing::warn!("Error reading terminal event: {}", e);
+                            return;
+                        }
+                        None => return, // Stream ended
                     }
                 }
-            } else {
-                // No event within tick_rate — send a tick
-                if tx.send(Event::Tick).is_err() {
-                    return;
+                _ = tick.tick() => {
+                    if tx.send(Event::Tick).is_err() {
+                        return;
+                    }
                 }
             }
         }

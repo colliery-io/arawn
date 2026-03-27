@@ -189,6 +189,7 @@ impl App {
                 event = event_rx.recv() => {
                     match event {
                         Some(Event::Key(key)) => self.handle_key(key),
+                        Some(Event::Paste(text)) => self.handle_paste(&text),
                         Some(Event::Tick) => {
                             self.maybe_clear_status();
                         }
@@ -234,6 +235,7 @@ impl App {
                 event = event_rx.recv() => {
                     match event {
                         Some(Event::Key(key)) => self.handle_key(key),
+                        Some(Event::Paste(text)) => self.handle_paste(&text),
                         Some(Event::Tick) => {
                             tick_count += 1;
                             self.maybe_clear_status();
@@ -277,6 +279,19 @@ impl App {
         match self.focus {
             Focus::Input => self.handle_key_input(key),
             Focus::Sidebar => self.handle_key_sidebar(key),
+        }
+    }
+
+    /// Handle pasted text — insert at cursor position.
+    fn handle_paste(&mut self, text: &str) {
+        if matches!(self.focus, Focus::Input) {
+            // Strip newlines from paste (single-line input for now)
+            let clean = text.replace('\n', " ").replace('\r', "");
+            self.input.insert_str(self.cursor_pos, &clean);
+            self.cursor_pos += clean.len();
+        } else if let Some(ref mut name) = self.creating_workstream {
+            let clean = text.replace('\n', "").replace('\r', "");
+            name.push_str(&clean);
         }
     }
 

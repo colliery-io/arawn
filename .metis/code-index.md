@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-03-27T02:38:14Z | 347 files | Rust
+> Generated: 2026-03-27T02:55:48Z | 347 files | Rust
 
 ## Project Structure
 
@@ -8696,11 +8696,11 @@
 - pub `spawn_fetch_messages` function L611-643 — `(&self, session_id: &str)` — Spawn a background HTTP task to fetch messages for a session.
 - pub `spawn_create_workstream` function L646-695 — `(&self, name: &str)` — Spawn a background HTTP task to create a new workstream.
 - pub `maybe_clear_status` function L714-721 — `(&mut self)` — Check if status should be auto-cleared after 5 seconds.
-- pub `set_text` function L783-786 — `(&mut self, text: &str)` — Set the input text directly (for testing).
-- pub `handle_key_public` function L789-791 — `(&mut self, key: crossterm::event::KeyEvent)` — Handle a key event (public for testing).
-- pub `handle_server_message_public` function L794-796 — `(&mut self, msg: ServerMessage)` — Handle a server message (public for testing).
-- pub `handle_http_result_public` function L799-801 — `(&mut self, result: HttpResult)` — Handle an HTTP result (public for testing).
--  `App` type L138-802 — `= App` — Application state and main event loop.
+- pub `set_text` function L800-803 — `(&mut self, text: &str)` — Set the input text directly (for testing).
+- pub `handle_key_public` function L806-808 — `(&mut self, key: crossterm::event::KeyEvent)` — Handle a key event (public for testing).
+- pub `handle_server_message_public` function L811-813 — `(&mut self, msg: ServerMessage)` — Handle a server message (public for testing).
+- pub `handle_http_result_public` function L816-818 — `(&mut self, result: HttpResult)` — Handle an HTTP result (public for testing).
+-  `App` type L138-819 — `= App` — Application state and main event loop.
 -  `handle_key` function L260-281 — `(&mut self, key: crossterm::event::KeyEvent)` — Handle a key event, dispatching based on current focus.
 -  `handle_key_input` function L284-328 — `(&mut self, key: crossterm::event::KeyEvent)` — Handle key events when focus is on the chat input.
 -  `handle_key_sidebar` function L331-345 — `(&mut self, key: crossterm::event::KeyEvent)` — Handle key events when focus is on the sidebar.
@@ -8713,7 +8713,7 @@
 -  `handle_http_result` function L506-538 — `(&mut self, result: HttpResult)` — Handle a result from a background HTTP task.
 -  `clear_status_on_action` function L698-705 — `(&mut self)` — Clear status message on user action (if it has been displayed long enough).
 -  `set_status` function L708-711 — `(&mut self, msg: String)` — Set a status message with a timestamp.
--  `handle_server_message` function L724-780 — `(&mut self, msg: ServerMessage)` — Handle a message from the server.
+-  `handle_server_message` function L724-797 — `(&mut self, msg: ServerMessage)` — Handle a message from the server.
 
 #### crates/arawn-tui/src/config.rs
 
