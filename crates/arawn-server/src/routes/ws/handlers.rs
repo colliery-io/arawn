@@ -388,12 +388,10 @@ async fn handle_chat(
     let stream_result = {
         if let Some(mut session) = app_state.session_cache().get(&session_id).await {
             let cancellation = conn_state.cancellation.clone();
-            let stream = app_state.agent().turn_stream(
-                &mut session,
-                &message,
-                cancellation,
-                workstream_id.as_deref(),
-            );
+            let stream =
+                app_state
+                    .agent()
+                    .turn_stream(&mut session, &message, cancellation, Some(ws_id));
             app_state.update_session(session_id, session).await;
             Some(stream)
         } else {
