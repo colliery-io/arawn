@@ -90,13 +90,14 @@ async fn test_headless_server_messages() {
         })
         .unwrap();
 
-    // Drive ticks to process
-    for _ in 0..5 {
+    // Drive enough ticks to let the select! process all ws messages interleaved.
+    // Send many ticks to ensure server messages are processed between them.
+    for _ in 0..20 {
         event_tx.send(Event::Tick).unwrap();
     }
     drop(event_tx);
 
-    app.run_headless(&mut terminal, event_rx, server_rx, 10)
+    app.run_headless(&mut terminal, event_rx, server_rx, 25)
         .await
         .unwrap();
 

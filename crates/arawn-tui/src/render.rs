@@ -1,36 +1,103 @@
-//! Ratatui rendering — chat panel + input box.
+//! Ratatui rendering — sidebar + chat panel + input box.
 
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Paragraph, Wrap},
+    widgets::{Block, Borders, List, ListItem, Paragraph, Wrap},
 };
 
-use crate::app::App;
+use crate::app::{App, Focus};
 
 /// Render the entire UI into the given frame.
 pub fn draw(f: &mut Frame, app: &App) {
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints(if app.status.is_some() {
-            vec![
-                Constraint::Min(1),
-                Constraint::Length(3),
-                Constraint::Length(1),
-            ]
-        } else {
-            vec![Constraint::Min(1), Constraint::Length(3)]
-        })
+    // Top-level horizontal split: sidebar | main
+    let h_chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Percentage(25), Constraint::Percentage(75)])
         .split(f.area());
 
-    draw_chat(f, app, chunks[0]);
-    draw_input(f, app, chunks[1]);
+    // Enforce minimum sidebar width of 20 cols; if terminal is too narrow,
+    // the percentage constraint will naturally shrink but we still render.
+    draw_sidebar(f, app, h_chunks[0]);
+
+    // Right panel: vertical split for chat + input + optional status
+    let v_constraints = if app.status.is_some() {
+        vec![
+            Constraint::Min(1),
+            Constraint::Length(3),
+            Constraint::Length(1),
+        ]
+    } else {
+        vec![Constraint::Min(1), Constraint::Length(3)]
+    };
+
+    let v_chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints(v_constraints)
+        .split(h_chunks[1]);
+
+    draw_chat(f, app, v_chunks[0]);
+    draw_input(f, app, v_chunks[1]);
 
     if let Some(ref status) = app.status {
-        draw_status(f, status, chunks[2]);
+        draw_status(f, status, v_chunks[2]);
     }
+}
+
+/// Render the workstream sidebar.
+fn draw_sidebar(f: &mut Frame, app: &App, area: Rect) {
+    let is_focused = app.focus == Focus::Sidebar;
+
+    let border_style = if is_focused {
+        Style::default().fg(Color::Cyan)
+    } else {
+        Style::default().fg(Color::DarkGray)
+    };
+
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .border_style(border_style)
+        .title(Span::styled(
+            "Workstreams",
+            Style::default().add_modifier(Modifier::BOLD),
+        ));
+
+    if app.workstreams.is_empty() {
+        let empty = Paragraph::new("  (none)")
+            .block(block)
+            .style(Style::default().fg(Color::DarkGray));
+        f.render_widget(empty, area);
+        return;
+    }
+
+    let items: Vec<ListItem> = app
+        .workstreams
+        .iter()
+        .enumerate()
+        .map(|(i, ws)| {
+            let label = if ws.is_scratch {
+                format!(" {} (scratch)", ws.title)
+            } else {
+                format!(" {}", ws.title)
+            };
+
+            let style = if i == app.selected_workstream {
+                Style::default()
+                    .fg(Color::Black)
+                    .bg(Color::Cyan)
+                    .add_modifier(Modifier::BOLD)
+            } else {
+                Style::default().fg(Color::White)
+            };
+
+            ListItem::new(Line::from(Span::styled(label, style)))
+        })
+        .collect();
+
+    let list = List::new(items).block(block);
+    f.render_widget(list, area);
 }
 
 /// Render the chat messages area.
@@ -97,17 +164,33 @@ fn draw_chat(f: &mut Frame, app: &App, area: Rect) {
 
 /// Render the input box.
 fn draw_input(f: &mut Frame, app: &App, area: Rect) {
+    let is_focused = app.focus == Focus::Input;
+
+    let border_style = if is_focused {
+        Style::default().fg(Color::Cyan)
+    } else {
+        Style::default().fg(Color::DarkGray)
+    };
+
     let input_text = format!("> {}", app.input);
     let input = Paragraph::new(input_text.as_str())
-        .block(Block::default().borders(Borders::ALL).title("Input"))
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .border_style(border_style)
+                .title("Input"),
+        )
         .style(Style::default().fg(Color::White));
 
     f.render_widget(input, area);
 
-    // Place cursor after the prompt + cursor_pos
-    let cursor_x = area.x + 1 + 2 + app.cursor_pos as u16; // border + "> " + pos
-    let cursor_y = area.y + 1; // border
-    f.set_cursor_position((cursor_x, cursor_y));
+    // Only show cursor when input is focused
+    if is_focused {
+        // Place cursor after the prompt + cursor_pos
+        let cursor_x = area.x + 1 + 2 + app.cursor_pos as u16; // border + "> " + pos
+        let cursor_y = area.y + 1; // border
+        f.set_cursor_position((cursor_x, cursor_y));
+    }
 }
 
 /// Render the status line at the bottom.

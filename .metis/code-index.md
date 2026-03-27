@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-03-27T01:24:05Z | 375 files | Rust
+> Generated: 2026-03-27T01:52:45Z | 344 files | Rust
 
 ## Project Structure
 
@@ -327,48 +327,15 @@
 │   │       └── ws_client.rs
 │   ├── arawn-tui/
 │   │   ├── src/
-│   │   │   ├── app/
-│   │   │   │   ├── api_ops.rs
-│   │   │   │   ├── chat_handler.rs
-│   │   │   │   ├── input_handler.rs
-│   │   │   │   ├── logs_handler.rs
-│   │   │   │   ├── mod.rs
-│   │   │   │   ├── server_msg_handler.rs
-│   │   │   │   ├── session_handler.rs
-│   │   │   │   ├── sidebar_handler.rs
-│   │   │   │   └── tool_pane_handler.rs
-│   │   │   ├── app_types.rs
-│   │   │   ├── bounded.rs
-│   │   │   ├── client.rs
+│   │   │   ├── app.rs
+│   │   │   ├── config.rs
 │   │   │   ├── events.rs
-│   │   │   ├── focus.rs
-│   │   │   ├── input.rs
 │   │   │   ├── lib.rs
-│   │   │   ├── logs.rs
-│   │   │   ├── palette.rs
 │   │   │   ├── protocol.rs
-│   │   │   ├── sessions.rs
-│   │   │   ├── sidebar.rs
-│   │   │   └── ui/
-│   │   │       ├── chat.rs
-│   │   │       ├── command_popup.rs
-│   │   │       ├── input.rs
-│   │   │       ├── layout.rs
-│   │   │       ├── logs.rs
-│   │   │       ├── mod.rs
-│   │   │       ├── palette.rs
-│   │   │       ├── sessions.rs
-│   │   │       ├── sidebar.rs
-│   │   │       ├── theme.rs
-│   │   │       └── tools.rs
+│   │   │   ├── render.rs
+│   │   │   └── ws.rs
 │   │   └── tests/
-│   │       ├── bug_hang.rs
-│   │       ├── e2e_tui.rs
-│   │       ├── headless.rs
-│   │       ├── helpers.rs
-│   │       ├── render_helpers_test.rs
-│   │       ├── render_tests.rs
-│   │       └── ws_integration.rs
+│   │       └── phase1.rs
 │   ├── arawn-types/
 │   │   └── src/
 │   │       ├── config.rs
@@ -8687,166 +8654,6 @@
 -  `collect_until_done` function L239-265 — `(&mut self) -> Result<Vec<WsServerMessage>>` — Collect messages until a ChatChunk with `done: true` is received.
 -  `collect_until_command_done` function L268-291 — `(&mut self) -> Result<Vec<WsServerMessage>>` — Collect messages until a CommandResult or Error is received.
 
-### crates/arawn-tui/src/app
-
-**Role**: Application state container and main event loop for the TUI — owns all runtime state and dispatches keyboard, mouse, and server message events to focused handler submodules.
-
-**Key abstractions**:
-- `App` struct — god-object that owns `WsClient`, `ArawnClient`, `FocusManager`, `Sidebar`, `CommandPalette`, `SessionList`, `InputState`, `BoundedVec<ChatMessage>`, `BoundedVec<ToolExecution>`, `LogBuffer`, context state, disk warning state, and pending action queue. All handler files add `impl App` blocks rather than creating separate types.
-- `PendingAction` enum (in `app_types.rs`) — async API operations queued during key handling and drained in `process_pending_actions()` each tick. This decouples the synchronous key handler from async HTTP calls.
-- Handler modules split by concern: `input_handler.rs` (key events, slash commands, mouse), `server_msg_handler.rs` (WebSocket server messages), `chat_handler.rs` (message/tool display), `session_handler.rs` (session switching/creation), `sidebar_handler.rs` (workstream navigation), `tool_pane_handler.rs` (tool output + external pager), `logs_handler.rs` (log panel navigation), `api_ops.rs` (async HTTP operations).
-
-**Internal flow**: `App::run()` polls the event handler and `WsClient` in a tick loop. Key events go to `handle_key()`, which routes to the appropriate handler based on `FocusManager::current()`. WebSocket messages arrive in `handle_server_message()`, which updates `messages`, `tools`, `session_id`, `context_state`, and `disk_warning` fields. Pending actions accumulated during key handling are drained at the start of each tick via `process_pending_actions()` which makes async API calls using `ArawnClient`.
-
-**Mixed concerns / gotchas**: `App` in `mod.rs` is ~500 lines of state fields plus the main loop and top-level key dispatch. The `test_new()` constructor creates a fully testable `App` with a mock `WsClient` — the unit test suite in `mod.rs` is 900+ lines and tests the full state machine without a real server.
-
-**Dependencies**: `arawn-client` (HTTP API calls), `arawn-tui::client` (WebSocket), `ratatui`, `crossterm`, `tokio`.
-
-#### crates/arawn-tui/src/app/api_ops.rs
-
--  `App` type L10-370 — `= App` — Async API operations — workstream/session CRUD via HTTP API.
--  `process_pending_actions` function L16-60 — `(&mut self)` — Process at most one pending action per call.
--  `do_create_workstream` function L63-99 — `(&mut self, title: &str)` — Create a workstream via API.
--  `do_rename_workstream` function L102-130 — `(&mut self, id: &str, new_title: &str)` — Rename a workstream via API.
--  `do_delete_session` function L133-157 — `(&mut self, id: &str)` — Delete a session via API.
--  `do_delete_workstream` function L160-185 — `(&mut self, id: &str)` — Delete a workstream via API.
--  `do_fetch_workstream_sessions` function L188-244 — `(&mut self, workstream_id: &str)` — Fetch sessions for a specific workstream.
--  `do_fetch_session_messages` function L247-277 — `(&mut self, session_id: &str)` — Fetch message history for a session.
--  `do_move_session_to_workstream` function L280-317 — `(&mut self, session_id: &str, workstream_id: &str)` — Move a session to a different workstream via API.
--  `refresh_sidebar_data` function L320-369 — `(&mut self)` — Refresh sidebar data from the server API.
-
-#### crates/arawn-tui/src/app/chat_handler.rs
-
-- pub `send_message` function L38-65 — `(&mut self)` — Send the current input as a chat message.
--  `App` type L5-66 — `= App` — Chat display state management — messages, scrolling, help text.
--  `push_message` function L7-9 — `(&mut self, message: ChatMessage)` — Push a chat message (BoundedVec handles eviction automatically).
--  `push_tool` function L12-14 — `(&mut self, tool: ToolExecution)` — Push a tool execution (BoundedVec handles eviction automatically).
--  `scroll_chat_up` function L17-20 — `(&mut self, lines: usize)` — Scroll chat up by the given number of lines.
--  `scroll_chat_down` function L23-26 — `(&mut self, lines: usize)` — Scroll chat down by the given number of lines.
--  `get_help_text` function L29-35 — `(&self) -> String` — Get the help text for available commands.
-
-#### crates/arawn-tui/src/app/input_handler.rs
-
--  `App` type L9-365 — `= App` — Input key handling, command popup, slash commands, mouse.
--  `handle_input_key` function L10-208 — `(&mut self, key: crossterm::event::KeyEvent)` — Input key handling, command popup, slash commands, mouse.
--  `handle_mouse` function L211-251 — `(&mut self, mouse: crossterm::event::MouseEvent)` — Handle mouse events (scroll wheel on panels).
--  `panel_at` function L254-284 — `(&self, col: u16, row: u16) -> Option<FocusTarget>` — Determine which panel contains the given screen coordinates.
--  `update_command_popup` function L287-297 — `(&mut self)` — Update the command popup based on current input.
--  `send_command` function L300-337 — `(&mut self)` — Send the current input as a command.
--  `build_command_args` function L340-364 — `(&self, cmd: &crate::input::ParsedCommand) -> serde_json::Value` — Build command arguments JSON from parsed command.
-
-#### crates/arawn-tui/src/app/logs_handler.rs
-
--  `App` type L7-40 — `= App` — Log panel key handling.
--  `handle_logs_key` function L9-39 — `(&mut self, key: crossterm::event::KeyEvent)` — Handle keyboard events when the log panel is focused.
-
-#### crates/arawn-tui/src/app/mod.rs
-
-- pub `App` struct L41-130 — `{ server_url: String, ws_client: WsClient, api: ArawnClient, connection_status: ...` — Main application state.
-- pub `new` function L139-195 — `(server_url: String, log_buffer: LogBuffer) -> Result<Self>` — Create a new App instance.
-- pub `process_tick` function L200-224 — `(&mut self) -> bool` — Process a tick event: poll connection status and send keepalive pings.
-- pub `run` function L227-262 — `(&mut self, terminal: &mut Tui) -> Result<()>` — Run the main application loop.
-- pub `run_headless` function L269-312 — `( &mut self, terminal: &mut ratatui::Terminal<B>, mut event_rx: tokio::sync::mps...` — Run the application in headless mode for testing.
-- pub `handle_key` function L315-409 — `(&mut self, key: crossterm::event::KeyEvent)` — Handle keyboard input.
--  `api_ops` module L3 — `-` — Application state and main loop.
--  `chat_handler` module L4 — `-` — Application state and main loop.
--  `input_handler` module L5 — `-` — Application state and main loop.
--  `logs_handler` module L6 — `-` — Application state and main loop.
--  `server_msg_handler` module L7 — `-` — Application state and main loop.
--  `session_handler` module L8 — `-` — Application state and main loop.
--  `sidebar_handler` module L9 — `-` — Application state and main loop.
--  `tool_pane_handler` module L10 — `-` — Application state and main loop.
--  `MAX_MESSAGES` variable L17 — `: usize` — Maximum number of chat messages to retain (prevents unbounded memory growth).
--  `MAX_TOOLS` variable L20 — `: usize` — Maximum number of tool executions to retain per response.
--  `App` type L134-501 — `= App` — Application state and main loop.
--  `handle_palette_key` function L412-450 — `(&mut self, key: crossterm::event::KeyEvent)` — Handle command palette key events.
--  `execute_action` function L453-500 — `(&mut self, action_id: ActionId)` — Execute a palette action.
--  `App` type L504-559 — `= App` — Application state and main loop.
--  `test_new` function L506-558 — `() -> Self` — Create a test App with a mock WsClient and no real connections.
--  `tests` module L562-1550 — `-` — Application state and main loop.
--  `key` function L567-574 — `(code: KeyCode) -> KeyEvent` — Application state and main loop.
--  `key_mod` function L576-583 — `(code: KeyCode, modifiers: KeyModifiers) -> KeyEvent` — Application state and main loop.
--  `test_session_created_sets_session_id` function L588-597 — `()` — Application state and main loop.
--  `test_chat_chunk_creates_assistant_message` function L600-613 — `()` — Application state and main loop.
--  `test_chat_chunk_appends_to_streaming` function L616-632 — `()` — Application state and main loop.
--  `test_chat_done_clears_waiting` function L635-654 — `()` — Application state and main loop.
--  `test_error_clears_waiting` function L657-668 — `()` — Application state and main loop.
--  `test_session_not_owned_sets_read_only` function L671-682 — `()` — Application state and main loop.
--  `test_subscribe_ack_owner` function L685-700 — `()` — Application state and main loop.
--  `test_subscribe_ack_reader` function L703-713 — `()` — Application state and main loop.
--  `test_auth_success` function L716-725 — `()` — Application state and main loop.
--  `test_auth_failure` function L728-742 — `()` — Application state and main loop.
--  `test_context_info_updates` function L745-759 — `()` — Application state and main loop.
--  `test_tool_lifecycle` function L764-790 — `()` — Application state and main loop.
--  `test_command_progress_and_result` function L795-812 — `()` — Application state and main loop.
--  `test_ctrl_q_quits` function L817-821 — `()` — Application state and main loop.
--  `test_ctrl_c_quits_when_idle` function L824-828 — `()` — Application state and main loop.
--  `test_ctrl_c_cancels_when_waiting` function L831-841 — `()` — Application state and main loop.
--  `test_ctrl_k_opens_palette` function L844-849 — `()` — Application state and main loop.
--  `test_ctrl_w_toggles_sidebar` function L852-863 — `()` — Application state and main loop.
--  `test_ctrl_e_toggles_tool_pane` function L866-874 — `()` — Application state and main loop.
--  `test_ctrl_l_toggles_logs` function L877-884 — `()` — Application state and main loop.
--  `test_ctrl_u_toggles_usage` function L887-894 — `()` — Application state and main loop.
--  `test_typing_adds_to_input` function L899-904 — `()` — Application state and main loop.
--  `test_enter_sends_message` function L907-917 — `()` — Application state and main loop.
--  `test_enter_blocked_when_waiting` function L920-929 — `()` — Application state and main loop.
--  `test_send_blocked_in_read_only` function L932-941 — `()` — Application state and main loop.
--  `test_enter_on_empty_does_nothing` function L944-949 — `()` — Application state and main loop.
--  `test_shift_enter_inserts_newline` function L952-958 — `()` — Application state and main loop.
--  `test_waiting_cleared_on_disconnect` function L963-984 — `()` — Application state and main loop.
--  `test_waiting_not_cleared_if_not_previously_connected` function L987-999 — `()` — Application state and main loop.
--  `test_switch_session_clears_state` function L1004-1028 — `()` — Application state and main loop.
--  `test_switch_workstream_clears_session` function L1033-1047 — `()` — Application state and main loop.
--  `test_slash_command_detected` function L1052-1056 — `()` — Application state and main loop.
--  `test_regular_text_not_command` function L1059-1063 — `()` — Application state and main loop.
--  `test_disk_pressure_stored` function L1068-1081 — `()` — Application state and main loop.
--  `test_disk_pressure_replaces_existing` function L1084-1106 — `()` — Application state and main loop.
--  `test_disk_critical_sets_status` function L1109-1122 — `()` — Application state and main loop.
--  `test_usage_updates_for_current_workstream` function L1127-1143 — `()` — Application state and main loop.
--  `test_usage_ignored_for_other_workstream` function L1146-1162 — `()` — Application state and main loop.
--  `test_palette_esc_closes` function L1167-1174 — `()` — Application state and main loop.
--  `test_full_message_flow` function L1179-1208 — `()` — Application state and main loop.
--  `test_send_clears_tools` function L1211-1228 — `()` — Application state and main loop.
--  `test_send_enables_auto_scroll` function L1231-1239 — `()` — Application state and main loop.
--  `simulate_status_poll` function L1244-1255 — `(app: &mut App)` — Helper: simulate the tick handler's connection status poll logic.
--  `test_app_controllable` function L1257-1317 — `() -> ( App, tokio::sync::mpsc::UnboundedSender<ConnectionStatus>, tokio::sync::...` — Application state and main loop.
--  `test_disconnect_shows_status_indicator` function L1320-1328 — `()` — Application state and main loop.
--  `test_reconnecting_shows_attempt_count` function L1331-1351 — `()` — Application state and main loop.
--  `test_full_reconnection_lifecycle` function L1354-1383 — `()` — Application state and main loop.
--  `test_session_state_preserved_across_reconnect` function L1386-1435 — `()` — Application state and main loop.
--  `test_rapid_disconnect_reconnect_cycles_no_panic` function L1438-1464 — `()` — Application state and main loop.
--  `test_disconnect_during_streaming_marks_message_not_streaming` function L1467-1492 — `()` — Application state and main loop.
--  `test_messages_received_after_reconnect_handled_correctly` function L1495-1531 — `()` — Application state and main loop.
--  `test_disconnect_while_not_waiting_no_status_change` function L1534-1549 — `()` — Application state and main loop.
-
-#### crates/arawn-tui/src/app/server_msg_handler.rs
-
-- pub `handle_server_message` function L8-241 — `(&mut self, msg: ServerMessage)` — Server message dispatch.
--  `App` type L7-242 — `= App` — Server message dispatch.
-
-#### crates/arawn-tui/src/app/session_handler.rs
-
-- pub `switch_to_session` function L56-86 — `(&mut self, session_id: &str)` — Session management — session switching, creation, sessions overlay.
--  `App` type L9-111 — `= App` — Session management — session switching, creation, sessions overlay.
--  `handle_sessions_key` function L10-54 — `(&mut self, key: crossterm::event::KeyEvent)` — Session management — session switching, creation, sessions overlay.
--  `create_new_session` function L89-96 — `(&mut self)` — Create a new session.
--  `open_sessions_panel` function L99-105 — `(&mut self)` — Open the sessions panel.
-
-#### crates/arawn-tui/src/app/sidebar_handler.rs
-
-- pub `switch_to_workstream` function L293-330 — `(&mut self, workstream_name: &str)` — Switch to a different workstream.
--  `App` type L9-331 — `= App` — Sidebar key handling, overlay navigation, and workstream switching.
--  `handle_overlay_key` function L10-46 — `(&mut self, key: crossterm::event::KeyEvent)` — Sidebar key handling, overlay navigation, and workstream switching.
--  `clear_pending_deletes` function L49-52 — `(&mut self)` — Clear any pending delete confirmations.
--  `handle_sidebar_key` function L55-290 — `(&mut self, key: crossterm::event::KeyEvent)` — Handle sidebar key events.
-
-#### crates/arawn-tui/src/app/tool_pane_handler.rs
-
--  `App` type L7-133 — `= App` — Tool pane key handling and external editor support.
--  `handle_tool_pane_key` function L9-70 — `(&mut self, key: crossterm::event::KeyEvent)` — Handle keyboard events when the tool pane is focused.
--  `open_tool_in_editor` function L73-100 — `(&mut self)` — Open the selected tool's output in an external pager.
--  `run_pager` function L103-132 — `(&self, pager: &str, content: &str) -> std::io::Result<()>` — Run a pager with the given content, suspending and restoring the TUI.
-
 ### crates/arawn-tui/src
 
 **Role**: Library crate for the Arawn terminal UI — exports all modules, terminal lifecycle utilities, the `TuiConfig` entry point, and the top-level `run`/`run_with_config` functions.
@@ -8868,665 +8675,80 @@
 
 **Dependencies**: `ratatui`, `crossterm`, `tokio-tungstenite`, `arawn-client`, `arawn-domain`, `tracing`.
 
-#### crates/arawn-tui/src/app_types.rs
+#### crates/arawn-tui/src/app.rs
 
-- pub `PendingAction` enum L7-24 — `CreateWorkstream | RenameWorkstream | DeleteSession | DeleteWorkstream | Refresh...` — Pending async actions to be executed in the main loop.
-- pub `InputMode` enum L28-36 — `Chat | NewWorkstream | RenameWorkstream` — Input mode determines what the input field is being used for.
-- pub `ChatMessage` struct L40-47 — `{ is_user: bool, content: String, streaming: bool }` — A chat message for display.
-- pub `ToolExecution` struct L51-68 — `{ id: String, name: String, args: String, output: String, running: bool, success...` — A tool execution for display.
-- pub `PanelAreas` struct L72-81 — `{ chat: Option<ratatui::layout::Rect>, tool_pane: Option<ratatui::layout::Rect>,...` — Panel areas for mouse click routing.
-- pub `ContextState` struct L85-94 — `{ current_tokens: usize, max_tokens: usize, percent: u8, status: String }` — Context usage state for display in status bar.
-- pub `UsageStats` struct L98-115 — `{ workstream_id: String, workstream_name: String, is_scratch: bool, production_b...` — Disk usage statistics for a workstream.
-- pub `format_size` function L119-129 — `(bytes: u64) -> String` — Format size as human-readable string.
-- pub `production_size` function L132-134 — `(&self) -> String` — Get formatted production size.
-- pub `work_size` function L137-139 — `(&self) -> String` — Get formatted work size.
-- pub `total_size` function L142-144 — `(&self) -> String` — Get formatted total size.
-- pub `limit_size` function L147-153 — `(&self) -> String` — Get formatted limit.
-- pub `DiskWarning` struct L158-173 — `{ workstream_id: String, workstream: String, level: String, usage_bytes: u64, li...` — A disk usage warning.
--  `UsageStats` type L117-154 — `= UsageStats` — Extracted from app.rs to reduce file size and improve organization.
+- pub `ChatMessage` struct L15-22 — `{ is_user: bool, content: String, streaming: bool }` — A single chat message displayed in the UI.
+- pub `App` struct L25-45 — `{ ws_tx: mpsc::UnboundedSender<ClientMessage>, messages: Vec<ChatMessage>, sessi...` — The main TUI application state.
+- pub `new` function L49-67 — `(config: &TuiConfig, ws_tx: mpsc::UnboundedSender<ClientMessage>) -> Self` — Create a new App from config and a sender channel to the WebSocket.
+- pub `run` function L70-101 — `( &mut self, terminal: &mut Terminal<B>, mut event_rx: mpsc::UnboundedReceiver<E...` — Run the TUI with a real terminal and crossterm event stream.
+- pub `run_headless` function L105-139 — `( &mut self, terminal: &mut Terminal<B>, mut event_rx: mpsc::UnboundedReceiver<E...` — Run in headless mode for testing.
+- pub `set_text` function L255-258 — `(&mut self, text: &str)` — Set the input text directly (for testing).
+- pub `handle_key_public` function L261-263 — `(&mut self, key: crossterm::event::KeyEvent)` — Handle a key event (public for testing).
+- pub `handle_server_message_public` function L266-268 — `(&mut self, msg: ServerMessage)` — Handle a server message (public for testing).
+-  `App` type L47-269 — `= App` — Application state and main event loop.
+-  `handle_key` function L142-172 — `(&mut self, key: crossterm::event::KeyEvent)` — Handle a key event.
+-  `send_message` function L175-200 — `(&mut self)` — Send the current input as a chat message.
+-  `handle_server_message` function L203-252 — `(&mut self, msg: ServerMessage)` — Handle a message from the server.
 
-#### crates/arawn-tui/src/bounded.rs
+#### crates/arawn-tui/src/config.rs
 
-- pub `BoundedVec` struct L10-13 — `{ inner: Vec<T>, max_capacity: usize }` — A vector with a maximum capacity that evicts oldest elements when full.
-- pub `new` function L20-26 — `(max_capacity: usize) -> Self` — Create a new bounded vector with the specified maximum capacity.
-- pub `with_capacity` function L29-35 — `(max_capacity: usize, initial_capacity: usize) -> Self` — Create a new bounded vector with pre-allocated capacity.
-- pub `push` function L41-48 — `(&mut self, item: T)` — Push an element, evicting oldest elements if at capacity.
-- pub `max_capacity` function L51-53 — `(&self) -> usize` — Get the maximum capacity.
-- pub `len` function L56-58 — `(&self) -> usize` — Get the current length.
-- pub `is_empty` function L61-63 — `(&self) -> bool` — Check if empty.
-- pub `clear` function L66-68 — `(&mut self)` — Clear all elements.
-- pub `last` function L71-73 — `(&self) -> Option<&T>` — Get a reference to the last element.
-- pub `last_mut` function L76-78 — `(&mut self) -> Option<&mut T>` — Get a mutable reference to the last element.
-- pub `iter` function L81-83 — `(&self) -> std::slice::Iter<'_, T>` — Iterate over elements.
-- pub `iter_mut` function L86-88 — `(&mut self) -> std::slice::IterMut<'_, T>` — Iterate mutably over elements.
-- pub `get` function L91-93 — `(&self, index: usize) -> Option<&T>` — Get element by index.
-- pub `get_mut` function L96-98 — `(&mut self, index: usize) -> Option<&mut T>` — Get mutable element by index.
-- pub `pop` function L101-103 — `(&mut self) -> Option<T>` — Pop the last element.
-- pub `replace_from_vec` function L106-110 — `(&mut self, items: Vec<T>)` — Replace contents with items from a Vec, keeping only the last `max_capacity` items.
-- pub `from_vec` function L113-120 — `(items: Vec<T>, max_capacity: usize) -> Self` — Create from a Vec, keeping only the last `max_capacity` items.
-- pub `extend` function L123-127 — `(&mut self, iter: I)` — Extend with items from an iterator.
--  `Target` type L132 — `= [T]` — Bounded collection types to prevent unbounded memory growth.
--  `deref` function L134-136 — `(&self) -> &Self::Target` — Bounded collection types to prevent unbounded memory growth.
--  `deref_mut` function L140-142 — `(&mut self) -> &mut Self::Target` — Bounded collection types to prevent unbounded memory growth.
--  `default` function L146-149 — `() -> Self` — Bounded collection types to prevent unbounded memory growth.
--  `Output` type L154 — `= T` — Bounded collection types to prevent unbounded memory growth.
--  `index` function L156-158 — `(&self, index: usize) -> &Self::Output` — Bounded collection types to prevent unbounded memory growth.
--  `index_mut` function L162-164 — `(&mut self, index: usize) -> &mut Self::Output` — Bounded collection types to prevent unbounded memory growth.
--  `tests` module L168-293 — `-` — Bounded collection types to prevent unbounded memory growth.
--  `test_basic_push` function L172-181 — `()` — Bounded collection types to prevent unbounded memory growth.
--  `test_eviction_at_capacity` function L184-199 — `()` — Bounded collection types to prevent unbounded memory growth.
--  `test_eviction_removes_ten_percent` function L202-215 — `()` — Bounded collection types to prevent unbounded memory growth.
--  `test_last` function L218-227 — `()` — Bounded collection types to prevent unbounded memory growth.
--  `test_last_mut` function L230-239 — `()` — Bounded collection types to prevent unbounded memory growth.
--  `test_clear` function L242-249 — `()` — Bounded collection types to prevent unbounded memory growth.
--  `test_iter` function L252-260 — `()` — Bounded collection types to prevent unbounded memory growth.
--  `test_deref_slice_methods` function L263-273 — `()` — Bounded collection types to prevent unbounded memory growth.
--  `test_zero_capacity_panics` function L277-279 — `()` — Bounded collection types to prevent unbounded memory growth.
--  `test_small_capacity_eviction` function L282-292 — `()` — Bounded collection types to prevent unbounded memory growth.
-
-#### crates/arawn-tui/src/client.rs
-
-- pub `ConnectionStatus` enum L13-22 — `Disconnected | Connecting | Connected | Reconnecting` — Connection status for display in the UI.
-- pub `WsClient` struct L36-54 — `{ server_url: String, tx: mpsc::UnboundedSender<ClientMessage>, rx: mpsc::Unboun...` — WebSocket client for real-time communication with the Arawn server.
-- pub `new` function L58-76 — `(server_url: &str) -> Self` — Create a new client and start connecting to the server.
-- pub `server_url` function L79-81 — `(&self) -> &str` — Get the server URL.
-- pub `status` function L84-86 — `(&self) -> ConnectionStatus` — Get the current connection status.
-- pub `poll_status` function L89-97 — `(&mut self) -> Option<ConnectionStatus>` — Poll for status updates (non-blocking).
-- pub `recv` function L100-102 — `(&mut self) -> Option<ServerMessage>` — Receive the next server message (async).
-- pub `try_recv` function L105-107 — `(&mut self) -> Option<ServerMessage>` — Try to receive a server message (non-blocking).
-- pub `send_chat` function L110-123 — `( &self, message: String, session_id: Option<String>, workstream_id: Option<Stri...` — Send a chat message.
-- pub `send_ping` function L126-130 — `(&self) -> Result<()>` — Send a ping.
-- pub `subscribe` function L135-142 — `(&self, session_id: String, reconnect_token: Option<String>) -> Result<()>` — Subscribe to a session.
-- pub `authenticate` function L145-149 — `(&self, token: String) -> Result<()>` — Authenticate with a token.
-- pub `cancel` function L152-156 — `(&self, session_id: String) -> Result<()>` — Cancel the current operation for a session.
-- pub `send_command` function L159-163 — `(&self, command: String, args: serde_json::Value) -> Result<()>` — Send a command to the server.
--  `ConnectionStatus` type L24-33 — `= ConnectionStatus` — WebSocket client for connecting to the Arawn server.
--  `fmt` function L25-32 — `(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result` — WebSocket client for connecting to the Arawn server.
--  `WsClient` type L56-217 — `= WsClient` — WebSocket client for connecting to the Arawn server.
--  `mock` function L170-187 — `() -> Self` — Create a disconnected mock client for testing.
--  `mock_controllable` function L194-216 — `() -> ( Self, mpsc::UnboundedSender<ConnectionStatus>, mpsc::UnboundedSender<Ser...` — Create a controllable mock client for testing reconnection flows.
--  `connection_loop` function L220-280 — `( server_url: String, mut client_rx: mpsc::UnboundedReceiver<ClientMessage>, ser...` — Connection loop that handles reconnection with exponential backoff.
--  `handle_connection` function L284-352 — `( ws_stream: tokio_tungstenite::WebSocketStream< tokio_tungstenite::MaybeTlsStre...` — Handle an active WebSocket connection.
--  `http_to_ws_url` function L355-372 — `(http_url: &str) -> Result<String>` — Convert an HTTP URL to a WebSocket URL with /ws path.
--  `tests` module L375-408 — `-` — WebSocket client for connecting to the Arawn server.
--  `test_http_to_ws_url` function L379-396 — `()` — WebSocket client for connecting to the Arawn server.
--  `test_connection_status_display` function L399-407 — `()` — WebSocket client for connecting to the Arawn server.
+- pub `TuiConfig` struct L5-12 — `{ server_url: String, context_name: Option<String>, workstream: Option<String> }` — Configuration for the TUI application.
+- pub `new` function L16-22 — `(server_url: &str) -> Self` — Create a new TUI config pointing at the given server.
+- pub `ws_url` function L25-33 — `(&self) -> String` — Derive the WebSocket URL from the server URL.
+-  `TuiConfig` type L14-34 — `= TuiConfig` — TUI configuration.
+-  `tests` module L37-57 — `-` — TUI configuration.
+-  `ws_url_from_http` function L41-44 — `()` — TUI configuration.
+-  `ws_url_from_https` function L47-50 — `()` — TUI configuration.
+-  `ws_url_strips_trailing_slash` function L53-56 — `()` — TUI configuration.
 
 #### crates/arawn-tui/src/events.rs
 
-- pub `Event` enum L12-21 — `Key | Mouse | Resize | Tick` — Terminal events.
-- pub `EventHandler` struct L24-30 — `{ rx: mpsc::UnboundedReceiver<Event>, task: tokio::task::JoinHandle<()> }` — Handles terminal events using crossterm's async event stream.
-- pub `new` function L34-82 — `() -> Self` — Create a new event handler.
-- pub `next` function L85-90 — `(&mut self) -> Result<Event>` — Wait for the next event.
--  `EventHandler` type L32-91 — `= EventHandler` — Event handling for the TUI.
--  `EventHandler` type L93-97 — `impl Default for EventHandler` — Event handling for the TUI.
--  `default` function L94-96 — `() -> Self` — Event handling for the TUI.
-
-#### crates/arawn-tui/src/focus.rs
-
-- pub `FocusTarget` enum L8-24 — `Input | Sidebar | ToolPane | Logs | CommandPalette | Sessions | Workstreams` — Focus targets - all focusable areas in the TUI.
-- pub `is_overlay` function L31-36 — `(&self) -> bool` — Returns true if this target is an overlay (modal popup).
-- pub `is_panel` function L39-41 — `(&self) -> bool` — Returns true if this is a main panel (not an overlay).
-- pub `name` function L44-54 — `(&self) -> &'static str` — Get the display name for this focus target.
-- pub `FocusManager` struct L86-93 — `{ current: FocusTarget, previous: Option<FocusTarget>, overlay_stack: Vec<FocusT...` — Manages focus state and transitions for the TUI.
-- pub `new` function L103-109 — `() -> Self` — Create a new focus manager with default focus on Input.
-- pub `current` function L112-114 — `(&self) -> FocusTarget` — Get the current focus target.
-- pub `is` function L117-119 — `(&self, target: FocusTarget) -> bool` — Check if currently focused on a specific target.
-- pub `has_overlay` function L122-124 — `(&self) -> bool` — Check if any overlay is active.
-- pub `focus` function L129-142 — `(&mut self, target: FocusTarget)` — Direct focus change to a panel (not an overlay).
-- pub `push_overlay` function L145-158 — `(&mut self, overlay: FocusTarget)` — Open an overlay, remembering the current focus to return to.
-- pub `pop_overlay` function L163-175 — `(&mut self) -> Option<FocusTarget>` — Close the current overlay and return to previous focus.
-- pub `close_all_overlays` function L178-181 — `(&mut self)` — Close all overlays and return to the previous panel focus.
-- pub `cycle_next` function L187-199 — `(&mut self)` — Cycle focus to the next main panel.
-- pub `cycle_prev` function L205-221 — `(&mut self)` — Cycle focus to the previous main panel.
-- pub `toggle` function L227-233 — `(&mut self, target: FocusTarget)` — Toggle focus between the current panel and a specific target.
-- pub `return_to_input` function L236-239 — `(&mut self)` — Return focus to Input (common operation).
--  `FocusTarget` type L26-55 — `= FocusTarget` — adding new panels easier and focus behavior more predictable.
--  `CYCLABLE_PANELS` variable L58-63 — `: &[FocusTarget]` — Main panels that can be cycled through with Tab.
--  `FocusManager` type L95-99 — `impl Default for FocusManager` — adding new panels easier and focus behavior more predictable.
--  `default` function L96-98 — `() -> Self` — adding new panels easier and focus behavior more predictable.
--  `FocusManager` type L101-240 — `= FocusManager` — adding new panels easier and focus behavior more predictable.
--  `tests` module L243-373 — `-` — adding new panels easier and focus behavior more predictable.
--  `test_default_focus` function L247-251 — `()` — adding new panels easier and focus behavior more predictable.
--  `test_direct_focus` function L254-259 — `()` — adding new panels easier and focus behavior more predictable.
--  `test_overlay_push_pop` function L262-278 — `()` — adding new panels easier and focus behavior more predictable.
--  `test_overlay_returns_to_previous_panel` function L281-295 — `()` — adding new panels easier and focus behavior more predictable.
--  `test_cycle_next` function L298-315 — `()` — adding new panels easier and focus behavior more predictable.
--  `test_cycle_prev` function L318-327 — `()` — adding new panels easier and focus behavior more predictable.
--  `test_cycle_blocked_during_overlay` function L330-338 — `()` — adding new panels easier and focus behavior more predictable.
--  `test_toggle` function L341-351 — `()` — adding new panels easier and focus behavior more predictable.
--  `test_is_overlay` function L354-360 — `()` — adding new panels easier and focus behavior more predictable.
--  `test_close_all_overlays` function L363-372 — `()` — adding new panels easier and focus behavior more predictable.
-
-#### crates/arawn-tui/src/input.rs
-
-- pub `ParsedCommand` struct L10-15 — `{ name: String, args: String }` — Parsed command from input starting with '/'.
-- pub `parse` function L21-41 — `(input: &str) -> Option<Self>` — Parse a command from input text.
-- pub `name_lower` function L44-46 — `(&self) -> String` — Get the command name in lowercase for matching.
-- pub `InputState` struct L51-62 — `{ content: String, cursor: usize, history: VecDeque<String>, history_index: Opti...` — Input state with text editing and history navigation.
-- pub `new` function L72-80 — `() -> Self` — Create a new empty input state.
-- pub `content` function L83-85 — `(&self) -> &str` — Get the current input content.
-- pub `cursor` function L88-90 — `(&self) -> usize` — Get the cursor position (byte offset).
-- pub `is_empty` function L93-95 — `(&self) -> bool` — Check if the input is empty.
-- pub `is_command` function L98-100 — `(&self) -> bool` — Check if the input starts with a command prefix '/'.
-- pub `parse_command` function L103-105 — `(&self) -> Option<ParsedCommand>` — Parse the input as a command if it starts with '/'.
-- pub `command_prefix` function L109-117 — `(&self) -> Option<&str>` — Get the command prefix for autocomplete filtering.
-- pub `line_count` function L120-122 — `(&self) -> usize` — Count the number of lines in the input.
-- pub `cursor_position` function L128-136 — `(&self) -> (usize, usize)` — Get the cursor's line and column position.
-- pub `insert_char` function L139-143 — `(&mut self, c: char)` — Insert a character at the cursor position.
-- pub `insert_newline` function L146-148 — `(&mut self)` — Insert a newline at the cursor position.
-- pub `delete_char_before` function L151-163 — `(&mut self)` — Delete the character before the cursor (backspace).
-- pub `delete_char_at` function L166-171 — `(&mut self)` — Delete the character at the cursor (delete key).
-- pub `move_left` function L174-183 — `(&mut self)` — Move cursor left by one character.
-- pub `move_right` function L186-195 — `(&mut self)` — Move cursor right by one character.
-- pub `move_to_line_start` function L198-201 — `(&mut self)` — Move cursor to the start of the current line.
-- pub `move_to_line_end` function L204-210 — `(&mut self)` — Move cursor to the end of the current line.
-- pub `move_to_start` function L213-215 — `(&mut self)` — Move cursor to the start of input.
-- pub `move_to_end` function L218-220 — `(&mut self)` — Move cursor to the end of input.
-- pub `move_up` function L223-242 — `(&mut self)` — Move cursor up one line.
-- pub `move_down` function L245-266 — `(&mut self)` — Move cursor down one line.
-- pub `history_prev` function L270-298 — `(&mut self) -> bool` — Navigate to previous history entry.
-- pub `history_next` function L302-323 — `(&mut self) -> bool` — Navigate to next history entry or restore draft.
-- pub `is_browsing_history` function L326-328 — `(&self) -> bool` — Check if currently browsing history.
-- pub `submit` function L344-359 — `(&mut self) -> String` — Submit the current input and add to history.
-- pub `clear` function L362-366 — `(&mut self)` — Clear the current input.
-- pub `set_text` function L369-373 — `(&mut self, text: &str)` — Set the input text and move cursor to the end.
--  `MAX_HISTORY` variable L6 — `: usize` — Maximum number of history entries to keep.
--  `ParsedCommand` type L17-47 — `= ParsedCommand` — Input state management with history support.
--  `InputState` type L64-68 — `impl Default for InputState` — Input state management with history support.
--  `default` function L65-67 — `() -> Self` — Input state management with history support.
--  `InputState` type L70-374 — `= InputState` — Input state management with history support.
--  `exit_history_mode` function L337-340 — `(&mut self)` — Exit history browsing mode without restoring draft.
--  `tests` module L377-845 — `-` — Input state management with history support.
--  `test_basic_input` function L381-389 — `()` — Input state management with history support.
--  `test_cursor_movement` function L392-406 — `()` — Input state management with history support.
--  `test_backspace` function L409-415 — `()` — Input state management with history support.
--  `test_history` function L418-445 — `()` — Input state management with history support.
--  `test_multiline` function L448-460 — `()` — Input state management with history support.
--  `test_history_with_draft` function L463-484 — `()` — Input state management with history support.
--  `test_is_command` function L487-508 — `()` — Input state management with history support.
--  `test_parse_command` function L511-535 — `()` — Input state management with history support.
--  `test_move_right` function L538-551 — `()` — Input state management with history support.
--  `test_move_left_at_start` function L554-560 — `()` — Input state management with history support.
--  `test_delete_char_at` function L563-570 — `()` — Input state management with history support.
--  `test_delete_char_at_end_noop` function L573-579 — `()` — Input state management with history support.
--  `test_delete_char_before_at_start_noop` function L582-588 — `()` — Input state management with history support.
--  `test_move_to_line_start_and_end` function L591-599 — `()` — Input state management with history support.
--  `test_move_to_line_start_first_line` function L602-609 — `()` — Input state management with history support.
--  `test_move_to_line_end_first_line` function L612-618 — `()` — Input state management with history support.
--  `test_move_up_down` function L621-655 — `()` — Input state management with history support.
--  `test_move_up_clamps_column_to_shorter_line` function L658-667 — `()` — Input state management with history support.
--  `test_move_down_clamps_column_to_shorter_line` function L670-686 — `()` — Input state management with history support.
--  `test_clear` function L689-695 — `()` — Input state management with history support.
--  `test_set_text` function L698-703 — `()` — Input state management with history support.
--  `test_submit_adds_to_history_and_clears` function L706-713 — `()` — Input state management with history support.
--  `test_submit_empty_not_added_to_history` function L716-720 — `()` — Input state management with history support.
--  `test_submit_whitespace_not_added_to_history` function L723-728 — `()` — Input state management with history support.
--  `test_submit_dedup_consecutive` function L731-741 — `()` — Input state management with history support.
--  `test_history_prev_on_empty_history` function L744-747 — `()` — Input state management with history support.
--  `test_history_next_without_browsing` function L750-753 — `()` — Input state management with history support.
--  `test_history_at_oldest_returns_false` function L756-762 — `()` — Input state management with history support.
--  `test_insert_char_exits_history_mode` function L765-773 — `()` — Input state management with history support.
--  `test_name_lower` function L776-779 — `()` — Input state management with history support.
--  `test_cursor_position_empty` function L782-787 — `()` — Input state management with history support.
--  `test_line_count_empty` function L790-793 — `()` — Input state management with history support.
--  `test_line_count_multiline` function L796-800 — `()` — Input state management with history support.
--  `test_insert_in_middle` function L803-811 — `()` — Input state management with history support.
--  `test_unicode_cursor_movement` function L814-823 — `()` — Input state management with history support.
--  `test_command_prefix` function L826-844 — `()` — Input state management with history support.
+- pub `Event` enum L10-15 — `Key | Tick` — Application events.
+- pub `spawn` function L21-48 — `() -> mpsc::UnboundedReceiver<Event>` — Spawn an event-reading loop that sends events via an unbounded channel.
+- pub `test_channel` function L51-53 — `() -> (mpsc::UnboundedSender<Event>, mpsc::UnboundedReceiver<Event>)` — Create a channel pair for injecting events in tests.
 
 #### crates/arawn-tui/src/lib.rs
 
-- pub `app` module L5 — `-` — A minimal, keyboard-driven terminal interface for Arawn.
-- pub `app_types` module L6 — `-` — A minimal, keyboard-driven terminal interface for Arawn.
-- pub `bounded` module L7 — `-` — A minimal, keyboard-driven terminal interface for Arawn.
-- pub `client` module L8 — `-` — A minimal, keyboard-driven terminal interface for Arawn.
-- pub `events` module L9 — `-` — A minimal, keyboard-driven terminal interface for Arawn.
-- pub `focus` module L10 — `-` — A minimal, keyboard-driven terminal interface for Arawn.
-- pub `input` module L11 — `-` — A minimal, keyboard-driven terminal interface for Arawn.
-- pub `logs` module L12 — `-` — A minimal, keyboard-driven terminal interface for Arawn.
-- pub `palette` module L13 — `-` — A minimal, keyboard-driven terminal interface for Arawn.
-- pub `protocol` module L14 — `-` — A minimal, keyboard-driven terminal interface for Arawn.
-- pub `sessions` module L15 — `-` — A minimal, keyboard-driven terminal interface for Arawn.
-- pub `sidebar` module L16 — `-` — A minimal, keyboard-driven terminal interface for Arawn.
-- pub `ui` module L17 — `-` — A minimal, keyboard-driven terminal interface for Arawn.
-- pub `Tui` type L35 — `= Terminal<CrosstermBackend<Stdout>>` — Terminal type alias for convenience.
-- pub `init_terminal` function L38-45 — `() -> Result<Tui>` — Initialize the terminal for TUI mode.
-- pub `restore_terminal` function L48-57 — `(terminal: &mut Tui) -> Result<()>` — Restore the terminal to normal mode.
-- pub `install_panic_hook` function L60-68 — `()` — Install a panic hook that restores the terminal before panicking.
-- pub `TuiConfig` struct L71-80 — `{ server_url: String, workstream: Option<String>, context_name: Option<String>, ...` — Configuration for running the TUI.
-- pub `new` function L84-91 — `(server_url: impl Into<String>) -> Self` — Create config with just a server URL.
-- pub `from_client_config` function L96-118 — `(context_name: Option<&str>) -> Result<Self>` — Load config from the client config file.
-- pub `run` function L122-124 — `(server_url: &str) -> Result<()>` — Run the TUI application.
-- pub `run_with_config` function L127-155 — `(config: TuiConfig) -> Result<()>` — Run the TUI application with full configuration.
--  `TuiConfig` type L82-119 — `= TuiConfig` — A minimal, keyboard-driven terminal interface for Arawn.
-
-#### crates/arawn-tui/src/logs.rs
-
-- pub `LogEntry` struct L19-26 — `{ level: Level, target: String, message: String }` — A single log entry.
-- pub `level_color` function L30-39 — `(&self) -> ratatui::style::Color` — Get a color for this log level.
-- pub `level_prefix` function L42-50 — `(&self) -> &'static str` — Get a short level prefix.
-- pub `LogBuffer` struct L55-57 — `{ entries: Arc<Mutex<VecDeque<LogEntry>>> }` — Shared log buffer that can be read by the TUI.
-- pub `new` function L61-65 — `() -> Self` — Create a new log buffer.
-- pub `entries` function L68-70 — `(&self) -> Vec<LogEntry>` — Get all current entries.
-- pub `len` function L73-75 — `(&self) -> usize` — Get the number of entries.
-- pub `is_empty` function L78-80 — `(&self) -> bool` — Check if empty.
-- pub `clear` function L83-85 — `(&self)` — Clear all entries.
-- pub `TuiLogLayer` struct L98-102 — `{ buffer: LogBuffer, min_level: Level }` — A tracing layer that captures logs to a buffer.
-- pub `new` function L106-111 — `(buffer: LogBuffer) -> Self` — Create a new TUI log layer.
-- pub `with_min_level` function L114-117 — `(mut self, level: Level) -> Self` — Set minimum log level to capture.
--  `MAX_LOG_ENTRIES` variable L15 — `: usize` — Maximum number of log entries to keep.
--  `LogEntry` type L28-51 — `= LogEntry` — Captures tracing events and stores them in a ring buffer for display.
--  `LogBuffer` type L59-95 — `= LogBuffer` — Captures tracing events and stores them in a ring buffer for display.
--  `push` function L88-94 — `(&self, entry: LogEntry)` — Add an entry.
--  `TuiLogLayer` type L104-118 — `= TuiLogLayer` — Captures tracing events and stores them in a ring buffer for display.
--  `MessageVisitor` struct L121-123 — `{ message: String }` — Visitor to extract the message field from events.
--  `MessageVisitor` type L125-131 — `= MessageVisitor` — Captures tracing events and stores them in a ring buffer for display.
--  `new` function L126-130 — `() -> Self` — Captures tracing events and stores them in a ring buffer for display.
--  `MessageVisitor` type L133-152 — `impl Visit for MessageVisitor` — Captures tracing events and stores them in a ring buffer for display.
--  `record_debug` function L134-145 — `(&mut self, field: &Field, value: &dyn std::fmt::Debug)` — Captures tracing events and stores them in a ring buffer for display.
--  `record_str` function L147-151 — `(&mut self, field: &Field, value: &str)` — Captures tracing events and stores them in a ring buffer for display.
--  `TuiLogLayer` type L154-175 — `= TuiLogLayer` — Captures tracing events and stores them in a ring buffer for display.
--  `on_event` function L155-174 — `(&self, event: &Event<'_>, _ctx: Context<'_, S>)` — Captures tracing events and stores them in a ring buffer for display.
--  `tests` module L178-217 — `-` — Captures tracing events and stores them in a ring buffer for display.
--  `test_log_buffer` function L182-195 — `()` — Captures tracing events and stores them in a ring buffer for display.
--  `test_log_entry_colors` function L198-216 — `()` — Captures tracing events and stores them in a ring buffer for display.
-
-#### crates/arawn-tui/src/palette.rs
-
-- pub `Action` struct L5-14 — `{ id: ActionId, label: &'static str, category: &'static str, shortcut: Option<&'...` — An action that can be executed from the command palette.
-- pub `ActionId` enum L18-31 — `SessionsSwitch | SessionsNew | SessionsDelete | SessionsMoveToWorkstream | Works...` — Identifiers for all palette actions.
-- pub `DEFAULT_ACTIONS` variable L51-95 — `: &[Action]` — Default set of actions available in the palette.
-- pub `CommandPalette` struct L99-108 — `{ actions: Vec<Action>, filter: String, filtered_indices: Vec<usize>, selected: ...` — State for the command palette.
-- pub `new` function L118-128 — `() -> Self` — Create a new command palette with default actions.
-- pub `filter` function L131-133 — `(&self) -> &str` — Get the current filter text.
-- pub `selected_action` function L136-140 — `(&self) -> Option<&Action>` — Get the selected action (if any).
-- pub `selected_index` function L143-145 — `(&self) -> usize` — Get the selected index in the filtered list.
-- pub `visible_actions` function L149-162 — `(&self) -> impl Iterator<Item = (bool, bool, &Action)>` — Get an iterator over visible actions with metadata.
-- pub `visible_count` function L165-167 — `(&self) -> usize` — Get the count of visible actions.
-- pub `select_prev` function L170-174 — `(&mut self)` — Move selection up.
-- pub `select_next` function L177-181 — `(&mut self)` — Move selection down.
-- pub `select_first` function L184-186 — `(&mut self)` — Move selection to first item.
-- pub `select_last` function L189-193 — `(&mut self)` — Move selection to last item.
-- pub `filter_push` function L196-199 — `(&mut self, c: char)` — Add a character to the filter.
-- pub `filter_pop` function L202-205 — `(&mut self)` — Remove last character from filter.
-- pub `filter_clear` function L208-211 — `(&mut self)` — Clear the filter.
-- pub `reset` function L236-240 — `(&mut self)` — Reset the palette state.
-- pub `register_action` function L243-246 — `(&mut self, action: Action)` — Register a new action.
--  `Action` type L33-48 — `= Action` — Command palette state and action registry.
--  `new` function L35-47 — `( id: ActionId, label: &'static str, category: &'static str, shortcut: Option<&'...` — Create a new action.
--  `CommandPalette` type L110-114 — `impl Default for CommandPalette` — Command palette state and action registry.
--  `default` function L111-113 — `() -> Self` — Command palette state and action registry.
--  `CommandPalette` type L116-247 — `= CommandPalette` — Command palette state and action registry.
--  `update_filtered` function L214-233 — `(&mut self)` — Update filtered indices based on current filter.
--  `fuzzy_match` function L250-264 — `(text: &str, filter: &str) -> bool` — Simple fuzzy matching - checks if all filter characters appear in order.
--  `tests` module L267-345 — `-` — Command palette state and action registry.
--  `test_palette_filtering` function L271-290 — `()` — Command palette state and action registry.
--  `test_palette_navigation` function L293-310 — `()` — Command palette state and action registry.
--  `test_palette_action_selection` function L313-324 — `()` — Command palette state and action registry.
--  `test_category_grouping` function L327-344 — `()` — Command palette state and action registry.
+- pub `app` module L3 — `-` — Arawn Terminal UI — bare-bones chat interface over WebSocket.
+- pub `config` module L4 — `-` — Arawn Terminal UI — bare-bones chat interface over WebSocket.
+- pub `events` module L5 — `-` — Arawn Terminal UI — bare-bones chat interface over WebSocket.
+- pub `protocol` module L6 — `-` — Arawn Terminal UI — bare-bones chat interface over WebSocket.
+- pub `render` module L7 — `-` — Arawn Terminal UI — bare-bones chat interface over WebSocket.
+- pub `ws` module L8 — `-` — Arawn Terminal UI — bare-bones chat interface over WebSocket.
+- pub `run_with_config` function L22-49 — `(config: TuiConfig) -> Result<()>` — Run the TUI with the given configuration.
 
 #### crates/arawn-tui/src/protocol.rs
 
-- pub `ClientMessage` enum L10-55 — `Chat | Subscribe | Unsubscribe | Ping | Auth | Cancel | Command` — Messages from client to server.
-- pub `ServerMessage` enum L60-196 — `AuthResult | SessionCreated | ChatChunk | ToolStart | ToolOutput | ToolEnd | Err...` — Messages from server to client.
--  `tests` module L199-382 — `-` — These types mirror the protocol defined in `arawn-server/src/routes/ws.rs`.
--  `test_client_message_serialization` function L203-234 — `()` — These types mirror the protocol defined in `arawn-server/src/routes/ws.rs`.
--  `test_server_message_deserialization` function L237-260 — `()` — These types mirror the protocol defined in `arawn-server/src/routes/ws.rs`.
--  `test_command_message_serialization` function L263-281 — `()` — These types mirror the protocol defined in `arawn-server/src/routes/ws.rs`.
--  `test_command_response_deserialization` function L284-339 — `()` — These types mirror the protocol defined in `arawn-server/src/routes/ws.rs`.
--  `test_context_info_deserialization` function L342-381 — `()` — These types mirror the protocol defined in `arawn-server/src/routes/ws.rs`.
+- pub `ClientMessage` enum L8-22 — `Chat | Ping` — Messages sent from the TUI client to the server.
+- pub `ServerMessage` enum L27-68 — `AuthResult | SessionCreated | ChatChunk | ToolStart | ToolEnd | Error | Pong | S...` — Messages received from the server.
+-  `tests` module L71-100 — `-` — WebSocket protocol types (client-side mirror of server protocol).
+-  `client_chat_serializes` function L75-85 — `()` — WebSocket protocol types (client-side mirror of server protocol).
+-  `server_chat_chunk_deserializes` function L88-92 — `()` — WebSocket protocol types (client-side mirror of server protocol).
+-  `unknown_type_deserializes_as_unknown` function L95-99 — `()` — WebSocket protocol types (client-side mirror of server protocol).
 
-#### crates/arawn-tui/src/sessions.rs
+#### crates/arawn-tui/src/render.rs
 
-- pub `SessionSummary` struct L7-18 — `{ id: String, title: String, last_active: DateTime<Utc>, message_count: usize, i...` — Summary information about a session.
-- pub `SessionList` struct L35-46 — `{ items: Vec<SessionSummary>, selected: usize, filter: String, filtered_indices:...` — State for the session list overlay.
-- pub `new` function L56-64 — `() -> Self` — Create a new empty session list.
-- pub `filter` function L67-69 — `(&self) -> &str` — Get the filter text.
-- pub `is_loading` function L72-74 — `(&self) -> bool` — Check if the list is loading.
-- pub `set_loading` function L77-79 — `(&mut self, loading: bool)` — Set loading state.
-- pub `set_items` function L82-86 — `(&mut self, items: Vec<SessionSummary>)` — Update the session list with new items.
-- pub `selected_session` function L89-93 — `(&self) -> Option<&SessionSummary>` — Get the currently selected session (if any).
-- pub `selected_index` function L96-98 — `(&self) -> usize` — Get the selected index in the filtered list.
-- pub `visible_sessions` function L101-106 — `(&self) -> impl Iterator<Item = (bool, &SessionSummary)>` — Get an iterator over visible sessions with their selected state.
-- pub `visible_count` function L109-111 — `(&self) -> usize` — Get the count of visible sessions.
-- pub `select_prev` function L114-118 — `(&mut self)` — Move selection up.
-- pub `select_next` function L121-125 — `(&mut self)` — Move selection down.
-- pub `select_first` function L128-130 — `(&mut self)` — Move selection to first item.
-- pub `select_last` function L133-137 — `(&mut self)` — Move selection to last item.
-- pub `filter_push` function L140-143 — `(&mut self, c: char)` — Add a character to the filter.
-- pub `filter_pop` function L146-149 — `(&mut self)` — Remove last character from filter.
-- pub `filter_clear` function L152-155 — `(&mut self)` — Clear the filter.
-- pub `reset` function L180-184 — `(&mut self)` — Reset the list state (e.g., when closing the overlay).
-- pub `set_current` function L187-191 — `(&mut self, session_id: &str)` — Mark a session as current by ID.
-- pub `format_relative_time` function L219-249 — `(time: DateTime<Utc>) -> String` — Format a timestamp as a relative time string.
--  `SessionList` type L48-52 — `impl Default for SessionList` — Session list state and management.
--  `default` function L49-51 — `() -> Self` — Session list state and management.
--  `SessionList` type L54-192 — `= SessionList` — Session list state and management.
--  `update_filtered` function L158-177 — `(&mut self)` — Update the filtered indices based on current filter.
--  `fuzzy_match` function L202-216 — `(text: &str, filter: &str) -> bool` — Simple fuzzy matching - checks if all filter characters appear in order.
--  `tests` module L252-557 — `-` — Session list state and management.
--  `test_fuzzy_match` function L256-265 — `()` — Session list state and management.
--  `test_session_list_filtering` function L268-295 — `()` — Session list state and management.
--  `test_session_list_navigation` function L298-343 — `()` — Session list state and management.
--  `make_sessions` function L345-355 — `(n: usize) -> Vec<SessionSummary>` — Session list state and management.
--  `test_selected_session_returns_correct_item` function L358-364 — `()` — Session list state and management.
--  `test_selected_session_empty_list` function L367-370 — `()` — Session list state and management.
--  `test_visible_sessions_iterator` function L373-382 — `()` — Session list state and management.
--  `test_filter_pop` function L385-409 — `()` — Session list state and management.
--  `test_reset` function L412-422 — `()` — Session list state and management.
--  `test_set_current` function L425-433 — `()` — Session list state and management.
--  `test_loading_state` function L436-443 — `()` — Session list state and management.
--  `test_select_prev_at_zero` function L446-451 — `()` — Session list state and management.
--  `test_select_last_on_empty` function L454-458 — `()` — Session list state and management.
--  `test_select_next_on_empty` function L461-465 — `()` — Session list state and management.
--  `test_filter_clamps_selection` function L468-477 — `()` — Session list state and management.
--  `test_filter_no_matches` function L480-488 — `()` — Session list state and management.
--  `test_format_relative_time_just_now` function L491-494 — `()` — Session list state and management.
--  `test_format_relative_time_minutes` function L497-500 — `()` — Session list state and management.
--  `test_format_relative_time_one_hour` function L503-506 — `()` — Session list state and management.
--  `test_format_relative_time_hours` function L509-512 — `()` — Session list state and management.
--  `test_format_relative_time_yesterday` function L515-518 — `()` — Session list state and management.
--  `test_format_relative_time_days` function L521-524 — `()` — Session list state and management.
--  `test_format_relative_time_one_week` function L527-530 — `()` — Session list state and management.
--  `test_format_relative_time_weeks` function L533-536 — `()` — Session list state and management.
--  `test_format_relative_time_old` function L539-544 — `()` — Session list state and management.
--  `test_default_impl` function L547-550 — `()` — Session list state and management.
--  `SessionList` type L552-556 — `= SessionList` — Session list state and management.
--  `is_empty` function L553-555 — `(&self) -> bool` — Session list state and management.
+- pub `draw` function L14-34 — `(f: &mut Frame, app: &App)` — Render the entire UI into the given frame.
+-  `draw_chat` function L37-96 — `(f: &mut Frame, app: &App, area: Rect)` — Render the chat messages area.
+-  `draw_input` function L99-111 — `(f: &mut Frame, app: &App, area: Rect)` — Render the input box.
+-  `draw_status` function L114-117 — `(f: &mut Frame, status: &str, area: Rect)` — Render the status line at the bottom.
 
-#### crates/arawn-tui/src/sidebar.rs
+#### crates/arawn-tui/src/ws.rs
 
-- pub `WorkstreamEntry` struct L7-24 — `{ id: String, name: String, session_count: usize, is_current: bool, is_scratch: ...` — A workstream entry for display.
-- pub `is_archived` function L28-30 — `(&self) -> bool` — Check if this workstream is archived.
-- pub `SidebarSection` enum L35-39 — `Workstreams | Sessions` — Which section of the sidebar has focus.
-- pub `Sidebar` struct L61-76 — `{ open: bool, section: SidebarSection, workstreams: Vec<WorkstreamEntry>, workst...` — Sidebar state managing workstreams and sessions lists.
-- pub `new` function L86-96 — `() -> Self` — Create a new sidebar (starts closed).
-- pub `toggle` function L99-101 — `(&mut self)` — Toggle sidebar open/closed.
-- pub `open` function L104-106 — `(&mut self)` — Open the sidebar.
-- pub `close` function L109-111 — `(&mut self)` — Close the sidebar.
-- pub `is_open` function L114-116 — `(&self) -> bool` — Check if the sidebar is open.
-- pub `toggle_section` function L119-124 — `(&mut self)` — Switch focus between workstreams and sessions.
-- pub `select_prev` function L129-159 — `(&mut self) -> Option<String>` — Move selection up in current section (circular).
-- pub `select_next` function L164-194 — `(&mut self) -> Option<String>` — Move selection down in current section (circular).
-- pub `selected_workstream` function L197-199 — `(&self) -> Option<&WorkstreamEntry>` — Get the currently selected workstream.
-- pub `is_new_session_selected` function L202-204 — `(&self) -> bool` — Check if "+ New Session" is currently selected.
-- pub `selected_session` function L207-213 — `(&self) -> Option<&SessionSummary>` — Get the currently selected session (None if "+ New Session" is selected).
-- pub `filter_push` function L216-218 — `(&mut self, c: char)` — Add a character to the filter.
-- pub `filter_pop` function L221-223 — `(&mut self)` — Remove the last character from the filter.
-- pub `filter_clear` function L226-228 — `(&mut self)` — Clear the filter.
-- pub `visible_workstreams` function L231-240 — `(&self) -> impl Iterator<Item = (bool, &WorkstreamEntry)>` — Get visible active workstreams (filtered).
-- pub `visible_archived_workstreams` function L243-252 — `(&self) -> impl Iterator<Item = (bool, &WorkstreamEntry)>` — Get visible archived workstreams (filtered).
-- pub `has_archived_workstreams` function L255-257 — `(&self) -> bool` — Check if there are any archived workstreams.
-- pub `visible_sessions` function L261-270 — `(&self) -> impl Iterator<Item = (bool, &SessionSummary)>` — Get visible sessions (filtered).
-- pub `set_current_session` function L273-281 — `(&mut self, session_id: &str)` — Set the current session as selected in sessions list.
--  `WorkstreamEntry` type L26-31 — `= WorkstreamEntry` — Sidebar state for workstreams and sessions navigation.
--  `Sidebar` type L78-82 — `impl Default for Sidebar` — Sidebar state for workstreams and sessions navigation.
--  `default` function L79-81 — `() -> Self` — Sidebar state for workstreams and sessions navigation.
--  `Sidebar` type L84-282 — `= Sidebar` — Sidebar state for workstreams and sessions navigation.
--  `tests` module L285-485 — `-` — Sidebar state for workstreams and sessions navigation.
--  `test_sidebar_toggle` function L290-306 — `()` — Sidebar state for workstreams and sessions navigation.
--  `test_section_toggle` function L309-318 — `()` — Sidebar state for workstreams and sessions navigation.
--  `setup_test_workstreams` function L321-364 — `(sidebar: &mut Sidebar)` — Helper to set up test workstreams.
--  `setup_test_sessions` function L367-406 — `(sidebar: &mut Sidebar)` — Helper to set up test sessions.
--  `test_navigation` function L409-460 — `()` — Sidebar state for workstreams and sessions navigation.
--  `test_workstream_navigation_returns_id` function L463-484 — `()` — Sidebar state for workstreams and sessions navigation.
-
-### crates/arawn-tui/src/ui
-
-**Role**: Pure rendering layer for the TUI — stateless functions that take application state references and write to a ratatui `Frame`. No business logic lives here.
-
-**Key abstractions**:
-- `theme.rs` — centralized color and style constants (`ACCENT`, `TEXT_PRIMARY`, `BORDER_FOCUSED`, etc.) and style factory functions (`user_prefix()`, `tool_name()`, `selected()`, etc.). All other render functions import from here, making visual consistency trivial to maintain.
-- `layout.rs` / `render()` — the root render function that computes panel areas, routes to per-panel renderers, and handles overlays. Contains the header bar (connection status, context usage indicator), content area (chat + optional tool pane), status bar, and warning banner.
-- `chat.rs` / `render_chat()` — renders the message list as a scrollable `Paragraph`. User messages get a `> ` prefix; assistant messages stream with a cursor indicator. Tool executions are rendered as compact inline cards between messages.
-- `sidebar.rs` / `render_sidebar()` — conditionally renders either a closed hint strip or the full workstream/session list with fuzzy filtering, archived section, and disk usage annotations.
-- `tools.rs` / `render_tool_pane()` — renders tool output in a scrollable split view with a tabbed selector showing all tool executions for the current turn.
-- `command_popup.rs` — autocomplete dropdown that appears when input starts with `/`, filtered by the typed prefix.
-- `palette.rs`, `sessions.rs` — overlay renderers for the command palette and sessions list respectively.
-
-**Internal flow**: `render()` in `layout.rs` is called once per frame tick. It computes `PanelAreas` (stored back into `app.panel_areas` for mouse hit-testing), then calls each panel's renderer. Overlays are rendered last so they paint over the underlying panels.
-
-**Mixed concerns / gotchas**: `layout.rs` contains both the layout logic and several inline render helpers (`render_header`, `render_status_bar`, `render_usage_popup`). The `centered_rect` helper is copy-pasted into `palette.rs`, `sessions.rs`, and `layout.rs`.
-
-**Dependencies**: `ratatui` (all rendering primitives), `arawn-tui::app` (read-only access to `App` state), `arawn-tui::app_types` (ChatMessage, ToolExecution, etc.).
-
-#### crates/arawn-tui/src/ui/chat.rs
-
-- pub `render_chat` function L17-89 — `(app: &mut App, frame: &mut Frame, area: Rect)` — Render the chat view with all messages.
--  `STREAMING_CURSOR` variable L14 — `: &str` — Streaming cursor indicator.
--  `render_user_message` function L92-96 — `(lines: &mut Vec<Line<'static>>, msg: &ChatMessage)` — Render user message with > prefix.
--  `render_assistant_message` function L99-123 — `(lines: &mut Vec<Line<'static>>, msg: &ChatMessage, _width: usize)` — Render assistant message with word wrapping and streaming cursor.
--  `TOOL_SEPARATOR` variable L126 — `: &str` — Dotted separator character for tool display.
--  `render_tools` function L129-196 — `(lines: &mut Vec<Line<'static>>, tools: &[ToolExecution])` — Render tool executions between messages.
--  `truncate_str` function L199-205 — `(s: &str, max_len: usize) -> String` — Truncate a string to max length, adding "..." if truncated.
--  `format_duration` function L208-219 — `(ms: u64) -> String` — Format duration in human-readable form.
--  `render_welcome` function L222-276 — `(frame: &mut Frame, area: Rect)` — Render the welcome screen when there are no messages.
-
-#### crates/arawn-tui/src/ui/command_popup.rs
-
-- pub `CommandInfo` struct L14-19 — `{ name: String, description: String }` — A command available for execution.
-- pub `new` function L22-27 — `(name: impl Into<String>, description: impl Into<String>) -> Self` — Command autocomplete popup component.
-- pub `CommandPopup` struct L32-41 — `{ commands: Vec<CommandInfo>, filtered: Vec<usize>, selected: usize, visible: bo...` — State for the command autocomplete popup.
-- pub `new` function L45-52 — `() -> Self` — Create a new command popup with available commands.
-- pub `set_commands` function L67-71 — `(&mut self, commands: Vec<CommandInfo>)` — Set the available commands (fetched from server).
-- pub `show` function L74-77 — `(&mut self, prefix: &str)` — Show the popup and filter by prefix.
-- pub `hide` function L80-83 — `(&mut self)` — Hide the popup.
-- pub `is_visible` function L86-88 — `(&self) -> bool` — Check if the popup is visible.
-- pub `filter` function L91-105 — `(&mut self, prefix: &str)` — Filter commands by prefix.
-- pub `select_prev` function L108-112 — `(&mut self)` — Select previous item.
-- pub `select_next` function L115-119 — `(&mut self)` — Select next item.
-- pub `selected_command` function L122-126 — `(&self) -> Option<&CommandInfo>` — Get the currently selected command.
-- pub `filtered_count` function L129-131 — `(&self) -> usize` — Get the number of filtered commands.
-- pub `render` function L134-188 — `(&self, frame: &mut Frame, area: Rect)` — Render the popup.
--  `CommandInfo` type L21-28 — `= CommandInfo` — Command autocomplete popup component.
--  `CommandPopup` type L43-189 — `= CommandPopup` — Command autocomplete popup component.
--  `default_commands` function L56-64 — `() -> Vec<CommandInfo>` — Get the default list of commands.
--  `tests` module L192-275 — `-` — Command autocomplete popup component.
--  `test_command_popup_filter` function L196-217 — `()` — Command autocomplete popup component.
--  `test_command_popup_navigation` function L220-243 — `()` — Command autocomplete popup component.
--  `test_command_popup_visibility` function L246-256 — `()` — Command autocomplete popup component.
--  `test_command_popup_set_commands` function L259-274 — `()` — Command autocomplete popup component.
-
-#### crates/arawn-tui/src/ui/input.rs
-
-- pub `MIN_INPUT_HEIGHT` variable L14 — `: u16` — Minimum height for the input area (in lines).
-- pub `MAX_INPUT_FRACTION` variable L17 — `: f32` — Maximum height for the input area as fraction of screen (30%).
-- pub `calculate_input_height` function L20-27 — `(input: &InputState, available_height: u16) -> u16` — Calculate the desired height for the input area based on content.
-- pub `render_input` function L30-107 — `( input: &InputState, waiting: bool, read_only: bool, frame: &mut Frame, area: R...` — Render the input area with multi-line support.
-
-#### crates/arawn-tui/src/ui/layout.rs
-
-- pub `render` function L27-133 — `(app: &mut App, frame: &mut Frame)` — Render the entire application UI.
--  `CONTEXT_WARNING_PERCENT` variable L4 — `: u8` — Main layout rendering.
--  `CONTEXT_CRITICAL_PERCENT` variable L5 — `: u8` — Main layout rendering.
--  `render_header` function L136-208 — `(app: &App, frame: &mut Frame, area: Rect)` — Render the header bar.
--  `render_content` function L211-234 — `(app: &mut App, frame: &mut Frame, area: Rect)` — Render the main content area (chat messages + optional tool pane).
--  `render_input` function L237-240 — `(app: &App, frame: &mut Frame, area: Rect)` — Render the input area.
--  `render_status_bar` function L243-300 — `(app: &App, frame: &mut Frame, area: Rect)` — Render the status bar.
--  `format_context_indicator` function L303-321 — `(ctx: &crate::app::ContextState) -> (String, Color)` — Format the context indicator with appropriate color.
--  `render_sessions_overlay` function L324-326 — `(app: &App, frame: &mut Frame, area: Rect)` — Render the sessions overlay.
--  `render_workstreams_overlay` function L329-409 — `(app: &App, frame: &mut Frame, area: Rect)` — Render the workstreams overlay.
--  `render_command_palette` function L412-414 — `(app: &App, frame: &mut Frame, area: Rect)` — Render the command palette.
--  `centered_rect` function L417-431 — `(percent_x: u16, percent_y: u16, area: Rect) -> Rect` — Create a centered rectangle within the given area.
--  `render_warning_banner` function L434-457 — `(app: &App, frame: &mut Frame, area: Rect)` — Render the disk warning banner.
--  `render_usage_popup` function L460-583 — `(app: &App, frame: &mut Frame, area: Rect)` — Render the usage stats popup (Ctrl+U).
-
-#### crates/arawn-tui/src/ui/logs.rs
-
-- pub `render_logs_panel` function L14-70 — `(log_buffer: &LogBuffer, scroll: usize, frame: &mut Frame, area: Rect)` — Render the logs panel.
-- pub `render_logs_footer` function L73-85 — `(frame: &mut Frame, area: Rect)` — Render the logs footer with keyboard hints.
-
-#### crates/arawn-tui/src/ui/mod.rs
-
-- pub `chat` module L3 — `-` — UI rendering components.
-- pub `command_popup` module L4 — `-` — UI rendering components.
-- pub `input` module L5 — `-` — UI rendering components.
-- pub `logs` module L7 — `-` — UI rendering components.
-- pub `palette` module L8 — `-` — UI rendering components.
-- pub `sessions` module L9 — `-` — UI rendering components.
-- pub `sidebar` module L10 — `-` — UI rendering components.
-- pub `theme` module L11 — `-` — UI rendering components.
-- pub `tools` module L12 — `-` — UI rendering components.
--  `layout` module L6 — `-` — UI rendering components.
-
-#### crates/arawn-tui/src/ui/palette.rs
-
-- pub `render_palette_overlay` function L14-40 — `(palette: &CommandPalette, frame: &mut Frame, area: Rect)` — Render the command palette overlay.
--  `render_search_box` function L43-55 — `(palette: &CommandPalette, frame: &mut Frame, area: Rect)` — Render the search/filter box.
--  `render_separator` function L58-64 — `(frame: &mut Frame, area: Rect)` — Render a separator line.
--  `render_action_list` function L67-96 — `(palette: &CommandPalette, frame: &mut Frame, area: Rect)` — Render the action list.
--  `format_action_line` function L99-140 — `( action: &crate::palette::Action, is_selected: bool, width: usize, ) -> Line<'s...` — Format a single action line.
--  `render_footer` function L143-155 — `(frame: &mut Frame, area: Rect)` — Render the footer with keyboard hints.
--  `centered_rect` function L158-172 — `(percent_x: u16, percent_y: u16, area: Rect) -> Rect` — Create a centered rectangle within the given area.
-
-#### crates/arawn-tui/src/ui/sessions.rs
-
-- pub `render_sessions_overlay` function L14-40 — `(sessions: &SessionList, frame: &mut Frame, area: Rect)` — Render the sessions overlay.
--  `render_search_box` function L43-52 — `(sessions: &SessionList, frame: &mut Frame, area: Rect)` — Render the search/filter box.
--  `render_separator` function L55-61 — `(frame: &mut Frame, area: Rect)` — Render a separator line.
--  `render_session_list` function L64-98 — `(sessions: &SessionList, frame: &mut Frame, area: Rect)` — Render the session list.
--  `format_session_line` function L101-142 — `( session: &crate::sessions::SessionSummary, is_selected: bool, width: usize, ) ...` — Format a single session line.
--  `render_footer` function L145-160 — `(frame: &mut Frame, area: Rect)` — Render the footer with keyboard hints.
--  `centered_rect` function L163-177 — `(percent_x: u16, percent_y: u16, area: Rect) -> Rect` — Create a centered rectangle within the given area.
-
-#### crates/arawn-tui/src/ui/sidebar.rs
-
-- pub `SIDEBAR_WIDTH` variable L19 — `: u16` — Width of the expanded sidebar (when open).
-- pub `SIDEBAR_HINT_WIDTH` variable L21 — `: u16` — Width of the closed sidebar hint.
-- pub `render_sidebar` function L24-30 — `(sidebar: &Sidebar, frame: &mut Frame, area: Rect)` — Render the sidebar panel based on open/closed state.
--  `CONTEXT_WARNING_PERCENT` variable L4 — `: u8` — Sidebar panel rendering for workstreams and sessions.
--  `CONTEXT_CRITICAL_PERCENT` variable L5 — `: u8` — Sidebar panel rendering for workstreams and sessions.
--  `render_closed_hint` function L33-37 — `(frame: &mut Frame, area: Rect)` — Render the closed sidebar hint (minimal indicator).
--  `render_open_sidebar` function L40-63 — `(sidebar: &Sidebar, frame: &mut Frame, area: Rect)` — Render the open sidebar with full content (has focus).
--  `render_workstreams_header` function L66-75 — `(sidebar: &Sidebar, frame: &mut Frame, area: Rect)` — Render the workstreams section header.
--  `render_workstreams_list` function L78-127 — `(sidebar: &Sidebar, frame: &mut Frame, area: Rect)` — Render the workstreams list.
--  `render_workstream_line` function L130-214 — `( sidebar: &Sidebar, ws: &crate::sidebar::WorkstreamEntry, is_selected: bool, wi...` — Render a single workstream line.
--  `format_size` function L217-227 — `(bytes: u64) -> String` — Format byte size as human-readable string.
--  `render_sessions_header` function L230-249 — `(sidebar: &Sidebar, frame: &mut Frame, area: Rect)` — Render the sessions section header.
--  `render_sessions_list` function L252-300 — `(sidebar: &Sidebar, frame: &mut Frame, area: Rect)` — Render the sessions list.
--  `render_sidebar_footer` function L303-309 — `(frame: &mut Frame, area: Rect)` — Render the sidebar footer with keybinding hints.
--  `truncate_str` function L312-320 — `(s: &str, max_width: usize) -> String` — Truncate a string to fit within the given width.
--  `tests` module L323-333 — `-` — Sidebar panel rendering for workstreams and sessions.
--  `test_truncate_str` function L327-332 — `()` — Sidebar panel rendering for workstreams and sessions.
-
-#### crates/arawn-tui/src/ui/theme.rs
-
-- pub `ACCENT` variable L16 — `: Color` — Primary accent color (interactive elements, focused borders, user prefix).
-- pub `ACCENT2` variable L20 — `: Color` — Secondary accent (tool pane headers, panel-specific highlights).
-- pub `ACCENT3` variable L24 — `: Color` — Tertiary accent (sidebar section labels, tags).
-- pub `OK` variable L27 — `: Color` — Status: success.
-- pub `WARN` variable L30 — `: Color` — Status: warning.
-- pub `ERR` variable L33 — `: Color` — Status: error / danger.
-- pub `TEXT_PRIMARY` variable L41 — `: Color` — Primary text — user messages, important content.
-- pub `TEXT_NORMAL` variable L45 — `: Color` — Normal text — assistant messages, list items, readable body.
-- pub `TEXT_SECONDARY` variable L49 — `: Color` — Secondary text — labels, metadata, timestamps.
-- pub `TEXT_MUTED` variable L53 — `: Color` — Muted text — hints, disabled items, truly de-emphasized.
-- pub `BORDER` variable L60 — `: Color` — Default border color (unfocused panels).
-- pub `BORDER_FOCUSED` variable L63 — `: Color` — Focused border color.
-- pub `SEPARATOR` variable L66 — `: Color` — Separator lines between messages / tool cards.
-- pub `header` function L74-76 — `() -> Style` — Section header style (panel titles, section labels).
-- pub `subheader` function L79-81 — `() -> Style` — Subheader or category label.
-- pub `selected` function L84-86 — `() -> Style` — Selected / highlighted item in a list.
-- pub `list_item` function L89-91 — `() -> Style` — Normal list item.
-- pub `list_item_dim` function L94-96 — `() -> Style` — Dimmed / secondary list item.
-- pub `key_hint` function L99-101 — `() -> Style` — Keyboard shortcut label in help text.
-- pub `key_desc` function L104-106 — `() -> Style` — Description text next to a key hint.
-- pub `user_prefix` function L109-111 — `() -> Style` — User message prefix style (the `> `).
-- pub `user_text` function L114-116 — `() -> Style` — User message content.
-- pub `assistant_text` function L119-121 — `() -> Style` — Assistant message text.
-- pub `streaming_text` function L124-126 — `() -> Style` — Streaming (in-progress) assistant text.
-- pub `tool_name` function L129-131 — `() -> Style` — Tool name badge.
-- pub `tool_preview` function L134-136 — `() -> Style` — Tool arguments / preview text.
-- pub `tool_duration` function L139-141 — `() -> Style` — Tool duration / timing info.
-- pub `status_bar` function L144-146 — `() -> Style` — Status bar text.
-- pub `search_prompt` function L149-151 — `() -> Style` — Search / filter prompt text.
-- pub `empty_state` function L154-156 — `() -> Style` — Empty state / placeholder text.
-- pub `scroll_indicator` function L159-161 — `() -> Style` — Scroll position indicator.
-- pub `border` function L164-166 — `() -> Style` — Border style for an unfocused panel.
-- pub `border_focused` function L169-171 — `() -> Style` — Border style for a focused panel.
-- pub `separator` function L174-176 — `() -> Style` — Separator line between items.
-- pub `warning_banner` function L179-181 — `() -> Style` — Warning banner style.
-
-#### crates/arawn-tui/src/ui/tools.rs
-
-- pub `render_tool_pane` function L14-42 — `(app: &App, frame: &mut Frame, area: Rect)` — Render the tool output pane (split view at bottom of screen).
-- pub `render_tool_pane_footer` function L165-179 — `(frame: &mut Frame, area: Rect)` — Render help footer for tool pane.
--  `build_title` function L45-85 — `(app: &App) -> Line<'static>` — Build the title line with tool selector.
--  `get_selected_tool` function L88-90 — `(app: &App) -> Option<&ToolExecution>` — Get the currently selected tool.
--  `render_tool_output` function L93-133 — `(tool: &ToolExecution, scroll: usize, frame: &mut Frame, area: Rect)` — Render the output of a tool.
--  `render_no_tools` function L136-150 — `(frame: &mut Frame, area: Rect)` — Render placeholder when no tools exist.
--  `render_no_selection` function L153-162 — `(frame: &mut Frame, area: Rect)` — Render placeholder when no tool is selected.
+- pub `ConnectionStatus` enum L13-18 — `Connecting | Connected | Disconnected | Failed` — Connection status reported via watch channel.
+- pub `connect` function L24-103 — `( url: String, ) -> ( mpsc::UnboundedSender<ClientMessage>, mpsc::UnboundedRecei...` — Connect to the WebSocket server and return channels for communication.
 
 ### crates/arawn-tui/tests
 
 > *Semantic summary to be generated by AI agent.*
 
-#### crates/arawn-tui/tests/bug_hang.rs
+#### crates/arawn-tui/tests/phase1.rs
 
--  `helpers` module L6 — `-` — User reports: TUI connects, sends message, no response appears.
--  `test_reproduce_hang_with_workstream` function L22-93 — `() -> anyhow::Result<()>` — Reproduce: user creates a workstream via the REST API, TUI shows it,
--  `test_chat_in_scratch_workstream` function L97-133 — `() -> anyhow::Result<()>` — Reproduce: user is in the default scratch workstream (no explicit workstream_id).
--  `send_ticks` function L135-139 — `(tx: &mpsc::UnboundedSender<Event>, count: usize)` — Server logs show the turn completed but TUI never renders it.
--  `test_send_without_explicit_session_creation` function L143-219 — `() -> anyhow::Result<()>` — Reproduce: switch to workstream, send message without creating session first.
-
-#### crates/arawn-tui/tests/e2e_tui.rs
-
--  `helpers` module L3 — `-` — End-to-end TUI tests — full flow from TestServer through headless App to rendered buffer.
--  `noauth_server` function L17-26 — `( responses: Vec<Vec<StreamingMockEvent>>, ) -> anyhow::Result<arawn_test_utils:...` — End-to-end TUI tests — full flow from TestServer through headless App to rendered buffer.
--  `make_terminal` function L28-30 — `() -> Terminal<TestBackend>` — End-to-end TUI tests — full flow from TestServer through headless App to rendered buffer.
--  `send_ticks` function L33-37 — `(tx: &mpsc::UnboundedSender<Event>, count: usize)` — Helper: send ticks then close the channel.
--  `e2e_single_message_renders` function L44-74 — `() -> anyhow::Result<()>` — End-to-end TUI tests — full flow from TestServer through headless App to rendered buffer.
--  `e2e_multi_turn_renders` function L81-125 — `() -> anyhow::Result<()>` — End-to-end TUI tests — full flow from TestServer through headless App to rendered buffer.
--  `e2e_tool_execution_renders` function L132-165 — `() -> anyhow::Result<()>` — End-to-end TUI tests — full flow from TestServer through headless App to rendered buffer.
--  `e2e_connection_status_renders` function L172-191 — `() -> anyhow::Result<()>` — End-to-end TUI tests — full flow from TestServer through headless App to rendered buffer.
-
-#### crates/arawn-tui/tests/headless.rs
-
--  `noauth_server` function L15-23 — `(response: &str) -> anyhow::Result<arawn_test_utils::TestServer>` — Helper: create a noauth test server with a single text response.
--  `test_headless_renders_without_panic` function L26-50 — `() -> anyhow::Result<()>` — Headless TUI tests — run the App event loop without a real terminal.
--  `test_headless_chat_flow` function L53-105 — `() -> anyhow::Result<()>` — Headless TUI tests — run the App event loop without a real terminal.
-
-#### crates/arawn-tui/tests/helpers.rs
-
-- pub `buffer_to_string` function L11-23 — `(buffer: &Buffer) -> String` — Extract all visible text from a terminal buffer, row by row.
-- pub `buffer_contains_text` function L26-29 — `(buffer: &Buffer, text: &str) -> bool` — Check if the terminal buffer contains the given text substring.
-- pub `assert_rendered` function L35-44 — `(terminal: &Terminal<TestBackend>, text: &str)` — Assert that the terminal buffer contains the given text.
-- pub `assert_not_rendered` function L48-57 — `(terminal: &Terminal<TestBackend>, text: &str)` — Assert that the terminal buffer does NOT contain the given text.
-
-#### crates/arawn-tui/tests/render_helpers_test.rs
-
--  `helpers` module L3 — `-` — Tests for render assertion helpers.
--  `test_buffer_to_string_not_empty` function L13-24 — `()` — Tests for render assertion helpers.
--  `test_assert_rendered_finds_user_message` function L27-39 — `()` — Tests for render assertion helpers.
--  `test_assert_not_rendered_works` function L42-49 — `()` — Tests for render assertion helpers.
--  `test_buffer_contains_text` function L52-72 — `()` — Tests for render assertion helpers.
-
-#### crates/arawn-tui/tests/render_tests.rs
-
--  `helpers` module L3 — `-` — Render tests — verify visible TUI output using TestBackend.
--  `app` function L13-15 — `() -> App` — Render tests — verify visible TUI output using TestBackend.
--  `term` function L17-19 — `() -> Terminal<TestBackend>` — Render tests — verify visible TUI output using TestBackend.
--  `render` function L21-23 — `(app: &mut App, terminal: &mut Terminal<TestBackend>)` — Render tests — verify visible TUI output using TestBackend.
--  `test_empty_state_renders` function L28-39 — `()` — Render tests — verify visible TUI output using TestBackend.
--  `test_user_message_renders` function L42-54 — `()` — Render tests — verify visible TUI output using TestBackend.
--  `test_assistant_response_renders` function L57-69 — `()` — Render tests — verify visible TUI output using TestBackend.
--  `test_streaming_message_renders` function L72-84 — `()` — Render tests — verify visible TUI output using TestBackend.
--  `test_error_status_renders` function L87-95 — `()` — Render tests — verify visible TUI output using TestBackend.
--  `test_workstream_renders_in_header` function L98-106 — `()` — Render tests — verify visible TUI output using TestBackend.
--  `test_disconnected_status_renders` function L109-122 — `()` — Render tests — verify visible TUI output using TestBackend.
--  `test_tool_execution_renders` function L125-143 — `()` — Render tests — verify visible TUI output using TestBackend.
--  `test_context_info_renders` function L146-160 — `()` — Render tests — verify visible TUI output using TestBackend.
--  `test_multiple_messages_render` function L163-187 — `()` — Render tests — verify visible TUI output using TestBackend.
-
-#### crates/arawn-tui/tests/ws_integration.rs
-
--  `text_server` function L15-19 — `(response: &str) -> anyhow::Result<arawn_test_utils::TestServer>` — Helper: create a test server WITH auth that responds with a single text message.
--  `noauth_text_server` function L22-30 — `(response: &str) -> anyhow::Result<arawn_test_utils::TestServer>` — Helper: create a test server WITHOUT auth (localhost mode).
--  `test_baseline_ws_client_chat` function L37-61 — `() -> anyhow::Result<()>` — connect → (auth) → send chat → receive response.
--  `test_tui_ws_client_receives_messages` function L68-140 — `() -> anyhow::Result<()>` — connect → (auth) → send chat → receive response.
--  `test_tui_ws_client_noauth_server` function L147-181 — `() -> anyhow::Result<()>` — connect → (auth) → send chat → receive response.
--  `test_tui_app_message_flow` function L188-258 — `() -> anyhow::Result<()>` — connect → (auth) → send chat → receive response.
+-  `make_test_app` function L12-25 — `() -> ( App, mpsc::UnboundedSender<Event>, mpsc::UnboundedReceiver<Event>, mpsc:...` — Helper: create an App wired to test channels.
+-  `test_headless_renders` function L28-41 — `()` — Phase 1 integration tests for arawn-tui.
+-  `test_headless_key_input` function L44-71 — `()` — Phase 1 integration tests for arawn-tui.
+-  `test_headless_server_messages` function L74-108 — `()` — Phase 1 integration tests for arawn-tui.
+-  `test_headless_chat_flow` function L111-189 — `()` — Phase 1 integration tests for arawn-tui.
 
 ### crates/arawn-types/src
 

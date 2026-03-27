@@ -8,7 +8,7 @@ tasks:
   - "ARAWN-T-0464"
   - "ARAWN-T-0465"
 current_task_index: 0
-iteration: 1
+iteration: 3
 max_iterations: 0
 completion_promise: "ALL TASKS COMPLETE"
 started_at: "2026-03-27T01:38:34Z"

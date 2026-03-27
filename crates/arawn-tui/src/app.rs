@@ -4,6 +4,7 @@ use anyhow::Result;
 use crossterm::event::{KeyCode, KeyModifiers};
 use ratatui::{Terminal, backend::Backend};
 use tokio::sync::mpsc;
+use tracing::warn;
 
 use crate::config::TuiConfig;
 use crate::events::Event;
@@ -19,6 +20,34 @@ pub struct ChatMessage {
     pub content: String,
     /// Whether this message is still being streamed.
     pub streaming: bool,
+}
+
+/// Information about a workstream for display in the sidebar.
+#[derive(Debug, Clone)]
+pub struct WorkstreamInfo {
+    /// Workstream ID.
+    pub id: String,
+    /// Display title.
+    pub title: String,
+    /// Whether this is the scratch workstream.
+    pub is_scratch: bool,
+}
+
+/// Results from background HTTP tasks.
+#[derive(Debug)]
+pub enum HttpResult {
+    /// Fetched list of workstreams.
+    Workstreams(Vec<WorkstreamInfo>),
+    // More variants added in Phase 3
+}
+
+/// Which panel currently has keyboard focus.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Focus {
+    /// The chat input box.
+    Input,
+    /// The workstream sidebar.
+    Sidebar,
 }
 
 /// The main TUI application state.
@@ -42,11 +71,27 @@ pub struct App {
     pub should_quit: bool,
     pub chat_scroll: usize,
     pub auto_scroll: bool,
+
+    // Sidebar
+    pub workstreams: Vec<WorkstreamInfo>,
+    pub selected_workstream: usize,
+    pub focus: Focus,
+
+    // Background HTTP
+    pub http_tx: mpsc::UnboundedSender<HttpResult>,
+    http_rx: mpsc::UnboundedReceiver<HttpResult>,
+
+    // Server URL for HTTP calls
+    pub server_url: String,
+
+    // Whether we have already fetched workstreams on first connect
+    has_fetched_workstreams: bool,
 }
 
 impl App {
     /// Create a new App from config and a sender channel to the WebSocket.
     pub fn new(config: &TuiConfig, ws_tx: mpsc::UnboundedSender<ClientMessage>) -> Self {
+        let (http_tx, http_rx) = mpsc::unbounded_channel();
         Self {
             ws_tx,
             messages: Vec::new(),
@@ -63,6 +108,13 @@ impl App {
             should_quit: false,
             chat_scroll: 0,
             auto_scroll: true,
+            workstreams: Vec::new(),
+            selected_workstream: 0,
+            focus: Focus::Input,
+            http_tx,
+            http_rx,
+            server_url: config.server_url.clone(),
+            has_fetched_workstreams: false,
         }
     }
 
@@ -94,6 +146,11 @@ impl App {
                         None => {
                             self.status = Some("Disconnected from server".into());
                         }
+                    }
+                }
+                http = self.http_rx.recv() => {
+                    if let Some(result) = http {
+                        self.handle_http_result(result);
                     }
                 }
             }
@@ -134,16 +191,42 @@ impl App {
                         None => {}
                     }
                 }
+                http = self.http_rx.recv() => {
+                    if let Some(result) = http {
+                        self.handle_http_result(result);
+                    }
+                }
             }
         }
     }
 
-    /// Handle a key event.
+    /// Handle a key event, dispatching based on current focus.
     fn handle_key(&mut self, key: crossterm::event::KeyEvent) {
+        // Global keybindings
         match key.code {
             KeyCode::Char('q') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                 self.should_quit = true;
+                return;
             }
+            KeyCode::Tab => {
+                self.focus = match self.focus {
+                    Focus::Input => Focus::Sidebar,
+                    Focus::Sidebar => Focus::Input,
+                };
+                return;
+            }
+            _ => {}
+        }
+
+        match self.focus {
+            Focus::Input => self.handle_key_input(key),
+            Focus::Sidebar => self.handle_key_sidebar(key),
+        }
+    }
+
+    /// Handle key events when focus is on the chat input.
+    fn handle_key_input(&mut self, key: crossterm::event::KeyEvent) {
+        match key.code {
             KeyCode::Enter => {
                 self.send_message();
             }
@@ -166,6 +249,31 @@ impl App {
             KeyCode::Char(c) => {
                 self.input.insert(self.cursor_pos, c);
                 self.cursor_pos += 1;
+            }
+            _ => {}
+        }
+    }
+
+    /// Handle key events when focus is on the sidebar.
+    fn handle_key_sidebar(&mut self, key: crossterm::event::KeyEvent) {
+        match key.code {
+            KeyCode::Up => {
+                if self.selected_workstream > 0 {
+                    self.selected_workstream -= 1;
+                }
+            }
+            KeyCode::Down => {
+                if !self.workstreams.is_empty()
+                    && self.selected_workstream < self.workstreams.len() - 1
+                {
+                    self.selected_workstream += 1;
+                }
+            }
+            KeyCode::Enter => {
+                self.select_workstream();
+            }
+            KeyCode::Esc => {
+                self.focus = Focus::Input;
             }
             _ => {}
         }
@@ -199,8 +307,75 @@ impl App {
         self.auto_scroll = true;
     }
 
+    /// Select the currently highlighted workstream in the sidebar.
+    fn select_workstream(&mut self) {
+        if let Some(ws) = self.workstreams.get(self.selected_workstream) {
+            self.workstream_id = Some(ws.id.clone());
+            self.workstream = ws.title.clone();
+            self.messages.clear();
+            self.session_id = None;
+            self.focus = Focus::Input;
+        }
+    }
+
+    /// Handle a result from a background HTTP task.
+    fn handle_http_result(&mut self, result: HttpResult) {
+        match result {
+            HttpResult::Workstreams(ws) => {
+                self.workstreams = ws;
+                // Clamp selection index
+                if self.selected_workstream >= self.workstreams.len()
+                    && !self.workstreams.is_empty()
+                {
+                    self.selected_workstream = self.workstreams.len() - 1;
+                }
+            }
+        }
+    }
+
+    /// Spawn a background HTTP task to fetch workstreams from the server.
+    pub fn spawn_fetch_workstreams(&self) {
+        let tx = self.http_tx.clone();
+        let server_url = self.server_url.clone();
+        tokio::spawn(async move {
+            let client = match arawn_client::ArawnClient::builder()
+                .base_url(&server_url)
+                .build()
+            {
+                Ok(c) => c,
+                Err(e) => {
+                    warn!("Failed to create HTTP client for workstreams: {}", e);
+                    return;
+                }
+            };
+            match client.workstreams().list().await {
+                Ok(resp) => {
+                    let infos: Vec<WorkstreamInfo> = resp
+                        .workstreams
+                        .into_iter()
+                        .map(|ws| WorkstreamInfo {
+                            id: ws.id,
+                            title: ws.title,
+                            is_scratch: ws.is_scratch,
+                        })
+                        .collect();
+                    let _ = tx.send(HttpResult::Workstreams(infos));
+                }
+                Err(e) => {
+                    warn!("Failed to fetch workstreams: {}", e);
+                }
+            }
+        });
+    }
+
     /// Handle a message from the server.
     fn handle_server_message(&mut self, msg: ServerMessage) {
+        // On first server message, fetch workstreams (implies WS is connected)
+        if !self.has_fetched_workstreams {
+            self.has_fetched_workstreams = true;
+            self.spawn_fetch_workstreams();
+        }
+
         match msg {
             ServerMessage::SessionCreated { session_id } => {
                 self.session_id = Some(session_id);

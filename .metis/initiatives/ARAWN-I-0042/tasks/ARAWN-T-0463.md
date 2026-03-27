@@ -4,14 +4,14 @@ level: task
 title: "Phase 2: Sidebar — workstream list with background HTTP fetch, Tab focus toggle, Enter selects"
 short_code: "ARAWN-T-0463"
 created_at: 2026-03-27T01:34:53.792832+00:00
-updated_at: 2026-03-27T01:34:53.792832+00:00
+updated_at: 2026-03-27T01:57:20.843638+00:00
 parent: ARAWN-I-0042
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/active"
 
 
 exit_criteria_met: false
@@ -63,6 +63,8 @@ Add the left sidebar panel showing workstreams. Workstreams are fetched via back
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
 
 ## Acceptance Criteria **[REQUIRED]**
 

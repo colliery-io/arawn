@@ -4,14 +4,14 @@ level: task
 title: "Phase 1: Bare bones — non-blocking event loop, WS connection, chat panel, send and receive messages"
 short_code: "ARAWN-T-0462"
 created_at: 2026-03-27T01:34:52.481151+00:00
-updated_at: 2026-03-27T01:38:45.298852+00:00
+updated_at: 2026-03-27T01:52:34.693118+00:00
 parent: ARAWN-I-0042
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -63,6 +63,8 @@ Delete the existing arawn-tui src/ and start fresh. Build the minimal working TU
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
