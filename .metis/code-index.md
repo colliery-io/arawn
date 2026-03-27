@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-03-27T00:34:56Z | 375 files | Rust
+> Generated: 2026-03-27T01:24:05Z | 375 files | Rust
 
 ## Project Structure
 
@@ -8704,16 +8704,16 @@
 
 #### crates/arawn-tui/src/app/api_ops.rs
 
--  `App` type L10-363 — `= App` — Async API operations — workstream/session CRUD via HTTP API.
--  `process_pending_actions` function L11-53 — `(&mut self)` — Async API operations — workstream/session CRUD via HTTP API.
--  `do_create_workstream` function L56-92 — `(&mut self, title: &str)` — Create a workstream via API.
--  `do_rename_workstream` function L95-123 — `(&mut self, id: &str, new_title: &str)` — Rename a workstream via API.
--  `do_delete_session` function L126-150 — `(&mut self, id: &str)` — Delete a session via API.
--  `do_delete_workstream` function L153-178 — `(&mut self, id: &str)` — Delete a workstream via API.
--  `do_fetch_workstream_sessions` function L181-237 — `(&mut self, workstream_id: &str)` — Fetch sessions for a specific workstream.
--  `do_fetch_session_messages` function L240-270 — `(&mut self, session_id: &str)` — Fetch message history for a session.
--  `do_move_session_to_workstream` function L273-310 — `(&mut self, session_id: &str, workstream_id: &str)` — Move a session to a different workstream via API.
--  `refresh_sidebar_data` function L313-362 — `(&mut self)` — Refresh sidebar data from the server API.
+-  `App` type L10-370 — `= App` — Async API operations — workstream/session CRUD via HTTP API.
+-  `process_pending_actions` function L16-60 — `(&mut self)` — Process at most one pending action per call.
+-  `do_create_workstream` function L63-99 — `(&mut self, title: &str)` — Create a workstream via API.
+-  `do_rename_workstream` function L102-130 — `(&mut self, id: &str, new_title: &str)` — Rename a workstream via API.
+-  `do_delete_session` function L133-157 — `(&mut self, id: &str)` — Delete a session via API.
+-  `do_delete_workstream` function L160-185 — `(&mut self, id: &str)` — Delete a workstream via API.
+-  `do_fetch_workstream_sessions` function L188-244 — `(&mut self, workstream_id: &str)` — Fetch sessions for a specific workstream.
+-  `do_fetch_session_messages` function L247-277 — `(&mut self, session_id: &str)` — Fetch message history for a session.
+-  `do_move_session_to_workstream` function L280-317 — `(&mut self, session_id: &str, workstream_id: &str)` — Move a session to a different workstream via API.
+-  `refresh_sidebar_data` function L320-369 — `(&mut self)` — Refresh sidebar data from the server API.
 
 #### crates/arawn-tui/src/app/chat_handler.rs
 
@@ -8745,9 +8745,9 @@
 - pub `App` struct L41-130 — `{ server_url: String, ws_client: WsClient, api: ArawnClient, connection_status: ...` — Main application state.
 - pub `new` function L139-195 — `(server_url: String, log_buffer: LogBuffer) -> Result<Self>` — Create a new App instance.
 - pub `process_tick` function L200-224 — `(&mut self) -> bool` — Process a tick event: poll connection status and send keepalive pings.
-- pub `run` function L227-260 — `(&mut self, terminal: &mut Tui) -> Result<()>` — Run the main application loop.
-- pub `run_headless` function L267-310 — `( &mut self, terminal: &mut ratatui::Terminal<B>, mut event_rx: tokio::sync::mps...` — Run the application in headless mode for testing.
-- pub `handle_key` function L313-407 — `(&mut self, key: crossterm::event::KeyEvent)` — Handle keyboard input.
+- pub `run` function L227-262 — `(&mut self, terminal: &mut Tui) -> Result<()>` — Run the main application loop.
+- pub `run_headless` function L269-312 — `( &mut self, terminal: &mut ratatui::Terminal<B>, mut event_rx: tokio::sync::mps...` — Run the application in headless mode for testing.
+- pub `handle_key` function L315-409 — `(&mut self, key: crossterm::event::KeyEvent)` — Handle keyboard input.
 -  `api_ops` module L3 — `-` — Application state and main loop.
 -  `chat_handler` module L4 — `-` — Application state and main loop.
 -  `input_handler` module L5 — `-` — Application state and main loop.
@@ -8758,66 +8758,66 @@
 -  `tool_pane_handler` module L10 — `-` — Application state and main loop.
 -  `MAX_MESSAGES` variable L17 — `: usize` — Maximum number of chat messages to retain (prevents unbounded memory growth).
 -  `MAX_TOOLS` variable L20 — `: usize` — Maximum number of tool executions to retain per response.
--  `App` type L134-499 — `= App` — Application state and main loop.
--  `handle_palette_key` function L410-448 — `(&mut self, key: crossterm::event::KeyEvent)` — Handle command palette key events.
--  `execute_action` function L451-498 — `(&mut self, action_id: ActionId)` — Execute a palette action.
--  `App` type L502-557 — `= App` — Application state and main loop.
--  `test_new` function L504-556 — `() -> Self` — Create a test App with a mock WsClient and no real connections.
--  `tests` module L560-1548 — `-` — Application state and main loop.
--  `key` function L565-572 — `(code: KeyCode) -> KeyEvent` — Application state and main loop.
--  `key_mod` function L574-581 — `(code: KeyCode, modifiers: KeyModifiers) -> KeyEvent` — Application state and main loop.
--  `test_session_created_sets_session_id` function L586-595 — `()` — Application state and main loop.
--  `test_chat_chunk_creates_assistant_message` function L598-611 — `()` — Application state and main loop.
--  `test_chat_chunk_appends_to_streaming` function L614-630 — `()` — Application state and main loop.
--  `test_chat_done_clears_waiting` function L633-652 — `()` — Application state and main loop.
--  `test_error_clears_waiting` function L655-666 — `()` — Application state and main loop.
--  `test_session_not_owned_sets_read_only` function L669-680 — `()` — Application state and main loop.
--  `test_subscribe_ack_owner` function L683-698 — `()` — Application state and main loop.
--  `test_subscribe_ack_reader` function L701-711 — `()` — Application state and main loop.
--  `test_auth_success` function L714-723 — `()` — Application state and main loop.
--  `test_auth_failure` function L726-740 — `()` — Application state and main loop.
--  `test_context_info_updates` function L743-757 — `()` — Application state and main loop.
--  `test_tool_lifecycle` function L762-788 — `()` — Application state and main loop.
--  `test_command_progress_and_result` function L793-810 — `()` — Application state and main loop.
--  `test_ctrl_q_quits` function L815-819 — `()` — Application state and main loop.
--  `test_ctrl_c_quits_when_idle` function L822-826 — `()` — Application state and main loop.
--  `test_ctrl_c_cancels_when_waiting` function L829-839 — `()` — Application state and main loop.
--  `test_ctrl_k_opens_palette` function L842-847 — `()` — Application state and main loop.
--  `test_ctrl_w_toggles_sidebar` function L850-861 — `()` — Application state and main loop.
--  `test_ctrl_e_toggles_tool_pane` function L864-872 — `()` — Application state and main loop.
--  `test_ctrl_l_toggles_logs` function L875-882 — `()` — Application state and main loop.
--  `test_ctrl_u_toggles_usage` function L885-892 — `()` — Application state and main loop.
--  `test_typing_adds_to_input` function L897-902 — `()` — Application state and main loop.
--  `test_enter_sends_message` function L905-915 — `()` — Application state and main loop.
--  `test_enter_blocked_when_waiting` function L918-927 — `()` — Application state and main loop.
--  `test_send_blocked_in_read_only` function L930-939 — `()` — Application state and main loop.
--  `test_enter_on_empty_does_nothing` function L942-947 — `()` — Application state and main loop.
--  `test_shift_enter_inserts_newline` function L950-956 — `()` — Application state and main loop.
--  `test_waiting_cleared_on_disconnect` function L961-982 — `()` — Application state and main loop.
--  `test_waiting_not_cleared_if_not_previously_connected` function L985-997 — `()` — Application state and main loop.
--  `test_switch_session_clears_state` function L1002-1026 — `()` — Application state and main loop.
--  `test_switch_workstream_clears_session` function L1031-1045 — `()` — Application state and main loop.
--  `test_slash_command_detected` function L1050-1054 — `()` — Application state and main loop.
--  `test_regular_text_not_command` function L1057-1061 — `()` — Application state and main loop.
--  `test_disk_pressure_stored` function L1066-1079 — `()` — Application state and main loop.
--  `test_disk_pressure_replaces_existing` function L1082-1104 — `()` — Application state and main loop.
--  `test_disk_critical_sets_status` function L1107-1120 — `()` — Application state and main loop.
--  `test_usage_updates_for_current_workstream` function L1125-1141 — `()` — Application state and main loop.
--  `test_usage_ignored_for_other_workstream` function L1144-1160 — `()` — Application state and main loop.
--  `test_palette_esc_closes` function L1165-1172 — `()` — Application state and main loop.
--  `test_full_message_flow` function L1177-1206 — `()` — Application state and main loop.
--  `test_send_clears_tools` function L1209-1226 — `()` — Application state and main loop.
--  `test_send_enables_auto_scroll` function L1229-1237 — `()` — Application state and main loop.
--  `simulate_status_poll` function L1242-1253 — `(app: &mut App)` — Helper: simulate the tick handler's connection status poll logic.
--  `test_app_controllable` function L1255-1315 — `() -> ( App, tokio::sync::mpsc::UnboundedSender<ConnectionStatus>, tokio::sync::...` — Application state and main loop.
--  `test_disconnect_shows_status_indicator` function L1318-1326 — `()` — Application state and main loop.
--  `test_reconnecting_shows_attempt_count` function L1329-1349 — `()` — Application state and main loop.
--  `test_full_reconnection_lifecycle` function L1352-1381 — `()` — Application state and main loop.
--  `test_session_state_preserved_across_reconnect` function L1384-1433 — `()` — Application state and main loop.
--  `test_rapid_disconnect_reconnect_cycles_no_panic` function L1436-1462 — `()` — Application state and main loop.
--  `test_disconnect_during_streaming_marks_message_not_streaming` function L1465-1490 — `()` — Application state and main loop.
--  `test_messages_received_after_reconnect_handled_correctly` function L1493-1529 — `()` — Application state and main loop.
--  `test_disconnect_while_not_waiting_no_status_change` function L1532-1547 — `()` — Application state and main loop.
+-  `App` type L134-501 — `= App` — Application state and main loop.
+-  `handle_palette_key` function L412-450 — `(&mut self, key: crossterm::event::KeyEvent)` — Handle command palette key events.
+-  `execute_action` function L453-500 — `(&mut self, action_id: ActionId)` — Execute a palette action.
+-  `App` type L504-559 — `= App` — Application state and main loop.
+-  `test_new` function L506-558 — `() -> Self` — Create a test App with a mock WsClient and no real connections.
+-  `tests` module L562-1550 — `-` — Application state and main loop.
+-  `key` function L567-574 — `(code: KeyCode) -> KeyEvent` — Application state and main loop.
+-  `key_mod` function L576-583 — `(code: KeyCode, modifiers: KeyModifiers) -> KeyEvent` — Application state and main loop.
+-  `test_session_created_sets_session_id` function L588-597 — `()` — Application state and main loop.
+-  `test_chat_chunk_creates_assistant_message` function L600-613 — `()` — Application state and main loop.
+-  `test_chat_chunk_appends_to_streaming` function L616-632 — `()` — Application state and main loop.
+-  `test_chat_done_clears_waiting` function L635-654 — `()` — Application state and main loop.
+-  `test_error_clears_waiting` function L657-668 — `()` — Application state and main loop.
+-  `test_session_not_owned_sets_read_only` function L671-682 — `()` — Application state and main loop.
+-  `test_subscribe_ack_owner` function L685-700 — `()` — Application state and main loop.
+-  `test_subscribe_ack_reader` function L703-713 — `()` — Application state and main loop.
+-  `test_auth_success` function L716-725 — `()` — Application state and main loop.
+-  `test_auth_failure` function L728-742 — `()` — Application state and main loop.
+-  `test_context_info_updates` function L745-759 — `()` — Application state and main loop.
+-  `test_tool_lifecycle` function L764-790 — `()` — Application state and main loop.
+-  `test_command_progress_and_result` function L795-812 — `()` — Application state and main loop.
+-  `test_ctrl_q_quits` function L817-821 — `()` — Application state and main loop.
+-  `test_ctrl_c_quits_when_idle` function L824-828 — `()` — Application state and main loop.
+-  `test_ctrl_c_cancels_when_waiting` function L831-841 — `()` — Application state and main loop.
+-  `test_ctrl_k_opens_palette` function L844-849 — `()` — Application state and main loop.
+-  `test_ctrl_w_toggles_sidebar` function L852-863 — `()` — Application state and main loop.
+-  `test_ctrl_e_toggles_tool_pane` function L866-874 — `()` — Application state and main loop.
+-  `test_ctrl_l_toggles_logs` function L877-884 — `()` — Application state and main loop.
+-  `test_ctrl_u_toggles_usage` function L887-894 — `()` — Application state and main loop.
+-  `test_typing_adds_to_input` function L899-904 — `()` — Application state and main loop.
+-  `test_enter_sends_message` function L907-917 — `()` — Application state and main loop.
+-  `test_enter_blocked_when_waiting` function L920-929 — `()` — Application state and main loop.
+-  `test_send_blocked_in_read_only` function L932-941 — `()` — Application state and main loop.
+-  `test_enter_on_empty_does_nothing` function L944-949 — `()` — Application state and main loop.
+-  `test_shift_enter_inserts_newline` function L952-958 — `()` — Application state and main loop.
+-  `test_waiting_cleared_on_disconnect` function L963-984 — `()` — Application state and main loop.
+-  `test_waiting_not_cleared_if_not_previously_connected` function L987-999 — `()` — Application state and main loop.
+-  `test_switch_session_clears_state` function L1004-1028 — `()` — Application state and main loop.
+-  `test_switch_workstream_clears_session` function L1033-1047 — `()` — Application state and main loop.
+-  `test_slash_command_detected` function L1052-1056 — `()` — Application state and main loop.
+-  `test_regular_text_not_command` function L1059-1063 — `()` — Application state and main loop.
+-  `test_disk_pressure_stored` function L1068-1081 — `()` — Application state and main loop.
+-  `test_disk_pressure_replaces_existing` function L1084-1106 — `()` — Application state and main loop.
+-  `test_disk_critical_sets_status` function L1109-1122 — `()` — Application state and main loop.
+-  `test_usage_updates_for_current_workstream` function L1127-1143 — `()` — Application state and main loop.
+-  `test_usage_ignored_for_other_workstream` function L1146-1162 — `()` — Application state and main loop.
+-  `test_palette_esc_closes` function L1167-1174 — `()` — Application state and main loop.
+-  `test_full_message_flow` function L1179-1208 — `()` — Application state and main loop.
+-  `test_send_clears_tools` function L1211-1228 — `()` — Application state and main loop.
+-  `test_send_enables_auto_scroll` function L1231-1239 — `()` — Application state and main loop.
+-  `simulate_status_poll` function L1244-1255 — `(app: &mut App)` — Helper: simulate the tick handler's connection status poll logic.
+-  `test_app_controllable` function L1257-1317 — `() -> ( App, tokio::sync::mpsc::UnboundedSender<ConnectionStatus>, tokio::sync::...` — Application state and main loop.
+-  `test_disconnect_shows_status_indicator` function L1320-1328 — `()` — Application state and main loop.
+-  `test_reconnecting_shows_attempt_count` function L1331-1351 — `()` — Application state and main loop.
+-  `test_full_reconnection_lifecycle` function L1354-1383 — `()` — Application state and main loop.
+-  `test_session_state_preserved_across_reconnect` function L1386-1435 — `()` — Application state and main loop.
+-  `test_rapid_disconnect_reconnect_cycles_no_panic` function L1438-1464 — `()` — Application state and main loop.
+-  `test_disconnect_during_streaming_marks_message_not_streaming` function L1467-1492 — `()` — Application state and main loop.
+-  `test_messages_received_after_reconnect_handled_correctly` function L1495-1531 — `()` — Application state and main loop.
+-  `test_disconnect_while_not_waiting_no_status_change` function L1534-1549 — `()` — Application state and main loop.
 
 #### crates/arawn-tui/src/app/server_msg_handler.rs
 
@@ -8834,8 +8834,8 @@
 
 #### crates/arawn-tui/src/app/sidebar_handler.rs
 
-- pub `switch_to_workstream` function L293-327 — `(&mut self, workstream_name: &str)` — Switch to a different workstream.
--  `App` type L9-328 — `= App` — Sidebar key handling, overlay navigation, and workstream switching.
+- pub `switch_to_workstream` function L293-330 — `(&mut self, workstream_name: &str)` — Switch to a different workstream.
+-  `App` type L9-331 — `= App` — Sidebar key handling, overlay navigation, and workstream switching.
 -  `handle_overlay_key` function L10-46 — `(&mut self, key: crossterm::event::KeyEvent)` — Sidebar key handling, overlay navigation, and workstream switching.
 -  `clear_pending_deletes` function L49-52 — `(&mut self)` — Clear any pending delete confirmations.
 -  `handle_sidebar_key` function L55-290 — `(&mut self, key: crossterm::event::KeyEvent)` — Handle sidebar key events.
@@ -9468,6 +9468,7 @@
 -  `test_reproduce_hang_with_workstream` function L22-93 — `() -> anyhow::Result<()>` — Reproduce: user creates a workstream via the REST API, TUI shows it,
 -  `test_chat_in_scratch_workstream` function L97-133 — `() -> anyhow::Result<()>` — Reproduce: user is in the default scratch workstream (no explicit workstream_id).
 -  `send_ticks` function L135-139 — `(tx: &mpsc::UnboundedSender<Event>, count: usize)` — Server logs show the turn completed but TUI never renders it.
+-  `test_send_without_explicit_session_creation` function L143-219 — `() -> anyhow::Result<()>` — Reproduce: switch to workstream, send message without creating session first.
 
 #### crates/arawn-tui/tests/e2e_tui.rs
 

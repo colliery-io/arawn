@@ -1,1 +1,8 @@
-/Users/dstorey/Desktop/arawn/crates/arawn-agent/src/tool/context.rs
+/Users/dstorey/Desktop/arawn/crates/arawn-tui/src/config.rs
+/Users/dstorey/Desktop/arawn/crates/arawn-tui/src/protocol.rs
+/Users/dstorey/Desktop/arawn/crates/arawn-tui/src/ws.rs
+/Users/dstorey/Desktop/arawn/crates/arawn-tui/src/events.rs
+/Users/dstorey/Desktop/arawn/crates/arawn-tui/src/render.rs
+/Users/dstorey/Desktop/arawn/crates/arawn-tui/src/app.rs
+/Users/dstorey/Desktop/arawn/crates/arawn-tui/src/lib.rs
+/Users/dstorey/Desktop/arawn/crates/arawn-tui/tests/phase1.rs
