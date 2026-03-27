@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-03-27T01:52:45Z | 344 files | Rust
+> Generated: 2026-03-27T02:38:14Z | 347 files | Rust
 
 ## Project Structure
 
@@ -335,7 +335,10 @@
 │   │   │   ├── render.rs
 │   │   │   └── ws.rs
 │   │   └── tests/
-│   │       └── phase1.rs
+│   │       ├── phase1.rs
+│   │       ├── phase2.rs
+│   │       ├── phase3.rs
+│   │       └── phase4.rs
 │   ├── arawn-types/
 │   │   └── src/
 │   │       ├── config.rs
@@ -8677,18 +8680,40 @@
 
 #### crates/arawn-tui/src/app.rs
 
-- pub `ChatMessage` struct L15-22 — `{ is_user: bool, content: String, streaming: bool }` — A single chat message displayed in the UI.
-- pub `App` struct L25-45 — `{ ws_tx: mpsc::UnboundedSender<ClientMessage>, messages: Vec<ChatMessage>, sessi...` — The main TUI application state.
-- pub `new` function L49-67 — `(config: &TuiConfig, ws_tx: mpsc::UnboundedSender<ClientMessage>) -> Self` — Create a new App from config and a sender channel to the WebSocket.
-- pub `run` function L70-101 — `( &mut self, terminal: &mut Terminal<B>, mut event_rx: mpsc::UnboundedReceiver<E...` — Run the TUI with a real terminal and crossterm event stream.
-- pub `run_headless` function L105-139 — `( &mut self, terminal: &mut Terminal<B>, mut event_rx: mpsc::UnboundedReceiver<E...` — Run in headless mode for testing.
-- pub `set_text` function L255-258 — `(&mut self, text: &str)` — Set the input text directly (for testing).
-- pub `handle_key_public` function L261-263 — `(&mut self, key: crossterm::event::KeyEvent)` — Handle a key event (public for testing).
-- pub `handle_server_message_public` function L266-268 — `(&mut self, msg: ServerMessage)` — Handle a server message (public for testing).
--  `App` type L47-269 — `= App` — Application state and main event loop.
--  `handle_key` function L142-172 — `(&mut self, key: crossterm::event::KeyEvent)` — Handle a key event.
--  `send_message` function L175-200 — `(&mut self)` — Send the current input as a chat message.
--  `handle_server_message` function L203-252 — `(&mut self, msg: ServerMessage)` — Handle a message from the server.
+- pub `ChatMessage` struct L19-26 — `{ is_user: bool, content: String, streaming: bool }` — A single chat message displayed in the UI.
+- pub `WorkstreamInfo` struct L30-37 — `{ id: String, title: String, is_scratch: bool }` — Information about a workstream for display in the sidebar.
+- pub `SessionInfo` struct L41-46 — `{ id: String, started_at: String }` — Information about a session for display in the sidebar.
+- pub `MessageInfo` struct L50-55 — `{ role: String, content: String }` — Information about a message within a session.
+- pub `HttpResult` enum L59-66 — `Workstreams | Sessions | Messages` — Results from background HTTP tasks.
+- pub `Focus` enum L70-75 — `Input | Sidebar` — Which panel currently has keyboard focus.
+- pub `SidebarSection` enum L79-84 — `Workstreams | Sessions` — Which section of the sidebar is active.
+- pub `App` struct L87-136 — `{ ws_tx: mpsc::UnboundedSender<ClientMessage>, messages: Vec<ChatMessage>, sessi...` — The main TUI application state.
+- pub `new` function L140-172 — `(config: &TuiConfig, ws_tx: mpsc::UnboundedSender<ClientMessage>) -> Self` — Create a new App from config and a sender channel to the WebSocket.
+- pub `run` function L175-213 — `( &mut self, terminal: &mut Terminal<B>, mut event_rx: mpsc::UnboundedReceiver<E...` — Run the TUI with a real terminal and crossterm event stream.
+- pub `run_headless` function L217-257 — `( &mut self, terminal: &mut Terminal<B>, mut event_rx: mpsc::UnboundedReceiver<E...` — Run in headless mode for testing.
+- pub `spawn_fetch_workstreams` function L541-573 — `(&self)` — Spawn a background HTTP task to fetch workstreams from the server.
+- pub `spawn_fetch_sessions` function L576-608 — `(&self, workstream_id: &str)` — Spawn a background HTTP task to fetch sessions for a workstream.
+- pub `spawn_fetch_messages` function L611-643 — `(&self, session_id: &str)` — Spawn a background HTTP task to fetch messages for a session.
+- pub `spawn_create_workstream` function L646-695 — `(&self, name: &str)` — Spawn a background HTTP task to create a new workstream.
+- pub `maybe_clear_status` function L714-721 — `(&mut self)` — Check if status should be auto-cleared after 5 seconds.
+- pub `set_text` function L783-786 — `(&mut self, text: &str)` — Set the input text directly (for testing).
+- pub `handle_key_public` function L789-791 — `(&mut self, key: crossterm::event::KeyEvent)` — Handle a key event (public for testing).
+- pub `handle_server_message_public` function L794-796 — `(&mut self, msg: ServerMessage)` — Handle a server message (public for testing).
+- pub `handle_http_result_public` function L799-801 — `(&mut self, result: HttpResult)` — Handle an HTTP result (public for testing).
+-  `App` type L138-802 — `= App` — Application state and main event loop.
+-  `handle_key` function L260-281 — `(&mut self, key: crossterm::event::KeyEvent)` — Handle a key event, dispatching based on current focus.
+-  `handle_key_input` function L284-328 — `(&mut self, key: crossterm::event::KeyEvent)` — Handle key events when focus is on the chat input.
+-  `handle_key_sidebar` function L331-345 — `(&mut self, key: crossterm::event::KeyEvent)` — Handle key events when focus is on the sidebar.
+-  `handle_key_sidebar_workstreams` function L348-377 — `(&mut self, key: crossterm::event::KeyEvent)` — Handle keys in the workstreams section of the sidebar.
+-  `handle_key_creating_workstream` function L380-405 — `(&mut self, key: crossterm::event::KeyEvent)` — Handle keys when in the "creating workstream" mini-input mode.
+-  `handle_key_sidebar_sessions` function L408-436 — `(&mut self, key: crossterm::event::KeyEvent)` — Handle keys in the sessions section of the sidebar.
+-  `send_message` function L439-464 — `(&mut self)` — Send the current input as a chat message.
+-  `select_workstream` function L467-481 — `(&mut self)` — Select the currently highlighted workstream in the sidebar.
+-  `select_session` function L484-503 — `(&mut self)` — Select the currently highlighted session in the sidebar.
+-  `handle_http_result` function L506-538 — `(&mut self, result: HttpResult)` — Handle a result from a background HTTP task.
+-  `clear_status_on_action` function L698-705 — `(&mut self)` — Clear status message on user action (if it has been displayed long enough).
+-  `set_status` function L708-711 — `(&mut self, msg: String)` — Set a status message with a timestamp.
+-  `handle_server_message` function L724-780 — `(&mut self, msg: ServerMessage)` — Handle a message from the server.
 
 #### crates/arawn-tui/src/config.rs
 
@@ -8728,10 +8753,14 @@
 
 #### crates/arawn-tui/src/render.rs
 
-- pub `draw` function L14-34 — `(f: &mut Frame, app: &App)` — Render the entire UI into the given frame.
--  `draw_chat` function L37-96 — `(f: &mut Frame, app: &App, area: Rect)` — Render the chat messages area.
--  `draw_input` function L99-111 — `(f: &mut Frame, app: &App, area: Rect)` — Render the input box.
--  `draw_status` function L114-117 — `(f: &mut Frame, status: &str, area: Rect)` — Render the status line at the bottom.
+- pub `draw` function L15-44 — `(f: &mut Frame, app: &App)` — Render the entire UI into the given frame.
+-  `draw_sidebar` function L47-98 — `(f: &mut Frame, app: &App, area: Rect)` — Render the sidebar with workstreams and sessions sections.
+-  `draw_workstreams_section` function L101-181 — `(f: &mut Frame, app: &App, area: Rect)` — Render the workstreams section within the sidebar.
+-  `draw_sessions_section` function L184-255 — `(f: &mut Frame, app: &App, area: Rect)` — Render the sessions section within the sidebar.
+-  `format_session_label` function L258-266 — `(started_at: &str) -> String` — Format a session started_at timestamp for sidebar display.
+-  `draw_chat` function L269-328 — `(f: &mut Frame, app: &App, area: Rect)` — Render the chat messages area.
+-  `draw_input` function L331-359 — `(f: &mut Frame, app: &App, area: Rect)` — Render the input box.
+-  `draw_status_bar` function L362-436 — `(f: &mut Frame, app: &App, area: Rect)` — Render the status bar at the very bottom of the screen.
 
 #### crates/arawn-tui/src/ws.rs
 
@@ -8747,8 +8776,48 @@
 -  `make_test_app` function L12-25 — `() -> ( App, mpsc::UnboundedSender<Event>, mpsc::UnboundedReceiver<Event>, mpsc:...` — Helper: create an App wired to test channels.
 -  `test_headless_renders` function L28-41 — `()` — Phase 1 integration tests for arawn-tui.
 -  `test_headless_key_input` function L44-71 — `()` — Phase 1 integration tests for arawn-tui.
--  `test_headless_server_messages` function L74-108 — `()` — Phase 1 integration tests for arawn-tui.
--  `test_headless_chat_flow` function L111-189 — `()` — Phase 1 integration tests for arawn-tui.
+-  `test_headless_server_messages` function L74-109 — `()` — Phase 1 integration tests for arawn-tui.
+-  `test_headless_chat_flow` function L112-190 — `()` — Phase 1 integration tests for arawn-tui.
+
+#### crates/arawn-tui/tests/phase2.rs
+
+-  `make_test_app` function L13-26 — `() -> ( App, mpsc::UnboundedSender<Event>, mpsc::UnboundedReceiver<Event>, mpsc:...` — Helper: create an App wired to test channels.
+-  `key` function L29-36 — `(code: KeyCode) -> crossterm::event::KeyEvent` — Helper: make a key event.
+-  `sample_workstreams` function L39-57 — `() -> Vec<WorkstreamInfo>` — Helper: create sample workstreams.
+-  `test_sidebar_renders_workstreams` function L60-96 — `()` — Phase 2 integration tests for arawn-tui — sidebar, focus, workstream selection.
+-  `test_tab_toggles_focus` function L99-112 — `()` — Phase 2 integration tests for arawn-tui — sidebar, focus, workstream selection.
+-  `test_esc_returns_to_input_from_sidebar` function L115-123 — `()` — Phase 2 integration tests for arawn-tui — sidebar, focus, workstream selection.
+-  `test_select_workstream_clears_chat` function L126-160 — `()` — Phase 2 integration tests for arawn-tui — sidebar, focus, workstream selection.
+-  `test_sidebar_navigation_bounds` function L163-186 — `()` — Phase 2 integration tests for arawn-tui — sidebar, focus, workstream selection.
+-  `test_http_result_populates_workstreams` function L189-214 — `()` — Phase 2 integration tests for arawn-tui — sidebar, focus, workstream selection.
+-  `test_input_keys_ignored_in_sidebar_mode` function L217-230 — `()` — Phase 2 integration tests for arawn-tui — sidebar, focus, workstream selection.
+
+#### crates/arawn-tui/tests/phase3.rs
+
+-  `make_test_app` function L15-28 — `() -> ( App, mpsc::UnboundedSender<Event>, mpsc::UnboundedReceiver<Event>, mpsc:...` — Helper: create an App wired to test channels.
+-  `key` function L31-38 — `(code: KeyCode) -> crossterm::event::KeyEvent` — Helper: make a key event.
+-  `sample_workstreams` function L41-54 — `() -> Vec<WorkstreamInfo>` — Helper: create sample workstreams.
+-  `sample_sessions` function L57-68 — `() -> Vec<SessionInfo>` — Helper: create sample sessions.
+-  `sample_messages` function L71-82 — `() -> Vec<MessageInfo>` — Helper: create sample messages for a session.
+-  `buffer_text` function L85-96 — `(terminal: &Terminal<TestBackend>) -> String` — Helper: extract rendered buffer text.
+-  `test_sessions_render_after_workstream_select` function L99-135 — `()` — Phase 3 integration tests for arawn-tui — sessions in sidebar.
+-  `test_new_session_clears_chat` function L138-187 — `()` — Phase 3 integration tests for arawn-tui — sessions in sidebar.
+-  `test_select_session_loads_messages` function L190-224 — `()` — Phase 3 integration tests for arawn-tui — sessions in sidebar.
+-  `test_sidebar_navigation_between_sections` function L227-269 — `()` — Phase 3 integration tests for arawn-tui — sessions in sidebar.
+-  `test_sessions_empty_when_no_workstream_selected` function L272-290 — `()` — Phase 3 integration tests for arawn-tui — sessions in sidebar.
+-  `test_messages_ignored_for_wrong_session` function L293-306 — `()` — Phase 3 integration tests for arawn-tui — sessions in sidebar.
+
+#### crates/arawn-tui/tests/phase4.rs
+
+-  `make_test_app` function L14-27 — `() -> ( App, mpsc::UnboundedSender<Event>, mpsc::UnboundedReceiver<Event>, mpsc:...` — Helper: create an App wired to test channels.
+-  `key` function L30-37 — `(code: KeyCode) -> crossterm::event::KeyEvent` — Helper: make a key event.
+-  `buffer_text` function L40-51 — `(terminal: &Terminal<TestBackend>) -> String` — Helper: extract rendered buffer text.
+-  `sample_workstreams` function L54-67 — `() -> Vec<WorkstreamInfo>` — Helper: create sample workstreams.
+-  `test_chat_scroll` function L70-136 — `()` — Phase 4 integration tests for arawn-tui — polish features.
+-  `test_status_bar_renders` function L139-192 — `()` — Phase 4 integration tests for arawn-tui — polish features.
+-  `test_create_workstream_input` function L195-254 — `()` — Phase 4 integration tests for arawn-tui — polish features.
+-  `test_status_message_overrides_bar` function L257-288 — `()` — Phase 4 integration tests for arawn-tui — polish features.
+-  `test_auto_scroll_on_new_messages` function L291-318 — `()` — Phase 4 integration tests for arawn-tui — polish features.
 
 ### crates/arawn-types/src
 

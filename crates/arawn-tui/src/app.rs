@@ -733,31 +733,48 @@ impl App {
                 self.session_id = Some(session_id);
             }
             ServerMessage::ChatChunk { chunk, done, .. } => {
-                // Find or create the current assistant message
-                let needs_new = self
-                    .messages
-                    .last()
-                    .map(|m| !m.streaming || m.is_user)
-                    .unwrap_or(true);
+                // Handle content first (even in done=true chunks that carry final text)
+                if !chunk.is_empty() {
+                    let needs_new = self
+                        .messages
+                        .last()
+                        .map(|m| !m.streaming || m.is_user)
+                        .unwrap_or(true);
 
-                if needs_new {
-                    self.messages.push(ChatMessage {
-                        is_user: false,
-                        content: chunk,
-                        streaming: !done,
-                    });
-                } else if let Some(last) = self.messages.last_mut() {
-                    last.content.push_str(&chunk);
-                    last.streaming = !done;
+                    if needs_new {
+                        self.messages.push(ChatMessage {
+                            is_user: false,
+                            content: chunk,
+                            streaming: !done,
+                        });
+                    } else if let Some(last) = self.messages.last_mut() {
+                        last.content.push_str(&chunk);
+                        if done {
+                            last.streaming = false;
+                        }
+                    }
                 }
 
                 if done {
+                    // Mark any trailing streaming message as complete
+                    if let Some(last) = self.messages.last_mut() {
+                        if !last.is_user {
+                            last.streaming = false;
+                        }
+                    }
                     self.waiting = false;
                 }
                 self.auto_scroll = true;
             }
             ServerMessage::ToolStart { tool_name, .. } => {
                 self.set_status(format!("Running tool: {}", tool_name));
+                // Show tool activity in chat so user sees something happening
+                self.messages.push(ChatMessage {
+                    is_user: false,
+                    content: format!("[tool: {}]", tool_name),
+                    streaming: false,
+                });
+                self.auto_scroll = true;
             }
             ServerMessage::ToolEnd { .. } => {
                 self.status = None;
