@@ -190,7 +190,7 @@
     "crates/arawn-server/src/routes/workstreams/tests.rs": "3e688f9fa543b9161174049d758bb236e80a168fa1d6925bc5e213f14683ee7b",
     "crates/arawn-server/src/routes/workstreams/types.rs": "638d12c08396debcf0a270b56151dd1c58ba188b826414053090f23421c0c2c0",
     "crates/arawn-server/src/routes/ws/connection.rs": "390991f064e696fcbe85ba40f034cd4092b3efe87d69334582596baddb6bb925",
-    "crates/arawn-server/src/routes/ws/handlers.rs": "468513931770dde568e5f71fab34b55462048498bade2b476c48e05a8d34ab10",
+    "crates/arawn-server/src/routes/ws/handlers.rs": "b5a30930eb1fb6618eb682506a8a046074c2df89df7fd9e2fed19d152418db39",
     "crates/arawn-server/src/routes/ws/mod.rs": "8255681b44fa225b027d89cf029d87b736b4b9247e5d89c65b5f2946243f5df1",
     "crates/arawn-server/src/routes/ws/protocol.rs": "36f64c9c71f8bcad6d04187068f83c15067693752489ca78261ce5ac66d4c490",
     "crates/arawn-server/src/session_cache.rs": "074df12c84c8bf204ddd0de38eda3779927286ca9c595ab6702b6223c70750e8",

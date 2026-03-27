@@ -130,25 +130,25 @@ pub fn validate_against_schema(
             }
 
             // Type check
-            if let Some(prop_schema) = props.get(key) {
-                if let Some(expected_type) = prop_schema.get("type").and_then(|t| t.as_str()) {
-                    let type_ok = match expected_type {
-                        "string" => value.is_string(),
-                        "number" => value.is_number(),
-                        "integer" => value.is_i64() || value.is_u64(),
-                        "boolean" => value.is_boolean(),
-                        "array" => value.is_array(),
-                        "object" => value.is_object(),
-                        _ => true, // Unknown type — don't reject
-                    };
-                    if !type_ok {
-                        return Err(ToolResult::error(format!(
-                            "Parameter '{}' expected type '{}', got {}",
-                            key,
-                            expected_type,
-                            value_type_name(value)
-                        )));
-                    }
+            if let Some(prop_schema) = props.get(key)
+                && let Some(expected_type) = prop_schema.get("type").and_then(|t| t.as_str())
+            {
+                let type_ok = match expected_type {
+                    "string" => value.is_string(),
+                    "number" => value.is_number(),
+                    "integer" => value.is_i64() || value.is_u64(),
+                    "boolean" => value.is_boolean(),
+                    "array" => value.is_array(),
+                    "object" => value.is_object(),
+                    _ => true, // Unknown type — don't reject
+                };
+                if !type_ok {
+                    return Err(ToolResult::error(format!(
+                        "Parameter '{}' expected type '{}', got {}",
+                        key,
+                        expected_type,
+                        value_type_name(value)
+                    )));
                 }
             }
         }

@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-03-26T18:18:25Z | 375 files | Rust
+> Generated: 2026-03-27T00:34:56Z | 375 files | Rust
 
 ## Project Structure
 
@@ -7648,12 +7648,12 @@
 -  `handle_cancel` function L180-202 — `(session_id: String, conn_state: &mut ConnectionState) -> MessageResponse` — Handle cancellation request.
 -  `handle_command` function L205-278 — `( command: String, args: serde_json::Value, conn_state: &ConnectionState, app_st...` — Handle command execution.
 -  `inject_session_context` function L281-304 — `( mut args: serde_json::Value, conn_state: &ConnectionState, ) -> serde_json::Va...` — Inject session context from the connection state if not provided in args.
--  `handle_chat` function L310-525 — `( session_id: Option<String>, workstream_id: Option<String>, message: String, co...` — Handle chat message.
--  `tests` module L528-586 — `-` — WebSocket message handlers.
--  `test_inject_session_context_null_args` function L532-540 — `()` — WebSocket message handlers.
--  `test_inject_session_context_with_subscription` function L543-557 — `()` — WebSocket message handlers.
--  `test_inject_session_context_preserves_existing` function L560-571 — `()` — WebSocket message handlers.
--  `test_inject_session_context_preserves_other_args` function L574-585 — `()` — WebSocket message handlers.
+-  `handle_chat` function L310-523 — `( session_id: Option<String>, workstream_id: Option<String>, message: String, co...` — Handle chat message.
+-  `tests` module L526-584 — `-` — WebSocket message handlers.
+-  `test_inject_session_context_null_args` function L530-538 — `()` — WebSocket message handlers.
+-  `test_inject_session_context_with_subscription` function L541-555 — `()` — WebSocket message handlers.
+-  `test_inject_session_context_preserves_existing` function L558-569 — `()` — WebSocket message handlers.
+-  `test_inject_session_context_preserves_other_args` function L572-583 — `()` — WebSocket message handlers.
 
 #### crates/arawn-server/src/routes/ws/mod.rs
 
