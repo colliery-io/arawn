@@ -8,7 +8,7 @@ use ratatui::{
     widgets::{Block, Borders, List, ListItem, Paragraph, Wrap},
 };
 
-use crate::app::{App, Focus};
+use crate::app::{App, Focus, SidebarSection};
 
 /// Render the entire UI into the given frame.
 pub fn draw(f: &mut Frame, app: &App) {
@@ -46,7 +46,7 @@ pub fn draw(f: &mut Frame, app: &App) {
     }
 }
 
-/// Render the workstream sidebar.
+/// Render the sidebar with workstreams and sessions sections.
 fn draw_sidebar(f: &mut Frame, app: &App, area: Rect) {
     let is_focused = app.focus == Focus::Sidebar;
 
@@ -58,19 +58,82 @@ fn draw_sidebar(f: &mut Frame, app: &App, area: Rect) {
 
     let block = Block::default()
         .borders(Borders::ALL)
-        .border_style(border_style)
-        .title(Span::styled(
-            "Workstreams",
-            Style::default().add_modifier(Modifier::BOLD),
-        ));
+        .border_style(border_style);
 
-    if app.workstreams.is_empty() {
-        let empty = Paragraph::new("  (none)")
-            .block(block)
-            .style(Style::default().fg(Color::DarkGray));
-        f.render_widget(empty, area);
+    let inner = block.inner(area);
+    f.render_widget(block, area);
+
+    // Split the inner area: workstreams header + items, divider, sessions
+    let ws_count = app.workstreams.len().max(1); // at least 1 row for "(none)"
+    let ws_header_height = 1u16;
+    let ws_items_height = ws_count as u16;
+
+    let available = inner.height;
+
+    // Workstreams section
+    let ws_section_height = (ws_header_height + ws_items_height).min(available);
+    let ws_area = Rect::new(inner.x, inner.y, inner.width, ws_section_height);
+    draw_workstreams_section(f, app, ws_area);
+
+    let remaining_y = inner.y + ws_section_height;
+    let remaining_h = available.saturating_sub(ws_section_height);
+
+    if remaining_h == 0 {
         return;
     }
+
+    // Divider line
+    let divider_area = Rect::new(inner.x, remaining_y, inner.width, 1.min(remaining_h));
+    let divider_text = "\u{2500}".repeat(inner.width as usize);
+    let divider = Paragraph::new(divider_text).style(Style::default().fg(Color::DarkGray));
+    f.render_widget(divider, divider_area);
+
+    let remaining_y = remaining_y + 1;
+    let remaining_h = remaining_h.saturating_sub(1);
+
+    if remaining_h == 0 {
+        return;
+    }
+
+    // Sessions section
+    let sessions_area = Rect::new(inner.x, remaining_y, inner.width, remaining_h);
+    draw_sessions_section(f, app, sessions_area);
+}
+
+/// Render the workstreams section within the sidebar.
+fn draw_workstreams_section(f: &mut Frame, app: &App, area: Rect) {
+    if area.height == 0 {
+        return;
+    }
+
+    // Header
+    let header_area = Rect::new(area.x, area.y, area.width, 1);
+    let header = Paragraph::new(Span::styled(
+        " Workstreams",
+        Style::default()
+            .add_modifier(Modifier::BOLD)
+            .fg(Color::White),
+    ));
+    f.render_widget(header, header_area);
+
+    let items_area = Rect::new(
+        area.x,
+        area.y + 1,
+        area.width,
+        area.height.saturating_sub(1),
+    );
+    if items_area.height == 0 {
+        return;
+    }
+
+    if app.workstreams.is_empty() {
+        let empty = Paragraph::new("  (none)").style(Style::default().fg(Color::DarkGray));
+        f.render_widget(empty, items_area);
+        return;
+    }
+
+    let is_ws_section =
+        app.focus == Focus::Sidebar && app.sidebar_section == SidebarSection::Workstreams;
 
     let items: Vec<ListItem> = app
         .workstreams
@@ -83,10 +146,14 @@ fn draw_sidebar(f: &mut Frame, app: &App, area: Rect) {
                 format!(" {}", ws.title)
             };
 
-            let style = if i == app.selected_workstream {
+            let style = if is_ws_section && i == app.selected_workstream {
                 Style::default()
                     .fg(Color::Black)
                     .bg(Color::Cyan)
+                    .add_modifier(Modifier::BOLD)
+            } else if Some(ws.id.as_str()) == app.workstream_id.as_deref() {
+                Style::default()
+                    .fg(Color::Cyan)
                     .add_modifier(Modifier::BOLD)
             } else {
                 Style::default().fg(Color::White)
@@ -96,8 +163,93 @@ fn draw_sidebar(f: &mut Frame, app: &App, area: Rect) {
         })
         .collect();
 
-    let list = List::new(items).block(block);
-    f.render_widget(list, area);
+    let list = List::new(items);
+    f.render_widget(list, items_area);
+}
+
+/// Render the sessions section within the sidebar.
+fn draw_sessions_section(f: &mut Frame, app: &App, area: Rect) {
+    if area.height == 0 {
+        return;
+    }
+
+    // Header
+    let header_area = Rect::new(area.x, area.y, area.width, 1);
+    let header = Paragraph::new(Span::styled(
+        " Sessions",
+        Style::default()
+            .add_modifier(Modifier::BOLD)
+            .fg(Color::White),
+    ));
+    f.render_widget(header, header_area);
+
+    let items_area = Rect::new(
+        area.x,
+        area.y + 1,
+        area.width,
+        area.height.saturating_sub(1),
+    );
+    if items_area.height == 0 {
+        return;
+    }
+
+    let is_session_section =
+        app.focus == Focus::Sidebar && app.sidebar_section == SidebarSection::Sessions;
+
+    // Build items: "+ New Session" first, then actual sessions
+    let mut items: Vec<ListItem> = Vec::new();
+
+    // "+ New Session" entry (index 0)
+    let new_session_style = if is_session_section && app.selected_session == 0 {
+        Style::default()
+            .fg(Color::Black)
+            .bg(Color::Cyan)
+            .add_modifier(Modifier::BOLD)
+    } else {
+        Style::default().fg(Color::Green)
+    };
+    items.push(ListItem::new(Line::from(Span::styled(
+        " + New Session",
+        new_session_style,
+    ))));
+
+    // Actual sessions
+    for (i, session) in app.sessions.iter().enumerate() {
+        let display_idx = i + 1; // offset by 1 for "+ New Session"
+        let label = format_session_label(&session.started_at);
+
+        let style = if is_session_section && app.selected_session == display_idx {
+            Style::default()
+                .fg(Color::Black)
+                .bg(Color::Cyan)
+                .add_modifier(Modifier::BOLD)
+        } else if app.session_id.as_deref() == Some(&session.id) {
+            Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::BOLD)
+        } else {
+            Style::default().fg(Color::White)
+        };
+
+        items.push(ListItem::new(Line::from(Span::styled(
+            format!(" {}", label),
+            style,
+        ))));
+    }
+
+    let list = List::new(items);
+    f.render_widget(list, items_area);
+}
+
+/// Format a session started_at timestamp for sidebar display.
+fn format_session_label(started_at: &str) -> String {
+    // Try to parse ISO 8601 and display a shorter form
+    if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(started_at) {
+        dt.format("%b %d %H:%M").to_string()
+    } else {
+        // Fallback: show the raw string, truncated
+        started_at.chars().take(16).collect()
+    }
 }
 
 /// Render the chat messages area.

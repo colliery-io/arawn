@@ -151,7 +151,12 @@ async fn test_select_workstream_clears_chat() {
     assert_eq!(app.workstream, "Project Alpha");
     assert!(app.messages.is_empty(), "Messages should be cleared");
     assert!(app.session_id.is_none(), "Session should be cleared");
-    assert_eq!(app.focus, Focus::Input, "Focus should return to Input");
+    // After Phase 3, selecting a workstream moves to the Sessions section of the sidebar
+    assert_eq!(
+        app.focus,
+        Focus::Sidebar,
+        "Focus should stay on Sidebar (sessions section)"
+    );
 }
 
 #[tokio::test]
@@ -166,14 +171,18 @@ async fn test_sidebar_navigation_bounds() {
     app.handle_key_public(key(KeyCode::Up));
     assert_eq!(app.selected_workstream, 0);
 
-    // Move to bottom
+    // Move to bottom of workstreams
     app.handle_key_public(key(KeyCode::Down));
     app.handle_key_public(key(KeyCode::Down));
     assert_eq!(app.selected_workstream, 2);
 
-    // At bottom, pressing Down should stay at 2
+    // At bottom of workstreams, pressing Down moves to sessions section
     app.handle_key_public(key(KeyCode::Down));
-    assert_eq!(app.selected_workstream, 2);
+    // After Phase 3, this transitions to the sessions sidebar section
+    assert_eq!(
+        app.sidebar_section,
+        arawn_tui::app::SidebarSection::Sessions
+    );
 }
 
 #[tokio::test]

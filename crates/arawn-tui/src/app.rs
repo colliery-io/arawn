@@ -33,12 +33,33 @@ pub struct WorkstreamInfo {
     pub is_scratch: bool,
 }
 
+/// Information about a session for display in the sidebar.
+#[derive(Debug, Clone)]
+pub struct SessionInfo {
+    /// Session ID.
+    pub id: String,
+    /// When the session started (ISO 8601).
+    pub started_at: String,
+}
+
+/// Information about a message within a session.
+#[derive(Debug, Clone)]
+pub struct MessageInfo {
+    /// Role of the sender ("user" or "assistant").
+    pub role: String,
+    /// The message text content.
+    pub content: String,
+}
+
 /// Results from background HTTP tasks.
 #[derive(Debug)]
 pub enum HttpResult {
     /// Fetched list of workstreams.
     Workstreams(Vec<WorkstreamInfo>),
-    // More variants added in Phase 3
+    /// Fetched sessions for the selected workstream.
+    Sessions(Vec<SessionInfo>),
+    /// Fetched messages for a session (session_id, messages).
+    Messages(String, Vec<MessageInfo>),
 }
 
 /// Which panel currently has keyboard focus.
@@ -48,6 +69,15 @@ pub enum Focus {
     Input,
     /// The workstream sidebar.
     Sidebar,
+}
+
+/// Which section of the sidebar is active.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SidebarSection {
+    /// Workstreams list.
+    Workstreams,
+    /// Sessions list.
+    Sessions,
 }
 
 /// The main TUI application state.
@@ -76,6 +106,11 @@ pub struct App {
     pub workstreams: Vec<WorkstreamInfo>,
     pub selected_workstream: usize,
     pub focus: Focus,
+    pub sidebar_section: SidebarSection,
+
+    // Sessions
+    pub sessions: Vec<SessionInfo>,
+    pub selected_session: usize, // 0 = "+ New Session"
 
     // Background HTTP
     pub http_tx: mpsc::UnboundedSender<HttpResult>,
@@ -111,6 +146,9 @@ impl App {
             workstreams: Vec::new(),
             selected_workstream: 0,
             focus: Focus::Input,
+            sidebar_section: SidebarSection::Workstreams,
+            sessions: Vec::new(),
+            selected_session: 0,
             http_tx,
             http_rx,
             server_url: config.server_url.clone(),
@@ -256,6 +294,14 @@ impl App {
 
     /// Handle key events when focus is on the sidebar.
     fn handle_key_sidebar(&mut self, key: crossterm::event::KeyEvent) {
+        match self.sidebar_section {
+            SidebarSection::Workstreams => self.handle_key_sidebar_workstreams(key),
+            SidebarSection::Sessions => self.handle_key_sidebar_sessions(key),
+        }
+    }
+
+    /// Handle keys in the workstreams section of the sidebar.
+    fn handle_key_sidebar_workstreams(&mut self, key: crossterm::event::KeyEvent) {
         match key.code {
             KeyCode::Up => {
                 if self.selected_workstream > 0 {
@@ -267,10 +313,45 @@ impl App {
                     && self.selected_workstream < self.workstreams.len() - 1
                 {
                     self.selected_workstream += 1;
+                } else if !self.workstreams.is_empty() {
+                    // At the bottom of workstreams, move to sessions section
+                    self.sidebar_section = SidebarSection::Sessions;
+                    self.selected_session = 0;
                 }
             }
             KeyCode::Enter => {
                 self.select_workstream();
+            }
+            KeyCode::Esc => {
+                self.focus = Focus::Input;
+            }
+            _ => {}
+        }
+    }
+
+    /// Handle keys in the sessions section of the sidebar.
+    fn handle_key_sidebar_sessions(&mut self, key: crossterm::event::KeyEvent) {
+        // Total items: 1 ("+ New Session") + sessions.len()
+        let total_items = 1 + self.sessions.len();
+        match key.code {
+            KeyCode::Up => {
+                if self.selected_session > 0 {
+                    self.selected_session -= 1;
+                } else {
+                    // At top of sessions, move back to workstreams
+                    self.sidebar_section = SidebarSection::Workstreams;
+                    if !self.workstreams.is_empty() {
+                        self.selected_workstream = self.workstreams.len() - 1;
+                    }
+                }
+            }
+            KeyCode::Down => {
+                if self.selected_session < total_items - 1 {
+                    self.selected_session += 1;
+                }
+            }
+            KeyCode::Enter => {
+                self.select_session();
             }
             KeyCode::Esc => {
                 self.focus = Focus::Input;
@@ -310,11 +391,39 @@ impl App {
     /// Select the currently highlighted workstream in the sidebar.
     fn select_workstream(&mut self) {
         if let Some(ws) = self.workstreams.get(self.selected_workstream) {
-            self.workstream_id = Some(ws.id.clone());
+            let ws_id = ws.id.clone();
+            self.workstream_id = Some(ws_id.clone());
             self.workstream = ws.title.clone();
             self.messages.clear();
             self.session_id = None;
+            self.sessions.clear();
+            self.selected_session = 0;
+            self.sidebar_section = SidebarSection::Sessions;
+
+            // Fetch sessions for this workstream in the background
+            self.spawn_fetch_sessions(&ws_id);
+        }
+    }
+
+    /// Select the currently highlighted session in the sidebar.
+    fn select_session(&mut self) {
+        if self.selected_session == 0 {
+            // "+ New Session" — clear chat and return to input
+            self.messages.clear();
+            self.session_id = None;
             self.focus = Focus::Input;
+        } else {
+            // Existing session — fetch messages
+            let session_idx = self.selected_session - 1;
+            if let Some(session) = self.sessions.get(session_idx) {
+                let session_id = session.id.clone();
+                self.session_id = Some(session_id.clone());
+                self.messages.clear();
+                self.focus = Focus::Input;
+
+                // Fetch session messages in the background
+                self.spawn_fetch_messages(&session_id);
+            }
         }
     }
 
@@ -328,6 +437,26 @@ impl App {
                     && !self.workstreams.is_empty()
                 {
                     self.selected_workstream = self.workstreams.len() - 1;
+                }
+            }
+            HttpResult::Sessions(sessions) => {
+                self.sessions = sessions;
+                // Keep selected_session at 0 ("+ New Session")
+                self.selected_session = 0;
+            }
+            HttpResult::Messages(session_id, messages) => {
+                // Only apply if this is still the selected session
+                if self.session_id.as_deref() == Some(&session_id) {
+                    self.messages = messages
+                        .into_iter()
+                        .filter(|m| m.role == "user" || m.role == "assistant")
+                        .map(|m| ChatMessage {
+                            is_user: m.role == "user",
+                            content: m.content,
+                            streaming: false,
+                        })
+                        .collect();
+                    self.auto_scroll = true;
                 }
             }
         }
@@ -363,6 +492,76 @@ impl App {
                 }
                 Err(e) => {
                     warn!("Failed to fetch workstreams: {}", e);
+                }
+            }
+        });
+    }
+
+    /// Spawn a background HTTP task to fetch sessions for a workstream.
+    pub fn spawn_fetch_sessions(&self, workstream_id: &str) {
+        let tx = self.http_tx.clone();
+        let server_url = self.server_url.clone();
+        let ws_id = workstream_id.to_string();
+        tokio::spawn(async move {
+            let client = match arawn_client::ArawnClient::builder()
+                .base_url(&server_url)
+                .build()
+            {
+                Ok(c) => c,
+                Err(e) => {
+                    warn!("Failed to create HTTP client for sessions: {}", e);
+                    return;
+                }
+            };
+            match client.workstreams().sessions(&ws_id).await {
+                Ok(resp) => {
+                    let infos: Vec<SessionInfo> = resp
+                        .sessions
+                        .into_iter()
+                        .map(|s| SessionInfo {
+                            id: s.id,
+                            started_at: s.started_at,
+                        })
+                        .collect();
+                    let _ = tx.send(HttpResult::Sessions(infos));
+                }
+                Err(e) => {
+                    warn!("Failed to fetch sessions for workstream {}: {}", ws_id, e);
+                }
+            }
+        });
+    }
+
+    /// Spawn a background HTTP task to fetch messages for a session.
+    pub fn spawn_fetch_messages(&self, session_id: &str) {
+        let tx = self.http_tx.clone();
+        let server_url = self.server_url.clone();
+        let sid = session_id.to_string();
+        tokio::spawn(async move {
+            let client = match arawn_client::ArawnClient::builder()
+                .base_url(&server_url)
+                .build()
+            {
+                Ok(c) => c,
+                Err(e) => {
+                    warn!("Failed to create HTTP client for messages: {}", e);
+                    return;
+                }
+            };
+            match client.sessions().messages(&sid).await {
+                Ok(resp) => {
+                    let messages: Vec<MessageInfo> = resp
+                        .messages
+                        .into_iter()
+                        .map(|m| MessageInfo {
+                            role: m.role,
+                            content: m.content,
+                        })
+                        .collect();
+                    let _ = tx.send(HttpResult::Messages(sid, messages));
+                }
+                Err(e) => {
+                    warn!("Failed to fetch messages for session {}: {}", sid, e);
                 }
             }
         });
@@ -440,5 +639,10 @@ impl App {
     /// Handle a server message (public for testing).
     pub fn handle_server_message_public(&mut self, msg: ServerMessage) {
         self.handle_server_message(msg);
+    }
+
+    /// Handle an HTTP result (public for testing).
+    pub fn handle_http_result_public(&mut self, result: HttpResult) {
+        self.handle_http_result(result);
     }
 }
