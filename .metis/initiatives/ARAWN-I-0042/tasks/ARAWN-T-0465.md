@@ -4,14 +4,14 @@ level: task
 title: "Phase 4: Polish — chat scroll, status bar, Ctrl+Q quit, create workstream from sidebar"
 short_code: "ARAWN-T-0465"
 created_at: 2026-03-27T01:34:56.209384+00:00
-updated_at: 2026-03-27T01:34:56.209384+00:00
+updated_at: 2026-03-27T02:25:15.634525+00:00
 parent: ARAWN-I-0042
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/active"
 
 
 exit_criteria_met: false
@@ -63,6 +63,8 @@ Polish the TUI: add chat scrolling, a status bar showing connection state and cu
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
 
 ## Acceptance Criteria **[REQUIRED]**
 

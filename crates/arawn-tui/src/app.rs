@@ -1,5 +1,7 @@
 //! Application state and main event loop.
 
+use std::time::Instant;
+
 use anyhow::Result;
 use crossterm::event::{KeyCode, KeyModifiers};
 use ratatui::{Terminal, backend::Backend};
@@ -10,6 +12,7 @@ use crate::config::TuiConfig;
 use crate::events::Event;
 use crate::protocol::{ClientMessage, ServerMessage};
 use crate::render;
+use crate::ws::ConnectionStatus;
 
 /// A single chat message displayed in the UI.
 #[derive(Debug, Clone)]
@@ -121,6 +124,15 @@ pub struct App {
 
     // Whether we have already fetched workstreams on first connect
     has_fetched_workstreams: bool,
+
+    // Connection status
+    pub connection_status: ConnectionStatus,
+
+    // Workstream creation mini-input (None = not creating, Some(text) = typing name)
+    pub creating_workstream: Option<String>,
+
+    // When status was last set (for auto-clear after 5 seconds)
+    pub status_set_at: Option<Instant>,
 }
 
 impl App {
@@ -153,6 +165,9 @@ impl App {
             http_rx,
             server_url: config.server_url.clone(),
             has_fetched_workstreams: false,
+            connection_status: ConnectionStatus::Connecting,
+            creating_workstream: None,
+            status_set_at: None,
         }
     }
 
@@ -174,7 +189,9 @@ impl App {
                 event = event_rx.recv() => {
                     match event {
                         Some(Event::Key(key)) => self.handle_key(key),
-                        Some(Event::Tick) => {} // Just triggers a redraw
+                        Some(Event::Tick) => {
+                            self.maybe_clear_status();
+                        }
                         None => self.should_quit = true,
                     }
                 }
@@ -182,7 +199,7 @@ impl App {
                     match msg {
                         Some(server_msg) => self.handle_server_message(server_msg),
                         None => {
-                            self.status = Some("Disconnected from server".into());
+                            self.set_status("Disconnected from server".into());
                         }
                     }
                 }
@@ -219,6 +236,7 @@ impl App {
                         Some(Event::Key(key)) => self.handle_key(key),
                         Some(Event::Tick) => {
                             tick_count += 1;
+                            self.maybe_clear_status();
                         }
                         None => return Ok(()),
                     }
@@ -264,6 +282,9 @@ impl App {
 
     /// Handle key events when focus is on the chat input.
     fn handle_key_input(&mut self, key: crossterm::event::KeyEvent) {
+        // Clear status on any user action
+        self.clear_status_on_action();
+
         match key.code {
             KeyCode::Enter => {
                 self.send_message();
@@ -284,6 +305,20 @@ impl App {
                     self.cursor_pos += 1;
                 }
             }
+            KeyCode::PageUp => {
+                self.auto_scroll = false;
+                self.chat_scroll = self.chat_scroll.saturating_sub(10);
+            }
+            KeyCode::PageDown => {
+                self.chat_scroll = self.chat_scroll.saturating_add(10);
+            }
+            KeyCode::Home => {
+                self.auto_scroll = false;
+                self.chat_scroll = 0;
+            }
+            KeyCode::End => {
+                self.auto_scroll = true;
+            }
             KeyCode::Char(c) => {
                 self.input.insert(self.cursor_pos, c);
                 self.cursor_pos += 1;
@@ -294,6 +329,15 @@ impl App {
 
     /// Handle key events when focus is on the sidebar.
     fn handle_key_sidebar(&mut self, key: crossterm::event::KeyEvent) {
+        // Clear status on any user action
+        self.clear_status_on_action();
+
+        // If creating a workstream, intercept all keys for the mini-input
+        if self.creating_workstream.is_some() {
+            self.handle_key_creating_workstream(key);
+            return;
+        }
+
         match self.sidebar_section {
             SidebarSection::Workstreams => self.handle_key_sidebar_workstreams(key),
             SidebarSection::Sessions => self.handle_key_sidebar_sessions(key),
@@ -322,8 +366,39 @@ impl App {
             KeyCode::Enter => {
                 self.select_workstream();
             }
+            KeyCode::Char('n') => {
+                self.creating_workstream = Some(String::new());
+            }
             KeyCode::Esc => {
                 self.focus = Focus::Input;
+            }
+            _ => {}
+        }
+    }
+
+    /// Handle keys when in the "creating workstream" mini-input mode.
+    fn handle_key_creating_workstream(&mut self, key: crossterm::event::KeyEvent) {
+        match key.code {
+            KeyCode::Esc => {
+                self.creating_workstream = None;
+            }
+            KeyCode::Enter => {
+                if let Some(name) = self.creating_workstream.take() {
+                    let name = name.trim().to_string();
+                    if !name.is_empty() {
+                        self.spawn_create_workstream(&name);
+                    }
+                }
+            }
+            KeyCode::Backspace => {
+                if let Some(ref mut name) = self.creating_workstream {
+                    name.pop();
+                }
+            }
+            KeyCode::Char(c) => {
+                if let Some(ref mut name) = self.creating_workstream {
+                    name.push(c);
+                }
             }
             _ => {}
         }
@@ -567,6 +642,84 @@ impl App {
         });
     }
 
+    /// Spawn a background HTTP task to create a new workstream.
+    pub fn spawn_create_workstream(&self, name: &str) {
+        let tx = self.http_tx.clone();
+        let server_url = self.server_url.clone();
+        let ws_name = name.to_string();
+        tokio::spawn(async move {
+            let client = match arawn_client::ArawnClient::builder()
+                .base_url(&server_url)
+                .build()
+            {
+                Ok(c) => c,
+                Err(e) => {
+                    warn!(
+                        "Failed to create HTTP client for workstream creation: {}",
+                        e
+                    );
+                    return;
+                }
+            };
+            let request = arawn_client::types::CreateWorkstreamRequest {
+                title: ws_name.clone(),
+                default_model: None,
+                tags: Vec::new(),
+            };
+            match client.workstreams().create(request).await {
+                Ok(_) => {
+                    // Re-fetch workstream list after creation
+                    match client.workstreams().list().await {
+                        Ok(resp) => {
+                            let infos: Vec<WorkstreamInfo> = resp
+                                .workstreams
+                                .into_iter()
+                                .map(|ws| WorkstreamInfo {
+                                    id: ws.id,
+                                    title: ws.title,
+                                    is_scratch: ws.is_scratch,
+                                })
+                                .collect();
+                            let _ = tx.send(HttpResult::Workstreams(infos));
+                        }
+                        Err(e) => {
+                            warn!("Failed to refresh workstreams after creation: {}", e);
+                        }
+                    }
+                }
+                Err(e) => {
+                    warn!("Failed to create workstream '{}': {}", ws_name, e);
+                }
+            }
+        });
+    }
+
+    /// Clear status message on user action (if it has been displayed long enough).
+    fn clear_status_on_action(&mut self) {
+        if let Some(set_at) = self.status_set_at {
+            // Clear if status has been shown for any amount of time on user action
+            let _ = set_at; // We clear on any action regardless of time
+            self.status = None;
+            self.status_set_at = None;
+        }
+    }
+
+    /// Set a status message with a timestamp.
+    fn set_status(&mut self, msg: String) {
+        self.status = Some(msg);
+        self.status_set_at = Some(Instant::now());
+    }
+
+    /// Check if status should be auto-cleared after 5 seconds.
+    pub fn maybe_clear_status(&mut self) {
+        if let Some(set_at) = self.status_set_at {
+            if set_at.elapsed() >= std::time::Duration::from_secs(5) {
+                self.status = None;
+                self.status_set_at = None;
+            }
+        }
+    }
+
     /// Handle a message from the server.
     fn handle_server_message(&mut self, msg: ServerMessage) {
         // On first server message, fetch workstreams (implies WS is connected)
@@ -604,18 +757,19 @@ impl App {
                 self.auto_scroll = true;
             }
             ServerMessage::ToolStart { tool_name, .. } => {
-                self.status = Some(format!("Running tool: {}", tool_name));
+                self.set_status(format!("Running tool: {}", tool_name));
             }
             ServerMessage::ToolEnd { .. } => {
                 self.status = None;
+                self.status_set_at = None;
             }
             ServerMessage::Error { message, .. } => {
-                self.status = Some(format!("Error: {}", message));
+                self.set_status(format!("Error: {}", message));
                 self.waiting = false;
             }
             ServerMessage::AuthResult { success, error } => {
                 if !success {
-                    self.status = Some(format!(
+                    self.set_status(format!(
                         "Auth failed: {}",
                         error.unwrap_or_else(|| "unknown".into())
                     ));

@@ -4,14 +4,14 @@ level: task
 title: "Phase 3: Sessions — session list per workstream, new session, switch session, load messages"
 short_code: "ARAWN-T-0464"
 created_at: 2026-03-27T01:34:55.104717+00:00
-updated_at: 2026-03-27T02:11:45.060723+00:00
+updated_at: 2026-03-27T02:24:47.773372+00:00
 parent: ARAWN-I-0042
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -63,6 +63,8 @@ Add sessions list below workstreams in the sidebar. When a workstream is selecte
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

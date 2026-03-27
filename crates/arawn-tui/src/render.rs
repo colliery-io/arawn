@@ -9,41 +9,38 @@ use ratatui::{
 };
 
 use crate::app::{App, Focus, SidebarSection};
+use crate::ws::ConnectionStatus;
 
 /// Render the entire UI into the given frame.
 pub fn draw(f: &mut Frame, app: &App) {
-    // Top-level horizontal split: sidebar | main
+    // Top-level vertical split: main area | status bar
+    let outer = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Min(1), Constraint::Length(1)])
+        .split(f.area());
+
+    let main_area = outer[0];
+    let status_bar_area = outer[1];
+
+    // Main area: horizontal split: sidebar | right panel
     let h_chunks = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([Constraint::Percentage(25), Constraint::Percentage(75)])
-        .split(f.area());
+        .split(main_area);
 
-    // Enforce minimum sidebar width of 20 cols; if terminal is too narrow,
-    // the percentage constraint will naturally shrink but we still render.
     draw_sidebar(f, app, h_chunks[0]);
 
-    // Right panel: vertical split for chat + input + optional status
-    let v_constraints = if app.status.is_some() {
-        vec![
-            Constraint::Min(1),
-            Constraint::Length(3),
-            Constraint::Length(1),
-        ]
-    } else {
-        vec![Constraint::Min(1), Constraint::Length(3)]
-    };
-
+    // Right panel: vertical split for chat + input
     let v_chunks = Layout::default()
         .direction(Direction::Vertical)
-        .constraints(v_constraints)
+        .constraints([Constraint::Min(1), Constraint::Length(3)])
         .split(h_chunks[1]);
 
     draw_chat(f, app, v_chunks[0]);
     draw_input(f, app, v_chunks[1]);
 
-    if let Some(ref status) = app.status {
-        draw_status(f, status, v_chunks[2]);
-    }
+    // Status bar at the very bottom
+    draw_status_bar(f, app, status_bar_area);
 }
 
 /// Render the sidebar with workstreams and sessions sections.
@@ -165,6 +162,22 @@ fn draw_workstreams_section(f: &mut Frame, app: &App, area: Rect) {
 
     let list = List::new(items);
     f.render_widget(list, items_area);
+
+    // Render workstream creation mini-input if active
+    if let Some(ref name) = app.creating_workstream {
+        // Show at the bottom of items_area (or overlay last row)
+        let input_y = items_area.y + items_area.height.saturating_sub(1);
+        if input_y < items_area.y + items_area.height {
+            let input_area = Rect::new(items_area.x, input_y, items_area.width, 1);
+            let display = format!(" New: {}_", name);
+            let input_line = Paragraph::new(display).style(
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
+            );
+            f.render_widget(input_line, input_area);
+        }
+    }
 }
 
 /// Render the sessions section within the sidebar.
@@ -345,8 +358,79 @@ fn draw_input(f: &mut Frame, app: &App, area: Rect) {
     }
 }
 
-/// Render the status line at the bottom.
-fn draw_status(f: &mut Frame, status: &str, area: Rect) {
-    let status_line = Paragraph::new(status).style(Style::default().fg(Color::DarkGray));
+/// Render the status bar at the very bottom of the screen.
+fn draw_status_bar(f: &mut Frame, app: &App, area: Rect) {
+    // If there's a transient status message, show it instead of normal content
+    if let Some(ref status) = app.status {
+        let status_line = Paragraph::new(status.as_str())
+            .style(Style::default().fg(Color::Yellow).bg(Color::DarkGray));
+        f.render_widget(status_line, area);
+        return;
+    }
+
+    // Normal status bar: connection | workstream | session
+    let width = area.width as usize;
+
+    // Left: connection status
+    let (conn_text, conn_color) = match &app.connection_status {
+        ConnectionStatus::Connected => ("Connected", Color::Green),
+        ConnectionStatus::Connecting => ("Connecting...", Color::Yellow),
+        ConnectionStatus::Disconnected => ("Disconnected", Color::Red),
+        ConnectionStatus::Failed(_) => ("Disconnected", Color::Red),
+    };
+
+    // Center: workstream name
+    let ws_name = if app.workstream_id.is_some() {
+        app.workstream.as_str()
+    } else {
+        "scratch"
+    };
+
+    // Right: session ID (first 8 chars)
+    let session_text = match &app.session_id {
+        Some(id) => {
+            let short: String = id.chars().take(8).collect();
+            short
+        }
+        None => "no session".to_string(),
+    };
+
+    // Build the line with left/center/right alignment using padding
+    let left_len = conn_text.len();
+    let right_len = session_text.len();
+    let center_len = ws_name.len();
+
+    // Calculate padding
+    let total_content = left_len + center_len + right_len;
+    let line = if width >= total_content + 4 {
+        // Enough space for spacing
+        let left_pad = (width / 2)
+            .saturating_sub(center_len / 2)
+            .saturating_sub(left_len);
+        let right_pad = width
+            .saturating_sub(left_len)
+            .saturating_sub(left_pad)
+            .saturating_sub(center_len)
+            .saturating_sub(right_len);
+        format!(
+            "{}{}{}{}{}",
+            conn_text,
+            " ".repeat(left_pad),
+            ws_name,
+            " ".repeat(right_pad),
+            session_text
+        )
+    } else {
+        // Narrow terminal: just show what fits
+        format!("{} | {} | {}", conn_text, ws_name, session_text)
+    };
+
+    let spans = vec![
+        Span::styled(conn_text.to_string(), Style::default().fg(conn_color)),
+        Span::raw(line[conn_text.len()..line.len().saturating_sub(session_text.len())].to_string()),
+        Span::styled(session_text, Style::default().fg(Color::DarkGray)),
+    ];
+
+    let status_line = Paragraph::new(Line::from(spans)).style(Style::default().bg(Color::Black));
     f.render_widget(status_line, area);
 }
