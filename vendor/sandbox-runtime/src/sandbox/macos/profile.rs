@@ -230,10 +230,10 @@ fn generate_mandatory_deny_rules(profile: &mut String, config: &FilesystemConfig
 
     // Deny dangerous directories
     for dir in DANGEROUS_DIRECTORIES {
-        // Skip .git/config if allowGitConfig is true
+        // When allowGitConfig is true (network commands like git), allow .git
+        // writes including hooks. Hook templates are created during clone/init
+        // and only execute when explicitly triggered (commit, push, etc.).
         if *dir == ".git" && config.allow_git_config.unwrap_or(false) {
-            // Only block .git/hooks, not all of .git
-            profile.push_str("(deny file-write* (subpath \"/.git/hooks\"))\n");
             continue;
         }
 

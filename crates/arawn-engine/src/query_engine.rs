@@ -16,7 +16,7 @@ use crate::plan::PlanModeState;
 use crate::token_estimator::{ModelLimits, TokenEstimator};
 use crate::tool::ToolRegistry;
 
-const DEFAULT_MAX_ITERATIONS: usize = 20;
+const DEFAULT_MAX_ITERATIONS: usize = 40;
 const MAX_COMPACT_FAILURES: u32 = 3;
 const DEFAULT_SYSTEM_PROMPT: &str = "You are Arawn, a helpful assistant. When you need to perform actions, use the available tools. Think step by step.";
 
