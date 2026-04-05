@@ -1,0 +1,24 @@
+---
+source: crates/arawn-tui/src/snapshot_tests.rs
+expression: snap
+---
+«fg:DarkGray,bg:Rgb(25, 25, 30)»  «fg:DarkGray»│«fg:Green,bold»You: hello
+«fg:DarkGray,bg:Rgb(25, 25, 30)» ·«fg:DarkGray»│
+«fg:DarkGray,bg:Rgb(25, 25, 30)»  «fg:DarkGray»│«fg:Blue,bold»Arawn:
+«fg:DarkGray,bg:Rgb(25, 25, 30)» ·«fg:DarkGray»│  world
+«fg:DarkGray,bg:Rgb(25, 25, 30)»  «fg:DarkGray»│
+«fg:DarkGray,bg:Rgb(25, 25, 30)» ·«fg:DarkGray»│«fg:Rgb(100, 100, 115)»  ┌─
+«fg:DarkGray,bg:Rgb(25, 25, 30)»  «fg:DarkGray»│«fg:Rgb(100, 100, 115)»  │«fg:Red» ✗ «fg:Cyan,bold»shell«fg:Rgb(140, 140, 155)» Calling shell...
+«fg:DarkGray,bg:Rgb(25, 25, 30)» ·«fg:DarkGray»│
+«fg:Cyan,bg:Rgb(25, 25, 30)» ▸«fg:DarkGray»│«fg:Rgb(100, 100, 115)»  │ «fg:Red»✗ «fg:Red,bold»shell error
+«fg:DarkGray,bg:Rgb(25, 25, 30)» ·«fg:DarkGray»│«fg:Rgb(100, 100, 115)»  │   «fg:Red»permission denied
+«fg:DarkGray,bg:Rgb(25, 25, 30)»  «fg:DarkGray»│«fg:Rgb(100, 100, 115)»  └─
+«fg:DarkGray,bg:Rgb(25, 25, 30)» ·«fg:DarkGray»│
+«fg:DarkGray,bg:Rgb(25, 25, 30)»  «fg:DarkGray»│
+«fg:DarkGray,bg:Rgb(25, 25, 30)» ·«fg:DarkGray»│
+«fg:DarkGray,bg:Rgb(25, 25, 30)»  «fg:DarkGray»│
+«fg:DarkGray,bg:Rgb(25, 25, 30)» ·«fg:DarkGray»│
+«fg:DarkGray,bg:Rgb(25, 25, 30)»  «fg:DarkGray»│
+«fg:DarkGray»────────────────────────────────────────────────────────────────────────────────
+«fg:Green,bold»> «fg:DarkGray»Type your message...
+«fg:White,bg:Rgb(30, 30, 40)» no model«fg:DarkGray,bg:Rgb(30, 30, 40)» │ «fg:White,bg:Rgb(30, 30, 40)»no workstream«bg:Rgb(30, 30, 40)»

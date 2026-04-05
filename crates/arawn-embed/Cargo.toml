@@ -1,0 +1,20 @@
+[package]
+name = "arawn-embed"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+async-trait = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+reqwest = { workspace = true, features = ["blocking"] }
+tracing = { workspace = true }
+ort = { version = "2.0.0-rc.12", features = ["download-binaries"] }
+tokenizers = "0.21"
+dirs = "6"
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+toml = "0.8"

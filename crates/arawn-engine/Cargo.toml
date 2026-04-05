@@ -1,0 +1,38 @@
+[package]
+name = "arawn-engine"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+arawn-core = { workspace = true }
+arawn-llm = { workspace = true }
+arawn-memory = { path = "../arawn-memory" }
+arawn-embed = { path = "../arawn-embed" }
+arawn-tool-plugin = { workspace = true }
+dirs = "6"
+fidius-host = "0.0.5"
+sandbox-runtime = "0.1"
+async-trait = { workspace = true }
+futures = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+tokio-util = { workspace = true }
+similar = { workspace = true }
+tempfile = { workspace = true }
+chrono = { workspace = true }
+toml = "0.8"
+tracing = { workspace = true }
+notify = { workspace = true }
+reqwest = { workspace = true }
+globwalk = { workspace = true }
+htmd = { workspace = true }
+lru = { workspace = true }
+ignore = { workspace = true }
+uuid = { workspace = true }
+
+[dev-dependencies]
+insta = "1"
+serial_test = "3"

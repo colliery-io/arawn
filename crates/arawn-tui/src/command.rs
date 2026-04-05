@@ -1,0 +1,419 @@
+//! Slash command parsing, registry, and autocomplete for the TUI.
+//!
+//! Commands are detected by a "/" prefix in the input buffer. They come in
+//! three flavors:
+//! - **Built-in**: /help, /clear, /plan — handled client-side
+//! - **Inventory**: /plugins, /skills, /agents, /mcp, /tools — query server
+//! - **Skill**: /skill-name — invoke a user-invocable skill via the server
+
+/// A registered slash command.
+#[derive(Debug, Clone)]
+pub struct CommandInfo {
+    pub name: String,
+    pub description: String,
+    pub kind: CommandKind,
+}
+
+/// What kind of slash command this is.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CommandKind {
+    /// Handled entirely client-side (e.g. /help, /clear).
+    BuiltIn,
+    /// Queries the server for an inventory listing (e.g. /plugins, /skills).
+    Inventory,
+    /// Invokes a user-invocable skill on the server.
+    Skill,
+}
+
+/// Result of parsing a slash command from the input buffer.
+#[derive(Debug, Clone)]
+pub struct ParsedCommand {
+    pub name: String,
+    pub args: String,
+}
+
+/// Parse a slash command from the input buffer.
+/// Returns None if the input doesn't start with "/".
+pub fn parse_command(input: &str) -> Option<ParsedCommand> {
+    let trimmed = input.trim();
+    if !trimmed.starts_with('/') {
+        return None;
+    }
+
+    let without_slash = &trimmed[1..];
+    if without_slash.is_empty() {
+        return None;
+    }
+
+    let (name, args) = match without_slash.find(char::is_whitespace) {
+        Some(pos) => (
+            without_slash[..pos].to_string(),
+            without_slash[pos..].trim().to_string(),
+        ),
+        None => (without_slash.to_string(), String::new()),
+    };
+
+    Some(ParsedCommand { name, args })
+}
+
+/// The command registry — holds all available slash commands.
+#[derive(Debug, Clone, Default)]
+pub struct CommandRegistry {
+    commands: Vec<CommandInfo>,
+}
+
+impl CommandRegistry {
+    pub fn new() -> Self {
+        let mut reg = Self::default();
+        reg.register_builtins();
+        reg
+    }
+
+    fn register_builtins(&mut self) {
+        self.commands.push(CommandInfo {
+            name: "help".into(),
+            description: "Show available slash commands".into(),
+            kind: CommandKind::BuiltIn,
+        });
+        self.commands.push(CommandInfo {
+            name: "clear".into(),
+            description: "Clear the chat history".into(),
+            kind: CommandKind::BuiltIn,
+        });
+        self.commands.push(CommandInfo {
+            name: "plan".into(),
+            description: "Enter plan mode (observation only)".into(),
+            kind: CommandKind::BuiltIn,
+        });
+        // Inventory commands
+        self.commands.push(CommandInfo {
+            name: "tools".into(),
+            description: "List available tools".into(),
+            kind: CommandKind::Inventory,
+        });
+        self.commands.push(CommandInfo {
+            name: "skills".into(),
+            description: "List available skills".into(),
+            kind: CommandKind::Inventory,
+        });
+        self.commands.push(CommandInfo {
+            name: "plugins".into(),
+            description: "List loaded plugins".into(),
+            kind: CommandKind::Inventory,
+        });
+        self.commands.push(CommandInfo {
+            name: "agents".into(),
+            description: "List available agent types".into(),
+            kind: CommandKind::Inventory,
+        });
+        self.commands.push(CommandInfo {
+            name: "mcp".into(),
+            description: "List connected MCP servers".into(),
+            kind: CommandKind::Inventory,
+        });
+        // Memory commands
+        self.commands.push(CommandInfo {
+            name: "remember".into(),
+            description: "Store a fact in the knowledge base".into(),
+            kind: CommandKind::BuiltIn,
+        });
+        self.commands.push(CommandInfo {
+            name: "memory".into(),
+            description: "Show knowledge base summary".into(),
+            kind: CommandKind::BuiltIn,
+        });
+        self.commands.push(CommandInfo {
+            name: "forget".into(),
+            description: "Remove an entity from the knowledge base".into(),
+            kind: CommandKind::BuiltIn,
+        });
+    }
+
+    /// Add skill commands from the server's cached skill list.
+    pub fn register_skills(&mut self, skills: Vec<(String, String)>) {
+        // Remove old skill commands
+        self.commands.retain(|c| c.kind != CommandKind::Skill);
+        for (name, description) in skills {
+            self.commands.push(CommandInfo {
+                name,
+                description,
+                kind: CommandKind::Skill,
+            });
+        }
+    }
+
+    /// Get all commands.
+    pub fn all(&self) -> &[CommandInfo] {
+        &self.commands
+    }
+
+    /// Find commands matching a prefix (for autocomplete).
+    pub fn matching(&self, prefix: &str) -> Vec<&CommandInfo> {
+        let lower = prefix.to_lowercase();
+        self.commands
+            .iter()
+            .filter(|c| c.name.to_lowercase().starts_with(&lower))
+            .collect()
+    }
+
+    /// Look up a command by exact name.
+    pub fn find(&self, name: &str) -> Option<&CommandInfo> {
+        let lower = name.to_lowercase();
+        self.commands.iter().find(|c| c.name.to_lowercase() == lower)
+    }
+}
+
+/// Autocomplete state for the slash command dropdown.
+#[derive(Debug, Clone)]
+pub struct AutocompleteState {
+    /// Filtered suggestions based on current input.
+    pub suggestions: Vec<CommandInfo>,
+    /// Currently highlighted index.
+    pub selected: usize,
+}
+
+impl AutocompleteState {
+    pub fn new(suggestions: Vec<CommandInfo>) -> Self {
+        Self {
+            suggestions,
+            selected: 0,
+        }
+    }
+
+    pub fn next(&mut self) {
+        if !self.suggestions.is_empty() {
+            self.selected = (self.selected + 1) % self.suggestions.len();
+        }
+    }
+
+    pub fn prev(&mut self) {
+        if !self.suggestions.is_empty() {
+            self.selected = if self.selected == 0 {
+                self.suggestions.len() - 1
+            } else {
+                self.selected - 1
+            };
+        }
+    }
+
+    pub fn selected_command(&self) -> Option<&CommandInfo> {
+        self.suggestions.get(self.selected)
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.suggestions.is_empty()
+    }
+}
+
+/// The result of executing a built-in command.
+#[derive(Debug)]
+pub enum CommandResult {
+    /// Show a system message in chat.
+    SystemMessage(String),
+    /// Clear chat messages.
+    ClearChat,
+    /// Enter plan mode (sends as a chat message to trigger the tool).
+    EnterPlan,
+    /// Query server for inventory.
+    QueryInventory(String),
+    /// Invoke a skill on the server.
+    InvokeSkill { name: String, args: String },
+    /// Store a memory via /remember.
+    RememberFact(String),
+    /// Show KB summary via /memory.
+    MemorySummary,
+    /// Forget/delete an entity via /forget.
+    ForgetEntity(String),
+}
+
+/// Execute a parsed slash command against the registry.
+pub fn execute_command(cmd: &ParsedCommand, registry: &CommandRegistry) -> CommandResult {
+    match registry.find(&cmd.name) {
+        Some(info) => match info.kind {
+            CommandKind::BuiltIn => match info.name.as_str() {
+                "help" => {
+                    let mut help = String::from("Available commands:\n\n");
+                    for c in registry.all() {
+                        help.push_str(&format!("  /{:<12} {}\n", c.name, c.description));
+                    }
+                    CommandResult::SystemMessage(help)
+                }
+                "clear" => CommandResult::ClearChat,
+                "plan" => CommandResult::EnterPlan,
+                "remember" => {
+                    if cmd.args.is_empty() {
+                        CommandResult::SystemMessage("Usage: /remember <fact to store>".into())
+                    } else {
+                        CommandResult::RememberFact(cmd.args.clone())
+                    }
+                }
+                "memory" => CommandResult::MemorySummary,
+                "forget" => {
+                    if cmd.args.is_empty() {
+                        CommandResult::SystemMessage("Usage: /forget <entity title or ID>".into())
+                    } else {
+                        CommandResult::ForgetEntity(cmd.args.clone())
+                    }
+                }
+
+                _ => CommandResult::SystemMessage(format!("Unknown built-in: /{}", cmd.name)),
+            },
+            CommandKind::Inventory => CommandResult::QueryInventory(info.name.clone()),
+            CommandKind::Skill => CommandResult::InvokeSkill {
+                name: info.name.clone(),
+                args: cmd.args.clone(),
+            },
+        },
+        None => CommandResult::SystemMessage(format!(
+            "Unknown command: /{}. Type /help to see available commands.",
+            cmd.name
+        )),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_simple_command() {
+        let cmd = parse_command("/help").unwrap();
+        assert_eq!(cmd.name, "help");
+        assert_eq!(cmd.args, "");
+    }
+
+    #[test]
+    fn parse_command_with_args() {
+        let cmd = parse_command("/search foo bar").unwrap();
+        assert_eq!(cmd.name, "search");
+        assert_eq!(cmd.args, "foo bar");
+    }
+
+    #[test]
+    fn parse_not_a_command() {
+        assert!(parse_command("hello world").is_none());
+        assert!(parse_command("").is_none());
+        assert!(parse_command("  ").is_none());
+    }
+
+    #[test]
+    fn parse_slash_only() {
+        assert!(parse_command("/").is_none());
+    }
+
+    #[test]
+    fn parse_with_leading_whitespace() {
+        let cmd = parse_command("  /help").unwrap();
+        assert_eq!(cmd.name, "help");
+    }
+
+    #[test]
+    fn registry_has_builtins() {
+        let reg = CommandRegistry::new();
+        assert!(reg.find("help").is_some());
+        assert!(reg.find("clear").is_some());
+        assert!(reg.find("plan").is_some());
+        assert!(reg.find("tools").is_some());
+        assert!(reg.find("skills").is_some());
+    }
+
+    #[test]
+    fn registry_matching_prefix() {
+        let reg = CommandRegistry::new();
+        let matches = reg.matching("pl");
+        assert_eq!(matches.len(), 2); // plan, plugins
+        assert!(matches.iter().any(|c| c.name == "plan"));
+        assert!(matches.iter().any(|c| c.name == "plugins"));
+    }
+
+    #[test]
+    fn registry_matching_empty_returns_all() {
+        let reg = CommandRegistry::new();
+        let matches = reg.matching("");
+        assert_eq!(matches.len(), reg.all().len());
+    }
+
+    #[test]
+    fn registry_skills() {
+        let mut reg = CommandRegistry::new();
+        let builtin_count = reg.all().len();
+        reg.register_skills(vec![
+            ("commit".into(), "Create a git commit".into()),
+            ("review".into(), "Review code changes".into()),
+        ]);
+        assert_eq!(reg.all().len(), builtin_count + 2);
+        assert_eq!(reg.find("commit").unwrap().kind, CommandKind::Skill);
+    }
+
+    #[test]
+    fn autocomplete_navigation() {
+        let suggestions = vec![
+            CommandInfo { name: "help".into(), description: "".into(), kind: CommandKind::BuiltIn },
+            CommandInfo { name: "clear".into(), description: "".into(), kind: CommandKind::BuiltIn },
+            CommandInfo { name: "plan".into(), description: "".into(), kind: CommandKind::BuiltIn },
+        ];
+        let mut ac = AutocompleteState::new(suggestions);
+        assert_eq!(ac.selected, 0);
+
+        ac.next();
+        assert_eq!(ac.selected, 1);
+        ac.next();
+        assert_eq!(ac.selected, 2);
+        ac.next();
+        assert_eq!(ac.selected, 0); // wraps
+
+        ac.prev();
+        assert_eq!(ac.selected, 2); // wraps back
+    }
+
+    #[test]
+    fn execute_help() {
+        let reg = CommandRegistry::new();
+        let cmd = parse_command("/help").unwrap();
+        match execute_command(&cmd, &reg) {
+            CommandResult::SystemMessage(msg) => assert!(msg.contains("/help")),
+            _ => panic!("expected SystemMessage"),
+        }
+    }
+
+    #[test]
+    fn execute_clear() {
+        let reg = CommandRegistry::new();
+        let cmd = parse_command("/clear").unwrap();
+        assert!(matches!(execute_command(&cmd, &reg), CommandResult::ClearChat));
+    }
+
+    #[test]
+    fn execute_unknown() {
+        let reg = CommandRegistry::new();
+        let cmd = parse_command("/nonexistent").unwrap();
+        match execute_command(&cmd, &reg) {
+            CommandResult::SystemMessage(msg) => assert!(msg.contains("Unknown command")),
+            _ => panic!("expected SystemMessage"),
+        }
+    }
+
+    #[test]
+    fn execute_inventory() {
+        let reg = CommandRegistry::new();
+        let cmd = parse_command("/tools").unwrap();
+        match execute_command(&cmd, &reg) {
+            CommandResult::QueryInventory(kind) => assert_eq!(kind, "tools"),
+            _ => panic!("expected QueryInventory"),
+        }
+    }
+
+    #[test]
+    fn execute_skill() {
+        let mut reg = CommandRegistry::new();
+        reg.register_skills(vec![("commit".into(), "Git commit".into())]);
+        let cmd = parse_command("/commit -m 'fix bug'").unwrap();
+        match execute_command(&cmd, &reg) {
+            CommandResult::InvokeSkill { name, args } => {
+                assert_eq!(name, "commit");
+                assert_eq!(args, "-m 'fix bug'");
+            }
+            _ => panic!("expected InvokeSkill"),
+        }
+    }
+}

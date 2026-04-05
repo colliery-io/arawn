@@ -1,0 +1,9 @@
+[package]
+name = "arawn-tool-plugin"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+fidius = "0.0.5"
+serde = { workspace = true }
+serde_json = { workspace = true }

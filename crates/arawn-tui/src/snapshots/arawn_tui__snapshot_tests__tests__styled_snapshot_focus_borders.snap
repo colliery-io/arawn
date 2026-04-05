@@ -1,0 +1,24 @@
+---
+source: crates/arawn-tui/src/snapshot_tests.rs
+expression: snap
+---
+«fg:DarkGray,bg:Rgb(25, 25, 30)»  «fg:DarkGray»│
+«fg:DarkGray,bg:Rgb(25, 25, 30)» ·«fg:DarkGray»│
+«fg:DarkGray,bg:Rgb(25, 25, 30)»  «fg:DarkGray»│
+«fg:DarkGray,bg:Rgb(25, 25, 30)» ·«fg:DarkGray»│
+«fg:DarkGray,bg:Rgb(25, 25, 30)»  «fg:DarkGray»│
+«fg:DarkGray,bg:Rgb(25, 25, 30)» ·«fg:DarkGray»│
+«fg:DarkGray,bg:Rgb(25, 25, 30)»  «fg:DarkGray»│
+«fg:DarkGray,bg:Rgb(25, 25, 30)» ·«fg:DarkGray»│
+«fg:Cyan,bg:Rgb(25, 25, 30)» ▸«fg:DarkGray»│
+«fg:DarkGray,bg:Rgb(25, 25, 30)» ·«fg:DarkGray»│
+«fg:DarkGray,bg:Rgb(25, 25, 30)»  «fg:DarkGray»│
+«fg:DarkGray,bg:Rgb(25, 25, 30)» ·«fg:DarkGray»│
+«fg:DarkGray,bg:Rgb(25, 25, 30)»  «fg:DarkGray»│
+«fg:DarkGray,bg:Rgb(25, 25, 30)» ·«fg:DarkGray»│
+«fg:DarkGray,bg:Rgb(25, 25, 30)»  «fg:DarkGray»│
+«fg:DarkGray,bg:Rgb(25, 25, 30)» ·«fg:DarkGray»│
+«fg:DarkGray,bg:Rgb(25, 25, 30)»  «fg:DarkGray»│
+«fg:DarkGray»────────────────────────────────────────────────────────────────────────────────
+«fg:Green,bold»> typing here
+«fg:White,bg:Rgb(30, 30, 40)» no model«fg:DarkGray,bg:Rgb(30, 30, 40)» │ «fg:White,bg:Rgb(30, 30, 40)»no workstream«bg:Rgb(30, 30, 40)»

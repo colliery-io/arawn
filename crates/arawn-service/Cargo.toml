@@ -1,0 +1,14 @@
+[package]
+name = "arawn-service"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+arawn-core = { workspace = true }
+async-trait = { workspace = true }
+chrono = { workspace = true }
+futures = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+uuid = { workspace = true }

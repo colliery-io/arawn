@@ -1,0 +1,34 @@
+---
+source: crates/arawn-tui/src/snapshot_tests.rs
+expression: snap
+---
+  │You: List the crates
+ ·│
+  │Arawn:
+ ·│  Here are the crates in this█
+  │
+ ·│
+  │
+ ·│
+  │
+ ·│
+  │
+ ·│
+  │
+ ▸│
+  │
+ ·│
+  │
+ ·│
+  │
+ ·│
+  │
+ ·│
+  │
+ ·│
+  │
+ ·│
+  │
+────────────────────────────────────────────────────────────────────────────────────────────────────
+> Generating...
+ no model │ no workstream ⠋ generating...

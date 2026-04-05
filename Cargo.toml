@@ -1,0 +1,81 @@
+[workspace]
+resolver = "2"
+exclude = [
+    "crates/arawn-tests/fixtures/arawn-plugin-web-fetch",
+    "crates/arawn-tests/fixtures/arawn-plugin-web-search",
+]
+members = [
+    "crates/arawn",
+    "crates/arawn-core",
+    "crates/arawn-engine",
+    "crates/arawn-llm",
+    "crates/arawn-storage",
+    "crates/arawn-tests",
+    "crates/arawn-tool-plugin",
+    "crates/arawn-service",
+    "crates/arawn-tui",
+    "crates/arawn-mcp",
+    "crates/arawn-embed",
+    "crates/arawn-memory",
+]
+
+[workspace.dependencies]
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Error handling
+thiserror = "2"
+anyhow = "1"
+
+# Async traits
+async-trait = "0.1"
+
+# HTTP client
+reqwest = { version = "0.12", features = ["json", "stream"] }
+
+# Streaming
+futures = "0.3"
+pin-project-lite = "0.2"
+
+# IDs and timestamps
+uuid = { version = "1", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+# File watching
+notify = { version = "8", features = ["macos_fsevent"] }
+
+# Glob / file discovery
+globwalk = "0.9"
+ignore = "0.4"
+
+# HTML processing & caching
+htmd = "0.5"
+lru = "0.16"
+
+# Async utilities
+tokio-util = "0.7"
+
+# Diff computation
+similar = "2"
+
+# Testing
+tempfile = "3"
+
+# Internal crates
+arawn-core = { path = "crates/arawn-core" }
+arawn-engine = { path = "crates/arawn-engine" }
+arawn-llm = { path = "crates/arawn-llm" }
+arawn-service = { path = "crates/arawn-service" }
+arawn-storage = { path = "crates/arawn-storage" }
+arawn-tool-plugin = { path = "crates/arawn-tool-plugin" }
+
+[patch.crates-io]
+sandbox-runtime = { path = "vendor/sandbox-runtime" }

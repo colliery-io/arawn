@@ -1,0 +1,44 @@
+---
+source: crates/arawn-tui/src/snapshot_tests.rs
+expression: snap
+---
+  │You: How do I fix this?
+ ·│
+  │Arawn:
+ ·│  Analysis
+  │  Here's what I found:
+ ·│
+  │
+ ·│  • File A has `3 errors` in the parser
+  │  • File B is clean
+ ·│  • The issue is in the `handle_input` function
+  │  rust
+ ·│   fn fix() {
+  │       let x = parse(input);
+ ·│       validate(&x);
+  │   }
+ ·│
+  │
+ ·│  Try running `cargo test` to verify the fix. You can also check the docs
+ ▸│(https://example.com) for more info.
+ ·│
+  │
+ ·│  1. First, update the parser
+  │  2. Then run the tests
+ ·│  3. Finally, check the output
+  │
+ ·│
+  │
+ ·│
+  │
+ ·│
+  │
+ ·│
+  │
+ ·│
+  │
+ ·│
+  │
+────────────────────────────────────────────────────────────────────────────────
+> Type your message...
+ no model │ no workstream

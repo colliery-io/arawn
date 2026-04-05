@@ -1,0 +1,24 @@
+---
+source: crates/arawn-tui/src/snapshot_tests.rs
+expression: snap
+---
+«fg:Cyan»┌ Workstreams ─┐
+«fg:Cyan»│              «fg:Cyan»│
+«fg:Cyan»│              «fg:Cyan»│
+«fg:Cyan»│              «fg:Cyan»│
+«fg:Cyan»│              «fg:Cyan»│
+«fg:Cyan»│              «fg:Cyan»│
+«fg:Cyan»└──────────────┘
+«fg:Cyan»┌ Sessions ────┐
+«fg:Cyan»│              «fg:Cyan»│
+«fg:Cyan»│              «fg:Cyan»│
+«fg:Cyan»│              «fg:Cyan»│
+«fg:Cyan»│              «fg:Cyan»│
+«fg:Cyan»│              «fg:Cyan»│
+«fg:Cyan»│              «fg:Cyan»│
+«fg:Cyan»│              «fg:Cyan»│
+«fg:Cyan»│              «fg:Cyan»│
+«fg:Cyan»└──────────────┘
+«fg:DarkGray»────────────────────────────────────────────────────────────────────────────────
+«fg:Green,bold»> «fg:DarkGray»Type your message...
+«fg:White,bg:Rgb(30, 30, 40)» no model«fg:DarkGray,bg:Rgb(30, 30, 40)» │ «fg:White,bg:Rgb(30, 30, 40)»no workstream«bg:Rgb(30, 30, 40)»

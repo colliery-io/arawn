@@ -1,0 +1,34 @@
+---
+source: crates/arawn-tui/src/snapshot_tests.rs
+expression: snap
+---
+  │You: do something
+ ·│
+  │System:
+ ·│  Error: API rate limited
+  │
+ ·│
+  │
+ ·│
+  │
+ ·│
+  │
+ ·│
+  │
+ ▸│
+  │
+ ·│
+  │
+ ·│
+  │
+ ·│
+  │
+ ·│
+  │
+ ·│
+  │
+ ·│
+  │
+────────────────────────────────────────────────────────────────────────────────────────────────────
+> Type your message...
+ no model │ no workstream

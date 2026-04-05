@@ -1,0 +1,34 @@
+---
+source: crates/arawn-tui/src/snapshot_tests.rs
+expression: snap
+---
+  │You: What files are in the project?
+ ·│
+  │  ┌─
+ ·│  │ ✓ shell Calling shell...
+  │
+ ·│  │ ▸ shell result
+  │  │   Cargo.toml
+ ·│  │   crates/
+  │  │   plugins/
+ ·│  └─
+  │
+ ·│Arawn:
+  │  The project has a Cargo.toml, crates/ and plugins/ directories.
+ ▸│
+  │
+ ·│
+  │
+ ·│
+  │
+ ·│
+  │
+ ·│
+  │
+ ·│
+  │
+ ·│
+  │
+────────────────────────────────────────────────────────────────────────────────────────────────────
+> Type your message...
+ no model │ no workstream

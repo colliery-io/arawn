@@ -1,0 +1,36 @@
+[package]
+name = "arawn"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "arawn_bin"
+path = "src/lib.rs"
+
+[[bin]]
+name = "arawn"
+path = "src/main.rs"
+
+[dependencies]
+async-trait = { workspace = true }
+arawn-core = { workspace = true }
+arawn-mcp = { path = "../arawn-mcp" }
+arawn-tui = { path = "../arawn-tui" }
+arawn-engine = { workspace = true }
+arawn-llm = { workspace = true }
+arawn-memory = { path = "../arawn-memory" }
+arawn-service = { workspace = true }
+arawn-storage = { workspace = true }
+axum = { version = "0.8", features = ["ws"] }
+futures = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
+anyhow = { workspace = true }
+notify = { workspace = true }
+tempfile = { workspace = true }
+tokio = { workspace = true }
+toml = "0.8"
+tokio-stream = "0.1"
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }

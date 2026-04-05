@@ -1,0 +1,23 @@
+[package]
+name = "arawn-tui"
+version = "0.1.0"
+edition = "2024"
+
+[dev-dependencies]
+insta = "1"
+
+[dependencies]
+arawn-engine = { workspace = true }
+arawn-service = { workspace = true }
+async-trait = { workspace = true }
+chrono = { workspace = true }
+crossterm = { version = "0.28", features = ["event-stream"] }
+pulldown-cmark = "0.12"
+syntect = { version = "5", default-features = false, features = ["default-syntaxes", "default-themes", "parsing", "regex-fancy"] }
+ratatui = "0.29"
+serde_json = { workspace = true }
+tokio = { workspace = true }
+tokio-tungstenite = "0.26"
+futures-util = "0.3"
+tracing = { workspace = true }
+uuid = { workspace = true }

@@ -1,0 +1,34 @@
+---
+source: crates/arawn-tui/src/snapshot_tests.rs
+expression: snap
+---
+  │⠋ thinking...
+ ·│
+  │
+ ·│
+  │
+ ·│
+  │
+ ·│
+  │
+ ·│
+  │
+ ·│
+  │
+ ▸│
+  │
+ ·│
+  │
+ ·│
+  │
+ ·│
+  │
+ ·│
+  │
+ ·│
+  │
+ ·│
+  │
+────────────────────────────────────────────────────────────────────────────────────────────────────
+> Generating...
+ no model │ no workstream ⠋ generating...
