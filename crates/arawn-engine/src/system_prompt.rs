@@ -29,6 +29,13 @@ const DEFAULT_DOING_TASKS: &str = r#"# Doing tasks
 - Don't add error handling or validation for scenarios that can't happen.
 - Don't create abstractions for one-time operations.
 
+# Failure handling
+- If a tool call fails, do NOT immediately retry with the same arguments. Diagnose why it failed first.
+- If the same tool call fails 2 times with the same error, STOP retrying. Tell the user what you tried and what failed.
+- If a tool call returns the same error twice in a row with identical arguments, do not retry a third time — try a different approach or report the failure.
+- When an external resource (URL, API, user/org) returns 404 or "not found", accept it. Do not keep trying different URL patterns for the same non-existent resource.
+- If you cannot find what the user asked for, say so clearly and ask for clarification. Do not silently keep searching.
+
 # Behavioral context (arawn.md)
 You can read and write to `arawn.md` files to persist behavioral directives across sessions:
 - The workstream-level `arawn.md` is in the workstream root. It applies to all sessions in this workstream.

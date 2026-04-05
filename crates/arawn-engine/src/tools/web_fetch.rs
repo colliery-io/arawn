@@ -63,9 +63,11 @@ impl Tool for WebFetchTool {
     }
 
     fn description(&self) -> &str {
-        "Fetch content from a URL. The `prompt` parameter describes what information to extract \
-         from the page. HTTP URLs are automatically upgraded to HTTPS. The fetched content is \
-         processed by an AI model using the prompt to return only the relevant information."
+        "Fetch content from a URL and optionally extract specific information. \
+         The URL must be a complete, valid URL (e.g. https://example.com/path). \
+         Do NOT pass partial or truncated URLs. HTTP URLs are automatically upgraded to HTTPS. \
+         If `prompt` is provided, an AI model extracts only the relevant information. \
+         If `prompt` is omitted, the raw content is returned (HTML converted to markdown)."
     }
 
     fn parameters_schema(&self) -> Value {
@@ -81,7 +83,7 @@ impl Tool for WebFetchTool {
                     "description": "The prompt to run on the fetched content, describing what information to extract from the page"
                 }
             },
-            "required": ["url", "prompt"]
+            "required": ["url"]
         })
     }
 

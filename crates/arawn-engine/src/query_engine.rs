@@ -77,6 +77,9 @@ pub struct QueryEngine {
     /// Consecutive compaction failures. After MAX_COMPACT_FAILURES, compaction
     /// is skipped for the rest of the session to avoid wasting tokens.
     compact_failures: u32,
+    /// Track recent failed tool calls (tool_name + args hash → failure count).
+    /// Used to detect and short-circuit repeated identical failing calls.
+    failed_call_counts: std::collections::HashMap<String, u32>,
 }
 
 impl QueryEngine {
@@ -93,6 +96,7 @@ impl QueryEngine {
             plan_state: None,
             background_tasks: None,
             compact_failures: 0,
+            failed_call_counts: std::collections::HashMap::new(),
         }
     }
 
@@ -113,6 +117,7 @@ impl QueryEngine {
             plan_state: None,
             background_tasks: None,
             compact_failures: 0,
+            failed_call_counts: std::collections::HashMap::new(),
         }
     }
 
@@ -320,6 +325,23 @@ impl QueryEngine {
                     }));
                     continue;
                 }
+                // Check for repeated failing calls with identical arguments.
+                // We use a compact key of tool name + sorted args to detect duplicates.
+                let call_key = format!("{}:{}", tc.name, tc.arguments);
+                if let Some(&count) = self.failed_call_counts.get(&call_key) {
+                    if count >= 2 {
+                        warn!(name = %tc.name, failures = count, "blocking repeated failing tool call");
+                        invalid_results.push((i, ToolResult {
+                            content: format!(
+                                "This exact call to '{}' has already failed {} times with the same arguments. \
+                                 Try a different approach, different arguments, or tell the user what went wrong.",
+                                tc.name, count
+                            ),
+                            is_error: true,
+                        }));
+                        continue;
+                    }
+                }
                 valid_tool_calls.push(i);
             }
 
@@ -411,6 +433,15 @@ impl QueryEngine {
                         is_error: tool_result.is_error,
                     }
                 };
+
+                // Track failed calls for duplicate detection
+                let call_key = format!("{}:{}", tc.name, tc.arguments);
+                if limited.is_error {
+                    *self.failed_call_counts.entry(call_key).or_insert(0) += 1;
+                } else {
+                    // Success clears the failure count for this call
+                    self.failed_call_counts.remove(&call_key);
+                }
 
                 session.add_message(Message::ToolResult {
                     tool_use_id: tc.id.clone(),

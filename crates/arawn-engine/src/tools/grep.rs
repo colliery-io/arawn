@@ -22,15 +22,15 @@ impl Tool for GrepTool {
     }
 
     fn description(&self) -> &str {
-        "A powerful search tool built on ripgrep\n\n\
+        "Search LOCAL file contents using ripgrep. Only for files on the local filesystem — NOT for searching the web, GitHub, or remote APIs.\n\n\
          \x20 Usage:\n\
-         \x20 - ALWAYS use grep for search tasks. NEVER invoke `grep` or `rg` as a shell command. The grep tool has been optimized for correct permissions and access.\n\
+         \x20 - ALWAYS use grep for local file search tasks. NEVER invoke `grep` or `rg` as a shell command.\n\
+         \x20 - The `path` parameter must be a valid local directory or file path. Do NOT pass URLs or empty strings.\n\
          \x20 - Supports full regex syntax (e.g., \"log.*Error\", \"function\\s+\\w+\")\n\
          \x20 - Filter files with glob parameter (e.g., \"*.js\", \"**/*.tsx\") or type parameter (e.g., \"js\", \"py\", \"rust\")\n\
          \x20 - Output modes: \"content\" shows matching lines, \"files_with_matches\" shows only file paths (default), \"count\" shows match counts\n\
-         \x20 - Use agent tool for open-ended searches requiring multiple rounds\n\
-         \x20 - Pattern syntax: Uses ripgrep (not grep) - literal braces need escaping (use `interface\\{\\}` to find `interface{}` in Go code)\n\
-         \x20 - Multiline matching: By default patterns match within single lines only. For cross-line patterns like `struct \\{[\\s\\S]*?field`, use `multiline: true`\n"
+         \x20 - Pattern syntax: Uses ripgrep — literal braces need escaping\n\
+         \x20 - Multiline matching: For cross-line patterns, use `multiline: true`\n"
     }
 
     fn is_read_only(&self) -> bool {

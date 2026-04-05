@@ -15,9 +15,12 @@ impl Tool for WebSearchTool {
     }
 
     fn description(&self) -> &str {
-        "Search the web and return results with titles, URLs, and snippets. \
+        "Search the web using DuckDuckGo and return results with titles, URLs, and snippets. \
+         Use this for discovering information on the internet — NOT for searching local files (use grep instead). \
          Use `allowed_domains` to restrict results to specific sites, or \
-         `blocked_domains` to exclude sites."
+         `blocked_domains` to exclude sites. \
+         If a web_search returns 'No results found', try rephrasing the query or broadening the search. \
+         Do not repeat the exact same query more than once."
     }
 
     fn is_read_only(&self) -> bool {
