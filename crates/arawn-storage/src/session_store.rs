@@ -100,6 +100,15 @@ impl<'a> SessionStore<'a> {
         Ok(sessions)
     }
 
+    /// Delete a session record from SQLite by ID.
+    pub fn delete(&self, session_id: Uuid) -> Result<bool, StorageError> {
+        let rows = self.db.conn().execute(
+            "DELETE FROM sessions WHERE id = ?1",
+            [session_id.to_string()],
+        )?;
+        Ok(rows > 0)
+    }
+
     /// Update session token/turn stats in SQLite.
     pub fn update_stats(&self, session_id: Uuid, stats: &SessionStats) -> Result<(), StorageError> {
         self.db.conn().execute(

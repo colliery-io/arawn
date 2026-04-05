@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-04-05T18:06:24Z | 142 files | Rust
+> Generated: 2026-04-05T18:57:50Z | 142 files | Rust
 
 ## Project Structure
 
@@ -767,104 +767,104 @@
 
 - pub `PromptContext` struct L24-35 — `{ prompts_dir: Option<std::path::PathBuf>, os: String, shell: String, cwd: std::...` — Cached context for building system prompts per-turn.
 - pub `QueryEngineConfig` struct L38-49 — `{ model: String, max_iterations: usize, system_prompt: String, max_tokens: Optio...` — Configuration for the query engine.
-- pub `QueryEngine` struct L66-80 — `{ llm: Arc<dyn LlmClient>, registry: Arc<ToolRegistry>, config: QueryEngineConfi...` — The agentic loop: prompt → LLM → tool_use → execute → feed result → loop.
-- pub `new` function L83-97 — `(llm: Arc<dyn LlmClient>, registry: Arc<ToolRegistry>) -> Self`
-- pub `with_config` function L99-117 — `( llm: Arc<dyn LlmClient>, registry: Arc<ToolRegistry>, config: QueryEngineConfi...`
-- pub `with_compactor` function L119-122 — `(mut self, compactor: Compactor) -> Self`
-- pub `with_permission_checker` function L124-127 — `(mut self, checker: Arc<PermissionChecker>) -> Self`
-- pub `with_hook_runner` function L129-132 — `(mut self, runner: Arc<HookRunner>) -> Self`
-- pub `with_skill_registry` function L134-137 — `(mut self, registry: Arc<crate::skills::SkillRegistry>) -> Self`
-- pub `with_plugin_registry` function L139-142 — `(mut self, registry: Arc<crate::plugins::PluginRegistry>) -> Self`
-- pub `with_plan_state` function L144-147 — `(mut self, plan_state: Arc<PlanModeState>) -> Self`
-- pub `plan_state` function L150-152 — `(&self) -> Option<&Arc<PlanModeState>>` — Get the plan mode state (if configured).
-- pub `with_background_tasks` function L154-157 — `(mut self, manager: Arc<BackgroundTaskManager>) -> Self`
-- pub `fire_hook` function L164-170 — `(&self, input: &HookInput) -> Option<crate::hooks::AggregatedHookResult>` — Fire a hook event.
-- pub `run` function L173-426 — `( &mut self, session: &mut Session, ctx: &ToolContext, ) -> Result<String, Engin...` — Run the agentic loop for a session.
+- pub `QueryEngine` struct L66-83 — `{ llm: Arc<dyn LlmClient>, registry: Arc<ToolRegistry>, config: QueryEngineConfi...` — The agentic loop: prompt → LLM → tool_use → execute → feed result → loop.
+- pub `new` function L86-101 — `(llm: Arc<dyn LlmClient>, registry: Arc<ToolRegistry>) -> Self`
+- pub `with_config` function L103-122 — `( llm: Arc<dyn LlmClient>, registry: Arc<ToolRegistry>, config: QueryEngineConfi...`
+- pub `with_compactor` function L124-127 — `(mut self, compactor: Compactor) -> Self`
+- pub `with_permission_checker` function L129-132 — `(mut self, checker: Arc<PermissionChecker>) -> Self`
+- pub `with_hook_runner` function L134-137 — `(mut self, runner: Arc<HookRunner>) -> Self`
+- pub `with_skill_registry` function L139-142 — `(mut self, registry: Arc<crate::skills::SkillRegistry>) -> Self`
+- pub `with_plugin_registry` function L144-147 — `(mut self, registry: Arc<crate::plugins::PluginRegistry>) -> Self`
+- pub `with_plan_state` function L149-152 — `(mut self, plan_state: Arc<PlanModeState>) -> Self`
+- pub `plan_state` function L155-157 — `(&self) -> Option<&Arc<PlanModeState>>` — Get the plan mode state (if configured).
+- pub `with_background_tasks` function L159-162 — `(mut self, manager: Arc<BackgroundTaskManager>) -> Self`
+- pub `fire_hook` function L169-175 — `(&self, input: &HookInput) -> Option<crate::hooks::AggregatedHookResult>` — Fire a hook event.
+- pub `run` function L178-457 — `( &mut self, session: &mut Session, ctx: &ToolContext, ) -> Result<String, Engin...` — Run the agentic loop for a session.
 -  `DEFAULT_MAX_ITERATIONS` variable L19 — `: usize`
 -  `MAX_COMPACT_FAILURES` variable L20 — `: u32`
 -  `DEFAULT_SYSTEM_PROMPT` variable L21 — `: &str`
 -  `QueryEngineConfig` type L51-63 — `impl Default for QueryEngineConfig`
 -  `default` function L52-62 — `() -> Self`
--  `QueryEngine` type L82-744 — `= QueryEngine`
--  `build_request` function L428-516 — `(&self, session: &Session) -> ChatRequest`
--  `stream_response_with_retry` function L521-560 — `( &self, session: &Session, _ctx: &ToolContext, ) -> Result<AssembledResponse, E...` — Build the request and stream with up to 2 retries on transient LLM errors
--  `MAX_RETRIES` variable L526 — `: u32`
--  `stream_response` function L562-622 — `( &self, request: ChatRequest, ) -> Result<AssembledResponse, EngineError>`
--  `execute_tool` function L624-743 — `( &self, ctx: &ToolContext, tool_use_id: &str, name: &str, arguments: &serde_jso...`
--  `parse_arguments` function L746-751 — `(raw: &str) -> serde_json::Value`
--  `AssembledResponse` struct L754-758 — `{ text: String, tool_calls: Vec<AssembledToolCall>, usage: Option<arawn_llm::Usa...`
--  `AssembledToolCall` struct L760-764 — `{ id: String, name: String, arguments: serde_json::Value }`
--  `ToolResult` struct L766-769 — `{ content: String, is_error: bool }`
--  `tests` module L772-959 — `-`
--  `MockLlm` struct L783-785 — `{ responses: Mutex<Vec<Vec<ChatChunk>>> }` — Mock LLM that returns pre-scripted responses.
--  `MockLlm` type L787-817 — `= MockLlm`
--  `new` function L788-792 — `(responses: Vec<Vec<ChatChunk>>) -> Self`
--  `text` function L795-802 — `(text: &str) -> Vec<ChatChunk>` — Convenience: text-only response
--  `tool_call` function L805-816 — `(id: &str, name: &str, args: &str) -> Vec<ChatChunk>` — Convenience: tool call then done
--  `MockLlm` type L820-836 — `impl LlmClient for MockLlm`
--  `stream` function L821-835 — `( &self, _request: ChatRequest, ) -> Result< Pin<Box<dyn futures::Stream<Item = ...`
--  `setup` function L838-843 — `() -> (Workstream, Session, ToolContext)`
--  `text_only_response` function L846-859 — `()`
--  `single_tool_call` function L862-880 — `()`
--  `tool_not_found` function L883-905 — `()`
--  `max_iterations_exceeded` function L908-935 — `()`
--  `multi_turn_tool_chain` function L938-957 — `()`
+-  `QueryEngine` type L85-775 — `= QueryEngine`
+-  `build_request` function L459-547 — `(&self, session: &Session) -> ChatRequest`
+-  `stream_response_with_retry` function L552-591 — `( &self, session: &Session, _ctx: &ToolContext, ) -> Result<AssembledResponse, E...` — Build the request and stream with up to 2 retries on transient LLM errors
+-  `MAX_RETRIES` variable L557 — `: u32`
+-  `stream_response` function L593-653 — `( &self, request: ChatRequest, ) -> Result<AssembledResponse, EngineError>`
+-  `execute_tool` function L655-774 — `( &self, ctx: &ToolContext, tool_use_id: &str, name: &str, arguments: &serde_jso...`
+-  `parse_arguments` function L777-782 — `(raw: &str) -> serde_json::Value`
+-  `AssembledResponse` struct L785-789 — `{ text: String, tool_calls: Vec<AssembledToolCall>, usage: Option<arawn_llm::Usa...`
+-  `AssembledToolCall` struct L791-795 — `{ id: String, name: String, arguments: serde_json::Value }`
+-  `ToolResult` struct L797-800 — `{ content: String, is_error: bool }`
+-  `tests` module L803-990 — `-`
+-  `MockLlm` struct L814-816 — `{ responses: Mutex<Vec<Vec<ChatChunk>>> }` — Mock LLM that returns pre-scripted responses.
+-  `MockLlm` type L818-848 — `= MockLlm`
+-  `new` function L819-823 — `(responses: Vec<Vec<ChatChunk>>) -> Self`
+-  `text` function L826-833 — `(text: &str) -> Vec<ChatChunk>` — Convenience: text-only response
+-  `tool_call` function L836-847 — `(id: &str, name: &str, args: &str) -> Vec<ChatChunk>` — Convenience: tool call then done
+-  `MockLlm` type L851-867 — `impl LlmClient for MockLlm`
+-  `stream` function L852-866 — `( &self, _request: ChatRequest, ) -> Result< Pin<Box<dyn futures::Stream<Item = ...`
+-  `setup` function L869-874 — `() -> (Workstream, Session, ToolContext)`
+-  `text_only_response` function L877-890 — `()`
+-  `single_tool_call` function L893-911 — `()`
+-  `tool_not_found` function L914-936 — `()`
+-  `max_iterations_exceeded` function L939-966 — `()`
+-  `multi_turn_tool_chain` function L969-988 — `()`
 
 #### crates/arawn-engine/src/system_prompt.rs
 
-- pub `SystemPromptBuilder` struct L118-121 — `{ sections: Vec<PromptSection>, token_budget: u32 }` — Builds a system prompt from static defaults (overridable) + dynamic context.
-- pub `new` function L124-129 — `() -> Self`
-- pub `with_token_budget` function L132-135 — `(mut self, budget: u32) -> Self` — Set a custom token budget.
-- pub `load_static_sections` function L139-151 — `(mut self, prompts_dir: Option<&Path>) -> Self` — Load all 7 static sections, checking for user overrides in `prompts_dir`.
-- pub `environment` function L154-165 — `(mut self, os: &str, shell: &str, cwd: &Path, model: &str) -> Self` — Add the environment section.
-- pub `workstream` function L168-178 — `(mut self, name: &str, root_dir: &Path) -> Self` — Add the workstream section.
-- pub `tools` function L188-203 — `(mut self, tool_defs: &[ToolDefinition]) -> Self` — Acknowledge tool availability in the system prompt.
-- pub `context_files` function L206-229 — `(mut self, files: &[ContextFile]) -> Self` — Add context files (arawn.md at workstream and global levels).
-- pub `memories` function L232-247 — `(mut self, memories: &[String]) -> Self` — Add relevant memories (future — currently a no-op if empty).
-- pub `session_context` function L250-261 — `(mut self, summary: &str) -> Self` — Add session context (for resumed sessions).
-- pub `plugin_prompts` function L264-280 — `(mut self, prompts: &[String]) -> Self` — Add plugin-contributed prompt fragments.
-- pub `build` function L283-305 — `(mut self) -> String` — Build the final system prompt string, enforcing token budget.
-- pub `ContextFile` struct L318-322 — `{ path: std::path::PathBuf, content: String, truncated: bool }` — A context file loaded from disk.
-- pub `find_context_files` function L325-341 — `(workstream_root: &Path, global_dir: &Path) -> Vec<ContextFile>` — Load context files from workstream root and global config dir.
+- pub `SystemPromptBuilder` struct L125-128 — `{ sections: Vec<PromptSection>, token_budget: u32 }` — Builds a system prompt from static defaults (overridable) + dynamic context.
+- pub `new` function L131-136 — `() -> Self`
+- pub `with_token_budget` function L139-142 — `(mut self, budget: u32) -> Self` — Set a custom token budget.
+- pub `load_static_sections` function L146-158 — `(mut self, prompts_dir: Option<&Path>) -> Self` — Load all 7 static sections, checking for user overrides in `prompts_dir`.
+- pub `environment` function L161-172 — `(mut self, os: &str, shell: &str, cwd: &Path, model: &str) -> Self` — Add the environment section.
+- pub `workstream` function L175-185 — `(mut self, name: &str, root_dir: &Path) -> Self` — Add the workstream section.
+- pub `tools` function L195-210 — `(mut self, tool_defs: &[ToolDefinition]) -> Self` — Acknowledge tool availability in the system prompt.
+- pub `context_files` function L213-236 — `(mut self, files: &[ContextFile]) -> Self` — Add context files (arawn.md at workstream and global levels).
+- pub `memories` function L239-254 — `(mut self, memories: &[String]) -> Self` — Add relevant memories (future — currently a no-op if empty).
+- pub `session_context` function L257-268 — `(mut self, summary: &str) -> Self` — Add session context (for resumed sessions).
+- pub `plugin_prompts` function L271-287 — `(mut self, prompts: &[String]) -> Self` — Add plugin-contributed prompt fragments.
+- pub `build` function L290-312 — `(mut self) -> String` — Build the final system prompt string, enforcing token budget.
+- pub `ContextFile` struct L325-329 — `{ path: std::path::PathBuf, content: String, truncated: bool }` — A context file loaded from disk.
+- pub `find_context_files` function L332-348 — `(workstream_root: &Path, global_dir: &Path) -> Vec<ContextFile>` — Load context files from workstream root and global config dir.
 -  `DEFAULT_TOKEN_BUDGET` variable L6 — `: u32` — Default token budget for the system prompt (~24k chars).
 -  `MAX_CONTEXT_FILE_CHARS` variable L9 — `: usize` — Max chars for a context file before truncation.
 -  `DEFAULT_IDENTITY` variable L13 — `: &str`
 -  `DEFAULT_SYSTEM` variable L15-19 — `: &str`
--  `DEFAULT_DOING_TASKS` variable L21-39 — `: &str`
--  `DEFAULT_ACTIONS` variable L41-47 — `: &str`
--  `DEFAULT_USING_TOOLS` variable L49-56 — `: &str`
--  `DEFAULT_TONE` variable L58-62 — `: &str`
--  `DEFAULT_OUTPUT_EFFICIENCY` variable L64-74 — `: &str`
--  `STATIC_SECTION_NAMES` variable L77-85 — `: &[&str]` — Names of the overridable static sections.
--  `STATIC_SECTION_DEFAULTS` variable L88-96 — `: &[&str]` — Compiled-in defaults for each static section.
--  `STATIC_SECTION_PRIORITIES` variable L99-107 — `: &[u8]` — Priority levels for sections.
--  `PromptSection` struct L111-115 — `{ name: String, content: String, priority: u8 }` — A section in the assembled prompt.
--  `SystemPromptBuilder` type L123-306 — `= SystemPromptBuilder`
--  `SystemPromptBuilder` type L308-312 — `impl Default for SystemPromptBuilder`
--  `default` function L309-311 — `() -> Self`
--  `load_context_file` function L343-362 — `(path: &Path, max_chars: usize) -> Option<ContextFile>`
--  `truncate_70_20` function L365-388 — `(content: &str, max_chars: usize) -> String` — Truncate keeping 70% from the head and 20% from the tail, with a marker in between.
--  `load_section` function L392-400 — `(name: &str, default: &str, prompts_dir: Option<&Path>) -> String`
--  `tests` module L403-718 — `-`
--  `default_assembly_includes_all_static_sections` function L410-426 — `()`
--  `sections_have_headers` function L430-441 — `()`
--  `empty_optional_sections_omitted` function L445-456 — `()`
--  `single_section_override` function L460-471 — `()`
--  `partial_overrides_other_sections_use_defaults` function L475-487 — `()`
--  `missing_override_dir_uses_defaults` function L491-497 — `()`
--  `empty_override_file_produces_empty_section` function L501-511 — `()`
--  `under_budget_all_sections_included` function L515-526 — `()`
--  `over_budget_drops_low_priority_sections` function L530-540 — `()`
--  `identity_survives_budget_cuts` function L544-553 — `()`
--  `truncation_produces_clean_sections` function L557-569 — `()`
--  `context_file_injected` function L573-584 — `()`
--  `context_file_missing_section_omitted` function L588-595 — `()`
--  `large_context_file_truncated` function L599-610 — `()`
--  `tools_section_reflects_tool_list` function L614-633 — `()`
--  `per_turn_freshness_different_tools` function L637-661 — `()`
--  `environment_section_contains_info` function L665-674 — `()`
--  `workstream_section_contains_info` function L678-685 — `()`
--  `snapshot_full_build` function L689-717 — `()`
+-  `DEFAULT_DOING_TASKS` variable L21-46 — `: &str`
+-  `DEFAULT_ACTIONS` variable L48-54 — `: &str`
+-  `DEFAULT_USING_TOOLS` variable L56-63 — `: &str`
+-  `DEFAULT_TONE` variable L65-69 — `: &str`
+-  `DEFAULT_OUTPUT_EFFICIENCY` variable L71-81 — `: &str`
+-  `STATIC_SECTION_NAMES` variable L84-92 — `: &[&str]` — Names of the overridable static sections.
+-  `STATIC_SECTION_DEFAULTS` variable L95-103 — `: &[&str]` — Compiled-in defaults for each static section.
+-  `STATIC_SECTION_PRIORITIES` variable L106-114 — `: &[u8]` — Priority levels for sections.
+-  `PromptSection` struct L118-122 — `{ name: String, content: String, priority: u8 }` — A section in the assembled prompt.
+-  `SystemPromptBuilder` type L130-313 — `= SystemPromptBuilder`
+-  `SystemPromptBuilder` type L315-319 — `impl Default for SystemPromptBuilder`
+-  `default` function L316-318 — `() -> Self`
+-  `load_context_file` function L350-369 — `(path: &Path, max_chars: usize) -> Option<ContextFile>`
+-  `truncate_70_20` function L372-395 — `(content: &str, max_chars: usize) -> String` — Truncate keeping 70% from the head and 20% from the tail, with a marker in between.
+-  `load_section` function L399-407 — `(name: &str, default: &str, prompts_dir: Option<&Path>) -> String`
+-  `tests` module L410-725 — `-`
+-  `default_assembly_includes_all_static_sections` function L417-433 — `()`
+-  `sections_have_headers` function L437-448 — `()`
+-  `empty_optional_sections_omitted` function L452-463 — `()`
+-  `single_section_override` function L467-478 — `()`
+-  `partial_overrides_other_sections_use_defaults` function L482-494 — `()`
+-  `missing_override_dir_uses_defaults` function L498-504 — `()`
+-  `empty_override_file_produces_empty_section` function L508-518 — `()`
+-  `under_budget_all_sections_included` function L522-533 — `()`
+-  `over_budget_drops_low_priority_sections` function L537-547 — `()`
+-  `identity_survives_budget_cuts` function L551-560 — `()`
+-  `truncation_produces_clean_sections` function L564-576 — `()`
+-  `context_file_injected` function L580-591 — `()`
+-  `context_file_missing_section_omitted` function L595-602 — `()`
+-  `large_context_file_truncated` function L606-617 — `()`
+-  `tools_section_reflects_tool_list` function L621-640 — `()`
+-  `per_turn_freshness_different_tools` function L644-668 — `()`
+-  `environment_section_contains_info` function L672-681 — `()`
+-  `workstream_section_contains_info` function L685-692 — `()`
+-  `snapshot_full_build` function L696-724 — `()`
 
 #### crates/arawn-engine/src/testing.rs
 
@@ -2051,70 +2051,70 @@
 -  `WebFetchTool` type L43-51 — `= WebFetchTool`
 -  `WebFetchTool` type L53-57 — `impl Default for WebFetchTool`
 -  `default` function L54-56 — `() -> Self`
--  `WebFetchTool` type L60-165 — `impl Tool for WebFetchTool`
+-  `WebFetchTool` type L60-167 — `impl Tool for WebFetchTool`
 -  `name` function L61-63 — `(&self) -> &str`
--  `description` function L65-69 — `(&self) -> &str`
--  `parameters_schema` function L71-86 — `(&self) -> Value`
--  `execute` function L88-164 — `(&self, ctx: &ToolContext, params: Value) -> Result<ToolOutput, EngineError>`
--  `process_content` function L168-181 — `(body: &str, content_type: &str) -> String` — Convert HTML to markdown, or return non-HTML as-is.
--  `html_to_markdown` function L184-189 — `(html: &str) -> String` — Convert HTML to markdown using htmd (Turndown-equivalent).
--  `strip_html_tags` function L192-223 — `(html: &str) -> String` — Fallback: simple HTML tag stripper (used if htmd fails).
--  `finish` function L226-237 — `( ctx: &ToolContext, prompt: &str, url: &str, text: String, ) -> Result<ToolOutp...` — If we have an LLM and a prompt, summarize.
--  `summarize_with_llm` function L239-282 — `( llm: &Arc<dyn arawn_llm::LlmClient>, model: &str, prompt: &str, url: &str, con...`
--  `tests` module L285-519 — `-`
--  `test_ctx` function L294-297 — `() -> ToolContext`
--  `test_ctx_with_mock` function L299-305 — `(responses: Vec<MockResponse>) -> (ToolContext, Arc<MockLlmClient>)`
--  `html_to_markdown_headings` function L310-314 — `()`
--  `html_to_markdown_links` function L317-321 — `()`
--  `html_to_markdown_lists` function L324-328 — `()`
--  `html_to_markdown_code` function L331-334 — `()`
--  `non_html_passthrough` function L337-340 — `()`
--  `strip_tags_basic` function L345-347 — `()`
--  `strip_tags_collapses_whitespace` function L350-355 — `()`
--  `cache_entry_expiry` function L360-374 — `()`
--  `cache_stores_and_retrieves` function L377-396 — `()`
--  `large_content_truncated` function L401-406 — `()`
--  `schema_is_valid` function L411-420 — `()`
--  `http_upgraded_description` function L423-426 — `()`
--  `summarize_with_mock_llm` function L431-449 — `()`
--  `summarize_sends_correct_request_shape` function L452-467 — `()`
--  `execute_without_llm_returns_raw_text` function L470-473 — `()`
--  `summarize_empty_content` function L476-491 — `()`
--  `summarize_multipart_response` function L494-518 — `()`
+-  `description` function L65-71 — `(&self) -> &str`
+-  `parameters_schema` function L73-88 — `(&self) -> Value`
+-  `execute` function L90-166 — `(&self, ctx: &ToolContext, params: Value) -> Result<ToolOutput, EngineError>`
+-  `process_content` function L170-183 — `(body: &str, content_type: &str) -> String` — Convert HTML to markdown, or return non-HTML as-is.
+-  `html_to_markdown` function L186-191 — `(html: &str) -> String` — Convert HTML to markdown using htmd (Turndown-equivalent).
+-  `strip_html_tags` function L194-225 — `(html: &str) -> String` — Fallback: simple HTML tag stripper (used if htmd fails).
+-  `finish` function L228-239 — `( ctx: &ToolContext, prompt: &str, url: &str, text: String, ) -> Result<ToolOutp...` — If we have an LLM and a prompt, summarize.
+-  `summarize_with_llm` function L241-284 — `( llm: &Arc<dyn arawn_llm::LlmClient>, model: &str, prompt: &str, url: &str, con...`
+-  `tests` module L287-521 — `-`
+-  `test_ctx` function L296-299 — `() -> ToolContext`
+-  `test_ctx_with_mock` function L301-307 — `(responses: Vec<MockResponse>) -> (ToolContext, Arc<MockLlmClient>)`
+-  `html_to_markdown_headings` function L312-316 — `()`
+-  `html_to_markdown_links` function L319-323 — `()`
+-  `html_to_markdown_lists` function L326-330 — `()`
+-  `html_to_markdown_code` function L333-336 — `()`
+-  `non_html_passthrough` function L339-342 — `()`
+-  `strip_tags_basic` function L347-349 — `()`
+-  `strip_tags_collapses_whitespace` function L352-357 — `()`
+-  `cache_entry_expiry` function L362-376 — `()`
+-  `cache_stores_and_retrieves` function L379-398 — `()`
+-  `large_content_truncated` function L403-408 — `()`
+-  `schema_is_valid` function L413-422 — `()`
+-  `http_upgraded_description` function L425-428 — `()`
+-  `summarize_with_mock_llm` function L433-451 — `()`
+-  `summarize_sends_correct_request_shape` function L454-469 — `()`
+-  `execute_without_llm_returns_raw_text` function L472-475 — `()`
+-  `summarize_empty_content` function L478-493 — `()`
+-  `summarize_multipart_response` function L496-520 — `()`
 
 #### crates/arawn-engine/src/tools/web_search.rs
 
 - pub `WebSearchTool` struct L9 — `-` — Searches the web and returns results to inform responses.
--  `WebSearchTool` type L12-135 — `impl Tool for WebSearchTool`
+-  `WebSearchTool` type L12-138 — `impl Tool for WebSearchTool`
 -  `name` function L13-15 — `(&self) -> &str`
--  `description` function L17-21 — `(&self) -> &str`
--  `is_read_only` function L23-25 — `(&self) -> bool`
--  `parameters_schema` function L27-49 — `(&self) -> Value`
--  `execute` function L51-134 — `(&self, _ctx: &ToolContext, params: Value) -> Result<ToolOutput, EngineError>`
--  `SearchResult` struct L137-141 — `{ title: String, url: String, snippet: String }`
--  `parse_ddg_results` function L143-166 — `(html: &str, max: usize) -> Vec<SearchResult>`
--  `extract_tag_content` function L168-176 — `(html: &str, after: &str) -> String`
--  `extract_href` function L178-191 — `(html: &str) -> String`
--  `extract_after_class` function L193-205 — `(html: &str, class: &str) -> String`
--  `strip_tags` function L207-219 — `(html: &str) -> String`
--  `urlencod` function L221-229 — `(s: &str) -> String`
--  `urldecod` function L231-249 — `(s: &str) -> String`
--  `tests` module L252-391 — `-`
--  `urlencod_spaces` function L256-258 — `()`
--  `urlencod_special_chars` function L261-263 — `()`
--  `urldecod_percent` function L266-268 — `()`
--  `urldecod_stops_at_ampersand` function L271-273 — `()`
--  `urldecod_plus_to_space` function L276-278 — `()`
--  `strip_tags_removes_html` function L281-283 — `()`
--  `strip_tags_empty` function L286-288 — `()`
--  `schema_is_valid` function L291-300 — `()`
--  `parse_ddg_results_empty_html` function L303-306 — `()`
--  `parse_ddg_results_no_results` function L309-313 — `()`
--  `parse_ddg_results_respects_max` function L316-327 — `()`
--  `parse_ddg_results_extracts_fields` function L330-340 — `()`
--  `blocked_domains_filter` function L343-368 — `()`
--  `allowed_domains_builds_site_clause` function L371-384 — `()`
--  `is_read_only` function L387-390 — `()`
+-  `description` function L17-24 — `(&self) -> &str`
+-  `is_read_only` function L26-28 — `(&self) -> bool`
+-  `parameters_schema` function L30-52 — `(&self) -> Value`
+-  `execute` function L54-137 — `(&self, _ctx: &ToolContext, params: Value) -> Result<ToolOutput, EngineError>`
+-  `SearchResult` struct L140-144 — `{ title: String, url: String, snippet: String }`
+-  `parse_ddg_results` function L146-169 — `(html: &str, max: usize) -> Vec<SearchResult>`
+-  `extract_tag_content` function L171-179 — `(html: &str, after: &str) -> String`
+-  `extract_href` function L181-194 — `(html: &str) -> String`
+-  `extract_after_class` function L196-208 — `(html: &str, class: &str) -> String`
+-  `strip_tags` function L210-222 — `(html: &str) -> String`
+-  `urlencod` function L224-232 — `(s: &str) -> String`
+-  `urldecod` function L234-252 — `(s: &str) -> String`
+-  `tests` module L255-394 — `-`
+-  `urlencod_spaces` function L259-261 — `()`
+-  `urlencod_special_chars` function L264-266 — `()`
+-  `urldecod_percent` function L269-271 — `()`
+-  `urldecod_stops_at_ampersand` function L274-276 — `()`
+-  `urldecod_plus_to_space` function L279-281 — `()`
+-  `strip_tags_removes_html` function L284-286 — `()`
+-  `strip_tags_empty` function L289-291 — `()`
+-  `schema_is_valid` function L294-303 — `()`
+-  `parse_ddg_results_empty_html` function L306-309 — `()`
+-  `parse_ddg_results_no_results` function L312-316 — `()`
+-  `parse_ddg_results_respects_max` function L319-330 — `()`
+-  `parse_ddg_results_extracts_fields` function L333-343 — `()`
+-  `blocked_domains_filter` function L346-371 — `()`
+-  `allowed_domains_builds_site_clause` function L374-387 — `()`
+-  `is_read_only` function L390-393 — `()`
 
 ### crates/arawn-llm/src
 

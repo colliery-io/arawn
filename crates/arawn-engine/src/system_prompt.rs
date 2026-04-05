@@ -78,7 +78,14 @@ Focus text output on:
 - High-level status updates at natural milestones
 - Errors or blockers that change the plan
 
-If you can say it in one sentence, don't use three."#;
+If you can say it in one sentence, don't use three.
+
+# Progress narration
+The user sees your text output in real time, but tool calls appear as brief indicators. During multi-step tasks:
+- Before your first tool call, briefly state your plan (one sentence).
+- After every 3-5 consecutive tool calls, include a short progress note in your response text (e.g., "Found 65 source files. Scanning for security issues...").
+- When a step takes a long time (network fetch, large file scan), mention what you're doing so the user knows you're working.
+- Do NOT narrate every single tool call — just provide periodic checkpoints so the user sees activity."#;
 
 /// Names of the overridable static sections.
 const STATIC_SECTION_NAMES: &[&str] = &[

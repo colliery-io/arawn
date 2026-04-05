@@ -611,54 +611,61 @@ impl ArawnService for LocalService {
             .with_plan_state(Arc::clone(&self.plan_state))
             .with_background_tasks(Arc::clone(&self.background_tasks));
 
+        // Set up live progress channel so tool calls stream to the TUI
+        // during the engine loop, not just after it completes.
+        let (progress_tx, mut progress_rx) =
+            tokio::sync::mpsc::channel::<arawn_engine::ProgressEvent>(64);
+        engine = engine.with_progress_sender(progress_tx);
+
         let data_dir = self.data_dir.clone();
         let ws_dir_owned = ws_dir.clone();
         let store = self.store.clone();
+
+        let event_tx = tx.clone();
+        // Forward live progress events to the WebSocket event channel
+        tokio::spawn(async move {
+            while let Some(event) = progress_rx.recv().await {
+                match event {
+                    arawn_engine::ProgressEvent::ToolCallStart { id, name, input } => {
+                        let _ = event_tx
+                            .send(EngineEvent::ToolCallStart { id, name, input })
+                            .await;
+                        let _ = event_tx.send(EngineEvent::Flush).await;
+                    }
+                    arawn_engine::ProgressEvent::ToolCallResult {
+                        id,
+                        content,
+                        is_error,
+                    } => {
+                        let _ = event_tx
+                            .send(EngineEvent::ToolCallResult {
+                                id,
+                                content,
+                                is_error,
+                            })
+                            .await;
+                        let _ = event_tx.send(EngineEvent::Flush).await;
+                    }
+                }
+            }
+        });
 
         tokio::spawn(async move {
             let msg_store = JsonlMessageStore::new(&data_dir);
 
             match engine.run(&mut session, &ctx).await {
                 Ok(final_text) => {
-                    // Emit events for new messages, with Flush after each boundary
+                    // Tool call events were already streamed live via progress_tx.
+                    // Only emit compaction events here (not streamed live).
                     let new_msgs = &session.messages()[msgs_before..];
                     for msg in new_msgs {
-                        match msg {
-                            Message::Assistant { tool_uses, .. } if !tool_uses.is_empty() => {
-                                for tu in tool_uses {
-                                    let _ = tx
-                                        .send(EngineEvent::ToolCallStart {
-                                            id: tu.id.clone(),
-                                            name: tu.name.clone(),
-                                            input: tu.input.clone(),
-                                        })
-                                        .await;
-                                }
-                                let _ = tx.send(EngineEvent::Flush).await;
-                            }
-                            Message::ToolResult {
-                                tool_use_id,
-                                content,
-                                is_error,
-                            } => {
-                                let _ = tx
-                                    .send(EngineEvent::ToolCallResult {
-                                        id: tool_use_id.clone(),
-                                        content: content.clone(),
-                                        is_error: *is_error,
-                                    })
-                                    .await;
-                                let _ = tx.send(EngineEvent::Flush).await;
-                            }
-                            Message::Summary { original_count, .. } => {
-                                let _ = tx
-                                    .send(EngineEvent::CompactionOccurred {
-                                        messages_summarized: *original_count,
-                                    })
-                                    .await;
-                                let _ = tx.send(EngineEvent::Flush).await;
-                            }
-                            _ => {}
+                        if let Message::Summary { original_count, .. } = msg {
+                            let _ = tx
+                                .send(EngineEvent::CompactionOccurred {
+                                    messages_summarized: *original_count,
+                                })
+                                .await;
+                            let _ = tx.send(EngineEvent::Flush).await;
                         }
                     }
 

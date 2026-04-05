@@ -99,6 +99,42 @@ impl Store {
         SessionStore::new(&self.db).list_scratch()
     }
 
+    /// Remove SQLite session records whose JSONL files no longer exist on disk.
+    /// Call on startup to clean up after manual filesystem deletions.
+    pub fn reconcile_sessions(&self) -> Result<usize, StorageError> {
+        let mut removed = 0;
+        let session_store = SessionStore::new(&self.db);
+
+        // Check scratch sessions
+        let scratch_sessions = session_store.list_scratch()?;
+        for meta in &scratch_sessions {
+            let jsonl = self.messages.path_for(meta.id, "scratch");
+            if !jsonl.exists() {
+                session_store.delete(meta.id)?;
+                removed += 1;
+            }
+        }
+
+        // Check workstream-bound sessions
+        let workstreams = WorkstreamStore::new(&self.db).list()?;
+        for ws in &workstreams {
+            let ws_dir = workstream_dir_name(&ws.name, ws.id);
+            let sessions = session_store.list_for_workstream(ws.id)?;
+            for meta in &sessions {
+                let jsonl = self.messages.path_for(meta.id, &ws_dir);
+                if !jsonl.exists() {
+                    session_store.delete(meta.id)?;
+                    removed += 1;
+                }
+            }
+        }
+
+        if removed > 0 {
+            info!(removed, "reconciled stale sessions");
+        }
+        Ok(removed)
+    }
+
     /// Resolve the directory name for a workstream by UUID.
     /// Uses name if available, falls back to UUID string.
     fn resolve_ws_dir(&self, ws_id: Option<Uuid>) -> Result<String, StorageError> {

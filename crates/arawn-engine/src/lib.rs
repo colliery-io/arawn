@@ -41,7 +41,7 @@ pub use plan::{PlanModeState, PlanModeSnapshot, generate_slug};
 pub use plugin_adapter::PluginToolAdapter;
 pub use plugin_loader::PluginLoader;
 pub use plugin_watcher::PluginWatcher;
-pub use query_engine::{PromptContext, QueryEngine, QueryEngineConfig};
+pub use query_engine::{ProgressEvent, PromptContext, QueryEngine, QueryEngineConfig};
 pub use system_prompt::{ContextFile, SystemPromptBuilder, find_context_files};
 pub use token_estimator::{ModelLimits, TokenEstimator};
 pub use tool::{Tool, ToolOutput, ToolRegistry};

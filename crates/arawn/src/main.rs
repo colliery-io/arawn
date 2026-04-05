@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use tracing::{debug, info};
+use tracing::{debug, info, warn};
 use tracing_subscriber::EnvFilter;
 use uuid::Uuid;
 
@@ -102,6 +102,11 @@ async fn main() -> Result<()> {
 
     let store = Store::open(std::path::Path::new(&data_dir))?;
     info!(data_dir = %data_dir, "store opened");
+
+    // Clean up sessions whose JSONL files were deleted from disk
+    if let Err(e) = store.reconcile_sessions() {
+        warn!(error = %e, "failed to reconcile sessions");
+    }
 
     // Generate default config file if it doesn't exist
     let config_path = std::path::PathBuf::from(&data_dir).join("arawn.toml");

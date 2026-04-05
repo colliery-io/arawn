@@ -365,39 +365,59 @@ impl MdRenderer {
             }
         }
 
-        // Cap column widths to fit within max_width
+        // Cap column widths to fit within max_width.
         // Each column takes: 1 (│) + 1 (space) + width + 1 (space) = width + 3
         // Plus trailing │ = total = sum(widths) + 3*ncols + 1
         if self.max_width > 0 {
             let chrome_overhead = 3 * ncols + 1;
             let available = self.max_width.saturating_sub(chrome_overhead);
-            let total_width: usize = col_widths.iter().sum();
 
-            if total_width > available {
-                // Distribute available width proportionally, with a minimum of 4 per column
-                let min_col = 4usize;
-                let min_total = min_col * ncols;
-
-                if available <= min_total {
-                    // Terminal too narrow — give each column the minimum
-                    for w in &mut col_widths {
-                        *w = min_col;
-                    }
-                } else {
-                    // Scale proportionally
-                    let scale = available as f64 / total_width as f64;
-                    for w in &mut col_widths {
-                        *w = ((*w as f64 * scale) as usize).max(min_col);
-                    }
-                    // Adjust rounding errors
-                    let scaled_total: usize = col_widths.iter().sum();
-                    if scaled_total > available {
-                        // Trim the widest column
-                        if let Some(widest) = col_widths.iter_mut().max() {
-                            *widest = widest.saturating_sub(scaled_total - available);
+            // Compute minimum width per column: longest single word (no mid-word breaks)
+            let mut min_widths = vec![4usize; ncols];
+            for (i, cell) in self.table_header.iter().enumerate() {
+                for word in cell.split_whitespace() {
+                    min_widths[i] = min_widths[i].max(word.chars().count());
+                }
+            }
+            for row in &self.table_rows {
+                for (i, cell) in row.iter().enumerate() {
+                    if i < ncols {
+                        for word in cell.split_whitespace() {
+                            min_widths[i] = min_widths[i].max(word.chars().count());
                         }
                     }
                 }
+            }
+            // Cap minimum widths to half available (no single column dominates)
+            let max_min = available / ncols;
+            for mw in &mut min_widths {
+                *mw = (*mw).min(max_min);
+            }
+
+            let total_width: usize = col_widths.iter().sum();
+            if total_width > available {
+                // Shrink-to-fit: repeatedly cap the widest column until we fit.
+                // This preserves short columns at their natural width while
+                // compressing long columns (Details, Description, etc.)
+                let mut widths = col_widths.clone();
+                loop {
+                    let current_total: usize = widths.iter().sum();
+                    if current_total <= available {
+                        break;
+                    }
+                    let excess = current_total - available;
+                    // Find the widest column that's above its minimum
+                    let max_w = *widths.iter().max().unwrap_or(&0);
+                    let max_idx = widths.iter().position(|w| *w == max_w).unwrap();
+                    let floor = min_widths[max_idx];
+                    if max_w <= floor {
+                        // All columns at minimum — can't shrink further
+                        break;
+                    }
+                    // Shrink the widest column by the excess (but not below minimum)
+                    widths[max_idx] = (max_w.saturating_sub(excess)).max(floor);
+                }
+                col_widths = widths;
             }
         }
 
@@ -757,6 +777,29 @@ mod tests {
                 consecutive_blanks = 0;
             }
         }
+    }
+
+    #[test]
+    fn table_wide_content_preserves_short_columns() {
+        // Reproduces the bug from session 79668a6f: 3-column table where the
+        // first column ("Issue") gets crushed to ~8 chars when the second
+        // column ("Details") has very long content.
+        let md = "\
+| Issue | Details | Mitigation |\n\
+|-------|---------|------------|\n\
+| Buffer overflow risk | JSON buffer size is approximated. For pathological inputs the buffer could overflow. | Use snprintf with size checks |\n\
+| Unchecked malloc | All malloc results are checked; good. | — |";
+        let lines = markdown_to_lines_with_width(md, 100);
+        let text = spans_text(&lines);
+
+        // The first column should be wide enough to fit "Buffer overflow risk" (20 chars)
+        // on one or at most two lines — NOT character-wrapped to 6-8 chars wide.
+        // Check that "Buffer overflow" appears on a single line (not split across lines).
+        let has_buffer_overflow_together = text.lines().any(|l| l.contains("Buffer overflow"));
+        assert!(
+            has_buffer_overflow_together,
+            "\"Buffer overflow\" should appear together on one line, not word-wrapped to 8 chars.\nRendered:\n{text}"
+        );
     }
 
     #[test]

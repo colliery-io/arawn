@@ -418,7 +418,7 @@ mod tests {
         assert!(schema["properties"]["prompt"].is_object());
         let required = schema["required"].as_array().unwrap();
         assert!(required.contains(&json!("url")));
-        assert!(required.contains(&json!("prompt")));
+        assert!(!required.contains(&json!("prompt")), "prompt should be optional");
     }
 
     #[test]

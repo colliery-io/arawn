@@ -18,6 +18,24 @@ use crate::tool::ToolRegistry;
 
 const DEFAULT_MAX_ITERATIONS: usize = 40;
 const MAX_COMPACT_FAILURES: u32 = 3;
+
+/// Live progress events emitted during the engine loop.
+/// The service layer can map these to EngineEvent/WebSocket messages.
+#[derive(Debug, Clone)]
+pub enum ProgressEvent {
+    /// A tool call is about to execute.
+    ToolCallStart {
+        id: String,
+        name: String,
+        input: serde_json::Value,
+    },
+    /// A tool call completed.
+    ToolCallResult {
+        id: String,
+        content: String,
+        is_error: bool,
+    },
+}
 const DEFAULT_SYSTEM_PROMPT: &str = "You are Arawn, a helpful assistant. When you need to perform actions, use the available tools. Think step by step.";
 
 /// Cached context for building system prompts per-turn.
@@ -80,6 +98,8 @@ pub struct QueryEngine {
     /// Track recent failed tool calls (tool_name + args hash → failure count).
     /// Used to detect and short-circuit repeated identical failing calls.
     failed_call_counts: std::collections::HashMap<String, u32>,
+    /// Optional channel for live progress events (tool starts/results during the loop).
+    progress_tx: Option<tokio::sync::mpsc::Sender<ProgressEvent>>,
 }
 
 impl QueryEngine {
@@ -97,6 +117,7 @@ impl QueryEngine {
             background_tasks: None,
             compact_failures: 0,
             failed_call_counts: std::collections::HashMap::new(),
+            progress_tx: None,
         }
     }
 
@@ -118,6 +139,7 @@ impl QueryEngine {
             background_tasks: None,
             compact_failures: 0,
             failed_call_counts: std::collections::HashMap::new(),
+            progress_tx: None,
         }
     }
 
@@ -159,6 +181,19 @@ impl QueryEngine {
     pub fn with_background_tasks(mut self, manager: Arc<BackgroundTaskManager>) -> Self {
         self.background_tasks = Some(manager);
         self
+    }
+
+    /// Set a channel for live progress events during the engine loop.
+    pub fn with_progress_sender(mut self, tx: tokio::sync::mpsc::Sender<ProgressEvent>) -> Self {
+        self.progress_tx = Some(tx);
+        self
+    }
+
+    /// Emit a progress event if a sender is configured.
+    fn emit_progress(&self, event: ProgressEvent) {
+        if let Some(ref tx) = self.progress_tx {
+            let _ = tx.try_send(event);
+        }
     }
 
     /// Fire a hook event. Convenience method for callers that need to trigger
@@ -361,6 +396,16 @@ impl QueryEngine {
                 tool_uses,
             });
 
+            // Emit progress events for all valid tool calls
+            for &i in &valid_tool_calls {
+                let tc = &response.tool_calls[i];
+                self.emit_progress(ProgressEvent::ToolCallStart {
+                    id: tc.id.clone(),
+                    name: tc.name.clone(),
+                    input: tc.arguments.clone(),
+                });
+            }
+
             // Execute valid tools — parallelize read-only, serialize writes
             let mut read_only_indices = Vec::new();
             let mut write_indices = Vec::new();
@@ -443,6 +488,12 @@ impl QueryEngine {
                     self.failed_call_counts.remove(&call_key);
                 }
 
+                self.emit_progress(ProgressEvent::ToolCallResult {
+                    id: tc.id.clone(),
+                    content: limited.content.clone(),
+                    is_error: limited.is_error,
+                });
+
                 session.add_message(Message::ToolResult {
                     tool_use_id: tc.id.clone(),
                     content: limited.content,
@@ -499,8 +550,10 @@ impl QueryEngine {
             })
             .collect();
 
-        // Query registry fresh each turn for hot-reload support
-        let tools = self.registry.tool_definitions();
+        // Query registry fresh each turn, then filter to contextually relevant tools.
+        // Core tools always included; specialty tools included when conversation signals need them.
+        let all_tools = self.registry.tool_definitions();
+        let tools = filter_tools_for_context(&all_tools, session);
 
         // Build system prompt fresh each turn (tools/skills may have changed via hot-reload)
         let system_prompt = if let Some(ref prompt_ctx) = self.config.prompt_context {
@@ -797,6 +850,143 @@ struct AssembledToolCall {
 struct ToolResult {
     content: String,
     is_error: bool,
+}
+
+/// Core tools always included in every LLM request.
+const CORE_TOOLS: &[&str] = &[
+    "think", "shell", "file_read", "file_write", "file_edit", "glob", "grep", "Skill",
+];
+
+/// Web tools — included when conversation references URLs, web, search, fetch, APIs.
+const WEB_TOOLS: &[&str] = &["web_fetch", "web_search"];
+
+/// Planning tools — included when in plan mode or conversation mentions planning.
+const PLAN_TOOLS: &[&str] = &["EnterPlanMode", "ExitPlanMode"];
+
+/// Task management tools — included when conversation mentions tasks, background, todo.
+const TASK_TOOLS: &[&str] = &[
+    "TaskCreate", "TaskUpdate", "TaskGet", "TaskList", "TaskOutput", "TaskStop",
+];
+
+/// Memory tools — included when conversation mentions memory, remember, recall.
+const MEMORY_TOOLS: &[&str] = &["memory_store", "memory_search"];
+
+/// Agent/delegation tools — included when conversation mentions delegation, agent, subagent.
+const AGENT_TOOLS: &[&str] = &["Agent"];
+
+/// Other tools always included.
+const ALWAYS_TOOLS: &[&str] = &["ask_user", "sleep"];
+
+/// Filter tool definitions to only contextually relevant ones for this turn.
+/// Scans the last user message for category signals. Core tools always included.
+fn filter_tools_for_context(
+    all_tools: &[arawn_llm::ToolDefinition],
+    session: &Session,
+) -> Vec<arawn_llm::ToolDefinition> {
+    // On first turn or very short sessions, send all tools (no context to filter on)
+    if session.messages().len() <= 2 {
+        return all_tools.to_vec();
+    }
+
+    // Extract the last user message for keyword scanning
+    let last_user_msg = session
+        .messages()
+        .iter()
+        .rev()
+        .find_map(|m| match m {
+            Message::User { content } => Some(content.to_lowercase()),
+            _ => None,
+        })
+        .unwrap_or_default();
+
+    // Also check if the model previously used any specialty tools (keep them available)
+    let used_tool_names: std::collections::HashSet<&str> = session
+        .messages()
+        .iter()
+        .filter_map(|m| match m {
+            Message::Assistant { tool_uses, .. } => {
+                Some(tool_uses.iter().map(|tu| tu.name.as_str()))
+            }
+            _ => None,
+        })
+        .flatten()
+        .collect();
+
+    let mut include = std::collections::HashSet::new();
+
+    // Always include core + always tools
+    for name in CORE_TOOLS.iter().chain(ALWAYS_TOOLS.iter()) {
+        include.insert(*name);
+    }
+
+    // Web tools: URL patterns, web/search/fetch/http/api/github mentions
+    if last_user_msg.contains("http")
+        || last_user_msg.contains("url")
+        || last_user_msg.contains("web")
+        || last_user_msg.contains("search")
+        || last_user_msg.contains("fetch")
+        || last_user_msg.contains("api")
+        || last_user_msg.contains("github")
+        || last_user_msg.contains("google")
+        || used_tool_names.iter().any(|n| WEB_TOOLS.contains(n))
+    {
+        for name in WEB_TOOLS {
+            include.insert(name);
+        }
+    }
+
+    // Plan tools: plan/planning mentions or plan mode active
+    if last_user_msg.contains("plan")
+        || used_tool_names.iter().any(|n| PLAN_TOOLS.contains(n))
+    {
+        for name in PLAN_TOOLS {
+            include.insert(name);
+        }
+    }
+
+    // Task tools: task/todo/background mentions
+    if last_user_msg.contains("task")
+        || last_user_msg.contains("todo")
+        || last_user_msg.contains("background")
+        || used_tool_names.iter().any(|n| TASK_TOOLS.contains(n))
+    {
+        for name in TASK_TOOLS {
+            include.insert(name);
+        }
+    }
+
+    // Memory tools: remember/recall/memory mentions
+    if last_user_msg.contains("remember")
+        || last_user_msg.contains("recall")
+        || last_user_msg.contains("memory")
+        || last_user_msg.contains("forget")
+        || used_tool_names.iter().any(|n| MEMORY_TOOLS.contains(n))
+    {
+        for name in MEMORY_TOOLS {
+            include.insert(name);
+        }
+    }
+
+    // Agent tools: agent/delegate/subagent mentions
+    if last_user_msg.contains("agent")
+        || last_user_msg.contains("delegat")
+        || used_tool_names.iter().any(|n| AGENT_TOOLS.contains(n))
+    {
+        for name in AGENT_TOOLS {
+            include.insert(name);
+        }
+    }
+
+    // Always include any tool the model has already used in this session
+    for name in &used_tool_names {
+        include.insert(name);
+    }
+
+    all_tools
+        .iter()
+        .filter(|t| include.contains(t.name.as_str()))
+        .cloned()
+        .collect()
 }
 
 #[cfg(test)]
