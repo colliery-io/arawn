@@ -5,18 +5,18 @@ use tracing::{debug, info, warn};
 use tracing_subscriber::EnvFilter;
 use uuid::Uuid;
 
-use arawn_core::{Message, Session, Workstream};
+use arawn_core::Workstream;
 use arawn_engine::{
     AgentTool, AskUserTool, BackgroundTaskManager, EnterPlanModeTool, ExitPlanModeTool,
     FileEditTool, FileReadTool, FileWriteTool, GlobTool, GrepTool, PlanModeState, PluginLoader,
-    PluginWatcher, QueryEngine, QueryEngineConfig, SessionTaskStore, ShellTool, SkillTool,
+    PluginWatcher, QueryEngineConfig, SessionTaskStore, ShellTool, SkillTool,
     SleepTool, TaskCreateTool, TaskGetTool, TaskListTool, TaskOutputTool, TaskStopTool,
-    TaskUpdateTool, ThinkTool, ToolContext, ToolRegistry, WebFetchTool, WebSearchTool,
+    TaskUpdateTool, ThinkTool, ToolRegistry, WebFetchTool, WebSearchTool,
 };
 use arawn_engine::plugins::PluginRuntime;
 use arawn_engine::skills::SkillRegistry;
 use arawn_llm::RetryClient;
-use arawn_storage::{Store, workstream_dir_name};
+use arawn_storage::Store;
 
 const DEFAULT_MODEL: &str = "llama-3.3-70b-versatile";
 
@@ -377,198 +377,123 @@ async fn main() -> Result<()> {
 
     let user_input = prompt_parts.join(" ");
 
-    // Load or create session
-    let mut session = match session_id {
-        Some(id) => match store.load_session(id).await? {
-            Some(s) => {
-                info!(session_id = %id, messages = s.messages().len(), "resumed session");
-                s
-            }
-            None => {
-                eprintln!("Session {id} not found");
-                std::process::exit(1);
-            }
-        },
+    // CLI prompt mode: connect to the running server via WebSocket.
+    // The server handles the engine, tools, persistence — we just send/receive.
+    let server_url = format!("ws://127.0.0.1:{}/ws", config.server.port);
+    run_cli_via_server(&server_url, &user_input, session_id).await
+}
+
+/// Run a CLI prompt by connecting to the running server via WebSocket.
+async fn run_cli_via_server(
+    url: &str,
+    prompt: &str,
+    session_id: Option<Uuid>,
+) -> Result<()> {
+    use arawn_tui::ws_client::{WsClient, EventUpdate, engine_event_to_update, parse_engine_event};
+    use futures_util::StreamExt;
+    use tokio_tungstenite::tungstenite::Message as WsMessage;
+
+    let mut client = WsClient::connect(url).await.map_err(|e| {
+        anyhow::anyhow!(
+            "Could not connect to arawn server at {url}: {e}\n\
+             Start the server first: arawn serve"
+        )
+    })?;
+
+    // Create or resume session
+    let session_uuid = match session_id {
+        Some(id) => {
+            eprintln!("Resuming session {id}");
+            id
+        }
         None => {
-            let s = Session::new(workstream.id);
-            store.create_session(&s)?;
-            info!(session_id = %s.id, "created new session");
-            s
+            let s = client.create_session(None).await.map_err(|e| {
+                anyhow::anyhow!("Failed to create session: {e}")
+            })?;
+            eprintln!("Session: {}", s.id);
+            s.id
         }
     };
 
-    // Resolve workstream directory name for JSONL storage
-    let ws_dir = workstream_dir_name(&workstream.name, workstream.id);
-
-    // CLI sessions are bound to a workstream, so they use the shared sandbox
-    let workspace_dir = store.sandbox_for(&ws_dir, session.id, false);
-    std::fs::create_dir_all(&workspace_dir)?;
-
-    // Build ToolContext with workspace as working directory
-    let mut ws_for_ctx = workstream.clone();
-    ws_for_ctx.root_dir = workspace_dir;
-
-    // Create LLM client with retry
-    let engine_llm_config = config.engine_llm();
-    let llm_client = Arc::new(arawn_llm::OpenAICompatibleClient::from_config(
-        &engine_llm_config.provider,
-        engine_llm_config.base_url.as_deref(),
-        &engine_llm_config.api_key_env,
-    )?);
-    let llm: Arc<RetryClient> = Arc::new(RetryClient::new(llm_client));
-
-    // Allow file tools to access arawn.md context files outside the sandbox
-    let global_arawn_md = std::path::PathBuf::from(&data_dir).join("arawn.md");
-    let workstream_arawn_md = std::path::PathBuf::from(&data_dir)
-        .join("workstreams")
-        .join(&ws_dir)
-        .join("arawn.md");
-    let model_limits = arawn_engine::ModelLimits::new(
-        engine_llm_config.context_window,
-        config.compactor.compaction_threshold,
-    );
-    let ctx = ToolContext::new(&ws_for_ctx, session.id)
-        .with_allowed_paths(vec![global_arawn_md, workstream_arawn_md])
-        .with_llm(llm.clone(), engine_llm_config.model.clone())
-        .with_model_limits(model_limits)
-        .with_data_dir(std::path::PathBuf::from(&data_dir));
-
-    // Initialize memory system (two-tier KB)
-    let memory_manager = arawn_memory::try_open_memory(
-        std::path::Path::new(&data_dir),
-        &ws_dir,
-        Some(384),
-    );
-    if memory_manager.is_some() {
-        info!("memory system initialized (global + workstream KB)");
+    // Send the prompt
+    if prompt.is_empty() {
+        eprintln!("No prompt provided");
+        std::process::exit(1);
     }
 
-    // Register tools
-    let registry = Arc::new(ToolRegistry::new());
-    let bg_manager = Arc::new(BackgroundTaskManager::new());
-
-    registry.register(Box::new(ThinkTool));
-    registry.register(Box::new(ShellTool::with_network_tools(
-        config.sandbox.network_tools.clone(),
-    ).with_background_manager(Arc::clone(&bg_manager))));
-    registry.register(Box::new(FileReadTool));
-    registry.register(Box::new(FileWriteTool));
-    registry.register(Box::new(FileEditTool));
-    registry.register(Box::new(GlobTool));
-    registry.register(Box::new(GrepTool));
-    registry.register(Box::new(WebFetchTool::new()));
-    registry.register(Box::new(WebSearchTool));
-    registry.register(Box::new(AskUserTool));
-    let agents_dir = std::path::PathBuf::from(&data_dir).join("agents");
-    let agent_defs = arawn_engine::agent_defs::get_all_agents(Some(&agents_dir));
-    registry.register(Box::new(AgentTool::new(Arc::clone(&registry), agent_defs)
-        .with_background_manager(Arc::clone(&bg_manager))));
-    let task_store = SessionTaskStore::new();
-    registry.register(Box::new(SleepTool));
-    registry.register(Box::new(TaskCreateTool::new(task_store.clone())));
-    registry.register(Box::new(TaskUpdateTool::new(task_store.clone())));
-    registry.register(Box::new(TaskGetTool::new(task_store.clone())));
-    registry.register(Box::new(TaskListTool::new(task_store)));
-    registry.register(Box::new(TaskOutputTool::new(Arc::clone(&bg_manager))));
-    registry.register(Box::new(TaskStopTool::new(Arc::clone(&bg_manager))));
-
-    // Plan mode tools
-    let plan_state = Arc::new(PlanModeState::new());
-    registry.register(Box::new(EnterPlanModeTool::new(Arc::clone(&plan_state))));
-    registry.register(Box::new(ExitPlanModeTool::new(Arc::clone(&plan_state))));
-    info!(tools = registry.len(), "built-in tools registered");
-
-    // Load legacy .arawn_tool plugins
-    let tools_dir = std::path::PathBuf::from(&data_dir).join("plugins/tools");
-    let build_dir = std::path::PathBuf::from(&data_dir).join("plugins/build");
-    let plugin_tools = PluginLoader::load_tools(&tools_dir, &build_dir);
-    for tool in plugin_tools {
-        info!(tool = tool.name(), "plugin tool loaded");
-        registry.register_plugin(tool);
-    }
-
-    // Load new-style plugins (Claude Code compatible)
-    let plugins_root = std::path::PathBuf::from(&data_dir).join("plugins");
-    let skill_registry = Arc::new(SkillRegistry::new());
-    let plugin_runtime = PluginRuntime::new(plugins_root)
-        .with_settings(std::path::PathBuf::from(&data_dir).join("settings.json"));
-    let _plugin_result = plugin_runtime.load_all(&registry, &skill_registry);
-
-    // Register SkillTool with loaded skills
-    registry.register(Box::new(SkillTool::new(Arc::clone(&skill_registry))));
-    info!(tools = registry.len(), "total tools registered");
-
-    // Add user message and persist
-    if !user_input.is_empty() {
-        let msg = Message::User {
-            content: user_input.clone(),
-        };
-        session.add_message(msg.clone());
-        store.append_message(session.id, &ws_dir, &msg).await?;
-        debug!(input = %user_input, "user message added");
-    }
-
-    // Run the engine
-    let compactor_llm = config.compactor_llm().clone();
-    let mut engine_config = build_engine_config(&config, &ws_for_ctx, &data_dir);
-
-    // Inject KB memories into the system prompt
-    if let Some(ref mgr) = memory_manager {
-        let kb_memories = arawn_memory::load_memories_for_injection(mgr, None, None);
-        if !kb_memories.is_empty() {
-            if let Some(ref mut ctx) = engine_config.prompt_context {
-                ctx.memories = kb_memories;
-                info!(count = ctx.memories.len(), "KB memories injected into prompt");
-            }
-        }
-    }
-
-    let compactor = arawn_engine::Compactor::new(llm.clone(), compactor_llm.model.clone());
-    let mut engine = QueryEngine::with_config(llm, registry, engine_config)
-        .with_compactor(compactor)
-        .with_skill_registry(skill_registry)
-        .with_plan_state(plan_state)
-        .with_background_tasks(bg_manager);
+    let req_id = client
+        .send_request(
+            "send_message",
+            serde_json::json!({
+                "session_id": session_uuid.to_string(),
+                "content": prompt,
+            }),
+        )
+        .await
+        .map_err(|e| anyhow::anyhow!("Failed to send message: {e}"))?;
 
     eprintln!("Thinking...\n");
 
-    // Snapshot message count before engine run so we know what's new
-    let msgs_before = session.messages().len();
-
-    match engine.run(&mut session, &ctx).await {
-        Ok(response) => {
-            // Persist all new messages (assistant responses, tool calls, tool results)
-            for msg in &session.messages()[msgs_before..] {
-                store.append_message(session.id, &ws_dir, msg).await?;
+    // Stream events until Complete or Error
+    let mut final_text = String::new();
+    loop {
+        let msg = client.read.next().await;
+        match msg {
+            Some(Ok(WsMessage::Text(text))) => {
+                if let Some(event) = parse_engine_event(&text) {
+                    match engine_event_to_update(event) {
+                        EventUpdate::AppendStreamingText(text) => {
+                            // Could print incrementally here for live streaming
+                        }
+                        EventUpdate::AddToolCall { name, .. } => {
+                            eprintln!("  [{name}]");
+                        }
+                        EventUpdate::AddToolResult { is_error, .. } => {
+                            if is_error {
+                                eprintln!("  [error]");
+                            }
+                        }
+                        EventUpdate::Complete(text) => {
+                            final_text = text;
+                            break;
+                        }
+                        EventUpdate::Error(message) => {
+                            eprintln!("Error: {message}");
+                            std::process::exit(1);
+                        }
+                        _ => {}
+                    }
+                }
+                // Check for JSON-RPC error response
+                if let Ok(data) = serde_json::from_str::<serde_json::Value>(&text) {
+                    if data.get("id").and_then(|v| v.as_u64()) == Some(req_id)
+                        && data.get("error").is_some()
+                    {
+                        let err = data["error"]["message"]
+                            .as_str()
+                            .unwrap_or("unknown error");
+                        eprintln!("Server error: {err}");
+                        std::process::exit(1);
+                    }
+                }
             }
-            // Persist stats
-            store.update_session_stats(session.id, &session.stats)?;
-
-            eprintln!("Session: {}", session.id);
-            let s = &session.stats;
-            if s.total_tokens() > 0 {
-                eprintln!(
-                    "Tokens: {} input + {} output = {} total ({} turns, {} tool calls)",
-                    s.input_tokens,
-                    s.output_tokens,
-                    s.total_tokens(),
-                    s.turns,
-                    s.tool_calls
-                );
+            Some(Ok(WsMessage::Close(_))) => {
+                eprintln!("Server closed connection");
+                std::process::exit(1);
             }
-            println!("{response}");
-        }
-        Err(e) => {
-            // Still persist what we have
-            for msg in &session.messages()[msgs_before..] {
-                let _ = store.append_message(session.id, &ws_dir, msg).await;
+            Some(Err(e)) => {
+                eprintln!("WebSocket error: {e}");
+                std::process::exit(1);
             }
-            let _ = store.update_session_stats(session.id, &session.stats);
-            eprintln!("{}", e.user_message());
-            std::process::exit(1);
+            None => {
+                eprintln!("Connection lost");
+                std::process::exit(1);
+            }
+            _ => {}
         }
     }
 
+    println!("{final_text}");
     Ok(())
 }
 
