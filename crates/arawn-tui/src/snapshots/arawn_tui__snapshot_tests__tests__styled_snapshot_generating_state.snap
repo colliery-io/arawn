@@ -2,10 +2,10 @@
 source: crates/arawn-tui/src/snapshot_tests.rs
 expression: snap
 ---
-«fg:DarkGray,bg:Rgb(25, 25, 30)»  «fg:DarkGray»│«fg:Green,bold»You: question
+«fg:DarkGray,bg:Rgb(25, 25, 30)»  «fg:DarkGray»│«fg:Green,bold»❯ question
 «fg:DarkGray,bg:Rgb(25, 25, 30)» ·«fg:DarkGray»│
-«fg:DarkGray,bg:Rgb(25, 25, 30)»  «fg:DarkGray»│«fg:Blue,bold»Arawn:
-«fg:DarkGray,bg:Rgb(25, 25, 30)» ·«fg:DarkGray»│  partial«fg:Blue»█
+«fg:DarkGray,bg:Rgb(25, 25, 30)»  «fg:DarkGray»│  partial«fg:Blue»█
+«fg:DarkGray,bg:Rgb(25, 25, 30)» ·«fg:DarkGray»│
 «fg:DarkGray,bg:Rgb(25, 25, 30)»  «fg:DarkGray»│
 «fg:DarkGray,bg:Rgb(25, 25, 30)» ·«fg:DarkGray»│
 «fg:DarkGray,bg:Rgb(25, 25, 30)»  «fg:DarkGray»│

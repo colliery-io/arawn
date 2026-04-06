@@ -2,25 +2,25 @@
 source: crates/arawn-tui/src/snapshot_tests.rs
 expression: snap
 ---
-«fg:DarkGray,bg:Rgb(25, 25, 30)»  «fg:DarkGray»│«fg:Green,bold»You: Explain this code
+«fg:DarkGray,bg:Rgb(25, 25, 30)»  «fg:DarkGray»│«fg:Green,bold»❯ Explain this code
 «fg:DarkGray,bg:Rgb(25, 25, 30)» ·«fg:DarkGray»│
-«fg:DarkGray,bg:Rgb(25, 25, 30)»  «fg:DarkGray»│«fg:Blue,bold»Arawn:
-«fg:DarkGray,bg:Rgb(25, 25, 30)» ·«fg:DarkGray»│  «fg:Cyan,bold»Overview
-«fg:DarkGray,bg:Rgb(25, 25, 30)»  «fg:DarkGray»│  This function does «bold»two things:
-«fg:DarkGray,bg:Rgb(25, 25, 30)» ·«fg:DarkGray»│
+«fg:DarkGray,bg:Rgb(25, 25, 30)»  «fg:DarkGray»│  «fg:Cyan,bold»Overview
+«fg:DarkGray,bg:Rgb(25, 25, 30)» ·«fg:DarkGray»│  This function does «bold»two things:
 «fg:DarkGray,bg:Rgb(25, 25, 30)»  «fg:DarkGray»│
-«fg:DarkGray,bg:Rgb(25, 25, 30)» ·«fg:DarkGray»│  «fg:DarkGray»1. Parses the «italic»input into tokens
-«fg:DarkGray,bg:Rgb(25, 25, 30)»  «fg:DarkGray»│  «fg:DarkGray»2. Validates each token against the schema
-«fg:DarkGray,bg:Rgb(25, 25, 30)» ·«fg:DarkGray»│  «fg:DarkGray,italic»python
-«fg:DarkGray,bg:Rgb(25, 25, 30)»  «fg:DarkGray»│  «bg:Rgb(30, 30, 40)» «fg:Rgb(204, 153, 204),bg:Rgb(30, 30, 40)»def«fg:Rgb(211, 208, 200),bg:Rgb(30, 30, 40)» «fg:Rgb(102, 153, 204),bg:Rgb(30, 30, 40)»process«fg:Rgb(211, 208, 200),bg:Rgb(30, 30, 40)»(«fg:Rgb(242, 119, 122),bg:Rgb(30, 30, 40)»data«fg:Rgb(211, 208, 200),bg:Rgb(30, 30, 40)»):
-«fg:DarkGray,bg:Rgb(25, 25, 30)» ·«fg:DarkGray»│  «bg:Rgb(30, 30, 40)» «fg:Rgb(211, 208, 200),bg:Rgb(30, 30, 40)»    tokens = «fg:Rgb(102, 153, 204),bg:Rgb(30, 30, 40)»parse«fg:Rgb(211, 208, 200),bg:Rgb(30, 30, 40)»(data)
-«fg:DarkGray,bg:Rgb(25, 25, 30)»  «fg:DarkGray»│  «bg:Rgb(30, 30, 40)» «fg:Rgb(211, 208, 200),bg:Rgb(30, 30, 40)»    «fg:Rgb(204, 153, 204),bg:Rgb(30, 30, 40)»return«fg:Rgb(211, 208, 200),bg:Rgb(30, 30, 40)» «fg:Rgb(102, 153, 204),bg:Rgb(30, 30, 40)»validate«fg:Rgb(211, 208, 200),bg:Rgb(30, 30, 40)»(tokens)
 «fg:DarkGray,bg:Rgb(25, 25, 30)» ·«fg:DarkGray»│
+«fg:DarkGray,bg:Rgb(25, 25, 30)»  «fg:DarkGray»│  «fg:DarkGray»1. Parses the «italic»input into tokens
+«fg:DarkGray,bg:Rgb(25, 25, 30)» ·«fg:DarkGray»│  «fg:DarkGray»2. Validates each token against the schema
+«fg:DarkGray,bg:Rgb(25, 25, 30)»  «fg:DarkGray»│  «fg:DarkGray,italic»python
+«fg:DarkGray,bg:Rgb(25, 25, 30)» ·«fg:DarkGray»│  «bg:Rgb(30, 30, 40)» «fg:Rgb(204, 153, 204),bg:Rgb(30, 30, 40)»def«fg:Rgb(211, 208, 200),bg:Rgb(30, 30, 40)» «fg:Rgb(102, 153, 204),bg:Rgb(30, 30, 40)»process«fg:Rgb(211, 208, 200),bg:Rgb(30, 30, 40)»(«fg:Rgb(242, 119, 122),bg:Rgb(30, 30, 40)»data«fg:Rgb(211, 208, 200),bg:Rgb(30, 30, 40)»):
+«fg:DarkGray,bg:Rgb(25, 25, 30)»  «fg:DarkGray»│  «bg:Rgb(30, 30, 40)» «fg:Rgb(211, 208, 200),bg:Rgb(30, 30, 40)»    tokens = «fg:Rgb(102, 153, 204),bg:Rgb(30, 30, 40)»parse«fg:Rgb(211, 208, 200),bg:Rgb(30, 30, 40)»(data)
+«fg:DarkGray,bg:Rgb(25, 25, 30)» ·«fg:DarkGray»│  «bg:Rgb(30, 30, 40)» «fg:Rgb(211, 208, 200),bg:Rgb(30, 30, 40)»    «fg:Rgb(204, 153, 204),bg:Rgb(30, 30, 40)»return«fg:Rgb(211, 208, 200),bg:Rgb(30, 30, 40)» «fg:Rgb(102, 153, 204),bg:Rgb(30, 30, 40)»validate«fg:Rgb(211, 208, 200),bg:Rgb(30, 30, 40)»(tokens)
 «fg:DarkGray,bg:Rgb(25, 25, 30)»  «fg:DarkGray»│
-«fg:DarkGray,bg:Rgb(25, 25, 30)» ·«fg:DarkGray»│  «fg:DarkGray»Note: This is O(n) complexity.
+«fg:DarkGray,bg:Rgb(25, 25, 30)» ·«fg:DarkGray»│
+«fg:DarkGray,bg:Rgb(25, 25, 30)»  «fg:DarkGray»│  «fg:DarkGray»Note: This is O(n) complexity.
+«fg:DarkGray,bg:Rgb(25, 25, 30)» ·«fg:DarkGray»│
 «fg:Cyan,bg:Rgb(25, 25, 30)» ▸«fg:DarkGray»│
-«fg:DarkGray,bg:Rgb(25, 25, 30)» ·«fg:DarkGray»│
-«fg:DarkGray,bg:Rgb(25, 25, 30)»  «fg:DarkGray»│  The «fg:Rgb(220, 170, 110),bg:Rgb(40, 40, 50)»`parse` function handles edge cases like empty strings and unicode.
+«fg:DarkGray,bg:Rgb(25, 25, 30)» ·«fg:DarkGray»│  The «fg:Rgb(220, 170, 110),bg:Rgb(40, 40, 50)»`parse` function handles edge cases like empty strings and unicode.
+«fg:DarkGray,bg:Rgb(25, 25, 30)»  «fg:DarkGray»│
 «fg:DarkGray,bg:Rgb(25, 25, 30)» ·«fg:DarkGray»│
 «fg:DarkGray,bg:Rgb(25, 25, 30)»  «fg:DarkGray»│
 «fg:DarkGray,bg:Rgb(25, 25, 30)» ·«fg:DarkGray»│

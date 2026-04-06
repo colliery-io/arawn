@@ -2,10 +2,10 @@
 source: crates/arawn-tui/src/snapshot_tests.rs
 expression: snap
 ---
-  │You: do something
+  │❯ do something
+ ·│system:
+  │  Error: API rate limited
  ·│
-  │System:
- ·│  Error: API rate limited
   │
  ·│
   │

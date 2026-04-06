@@ -2,7 +2,7 @@
 source: crates/arawn-tui/src/snapshot_tests.rs
 expression: snap
 ---
-  │Arawn:
+  │
  ·│  Some response text.
   │
  ·│

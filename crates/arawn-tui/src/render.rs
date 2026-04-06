@@ -279,12 +279,18 @@ fn render_chat(app: &mut App, frame: &mut Frame, area: ratatui::layout::Rect) {
         })
         .collect();
 
+    let chat_width = area.width as usize;
+
     for (msg_idx, msg) in app.messages.iter_mut().enumerate() {
         match &msg.role {
             ChatRole::User => {
+                // Blank line before user messages (turn separator) unless first message
+                if msg_idx > 0 {
+                    lines.push(Line::from(""));
+                }
                 lines.push(Line::from(vec![
                     Span::styled(
-                        "You: ",
+                        "❯ ",
                         Style::default()
                             .fg(Color::Green)
                             .add_modifier(Modifier::BOLD),
@@ -297,13 +303,8 @@ fn render_chat(app: &mut App, frame: &mut Frame, area: ratatui::layout::Rect) {
                 if msg.content.trim().is_empty() {
                     continue;
                 }
-                lines.push(Line::from(Span::styled(
-                    "Arawn: ",
-                    Style::default()
-                        .fg(Color::Blue)
-                        .add_modifier(Modifier::BOLD),
-                )));
-                let content_width = (area.width as usize).saturating_sub(2);
+                lines.push(Line::from(""));
+                let content_width = chat_width.saturating_sub(2);
                 for md_line in msg.rendered_lines(content_width) {
                     let mut indented = vec![Span::raw("  ")];
                     indented.extend(md_line.spans.clone());
@@ -319,15 +320,15 @@ fn render_chat(app: &mut App, frame: &mut Frame, area: ratatui::layout::Rect) {
                 let icon = if is_running {
                     let frame_char = SPINNER_FRAMES[app.spinner_frame as usize % SPINNER_FRAMES.len()];
                     Span::styled(
-                        format!(" {frame_char} "),
+                        format!("{frame_char} "),
                         Style::default().fg(Color::Yellow),
                     )
                 } else if next_is_error {
-                    Span::styled(" ✗ ", Style::default().fg(Color::Red))
+                    Span::styled("✗ ", Style::default().fg(Color::Red))
                 } else if next_is_result {
-                    Span::styled(" ✓ ", Style::default().fg(Color::Green))
+                    Span::styled("✓ ", Style::default().fg(Color::Green))
                 } else {
-                    Span::styled(" ⏳ ", Style::default().fg(Color::Yellow))
+                    Span::styled("⏳ ", Style::default().fg(Color::Yellow))
                 };
 
                 let tool_name = Span::styled(
@@ -338,27 +339,36 @@ fn render_chat(app: &mut App, frame: &mut Frame, area: ratatui::layout::Rect) {
                 let summary_span = if summary.is_empty() {
                     Span::raw("")
                 } else {
-                    Span::styled(format!(" {summary}"), Style::default().fg(Color::Rgb(140, 140, 155)))
+                    Span::styled(format!("  {summary}"), Style::default().fg(Color::Rgb(140, 140, 155)))
                 };
 
-                // Elapsed time for running tools
                 let elapsed_span = if is_running {
                     let elapsed = msg.created_at.elapsed().as_secs_f64();
                     Span::styled(
-                        format!(" {elapsed:.1}s"),
+                        format!("  {elapsed:.1}s"),
                         Style::default().fg(Color::DarkGray),
                     )
                 } else {
                     Span::raw("")
                 };
 
-                lines.push(Line::from(Span::styled("  ┌─", chrome)));
+                // Build header content to measure its width for the fill dashes
+                let header_text = format!(
+                    "┌ {} {} {}",
+                    if is_running { "⠹" } else if next_is_error { "✗" } else if next_is_result { "✓" } else { "⏳" },
+                    name,
+                    &summary.chars().take(40).collect::<String>(),
+                );
+                let fill_len = chat_width.saturating_sub(header_text.len() + 3); // 3 for "  " prefix + "┐"
+                let fill = "─".repeat(fill_len.min(80));
+
                 lines.push(Line::from(vec![
-                    Span::styled("  │", chrome),
+                    Span::styled("  ┌ ", chrome),
                     icon,
                     tool_name,
                     summary_span,
                     elapsed_span,
+                    Span::styled(format!(" {fill}┐"), chrome),
                 ]));
             }
             ChatRole::ToolResult { name, is_error } => {
@@ -376,11 +386,15 @@ fn render_chat(app: &mut App, frame: &mut Frame, area: ratatui::layout::Rect) {
                     ]));
                     for err_line in msg.content.lines().take(10) {
                         lines.push(Line::from(vec![
-                            Span::styled("  │   ", chrome),
+                            Span::styled("  │  ", chrome),
                             Span::styled(err_line.to_string(), Style::default().fg(Color::Red)),
                         ]));
                     }
-                    lines.push(Line::from(Span::styled("  └─", chrome)));
+                    let bottom_len = chat_width.saturating_sub(4);
+                    lines.push(Line::from(Span::styled(
+                        format!("  └{}┘", "─".repeat(bottom_len.min(80))),
+                        chrome,
+                    )));
                 } else if is_expanded {
                     let toggle_hint = Span::styled(
                         " (Ctrl+E to collapse)",
@@ -396,11 +410,15 @@ fn render_chat(app: &mut App, frame: &mut Frame, area: ratatui::layout::Rect) {
                     ]));
                     for result_line in msg.content.lines() {
                         lines.push(Line::from(vec![
-                            Span::styled("  │   ", chrome),
+                            Span::styled("  │  ", chrome),
                             Span::styled(result_line.to_string(), result_text),
                         ]));
                     }
-                    lines.push(Line::from(Span::styled("  └─", chrome)));
+                    let bottom_len = chat_width.saturating_sub(4);
+                    lines.push(Line::from(Span::styled(
+                        format!("  └{}┘", "─".repeat(bottom_len.min(80))),
+                        chrome,
+                    )));
                 } else {
                     let total_lines = msg.content.lines().count();
                     let max_preview = 5;
@@ -422,31 +440,34 @@ fn render_chat(app: &mut App, frame: &mut Frame, area: ratatui::layout::Rect) {
                     ]));
                     for result_line in msg.content.lines().take(max_preview) {
                         lines.push(Line::from(vec![
-                            Span::styled("  │   ", chrome),
+                            Span::styled("  │  ", chrome),
                             Span::styled(result_line.to_string(), result_text),
                         ]));
                     }
                     if total_lines > max_preview {
                         lines.push(Line::from(vec![
-                            Span::styled("  │   ", chrome),
+                            Span::styled("  │  ", chrome),
                             Span::styled(
                                 format!("… {remaining} more", remaining = total_lines - max_preview),
                                 Style::default().fg(Color::Rgb(120, 120, 135)).add_modifier(Modifier::ITALIC),
                             ),
                         ]));
                     }
-                    lines.push(Line::from(Span::styled("  └─", chrome)));
+                    let bottom_len = chat_width.saturating_sub(4);
+                    lines.push(Line::from(Span::styled(
+                        format!("  └{}┘", "─".repeat(bottom_len.min(80))),
+                        chrome,
+                    )));
                 }
             }
             ChatRole::System => {
                 lines.push(Line::from(Span::styled(
-                    "System: ",
+                    "system:",
                     Style::default()
                         .fg(Color::Magenta)
-                        .add_modifier(Modifier::BOLD),
+                        .add_modifier(Modifier::ITALIC),
                 )));
-                // Subtract indent width so tables fit without overflowing
-                let content_width = (area.width as usize).saturating_sub(2);
+                let content_width = chat_width.saturating_sub(2);
                 for md_line in msg.rendered_lines(content_width) {
                     let mut indented = vec![Span::raw("  ")];
                     indented.extend(md_line.spans.clone());
@@ -454,15 +475,11 @@ fn render_chat(app: &mut App, frame: &mut Frame, area: ratatui::layout::Rect) {
                 }
             }
         }
-        lines.push(Line::from("")); // spacing between messages
     }
 
     // Streaming text (in progress)
-    let assistant_prefix_style = Style::default()
-        .fg(Color::Blue)
-        .add_modifier(Modifier::BOLD);
     if !app.streaming_text.is_empty() {
-        lines.push(Line::from(Span::styled("Arawn: ", assistant_prefix_style)));
+        lines.push(Line::from(""));
         lines.push(Line::from(vec![
             Span::raw("  "),
             Span::raw(app.streaming_text.clone()),
@@ -867,8 +884,8 @@ mod tests {
 
         let chat = chat_region(&terminal);
         assert!(
-            chat.contains("You:") && chat.contains("What files exist?"),
-            "chat should show 'You: What files exist?', got:\n{chat}"
+            chat.contains("❯") && chat.contains("What files exist?"),
+            "chat should show '❯ What files exist?', got:\n{chat}"
         );
     }
 
@@ -884,8 +901,8 @@ mod tests {
 
         let chat = chat_region(&terminal);
         assert!(
-            chat.contains("Arawn:") && chat.contains("Here are the files"),
-            "chat should show 'Arawn: Here are the files.', got:\n{chat}"
+            chat.contains("Here are the files"),
+            "chat should show assistant text, got:\n{chat}"
         );
     }
 
@@ -1018,10 +1035,6 @@ mod tests {
         assert!(
             chat.contains("streaming response here"),
             "streaming text should be in chat area, got:\n{chat}"
-        );
-        assert!(
-            chat.contains("Arawn:"),
-            "streaming text should have Arawn prefix, got:\n{chat}"
         );
         assert!(
             chat.contains("█"),
@@ -1372,7 +1385,7 @@ mod tests {
             "AFTER_TOOL_VISIBLE",
         ));
 
-        let backend = TestBackend::new(80, 24);
+        let backend = TestBackend::new(80, 30);
         let mut terminal = Terminal::new(backend).unwrap();
         terminal.draw(|f| render(&mut app, f)).unwrap();
 
@@ -1380,12 +1393,16 @@ mod tests {
         let h = buf.area.height;
         let w = buf.area.width;
 
+        // Find the thin separator row (between chat and input) — skip box-drawing
+        // inside tool cards by looking for a full-width separator row.
         let sep_row = (0..h)
+            .rev()
             .find(|&row| {
                 let row_text: String = (0..w)
                     .map(|x| buf.cell((x, row)).unwrap().symbol().to_string())
                     .collect();
-                row_text.contains("───")
+                // The separator is a full line of ─ with no other box chars (│┌└┐┘)
+                row_text.contains("───") && !row_text.contains('│') && !row_text.contains('┌') && !row_text.contains('└')
             })
             .expect("should have separator row");
 
