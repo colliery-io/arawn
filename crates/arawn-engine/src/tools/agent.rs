@@ -58,9 +58,20 @@ impl Tool for AgentTool {
         // is built dynamically but we can't return a borrowed &str from a
         // computed String. The agent type list is available via the schema.
         "Spawn a sub-agent to handle a complex task in an isolated context window. \
-         The sub-agent runs a full agentic loop with a fresh conversation. \
+         The sub-agent runs a full agentic loop with a fresh conversation and its own tools.\n\n\
          Use `subagent_type` to select a specialized agent (e.g., \"Explore\", \"Plan\"). \
-         If omitted or unknown, uses the general-purpose agent."
+         If omitted, uses the general-purpose agent.\n\n\
+         WHEN to use:\n\
+         - Deep research or exploration that would fill your context with intermediate output\n\
+         - Parallel investigation of independent sub-tasks\n\
+         - Complex implementation work requiring many file reads/edits\n\n\
+         WHEN NOT to use:\n\
+         - Simple file reads or searches — use file_read, grep, glob directly\n\
+         - Tasks requiring fewer than 3 tool calls\n\
+         - When you need the results immediately in your current context\n\n\
+         Write the prompt like a brief to a colleague who just walked in — explain what you're \
+         trying to accomplish, what you already know, and what specifically you need. \
+         Never delegate understanding: include file paths, context, and specifics."
     }
 
     fn parameters_schema(&self) -> Value {
