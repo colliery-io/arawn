@@ -93,6 +93,16 @@ impl WsClient {
         Ok(serde_json::from_value(result.clone())?)
     }
 
+    pub async fn load_session(
+        &mut self,
+        session_id: uuid::Uuid,
+    ) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
+        self.send_request("load_session", json!({"session_id": session_id.to_string()})).await?;
+        let resp = self.read_response().await?;
+        let result = resp.get("result").ok_or("no result")?;
+        Ok(result.clone())
+    }
+
     pub async fn send_message(
         &mut self,
         session_id: uuid::Uuid,
