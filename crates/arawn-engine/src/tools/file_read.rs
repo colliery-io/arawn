@@ -69,7 +69,14 @@ impl Tool for FileReadTool {
         let full_path = ctx.working_dir.join(path_str);
         let canonical = match full_path.canonicalize() {
             Ok(p) => p,
-            Err(e) => return Ok(ToolOutput::error(format!("cannot read '{path_str}': {e}"))),
+            Err(e) => {
+                let hint = if e.kind() == std::io::ErrorKind::NotFound {
+                    " Use the glob tool to find the correct path."
+                } else {
+                    ""
+                };
+                return Ok(ToolOutput::error(format!("cannot read '{path_str}': {e}.{hint}")));
+            }
         };
 
         let canonical_root = match ctx.working_dir.canonicalize() {
@@ -84,6 +91,13 @@ impl Tool for FileReadTool {
         if !canonical.starts_with(&canonical_root) && !ctx.is_allowed_path(&canonical) {
             return Ok(ToolOutput::error(format!(
                 "path '{path_str}' escapes workstream root"
+            )));
+        }
+
+        // Check if path is a directory
+        if canonical.is_dir() {
+            return Ok(ToolOutput::error(format!(
+                "'{path_str}' is a directory, not a file. Use the glob tool to list directory contents (e.g., glob with pattern \"**/*\" and path \"{path_str}\")."
             )));
         }
 
