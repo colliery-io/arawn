@@ -29,7 +29,10 @@ impl OpenAICompatibleClient {
         provider_name: impl Into<String>,
     ) -> Self {
         Self {
-            http: Client::new(),
+            http: Client::builder()
+                .timeout(std::time::Duration::from_secs(300))
+                .build()
+                .unwrap_or_else(|_| Client::new()),
             base_url: base_url.into(),
             api_key,
             provider_name: provider_name.into(),
