@@ -163,11 +163,7 @@ async fn main() -> Result<()> {
     // Handle serve mode
     if serve_mode {
         let engine_llm_config = config.engine_llm();
-        let llm_client = Arc::new(arawn_llm::OpenAICompatibleClient::from_config(
-            &engine_llm_config.provider,
-            engine_llm_config.base_url.as_deref(),
-            &engine_llm_config.api_key_env,
-        )?);
+        let llm_client: Arc<dyn arawn_llm::LlmClient> = build_llm_client(&engine_llm_config)?;
         let llm = Arc::new(arawn_llm::RetryClient::new(llm_client));
         info!(
             provider = %engine_llm_config.provider,
@@ -495,6 +491,31 @@ async fn run_cli_via_server(
 
     println!("{final_text}");
     Ok(())
+}
+
+/// Build the appropriate LLM client based on provider config.
+fn build_llm_client(
+    config: &arawn_bin::LlmConfig,
+) -> Result<Arc<dyn arawn_llm::LlmClient>> {
+    match config.provider.as_str() {
+        "anthropic" => {
+            let api_key = std::env::var(&config.api_key_env).map_err(|_| {
+                anyhow::anyhow!(
+                    "{} environment variable not set (required for Anthropic provider)",
+                    config.api_key_env
+                )
+            })?;
+            Ok(Arc::new(arawn_llm::AnthropicClient::new(api_key)))
+        }
+        _ => {
+            // All other providers use OpenAI-compatible client
+            Ok(Arc::new(arawn_llm::OpenAICompatibleClient::from_config(
+                &config.provider,
+                config.base_url.as_deref(),
+                &config.api_key_env,
+            )?))
+        }
+    }
 }
 
 fn build_engine_config(

@@ -1,3 +1,4 @@
+pub mod anthropic;
 pub mod client;
 pub mod error;
 pub mod groq;
@@ -6,6 +7,7 @@ pub mod openai_compat;
 pub mod retry;
 pub mod types;
 
+pub use anthropic::AnthropicClient;
 pub use client::LlmClient;
 pub use error::LlmError;
 pub use groq::GroqClient;
