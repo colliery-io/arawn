@@ -16,7 +16,7 @@ use crate::plan::PlanModeState;
 use crate::token_estimator::{ModelLimits, TokenEstimator};
 use crate::tool::ToolRegistry;
 
-const DEFAULT_MAX_ITERATIONS: usize = 40;
+const DEFAULT_MAX_ITERATIONS: usize = 200;
 const MAX_COMPACT_FAILURES: u32 = 3;
 
 /// Live progress events emitted during the engine loop.
@@ -215,7 +215,12 @@ impl QueryEngine {
         session: &mut Session,
         ctx: &ToolContext,
     ) -> Result<String, EngineError> {
-        for iteration in 0..self.config.max_iterations {
+        let mut iteration = 0;
+        loop {
+            if self.config.max_iterations > 0 && iteration >= self.config.max_iterations {
+                return Err(EngineError::MaxIterations(iteration));
+            }
+            iteration += 1;
             debug!(iteration, "query engine turn");
 
             // Drain background task notifications and inject into conversation
@@ -503,8 +508,6 @@ impl QueryEngine {
 
             // Loop — send updated history back to LLM
         }
-
-        Err(EngineError::MaxIterations(self.config.max_iterations))
     }
 
     fn build_request(&self, session: &Session) -> ChatRequest {
