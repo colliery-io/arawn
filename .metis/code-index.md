@@ -1,188 +1,191 @@
 # Code Index
 
-> Generated: 2026-04-05T18:57:50Z | 142 files | Rust
+> Generated: 2026-04-06T01:17:19Z | 144 files | Python, Rust
 
 ## Project Structure
 
 ```
-└── crates/
-    ├── arawn/
-    │   └── src/
-    │       ├── channel_prompt.rs
-    │       ├── config.rs
-    │       ├── config_watcher.rs
-    │       ├── lib.rs
-    │       ├── local_service.rs
-    │       ├── main.rs
-    │       ├── plugin_cmd.rs
-    │       └── ws_server.rs
-    ├── arawn-core/
-    │   └── src/
-    │       ├── error.rs
-    │       ├── lib.rs
-    │       ├── message.rs
-    │       ├── session.rs
-    │       ├── session_stats.rs
-    │       └── workstream.rs
-    ├── arawn-embed/
-    │   └── src/
-    │       ├── api.rs
-    │       ├── config.rs
-    │       ├── error.rs
-    │       ├── lib.rs
-    │       └── local.rs
-    ├── arawn-engine/
-    │   └── src/
-    │       ├── agent_defs.rs
-    │       ├── background.rs
-    │       ├── compact_prompt.rs
-    │       ├── compactor.rs
-    │       ├── context.rs
-    │       ├── diff.rs
-    │       ├── error.rs
-    │       ├── hooks/
-    │       │   ├── config.rs
-    │       │   ├── events.rs
-    │       │   ├── executor.rs
-    │       │   ├── file_watcher.rs
-    │       │   ├── loader.rs
-    │       │   ├── matcher.rs
-    │       │   ├── mod.rs
-    │       │   └── runner.rs
-    │       ├── lib.rs
-    │       ├── permissions/
-    │       │   ├── checker.rs
-    │       │   ├── config.rs
-    │       │   ├── mod.rs
-    │       │   ├── prompt.rs
-    │       │   └── rules.rs
-    │       ├── plan.rs
-    │       ├── plugin_adapter.rs
-    │       ├── plugin_loader.rs
-    │       ├── plugin_watcher.rs
-    │       ├── plugins/
-    │       │   ├── builtin.rs
-    │       │   ├── components.rs
-    │       │   ├── installer.rs
-    │       │   ├── loader.rs
-    │       │   ├── manifest.rs
-    │       │   ├── marketplace.rs
-    │       │   ├── mod.rs
-    │       │   ├── runtime.rs
-    │       │   └── settings.rs
-    │       ├── query_engine.rs
-    │       ├── skills/
-    │       │   ├── definition.rs
-    │       │   ├── loader.rs
-    │       │   └── mod.rs
-    │       ├── system_prompt.rs
-    │       ├── testing.rs
-    │       ├── token_estimator.rs
-    │       ├── tool.rs
-    │       ├── tool_result_limiter.rs
-    │       └── tools/
-    │           ├── agent.rs
-    │           ├── ask_user.rs
-    │           ├── enter_plan_mode.rs
-    │           ├── exit_plan_mode.rs
-    │           ├── file_edit.rs
-    │           ├── file_read.rs
-    │           ├── file_write.rs
-    │           ├── glob.rs
-    │           ├── grep.rs
-    │           ├── memory_search.rs
-    │           ├── memory_store.rs
-    │           ├── mod.rs
-    │           ├── shell.rs
-    │           ├── skill.rs
-    │           ├── sleep.rs
-    │           ├── task_list.rs
-    │           ├── task_output.rs
-    │           ├── task_stop.rs
-    │           ├── think.rs
-    │           ├── web_fetch.rs
-    │           └── web_search.rs
-    ├── arawn-llm/
-    │   └── src/
-    │       ├── client.rs
-    │       ├── error.rs
-    │       ├── groq.rs
-    │       ├── lib.rs
-    │       ├── mock.rs
-    │       ├── openai_compat.rs
-    │       ├── retry.rs
-    │       └── types.rs
-    ├── arawn-mcp/
-    │   └── src/
-    │       ├── adapter.rs
-    │       ├── config.rs
-    │       ├── lib.rs
-    │       └── manager.rs
-    ├── arawn-memory/
-    │   └── src/
-    │       ├── error.rs
-    │       ├── inject.rs
-    │       ├── lib.rs
-    │       ├── manager.rs
-    │       ├── store.rs
-    │       ├── types.rs
-    │       └── vector.rs
-    ├── arawn-service/
-    │   └── src/
-    │       ├── error.rs
-    │       ├── lib.rs
-    │       └── types.rs
-    ├── arawn-storage/
-    │   └── src/
-    │       ├── database.rs
-    │       ├── error.rs
-    │       ├── jsonl.rs
-    │       ├── layout.rs
-    │       ├── lib.rs
-    │       ├── session_store.rs
-    │       ├── store.rs
-    │       └── workstream_store.rs
-    ├── arawn-tests/
-    │   ├── fixtures/
-    │   │   ├── arawn-plugin-web-fetch/
-    │   │   │   └── src/
-    │   │   │       └── lib.rs
-    │   │   └── arawn-plugin-web-search/
-    │   │       └── src/
-    │   │           └── lib.rs
-    │   ├── src/
-    │   │   └── lib.rs
-    │   └── tests/
-    │       ├── compaction.rs
-    │       ├── engine_persistence.rs
-    │       ├── full_pipeline.rs
-    │       ├── hooks.rs
-    │       ├── hot_reload.rs
-    │       ├── local_service.rs
-    │       ├── permissions.rs
-    │       ├── plugin_components.rs
-    │       ├── plugin_loading.rs
-    │       ├── skills.rs
-    │       └── websocket.rs
-    ├── arawn-tool-plugin/
-    │   └── src/
-    │       └── lib.rs
-    └── arawn-tui/
-        └── src/
-            ├── action.rs
-            ├── app.rs
-            ├── command.rs
-            ├── event.rs
-            ├── event_loop.rs
-            ├── lib.rs
-            ├── markdown.rs
-            ├── modal.rs
-            ├── render.rs
-            ├── snapshot.rs
-            ├── snapshot_tests.rs
-            ├── theme.rs
-            ├── tui_prompt.rs
-            └── ws_client.rs
+├── crates/
+│   ├── arawn/
+│   │   └── src/
+│   │       ├── channel_prompt.rs
+│   │       ├── config.rs
+│   │       ├── config_watcher.rs
+│   │       ├── lib.rs
+│   │       ├── local_service.rs
+│   │       ├── main.rs
+│   │       ├── plugin_cmd.rs
+│   │       └── ws_server.rs
+│   ├── arawn-core/
+│   │   └── src/
+│   │       ├── error.rs
+│   │       ├── lib.rs
+│   │       ├── message.rs
+│   │       ├── session.rs
+│   │       ├── session_stats.rs
+│   │       └── workstream.rs
+│   ├── arawn-embed/
+│   │   └── src/
+│   │       ├── api.rs
+│   │       ├── config.rs
+│   │       ├── error.rs
+│   │       ├── lib.rs
+│   │       └── local.rs
+│   ├── arawn-engine/
+│   │   └── src/
+│   │       ├── agent_defs.rs
+│   │       ├── background.rs
+│   │       ├── compact_prompt.rs
+│   │       ├── compactor.rs
+│   │       ├── context.rs
+│   │       ├── diff.rs
+│   │       ├── error.rs
+│   │       ├── hooks/
+│   │       │   ├── config.rs
+│   │       │   ├── events.rs
+│   │       │   ├── executor.rs
+│   │       │   ├── file_watcher.rs
+│   │       │   ├── loader.rs
+│   │       │   ├── matcher.rs
+│   │       │   ├── mod.rs
+│   │       │   └── runner.rs
+│   │       ├── lib.rs
+│   │       ├── permissions/
+│   │       │   ├── checker.rs
+│   │       │   ├── config.rs
+│   │       │   ├── mod.rs
+│   │       │   ├── prompt.rs
+│   │       │   └── rules.rs
+│   │       ├── plan.rs
+│   │       ├── plugin_adapter.rs
+│   │       ├── plugin_loader.rs
+│   │       ├── plugin_watcher.rs
+│   │       ├── plugins/
+│   │       │   ├── builtin.rs
+│   │       │   ├── components.rs
+│   │       │   ├── installer.rs
+│   │       │   ├── loader.rs
+│   │       │   ├── manifest.rs
+│   │       │   ├── marketplace.rs
+│   │       │   ├── mod.rs
+│   │       │   ├── runtime.rs
+│   │       │   └── settings.rs
+│   │       ├── query_engine.rs
+│   │       ├── skills/
+│   │       │   ├── definition.rs
+│   │       │   ├── loader.rs
+│   │       │   └── mod.rs
+│   │       ├── system_prompt.rs
+│   │       ├── testing.rs
+│   │       ├── token_estimator.rs
+│   │       ├── tool.rs
+│   │       ├── tool_result_limiter.rs
+│   │       └── tools/
+│   │           ├── agent.rs
+│   │           ├── ask_user.rs
+│   │           ├── enter_plan_mode.rs
+│   │           ├── exit_plan_mode.rs
+│   │           ├── file_edit.rs
+│   │           ├── file_read.rs
+│   │           ├── file_write.rs
+│   │           ├── glob.rs
+│   │           ├── grep.rs
+│   │           ├── memory_search.rs
+│   │           ├── memory_store.rs
+│   │           ├── mod.rs
+│   │           ├── shell.rs
+│   │           ├── skill.rs
+│   │           ├── sleep.rs
+│   │           ├── task_list.rs
+│   │           ├── task_output.rs
+│   │           ├── task_stop.rs
+│   │           ├── think.rs
+│   │           ├── web_fetch.rs
+│   │           └── web_search.rs
+│   ├── arawn-llm/
+│   │   └── src/
+│   │       ├── anthropic.rs
+│   │       ├── client.rs
+│   │       ├── error.rs
+│   │       ├── groq.rs
+│   │       ├── lib.rs
+│   │       ├── mock.rs
+│   │       ├── openai_compat.rs
+│   │       ├── retry.rs
+│   │       └── types.rs
+│   ├── arawn-mcp/
+│   │   └── src/
+│   │       ├── adapter.rs
+│   │       ├── config.rs
+│   │       ├── lib.rs
+│   │       └── manager.rs
+│   ├── arawn-memory/
+│   │   └── src/
+│   │       ├── error.rs
+│   │       ├── inject.rs
+│   │       ├── lib.rs
+│   │       ├── manager.rs
+│   │       ├── store.rs
+│   │       ├── types.rs
+│   │       └── vector.rs
+│   ├── arawn-service/
+│   │   └── src/
+│   │       ├── error.rs
+│   │       ├── lib.rs
+│   │       └── types.rs
+│   ├── arawn-storage/
+│   │   └── src/
+│   │       ├── database.rs
+│   │       ├── error.rs
+│   │       ├── jsonl.rs
+│   │       ├── layout.rs
+│   │       ├── lib.rs
+│   │       ├── session_store.rs
+│   │       ├── store.rs
+│   │       └── workstream_store.rs
+│   ├── arawn-tests/
+│   │   ├── fixtures/
+│   │   │   ├── arawn-plugin-web-fetch/
+│   │   │   │   └── src/
+│   │   │   │       └── lib.rs
+│   │   │   └── arawn-plugin-web-search/
+│   │   │       └── src/
+│   │   │           └── lib.rs
+│   │   ├── src/
+│   │   │   └── lib.rs
+│   │   └── tests/
+│   │       ├── compaction.rs
+│   │       ├── engine_persistence.rs
+│   │       ├── full_pipeline.rs
+│   │       ├── hooks.rs
+│   │       ├── hot_reload.rs
+│   │       ├── local_service.rs
+│   │       ├── permissions.rs
+│   │       ├── plugin_components.rs
+│   │       ├── plugin_loading.rs
+│   │       ├── skills.rs
+│   │       └── websocket.rs
+│   ├── arawn-tool-plugin/
+│   │   └── src/
+│   │       └── lib.rs
+│   └── arawn-tui/
+│       └── src/
+│           ├── action.rs
+│           ├── app.rs
+│           ├── command.rs
+│           ├── event.rs
+│           ├── event_loop.rs
+│           ├── lib.rs
+│           ├── markdown.rs
+│           ├── modal.rs
+│           ├── render.rs
+│           ├── snapshot.rs
+│           ├── snapshot_tests.rs
+│           ├── theme.rs
+│           ├── tui_prompt.rs
+│           └── ws_client.rs
+└── scripts/
+    └── functional_test.py
 ```
 
 ## Modules
@@ -298,23 +301,25 @@
 - pub `forget_entity` function L292-341 — `(&self, query: &str) -> serde_json::Value` — Forget/delete an entity via /forget command.
 -  `LocalService` type L48-342 — `= LocalService`
 -  `infer_entity_type` function L345-358 — `(text: &str) -> (arawn_memory::EntityType, String)` — Infer entity type from text patterns.
--  `LocalService` type L363-709 — `impl ArawnService for LocalService`
+-  `LocalService` type L363-716 — `impl ArawnService for LocalService`
 -  `list_workstreams` function L364-379 — `(&self) -> Result<Vec<WorkstreamInfo>, ServiceError>`
 -  `create_workstream` function L381-398 — `( &self, name: String, root_dir: PathBuf, ) -> Result<WorkstreamInfo, ServiceErr...`
 -  `list_sessions` function L400-419 — `( &self, workstream_id: Option<Uuid>, ) -> Result<Vec<SessionInfo>, ServiceError...`
 -  `create_session` function L421-442 — `( &self, workstream_id: Option<Uuid>, ) -> Result<SessionInfo, ServiceError>`
 -  `load_session` function L444-471 — `(&self, id: Uuid) -> Result<SessionDetail, ServiceError>`
--  `send_message` function L473-702 — `( &self, session_id: Uuid, content: String, ) -> Result<Pin<Box<dyn futures::Str...`
--  `cancel` function L704-708 — `(&self, _session_id: Uuid) -> Result<(), ServiceError>`
--  `resolve_ws_dir_from_store` function L712-723 — `(store: &Store, ws_id: Option<Uuid>) -> Result<String, ServiceError>` — Resolve workstream directory name from store.
--  `first_sentence` function L727-738 — `(s: &str) -> String` — Extract the first sentence and sanitize for use in a markdown table cell.
+-  `send_message` function L473-709 — `( &self, session_id: Uuid, content: String, ) -> Result<Pin<Box<dyn futures::Str...`
+-  `cancel` function L711-715 — `(&self, _session_id: Uuid) -> Result<(), ServiceError>`
+-  `resolve_ws_dir_from_store` function L719-730 — `(store: &Store, ws_id: Option<Uuid>) -> Result<String, ServiceError>` — Resolve workstream directory name from store.
+-  `first_sentence` function L734-745 — `(s: &str) -> String` — Extract the first sentence and sanitize for use in a markdown table cell.
 
 #### crates/arawn/src/main.rs
 
 -  `DEFAULT_MODEL` variable L21 — `: &str`
--  `main` function L24-568 — `() -> Result<()>`
--  `build_engine_config` function L570-602 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
--  `dirs_path` function L604-613 — `() -> Option<String>`
+-  `main` function L24-380 — `() -> Result<()>`
+-  `run_cli_via_server` function L383-494 — `( url: &str, prompt: &str, session_id: Option<Uuid>, ) -> Result<()>` — Run a CLI prompt by connecting to the running server via WebSocket.
+-  `build_llm_client` function L497-519 — `( config: &arawn_bin::LlmConfig, ) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
+-  `build_engine_config` function L521-553 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
+-  `dirs_path` function L555-564 — `() -> Option<String>`
 
 #### crates/arawn/src/plugin_cmd.rs
 
@@ -765,106 +770,117 @@
 
 #### crates/arawn-engine/src/query_engine.rs
 
-- pub `PromptContext` struct L24-35 — `{ prompts_dir: Option<std::path::PathBuf>, os: String, shell: String, cwd: std::...` — Cached context for building system prompts per-turn.
-- pub `QueryEngineConfig` struct L38-49 — `{ model: String, max_iterations: usize, system_prompt: String, max_tokens: Optio...` — Configuration for the query engine.
-- pub `QueryEngine` struct L66-83 — `{ llm: Arc<dyn LlmClient>, registry: Arc<ToolRegistry>, config: QueryEngineConfi...` — The agentic loop: prompt → LLM → tool_use → execute → feed result → loop.
-- pub `new` function L86-101 — `(llm: Arc<dyn LlmClient>, registry: Arc<ToolRegistry>) -> Self`
-- pub `with_config` function L103-122 — `( llm: Arc<dyn LlmClient>, registry: Arc<ToolRegistry>, config: QueryEngineConfi...`
-- pub `with_compactor` function L124-127 — `(mut self, compactor: Compactor) -> Self`
-- pub `with_permission_checker` function L129-132 — `(mut self, checker: Arc<PermissionChecker>) -> Self`
-- pub `with_hook_runner` function L134-137 — `(mut self, runner: Arc<HookRunner>) -> Self`
-- pub `with_skill_registry` function L139-142 — `(mut self, registry: Arc<crate::skills::SkillRegistry>) -> Self`
-- pub `with_plugin_registry` function L144-147 — `(mut self, registry: Arc<crate::plugins::PluginRegistry>) -> Self`
-- pub `with_plan_state` function L149-152 — `(mut self, plan_state: Arc<PlanModeState>) -> Self`
-- pub `plan_state` function L155-157 — `(&self) -> Option<&Arc<PlanModeState>>` — Get the plan mode state (if configured).
-- pub `with_background_tasks` function L159-162 — `(mut self, manager: Arc<BackgroundTaskManager>) -> Self`
-- pub `fire_hook` function L169-175 — `(&self, input: &HookInput) -> Option<crate::hooks::AggregatedHookResult>` — Fire a hook event.
-- pub `run` function L178-457 — `( &mut self, session: &mut Session, ctx: &ToolContext, ) -> Result<String, Engin...` — Run the agentic loop for a session.
+- pub `ProgressEvent` enum L25-38 — `ToolCallStart | ToolCallResult` — Live progress events emitted during the engine loop.
+- pub `PromptContext` struct L42-53 — `{ prompts_dir: Option<std::path::PathBuf>, os: String, shell: String, cwd: std::...` — Cached context for building system prompts per-turn.
+- pub `QueryEngineConfig` struct L56-67 — `{ model: String, max_iterations: usize, system_prompt: String, max_tokens: Optio...` — Configuration for the query engine.
+- pub `QueryEngine` struct L84-103 — `{ llm: Arc<dyn LlmClient>, registry: Arc<ToolRegistry>, config: QueryEngineConfi...` — The agentic loop: prompt → LLM → tool_use → execute → feed result → loop.
+- pub `new` function L106-122 — `(llm: Arc<dyn LlmClient>, registry: Arc<ToolRegistry>) -> Self`
+- pub `with_config` function L124-144 — `( llm: Arc<dyn LlmClient>, registry: Arc<ToolRegistry>, config: QueryEngineConfi...`
+- pub `with_compactor` function L146-149 — `(mut self, compactor: Compactor) -> Self`
+- pub `with_permission_checker` function L151-154 — `(mut self, checker: Arc<PermissionChecker>) -> Self`
+- pub `with_hook_runner` function L156-159 — `(mut self, runner: Arc<HookRunner>) -> Self`
+- pub `with_skill_registry` function L161-164 — `(mut self, registry: Arc<crate::skills::SkillRegistry>) -> Self`
+- pub `with_plugin_registry` function L166-169 — `(mut self, registry: Arc<crate::plugins::PluginRegistry>) -> Self`
+- pub `with_plan_state` function L171-174 — `(mut self, plan_state: Arc<PlanModeState>) -> Self`
+- pub `plan_state` function L177-179 — `(&self) -> Option<&Arc<PlanModeState>>` — Get the plan mode state (if configured).
+- pub `with_background_tasks` function L181-184 — `(mut self, manager: Arc<BackgroundTaskManager>) -> Self`
+- pub `with_progress_sender` function L187-190 — `(mut self, tx: tokio::sync::mpsc::Sender<ProgressEvent>) -> Self` — Set a channel for live progress events during the engine loop.
+- pub `fire_hook` function L204-210 — `(&self, input: &HookInput) -> Option<crate::hooks::AggregatedHookResult>` — Fire a hook event.
+- pub `run` function L213-511 — `( &mut self, session: &mut Session, ctx: &ToolContext, ) -> Result<String, Engin...` — Run the agentic loop for a session.
 -  `DEFAULT_MAX_ITERATIONS` variable L19 — `: usize`
 -  `MAX_COMPACT_FAILURES` variable L20 — `: u32`
--  `DEFAULT_SYSTEM_PROMPT` variable L21 — `: &str`
--  `QueryEngineConfig` type L51-63 — `impl Default for QueryEngineConfig`
--  `default` function L52-62 — `() -> Self`
--  `QueryEngine` type L85-775 — `= QueryEngine`
--  `build_request` function L459-547 — `(&self, session: &Session) -> ChatRequest`
--  `stream_response_with_retry` function L552-591 — `( &self, session: &Session, _ctx: &ToolContext, ) -> Result<AssembledResponse, E...` — Build the request and stream with up to 2 retries on transient LLM errors
--  `MAX_RETRIES` variable L557 — `: u32`
--  `stream_response` function L593-653 — `( &self, request: ChatRequest, ) -> Result<AssembledResponse, EngineError>`
--  `execute_tool` function L655-774 — `( &self, ctx: &ToolContext, tool_use_id: &str, name: &str, arguments: &serde_jso...`
--  `parse_arguments` function L777-782 — `(raw: &str) -> serde_json::Value`
--  `AssembledResponse` struct L785-789 — `{ text: String, tool_calls: Vec<AssembledToolCall>, usage: Option<arawn_llm::Usa...`
--  `AssembledToolCall` struct L791-795 — `{ id: String, name: String, arguments: serde_json::Value }`
--  `ToolResult` struct L797-800 — `{ content: String, is_error: bool }`
--  `tests` module L803-990 — `-`
--  `MockLlm` struct L814-816 — `{ responses: Mutex<Vec<Vec<ChatChunk>>> }` — Mock LLM that returns pre-scripted responses.
--  `MockLlm` type L818-848 — `= MockLlm`
--  `new` function L819-823 — `(responses: Vec<Vec<ChatChunk>>) -> Self`
--  `text` function L826-833 — `(text: &str) -> Vec<ChatChunk>` — Convenience: text-only response
--  `tool_call` function L836-847 — `(id: &str, name: &str, args: &str) -> Vec<ChatChunk>` — Convenience: tool call then done
--  `MockLlm` type L851-867 — `impl LlmClient for MockLlm`
--  `stream` function L852-866 — `( &self, _request: ChatRequest, ) -> Result< Pin<Box<dyn futures::Stream<Item = ...`
--  `setup` function L869-874 — `() -> (Workstream, Session, ToolContext)`
--  `text_only_response` function L877-890 — `()`
--  `single_tool_call` function L893-911 — `()`
--  `tool_not_found` function L914-936 — `()`
--  `max_iterations_exceeded` function L939-966 — `()`
--  `multi_turn_tool_chain` function L969-988 — `()`
+-  `DEFAULT_SYSTEM_PROMPT` variable L39 — `: &str`
+-  `QueryEngineConfig` type L69-81 — `impl Default for QueryEngineConfig`
+-  `default` function L70-80 — `() -> Self`
+-  `QueryEngine` type L105-831 — `= QueryEngine`
+-  `emit_progress` function L193-197 — `(&self, event: ProgressEvent)` — Emit a progress event if a sender is configured.
+-  `build_request` function L513-603 — `(&self, session: &Session) -> ChatRequest`
+-  `stream_response_with_retry` function L608-647 — `( &self, session: &Session, _ctx: &ToolContext, ) -> Result<AssembledResponse, E...` — Build the request and stream with up to 2 retries on transient LLM errors
+-  `MAX_RETRIES` variable L613 — `: u32`
+-  `stream_response` function L649-709 — `( &self, request: ChatRequest, ) -> Result<AssembledResponse, EngineError>`
+-  `execute_tool` function L711-830 — `( &self, ctx: &ToolContext, tool_use_id: &str, name: &str, arguments: &serde_jso...`
+-  `parse_arguments` function L833-838 — `(raw: &str) -> serde_json::Value`
+-  `AssembledResponse` struct L841-845 — `{ text: String, tool_calls: Vec<AssembledToolCall>, usage: Option<arawn_llm::Usa...`
+-  `AssembledToolCall` struct L847-851 — `{ id: String, name: String, arguments: serde_json::Value }`
+-  `ToolResult` struct L853-856 — `{ content: String, is_error: bool }`
+-  `CORE_TOOLS` variable L859-861 — `: &[&str]` — Core tools always included in every LLM request.
+-  `WEB_TOOLS` variable L864 — `: &[&str]` — Web tools — included when conversation references URLs, web, search, fetch, APIs.
+-  `PLAN_TOOLS` variable L867 — `: &[&str]` — Planning tools — included when in plan mode or conversation mentions planning.
+-  `TASK_TOOLS` variable L870-872 — `: &[&str]` — Task management tools — included when conversation mentions tasks, background, todo.
+-  `MEMORY_TOOLS` variable L875 — `: &[&str]` — Memory tools — included when conversation mentions memory, remember, recall.
+-  `AGENT_TOOLS` variable L878 — `: &[&str]` — Agent/delegation tools — included when conversation mentions delegation, agent, subagent.
+-  `ALWAYS_TOOLS` variable L881 — `: &[&str]` — Other tools always included.
+-  `filter_tools_for_context` function L885-993 — `( all_tools: &[arawn_llm::ToolDefinition], session: &Session, ) -> Vec<arawn_llm...` — Filter tool definitions to only contextually relevant ones for this turn.
+-  `tests` module L996-1183 — `-`
+-  `MockLlm` struct L1007-1009 — `{ responses: Mutex<Vec<Vec<ChatChunk>>> }` — Mock LLM that returns pre-scripted responses.
+-  `MockLlm` type L1011-1041 — `= MockLlm`
+-  `new` function L1012-1016 — `(responses: Vec<Vec<ChatChunk>>) -> Self`
+-  `text` function L1019-1026 — `(text: &str) -> Vec<ChatChunk>` — Convenience: text-only response
+-  `tool_call` function L1029-1040 — `(id: &str, name: &str, args: &str) -> Vec<ChatChunk>` — Convenience: tool call then done
+-  `MockLlm` type L1044-1060 — `impl LlmClient for MockLlm`
+-  `stream` function L1045-1059 — `( &self, _request: ChatRequest, ) -> Result< Pin<Box<dyn futures::Stream<Item = ...`
+-  `setup` function L1062-1067 — `() -> (Workstream, Session, ToolContext)`
+-  `text_only_response` function L1070-1083 — `()`
+-  `single_tool_call` function L1086-1104 — `()`
+-  `tool_not_found` function L1107-1129 — `()`
+-  `max_iterations_exceeded` function L1132-1159 — `()`
+-  `multi_turn_tool_chain` function L1162-1181 — `()`
 
 #### crates/arawn-engine/src/system_prompt.rs
 
-- pub `SystemPromptBuilder` struct L125-128 — `{ sections: Vec<PromptSection>, token_budget: u32 }` — Builds a system prompt from static defaults (overridable) + dynamic context.
-- pub `new` function L131-136 — `() -> Self`
-- pub `with_token_budget` function L139-142 — `(mut self, budget: u32) -> Self` — Set a custom token budget.
-- pub `load_static_sections` function L146-158 — `(mut self, prompts_dir: Option<&Path>) -> Self` — Load all 7 static sections, checking for user overrides in `prompts_dir`.
-- pub `environment` function L161-172 — `(mut self, os: &str, shell: &str, cwd: &Path, model: &str) -> Self` — Add the environment section.
-- pub `workstream` function L175-185 — `(mut self, name: &str, root_dir: &Path) -> Self` — Add the workstream section.
-- pub `tools` function L195-210 — `(mut self, tool_defs: &[ToolDefinition]) -> Self` — Acknowledge tool availability in the system prompt.
-- pub `context_files` function L213-236 — `(mut self, files: &[ContextFile]) -> Self` — Add context files (arawn.md at workstream and global levels).
-- pub `memories` function L239-254 — `(mut self, memories: &[String]) -> Self` — Add relevant memories (future — currently a no-op if empty).
-- pub `session_context` function L257-268 — `(mut self, summary: &str) -> Self` — Add session context (for resumed sessions).
-- pub `plugin_prompts` function L271-287 — `(mut self, prompts: &[String]) -> Self` — Add plugin-contributed prompt fragments.
-- pub `build` function L290-312 — `(mut self) -> String` — Build the final system prompt string, enforcing token budget.
-- pub `ContextFile` struct L325-329 — `{ path: std::path::PathBuf, content: String, truncated: bool }` — A context file loaded from disk.
-- pub `find_context_files` function L332-348 — `(workstream_root: &Path, global_dir: &Path) -> Vec<ContextFile>` — Load context files from workstream root and global config dir.
+- pub `SystemPromptBuilder` struct L134-137 — `{ sections: Vec<PromptSection>, token_budget: u32 }` — Builds a system prompt from static defaults (overridable) + dynamic context.
+- pub `new` function L140-145 — `() -> Self`
+- pub `with_token_budget` function L148-151 — `(mut self, budget: u32) -> Self` — Set a custom token budget.
+- pub `load_static_sections` function L155-167 — `(mut self, prompts_dir: Option<&Path>) -> Self` — Load all 7 static sections, checking for user overrides in `prompts_dir`.
+- pub `environment` function L170-181 — `(mut self, os: &str, shell: &str, cwd: &Path, model: &str) -> Self` — Add the environment section.
+- pub `workstream` function L184-194 — `(mut self, name: &str, root_dir: &Path) -> Self` — Add the workstream section.
+- pub `tools` function L204-219 — `(mut self, tool_defs: &[ToolDefinition]) -> Self` — Acknowledge tool availability in the system prompt.
+- pub `context_files` function L222-245 — `(mut self, files: &[ContextFile]) -> Self` — Add context files (arawn.md at workstream and global levels).
+- pub `memories` function L248-263 — `(mut self, memories: &[String]) -> Self` — Add relevant memories (future — currently a no-op if empty).
+- pub `session_context` function L266-277 — `(mut self, summary: &str) -> Self` — Add session context (for resumed sessions).
+- pub `plugin_prompts` function L280-296 — `(mut self, prompts: &[String]) -> Self` — Add plugin-contributed prompt fragments.
+- pub `build` function L299-321 — `(mut self) -> String` — Build the final system prompt string, enforcing token budget.
+- pub `ContextFile` struct L334-338 — `{ path: std::path::PathBuf, content: String, truncated: bool }` — A context file loaded from disk.
+- pub `find_context_files` function L341-357 — `(workstream_root: &Path, global_dir: &Path) -> Vec<ContextFile>` — Load context files from workstream root and global config dir.
 -  `DEFAULT_TOKEN_BUDGET` variable L6 — `: u32` — Default token budget for the system prompt (~24k chars).
 -  `MAX_CONTEXT_FILE_CHARS` variable L9 — `: usize` — Max chars for a context file before truncation.
 -  `DEFAULT_IDENTITY` variable L13 — `: &str`
--  `DEFAULT_SYSTEM` variable L15-19 — `: &str`
--  `DEFAULT_DOING_TASKS` variable L21-46 — `: &str`
--  `DEFAULT_ACTIONS` variable L48-54 — `: &str`
--  `DEFAULT_USING_TOOLS` variable L56-63 — `: &str`
--  `DEFAULT_TONE` variable L65-69 — `: &str`
--  `DEFAULT_OUTPUT_EFFICIENCY` variable L71-81 — `: &str`
--  `STATIC_SECTION_NAMES` variable L84-92 — `: &[&str]` — Names of the overridable static sections.
--  `STATIC_SECTION_DEFAULTS` variable L95-103 — `: &[&str]` — Compiled-in defaults for each static section.
--  `STATIC_SECTION_PRIORITIES` variable L106-114 — `: &[u8]` — Priority levels for sections.
--  `PromptSection` struct L118-122 — `{ name: String, content: String, priority: u8 }` — A section in the assembled prompt.
--  `SystemPromptBuilder` type L130-313 — `= SystemPromptBuilder`
--  `SystemPromptBuilder` type L315-319 — `impl Default for SystemPromptBuilder`
--  `default` function L316-318 — `() -> Self`
--  `load_context_file` function L350-369 — `(path: &Path, max_chars: usize) -> Option<ContextFile>`
--  `truncate_70_20` function L372-395 — `(content: &str, max_chars: usize) -> String` — Truncate keeping 70% from the head and 20% from the tail, with a marker in between.
--  `load_section` function L399-407 — `(name: &str, default: &str, prompts_dir: Option<&Path>) -> String`
--  `tests` module L410-725 — `-`
--  `default_assembly_includes_all_static_sections` function L417-433 — `()`
--  `sections_have_headers` function L437-448 — `()`
--  `empty_optional_sections_omitted` function L452-463 — `()`
--  `single_section_override` function L467-478 — `()`
--  `partial_overrides_other_sections_use_defaults` function L482-494 — `()`
--  `missing_override_dir_uses_defaults` function L498-504 — `()`
--  `empty_override_file_produces_empty_section` function L508-518 — `()`
--  `under_budget_all_sections_included` function L522-533 — `()`
--  `over_budget_drops_low_priority_sections` function L537-547 — `()`
--  `identity_survives_budget_cuts` function L551-560 — `()`
--  `truncation_produces_clean_sections` function L564-576 — `()`
--  `context_file_injected` function L580-591 — `()`
--  `context_file_missing_section_omitted` function L595-602 — `()`
--  `large_context_file_truncated` function L606-617 — `()`
--  `tools_section_reflects_tool_list` function L621-640 — `()`
--  `per_turn_freshness_different_tools` function L644-668 — `()`
--  `environment_section_contains_info` function L672-681 — `()`
--  `workstream_section_contains_info` function L685-692 — `()`
--  `snapshot_full_build` function L696-724 — `()`
+-  `DEFAULT_SYSTEM` variable L15-20 — `: &str`
+-  `DEFAULT_DOING_TASKS` variable L22-46 — `: &str`
+-  `DEFAULT_ACTIONS` variable L48-56 — `: &str`
+-  `DEFAULT_USING_TOOLS` variable L58-68 — `: &str`
+-  `DEFAULT_TONE` variable L70-74 — `: &str`
+-  `DEFAULT_OUTPUT_EFFICIENCY` variable L76-90 — `: &str`
+-  `STATIC_SECTION_NAMES` variable L93-101 — `: &[&str]` — Names of the overridable static sections.
+-  `STATIC_SECTION_DEFAULTS` variable L104-112 — `: &[&str]` — Compiled-in defaults for each static section.
+-  `STATIC_SECTION_PRIORITIES` variable L115-123 — `: &[u8]` — Priority levels for sections.
+-  `PromptSection` struct L127-131 — `{ name: String, content: String, priority: u8 }` — A section in the assembled prompt.
+-  `SystemPromptBuilder` type L139-322 — `= SystemPromptBuilder`
+-  `SystemPromptBuilder` type L324-328 — `impl Default for SystemPromptBuilder`
+-  `default` function L325-327 — `() -> Self`
+-  `load_context_file` function L359-378 — `(path: &Path, max_chars: usize) -> Option<ContextFile>`
+-  `truncate_70_20` function L381-404 — `(content: &str, max_chars: usize) -> String` — Truncate keeping 70% from the head and 20% from the tail, with a marker in between.
+-  `load_section` function L408-416 — `(name: &str, default: &str, prompts_dir: Option<&Path>) -> String`
+-  `tests` module L419-734 — `-`
+-  `default_assembly_includes_all_static_sections` function L426-442 — `()`
+-  `sections_have_headers` function L446-457 — `()`
+-  `empty_optional_sections_omitted` function L461-472 — `()`
+-  `single_section_override` function L476-487 — `()`
+-  `partial_overrides_other_sections_use_defaults` function L491-503 — `()`
+-  `missing_override_dir_uses_defaults` function L507-513 — `()`
+-  `empty_override_file_produces_empty_section` function L517-527 — `()`
+-  `under_budget_all_sections_included` function L531-542 — `()`
+-  `over_budget_drops_low_priority_sections` function L546-556 — `()`
+-  `identity_survives_budget_cuts` function L560-569 — `()`
+-  `truncation_produces_clean_sections` function L573-585 — `()`
+-  `context_file_injected` function L589-600 — `()`
+-  `context_file_missing_section_omitted` function L604-611 — `()`
+-  `large_context_file_truncated` function L615-626 — `()`
+-  `tools_section_reflects_tool_list` function L630-649 — `()`
+-  `per_turn_freshness_different_tools` function L653-677 — `()`
+-  `environment_section_contains_info` function L681-690 — `()`
+-  `workstream_section_contains_info` function L694-701 — `()`
+-  `snapshot_full_build` function L705-733 — `()`
 
 #### crates/arawn-engine/src/testing.rs
 
@@ -987,13 +1003,13 @@
 - pub `DEFAULT_MAX_RESULT_SIZE_CHARS` variable L9 — `: usize` — Default maximum characters per tool result before persisting to disk.
 - pub `limit_tool_result` function L18-57 — `( output: ToolOutput, session_id: Uuid, data_dir: &Path, max_chars: usize, ) -> ...` — Check if a tool output exceeds the size threshold.
 -  `PREVIEW_SIZE` variable L12 — `: usize` — Truncation preview size — how much of the original to keep inline.
--  `truncate_output` function L59-83 — `( output: ToolOutput, _max_chars: usize, persisted_path: Option<&Path>, ) -> Too...`
--  `tests` module L86-176 — `-`
--  `small_output_passes_through` function L91-105 — `()`
--  `large_output_gets_truncated_and_persisted` function L108-139 — `()`
--  `truncated_output_contains_preview` function L142-152 — `()`
--  `error_flag_preserved` function L155-163 — `()`
--  `custom_threshold` function L166-175 — `()`
+-  `truncate_output` function L59-88 — `( output: ToolOutput, _max_chars: usize, persisted_path: Option<&Path>, ) -> Too...`
+-  `tests` module L91-181 — `-`
+-  `small_output_passes_through` function L96-110 — `()`
+-  `large_output_gets_truncated_and_persisted` function L113-144 — `()`
+-  `truncated_output_contains_preview` function L147-157 — `()`
+-  `error_flag_preserved` function L160-168 — `()`
+-  `custom_threshold` function L171-180 — `()`
 
 ### crates/arawn-engine/src/hooks
 
@@ -1594,22 +1610,22 @@
 - pub `with_background_manager` function L44-47 — `(mut self, mgr: Arc<BackgroundTaskManager>) -> Self` — Attach a background task manager for `run_in_background` support.
 -  `DEFAULT_MAX_TURNS` variable L20 — `: usize`
 -  `AgentTool` type L34-48 — `= AgentTool`
--  `AgentTool` type L51-255 — `impl Tool for AgentTool`
+-  `AgentTool` type L51-266 — `impl Tool for AgentTool`
 -  `name` function L52-54 — `(&self) -> &str`
--  `description` function L56-64 — `(&self) -> &str`
--  `parameters_schema` function L66-89 — `(&self) -> Value`
--  `execute` function L91-254 — `(&self, ctx: &ToolContext, params: Value) -> Result<ToolOutput, EngineError>`
--  `tests` module L258-434 — `-`
--  `test_ctx_with_mock` function L265-274 — `( responses: Vec<MockResponse>, ) -> (ToolContext, Arc<MockLlmClient>, Arc<ToolR...`
--  `schema_is_valid` function L277-286 — `()`
--  `text_only_sub_agent` function L289-306 — `()`
--  `sub_agent_with_tool_call` function L309-326 — `()`
--  `sub_agent_no_llm_errors` function L329-338 — `()`
--  `sub_agent_max_iterations_returns_last_text` function L341-363 — `()`
--  `depth_limit_prevents_infinite_recursion` function L366-380 — `()`
--  `explore_agent_type_used` function L383-399 — `()`
--  `unknown_type_falls_back_to_general` function L402-416 — `()`
--  `for_sub_agent_increments_depth` function L419-433 — `()`
+-  `description` function L56-75 — `(&self) -> &str`
+-  `parameters_schema` function L77-100 — `(&self) -> Value`
+-  `execute` function L102-265 — `(&self, ctx: &ToolContext, params: Value) -> Result<ToolOutput, EngineError>`
+-  `tests` module L269-445 — `-`
+-  `test_ctx_with_mock` function L276-285 — `( responses: Vec<MockResponse>, ) -> (ToolContext, Arc<MockLlmClient>, Arc<ToolR...`
+-  `schema_is_valid` function L288-297 — `()`
+-  `text_only_sub_agent` function L300-317 — `()`
+-  `sub_agent_with_tool_call` function L320-337 — `()`
+-  `sub_agent_no_llm_errors` function L340-349 — `()`
+-  `sub_agent_max_iterations_returns_last_text` function L352-374 — `()`
+-  `depth_limit_prevents_infinite_recursion` function L377-391 — `()`
+-  `explore_agent_type_used` function L394-410 — `()`
+-  `unknown_type_falls_back_to_general` function L413-427 — `()`
+-  `for_sub_agent_increments_depth` function L430-444 — `()`
 
 #### crates/arawn-engine/src/tools/ask_user.rs
 
@@ -1688,23 +1704,23 @@
 #### crates/arawn-engine/src/tools/file_read.rs
 
 - pub `FileReadTool` struct L12 — `-` — Read a file within the workstream's working directory.
--  `FileReadTool` type L15-110 — `impl Tool for FileReadTool`
+-  `FileReadTool` type L15-124 — `impl Tool for FileReadTool`
 -  `name` function L16-18 — `(&self) -> &str`
 -  `description` function L20-29 — `(&self) -> &str`
 -  `is_read_only` function L31-33 — `(&self) -> bool`
 -  `parameters_schema` function L35-54 — `(&self) -> Value`
--  `execute` function L56-109 — `(&self, ctx: &ToolContext, params: Value) -> Result<ToolOutput, EngineError>`
--  `would_escape_root` function L115-120 — `(root: &Path, relative_path: &str) -> bool` — Check if a path would escape the root without requiring the file to exist.
--  `normalize_path` function L123-135 — `(path: &Path) -> std::path::PathBuf` — Normalize a path by resolving .
--  `tests` module L138-246 — `-`
--  `test_ctx_with_dir` function L145-148 — `(dir: &Path) -> ToolContext`
--  `read_existing_file` function L151-166 — `()`
--  `read_with_offset_and_limit` function L169-183 — `()`
--  `read_nonexistent_file` function L186-197 — `()`
--  `path_traversal_rejected` function L200-220 — `()`
--  `missing_path_param` function L223-229 — `()`
--  `schema_is_valid` function L232-237 — `()`
--  `would_escape_root_detects_traversal` function L240-245 — `()`
+-  `execute` function L56-123 — `(&self, ctx: &ToolContext, params: Value) -> Result<ToolOutput, EngineError>`
+-  `would_escape_root` function L129-134 — `(root: &Path, relative_path: &str) -> bool` — Check if a path would escape the root without requiring the file to exist.
+-  `normalize_path` function L137-149 — `(path: &Path) -> std::path::PathBuf` — Normalize a path by resolving .
+-  `tests` module L152-260 — `-`
+-  `test_ctx_with_dir` function L159-162 — `(dir: &Path) -> ToolContext`
+-  `read_existing_file` function L165-180 — `()`
+-  `read_with_offset_and_limit` function L183-197 — `()`
+-  `read_nonexistent_file` function L200-211 — `()`
+-  `path_traversal_rejected` function L214-234 — `()`
+-  `missing_path_param` function L237-243 — `()`
+-  `schema_is_valid` function L246-251 — `()`
+-  `would_escape_root_detects_traversal` function L254-259 — `()`
 
 #### crates/arawn-engine/src/tools/file_write.rs
 
@@ -2120,6 +2136,31 @@
 
 > *Semantic summary to be generated by AI agent.*
 
+#### crates/arawn-llm/src/anthropic.rs
+
+- pub `AnthropicClient` struct L18-21 — `{ http: Client, api_key: String }` — Client for Anthropic's Claude API (Messages API).
+- pub `new` function L24-29 — `(api_key: impl Into<String>) -> Self`
+- pub `from_env` function L31-35 — `() -> Result<Self, LlmError>`
+-  `API_URL` variable L14 — `: &str`
+-  `API_VERSION` variable L15 — `: &str`
+-  `AnthropicClient` type L23-58 — `= AnthropicClient`
+-  `build_request_body` function L37-57 — `(&self, request: &ChatRequest) -> Value`
+-  `AnthropicClient` type L61-201 — `impl LlmClient for AnthropicClient`
+-  `stream` function L62-200 — `( &self, request: ChatRequest, ) -> Result<Pin<Box<dyn Stream<Item = Result<Chat...`
+-  `build_messages` function L207-269 — `(messages: &[ChatMessage]) -> Vec<Value>` — Convert arawn messages to Anthropic format.
+-  `merge_consecutive_roles` function L273-309 — `(messages: &mut Vec<Value>)` — Merge consecutive messages with the same role into a single message
+-  `normalize_content` function L312-318 — `(content: &Value) -> Vec<Value>` — Normalize content to a Vec<Value> of content blocks.
+-  `build_tools` function L321-332 — `(tools: &[ToolDefinition]) -> Vec<Value>` — Convert tool definitions to Anthropic format.
+-  `tests` module L335-466 — `-`
+-  `user_msg` function L339-346 — `(text: &str) -> ChatMessage`
+-  `assistant_text` function L348-355 — `(text: &str) -> ChatMessage`
+-  `assistant_with_tool` function L357-368 — `(text: &str, tool_id: &str, tool_name: &str, args: Value) -> ChatMessage`
+-  `tool_result` function L370-378 — `(tool_use_id: &str, content: &str) -> ChatMessage`
+-  `simple_conversation` function L381-390 — `()`
+-  `tool_call_with_result` function L393-416 — `()`
+-  `multi_turn_with_tools` function L419-442 — `()`
+-  `consecutive_tool_results_merged` function L445-465 — `()`
+
 #### crates/arawn-llm/src/client.rs
 
 - pub `LlmClient` interface L12-17 — `{ fn stream() }` — Provider-agnostic LLM client trait.
@@ -2183,13 +2224,14 @@
 
 #### crates/arawn-llm/src/lib.rs
 
-- pub `client` module L1 — `-`
-- pub `error` module L2 — `-`
-- pub `groq` module L3 — `-`
-- pub `mock` module L4 — `-`
-- pub `openai_compat` module L5 — `-`
-- pub `retry` module L6 — `-`
-- pub `types` module L7 — `-`
+- pub `anthropic` module L1 — `-`
+- pub `client` module L2 — `-`
+- pub `error` module L3 — `-`
+- pub `groq` module L4 — `-`
+- pub `mock` module L5 — `-`
+- pub `openai_compat` module L6 — `-`
+- pub `retry` module L7 — `-`
+- pub `types` module L8 — `-`
 
 #### crates/arawn-llm/src/mock.rs
 
@@ -2624,23 +2666,24 @@
 - pub `get` function L31-53 — `(&self, id: Uuid) -> Result<Option<SessionMeta>, StorageError>`
 - pub `list_for_workstream` function L55-77 — `(&self, ws_id: Uuid) -> Result<Vec<SessionMeta>, StorageError>`
 - pub `list_scratch` function L79-101 — `(&self) -> Result<Vec<SessionMeta>, StorageError>`
-- pub `update_stats` function L104-116 — `(&self, session_id: Uuid, stats: &SessionStats) -> Result<(), StorageError>` — Update session token/turn stats in SQLite.
-- pub `update_workstream_id` function L118-128 — `( &self, session_id: Uuid, new_ws_id: Uuid, ) -> Result<bool, StorageError>`
-- pub `SessionMeta` struct L133-138 — `{ id: Uuid, workstream_id: Option<Uuid>, created_at: DateTime<Utc>, stats: Sessi...` — Session metadata as stored in SQLite (no messages — those are in JSONL).
-- pub `into_session` function L144-149 — `(self) -> Session` — Convert to an arawn_core::Session (without messages — load those separately).
--  `SessionMeta` type L140-150 — `= SessionMeta`
--  `SessionRow` struct L152-160 — `{ id: String, workstream_id: Option<String>, created_at: String, input_tokens: i...`
--  `SessionRow` type L162-189 — `= SessionRow`
--  `into_meta` function L163-188 — `(self) -> Result<SessionMeta, StorageError>`
--  `tests` module L192-317 — `-`
--  `setup` function L196-198 — `() -> Database`
--  `create_and_get_session` function L201-214 — `()`
--  `create_scratch_session` function L217-227 — `()`
--  `get_nonexistent_returns_none` function L230-234 — `()`
--  `list_for_workstream` function L237-259 — `()`
--  `list_scratch_sessions` function L262-280 — `()`
--  `update_workstream_id_promotes_scratch` function L283-298 — `()`
--  `update_workstream_id_on_bound_session_returns_false` function L301-316 — `()`
+- pub `delete` function L104-110 — `(&self, session_id: Uuid) -> Result<bool, StorageError>` — Delete a session record from SQLite by ID.
+- pub `update_stats` function L113-125 — `(&self, session_id: Uuid, stats: &SessionStats) -> Result<(), StorageError>` — Update session token/turn stats in SQLite.
+- pub `update_workstream_id` function L127-137 — `( &self, session_id: Uuid, new_ws_id: Uuid, ) -> Result<bool, StorageError>`
+- pub `SessionMeta` struct L142-147 — `{ id: Uuid, workstream_id: Option<Uuid>, created_at: DateTime<Utc>, stats: Sessi...` — Session metadata as stored in SQLite (no messages — those are in JSONL).
+- pub `into_session` function L153-158 — `(self) -> Session` — Convert to an arawn_core::Session (without messages — load those separately).
+-  `SessionMeta` type L149-159 — `= SessionMeta`
+-  `SessionRow` struct L161-169 — `{ id: String, workstream_id: Option<String>, created_at: String, input_tokens: i...`
+-  `SessionRow` type L171-198 — `= SessionRow`
+-  `into_meta` function L172-197 — `(self) -> Result<SessionMeta, StorageError>`
+-  `tests` module L201-326 — `-`
+-  `setup` function L205-207 — `() -> Database`
+-  `create_and_get_session` function L210-223 — `()`
+-  `create_scratch_session` function L226-236 — `()`
+-  `get_nonexistent_returns_none` function L239-243 — `()`
+-  `list_for_workstream` function L246-268 — `()`
+-  `list_scratch_sessions` function L271-289 — `()`
+-  `update_workstream_id_promotes_scratch` function L292-307 — `()`
+-  `update_workstream_id_on_bound_session_returns_false` function L310-325 — `()`
 
 #### crates/arawn-storage/src/store.rs
 
@@ -2656,27 +2699,28 @@
 - pub `get_session_meta` function L87-89 — `(&self, id: Uuid) -> Result<Option<SessionMeta>, StorageError>`
 - pub `list_sessions_for_workstream` function L91-96 — `( &self, ws_id: Uuid, ) -> Result<Vec<SessionMeta>, StorageError>`
 - pub `list_scratch_sessions` function L98-100 — `(&self) -> Result<Vec<SessionMeta>, StorageError>`
-- pub `load_session` function L117-134 — `(&self, id: Uuid) -> Result<Option<Session>, StorageError>` — Load a full session (metadata + messages) by ID.
-- pub `update_session_stats` function L136-142 — `( &self, session_id: Uuid, stats: &arawn_core::SessionStats, ) -> Result<(), Sto...`
-- pub `append_message` function L146-153 — `( &self, session_id: Uuid, workstream_dir: &str, msg: &Message, ) -> Result<(), ...`
-- pub `load_messages` function L155-161 — `( &self, session_id: Uuid, workstream_dir: &str, ) -> Result<Vec<Message>, Stora...`
-- pub `promote_session` function L167-220 — `( &self, session_id: Uuid, new_ws_id: Uuid, ) -> Result<(), StorageError>` — Promote a scratch session to a workstream.
-- pub `sandbox_for` function L223-226 — `(&self, workstream_dir: &str, session_id: Uuid, is_scratch: bool) -> PathBuf` — Resolve the sandbox root for a session.
--  `Store` type L22-227 — `= Store`
--  `resolve_ws_dir` function L104-114 — `(&self, ws_id: Option<Uuid>) -> Result<String, StorageError>` — Resolve the directory name for a workstream by UUID.
--  `copy_dir_contents` function L230-243 — `(src: &Path, dst: &Path) -> Result<(), StorageError>` — Recursively copy directory contents from src to dst.
--  `tests` module L246-415 — `-`
--  `setup` function L250-254 — `() -> (TempDir, Store)`
--  `open_creates_directories_and_db` function L257-263 — `()`
--  `open_is_idempotent` function L266-271 — `()`
--  `create_and_list_workstreams` function L274-282 — `()`
--  `create_scratch_session_and_append_messages` function L285-303 — `()`
--  `load_full_session` function L306-329 — `()`
--  `promote_session_full_flow` function L332-372 — `()`
--  `promote_bound_session_fails` function L375-388 — `()`
--  `load_nonexistent_session_returns_none` function L391-395 — `()`
--  `sandbox_for_scratch_is_per_session` function L398-405 — `()`
--  `sandbox_for_named_is_shared` function L408-414 — `()`
+- pub `reconcile_sessions` function L104-136 — `(&self) -> Result<usize, StorageError>` — Remove SQLite session records whose JSONL files no longer exist on disk.
+- pub `load_session` function L153-170 — `(&self, id: Uuid) -> Result<Option<Session>, StorageError>` — Load a full session (metadata + messages) by ID.
+- pub `update_session_stats` function L172-178 — `( &self, session_id: Uuid, stats: &arawn_core::SessionStats, ) -> Result<(), Sto...`
+- pub `append_message` function L182-189 — `( &self, session_id: Uuid, workstream_dir: &str, msg: &Message, ) -> Result<(), ...`
+- pub `load_messages` function L191-197 — `( &self, session_id: Uuid, workstream_dir: &str, ) -> Result<Vec<Message>, Stora...`
+- pub `promote_session` function L203-256 — `( &self, session_id: Uuid, new_ws_id: Uuid, ) -> Result<(), StorageError>` — Promote a scratch session to a workstream.
+- pub `sandbox_for` function L259-262 — `(&self, workstream_dir: &str, session_id: Uuid, is_scratch: bool) -> PathBuf` — Resolve the sandbox root for a session.
+-  `Store` type L22-263 — `= Store`
+-  `resolve_ws_dir` function L140-150 — `(&self, ws_id: Option<Uuid>) -> Result<String, StorageError>` — Resolve the directory name for a workstream by UUID.
+-  `copy_dir_contents` function L266-279 — `(src: &Path, dst: &Path) -> Result<(), StorageError>` — Recursively copy directory contents from src to dst.
+-  `tests` module L282-451 — `-`
+-  `setup` function L286-290 — `() -> (TempDir, Store)`
+-  `open_creates_directories_and_db` function L293-299 — `()`
+-  `open_is_idempotent` function L302-307 — `()`
+-  `create_and_list_workstreams` function L310-318 — `()`
+-  `create_scratch_session_and_append_messages` function L321-339 — `()`
+-  `load_full_session` function L342-365 — `()`
+-  `promote_session_full_flow` function L368-408 — `()`
+-  `promote_bound_session_fails` function L411-424 — `()`
+-  `load_nonexistent_session_returns_none` function L427-431 — `()`
+-  `sandbox_for_scratch_is_per_session` function L434-441 — `()`
+-  `sandbox_for_named_is_shared` function L444-450 — `()`
 
 #### crates/arawn-storage/src/workstream_store.rs
 
@@ -3001,7 +3045,7 @@
 -  `THEME` variable L15-18 — `: LazyLock<Theme>` — suitable for rendering in the chat area.
 -  `CODE_STYLE` variable L42-44 — `: Style` — suitable for rendering in the chat area.
 -  `MdRenderer` struct L46-68 — `{ lines: Vec<Line<'static>>, current_spans: Vec<Span<'static>>, style_stack: Vec...` — suitable for rendering in the chat area.
--  `MdRenderer` type L70-477 — `= MdRenderer` — suitable for rendering in the chat area.
+-  `MdRenderer` type L70-497 — `= MdRenderer` — suitable for rendering in the chat area.
 -  `new` function L71-92 — `(max_width: usize) -> Self` — suitable for rendering in the chat area.
 -  `process` function L94-110 — `(&mut self, event: Event)` — suitable for rendering in the chat area.
 -  `start_tag` function L112-184 — `(&mut self, tag: Tag)` — suitable for rendering in the chat area.
@@ -3014,25 +3058,26 @@
 -  `push_style` function L327-330 — `(&mut self, style: Style)` — suitable for rendering in the chat area.
 -  `pop_style` function L332-335 — `(&mut self)` — suitable for rendering in the chat area.
 -  `recompute_style` function L337-343 — `(&mut self)` — suitable for rendering in the chat area.
--  `emit_full_table` function L347-427 — `(&mut self)` — suitable for rendering in the chat area.
--  `emit_padded_row` function L429-463 — `( &mut self, row: &[String], col_widths: &[usize], cell_style: Style, chrome_sty...` — suitable for rendering in the chat area.
--  `finish` function L465-476 — `(mut self) -> Vec<Line<'static>>` — suitable for rendering in the chat area.
--  `highlight_code` function L481-519 — `(code: &str, lang: Option<&str>) -> Vec<Line<'static>>` — Syntax-highlight a code block, returning one Line per source line.
--  `heading_style` function L521-529 — `(level: u8) -> Style` — suitable for rendering in the chat area.
--  `wrap_text` function L533-612 — `(text: &str, width: usize) -> Vec<String>` — Word-wrap text to fit within a given width.
--  `tests` module L615-768 — `-` — suitable for rendering in the chat area.
--  `spans_text` function L618-630 — `(lines: &[Line]) -> String` — suitable for rendering in the chat area.
--  `plain_text` function L633-637 — `()` — suitable for rendering in the chat area.
--  `heading_levels` function L640-649 — `()` — suitable for rendering in the chat area.
--  `bold_and_italic` function L652-666 — `()` — suitable for rendering in the chat area.
--  `inline_code` function L669-677 — `()` — suitable for rendering in the chat area.
--  `fenced_code_block` function L680-695 — `()` — suitable for rendering in the chat area.
--  `unordered_list` function L698-704 — `()` — suitable for rendering in the chat area.
--  `ordered_list` function L707-712 — `()` — suitable for rendering in the chat area.
--  `table_renders_aligned` function L715-735 — `()` — suitable for rendering in the chat area.
--  `link_shows_url` function L738-743 — `()` — suitable for rendering in the chat area.
--  `no_double_blank_lines` function L746-760 — `()` — suitable for rendering in the chat area.
--  `no_trailing_blanks` function L763-767 — `()` — suitable for rendering in the chat area.
+-  `emit_full_table` function L347-447 — `(&mut self)` — suitable for rendering in the chat area.
+-  `emit_padded_row` function L449-483 — `( &mut self, row: &[String], col_widths: &[usize], cell_style: Style, chrome_sty...` — suitable for rendering in the chat area.
+-  `finish` function L485-496 — `(mut self) -> Vec<Line<'static>>` — suitable for rendering in the chat area.
+-  `highlight_code` function L501-539 — `(code: &str, lang: Option<&str>) -> Vec<Line<'static>>` — Syntax-highlight a code block, returning one Line per source line.
+-  `heading_style` function L541-549 — `(level: u8) -> Style` — suitable for rendering in the chat area.
+-  `wrap_text` function L553-632 — `(text: &str, width: usize) -> Vec<String>` — Word-wrap text to fit within a given width.
+-  `tests` module L635-811 — `-` — suitable for rendering in the chat area.
+-  `spans_text` function L638-650 — `(lines: &[Line]) -> String` — suitable for rendering in the chat area.
+-  `plain_text` function L653-657 — `()` — suitable for rendering in the chat area.
+-  `heading_levels` function L660-669 — `()` — suitable for rendering in the chat area.
+-  `bold_and_italic` function L672-686 — `()` — suitable for rendering in the chat area.
+-  `inline_code` function L689-697 — `()` — suitable for rendering in the chat area.
+-  `fenced_code_block` function L700-715 — `()` — suitable for rendering in the chat area.
+-  `unordered_list` function L718-724 — `()` — suitable for rendering in the chat area.
+-  `ordered_list` function L727-732 — `()` — suitable for rendering in the chat area.
+-  `table_renders_aligned` function L735-755 — `()` — suitable for rendering in the chat area.
+-  `link_shows_url` function L758-763 — `()` — suitable for rendering in the chat area.
+-  `no_double_blank_lines` function L766-780 — `()` — suitable for rendering in the chat area.
+-  `table_wide_content_preserves_short_columns` function L783-803 — `()` — suitable for rendering in the chat area.
+-  `no_trailing_blanks` function L806-810 — `()` — suitable for rendering in the chat area.
 
 #### crates/arawn-tui/src/modal.rs
 
@@ -3201,4 +3246,16 @@
 -  `next_id` function L11-13 — `() -> u64`
 -  `WsClient` type L30-125 — `= WsClient`
 -  `read_response` function L115-124 — `(&mut self) -> Result<Value, Box<dyn std::error::Error>>` — Read the next JSON response from the server.
+
+### scripts
+
+> *Semantic summary to be generated by AI agent.*
+
+#### scripts/functional_test.py
+
+- pub `send_rpc` function L16-30 — `def send_rpc(ws, method, params=None)` — Send a JSON-RPC request and return the result.
+- pub `send_and_wait` function L33-60 — `def send_and_wait(ws, session_id, prompt)` — Send a message and wait for the Complete event.
+- pub `load_session_jsonl` function L63-71 — `def load_session_jsonl(session_id)` — Load the session JSONL from disk.
+- pub `analyze` function L74-170 — `def analyze(messages, scenario_name)` — Analyze session messages and print a report.
+- pub `run_scenario` function L173-189 — `def run_scenario(prompt, name="test")` — Connect, send prompt, wait, analyze.
 
