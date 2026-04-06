@@ -4,15 +4,15 @@ level: task
 title: "TUI does not support text selection or copy-to-clipboard"
 short_code: "ARAWN-T-0113"
 created_at: 2026-04-06T10:02:28.366117+00:00
-updated_at: 2026-04-06T10:02:28.366117+00:00
+updated_at: 2026-04-06T11:07:10.281031+00:00
 parent: 
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/backlog"
   - "#bug"
+  - "#phase/active"
 
 
 exit_criteria_met: false
@@ -36,6 +36,10 @@ Users cannot select or copy text from the TUI chat area. When the agent produces
 ### Expected vs Actual
 - **Expected**: Mouse drag selects text, Cmd+C copies to system clipboard. Or a keyboard shortcut copies the last message / selected message.
 - **Actual**: Mouse events are captured by the TUI (crossterm) for scrolling/clicking. No text selection or clipboard support.
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

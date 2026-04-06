@@ -142,12 +142,32 @@ fn render_status_bar(app: &App, frame: &mut Frame, area: ratatui::layout::Rect) 
         spans.push(Span::styled(id_short.to_string(), bar_style));
     }
 
-    // Generating spinner
+    // State indicator
     if app.is_generating {
         let frame_char = SPINNER_FRAMES[app.spinner_frame as usize % SPINNER_FRAMES.len()];
+        let state_text = if let Some(ref tool) = app.active_tool {
+            format!(" {frame_char} Running {tool}...")
+        } else {
+            format!(" {frame_char} Thinking...")
+        };
         spans.push(Span::styled(
-            format!(" {frame_char} generating..."),
+            state_text,
             Style::default().fg(Color::Yellow).bg(Color::Rgb(30, 30, 40)),
+        ));
+        // Elapsed time
+        if let Some(started) = app.generation_started {
+            let elapsed = started.elapsed().as_secs();
+            if elapsed >= 2 {
+                spans.push(Span::styled(
+                    format!(" {elapsed}s"),
+                    Style::default().fg(Color::DarkGray).bg(Color::Rgb(30, 30, 40)),
+                ));
+            }
+        }
+    } else {
+        spans.push(Span::styled(
+            " Ready",
+            Style::default().fg(Color::Green).bg(Color::Rgb(30, 30, 40)),
         ));
     }
 
@@ -1127,7 +1147,7 @@ mod tests {
         let h = terminal.backend().buffer().area.height;
         let status = buffer_to_string(&terminal, h - 1);
         assert!(
-            status.contains("generating"),
+            status.contains("Thinking"),
             "status bar should show generating indicator, got:\n{status}"
         );
     }

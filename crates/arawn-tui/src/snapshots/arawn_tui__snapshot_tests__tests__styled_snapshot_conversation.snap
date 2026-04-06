@@ -21,4 +21,4 @@ expression: snap
 «fg:DarkGray,bg:Rgb(25, 25, 30)»  «fg:DarkGray»│
 «fg:DarkGray»────────────────────────────────────────────────────────────────────────────────
 «fg:Green,bold»> «fg:DarkGray»Type your message...
-«fg:White,bg:Rgb(30, 30, 40)» no model«fg:DarkGray,bg:Rgb(30, 30, 40)» │ «fg:White,bg:Rgb(30, 30, 40)»no workstream«bg:Rgb(30, 30, 40)»
+«fg:White,bg:Rgb(30, 30, 40)» no model«fg:DarkGray,bg:Rgb(30, 30, 40)» │ «fg:White,bg:Rgb(30, 30, 40)»no workstream«fg:Green,bg:Rgb(30, 30, 40)» Ready«bg:Rgb(30, 30, 40)»

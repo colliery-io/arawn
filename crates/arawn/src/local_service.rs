@@ -663,8 +663,9 @@ impl ArawnService for LocalService {
 
             let engine_result = engine.run(&mut session, &ctx).await;
 
-            // Engine dropped progress_tx on return → forwarder drains remaining events.
-            // Wait for it to finish so all progress events are sent before Complete.
+            // Drop the engine to release progress_tx — this closes the channel
+            // so the forwarder can drain remaining events and exit.
+            drop(engine);
             let _ = forwarder.await;
 
             match engine_result {

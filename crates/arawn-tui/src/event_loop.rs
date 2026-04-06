@@ -1,8 +1,6 @@
 use std::io;
 
-use crossterm::event::{
-    DisableMouseCapture, EnableMouseCapture, Event as CEvent, EventStream, MouseEventKind,
-};
+use crossterm::event::{Event as CEvent, EventStream};
 use crossterm::execute;
 use crossterm::terminal::{
     EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode,
@@ -13,16 +11,10 @@ use ratatui::backend::CrosstermBackend;
 use tokio_tungstenite::tungstenite::Message as WsMessage;
 use tracing::{debug, error, info, warn};
 
-use ratatui::layout::Rect;
-
 use crate::app::{App, ChatMessage, ChatRole};
 use crate::event::map_key_event;
 use crate::render::render;
 use crate::ws_client::{EventUpdate, WsClient, engine_event_to_update, parse_engine_event};
-
-fn rect_contains(rect: Rect, col: u16, row: u16) -> bool {
-    col >= rect.x && col < rect.x + rect.width && row >= rect.y && row < rect.y + rect.height
-}
 
 /// Run the TUI connected to the given WebSocket server URL.
 pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::error::Error>> {
@@ -83,7 +75,7 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
     // Setup terminal
     enable_raw_mode()?;
     let mut stdout = io::stdout();
-    execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
+    execute!(stdout, EnterAlternateScreen)?;
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
     terminal.clear()?;
@@ -92,7 +84,7 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
     let original_hook = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |info| {
         let _ = disable_raw_mode();
-        let _ = execute!(io::stdout(), DisableMouseCapture, LeaveAlternateScreen);
+        let _ = execute!(io::stdout(), LeaveAlternateScreen);
         original_hook(info);
     }));
 
@@ -352,70 +344,6 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                         app.dirty = false;
                     }
                 }
-                if let CEvent::Mouse(mouse) = event {
-                    match mouse.kind {
-                        MouseEventKind::ScrollUp => {
-                            app.scroll_offset = app.scroll_offset.saturating_add(3);
-                            app.dirty = true;
-                        }
-                        MouseEventKind::ScrollDown => {
-                            app.scroll_offset = app.scroll_offset.saturating_sub(3);
-                            app.dirty = true;
-                        }
-                        MouseEventKind::Down(crossterm::event::MouseButton::Left) => {
-                            let col = mouse.column;
-                            let row = mouse.row;
-
-                            // Hit-test: sidebar tab strip (opens sidebar)
-                            if let Some(tab_rect) = app.layout.sidebar_tab
-                                && rect_contains(tab_rect, col, row) {
-                                    app.focus = crate::app::Focus::Sidebar;
-                                    app.dirty = true;
-                                }
-
-                            // Hit-test against layout regions
-                            if let Some(sidebar_rect) = app.layout.sidebar
-                                && rect_contains(sidebar_rect, col, row) {
-                                    app.focus = crate::app::Focus::Sidebar;
-                                    // Check if click is in workstreams or sessions section
-                                    if let Some(ws_rect) = app.layout.sidebar_ws
-                                        && rect_contains(ws_rect, col, row) {
-                                            app.sidebar_section = crate::app::SidebarSection::Workstreams;
-                                            // Map row to index (skip border + title row)
-                                            let item_row = row.saturating_sub(ws_rect.y + 1) as usize;
-                                            if item_row < app.workstreams.len() {
-                                                app.sidebar_ws_index = item_row;
-                                            }
-                                        }
-                                    if let Some(sess_rect) = app.layout.sidebar_sessions
-                                        && rect_contains(sess_rect, col, row) {
-                                            app.sidebar_section = crate::app::SidebarSection::Sessions;
-                                            let item_row = row.saturating_sub(sess_rect.y + 1) as usize;
-                                            if item_row < app.sessions.len() {
-                                                app.sidebar_session_index = item_row;
-                                            }
-                                        }
-                                    app.dirty = true;
-                                }
-                            if rect_contains(app.layout.chat, col, row) {
-                                app.focus = crate::app::Focus::Main;
-                                app.dirty = true;
-                            }
-                            if rect_contains(app.layout.input, col, row) {
-                                app.focus = crate::app::Focus::Main;
-                                // Place cursor at click position
-                                let offset = col.saturating_sub(app.layout.input.x + 1) as usize;
-                                app.cursor_pos = offset.min(app.input_buffer.len());
-                                app.dirty = true;
-                            }
-                        }
-                        _ => {}
-                    }
-                    if app.dirty {
-                        terminal.draw(|f| render(&mut app, f))?;
-                        app.dirty = false;
-                    }
-                }
                 if let CEvent::Resize(_, _) = event {
                     terminal.draw(|f| render(&mut app, f))?;
                 }
@@ -452,6 +380,7 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                                 let text = std::mem::take(&mut app.streaming_text);
                                 app.messages.push(ChatMessage::new(ChatRole::Assistant, text));
                             }
+                            app.active_tool = Some(name.clone());
                             let summary = crate::app::format_tool_input(&name, &input);
                             app.messages.push(ChatMessage::new(ChatRole::ToolCall { name: name.clone() }, summary));
                             return true; // Draw immediately
@@ -464,6 +393,7 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                                 })
                                 .unwrap_or_else(|| "tool".to_string());
                             debug!(%name, is_error, content_len = content.len(), "update: tool result");
+                            app.active_tool = None;
                             app.messages.push(ChatMessage::new(ChatRole::ToolResult { name, is_error }, content));
                             return true; // Draw immediately
                         }
@@ -479,6 +409,7 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                                 app.messages.push(ChatMessage::new(ChatRole::Assistant, final_text));
                             }
                             app.is_generating = false;
+                            app.active_tool = None;
                             app.scroll_offset = 0;
                             // Force draw — don't depend on a separate Flush event
                             return true;
@@ -487,6 +418,7 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                             warn!(%message, "update: engine error");
                             app.messages.push(ChatMessage::new(ChatRole::System, format!("Error: {message}")));
                             app.is_generating = false;
+                            app.active_tool = None;
                             app.streaming_text.clear();
                             // Force draw
                             return true;
@@ -598,7 +530,6 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
     disable_raw_mode()?;
     execute!(
         terminal.backend_mut(),
-        DisableMouseCapture,
         LeaveAlternateScreen
     )?;
     terminal.show_cursor()?;

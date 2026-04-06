@@ -121,6 +121,8 @@ pub struct App {
     pub pending_modal_response: Option<(String, tokio::sync::oneshot::Receiver<Option<usize>>)>,
     /// Spinner animation frame (0-9), ticked by the event loop.
     pub spinner_frame: u8,
+    /// Name of the currently executing tool (set on ToolCallStart, cleared on ToolCallResult/Complete).
+    pub active_tool: Option<String>,
     /// Panel regions from last render, for mouse hit-testing.
     pub layout: LayoutRegions,
     /// Slash command registry (built-in + cached skills).
@@ -158,6 +160,7 @@ impl App {
             pending_modal_response: None,
             generation_started: None,
             spinner_frame: 0,
+            active_tool: None,
             layout: LayoutRegions::default(),
             command_registry: CommandRegistry::new(),
             autocomplete: None,
@@ -457,6 +460,7 @@ impl App {
                     self.autocomplete = None;
                 } else if self.is_generating {
                     self.is_generating = false;
+                    self.active_tool = None;
                     if !self.streaming_text.is_empty() {
                         self.messages.push(ChatMessage::new(
                             ChatRole::Assistant,
@@ -525,6 +529,7 @@ impl App {
             }
             crate::ws_client::EventUpdate::AddToolCall { name, input, .. } => {
                 let summary = format_tool_input(&name, &input);
+                self.active_tool = Some(name.clone());
                 self.messages.push(ChatMessage::new(
                     ChatRole::ToolCall { name: name.clone() },
                     summary,
@@ -542,6 +547,7 @@ impl App {
                         _ => None,
                     })
                     .unwrap_or_else(|| "tool".to_string());
+                self.active_tool = None;
                 self.messages.push(ChatMessage::new(
                     ChatRole::ToolResult { name, is_error },
                     content,
@@ -556,6 +562,7 @@ impl App {
                 self.messages
                     .push(ChatMessage::new(ChatRole::Assistant, content));
                 self.is_generating = false;
+                self.active_tool = None;
                 self.generation_started = None;
                 self.scroll_offset = 0;
             }
@@ -565,6 +572,7 @@ impl App {
                     format!("Error: {message}"),
                 ));
                 self.is_generating = false;
+                self.active_tool = None;
                 self.generation_started = None;
                 self.streaming_text.clear();
             }
