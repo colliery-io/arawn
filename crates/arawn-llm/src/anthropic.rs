@@ -238,7 +238,7 @@ fn build_messages(messages: &[ChatMessage]) -> Vec<Value> {
                     result.push(json!({"role": "assistant", "content": content_blocks}));
                 }
             }
-            "tool_result" => {
+            "tool_result" | "tool" => {
                 // Anthropic expects tool results as user messages with tool_result content blocks
                 let tool_use_id = msg.tool_call_id.as_deref().unwrap_or("");
                 let content = match msg.content {
@@ -329,4 +329,138 @@ fn build_tools(tools: &[ToolDefinition]) -> Vec<Value> {
             })
         })
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::types::ToolCall;
+
+    fn user_msg(text: &str) -> ChatMessage {
+        ChatMessage {
+            role: "user".into(),
+            content: ChatContent::Text(text.into()),
+            tool_calls: vec![],
+            tool_call_id: None,
+        }
+    }
+
+    fn assistant_text(text: &str) -> ChatMessage {
+        ChatMessage {
+            role: "assistant".into(),
+            content: ChatContent::Text(text.into()),
+            tool_calls: vec![],
+            tool_call_id: None,
+        }
+    }
+
+    fn assistant_with_tool(text: &str, tool_id: &str, tool_name: &str, args: Value) -> ChatMessage {
+        ChatMessage {
+            role: "assistant".into(),
+            content: ChatContent::Text(text.into()),
+            tool_calls: vec![ToolCall {
+                id: tool_id.into(),
+                name: tool_name.into(),
+                arguments: args,
+            }],
+            tool_call_id: None,
+        }
+    }
+
+    fn tool_result(tool_use_id: &str, content: &str) -> ChatMessage {
+        // Engine sends role "tool" (OpenAI format), not "tool_result"
+        ChatMessage {
+            role: "tool".into(),
+            content: ChatContent::Text(content.into()),
+            tool_calls: vec![],
+            tool_call_id: Some(tool_use_id.into()),
+        }
+    }
+
+    #[test]
+    fn simple_conversation() {
+        let messages = vec![
+            user_msg("hello"),
+            assistant_text("hi there"),
+        ];
+        let result = build_messages(&messages);
+        assert_eq!(result.len(), 2);
+        assert_eq!(result[0]["role"], "user");
+        assert_eq!(result[1]["role"], "assistant");
+    }
+
+    #[test]
+    fn tool_call_with_result() {
+        let messages = vec![
+            user_msg("do something"),
+            assistant_with_tool("I'll help", "tool_1", "shell", json!({"command": "ls"})),
+            tool_result("tool_1", "file1\nfile2"),
+        ];
+        let result = build_messages(&messages);
+
+        // Should be: user, assistant (with tool_use blocks), user (with tool_result block)
+        assert_eq!(result.len(), 3, "expected 3 messages, got: {result:#?}");
+        assert_eq!(result[0]["role"], "user");
+        assert_eq!(result[1]["role"], "assistant");
+        assert_eq!(result[2]["role"], "user");
+
+        // Assistant should have text + tool_use content blocks
+        let assistant_content = result[1]["content"].as_array().unwrap();
+        assert!(assistant_content.iter().any(|b| b["type"] == "text"), "should have text block");
+        assert!(assistant_content.iter().any(|b| b["type"] == "tool_use"), "should have tool_use block");
+
+        // Tool result should be a user message with tool_result content block
+        let user_content = result[2]["content"].as_array().unwrap();
+        assert_eq!(user_content[0]["type"], "tool_result");
+        assert_eq!(user_content[0]["tool_use_id"], "tool_1");
+    }
+
+    #[test]
+    fn multi_turn_with_tools() {
+        // Simulates the second API call: user, assistant+tool, tool_result, then LLM responds
+        let messages = vec![
+            user_msg("review this repo"),
+            assistant_with_tool("I'll clone it first.", "t1", "shell", json!({"command": "git clone ..."})),
+            tool_result("t1", "Cloning into..."),
+            // After tool result, the engine calls LLM again with these 3 messages
+        ];
+        let result = build_messages(&messages);
+
+        assert_eq!(result.len(), 3, "user, assistant, user(tool_result): {result:#?}");
+        assert_eq!(result[0]["role"], "user");
+        assert_eq!(result[1]["role"], "assistant");
+        assert_eq!(result[2]["role"], "user");
+
+        // Verify alternation: no two consecutive same-role messages
+        for i in 1..result.len() {
+            assert_ne!(
+                result[i]["role"], result[i-1]["role"],
+                "messages {} and {i} have same role: {}",
+                i - 1, result[i]["role"]
+            );
+        }
+    }
+
+    #[test]
+    fn consecutive_tool_results_merged() {
+        // When assistant makes multiple tool calls, results come as consecutive tool_result messages
+        let messages = vec![
+            user_msg("do two things"),
+            assistant_with_tool("", "t1", "grep", json!({"pattern": "foo"})),
+            tool_result("t1", "found foo"),
+            // Second turn — assistant makes another call
+            assistant_with_tool("", "t2", "file_read", json!({"path": "bar.rs"})),
+            tool_result("t2", "file contents"),
+        ];
+        let result = build_messages(&messages);
+
+        // Should alternate: user, assistant, user(tool_result), assistant, user(tool_result)
+        for i in 1..result.len() {
+            assert_ne!(
+                result[i]["role"], result[i-1]["role"],
+                "messages {} and {i} have same role: {:?}",
+                i - 1, result
+            );
+        }
+    }
 }
