@@ -431,6 +431,7 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                                 app.messages.push(ChatMessage::new(ChatRole::Assistant, prev));
                             }
                             app.streaming_text.push_str(&text);
+                            return true; // Draw immediately — narration should be visible
                         }
                         EventUpdate::AddToolCall { name, input, .. } => {
                             // Flush streaming text before tool call indicator
@@ -440,6 +441,7 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                             }
                             let summary = crate::app::format_tool_input(&name, &input);
                             app.messages.push(ChatMessage::new(ChatRole::ToolCall { name: name.clone() }, summary));
+                            return true; // Draw immediately
                         }
                         EventUpdate::AddToolResult { content, is_error, .. } => {
                             let name = app.messages.iter().rev()
@@ -449,6 +451,7 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                                 })
                                 .unwrap_or_else(|| "tool".to_string());
                             app.messages.push(ChatMessage::new(ChatRole::ToolResult { name, is_error }, content));
+                            return true; // Draw immediately
                         }
                         EventUpdate::Complete(final_text) => {
                             // Flush any remaining streaming text
@@ -462,11 +465,15 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                             }
                             app.is_generating = false;
                             app.scroll_offset = 0;
+                            // Force draw — don't depend on a separate Flush event
+                            return true;
                         }
                         EventUpdate::Error(message) => {
                             app.messages.push(ChatMessage::new(ChatRole::System, format!("Error: {message}")));
                             app.is_generating = false;
                             app.streaming_text.clear();
+                            // Force draw
+                            return true;
                         }
                         EventUpdate::Compaction(count) => {
                             app.messages.push(ChatMessage::new(ChatRole::System, format!("Context compacted ({count} messages summarized)")));
