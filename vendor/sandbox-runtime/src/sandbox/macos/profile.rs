@@ -233,7 +233,7 @@ fn generate_mandatory_deny_rules(profile: &mut String, config: &FilesystemConfig
         // When allowGitConfig is true (network commands like git), allow .git
         // writes including hooks. Hook templates are created during clone/init
         // and only execute when explicitly triggered (commit, push, etc.).
-        if *dir == ".git" && config.allow_git_config.unwrap_or(false) {
+        if (*dir == ".git" || *dir == ".git/hooks") && config.allow_git_config.unwrap_or(false) {
             continue;
         }
 
