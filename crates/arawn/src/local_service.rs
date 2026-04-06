@@ -621,39 +621,53 @@ impl ArawnService for LocalService {
         let ws_dir_owned = ws_dir.clone();
         let store = self.store.clone();
 
-        let event_tx = tx.clone();
-        // Forward live progress events to the WebSocket event channel
-        tokio::spawn(async move {
-            while let Some(event) = progress_rx.recv().await {
-                match event {
-                    arawn_engine::ProgressEvent::ToolCallStart { id, name, input } => {
-                        let _ = event_tx
-                            .send(EngineEvent::ToolCallStart { id, name, input })
-                            .await;
-                        let _ = event_tx.send(EngineEvent::Flush).await;
-                    }
-                    arawn_engine::ProgressEvent::ToolCallResult {
-                        id,
-                        content,
-                        is_error,
-                    } => {
-                        let _ = event_tx
-                            .send(EngineEvent::ToolCallResult {
-                                id,
-                                content,
-                                is_error,
-                            })
-                            .await;
-                        let _ = event_tx.send(EngineEvent::Flush).await;
-                    }
-                }
-            }
-        });
-
         tokio::spawn(async move {
             let msg_store = JsonlMessageStore::new(&data_dir);
 
-            match engine.run(&mut session, &ctx).await {
+            // Forward progress events inline (same task as engine, no race condition).
+            // We drain the progress channel after each await point in the engine loop
+            // by spawning a forwarder that the engine feeds into.
+            let event_tx_progress = tx.clone();
+            let forwarder = tokio::spawn(async move {
+                while let Some(event) = progress_rx.recv().await {
+                    match event {
+                        arawn_engine::ProgressEvent::AssistantText { content } => {
+                            let _ = event_tx_progress
+                                .send(EngineEvent::StreamingText { text: content })
+                                .await;
+                            let _ = event_tx_progress.send(EngineEvent::Flush).await;
+                        }
+                        arawn_engine::ProgressEvent::ToolCallStart { id, name, input } => {
+                            let _ = event_tx_progress
+                                .send(EngineEvent::ToolCallStart { id, name, input })
+                                .await;
+                            let _ = event_tx_progress.send(EngineEvent::Flush).await;
+                        }
+                        arawn_engine::ProgressEvent::ToolCallResult {
+                            id,
+                            content,
+                            is_error,
+                        } => {
+                            let _ = event_tx_progress
+                                .send(EngineEvent::ToolCallResult {
+                                    id,
+                                    content,
+                                    is_error,
+                                })
+                                .await;
+                            let _ = event_tx_progress.send(EngineEvent::Flush).await;
+                        }
+                    }
+                }
+            });
+
+            let engine_result = engine.run(&mut session, &ctx).await;
+
+            // Engine dropped progress_tx on return → forwarder drains remaining events.
+            // Wait for it to finish so all progress events are sent before Complete.
+            let _ = forwarder.await;
+
+            match engine_result {
                 Ok(final_text) => {
                     // Tool call events were already streamed live via progress_tx.
                     // Only emit compaction events here (not streamed live).

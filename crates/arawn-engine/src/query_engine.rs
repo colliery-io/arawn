@@ -23,6 +23,10 @@ const MAX_COMPACT_FAILURES: u32 = 3;
 /// The service layer can map these to EngineEvent/WebSocket messages.
 #[derive(Debug, Clone)]
 pub enum ProgressEvent {
+    /// Assistant produced text (narration) alongside tool calls.
+    AssistantText {
+        content: String,
+    },
     /// A tool call is about to execute.
     ToolCallStart {
         id: String,
@@ -400,6 +404,13 @@ impl QueryEngine {
                 content: response.text.clone(),
                 tool_uses,
             });
+
+            // Emit assistant narration text (if any) before tool call events
+            if !response.text.is_empty() {
+                self.emit_progress(ProgressEvent::AssistantText {
+                    content: response.text.clone(),
+                });
+            }
 
             // Emit progress events for all valid tool calls
             for &i in &valid_tool_calls {

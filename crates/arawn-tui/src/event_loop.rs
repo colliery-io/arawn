@@ -424,9 +424,20 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                 let apply_update = |update: EventUpdate, app: &mut App| -> bool {
                     match update {
                         EventUpdate::AppendStreamingText(text) => {
+                            // Flush any accumulated streaming text as an assistant message
+                            // when we get new text (handles mid-loop narration from tool call turns)
+                            if !app.streaming_text.is_empty() {
+                                let prev = std::mem::take(&mut app.streaming_text);
+                                app.messages.push(ChatMessage::new(ChatRole::Assistant, prev));
+                            }
                             app.streaming_text.push_str(&text);
                         }
                         EventUpdate::AddToolCall { name, input, .. } => {
+                            // Flush streaming text before tool call indicator
+                            if !app.streaming_text.is_empty() {
+                                let text = std::mem::take(&mut app.streaming_text);
+                                app.messages.push(ChatMessage::new(ChatRole::Assistant, text));
+                            }
                             let summary = crate::app::format_tool_input(&name, &input);
                             app.messages.push(ChatMessage::new(ChatRole::ToolCall { name: name.clone() }, summary));
                         }
@@ -440,12 +451,15 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                             app.messages.push(ChatMessage::new(ChatRole::ToolResult { name, is_error }, content));
                         }
                         EventUpdate::Complete(final_text) => {
-                            let content = if !app.streaming_text.is_empty() {
-                                std::mem::take(&mut app.streaming_text)
-                            } else {
-                                final_text
-                            };
-                            app.messages.push(ChatMessage::new(ChatRole::Assistant, content));
+                            // Flush any remaining streaming text
+                            if !app.streaming_text.is_empty() {
+                                let text = std::mem::take(&mut app.streaming_text);
+                                app.messages.push(ChatMessage::new(ChatRole::Assistant, text));
+                            }
+                            // Add final text if non-empty and not already flushed
+                            if !final_text.is_empty() {
+                                app.messages.push(ChatMessage::new(ChatRole::Assistant, final_text));
+                            }
                             app.is_generating = false;
                             app.scroll_offset = 0;
                         }
