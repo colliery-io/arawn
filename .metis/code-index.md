@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-04-06T01:17:19Z | 144 files | Python, Rust
+> Generated: 2026-04-06T10:29:51Z | 144 files | Python, Rust
 
 ## Project Structure
 
@@ -301,16 +301,16 @@
 - pub `forget_entity` function L292-341 — `(&self, query: &str) -> serde_json::Value` — Forget/delete an entity via /forget command.
 -  `LocalService` type L48-342 — `= LocalService`
 -  `infer_entity_type` function L345-358 — `(text: &str) -> (arawn_memory::EntityType, String)` — Infer entity type from text patterns.
--  `LocalService` type L363-716 — `impl ArawnService for LocalService`
+-  `LocalService` type L363-730 — `impl ArawnService for LocalService`
 -  `list_workstreams` function L364-379 — `(&self) -> Result<Vec<WorkstreamInfo>, ServiceError>`
 -  `create_workstream` function L381-398 — `( &self, name: String, root_dir: PathBuf, ) -> Result<WorkstreamInfo, ServiceErr...`
 -  `list_sessions` function L400-419 — `( &self, workstream_id: Option<Uuid>, ) -> Result<Vec<SessionInfo>, ServiceError...`
 -  `create_session` function L421-442 — `( &self, workstream_id: Option<Uuid>, ) -> Result<SessionInfo, ServiceError>`
 -  `load_session` function L444-471 — `(&self, id: Uuid) -> Result<SessionDetail, ServiceError>`
--  `send_message` function L473-709 — `( &self, session_id: Uuid, content: String, ) -> Result<Pin<Box<dyn futures::Str...`
--  `cancel` function L711-715 — `(&self, _session_id: Uuid) -> Result<(), ServiceError>`
--  `resolve_ws_dir_from_store` function L719-730 — `(store: &Store, ws_id: Option<Uuid>) -> Result<String, ServiceError>` — Resolve workstream directory name from store.
--  `first_sentence` function L734-745 — `(s: &str) -> String` — Extract the first sentence and sanitize for use in a markdown table cell.
+-  `send_message` function L473-723 — `( &self, session_id: Uuid, content: String, ) -> Result<Pin<Box<dyn futures::Str...`
+-  `cancel` function L725-729 — `(&self, _session_id: Uuid) -> Result<(), ServiceError>`
+-  `resolve_ws_dir_from_store` function L733-744 — `(store: &Store, ws_id: Option<Uuid>) -> Result<String, ServiceError>` — Resolve workstream directory name from store.
+-  `first_sentence` function L748-759 — `(s: &str) -> String` — Extract the first sentence and sanitize for use in a markdown table cell.
 
 #### crates/arawn/src/main.rs
 
@@ -770,61 +770,61 @@
 
 #### crates/arawn-engine/src/query_engine.rs
 
-- pub `ProgressEvent` enum L25-38 — `ToolCallStart | ToolCallResult` — Live progress events emitted during the engine loop.
-- pub `PromptContext` struct L42-53 — `{ prompts_dir: Option<std::path::PathBuf>, os: String, shell: String, cwd: std::...` — Cached context for building system prompts per-turn.
-- pub `QueryEngineConfig` struct L56-67 — `{ model: String, max_iterations: usize, system_prompt: String, max_tokens: Optio...` — Configuration for the query engine.
-- pub `QueryEngine` struct L84-103 — `{ llm: Arc<dyn LlmClient>, registry: Arc<ToolRegistry>, config: QueryEngineConfi...` — The agentic loop: prompt → LLM → tool_use → execute → feed result → loop.
-- pub `new` function L106-122 — `(llm: Arc<dyn LlmClient>, registry: Arc<ToolRegistry>) -> Self`
-- pub `with_config` function L124-144 — `( llm: Arc<dyn LlmClient>, registry: Arc<ToolRegistry>, config: QueryEngineConfi...`
-- pub `with_compactor` function L146-149 — `(mut self, compactor: Compactor) -> Self`
-- pub `with_permission_checker` function L151-154 — `(mut self, checker: Arc<PermissionChecker>) -> Self`
-- pub `with_hook_runner` function L156-159 — `(mut self, runner: Arc<HookRunner>) -> Self`
-- pub `with_skill_registry` function L161-164 — `(mut self, registry: Arc<crate::skills::SkillRegistry>) -> Self`
-- pub `with_plugin_registry` function L166-169 — `(mut self, registry: Arc<crate::plugins::PluginRegistry>) -> Self`
-- pub `with_plan_state` function L171-174 — `(mut self, plan_state: Arc<PlanModeState>) -> Self`
-- pub `plan_state` function L177-179 — `(&self) -> Option<&Arc<PlanModeState>>` — Get the plan mode state (if configured).
-- pub `with_background_tasks` function L181-184 — `(mut self, manager: Arc<BackgroundTaskManager>) -> Self`
-- pub `with_progress_sender` function L187-190 — `(mut self, tx: tokio::sync::mpsc::Sender<ProgressEvent>) -> Self` — Set a channel for live progress events during the engine loop.
-- pub `fire_hook` function L204-210 — `(&self, input: &HookInput) -> Option<crate::hooks::AggregatedHookResult>` — Fire a hook event.
-- pub `run` function L213-511 — `( &mut self, session: &mut Session, ctx: &ToolContext, ) -> Result<String, Engin...` — Run the agentic loop for a session.
+- pub `ProgressEvent` enum L25-42 — `AssistantText | ToolCallStart | ToolCallResult` — Live progress events emitted during the engine loop.
+- pub `PromptContext` struct L46-57 — `{ prompts_dir: Option<std::path::PathBuf>, os: String, shell: String, cwd: std::...` — Cached context for building system prompts per-turn.
+- pub `QueryEngineConfig` struct L60-71 — `{ model: String, max_iterations: usize, system_prompt: String, max_tokens: Optio...` — Configuration for the query engine.
+- pub `QueryEngine` struct L88-107 — `{ llm: Arc<dyn LlmClient>, registry: Arc<ToolRegistry>, config: QueryEngineConfi...` — The agentic loop: prompt → LLM → tool_use → execute → feed result → loop.
+- pub `new` function L110-126 — `(llm: Arc<dyn LlmClient>, registry: Arc<ToolRegistry>) -> Self`
+- pub `with_config` function L128-148 — `( llm: Arc<dyn LlmClient>, registry: Arc<ToolRegistry>, config: QueryEngineConfi...`
+- pub `with_compactor` function L150-153 — `(mut self, compactor: Compactor) -> Self`
+- pub `with_permission_checker` function L155-158 — `(mut self, checker: Arc<PermissionChecker>) -> Self`
+- pub `with_hook_runner` function L160-163 — `(mut self, runner: Arc<HookRunner>) -> Self`
+- pub `with_skill_registry` function L165-168 — `(mut self, registry: Arc<crate::skills::SkillRegistry>) -> Self`
+- pub `with_plugin_registry` function L170-173 — `(mut self, registry: Arc<crate::plugins::PluginRegistry>) -> Self`
+- pub `with_plan_state` function L175-178 — `(mut self, plan_state: Arc<PlanModeState>) -> Self`
+- pub `plan_state` function L181-183 — `(&self) -> Option<&Arc<PlanModeState>>` — Get the plan mode state (if configured).
+- pub `with_background_tasks` function L185-188 — `(mut self, manager: Arc<BackgroundTaskManager>) -> Self`
+- pub `with_progress_sender` function L191-194 — `(mut self, tx: tokio::sync::mpsc::Sender<ProgressEvent>) -> Self` — Set a channel for live progress events during the engine loop.
+- pub `fire_hook` function L208-214 — `(&self, input: &HookInput) -> Option<crate::hooks::AggregatedHookResult>` — Fire a hook event.
+- pub `run` function L217-522 — `( &mut self, session: &mut Session, ctx: &ToolContext, ) -> Result<String, Engin...` — Run the agentic loop for a session.
 -  `DEFAULT_MAX_ITERATIONS` variable L19 — `: usize`
 -  `MAX_COMPACT_FAILURES` variable L20 — `: u32`
--  `DEFAULT_SYSTEM_PROMPT` variable L39 — `: &str`
--  `QueryEngineConfig` type L69-81 — `impl Default for QueryEngineConfig`
--  `default` function L70-80 — `() -> Self`
--  `QueryEngine` type L105-831 — `= QueryEngine`
--  `emit_progress` function L193-197 — `(&self, event: ProgressEvent)` — Emit a progress event if a sender is configured.
--  `build_request` function L513-603 — `(&self, session: &Session) -> ChatRequest`
--  `stream_response_with_retry` function L608-647 — `( &self, session: &Session, _ctx: &ToolContext, ) -> Result<AssembledResponse, E...` — Build the request and stream with up to 2 retries on transient LLM errors
--  `MAX_RETRIES` variable L613 — `: u32`
--  `stream_response` function L649-709 — `( &self, request: ChatRequest, ) -> Result<AssembledResponse, EngineError>`
--  `execute_tool` function L711-830 — `( &self, ctx: &ToolContext, tool_use_id: &str, name: &str, arguments: &serde_jso...`
--  `parse_arguments` function L833-838 — `(raw: &str) -> serde_json::Value`
--  `AssembledResponse` struct L841-845 — `{ text: String, tool_calls: Vec<AssembledToolCall>, usage: Option<arawn_llm::Usa...`
--  `AssembledToolCall` struct L847-851 — `{ id: String, name: String, arguments: serde_json::Value }`
--  `ToolResult` struct L853-856 — `{ content: String, is_error: bool }`
--  `CORE_TOOLS` variable L859-861 — `: &[&str]` — Core tools always included in every LLM request.
--  `WEB_TOOLS` variable L864 — `: &[&str]` — Web tools — included when conversation references URLs, web, search, fetch, APIs.
--  `PLAN_TOOLS` variable L867 — `: &[&str]` — Planning tools — included when in plan mode or conversation mentions planning.
--  `TASK_TOOLS` variable L870-872 — `: &[&str]` — Task management tools — included when conversation mentions tasks, background, todo.
--  `MEMORY_TOOLS` variable L875 — `: &[&str]` — Memory tools — included when conversation mentions memory, remember, recall.
--  `AGENT_TOOLS` variable L878 — `: &[&str]` — Agent/delegation tools — included when conversation mentions delegation, agent, subagent.
--  `ALWAYS_TOOLS` variable L881 — `: &[&str]` — Other tools always included.
--  `filter_tools_for_context` function L885-993 — `( all_tools: &[arawn_llm::ToolDefinition], session: &Session, ) -> Vec<arawn_llm...` — Filter tool definitions to only contextually relevant ones for this turn.
--  `tests` module L996-1183 — `-`
--  `MockLlm` struct L1007-1009 — `{ responses: Mutex<Vec<Vec<ChatChunk>>> }` — Mock LLM that returns pre-scripted responses.
--  `MockLlm` type L1011-1041 — `= MockLlm`
--  `new` function L1012-1016 — `(responses: Vec<Vec<ChatChunk>>) -> Self`
--  `text` function L1019-1026 — `(text: &str) -> Vec<ChatChunk>` — Convenience: text-only response
--  `tool_call` function L1029-1040 — `(id: &str, name: &str, args: &str) -> Vec<ChatChunk>` — Convenience: tool call then done
--  `MockLlm` type L1044-1060 — `impl LlmClient for MockLlm`
--  `stream` function L1045-1059 — `( &self, _request: ChatRequest, ) -> Result< Pin<Box<dyn futures::Stream<Item = ...`
--  `setup` function L1062-1067 — `() -> (Workstream, Session, ToolContext)`
--  `text_only_response` function L1070-1083 — `()`
--  `single_tool_call` function L1086-1104 — `()`
--  `tool_not_found` function L1107-1129 — `()`
--  `max_iterations_exceeded` function L1132-1159 — `()`
--  `multi_turn_tool_chain` function L1162-1181 — `()`
+-  `DEFAULT_SYSTEM_PROMPT` variable L43 — `: &str`
+-  `QueryEngineConfig` type L73-85 — `impl Default for QueryEngineConfig`
+-  `default` function L74-84 — `() -> Self`
+-  `QueryEngine` type L109-842 — `= QueryEngine`
+-  `emit_progress` function L197-201 — `(&self, event: ProgressEvent)` — Emit a progress event if a sender is configured.
+-  `build_request` function L524-614 — `(&self, session: &Session) -> ChatRequest`
+-  `stream_response_with_retry` function L619-658 — `( &self, session: &Session, _ctx: &ToolContext, ) -> Result<AssembledResponse, E...` — Build the request and stream with up to 2 retries on transient LLM errors
+-  `MAX_RETRIES` variable L624 — `: u32`
+-  `stream_response` function L660-720 — `( &self, request: ChatRequest, ) -> Result<AssembledResponse, EngineError>`
+-  `execute_tool` function L722-841 — `( &self, ctx: &ToolContext, tool_use_id: &str, name: &str, arguments: &serde_jso...`
+-  `parse_arguments` function L844-849 — `(raw: &str) -> serde_json::Value`
+-  `AssembledResponse` struct L852-856 — `{ text: String, tool_calls: Vec<AssembledToolCall>, usage: Option<arawn_llm::Usa...`
+-  `AssembledToolCall` struct L858-862 — `{ id: String, name: String, arguments: serde_json::Value }`
+-  `ToolResult` struct L864-867 — `{ content: String, is_error: bool }`
+-  `CORE_TOOLS` variable L870-872 — `: &[&str]` — Core tools always included in every LLM request.
+-  `WEB_TOOLS` variable L875 — `: &[&str]` — Web tools — included when conversation references URLs, web, search, fetch, APIs.
+-  `PLAN_TOOLS` variable L878 — `: &[&str]` — Planning tools — included when in plan mode or conversation mentions planning.
+-  `TASK_TOOLS` variable L881-883 — `: &[&str]` — Task management tools — included when conversation mentions tasks, background, todo.
+-  `MEMORY_TOOLS` variable L886 — `: &[&str]` — Memory tools — included when conversation mentions memory, remember, recall.
+-  `AGENT_TOOLS` variable L889 — `: &[&str]` — Agent/delegation tools — included when conversation mentions delegation, agent, subagent.
+-  `ALWAYS_TOOLS` variable L892 — `: &[&str]` — Other tools always included.
+-  `filter_tools_for_context` function L896-1004 — `( all_tools: &[arawn_llm::ToolDefinition], session: &Session, ) -> Vec<arawn_llm...` — Filter tool definitions to only contextually relevant ones for this turn.
+-  `tests` module L1007-1194 — `-`
+-  `MockLlm` struct L1018-1020 — `{ responses: Mutex<Vec<Vec<ChatChunk>>> }` — Mock LLM that returns pre-scripted responses.
+-  `MockLlm` type L1022-1052 — `= MockLlm`
+-  `new` function L1023-1027 — `(responses: Vec<Vec<ChatChunk>>) -> Self`
+-  `text` function L1030-1037 — `(text: &str) -> Vec<ChatChunk>` — Convenience: text-only response
+-  `tool_call` function L1040-1051 — `(id: &str, name: &str, args: &str) -> Vec<ChatChunk>` — Convenience: tool call then done
+-  `MockLlm` type L1055-1071 — `impl LlmClient for MockLlm`
+-  `stream` function L1056-1070 — `( &self, _request: ChatRequest, ) -> Result< Pin<Box<dyn futures::Stream<Item = ...`
+-  `setup` function L1073-1078 — `() -> (Workstream, Session, ToolContext)`
+-  `text_only_response` function L1081-1094 — `()`
+-  `single_tool_call` function L1097-1115 — `()`
+-  `tool_not_found` function L1118-1140 — `()`
+-  `max_iterations_exceeded` function L1143-1170 — `()`
+-  `multi_turn_tool_chain` function L1173-1192 — `()`
 
 #### crates/arawn-engine/src/system_prompt.rs
 
@@ -2256,47 +2256,47 @@
 #### crates/arawn-llm/src/openai_compat.rs
 
 - pub `OpenAICompatibleClient` struct L18-23 — `{ http: Client, base_url: String, api_key: Option<String>, provider_name: String...` — Generic client for any OpenAI-compatible API (Groq, Ollama, OpenAI, vLLM,
-- pub `new` function L26-37 — `( base_url: impl Into<String>, api_key: Option<String>, provider_name: impl Into...`
-- pub `groq` function L40-46 — `(api_key: impl Into<String>) -> Self` — Create a client for Groq.
-- pub `groq_from_env` function L49-53 — `() -> Result<Self, LlmError>` — Create a client for Groq from the GROQ_API_KEY env var.
-- pub `ollama` function L56-58 — `() -> Self` — Create a client for Ollama (local, no API key needed).
-- pub `ollama_at` function L61-63 — `(base_url: impl Into<String>) -> Self` — Create a client for Ollama with a custom host/port.
-- pub `openai` function L66-72 — `(api_key: impl Into<String>) -> Self` — Create a client for OpenAI.
-- pub `openai_from_env` function L75-79 — `() -> Result<Self, LlmError>` — Create a client for OpenAI from the OPENAI_API_KEY env var.
-- pub `from_config` function L82-110 — `( provider: &str, base_url: Option<&str>, api_key_env: &str, ) -> Result<Self, L...` — Create from explicit config values.
--  `OpenAICompatibleClient` type L25-136 — `= OpenAICompatibleClient`
--  `build_request_body` function L112-131 — `(&self, request: &ChatRequest) -> Value`
--  `completions_url` function L133-135 — `(&self) -> String`
--  `OpenAICompatibleClient` type L139-174 — `impl LlmClient for OpenAICompatibleClient`
--  `stream` function L140-173 — `( &self, request: ChatRequest, ) -> Result<Pin<Box<dyn Stream<Item = Result<Chat...`
--  `SseParser` struct L178-183 — `{ inner: S, buffer: String, pending_chunks: Vec<ChatChunk>, provider: String }`
--  `new` function L186-193 — `(inner: S, provider: String) -> Self`
--  `Item` type L200 — `= Result<ChatChunk, LlmError>`
--  `poll_next` function L202-238 — `( mut self: Pin<&mut Self>, cx: &mut std::task::Context<'_>, ) -> std::task::Pol...`
--  `try_parse_buffer` function L242-288 — `(&mut self) -> Option<Result<ChatChunk, LlmError>>`
--  `parse_stream_chunk` function L291-336 — `(chunk: &StreamChunk) -> Vec<ChatChunk>`
--  `build_messages` function L340-403 — `(system_prompt: &Option<String>, messages: &[ChatMessage]) -> Vec<Value>`
--  `build_tools` function L405-419 — `(tools: &[ToolDefinition]) -> Vec<Value>`
--  `ApiErrorResponse` struct L424-426 — `{ error: Option<ApiError> }`
--  `ApiError` struct L429-433 — `{ message: String, code: Option<String> }`
--  `StreamChunk` struct L436-441 — `{ choices: Vec<StreamChoice>, usage: Option<StreamUsage> }`
--  `StreamChoice` struct L444-446 — `{ delta: StreamDelta }`
--  `StreamDelta` struct L449-452 — `{ content: Option<String>, tool_calls: Option<Vec<StreamToolCall>> }`
--  `StreamToolCall` struct L455-458 — `{ id: Option<String>, function: Option<StreamFunction> }`
--  `StreamFunction` struct L461-464 — `{ name: Option<String>, arguments: Option<String> }`
--  `StreamUsage` struct L467-470 — `{ prompt_tokens: u32, completion_tokens: u32 }`
--  `tests` module L473-615 — `-`
--  `groq_convenience_constructor` function L478-483 — `()`
--  `ollama_convenience_constructor` function L486-491 — `()`
--  `openai_convenience_constructor` function L494-498 — `()`
--  `custom_base_url` function L501-508 — `()`
--  `from_config_known_providers` function L511-515 — `()`
--  `from_config_custom_url_override` function L518-525 — `()`
--  `build_messages_with_system_prompt` function L528-541 — `()`
--  `parse_text_delta` function L544-557 — `()`
--  `parse_tool_use_start` function L560-579 — `()`
--  `parse_usage` function L582-593 — `()`
--  `no_auth_header_when_no_api_key` function L596-614 — `()`
+- pub `new` function L26-40 — `( base_url: impl Into<String>, api_key: Option<String>, provider_name: impl Into...`
+- pub `groq` function L43-49 — `(api_key: impl Into<String>) -> Self` — Create a client for Groq.
+- pub `groq_from_env` function L52-56 — `() -> Result<Self, LlmError>` — Create a client for Groq from the GROQ_API_KEY env var.
+- pub `ollama` function L59-61 — `() -> Self` — Create a client for Ollama (local, no API key needed).
+- pub `ollama_at` function L64-66 — `(base_url: impl Into<String>) -> Self` — Create a client for Ollama with a custom host/port.
+- pub `openai` function L69-75 — `(api_key: impl Into<String>) -> Self` — Create a client for OpenAI.
+- pub `openai_from_env` function L78-82 — `() -> Result<Self, LlmError>` — Create a client for OpenAI from the OPENAI_API_KEY env var.
+- pub `from_config` function L85-113 — `( provider: &str, base_url: Option<&str>, api_key_env: &str, ) -> Result<Self, L...` — Create from explicit config values.
+-  `OpenAICompatibleClient` type L25-139 — `= OpenAICompatibleClient`
+-  `build_request_body` function L115-134 — `(&self, request: &ChatRequest) -> Value`
+-  `completions_url` function L136-138 — `(&self) -> String`
+-  `OpenAICompatibleClient` type L142-177 — `impl LlmClient for OpenAICompatibleClient`
+-  `stream` function L143-176 — `( &self, request: ChatRequest, ) -> Result<Pin<Box<dyn Stream<Item = Result<Chat...`
+-  `SseParser` struct L181-186 — `{ inner: S, buffer: String, pending_chunks: Vec<ChatChunk>, provider: String }`
+-  `new` function L189-196 — `(inner: S, provider: String) -> Self`
+-  `Item` type L203 — `= Result<ChatChunk, LlmError>`
+-  `poll_next` function L205-241 — `( mut self: Pin<&mut Self>, cx: &mut std::task::Context<'_>, ) -> std::task::Pol...`
+-  `try_parse_buffer` function L245-291 — `(&mut self) -> Option<Result<ChatChunk, LlmError>>`
+-  `parse_stream_chunk` function L294-339 — `(chunk: &StreamChunk) -> Vec<ChatChunk>`
+-  `build_messages` function L343-406 — `(system_prompt: &Option<String>, messages: &[ChatMessage]) -> Vec<Value>`
+-  `build_tools` function L408-422 — `(tools: &[ToolDefinition]) -> Vec<Value>`
+-  `ApiErrorResponse` struct L427-429 — `{ error: Option<ApiError> }`
+-  `ApiError` struct L432-436 — `{ message: String, code: Option<String> }`
+-  `StreamChunk` struct L439-444 — `{ choices: Vec<StreamChoice>, usage: Option<StreamUsage> }`
+-  `StreamChoice` struct L447-449 — `{ delta: StreamDelta }`
+-  `StreamDelta` struct L452-455 — `{ content: Option<String>, tool_calls: Option<Vec<StreamToolCall>> }`
+-  `StreamToolCall` struct L458-461 — `{ id: Option<String>, function: Option<StreamFunction> }`
+-  `StreamFunction` struct L464-467 — `{ name: Option<String>, arguments: Option<String> }`
+-  `StreamUsage` struct L470-473 — `{ prompt_tokens: u32, completion_tokens: u32 }`
+-  `tests` module L476-618 — `-`
+-  `groq_convenience_constructor` function L481-486 — `()`
+-  `ollama_convenience_constructor` function L489-494 — `()`
+-  `openai_convenience_constructor` function L497-501 — `()`
+-  `custom_base_url` function L504-511 — `()`
+-  `from_config_known_providers` function L514-518 — `()`
+-  `from_config_custom_url_override` function L521-528 — `()`
+-  `build_messages_with_system_prompt` function L531-544 — `()`
+-  `parse_text_delta` function L547-560 — `()`
+-  `parse_tool_use_start` function L563-582 — `()`
+-  `parse_usage` function L585-596 — `()`
+-  `no_auth_header_when_no_api_key` function L599-617 — `()`
 
 #### crates/arawn-llm/src/retry.rs
 
@@ -3018,7 +3018,7 @@
 
 #### crates/arawn-tui/src/event_loop.rs
 
-- pub `run_tui` function L28-557 — `(url: &str, model_name: &str) -> Result<(), Box<dyn std::error::Error>>` — Run the TUI connected to the given WebSocket server URL.
+- pub `run_tui` function L28-578 — `(url: &str, model_name: &str) -> Result<(), Box<dyn std::error::Error>>` — Run the TUI connected to the given WebSocket server URL.
 -  `rect_contains` function L23-25 — `(rect: Rect, col: u16, row: u16) -> bool`
 
 #### crates/arawn-tui/src/lib.rs
@@ -3111,45 +3111,45 @@
 -  `render_status_bar` function L107-157 — `(app: &App, frame: &mut Frame, area: ratatui::layout::Rect)`
 -  `format_tokens` function L160-168 — `(n: u64) -> String` — Format a token count for display: 1234 → "1.2k", 12345 → "12.3k", 500 → "500"
 -  `render_sidebar` function L170-244 — `(app: &App, frame: &mut Frame, area: ratatui::layout::Rect)`
--  `render_chat` function L246-506 — `(app: &mut App, frame: &mut Frame, area: ratatui::layout::Rect)`
--  `render_separator` function L508-512 — `(frame: &mut Frame, area: ratatui::layout::Rect)`
--  `render_input` function L514-563 — `(app: &App, frame: &mut Frame, area: ratatui::layout::Rect)`
--  `render_autocomplete` function L566-624 — `( ac: &crate::command::AutocompleteState, frame: &mut Frame, input_area: ratatui...` — Render the autocomplete dropdown above the input line.
--  `truncate_to` function L627-636 — `(s: &str, max_chars: usize) -> String` — Truncate a string to fit within a display width, adding "…" if needed.
--  `compact_tool_summary` function L639-644 — `(content: &str) -> String` — Extract a compact summary from tool call content for inline display.
--  `truncate_for_display` function L646-652 — `(s: &str, max: usize) -> String`
--  `tests` module L655-1389 — `-`
--  `buffer_to_string` function L661-676 — `(terminal: &Terminal<TestBackend>, row: u16) -> String`
--  `render_empty_app_has_status_bar` function L679-688 — `()`
--  `render_with_messages_shows_content` function L691-717 — `()`
--  `render_with_input_text` function L720-735 — `()`
--  `render_streaming_shows_cursor` function L738-761 — `()`
--  `render_small_terminal` function L764-769 — `()`
--  `render_large_terminal` function L772-777 — `()`
--  `region_text` function L782-794 — `(terminal: &Terminal<TestBackend>, x: u16, y: u16, w: u16, h: u16) -> String` — Extract text from a rectangular region of the buffer.
--  `chat_region_for` function L798-811 — `(terminal: &Terminal<TestBackend>, sidebar_visible: bool) -> String` — Extract the chat area text.
--  `chat_region` function L814-816 — `(terminal: &Terminal<TestBackend>) -> String` — Convenience: chat region for default app (sidebar hidden).
--  `sidebar_region` function L820-828 — `(terminal: &Terminal<TestBackend>) -> String` — Extract the sidebar text (left 20%, rows 1..height-3).
--  `input_region` function L831-836 — `(terminal: &Terminal<TestBackend>) -> String` — Extract the input bar text (second from bottom row).
--  `chat_renders_user_message_with_prefix` function L841-855 — `()`
--  `chat_renders_assistant_message_with_prefix` function L858-872 — `()`
--  `chat_renders_tool_call_with_icon` function L875-900 — `()`
--  `chat_renders_tool_result_collapsed` function L903-931 — `()`
--  `chat_renders_tool_error_result` function L934-957 — `()`
--  `chat_renders_tool_result_truncated` function L960-987 — `()`
--  `chat_streaming_text_appears_in_chat_area` function L990-1012 — `()`
--  `sidebar_renders_workstream_names` function L1015-1051 — `()`
--  `sidebar_does_not_leak_into_chat` function L1054-1088 — `()`
--  `input_shows_placeholder_when_empty` function L1091-1102 — `()`
--  `input_shows_generating_when_active` function L1105-1118 — `()`
--  `status_bar_shows_generating_indicator` function L1121-1135 — `()`
--  `status_bar_shows_workstream_name` function L1138-1162 — `()`
--  `messages_do_not_appear_in_input_area` function L1165-1188 — `()`
--  `chat_auto_scrolls_to_bottom_with_many_messages` function L1193-1223 — `()`
--  `chat_scroll_up_reveals_older_messages` function L1226-1254 — `()`
--  `chat_few_messages_all_visible` function L1257-1271 — `()`
--  `last_message_visible_above_input` function L1274-1327 — `()`
--  `last_tool_result_visible_above_input` function L1330-1388 — `()`
+-  `render_chat` function L246-504 — `(app: &mut App, frame: &mut Frame, area: ratatui::layout::Rect)`
+-  `render_separator` function L506-510 — `(frame: &mut Frame, area: ratatui::layout::Rect)`
+-  `render_input` function L512-561 — `(app: &App, frame: &mut Frame, area: ratatui::layout::Rect)`
+-  `render_autocomplete` function L564-622 — `( ac: &crate::command::AutocompleteState, frame: &mut Frame, input_area: ratatui...` — Render the autocomplete dropdown above the input line.
+-  `truncate_to` function L625-634 — `(s: &str, max_chars: usize) -> String` — Truncate a string to fit within a display width, adding "…" if needed.
+-  `compact_tool_summary` function L637-642 — `(content: &str) -> String` — Extract a compact summary from tool call content for inline display.
+-  `truncate_for_display` function L644-650 — `(s: &str, max: usize) -> String`
+-  `tests` module L653-1387 — `-`
+-  `buffer_to_string` function L659-674 — `(terminal: &Terminal<TestBackend>, row: u16) -> String`
+-  `render_empty_app_has_status_bar` function L677-686 — `()`
+-  `render_with_messages_shows_content` function L689-715 — `()`
+-  `render_with_input_text` function L718-733 — `()`
+-  `render_streaming_shows_cursor` function L736-759 — `()`
+-  `render_small_terminal` function L762-767 — `()`
+-  `render_large_terminal` function L770-775 — `()`
+-  `region_text` function L780-792 — `(terminal: &Terminal<TestBackend>, x: u16, y: u16, w: u16, h: u16) -> String` — Extract text from a rectangular region of the buffer.
+-  `chat_region_for` function L796-809 — `(terminal: &Terminal<TestBackend>, sidebar_visible: bool) -> String` — Extract the chat area text.
+-  `chat_region` function L812-814 — `(terminal: &Terminal<TestBackend>) -> String` — Convenience: chat region for default app (sidebar hidden).
+-  `sidebar_region` function L818-826 — `(terminal: &Terminal<TestBackend>) -> String` — Extract the sidebar text (left 20%, rows 1..height-3).
+-  `input_region` function L829-834 — `(terminal: &Terminal<TestBackend>) -> String` — Extract the input bar text (second from bottom row).
+-  `chat_renders_user_message_with_prefix` function L839-853 — `()`
+-  `chat_renders_assistant_message_with_prefix` function L856-870 — `()`
+-  `chat_renders_tool_call_with_icon` function L873-898 — `()`
+-  `chat_renders_tool_result_collapsed` function L901-929 — `()`
+-  `chat_renders_tool_error_result` function L932-955 — `()`
+-  `chat_renders_tool_result_truncated` function L958-985 — `()`
+-  `chat_streaming_text_appears_in_chat_area` function L988-1010 — `()`
+-  `sidebar_renders_workstream_names` function L1013-1049 — `()`
+-  `sidebar_does_not_leak_into_chat` function L1052-1086 — `()`
+-  `input_shows_placeholder_when_empty` function L1089-1100 — `()`
+-  `input_shows_generating_when_active` function L1103-1116 — `()`
+-  `status_bar_shows_generating_indicator` function L1119-1133 — `()`
+-  `status_bar_shows_workstream_name` function L1136-1160 — `()`
+-  `messages_do_not_appear_in_input_area` function L1163-1186 — `()`
+-  `chat_auto_scrolls_to_bottom_with_many_messages` function L1191-1221 — `()`
+-  `chat_scroll_up_reveals_older_messages` function L1224-1252 — `()`
+-  `chat_few_messages_all_visible` function L1255-1269 — `()`
+-  `last_message_visible_above_input` function L1272-1325 — `()`
+-  `last_tool_result_visible_above_input` function L1328-1386 — `()`
 
 #### crates/arawn-tui/src/snapshot.rs
 
