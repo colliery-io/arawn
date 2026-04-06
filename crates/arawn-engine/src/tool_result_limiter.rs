@@ -61,7 +61,12 @@ fn truncate_output(
     _max_chars: usize,
     persisted_path: Option<&Path>,
 ) -> ToolOutput {
-    let preview = &output.content[..PREVIEW_SIZE.min(output.content.len())];
+    // Find a char boundary at or before PREVIEW_SIZE to avoid panicking on multi-byte chars
+    let mut end = PREVIEW_SIZE.min(output.content.len());
+    while end > 0 && !output.content.is_char_boundary(end) {
+        end -= 1;
+    }
+    let preview = &output.content[..end];
     let original_len = output.content.len();
 
     let mut content = String::with_capacity(PREVIEW_SIZE + 200);
