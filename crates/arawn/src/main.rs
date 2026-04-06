@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use tracing::{debug, info, warn};
-use tracing_subscriber::EnvFilter;
+use tracing_subscriber::{EnvFilter, Layer, fmt, layer::SubscriberExt, util::SubscriberInitExt};
 use uuid::Uuid;
 
 use arawn_core::Workstream;
@@ -20,18 +20,12 @@ use arawn_storage::Store;
 
 const DEFAULT_MODEL: &str = "llama-3.3-70b-versatile";
 
+/// Default file log filter: debug for arawn crates, warn for third-party.
+const FILE_LOG_FILTER: &str = "warn,arawn=debug,arawn_bin=debug,arawn_tui=debug,arawn_engine=debug,arawn_llm=debug,arawn_storage=debug,arawn_core=debug,arawn_mcp=debug,arawn_memory=debug,arawn_service=debug,arawn_embed=debug";
+
 #[tokio::main]
 async fn main() -> Result<()> {
-    // Initialize tracing
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")),
-        )
-        .with_target(false)
-        .with_writer(std::io::stderr)
-        .init();
-
-    // Parse CLI args
+    // Parse CLI args (tracing initialized after config load so we know the mode + data dir)
     let args: Vec<String> = std::env::args().collect();
     let mut session_id: Option<Uuid> = None;
     let mut list_sessions = false;
@@ -99,6 +93,60 @@ async fn main() -> Result<()> {
         .unwrap_or_else(|_| dirs_path().unwrap_or_else(|| ".arawn".into()));
     let config = arawn_bin::ArawnConfig::load(std::path::Path::new(&bootstrap_dir));
     let data_dir = config.data_dir().to_string_lossy().to_string();
+
+    // Initialize logging — file-based for serve/tui, stderr-only for CLI
+    let _log_guard: Option<tracing_appender::non_blocking::WorkerGuard>;
+    {
+        let log_dir = std::path::PathBuf::from(&data_dir).join("logs");
+        let _ = std::fs::create_dir_all(&log_dir);
+        let is_tui = tui_mode
+            || (!serve_mode && !list_sessions && session_id.is_none() && prompt_parts.is_empty());
+
+        if serve_mode {
+            let file_appender = tracing_appender::rolling::daily(&log_dir, "server.log");
+            let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
+            _log_guard = Some(guard);
+            tracing_subscriber::registry()
+                .with(
+                    fmt::layer()
+                        .with_writer(non_blocking)
+                        .with_ansi(false)
+                        .with_filter(EnvFilter::new(FILE_LOG_FILTER)),
+                )
+                .with(
+                    fmt::layer()
+                        .with_writer(std::io::stderr)
+                        .with_target(false)
+                        .with_filter(
+                            EnvFilter::try_from_default_env()
+                                .unwrap_or_else(|_| EnvFilter::new("info")),
+                        ),
+                )
+                .init();
+        } else if is_tui {
+            let file_appender = tracing_appender::rolling::daily(&log_dir, "tui.log");
+            let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
+            _log_guard = Some(guard);
+            tracing_subscriber::registry()
+                .with(
+                    fmt::layer()
+                        .with_writer(non_blocking)
+                        .with_ansi(false)
+                        .with_filter(EnvFilter::new(FILE_LOG_FILTER)),
+                )
+                .init();
+        } else {
+            _log_guard = None;
+            tracing_subscriber::fmt()
+                .with_env_filter(
+                    EnvFilter::try_from_default_env()
+                        .unwrap_or_else(|_| EnvFilter::new("info")),
+                )
+                .with_target(false)
+                .with_writer(std::io::stderr)
+                .init();
+        }
+    }
 
     let store = Store::open(std::path::Path::new(&data_dir))?;
     info!(data_dir = %data_dir, "store opened");

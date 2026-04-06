@@ -11,7 +11,7 @@ use futures_util::{FutureExt, StreamExt};
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
 use tokio_tungstenite::tungstenite::Message as WsMessage;
-use tracing::{error, info, warn};
+use tracing::{debug, error, info, warn};
 
 use ratatui::layout::Rect;
 
@@ -32,16 +32,22 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
     info!("connected");
 
     // Load initial state
+    debug!("loading initial workstreams");
     let workstreams = client.list_workstreams().await?;
+    debug!(count = workstreams.len(), "workstreams loaded");
     let current_ws = workstreams.first().cloned();
     let sessions = if let Some(ref ws) = current_ws {
+        debug!(ws_id = %ws.id, "loading sessions for workstream");
         client.list_sessions(Some(ws.id)).await?
     } else {
+        debug!("no workstreams found, skipping session load");
         vec![]
     };
+    debug!(count = sessions.len(), "sessions loaded");
 
     // Create session for this TUI instance
     let ws_id = current_ws.as_ref().map(|ws| ws.id);
+    debug!("creating new session");
     let session = client.create_session(ws_id).await?;
     info!(session_id = %session.id, "session created");
 
@@ -111,6 +117,7 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                 if let CEvent::Key(key) = event
                     && let Some(action) = map_key_event(key, app.focus, app.is_generating, app.active_modal.is_some(), app.autocomplete.is_some())
                 {
+                    debug!(?action, focus = ?app.focus, generating = app.is_generating, "handling action");
                     app.handle_action(action.clone());
 
                     // Handle modal response — send back to server when modal closes
@@ -120,12 +127,13 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                                 Ok(idx) => idx,
                                 Err(_) => None, // Not ready or cancelled
                             };
+                            debug!(%request_id, ?selected_index, "sending modal response to server");
                             let params = serde_json::json!({
                                 "request_id": request_id,
                                 "selected_index": selected_index,
                             });
                             if let Err(e) = client.send_request("user_input_response", params).await {
-                                warn!("failed to send modal response: {e}");
+                                warn!(%request_id, error = %e, "failed to send modal response");
                             }
                         }
                     }
@@ -133,10 +141,13 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                     // Handle submit — send message via WS
                     if let Some(content) = app.pending_submit.take()
                         && let Some(ref session) = app.current_session
-                        && let Err(e) = client.send_message(session.id, &content).await
                     {
-                        app.messages.push(ChatMessage::new(ChatRole::System, format!("Error: {e}")));
-                        app.is_generating = false;
+                        debug!(session_id = %session.id, content_len = content.len(), "submitting message");
+                        if let Err(e) = client.send_message(session.id, &content).await {
+                            warn!(error = %e, "send_message failed");
+                            app.messages.push(ChatMessage::new(ChatRole::System, format!("Error: {e}")));
+                            app.is_generating = false;
+                        }
                     }
 
                     // Handle slash command results that need WS interaction
@@ -424,6 +435,7 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                 let apply_update = |update: EventUpdate, app: &mut App| -> bool {
                     match update {
                         EventUpdate::AppendStreamingText(text) => {
+                            debug!(len = text.len(), "update: streaming text");
                             // Flush any accumulated streaming text as an assistant message
                             // when we get new text (handles mid-loop narration from tool call turns)
                             if !app.streaming_text.is_empty() {
@@ -434,6 +446,7 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                             return true; // Draw immediately — narration should be visible
                         }
                         EventUpdate::AddToolCall { name, input, .. } => {
+                            debug!(%name, "update: tool call start");
                             // Flush streaming text before tool call indicator
                             if !app.streaming_text.is_empty() {
                                 let text = std::mem::take(&mut app.streaming_text);
@@ -450,10 +463,12 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                                     _ => None,
                                 })
                                 .unwrap_or_else(|| "tool".to_string());
+                            debug!(%name, is_error, content_len = content.len(), "update: tool result");
                             app.messages.push(ChatMessage::new(ChatRole::ToolResult { name, is_error }, content));
                             return true; // Draw immediately
                         }
                         EventUpdate::Complete(final_text) => {
+                            debug!(final_len = final_text.len(), messages = app.messages.len(), "update: complete");
                             // Flush any remaining streaming text
                             if !app.streaming_text.is_empty() {
                                 let text = std::mem::take(&mut app.streaming_text);
@@ -469,6 +484,7 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                             return true;
                         }
                         EventUpdate::Error(message) => {
+                            warn!(%message, "update: engine error");
                             app.messages.push(ChatMessage::new(ChatRole::System, format!("Error: {message}")));
                             app.is_generating = false;
                             app.streaming_text.clear();
@@ -476,12 +492,15 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                             return true;
                         }
                         EventUpdate::Compaction(count) => {
+                            debug!(count, "update: compaction");
                             app.messages.push(ChatMessage::new(ChatRole::System, format!("Context compacted ({count} messages summarized)")));
                         }
                         EventUpdate::Usage { input_tokens, output_tokens } => {
+                            debug!(input_tokens, output_tokens, "update: usage");
                             app.token_usage = (input_tokens, output_tokens);
                         }
                         EventUpdate::UserInputRequest { request_id, title, subtitle, options } => {
+                            debug!(%request_id, %title, option_count = options.len(), "update: user input request");
                             // Show modal — the request_id is stored so we can send back the response
                             let modal_options: Vec<crate::modal::ModalOption> = options
                                 .iter()
@@ -511,7 +530,10 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                             // The event loop will handle this after the modal closes
                             app.pending_modal_response = Some((req_id, result_rx));
                         }
-                        EventUpdate::Flush => return true,
+                        EventUpdate::Flush => {
+                            debug!("update: flush");
+                            return true;
+                        }
                     }
                     false
                 };
@@ -522,8 +544,8 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                             flush |= apply_update(engine_event_to_update(event), &mut app);
                         }
                     }
-                    Ok(WsMessage::Close(_)) => {
-                        warn!("server closed connection");
+                    Ok(WsMessage::Close(frame)) => {
+                        warn!(frame = ?frame, "server closed connection");
                         should_break = true;
                     }
                     Err(e) => {
@@ -535,30 +557,37 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
 
                 // Drain any immediately queued messages up to the next Flush
                 if !should_break && !flush {
+                    let mut drained: u32 = 0;
                     loop {
                         match client.read.next().now_or_never() {
                             Some(Some(Ok(WsMessage::Text(text)))) => {
+                                drained += 1;
                                 if let Some(event) = parse_engine_event(&text) {
                                     flush |= apply_update(engine_event_to_update(event), &mut app);
                                     if flush { break; }
                                 }
                             }
-                            Some(Some(Ok(WsMessage::Close(_)))) => {
+                            Some(Some(Ok(WsMessage::Close(frame)))) => {
+                                warn!(frame = ?frame, "server closed during drain");
                                 should_break = true;
                                 break;
                             }
                             Some(Some(Err(e))) => {
-                                error!(error = %e, "WebSocket error");
+                                error!(error = %e, "WebSocket error during drain");
                                 should_break = true;
                                 break;
                             }
                             _ => break, // No more queued messages
                         }
                     }
+                    if drained > 0 {
+                        debug!(drained, flush, "drained queued ws messages");
+                    }
                 }
 
                 if should_break { break; }
                 if flush {
+                    debug!(messages = app.messages.len(), streaming_len = app.streaming_text.len(), "drawing frame");
                     terminal.draw(|f| render(&mut app, f))?;
                 }
             }

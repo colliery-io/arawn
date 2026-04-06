@@ -5,6 +5,7 @@ use futures_util::{SinkExt, StreamExt};
 use serde_json::{Value, json};
 use tokio_tungstenite::connect_async;
 use tokio_tungstenite::tungstenite::Message as WsMessage;
+use tracing::{debug, warn};
 
 static REQUEST_ID: AtomicU64 = AtomicU64::new(1);
 
@@ -29,7 +30,9 @@ pub struct WsClient {
 
 impl WsClient {
     pub async fn connect(url: &str) -> Result<Self, Box<dyn std::error::Error>> {
-        let (ws_stream, _) = connect_async(url).await?;
+        debug!(url, "ws_client connecting");
+        let (ws_stream, resp) = connect_async(url).await?;
+        debug!(status = ?resp.status(), "ws_client connected");
         let (write, read) = ws_stream.split();
         Ok(Self { write, read })
     }
@@ -45,9 +48,11 @@ impl WsClient {
             "method": method,
             "params": params,
         });
+        debug!(id, method, "ws_client sending request");
         self.write
             .send(WsMessage::Text(request.to_string().into()))
             .await?;
+        debug!(id, method, "ws_client request sent");
         Ok(id)
     }
 
@@ -115,11 +120,26 @@ impl WsClient {
     async fn read_response(&mut self) -> Result<Value, Box<dyn std::error::Error>> {
         while let Some(msg) = self.read.next().await {
             let msg = msg?;
-            if let WsMessage::Text(text) = msg {
-                let value: Value = serde_json::from_str(&text)?;
-                return Ok(value);
+            match &msg {
+                WsMessage::Text(text) => {
+                    let value: Value = serde_json::from_str(text)?;
+                    let id = value.get("id").and_then(|v| v.as_u64());
+                    let has_error = value.get("error").is_some();
+                    debug!(id = ?id, has_error, "ws_client recv response");
+                    return Ok(value);
+                }
+                WsMessage::Close(frame) => {
+                    warn!(frame = ?frame, "ws_client recv close frame");
+                }
+                WsMessage::Ping(_) => {
+                    debug!("ws_client recv ping");
+                }
+                _ => {
+                    debug!(kind = ?std::mem::discriminant(&msg), "ws_client recv non-text frame");
+                }
             }
         }
+        warn!("ws_client connection closed unexpectedly");
         Err("connection closed".into())
     }
 }
@@ -130,8 +150,19 @@ pub fn parse_engine_event(text: &str) -> Option<EngineEvent> {
 
     // EngineEvent uses tagged serde: {"event": "...", "data": {...}}
     if value.get("event").is_some() {
-        serde_json::from_value(value).ok()
+        let event_type = value.get("event").and_then(|e| e.as_str()).unwrap_or("?").to_string();
+        match serde_json::from_value::<EngineEvent>(value) {
+            Ok(event) => {
+                debug!(event_type = %event_type, "parsed engine event");
+                Some(event)
+            }
+            Err(e) => {
+                warn!(event_type = %event_type, error = %e, "failed to deserialize engine event");
+                None
+            }
+        }
     } else {
+        debug!("ws message is not an engine event (no 'event' field)");
         None
     }
 }

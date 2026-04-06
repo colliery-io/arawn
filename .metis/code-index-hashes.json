@@ -125,7 +125,7 @@
     "crates/arawn-tui/src/app.rs": "925b222d09552cd08ef878c5a796252ef407b843696f2a69b6d0169bcfbbfeba",
     "crates/arawn-tui/src/command.rs": "c9899bee21dd1dc31610247ea3c66f596eed581839da6844c6578d0f777a9171",
     "crates/arawn-tui/src/event.rs": "02560f78a7116114d74d17362a8c07a23e45f9997c49a87dc6bdcf4cdc49b18a",
-    "crates/arawn-tui/src/event_loop.rs": "d086c543372da5d330dadf9fba0069e7320a2e30e6ba8d5b3a29383f80afd923",
+    "crates/arawn-tui/src/event_loop.rs": "6d1ce2a6f64cdbc5bde61a609c8ce2476ce983aca712c9a7ca4ec9e84559d3cf",
     "crates/arawn-tui/src/lib.rs": "bf562805d49cea94ad9d136b5136c2b4322b61ef61e9d2cbc154010bafdb099d",
     "crates/arawn-tui/src/markdown.rs": "c13accfdc9b9a494d553555f6020dabc5060f7dc043f61b13440d8b3846af0ab",
     "crates/arawn-tui/src/modal.rs": "f3fa34fc22a58d4f65ce9d82d1b26f2feb34c33854d54f70cc8bc82dcb3fafb1",
@@ -134,15 +134,15 @@
     "crates/arawn-tui/src/snapshot_tests.rs": "a8ee88cedd09ca5e51ce457c5669a394ee99ef6dd4c7e982801ffbbfa6401d3a",
     "crates/arawn-tui/src/theme.rs": "2693eb5447f29572378352e50191a99632bdc0a2c465d86fdde894870c774375",
     "crates/arawn-tui/src/tui_prompt.rs": "b87d79a0c68d7f22752ba46896851218e31642c951f570435debdb6aa49d1df0",
-    "crates/arawn-tui/src/ws_client.rs": "f0025303a1a28b896f623a82a811bee51f639ad37a41a7726593abefcfb37c62",
+    "crates/arawn-tui/src/ws_client.rs": "af4824a12aa0f2de7666f500d60e691dbc507ccc0cf64f6ddd95bb0f01734506",
     "crates/arawn/src/channel_prompt.rs": "68733b4e46222f5d1a33779e26cded2b5ea29bbd92b482e75dadf86fcecf7d9b",
     "crates/arawn/src/config.rs": "4fde9b30ff5c4acdf23920429cbb02adcd8b10457bfee8b7748c6c08a5faf076",
     "crates/arawn/src/config_watcher.rs": "7518f75d28bff008ff6c1ce029cf8324136b2ee74d90bd23c044ed427466ce0c",
     "crates/arawn/src/lib.rs": "69c41bdb072d6ae2b56a6c61b67cb2f9a85ff685821758e21b70e5104f968ece",
     "crates/arawn/src/local_service.rs": "980fb1ddf85ecbee99bad4b275e7c947a9f077adf406fd3336a9c60865c94699",
-    "crates/arawn/src/main.rs": "6569d90905bb3ea0825132afe12aff8372fc8a72c50174c315e5158c71ba0d14",
+    "crates/arawn/src/main.rs": "fbd36556c21e8591618270f4c480aeb1e6c31534a8ddad54e08600143027a898",
     "crates/arawn/src/plugin_cmd.rs": "04044fe487f11669d8f59c5a1f4fd86fa7b98ddcb4453063963d8ec45ef01459",
-    "crates/arawn/src/ws_server.rs": "2f3449223aafb7c2947942b73027e9f542cc061efbf42b13fd2e96f2faafca60",
+    "crates/arawn/src/ws_server.rs": "6b2c19f8f76ef0b5ba11374ecf3b0052740b8cf39ea17301165b56b0060014ab",
     "scripts/functional_test.py": "772886d5564a27e0e8da6e69bd2b17208fce5e8222f84954350717d97749a2f4"
   }
 }

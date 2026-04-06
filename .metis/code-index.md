@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-04-06T10:29:51Z | 144 files | Python, Rust
+> Generated: 2026-04-06T11:01:41Z | 144 files | Python, Rust
 
 ## Project Structure
 
@@ -315,11 +315,12 @@
 #### crates/arawn/src/main.rs
 
 -  `DEFAULT_MODEL` variable L21 — `: &str`
--  `main` function L24-380 — `() -> Result<()>`
--  `run_cli_via_server` function L383-494 — `( url: &str, prompt: &str, session_id: Option<Uuid>, ) -> Result<()>` — Run a CLI prompt by connecting to the running server via WebSocket.
--  `build_llm_client` function L497-519 — `( config: &arawn_bin::LlmConfig, ) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
--  `build_engine_config` function L521-553 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
--  `dirs_path` function L555-564 — `() -> Option<String>`
+-  `FILE_LOG_FILTER` variable L24 — `: &str` — Default file log filter: debug for arawn crates, warn for third-party.
+-  `main` function L27-428 — `() -> Result<()>`
+-  `run_cli_via_server` function L431-542 — `( url: &str, prompt: &str, session_id: Option<Uuid>, ) -> Result<()>` — Run a CLI prompt by connecting to the running server via WebSocket.
+-  `build_llm_client` function L545-567 — `( config: &arawn_bin::LlmConfig, ) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
+-  `build_engine_config` function L569-601 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
+-  `dirs_path` function L603-612 — `() -> Option<String>`
 
 #### crates/arawn/src/plugin_cmd.rs
 
@@ -348,15 +349,15 @@
 #### crates/arawn/src/ws_server.rs
 
 - pub `run_server` function L69-84 — `(service: LocalService, port: u16) -> anyhow::Result<()>` — Start the WebSocket server on the given port.
-- pub `handle_connection_public` function L94-96 — `(socket: WebSocket, service: Arc<LocalService>)` — Handle a single WebSocket connection.
+- pub `handle_connection_public` function L95-97 — `(socket: WebSocket, service: Arc<LocalService>)` — Handle a single WebSocket connection.
 -  `Request` struct L24-29 — `{ id: u64, method: String, params: Value }` — JSON-RPC style request from client.
 -  `Response` struct L33-39 — `{ id: u64, result: Option<Value>, error: Option<ErrorBody> }` — JSON-RPC style response to client.
 -  `ErrorBody` struct L42-45 — `{ code: String, message: String }`
 -  `Response` type L47-66 — `= Response`
 -  `success` function L48-54 — `(id: u64, result: Value) -> Self`
 -  `error` function L56-65 — `(id: u64, code: &str, message: String) -> Self`
--  `ws_handler` function L86-91 — `( ws: WebSocketUpgrade, State(service): State<Arc<LocalService>>, ) -> impl Into...`
--  `handle_connection` function L98-460 — `(socket: WebSocket, service: Arc<LocalService>)`
+-  `ws_handler` function L86-92 — `( ws: WebSocketUpgrade, State(service): State<Arc<LocalService>>, ) -> impl Into...`
+-  `handle_connection` function L99-588 — `(socket: WebSocket, service: Arc<LocalService>)`
 
 ### crates/arawn-core/src
 
@@ -3018,7 +3019,7 @@
 
 #### crates/arawn-tui/src/event_loop.rs
 
-- pub `run_tui` function L28-578 — `(url: &str, model_name: &str) -> Result<(), Box<dyn std::error::Error>>` — Run the TUI connected to the given WebSocket server URL.
+- pub `run_tui` function L28-607 — `(url: &str, model_name: &str) -> Result<(), Box<dyn std::error::Error>>` — Run the TUI connected to the given WebSocket server URL.
 -  `rect_contains` function L23-25 — `(rect: Rect, col: u16, row: u16) -> bool`
 
 #### crates/arawn-tui/src/lib.rs
@@ -3231,21 +3232,21 @@
 
 #### crates/arawn-tui/src/ws_client.rs
 
-- pub `WsClient` struct L16-28 — `{ write: futures_util::stream::SplitSink< tokio_tungstenite::WebSocketStream< to...` — A WebSocket connection to the Arawn server.
-- pub `connect` function L31-35 — `(url: &str) -> Result<Self, Box<dyn std::error::Error>>`
-- pub `send_request` function L37-52 — `( &mut self, method: &str, params: Value, ) -> Result<u64, Box<dyn std::error::E...`
-- pub `list_workstreams` function L54-61 — `( &mut self, ) -> Result<Vec<WorkstreamInfo>, Box<dyn std::error::Error>>`
-- pub `list_sessions` function L63-75 — `( &mut self, ws_id: Option<uuid::Uuid>, ) -> Result<Vec<SessionInfo>, Box<dyn st...`
-- pub `create_session` function L77-89 — `( &mut self, ws_id: Option<uuid::Uuid>, ) -> Result<SessionInfo, Box<dyn std::er...`
-- pub `send_message` function L91-107 — `( &mut self, session_id: uuid::Uuid, content: &str, ) -> Result<(), Box<dyn std:...`
-- pub `read_response_raw` function L110-112 — `(&mut self) -> Result<Value, Box<dyn std::error::Error>>` — Read the next JSON response from the server (public for sidebar).
-- pub `parse_engine_event` function L128-137 — `(text: &str) -> Option<EngineEvent>` — Parse a WS message as an EngineEvent.
-- pub `EventUpdate` enum L140-166 — `AppendStreamingText | AddToolCall | AddToolResult | Complete | Error | Compactio...` — Convert an EngineEvent into App state updates.
-- pub `engine_event_to_update` function L168-194 — `(event: EngineEvent) -> EventUpdate`
--  `REQUEST_ID` variable L9 — `: AtomicU64`
--  `next_id` function L11-13 — `() -> u64`
--  `WsClient` type L30-125 — `= WsClient`
--  `read_response` function L115-124 — `(&mut self) -> Result<Value, Box<dyn std::error::Error>>` — Read the next JSON response from the server.
+- pub `WsClient` struct L17-29 — `{ write: futures_util::stream::SplitSink< tokio_tungstenite::WebSocketStream< to...` — A WebSocket connection to the Arawn server.
+- pub `connect` function L32-38 — `(url: &str) -> Result<Self, Box<dyn std::error::Error>>`
+- pub `send_request` function L40-57 — `( &mut self, method: &str, params: Value, ) -> Result<u64, Box<dyn std::error::E...`
+- pub `list_workstreams` function L59-66 — `( &mut self, ) -> Result<Vec<WorkstreamInfo>, Box<dyn std::error::Error>>`
+- pub `list_sessions` function L68-80 — `( &mut self, ws_id: Option<uuid::Uuid>, ) -> Result<Vec<SessionInfo>, Box<dyn st...`
+- pub `create_session` function L82-94 — `( &mut self, ws_id: Option<uuid::Uuid>, ) -> Result<SessionInfo, Box<dyn std::er...`
+- pub `send_message` function L96-112 — `( &mut self, session_id: uuid::Uuid, content: &str, ) -> Result<(), Box<dyn std:...`
+- pub `read_response_raw` function L115-117 — `(&mut self) -> Result<Value, Box<dyn std::error::Error>>` — Read the next JSON response from the server (public for sidebar).
+- pub `parse_engine_event` function L148-168 — `(text: &str) -> Option<EngineEvent>` — Parse a WS message as an EngineEvent.
+- pub `EventUpdate` enum L171-197 — `AppendStreamingText | AddToolCall | AddToolResult | Complete | Error | Compactio...` — Convert an EngineEvent into App state updates.
+- pub `engine_event_to_update` function L199-225 — `(event: EngineEvent) -> EventUpdate`
+-  `REQUEST_ID` variable L10 — `: AtomicU64`
+-  `next_id` function L12-14 — `() -> u64`
+-  `WsClient` type L31-145 — `= WsClient`
+-  `read_response` function L120-144 — `(&mut self) -> Result<Value, Box<dyn std::error::Error>>` — Read the next JSON response from the server.
 
 ### scripts
 

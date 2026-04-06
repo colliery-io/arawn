@@ -13,7 +13,7 @@ use futures::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use tokio::net::TcpListener;
-use tracing::{info, warn};
+use tracing::{debug, info, warn};
 
 use arawn_service::ArawnService;
 
@@ -87,6 +87,7 @@ async fn ws_handler(
     ws: WebSocketUpgrade,
     State(service): State<Arc<LocalService>>,
 ) -> impl IntoResponse {
+    debug!("ws_handler: upgrade request received");
     ws.on_upgrade(move |socket| handle_connection(socket, service))
 }
 
@@ -102,11 +103,19 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
     while let Some(msg) = receiver.next().await {
         let msg = match msg {
             Ok(WsMessage::Text(text)) => text,
-            Ok(WsMessage::Close(_)) => {
-                info!("WebSocket client disconnected");
+            Ok(WsMessage::Close(frame)) => {
+                info!(frame = ?frame, "WebSocket client disconnected (close frame)");
                 break;
             }
-            Ok(_) => continue, // Ignore binary, ping, pong
+            Ok(WsMessage::Ping(_)) => {
+                debug!("recv ping");
+                continue;
+            }
+            Ok(WsMessage::Pong(_)) => {
+                debug!("recv pong");
+                continue;
+            }
+            Ok(_) => continue,
             Err(e) => {
                 warn!(error = %e, "WebSocket receive error");
                 break;
@@ -116,6 +125,7 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
         let request: Request = match serde_json::from_str(&msg) {
             Ok(r) => r,
             Err(e) => {
+                warn!(raw = %msg, error = %e, "failed to parse request JSON");
                 let resp = Response::error(0, "parse_error", format!("Invalid JSON: {e}"));
                 let _ = sender
                     .send(WsMessage::Text(
@@ -127,18 +137,30 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
         };
 
         let id = request.id;
+        debug!(id, method = %request.method, "dispatching RPC");
 
         match request.method.as_str() {
             "list_workstreams" => {
                 let resp = match service.list_workstreams().await {
-                    Ok(ws) => Response::success(id, serde_json::to_value(&ws).unwrap()),
-                    Err(e) => Response::error(id, "service_error", e.to_string()),
+                    Ok(ws) => {
+                        debug!(id, count = ws.len(), "list_workstreams ok");
+                        Response::success(id, serde_json::to_value(&ws).unwrap())
+                    }
+                    Err(e) => {
+                        warn!(id, error = %e, "list_workstreams failed");
+                        Response::error(id, "service_error", e.to_string())
+                    }
                 };
-                let _ = sender
+                if sender
                     .send(WsMessage::Text(
                         serde_json::to_string(&resp).unwrap().into(),
                     ))
-                    .await;
+                    .await
+                    .is_err()
+                {
+                    warn!(id, "send failed, client gone");
+                    break;
+                }
             }
 
             "create_workstream" => {
@@ -154,15 +176,27 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                     .and_then(|v| v.as_str())
                     .unwrap_or("")
                     .into();
+                debug!(id, %name, "create_workstream");
                 let resp = match service.create_workstream(name, root_dir).await {
-                    Ok(ws) => Response::success(id, serde_json::to_value(&ws).unwrap()),
-                    Err(e) => Response::error(id, "service_error", e.to_string()),
+                    Ok(ws) => {
+                        debug!(id, ws_id = %ws.id, "create_workstream ok");
+                        Response::success(id, serde_json::to_value(&ws).unwrap())
+                    }
+                    Err(e) => {
+                        warn!(id, error = %e, "create_workstream failed");
+                        Response::error(id, "service_error", e.to_string())
+                    }
                 };
-                let _ = sender
+                if sender
                     .send(WsMessage::Text(
                         serde_json::to_string(&resp).unwrap().into(),
                     ))
-                    .await;
+                    .await
+                    .is_err()
+                {
+                    warn!(id, "send failed, client gone");
+                    break;
+                }
             }
 
             "list_sessions" => {
@@ -171,15 +205,27 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                     .get("workstream_id")
                     .and_then(|v| v.as_str())
                     .and_then(|s| uuid::Uuid::parse_str(s).ok());
+                debug!(id, ws_id = ?ws_id, "list_sessions");
                 let resp = match service.list_sessions(ws_id).await {
-                    Ok(sessions) => Response::success(id, serde_json::to_value(&sessions).unwrap()),
-                    Err(e) => Response::error(id, "service_error", e.to_string()),
+                    Ok(sessions) => {
+                        debug!(id, count = sessions.len(), "list_sessions ok");
+                        Response::success(id, serde_json::to_value(&sessions).unwrap())
+                    }
+                    Err(e) => {
+                        warn!(id, error = %e, "list_sessions failed");
+                        Response::error(id, "service_error", e.to_string())
+                    }
                 };
-                let _ = sender
+                if sender
                     .send(WsMessage::Text(
                         serde_json::to_string(&resp).unwrap().into(),
                     ))
-                    .await;
+                    .await
+                    .is_err()
+                {
+                    warn!(id, "send failed, client gone");
+                    break;
+                }
             }
 
             "create_session" => {
@@ -188,15 +234,27 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                     .get("workstream_id")
                     .and_then(|v| v.as_str())
                     .and_then(|s| uuid::Uuid::parse_str(s).ok());
+                debug!(id, ws_id = ?ws_id, "create_session");
                 let resp = match service.create_session(ws_id).await {
-                    Ok(session) => Response::success(id, serde_json::to_value(&session).unwrap()),
-                    Err(e) => Response::error(id, "service_error", e.to_string()),
+                    Ok(session) => {
+                        debug!(id, session_id = %session.id, "create_session ok");
+                        Response::success(id, serde_json::to_value(&session).unwrap())
+                    }
+                    Err(e) => {
+                        warn!(id, error = %e, "create_session failed");
+                        Response::error(id, "service_error", e.to_string())
+                    }
                 };
-                let _ = sender
+                if sender
                     .send(WsMessage::Text(
                         serde_json::to_string(&resp).unwrap().into(),
                     ))
-                    .await;
+                    .await
+                    .is_err()
+                {
+                    warn!(id, "send failed, client gone");
+                    break;
+                }
             }
 
             "load_session" => {
@@ -205,18 +263,33 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                     .get("session_id")
                     .and_then(|v| v.as_str())
                     .and_then(|s| uuid::Uuid::parse_str(s).ok());
+                debug!(id, session_id = ?session_id, "load_session");
                 let resp = match session_id {
                     Some(sid) => match service.load_session(sid).await {
-                        Ok(detail) => Response::success(id, serde_json::to_value(&detail).unwrap()),
-                        Err(e) => Response::error(id, "service_error", e.to_string()),
+                        Ok(detail) => {
+                            debug!(id, messages = detail.messages.len(), "load_session ok");
+                            Response::success(id, serde_json::to_value(&detail).unwrap())
+                        }
+                        Err(e) => {
+                            warn!(id, error = %e, "load_session failed");
+                            Response::error(id, "service_error", e.to_string())
+                        }
                     },
-                    None => Response::error(id, "invalid_params", "missing session_id".into()),
+                    None => {
+                        warn!(id, "load_session missing session_id");
+                        Response::error(id, "invalid_params", "missing session_id".into())
+                    }
                 };
-                let _ = sender
+                if sender
                     .send(WsMessage::Text(
                         serde_json::to_string(&resp).unwrap().into(),
                     ))
-                    .await;
+                    .await
+                    .is_err()
+                {
+                    warn!(id, "send failed, client gone");
+                    break;
+                }
             }
 
             "send_message" => {
@@ -235,6 +308,7 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                 let session_id = match session_id {
                     Some(sid) => sid,
                     None => {
+                        warn!(id, "send_message missing session_id");
                         let resp =
                             Response::error(id, "invalid_params", "missing session_id".into());
                         let _ = sender
@@ -246,32 +320,47 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                     }
                 };
 
+                debug!(id, %session_id, content_len = content.len(), "send_message starting stream");
+
                 // Ack the request
                 let ack = Response::success(id, json!({"status": "streaming"}));
-                let _ = sender
+                if sender
                     .send(WsMessage::Text(serde_json::to_string(&ack).unwrap().into()))
-                    .await;
+                    .await
+                    .is_err()
+                {
+                    warn!(id, "send_message ack failed, client gone");
+                    break;
+                }
+                debug!(id, "send_message ack sent");
 
                 // Stream events while also handling incoming messages
                 // (needed for user_input_response during modal prompts)
                 match service.send_message(session_id, content).await {
                     Ok(mut stream) => {
+                        let mut event_count: u64 = 0;
                         loop {
                             tokio::select! {
                                 // Engine events → forward to client
                                 event = stream.next() => {
                                     match event {
                                         Some(engine_event) => {
+                                            event_count += 1;
+                                            debug!(id, event_count, event = ?std::mem::discriminant(&engine_event), "forwarding engine event");
                                             let event_json = serde_json::to_string(&engine_event).unwrap();
                                             if sender
                                                 .send(WsMessage::Text(event_json.into()))
                                                 .await
                                                 .is_err()
                                             {
-                                                break; // Client disconnected
+                                                warn!(id, event_count, "stream send failed, client disconnected mid-stream");
+                                                break;
                                             }
                                         }
-                                        None => break, // Stream ended
+                                        None => {
+                                            debug!(id, event_count, "engine stream ended");
+                                            break;
+                                        }
                                     }
                                 }
                                 // Client messages (e.g., user_input_response) → handle inline
@@ -279,6 +368,7 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                                     match msg {
                                         Some(Ok(WsMessage::Text(text))) => {
                                             if let Ok(req) = serde_json::from_str::<Request>(&text) {
+                                                debug!(id, inline_method = %req.method, "recv inline message during stream");
                                                 if req.method == "user_input_response" {
                                                     let request_id = req.params
                                                         .get("request_id")
@@ -290,10 +380,14 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                                                         .and_then(|v| v.as_u64())
                                                         .map(|n| n as usize);
 
+                                                    debug!(id, %request_id, ?selected_index, "routing modal response (inline)");
                                                     {
                                                         let mut pending = service.pending_modals.lock().unwrap();
                                                         if let Some(tx) = pending.remove(&request_id) {
                                                             let _ = tx.send(selected_index);
+                                                            debug!(id, %request_id, "modal response delivered (inline)");
+                                                        } else {
+                                                            warn!(id, %request_id, "no pending modal found (inline)");
                                                         }
                                                     }
 
@@ -307,14 +401,23 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                                                 // Other methods during streaming are ignored
                                             }
                                         }
-                                        Some(Ok(WsMessage::Close(_))) | None => break,
+                                        Some(Ok(WsMessage::Close(frame))) => {
+                                            info!(id, frame = ?frame, "client closed during stream");
+                                            break;
+                                        }
+                                        None => {
+                                            info!(id, "client connection dropped during stream");
+                                            break;
+                                        }
                                         _ => {}
                                     }
                                 }
                             }
                         }
+                        debug!(id, event_count, "send_message stream complete");
                     }
                     Err(e) => {
+                        warn!(id, error = %e, "send_message service error");
                         let resp = Response::error(id, "service_error", e.to_string());
                         let _ = sender
                             .send(WsMessage::Text(
@@ -338,6 +441,8 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                     .and_then(|v| v.as_u64())
                     .map(|n| n as usize);
 
+                debug!(id, %request_id, ?selected_index, "routing modal response");
+
                 // Route the response to the waiting tool
                 let resolved = {
                     let mut pending = service.pending_modals.lock().unwrap();
@@ -348,6 +453,12 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                         false
                     }
                 };
+
+                if resolved {
+                    debug!(id, %request_id, "modal response delivered");
+                } else {
+                    warn!(id, %request_id, "no pending modal found");
+                }
 
                 let resp = if resolved {
                     Response::success(id, json!({"status": "delivered"}))
@@ -367,12 +478,22 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                     .get("session_id")
                     .and_then(|v| v.as_str())
                     .and_then(|s| uuid::Uuid::parse_str(s).ok());
+                debug!(id, session_id = ?session_id, "cancel");
                 let resp = match session_id {
                     Some(sid) => match service.cancel(sid).await {
-                        Ok(()) => Response::success(id, json!({"status": "cancelled"})),
-                        Err(e) => Response::error(id, "service_error", e.to_string()),
+                        Ok(()) => {
+                            debug!(id, "cancel ok");
+                            Response::success(id, json!({"status": "cancelled"}))
+                        }
+                        Err(e) => {
+                            warn!(id, error = %e, "cancel failed");
+                            Response::error(id, "service_error", e.to_string())
+                        }
                     },
-                    None => Response::error(id, "invalid_params", "missing session_id".into()),
+                    None => {
+                        warn!(id, "cancel missing session_id");
+                        Response::error(id, "invalid_params", "missing session_id".into())
+                    }
                 };
                 let _ = sender
                     .send(WsMessage::Text(
@@ -387,6 +508,7 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                     .get("kind")
                     .and_then(|v| v.as_str())
                     .unwrap_or("");
+                debug!(id, %kind, "query_inventory");
                 let result = service.query_inventory(kind);
                 let resp = Response::success(id, result);
                 let _ = sender
@@ -397,6 +519,7 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
             }
 
             "remember_fact" => {
+                debug!(id, "remember_fact");
                 let text = request
                     .params
                     .get("text")
@@ -412,6 +535,7 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
             }
 
             "memory_summary" => {
+                debug!(id, "memory_summary");
                 let result = service.memory_summary();
                 let resp = Response::success(id, result);
                 let _ = sender
@@ -422,6 +546,7 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
             }
 
             "forget_entity" => {
+                debug!(id, "forget_entity");
                 let query = request
                     .params
                     .get("query")
@@ -437,6 +562,7 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
             }
 
             "list_available_commands" => {
+                debug!(id, "list_available_commands");
                 let result = service.list_available_commands();
                 let resp = Response::success(id, result);
                 let _ = sender
@@ -447,6 +573,7 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
             }
 
             unknown => {
+                warn!(id, method = %unknown, "unknown RPC method");
                 let resp =
                     Response::error(id, "method_not_found", format!("unknown method: {unknown}"));
                 let _ = sender
@@ -457,4 +584,5 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
             }
         }
     }
+    info!("WebSocket connection handler exiting");
 }
