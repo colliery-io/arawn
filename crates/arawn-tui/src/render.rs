@@ -470,10 +470,8 @@ fn render_chat(app: &mut App, frame: &mut Frame, area: ratatui::layout::Rect) {
     // scroll_offset = 0 means "at the bottom". User scrolling up increases it.
     // Account for line wrapping by estimating visual lines.
     let content_width = (area.width as usize).max(1);
-    // Reduce visible height to ensure auto-scroll shows the last content lines
-    // above the separator/input. The extra buffer accounts for word-wrap producing
-    // more visual lines than our width-based estimate predicts.
-    let visible_height = (area.height as usize).saturating_sub(4);
+    // Use the actual chat area height — the layout already excludes separator/input/status.
+    let visible_height = area.height as usize;
     let visual_lines: usize = lines
         .iter()
         .map(|line| {
