@@ -85,6 +85,22 @@ impl CommandRegistry {
             description: "Enter plan mode (observation only)".into(),
             kind: CommandKind::BuiltIn,
         });
+        // Workstream/session management
+        self.commands.push(CommandInfo {
+            name: "workstream".into(),
+            description: "Manage workstreams (create, list, switch)".into(),
+            kind: CommandKind::BuiltIn,
+        });
+        self.commands.push(CommandInfo {
+            name: "session".into(),
+            description: "Manage sessions (new, list)".into(),
+            kind: CommandKind::BuiltIn,
+        });
+        self.commands.push(CommandInfo {
+            name: "promote".into(),
+            description: "Promote scratch session to a workstream".into(),
+            kind: CommandKind::BuiltIn,
+        });
         // Inventory commands
         self.commands.push(CommandInfo {
             name: "tools".into(),
@@ -224,6 +240,18 @@ pub enum CommandResult {
     MemorySummary,
     /// Forget/delete an entity via /forget.
     ForgetEntity(String),
+    /// Create a new workstream.
+    WorkstreamCreate(String),
+    /// List all workstreams.
+    WorkstreamList,
+    /// Switch to a workstream by name.
+    WorkstreamSwitch(String),
+    /// Create a new session in the current workstream.
+    SessionNew,
+    /// List sessions in the current workstream.
+    SessionList,
+    /// Promote current scratch session to a workstream.
+    PromoteSession(String),
 }
 
 /// Execute a parsed slash command against the registry.
@@ -239,6 +267,48 @@ pub fn execute_command(cmd: &ParsedCommand, registry: &CommandRegistry) -> Comma
                     CommandResult::SystemMessage(help)
                 }
                 "clear" => CommandResult::ClearChat,
+                "workstream" => {
+                    let parts: Vec<&str> = cmd.args.splitn(2, char::is_whitespace).collect();
+                    match parts.first().map(|s| *s) {
+                        Some("create") => {
+                            let name = parts.get(1).unwrap_or(&"").trim();
+                            if name.is_empty() {
+                                CommandResult::SystemMessage("Usage: /workstream create <name>".into())
+                            } else {
+                                CommandResult::WorkstreamCreate(name.to_string())
+                            }
+                        }
+                        Some("list") => CommandResult::WorkstreamList,
+                        Some("switch") => {
+                            let name = parts.get(1).unwrap_or(&"").trim();
+                            if name.is_empty() {
+                                CommandResult::SystemMessage("Usage: /workstream switch <name>".into())
+                            } else {
+                                CommandResult::WorkstreamSwitch(name.to_string())
+                            }
+                        }
+                        _ => CommandResult::SystemMessage(
+                            "Usage: /workstream <create|list|switch> [name]\n\n  create <name>  Create a new workstream\n  list           List all workstreams\n  switch <name>  Switch to a workstream".into()
+                        ),
+                    }
+                }
+                "session" => {
+                    let sub = cmd.args.split_whitespace().next().unwrap_or("");
+                    match sub {
+                        "new" => CommandResult::SessionNew,
+                        "list" => CommandResult::SessionList,
+                        _ => CommandResult::SystemMessage(
+                            "Usage: /session <new|list>\n\n  new   Create a new session\n  list  List sessions in current workstream".into()
+                        ),
+                    }
+                }
+                "promote" => {
+                    if cmd.args.is_empty() {
+                        CommandResult::SystemMessage("Usage: /promote <workstream-name>".into())
+                    } else {
+                        CommandResult::PromoteSession(cmd.args.clone())
+                    }
+                }
                 "plan" => CommandResult::EnterPlan,
                 "remember" => {
                     if cmd.args.is_empty() {

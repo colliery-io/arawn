@@ -250,6 +250,135 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                                 }
                                 app.dirty = true;
                             }
+                            crate::command::CommandResult::WorkstreamCreate(name) => {
+                                let params = serde_json::json!({"name": name});
+                                if let Ok(_id) = client.send_request("create_workstream", params).await {
+                                    if let Ok(resp) = client.read_response_raw().await {
+                                        if resp.get("result").is_some() {
+                                            // Refresh workstream list and switch to new one
+                                            if let Ok(workstreams) = client.list_workstreams().await {
+                                                app.workstreams = workstreams;
+                                                if let Some(ws) = app.workstreams.iter().find(|w| w.name == name).cloned() {
+                                                    app.current_workstream = Some(ws.clone());
+                                                    if let Ok(sessions) = client.list_sessions(Some(ws.id)).await {
+                                                        app.sessions = sessions;
+                                                    }
+                                                    // Auto-create first session
+                                                    if app.sessions.is_empty() {
+                                                        if let Ok(session) = client.create_session(Some(ws.id)).await {
+                                                            app.current_session = Some(session.clone());
+                                                            app.sessions.push(session);
+                                                            app.messages.clear();
+                                                            app.streaming_text.clear();
+                                                        }
+                                                    }
+                                                    app.messages.push(ChatMessage::new(ChatRole::System, format!("Switched to workstream '{name}'")));
+                                                }
+                                            }
+                                        } else if let Some(err) = resp.get("error").and_then(|e| e.get("message")).and_then(|m| m.as_str()) {
+                                            app.messages.push(ChatMessage::new(ChatRole::System, format!("Error: {err}")));
+                                        }
+                                    }
+                                }
+                                app.dirty = true;
+                            }
+                            crate::command::CommandResult::WorkstreamList => {
+                                if let Ok(workstreams) = client.list_workstreams().await {
+                                    let mut output = String::from("Workstreams:\n\n");
+                                    for ws in &workstreams {
+                                        let current = app.current_workstream.as_ref().map(|c| c.id) == Some(ws.id);
+                                        let marker = if current { "▸ " } else { "  " };
+                                        let sessions = client.list_sessions(Some(ws.id)).await.map(|s| s.len()).unwrap_or(0);
+                                        output.push_str(&format!("{marker}{} ({} sessions)\n", ws.name, sessions));
+                                    }
+                                    app.messages.push(ChatMessage::new(ChatRole::System, output));
+                                }
+                                app.dirty = true;
+                            }
+                            crate::command::CommandResult::WorkstreamSwitch(name) => {
+                                // Refresh workstream list and find by name
+                                if let Ok(workstreams) = client.list_workstreams().await {
+                                    app.workstreams = workstreams;
+                                    if let Some(ws) = app.workstreams.iter().find(|w| w.name == name).cloned() {
+                                        app.current_workstream = Some(ws.clone());
+                                        if let Ok(sessions) = client.list_sessions(Some(ws.id)).await {
+                                            app.sessions = sessions;
+                                        }
+                                        if app.sessions.is_empty() {
+                                            if let Ok(session) = client.create_session(Some(ws.id)).await {
+                                                app.current_session = Some(session.clone());
+                                                app.sessions.push(session);
+                                                app.messages.clear();
+                                                app.streaming_text.clear();
+                                            }
+                                        } else {
+                                            let session = app.sessions[0].clone();
+                                            app.current_session = Some(session.clone());
+                                            if let Ok(detail) = client.load_session(session.id).await {
+                                                app.load_session_messages(&detail);
+                                            }
+                                        }
+                                        app.messages.push(ChatMessage::new(ChatRole::System, format!("Switched to workstream '{name}'")));
+                                    } else {
+                                        app.messages.push(ChatMessage::new(ChatRole::System, format!("Workstream '{name}' not found")));
+                                    }
+                                }
+                                app.dirty = true;
+                            }
+                            crate::command::CommandResult::SessionNew => {
+                                let ws_id = app.current_workstream.as_ref().map(|ws| ws.id);
+                                if let Ok(session) = client.create_session(ws_id).await {
+                                    app.current_session = Some(session.clone());
+                                    app.messages.clear();
+                                    app.streaming_text.clear();
+                                    if let Ok(sessions) = client.list_sessions(ws_id).await {
+                                        app.sessions = sessions;
+                                    }
+                                }
+                                app.dirty = true;
+                            }
+                            crate::command::CommandResult::SessionList => {
+                                let mut output = String::from("Sessions:\n\n");
+                                for s in &app.sessions {
+                                    let current = app.current_session.as_ref().map(|c| c.id) == Some(s.id);
+                                    let marker = if current { "▸ " } else { "  " };
+                                    let id_short = &s.id.to_string()[..8];
+                                    let date = s.created_at.format("%Y-%m-%d %H:%M");
+                                    output.push_str(&format!("{marker}{id_short}  {date}\n"));
+                                }
+                                app.messages.push(ChatMessage::new(ChatRole::System, output));
+                                app.dirty = true;
+                            }
+                            crate::command::CommandResult::PromoteSession(ws_name) => {
+                                if let Some(ref session) = app.current_session {
+                                    let params = serde_json::json!({
+                                        "session_id": session.id.to_string(),
+                                        "workstream_name": ws_name,
+                                    });
+                                    if let Ok(_id) = client.send_request("promote_session", params).await {
+                                        if let Ok(resp) = client.read_response_raw().await {
+                                            if resp.get("result").and_then(|r| r.get("status")).and_then(|s| s.as_str()) == Some("promoted") {
+                                                // Refresh state
+                                                if let Ok(workstreams) = client.list_workstreams().await {
+                                                    app.workstreams = workstreams;
+                                                    if let Some(ws) = app.workstreams.iter().find(|w| w.name == ws_name).cloned() {
+                                                        app.current_workstream = Some(ws.clone());
+                                                        if let Ok(sessions) = client.list_sessions(Some(ws.id)).await {
+                                                            app.sessions = sessions;
+                                                        }
+                                                    }
+                                                }
+                                                app.messages.push(ChatMessage::new(ChatRole::System, format!("Session promoted to workstream '{ws_name}'")));
+                                            } else if let Some(err) = resp.get("error").and_then(|e| e.get("message")).and_then(|m| m.as_str()) {
+                                                app.messages.push(ChatMessage::new(ChatRole::System, format!("Error: {err}")));
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    app.messages.push(ChatMessage::new(ChatRole::System, "No active session to promote".to_string()));
+                                }
+                                app.dirty = true;
+                            }
                             _ => {} // Other command results handled in app.handle_action
                         }
                     }

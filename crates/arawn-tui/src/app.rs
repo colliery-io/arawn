@@ -266,7 +266,13 @@ impl App {
                             | CommandResult::InvokeSkill { .. }
                             | CommandResult::RememberFact(_)
                             | CommandResult::MemorySummary
-                            | CommandResult::ForgetEntity(_) => {
+                            | CommandResult::ForgetEntity(_)
+                            | CommandResult::WorkstreamCreate(_)
+                            | CommandResult::WorkstreamList
+                            | CommandResult::WorkstreamSwitch(_)
+                            | CommandResult::SessionNew
+                            | CommandResult::SessionList
+                            | CommandResult::PromoteSession(_) => {
                                 // These need WS interaction — store for event loop to handle
                                 self.pending_command = Some(result);
                             }
