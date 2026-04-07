@@ -374,6 +374,10 @@ async fn main() -> Result<()> {
             service = service.with_memory_manager(Arc::clone(mgr));
         }
 
+        // Register workstream tools (need the shared store from the service)
+        registry.register(Box::new(arawn_engine::WorkstreamCreateTool::new(service.shared_store())));
+        registry.register(Box::new(arawn_engine::WorkstreamListTool::new(service.shared_store())));
+
         // Spawn config watcher for hot-reloading arawn.toml changes
         let _config_watcher = arawn_bin::config_watcher::ConfigWatcher::new(
             config_path,

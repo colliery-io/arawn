@@ -51,4 +51,5 @@ pub use tools::{
     FileWriteTool, GlobTool, GrepTool, SessionTaskStore, ShellTool, SkillTool, SleepTool,
     MemorySearchTool, MemoryStoreTool, TaskCreateTool, TaskGetTool, TaskListTool, TaskOutputTool, TaskStopTool,
     TaskUpdateTool, ThinkTool, WebFetchTool, WebSearchTool,
+    WorkstreamCreateTool, WorkstreamListTool,
 };

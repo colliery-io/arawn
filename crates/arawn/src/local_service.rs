@@ -75,6 +75,11 @@ impl LocalService {
     }
 
     /// Get a reference to the shared permission rules for hot-reload.
+    /// Get a shared reference to the store for tools that need direct access.
+    pub fn shared_store(&self) -> Arc<Mutex<Store>> {
+        Arc::clone(&self.store)
+    }
+
     pub fn shared_permission_rules(&self) -> Arc<std::sync::RwLock<Vec<PermissionRule>>> {
         Arc::clone(&self.permission_rules)
     }

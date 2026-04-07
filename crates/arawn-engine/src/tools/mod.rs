@@ -18,6 +18,7 @@ pub mod task_stop;
 pub mod think;
 pub mod web_fetch;
 pub mod web_search;
+pub mod workstream;
 
 pub use agent::AgentTool;
 pub use ask_user::AskUserTool;
@@ -39,3 +40,4 @@ pub use task_stop::TaskStopTool;
 pub use think::ThinkTool;
 pub use web_fetch::WebFetchTool;
 pub use web_search::WebSearchTool;
+pub use workstream::{WorkstreamCreateTool, WorkstreamListTool};
