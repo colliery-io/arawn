@@ -25,7 +25,7 @@ use crate::channel_prompt::{ChannelModalPrompt, PendingModals};
 /// Store is behind a std::sync::Mutex since rusqlite::Connection isn't Send.
 pub struct LocalService {
     store: Arc<Mutex<Store>>,
-    data_dir: PathBuf,
+    pub(crate) data_dir: PathBuf,
     llm: Arc<dyn LlmClient>,
     registry: Arc<ToolRegistry>,
     config: QueryEngineConfig,
@@ -338,6 +338,57 @@ impl LocalService {
                 .collect();
             serde_json::json!({"status": "ambiguous", "candidates": items})
         }
+    }
+
+    /// Promote a scratch session to a named workstream.
+    /// Split into sync (SQLite) + async (file moves) to avoid holding MutexGuard across await.
+    pub async fn promote_session(
+        &self,
+        session_id: Uuid,
+        workstream_name: &str,
+    ) -> Result<serde_json::Value, ServiceError> {
+        // Sync phase under lock: find workstream, update SQLite, capture paths
+        let (ws_id, ws_name, ws_dir, scratch_workspace, target_workspace) = {
+            let store = self.store.lock().unwrap();
+            let ws = store
+                .find_workstream_by_name(workstream_name)
+                .map_err(|e| ServiceError::Storage(e.to_string()))?
+                .ok_or_else(|| {
+                    ServiceError::NotFound(format!("workstream '{workstream_name}'"))
+                })?;
+
+            store
+                .promote_session_metadata(session_id, ws.id)
+                .map_err(|e| ServiceError::Storage(e.to_string()))?;
+
+            let ws_dir = arawn_storage::workstream_dir_name(&ws.name, ws.id);
+            let scratch_ws = store.sandbox_for("scratch", session_id, true).join("workspace");
+            let target_ws = store.sandbox_for(&ws_dir, session_id, false).join("workspace");
+
+            (ws.id, ws.name, ws_dir, scratch_ws, target_ws)
+        };
+        // Lock dropped — now do async file operations
+
+        // Move JSONL file (uses JsonlMessageStore directly, no lock needed)
+        let msg_store = arawn_storage::JsonlMessageStore::new(&self.data_dir);
+        msg_store
+            .move_session(session_id, "scratch", &ws_dir)
+            .await
+            .map_err(|e| ServiceError::Storage(e.to_string()))?;
+
+        // Move workspace directory if it exists (best-effort)
+        if scratch_workspace.exists() {
+            let _ = tokio::fs::create_dir_all(target_workspace.parent().unwrap_or(&target_workspace)).await;
+            if let Err(e) = tokio::fs::rename(&scratch_workspace, &target_workspace).await {
+                tracing::warn!(error = %e, "workspace rename failed during promotion, files remain in scratch");
+            }
+        }
+
+        Ok(serde_json::json!({
+            "status": "promoted",
+            "workstream_id": ws_id.to_string(),
+            "workstream_name": ws_name,
+        }))
     }
 }
 

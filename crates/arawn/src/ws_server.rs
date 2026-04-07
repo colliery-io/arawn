@@ -170,13 +170,15 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                     .and_then(|v| v.as_str())
                     .unwrap_or("")
                     .to_string();
-                let root_dir = request
+                // Default root_dir to {data_dir}/workstreams/{name}/ when not provided
+                let root_dir: std::path::PathBuf = request
                     .params
                     .get("root_dir")
                     .and_then(|v| v.as_str())
-                    .unwrap_or("")
-                    .into();
-                debug!(id, %name, "create_workstream");
+                    .filter(|s| !s.is_empty())
+                    .map(std::path::PathBuf::from)
+                    .unwrap_or_else(|| service.data_dir.join("workstreams").join(&name));
+                debug!(id, %name, root_dir = %root_dir.display(), "create_workstream");
                 let resp = match service.create_workstream(name, root_dir).await {
                     Ok(ws) => {
                         debug!(id, ws_id = %ws.id, "create_workstream ok");
@@ -492,6 +494,43 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                     },
                     None => {
                         warn!(id, "cancel missing session_id");
+                        Response::error(id, "invalid_params", "missing session_id".into())
+                    }
+                };
+                let _ = sender
+                    .send(WsMessage::Text(
+                        serde_json::to_string(&resp).unwrap().into(),
+                    ))
+                    .await;
+            }
+
+            "promote_session" => {
+                let session_id = request
+                    .params
+                    .get("session_id")
+                    .and_then(|v| v.as_str())
+                    .and_then(|s| uuid::Uuid::parse_str(s).ok());
+                let workstream_name = request
+                    .params
+                    .get("workstream_name")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                debug!(id, session_id = ?session_id, %workstream_name, "promote_session");
+
+                let resp = match session_id {
+                    Some(sid) => match service.promote_session(sid, &workstream_name).await {
+                        Ok(result) => {
+                            debug!(id, "promote_session ok");
+                            Response::success(id, result)
+                        }
+                        Err(e) => {
+                            warn!(id, error = %e, "promote_session failed");
+                            Response::error(id, "service_error", e.to_string())
+                        }
+                    },
+                    None => {
+                        warn!(id, "promote_session missing session_id");
                         Response::error(id, "invalid_params", "missing session_id".into())
                     }
                 };

@@ -260,6 +260,34 @@ impl Store {
         self.messages
             .sandbox_dir(workstream_dir, session_id, is_scratch)
     }
+
+    /// Sync-only part of session promotion: update SQLite workstream_id.
+    /// Returns Err if the session isn't scratch or doesn't exist.
+    pub fn promote_session_metadata(
+        &self,
+        session_id: Uuid,
+        new_ws_id: Uuid,
+    ) -> Result<(), StorageError> {
+        let updated = SessionStore::new(&self.db).update_workstream_id(session_id, new_ws_id)?;
+        if !updated {
+            return Err(StorageError::InvalidOperation(
+                "session is not a scratch session or does not exist".into(),
+            ));
+        }
+        Ok(())
+    }
+
+    /// Async part of session promotion: move the JSONL file between workstream dirs.
+    pub async fn move_session_jsonl(
+        &self,
+        session_id: Uuid,
+        from_ws_dir: &str,
+        to_ws_dir: &str,
+    ) -> Result<(), StorageError> {
+        self.messages
+            .move_session(session_id, from_ws_dir, to_ws_dir)
+            .await
+    }
 }
 
 /// Recursively copy directory contents from src to dst.
