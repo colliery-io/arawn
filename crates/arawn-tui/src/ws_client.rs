@@ -30,11 +30,31 @@ pub struct WsClient {
 
 impl WsClient {
     pub async fn connect(url: &str) -> Result<Self, Box<dyn std::error::Error>> {
-        debug!(url, "ws_client connecting");
-        let (ws_stream, resp) = connect_async(url).await?;
+        // Append auth token from ~/.arawn/server.token if available
+        let authed_url = if let Some(token) = Self::read_server_token() {
+            let separator = if url.contains('?') { "&" } else { "?" };
+            format!("{url}{separator}token={token}")
+        } else {
+            url.to_string()
+        };
+
+        debug!(url = %authed_url, "ws_client connecting");
+        let (ws_stream, resp) = connect_async(&authed_url).await?;
         debug!(status = ?resp.status(), "ws_client connected");
         let (write, read) = ws_stream.split();
         Ok(Self { write, read })
+    }
+
+    /// Read the server auth token from ~/.arawn/server.token.
+    fn read_server_token() -> Option<String> {
+        let home = std::env::var("HOME")
+            .or_else(|_| std::env::var("USERPROFILE"))
+            .ok()?;
+        let token_path = std::path::PathBuf::from(home).join(".arawn/server.token");
+        std::fs::read_to_string(token_path)
+            .ok()
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
     }
 
     pub async fn send_request(

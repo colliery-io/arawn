@@ -1,13 +1,14 @@
 use std::sync::Arc;
 
 use axum::{
-    Router,
+    Json, Router,
     extract::{
-        State, WebSocketUpgrade,
+        Query, State, WebSocketUpgrade,
         ws::{Message as WsMessage, WebSocket},
     },
+    http::StatusCode,
     response::IntoResponse,
-    routing::get,
+    routing::{get, post},
 };
 use futures::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
@@ -65,13 +66,60 @@ impl Response {
     }
 }
 
+/// Shared app state for the WebSocket server.
+#[derive(Clone)]
+struct AppState {
+    service: Arc<LocalService>,
+    /// Authentication token required for WebSocket connections.
+    /// If None, authentication is disabled (dev mode).
+    auth_token: Option<String>,
+}
+
+/// Generate a random auth token for WebSocket connections.
+fn generate_auth_token() -> String {
+    // Use two UUIDs concatenated for sufficient entropy (256 bits)
+    format!("{}{}", uuid::Uuid::new_v4().simple(), uuid::Uuid::new_v4().simple())
+}
+
+/// Write the auth token to ~/.arawn/server.token for clients to read.
+fn write_token_file(token: &str) -> std::io::Result<std::path::PathBuf> {
+    let home = std::env::var("HOME")
+        .or_else(|_| std::env::var("USERPROFILE"))
+        .unwrap_or_else(|_| ".".to_string());
+    let arawn_dir = std::path::PathBuf::from(home).join(".arawn");
+    std::fs::create_dir_all(&arawn_dir)?;
+    let token_path = arawn_dir.join("server.token");
+    std::fs::write(&token_path, token)?;
+    Ok(token_path)
+}
+
+/// Read the auth token from ~/.arawn/server.token.
+pub fn read_token_file() -> Option<String> {
+    let home = std::env::var("HOME")
+        .or_else(|_| std::env::var("USERPROFILE"))
+        .ok()?;
+    let token_path = std::path::PathBuf::from(home).join(".arawn/server.token");
+    std::fs::read_to_string(token_path).ok().map(|s| s.trim().to_string())
+}
+
 /// Start the WebSocket server on the given port.
 pub async fn run_server(service: LocalService, port: u16) -> anyhow::Result<()> {
-    let service = Arc::new(service);
+    // Generate auth token and write to disk for clients
+    let auth_token = generate_auth_token();
+    match write_token_file(&auth_token) {
+        Ok(path) => info!(?path, "auth token written"),
+        Err(e) => warn!("failed to write auth token file: {e} — authentication disabled"),
+    }
+
+    let state = AppState {
+        service: Arc::new(service),
+        auth_token: Some(auth_token),
+    };
 
     let app = Router::new()
         .route("/ws", get(ws_handler))
-        .with_state(service);
+        .route("/api/decision", post(decision_handler))
+        .with_state(state);
 
     let addr = format!("127.0.0.1:{port}");
     let listener = TcpListener::bind(&addr).await?;
@@ -83,12 +131,62 @@ pub async fn run_server(service: LocalService, port: u16) -> anyhow::Result<()> 
     Ok(())
 }
 
+/// HTTP endpoint for workflow decision tasks.
+/// Decision tasks in cloacina pipelines call POST /api/decision to run
+/// the QueryEngine and get agent-powered responses.
+async fn decision_handler(
+    State(AppState { service, .. }): State<AppState>,
+    Json(req): Json<arawn_workflow::agent_executor::DecisionRequest>,
+) -> impl IntoResponse {
+    let decision_service = arawn_workflow::DecisionService::new(
+        service.shared_store(),
+        service.shared_llm(),
+        service.shared_registry(),
+        service.engine_config().clone(),
+    );
+
+    match decision_service.execute(req).await {
+        Ok(resp) => (StatusCode::OK, Json(json!(resp))).into_response(),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": e.to_string() })),
+        )
+            .into_response(),
+    }
+}
+
+/// Query parameters for WebSocket connection.
+#[derive(Debug, Deserialize)]
+struct WsQueryParams {
+    token: Option<String>,
+}
+
 async fn ws_handler(
     ws: WebSocketUpgrade,
-    State(service): State<Arc<LocalService>>,
+    Query(params): Query<WsQueryParams>,
+    State(state): State<AppState>,
 ) -> impl IntoResponse {
     debug!("ws_handler: upgrade request received");
-    ws.on_upgrade(move |socket| handle_connection(socket, service))
+
+    // Validate auth token if configured
+    if let Some(ref expected_token) = state.auth_token {
+        match params.token {
+            Some(ref provided) if provided == expected_token => {
+                debug!("ws_handler: auth token valid");
+            }
+            Some(_) => {
+                warn!("ws_handler: invalid auth token");
+                return (StatusCode::UNAUTHORIZED, "Invalid auth token").into_response();
+            }
+            None => {
+                warn!("ws_handler: missing auth token");
+                return (StatusCode::UNAUTHORIZED, "Auth token required. Connect with /ws?token=<token>").into_response();
+            }
+        }
+    }
+
+    ws.on_upgrade(move |socket| handle_connection(socket, state.service))
+        .into_response()
 }
 
 /// Handle a single WebSocket connection. Public for integration tests.
@@ -608,6 +706,62 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                     .send(WsMessage::Text(
                         serde_json::to_string(&resp).unwrap().into(),
                     ))
+                    .await;
+            }
+
+            "list_workflows" => {
+                let workflows_dir = service.data_dir.join("workflows");
+                let mut workflows = Vec::new();
+                if workflows_dir.exists() {
+                    if let Ok(entries) = std::fs::read_dir(&workflows_dir) {
+                        for entry in entries.flatten() {
+                            if entry.path().is_dir() {
+                                let name = entry.file_name().to_string_lossy().to_string();
+                                let pkg_toml = entry.path().join("package.toml");
+                                let cron = pkg_toml.exists().then(|| {
+                                    std::fs::read_to_string(&pkg_toml).ok().and_then(|s| {
+                                        s.lines()
+                                            .find(|l| l.contains("cron"))
+                                            .map(|l| l.split('=').nth(1).unwrap_or("").trim().trim_matches('"').to_string())
+                                    })
+                                }).flatten();
+                                workflows.push(json!({ "name": name, "cron": cron }));
+                            }
+                        }
+                    }
+                }
+                let resp = Response::success(id, json!(workflows));
+                let _ = sender
+                    .send(WsMessage::Text(serde_json::to_string(&resp).unwrap().into()))
+                    .await;
+            }
+
+            "get_permission_mode" => {
+                let mode = *service.shared_permission_mode().read().unwrap();
+                let resp = Response::success(id, json!({ "mode": mode }));
+                let _ = sender
+                    .send(WsMessage::Text(serde_json::to_string(&resp).unwrap().into()))
+                    .await;
+            }
+
+            "set_permission_mode" => {
+                let mode_str = request.params.get("mode").and_then(|v| v.as_str()).unwrap_or("");
+                let resp = match serde_json::from_value::<arawn_engine::permissions::PermissionMode>(
+                    json!(mode_str),
+                ) {
+                    Ok(mode) => {
+                        *service.shared_permission_mode().write().unwrap() = mode;
+                        info!(id, mode = %mode_str, "permission mode updated");
+                        Response::success(id, json!({ "mode": mode, "status": "updated" }))
+                    }
+                    Err(_) => Response::error(
+                        id,
+                        "invalid_mode",
+                        format!("unknown mode '{mode_str}'. Valid: default, accept_edits, bypass, plan"),
+                    ),
+                };
+                let _ = sender
+                    .send(WsMessage::Text(serde_json::to_string(&resp).unwrap().into()))
                     .await;
             }
 

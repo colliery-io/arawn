@@ -191,7 +191,8 @@ impl ShellTool {
         });
 
         Ok(ToolOutput::success(format!(
-            "Background task {task_id} started: {command_owned}\n\n\
+            "Background task {task_id} started (UNSANDBOXED): {command_owned}\n\n\
+             Note: Background commands run outside the OS sandbox.\n\
              Use TaskOutput with task_id=\"{task_id}\" to check status and read output."
         )))
     }
@@ -381,7 +382,13 @@ impl Tool for ShellTool {
             .unwrap_or(false);
 
         // Background execution: spawn and return immediately
+        // WARNING: Background commands run unsandboxed because the OS sandbox
+        // requires sync lifecycle management incompatible with background execution.
         if run_in_background {
+            warn!(
+                command,
+                "background shell command will run UNSANDBOXED — sandbox does not support background processes"
+            );
             return self.spawn_background(command, &ctx.working_dir).await;
         }
 
@@ -392,7 +399,13 @@ impl Tool for ShellTool {
             Ok(output) => Ok(output),
             Err(SandboxExecError::Unavailable(msg)) => {
                 warn!("sandbox unavailable: {msg} — running unsandboxed");
-                execute_unsandboxed(command, &ctx.working_dir, timeout_ms).await
+                let mut output = execute_unsandboxed(command, &ctx.working_dir, timeout_ms).await?;
+                // Prepend warning so the LLM (and user via tool result) sees the sandbox was bypassed
+                output.content = format!(
+                    "[WARNING: Command ran without sandbox protection ({msg})]\n{}",
+                    output.content
+                );
+                Ok(output)
             }
             Err(SandboxExecError::Tool(output)) => Ok(output),
         }

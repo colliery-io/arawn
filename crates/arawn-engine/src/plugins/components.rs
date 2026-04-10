@@ -77,7 +77,11 @@ pub fn load_plugin_components(plugin: &LoadedPlugin) -> PluginComponents {
                 if hooks_path.exists() {
                     let config = load_hooks_from_file(hooks_path);
                     if !config.is_empty() {
-                        info!(plugin = plugin_name, "loaded plugin hooks");
+                        info!(
+                            plugin = plugin_name,
+                            hook_config = %serde_json::to_string(&config).unwrap_or_default(),
+                            "loaded plugin hooks — these run UNSANDBOXED shell commands"
+                        );
                         result.hooks = Some(config);
                     }
                 } else {
@@ -90,7 +94,11 @@ pub fn load_plugin_components(plugin: &LoadedPlugin) -> PluginComponents {
         }
         Some(HooksField::Inline(config)) => {
             if !config.is_empty() {
-                info!(plugin = plugin_name, "loaded inline plugin hooks");
+                info!(
+                    plugin = plugin_name,
+                    hook_config = %serde_json::to_string(config).unwrap_or_default(),
+                    "loaded inline plugin hooks — these run UNSANDBOXED shell commands"
+                );
                 result.hooks = Some(config.clone());
             }
         }
