@@ -27,68 +27,79 @@ const FILE_LOG_FILTER: &str = "warn,arawn=debug,arawn_bin=debug,arawn_tui=debug,
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    // Parse CLI args (tracing initialized after config load so we know the mode + data dir)
-    let args: Vec<String> = std::env::args().collect();
-    let mut session_id: Option<Uuid> = None;
-    let mut list_sessions = false;
-    let mut serve_mode = false;
-    let mut tui_mode = false;
-    let mut serve_port: u16 = 3100;
-    let mut tui_url = "ws://127.0.0.1:3100/ws".to_string();
-    let mut prompt_parts: Vec<String> = Vec::new();
+    // Parse CLI args
+    use clap::{Parser, Subcommand};
 
-    let mut i = 1;
-    while i < args.len() {
-        match args[i].as_str() {
-            "serve" => {
-                serve_mode = true;
-            }
-            "tui" => {
-                tui_mode = true;
-            }
-            "plugin" => {
-                let plugin_args: Vec<String> = args[i + 1..].to_vec();
-                let plugins_root = dirs_path()
-                    .map(|d| std::path::PathBuf::from(d).join("plugins"))
-                    .unwrap_or_else(|| std::path::PathBuf::from(".arawn/plugins"));
-                match arawn_bin::plugin_cmd::run_plugin_command(&plugin_args, &plugins_root) {
-                    Ok(()) => std::process::exit(0),
-                    Err(e) => {
-                        eprintln!("Error: {e}");
-                        std::process::exit(1);
-                    }
-                }
-            }
-            "--url" => {
-                i += 1;
-                if i < args.len() {
-                    tui_url = args[i].clone();
-                }
-            }
-            "--port" => {
-                i += 1;
-                if i < args.len() {
-                    serve_port = args[i].parse().unwrap_or(3100);
-                }
-            }
-            "--session" => {
-                i += 1;
-                if i < args.len() {
-                    session_id = Some(
-                        Uuid::parse_str(&args[i])
-                            .map_err(|e| anyhow::anyhow!("invalid session UUID: {e}"))?,
-                    );
-                }
-            }
-            "--list-sessions" => {
-                list_sessions = true;
-            }
-            _ => {
-                prompt_parts.push(args[i].clone());
+    #[derive(Parser)]
+    #[command(name = "arawn", about = "LLM-powered coding assistant", version)]
+    struct Cli {
+        #[command(subcommand)]
+        command: Option<Command>,
+
+        /// Resume an existing session by UUID
+        #[arg(long)]
+        session: Option<Uuid>,
+
+        /// List all sessions
+        #[arg(long)]
+        list_sessions: bool,
+
+        /// Prompt text (when not using a subcommand)
+        #[arg(trailing_var_arg = true)]
+        prompt: Vec<String>,
+    }
+
+    #[derive(Subcommand)]
+    enum Command {
+        /// Start the WebSocket server
+        Serve {
+            /// Server port
+            #[arg(long, default_value_t = 3100)]
+            port: u16,
+        },
+        /// Launch the TUI client
+        Tui {
+            /// WebSocket server URL
+            #[arg(long, default_value = "ws://127.0.0.1:3100/ws")]
+            url: String,
+        },
+        /// Plugin management commands
+        Plugin {
+            /// Plugin subcommand arguments
+            #[arg(trailing_var_arg = true)]
+            args: Vec<String>,
+        },
+    }
+
+    let cli = Cli::parse();
+
+    // Handle plugin subcommand immediately (exits process)
+    if let Some(Command::Plugin { args: plugin_args }) = &cli.command {
+        let plugins_root = dirs_path()
+            .map(|d| std::path::PathBuf::from(d).join("plugins"))
+            .unwrap_or_else(|| std::path::PathBuf::from(".arawn/plugins"));
+        match arawn_bin::plugin_cmd::run_plugin_command(plugin_args, &plugins_root) {
+            Ok(()) => std::process::exit(0),
+            Err(e) => {
+                eprintln!("Error: {e}");
+                std::process::exit(1);
             }
         }
-        i += 1;
     }
+
+    let serve_mode = matches!(cli.command, Some(Command::Serve { .. }));
+    let tui_mode = matches!(cli.command, Some(Command::Tui { .. }));
+    let serve_port = match &cli.command {
+        Some(Command::Serve { port }) => *port,
+        _ => 3100,
+    };
+    let tui_url = match &cli.command {
+        Some(Command::Tui { url }) => url.clone(),
+        _ => "ws://127.0.0.1:3100/ws".to_string(),
+    };
+    let session_id = cli.session;
+    let list_sessions = cli.list_sessions;
+    let prompt_parts = cli.prompt;
 
     // Load config — try ARAWN_DATA_DIR first for bootstrap, then load arawn.toml
     let bootstrap_dir = std::env::var("ARAWN_DATA_DIR")

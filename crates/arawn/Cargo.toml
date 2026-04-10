@@ -11,6 +11,10 @@ path = "src/lib.rs"
 name = "arawn"
 path = "src/main.rs"
 
+[features]
+default = ["legacy-plugins"]
+legacy-plugins = ["arawn-engine/legacy-plugins"]
+
 [dependencies]
 async-trait = { workspace = true }
 arawn-core = { workspace = true }
@@ -28,6 +32,7 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 uuid = { workspace = true }
 anyhow = { workspace = true }
+clap = { version = "4", features = ["derive"] }
 notify = { workspace = true }
 tempfile = { workspace = true }
 tokio = { workspace = true }
