@@ -4,14 +4,14 @@ level: task
 title: "Replace hand-rolled CLI argument parsing with clap"
 short_code: "ARAWN-T-0157"
 created_at: 2026-04-10T01:01:22.535560+00:00
-updated_at: 2026-04-10T01:01:22.535560+00:00
+updated_at: 2026-04-10T20:41:22.125069+00:00
 parent: ARAWN-I-0025
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -30,6 +30,10 @@ initiative_id: ARAWN-I-0025
 Replace hand-rolled argument parsing in `main.rs` with `clap` derive macros. Provides `--help`, `--version`, shell completions, and input validation.
 
 ## Acceptance Criteria
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 - [ ] `#[derive(Parser)]` struct with subcommands for `serve`, `tui`, `plugin`
 - [ ] `--help` and `--version` flags work
 - [ ] All existing CLI arguments preserved (port, config, mode, etc.)
@@ -41,7 +45,13 @@ Replace hand-rolled argument parsing in `main.rs` with `clap` derive macros. Pro
 - Current arg surface is small — straightforward migration
 
 ## Status Updates
-- **DEFERRED**: Independent but requires reading and rewriting the entire CLI parsing in main.rs (~650 lines). Best done in a dedicated session with `/metis-ralph ARAWN-T-0157`. No blockers — can be done anytime.
+- Replaced hand-rolled `while i < args.len()` parsing with `clap` derive macros
+- `Cli` struct with `Command` enum: `Serve { port }`, `Tui { url }`, `Plugin { args }`
+- `--help`, `--version`, `serve --help`, `tui --help` all work
+- `--session <UUID>`, `--list-sessions`, trailing prompt args preserved
+- Invalid args produce clap error messages with usage hints (no more silent defaults)
+- Added `legacy-plugins` feature passthrough from arawn to arawn-engine
+- `clap = { version = "4", features = ["derive"] }` added to Cargo.toml
 
 ## REMOVED_SECTIONS
 

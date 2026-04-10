@@ -46,9 +46,9 @@ Extract `Tool`, `ToolOutput`, `ToolRegistry`, `ToolContext`, and core error type
 - Consider which error types need to move vs stay
 
 ## Status Updates
-- **BLOCKED**: This is a cross-crate refactoring touching 30+ import sites across 7 crates. Requires creating new crate, moving types, updating all imports, and verifying 500+ tests. Estimated 1-2 dedicated sessions.
-- Scope analysis complete: `Tool`, `ToolOutput`, `ToolRegistry` in `tool.rs`, `ToolContext` in `context.rs`, consumed by arawn-engine, arawn-mcp, arawn-workflow, arawn-tests, arawn (binary)
-- Recommend executing this as a standalone focused task in a fresh session with `/metis-ralph ARAWN-T-0153`
+- **DEFERRED**: Full crate extraction requires moving ToolContext (which depends on Workstream, LlmClient, ModelLimits) and EngineError, creating a deep dependency chain. The `execute()` signature ties Tool to EngineError and ToolContext.
+- The immediate value (ToolCategory enum) is being delivered via T-0159 without crate extraction — adding the enum directly to arawn-engine's Tool trait.
+- Full extraction should be planned as a breaking-change release with interface redesign (e.g., a simpler ToolError type, reduced ToolContext interface).
 
 ## REMOVED_SECTIONS
 
