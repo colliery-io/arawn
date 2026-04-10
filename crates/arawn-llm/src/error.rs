@@ -37,12 +37,17 @@ impl LlmError {
             LlmError::RateLimited(_) => true,
             LlmError::ServerError(_) => true,
             LlmError::Request(e) => e.is_timeout() || e.is_connect() || e.is_request(),
+            // Certain API errors are transient (malformed LLM output that may succeed on retry)
+            LlmError::Api(msg) => {
+                let lower = msg.to_lowercase();
+                lower.contains("tool_use_failed") || lower.contains("overloaded")
+            }
+            // JSON parse failures from LLM output are transient — a retry may produce valid JSON
+            LlmError::Json(_) => true,
             LlmError::Stream(_) => false,
-            LlmError::Api(_) => false,
             LlmError::Auth(_) => false,
             LlmError::ModelNotFound(_) => false,
             LlmError::Config(_) => false,
-            LlmError::Json(_) => false,
         }
     }
 

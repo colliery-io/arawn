@@ -43,6 +43,7 @@ pub enum ProgressEvent {
 const DEFAULT_SYSTEM_PROMPT: &str = "You are Arawn, a helpful assistant. When you need to perform actions, use the available tools. Think step by step.";
 
 /// Cached context for building system prompts per-turn.
+#[derive(Clone)]
 pub struct PromptContext {
     pub prompts_dir: Option<std::path::PathBuf>,
     pub os: String,
@@ -57,6 +58,7 @@ pub struct PromptContext {
 }
 
 /// Configuration for the query engine.
+#[derive(Clone)]
 pub struct QueryEngineConfig {
     pub model: String,
     pub max_iterations: usize,
@@ -222,7 +224,10 @@ impl QueryEngine {
         let mut iteration = 0;
         loop {
             if self.config.max_iterations > 0 && iteration >= self.config.max_iterations {
-                return Err(EngineError::MaxIterations(iteration));
+                return Err(EngineError::MaxIterations {
+                    iterations: iteration,
+                    session_id: ctx.session_id,
+                });
             }
             iteration += 1;
             debug!(iteration, "query engine turn");
@@ -628,16 +633,10 @@ impl QueryEngine {
             match self.stream_response(request).await {
                 Ok(response) => return Ok(response),
                 Err(e) => {
-                    let err_str = e.to_string().to_lowercase();
-                    let is_transient = err_str.contains("rate")
-                        || err_str.contains("timeout")
-                        || err_str.contains("tool_use_failed")
-                        || err_str.contains("failed to parse")
-                        || err_str.contains("connection")
-                        || err_str.contains("500")
-                        || err_str.contains("502")
-                        || err_str.contains("503")
-                        || err_str.contains("529");
+                    let is_transient = match &e {
+                        EngineError::Llm(llm_err) => llm_err.is_retryable(),
+                        _ => false,
+                    };
 
                     if !is_transient || attempt == MAX_RETRIES {
                         return Err(e);
@@ -1164,7 +1163,7 @@ mod tests {
 
         let result = engine.run(&mut session, &ctx).await;
         match result {
-            Err(EngineError::MaxIterations(3)) => {} // expected
+            Err(EngineError::MaxIterations { iterations: 3, .. }) => {} // expected
             other => panic!("expected MaxIterations(3), got {other:?}"),
         }
     }

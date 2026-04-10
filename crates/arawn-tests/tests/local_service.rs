@@ -240,3 +240,257 @@ async fn promote_non_scratch_session_fails() {
     let result = service.promote_session(session.id, "project-b").await;
     assert!(result.is_err(), "promoting a non-scratch session should fail");
 }
+
+#[tokio::test]
+async fn multi_turn_conversation_accumulates_history() {
+    let (_tmp, service) = setup_service(vec![
+        MockResponse::text("First reply"),
+        MockResponse::text("Second reply"),
+    ]);
+
+    let session = service.create_session(None).await.unwrap();
+
+    // First turn
+    let mut stream = service
+        .send_message(session.id, "Turn 1".into())
+        .await
+        .unwrap();
+    while let Some(_) = stream.next().await {}
+
+    // Second turn
+    let mut stream = service
+        .send_message(session.id, "Turn 2".into())
+        .await
+        .unwrap();
+    while let Some(_) = stream.next().await {}
+
+    // Load session — should have 4 messages: user1, assistant1, user2, assistant2
+    let loaded = service.load_session(session.id).await.unwrap();
+    assert!(
+        loaded.messages.len() >= 4,
+        "expected at least 4 messages for 2 turns, got {}",
+        loaded.messages.len()
+    );
+}
+
+#[tokio::test]
+async fn list_sessions_returns_multiple() {
+    let (_tmp, service) = setup_service(vec![]);
+
+    let workstreams = service.list_workstreams().await.unwrap();
+    let ws_id = workstreams[0].id;
+
+    // Create 2 sessions
+    let s1 = service.create_session(Some(ws_id)).await.unwrap();
+    let s2 = service.create_session(Some(ws_id)).await.unwrap();
+
+    let sessions = service.list_sessions(Some(ws_id)).await.unwrap();
+    assert!(
+        sessions.len() >= 2,
+        "expected at least 2 sessions, got {}",
+        sessions.len()
+    );
+
+    let ids: Vec<_> = sessions.iter().map(|s| s.id).collect();
+    assert!(ids.contains(&s1.id), "should contain first session");
+    assert!(ids.contains(&s2.id), "should contain second session");
+}
+
+#[tokio::test]
+async fn engine_error_produces_error_event() {
+    // Use MockResponse::error to simulate LLM failure
+    let (_tmp, service) = setup_service(vec![MockResponse::error(
+        arawn_llm::LlmError::Auth("invalid key".into()),
+    )]);
+
+    let session = service.create_session(None).await.unwrap();
+
+    let mut stream = service
+        .send_message(session.id, "trigger error".into())
+        .await
+        .unwrap();
+
+    let mut got_error = false;
+    while let Some(event) = stream.next().await {
+        if matches!(event, EngineEvent::Error { .. }) {
+            got_error = true;
+        }
+    }
+
+    assert!(got_error, "should have received Error event for LLM failure");
+}
+
+#[tokio::test]
+async fn multi_turn_with_tool_calls_accumulates_full_history() {
+    let (_tmp, service) = setup_service(vec![
+        // Turn 1: tool call + text
+        MockResponse::tool_call("c1", "think", r#"{"thought":"turn 1 analysis"}"#),
+        MockResponse::text("Turn 1 complete."),
+        // Turn 2: tool call + text
+        MockResponse::tool_call("c2", "think", r#"{"thought":"turn 2 analysis"}"#),
+        MockResponse::text("Turn 2 complete."),
+    ]);
+
+    let session = service.create_session(None).await.unwrap();
+
+    // Turn 1
+    let mut stream = service
+        .send_message(session.id, "First question".into())
+        .await
+        .unwrap();
+    while let Some(_) = stream.next().await {}
+
+    // Turn 2
+    let mut stream = service
+        .send_message(session.id, "Follow-up question".into())
+        .await
+        .unwrap();
+    while let Some(_) = stream.next().await {}
+
+    // Load and verify full history
+    let loaded = service.load_session(session.id).await.unwrap();
+    // Per turn: user + assistant(tool) + tool_result + assistant(text) = 4
+    // Two turns = 8 messages minimum
+    assert!(
+        loaded.messages.len() >= 8,
+        "expected 8+ messages for 2 tool-call turns, got {}",
+        loaded.messages.len()
+    );
+}
+
+#[tokio::test]
+async fn session_isolation_separate_histories() {
+    let (_tmp, service) = setup_service(vec![
+        MockResponse::text("Reply to session A"),
+        MockResponse::text("Reply to session B"),
+    ]);
+
+    let s_a = service.create_session(None).await.unwrap();
+    let s_b = service.create_session(None).await.unwrap();
+
+    // Send to A
+    let mut stream = service
+        .send_message(s_a.id, "Message for A".into())
+        .await
+        .unwrap();
+    while let Some(_) = stream.next().await {}
+
+    // Send to B
+    let mut stream = service
+        .send_message(s_b.id, "Message for B".into())
+        .await
+        .unwrap();
+    while let Some(_) = stream.next().await {}
+
+    // Verify isolation
+    let loaded_a = service.load_session(s_a.id).await.unwrap();
+    let loaded_b = service.load_session(s_b.id).await.unwrap();
+
+    // A should not contain B's content and vice versa
+    let a_text: String = loaded_a
+        .messages
+        .iter()
+        .filter_map(|m| match m {
+            arawn_core::Message::Assistant { content, .. } => Some(content.clone()),
+            _ => None,
+        })
+        .collect();
+    let b_text: String = loaded_b
+        .messages
+        .iter()
+        .filter_map(|m| match m {
+            arawn_core::Message::Assistant { content, .. } => Some(content.clone()),
+            _ => None,
+        })
+        .collect();
+
+    assert!(
+        a_text.contains("session A"),
+        "session A should have A's reply"
+    );
+    assert!(
+        b_text.contains("session B"),
+        "session B should have B's reply"
+    );
+    assert!(
+        !a_text.contains("session B"),
+        "session A should NOT have B's reply"
+    );
+    assert!(
+        !b_text.contains("session A"),
+        "session B should NOT have A's reply"
+    );
+}
+
+#[tokio::test]
+async fn large_conversation_five_turns_persisted() {
+    let (_tmp, service) = setup_service(vec![
+        MockResponse::text("Reply 1"),
+        MockResponse::text("Reply 2"),
+        MockResponse::text("Reply 3"),
+        MockResponse::text("Reply 4"),
+        MockResponse::text("Reply 5"),
+    ]);
+
+    let session = service.create_session(None).await.unwrap();
+
+    for i in 1..=5 {
+        let mut stream = service
+            .send_message(session.id, format!("Turn {i}"))
+            .await
+            .unwrap();
+        while let Some(_) = stream.next().await {}
+    }
+
+    let loaded = service.load_session(session.id).await.unwrap();
+    // 5 turns * 2 messages (user + assistant) = 10
+    assert!(
+        loaded.messages.len() >= 10,
+        "expected 10+ messages for 5 turns, got {}",
+        loaded.messages.len()
+    );
+}
+
+#[tokio::test]
+async fn error_after_successful_first_turn_preserves_history() {
+    let (_tmp, service) = setup_service(vec![
+        MockResponse::text("First turn succeeded."),
+        MockResponse::error(arawn_llm::LlmError::Auth("expired token".into())),
+    ]);
+
+    let session = service.create_session(None).await.unwrap();
+
+    // Turn 1: success
+    let mut stream = service
+        .send_message(session.id, "First turn".into())
+        .await
+        .unwrap();
+    let mut first_text = String::new();
+    while let Some(event) = stream.next().await {
+        if let EngineEvent::Complete { final_text } = event {
+            first_text = final_text;
+        }
+    }
+    assert_eq!(first_text, "First turn succeeded.");
+
+    // Turn 2: LLM error
+    let mut stream = service
+        .send_message(session.id, "Second turn".into())
+        .await
+        .unwrap();
+    let mut got_error = false;
+    while let Some(event) = stream.next().await {
+        if matches!(event, EngineEvent::Error { .. }) {
+            got_error = true;
+        }
+    }
+    assert!(got_error, "second turn should produce error event");
+
+    // First turn's messages should still be persisted
+    let loaded = service.load_session(session.id).await.unwrap();
+    assert!(
+        loaded.messages.len() >= 2,
+        "first turn messages should survive second turn's error, got {}",
+        loaded.messages.len()
+    );
+}
