@@ -111,6 +111,13 @@ impl Tool for GrepTool {
 
         let path = params.get("path").and_then(|v| v.as_str()).unwrap_or(".");
 
+        // Validate path stays within workstream root
+        if path != "." {
+            if let Err(e) = ctx.validate_path(path) {
+                return Ok(ToolOutput::error(e));
+            }
+        }
+
         let glob_pattern = params.get("glob").and_then(|v| v.as_str());
         let file_type = params.get("type").and_then(|v| v.as_str());
 
@@ -490,5 +497,60 @@ mod tests {
         assert!(schema["properties"]["head_limit"].is_object());
         assert!(schema["properties"]["multiline"].is_object());
         assert!(schema["properties"]["type"].is_object());
+    }
+
+    #[tokio::test]
+    async fn grep_path_traversal_rejected() {
+        let dir = TempDir::new().unwrap();
+        std::fs::write(dir.path().join("safe.txt"), "safe content\n").unwrap();
+
+        let tool = GrepTool;
+        let ctx = test_ctx(dir.path());
+
+        let result = tool
+            .execute(&ctx, json!({"pattern": ".", "path": "../../../etc"}))
+            .await
+            .unwrap();
+
+        assert!(result.is_error, "traversal path should be rejected");
+        assert!(
+            result.content.contains("escapes workstream root"),
+            "expected traversal error, got: {}",
+            result.content
+        );
+    }
+
+    #[tokio::test]
+    async fn grep_absolute_path_rejected() {
+        let dir = TempDir::new().unwrap();
+        let tool = GrepTool;
+        let ctx = test_ctx(dir.path());
+
+        let result = tool
+            .execute(&ctx, json!({"pattern": ".", "path": "/etc"}))
+            .await
+            .unwrap();
+
+        assert!(result.is_error, "absolute path outside root should be rejected");
+        assert!(result.content.contains("escapes workstream root"));
+    }
+
+    #[tokio::test]
+    async fn grep_relative_path_within_root_allowed() {
+        let dir = TempDir::new().unwrap();
+        let sub = dir.path().join("subdir");
+        std::fs::create_dir(&sub).unwrap();
+        std::fs::write(sub.join("file.txt"), "findme\n").unwrap();
+
+        let tool = GrepTool;
+        let ctx = test_ctx(dir.path());
+
+        let result = tool
+            .execute(&ctx, json!({"pattern": "findme", "path": "subdir"}))
+            .await
+            .unwrap();
+
+        assert!(!result.is_error, "relative path within root should be allowed");
+        assert!(result.content.contains("file.txt"));
     }
 }

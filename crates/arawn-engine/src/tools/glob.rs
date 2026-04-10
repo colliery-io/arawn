@@ -56,6 +56,10 @@ impl Tool for GlobTool {
             .ok_or_else(|| EngineError::Tool("missing 'pattern' parameter".into()))?;
 
         let base_dir = if let Some(path) = params.get("path").and_then(|v| v.as_str()) {
+            // Validate path stays within workstream root
+            if let Err(e) = ctx.validate_path(path) {
+                return Ok(ToolOutput::error(e));
+            }
             ctx.working_dir.join(path)
         } else {
             ctx.working_dir.clone()
@@ -135,6 +139,11 @@ mod tests {
     use serde_json::json;
     use uuid::Uuid;
 
+    fn test_ctx(dir: &std::path::Path) -> ToolContext {
+        let ws = Workstream::new("test", dir);
+        ToolContext::new(&ws, Uuid::new_v4())
+    }
+
     #[test]
     fn schema_is_valid() {
         let tool = GlobTool;
@@ -208,5 +217,35 @@ mod tests {
         // globwalk doesn't inherently respect .gitignore (that's the ignore crate),
         // but the build/ dir files should still show up here since globwalk
         // doesn't filter by gitignore. This test documents current behavior.
+    }
+
+    #[tokio::test]
+    async fn glob_path_traversal_rejected() {
+        let dir = tempfile::tempdir().unwrap();
+        let tool = GlobTool;
+        let ctx = test_ctx(dir.path());
+
+        let result = tool
+            .execute(&ctx, json!({"pattern": "*", "path": "../../../etc"}))
+            .await
+            .unwrap();
+
+        assert!(result.is_error, "traversal path should be rejected");
+        assert!(result.content.contains("escapes workstream root"));
+    }
+
+    #[tokio::test]
+    async fn glob_absolute_path_rejected() {
+        let dir = tempfile::tempdir().unwrap();
+        let tool = GlobTool;
+        let ctx = test_ctx(dir.path());
+
+        let result = tool
+            .execute(&ctx, json!({"pattern": "*", "path": "/etc"}))
+            .await
+            .unwrap();
+
+        assert!(result.is_error, "absolute path outside root should be rejected");
+        assert!(result.content.contains("escapes workstream root"));
     }
 }

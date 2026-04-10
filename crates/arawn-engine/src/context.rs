@@ -103,6 +103,34 @@ impl ToolContext {
         }
     }
 
+    /// Validate that a path stays within the workstream root or is in the allowed list.
+    /// Returns `Ok(canonical_path)` if valid, or `Err(error_message)` if the path escapes.
+    /// For paths that don't exist yet (e.g., glob patterns), uses heuristic normalization.
+    pub fn validate_path(&self, path_str: &str) -> Result<std::path::PathBuf, String> {
+        let full_path = self.working_dir.join(path_str);
+
+        let canonical_root = self
+            .working_dir
+            .canonicalize()
+            .map_err(|e| format!("cannot resolve workstream root: {e}"))?;
+
+        // Try canonicalize first (works for existing paths)
+        if let Ok(canonical) = full_path.canonicalize() {
+            if canonical.starts_with(&canonical_root) || self.is_allowed_path(&canonical) {
+                return Ok(canonical);
+            }
+            return Err(format!("path '{path_str}' escapes workstream root"));
+        }
+
+        // For non-existent paths (common with glob patterns), use heuristic normalization
+        let normalized = normalize_path_components(&full_path);
+        if normalized.starts_with(&canonical_root) || self.is_allowed_path(&normalized) {
+            Ok(normalized)
+        } else {
+            Err(format!("path '{path_str}' escapes workstream root"))
+        }
+    }
+
     pub fn workstream_name(&self) -> &str {
         &self.workstream_name
     }
@@ -181,4 +209,20 @@ mod tests {
         assert_eq!(ctx.session_id, cloned.session_id);
         assert_eq!(ctx.working_dir, cloned.working_dir);
     }
+}
+
+/// Normalize a path by resolving . and .. components without touching the filesystem.
+fn normalize_path_components(path: &std::path::Path) -> PathBuf {
+    use std::path::Component;
+    let mut components = Vec::new();
+    for component in path.components() {
+        match component {
+            Component::ParentDir => {
+                components.pop();
+            }
+            Component::CurDir => {}
+            c => components.push(c),
+        }
+    }
+    components.iter().collect()
 }
