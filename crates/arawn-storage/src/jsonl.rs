@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use tokio::fs;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+use tracing::warn;
 use uuid::Uuid;
 
 use arawn_core::Message;
@@ -37,8 +38,7 @@ impl JsonlMessageStore {
             fs::create_dir_all(parent).await?;
         }
 
-        let mut line = serde_json::to_string(msg)?;
-        line.push('\n');
+        let is_new = !path.exists();
 
         let mut file = fs::OpenOptions::new()
             .create(true)
@@ -46,6 +46,13 @@ impl JsonlMessageStore {
             .open(&path)
             .await?;
 
+        // Write version header on first message (new files only)
+        if is_new {
+            file.write_all(b"{\"_version\":1}\n").await?;
+        }
+
+        let mut line = serde_json::to_string(msg)?;
+        line.push('\n');
         file.write_all(line.as_bytes()).await?;
         Ok(())
     }
@@ -66,13 +73,30 @@ impl JsonlMessageStore {
         let reader = BufReader::new(file);
         let mut lines = reader.lines();
         let mut messages = Vec::new();
+        let mut line_num = 0u64;
 
         while let Some(line) = lines.next_line().await? {
-            if line.trim().is_empty() {
+            line_num += 1;
+            let trimmed = line.trim();
+            if trimmed.is_empty() {
                 continue;
             }
-            let msg: Message = serde_json::from_str(&line)?;
-            messages.push(msg);
+            // Skip version header lines (future migration support)
+            if trimmed.starts_with(r#"{"_version""#) {
+                continue;
+            }
+            match serde_json::from_str::<Message>(trimmed) {
+                Ok(msg) => messages.push(msg),
+                Err(e) => {
+                    warn!(
+                        ?path,
+                        line_num,
+                        error = %e,
+                        content = &trimmed[..trimmed.len().min(100)],
+                        "skipping malformed JSONL line"
+                    );
+                }
+            }
         }
 
         Ok(messages)
@@ -377,5 +401,61 @@ mod tests {
     fn workstream_dir_name_falls_back_to_uuid() {
         let id = Uuid::nil();
         assert_eq!(workstream_dir_name("", id), id.to_string());
+    }
+
+    #[tokio::test]
+    async fn load_skips_malformed_lines() {
+        let (_tmp, store) = setup();
+        let session_id = Uuid::new_v4();
+        let path = store.session_path(session_id, "test-ws");
+        tokio::fs::create_dir_all(path.parent().unwrap())
+            .await
+            .unwrap();
+
+        // Get the correct serialization format
+        let msg1 = serde_json::to_string(&Message::User { content: "first".into() }).unwrap();
+        let msg2 = serde_json::to_string(&Message::User { content: "second".into() }).unwrap();
+        let msg3 = serde_json::to_string(&Message::User { content: "third".into() }).unwrap();
+
+        // Write a mix of valid and invalid lines
+        let content = format!(
+            "{{\"_version\":1}}\n\
+             {msg1}\n\
+             THIS IS NOT VALID JSON\n\
+             {msg2}\n\
+             \n\
+             also bad\n\
+             {msg3}\n"
+        );
+        tokio::fs::write(&path, content).await.unwrap();
+
+        let loaded = store.load(session_id, "test-ws").await.unwrap();
+        // Should have 3 valid messages, skipping the 2 bad lines and version header
+        assert_eq!(loaded.len(), 3);
+    }
+
+    #[tokio::test]
+    async fn new_file_has_version_header() {
+        let (_tmp, store) = setup();
+        let session_id = Uuid::new_v4();
+
+        store
+            .append(
+                session_id,
+                "test-ws",
+                &Message::User {
+                    content: "hello".into(),
+                },
+            )
+            .await
+            .unwrap();
+
+        let path = store.path_for(session_id, "test-ws");
+        let raw = tokio::fs::read_to_string(&path).await.unwrap();
+        let first_line = raw.lines().next().unwrap();
+        assert!(
+            first_line.contains("\"_version\""),
+            "first line should be version header, got: {first_line}"
+        );
     }
 }

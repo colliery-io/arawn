@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -48,6 +48,8 @@ pub struct LocalService {
     memory_manager: Option<Arc<arawn_memory::MemoryManager>>,
     /// Tracks sessions with active send_message calls to prevent concurrent access.
     active_sessions: Arc<Mutex<HashSet<Uuid>>>,
+    /// Cancellation tokens for active engine runs, keyed by session ID.
+    cancel_tokens: Arc<Mutex<HashMap<Uuid, tokio_util::sync::CancellationToken>>>,
 }
 
 impl LocalService {
@@ -73,6 +75,7 @@ impl LocalService {
             background_tasks: Arc::new(BackgroundTaskManager::new()),
             memory_manager: None,
             active_sessions: Arc::new(Mutex::new(HashSet::new())),
+            cancel_tokens: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 
@@ -375,7 +378,7 @@ impl LocalService {
         session_id: Uuid,
         workstream_name: &str,
     ) -> Result<serde_json::Value, ServiceError> {
-        // Sync phase under lock: find workstream, update SQLite, capture paths
+        // Sync phase under lock: find workstream, capture paths (don't update SQLite yet)
         let (ws_id, ws_name, ws_dir, scratch_workspace, target_workspace) = {
             let store = self.store.lock().unwrap();
             let ws = store
@@ -385,30 +388,37 @@ impl LocalService {
                     ServiceError::NotFound(format!("workstream '{workstream_name}'"))
                 })?;
 
-            store
-                .promote_session_metadata(session_id, ws.id)
-                .map_err(|e| ServiceError::Storage(e.to_string()))?;
-
             let ws_dir = arawn_storage::workstream_dir_name(&ws.name, ws.id);
             let scratch_ws = store.sandbox_for("scratch", session_id, true).join("workspace");
             let target_ws = store.sandbox_for(&ws_dir, session_id, false).join("workspace");
 
             (ws.id, ws.name, ws_dir, scratch_ws, target_ws)
         };
-        // Lock dropped — now do async file operations
+        // Lock dropped — now do async file operations BEFORE updating SQLite
 
-        // Move JSONL file (uses JsonlMessageStore directly, no lock needed)
+        // Step 1: Move JSONL file first (so failure leaves session in scratch, which is loadable)
         let msg_store = arawn_storage::JsonlMessageStore::new(&self.data_dir);
         msg_store
             .move_session(session_id, "scratch", &ws_dir)
             .await
             .map_err(|e| ServiceError::Storage(e.to_string()))?;
 
-        // Move workspace directory if it exists (best-effort)
+        // Step 2: Update SQLite metadata. If this fails, move the file back.
+        let sqlite_result = {
+            let store = self.store.lock().unwrap();
+            store.promote_session_metadata(session_id, ws_id)
+        };
+        if let Err(e) = sqlite_result {
+            warn!(error = %e, "SQLite update failed during promotion, rolling back file move");
+            let _ = msg_store.move_session(session_id, &ws_dir, "scratch").await;
+            return Err(ServiceError::Storage(e.to_string()));
+        }
+
+        // Step 3: Move workspace directory if it exists (best-effort)
         if scratch_workspace.exists() {
             let _ = tokio::fs::create_dir_all(target_workspace.parent().unwrap_or(&target_workspace)).await;
             if let Err(e) = tokio::fs::rename(&scratch_workspace, &target_workspace).await {
-                tracing::warn!(error = %e, "workspace rename failed during promotion, files remain in scratch");
+                warn!(error = %e, "workspace rename failed during promotion, files remain in scratch");
             }
         }
 
@@ -727,10 +737,16 @@ impl ArawnService for LocalService {
             tokio::sync::mpsc::channel::<arawn_engine::ProgressEvent>(64);
         engine = engine.with_progress_sender(progress_tx);
 
+        // Create cancellation token for this session
+        let cancel_token = tokio_util::sync::CancellationToken::new();
+        engine = engine.with_cancel_token(cancel_token.clone());
+        self.cancel_tokens.lock().unwrap().insert(session_id, cancel_token);
+
         let data_dir = self.data_dir.clone();
         let ws_dir_owned = ws_dir.clone();
         let store = self.store.clone();
         let active_sessions = self.active_sessions.clone();
+        let cancel_tokens = self.cancel_tokens.clone();
 
         tokio::spawn(async move {
             let msg_store = JsonlMessageStore::new(&data_dir);
@@ -850,17 +866,27 @@ impl ArawnService for LocalService {
                 }
             }
 
-            // Release the session lock so new messages can be sent
+            // Release the session lock and cancel token so new messages can be sent
             active_sessions.lock().unwrap().remove(&session_id);
+            cancel_tokens.lock().unwrap().remove(&session_id);
         });
 
         Ok(Box::pin(tokio_stream::wrappers::ReceiverStream::new(rx)))
     }
 
-    async fn cancel(&self, _session_id: Uuid) -> Result<(), ServiceError> {
-        // TODO: implement cancellation via CancellationToken
-        debug!("cancel requested (not yet implemented)");
-        Ok(())
+    async fn cancel(&self, session_id: Uuid) -> Result<(), ServiceError> {
+        let token = self.cancel_tokens.lock().unwrap().get(&session_id).cloned();
+        match token {
+            Some(token) => {
+                info!(%session_id, "cancelling engine run");
+                token.cancel();
+                Ok(())
+            }
+            None => {
+                debug!(%session_id, "cancel requested but no active engine run");
+                Ok(())
+            }
+        }
     }
 }
 

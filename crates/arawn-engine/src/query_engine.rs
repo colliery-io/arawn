@@ -106,6 +106,8 @@ pub struct QueryEngine {
     failed_call_counts: std::collections::HashMap<String, u32>,
     /// Optional channel for live progress events (tool starts/results during the loop).
     progress_tx: Option<tokio::sync::mpsc::Sender<ProgressEvent>>,
+    /// Optional cancellation token — checked at each iteration and before each tool execution.
+    cancel_token: Option<tokio_util::sync::CancellationToken>,
 }
 
 impl QueryEngine {
@@ -124,6 +126,7 @@ impl QueryEngine {
             compact_failures: 0,
             failed_call_counts: std::collections::HashMap::new(),
             progress_tx: None,
+            cancel_token: None,
         }
     }
 
@@ -146,6 +149,7 @@ impl QueryEngine {
             compact_failures: 0,
             failed_call_counts: std::collections::HashMap::new(),
             progress_tx: None,
+            cancel_token: None,
         }
     }
 
@@ -195,6 +199,17 @@ impl QueryEngine {
         self
     }
 
+    /// Set a cancellation token — checked at each loop iteration and before tool execution.
+    pub fn with_cancel_token(mut self, token: tokio_util::sync::CancellationToken) -> Self {
+        self.cancel_token = Some(token);
+        self
+    }
+
+    /// Check if cancellation has been requested.
+    fn is_cancelled(&self) -> bool {
+        self.cancel_token.as_ref().is_some_and(|t| t.is_cancelled())
+    }
+
     /// Emit a progress event if a sender is configured.
     fn emit_progress(&self, event: ProgressEvent) {
         if let Some(ref tx) = self.progress_tx {
@@ -223,6 +238,12 @@ impl QueryEngine {
     ) -> Result<String, EngineError> {
         let mut iteration = 0;
         loop {
+            // Check for cancellation before each iteration
+            if self.is_cancelled() {
+                info!(iteration, "engine cancelled by user");
+                return Err(EngineError::Other(anyhow::anyhow!("Cancelled by user")));
+            }
+
             if self.config.max_iterations > 0 && iteration >= self.config.max_iterations {
                 return Err(EngineError::MaxIterations {
                     iterations: iteration,
@@ -451,6 +472,12 @@ impl QueryEngine {
             // Fill in results for invalid tool calls
             for (i, result) in invalid_results {
                 results[i] = Some(result);
+            }
+
+            // Check for cancellation before tool execution
+            if self.is_cancelled() {
+                info!("engine cancelled before tool execution");
+                return Err(EngineError::Other(anyhow::anyhow!("Cancelled by user")));
             }
 
             // Execute read-only tools concurrently

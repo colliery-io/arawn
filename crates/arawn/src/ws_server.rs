@@ -127,8 +127,42 @@ pub async fn run_server(service: LocalService, port: u16) -> anyhow::Result<()> 
     eprintln!("Arawn server listening on ws://{addr}/ws");
     eprintln!("Press Ctrl-C to stop.");
 
-    axum::serve(listener, app).await?;
+    axum::serve(listener, app)
+        .with_graceful_shutdown(shutdown_signal())
+        .await?;
+
+    info!("server shutting down gracefully");
+    // Clean up token file on shutdown
+    if let Ok(home) = std::env::var("HOME").or_else(|_| std::env::var("USERPROFILE")) {
+        let token_path = std::path::PathBuf::from(home).join(".arawn/server.token");
+        let _ = std::fs::remove_file(token_path);
+    }
     Ok(())
+}
+
+/// Wait for a shutdown signal (Ctrl-C / SIGTERM).
+async fn shutdown_signal() {
+    let ctrl_c = async {
+        tokio::signal::ctrl_c()
+            .await
+            .expect("failed to install Ctrl+C handler");
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+            .expect("failed to install SIGTERM handler")
+            .recv()
+            .await;
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => info!("received Ctrl-C, initiating shutdown"),
+        _ = terminate => info!("received SIGTERM, initiating shutdown"),
+    }
 }
 
 /// HTTP endpoint for workflow decision tasks.
