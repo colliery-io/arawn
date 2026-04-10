@@ -11,7 +11,7 @@ use arawn_memory::{
 
 use crate::context::ToolContext;
 use crate::error::EngineError;
-use crate::tool::{Tool, ToolOutput};
+use crate::tool::{Tool, ToolCategory, ToolOutput};
 
 /// Tool that stores knowledge in the KB with search-before-create deduplication.
 pub struct MemoryStoreTool {
@@ -42,6 +42,10 @@ impl Tool for MemoryStoreTool {
          - **person**: Team members (\"Alice — backend lead\") — stored globally\n\
          - **note**: Freeform annotations\n\n\
          Use this when you learn something worth remembering across sessions."
+    }
+
+    fn category(&self) -> ToolCategory {
+        ToolCategory::Memory
     }
 
     fn parameters_schema(&self) -> Value {

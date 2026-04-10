@@ -8,7 +8,7 @@ use uuid::Uuid;
 
 use crate::context::ToolContext;
 use crate::error::EngineError;
-use crate::tool::{Tool, ToolOutput};
+use crate::tool::{Tool, ToolCategory, ToolOutput};
 
 /// Session-scoped task status.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -157,6 +157,10 @@ impl Tool for TaskCreateTool {
          All tasks are created with status `pending`."
     }
 
+    fn category(&self) -> ToolCategory {
+        ToolCategory::Task
+    }
+
     fn parameters_schema(&self) -> Value {
         json!({
             "type": "object",
@@ -232,6 +236,10 @@ impl Tool for TaskUpdateTool {
          - Mark as `completed` only when FULLY accomplished\n\
          - If blocked or errored, keep as `in_progress`\n\
          - After completing, call task_list to find your next task"
+    }
+
+    fn category(&self) -> ToolCategory {
+        ToolCategory::Task
     }
 
     fn parameters_schema(&self) -> Value {
@@ -365,6 +373,10 @@ impl Tool for TaskListTool {
         true
     }
 
+    fn category(&self) -> ToolCategory {
+        ToolCategory::Task
+    }
+
     fn parameters_schema(&self) -> Value {
         json!({
             "type": "object",
@@ -424,6 +436,10 @@ impl Tool for TaskGetTool {
 
     fn is_read_only(&self) -> bool {
         true
+    }
+
+    fn category(&self) -> ToolCategory {
+        ToolCategory::Task
     }
 
     fn parameters_schema(&self) -> Value {

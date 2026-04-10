@@ -5,7 +5,7 @@ use serde_json::{Value, json};
 
 use crate::context::ToolContext;
 use crate::error::EngineError;
-use crate::tool::{Tool, ToolOutput};
+use crate::tool::{Tool, ToolCategory, ToolOutput};
 
 /// Maximum sleep duration in seconds.
 const MAX_SLEEP_SECS: u64 = 300; // 5 minutes
@@ -29,6 +29,10 @@ impl Tool for SleepTool {
 
     fn is_read_only(&self) -> bool {
         true
+    }
+
+    fn category(&self) -> ToolCategory {
+        ToolCategory::Utility
     }
 
     fn parameters_schema(&self) -> Value {

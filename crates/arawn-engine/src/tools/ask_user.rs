@@ -3,7 +3,7 @@ use serde_json::{Value, json};
 
 use crate::context::ToolContext;
 use crate::error::EngineError;
-use crate::tool::{Tool, ToolOutput};
+use crate::tool::{Tool, ToolCategory, ToolOutput};
 
 /// Asks the user structured multiple-choice questions to gather requirements
 /// or clarify ambiguity. Returns the user's selected answers.
@@ -31,6 +31,10 @@ impl Tool for AskUserTool {
 
     fn is_read_only(&self) -> bool {
         true
+    }
+
+    fn category(&self) -> ToolCategory {
+        ToolCategory::Utility
     }
 
     fn parameters_schema(&self) -> Value {

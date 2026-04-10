@@ -10,7 +10,7 @@ use arawn_llm::{ChatContent, ChatMessage, ChatRequest};
 
 use crate::context::ToolContext;
 use crate::error::EngineError;
-use crate::tool::{Tool, ToolOutput};
+use crate::tool::{Tool, ToolCategory, ToolOutput};
 
 /// Cache TTL: 15 minutes.
 const CACHE_TTL: Duration = Duration::from_secs(15 * 60);
@@ -68,6 +68,10 @@ impl Tool for WebFetchTool {
          Do NOT pass partial or truncated URLs. HTTP URLs are automatically upgraded to HTTPS. \
          If `prompt` is provided, an AI model extracts only the relevant information. \
          If `prompt` is omitted, the raw content is returned (HTML converted to markdown)."
+    }
+
+    fn category(&self) -> ToolCategory {
+        ToolCategory::Web
     }
 
     fn parameters_schema(&self) -> Value {

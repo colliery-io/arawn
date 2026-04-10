@@ -6,7 +6,7 @@ use serde_json::{Value, json};
 use crate::context::ToolContext;
 use crate::error::EngineError;
 use crate::plan::PlanModeState;
-use crate::tool::{Tool, ToolOutput};
+use crate::tool::{Tool, ToolCategory, ToolOutput};
 
 /// Tool that exits plan mode — writes the plan to disk and deactivates plan mode
 /// so all tools become available again. The plan content is returned for the user
@@ -37,6 +37,10 @@ impl Tool for ExitPlanModeTool {
     fn is_read_only(&self) -> bool {
         // Must be callable from within plan mode
         true
+    }
+
+    fn category(&self) -> ToolCategory {
+        ToolCategory::Plan
     }
 
     fn parameters_schema(&self) -> Value {

@@ -7,7 +7,7 @@ use tracing::info;
 use crate::background::{BackgroundTaskManager, BackgroundTaskStatus};
 use crate::context::ToolContext;
 use crate::error::EngineError;
-use crate::tool::{Tool, ToolOutput};
+use crate::tool::{Tool, ToolCategory, ToolOutput};
 
 /// Stop a running background task.
 pub struct TaskStopTool {
@@ -33,6 +33,10 @@ impl Tool for TaskStopTool {
 
     fn is_read_only(&self) -> bool {
         false
+    }
+
+    fn category(&self) -> ToolCategory {
+        ToolCategory::BackgroundTask
     }
 
     fn parameters_schema(&self) -> Value {

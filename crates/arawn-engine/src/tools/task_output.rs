@@ -7,7 +7,7 @@ use tracing::debug;
 use crate::background::{BackgroundTaskManager, BackgroundTaskStatus};
 use crate::context::ToolContext;
 use crate::error::EngineError;
-use crate::tool::{Tool, ToolOutput};
+use crate::tool::{Tool, ToolCategory, ToolOutput};
 
 /// Read the output and status of a background task.
 /// Can block/poll until the task completes or return immediately.
@@ -35,6 +35,10 @@ impl Tool for TaskOutputTool {
 
     fn is_read_only(&self) -> bool {
         true
+    }
+
+    fn category(&self) -> ToolCategory {
+        ToolCategory::BackgroundTask
     }
 
     fn parameters_schema(&self) -> Value {

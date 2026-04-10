@@ -38,8 +38,11 @@ pub use hooks::{
 pub use permissions::{
     CliModalPrompt, MockModalPrompt, ModalOption, ModalPrompt, ModalRequest,
     PermissionChecker, PermissionConfig, PermissionDecision, PermissionMode,
-    PermissionResponse, PermissionRule, RuleKind, SessionGrants, ToolCategory, tool_category,
+    PermissionResponse, PermissionRule, RuleKind, SessionGrants, tool_category,
 };
+// Note: permissions::ToolCategory (ReadOnly/FileWrite/Shell/Other) is accessed via
+// permissions::checker::ToolCategory when needed. The top-level ToolCategory re-export
+// is tool::ToolCategory (Core/Task/Agent/Web/etc.) for context filtering.
 pub use plan::{PlanModeState, PlanModeSnapshot, generate_slug};
 #[cfg(feature = "legacy-plugins")]
 pub use plugin_adapter::PluginToolAdapter;
@@ -50,7 +53,7 @@ pub use plugin_watcher::PluginWatcher;
 pub use query_engine::{ProgressEvent, PromptContext, QueryEngine, QueryEngineConfig};
 pub use system_prompt::{ContextFile, SystemPromptBuilder, find_context_files};
 pub use token_estimator::{ModelLimits, TokenEstimator};
-pub use tool::{Tool, ToolOutput, ToolRegistry};
+pub use tool::{Tool, ToolCategory, ToolOutput, ToolRegistry};
 pub use skills::{SkillDefinition, SkillRegistry, format_skill_listing, load_merged_skills};
 pub use tools::{
     AgentTool, AskUserTool, EnterPlanModeTool, ExitPlanModeTool, FileEditTool, FileReadTool,

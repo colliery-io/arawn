@@ -5,7 +5,7 @@ use serde_json::{Value, json};
 
 use crate::context::ToolContext;
 use crate::error::EngineError;
-use crate::tool::{Tool, ToolOutput};
+use crate::tool::{Tool, ToolCategory, ToolOutput};
 
 use arawn_core::Workstream;
 use arawn_storage::Store;
@@ -31,6 +31,10 @@ impl Tool for WorkstreamCreateTool {
         "Create a new workstream — an isolated context for a project or topic. \
          Each workstream gets its own sessions, sandbox directory, and scoped memory. \
          Use this when the user wants to organize work into a separate area."
+    }
+
+    fn category(&self) -> ToolCategory {
+        ToolCategory::Workstream
     }
 
     fn parameters_schema(&self) -> Value {
@@ -106,6 +110,10 @@ impl Tool for WorkstreamListTool {
 
     fn is_read_only(&self) -> bool {
         true
+    }
+
+    fn category(&self) -> ToolCategory {
+        ToolCategory::Workstream
     }
 
     fn parameters_schema(&self) -> Value {

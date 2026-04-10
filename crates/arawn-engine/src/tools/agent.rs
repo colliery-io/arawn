@@ -15,7 +15,7 @@ use crate::compactor::Compactor;
 use crate::context::ToolContext;
 use crate::error::EngineError;
 use crate::query_engine::{QueryEngine, QueryEngineConfig};
-use crate::tool::{Tool, ToolOutput, ToolRegistry};
+use crate::tool::{Tool, ToolCategory, ToolOutput, ToolRegistry};
 
 const DEFAULT_MAX_TURNS: usize = 20;
 
@@ -72,6 +72,10 @@ impl Tool for AgentTool {
          Write the prompt like a brief to a colleague who just walked in — explain what you're \
          trying to accomplish, what you already know, and what specifically you need. \
          Never delegate understanding: include file paths, context, and specifics."
+    }
+
+    fn category(&self) -> ToolCategory {
+        ToolCategory::Agent
     }
 
     fn parameters_schema(&self) -> Value {
@@ -244,7 +248,7 @@ impl Tool for AgentTool {
                 info!(description, agent_type = %definition.name, "sub-agent completed");
                 Ok(ToolOutput::success(response))
             }
-            Err(EngineError::MaxIterations(_)) => {
+            Err(EngineError::MaxIterations { .. }) => {
                 let last_text = session
                     .messages()
                     .iter()

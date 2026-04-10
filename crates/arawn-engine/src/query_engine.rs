@@ -599,7 +599,7 @@ impl QueryEngine {
         // Query registry fresh each turn, then filter to contextually relevant tools.
         // Core tools always included; specialty tools included when conversation signals need them.
         let all_tools = self.registry.tool_definitions();
-        let tools = filter_tools_for_context(&all_tools, session);
+        let tools = filter_tools_for_context(&all_tools, session, &self.registry);
 
         // Build system prompt fresh each turn (tools/skills may have changed via hot-reload)
         let system_prompt = if let Some(ref prompt_ctx) = self.config.prompt_context {
@@ -896,37 +896,16 @@ struct ToolResult {
     is_error: bool,
 }
 
-/// Core tools always included in every LLM request.
-const CORE_TOOLS: &[&str] = &[
-    "think", "shell", "file_read", "file_write", "file_edit", "glob", "grep", "skill",
-];
-
-/// Web tools — included when conversation references URLs, web, search, fetch, APIs.
-const WEB_TOOLS: &[&str] = &["web_fetch", "web_search"];
-
-/// Planning tools — included when in plan mode or conversation mentions planning.
-const PLAN_TOOLS: &[&str] = &["enter_plan_mode", "exit_plan_mode"];
-
-/// Task management tools — included when conversation mentions tasks, background, todo.
-const TASK_TOOLS: &[&str] = &[
-    "task_create", "task_update", "task_get", "task_list", "task_output", "task_stop",
-];
-
-/// Memory tools — included when conversation mentions memory, remember, recall.
-const MEMORY_TOOLS: &[&str] = &["memory_store", "memory_search"];
-
-/// Agent/delegation tools — included when conversation mentions delegation, agent, subagent.
-const AGENT_TOOLS: &[&str] = &["agent"];
-
-/// Other tools always included.
-const ALWAYS_TOOLS: &[&str] = &["ask_user", "sleep"];
-
 /// Filter tool definitions to only contextually relevant ones for this turn.
-/// Scans the last user message for category signals. Core tools always included.
+/// Uses ToolCategory from the registry instead of string constants.
+/// Core and Utility categories are always included. Others are triggered by keywords.
 fn filter_tools_for_context(
     all_tools: &[arawn_llm::ToolDefinition],
     session: &Session,
+    registry: &ToolRegistry,
 ) -> Vec<arawn_llm::ToolDefinition> {
+    use crate::tool::ToolCategory;
+
     // On first turn or very short sessions, send all tools (no context to filter on)
     if session.messages().len() <= 2 {
         return all_tools.to_vec();
@@ -943,7 +922,7 @@ fn filter_tools_for_context(
         })
         .unwrap_or_default();
 
-    // Also check if the model previously used any specialty tools (keep them available)
+    // Track which categories the model has already used (keep them available)
     let used_tool_names: std::collections::HashSet<&str> = session
         .messages()
         .iter()
@@ -956,14 +935,14 @@ fn filter_tools_for_context(
         .flatten()
         .collect();
 
-    let mut include = std::collections::HashSet::new();
+    // Determine which categories to include based on keywords
+    let mut active_categories = std::collections::HashSet::new();
 
-    // Always include core + always tools
-    for name in CORE_TOOLS.iter().chain(ALWAYS_TOOLS.iter()) {
-        include.insert(*name);
-    }
+    // Always include Core and Utility
+    active_categories.insert(ToolCategory::Core);
+    active_categories.insert(ToolCategory::Utility);
 
-    // Web tools: URL patterns, web/search/fetch/http/api/github mentions
+    // Web: URL patterns, web/search/fetch/http/api mentions
     if last_user_msg.contains("http")
         || last_user_msg.contains("url")
         || last_user_msg.contains("web")
@@ -972,63 +951,64 @@ fn filter_tools_for_context(
         || last_user_msg.contains("api")
         || last_user_msg.contains("github")
         || last_user_msg.contains("google")
-        || used_tool_names.iter().any(|n| WEB_TOOLS.contains(n))
     {
-        for name in WEB_TOOLS {
-            include.insert(name);
-        }
+        active_categories.insert(ToolCategory::Web);
     }
 
-    // Plan tools: plan/planning mentions or plan mode active
-    if last_user_msg.contains("plan")
-        || used_tool_names.iter().any(|n| PLAN_TOOLS.contains(n))
-    {
-        for name in PLAN_TOOLS {
-            include.insert(name);
-        }
+    // Plan: plan/planning mentions
+    if last_user_msg.contains("plan") {
+        active_categories.insert(ToolCategory::Plan);
     }
 
-    // Task tools: task/todo/background mentions
+    // Task + BackgroundTask: task/todo/background mentions
     if last_user_msg.contains("task")
         || last_user_msg.contains("todo")
         || last_user_msg.contains("background")
-        || used_tool_names.iter().any(|n| TASK_TOOLS.contains(n))
     {
-        for name in TASK_TOOLS {
-            include.insert(name);
-        }
+        active_categories.insert(ToolCategory::Task);
+        active_categories.insert(ToolCategory::BackgroundTask);
     }
 
-    // Memory tools: remember/recall/memory mentions
+    // Memory: remember/recall/memory/forget mentions
     if last_user_msg.contains("remember")
         || last_user_msg.contains("recall")
         || last_user_msg.contains("memory")
         || last_user_msg.contains("forget")
-        || used_tool_names.iter().any(|n| MEMORY_TOOLS.contains(n))
     {
-        for name in MEMORY_TOOLS {
-            include.insert(name);
-        }
+        active_categories.insert(ToolCategory::Memory);
     }
 
-    // Agent tools: agent/delegate/subagent mentions
-    if last_user_msg.contains("agent")
-        || last_user_msg.contains("delegat")
-        || used_tool_names.iter().any(|n| AGENT_TOOLS.contains(n))
-    {
-        for name in AGENT_TOOLS {
-            include.insert(name);
-        }
+    // Agent: agent/delegate/subagent mentions
+    if last_user_msg.contains("agent") || last_user_msg.contains("delegat") {
+        active_categories.insert(ToolCategory::Agent);
     }
 
-    // Always include any tool the model has already used in this session
+    // Workstream: workstream/workspace mentions
+    if last_user_msg.contains("workstream") || last_user_msg.contains("workspace") {
+        active_categories.insert(ToolCategory::Workstream);
+    }
+
+    // Include categories of any previously-used tools
     for name in &used_tool_names {
-        include.insert(name);
+        if let Some(tool) = registry.get(name) {
+            active_categories.insert(tool.category());
+        }
     }
 
     all_tools
         .iter()
-        .filter(|t| include.contains(t.name.as_str()))
+        .filter(|t| {
+            // Include if category is active OR if this specific tool was previously used
+            if used_tool_names.contains(t.name.as_str()) {
+                return true;
+            }
+            if let Some(tool) = registry.get(&t.name) {
+                active_categories.contains(&tool.category())
+            } else {
+                // Unknown tool (e.g., MCP) — include by default
+                true
+            }
+        })
         .cloned()
         .collect()
 }

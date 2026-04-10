@@ -13,8 +13,29 @@ pub struct SkillRegistry {
 
 impl SkillRegistry {
     pub fn new() -> Self {
-        Self {
+        let registry = Self {
             skills: RwLock::new(HashMap::new()),
+        };
+        registry.register_builtins();
+        registry
+    }
+
+    /// Register built-in skills that ship with the arawn binary.
+    fn register_builtins(&self) {
+        let builtins: &[(&str, &str)] = &[
+            ("workflows", include_str!("builtin/workflows.md")),
+        ];
+
+        for (default_name, content) in builtins {
+            match parse_skill_markdown(content, default_name) {
+                Ok(mut skill) => {
+                    skill.source = SkillSource::BuiltIn;
+                    self.register(skill);
+                }
+                Err(e) => {
+                    warn!(name = default_name, error = %e, "failed to parse built-in skill");
+                }
+            }
         }
     }
 
@@ -425,8 +446,10 @@ Project version.
             source: SkillSource::Project,
         });
 
-        assert_eq!(registry.all().len(), 2);
-        assert_eq!(registry.user_invocable().len(), 1);
-        assert_eq!(registry.user_invocable()[0].name, "visible");
+        let num_builtins = registry.all().iter().filter(|s| s.source == SkillSource::BuiltIn).count();
+        assert_eq!(registry.all().len(), 2 + num_builtins);
+        let user_invocable = registry.user_invocable();
+        assert!(user_invocable.iter().any(|s| s.name == "visible"));
+        assert!(!user_invocable.iter().any(|s| s.name == "hidden"));
     }
 }

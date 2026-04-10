@@ -8,6 +8,30 @@ use serde_json::Value;
 use crate::context::ToolContext;
 use crate::error::EngineError;
 
+/// Category of a tool — used for permission checking, context filtering, and
+/// tool grouping. Replaces string-based matching with compile-time verification.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ToolCategory {
+    /// Core tools always included (think, shell, file ops, glob, grep, skill)
+    Core,
+    /// Task management tools (task_create, task_update, etc.)
+    Task,
+    /// Agent/sub-agent tools
+    Agent,
+    /// Web tools (web_fetch, web_search)
+    Web,
+    /// Memory tools (memory_store, memory_search)
+    Memory,
+    /// Planning tools (enter_plan_mode, exit_plan_mode)
+    Plan,
+    /// Workstream management tools
+    Workstream,
+    /// Always-included utility tools (ask_user, sleep)
+    Utility,
+    /// Background task management (task_output, task_stop)
+    BackgroundTask,
+}
+
 /// Output from a tool execution.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ToolOutput {
@@ -46,6 +70,12 @@ pub trait Tool: Send + Sync {
     /// Default: false (conservative — assumes side effects).
     fn is_read_only(&self) -> bool {
         false
+    }
+
+    /// Tool category for permission checking and context filtering.
+    /// Default: Core (included in all turns).
+    fn category(&self) -> ToolCategory {
+        ToolCategory::Core
     }
 }
 

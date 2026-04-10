@@ -6,7 +6,7 @@ use serde_json::{Value, json};
 use crate::context::ToolContext;
 use crate::error::EngineError;
 use crate::plan::{PlanModeState, generate_slug};
-use crate::tool::{Tool, ToolOutput};
+use crate::tool::{Tool, ToolCategory, ToolOutput};
 
 /// Tool that enters plan mode — restricts the agent to observation-only tools
 /// while it researches and designs an approach. The plan is written to a file
@@ -41,6 +41,10 @@ impl Tool for EnterPlanModeTool {
 
     fn is_read_only(&self) -> bool {
         true
+    }
+
+    fn category(&self) -> ToolCategory {
+        ToolCategory::Plan
     }
 
     fn parameters_schema(&self) -> Value {

@@ -1,4 +1,5 @@
 use thiserror::Error;
+use uuid::Uuid;
 
 #[derive(Debug, Error)]
 pub enum EngineError {
@@ -11,8 +12,11 @@ pub enum EngineError {
     #[error("LLM error: {0}")]
     Llm(#[from] arawn_llm::LlmError),
 
-    #[error("max iterations ({0}) exceeded")]
-    MaxIterations(usize),
+    #[error("max iterations ({iterations}) exceeded for session {session_id}")]
+    MaxIterations {
+        iterations: usize,
+        session_id: Uuid,
+    },
 
     #[error("{0}")]
     Other(#[from] anyhow::Error),
@@ -32,10 +36,10 @@ impl EngineError {
             EngineError::Tool(msg) => {
                 format!("A tool encountered an error: {msg}")
             }
-            EngineError::MaxIterations(max) => {
+            EngineError::MaxIterations { iterations, session_id } => {
                 format!(
-                    "Reached the maximum iteration limit ({max} turns) without completing. \
-                     Try breaking the task into smaller steps."
+                    "Reached the maximum iteration limit ({iterations} turns). \
+                     Session {session_id} has been saved — resume with --session {session_id}"
                 )
             }
             EngineError::Other(e) => {

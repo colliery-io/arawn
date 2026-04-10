@@ -10,7 +10,7 @@ use arawn_memory::{Entity, EntityType, MemoryManager, MemoryStore, RelationType}
 
 use crate::context::ToolContext;
 use crate::error::EngineError;
-use crate::tool::{Tool, ToolOutput};
+use crate::tool::{Tool, ToolCategory, ToolOutput};
 
 /// Tool that searches the knowledge base using composite retrieval:
 /// semantic similarity + FTS5 text search + tag filtering + graph expansion.
@@ -39,6 +39,10 @@ impl Tool for MemorySearchTool {
 
     fn is_read_only(&self) -> bool {
         true
+    }
+
+    fn category(&self) -> ToolCategory {
+        ToolCategory::Memory
     }
 
     fn parameters_schema(&self) -> Value {

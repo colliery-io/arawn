@@ -3,7 +3,7 @@ use serde_json::{Value, json};
 
 use crate::context::ToolContext;
 use crate::error::EngineError;
-use crate::tool::{Tool, ToolOutput};
+use crate::tool::{Tool, ToolCategory, ToolOutput};
 
 /// Searches the web and returns results to inform responses.
 pub struct WebSearchTool;
@@ -25,6 +25,10 @@ impl Tool for WebSearchTool {
 
     fn is_read_only(&self) -> bool {
         true
+    }
+
+    fn category(&self) -> ToolCategory {
+        ToolCategory::Web
     }
 
     fn parameters_schema(&self) -> Value {
