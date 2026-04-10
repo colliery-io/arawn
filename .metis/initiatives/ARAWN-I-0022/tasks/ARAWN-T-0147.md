@@ -4,14 +4,14 @@ level: task
 title: "Add WebSocket authentication via session token"
 short_code: "ARAWN-T-0147"
 created_at: 2026-04-10T01:01:08.850137+00:00
-updated_at: 2026-04-10T01:01:08.850137+00:00
+updated_at: 2026-04-10T02:04:38.748263+00:00
 parent: ARAWN-I-0022
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -30,6 +30,10 @@ initiative_id: ARAWN-I-0022
 Add authentication to the WebSocket server so that arbitrary local processes (or browser CSRF) cannot connect and issue RPC calls. Generate a session token at startup, require it for connection, and require confirmation for `set_permission_mode(bypass)`.
 
 ## Acceptance Criteria
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 - [ ] Random token generated at server startup, written to `~/.arawn/server.token`
 - [ ] Token required as query parameter on WebSocket upgrade (`/ws?token=...`)
 - [ ] TUI reads token from file to authenticate
@@ -42,7 +46,15 @@ Add authentication to the WebSocket server so that arbitrary local processes (or
 - Files: `crates/arawn/src/ws_server.rs`, `crates/arawn/src/main.rs` (token generation), `crates/arawn-tui/src/ws_client.rs` (token reading)
 
 ## Status Updates
-*To be added during implementation*
+- Added `AppState` struct with `service` + `auth_token` fields
+- `run_server` generates token via two concatenated UUIDs, writes to `~/.arawn/server.token`
+- `ws_handler` validates `?token=` query param — returns 401 if missing/invalid
+- TUI `WsClient::connect` reads `~/.arawn/server.token` and appends `?token=` automatically
+- Integration tests bypass auth by using `handle_connection_public` directly (no ws_handler)
+- Updated `decision_handler` to destructure from `AppState`
+- No new dependencies — used `uuid::Uuid::new_v4()` instead of `rand`, `$HOME` env var instead of `dirs`
+- Deferred: Origin header validation, set_permission_mode(bypass) confirmation prompt
+- All 29 service+WS tests pass, clean build
 
 ## REMOVED_SECTIONS
 

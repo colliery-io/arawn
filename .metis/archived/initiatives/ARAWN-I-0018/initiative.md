@@ -4,14 +4,14 @@ level: initiative
 title: "First-class workstreams — TUI navigation, agent tools, and session binding"
 short_code: "ARAWN-I-0018"
 created_at: 2026-04-06T10:00:15.118843+00:00
-updated_at: 2026-04-06T10:00:15.118843+00:00
+updated_at: 2026-04-07T12:16:23.383781+00:00
 parent: ARAWN-V-0001
 blocked_by: []
-archived: false
+archived: true
 
 tags:
   - "#initiative"
-  - "#phase/discovery"
+  - "#phase/completed"
 
 
 exit_criteria_met: false

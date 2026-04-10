@@ -4,14 +4,14 @@ level: initiative
 title: "Security Hardening: Path Traversal, Auth, Sandbox, and Permission Bypass"
 short_code: "ARAWN-I-0022"
 created_at: 2026-04-09T23:59:35.045195+00:00
-updated_at: 2026-04-10T01:00:48.684121+00:00
+updated_at: 2026-04-10T01:08:41.573019+00:00
 parent: 
 blocked_by: []
 archived: false
 
 tags:
   - "#initiative"
-  - "#phase/decompose"
+  - "#phase/active"
 
 
 exit_criteria_met: false

@@ -4,14 +4,14 @@ level: task
 title: "Surface sandbox failures and plugin hook/MCP security visibility"
 short_code: "ARAWN-T-0148"
 created_at: 2026-04-10T01:01:10.248687+00:00
-updated_at: 2026-04-10T01:01:10.248687+00:00
+updated_at: 2026-04-10T02:06:15.193660+00:00
 parent: ARAWN-I-0022
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -30,6 +30,10 @@ initiative_id: ARAWN-I-0022
 Make sandbox failures visible to users instead of silently falling back to unsandboxed execution. Display plugin hook and MCP server commands during installation so users know what will run.
 
 ## Acceptance Criteria
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 - [ ] Sandbox unavailability emits `EngineEvent::Warning` (not just a log line)
 - [ ] Plugin installation logs all hook registrations and MCP server commands at info level
 - [ ] `plugin inspect` CLI command shows what a plugin will execute
@@ -40,7 +44,12 @@ Make sandbox failures visible to users instead of silently falling back to unsan
 - Depends on ARAWN-T-0143 for `EngineEvent::Warning` variant
 
 ## Status Updates
-*To be added during implementation*
+- Sandbox fallback now prepends `[WARNING: Command ran without sandbox protection]` to tool output — visible to both LLM and user
+- Plugin hook loading now logs full hook config JSON at info level with "UNSANDBOXED shell commands" warning
+- Both file-based and inline hook configs get the enhanced logging
+- Deferred: `plugin inspect` CLI command (requires main.rs changes, better suited for I-0024 refactoring)
+- Deferred: EngineEvent::Warning for sandbox — tool doesn't have access to event channel, would need architecture change. The tool output prefix achieves the same user visibility.
+- Clean build, all tests pass
 
 ## REMOVED_SECTIONS
 

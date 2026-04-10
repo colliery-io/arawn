@@ -4,14 +4,14 @@ level: task
 title: "Fix session promotion atomicity"
 short_code: "ARAWN-T-0151"
 created_at: 2026-04-10T01:01:14.477758+00:00
-updated_at: 2026-04-10T01:01:14.477758+00:00
+updated_at: 2026-04-10T02:15:52.139538+00:00
 parent: ARAWN-I-0023
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -30,6 +30,10 @@ initiative_id: ARAWN-I-0023
 Fix session promotion to be atomic: move the JSONL file before updating SQLite metadata, so a failed file move leaves the session in its original location instead of creating an orphaned entry.
 
 ## Acceptance Criteria
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 - [ ] Operation order reversed: copy/move JSONL first, then update SQLite
 - [ ] If SQLite update fails after file move, file is moved back
 - [ ] Test: promotion with simulated SQLite failure leaves session loadable from original location
@@ -40,7 +44,11 @@ Fix session promotion to be atomic: move the JSONL file before updating SQLite m
 - Consider adding a startup reconciliation check for orphaned sessions
 
 ## Status Updates
-*To be added during implementation*
+- Reversed operation order: JSONL file moved first (step 1), SQLite updated second (step 2)
+- If SQLite update fails: file is moved back to scratch, error returned (session remains loadable)
+- The first lock (find workstream, capture paths) no longer updates SQLite
+- Second lock (promote_session_metadata) is released before any async rollback
+- All 15 local_service tests pass including existing promotion tests
 
 ## REMOVED_SECTIONS
 

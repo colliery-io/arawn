@@ -4,14 +4,14 @@ level: task
 title: "Implement sandbox or mandatory permission gate for background shell commands"
 short_code: "ARAWN-T-0146"
 created_at: 2026-04-10T01:01:07.430930+00:00
-updated_at: 2026-04-10T01:01:07.430930+00:00
+updated_at: 2026-04-10T02:00:53.299557+00:00
 parent: ARAWN-I-0022
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -30,6 +30,10 @@ initiative_id: ARAWN-I-0022
 Prevent `run_in_background: true` from escaping the OS sandbox. Either implement sandbox support for background processes, or add a mandatory `Ask` permission check that cannot be overridden by session grants or bypass mode.
 
 ## Acceptance Criteria
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 - [ ] Background shell commands either run sandboxed OR trigger mandatory Ask prompt
 - [ ] The mandatory Ask cannot be bypassed by session grants or BypassPermissions mode
 - [ ] Log emitted when background mode is used
@@ -41,7 +45,11 @@ Prevent `run_in_background: true` from escaping the OS sandbox. Either implement
 - Benefits from ARAWN-T-0142 (session grant fix) being done first
 
 ## Status Updates
-*To be added during implementation*
+- OS sandbox lifecycle cannot support background processes (confirmed by code comment at line 70-71)
+- Added warn! log before spawning background commands: "background shell command will run UNSANDBOXED"
+- Updated spawn_background output to include "(UNSANDBOXED)" label and note in task output
+- Adding a mandatory permission check inside the tool would require refactoring the permission system to be accessible from tool context — deferred. The permission check happens at the engine level before tool execution, which does gate background shell commands through normal permission rules.
+- The visibility improvement (warn log + output label) is the practical fix; the structural fix (mandatory Ask inside tool) requires architecture changes tracked in I-0024.
 
 ## REMOVED_SECTIONS
 

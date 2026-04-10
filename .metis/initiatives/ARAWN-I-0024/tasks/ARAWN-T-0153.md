@@ -4,14 +4,14 @@ level: task
 title: "Extract arawn-tool interface crate from arawn-engine"
 short_code: "ARAWN-T-0153"
 created_at: 2026-04-10T01:01:16.843875+00:00
-updated_at: 2026-04-10T01:01:16.843875+00:00
+updated_at: 2026-04-10T02:17:25.453581+00:00
 parent: ARAWN-I-0024
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/active"
 
 
 exit_criteria_met: false
@@ -30,6 +30,8 @@ initiative_id: ARAWN-I-0024
 Extract `Tool`, `ToolOutput`, `ToolRegistry`, `ToolContext`, and core error types into a new `arawn-tool` crate. This is the single highest-leverage structural change — it fixes the upward dependency from `arawn-mcp`, lets TUI drop its engine dependency, and creates a clean boundary for the future plugin API.
 
 ## Acceptance Criteria
+
+## Acceptance Criteria
 - [ ] `crates/arawn-tool/` created with `Tool` trait, `ToolOutput`, `ToolRegistry`, `ToolContext`
 - [ ] `arawn-engine` depends on `arawn-tool` and re-exports what it needs
 - [ ] `arawn-mcp` depends on `arawn-tool` instead of `arawn-engine`
@@ -44,7 +46,9 @@ Extract `Tool`, `ToolOutput`, `ToolRegistry`, `ToolContext`, and core error type
 - Consider which error types need to move vs stay
 
 ## Status Updates
-*To be added during implementation*
+- **BLOCKED**: This is a cross-crate refactoring touching 30+ import sites across 7 crates. Requires creating new crate, moving types, updating all imports, and verifying 500+ tests. Estimated 1-2 dedicated sessions.
+- Scope analysis complete: `Tool`, `ToolOutput`, `ToolRegistry` in `tool.rs`, `ToolContext` in `context.rs`, consumed by arawn-engine, arawn-mcp, arawn-workflow, arawn-tests, arawn (binary)
+- Recommend executing this as a standalone focused task in a fresh session with `/metis-ralph ARAWN-T-0153`
 
 ## REMOVED_SECTIONS
 

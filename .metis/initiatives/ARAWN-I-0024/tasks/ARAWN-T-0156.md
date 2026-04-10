@@ -4,14 +4,14 @@ level: task
 title: "Deprecate legacy WASM plugin system behind feature flag"
 short_code: "ARAWN-T-0156"
 created_at: 2026-04-10T01:01:21.119705+00:00
-updated_at: 2026-04-10T01:01:21.119705+00:00
+updated_at: 2026-04-10T02:21:40.732863+00:00
 parent: ARAWN-I-0024
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -30,6 +30,10 @@ initiative_id: ARAWN-I-0024
 Add deprecation notices to the legacy WASM/fidius plugin system and feature-gate its dependency to reduce maintenance cost and contributor confusion.
 
 ## Acceptance Criteria
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 - [ ] `#[deprecated]` and `//! DEPRECATED` module docs on `plugin_loader.rs`, `plugin_adapter.rs`, `plugin_watcher.rs`
 - [ ] `legacy-plugins` feature flag in `arawn-engine/Cargo.toml`
 - [ ] fidius dependency gated behind `legacy-plugins` feature
@@ -41,7 +45,15 @@ Add deprecation notices to the legacy WASM/fidius plugin system and feature-gate
 - Files: `crates/arawn-engine/Cargo.toml`, `crates/arawn-engine/src/plugin_loader.rs`, `crates/arawn-engine/src/plugin_adapter.rs`, `crates/arawn/src/main.rs`
 
 ## Status Updates
-*To be added during implementation*
+- Added `legacy-plugins` feature flag to arawn-engine/Cargo.toml (in default features for backward compat)
+- `fidius-host` and `arawn-tool-plugin` deps gated behind `dep:` optional syntax
+- `plugin_loader.rs`, `plugin_adapter.rs`, `plugin_watcher.rs` modules gated with `#[cfg(feature = "legacy-plugins")]`
+- Re-exports in lib.rs also gated
+- main.rs: legacy plugin loading and watcher gated behind `#[cfg(feature = "legacy-plugins")]`
+- Deprecation warning logged when legacy plugins are loaded: "this system is DEPRECATED, migrate to new plugin format"
+- `//! DEPRECATED` doc comments added to all 3 legacy modules
+- Builds cleanly both with and without the feature
+- Note: kept in default features since existing users may have legacy plugins; can flip to opt-in after migration period
 
 ## REMOVED_SECTIONS
 

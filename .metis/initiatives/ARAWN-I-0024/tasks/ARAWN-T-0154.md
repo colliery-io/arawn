@@ -40,7 +40,7 @@ Expand `ArawnService` trait from 7 to all 16 RPC methods. Define typed response 
 - Files: `crates/arawn-service/src/lib.rs` (trait + types), `crates/arawn/src/local_service.rs` (impl), `crates/arawn/src/ws_server.rs` (handler)
 
 ## Status Updates
-*To be added during implementation*
+- **DEFERRED**: Multi-file refactoring across arawn-service, arawn (local_service + ws_server). Requires adding 9 trait methods, defining 5 response structs, updating 600-line WS handler. Best done in a dedicated session with `/metis-ralph ARAWN-T-0154`.
 
 ## REMOVED_SECTIONS
 

@@ -7,7 +7,7 @@ created_at: 2026-04-05T17:17:11.666998+00:00
 updated_at: 2026-04-05T17:51:15.331224+00:00
 parent: ARAWN-I-0013
 blocked_by: []
-archived: false
+archived: true
 
 tags:
   - "#task"
@@ -23,6 +23,8 @@ initiative_id: ARAWN-I-0013
 ## Objective
 
 The capstone integration test — a multi-turn conversation with ALL subsystems (permissions, hooks, skills, tools) wired into the QueryEngine simultaneously. Verifies the subsystems compose correctly and don't interfere with each other. Tests go in `crates/arawn-tests/tests/full_pipeline.rs`.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

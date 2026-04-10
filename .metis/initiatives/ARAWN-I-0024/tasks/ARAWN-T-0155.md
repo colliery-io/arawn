@@ -42,7 +42,7 @@ Break down the ~650-line `main.rs` serve mode setup and ~220-line `LocalService:
 - Easier after ARAWN-T-0153 (arawn-tool extraction makes boundaries clearer)
 
 ## Status Updates
-*To be added during implementation*
+- **DEFERRED**: Pure refactoring of ~650-line main.rs and ~220-line send_message. Best done after T-0153 (crate extraction) makes boundaries clearer. Dedicated session recommended.
 
 ## REMOVED_SECTIONS
 

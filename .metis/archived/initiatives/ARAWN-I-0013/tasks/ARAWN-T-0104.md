@@ -7,7 +7,7 @@ created_at: 2026-04-05T17:17:08.591847+00:00
 updated_at: 2026-04-05T17:38:06.065619+00:00
 parent: ARAWN-I-0013
 blocked_by: []
-archived: false
+archived: true
 
 tags:
   - "#task"
@@ -23,6 +23,8 @@ initiative_id: ARAWN-I-0013
 ## Objective
 
 Integration tests verifying hooks fire correctly when wired into the QueryEngine. Tests go in `crates/arawn-tests/tests/hooks.rs`.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

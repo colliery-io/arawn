@@ -4,7 +4,7 @@ level: task
 title: "TUI has no clear working/idle state indicator — impossible to tell if agent is thinking or waiting for input"
 short_code: "ARAWN-T-0114"
 created_at: 2026-04-06T10:05:10.980984+00:00
-updated_at: 2026-04-06T11:05:51.208218+00:00
+updated_at: 2026-04-06T11:23:28.181546+00:00
 parent: 
 blocked_by: []
 archived: false
@@ -12,7 +12,7 @@ archived: false
 tags:
   - "#task"
   - "#bug"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -38,6 +38,8 @@ Screenshot from 2026-04-06 shows: `file_write` error → `file_read` success →
 ### Expected vs Actual
 - **Expected**: Clear visual states — spinner/animation when agent is thinking, distinct "ready for input" state when done
 - **Actual**: No distinction between "agent is processing" and "agent is done, your turn". Chat just stops.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

@@ -4,14 +4,14 @@ level: task
 title: "Fix session grants to respect deny rules in permission checker"
 short_code: "ARAWN-T-0142"
 created_at: 2026-04-10T01:00:57.055570+00:00
-updated_at: 2026-04-10T01:00:57.055570+00:00
+updated_at: 2026-04-10T01:17:24.574160+00:00
 parent: ARAWN-I-0021
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -30,6 +30,10 @@ initiative_id: ARAWN-I-0021
 Fix permission check ordering so deny rules are evaluated before session grants. Currently, clicking "Allow Always" permanently overrides any deny rule for the session, making deny rules unreliable as a security boundary.
 
 ## Acceptance Criteria
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 - [ ] Deny rules evaluated before session grants in `PermissionChecker::check()`
 - [ ] Priority order: Deny > SessionGrant > Allow > Ask > mode fallback
 - [ ] Test: deny rule blocks tool even when session grant exists for it
@@ -42,7 +46,11 @@ Fix permission check ordering so deny rules are evaluated before session grants.
 - Update existing test at ~line 512 to verify new behavior
 
 ## Status Updates
-*To be added during implementation*
+- Reordered `check()`: evaluate all rules first, deny short-circuits immediately (before session grant check)
+- New flow: Deny > SessionGrant > Allow > Ask > NoMatch > mode fallback
+- Renamed test `session_grant_short_circuits` → `deny_rules_override_session_grants` (now asserts Denied)
+- Added new test `session_grant_works_for_non_denied_tools` (Ask rule + grant = Allowed)
+- All 52 permission tests + 6 integration permission tests + 7 hook tests pass
 
 ## REMOVED_SECTIONS
 

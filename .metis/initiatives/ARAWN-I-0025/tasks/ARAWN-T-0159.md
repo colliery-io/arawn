@@ -42,7 +42,7 @@ Replace string-based tool name matching in filter constants and permission categ
 - Depends on ARAWN-T-0153 (arawn-tool crate extraction)
 
 ## Status Updates
-*To be added during implementation*
+- **DEFERRED**: Depends on T-0153 (arawn-tool crate extraction) for the ToolCategory enum's home crate. Cannot proceed until the crate exists.
 
 ## REMOVED_SECTIONS
 

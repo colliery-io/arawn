@@ -7,7 +7,7 @@ created_at: 2026-04-05T17:17:07.308020+00:00
 updated_at: 2026-04-05T17:31:38.074062+00:00
 parent: ARAWN-I-0013
 blocked_by: []
-archived: false
+archived: true
 
 tags:
   - "#task"
@@ -23,6 +23,8 @@ initiative_id: ARAWN-I-0013
 ## Objective
 
 Extend `TestHarnessBuilder` in `crates/arawn-engine/src/testing.rs` to support wiring permissions, hooks, skills, and plugins into the engine — enabling cross-subsystem integration tests. This is the foundation task that unblocks all other integration tests in the initiative.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

@@ -1,3 +1,9 @@
+//! DEPRECATED: Legacy WASM plugin system.
+//!
+//! This module is superseded by the new plugin system in `plugins/`.
+//! It is gated behind the `legacy-plugins` feature flag and will be
+//! removed in a future version. Migrate to the new plugin format.
+
 use std::path::Path;
 
 use fidius_host::PluginHandle;

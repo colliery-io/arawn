@@ -41,7 +41,7 @@ Add a `hello` handshake RPC method returning server version and supported method
 - Depends on ARAWN-T-0154 (service trait completion) for stable method list
 
 ## Status Updates
-*To be added during implementation*
+- **DEFERRED**: Depends on T-0154 (service trait completion) for a stable method list. Best done together in a dedicated session.
 
 ## REMOVED_SECTIONS
 

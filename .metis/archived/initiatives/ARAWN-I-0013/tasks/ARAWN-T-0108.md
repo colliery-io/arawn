@@ -7,7 +7,7 @@ created_at: 2026-04-05T17:17:12.342303+00:00
 updated_at: 2026-04-05T17:48:47.564029+00:00
 parent: ARAWN-I-0013
 blocked_by: []
-archived: false
+archived: true
 
 tags:
   - "#task"
@@ -23,6 +23,8 @@ initiative_id: ARAWN-I-0013
 ## Objective
 
 Integration tests verifying the hot-reload APIs on PermissionChecker work correctly mid-session. Tests go in `crates/arawn-tests/tests/hot_reload.rs`. These test the programmatic API (`update_rules()`, `update_mode()`), NOT the filesystem ConfigWatcher.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

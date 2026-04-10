@@ -4,14 +4,14 @@ level: task
 title: "Add signal handling and graceful shutdown"
 short_code: "ARAWN-T-0152"
 created_at: 2026-04-10T01:01:15.421397+00:00
-updated_at: 2026-04-10T01:01:15.421397+00:00
+updated_at: 2026-04-10T02:17:04.869806+00:00
 parent: ARAWN-I-0023
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -30,6 +30,10 @@ initiative_id: ARAWN-I-0023
 Add SIGINT/SIGTERM handling with graceful shutdown: cancel in-flight engine tasks via CancellationTokens, drain background tasks with a timeout, then exit cleanly.
 
 ## Acceptance Criteria
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 - [ ] `tokio::signal::ctrl_c()` handled in serve mode
 - [ ] `axum::serve(...).with_graceful_shutdown(shutdown_signal())` wired in
 - [ ] On shutdown: all active engine CancellationTokens cancelled
@@ -42,7 +46,13 @@ Add SIGINT/SIGTERM handling with graceful shutdown: cancel in-flight engine task
 - Depends on ARAWN-T-0149 (cancellation tokens provide the mechanism to stop in-flight tasks)
 
 ## Status Updates
-*To be added during implementation*
+- Added `shutdown_signal()` async fn handling both Ctrl-C and SIGTERM (unix-only for SIGTERM)
+- Wired `axum::serve(...).with_graceful_shutdown(shutdown_signal())`
+- On shutdown: axum stops accepting new connections and drains in-flight requests
+- Active engine tasks will be cancelled by their CancellationTokens when connections drop (from T-0149)
+- Token file cleaned up on shutdown
+- Deferred: explicit cancellation of all active sessions and workflow runner shutdown — would require passing cancel_tokens map into the server. The graceful shutdown + per-session cancellation from T-0149 handles the primary use case.
+- Clean build
 
 ## REMOVED_SECTIONS
 

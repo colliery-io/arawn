@@ -7,7 +7,7 @@ created_at: 2026-04-05T18:40:53.260964+00:00
 updated_at: 2026-04-05T21:31:40.055421+00:00
 parent: 
 blocked_by: []
-archived: false
+archived: true
 
 tags:
   - "#task"
@@ -32,6 +32,8 @@ Reduce the number of tool definitions sent to the LLM per turn by filtering to o
 
 ### Priority
 - [ ] P2 - Medium (nice to have)
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

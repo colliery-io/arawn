@@ -4,14 +4,14 @@ level: task
 title: "Add per-session lock to prevent concurrent send_message corruption"
 short_code: "ARAWN-T-0141"
 created_at: 2026-04-10T01:00:55.651119+00:00
-updated_at: 2026-04-10T01:00:55.651119+00:00
+updated_at: 2026-04-10T01:15:42.890366+00:00
 parent: ARAWN-I-0021
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -30,6 +30,10 @@ initiative_id: ARAWN-I-0021
 Add per-session locking in `LocalService` to prevent concurrent `send_message` calls from interleaving JSONL writes and corrupting session history.
 
 ## Acceptance Criteria
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 - [ ] `DashMap<Uuid, Arc<Mutex<()>>>` (or similar) added to `LocalService`
 - [ ] Lock acquired before session load in `send_message`, released after persist
 - [ ] Concurrent `send_message` to same session returns `ServiceError::InvalidOperation`
@@ -42,7 +46,12 @@ Add per-session locking in `LocalService` to prevent concurrent `send_message` c
 - This DashMap can later be reused for cancellation tokens (ARAWN-T-0149)
 
 ## Status Updates
-*To be added during implementation*
+- Used `Arc<Mutex<HashSet<Uuid>>>` instead of DashMap to avoid new dependency
+- `active_sessions` field added to `LocalService`, initialized in `new()`
+- At start of `send_message`: `insert(session_id)` — if already present, return `ServiceError::InvalidOperation`
+- At end of spawned engine task: `remove(&session_id)` — releases lock regardless of success/error
+- Cloned `active_sessions` into the spawned task for cleanup
+- All 15 local_service tests pass, clean build
 
 ## REMOVED_SECTIONS
 

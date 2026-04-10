@@ -4,14 +4,14 @@ level: initiative
 title: "Crate Extraction and Service Layer Completion"
 short_code: "ARAWN-I-0024"
 created_at: 2026-04-09T23:59:37.387469+00:00
-updated_at: 2026-04-10T01:00:49.056604+00:00
+updated_at: 2026-04-10T01:08:42.994708+00:00
 parent: 
 blocked_by: []
 archived: false
 
 tags:
   - "#initiative"
-  - "#phase/decompose"
+  - "#phase/active"
 
 
 exit_criteria_met: false

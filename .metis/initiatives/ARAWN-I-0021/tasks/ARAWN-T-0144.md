@@ -4,14 +4,14 @@ level: task
 title: "Log malformed LLM arguments and fix truncate_input UTF-8 panic"
 short_code: "ARAWN-T-0144"
 created_at: 2026-04-10T01:00:59.883260+00:00
-updated_at: 2026-04-10T01:00:59.883260+00:00
+updated_at: 2026-04-10T01:52:50.576465+00:00
 parent: ARAWN-I-0021
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -30,6 +30,10 @@ initiative_id: ARAWN-I-0021
 Two small fixes: (1) Log a warning when `parse_arguments()` falls back to `{}` due to malformed JSON from the LLM, so the root cause is visible. (2) Fix `truncate_input` to use `floor_char_boundary` instead of raw byte slicing, preventing panic on multi-byte UTF-8 characters.
 
 ## Acceptance Criteria
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 - [ ] `parse_arguments` logs `warn!` with truncated raw string when falling back to `{}`
 - [ ] `truncate_input` uses `str::floor_char_boundary()` or equivalent manual search
 - [ ] Test: `truncate_input` with multi-byte UTF-8 string longer than 200 chars doesn't panic
@@ -40,7 +44,10 @@ Two small fixes: (1) Log a warning when `parse_arguments()` falls back to `{}` d
 - For `truncate_input`, use `input[..input.floor_char_boundary(max_len)]` (Rust 1.73+) or the manual pattern from `tool_result_limiter.rs:64-68`
 
 ## Status Updates
-*To be added during implementation*
+- `parse_arguments` now logs `warn!` with truncated raw string (max 200 chars) when JSON parse fails
+- `truncate_input` now uses `str::floor_char_boundary(max_len)` (stable since Rust 1.73, we're on 1.93)
+- Added test `truncate_input_multibyte_utf8_no_panic` — 60 emojis (240 bytes) truncated safely
+- All 53 permission tests pass
 
 ## REMOVED_SECTIONS
 

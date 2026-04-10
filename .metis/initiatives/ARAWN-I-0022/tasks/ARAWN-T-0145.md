@@ -4,14 +4,14 @@ level: task
 title: "Add path restrictions to grep and glob tools"
 short_code: "ARAWN-T-0145"
 created_at: 2026-04-10T01:01:05.957753+00:00
-updated_at: 2026-04-10T01:01:05.957753+00:00
+updated_at: 2026-04-10T01:57:04.991536+00:00
 parent: ARAWN-I-0022
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -30,6 +30,10 @@ initiative_id: ARAWN-I-0022
 Apply the same `canonicalize + starts_with(root)` path validation used by `file_read` to `grep` and `glob` tools, preventing the LLM from searching the entire filesystem via `path: "/"`.
 
 ## Acceptance Criteria
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 - [ ] Shared `validate_path(path, ctx)` function extracted from file_read.rs
 - [ ] grep tool validates path before executing search
 - [ ] glob tool validates path before executing search
@@ -42,7 +46,14 @@ Apply the same `canonicalize + starts_with(root)` path validation used by `file_
 - Files: `crates/arawn-engine/src/tools/file_read.rs` (extract validation), `crates/arawn-engine/src/tools/grep.rs`, `crates/arawn-engine/src/tools/glob.rs`, `crates/arawn-engine/src/context.rs` (shared validation function)
 
 ## Status Updates
-*To be added during implementation*
+- Added `validate_path(path_str)` method to `ToolContext` in context.rs — canonicalize+starts_with check with heuristic normalization fallback for non-existent paths
+- Added `normalize_path_components` helper function in context.rs
+- grep tool: validates non-default paths before executing search
+- glob tool: validates path parameter before setting base_dir
+- Added 3 grep tests: path traversal rejected, absolute path rejected, relative path within root allowed
+- Added 2 glob tests: path traversal rejected, absolute path rejected
+- `ctx.allowed_paths` escape hatch respected (checked in validate_path via is_allowed_path)
+- All 507 engine tests pass
 
 ## REMOVED_SECTIONS
 

@@ -4,14 +4,14 @@ level: initiative
 title: "Correctness Bug Fixes and Silent Failures"
 short_code: "ARAWN-I-0021"
 created_at: 2026-04-09T23:59:33.569198+00:00
-updated_at: 2026-04-10T01:00:35.049392+00:00
+updated_at: 2026-04-10T01:08:40.656317+00:00
 parent: 
 blocked_by: []
 archived: false
 
 tags:
   - "#initiative"
-  - "#phase/decompose"
+  - "#phase/active"
 
 
 exit_criteria_met: false

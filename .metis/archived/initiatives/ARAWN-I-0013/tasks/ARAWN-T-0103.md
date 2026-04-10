@@ -7,7 +7,7 @@ created_at: 2026-04-05T17:17:07.609544+00:00
 updated_at: 2026-04-05T17:36:09.605487+00:00
 parent: ARAWN-I-0013
 blocked_by: []
-archived: false
+archived: true
 
 tags:
   - "#task"
@@ -23,6 +23,8 @@ initiative_id: ARAWN-I-0013
 ## Objective
 
 Integration tests verifying the permission system works correctly when wired into the QueryEngine. Tests go in `crates/arawn-tests/tests/permissions.rs`.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

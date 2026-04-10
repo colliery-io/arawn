@@ -8,11 +8,13 @@ use uuid::Uuid;
 use arawn_core::Workstream;
 use arawn_engine::{
     AgentTool, AskUserTool, BackgroundTaskManager, EnterPlanModeTool, ExitPlanModeTool,
-    FileEditTool, FileReadTool, FileWriteTool, GlobTool, GrepTool, PlanModeState, PluginLoader,
-    PluginWatcher, QueryEngineConfig, SessionTaskStore, ShellTool, SkillTool,
+    FileEditTool, FileReadTool, FileWriteTool, GlobTool, GrepTool, PlanModeState,
+    QueryEngineConfig, SessionTaskStore, ShellTool, SkillTool,
     SleepTool, TaskCreateTool, TaskGetTool, TaskListTool, TaskOutputTool, TaskStopTool,
     TaskUpdateTool, ThinkTool, ToolRegistry, WebFetchTool, WebSearchTool,
 };
+#[cfg(feature = "legacy-plugins")]
+use arawn_engine::{PluginLoader, PluginWatcher};
 use arawn_engine::plugins::PluginRuntime;
 use arawn_engine::skills::SkillRegistry;
 use arawn_llm::RetryClient;
@@ -270,13 +272,23 @@ async fn main() -> Result<()> {
         registry.register(Box::new(arawn_engine::EnterPlanModeTool::new(Arc::clone(&plan_state))));
         registry.register(Box::new(arawn_engine::ExitPlanModeTool::new(Arc::clone(&plan_state))));
 
-        // Load legacy .arawn_tool plugins
-        let tools_dir = std::path::PathBuf::from(&data_dir).join("plugins/tools");
-        let build_dir = std::path::PathBuf::from(&data_dir).join("plugins/build");
-        let plugin_tools = arawn_engine::PluginLoader::load_tools(&tools_dir, &build_dir);
-        for tool in plugin_tools {
-            registry.register_plugin(tool);
-        }
+        // Load legacy .arawn_tool plugins (deprecated — use new plugin system instead)
+        #[cfg(feature = "legacy-plugins")]
+        let (tools_dir, build_dir) = {
+            let tools_dir = std::path::PathBuf::from(&data_dir).join("plugins/tools");
+            let build_dir = std::path::PathBuf::from(&data_dir).join("plugins/build");
+            let plugin_tools = arawn_engine::PluginLoader::load_tools(&tools_dir, &build_dir);
+            if !plugin_tools.is_empty() {
+                tracing::warn!(
+                    count = plugin_tools.len(),
+                    "loaded legacy .arawn_tool plugins — this system is DEPRECATED, migrate to new plugin format"
+                );
+            }
+            for tool in plugin_tools {
+                registry.register_plugin(tool);
+            }
+            (tools_dir, build_dir)
+        };
 
         // Load new-style plugins (Claude Code compatible)
         let plugins_root = std::path::PathBuf::from(&data_dir).join("plugins");
@@ -290,8 +302,11 @@ async fn main() -> Result<()> {
         info!(tools = registry.len(), "tools registered for serve mode");
 
         // Spawn file watcher for hot-reloading legacy plugins
-        let watcher = PluginWatcher::new(tools_dir, build_dir, Arc::clone(&registry));
-        let _watcher_handle = watcher.spawn();
+        #[cfg(feature = "legacy-plugins")]
+        let _watcher_handle = {
+            let watcher = PluginWatcher::new(tools_dir, build_dir, Arc::clone(&registry));
+            watcher.spawn()
+        };
 
         // Spawn hot-reload watcher for new-style plugins
         let _plugin_watcher = plugin_runtime.watch(Arc::clone(&registry), Arc::clone(&skill_registry));
@@ -378,6 +393,38 @@ async fn main() -> Result<()> {
         registry.register(Box::new(arawn_engine::WorkstreamCreateTool::new(service.shared_store())));
         registry.register(Box::new(arawn_engine::WorkstreamListTool::new(service.shared_store())));
 
+        // Start workflow engine (cloacina DefaultRunner — background services start on construction)
+        let workflow_config = arawn_workflow::runner::WorkflowRunnerConfig::new(
+            std::path::Path::new(&data_dir),
+        );
+        let workflows_dir = std::path::PathBuf::from(&data_dir).join("workflows");
+        let shared_runner: arawn_workflow::SharedWorkflowRunner =
+            Arc::new(tokio::sync::RwLock::new(None));
+
+        match arawn_workflow::WorkflowRunner::new(workflow_config).await {
+            Ok(runner) => {
+                info!("workflow runner started");
+                *shared_runner.write().await = Some(Arc::new(runner));
+            }
+            Err(e) => {
+                warn!(error = %e, "workflow runner unavailable — continuing without workflows");
+            }
+        }
+
+        // Register workflow tools (before config watcher takes registry ownership)
+        registry.register(Box::new(arawn_workflow::WorkflowCreateTool::new(
+            workflows_dir.clone(),
+        )));
+        registry.register(Box::new(arawn_workflow::WorkflowListTool::new(
+            workflows_dir.clone(),
+        )));
+        registry.register(Box::new(arawn_workflow::WorkflowDeleteTool::new(
+            workflows_dir,
+        )));
+        registry.register(Box::new(arawn_workflow::WorkflowStatusTool::new(
+            Arc::clone(&shared_runner),
+        )));
+
         // Spawn config watcher for hot-reloading arawn.toml changes
         let _config_watcher = arawn_bin::config_watcher::ConfigWatcher::new(
             config_path,
@@ -389,6 +436,12 @@ async fn main() -> Result<()> {
         .spawn();
 
         arawn_bin::ws_server::run_server(service, serve_port).await?;
+
+        // Graceful shutdown of workflow runner
+        if let Some(ref runner) = *shared_runner.read().await {
+            runner.shutdown().await;
+        }
+
         return Ok(());
     }
 

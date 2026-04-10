@@ -8,9 +8,12 @@ pub mod error;
 pub mod hooks;
 pub mod permissions;
 pub mod plan;
+#[cfg(feature = "legacy-plugins")]
 pub mod plugin_adapter;
 pub mod plugins;
+#[cfg(feature = "legacy-plugins")]
 pub mod plugin_loader;
+#[cfg(feature = "legacy-plugins")]
 pub mod plugin_watcher;
 pub mod query_engine;
 pub mod skills;
@@ -38,8 +41,11 @@ pub use permissions::{
     PermissionResponse, PermissionRule, RuleKind, SessionGrants, ToolCategory, tool_category,
 };
 pub use plan::{PlanModeState, PlanModeSnapshot, generate_slug};
+#[cfg(feature = "legacy-plugins")]
 pub use plugin_adapter::PluginToolAdapter;
+#[cfg(feature = "legacy-plugins")]
 pub use plugin_loader::PluginLoader;
+#[cfg(feature = "legacy-plugins")]
 pub use plugin_watcher::PluginWatcher;
 pub use query_engine::{ProgressEvent, PromptContext, QueryEngine, QueryEngineConfig};
 pub use system_prompt::{ContextFile, SystemPromptBuilder, find_context_files};

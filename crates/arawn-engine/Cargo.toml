@@ -3,15 +3,19 @@ name = "arawn-engine"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+default = ["legacy-plugins"]
+legacy-plugins = ["dep:fidius-host", "dep:arawn-tool-plugin"]
+
 [dependencies]
 arawn-core = { workspace = true }
 arawn-llm = { workspace = true }
 arawn-memory = { path = "../arawn-memory" }
 arawn-storage = { workspace = true }
 arawn-embed = { path = "../arawn-embed" }
-arawn-tool-plugin = { workspace = true }
+arawn-tool-plugin = { workspace = true, optional = true }
 dirs = "6"
-fidius-host = "0.0.5"
+fidius-host = { version = "0.0.5", optional = true }
 sandbox-runtime = "0.1"
 async-trait = { workspace = true }
 futures = { workspace = true }

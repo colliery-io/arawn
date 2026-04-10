@@ -7,7 +7,7 @@ created_at: 2026-04-05T17:17:09.410382+00:00
 updated_at: 2026-04-05T17:41:19.391664+00:00
 parent: ARAWN-I-0013
 blocked_by: []
-archived: false
+archived: true
 
 tags:
   - "#task"
@@ -23,6 +23,8 @@ initiative_id: ARAWN-I-0013
 ## Objective
 
 Integration tests verifying skill loading and invocation through the engine via SkillTool. Tests go in `crates/arawn-tests/tests/skills.rs`.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

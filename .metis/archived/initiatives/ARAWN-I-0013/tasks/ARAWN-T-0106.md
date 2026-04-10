@@ -7,7 +7,7 @@ created_at: 2026-04-05T17:17:10.845249+00:00
 updated_at: 2026-04-05T17:46:04.551532+00:00
 parent: ARAWN-I-0013
 blocked_by: []
-archived: false
+archived: true
 
 tags:
   - "#task"
@@ -23,6 +23,8 @@ initiative_id: ARAWN-I-0013
 ## Objective
 
 Integration tests for plugin discovery, manifest parsing, and component loading (skills, hooks, agents) into engine registries. Tests go in `crates/arawn-tests/tests/plugin_components.rs`. This task does NOT require TestHarnessBuilder — it tests the plugin loader APIs directly with temp directories.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

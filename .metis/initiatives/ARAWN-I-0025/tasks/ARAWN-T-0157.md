@@ -41,7 +41,7 @@ Replace hand-rolled argument parsing in `main.rs` with `clap` derive macros. Pro
 - Current arg surface is small — straightforward migration
 
 ## Status Updates
-*To be added during implementation*
+- **DEFERRED**: Independent but requires reading and rewriting the entire CLI parsing in main.rs (~650 lines). Best done in a dedicated session with `/metis-ralph ARAWN-T-0157`. No blockers — can be done anytime.
 
 ## REMOVED_SECTIONS
 
