@@ -731,8 +731,8 @@ impl QueryEngine {
         if let Some(ref plan_state) = self.plan_state {
             if plan_state.is_active() {
                 // Allow plan mode meta-tools and side-effect-free tools
-                let tool_is_allowed = name == "EnterPlanMode"
-                    || name == "ExitPlanMode"
+                let tool_is_allowed = name == "enter_plan_mode"
+                    || name == "exit_plan_mode"
                     || self
                         .registry
                         .get(name)
@@ -844,7 +844,11 @@ fn parse_arguments(raw: &str) -> serde_json::Value {
     if raw.is_empty() {
         return serde_json::json!({});
     }
-    serde_json::from_str(raw).unwrap_or(serde_json::json!({}))
+    serde_json::from_str(raw).unwrap_or_else(|_| {
+        let truncated = &raw[..raw.len().min(200)];
+        warn!(raw = %truncated, "malformed tool arguments from LLM, falling back to empty object");
+        serde_json::json!({})
+    })
 }
 
 #[derive(Default)]
@@ -867,25 +871,25 @@ struct ToolResult {
 
 /// Core tools always included in every LLM request.
 const CORE_TOOLS: &[&str] = &[
-    "think", "shell", "file_read", "file_write", "file_edit", "glob", "grep", "Skill",
+    "think", "shell", "file_read", "file_write", "file_edit", "glob", "grep", "skill",
 ];
 
 /// Web tools — included when conversation references URLs, web, search, fetch, APIs.
 const WEB_TOOLS: &[&str] = &["web_fetch", "web_search"];
 
 /// Planning tools — included when in plan mode or conversation mentions planning.
-const PLAN_TOOLS: &[&str] = &["EnterPlanMode", "ExitPlanMode"];
+const PLAN_TOOLS: &[&str] = &["enter_plan_mode", "exit_plan_mode"];
 
 /// Task management tools — included when conversation mentions tasks, background, todo.
 const TASK_TOOLS: &[&str] = &[
-    "TaskCreate", "TaskUpdate", "TaskGet", "TaskList", "TaskOutput", "TaskStop",
+    "task_create", "task_update", "task_get", "task_list", "task_output", "task_stop",
 ];
 
 /// Memory tools — included when conversation mentions memory, remember, recall.
 const MEMORY_TOOLS: &[&str] = &["memory_store", "memory_search"];
 
 /// Agent/delegation tools — included when conversation mentions delegation, agent, subagent.
-const AGENT_TOOLS: &[&str] = &["Agent"];
+const AGENT_TOOLS: &[&str] = &["agent"];
 
 /// Other tools always included.
 const ALWAYS_TOOLS: &[&str] = &["ask_user", "sleep"];

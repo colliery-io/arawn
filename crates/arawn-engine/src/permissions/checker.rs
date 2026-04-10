@@ -51,7 +51,7 @@ pub fn tool_category(tool_name: &str) -> ToolCategory {
         "Grep" | "grep" => ToolCategory::ReadOnly,
         "Think" | "think" => ToolCategory::ReadOnly,
         "Sleep" | "sleep" => ToolCategory::ReadOnly,
-        "TaskList" | "TaskGet" | "TaskCreate" | "TaskUpdate" => ToolCategory::ReadOnly,
+        "task_list" | "task_get" | "task_create" | "task_update" => ToolCategory::ReadOnly,
         "WebSearch" | "web_search" => ToolCategory::ReadOnly,
         "WebFetch" | "web_fetch" => ToolCategory::ReadOnly,
         "AskUser" | "ask_user" => ToolCategory::ReadOnly,
@@ -89,7 +89,7 @@ impl PermissionMode {
                 ToolCategory::ReadOnly => PermissionDecision::Allowed,
                 _ => {
                     // Plan mode tools (EnterPlanMode/ExitPlanMode) are always allowed
-                    if tool_name == "EnterPlanMode" || tool_name == "ExitPlanMode" {
+                    if tool_name == "enter_plan_mode" || tool_name == "exit_plan_mode" {
                         PermissionDecision::Allowed
                     } else {
                         PermissionDecision::Denied
@@ -225,32 +225,36 @@ impl PermissionChecker {
     /// Check if a tool call is permitted.
     ///
     /// Flow:
-    /// 1. Check session grants (short-circuit if granted)
-    /// 2. Evaluate rules: deny > allow > ask > no match
-    /// 3. If Ask, prompt the user (or deny if no prompter)
-    /// 4. NoMatch falls through as Allowed (permission modes handle this in T-0075)
+    /// 1. Evaluate deny rules first (deny always wins, even over session grants)
+    /// 2. Check session grants (short-circuit if granted and not denied)
+    /// 3. Evaluate remaining rules: allow > ask > no match
+    /// 4. If Ask, prompt the user (or deny if no prompter)
+    /// 5. NoMatch falls through to permission mode fallback
     pub async fn check(&self, tool_name: &str, tool_input: &str) -> PermissionDecision {
-        // 1. Session grants short-circuit
-        if self.grants.lock().unwrap().is_granted(tool_name) {
-            debug!(tool_name, "session grant hit — allowed");
-            return PermissionDecision::Allowed;
-        }
-
-        // 2. Evaluate rules
+        // 1. Evaluate rules — deny rules always take priority
         let decision = {
             let rules = self.rules.read().unwrap();
             RuleMatcher::evaluate(&rules, tool_name, tool_input)
         };
         debug!(tool_name, ?decision, "permission rule evaluation");
 
+        // Deny rules override everything, including session grants
+        if decision == PermissionDecision::Denied {
+            warn!(tool_name, "permission denied by rule (overrides session grants)");
+            return PermissionDecision::Denied;
+        }
+
+        // 2. Session grants short-circuit (only checked after deny rules pass)
+        if self.grants.lock().unwrap().is_granted(tool_name) {
+            debug!(tool_name, "session grant hit — allowed");
+            return PermissionDecision::Allowed;
+        }
+
+        // 3. Remaining rule decisions
         match decision {
             PermissionDecision::Allowed => PermissionDecision::Allowed,
-            PermissionDecision::Denied => {
-                warn!(tool_name, "permission denied by rule");
-                PermissionDecision::Denied
-            }
+            PermissionDecision::Denied => unreachable!("handled above"),
             PermissionDecision::Ask => {
-                // 3. Prompt user
                 self.prompt_user(tool_name, tool_input).await
             }
             // NoMatch = no explicit rule applies. Fall back to permission mode.
@@ -260,7 +264,6 @@ impl PermissionChecker {
                 debug!(tool_name, ?fallback, ?mode, "mode fallback");
                 match fallback {
                     PermissionDecision::Ask => {
-                        // Mode says ask — route through the same prompt logic
                         self.prompt_user(tool_name, tool_input).await
                     }
                     other => other,
@@ -317,7 +320,9 @@ fn truncate_input(input: &str, max_len: usize) -> String {
     if input.len() <= max_len {
         input.to_string()
     } else {
-        format!("{}…", &input[..max_len])
+        // Find the nearest char boundary at or before max_len to avoid panic on multi-byte UTF-8
+        let boundary = input.floor_char_boundary(max_len);
+        format!("{}…", &input[..boundary])
     }
 }
 
@@ -508,13 +513,25 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn session_grant_short_circuits() {
+    async fn deny_rules_override_session_grants() {
         let rules = vec![PermissionRule::new(RuleKind::Deny, "Bash")];
         let checker = PermissionChecker::new(rules);
-        // Manually grant — should override even the deny rule
+        // Manually grant — deny rule should still win
         checker.grants.lock().unwrap().grant("Bash".to_string());
         assert_eq!(
             checker.check("Bash", "rm -rf /").await,
+            PermissionDecision::Denied
+        );
+    }
+
+    #[tokio::test]
+    async fn session_grant_works_for_non_denied_tools() {
+        // Allow rule + grant: grant should short-circuit
+        let rules = vec![PermissionRule::new(RuleKind::Ask, "think")];
+        let checker = PermissionChecker::new(rules);
+        checker.grants.lock().unwrap().grant("think".to_string());
+        assert_eq!(
+            checker.check("think", "").await,
             PermissionDecision::Allowed
         );
     }
@@ -541,6 +558,17 @@ mod tests {
         let long = "a".repeat(300);
         let truncated = truncate_input(&long, 200);
         assert_eq!(truncated.len(), 203); // 200 + "…" (3 bytes)
+    }
+
+    #[test]
+    fn truncate_input_multibyte_utf8_no_panic() {
+        // Each emoji is 4 bytes. 60 emojis = 240 bytes > 200 byte limit.
+        // Slicing at byte 200 would land mid-character and panic without floor_char_boundary.
+        let emojis = "🦀".repeat(60);
+        let truncated = truncate_input(&emojis, 200);
+        // Should truncate at a char boundary (200 / 4 = 50 emojis exactly)
+        assert!(truncated.len() <= 203); // at most 200 + "…" (3 bytes)
+        assert!(truncated.ends_with('…'));
     }
 
     #[test]
@@ -666,11 +694,11 @@ mod tests {
     async fn plan_mode_allows_plan_meta_tools() {
         let checker = PermissionChecker::new(vec![]).with_mode(PermissionMode::Plan);
         assert_eq!(
-            checker.check("EnterPlanMode", "").await,
+            checker.check("enter_plan_mode", "").await,
             PermissionDecision::Allowed
         );
         assert_eq!(
-            checker.check("ExitPlanMode", "").await,
+            checker.check("exit_plan_mode", "").await,
             PermissionDecision::Allowed
         );
     }

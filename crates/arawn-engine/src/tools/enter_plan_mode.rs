@@ -24,7 +24,7 @@ impl EnterPlanModeTool {
 #[async_trait]
 impl Tool for EnterPlanModeTool {
     fn name(&self) -> &str {
-        "EnterPlanMode"
+        "enter_plan_mode"
     }
 
     fn description(&self) -> &str {

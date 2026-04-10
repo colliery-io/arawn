@@ -1,10 +1,11 @@
+use std::collections::HashSet;
 use std::path::PathBuf;
 use std::pin::Pin;
 use std::sync::Arc;
 
 use std::sync::Mutex;
 use tokio::sync::mpsc;
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, warn};
 use uuid::Uuid;
 
 use arawn_core::{Message, Session, Workstream};
@@ -31,6 +32,8 @@ pub struct LocalService {
     config: QueryEngineConfig,
     /// Shared permission rules — updated by ConfigWatcher on hot-reload.
     permission_rules: Arc<std::sync::RwLock<Vec<PermissionRule>>>,
+    /// Shared permission mode — toggled at runtime via /accept commands.
+    permission_mode: Arc<std::sync::RwLock<arawn_engine::permissions::PermissionMode>>,
     /// Shared skill registry — updated by plugin hot-reload.
     skill_registry: Option<Arc<arawn_engine::skills::SkillRegistry>>,
     /// Shared plugin registry — tracks loaded plugins.
@@ -43,6 +46,8 @@ pub struct LocalService {
     background_tasks: Arc<BackgroundTaskManager>,
     /// Shared memory manager — two-tier KB (global + workstream).
     memory_manager: Option<Arc<arawn_memory::MemoryManager>>,
+    /// Tracks sessions with active send_message calls to prevent concurrent access.
+    active_sessions: Arc<Mutex<HashSet<Uuid>>>,
 }
 
 impl LocalService {
@@ -60,12 +65,14 @@ impl LocalService {
             registry,
             config,
             permission_rules: Arc::new(std::sync::RwLock::new(Vec::new())),
+            permission_mode: Arc::new(std::sync::RwLock::new(arawn_engine::permissions::PermissionMode::Default)),
             skill_registry: None,
             plugin_registry: None,
             pending_modals: crate::new_pending_modals(),
             plan_state: Arc::new(PlanModeState::new()),
             background_tasks: Arc::new(BackgroundTaskManager::new()),
             memory_manager: None,
+            active_sessions: Arc::new(Mutex::new(HashSet::new())),
         }
     }
 
@@ -80,8 +87,24 @@ impl LocalService {
         Arc::clone(&self.store)
     }
 
+    pub fn shared_llm(&self) -> Arc<dyn LlmClient> {
+        Arc::clone(&self.llm)
+    }
+
+    pub fn shared_registry(&self) -> Arc<ToolRegistry> {
+        Arc::clone(&self.registry)
+    }
+
+    pub fn engine_config(&self) -> &QueryEngineConfig {
+        &self.config
+    }
+
     pub fn shared_permission_rules(&self) -> Arc<std::sync::RwLock<Vec<PermissionRule>>> {
         Arc::clone(&self.permission_rules)
+    }
+
+    pub fn shared_permission_mode(&self) -> Arc<std::sync::RwLock<arawn_engine::permissions::PermissionMode>> {
+        Arc::clone(&self.permission_mode)
     }
 
     pub fn with_skill_registry(mut self, registry: Arc<arawn_engine::skills::SkillRegistry>) -> Self {
@@ -531,6 +554,16 @@ impl ArawnService for LocalService {
         session_id: Uuid,
         content: String,
     ) -> Result<Pin<Box<dyn futures::Stream<Item = EngineEvent> + Send>>, ServiceError> {
+        // Prevent concurrent send_message calls to the same session
+        {
+            let mut active = self.active_sessions.lock().unwrap();
+            if !active.insert(session_id) {
+                return Err(ServiceError::InvalidOperation(
+                    "Session is currently processing a message. Wait for the current request to complete.".into(),
+                ));
+            }
+        }
+
         // Load session metadata and resolve workstream
         let (meta, workstream, ws_dir) = {
             let store = self.store.lock().unwrap();
@@ -619,7 +652,26 @@ impl ArawnService for LocalService {
                     workstream_name: workstream.name.clone(),
                     workstream_root: workspace_dir.clone(),
                     context_files: arawn_engine::find_context_files(&workspace_dir, &self.data_dir),
-                    memories: pc.memories.clone(),
+                    memories: self.memory_manager.as_ref().map(|mgr| {
+                        let stack = arawn_memory::MemoryStack::new(mgr, &workstream.name);
+                        let mut mems = vec![stack.wake_up(900)];
+
+                        // L2: auto-inject topical context from user message keywords
+                        let keywords: Vec<String> = content
+                            .split_whitespace()
+                            .filter(|w| w.len() > 3)
+                            .map(|w| w.trim_matches(|c: char| !c.is_alphanumeric()).to_lowercase())
+                            .filter(|w| !w.is_empty())
+                            .collect();
+                        if !keywords.is_empty() {
+                            let l1_titles = stack.l1_entity_titles();
+                            if let Some(l2) = stack.topical_context(&keywords, &l1_titles, 400) {
+                                mems.push(l2);
+                            }
+                        }
+
+                        mems
+                    }).unwrap_or_else(|| pc.memories.clone()),
                     session_context: pc.session_context.clone(),
                     plugin_prompts: pc.plugin_prompts.clone(),
                 });
@@ -657,7 +709,9 @@ impl ArawnService for LocalService {
             let rules = self.permission_rules.read().unwrap().clone();
             if !rules.is_empty() {
                 let prompt = ChannelModalPrompt::new(tx.clone(), self.pending_modals.clone());
+                let mode = *self.permission_mode.read().unwrap();
                 let checker = PermissionChecker::new(rules)
+                    .with_mode(mode)
                     .with_prompter(Box::new(prompt));
                 engine = engine.with_permission_checker(Arc::new(checker));
             }
@@ -676,6 +730,7 @@ impl ArawnService for LocalService {
         let data_dir = self.data_dir.clone();
         let ws_dir_owned = ws_dir.clone();
         let store = self.store.clone();
+        let active_sessions = self.active_sessions.clone();
 
         tokio::spawn(async move {
             let msg_store = JsonlMessageStore::new(&data_dir);
@@ -741,30 +796,50 @@ impl ArawnService for LocalService {
                     }
 
                     // Persist new messages
+                    let mut persist_errors = Vec::new();
                     for msg in &session.messages()[msgs_before..] {
                         if let Err(e) = msg_store.append(session_id, &ws_dir_owned, msg).await {
                             error!(error = %e, "failed to persist message");
+                            persist_errors.push(e.to_string());
                         }
                     }
 
                     // Persist stats
                     if let Ok(s) = store.lock() {
-                        let _ = s.update_session_stats(session_id, &session.stats);
+                        if let Err(e) = s.update_session_stats(session_id, &session.stats) {
+                            warn!(error = %e, "failed to update session stats");
+                        }
                     }
 
                     let _ = tx.send(EngineEvent::Usage {
                         input_tokens: session.stats.input_tokens,
                         output_tokens: session.stats.output_tokens,
                     }).await;
+
+                    // Surface persistence failures as warnings before Complete
+                    if !persist_errors.is_empty() {
+                        let _ = tx.send(EngineEvent::Warning {
+                            message: format!(
+                                "Some messages could not be saved to disk ({} error{}). Your conversation may not survive a restart.",
+                                persist_errors.len(),
+                                if persist_errors.len() == 1 { "" } else { "s" }
+                            ),
+                        }).await;
+                    }
+
                     let _ = tx.send(EngineEvent::Complete { final_text }).await;
                     let _ = tx.send(EngineEvent::Flush).await;
                 }
                 Err(e) => {
                     for msg in &session.messages()[msgs_before..] {
-                        let _ = msg_store.append(session_id, &ws_dir_owned, msg).await;
+                        if let Err(pe) = msg_store.append(session_id, &ws_dir_owned, msg).await {
+                            error!(error = %pe, "failed to persist message in error path");
+                        }
                     }
                     if let Ok(s) = store.lock() {
-                        let _ = s.update_session_stats(session_id, &session.stats);
+                        if let Err(se) = s.update_session_stats(session_id, &session.stats) {
+                            warn!(error = %se, "failed to update session stats in error path");
+                        }
                     }
                     let _ = tx
                         .send(EngineEvent::Error {
@@ -774,6 +849,9 @@ impl ArawnService for LocalService {
                     let _ = tx.send(EngineEvent::Flush).await;
                 }
             }
+
+            // Release the session lock so new messages can be sent
+            active_sessions.lock().unwrap().remove(&session_id);
         });
 
         Ok(Box::pin(tokio_stream::wrappers::ReceiverStream::new(rx)))

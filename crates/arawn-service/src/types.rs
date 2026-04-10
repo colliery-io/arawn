@@ -84,6 +84,9 @@ pub enum EngineEvent {
         options: Vec<ModalPromptOption>,
     },
 
+    /// Non-fatal warning the user should see (e.g., persistence failure, sandbox unavailable).
+    Warning { message: String },
+
     /// Client should render now. Sent after each logical boundary:
     /// streaming text burst, tool call, tool result, etc.
     Flush,

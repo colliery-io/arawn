@@ -24,7 +24,7 @@ impl ExitPlanModeTool {
 #[async_trait]
 impl Tool for ExitPlanModeTool {
     fn name(&self) -> &str {
-        "ExitPlanMode"
+        "exit_plan_mode"
     }
 
     fn description(&self) -> &str {

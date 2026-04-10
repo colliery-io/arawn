@@ -65,6 +65,37 @@ impl WsClient {
         Ok(serde_json::from_value(result.clone())?)
     }
 
+    pub async fn list_workflows(
+        &mut self,
+    ) -> Result<Vec<serde_json::Value>, Box<dyn std::error::Error>> {
+        self.send_request("list_workflows", json!({})).await?;
+        let resp = self.read_response().await?;
+        let result = resp.get("result").ok_or("no result")?;
+        Ok(serde_json::from_value(result.clone())?)
+    }
+
+    pub async fn get_permission_mode(
+        &mut self,
+    ) -> Result<String, Box<dyn std::error::Error>> {
+        self.send_request("get_permission_mode", json!({})).await?;
+        let resp = self.read_response().await?;
+        let result = resp.get("result").ok_or("no result")?;
+        Ok(result["mode"].as_str().unwrap_or("default").to_string())
+    }
+
+    pub async fn set_permission_mode(
+        &mut self,
+        mode: &str,
+    ) -> Result<String, Box<dyn std::error::Error>> {
+        self.send_request("set_permission_mode", json!({"mode": mode})).await?;
+        let resp = self.read_response().await?;
+        if let Some(err) = resp.get("error") {
+            return Err(err["message"].as_str().unwrap_or("unknown error").into());
+        }
+        let result = resp.get("result").ok_or("no result")?;
+        Ok(result["mode"].as_str().unwrap_or(mode).to_string())
+    }
+
     pub async fn list_sessions(
         &mut self,
         ws_id: Option<uuid::Uuid>,
@@ -192,6 +223,7 @@ pub enum EventUpdate {
     },
     Complete(String),
     Error(String),
+    Warning(String),
     Compaction(usize),
     /// Token usage update.
     Usage { input_tokens: u64, output_tokens: u64 },
@@ -223,6 +255,7 @@ pub fn engine_event_to_update(event: EngineEvent) -> EventUpdate {
         },
         EngineEvent::Complete { final_text } => EventUpdate::Complete(final_text),
         EngineEvent::Error { message } => EventUpdate::Error(message),
+        EngineEvent::Warning { message } => EventUpdate::Warning(message),
         EngineEvent::CompactionOccurred {
             messages_summarized,
         } => EventUpdate::Compaction(messages_summarized),

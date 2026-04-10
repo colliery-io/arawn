@@ -68,7 +68,7 @@ async fn register_skill_in_memory_invoke_through_engine() {
     let harness = TestHarness::builder()
         .with_skill_registry(skill_registry)
         .with_script(vec![
-            MockResponse::tool_call("c1", "Skill", r#"{"skill":"greet"}"#),
+            MockResponse::tool_call("c1", "skill", r#"{"skill":"greet"}"#),
             MockResponse::text("Hello there!"),
         ])
         .build();
@@ -108,7 +108,7 @@ Check the current branch, run tests, and deploy.
     let harness = TestHarness::builder()
         .with_skill_registry(skill_registry)
         .with_script(vec![
-            MockResponse::tool_call("c1", "Skill", r#"{"skill":"deploy"}"#),
+            MockResponse::tool_call("c1", "skill", r#"{"skill":"deploy"}"#),
             MockResponse::text("Deploying now"),
         ])
         .build();
@@ -126,7 +126,7 @@ async fn skill_not_found_returns_error() {
     let harness = TestHarness::builder()
         .with_skill_registry(skill_registry)
         .with_script(vec![
-            MockResponse::tool_call("c1", "Skill", r#"{"skill":"nonexistent"}"#),
+            MockResponse::tool_call("c1", "skill", r#"{"skill":"nonexistent"}"#),
             MockResponse::text("Skill not available"),
         ])
         .build();
@@ -150,10 +150,10 @@ async fn user_invocable_filtering() {
     registry.register(make_skill("visible", "Public skill", true, SkillSource::Project));
     registry.register(make_skill("hidden", "Internal skill", false, SkillSource::BuiltIn));
 
-    assert_eq!(registry.all().len(), 2);
+    // Registry has built-in skills plus the two we added
     let invocable = registry.user_invocable();
-    assert_eq!(invocable.len(), 1);
-    assert_eq!(invocable[0].name, "visible");
+    assert!(invocable.iter().any(|s| s.name == "visible"));
+    assert!(!invocable.iter().any(|s| s.name == "hidden"));
 }
 
 #[tokio::test]
@@ -169,7 +169,7 @@ async fn plugin_namespaced_skill_accessible() {
     let harness = TestHarness::builder()
         .with_skill_registry(skill_registry)
         .with_script(vec![
-            MockResponse::tool_call("c1", "Skill", r#"{"skill":"my-plugin:format"}"#),
+            MockResponse::tool_call("c1", "skill", r#"{"skill":"my-plugin:format"}"#),
             MockResponse::text("Formatted"),
         ])
         .build();

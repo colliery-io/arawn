@@ -24,7 +24,7 @@ impl TaskOutputTool {
 #[async_trait]
 impl Tool for TaskOutputTool {
     fn name(&self) -> &str {
-        "TaskOutput"
+        "task_output"
     }
 
     fn description(&self) -> &str {

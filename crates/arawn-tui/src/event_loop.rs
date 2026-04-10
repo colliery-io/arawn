@@ -379,6 +379,57 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                                 }
                                 app.dirty = true;
                             }
+                            crate::command::CommandResult::SetPermissionMode(mode) => {
+                                match client.set_permission_mode(&mode).await {
+                                    Ok(confirmed) => {
+                                        app.permission_mode = confirmed.clone();
+                                        let label = match confirmed.as_str() {
+                                            "bypass" => "BYPASS (full autonomy)",
+                                            "accept_edits" => "ACCEPT EDITS",
+                                            "plan" => "PLAN (read-only)",
+                                            _ => "DEFAULT",
+                                        };
+                                        app.messages.push(ChatMessage::new(
+                                            ChatRole::System,
+                                            format!("Permission mode set to {label}"),
+                                        ));
+                                    }
+                                    Err(e) => {
+                                        app.messages.push(ChatMessage::new(
+                                            ChatRole::System,
+                                            format!("Failed to set mode: {e}"),
+                                        ));
+                                    }
+                                }
+                                app.dirty = true;
+                            }
+                            crate::command::CommandResult::WorkflowList => {
+                                if let Ok(workflows) = client.list_workflows().await {
+                                    if workflows.is_empty() {
+                                        app.messages.push(ChatMessage::new(ChatRole::System, "No workflows installed.".to_string()));
+                                    } else {
+                                        let mut output = String::from("Installed workflows:\n\n");
+                                        for wf in &workflows {
+                                            let name = wf["name"].as_str().unwrap_or("?");
+                                            let cron = wf["cron"].as_str().unwrap_or("manual");
+                                            output.push_str(&format!("  {name}  ({cron})\n"));
+                                        }
+                                        app.messages.push(ChatMessage::new(ChatRole::System, output));
+                                    }
+                                } else {
+                                    app.messages.push(ChatMessage::new(ChatRole::System, "Failed to list workflows.".to_string()));
+                                }
+                                app.dirty = true;
+                            }
+                            crate::command::CommandResult::WorkflowStatus(_name) => {
+                                // Status requires the workflow runner which is server-side
+                                // For now, show a message directing to the agent tool
+                                app.messages.push(ChatMessage::new(
+                                    ChatRole::System,
+                                    "Use the workflow_status tool to check execution history.".to_string(),
+                                ));
+                                app.dirty = true;
+                            }
                             _ => {} // Other command results handled in app.handle_action
                         }
                     }
@@ -592,6 +643,11 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                             app.active_tool = None;
                             app.streaming_text.clear();
                             // Force draw
+                            return true;
+                        }
+                        EventUpdate::Warning(message) => {
+                            warn!(%message, "update: engine warning");
+                            app.messages.push(ChatMessage::new(ChatRole::System, format!("Warning: {message}")));
                             return true;
                         }
                         EventUpdate::Compaction(count) => {

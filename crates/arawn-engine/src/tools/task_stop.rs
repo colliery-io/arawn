@@ -23,7 +23,7 @@ impl TaskStopTool {
 #[async_trait]
 impl Tool for TaskStopTool {
     fn name(&self) -> &str {
-        "TaskStop"
+        "task_stop"
     }
 
     fn description(&self) -> &str {

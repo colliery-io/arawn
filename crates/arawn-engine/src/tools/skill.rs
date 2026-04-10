@@ -26,7 +26,7 @@ impl SkillTool {
 #[async_trait]
 impl Tool for SkillTool {
     fn name(&self) -> &str {
-        "Skill"
+        "skill"
     }
 
     fn description(&self) -> &str {
@@ -192,7 +192,7 @@ mod tests {
     #[test]
     fn tool_metadata() {
         let tool = SkillTool::new(make_registry());
-        assert_eq!(tool.name(), "Skill");
+        assert_eq!(tool.name(), "skill");
         assert!(!tool.is_read_only());
         assert!(tool.description().contains("slash command"));
     }

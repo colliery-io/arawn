@@ -80,7 +80,7 @@ async fn full_pipeline_all_subsystems_wired() {
             // Turn 2: shell → denied by permission rule
             MockResponse::tool_call("c2", "shell", r#"{"command":"echo hi"}"#),
             // Turn 3: Skill → greet skill invocation
-            MockResponse::tool_call("c3", "Skill", r#"{"skill":"greet"}"#),
+            MockResponse::tool_call("c3", "skill", r#"{"skill":"greet"}"#),
             // Turn 4: file_read → ask (mock allows), PreToolUse hook (exit 0 = allow)
             MockResponse::tool_call("c4", "file_read", r#"{"path":"data.txt"}"#),
             // Final text response

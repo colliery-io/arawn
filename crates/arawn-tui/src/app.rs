@@ -111,6 +111,8 @@ pub struct App {
     pub expanded_tool_results: std::collections::HashSet<usize>,
     /// Current model name (for status bar display).
     pub model_name: String,
+    /// Current permission mode label (fetched from server).
+    pub permission_mode: String,
     /// Cumulative token usage: (input_tokens, output_tokens).
     pub token_usage: (u64, u64),
     /// When generation started (for elapsed time in status bar).
@@ -155,6 +157,7 @@ impl App {
             pending_submit: None,
             expanded_tool_results: std::collections::HashSet::new(),
             model_name: String::new(),
+            permission_mode: "default".into(),
             token_usage: (0, 0),
             active_modal: None,
             pending_modal_response: None,
@@ -272,7 +275,10 @@ impl App {
                             | CommandResult::WorkstreamSwitch(_)
                             | CommandResult::SessionNew
                             | CommandResult::SessionList
-                            | CommandResult::PromoteSession(_) => {
+                            | CommandResult::PromoteSession(_)
+                            | CommandResult::SetPermissionMode(_)
+                            | CommandResult::WorkflowList
+                            | CommandResult::WorkflowStatus(_) => {
                                 // These need WS interaction — store for event loop to handle
                                 self.pending_command = Some(result);
                             }
@@ -581,6 +587,12 @@ impl App {
                 self.active_tool = None;
                 self.generation_started = None;
                 self.streaming_text.clear();
+            }
+            crate::ws_client::EventUpdate::Warning(message) => {
+                self.messages.push(ChatMessage::new(
+                    ChatRole::System,
+                    format!("Warning: {message}"),
+                ));
             }
             crate::ws_client::EventUpdate::Compaction(count) => {
                 self.messages.push(ChatMessage::new(
