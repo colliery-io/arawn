@@ -13,9 +13,12 @@ use arawn_engine::{
     BackgroundTaskManager, Compactor, PlanModeState, PermissionChecker, PermissionRule,
     QueryEngine, QueryEngineConfig, ToolContext, ToolRegistry,
 };
+use tracing::instrument;
 use arawn_llm::LlmClient;
 use arawn_service::{
-    ArawnService, EngineEvent, ServiceError, SessionDetail, SessionInfo, WorkstreamInfo,
+    ArawnService, CommandInfo, EngineEvent, ForgetCandidate, ForgetResult, InventoryItem,
+    MemoryStoreResult, MemoryStoreSummary, MemorySummary, MemoryTypeCount, PermissionModeInfo,
+    PromotionResult, ServiceError, SessionDetail, SessionInfo, WorkflowInfo, WorkstreamInfo,
 };
 use arawn_storage::{JsonlMessageStore, Store, workstream_dir_name};
 
@@ -135,300 +138,157 @@ impl LocalService {
         self
     }
 
-    /// Query available inventory for slash commands.
-    /// Returns a JSON array of {name, description, source} items.
-    pub fn query_inventory(&self, kind: &str) -> serde_json::Value {
-        match kind {
-            "tools" => {
-                let tools = self.registry.tool_definitions();
-                let items: Vec<serde_json::Value> = tools
-                    .iter()
-                    .map(|t| {
-                        serde_json::json!({
-                            "name": t.name,
-                            "description": first_sentence(&t.description),
-                        })
-                    })
-                    .collect();
-                serde_json::json!(items)
-            }
-            "skills" => {
-                if let Some(ref reg) = self.skill_registry {
-                    let items: Vec<serde_json::Value> = reg
-                        .all()
-                        .iter()
-                        .map(|s| {
-                            serde_json::json!({
-                                "name": s.name,
-                                "description": first_sentence(&s.description),
-                                "user_invocable": s.user_invocable,
-                            })
-                        })
-                        .collect();
-                    serde_json::json!(items)
-                } else {
-                    serde_json::json!([])
-                }
-            }
-            "plugins" => {
-                if let Some(ref reg) = self.plugin_registry {
-                    let items: Vec<serde_json::Value> = reg
-                        .all()
-                        .iter()
-                        .map(|p| {
-                            serde_json::json!({
-                                "name": p.name(),
-                                "description": p.manifest.description.as_deref().unwrap_or(""),
-                                "enabled": p.enabled,
-                            })
-                        })
-                        .collect();
-                    serde_json::json!(items)
-                } else {
-                    serde_json::json!([])
-                }
-            }
-            "agents" => {
-                // Agent definitions are loaded into the AgentTool — list from agent_defs
-                let agents = arawn_engine::agent_defs::built_in_agents();
-                let items: Vec<serde_json::Value> = agents
-                    .iter()
-                    .map(|a| {
-                        serde_json::json!({
-                            "name": a.name,
-                            "description": first_sentence(&a.when_to_use),
-                        })
-                    })
-                    .collect();
-                serde_json::json!(items)
-            }
-            "mcp" => {
-                // MCP servers aren't directly accessible from here — return empty for now
-                // TODO: expose McpManager connected servers
-                serde_json::json!([])
-            }
-            _ => serde_json::json!([]),
-        }
-    }
-
-    /// List available commands (built-ins + user-invocable skills) for autocomplete cache.
-    pub fn list_available_commands(&self) -> serde_json::Value {
-        let mut commands: Vec<serde_json::Value> = Vec::new();
-
-        // User-invocable skills become slash commands
-        if let Some(ref reg) = self.skill_registry {
-            for skill in reg.user_invocable() {
-                commands.push(serde_json::json!({
-                    "name": skill.name,
-                    "description": first_sentence(&skill.description),
-                    "kind": "skill",
-                }));
-            }
-        }
-
-        serde_json::json!(commands)
-    }
-
-    /// Store a fact in the KB via /remember command.
-    pub fn remember_fact(&self, text: &str) -> serde_json::Value {
-        use arawn_memory::{ConfidenceSource, Entity, EntityType};
-
-        let memory = match self.memory_manager.as_ref() {
-            Some(m) => m,
-            None => return serde_json::json!({"error": "Memory system not available"}),
-        };
-
-        // Infer entity type from text patterns
-        let (entity_type, title) = infer_entity_type(text);
-        let mut entity = Entity::new(entity_type, &title)
-            .with_confidence(ConfidenceSource::Stated);
-
-        // If the text is longer than the title, store the full text as content
-        if text.len() > title.len() + 5 {
-            entity = entity.with_content(text);
-        }
-
-        let store = memory.store_for_type(entity_type);
-        match store.store_fact(&entity) {
-            Ok(arawn_memory::StoreFactResult::Inserted { entity_id }) => {
-                serde_json::json!({
-                    "status": "inserted",
-                    "entity_id": entity_id.to_string(),
-                    "title": title,
-                    "entity_type": entity_type.as_str(),
-                })
-            }
-            Ok(arawn_memory::StoreFactResult::Reinforced { entity_id, new_count }) => {
-                serde_json::json!({
-                    "status": "reinforced",
-                    "entity_id": entity_id.to_string(),
-                    "title": title,
-                    "count": new_count,
-                })
-            }
-            Ok(arawn_memory::StoreFactResult::Superseded { old_entity_id, new_entity_id }) => {
-                serde_json::json!({
-                    "status": "superseded",
-                    "old_id": old_entity_id.to_string(),
-                    "new_id": new_entity_id.to_string(),
-                    "title": title,
-                })
-            }
-            Err(e) => serde_json::json!({"error": e.to_string()}),
-        }
-    }
-
-    /// Get KB summary for /memory command.
-    pub fn memory_summary(&self) -> serde_json::Value {
-        use arawn_memory::EntityType;
-
-        let memory = match self.memory_manager.as_ref() {
-            Some(m) => m,
-            None => return serde_json::json!({"error": "Memory system not available"}),
-        };
-
-        let types = [
-            EntityType::Fact,
-            EntityType::Decision,
-            EntityType::Convention,
-            EntityType::Preference,
-            EntityType::Person,
-            EntityType::Note,
-        ];
-
-        let mut global_counts = Vec::new();
-        let mut ws_counts = Vec::new();
-
-        for et in &types {
-            let g = memory.global.count_by_type(*et).unwrap_or(0);
-            let w = memory.workstream.count_by_type(*et).unwrap_or(0);
-            if g > 0 {
-                global_counts.push(serde_json::json!({"type": et.as_str(), "count": g}));
-            }
-            if w > 0 {
-                ws_counts.push(serde_json::json!({"type": et.as_str(), "count": w}));
-            }
-        }
-
-        let global_total = memory.global.count_all().unwrap_or(0);
-        let ws_total = memory.workstream.count_all().unwrap_or(0);
-
-        serde_json::json!({
-            "global": {"total": global_total, "by_type": global_counts},
-            "workstream": {"total": ws_total, "by_type": ws_counts},
-        })
-    }
-
-    /// Forget/delete an entity via /forget command.
-    pub fn forget_entity(&self, query: &str) -> serde_json::Value {
-        let memory = match self.memory_manager.as_ref() {
-            Some(m) => m,
-            None => return serde_json::json!({"error": "Memory system not available"}),
-        };
-
-        // Search both stores for matching entities
-        let mut candidates = Vec::new();
-        for (store, label) in [(&memory.global, "global"), (&memory.workstream, "workstream")] {
-            if let Ok(results) = store.search(query, 5) {
-                for e in results {
-                    candidates.push((e, label));
-                }
-            }
-        }
-
-        if candidates.is_empty() {
-            return serde_json::json!({"error": format!("No entities matching '{query}' found")});
-        }
-
-        // If exact single match, delete it
-        if candidates.len() == 1 {
-            let (entity, label) = &candidates[0];
-            let store = if *label == "global" { &memory.global } else { &memory.workstream };
-            match store.delete_entity(entity.id) {
-                Ok(true) => serde_json::json!({
-                    "status": "deleted",
-                    "title": entity.title,
-                    "entity_type": entity.entity_type.as_str(),
-                    "scope": label,
-                }),
-                Ok(false) => serde_json::json!({"error": "Entity not found"}),
-                Err(e) => serde_json::json!({"error": e.to_string()}),
-            }
-        } else {
-            // Multiple matches — return candidates for user to choose
-            let items: Vec<serde_json::Value> = candidates
-                .iter()
-                .map(|(e, label)| {
-                    serde_json::json!({
-                        "id": e.id.to_string(),
-                        "title": e.title,
-                        "type": e.entity_type.as_str(),
-                        "scope": label,
-                    })
-                })
-                .collect();
-            serde_json::json!({"status": "ambiguous", "candidates": items})
-        }
-    }
-
-    /// Promote a scratch session to a named workstream.
-    /// Split into sync (SQLite) + async (file moves) to avoid holding MutexGuard across await.
-    pub async fn promote_session(
+    /// Load session metadata, resolve workstream, and load message history.
+    #[instrument(skip_all, fields(%session_id))]
+    fn load_session_state(
         &self,
         session_id: Uuid,
-        workstream_name: &str,
-    ) -> Result<serde_json::Value, ServiceError> {
-        // Sync phase under lock: find workstream, capture paths (don't update SQLite yet)
-        let (ws_id, ws_name, ws_dir, scratch_workspace, target_workspace) = {
+    ) -> Result<(arawn_storage::SessionMeta, Workstream, String, Vec<Message>), ServiceError> {
+        let (meta, workstream, ws_dir) = {
             let store = self.store.lock().unwrap();
-            let ws = store
-                .find_workstream_by_name(workstream_name)
+            let meta = store
+                .get_session_meta(session_id)
                 .map_err(|e| ServiceError::Storage(e.to_string()))?
-                .ok_or_else(|| {
-                    ServiceError::NotFound(format!("workstream '{workstream_name}'"))
-                })?;
+                .ok_or_else(|| ServiceError::NotFound(format!("session {session_id}")))?;
 
-            let ws_dir = arawn_storage::workstream_dir_name(&ws.name, ws.id);
-            let scratch_ws = store.sandbox_for("scratch", session_id, true).join("workspace");
-            let target_ws = store.sandbox_for(&ws_dir, session_id, false).join("workspace");
+            let ws_dir = resolve_ws_dir_from_store(&store, meta.workstream_id)?;
 
-            (ws.id, ws.name, ws_dir, scratch_ws, target_ws)
+            let workstream = if let Some(ws_id) = meta.workstream_id {
+                store
+                    .get_workstream(ws_id)
+                    .map_err(|e| ServiceError::Storage(e.to_string()))?
+                    .ok_or_else(|| ServiceError::NotFound(format!("workstream {ws_id}")))?
+            } else {
+                store
+                    .find_workstream_by_name("scratch")
+                    .map_err(|e| ServiceError::Storage(e.to_string()))?
+                    .ok_or_else(|| ServiceError::NotFound("scratch workstream".into()))?
+            };
+
+            (meta, workstream, ws_dir)
         };
-        // Lock dropped — now do async file operations BEFORE updating SQLite
 
-        // Step 1: Move JSONL file first (so failure leaves session in scratch, which is loadable)
-        let msg_store = arawn_storage::JsonlMessageStore::new(&self.data_dir);
-        msg_store
-            .move_session(session_id, "scratch", &ws_dir)
-            .await
-            .map_err(|e| ServiceError::Storage(e.to_string()))?;
+        Ok((meta, workstream, ws_dir, Vec::new()))
+    }
 
-        // Step 2: Update SQLite metadata. If this fails, move the file back.
-        let sqlite_result = {
-            let store = self.store.lock().unwrap();
-            store.promote_session_metadata(session_id, ws_id)
-        };
-        if let Err(e) = sqlite_result {
-            warn!(error = %e, "SQLite update failed during promotion, rolling back file move");
-            let _ = msg_store.move_session(session_id, &ws_dir, "scratch").await;
-            return Err(ServiceError::Storage(e.to_string()));
+    /// Build a ToolContext and per-session PromptContext for the engine.
+    #[instrument(skip_all, fields(%session_id))]
+    fn build_session_context(
+        &self,
+        session_id: Uuid,
+        workstream: &Workstream,
+        ws_dir: &str,
+        workspace_dir: &std::path::Path,
+        content: &str,
+    ) -> (ToolContext, Option<arawn_engine::PromptContext>) {
+        let mut ws_for_ctx = workstream.clone();
+        ws_for_ctx.root_dir = workspace_dir.to_path_buf();
+
+        let global_arawn_md = self.data_dir.join("arawn.md");
+        let workstream_arawn_md = self
+            .data_dir
+            .join("workstreams")
+            .join(ws_dir)
+            .join("arawn.md");
+        let ctx = ToolContext::new(&ws_for_ctx, session_id)
+            .with_allowed_paths(vec![global_arawn_md, workstream_arawn_md])
+            .with_llm(self.llm.clone(), self.config.model.clone())
+            .with_model_limits(self.config.model_limits.clone())
+            .with_data_dir(self.data_dir.clone());
+
+        let prompt_context = self.config.prompt_context.as_ref().map(|pc| {
+            arawn_engine::PromptContext {
+                prompts_dir: pc.prompts_dir.clone(),
+                os: pc.os.clone(),
+                shell: pc.shell.clone(),
+                cwd: workspace_dir.to_path_buf(),
+                workstream_name: workstream.name.clone(),
+                workstream_root: workspace_dir.to_path_buf(),
+                context_files: arawn_engine::find_context_files(workspace_dir, &self.data_dir),
+                memories: self
+                    .memory_manager
+                    .as_ref()
+                    .map(|mgr| {
+                        let stack = arawn_memory::MemoryStack::new(mgr, &workstream.name);
+                        let mut mems = vec![stack.wake_up(900)];
+
+                        let keywords: Vec<String> = content
+                            .split_whitespace()
+                            .filter(|w| w.len() > 3)
+                            .map(|w| {
+                                w.trim_matches(|c: char| !c.is_alphanumeric())
+                                    .to_lowercase()
+                            })
+                            .filter(|w| !w.is_empty())
+                            .collect();
+                        if !keywords.is_empty() {
+                            let l1_titles = stack.l1_entity_titles();
+                            if let Some(l2) = stack.topical_context(&keywords, &l1_titles, 400) {
+                                mems.push(l2);
+                            }
+                        }
+
+                        mems
+                    })
+                    .unwrap_or_else(|| pc.memories.clone()),
+                session_context: pc.session_context.clone(),
+                plugin_prompts: pc.plugin_prompts.clone(),
+            }
+        });
+
+        (ctx, prompt_context)
+    }
+
+    /// Build a QueryEngine configured with compactor, skills, plugins, and plan state.
+    #[instrument(skip_all)]
+    fn build_engine(
+        &self,
+        prompt_context: Option<arawn_engine::PromptContext>,
+        event_tx: &mpsc::Sender<EngineEvent>,
+    ) -> QueryEngine {
+        let compactor = Compactor::new(self.llm.clone(), self.config.model.clone());
+        let mut engine = QueryEngine::with_config(
+            self.llm.clone(),
+            self.registry.clone(),
+            QueryEngineConfig {
+                model: self.config.model.clone(),
+                max_iterations: self.config.max_iterations,
+                system_prompt: self.config.system_prompt.clone(),
+                max_tokens: self.config.max_tokens,
+                model_limits: self.config.model_limits.clone(),
+                data_dir: Some(self.data_dir.clone()),
+                prompt_context,
+            },
+        )
+        .with_compactor(compactor);
+
+        if let Some(ref skill_reg) = self.skill_registry {
+            engine = engine.with_skill_registry(Arc::clone(skill_reg));
+        }
+        if let Some(ref plugin_reg) = self.plugin_registry {
+            engine = engine.with_plugin_registry(Arc::clone(plugin_reg));
         }
 
-        // Step 3: Move workspace directory if it exists (best-effort)
-        if scratch_workspace.exists() {
-            let _ = tokio::fs::create_dir_all(target_workspace.parent().unwrap_or(&target_workspace)).await;
-            if let Err(e) = tokio::fs::rename(&scratch_workspace, &target_workspace).await {
-                warn!(error = %e, "workspace rename failed during promotion, files remain in scratch");
+        // Attach permission checker
+        {
+            let rules = self.permission_rules.read().unwrap().clone();
+            if !rules.is_empty() {
+                let prompt =
+                    ChannelModalPrompt::new(event_tx.clone(), self.pending_modals.clone());
+                let mode = *self.permission_mode.read().unwrap();
+                let checker = PermissionChecker::new(rules)
+                    .with_mode(mode)
+                    .with_prompter(Box::new(prompt));
+                engine = engine.with_permission_checker(Arc::new(checker));
             }
         }
 
-        Ok(serde_json::json!({
-            "status": "promoted",
-            "workstream_id": ws_id.to_string(),
-            "workstream_name": ws_name,
-        }))
+        engine
+            .with_plan_state(Arc::clone(&self.plan_state))
+            .with_background_tasks(Arc::clone(&self.background_tasks))
     }
 }
+
 
 /// Infer entity type from text patterns.
 fn infer_entity_type(text: &str) -> (arawn_memory::EntityType, String) {
@@ -559,6 +419,7 @@ impl ArawnService for LocalService {
         })
     }
 
+    #[instrument(skip_all, fields(%session_id))]
     async fn send_message(
         &self,
         session_id: Uuid,
@@ -574,30 +435,8 @@ impl ArawnService for LocalService {
             }
         }
 
-        // Load session metadata and resolve workstream
-        let (meta, workstream, ws_dir) = {
-            let store = self.store.lock().unwrap();
-            let meta = store
-                .get_session_meta(session_id)
-                .map_err(|e| ServiceError::Storage(e.to_string()))?
-                .ok_or_else(|| ServiceError::NotFound(format!("session {session_id}")))?;
-
-            let ws_dir = resolve_ws_dir_from_store(&store, meta.workstream_id)?;
-
-            let workstream = if let Some(ws_id) = meta.workstream_id {
-                store
-                    .get_workstream(ws_id)
-                    .map_err(|e| ServiceError::Storage(e.to_string()))?
-                    .ok_or_else(|| ServiceError::NotFound(format!("workstream {ws_id}")))?
-            } else {
-                store
-                    .find_workstream_by_name("scratch")
-                    .map_err(|e| ServiceError::Storage(e.to_string()))?
-                    .ok_or_else(|| ServiceError::NotFound("scratch workstream".into()))?
-            };
-
-            (meta, workstream, ws_dir)
-        };
+        // Load session state
+        let (meta, workstream, ws_dir, _) = self.load_session_state(session_id)?;
 
         // Load messages from JSONL
         let msg_store = JsonlMessageStore::new(&self.data_dir);
@@ -622,117 +461,24 @@ impl ArawnService for LocalService {
             .await
             .map_err(|e| ServiceError::Storage(e.to_string()))?;
 
-        // Resolve sandbox root for ToolContext
-        // Scratch workstream sessions get per-session sandboxes
+        // Resolve workspace directory
         let is_scratch = workstream.name == "scratch";
         let workspace_dir = msg_store.sandbox_dir(&ws_dir, session_id, is_scratch);
-
-        // Ensure workspace directory exists
         tokio::fs::create_dir_all(&workspace_dir)
             .await
             .map_err(|e| ServiceError::Storage(e.to_string()))?;
 
-        // Build ToolContext with the workspace as working directory
-        let mut ws_for_ctx = workstream.clone();
-        ws_for_ctx.root_dir = workspace_dir.clone();
-
-        // Allow file tools to access arawn.md context files outside the sandbox
-        let global_arawn_md = self.data_dir.join("arawn.md");
-        let workstream_arawn_md = self
-            .data_dir
-            .join("workstreams")
-            .join(&ws_dir)
-            .join("arawn.md");
-        let ctx = ToolContext::new(&ws_for_ctx, session.id)
-            .with_allowed_paths(vec![global_arawn_md, workstream_arawn_md])
-            .with_llm(self.llm.clone(), self.config.model.clone())
-            .with_model_limits(self.config.model_limits.clone())
-            .with_data_dir(self.data_dir.clone());
-
-        // Build PromptContext per-session using the actual workspace
-        let session_prompt_context =
-            self.config
-                .prompt_context
-                .as_ref()
-                .map(|pc| arawn_engine::PromptContext {
-                    prompts_dir: pc.prompts_dir.clone(),
-                    os: pc.os.clone(),
-                    shell: pc.shell.clone(),
-                    cwd: workspace_dir.clone(),
-                    workstream_name: workstream.name.clone(),
-                    workstream_root: workspace_dir.clone(),
-                    context_files: arawn_engine::find_context_files(&workspace_dir, &self.data_dir),
-                    memories: self.memory_manager.as_ref().map(|mgr| {
-                        let stack = arawn_memory::MemoryStack::new(mgr, &workstream.name);
-                        let mut mems = vec![stack.wake_up(900)];
-
-                        // L2: auto-inject topical context from user message keywords
-                        let keywords: Vec<String> = content
-                            .split_whitespace()
-                            .filter(|w| w.len() > 3)
-                            .map(|w| w.trim_matches(|c: char| !c.is_alphanumeric()).to_lowercase())
-                            .filter(|w| !w.is_empty())
-                            .collect();
-                        if !keywords.is_empty() {
-                            let l1_titles = stack.l1_entity_titles();
-                            if let Some(l2) = stack.topical_context(&keywords, &l1_titles, 400) {
-                                mems.push(l2);
-                            }
-                        }
-
-                        mems
-                    }).unwrap_or_else(|| pc.memories.clone()),
-                    session_context: pc.session_context.clone(),
-                    plugin_prompts: pc.plugin_prompts.clone(),
-                });
-
-        // Build engine with compactor
-        let compactor = Compactor::new(self.llm.clone(), self.config.model.clone());
-        let mut engine = QueryEngine::with_config(
-            self.llm.clone(),
-            self.registry.clone(),
-            QueryEngineConfig {
-                model: self.config.model.clone(),
-                max_iterations: self.config.max_iterations,
-                system_prompt: self.config.system_prompt.clone(),
-                max_tokens: self.config.max_tokens,
-                model_limits: self.config.model_limits.clone(),
-                data_dir: Some(self.data_dir.clone()),
-                prompt_context: session_prompt_context,
-            },
-        )
-        .with_compactor(compactor);
-
-        if let Some(ref skill_reg) = self.skill_registry {
-            engine = engine.with_skill_registry(Arc::clone(skill_reg));
-        }
-        if let Some(ref plugin_reg) = self.plugin_registry {
-            engine = engine.with_plugin_registry(Arc::clone(plugin_reg));
-        }
+        // Build context and engine
+        let ws_dir_owned = ws_dir.clone();
+        let (ctx, prompt_context) =
+            self.build_session_context(session_id, &workstream, &ws_dir, &workspace_dir, &content);
 
         let msgs_before = session.messages().len();
         let (tx, rx) = mpsc::channel::<EngineEvent>(64);
 
-        // Create per-message permission checker with a prompt that sends
-        // UserInputRequest events through the engine's tx channel.
-        {
-            let rules = self.permission_rules.read().unwrap().clone();
-            if !rules.is_empty() {
-                let prompt = ChannelModalPrompt::new(tx.clone(), self.pending_modals.clone());
-                let mode = *self.permission_mode.read().unwrap();
-                let checker = PermissionChecker::new(rules)
-                    .with_mode(mode)
-                    .with_prompter(Box::new(prompt));
-                engine = engine.with_permission_checker(Arc::new(checker));
-            }
-        }
+        let mut engine = self.build_engine(prompt_context, &tx);
 
-        engine = engine
-            .with_plan_state(Arc::clone(&self.plan_state))
-            .with_background_tasks(Arc::clone(&self.background_tasks));
-
-        // Set up live progress channel so tool calls stream to the TUI
-        // during the engine loop, not just after it completes.
+        // Set up live progress channel
         let (progress_tx, mut progress_rx) =
             tokio::sync::mpsc::channel::<arawn_engine::ProgressEvent>(64);
         engine = engine.with_progress_sender(progress_tx);
@@ -743,7 +489,6 @@ impl ArawnService for LocalService {
         self.cancel_tokens.lock().unwrap().insert(session_id, cancel_token);
 
         let data_dir = self.data_dir.clone();
-        let ws_dir_owned = ws_dir.clone();
         let store = self.store.clone();
         let active_sessions = self.active_sessions.clone();
         let cancel_tokens = self.cancel_tokens.clone();
@@ -887,6 +632,359 @@ impl ArawnService for LocalService {
                 Ok(())
             }
         }
+    }
+
+    async fn promote_session(
+        &self,
+        session_id: Uuid,
+        workstream_name: &str,
+    ) -> Result<PromotionResult, ServiceError> {
+        let (ws_id, ws_name, ws_dir, scratch_workspace, target_workspace) = {
+            let store = self.store.lock().unwrap();
+            let ws = store
+                .find_workstream_by_name(workstream_name)
+                .map_err(|e| ServiceError::Storage(e.to_string()))?
+                .ok_or_else(|| {
+                    ServiceError::NotFound(format!("workstream '{workstream_name}'"))
+                })?;
+
+            let ws_dir = arawn_storage::workstream_dir_name(&ws.name, ws.id);
+            let scratch_ws = store.sandbox_for("scratch", session_id, true).join("workspace");
+            let target_ws = store.sandbox_for(&ws_dir, session_id, false).join("workspace");
+
+            (ws.id, ws.name, ws_dir, scratch_ws, target_ws)
+        };
+
+        let msg_store = arawn_storage::JsonlMessageStore::new(&self.data_dir);
+        msg_store
+            .move_session(session_id, "scratch", &ws_dir)
+            .await
+            .map_err(|e| ServiceError::Storage(e.to_string()))?;
+
+        let sqlite_result = {
+            let store = self.store.lock().unwrap();
+            store.promote_session_metadata(session_id, ws_id)
+        };
+        if let Err(e) = sqlite_result {
+            warn!(error = %e, "SQLite update failed during promotion, rolling back file move");
+            let _ = msg_store.move_session(session_id, &ws_dir, "scratch").await;
+            return Err(ServiceError::Storage(e.to_string()));
+        }
+
+        if scratch_workspace.exists() {
+            let _ = tokio::fs::create_dir_all(
+                target_workspace.parent().unwrap_or(&target_workspace),
+            )
+            .await;
+            if let Err(e) = tokio::fs::rename(&scratch_workspace, &target_workspace).await {
+                warn!(error = %e, "workspace rename failed during promotion, files remain in scratch");
+            }
+        }
+
+        Ok(PromotionResult {
+            workstream_id: ws_id.to_string(),
+            workstream_name: ws_name,
+        })
+    }
+
+    async fn resolve_user_input(
+        &self,
+        request_id: &str,
+        selected_index: Option<usize>,
+    ) -> Result<(), ServiceError> {
+        let mut pending = self.pending_modals.lock().unwrap();
+        if let Some(tx) = pending.remove(request_id) {
+            let _ = tx.send(selected_index);
+            Ok(())
+        } else {
+            Err(ServiceError::NotFound(format!(
+                "no pending modal for {request_id}"
+            )))
+        }
+    }
+
+    async fn query_inventory(&self, kind: &str) -> Result<Vec<InventoryItem>, ServiceError> {
+        let items = match kind {
+            "tools" => self
+                .registry
+                .tool_definitions()
+                .iter()
+                .map(|t| InventoryItem {
+                    name: t.name.clone(),
+                    description: first_sentence(&t.description),
+                    kind: None,
+                    enabled: None,
+                    user_invocable: None,
+                })
+                .collect(),
+            "skills" => {
+                if let Some(ref reg) = self.skill_registry {
+                    reg.all()
+                        .iter()
+                        .map(|s| InventoryItem {
+                            name: s.name.clone(),
+                            description: first_sentence(&s.description),
+                            kind: None,
+                            enabled: None,
+                            user_invocable: Some(s.user_invocable),
+                        })
+                        .collect()
+                } else {
+                    Vec::new()
+                }
+            }
+            "plugins" => {
+                if let Some(ref reg) = self.plugin_registry {
+                    reg.all()
+                        .iter()
+                        .map(|p| InventoryItem {
+                            name: p.name().to_string(),
+                            description: p
+                                .manifest
+                                .description
+                                .as_deref()
+                                .unwrap_or("")
+                                .to_string(),
+                            kind: None,
+                            enabled: Some(p.enabled),
+                            user_invocable: None,
+                        })
+                        .collect()
+                } else {
+                    Vec::new()
+                }
+            }
+            "agents" => arawn_engine::agent_defs::built_in_agents()
+                .iter()
+                .map(|a| InventoryItem {
+                    name: a.name.clone(),
+                    description: first_sentence(&a.when_to_use),
+                    kind: None,
+                    enabled: None,
+                    user_invocable: None,
+                })
+                .collect(),
+            "mcp" => Vec::new(),
+            _ => Vec::new(),
+        };
+        Ok(items)
+    }
+
+    async fn list_available_commands(&self) -> Result<Vec<CommandInfo>, ServiceError> {
+        let mut commands = Vec::new();
+        if let Some(ref reg) = self.skill_registry {
+            for skill in reg.user_invocable() {
+                commands.push(CommandInfo {
+                    name: skill.name.clone(),
+                    description: first_sentence(&skill.description),
+                    kind: "skill".to_string(),
+                });
+            }
+        }
+        Ok(commands)
+    }
+
+    async fn list_workflows(&self) -> Result<Vec<WorkflowInfo>, ServiceError> {
+        let workflows_dir = self.data_dir.join("workflows");
+        let mut workflows = Vec::new();
+        if workflows_dir.exists() {
+            if let Ok(entries) = std::fs::read_dir(&workflows_dir) {
+                for entry in entries.flatten() {
+                    if entry.path().is_dir() {
+                        let name = entry.file_name().to_string_lossy().to_string();
+                        let pkg_toml = entry.path().join("package.toml");
+                        let cron = pkg_toml
+                            .exists()
+                            .then(|| {
+                                std::fs::read_to_string(&pkg_toml).ok().and_then(|s| {
+                                    s.lines()
+                                        .find(|l| l.contains("cron"))
+                                        .map(|l| {
+                                            l.split('=')
+                                                .nth(1)
+                                                .unwrap_or("")
+                                                .trim()
+                                                .trim_matches('"')
+                                                .to_string()
+                                        })
+                                })
+                            })
+                            .flatten();
+                        workflows.push(WorkflowInfo { name, cron });
+                    }
+                }
+            }
+        }
+        Ok(workflows)
+    }
+
+    async fn remember_fact(&self, text: &str) -> Result<MemoryStoreResult, ServiceError> {
+        use arawn_memory::{ConfidenceSource, Entity};
+
+        let memory = self
+            .memory_manager
+            .as_ref()
+            .ok_or_else(|| ServiceError::Internal("Memory system not available".into()))?;
+
+        let (entity_type, title) = infer_entity_type(text);
+        let mut entity =
+            Entity::new(entity_type, &title).with_confidence(ConfidenceSource::Stated);
+        if text.len() > title.len() + 5 {
+            entity = entity.with_content(text);
+        }
+
+        let store = memory.store_for_type(entity_type);
+        match store.store_fact(&entity) {
+            Ok(arawn_memory::StoreFactResult::Inserted { entity_id }) => {
+                Ok(MemoryStoreResult::Inserted {
+                    entity_id: entity_id.to_string(),
+                    title,
+                    entity_type: entity_type.as_str().to_string(),
+                })
+            }
+            Ok(arawn_memory::StoreFactResult::Reinforced {
+                entity_id,
+                new_count,
+            }) => Ok(MemoryStoreResult::Reinforced {
+                entity_id: entity_id.to_string(),
+                title,
+                count: new_count as u64,
+            }),
+            Ok(arawn_memory::StoreFactResult::Superseded {
+                old_entity_id,
+                new_entity_id,
+            }) => Ok(MemoryStoreResult::Superseded {
+                old_id: old_entity_id.to_string(),
+                new_id: new_entity_id.to_string(),
+                title,
+            }),
+            Err(e) => Err(ServiceError::Storage(e.to_string())),
+        }
+    }
+
+    async fn memory_summary(&self) -> Result<MemorySummary, ServiceError> {
+        use arawn_memory::EntityType;
+
+        let memory = self
+            .memory_manager
+            .as_ref()
+            .ok_or_else(|| ServiceError::Internal("Memory system not available".into()))?;
+
+        let types = [
+            EntityType::Fact,
+            EntityType::Decision,
+            EntityType::Convention,
+            EntityType::Preference,
+            EntityType::Person,
+            EntityType::Note,
+        ];
+
+        let mut global_counts = Vec::new();
+        let mut ws_counts = Vec::new();
+
+        for et in &types {
+            let g = memory.global.count_by_type(*et).unwrap_or(0);
+            let w = memory.workstream.count_by_type(*et).unwrap_or(0);
+            if g > 0 {
+                global_counts.push(MemoryTypeCount {
+                    entity_type: et.as_str().to_string(),
+                    count: g as u64,
+                });
+            }
+            if w > 0 {
+                ws_counts.push(MemoryTypeCount {
+                    entity_type: et.as_str().to_string(),
+                    count: w as u64,
+                });
+            }
+        }
+
+        Ok(MemorySummary {
+            global: MemoryStoreSummary {
+                total: memory.global.count_all().unwrap_or(0) as u64,
+                by_type: global_counts,
+            },
+            workstream: MemoryStoreSummary {
+                total: memory.workstream.count_all().unwrap_or(0) as u64,
+                by_type: ws_counts,
+            },
+        })
+    }
+
+    async fn forget_entity(&self, query: &str) -> Result<ForgetResult, ServiceError> {
+        let memory = self
+            .memory_manager
+            .as_ref()
+            .ok_or_else(|| ServiceError::Internal("Memory system not available".into()))?;
+
+        let mut candidates = Vec::new();
+        for (store, label) in [(&memory.global, "global"), (&memory.workstream, "workstream")] {
+            if let Ok(results) = store.search(query, 5) {
+                for e in results {
+                    candidates.push((e, label));
+                }
+            }
+        }
+
+        if candidates.is_empty() {
+            return Err(ServiceError::NotFound(format!(
+                "No entities matching '{query}' found"
+            )));
+        }
+
+        if candidates.len() == 1 {
+            let (entity, label) = &candidates[0];
+            let store = if *label == "global" {
+                &memory.global
+            } else {
+                &memory.workstream
+            };
+            match store.delete_entity(entity.id) {
+                Ok(true) => Ok(ForgetResult::Deleted {
+                    title: entity.title.clone(),
+                    entity_type: entity.entity_type.as_str().to_string(),
+                    scope: label.to_string(),
+                }),
+                Ok(false) => Err(ServiceError::NotFound("Entity not found".into())),
+                Err(e) => Err(ServiceError::Storage(e.to_string())),
+            }
+        } else {
+            Ok(ForgetResult::Ambiguous {
+                candidates: candidates
+                    .iter()
+                    .map(|(e, label)| ForgetCandidate {
+                        id: e.id.to_string(),
+                        title: e.title.clone(),
+                        entity_type: e.entity_type.as_str().to_string(),
+                        scope: label.to_string(),
+                    })
+                    .collect(),
+            })
+        }
+    }
+
+    async fn get_permission_mode(&self) -> Result<PermissionModeInfo, ServiceError> {
+        let mode = *self.permission_mode.read().unwrap();
+        Ok(PermissionModeInfo {
+            mode: serde_json::to_value(mode)
+                .ok()
+                .and_then(|v| v.as_str().map(String::from))
+                .unwrap_or_else(|| format!("{mode:?}")),
+        })
+    }
+
+    async fn set_permission_mode(&self, mode_str: &str) -> Result<PermissionModeInfo, ServiceError> {
+        let mode: arawn_engine::permissions::PermissionMode =
+            serde_json::from_value(serde_json::json!(mode_str)).map_err(|_| {
+                ServiceError::InvalidOperation(format!(
+                    "unknown mode '{mode_str}'. Valid: default, accept_edits, bypass, plan"
+                ))
+            })?;
+        *self.permission_mode.write().unwrap() = mode;
+        info!(mode = %mode_str, "permission mode updated");
+        Ok(PermissionModeInfo {
+            mode: mode_str.to_string(),
+        })
     }
 }
 

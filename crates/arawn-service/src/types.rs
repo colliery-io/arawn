@@ -91,3 +91,112 @@ pub enum EngineEvent {
     /// streaming text burst, tool call, tool result, etc.
     Flush,
 }
+
+/// Result of storing a fact in the knowledge base.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "status")]
+pub enum MemoryStoreResult {
+    #[serde(rename = "inserted")]
+    Inserted {
+        entity_id: String,
+        title: String,
+        entity_type: String,
+    },
+    #[serde(rename = "reinforced")]
+    Reinforced {
+        entity_id: String,
+        title: String,
+        count: u64,
+    },
+    #[serde(rename = "superseded")]
+    Superseded {
+        old_id: String,
+        new_id: String,
+        title: String,
+    },
+}
+
+/// Summary of the knowledge base.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MemorySummary {
+    pub global: MemoryStoreSummary,
+    pub workstream: MemoryStoreSummary,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MemoryStoreSummary {
+    pub total: u64,
+    pub by_type: Vec<MemoryTypeCount>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MemoryTypeCount {
+    #[serde(rename = "type")]
+    pub entity_type: String,
+    pub count: u64,
+}
+
+/// Result of forgetting an entity.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "status")]
+pub enum ForgetResult {
+    #[serde(rename = "deleted")]
+    Deleted {
+        title: String,
+        entity_type: String,
+        scope: String,
+    },
+    #[serde(rename = "ambiguous")]
+    Ambiguous { candidates: Vec<ForgetCandidate> },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ForgetCandidate {
+    pub id: String,
+    pub title: String,
+    #[serde(rename = "type")]
+    pub entity_type: String,
+    pub scope: String,
+}
+
+/// A single item in an inventory query result.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InventoryItem {
+    pub name: String,
+    pub description: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub kind: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub enabled: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub user_invocable: Option<bool>,
+}
+
+/// A command available for autocomplete.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CommandInfo {
+    pub name: String,
+    pub description: String,
+    pub kind: String,
+}
+
+/// Result of promoting a scratch session to a workstream.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PromotionResult {
+    pub workstream_id: String,
+    pub workstream_name: String,
+}
+
+/// Info about a workflow.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WorkflowInfo {
+    pub name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cron: Option<String>,
+}
+
+/// Result of getting or setting the permission mode.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PermissionModeInfo {
+    pub mode: String,
+}

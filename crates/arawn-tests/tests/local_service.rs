@@ -192,10 +192,7 @@ async fn promote_scratch_session_to_workstream() {
 
     // Promote to finances workstream
     let result = service.promote_session(session.id, "finances").await.unwrap();
-    assert_eq!(
-        result.get("status").and_then(|s| s.as_str()),
-        Some("promoted")
-    );
+    assert_eq!(result.workstream_name, "finances");
 
     // Session should still load with its messages from the new location
     let loaded_after = service.load_session(session.id).await.unwrap();
@@ -206,11 +203,8 @@ async fn promote_scratch_session_to_workstream() {
     );
 
     // JSONL should exist in the workstream dir, not scratch
-    let ws_dir = arawn_storage::workstream_dir_name("finances",
-        result.get("workstream_id").and_then(|s| s.as_str())
-            .and_then(|s| uuid::Uuid::parse_str(s).ok())
-            .unwrap()
-    );
+    let ws_id: uuid::Uuid = result.workstream_id.parse().unwrap();
+    let ws_dir = arawn_storage::workstream_dir_name("finances", ws_id);
     let msg_store = JsonlMessageStore::new(tmp.path());
     let messages = msg_store.load(session.id, &ws_dir).await.unwrap();
     assert!(

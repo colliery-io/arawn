@@ -9,7 +9,11 @@ use futures::Stream;
 use uuid::Uuid;
 
 pub use error::ServiceError;
-pub use types::{EngineEvent, ModalPromptOption, SessionDetail, SessionInfo, WorkstreamInfo};
+pub use types::{
+    CommandInfo, EngineEvent, ForgetCandidate, ForgetResult, InventoryItem, MemoryStoreResult,
+    MemoryStoreSummary, MemorySummary, MemoryTypeCount, ModalPromptOption, PermissionModeInfo,
+    PromotionResult, SessionDetail, SessionInfo, WorkflowInfo, WorkstreamInfo,
+};
 
 /// The service contract between any UI client and the Arawn backend.
 ///
@@ -58,4 +62,50 @@ pub trait ArawnService: Send + Sync {
 
     /// Cancel an in-progress generation.
     async fn cancel(&self, session_id: Uuid) -> Result<(), ServiceError>;
+
+    // --- Session Management ---
+
+    /// Promote a scratch session to a named workstream.
+    async fn promote_session(
+        &self,
+        session_id: Uuid,
+        workstream_name: &str,
+    ) -> Result<PromotionResult, ServiceError>;
+
+    /// Resolve a pending user input modal by delivering the selected index.
+    async fn resolve_user_input(
+        &self,
+        request_id: &str,
+        selected_index: Option<usize>,
+    ) -> Result<(), ServiceError>;
+
+    // --- Inventory & Commands ---
+
+    /// Query available inventory (tools, skills, plugins, agents, mcp).
+    async fn query_inventory(&self, kind: &str) -> Result<Vec<InventoryItem>, ServiceError>;
+
+    /// List available commands for autocomplete.
+    async fn list_available_commands(&self) -> Result<Vec<CommandInfo>, ServiceError>;
+
+    /// List installed workflows.
+    async fn list_workflows(&self) -> Result<Vec<WorkflowInfo>, ServiceError>;
+
+    // --- Memory ---
+
+    /// Store a fact in the knowledge base.
+    async fn remember_fact(&self, text: &str) -> Result<MemoryStoreResult, ServiceError>;
+
+    /// Get a summary of the knowledge base.
+    async fn memory_summary(&self) -> Result<MemorySummary, ServiceError>;
+
+    /// Forget/delete an entity from the knowledge base.
+    async fn forget_entity(&self, query: &str) -> Result<ForgetResult, ServiceError>;
+
+    // --- Permissions ---
+
+    /// Get the current permission mode.
+    async fn get_permission_mode(&self) -> Result<PermissionModeInfo, ServiceError>;
+
+    /// Set the permission mode. Returns the new mode.
+    async fn set_permission_mode(&self, mode: &str) -> Result<PermissionModeInfo, ServiceError>;
 }

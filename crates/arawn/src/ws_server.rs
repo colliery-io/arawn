@@ -20,6 +20,31 @@ use arawn_service::ArawnService;
 
 use crate::local_service::LocalService;
 
+/// Protocol version reported by the `hello` handshake.
+const PROTOCOL_VERSION: &str = "0.1.0";
+
+/// Canonical RPC method names (returned by `hello`).
+const RPC_METHODS: &[&str] = &[
+    "hello",
+    "list_workstreams",
+    "create_workstream",
+    "list_sessions",
+    "create_session",
+    "load_session",
+    "send_message",
+    "cancel",
+    "user_input_response",
+    "promote_session",
+    "query_inventory",
+    "list_commands",
+    "list_workflows",
+    "store_memory",
+    "get_memory_summary",
+    "delete_memory",
+    "get_permission_mode",
+    "set_permission_mode",
+];
+
 /// JSON-RPC style request from client.
 #[derive(Debug, Deserialize)]
 struct Request {
@@ -272,6 +297,22 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
         debug!(id, method = %request.method, "dispatching RPC");
 
         match request.method.as_str() {
+            "hello" => {
+                debug!(id, "hello handshake");
+                let resp = Response::success(
+                    id,
+                    json!({
+                        "version": PROTOCOL_VERSION,
+                        "methods": RPC_METHODS,
+                    }),
+                );
+                let _ = sender
+                    .send(WsMessage::Text(
+                        serde_json::to_string(&resp).unwrap().into(),
+                    ))
+                    .await;
+            }
+
             "list_workstreams" => {
                 let resp = match service.list_workstreams().await {
                     Ok(ws) => {
@@ -280,7 +321,7 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                     }
                     Err(e) => {
                         warn!(id, error = %e, "list_workstreams failed");
-                        Response::error(id, "service_error", e.to_string())
+                        Response::error(id, e.error_code(), e.to_string())
                     }
                 };
                 if sender
@@ -318,7 +359,7 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                     }
                     Err(e) => {
                         warn!(id, error = %e, "create_workstream failed");
-                        Response::error(id, "service_error", e.to_string())
+                        Response::error(id, e.error_code(), e.to_string())
                     }
                 };
                 if sender
@@ -347,7 +388,7 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                     }
                     Err(e) => {
                         warn!(id, error = %e, "list_sessions failed");
-                        Response::error(id, "service_error", e.to_string())
+                        Response::error(id, e.error_code(), e.to_string())
                     }
                 };
                 if sender
@@ -376,7 +417,7 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                     }
                     Err(e) => {
                         warn!(id, error = %e, "create_session failed");
-                        Response::error(id, "service_error", e.to_string())
+                        Response::error(id, e.error_code(), e.to_string())
                     }
                 };
                 if sender
@@ -406,7 +447,7 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                         }
                         Err(e) => {
                             warn!(id, error = %e, "load_session failed");
-                            Response::error(id, "service_error", e.to_string())
+                            Response::error(id, e.error_code(), e.to_string())
                         }
                     },
                     None => {
@@ -515,17 +556,19 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                                                         .map(|n| n as usize);
 
                                                     debug!(id, %request_id, ?selected_index, "routing modal response (inline)");
+                                                    let resp = match service
+                                                        .resolve_user_input(&request_id, selected_index)
+                                                        .await
                                                     {
-                                                        let mut pending = service.pending_modals.lock().unwrap();
-                                                        if let Some(tx) = pending.remove(&request_id) {
-                                                            let _ = tx.send(selected_index);
+                                                        Ok(()) => {
                                                             debug!(id, %request_id, "modal response delivered (inline)");
-                                                        } else {
-                                                            warn!(id, %request_id, "no pending modal found (inline)");
+                                                            Response::success(req.id, json!({"status": "delivered"}))
                                                         }
-                                                    }
-
-                                                    let resp = Response::success(req.id, json!({"status": "delivered"}));
+                                                        Err(e) => {
+                                                            warn!(id, %request_id, "no pending modal found (inline)");
+                                                            Response::error(req.id, e.error_code(), e.to_string())
+                                                        }
+                                                    };
                                                     let _ = sender
                                                         .send(WsMessage::Text(
                                                             serde_json::to_string(&resp).unwrap().into(),
@@ -552,7 +595,7 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                     }
                     Err(e) => {
                         warn!(id, error = %e, "send_message service error");
-                        let resp = Response::error(id, "service_error", e.to_string());
+                        let resp = Response::error(id, e.error_code(), e.to_string());
                         let _ = sender
                             .send(WsMessage::Text(
                                 serde_json::to_string(&resp).unwrap().into(),
@@ -577,27 +620,18 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
 
                 debug!(id, %request_id, ?selected_index, "routing modal response");
 
-                // Route the response to the waiting tool
-                let resolved = {
-                    let mut pending = service.pending_modals.lock().unwrap();
-                    if let Some(tx) = pending.remove(&request_id) {
-                        let _ = tx.send(selected_index);
-                        true
-                    } else {
-                        false
+                let resp = match service
+                    .resolve_user_input(&request_id, selected_index)
+                    .await
+                {
+                    Ok(()) => {
+                        debug!(id, %request_id, "modal response delivered");
+                        Response::success(id, json!({"status": "delivered"}))
                     }
-                };
-
-                if resolved {
-                    debug!(id, %request_id, "modal response delivered");
-                } else {
-                    warn!(id, %request_id, "no pending modal found");
-                }
-
-                let resp = if resolved {
-                    Response::success(id, json!({"status": "delivered"}))
-                } else {
-                    Response::error(id, "not_found", format!("no pending modal for {request_id}"))
+                    Err(e) => {
+                        warn!(id, %request_id, "no pending modal found");
+                        Response::error(id, e.error_code(), e.to_string())
+                    }
                 };
                 let _ = sender
                     .send(WsMessage::Text(
@@ -621,7 +655,7 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                         }
                         Err(e) => {
                             warn!(id, error = %e, "cancel failed");
-                            Response::error(id, "service_error", e.to_string())
+                            Response::error(id, e.error_code(), e.to_string())
                         }
                     },
                     None => {
@@ -654,11 +688,11 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                     Some(sid) => match service.promote_session(sid, &workstream_name).await {
                         Ok(result) => {
                             debug!(id, "promote_session ok");
-                            Response::success(id, result)
+                            Response::success(id, serde_json::to_value(&result).unwrap())
                         }
                         Err(e) => {
                             warn!(id, error = %e, "promote_session failed");
-                            Response::error(id, "service_error", e.to_string())
+                            Response::error(id, e.error_code(), e.to_string())
                         }
                     },
                     None => {
@@ -680,8 +714,10 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                     .and_then(|v| v.as_str())
                     .unwrap_or("");
                 debug!(id, %kind, "query_inventory");
-                let result = service.query_inventory(kind);
-                let resp = Response::success(id, result);
+                let resp = match service.query_inventory(kind).await {
+                    Ok(items) => Response::success(id, serde_json::to_value(&items).unwrap()),
+                    Err(e) => Response::error(id, e.error_code(), e.to_string()),
+                };
                 let _ = sender
                     .send(WsMessage::Text(
                         serde_json::to_string(&resp).unwrap().into(),
@@ -689,15 +725,17 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                     .await;
             }
 
-            "remember_fact" => {
-                debug!(id, "remember_fact");
+            "store_memory" => {
+                debug!(id, "store_memory");
                 let text = request
                     .params
                     .get("text")
                     .and_then(|v| v.as_str())
                     .unwrap_or("");
-                let result = service.remember_fact(text);
-                let resp = Response::success(id, result);
+                let resp = match service.remember_fact(text).await {
+                    Ok(result) => Response::success(id, serde_json::to_value(&result).unwrap()),
+                    Err(e) => Response::error(id, e.error_code(), e.to_string()),
+                };
                 let _ = sender
                     .send(WsMessage::Text(
                         serde_json::to_string(&resp).unwrap().into(),
@@ -705,10 +743,12 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                     .await;
             }
 
-            "memory_summary" => {
-                debug!(id, "memory_summary");
-                let result = service.memory_summary();
-                let resp = Response::success(id, result);
+            "get_memory_summary" => {
+                debug!(id, "get_memory_summary");
+                let resp = match service.memory_summary().await {
+                    Ok(summary) => Response::success(id, serde_json::to_value(&summary).unwrap()),
+                    Err(e) => Response::error(id, e.error_code(), e.to_string()),
+                };
                 let _ = sender
                     .send(WsMessage::Text(
                         serde_json::to_string(&resp).unwrap().into(),
@@ -716,15 +756,17 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                     .await;
             }
 
-            "forget_entity" => {
-                debug!(id, "forget_entity");
+            "delete_memory" => {
+                debug!(id, "delete_memory");
                 let query = request
                     .params
                     .get("query")
                     .and_then(|v| v.as_str())
                     .unwrap_or("");
-                let result = service.forget_entity(query);
-                let resp = Response::success(id, result);
+                let resp = match service.forget_entity(query).await {
+                    Ok(result) => Response::success(id, serde_json::to_value(&result).unwrap()),
+                    Err(e) => Response::error(id, e.error_code(), e.to_string()),
+                };
                 let _ = sender
                     .send(WsMessage::Text(
                         serde_json::to_string(&resp).unwrap().into(),
@@ -732,10 +774,12 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                     .await;
             }
 
-            "list_available_commands" => {
-                debug!(id, "list_available_commands");
-                let result = service.list_available_commands();
-                let resp = Response::success(id, result);
+            "list_commands" => {
+                debug!(id, "list_commands");
+                let resp = match service.list_available_commands().await {
+                    Ok(commands) => Response::success(id, serde_json::to_value(&commands).unwrap()),
+                    Err(e) => Response::error(id, e.error_code(), e.to_string()),
+                };
                 let _ = sender
                     .send(WsMessage::Text(
                         serde_json::to_string(&resp).unwrap().into(),
@@ -744,58 +788,48 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
             }
 
             "list_workflows" => {
-                let workflows_dir = service.data_dir.join("workflows");
-                let mut workflows = Vec::new();
-                if workflows_dir.exists() {
-                    if let Ok(entries) = std::fs::read_dir(&workflows_dir) {
-                        for entry in entries.flatten() {
-                            if entry.path().is_dir() {
-                                let name = entry.file_name().to_string_lossy().to_string();
-                                let pkg_toml = entry.path().join("package.toml");
-                                let cron = pkg_toml.exists().then(|| {
-                                    std::fs::read_to_string(&pkg_toml).ok().and_then(|s| {
-                                        s.lines()
-                                            .find(|l| l.contains("cron"))
-                                            .map(|l| l.split('=').nth(1).unwrap_or("").trim().trim_matches('"').to_string())
-                                    })
-                                }).flatten();
-                                workflows.push(json!({ "name": name, "cron": cron }));
-                            }
-                        }
+                debug!(id, "list_workflows");
+                let resp = match service.list_workflows().await {
+                    Ok(workflows) => {
+                        Response::success(id, serde_json::to_value(&workflows).unwrap())
                     }
-                }
-                let resp = Response::success(id, json!(workflows));
+                    Err(e) => Response::error(id, e.error_code(), e.to_string()),
+                };
                 let _ = sender
-                    .send(WsMessage::Text(serde_json::to_string(&resp).unwrap().into()))
+                    .send(WsMessage::Text(
+                        serde_json::to_string(&resp).unwrap().into(),
+                    ))
                     .await;
             }
 
             "get_permission_mode" => {
-                let mode = *service.shared_permission_mode().read().unwrap();
-                let resp = Response::success(id, json!({ "mode": mode }));
+                debug!(id, "get_permission_mode");
+                let resp = match service.get_permission_mode().await {
+                    Ok(info) => Response::success(id, serde_json::to_value(&info).unwrap()),
+                    Err(e) => Response::error(id, e.error_code(), e.to_string()),
+                };
                 let _ = sender
-                    .send(WsMessage::Text(serde_json::to_string(&resp).unwrap().into()))
+                    .send(WsMessage::Text(
+                        serde_json::to_string(&resp).unwrap().into(),
+                    ))
                     .await;
             }
 
             "set_permission_mode" => {
-                let mode_str = request.params.get("mode").and_then(|v| v.as_str()).unwrap_or("");
-                let resp = match serde_json::from_value::<arawn_engine::permissions::PermissionMode>(
-                    json!(mode_str),
-                ) {
-                    Ok(mode) => {
-                        *service.shared_permission_mode().write().unwrap() = mode;
-                        info!(id, mode = %mode_str, "permission mode updated");
-                        Response::success(id, json!({ "mode": mode, "status": "updated" }))
-                    }
-                    Err(_) => Response::error(
-                        id,
-                        "invalid_mode",
-                        format!("unknown mode '{mode_str}'. Valid: default, accept_edits, bypass, plan"),
-                    ),
+                let mode_str = request
+                    .params
+                    .get("mode")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                debug!(id, %mode_str, "set_permission_mode");
+                let resp = match service.set_permission_mode(mode_str).await {
+                    Ok(info) => Response::success(id, serde_json::to_value(&info).unwrap()),
+                    Err(e) => Response::error(id, e.error_code(), e.to_string()),
                 };
                 let _ = sender
-                    .send(WsMessage::Text(serde_json::to_string(&resp).unwrap().into()))
+                    .send(WsMessage::Text(
+                        serde_json::to_string(&resp).unwrap().into(),
+                    ))
                     .await;
             }
 
