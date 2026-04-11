@@ -10,9 +10,8 @@ use serde_json::Value;
 
 use arawn_tool_plugin::ToolExecuteOutput;
 
-use crate::context::ToolContext;
 use crate::error::EngineError;
-use crate::tool::{Tool, ToolOutput};
+use crate::tool::{Tool, ToolError, ToolOutput};
 
 /// Adapts a fides PluginHandle into an arawn Tool.
 /// Caches name/description/schema on construction so they're not called per-turn.
@@ -67,12 +66,12 @@ impl Tool for PluginToolAdapter {
         self.cached_schema.clone()
     }
 
-    async fn execute(&self, ctx: &ToolContext, params: Value) -> Result<ToolOutput, EngineError> {
+    async fn execute(&self, ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
         use arawn_tool_plugin::__fidius_ArawnTool::*;
 
         let context_json = serde_json::to_string(&ContextForPlugin {
-            working_dir: ctx.working_dir.to_string_lossy().to_string(),
-            session_id: ctx.session_id.to_string(),
+            working_dir: ctx.working_dir().to_string_lossy().to_string(),
+            session_id: ctx.session_id().to_string(),
             workstream_name: ctx.workstream_name().to_string(),
         })
         .unwrap_or_default();

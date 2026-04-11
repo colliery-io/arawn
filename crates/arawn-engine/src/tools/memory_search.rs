@@ -8,9 +8,7 @@ use tracing::debug;
 use arawn_embed::Embedder;
 use arawn_memory::{Entity, EntityType, MemoryManager, MemoryStore, RelationType};
 
-use crate::context::ToolContext;
-use crate::error::EngineError;
-use crate::tool::{Tool, ToolCategory, ToolOutput};
+use crate::tool::{Tool, ToolCategory, ToolError, ToolOutput};
 
 /// Tool that searches the knowledge base using composite retrieval:
 /// semantic similarity + FTS5 text search + tag filtering + graph expansion.
@@ -81,11 +79,11 @@ impl Tool for MemorySearchTool {
         })
     }
 
-    async fn execute(&self, _ctx: &ToolContext, params: Value) -> Result<ToolOutput, EngineError> {
+    async fn execute(&self, _ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
         let query = params
             .get("query")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| EngineError::Tool("missing 'query' parameter".into()))?;
+            .ok_or_else(|| ToolError::ExecutionFailed("missing 'query' parameter".into()))?;
 
         let entity_type = params
             .get("entity_type")
@@ -131,7 +129,7 @@ impl Tool for MemorySearchTool {
             } else {
                 store.search(query, limit * 2)
             }
-            .map_err(|e| EngineError::Tool(format!("FTS search error: {e}")))?;
+            .map_err(|e| ToolError::ExecutionFailed(format!("FTS search error: {e}")))?;
 
             for (rank, entity) in fts_results.iter().enumerate() {
                 let fts_score = 1.0 / (1.0 + rank as f32); // rank-based score
@@ -153,7 +151,7 @@ impl Tool for MemorySearchTool {
                     Ok(query_embedding) => {
                         let sim_results = store
                             .search_similar(&query_embedding, limit * 2)
-                            .map_err(|e| EngineError::Tool(format!("vector search error: {e}")))?;
+                            .map_err(|e| ToolError::ExecutionFailed(format!("vector search error: {e}")))?;
 
                         for result in &sim_results {
                             let semantic_score = 1.0 / (1.0 + result.distance);
@@ -191,7 +189,7 @@ impl Tool for MemorySearchTool {
             if let Some(ref tag_list) = tags {
                 let tag_results = store
                     .search_by_tags(tag_list, limit * 2)
-                    .map_err(|e| EngineError::Tool(format!("tag search error: {e}")))?;
+                    .map_err(|e| ToolError::ExecutionFailed(format!("tag search error: {e}")))?;
 
                 // Remove entities that don't match tags
                 let tag_ids: std::collections::HashSet<_> =
@@ -303,12 +301,12 @@ mod tests {
     use tempfile::TempDir;
     use uuid::Uuid;
 
-    fn setup() -> (TempDir, Arc<MemoryManager>, ToolContext) {
+    fn setup() -> (TempDir, Arc<MemoryManager>, crate::context::EngineToolContext) {
         let tmp = TempDir::new().unwrap();
         std::fs::create_dir_all(tmp.path().join("workstreams/test-ws")).unwrap();
         let mgr = Arc::new(MemoryManager::open(tmp.path(), "test-ws", None).unwrap());
         let ws = Workstream::scratch(tmp.path());
-        let ctx = ToolContext::new(&ws, Uuid::new_v4());
+        let ctx = crate::context::EngineToolContext::new(&ws, Uuid::new_v4());
         (tmp, mgr, ctx)
     }
 

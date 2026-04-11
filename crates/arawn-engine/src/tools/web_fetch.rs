@@ -8,9 +8,7 @@ use serde_json::{Value, json};
 
 use arawn_llm::{ChatContent, ChatMessage, ChatRequest};
 
-use crate::context::ToolContext;
-use crate::error::EngineError;
-use crate::tool::{Tool, ToolCategory, ToolOutput};
+use crate::tool::{Tool, ToolCategory, ToolError, ToolOutput};
 
 /// Cache TTL: 15 minutes.
 const CACHE_TTL: Duration = Duration::from_secs(15 * 60);
@@ -91,11 +89,11 @@ impl Tool for WebFetchTool {
         })
     }
 
-    async fn execute(&self, ctx: &ToolContext, params: Value) -> Result<ToolOutput, EngineError> {
+    async fn execute(&self, ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
         let url = params
             .get("url")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| EngineError::Tool("missing 'url' parameter".into()))?;
+            .ok_or_else(|| ToolError::ExecutionFailed("missing 'url' parameter".into()))?;
 
         let prompt = params.get("prompt").and_then(|v| v.as_str()).unwrap_or("");
 
@@ -126,14 +124,14 @@ impl Tool for WebFetchTool {
         let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(30))
             .build()
-            .map_err(|e| EngineError::Tool(format!("client error: {e}")))?;
+            .map_err(|e| ToolError::ExecutionFailed(format!("client error: {e}")))?;
 
         let response = client
             .get(&url)
             .header("User-Agent", "Arawn/0.1")
             .send()
             .await
-            .map_err(|e| EngineError::Tool(format!("fetch error: {e}")))?;
+            .map_err(|e| ToolError::ExecutionFailed(format!("fetch error: {e}")))?;
 
         let status = response.status();
         if !status.is_success() {
@@ -150,7 +148,7 @@ impl Tool for WebFetchTool {
         let body = response
             .text()
             .await
-            .map_err(|e| EngineError::Tool(format!("read error: {e}")))?;
+            .map_err(|e| ToolError::ExecutionFailed(format!("read error: {e}")))?;
 
         // Cache the raw response
         {
@@ -230,11 +228,11 @@ fn strip_html_tags(html: &str) -> String {
 
 /// If we have an LLM and a prompt, summarize. Otherwise return the content directly.
 async fn finish(
-    ctx: &ToolContext,
+    ctx: &dyn arawn_tool::ToolContext,
     prompt: &str,
     url: &str,
     text: String,
-) -> Result<ToolOutput, EngineError> {
+) -> Result<ToolOutput, ToolError> {
     if !prompt.is_empty()
         && let (Some(llm), Some(model)) = (ctx.llm(), ctx.model()) {
             return summarize_with_llm(llm, model, prompt, url, &text).await;
@@ -248,7 +246,7 @@ async fn summarize_with_llm(
     prompt: &str,
     url: &str,
     content: &str,
-) -> Result<ToolOutput, EngineError> {
+) -> Result<ToolOutput, ToolError> {
     let request = ChatRequest {
         model: model.to_string(),
         system_prompt: Some(
@@ -272,14 +270,14 @@ async fn summarize_with_llm(
     let mut stream = llm
         .stream(request)
         .await
-        .map_err(|e| EngineError::Tool(format!("LLM summarization error: {e}")))?;
+        .map_err(|e| ToolError::ExecutionFailed(format!("LLM summarization error: {e}")))?;
 
     let mut result = String::new();
     while let Some(chunk) = stream.next().await {
         match chunk {
             Ok(arawn_llm::ChatChunk::TextDelta { text }) => result.push_str(&text),
             Ok(arawn_llm::ChatChunk::Done { .. }) => break,
-            Err(e) => return Err(EngineError::Tool(format!("LLM stream error: {e}"))),
+            Err(e) => return Err(ToolError::ExecutionFailed(format!("LLM stream error: {e}"))),
             _ => {}
         }
     }
@@ -292,21 +290,23 @@ mod tests {
     use super::*;
     use std::sync::Arc;
 
+    use crate::context::EngineToolContext;
     use arawn_core::Workstream;
     use arawn_llm::MockLlmClient;
     use arawn_llm::MockResponse;
+    use arawn_tool::ToolContext as _;
     use uuid::Uuid;
 
-    fn test_ctx() -> ToolContext {
+    fn test_ctx() -> EngineToolContext {
         let ws = Workstream::scratch("/tmp/test");
-        ToolContext::new(&ws, Uuid::new_v4())
+        EngineToolContext::new(&ws, Uuid::new_v4())
     }
 
-    fn test_ctx_with_mock(responses: Vec<MockResponse>) -> (ToolContext, Arc<MockLlmClient>) {
+    fn test_ctx_with_mock(responses: Vec<MockResponse>) -> (EngineToolContext, Arc<MockLlmClient>) {
         let mock = Arc::new(MockLlmClient::new(responses));
         let ws = Workstream::scratch("/tmp/test");
         let ctx =
-            ToolContext::new(&ws, Uuid::new_v4()).with_llm(mock.clone(), "test-model".to_string());
+            EngineToolContext::new(&ws, Uuid::new_v4()).with_llm(mock.clone(), "test-model".to_string());
         (ctx, mock)
     }
 

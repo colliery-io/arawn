@@ -10,7 +10,7 @@ use rmcp::service::{RoleClient, RunningService};
 use tokio::process::Command;
 use tracing::{error, info, warn};
 
-use arawn_engine::tool::ToolRegistry;
+use arawn_tool::ToolRegistry;
 
 use crate::adapter::McpToolAdapter;
 use crate::config::McpServerConfig;

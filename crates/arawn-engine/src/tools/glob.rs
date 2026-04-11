@@ -3,9 +3,7 @@ use std::time::Instant;
 use async_trait::async_trait;
 use serde_json::{Value, json};
 
-use crate::context::ToolContext;
-use crate::error::EngineError;
-use crate::tool::{Tool, ToolOutput};
+use crate::tool::{Tool, ToolError, ToolOutput};
 
 /// Maximum number of files to return before truncating.
 const MAX_RESULTS: usize = 100;
@@ -49,20 +47,20 @@ impl Tool for GlobTool {
         })
     }
 
-    async fn execute(&self, ctx: &ToolContext, params: Value) -> Result<ToolOutput, EngineError> {
+    async fn execute(&self, ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
         let pattern = params
             .get("pattern")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| EngineError::Tool("missing 'pattern' parameter".into()))?;
+            .ok_or_else(|| ToolError::ExecutionFailed("missing 'pattern' parameter".into()))?;
 
         let base_dir = if let Some(path) = params.get("path").and_then(|v| v.as_str()) {
             // Validate path stays within workstream root
             if let Err(e) = ctx.validate_path(path) {
                 return Ok(ToolOutput::error(e));
             }
-            ctx.working_dir.join(path)
+            ctx.working_dir().join(path)
         } else {
-            ctx.working_dir.clone()
+            ctx.working_dir().to_path_buf()
         };
 
         let start = Instant::now();
@@ -108,7 +106,7 @@ impl Tool for GlobTool {
         }
 
         // Build relative paths
-        let prefix = ctx.working_dir.to_string_lossy();
+        let prefix = ctx.working_dir().to_string_lossy();
         let result: String = entries
             .iter()
             .take(MAX_RESULTS)
@@ -135,13 +133,14 @@ impl Tool for GlobTool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::context::EngineToolContext;
     use arawn_core::Workstream;
     use serde_json::json;
     use uuid::Uuid;
 
-    fn test_ctx(dir: &std::path::Path) -> ToolContext {
+    fn test_ctx(dir: &std::path::Path) -> EngineToolContext {
         let ws = Workstream::new("test", dir);
-        ToolContext::new(&ws, Uuid::new_v4())
+        EngineToolContext::new(&ws, Uuid::new_v4())
     }
 
     #[test]
@@ -168,7 +167,7 @@ mod tests {
         std::fs::write(dir.path().join("sub/baz.rs"), "mod baz;").unwrap();
 
         let ws = Workstream::scratch(dir.path());
-        let ctx = ToolContext::new(&ws, Uuid::new_v4());
+        let ctx = EngineToolContext::new(&ws, Uuid::new_v4());
 
         let result = GlobTool
             .execute(&ctx, json!({"pattern": "**/*.rs"}))
@@ -185,7 +184,7 @@ mod tests {
     async fn glob_no_matches() {
         let dir = tempfile::tempdir().unwrap();
         let ws = Workstream::scratch(dir.path());
-        let ctx = ToolContext::new(&ws, Uuid::new_v4());
+        let ctx = EngineToolContext::new(&ws, Uuid::new_v4());
 
         let result = GlobTool
             .execute(&ctx, json!({"pattern": "**/*.xyz"}))
@@ -206,7 +205,7 @@ mod tests {
         std::fs::write(dir.path().join("src.rs"), "fn main() {}").unwrap();
 
         let ws = Workstream::scratch(dir.path());
-        let ctx = ToolContext::new(&ws, Uuid::new_v4());
+        let ctx = EngineToolContext::new(&ws, Uuid::new_v4());
 
         let result = GlobTool
             .execute(&ctx, json!({"pattern": "**/*.rs"}))

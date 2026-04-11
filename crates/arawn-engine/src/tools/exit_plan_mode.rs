@@ -3,10 +3,8 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use serde_json::{Value, json};
 
-use crate::context::ToolContext;
-use crate::error::EngineError;
 use crate::plan::PlanModeState;
-use crate::tool::{Tool, ToolCategory, ToolOutput};
+use crate::tool::{Tool, ToolCategory, ToolError, ToolOutput};
 
 /// Tool that exits plan mode — writes the plan to disk and deactivates plan mode
 /// so all tools become available again. The plan content is returned for the user
@@ -56,7 +54,7 @@ impl Tool for ExitPlanModeTool {
         })
     }
 
-    async fn execute(&self, _ctx: &ToolContext, params: Value) -> Result<ToolOutput, EngineError> {
+    async fn execute(&self, _ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
         if !self.plan_state.is_active() {
             return Ok(ToolOutput::error(
                 "Not in plan mode. Use EnterPlanMode first.",
@@ -77,7 +75,7 @@ impl Tool for ExitPlanModeTool {
         // Write the plan to disk
         self.plan_state
             .write_plan(plan_content)
-            .map_err(|e| EngineError::Tool(format!("Failed to write plan: {e}")))?;
+            .map_err(|e| ToolError::ExecutionFailed(format!("Failed to write plan: {e}")))?;
 
         let plan_file = self
             .plan_state
@@ -99,14 +97,15 @@ impl Tool for ExitPlanModeTool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::context::EngineToolContext;
     use crate::permissions::PermissionMode;
     use arawn_core::Workstream;
     use tempfile::TempDir;
     use uuid::Uuid;
 
-    fn test_ctx() -> ToolContext {
+    fn test_ctx() -> EngineToolContext {
         let ws = Workstream::scratch("/tmp/test");
-        ToolContext::new(&ws, Uuid::new_v4())
+        EngineToolContext::new(&ws, Uuid::new_v4())
     }
 
     fn setup() -> (Arc<PlanModeState>, ExitPlanModeTool, std::path::PathBuf) {

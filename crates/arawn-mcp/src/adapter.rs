@@ -8,9 +8,7 @@ use rmcp::service::{Peer, RoleClient};
 use serde_json::Value;
 use tracing::{debug, warn};
 
-use arawn_engine::context::ToolContext;
-use arawn_engine::error::EngineError;
-use arawn_engine::tool::{Tool, ToolOutput};
+use arawn_tool::{Tool, ToolError, ToolOutput};
 
 /// An arawn Tool backed by an MCP server tool.
 pub struct McpToolAdapter {
@@ -75,7 +73,7 @@ impl Tool for McpToolAdapter {
             .unwrap_or(false)
     }
 
-    async fn execute(&self, _ctx: &ToolContext, params: Value) -> Result<ToolOutput, EngineError> {
+    async fn execute(&self, _ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
         debug!(tool = %self.arawn_name, mcp_name = %self.mcp_name, "calling MCP tool");
 
         let mut request = CallToolRequestParams::new(self.mcp_name.clone());

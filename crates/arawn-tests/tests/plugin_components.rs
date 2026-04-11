@@ -227,8 +227,7 @@ fn register_plugin_skills_namespaces_into_registry() {
     let registry = Arc::new(SkillRegistry::new());
     register_plugin_skills(&registry, components.skills);
 
-    assert_eq!(registry.len(), 1);
-    // Should be accessible by namespaced name
+    // Should be accessible by namespaced name (registry also has built-in skills)
     let skill = registry.get("my-plugin:deploy").expect("should find namespaced skill");
     assert!(skill.prompt.contains("Deploy the application"));
 }

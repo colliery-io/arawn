@@ -9,9 +9,7 @@ use arawn_memory::{
     ConfidenceSource, Entity, EntityType, MemoryManager, RelationType, Scope, StoreFactResult,
 };
 
-use crate::context::ToolContext;
-use crate::error::EngineError;
-use crate::tool::{Tool, ToolCategory, ToolOutput};
+use crate::tool::{Tool, ToolCategory, ToolError, ToolOutput};
 
 /// Tool that stores knowledge in the KB with search-before-create deduplication.
 pub struct MemoryStoreTool {
@@ -80,19 +78,19 @@ impl Tool for MemoryStoreTool {
         })
     }
 
-    async fn execute(&self, ctx: &ToolContext, params: Value) -> Result<ToolOutput, EngineError> {
+    async fn execute(&self, ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
         let title = params
             .get("title")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| EngineError::Tool("missing 'title' parameter".into()))?;
+            .ok_or_else(|| ToolError::ExecutionFailed("missing 'title' parameter".into()))?;
 
         let type_str = params
             .get("entity_type")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| EngineError::Tool("missing 'entity_type' parameter".into()))?;
+            .ok_or_else(|| ToolError::ExecutionFailed("missing 'entity_type' parameter".into()))?;
 
         let entity_type = EntityType::from_str(type_str)
-            .ok_or_else(|| EngineError::Tool(format!("unknown entity_type: '{type_str}'")))?;
+            .ok_or_else(|| ToolError::ExecutionFailed(format!("unknown entity_type: '{type_str}'")))?;
 
         let content = params.get("content").and_then(|v| v.as_str());
 
@@ -120,7 +118,7 @@ impl Tool for MemoryStoreTool {
         let mut entity = Entity::new(entity_type, title)
             .with_confidence(ConfidenceSource::Stated)
             .with_tags(tags)
-            .with_session(ctx.session_id);
+            .with_session(ctx.session_id());
 
         if let Some(c) = content {
             entity = entity.with_content(c);
@@ -132,7 +130,7 @@ impl Tool for MemoryStoreTool {
         // Search-before-create via store_fact
         let result = store
             .store_fact(&entity)
-            .map_err(|e| EngineError::Tool(format!("memory store error: {e}")))?;
+            .map_err(|e| ToolError::ExecutionFailed(format!("memory store error: {e}")))?;
 
         // Embed if embedder available
         if let Some(ref embedder) = self.embedder {
@@ -167,7 +165,7 @@ impl Tool for MemoryStoreTool {
         let _ = store.add_relation(
             entity_id,
             RelationType::ExtractedFrom,
-            ctx.session_id,
+            ctx.session_id(),
         );
 
         // Format output
@@ -213,14 +211,14 @@ mod tests {
     use tempfile::TempDir;
     use uuid::Uuid;
 
-    fn setup() -> (TempDir, Arc<MemoryManager>, ToolContext) {
+    fn setup() -> (TempDir, Arc<MemoryManager>, crate::context::EngineToolContext) {
         let tmp = TempDir::new().unwrap();
         std::fs::create_dir_all(tmp.path().join("workstreams/test-ws")).unwrap();
         let mgr = Arc::new(
             MemoryManager::open(tmp.path(), "test-ws", None).unwrap(),
         );
         let ws = Workstream::scratch(tmp.path());
-        let ctx = ToolContext::new(&ws, Uuid::new_v4());
+        let ctx = crate::context::EngineToolContext::new(&ws, Uuid::new_v4());
         (tmp, mgr, ctx)
     }
 

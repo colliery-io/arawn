@@ -2,9 +2,7 @@ use async_trait::async_trait;
 use serde_json::{Value, json};
 use tokio::process::Command;
 
-use crate::context::ToolContext;
-use crate::error::EngineError;
-use crate::tool::{Tool, ToolOutput};
+use crate::tool::{Tool, ToolError, ToolOutput};
 
 /// Default cap on grep results when head_limit is unspecified.
 const DEFAULT_HEAD_LIMIT: usize = 250;
@@ -103,11 +101,11 @@ impl Tool for GrepTool {
         })
     }
 
-    async fn execute(&self, ctx: &ToolContext, params: Value) -> Result<ToolOutput, EngineError> {
+    async fn execute(&self, ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
         let pattern = params
             .get("pattern")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| EngineError::Tool("missing 'pattern' parameter".into()))?;
+            .ok_or_else(|| ToolError::ExecutionFailed("missing 'pattern' parameter".into()))?;
 
         let path = params.get("path").and_then(|v| v.as_str()).unwrap_or(".");
 
@@ -148,7 +146,7 @@ impl Tool for GrepTool {
         // Build rg command
         let result = if has_rg().await {
             run_rg(
-                &ctx.working_dir,
+                &ctx.working_dir(),
                 pattern,
                 path,
                 glob_pattern,
@@ -164,7 +162,7 @@ impl Tool for GrepTool {
             .await
         } else {
             run_grep_fallback(
-                &ctx.working_dir,
+                &ctx.working_dir(),
                 pattern,
                 path,
                 case_insensitive,
@@ -336,13 +334,14 @@ async fn run_grep_fallback(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::context::EngineToolContext;
     use arawn_core::Workstream;
     use tempfile::TempDir;
     use uuid::Uuid;
 
-    fn test_ctx(dir: &std::path::Path) -> ToolContext {
+    fn test_ctx(dir: &std::path::Path) -> EngineToolContext {
         let ws = Workstream::new("test", dir);
-        ToolContext::new(&ws, Uuid::new_v4())
+        EngineToolContext::new(&ws, Uuid::new_v4())
     }
 
     #[tokio::test]

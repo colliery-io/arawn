@@ -135,6 +135,21 @@ fn render_status_bar(app: &App, frame: &mut Frame, area: ratatui::layout::Rect) 
         .unwrap_or("no workstream");
     spans.push(Span::styled(ws_name.to_string(), bar_style));
 
+    // Permission mode
+    if app.permission_mode != "default" {
+        spans.push(Span::styled(" │ ", dim));
+        let (label, color) = match app.permission_mode.as_str() {
+            "bypass" => ("BYPASS", Color::Red),
+            "accept_edits" => ("ACCEPT EDITS", Color::Yellow),
+            "plan" => ("PLAN", Color::Cyan),
+            _ => ("DEFAULT", Color::White),
+        };
+        spans.push(Span::styled(
+            label.to_string(),
+            Style::default().fg(color).bg(Color::Rgb(30, 30, 40)).add_modifier(ratatui::style::Modifier::BOLD),
+        ));
+    }
+
     // Session ID (8 chars)
     if let Some(ref session) = app.current_session {
         spans.push(Span::styled(" │ ", dim));

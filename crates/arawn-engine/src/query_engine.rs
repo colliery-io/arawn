@@ -8,7 +8,7 @@ use arawn_llm::{ChatChunk, ChatContent, ChatMessage, ChatRequest, LlmClient, Too
 
 use crate::background::BackgroundTaskManager;
 use crate::compactor::Compactor;
-use crate::context::ToolContext;
+use crate::context::EngineToolContext;
 use crate::error::EngineError;
 use crate::hooks::{HookInput, HookRunner};
 use crate::permissions::{PermissionChecker, PermissionDecision};
@@ -234,7 +234,7 @@ impl QueryEngine {
     pub async fn run(
         &mut self,
         session: &mut Session,
-        ctx: &ToolContext,
+        ctx: &dyn arawn_tool::ToolContext,
     ) -> Result<String, EngineError> {
         let mut iteration = 0;
         loop {
@@ -247,7 +247,7 @@ impl QueryEngine {
             if self.config.max_iterations > 0 && iteration >= self.config.max_iterations {
                 return Err(EngineError::MaxIterations {
                     iterations: iteration,
-                    session_id: ctx.session_id,
+                    session_id: ctx.session_id(),
                 });
             }
             iteration += 1;
@@ -515,7 +515,7 @@ impl QueryEngine {
                             content: tool_result.content,
                             is_error: tool_result.is_error,
                         },
-                        ctx.session_id,
+                        ctx.session_id(),
                         data_dir,
                         crate::tool_result_limiter::DEFAULT_MAX_RESULT_SIZE_CHARS,
                     )
@@ -651,7 +651,7 @@ impl QueryEngine {
     async fn stream_response_with_retry(
         &self,
         session: &Session,
-        _ctx: &ToolContext,
+        _ctx: &dyn arawn_tool::ToolContext,
     ) -> Result<AssembledResponse, EngineError> {
         const MAX_RETRIES: u32 = 2;
 
@@ -747,7 +747,7 @@ impl QueryEngine {
 
     async fn execute_tool(
         &self,
-        ctx: &ToolContext,
+        ctx: &dyn arawn_tool::ToolContext,
         tool_use_id: &str,
         name: &str,
         arguments: &serde_json::Value,
@@ -1080,10 +1080,10 @@ mod tests {
         }
     }
 
-    fn setup() -> (Workstream, Session, ToolContext) {
+    fn setup() -> (Workstream, Session, EngineToolContext) {
         let ws = Workstream::scratch("/tmp/test-engine");
         let session = Session::new(ws.id);
-        let ctx = ToolContext::new(&ws, session.id);
+        let ctx = EngineToolContext::new(&ws, session.id);
         (ws, session, ctx)
     }
 

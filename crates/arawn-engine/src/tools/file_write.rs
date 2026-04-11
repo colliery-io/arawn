@@ -1,9 +1,7 @@
 use async_trait::async_trait;
 use serde_json::{Value, json};
 
-use crate::context::ToolContext;
-use crate::error::EngineError;
-use crate::tool::{Tool, ToolOutput};
+use crate::tool::{Tool, ToolError, ToolOutput};
 
 /// Write content to a file within the workstream's working directory.
 /// Creates parent directories if needed. Path traversal protection.
@@ -43,20 +41,20 @@ impl Tool for FileWriteTool {
         })
     }
 
-    async fn execute(&self, ctx: &ToolContext, params: Value) -> Result<ToolOutput, EngineError> {
+    async fn execute(&self, ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
         let path_str = params
             .get("path")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| EngineError::Tool("missing 'path' parameter".into()))?;
+            .ok_or_else(|| ToolError::ExecutionFailed("missing 'path' parameter".into()))?;
 
         let content = params
             .get("content")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| EngineError::Tool("missing 'content' parameter".into()))?;
+            .ok_or_else(|| ToolError::ExecutionFailed("missing 'content' parameter".into()))?;
 
         // Path traversal protection: for new files we can't canonicalize the full path,
         // so we canonicalize the root and normalize the relative path to check for .. escapes
-        let canonical_root = match ctx.working_dir.canonicalize() {
+        let canonical_root = match ctx.working_dir().canonicalize() {
             Ok(p) => p,
             Err(e) => {
                 return Ok(ToolOutput::error(format!(
@@ -148,16 +146,18 @@ fn normalize_path(path: &std::path::Path) -> std::path::PathBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::context::EngineToolContext;
     use arawn_core::Workstream;
+    use arawn_tool::ToolContext as _;
     use tempfile::TempDir;
     use uuid::Uuid;
 
-    fn test_ctx(dir: &std::path::Path) -> ToolContext {
+    fn test_ctx(dir: &std::path::Path) -> EngineToolContext {
         let ws = Workstream::new("test", dir);
-        ToolContext::new(&ws, Uuid::new_v4())
+        EngineToolContext::new(&ws, Uuid::new_v4())
     }
 
-    fn mark_read(ctx: &ToolContext, path: &std::path::Path) {
+    fn mark_read(ctx: &EngineToolContext, path: &std::path::Path) {
         let canonical = path.canonicalize().unwrap();
         ctx.mark_file_read(canonical);
     }

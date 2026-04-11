@@ -1,9 +1,7 @@
 use async_trait::async_trait;
 use serde_json::{Value, json};
 
-use crate::context::ToolContext;
-use crate::error::EngineError;
-use crate::tool::{Tool, ToolOutput};
+use crate::tool::{Tool, ToolError, ToolOutput};
 
 /// Edit a file by replacing a string. Path traversal protection.
 pub struct FileEditTool;
@@ -51,21 +49,21 @@ impl Tool for FileEditTool {
         })
     }
 
-    async fn execute(&self, ctx: &ToolContext, params: Value) -> Result<ToolOutput, EngineError> {
+    async fn execute(&self, ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
         let path_str = params
             .get("path")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| EngineError::Tool("missing 'path' parameter".into()))?;
+            .ok_or_else(|| ToolError::ExecutionFailed("missing 'path' parameter".into()))?;
 
         let old_string = params
             .get("old_string")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| EngineError::Tool("missing 'old_string' parameter".into()))?;
+            .ok_or_else(|| ToolError::ExecutionFailed("missing 'old_string' parameter".into()))?;
 
         let new_string = params
             .get("new_string")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| EngineError::Tool("missing 'new_string' parameter".into()))?;
+            .ok_or_else(|| ToolError::ExecutionFailed("missing 'new_string' parameter".into()))?;
 
         let replace_all = params
             .get("replace_all")
@@ -73,13 +71,13 @@ impl Tool for FileEditTool {
             .unwrap_or(false);
 
         // Resolve and validate path
-        let full_path = ctx.working_dir.join(path_str);
+        let full_path = ctx.working_dir().join(path_str);
         let canonical = match full_path.canonicalize() {
             Ok(p) => p,
             Err(e) => return Ok(ToolOutput::error(format!("cannot read '{path_str}': {e}"))),
         };
 
-        let canonical_root = match ctx.working_dir.canonicalize() {
+        let canonical_root = match ctx.working_dir().canonicalize() {
             Ok(p) => p,
             Err(e) => {
                 return Ok(ToolOutput::error(format!(
@@ -148,17 +146,19 @@ impl Tool for FileEditTool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::context::EngineToolContext;
     use arawn_core::Workstream;
+    use arawn_tool::ToolContext as _;
     use tempfile::TempDir;
     use uuid::Uuid;
 
-    fn test_ctx(dir: &std::path::Path) -> ToolContext {
+    fn test_ctx(dir: &std::path::Path) -> EngineToolContext {
         let ws = Workstream::new("test", dir);
-        ToolContext::new(&ws, Uuid::new_v4())
+        EngineToolContext::new(&ws, Uuid::new_v4())
     }
 
     /// Mark a file as read in the context (simulates a prior file_read call).
-    fn mark_read(ctx: &ToolContext, dir: &std::path::Path, name: &str) {
+    fn mark_read(ctx: &EngineToolContext, dir: &std::path::Path, name: &str) {
         let canonical = dir.join(name).canonicalize().unwrap();
         ctx.mark_file_read(canonical);
     }

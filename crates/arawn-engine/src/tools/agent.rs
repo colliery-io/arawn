@@ -12,8 +12,9 @@ use crate::background::{
     BackgroundTaskKind, BackgroundTaskManager, BackgroundTaskStatus, append_output,
 };
 use crate::compactor::Compactor;
-use crate::context::ToolContext;
+use crate::context::EngineToolContext;
 use crate::error::EngineError;
+use crate::tool::ToolError;
 use crate::query_engine::{QueryEngine, QueryEngineConfig};
 use crate::tool::{Tool, ToolCategory, ToolOutput, ToolRegistry};
 
@@ -103,11 +104,11 @@ impl Tool for AgentTool {
         })
     }
 
-    async fn execute(&self, ctx: &ToolContext, params: Value) -> Result<ToolOutput, EngineError> {
+    async fn execute(&self, ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
         let prompt = params
             .get("prompt")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| EngineError::Tool("missing 'prompt' parameter".into()))?;
+            .ok_or_else(|| ToolError::ExecutionFailed("missing 'prompt' parameter".into()))?;
 
         let description = params
             .get("description")
@@ -134,12 +135,12 @@ impl Tool for AgentTool {
 
         let llm = ctx
             .llm()
-            .ok_or_else(|| EngineError::Tool("no LLM available for sub-agent".into()))?
+            .ok_or_else(|| ToolError::ExecutionFailed("no LLM available for sub-agent".into()))?
             .clone();
 
         let parent_model = ctx
             .model()
-            .ok_or_else(|| EngineError::Tool("no model configured for sub-agent".into()))?
+            .ok_or_else(|| ToolError::ExecutionFailed("no model configured for sub-agent".into()))?
             .to_string();
 
         // Look up agent definition
@@ -183,7 +184,7 @@ impl Tool for AgentTool {
         // Background execution: spawn and return immediately
         if run_in_background {
             let mgr = self.bg_manager.as_ref().ok_or_else(|| {
-                EngineError::Tool("Background execution not available (no task manager configured)".into())
+                ToolError::ExecutionFailed("Background execution not available (no task manager configured)".into())
             })?;
 
             let cancel_token = CancellationToken::new();
@@ -206,12 +207,12 @@ impl Tool for AgentTool {
 
             let task_id_clone = task_id.clone();
             tokio::spawn(async move {
-                let mut session = Session::new(child_ctx.session_id);
+                let mut session = Session::new(child_ctx.session_id());
                 session.add_message(Message::User {
                     content: prompt_owned,
                 });
 
-                let result = engine.run(&mut session, &child_ctx).await;
+                let result = engine.run(&mut session, &*child_ctx).await;
 
                 match result {
                     Ok(response) => {
@@ -238,12 +239,12 @@ impl Tool for AgentTool {
         }
 
         // Foreground execution (existing behavior)
-        let mut session = Session::new(ctx.session_id);
+        let mut session = Session::new(ctx.session_id());
         session.add_message(Message::User {
             content: prompt.to_string(),
         });
 
-        match engine.run(&mut session, &child_ctx).await {
+        match engine.run(&mut session, &*child_ctx).await {
             Ok(response) => {
                 info!(description, agent_type = %definition.name, "sub-agent completed");
                 Ok(ToolOutput::success(response))
@@ -264,7 +265,7 @@ impl Tool for AgentTool {
                     });
                 Ok(ToolOutput::success(last_text))
             }
-            Err(e) => Err(EngineError::Tool(format!("sub-agent error: {e}"))),
+            Err(e) => Err(ToolError::ExecutionFailed(format!("sub-agent error: {e}"))),
         }
     }
 }
@@ -275,16 +276,17 @@ mod tests {
     use crate::agent_defs::built_in_agents;
     use arawn_core::Workstream;
     use arawn_llm::{MockLlmClient, MockResponse};
+    use arawn_tool::ToolContext as _;
     use uuid::Uuid;
 
     fn test_ctx_with_mock(
         responses: Vec<MockResponse>,
-    ) -> (ToolContext, Arc<MockLlmClient>, Arc<ToolRegistry>) {
+    ) -> (EngineToolContext, Arc<MockLlmClient>, Arc<ToolRegistry>) {
         let mock = Arc::new(MockLlmClient::new(responses));
         let registry = Arc::new(ToolRegistry::new());
         let ws = Workstream::scratch("/tmp/test");
         let ctx =
-            ToolContext::new(&ws, Uuid::new_v4()).with_llm(mock.clone(), "test-model".to_string());
+            EngineToolContext::new(&ws, Uuid::new_v4()).with_llm(mock.clone(), "test-model".to_string());
         (ctx, mock, registry)
     }
 
@@ -343,7 +345,7 @@ mod tests {
     #[tokio::test]
     async fn sub_agent_no_llm_errors() {
         let ws = Workstream::scratch("/tmp/test");
-        let ctx = ToolContext::new(&ws, Uuid::new_v4());
+        let ctx = EngineToolContext::new(&ws, Uuid::new_v4());
         let registry = Arc::new(ToolRegistry::new());
 
         let tool = AgentTool::new(registry, built_in_agents());
@@ -386,7 +388,7 @@ mod tests {
 
         let tool = AgentTool::new(registry, built_in_agents());
         let result = tool
-            .execute(&deep_ctx, json!({"prompt": "Spawn another"}))
+            .execute(&*deep_ctx, json!({"prompt": "Spawn another"}))
             .await
             .unwrap();
 
@@ -433,7 +435,7 @@ mod tests {
     #[test]
     fn for_sub_agent_increments_depth() {
         let ws = Workstream::scratch("/tmp/test");
-        let ctx = ToolContext::new(&ws, Uuid::new_v4());
+        let ctx = EngineToolContext::new(&ws, Uuid::new_v4());
         assert_eq!(ctx.agent_depth(), 0);
 
         let child = ctx.for_sub_agent();

@@ -3,9 +3,7 @@ use std::time::Duration;
 use async_trait::async_trait;
 use serde_json::{Value, json};
 
-use crate::context::ToolContext;
-use crate::error::EngineError;
-use crate::tool::{Tool, ToolCategory, ToolOutput};
+use crate::tool::{Tool, ToolCategory, ToolError, ToolOutput};
 
 /// Maximum sleep duration in seconds.
 const MAX_SLEEP_SECS: u64 = 300; // 5 minutes
@@ -48,11 +46,11 @@ impl Tool for SleepTool {
         })
     }
 
-    async fn execute(&self, _ctx: &ToolContext, params: Value) -> Result<ToolOutput, EngineError> {
+    async fn execute(&self, _ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
         let seconds = params
             .get("seconds")
             .and_then(|v| v.as_f64())
-            .ok_or_else(|| EngineError::Tool("missing 'seconds' parameter".into()))?;
+            .ok_or_else(|| ToolError::ExecutionFailed("missing 'seconds' parameter".into()))?;
 
         if seconds < 0.0 {
             return Ok(ToolOutput::error("seconds must be non-negative"));
@@ -76,13 +74,14 @@ impl Tool for SleepTool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::context::EngineToolContext;
     use arawn_core::Workstream;
     use serde_json::json;
     use uuid::Uuid;
 
-    fn test_ctx() -> ToolContext {
+    fn test_ctx() -> EngineToolContext {
         let ws = Workstream::scratch("/tmp/test");
-        ToolContext::new(&ws, Uuid::new_v4())
+        EngineToolContext::new(&ws, Uuid::new_v4())
     }
 
     #[test]

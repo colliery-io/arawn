@@ -1,9 +1,7 @@
 use async_trait::async_trait;
 use serde_json::{Value, json};
 
-use crate::context::ToolContext;
-use crate::error::EngineError;
-use crate::tool::{Tool, ToolCategory, ToolOutput};
+use crate::tool::{Tool, ToolCategory, ToolError, ToolOutput};
 
 /// Asks the user structured multiple-choice questions to gather requirements
 /// or clarify ambiguity. Returns the user's selected answers.
@@ -84,14 +82,14 @@ impl Tool for AskUserTool {
         })
     }
 
-    async fn execute(&self, _ctx: &ToolContext, params: Value) -> Result<ToolOutput, EngineError> {
+    async fn execute(&self, _ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
         let questions = params
             .get("questions")
             .and_then(|v| v.as_array())
-            .ok_or_else(|| EngineError::Tool("missing 'questions' parameter".into()))?;
+            .ok_or_else(|| ToolError::ExecutionFailed("missing 'questions' parameter".into()))?;
 
         if questions.is_empty() {
-            return Err(EngineError::Tool(
+            return Err(ToolError::ExecutionFailed(
                 "at least one question is required".into(),
             ));
         }
@@ -141,13 +139,14 @@ impl Tool for AskUserTool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::context::EngineToolContext;
     use arawn_core::Workstream;
     use serde_json::json;
     use uuid::Uuid;
 
-    fn test_ctx() -> ToolContext {
+    fn test_ctx() -> EngineToolContext {
         let ws = Workstream::scratch("/tmp/test");
-        ToolContext::new(&ws, Uuid::new_v4())
+        EngineToolContext::new(&ws, Uuid::new_v4())
     }
 
     #[test]

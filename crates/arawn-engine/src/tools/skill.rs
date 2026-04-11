@@ -3,10 +3,8 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use serde_json::Value;
 
-use crate::context::ToolContext;
-use crate::error::EngineError;
 use crate::skills::SkillRegistry;
-use crate::tool::{Tool, ToolOutput};
+use crate::tool::{Tool, ToolError, ToolOutput};
 
 /// Tool that executes skills (reusable prompt-based workflows).
 ///
@@ -53,11 +51,11 @@ impl Tool for SkillTool {
         })
     }
 
-    async fn execute(&self, _ctx: &ToolContext, params: Value) -> Result<ToolOutput, EngineError> {
+    async fn execute(&self, _ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
         let skill_name = params
             .get("skill")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| EngineError::Tool("missing 'skill' parameter".into()))?;
+            .ok_or_else(|| ToolError::ExecutionFailed("missing 'skill' parameter".into()))?;
 
         let args = params.get("args").and_then(|v| v.as_str()).unwrap_or("");
 
@@ -138,9 +136,9 @@ mod tests {
         registry
     }
 
-    fn ctx() -> ToolContext {
+    fn ctx() -> crate::context::EngineToolContext {
         use arawn_core::Workstream;
-        ToolContext::new(&Workstream::new("test", "/tmp"), uuid::Uuid::new_v4())
+        crate::context::EngineToolContext::new(&Workstream::new("test", "/tmp"), uuid::Uuid::new_v4())
     }
 
     #[tokio::test]

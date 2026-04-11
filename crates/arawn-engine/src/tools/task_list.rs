@@ -6,9 +6,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use uuid::Uuid;
 
-use crate::context::ToolContext;
-use crate::error::EngineError;
-use crate::tool::{Tool, ToolCategory, ToolOutput};
+use crate::tool::{Tool, ToolCategory, ToolError, ToolOutput};
 
 /// Session-scoped task status.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -182,11 +180,11 @@ impl Tool for TaskCreateTool {
         })
     }
 
-    async fn execute(&self, _ctx: &ToolContext, params: Value) -> Result<ToolOutput, EngineError> {
+    async fn execute(&self, _ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
         let subject = params
             .get("subject")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| EngineError::Tool("missing 'subject' parameter".into()))?;
+            .ok_or_else(|| ToolError::ExecutionFailed("missing 'subject' parameter".into()))?;
 
         let description = params
             .get("description")
@@ -272,11 +270,11 @@ impl Tool for TaskUpdateTool {
         })
     }
 
-    async fn execute(&self, _ctx: &ToolContext, params: Value) -> Result<ToolOutput, EngineError> {
+    async fn execute(&self, _ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
         let task_id = params
             .get("task_id")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| EngineError::Tool("missing 'task_id' parameter".into()))?;
+            .ok_or_else(|| ToolError::ExecutionFailed("missing 'task_id' parameter".into()))?;
 
         let status_str = params.get("status").and_then(|v| v.as_str());
 
@@ -294,7 +292,7 @@ impl Tool for TaskUpdateTool {
             Some("in_progress") => Some(TaskStatus::InProgress),
             Some("completed") => Some(TaskStatus::Completed),
             Some(other) => {
-                return Err(EngineError::Tool(format!(
+                return Err(ToolError::ExecutionFailed(format!(
                     "invalid status '{other}', expected: pending, in_progress, completed, deleted"
                 )));
             }
@@ -323,7 +321,7 @@ impl Tool for TaskUpdateTool {
             && updates.description.is_none()
             && updates.active_form.is_none()
         {
-            return Err(EngineError::Tool(
+            return Err(ToolError::ExecutionFailed(
                 "at least one field (status, subject, description, activeForm) must be provided"
                     .into(),
             ));
@@ -384,7 +382,7 @@ impl Tool for TaskListTool {
         })
     }
 
-    async fn execute(&self, _ctx: &ToolContext, _params: Value) -> Result<ToolOutput, EngineError> {
+    async fn execute(&self, _ctx: &dyn arawn_tool::ToolContext, _params: Value) -> Result<ToolOutput, ToolError> {
         let tasks = self.store.list();
 
         if tasks.is_empty() {
@@ -455,11 +453,11 @@ impl Tool for TaskGetTool {
         })
     }
 
-    async fn execute(&self, _ctx: &ToolContext, params: Value) -> Result<ToolOutput, EngineError> {
+    async fn execute(&self, _ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
         let task_id = params
             .get("task_id")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| EngineError::Tool("missing 'task_id' parameter".into()))?;
+            .ok_or_else(|| ToolError::ExecutionFailed("missing 'task_id' parameter".into()))?;
 
         match self.store.get(task_id) {
             Some(task) => Ok(ToolOutput::success(
@@ -477,9 +475,9 @@ mod tests {
     use serde_json::json;
     use uuid::Uuid;
 
-    fn test_ctx() -> ToolContext {
+    fn test_ctx() -> crate::context::EngineToolContext {
         let ws = Workstream::scratch("/tmp/test");
-        ToolContext::new(&ws, Uuid::new_v4())
+        crate::context::EngineToolContext::new(&ws, Uuid::new_v4())
     }
 
     #[test]

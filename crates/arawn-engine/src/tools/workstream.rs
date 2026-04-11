@@ -3,9 +3,7 @@ use std::sync::{Arc, Mutex};
 use async_trait::async_trait;
 use serde_json::{Value, json};
 
-use crate::context::ToolContext;
-use crate::error::EngineError;
-use crate::tool::{Tool, ToolCategory, ToolOutput};
+use crate::tool::{Tool, ToolCategory, ToolError, ToolOutput};
 
 use arawn_core::Workstream;
 use arawn_storage::Store;
@@ -50,7 +48,7 @@ impl Tool for WorkstreamCreateTool {
         })
     }
 
-    async fn execute(&self, ctx: &ToolContext, params: Value) -> Result<ToolOutput, EngineError> {
+    async fn execute(&self, ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
         let name = params
             .get("name")
             .and_then(|v| v.as_str())
@@ -124,10 +122,10 @@ impl Tool for WorkstreamListTool {
         })
     }
 
-    async fn execute(&self, _ctx: &ToolContext, _params: Value) -> Result<ToolOutput, EngineError> {
+    async fn execute(&self, _ctx: &dyn arawn_tool::ToolContext, _params: Value) -> Result<ToolOutput, ToolError> {
         let store = self.store.lock().unwrap();
         let workstreams = store.list_workstreams()
-            .map_err(|e| EngineError::Tool(e.to_string()))?;
+            .map_err(|e| ToolError::ExecutionFailed(e.to_string()))?;
 
         let items: Vec<Value> = workstreams
             .iter()
@@ -162,9 +160,9 @@ mod tests {
         (tmp, Arc::new(Mutex::new(store)))
     }
 
-    fn test_ctx(tmp: &tempfile::TempDir) -> ToolContext {
+    fn test_ctx(tmp: &tempfile::TempDir) -> crate::context::EngineToolContext {
         let ws = Workstream::scratch(tmp.path());
-        ToolContext::new(&ws, Uuid::new_v4())
+        crate::context::EngineToolContext::new(&ws, Uuid::new_v4())
             .with_data_dir(tmp.path().to_path_buf())
     }
 

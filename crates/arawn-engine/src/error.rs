@@ -22,6 +22,17 @@ pub enum EngineError {
     Other(#[from] anyhow::Error),
 }
 
+impl From<arawn_tool::ToolError> for EngineError {
+    fn from(err: arawn_tool::ToolError) -> Self {
+        match err {
+            arawn_tool::ToolError::ExecutionFailed(msg) => EngineError::Tool(msg),
+            arawn_tool::ToolError::NotFound(name) => EngineError::ToolNotFound(name),
+            arawn_tool::ToolError::Llm(msg) => EngineError::Tool(format!("LLM error: {msg}")),
+            arawn_tool::ToolError::Other(e) => EngineError::Other(e),
+        }
+    }
+}
+
 impl EngineError {
     /// Return a user-facing error message with actionable guidance.
     pub fn user_message(&self) -> String {

@@ -4,7 +4,7 @@ use arawn_core::{Message, Session, Workstream};
 use arawn_llm::{MockLlmClient, MockResponse};
 use tempfile::TempDir;
 
-use crate::context::ToolContext;
+use crate::context::EngineToolContext;
 use crate::hooks::HookRunner;
 use crate::permissions::PermissionChecker;
 use crate::plan::PlanModeState;
@@ -246,7 +246,7 @@ impl TestHarness {
     /// Run the engine with the given user input and return results.
     pub async fn run(&self, user_input: impl Into<String>) -> HarnessResult {
         let mut session = Session::new(self.workstream.id);
-        let ctx = ToolContext::new(&self.workstream, session.id);
+        let ctx = EngineToolContext::new(&self.workstream, session.id);
 
         session.add_message(Message::User {
             content: user_input.into(),
@@ -271,7 +271,7 @@ impl TestHarness {
         user_input: impl Into<String>,
     ) -> crate::error::EngineError {
         let mut session = Session::new(self.workstream.id);
-        let ctx = ToolContext::new(&self.workstream, session.id);
+        let ctx = EngineToolContext::new(&self.workstream, session.id);
 
         session.add_message(Message::User {
             content: user_input.into(),

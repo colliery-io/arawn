@@ -3,9 +3,7 @@ use std::path::Path;
 use async_trait::async_trait;
 use serde_json::{Value, json};
 
-use crate::context::ToolContext;
-use crate::error::EngineError;
-use crate::tool::{Tool, ToolOutput};
+use crate::tool::{Tool, ToolError, ToolOutput};
 
 /// Read a file within the workstream's working directory.
 /// Rejects paths that escape the workstream root (path traversal protection).
@@ -53,11 +51,11 @@ impl Tool for FileReadTool {
         })
     }
 
-    async fn execute(&self, ctx: &ToolContext, params: Value) -> Result<ToolOutput, EngineError> {
+    async fn execute(&self, ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
         let path_str = params
             .get("path")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| EngineError::Tool("missing 'path' parameter".into()))?;
+            .ok_or_else(|| ToolError::ExecutionFailed("missing 'path' parameter".into()))?;
 
         let offset = params.get("offset").and_then(|v| v.as_u64()).unwrap_or(0) as usize;
         let limit = params
@@ -66,7 +64,7 @@ impl Tool for FileReadTool {
             .map(|v| v as usize);
 
         // Resolve the path and check for traversal
-        let full_path = ctx.working_dir.join(path_str);
+        let full_path = ctx.working_dir().join(path_str);
         let canonical = match full_path.canonicalize() {
             Ok(p) => p,
             Err(e) => {
@@ -79,7 +77,7 @@ impl Tool for FileReadTool {
             }
         };
 
-        let canonical_root = match ctx.working_dir.canonicalize() {
+        let canonical_root = match ctx.working_dir().canonicalize() {
             Ok(p) => p,
             Err(e) => {
                 return Ok(ToolOutput::error(format!(
@@ -151,14 +149,15 @@ fn normalize_path(path: &Path) -> std::path::PathBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::context::EngineToolContext;
     use arawn_core::Workstream;
     use std::io::Write;
     use tempfile::TempDir;
     use uuid::Uuid;
 
-    fn test_ctx_with_dir(dir: &Path) -> ToolContext {
+    fn test_ctx_with_dir(dir: &Path) -> EngineToolContext {
         let ws = Workstream::new("test", dir);
-        ToolContext::new(&ws, Uuid::new_v4())
+        EngineToolContext::new(&ws, Uuid::new_v4())
     }
 
     #[tokio::test]

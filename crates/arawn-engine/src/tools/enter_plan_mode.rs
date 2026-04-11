@@ -3,10 +3,8 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use serde_json::{Value, json};
 
-use crate::context::ToolContext;
-use crate::error::EngineError;
 use crate::plan::{PlanModeState, generate_slug};
-use crate::tool::{Tool, ToolCategory, ToolOutput};
+use crate::tool::{Tool, ToolCategory, ToolError, ToolOutput};
 
 /// Tool that enters plan mode — restricts the agent to observation-only tools
 /// while it researches and designs an approach. The plan is written to a file
@@ -60,7 +58,7 @@ impl Tool for EnterPlanModeTool {
         })
     }
 
-    async fn execute(&self, ctx: &ToolContext, params: Value) -> Result<ToolOutput, EngineError> {
+    async fn execute(&self, ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
         if self.plan_state.is_active() {
             return Ok(ToolOutput::error(
                 "Already in plan mode. Use ExitPlanMode to present your plan, or continue planning.",
@@ -79,8 +77,8 @@ impl Tool for EnterPlanModeTool {
         // and blocks non-read-only tools automatically.
         let plan_file = self
             .plan_state
-            .enter(crate::permissions::PermissionMode::Default, &slug, &ctx.working_dir)
-            .map_err(|e| EngineError::Tool(format!("Failed to create plan file: {e}")))?;
+            .enter(crate::permissions::PermissionMode::Default, &slug, ctx.working_dir())
+            .map_err(|e| ToolError::ExecutionFailed(format!("Failed to create plan file: {e}")))?;
 
         Ok(ToolOutput::success(format!(
             "Plan mode activated. Only observation tools are now available.\n\n\
@@ -96,13 +94,14 @@ impl Tool for EnterPlanModeTool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::context::EngineToolContext;
     use arawn_core::Workstream;
     use tempfile::TempDir;
     use uuid::Uuid;
 
-    fn test_ctx(dir: &std::path::Path) -> ToolContext {
+    fn test_ctx(dir: &std::path::Path) -> EngineToolContext {
         let ws = Workstream::scratch(dir);
-        ToolContext::new(&ws, Uuid::new_v4())
+        EngineToolContext::new(&ws, Uuid::new_v4())
     }
 
     #[tokio::test]

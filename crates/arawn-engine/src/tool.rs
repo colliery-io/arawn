@@ -1,187 +1,15 @@
-use std::collections::{HashMap, HashSet};
-use std::sync::{Arc, RwLock};
+// Re-export tool types from the arawn-tool crate.
+// The canonical definitions now live in arawn-tool; this module provides
+// backward-compatible re-exports so downstream code can still do
+// `use arawn_engine::tool::{Tool, ToolOutput, ...}`.
 
-use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
-
-use crate::context::ToolContext;
-use crate::error::EngineError;
-
-/// Category of a tool — used for permission checking, context filtering, and
-/// tool grouping. Replaces string-based matching with compile-time verification.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum ToolCategory {
-    /// Core tools always included (think, shell, file ops, glob, grep, skill)
-    Core,
-    /// Task management tools (task_create, task_update, etc.)
-    Task,
-    /// Agent/sub-agent tools
-    Agent,
-    /// Web tools (web_fetch, web_search)
-    Web,
-    /// Memory tools (memory_store, memory_search)
-    Memory,
-    /// Planning tools (enter_plan_mode, exit_plan_mode)
-    Plan,
-    /// Workstream management tools
-    Workstream,
-    /// Always-included utility tools (ask_user, sleep)
-    Utility,
-    /// Background task management (task_output, task_stop)
-    BackgroundTask,
-}
-
-/// Output from a tool execution.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ToolOutput {
-    pub content: String,
-    pub is_error: bool,
-}
-
-impl ToolOutput {
-    pub fn success(content: impl Into<String>) -> Self {
-        Self {
-            content: content.into(),
-            is_error: false,
-        }
-    }
-
-    pub fn error(content: impl Into<String>) -> Self {
-        Self {
-            content: content.into(),
-            is_error: true,
-        }
-    }
-}
-
-/// A tool that can be invoked by the LLM.
-#[async_trait]
-pub trait Tool: Send + Sync {
-    fn name(&self) -> &str;
-    fn description(&self) -> &str;
-    fn parameters_schema(&self) -> Value;
-    async fn execute(&self, ctx: &ToolContext, params: Value) -> Result<ToolOutput, EngineError>;
-
-    /// Whether this tool is side-effect-free (observation only). Side-effect-free
-    /// tools can be executed concurrently when the LLM requests multiple tool calls
-    /// in one turn, and are the only tools allowed during plan mode.
-    /// Examples: reading files, searching code, querying APIs, thinking.
-    /// Default: false (conservative — assumes side effects).
-    fn is_read_only(&self) -> bool {
-        false
-    }
-
-    /// Tool category for permission checking and context filtering.
-    /// Default: Core (included in all turns).
-    fn category(&self) -> ToolCategory {
-        ToolCategory::Core
-    }
-}
-
-/// Registry of available tools. Supports hot-reload via register/unregister at runtime.
-/// The engine queries this fresh each turn so changes take effect immediately.
-pub struct ToolRegistry {
-    tools: RwLock<HashMap<String, Arc<dyn Tool>>>,
-    /// Names of tools loaded from plugins (vs built-in tools).
-    plugin_tools: RwLock<HashSet<String>>,
-}
-
-impl ToolRegistry {
-    pub fn new() -> Self {
-        Self {
-            tools: RwLock::new(HashMap::new()),
-            plugin_tools: RwLock::new(HashSet::new()),
-        }
-    }
-
-    /// Register a built-in tool.
-    pub fn register(&self, tool: Box<dyn Tool>) {
-        let name = tool.name().to_string();
-        self.tools.write().unwrap().insert(name, Arc::from(tool));
-    }
-
-    /// Register a plugin-provided tool (tracked for hot-reload).
-    pub fn register_plugin(&self, tool: Box<dyn Tool>) {
-        let name = tool.name().to_string();
-        self.tools
-            .write()
-            .unwrap()
-            .insert(name.clone(), Arc::from(tool));
-        self.plugin_tools.write().unwrap().insert(name);
-    }
-
-    /// Register an already-Arc'd tool (used when building filtered registries).
-    pub fn register_arc(&self, tool: Arc<dyn Tool>) {
-        let name = tool.name().to_string();
-        self.tools.write().unwrap().insert(name, tool);
-    }
-
-    pub fn unregister(&self, name: &str) -> Option<Arc<dyn Tool>> {
-        self.plugin_tools.write().unwrap().remove(name);
-        self.tools.write().unwrap().remove(name)
-    }
-
-    /// Returns the names of all currently loaded plugin tools.
-    pub fn plugin_tool_names(&self) -> Vec<String> {
-        self.plugin_tools.read().unwrap().iter().cloned().collect()
-    }
-
-    /// Get a tool by name. Returns a cloned Arc — no lock held after return.
-    pub fn get(&self, name: &str) -> Option<Arc<dyn Tool>> {
-        self.tools.read().unwrap().get(name).cloned()
-    }
-
-    pub fn tool_definitions(&self) -> Vec<arawn_llm::ToolDefinition> {
-        let tools = self.tools.read().unwrap();
-        tools
-            .values()
-            .map(|t| arawn_llm::ToolDefinition {
-                name: t.name().to_string(),
-                description: t.description().to_string(),
-                parameters: t.parameters_schema(),
-            })
-            .collect()
-    }
-
-    pub fn len(&self) -> usize {
-        self.tools.read().unwrap().len()
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
-
-    /// Unregister all tools whose names start with the given prefix.
-    /// Used for bulk removal of MCP server tools (e.g. `mcp__server_name__`).
-    pub fn unregister_by_prefix(&self, prefix: &str) -> Vec<String> {
-        let names: Vec<String> = self
-            .tools
-            .read()
-            .unwrap()
-            .keys()
-            .filter(|name| name.starts_with(prefix))
-            .cloned()
-            .collect();
-
-        for name in &names {
-            self.unregister(name);
-        }
-
-        names
-    }
-}
-
-impl Default for ToolRegistry {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+pub use arawn_tool::{Tool, ToolCategory, ToolError, ToolOutput, ToolRegistry};
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serde_json::json;
+    use async_trait::async_trait;
+    use serde_json::{Value, json};
     use std::sync::Arc;
 
     /// A minimal test tool for unit testing the registry.
@@ -213,9 +41,9 @@ mod tests {
 
         async fn execute(
             &self,
-            _ctx: &ToolContext,
+            _ctx: &dyn arawn_tool::ToolContext,
             _params: Value,
-        ) -> Result<ToolOutput, EngineError> {
+        ) -> Result<ToolOutput, ToolError> {
             Ok(ToolOutput::success("dummy result"))
         }
     }

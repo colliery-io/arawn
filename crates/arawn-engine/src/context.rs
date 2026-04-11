@@ -1,5 +1,5 @@
 use std::collections::HashSet;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 
 use uuid::Uuid;
@@ -7,15 +7,19 @@ use uuid::Uuid;
 use arawn_core::Workstream;
 use arawn_llm::LlmClient;
 
-use crate::token_estimator::ModelLimits;
+use arawn_tool::ModelLimits;
 
 /// Maximum sub-agent nesting depth. Prevents infinite recursion.
 const MAX_AGENT_DEPTH: u8 = 3;
 
-/// Execution context provided to tools.
+/// Concrete execution context provided to tools within the engine.
+///
+/// Implements the `arawn_tool::ToolContext` trait so it can be passed to
+/// tool execute methods as `&dyn arawn_tool::ToolContext`.
+///
 /// Immutable for the lifetime of a session — workstream binding never changes.
 #[derive(Clone)]
-pub struct ToolContext {
+pub struct EngineToolContext {
     pub session_id: Uuid,
     pub working_dir: PathBuf,
     workstream_name: String,
@@ -37,9 +41,9 @@ pub struct ToolContext {
     read_files: Arc<RwLock<HashSet<PathBuf>>>,
 }
 
-impl std::fmt::Debug for ToolContext {
+impl std::fmt::Debug for EngineToolContext {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("ToolContext")
+        f.debug_struct("EngineToolContext")
             .field("session_id", &self.session_id)
             .field("working_dir", &self.working_dir)
             .field("workstream_name", &self.workstream_name)
@@ -50,7 +54,7 @@ impl std::fmt::Debug for ToolContext {
     }
 }
 
-impl ToolContext {
+impl EngineToolContext {
     pub fn new(workstream: &Workstream, session_id: Uuid) -> Self {
         Self {
             session_id,
@@ -90,23 +94,22 @@ impl ToolContext {
         self.data_dir = Some(dir);
         self
     }
+}
 
-    /// Check if a path is in the allowed list (exact match on canonical paths).
-    pub fn is_allowed_path(&self, path: &std::path::Path) -> bool {
-        if let Ok(canonical) = path.canonicalize() {
-            self.allowed_paths
-                .iter()
-                .any(|p| p.canonicalize().map(|c| c == canonical).unwrap_or(false))
-        } else {
-            // File doesn't exist yet — check non-canonical match for write access
-            self.allowed_paths.iter().any(|p| p == path)
-        }
+// ---------------------------------------------------------------------------
+// Implement the arawn_tool::ToolContext trait
+// ---------------------------------------------------------------------------
+
+impl arawn_tool::ToolContext for EngineToolContext {
+    fn working_dir(&self) -> &Path {
+        &self.working_dir
     }
 
-    /// Validate that a path stays within the workstream root or is in the allowed list.
-    /// Returns `Ok(canonical_path)` if valid, or `Err(error_message)` if the path escapes.
-    /// For paths that don't exist yet (e.g., glob patterns), uses heuristic normalization.
-    pub fn validate_path(&self, path_str: &str) -> Result<std::path::PathBuf, String> {
+    fn session_id(&self) -> Uuid {
+        self.session_id
+    }
+
+    fn validate_path(&self, path_str: &str) -> Result<PathBuf, String> {
         let full_path = self.working_dir.join(path_str);
 
         let canonical_root = self
@@ -131,57 +134,62 @@ impl ToolContext {
         }
     }
 
-    pub fn workstream_name(&self) -> &str {
-        &self.workstream_name
+    fn is_allowed_path(&self, path: &Path) -> bool {
+        if let Ok(canonical) = path.canonicalize() {
+            self.allowed_paths
+                .iter()
+                .any(|p| p.canonicalize().map(|c| c == canonical).unwrap_or(false))
+        } else {
+            // File doesn't exist yet — check non-canonical match for write access
+            self.allowed_paths.iter().any(|p| p == path)
+        }
     }
 
-    /// Get the LLM client if available.
-    pub fn llm(&self) -> Option<&Arc<dyn LlmClient>> {
-        self.llm.as_ref()
-    }
-
-    /// Get the model name for sub-queries.
-    pub fn model(&self) -> Option<&str> {
-        self.model.as_deref()
-    }
-
-    /// Get model limits (for sub-agent compaction).
-    pub fn model_limits(&self) -> &ModelLimits {
-        &self.model_limits
-    }
-
-    /// Get data directory for tool result persistence.
-    pub fn data_dir(&self) -> Option<&PathBuf> {
-        self.data_dir.as_ref()
-    }
-
-    /// Current agent nesting depth.
-    pub fn agent_depth(&self) -> u8 {
-        self.agent_depth
-    }
-
-    /// Whether another sub-agent can be spawned at this depth.
-    pub fn can_spawn_agent(&self) -> bool {
-        self.agent_depth < MAX_AGENT_DEPTH
-    }
-
-    /// Create a child context for a sub-agent (increments depth).
-    /// Sub-agents get their own fresh read-file tracker.
-    pub fn for_sub_agent(&self) -> Self {
-        let mut child = self.clone();
-        child.agent_depth = self.agent_depth.saturating_add(1);
-        child.read_files = Arc::new(RwLock::new(HashSet::new()));
-        child
-    }
-
-    /// Record that a file has been read in this session.
-    pub fn mark_file_read(&self, path: PathBuf) {
+    fn mark_file_read(&self, path: PathBuf) {
         self.read_files.write().unwrap().insert(path);
     }
 
-    /// Check if a file has been read in this session.
-    pub fn has_read_file(&self, path: &PathBuf) -> bool {
+    fn has_read_file(&self, path: &Path) -> bool {
         self.read_files.read().unwrap().contains(path)
+    }
+
+    fn llm(&self) -> Option<&Arc<dyn LlmClient>> {
+        self.llm.as_ref()
+    }
+
+    fn model(&self) -> Option<&str> {
+        self.model.as_deref()
+    }
+
+    fn model_limits(&self) -> &ModelLimits {
+        &self.model_limits
+    }
+
+    fn data_dir(&self) -> Option<&PathBuf> {
+        self.data_dir.as_ref()
+    }
+
+    fn agent_depth(&self) -> u8 {
+        self.agent_depth
+    }
+
+    fn can_spawn_agent(&self) -> bool {
+        self.agent_depth < MAX_AGENT_DEPTH
+    }
+
+    fn for_sub_agent(&self) -> Box<dyn arawn_tool::ToolContext> {
+        let mut child = self.clone();
+        child.agent_depth = self.agent_depth.saturating_add(1);
+        child.read_files = Arc::new(RwLock::new(HashSet::new()));
+        Box::new(child)
+    }
+
+    fn workstream_name(&self) -> &str {
+        &self.workstream_name
+    }
+
+    fn allowed_paths(&self) -> &[PathBuf] {
+        &self.allowed_paths
     }
 }
 
@@ -194,17 +202,17 @@ mod tests {
     fn context_from_workstream() {
         let ws = Workstream::new("Test WS", "/tmp/test-ws");
         let session_id = Uuid::new_v4();
-        let ctx = ToolContext::new(&ws, session_id);
+        let ctx = EngineToolContext::new(&ws, session_id);
 
         assert_eq!(ctx.session_id, session_id);
         assert_eq!(ctx.working_dir, PathBuf::from("/tmp/test-ws"));
-        assert_eq!(ctx.workstream_name(), "Test WS");
+        assert_eq!(arawn_tool::ToolContext::workstream_name(&ctx), "Test WS");
     }
 
     #[test]
     fn context_is_clone() {
         let ws = Workstream::new("Clone Test", "/tmp/clone");
-        let ctx = ToolContext::new(&ws, Uuid::new_v4());
+        let ctx = EngineToolContext::new(&ws, Uuid::new_v4());
         let cloned = ctx.clone();
         assert_eq!(ctx.session_id, cloned.session_id);
         assert_eq!(ctx.working_dir, cloned.working_dir);
@@ -212,7 +220,7 @@ mod tests {
 }
 
 /// Normalize a path by resolving . and .. components without touching the filesystem.
-fn normalize_path_components(path: &std::path::Path) -> PathBuf {
+fn normalize_path_components(path: &Path) -> PathBuf {
     use std::path::Component;
     let mut components = Vec::new();
     for component in path.components() {

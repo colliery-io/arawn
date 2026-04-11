@@ -12,6 +12,7 @@ arawn-core = { workspace = true }
 arawn-llm = { workspace = true }
 arawn-memory = { path = "../arawn-memory" }
 arawn-storage = { workspace = true }
+arawn-tool = { workspace = true }
 arawn-embed = { path = "../arawn-embed" }
 arawn-tool-plugin = { workspace = true, optional = true }
 dirs = "6"

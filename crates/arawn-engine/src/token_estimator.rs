@@ -45,70 +45,8 @@ impl TokenEstimator {
     }
 }
 
-/// Model context window limits and compaction threshold.
-#[derive(Debug, Clone)]
-pub struct ModelLimits {
-    /// Total context window in tokens.
-    pub context_window: u32,
-    /// Fraction of context window that triggers compaction (e.g., 0.85).
-    pub compaction_threshold: f32,
-}
-
-impl ModelLimits {
-    pub fn new(context_window: u32, compaction_threshold: f32) -> Self {
-        Self {
-            context_window,
-            compaction_threshold,
-        }
-    }
-
-    /// Get default limits for a known model name.
-    pub fn for_model(model: &str) -> Self {
-        let context_window = match model {
-            m if m.contains("llama-3.3") => 128_000,
-            m if m.contains("llama-3.1") => 128_000,
-            m if m.contains("llama-4") => 128_000,
-            m if m.contains("gpt-oss") => 128_000,
-            m if m.contains("qwen") => 32_000,
-            m if m.contains("claude-3") => 200_000,
-            m if m.contains("claude-sonnet") || m.contains("claude-opus") => 200_000,
-            _ => 128_000, // safe default
-        };
-        Self {
-            context_window,
-            compaction_threshold: 0.85,
-        }
-    }
-
-    /// Check if the total estimated tokens exceed the compaction threshold.
-    pub fn should_compact(
-        &self,
-        session_tokens: u32,
-        tool_tokens: u32,
-        system_tokens: u32,
-    ) -> bool {
-        let total = session_tokens + tool_tokens + system_tokens;
-        let threshold = (self.context_window as f32 * self.compaction_threshold) as u32;
-        total > threshold
-    }
-
-    /// The token budget available after accounting for tools and system prompt.
-    pub fn available_for_messages(&self, tool_tokens: u32, system_tokens: u32) -> u32 {
-        let threshold = (self.context_window as f32 * self.compaction_threshold) as u32;
-        threshold
-            .saturating_sub(tool_tokens)
-            .saturating_sub(system_tokens)
-    }
-}
-
-impl Default for ModelLimits {
-    fn default() -> Self {
-        Self {
-            context_window: 128_000,
-            compaction_threshold: 0.85,
-        }
-    }
-}
+// Re-export ModelLimits from arawn-tool crate.
+pub use arawn_tool::ModelLimits;
 
 #[cfg(test)]
 mod tests {

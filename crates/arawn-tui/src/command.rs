@@ -85,6 +85,12 @@ impl CommandRegistry {
             description: "Enter plan mode (observation only)".into(),
             kind: CommandKind::BuiltIn,
         });
+        // Permission mode
+        self.commands.push(CommandInfo {
+            name: "accept".into(),
+            description: "Set permission mode (on/off/edits)".into(),
+            kind: CommandKind::BuiltIn,
+        });
         // Workstream/session management
         self.commands.push(CommandInfo {
             name: "workstream".into(),
@@ -126,6 +132,12 @@ impl CommandRegistry {
             name: "mcp".into(),
             description: "List connected MCP servers".into(),
             kind: CommandKind::Inventory,
+        });
+        // Workflow commands
+        self.commands.push(CommandInfo {
+            name: "workflows".into(),
+            description: "List workflows and execution status".into(),
+            kind: CommandKind::BuiltIn,
         });
         // Memory commands
         self.commands.push(CommandInfo {
@@ -252,6 +264,12 @@ pub enum CommandResult {
     SessionList,
     /// Promote current scratch session to a workstream.
     PromoteSession(String),
+    /// Set permission mode (mode string: "bypass", "default", "accept_edits", "plan").
+    SetPermissionMode(String),
+    /// List installed workflows.
+    WorkflowList,
+    /// Show workflow execution status.
+    WorkflowStatus(Option<String>),
 }
 
 /// Execute a parsed slash command against the registry.
@@ -309,7 +327,31 @@ pub fn execute_command(cmd: &ParsedCommand, registry: &CommandRegistry) -> Comma
                         CommandResult::PromoteSession(cmd.args.clone())
                     }
                 }
-                "plan" => CommandResult::EnterPlan,
+                "plan" => CommandResult::SetPermissionMode("plan".into()),
+                "accept" => {
+                    let sub = cmd.args.split_whitespace().next().unwrap_or("");
+                    match sub {
+                        "on" => CommandResult::SetPermissionMode("bypass".into()),
+                        "off" => CommandResult::SetPermissionMode("default".into()),
+                        "edits" => CommandResult::SetPermissionMode("accept_edits".into()),
+                        _ => CommandResult::SystemMessage(
+                            "Usage: /accept <on|off|edits>\n\n  on      Full autonomy (bypass all permissions)\n  off     Restore default permission prompts\n  edits   Auto-allow file writes, prompt for shell".into()
+                        ),
+                    }
+                }
+                "workflows" => {
+                    let sub = cmd.args.split_whitespace().next().unwrap_or("list");
+                    match sub {
+                        "list" | "" => CommandResult::WorkflowList,
+                        "status" => {
+                            let name = cmd.args.split_whitespace().nth(1).map(String::from);
+                            CommandResult::WorkflowStatus(name)
+                        }
+                        _ => CommandResult::SystemMessage(
+                            "Usage: /workflows [list|status [name]]\n\n  list           List installed workflows\n  status [name]  Show recent execution status".into()
+                        ),
+                    }
+                }
                 "remember" => {
                     if cmd.args.is_empty() {
                         CommandResult::SystemMessage("Usage: /remember <fact to store>".into())

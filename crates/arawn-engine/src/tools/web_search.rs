@@ -1,9 +1,7 @@
 use async_trait::async_trait;
 use serde_json::{Value, json};
 
-use crate::context::ToolContext;
-use crate::error::EngineError;
-use crate::tool::{Tool, ToolCategory, ToolOutput};
+use crate::tool::{Tool, ToolCategory, ToolError, ToolOutput};
 
 /// Searches the web and returns results to inform responses.
 pub struct WebSearchTool;
@@ -55,11 +53,11 @@ impl Tool for WebSearchTool {
         })
     }
 
-    async fn execute(&self, _ctx: &ToolContext, params: Value) -> Result<ToolOutput, EngineError> {
+    async fn execute(&self, _ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
         let query = params
             .get("query")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| EngineError::Tool("missing 'query' parameter".into()))?;
+            .ok_or_else(|| ToolError::ExecutionFailed("missing 'query' parameter".into()))?;
 
         let allowed_domains: Vec<String> = params
             .get("allowed_domains")
@@ -96,7 +94,7 @@ impl Tool for WebSearchTool {
         let client = reqwest::Client::builder()
             .timeout(std::time::Duration::from_secs(30))
             .build()
-            .map_err(|e| EngineError::Tool(format!("client error: {e}")))?;
+            .map_err(|e| ToolError::ExecutionFailed(format!("client error: {e}")))?;
 
         let url = format!(
             "https://html.duckduckgo.com/html/?q={}",
@@ -108,12 +106,12 @@ impl Tool for WebSearchTool {
             .header("User-Agent", "Arawn/0.1")
             .send()
             .await
-            .map_err(|e| EngineError::Tool(format!("search error: {e}")))?;
+            .map_err(|e| ToolError::ExecutionFailed(format!("search error: {e}")))?;
 
         let body = response
             .text()
             .await
-            .map_err(|e| EngineError::Tool(format!("read error: {e}")))?;
+            .map_err(|e| ToolError::ExecutionFailed(format!("read error: {e}")))?;
 
         let mut results = parse_ddg_results(&body, 10);
 

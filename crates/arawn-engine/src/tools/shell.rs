@@ -10,9 +10,7 @@ use tracing::{debug, info, warn};
 use crate::background::{
     BackgroundTaskKind, BackgroundTaskManager, BackgroundTaskStatus, append_output,
 };
-use crate::context::ToolContext;
-use crate::error::EngineError;
-use crate::tool::{Tool, ToolOutput};
+use crate::tool::{Tool, ToolError, ToolOutput};
 
 /// Execute a shell command within an OS-level sandbox.
 ///
@@ -58,9 +56,9 @@ impl ShellTool {
         &self,
         command: &str,
         working_dir: &std::path::Path,
-    ) -> Result<ToolOutput, EngineError> {
+    ) -> Result<ToolOutput, ToolError> {
         let mgr = self.bg_manager.as_ref().ok_or_else(|| {
-            EngineError::Tool(
+            ToolError::ExecutionFailed(
                 "Background execution not available (no task manager configured)".into(),
             )
         })?;
@@ -76,7 +74,7 @@ impl ShellTool {
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped())
             .spawn()
-            .map_err(|e| EngineError::Tool(format!("Failed to spawn background command: {e}")))?;
+            .map_err(|e| ToolError::ExecutionFailed(format!("Failed to spawn background command: {e}")))?;
 
         let cancel_token = CancellationToken::new();
         let cancel_clone = cancel_token.clone();
@@ -365,11 +363,11 @@ impl Tool for ShellTool {
         })
     }
 
-    async fn execute(&self, ctx: &ToolContext, params: Value) -> Result<ToolOutput, EngineError> {
+    async fn execute(&self, ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
         let command = params
             .get("command")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| EngineError::Tool("missing 'command' parameter".into()))?;
+            .ok_or_else(|| ToolError::ExecutionFailed("missing 'command' parameter".into()))?;
 
         let timeout_ms = params
             .get("timeout_ms")
@@ -389,17 +387,17 @@ impl Tool for ShellTool {
                 command,
                 "background shell command will run UNSANDBOXED — sandbox does not support background processes"
             );
-            return self.spawn_background(command, &ctx.working_dir).await;
+            return self.spawn_background(command, &ctx.working_dir()).await;
         }
 
-        debug!(command, timeout_ms, cwd = ?ctx.working_dir, "executing sandboxed shell command");
+        debug!(command, timeout_ms, cwd = ?ctx.working_dir(), "executing sandboxed shell command");
 
         // Try sandboxed execution, fall back to unsandboxed with warning
-        match execute_sandboxed(command, &ctx.working_dir, timeout_ms, &self.network_tools).await {
+        match execute_sandboxed(command, &ctx.working_dir(), timeout_ms, &self.network_tools).await {
             Ok(output) => Ok(output),
             Err(SandboxExecError::Unavailable(msg)) => {
                 warn!("sandbox unavailable: {msg} — running unsandboxed");
-                let mut output = execute_unsandboxed(command, &ctx.working_dir, timeout_ms).await?;
+                let mut output = execute_unsandboxed(command, &ctx.working_dir(), timeout_ms).await?;
                 // Prepend warning so the LLM (and user via tool result) sees the sandbox was bypassed
                 output.content = format!(
                     "[WARNING: Command ran without sandbox protection ({msg})]\n{}",
@@ -512,7 +510,7 @@ async fn execute_unsandboxed(
     command: &str,
     working_dir: &std::path::Path,
     timeout_ms: u64,
-) -> Result<ToolOutput, EngineError> {
+) -> Result<ToolOutput, ToolError> {
     let result = tokio::time::timeout(
         std::time::Duration::from_millis(timeout_ms),
         Command::new("sh")
@@ -557,19 +555,20 @@ async fn execute_unsandboxed(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::context::EngineToolContext;
     use arawn_core::Workstream;
     use serde_json::json;
     use serial_test::serial;
     use uuid::Uuid;
 
-    fn test_ctx() -> ToolContext {
+    fn test_ctx() -> EngineToolContext {
         let ws = Workstream::scratch("/tmp");
-        ToolContext::new(&ws, Uuid::new_v4())
+        EngineToolContext::new(&ws, Uuid::new_v4())
     }
 
-    fn test_ctx_in(dir: &std::path::Path) -> ToolContext {
+    fn test_ctx_in(dir: &std::path::Path) -> EngineToolContext {
         let ws = Workstream::scratch(dir);
-        ToolContext::new(&ws, Uuid::new_v4())
+        EngineToolContext::new(&ws, Uuid::new_v4())
     }
 
     #[tokio::test]

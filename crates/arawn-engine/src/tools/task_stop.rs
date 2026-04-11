@@ -5,9 +5,7 @@ use serde_json::{Value, json};
 use tracing::info;
 
 use crate::background::{BackgroundTaskManager, BackgroundTaskStatus};
-use crate::context::ToolContext;
-use crate::error::EngineError;
-use crate::tool::{Tool, ToolCategory, ToolOutput};
+use crate::tool::{Tool, ToolCategory, ToolError, ToolOutput};
 
 /// Stop a running background task.
 pub struct TaskStopTool {
@@ -52,11 +50,11 @@ impl Tool for TaskStopTool {
         })
     }
 
-    async fn execute(&self, _ctx: &ToolContext, params: Value) -> Result<ToolOutput, EngineError> {
+    async fn execute(&self, _ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
         let task_id = params
             .get("task_id")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| EngineError::Tool("missing 'task_id' parameter".into()))?;
+            .ok_or_else(|| ToolError::ExecutionFailed("missing 'task_id' parameter".into()))?;
 
         // Check task exists
         let status = self.bg_manager.status(task_id);
@@ -87,9 +85,9 @@ mod tests {
     use tokio_util::sync::CancellationToken;
     use uuid::Uuid;
 
-    fn test_ctx() -> ToolContext {
+    fn test_ctx() -> crate::context::EngineToolContext {
         let ws = Workstream::scratch("/tmp/test");
-        ToolContext::new(&ws, Uuid::new_v4())
+        crate::context::EngineToolContext::new(&ws, Uuid::new_v4())
     }
 
     #[tokio::test]

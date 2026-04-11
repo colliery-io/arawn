@@ -29,7 +29,10 @@ pub use background::{
     append_output,
 };
 pub use compactor::Compactor;
-pub use context::ToolContext;
+pub use context::EngineToolContext;
+/// Backward-compatible alias: downstream code that used `arawn_engine::ToolContext`
+/// continues to work via this re-export.
+pub use context::EngineToolContext as ToolContext;
 pub use error::EngineError;
 pub use hooks::{
     HookConfig, HookEvent, HookFileWatcher, HookInput, HookRunner, load_hooks_from_file,
@@ -53,7 +56,7 @@ pub use plugin_watcher::PluginWatcher;
 pub use query_engine::{ProgressEvent, PromptContext, QueryEngine, QueryEngineConfig};
 pub use system_prompt::{ContextFile, SystemPromptBuilder, find_context_files};
 pub use token_estimator::{ModelLimits, TokenEstimator};
-pub use tool::{Tool, ToolCategory, ToolOutput, ToolRegistry};
+pub use tool::{Tool, ToolCategory, ToolError, ToolOutput, ToolRegistry};
 pub use skills::{SkillDefinition, SkillRegistry, format_skill_listing, load_merged_skills};
 pub use tools::{
     AgentTool, AskUserTool, EnterPlanModeTool, ExitPlanModeTool, FileEditTool, FileReadTool,
