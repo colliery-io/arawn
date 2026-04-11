@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-04-10T02:23:20Z | 157 files | Python, Rust
+> Generated: 2026-04-11T00:41:06Z | 164 files | Python, Rust
 
 ## Project Structure
 
@@ -122,16 +122,19 @@
 │   │       ├── lib.rs
 │   │       └── manager.rs
 │   ├── arawn-memory/
-│   │   └── src/
-│   │       ├── error.rs
-│   │       ├── inject.rs
-│   │       ├── lib.rs
-│   │       ├── manager.rs
-│   │       ├── shortcodes.rs
-│   │       ├── stack.rs
-│   │       ├── store.rs
-│   │       ├── types.rs
-│   │       └── vector.rs
+│   │   ├── src/
+│   │   │   ├── error.rs
+│   │   │   ├── inject.rs
+│   │   │   ├── lib.rs
+│   │   │   ├── manager.rs
+│   │   │   ├── shortcodes.rs
+│   │   │   ├── stack.rs
+│   │   │   ├── store.rs
+│   │   │   ├── types.rs
+│   │   │   └── vector.rs
+│   │   └── tests/
+│   │       ├── longmemeval_bench.rs
+│   │       └── recall_eval.rs
 │   ├── arawn-service/
 │   │   └── src/
 │   │       ├── error.rs
@@ -172,6 +175,13 @@
 │   │       ├── skills.rs
 │   │       ├── websocket.rs
 │   │       └── workflows.rs
+│   ├── arawn-tool/
+│   │   └── src/
+│   │       ├── context.rs
+│   │       ├── error.rs
+│   │       ├── lib.rs
+│   │       ├── registry.rs
+│   │       └── tool.rs
 │   ├── arawn-tool-plugin/
 │   │   └── src/
 │   │       └── lib.rs
@@ -308,48 +318,60 @@
 
 #### crates/arawn/src/local_service.rs
 
-- pub `LocalService` struct L27-53 — `{ store: Arc<Mutex<Store>>, data_dir: PathBuf, llm: Arc<dyn LlmClient>, registry...` — In-process implementation of ArawnService.
-- pub `new` function L56-80 — `( store: Store, data_dir: PathBuf, llm: Arc<dyn LlmClient>, registry: Arc<ToolRe...`
-- pub `with_permission_rules` function L82-85 — `(mut self, rules: Vec<PermissionRule>) -> Self`
-- pub `shared_store` function L89-91 — `(&self) -> Arc<Mutex<Store>>` — Get a reference to the shared permission rules for hot-reload.
-- pub `shared_llm` function L93-95 — `(&self) -> Arc<dyn LlmClient>`
-- pub `shared_registry` function L97-99 — `(&self) -> Arc<ToolRegistry>`
-- pub `engine_config` function L101-103 — `(&self) -> &QueryEngineConfig`
-- pub `shared_permission_rules` function L105-107 — `(&self) -> Arc<std::sync::RwLock<Vec<PermissionRule>>>`
-- pub `shared_permission_mode` function L109-111 — `(&self) -> Arc<std::sync::RwLock<arawn_engine::permissions::PermissionMode>>`
-- pub `with_skill_registry` function L113-116 — `(mut self, registry: Arc<arawn_engine::skills::SkillRegistry>) -> Self`
-- pub `with_plugin_registry` function L118-121 — `(mut self, registry: Arc<arawn_engine::plugins::PluginRegistry>) -> Self`
-- pub `with_plan_state` function L123-126 — `(mut self, state: Arc<PlanModeState>) -> Self`
-- pub `with_background_tasks` function L128-131 — `(mut self, manager: Arc<BackgroundTaskManager>) -> Self`
-- pub `with_memory_manager` function L133-136 — `(mut self, mgr: Arc<arawn_memory::MemoryManager>) -> Self`
-- pub `query_inventory` function L140-212 — `(&self, kind: &str) -> serde_json::Value` — Query available inventory for slash commands.
-- pub `list_available_commands` function L215-230 — `(&self) -> serde_json::Value` — List available commands (built-ins + user-invocable skills) for autocomplete cache.
-- pub `remember_fact` function L233-279 — `(&self, text: &str) -> serde_json::Value` — Store a fact in the KB via /remember command.
-- pub `memory_summary` function L282-320 — `(&self) -> serde_json::Value` — Get KB summary for /memory command.
-- pub `forget_entity` function L323-372 — `(&self, query: &str) -> serde_json::Value` — Forget/delete an entity via /forget command.
-- pub `promote_session` function L376-430 — `( &self, session_id: Uuid, workstream_name: &str, ) -> Result<serde_json::Value,...` — Promote a scratch session to a named workstream.
--  `LocalService` type L55-431 — `= LocalService`
--  `infer_entity_type` function L434-447 — `(text: &str) -> (arawn_memory::EntityType, String)` — Infer entity type from text patterns.
--  `LocalService` type L452-891 — `impl ArawnService for LocalService`
--  `list_workstreams` function L453-468 — `(&self) -> Result<Vec<WorkstreamInfo>, ServiceError>`
--  `create_workstream` function L470-487 — `( &self, name: String, root_dir: PathBuf, ) -> Result<WorkstreamInfo, ServiceErr...`
--  `list_sessions` function L489-508 — `( &self, workstream_id: Option<Uuid>, ) -> Result<Vec<SessionInfo>, ServiceError...`
--  `create_session` function L510-531 — `( &self, workstream_id: Option<Uuid>, ) -> Result<SessionInfo, ServiceError>`
--  `load_session` function L533-560 — `(&self, id: Uuid) -> Result<SessionDetail, ServiceError>`
--  `send_message` function L562-875 — `( &self, session_id: Uuid, content: String, ) -> Result<Pin<Box<dyn futures::Str...`
--  `cancel` function L877-890 — `(&self, session_id: Uuid) -> Result<(), ServiceError>`
--  `resolve_ws_dir_from_store` function L894-905 — `(store: &Store, ws_id: Option<Uuid>) -> Result<String, ServiceError>` — Resolve workstream directory name from store.
--  `first_sentence` function L909-920 — `(s: &str) -> String` — Extract the first sentence and sanitize for use in a markdown table cell.
+- pub `LocalService` struct L30-56 — `{ store: Arc<Mutex<Store>>, data_dir: PathBuf, llm: Arc<dyn LlmClient>, registry...` — In-process implementation of ArawnService.
+- pub `new` function L59-83 — `( store: Store, data_dir: PathBuf, llm: Arc<dyn LlmClient>, registry: Arc<ToolRe...`
+- pub `with_permission_rules` function L85-88 — `(mut self, rules: Vec<PermissionRule>) -> Self`
+- pub `shared_store` function L92-94 — `(&self) -> Arc<Mutex<Store>>` — Get a reference to the shared permission rules for hot-reload.
+- pub `shared_llm` function L96-98 — `(&self) -> Arc<dyn LlmClient>`
+- pub `shared_registry` function L100-102 — `(&self) -> Arc<ToolRegistry>`
+- pub `engine_config` function L104-106 — `(&self) -> &QueryEngineConfig`
+- pub `shared_permission_rules` function L108-110 — `(&self) -> Arc<std::sync::RwLock<Vec<PermissionRule>>>`
+- pub `shared_permission_mode` function L112-114 — `(&self) -> Arc<std::sync::RwLock<arawn_engine::permissions::PermissionMode>>`
+- pub `with_skill_registry` function L116-119 — `(mut self, registry: Arc<arawn_engine::skills::SkillRegistry>) -> Self`
+- pub `with_plugin_registry` function L121-124 — `(mut self, registry: Arc<arawn_engine::plugins::PluginRegistry>) -> Self`
+- pub `with_plan_state` function L126-129 — `(mut self, state: Arc<PlanModeState>) -> Self`
+- pub `with_background_tasks` function L131-134 — `(mut self, manager: Arc<BackgroundTaskManager>) -> Self`
+- pub `with_memory_manager` function L136-139 — `(mut self, mgr: Arc<arawn_memory::MemoryManager>) -> Self`
+-  `LocalService` type L58-290 — `= LocalService`
+-  `load_session_state` function L143-172 — `( &self, session_id: Uuid, ) -> Result<(arawn_storage::SessionMeta, Workstream, ...` — Load session metadata, resolve workstream, and load message history.
+-  `build_session_context` function L176-240 — `( &self, session_id: Uuid, workstream: &Workstream, ws_dir: &str, workspace_dir:...` — Build a ToolContext and per-session PromptContext for the engine.
+-  `build_engine` function L244-289 — `( &self, prompt_context: Option<arawn_engine::PromptContext>, event_tx: &mpsc::S...` — Build a QueryEngine configured with compactor, skills, plugins, and plan state.
+-  `infer_entity_type` function L294-307 — `(text: &str) -> (arawn_memory::EntityType, String)` — Infer entity type from text patterns.
+-  `LocalService` type L312-989 — `impl ArawnService for LocalService`
+-  `list_workstreams` function L313-328 — `(&self) -> Result<Vec<WorkstreamInfo>, ServiceError>`
+-  `create_workstream` function L330-347 — `( &self, name: String, root_dir: PathBuf, ) -> Result<WorkstreamInfo, ServiceErr...`
+-  `list_sessions` function L349-368 — `( &self, workstream_id: Option<Uuid>, ) -> Result<Vec<SessionInfo>, ServiceError...`
+-  `create_session` function L370-391 — `( &self, workstream_id: Option<Uuid>, ) -> Result<SessionInfo, ServiceError>`
+-  `load_session` function L393-420 — `(&self, id: Uuid) -> Result<SessionDetail, ServiceError>`
+-  `send_message` function L423-620 — `( &self, session_id: Uuid, content: String, ) -> Result<Pin<Box<dyn futures::Str...`
+-  `cancel` function L622-635 — `(&self, session_id: Uuid) -> Result<(), ServiceError>`
+-  `promote_session` function L637-688 — `( &self, session_id: Uuid, workstream_name: &str, ) -> Result<PromotionResult, S...`
+-  `resolve_user_input` function L690-704 — `( &self, request_id: &str, selected_index: Option<usize>, ) -> Result<(), Servic...`
+-  `query_inventory` function L706-771 — `(&self, kind: &str) -> Result<Vec<InventoryItem>, ServiceError>`
+-  `list_available_commands` function L773-785 — `(&self) -> Result<Vec<CommandInfo>, ServiceError>`
+-  `list_workflows` function L787-819 — `(&self) -> Result<Vec<WorkflowInfo>, ServiceError>`
+-  `remember_fact` function L821-863 — `(&self, text: &str) -> Result<MemoryStoreResult, ServiceError>`
+-  `memory_summary` function L865-912 — `(&self) -> Result<MemorySummary, ServiceError>`
+-  `forget_entity` function L914-964 — `(&self, query: &str) -> Result<ForgetResult, ServiceError>`
+-  `get_permission_mode` function L966-974 — `(&self) -> Result<PermissionModeInfo, ServiceError>`
+-  `set_permission_mode` function L976-988 — `(&self, mode_str: &str) -> Result<PermissionModeInfo, ServiceError>`
+-  `resolve_ws_dir_from_store` function L992-1003 — `(store: &Store, ws_id: Option<Uuid>) -> Result<String, ServiceError>` — Resolve workstream directory name from store.
+-  `first_sentence` function L1007-1018 — `(s: &str) -> String` — Extract the first sentence and sanitize for use in a markdown table cell.
 
 #### crates/arawn/src/main.rs
 
--  `DEFAULT_MODEL` variable L23 — `: &str`
--  `FILE_LOG_FILTER` variable L26 — `: &str` — Default file log filter: debug for arawn crates, warn for third-party.
--  `main` function L29-485 — `() -> Result<()>`
--  `run_cli_via_server` function L488-599 — `( url: &str, prompt: &str, session_id: Option<Uuid>, ) -> Result<()>` — Run a CLI prompt by connecting to the running server via WebSocket.
--  `build_llm_client` function L602-624 — `( config: &arawn_bin::LlmConfig, ) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
--  `build_engine_config` function L626-658 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
--  `dirs_path` function L660-669 — `() -> Option<String>`
+-  `DEFAULT_MODEL` variable L17 — `: &str`
+-  `FILE_LOG_FILTER` variable L20 — `: &str` — Default file log filter: debug for arawn crates, warn for third-party.
+-  `main` function L23-420 — `() -> Result<()>`
+-  `Cli` struct L29-44 — `{ command: Option<Command>, session: Option<Uuid>, list_sessions: bool, prompt: ...`
+-  `Command` enum L47-66 — `Serve | Tui | Plugin`
+-  `run_cli_via_server` function L423-534 — `( url: &str, prompt: &str, session_id: Option<Uuid>, ) -> Result<()>` — Run a CLI prompt by connecting to the running server via WebSocket.
+-  `build_llm_client` function L537-559 — `( config: &arawn_bin::LlmConfig, ) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
+-  `register_default_tools` function L562-608 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &arawn_bin::ArawnConfig, d...` — Register all default tools into the registry.
+-  `connect_mcp_servers` function L611-659 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
+-  `register_workflow_tools` function L662-679 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
+-  `build_engine_config` function L681-713 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
+-  `dirs_path` function L715-724 — `() -> Option<String>`
 
 #### crates/arawn/src/plugin_cmd.rs
 
@@ -377,23 +399,25 @@
 
 #### crates/arawn/src/ws_server.rs
 
-- pub `read_token_file` function L97-103 — `() -> Option<String>` — Read the auth token from ~/.arawn/server.token.
-- pub `run_server` function L106-141 — `(service: LocalService, port: u16) -> anyhow::Result<()>` — Start the WebSocket server on the given port.
-- pub `handle_connection_public` function L227-229 — `(socket: WebSocket, service: Arc<LocalService>)` — Handle a single WebSocket connection.
--  `Request` struct L25-30 — `{ id: u64, method: String, params: Value }` — JSON-RPC style request from client.
--  `Response` struct L34-40 — `{ id: u64, result: Option<Value>, error: Option<ErrorBody> }` — JSON-RPC style response to client.
--  `ErrorBody` struct L43-46 — `{ code: String, message: String }`
--  `Response` type L48-67 — `= Response`
--  `success` function L49-55 — `(id: u64, result: Value) -> Self`
--  `error` function L57-66 — `(id: u64, code: &str, message: String) -> Self`
--  `AppState` struct L71-76 — `{ service: Arc<LocalService>, auth_token: Option<String> }` — Shared app state for the WebSocket server.
--  `generate_auth_token` function L79-82 — `() -> String` — Generate a random auth token for WebSocket connections.
--  `write_token_file` function L85-94 — `(token: &str) -> std::io::Result<std::path::PathBuf>` — Write the auth token to ~/.arawn/server.token for clients to read.
--  `shutdown_signal` function L144-166 — `()` — Wait for a shutdown signal (Ctrl-C / SIGTERM).
--  `decision_handler` function L171-190 — `( State(AppState { service, .. }): State<AppState>, Json(req): Json<arawn_workfl...` — HTTP endpoint for workflow decision tasks.
--  `WsQueryParams` struct L194-196 — `{ token: Option<String> }` — Query parameters for WebSocket connection.
--  `ws_handler` function L198-224 — `( ws: WebSocketUpgrade, Query(params): Query<WsQueryParams>, State(state): State...`
--  `handle_connection` function L231-815 — `(socket: WebSocket, service: Arc<LocalService>)`
+- pub `read_token_file` function L122-128 — `() -> Option<String>` — Read the auth token from ~/.arawn/server.token.
+- pub `run_server` function L131-166 — `(service: LocalService, port: u16) -> anyhow::Result<()>` — Start the WebSocket server on the given port.
+- pub `handle_connection_public` function L252-254 — `(socket: WebSocket, service: Arc<LocalService>)` — Handle a single WebSocket connection.
+-  `PROTOCOL_VERSION` variable L24 — `: &str` — Protocol version reported by the `hello` handshake.
+-  `RPC_METHODS` variable L27-46 — `: &[&str]` — Canonical RPC method names (returned by `hello`).
+-  `Request` struct L50-55 — `{ id: u64, method: String, params: Value }` — JSON-RPC style request from client.
+-  `Response` struct L59-65 — `{ id: u64, result: Option<Value>, error: Option<ErrorBody> }` — JSON-RPC style response to client.
+-  `ErrorBody` struct L68-71 — `{ code: String, message: String }`
+-  `Response` type L73-92 — `= Response`
+-  `success` function L74-80 — `(id: u64, result: Value) -> Self`
+-  `error` function L82-91 — `(id: u64, code: &str, message: String) -> Self`
+-  `AppState` struct L96-101 — `{ service: Arc<LocalService>, auth_token: Option<String> }` — Shared app state for the WebSocket server.
+-  `generate_auth_token` function L104-107 — `() -> String` — Generate a random auth token for WebSocket connections.
+-  `write_token_file` function L110-119 — `(token: &str) -> std::io::Result<std::path::PathBuf>` — Write the auth token to ~/.arawn/server.token for clients to read.
+-  `shutdown_signal` function L169-191 — `()` — Wait for a shutdown signal (Ctrl-C / SIGTERM).
+-  `decision_handler` function L196-215 — `( State(AppState { service, .. }): State<AppState>, Json(req): Json<arawn_workfl...` — HTTP endpoint for workflow decision tasks.
+-  `WsQueryParams` struct L219-221 — `{ token: Option<String> }` — Query parameters for WebSocket connection.
+-  `ws_handler` function L223-249 — `( ws: WebSocketUpgrade, Query(params): Query<WsQueryParams>, State(state): State...`
+-  `handle_connection` function L256-849 — `(socket: WebSocket, service: Arc<LocalService>)`
 
 ### crates/arawn-core/src
 
@@ -674,32 +698,36 @@
 
 #### crates/arawn-engine/src/context.rs
 
-- pub `ToolContext` struct L18-38 — `{ session_id: Uuid, working_dir: PathBuf, workstream_name: String, allowed_paths...` — Execution context provided to tools.
-- pub `new` function L54-67 — `(workstream: &Workstream, session_id: Uuid) -> Self`
-- pub `with_allowed_paths` function L70-73 — `(mut self, paths: Vec<PathBuf>) -> Self` — Set allowed paths that file tools can access outside the sandbox.
-- pub `with_llm` function L76-80 — `(mut self, llm: Arc<dyn LlmClient>, model: String) -> Self` — Attach an LLM client and model for tools that need sub-queries.
-- pub `with_model_limits` function L83-86 — `(mut self, limits: ModelLimits) -> Self` — Set model limits for sub-agent compaction.
-- pub `with_data_dir` function L89-92 — `(mut self, dir: PathBuf) -> Self` — Set data directory for persisting large tool results.
-- pub `is_allowed_path` function L95-104 — `(&self, path: &std::path::Path) -> bool` — Check if a path is in the allowed list (exact match on canonical paths).
-- pub `validate_path` function L109-132 — `(&self, path_str: &str) -> Result<std::path::PathBuf, String>` — Validate that a path stays within the workstream root or is in the allowed list.
-- pub `workstream_name` function L134-136 — `(&self) -> &str`
-- pub `llm` function L139-141 — `(&self) -> Option<&Arc<dyn LlmClient>>` — Get the LLM client if available.
-- pub `model` function L144-146 — `(&self) -> Option<&str>` — Get the model name for sub-queries.
-- pub `model_limits` function L149-151 — `(&self) -> &ModelLimits` — Get model limits (for sub-agent compaction).
-- pub `data_dir` function L154-156 — `(&self) -> Option<&PathBuf>` — Get data directory for tool result persistence.
-- pub `agent_depth` function L159-161 — `(&self) -> u8` — Current agent nesting depth.
-- pub `can_spawn_agent` function L164-166 — `(&self) -> bool` — Whether another sub-agent can be spawned at this depth.
-- pub `for_sub_agent` function L170-175 — `(&self) -> Self` — Create a child context for a sub-agent (increments depth).
-- pub `mark_file_read` function L178-180 — `(&self, path: PathBuf)` — Record that a file has been read in this session.
-- pub `has_read_file` function L183-185 — `(&self, path: &PathBuf) -> bool` — Check if a file has been read in this session.
+- pub `EngineToolContext` struct L22-42 — `{ session_id: Uuid, working_dir: PathBuf, workstream_name: String, allowed_paths...` — Concrete execution context provided to tools within the engine.
+- pub `new` function L58-71 — `(workstream: &Workstream, session_id: Uuid) -> Self`
+- pub `with_allowed_paths` function L74-77 — `(mut self, paths: Vec<PathBuf>) -> Self` — Set allowed paths that file tools can access outside the sandbox.
+- pub `with_llm` function L80-84 — `(mut self, llm: Arc<dyn LlmClient>, model: String) -> Self` — Attach an LLM client and model for tools that need sub-queries.
+- pub `with_model_limits` function L87-90 — `(mut self, limits: ModelLimits) -> Self` — Set model limits for sub-agent compaction.
+- pub `with_data_dir` function L93-96 — `(mut self, dir: PathBuf) -> Self` — Set data directory for persisting large tool results.
 -  `MAX_AGENT_DEPTH` variable L13 — `: u8` — Maximum sub-agent nesting depth.
--  `ToolContext` type L40-51 — `= ToolContext`
--  `fmt` function L41-50 — `(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result`
--  `ToolContext` type L53-186 — `= ToolContext`
--  `tests` module L189-212 — `-`
--  `context_from_workstream` function L194-202 — `()`
--  `context_is_clone` function L205-211 — `()`
--  `normalize_path_components` function L215-228 — `(path: &std::path::Path) -> PathBuf` — Normalize a path by resolving .
+-  `EngineToolContext` type L44-55 — `= EngineToolContext`
+-  `fmt` function L45-54 — `(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result`
+-  `EngineToolContext` type L57-97 — `= EngineToolContext`
+-  `EngineToolContext` type L103-194 — `= EngineToolContext`
+-  `working_dir` function L104-106 — `(&self) -> &Path`
+-  `session_id` function L108-110 — `(&self) -> Uuid`
+-  `validate_path` function L112-135 — `(&self, path_str: &str) -> Result<PathBuf, String>`
+-  `is_allowed_path` function L137-146 — `(&self, path: &Path) -> bool`
+-  `mark_file_read` function L148-150 — `(&self, path: PathBuf)`
+-  `has_read_file` function L152-154 — `(&self, path: &Path) -> bool`
+-  `llm` function L156-158 — `(&self) -> Option<&Arc<dyn LlmClient>>`
+-  `model` function L160-162 — `(&self) -> Option<&str>`
+-  `model_limits` function L164-166 — `(&self) -> &ModelLimits`
+-  `data_dir` function L168-170 — `(&self) -> Option<&PathBuf>`
+-  `agent_depth` function L172-174 — `(&self) -> u8`
+-  `can_spawn_agent` function L176-178 — `(&self) -> bool`
+-  `for_sub_agent` function L180-185 — `(&self) -> Box<dyn arawn_tool::ToolContext>`
+-  `workstream_name` function L187-189 — `(&self) -> &str`
+-  `allowed_paths` function L191-193 — `(&self) -> &[PathBuf]`
+-  `tests` module L197-220 — `-`
+-  `context_from_workstream` function L202-210 — `()`
+-  `context_is_clone` function L213-219 — `()`
+-  `normalize_path_components` function L223-236 — `(path: &Path) -> PathBuf` — Normalize a path by resolving .
 
 #### crates/arawn-engine/src/diff.rs
 
@@ -721,8 +749,10 @@
 #### crates/arawn-engine/src/error.rs
 
 - pub `EngineError` enum L5-23 — `Tool | ToolNotFound | Llm | MaxIterations | Other`
-- pub `user_message` function L27-49 — `(&self) -> String` — Return a user-facing error message with actionable guidance.
--  `EngineError` type L25-50 — `= EngineError`
+- pub `user_message` function L38-60 — `(&self) -> String` — Return a user-facing error message with actionable guidance.
+-  `EngineError` type L25-34 — `= EngineError`
+-  `from` function L26-33 — `(err: arawn_tool::ToolError) -> Self`
+-  `EngineError` type L36-61 — `= EngineError`
 
 #### crates/arawn-engine/src/lib.rs
 
@@ -779,15 +809,15 @@
 
 #### crates/arawn-engine/src/plugin_adapter.rs
 
-- pub `PluginToolAdapter` struct L19-24 — `{ handle: PluginHandle, cached_name: String, cached_description: String, cached_...` — Adapts a fides PluginHandle into an arawn Tool.
-- pub `new` function L28-53 — `(handle: PluginHandle) -> Result<Self, EngineError>` — Create an adapter by calling the plugin's metadata methods once.
--  `PluginToolAdapter` type L26-54 — `= PluginToolAdapter` — removed in a future version.
--  `PluginToolAdapter` type L57-102 — `impl Tool for PluginToolAdapter` — removed in a future version.
--  `name` function L58-60 — `(&self) -> &str` — removed in a future version.
--  `description` function L62-64 — `(&self) -> &str` — removed in a future version.
--  `parameters_schema` function L66-68 — `(&self) -> Value` — removed in a future version.
--  `execute` function L70-101 — `(&self, ctx: &ToolContext, params: Value) -> Result<ToolOutput, EngineError>` — removed in a future version.
--  `ContextForPlugin` struct L106-110 — `{ working_dir: String, session_id: String, workstream_name: String }` — Serializable context sent to plugins across FFI.
+- pub `PluginToolAdapter` struct L18-23 — `{ handle: PluginHandle, cached_name: String, cached_description: String, cached_...` — Adapts a fides PluginHandle into an arawn Tool.
+- pub `new` function L27-52 — `(handle: PluginHandle) -> Result<Self, EngineError>` — Create an adapter by calling the plugin's metadata methods once.
+-  `PluginToolAdapter` type L25-53 — `= PluginToolAdapter` — removed in a future version.
+-  `PluginToolAdapter` type L56-101 — `impl Tool for PluginToolAdapter` — removed in a future version.
+-  `name` function L57-59 — `(&self) -> &str` — removed in a future version.
+-  `description` function L61-63 — `(&self) -> &str` — removed in a future version.
+-  `parameters_schema` function L65-67 — `(&self) -> Value` — removed in a future version.
+-  `execute` function L69-100 — `(&self, ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ...` — removed in a future version.
+-  `ContextForPlugin` struct L105-109 — `{ working_dir: String, session_id: String, workstream_name: String }` — Serializable context sent to plugins across FFI.
 
 #### crates/arawn-engine/src/plugin_loader.rs
 
@@ -826,7 +856,7 @@
 - pub `with_progress_sender` function L197-200 — `(mut self, tx: tokio::sync::mpsc::Sender<ProgressEvent>) -> Self` — Set a channel for live progress events during the engine loop.
 - pub `with_cancel_token` function L203-206 — `(mut self, token: tokio_util::sync::CancellationToken) -> Self` — Set a cancellation token — checked at each loop iteration and before tool execution.
 - pub `fire_hook` function L225-231 — `(&self, input: &HookInput) -> Option<crate::hooks::AggregatedHookResult>` — Fire a hook event.
-- pub `run` function L234-554 — `( &mut self, session: &mut Session, ctx: &ToolContext, ) -> Result<String, Engin...` — Run the agentic loop for a session.
+- pub `run` function L234-554 — `( &mut self, session: &mut Session, ctx: &dyn arawn_tool::ToolContext, ) -> Resu...` — Run the agentic loop for a session.
 -  `DEFAULT_MAX_ITERATIONS` variable L19 — `: usize`
 -  `MAX_COMPACT_FAILURES` variable L20 — `: u32`
 -  `DEFAULT_SYSTEM_PROMPT` variable L43 — `: &str`
@@ -836,36 +866,29 @@
 -  `is_cancelled` function L209-211 — `(&self) -> bool` — Check if cancellation has been requested.
 -  `emit_progress` function L214-218 — `(&self, event: ProgressEvent)` — Emit a progress event if a sender is configured.
 -  `build_request` function L556-646 — `(&self, session: &Session) -> ChatRequest`
--  `stream_response_with_retry` function L651-684 — `( &self, session: &Session, _ctx: &ToolContext, ) -> Result<AssembledResponse, E...` — Build the request and stream with up to 2 retries on transient LLM errors
+-  `stream_response_with_retry` function L651-684 — `( &self, session: &Session, _ctx: &dyn arawn_tool::ToolContext, ) -> Result<Asse...` — Build the request and stream with up to 2 retries on transient LLM errors
 -  `MAX_RETRIES` variable L656 — `: u32`
 -  `stream_response` function L686-746 — `( &self, request: ChatRequest, ) -> Result<AssembledResponse, EngineError>`
--  `execute_tool` function L748-867 — `( &self, ctx: &ToolContext, tool_use_id: &str, name: &str, arguments: &serde_jso...`
+-  `execute_tool` function L748-867 — `( &self, ctx: &dyn arawn_tool::ToolContext, tool_use_id: &str, name: &str, argum...`
 -  `parse_arguments` function L870-879 — `(raw: &str) -> serde_json::Value`
 -  `AssembledResponse` struct L882-886 — `{ text: String, tool_calls: Vec<AssembledToolCall>, usage: Option<arawn_llm::Usa...`
 -  `AssembledToolCall` struct L888-892 — `{ id: String, name: String, arguments: serde_json::Value }`
 -  `ToolResult` struct L894-897 — `{ content: String, is_error: bool }`
--  `CORE_TOOLS` variable L900-902 — `: &[&str]` — Core tools always included in every LLM request.
--  `WEB_TOOLS` variable L905 — `: &[&str]` — Web tools — included when conversation references URLs, web, search, fetch, APIs.
--  `PLAN_TOOLS` variable L908 — `: &[&str]` — Planning tools — included when in plan mode or conversation mentions planning.
--  `TASK_TOOLS` variable L911-913 — `: &[&str]` — Task management tools — included when conversation mentions tasks, background, todo.
--  `MEMORY_TOOLS` variable L916 — `: &[&str]` — Memory tools — included when conversation mentions memory, remember, recall.
--  `AGENT_TOOLS` variable L919 — `: &[&str]` — Agent/delegation tools — included when conversation mentions delegation, agent, subagent.
--  `ALWAYS_TOOLS` variable L922 — `: &[&str]` — Other tools always included.
--  `filter_tools_for_context` function L926-1034 — `( all_tools: &[arawn_llm::ToolDefinition], session: &Session, ) -> Vec<arawn_llm...` — Filter tool definitions to only contextually relevant ones for this turn.
--  `tests` module L1037-1224 — `-`
--  `MockLlm` struct L1048-1050 — `{ responses: Mutex<Vec<Vec<ChatChunk>>> }` — Mock LLM that returns pre-scripted responses.
--  `MockLlm` type L1052-1082 — `= MockLlm`
--  `new` function L1053-1057 — `(responses: Vec<Vec<ChatChunk>>) -> Self`
--  `text` function L1060-1067 — `(text: &str) -> Vec<ChatChunk>` — Convenience: text-only response
--  `tool_call` function L1070-1081 — `(id: &str, name: &str, args: &str) -> Vec<ChatChunk>` — Convenience: tool call then done
--  `MockLlm` type L1085-1101 — `impl LlmClient for MockLlm`
--  `stream` function L1086-1100 — `( &self, _request: ChatRequest, ) -> Result< Pin<Box<dyn futures::Stream<Item = ...`
--  `setup` function L1103-1108 — `() -> (Workstream, Session, ToolContext)`
--  `text_only_response` function L1111-1124 — `()`
--  `single_tool_call` function L1127-1145 — `()`
--  `tool_not_found` function L1148-1170 — `()`
--  `max_iterations_exceeded` function L1173-1200 — `()`
--  `multi_turn_tool_chain` function L1203-1222 — `()`
+-  `filter_tools_for_context` function L902-1014 — `( all_tools: &[arawn_llm::ToolDefinition], session: &Session, registry: &ToolReg...` — Filter tool definitions to only contextually relevant ones for this turn.
+-  `tests` module L1017-1204 — `-`
+-  `MockLlm` struct L1028-1030 — `{ responses: Mutex<Vec<Vec<ChatChunk>>> }` — Mock LLM that returns pre-scripted responses.
+-  `MockLlm` type L1032-1062 — `= MockLlm`
+-  `new` function L1033-1037 — `(responses: Vec<Vec<ChatChunk>>) -> Self`
+-  `text` function L1040-1047 — `(text: &str) -> Vec<ChatChunk>` — Convenience: text-only response
+-  `tool_call` function L1050-1061 — `(id: &str, name: &str, args: &str) -> Vec<ChatChunk>` — Convenience: tool call then done
+-  `MockLlm` type L1065-1081 — `impl LlmClient for MockLlm`
+-  `stream` function L1066-1080 — `( &self, _request: ChatRequest, ) -> Result< Pin<Box<dyn futures::Stream<Item = ...`
+-  `setup` function L1083-1088 — `() -> (Workstream, Session, EngineToolContext)`
+-  `text_only_response` function L1091-1104 — `()`
+-  `single_tool_call` function L1107-1125 — `()`
+-  `tool_not_found` function L1128-1150 — `()`
+-  `max_iterations_exceeded` function L1153-1180 — `()`
+-  `multi_turn_tool_chain` function L1183-1202 — `()`
 
 #### crates/arawn-engine/src/system_prompt.rs
 
@@ -1008,73 +1031,44 @@
 - pub `estimate_messages` function L29-31 — `(messages: &[Message]) -> u32` — Estimate total tokens for all messages in a session.
 - pub `estimate_tools` function L34-40 — `(tools: &[ToolDefinition]) -> u32` — Estimate tokens for tool definitions (JSON schemas sent with each request).
 - pub `estimate_system_prompt` function L43-45 — `(prompt: &str) -> u32` — Estimate tokens for a system prompt string.
-- pub `ModelLimits` struct L50-55 — `{ context_window: u32, compaction_threshold: f32 }` — Model context window limits and compaction threshold.
-- pub `new` function L58-63 — `(context_window: u32, compaction_threshold: f32) -> Self`
-- pub `for_model` function L66-81 — `(model: &str) -> Self` — Get default limits for a known model name.
-- pub `should_compact` function L84-93 — `( &self, session_tokens: u32, tool_tokens: u32, system_tokens: u32, ) -> bool` — Check if the total estimated tokens exceed the compaction threshold.
-- pub `available_for_messages` function L96-101 — `(&self, tool_tokens: u32, system_tokens: u32) -> u32` — The token budget available after accounting for tools and system prompt.
 -  `TokenEstimator` type L8-46 — `= TokenEstimator`
--  `ModelLimits` type L57-102 — `= ModelLimits`
--  `ModelLimits` type L104-111 — `impl Default for ModelLimits`
--  `default` function L105-110 — `() -> Self`
--  `tests` module L114-224 — `-`
--  `estimate_user_message` function L120-127 — `()`
--  `estimate_assistant_with_tool_uses` function L130-141 — `()`
--  `estimate_tool_result` function L144-152 — `()`
--  `estimate_messages_sums` function L155-171 — `()`
--  `estimate_tools` function L174-182 — `()`
--  `model_limits_for_known_models` function L185-202 — `()`
--  `should_compact_under_threshold` function L205-209 — `()`
--  `should_compact_over_threshold` function L212-215 — `()`
--  `available_for_messages` function L218-223 — `()`
+-  `tests` module L52-162 — `-`
+-  `estimate_user_message` function L58-65 — `()`
+-  `estimate_assistant_with_tool_uses` function L68-79 — `()`
+-  `estimate_tool_result` function L82-90 — `()`
+-  `estimate_messages_sums` function L93-109 — `()`
+-  `estimate_tools` function L112-120 — `()`
+-  `model_limits_for_known_models` function L123-140 — `()`
+-  `should_compact_under_threshold` function L143-147 — `()`
+-  `should_compact_over_threshold` function L150-153 — `()`
+-  `available_for_messages` function L156-161 — `()`
 
 #### crates/arawn-engine/src/tool.rs
 
-- pub `ToolOutput` struct L13-16 — `{ content: String, is_error: bool }` — Output from a tool execution.
-- pub `success` function L19-24 — `(content: impl Into<String>) -> Self`
-- pub `error` function L26-31 — `(content: impl Into<String>) -> Self`
-- pub `Tool` interface L36-50 — `{ fn name(), fn description(), fn parameters_schema(), fn execute(), fn is_read_...` — A tool that can be invoked by the LLM.
-- pub `ToolRegistry` struct L54-58 — `{ tools: RwLock<HashMap<String, Arc<dyn Tool>>>, plugin_tools: RwLock<HashSet<St...` — Registry of available tools.
-- pub `new` function L61-66 — `() -> Self`
-- pub `register` function L69-72 — `(&self, tool: Box<dyn Tool>)` — Register a built-in tool.
-- pub `register_plugin` function L75-82 — `(&self, tool: Box<dyn Tool>)` — Register a plugin-provided tool (tracked for hot-reload).
-- pub `register_arc` function L85-88 — `(&self, tool: Arc<dyn Tool>)` — Register an already-Arc'd tool (used when building filtered registries).
-- pub `unregister` function L90-93 — `(&self, name: &str) -> Option<Arc<dyn Tool>>`
-- pub `plugin_tool_names` function L96-98 — `(&self) -> Vec<String>` — Returns the names of all currently loaded plugin tools.
-- pub `get` function L101-103 — `(&self, name: &str) -> Option<Arc<dyn Tool>>` — Get a tool by name.
-- pub `tool_definitions` function L105-115 — `(&self) -> Vec<arawn_llm::ToolDefinition>`
-- pub `len` function L117-119 — `(&self) -> usize`
-- pub `is_empty` function L121-123 — `(&self) -> bool`
-- pub `unregister_by_prefix` function L127-142 — `(&self, prefix: &str) -> Vec<String>` — Unregister all tools whose names start with the given prefix.
--  `ToolOutput` type L18-32 — `= ToolOutput`
--  `is_read_only` function L47-49 — `(&self) -> bool` — Whether this tool is side-effect-free (observation only).
--  `ToolRegistry` type L60-143 — `= ToolRegistry`
--  `ToolRegistry` type L145-149 — `impl Default for ToolRegistry`
--  `default` function L146-148 — `() -> Self`
--  `tests` module L152-351 — `-`
--  `DummyTool` struct L158-160 — `{ tool_name: String }` — A minimal test tool for unit testing the registry.
--  `DummyTool` type L162-168 — `= DummyTool`
--  `new` function L163-167 — `(name: &str) -> Self`
--  `DummyTool` type L171-191 — `impl Tool for DummyTool`
--  `name` function L172-174 — `(&self) -> &str`
--  `description` function L176-178 — `(&self) -> &str`
--  `parameters_schema` function L180-182 — `(&self) -> Value`
--  `execute` function L184-190 — `( &self, _ctx: &ToolContext, _params: Value, ) -> Result<ToolOutput, EngineError...`
--  `registry_starts_empty` function L194-198 — `()`
--  `register_and_get_tool` function L201-211 — `()`
--  `get_nonexistent_tool_returns_none` function L214-217 — `()`
--  `unregister_tool` function L220-229 — `()`
--  `unregister_nonexistent_returns_none` function L232-235 — `()`
--  `hot_reload_register_unregister_cycle` function L238-256 — `()`
--  `tool_definitions_reflects_registered_tools` function L259-270 — `()`
--  `tool_definitions_updates_after_unregister` function L273-282 — `()`
--  `registry_is_send_sync` function L285-288 — `()`
--  `assert_send_sync` function L286 — `()`
--  `concurrent_access` function L291-309 — `()`
--  `unregister_by_prefix_removes_matching` function L312-327 — `()`
--  `unregister_by_prefix_no_match` function L330-336 — `()`
--  `tool_output_success` function L339-343 — `()`
--  `tool_output_error` function L346-350 — `()`
+-  `tests` module L9-209 — `-`
+-  `DummyTool` struct L16-18 — `{ tool_name: String }` — A minimal test tool for unit testing the registry.
+-  `DummyTool` type L20-26 — `= DummyTool`
+-  `new` function L21-25 — `(name: &str) -> Self`
+-  `DummyTool` type L29-49 — `impl Tool for DummyTool`
+-  `name` function L30-32 — `(&self) -> &str`
+-  `description` function L34-36 — `(&self) -> &str`
+-  `parameters_schema` function L38-40 — `(&self) -> Value`
+-  `execute` function L42-48 — `( &self, _ctx: &dyn arawn_tool::ToolContext, _params: Value, ) -> Result<ToolOut...`
+-  `registry_starts_empty` function L52-56 — `()`
+-  `register_and_get_tool` function L59-69 — `()`
+-  `get_nonexistent_tool_returns_none` function L72-75 — `()`
+-  `unregister_tool` function L78-87 — `()`
+-  `unregister_nonexistent_returns_none` function L90-93 — `()`
+-  `hot_reload_register_unregister_cycle` function L96-114 — `()`
+-  `tool_definitions_reflects_registered_tools` function L117-128 — `()`
+-  `tool_definitions_updates_after_unregister` function L131-140 — `()`
+-  `registry_is_send_sync` function L143-146 — `()`
+-  `assert_send_sync` function L144 — `()`
+-  `concurrent_access` function L149-167 — `()`
+-  `unregister_by_prefix_removes_matching` function L170-185 — `()`
+-  `unregister_by_prefix_no_match` function L188-194 — `()`
+-  `tool_output_success` function L197-201 — `()`
+-  `tool_output_error` function L204-208 — `()`
 
 #### crates/arawn-engine/src/tool_result_limiter.rs
 
@@ -1686,94 +1680,98 @@
 
 #### crates/arawn-engine/src/tools/agent.rs
 
-- pub `AgentTool` struct L28-32 — `{ registry: Arc<ToolRegistry>, definitions: Vec<AgentDefinition>, bg_manager: Op...` — Spawns a sub-agent that runs a full `QueryEngine` loop in an isolated
-- pub `new` function L35-41 — `(registry: Arc<ToolRegistry>, definitions: Vec<AgentDefinition>) -> Self`
-- pub `with_background_manager` function L44-47 — `(mut self, mgr: Arc<BackgroundTaskManager>) -> Self` — Attach a background task manager for `run_in_background` support.
--  `DEFAULT_MAX_TURNS` variable L20 — `: usize`
--  `AgentTool` type L34-48 — `= AgentTool`
--  `AgentTool` type L51-266 — `impl Tool for AgentTool`
--  `name` function L52-54 — `(&self) -> &str`
--  `description` function L56-75 — `(&self) -> &str`
--  `parameters_schema` function L77-100 — `(&self) -> Value`
--  `execute` function L102-265 — `(&self, ctx: &ToolContext, params: Value) -> Result<ToolOutput, EngineError>`
--  `tests` module L269-445 — `-`
--  `test_ctx_with_mock` function L276-285 — `( responses: Vec<MockResponse>, ) -> (ToolContext, Arc<MockLlmClient>, Arc<ToolR...`
--  `schema_is_valid` function L288-297 — `()`
--  `text_only_sub_agent` function L300-317 — `()`
--  `sub_agent_with_tool_call` function L320-337 — `()`
--  `sub_agent_no_llm_errors` function L340-349 — `()`
--  `sub_agent_max_iterations_returns_last_text` function L352-374 — `()`
--  `depth_limit_prevents_infinite_recursion` function L377-391 — `()`
--  `explore_agent_type_used` function L394-410 — `()`
--  `unknown_type_falls_back_to_general` function L413-427 — `()`
--  `for_sub_agent_increments_depth` function L430-444 — `()`
+- pub `AgentTool` struct L29-33 — `{ registry: Arc<ToolRegistry>, definitions: Vec<AgentDefinition>, bg_manager: Op...` — Spawns a sub-agent that runs a full `QueryEngine` loop in an isolated
+- pub `new` function L36-42 — `(registry: Arc<ToolRegistry>, definitions: Vec<AgentDefinition>) -> Self`
+- pub `with_background_manager` function L45-48 — `(mut self, mgr: Arc<BackgroundTaskManager>) -> Self` — Attach a background task manager for `run_in_background` support.
+-  `DEFAULT_MAX_TURNS` variable L21 — `: usize`
+-  `AgentTool` type L35-49 — `= AgentTool`
+-  `AgentTool` type L52-271 — `impl Tool for AgentTool`
+-  `name` function L53-55 — `(&self) -> &str`
+-  `description` function L57-76 — `(&self) -> &str`
+-  `category` function L78-80 — `(&self) -> ToolCategory`
+-  `parameters_schema` function L82-105 — `(&self) -> Value`
+-  `execute` function L107-270 — `(&self, ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ...`
+-  `tests` module L274-451 — `-`
+-  `test_ctx_with_mock` function L282-291 — `( responses: Vec<MockResponse>, ) -> (EngineToolContext, Arc<MockLlmClient>, Arc...`
+-  `schema_is_valid` function L294-303 — `()`
+-  `text_only_sub_agent` function L306-323 — `()`
+-  `sub_agent_with_tool_call` function L326-343 — `()`
+-  `sub_agent_no_llm_errors` function L346-355 — `()`
+-  `sub_agent_max_iterations_returns_last_text` function L358-380 — `()`
+-  `depth_limit_prevents_infinite_recursion` function L383-397 — `()`
+-  `explore_agent_type_used` function L400-416 — `()`
+-  `unknown_type_falls_back_to_general` function L419-433 — `()`
+-  `for_sub_agent_increments_depth` function L436-450 — `()`
 
 #### crates/arawn-engine/src/tools/ask_user.rs
 
-- pub `AskUserTool` struct L13 — `-` — Asks the user structured multiple-choice questions to gather requirements
--  `AskUserTool` type L16-135 — `impl Tool for AskUserTool`
--  `name` function L17-19 — `(&self) -> &str`
--  `description` function L21-30 — `(&self) -> &str`
--  `is_read_only` function L32-34 — `(&self) -> bool`
--  `parameters_schema` function L36-81 — `(&self) -> Value`
--  `execute` function L83-134 — `(&self, _ctx: &ToolContext, params: Value) -> Result<ToolOutput, EngineError>`
--  `tests` module L138-250 — `-`
--  `test_ctx` function L144-147 — `() -> ToolContext`
--  `schema_is_valid` function L150-157 — `()`
--  `is_read_only` function L160-162 — `()`
--  `single_question` function L165-189 — `()`
--  `multi_select_shows_hint` function L192-213 — `()`
--  `multiple_questions` function L216-241 — `()`
--  `empty_questions_errors` function L244-249 — `()`
+- pub `AskUserTool` struct L11 — `-` — Asks the user structured multiple-choice questions to gather requirements
+-  `AskUserTool` type L14-137 — `impl Tool for AskUserTool`
+-  `name` function L15-17 — `(&self) -> &str`
+-  `description` function L19-28 — `(&self) -> &str`
+-  `is_read_only` function L30-32 — `(&self) -> bool`
+-  `category` function L34-36 — `(&self) -> ToolCategory`
+-  `parameters_schema` function L38-83 — `(&self) -> Value`
+-  `execute` function L85-136 — `(&self, _ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput,...`
+-  `tests` module L140-253 — `-`
+-  `test_ctx` function L147-150 — `() -> EngineToolContext`
+-  `schema_is_valid` function L153-160 — `()`
+-  `is_read_only` function L163-165 — `()`
+-  `single_question` function L168-192 — `()`
+-  `multi_select_shows_hint` function L195-216 — `()`
+-  `multiple_questions` function L219-244 — `()`
+-  `empty_questions_errors` function L247-252 — `()`
 
 #### crates/arawn-engine/src/tools/enter_plan_mode.rs
 
-- pub `EnterPlanModeTool` struct L14-16 — `{ plan_state: Arc<PlanModeState> }` — Tool that enters plan mode — restricts the agent to observation-only tools
-- pub `new` function L19-21 — `(plan_state: Arc<PlanModeState>) -> Self`
--  `EnterPlanModeTool` type L18-22 — `= EnterPlanModeTool`
--  `EnterPlanModeTool` type L25-90 — `impl Tool for EnterPlanModeTool`
--  `name` function L26-28 — `(&self) -> &str`
--  `description` function L30-40 — `(&self) -> &str`
--  `is_read_only` function L42-44 — `(&self) -> bool`
--  `parameters_schema` function L46-57 — `(&self) -> Value`
--  `execute` function L59-89 — `(&self, ctx: &ToolContext, params: Value) -> Result<ToolOutput, EngineError>`
--  `tests` module L93-147 — `-`
--  `test_ctx` function L99-102 — `(dir: &std::path::Path) -> ToolContext`
--  `enter_plan_mode_activates` function L105-120 — `()`
--  `enter_plan_mode_when_already_active` function L123-139 — `()`
--  `enter_plan_mode_is_read_only` function L142-146 — `()`
+- pub `EnterPlanModeTool` struct L12-14 — `{ plan_state: Arc<PlanModeState> }` — Tool that enters plan mode — restricts the agent to observation-only tools
+- pub `new` function L17-19 — `(plan_state: Arc<PlanModeState>) -> Self`
+-  `EnterPlanModeTool` type L16-20 — `= EnterPlanModeTool`
+-  `EnterPlanModeTool` type L23-92 — `impl Tool for EnterPlanModeTool`
+-  `name` function L24-26 — `(&self) -> &str`
+-  `description` function L28-38 — `(&self) -> &str`
+-  `is_read_only` function L40-42 — `(&self) -> bool`
+-  `category` function L44-46 — `(&self) -> ToolCategory`
+-  `parameters_schema` function L48-59 — `(&self) -> Value`
+-  `execute` function L61-91 — `(&self, ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ...`
+-  `tests` module L95-150 — `-`
+-  `test_ctx` function L102-105 — `(dir: &std::path::Path) -> EngineToolContext`
+-  `enter_plan_mode_activates` function L108-123 — `()`
+-  `enter_plan_mode_when_already_active` function L126-142 — `()`
+-  `enter_plan_mode_is_read_only` function L145-149 — `()`
 
 #### crates/arawn-engine/src/tools/exit_plan_mode.rs
 
-- pub `ExitPlanModeTool` struct L14-16 — `{ plan_state: Arc<PlanModeState> }` — Tool that exits plan mode — writes the plan to disk and deactivates plan mode
-- pub `new` function L19-21 — `(plan_state: Arc<PlanModeState>) -> Self`
--  `ExitPlanModeTool` type L18-22 — `= ExitPlanModeTool`
--  `ExitPlanModeTool` type L25-93 — `impl Tool for ExitPlanModeTool`
--  `name` function L26-28 — `(&self) -> &str`
--  `description` function L30-35 — `(&self) -> &str`
--  `is_read_only` function L37-40 — `(&self) -> bool`
--  `parameters_schema` function L42-53 — `(&self) -> Value`
--  `execute` function L55-92 — `(&self, _ctx: &ToolContext, params: Value) -> Result<ToolOutput, EngineError>`
--  `tests` module L96-174 — `-`
--  `test_ctx` function L103-106 — `() -> ToolContext`
--  `setup` function L108-116 — `() -> (Arc<PlanModeState>, ExitPlanModeTool, std::path::PathBuf)`
--  `exit_not_in_plan_mode` function L119-127 — `()`
--  `exit_with_empty_plan` function L130-137 — `()`
--  `exit_deactivates_plan_mode` function L140-153 — `()`
--  `plan_written_to_disk` function L156-166 — `()`
--  `exit_plan_mode_is_read_only` function L169-173 — `()`
+- pub `ExitPlanModeTool` struct L12-14 — `{ plan_state: Arc<PlanModeState> }` — Tool that exits plan mode — writes the plan to disk and deactivates plan mode
+- pub `new` function L17-19 — `(plan_state: Arc<PlanModeState>) -> Self`
+-  `ExitPlanModeTool` type L16-20 — `= ExitPlanModeTool`
+-  `ExitPlanModeTool` type L23-95 — `impl Tool for ExitPlanModeTool`
+-  `name` function L24-26 — `(&self) -> &str`
+-  `description` function L28-33 — `(&self) -> &str`
+-  `is_read_only` function L35-38 — `(&self) -> bool`
+-  `category` function L40-42 — `(&self) -> ToolCategory`
+-  `parameters_schema` function L44-55 — `(&self) -> Value`
+-  `execute` function L57-94 — `(&self, _ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput,...`
+-  `tests` module L98-177 — `-`
+-  `test_ctx` function L106-109 — `() -> EngineToolContext`
+-  `setup` function L111-119 — `() -> (Arc<PlanModeState>, ExitPlanModeTool, std::path::PathBuf)`
+-  `exit_not_in_plan_mode` function L122-130 — `()`
+-  `exit_with_empty_plan` function L133-140 — `()`
+-  `exit_deactivates_plan_mode` function L143-156 — `()`
+-  `plan_written_to_disk` function L159-169 — `()`
+-  `exit_plan_mode_is_read_only` function L172-176 — `()`
 
 #### crates/arawn-engine/src/tools/file_edit.rs
 
-- pub `FileEditTool` struct L9 — `-` — Edit a file by replacing a string.
--  `FileEditTool` type L12-146 — `impl Tool for FileEditTool`
--  `name` function L13-15 — `(&self) -> &str`
--  `description` function L17-27 — `(&self) -> &str`
--  `parameters_schema` function L29-52 — `(&self) -> Value`
--  `execute` function L54-145 — `(&self, ctx: &ToolContext, params: Value) -> Result<ToolOutput, EngineError>`
--  `tests` module L149-302 — `-`
--  `test_ctx` function L155-158 — `(dir: &std::path::Path) -> ToolContext`
--  `mark_read` function L161-164 — `(ctx: &ToolContext, dir: &std::path::Path, name: &str)` — Mark a file as read in the context (simulates a prior file_read call).
+- pub `FileEditTool` struct L7 — `-` — Edit a file by replacing a string.
+-  `FileEditTool` type L10-144 — `impl Tool for FileEditTool`
+-  `name` function L11-13 — `(&self) -> &str`
+-  `description` function L15-25 — `(&self) -> &str`
+-  `parameters_schema` function L27-50 — `(&self) -> Value`
+-  `execute` function L52-143 — `(&self, ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ...`
+-  `tests` module L147-302 — `-`
+-  `test_ctx` function L155-158 — `(dir: &std::path::Path) -> EngineToolContext`
+-  `mark_read` function L161-164 — `(ctx: &EngineToolContext, dir: &std::path::Path, name: &str)` — Mark a file as read in the context (simulates a prior file_read call).
 -  `edit_replaces_string` function L167-188 — `()`
 -  `edit_fails_on_missing_string` function L191-209 — `()`
 -  `edit_fails_on_ambiguous_match` function L212-230 — `()`
@@ -1784,37 +1782,37 @@
 
 #### crates/arawn-engine/src/tools/file_read.rs
 
-- pub `FileReadTool` struct L12 — `-` — Read a file within the workstream's working directory.
--  `FileReadTool` type L15-124 — `impl Tool for FileReadTool`
--  `name` function L16-18 — `(&self) -> &str`
--  `description` function L20-29 — `(&self) -> &str`
--  `is_read_only` function L31-33 — `(&self) -> bool`
--  `parameters_schema` function L35-54 — `(&self) -> Value`
--  `execute` function L56-123 — `(&self, ctx: &ToolContext, params: Value) -> Result<ToolOutput, EngineError>`
--  `would_escape_root` function L129-134 — `(root: &Path, relative_path: &str) -> bool` — Check if a path would escape the root without requiring the file to exist.
--  `normalize_path` function L137-149 — `(path: &Path) -> std::path::PathBuf` — Normalize a path by resolving .
--  `tests` module L152-260 — `-`
--  `test_ctx_with_dir` function L159-162 — `(dir: &Path) -> ToolContext`
--  `read_existing_file` function L165-180 — `()`
--  `read_with_offset_and_limit` function L183-197 — `()`
--  `read_nonexistent_file` function L200-211 — `()`
--  `path_traversal_rejected` function L214-234 — `()`
--  `missing_path_param` function L237-243 — `()`
--  `schema_is_valid` function L246-251 — `()`
--  `would_escape_root_detects_traversal` function L254-259 — `()`
+- pub `FileReadTool` struct L10 — `-` — Read a file within the workstream's working directory.
+-  `FileReadTool` type L13-122 — `impl Tool for FileReadTool`
+-  `name` function L14-16 — `(&self) -> &str`
+-  `description` function L18-27 — `(&self) -> &str`
+-  `is_read_only` function L29-31 — `(&self) -> bool`
+-  `parameters_schema` function L33-52 — `(&self) -> Value`
+-  `execute` function L54-121 — `(&self, ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ...`
+-  `would_escape_root` function L127-132 — `(root: &Path, relative_path: &str) -> bool` — Check if a path would escape the root without requiring the file to exist.
+-  `normalize_path` function L135-147 — `(path: &Path) -> std::path::PathBuf` — Normalize a path by resolving .
+-  `tests` module L150-259 — `-`
+-  `test_ctx_with_dir` function L158-161 — `(dir: &Path) -> EngineToolContext`
+-  `read_existing_file` function L164-179 — `()`
+-  `read_with_offset_and_limit` function L182-196 — `()`
+-  `read_nonexistent_file` function L199-210 — `()`
+-  `path_traversal_rejected` function L213-233 — `()`
+-  `missing_path_param` function L236-242 — `()`
+-  `schema_is_valid` function L245-250 — `()`
+-  `would_escape_root_detects_traversal` function L253-258 — `()`
 
 #### crates/arawn-engine/src/tools/file_write.rs
 
-- pub `FileWriteTool` struct L10 — `-` — Write content to a file within the workstream's working directory.
--  `FileWriteTool` type L13-132 — `impl Tool for FileWriteTool`
--  `name` function L14-16 — `(&self) -> &str`
--  `description` function L18-27 — `(&self) -> &str`
--  `parameters_schema` function L29-44 — `(&self) -> Value`
--  `execute` function L46-131 — `(&self, ctx: &ToolContext, params: Value) -> Result<ToolOutput, EngineError>`
--  `normalize_path` function L134-146 — `(path: &std::path::Path) -> std::path::PathBuf`
--  `tests` module L149-281 — `-`
--  `test_ctx` function L155-158 — `(dir: &std::path::Path) -> ToolContext`
--  `mark_read` function L160-163 — `(ctx: &ToolContext, path: &std::path::Path)`
+- pub `FileWriteTool` struct L8 — `-` — Write content to a file within the workstream's working directory.
+-  `FileWriteTool` type L11-130 — `impl Tool for FileWriteTool`
+-  `name` function L12-14 — `(&self) -> &str`
+-  `description` function L16-25 — `(&self) -> &str`
+-  `parameters_schema` function L27-42 — `(&self) -> Value`
+-  `execute` function L44-129 — `(&self, ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ...`
+-  `normalize_path` function L132-144 — `(path: &std::path::Path) -> std::path::PathBuf`
+-  `tests` module L147-281 — `-`
+-  `test_ctx` function L155-158 — `(dir: &std::path::Path) -> EngineToolContext`
+-  `mark_read` function L160-163 — `(ctx: &EngineToolContext, path: &std::path::Path)`
 -  `write_creates_file` function L166-182 — `()`
 -  `write_creates_parent_dirs` function L185-200 — `()`
 -  `write_overwrites_existing` function L203-221 — `()`
@@ -1825,96 +1823,98 @@
 
 #### crates/arawn-engine/src/tools/glob.rs
 
-- pub `GlobTool` struct L15 — `-` — Fast file pattern matching using globwalk.
--  `MAX_RESULTS` variable L11 — `: usize` — Maximum number of files to return before truncating.
--  `GlobTool` type L18-133 — `impl Tool for GlobTool`
--  `name` function L19-21 — `(&self) -> &str`
--  `description` function L23-29 — `(&self) -> &str`
--  `is_read_only` function L31-33 — `(&self) -> bool`
--  `parameters_schema` function L35-50 — `(&self) -> Value`
--  `execute` function L52-132 — `(&self, ctx: &ToolContext, params: Value) -> Result<ToolOutput, EngineError>`
--  `tests` module L136-251 — `-`
--  `test_ctx` function L142-145 — `(dir: &std::path::Path) -> ToolContext`
--  `schema_is_valid` function L148-155 — `()`
--  `is_read_only` function L158-160 — `()`
--  `glob_in_tempdir` function L163-182 — `()`
--  `glob_no_matches` function L185-197 — `()`
--  `glob_respects_gitignore` function L200-220 — `()`
--  `glob_path_traversal_rejected` function L223-235 — `()`
--  `glob_absolute_path_rejected` function L238-250 — `()`
+- pub `GlobTool` struct L13 — `-` — Fast file pattern matching using globwalk.
+-  `MAX_RESULTS` variable L9 — `: usize` — Maximum number of files to return before truncating.
+-  `GlobTool` type L16-131 — `impl Tool for GlobTool`
+-  `name` function L17-19 — `(&self) -> &str`
+-  `description` function L21-27 — `(&self) -> &str`
+-  `is_read_only` function L29-31 — `(&self) -> bool`
+-  `parameters_schema` function L33-48 — `(&self) -> Value`
+-  `execute` function L50-130 — `(&self, ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ...`
+-  `tests` module L134-250 — `-`
+-  `test_ctx` function L141-144 — `(dir: &std::path::Path) -> EngineToolContext`
+-  `schema_is_valid` function L147-154 — `()`
+-  `is_read_only` function L157-159 — `()`
+-  `glob_in_tempdir` function L162-181 — `()`
+-  `glob_no_matches` function L184-196 — `()`
+-  `glob_respects_gitignore` function L199-219 — `()`
+-  `glob_path_traversal_rejected` function L222-234 — `()`
+-  `glob_absolute_path_rejected` function L237-249 — `()`
 
 #### crates/arawn-engine/src/tools/grep.rs
 
-- pub `GrepTool` struct L16 — `-` — Search file contents using ripgrep (rg) or grep as fallback.
--  `DEFAULT_HEAD_LIMIT` variable L10 — `: usize` — Default cap on grep results when head_limit is unspecified.
--  `VCS_EXCLUDES` variable L13 — `: &[&str]` — VCS directories to exclude from searches.
--  `GrepTool` type L19-212 — `impl Tool for GrepTool`
--  `name` function L20-22 — `(&self) -> &str`
--  `description` function L24-34 — `(&self) -> &str`
--  `is_read_only` function L36-38 — `(&self) -> bool`
--  `parameters_schema` function L40-104 — `(&self) -> Value`
--  `execute` function L106-211 — `(&self, ctx: &ToolContext, params: Value) -> Result<ToolOutput, EngineError>`
--  `has_rg` function L214-216 — `() -> bool`
--  `run_rg` function L219-296 — `( cwd: &std::path::Path, pattern: &str, path: &str, glob: Option<&str>, file_typ...`
--  `run_grep_fallback` function L298-334 — `( cwd: &std::path::Path, pattern: &str, path: &str, case_insensitive: bool, outp...`
--  `tests` module L337-556 — `-`
--  `test_ctx` function L343-346 — `(dir: &std::path::Path) -> ToolContext`
--  `grep_finds_matches` function L349-367 — `()`
--  `grep_no_matches` function L370-384 — `()`
--  `grep_case_insensitive` function L387-401 — `()`
--  `grep_with_glob` function L404-419 — `()`
--  `grep_content_mode` function L422-440 — `()`
--  `grep_files_with_matches_mode` function L443-462 — `()`
--  `grep_head_limit` function L465-488 — `()`
--  `schema_is_valid` function L491-500 — `()`
--  `grep_path_traversal_rejected` function L503-521 — `()`
--  `grep_absolute_path_rejected` function L524-536 — `()`
--  `grep_relative_path_within_root_allowed` function L539-555 — `()`
+- pub `GrepTool` struct L14 — `-` — Search file contents using ripgrep (rg) or grep as fallback.
+-  `DEFAULT_HEAD_LIMIT` variable L8 — `: usize` — Default cap on grep results when head_limit is unspecified.
+-  `VCS_EXCLUDES` variable L11 — `: &[&str]` — VCS directories to exclude from searches.
+-  `GrepTool` type L17-210 — `impl Tool for GrepTool`
+-  `name` function L18-20 — `(&self) -> &str`
+-  `description` function L22-32 — `(&self) -> &str`
+-  `is_read_only` function L34-36 — `(&self) -> bool`
+-  `parameters_schema` function L38-102 — `(&self) -> Value`
+-  `execute` function L104-209 — `(&self, ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ...`
+-  `has_rg` function L212-214 — `() -> bool`
+-  `run_rg` function L217-294 — `( cwd: &std::path::Path, pattern: &str, path: &str, glob: Option<&str>, file_typ...`
+-  `run_grep_fallback` function L296-332 — `( cwd: &std::path::Path, pattern: &str, path: &str, case_insensitive: bool, outp...`
+-  `tests` module L335-555 — `-`
+-  `test_ctx` function L342-345 — `(dir: &std::path::Path) -> EngineToolContext`
+-  `grep_finds_matches` function L348-366 — `()`
+-  `grep_no_matches` function L369-383 — `()`
+-  `grep_case_insensitive` function L386-400 — `()`
+-  `grep_with_glob` function L403-418 — `()`
+-  `grep_content_mode` function L421-439 — `()`
+-  `grep_files_with_matches_mode` function L442-461 — `()`
+-  `grep_head_limit` function L464-487 — `()`
+-  `schema_is_valid` function L490-499 — `()`
+-  `grep_path_traversal_rejected` function L502-520 — `()`
+-  `grep_absolute_path_rejected` function L523-535 — `()`
+-  `grep_relative_path_within_root_allowed` function L538-554 — `()`
 
 #### crates/arawn-engine/src/tools/memory_search.rs
 
-- pub `MemorySearchTool` struct L17-20 — `{ memory: Arc<MemoryManager>, embedder: Option<Arc<dyn Embedder>> }` — Tool that searches the knowledge base using composite retrieval:
-- pub `new` function L23-25 — `(memory: Arc<MemoryManager>, embedder: Option<Arc<dyn Embedder>>) -> Self`
--  `MemorySearchTool` type L22-26 — `= MemorySearchTool`
--  `MemorySearchTool` type L29-267 — `impl Tool for MemorySearchTool`
--  `name` function L30-32 — `(&self) -> &str`
--  `description` function L34-38 — `(&self) -> &str`
--  `is_read_only` function L40-42 — `(&self) -> bool`
--  `parameters_schema` function L44-78 — `(&self) -> Value`
--  `execute` function L80-266 — `(&self, _ctx: &ToolContext, params: Value) -> Result<ToolOutput, EngineError>`
--  `ScoredEntity` struct L269-276 — `{ entity: Entity, fts_score: f32, semantic_score: f32, confidence: f32, source: ...`
--  `ScoredEntity` type L278-286 — `= ScoredEntity`
--  `composite` function L279-281 — `(&self) -> f32`
--  `compute_composite` function L283-285 — `(&mut self)`
--  `ScoredEntity` type L288-292 — `impl Default for ScoredEntity`
--  `default` function L289-291 — `() -> Self`
--  `tests` module L295-406 — `-`
--  `setup` function L302-309 — `() -> (TempDir, Arc<MemoryManager>, ToolContext)`
--  `populate` function L311-333 — `(mgr: &MemoryManager)`
--  `search_fts_both_tiers` function L336-349 — `()`
--  `search_with_type_filter` function L352-364 — `()`
--  `search_global_only` function L367-378 — `()`
--  `search_no_results` function L381-391 — `()`
--  `search_with_tags` function L394-405 — `()`
+- pub `MemorySearchTool` struct L15-18 — `{ memory: Arc<MemoryManager>, embedder: Option<Arc<dyn Embedder>> }` — Tool that searches the knowledge base using composite retrieval:
+- pub `new` function L21-23 — `(memory: Arc<MemoryManager>, embedder: Option<Arc<dyn Embedder>>) -> Self`
+-  `MemorySearchTool` type L20-24 — `= MemorySearchTool`
+-  `MemorySearchTool` type L27-269 — `impl Tool for MemorySearchTool`
+-  `name` function L28-30 — `(&self) -> &str`
+-  `description` function L32-36 — `(&self) -> &str`
+-  `is_read_only` function L38-40 — `(&self) -> bool`
+-  `category` function L42-44 — `(&self) -> ToolCategory`
+-  `parameters_schema` function L46-80 — `(&self) -> Value`
+-  `execute` function L82-268 — `(&self, _ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput,...`
+-  `ScoredEntity` struct L271-278 — `{ entity: Entity, fts_score: f32, semantic_score: f32, confidence: f32, source: ...`
+-  `ScoredEntity` type L280-288 — `= ScoredEntity`
+-  `composite` function L281-283 — `(&self) -> f32`
+-  `compute_composite` function L285-287 — `(&mut self)`
+-  `ScoredEntity` type L290-294 — `impl Default for ScoredEntity`
+-  `default` function L291-293 — `() -> Self`
+-  `tests` module L297-408 — `-`
+-  `setup` function L304-311 — `() -> (TempDir, Arc<MemoryManager>, crate::context::EngineToolContext)`
+-  `populate` function L313-335 — `(mgr: &MemoryManager)`
+-  `search_fts_both_tiers` function L338-351 — `()`
+-  `search_with_type_filter` function L354-366 — `()`
+-  `search_global_only` function L369-380 — `()`
+-  `search_no_results` function L383-393 — `()`
+-  `search_with_tags` function L396-407 — `()`
 
 #### crates/arawn-engine/src/tools/memory_store.rs
 
-- pub `MemoryStoreTool` struct L17-20 — `{ memory: Arc<MemoryManager>, embedder: Option<Arc<dyn Embedder>> }` — Tool that stores knowledge in the KB with search-before-create deduplication.
-- pub `new` function L23-25 — `(memory: Arc<MemoryManager>, embedder: Option<Arc<dyn Embedder>>) -> Self`
--  `MemoryStoreTool` type L22-26 — `= MemoryStoreTool`
--  `MemoryStoreTool` type L29-202 — `impl Tool for MemoryStoreTool`
--  `name` function L30-32 — `(&self) -> &str`
--  `description` function L34-45 — `(&self) -> &str`
--  `parameters_schema` function L47-77 — `(&self) -> Value`
--  `execute` function L79-201 — `(&self, ctx: &ToolContext, params: Value) -> Result<ToolOutput, EngineError>`
--  `tests` module L205-314 — `-`
--  `setup` function L212-221 — `() -> (TempDir, Arc<MemoryManager>, ToolContext)`
--  `store_new_fact` function L224-236 — `()`
--  `store_preference_goes_global` function L239-249 — `()`
--  `store_decision_goes_workstream` function L252-262 — `()`
--  `store_reinforces_duplicate` function L265-280 — `()`
--  `store_with_tags` function L283-296 — `()`
--  `store_with_explicit_scope_override` function L299-313 — `()`
+- pub `MemoryStoreTool` struct L15-18 — `{ memory: Arc<MemoryManager>, embedder: Option<Arc<dyn Embedder>> }` — Tool that stores knowledge in the KB with search-before-create deduplication.
+- pub `new` function L21-23 — `(memory: Arc<MemoryManager>, embedder: Option<Arc<dyn Embedder>>) -> Self`
+-  `MemoryStoreTool` type L20-24 — `= MemoryStoreTool`
+-  `MemoryStoreTool` type L27-204 — `impl Tool for MemoryStoreTool`
+-  `name` function L28-30 — `(&self) -> &str`
+-  `description` function L32-43 — `(&self) -> &str`
+-  `category` function L45-47 — `(&self) -> ToolCategory`
+-  `parameters_schema` function L49-79 — `(&self) -> Value`
+-  `execute` function L81-203 — `(&self, ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ...`
+-  `tests` module L207-316 — `-`
+-  `setup` function L214-223 — `() -> (TempDir, Arc<MemoryManager>, crate::context::EngineToolContext)`
+-  `store_new_fact` function L226-238 — `()`
+-  `store_preference_goes_global` function L241-251 — `()`
+-  `store_decision_goes_workstream` function L254-264 — `()`
+-  `store_reinforces_duplicate` function L267-282 — `()`
+-  `store_with_tags` function L285-298 — `()`
+-  `store_with_explicit_scope_override` function L301-315 — `()`
 
 #### crates/arawn-engine/src/tools/mod.rs
 
@@ -1942,310 +1942,321 @@
 
 #### crates/arawn-engine/src/tools/shell.rs
 
-- pub `ShellTool` struct L23-28 — `{ network_tools: Vec<String>, bg_manager: Option<Arc<BackgroundTaskManager>> }` — Execute a shell command within an OS-level sandbox.
-- pub `with_network_tools` function L43-48 — `(network_tools: Vec<String>) -> Self` — Create a ShellTool with the given list of network-allowed tool binaries.
-- pub `with_background_manager` function L51-54 — `(mut self, mgr: Arc<BackgroundTaskManager>) -> Self` — Attach a background task manager for `run_in_background` support.
--  `DEFAULT_TIMEOUT_MS` variable L30 — `: u64`
--  `ShellTool` type L32-39 — `impl Default for ShellTool`
--  `default` function L33-38 — `() -> Self`
--  `ShellTool` type L41-199 — `= ShellTool`
--  `spawn_background` function L57-198 — `( &self, command: &str, working_dir: &std::path::Path, ) -> Result<ToolOutput, E...` — Spawn a shell command as a background task.
--  `sensitive_deny_read_paths` function L203-248 — `() -> Vec<String>` — Build the list of sensitive paths that should be denied for reading.
--  `command_needs_network` function L251-270 — `(command: &str, network_tools: &[String]) -> bool` — Check if a command invokes any tool that needs network access.
--  `build_sandbox_config` function L273-322 — `( command: &str, working_dir: &std::path::Path, network_tools: &[String], ) -> S...` — Build a sandbox config for executing a command in the given working directory.
--  `ShellTool` type L325-413 — `impl Tool for ShellTool`
--  `name` function L326-328 — `(&self) -> &str`
--  `description` function L330-345 — `(&self) -> &str`
--  `parameters_schema` function L347-366 — `(&self) -> Value`
--  `execute` function L368-412 — `(&self, ctx: &ToolContext, params: Value) -> Result<ToolOutput, EngineError>`
--  `SandboxExecError` enum L415-420 — `Unavailable | Tool`
--  `execute_sandboxed` function L422-509 — `( command: &str, working_dir: &std::path::Path, timeout_ms: u64, network_tools: ...`
--  `execute_unsandboxed` function L511-555 — `( command: &str, working_dir: &std::path::Path, timeout_ms: u64, ) -> Result<Too...`
--  `tests` module L558-857 — `-`
--  `test_ctx` function L565-568 — `() -> ToolContext`
--  `test_ctx_in` function L570-573 — `(dir: &std::path::Path) -> ToolContext`
--  `shell_echo` function L577-585 — `()`
--  `shell_nonzero_exit` function L589-597 — `()`
--  `shell_timeout` function L601-612 — `()`
--  `shell_missing_command` function L616-620 — `()`
--  `shell_schema_is_valid` function L623-628 — `()`
--  `sensitive_paths_includes_ssh` function L631-634 — `()`
--  `sensitive_paths_includes_aws` function L637-640 — `()`
--  `sandbox_config_allows_working_dir_and_tmp` function L643-654 — `()`
--  `network_detection_recognizes_tools` function L657-664 — `()`
--  `network_detection_blocks_unknown` function L667-672 — `()`
--  `network_detection_empty_list_blocks_all` function L675-678 — `()`
--  `sandbox_write_inside_allowed` function L684-703 — `()`
--  `sandbox_mkdir_inside_allowed` function L707-728 — `()`
--  `sandbox_unlink_inside_allowed` function L732-757 — `()`
--  `sandbox_build_tool_workflow` function L761-783 — `()`
--  `sandbox_write_outside_blocked` function L787-824 — `()`
--  `sandbox_read_sensitive_path_blocked` function L828-856 — `()`
+- pub `ShellTool` struct L21-26 — `{ network_tools: Vec<String>, bg_manager: Option<Arc<BackgroundTaskManager>> }` — Execute a shell command within an OS-level sandbox.
+- pub `with_network_tools` function L41-46 — `(network_tools: Vec<String>) -> Self` — Create a ShellTool with the given list of network-allowed tool binaries.
+- pub `with_background_manager` function L49-52 — `(mut self, mgr: Arc<BackgroundTaskManager>) -> Self` — Attach a background task manager for `run_in_background` support.
+-  `DEFAULT_TIMEOUT_MS` variable L28 — `: u64`
+-  `ShellTool` type L30-37 — `impl Default for ShellTool`
+-  `default` function L31-36 — `() -> Self`
+-  `ShellTool` type L39-197 — `= ShellTool`
+-  `spawn_background` function L55-196 — `( &self, command: &str, working_dir: &std::path::Path, ) -> Result<ToolOutput, T...` — Spawn a shell command as a background task.
+-  `sensitive_deny_read_paths` function L201-246 — `() -> Vec<String>` — Build the list of sensitive paths that should be denied for reading.
+-  `command_needs_network` function L249-268 — `(command: &str, network_tools: &[String]) -> bool` — Check if a command invokes any tool that needs network access.
+-  `build_sandbox_config` function L271-320 — `( command: &str, working_dir: &std::path::Path, network_tools: &[String], ) -> S...` — Build a sandbox config for executing a command in the given working directory.
+-  `ShellTool` type L323-411 — `impl Tool for ShellTool`
+-  `name` function L324-326 — `(&self) -> &str`
+-  `description` function L328-343 — `(&self) -> &str`
+-  `parameters_schema` function L345-364 — `(&self) -> Value`
+-  `execute` function L366-410 — `(&self, ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ...`
+-  `SandboxExecError` enum L413-418 — `Unavailable | Tool`
+-  `execute_sandboxed` function L420-507 — `( command: &str, working_dir: &std::path::Path, timeout_ms: u64, network_tools: ...`
+-  `execute_unsandboxed` function L509-553 — `( command: &str, working_dir: &std::path::Path, timeout_ms: u64, ) -> Result<Too...`
+-  `tests` module L556-856 — `-`
+-  `test_ctx` function L564-567 — `() -> EngineToolContext`
+-  `test_ctx_in` function L569-572 — `(dir: &std::path::Path) -> EngineToolContext`
+-  `shell_echo` function L576-584 — `()`
+-  `shell_nonzero_exit` function L588-596 — `()`
+-  `shell_timeout` function L600-611 — `()`
+-  `shell_missing_command` function L615-619 — `()`
+-  `shell_schema_is_valid` function L622-627 — `()`
+-  `sensitive_paths_includes_ssh` function L630-633 — `()`
+-  `sensitive_paths_includes_aws` function L636-639 — `()`
+-  `sandbox_config_allows_working_dir_and_tmp` function L642-653 — `()`
+-  `network_detection_recognizes_tools` function L656-663 — `()`
+-  `network_detection_blocks_unknown` function L666-671 — `()`
+-  `network_detection_empty_list_blocks_all` function L674-677 — `()`
+-  `sandbox_write_inside_allowed` function L683-702 — `()`
+-  `sandbox_mkdir_inside_allowed` function L706-727 — `()`
+-  `sandbox_unlink_inside_allowed` function L731-756 — `()`
+-  `sandbox_build_tool_workflow` function L760-782 — `()`
+-  `sandbox_write_outside_blocked` function L786-823 — `()`
+-  `sandbox_read_sensitive_path_blocked` function L827-855 — `()`
 
 #### crates/arawn-engine/src/tools/skill.rs
 
-- pub `SkillTool` struct L16-18 — `{ registry: Arc<SkillRegistry> }` — Tool that executes skills (reusable prompt-based workflows).
-- pub `new` function L21-23 — `(registry: Arc<SkillRegistry>) -> Self`
--  `SkillTool` type L20-24 — `= SkillTool`
--  `SkillTool` type L27-99 — `impl Tool for SkillTool`
--  `name` function L28-30 — `(&self) -> &str`
--  `description` function L32-37 — `(&self) -> &str`
--  `parameters_schema` function L39-54 — `(&self) -> Value`
--  `execute` function L56-93 — `(&self, _ctx: &ToolContext, params: Value) -> Result<ToolOutput, EngineError>`
--  `is_read_only` function L95-98 — `(&self) -> bool`
--  `tests` module L102-207 — `-`
--  `make_registry` function L106-139 — `() -> Arc<SkillRegistry>`
--  `ctx` function L141-144 — `() -> ToolContext`
--  `execute_existing_skill` function L147-155 — `()`
--  `execute_with_args` function L158-170 — `()`
--  `execute_missing_skill` function L173-183 — `()`
--  `execute_missing_param` function L186-190 — `()`
--  `tool_metadata` function L193-198 — `()`
--  `schema_has_required_skill` function L201-206 — `()`
+- pub `SkillTool` struct L14-16 — `{ registry: Arc<SkillRegistry> }` — Tool that executes skills (reusable prompt-based workflows).
+- pub `new` function L19-21 — `(registry: Arc<SkillRegistry>) -> Self`
+-  `SkillTool` type L18-22 — `= SkillTool`
+-  `SkillTool` type L25-97 — `impl Tool for SkillTool`
+-  `name` function L26-28 — `(&self) -> &str`
+-  `description` function L30-35 — `(&self) -> &str`
+-  `parameters_schema` function L37-52 — `(&self) -> Value`
+-  `execute` function L54-91 — `(&self, _ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput,...`
+-  `is_read_only` function L93-96 — `(&self) -> bool`
+-  `tests` module L100-205 — `-`
+-  `make_registry` function L104-137 — `() -> Arc<SkillRegistry>`
+-  `ctx` function L139-142 — `() -> crate::context::EngineToolContext`
+-  `execute_existing_skill` function L145-153 — `()`
+-  `execute_with_args` function L156-168 — `()`
+-  `execute_missing_skill` function L171-181 — `()`
+-  `execute_missing_param` function L184-188 — `()`
+-  `tool_metadata` function L191-196 — `()`
+-  `schema_has_required_skill` function L199-204 — `()`
 
 #### crates/arawn-engine/src/tools/sleep.rs
 
-- pub `SleepTool` struct L15 — `-` — Waits for a specified duration.
--  `MAX_SLEEP_SECS` variable L11 — `: u64` — Maximum sleep duration in seconds.
--  `SleepTool` type L18-70 — `impl Tool for SleepTool`
--  `name` function L19-21 — `(&self) -> &str`
--  `description` function L23-28 — `(&self) -> &str`
--  `is_read_only` function L30-32 — `(&self) -> bool`
--  `parameters_schema` function L34-45 — `(&self) -> Value`
--  `execute` function L47-69 — `(&self, _ctx: &ToolContext, params: Value) -> Result<ToolOutput, EngineError>`
--  `tests` module L73-140 — `-`
--  `test_ctx` function L79-82 — `() -> ToolContext`
--  `schema_is_valid` function L85-92 — `()`
--  `is_read_only` function L95-97 — `()`
--  `sleep_short_duration` function L100-112 — `()`
--  `sleep_negative_errors` function L115-123 — `()`
--  `sleep_clamped` function L126-139 — `()`
+- pub `SleepTool` struct L13 — `-` — Waits for a specified duration.
+-  `MAX_SLEEP_SECS` variable L9 — `: u64` — Maximum sleep duration in seconds.
+-  `SleepTool` type L16-72 — `impl Tool for SleepTool`
+-  `name` function L17-19 — `(&self) -> &str`
+-  `description` function L21-26 — `(&self) -> &str`
+-  `is_read_only` function L28-30 — `(&self) -> bool`
+-  `category` function L32-34 — `(&self) -> ToolCategory`
+-  `parameters_schema` function L36-47 — `(&self) -> Value`
+-  `execute` function L49-71 — `(&self, _ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput,...`
+-  `tests` module L75-143 — `-`
+-  `test_ctx` function L82-85 — `() -> EngineToolContext`
+-  `schema_is_valid` function L88-95 — `()`
+-  `is_read_only` function L98-100 — `()`
+-  `sleep_short_duration` function L103-115 — `()`
+-  `sleep_negative_errors` function L118-126 — `()`
+-  `sleep_clamped` function L129-142 — `()`
 
 #### crates/arawn-engine/src/tools/task_list.rs
 
-- pub `TaskStatus` enum L16-20 — `Pending | InProgress | Completed` — Session-scoped task status.
-- pub `SessionTask` struct L34-42 — `{ id: String, subject: String, description: Option<String>, active_form: Option<...` — A single session-scoped task.
-- pub `SessionTaskStore` struct L47-50 — `{ tasks: Arc<RwLock<HashMap<String, SessionTask>>>, order: Arc<RwLock<Vec<String...` — Shared in-memory task store for a session.
-- pub `new` function L53-55 — `() -> Self`
-- pub `TaskCreateTool` struct L131-133 — `{ store: SessionTaskStore }` — Creates a new session-scoped task for tracking work within the current session.
-- pub `new` function L136-138 — `(store: SessionTaskStore) -> Self`
-- pub `TaskUpdateTool` struct L210-212 — `{ store: SessionTaskStore }` — Updates a session task's status or details.
-- pub `new` function L215-217 — `(store: SessionTaskStore) -> Self`
-- pub `TaskListTool` struct L338-340 — `{ store: SessionTaskStore }` — Lists all session tasks with their status.
-- pub `new` function L343-345 — `(store: SessionTaskStore) -> Self`
-- pub `TaskGetTool` struct L401-403 — `{ store: SessionTaskStore }` — Gets full details of a session task by ID.
-- pub `new` function L406-408 — `(store: SessionTaskStore) -> Self`
--  `TaskStatus` type L22-30 — `= TaskStatus`
--  `fmt` function L23-29 — `(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result`
--  `SessionTaskStore` type L52-117 — `= SessionTaskStore`
--  `create` function L57-74 — `( &self, subject: String, description: Option<String>, active_form: Option<Strin...`
--  `update` function L76-95 — `(&self, id: &str, updates: TaskUpdates) -> Option<SessionTask>`
--  `get` function L97-99 — `(&self, id: &str) -> Option<SessionTask>`
--  `delete` function L101-107 — `(&self, id: &str) -> bool`
--  `list` function L109-116 — `(&self) -> Vec<SessionTask>`
--  `TaskUpdates` struct L119-124 — `{ status: Option<TaskStatus>, subject: Option<String>, description: Option<Strin...`
--  `TaskCreateTool` type L135-139 — `= TaskCreateTool`
--  `TaskCreateTool` type L142-203 — `impl Tool for TaskCreateTool`
--  `name` function L143-145 — `(&self) -> &str`
--  `description` function L147-158 — `(&self) -> &str`
--  `parameters_schema` function L160-179 — `(&self) -> Value`
--  `execute` function L181-202 — `(&self, _ctx: &ToolContext, params: Value) -> Result<ToolOutput, EngineError>`
--  `TaskUpdateTool` type L214-218 — `= TaskUpdateTool`
--  `TaskUpdateTool` type L221-331 — `impl Tool for TaskUpdateTool`
--  `name` function L222-224 — `(&self) -> &str`
--  `description` function L226-235 — `(&self) -> &str`
--  `parameters_schema` function L237-265 — `(&self) -> Value`
--  `execute` function L267-330 — `(&self, _ctx: &ToolContext, params: Value) -> Result<ToolOutput, EngineError>`
--  `TaskListTool` type L342-346 — `= TaskListTool`
--  `TaskListTool` type L349-394 — `impl Tool for TaskListTool`
--  `name` function L350-352 — `(&self) -> &str`
--  `description` function L354-362 — `(&self) -> &str`
--  `is_read_only` function L364-366 — `(&self) -> bool`
--  `parameters_schema` function L368-373 — `(&self) -> Value`
--  `execute` function L375-393 — `(&self, _ctx: &ToolContext, _params: Value) -> Result<ToolOutput, EngineError>`
--  `TaskGetTool` type L405-409 — `= TaskGetTool`
--  `TaskGetTool` type L412-455 — `impl Tool for TaskGetTool`
--  `name` function L413-415 — `(&self) -> &str`
--  `description` function L417-423 — `(&self) -> &str`
--  `is_read_only` function L425-427 — `(&self) -> bool`
--  `parameters_schema` function L429-440 — `(&self) -> Value`
--  `execute` function L442-454 — `(&self, _ctx: &ToolContext, params: Value) -> Result<ToolOutput, EngineError>`
--  `tests` module L458-801 — `-`
--  `test_ctx` function L464-467 — `() -> ToolContext`
--  `store_create_and_list` function L470-480 — `()`
--  `store_update_status` function L483-498 — `()`
--  `store_update_subject_and_description` function L501-518 — `()`
--  `store_delete` function L521-526 — `()`
--  `store_delete_nonexistent` function L529-532 — `()`
--  `store_update_nonexistent` function L535-550 — `()`
--  `store_preserves_order` function L553-561 — `()`
--  `task_create_tool` function L564-581 — `()`
--  `task_create_with_active_form` function L584-600 — `()`
--  `task_update_status` function L603-616 — `()`
--  `task_update_delete` function L619-633 — `()`
--  `task_update_invalid_status` function L636-647 — `()`
--  `task_update_no_fields_errors` function L650-659 — `()`
--  `task_update_not_found` function L662-674 — `()`
--  `task_list_empty` function L677-684 — `()`
--  `task_list_with_tasks` function L687-707 — `()`
--  `full_lifecycle` function L710-745 — `()`
--  `schemas_are_valid` function L748-767 — `()`
--  `task_get_found` function L770-785 — `()`
--  `task_get_not_found` function L788-800 — `()`
+- pub `TaskStatus` enum L14-18 — `Pending | InProgress | Completed` — Session-scoped task status.
+- pub `SessionTask` struct L32-40 — `{ id: String, subject: String, description: Option<String>, active_form: Option<...` — A single session-scoped task.
+- pub `SessionTaskStore` struct L45-48 — `{ tasks: Arc<RwLock<HashMap<String, SessionTask>>>, order: Arc<RwLock<Vec<String...` — Shared in-memory task store for a session.
+- pub `new` function L51-53 — `() -> Self`
+- pub `TaskCreateTool` struct L129-131 — `{ store: SessionTaskStore }` — Creates a new session-scoped task for tracking work within the current session.
+- pub `new` function L134-136 — `(store: SessionTaskStore) -> Self`
+- pub `TaskUpdateTool` struct L212-214 — `{ store: SessionTaskStore }` — Updates a session task's status or details.
+- pub `new` function L217-219 — `(store: SessionTaskStore) -> Self`
+- pub `TaskListTool` struct L344-346 — `{ store: SessionTaskStore }` — Lists all session tasks with their status.
+- pub `new` function L349-351 — `(store: SessionTaskStore) -> Self`
+- pub `TaskGetTool` struct L411-413 — `{ store: SessionTaskStore }` — Gets full details of a session task by ID.
+- pub `new` function L416-418 — `(store: SessionTaskStore) -> Self`
+-  `TaskStatus` type L20-28 — `= TaskStatus`
+-  `fmt` function L21-27 — `(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result`
+-  `SessionTaskStore` type L50-115 — `= SessionTaskStore`
+-  `create` function L55-72 — `( &self, subject: String, description: Option<String>, active_form: Option<Strin...`
+-  `update` function L74-93 — `(&self, id: &str, updates: TaskUpdates) -> Option<SessionTask>`
+-  `get` function L95-97 — `(&self, id: &str) -> Option<SessionTask>`
+-  `delete` function L99-105 — `(&self, id: &str) -> bool`
+-  `list` function L107-114 — `(&self) -> Vec<SessionTask>`
+-  `TaskUpdates` struct L117-122 — `{ status: Option<TaskStatus>, subject: Option<String>, description: Option<Strin...`
+-  `TaskCreateTool` type L133-137 — `= TaskCreateTool`
+-  `TaskCreateTool` type L140-205 — `impl Tool for TaskCreateTool`
+-  `name` function L141-143 — `(&self) -> &str`
+-  `description` function L145-156 — `(&self) -> &str`
+-  `category` function L158-160 — `(&self) -> ToolCategory`
+-  `parameters_schema` function L162-181 — `(&self) -> Value`
+-  `execute` function L183-204 — `(&self, _ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput,...`
+-  `TaskUpdateTool` type L216-220 — `= TaskUpdateTool`
+-  `TaskUpdateTool` type L223-337 — `impl Tool for TaskUpdateTool`
+-  `name` function L224-226 — `(&self) -> &str`
+-  `description` function L228-237 — `(&self) -> &str`
+-  `category` function L239-241 — `(&self) -> ToolCategory`
+-  `parameters_schema` function L243-271 — `(&self) -> Value`
+-  `execute` function L273-336 — `(&self, _ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput,...`
+-  `TaskListTool` type L348-352 — `= TaskListTool`
+-  `TaskListTool` type L355-404 — `impl Tool for TaskListTool`
+-  `name` function L356-358 — `(&self) -> &str`
+-  `description` function L360-368 — `(&self) -> &str`
+-  `is_read_only` function L370-372 — `(&self) -> bool`
+-  `category` function L374-376 — `(&self) -> ToolCategory`
+-  `parameters_schema` function L378-383 — `(&self) -> Value`
+-  `execute` function L385-403 — `(&self, _ctx: &dyn arawn_tool::ToolContext, _params: Value) -> Result<ToolOutput...`
+-  `TaskGetTool` type L415-419 — `= TaskGetTool`
+-  `TaskGetTool` type L422-469 — `impl Tool for TaskGetTool`
+-  `name` function L423-425 — `(&self) -> &str`
+-  `description` function L427-433 — `(&self) -> &str`
+-  `is_read_only` function L435-437 — `(&self) -> bool`
+-  `category` function L439-441 — `(&self) -> ToolCategory`
+-  `parameters_schema` function L443-454 — `(&self) -> Value`
+-  `execute` function L456-468 — `(&self, _ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput,...`
+-  `tests` module L472-815 — `-`
+-  `test_ctx` function L478-481 — `() -> crate::context::EngineToolContext`
+-  `store_create_and_list` function L484-494 — `()`
+-  `store_update_status` function L497-512 — `()`
+-  `store_update_subject_and_description` function L515-532 — `()`
+-  `store_delete` function L535-540 — `()`
+-  `store_delete_nonexistent` function L543-546 — `()`
+-  `store_update_nonexistent` function L549-564 — `()`
+-  `store_preserves_order` function L567-575 — `()`
+-  `task_create_tool` function L578-595 — `()`
+-  `task_create_with_active_form` function L598-614 — `()`
+-  `task_update_status` function L617-630 — `()`
+-  `task_update_delete` function L633-647 — `()`
+-  `task_update_invalid_status` function L650-661 — `()`
+-  `task_update_no_fields_errors` function L664-673 — `()`
+-  `task_update_not_found` function L676-688 — `()`
+-  `task_list_empty` function L691-698 — `()`
+-  `task_list_with_tasks` function L701-721 — `()`
+-  `full_lifecycle` function L724-759 — `()`
+-  `schemas_are_valid` function L762-781 — `()`
+-  `task_get_found` function L784-799 — `()`
+-  `task_get_not_found` function L802-814 — `()`
 
 #### crates/arawn-engine/src/tools/task_output.rs
 
-- pub `TaskOutputTool` struct L14-16 — `{ bg_manager: Arc<BackgroundTaskManager> }` — Read the output and status of a background task.
-- pub `new` function L19-21 — `(bg_manager: Arc<BackgroundTaskManager>) -> Self`
--  `TaskOutputTool` type L18-22 — `= TaskOutputTool`
--  `TaskOutputTool` type L25-135 — `impl Tool for TaskOutputTool`
--  `name` function L26-28 — `(&self) -> &str`
--  `description` function L30-34 — `(&self) -> &str`
--  `is_read_only` function L36-38 — `(&self) -> bool`
--  `parameters_schema` function L40-59 — `(&self) -> Value`
--  `execute` function L61-134 — `(&self, _ctx: &ToolContext, params: Value) -> Result<ToolOutput, EngineError>`
--  `tests` module L138-213 — `-`
--  `test_ctx` function L145-148 — `() -> ToolContext`
--  `unknown_task_returns_error` function L151-160 — `()`
--  `completed_task_returns_output` function L163-188 — `()`
--  `running_task_non_blocking` function L191-212 — `()`
+- pub `TaskOutputTool` struct L12-14 — `{ bg_manager: Arc<BackgroundTaskManager> }` — Read the output and status of a background task.
+- pub `new` function L17-19 — `(bg_manager: Arc<BackgroundTaskManager>) -> Self`
+-  `TaskOutputTool` type L16-20 — `= TaskOutputTool`
+-  `TaskOutputTool` type L23-137 — `impl Tool for TaskOutputTool`
+-  `name` function L24-26 — `(&self) -> &str`
+-  `description` function L28-32 — `(&self) -> &str`
+-  `is_read_only` function L34-36 — `(&self) -> bool`
+-  `category` function L38-40 — `(&self) -> ToolCategory`
+-  `parameters_schema` function L42-61 — `(&self) -> Value`
+-  `execute` function L63-136 — `(&self, _ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput,...`
+-  `tests` module L140-215 — `-`
+-  `test_ctx` function L147-150 — `() -> crate::context::EngineToolContext`
+-  `unknown_task_returns_error` function L153-162 — `()`
+-  `completed_task_returns_output` function L165-190 — `()`
+-  `running_task_non_blocking` function L193-214 — `()`
 
 #### crates/arawn-engine/src/tools/task_stop.rs
 
-- pub `TaskStopTool` struct L13-15 — `{ bg_manager: Arc<BackgroundTaskManager> }` — Stop a running background task.
-- pub `new` function L18-20 — `(bg_manager: Arc<BackgroundTaskManager>) -> Self`
--  `TaskStopTool` type L17-21 — `= TaskStopTool`
--  `TaskStopTool` type L24-76 — `impl Tool for TaskStopTool`
--  `name` function L25-27 — `(&self) -> &str`
--  `description` function L29-32 — `(&self) -> &str`
--  `is_read_only` function L34-36 — `(&self) -> bool`
--  `parameters_schema` function L38-49 — `(&self) -> Value`
--  `execute` function L51-75 — `(&self, _ctx: &ToolContext, params: Value) -> Result<ToolOutput, EngineError>`
--  `tests` module L79-154 — `-`
--  `test_ctx` function L86-89 — `() -> ToolContext`
--  `stop_unknown_task` function L92-101 — `()`
--  `stop_running_task` function L104-129 — `()`
--  `stop_already_completed_task` function L132-153 — `()`
+- pub `TaskStopTool` struct L11-13 — `{ bg_manager: Arc<BackgroundTaskManager> }` — Stop a running background task.
+- pub `new` function L16-18 — `(bg_manager: Arc<BackgroundTaskManager>) -> Self`
+-  `TaskStopTool` type L15-19 — `= TaskStopTool`
+-  `TaskStopTool` type L22-78 — `impl Tool for TaskStopTool`
+-  `name` function L23-25 — `(&self) -> &str`
+-  `description` function L27-30 — `(&self) -> &str`
+-  `is_read_only` function L32-34 — `(&self) -> bool`
+-  `category` function L36-38 — `(&self) -> ToolCategory`
+-  `parameters_schema` function L40-51 — `(&self) -> Value`
+-  `execute` function L53-77 — `(&self, _ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput,...`
+-  `tests` module L81-156 — `-`
+-  `test_ctx` function L88-91 — `() -> crate::context::EngineToolContext`
+-  `stop_unknown_task` function L94-103 — `()`
+-  `stop_running_task` function L106-131 — `()`
+-  `stop_already_completed_task` function L134-155 — `()`
 
 #### crates/arawn-engine/src/tools/think.rs
 
-- pub `ThinkTool` struct L10 — `-` — A no-op reasoning scratchpad tool.
--  `ThinkTool` type L13-52 — `impl Tool for ThinkTool`
--  `name` function L14-16 — `(&self) -> &str`
--  `description` function L18-25 — `(&self) -> &str`
--  `is_read_only` function L27-29 — `(&self) -> bool`
--  `parameters_schema` function L31-42 — `(&self) -> Value`
--  `execute` function L44-51 — `(&self, _ctx: &ToolContext, params: Value) -> Result<ToolOutput, EngineError>`
--  `tests` module L55-92 — `-`
--  `test_ctx` function L61-64 — `() -> ToolContext`
--  `think_returns_thought` function L67-75 — `()`
--  `think_with_empty_thought` function L78-83 — `()`
--  `think_schema_is_valid` function L86-91 — `()`
+- pub `ThinkTool` struct L8 — `-` — A no-op reasoning scratchpad tool.
+-  `ThinkTool` type L11-50 — `impl Tool for ThinkTool`
+-  `name` function L12-14 — `(&self) -> &str`
+-  `description` function L16-23 — `(&self) -> &str`
+-  `is_read_only` function L25-27 — `(&self) -> bool`
+-  `parameters_schema` function L29-40 — `(&self) -> Value`
+-  `execute` function L42-49 — `(&self, _ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput,...`
+-  `tests` module L53-91 — `-`
+-  `test_ctx` function L60-63 — `() -> EngineToolContext`
+-  `think_returns_thought` function L66-74 — `()`
+-  `think_with_empty_thought` function L77-82 — `()`
+-  `think_schema_is_valid` function L85-90 — `()`
 
 #### crates/arawn-engine/src/tools/web_fetch.rs
 
-- pub `WebFetchTool` struct L39-41 — `{ cache: Arc<Mutex<LruCache<String, CacheEntry>>> }` — Fetches content from a URL, converts HTML to markdown, caches results,
-- pub `new` function L44-50 — `() -> Self`
--  `CACHE_TTL` variable L16 — `: Duration` — Cache TTL: 15 minutes.
--  `CACHE_MAX_ENTRIES` variable L19 — `: usize` — Maximum cache entries.
--  `MAX_CONTENT_BYTES` variable L22 — `: usize` — Max content size before truncation (100KB).
--  `CacheEntry` struct L25-29 — `{ content: String, content_type: String, fetched_at: Instant }` — Cached fetch result.
--  `CacheEntry` type L31-35 — `= CacheEntry`
--  `is_expired` function L32-34 — `(&self) -> bool`
--  `WebFetchTool` type L43-51 — `= WebFetchTool`
--  `WebFetchTool` type L53-57 — `impl Default for WebFetchTool`
--  `default` function L54-56 — `() -> Self`
--  `WebFetchTool` type L60-167 — `impl Tool for WebFetchTool`
--  `name` function L61-63 — `(&self) -> &str`
--  `description` function L65-71 — `(&self) -> &str`
--  `parameters_schema` function L73-88 — `(&self) -> Value`
--  `execute` function L90-166 — `(&self, ctx: &ToolContext, params: Value) -> Result<ToolOutput, EngineError>`
--  `process_content` function L170-183 — `(body: &str, content_type: &str) -> String` — Convert HTML to markdown, or return non-HTML as-is.
--  `html_to_markdown` function L186-191 — `(html: &str) -> String` — Convert HTML to markdown using htmd (Turndown-equivalent).
--  `strip_html_tags` function L194-225 — `(html: &str) -> String` — Fallback: simple HTML tag stripper (used if htmd fails).
--  `finish` function L228-239 — `( ctx: &ToolContext, prompt: &str, url: &str, text: String, ) -> Result<ToolOutp...` — If we have an LLM and a prompt, summarize.
--  `summarize_with_llm` function L241-284 — `( llm: &Arc<dyn arawn_llm::LlmClient>, model: &str, prompt: &str, url: &str, con...`
--  `tests` module L287-521 — `-`
--  `test_ctx` function L296-299 — `() -> ToolContext`
--  `test_ctx_with_mock` function L301-307 — `(responses: Vec<MockResponse>) -> (ToolContext, Arc<MockLlmClient>)`
--  `html_to_markdown_headings` function L312-316 — `()`
--  `html_to_markdown_links` function L319-323 — `()`
--  `html_to_markdown_lists` function L326-330 — `()`
--  `html_to_markdown_code` function L333-336 — `()`
--  `non_html_passthrough` function L339-342 — `()`
--  `strip_tags_basic` function L347-349 — `()`
--  `strip_tags_collapses_whitespace` function L352-357 — `()`
--  `cache_entry_expiry` function L362-376 — `()`
--  `cache_stores_and_retrieves` function L379-398 — `()`
--  `large_content_truncated` function L403-408 — `()`
--  `schema_is_valid` function L413-422 — `()`
--  `http_upgraded_description` function L425-428 — `()`
--  `summarize_with_mock_llm` function L433-451 — `()`
--  `summarize_sends_correct_request_shape` function L454-469 — `()`
--  `execute_without_llm_returns_raw_text` function L472-475 — `()`
--  `summarize_empty_content` function L478-493 — `()`
--  `summarize_multipart_response` function L496-520 — `()`
+- pub `WebFetchTool` struct L37-39 — `{ cache: Arc<Mutex<LruCache<String, CacheEntry>>> }` — Fetches content from a URL, converts HTML to markdown, caches results,
+- pub `new` function L42-48 — `() -> Self`
+-  `CACHE_TTL` variable L14 — `: Duration` — Cache TTL: 15 minutes.
+-  `CACHE_MAX_ENTRIES` variable L17 — `: usize` — Maximum cache entries.
+-  `MAX_CONTENT_BYTES` variable L20 — `: usize` — Max content size before truncation (100KB).
+-  `CacheEntry` struct L23-27 — `{ content: String, content_type: String, fetched_at: Instant }` — Cached fetch result.
+-  `CacheEntry` type L29-33 — `= CacheEntry`
+-  `is_expired` function L30-32 — `(&self) -> bool`
+-  `WebFetchTool` type L41-49 — `= WebFetchTool`
+-  `WebFetchTool` type L51-55 — `impl Default for WebFetchTool`
+-  `default` function L52-54 — `() -> Self`
+-  `WebFetchTool` type L58-169 — `impl Tool for WebFetchTool`
+-  `name` function L59-61 — `(&self) -> &str`
+-  `description` function L63-69 — `(&self) -> &str`
+-  `category` function L71-73 — `(&self) -> ToolCategory`
+-  `parameters_schema` function L75-90 — `(&self) -> Value`
+-  `execute` function L92-168 — `(&self, ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ...`
+-  `process_content` function L172-185 — `(body: &str, content_type: &str) -> String` — Convert HTML to markdown, or return non-HTML as-is.
+-  `html_to_markdown` function L188-193 — `(html: &str) -> String` — Convert HTML to markdown using htmd (Turndown-equivalent).
+-  `strip_html_tags` function L196-227 — `(html: &str) -> String` — Fallback: simple HTML tag stripper (used if htmd fails).
+-  `finish` function L230-241 — `( ctx: &dyn arawn_tool::ToolContext, prompt: &str, url: &str, text: String, ) ->...` — If we have an LLM and a prompt, summarize.
+-  `summarize_with_llm` function L243-286 — `( llm: &Arc<dyn arawn_llm::LlmClient>, model: &str, prompt: &str, url: &str, con...`
+-  `tests` module L289-525 — `-`
+-  `test_ctx` function L300-303 — `() -> EngineToolContext`
+-  `test_ctx_with_mock` function L305-311 — `(responses: Vec<MockResponse>) -> (EngineToolContext, Arc<MockLlmClient>)`
+-  `html_to_markdown_headings` function L316-320 — `()`
+-  `html_to_markdown_links` function L323-327 — `()`
+-  `html_to_markdown_lists` function L330-334 — `()`
+-  `html_to_markdown_code` function L337-340 — `()`
+-  `non_html_passthrough` function L343-346 — `()`
+-  `strip_tags_basic` function L351-353 — `()`
+-  `strip_tags_collapses_whitespace` function L356-361 — `()`
+-  `cache_entry_expiry` function L366-380 — `()`
+-  `cache_stores_and_retrieves` function L383-402 — `()`
+-  `large_content_truncated` function L407-412 — `()`
+-  `schema_is_valid` function L417-426 — `()`
+-  `http_upgraded_description` function L429-432 — `()`
+-  `summarize_with_mock_llm` function L437-455 — `()`
+-  `summarize_sends_correct_request_shape` function L458-473 — `()`
+-  `execute_without_llm_returns_raw_text` function L476-479 — `()`
+-  `summarize_empty_content` function L482-497 — `()`
+-  `summarize_multipart_response` function L500-524 — `()`
 
 #### crates/arawn-engine/src/tools/web_search.rs
 
-- pub `WebSearchTool` struct L9 — `-` — Searches the web and returns results to inform responses.
--  `WebSearchTool` type L12-138 — `impl Tool for WebSearchTool`
--  `name` function L13-15 — `(&self) -> &str`
--  `description` function L17-24 — `(&self) -> &str`
--  `is_read_only` function L26-28 — `(&self) -> bool`
--  `parameters_schema` function L30-52 — `(&self) -> Value`
--  `execute` function L54-137 — `(&self, _ctx: &ToolContext, params: Value) -> Result<ToolOutput, EngineError>`
--  `SearchResult` struct L140-144 — `{ title: String, url: String, snippet: String }`
--  `parse_ddg_results` function L146-169 — `(html: &str, max: usize) -> Vec<SearchResult>`
--  `extract_tag_content` function L171-179 — `(html: &str, after: &str) -> String`
--  `extract_href` function L181-194 — `(html: &str) -> String`
--  `extract_after_class` function L196-208 — `(html: &str, class: &str) -> String`
--  `strip_tags` function L210-222 — `(html: &str) -> String`
--  `urlencod` function L224-232 — `(s: &str) -> String`
--  `urldecod` function L234-252 — `(s: &str) -> String`
--  `tests` module L255-394 — `-`
--  `urlencod_spaces` function L259-261 — `()`
--  `urlencod_special_chars` function L264-266 — `()`
--  `urldecod_percent` function L269-271 — `()`
--  `urldecod_stops_at_ampersand` function L274-276 — `()`
--  `urldecod_plus_to_space` function L279-281 — `()`
--  `strip_tags_removes_html` function L284-286 — `()`
--  `strip_tags_empty` function L289-291 — `()`
--  `schema_is_valid` function L294-303 — `()`
--  `parse_ddg_results_empty_html` function L306-309 — `()`
--  `parse_ddg_results_no_results` function L312-316 — `()`
--  `parse_ddg_results_respects_max` function L319-330 — `()`
--  `parse_ddg_results_extracts_fields` function L333-343 — `()`
--  `blocked_domains_filter` function L346-371 — `()`
--  `allowed_domains_builds_site_clause` function L374-387 — `()`
--  `is_read_only` function L390-393 — `()`
+- pub `WebSearchTool` struct L7 — `-` — Searches the web and returns results to inform responses.
+-  `WebSearchTool` type L10-140 — `impl Tool for WebSearchTool`
+-  `name` function L11-13 — `(&self) -> &str`
+-  `description` function L15-22 — `(&self) -> &str`
+-  `is_read_only` function L24-26 — `(&self) -> bool`
+-  `category` function L28-30 — `(&self) -> ToolCategory`
+-  `parameters_schema` function L32-54 — `(&self) -> Value`
+-  `execute` function L56-139 — `(&self, _ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput,...`
+-  `SearchResult` struct L142-146 — `{ title: String, url: String, snippet: String }`
+-  `parse_ddg_results` function L148-171 — `(html: &str, max: usize) -> Vec<SearchResult>`
+-  `extract_tag_content` function L173-181 — `(html: &str, after: &str) -> String`
+-  `extract_href` function L183-196 — `(html: &str) -> String`
+-  `extract_after_class` function L198-210 — `(html: &str, class: &str) -> String`
+-  `strip_tags` function L212-224 — `(html: &str) -> String`
+-  `urlencod` function L226-234 — `(s: &str) -> String`
+-  `urldecod` function L236-254 — `(s: &str) -> String`
+-  `tests` module L257-396 — `-`
+-  `urlencod_spaces` function L261-263 — `()`
+-  `urlencod_special_chars` function L266-268 — `()`
+-  `urldecod_percent` function L271-273 — `()`
+-  `urldecod_stops_at_ampersand` function L276-278 — `()`
+-  `urldecod_plus_to_space` function L281-283 — `()`
+-  `strip_tags_removes_html` function L286-288 — `()`
+-  `strip_tags_empty` function L291-293 — `()`
+-  `schema_is_valid` function L296-305 — `()`
+-  `parse_ddg_results_empty_html` function L308-311 — `()`
+-  `parse_ddg_results_no_results` function L314-318 — `()`
+-  `parse_ddg_results_respects_max` function L321-332 — `()`
+-  `parse_ddg_results_extracts_fields` function L335-345 — `()`
+-  `blocked_domains_filter` function L348-373 — `()`
+-  `allowed_domains_builds_site_clause` function L376-389 — `()`
+-  `is_read_only` function L392-395 — `()`
 
 #### crates/arawn-engine/src/tools/workstream.rs
 
-- pub `WorkstreamCreateTool` struct L14-16 — `{ store: Arc<Mutex<Store>> }` — Tool for creating a new workstream.
-- pub `new` function L19-21 — `(store: Arc<Mutex<Store>>) -> Self`
-- pub `WorkstreamListTool` struct L87-89 — `{ store: Arc<Mutex<Store>> }` — Tool for listing available workstreams.
-- pub `new` function L92-94 — `(store: Arc<Mutex<Store>>) -> Self`
--  `WorkstreamCreateTool` type L18-22 — `= WorkstreamCreateTool`
--  `WorkstreamCreateTool` type L25-84 — `impl Tool for WorkstreamCreateTool`
--  `name` function L26-28 — `(&self) -> &str`
--  `description` function L30-34 — `(&self) -> &str`
--  `parameters_schema` function L36-47 — `(&self) -> Value`
--  `execute` function L49-83 — `(&self, ctx: &ToolContext, params: Value) -> Result<ToolOutput, EngineError>`
--  `WorkstreamListTool` type L91-95 — `= WorkstreamListTool`
--  `WorkstreamListTool` type L98-141 — `impl Tool for WorkstreamListTool`
--  `name` function L99-101 — `(&self) -> &str`
--  `description` function L103-105 — `(&self) -> &str`
--  `is_read_only` function L107-109 — `(&self) -> bool`
--  `parameters_schema` function L111-117 — `(&self) -> Value`
--  `execute` function L119-140 — `(&self, _ctx: &ToolContext, _params: Value) -> Result<ToolOutput, EngineError>`
--  `tests` module L144-210 — `-`
--  `setup` function L149-155 — `() -> (tempfile::TempDir, Arc<Mutex<Store>>)`
--  `test_ctx` function L157-161 — `(tmp: &tempfile::TempDir) -> ToolContext`
--  `create_workstream_succeeds` function L164-173 — `()`
--  `create_duplicate_workstream_errors` function L176-186 — `()`
--  `create_workstream_empty_name_errors` function L189-197 — `()`
--  `list_workstreams_includes_scratch` function L200-209 — `()`
+- pub `WorkstreamCreateTool` struct L12-14 — `{ store: Arc<Mutex<Store>> }` — Tool for creating a new workstream.
+- pub `new` function L17-19 — `(store: Arc<Mutex<Store>>) -> Self`
+- pub `WorkstreamListTool` struct L89-91 — `{ store: Arc<Mutex<Store>> }` — Tool for listing available workstreams.
+- pub `new` function L94-96 — `(store: Arc<Mutex<Store>>) -> Self`
+-  `WorkstreamCreateTool` type L16-20 — `= WorkstreamCreateTool`
+-  `WorkstreamCreateTool` type L23-86 — `impl Tool for WorkstreamCreateTool`
+-  `name` function L24-26 — `(&self) -> &str`
+-  `description` function L28-32 — `(&self) -> &str`
+-  `category` function L34-36 — `(&self) -> ToolCategory`
+-  `parameters_schema` function L38-49 — `(&self) -> Value`
+-  `execute` function L51-85 — `(&self, ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ...`
+-  `WorkstreamListTool` type L93-97 — `= WorkstreamListTool`
+-  `WorkstreamListTool` type L100-147 — `impl Tool for WorkstreamListTool`
+-  `name` function L101-103 — `(&self) -> &str`
+-  `description` function L105-107 — `(&self) -> &str`
+-  `is_read_only` function L109-111 — `(&self) -> bool`
+-  `category` function L113-115 — `(&self) -> ToolCategory`
+-  `parameters_schema` function L117-123 — `(&self) -> Value`
+-  `execute` function L125-146 — `(&self, _ctx: &dyn arawn_tool::ToolContext, _params: Value) -> Result<ToolOutput...`
+-  `tests` module L150-216 — `-`
+-  `setup` function L155-161 — `() -> (tempfile::TempDir, Arc<Mutex<Store>>)`
+-  `test_ctx` function L163-167 — `(tmp: &tempfile::TempDir) -> crate::context::EngineToolContext`
+-  `create_workstream_succeeds` function L170-179 — `()`
+-  `create_duplicate_workstream_errors` function L182-192 — `()`
+-  `create_workstream_empty_name_errors` function L195-203 — `()`
+-  `list_workstreams_includes_scratch` function L206-215 — `()`
 
 ### crates/arawn-llm/src
 
@@ -2463,20 +2474,20 @@
 
 #### crates/arawn-mcp/src/adapter.rs
 
-- pub `McpToolAdapter` struct L16-25 — `{ arawn_name: String, mcp_name: String, mcp_tool: McpTool, peer: Arc<Peer<RoleCl...` — An arawn Tool backed by an MCP server tool.
-- pub `new` function L28-40 — `(server_name: &str, mcp_tool: McpTool, peer: Arc<Peer<RoleClient>>) -> Self` — McpToolAdapter — wraps an MCP tool as an arawn Tool impl.
-- pub `tool_name` function L43-45 — `(&self) -> &str` — Get the arawn tool name (for logging before registration).
--  `McpToolAdapter` type L27-46 — `= McpToolAdapter` — McpToolAdapter — wraps an MCP tool as an arawn Tool impl.
--  `McpToolAdapter` type L49-122 — `impl Tool for McpToolAdapter` — McpToolAdapter — wraps an MCP tool as an arawn Tool impl.
--  `name` function L50-52 — `(&self) -> &str` — McpToolAdapter — wraps an MCP tool as an arawn Tool impl.
--  `description` function L54-59 — `(&self) -> &str` — McpToolAdapter — wraps an MCP tool as an arawn Tool impl.
--  `parameters_schema` function L61-68 — `(&self) -> Value` — McpToolAdapter — wraps an MCP tool as an arawn Tool impl.
--  `is_read_only` function L70-76 — `(&self) -> bool` — McpToolAdapter — wraps an MCP tool as an arawn Tool impl.
--  `execute` function L78-121 — `(&self, _ctx: &ToolContext, params: Value) -> Result<ToolOutput, EngineError>` — McpToolAdapter — wraps an MCP tool as an arawn Tool impl.
--  `normalize_name` function L125-135 — `(name: &str) -> String` — Normalize a name for use in tool naming — replace non-alphanumeric chars with _
--  `tests` module L138-153 — `-` — McpToolAdapter — wraps an MCP tool as an arawn Tool impl.
--  `normalize_simple` function L142-145 — `()` — McpToolAdapter — wraps an MCP tool as an arawn Tool impl.
--  `normalize_special_chars` function L148-152 — `()` — McpToolAdapter — wraps an MCP tool as an arawn Tool impl.
+- pub `McpToolAdapter` struct L14-23 — `{ arawn_name: String, mcp_name: String, mcp_tool: McpTool, peer: Arc<Peer<RoleCl...` — An arawn Tool backed by an MCP server tool.
+- pub `new` function L26-38 — `(server_name: &str, mcp_tool: McpTool, peer: Arc<Peer<RoleClient>>) -> Self` — McpToolAdapter — wraps an MCP tool as an arawn Tool impl.
+- pub `tool_name` function L41-43 — `(&self) -> &str` — Get the arawn tool name (for logging before registration).
+-  `McpToolAdapter` type L25-44 — `= McpToolAdapter` — McpToolAdapter — wraps an MCP tool as an arawn Tool impl.
+-  `McpToolAdapter` type L47-120 — `impl Tool for McpToolAdapter` — McpToolAdapter — wraps an MCP tool as an arawn Tool impl.
+-  `name` function L48-50 — `(&self) -> &str` — McpToolAdapter — wraps an MCP tool as an arawn Tool impl.
+-  `description` function L52-57 — `(&self) -> &str` — McpToolAdapter — wraps an MCP tool as an arawn Tool impl.
+-  `parameters_schema` function L59-66 — `(&self) -> Value` — McpToolAdapter — wraps an MCP tool as an arawn Tool impl.
+-  `is_read_only` function L68-74 — `(&self) -> bool` — McpToolAdapter — wraps an MCP tool as an arawn Tool impl.
+-  `execute` function L76-119 — `(&self, _ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput,...` — McpToolAdapter — wraps an MCP tool as an arawn Tool impl.
+-  `normalize_name` function L123-133 — `(name: &str) -> String` — Normalize a name for use in tool naming — replace non-alphanumeric chars with _
+-  `tests` module L136-151 — `-` — McpToolAdapter — wraps an MCP tool as an arawn Tool impl.
+-  `normalize_simple` function L140-143 — `()` — McpToolAdapter — wraps an MCP tool as an arawn Tool impl.
+-  `normalize_special_chars` function L146-150 — `()` — McpToolAdapter — wraps an MCP tool as an arawn Tool impl.
 
 #### crates/arawn-mcp/src/config.rs
 
@@ -2557,21 +2568,22 @@
 
 - pub `MemoryManager` struct L17-24 — `{ global: Arc<MemoryStore>, workstream: Arc<MemoryStore>, vectors_enabled: bool ...` — Two-tier memory manager holding global and workstream knowledge bases.
 - pub `open` function L30-66 — `(data_dir: &Path, ws_dir: &str, embedding_dims: Option<usize>) -> Result<Self, M...` — Open both KB tiers.
-- pub `store_for` function L69-74 — `(&self, scope: Scope) -> &Arc<MemoryStore>` — Get the store for a given scope.
-- pub `store_for_type` function L77-79 — `(&self, entity_type: EntityType) -> &Arc<MemoryStore>` — Get the store for a given entity type (uses default scope).
-- pub `vectors_enabled` function L82-84 — `(&self) -> bool` — Whether vector storage is available.
-- pub `retrieve_topical` function L88-139 — `( &self, keywords: &[String], budget_tokens: usize, ) -> Vec<crate::types::Entit...` — Retrieve entities matching keywords (by title FTS or tag match) from both tiers.
-- pub `try_open_memory` function L143-155 — `( data_dir: &Path, ws_dir: &str, embedding_dims: Option<usize>, ) -> Option<Arc<...` — Try to open a MemoryManager, returning None on failure (graceful degradation).
--  `MemoryManager` type L26-140 — `= MemoryManager` — It abstracts the two-tier scoping and routes entities to the appropriate store.
--  `tests` module L158-265 — `-` — It abstracts the two-tier scoping and routes entities to the appropriate store.
--  `setup` function L163-168 — `() -> (TempDir, MemoryManager)` — It abstracts the two-tier scoping and routes entities to the appropriate store.
--  `setup_with_vectors` function L170-175 — `() -> (TempDir, MemoryManager)` — It abstracts the two-tier scoping and routes entities to the appropriate store.
--  `opens_both_stores` function L178-187 — `()` — It abstracts the two-tier scoping and routes entities to the appropriate store.
--  `scope_routing` function L190-220 — `()` — It abstracts the two-tier scoping and routes entities to the appropriate store.
--  `vectors_disabled_by_default` function L223-226 — `()` — It abstracts the two-tier scoping and routes entities to the appropriate store.
--  `vectors_enabled_with_dims` function L229-240 — `()` — It abstracts the two-tier scoping and routes entities to the appropriate store.
--  `graceful_degradation` function L243-247 — `()` — It abstracts the two-tier scoping and routes entities to the appropriate store.
--  `stores_are_independent` function L250-264 — `()` — It abstracts the two-tier scoping and routes entities to the appropriate store.
+- pub `open_with_stores` function L69-75 — `(global: Arc<MemoryStore>, workstream: Arc<MemoryStore>) -> Self` — Create a MemoryManager from pre-built stores (for testing).
+- pub `store_for` function L78-83 — `(&self, scope: Scope) -> &Arc<MemoryStore>` — Get the store for a given scope.
+- pub `store_for_type` function L86-88 — `(&self, entity_type: EntityType) -> &Arc<MemoryStore>` — Get the store for a given entity type (uses default scope).
+- pub `vectors_enabled` function L91-93 — `(&self) -> bool` — Whether vector storage is available.
+- pub `retrieve_topical` function L97-148 — `( &self, keywords: &[String], budget_tokens: usize, ) -> Vec<crate::types::Entit...` — Retrieve entities matching keywords (by title FTS or tag match) from both tiers.
+- pub `try_open_memory` function L152-164 — `( data_dir: &Path, ws_dir: &str, embedding_dims: Option<usize>, ) -> Option<Arc<...` — Try to open a MemoryManager, returning None on failure (graceful degradation).
+-  `MemoryManager` type L26-149 — `= MemoryManager` — It abstracts the two-tier scoping and routes entities to the appropriate store.
+-  `tests` module L167-274 — `-` — It abstracts the two-tier scoping and routes entities to the appropriate store.
+-  `setup` function L172-177 — `() -> (TempDir, MemoryManager)` — It abstracts the two-tier scoping and routes entities to the appropriate store.
+-  `setup_with_vectors` function L179-184 — `() -> (TempDir, MemoryManager)` — It abstracts the two-tier scoping and routes entities to the appropriate store.
+-  `opens_both_stores` function L187-196 — `()` — It abstracts the two-tier scoping and routes entities to the appropriate store.
+-  `scope_routing` function L199-229 — `()` — It abstracts the two-tier scoping and routes entities to the appropriate store.
+-  `vectors_disabled_by_default` function L232-235 — `()` — It abstracts the two-tier scoping and routes entities to the appropriate store.
+-  `vectors_enabled_with_dims` function L238-249 — `()` — It abstracts the two-tier scoping and routes entities to the appropriate store.
+-  `graceful_degradation` function L252-256 — `()` — It abstracts the two-tier scoping and routes entities to the appropriate store.
+-  `stores_are_independent` function L259-273 — `()` — It abstracts the two-tier scoping and routes entities to the appropriate store.
 
 #### crates/arawn-memory/src/shortcodes.rs
 
@@ -2622,39 +2634,39 @@
 - pub `get_relations` function L383-424 — `(&self, entity_id: Uuid) -> Result<Vec<Relation>, MemoryError>` — SQLite-backed knowledge base store with FTS5 search and relations.
 - pub `get_neighbors` function L426-454 — `(&self, entity_id: Uuid) -> Result<Vec<(Uuid, RelationType)>, MemoryError>` — SQLite-backed knowledge base store with FTS5 search and relations.
 - pub `delete_relation` function L456-474 — `( &self, source_id: Uuid, relation_type: RelationType, target_id: Uuid, ) -> Res...` — SQLite-backed knowledge base store with FTS5 search and relations.
-- pub `store_fact` function L481-501 — `(&self, entity: &Entity) -> Result<StoreFactResult, MemoryError>` — Store a fact with search-before-create deduplication.
-- pub `supersede_entity` function L530-555 — `( &self, old_id: Uuid, new_entity: &Entity, ) -> Result<StoreFactResult, MemoryE...` — Supersede an existing entity with a new one.
-- pub `init_vectors` function L561-565 — `(&self, dims: usize) -> Result<(), MemoryError>` — Initialize vector storage with the given dimensions.
-- pub `store_embedding` function L568-571 — `(&self, entity_id: Uuid, embedding: &[f32]) -> Result<(), MemoryError>` — Store an embedding for an entity.
-- pub `search_similar` function L574-581 — `( &self, query_embedding: &[f32], limit: usize, ) -> Result<Vec<vector::Similari...` — Search for entities similar to a query embedding.
-- pub `search_similar_filtered` function L584-592 — `( &self, query_embedding: &[f32], entity_ids: &[Uuid], limit: usize, ) -> Result...` — Search for entities similar to a query, filtered to a subset.
-- pub `has_embedding` function L595-598 — `(&self, entity_id: Uuid) -> Result<bool, MemoryError>` — Check if an entity has a stored embedding.
-- pub `count_embeddings` function L601-604 — `(&self) -> Result<usize, MemoryError>` — Count total stored embeddings.
-- pub `search_by_tags` function L608-657 — `( &self, tags: &[String], limit: usize, ) -> Result<Vec<Entity>, MemoryError>` — SQLite-backed knowledge base store with FTS5 search and relations.
--  `MemoryStore` type L20-658 — `= MemoryStore` — SQLite-backed knowledge base store with FTS5 search and relations.
+- pub `store_fact` function L481-503 — `(&self, entity: &Entity) -> Result<StoreFactResult, MemoryError>` — Store a fact with search-before-create deduplication.
+- pub `supersede_entity` function L532-557 — `( &self, old_id: Uuid, new_entity: &Entity, ) -> Result<StoreFactResult, MemoryE...` — Supersede an existing entity with a new one.
+- pub `init_vectors` function L563-567 — `(&self, dims: usize) -> Result<(), MemoryError>` — Initialize vector storage with the given dimensions.
+- pub `store_embedding` function L570-573 — `(&self, entity_id: Uuid, embedding: &[f32]) -> Result<(), MemoryError>` — Store an embedding for an entity.
+- pub `search_similar` function L576-583 — `( &self, query_embedding: &[f32], limit: usize, ) -> Result<Vec<vector::Similari...` — Search for entities similar to a query embedding.
+- pub `search_similar_filtered` function L586-594 — `( &self, query_embedding: &[f32], entity_ids: &[Uuid], limit: usize, ) -> Result...` — Search for entities similar to a query, filtered to a subset.
+- pub `has_embedding` function L597-600 — `(&self, entity_id: Uuid) -> Result<bool, MemoryError>` — Check if an entity has a stored embedding.
+- pub `count_embeddings` function L603-606 — `(&self) -> Result<usize, MemoryError>` — Count total stored embeddings.
+- pub `search_by_tags` function L610-659 — `( &self, tags: &[String], limit: usize, ) -> Result<Vec<Entity>, MemoryError>` — SQLite-backed knowledge base store with FTS5 search and relations.
+-  `MemoryStore` type L20-660 — `= MemoryStore` — SQLite-backed knowledge base store with FTS5 search and relations.
 -  `migrate` function L53-111 — `(&self) -> Result<(), MemoryError>` — SQLite-backed knowledge base store with FTS5 search and relations.
--  `reinforce_entity` function L504-527 — `(&self, entity_id: Uuid) -> Result<StoreFactResult, MemoryError>` — Reinforce an existing entity (increment count, update timestamp).
--  `row_to_entity` function L662-697 — `(row: &rusqlite::Row) -> Result<Entity, MemoryError>` — SQLite-backed knowledge base store with FTS5 search and relations.
--  `OptionalExt` interface L700-702 — `{ fn optional() }` — Extension trait for optional query results.
--  `optional` function L705-711 — `(self) -> Result<Option<T>, rusqlite::Error>` — SQLite-backed knowledge base store with FTS5 search and relations.
--  `tests` module L715-957 — `-` — SQLite-backed knowledge base store with FTS5 search and relations.
--  `test_store` function L718-720 — `() -> MemoryStore` — SQLite-backed knowledge base store with FTS5 search and relations.
--  `insert_and_get` function L723-731 — `()` — SQLite-backed knowledge base store with FTS5 search and relations.
--  `get_nonexistent` function L734-737 — `()` — SQLite-backed knowledge base store with FTS5 search and relations.
--  `update_entity` function L740-751 — `()` — SQLite-backed knowledge base store with FTS5 search and relations.
--  `delete_entity` function L754-761 — `()` — SQLite-backed knowledge base store with FTS5 search and relations.
--  `list_by_type` function L764-775 — `()` — SQLite-backed knowledge base store with FTS5 search and relations.
--  `count_by_type` function L778-787 — `()` — SQLite-backed knowledge base store with FTS5 search and relations.
--  `fts5_search` function L790-803 — `()` — SQLite-backed knowledge base store with FTS5 search and relations.
--  `fts5_search_by_type` function L806-816 — `()` — SQLite-backed knowledge base store with FTS5 search and relations.
--  `relations_crud` function L819-838 — `()` — SQLite-backed knowledge base store with FTS5 search and relations.
--  `store_fact_insert` function L841-849 — `()` — SQLite-backed knowledge base store with FTS5 search and relations.
--  `store_fact_reinforce` function L852-866 — `()` — SQLite-backed knowledge base store with FTS5 search and relations.
--  `store_fact_reinforce_case_insensitive` function L869-881 — `()` — SQLite-backed knowledge base store with FTS5 search and relations.
--  `supersede_entity` function L884-907 — `()` — SQLite-backed knowledge base store with FTS5 search and relations.
--  `tags_on_entity` function L910-918 — `()` — SQLite-backed knowledge base store with FTS5 search and relations.
--  `search_by_tags` function L921-942 — `()` — SQLite-backed knowledge base store with FTS5 search and relations.
--  `superseded_excluded_from_search` function L945-956 — `()` — SQLite-backed knowledge base store with FTS5 search and relations.
+-  `reinforce_entity` function L506-529 — `(&self, entity_id: Uuid) -> Result<StoreFactResult, MemoryError>` — Reinforce an existing entity (increment count, update timestamp).
+-  `row_to_entity` function L664-699 — `(row: &rusqlite::Row) -> Result<Entity, MemoryError>` — SQLite-backed knowledge base store with FTS5 search and relations.
+-  `OptionalExt` interface L702-704 — `{ fn optional() }` — Extension trait for optional query results.
+-  `optional` function L707-713 — `(self) -> Result<Option<T>, rusqlite::Error>` — SQLite-backed knowledge base store with FTS5 search and relations.
+-  `tests` module L717-959 — `-` — SQLite-backed knowledge base store with FTS5 search and relations.
+-  `test_store` function L720-722 — `() -> MemoryStore` — SQLite-backed knowledge base store with FTS5 search and relations.
+-  `insert_and_get` function L725-733 — `()` — SQLite-backed knowledge base store with FTS5 search and relations.
+-  `get_nonexistent` function L736-739 — `()` — SQLite-backed knowledge base store with FTS5 search and relations.
+-  `update_entity` function L742-753 — `()` — SQLite-backed knowledge base store with FTS5 search and relations.
+-  `delete_entity` function L756-763 — `()` — SQLite-backed knowledge base store with FTS5 search and relations.
+-  `list_by_type` function L766-777 — `()` — SQLite-backed knowledge base store with FTS5 search and relations.
+-  `count_by_type` function L780-789 — `()` — SQLite-backed knowledge base store with FTS5 search and relations.
+-  `fts5_search` function L792-805 — `()` — SQLite-backed knowledge base store with FTS5 search and relations.
+-  `fts5_search_by_type` function L808-818 — `()` — SQLite-backed knowledge base store with FTS5 search and relations.
+-  `relations_crud` function L821-840 — `()` — SQLite-backed knowledge base store with FTS5 search and relations.
+-  `store_fact_insert` function L843-851 — `()` — SQLite-backed knowledge base store with FTS5 search and relations.
+-  `store_fact_reinforce` function L854-868 — `()` — SQLite-backed knowledge base store with FTS5 search and relations.
+-  `store_fact_reinforce_case_insensitive` function L871-883 — `()` — SQLite-backed knowledge base store with FTS5 search and relations.
+-  `supersede_entity` function L886-909 — `()` — SQLite-backed knowledge base store with FTS5 search and relations.
+-  `tags_on_entity` function L912-920 — `()` — SQLite-backed knowledge base store with FTS5 search and relations.
+-  `search_by_tags` function L923-944 — `()` — SQLite-backed knowledge base store with FTS5 search and relations.
+-  `superseded_excluded_from_search` function L947-958 — `()` — SQLite-backed knowledge base store with FTS5 search and relations.
 
 #### crates/arawn-memory/src/types.rs
 
@@ -2721,6 +2733,45 @@
 -  `delete_nonexistent` function L320-323 — `()` — SQLite extension (vec0 virtual tables).
 -  `drop_and_recreate` function L326-332 — `()` — SQLite extension (vec0 virtual tables).
 
+### crates/arawn-memory/tests
+
+> *Semantic summary to be generated by AI agent.*
+
+#### crates/arawn-memory/tests/longmemeval_bench.rs
+
+-  `LongMemEvalEntry` struct L23-38 — `{ question_id: Option<String>, question: String, question_type: Option<String>, ...` — (ignored by default since it requires model download and takes ~5 minutes)
+-  `LongMemEvalEntry` type L40-48 — `= LongMemEvalEntry` — (ignored by default since it requires model download and takes ~5 minutes)
+-  `ground_truth_ids` function L41-47 — `(&self) -> &[String]` — (ignored by default since it requires model download and takes ~5 minutes)
+-  `Turn` struct L51-54 — `{ role: String, content: String }` — (ignored by default since it requires model download and takes ~5 minutes)
+-  `recall_any_at_k` function L61-67 — `(retrieved_ids: &[&str], ground_truth_ids: &[String], k: usize) -> f64` — Recall@K (any): at least one ground-truth session appears in top-K.
+-  `recall_all_at_k` function L70-76 — `(retrieved_ids: &[&str], ground_truth_ids: &[String], k: usize) -> f64` — Recall@K (all): all ground-truth sessions appear in top-K.
+-  `ndcg_at_k` function L79-103 — `(retrieved_ids: &[&str], ground_truth_ids: &[String], k: usize) -> f64` — NDCG@K: Normalized Discounted Cumulative Gain.
+-  `DATASET_URL` variable L109 — `: &str` — (ignored by default since it requires model download and takes ~5 minutes)
+-  `dataset_path` function L111-115 — `() -> PathBuf` — (ignored by default since it requires model download and takes ~5 minutes)
+-  `download_dataset` function L117-139 — `() -> Result<PathBuf, String>` — (ignored by default since it requires model download and takes ~5 minutes)
+-  `load_dataset` function L141-144 — `(path: &PathBuf) -> Vec<LongMemEvalEntry>` — (ignored by default since it requires model download and takes ~5 minutes)
+-  `longmemeval_benchmark` function L152-369 — `()` — (ignored by default since it requires model download and takes ~5 minutes)
+-  `TurnDoc` struct L201-204 — `{ session_id: String, text: String }` — (ignored by default since it requires model download and takes ~5 minutes)
+
+#### crates/arawn-memory/tests/recall_eval.rs
+
+-  `recall_at_k` function L16-26 — `(results: &[Entity], expected_titles: &[&str], k: usize) -> f64` — Recall@K: fraction of expected entities found in the top-K results.
+-  `precision_at_k` function L29-37 — `(results: &[Entity], expected_titles: &[&str], k: usize) -> f64` — Precision@K: fraction of top-K results that are in the expected set.
+-  `mrr` function L40-48 — `(results: &[Entity], expected_titles: &[&str]) -> f64` — Mean Reciprocal Rank: 1/rank of the first relevant result.
+-  `build_fixture_store` function L55-209 — `() -> Arc<MemoryStore>` — Build a populated MemoryStore with realistic entities for evaluation.
+-  `build_fixture_manager` function L212-219 — `() -> (Arc<MemoryStore>, MemoryManager)` — Build a MemoryManager for stack tests using the fixture store.
+-  `QueryCase` struct L225-230 — `{ description: &'static str, query: &'static str, expected: Vec<&'static str>, c...` — topical retrieval.
+-  `QueryCategory` enum L233-239 — `ExactTitle | KeywordOverlap | ContentSearch | Paraphrase | Negative` — topical retrieval.
+-  `build_query_corpus` function L241-399 — `() -> Vec<QueryCase>` — topical retrieval.
+-  `fts_recall_evaluation` function L406-512 — `()` — topical retrieval.
+-  `memory_stack_l1_coverage` function L515-547 — `()` — topical retrieval.
+-  `memory_stack_l2_topical_retrieval` function L550-595 — `()` — topical retrieval.
+-  `superseded_entities_excluded_from_all_searches` function L598-616 — `()` — topical retrieval.
+-  `reinforcement_boosts_ranking` function L619-644 — `()` — topical retrieval.
+-  `edge_case_very_short_query` function L647-659 — `()` — topical retrieval.
+-  `edge_case_no_matches` function L662-670 — `()` — topical retrieval.
+-  `vector_search_recall_real_embeddings` function L677-855 — `()` — topical retrieval.
+
 ### crates/arawn-service/src
 
 > *Semantic summary to be generated by AI agent.*
@@ -2728,12 +2779,14 @@
 #### crates/arawn-service/src/error.rs
 
 - pub `ServiceError` enum L4-19 — `NotFound | InvalidOperation | Engine | Storage | Internal`
+- pub `error_code` function L23-31 — `(&self) -> &'static str` — Return a stable error code string for RPC responses.
+-  `ServiceError` type L21-32 — `= ServiceError`
 
 #### crates/arawn-service/src/lib.rs
 
 - pub `error` module L1 — `-`
 - pub `types` module L2 — `-`
-- pub `ArawnService` interface L20-61 — `{ fn list_workstreams(), fn create_workstream(), fn list_sessions(), fn create_s...` — The service contract between any UI client and the Arawn backend.
+- pub `ArawnService` interface L24-111 — `{ fn list_workstreams(), fn create_workstream(), fn list_sessions(), fn create_s...` — The service contract between any UI client and the Arawn backend.
 
 #### crates/arawn-service/src/types.rs
 
@@ -2742,6 +2795,17 @@
 - pub `SessionDetail` struct L28-33 — `{ id: Uuid, workstream_id: Option<Uuid>, created_at: DateTime<Utc>, messages: Ve...` — Session with full message history.
 - pub `ModalPromptOption` struct L37-41 — `{ label: String, description: Option<String> }` — An option in a modal prompt sent to the client.
 - pub `EngineEvent` enum L46-93 — `StreamingText | ToolCallStart | ToolCallResult | Complete | Error | CompactionOc...` — Streaming event emitted during a conversation turn.
+- pub `MemoryStoreResult` enum L98-117 — `Inserted | Reinforced | Superseded` — Result of storing a fact in the knowledge base.
+- pub `MemorySummary` struct L121-124 — `{ global: MemoryStoreSummary, workstream: MemoryStoreSummary }` — Summary of the knowledge base.
+- pub `MemoryStoreSummary` struct L127-130 — `{ total: u64, by_type: Vec<MemoryTypeCount> }`
+- pub `MemoryTypeCount` struct L133-137 — `{ entity_type: String, count: u64 }`
+- pub `ForgetResult` enum L142-151 — `Deleted | Ambiguous` — Result of forgetting an entity.
+- pub `ForgetCandidate` struct L154-160 — `{ id: String, title: String, entity_type: String, scope: String }`
+- pub `InventoryItem` struct L164-173 — `{ name: String, description: String, kind: Option<String>, enabled: Option<bool>...` — A single item in an inventory query result.
+- pub `CommandInfo` struct L177-181 — `{ name: String, description: String, kind: String }` — A command available for autocomplete.
+- pub `PromotionResult` struct L185-188 — `{ workstream_id: String, workstream_name: String }` — Result of promoting a scratch session to a workstream.
+- pub `WorkflowInfo` struct L192-196 — `{ name: String, cron: Option<String> }` — Info about a workflow.
+- pub `PermissionModeInfo` struct L200-202 — `{ mode: String }` — Result of getting or setting the permission mode.
 
 ### crates/arawn-storage/src
 
@@ -3007,15 +3071,15 @@
 -  `send_message_with_tool_call_returns_events` function L86-118 — `()` — Tests for LocalService — the ArawnService impl that wraps engine + store.
 -  `send_message_persists_to_jsonl` function L121-143 — `()` — Tests for LocalService — the ArawnService impl that wraps engine + store.
 -  `create_workstream_with_default_root_dir` function L146-166 — `()` — Tests for LocalService — the ArawnService impl that wraps engine + store.
--  `promote_scratch_session_to_workstream` function L169-220 — `()` — Tests for LocalService — the ArawnService impl that wraps engine + store.
--  `promote_non_scratch_session_fails` function L223-242 — `()` — Tests for LocalService — the ArawnService impl that wraps engine + store.
--  `multi_turn_conversation_accumulates_history` function L245-274 — `()` — Tests for LocalService — the ArawnService impl that wraps engine + store.
--  `list_sessions_returns_multiple` function L277-297 — `()` — Tests for LocalService — the ArawnService impl that wraps engine + store.
--  `engine_error_produces_error_event` function L300-321 — `()` — Tests for LocalService — the ArawnService impl that wraps engine + store.
--  `multi_turn_with_tool_calls_accumulates_full_history` function L324-359 — `()` — Tests for LocalService — the ArawnService impl that wraps engine + store.
--  `session_isolation_separate_histories` function L362-423 — `()` — Tests for LocalService — the ArawnService impl that wraps engine + store.
--  `large_conversation_five_turns_persisted` function L426-452 — `()` — Tests for LocalService — the ArawnService impl that wraps engine + store.
--  `error_after_successful_first_turn_preserves_history` function L455-496 — `()` — Tests for LocalService — the ArawnService impl that wraps engine + store.
+-  `promote_scratch_session_to_workstream` function L169-214 — `()` — Tests for LocalService — the ArawnService impl that wraps engine + store.
+-  `promote_non_scratch_session_fails` function L217-236 — `()` — Tests for LocalService — the ArawnService impl that wraps engine + store.
+-  `multi_turn_conversation_accumulates_history` function L239-268 — `()` — Tests for LocalService — the ArawnService impl that wraps engine + store.
+-  `list_sessions_returns_multiple` function L271-291 — `()` — Tests for LocalService — the ArawnService impl that wraps engine + store.
+-  `engine_error_produces_error_event` function L294-315 — `()` — Tests for LocalService — the ArawnService impl that wraps engine + store.
+-  `multi_turn_with_tool_calls_accumulates_full_history` function L318-353 — `()` — Tests for LocalService — the ArawnService impl that wraps engine + store.
+-  `session_isolation_separate_histories` function L356-417 — `()` — Tests for LocalService — the ArawnService impl that wraps engine + store.
+-  `large_conversation_five_turns_persisted` function L420-446 — `()` — Tests for LocalService — the ArawnService impl that wraps engine + store.
+-  `error_after_successful_first_turn_preserves_history` function L449-490 — `()` — Tests for LocalService — the ArawnService impl that wraps engine + store.
 
 #### crates/arawn-tests/tests/memory_stack.rs
 
@@ -3117,6 +3181,62 @@
 -  `workflow_status_with_runner_returns_empty_list` function L207-226 — `()` — Integration tests: workflow tools and skill activation through the QueryEngine.
 -  `scaffold_generates_compilable_project` function L231-281 — `()` — Integration tests: workflow tools and skill activation through the QueryEngine.
 -  `skill_then_tool_workflow_creation_chain` function L286-318 — `()` — Integration tests: workflow tools and skill activation through the QueryEngine.
+
+### crates/arawn-tool/src
+
+> *Semantic summary to be generated by AI agent.*
+
+#### crates/arawn-tool/src/context.rs
+
+- pub `ModelLimits` struct L9-14 — `{ context_window: u32, compaction_threshold: f32 }` — Model context window limits — used by sub-agents for compaction decisions.
+- pub `new` function L17-22 — `(context_window: u32, compaction_threshold: f32) -> Self`
+- pub `for_model` function L25-40 — `(model: &str) -> Self` — Get default limits for a known model name.
+- pub `should_compact` function L43-52 — `( &self, session_tokens: u32, tool_tokens: u32, system_tokens: u32, ) -> bool` — Check if the total estimated tokens exceed the compaction threshold.
+- pub `available_for_messages` function L55-60 — `(&self, tool_tokens: u32, system_tokens: u32) -> u32` — The token budget available after accounting for tools and system prompt.
+- pub `ToolContext` interface L76-121 — `{ fn working_dir(), fn session_id(), fn validate_path(), fn is_allowed_path(), f...` — Execution context provided to tools.
+-  `ModelLimits` type L16-61 — `= ModelLimits`
+-  `ModelLimits` type L63-70 — `impl Default for ModelLimits`
+-  `default` function L64-69 — `() -> Self`
+
+#### crates/arawn-tool/src/error.rs
+
+- pub `ToolError` enum L8-24 — `ExecutionFailed | NotFound | Llm | Other` — Errors that tools can return from `execute()`.
+
+#### crates/arawn-tool/src/lib.rs
+
+-  `context` module L1 — `-`
+-  `error` module L2 — `-`
+-  `registry` module L3 — `-`
+-  `tool` module L4 — `-`
+
+#### crates/arawn-tool/src/registry.rs
+
+- pub `ToolRegistry` struct L8-12 — `{ tools: RwLock<HashMap<String, Arc<dyn Tool>>>, plugin_tools: RwLock<HashSet<St...` — Registry of available tools.
+- pub `new` function L15-20 — `() -> Self`
+- pub `register` function L23-26 — `(&self, tool: Box<dyn Tool>)` — Register a built-in tool.
+- pub `register_plugin` function L29-36 — `(&self, tool: Box<dyn Tool>)` — Register a plugin-provided tool (tracked for hot-reload).
+- pub `register_arc` function L39-42 — `(&self, tool: Arc<dyn Tool>)` — Register an already-Arc'd tool (used when building filtered registries).
+- pub `unregister` function L44-47 — `(&self, name: &str) -> Option<Arc<dyn Tool>>`
+- pub `plugin_tool_names` function L50-52 — `(&self) -> Vec<String>` — Returns the names of all currently loaded plugin tools.
+- pub `get` function L55-57 — `(&self, name: &str) -> Option<Arc<dyn Tool>>` — Get a tool by name.
+- pub `tool_definitions` function L59-69 — `(&self) -> Vec<arawn_llm::ToolDefinition>`
+- pub `len` function L71-73 — `(&self) -> usize`
+- pub `is_empty` function L75-77 — `(&self) -> bool`
+- pub `unregister_by_prefix` function L80-95 — `(&self, prefix: &str) -> Vec<String>` — Unregister all tools whose names start with the given prefix.
+-  `ToolRegistry` type L14-96 — `= ToolRegistry`
+-  `ToolRegistry` type L98-102 — `impl Default for ToolRegistry`
+-  `default` function L99-101 — `() -> Self`
+
+#### crates/arawn-tool/src/tool.rs
+
+- pub `ToolCategory` enum L11-30 — `Core | Task | Agent | Web | Memory | Plan | Workstream | Utility | BackgroundTas...` — Category of a tool — used for permission checking, context filtering, and
+- pub `ToolOutput` struct L34-37 — `{ content: String, is_error: bool }` — Output from a tool execution.
+- pub `success` function L40-45 — `(content: impl Into<String>) -> Self`
+- pub `error` function L47-52 — `(content: impl Into<String>) -> Self`
+- pub `Tool` interface L57-76 — `{ fn name(), fn description(), fn parameters_schema(), fn execute(), fn is_read_...` — A tool that can be invoked by the LLM.
+-  `ToolOutput` type L39-53 — `= ToolOutput`
+-  `is_read_only` function L68-70 — `(&self) -> bool` — Whether this tool is side-effect-free (observation only).
+-  `category` function L73-75 — `(&self) -> ToolCategory` — Tool category for permission checking and context filtering.
 
 ### crates/arawn-tool-plugin/src
 
@@ -3532,41 +3652,41 @@
 
 #### crates/arawn-workflow/src/tools.rs
 
-- pub `SharedWorkflowRunner` type L20 — `= Arc<RwLock<Option<Arc<WorkflowRunner>>>>` — Shared handle to the workflow runner (Option because it may not be available).
-- pub `WorkflowCreateTool` struct L23-25 — `{ packages_dir: PathBuf }` — Tool for creating a new workflow — scaffolds, compiles, and installs.
-- pub `new` function L28-30 — `(packages_dir: PathBuf) -> Self` — Agent-facing tools for workflow management: create, list, delete, status.
-- pub `WorkflowListTool` struct L187-189 — `{ packages_dir: PathBuf }` — Tool for listing installed workflows.
-- pub `new` function L192-194 — `(packages_dir: PathBuf) -> Self` — Agent-facing tools for workflow management: create, list, delete, status.
-- pub `WorkflowDeleteTool` struct L261-263 — `{ packages_dir: PathBuf }` — Tool for deleting a workflow package.
-- pub `new` function L266-268 — `(packages_dir: PathBuf) -> Self` — Agent-facing tools for workflow management: create, list, delete, status.
-- pub `WorkflowStatusTool` struct L316-318 — `{ runner: SharedWorkflowRunner }` — Tool for checking workflow execution status.
-- pub `new` function L321-323 — `(runner: SharedWorkflowRunner) -> Self` — Agent-facing tools for workflow management: create, list, delete, status.
--  `WorkflowCreateTool` type L27-31 — `= WorkflowCreateTool` — Agent-facing tools for workflow management: create, list, delete, status.
--  `WorkflowCreateTool` type L34-184 — `impl Tool for WorkflowCreateTool` — Agent-facing tools for workflow management: create, list, delete, status.
--  `name` function L35-37 — `(&self) -> &str` — Agent-facing tools for workflow management: create, list, delete, status.
--  `description` function L39-43 — `(&self) -> &str` — Agent-facing tools for workflow management: create, list, delete, status.
--  `parameters_schema` function L45-92 — `(&self) -> Value` — Agent-facing tools for workflow management: create, list, delete, status.
--  `execute` function L94-183 — `(&self, _ctx: &ToolContext, params: Value) -> Result<ToolOutput, EngineError>` — Agent-facing tools for workflow management: create, list, delete, status.
--  `WorkflowListTool` type L191-195 — `= WorkflowListTool` — Agent-facing tools for workflow management: create, list, delete, status.
--  `WorkflowListTool` type L198-258 — `impl Tool for WorkflowListTool` — Agent-facing tools for workflow management: create, list, delete, status.
--  `name` function L199-201 — `(&self) -> &str` — Agent-facing tools for workflow management: create, list, delete, status.
--  `description` function L203-205 — `(&self) -> &str` — Agent-facing tools for workflow management: create, list, delete, status.
--  `is_read_only` function L207-209 — `(&self) -> bool` — Agent-facing tools for workflow management: create, list, delete, status.
--  `parameters_schema` function L211-217 — `(&self) -> Value` — Agent-facing tools for workflow management: create, list, delete, status.
--  `execute` function L219-257 — `(&self, _ctx: &ToolContext, _params: Value) -> Result<ToolOutput, EngineError>` — Agent-facing tools for workflow management: create, list, delete, status.
--  `WorkflowDeleteTool` type L265-269 — `= WorkflowDeleteTool` — Agent-facing tools for workflow management: create, list, delete, status.
--  `WorkflowDeleteTool` type L272-313 — `impl Tool for WorkflowDeleteTool` — Agent-facing tools for workflow management: create, list, delete, status.
--  `name` function L273-275 — `(&self) -> &str` — Agent-facing tools for workflow management: create, list, delete, status.
--  `description` function L277-279 — `(&self) -> &str` — Agent-facing tools for workflow management: create, list, delete, status.
--  `parameters_schema` function L281-292 — `(&self) -> Value` — Agent-facing tools for workflow management: create, list, delete, status.
--  `execute` function L294-312 — `(&self, _ctx: &ToolContext, params: Value) -> Result<ToolOutput, EngineError>` — Agent-facing tools for workflow management: create, list, delete, status.
--  `WorkflowStatusTool` type L320-324 — `= WorkflowStatusTool` — Agent-facing tools for workflow management: create, list, delete, status.
--  `WorkflowStatusTool` type L327-386 — `impl Tool for WorkflowStatusTool` — Agent-facing tools for workflow management: create, list, delete, status.
--  `name` function L328-330 — `(&self) -> &str` — Agent-facing tools for workflow management: create, list, delete, status.
--  `description` function L332-334 — `(&self) -> &str` — Agent-facing tools for workflow management: create, list, delete, status.
--  `is_read_only` function L336-338 — `(&self) -> bool` — Agent-facing tools for workflow management: create, list, delete, status.
--  `parameters_schema` function L340-351 — `(&self) -> Value` — Agent-facing tools for workflow management: create, list, delete, status.
--  `execute` function L353-385 — `(&self, _ctx: &ToolContext, params: Value) -> Result<ToolOutput, EngineError>` — Agent-facing tools for workflow management: create, list, delete, status.
+- pub `SharedWorkflowRunner` type L18 — `= Arc<RwLock<Option<Arc<WorkflowRunner>>>>` — Shared handle to the workflow runner (Option because it may not be available).
+- pub `WorkflowCreateTool` struct L21-23 — `{ packages_dir: PathBuf }` — Tool for creating a new workflow — scaffolds, compiles, and installs.
+- pub `new` function L26-28 — `(packages_dir: PathBuf) -> Self` — Agent-facing tools for workflow management: create, list, delete, status.
+- pub `WorkflowListTool` struct L185-187 — `{ packages_dir: PathBuf }` — Tool for listing installed workflows.
+- pub `new` function L190-192 — `(packages_dir: PathBuf) -> Self` — Agent-facing tools for workflow management: create, list, delete, status.
+- pub `WorkflowDeleteTool` struct L259-261 — `{ packages_dir: PathBuf }` — Tool for deleting a workflow package.
+- pub `new` function L264-266 — `(packages_dir: PathBuf) -> Self` — Agent-facing tools for workflow management: create, list, delete, status.
+- pub `WorkflowStatusTool` struct L314-316 — `{ runner: SharedWorkflowRunner }` — Tool for checking workflow execution status.
+- pub `new` function L319-321 — `(runner: SharedWorkflowRunner) -> Self` — Agent-facing tools for workflow management: create, list, delete, status.
+-  `WorkflowCreateTool` type L25-29 — `= WorkflowCreateTool` — Agent-facing tools for workflow management: create, list, delete, status.
+-  `WorkflowCreateTool` type L32-182 — `impl Tool for WorkflowCreateTool` — Agent-facing tools for workflow management: create, list, delete, status.
+-  `name` function L33-35 — `(&self) -> &str` — Agent-facing tools for workflow management: create, list, delete, status.
+-  `description` function L37-41 — `(&self) -> &str` — Agent-facing tools for workflow management: create, list, delete, status.
+-  `parameters_schema` function L43-90 — `(&self) -> Value` — Agent-facing tools for workflow management: create, list, delete, status.
+-  `execute` function L92-181 — `(&self, _ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput,...` — Agent-facing tools for workflow management: create, list, delete, status.
+-  `WorkflowListTool` type L189-193 — `= WorkflowListTool` — Agent-facing tools for workflow management: create, list, delete, status.
+-  `WorkflowListTool` type L196-256 — `impl Tool for WorkflowListTool` — Agent-facing tools for workflow management: create, list, delete, status.
+-  `name` function L197-199 — `(&self) -> &str` — Agent-facing tools for workflow management: create, list, delete, status.
+-  `description` function L201-203 — `(&self) -> &str` — Agent-facing tools for workflow management: create, list, delete, status.
+-  `is_read_only` function L205-207 — `(&self) -> bool` — Agent-facing tools for workflow management: create, list, delete, status.
+-  `parameters_schema` function L209-215 — `(&self) -> Value` — Agent-facing tools for workflow management: create, list, delete, status.
+-  `execute` function L217-255 — `(&self, _ctx: &dyn arawn_tool::ToolContext, _params: Value) -> Result<ToolOutput...` — Agent-facing tools for workflow management: create, list, delete, status.
+-  `WorkflowDeleteTool` type L263-267 — `= WorkflowDeleteTool` — Agent-facing tools for workflow management: create, list, delete, status.
+-  `WorkflowDeleteTool` type L270-311 — `impl Tool for WorkflowDeleteTool` — Agent-facing tools for workflow management: create, list, delete, status.
+-  `name` function L271-273 — `(&self) -> &str` — Agent-facing tools for workflow management: create, list, delete, status.
+-  `description` function L275-277 — `(&self) -> &str` — Agent-facing tools for workflow management: create, list, delete, status.
+-  `parameters_schema` function L279-290 — `(&self) -> Value` — Agent-facing tools for workflow management: create, list, delete, status.
+-  `execute` function L292-310 — `(&self, _ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput,...` — Agent-facing tools for workflow management: create, list, delete, status.
+-  `WorkflowStatusTool` type L318-322 — `= WorkflowStatusTool` — Agent-facing tools for workflow management: create, list, delete, status.
+-  `WorkflowStatusTool` type L325-384 — `impl Tool for WorkflowStatusTool` — Agent-facing tools for workflow management: create, list, delete, status.
+-  `name` function L326-328 — `(&self) -> &str` — Agent-facing tools for workflow management: create, list, delete, status.
+-  `description` function L330-332 — `(&self) -> &str` — Agent-facing tools for workflow management: create, list, delete, status.
+-  `is_read_only` function L334-336 — `(&self) -> bool` — Agent-facing tools for workflow management: create, list, delete, status.
+-  `parameters_schema` function L338-349 — `(&self) -> Value` — Agent-facing tools for workflow management: create, list, delete, status.
+-  `execute` function L351-383 — `(&self, _ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput,...` — Agent-facing tools for workflow management: create, list, delete, status.
 
 ### scripts
 

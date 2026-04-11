@@ -4,14 +4,14 @@ level: task
 title: "Extract arawn-tool interface crate from arawn-engine"
 short_code: "ARAWN-T-0153"
 created_at: 2026-04-10T01:01:16.843875+00:00
-updated_at: 2026-04-10T02:17:25.453581+00:00
+updated_at: 2026-04-10T20:49:17.130415+00:00
 parent: ARAWN-I-0024
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -32,6 +32,8 @@ Extract `Tool`, `ToolOutput`, `ToolRegistry`, `ToolContext`, and core error type
 ## Acceptance Criteria
 
 ## Acceptance Criteria
+
+## Acceptance Criteria
 - [ ] `crates/arawn-tool/` created with `Tool` trait, `ToolOutput`, `ToolRegistry`, `ToolContext`
 - [ ] `arawn-engine` depends on `arawn-tool` and re-exports what it needs
 - [ ] `arawn-mcp` depends on `arawn-tool` instead of `arawn-engine`
@@ -47,8 +49,9 @@ Extract `Tool`, `ToolOutput`, `ToolRegistry`, `ToolContext`, and core error type
 
 ## Status Updates
 - **DEFERRED**: Full crate extraction requires moving ToolContext (which depends on Workstream, LlmClient, ModelLimits) and EngineError, creating a deep dependency chain. The `execute()` signature ties Tool to EngineError and ToolContext.
-- The immediate value (ToolCategory enum) is being delivered via T-0159 without crate extraction — adding the enum directly to arawn-engine's Tool trait.
-- Full extraction should be planned as a breaking-change release with interface redesign (e.g., a simpler ToolError type, reduced ToolContext interface).
+- The immediate value (ToolCategory enum) was delivered via T-0159 without crate extraction.
+- Full extraction scoped as breaking-change task → ARAWN-T-0160 (or next assigned code).
+- **CLOSING**: Immediate value delivered; remaining work tracked separately.
 
 ## REMOVED_SECTIONS
 

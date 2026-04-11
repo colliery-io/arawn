@@ -4,14 +4,14 @@ level: initiative
 title: "API Polish: Protocol Versioning, CLI, and String-Typed Dispatch Elimination"
 short_code: "ARAWN-I-0025"
 created_at: 2026-04-09T23:59:38.545659+00:00
-updated_at: 2026-04-10T01:08:43.509826+00:00
+updated_at: 2026-04-10T23:28:04.045615+00:00
 parent: 
 blocked_by: []
 archived: false
 
 tags:
   - "#initiative"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
