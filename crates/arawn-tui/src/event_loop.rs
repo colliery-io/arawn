@@ -59,7 +59,7 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
     app.model_name = model_name.to_string();
 
     // Fetch available commands from server for autocomplete (skills, etc.)
-    if let Ok(_id) = client.send_request("list_available_commands", serde_json::json!({})).await {
+    if let Ok(_id) = client.send_request("list_commands", serde_json::json!({})).await {
         if let Ok(resp) = client.read_response_raw().await {
             if let Some(commands) = resp.get("result").and_then(|r| r.as_array()) {
                 let skills: Vec<(String, String)> = commands
@@ -207,7 +207,7 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                                 app.dirty = true;
                             }
                             crate::command::CommandResult::MemorySummary => {
-                                if let Ok(_id) = client.send_request("memory_summary", serde_json::json!({})).await {
+                                if let Ok(_id) = client.send_request("get_memory_summary", serde_json::json!({})).await {
                                     if let Ok(resp) = client.read_response_raw().await {
                                         if let Some(result) = resp.get("result") {
                                             let mut output = String::from("**Knowledge Base**\n\n");

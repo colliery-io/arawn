@@ -6,18 +6,12 @@ use tracing_subscriber::{EnvFilter, Layer, fmt, layer::SubscriberExt, util::Subs
 use uuid::Uuid;
 
 use arawn_core::Workstream;
-use arawn_engine::{
-    AgentTool, AskUserTool, BackgroundTaskManager, EnterPlanModeTool, ExitPlanModeTool,
-    FileEditTool, FileReadTool, FileWriteTool, GlobTool, GrepTool, PlanModeState,
-    QueryEngineConfig, SessionTaskStore, ShellTool, SkillTool,
-    SleepTool, TaskCreateTool, TaskGetTool, TaskListTool, TaskOutputTool, TaskStopTool,
-    TaskUpdateTool, ThinkTool, ToolRegistry, WebFetchTool, WebSearchTool,
-};
+use arawn_engine::QueryEngineConfig;
+use arawn_engine::SkillTool;
 #[cfg(feature = "legacy-plugins")]
 use arawn_engine::{PluginLoader, PluginWatcher};
 use arawn_engine::plugins::PluginRuntime;
 use arawn_engine::skills::SkillRegistry;
-use arawn_llm::RetryClient;
 use arawn_storage::Store;
 
 const DEFAULT_MODEL: &str = "llama-3.3-70b-versatile";
@@ -244,44 +238,15 @@ async fn main() -> Result<()> {
         }
 
         let registry = Arc::new(arawn_engine::ToolRegistry::new());
-        registry.register(Box::new(arawn_engine::ThinkTool));
-        // Background task manager (shared across tools)
         let bg_manager = Arc::new(arawn_engine::BackgroundTaskManager::new());
-
-        registry.register(Box::new(arawn_engine::ShellTool::with_network_tools(
-            config.sandbox.network_tools.clone(),
-        ).with_background_manager(Arc::clone(&bg_manager))));
-        registry.register(Box::new(arawn_engine::FileReadTool));
-        registry.register(Box::new(arawn_engine::FileWriteTool));
-        registry.register(Box::new(arawn_engine::FileEditTool));
-        registry.register(Box::new(arawn_engine::GlobTool));
-        registry.register(Box::new(arawn_engine::GrepTool));
-        registry.register(Box::new(arawn_engine::WebFetchTool::new()));
-        registry.register(Box::new(arawn_engine::WebSearchTool));
-        registry.register(Box::new(arawn_engine::AskUserTool));
-        let agents_dir = std::path::PathBuf::from(&data_dir).join("agents");
-        let agent_defs = arawn_engine::agent_defs::get_all_agents(Some(&agents_dir));
-        registry.register(Box::new(arawn_engine::AgentTool::new(
-            Arc::clone(&registry),
-            agent_defs,
-        ).with_background_manager(Arc::clone(&bg_manager))));
-        let task_store = arawn_engine::SessionTaskStore::new();
-        registry.register(Box::new(arawn_engine::SleepTool));
-        registry.register(Box::new(arawn_engine::TaskCreateTool::new(
-            task_store.clone(),
-        )));
-        registry.register(Box::new(arawn_engine::TaskUpdateTool::new(
-            task_store.clone(),
-        )));
-        registry.register(Box::new(arawn_engine::TaskGetTool::new(task_store.clone())));
-        registry.register(Box::new(arawn_engine::TaskListTool::new(task_store)));
-        registry.register(Box::new(arawn_engine::TaskOutputTool::new(Arc::clone(&bg_manager))));
-        registry.register(Box::new(arawn_engine::TaskStopTool::new(Arc::clone(&bg_manager))));
-
-        // Plan mode tools
         let plan_state = Arc::new(arawn_engine::PlanModeState::new());
-        registry.register(Box::new(arawn_engine::EnterPlanModeTool::new(Arc::clone(&plan_state))));
-        registry.register(Box::new(arawn_engine::ExitPlanModeTool::new(Arc::clone(&plan_state))));
+        register_default_tools(
+            &registry,
+            &config,
+            &data_dir,
+            Arc::clone(&bg_manager),
+            Arc::clone(&plan_state),
+        );
 
         // Load legacy .arawn_tool plugins (deprecated — use new plugin system instead)
         #[cfg(feature = "legacy-plugins")]
@@ -322,38 +287,8 @@ async fn main() -> Result<()> {
         // Spawn hot-reload watcher for new-style plugins
         let _plugin_watcher = plugin_runtime.watch(Arc::clone(&registry), Arc::clone(&skill_registry));
 
-        // Connect to MCP servers (from arawn.toml + plugins)
-        let mcp_config = arawn_mcp::load_mcp_config(&std::path::PathBuf::from(&data_dir).join("arawn.toml"));
-        let mut mcp_manager = arawn_mcp::McpManager::new();
-        if !mcp_config.servers.is_empty() {
-            info!(servers = mcp_config.servers.len(), "connecting to config MCP servers");
-            mcp_manager.connect_all(&mcp_config.servers, &registry).await;
-        }
-
-        // Connect plugin MCP servers
-        if !plugin_result.mcp_servers.is_empty() {
-            let plugin_mcp_configs: Vec<arawn_mcp::McpServerConfig> = plugin_result
-                .mcp_servers
-                .iter()
-                .map(|s| arawn_mcp::McpServerConfig {
-                    name: s.name.clone(),
-                    command: s.command.clone(),
-                    args: s.args.clone(),
-                    env: s.env.clone(),
-                    enabled: true,
-                })
-                .collect();
-            info!(servers = plugin_mcp_configs.len(), "connecting to plugin MCP servers");
-            mcp_manager.connect_all(&plugin_mcp_configs, &registry).await;
-        }
-
-        if mcp_manager.tool_count() > 0 {
-            info!(
-                tools = mcp_manager.tool_count(),
-                servers = mcp_manager.connected_servers().len(),
-                "MCP servers connected"
-            );
-        }
+        // Connect MCP servers (config + plugins)
+        let mcp_manager = connect_mcp_servers(&data_dir, &plugin_result, &registry).await;
 
         let mut engine_config = build_engine_config(&config, &workstream, &data_dir);
 
@@ -423,18 +358,7 @@ async fn main() -> Result<()> {
         }
 
         // Register workflow tools (before config watcher takes registry ownership)
-        registry.register(Box::new(arawn_workflow::WorkflowCreateTool::new(
-            workflows_dir.clone(),
-        )));
-        registry.register(Box::new(arawn_workflow::WorkflowListTool::new(
-            workflows_dir.clone(),
-        )));
-        registry.register(Box::new(arawn_workflow::WorkflowDeleteTool::new(
-            workflows_dir,
-        )));
-        registry.register(Box::new(arawn_workflow::WorkflowStatusTool::new(
-            Arc::clone(&shared_runner),
-        )));
+        register_workflow_tools(&registry, workflows_dir, Arc::clone(&shared_runner));
 
         // Spawn config watcher for hot-reloading arawn.toml changes
         let _config_watcher = arawn_bin::config_watcher::ConfigWatcher::new(
@@ -632,6 +556,126 @@ fn build_llm_client(
             )?))
         }
     }
+}
+
+/// Register all default tools into the registry.
+fn register_default_tools(
+    registry: &Arc<arawn_engine::ToolRegistry>,
+    config: &arawn_bin::ArawnConfig,
+    data_dir: &str,
+    bg_manager: Arc<arawn_engine::BackgroundTaskManager>,
+    plan_state: Arc<arawn_engine::PlanModeState>,
+) {
+    use arawn_engine::{
+        AgentTool, AskUserTool, EnterPlanModeTool, ExitPlanModeTool, FileEditTool, FileReadTool,
+        FileWriteTool, GlobTool, GrepTool, SessionTaskStore, ShellTool, SleepTool, TaskCreateTool,
+        TaskGetTool, TaskListTool, TaskOutputTool, TaskStopTool, TaskUpdateTool, ThinkTool,
+        WebFetchTool, WebSearchTool,
+    };
+
+    registry.register(Box::new(ThinkTool));
+    registry.register(Box::new(
+        ShellTool::with_network_tools(config.sandbox.network_tools.clone())
+            .with_background_manager(Arc::clone(&bg_manager)),
+    ));
+    registry.register(Box::new(FileReadTool));
+    registry.register(Box::new(FileWriteTool));
+    registry.register(Box::new(FileEditTool));
+    registry.register(Box::new(GlobTool));
+    registry.register(Box::new(GrepTool));
+    registry.register(Box::new(WebFetchTool::new()));
+    registry.register(Box::new(WebSearchTool));
+    registry.register(Box::new(AskUserTool));
+
+    let agents_dir = std::path::PathBuf::from(data_dir).join("agents");
+    let agent_defs = arawn_engine::agent_defs::get_all_agents(Some(&agents_dir));
+    registry.register(Box::new(
+        AgentTool::new(Arc::clone(registry), agent_defs)
+            .with_background_manager(Arc::clone(&bg_manager)),
+    ));
+
+    let task_store = SessionTaskStore::new();
+    registry.register(Box::new(SleepTool));
+    registry.register(Box::new(TaskCreateTool::new(task_store.clone())));
+    registry.register(Box::new(TaskUpdateTool::new(task_store.clone())));
+    registry.register(Box::new(TaskGetTool::new(task_store.clone())));
+    registry.register(Box::new(TaskListTool::new(task_store)));
+    registry.register(Box::new(TaskOutputTool::new(Arc::clone(&bg_manager))));
+    registry.register(Box::new(TaskStopTool::new(Arc::clone(&bg_manager))));
+
+    registry.register(Box::new(EnterPlanModeTool::new(Arc::clone(&plan_state))));
+    registry.register(Box::new(ExitPlanModeTool::new(Arc::clone(&plan_state))));
+}
+
+/// Connect to MCP servers from config and plugins.
+async fn connect_mcp_servers(
+    data_dir: &str,
+    plugin_result: &arawn_engine::plugins::PluginLoadResult,
+    registry: &Arc<arawn_engine::ToolRegistry>,
+) -> arawn_mcp::McpManager {
+    let mcp_config =
+        arawn_mcp::load_mcp_config(&std::path::PathBuf::from(data_dir).join("arawn.toml"));
+    let mut mcp_manager = arawn_mcp::McpManager::new();
+    if !mcp_config.servers.is_empty() {
+        info!(
+            servers = mcp_config.servers.len(),
+            "connecting to config MCP servers"
+        );
+        mcp_manager
+            .connect_all(&mcp_config.servers, registry)
+            .await;
+    }
+
+    if !plugin_result.mcp_servers.is_empty() {
+        let plugin_mcp_configs: Vec<arawn_mcp::McpServerConfig> = plugin_result
+            .mcp_servers
+            .iter()
+            .map(|s| arawn_mcp::McpServerConfig {
+                name: s.name.clone(),
+                command: s.command.clone(),
+                args: s.args.clone(),
+                env: s.env.clone(),
+                enabled: true,
+            })
+            .collect();
+        info!(
+            servers = plugin_mcp_configs.len(),
+            "connecting to plugin MCP servers"
+        );
+        mcp_manager
+            .connect_all(&plugin_mcp_configs, registry)
+            .await;
+    }
+
+    if mcp_manager.tool_count() > 0 {
+        info!(
+            tools = mcp_manager.tool_count(),
+            servers = mcp_manager.connected_servers().len(),
+            "MCP servers connected"
+        );
+    }
+
+    mcp_manager
+}
+
+/// Register workflow management tools.
+fn register_workflow_tools(
+    registry: &Arc<arawn_engine::ToolRegistry>,
+    workflows_dir: std::path::PathBuf,
+    shared_runner: arawn_workflow::SharedWorkflowRunner,
+) {
+    registry.register(Box::new(arawn_workflow::WorkflowCreateTool::new(
+        workflows_dir.clone(),
+    )));
+    registry.register(Box::new(arawn_workflow::WorkflowListTool::new(
+        workflows_dir.clone(),
+    )));
+    registry.register(Box::new(arawn_workflow::WorkflowDeleteTool::new(
+        workflows_dir,
+    )));
+    registry.register(Box::new(arawn_workflow::WorkflowStatusTool::new(
+        shared_runner,
+    )));
 }
 
 fn build_engine_config(
