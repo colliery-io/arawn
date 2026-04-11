@@ -226,16 +226,40 @@ async fn main() -> Result<()> {
             "LLM provider configured"
         );
 
-        // Initialize memory system (two-tier KB)
+        // Initialize embedding model
+        let embed_config = arawn_embed::EmbeddingConfig::default();
+        let embedder: Option<Arc<dyn arawn_embed::Embedder>> =
+            match arawn_embed::create_embedder(&embed_config) {
+                Ok(e) => {
+                    info!(model = %embed_config.model, dims = embed_config.dimensions, "embedding model loaded");
+                    Some(e)
+                }
+                Err(e) => {
+                    warn!(error = %e, "embedding model unavailable — memory system will use FTS only");
+                    None
+                }
+            };
+
+        // Initialize memory system (two-tier KB) with optional embedder
         let ws_dir = arawn_storage::workstream_dir_name(&workstream.name, workstream.id);
-        let memory_manager = arawn_memory::try_open_memory(
-            std::path::Path::new(&data_dir),
-            &ws_dir,
-            Some(384), // default embedding dimensions
-        );
-        if memory_manager.is_some() {
-            info!("memory system initialized (global + workstream KB)");
-        }
+        let memory_manager: Option<Arc<arawn_memory::MemoryManager>> =
+            match arawn_memory::MemoryManager::open(
+                std::path::Path::new(&data_dir),
+                &ws_dir,
+                Some(embed_config.dimensions),
+            ) {
+                Ok(mut mgr) => {
+                    if let Some(ref emb) = embedder {
+                        mgr = mgr.with_embedder(Arc::clone(emb));
+                    }
+                    info!("memory system initialized (global + workstream KB)");
+                    Some(Arc::new(mgr))
+                }
+                Err(e) => {
+                    warn!(error = %e, "memory system unavailable — continuing without memory");
+                    None
+                }
+            };
 
         let registry = Arc::new(arawn_engine::ToolRegistry::new());
         let bg_manager = Arc::new(arawn_engine::BackgroundTaskManager::new());
@@ -247,6 +271,19 @@ async fn main() -> Result<()> {
             Arc::clone(&bg_manager),
             Arc::clone(&plan_state),
         );
+
+        // Register memory tools (if memory system is available)
+        if let Some(ref mgr) = memory_manager {
+            registry.register(Box::new(arawn_engine::MemoryStoreTool::new(
+                Arc::clone(mgr),
+                embedder.clone(),
+            )));
+            registry.register(Box::new(arawn_engine::MemorySearchTool::new(
+                Arc::clone(mgr),
+                embedder.clone(),
+            )));
+            info!("memory tools registered (store + search)");
+        }
 
         // Load legacy .arawn_tool plugins (deprecated — use new plugin system instead)
         #[cfg(feature = "legacy-plugins")]

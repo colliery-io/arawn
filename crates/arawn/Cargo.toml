@@ -18,6 +18,7 @@ legacy-plugins = ["arawn-engine/legacy-plugins"]
 [dependencies]
 async-trait = { workspace = true }
 arawn-core = { workspace = true }
+arawn-embed = { path = "../arawn-embed" }
 arawn-mcp = { path = "../arawn-mcp" }
 arawn-tui = { path = "../arawn-tui" }
 arawn-engine = { workspace = true }

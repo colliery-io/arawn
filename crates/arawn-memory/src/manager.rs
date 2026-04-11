@@ -6,11 +6,13 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use tracing::{info, warn};
+use tracing::{debug, info, warn};
+
+use arawn_embed::Embedder;
 
 use crate::error::MemoryError;
 use crate::store::MemoryStore;
-use crate::types::{EntityType, Scope};
+use crate::types::{Entity, EntityType, Scope, StoreFactResult};
 use crate::vector;
 
 /// Two-tier memory manager holding global and workstream knowledge bases.
@@ -21,6 +23,8 @@ pub struct MemoryManager {
     pub workstream: Arc<MemoryStore>,
     /// Whether vector storage is initialized.
     vectors_enabled: bool,
+    /// Optional embedder for automatic embedding on ingest and vector retrieval.
+    embedder: Option<Arc<dyn Embedder>>,
 }
 
 impl MemoryManager {
@@ -62,6 +66,7 @@ impl MemoryManager {
             global,
             workstream,
             vectors_enabled,
+            embedder: None,
         })
     }
 
@@ -71,7 +76,58 @@ impl MemoryManager {
             global,
             workstream,
             vectors_enabled: false,
+            embedder: None,
         }
+    }
+
+    /// Attach an embedder for automatic embedding on ingest and vector-enhanced retrieval.
+    pub fn with_embedder(mut self, embedder: Arc<dyn Embedder>) -> Self {
+        self.embedder = Some(embedder);
+        self
+    }
+
+    /// Get the embedder if available.
+    pub fn embedder(&self) -> Option<&Arc<dyn Embedder>> {
+        self.embedder.as_ref()
+    }
+
+    /// Store a fact with automatic embedding. Routes to the appropriate store
+    /// based on entity type, performs search-before-create dedup, and embeds
+    /// the entity if an embedder is available.
+    pub async fn store_fact_embedded(
+        &self,
+        entity: &Entity,
+        scope: Option<Scope>,
+    ) -> Result<StoreFactResult, MemoryError> {
+        let scope = scope.unwrap_or_else(|| entity.entity_type.default_scope());
+        let store = self.store_for(scope);
+        let result = store.store_fact(entity)?;
+
+        // Embed if embedder is available
+        if let Some(ref embedder) = self.embedder {
+            let entity_id = match &result {
+                StoreFactResult::Inserted { entity_id } => *entity_id,
+                StoreFactResult::Reinforced { entity_id, .. } => *entity_id,
+                StoreFactResult::Superseded { new_entity_id, .. } => *new_entity_id,
+            };
+            let text = format!(
+                "{} {}",
+                entity.title,
+                entity.content.as_deref().unwrap_or("")
+            );
+            match embedder.embed(&text).await {
+                Ok(embedding) => {
+                    if let Err(e) = store.store_embedding(entity_id, &embedding) {
+                        debug!(error = %e, "failed to store embedding (non-fatal)");
+                    }
+                }
+                Err(e) => {
+                    debug!(error = %e, "failed to embed entity (non-fatal)");
+                }
+            }
+        }
+
+        Ok(result)
     }
 
     /// Get the store for a given scope.
@@ -92,7 +148,8 @@ impl MemoryManager {
         self.vectors_enabled
     }
 
-    /// Retrieve entities matching keywords (by title FTS or tag match) from both tiers.
+    /// Retrieve entities matching keywords from both tiers.
+    /// Uses hybrid FTS + vector search when embedder is available.
     /// Returns entities within the token budget, deduplicated by ID.
     pub fn retrieve_topical(
         &self,
@@ -107,38 +164,78 @@ impl MemoryManager {
         let mut results = Vec::new();
         let mut tokens_used = 0;
 
-        // Search both tiers by FTS and tags
+        let budget_check = |entity: &Entity, seen: &std::collections::HashSet<uuid::Uuid>, tokens_used: &usize| -> Option<usize> {
+            if entity.superseded || seen.contains(&entity.id) {
+                return None;
+            }
+            let cost = (entity.title.len() + entity.content.as_ref().map(|c| c.len().min(80)).unwrap_or(0)) / 4;
+            if *tokens_used + cost > budget_tokens {
+                return None;
+            }
+            Some(cost)
+        };
+
+        // FTS + tag search (always available)
         for store in [&self.global, &self.workstream] {
             for keyword in keywords {
-                // FTS search
                 if let Ok(entities) = store.search(keyword, 10) {
                     for entity in entities {
-                        if entity.superseded || seen.contains(&entity.id) {
-                            continue;
+                        if let Some(cost) = budget_check(&entity, &seen, &tokens_used) {
+                            seen.insert(entity.id);
+                            tokens_used += cost;
+                            results.push(entity);
                         }
-                        let cost = (entity.title.len() + entity.content.as_ref().map(|c| c.len().min(80)).unwrap_or(0)) / 4;
-                        if tokens_used + cost > budget_tokens {
-                            continue;
-                        }
-                        seen.insert(entity.id);
-                        tokens_used += cost;
-                        results.push(entity);
                     }
                 }
 
-                // Tag search
                 if let Ok(entities) = store.search_by_tags(&[keyword.clone()], 10) {
                     for entity in entities {
-                        if entity.superseded || seen.contains(&entity.id) {
-                            continue;
+                        if let Some(cost) = budget_check(&entity, &seen, &tokens_used) {
+                            seen.insert(entity.id);
+                            tokens_used += cost;
+                            results.push(entity);
                         }
-                        let cost = (entity.title.len() + entity.content.as_ref().map(|c| c.len().min(80)).unwrap_or(0)) / 4;
-                        if tokens_used + cost > budget_tokens {
-                            continue;
+                    }
+                }
+            }
+        }
+
+        // Vector search (if embedder available) — catches paraphrase matches FTS misses
+        if let Some(ref embedder) = self.embedder {
+            let query_text = keywords.join(" ");
+            // Block on the async embed call — retrieve_topical is called from sync context
+            let rt = tokio::runtime::Handle::try_current();
+            let embedding = if let Ok(handle) = rt {
+                // Already in async context — use spawn_blocking to avoid blocking the runtime
+                let emb = embedder.clone();
+                let qt = query_text.clone();
+                std::thread::spawn(move || {
+                    tokio::runtime::Runtime::new()
+                        .unwrap()
+                        .block_on(emb.embed(&qt))
+                })
+                .join()
+                .ok()
+                .and_then(|r| r.ok())
+            } else {
+                // No runtime — create one
+                tokio::runtime::Runtime::new()
+                    .ok()
+                    .and_then(|rt| rt.block_on(embedder.embed(&query_text)).ok())
+            };
+
+            if let Some(query_emb) = embedding {
+                for store in [&self.global, &self.workstream] {
+                    if let Ok(sim_results) = store.search_similar(&query_emb, 10) {
+                        for result in &sim_results {
+                            if let Ok(Some(entity)) = store.get_entity(result.entity_id) {
+                                if let Some(cost) = budget_check(&entity, &seen, &tokens_used) {
+                                    seen.insert(entity.id);
+                                    tokens_used += cost;
+                                    results.push(entity);
+                                }
+                            }
                         }
-                        seen.insert(entity.id);
-                        tokens_used += cost;
-                        results.push(entity);
                     }
                 }
             }

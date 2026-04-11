@@ -833,32 +833,36 @@ impl ArawnService for LocalService {
             entity = entity.with_content(text);
         }
 
-        let store = memory.store_for_type(entity_type);
-        match store.store_fact(&entity) {
-            Ok(arawn_memory::StoreFactResult::Inserted { entity_id }) => {
+        // Use store_fact_embedded to auto-embed if embedder is available
+        let result = memory
+            .store_fact_embedded(&entity, None)
+            .await
+            .map_err(|e| ServiceError::Storage(e.to_string()))?;
+
+        match result {
+            arawn_memory::StoreFactResult::Inserted { entity_id } => {
                 Ok(MemoryStoreResult::Inserted {
                     entity_id: entity_id.to_string(),
                     title,
                     entity_type: entity_type.as_str().to_string(),
                 })
             }
-            Ok(arawn_memory::StoreFactResult::Reinforced {
+            arawn_memory::StoreFactResult::Reinforced {
                 entity_id,
                 new_count,
-            }) => Ok(MemoryStoreResult::Reinforced {
+            } => Ok(MemoryStoreResult::Reinforced {
                 entity_id: entity_id.to_string(),
                 title,
                 count: new_count as u64,
             }),
-            Ok(arawn_memory::StoreFactResult::Superseded {
+            arawn_memory::StoreFactResult::Superseded {
                 old_entity_id,
                 new_entity_id,
-            }) => Ok(MemoryStoreResult::Superseded {
+            } => Ok(MemoryStoreResult::Superseded {
                 old_id: old_entity_id.to_string(),
                 new_id: new_entity_id.to_string(),
                 title,
             }),
-            Err(e) => Err(ServiceError::Storage(e.to_string())),
         }
     }
 

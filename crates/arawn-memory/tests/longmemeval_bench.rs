@@ -9,11 +9,64 @@
 //! Run with: cargo test -p arawn-memory --test longmemeval_bench -- --nocapture --ignored
 //! (ignored by default since it requires model download and takes ~5 minutes)
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use arawn_memory::*;
+
+// ============================================================================
+// Hybrid Retrieval
+// ============================================================================
+
+/// Reciprocal Rank Fusion: merge multiple ranked lists into one.
+/// score(doc) = sum over lists: 1 / (k + rank_in_list)
+/// k=60 is standard (Cormack et al. 2009).
+fn reciprocal_rank_fusion(
+    ranked_lists: &[Vec<&str>],
+    k: f64,
+) -> Vec<(String, f64)> {
+    let mut scores: HashMap<String, f64> = HashMap::new();
+    for list in ranked_lists {
+        for (rank, id) in list.iter().enumerate() {
+            *scores.entry(id.to_string()).or_default() += 1.0 / (k + rank as f64 + 1.0);
+        }
+    }
+    let mut sorted: Vec<(String, f64)> = scores.into_iter().collect();
+    sorted.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+    sorted
+}
+
+/// Parse a LongMemEval date string like "2023/01/15 (Sun) 10:20" into days-since-epoch.
+fn parse_date_to_days(date_str: &str) -> Option<f64> {
+    // Format: "2023/01/15 (Sun) 10:20" — extract YYYY/MM/DD
+    let parts: Vec<&str> = date_str.split_whitespace().next()?.split('/').collect();
+    if parts.len() != 3 {
+        return None;
+    }
+    let year: i64 = parts[0].parse().ok()?;
+    let month: i64 = parts[1].parse().ok()?;
+    let day: i64 = parts[2].parse().ok()?;
+    // Rough days since epoch (good enough for relative comparisons)
+    Some((year * 365 + month * 30 + day) as f64)
+}
+
+/// Temporal proximity score: higher for sessions closer in time to the question.
+/// Returns a multiplier in [0.5, 1.5] — recent sessions get boosted, old ones dampened.
+fn temporal_score(question_days: f64, session_days: f64) -> f64 {
+    let diff = (question_days - session_days).abs();
+    if diff < 7.0 {
+        1.5 // within a week — strong boost
+    } else if diff < 30.0 {
+        1.3 // within a month
+    } else if diff < 90.0 {
+        1.1 // within a quarter
+    } else if diff < 365.0 {
+        1.0 // within a year — neutral
+    } else {
+        0.7 // over a year old — dampen
+    }
+}
 
 // ============================================================================
 // Dataset types
@@ -24,6 +77,8 @@ struct LongMemEvalEntry {
     #[serde(default)]
     question_id: Option<String>,
     question: String,
+    #[serde(default)]
+    question_date: Option<String>,
     #[serde(default)]
     question_type: Option<String>,
     haystack_sessions: Vec<Vec<Turn>>,
@@ -182,80 +237,64 @@ fn longmemeval_benchmark() {
         .build()
         .unwrap();
 
-    // Initialize vector store
+    // Per-question indexing (matches MemPalace methodology):
+    // Each question has its own haystack of ~50 sessions.
+    // Build a fresh vector store per question, embed user turns only.
     arawn_memory::init_vector_extension();
-    let store = Arc::new(MemoryStore::in_memory().unwrap());
-    store.init_vectors(384).unwrap();
 
-    // Turn-level indexing: each turn gets its own embedding.
-    // This is the #1 lever for recall — a 20-turn session dilutes signal
-    // when embedded as one doc, but individual turns match precisely.
-    println!("  Indexing turns (turn-level granularity)...");
+    // Pre-compute embeddings for all unique session user-turn documents.
+    // This avoids re-embedding the same session across multiple questions.
+    println!("  Pre-computing embeddings for unique sessions...");
 
-    // Map: uuid -> parent session ID
-    let mut uuid_to_session: HashMap<uuid::Uuid, String> = HashMap::new();
-    let mut total_turns = 0;
-    let mut seen_sessions: std::collections::HashSet<String> = std::collections::HashSet::new();
-
-    // Collect all unique turns across entries
-    struct TurnDoc {
-        session_id: String,
-        text: String,
-    }
-    let mut all_turns: Vec<TurnDoc> = Vec::new();
-
+    // Collect unique session docs (user turns only, matching MemPalace raw mode)
+    let mut session_docs: HashMap<String, String> = HashMap::new();
     for entry in &entries {
         for (i, session) in entry.haystack_sessions.iter().enumerate() {
             let session_id = &entry.haystack_session_ids[i];
-            if seen_sessions.contains(session_id) {
+            if session_docs.contains_key(session_id) {
                 continue;
             }
-            seen_sessions.insert(session_id.clone());
-
-            for turn in session {
-                // Skip very short turns (< 20 chars) — they're noise
-                if turn.content.len() < 20 {
-                    continue;
-                }
-                all_turns.push(TurnDoc {
-                    session_id: session_id.clone(),
-                    text: format!("{}: {}", turn.role, turn.content),
-                });
+            let user_turns: Vec<&str> = session
+                .iter()
+                .filter(|t| t.role == "user")
+                .map(|t| t.content.as_str())
+                .collect();
+            if !user_turns.is_empty() {
+                session_docs.insert(session_id.clone(), user_turns.join("\n"));
             }
         }
     }
 
-    println!("  {} unique sessions, {} turns to embed", seen_sessions.len(), all_turns.len());
+    println!("  {} unique session documents to embed", session_docs.len());
 
-    // Embed in batches
+    // Embed all session docs in batches
+    let doc_list: Vec<(&String, &String)> = session_docs.iter().collect();
+    let mut session_embeddings: HashMap<String, Vec<f32>> = HashMap::new();
     let batch_size = 32;
-    let total_batches = (all_turns.len() + batch_size - 1) / batch_size;
+    let total_batches = (doc_list.len() + batch_size - 1) / batch_size;
 
-    for (batch_idx, chunk) in all_turns.chunks(batch_size).enumerate() {
-        if (batch_idx + 1) % 200 == 0 || batch_idx == 0 {
+    for (batch_idx, chunk) in doc_list.chunks(batch_size).enumerate() {
+        if (batch_idx + 1) % 100 == 0 || batch_idx == 0 {
             println!(
-                "    Batch {}/{} ({} turns embedded)",
+                "    Batch {}/{} ({} sessions embedded)",
                 batch_idx + 1,
                 total_batches,
                 batch_idx * batch_size
             );
         }
 
-        let texts: Vec<&str> = chunk.iter().map(|t| t.text.as_str()).collect();
+        let texts: Vec<&str> = chunk.iter().map(|(_, doc)| doc.as_str()).collect();
         let embeddings = rt.block_on(embedder.embed_batch(&texts)).unwrap();
 
-        for (i, turn_doc) in chunk.iter().enumerate() {
-            let entity_uuid = uuid::Uuid::new_v4();
-            store.store_embedding(entity_uuid, &embeddings[i]).unwrap();
-            uuid_to_session.insert(entity_uuid, turn_doc.session_id.clone());
-            total_turns += 1;
+        for (i, (session_id, _)) in chunk.iter().enumerate() {
+            session_embeddings.insert((*session_id).clone(), embeddings[i].clone());
         }
     }
 
-    println!("  Indexed {} turns", total_turns);
-    println!("\n  Evaluating {} questions...\n", entries.len());
+    println!("  Embeddings cached for {} sessions", session_embeddings.len());
+    println!("\n  Evaluating {} questions (per-question index, user-turns only)...\n", entries.len());
 
-    // Evaluate each question
+    // Evaluate each question with its own haystack
     let mut results_by_type: HashMap<String, Vec<(f64, f64, f64, f64)>> = HashMap::new();
     let mut total_r5_any = 0.0;
     let mut total_r5_all = 0.0;
@@ -269,30 +308,47 @@ fn longmemeval_benchmark() {
             continue;
         }
 
-        // Embed the question
+        // Build per-question vector index from this question's haystack
+        let store = MemoryStore::in_memory().unwrap();
+        store.init_vectors(384).unwrap();
+
+        let mut uuid_to_session: HashMap<uuid::Uuid, String> = HashMap::new();
+        let mut indexed = 0;
+
+        for (i, session_id) in entry.haystack_session_ids.iter().enumerate() {
+            if let Some(emb) = session_embeddings.get(session_id) {
+                let entity_uuid = uuid::Uuid::new_v4();
+                store.store_embedding(entity_uuid, emb).unwrap();
+                uuid_to_session.insert(entity_uuid, session_id.clone());
+                indexed += 1;
+            }
+        }
+
+        if indexed == 0 {
+            continue;
+        }
+
+        // Embed the question and search
         let q_emb = rt.block_on(embedder.embed(&entry.question)).unwrap();
+        let results = store.search_similar(&q_emb, 50.min(indexed)).unwrap();
 
-        // Search top-50 turns (more than needed — we deduplicate to sessions)
-        let results = store.search_similar(&q_emb, 50).unwrap();
-
-        // Deduplicate turn hits to unique session IDs (preserve order by best distance)
-        let mut seen: std::collections::HashSet<&str> = std::collections::HashSet::new();
-        let mut retrieved_session_ids: Vec<&str> = Vec::new();
+        // Deduplicate to unique session IDs
+        let mut seen: HashSet<String> = HashSet::new();
+        let mut retrieved_session_ids: Vec<String> = Vec::new();
         for r in &results {
             if let Some(sid) = uuid_to_session.get(&r.entity_id) {
-                if seen.insert(sid.as_str()) {
-                    retrieved_session_ids.push(sid.as_str());
-                    if retrieved_session_ids.len() >= 10 {
-                        break;
-                    }
+                if seen.insert(sid.clone()) {
+                    retrieved_session_ids.push(sid.clone());
                 }
             }
         }
 
-        let r5_any = recall_any_at_k(&retrieved_session_ids, ground_truth, 5);
-        let r5_all = recall_all_at_k(&retrieved_session_ids, ground_truth, 5);
-        let r10_any = recall_any_at_k(&retrieved_session_ids, ground_truth, 10);
-        let ndcg = ndcg_at_k(&retrieved_session_ids, ground_truth, 10);
+        let retrieved_refs: Vec<&str> = retrieved_session_ids.iter().map(|s| s.as_str()).collect();
+
+        let r5_any = recall_any_at_k(&retrieved_refs, ground_truth, 5);
+        let r5_all = recall_all_at_k(&retrieved_refs, ground_truth, 5);
+        let r10_any = recall_any_at_k(&retrieved_refs, ground_truth, 10);
+        let ndcg = ndcg_at_k(&retrieved_refs, ground_truth, 10);
 
         total_r5_any += r5_any;
         total_r5_all += r5_all;
@@ -361,8 +417,10 @@ fn longmemeval_benchmark() {
         count
     );
     println!("======================================================================");
-    println!("\n  MemPalace baseline (raw mode, same model): R@5 = 96.6%");
-    println!("  Our result:                                R@5 = {:.1}%\n", avg_r5_any * 100.0);
+    println!("\n  MemPalace baseline (raw mode, same model):        R@5 = 96.6%");
+    println!("  v1 (global index, session-level):               R@5 = 28.4%");
+    println!("  v2 (global index, turn-level):                  R@5 = 38.8%");
+    println!("  v5 (per-question index, user-turns, session):   R@5 = {:.1}%\n", avg_r5_any * 100.0);
 
     // Don't assert a threshold — this is a benchmark, not a pass/fail test.
     // Just report the numbers for comparison.
