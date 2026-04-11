@@ -106,32 +106,36 @@ fn generate_auth_token() -> String {
     format!("{}{}", uuid::Uuid::new_v4().simple(), uuid::Uuid::new_v4().simple())
 }
 
-/// Write the auth token to ~/.arawn/server.token for clients to read.
-fn write_token_file(token: &str) -> std::io::Result<std::path::PathBuf> {
-    let home = std::env::var("HOME")
-        .or_else(|_| std::env::var("USERPROFILE"))
-        .unwrap_or_else(|_| ".".to_string());
-    let arawn_dir = std::path::PathBuf::from(home).join(".arawn");
-    std::fs::create_dir_all(&arawn_dir)?;
-    let token_path = arawn_dir.join("server.token");
+/// Write the auth token to {data_dir}/server.token for clients to read.
+fn write_token_file(data_dir: &std::path::Path, token: &str) -> std::io::Result<std::path::PathBuf> {
+    std::fs::create_dir_all(data_dir)?;
+    let token_path = data_dir.join("server.token");
     std::fs::write(&token_path, token)?;
     Ok(token_path)
 }
 
-/// Read the auth token from ~/.arawn/server.token.
+/// Read the auth token from {data_dir}/server.token.
+/// Falls back to ARAWN_DATA_DIR env var, then ~/.arawn.
 pub fn read_token_file() -> Option<String> {
-    let home = std::env::var("HOME")
-        .or_else(|_| std::env::var("USERPROFILE"))
-        .ok()?;
-    let token_path = std::path::PathBuf::from(home).join(".arawn/server.token");
+    let data_dir = std::env::var("ARAWN_DATA_DIR")
+        .ok()
+        .or_else(|| {
+            std::env::var("HOME")
+                .or_else(|_| std::env::var("USERPROFILE"))
+                .ok()
+                .map(|h| format!("{h}/.arawn"))
+        })?;
+    let token_path = std::path::PathBuf::from(data_dir).join("server.token");
     std::fs::read_to_string(token_path).ok().map(|s| s.trim().to_string())
 }
 
 /// Start the WebSocket server on the given port.
 pub async fn run_server(service: LocalService, port: u16) -> anyhow::Result<()> {
+    let data_dir = service.data_dir.clone();
+
     // Generate auth token and write to disk for clients
     let auth_token = generate_auth_token();
-    match write_token_file(&auth_token) {
+    match write_token_file(&data_dir, &auth_token) {
         Ok(path) => info!(?path, "auth token written"),
         Err(e) => warn!("failed to write auth token file: {e} — authentication disabled"),
     }
@@ -158,10 +162,8 @@ pub async fn run_server(service: LocalService, port: u16) -> anyhow::Result<()> 
 
     info!("server shutting down gracefully");
     // Clean up token file on shutdown
-    if let Ok(home) = std::env::var("HOME").or_else(|_| std::env::var("USERPROFILE")) {
-        let token_path = std::path::PathBuf::from(home).join(".arawn/server.token");
-        let _ = std::fs::remove_file(token_path);
-    }
+    let token_path = data_dir.join("server.token");
+    let _ = std::fs::remove_file(token_path);
     Ok(())
 }
 

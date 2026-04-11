@@ -30,6 +30,10 @@ async fn main() -> Result<()> {
         #[command(subcommand)]
         command: Option<Command>,
 
+        /// Data directory (default: ~/.arawn, or ARAWN_DATA_DIR env var)
+        #[arg(long, env = "ARAWN_DATA_DIR")]
+        data_dir: Option<String>,
+
         /// Resume an existing session by UUID
         #[arg(long)]
         session: Option<Uuid>,
@@ -69,9 +73,11 @@ async fn main() -> Result<()> {
 
     // Handle plugin subcommand immediately (exits process)
     if let Some(Command::Plugin { args: plugin_args }) = &cli.command {
-        let plugins_root = dirs_path()
-            .map(|d| std::path::PathBuf::from(d).join("plugins"))
-            .unwrap_or_else(|| std::path::PathBuf::from(".arawn/plugins"));
+        let base = cli.data_dir.as_deref()
+            .map(String::from)
+            .or_else(|| dirs_path())
+            .unwrap_or_else(|| ".arawn".into());
+        let plugins_root = std::path::PathBuf::from(base).join("plugins");
         match arawn_bin::plugin_cmd::run_plugin_command(plugin_args, &plugins_root) {
             Ok(()) => std::process::exit(0),
             Err(e) => {
@@ -95,9 +101,10 @@ async fn main() -> Result<()> {
     let list_sessions = cli.list_sessions;
     let prompt_parts = cli.prompt;
 
-    // Load config — try ARAWN_DATA_DIR first for bootstrap, then load arawn.toml
-    let bootstrap_dir = std::env::var("ARAWN_DATA_DIR")
-        .unwrap_or_else(|_| dirs_path().unwrap_or_else(|| ".arawn".into()));
+    // Resolve data directory: --data-dir flag > ARAWN_DATA_DIR env > ~/.arawn
+    let bootstrap_dir = cli
+        .data_dir
+        .unwrap_or_else(|| dirs_path().unwrap_or_else(|| ".arawn".into()));
     let config = arawn_bin::ArawnConfig::load(std::path::Path::new(&bootstrap_dir));
     let data_dir = config.data_dir().to_string_lossy().to_string();
 

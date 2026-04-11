@@ -45,12 +45,18 @@ impl WsClient {
         Ok(Self { write, read })
     }
 
-    /// Read the server auth token from ~/.arawn/server.token.
+    /// Read the server auth token from {data_dir}/server.token.
+    /// Checks ARAWN_DATA_DIR env var first, falls back to ~/.arawn.
     fn read_server_token() -> Option<String> {
-        let home = std::env::var("HOME")
-            .or_else(|_| std::env::var("USERPROFILE"))
-            .ok()?;
-        let token_path = std::path::PathBuf::from(home).join(".arawn/server.token");
+        let data_dir = std::env::var("ARAWN_DATA_DIR")
+            .ok()
+            .or_else(|| {
+                std::env::var("HOME")
+                    .or_else(|_| std::env::var("USERPROFILE"))
+                    .ok()
+                    .map(|h| format!("{h}/.arawn"))
+            })?;
+        let token_path = std::path::PathBuf::from(data_dir).join("server.token");
         std::fs::read_to_string(token_path)
             .ok()
             .map(|s| s.trim().to_string())

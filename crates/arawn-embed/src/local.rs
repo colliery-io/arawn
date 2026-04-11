@@ -202,12 +202,15 @@ fn resolve_model_dir(config: &EmbeddingConfig) -> Result<PathBuf, EmbedError> {
     if let Some(ref path) = config.model_path {
         return Ok(PathBuf::from(path));
     }
-    let dir = dirs::home_dir()
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join(".arawn")
-        .join("models")
-        .join(&config.model);
-    Ok(dir)
+    // Use ARAWN_DATA_DIR if set, otherwise ~/.arawn
+    let base = std::env::var("ARAWN_DATA_DIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| {
+            dirs::home_dir()
+                .unwrap_or_else(|| PathBuf::from("."))
+                .join(".arawn")
+        });
+    Ok(base.join("models").join(&config.model))
 }
 
 fn download_model_files(model_dir: &Path, model_name: &str) -> Result<(), EmbedError> {

@@ -33,7 +33,7 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 uuid = { workspace = true }
 anyhow = { workspace = true }
-clap = { version = "4", features = ["derive"] }
+clap = { version = "4", features = ["derive", "env"] }
 notify = { workspace = true }
 tempfile = { workspace = true }
 tokio = { workspace = true }
