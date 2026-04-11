@@ -8,7 +8,9 @@ edition = "2024"
 
 [dependencies]
 arawn-bin = { package = "arawn", path = "../arawn" }
+async-trait = { workspace = true }
 arawn-core = { workspace = true }
+arawn-embed = { path = "../arawn-embed" }
 arawn-engine = { workspace = true }
 arawn-llm = { workspace = true }
 arawn-memory = { path = "../arawn-memory" }

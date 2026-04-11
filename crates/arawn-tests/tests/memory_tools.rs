@@ -4,23 +4,76 @@
 
 use std::sync::Arc;
 
+use arawn_embed::Embedder;
 use arawn_engine::testing::TestHarness;
 use arawn_engine::tools::{MemorySearchTool, MemoryStoreTool};
 use arawn_llm::MockResponse;
 use arawn_memory::MemoryManager;
 
-fn setup_memory_manager() -> Arc<MemoryManager> {
+/// Bag-of-words embedder for deterministic testing.
+/// Maps words to dimension indices via hashing — semantically similar
+/// text (shared words) produces similar vectors without an ML model.
+struct MockEmbedder {
+    dims: usize,
+}
+
+impl MockEmbedder {
+    fn new(dims: usize) -> Self {
+        Self { dims }
+    }
+
+    fn embed_sync(&self, text: &str) -> Vec<f32> {
+        let mut vec = vec![0.0f32; self.dims];
+        for word in text.split_whitespace() {
+            let w = word.to_lowercase();
+            let mut h: u64 = 5381;
+            for b in w.bytes() {
+                h = h.wrapping_mul(33).wrapping_add(b as u64);
+            }
+            let idx = (h % self.dims as u64) as usize;
+            vec[idx] += 1.0;
+            vec[(idx + 1) % self.dims] += 0.3;
+        }
+        // L2 normalize
+        let norm: f32 = vec.iter().map(|x| x * x).sum::<f32>().sqrt();
+        if norm > 0.0 {
+            for x in &mut vec {
+                *x /= norm;
+            }
+        }
+        vec
+    }
+}
+
+#[async_trait::async_trait]
+impl Embedder for MockEmbedder {
+    async fn embed(&self, text: &str) -> Result<Vec<f32>, arawn_embed::EmbedError> {
+        Ok(self.embed_sync(text))
+    }
+
+    fn dimensions(&self) -> usize {
+        self.dims
+    }
+}
+
+fn setup_memory_manager() -> (Arc<MemoryManager>, Option<Arc<dyn Embedder>>) {
+    arawn_memory::init_vector_extension();
     let global = Arc::new(arawn_memory::MemoryStore::in_memory().unwrap());
+    global.init_vectors(64).unwrap();
     let workstream = Arc::new(arawn_memory::MemoryStore::in_memory().unwrap());
-    Arc::new(MemoryManager::open_with_stores(global, workstream))
+    workstream.init_vectors(64).unwrap();
+    let embedder: Arc<dyn Embedder> = Arc::new(MockEmbedder::new(64));
+    let mgr = MemoryManager::open_with_stores(global, workstream)
+        .with_embedder(Arc::clone(&embedder));
+    (Arc::new(mgr), Some(embedder))
 }
 
 #[tokio::test]
 async fn memory_store_inserts_entity() {
-    let mgr = setup_memory_manager();
+    let (mgr, embedder) = setup_memory_manager();
 
     let harness = TestHarness::builder()
-        .with_tool(Box::new(MemoryStoreTool::new(Arc::clone(&mgr), None)))
+        .with_tool(Box::new(MemoryStoreTool::new(Arc::clone(&mgr), embedder.clone())))
         .with_script(vec![
             MockResponse::tool_call(
                 "c1",
@@ -53,10 +106,10 @@ async fn memory_store_inserts_entity() {
 
 #[tokio::test]
 async fn memory_store_preference_goes_to_global() {
-    let mgr = setup_memory_manager();
+    let (mgr, embedder) = setup_memory_manager();
 
     let harness = TestHarness::builder()
-        .with_tool(Box::new(MemoryStoreTool::new(Arc::clone(&mgr), None)))
+        .with_tool(Box::new(MemoryStoreTool::new(Arc::clone(&mgr), embedder.clone())))
         .with_script(vec![
             MockResponse::tool_call(
                 "c1",
@@ -83,10 +136,10 @@ async fn memory_store_preference_goes_to_global() {
 
 #[tokio::test]
 async fn memory_store_person_goes_to_global() {
-    let mgr = setup_memory_manager();
+    let (mgr, embedder) = setup_memory_manager();
 
     let harness = TestHarness::builder()
-        .with_tool(Box::new(MemoryStoreTool::new(Arc::clone(&mgr), None)))
+        .with_tool(Box::new(MemoryStoreTool::new(Arc::clone(&mgr), embedder.clone())))
         .with_script(vec![
             MockResponse::tool_call(
                 "c1",
@@ -106,10 +159,10 @@ async fn memory_store_person_goes_to_global() {
 
 #[tokio::test]
 async fn memory_store_deduplicates_on_reinsertion() {
-    let mgr = setup_memory_manager();
+    let (mgr, embedder) = setup_memory_manager();
 
     let harness = TestHarness::builder()
-        .with_tool(Box::new(MemoryStoreTool::new(Arc::clone(&mgr), None)))
+        .with_tool(Box::new(MemoryStoreTool::new(Arc::clone(&mgr), embedder.clone())))
         .with_script(vec![
             MockResponse::tool_call(
                 "c1",
@@ -144,7 +197,7 @@ async fn memory_store_deduplicates_on_reinsertion() {
 
 #[tokio::test]
 async fn memory_search_finds_stored_entity() {
-    let mgr = setup_memory_manager();
+    let (mgr, embedder) = setup_memory_manager();
 
     // Pre-populate the KB
     let entity = arawn_memory::Entity::new(arawn_memory::EntityType::Fact, "Redis cache TTL is 5 minutes")
@@ -153,7 +206,7 @@ async fn memory_search_finds_stored_entity() {
     mgr.workstream.insert_entity(&entity).unwrap();
 
     let harness = TestHarness::builder()
-        .with_tool(Box::new(MemorySearchTool::new(Arc::clone(&mgr), None)))
+        .with_tool(Box::new(MemorySearchTool::new(Arc::clone(&mgr), embedder.clone())))
         .with_script(vec![
             MockResponse::tool_call(
                 "c1",
@@ -188,7 +241,7 @@ async fn memory_search_finds_stored_entity() {
 
 #[tokio::test]
 async fn memory_search_filters_by_type() {
-    let mgr = setup_memory_manager();
+    let (mgr, embedder) = setup_memory_manager();
 
     // Store a fact and a decision
     mgr.workstream
@@ -205,7 +258,7 @@ async fn memory_search_filters_by_type() {
         .unwrap();
 
     let harness = TestHarness::builder()
-        .with_tool(Box::new(MemorySearchTool::new(Arc::clone(&mgr), None)))
+        .with_tool(Box::new(MemorySearchTool::new(Arc::clone(&mgr), embedder.clone())))
         .with_script(vec![
             MockResponse::tool_call(
                 "c1",
@@ -237,11 +290,11 @@ async fn memory_search_filters_by_type() {
 
 #[tokio::test]
 async fn memory_store_then_search_roundtrip() {
-    let mgr = setup_memory_manager();
+    let (mgr, embedder) = setup_memory_manager();
 
     // Step 1: Store a fact via the tool
     let store_harness = TestHarness::builder()
-        .with_tool(Box::new(MemoryStoreTool::new(Arc::clone(&mgr), None)))
+        .with_tool(Box::new(MemoryStoreTool::new(Arc::clone(&mgr), embedder.clone())))
         .with_script(vec![
             MockResponse::tool_call(
                 "c1",
@@ -257,12 +310,12 @@ async fn memory_store_then_search_roundtrip() {
 
     // Step 2: Search for it in a separate engine turn (same KB)
     let search_harness = TestHarness::builder()
-        .with_tool(Box::new(MemorySearchTool::new(Arc::clone(&mgr), None)))
+        .with_tool(Box::new(MemorySearchTool::new(Arc::clone(&mgr), embedder.clone())))
         .with_script(vec![
             MockResponse::tool_call(
                 "c1",
                 "memory_search",
-                r#"{"query": "deploy Tuesday"}"#,
+                r#"{"query": "deploy schedule"}"#,
             ),
             MockResponse::text("Deploys are weekly on Tuesdays at 2pm UTC."),
         ])
@@ -294,10 +347,10 @@ async fn memory_store_then_search_roundtrip() {
 
 #[tokio::test]
 async fn memory_search_empty_kb_returns_no_results() {
-    let mgr = setup_memory_manager();
+    let (mgr, embedder) = setup_memory_manager();
 
     let harness = TestHarness::builder()
-        .with_tool(Box::new(MemorySearchTool::new(Arc::clone(&mgr), None)))
+        .with_tool(Box::new(MemorySearchTool::new(Arc::clone(&mgr), embedder.clone())))
         .with_script(vec![
             MockResponse::tool_call(
                 "c1",
@@ -321,10 +374,10 @@ async fn memory_search_empty_kb_returns_no_results() {
 
 #[tokio::test]
 async fn memory_store_with_tags() {
-    let mgr = setup_memory_manager();
+    let (mgr, embedder) = setup_memory_manager();
 
     let harness = TestHarness::builder()
-        .with_tool(Box::new(MemoryStoreTool::new(Arc::clone(&mgr), None)))
+        .with_tool(Box::new(MemoryStoreTool::new(Arc::clone(&mgr), embedder.clone())))
         .with_script(vec![
             MockResponse::tool_call(
                 "c1",
@@ -344,11 +397,11 @@ async fn memory_store_with_tags() {
 
 #[tokio::test]
 async fn memory_store_explicit_scope_override() {
-    let mgr = setup_memory_manager();
+    let (mgr, embedder) = setup_memory_manager();
 
     // Facts default to workstream scope, but explicitly set to global
     let harness = TestHarness::builder()
-        .with_tool(Box::new(MemoryStoreTool::new(Arc::clone(&mgr), None)))
+        .with_tool(Box::new(MemoryStoreTool::new(Arc::clone(&mgr), embedder.clone())))
         .with_script(vec![
             MockResponse::tool_call(
                 "c1",
