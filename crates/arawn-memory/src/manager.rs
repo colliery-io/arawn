@@ -65,6 +65,15 @@ impl MemoryManager {
         })
     }
 
+    /// Create a MemoryManager from pre-built stores (for testing).
+    pub fn open_with_stores(global: Arc<MemoryStore>, workstream: Arc<MemoryStore>) -> Self {
+        Self {
+            global,
+            workstream,
+            vectors_enabled: false,
+        }
+    }
+
     /// Get the store for a given scope.
     pub fn store_for(&self, scope: Scope) -> &Arc<MemoryStore> {
         match scope {
@@ -81,6 +90,61 @@ impl MemoryManager {
     /// Whether vector storage is available.
     pub fn vectors_enabled(&self) -> bool {
         self.vectors_enabled
+    }
+
+    /// Retrieve entities matching keywords (by title FTS or tag match) from both tiers.
+    /// Returns entities within the token budget, deduplicated by ID.
+    pub fn retrieve_topical(
+        &self,
+        keywords: &[String],
+        budget_tokens: usize,
+    ) -> Vec<crate::types::Entity> {
+        if keywords.is_empty() || budget_tokens == 0 {
+            return Vec::new();
+        }
+
+        let mut seen = std::collections::HashSet::new();
+        let mut results = Vec::new();
+        let mut tokens_used = 0;
+
+        // Search both tiers by FTS and tags
+        for store in [&self.global, &self.workstream] {
+            for keyword in keywords {
+                // FTS search
+                if let Ok(entities) = store.search(keyword, 10) {
+                    for entity in entities {
+                        if entity.superseded || seen.contains(&entity.id) {
+                            continue;
+                        }
+                        let cost = (entity.title.len() + entity.content.as_ref().map(|c| c.len().min(80)).unwrap_or(0)) / 4;
+                        if tokens_used + cost > budget_tokens {
+                            continue;
+                        }
+                        seen.insert(entity.id);
+                        tokens_used += cost;
+                        results.push(entity);
+                    }
+                }
+
+                // Tag search
+                if let Ok(entities) = store.search_by_tags(&[keyword.clone()], 10) {
+                    for entity in entities {
+                        if entity.superseded || seen.contains(&entity.id) {
+                            continue;
+                        }
+                        let cost = (entity.title.len() + entity.content.as_ref().map(|c| c.len().min(80)).unwrap_or(0)) / 4;
+                        if tokens_used + cost > budget_tokens {
+                            continue;
+                        }
+                        seen.insert(entity.id);
+                        tokens_used += cost;
+                        results.push(entity);
+                    }
+                }
+            }
+        }
+
+        results
     }
 }
 

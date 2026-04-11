@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-rusqlite = { version = "0.35", features = ["bundled"] }
+rusqlite = { version = "0.37", features = ["bundled"] }
 sqlite-vec = "0.1.6"
 zerocopy = { version = "0.8", features = ["derive"] }
 uuid = { workspace = true }
@@ -16,3 +16,6 @@ tracing = { workspace = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }
+arawn-embed = { path = "../arawn-embed" }
+tokio = { workspace = true }
+ureq = "3"

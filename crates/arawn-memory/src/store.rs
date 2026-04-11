@@ -234,6 +234,41 @@ impl MemoryStore {
         Ok(entities)
     }
 
+    /// List all non-superseded entities ranked by confidence: stated > observed > inferred,
+    /// then by reinforcement count, then recency. Used for L1 memory generation.
+    pub fn list_all_ranked(&self, limit: usize) -> Result<Vec<Entity>, MemoryError> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn
+            .prepare(
+                "SELECT * FROM entities WHERE superseded = 0
+                 ORDER BY
+                   CASE confidence_source
+                     WHEN 'stated' THEN 3
+                     WHEN 'observed' THEN 2
+                     WHEN 'inferred' THEN 1
+                     ELSE 0
+                   END DESC,
+                   reinforcement_count DESC,
+                   updated_at DESC
+                 LIMIT ?1",
+            )
+            .map_err(|e| MemoryError::Storage(format!("prepare: {e}")))?;
+
+        let rows = stmt
+            .query_map(params![limit as i64], |row| Ok(row_to_entity(row)))
+            .map_err(|e| MemoryError::Storage(format!("list: {e}")))?;
+
+        let mut entities = Vec::new();
+        for row in rows {
+            match row {
+                Ok(Ok(entity)) => entities.push(entity),
+                Ok(Err(e)) => return Err(e),
+                Err(e) => return Err(MemoryError::Storage(format!("row: {e}"))),
+            }
+        }
+        Ok(entities)
+    }
+
     pub fn count_by_type(&self, entity_type: EntityType) -> Result<usize, MemoryError> {
         let conn = self.conn.lock().unwrap();
         let count: i64 = conn
@@ -444,8 +479,10 @@ impl MemoryStore {
     /// Searches for existing entities of the same type with similar titles.
     /// Returns Inserted, Reinforced, or Superseded.
     pub fn store_fact(&self, entity: &Entity) -> Result<StoreFactResult, MemoryError> {
-        // Search for existing entities of the same type
-        let candidates = self.search_by_type(&entity.title, entity.entity_type, 5)?;
+        // Search for existing entities of the same type.
+        // Quote the title for FTS5 to prevent special character interpretation.
+        let fts_query = format!("\"{}\"", entity.title.replace('"', "\"\""));
+        let candidates = self.search_by_type(&fts_query, entity.entity_type, 5)?;
 
         // Check for exact or near-exact title match
         let title_lower = entity.title.to_lowercase();
