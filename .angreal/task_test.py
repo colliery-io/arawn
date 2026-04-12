@@ -166,6 +166,130 @@ def _print_branch_summary(lcov_path):
         print(f"\n  {'TOTAL':<25s} Lines: {total_ln_hit:>4d}/{total_ln:<4d} ({ln_pct:>5s}%)  Branches: {total_br_hit:>4d}/{total_br:<4d} ({br_pct:>5s}%)")
 
 
+@test()
+@angreal.command(name="uat", about="Run end-to-end UAT against a real LLM")
+@angreal.argument(name="model", long="model", help="LLM model name (default: gemma3:27b)", default="gemma3:27b")
+@angreal.argument(name="provider", long="provider", help="LLM provider (default: ollama)", default="ollama")
+@angreal.argument(name="base_url", long="base-url", help="Provider API base URL", default="https://api.ollama.com/v1")
+@angreal.argument(name="api_key_env", long="api-key-env", help="Env var for API key", default="OLLAMA_API_KEY")
+@angreal.argument(name="scenario", long="scenario", help="Run only this scenario (name filter)")
+def test_uat(model="gemma3:27b", provider="ollama", base_url="https://api.ollama.com/v1", api_key_env="OLLAMA_API_KEY", scenario=None):
+    """Run end-to-end UAT scenarios against a real LLM.
+
+    Starts an isolated arawn server, drives multi-turn conversations,
+    collects artifacts for judge review.
+
+    Examples:
+        angreal test uat
+        angreal test uat --model llama-3.3-70b --provider groq --api-key-env GROQ_API_KEY
+        angreal test uat --scenario github-monitor
+    """
+    with Flox("."):
+        env = {
+            **os.environ,
+            "UAT_MODEL": model,
+            "UAT_PROVIDER": provider,
+            "UAT_BASE_URL": base_url,
+            "UAT_API_KEY_ENV": api_key_env,
+        }
+        if scenario:
+            env["UAT_SCENARIO"] = scenario
+
+        subprocess.run(
+            ["cargo", "test", "-p", "arawn-tests", "--test", "uat", "--", "--ignored", "--nocapture"],
+            env=env,
+            check=True,
+        )
+
+
+@test()
+@angreal.command(name="uat-judge", about="Judge UAT results using Claude Code")
+@angreal.argument(name="results", long="results", help="Path to UAT results directory", required=True)
+def test_uat_judge(results=None):
+    """Evaluate UAT scenario artifacts using Claude Code as judge.
+
+    Reads transcript, workspace files, and scenario rubric from the
+    results directory and produces structured evaluation scores.
+
+    Example:
+        angreal test uat-judge --results /tmp/arawn-uat-20260411-103000/
+    """
+    import glob as globmod
+
+    if not os.path.isdir(results):
+        print(f"Error: {results} is not a directory")
+        return
+
+    # Find all scenario/model result dirs
+    scenario_dirs = []
+    for scenario_md in globmod.glob(os.path.join(results, "**/scenario.md"), recursive=True):
+        scenario_dirs.append(os.path.dirname(scenario_md))
+
+    if not scenario_dirs:
+        print(f"No scenario results found in {results}")
+        return
+
+    print(f"Found {len(scenario_dirs)} scenario result(s) to judge\n")
+
+    for result_dir in sorted(scenario_dirs):
+        rel = os.path.relpath(result_dir, results)
+        print(f"  Judging: {rel}")
+
+        prompt = f"""You are evaluating an AI coding assistant's UAT performance.
+
+Read ALL files in {result_dir}/:
+1. scenario.md — the objective and per-turn expectations (your rubric)
+2. transcript.jsonl — the full conversation (one JSON object per turn)
+3. mechanical.json — automated check results
+4. workspace/ — all files the agent created (read each one)
+
+For each turn, score 1-5:
+- Task adherence: Did the agent address what was asked?
+- Tool appropriateness: Did it use the right tools?
+- Output quality: Is the produced artifact useful?
+- Coherence: Does it build on previous turns logically?
+
+Overall:
+- Completion (1-5): Did the agent achieve the stated objective?
+- Artifact quality (1-5): Could a human use the produced files?
+
+Output ONLY valid JSON (no markdown, no explanation):
+{{"turns": [{{"turn": 1, "adherence": N, "tools": N, "quality": N, "coherence": N, "notes": "..."}}], "overall_completion": N, "artifact_quality": N, "pass": true/false, "summary": "one paragraph"}}
+
+Pass criteria: completion >= 3, artifact_quality >= 3, no turn adherence < 2."""
+
+        result = subprocess.run(
+            ["claude", "--print", "-p", prompt, "--allowedTools", "Read,Glob,Grep"],
+            capture_output=True,
+            text=True,
+        )
+
+        if result.returncode == 0 and result.stdout.strip():
+            judge_output = result.stdout.strip()
+            # Write judge result
+            judge_path = os.path.join(result_dir, "judge.json")
+            with open(judge_path, "w") as f:
+                f.write(judge_output)
+            print(f"    Judge output: {judge_path}")
+
+            # Try to parse and summarize
+            try:
+                import json
+                scores = json.loads(judge_output)
+                status = "PASS" if scores.get("pass") else "FAIL"
+                completion = scores.get("overall_completion", "?")
+                quality = scores.get("artifact_quality", "?")
+                summary = scores.get("summary", "")[:100]
+                print(f"    Result: {status} (completion={completion}/5, quality={quality}/5)")
+                print(f"    Summary: {summary}...")
+            except json.JSONDecodeError:
+                print(f"    (could not parse judge output as JSON)")
+        else:
+            print(f"    Judge failed: {result.stderr[:200] if result.stderr else 'no output'}")
+
+        print()
+
+
 def _run_unit():
     subprocess.run(
         ["cargo", "test", "--workspace", "--", "--test-threads=1"],
