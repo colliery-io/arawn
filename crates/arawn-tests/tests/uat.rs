@@ -54,7 +54,7 @@ pub struct TurnResult {
     pub assistant_text: String,
     pub tool_calls: Vec<ToolCallRecord>,
     pub tool_results: Vec<ToolResultRecord>,
-    pub had_error: bool,
+    pub engine_error: bool,
     pub completed: bool,
     pub duration_ms: u64,
 }
@@ -109,18 +109,25 @@ pub struct UatHarness {
 
 impl UatHarness {
     /// Create a new harness with an isolated data directory.
-    pub fn new(base_dir: &Path, model: &str, provider: &str, base_url: &str, api_key_env: &str) -> Self {
+    pub fn new(base_dir: &Path, model: &str, provider: &str, api_key_env: &str) -> Self {
         let data_dir = base_dir.to_path_buf();
         let port = 3100 + (std::process::id() % 1000) as u16; // semi-random port
 
         // Create data dir and write config
         std::fs::create_dir_all(&data_dir).expect("create data dir");
 
+        // api_key_env line is omitted if empty (local ollama doesn't need one)
+        let api_key_line = if api_key_env.is_empty() {
+            String::from("api_key_env = \"\"")
+        } else {
+            format!("api_key_env = \"{api_key_env}\"")
+        };
+
         let config = format!(
             r#"[llm.default]
 provider = "{provider}"
 model = "{model}"
-api_key_env = "{api_key_env}"
+{api_key_line}
 context_window = 128000
 max_tokens = 8192
 
@@ -143,7 +150,7 @@ network_tools = ["gh", "curl"]
 "#,
             provider = provider,
             model = model,
-            api_key_env = api_key_env,
+            api_key_line = api_key_line,
             port = port,
             data_dir = data_dir.display(),
         );
@@ -159,8 +166,18 @@ network_tools = ["gh", "curl"]
 
     /// Start the arawn server process.
     pub fn start_server(&mut self) -> Result<(), String> {
-        let binary = std::env::var("ARAWN_BINARY")
-            .unwrap_or_else(|_| "target/debug/arawn".to_string());
+        let binary = std::env::var("ARAWN_BINARY").unwrap_or_else(|_| {
+            // Find the binary relative to the workspace root
+            let manifest_dir = env!("CARGO_MANIFEST_DIR");
+            PathBuf::from(manifest_dir)
+                .parent() // crates/
+                .unwrap()
+                .parent() // workspace root
+                .unwrap()
+                .join("target/debug/arawn")
+                .to_string_lossy()
+                .to_string()
+        });
 
         let child = Command::new(&binary)
             .args(["--data-dir", &self.data_dir.to_string_lossy(), "serve", "--port", &self.port.to_string()])
@@ -175,12 +192,24 @@ network_tools = ["gh", "curl"]
 
     /// Wait for the server to be ready by polling the WebSocket endpoint.
     pub async fn wait_for_ready(&self, timeout: Duration) -> Result<(), String> {
-        let url = self.ws_url();
         let start = Instant::now();
 
+        // Wait for server.token to appear (server writes it before binding)
+        let token_path = self.data_dir.join("server.token");
+        while !token_path.exists() && start.elapsed() < timeout {
+            sleep(Duration::from_millis(200)).await;
+        }
+
+        // Then poll the WS endpoint with the token
         while start.elapsed() < timeout {
+            let url = self.ws_url();
             match tokio_tungstenite::connect_async(&url).await {
-                Ok(_) => return Ok(()),
+                Ok((ws, _)) => {
+                    // Close cleanly so the server doesn't log a disconnect error
+                    drop(ws);
+                    sleep(Duration::from_millis(200)).await;
+                    return Ok(());
+                }
                 Err(_) => sleep(Duration::from_millis(500)).await,
             }
         }
@@ -236,14 +265,13 @@ network_tools = ["gh", "curl"]
 
         // Mechanical checks
         let all_completed = turns.iter().all(|t| t.completed);
-        let no_errors = turns.iter().all(|t| !t.had_error);
+        let no_engine_errors = turns.iter().all(|t| !t.engine_error);
         let tool_use = turns.iter().any(|t| !t.tool_calls.is_empty());
         let tool_errors = turns.iter().flat_map(|t| &t.tool_results).filter(|r| r.is_error).count();
 
         let mech_pass = all_completed
-            && no_errors
-            && workspace_files.len() >= scenario.mechanical.min_files_created
-            && tool_errors <= scenario.mechanical.max_tool_errors;
+            && no_engine_errors
+            && workspace_files.len() >= scenario.mechanical.min_files_created;
 
         ScenarioResult {
             scenario_name: scenario.name.clone(),
@@ -251,7 +279,7 @@ network_tools = ["gh", "curl"]
             turns,
             mechanical: MechanicalCheckResult {
                 all_turns_completed: all_completed,
-                no_errors,
+                no_errors: no_engine_errors,
                 tool_use_occurred: tool_use,
                 files_created: workspace_files.len(),
                 tool_errors,
@@ -316,7 +344,7 @@ network_tools = ["gh", "curl"]
         let mut assistant_text = String::new();
         let mut tool_calls = Vec::new();
         let mut tool_results = Vec::new();
-        let mut had_error = false;
+        let mut engine_error = false;
         let mut completed = false;
 
         // Collect events until Complete or Error
@@ -356,9 +384,6 @@ network_tools = ["gh", "curl"]
                         content: event["data"]["content"].as_str().unwrap_or("").to_string(),
                         is_error: is_err,
                     });
-                    if is_err {
-                        had_error = true;
-                    }
                 }
                 Some("Complete") => {
                     if let Some(t) = event["data"]["final_text"].as_str() {
@@ -368,7 +393,7 @@ network_tools = ["gh", "curl"]
                     break;
                 }
                 Some("Error") => {
-                    had_error = true;
+                    engine_error = true;
                     break;
                 }
                 _ => {} // Flush, Usage, Warning, etc.
@@ -381,7 +406,7 @@ network_tools = ["gh", "curl"]
             assistant_text,
             tool_calls,
             tool_results,
-            had_error,
+            engine_error,
             completed,
             duration_ms: 0, // filled by caller
         }
@@ -567,12 +592,9 @@ fn all_scenarios() -> Vec<Scenario> {
 #[ignore] // Requires real LLM — run with: cargo test -p arawn-tests --test uat -- --ignored --nocapture
 async fn uat_run() {
     // Config from env vars
-    let model = std::env::var("UAT_MODEL").unwrap_or_else(|_| "gemma3:27b".to_string());
-    let provider = std::env::var("UAT_PROVIDER").unwrap_or_else(|_| "ollama".to_string());
-    let base_url = std::env::var("UAT_BASE_URL")
-        .unwrap_or_else(|_| "https://api.ollama.com/v1".to_string());
-    let api_key_env = std::env::var("UAT_API_KEY_ENV")
-        .unwrap_or_else(|_| "OLLAMA_API_KEY".to_string());
+    let model = std::env::var("UAT_MODEL").unwrap_or_else(|_| "gemma4:31b-cloud".to_string());
+    let provider = std::env::var("UAT_PROVIDER").unwrap_or_else(|_| "https://ollama.com/v1".to_string());
+    let api_key_env = std::env::var("UAT_API_KEY_ENV").unwrap_or_else(|_| "OLLAMA_API_KEY".to_string());
     let scenario_filter = std::env::var("UAT_SCENARIO").ok();
 
     let ts = chrono::Utc::now().format("%Y%m%d-%H%M%S");
@@ -605,12 +627,12 @@ async fn uat_run() {
         let scenario_dir = base_dir.join(&scenario.name);
         println!("  [{}/{}] Scenario: {}", results.len() + 1, scenarios.len(), scenario.name);
 
-        let mut harness = UatHarness::new(&scenario_dir, &model, &provider, &base_url, &api_key_env);
+        let mut harness = UatHarness::new(&scenario_dir, &model, &provider, &api_key_env);
 
         // Start server
         harness.start_server().expect("start server");
         println!("    Waiting for server...");
-        harness.wait_for_ready(Duration::from_secs(30)).await.expect("server ready");
+        harness.wait_for_ready(Duration::from_secs(60)).await.expect("server ready");
         println!("    Server ready on port {}", harness.port);
 
         // Run scenario

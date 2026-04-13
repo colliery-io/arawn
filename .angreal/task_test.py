@@ -168,12 +168,11 @@ def _print_branch_summary(lcov_path):
 
 @test()
 @angreal.command(name="uat", about="Run end-to-end UAT against a real LLM")
-@angreal.argument(name="model", long="model", help="LLM model name (default: gemma3:27b)", default="gemma3:27b")
-@angreal.argument(name="provider", long="provider", help="LLM provider (default: ollama)", default="ollama")
-@angreal.argument(name="base_url", long="base-url", help="Provider API base URL", default="https://api.ollama.com/v1")
-@angreal.argument(name="api_key_env", long="api-key-env", help="Env var for API key", default="OLLAMA_API_KEY")
+@angreal.argument(name="model", long="model", help="LLM model name (default: gemma4:31b-cloud)", default="gemma4:31b-cloud")
+@angreal.argument(name="provider", long="provider", help="LLM provider or base URL (default: https://ollama.com/v1)", default="https://ollama.com/v1")
+@angreal.argument(name="api_key_env", long="api-key-env", help="Env var for API key (empty for no auth)", default="OLLAMA_API_KEY")
 @angreal.argument(name="scenario", long="scenario", help="Run only this scenario (name filter)")
-def test_uat(model="gemma3:27b", provider="ollama", base_url="https://api.ollama.com/v1", api_key_env="OLLAMA_API_KEY", scenario=None):
+def test_uat(model="gemma4:31b-cloud", provider="https://ollama.com/v1", api_key_env="OLLAMA_API_KEY", scenario=None):
     """Run end-to-end UAT scenarios against a real LLM.
 
     Starts an isolated arawn server, drives multi-turn conversations,
@@ -189,7 +188,6 @@ def test_uat(model="gemma3:27b", provider="ollama", base_url="https://api.ollama
             **os.environ,
             "UAT_MODEL": model,
             "UAT_PROVIDER": provider,
-            "UAT_BASE_URL": base_url,
             "UAT_API_KEY_ENV": api_key_env,
         }
         if scenario:
