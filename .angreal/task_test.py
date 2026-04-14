@@ -270,10 +270,24 @@ Pass criteria: completion >= 3, artifact_quality >= 3, no turn adherence < 2."""
                 f.write(judge_output)
             print(f"    Judge output: {judge_path}")
 
-            # Try to parse and summarize
+            # Try to parse and summarize (strip markdown fences if present)
             try:
                 import json
-                scores = json.loads(judge_output)
+                cleaned = judge_output
+                if "```json" in cleaned:
+                    cleaned = cleaned.split("```json", 1)[1]
+                if "```" in cleaned:
+                    cleaned = cleaned.split("```", 1)[0]
+                cleaned = cleaned.strip()
+                # Also try extracting just the JSON object if there's preamble text
+                if not cleaned.startswith("{"):
+                    brace_idx = cleaned.find("{")
+                    if brace_idx >= 0:
+                        cleaned = cleaned[brace_idx:]
+                scores = json.loads(cleaned)
+                # Rewrite with clean JSON
+                with open(judge_path, "w") as f:
+                    f.write(json.dumps(scores, indent=2))
                 status = "PASS" if scores.get("pass") else "FAIL"
                 completion = scores.get("overall_completion", "?")
                 quality = scores.get("artifact_quality", "?")
