@@ -549,27 +549,27 @@ fn github_monitor_scenario() -> Scenario {
 fn work_signal_pipeline_scenario() -> Scenario {
     Scenario {
         name: "work-signal-pipeline".to_string(),
-        objective: "Build a daily work signal processing pipeline that intakes meeting transcripts, Slack exports, and task updates, then extracts action items and produces a prioritized daily briefing.".to_string(),
+        objective: "Build a daily work signal processing pipeline as an arawn workflow using the workflow_create tool. The workflow should intake meeting transcripts, Slack exports, and task updates, extract action items, and produce a prioritized daily briefing on a cron schedule.".to_string(),
         turns: vec![
             ScenarioTurn {
-                user_message: "I need a daily work signal processing pipeline. Every morning it should intake signals from multiple sources — meeting transcripts, Slack channel exports, and Jira updates — then analyze, extract action items, and produce a prioritized daily briefing. Think through the architecture first.".to_string(),
-                judge_expectation: "Agent should use think tool to design the pipeline architecture. Response should identify distinct processing stages (intake, extraction, aggregation, prioritization, output) and the data flow between them.".to_string(),
+                user_message: "I need a daily work signal processing pipeline built as an arawn workflow — use the workflows skill to learn how, then use workflow_create to build it. Every morning it should intake signals from multiple sources — meeting transcripts, Slack channel exports, and Jira updates — then analyze, extract action items, and produce a prioritized daily briefing. Think through the architecture first.".to_string(),
+                judge_expectation: "Agent should invoke skill('workflows') to load the workflow authoring guide, then use think/plan mode to design the pipeline architecture as a cloacina DAG with data tasks, decision tasks, and action tasks.".to_string(),
             },
             ScenarioTurn {
-                user_message: "Let's start with the transcript processor. Write a module that takes a meeting transcript (plain text) and extracts: attendees, key decisions, action items with owners, and follow-up dates.".to_string(),
-                judge_expectation: "Agent should create a file with a transcript processing module. Code should parse text to extract structured data: attendees, decisions, action items (with owners and dates).".to_string(),
+                user_message: "Let's start with the transcript processor. Write the ingestion task that fetches and parses meeting transcripts to extract: attendees, key decisions, action items with owners, and follow-up dates.".to_string(),
+                judge_expectation: "Agent should create code for a workflow task (Rust function body) that processes transcripts. May use file_write for supporting modules or workflow_create for the task definition.".to_string(),
             },
             ScenarioTurn {
-                user_message: "Now write the signal aggregator that combines outputs from transcript processing, Slack digests, and task tracker updates into a unified daily signal feed.".to_string(),
-                judge_expectation: "Agent should create an aggregator module that takes multiple input sources and merges them into a unified data structure. Should handle deduplication or cross-referencing between sources.".to_string(),
+                user_message: "Now write the signal aggregator task that combines outputs from transcript processing, Slack digests, and task tracker updates into a unified daily signal feed.".to_string(),
+                judge_expectation: "Agent should create an aggregator — either as a workflow task body or supporting module. Should handle multiple input sources and merge into a unified structure.".to_string(),
             },
             ScenarioTurn {
-                user_message: "Add a prioritization engine that ranks signals by urgency (time-sensitive items first), impact (cross-team items higher), and staleness (older unresolved items bubble up).".to_string(),
-                judge_expectation: "Agent should create prioritization logic with three dimensions: urgency, impact, and staleness. Should produce a scored/ranked list of work items.".to_string(),
+                user_message: "Add a prioritization step that ranks signals by urgency (time-sensitive items first), impact (cross-team items higher), and staleness (older unresolved items bubble up).".to_string(),
+                judge_expectation: "Agent should create prioritization logic with three scoring dimensions. May be a workflow decision task that uses the arawn agent for LLM-powered ranking.".to_string(),
             },
             ScenarioTurn {
-                user_message: "Finally, generate a sample daily briefing from mock data so I can see the output format. Include at least 5 mock signals across the different sources.".to_string(),
-                judge_expectation: "Agent should create a sample output demonstrating the full pipeline. Should show a structured briefing with prioritized items from at least 2-3 different sources, formatted for human reading.".to_string(),
+                user_message: "Now create the complete workflow using workflow_create with all the tasks wired together as a DAG, scheduled to run at 8 AM on weekdays. Include a final task that generates the briefing report.".to_string(),
+                judge_expectation: "Agent should call workflow_create with a full DAG spec: ingestion tasks → aggregation → prioritization → briefing generation, with cron schedule '0 8 * * 1-5'. This is the key deliverable.".to_string(),
             },
         ],
         mechanical: MechanicalThresholds {

@@ -25,7 +25,7 @@ Workflows are heterogeneous DAGs mixing three task flavors:
 Fetch APIs, query databases, transform data. Fast, deterministic, retryable.
 
 ```rust
-ctx.insert("data", serde_json::json!({"items": results}))?;
+context.insert("data", serde_json::json!({"items": results}))?;
 Ok(())
 ```
 
@@ -34,7 +34,7 @@ Call back to the arawn server's decision endpoint for multi-turn agent sessions 
 
 ```rust
 let client = reqwest::Client::new();
-let upstream = ctx.get("data").cloned().unwrap_or(serde_json::json!(null));
+let upstream = context.get("data").cloned().unwrap_or(serde_json::json!(null));
 let resp = client.post("http://127.0.0.1:3100/api/decision")
     .json(&serde_json::json!({
         "prompt": "Triage these items and decide which need attention",
@@ -53,7 +53,7 @@ let result: serde_json::Value = resp.json().await.map_err(|e| TaskError::Executi
     task_id: "decide".into(),
     timestamp: chrono::Utc::now(),
 })?;
-ctx.insert("decision", result)?;
+context.insert("decision", result)?;
 Ok(())
 ```
 
@@ -61,7 +61,7 @@ Ok(())
 Write files, send notifications, schedule follow-ups based on upstream decision results.
 
 ```rust
-let decision = ctx.get("decision").cloned().unwrap_or_default();
+let decision = context.get("decision").cloned().unwrap_or_default();
 // Act on the decision...
 Ok(())
 ```
@@ -85,12 +85,12 @@ When the user describes a recurring automation, use `workflow_create` with:
     {
       "id": "fetch",
       "dependencies": [],
-      "body": "let data = reqwest::get(\"https://api.example.com/updates\").await.map_err(|e| TaskError::ExecutionFailed { message: e.to_string(), task_id: \"fetch\".into(), timestamp: chrono::Utc::now() })?.json::<serde_json::Value>().await.map_err(|e| TaskError::ExecutionFailed { message: e.to_string(), task_id: \"fetch\".into(), timestamp: chrono::Utc::now() })?;\nctx.insert(\"updates\", data)?;\nOk(())"
+      "body": "let data = reqwest::get(\"https://api.example.com/updates\").await.map_err(|e| TaskError::ExecutionFailed { message: e.to_string(), task_id: \"fetch\".into(), timestamp: chrono::Utc::now() })?.json::<serde_json::Value>().await.map_err(|e| TaskError::ExecutionFailed { message: e.to_string(), task_id: \"fetch\".into(), timestamp: chrono::Utc::now() })?;\ncontext.insert(\"updates\", data)?;\nOk(())"
     },
     {
       "id": "summarize",
       "dependencies": ["fetch"],
-      "body": "let client = reqwest::Client::new();\nlet upstream = ctx.get(\"updates\").cloned().unwrap_or(serde_json::json!(null));\nlet resp = client.post(\"http://127.0.0.1:3100/api/decision\").json(&serde_json::json!({\"prompt\": \"Summarize these updates into a concise daily briefing\", \"workstream\": \"scratch\", \"upstream_data\": upstream})).send().await.map_err(|e| TaskError::ExecutionFailed { message: e.to_string(), task_id: \"summarize\".into(), timestamp: chrono::Utc::now() })?;\nlet result: serde_json::Value = resp.json().await.map_err(|e| TaskError::ExecutionFailed { message: e.to_string(), task_id: \"summarize\".into(), timestamp: chrono::Utc::now() })?;\nctx.insert(\"summary\", result)?;\nOk(())"
+      "body": "let client = reqwest::Client::new();\nlet upstream = context.get(\"updates\").cloned().unwrap_or(serde_json::json!(null));\nlet resp = client.post(\"http://127.0.0.1:3100/api/decision\").json(&serde_json::json!({\"prompt\": \"Summarize these updates into a concise daily briefing\", \"workstream\": \"scratch\", \"upstream_data\": upstream})).send().await.map_err(|e| TaskError::ExecutionFailed { message: e.to_string(), task_id: \"summarize\".into(), timestamp: chrono::Utc::now() })?;\nlet result: serde_json::Value = resp.json().await.map_err(|e| TaskError::ExecutionFailed { message: e.to_string(), task_id: \"summarize\".into(), timestamp: chrono::Utc::now() })?;\ncontext.insert(\"summary\", result)?;\nOk(())"
     }
   ],
   "cron": "0 8 * * 1-5"
