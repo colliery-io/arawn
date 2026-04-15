@@ -56,17 +56,27 @@ pub fn generate(dir: &Path, def: &WorkflowDef) -> Result<(), ScaffoldError> {
 
 fn cargo_toml(name: &str) -> String {
     format!(
-        r#"[package]
+        r#"[workspace]
+
+[package]
 name = "{name}"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+default = ["packaged"]
+packaged = []
+
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
+cloacina-macros = "0.5"
 cloacina-workflow = {{ version = "0.5", features = ["packaged"] }}
+cloacina-workflow-plugin = "0.5"
+async-trait = "0.1"
 chrono = {{ version = "0.4", features = ["serde"] }}
+futures = "0.3"
 reqwest = {{ version = "0.12", features = ["json"] }}
 serde_json = "1"
 tokio = {{ version = "1", features = ["full"] }}
