@@ -127,7 +127,7 @@ fn lib_rs(def: &WorkflowDef, crate_name: &str) -> String {
 
         out.push_str(&format!("    #[task({attrs})]\n"));
         out.push_str(&format!(
-            "    pub async fn {}(ctx: &mut Context<Value>) -> Result<(), TaskError> {{\n",
+            "    pub async fn {}(context: &mut Context<Value>) -> Result<(), TaskError> {{\n",
             task.id
         ));
 
@@ -171,13 +171,13 @@ mod tests {
                 TaskDef {
                     id: "fetch".into(),
                     dependencies: vec![],
-                    body: "ctx.insert(\"data\", serde_json::json!({\"ok\": true}))?;\nOk(())".into(),
+                    body: "context.insert(\"data\", serde_json::json!({\"ok\": true}))?;\nOk(())".into(),
                     retry_attempts: Some(3),
                 },
                 TaskDef {
                     id: "process".into(),
                     dependencies: vec!["fetch".into()],
-                    body: "let _data = ctx.get(\"data\");\nOk(())".into(),
+                    body: "let _data = context.get(\"data\");\nOk(())".into(),
                     retry_attempts: None,
                 },
             ],
