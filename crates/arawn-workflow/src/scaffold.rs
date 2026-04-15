@@ -65,12 +65,14 @@ edition = "2021"
 crate-type = ["cdylib"]
 
 [dependencies]
-cloacina-workflow = {{ version = "0.4", features = ["packaged"] }}
+cloacina-workflow = {{ version = "0.5", features = ["packaged"] }}
+chrono = {{ version = "0.4", features = ["serde"] }}
+reqwest = {{ version = "0.12", features = ["json"] }}
 serde_json = "1"
 tokio = {{ version = "1", features = ["full"] }}
 
 [build-dependencies]
-cloacina-build = "0.4"
+cloacina-build = "0.5"
 "#
     )
 }
