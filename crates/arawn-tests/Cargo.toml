@@ -12,6 +12,7 @@ async-trait = { workspace = true }
 arawn-core = { workspace = true }
 arawn-embed = { path = "../arawn-embed" }
 arawn-engine = { workspace = true }
+arawn-tool = { path = "../arawn-tool" }
 arawn-llm = { workspace = true }
 arawn-memory = { path = "../arawn-memory" }
 arawn-service = { workspace = true }
