@@ -644,15 +644,31 @@ impl QueryEngine {
         }
     }
 
-    /// Build the request and stream with up to 2 retries on transient LLM errors
-    /// (rate limits, parse failures, network issues). Rebuilds the request on each
-    /// retry since tool definitions and session state haven't changed.
+    /// Retry the request-build-and-stream cycle when the stream fails mid-flight.
+    ///
+    /// This is a different retry layer from `arawn_llm::RetryClient`:
+    /// - `RetryClient` retries the `stream()` *open* call (connect-time
+    ///   transient errors, e.g., 429 on initial HTTP request).
+    /// - This retry catches errors that surface *after* chunk consumption
+    ///   has started (mid-stream network hiccups, provider closing the
+    ///   stream with a transient error code). Those are invisible to
+    ///   `RetryClient` — by the time it has handed back a stream, its
+    ///   retry window is closed.
+    ///
+    /// Rebuilds the full request on each attempt since session state is
+    /// unchanged and the previous stream's partial text is discarded.
+    ///
+    /// Policy: 2 retries total (3 attempts), exponential backoff with
+    /// 500 ms base (500 ms, 1 s) — shorter than `RetryClient`'s policy
+    /// because mid-stream is usually a transient hiccup and the caller
+    /// is already inside a user-facing turn.
     async fn stream_response_with_retry(
         &self,
         session: &Session,
         _ctx: &dyn arawn_tool::ToolContext,
     ) -> Result<AssembledResponse, EngineError> {
         const MAX_RETRIES: u32 = 2;
+        const BASE_DELAY_MS: u64 = 500;
 
         for attempt in 0..=MAX_RETRIES {
             let request = self.build_request(session);
@@ -668,14 +684,14 @@ impl QueryEngine {
                         return Err(e);
                     }
 
-                    let backoff_ms = (attempt + 1) * 500;
+                    let backoff_ms = BASE_DELAY_MS * 2u64.pow(attempt);
                     warn!(
                         attempt,
                         backoff_ms,
                         error = %e,
-                        "transient LLM error, retrying"
+                        "mid-stream LLM error, rebuilding request and retrying"
                     );
-                    tokio::time::sleep(std::time::Duration::from_millis(backoff_ms as u64)).await;
+                    tokio::time::sleep(std::time::Duration::from_millis(backoff_ms)).await;
                 }
             }
         }
