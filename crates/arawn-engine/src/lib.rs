@@ -35,11 +35,11 @@ pub use hooks::{
 pub use permissions::{
     CliModalPrompt, MockModalPrompt, ModalOption, ModalPrompt, ModalRequest,
     PermissionChecker, PermissionConfig, PermissionDecision, PermissionMode,
-    PermissionResponse, PermissionRule, RuleKind, SessionGrants, tool_category,
+    PermissionResponse, PermissionRule, RuleKind, SessionGrants,
 };
-// Note: permissions::ToolCategory (ReadOnly/FileWrite/Shell/Other) is accessed via
-// permissions::checker::ToolCategory when needed. The top-level ToolCategory re-export
-// is tool::ToolCategory (Core/Task/Agent/Web/etc.) for context filtering.
+// The top-level ToolCategory re-export below is tool::ToolCategory
+// (Core/Task/Agent/Web/etc.) for context filtering. Permission-risk classes
+// now live on the Tool trait itself as arawn_tool::PermissionCategory.
 pub use plan::{PlanModeState, PlanModeSnapshot, generate_slug};
 pub use query_engine::{ProgressEvent, PromptContext, QueryEngine, QueryEngineConfig};
 pub use system_prompt::{ContextFile, SystemPromptBuilder, find_context_files};

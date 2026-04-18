@@ -397,8 +397,8 @@ impl QueryEngine {
                 // Check for repeated failing calls with identical arguments.
                 // We use a compact key of tool name + sorted args to detect duplicates.
                 let call_key = format!("{}:{}", tc.name, tc.arguments);
-                if let Some(&count) = self.failed_call_counts.get(&call_key) {
-                    if count >= 2 {
+                if let Some(&count) = self.failed_call_counts.get(&call_key)
+                    && count >= 2 {
                         warn!(name = %tc.name, failures = count, "blocking repeated failing tool call");
                         invalid_results.push((i, ToolResult {
                             content: format!(
@@ -410,7 +410,6 @@ impl QueryEngine {
                         }));
                         continue;
                     }
-                }
                 valid_tool_calls.push(i);
             }
 
@@ -770,8 +769,8 @@ impl QueryEngine {
         debug!(name, tool_use_id, %arguments, "executing tool");
 
         // Plan mode enforcement — check before permission rules
-        if let Some(ref plan_state) = self.plan_state {
-            if plan_state.is_active() {
+        if let Some(ref plan_state) = self.plan_state
+            && plan_state.is_active() {
                 // Allow plan mode meta-tools and side-effect-free tools
                 let tool_is_allowed = name == "enter_plan_mode"
                     || name == "exit_plan_mode"
@@ -792,12 +791,18 @@ impl QueryEngine {
                     };
                 }
             }
-        }
 
-        // Permission check — if a checker is configured, verify the tool call is allowed
+        // Permission check — if a checker is configured, verify the tool call is allowed.
+        // The permission category comes from the tool itself via the Tool trait
+        // (`tool.permission_category()`). Unknown tools get `Other` — conservative default.
         if let Some(ref checker) = self.permission_checker {
             let input_summary = arguments.to_string();
-            let decision = checker.check(name, &input_summary).await;
+            let category = self
+                .registry
+                .get(name)
+                .map(|t| t.permission_category())
+                .unwrap_or(arawn_tool::PermissionCategory::Other);
+            let decision = checker.check(name, &input_summary, category).await;
             if decision == PermissionDecision::Denied {
                 warn!(name, "tool blocked by permission system");
                 return ToolResult {
@@ -839,7 +844,9 @@ impl QueryEngine {
             }
         };
 
-        let tool_result = match tool.execute(ctx, arguments.clone()).await {
+        
+
+        match tool.execute(ctx, arguments.clone()).await {
             Ok(output) => {
                 debug!(name, is_error = output.is_error, "tool completed");
 
@@ -876,9 +883,7 @@ impl QueryEngine {
                     is_error: true,
                 }
             }
-        };
-
-        tool_result
+        }
     }
 }
 

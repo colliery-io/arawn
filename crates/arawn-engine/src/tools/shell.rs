@@ -20,6 +20,7 @@ use crate::tools::sensitive_paths::sensitive_deny_read_paths;
 /// - Write access restricted to the session/workstream sandbox directory
 /// - Sensitive paths denied for reading (~/.ssh, ~/.aws, credentials, etc.)
 /// - Network blocked by default, unless the command invokes a known network tool
+#[derive(Default)]
 pub struct ShellTool {
     /// Tools that are granted network access when detected in a command.
     network_tools: Vec<String>,
@@ -29,14 +30,6 @@ pub struct ShellTool {
 
 const DEFAULT_TIMEOUT_MS: u64 = 30_000;
 
-impl Default for ShellTool {
-    fn default() -> Self {
-        Self {
-            network_tools: Vec::new(),
-            bg_manager: None,
-        }
-    }
-}
 
 impl ShellTool {
     /// Create a ShellTool with the given list of network-allowed tool binaries.
@@ -341,6 +334,10 @@ impl Tool for ShellTool {
         "shell"
     }
 
+    fn permission_category(&self) -> arawn_tool::PermissionCategory {
+        arawn_tool::PermissionCategory::Shell
+    }
+
     fn description(&self) -> &str {
         "Execute a shell command in a sandboxed environment. The command runs in the session's working directory with restricted filesystem and network access.\n\n\
          IMPORTANT: Do NOT use shell to run commands when a dedicated tool exists:\n\
@@ -399,17 +396,17 @@ impl Tool for ShellTool {
         // as foreground; the reader task owns the SandboxManager and resets it
         // when the child exits.
         if run_in_background {
-            return self.spawn_background(command, &ctx.working_dir()).await;
+            return self.spawn_background(command, ctx.working_dir()).await;
         }
 
         debug!(command, timeout_ms, cwd = ?ctx.working_dir(), "executing sandboxed shell command");
 
         // Try sandboxed execution, fall back to unsandboxed with warning
-        match execute_sandboxed(command, &ctx.working_dir(), timeout_ms, &self.network_tools).await {
+        match execute_sandboxed(command, ctx.working_dir(), timeout_ms, &self.network_tools).await {
             Ok(output) => Ok(output),
             Err(SandboxExecError::Unavailable(msg)) => {
                 warn!("sandbox unavailable: {msg} — running unsandboxed");
-                let mut output = execute_unsandboxed(command, &ctx.working_dir(), timeout_ms).await?;
+                let mut output = execute_unsandboxed(command, ctx.working_dir(), timeout_ms).await?;
                 // Prepend warning so the LLM (and user via tool result) sees the sandbox was bypassed
                 output.content = format!(
                     "[WARNING: Command ran without sandbox protection ({msg})]\n{}",

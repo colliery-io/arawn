@@ -10,4 +10,4 @@ pub use llm_preference::{
     LlmCapabilities, LlmPreference, LlmResolution, LlmResolverFn, MatchQuality, ResolvedLlmInfo,
 };
 pub use registry::ToolRegistry;
-pub use tool::{Tool, ToolCategory, ToolOutput};
+pub use tool::{PermissionCategory, Tool, ToolCategory, ToolOutput};

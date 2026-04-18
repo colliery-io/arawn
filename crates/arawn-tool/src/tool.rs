@@ -30,6 +30,23 @@ pub enum ToolCategory {
     BackgroundTask,
 }
 
+/// Risk class of a tool — used by the permission system to decide fallback
+/// behaviour when no explicit rule matches. Orthogonal to [`ToolCategory`]
+/// (which groups tools by feature area for context filtering).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PermissionCategory {
+    /// Side-effect-free / observation only — safe to auto-allow.
+    /// These are the only tools permitted in plan mode.
+    /// Examples: file_read, glob, grep, think, sleep, web_search, web_fetch.
+    ReadOnly,
+    /// Modifies files but not the broader system (file_edit, file_write).
+    FileWrite,
+    /// Executes arbitrary commands — highest risk (shell).
+    Shell,
+    /// Anything else (agents, memory, etc.) — treated conservatively.
+    Other,
+}
+
 /// Output from a tool execution.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ToolOutput {
@@ -70,9 +87,25 @@ pub trait Tool: Send + Sync {
         false
     }
 
-    /// Tool category for permission checking and context filtering.
+    /// Tool category for context filtering and feature-area grouping.
     fn category(&self) -> ToolCategory {
         ToolCategory::Core
+    }
+
+    /// Permission risk class for permission-mode fallback decisions.
+    /// Default is `Other` (conservative — requires explicit allow).
+    /// Read-only tools should return `ReadOnly` so they auto-allow in
+    /// Default mode and are permitted in Plan mode. File-writing and shell
+    /// tools should return their matching variant.
+    fn permission_category(&self) -> PermissionCategory {
+        // Default: conservative. Tools that are observation-only should
+        // override; also tied to `is_read_only()` below — if a tool is
+        // read-only it is by definition `PermissionCategory::ReadOnly`.
+        if self.is_read_only() {
+            PermissionCategory::ReadOnly
+        } else {
+            PermissionCategory::Other
+        }
     }
 
     /// Optional preferred LLM for this tool. The engine resolves this against

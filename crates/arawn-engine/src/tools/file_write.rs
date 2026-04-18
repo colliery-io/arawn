@@ -14,6 +14,10 @@ impl Tool for FileWriteTool {
         "file_write"
     }
 
+    fn permission_category(&self) -> arawn_tool::PermissionCategory {
+        arawn_tool::PermissionCategory::FileWrite
+    }
+
     fn description(&self) -> &str {
         "Create or overwrite a file with the given content. Creates parent directories if needed.\n\n\
          Usage:\n\

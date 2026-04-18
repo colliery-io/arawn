@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use arawn_tool::PermissionCategory;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, info, warn};
 
@@ -26,67 +27,27 @@ pub enum PermissionMode {
 }
 
 
-/// Category of a tool for permission mode fallback decisions.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ToolCategory {
-    /// Side-effect-free / observation only — safe to auto-allow.
-    /// These are the only tools permitted in plan mode.
-    /// Examples: Read, Glob, Grep, Think, Sleep, WebSearch, WebFetch.
-    ReadOnly,
-    /// Modifies files but not the broader system (Edit, Write).
-    FileWrite,
-    /// Executes arbitrary commands — highest risk (Bash/Shell).
-    Shell,
-    /// Anything else (agents, web fetch, etc.) — treated conservatively.
-    Other,
-}
-
-/// Determine the category of a tool by name. Data-driven lookup so new tools
-/// get a sensible default without modifying the Tool trait.
-pub fn tool_category(tool_name: &str) -> ToolCategory {
-    match tool_name {
-        // Read-only tools
-        "Read" | "FileRead" | "file_read" => ToolCategory::ReadOnly,
-        "Glob" | "glob" => ToolCategory::ReadOnly,
-        "Grep" | "grep" => ToolCategory::ReadOnly,
-        "Think" | "think" => ToolCategory::ReadOnly,
-        "Sleep" | "sleep" => ToolCategory::ReadOnly,
-        "task_list" | "task_get" | "task_create" | "task_update" => ToolCategory::ReadOnly,
-        "WebSearch" | "web_search" => ToolCategory::ReadOnly,
-        "WebFetch" | "web_fetch" => ToolCategory::ReadOnly,
-        "AskUser" | "ask_user" => ToolCategory::ReadOnly,
-
-        // File write tools
-        "Edit" | "FileEdit" | "file_edit" => ToolCategory::FileWrite,
-        "Write" | "FileWrite" | "file_write" => ToolCategory::FileWrite,
-
-        // Shell tools
-        "Bash" | "Shell" | "shell" => ToolCategory::Shell,
-
-        // Everything else
-        _ => ToolCategory::Other,
-    }
-}
-
 impl PermissionMode {
-    /// Determine the fallback decision for a tool when no explicit rule matched.
-    pub fn fallback(&self, tool_name: &str) -> PermissionDecision {
+    /// Determine the fallback decision for a tool when no explicit rule
+    /// matched. Takes the tool's declared [`PermissionCategory`] plus the
+    /// tool name — the name is only used for the Plan-mode exception that
+    /// lets `enter_plan_mode` / `exit_plan_mode` through regardless of
+    /// category.
+    pub fn fallback(&self, category: PermissionCategory, tool_name: &str) -> PermissionDecision {
         match self {
-            PermissionMode::Default => match tool_category(tool_name) {
-                ToolCategory::ReadOnly => PermissionDecision::Allowed,
-                ToolCategory::FileWrite => PermissionDecision::Ask,
-                ToolCategory::Shell => PermissionDecision::Ask,
-                ToolCategory::Other => PermissionDecision::Ask,
+            PermissionMode::Default => match category {
+                PermissionCategory::ReadOnly => PermissionDecision::Allowed,
+                _ => PermissionDecision::Ask,
             },
-            PermissionMode::AcceptEdits => match tool_category(tool_name) {
-                ToolCategory::ReadOnly => PermissionDecision::Allowed,
-                ToolCategory::FileWrite => PermissionDecision::Allowed,
-                ToolCategory::Shell => PermissionDecision::Ask,
-                ToolCategory::Other => PermissionDecision::Ask,
+            PermissionMode::AcceptEdits => match category {
+                PermissionCategory::ReadOnly | PermissionCategory::FileWrite => {
+                    PermissionDecision::Allowed
+                }
+                PermissionCategory::Shell | PermissionCategory::Other => PermissionDecision::Ask,
             },
             PermissionMode::BypassPermissions => PermissionDecision::Allowed,
-            PermissionMode::Plan => match tool_category(tool_name) {
-                ToolCategory::ReadOnly => PermissionDecision::Allowed,
+            PermissionMode::Plan => match category {
+                PermissionCategory::ReadOnly => PermissionDecision::Allowed,
                 _ => {
                     // Plan mode tools (EnterPlanMode/ExitPlanMode) are always allowed
                     if tool_name == "enter_plan_mode" || tool_name == "exit_plan_mode" {
@@ -222,15 +183,23 @@ impl PermissionChecker {
         *self.mode.write().unwrap() = mode;
     }
 
-    /// Check if a tool call is permitted.
+    /// Check if a tool call is permitted. The caller supplies the tool's
+    /// declared [`PermissionCategory`] — the engine looks this up via the
+    /// [`Tool`] trait (`tool.permission_category()`) before calling.
     ///
     /// Flow:
     /// 1. Evaluate deny rules first (deny always wins, even over session grants)
     /// 2. Check session grants (short-circuit if granted and not denied)
     /// 3. Evaluate remaining rules: allow > ask > no match
     /// 4. If Ask, prompt the user (or deny if no prompter)
-    /// 5. NoMatch falls through to permission mode fallback
-    pub async fn check(&self, tool_name: &str, tool_input: &str) -> PermissionDecision {
+    /// 5. NoMatch falls through to permission mode fallback, which uses the
+    ///    category to decide (ReadOnly auto-allow in Default, etc.)
+    pub async fn check(
+        &self,
+        tool_name: &str,
+        tool_input: &str,
+        category: PermissionCategory,
+    ) -> PermissionDecision {
         // 1. Evaluate rules — deny rules always take priority
         let decision = {
             let rules = self.rules.read().unwrap();
@@ -260,8 +229,8 @@ impl PermissionChecker {
             // NoMatch = no explicit rule applies. Fall back to permission mode.
             PermissionDecision::NoMatch => {
                 let mode = *self.mode.read().unwrap();
-                let fallback = mode.fallback(tool_name);
-                debug!(tool_name, ?fallback, ?mode, "mode fallback");
+                let fallback = mode.fallback(category, tool_name);
+                debug!(tool_name, ?fallback, ?mode, ?category, "mode fallback");
                 match fallback {
                     PermissionDecision::Ask => {
                         self.prompt_user(tool_name, tool_input).await
@@ -354,7 +323,7 @@ mod tests {
         let rules = vec![PermissionRule::new(RuleKind::Allow, "Read")];
         let checker = PermissionChecker::new(rules);
         assert_eq!(
-            checker.check("Read", "/foo").await,
+            checker.check("Read", "/foo", PermissionCategory::ReadOnly).await,
             PermissionDecision::Allowed
         );
     }
@@ -364,7 +333,7 @@ mod tests {
         let rules = vec![PermissionRule::new(RuleKind::Deny, "Bash")];
         let checker = PermissionChecker::new(rules);
         assert_eq!(
-            checker.check("Bash", "rm -rf /").await,
+            checker.check("Bash", "rm -rf /", PermissionCategory::Shell).await,
             PermissionDecision::Denied
         );
     }
@@ -374,7 +343,7 @@ mod tests {
         let rules = vec![PermissionRule::new(RuleKind::Ask, "Bash")];
         let checker = PermissionChecker::new(rules);
         assert_eq!(
-            checker.check("Bash", "ls").await,
+            checker.check("Bash", "ls", PermissionCategory::Shell).await,
             PermissionDecision::Denied
         );
     }
@@ -384,7 +353,7 @@ mod tests {
         let rules = vec![PermissionRule::new(RuleKind::Ask, "Bash")];
         let checker = PermissionChecker::new(rules).with_prompter(Box::new(MockPrompter::allow_once()));
         assert_eq!(
-            checker.check("Bash", "ls").await,
+            checker.check("Bash", "ls", PermissionCategory::Shell).await,
             PermissionDecision::Allowed
         );
         // Not granted for session — next call should ask again
@@ -396,13 +365,13 @@ mod tests {
         let rules = vec![PermissionRule::new(RuleKind::Ask, "Bash")];
         let checker = PermissionChecker::new(rules).with_prompter(Box::new(MockPrompter::allow_always()));
         assert_eq!(
-            checker.check("Bash", "ls").await,
+            checker.check("Bash", "ls", PermissionCategory::Shell).await,
             PermissionDecision::Allowed
         );
         // Session grant recorded — subsequent calls skip prompting
         assert!(checker.grants.lock().unwrap().is_granted("Bash"));
         assert_eq!(
-            checker.check("Bash", "cargo test").await,
+            checker.check("Bash", "cargo test", PermissionCategory::Shell).await,
             PermissionDecision::Allowed
         );
     }
@@ -412,7 +381,7 @@ mod tests {
         let rules = vec![PermissionRule::new(RuleKind::Ask, "Edit")];
         let checker = PermissionChecker::new(rules).with_prompter(Box::new(MockPrompter::deny()));
         assert_eq!(
-            checker.check("Edit", "/foo.rs").await,
+            checker.check("Edit", "/foo.rs", PermissionCategory::FileWrite).await,
             PermissionDecision::Denied
         );
     }
@@ -422,19 +391,19 @@ mod tests {
         let checker = PermissionChecker::new(vec![]);
         // Read-only tools auto-allowed in Default mode
         assert_eq!(
-            checker.check("Read", "/foo").await,
+            checker.check("Read", "/foo", PermissionCategory::ReadOnly).await,
             PermissionDecision::Allowed
         );
         assert_eq!(
-            checker.check("Glob", "*.rs").await,
+            checker.check("Glob", "*.rs", PermissionCategory::ReadOnly).await,
             PermissionDecision::Allowed
         );
         assert_eq!(
-            checker.check("Grep", "pattern").await,
+            checker.check("Grep", "pattern", PermissionCategory::ReadOnly).await,
             PermissionDecision::Allowed
         );
         assert_eq!(
-            checker.check("Think", "hmm").await,
+            checker.check("Think", "hmm", PermissionCategory::ReadOnly).await,
             PermissionDecision::Allowed
         );
     }
@@ -444,15 +413,15 @@ mod tests {
         // Without a prompter, Ask → Denied
         let checker = PermissionChecker::new(vec![]);
         assert_eq!(
-            checker.check("Edit", "/foo.rs").await,
+            checker.check("Edit", "/foo.rs", PermissionCategory::FileWrite).await,
             PermissionDecision::Denied
         );
         assert_eq!(
-            checker.check("Bash", "ls").await,
+            checker.check("Bash", "ls", PermissionCategory::Shell).await,
             PermissionDecision::Denied
         );
         assert_eq!(
-            checker.check("Write", "/bar.rs").await,
+            checker.check("Write", "/bar.rs", PermissionCategory::FileWrite).await,
             PermissionDecision::Denied
         );
     }
@@ -462,20 +431,20 @@ mod tests {
         let checker = PermissionChecker::new(vec![]).with_mode(PermissionMode::AcceptEdits);
         // File ops allowed
         assert_eq!(
-            checker.check("Read", "/foo").await,
+            checker.check("Read", "/foo", PermissionCategory::ReadOnly).await,
             PermissionDecision::Allowed
         );
         assert_eq!(
-            checker.check("Edit", "/foo.rs").await,
+            checker.check("Edit", "/foo.rs", PermissionCategory::FileWrite).await,
             PermissionDecision::Allowed
         );
         assert_eq!(
-            checker.check("Write", "/bar.rs").await,
+            checker.check("Write", "/bar.rs", PermissionCategory::FileWrite).await,
             PermissionDecision::Allowed
         );
         // Shell still asks (denied without prompter)
         assert_eq!(
-            checker.check("Bash", "ls").await,
+            checker.check("Bash", "ls", PermissionCategory::Shell).await,
             PermissionDecision::Denied
         );
     }
@@ -484,19 +453,19 @@ mod tests {
     async fn bypass_mode_allows_everything() {
         let checker = PermissionChecker::new(vec![]).with_mode(PermissionMode::BypassPermissions);
         assert_eq!(
-            checker.check("Read", "/foo").await,
+            checker.check("Read", "/foo", PermissionCategory::ReadOnly).await,
             PermissionDecision::Allowed
         );
         assert_eq!(
-            checker.check("Edit", "/foo.rs").await,
+            checker.check("Edit", "/foo.rs", PermissionCategory::FileWrite).await,
             PermissionDecision::Allowed
         );
         assert_eq!(
-            checker.check("Bash", "rm -rf /").await,
+            checker.check("Bash", "rm -rf /", PermissionCategory::Shell).await,
             PermissionDecision::Allowed
         );
         assert_eq!(
-            checker.check("UnknownTool", "").await,
+            checker.check("UnknownTool", "", PermissionCategory::Other).await,
             PermissionDecision::Allowed
         );
     }
@@ -507,7 +476,7 @@ mod tests {
         let rules = vec![PermissionRule::new(RuleKind::Allow, "Bash")];
         let checker = PermissionChecker::new(rules);
         assert_eq!(
-            checker.check("Bash", "ls").await,
+            checker.check("Bash", "ls", PermissionCategory::Shell).await,
             PermissionDecision::Allowed
         );
     }
@@ -519,7 +488,7 @@ mod tests {
         // Manually grant — deny rule should still win
         checker.grants.lock().unwrap().grant("Bash".to_string());
         assert_eq!(
-            checker.check("Bash", "rm -rf /").await,
+            checker.check("Bash", "rm -rf /", PermissionCategory::Shell).await,
             PermissionDecision::Denied
         );
     }
@@ -531,7 +500,7 @@ mod tests {
         let checker = PermissionChecker::new(rules);
         checker.grants.lock().unwrap().grant("think".to_string());
         assert_eq!(
-            checker.check("think", "").await,
+            checker.check("think", "", PermissionCategory::ReadOnly).await,
             PermissionDecision::Allowed
         );
     }
@@ -543,7 +512,7 @@ mod tests {
         checker.grants.lock().unwrap().grant("Bash".to_string());
         checker.clear_grants();
         assert_eq!(
-            checker.check("Bash", "ls").await,
+            checker.check("Bash", "ls", PermissionCategory::Shell).await,
             PermissionDecision::Denied
         );
     }
@@ -571,42 +540,26 @@ mod tests {
         assert!(truncated.ends_with('…'));
     }
 
-    #[test]
-    fn tool_categories() {
-        assert_eq!(tool_category("Read"), ToolCategory::ReadOnly);
-        assert_eq!(tool_category("Glob"), ToolCategory::ReadOnly);
-        assert_eq!(tool_category("Grep"), ToolCategory::ReadOnly);
-        assert_eq!(tool_category("Think"), ToolCategory::ReadOnly);
-        assert_eq!(tool_category("Edit"), ToolCategory::FileWrite);
-        assert_eq!(tool_category("Write"), ToolCategory::FileWrite);
-        assert_eq!(tool_category("Bash"), ToolCategory::Shell);
-        assert_eq!(tool_category("Shell"), ToolCategory::Shell);
-        assert_eq!(tool_category("WebSearch"), ToolCategory::ReadOnly);
-        assert_eq!(tool_category("WebFetch"), ToolCategory::ReadOnly);
-        assert_eq!(tool_category("AskUser"), ToolCategory::ReadOnly);
-        assert_eq!(tool_category("AgentTool"), ToolCategory::Other);
-    }
-
     #[tokio::test]
     async fn update_rules_hot_reload() {
         // Start with no rules — default mode denies Bash (asks, but no prompter)
         let checker = PermissionChecker::new(vec![]);
         assert_eq!(
-            checker.check("Bash", "ls").await,
+            checker.check("Bash", "ls", PermissionCategory::Shell).await,
             PermissionDecision::Denied
         );
 
         // Hot-reload: add an allow rule for Bash
         checker.update_rules(vec![PermissionRule::new(RuleKind::Allow, "Bash")]);
         assert_eq!(
-            checker.check("Bash", "ls").await,
+            checker.check("Bash", "ls", PermissionCategory::Shell).await,
             PermissionDecision::Allowed
         );
 
         // Hot-reload again: deny Bash
         checker.update_rules(vec![PermissionRule::new(RuleKind::Deny, "Bash")]);
         assert_eq!(
-            checker.check("Bash", "ls").await,
+            checker.check("Bash", "ls", PermissionCategory::Shell).await,
             PermissionDecision::Denied
         );
     }
@@ -617,21 +570,21 @@ mod tests {
 
         // Default mode: Bash denied (asks, no prompter)
         assert_eq!(
-            checker.check("Bash", "ls").await,
+            checker.check("Bash", "ls", PermissionCategory::Shell).await,
             PermissionDecision::Denied
         );
 
         // Hot-reload to bypass mode
         checker.update_mode(PermissionMode::BypassPermissions);
         assert_eq!(
-            checker.check("Bash", "ls").await,
+            checker.check("Bash", "ls", PermissionCategory::Shell).await,
             PermissionDecision::Allowed
         );
 
         // Hot-reload back to default
         checker.update_mode(PermissionMode::Default);
         assert_eq!(
-            checker.check("Bash", "ls").await,
+            checker.check("Bash", "ls", PermissionCategory::Shell).await,
             PermissionDecision::Denied
         );
     }
@@ -652,19 +605,19 @@ mod tests {
     async fn plan_mode_allows_read_only() {
         let checker = PermissionChecker::new(vec![]).with_mode(PermissionMode::Plan);
         assert_eq!(
-            checker.check("Read", "/foo").await,
+            checker.check("Read", "/foo", PermissionCategory::ReadOnly).await,
             PermissionDecision::Allowed
         );
         assert_eq!(
-            checker.check("Glob", "*.rs").await,
+            checker.check("Glob", "*.rs", PermissionCategory::ReadOnly).await,
             PermissionDecision::Allowed
         );
         assert_eq!(
-            checker.check("Think", "hmm").await,
+            checker.check("Think", "hmm", PermissionCategory::ReadOnly).await,
             PermissionDecision::Allowed
         );
         assert_eq!(
-            checker.check("WebSearch", "query").await,
+            checker.check("WebSearch", "query", PermissionCategory::ReadOnly).await,
             PermissionDecision::Allowed
         );
     }
@@ -673,19 +626,19 @@ mod tests {
     async fn plan_mode_denies_writes() {
         let checker = PermissionChecker::new(vec![]).with_mode(PermissionMode::Plan);
         assert_eq!(
-            checker.check("Edit", "/foo.rs").await,
+            checker.check("Edit", "/foo.rs", PermissionCategory::FileWrite).await,
             PermissionDecision::Denied
         );
         assert_eq!(
-            checker.check("Write", "/bar.rs").await,
+            checker.check("Write", "/bar.rs", PermissionCategory::FileWrite).await,
             PermissionDecision::Denied
         );
         assert_eq!(
-            checker.check("Bash", "ls").await,
+            checker.check("Bash", "ls", PermissionCategory::Shell).await,
             PermissionDecision::Denied
         );
         assert_eq!(
-            checker.check("AgentTool", "").await,
+            checker.check("AgentTool", "", PermissionCategory::Other).await,
             PermissionDecision::Denied
         );
     }
@@ -694,11 +647,11 @@ mod tests {
     async fn plan_mode_allows_plan_meta_tools() {
         let checker = PermissionChecker::new(vec![]).with_mode(PermissionMode::Plan);
         assert_eq!(
-            checker.check("enter_plan_mode", "").await,
+            checker.check("enter_plan_mode", "", PermissionCategory::Other).await,
             PermissionDecision::Allowed
         );
         assert_eq!(
-            checker.check("exit_plan_mode", "").await,
+            checker.check("exit_plan_mode", "", PermissionCategory::Other).await,
             PermissionDecision::Allowed
         );
     }

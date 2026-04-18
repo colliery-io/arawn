@@ -11,7 +11,7 @@ mod rules;
 
 pub use checker::{
     ModalOption, ModalPrompt, ModalRequest, PermissionChecker, PermissionMode,
-    PermissionResponse, SessionGrants, ToolCategory, tool_category,
+    PermissionResponse, SessionGrants,
 };
 pub use config::{PermissionConfig, load_merged_permissions, load_permissions_from_file};
 pub use prompt::{CliModalPrompt, MockModalPrompt};

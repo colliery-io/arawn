@@ -13,6 +13,10 @@ impl Tool for FileEditTool {
         "file_edit"
     }
 
+    fn permission_category(&self) -> arawn_tool::PermissionCategory {
+        arawn_tool::PermissionCategory::FileWrite
+    }
+
     fn description(&self) -> &str {
         "Edit a file by performing exact string replacement. ALWAYS prefer this over file_write for modifying existing files — it only sends the diff. Do NOT use sed/awk via shell.\n\n\
          Usage:\n\
