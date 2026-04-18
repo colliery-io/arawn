@@ -7,7 +7,7 @@ use uuid::Uuid;
 use arawn_core::Workstream;
 use arawn_llm::LlmClient;
 
-use arawn_tool::{LlmPreference, LlmResolution, LlmResolver, ModelLimits};
+use arawn_tool::{LlmPreference, LlmResolution, LlmResolverFn, ModelLimits};
 
 /// Maximum sub-agent nesting depth. Prevents infinite recursion.
 const MAX_AGENT_DEPTH: u8 = 3;
@@ -39,10 +39,10 @@ pub struct EngineToolContext {
     /// Tracks which files have been read in this session.
     /// FileEdit and FileWrite check this before modifying existing files.
     read_files: Arc<RwLock<HashSet<PathBuf>>>,
-    /// Optional LLM resolver — backed by the runtime's `LlmClientPool` when
-    /// the engine is wired to one. Tools call `resolve_llm()` to look up a
-    /// preferred client.
-    llm_resolver: Option<Arc<dyn LlmResolver>>,
+    /// Optional LLM resolver closure — backed by the runtime's
+    /// `LlmClientPool` when the engine is wired to one. Tools call
+    /// `resolve_llm()` to look up a preferred client.
+    llm_resolver: Option<Arc<LlmResolverFn>>,
 }
 
 impl std::fmt::Debug for EngineToolContext {
@@ -75,9 +75,10 @@ impl EngineToolContext {
         }
     }
 
-    /// Attach an LLM resolver (typically `arawn-bin`'s `LlmClientPool`).
-    /// Tools that declare an `llm_preference()` will be resolved through it.
-    pub fn with_llm_resolver(mut self, resolver: Arc<dyn LlmResolver>) -> Self {
+    /// Attach an LLM resolver closure (typically wrapping `arawn-bin`'s
+    /// `LlmClientPool`). Tools that declare an `llm_preference()` will be
+    /// resolved through it.
+    pub fn with_llm_resolver(mut self, resolver: Arc<LlmResolverFn>) -> Self {
         self.llm_resolver = Some(resolver);
         self
     }
@@ -205,9 +206,7 @@ impl arawn_tool::ToolContext for EngineToolContext {
     }
 
     fn resolve_llm(&self, preference: &LlmPreference) -> Option<LlmResolution> {
-        self.llm_resolver
-            .as_ref()
-            .map(|r| r.resolve(preference))
+        self.llm_resolver.as_ref().map(|r| r(preference))
     }
 }
 

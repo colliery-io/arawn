@@ -115,13 +115,13 @@ impl std::fmt::Debug for LlmResolution {
     }
 }
 
-/// Anything that can resolve [`LlmPreference`] requests against a pool of
-/// LLM clients. Implemented by `arawn-bin`'s `LlmClientPool`; defined in
-/// `arawn-tool` so engine + context code can depend on it without pulling
-/// in the binary crate.
-pub trait LlmResolver: Send + Sync {
-    fn resolve(&self, preference: &LlmPreference) -> LlmResolution;
-}
+/// Type-erased resolver function. Constructed by the binary crate from an
+/// `LlmClientPool` and attached to a context; the engine calls it via
+/// [`crate::ToolContext::resolve_llm`]. Kept as a closure (not a trait
+/// object of a one-impl trait) so no new abstraction layer is introduced
+/// just to wire the pool through.
+pub type LlmResolverFn =
+    dyn Fn(&LlmPreference) -> LlmResolution + Send + Sync;
 
 /// How closely the resolved client matched the requested preference.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

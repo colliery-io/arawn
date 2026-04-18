@@ -76,7 +76,7 @@ pub trait Tool: Send + Sync {
     }
 
     /// Optional preferred LLM for this tool. The engine resolves this against
-    /// the [`crate::LlmResolver`] before calling [`Tool::execute`] and makes
+    /// the context's resolver before calling [`Tool::execute`] and makes
     /// the resolved client available via [`ToolContext::preferred_llm`].
     /// Defaults to `None` — most tools don't need an LLM at all.
     fn llm_preference(&self) -> Option<LlmPreference> {

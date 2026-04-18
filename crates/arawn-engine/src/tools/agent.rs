@@ -352,43 +352,33 @@ mod tests {
         assert_eq!(mock.call_count(), 1);
     }
 
-    /// Test resolver that knows about a single named entry.
-    struct TestResolver {
+    /// Build a test resolver closure that returns `named_client` for
+    /// `preference.named == named_key`, and falls through to the same
+    /// client with `MatchQuality::Fallback` otherwise.
+    fn test_resolver(
         named_client: Arc<dyn arawn_llm::LlmClient>,
         named_model: String,
-        named: String,
-    }
-
-    impl arawn_tool::LlmResolver for TestResolver {
-        fn resolve(&self, pref: &arawn_tool::LlmPreference) -> arawn_tool::LlmResolution {
-            if let Some(name) = &pref.named
-                && name == &self.named
-            {
-                return arawn_tool::LlmResolution {
-                    client: Arc::clone(&self.named_client),
-                    info: arawn_tool::ResolvedLlmInfo {
-                        provider: "mock".into(),
-                        model: self.named_model.clone(),
-                        context_window: 128_000,
-                        tool_use: true,
-                        vision: false,
-                    },
-                    match_quality: arawn_tool::MatchQuality::Exact,
+        named_key: String,
+    ) -> Arc<arawn_tool::LlmResolverFn> {
+        Arc::new(move |pref: &arawn_tool::LlmPreference| {
+            let match_quality =
+                if pref.named.as_deref() == Some(named_key.as_str()) {
+                    arawn_tool::MatchQuality::Exact
+                } else {
+                    arawn_tool::MatchQuality::Fallback
                 };
-            }
-            // Fallback: re-use named_client to keep test simple
             arawn_tool::LlmResolution {
-                client: Arc::clone(&self.named_client),
+                client: Arc::clone(&named_client),
                 info: arawn_tool::ResolvedLlmInfo {
                     provider: "mock".into(),
-                    model: self.named_model.clone(),
+                    model: named_model.clone(),
                     context_window: 128_000,
                     tool_use: true,
                     vision: false,
                 },
-                match_quality: arawn_tool::MatchQuality::Fallback,
+                match_quality,
             }
-        }
+        })
     }
 
     #[tokio::test]
@@ -400,11 +390,7 @@ mod tests {
         let cheap = Arc::new(MockLlmClient::new(vec![MockResponse::text("cheap response")]));
         let cheap_dyn: Arc<dyn arawn_llm::LlmClient> = cheap.clone();
 
-        let resolver: Arc<dyn arawn_tool::LlmResolver> = Arc::new(TestResolver {
-            named_client: cheap_dyn,
-            named_model: "cheap-model".into(),
-            named: "cheap".into(),
-        });
+        let resolver = test_resolver(cheap_dyn, "cheap-model".into(), "cheap".into());
 
         let registry = Arc::new(ToolRegistry::new());
         let ws = Workstream::scratch("/tmp/test");

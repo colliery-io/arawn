@@ -211,8 +211,9 @@ impl LocalService {
             .join("workstreams")
             .join(ws_dir)
             .join("arawn.md");
-        let pool: Arc<crate::LlmClientPool> = Arc::clone(&self.llm_pool);
-        let resolver: Arc<dyn arawn_tool::LlmResolver> = pool;
+        let pool = Arc::clone(&self.llm_pool);
+        let resolver: Arc<arawn_tool::LlmResolverFn> =
+            Arc::new(move |pref| pool.resolve(pref));
         let ctx = ToolContext::new(&ws_for_ctx, session_id)
             .with_allowed_paths(vec![global_arawn_md, workstream_arawn_md])
             .with_llm(self.llm_pool.engine(), self.config.model.clone())

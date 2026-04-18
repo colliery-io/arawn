@@ -13,7 +13,7 @@ use std::sync::Arc;
 
 use anyhow::{Context, Result, anyhow};
 use arawn_llm::LlmClient;
-use arawn_tool::{LlmPreference, LlmResolution, LlmResolver, MatchQuality};
+use arawn_tool::{LlmPreference, LlmResolution, MatchQuality};
 
 use crate::config::{ArawnConfig, LlmConfig};
 
@@ -23,12 +23,6 @@ pub struct LlmClientPool {
     configs: HashMap<String, LlmConfig>,
     engine_name: String,
     compactor_name: String,
-}
-
-impl LlmResolver for LlmClientPool {
-    fn resolve(&self, preference: &LlmPreference) -> LlmResolution {
-        LlmClientPool::resolve(self, preference)
-    }
 }
 
 impl std::fmt::Debug for LlmClientPool {
