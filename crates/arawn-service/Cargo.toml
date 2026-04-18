@@ -5,6 +5,9 @@ edition = "2024"
 
 [dependencies]
 arawn-core = { workspace = true }
+arawn-engine = { workspace = true }
+arawn-memory = { workspace = true }
+arawn-storage = { workspace = true }
 async-trait = { workspace = true }
 chrono = { workspace = true }
 futures = { workspace = true }

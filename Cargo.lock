@@ -314,6 +314,9 @@ name = "arawn-service"
 version = "0.1.0"
 dependencies = [
  "arawn-core",
+ "arawn-engine",
+ "arawn-memory",
+ "arawn-storage",
  "async-trait",
  "chrono",
  "futures",

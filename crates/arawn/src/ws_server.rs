@@ -68,6 +68,8 @@ struct Response {
 struct ErrorBody {
     code: String,
     message: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    details: Option<Value>,
 }
 
 impl Response {
@@ -86,6 +88,23 @@ impl Response {
             error: Some(ErrorBody {
                 code: code.to_string(),
                 message,
+                details: None,
+            }),
+        }
+    }
+
+    /// Build an error response from a [`ServiceError`]. Preserves the
+    /// stable code, the display message, and — for variants that wrap
+    /// typed sources — a structured `details` object with the inner
+    /// error's `kind` so clients can dispatch on it.
+    fn from_service_error(id: u64, e: &arawn_service::ServiceError) -> Self {
+        Self {
+            id,
+            result: None,
+            error: Some(ErrorBody {
+                code: e.error_code().to_string(),
+                message: e.to_string(),
+                details: e.details(),
             }),
         }
     }
@@ -323,7 +342,7 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                     }
                     Err(e) => {
                         warn!(id, error = %e, "list_workstreams failed");
-                        Response::error(id, e.error_code(), e.to_string())
+                        Response::from_service_error(id, &e)
                     }
                 };
                 if sender
@@ -361,7 +380,7 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                     }
                     Err(e) => {
                         warn!(id, error = %e, "create_workstream failed");
-                        Response::error(id, e.error_code(), e.to_string())
+                        Response::from_service_error(id, &e)
                     }
                 };
                 if sender
@@ -390,7 +409,7 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                     }
                     Err(e) => {
                         warn!(id, error = %e, "list_sessions failed");
-                        Response::error(id, e.error_code(), e.to_string())
+                        Response::from_service_error(id, &e)
                     }
                 };
                 if sender
@@ -419,7 +438,7 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                     }
                     Err(e) => {
                         warn!(id, error = %e, "create_session failed");
-                        Response::error(id, e.error_code(), e.to_string())
+                        Response::from_service_error(id, &e)
                     }
                 };
                 if sender
@@ -449,7 +468,7 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                         }
                         Err(e) => {
                             warn!(id, error = %e, "load_session failed");
-                            Response::error(id, e.error_code(), e.to_string())
+                            Response::from_service_error(id, &e)
                         }
                     },
                     None => {
@@ -568,7 +587,7 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                                                         }
                                                         Err(e) => {
                                                             warn!(id, %request_id, "no pending modal found (inline)");
-                                                            Response::error(req.id, e.error_code(), e.to_string())
+                                                            Response::from_service_error(req.id, &e)
                                                         }
                                                     };
                                                     let _ = sender
@@ -597,7 +616,7 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                     }
                     Err(e) => {
                         warn!(id, error = %e, "send_message service error");
-                        let resp = Response::error(id, e.error_code(), e.to_string());
+                        let resp = Response::from_service_error(id, &e);
                         let _ = sender
                             .send(WsMessage::Text(
                                 serde_json::to_string(&resp).unwrap().into(),
@@ -632,7 +651,7 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                     }
                     Err(e) => {
                         warn!(id, %request_id, "no pending modal found");
-                        Response::error(id, e.error_code(), e.to_string())
+                        Response::from_service_error(id, &e)
                     }
                 };
                 let _ = sender
@@ -657,7 +676,7 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                         }
                         Err(e) => {
                             warn!(id, error = %e, "cancel failed");
-                            Response::error(id, e.error_code(), e.to_string())
+                            Response::from_service_error(id, &e)
                         }
                     },
                     None => {
@@ -694,7 +713,7 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                         }
                         Err(e) => {
                             warn!(id, error = %e, "promote_session failed");
-                            Response::error(id, e.error_code(), e.to_string())
+                            Response::from_service_error(id, &e)
                         }
                     },
                     None => {
@@ -718,7 +737,7 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                 debug!(id, %kind, "query_inventory");
                 let resp = match service.query_inventory(kind).await {
                     Ok(items) => Response::success(id, serde_json::to_value(&items).unwrap()),
-                    Err(e) => Response::error(id, e.error_code(), e.to_string()),
+                    Err(e) => Response::from_service_error(id, &e),
                 };
                 let _ = sender
                     .send(WsMessage::Text(
@@ -736,7 +755,7 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                     .unwrap_or("");
                 let resp = match service.remember_fact(text).await {
                     Ok(result) => Response::success(id, serde_json::to_value(&result).unwrap()),
-                    Err(e) => Response::error(id, e.error_code(), e.to_string()),
+                    Err(e) => Response::from_service_error(id, &e),
                 };
                 let _ = sender
                     .send(WsMessage::Text(
@@ -749,7 +768,7 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                 debug!(id, "get_memory_summary");
                 let resp = match service.memory_summary().await {
                     Ok(summary) => Response::success(id, serde_json::to_value(&summary).unwrap()),
-                    Err(e) => Response::error(id, e.error_code(), e.to_string()),
+                    Err(e) => Response::from_service_error(id, &e),
                 };
                 let _ = sender
                     .send(WsMessage::Text(
@@ -767,7 +786,7 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                     .unwrap_or("");
                 let resp = match service.forget_entity(query).await {
                     Ok(result) => Response::success(id, serde_json::to_value(&result).unwrap()),
-                    Err(e) => Response::error(id, e.error_code(), e.to_string()),
+                    Err(e) => Response::from_service_error(id, &e),
                 };
                 let _ = sender
                     .send(WsMessage::Text(
@@ -780,7 +799,7 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                 debug!(id, "list_commands");
                 let resp = match service.list_available_commands().await {
                     Ok(commands) => Response::success(id, serde_json::to_value(&commands).unwrap()),
-                    Err(e) => Response::error(id, e.error_code(), e.to_string()),
+                    Err(e) => Response::from_service_error(id, &e),
                 };
                 let _ = sender
                     .send(WsMessage::Text(
@@ -795,7 +814,7 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                     Ok(workflows) => {
                         Response::success(id, serde_json::to_value(&workflows).unwrap())
                     }
-                    Err(e) => Response::error(id, e.error_code(), e.to_string()),
+                    Err(e) => Response::from_service_error(id, &e),
                 };
                 let _ = sender
                     .send(WsMessage::Text(
@@ -808,7 +827,7 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                 debug!(id, "get_permission_mode");
                 let resp = match service.get_permission_mode().await {
                     Ok(info) => Response::success(id, serde_json::to_value(&info).unwrap()),
-                    Err(e) => Response::error(id, e.error_code(), e.to_string()),
+                    Err(e) => Response::from_service_error(id, &e),
                 };
                 let _ = sender
                     .send(WsMessage::Text(
@@ -826,7 +845,7 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                 debug!(id, %mode_str, "set_permission_mode");
                 let resp = match service.set_permission_mode(mode_str).await {
                     Ok(info) => Response::success(id, serde_json::to_value(&info).unwrap()),
-                    Err(e) => Response::error(id, e.error_code(), e.to_string()),
+                    Err(e) => Response::from_service_error(id, &e),
                 };
                 let _ = sender
                     .send(WsMessage::Text(
@@ -848,4 +867,57 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
         }
     }
     info!("WebSocket connection handler exiting");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use arawn_service::ServiceError;
+
+    /// Typed Storage error should round-trip through the wire payload with
+    /// structured `details` (kind tag) alongside the code + message.
+    #[test]
+    fn from_service_error_preserves_structured_detail_for_typed_variants() {
+        let storage_err = arawn_storage::StorageError::NotFound("session 42".into());
+        let service_err: ServiceError = storage_err.into();
+        let resp = Response::from_service_error(7, &service_err);
+
+        let body = resp.error.unwrap();
+        assert_eq!(body.code, "storage_error");
+        assert!(body.message.contains("not found"), "message: {}", body.message);
+        let details = body.details.unwrap();
+        assert_eq!(details["kind"], "not_found");
+    }
+
+    /// String-only variants (NotFound, InvalidOperation, Internal) keep
+    /// code + message but have no `details` payload — the serialized wire
+    /// form must omit the field entirely, not emit null.
+    #[test]
+    fn from_service_error_omits_details_for_string_only_variants() {
+        let service_err = ServiceError::NotFound("session 99".into());
+        let resp = Response::from_service_error(1, &service_err);
+
+        let body = resp.error.as_ref().unwrap();
+        assert_eq!(body.code, "not_found");
+        assert!(body.details.is_none());
+
+        // Wire check: `details: null` should not appear in the JSON.
+        let json = serde_json::to_string(&resp).unwrap();
+        assert!(!json.contains("\"details\":null"), "json: {json}");
+    }
+
+    /// Engine errors surface a `kind` that identifies the inner variant —
+    /// tool_not_found here — so clients can dispatch without string-parsing
+    /// the message.
+    #[test]
+    fn from_service_error_preserves_engine_error_kind() {
+        let engine_err = arawn_engine::EngineError::ToolNotFound("make_coffee".into());
+        let service_err: ServiceError = engine_err.into();
+        let resp = Response::from_service_error(3, &service_err);
+
+        let body = resp.error.unwrap();
+        assert_eq!(body.code, "engine_error");
+        let details = body.details.unwrap();
+        assert_eq!(details["kind"], "tool_not_found");
+    }
 }

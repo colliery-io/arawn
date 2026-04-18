@@ -169,7 +169,7 @@ impl LocalService {
             let store = self.store.lock().unwrap();
             let meta = store
                 .get_session_meta(session_id)
-                .map_err(|e| ServiceError::Storage(e.to_string()))?
+                ?
                 .ok_or_else(|| ServiceError::NotFound(format!("session {session_id}")))?;
 
             let ws_dir = resolve_ws_dir_from_store(&store, meta.workstream_id)?;
@@ -177,12 +177,12 @@ impl LocalService {
             let workstream = if let Some(ws_id) = meta.workstream_id {
                 store
                     .get_workstream(ws_id)
-                    .map_err(|e| ServiceError::Storage(e.to_string()))?
+                    ?
                     .ok_or_else(|| ServiceError::NotFound(format!("workstream {ws_id}")))?
             } else {
                 store
                     .find_workstream_by_name("scratch")
-                    .map_err(|e| ServiceError::Storage(e.to_string()))?
+                    ?
                     .ok_or_else(|| ServiceError::NotFound("scratch workstream".into()))?
             };
 
@@ -342,7 +342,7 @@ impl ArawnService for LocalService {
         let store = self.store.lock().unwrap();
         let workstreams = store
             .list_workstreams()
-            .map_err(|e| ServiceError::Storage(e.to_string()))?;
+            ?;
 
         Ok(workstreams
             .into_iter()
@@ -364,7 +364,7 @@ impl ArawnService for LocalService {
         let store = self.store.lock().unwrap();
         store
             .create_workstream(&ws)
-            .map_err(|e| ServiceError::Storage(e.to_string()))?;
+            ?;
 
         Ok(WorkstreamInfo {
             id: ws.id,
@@ -383,7 +383,7 @@ impl ArawnService for LocalService {
             Some(ws_id) => store.list_sessions_for_workstream(ws_id),
             None => store.list_scratch_sessions(),
         }
-        .map_err(|e| ServiceError::Storage(e.to_string()))?;
+        ?;
 
         Ok(metas
             .into_iter()
@@ -407,7 +407,7 @@ impl ArawnService for LocalService {
         let store = self.store.lock().unwrap();
         store
             .create_session(&session)
-            .map_err(|e| ServiceError::Storage(e.to_string()))?;
+            ?;
 
         info!(session_id = %session.id, "session created via service");
 
@@ -424,7 +424,7 @@ impl ArawnService for LocalService {
             let store = self.store.lock().unwrap();
             let meta = store
                 .get_session_meta(id)
-                .map_err(|e| ServiceError::Storage(e.to_string()))?
+                ?
                 .ok_or_else(|| ServiceError::NotFound(format!("session {id}")))?;
 
             let ws_dir = resolve_ws_dir_from_store(&store, meta.workstream_id)?;
@@ -436,7 +436,7 @@ impl ArawnService for LocalService {
         let all_messages = msg_store
             .load(id, &ws_dir)
             .await
-            .map_err(|e| ServiceError::Storage(e.to_string()))?;
+            ?;
         let messages = Session::load_compacted(all_messages);
 
         Ok(SessionDetail {
@@ -471,7 +471,7 @@ impl ArawnService for LocalService {
         let all_messages = msg_store
             .load(session_id, &ws_dir)
             .await
-            .map_err(|e| ServiceError::Storage(e.to_string()))?;
+            ?;
         let messages = Session::load_compacted(all_messages);
 
         let mut session =
@@ -487,14 +487,14 @@ impl ArawnService for LocalService {
         message_store
             .append(session_id, &ws_dir, &user_msg)
             .await
-            .map_err(|e| ServiceError::Storage(e.to_string()))?;
+            ?;
 
         // Resolve workspace directory
         let is_scratch = workstream.name == "scratch";
         let workspace_dir = msg_store.sandbox_dir(&ws_dir, session_id, is_scratch);
         tokio::fs::create_dir_all(&workspace_dir)
             .await
-            .map_err(|e| ServiceError::Storage(e.to_string()))?;
+            .map_err(arawn_storage::StorageError::from)?;
 
         // Build context and engine
         let ws_dir_owned = ws_dir.clone();
@@ -669,7 +669,7 @@ impl ArawnService for LocalService {
             let store = self.store.lock().unwrap();
             let ws = store
                 .find_workstream_by_name(workstream_name)
-                .map_err(|e| ServiceError::Storage(e.to_string()))?
+                ?
                 .ok_or_else(|| {
                     ServiceError::NotFound(format!("workstream '{workstream_name}'"))
                 })?;
@@ -685,7 +685,7 @@ impl ArawnService for LocalService {
         msg_store
             .move_session(session_id, "scratch", &ws_dir)
             .await
-            .map_err(|e| ServiceError::Storage(e.to_string()))?;
+            ?;
 
         let sqlite_result = {
             let store = self.store.lock().unwrap();
@@ -694,7 +694,7 @@ impl ArawnService for LocalService {
         if let Err(e) = sqlite_result {
             warn!(error = %e, "SQLite update failed during promotion, rolling back file move");
             let _ = msg_store.move_session(session_id, &ws_dir, "scratch").await;
-            return Err(ServiceError::Storage(e.to_string()));
+            return Err(e.into());
         }
 
         if scratch_workspace.exists() {
@@ -862,7 +862,7 @@ impl ArawnService for LocalService {
         let result = memory
             .store_fact_embedded(&entity, None)
             .await
-            .map_err(|e| ServiceError::Storage(e.to_string()))?;
+            ?;
 
         match result {
             arawn_memory::StoreFactResult::Inserted { entity_id } => {
@@ -975,7 +975,7 @@ impl ArawnService for LocalService {
                     scope: label.to_string(),
                 }),
                 Ok(false) => Err(ServiceError::NotFound("Entity not found".into())),
-                Err(e) => Err(ServiceError::Storage(e.to_string())),
+                Err(e) => Err(e.into()),
             }
         } else {
             Ok(ForgetResult::Ambiguous {
@@ -1023,7 +1023,7 @@ fn resolve_ws_dir_from_store(store: &Store, ws_id: Option<Uuid>) -> Result<Strin
         Some(id) => {
             let ws = store
                 .get_workstream(id)
-                .map_err(|e| ServiceError::Storage(e.to_string()))?
+                ?
                 .ok_or_else(|| ServiceError::NotFound(format!("workstream {id}")))?;
             Ok(workstream_dir_name(&ws.name, ws.id))
         }
