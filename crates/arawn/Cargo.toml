@@ -11,10 +11,6 @@ path = "src/lib.rs"
 name = "arawn"
 path = "src/main.rs"
 
-[features]
-default = ["legacy-plugins"]
-legacy-plugins = ["arawn-engine/legacy-plugins"]
-
 [dependencies]
 async-trait = { workspace = true }
 arawn-core = { workspace = true }
@@ -24,6 +20,7 @@ arawn-tui = { path = "../arawn-tui" }
 arawn-engine = { workspace = true }
 arawn-llm = { workspace = true }
 arawn-memory = { path = "../arawn-memory" }
+arawn-tool = { workspace = true }
 arawn-service = { workspace = true }
 arawn-workflow = { path = "../arawn-workflow" }
 arawn-storage = { workspace = true }

@@ -1,6 +1,5 @@
 //! Session injection — format KB entities for system prompt context.
 
-use crate::error::MemoryError;
 use crate::manager::MemoryManager;
 use crate::types::EntityType;
 

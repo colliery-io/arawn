@@ -17,10 +17,8 @@ arawn-llm = { workspace = true }
 arawn-memory = { path = "../arawn-memory" }
 arawn-service = { workspace = true }
 arawn-storage = { workspace = true }
-arawn-tool-plugin = { workspace = true }
 arawn-workflow = { path = "../arawn-workflow" }
 axum = { version = "0.8", features = ["ws"] }
-fidius-host = "0.0.5"
 futures-util = "0.3"
 tokio-tungstenite = "0.26"
 chrono = { workspace = true }

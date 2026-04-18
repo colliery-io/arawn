@@ -9,7 +9,7 @@ use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::sync::Mutex;
-use tracing::{info, warn};
+use tracing::info;
 
 use arawn_core::Message;
 use arawn_engine::{QueryEngine, QueryEngineConfig, ToolContext, ToolRegistry};
@@ -112,8 +112,11 @@ impl DecisionService {
         // Build engine and run
         let session_id = session.id;
         let tool_ctx = ToolContext::new(&workstream, session_id);
-        let mut engine =
-            QueryEngine::new(Arc::clone(&self.llm), Arc::clone(&self.registry));
+        let mut engine = QueryEngine::with_config(
+            Arc::clone(&self.llm),
+            Arc::clone(&self.registry),
+            self.engine_config.clone(),
+        );
 
         let result = engine
             .run(&mut session, &tool_ctx)

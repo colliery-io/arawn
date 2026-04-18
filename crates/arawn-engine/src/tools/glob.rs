@@ -4,6 +4,7 @@ use async_trait::async_trait;
 use serde_json::{Value, json};
 
 use crate::tool::{Tool, ToolError, ToolOutput};
+use crate::tools::sensitive_paths::{is_sensitive_path, is_token_path};
 
 /// Maximum number of files to return before truncating.
 const MAX_RESULTS: usize = 100;
@@ -55,8 +56,21 @@ impl Tool for GlobTool {
 
         let base_dir = if let Some(path) = params.get("path").and_then(|v| v.as_str()) {
             // Validate path stays within workstream root
-            if let Err(e) = ctx.validate_path(path) {
-                return Ok(ToolOutput::error(e));
+            let resolved = match ctx.validate_path(path) {
+                Ok(p) => p,
+                Err(e) => return Ok(ToolOutput::error(e)),
+            };
+            if is_sensitive_path(&resolved) {
+                return Ok(ToolOutput::error(format!(
+                    "path '{path}' resolves into a sensitive directory and is denied"
+                )));
+            }
+            if let Some(data_dir) = ctx.data_dir()
+                && is_token_path(&resolved, data_dir)
+            {
+                return Ok(ToolOutput::error(format!(
+                    "path '{path}' resolves into the OAuth token directory and is denied"
+                )));
             }
             ctx.working_dir().join(path)
         } else {

@@ -65,10 +65,8 @@ impl ChatMessage {
     /// Width is used for table column sizing — cache invalidates on width change.
     pub fn rendered_lines(&mut self, width: usize) -> &[ratatui::text::Line<'static>] {
         // Invalidate cache if width changed (terminal resize)
-        if let Some(ref cached) = self.rendered_cache {
-            if self.cached_width != width {
-                self.rendered_cache = None;
-            }
+        if self.rendered_cache.is_some() && self.cached_width != width {
+            self.rendered_cache = None;
         }
         if self.rendered_cache.is_none() {
             self.rendered_cache = Some(crate::markdown::markdown_to_lines_with_width(&self.content, width));

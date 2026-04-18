@@ -19,6 +19,14 @@ pub struct LlmConfig {
     pub context_window: u32,
     #[serde(default = "default_max_tokens")]
     pub max_tokens: u32,
+    /// Whether this model supports tool/function calling. Defaults to true —
+    /// every modern model supported by arawn does.
+    #[serde(default = "default_tool_use")]
+    pub tool_use: bool,
+    /// Whether this model supports vision/image input. Defaults to false —
+    /// must be opted into per entry.
+    #[serde(default)]
+    pub vision: bool,
 }
 
 fn default_api_key_env() -> String {
@@ -30,6 +38,9 @@ fn default_context_window() -> u32 {
 fn default_max_tokens() -> u32 {
     4096
 }
+fn default_tool_use() -> bool {
+    true
+}
 
 impl Default for LlmConfig {
     fn default() -> Self {
@@ -40,6 +51,22 @@ impl Default for LlmConfig {
             base_url: None,
             context_window: default_context_window(),
             max_tokens: default_max_tokens(),
+            tool_use: true,
+            vision: false,
+        }
+    }
+}
+
+impl LlmConfig {
+    /// Project this config into the capability metadata used by
+    /// `LlmPreference` resolution.
+    pub fn to_resolved_info(&self) -> arawn_tool::ResolvedLlmInfo {
+        arawn_tool::ResolvedLlmInfo {
+            provider: self.provider.clone(),
+            model: self.model.clone(),
+            context_window: self.context_window,
+            tool_use: self.tool_use,
+            vision: self.vision,
         }
     }
 }
@@ -351,9 +378,26 @@ impl ArawnConfig {
 
     /// Generate a default config file string with comments.
     pub fn generate_default_toml() -> String {
-        r#"# Arawn Configuration
+        r##"# Arawn Configuration
 # Edit this file to customize Arawn's behavior.
 # Env vars override values here: GROQ_API_KEY, GROQ_MODEL, ARAWN_DATA_DIR
+#
+# Multi-model setup
+# -----------------
+# `[llm.*]` entries define every model you have access to. Other sections
+# (`[engine]`, `[compactor]`, future per-tool slots) reference them by name.
+# At startup, arawn builds an `LlmClientPool` containing one client per
+# `[llm.*]` entry; misconfigured entries fail fast.
+#
+# Tools and sub-agents can request a specific model via `LlmPreference`. The
+# pool resolves preferences in this order:
+#   1. Named match — preference.named is in the pool        → MatchQuality::Exact
+#   2. Provider+model match — exact pair found              → MatchQuality::Exact
+#   3. Capability match — first entry meeting bounds        → MatchQuality::Capability
+#   4. Fallback — engine LLM (always succeeds)              → MatchQuality::Fallback
+#
+# Tools can inspect MatchQuality and degrade gracefully (e.g., skip an
+# expensive summarization step when only `Fallback` is available).
 
 # Named LLM configurations — define models you have access to
 [llm.default]
@@ -362,14 +406,24 @@ model = "openai/gpt-oss-20b"
 api_key_env = "GROQ_API_KEY"
 context_window = 128000
 max_tokens = 4096
+tool_use = true   # supports tool/function calling (default: true)
+vision = false    # supports image input (default: false)
 
-# Example: add a second model
-# [llm.llama]
+# Example: add a cheaper model used for context compaction
+# [llm.cheap]
 # provider = "groq"
 # model = "llama-3.3-70b-versatile"
 # api_key_env = "GROQ_API_KEY"
 # context_window = 128000
 # max_tokens = 4096
+
+# Example: add a strong model reserved for judging / evals
+# [llm.judge]
+# provider = "anthropic"
+# model = "claude-sonnet-4-20250514"
+# api_key_env = "ANTHROPIC_API_KEY"
+# context_window = 200000
+# max_tokens = 8192
 
 # Engine uses a named LLM config
 [engine]
@@ -377,9 +431,10 @@ llm = "default"
 max_iterations = 20
 max_result_size = 50000
 
-# Compactor can use a different (cheaper) model
+# Compactor can use a different (cheaper) model. Set `llm` to any [llm.*] name.
+# When unset (or pointing at a missing entry), falls back to the engine's LLM.
 [compactor]
-# llm = "default"  # omit to use engine's LLM
+# llm = "cheap"  # uncomment to route compaction to the cheap model above
 compaction_threshold = 0.85
 keep_recent = 6
 
@@ -395,6 +450,7 @@ token_budget = 6000
 
 # Shell sandbox — tools granted network access when detected in a command.
 # All other shell commands run with no network access.
+
 [sandbox]
 network_tools = [
     "gh", "kubectl", "gcloud", "aws", "az",
@@ -410,7 +466,7 @@ network_tools = [
     "ssh", "scp", "rsync",
     "brew",
 ]
-"#
+"##
         .to_string()
     }
 }

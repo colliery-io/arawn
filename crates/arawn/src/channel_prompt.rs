@@ -16,7 +16,7 @@ use async_trait::async_trait;
 use tokio::sync::{mpsc, oneshot};
 use uuid::Uuid;
 
-use arawn_engine::permissions::{ModalOption, ModalPrompt, ModalRequest};
+use arawn_engine::permissions::{ModalPrompt, ModalRequest};
 use arawn_service::{EngineEvent, ModalPromptOption};
 
 /// Shared map of pending modal responses. The WS server inserts responses here.

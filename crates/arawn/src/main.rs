@@ -8,8 +8,6 @@ use uuid::Uuid;
 use arawn_core::Workstream;
 use arawn_engine::QueryEngineConfig;
 use arawn_engine::SkillTool;
-#[cfg(feature = "legacy-plugins")]
-use arawn_engine::{PluginLoader, PluginWatcher};
 use arawn_engine::plugins::PluginRuntime;
 use arawn_engine::skills::SkillRegistry;
 use arawn_storage::Store;
@@ -224,13 +222,19 @@ async fn main() -> Result<()> {
 
     // Handle serve mode
     if serve_mode {
-        let engine_llm_config = config.engine_llm();
-        let llm_client: Arc<dyn arawn_llm::LlmClient> = build_llm_client(&engine_llm_config)?;
-        let llm = Arc::new(arawn_llm::RetryClient::new(llm_client));
+        // Build the LLM client pool — fail-fast: any misconfigured `[llm.*]`
+        // entry surfaces here, not mid-session.
+        let llm_pool = Arc::new(arawn_bin::LlmClientPool::from_config(
+            &config,
+            |cfg| build_llm_client(cfg),
+        )?);
         info!(
-            provider = %engine_llm_config.provider,
-            model = %engine_llm_config.model,
-            "LLM provider configured"
+            entries = llm_pool.len(),
+            engine = llm_pool.engine_name(),
+            compactor = llm_pool.compactor_name(),
+            engine_model = %llm_pool.engine_config().model,
+            compactor_model = %llm_pool.compactor_config().model,
+            "LLM client pool ready"
         );
 
         // Initialize embedding model
@@ -292,44 +296,19 @@ async fn main() -> Result<()> {
             info!("memory tools registered (store + search)");
         }
 
-        // Load legacy .arawn_tool plugins (deprecated — use new plugin system instead)
-        #[cfg(feature = "legacy-plugins")]
-        let (tools_dir, build_dir) = {
-            let tools_dir = std::path::PathBuf::from(&data_dir).join("plugins/tools");
-            let build_dir = std::path::PathBuf::from(&data_dir).join("plugins/build");
-            let plugin_tools = arawn_engine::PluginLoader::load_tools(&tools_dir, &build_dir);
-            if !plugin_tools.is_empty() {
-                tracing::warn!(
-                    count = plugin_tools.len(),
-                    "loaded legacy .arawn_tool plugins — this system is DEPRECATED, migrate to new plugin format"
-                );
-            }
-            for tool in plugin_tools {
-                registry.register_plugin(tool);
-            }
-            (tools_dir, build_dir)
-        };
-
         // Load new-style plugins (Claude Code compatible)
         let plugins_root = std::path::PathBuf::from(&data_dir).join("plugins");
         let skill_registry = Arc::new(SkillRegistry::new());
         let plugin_runtime = PluginRuntime::new(plugins_root)
             .with_settings(std::path::PathBuf::from(&data_dir).join("settings.json"));
-        let plugin_result = plugin_runtime.load_all(&registry, &skill_registry);
+        let plugin_result = plugin_runtime.load_all(&skill_registry);
 
         // Register SkillTool with loaded skills
         registry.register(Box::new(SkillTool::new(Arc::clone(&skill_registry))));
         info!(tools = registry.len(), "tools registered for serve mode");
 
-        // Spawn file watcher for hot-reloading legacy plugins
-        #[cfg(feature = "legacy-plugins")]
-        let _watcher_handle = {
-            let watcher = PluginWatcher::new(tools_dir, build_dir, Arc::clone(&registry));
-            watcher.spawn()
-        };
-
         // Spawn hot-reload watcher for new-style plugins
-        let _plugin_watcher = plugin_runtime.watch(Arc::clone(&registry), Arc::clone(&skill_registry));
+        let _plugin_watcher = plugin_runtime.watch(Arc::clone(&skill_registry));
 
         // Connect MCP servers (config + plugins)
         let mcp_manager = connect_mcp_servers(&data_dir, &plugin_result, &registry).await;
@@ -365,7 +344,7 @@ async fn main() -> Result<()> {
         let mut service = arawn_bin::LocalService::new(
             store,
             std::path::PathBuf::from(&data_dir),
-            llm,
+            Arc::clone(&llm_pool),
             registry.clone(),
             engine_config,
         )
@@ -515,16 +494,12 @@ async fn run_cli_via_server(
     eprintln!("Thinking...\n");
 
     // Stream events until Complete or Error
-    let mut final_text = String::new();
-    loop {
+    let final_text = 'stream: loop {
         let msg = client.read.next().await;
         match msg {
             Some(Ok(WsMessage::Text(text))) => {
                 if let Some(event) = parse_engine_event(&text) {
                     match engine_event_to_update(event) {
-                        EventUpdate::AppendStreamingText(text) => {
-                            // Could print incrementally here for live streaming
-                        }
                         EventUpdate::AddToolCall { name, .. } => {
                             eprintln!("  [{name}]");
                         }
@@ -534,8 +509,7 @@ async fn run_cli_via_server(
                             }
                         }
                         EventUpdate::Complete(text) => {
-                            final_text = text;
-                            break;
+                            break 'stream text;
                         }
                         EventUpdate::Error(message) => {
                             eprintln!("Error: {message}");
@@ -571,7 +545,7 @@ async fn run_cli_via_server(
             }
             _ => {}
         }
-    }
+    };
 
     println!("{final_text}");
     Ok(())

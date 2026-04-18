@@ -15,7 +15,6 @@ use tracing::{info, warn};
 use crate::agent_defs::AgentDefinition;
 use crate::hooks::HookConfig;
 use crate::skills::{SkillDefinition, SkillRegistry};
-use crate::tool::ToolRegistry;
 
 use super::builtin::register_builtin_plugins;
 use super::components::load_plugin_components;
@@ -73,11 +72,7 @@ impl PluginRuntime {
     }
 
     /// Discover, load, and register all plugins. Returns components to wire into the engine.
-    pub fn load_all(
-        &self,
-        tool_registry: &Arc<ToolRegistry>,
-        skill_registry: &Arc<SkillRegistry>,
-    ) -> PluginLoadResult {
+    pub fn load_all(&self, skill_registry: &Arc<SkillRegistry>) -> PluginLoadResult {
         let mut result = PluginLoadResult {
             agents: Vec::new(),
             skills: Vec::new(),
@@ -170,11 +165,7 @@ impl PluginRuntime {
     ///
     /// For long-lived processes (serve mode). Re-discovers and re-loads all plugins
     /// when files in the cache directory are created, modified, or removed.
-    pub fn watch(
-        &self,
-        tool_registry: Arc<ToolRegistry>,
-        skill_registry: Arc<SkillRegistry>,
-    ) -> tokio::task::JoinHandle<()> {
+    pub fn watch(&self, skill_registry: Arc<SkillRegistry>) -> tokio::task::JoinHandle<()> {
         let plugins_root = self.plugins_root.clone();
         let settings_path = self.settings_path.clone();
         let plugin_dirs = self.plugin_dirs.clone();

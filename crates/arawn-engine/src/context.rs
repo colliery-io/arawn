@@ -7,7 +7,7 @@ use uuid::Uuid;
 use arawn_core::Workstream;
 use arawn_llm::LlmClient;
 
-use arawn_tool::ModelLimits;
+use arawn_tool::{LlmPreference, LlmResolution, LlmResolver, ModelLimits};
 
 /// Maximum sub-agent nesting depth. Prevents infinite recursion.
 const MAX_AGENT_DEPTH: u8 = 3;
@@ -39,6 +39,10 @@ pub struct EngineToolContext {
     /// Tracks which files have been read in this session.
     /// FileEdit and FileWrite check this before modifying existing files.
     read_files: Arc<RwLock<HashSet<PathBuf>>>,
+    /// Optional LLM resolver — backed by the runtime's `LlmClientPool` when
+    /// the engine is wired to one. Tools call `resolve_llm()` to look up a
+    /// preferred client.
+    llm_resolver: Option<Arc<dyn LlmResolver>>,
 }
 
 impl std::fmt::Debug for EngineToolContext {
@@ -67,7 +71,15 @@ impl EngineToolContext {
             data_dir: None,
             agent_depth: 0,
             read_files: Arc::new(RwLock::new(HashSet::new())),
+            llm_resolver: None,
         }
+    }
+
+    /// Attach an LLM resolver (typically `arawn-bin`'s `LlmClientPool`).
+    /// Tools that declare an `llm_preference()` will be resolved through it.
+    pub fn with_llm_resolver(mut self, resolver: Arc<dyn LlmResolver>) -> Self {
+        self.llm_resolver = Some(resolver);
+        self
     }
 
     /// Set allowed paths that file tools can access outside the sandbox.
@@ -190,6 +202,12 @@ impl arawn_tool::ToolContext for EngineToolContext {
 
     fn allowed_paths(&self) -> &[PathBuf] {
         &self.allowed_paths
+    }
+
+    fn resolve_llm(&self, preference: &LlmPreference) -> Option<LlmResolution> {
+        self.llm_resolver
+            .as_ref()
+            .map(|r| r.resolve(preference))
     }
 }
 

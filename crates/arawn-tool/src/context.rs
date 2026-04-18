@@ -4,6 +4,8 @@ use std::sync::Arc;
 use arawn_llm::LlmClient;
 use uuid::Uuid;
 
+use crate::llm_preference::{LlmPreference, LlmResolution};
+
 /// Model context window limits — used by sub-agents for compaction decisions.
 #[derive(Debug, Clone)]
 pub struct ModelLimits {
@@ -118,4 +120,13 @@ pub trait ToolContext: Send + Sync {
 
     /// Paths outside the sandbox that file tools are allowed to access.
     fn allowed_paths(&self) -> &[PathBuf];
+
+    /// Resolve an [`LlmPreference`] against the runtime's LLM pool. Returns
+    /// `None` if no resolver is wired (e.g., test contexts). Tools that
+    /// declare an `llm_preference()` typically call this from inside
+    /// `execute()` and use the resolved client + match quality to decide
+    /// whether to proceed normally or degrade.
+    fn resolve_llm(&self, _preference: &LlmPreference) -> Option<LlmResolution> {
+        None
+    }
 }

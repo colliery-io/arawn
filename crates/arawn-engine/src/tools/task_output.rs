@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use serde_json::{Value, json};
-use tracing::debug;
 
 use crate::background::{BackgroundTaskManager, BackgroundTaskStatus};
 use crate::tool::{Tool, ToolCategory, ToolError, ToolOutput};

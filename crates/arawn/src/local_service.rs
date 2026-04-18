@@ -23,6 +23,7 @@ use arawn_service::{
 use arawn_storage::{JsonlMessageStore, Store, workstream_dir_name};
 
 use crate::channel_prompt::{ChannelModalPrompt, PendingModals};
+use crate::llm_pool::LlmClientPool;
 
 /// In-process implementation of ArawnService.
 /// Wraps engine + store + tools and bridges to the EngineEvent stream.
@@ -30,7 +31,10 @@ use crate::channel_prompt::{ChannelModalPrompt, PendingModals};
 pub struct LocalService {
     store: Arc<Mutex<Store>>,
     pub(crate) data_dir: PathBuf,
-    llm: Arc<dyn LlmClient>,
+    /// Source of all LLM clients. The engine and compactor are resolved
+    /// through here; tools and agents that adopt `LlmPreference` will
+    /// resolve via the same pool.
+    llm_pool: Arc<LlmClientPool>,
     registry: Arc<ToolRegistry>,
     config: QueryEngineConfig,
     /// Shared permission rules — updated by ConfigWatcher on hot-reload.
@@ -59,14 +63,14 @@ impl LocalService {
     pub fn new(
         store: Store,
         data_dir: PathBuf,
-        llm: Arc<dyn LlmClient>,
+        llm_pool: Arc<LlmClientPool>,
         registry: Arc<ToolRegistry>,
         config: QueryEngineConfig,
     ) -> Self {
         Self {
             store: Arc::new(Mutex::new(store)),
             data_dir,
-            llm,
+            llm_pool,
             registry,
             config,
             permission_rules: Arc::new(std::sync::RwLock::new(Vec::new())),
@@ -82,7 +86,7 @@ impl LocalService {
         }
     }
 
-    pub fn with_permission_rules(mut self, rules: Vec<PermissionRule>) -> Self {
+    pub fn with_permission_rules(self, rules: Vec<PermissionRule>) -> Self {
         *self.permission_rules.write().unwrap() = rules;
         self
     }
@@ -94,7 +98,24 @@ impl LocalService {
     }
 
     pub fn shared_llm(&self) -> Arc<dyn LlmClient> {
-        Arc::clone(&self.llm)
+        self.llm_pool.engine()
+    }
+
+    /// Compactor LLM (separate client when `[compactor]` config selects a
+    /// different `[llm.*]` entry; otherwise an `Arc` clone of the engine LLM).
+    pub fn shared_compactor_llm(&self) -> Arc<dyn LlmClient> {
+        self.llm_pool.compactor()
+    }
+
+    /// Model name used by the compactor.
+    pub fn compactor_model(&self) -> &str {
+        &self.llm_pool.compactor_config().model
+    }
+
+    /// Shared reference to the LLM pool — used by tools/agents that resolve
+    /// via [`LlmPreference`].
+    pub fn shared_llm_pool(&self) -> Arc<LlmClientPool> {
+        Arc::clone(&self.llm_pool)
     }
 
     pub fn shared_registry(&self) -> Arc<ToolRegistry> {
@@ -190,9 +211,12 @@ impl LocalService {
             .join("workstreams")
             .join(ws_dir)
             .join("arawn.md");
+        let pool: Arc<crate::LlmClientPool> = Arc::clone(&self.llm_pool);
+        let resolver: Arc<dyn arawn_tool::LlmResolver> = pool;
         let ctx = ToolContext::new(&ws_for_ctx, session_id)
             .with_allowed_paths(vec![global_arawn_md, workstream_arawn_md])
-            .with_llm(self.llm.clone(), self.config.model.clone())
+            .with_llm(self.llm_pool.engine(), self.config.model.clone())
+            .with_llm_resolver(resolver)
             .with_model_limits(self.config.model_limits.clone())
             .with_data_dir(self.data_dir.clone());
 
@@ -246,9 +270,12 @@ impl LocalService {
         prompt_context: Option<arawn_engine::PromptContext>,
         event_tx: &mpsc::Sender<EngineEvent>,
     ) -> QueryEngine {
-        let compactor = Compactor::new(self.llm.clone(), self.config.model.clone());
+        let compactor = Compactor::new(
+            self.llm_pool.compactor(),
+            self.llm_pool.compactor_config().model.clone(),
+        );
         let mut engine = QueryEngine::with_config(
-            self.llm.clone(),
+            self.llm_pool.engine(),
             self.registry.clone(),
             QueryEngineConfig {
                 model: self.config.model.clone(),

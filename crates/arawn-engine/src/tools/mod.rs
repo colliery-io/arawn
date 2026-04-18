@@ -9,6 +9,8 @@ pub mod glob;
 pub mod grep;
 pub mod memory_search;
 pub mod memory_store;
+pub mod safe_env;
+pub mod sensitive_paths;
 pub mod shell;
 pub mod skill;
 pub mod sleep;

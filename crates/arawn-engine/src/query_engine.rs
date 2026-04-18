@@ -8,7 +8,6 @@ use arawn_llm::{ChatChunk, ChatContent, ChatMessage, ChatRequest, LlmClient, Too
 
 use crate::background::BackgroundTaskManager;
 use crate::compactor::Compactor;
-use crate::context::EngineToolContext;
 use crate::error::EngineError;
 use crate::hooks::{HookInput, HookRunner};
 use crate::permissions::{PermissionChecker, PermissionDecision};
@@ -1016,6 +1015,7 @@ fn filter_tools_for_context(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::context::EngineToolContext;
     use crate::tools::ThinkTool;
     use arawn_core::Workstream;
     use arawn_llm::LlmError;

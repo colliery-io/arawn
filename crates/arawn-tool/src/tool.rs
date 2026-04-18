@@ -4,6 +4,7 @@ use serde_json::Value;
 
 use crate::context::ToolContext;
 use crate::error::ToolError;
+use crate::llm_preference::LlmPreference;
 
 /// Category of a tool — used for permission checking, context filtering, and
 /// tool grouping.
@@ -72,5 +73,13 @@ pub trait Tool: Send + Sync {
     /// Tool category for permission checking and context filtering.
     fn category(&self) -> ToolCategory {
         ToolCategory::Core
+    }
+
+    /// Optional preferred LLM for this tool. The engine resolves this against
+    /// the [`crate::LlmResolver`] before calling [`Tool::execute`] and makes
+    /// the resolved client available via [`ToolContext::preferred_llm`].
+    /// Defaults to `None` — most tools don't need an LLM at all.
+    fn llm_preference(&self) -> Option<LlmPreference> {
+        None
     }
 }

@@ -19,7 +19,7 @@ fn setup_service(responses: Vec<MockResponse>) -> (TempDir, arawn_bin::LocalServ
     let ws = Workstream::scratch(tmp.path());
     store.create_workstream(&ws).unwrap();
 
-    let llm = Arc::new(MockLlmClient::new(responses));
+    let llm: Arc<dyn arawn_llm::LlmClient> = Arc::new(MockLlmClient::new(responses));
     let registry = Arc::new(ToolRegistry::new());
     registry.register(Box::new(ThinkTool));
 
@@ -28,10 +28,67 @@ fn setup_service(responses: Vec<MockResponse>) -> (TempDir, arawn_bin::LocalServ
         ..Default::default()
     };
 
-    let service =
-        arawn_bin::LocalService::new(store, tmp.path().to_path_buf(), llm, registry, config);
+    let pool = Arc::new(arawn_bin::LlmClientPool::single(llm, config.model.clone()));
+    let service = arawn_bin::LocalService::new(
+        store,
+        tmp.path().to_path_buf(),
+        pool,
+        registry,
+        config,
+    );
 
     (tmp, service)
+}
+
+#[tokio::test]
+async fn separate_engine_and_compactor_llms_are_stored_distinctly() {
+    use std::collections::HashMap;
+    use arawn_bin::LlmConfig;
+
+    let tmp = TempDir::new().unwrap();
+    let store = Store::open(tmp.path()).unwrap();
+
+    let engine_llm: Arc<dyn arawn_llm::LlmClient> =
+        Arc::new(MockLlmClient::new(vec![]));
+    let compactor_llm: Arc<dyn arawn_llm::LlmClient> =
+        Arc::new(MockLlmClient::new(vec![]));
+
+    let mut clients = HashMap::new();
+    clients.insert("engine".to_string(), engine_llm);
+    clients.insert("compactor".to_string(), compactor_llm);
+
+    let mut configs = HashMap::new();
+    configs.insert(
+        "engine".to_string(),
+        LlmConfig { model: "engine-model".into(), ..LlmConfig::default() },
+    );
+    configs.insert(
+        "compactor".to_string(),
+        LlmConfig { model: "compactor-model".into(), ..LlmConfig::default() },
+    );
+
+    let pool = Arc::new(arawn_bin::LlmClientPool::from_clients(
+        clients, configs, "engine", "compactor",
+    ));
+
+    let registry = Arc::new(ToolRegistry::new());
+    let config = QueryEngineConfig {
+        model: "engine-model".into(),
+        system_prompt: "test".into(),
+        ..Default::default()
+    };
+
+    let service = arawn_bin::LocalService::new(
+        store,
+        tmp.path().to_path_buf(),
+        pool,
+        registry,
+        config,
+    );
+
+    assert!(!Arc::ptr_eq(&service.shared_llm(), &service.shared_compactor_llm()));
+    assert_eq!(service.compactor_model(), "compactor-model");
+    assert_eq!(service.engine_config().model, "engine-model");
 }
 
 #[tokio::test]

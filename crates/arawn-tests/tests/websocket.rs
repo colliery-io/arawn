@@ -24,7 +24,7 @@ async fn start_test_server(mock_responses: Vec<MockResponse>) -> (String, TempDi
     let ws = Workstream::scratch(tmp.path());
     store.create_workstream(&ws).unwrap();
 
-    let llm = Arc::new(MockLlmClient::new(mock_responses));
+    let llm: Arc<dyn arawn_llm::LlmClient> = Arc::new(MockLlmClient::new(mock_responses));
     let registry = Arc::new(ToolRegistry::new());
     registry.register(Box::new(ThinkTool));
     registry.register(Box::new(ShellTool::default()));
@@ -35,8 +35,14 @@ async fn start_test_server(mock_responses: Vec<MockResponse>) -> (String, TempDi
         ..Default::default()
     };
 
-    let service =
-        arawn_bin::LocalService::new(store, tmp.path().to_path_buf(), llm, registry, config);
+    let pool = Arc::new(arawn_bin::LlmClientPool::single(llm, config.model.clone()));
+    let service = arawn_bin::LocalService::new(
+        store,
+        tmp.path().to_path_buf(),
+        pool,
+        registry,
+        config,
+    );
 
     // Bind to random port
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();

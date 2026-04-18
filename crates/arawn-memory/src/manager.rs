@@ -3,7 +3,7 @@
 //! `MemoryManager` is the single handle the rest of the system uses.
 //! It abstracts the two-tier scoping and routes entities to the appropriate store.
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::Arc;
 
 use tracing::{debug, info, warn};
@@ -205,7 +205,7 @@ impl MemoryManager {
             let query_text = keywords.join(" ");
             // Block on the async embed call — retrieve_topical is called from sync context
             let rt = tokio::runtime::Handle::try_current();
-            let embedding = if let Ok(handle) = rt {
+            let embedding = if let Ok(_handle) = rt {
                 // Already in async context — use spawn_blocking to avoid blocking the runtime
                 let emb = embedder.clone();
                 let qt = query_text.clone();

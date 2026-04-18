@@ -576,7 +576,6 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
             // but draw immediately on state changes (tool call, result, complete).
             Some(msg) = client.read.next() => {
                 let mut should_break = false;
-                let mut needs_draw = false;
 
                 // Process WS messages, accumulating state changes.
                 // Only draw when we receive a Flush event from the server.

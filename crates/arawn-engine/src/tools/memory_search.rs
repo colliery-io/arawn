@@ -113,16 +113,13 @@ impl Tool for MemorySearchTool {
         // Collect results from each store, keyed by entity ID to deduplicate
         let mut scored: HashMap<uuid::Uuid, ScoredEntity> = HashMap::new();
 
-        let stores_to_search: Vec<(&Arc<MemoryStore>, &str)> = match scope {
-            "global" => vec![(&self.memory.global, "global")],
-            "workstream" => vec![(&self.memory.workstream, "workstream")],
-            _ => vec![
-                (&self.memory.global, "global"),
-                (&self.memory.workstream, "workstream"),
-            ],
+        let stores_to_search: Vec<&Arc<MemoryStore>> = match scope {
+            "global" => vec![&self.memory.global],
+            "workstream" => vec![&self.memory.workstream],
+            _ => vec![&self.memory.global, &self.memory.workstream],
         };
 
-        for (store, store_label) in &stores_to_search {
+        for store in &stores_to_search {
             // FTS5 search
             let fts_results = if let Some(et) = entity_type {
                 store.search_by_type(query, et, limit * 2)
@@ -139,7 +136,6 @@ impl Tool for MemorySearchTool {
                     fts_score: 0.0,
                     semantic_score: 0.0,
                     confidence,
-                    source: store_label.to_string(),
                     related: Vec::new(),
                 });
                 entry.fts_score = fts_score;
@@ -172,7 +168,6 @@ impl Tool for MemorySearchTool {
                                         fts_score: 0.0,
                                         semantic_score: 0.0,
                                         confidence,
-                                        source: store_label.to_string(),
                                         related: Vec::new(),
                                     });
                                 entry.semantic_score = semantic_score;
@@ -200,16 +195,13 @@ impl Tool for MemorySearchTool {
 
         // Compute composite score and sort
         let mut results: Vec<ScoredEntity> = scored.into_values().collect();
-        for r in &mut results {
-            r.compute_composite();
-        }
         results.sort_by(|a, b| b.composite().partial_cmp(&a.composite()).unwrap_or(std::cmp::Ordering::Equal));
         results.truncate(limit);
 
         // Graph expansion
         if include_related && !results.is_empty() {
             for result in &mut results {
-                for (store, _) in &stores_to_search {
+                for store in &stores_to_search {
                     if let Ok(relations) = store.get_relations(result.entity.id) {
                         for rel in relations {
                             let neighbor_id = if rel.source_id == result.entity.id {
@@ -273,23 +265,12 @@ struct ScoredEntity {
     fts_score: f32,
     semantic_score: f32,
     confidence: f32,
-    source: String,
     related: Vec<(RelationType, String)>,
 }
 
 impl ScoredEntity {
     fn composite(&self) -> f32 {
         0.4 * self.semantic_score + 0.3 * self.fts_score + 0.3 * self.confidence
-    }
-
-    fn compute_composite(&mut self) {
-        // pre-compute for sorting — just ensures fields are populated
-    }
-}
-
-impl Default for ScoredEntity {
-    fn default() -> Self {
-        unreachable!()
     }
 }
 

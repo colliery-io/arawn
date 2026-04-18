@@ -90,12 +90,10 @@ fn map_modal_key(key: KeyEvent) -> Option<Action> {
         KeyCode::Enter => Some(Action::ModalConfirm),
         KeyCode::Esc => Some(Action::ModalCancel),
         // Number keys for direct selection (1-indexed)
-        KeyCode::Char(c @ '1'..='9') => {
-            let idx = (c as usize) - ('1' as usize);
-            // We'll confirm via ModalConfirm after setting focus —
-            // but for simplicity just map to confirm with index in a single action.
-            // The app handler can set focus_index + confirm.
-            Some(Action::ModalConfirm) // TODO: direct index selection
+        KeyCode::Char('1'..='9') => {
+            // TODO: direct index selection. For now just map to confirm; the
+            // app handler can set focus_index + confirm.
+            Some(Action::ModalConfirm)
         }
         _ => None, // Swallow all other keys while modal is active
     }

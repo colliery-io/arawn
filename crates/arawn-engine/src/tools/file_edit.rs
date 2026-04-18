@@ -2,6 +2,7 @@ use async_trait::async_trait;
 use serde_json::{Value, json};
 
 use crate::tool::{Tool, ToolError, ToolOutput};
+use crate::tools::sensitive_paths::{is_secret_file, is_token_path};
 
 /// Edit a file by replacing a string. Path traversal protection.
 pub struct FileEditTool;
@@ -89,6 +90,20 @@ impl Tool for FileEditTool {
         if !canonical.starts_with(&canonical_root) && !ctx.is_allowed_path(&canonical) {
             return Ok(ToolOutput::error(format!(
                 "path '{path_str}' escapes workstream root"
+            )));
+        }
+
+        if is_secret_file(&canonical) {
+            return Ok(ToolOutput::error(format!(
+                "refusing to edit '{path_str}': matches secret-file pattern (e.g. .env, *.pem, credentials.*)"
+            )));
+        }
+
+        if let Some(data_dir) = ctx.data_dir()
+            && is_token_path(&canonical, data_dir)
+        {
+            return Ok(ToolOutput::error(format!(
+                "refusing to edit '{path_str}': resolves into the OAuth token directory"
             )));
         }
 
@@ -289,6 +304,27 @@ mod tests {
 
         assert!(result.is_error);
         assert!(result.content.contains("must use file_read"));
+    }
+
+    #[tokio::test]
+    async fn edit_rejects_secret_filename() {
+        let dir = TempDir::new().unwrap();
+        std::fs::write(dir.path().join(".env"), "API_KEY=old").unwrap();
+
+        let tool = FileEditTool;
+        let ctx = test_ctx(dir.path());
+        mark_read(&ctx, dir.path(), ".env");
+
+        let result = tool
+            .execute(
+                &ctx,
+                json!({"path": ".env", "old_string": "old", "new_string": "new"}),
+            )
+            .await
+            .unwrap();
+
+        assert!(result.is_error);
+        assert!(result.content.contains("secret-file pattern"));
     }
 
     #[test]

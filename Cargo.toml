@@ -1,18 +1,14 @@
 [workspace]
 resolver = "2"
-exclude = [
-    "crates/arawn-tests/fixtures/arawn-plugin-web-fetch",
-    "crates/arawn-tests/fixtures/arawn-plugin-web-search",
-]
 members = [
     "crates/arawn",
+    "crates/arawn-auth",
     "crates/arawn-core",
     "crates/arawn-engine",
     "crates/arawn-llm",
     "crates/arawn-storage",
     "crates/arawn-tests",
     "crates/arawn-tool",
-    "crates/arawn-tool-plugin",
     "crates/arawn-service",
     "crates/arawn-tui",
     "crates/arawn-mcp",
@@ -73,13 +69,13 @@ similar = "2"
 tempfile = "3"
 
 # Internal crates
+arawn-auth = { path = "crates/arawn-auth" }
 arawn-core = { path = "crates/arawn-core" }
 arawn-engine = { path = "crates/arawn-engine" }
 arawn-llm = { path = "crates/arawn-llm" }
 arawn-service = { path = "crates/arawn-service" }
 arawn-storage = { path = "crates/arawn-storage" }
 arawn-tool = { path = "crates/arawn-tool" }
-arawn-tool-plugin = { path = "crates/arawn-tool-plugin" }
 
 [patch.crates-io]
 sandbox-runtime = { path = "vendor/sandbox-runtime" }

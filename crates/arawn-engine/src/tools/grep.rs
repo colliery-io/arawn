@@ -3,6 +3,7 @@ use serde_json::{Value, json};
 use tokio::process::Command;
 
 use crate::tool::{Tool, ToolError, ToolOutput};
+use crate::tools::sensitive_paths::{is_sensitive_path, is_token_path};
 
 /// Default cap on grep results when head_limit is unspecified.
 const DEFAULT_HEAD_LIMIT: usize = 250;
@@ -109,10 +110,23 @@ impl Tool for GrepTool {
 
         let path = params.get("path").and_then(|v| v.as_str()).unwrap_or(".");
 
-        // Validate path stays within workstream root
+        // Validate path stays within workstream root and isn't sensitive
         if path != "." {
-            if let Err(e) = ctx.validate_path(path) {
-                return Ok(ToolOutput::error(e));
+            let resolved = match ctx.validate_path(path) {
+                Ok(p) => p,
+                Err(e) => return Ok(ToolOutput::error(e)),
+            };
+            if is_sensitive_path(&resolved) {
+                return Ok(ToolOutput::error(format!(
+                    "path '{path}' resolves into a sensitive directory and is denied"
+                )));
+            }
+            if let Some(data_dir) = ctx.data_dir()
+                && is_token_path(&resolved, data_dir)
+            {
+                return Ok(ToolOutput::error(format!(
+                    "path '{path}' resolves into the OAuth token directory and is denied"
+                )));
             }
         }
 

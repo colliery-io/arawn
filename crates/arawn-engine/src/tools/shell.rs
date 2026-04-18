@@ -11,6 +11,8 @@ use crate::background::{
     BackgroundTaskKind, BackgroundTaskManager, BackgroundTaskStatus, append_output,
 };
 use crate::tool::{Tool, ToolError, ToolOutput};
+use crate::tools::safe_env::safe_env;
+use crate::tools::sensitive_paths::sensitive_deny_read_paths;
 
 /// Execute a shell command within an OS-level sandbox.
 ///
@@ -52,6 +54,11 @@ impl ShellTool {
     }
 
     /// Spawn a shell command as a background task. Returns immediately with the task ID.
+    ///
+    /// Background commands run inside the same OS sandbox as foreground commands.
+    /// The sandbox manager is owned by the reader/waiter task and reset after the
+    /// child exits. If sandboxing is unavailable on this platform, the call fails
+    /// rather than silently running unsandboxed.
     async fn spawn_background(
         &self,
         command: &str,
@@ -63,18 +70,31 @@ impl ShellTool {
             )
         })?;
 
-        info!(command, ?working_dir, "spawning background shell command");
+        info!(command, ?working_dir, "spawning sandboxed background shell command");
 
-        // Spawn the child process (unsandboxed for background — sandbox requires
-        // sync lifecycle management that doesn't fit background execution)
+        // Initialize a sandbox manager for this background command. The manager
+        // owns the proxy lifecycle — it must outlive the child process, so we
+        // hand it off to the reader task below.
+        let (sandbox_mgr, wrapped) =
+            init_sandbox_for_background(command, working_dir, &self.network_tools)
+                .await
+                .map_err(ToolError::ExecutionFailed)?;
+
         let mut child = Command::new("sh")
             .arg("-c")
-            .arg(command)
+            .arg(&wrapped)
             .current_dir(working_dir)
+            .env_clear()
+            .envs(safe_env())
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped())
             .spawn()
-            .map_err(|e| ToolError::ExecutionFailed(format!("Failed to spawn background command: {e}")))?;
+            .map_err(|e| {
+                // Reset sandbox manager since we never handed it off
+                let mgr_for_reset = Arc::clone(&sandbox_mgr);
+                tokio::spawn(async move { mgr_for_reset.reset().await });
+                ToolError::ExecutionFailed(format!("Failed to spawn background command: {e}"))
+            })?;
 
         let cancel_token = CancellationToken::new();
         let cancel_clone = cancel_token.clone();
@@ -104,6 +124,7 @@ impl ShellTool {
         );
 
         let task_id_clone = task_id.clone();
+        let sandbox_for_task = Arc::clone(&sandbox_mgr);
 
         // Spawn the real reader/waiter task
         tokio::spawn(async move {
@@ -186,64 +207,59 @@ impl ShellTool {
                     }
                 }
             }
+
+            // Reset the sandbox manager (releases proxy ports, etc.)
+            sandbox_for_task.reset().await;
         });
 
         Ok(ToolOutput::success(format!(
-            "Background task {task_id} started (UNSANDBOXED): {command_owned}\n\n\
-             Note: Background commands run outside the OS sandbox.\n\
+            "Background task {task_id} started (sandboxed): {command_owned}\n\n\
              Use TaskOutput with task_id=\"{task_id}\" to check status and read output."
         )))
     }
 }
 
-
-/// Build the list of sensitive paths that should be denied for reading.
-fn sensitive_deny_read_paths() -> Vec<String> {
-    let mut paths = vec![
-        // System auth & security
-        "/etc/shadow".to_string(),
-        "/etc/gshadow".to_string(),
-        "/etc/sudoers".to_string(),
-        "/etc/sudoers.d".to_string(),
-        "/etc/ssl/private".to_string(),
-    ];
-
-    if let Some(home) = dirs::home_dir() {
-        let h = home.to_string_lossy();
-        // SSH & GPG keys
-        paths.push(format!("{h}/.ssh"));
-        paths.push(format!("{h}/.gnupg"));
-        // Cloud provider credentials
-        paths.push(format!("{h}/.aws"));
-        paths.push(format!("{h}/.azure"));
-        paths.push(format!("{h}/.config/gcloud"));
-        paths.push(format!("{h}/.kube"));
-        // Container credentials
-        paths.push(format!("{h}/.docker/config.json"));
-        // Package manager tokens
-        paths.push(format!("{h}/.npmrc"));
-        // Git credentials
-        paths.push(format!("{h}/.netrc"));
-        paths.push(format!("{h}/.git-credentials"));
-        // CLI tool credentials
-        paths.push(format!("{h}/.config/gh"));
-        paths.push(format!("{h}/.vault-token"));
-        // Database passwords
-        paths.push(format!("{h}/.pgpass"));
-        paths.push(format!("{h}/.my.cnf"));
-        // Shell history
-        paths.push(format!("{h}/.bash_history"));
-        paths.push(format!("{h}/.zsh_history"));
-        // macOS specific
-        #[cfg(target_os = "macos")]
-        {
-            paths.push(format!("{h}/Library/Keychains"));
-            paths.push(format!("{h}/Library/Cookies"));
-        }
+/// Initialize a sandbox manager for a background command and return it together
+/// with the wrapped command string. The caller is responsible for eventually
+/// calling [`SandboxManager::reset`] on the returned manager (usually after the
+/// child process exits).
+async fn init_sandbox_for_background(
+    command: &str,
+    working_dir: &std::path::Path,
+    network_tools: &[String],
+) -> Result<(Arc<SandboxManager>, String), String> {
+    if !SandboxManager::is_supported_platform() {
+        return Err(
+            "Refusing to spawn background command: OS sandbox is not supported on this platform"
+                .to_string(),
+        );
     }
 
-    paths
+    let manager = Arc::new(SandboxManager::new());
+    let config = build_sandbox_config(command, working_dir, network_tools);
+
+    manager
+        .check_dependencies(Some(&config))
+        .map_err(|e| format!("Refusing to spawn background command: sandbox dependencies missing: {e}"))?;
+
+    manager
+        .initialize(config.clone())
+        .await
+        .map_err(|e| format!("Refusing to spawn background command: sandbox init failed: {e}"))?;
+
+    let wrapped = match manager.wrap_with_sandbox(command, None, None).await {
+        Ok(w) => w,
+        Err(e) => {
+            manager.reset().await;
+            return Err(format!(
+                "Refusing to spawn background command: sandbox wrap failed: {e}"
+            ));
+        }
+    };
+
+    Ok((manager, wrapped))
 }
+
 
 /// Check if a command invokes any tool that needs network access.
 fn command_needs_network(command: &str, network_tools: &[String]) -> bool {
@@ -379,14 +395,10 @@ impl Tool for ShellTool {
             .and_then(|v| v.as_bool())
             .unwrap_or(false);
 
-        // Background execution: spawn and return immediately
-        // WARNING: Background commands run unsandboxed because the OS sandbox
-        // requires sync lifecycle management incompatible with background execution.
+        // Background execution: spawn and return immediately. Same sandbox profile
+        // as foreground; the reader task owns the SandboxManager and resets it
+        // when the child exits.
         if run_in_background {
-            warn!(
-                command,
-                "background shell command will run UNSANDBOXED — sandbox does not support background processes"
-            );
             return self.spawn_background(command, &ctx.working_dir()).await;
         }
 
@@ -465,6 +477,8 @@ async fn execute_sandboxed(
             .arg("-c")
             .arg(&wrapped)
             .current_dir(working_dir)
+            .env_clear()
+            .envs(safe_env())
             .output(),
     )
     .await;
@@ -517,6 +531,8 @@ async fn execute_unsandboxed(
             .arg("-c")
             .arg(command)
             .current_dir(working_dir)
+            .env_clear()
+            .envs(safe_env())
             .output(),
     )
     .await;
@@ -616,6 +632,135 @@ mod tests {
         let tool = ShellTool::default();
         let result = tool.execute(&test_ctx(), json!({})).await;
         assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn shell_env_does_not_leak_secrets() {
+        // SAFETY: tests run in this process; we set then clear a single var.
+        unsafe {
+            std::env::set_var("ARAWN_TEST_LEAK_KEY", "supersecret-value-xyz");
+        }
+        let tool = ShellTool::default();
+        let result = tool
+            .execute(&test_ctx(), json!({"command": "env"}))
+            .await
+            .unwrap();
+        unsafe {
+            std::env::remove_var("ARAWN_TEST_LEAK_KEY");
+        }
+
+        assert!(!result.is_error, "env command should succeed: {}", result.content);
+        assert!(
+            !result.content.contains("ARAWN_TEST_LEAK_KEY"),
+            "child env leaked parent secret: {}",
+            result.content
+        );
+        assert!(
+            !result.content.contains("supersecret-value-xyz"),
+            "child env leaked secret value: {}",
+            result.content
+        );
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn background_command_runs_sandboxed() {
+        if !SandboxManager::is_supported_platform() {
+            return;
+        }
+        let tmp = tempfile::tempdir().unwrap();
+        let bg = Arc::new(BackgroundTaskManager::new());
+        let tool = ShellTool::default().with_background_manager(bg.clone());
+        let ctx = test_ctx_in(tmp.path());
+
+        let result = tool
+            .execute(
+                &ctx,
+                json!({
+                    "command": "touch bg-marker && echo done",
+                    "run_in_background": true,
+                }),
+            )
+            .await
+            .unwrap();
+
+        assert!(!result.is_error, "background spawn failed: {}", result.content);
+        assert!(result.content.contains("sandboxed"));
+
+        // Wait briefly for the background task to finish
+        for _ in 0..50 {
+            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+            let count = bg.running_count();
+            if count == 0 {
+                break;
+            }
+        }
+
+        // Marker file should exist (write inside sandbox is allowed)
+        assert!(tmp.path().join("bg-marker").exists());
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn background_command_sandbox_blocks_sensitive_read() {
+        if !SandboxManager::is_supported_platform() {
+            return;
+        }
+        // Skip if no .ssh dir on this host
+        let Some(home) = dirs::home_dir() else {
+            return;
+        };
+        if !home.join(".ssh").exists() {
+            return;
+        }
+
+        let tmp = tempfile::tempdir().unwrap();
+        let bg = Arc::new(BackgroundTaskManager::new());
+        let tool = ShellTool::default().with_background_manager(bg.clone());
+        let ctx = test_ctx_in(tmp.path());
+
+        let result = tool
+            .execute(
+                &ctx,
+                json!({
+                    "command": "ls ~/.ssh > listing.txt 2>&1 || echo blocked > listing.txt",
+                    "run_in_background": true,
+                }),
+            )
+            .await
+            .unwrap();
+        assert!(!result.is_error, "spawn failed: {}", result.content);
+
+        // Wait for completion
+        for _ in 0..100 {
+            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+            if bg.running_count() == 0 {
+                break;
+            }
+        }
+
+        let listing = std::fs::read_to_string(tmp.path().join("listing.txt"))
+            .unwrap_or_default();
+        // Either the sandbox produced an error or the script's "blocked" fallback
+        // ran — either way the listing must NOT contain real ssh key filenames.
+        assert!(
+            !listing.contains("id_rsa") && !listing.contains("authorized_keys"),
+            "sandbox failed to block ~/.ssh listing: {}",
+            listing
+        );
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn shell_env_preserves_path() {
+        let tool = ShellTool::default();
+        let result = tool
+            .execute(&test_ctx(), json!({"command": "echo $PATH"}))
+            .await
+            .unwrap();
+        assert!(!result.is_error);
+        assert!(!result.content.trim().is_empty(), "PATH must be forwarded");
     }
 
     #[test]

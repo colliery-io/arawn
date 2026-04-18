@@ -12,7 +12,6 @@ use crate::background::{
     BackgroundTaskKind, BackgroundTaskManager, BackgroundTaskStatus, append_output,
 };
 use crate::compactor::Compactor;
-use crate::context::EngineToolContext;
 use crate::error::EngineError;
 use crate::tool::ToolError;
 use crate::query_engine::{QueryEngine, QueryEngineConfig};
@@ -91,6 +90,10 @@ impl Tool for AgentTool {
                     "type": "string",
                     "description": "Short (3-5 word) summary of the task"
                 },
+                "llm": {
+                    "type": "string",
+                    "description": "Optional named LLM (e.g., 'cheap', 'judge') from arawn.toml. The sub-agent will run on the resolved client. Falls back to the parent agent's model if the named entry isn't configured."
+                },
                 "subagent_type": {
                     "type": "string",
                     "description": "The type of specialized agent to use for this task"
@@ -133,15 +136,39 @@ impl Tool for AgentTool {
             )));
         }
 
-        let llm = ctx
-            .llm()
-            .ok_or_else(|| ToolError::ExecutionFailed("no LLM available for sub-agent".into()))?
-            .clone();
-
         let parent_model = ctx
             .model()
             .ok_or_else(|| ToolError::ExecutionFailed("no model configured for sub-agent".into()))?
             .to_string();
+
+        // Resolve a per-spawn LLM preference if `llm` was supplied.
+        let preferred_llm_name = params.get("llm").and_then(|v| v.as_str());
+        let resolved = preferred_llm_name.and_then(|name| {
+            let pref = arawn_tool::LlmPreference::named(name);
+            ctx.resolve_llm(&pref)
+        });
+
+        let (llm, resolved_model) = match resolved {
+            Some(res) if res.match_quality != arawn_tool::MatchQuality::Fallback => {
+                let model = res.info.model.clone();
+                info!(
+                    requested = preferred_llm_name.unwrap_or(""),
+                    resolved_model = %model,
+                    match_quality = ?res.match_quality,
+                    "sub-agent using resolved LLM preference"
+                );
+                (res.client, Some(model))
+            }
+            _ => {
+                let llm = ctx
+                    .llm()
+                    .ok_or_else(|| {
+                        ToolError::ExecutionFailed("no LLM available for sub-agent".into())
+                    })?
+                    .clone();
+                (llm, None)
+            }
+        };
 
         // Look up agent definition
         let definition = find_agent(&self.definitions, subagent_type);
@@ -154,8 +181,10 @@ impl Tool for AgentTool {
             "spawning sub-agent"
         );
 
-        // Resolve model: definition override > parent model
-        let model = definition.model.as_ref().cloned().unwrap_or(parent_model);
+        // Resolve model: spawn-time `llm` preference > definition override > parent model
+        let model = resolved_model
+            .or_else(|| definition.model.as_ref().cloned())
+            .unwrap_or(parent_model);
 
         let max_turns = definition.max_turns.unwrap_or(DEFAULT_MAX_TURNS);
 
@@ -274,6 +303,7 @@ impl Tool for AgentTool {
 mod tests {
     use super::*;
     use crate::agent_defs::built_in_agents;
+    use crate::context::EngineToolContext;
     use arawn_core::Workstream;
     use arawn_llm::{MockLlmClient, MockResponse};
     use arawn_tool::ToolContext as _;
@@ -320,6 +350,102 @@ mod tests {
         assert!(!result.is_error);
         assert_eq!(result.content, "Here is the answer to your question.");
         assert_eq!(mock.call_count(), 1);
+    }
+
+    /// Test resolver that knows about a single named entry.
+    struct TestResolver {
+        named_client: Arc<dyn arawn_llm::LlmClient>,
+        named_model: String,
+        named: String,
+    }
+
+    impl arawn_tool::LlmResolver for TestResolver {
+        fn resolve(&self, pref: &arawn_tool::LlmPreference) -> arawn_tool::LlmResolution {
+            if let Some(name) = &pref.named
+                && name == &self.named
+            {
+                return arawn_tool::LlmResolution {
+                    client: Arc::clone(&self.named_client),
+                    info: arawn_tool::ResolvedLlmInfo {
+                        provider: "mock".into(),
+                        model: self.named_model.clone(),
+                        context_window: 128_000,
+                        tool_use: true,
+                        vision: false,
+                    },
+                    match_quality: arawn_tool::MatchQuality::Exact,
+                };
+            }
+            // Fallback: re-use named_client to keep test simple
+            arawn_tool::LlmResolution {
+                client: Arc::clone(&self.named_client),
+                info: arawn_tool::ResolvedLlmInfo {
+                    provider: "mock".into(),
+                    model: self.named_model.clone(),
+                    context_window: 128_000,
+                    tool_use: true,
+                    vision: false,
+                },
+                match_quality: arawn_tool::MatchQuality::Fallback,
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn sub_agent_uses_resolved_llm_preference() {
+        // Parent context has a "parent" mock client. Resolver maps "cheap" to a
+        // separate "cheap" mock. When the agent tool gets `llm: "cheap"`, the
+        // sub-agent must run on the cheap client.
+        let parent = Arc::new(MockLlmClient::new(vec![MockResponse::text("parent unused")]));
+        let cheap = Arc::new(MockLlmClient::new(vec![MockResponse::text("cheap response")]));
+        let cheap_dyn: Arc<dyn arawn_llm::LlmClient> = cheap.clone();
+
+        let resolver: Arc<dyn arawn_tool::LlmResolver> = Arc::new(TestResolver {
+            named_client: cheap_dyn,
+            named_model: "cheap-model".into(),
+            named: "cheap".into(),
+        });
+
+        let registry = Arc::new(ToolRegistry::new());
+        let ws = Workstream::scratch("/tmp/test");
+        let ctx = EngineToolContext::new(&ws, Uuid::new_v4())
+            .with_llm(parent.clone(), "parent-model".to_string())
+            .with_llm_resolver(resolver);
+
+        let tool = AgentTool::new(registry, built_in_agents());
+        let result = tool
+            .execute(
+                &ctx,
+                json!({"prompt": "Anything", "llm": "cheap"}),
+            )
+            .await
+            .unwrap();
+
+        assert!(!result.is_error);
+        assert_eq!(result.content, "cheap response");
+        // Parent must NOT have been called — sub-agent ran on the resolved client.
+        assert_eq!(parent.call_count(), 0);
+        assert_eq!(cheap.call_count(), 1);
+    }
+
+    #[tokio::test]
+    async fn sub_agent_falls_back_to_parent_llm_when_resolution_unavailable() {
+        // No resolver attached — agent tool falls back to ctx.llm() (parent).
+        let parent = Arc::new(MockLlmClient::new(vec![MockResponse::text("from parent")]));
+        let registry = Arc::new(ToolRegistry::new());
+        let ws = Workstream::scratch("/tmp/test");
+        let ctx = EngineToolContext::new(&ws, Uuid::new_v4())
+            .with_llm(parent.clone(), "parent-model".to_string());
+
+        let tool = AgentTool::new(registry, built_in_agents());
+        let result = tool
+            .execute(&ctx, json!({"prompt": "Hi", "llm": "cheap"}))
+            .await
+            .unwrap();
+
+        assert!(!result.is_error);
+        assert_eq!(result.content, "from parent");
+        assert_eq!(parent.call_count(), 1);
     }
 
     #[tokio::test]

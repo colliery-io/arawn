@@ -1,9 +1,8 @@
-use std::path::Path;
-
 use async_trait::async_trait;
 use serde_json::{Value, json};
 
 use crate::tool::{Tool, ToolError, ToolOutput};
+use crate::tools::sensitive_paths::{is_secret_file, is_token_path};
 
 /// Read a file within the workstream's working directory.
 /// Rejects paths that escape the workstream root (path traversal protection).
@@ -92,6 +91,20 @@ impl Tool for FileReadTool {
             )));
         }
 
+        if is_secret_file(&canonical) {
+            return Ok(ToolOutput::error(format!(
+                "refusing to read '{path_str}': matches secret-file pattern (e.g. .env, *.pem, credentials.*)"
+            )));
+        }
+
+        if let Some(data_dir) = ctx.data_dir()
+            && is_token_path(&canonical, data_dir)
+        {
+            return Ok(ToolOutput::error(format!(
+                "refusing to read '{path_str}': resolves into the OAuth token directory"
+            )));
+        }
+
         // Check if path is a directory
         if canonical.is_dir() {
             return Ok(ToolOutput::error(format!(
@@ -121,30 +134,6 @@ impl Tool for FileReadTool {
     }
 }
 
-/// Check if a path would escape the root without requiring the file to exist.
-/// Used for validation before attempting reads.
-#[allow(dead_code)]
-fn would_escape_root(root: &Path, relative_path: &str) -> bool {
-    let joined = root.join(relative_path);
-    // Simple heuristic: check for .. components after normalization
-    let normalized = normalize_path(&joined);
-    !normalized.starts_with(root)
-}
-
-/// Normalize a path by resolving . and .. components without touching the filesystem.
-fn normalize_path(path: &Path) -> std::path::PathBuf {
-    let mut components = Vec::new();
-    for component in path.components() {
-        match component {
-            std::path::Component::ParentDir => {
-                components.pop();
-            }
-            std::path::Component::CurDir => {}
-            c => components.push(c),
-        }
-    }
-    components.iter().collect()
-}
 
 #[cfg(test)]
 mod tests {
@@ -152,6 +141,7 @@ mod tests {
     use crate::context::EngineToolContext;
     use arawn_core::Workstream;
     use std::io::Write;
+    use std::path::Path;
     use tempfile::TempDir;
     use uuid::Uuid;
 
@@ -249,11 +239,54 @@ mod tests {
         assert!(schema["properties"]["path"].is_object());
     }
 
-    #[test]
-    fn would_escape_root_detects_traversal() {
-        let root = Path::new("/home/user/workstream");
-        assert!(would_escape_root(root, "../../etc/passwd"));
-        assert!(!would_escape_root(root, "subdir/file.txt"));
-        assert!(!would_escape_root(root, "./file.txt"));
+    #[tokio::test]
+    async fn refuses_token_dir_path() {
+        // Workstream root doubles as data_dir; tokens/ lives inside it.
+        let dir = TempDir::new().unwrap();
+        let tokens = dir.path().join("tokens");
+        std::fs::create_dir_all(&tokens).unwrap();
+        std::fs::write(tokens.join("google.json.enc"), b"encrypted").unwrap();
+
+        let tool = FileReadTool;
+        let ws = Workstream::new("test", dir.path());
+        let ctx = EngineToolContext::new(&ws, Uuid::new_v4())
+            .with_data_dir(dir.path().to_path_buf());
+
+        let result = tool
+            .execute(&ctx, json!({"path": "tokens/google.json.enc"}))
+            .await
+            .unwrap();
+
+        assert!(result.is_error);
+        assert!(result.content.contains("OAuth token directory"), "got: {}", result.content);
     }
+
+    #[tokio::test]
+    async fn refuses_dotenv_in_workstream() {
+        let dir = TempDir::new().unwrap();
+        std::fs::write(dir.path().join(".env"), "API_KEY=secret").unwrap();
+
+        let tool = FileReadTool;
+        let ctx = test_ctx_with_dir(dir.path());
+        let result = tool.execute(&ctx, json!({"path": ".env"})).await.unwrap();
+
+        assert!(result.is_error);
+        assert!(result.content.contains("secret-file pattern"));
+    }
+
+    #[tokio::test]
+    async fn allows_legitimate_env_rs() {
+        let dir = TempDir::new().unwrap();
+        std::fs::write(dir.path().join("env.rs"), "fn main() {}").unwrap();
+
+        let tool = FileReadTool;
+        let ctx = test_ctx_with_dir(dir.path());
+        let result = tool
+            .execute(&ctx, json!({"path": "env.rs"}))
+            .await
+            .unwrap();
+
+        assert!(!result.is_error, "env.rs is a Rust file, not a secret");
+    }
+
 }

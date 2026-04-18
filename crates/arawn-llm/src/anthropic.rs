@@ -3,7 +3,6 @@ use std::pin::Pin;
 use async_trait::async_trait;
 use futures::stream::Stream;
 use reqwest::Client;
-use serde::Deserialize;
 use serde_json::{Value, json};
 use tracing::debug;
 
@@ -210,18 +209,16 @@ fn build_messages(messages: &[ChatMessage]) -> Vec<Value> {
     for msg in messages {
         match msg.role.as_str() {
             "user" => {
-                if let ChatContent::Text(ref text) = msg.content {
-                    result.push(json!({"role": "user", "content": text}));
-                }
+                let ChatContent::Text(ref text) = msg.content;
+                result.push(json!({"role": "user", "content": text}));
             }
             "assistant" => {
                 let mut content_blocks: Vec<Value> = Vec::new();
 
                 // Add text block if present
-                if let ChatContent::Text(ref text) = msg.content {
-                    if !text.is_empty() {
-                        content_blocks.push(json!({"type": "text", "text": text}));
-                    }
+                let ChatContent::Text(ref text) = msg.content;
+                if !text.is_empty() {
+                    content_blocks.push(json!({"type": "text", "text": text}));
                 }
 
                 // Add tool_use blocks
@@ -255,9 +252,8 @@ fn build_messages(messages: &[ChatMessage]) -> Vec<Value> {
             }
             _ => {
                 // Summary or other — treat as user message
-                if let ChatContent::Text(ref text) = msg.content {
-                    result.push(json!({"role": "user", "content": text}));
-                }
+                let ChatContent::Text(ref text) = msg.content;
+                result.push(json!({"role": "user", "content": text}));
             }
         }
     }

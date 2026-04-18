@@ -4,7 +4,7 @@ level: task
 title: "Memory system recall evaluation suite — FTS, vector, and stack coverage benchmarks"
 short_code: "ARAWN-T-0161"
 created_at: 2026-04-10T23:30:24.905403+00:00
-updated_at: 2026-04-10T23:32:54.637466+00:00
+updated_at: 2026-04-16T12:32:09.745856+00:00
 parent: 
 blocked_by: []
 archived: false
@@ -12,7 +12,7 @@ archived: false
 tags:
   - "#task"
   - "#feature"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -36,6 +36,8 @@ Build a recall evaluation suite that measures how well the memory system retriev
 ### Business Justification
 - **User Value**: Memory system quality directly affects conversation coherence — bad recall means the agent forgets or surfaces irrelevant info
 - **Effort Estimate**: M
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
