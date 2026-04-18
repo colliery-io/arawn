@@ -7,7 +7,7 @@ created_at: 2026-04-17T02:46:57.119584+00:00
 updated_at: 2026-04-17T02:46:57.119584+00:00
 parent: ARAWN-V-0001
 blocked_by: []
-archived: false
+archived: true
 
 tags:
   - "#initiative"

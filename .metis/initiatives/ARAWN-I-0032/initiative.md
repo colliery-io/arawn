@@ -4,14 +4,14 @@ level: initiative
 title: "Consolidation cleanup — drop one-impl traits, unify retry + errors"
 short_code: "ARAWN-I-0032"
 created_at: 2026-04-18T14:12:12.923578+00:00
-updated_at: 2026-04-18T14:14:41.564443+00:00
+updated_at: 2026-04-18T15:09:53.430232+00:00
 parent: ARAWN-V-0001
 blocked_by: []
 archived: false
 
 tags:
   - "#initiative"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false

@@ -12,6 +12,9 @@ proptest-regressions/
 *.swo
 *~
 
+# Claude Code local session state
+.claude/
+
 # Environment
 .env
 .env.local
