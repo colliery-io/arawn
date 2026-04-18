@@ -287,7 +287,7 @@ pub fn execute_command(cmd: &ParsedCommand, registry: &CommandRegistry) -> Comma
                 "clear" => CommandResult::ClearChat,
                 "workstream" => {
                     let parts: Vec<&str> = cmd.args.splitn(2, char::is_whitespace).collect();
-                    match parts.first().map(|s| *s) {
+                    match parts.first().copied() {
                         Some("create") => {
                             let name = parts.get(1).unwrap_or(&"").trim();
                             if name.is_empty() {

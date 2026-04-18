@@ -90,7 +90,7 @@ fn cmd_list(plugins_root: &Path) -> Result<(), String> {
         return Ok(());
     }
 
-    println!("{:<40} {:<10} {:<10} {}", "PLUGIN", "VERSION", "STATUS", "SOURCE");
+    println!("{:<40} {:<10} {:<10} SOURCE", "PLUGIN", "VERSION", "STATUS");
     println!("{}", "-".repeat(80));
 
     for plugin in &plugins {

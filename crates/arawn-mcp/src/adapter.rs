@@ -77,11 +77,10 @@ impl Tool for McpToolAdapter {
         debug!(tool = %self.arawn_name, mcp_name = %self.mcp_name, "calling MCP tool");
 
         let mut request = CallToolRequestParams::new(self.mcp_name.clone());
-        if let Some(obj) = params.as_object() {
-            if !obj.is_empty() {
+        if let Some(obj) = params.as_object()
+            && !obj.is_empty() {
                 request = request.with_arguments(obj.clone());
             }
-        }
 
         match self.peer.call_tool(request).await {
             Ok(result) => {

@@ -160,7 +160,7 @@ impl Tool for GrepTool {
         // Build rg command
         let result = if has_rg().await {
             run_rg(
-                &ctx.working_dir(),
+                ctx.working_dir(),
                 pattern,
                 path,
                 glob_pattern,
@@ -176,7 +176,7 @@ impl Tool for GrepTool {
             .await
         } else {
             run_grep_fallback(
-                &ctx.working_dir(),
+                ctx.working_dir(),
                 pattern,
                 path,
                 case_insensitive,

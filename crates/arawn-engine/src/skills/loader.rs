@@ -11,6 +11,12 @@ pub struct SkillRegistry {
     skills: RwLock<HashMap<String, SkillDefinition>>,
 }
 
+impl Default for SkillRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SkillRegistry {
     pub fn new() -> Self {
         let registry = Self {
@@ -110,10 +116,7 @@ pub fn load_skills_dir(dir: &Path, source: SkillSource) -> Vec<SkillDefinition> 
                 .unwrap_or("unknown")
                 .to_string();
 
-            match load_skill_file(&path, &name, source.clone()) {
-                Some(skill) => skills.push(skill),
-                None => {}
-            }
+            if let Some(skill) = load_skill_file(&path, &name, source.clone()) { skills.push(skill) }
         } else if path.is_dir() {
             // Subdirectory: deploy/skill.md → "deploy"
             let skill_file = path.join("skill.md");
@@ -124,10 +127,7 @@ pub fn load_skills_dir(dir: &Path, source: SkillSource) -> Vec<SkillDefinition> 
                     .unwrap_or("unknown")
                     .to_string();
 
-                match load_skill_file(&skill_file, &name, source.clone()) {
-                    Some(skill) => skills.push(skill),
-                    None => {}
-                }
+                if let Some(skill) = load_skill_file(&skill_file, &name, source.clone()) { skills.push(skill) }
             }
         }
     }

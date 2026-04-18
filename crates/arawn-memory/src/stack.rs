@@ -56,12 +56,11 @@ impl<'a> MemoryStack<'a> {
         let mut out = format!("[L0 — IDENTITY] workstream: {}\n", self.workstream_name);
 
         // People from global KB
-        if let Ok(people) = self.manager.global.list_by_type(EntityType::Person, 5) {
-            if !people.is_empty() {
+        if let Ok(people) = self.manager.global.list_by_type(EntityType::Person, 5)
+            && !people.is_empty() {
                 let names: Vec<&str> = people.iter().map(|e| e.title.as_str()).collect();
                 out.push_str(&format!("people: {}\n", names.join(", ")));
             }
-        }
 
         // Core conventions from workstream KB
         if let Ok(conventions) = self.manager.workstream.list_by_type(EntityType::Convention, 3) {

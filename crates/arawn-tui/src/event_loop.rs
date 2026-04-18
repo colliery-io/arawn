@@ -59,9 +59,9 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
     app.model_name = model_name.to_string();
 
     // Fetch available commands from server for autocomplete (skills, etc.)
-    if let Ok(_id) = client.send_request("list_commands", serde_json::json!({})).await {
-        if let Ok(resp) = client.read_response_raw().await {
-            if let Some(commands) = resp.get("result").and_then(|r| r.as_array()) {
+    if let Ok(_id) = client.send_request("list_commands", serde_json::json!({})).await
+        && let Ok(resp) = client.read_response_raw().await
+            && let Some(commands) = resp.get("result").and_then(|r| r.as_array()) {
                 let skills: Vec<(String, String)> = commands
                     .iter()
                     .filter(|c| c.get("kind").and_then(|k| k.as_str()) == Some("skill"))
@@ -76,8 +76,6 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                     app.command_registry.register_skills(skills);
                 }
             }
-        }
-    }
 
     // Setup terminal
     enable_raw_mode()?;
@@ -120,8 +118,8 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                     app.handle_action(action.clone());
 
                     // Handle modal response — send back to server when modal closes
-                    if app.active_modal.is_none() {
-                        if let Some((request_id, mut rx)) = app.pending_modal_response.take() {
+                    if app.active_modal.is_none()
+                        && let Some((request_id, mut rx)) = app.pending_modal_response.take() {
                             let selected_index = match rx.try_recv() {
                                 Ok(idx) => idx,
                                 Err(_) => None, // Not ready or cancelled
@@ -135,7 +133,6 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                                 warn!(%request_id, error = %e, "failed to send modal response");
                             }
                         }
-                    }
 
                     // Handle submit — send message via WS
                     if let Some(content) = app.pending_submit.take()
@@ -154,8 +151,8 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                         match cmd_result {
                             crate::command::CommandResult::QueryInventory(kind) => {
                                 let params = serde_json::json!({"kind": kind});
-                                if let Ok(_id) = client.send_request("query_inventory", params).await {
-                                    if let Ok(resp) = client.read_response_raw().await {
+                                if let Ok(_id) = client.send_request("query_inventory", params).await
+                                    && let Ok(resp) = client.read_response_raw().await {
                                         if let Some(items) = resp.get("result").and_then(|r| r.as_array()) {
                                             let mut output = format!("**/{kind}** ({} items)\n\n| Name | Description |\n|------|-------------|\n", items.len());
                                             for item in items {
@@ -168,7 +165,6 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                                             app.messages.push(ChatMessage::new(ChatRole::System, format!("No {kind} found.")));
                                         }
                                     }
-                                }
                                 app.dirty = true;
                             }
                             crate::command::CommandResult::InvokeSkill { name, args } => {
@@ -207,9 +203,9 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                                 app.dirty = true;
                             }
                             crate::command::CommandResult::MemorySummary => {
-                                if let Ok(_id) = client.send_request("get_memory_summary", serde_json::json!({})).await {
-                                    if let Ok(resp) = client.read_response_raw().await {
-                                        if let Some(result) = resp.get("result") {
+                                if let Ok(_id) = client.send_request("get_memory_summary", serde_json::json!({})).await
+                                    && let Ok(resp) = client.read_response_raw().await
+                                        && let Some(result) = resp.get("result") {
                                             let mut output = String::from("**Knowledge Base**\n\n");
                                             for (label, key) in [("Global", "global"), ("Workstream", "workstream")] {
                                                 if let Some(tier) = result.get(key) {
@@ -227,8 +223,6 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                                             }
                                             app.messages.push(ChatMessage::new(ChatRole::System, output));
                                         }
-                                    }
-                                }
                                 app.dirty = true;
                             }
                             crate::command::CommandResult::ForgetEntity(query) => {
@@ -252,8 +246,8 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                             }
                             crate::command::CommandResult::WorkstreamCreate(name) => {
                                 let params = serde_json::json!({"name": name});
-                                if let Ok(_id) = client.send_request("create_workstream", params).await {
-                                    if let Ok(resp) = client.read_response_raw().await {
+                                if let Ok(_id) = client.send_request("create_workstream", params).await
+                                    && let Ok(resp) = client.read_response_raw().await {
                                         if resp.get("result").is_some() {
                                             // Refresh workstream list and switch to new one
                                             if let Ok(workstreams) = client.list_workstreams().await {
@@ -264,14 +258,13 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                                                         app.sessions = sessions;
                                                     }
                                                     // Auto-create first session
-                                                    if app.sessions.is_empty() {
-                                                        if let Ok(session) = client.create_session(Some(ws.id)).await {
+                                                    if app.sessions.is_empty()
+                                                        && let Ok(session) = client.create_session(Some(ws.id)).await {
                                                             app.current_session = Some(session.clone());
                                                             app.sessions.push(session);
                                                             app.messages.clear();
                                                             app.streaming_text.clear();
                                                         }
-                                                    }
                                                     app.messages.push(ChatMessage::new(ChatRole::System, format!("Switched to workstream '{name}'")));
                                                 }
                                             }
@@ -279,7 +272,6 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                                             app.messages.push(ChatMessage::new(ChatRole::System, format!("Error: {err}")));
                                         }
                                     }
-                                }
                                 app.dirty = true;
                             }
                             crate::command::CommandResult::WorkstreamList => {
@@ -355,8 +347,8 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                                         "session_id": session.id.to_string(),
                                         "workstream_name": ws_name,
                                     });
-                                    if let Ok(_id) = client.send_request("promote_session", params).await {
-                                        if let Ok(resp) = client.read_response_raw().await {
+                                    if let Ok(_id) = client.send_request("promote_session", params).await
+                                        && let Ok(resp) = client.read_response_raw().await {
                                             if resp.get("result").and_then(|r| r.get("status")).and_then(|s| s.as_str()) == Some("promoted") {
                                                 // Refresh state
                                                 if let Ok(workstreams) = client.list_workstreams().await {
@@ -373,7 +365,6 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                                                 app.messages.push(ChatMessage::new(ChatRole::System, format!("Error: {err}")));
                                             }
                                         }
-                                    }
                                 } else {
                                     app.messages.push(ChatMessage::new(ChatRole::System, "No active session to promote".to_string()));
                                 }

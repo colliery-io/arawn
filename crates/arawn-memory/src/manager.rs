@@ -228,13 +228,12 @@ impl MemoryManager {
                 for store in [&self.global, &self.workstream] {
                     if let Ok(sim_results) = store.search_similar(&query_emb, 10) {
                         for result in &sim_results {
-                            if let Ok(Some(entity)) = store.get_entity(result.entity_id) {
-                                if let Some(cost) = budget_check(&entity, &seen, &tokens_used) {
+                            if let Ok(Some(entity)) = store.get_entity(result.entity_id)
+                                && let Some(cost) = budget_check(&entity, &seen, &tokens_used) {
                                     seen.insert(entity.id);
                                     tokens_used += cost;
                                     results.push(entity);
                                 }
-                            }
                         }
                     }
                 }

@@ -147,14 +147,10 @@ impl LlmClient for AnthropicClient {
                                         }
                                     }
                                     "message_delta" => {
-                                        let usage = if let Some(u) = event.get("usage") {
-                                            Some(Usage {
+                                        let usage = event.get("usage").map(|u| Usage {
                                                 input_tokens: u["input_tokens"].as_u64().unwrap_or(0) as u32,
                                                 output_tokens: u["output_tokens"].as_u64().unwrap_or(0) as u32,
-                                            })
-                                        } else {
-                                            None
-                                        };
+                                            });
                                         // Don't emit Done here — wait for message_stop
                                         if let Some(u) = usage {
                                             // Store usage for message_stop

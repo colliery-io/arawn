@@ -221,8 +221,8 @@ impl Tool for WorkflowListTool {
             for entry in std::fs::read_dir(&self.packages_dir)
                 .map_err(|e| ToolError::ExecutionFailed(format!("read workflows dir: {e}")))?
             {
-                if let Ok(entry) = entry {
-                    if entry.path().is_dir() {
+                if let Ok(entry) = entry
+                    && entry.path().is_dir() {
                         let name = entry.file_name().to_string_lossy().to_string();
                         let pkg_toml = entry.path().join("package.toml");
                         let cron = if pkg_toml.exists() {
@@ -247,7 +247,6 @@ impl Tool for WorkflowListTool {
                             "cron": cron,
                         }));
                     }
-                }
             }
         }
 

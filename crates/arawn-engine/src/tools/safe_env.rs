@@ -48,7 +48,7 @@ pub fn safe_env() -> HashMap<String, String> {
 
 /// Returns true if `name` is on the safe allowlist.
 pub fn is_safe_env_name(name: &str) -> bool {
-    if SAFE_EXACT.iter().any(|s| *s == name) {
+    if SAFE_EXACT.contains(&name) {
         return true;
     }
     SAFE_PREFIXES.iter().any(|p| name.starts_with(p))

@@ -145,7 +145,7 @@ fn is_secret_filename(name: &str) -> bool {
     // .env.<something> — but allow .env.example / .env.sample / .env.template
     if let Some(rest) = lower.strip_prefix(".env.") {
         const ALLOWED_ENV_SUFFIXES: &[&str] = &["example", "sample", "template", "dist", "default"];
-        if !ALLOWED_ENV_SUFFIXES.iter().any(|s| rest == *s) {
+        if !ALLOWED_ENV_SUFFIXES.contains(&rest) {
             return true;
         }
     }

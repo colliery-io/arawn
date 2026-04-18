@@ -142,13 +142,13 @@ pub fn discover_plugins(plugins_root: &Path) -> Vec<LoadedPlugin> {
                     continue;
                 }
                 let version = ver_entry.file_name().to_string_lossy().to_string();
-                if latest_version.as_ref().map_or(true, |(v, _)| version > *v) {
+                if latest_version.as_ref().is_none_or(|(v, _)| version > *v) {
                     latest_version = Some((version, ver_dir));
                 }
             }
 
-            if let Some((_version, ver_dir)) = latest_version {
-                if let Some(plugin) = load_plugin_from_dir(
+            if let Some((_version, ver_dir)) = latest_version
+                && let Some(plugin) = load_plugin_from_dir(
                     &ver_dir,
                     &plugin_name,
                     &marketplace_name,
@@ -156,7 +156,6 @@ pub fn discover_plugins(plugins_root: &Path) -> Vec<LoadedPlugin> {
                 ) {
                     plugins.insert(plugin.id.to_string(), plugin);
                 }
-            }
         }
     }
 
@@ -267,6 +266,12 @@ fn resolve_paths(manifest: &PluginManifest, plugin_dir: &Path) -> ResolvedPaths 
 /// Registry of loaded plugins, queryable by identifier string.
 pub struct PluginRegistry {
     plugins: RwLock<HashMap<String, LoadedPlugin>>,
+}
+
+impl Default for PluginRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl PluginRegistry {

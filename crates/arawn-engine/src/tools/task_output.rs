@@ -87,11 +87,10 @@ impl Tool for TaskOutputTool {
                 + tokio::time::Duration::from_millis(timeout_ms);
 
             loop {
-                if let Some(status) = self.bg_manager.status(task_id) {
-                    if status.is_terminal() {
+                if let Some(status) = self.bg_manager.status(task_id)
+                    && status.is_terminal() {
                         break;
                     }
-                }
                 if tokio::time::Instant::now() >= deadline {
                     let output = self.bg_manager.read_output(task_id).unwrap_or_default();
                     return Ok(ToolOutput::success(format!(

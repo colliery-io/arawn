@@ -147,7 +147,7 @@ pub fn install_plugin(
     let marketplace_clone_dir = market_entry
         .install_location
         .as_ref()
-        .map(|loc| PathBuf::from(loc));
+        .map(PathBuf::from);
 
     // Clone/download the plugin into the cache
     clone_plugin_to_cache(
@@ -225,8 +225,8 @@ fn clone_plugin_to_cache(
     }
 
     // Check for relative path source — copy from marketplace clone dir
-    if let Some(ref src) = plugin.source {
-        if let Some(rel_path) = src.relative_path() {
+    if let Some(ref src) = plugin.source
+        && let Some(rel_path) = src.relative_path() {
             let market_dir = marketplace_dir.ok_or_else(|| {
                 "plugin source is a relative path but no marketplace directory available".to_string()
             })?;
@@ -244,7 +244,6 @@ fn clone_plugin_to_cache(
             copy_dir_recursive(&source_dir, cache_path)?;
             return Ok(());
         }
-    }
 
     // Determine git URL and optional subdirectory
     let (git_url, git_ref, subdir) = if let Some(ref src) = plugin.source {

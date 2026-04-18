@@ -205,14 +205,13 @@ impl PluginManifest {
         }
 
         // Validate hooks path if it's a string
-        if let Some(HooksField::Path(ref p)) = self.hooks {
-            if !p.starts_with("./") {
+        if let Some(HooksField::Path(ref p)) = self.hooks
+            && !p.starts_with("./") {
                 errors.push(PluginError::InvalidPath {
                     field: "hooks".into(),
                     path: p.clone(),
                 });
             }
-        }
 
         errors
     }

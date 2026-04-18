@@ -47,7 +47,7 @@ impl HookConfig {
                 group
                     .matcher
                     .as_ref()
-                    .map_or(true, |m| m.matches(field_value, content))
+                    .is_none_or(|m| m.matches(field_value, content))
             })
             .flat_map(|group| group.hooks.iter())
             .collect()

@@ -153,7 +153,7 @@ impl LlmClient for OpenAICompatibleClient {
 
         let mut req = self
             .http
-            .post(&self.completions_url())
+            .post(self.completions_url())
             .header("Content-Type", "application/json")
             .json(&body);
 

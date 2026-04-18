@@ -159,7 +159,7 @@ fn lib_rs(def: &WorkflowDef, crate_name: &str) -> String {
         out.push_str(&format!(
             "\n#[trigger(on = \"{crate_name}\", cron = \"{cron}\", timezone = \"{tz}\")]\n"
         ));
-        out.push_str(&format!("pub async fn scheduled() {{}}\n"));
+        out.push_str("pub async fn scheduled() {}\n");
     }
 
     out

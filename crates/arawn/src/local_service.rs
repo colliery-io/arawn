@@ -594,11 +594,10 @@ impl ArawnService for LocalService {
                     }
 
                     // Persist stats
-                    if let Ok(s) = store.lock() {
-                        if let Err(e) = s.update_session_stats(session_id, &session.stats) {
+                    if let Ok(s) = store.lock()
+                        && let Err(e) = s.update_session_stats(session_id, &session.stats) {
                             warn!(error = %e, "failed to update session stats");
                         }
-                    }
 
                     let _ = tx.send(EngineEvent::Usage {
                         input_tokens: session.stats.input_tokens,
@@ -625,11 +624,10 @@ impl ArawnService for LocalService {
                             error!(error = %pe, "failed to persist message in error path");
                         }
                     }
-                    if let Ok(s) = store.lock() {
-                        if let Err(se) = s.update_session_stats(session_id, &session.stats) {
+                    if let Ok(s) = store.lock()
+                        && let Err(se) = s.update_session_stats(session_id, &session.stats) {
                             warn!(error = %se, "failed to update session stats in error path");
                         }
-                    }
                     let _ = tx
                         .send(EngineEvent::Error {
                             message: e.to_string(),
@@ -815,8 +813,8 @@ impl ArawnService for LocalService {
     async fn list_workflows(&self) -> Result<Vec<WorkflowInfo>, ServiceError> {
         let workflows_dir = self.data_dir.join("workflows");
         let mut workflows = Vec::new();
-        if workflows_dir.exists() {
-            if let Ok(entries) = std::fs::read_dir(&workflows_dir) {
+        if workflows_dir.exists()
+            && let Ok(entries) = std::fs::read_dir(&workflows_dir) {
                 for entry in entries.flatten() {
                     if entry.path().is_dir() {
                         let name = entry.file_name().to_string_lossy().to_string();
@@ -842,7 +840,6 @@ impl ArawnService for LocalService {
                     }
                 }
             }
-        }
         Ok(workflows)
     }
 

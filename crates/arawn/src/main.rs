@@ -73,7 +73,7 @@ async fn main() -> Result<()> {
     if let Some(Command::Plugin { args: plugin_args }) = &cli.command {
         let base = cli.data_dir.as_deref()
             .map(String::from)
-            .or_else(|| dirs_path())
+            .or_else(dirs_path)
             .unwrap_or_else(|| ".arawn".into());
         let plugins_root = std::path::PathBuf::from(base).join("plugins");
         match arawn_bin::plugin_cmd::run_plugin_command(plugin_args, &plugins_root) {
@@ -226,7 +226,7 @@ async fn main() -> Result<()> {
         // entry surfaces here, not mid-session.
         let llm_pool = Arc::new(arawn_bin::LlmClientPool::from_config(
             &config,
-            |cfg| build_llm_client(cfg),
+            build_llm_client,
         )?);
         info!(
             entries = llm_pool.len(),
@@ -318,21 +318,19 @@ async fn main() -> Result<()> {
         // Inject KB memories into the system prompt
         if let Some(ref mgr) = memory_manager {
             let kb_memories = arawn_memory::load_memories_for_injection(mgr, None, None);
-            if !kb_memories.is_empty() {
-                if let Some(ref mut ctx) = engine_config.prompt_context {
+            if !kb_memories.is_empty()
+                && let Some(ref mut ctx) = engine_config.prompt_context {
                     ctx.memories = kb_memories;
                     info!(count = ctx.memories.len(), "KB memories injected into prompt");
                 }
-            }
         }
 
         // Inject MCP server descriptions into the system prompt
         let mcp_prompt = mcp_manager.system_prompt();
-        if !mcp_prompt.is_empty() {
-            if let Some(ref mut ctx) = engine_config.prompt_context {
+        if !mcp_prompt.is_empty()
+            && let Some(ref mut ctx) = engine_config.prompt_context {
                 ctx.plugin_prompts.push(mcp_prompt);
             }
-        }
 
         // Load permission rules from config
         let config_path = std::path::PathBuf::from(&data_dir).join("arawn.toml");
@@ -519,8 +517,8 @@ async fn run_cli_via_server(
                     }
                 }
                 // Check for JSON-RPC error response
-                if let Ok(data) = serde_json::from_str::<serde_json::Value>(&text) {
-                    if data.get("id").and_then(|v| v.as_u64()) == Some(req_id)
+                if let Ok(data) = serde_json::from_str::<serde_json::Value>(&text)
+                    && data.get("id").and_then(|v| v.as_u64()) == Some(req_id)
                         && data.get("error").is_some()
                     {
                         let err = data["error"]["message"]
@@ -529,7 +527,6 @@ async fn run_cli_via_server(
                         eprintln!("Server error: {err}");
                         std::process::exit(1);
                     }
-                }
             }
             Some(Ok(WsMessage::Close(_))) => {
                 eprintln!("Server closed connection");

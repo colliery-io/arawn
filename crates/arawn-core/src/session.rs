@@ -152,7 +152,7 @@ impl Session {
                     .map(|s| s.as_str())
                     .unwrap_or("unknown");
 
-                if TARGETED_TOOLS.iter().any(|&t| t == tool_name) {
+                if TARGETED_TOOLS.contains(&tool_name) {
                     let original_len = content.len();
                     chars_cleared += original_len;
                     self.messages[i] = Message::ToolResult {

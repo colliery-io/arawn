@@ -263,13 +263,12 @@ impl BackgroundTaskManager {
     /// Cancel a running task.
     pub fn cancel(&self, task_id: &str) -> bool {
         let tasks = self.tasks.read().unwrap();
-        if let Some(task) = tasks.get(task_id) {
-            if task.status == BackgroundTaskStatus::Running {
+        if let Some(task) = tasks.get(task_id)
+            && task.status == BackgroundTaskStatus::Running {
                 debug!(task_id, "cancelling background task");
                 task.cancel_token.cancel();
                 return true;
             }
-        }
         false
     }
 

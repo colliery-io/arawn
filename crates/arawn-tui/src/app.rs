@@ -521,12 +521,11 @@ impl App {
 
     /// Accept the currently selected autocomplete suggestion.
     fn accept_autocomplete(&mut self) {
-        if let Some(ref ac) = self.autocomplete {
-            if let Some(cmd) = ac.selected_command() {
+        if let Some(ref ac) = self.autocomplete
+            && let Some(cmd) = ac.selected_command() {
                 self.input_buffer = format!("/{}", cmd.name);
                 self.cursor_pos = self.input_buffer.len();
             }
-        }
         self.autocomplete = None;
     }
 

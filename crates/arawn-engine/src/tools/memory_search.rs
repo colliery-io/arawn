@@ -155,11 +155,10 @@ impl Tool for MemorySearchTool {
                                 if entity.superseded {
                                     continue;
                                 }
-                                if let Some(et) = entity_type {
-                                    if entity.entity_type != et {
+                                if let Some(et) = entity_type
+                                    && entity.entity_type != et {
                                         continue;
                                     }
-                                }
                                 let confidence = entity.confidence_score();
                                 let entry = scored
                                     .entry(entity.id)
