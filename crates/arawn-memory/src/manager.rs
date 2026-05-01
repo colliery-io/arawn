@@ -188,7 +188,7 @@ impl MemoryManager {
                     }
                 }
 
-                if let Ok(entities) = store.search_by_tags(&[keyword.clone()], 10) {
+                if let Ok(entities) = store.search_by_tags(std::slice::from_ref(keyword), 10) {
                     for entity in entities {
                         if let Some(cost) = budget_check(&entity, &seen, &tokens_used) {
                             seen.insert(entity.id);

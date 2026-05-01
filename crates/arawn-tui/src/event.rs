@@ -41,9 +41,8 @@ pub fn map_key_event(
             _ => None,
         };
     }
-    match key.code {
-        KeyCode::Char('\x05') => return Some(Action::ToggleAllToolResults), // Ctrl+E
-        _ => {}
+    if let KeyCode::Char('\x05') = key.code {
+        return Some(Action::ToggleAllToolResults); // Ctrl+E
     }
 
     if key.code == KeyCode::Esc {

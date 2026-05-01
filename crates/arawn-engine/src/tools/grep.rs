@@ -253,7 +253,8 @@ async fn run_rg(
         "count" => {
             cmd.arg("--count");
         }
-        "content" | _ => {
+        // "content" is the default mode; any unknown value falls through to it.
+        _ => {
             if show_line_numbers {
                 cmd.arg("--line-number");
             }

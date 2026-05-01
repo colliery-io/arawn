@@ -49,11 +49,7 @@ impl HookMatcher {
         if let Some(paren_pos) = self.raw.find('(') {
             let name_part = &self.raw[..paren_pos];
             let inner = &self.raw[paren_pos + 1..];
-            let pattern = if inner.ends_with(')') {
-                &inner[..inner.len() - 1]
-            } else {
-                inner
-            };
+            let pattern = inner.strip_suffix(')').unwrap_or(inner);
 
             // Name part can be pipe-separated
             let name_matches = self.matches_alternatives(name_part, field_value);

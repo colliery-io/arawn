@@ -120,10 +120,8 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                     // Handle modal response — send back to server when modal closes
                     if app.active_modal.is_none()
                         && let Some((request_id, mut rx)) = app.pending_modal_response.take() {
-                            let selected_index = match rx.try_recv() {
-                                Ok(idx) => idx,
-                                Err(_) => None, // Not ready or cancelled
-                            };
+                            // Err = not ready or cancelled — treat as None.
+                            let selected_index = rx.try_recv().unwrap_or_default();
                             debug!(%request_id, ?selected_index, "sending modal response to server");
                             let params = serde_json::json!({
                                 "request_id": request_id,

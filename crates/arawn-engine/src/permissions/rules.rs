@@ -47,11 +47,7 @@ impl PermissionRule {
             let tool_pattern = spec[..paren_pos].to_string();
             let inner = &spec[paren_pos + 1..];
             // Strip only the final closing paren (the one wrapping the content pattern)
-            let content = if inner.ends_with(')') {
-                &inner[..inner.len() - 1]
-            } else {
-                inner
-            };
+            let content = inner.strip_suffix(')').unwrap_or(inner);
             Self {
                 kind,
                 tool_pattern,

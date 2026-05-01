@@ -629,7 +629,7 @@ fn render_autocomplete(
     let dropdown_area = ratatui::layout::Rect {
         x: input_area.x + 2, // offset to align with text after "> "
         y: input_area.y.saturating_sub(dropdown_height),
-        width: input_area.width.min(50).max(20),
+        width: input_area.width.clamp(20, 50),
         height: dropdown_height,
     };
 

@@ -176,18 +176,12 @@ impl ShellTool {
                 } => {
                     match result {
                         Ok(status) => {
-                            let exit_code = status.code();
-                            if status.success() {
-                                mgr_clone.complete(
-                                    &task_id_clone,
-                                    BackgroundTaskStatus::Completed { exit_code },
-                                );
-                            } else {
-                                mgr_clone.complete(
-                                    &task_id_clone,
-                                    BackgroundTaskStatus::Completed { exit_code },
-                                );
-                            }
+                            mgr_clone.complete(
+                                &task_id_clone,
+                                BackgroundTaskStatus::Completed {
+                                    exit_code: status.code(),
+                                },
+                            );
                         }
                         Err(e) => {
                             mgr_clone.complete(

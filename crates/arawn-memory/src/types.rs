@@ -28,6 +28,7 @@ impl EntityType {
         }
     }
 
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Option<Self> {
         match s.to_lowercase().as_str() {
             "fact" => Some(Self::Fact),
@@ -83,6 +84,7 @@ impl RelationType {
         }
     }
 
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Option<Self> {
         match s {
             "relates_to" => Some(Self::RelatesTo),
@@ -126,6 +128,7 @@ impl ConfidenceSource {
         }
     }
 
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Option<Self> {
         match s {
             "stated" => Some(Self::Stated),
