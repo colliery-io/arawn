@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-01T20:24:42Z | 170 files | Python, Rust
+> Generated: 2026-05-01T20:53:40Z | 170 files | Python, Rust
 
 ## Project Structure
 
@@ -1384,28 +1384,28 @@
 
 - pub `HookMatcher` struct L16-19 — `{ raw: String }` — Matches hook events by a filterable field value (tool name, source, notification type, etc.)
 - pub `new` function L35-37 — `(raw: impl Into<String>) -> Self`
-- pub `matches` function L43-66 — `(&self, field_value: &str, content: &str) -> bool` — Check if this matcher matches a given field value and optional content string.
+- pub `matches` function L43-62 — `(&self, field_value: &str, content: &str) -> bool` — Check if this matcher matches a given field value and optional content string.
 -  `HookMatcher` type L21-25 — `impl Serialize for HookMatcher`
 -  `serialize` function L22-24 — `(&self, serializer: S) -> Result<S::Ok, S::Error>`
 -  `HookMatcher` type L27-32 — `= HookMatcher`
 -  `deserialize` function L28-31 — `(deserializer: D) -> Result<Self, D::Error>`
--  `HookMatcher` type L34-76 — `= HookMatcher`
--  `matches_alternatives` function L69-75 — `(&self, spec: &str, value: &str) -> bool` — Check pipe-separated alternatives: "Bash|Edit|Write"
--  `glob_match` function L80-84 — `(pattern: &str, text: &str) -> bool` — Simple glob matching supporting `*` (any chars) and `?` (single char).
--  `glob_match_inner` function L86-114 — `(pat: &[char], txt: &[char]) -> bool`
--  `tests` module L117-214 — `-`
--  `glob_exact` function L123-126 — `()`
--  `glob_star` function L129-133 — `()`
--  `glob_question_mark` function L136-139 — `()`
--  `empty_matcher_matches_everything` function L144-149 — `()`
--  `exact_tool_match` function L152-156 — `()`
--  `pipe_separated_alternatives` function L159-165 — `()`
--  `glob_tool_match` function L168-173 — `()`
--  `content_pattern` function L176-182 — `()`
--  `content_pattern_with_pipes` function L185-192 — `()`
--  `session_source_matching` function L195-199 — `()`
--  `wildcard_matches_any_tool` function L202-207 — `()`
--  `nested_parens_in_content` function L210-213 — `()`
+-  `HookMatcher` type L34-72 — `= HookMatcher`
+-  `matches_alternatives` function L65-71 — `(&self, spec: &str, value: &str) -> bool` — Check pipe-separated alternatives: "Bash|Edit|Write"
+-  `glob_match` function L76-80 — `(pattern: &str, text: &str) -> bool` — Simple glob matching supporting `*` (any chars) and `?` (single char).
+-  `glob_match_inner` function L82-110 — `(pat: &[char], txt: &[char]) -> bool`
+-  `tests` module L113-210 — `-`
+-  `glob_exact` function L119-122 — `()`
+-  `glob_star` function L125-129 — `()`
+-  `glob_question_mark` function L132-135 — `()`
+-  `empty_matcher_matches_everything` function L140-145 — `()`
+-  `exact_tool_match` function L148-152 — `()`
+-  `pipe_separated_alternatives` function L155-161 — `()`
+-  `glob_tool_match` function L164-169 — `()`
+-  `content_pattern` function L172-178 — `()`
+-  `content_pattern_with_pipes` function L181-188 — `()`
+-  `session_source_matching` function L191-195 — `()`
+-  `wildcard_matches_any_tool` function L198-203 — `()`
+-  `nested_parens_in_content` function L206-209 — `()`
 
 #### crates/arawn-engine/src/hooks/mod.rs
 
@@ -1568,34 +1568,34 @@
 - pub `PermissionRule` struct L22-28 — `{ kind: RuleKind, tool_pattern: String, content_pattern: Option<String> }` — A single permission rule: a kind (allow/deny/ask), a tool name pattern,
 - pub `new` function L31-37 — `(kind: RuleKind, tool_pattern: impl Into<String>) -> Self`
 - pub `with_content` function L39-42 — `(mut self, pattern: impl Into<String>) -> Self`
-- pub `parse` function L45-63 — `(kind: RuleKind, spec: &str) -> Self` — Parse a rule from the compact string format: `"ToolName"` or `"ToolName(content pattern)"`.
-- pub `matches` function L66-74 — `(&self, tool_name: &str, tool_input: &str) -> bool` — Check if this rule matches a given tool name and input.
-- pub `PermissionDecision` enum L79-88 — `Allowed | Denied | Ask | NoMatch` — The result of evaluating permission rules against a tool call.
-- pub `RuleMatcher` struct L94 — `-` — Evaluates a list of permission rules against a tool call.
-- pub `evaluate` function L100-127 — `( rules: &[PermissionRule], tool_name: &str, tool_input: &str, ) -> PermissionDe...` — Evaluate rules against a tool call.
--  `PermissionRule` type L30-75 — `= PermissionRule`
--  `RuleMatcher` type L96-128 — `= RuleMatcher`
--  `glob_match` function L132-136 — `(pattern: &str, text: &str) -> bool` — Simple glob matching supporting `*` (any chars) and `?` (single char).
--  `glob_match_inner` function L138-166 — `(pat: &[char], txt: &[char]) -> bool`
--  `tests` module L169-374 — `-`
--  `glob_exact_match` function L175-178 — `()`
--  `glob_star_match` function L181-186 — `()`
--  `glob_question_mark` function L189-192 — `()`
--  `glob_complex_patterns` function L195-200 — `()`
--  `glob_content_patterns` function L203-208 — `()`
--  `rule_exact_tool_match` function L213-217 — `()`
--  `rule_glob_tool_match` function L220-225 — `()`
--  `rule_with_content_pattern` function L228-233 — `()`
--  `rule_parse_simple` function L236-240 — `()`
--  `rule_parse_with_content` function L243-247 — `()`
--  `rule_parse_nested_parens` function L250-255 — `()`
--  `matcher_deny_takes_priority` function L260-269 — `()`
--  `matcher_allow_before_ask` function L272-281 — `()`
--  `matcher_ask_when_only_ask_rule` function L284-290 — `()`
--  `matcher_no_match_when_no_rules` function L293-298 — `()`
--  `matcher_no_match_when_rules_dont_apply` function L301-307 — `()`
--  `matcher_content_pattern_deny` function L310-325 — `()`
--  `matcher_mixed_rules_realistic` function L328-373 — `()`
+- pub `parse` function L45-59 — `(kind: RuleKind, spec: &str) -> Self` — Parse a rule from the compact string format: `"ToolName"` or `"ToolName(content pattern)"`.
+- pub `matches` function L62-70 — `(&self, tool_name: &str, tool_input: &str) -> bool` — Check if this rule matches a given tool name and input.
+- pub `PermissionDecision` enum L75-84 — `Allowed | Denied | Ask | NoMatch` — The result of evaluating permission rules against a tool call.
+- pub `RuleMatcher` struct L90 — `-` — Evaluates a list of permission rules against a tool call.
+- pub `evaluate` function L96-123 — `( rules: &[PermissionRule], tool_name: &str, tool_input: &str, ) -> PermissionDe...` — Evaluate rules against a tool call.
+-  `PermissionRule` type L30-71 — `= PermissionRule`
+-  `RuleMatcher` type L92-124 — `= RuleMatcher`
+-  `glob_match` function L128-132 — `(pattern: &str, text: &str) -> bool` — Simple glob matching supporting `*` (any chars) and `?` (single char).
+-  `glob_match_inner` function L134-162 — `(pat: &[char], txt: &[char]) -> bool`
+-  `tests` module L165-370 — `-`
+-  `glob_exact_match` function L171-174 — `()`
+-  `glob_star_match` function L177-182 — `()`
+-  `glob_question_mark` function L185-188 — `()`
+-  `glob_complex_patterns` function L191-196 — `()`
+-  `glob_content_patterns` function L199-204 — `()`
+-  `rule_exact_tool_match` function L209-213 — `()`
+-  `rule_glob_tool_match` function L216-221 — `()`
+-  `rule_with_content_pattern` function L224-229 — `()`
+-  `rule_parse_simple` function L232-236 — `()`
+-  `rule_parse_with_content` function L239-243 — `()`
+-  `rule_parse_nested_parens` function L246-251 — `()`
+-  `matcher_deny_takes_priority` function L256-265 — `()`
+-  `matcher_allow_before_ask` function L268-277 — `()`
+-  `matcher_ask_when_only_ask_rule` function L280-286 — `()`
+-  `matcher_no_match_when_no_rules` function L289-294 — `()`
+-  `matcher_no_match_when_rules_dont_apply` function L297-303 — `()`
+-  `matcher_content_pattern_deny` function L306-321 — `()`
+-  `matcher_mixed_rules_realistic` function L324-369 — `()`
 
 ### crates/arawn-engine/src/plugins
 
@@ -2114,21 +2114,21 @@
 -  `parameters_schema` function L39-103 — `(&self) -> Value`
 -  `execute` function L105-223 — `(&self, ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ...`
 -  `has_rg` function L226-228 — `() -> bool`
--  `run_rg` function L231-308 — `( cwd: &std::path::Path, pattern: &str, path: &str, glob: Option<&str>, file_typ...`
--  `run_grep_fallback` function L310-346 — `( cwd: &std::path::Path, pattern: &str, path: &str, case_insensitive: bool, outp...`
--  `tests` module L349-569 — `-`
--  `test_ctx` function L356-359 — `(dir: &std::path::Path) -> EngineToolContext`
--  `grep_finds_matches` function L362-380 — `()`
--  `grep_no_matches` function L383-397 — `()`
--  `grep_case_insensitive` function L400-414 — `()`
--  `grep_with_glob` function L417-432 — `()`
--  `grep_content_mode` function L435-453 — `()`
--  `grep_files_with_matches_mode` function L456-475 — `()`
--  `grep_head_limit` function L478-501 — `()`
--  `schema_is_valid` function L504-513 — `()`
--  `grep_path_traversal_rejected` function L516-534 — `()`
--  `grep_absolute_path_rejected` function L537-549 — `()`
--  `grep_relative_path_within_root_allowed` function L552-568 — `()`
+-  `run_rg` function L231-309 — `( cwd: &std::path::Path, pattern: &str, path: &str, glob: Option<&str>, file_typ...`
+-  `run_grep_fallback` function L311-347 — `( cwd: &std::path::Path, pattern: &str, path: &str, case_insensitive: bool, outp...`
+-  `tests` module L350-570 — `-`
+-  `test_ctx` function L357-360 — `(dir: &std::path::Path) -> EngineToolContext`
+-  `grep_finds_matches` function L363-381 — `()`
+-  `grep_no_matches` function L384-398 — `()`
+-  `grep_case_insensitive` function L401-415 — `()`
+-  `grep_with_glob` function L418-433 — `()`
+-  `grep_content_mode` function L436-454 — `()`
+-  `grep_files_with_matches_mode` function L457-476 — `()`
+-  `grep_head_limit` function L479-502 — `()`
+-  `schema_is_valid` function L505-514 — `()`
+-  `grep_path_traversal_rejected` function L517-535 — `()`
+-  `grep_absolute_path_rejected` function L538-550 — `()`
+-  `grep_relative_path_within_root_allowed` function L553-569 — `()`
 
 #### crates/arawn-engine/src/tools/memory_search.rs
 
@@ -2239,44 +2239,44 @@
 - pub `with_network_tools` function L36-41 — `(network_tools: Vec<String>) -> Self` — Create a ShellTool with the given list of network-allowed tool binaries.
 - pub `with_background_manager` function L44-47 — `(mut self, mgr: Arc<BackgroundTaskManager>) -> Self` — Attach a background task manager for `run_in_background` support.
 -  `DEFAULT_TIMEOUT_MS` variable L31 — `: u64`
--  `ShellTool` type L34-213 — `= ShellTool`
--  `spawn_background` function L55-212 — `( &self, command: &str, working_dir: &std::path::Path, ) -> Result<ToolOutput, T...` — Spawn a shell command as a background task.
--  `init_sandbox_for_background` function L219-254 — `( command: &str, working_dir: &std::path::Path, network_tools: &[String], ) -> R...` — Initialize a sandbox manager for a background command and return it together
--  `command_needs_network` function L258-277 — `(command: &str, network_tools: &[String]) -> bool` — Check if a command invokes any tool that needs network access.
--  `build_sandbox_config` function L280-329 — `( command: &str, working_dir: &std::path::Path, network_tools: &[String], ) -> S...` — Build a sandbox config for executing a command in the given working directory.
--  `ShellTool` type L332-420 — `impl Tool for ShellTool`
--  `name` function L333-335 — `(&self) -> &str`
--  `permission_category` function L337-339 — `(&self) -> arawn_tool::PermissionCategory`
--  `description` function L341-356 — `(&self) -> &str`
--  `parameters_schema` function L358-377 — `(&self) -> Value`
--  `execute` function L379-419 — `(&self, ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ...`
--  `SandboxExecError` enum L422-427 — `Unavailable | Tool`
--  `execute_sandboxed` function L429-518 — `( command: &str, working_dir: &std::path::Path, timeout_ms: u64, network_tools: ...`
--  `execute_unsandboxed` function L520-566 — `( command: &str, working_dir: &std::path::Path, timeout_ms: u64, ) -> Result<Too...`
--  `tests` module L569-998 — `-`
--  `test_ctx` function L577-580 — `() -> EngineToolContext`
--  `test_ctx_in` function L582-585 — `(dir: &std::path::Path) -> EngineToolContext`
--  `shell_echo` function L589-597 — `()`
--  `shell_nonzero_exit` function L601-609 — `()`
--  `shell_timeout` function L613-624 — `()`
--  `shell_missing_command` function L628-632 — `()`
--  `shell_env_does_not_leak_secrets` function L636-661 — `()`
--  `background_command_runs_sandboxed` function L665-699 — `()`
--  `background_command_sandbox_blocks_sensitive_read` function L703-749 — `()`
--  `shell_env_preserves_path` function L753-761 — `()`
--  `shell_schema_is_valid` function L764-769 — `()`
--  `sensitive_paths_includes_ssh` function L772-775 — `()`
--  `sensitive_paths_includes_aws` function L778-781 — `()`
--  `sandbox_config_allows_working_dir_and_tmp` function L784-795 — `()`
--  `network_detection_recognizes_tools` function L798-805 — `()`
--  `network_detection_blocks_unknown` function L808-813 — `()`
--  `network_detection_empty_list_blocks_all` function L816-819 — `()`
--  `sandbox_write_inside_allowed` function L825-844 — `()`
--  `sandbox_mkdir_inside_allowed` function L848-869 — `()`
--  `sandbox_unlink_inside_allowed` function L873-898 — `()`
--  `sandbox_build_tool_workflow` function L902-924 — `()`
--  `sandbox_write_outside_blocked` function L928-965 — `()`
--  `sandbox_read_sensitive_path_blocked` function L969-997 — `()`
+-  `ShellTool` type L34-207 — `= ShellTool`
+-  `spawn_background` function L55-206 — `( &self, command: &str, working_dir: &std::path::Path, ) -> Result<ToolOutput, T...` — Spawn a shell command as a background task.
+-  `init_sandbox_for_background` function L213-248 — `( command: &str, working_dir: &std::path::Path, network_tools: &[String], ) -> R...` — Initialize a sandbox manager for a background command and return it together
+-  `command_needs_network` function L252-271 — `(command: &str, network_tools: &[String]) -> bool` — Check if a command invokes any tool that needs network access.
+-  `build_sandbox_config` function L274-323 — `( command: &str, working_dir: &std::path::Path, network_tools: &[String], ) -> S...` — Build a sandbox config for executing a command in the given working directory.
+-  `ShellTool` type L326-414 — `impl Tool for ShellTool`
+-  `name` function L327-329 — `(&self) -> &str`
+-  `permission_category` function L331-333 — `(&self) -> arawn_tool::PermissionCategory`
+-  `description` function L335-350 — `(&self) -> &str`
+-  `parameters_schema` function L352-371 — `(&self) -> Value`
+-  `execute` function L373-413 — `(&self, ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ...`
+-  `SandboxExecError` enum L416-421 — `Unavailable | Tool`
+-  `execute_sandboxed` function L423-512 — `( command: &str, working_dir: &std::path::Path, timeout_ms: u64, network_tools: ...`
+-  `execute_unsandboxed` function L514-560 — `( command: &str, working_dir: &std::path::Path, timeout_ms: u64, ) -> Result<Too...`
+-  `tests` module L563-992 — `-`
+-  `test_ctx` function L571-574 — `() -> EngineToolContext`
+-  `test_ctx_in` function L576-579 — `(dir: &std::path::Path) -> EngineToolContext`
+-  `shell_echo` function L583-591 — `()`
+-  `shell_nonzero_exit` function L595-603 — `()`
+-  `shell_timeout` function L607-618 — `()`
+-  `shell_missing_command` function L622-626 — `()`
+-  `shell_env_does_not_leak_secrets` function L630-655 — `()`
+-  `background_command_runs_sandboxed` function L659-693 — `()`
+-  `background_command_sandbox_blocks_sensitive_read` function L697-743 — `()`
+-  `shell_env_preserves_path` function L747-755 — `()`
+-  `shell_schema_is_valid` function L758-763 — `()`
+-  `sensitive_paths_includes_ssh` function L766-769 — `()`
+-  `sensitive_paths_includes_aws` function L772-775 — `()`
+-  `sandbox_config_allows_working_dir_and_tmp` function L778-789 — `()`
+-  `network_detection_recognizes_tools` function L792-799 — `()`
+-  `network_detection_blocks_unknown` function L802-807 — `()`
+-  `network_detection_empty_list_blocks_all` function L810-813 — `()`
+-  `sandbox_write_inside_allowed` function L819-838 — `()`
+-  `sandbox_mkdir_inside_allowed` function L842-863 — `()`
+-  `sandbox_unlink_inside_allowed` function L867-892 — `()`
+-  `sandbox_build_tool_workflow` function L896-918 — `()`
+-  `sandbox_write_outside_blocked` function L922-959 — `()`
+-  `sandbox_read_sensitive_path_blocked` function L963-991 — `()`
 
 #### crates/arawn-engine/src/tools/skill.rs
 
@@ -3044,39 +3044,39 @@
 
 - pub `EntityType` enum L10-17 — `Fact | Decision | Convention | Preference | Person | Note` — Type of entity stored in the knowledge base.
 - pub `as_str` function L20-29 — `(&self) -> &'static str` — Core types for the knowledge base memory system.
-- pub `from_str` function L31-41 — `(s: &str) -> Option<Self>` — Core types for the knowledge base memory system.
-- pub `default_scope` function L44-49 — `(&self) -> Scope` — Default scope for this entity type.
-- pub `Scope` enum L55-58 — `Global | Workstream` — Which KB tier an entity belongs to.
-- pub `RelationType` enum L63-71 — `RelatesTo | Contradicts | Supports | Supersedes | ExtractedFrom | Mentions | Bel...` — Type of relationship between entities.
-- pub `as_str` function L74-84 — `(&self) -> &'static str` — Core types for the knowledge base memory system.
-- pub `from_str` function L86-97 — `(s: &str) -> Option<Self>` — Core types for the knowledge base memory system.
-- pub `ConfidenceSource` enum L103-110 — `Stated | Observed | Inferred` — How confident we are in this entity's accuracy.
-- pub `base_score` function L113-119 — `(&self) -> f32` — Core types for the knowledge base memory system.
-- pub `as_str` function L121-127 — `(&self) -> &'static str` — Core types for the knowledge base memory system.
-- pub `from_str` function L129-136 — `(s: &str) -> Option<Self>` — Core types for the knowledge base memory system.
-- pub `compute_confidence` function L140-165 — `( source: ConfidenceSource, reinforcement_count: u32, days_since_update: f64, su...` — Compute confidence score with reinforcement and staleness.
-- pub `Entity` struct L169-182 — `{ id: Uuid, entity_type: EntityType, title: String, content: Option<String>, con...` — A knowledge entity stored in the KB.
-- pub `new` function L185-201 — `(entity_type: EntityType, title: impl Into<String>) -> Self` — Core types for the knowledge base memory system.
-- pub `with_content` function L203-206 — `(mut self, content: impl Into<String>) -> Self` — Core types for the knowledge base memory system.
-- pub `with_confidence` function L208-211 — `(mut self, source: ConfidenceSource) -> Self` — Core types for the knowledge base memory system.
-- pub `with_tags` function L213-216 — `(mut self, tags: Vec<String>) -> Self` — Core types for the knowledge base memory system.
-- pub `with_session` function L218-221 — `(mut self, session_id: Uuid) -> Self` — Core types for the knowledge base memory system.
-- pub `confidence_score` function L224-232 — `(&self) -> f32` — Compute the current confidence score.
-- pub `Relation` struct L237-242 — `{ source_id: Uuid, relation_type: RelationType, target_id: Uuid, created_at: Dat...` — A directed relation between two entities.
-- pub `StoreFactResult` enum L246-259 — `Inserted | Reinforced | Superseded` — Result of a store_fact operation (search-before-create).
--  `EntityType` type L19-50 — `= EntityType` — Core types for the knowledge base memory system.
--  `RelationType` type L73-98 — `= RelationType` — Core types for the knowledge base memory system.
--  `ConfidenceSource` type L112-137 — `= ConfidenceSource` — Core types for the knowledge base memory system.
--  `Entity` type L184-233 — `= Entity` — Core types for the knowledge base memory system.
--  `tests` module L262-342 — `-` — Core types for the knowledge base memory system.
--  `entity_type_roundtrip` function L266-277 — `()` — Core types for the knowledge base memory system.
--  `relation_type_roundtrip` function L280-292 — `()` — Core types for the knowledge base memory system.
--  `confidence_stated_fresh` function L295-298 — `()` — Core types for the knowledge base memory system.
--  `confidence_reinforced` function L301-305 — `()` — Core types for the knowledge base memory system.
--  `confidence_stale` function L308-312 — `()` — Core types for the knowledge base memory system.
--  `confidence_superseded_is_zero` function L315-318 — `()` — Core types for the knowledge base memory system.
--  `entity_builder` function L321-331 — `()` — Core types for the knowledge base memory system.
--  `default_scopes` function L334-341 — `()` — Core types for the knowledge base memory system.
+- pub `from_str` function L32-42 — `(s: &str) -> Option<Self>` — Core types for the knowledge base memory system.
+- pub `default_scope` function L45-50 — `(&self) -> Scope` — Default scope for this entity type.
+- pub `Scope` enum L56-59 — `Global | Workstream` — Which KB tier an entity belongs to.
+- pub `RelationType` enum L64-72 — `RelatesTo | Contradicts | Supports | Supersedes | ExtractedFrom | Mentions | Bel...` — Type of relationship between entities.
+- pub `as_str` function L75-85 — `(&self) -> &'static str` — Core types for the knowledge base memory system.
+- pub `from_str` function L88-99 — `(s: &str) -> Option<Self>` — Core types for the knowledge base memory system.
+- pub `ConfidenceSource` enum L105-112 — `Stated | Observed | Inferred` — How confident we are in this entity's accuracy.
+- pub `base_score` function L115-121 — `(&self) -> f32` — Core types for the knowledge base memory system.
+- pub `as_str` function L123-129 — `(&self) -> &'static str` — Core types for the knowledge base memory system.
+- pub `from_str` function L132-139 — `(s: &str) -> Option<Self>` — Core types for the knowledge base memory system.
+- pub `compute_confidence` function L143-168 — `( source: ConfidenceSource, reinforcement_count: u32, days_since_update: f64, su...` — Compute confidence score with reinforcement and staleness.
+- pub `Entity` struct L172-185 — `{ id: Uuid, entity_type: EntityType, title: String, content: Option<String>, con...` — A knowledge entity stored in the KB.
+- pub `new` function L188-204 — `(entity_type: EntityType, title: impl Into<String>) -> Self` — Core types for the knowledge base memory system.
+- pub `with_content` function L206-209 — `(mut self, content: impl Into<String>) -> Self` — Core types for the knowledge base memory system.
+- pub `with_confidence` function L211-214 — `(mut self, source: ConfidenceSource) -> Self` — Core types for the knowledge base memory system.
+- pub `with_tags` function L216-219 — `(mut self, tags: Vec<String>) -> Self` — Core types for the knowledge base memory system.
+- pub `with_session` function L221-224 — `(mut self, session_id: Uuid) -> Self` — Core types for the knowledge base memory system.
+- pub `confidence_score` function L227-235 — `(&self) -> f32` — Compute the current confidence score.
+- pub `Relation` struct L240-245 — `{ source_id: Uuid, relation_type: RelationType, target_id: Uuid, created_at: Dat...` — A directed relation between two entities.
+- pub `StoreFactResult` enum L249-262 — `Inserted | Reinforced | Superseded` — Result of a store_fact operation (search-before-create).
+-  `EntityType` type L19-51 — `= EntityType` — Core types for the knowledge base memory system.
+-  `RelationType` type L74-100 — `= RelationType` — Core types for the knowledge base memory system.
+-  `ConfidenceSource` type L114-140 — `= ConfidenceSource` — Core types for the knowledge base memory system.
+-  `Entity` type L187-236 — `= Entity` — Core types for the knowledge base memory system.
+-  `tests` module L265-345 — `-` — Core types for the knowledge base memory system.
+-  `entity_type_roundtrip` function L269-280 — `()` — Core types for the knowledge base memory system.
+-  `relation_type_roundtrip` function L283-295 — `()` — Core types for the knowledge base memory system.
+-  `confidence_stated_fresh` function L298-301 — `()` — Core types for the knowledge base memory system.
+-  `confidence_reinforced` function L304-308 — `()` — Core types for the knowledge base memory system.
+-  `confidence_stale` function L311-315 — `()` — Core types for the knowledge base memory system.
+-  `confidence_superseded_is_zero` function L318-321 — `()` — Core types for the knowledge base memory system.
+-  `entity_builder` function L324-334 — `()` — Core types for the knowledge base memory system.
+-  `default_scopes` function L337-344 — `()` — Core types for the knowledge base memory system.
 
 #### crates/arawn-memory/src/vector.rs
 
@@ -3843,24 +3843,24 @@
 
 #### crates/arawn-tui/src/event.rs
 
-- pub `map_key_event` function L7-66 — `( key: KeyEvent, focus: Focus, is_generating: bool, has_modal: bool, has_autocom...` — Map a crossterm KeyEvent to an Action, given the current focus.
--  `map_main_key` function L68-84 — `(key: KeyEvent) -> Option<Action>`
--  `map_modal_key` function L86-100 — `(key: KeyEvent) -> Option<Action>`
--  `map_sidebar_key` function L102-110 — `(key: KeyEvent) -> Option<Action>`
--  `tests` module L113-221 — `-`
--  `key` function L115-117 — `(code: KeyCode) -> KeyEvent`
--  `ctrl` function L119-121 — `(c: char) -> KeyEvent`
--  `ctrl_c_quits_from_any_focus` function L124-133 — `()`
--  `tab_toggles_from_any_focus` function L136-145 — `()`
--  `esc_cancels_when_generating` function L148-154 — `()`
--  `main_focus_typing` function L157-170 — `()`
--  `main_focus_scrolling` function L173-186 — `()`
--  `ctrl_e_toggles_tool_results` function L189-200 — `()`
--  `sidebar_focus_navigation` function L203-220 — `()`
+- pub `map_key_event` function L7-65 — `( key: KeyEvent, focus: Focus, is_generating: bool, has_modal: bool, has_autocom...` — Map a crossterm KeyEvent to an Action, given the current focus.
+-  `map_main_key` function L67-83 — `(key: KeyEvent) -> Option<Action>`
+-  `map_modal_key` function L85-99 — `(key: KeyEvent) -> Option<Action>`
+-  `map_sidebar_key` function L101-109 — `(key: KeyEvent) -> Option<Action>`
+-  `tests` module L112-220 — `-`
+-  `key` function L114-116 — `(code: KeyCode) -> KeyEvent`
+-  `ctrl` function L118-120 — `(c: char) -> KeyEvent`
+-  `ctrl_c_quits_from_any_focus` function L123-132 — `()`
+-  `tab_toggles_from_any_focus` function L135-144 — `()`
+-  `esc_cancels_when_generating` function L147-153 — `()`
+-  `main_focus_typing` function L156-169 — `()`
+-  `main_focus_scrolling` function L172-185 — `()`
+-  `ctrl_e_toggles_tool_results` function L188-199 — `()`
+-  `sidebar_focus_navigation` function L202-219 — `()`
 
 #### crates/arawn-tui/src/event_loop.rs
 
-- pub `run_tui` function L27-756 — `(url: &str, model_name: &str) -> Result<(), Box<dyn std::error::Error>>` — Run the TUI connected to the given WebSocket server URL.
+- pub `run_tui` function L27-754 — `(url: &str, model_name: &str) -> Result<(), Box<dyn std::error::Error>>` — Run the TUI connected to the given WebSocket server URL.
 -  `rect_contains` function L22-24 — `(rect: Rect, col: u16, row: u16) -> bool`
 
 #### crates/arawn-tui/src/lib.rs
