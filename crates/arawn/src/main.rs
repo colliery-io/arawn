@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use tracing::{debug, info, warn};
+use tracing::{debug, error, info, warn};
 use tracing_subscriber::{EnvFilter, Layer, fmt, layer::SubscriberExt, util::SubscriberInitExt};
 use uuid::Uuid;
 
@@ -236,6 +236,37 @@ async fn main() -> Result<()> {
             compactor_model = %llm_pool.compactor_config().model,
             "LLM client pool ready"
         );
+
+        // Eagerly warm up every configured LLM in the background. Server
+        // startup proceeds immediately; warmup failures are logged but never
+        // block startup. Lazy warmup on first `stream` call covers any
+        // provider that comes back up after this initial probe fails.
+        {
+            let pool_for_warmup = Arc::clone(&llm_pool);
+            tokio::spawn(async move {
+                let results = pool_for_warmup.warmup_all().await;
+                for (name, result) in results {
+                    let model = pool_for_warmup
+                        .config(&name)
+                        .map(|c| c.model.as_str())
+                        .unwrap_or("?");
+                    let provider = pool_for_warmup
+                        .config(&name)
+                        .map(|c| c.provider.as_str())
+                        .unwrap_or("?");
+                    match result {
+                        Ok(()) => info!(name = %name, provider = %provider, model = %model, "LLM warmup OK"),
+                        Err(e) => error!(
+                            name = %name,
+                            provider = %provider,
+                            model = %model,
+                            error = %e,
+                            "LLM warmup failed — model may be unavailable; lazy warmup will retry on first request"
+                        ),
+                    }
+                }
+            });
+        }
 
         // Initialize embedding model
         let embed_config = arawn_embed::EmbeddingConfig::default();

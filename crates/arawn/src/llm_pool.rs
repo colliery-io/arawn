@@ -50,9 +50,14 @@ impl LlmClientPool {
             let raw = build(llm_config).with_context(|| {
                 format!("failed to build LLM client for [llm.{name}]")
             })?;
-            let wrapped: Arc<dyn LlmClient> =
+            // Layering: raw provider → RetryClient (retries on transient errors)
+            // → WarmingClient (TTL-cached warmup + cold-restart retry).
+            let with_retry: Arc<dyn LlmClient> =
                 Arc::new(arawn_llm::RetryClient::new(raw));
-            clients.insert(name.clone(), wrapped);
+            let warmed: Arc<dyn LlmClient> = Arc::new(
+                arawn_llm::WarmingClient::new(with_retry, llm_config.provider.clone()),
+            );
+            clients.insert(name.clone(), warmed);
             configs.insert(name.clone(), llm_config.clone());
         }
 
@@ -136,6 +141,30 @@ impl LlmClientPool {
     /// Iterator over (name, config) pairs.
     pub fn entries(&self) -> impl Iterator<Item = (&String, &LlmConfig)> {
         self.configs.iter()
+    }
+
+    /// Warm up every entry concurrently. Returns a vector of `(name, result)`
+    /// so callers can log per-entry outcomes. Never fails as a whole — a bad
+    /// model surfaces as `Err` for that entry while others may still succeed.
+    pub async fn warmup_all(
+        &self,
+    ) -> Vec<(String, Result<(), arawn_llm::LlmError>)> {
+        use futures::future::join_all;
+
+        let probes = self.clients.iter().map(|(name, client)| {
+            let name = name.clone();
+            let client = Arc::clone(client);
+            let model = self
+                .configs
+                .get(&name)
+                .map(|c| c.model.clone())
+                .unwrap_or_default();
+            async move {
+                let res = client.warmup(&model).await;
+                (name, res)
+            }
+        });
+        join_all(probes).await
     }
 
     /// Resolve an [`LlmPreference`] against the pool. Always succeeds — the
