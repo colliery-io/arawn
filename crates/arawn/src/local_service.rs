@@ -619,6 +619,7 @@ impl ArawnService for LocalService {
                     let _ = tx.send(EngineEvent::Flush).await;
                 }
                 Err(e) => {
+                    error!(%session_id, error = %e, "engine turn failed");
                     for msg in &session.messages()[msgs_before..] {
                         if let Err(pe) = msg_store.append(session_id, &ws_dir_owned, msg).await {
                             error!(error = %pe, "failed to persist message in error path");

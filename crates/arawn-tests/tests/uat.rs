@@ -6,7 +6,6 @@
 //! Run: cargo test -p arawn-tests --test uat -- --ignored --nocapture
 //! Or via angreal: angreal test uat --model gemma4
 
-use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command};
 use std::time::{Duration, Instant};
@@ -39,6 +38,8 @@ pub struct ScenarioTurn {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MechanicalThresholds {
     pub min_files_created: usize,
+    #[serde(default)]
+    pub min_workflows_created: usize,
     pub min_memory_entities: usize,
     pub max_tool_errors: usize,
 }
@@ -55,6 +56,8 @@ pub struct TurnResult {
     pub tool_calls: Vec<ToolCallRecord>,
     pub tool_results: Vec<ToolResultRecord>,
     pub engine_error: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error_message: Option<String>,
     pub completed: bool,
     pub duration_ms: u64,
 }
@@ -93,8 +96,86 @@ pub struct MechanicalCheckResult {
     pub no_errors: bool,
     pub tool_use_occurred: bool,
     pub files_created: usize,
+    pub workflows_created: usize,
     pub tool_errors: usize,
     pub pass: bool,
+}
+
+// ============================================================================
+// Event Handling (extracted for testability)
+// ============================================================================
+
+/// State accumulated while consuming engine events for a single turn.
+#[derive(Debug, Default)]
+struct TurnAccumulator {
+    assistant_text: String,
+    tool_calls: Vec<ToolCallRecord>,
+    tool_results: Vec<ToolResultRecord>,
+    engine_error: bool,
+    error_message: Option<String>,
+    completed: bool,
+}
+
+/// Count subdirectories of `dir`. Each `workflow_create` install lands as
+/// `<dir>/<name>/{libname.dylib, package.toml}`, so subdir count == installed workflow count.
+fn count_workflows_in(dir: &Path) -> usize {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return 0;
+    };
+    entries
+        .filter_map(Result::ok)
+        .filter(|e| e.file_type().map(|t| t.is_dir()).unwrap_or(false))
+        .count()
+}
+
+/// Apply one engine event JSON value to the accumulator.
+/// Returns `true` if this event terminates the turn (Complete or Error).
+fn apply_event(event: &Value, acc: &mut TurnAccumulator) -> bool {
+    // Skip the RPC ack response (it has both `id` and `result`, no `event`).
+    if event.get("id").is_some() && event.get("result").is_some() {
+        return false;
+    }
+
+    match event.get("event").and_then(|e| e.as_str()) {
+        Some("StreamingText") => {
+            if let Some(t) = event["data"]["text"].as_str() {
+                acc.assistant_text.push_str(t);
+            }
+            false
+        }
+        Some("ToolCallStart") => {
+            acc.tool_calls.push(ToolCallRecord {
+                id: event["data"]["id"].as_str().unwrap_or("").to_string(),
+                name: event["data"]["name"].as_str().unwrap_or("").to_string(),
+                input: event["data"]["input"].clone(),
+            });
+            false
+        }
+        Some("ToolCallResult") => {
+            let is_err = event["data"]["is_error"].as_bool().unwrap_or(false);
+            acc.tool_results.push(ToolResultRecord {
+                id: event["data"]["id"].as_str().unwrap_or("").to_string(),
+                content: event["data"]["content"].as_str().unwrap_or("").to_string(),
+                is_error: is_err,
+            });
+            false
+        }
+        Some("Complete") => {
+            if let Some(t) = event["data"]["final_text"].as_str() {
+                acc.assistant_text = t.to_string();
+            }
+            acc.completed = true;
+            true
+        }
+        Some("Error") => {
+            acc.engine_error = true;
+            acc.error_message = event["data"]["message"]
+                .as_str()
+                .map(|s| s.to_string());
+            true
+        }
+        _ => false, // Flush, Usage, Warning, etc.
+    }
 }
 
 // ============================================================================
@@ -262,6 +343,7 @@ network_tools = ["gh", "curl"]
 
         // Collect workspace files
         let workspace_files = self.list_workspace_files();
+        let workflows_created = self.count_installed_workflows();
 
         // Mechanical checks
         let all_completed = turns.iter().all(|t| t.completed);
@@ -271,7 +353,8 @@ network_tools = ["gh", "curl"]
 
         let mech_pass = all_completed
             && no_engine_errors
-            && workspace_files.len() >= scenario.mechanical.min_files_created;
+            && workspace_files.len() >= scenario.mechanical.min_files_created
+            && workflows_created >= scenario.mechanical.min_workflows_created;
 
         ScenarioResult {
             scenario_name: scenario.name.clone(),
@@ -282,6 +365,7 @@ network_tools = ["gh", "curl"]
                 no_errors: no_engine_errors,
                 tool_use_occurred: tool_use,
                 files_created: workspace_files.len(),
+                workflows_created,
                 tool_errors,
                 pass: mech_pass,
             },
@@ -341,11 +425,7 @@ network_tools = ["gh", "curl"]
         });
         write.send(WsMessage::Text(req.to_string().into())).await.unwrap();
 
-        let mut assistant_text = String::new();
-        let mut tool_calls = Vec::new();
-        let mut tool_results = Vec::new();
-        let mut engine_error = false;
-        let mut completed = false;
+        let mut acc = TurnAccumulator::default();
 
         // Collect events until Complete or Error
         while let Some(Ok(msg)) = read.next().await {
@@ -359,55 +439,20 @@ network_tools = ["gh", "curl"]
                 Err(_) => continue,
             };
 
-            // Skip the RPC ack response
-            if event.get("id").is_some() && event.get("result").is_some() {
-                continue;
-            }
-
-            match event.get("event").and_then(|e| e.as_str()) {
-                Some("StreamingText") => {
-                    if let Some(t) = event["data"]["text"].as_str() {
-                        assistant_text.push_str(t);
-                    }
-                }
-                Some("ToolCallStart") => {
-                    tool_calls.push(ToolCallRecord {
-                        id: event["data"]["id"].as_str().unwrap_or("").to_string(),
-                        name: event["data"]["name"].as_str().unwrap_or("").to_string(),
-                        input: event["data"]["input"].clone(),
-                    });
-                }
-                Some("ToolCallResult") => {
-                    let is_err = event["data"]["is_error"].as_bool().unwrap_or(false);
-                    tool_results.push(ToolResultRecord {
-                        id: event["data"]["id"].as_str().unwrap_or("").to_string(),
-                        content: event["data"]["content"].as_str().unwrap_or("").to_string(),
-                        is_error: is_err,
-                    });
-                }
-                Some("Complete") => {
-                    if let Some(t) = event["data"]["final_text"].as_str() {
-                        assistant_text = t.to_string();
-                    }
-                    completed = true;
-                    break;
-                }
-                Some("Error") => {
-                    engine_error = true;
-                    break;
-                }
-                _ => {} // Flush, Usage, Warning, etc.
+            if apply_event(&event, &mut acc) {
+                break;
             }
         }
 
         TurnResult {
             turn_number,
             user_message: user_message.to_string(),
-            assistant_text,
-            tool_calls,
-            tool_results,
-            engine_error,
-            completed,
+            assistant_text: acc.assistant_text,
+            tool_calls: acc.tool_calls,
+            tool_results: acc.tool_results,
+            engine_error: acc.engine_error,
+            error_message: acc.error_message,
+            completed: acc.completed,
             duration_ms: 0, // filled by caller
         }
     }
@@ -425,6 +470,11 @@ network_tools = ["gh", "curl"]
             }
         }
         files
+    }
+
+    /// Count installed workflows under `<data_dir>/workflows/`.
+    fn count_installed_workflows(&self) -> usize {
+        count_workflows_in(&self.data_dir.join("workflows"))
     }
 
     /// Write all artifacts to the results directory.
@@ -540,6 +590,7 @@ fn github_monitor_scenario() -> Scenario {
         ],
         mechanical: MechanicalThresholds {
             min_files_created: 2,
+            min_workflows_created: 0,
             min_memory_entities: 0,
             max_tool_errors: 2,
         },
@@ -573,7 +624,8 @@ fn work_signal_pipeline_scenario() -> Scenario {
             },
         ],
         mechanical: MechanicalThresholds {
-            min_files_created: 3,
+            min_files_created: 0,
+            min_workflows_created: 1,
             min_memory_entities: 0,
             max_tool_errors: 2,
         },
@@ -642,9 +694,10 @@ async fn uat_run() {
         harness.write_artifacts(&result, scenario);
 
         // Print summary
-        println!("    Turns: {} | Files: {} | Tool errors: {} | Mechanical: {}",
+        println!("    Turns: {} | Files: {} | Workflows: {} | Tool errors: {} | Mechanical: {}",
             result.turns.len(),
             result.mechanical.files_created,
+            result.mechanical.workflows_created,
             result.mechanical.tool_errors,
             if result.mechanical.pass { "PASS" } else { "FAIL" },
         );
@@ -657,6 +710,9 @@ async fn uat_run() {
                 turn.duration_ms as f64 / 1000.0,
                 if turn.completed { "OK" } else { "INCOMPLETE" },
             );
+            if let Some(msg) = &turn.error_message {
+                println!("        → ERROR: {msg}");
+            }
         }
 
         harness.stop();
@@ -667,13 +723,14 @@ async fn uat_run() {
     println!("\n======================================================================");
     println!("  UAT SUMMARY — {model}");
     println!("----------------------------------------------------------------------");
-    println!("  {:<30} {:>10} {:>8} {:>8} {:>8}", "Scenario", "Mechanical", "Files", "Errors", "Time");
+    println!("  {:<30} {:>10} {:>8} {:>10} {:>8} {:>8}", "Scenario", "Mechanical", "Files", "Workflows", "Errors", "Time");
     println!("----------------------------------------------------------------------");
     for r in &results {
-        println!("  {:<30} {:>10} {:>8} {:>8} {:>7.0}s",
+        println!("  {:<30} {:>10} {:>8} {:>10} {:>8} {:>7.0}s",
             r.scenario_name,
             if r.mechanical.pass { "PASS" } else { "FAIL" },
             r.mechanical.files_created,
+            r.mechanical.workflows_created,
             r.mechanical.tool_errors,
             r.total_duration_ms as f64 / 1000.0,
         );
@@ -685,4 +742,159 @@ async fn uat_run() {
     // Fail if any mechanical check failed
     let all_pass = results.iter().all(|r| r.mechanical.pass);
     assert!(all_pass, "One or more scenarios failed mechanical checks");
+}
+
+// ============================================================================
+// Unit tests — run via `cargo test -p arawn-tests --test uat` (no --ignored).
+// These test the harness internals without spinning up a real LLM.
+// ============================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ARAWN-T-0192 — workflow counter behavior.
+
+    #[test]
+    fn count_workflows_returns_zero_for_missing_dir() {
+        let tmp = tempfile::tempdir().unwrap();
+        assert_eq!(count_workflows_in(&tmp.path().join("does-not-exist")), 0);
+    }
+
+    #[test]
+    fn count_workflows_returns_zero_for_empty_dir() {
+        let tmp = tempfile::tempdir().unwrap();
+        assert_eq!(count_workflows_in(tmp.path()), 0);
+    }
+
+    #[test]
+    fn count_workflows_counts_subdirs_only() {
+        let tmp = tempfile::tempdir().unwrap();
+        // Two installed workflows
+        std::fs::create_dir(tmp.path().join("alpha")).unwrap();
+        std::fs::create_dir(tmp.path().join("beta")).unwrap();
+        // Loose files at this level should not count (they're not what `workflow_create` produces)
+        std::fs::write(tmp.path().join("README"), "ignored").unwrap();
+        assert_eq!(count_workflows_in(tmp.path()), 2);
+    }
+
+    // ARAWN-T-0191 — error_message capture.
+
+    #[test]
+    fn apply_event_captures_error_message() {
+        let event = json!({
+            "event": "Error",
+            "data": {
+                "message": "LLM error: authentication error: HTTP 403: subscription required"
+            }
+        });
+        let mut acc = TurnAccumulator::default();
+        let stop = apply_event(&event, &mut acc);
+        assert!(stop, "Error event should terminate the turn");
+        assert!(acc.engine_error);
+        assert_eq!(
+            acc.error_message.as_deref(),
+            Some("LLM error: authentication error: HTTP 403: subscription required"),
+        );
+        assert!(!acc.completed);
+    }
+
+    #[test]
+    fn apply_event_error_with_missing_message_field_keeps_none() {
+        let event = json!({"event": "Error", "data": {}});
+        let mut acc = TurnAccumulator::default();
+        assert!(apply_event(&event, &mut acc));
+        assert!(acc.engine_error);
+        assert_eq!(acc.error_message, None);
+    }
+
+    #[test]
+    fn apply_event_complete_sets_final_text() {
+        let event = json!({"event": "Complete", "data": {"final_text": "all done"}});
+        let mut acc = TurnAccumulator::default();
+        assert!(apply_event(&event, &mut acc));
+        assert!(acc.completed);
+        assert!(!acc.engine_error);
+        assert_eq!(acc.assistant_text, "all done");
+    }
+
+    #[test]
+    fn apply_event_streaming_text_appends() {
+        let mut acc = TurnAccumulator::default();
+        for chunk in &["hello ", "world"] {
+            let event = json!({"event": "StreamingText", "data": {"text": *chunk}});
+            assert!(!apply_event(&event, &mut acc));
+        }
+        assert_eq!(acc.assistant_text, "hello world");
+        assert!(!acc.completed);
+    }
+
+    #[test]
+    fn apply_event_ignores_rpc_ack() {
+        let event = json!({"id": 101, "result": {"ok": true}});
+        let mut acc = TurnAccumulator::default();
+        assert!(!apply_event(&event, &mut acc));
+        assert!(acc.assistant_text.is_empty());
+        assert!(!acc.engine_error);
+        assert!(!acc.completed);
+    }
+
+    #[test]
+    fn apply_event_records_tool_calls_and_results() {
+        let mut acc = TurnAccumulator::default();
+        apply_event(
+            &json!({
+                "event": "ToolCallStart",
+                "data": {"id": "t1", "name": "file_write", "input": {"path": "x.md"}}
+            }),
+            &mut acc,
+        );
+        apply_event(
+            &json!({
+                "event": "ToolCallResult",
+                "data": {"id": "t1", "content": "ok", "is_error": false}
+            }),
+            &mut acc,
+        );
+        assert_eq!(acc.tool_calls.len(), 1);
+        assert_eq!(acc.tool_calls[0].name, "file_write");
+        assert_eq!(acc.tool_results.len(), 1);
+        assert!(!acc.tool_results[0].is_error);
+    }
+
+    // Transcript serialization — verify the new field round-trips.
+
+    #[test]
+    fn turn_result_serializes_error_message_when_present() {
+        let result = TurnResult {
+            turn_number: 1,
+            user_message: "hi".into(),
+            assistant_text: String::new(),
+            tool_calls: Vec::new(),
+            tool_results: Vec::new(),
+            engine_error: true,
+            error_message: Some("HTTP 403: bad".into()),
+            completed: false,
+            duration_ms: 500,
+        };
+        let json = serde_json::to_string(&result).unwrap();
+        assert!(json.contains(r#""error_message":"HTTP 403: bad""#), "got: {json}");
+    }
+
+    #[test]
+    fn turn_result_omits_error_message_when_none() {
+        let result = TurnResult {
+            turn_number: 1,
+            user_message: "hi".into(),
+            assistant_text: "fine".into(),
+            tool_calls: Vec::new(),
+            tool_results: Vec::new(),
+            engine_error: false,
+            error_message: None,
+            completed: true,
+            duration_ms: 500,
+        };
+        let json = serde_json::to_string(&result).unwrap();
+        assert!(!json.contains("error_message"), "got: {json}");
+    }
 }
