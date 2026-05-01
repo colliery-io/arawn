@@ -1,4 +1,4 @@
-an---
+---
 id: session-management-ux-resume
 level: initiative
 title: "Session management UX — resume, branch, export, compact, context visualization"

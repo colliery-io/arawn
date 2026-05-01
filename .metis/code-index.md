@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-04-18T15:53:01Z | 169 files | Python, Rust
+> Generated: 2026-05-01T20:24:42Z | 170 files | Python, Rust
 
 ## Project Structure
 
@@ -121,7 +121,8 @@
 │   │       ├── mock.rs
 │   │       ├── openai_compat.rs
 │   │       ├── retry.rs
-│   │       └── types.rs
+│   │       ├── types.rs
+│   │       └── warming.rs
 │   ├── arawn-mcp/
 │   │   └── src/
 │   │       ├── adapter.rs
@@ -349,41 +350,42 @@
 #### crates/arawn/src/llm_pool.rs
 
 - pub `LlmClientPool` struct L21-26 — `{ clients: HashMap<String, Arc<dyn LlmClient>>, configs: HashMap<String, LlmConf...` — A pool of named LLM clients built from an [`ArawnConfig`].
-- pub `from_config` function L42-66 — `(config: &ArawnConfig, build: F) -> Result<Self>` — Build the pool from the given config.
-- pub `from_clients` function L70-81 — `( clients: HashMap<String, Arc<dyn LlmClient>>, configs: HashMap<String, LlmConf...` — Construct a pool from a pre-built map of clients.
-- pub `single` function L85-97 — `(client: Arc<dyn LlmClient>, model: impl Into<String>) -> Self` — Build a single-entry pool wrapping `client` as both engine and
-- pub `get` function L100-102 — `(&self, name: &str) -> Option<Arc<dyn LlmClient>>` — Look up a client by name (e.g., "default", "cheap", "judge").
-- pub `config` function L105-107 — `(&self, name: &str) -> Option<&LlmConfig>` — Get the [`LlmConfig`] for a named entry.
-- pub `engine` function L110-112 — `(&self) -> Arc<dyn LlmClient>` — Engine LLM — never fails; falls back to whatever `engine_llm()` resolved.
-- pub `engine_config` function L114-116 — `(&self) -> &LlmConfig` — surfaces here, not mid-session.
-- pub `engine_name` function L118-120 — `(&self) -> &str` — surfaces here, not mid-session.
-- pub `compactor` function L124-126 — `(&self) -> Arc<dyn LlmClient>` — Compactor LLM — never fails; falls back to engine LLM if `[compactor]`
-- pub `compactor_config` function L128-130 — `(&self) -> &LlmConfig` — surfaces here, not mid-session.
-- pub `compactor_name` function L132-134 — `(&self) -> &str` — surfaces here, not mid-session.
-- pub `entries` function L137-139 — `(&self) -> impl Iterator<Item = (&String, &LlmConfig)>` — Iterator over (name, config) pairs.
-- pub `resolve` function L149-210 — `(&self, preference: &LlmPreference) -> LlmResolution` — Resolve an [`LlmPreference`] against the pool.
-- pub `len` function L212-214 — `(&self) -> usize` — surfaces here, not mid-session.
-- pub `is_empty` function L216-218 — `(&self) -> bool` — surfaces here, not mid-session.
+- pub `from_config` function L42-71 — `(config: &ArawnConfig, build: F) -> Result<Self>` — Build the pool from the given config.
+- pub `from_clients` function L75-86 — `( clients: HashMap<String, Arc<dyn LlmClient>>, configs: HashMap<String, LlmConf...` — Construct a pool from a pre-built map of clients.
+- pub `single` function L90-102 — `(client: Arc<dyn LlmClient>, model: impl Into<String>) -> Self` — Build a single-entry pool wrapping `client` as both engine and
+- pub `get` function L105-107 — `(&self, name: &str) -> Option<Arc<dyn LlmClient>>` — Look up a client by name (e.g., "default", "cheap", "judge").
+- pub `config` function L110-112 — `(&self, name: &str) -> Option<&LlmConfig>` — Get the [`LlmConfig`] for a named entry.
+- pub `engine` function L115-117 — `(&self) -> Arc<dyn LlmClient>` — Engine LLM — never fails; falls back to whatever `engine_llm()` resolved.
+- pub `engine_config` function L119-121 — `(&self) -> &LlmConfig` — surfaces here, not mid-session.
+- pub `engine_name` function L123-125 — `(&self) -> &str` — surfaces here, not mid-session.
+- pub `compactor` function L129-131 — `(&self) -> Arc<dyn LlmClient>` — Compactor LLM — never fails; falls back to engine LLM if `[compactor]`
+- pub `compactor_config` function L133-135 — `(&self) -> &LlmConfig` — surfaces here, not mid-session.
+- pub `compactor_name` function L137-139 — `(&self) -> &str` — surfaces here, not mid-session.
+- pub `entries` function L142-144 — `(&self) -> impl Iterator<Item = (&String, &LlmConfig)>` — Iterator over (name, config) pairs.
+- pub `warmup_all` function L149-168 — `( &self, ) -> Vec<(String, Result<(), arawn_llm::LlmError>)>` — Warm up every entry concurrently.
+- pub `resolve` function L178-239 — `(&self, preference: &LlmPreference) -> LlmResolution` — Resolve an [`LlmPreference`] against the pool.
+- pub `len` function L241-243 — `(&self) -> usize` — surfaces here, not mid-session.
+- pub `is_empty` function L245-247 — `(&self) -> bool` — surfaces here, not mid-session.
 -  `LlmClientPool` type L28-36 — `= LlmClientPool` — surfaces here, not mid-session.
 -  `fmt` function L29-35 — `(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result` — surfaces here, not mid-session.
--  `LlmClientPool` type L38-219 — `= LlmClientPool` — surfaces here, not mid-session.
--  `resolve_engine_name` function L221-235 — `( config: &ArawnConfig, clients: &HashMap<String, Arc<dyn LlmClient>>, ) -> Resu...` — surfaces here, not mid-session.
--  `resolve_compactor_name` function L237-245 — `(config: &ArawnConfig, engine_name: &str) -> String` — surfaces here, not mid-session.
--  `tests` module L248-508 — `-` — surfaces here, not mid-session.
--  `mock_builder` function L252-254 — `(_cfg: &LlmConfig) -> Result<Arc<dyn LlmClient>>` — surfaces here, not mid-session.
--  `cfg_from_toml` function L256-258 — `(toml_str: &str) -> ArawnConfig` — surfaces here, not mid-session.
--  `pool_builds_every_named_entry` function L261-281 — `()` — surfaces here, not mid-session.
--  `engine_and_compactor_resolve_distinct_clients_when_configured` function L284-308 — `()` — surfaces here, not mid-session.
--  `compactor_falls_back_to_engine_when_unconfigured` function L311-323 — `()` — surfaces here, not mid-session.
--  `compactor_falls_back_to_engine_when_pointing_at_missing_entry` function L326-339 — `()` — surfaces here, not mid-session.
--  `resolve_named_exact_match` function L342-358 — `()` — surfaces here, not mid-session.
--  `resolve_named_missing_falls_back` function L361-373 — `()` — surfaces here, not mid-session.
--  `resolve_provider_model_exact` function L376-395 — `()` — surfaces here, not mid-session.
--  `resolve_capability_match_when_no_exact` function L398-423 — `()` — surfaces here, not mid-session.
--  `resolve_capability_too_strict_falls_back` function L426-445 — `()` — surfaces here, not mid-session.
--  `resolve_empty_preference_is_fallback` function L448-459 — `()` — surfaces here, not mid-session.
--  `resolve_provider_only_uses_capability_path` function L462-482 — `()` — surfaces here, not mid-session.
--  `pool_construction_fails_fast_when_builder_errors` function L485-507 — `()` — surfaces here, not mid-session.
+-  `LlmClientPool` type L38-248 — `= LlmClientPool` — surfaces here, not mid-session.
+-  `resolve_engine_name` function L250-264 — `( config: &ArawnConfig, clients: &HashMap<String, Arc<dyn LlmClient>>, ) -> Resu...` — surfaces here, not mid-session.
+-  `resolve_compactor_name` function L266-274 — `(config: &ArawnConfig, engine_name: &str) -> String` — surfaces here, not mid-session.
+-  `tests` module L277-537 — `-` — surfaces here, not mid-session.
+-  `mock_builder` function L281-283 — `(_cfg: &LlmConfig) -> Result<Arc<dyn LlmClient>>` — surfaces here, not mid-session.
+-  `cfg_from_toml` function L285-287 — `(toml_str: &str) -> ArawnConfig` — surfaces here, not mid-session.
+-  `pool_builds_every_named_entry` function L290-310 — `()` — surfaces here, not mid-session.
+-  `engine_and_compactor_resolve_distinct_clients_when_configured` function L313-337 — `()` — surfaces here, not mid-session.
+-  `compactor_falls_back_to_engine_when_unconfigured` function L340-352 — `()` — surfaces here, not mid-session.
+-  `compactor_falls_back_to_engine_when_pointing_at_missing_entry` function L355-368 — `()` — surfaces here, not mid-session.
+-  `resolve_named_exact_match` function L371-387 — `()` — surfaces here, not mid-session.
+-  `resolve_named_missing_falls_back` function L390-402 — `()` — surfaces here, not mid-session.
+-  `resolve_provider_model_exact` function L405-424 — `()` — surfaces here, not mid-session.
+-  `resolve_capability_match_when_no_exact` function L427-452 — `()` — surfaces here, not mid-session.
+-  `resolve_capability_too_strict_falls_back` function L455-474 — `()` — surfaces here, not mid-session.
+-  `resolve_empty_preference_is_fallback` function L477-488 — `()` — surfaces here, not mid-session.
+-  `resolve_provider_only_uses_capability_path` function L491-511 — `()` — surfaces here, not mid-session.
+-  `pool_construction_fails_fast_when_builder_errors` function L514-536 — `()` — surfaces here, not mid-session.
 
 #### crates/arawn/src/local_service.rs
 
@@ -409,41 +411,41 @@
 -  `build_session_context` function L197-265 — `( &self, session_id: Uuid, workstream: &Workstream, ws_dir: &str, workspace_dir:...` — Build a ToolContext and per-session PromptContext for the engine.
 -  `build_engine` function L269-317 — `( &self, prompt_context: Option<arawn_engine::PromptContext>, event_tx: &mpsc::S...` — Build a QueryEngine configured with compactor, skills, plugins, and plan state.
 -  `infer_entity_type` function L322-335 — `(text: &str) -> (arawn_memory::EntityType, String)` — Infer entity type from text patterns.
--  `LocalService` type L340-1018 — `impl ArawnService for LocalService`
+-  `LocalService` type L340-1019 — `impl ArawnService for LocalService`
 -  `list_workstreams` function L341-356 — `(&self) -> Result<Vec<WorkstreamInfo>, ServiceError>`
 -  `create_workstream` function L358-375 — `( &self, name: String, root_dir: PathBuf, ) -> Result<WorkstreamInfo, ServiceErr...`
 -  `list_sessions` function L377-396 — `( &self, workstream_id: Option<Uuid>, ) -> Result<Vec<SessionInfo>, ServiceError...`
 -  `create_session` function L398-419 — `( &self, workstream_id: Option<Uuid>, ) -> Result<SessionInfo, ServiceError>`
 -  `load_session` function L421-448 — `(&self, id: Uuid) -> Result<SessionDetail, ServiceError>`
--  `send_message` function L451-646 — `( &self, session_id: Uuid, content: String, ) -> Result<Pin<Box<dyn futures::Str...`
--  `cancel` function L648-661 — `(&self, session_id: Uuid) -> Result<(), ServiceError>`
--  `promote_session` function L663-714 — `( &self, session_id: Uuid, workstream_name: &str, ) -> Result<PromotionResult, S...`
--  `resolve_user_input` function L716-730 — `( &self, request_id: &str, selected_index: Option<usize>, ) -> Result<(), Servic...`
--  `query_inventory` function L732-797 — `(&self, kind: &str) -> Result<Vec<InventoryItem>, ServiceError>`
--  `list_available_commands` function L799-811 — `(&self) -> Result<Vec<CommandInfo>, ServiceError>`
--  `list_workflows` function L813-844 — `(&self) -> Result<Vec<WorkflowInfo>, ServiceError>`
--  `remember_fact` function L846-892 — `(&self, text: &str) -> Result<MemoryStoreResult, ServiceError>`
--  `memory_summary` function L894-941 — `(&self) -> Result<MemorySummary, ServiceError>`
--  `forget_entity` function L943-993 — `(&self, query: &str) -> Result<ForgetResult, ServiceError>`
--  `get_permission_mode` function L995-1003 — `(&self) -> Result<PermissionModeInfo, ServiceError>`
--  `set_permission_mode` function L1005-1017 — `(&self, mode_str: &str) -> Result<PermissionModeInfo, ServiceError>`
--  `resolve_ws_dir_from_store` function L1021-1032 — `(store: &Store, ws_id: Option<Uuid>) -> Result<String, ServiceError>` — Resolve workstream directory name from store.
--  `first_sentence` function L1036-1047 — `(s: &str) -> String` — Extract the first sentence and sanitize for use in a markdown table cell.
+-  `send_message` function L451-647 — `( &self, session_id: Uuid, content: String, ) -> Result<Pin<Box<dyn futures::Str...`
+-  `cancel` function L649-662 — `(&self, session_id: Uuid) -> Result<(), ServiceError>`
+-  `promote_session` function L664-715 — `( &self, session_id: Uuid, workstream_name: &str, ) -> Result<PromotionResult, S...`
+-  `resolve_user_input` function L717-731 — `( &self, request_id: &str, selected_index: Option<usize>, ) -> Result<(), Servic...`
+-  `query_inventory` function L733-798 — `(&self, kind: &str) -> Result<Vec<InventoryItem>, ServiceError>`
+-  `list_available_commands` function L800-812 — `(&self) -> Result<Vec<CommandInfo>, ServiceError>`
+-  `list_workflows` function L814-845 — `(&self) -> Result<Vec<WorkflowInfo>, ServiceError>`
+-  `remember_fact` function L847-893 — `(&self, text: &str) -> Result<MemoryStoreResult, ServiceError>`
+-  `memory_summary` function L895-942 — `(&self) -> Result<MemorySummary, ServiceError>`
+-  `forget_entity` function L944-994 — `(&self, query: &str) -> Result<ForgetResult, ServiceError>`
+-  `get_permission_mode` function L996-1004 — `(&self) -> Result<PermissionModeInfo, ServiceError>`
+-  `set_permission_mode` function L1006-1018 — `(&self, mode_str: &str) -> Result<PermissionModeInfo, ServiceError>`
+-  `resolve_ws_dir_from_store` function L1022-1033 — `(store: &Store, ws_id: Option<Uuid>) -> Result<String, ServiceError>` — Resolve workstream directory name from store.
+-  `first_sentence` function L1037-1048 — `(s: &str) -> String` — Extract the first sentence and sanitize for use in a markdown table cell.
 
 #### crates/arawn/src/main.rs
 
 -  `DEFAULT_MODEL` variable L15 — `: &str`
 -  `FILE_LOG_FILTER` variable L18 — `: &str` — Default file log filter: debug for arawn crates, warn for third-party.
--  `main` function L21-441 — `() -> Result<()>`
+-  `main` function L21-472 — `() -> Result<()>`
 -  `Cli` struct L27-46 — `{ command: Option<Command>, data_dir: Option<String>, session: Option<Uuid>, lis...`
 -  `Command` enum L49-68 — `Serve | Tui | Plugin`
--  `run_cli_via_server` function L444-549 — `( url: &str, prompt: &str, session_id: Option<Uuid>, ) -> Result<()>` — Run a CLI prompt by connecting to the running server via WebSocket.
--  `build_llm_client` function L552-574 — `( config: &arawn_bin::LlmConfig, ) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
--  `register_default_tools` function L577-623 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &arawn_bin::ArawnConfig, d...` — Register all default tools into the registry.
--  `connect_mcp_servers` function L626-674 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
--  `register_workflow_tools` function L677-694 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
--  `build_engine_config` function L696-728 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
--  `dirs_path` function L730-739 — `() -> Option<String>`
+-  `run_cli_via_server` function L475-580 — `( url: &str, prompt: &str, session_id: Option<Uuid>, ) -> Result<()>` — Run a CLI prompt by connecting to the running server via WebSocket.
+-  `build_llm_client` function L583-605 — `( config: &arawn_bin::LlmConfig, ) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
+-  `register_default_tools` function L608-654 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &arawn_bin::ArawnConfig, d...` — Register all default tools into the registry.
+-  `connect_mcp_servers` function L657-705 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
+-  `register_workflow_tools` function L708-725 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
+-  `build_engine_config` function L727-759 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
+-  `dirs_path` function L761-770 — `() -> Option<String>`
 
 #### crates/arawn/src/plugin_cmd.rs
 
@@ -2595,7 +2597,8 @@
 
 #### crates/arawn-llm/src/client.rs
 
-- pub `LlmClient` interface L12-17 — `{ fn stream() }` — Provider-agnostic LLM client trait.
+- pub `LlmClient` interface L12-48 — `{ fn stream(), fn warmup() }` — Provider-agnostic LLM client trait.
+-  `warmup` function L24-47 — `(&self, model: &str) -> Result<(), LlmError>` — Probe a model with a minimal request to confirm it is reachable and
 
 #### crates/arawn-llm/src/error.rs
 
@@ -2664,6 +2667,7 @@
 - pub `openai_compat` module L6 — `-`
 - pub `retry` module L7 — `-`
 - pub `types` module L8 — `-`
+- pub `warming` module L9 — `-`
 
 #### crates/arawn-llm/src/mock.rs
 
@@ -2773,6 +2777,38 @@
 - pub `ToolDefinition` struct L43-47 — `{ name: String, description: String, parameters: Value }` — Tool definition sent with the request.
 - pub `ChatChunk` enum L51-56 — `TextDelta | ToolUseStart | ToolUseInputDelta | Done` — Streaming chunk from the LLM.
 - pub `Usage` struct L60-63 — `{ input_tokens: u32, output_tokens: u32 }` — Token usage statistics.
+
+#### crates/arawn-llm/src/warming.rs
+
+- pub `DEFAULT_WARMUP_TTL` variable L27 — `: Duration` — Default TTL chosen for Ollama Cloud, which unloads idle models aggressively.
+- pub `WarmingClient` struct L31-40 — `{ inner: Arc<dyn LlmClient>, provider: String, ttl: Duration, last_warmup: Mutex...` — Wraps any [`LlmClient`] with TTL-based warmup caching and a one-shot
+- pub `new` function L43-45 — `(inner: Arc<dyn LlmClient>, provider: impl Into<String>) -> Self` — Pool layering: raw provider → `RetryClient` → `WarmingClient`.
+- pub `with_ttl` function L47-58 — `( inner: Arc<dyn LlmClient>, provider: impl Into<String>, ttl: Duration, ) -> Se...` — Pool layering: raw provider → `RetryClient` → `WarmingClient`.
+- pub `last_warmup_for_test` function L86-88 — `(&self) -> Option<Instant>` — Returns the cached `last_warmup` timestamp.
+-  `WarmingClient` type L42-89 — `= WarmingClient` — Pool layering: raw provider → `RetryClient` → `WarmingClient`.
+-  `ensure_warm` function L62-77 — `(&self, model: &str) -> Result<(), LlmError>` — Ensure the cached warmup is fresh.
+-  `invalidate` function L79-82 — `(&self)` — Pool layering: raw provider → `RetryClient` → `WarmingClient`.
+-  `looks_like_cold_restart` function L94-96 — `(err: &LlmError) -> bool` — Errors that look like the provider unloaded the model and the next request
+-  `WarmingClient` type L99-142 — `impl LlmClient for WarmingClient` — Pool layering: raw provider → `RetryClient` → `WarmingClient`.
+-  `stream` function L100-131 — `( &self, request: ChatRequest, ) -> Result<Pin<Box<dyn Stream<Item = Result<Chat...` — Pool layering: raw provider → `RetryClient` → `WarmingClient`.
+-  `warmup` function L133-141 — `(&self, model: &str) -> Result<(), LlmError>` — Pool layering: raw provider → `RetryClient` → `WarmingClient`.
+-  `tests` module L145-339 — `-` — Pool layering: raw provider → `RetryClient` → `WarmingClient`.
+-  `ok_response` function L151-158 — `() -> MockResponse` — Pool layering: raw provider → `RetryClient` → `WarmingClient`.
+-  `user_request` function L160-173 — `(model: &str) -> ChatRequest` — Pool layering: raw provider → `RetryClient` → `WarmingClient`.
+-  `CountingClient` struct L178-181 — `{ inner: MockLlmClient, calls: AtomicUsize }` — Counts how many times `stream` was invoked on the inner client.
+-  `CountingClient` type L183-194 — `= CountingClient` — Pool layering: raw provider → `RetryClient` → `WarmingClient`.
+-  `new` function L184-189 — `(responses: Vec<MockResponse>) -> Self` — Pool layering: raw provider → `RetryClient` → `WarmingClient`.
+-  `calls` function L191-193 — `(&self) -> usize` — Pool layering: raw provider → `RetryClient` → `WarmingClient`.
+-  `CountingClient` type L197-208 — `impl LlmClient for CountingClient` — Pool layering: raw provider → `RetryClient` → `WarmingClient`.
+-  `stream` function L198-207 — `( &self, request: ChatRequest, ) -> Result< Pin<Box<dyn Stream<Item = Result<Cha...` — Pool layering: raw provider → `RetryClient` → `WarmingClient`.
+-  `warmup_probes_inner_and_caches` function L211-219 — `()` — Pool layering: raw provider → `RetryClient` → `WarmingClient`.
+-  `stream_skips_warmup_when_cache_fresh` function L222-232 — `()` — Pool layering: raw provider → `RetryClient` → `WarmingClient`.
+-  `stream_warms_lazily_when_cache_empty` function L235-245 — `()` — Pool layering: raw provider → `RetryClient` → `WarmingClient`.
+-  `stream_re_warms_after_ttl_expiry` function L248-273 — `()` — Pool layering: raw provider → `RetryClient` → `WarmingClient`.
+-  `stream_retries_once_on_cold_restart_signature` function L276-291 — `()` — Pool layering: raw provider → `RetryClient` → `WarmingClient`.
+-  `stream_does_not_retry_on_non_cold_restart_errors` function L294-307 — `()` — Pool layering: raw provider → `RetryClient` → `WarmingClient`.
+-  `warmup_failure_does_not_update_cache` function L310-322 — `()` — Pool layering: raw provider → `RetryClient` → `WarmingClient`.
+-  `cold_restart_classifier` function L325-338 — `()` — Pool layering: raw provider → `RetryClient` → `WarmingClient`.
 
 ### crates/arawn-mcp/src
 
@@ -3529,33 +3565,49 @@
 
 #### crates/arawn-tests/tests/uat.rs
 
-- pub `Scenario` struct L26-31 — `{ name: String, objective: String, turns: Vec<ScenarioTurn>, mechanical: Mechani...` — Or via angreal: angreal test uat --model gemma4
-- pub `ScenarioTurn` struct L34-37 — `{ user_message: String, judge_expectation: String }` — Or via angreal: angreal test uat --model gemma4
-- pub `MechanicalThresholds` struct L40-44 — `{ min_files_created: usize, min_memory_entities: usize, max_tool_errors: usize }` — Or via angreal: angreal test uat --model gemma4
-- pub `TurnResult` struct L51-60 — `{ turn_number: usize, user_message: String, assistant_text: String, tool_calls: ...` — Or via angreal: angreal test uat --model gemma4
-- pub `ToolCallRecord` struct L63-67 — `{ id: String, name: String, input: Value }` — Or via angreal: angreal test uat --model gemma4
-- pub `ToolResultRecord` struct L70-74 — `{ id: String, content: String, is_error: bool }` — Or via angreal: angreal test uat --model gemma4
-- pub `ScenarioResult` struct L81-88 — `{ scenario_name: String, model: String, turns: Vec<TurnResult>, mechanical: Mech...` — Or via angreal: angreal test uat --model gemma4
-- pub `MechanicalCheckResult` struct L91-98 — `{ all_turns_completed: bool, no_errors: bool, tool_use_occurred: bool, files_cre...` — Or via angreal: angreal test uat --model gemma4
-- pub `UatHarness` struct L104-108 — `{ data_dir: PathBuf, port: u16, server_process: Option<Child> }` — Or via angreal: angreal test uat --model gemma4
-- pub `new` function L112-165 — `(base_dir: &Path, model: &str, provider: &str, api_key_env: &str) -> Self` — Create a new harness with an isolated data directory.
-- pub `start_server` function L168-191 — `(&mut self) -> Result<(), String>` — Start the arawn server process.
-- pub `wait_for_ready` function L194-218 — `(&self, timeout: Duration) -> Result<(), String>` — Wait for the server to be ready by polling the WebSocket endpoint.
-- pub `ws_url` function L220-232 — `(&self) -> String` — Or via angreal: angreal test uat --model gemma4
-- pub `run_scenario` function L235-291 — `(&self, scenario: &Scenario, model: &str) -> ScenarioResult` — Run a scenario: create session, drive all turns, collect results.
-- pub `write_artifacts` function L431-479 — `(&self, result: &ScenarioResult, scenario: &Scenario)` — Write all artifacts to the results directory.
-- pub `stop` function L482-488 — `(&mut self)` — Stop the server process.
--  `UatHarness` type L110-489 — `= UatHarness` — Or via angreal: angreal test uat --model gemma4
--  `rpc_create_session` function L293-319 — `( &self, write: &mut futures_util::stream::SplitSink< tokio_tungstenite::WebSock...` — Or via angreal: angreal test uat --model gemma4
--  `drive_turn` function L321-413 — `( &self, write: &mut futures_util::stream::SplitSink< tokio_tungstenite::WebSock...` — Or via angreal: angreal test uat --model gemma4
--  `list_workspace_files` function L415-428 — `(&self) -> Vec<String>` — Or via angreal: angreal test uat --model gemma4
--  `UatHarness` type L491-495 — `impl Drop for UatHarness` — Or via angreal: angreal test uat --model gemma4
--  `drop` function L492-494 — `(&mut self)` — Or via angreal: angreal test uat --model gemma4
--  `walkdir` function L498-513 — `(dir: &Path) -> Result<Vec<PathBuf>, std::io::Error>` — Recursively list all files under a directory.
--  `github_monitor_scenario` function L519-547 — `() -> Scenario` — Or via angreal: angreal test uat --model gemma4
--  `work_signal_pipeline_scenario` function L549-581 — `() -> Scenario` — Or via angreal: angreal test uat --model gemma4
--  `all_scenarios` function L583-585 — `() -> Vec<Scenario>` — Or via angreal: angreal test uat --model gemma4
--  `uat_run` function L593-688 — `()` — Or via angreal: angreal test uat --model gemma4
+- pub `Scenario` struct L25-30 — `{ name: String, objective: String, turns: Vec<ScenarioTurn>, mechanical: Mechani...` — Or via angreal: angreal test uat --model gemma4
+- pub `ScenarioTurn` struct L33-36 — `{ user_message: String, judge_expectation: String }` — Or via angreal: angreal test uat --model gemma4
+- pub `MechanicalThresholds` struct L39-45 — `{ min_files_created: usize, min_workflows_created: usize, min_memory_entities: u...` — Or via angreal: angreal test uat --model gemma4
+- pub `TurnResult` struct L52-63 — `{ turn_number: usize, user_message: String, assistant_text: String, tool_calls: ...` — Or via angreal: angreal test uat --model gemma4
+- pub `ToolCallRecord` struct L66-70 — `{ id: String, name: String, input: Value }` — Or via angreal: angreal test uat --model gemma4
+- pub `ToolResultRecord` struct L73-77 — `{ id: String, content: String, is_error: bool }` — Or via angreal: angreal test uat --model gemma4
+- pub `ScenarioResult` struct L84-91 — `{ scenario_name: String, model: String, turns: Vec<TurnResult>, mechanical: Mech...` — Or via angreal: angreal test uat --model gemma4
+- pub `MechanicalCheckResult` struct L94-102 — `{ all_turns_completed: bool, no_errors: bool, tool_use_occurred: bool, files_cre...` — Or via angreal: angreal test uat --model gemma4
+- pub `UatHarness` struct L185-189 — `{ data_dir: PathBuf, port: u16, server_process: Option<Child> }` — Or via angreal: angreal test uat --model gemma4
+- pub `new` function L193-246 — `(base_dir: &Path, model: &str, provider: &str, api_key_env: &str) -> Self` — Create a new harness with an isolated data directory.
+- pub `start_server` function L249-272 — `(&mut self) -> Result<(), String>` — Start the arawn server process.
+- pub `wait_for_ready` function L275-299 — `(&self, timeout: Duration) -> Result<(), String>` — Wait for the server to be ready by polling the WebSocket endpoint.
+- pub `ws_url` function L301-313 — `(&self) -> String` — Or via angreal: angreal test uat --model gemma4
+- pub `run_scenario` function L316-375 — `(&self, scenario: &Scenario, model: &str) -> ScenarioResult` — Run a scenario: create session, drive all turns, collect results.
+- pub `write_artifacts` function L481-529 — `(&self, result: &ScenarioResult, scenario: &Scenario)` — Write all artifacts to the results directory.
+- pub `stop` function L532-538 — `(&mut self)` — Stop the server process.
+-  `TurnAccumulator` struct L110-117 — `{ assistant_text: String, tool_calls: Vec<ToolCallRecord>, tool_results: Vec<Too...` — State accumulated while consuming engine events for a single turn.
+-  `count_workflows_in` function L121-129 — `(dir: &Path) -> usize` — Count subdirectories of `dir`.
+-  `apply_event` function L133-179 — `(event: &Value, acc: &mut TurnAccumulator) -> bool` — Apply one engine event JSON value to the accumulator.
+-  `UatHarness` type L191-539 — `= UatHarness` — Or via angreal: angreal test uat --model gemma4
+-  `rpc_create_session` function L377-403 — `( &self, write: &mut futures_util::stream::SplitSink< tokio_tungstenite::WebSock...` — Or via angreal: angreal test uat --model gemma4
+-  `drive_turn` function L405-458 — `( &self, write: &mut futures_util::stream::SplitSink< tokio_tungstenite::WebSock...` — Or via angreal: angreal test uat --model gemma4
+-  `list_workspace_files` function L460-473 — `(&self) -> Vec<String>` — Or via angreal: angreal test uat --model gemma4
+-  `count_installed_workflows` function L476-478 — `(&self) -> usize` — Count installed workflows under `<data_dir>/workflows/`.
+-  `UatHarness` type L541-545 — `impl Drop for UatHarness` — Or via angreal: angreal test uat --model gemma4
+-  `drop` function L542-544 — `(&mut self)` — Or via angreal: angreal test uat --model gemma4
+-  `walkdir` function L548-563 — `(dir: &Path) -> Result<Vec<PathBuf>, std::io::Error>` — Recursively list all files under a directory.
+-  `github_monitor_scenario` function L569-598 — `() -> Scenario` — Or via angreal: angreal test uat --model gemma4
+-  `work_signal_pipeline_scenario` function L600-633 — `() -> Scenario` — Or via angreal: angreal test uat --model gemma4
+-  `all_scenarios` function L635-637 — `() -> Vec<Scenario>` — Or via angreal: angreal test uat --model gemma4
+-  `uat_run` function L645-745 — `()` — Or via angreal: angreal test uat --model gemma4
+-  `tests` module L753-900 — `-` — Or via angreal: angreal test uat --model gemma4
+-  `count_workflows_returns_zero_for_missing_dir` function L759-762 — `()` — Or via angreal: angreal test uat --model gemma4
+-  `count_workflows_returns_zero_for_empty_dir` function L765-768 — `()` — Or via angreal: angreal test uat --model gemma4
+-  `count_workflows_counts_subdirs_only` function L771-779 — `()` — Or via angreal: angreal test uat --model gemma4
+-  `apply_event_captures_error_message` function L784-800 — `()` — Or via angreal: angreal test uat --model gemma4
+-  `apply_event_error_with_missing_message_field_keeps_none` function L803-809 — `()` — Or via angreal: angreal test uat --model gemma4
+-  `apply_event_complete_sets_final_text` function L812-819 — `()` — Or via angreal: angreal test uat --model gemma4
+-  `apply_event_streaming_text_appends` function L822-830 — `()` — Or via angreal: angreal test uat --model gemma4
+-  `apply_event_ignores_rpc_ack` function L833-840 — `()` — Or via angreal: angreal test uat --model gemma4
+-  `apply_event_records_tool_calls_and_results` function L843-863 — `()` — Or via angreal: angreal test uat --model gemma4
+-  `turn_result_serializes_error_message_when_present` function L868-882 — `()` — Or via angreal: angreal test uat --model gemma4
+-  `turn_result_omits_error_message_when_none` function L885-899 — `()` — Or via angreal: angreal test uat --model gemma4
 
 #### crates/arawn-tests/tests/websocket.rs
 

@@ -11,10 +11,10 @@ archived: true
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
-exit_criteria_met: false
+exit_criteria_met: true
 initiative_id: ARAWN-I-0026
 ---
 
@@ -28,6 +28,8 @@ initiative_id: ARAWN-I-0026
 
 ## Objective
 Verify Ollama Cloud works as an arawn LLM provider and create reusable config templates for UAT runs. Ensure the OpenAI-compatible client handles Ollama Cloud's API correctly (auth, streaming, tool_use format).
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
