@@ -45,4 +45,13 @@ Arawn's shell tool runs commands under a real OS sandbox (macOS `sandbox-exec`, 
 
 ## Status Updates
 
-*To be added during implementation*
+### 2026-05-02 — Docs portion done
+
+`docs/src/security.md` written. Covers shell sandbox per platform (sandbox-exec / bubblewrap, write restriction to workstream dir, sensitive deny-list with concrete paths, network-tools allowlist, env scrubbing), permission rule grammar (allow/deny/ask, glob, content patterns), evaluation order (deny > allow > ask), four permission modes (default / accept_edits / bypass / plan), and three "limit blast radius" config recipes. Linked from SUMMARY.md.
+
+Code work still open under this ticket:
+- [ ] Sandbox-denial errors carry user-facing messages identifying which restriction tripped
+- [ ] `/permissions` TUI command — active rule set + recent decisions
+- [ ] Engine error chain (T-0191) carries `denied by permission rule: <rule>` instead of generic "tool failed"
+
+The docs page already mentions the audit-view as TODO and points users at `RUST_LOG=arawn=debug` for now.

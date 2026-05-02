@@ -5,3 +5,9 @@
 # Getting Started
 
 - [Getting Started](./getting-started.md)
+
+# Reference
+
+- [Security & Permissions](./security.md)
+- [Memory](./memory.md)
+- [Workflows](./workflows.md)

@@ -47,4 +47,16 @@ The workflows runtime is built (`crates/arawn-workflow`), the scaffold generates
 
 ## Status Updates
 
-*To be added during implementation*
+### 2026-05-02 — Docs portion done
+
+`docs/src/workflows.md` written. Covers what a workflow is, when to reach for one vs an ad-hoc conversation (decision matrix), the three task flavours (data/decision/action), how `workflow_create` authors them step-by-step (scaffold → compile → install → reconciler), cron syntax with common forms, the four workflow management tools (`workflow_list/status/delete/create`), storage layout, and caveats (compile time, host trust, single-host scheduling). Linked from SUMMARY.md.
+
+Code/example work still open under this ticket:
+- [ ] At least 3 worked-example workflow crates in `examples/workflows/`:
+  - linear pipeline (fetch → summarize → save)
+  - DAG with parallel branches (basically work-signal-pipeline cleaned up)
+  - decision task using the agent (fetch issues → agent classifies severity → notify if P0)
+- [ ] Each compiles and installs cleanly; document the steps in `examples/workflows/README.md`
+- [ ] Workflow skill guide cross-linked from `docs/src/workflows.md` (currently points only at the UAT scenario)
+
+The example library is the larger half of this ticket and was deliberately deferred — workflow-crate authoring is its own focused session.

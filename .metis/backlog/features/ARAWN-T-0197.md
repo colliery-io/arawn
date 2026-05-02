@@ -46,4 +46,13 @@ The memory system works under the hood — `MemoryStoreTool` and `MemorySearchTo
 
 ## Status Updates
 
-*To be added during implementation*
+### 2026-05-02 — Docs portion done
+
+`docs/src/memory.md` written. Covers two-store layout (global vs workstream with scope-locking per entity type), the six entity types and seven relation types with concrete examples, the three confidence sources and base scores, the FTS-vs-vector retrieval paths, the embedding model location and silent-FTS-fallback caveat, how the agent uses `memory_store` / `memory_search` autonomously, and a worked flow for "user states preference → agent stores → next session retrieves." Calls out `/remember`/`/memory`/`/forget` as TUI work-in-progress, points at direct `sqlite3` access as the current escape hatch. Linked from SUMMARY.md.
+
+Code work still open under this ticket:
+- [ ] `/remember <text>` wired (paired with T-0195)
+- [ ] `/memory` inspection view (modal or pane listing recent entries)
+- [ ] `/forget <id-or-title>` — verify whether MemoryForgetTool exists; either wire or remove from /help
+- [ ] Embedder-fallback warning surfaced in TUI banner (currently server-log only)
+- [ ] Round-trip test: `/remember` → store → retrievable via `/memory`
