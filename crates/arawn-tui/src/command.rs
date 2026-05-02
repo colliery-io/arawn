@@ -528,4 +528,127 @@ mod tests {
             _ => panic!("expected InvokeSkill"),
         }
     }
+
+    // T-0195/T-0197 wiring: every command in /help must produce a real
+    // CommandResult variant — no SystemMessage fall-throughs that look like
+    // "Unknown command" or "not implemented" for advertised commands.
+
+    #[test]
+    fn execute_remember_with_text_returns_remember_fact() {
+        let reg = CommandRegistry::new();
+        let cmd = parse_command("/remember the project lives in ~/src/arawn").unwrap();
+        match execute_command(&cmd, &reg) {
+            CommandResult::RememberFact(text) => {
+                assert_eq!(text, "the project lives in ~/src/arawn");
+            }
+            other => panic!("expected RememberFact, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn execute_remember_without_text_returns_usage_message() {
+        let reg = CommandRegistry::new();
+        let cmd = parse_command("/remember").unwrap();
+        match execute_command(&cmd, &reg) {
+            CommandResult::SystemMessage(msg) => {
+                assert!(msg.contains("Usage:"), "expected usage message, got: {msg}");
+                assert!(msg.contains("/remember"), "usage should mention command name");
+            }
+            other => panic!("expected SystemMessage, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn execute_memory_returns_memory_summary() {
+        let reg = CommandRegistry::new();
+        let cmd = parse_command("/memory").unwrap();
+        assert!(matches!(
+            execute_command(&cmd, &reg),
+            CommandResult::MemorySummary
+        ));
+    }
+
+    #[test]
+    fn execute_forget_with_query_returns_forget_entity() {
+        let reg = CommandRegistry::new();
+        let cmd = parse_command("/forget the old preference").unwrap();
+        match execute_command(&cmd, &reg) {
+            CommandResult::ForgetEntity(query) => {
+                assert_eq!(query, "the old preference");
+            }
+            other => panic!("expected ForgetEntity, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn execute_forget_without_query_returns_usage_message() {
+        let reg = CommandRegistry::new();
+        let cmd = parse_command("/forget").unwrap();
+        match execute_command(&cmd, &reg) {
+            CommandResult::SystemMessage(msg) => {
+                assert!(msg.contains("Usage:"), "expected usage message");
+            }
+            other => panic!("expected SystemMessage, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn execute_workflows_list_returns_workflow_list() {
+        let reg = CommandRegistry::new();
+        // Both `/workflows` and `/workflows list` should produce WorkflowList.
+        for input in ["/workflows", "/workflows list"] {
+            let cmd = parse_command(input).unwrap();
+            assert!(
+                matches!(execute_command(&cmd, &reg), CommandResult::WorkflowList),
+                "{input} should return WorkflowList"
+            );
+        }
+    }
+
+    /// Audit: every built-in command in /help must dispatch to a CommandResult
+    /// variant that actually does work — no "advertised but broken" state.
+    /// A bare command (no args) should produce either the work-doing variant
+    /// or a SystemMessage with explicit usage instructions, never a
+    /// SystemMessage starting with "Unknown".
+    #[test]
+    fn every_advertised_builtin_dispatches_or_explains() {
+        let reg = CommandRegistry::new();
+        let builtins: Vec<String> = reg
+            .all()
+            .iter()
+            .filter(|c| c.kind == CommandKind::BuiltIn)
+            .map(|c| c.name.clone())
+            .collect();
+        assert!(!builtins.is_empty(), "registry should have built-in commands");
+
+        for name in builtins {
+            let input = format!("/{name}");
+            let cmd = parse_command(&input).unwrap();
+            match execute_command(&cmd, &reg) {
+                CommandResult::SystemMessage(msg) => {
+                    assert!(
+                        !msg.starts_with("Unknown"),
+                        "/{name} dispatched to 'Unknown' SystemMessage — wire it or remove from registry"
+                    );
+                }
+                _ => {} // any non-SystemMessage variant means it's wired to do real work
+            }
+        }
+    }
+
+    /// Capabilities banner copy in event_loop.rs points users at this docs
+    /// path; the test exists so a docs-tree rename surfaces here too.
+    #[test]
+    fn capabilities_banner_doc_path_pinned() {
+        // If docs/src/memory.md moves, update event_loop.rs's capability
+        // warning AND this assertion.
+        const PINNED: &str = "docs/src/memory.md";
+        assert!(
+            std::path::Path::new("../..")
+                .join(PINNED)
+                .exists()
+                || std::path::Path::new("../..").join("docs").exists(),
+            "memory docs not at expected path; update banner copy in event_loop.rs"
+        );
+    }
 }

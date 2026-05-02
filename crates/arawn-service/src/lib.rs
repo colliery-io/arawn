@@ -12,7 +12,7 @@ pub use error::ServiceError;
 pub use types::{
     CommandInfo, EngineEvent, ForgetCandidate, ForgetResult, InventoryItem, MemoryStoreResult,
     MemoryStoreSummary, MemorySummary, MemoryTypeCount, ModalPromptOption, PermissionModeInfo,
-    PromotionResult, SessionDetail, SessionInfo, WorkflowInfo, WorkstreamInfo,
+    PromotionResult, ServerCapabilities, SessionDetail, SessionInfo, WorkflowInfo, WorkstreamInfo,
 };
 
 /// The service contract between any UI client and the Arawn backend.
@@ -108,4 +108,12 @@ pub trait ArawnService: Send + Sync {
 
     /// Set the permission mode. Returns the new mode.
     async fn set_permission_mode(&self, mode: &str) -> Result<PermissionModeInfo, ServiceError>;
+
+    // --- Capabilities ---
+
+    /// Report which optional subsystems initialized successfully. Clients
+    /// call this on connect to surface degraded-functionality warnings
+    /// (e.g. memory falls back to FTS-only when embeddings_available=false)
+    /// before the user runs into them mid-conversation.
+    async fn get_capabilities(&self) -> Result<ServerCapabilities, ServiceError>;
 }

@@ -100,6 +100,18 @@ impl WsClient {
         Ok(serde_json::from_value(result.clone())?)
     }
 
+    /// Fetch server runtime capabilities. Used on connect to surface
+    /// degraded-feature warnings (e.g. embeddings unavailable → memory
+    /// falls back to keyword search).
+    pub async fn get_capabilities(
+        &mut self,
+    ) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
+        self.send_request("get_capabilities", json!({})).await?;
+        let resp = self.read_response().await?;
+        let result = resp.get("result").ok_or("no result")?;
+        Ok(result.clone())
+    }
+
     pub async fn get_permission_mode(
         &mut self,
     ) -> Result<String, Box<dyn std::error::Error>> {

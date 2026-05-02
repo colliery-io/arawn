@@ -77,6 +77,27 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                 }
             }
 
+    // Fetch server capabilities and surface degraded-feature warnings.
+    // Failure to retrieve capabilities is non-fatal — older servers won't have
+    // this RPC; we just don't show the banner.
+    if let Ok(caps) = client.get_capabilities().await {
+        let embeddings_available = caps
+            .get("embeddings_available")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(true); // assume available if older server omits the field
+        if !embeddings_available {
+            app.messages.push(crate::app::ChatMessage::new(
+                crate::app::ChatRole::System,
+                "⚠ Memory is running in keyword-only mode — semantic search is \
+                 unavailable because the embedding model didn't load. \
+                 Install the model file at \
+                 ~/.arawn/models/all-MiniLM-L6-v2/model.onnx and restart \
+                 the server. See docs/src/memory.md for details."
+                    .to_string(),
+            ));
+        }
+    }
+
     // Setup terminal
     enable_raw_mode()?;
     let mut stdout = io::stdout();

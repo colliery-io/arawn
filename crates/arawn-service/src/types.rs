@@ -200,3 +200,16 @@ pub struct WorkflowInfo {
 pub struct PermissionModeInfo {
     pub mode: String,
 }
+
+/// Runtime capabilities advertised to clients on connect — what optional
+/// subsystems are actually available for this server instance. Lets the
+/// client surface degraded-functionality warnings (e.g. embeddings missing,
+/// memory falls back to keyword search) before the user runs into them.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ServerCapabilities {
+    /// Server version (Cargo package version of the arawn binary).
+    pub server_version: String,
+    /// True if the embedding model loaded successfully and semantic memory
+    /// search is available. False means memory falls back to FTS-only.
+    pub embeddings_available: bool,
+}

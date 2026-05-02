@@ -1016,6 +1016,18 @@ impl ArawnService for LocalService {
             mode: mode_str.to_string(),
         })
     }
+
+    async fn get_capabilities(&self) -> Result<arawn_service::ServerCapabilities, ServiceError> {
+        let embeddings_available = self
+            .memory_manager
+            .as_ref()
+            .map(|m| m.embedder().is_some())
+            .unwrap_or(false);
+        Ok(arawn_service::ServerCapabilities {
+            server_version: env!("CARGO_PKG_VERSION").to_string(),
+            embeddings_available,
+        })
+    }
 }
 
 /// Resolve workstream directory name from store. Returns "scratch" for None.
