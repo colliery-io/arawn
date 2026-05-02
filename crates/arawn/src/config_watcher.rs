@@ -24,6 +24,10 @@ pub struct ConfigWatcher {
     permission_rules: Arc<std::sync::RwLock<Vec<PermissionRule>>>,
     mcp_manager: Arc<Mutex<McpManager>>,
     tool_registry: Arc<ToolRegistry>,
+    /// Optional callback fired after each reload completes (success or failure)
+    /// with `(is_error, message)`. Wired by the binary to broadcast a
+    /// `ServerNotice` so the TUI can surface the outcome.
+    notify: Option<Arc<dyn Fn(bool, String) + Send + Sync>>,
 }
 
 impl ConfigWatcher {
@@ -40,7 +44,14 @@ impl ConfigWatcher {
             permission_rules,
             mcp_manager,
             tool_registry,
+            notify: None,
         }
+    }
+
+    /// Attach a notify callback fired after each reload completes.
+    pub fn with_notify(mut self, notify: Arc<dyn Fn(bool, String) + Send + Sync>) -> Self {
+        self.notify = Some(notify);
+        self
     }
 
     /// Spawn the file watcher as a background tokio task.
@@ -142,5 +153,16 @@ impl ConfigWatcher {
             max_iterations = config.engine.max_iterations,
             "config hot-reload complete"
         );
+
+        if let Some(ref n) = self.notify {
+            n(
+                false,
+                format!(
+                    "config reloaded: model={} max_iterations={}",
+                    config.engine_llm().model,
+                    config.engine.max_iterations
+                ),
+            );
+        }
     }
 }

@@ -17,7 +17,9 @@ use tracing::{debug, error, info, warn};
 use crate::app::{App, ChatMessage, ChatRole};
 use crate::event::map_key_event;
 use crate::render::render;
-use crate::ws_client::{EventUpdate, WsClient, engine_event_to_update, parse_engine_event};
+use crate::ws_client::{
+    EventUpdate, WsClient, engine_event_to_update, parse_engine_event, parse_system_notice,
+};
 
 fn rect_contains(rect: Rect, col: u16, row: u16) -> bool {
     col >= rect.x && col < rect.x + rect.width && row >= rect.y && row < rect.y + rect.height
@@ -716,7 +718,10 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
 
                 match msg {
                     Ok(WsMessage::Text(text)) => {
-                        if let Some(event) = parse_engine_event(&text) {
+                        if let Some(notice) = parse_system_notice(&text) {
+                            apply_system_notice(&notice, &mut app);
+                            flush = true;
+                        } else if let Some(event) = parse_engine_event(&text) {
                             flush |= apply_update(engine_event_to_update(event), &mut app);
                         }
                     }
@@ -738,7 +743,11 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                         match client.read.next().now_or_never() {
                             Some(Some(Ok(WsMessage::Text(text)))) => {
                                 drained += 1;
-                                if let Some(event) = parse_engine_event(&text) {
+                                if let Some(notice) = parse_system_notice(&text) {
+                                    apply_system_notice(&notice, &mut app);
+                                    flush = true;
+                                    break;
+                                } else if let Some(event) = parse_engine_event(&text) {
                                     flush |= apply_update(engine_event_to_update(event), &mut app);
                                     if flush { break; }
                                 }
@@ -780,6 +789,17 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
     terminal.show_cursor()?;
 
     Ok(())
+}
+
+/// Push a server-side notice (plugin/config hot-reload outcome) into the
+/// chat history as a system message. Failures get an "✗" prefix; successes
+/// get an info marker. Both stay visible — fade-out is future work.
+fn apply_system_notice(notice: &arawn_service::ServerNotice, app: &mut crate::app::App) {
+    let marker = if notice.level == "error" { "✗" } else { "ℹ" };
+    let body = format!("{marker} [{}] {}", notice.category, notice.message);
+    app.messages
+        .push(crate::app::ChatMessage::new(crate::app::ChatRole::System, body));
+    app.dirty = true;
 }
 
 /// Render `get_permissions_status` JSON as a human-readable system message.

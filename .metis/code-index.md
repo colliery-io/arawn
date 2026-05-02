@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-02T13:48:20Z | 170 files | Python, Rust
+> Generated: 2026-05-02T14:07:34Z | 170 files | Python, Rust
 
 ## Project Structure
 
@@ -389,49 +389,50 @@
 
 #### crates/arawn/src/local_service.rs
 
-- pub `LocalService` struct L31-60 — `{ store: Arc<Mutex<Store>>, data_dir: PathBuf, llm_pool: Arc<LlmClientPool>, reg...` — In-process implementation of ArawnService.
-- pub `new` function L63-87 — `( store: Store, data_dir: PathBuf, llm_pool: Arc<LlmClientPool>, registry: Arc<T...`
-- pub `with_permission_rules` function L89-92 — `(self, rules: Vec<PermissionRule>) -> Self`
-- pub `shared_store` function L96-98 — `(&self) -> Arc<Mutex<Store>>` — Get a reference to the shared permission rules for hot-reload.
-- pub `shared_llm` function L100-102 — `(&self) -> Arc<dyn LlmClient>`
-- pub `shared_compactor_llm` function L106-108 — `(&self) -> Arc<dyn LlmClient>` — Compactor LLM (separate client when `[compactor]` config selects a
-- pub `compactor_model` function L111-113 — `(&self) -> &str` — Model name used by the compactor.
-- pub `shared_llm_pool` function L117-119 — `(&self) -> Arc<LlmClientPool>` — Shared reference to the LLM pool — used by tools/agents that resolve
-- pub `shared_registry` function L121-123 — `(&self) -> Arc<ToolRegistry>`
-- pub `engine_config` function L125-127 — `(&self) -> &QueryEngineConfig`
-- pub `shared_permission_rules` function L129-131 — `(&self) -> Arc<std::sync::RwLock<Vec<PermissionRule>>>`
-- pub `shared_permission_mode` function L133-135 — `(&self) -> Arc<std::sync::RwLock<arawn_engine::permissions::PermissionMode>>`
-- pub `with_skill_registry` function L137-140 — `(mut self, registry: Arc<arawn_engine::skills::SkillRegistry>) -> Self`
-- pub `with_plugin_registry` function L142-145 — `(mut self, registry: Arc<arawn_engine::plugins::PluginRegistry>) -> Self`
-- pub `with_plan_state` function L147-150 — `(mut self, state: Arc<PlanModeState>) -> Self`
-- pub `with_background_tasks` function L152-155 — `(mut self, manager: Arc<BackgroundTaskManager>) -> Self`
-- pub `with_memory_manager` function L157-160 — `(mut self, mgr: Arc<arawn_memory::MemoryManager>) -> Self`
--  `LocalService` type L62-318 — `= LocalService`
--  `load_session_state` function L164-193 — `( &self, session_id: Uuid, ) -> Result<(arawn_storage::SessionMeta, Workstream, ...` — Load session metadata, resolve workstream, and load message history.
--  `build_session_context` function L197-265 — `( &self, session_id: Uuid, workstream: &Workstream, ws_dir: &str, workspace_dir:...` — Build a ToolContext and per-session PromptContext for the engine.
--  `build_engine` function L269-317 — `( &self, prompt_context: Option<arawn_engine::PromptContext>, event_tx: &mpsc::S...` — Build a QueryEngine configured with compactor, skills, plugins, and plan state.
--  `infer_entity_type` function L322-335 — `(text: &str) -> (arawn_memory::EntityType, String)` — Infer entity type from text patterns.
--  `LocalService` type L340-1031 — `impl ArawnService for LocalService`
--  `list_workstreams` function L341-356 — `(&self) -> Result<Vec<WorkstreamInfo>, ServiceError>`
--  `create_workstream` function L358-375 — `( &self, name: String, root_dir: PathBuf, ) -> Result<WorkstreamInfo, ServiceErr...`
--  `list_sessions` function L377-396 — `( &self, workstream_id: Option<Uuid>, ) -> Result<Vec<SessionInfo>, ServiceError...`
--  `create_session` function L398-419 — `( &self, workstream_id: Option<Uuid>, ) -> Result<SessionInfo, ServiceError>`
--  `load_session` function L421-448 — `(&self, id: Uuid) -> Result<SessionDetail, ServiceError>`
--  `send_message` function L451-647 — `( &self, session_id: Uuid, content: String, ) -> Result<Pin<Box<dyn futures::Str...`
--  `cancel` function L649-662 — `(&self, session_id: Uuid) -> Result<(), ServiceError>`
--  `promote_session` function L664-715 — `( &self, session_id: Uuid, workstream_name: &str, ) -> Result<PromotionResult, S...`
--  `resolve_user_input` function L717-731 — `( &self, request_id: &str, selected_index: Option<usize>, ) -> Result<(), Servic...`
--  `query_inventory` function L733-798 — `(&self, kind: &str) -> Result<Vec<InventoryItem>, ServiceError>`
--  `list_available_commands` function L800-812 — `(&self) -> Result<Vec<CommandInfo>, ServiceError>`
--  `list_workflows` function L814-845 — `(&self) -> Result<Vec<WorkflowInfo>, ServiceError>`
--  `remember_fact` function L847-893 — `(&self, text: &str) -> Result<MemoryStoreResult, ServiceError>`
--  `memory_summary` function L895-942 — `(&self) -> Result<MemorySummary, ServiceError>`
--  `forget_entity` function L944-994 — `(&self, query: &str) -> Result<ForgetResult, ServiceError>`
--  `get_permission_mode` function L996-1004 — `(&self) -> Result<PermissionModeInfo, ServiceError>`
--  `set_permission_mode` function L1006-1018 — `(&self, mode_str: &str) -> Result<PermissionModeInfo, ServiceError>`
--  `get_capabilities` function L1020-1030 — `(&self) -> Result<arawn_service::ServerCapabilities, ServiceError>`
--  `resolve_ws_dir_from_store` function L1034-1045 — `(store: &Store, ws_id: Option<Uuid>) -> Result<String, ServiceError>` — Resolve workstream directory name from store.
--  `first_sentence` function L1049-1060 — `(s: &str) -> String` — Extract the first sentence and sanitize for use in a markdown table cell.
+- pub `LocalService` struct L31-64 — `{ store: Arc<Mutex<Store>>, data_dir: PathBuf, llm_pool: Arc<LlmClientPool>, reg...` — In-process implementation of ArawnService.
+- pub `new` function L67-92 — `( store: Store, data_dir: PathBuf, llm_pool: Arc<LlmClientPool>, registry: Arc<T...`
+- pub `with_permission_rules` function L94-97 — `(self, rules: Vec<PermissionRule>) -> Self`
+- pub `shared_store` function L101-103 — `(&self) -> Arc<Mutex<Store>>` — Get a reference to the shared permission rules for hot-reload.
+- pub `shared_llm` function L105-107 — `(&self) -> Arc<dyn LlmClient>`
+- pub `shared_compactor_llm` function L111-113 — `(&self) -> Arc<dyn LlmClient>` — Compactor LLM (separate client when `[compactor]` config selects a
+- pub `compactor_model` function L116-118 — `(&self) -> &str` — Model name used by the compactor.
+- pub `shared_llm_pool` function L122-124 — `(&self) -> Arc<LlmClientPool>` — Shared reference to the LLM pool — used by tools/agents that resolve
+- pub `shared_registry` function L126-128 — `(&self) -> Arc<ToolRegistry>`
+- pub `engine_config` function L130-132 — `(&self) -> &QueryEngineConfig`
+- pub `shared_permission_rules` function L134-136 — `(&self) -> Arc<std::sync::RwLock<Vec<PermissionRule>>>`
+- pub `shared_permission_mode` function L138-140 — `(&self) -> Arc<std::sync::RwLock<arawn_engine::permissions::PermissionMode>>`
+- pub `with_skill_registry` function L142-145 — `(mut self, registry: Arc<arawn_engine::skills::SkillRegistry>) -> Self`
+- pub `with_plugin_registry` function L147-150 — `(mut self, registry: Arc<arawn_engine::plugins::PluginRegistry>) -> Self`
+- pub `with_plan_state` function L152-155 — `(mut self, state: Arc<PlanModeState>) -> Self`
+- pub `with_background_tasks` function L157-160 — `(mut self, manager: Arc<BackgroundTaskManager>) -> Self`
+- pub `with_memory_manager` function L162-165 — `(mut self, mgr: Arc<arawn_memory::MemoryManager>) -> Self`
+-  `LocalService` type L66-324 — `= LocalService`
+-  `load_session_state` function L169-198 — `( &self, session_id: Uuid, ) -> Result<(arawn_storage::SessionMeta, Workstream, ...` — Load session metadata, resolve workstream, and load message history.
+-  `build_session_context` function L202-270 — `( &self, session_id: Uuid, workstream: &Workstream, ws_dir: &str, workspace_dir:...` — Build a ToolContext and per-session PromptContext for the engine.
+-  `build_engine` function L274-323 — `( &self, prompt_context: Option<arawn_engine::PromptContext>, event_tx: &mpsc::S...` — Build a QueryEngine configured with compactor, skills, plugins, and plan state.
+-  `infer_entity_type` function L328-341 — `(text: &str) -> (arawn_memory::EntityType, String)` — Infer entity type from text patterns.
+-  `LocalService` type L346-1088 — `impl ArawnService for LocalService`
+-  `list_workstreams` function L347-362 — `(&self) -> Result<Vec<WorkstreamInfo>, ServiceError>`
+-  `create_workstream` function L364-381 — `( &self, name: String, root_dir: PathBuf, ) -> Result<WorkstreamInfo, ServiceErr...`
+-  `list_sessions` function L383-402 — `( &self, workstream_id: Option<Uuid>, ) -> Result<Vec<SessionInfo>, ServiceError...`
+-  `create_session` function L404-425 — `( &self, workstream_id: Option<Uuid>, ) -> Result<SessionInfo, ServiceError>`
+-  `load_session` function L427-454 — `(&self, id: Uuid) -> Result<SessionDetail, ServiceError>`
+-  `send_message` function L457-653 — `( &self, session_id: Uuid, content: String, ) -> Result<Pin<Box<dyn futures::Str...`
+-  `cancel` function L655-668 — `(&self, session_id: Uuid) -> Result<(), ServiceError>`
+-  `promote_session` function L670-721 — `( &self, session_id: Uuid, workstream_name: &str, ) -> Result<PromotionResult, S...`
+-  `resolve_user_input` function L723-737 — `( &self, request_id: &str, selected_index: Option<usize>, ) -> Result<(), Servic...`
+-  `query_inventory` function L739-804 — `(&self, kind: &str) -> Result<Vec<InventoryItem>, ServiceError>`
+-  `list_available_commands` function L806-818 — `(&self) -> Result<Vec<CommandInfo>, ServiceError>`
+-  `list_workflows` function L820-851 — `(&self) -> Result<Vec<WorkflowInfo>, ServiceError>`
+-  `remember_fact` function L853-899 — `(&self, text: &str) -> Result<MemoryStoreResult, ServiceError>`
+-  `memory_summary` function L901-948 — `(&self) -> Result<MemorySummary, ServiceError>`
+-  `forget_entity` function L950-1000 — `(&self, query: &str) -> Result<ForgetResult, ServiceError>`
+-  `get_permission_mode` function L1002-1010 — `(&self) -> Result<PermissionModeInfo, ServiceError>`
+-  `set_permission_mode` function L1012-1024 — `(&self, mode_str: &str) -> Result<PermissionModeInfo, ServiceError>`
+-  `get_capabilities` function L1026-1036 — `(&self) -> Result<arawn_service::ServerCapabilities, ServiceError>`
+-  `get_permissions_status` function L1038-1087 — `(&self) -> Result<arawn_service::PermissionsStatus, ServiceError>`
+-  `resolve_ws_dir_from_store` function L1091-1102 — `(store: &Store, ws_id: Option<Uuid>) -> Result<String, ServiceError>` — Resolve workstream directory name from store.
+-  `first_sentence` function L1106-1117 — `(s: &str) -> String` — Extract the first sentence and sanitize for use in a markdown table cell.
 
 #### crates/arawn/src/main.rs
 
@@ -474,30 +475,30 @@
 
 #### crates/arawn/src/ws_server.rs
 
-- pub `read_token_file` function L139-150 — `() -> Option<String>` — Read the auth token from {data_dir}/server.token.
-- pub `run_server` function L153-188 — `(service: LocalService, port: u16) -> anyhow::Result<()>` — Start the WebSocket server on the given port.
-- pub `handle_connection_public` function L274-276 — `(socket: WebSocket, service: Arc<LocalService>)` — Handle a single WebSocket connection.
+- pub `read_token_file` function L140-151 — `() -> Option<String>` — Read the auth token from {data_dir}/server.token.
+- pub `run_server` function L154-189 — `(service: LocalService, port: u16) -> anyhow::Result<()>` — Start the WebSocket server on the given port.
+- pub `handle_connection_public` function L275-277 — `(socket: WebSocket, service: Arc<LocalService>)` — Handle a single WebSocket connection.
 -  `PROTOCOL_VERSION` variable L24 — `: &str` — Protocol version reported by the `hello` handshake.
--  `RPC_METHODS` variable L27-47 — `: &[&str]` — Canonical RPC method names (returned by `hello`).
--  `Request` struct L51-56 — `{ id: u64, method: String, params: Value }` — JSON-RPC style request from client.
--  `Response` struct L60-66 — `{ id: u64, result: Option<Value>, error: Option<ErrorBody> }` — JSON-RPC style response to client.
--  `ErrorBody` struct L69-74 — `{ code: String, message: String, details: Option<Value> }`
--  `Response` type L76-112 — `= Response`
--  `success` function L77-83 — `(id: u64, result: Value) -> Self`
--  `error` function L85-95 — `(id: u64, code: &str, message: String) -> Self`
--  `from_service_error` function L101-111 — `(id: u64, e: &arawn_service::ServiceError) -> Self` — Build an error response from a [`ServiceError`].
--  `AppState` struct L116-121 — `{ service: Arc<LocalService>, auth_token: Option<String> }` — Shared app state for the WebSocket server.
--  `generate_auth_token` function L124-127 — `() -> String` — Generate a random auth token for WebSocket connections.
--  `write_token_file` function L130-135 — `(data_dir: &std::path::Path, token: &str) -> std::io::Result<std::path::PathBuf>` — Write the auth token to {data_dir}/server.token for clients to read.
--  `shutdown_signal` function L191-213 — `()` — Wait for a shutdown signal (Ctrl-C / SIGTERM).
--  `decision_handler` function L218-237 — `( State(AppState { service, .. }): State<AppState>, Json(req): Json<arawn_workfl...` — HTTP endpoint for workflow decision tasks.
--  `WsQueryParams` struct L241-243 — `{ token: Option<String> }` — Query parameters for WebSocket connection.
--  `ws_handler` function L245-271 — `( ws: WebSocketUpgrade, Query(params): Query<WsQueryParams>, State(state): State...`
--  `handle_connection` function L278-884 — `(socket: WebSocket, service: Arc<LocalService>)`
--  `tests` module L887-937 — `-`
--  `from_service_error_preserves_structured_detail_for_typed_variants` function L894-904 — `()` — Typed Storage error should round-trip through the wire payload with
--  `from_service_error_omits_details_for_string_only_variants` function L910-921 — `()` — String-only variants (NotFound, InvalidOperation, Internal) keep
--  `from_service_error_preserves_engine_error_kind` function L927-936 — `()` — Engine errors surface a `kind` that identifies the inner variant —
+-  `RPC_METHODS` variable L27-48 — `: &[&str]` — Canonical RPC method names (returned by `hello`).
+-  `Request` struct L52-57 — `{ id: u64, method: String, params: Value }` — JSON-RPC style request from client.
+-  `Response` struct L61-67 — `{ id: u64, result: Option<Value>, error: Option<ErrorBody> }` — JSON-RPC style response to client.
+-  `ErrorBody` struct L70-75 — `{ code: String, message: String, details: Option<Value> }`
+-  `Response` type L77-113 — `= Response`
+-  `success` function L78-84 — `(id: u64, result: Value) -> Self`
+-  `error` function L86-96 — `(id: u64, code: &str, message: String) -> Self`
+-  `from_service_error` function L102-112 — `(id: u64, e: &arawn_service::ServiceError) -> Self` — Build an error response from a [`ServiceError`].
+-  `AppState` struct L117-122 — `{ service: Arc<LocalService>, auth_token: Option<String> }` — Shared app state for the WebSocket server.
+-  `generate_auth_token` function L125-128 — `() -> String` — Generate a random auth token for WebSocket connections.
+-  `write_token_file` function L131-136 — `(data_dir: &std::path::Path, token: &str) -> std::io::Result<std::path::PathBuf>` — Write the auth token to {data_dir}/server.token for clients to read.
+-  `shutdown_signal` function L192-214 — `()` — Wait for a shutdown signal (Ctrl-C / SIGTERM).
+-  `decision_handler` function L219-238 — `( State(AppState { service, .. }): State<AppState>, Json(req): Json<arawn_workfl...` — HTTP endpoint for workflow decision tasks.
+-  `WsQueryParams` struct L242-244 — `{ token: Option<String> }` — Query parameters for WebSocket connection.
+-  `ws_handler` function L246-272 — `( ws: WebSocketUpgrade, Query(params): Query<WsQueryParams>, State(state): State...`
+-  `handle_connection` function L279-898 — `(socket: WebSocket, service: Arc<LocalService>)`
+-  `tests` module L901-951 — `-`
+-  `from_service_error_preserves_structured_detail_for_typed_variants` function L908-918 — `()` — Typed Storage error should round-trip through the wire payload with
+-  `from_service_error_omits_details_for_string_only_variants` function L924-935 — `()` — String-only variants (NotFound, InvalidOperation, Internal) keep
+-  `from_service_error_preserves_engine_error_kind` function L941-950 — `()` — Engine errors surface a `kind` that identifies the inner variant —
 
 ### crates/arawn-auth/src
 
@@ -1051,7 +1052,7 @@
 -  `DEFAULT_SYSTEM_PROMPT` variable L42 — `: &str`
 -  `QueryEngineConfig` type L74-86 — `impl Default for QueryEngineConfig`
 -  `default` function L75-85 — `() -> Self`
--  `QueryEngine` type L112-888 — `= QueryEngine`
+-  `QueryEngine` type L112-891 — `= QueryEngine`
 -  `is_cancelled` function L208-210 — `(&self) -> bool` — Check if cancellation has been requested.
 -  `emit_progress` function L213-217 — `(&self, event: ProgressEvent)` — Emit a progress event if a sender is configured.
 -  `build_request` function L554-644 — `(&self, session: &Session) -> ChatRequest`
@@ -1059,26 +1060,26 @@
 -  `MAX_RETRIES` variable L669 — `: u32`
 -  `BASE_DELAY_MS` variable L670 — `: u64`
 -  `stream_response` function L700-760 — `( &self, request: ChatRequest, ) -> Result<AssembledResponse, EngineError>`
--  `execute_tool` function L762-887 — `( &self, ctx: &dyn arawn_tool::ToolContext, tool_use_id: &str, name: &str, argum...`
--  `parse_arguments` function L890-899 — `(raw: &str) -> serde_json::Value`
--  `AssembledResponse` struct L902-906 — `{ text: String, tool_calls: Vec<AssembledToolCall>, usage: Option<arawn_llm::Usa...`
--  `AssembledToolCall` struct L908-912 — `{ id: String, name: String, arguments: serde_json::Value }`
--  `ToolResult` struct L914-917 — `{ content: String, is_error: bool }`
--  `filter_tools_for_context` function L922-1034 — `( all_tools: &[arawn_llm::ToolDefinition], session: &Session, registry: &ToolReg...` — Filter tool definitions to only contextually relevant ones for this turn.
--  `tests` module L1037-1225 — `-`
--  `MockLlm` struct L1049-1051 — `{ responses: Mutex<Vec<Vec<ChatChunk>>> }` — Mock LLM that returns pre-scripted responses.
--  `MockLlm` type L1053-1083 — `= MockLlm`
--  `new` function L1054-1058 — `(responses: Vec<Vec<ChatChunk>>) -> Self`
--  `text` function L1061-1068 — `(text: &str) -> Vec<ChatChunk>` — Convenience: text-only response
--  `tool_call` function L1071-1082 — `(id: &str, name: &str, args: &str) -> Vec<ChatChunk>` — Convenience: tool call then done
--  `MockLlm` type L1086-1102 — `impl LlmClient for MockLlm`
--  `stream` function L1087-1101 — `( &self, _request: ChatRequest, ) -> Result< Pin<Box<dyn futures::Stream<Item = ...`
--  `setup` function L1104-1109 — `() -> (Workstream, Session, EngineToolContext)`
--  `text_only_response` function L1112-1125 — `()`
--  `single_tool_call` function L1128-1146 — `()`
--  `tool_not_found` function L1149-1171 — `()`
--  `max_iterations_exceeded` function L1174-1201 — `()`
--  `multi_turn_tool_chain` function L1204-1223 — `()`
+-  `execute_tool` function L762-890 — `( &self, ctx: &dyn arawn_tool::ToolContext, tool_use_id: &str, name: &str, argum...`
+-  `parse_arguments` function L893-902 — `(raw: &str) -> serde_json::Value`
+-  `AssembledResponse` struct L905-909 — `{ text: String, tool_calls: Vec<AssembledToolCall>, usage: Option<arawn_llm::Usa...`
+-  `AssembledToolCall` struct L911-915 — `{ id: String, name: String, arguments: serde_json::Value }`
+-  `ToolResult` struct L917-920 — `{ content: String, is_error: bool }`
+-  `filter_tools_for_context` function L925-1037 — `( all_tools: &[arawn_llm::ToolDefinition], session: &Session, registry: &ToolReg...` — Filter tool definitions to only contextually relevant ones for this turn.
+-  `tests` module L1040-1228 — `-`
+-  `MockLlm` struct L1052-1054 — `{ responses: Mutex<Vec<Vec<ChatChunk>>> }` — Mock LLM that returns pre-scripted responses.
+-  `MockLlm` type L1056-1086 — `= MockLlm`
+-  `new` function L1057-1061 — `(responses: Vec<Vec<ChatChunk>>) -> Self`
+-  `text` function L1064-1071 — `(text: &str) -> Vec<ChatChunk>` — Convenience: text-only response
+-  `tool_call` function L1074-1085 — `(id: &str, name: &str, args: &str) -> Vec<ChatChunk>` — Convenience: tool call then done
+-  `MockLlm` type L1089-1105 — `impl LlmClient for MockLlm`
+-  `stream` function L1090-1104 — `( &self, _request: ChatRequest, ) -> Result< Pin<Box<dyn futures::Stream<Item = ...`
+-  `setup` function L1107-1112 — `() -> (Workstream, Session, EngineToolContext)`
+-  `text_only_response` function L1115-1128 — `()`
+-  `single_tool_call` function L1131-1149 — `()`
+-  `tool_not_found` function L1152-1174 — `()`
+-  `max_iterations_exceeded` function L1177-1204 — `()`
+-  `multi_turn_tool_chain` function L1207-1226 — `()`
 
 #### crates/arawn-engine/src/system_prompt.rs
 
@@ -1469,52 +1470,69 @@
 - pub `grant` function L123-125 — `(&mut self, tool_name: String)` — Record a session grant for a tool name.
 - pub `is_granted` function L128-130 — `(&self, tool_name: &str) -> bool` — Check if a tool has been granted for this session.
 - pub `clear` function L133-135 — `(&mut self)` — Clear all session grants.
-- pub `PermissionChecker` struct L140-145 — `{ rules: std::sync::RwLock<Vec<PermissionRule>>, mode: std::sync::RwLock<Permiss...` — The central permission checker.
-- pub `new` function L150-157 — `(rules: Vec<PermissionRule>) -> Self` — Create a new permission checker with the given rules and default mode.
-- pub `with_mode` function L160-166 — `(self, mode: PermissionMode) -> Self` — Set the permission mode (Default, AcceptEdits, BypassPermissions).
-- pub `with_prompter` function L169-172 — `(mut self, prompter: Box<dyn ModalPrompt>) -> Self` — Set the modal prompter for interactive permission requests.
-- pub `update_rules` function L175-178 — `(&self, rules: Vec<PermissionRule>)` — Hot-reload: replace the current rules with new ones.
-- pub `update_mode` function L181-184 — `(&self, mode: PermissionMode)` — Hot-reload: update the permission mode.
-- pub `check` function L197-242 — `( &self, tool_name: &str, tool_input: &str, category: PermissionCategory, ) -> P...` — Check if a tool call is permitted.
-- pub `mode` function L278-280 — `(&self) -> PermissionMode` — Get the current permission mode.
-- pub `clear_grants` function L283-285 — `(&self)` — Clear all session grants.
+- pub `DecisionReason` enum L142-154 — `MatchedRule | SessionGrant | ModeFallback | Prompted | NoChecker` — Why a permission decision came out the way it did.
+- pub `display` function L158-174 — `(&self) -> String` — One-line human-readable form for error messages and audit display.
+- pub `AuditEntry` struct L179-185 — `{ timestamp: std::time::SystemTime, tool_name: String, tool_input_summary: Strin...` — One row of the audit log — what was checked, when, and how it was decided.
+- pub `PermissionSnapshot` struct L191-197 — `{ mode: PermissionMode, allow_rules: Vec<String>, deny_rules: Vec<String>, ask_r...` — Read-only snapshot of the current permission state — exposed via the
+- pub `SharedAudit` type L207 — `= std::sync::Arc<std::sync::Mutex<std::collections::VecDeque<AuditEntry>>>` — Shareable audit buffer — held in an Arc so callers (e.g.
+- pub `new_shared_audit` function L210-212 — `() -> SharedAudit` — Construct a fresh shared audit buffer with the standard cap.
+- pub `PermissionChecker` struct L216-222 — `{ rules: std::sync::RwLock<Vec<PermissionRule>>, mode: std::sync::RwLock<Permiss...` — The central permission checker.
+- pub `new` function L227-235 — `(rules: Vec<PermissionRule>) -> Self` — Create a new permission checker with the given rules and default mode.
+- pub `with_audit` function L240-243 — `(mut self, audit: SharedAudit) -> Self` — Wire an externally-owned audit buffer so per-message checkers can
+- pub `snapshot` function L248-275 — `(&self) -> PermissionSnapshot` — Capture a read-only snapshot of the current rules, mode, and recent
+- pub `with_mode` function L294-300 — `(self, mode: PermissionMode) -> Self` — Set the permission mode (Default, AcceptEdits, BypassPermissions).
+- pub `with_prompter` function L303-306 — `(mut self, prompter: Box<dyn ModalPrompt>) -> Self` — Set the modal prompter for interactive permission requests.
+- pub `update_rules` function L309-312 — `(&self, rules: Vec<PermissionRule>)` — Hot-reload: replace the current rules with new ones.
+- pub `update_mode` function L315-318 — `(&self, mode: PermissionMode)` — Hot-reload: update the permission mode.
+- pub `check` function L331-338 — `( &self, tool_name: &str, tool_input: &str, category: PermissionCategory, ) -> P...` — Check if a tool call is permitted.
+- pub `check_explained` function L343-416 — `( &self, tool_name: &str, tool_input: &str, category: PermissionCategory, ) -> (...` — Same as [`check`] but also returns *why* the decision was made.
+- pub `mode` function L452-454 — `(&self) -> PermissionMode` — Get the current permission mode.
+- pub `clear_grants` function L457-459 — `(&self)` — Clear all session grants.
 -  `PermissionMode` type L30-62 — `= PermissionMode`
 -  `ModalOption` type L79-91 — `= ModalOption`
 -  `SessionGrants` type L117-136 — `= SessionGrants`
--  `PermissionChecker` type L147-286 — `= PermissionChecker`
--  `prompt_user` function L245-275 — `(&self, tool_name: &str, tool_input: &str) -> PermissionDecision` — Prompt the user for permission (or deny if no prompter is configured).
--  `truncate_input` function L288-296 — `(input: &str, max_len: usize) -> String`
--  `tests` module L299-658 — `-`
--  `MockPrompter` struct L304-306 — `{ index: Option<usize> }` — Mock prompter that returns a fixed index (0=AllowOnce, 1=AllowAlways, 2/None=Deny).
--  `MockPrompter` type L308-312 — `= MockPrompter`
--  `allow_once` function L309 — `() -> Self`
--  `allow_always` function L310 — `() -> Self`
--  `deny` function L311 — `() -> Self`
--  `MockPrompter` type L315-319 — `impl ModalPrompt for MockPrompter`
--  `prompt` function L316-318 — `(&self, _request: ModalRequest) -> Option<usize>`
--  `allowed_by_rule` function L322-329 — `()`
--  `denied_by_rule` function L332-339 — `()`
--  `ask_without_prompter_denies` function L342-349 — `()`
--  `ask_with_allow_once` function L352-361 — `()`
--  `ask_with_allow_always_grants_session` function L364-377 — `()`
--  `ask_with_deny` function L380-387 — `()`
--  `default_mode_allows_read_only` function L390-409 — `()`
--  `default_mode_asks_for_writes` function L412-427 — `()`
--  `accept_edits_mode_allows_file_ops` function L430-450 — `()`
--  `bypass_mode_allows_everything` function L453-471 — `()`
--  `explicit_rules_override_mode` function L474-482 — `()`
--  `deny_rules_override_session_grants` function L485-494 — `()`
--  `session_grant_works_for_non_denied_tools` function L497-506 — `()`
--  `clear_grants_resets` function L509-518 — `()`
--  `truncate_input_short` function L521-523 — `()`
--  `truncate_input_long` function L526-530 — `()`
--  `truncate_input_multibyte_utf8_no_panic` function L533-541 — `()`
--  `update_rules_hot_reload` function L544-565 — `()`
--  `update_mode_hot_reload` function L568-590 — `()`
--  `permission_mode_serde` function L593-602 — `()`
--  `plan_mode_allows_read_only` function L605-623 — `()`
--  `plan_mode_denies_writes` function L626-644 — `()`
--  `plan_mode_allows_plan_meta_tools` function L647-657 — `()`
+-  `DecisionReason` type L156-175 — `= DecisionReason`
+-  `AUDIT_CAP` variable L202 — `: usize` — Cap on the audit ring buffer — newest decisions evict oldest.
+-  `PermissionChecker` type L224-460 — `= PermissionChecker`
+-  `record_audit` function L277-291 — `(&self, tool_name: &str, tool_input: &str, decision: PermissionDecision, reason:...`
+-  `prompt_user` function L419-449 — `(&self, tool_name: &str, tool_input: &str) -> PermissionDecision` — Prompt the user for permission (or deny if no prompter is configured).
+-  `truncate_input` function L462-470 — `(input: &str, max_len: usize) -> String`
+-  `tests` module L473-919 — `-`
+-  `MockPrompter` struct L478-480 — `{ index: Option<usize> }` — Mock prompter that returns a fixed index (0=AllowOnce, 1=AllowAlways, 2/None=Deny).
+-  `MockPrompter` type L482-486 — `= MockPrompter`
+-  `allow_once` function L483 — `() -> Self`
+-  `allow_always` function L484 — `() -> Self`
+-  `deny` function L485 — `() -> Self`
+-  `MockPrompter` type L489-493 — `impl ModalPrompt for MockPrompter`
+-  `prompt` function L490-492 — `(&self, _request: ModalRequest) -> Option<usize>`
+-  `allowed_by_rule` function L496-503 — `()`
+-  `denied_by_rule` function L506-513 — `()`
+-  `ask_without_prompter_denies` function L516-523 — `()`
+-  `ask_with_allow_once` function L526-535 — `()`
+-  `ask_with_allow_always_grants_session` function L538-551 — `()`
+-  `ask_with_deny` function L554-561 — `()`
+-  `default_mode_allows_read_only` function L564-583 — `()`
+-  `default_mode_asks_for_writes` function L586-601 — `()`
+-  `accept_edits_mode_allows_file_ops` function L604-624 — `()`
+-  `bypass_mode_allows_everything` function L627-645 — `()`
+-  `explicit_rules_override_mode` function L648-656 — `()`
+-  `deny_rules_override_session_grants` function L659-668 — `()`
+-  `session_grant_works_for_non_denied_tools` function L671-680 — `()`
+-  `clear_grants_resets` function L683-692 — `()`
+-  `truncate_input_short` function L695-697 — `()`
+-  `truncate_input_long` function L700-704 — `()`
+-  `truncate_input_multibyte_utf8_no_panic` function L707-715 — `()`
+-  `update_rules_hot_reload` function L718-739 — `()`
+-  `update_mode_hot_reload` function L742-764 — `()`
+-  `permission_mode_serde` function L767-776 — `()`
+-  `plan_mode_allows_read_only` function L779-797 — `()`
+-  `plan_mode_denies_writes` function L800-818 — `()`
+-  `plan_mode_allows_plan_meta_tools` function L821-831 — `()`
+-  `check_explained_attributes_deny_to_matching_rule` function L838-851 — `()`
+-  `check_explained_attributes_no_match_to_mode_fallback` function L854-863 — `()`
+-  `audit_log_records_decisions_in_order_and_caps` function L866-882 — `()`
+-  `shared_audit_aggregates_across_checkers` function L885-901 — `()`
+-  `snapshot_partitions_rules_by_kind_with_display_specs` function L904-918 — `()`
 
 #### crates/arawn-engine/src/permissions/config.rs
 
@@ -1573,30 +1591,33 @@
 - pub `matches` function L62-70 — `(&self, tool_name: &str, tool_input: &str) -> bool` — Check if this rule matches a given tool name and input.
 - pub `PermissionDecision` enum L75-84 — `Allowed | Denied | Ask | NoMatch` — The result of evaluating permission rules against a tool call.
 - pub `RuleMatcher` struct L90 — `-` — Evaluates a list of permission rules against a tool call.
-- pub `evaluate` function L96-123 — `( rules: &[PermissionRule], tool_name: &str, tool_input: &str, ) -> PermissionDe...` — Evaluate rules against a tool call.
+- pub `evaluate` function L96-102 — `( rules: &[PermissionRule], tool_name: &str, tool_input: &str, ) -> PermissionDe...` — Evaluate rules against a tool call.
+- pub `evaluate_with_match` function L107-134 — `( rules: &[PermissionRule], tool_name: &str, tool_input: &str, ) -> (PermissionD...` — Evaluate rules and also return the rule that matched, when any did.
+- pub `display_spec` function L140-145 — `(&self) -> String` — Compact human-readable form: `"shell(rm -rf *)"` or `"file_write"`.
 -  `PermissionRule` type L30-71 — `= PermissionRule`
--  `RuleMatcher` type L92-124 — `= RuleMatcher`
--  `glob_match` function L128-132 — `(pattern: &str, text: &str) -> bool` — Simple glob matching supporting `*` (any chars) and `?` (single char).
--  `glob_match_inner` function L134-162 — `(pat: &[char], txt: &[char]) -> bool`
--  `tests` module L165-370 — `-`
--  `glob_exact_match` function L171-174 — `()`
--  `glob_star_match` function L177-182 — `()`
--  `glob_question_mark` function L185-188 — `()`
--  `glob_complex_patterns` function L191-196 — `()`
--  `glob_content_patterns` function L199-204 — `()`
--  `rule_exact_tool_match` function L209-213 — `()`
--  `rule_glob_tool_match` function L216-221 — `()`
--  `rule_with_content_pattern` function L224-229 — `()`
--  `rule_parse_simple` function L232-236 — `()`
--  `rule_parse_with_content` function L239-243 — `()`
--  `rule_parse_nested_parens` function L246-251 — `()`
--  `matcher_deny_takes_priority` function L256-265 — `()`
--  `matcher_allow_before_ask` function L268-277 — `()`
--  `matcher_ask_when_only_ask_rule` function L280-286 — `()`
--  `matcher_no_match_when_no_rules` function L289-294 — `()`
--  `matcher_no_match_when_rules_dont_apply` function L297-303 — `()`
--  `matcher_content_pattern_deny` function L306-321 — `()`
--  `matcher_mixed_rules_realistic` function L324-369 — `()`
+-  `RuleMatcher` type L92-135 — `= RuleMatcher`
+-  `PermissionRule` type L137-146 — `= PermissionRule`
+-  `glob_match` function L150-154 — `(pattern: &str, text: &str) -> bool` — Simple glob matching supporting `*` (any chars) and `?` (single char).
+-  `glob_match_inner` function L156-184 — `(pat: &[char], txt: &[char]) -> bool`
+-  `tests` module L187-392 — `-`
+-  `glob_exact_match` function L193-196 — `()`
+-  `glob_star_match` function L199-204 — `()`
+-  `glob_question_mark` function L207-210 — `()`
+-  `glob_complex_patterns` function L213-218 — `()`
+-  `glob_content_patterns` function L221-226 — `()`
+-  `rule_exact_tool_match` function L231-235 — `()`
+-  `rule_glob_tool_match` function L238-243 — `()`
+-  `rule_with_content_pattern` function L246-251 — `()`
+-  `rule_parse_simple` function L254-258 — `()`
+-  `rule_parse_with_content` function L261-265 — `()`
+-  `rule_parse_nested_parens` function L268-273 — `()`
+-  `matcher_deny_takes_priority` function L278-287 — `()`
+-  `matcher_allow_before_ask` function L290-299 — `()`
+-  `matcher_ask_when_only_ask_rule` function L302-308 — `()`
+-  `matcher_no_match_when_no_rules` function L311-316 — `()`
+-  `matcher_no_match_when_rules_dont_apply` function L319-325 — `()`
+-  `matcher_content_pattern_deny` function L328-343 — `()`
+-  `matcher_mixed_rules_realistic` function L346-391 — `()`
 
 ### crates/arawn-engine/src/plugins
 
@@ -2252,32 +2273,32 @@
 -  `parameters_schema` function L352-371 — `(&self) -> Value`
 -  `execute` function L373-413 — `(&self, ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ...`
 -  `SandboxExecError` enum L416-421 — `Unavailable | Tool`
--  `execute_sandboxed` function L423-512 — `( command: &str, working_dir: &std::path::Path, timeout_ms: u64, network_tools: ...`
--  `execute_unsandboxed` function L514-560 — `( command: &str, working_dir: &std::path::Path, timeout_ms: u64, ) -> Result<Too...`
--  `tests` module L563-992 — `-`
--  `test_ctx` function L571-574 — `() -> EngineToolContext`
--  `test_ctx_in` function L576-579 — `(dir: &std::path::Path) -> EngineToolContext`
--  `shell_echo` function L583-591 — `()`
--  `shell_nonzero_exit` function L595-603 — `()`
--  `shell_timeout` function L607-618 — `()`
--  `shell_missing_command` function L622-626 — `()`
--  `shell_env_does_not_leak_secrets` function L630-655 — `()`
--  `background_command_runs_sandboxed` function L659-693 — `()`
--  `background_command_sandbox_blocks_sensitive_read` function L697-743 — `()`
--  `shell_env_preserves_path` function L747-755 — `()`
--  `shell_schema_is_valid` function L758-763 — `()`
--  `sensitive_paths_includes_ssh` function L766-769 — `()`
--  `sensitive_paths_includes_aws` function L772-775 — `()`
--  `sandbox_config_allows_working_dir_and_tmp` function L778-789 — `()`
--  `network_detection_recognizes_tools` function L792-799 — `()`
--  `network_detection_blocks_unknown` function L802-807 — `()`
--  `network_detection_empty_list_blocks_all` function L810-813 — `()`
--  `sandbox_write_inside_allowed` function L819-838 — `()`
--  `sandbox_mkdir_inside_allowed` function L842-863 — `()`
--  `sandbox_unlink_inside_allowed` function L867-892 — `()`
--  `sandbox_build_tool_workflow` function L896-918 — `()`
--  `sandbox_write_outside_blocked` function L922-959 — `()`
--  `sandbox_read_sensitive_path_blocked` function L963-991 — `()`
+-  `execute_sandboxed` function L423-523 — `( command: &str, working_dir: &std::path::Path, timeout_ms: u64, network_tools: ...`
+-  `execute_unsandboxed` function L525-571 — `( command: &str, working_dir: &std::path::Path, timeout_ms: u64, ) -> Result<Too...`
+-  `tests` module L574-1003 — `-`
+-  `test_ctx` function L582-585 — `() -> EngineToolContext`
+-  `test_ctx_in` function L587-590 — `(dir: &std::path::Path) -> EngineToolContext`
+-  `shell_echo` function L594-602 — `()`
+-  `shell_nonzero_exit` function L606-614 — `()`
+-  `shell_timeout` function L618-629 — `()`
+-  `shell_missing_command` function L633-637 — `()`
+-  `shell_env_does_not_leak_secrets` function L641-666 — `()`
+-  `background_command_runs_sandboxed` function L670-704 — `()`
+-  `background_command_sandbox_blocks_sensitive_read` function L708-754 — `()`
+-  `shell_env_preserves_path` function L758-766 — `()`
+-  `shell_schema_is_valid` function L769-774 — `()`
+-  `sensitive_paths_includes_ssh` function L777-780 — `()`
+-  `sensitive_paths_includes_aws` function L783-786 — `()`
+-  `sandbox_config_allows_working_dir_and_tmp` function L789-800 — `()`
+-  `network_detection_recognizes_tools` function L803-810 — `()`
+-  `network_detection_blocks_unknown` function L813-818 — `()`
+-  `network_detection_empty_list_blocks_all` function L821-824 — `()`
+-  `sandbox_write_inside_allowed` function L830-849 — `()`
+-  `sandbox_mkdir_inside_allowed` function L853-874 — `()`
+-  `sandbox_unlink_inside_allowed` function L878-903 — `()`
+-  `sandbox_build_tool_workflow` function L907-929 — `()`
+-  `sandbox_write_outside_blocked` function L933-970 — `()`
+-  `sandbox_read_sensitive_path_blocked` function L974-1002 — `()`
 
 #### crates/arawn-engine/src/tools/skill.rs
 
@@ -3181,7 +3202,7 @@
 
 - pub `error` module L1 — `-`
 - pub `types` module L2 — `-`
-- pub `ArawnService` interface L24-119 — `{ fn list_workstreams(), fn create_workstream(), fn list_sessions(), fn create_s...` — The service contract between any UI client and the Arawn backend.
+- pub `ArawnService` interface L25-125 — `{ fn list_workstreams(), fn create_workstream(), fn list_sessions(), fn create_s...` — The service contract between any UI client and the Arawn backend.
 
 #### crates/arawn-service/src/types.rs
 
@@ -3202,6 +3223,8 @@
 - pub `WorkflowInfo` struct L192-196 — `{ name: String, cron: Option<String> }` — Info about a workflow.
 - pub `PermissionModeInfo` struct L200-202 — `{ mode: String }` — Result of getting or setting the permission mode.
 - pub `ServerCapabilities` struct L209-215 — `{ server_version: String, embeddings_available: bool }` — Runtime capabilities advertised to clients on connect — what optional
+- pub `PermissionsStatus` struct L221-227 — `{ mode: String, allow_rules: Vec<String>, deny_rules: Vec<String>, ask_rules: Ve...` — Read-only snapshot of the active permission configuration plus a
+- pub `PermissionAuditEntry` struct L232-242 — `{ timestamp: String, tool_name: String, tool_input_summary: String, decision: St...` — One row of the permission audit — what the agent tried to do and how
 
 ### crates/arawn-storage/src
 
@@ -3775,33 +3798,33 @@
 - pub `ChatRole` enum L80-86 — `User | Assistant | ToolCall | ToolResult | System`
 - pub `App` struct L89-134 — `{ focus: Focus, input_buffer: String, cursor_pos: usize, messages: Vec<ChatMessa...` — All mutable TUI state.
 - pub `new` function L137-170 — `() -> Self`
-- pub `handle_action` function L173-488 — `(&mut self, action: Action) -> bool` — Process an action and mutate state.
-- pub `apply_engine_event` function L533-610 — `(&mut self, event: crate::ws_client::EventUpdate)` — Apply a streaming engine event to the app state (testable without network).
-- pub `load_session_messages` function L614-654 — `(&mut self, detail: &serde_json::Value)` — Load messages from a session detail JSON response into the chat.
-- pub `format_tool_input` function L674-722 — `(tool_name: &str, input: &serde_json::Value) -> String` — Format tool input args into a compact display string.
+- pub `handle_action` function L173-489 — `(&mut self, action: Action) -> bool` — Process an action and mutate state.
+- pub `apply_engine_event` function L534-611 — `(&mut self, event: crate::ws_client::EventUpdate)` — Apply a streaming engine event to the app state (testable without network).
+- pub `load_session_messages` function L615-655 — `(&mut self, detail: &serde_json::Value)` — Load messages from a session detail JSON response into the chat.
+- pub `format_tool_input` function L675-723 — `(tool_name: &str, input: &serde_json::Value) -> String` — Format tool input args into a compact display string.
 -  `ChatMessage` type L53-77 — `= ChatMessage`
--  `App` type L136-671 — `= App`
--  `update_autocomplete` function L491-520 — `(&mut self)` — Update autocomplete suggestions based on current input buffer.
--  `accept_autocomplete` function L523-530 — `(&mut self)` — Accept the currently selected autocomplete suggestion.
--  `prev_char_boundary` function L656-662 — `(&self) -> usize`
--  `next_char_boundary` function L664-670 — `(&self) -> usize`
--  `App` type L724-728 — `impl Default for App`
--  `default` function L725-727 — `() -> Self`
--  `tests` module L731-969 — `-`
--  `type_chars_updates_buffer` function L735-741 — `()`
--  `backspace_removes_char` function L744-751 — `()`
--  `submit_moves_to_messages` function L754-766 — `()`
--  `submit_blocked_when_empty` function L769-775 — `()`
--  `submit_blocked_while_generating` function L778-784 — `()`
--  `tab_toggles_focus` function L787-794 — `()`
--  `scroll_updates_offset` function L797-805 — `()`
--  `cancel_stops_generation` function L808-817 — `()`
--  `quit_sets_flag` function L820-824 — `()`
--  `cursor_movement` function L827-848 — `()`
--  `full_conversation_flow` function L853-883 — `()`
--  `tool_call_flow` function L886-917 — `()`
--  `error_event_clears_generating` function L920-934 — `()`
--  `sidebar_navigation` function L937-968 — `()`
+-  `App` type L136-672 — `= App`
+-  `update_autocomplete` function L492-521 — `(&mut self)` — Update autocomplete suggestions based on current input buffer.
+-  `accept_autocomplete` function L524-531 — `(&mut self)` — Accept the currently selected autocomplete suggestion.
+-  `prev_char_boundary` function L657-663 — `(&self) -> usize`
+-  `next_char_boundary` function L665-671 — `(&self) -> usize`
+-  `App` type L725-729 — `impl Default for App`
+-  `default` function L726-728 — `() -> Self`
+-  `tests` module L732-970 — `-`
+-  `type_chars_updates_buffer` function L736-742 — `()`
+-  `backspace_removes_char` function L745-752 — `()`
+-  `submit_moves_to_messages` function L755-767 — `()`
+-  `submit_blocked_when_empty` function L770-776 — `()`
+-  `submit_blocked_while_generating` function L779-785 — `()`
+-  `tab_toggles_focus` function L788-795 — `()`
+-  `scroll_updates_offset` function L798-806 — `()`
+-  `cancel_stops_generation` function L809-818 — `()`
+-  `quit_sets_flag` function L821-825 — `()`
+-  `cursor_movement` function L828-849 — `()`
+-  `full_conversation_flow` function L854-884 — `()`
+-  `tool_call_flow` function L887-918 — `()`
+-  `error_event_clears_generating` function L921-935 — `()`
+-  `sidebar_navigation` function L938-969 — `()`
 
 #### crates/arawn-tui/src/command.rs
 
@@ -3811,46 +3834,46 @@
 - pub `parse_command` function L37-57 — `(input: &str) -> Option<ParsedCommand>` — Parse a slash command from the input buffer.
 - pub `CommandRegistry` struct L61-63 — `{ commands: Vec<CommandInfo> }` — The command registry — holds all available slash commands.
 - pub `new` function L66-70 — `() -> Self` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
-- pub `register_skills` function L161-171 — `(&mut self, skills: Vec<(String, String)>)` — Add skill commands from the server's cached skill list.
-- pub `all` function L174-176 — `(&self) -> &[CommandInfo]` — Get all commands.
-- pub `matching` function L179-185 — `(&self, prefix: &str) -> Vec<&CommandInfo>` — Find commands matching a prefix (for autocomplete).
-- pub `find` function L188-191 — `(&self, name: &str) -> Option<&CommandInfo>` — Look up a command by exact name.
-- pub `AutocompleteState` struct L196-201 — `{ suggestions: Vec<CommandInfo>, selected: usize }` — Autocomplete state for the slash command dropdown.
-- pub `new` function L204-209 — `(suggestions: Vec<CommandInfo>) -> Self` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
-- pub `next` function L211-215 — `(&mut self)` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
-- pub `prev` function L217-225 — `(&mut self)` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
-- pub `selected_command` function L227-229 — `(&self) -> Option<&CommandInfo>` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
-- pub `is_empty` function L231-233 — `(&self) -> bool` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
-- pub `CommandResult` enum L238-273 — `SystemMessage | ClearChat | EnterPlan | QueryInventory | InvokeSkill | RememberF...` — The result of executing a built-in command.
-- pub `execute_command` function L276-384 — `(cmd: &ParsedCommand, registry: &CommandRegistry) -> CommandResult` — Execute a parsed slash command against the registry.
--  `CommandRegistry` type L65-192 — `= CommandRegistry` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `register_builtins` function L72-158 — `(&mut self)` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `AutocompleteState` type L203-234 — `= AutocompleteState` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `tests` module L387-654 — `-` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `parse_simple_command` function L391-395 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `parse_command_with_args` function L398-402 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `parse_not_a_command` function L405-409 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `parse_slash_only` function L412-414 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `parse_with_leading_whitespace` function L417-420 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `registry_has_builtins` function L423-430 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `registry_matching_prefix` function L433-439 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `registry_matching_empty_returns_all` function L442-446 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `registry_skills` function L449-458 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `autocomplete_navigation` function L461-479 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_help` function L482-489 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_clear` function L492-496 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_unknown` function L499-506 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_inventory` function L509-516 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_skill` function L519-530 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_remember_with_text_returns_remember_fact` function L537-546 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_remember_without_text_returns_usage_message` function L549-559 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_memory_returns_memory_summary` function L562-569 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_forget_with_query_returns_forget_entity` function L572-581 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_forget_without_query_returns_usage_message` function L584-593 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_workflows_list_returns_workflow_list` function L596-606 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `every_advertised_builtin_dispatches_or_explains` function L614-637 — `()` — Audit: every built-in command in /help must dispatch to a CommandResult
--  `capabilities_banner_doc_path_pinned` function L642-653 — `()` — Capabilities banner copy in event_loop.rs points users at this docs
--  `PINNED` variable L645 — `: &str` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+- pub `register_skills` function L167-177 — `(&mut self, skills: Vec<(String, String)>)` — Add skill commands from the server's cached skill list.
+- pub `all` function L180-182 — `(&self) -> &[CommandInfo]` — Get all commands.
+- pub `matching` function L185-191 — `(&self, prefix: &str) -> Vec<&CommandInfo>` — Find commands matching a prefix (for autocomplete).
+- pub `find` function L194-197 — `(&self, name: &str) -> Option<&CommandInfo>` — Look up a command by exact name.
+- pub `AutocompleteState` struct L202-207 — `{ suggestions: Vec<CommandInfo>, selected: usize }` — Autocomplete state for the slash command dropdown.
+- pub `new` function L210-215 — `(suggestions: Vec<CommandInfo>) -> Self` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+- pub `next` function L217-221 — `(&mut self)` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+- pub `prev` function L223-231 — `(&mut self)` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+- pub `selected_command` function L233-235 — `(&self) -> Option<&CommandInfo>` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+- pub `is_empty` function L237-239 — `(&self) -> bool` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+- pub `CommandResult` enum L244-281 — `SystemMessage | ClearChat | EnterPlan | QueryInventory | InvokeSkill | RememberF...` — The result of executing a built-in command.
+- pub `execute_command` function L284-393 — `(cmd: &ParsedCommand, registry: &CommandRegistry) -> CommandResult` — Execute a parsed slash command against the registry.
+-  `CommandRegistry` type L65-198 — `= CommandRegistry` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `register_builtins` function L72-164 — `(&mut self)` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `AutocompleteState` type L209-240 — `= AutocompleteState` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `tests` module L396-663 — `-` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `parse_simple_command` function L400-404 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `parse_command_with_args` function L407-411 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `parse_not_a_command` function L414-418 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `parse_slash_only` function L421-423 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `parse_with_leading_whitespace` function L426-429 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `registry_has_builtins` function L432-439 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `registry_matching_prefix` function L442-448 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `registry_matching_empty_returns_all` function L451-455 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `registry_skills` function L458-467 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `autocomplete_navigation` function L470-488 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_help` function L491-498 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_clear` function L501-505 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_unknown` function L508-515 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_inventory` function L518-525 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_skill` function L528-539 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_remember_with_text_returns_remember_fact` function L546-555 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_remember_without_text_returns_usage_message` function L558-568 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_memory_returns_memory_summary` function L571-578 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_forget_with_query_returns_forget_entity` function L581-590 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_forget_without_query_returns_usage_message` function L593-602 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_workflows_list_returns_workflow_list` function L605-615 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `every_advertised_builtin_dispatches_or_explains` function L623-646 — `()` — Audit: every built-in command in /help must dispatch to a CommandResult
+-  `capabilities_banner_doc_path_pinned` function L651-662 — `()` — Capabilities banner copy in event_loop.rs points users at this docs
+-  `PINNED` variable L654 — `: &str` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
 
 #### crates/arawn-tui/src/event.rs
 
@@ -3871,8 +3894,9 @@
 
 #### crates/arawn-tui/src/event_loop.rs
 
-- pub `run_tui` function L27-775 — `(url: &str, model_name: &str) -> Result<(), Box<dyn std::error::Error>>` — Run the TUI connected to the given WebSocket server URL.
+- pub `run_tui` function L27-783 — `(url: &str, model_name: &str) -> Result<(), Box<dyn std::error::Error>>` — Run the TUI connected to the given WebSocket server URL.
 -  `rect_contains` function L22-24 — `(rect: Rect, col: u16, row: u16) -> bool`
+-  `format_permissions_status` function L786-826 — `(status: &serde_json::Value) -> String` — Render `get_permissions_status` JSON as a human-readable system message.
 
 #### crates/arawn-tui/src/lib.rs
 
@@ -4090,21 +4114,22 @@
 - pub `list_workstreams` function L85-92 — `( &mut self, ) -> Result<Vec<WorkstreamInfo>, Box<dyn std::error::Error>>`
 - pub `list_workflows` function L94-101 — `( &mut self, ) -> Result<Vec<serde_json::Value>, Box<dyn std::error::Error>>`
 - pub `get_capabilities` function L106-113 — `( &mut self, ) -> Result<serde_json::Value, Box<dyn std::error::Error>>` — Fetch server runtime capabilities.
-- pub `get_permission_mode` function L115-122 — `( &mut self, ) -> Result<String, Box<dyn std::error::Error>>`
-- pub `set_permission_mode` function L124-135 — `( &mut self, mode: &str, ) -> Result<String, Box<dyn std::error::Error>>`
-- pub `list_sessions` function L137-149 — `( &mut self, ws_id: Option<uuid::Uuid>, ) -> Result<Vec<SessionInfo>, Box<dyn st...`
-- pub `create_session` function L151-163 — `( &mut self, ws_id: Option<uuid::Uuid>, ) -> Result<SessionInfo, Box<dyn std::er...`
-- pub `load_session` function L165-173 — `( &mut self, session_id: uuid::Uuid, ) -> Result<serde_json::Value, Box<dyn std:...`
-- pub `send_message` function L175-191 — `( &mut self, session_id: uuid::Uuid, content: &str, ) -> Result<(), Box<dyn std:...`
-- pub `read_response_raw` function L194-196 — `(&mut self) -> Result<Value, Box<dyn std::error::Error>>` — Read the next JSON response from the server (public for sidebar).
-- pub `parse_engine_event` function L227-247 — `(text: &str) -> Option<EngineEvent>` — Parse a WS message as an EngineEvent.
-- pub `EventUpdate` enum L250-277 — `AppendStreamingText | AddToolCall | AddToolResult | Complete | Error | Warning |...` — Convert an EngineEvent into App state updates.
-- pub `engine_event_to_update` function L279-306 — `(event: EngineEvent) -> EventUpdate`
+- pub `get_permissions_status` function L116-123 — `( &mut self, ) -> Result<serde_json::Value, Box<dyn std::error::Error>>` — Fetch permission rules + recent audit.
+- pub `get_permission_mode` function L125-132 — `( &mut self, ) -> Result<String, Box<dyn std::error::Error>>`
+- pub `set_permission_mode` function L134-145 — `( &mut self, mode: &str, ) -> Result<String, Box<dyn std::error::Error>>`
+- pub `list_sessions` function L147-159 — `( &mut self, ws_id: Option<uuid::Uuid>, ) -> Result<Vec<SessionInfo>, Box<dyn st...`
+- pub `create_session` function L161-173 — `( &mut self, ws_id: Option<uuid::Uuid>, ) -> Result<SessionInfo, Box<dyn std::er...`
+- pub `load_session` function L175-183 — `( &mut self, session_id: uuid::Uuid, ) -> Result<serde_json::Value, Box<dyn std:...`
+- pub `send_message` function L185-201 — `( &mut self, session_id: uuid::Uuid, content: &str, ) -> Result<(), Box<dyn std:...`
+- pub `read_response_raw` function L204-206 — `(&mut self) -> Result<Value, Box<dyn std::error::Error>>` — Read the next JSON response from the server (public for sidebar).
+- pub `parse_engine_event` function L237-257 — `(text: &str) -> Option<EngineEvent>` — Parse a WS message as an EngineEvent.
+- pub `EventUpdate` enum L260-287 — `AppendStreamingText | AddToolCall | AddToolResult | Complete | Error | Warning |...` — Convert an EngineEvent into App state updates.
+- pub `engine_event_to_update` function L289-316 — `(event: EngineEvent) -> EventUpdate`
 -  `REQUEST_ID` variable L10 — `: AtomicU64`
 -  `next_id` function L12-14 — `() -> u64`
--  `WsClient` type L31-224 — `= WsClient`
+-  `WsClient` type L31-234 — `= WsClient`
 -  `read_server_token` function L50-64 — `() -> Option<String>` — Read the server auth token from {data_dir}/server.token.
--  `read_response` function L199-223 — `(&mut self) -> Result<Value, Box<dyn std::error::Error>>` — Read the next JSON response from the server.
+-  `read_response` function L209-233 — `(&mut self) -> Result<Value, Box<dyn std::error::Error>>` — Read the next JSON response from the server.
 
 ### crates/arawn-workflow
 

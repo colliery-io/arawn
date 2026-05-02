@@ -338,8 +338,9 @@ async fn main() -> Result<()> {
         registry.register(Box::new(SkillTool::new(Arc::clone(&skill_registry))));
         info!(tools = registry.len(), "tools registered for serve mode");
 
-        // Spawn hot-reload watcher for new-style plugins
-        let _plugin_watcher = plugin_runtime.watch(Arc::clone(&skill_registry));
+        // Plugin hot-reload watcher is spawned later, after `service` is
+        // constructed, so we can wire it into the broadcast channel and
+        // surface reload outcomes in the TUI.
 
         // Connect MCP servers (config + plugins)
         let mcp_manager = connect_mcp_servers(&data_dir, &plugin_result, &registry).await;
@@ -412,7 +413,23 @@ async fn main() -> Result<()> {
         // Register workflow tools (before config watcher takes registry ownership)
         register_workflow_tools(&registry, workflows_dir, Arc::clone(&shared_runner));
 
+        // Wire watchers into the broadcast so reload outcomes reach the TUI.
+        let notice_tx_plugin = service.notice_sender();
+        let _plugin_watcher = plugin_runtime.watch(
+            Arc::clone(&skill_registry),
+            Some(Arc::new(move |is_error: bool, msg: String| {
+                let notice = arawn_service::ServerNotice {
+                    level: if is_error { "error".into() } else { "info".into() },
+                    category: "plugin_reload".into(),
+                    message: msg,
+                    timestamp: chrono::Utc::now().to_rfc3339(),
+                };
+                let _ = notice_tx_plugin.send(notice);
+            })),
+        );
+
         // Spawn config watcher for hot-reloading arawn.toml changes
+        let notice_tx_config = service.notice_sender();
         let _config_watcher = arawn_bin::config_watcher::ConfigWatcher::new(
             config_path,
             std::path::PathBuf::from(&data_dir),
@@ -420,6 +437,15 @@ async fn main() -> Result<()> {
             mcp_manager,
             registry,
         )
+        .with_notify(Arc::new(move |is_error: bool, msg: String| {
+            let notice = arawn_service::ServerNotice {
+                level: if is_error { "error".into() } else { "info".into() },
+                category: "config_reload".into(),
+                message: msg,
+                timestamp: chrono::Utc::now().to_rfc3339(),
+            };
+            let _ = notice_tx_config.send(notice);
+        }))
         .spawn();
 
         arawn_bin::ws_server::run_server(service, serve_port).await?;

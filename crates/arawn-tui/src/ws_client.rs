@@ -286,6 +286,18 @@ pub enum EventUpdate {
     Flush,
 }
 
+/// Parse a server-wide notice (plugin/config hot-reload) from a raw WS text
+/// message. Returns `None` if the message isn't a `SystemNotice` envelope.
+/// Distinct from `parse_engine_event` because notices are server-scoped, not
+/// per-conversation-turn.
+pub fn parse_system_notice(text: &str) -> Option<arawn_service::ServerNotice> {
+    let v: serde_json::Value = serde_json::from_str(text).ok()?;
+    if v.get("event")?.as_str()? != "SystemNotice" {
+        return None;
+    }
+    serde_json::from_value(v.get("data")?.clone()).ok()
+}
+
 pub fn engine_event_to_update(event: EngineEvent) -> EventUpdate {
     match event {
         EngineEvent::StreamingText { text } => EventUpdate::AppendStreamingText(text),
@@ -312,5 +324,53 @@ pub fn engine_event_to_update(event: EngineEvent) -> EventUpdate {
             EventUpdate::UserInputRequest { request_id, title, subtitle, options }
         }
         EngineEvent::Flush => EventUpdate::Flush,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // T-0199: parse_system_notice must accept the on-the-wire shape and
+    // reject unrelated messages without panicking.
+
+    #[test]
+    fn parses_well_formed_system_notice() {
+        let raw = serde_json::json!({
+            "event": "SystemNotice",
+            "data": {
+                "level": "info",
+                "category": "plugin_reload",
+                "message": "plugins reloaded: 2 plugin(s), 5 skill(s), 1 agent(s)",
+                "timestamp": "2026-05-02T15:00:00Z"
+            }
+        })
+        .to_string();
+        let notice = parse_system_notice(&raw).expect("expected SystemNotice");
+        assert_eq!(notice.level, "info");
+        assert_eq!(notice.category, "plugin_reload");
+        assert!(notice.message.contains("reloaded"));
+    }
+
+    #[test]
+    fn rejects_engine_event_envelope() {
+        let raw = serde_json::json!({
+            "event": "StreamingText",
+            "data": {"text": "hi"}
+        })
+        .to_string();
+        assert!(parse_system_notice(&raw).is_none());
+    }
+
+    #[test]
+    fn rejects_response_envelope() {
+        let raw = serde_json::json!({"id": 1, "result": {"ok": true}}).to_string();
+        assert!(parse_system_notice(&raw).is_none());
+    }
+
+    #[test]
+    fn rejects_malformed_json() {
+        assert!(parse_system_notice("not json at all").is_none());
+        assert!(parse_system_notice("").is_none());
     }
 }

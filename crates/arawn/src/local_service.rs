@@ -61,6 +61,12 @@ pub struct LocalService {
     /// PermissionChecker writes into this so the rolling history survives
     /// across messages and is exposed via `get_permissions_status`.
     permission_audit: arawn_engine::permissions::SharedAudit,
+    /// Broadcast channel for server-wide notices (hot-reload outcomes,
+    /// config changes). Each WS connection subscribes its own receiver and
+    /// forwards events to the client. Capped at 64 — overflow drops oldest,
+    /// which is the right behavior for "the user just wants to know
+    /// something happened" notifications.
+    notice_tx: tokio::sync::broadcast::Sender<arawn_service::ServerNotice>,
 }
 
 impl LocalService {
@@ -88,7 +94,22 @@ impl LocalService {
             active_sessions: Arc::new(Mutex::new(HashSet::new())),
             cancel_tokens: Arc::new(Mutex::new(HashMap::new())),
             permission_audit: arawn_engine::permissions::new_shared_audit(),
+            notice_tx: tokio::sync::broadcast::channel(64).0,
         }
+    }
+
+    /// Subscribe to server-wide notices (plugin/config hot-reload, etc.).
+    /// Each call returns a fresh receiver — every subscriber gets every
+    /// notice. Receivers that fall behind by more than 64 messages drop
+    /// oldest first.
+    pub fn subscribe_notices(&self) -> tokio::sync::broadcast::Receiver<arawn_service::ServerNotice> {
+        self.notice_tx.subscribe()
+    }
+
+    /// Get a sender clone — used to wire watchers (plugin runtime, config
+    /// watcher) into the broadcast at startup.
+    pub fn notice_sender(&self) -> tokio::sync::broadcast::Sender<arawn_service::ServerNotice> {
+        self.notice_tx.clone()
     }
 
     pub fn with_permission_rules(self, rules: Vec<PermissionRule>) -> Self {

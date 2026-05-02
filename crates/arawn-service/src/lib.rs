@@ -13,7 +13,7 @@ pub use types::{
     CommandInfo, EngineEvent, ForgetCandidate, ForgetResult, InventoryItem, MemoryStoreResult,
     MemoryStoreSummary, MemorySummary, MemoryTypeCount, ModalPromptOption,
     PermissionAuditEntry, PermissionModeInfo, PermissionsStatus, PromotionResult,
-    ServerCapabilities, SessionDetail, SessionInfo, WorkflowInfo, WorkstreamInfo,
+    ServerCapabilities, ServerNotice, SessionDetail, SessionInfo, WorkflowInfo, WorkstreamInfo,
 };
 
 /// The service contract between any UI client and the Arawn backend.

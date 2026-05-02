@@ -240,3 +240,22 @@ pub struct PermissionAuditEntry {
     /// "mode default 'default'".
     pub reason: String,
 }
+
+/// Server-wide event broadcast to every connected client. Used for things
+/// that aren't per-session — hot-reload outcomes, config changes,
+/// background-task notifications. Distinct from `EngineEvent`, which is
+/// per-conversation-turn.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ServerNotice {
+    /// Severity: "info" | "warn" | "error".
+    pub level: String,
+    /// What kind of notice this is — lets the TUI route to the right UI
+    /// affordance (banner vs chat history vs status line). Examples:
+    /// "plugin_reload", "config_reload".
+    pub category: String,
+    /// One-line human-readable message. Already includes any counts or
+    /// error details; the TUI just renders verbatim.
+    pub message: String,
+    /// RFC3339 timestamp the notice was emitted.
+    pub timestamp: String,
+}

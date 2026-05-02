@@ -280,24 +280,61 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
     let (mut sender, mut receiver) = socket.split();
     info!("WebSocket client connected");
 
-    while let Some(msg) = receiver.next().await {
+    // Subscribe to server-wide notices (plugin/config hot-reload) for the
+    // lifetime of this connection. Notices arrive as JSON messages with
+    // `event: "SystemNotice"` interleaved with normal RPC responses.
+    let mut notice_rx = service.subscribe_notices();
+
+    loop {
+        let msg = tokio::select! {
+            biased;
+            // Forward server-wide notices to this client. RecvError::Lagged
+            // means the broadcast buffer overflowed — log and keep going;
+            // missing a hot-reload notice is not fatal.
+            notice = notice_rx.recv() => {
+                match notice {
+                    Ok(notice) => {
+                        let payload = serde_json::json!({
+                            "event": "SystemNotice",
+                            "data": notice,
+                        });
+                        let _ = sender
+                            .send(WsMessage::Text(payload.to_string().into()))
+                            .await;
+                    }
+                    Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
+                        warn!(skipped = n, "client lagged on notice broadcast");
+                    }
+                    Err(tokio::sync::broadcast::error::RecvError::Closed) => {
+                        // Channel closed — service is shutting down. Fall
+                        // through; the next socket recv will see Close.
+                    }
+                }
+                continue;
+            }
+            recv = receiver.next() => recv,
+        };
         let msg = match msg {
-            Ok(WsMessage::Text(text)) => text,
-            Ok(WsMessage::Close(frame)) => {
+            Some(Ok(WsMessage::Text(text))) => text,
+            Some(Ok(WsMessage::Close(frame))) => {
                 info!(frame = ?frame, "WebSocket client disconnected (close frame)");
                 break;
             }
-            Ok(WsMessage::Ping(_)) => {
+            Some(Ok(WsMessage::Ping(_))) => {
                 debug!("recv ping");
                 continue;
             }
-            Ok(WsMessage::Pong(_)) => {
+            Some(Ok(WsMessage::Pong(_))) => {
                 debug!("recv pong");
                 continue;
             }
-            Ok(_) => continue,
-            Err(e) => {
+            Some(Ok(_)) => continue,
+            Some(Err(e)) => {
                 warn!(error = %e, "WebSocket receive error");
+                break;
+            }
+            None => {
+                info!("WebSocket receiver closed");
                 break;
             }
         };

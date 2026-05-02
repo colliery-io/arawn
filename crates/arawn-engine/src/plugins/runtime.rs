@@ -165,7 +165,16 @@ impl PluginRuntime {
     ///
     /// For long-lived processes (serve mode). Re-discovers and re-loads all plugins
     /// when files in the cache directory are created, modified, or removed.
-    pub fn watch(&self, skill_registry: Arc<SkillRegistry>) -> tokio::task::JoinHandle<()> {
+    ///
+    /// Optional `notify` callback is invoked after each reload completes (success
+    /// or failure) with a one-line human-readable status message + a "is_error"
+    /// flag. Wired by the binary to a server-wide broadcast so the TUI can
+    /// surface the reload outcome.
+    pub fn watch(
+        &self,
+        skill_registry: Arc<SkillRegistry>,
+        notify: Option<Arc<dyn Fn(bool, String) + Send + Sync>>,
+    ) -> tokio::task::JoinHandle<()> {
         let plugins_root = self.plugins_root.clone();
         let settings_path = self.settings_path.clone();
         let plugin_dirs = self.plugin_dirs.clone();
@@ -272,6 +281,18 @@ impl PluginRuntime {
                     agents = total_agents,
                     "hot-reload complete"
                 );
+
+                if let Some(ref n) = notify {
+                    n(
+                        false,
+                        format!(
+                            "plugins reloaded: {} plugin(s), {} skill(s), {} agent(s)",
+                            plugins.len(),
+                            total_skills,
+                            total_agents
+                        ),
+                    );
+                }
             }
         })
     }
