@@ -4,15 +4,15 @@ level: task
 title: "First-run config UX: arawn init, env vars, actionable errors"
 short_code: "ARAWN-T-0194"
 created_at: 2026-05-02T00:00:00+00:00
-updated_at: 2026-05-02T00:00:00+00:00
+updated_at: 2026-05-02T04:37:10.107117+00:00
 parent: 
 blocked_by: []
-archived: false
+archived: true
 
 tags:
   - "#task"
-  - "#phase/backlog"
   - "#feature"
+  - "#phase/active"
 
 
 exit_criteria_met: false
@@ -28,6 +28,12 @@ Today, configuring arawn requires hand-writing `~/.arawn/arawn.toml`, knowing wh
 ## Type / Priority
 - Feature
 - P1 — Blocker. Pairs with T-0193 (docs); together they cover "user can stand it up."
+
+## Acceptance Criteria
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
@@ -48,4 +54,17 @@ Today, configuring arawn requires hand-writing `~/.arawn/arawn.toml`, knowing wh
 
 ## Status Updates
 
-*To be added during implementation*
+### 2026-05-02 — Deferred (scope change)
+
+Moved back to backlog without implementing. Two reasons:
+
+1. **Design call from owner**: TOML is the source of truth for configuration. Env vars hold *secrets* via `api_key_env`, not config. So the env-var override layer (`ARAWN_DEFAULT_*`) and the `arawn init` wizard both fall away — there's no config to interactively choose if the user is expected to edit the TOML directly.
+2. **Not currently painful**: the only user today already has a working `arawn.toml` and knows the env-var-for-secrets dance. The pain belongs to a future fresh-machine setup or a handoff to someone else, neither of which is on the immediate roadmap.
+
+**What survives as a smaller follow-up** (worth filing if/when picked up):
+- Validate minimum config at startup and **abort** on:
+  - Missing `arawn.toml` at `<data_dir>/arawn.toml` → fail with pointer to `docs/src/getting-started.md`
+  - Missing `[llm.default]` in the file → same
+  - Engine LLM's `api_key_env` is set but the env var is unset → fail with `try: export FOO=...`
+- Drop `apply_env_overrides`'s `GROQ_MODEL` branch (keep `ARAWN_DATA_DIR` — runtime path concern, also a clap arg).
+- Update getting-started.md to remove any "configure via env var" guidance once the override is removed.
