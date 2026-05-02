@@ -480,6 +480,17 @@ async fn execute_sandboxed(
             let stdout = String::from_utf8_lossy(&output.stdout);
             let stderr_raw = String::from_utf8_lossy(&output.stderr);
             let stderr = manager.annotate_stderr_with_sandbox_failures(command, &stderr_raw);
+            // sandbox-runtime appends "--- Sandbox Violations ---" when it
+            // detected restrictions tripping. Append a one-line pointer so
+            // the agent and the user know where to look for context.
+            let stderr = if stderr.contains("--- Sandbox Violations ---") {
+                format!(
+                    "{stderr}\n(Hint: the OS sandbox blocked one or more operations. \
+                     See docs/src/security.md, or run /permissions to inspect rules.)"
+                )
+            } else {
+                stderr
+            };
 
             let mut content = String::new();
             if !stdout.is_empty() {

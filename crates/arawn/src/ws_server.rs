@@ -44,6 +44,7 @@ const RPC_METHODS: &[&str] = &[
     "get_permission_mode",
     "set_permission_mode",
     "get_capabilities",
+    "get_permissions_status",
 ];
 
 /// JSON-RPC style request from client.
@@ -859,6 +860,19 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                 debug!(id, "get_capabilities");
                 let resp = match service.get_capabilities().await {
                     Ok(caps) => Response::success(id, serde_json::to_value(&caps).unwrap()),
+                    Err(e) => Response::from_service_error(id, &e),
+                };
+                let _ = sender
+                    .send(WsMessage::Text(
+                        serde_json::to_string(&resp).unwrap().into(),
+                    ))
+                    .await;
+            }
+
+            "get_permissions_status" => {
+                debug!(id, "get_permissions_status");
+                let resp = match service.get_permissions_status().await {
+                    Ok(status) => Response::success(id, serde_json::to_value(&status).unwrap()),
                     Err(e) => Response::from_service_error(id, &e),
                 };
                 let _ = sender

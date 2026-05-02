@@ -139,6 +139,12 @@ impl CommandRegistry {
             description: "List workflows and execution status".into(),
             kind: CommandKind::BuiltIn,
         });
+        // Permissions inspection
+        self.commands.push(CommandInfo {
+            name: "permissions".into(),
+            description: "Show active permission rules and recent decisions".into(),
+            kind: CommandKind::BuiltIn,
+        });
         // Memory commands
         self.commands.push(CommandInfo {
             name: "remember".into(),
@@ -270,6 +276,8 @@ pub enum CommandResult {
     WorkflowList,
     /// Show workflow execution status.
     WorkflowStatus(Option<String>),
+    /// Show active permission rules + recent decisions.
+    PermissionsStatus,
 }
 
 /// Execute a parsed slash command against the registry.
@@ -360,6 +368,7 @@ pub fn execute_command(cmd: &ParsedCommand, registry: &CommandRegistry) -> Comma
                     }
                 }
                 "memory" => CommandResult::MemorySummary,
+                "permissions" => CommandResult::PermissionsStatus,
                 "forget" => {
                     if cmd.args.is_empty() {
                         CommandResult::SystemMessage("Usage: /forget <entity title or ID>".into())

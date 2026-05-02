@@ -10,8 +10,9 @@ mod prompt;
 mod rules;
 
 pub use checker::{
-    ModalOption, ModalPrompt, ModalRequest, PermissionChecker, PermissionMode,
-    PermissionResponse, SessionGrants,
+    AuditEntry, DecisionReason, ModalOption, ModalPrompt, ModalRequest,
+    PermissionChecker, PermissionMode, PermissionResponse, PermissionSnapshot,
+    SessionGrants, SharedAudit, new_shared_audit,
 };
 pub use config::{PermissionConfig, load_merged_permissions, load_permissions_from_file};
 pub use prompt::{CliModalPrompt, MockModalPrompt};

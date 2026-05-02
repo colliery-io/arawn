@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-01T20:53:40Z | 170 files | Python, Rust
+> Generated: 2026-05-02T13:48:20Z | 170 files | Python, Rust
 
 ## Project Structure
 
@@ -411,7 +411,7 @@
 -  `build_session_context` function L197-265 — `( &self, session_id: Uuid, workstream: &Workstream, ws_dir: &str, workspace_dir:...` — Build a ToolContext and per-session PromptContext for the engine.
 -  `build_engine` function L269-317 — `( &self, prompt_context: Option<arawn_engine::PromptContext>, event_tx: &mpsc::S...` — Build a QueryEngine configured with compactor, skills, plugins, and plan state.
 -  `infer_entity_type` function L322-335 — `(text: &str) -> (arawn_memory::EntityType, String)` — Infer entity type from text patterns.
--  `LocalService` type L340-1019 — `impl ArawnService for LocalService`
+-  `LocalService` type L340-1031 — `impl ArawnService for LocalService`
 -  `list_workstreams` function L341-356 — `(&self) -> Result<Vec<WorkstreamInfo>, ServiceError>`
 -  `create_workstream` function L358-375 — `( &self, name: String, root_dir: PathBuf, ) -> Result<WorkstreamInfo, ServiceErr...`
 -  `list_sessions` function L377-396 — `( &self, workstream_id: Option<Uuid>, ) -> Result<Vec<SessionInfo>, ServiceError...`
@@ -429,8 +429,9 @@
 -  `forget_entity` function L944-994 — `(&self, query: &str) -> Result<ForgetResult, ServiceError>`
 -  `get_permission_mode` function L996-1004 — `(&self) -> Result<PermissionModeInfo, ServiceError>`
 -  `set_permission_mode` function L1006-1018 — `(&self, mode_str: &str) -> Result<PermissionModeInfo, ServiceError>`
--  `resolve_ws_dir_from_store` function L1022-1033 — `(store: &Store, ws_id: Option<Uuid>) -> Result<String, ServiceError>` — Resolve workstream directory name from store.
--  `first_sentence` function L1037-1048 — `(s: &str) -> String` — Extract the first sentence and sanitize for use in a markdown table cell.
+-  `get_capabilities` function L1020-1030 — `(&self) -> Result<arawn_service::ServerCapabilities, ServiceError>`
+-  `resolve_ws_dir_from_store` function L1034-1045 — `(store: &Store, ws_id: Option<Uuid>) -> Result<String, ServiceError>` — Resolve workstream directory name from store.
+-  `first_sentence` function L1049-1060 — `(s: &str) -> String` — Extract the first sentence and sanitize for use in a markdown table cell.
 
 #### crates/arawn/src/main.rs
 
@@ -473,30 +474,30 @@
 
 #### crates/arawn/src/ws_server.rs
 
-- pub `read_token_file` function L138-149 — `() -> Option<String>` — Read the auth token from {data_dir}/server.token.
-- pub `run_server` function L152-187 — `(service: LocalService, port: u16) -> anyhow::Result<()>` — Start the WebSocket server on the given port.
-- pub `handle_connection_public` function L273-275 — `(socket: WebSocket, service: Arc<LocalService>)` — Handle a single WebSocket connection.
+- pub `read_token_file` function L139-150 — `() -> Option<String>` — Read the auth token from {data_dir}/server.token.
+- pub `run_server` function L153-188 — `(service: LocalService, port: u16) -> anyhow::Result<()>` — Start the WebSocket server on the given port.
+- pub `handle_connection_public` function L274-276 — `(socket: WebSocket, service: Arc<LocalService>)` — Handle a single WebSocket connection.
 -  `PROTOCOL_VERSION` variable L24 — `: &str` — Protocol version reported by the `hello` handshake.
--  `RPC_METHODS` variable L27-46 — `: &[&str]` — Canonical RPC method names (returned by `hello`).
--  `Request` struct L50-55 — `{ id: u64, method: String, params: Value }` — JSON-RPC style request from client.
--  `Response` struct L59-65 — `{ id: u64, result: Option<Value>, error: Option<ErrorBody> }` — JSON-RPC style response to client.
--  `ErrorBody` struct L68-73 — `{ code: String, message: String, details: Option<Value> }`
--  `Response` type L75-111 — `= Response`
--  `success` function L76-82 — `(id: u64, result: Value) -> Self`
--  `error` function L84-94 — `(id: u64, code: &str, message: String) -> Self`
--  `from_service_error` function L100-110 — `(id: u64, e: &arawn_service::ServiceError) -> Self` — Build an error response from a [`ServiceError`].
--  `AppState` struct L115-120 — `{ service: Arc<LocalService>, auth_token: Option<String> }` — Shared app state for the WebSocket server.
--  `generate_auth_token` function L123-126 — `() -> String` — Generate a random auth token for WebSocket connections.
--  `write_token_file` function L129-134 — `(data_dir: &std::path::Path, token: &str) -> std::io::Result<std::path::PathBuf>` — Write the auth token to {data_dir}/server.token for clients to read.
--  `shutdown_signal` function L190-212 — `()` — Wait for a shutdown signal (Ctrl-C / SIGTERM).
--  `decision_handler` function L217-236 — `( State(AppState { service, .. }): State<AppState>, Json(req): Json<arawn_workfl...` — HTTP endpoint for workflow decision tasks.
--  `WsQueryParams` struct L240-242 — `{ token: Option<String> }` — Query parameters for WebSocket connection.
--  `ws_handler` function L244-270 — `( ws: WebSocketUpgrade, Query(params): Query<WsQueryParams>, State(state): State...`
--  `handle_connection` function L277-870 — `(socket: WebSocket, service: Arc<LocalService>)`
--  `tests` module L873-923 — `-`
--  `from_service_error_preserves_structured_detail_for_typed_variants` function L880-890 — `()` — Typed Storage error should round-trip through the wire payload with
--  `from_service_error_omits_details_for_string_only_variants` function L896-907 — `()` — String-only variants (NotFound, InvalidOperation, Internal) keep
--  `from_service_error_preserves_engine_error_kind` function L913-922 — `()` — Engine errors surface a `kind` that identifies the inner variant —
+-  `RPC_METHODS` variable L27-47 — `: &[&str]` — Canonical RPC method names (returned by `hello`).
+-  `Request` struct L51-56 — `{ id: u64, method: String, params: Value }` — JSON-RPC style request from client.
+-  `Response` struct L60-66 — `{ id: u64, result: Option<Value>, error: Option<ErrorBody> }` — JSON-RPC style response to client.
+-  `ErrorBody` struct L69-74 — `{ code: String, message: String, details: Option<Value> }`
+-  `Response` type L76-112 — `= Response`
+-  `success` function L77-83 — `(id: u64, result: Value) -> Self`
+-  `error` function L85-95 — `(id: u64, code: &str, message: String) -> Self`
+-  `from_service_error` function L101-111 — `(id: u64, e: &arawn_service::ServiceError) -> Self` — Build an error response from a [`ServiceError`].
+-  `AppState` struct L116-121 — `{ service: Arc<LocalService>, auth_token: Option<String> }` — Shared app state for the WebSocket server.
+-  `generate_auth_token` function L124-127 — `() -> String` — Generate a random auth token for WebSocket connections.
+-  `write_token_file` function L130-135 — `(data_dir: &std::path::Path, token: &str) -> std::io::Result<std::path::PathBuf>` — Write the auth token to {data_dir}/server.token for clients to read.
+-  `shutdown_signal` function L191-213 — `()` — Wait for a shutdown signal (Ctrl-C / SIGTERM).
+-  `decision_handler` function L218-237 — `( State(AppState { service, .. }): State<AppState>, Json(req): Json<arawn_workfl...` — HTTP endpoint for workflow decision tasks.
+-  `WsQueryParams` struct L241-243 — `{ token: Option<String> }` — Query parameters for WebSocket connection.
+-  `ws_handler` function L245-271 — `( ws: WebSocketUpgrade, Query(params): Query<WsQueryParams>, State(state): State...`
+-  `handle_connection` function L278-884 — `(socket: WebSocket, service: Arc<LocalService>)`
+-  `tests` module L887-937 — `-`
+-  `from_service_error_preserves_structured_detail_for_typed_variants` function L894-904 — `()` — Typed Storage error should round-trip through the wire payload with
+-  `from_service_error_omits_details_for_string_only_variants` function L910-921 — `()` — String-only variants (NotFound, InvalidOperation, Internal) keep
+-  `from_service_error_preserves_engine_error_kind` function L927-936 — `()` — Engine errors surface a `kind` that identifies the inner variant —
 
 ### crates/arawn-auth/src
 
@@ -3180,7 +3181,7 @@
 
 - pub `error` module L1 — `-`
 - pub `types` module L2 — `-`
-- pub `ArawnService` interface L24-111 — `{ fn list_workstreams(), fn create_workstream(), fn list_sessions(), fn create_s...` — The service contract between any UI client and the Arawn backend.
+- pub `ArawnService` interface L24-119 — `{ fn list_workstreams(), fn create_workstream(), fn list_sessions(), fn create_s...` — The service contract between any UI client and the Arawn backend.
 
 #### crates/arawn-service/src/types.rs
 
@@ -3200,6 +3201,7 @@
 - pub `PromotionResult` struct L185-188 — `{ workstream_id: String, workstream_name: String }` — Result of promoting a scratch session to a workstream.
 - pub `WorkflowInfo` struct L192-196 — `{ name: String, cron: Option<String> }` — Info about a workflow.
 - pub `PermissionModeInfo` struct L200-202 — `{ mode: String }` — Result of getting or setting the permission mode.
+- pub `ServerCapabilities` struct L209-215 — `{ server_version: String, embeddings_available: bool }` — Runtime capabilities advertised to clients on connect — what optional
 
 ### crates/arawn-storage/src
 
@@ -3824,7 +3826,7 @@
 -  `CommandRegistry` type L65-192 — `= CommandRegistry` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
 -  `register_builtins` function L72-158 — `(&mut self)` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
 -  `AutocompleteState` type L203-234 — `= AutocompleteState` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `tests` module L387-531 — `-` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `tests` module L387-654 — `-` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
 -  `parse_simple_command` function L391-395 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
 -  `parse_command_with_args` function L398-402 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
 -  `parse_not_a_command` function L405-409 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
@@ -3840,6 +3842,15 @@
 -  `execute_unknown` function L499-506 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
 -  `execute_inventory` function L509-516 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
 -  `execute_skill` function L519-530 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_remember_with_text_returns_remember_fact` function L537-546 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_remember_without_text_returns_usage_message` function L549-559 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_memory_returns_memory_summary` function L562-569 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_forget_with_query_returns_forget_entity` function L572-581 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_forget_without_query_returns_usage_message` function L584-593 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_workflows_list_returns_workflow_list` function L596-606 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `every_advertised_builtin_dispatches_or_explains` function L614-637 — `()` — Audit: every built-in command in /help must dispatch to a CommandResult
+-  `capabilities_banner_doc_path_pinned` function L642-653 — `()` — Capabilities banner copy in event_loop.rs points users at this docs
+-  `PINNED` variable L645 — `: &str` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
 
 #### crates/arawn-tui/src/event.rs
 
@@ -3860,7 +3871,7 @@
 
 #### crates/arawn-tui/src/event_loop.rs
 
-- pub `run_tui` function L27-754 — `(url: &str, model_name: &str) -> Result<(), Box<dyn std::error::Error>>` — Run the TUI connected to the given WebSocket server URL.
+- pub `run_tui` function L27-775 — `(url: &str, model_name: &str) -> Result<(), Box<dyn std::error::Error>>` — Run the TUI connected to the given WebSocket server URL.
 -  `rect_contains` function L22-24 — `(rect: Rect, col: u16, row: u16) -> bool`
 
 #### crates/arawn-tui/src/lib.rs
@@ -4078,21 +4089,22 @@
 - pub `send_request` function L66-83 — `( &mut self, method: &str, params: Value, ) -> Result<u64, Box<dyn std::error::E...`
 - pub `list_workstreams` function L85-92 — `( &mut self, ) -> Result<Vec<WorkstreamInfo>, Box<dyn std::error::Error>>`
 - pub `list_workflows` function L94-101 — `( &mut self, ) -> Result<Vec<serde_json::Value>, Box<dyn std::error::Error>>`
-- pub `get_permission_mode` function L103-110 — `( &mut self, ) -> Result<String, Box<dyn std::error::Error>>`
-- pub `set_permission_mode` function L112-123 — `( &mut self, mode: &str, ) -> Result<String, Box<dyn std::error::Error>>`
-- pub `list_sessions` function L125-137 — `( &mut self, ws_id: Option<uuid::Uuid>, ) -> Result<Vec<SessionInfo>, Box<dyn st...`
-- pub `create_session` function L139-151 — `( &mut self, ws_id: Option<uuid::Uuid>, ) -> Result<SessionInfo, Box<dyn std::er...`
-- pub `load_session` function L153-161 — `( &mut self, session_id: uuid::Uuid, ) -> Result<serde_json::Value, Box<dyn std:...`
-- pub `send_message` function L163-179 — `( &mut self, session_id: uuid::Uuid, content: &str, ) -> Result<(), Box<dyn std:...`
-- pub `read_response_raw` function L182-184 — `(&mut self) -> Result<Value, Box<dyn std::error::Error>>` — Read the next JSON response from the server (public for sidebar).
-- pub `parse_engine_event` function L215-235 — `(text: &str) -> Option<EngineEvent>` — Parse a WS message as an EngineEvent.
-- pub `EventUpdate` enum L238-265 — `AppendStreamingText | AddToolCall | AddToolResult | Complete | Error | Warning |...` — Convert an EngineEvent into App state updates.
-- pub `engine_event_to_update` function L267-294 — `(event: EngineEvent) -> EventUpdate`
+- pub `get_capabilities` function L106-113 — `( &mut self, ) -> Result<serde_json::Value, Box<dyn std::error::Error>>` — Fetch server runtime capabilities.
+- pub `get_permission_mode` function L115-122 — `( &mut self, ) -> Result<String, Box<dyn std::error::Error>>`
+- pub `set_permission_mode` function L124-135 — `( &mut self, mode: &str, ) -> Result<String, Box<dyn std::error::Error>>`
+- pub `list_sessions` function L137-149 — `( &mut self, ws_id: Option<uuid::Uuid>, ) -> Result<Vec<SessionInfo>, Box<dyn st...`
+- pub `create_session` function L151-163 — `( &mut self, ws_id: Option<uuid::Uuid>, ) -> Result<SessionInfo, Box<dyn std::er...`
+- pub `load_session` function L165-173 — `( &mut self, session_id: uuid::Uuid, ) -> Result<serde_json::Value, Box<dyn std:...`
+- pub `send_message` function L175-191 — `( &mut self, session_id: uuid::Uuid, content: &str, ) -> Result<(), Box<dyn std:...`
+- pub `read_response_raw` function L194-196 — `(&mut self) -> Result<Value, Box<dyn std::error::Error>>` — Read the next JSON response from the server (public for sidebar).
+- pub `parse_engine_event` function L227-247 — `(text: &str) -> Option<EngineEvent>` — Parse a WS message as an EngineEvent.
+- pub `EventUpdate` enum L250-277 — `AppendStreamingText | AddToolCall | AddToolResult | Complete | Error | Warning |...` — Convert an EngineEvent into App state updates.
+- pub `engine_event_to_update` function L279-306 — `(event: EngineEvent) -> EventUpdate`
 -  `REQUEST_ID` variable L10 — `: AtomicU64`
 -  `next_id` function L12-14 — `() -> u64`
--  `WsClient` type L31-212 — `= WsClient`
+-  `WsClient` type L31-224 — `= WsClient`
 -  `read_server_token` function L50-64 — `() -> Option<String>` — Read the server auth token from {data_dir}/server.token.
--  `read_response` function L187-211 — `(&mut self) -> Result<Value, Box<dyn std::error::Error>>` — Read the next JSON response from the server.
+-  `read_response` function L199-223 — `(&mut self) -> Result<Value, Box<dyn std::error::Error>>` — Read the next JSON response from the server.
 
 ### crates/arawn-workflow
 

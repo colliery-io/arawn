@@ -71,7 +71,7 @@ impl PermissionRule {
 }
 
 /// The result of evaluating permission rules against a tool call.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PermissionDecision {
     /// Tool is explicitly allowed — proceed with execution.
     Allowed,
@@ -98,28 +98,50 @@ impl RuleMatcher {
         tool_name: &str,
         tool_input: &str,
     ) -> PermissionDecision {
+        Self::evaluate_with_match(rules, tool_name, tool_input).0
+    }
+
+    /// Evaluate rules and also return the rule that matched, when any did.
+    /// Used by callers that need to surface *which* rule fired (e.g.
+    /// "denied by rule shell(rm -rf *)") instead of just the bare decision.
+    pub fn evaluate_with_match(
+        rules: &[PermissionRule],
+        tool_name: &str,
+        tool_input: &str,
+    ) -> (PermissionDecision, Option<PermissionRule>) {
         // Check deny rules first
         for rule in rules {
             if rule.kind == RuleKind::Deny && rule.matches(tool_name, tool_input) {
-                return PermissionDecision::Denied;
+                return (PermissionDecision::Denied, Some(rule.clone()));
             }
         }
 
         // Check allow rules
         for rule in rules {
             if rule.kind == RuleKind::Allow && rule.matches(tool_name, tool_input) {
-                return PermissionDecision::Allowed;
+                return (PermissionDecision::Allowed, Some(rule.clone()));
             }
         }
 
         // Check ask rules
         for rule in rules {
             if rule.kind == RuleKind::Ask && rule.matches(tool_name, tool_input) {
-                return PermissionDecision::Ask;
+                return (PermissionDecision::Ask, Some(rule.clone()));
             }
         }
 
-        PermissionDecision::NoMatch
+        (PermissionDecision::NoMatch, None)
+    }
+}
+
+impl PermissionRule {
+    /// Compact human-readable form: `"shell(rm -rf *)"` or `"file_write"`.
+    /// Used in denial messages and audit logs.
+    pub fn display_spec(&self) -> String {
+        match &self.content_pattern {
+            Some(p) => format!("{}({})", self.tool_pattern, p),
+            None => self.tool_pattern.clone(),
+        }
     }
 }
 

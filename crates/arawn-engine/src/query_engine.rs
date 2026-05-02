@@ -802,12 +802,15 @@ impl QueryEngine {
                 .get(name)
                 .map(|t| t.permission_category())
                 .unwrap_or(arawn_tool::PermissionCategory::Other);
-            let decision = checker.check(name, &input_summary, category).await;
+            let (decision, reason) = checker.check_explained(name, &input_summary, category).await;
             if decision == PermissionDecision::Denied {
-                warn!(name, "tool blocked by permission system");
+                let reason_str = reason.display();
+                warn!(name, reason = %reason_str, "tool blocked by permission system");
                 return ToolResult {
                     content: format!(
-                        "Permission denied: tool '{name}' is not allowed by your permission settings."
+                        "Permission denied: tool '{name}' was denied by {reason_str}. \
+                         Run /permissions in the TUI to inspect the active rule set, \
+                         or see docs/src/security.md."
                     ),
                     is_error: true,
                 };

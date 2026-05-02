@@ -112,6 +112,16 @@ impl WsClient {
         Ok(result.clone())
     }
 
+    /// Fetch permission rules + recent audit. Backs the `/permissions` TUI command.
+    pub async fn get_permissions_status(
+        &mut self,
+    ) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
+        self.send_request("get_permissions_status", json!({})).await?;
+        let resp = self.read_response().await?;
+        let result = resp.get("result").ok_or("no result")?;
+        Ok(result.clone())
+    }
+
     pub async fn get_permission_mode(
         &mut self,
     ) -> Result<String, Box<dyn std::error::Error>> {

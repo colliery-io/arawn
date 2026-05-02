@@ -213,3 +213,30 @@ pub struct ServerCapabilities {
     /// search is available. False means memory falls back to FTS-only.
     pub embeddings_available: bool,
 }
+
+/// Read-only snapshot of the active permission configuration plus a
+/// rolling audit of recent decisions. Returned by `get_permissions_status`
+/// and rendered by the TUI's `/permissions` command.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PermissionsStatus {
+    pub mode: String,
+    pub allow_rules: Vec<String>,
+    pub deny_rules: Vec<String>,
+    pub ask_rules: Vec<String>,
+    pub recent_decisions: Vec<PermissionAuditEntry>,
+}
+
+/// One row of the permission audit — what the agent tried to do and how
+/// the checker decided.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PermissionAuditEntry {
+    /// RFC3339 timestamp.
+    pub timestamp: String,
+    pub tool_name: String,
+    pub tool_input_summary: String,
+    /// One of: "allowed", "denied", "ask", "no_match".
+    pub decision: String,
+    /// Human-readable reason — e.g. "rule 'deny shell(rm -rf *)'" or
+    /// "mode default 'default'".
+    pub reason: String,
+}

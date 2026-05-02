@@ -57,6 +57,10 @@ pub struct LocalService {
     active_sessions: Arc<Mutex<HashSet<Uuid>>>,
     /// Cancellation tokens for active engine runs, keyed by session ID.
     cancel_tokens: Arc<Mutex<HashMap<Uuid, tokio_util::sync::CancellationToken>>>,
+    /// Persistent audit buffer for permission decisions. Each per-message
+    /// PermissionChecker writes into this so the rolling history survives
+    /// across messages and is exposed via `get_permissions_status`.
+    permission_audit: arawn_engine::permissions::SharedAudit,
 }
 
 impl LocalService {
@@ -83,6 +87,7 @@ impl LocalService {
             memory_manager: None,
             active_sessions: Arc::new(Mutex::new(HashSet::new())),
             cancel_tokens: Arc::new(Mutex::new(HashMap::new())),
+            permission_audit: arawn_engine::permissions::new_shared_audit(),
         }
     }
 
@@ -306,7 +311,8 @@ impl LocalService {
                 let mode = *self.permission_mode.read().unwrap();
                 let checker = PermissionChecker::new(rules)
                     .with_mode(mode)
-                    .with_prompter(Box::new(prompt));
+                    .with_prompter(Box::new(prompt))
+                    .with_audit(Arc::clone(&self.permission_audit));
                 engine = engine.with_permission_checker(Arc::new(checker));
             }
         }
@@ -1026,6 +1032,57 @@ impl ArawnService for LocalService {
         Ok(arawn_service::ServerCapabilities {
             server_version: env!("CARGO_PKG_VERSION").to_string(),
             embeddings_available,
+        })
+    }
+
+    async fn get_permissions_status(&self) -> Result<arawn_service::PermissionsStatus, ServiceError> {
+        use arawn_engine::permissions::{PermissionDecision, RuleKind};
+
+        let rules = self.permission_rules.read().unwrap().clone();
+        let mode = *self.permission_mode.read().unwrap();
+        let mode_str = format!("{mode:?}").to_lowercase();
+
+        let mut allow_rules = Vec::new();
+        let mut deny_rules = Vec::new();
+        let mut ask_rules = Vec::new();
+        for r in &rules {
+            let spec = r.display_spec();
+            match r.kind {
+                RuleKind::Allow => allow_rules.push(spec),
+                RuleKind::Deny => deny_rules.push(spec),
+                RuleKind::Ask => ask_rules.push(spec),
+            }
+        }
+
+        let recent_decisions = self
+            .permission_audit
+            .lock()
+            .unwrap()
+            .iter()
+            .map(|e| {
+                let decision_str = match e.decision {
+                    PermissionDecision::Allowed => "allowed",
+                    PermissionDecision::Denied => "denied",
+                    PermissionDecision::Ask => "ask",
+                    PermissionDecision::NoMatch => "no_match",
+                };
+                let timestamp = chrono::DateTime::<chrono::Utc>::from(e.timestamp).to_rfc3339();
+                arawn_service::PermissionAuditEntry {
+                    timestamp,
+                    tool_name: e.tool_name.clone(),
+                    tool_input_summary: e.tool_input_summary.clone(),
+                    decision: decision_str.to_string(),
+                    reason: e.reason.clone(),
+                }
+            })
+            .collect();
+
+        Ok(arawn_service::PermissionsStatus {
+            mode: mode_str,
+            allow_rules,
+            deny_rules,
+            ask_rules,
+            recent_decisions,
         })
     }
 }

@@ -135,6 +135,82 @@ impl SessionGrants {
     }
 }
 
+/// Why a permission decision came out the way it did. Surfaced to the
+/// engine for error messages ("denied by rule X", "denied by mode default
+/// 'plan'") and to the audit log behind `/permissions`.
+#[derive(Debug, Clone)]
+pub enum DecisionReason {
+    /// A specific rule matched. Carries the matched rule so callers can
+    /// quote it back to the user.
+    MatchedRule(PermissionRule),
+    /// A previous session grant let it through.
+    SessionGrant,
+    /// No rule matched; the active mode's fallback decided.
+    ModeFallback { mode: PermissionMode },
+    /// User answered an interactive prompt.
+    Prompted,
+    /// No checker is wired (default-allow, internal callers).
+    NoChecker,
+}
+
+impl DecisionReason {
+    /// One-line human-readable form for error messages and audit display.
+    pub fn display(&self) -> String {
+        match self {
+            DecisionReason::MatchedRule(r) => {
+                format!("rule '{} {}'", match r.kind {
+                    crate::permissions::rules::RuleKind::Allow => "allow",
+                    crate::permissions::rules::RuleKind::Deny => "deny",
+                    crate::permissions::rules::RuleKind::Ask => "ask",
+                }, r.display_spec())
+            }
+            DecisionReason::SessionGrant => "session grant".to_string(),
+            DecisionReason::ModeFallback { mode } => {
+                format!("mode default '{:?}'", mode).to_lowercase()
+            }
+            DecisionReason::Prompted => "user prompt".to_string(),
+            DecisionReason::NoChecker => "no permission checker configured".to_string(),
+        }
+    }
+}
+
+/// One row of the audit log — what was checked, when, and how it was decided.
+#[derive(Debug, Clone)]
+pub struct AuditEntry {
+    pub timestamp: std::time::SystemTime,
+    pub tool_name: String,
+    pub tool_input_summary: String,
+    pub decision: PermissionDecision,
+    pub reason: String,
+}
+
+/// Read-only snapshot of the current permission state — exposed via the
+/// `get_permissions_status` RPC so the TUI's `/permissions` command can
+/// render it without holding the checker's internal locks.
+#[derive(Debug, Clone)]
+pub struct PermissionSnapshot {
+    pub mode: PermissionMode,
+    pub allow_rules: Vec<String>,
+    pub deny_rules: Vec<String>,
+    pub ask_rules: Vec<String>,
+    pub recent_decisions: Vec<AuditEntry>,
+}
+
+/// Cap on the audit ring buffer — newest decisions evict oldest. Sized so a
+/// chatty session doesn't crowd out everything older but a long session
+/// doesn't grow memory unbounded.
+const AUDIT_CAP: usize = 50;
+
+/// Shareable audit buffer — held in an Arc so callers (e.g. the
+/// long-lived service) can both pass it into per-message PermissionChecker
+/// instances *and* read snapshots from it without going through a checker.
+pub type SharedAudit = std::sync::Arc<std::sync::Mutex<std::collections::VecDeque<AuditEntry>>>;
+
+/// Construct a fresh shared audit buffer with the standard cap.
+pub fn new_shared_audit() -> SharedAudit {
+    std::sync::Arc::new(std::sync::Mutex::new(std::collections::VecDeque::with_capacity(AUDIT_CAP)))
+}
+
 /// The central permission checker. Evaluates rules against tool calls,
 /// prompts the user when needed, and manages session grants.
 pub struct PermissionChecker {
@@ -142,6 +218,7 @@ pub struct PermissionChecker {
     mode: std::sync::RwLock<PermissionMode>,
     grants: std::sync::Mutex<SessionGrants>,
     prompter: Option<Box<dyn ModalPrompt>>,
+    audit: SharedAudit,
 }
 
 impl PermissionChecker {
@@ -153,7 +230,64 @@ impl PermissionChecker {
             mode: std::sync::RwLock::new(PermissionMode::Default),
             grants: std::sync::Mutex::new(SessionGrants::new()),
             prompter: None,
+            audit: new_shared_audit(),
         }
+    }
+
+    /// Wire an externally-owned audit buffer so per-message checkers can
+    /// share a single rolling log. The default `new` constructs its own
+    /// buffer (fine for tests); production callers pass one in here.
+    pub fn with_audit(mut self, audit: SharedAudit) -> Self {
+        self.audit = audit;
+        self
+    }
+
+    /// Capture a read-only snapshot of the current rules, mode, and recent
+    /// decisions. Intended for the `/permissions` UI command — does not hold
+    /// internal locks across await points.
+    pub fn snapshot(&self) -> PermissionSnapshot {
+        let rules = self.rules.read().unwrap();
+        let mut allow_rules = Vec::new();
+        let mut deny_rules = Vec::new();
+        let mut ask_rules = Vec::new();
+        for r in rules.iter() {
+            let spec = r.display_spec();
+            match r.kind {
+                crate::permissions::rules::RuleKind::Allow => allow_rules.push(spec),
+                crate::permissions::rules::RuleKind::Deny => deny_rules.push(spec),
+                crate::permissions::rules::RuleKind::Ask => ask_rules.push(spec),
+            }
+        }
+        let recent_decisions = self
+            .audit
+            .lock()
+            .unwrap()
+            .iter()
+            .cloned()
+            .collect::<Vec<_>>();
+        PermissionSnapshot {
+            mode: *self.mode.read().unwrap(),
+            allow_rules,
+            deny_rules,
+            ask_rules,
+            recent_decisions,
+        }
+    }
+
+    fn record_audit(&self, tool_name: &str, tool_input: &str, decision: PermissionDecision, reason: &DecisionReason) {
+        let mut buf = self.audit.lock().unwrap();
+        if buf.len() >= AUDIT_CAP {
+            buf.pop_front();
+        }
+        // Truncate input summary to avoid bloating memory with large tool args.
+        let summary: String = tool_input.chars().take(120).collect();
+        buf.push_back(AuditEntry {
+            timestamp: std::time::SystemTime::now(),
+            tool_name: tool_name.to_string(),
+            tool_input_summary: summary,
+            decision,
+            reason: reason.display(),
+        });
     }
 
     /// Set the permission mode (Default, AcceptEdits, BypassPermissions).
@@ -200,45 +334,85 @@ impl PermissionChecker {
         tool_input: &str,
         category: PermissionCategory,
     ) -> PermissionDecision {
+        self.check_explained(tool_name, tool_input, category).await.0
+    }
+
+    /// Same as [`check`] but also returns *why* the decision was made.
+    /// Callers that surface denial messages to the user (engine error chain,
+    /// audit log) use this; everything else uses `check`.
+    pub async fn check_explained(
+        &self,
+        tool_name: &str,
+        tool_input: &str,
+        category: PermissionCategory,
+    ) -> (PermissionDecision, DecisionReason) {
         // 1. Evaluate rules — deny rules always take priority
-        let decision = {
+        let (rule_decision, matched_rule) = {
             let rules = self.rules.read().unwrap();
-            RuleMatcher::evaluate(&rules, tool_name, tool_input)
+            RuleMatcher::evaluate_with_match(&rules, tool_name, tool_input)
         };
-        debug!(tool_name, ?decision, "permission rule evaluation");
+        debug!(tool_name, decision = ?rule_decision, "permission rule evaluation");
 
         // Deny rules override everything, including session grants
-        if decision == PermissionDecision::Denied {
+        if rule_decision == PermissionDecision::Denied {
             warn!(tool_name, "permission denied by rule (overrides session grants)");
-            return PermissionDecision::Denied;
+            let reason = matched_rule
+                .map(DecisionReason::MatchedRule)
+                .unwrap_or(DecisionReason::ModeFallback {
+                    mode: *self.mode.read().unwrap(),
+                });
+            self.record_audit(tool_name, tool_input, PermissionDecision::Denied, &reason);
+            return (PermissionDecision::Denied, reason);
         }
 
         // 2. Session grants short-circuit (only checked after deny rules pass)
         if self.grants.lock().unwrap().is_granted(tool_name) {
             debug!(tool_name, "session grant hit — allowed");
-            return PermissionDecision::Allowed;
+            let reason = DecisionReason::SessionGrant;
+            self.record_audit(tool_name, tool_input, PermissionDecision::Allowed, &reason);
+            return (PermissionDecision::Allowed, reason);
         }
 
         // 3. Remaining rule decisions
-        match decision {
-            PermissionDecision::Allowed => PermissionDecision::Allowed,
+        let (decision, reason) = match rule_decision {
+            PermissionDecision::Allowed => (
+                PermissionDecision::Allowed,
+                matched_rule
+                    .map(DecisionReason::MatchedRule)
+                    .unwrap_or(DecisionReason::ModeFallback {
+                        mode: *self.mode.read().unwrap(),
+                    }),
+            ),
             PermissionDecision::Denied => unreachable!("handled above"),
             PermissionDecision::Ask => {
-                self.prompt_user(tool_name, tool_input).await
+                let prompted = self.prompt_user(tool_name, tool_input).await;
+                (prompted, DecisionReason::Prompted)
             }
             // NoMatch = no explicit rule applies. Fall back to permission mode.
             PermissionDecision::NoMatch => {
                 let mode = *self.mode.read().unwrap();
                 let fallback = mode.fallback(category, tool_name);
                 debug!(tool_name, ?fallback, ?mode, ?category, "mode fallback");
-                match fallback {
+                let reason = DecisionReason::ModeFallback { mode };
+                let final_decision = match fallback {
                     PermissionDecision::Ask => {
-                        self.prompt_user(tool_name, tool_input).await
+                        let prompted = self.prompt_user(tool_name, tool_input).await;
+                        // Prompted from a NoMatch path — still prefer reporting the
+                        // fallback mode rather than "user prompt", since a future
+                        // re-evaluation against a stable rule set should hit the
+                        // same fallback. Audit captures the eventual decision.
+                        return {
+                            self.record_audit(tool_name, tool_input, prompted, &reason);
+                            (prompted, reason)
+                        };
                     }
                     other => other,
-                }
+                };
+                (final_decision, reason)
             }
-        }
+        };
+        self.record_audit(tool_name, tool_input, decision, &reason);
+        (decision, reason)
     }
 
     /// Prompt the user for permission (or deny if no prompter is configured).
@@ -654,5 +828,92 @@ mod tests {
             checker.check("exit_plan_mode", "", PermissionCategory::Other).await,
             PermissionDecision::Allowed
         );
+    }
+
+    // T-0196: explained checks should attribute decisions to the matching
+    // rule (or to the mode default when no rule fires) so callers can
+    // surface "denied by rule X" instead of an opaque "denied".
+
+    #[tokio::test]
+    async fn check_explained_attributes_deny_to_matching_rule() {
+        let rules = vec![PermissionRule::parse(
+            crate::permissions::rules::RuleKind::Deny,
+            "shell(rm -rf *)",
+        )];
+        let checker = PermissionChecker::new(rules);
+        let (decision, reason) = checker
+            .check_explained("shell", "rm -rf /tmp/foo", PermissionCategory::Shell)
+            .await;
+        assert_eq!(decision, PermissionDecision::Denied);
+        let display = reason.display();
+        assert!(display.contains("deny"), "expected rule kind in reason: {display}");
+        assert!(display.contains("shell(rm -rf *)"), "expected rule spec: {display}");
+    }
+
+    #[tokio::test]
+    async fn check_explained_attributes_no_match_to_mode_fallback() {
+        // No rules at all → ReadOnly tool in Default mode → allowed via mode fallback.
+        let checker = PermissionChecker::new(vec![]);
+        let (decision, reason) = checker
+            .check_explained("file_read", "{}", PermissionCategory::ReadOnly)
+            .await;
+        assert_eq!(decision, PermissionDecision::Allowed);
+        let display = reason.display();
+        assert!(display.contains("mode default"), "expected mode default reason: {display}");
+    }
+
+    #[tokio::test]
+    async fn audit_log_records_decisions_in_order_and_caps() {
+        let checker = PermissionChecker::new(vec![]);
+        // Drive AUDIT_CAP + 5 distinct decisions; oldest should evict.
+        for i in 0..(super::AUDIT_CAP + 5) {
+            let _ = checker
+                .check(&format!("tool_{i}"), "", PermissionCategory::ReadOnly)
+                .await;
+        }
+        let snapshot = checker.snapshot();
+        assert_eq!(snapshot.recent_decisions.len(), super::AUDIT_CAP);
+        // Oldest entries (tool_0..tool_4) should have evicted; first remaining is tool_5.
+        let first_remaining = &snapshot.recent_decisions[0];
+        assert_eq!(first_remaining.tool_name, "tool_5");
+        // Last entry should be the most recent (tool_AUDIT_CAP+4).
+        let last = snapshot.recent_decisions.last().unwrap();
+        assert_eq!(last.tool_name, format!("tool_{}", super::AUDIT_CAP + 4));
+    }
+
+    #[tokio::test]
+    async fn shared_audit_aggregates_across_checkers() {
+        // Simulates the production shape: LocalService holds one SharedAudit
+        // and constructs per-message PermissionCheckers that all log into it.
+        use std::sync::Arc;
+        let audit = super::new_shared_audit();
+        let checker_a = PermissionChecker::new(vec![]).with_audit(Arc::clone(&audit));
+        let checker_b = PermissionChecker::new(vec![]).with_audit(Arc::clone(&audit));
+        let _ = checker_a.check("tool_a", "", PermissionCategory::ReadOnly).await;
+        let _ = checker_b.check("tool_b", "", PermissionCategory::ReadOnly).await;
+        // snapshot() reads from whichever checker — both share the buffer.
+        let snap_a = checker_a.snapshot();
+        let snap_b = checker_b.snapshot();
+        assert_eq!(snap_a.recent_decisions.len(), 2);
+        assert_eq!(snap_b.recent_decisions.len(), 2);
+        assert_eq!(snap_a.recent_decisions[0].tool_name, "tool_a");
+        assert_eq!(snap_a.recent_decisions[1].tool_name, "tool_b");
+    }
+
+    #[test]
+    fn snapshot_partitions_rules_by_kind_with_display_specs() {
+        use crate::permissions::rules::RuleKind;
+        let rules = vec![
+            PermissionRule::parse(RuleKind::Deny, "shell(rm -rf *)"),
+            PermissionRule::parse(RuleKind::Allow, "Read"),
+            PermissionRule::parse(RuleKind::Allow, "shell(cargo *)"),
+            PermissionRule::parse(RuleKind::Ask, "web_fetch"),
+        ];
+        let checker = PermissionChecker::new(rules);
+        let snap = checker.snapshot();
+        assert_eq!(snap.deny_rules, vec!["shell(rm -rf *)".to_string()]);
+        assert_eq!(snap.allow_rules, vec!["Read".to_string(), "shell(cargo *)".to_string()]);
+        assert_eq!(snap.ask_rules, vec!["web_fetch".to_string()]);
+        assert_eq!(snap.recent_decisions.len(), 0);
     }
 }

@@ -11,8 +11,9 @@ use uuid::Uuid;
 pub use error::ServiceError;
 pub use types::{
     CommandInfo, EngineEvent, ForgetCandidate, ForgetResult, InventoryItem, MemoryStoreResult,
-    MemoryStoreSummary, MemorySummary, MemoryTypeCount, ModalPromptOption, PermissionModeInfo,
-    PromotionResult, ServerCapabilities, SessionDetail, SessionInfo, WorkflowInfo, WorkstreamInfo,
+    MemoryStoreSummary, MemorySummary, MemoryTypeCount, ModalPromptOption,
+    PermissionAuditEntry, PermissionModeInfo, PermissionsStatus, PromotionResult,
+    ServerCapabilities, SessionDetail, SessionInfo, WorkflowInfo, WorkstreamInfo,
 };
 
 /// The service contract between any UI client and the Arawn backend.
@@ -116,4 +117,9 @@ pub trait ArawnService: Send + Sync {
     /// (e.g. memory falls back to FTS-only when embeddings_available=false)
     /// before the user runs into them mid-conversation.
     async fn get_capabilities(&self) -> Result<ServerCapabilities, ServiceError>;
+
+    /// Snapshot the current permission rules + recent audit entries.
+    /// Backs the TUI's `/permissions` command. Read-only — modifying rules
+    /// requires editing `arawn.toml` and (for now) restarting.
+    async fn get_permissions_status(&self) -> Result<PermissionsStatus, ServiceError>;
 }

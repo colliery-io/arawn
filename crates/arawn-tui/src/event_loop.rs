@@ -440,6 +440,14 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                                 ));
                                 app.dirty = true;
                             }
+                            crate::command::CommandResult::PermissionsStatus => {
+                                let body = match client.get_permissions_status().await {
+                                    Ok(status) => format_permissions_status(&status),
+                                    Err(e) => format!("Failed to fetch permissions status: {e}"),
+                                };
+                                app.messages.push(ChatMessage::new(ChatRole::System, body));
+                                app.dirty = true;
+                            }
                             _ => {} // Other command results handled in app.handle_action
                         }
                     }
@@ -772,4 +780,47 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
     terminal.show_cursor()?;
 
     Ok(())
+}
+
+/// Render `get_permissions_status` JSON as a human-readable system message.
+fn format_permissions_status(status: &serde_json::Value) -> String {
+    use std::fmt::Write;
+    let mut out = String::from("**Permissions**\n\n");
+
+    let mode = status.get("mode").and_then(|v| v.as_str()).unwrap_or("?");
+    let _ = writeln!(out, "Mode: `{mode}`");
+
+    let render_list = |label: &str, key: &str, out: &mut String| {
+        if let Some(arr) = status.get(key).and_then(|v| v.as_array())
+            && !arr.is_empty()
+        {
+            let _ = writeln!(out, "\n{label}:");
+            for item in arr {
+                if let Some(s) = item.as_str() {
+                    let _ = writeln!(out, "  - `{s}`");
+                }
+            }
+        }
+    };
+    render_list("Deny rules", "deny_rules", &mut out);
+    render_list("Allow rules", "allow_rules", &mut out);
+    render_list("Ask rules", "ask_rules", &mut out);
+
+    if let Some(decisions) = status.get("recent_decisions").and_then(|v| v.as_array()) {
+        if decisions.is_empty() {
+            let _ = writeln!(out, "\nNo decisions recorded yet this session.");
+        } else {
+            let _ = writeln!(out, "\nRecent decisions (newest first):");
+            // Newest at the top — the audit buffer is push_back so the last
+            // entry is most recent.
+            for entry in decisions.iter().rev().take(20) {
+                let ts = entry.get("timestamp").and_then(|v| v.as_str()).unwrap_or("?");
+                let tool = entry.get("tool_name").and_then(|v| v.as_str()).unwrap_or("?");
+                let dec = entry.get("decision").and_then(|v| v.as_str()).unwrap_or("?");
+                let reason = entry.get("reason").and_then(|v| v.as_str()).unwrap_or("?");
+                let _ = writeln!(out, "  {ts}  {tool:<24}  {dec:<8}  {reason}");
+            }
+        }
+    }
+    out
 }
