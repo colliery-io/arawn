@@ -4,14 +4,14 @@ level: initiative
 title: "External integrations layer — Gmail, Calendar, notifications"
 short_code: "ARAWN-I-0033"
 created_at: 2026-05-02T04:13:45.230690+00:00
-updated_at: 2026-05-02T04:13:45.230690+00:00
+updated_at: 2026-05-03T12:43:15.333878+00:00
 parent: ARAWN-V-0001
 blocked_by: []
 archived: false
 
 tags:
   - "#initiative"
-  - "#phase/discovery"
+  - "#phase/decompose"
 
 
 exit_criteria_met: false
@@ -62,11 +62,12 @@ Phased decomposition (tasks to be created during decompose phase):
 - [ ] Tokens stored securely (not in `arawn.toml`), survive restart, refresh transparently.
 - [ ] Documentation for adding a fourth integration is clear enough that it's a 1–2 day task.
 
-## Open Questions
+## Resolved (was Open Questions)
 
-- **Credential storage**: filesystem-only (encrypted at rest like the existing `secrets.age`?), or use OS keychain via `keyring` crate? Decide in ADR.
-- **Slack auth**: webhook (simpler, channel-scoped) vs. proper OAuth app (more capable, multi-channel). User preference?
-- **Sandbox interaction**: do integration tools bypass the shell sandbox entirely (since they're not shell commands), or do they participate in the same audit/permission flow?
+- **Credential storage** → filesystem, encrypted with the existing `~/.arawn/identity.age`. Per-service paths under `~/.arawn/integrations/<service>/credentials.age`. See [ARAWN-A-0001](../../adrs/ARAWN-A-0001.md) for full rationale.
+- **OAuth UX** → in-TUI `/connect <service>` slash-command brokered through the server, with localhost callback capture. See ARAWN-A-0001.
+- **Slack auth** → **incoming webhook for v1.** Simpler, channel-scoped, no OAuth dance. The Notification tool is built against an abstraction so a future Slack-OAuth path is a swap, not a rewrite.
+- **Sandbox interaction** → integration tools are normal `arawn-engine::Tool` impls. They don't go through the shell sandbox (different code path entirely) but they DO participate in the permission system — every call gets evaluated by `PermissionChecker::check_explained` (T-0196), so rules like `deny gmail_send(*)` work. Tools declare their `permission_category` so the mode-default fallback applies (e.g. `gmail_inbox_read` → ReadOnly, `gmail_send` → Other).
 
 ## Dependencies
 
@@ -81,4 +82,18 @@ Phased decomposition (tasks to be created during decompose phase):
 
 ## Status Updates
 
-*Discovery phase. Awaiting decomposition into tasks.*
+### 2026-05-03 — Decomposed (4 tasks)
+
+Open questions answered (see Resolved section above), [ARAWN-A-0001](../../adrs/ARAWN-A-0001.md) landed with the credential-storage + OAuth-UX decisions. Initiative moved discovery → design → ready → decompose. Tasks created:
+
+| Task | Title | Deps |
+|---|---|---|
+| [ARAWN-T-0200](./tasks/ARAWN-T-0200.md) | arawn-integrations crate scaffolding + Integration trait + connect/disconnect RPCs | (foundation) |
+| [ARAWN-T-0201](./tasks/ARAWN-T-0201.md) | TUI /connect, /disconnect, /integrations commands + OAuth UX flow | T-0200 |
+| [ARAWN-T-0202](./tasks/ARAWN-T-0202.md) | Gmail integration: read inbox, search, send, mark read | T-0200, T-0201 |
+| [ARAWN-T-0203](./tasks/ARAWN-T-0203.md) | Google Calendar integration: list upcoming, create event, find conflicts | T-0200, T-0201 |
+| [ARAWN-T-0204](./tasks/ARAWN-T-0204.md) | Notification integration: Slack incoming-webhook channel for v1 | T-0200, T-0201 |
+
+**Suggested execution order:** T-0200 → T-0201 → T-0202 (proves the framework end-to-end with a real consumer) → T-0203 + T-0204 in parallel.
+
+T-0202 is the MVP — once Gmail works end-to-end, the framework is proven. T-0203 and T-0204 follow the same shape with different wire formats.

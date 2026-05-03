@@ -169,6 +169,10 @@
     "crates/arawn/src/main.rs": "8e8b701df02cc264c9ae133d2f4162c418ccbe9cfdf3e27b39b16cafd1fca7b8",
     "crates/arawn/src/plugin_cmd.rs": "53b18eb0fd2b2cbd76976f071534d15a36fa497924f68c6cf4094628db803dc8",
     "crates/arawn/src/ws_server.rs": "7d3e94cf3ee003cead8cebf15936422be20634f3a8beb516ffa14234a5b62197",
+    "examples/workflows/daily-pr-summary/build.rs": "7c3f20f9df59c2d379a5f797a5bc506c2d54e671d04ed67daf5de3baac7eb873",
+    "examples/workflows/daily-pr-summary/src/lib.rs": "da84c531fcbd2581e42f04e92b08ef8e7f333ec1725aac5f60f2e7faea26219f",
+    "examples/workflows/issue-triage/lib.rs": "0ab3af2e746c846cbbb4b5bdcd1b09981c096555186f933eceb5b9beabb13a4f",
+    "examples/workflows/work-signal-pipeline/lib.rs": "afbffd2005d60bd6b4999aec0b95107798a8bbc94c477fe61aaccfbe0efbdbee",
     "scripts/functional_test.py": "772886d5564a27e0e8da6e69bd2b17208fce5e8222f84954350717d97749a2f4"
   }
 }
