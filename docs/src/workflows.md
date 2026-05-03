@@ -141,11 +141,23 @@ attempts, schedule state). Don't delete it while arawn is running.
 
 ## Examples
 
-A library of worked examples is on the backlog (T-0198 follow-up).
-Until those land, the cleanest reference is the
-`work-signal-pipeline` UAT scenario in
-`crates/arawn-tests/tests/uat.rs` — it builds a 6-task DAG with cron
-scheduling that you can ask the agent to recreate.
+Three worked examples live in [`examples/workflows/`](https://github.com/dstorey/arawn/tree/main/examples/workflows):
+
+- **`daily-pr-summary/`** — full buildable crate showing the linear
+  fetch → process → save pattern. `cargo build --release` produces a
+  `.cdylib` you can install.
+- **`work-signal-pipeline/`** — source listing for a DAG with parallel
+  ingestion (three data tasks fanning into one aggregator).
+- **`issue-triage/`** — source listing for a decision-task pattern that
+  uses the agent for LLM-backed classification and conditionally fires
+  an action.
+
+Read [`examples/workflows/README.md`](https://github.com/dstorey/arawn/blob/main/examples/workflows/README.md) first.
+
+The UAT `work-signal-pipeline` scenario in
+`crates/arawn-tests/tests/uat.rs` exercises the full agent-authored flow
+end-to-end against a real LLM — useful as a reference for "what does the
+agent's output look like."
 
 ## Caveats
 

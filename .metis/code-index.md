@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-02T14:07:34Z | 170 files | Python, Rust
+> Generated: 2026-05-02T18:11:50Z | 170 files | Python, Rust
 
 ## Project Structure
 
@@ -330,12 +330,13 @@
 
 #### crates/arawn/src/config_watcher.rs
 
-- pub `ConfigWatcher` struct L21-27 — `{ config_path: PathBuf, data_dir: PathBuf, permission_rules: Arc<std::sync::RwLo...` — Watches config files and dispatches live updates to running subsystems.
-- pub `new` function L30-44 — `( config_path: PathBuf, data_dir: PathBuf, permission_rules: Arc<std::sync::RwLo...` — with debouncing.
-- pub `spawn` function L47-53 — `(self) -> tokio::task::JoinHandle<()>` — Spawn the file watcher as a background tokio task.
--  `ConfigWatcher` type L29-146 — `= ConfigWatcher` — with debouncing.
--  `run` function L55-114 — `(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>>` — with debouncing.
--  `reload` function L116-145 — `(&self)` — with debouncing.
+- pub `ConfigWatcher` struct L21-31 — `{ config_path: PathBuf, data_dir: PathBuf, permission_rules: Arc<std::sync::RwLo...` — Watches config files and dispatches live updates to running subsystems.
+- pub `new` function L34-49 — `( config_path: PathBuf, data_dir: PathBuf, permission_rules: Arc<std::sync::RwLo...` — with debouncing.
+- pub `with_notify` function L52-55 — `(mut self, notify: Arc<dyn Fn(bool, String) + Send + Sync>) -> Self` — Attach a notify callback fired after each reload completes.
+- pub `spawn` function L58-64 — `(self) -> tokio::task::JoinHandle<()>` — Spawn the file watcher as a background tokio task.
+-  `ConfigWatcher` type L33-168 — `= ConfigWatcher` — with debouncing.
+-  `run` function L66-125 — `(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>>` — with debouncing.
+-  `reload` function L127-167 — `(&self)` — with debouncing.
 
 #### crates/arawn/src/lib.rs
 
@@ -389,65 +390,67 @@
 
 #### crates/arawn/src/local_service.rs
 
-- pub `LocalService` struct L31-64 — `{ store: Arc<Mutex<Store>>, data_dir: PathBuf, llm_pool: Arc<LlmClientPool>, reg...` — In-process implementation of ArawnService.
-- pub `new` function L67-92 — `( store: Store, data_dir: PathBuf, llm_pool: Arc<LlmClientPool>, registry: Arc<T...`
-- pub `with_permission_rules` function L94-97 — `(self, rules: Vec<PermissionRule>) -> Self`
-- pub `shared_store` function L101-103 — `(&self) -> Arc<Mutex<Store>>` — Get a reference to the shared permission rules for hot-reload.
-- pub `shared_llm` function L105-107 — `(&self) -> Arc<dyn LlmClient>`
-- pub `shared_compactor_llm` function L111-113 — `(&self) -> Arc<dyn LlmClient>` — Compactor LLM (separate client when `[compactor]` config selects a
-- pub `compactor_model` function L116-118 — `(&self) -> &str` — Model name used by the compactor.
-- pub `shared_llm_pool` function L122-124 — `(&self) -> Arc<LlmClientPool>` — Shared reference to the LLM pool — used by tools/agents that resolve
-- pub `shared_registry` function L126-128 — `(&self) -> Arc<ToolRegistry>`
-- pub `engine_config` function L130-132 — `(&self) -> &QueryEngineConfig`
-- pub `shared_permission_rules` function L134-136 — `(&self) -> Arc<std::sync::RwLock<Vec<PermissionRule>>>`
-- pub `shared_permission_mode` function L138-140 — `(&self) -> Arc<std::sync::RwLock<arawn_engine::permissions::PermissionMode>>`
-- pub `with_skill_registry` function L142-145 — `(mut self, registry: Arc<arawn_engine::skills::SkillRegistry>) -> Self`
-- pub `with_plugin_registry` function L147-150 — `(mut self, registry: Arc<arawn_engine::plugins::PluginRegistry>) -> Self`
-- pub `with_plan_state` function L152-155 — `(mut self, state: Arc<PlanModeState>) -> Self`
-- pub `with_background_tasks` function L157-160 — `(mut self, manager: Arc<BackgroundTaskManager>) -> Self`
-- pub `with_memory_manager` function L162-165 — `(mut self, mgr: Arc<arawn_memory::MemoryManager>) -> Self`
--  `LocalService` type L66-324 — `= LocalService`
--  `load_session_state` function L169-198 — `( &self, session_id: Uuid, ) -> Result<(arawn_storage::SessionMeta, Workstream, ...` — Load session metadata, resolve workstream, and load message history.
--  `build_session_context` function L202-270 — `( &self, session_id: Uuid, workstream: &Workstream, ws_dir: &str, workspace_dir:...` — Build a ToolContext and per-session PromptContext for the engine.
--  `build_engine` function L274-323 — `( &self, prompt_context: Option<arawn_engine::PromptContext>, event_tx: &mpsc::S...` — Build a QueryEngine configured with compactor, skills, plugins, and plan state.
--  `infer_entity_type` function L328-341 — `(text: &str) -> (arawn_memory::EntityType, String)` — Infer entity type from text patterns.
--  `LocalService` type L346-1088 — `impl ArawnService for LocalService`
--  `list_workstreams` function L347-362 — `(&self) -> Result<Vec<WorkstreamInfo>, ServiceError>`
--  `create_workstream` function L364-381 — `( &self, name: String, root_dir: PathBuf, ) -> Result<WorkstreamInfo, ServiceErr...`
--  `list_sessions` function L383-402 — `( &self, workstream_id: Option<Uuid>, ) -> Result<Vec<SessionInfo>, ServiceError...`
--  `create_session` function L404-425 — `( &self, workstream_id: Option<Uuid>, ) -> Result<SessionInfo, ServiceError>`
--  `load_session` function L427-454 — `(&self, id: Uuid) -> Result<SessionDetail, ServiceError>`
--  `send_message` function L457-653 — `( &self, session_id: Uuid, content: String, ) -> Result<Pin<Box<dyn futures::Str...`
--  `cancel` function L655-668 — `(&self, session_id: Uuid) -> Result<(), ServiceError>`
--  `promote_session` function L670-721 — `( &self, session_id: Uuid, workstream_name: &str, ) -> Result<PromotionResult, S...`
--  `resolve_user_input` function L723-737 — `( &self, request_id: &str, selected_index: Option<usize>, ) -> Result<(), Servic...`
--  `query_inventory` function L739-804 — `(&self, kind: &str) -> Result<Vec<InventoryItem>, ServiceError>`
--  `list_available_commands` function L806-818 — `(&self) -> Result<Vec<CommandInfo>, ServiceError>`
--  `list_workflows` function L820-851 — `(&self) -> Result<Vec<WorkflowInfo>, ServiceError>`
--  `remember_fact` function L853-899 — `(&self, text: &str) -> Result<MemoryStoreResult, ServiceError>`
--  `memory_summary` function L901-948 — `(&self) -> Result<MemorySummary, ServiceError>`
--  `forget_entity` function L950-1000 — `(&self, query: &str) -> Result<ForgetResult, ServiceError>`
--  `get_permission_mode` function L1002-1010 — `(&self) -> Result<PermissionModeInfo, ServiceError>`
--  `set_permission_mode` function L1012-1024 — `(&self, mode_str: &str) -> Result<PermissionModeInfo, ServiceError>`
--  `get_capabilities` function L1026-1036 — `(&self) -> Result<arawn_service::ServerCapabilities, ServiceError>`
--  `get_permissions_status` function L1038-1087 — `(&self) -> Result<arawn_service::PermissionsStatus, ServiceError>`
--  `resolve_ws_dir_from_store` function L1091-1102 — `(store: &Store, ws_id: Option<Uuid>) -> Result<String, ServiceError>` — Resolve workstream directory name from store.
--  `first_sentence` function L1106-1117 — `(s: &str) -> String` — Extract the first sentence and sanitize for use in a markdown table cell.
+- pub `LocalService` struct L31-70 — `{ store: Arc<Mutex<Store>>, data_dir: PathBuf, llm_pool: Arc<LlmClientPool>, reg...` — In-process implementation of ArawnService.
+- pub `new` function L73-99 — `( store: Store, data_dir: PathBuf, llm_pool: Arc<LlmClientPool>, registry: Arc<T...`
+- pub `subscribe_notices` function L105-107 — `(&self) -> tokio::sync::broadcast::Receiver<arawn_service::ServerNotice>` — Subscribe to server-wide notices (plugin/config hot-reload, etc.).
+- pub `notice_sender` function L111-113 — `(&self) -> tokio::sync::broadcast::Sender<arawn_service::ServerNotice>` — Get a sender clone — used to wire watchers (plugin runtime, config
+- pub `with_permission_rules` function L115-118 — `(self, rules: Vec<PermissionRule>) -> Self`
+- pub `shared_store` function L122-124 — `(&self) -> Arc<Mutex<Store>>` — Get a reference to the shared permission rules for hot-reload.
+- pub `shared_llm` function L126-128 — `(&self) -> Arc<dyn LlmClient>`
+- pub `shared_compactor_llm` function L132-134 — `(&self) -> Arc<dyn LlmClient>` — Compactor LLM (separate client when `[compactor]` config selects a
+- pub `compactor_model` function L137-139 — `(&self) -> &str` — Model name used by the compactor.
+- pub `shared_llm_pool` function L143-145 — `(&self) -> Arc<LlmClientPool>` — Shared reference to the LLM pool — used by tools/agents that resolve
+- pub `shared_registry` function L147-149 — `(&self) -> Arc<ToolRegistry>`
+- pub `engine_config` function L151-153 — `(&self) -> &QueryEngineConfig`
+- pub `shared_permission_rules` function L155-157 — `(&self) -> Arc<std::sync::RwLock<Vec<PermissionRule>>>`
+- pub `shared_permission_mode` function L159-161 — `(&self) -> Arc<std::sync::RwLock<arawn_engine::permissions::PermissionMode>>`
+- pub `with_skill_registry` function L163-166 — `(mut self, registry: Arc<arawn_engine::skills::SkillRegistry>) -> Self`
+- pub `with_plugin_registry` function L168-171 — `(mut self, registry: Arc<arawn_engine::plugins::PluginRegistry>) -> Self`
+- pub `with_plan_state` function L173-176 — `(mut self, state: Arc<PlanModeState>) -> Self`
+- pub `with_background_tasks` function L178-181 — `(mut self, manager: Arc<BackgroundTaskManager>) -> Self`
+- pub `with_memory_manager` function L183-186 — `(mut self, mgr: Arc<arawn_memory::MemoryManager>) -> Self`
+-  `LocalService` type L72-345 — `= LocalService`
+-  `load_session_state` function L190-219 — `( &self, session_id: Uuid, ) -> Result<(arawn_storage::SessionMeta, Workstream, ...` — Load session metadata, resolve workstream, and load message history.
+-  `build_session_context` function L223-291 — `( &self, session_id: Uuid, workstream: &Workstream, ws_dir: &str, workspace_dir:...` — Build a ToolContext and per-session PromptContext for the engine.
+-  `build_engine` function L295-344 — `( &self, prompt_context: Option<arawn_engine::PromptContext>, event_tx: &mpsc::S...` — Build a QueryEngine configured with compactor, skills, plugins, and plan state.
+-  `infer_entity_type` function L349-362 — `(text: &str) -> (arawn_memory::EntityType, String)` — Infer entity type from text patterns.
+-  `LocalService` type L367-1109 — `impl ArawnService for LocalService`
+-  `list_workstreams` function L368-383 — `(&self) -> Result<Vec<WorkstreamInfo>, ServiceError>`
+-  `create_workstream` function L385-402 — `( &self, name: String, root_dir: PathBuf, ) -> Result<WorkstreamInfo, ServiceErr...`
+-  `list_sessions` function L404-423 — `( &self, workstream_id: Option<Uuid>, ) -> Result<Vec<SessionInfo>, ServiceError...`
+-  `create_session` function L425-446 — `( &self, workstream_id: Option<Uuid>, ) -> Result<SessionInfo, ServiceError>`
+-  `load_session` function L448-475 — `(&self, id: Uuid) -> Result<SessionDetail, ServiceError>`
+-  `send_message` function L478-674 — `( &self, session_id: Uuid, content: String, ) -> Result<Pin<Box<dyn futures::Str...`
+-  `cancel` function L676-689 — `(&self, session_id: Uuid) -> Result<(), ServiceError>`
+-  `promote_session` function L691-742 — `( &self, session_id: Uuid, workstream_name: &str, ) -> Result<PromotionResult, S...`
+-  `resolve_user_input` function L744-758 — `( &self, request_id: &str, selected_index: Option<usize>, ) -> Result<(), Servic...`
+-  `query_inventory` function L760-825 — `(&self, kind: &str) -> Result<Vec<InventoryItem>, ServiceError>`
+-  `list_available_commands` function L827-839 — `(&self) -> Result<Vec<CommandInfo>, ServiceError>`
+-  `list_workflows` function L841-872 — `(&self) -> Result<Vec<WorkflowInfo>, ServiceError>`
+-  `remember_fact` function L874-920 — `(&self, text: &str) -> Result<MemoryStoreResult, ServiceError>`
+-  `memory_summary` function L922-969 — `(&self) -> Result<MemorySummary, ServiceError>`
+-  `forget_entity` function L971-1021 — `(&self, query: &str) -> Result<ForgetResult, ServiceError>`
+-  `get_permission_mode` function L1023-1031 — `(&self) -> Result<PermissionModeInfo, ServiceError>`
+-  `set_permission_mode` function L1033-1045 — `(&self, mode_str: &str) -> Result<PermissionModeInfo, ServiceError>`
+-  `get_capabilities` function L1047-1057 — `(&self) -> Result<arawn_service::ServerCapabilities, ServiceError>`
+-  `get_permissions_status` function L1059-1108 — `(&self) -> Result<arawn_service::PermissionsStatus, ServiceError>`
+-  `resolve_ws_dir_from_store` function L1112-1123 — `(store: &Store, ws_id: Option<Uuid>) -> Result<String, ServiceError>` — Resolve workstream directory name from store.
+-  `first_sentence` function L1127-1138 — `(s: &str) -> String` — Extract the first sentence and sanitize for use in a markdown table cell.
 
 #### crates/arawn/src/main.rs
 
 -  `DEFAULT_MODEL` variable L15 — `: &str`
 -  `FILE_LOG_FILTER` variable L18 — `: &str` — Default file log filter: debug for arawn crates, warn for third-party.
--  `main` function L21-472 — `() -> Result<()>`
+-  `main` function L21-498 — `() -> Result<()>`
 -  `Cli` struct L27-46 — `{ command: Option<Command>, data_dir: Option<String>, session: Option<Uuid>, lis...`
 -  `Command` enum L49-68 — `Serve | Tui | Plugin`
--  `run_cli_via_server` function L475-580 — `( url: &str, prompt: &str, session_id: Option<Uuid>, ) -> Result<()>` — Run a CLI prompt by connecting to the running server via WebSocket.
--  `build_llm_client` function L583-605 — `( config: &arawn_bin::LlmConfig, ) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
--  `register_default_tools` function L608-654 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &arawn_bin::ArawnConfig, d...` — Register all default tools into the registry.
--  `connect_mcp_servers` function L657-705 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
--  `register_workflow_tools` function L708-725 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
--  `build_engine_config` function L727-759 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
--  `dirs_path` function L761-770 — `() -> Option<String>`
+-  `run_cli_via_server` function L501-606 — `( url: &str, prompt: &str, session_id: Option<Uuid>, ) -> Result<()>` — Run a CLI prompt by connecting to the running server via WebSocket.
+-  `build_llm_client` function L609-631 — `( config: &arawn_bin::LlmConfig, ) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
+-  `register_default_tools` function L634-680 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &arawn_bin::ArawnConfig, d...` — Register all default tools into the registry.
+-  `connect_mcp_servers` function L683-731 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
+-  `register_workflow_tools` function L734-751 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
+-  `build_engine_config` function L753-785 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
+-  `dirs_path` function L787-796 — `() -> Option<String>`
 
 #### crates/arawn/src/plugin_cmd.rs
 
@@ -494,11 +497,11 @@
 -  `decision_handler` function L219-238 — `( State(AppState { service, .. }): State<AppState>, Json(req): Json<arawn_workfl...` — HTTP endpoint for workflow decision tasks.
 -  `WsQueryParams` struct L242-244 — `{ token: Option<String> }` — Query parameters for WebSocket connection.
 -  `ws_handler` function L246-272 — `( ws: WebSocketUpgrade, Query(params): Query<WsQueryParams>, State(state): State...`
--  `handle_connection` function L279-898 — `(socket: WebSocket, service: Arc<LocalService>)`
--  `tests` module L901-951 — `-`
--  `from_service_error_preserves_structured_detail_for_typed_variants` function L908-918 — `()` — Typed Storage error should round-trip through the wire payload with
--  `from_service_error_omits_details_for_string_only_variants` function L924-935 — `()` — String-only variants (NotFound, InvalidOperation, Internal) keep
--  `from_service_error_preserves_engine_error_kind` function L941-950 — `()` — Engine errors surface a `kind` that identifies the inner variant —
+-  `handle_connection` function L279-935 — `(socket: WebSocket, service: Arc<LocalService>)`
+-  `tests` module L938-988 — `-`
+-  `from_service_error_preserves_structured_detail_for_typed_variants` function L945-955 — `()` — Typed Storage error should round-trip through the wire payload with
+-  `from_service_error_omits_details_for_string_only_variants` function L961-972 — `()` — String-only variants (NotFound, InvalidOperation, Internal) keep
+-  `from_service_error_preserves_engine_error_kind` function L978-987 — `()` — Engine errors surface a `kind` that identifies the inner variant —
 
 ### crates/arawn-auth/src
 
@@ -1835,8 +1838,8 @@
 - pub `with_settings` function L64-67 — `(mut self, path: PathBuf) -> Self` — to hot-reload when plugins are installed or changed.
 - pub `with_plugin_dir` function L69-72 — `(mut self, dir: PathBuf) -> Self` — to hot-reload when plugins are installed or changed.
 - pub `load_all` function L75-162 — `(&self, skill_registry: &Arc<SkillRegistry>) -> PluginLoadResult` — Discover, load, and register all plugins.
-- pub `watch` function L168-277 — `(&self, skill_registry: Arc<SkillRegistry>) -> tokio::task::JoinHandle<()>` — Spawn a file watcher that hot-reloads plugins when the cache directory changes.
--  `PluginRuntime` type L54-278 — `= PluginRuntime` — to hot-reload when plugins are installed or changed.
+- pub `watch` function L173-298 — `( &self, skill_registry: Arc<SkillRegistry>, notify: Option<Arc<dyn Fn(bool, Str...` — Spawn a file watcher that hot-reloads plugins when the cache directory changes.
+-  `PluginRuntime` type L54-299 — `= PluginRuntime` — to hot-reload when plugins are installed or changed.
 
 #### crates/arawn-engine/src/plugins/settings.rs
 
@@ -3225,6 +3228,7 @@
 - pub `ServerCapabilities` struct L209-215 — `{ server_version: String, embeddings_available: bool }` — Runtime capabilities advertised to clients on connect — what optional
 - pub `PermissionsStatus` struct L221-227 — `{ mode: String, allow_rules: Vec<String>, deny_rules: Vec<String>, ask_rules: Ve...` — Read-only snapshot of the active permission configuration plus a
 - pub `PermissionAuditEntry` struct L232-242 — `{ timestamp: String, tool_name: String, tool_input_summary: String, decision: St...` — One row of the permission audit — what the agent tried to do and how
+- pub `ServerNotice` struct L249-261 — `{ level: String, category: String, message: String, timestamp: String }` — Server-wide event broadcast to every connected client.
 
 ### crates/arawn-storage/src
 
@@ -3894,9 +3898,10 @@
 
 #### crates/arawn-tui/src/event_loop.rs
 
-- pub `run_tui` function L27-783 — `(url: &str, model_name: &str) -> Result<(), Box<dyn std::error::Error>>` — Run the TUI connected to the given WebSocket server URL.
--  `rect_contains` function L22-24 — `(rect: Rect, col: u16, row: u16) -> bool`
--  `format_permissions_status` function L786-826 — `(status: &serde_json::Value) -> String` — Render `get_permissions_status` JSON as a human-readable system message.
+- pub `run_tui` function L29-792 — `(url: &str, model_name: &str) -> Result<(), Box<dyn std::error::Error>>` — Run the TUI connected to the given WebSocket server URL.
+-  `rect_contains` function L24-26 — `(rect: Rect, col: u16, row: u16) -> bool`
+-  `apply_system_notice` function L797-803 — `(notice: &arawn_service::ServerNotice, app: &mut crate::app::App)` — Push a server-side notice (plugin/config hot-reload outcome) into the
+-  `format_permissions_status` function L806-846 — `(status: &serde_json::Value) -> String` — Render `get_permissions_status` JSON as a human-readable system message.
 
 #### crates/arawn-tui/src/lib.rs
 
@@ -4124,12 +4129,18 @@
 - pub `read_response_raw` function L204-206 — `(&mut self) -> Result<Value, Box<dyn std::error::Error>>` — Read the next JSON response from the server (public for sidebar).
 - pub `parse_engine_event` function L237-257 — `(text: &str) -> Option<EngineEvent>` — Parse a WS message as an EngineEvent.
 - pub `EventUpdate` enum L260-287 — `AppendStreamingText | AddToolCall | AddToolResult | Complete | Error | Warning |...` — Convert an EngineEvent into App state updates.
-- pub `engine_event_to_update` function L289-316 — `(event: EngineEvent) -> EventUpdate`
+- pub `parse_system_notice` function L293-299 — `(text: &str) -> Option<arawn_service::ServerNotice>` — Parse a server-wide notice (plugin/config hot-reload) from a raw WS text
+- pub `engine_event_to_update` function L301-328 — `(event: EngineEvent) -> EventUpdate`
 -  `REQUEST_ID` variable L10 — `: AtomicU64`
 -  `next_id` function L12-14 — `() -> u64`
 -  `WsClient` type L31-234 — `= WsClient`
 -  `read_server_token` function L50-64 — `() -> Option<String>` — Read the server auth token from {data_dir}/server.token.
 -  `read_response` function L209-233 — `(&mut self) -> Result<Value, Box<dyn std::error::Error>>` — Read the next JSON response from the server.
+-  `tests` module L331-376 — `-`
+-  `parses_well_formed_system_notice` function L338-353 — `()`
+-  `rejects_engine_event_envelope` function L356-363 — `()`
+-  `rejects_response_envelope` function L366-369 — `()`
+-  `rejects_malformed_json` function L372-375 — `()`
 
 ### crates/arawn-workflow
 
