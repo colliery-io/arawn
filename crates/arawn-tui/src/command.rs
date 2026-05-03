@@ -145,6 +145,22 @@ impl CommandRegistry {
             description: "Show active permission rules and recent decisions".into(),
             kind: CommandKind::BuiltIn,
         });
+        // External integrations
+        self.commands.push(CommandInfo {
+            name: "integrations".into(),
+            description: "List registered external integrations and their connection state".into(),
+            kind: CommandKind::BuiltIn,
+        });
+        self.commands.push(CommandInfo {
+            name: "connect".into(),
+            description: "Begin the auth flow for an integration (e.g. /connect gmail)".into(),
+            kind: CommandKind::BuiltIn,
+        });
+        self.commands.push(CommandInfo {
+            name: "disconnect".into(),
+            description: "Drop stored credentials for an integration".into(),
+            kind: CommandKind::BuiltIn,
+        });
         // Memory commands
         self.commands.push(CommandInfo {
             name: "remember".into(),
@@ -278,6 +294,12 @@ pub enum CommandResult {
     WorkflowStatus(Option<String>),
     /// Show active permission rules + recent decisions.
     PermissionsStatus,
+    /// List registered external integrations + connection state.
+    IntegrationsList,
+    /// Begin the auth flow for an integration. Argument is the service name.
+    IntegrationConnect(String),
+    /// Drop stored credentials for an integration. Argument is the service name.
+    IntegrationDisconnect(String),
 }
 
 /// Execute a parsed slash command against the registry.
@@ -369,6 +391,25 @@ pub fn execute_command(cmd: &ParsedCommand, registry: &CommandRegistry) -> Comma
                 }
                 "memory" => CommandResult::MemorySummary,
                 "permissions" => CommandResult::PermissionsStatus,
+                "integrations" => CommandResult::IntegrationsList,
+                "connect" => {
+                    let svc = cmd.args.split_whitespace().next().unwrap_or("");
+                    if svc.is_empty() {
+                        CommandResult::SystemMessage(
+                            "Usage: /connect <service>\n\nRun /integrations to see what's available.".into(),
+                        )
+                    } else {
+                        CommandResult::IntegrationConnect(svc.to_string())
+                    }
+                }
+                "disconnect" => {
+                    let svc = cmd.args.split_whitespace().next().unwrap_or("");
+                    if svc.is_empty() {
+                        CommandResult::SystemMessage("Usage: /disconnect <service>".into())
+                    } else {
+                        CommandResult::IntegrationDisconnect(svc.to_string())
+                    }
+                }
                 "forget" => {
                     if cmd.args.is_empty() {
                         CommandResult::SystemMessage("Usage: /forget <entity title or ID>".into())
@@ -642,6 +683,61 @@ mod tests {
                 }
                 _ => {} // any non-SystemMessage variant means it's wired to do real work
             }
+        }
+    }
+
+    // T-0201: integration commands
+
+    #[test]
+    fn execute_integrations_returns_list_variant() {
+        let reg = CommandRegistry::new();
+        let cmd = parse_command("/integrations").unwrap();
+        assert!(matches!(
+            execute_command(&cmd, &reg),
+            CommandResult::IntegrationsList
+        ));
+    }
+
+    #[test]
+    fn execute_connect_with_service_returns_connect_variant() {
+        let reg = CommandRegistry::new();
+        let cmd = parse_command("/connect gmail").unwrap();
+        match execute_command(&cmd, &reg) {
+            CommandResult::IntegrationConnect(svc) => assert_eq!(svc, "gmail"),
+            other => panic!("expected IntegrationConnect, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn execute_connect_without_service_returns_usage_message() {
+        let reg = CommandRegistry::new();
+        let cmd = parse_command("/connect").unwrap();
+        match execute_command(&cmd, &reg) {
+            CommandResult::SystemMessage(msg) => {
+                assert!(msg.contains("Usage:"), "expected usage message, got: {msg}");
+                assert!(msg.contains("/connect"));
+            }
+            other => panic!("expected SystemMessage, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn execute_disconnect_with_service_returns_disconnect_variant() {
+        let reg = CommandRegistry::new();
+        let cmd = parse_command("/disconnect slack").unwrap();
+        match execute_command(&cmd, &reg) {
+            CommandResult::IntegrationDisconnect(svc) => assert_eq!(svc, "slack"),
+            other => panic!("expected IntegrationDisconnect, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn execute_disconnect_without_service_returns_usage_message() {
+        let reg = CommandRegistry::new();
+        let cmd = parse_command("/disconnect").unwrap();
+        match execute_command(&cmd, &reg) {
+            CommandResult::SystemMessage(msg) => assert!(msg.contains("Usage:")),
+            other => panic!("expected SystemMessage, got {other:?}"),
         }
     }
 

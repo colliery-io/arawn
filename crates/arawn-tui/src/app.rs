@@ -277,7 +277,10 @@ impl App {
                             | CommandResult::SetPermissionMode(_)
                             | CommandResult::WorkflowList
                             | CommandResult::WorkflowStatus(_)
-                            | CommandResult::PermissionsStatus => {
+                            | CommandResult::PermissionsStatus
+                            | CommandResult::IntegrationsList
+                            | CommandResult::IntegrationConnect(_)
+                            | CommandResult::IntegrationDisconnect(_) => {
                                 // These need WS interaction — store for event loop to handle
                                 self.pending_command = Some(result);
                             }

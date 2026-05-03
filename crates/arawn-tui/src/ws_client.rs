@@ -122,6 +122,45 @@ impl WsClient {
         Ok(result.clone())
     }
 
+    /// List registered integrations and their connection state. Backs `/integrations`.
+    pub async fn list_integrations(
+        &mut self,
+    ) -> Result<Vec<serde_json::Value>, Box<dyn std::error::Error>> {
+        self.send_request("list_integrations", json!({})).await?;
+        let resp = self.read_response().await?;
+        let result = resp.get("result").ok_or("no result")?;
+        Ok(serde_json::from_value(result.clone())?)
+    }
+
+    /// Begin the OAuth flow for a service. Returns the auth URL the user
+    /// should open. The rest of the flow runs server-side; completion is
+    /// announced via a `ServerNotice` with category="integration".
+    pub async fn start_oauth_flow(
+        &mut self,
+        service: &str,
+    ) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
+        self.send_request("start_oauth_flow", json!({"service": service})).await?;
+        let resp = self.read_response().await?;
+        if let Some(err) = resp.get("error") {
+            return Err(err["message"].as_str().unwrap_or("unknown error").into());
+        }
+        let result = resp.get("result").ok_or("no result")?;
+        Ok(result.clone())
+    }
+
+    /// Drop stored credentials for a service.
+    pub async fn disconnect_integration(
+        &mut self,
+        service: &str,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        self.send_request("disconnect_integration", json!({"service": service})).await?;
+        let resp = self.read_response().await?;
+        if let Some(err) = resp.get("error") {
+            return Err(err["message"].as_str().unwrap_or("unknown error").into());
+        }
+        Ok(())
+    }
+
     pub async fn get_permission_mode(
         &mut self,
     ) -> Result<String, Box<dyn std::error::Error>> {

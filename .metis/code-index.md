@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-03T12:39:31Z | 174 files | Python, Rust
+> Generated: 2026-05-03T19:53:27Z | 179 files | Python, Rust
 
 ## Project Structure
 
@@ -111,6 +111,13 @@
 │   │           ├── web_fetch.rs
 │   │           ├── web_search.rs
 │   │           └── workstream.rs
+│   ├── arawn-integrations/
+│   │   └── src/
+│   │       ├── credential_store.rs
+│   │       ├── error.rs
+│   │       ├── integration.rs
+│   │       ├── lib.rs
+│   │       └── oauth_flow.rs
 │   ├── arawn-llm/
 │   │   └── src/
 │   │       ├── anthropic.rs
@@ -400,52 +407,62 @@
 
 #### crates/arawn/src/local_service.rs
 
-- pub `LocalService` struct L31-70 — `{ store: Arc<Mutex<Store>>, data_dir: PathBuf, llm_pool: Arc<LlmClientPool>, reg...` — In-process implementation of ArawnService.
-- pub `new` function L73-99 — `( store: Store, data_dir: PathBuf, llm_pool: Arc<LlmClientPool>, registry: Arc<T...`
-- pub `subscribe_notices` function L105-107 — `(&self) -> tokio::sync::broadcast::Receiver<arawn_service::ServerNotice>` — Subscribe to server-wide notices (plugin/config hot-reload, etc.).
-- pub `notice_sender` function L111-113 — `(&self) -> tokio::sync::broadcast::Sender<arawn_service::ServerNotice>` — Get a sender clone — used to wire watchers (plugin runtime, config
-- pub `with_permission_rules` function L115-118 — `(self, rules: Vec<PermissionRule>) -> Self`
-- pub `shared_store` function L122-124 — `(&self) -> Arc<Mutex<Store>>` — Get a reference to the shared permission rules for hot-reload.
-- pub `shared_llm` function L126-128 — `(&self) -> Arc<dyn LlmClient>`
-- pub `shared_compactor_llm` function L132-134 — `(&self) -> Arc<dyn LlmClient>` — Compactor LLM (separate client when `[compactor]` config selects a
-- pub `compactor_model` function L137-139 — `(&self) -> &str` — Model name used by the compactor.
-- pub `shared_llm_pool` function L143-145 — `(&self) -> Arc<LlmClientPool>` — Shared reference to the LLM pool — used by tools/agents that resolve
-- pub `shared_registry` function L147-149 — `(&self) -> Arc<ToolRegistry>`
-- pub `engine_config` function L151-153 — `(&self) -> &QueryEngineConfig`
-- pub `shared_permission_rules` function L155-157 — `(&self) -> Arc<std::sync::RwLock<Vec<PermissionRule>>>`
-- pub `shared_permission_mode` function L159-161 — `(&self) -> Arc<std::sync::RwLock<arawn_engine::permissions::PermissionMode>>`
-- pub `with_skill_registry` function L163-166 — `(mut self, registry: Arc<arawn_engine::skills::SkillRegistry>) -> Self`
-- pub `with_plugin_registry` function L168-171 — `(mut self, registry: Arc<arawn_engine::plugins::PluginRegistry>) -> Self`
-- pub `with_plan_state` function L173-176 — `(mut self, state: Arc<PlanModeState>) -> Self`
-- pub `with_background_tasks` function L178-181 — `(mut self, manager: Arc<BackgroundTaskManager>) -> Self`
-- pub `with_memory_manager` function L183-186 — `(mut self, mgr: Arc<arawn_memory::MemoryManager>) -> Self`
--  `LocalService` type L72-345 — `= LocalService`
--  `load_session_state` function L190-219 — `( &self, session_id: Uuid, ) -> Result<(arawn_storage::SessionMeta, Workstream, ...` — Load session metadata, resolve workstream, and load message history.
--  `build_session_context` function L223-291 — `( &self, session_id: Uuid, workstream: &Workstream, ws_dir: &str, workspace_dir:...` — Build a ToolContext and per-session PromptContext for the engine.
--  `build_engine` function L295-344 — `( &self, prompt_context: Option<arawn_engine::PromptContext>, event_tx: &mpsc::S...` — Build a QueryEngine configured with compactor, skills, plugins, and plan state.
--  `infer_entity_type` function L349-362 — `(text: &str) -> (arawn_memory::EntityType, String)` — Infer entity type from text patterns.
--  `LocalService` type L367-1109 — `impl ArawnService for LocalService`
--  `list_workstreams` function L368-383 — `(&self) -> Result<Vec<WorkstreamInfo>, ServiceError>`
--  `create_workstream` function L385-402 — `( &self, name: String, root_dir: PathBuf, ) -> Result<WorkstreamInfo, ServiceErr...`
--  `list_sessions` function L404-423 — `( &self, workstream_id: Option<Uuid>, ) -> Result<Vec<SessionInfo>, ServiceError...`
--  `create_session` function L425-446 — `( &self, workstream_id: Option<Uuid>, ) -> Result<SessionInfo, ServiceError>`
--  `load_session` function L448-475 — `(&self, id: Uuid) -> Result<SessionDetail, ServiceError>`
--  `send_message` function L478-674 — `( &self, session_id: Uuid, content: String, ) -> Result<Pin<Box<dyn futures::Str...`
--  `cancel` function L676-689 — `(&self, session_id: Uuid) -> Result<(), ServiceError>`
--  `promote_session` function L691-742 — `( &self, session_id: Uuid, workstream_name: &str, ) -> Result<PromotionResult, S...`
--  `resolve_user_input` function L744-758 — `( &self, request_id: &str, selected_index: Option<usize>, ) -> Result<(), Servic...`
--  `query_inventory` function L760-825 — `(&self, kind: &str) -> Result<Vec<InventoryItem>, ServiceError>`
--  `list_available_commands` function L827-839 — `(&self) -> Result<Vec<CommandInfo>, ServiceError>`
--  `list_workflows` function L841-872 — `(&self) -> Result<Vec<WorkflowInfo>, ServiceError>`
--  `remember_fact` function L874-920 — `(&self, text: &str) -> Result<MemoryStoreResult, ServiceError>`
--  `memory_summary` function L922-969 — `(&self) -> Result<MemorySummary, ServiceError>`
--  `forget_entity` function L971-1021 — `(&self, query: &str) -> Result<ForgetResult, ServiceError>`
--  `get_permission_mode` function L1023-1031 — `(&self) -> Result<PermissionModeInfo, ServiceError>`
--  `set_permission_mode` function L1033-1045 — `(&self, mode_str: &str) -> Result<PermissionModeInfo, ServiceError>`
--  `get_capabilities` function L1047-1057 — `(&self) -> Result<arawn_service::ServerCapabilities, ServiceError>`
--  `get_permissions_status` function L1059-1108 — `(&self) -> Result<arawn_service::PermissionsStatus, ServiceError>`
--  `resolve_ws_dir_from_store` function L1112-1123 — `(store: &Store, ws_id: Option<Uuid>) -> Result<String, ServiceError>` — Resolve workstream directory name from store.
--  `first_sentence` function L1127-1138 — `(s: &str) -> String` — Extract the first sentence and sanitize for use in a markdown table cell.
+- pub `LocalService` struct L31-75 — `{ store: Arc<Mutex<Store>>, data_dir: PathBuf, llm_pool: Arc<LlmClientPool>, reg...` — In-process implementation of ArawnService.
+- pub `new` function L78-105 — `( store: Store, data_dir: PathBuf, llm_pool: Arc<LlmClientPool>, registry: Arc<T...`
+- pub `register_integration` function L109-113 — `(&self, integration: Arc<dyn arawn_integrations::Integration>)` — Register an external integration.
+- pub `shared_integrations` function L117-121 — `( &self, ) -> Arc<std::sync::RwLock<HashMap<String, Arc<dyn arawn_integrations::...` — Shared reference to the integration registry — for tools that want
+- pub `subscribe_notices` function L127-129 — `(&self) -> tokio::sync::broadcast::Receiver<arawn_service::ServerNotice>` — Subscribe to server-wide notices (plugin/config hot-reload, etc.).
+- pub `notice_sender` function L133-135 — `(&self) -> tokio::sync::broadcast::Sender<arawn_service::ServerNotice>` — Get a sender clone — used to wire watchers (plugin runtime, config
+- pub `with_permission_rules` function L137-140 — `(self, rules: Vec<PermissionRule>) -> Self`
+- pub `shared_store` function L144-146 — `(&self) -> Arc<Mutex<Store>>` — Get a reference to the shared permission rules for hot-reload.
+- pub `shared_llm` function L148-150 — `(&self) -> Arc<dyn LlmClient>`
+- pub `shared_compactor_llm` function L154-156 — `(&self) -> Arc<dyn LlmClient>` — Compactor LLM (separate client when `[compactor]` config selects a
+- pub `compactor_model` function L159-161 — `(&self) -> &str` — Model name used by the compactor.
+- pub `shared_llm_pool` function L165-167 — `(&self) -> Arc<LlmClientPool>` — Shared reference to the LLM pool — used by tools/agents that resolve
+- pub `shared_registry` function L169-171 — `(&self) -> Arc<ToolRegistry>`
+- pub `engine_config` function L173-175 — `(&self) -> &QueryEngineConfig`
+- pub `shared_permission_rules` function L177-179 — `(&self) -> Arc<std::sync::RwLock<Vec<PermissionRule>>>`
+- pub `shared_permission_mode` function L181-183 — `(&self) -> Arc<std::sync::RwLock<arawn_engine::permissions::PermissionMode>>`
+- pub `with_skill_registry` function L185-188 — `(mut self, registry: Arc<arawn_engine::skills::SkillRegistry>) -> Self`
+- pub `with_plugin_registry` function L190-193 — `(mut self, registry: Arc<arawn_engine::plugins::PluginRegistry>) -> Self`
+- pub `with_plan_state` function L195-198 — `(mut self, state: Arc<PlanModeState>) -> Self`
+- pub `with_background_tasks` function L200-203 — `(mut self, manager: Arc<BackgroundTaskManager>) -> Self`
+- pub `with_memory_manager` function L205-208 — `(mut self, mgr: Arc<arawn_memory::MemoryManager>) -> Self`
+-  `LocalService` type L77-367 — `= LocalService`
+-  `load_session_state` function L212-241 — `( &self, session_id: Uuid, ) -> Result<(arawn_storage::SessionMeta, Workstream, ...` — Load session metadata, resolve workstream, and load message history.
+-  `build_session_context` function L245-313 — `( &self, session_id: Uuid, workstream: &Workstream, ws_dir: &str, workspace_dir:...` — Build a ToolContext and per-session PromptContext for the engine.
+-  `build_engine` function L317-366 — `( &self, prompt_context: Option<arawn_engine::PromptContext>, event_tx: &mpsc::S...` — Build a QueryEngine configured with compactor, skills, plugins, and plan state.
+-  `infer_entity_type` function L371-384 — `(text: &str) -> (arawn_memory::EntityType, String)` — Infer entity type from text patterns.
+-  `LocalService` type L389-1255 — `impl ArawnService for LocalService`
+-  `list_workstreams` function L390-405 — `(&self) -> Result<Vec<WorkstreamInfo>, ServiceError>`
+-  `create_workstream` function L407-424 — `( &self, name: String, root_dir: PathBuf, ) -> Result<WorkstreamInfo, ServiceErr...`
+-  `list_sessions` function L426-445 — `( &self, workstream_id: Option<Uuid>, ) -> Result<Vec<SessionInfo>, ServiceError...`
+-  `create_session` function L447-468 — `( &self, workstream_id: Option<Uuid>, ) -> Result<SessionInfo, ServiceError>`
+-  `load_session` function L470-497 — `(&self, id: Uuid) -> Result<SessionDetail, ServiceError>`
+-  `send_message` function L500-696 — `( &self, session_id: Uuid, content: String, ) -> Result<Pin<Box<dyn futures::Str...`
+-  `cancel` function L698-711 — `(&self, session_id: Uuid) -> Result<(), ServiceError>`
+-  `promote_session` function L713-764 — `( &self, session_id: Uuid, workstream_name: &str, ) -> Result<PromotionResult, S...`
+-  `resolve_user_input` function L766-780 — `( &self, request_id: &str, selected_index: Option<usize>, ) -> Result<(), Servic...`
+-  `query_inventory` function L782-847 — `(&self, kind: &str) -> Result<Vec<InventoryItem>, ServiceError>`
+-  `list_available_commands` function L849-861 — `(&self) -> Result<Vec<CommandInfo>, ServiceError>`
+-  `list_workflows` function L863-894 — `(&self) -> Result<Vec<WorkflowInfo>, ServiceError>`
+-  `remember_fact` function L896-942 — `(&self, text: &str) -> Result<MemoryStoreResult, ServiceError>`
+-  `memory_summary` function L944-991 — `(&self) -> Result<MemorySummary, ServiceError>`
+-  `forget_entity` function L993-1043 — `(&self, query: &str) -> Result<ForgetResult, ServiceError>`
+-  `get_permission_mode` function L1045-1053 — `(&self) -> Result<PermissionModeInfo, ServiceError>`
+-  `set_permission_mode` function L1055-1067 — `(&self, mode_str: &str) -> Result<PermissionModeInfo, ServiceError>`
+-  `get_capabilities` function L1069-1079 — `(&self) -> Result<arawn_service::ServerCapabilities, ServiceError>`
+-  `get_permissions_status` function L1081-1130 — `(&self) -> Result<arawn_service::PermissionsStatus, ServiceError>`
+-  `list_integrations` function L1132-1150 — `(&self) -> Result<Vec<arawn_service::IntegrationStatus>, ServiceError>`
+-  `start_oauth_flow` function L1152-1229 — `( &self, service: &str, ) -> Result<arawn_service::OAuthFlowStarted, ServiceErro...`
+-  `disconnect_integration` function L1231-1254 — `(&self, service: &str) -> Result<(), ServiceError>`
+-  `OAuthFlowCtx` struct L1260-1264 — `{ service: String, url_tx: tokio::sync::Mutex<Option<tokio::sync::oneshot::Sende...` — Glue that lets `LocalService::start_oauth_flow` bridge the integration's
+-  `OAuthFlowCtx` type L1267-1289 — `= OAuthFlowCtx`
+-  `service` function L1268-1270 — `(&self) -> &str`
+-  `publish_auth_url` function L1272-1279 — `(&self, url: &url::Url)`
+-  `publish_progress` function L1281-1288 — `(&self, message: &str)`
+-  `resolve_ws_dir_from_store` function L1292-1303 — `(store: &Store, ws_id: Option<Uuid>) -> Result<String, ServiceError>` — Resolve workstream directory name from store.
+-  `first_sentence` function L1307-1318 — `(s: &str) -> String` — Extract the first sentence and sanitize for use in a markdown table cell.
 
 #### crates/arawn/src/main.rs
 
@@ -488,30 +505,30 @@
 
 #### crates/arawn/src/ws_server.rs
 
-- pub `read_token_file` function L140-151 — `() -> Option<String>` — Read the auth token from {data_dir}/server.token.
-- pub `run_server` function L154-189 — `(service: LocalService, port: u16) -> anyhow::Result<()>` — Start the WebSocket server on the given port.
-- pub `handle_connection_public` function L275-277 — `(socket: WebSocket, service: Arc<LocalService>)` — Handle a single WebSocket connection.
+- pub `read_token_file` function L143-154 — `() -> Option<String>` — Read the auth token from {data_dir}/server.token.
+- pub `run_server` function L157-192 — `(service: LocalService, port: u16) -> anyhow::Result<()>` — Start the WebSocket server on the given port.
+- pub `handle_connection_public` function L278-280 — `(socket: WebSocket, service: Arc<LocalService>)` — Handle a single WebSocket connection.
 -  `PROTOCOL_VERSION` variable L24 — `: &str` — Protocol version reported by the `hello` handshake.
--  `RPC_METHODS` variable L27-48 — `: &[&str]` — Canonical RPC method names (returned by `hello`).
--  `Request` struct L52-57 — `{ id: u64, method: String, params: Value }` — JSON-RPC style request from client.
--  `Response` struct L61-67 — `{ id: u64, result: Option<Value>, error: Option<ErrorBody> }` — JSON-RPC style response to client.
--  `ErrorBody` struct L70-75 — `{ code: String, message: String, details: Option<Value> }`
--  `Response` type L77-113 — `= Response`
--  `success` function L78-84 — `(id: u64, result: Value) -> Self`
--  `error` function L86-96 — `(id: u64, code: &str, message: String) -> Self`
--  `from_service_error` function L102-112 — `(id: u64, e: &arawn_service::ServiceError) -> Self` — Build an error response from a [`ServiceError`].
--  `AppState` struct L117-122 — `{ service: Arc<LocalService>, auth_token: Option<String> }` — Shared app state for the WebSocket server.
--  `generate_auth_token` function L125-128 — `() -> String` — Generate a random auth token for WebSocket connections.
--  `write_token_file` function L131-136 — `(data_dir: &std::path::Path, token: &str) -> std::io::Result<std::path::PathBuf>` — Write the auth token to {data_dir}/server.token for clients to read.
--  `shutdown_signal` function L192-214 — `()` — Wait for a shutdown signal (Ctrl-C / SIGTERM).
--  `decision_handler` function L219-238 — `( State(AppState { service, .. }): State<AppState>, Json(req): Json<arawn_workfl...` — HTTP endpoint for workflow decision tasks.
--  `WsQueryParams` struct L242-244 — `{ token: Option<String> }` — Query parameters for WebSocket connection.
--  `ws_handler` function L246-272 — `( ws: WebSocketUpgrade, Query(params): Query<WsQueryParams>, State(state): State...`
--  `handle_connection` function L279-935 — `(socket: WebSocket, service: Arc<LocalService>)`
--  `tests` module L938-988 — `-`
--  `from_service_error_preserves_structured_detail_for_typed_variants` function L945-955 — `()` — Typed Storage error should round-trip through the wire payload with
--  `from_service_error_omits_details_for_string_only_variants` function L961-972 — `()` — String-only variants (NotFound, InvalidOperation, Internal) keep
--  `from_service_error_preserves_engine_error_kind` function L978-987 — `()` — Engine errors surface a `kind` that identifies the inner variant —
+-  `RPC_METHODS` variable L27-51 — `: &[&str]` — Canonical RPC method names (returned by `hello`).
+-  `Request` struct L55-60 — `{ id: u64, method: String, params: Value }` — JSON-RPC style request from client.
+-  `Response` struct L64-70 — `{ id: u64, result: Option<Value>, error: Option<ErrorBody> }` — JSON-RPC style response to client.
+-  `ErrorBody` struct L73-78 — `{ code: String, message: String, details: Option<Value> }`
+-  `Response` type L80-116 — `= Response`
+-  `success` function L81-87 — `(id: u64, result: Value) -> Self`
+-  `error` function L89-99 — `(id: u64, code: &str, message: String) -> Self`
+-  `from_service_error` function L105-115 — `(id: u64, e: &arawn_service::ServiceError) -> Self` — Build an error response from a [`ServiceError`].
+-  `AppState` struct L120-125 — `{ service: Arc<LocalService>, auth_token: Option<String> }` — Shared app state for the WebSocket server.
+-  `generate_auth_token` function L128-131 — `() -> String` — Generate a random auth token for WebSocket connections.
+-  `write_token_file` function L134-139 — `(data_dir: &std::path::Path, token: &str) -> std::io::Result<std::path::PathBuf>` — Write the auth token to {data_dir}/server.token for clients to read.
+-  `shutdown_signal` function L195-217 — `()` — Wait for a shutdown signal (Ctrl-C / SIGTERM).
+-  `decision_handler` function L222-241 — `( State(AppState { service, .. }): State<AppState>, Json(req): Json<arawn_workfl...` — HTTP endpoint for workflow decision tasks.
+-  `WsQueryParams` struct L245-247 — `{ token: Option<String> }` — Query parameters for WebSocket connection.
+-  `ws_handler` function L249-275 — `( ws: WebSocketUpgrade, Query(params): Query<WsQueryParams>, State(state): State...`
+-  `handle_connection` function L282-987 — `(socket: WebSocket, service: Arc<LocalService>)`
+-  `tests` module L990-1040 — `-`
+-  `from_service_error_preserves_structured_detail_for_typed_variants` function L997-1007 — `()` — Typed Storage error should round-trip through the wire payload with
+-  `from_service_error_omits_details_for_string_only_variants` function L1013-1024 — `()` — String-only variants (NotFound, InvalidOperation, Internal) keep
+-  `from_service_error_preserves_engine_error_kind` function L1030-1039 — `()` — Engine errors surface a `kind` that identifies the inner variant —
 
 ### crates/arawn-auth/src
 
@@ -2589,6 +2606,71 @@
 -  `create_workstream_empty_name_errors` function L195-203 — `()`
 -  `list_workstreams_includes_scratch` function L206-215 — `()`
 
+### crates/arawn-integrations/src
+
+> *Semantic summary to be generated by AI agent.*
+
+#### crates/arawn-integrations/src/credential_store.rs
+
+- pub `CredentialStore` struct L34-39 — `{ integrations_dir: PathBuf, service: String, cipher: ChaCha20Poly1305, _phantom...` — Encrypted blob store, keyed by `<data_dir>/integrations/<service>/<entry>.bin`.
+- pub `open` function L45-76 — `(data_dir: &Path, service: &str) -> Result<Self, IntegrationError>` — Open or initialize the store rooted at `<data_dir>/integrations/<service>/`.
+- pub `save` function L79-102 — `(&self, entry: &str, value: &T) -> Result<(), IntegrationError>` — Persist a serializable value under `entry`.
+- pub `load` function L106-132 — `(&self, entry: &str) -> Result<Option<T>, IntegrationError>` — Load `entry`.
+- pub `delete` function L135-142 — `(&self, entry: &str) -> Result<(), IntegrationError>` — Remove `entry` if present.
+- pub `exists` function L145-147 — `(&self, entry: &str) -> bool` — True if this store has anything stored under `entry`.
+- pub `service` function L150-152 — `(&self) -> &str` — Service name this store is bound to.
+- pub `integrations_dir` function L155-157 — `(&self) -> &Path` — Path to the per-service directory.
+-  `KEY_LEN` variable L24 — `: usize` — install bootstraps the same way regardless of which gets opened first.
+-  `NONCE_LEN` variable L25 — `: usize` — install bootstraps the same way regardless of which gets opened first.
+-  `KEY_FILENAME` variable L28 — `: &str` — Same filename TokenStore uses, same parent dir.
+-  `KEY_PARENT` variable L29 — `: &str` — install bootstraps the same way regardless of which gets opened first.
+-  `path_for` function L159-161 — `(&self, entry: &str) -> PathBuf` — install bootstraps the same way regardless of which gets opened first.
+-  `safe_segment` function L165-175 — `(s: &str) -> String` — Refuse path-separator characters in user-supplied service / entry names.
+-  `set_dir_mode` function L178-184 — `(path: &Path) -> Result<(), IntegrationError>` — install bootstraps the same way regardless of which gets opened first.
+-  `set_dir_mode` function L187-189 — `(_path: &Path) -> Result<(), IntegrationError>` — install bootstraps the same way regardless of which gets opened first.
+-  `set_file_mode` function L192-198 — `(path: &Path, mode: u32) -> Result<(), IntegrationError>` — install bootstraps the same way regardless of which gets opened first.
+-  `set_file_mode` function L201-203 — `(_path: &Path, _mode: u32) -> Result<(), IntegrationError>` — install bootstraps the same way regardless of which gets opened first.
+-  `write_key` function L205-211 — `(path: &Path, bytes: &[u8]) -> Result<(), IntegrationError>` — install bootstraps the same way regardless of which gets opened first.
+-  `tests` module L214-312 — `-` — install bootstraps the same way regardless of which gets opened first.
+-  `WebhookCred` struct L220-223 — `{ url: String, signing_secret: Option<String> }` — install bootstraps the same way regardless of which gets opened first.
+-  `round_trip_returns_what_was_saved` function L226-237 — `()` — install bootstraps the same way regardless of which gets opened first.
+-  `load_returns_none_when_absent` function L240-245 — `()` — install bootstraps the same way regardless of which gets opened first.
+-  `delete_is_idempotent` function L248-264 — `()` — install bootstraps the same way regardless of which gets opened first.
+-  `second_store_on_same_data_dir_uses_same_key` function L267-285 — `()` — install bootstraps the same way regardless of which gets opened first.
+-  `path_segments_with_slashes_get_sanitized` function L288-297 — `()` — install bootstraps the same way regardless of which gets opened first.
+-  `corrupted_blob_yields_format_error_not_panic` function L300-311 — `()` — install bootstraps the same way regardless of which gets opened first.
+
+#### crates/arawn-integrations/src/error.rs
+
+- pub `IntegrationError` enum L7-28 — `UnknownService | NotConnected | Auth | Io | Format | Provider | Cancelled` — Errors surfaced by the integration layer.
+- pub `user_message` function L32-46 — `(&self) -> String` — User-facing one-liner suitable for the engine error chain (T-0191).
+-  `IntegrationError` type L30-47 — `= IntegrationError`
+
+#### crates/arawn-integrations/src/integration.rs
+
+- pub `Integration` interface L20-46 — `{ fn name(), fn is_connected(), fn connect(), fn disconnect() }` — Lifecycle contract every external integration implements.
+- pub `ConnectContext` interface L55-66 — `{ fn service(), fn publish_auth_url(), fn publish_progress() }` — Hooks an `Integration::connect` impl needs from its caller (the server).
+- pub `IntegrationStatus` struct L70-73 — `{ name: String, connected: bool }` — Snapshot of one integration's state, returned by `list_integrations` RPC.
+
+#### crates/arawn-integrations/src/lib.rs
+
+- pub `credential_store` module L23 — `-` — Provides three things to the rest of arawn:
+- pub `error` module L24 — `-` — ChaCha20Poly1305 + per-data-dir master key that `TokenStore` uses.
+- pub `integration` module L25 — `-` — ChaCha20Poly1305 + per-data-dir master key that `TokenStore` uses.
+- pub `oauth_flow` module L26 — `-` — ChaCha20Poly1305 + per-data-dir master key that `TokenStore` uses.
+
+#### crates/arawn-integrations/src/oauth_flow.rs
+
+- pub `OAuthOutcome` struct L23-25 — `{ token: Token }` — Result of a successful OAuth flow.
+- pub `run_oauth_flow` function L30-68 — `( provider_config: OAuthProviderConfig, token_store: &TokenStore, service_name: ...` — Drive the OAuth dance end-to-end.
+-  `tests` module L71-119 — `-` — 6.
+-  `CaptureCtx` struct L78-82 — `{ service: String, auth_url: Mutex<Option<Url>>, progress: Mutex<Vec<String>> }` — Captures everything published; lets tests assert without a real TUI.
+-  `CaptureCtx` type L85-95 — `impl ConnectContext for CaptureCtx` — 6.
+-  `service` function L86-88 — `(&self) -> &str` — 6.
+-  `publish_auth_url` function L89-91 — `(&self, url: &Url)` — 6.
+-  `publish_progress` function L92-94 — `(&self, message: &str)` — 6.
+-  `ctx_capture_smoke` function L98-118 — `()` — 6.
+
 ### crates/arawn-llm/src
 
 **Role**: Provider-neutral LLM client abstraction with concrete implementations for Anthropic, Groq, and any OpenAI-compatible API, plus retry wrapping and a mock client for testing.
@@ -3215,7 +3297,7 @@
 
 - pub `error` module L1 — `-`
 - pub `types` module L2 — `-`
-- pub `ArawnService` interface L25-125 — `{ fn list_workstreams(), fn create_workstream(), fn list_sessions(), fn create_s...` — The service contract between any UI client and the Arawn backend.
+- pub `ArawnService` interface L26-141 — `{ fn list_workstreams(), fn create_workstream(), fn list_sessions(), fn create_s...` — The service contract between any UI client and the Arawn backend.
 
 #### crates/arawn-service/src/types.rs
 
@@ -3239,6 +3321,8 @@
 - pub `PermissionsStatus` struct L221-227 — `{ mode: String, allow_rules: Vec<String>, deny_rules: Vec<String>, ask_rules: Ve...` — Read-only snapshot of the active permission configuration plus a
 - pub `PermissionAuditEntry` struct L232-242 — `{ timestamp: String, tool_name: String, tool_input_summary: String, decision: St...` — One row of the permission audit — what the agent tried to do and how
 - pub `ServerNotice` struct L249-261 — `{ level: String, category: String, message: String, timestamp: String }` — Server-wide event broadcast to every connected client.
+- pub `IntegrationStatus` struct L265-268 — `{ name: String, connected: bool }` — One row of the integration registry as seen by clients.
+- pub `OAuthFlowStarted` struct L274-279 — `{ service: String, auth_url: String }` — Returned by `start_oauth_flow` so the TUI knows what URL to open.
 
 ### crates/arawn-storage/src
 

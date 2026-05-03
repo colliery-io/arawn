@@ -450,6 +450,47 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                                 app.messages.push(ChatMessage::new(ChatRole::System, body));
                                 app.dirty = true;
                             }
+                            crate::command::CommandResult::IntegrationsList => {
+                                let body = match client.list_integrations().await {
+                                    Ok(items) => format_integrations_list(&items),
+                                    Err(e) => format!("Failed to list integrations: {e}"),
+                                };
+                                app.messages.push(ChatMessage::new(ChatRole::System, body));
+                                app.dirty = true;
+                            }
+                            crate::command::CommandResult::IntegrationConnect(svc) => {
+                                let body = match client.start_oauth_flow(&svc).await {
+                                    Ok(started) => {
+                                        let auth_url = started
+                                            .get("auth_url")
+                                            .and_then(|v| v.as_str())
+                                            .unwrap_or("");
+                                        let opener_status = match try_open_url(auth_url) {
+                                            OpenAttempt::Opened(cmd) => format!("Opened in browser via `{cmd}`."),
+                                            OpenAttempt::NoOpener => "No browser opener detected on this platform.".to_string(),
+                                            OpenAttempt::Failed(err) => format!("Browser open failed: {err}."),
+                                        };
+                                        format!(
+                                            "Connecting **{svc}**…\n\n\
+                                             {opener_status}\n\n\
+                                             If the browser didn't open, paste this URL:\n\n  {auth_url}\n\n\
+                                             _Waiting for browser authorization (5 min timeout). \
+                                             You'll see a [integration] notice when it lands._"
+                                        )
+                                    }
+                                    Err(e) => format!("/connect {svc} failed: {e}"),
+                                };
+                                app.messages.push(ChatMessage::new(ChatRole::System, body));
+                                app.dirty = true;
+                            }
+                            crate::command::CommandResult::IntegrationDisconnect(svc) => {
+                                let body = match client.disconnect_integration(&svc).await {
+                                    Ok(()) => format!("Disconnected **{svc}**. Stored credentials removed."),
+                                    Err(e) => format!("/disconnect {svc} failed: {e}"),
+                                };
+                                app.messages.push(ChatMessage::new(ChatRole::System, body));
+                                app.dirty = true;
+                            }
                             _ => {} // Other command results handled in app.handle_action
                         }
                     }
@@ -789,6 +830,67 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
     terminal.show_cursor()?;
 
     Ok(())
+}
+
+/// Render a `list_integrations` response as a markdown table the user can scan.
+fn format_integrations_list(items: &[serde_json::Value]) -> String {
+    use std::fmt::Write;
+    if items.is_empty() {
+        return "No integrations registered. (Build with integrations to enable Gmail / Calendar / Slack.)"
+            .to_string();
+    }
+    let mut out = String::from("**Integrations**\n\n| Service | Connected |\n|---|---|\n");
+    for item in items {
+        let name = item.get("name").and_then(|v| v.as_str()).unwrap_or("?");
+        let connected = item.get("connected").and_then(|v| v.as_bool()).unwrap_or(false);
+        let mark = if connected { "✓" } else { "—" };
+        let _ = writeln!(out, "| {name} | {mark} |");
+    }
+    out.push_str("\nRun `/connect <service>` to authorize, `/disconnect <service>` to drop credentials.");
+    out
+}
+
+/// What `try_open_url` did. The TUI always prints the URL too, so even
+/// `NoOpener` is a soft failure — the user can still copy/paste.
+enum OpenAttempt {
+    Opened(&'static str),
+    NoOpener,
+    Failed(String),
+}
+
+/// Best-effort browser open. Returns immediately — doesn't block on the
+/// child process (which is the whole point of `open` / `xdg-open`).
+fn try_open_url(url: &str) -> OpenAttempt {
+    let opener: Option<&'static str> = if cfg!(target_os = "macos") {
+        Some("open")
+    } else if cfg!(target_os = "linux") {
+        Some("xdg-open")
+    } else if cfg!(target_os = "windows") {
+        // `cmd /c start` needs an empty title arg before the URL.
+        // We treat it as a special case below.
+        Some("cmd")
+    } else {
+        None
+    };
+    let Some(cmd) = opener else { return OpenAttempt::NoOpener };
+
+    let result = if cmd == "cmd" {
+        std::process::Command::new("cmd")
+            .args(["/c", "start", "", url])
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .spawn()
+    } else {
+        std::process::Command::new(cmd)
+            .arg(url)
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .spawn()
+    };
+    match result {
+        Ok(_child) => OpenAttempt::Opened(cmd),
+        Err(e) => OpenAttempt::Failed(e.to_string()),
+    }
 }
 
 /// Push a server-side notice (plugin/config hot-reload outcome) into the
