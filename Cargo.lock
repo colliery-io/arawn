@@ -145,6 +145,7 @@ dependencies = [
  "arawn-core",
  "arawn-embed",
  "arawn-engine",
+ "arawn-integrations",
  "arawn-llm",
  "arawn-mcp",
  "arawn-memory",
@@ -172,6 +173,7 @@ dependencies = [
  "tracing",
  "tracing-appender",
  "tracing-subscriber",
+ "url",
  "uuid",
 ]
 
@@ -257,6 +259,25 @@ dependencies = [
  "toml 0.8.23",
  "tracing",
  "uuid",
+]
+
+[[package]]
+name = "arawn-integrations"
+version = "0.1.0"
+dependencies = [
+ "arawn-auth",
+ "arawn-service",
+ "async-trait",
+ "chacha20poly1305",
+ "chrono",
+ "rand 0.8.5",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+ "url",
 ]
 
 [[package]]

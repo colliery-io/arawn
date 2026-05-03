@@ -67,6 +67,11 @@ pub struct LocalService {
     /// which is the right behavior for "the user just wants to know
     /// something happened" notifications.
     notice_tx: tokio::sync::broadcast::Sender<arawn_service::ServerNotice>,
+    /// Registered external integrations (Gmail, Calendar, Slack, ...). Keyed
+    /// by stable service name. Populated at startup from the binary; tools
+    /// look up their integration here at construction time.
+    integration_registry:
+        Arc<std::sync::RwLock<HashMap<String, Arc<dyn arawn_integrations::Integration>>>>,
 }
 
 impl LocalService {
@@ -95,7 +100,24 @@ impl LocalService {
             cancel_tokens: Arc::new(Mutex::new(HashMap::new())),
             permission_audit: arawn_engine::permissions::new_shared_audit(),
             notice_tx: tokio::sync::broadcast::channel(64).0,
+            integration_registry: Arc::new(std::sync::RwLock::new(HashMap::new())),
         }
+    }
+
+    /// Register an external integration. Called from main.rs at startup
+    /// for each integration the binary wants to expose.
+    pub fn register_integration(&self, integration: Arc<dyn arawn_integrations::Integration>) {
+        let name = integration.name().to_string();
+        info!(name = %name, "registering integration");
+        self.integration_registry.write().unwrap().insert(name, integration);
+    }
+
+    /// Shared reference to the integration registry — for tools that want
+    /// to look up an integration at construction time.
+    pub fn shared_integrations(
+        &self,
+    ) -> Arc<std::sync::RwLock<HashMap<String, Arc<dyn arawn_integrations::Integration>>>> {
+        Arc::clone(&self.integration_registry)
     }
 
     /// Subscribe to server-wide notices (plugin/config hot-reload, etc.).
@@ -1105,6 +1127,164 @@ impl ArawnService for LocalService {
             ask_rules,
             recent_decisions,
         })
+    }
+
+    async fn list_integrations(&self) -> Result<Vec<arawn_service::IntegrationStatus>, ServiceError> {
+        // Snapshot the registry to a Vec before awaiting on each integration's
+        // is_connected() check — don't hold the RwLock across await points.
+        let entries: Vec<(String, Arc<dyn arawn_integrations::Integration>)> = self
+            .integration_registry
+            .read()
+            .unwrap()
+            .iter()
+            .map(|(k, v)| (k.clone(), Arc::clone(v)))
+            .collect();
+
+        let mut out = Vec::with_capacity(entries.len());
+        for (name, integration) in entries {
+            let connected = integration.is_connected().await;
+            out.push(arawn_service::IntegrationStatus { name, connected });
+        }
+        out.sort_by(|a, b| a.name.cmp(&b.name));
+        Ok(out)
+    }
+
+    async fn start_oauth_flow(
+        &self,
+        service: &str,
+    ) -> Result<arawn_service::OAuthFlowStarted, ServiceError> {
+        let integration = self
+            .integration_registry
+            .read()
+            .unwrap()
+            .get(service)
+            .cloned()
+            .ok_or_else(|| {
+                ServiceError::InvalidOperation(format!("no integration registered for '{service}'"))
+            })?;
+
+        // Per ARAWN-A-0001: the connect flow runs asynchronously on the
+        // server. The TUI gets the auth URL back from this RPC and should
+        // open it; the rest of the flow (callback wait, code exchange,
+        // credential persistence) happens in the spawned task and emits a
+        // ServerNotice on completion. The OAuthFlowStarted reply is shaped
+        // to satisfy "give me a URL to open" without blocking the caller.
+        //
+        // The actual auth URL comes from the integration during connect()
+        // via the ConnectContext's publish_auth_url. Since the RPC needs to
+        // return synchronously with the URL, we use a oneshot to bridge:
+        // the spawned task publishes the URL to the oneshot the moment the
+        // integration calls publish_auth_url, then continues the flow.
+        let (url_tx, url_rx) = tokio::sync::oneshot::channel::<url::Url>();
+        let notice_tx = self.notice_tx.clone();
+        let service_name = service.to_string();
+        let integration_for_task = Arc::clone(&integration);
+
+        tokio::spawn(async move {
+            let ctx = OAuthFlowCtx {
+                service: service_name.clone(),
+                url_tx: tokio::sync::Mutex::new(Some(url_tx)),
+                notice_tx: notice_tx.clone(),
+            };
+            let result = integration_for_task.connect(&ctx).await;
+            let notice = match result {
+                Ok(()) => arawn_service::ServerNotice {
+                    level: "info".into(),
+                    category: "integration".into(),
+                    message: format!("{service_name} connected"),
+                    timestamp: chrono::Utc::now().to_rfc3339(),
+                },
+                Err(e) => arawn_service::ServerNotice {
+                    level: "error".into(),
+                    category: "integration".into(),
+                    message: format!("{service_name} connection FAILED: {}", e.user_message()),
+                    timestamp: chrono::Utc::now().to_rfc3339(),
+                },
+            };
+            let _ = notice_tx.send(notice);
+        });
+
+        // Wait briefly for the integration to publish its auth URL.
+        // Most OAuth integrations call publish_auth_url within milliseconds;
+        // a 5s ceiling protects the RPC from hanging if an integration is
+        // poorly behaved.
+        let url = match tokio::time::timeout(std::time::Duration::from_secs(5), url_rx).await {
+            Ok(Ok(u)) => u,
+            Ok(Err(_)) => {
+                return Err(ServiceError::InvalidOperation(format!(
+                    "integration '{service}' did not publish an auth URL"
+                )));
+            }
+            Err(_) => {
+                return Err(ServiceError::InvalidOperation(format!(
+                    "integration '{service}' did not publish an auth URL within 5s"
+                )));
+            }
+        };
+
+        Ok(arawn_service::OAuthFlowStarted {
+            service: service.to_string(),
+            auth_url: url.to_string(),
+        })
+    }
+
+    async fn disconnect_integration(&self, service: &str) -> Result<(), ServiceError> {
+        let integration = self
+            .integration_registry
+            .read()
+            .unwrap()
+            .get(service)
+            .cloned()
+            .ok_or_else(|| {
+                ServiceError::InvalidOperation(format!("no integration registered for '{service}'"))
+            })?;
+
+        integration
+            .disconnect()
+            .await
+            .map_err(|e| ServiceError::InvalidOperation(e.user_message()))?;
+
+        let _ = self.notice_tx.send(arawn_service::ServerNotice {
+            level: "info".into(),
+            category: "integration".into(),
+            message: format!("{service} disconnected"),
+            timestamp: chrono::Utc::now().to_rfc3339(),
+        });
+        Ok(())
+    }
+}
+
+/// Glue that lets `LocalService::start_oauth_flow` bridge the integration's
+/// `connect()` callback to (a) the RPC's oneshot reply for the auth URL and
+/// (b) the server-wide notice broadcast for progress messages.
+struct OAuthFlowCtx {
+    service: String,
+    url_tx: tokio::sync::Mutex<Option<tokio::sync::oneshot::Sender<url::Url>>>,
+    notice_tx: tokio::sync::broadcast::Sender<arawn_service::ServerNotice>,
+}
+
+#[async_trait::async_trait]
+impl arawn_integrations::ConnectContext for OAuthFlowCtx {
+    fn service(&self) -> &str {
+        &self.service
+    }
+
+    async fn publish_auth_url(&self, url: &url::Url) {
+        // Take the sender so re-publishing is a no-op (integrations should
+        // only publish once per flow).
+        let mut guard = self.url_tx.lock().await;
+        if let Some(tx) = guard.take() {
+            let _ = tx.send(url.clone());
+        }
+    }
+
+    async fn publish_progress(&self, message: &str) {
+        let _ = self.notice_tx.send(arawn_service::ServerNotice {
+            level: "info".into(),
+            category: "integration".into(),
+            message: format!("{}: {message}", self.service),
+            timestamp: chrono::Utc::now().to_rfc3339(),
+        });
     }
 }
 

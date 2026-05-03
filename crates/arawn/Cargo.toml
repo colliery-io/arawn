@@ -24,8 +24,10 @@ arawn-tool = { workspace = true }
 arawn-service = { workspace = true }
 arawn-workflow = { path = "../arawn-workflow" }
 arawn-storage = { workspace = true }
+arawn-integrations = { path = "../arawn-integrations" }
 axum = { version = "0.8", features = ["ws"] }
 chrono = { workspace = true }
+url = "2"
 futures = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

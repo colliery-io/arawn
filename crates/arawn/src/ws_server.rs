@@ -45,6 +45,9 @@ const RPC_METHODS: &[&str] = &[
     "set_permission_mode",
     "get_capabilities",
     "get_permissions_status",
+    "list_integrations",
+    "start_oauth_flow",
+    "disconnect_integration",
 ];
 
 /// JSON-RPC style request from client.
@@ -910,6 +913,55 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                 debug!(id, "get_permissions_status");
                 let resp = match service.get_permissions_status().await {
                     Ok(status) => Response::success(id, serde_json::to_value(&status).unwrap()),
+                    Err(e) => Response::from_service_error(id, &e),
+                };
+                let _ = sender
+                    .send(WsMessage::Text(
+                        serde_json::to_string(&resp).unwrap().into(),
+                    ))
+                    .await;
+            }
+
+            "list_integrations" => {
+                debug!(id, "list_integrations");
+                let resp = match service.list_integrations().await {
+                    Ok(list) => Response::success(id, serde_json::to_value(&list).unwrap()),
+                    Err(e) => Response::from_service_error(id, &e),
+                };
+                let _ = sender
+                    .send(WsMessage::Text(
+                        serde_json::to_string(&resp).unwrap().into(),
+                    ))
+                    .await;
+            }
+
+            "start_oauth_flow" => {
+                let svc = request
+                    .params
+                    .get("service")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                debug!(id, %svc, "start_oauth_flow");
+                let resp = match service.start_oauth_flow(svc).await {
+                    Ok(started) => Response::success(id, serde_json::to_value(&started).unwrap()),
+                    Err(e) => Response::from_service_error(id, &e),
+                };
+                let _ = sender
+                    .send(WsMessage::Text(
+                        serde_json::to_string(&resp).unwrap().into(),
+                    ))
+                    .await;
+            }
+
+            "disconnect_integration" => {
+                let svc = request
+                    .params
+                    .get("service")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                debug!(id, %svc, "disconnect_integration");
+                let resp = match service.disconnect_integration(svc).await {
+                    Ok(()) => Response::success(id, serde_json::json!({"ok": true})),
                     Err(e) => Response::from_service_error(id, &e),
                 };
                 let _ = sender

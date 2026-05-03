@@ -15,6 +15,7 @@ members = [
     "crates/arawn-embed",
     "crates/arawn-memory",
     "crates/arawn-workflow",
+    "crates/arawn-integrations",
 ]
 
 [workspace.dependencies]

@@ -251,11 +251,29 @@ pub struct ServerNotice {
     pub level: String,
     /// What kind of notice this is — lets the TUI route to the right UI
     /// affordance (banner vs chat history vs status line). Examples:
-    /// "plugin_reload", "config_reload".
+    /// "plugin_reload", "config_reload", "integration".
     pub category: String,
     /// One-line human-readable message. Already includes any counts or
     /// error details; the TUI just renders verbatim.
     pub message: String,
     /// RFC3339 timestamp the notice was emitted.
     pub timestamp: String,
+}
+
+/// One row of the integration registry as seen by clients.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct IntegrationStatus {
+    pub name: String,
+    pub connected: bool,
+}
+
+/// Returned by `start_oauth_flow` so the TUI knows what URL to open.
+/// The actual flow continues asynchronously on the server; the TUI watches
+/// for a `ServerNotice` with category="integration" to know when it lands.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OAuthFlowStarted {
+    pub service: String,
+    /// URL the user must visit to authorize. The TUI tries to `open` this
+    /// and also prints it for copy/paste.
+    pub auth_url: String,
 }

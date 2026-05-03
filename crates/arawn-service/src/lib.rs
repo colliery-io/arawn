@@ -10,10 +10,11 @@ use uuid::Uuid;
 
 pub use error::ServiceError;
 pub use types::{
-    CommandInfo, EngineEvent, ForgetCandidate, ForgetResult, InventoryItem, MemoryStoreResult,
-    MemoryStoreSummary, MemorySummary, MemoryTypeCount, ModalPromptOption,
-    PermissionAuditEntry, PermissionModeInfo, PermissionsStatus, PromotionResult,
-    ServerCapabilities, ServerNotice, SessionDetail, SessionInfo, WorkflowInfo, WorkstreamInfo,
+    CommandInfo, EngineEvent, ForgetCandidate, ForgetResult, IntegrationStatus, InventoryItem,
+    MemoryStoreResult, MemoryStoreSummary, MemorySummary, MemoryTypeCount, ModalPromptOption,
+    OAuthFlowStarted, PermissionAuditEntry, PermissionModeInfo, PermissionsStatus,
+    PromotionResult, ServerCapabilities, ServerNotice, SessionDetail, SessionInfo, WorkflowInfo,
+    WorkstreamInfo,
 };
 
 /// The service contract between any UI client and the Arawn backend.
@@ -122,4 +123,19 @@ pub trait ArawnService: Send + Sync {
     /// Backs the TUI's `/permissions` command. Read-only — modifying rules
     /// requires editing `arawn.toml` and (for now) restarting.
     async fn get_permissions_status(&self) -> Result<PermissionsStatus, ServiceError>;
+
+    // --- Integrations ---
+
+    /// List registered integrations and whether each one has stored
+    /// credentials. Backs the TUI's `/integrations` command.
+    async fn list_integrations(&self) -> Result<Vec<IntegrationStatus>, ServiceError>;
+
+    /// Begin an OAuth (or other credential-acquisition) flow for `service`.
+    /// Returns the auth URL the user should open; the rest of the flow
+    /// runs asynchronously on the server, with completion broadcast as a
+    /// `ServerNotice` with category="integration".
+    async fn start_oauth_flow(&self, service: &str) -> Result<OAuthFlowStarted, ServiceError>;
+
+    /// Drop stored credentials for `service`. Idempotent.
+    async fn disconnect_integration(&self, service: &str) -> Result<(), ServiceError>;
 }
