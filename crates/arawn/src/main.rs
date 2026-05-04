@@ -419,6 +419,35 @@ async fn main() -> Result<()> {
             );
         }
 
+        // Register Google Calendar similarly. Reads ARAWN_GCAL_CLIENT_ID /
+        // _SECRET first; falls back to ARAWN_GOOGLE_CLIENT_ID / _SECRET so a
+        // user with one shared OAuth project for both Gmail and Calendar can
+        // configure once. See docs/src/integrations/calendar.md.
+        let gcal_client = std::env::var("ARAWN_GCAL_CLIENT_ID")
+            .ok()
+            .or_else(|| std::env::var("ARAWN_GOOGLE_CLIENT_ID").ok());
+        let gcal_secret = std::env::var("ARAWN_GCAL_CLIENT_SECRET")
+            .ok()
+            .or_else(|| std::env::var("ARAWN_GOOGLE_CLIENT_SECRET").ok());
+        if let (Some(client_id), Some(client_secret)) = (gcal_client, gcal_secret) {
+            let calendar = Arc::new(arawn_integrations::calendar::GoogleCalendarIntegration::new(
+                std::path::PathBuf::from(&data_dir),
+                client_id,
+                client_secret,
+            ));
+            service.register_integration(Arc::clone(&calendar) as Arc<dyn arawn_integrations::Integration>);
+            registry.register(Box::new(arawn_integrations::calendar::CalendarUpcomingTool::new(Arc::clone(&calendar))));
+            registry.register(Box::new(arawn_integrations::calendar::CalendarCreateEventTool::new(Arc::clone(&calendar))));
+            registry.register(Box::new(arawn_integrations::calendar::CalendarFindConflictsTool::new(Arc::clone(&calendar))));
+            info!("Google Calendar integration registered (3 tools)");
+        } else {
+            debug!(
+                "Google Calendar integration skipped — set ARAWN_GCAL_CLIENT_ID + \
+                 ARAWN_GCAL_CLIENT_SECRET (or share ARAWN_GOOGLE_CLIENT_ID / _SECRET with Gmail) \
+                 to enable. See docs/src/integrations/calendar.md."
+            );
+        }
+
         // Start workflow engine (cloacina DefaultRunner — background services start on construction)
         let workflow_config = arawn_workflow::runner::WorkflowRunnerConfig::new(
             std::path::Path::new(&data_dir),

@@ -272,6 +272,8 @@ dependencies = [
  "base64 0.22.1",
  "chacha20poly1305",
  "chrono",
+ "google-apis-common",
+ "google-calendar3",
  "google-gmail1",
  "hyper-rustls",
  "hyper-util",
@@ -2097,6 +2099,26 @@ dependencies = [
  "hyper-util",
  "mime",
  "percent-encoding",
+ "serde",
+ "serde_json",
+ "serde_with",
+ "tokio",
+ "url",
+ "yup-oauth2",
+]
+
+[[package]]
+name = "google-calendar3"
+version = "7.0.0+20251214"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8ea77c8a4c1735f9e96c60a276d49fd08452ec39f29155782cbd080f60ffb9e4"
+dependencies = [
+ "chrono",
+ "google-apis-common",
+ "hyper",
+ "hyper-rustls",
+ "hyper-util",
+ "mime",
  "serde",
  "serde_json",
  "serde_with",

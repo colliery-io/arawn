@@ -20,9 +20,11 @@
 //! under `<data_dir>/integrations/<service>/`, encrypted with the same
 //! ChaCha20Poly1305 + per-data-dir master key that `TokenStore` uses.
 
+pub mod calendar;
 pub mod credential_store;
 pub mod error;
 pub mod gmail;
+pub mod google_common;
 pub mod integration;
 pub mod oauth_flow;
 

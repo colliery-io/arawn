@@ -13,7 +13,7 @@ mod client;
 mod integration;
 mod tools;
 
-pub use client::{ArawnGetToken, GmailHub, build_gmail_hub, client_from_token_store};
+pub use client::{GmailHub, client_from_token_store};
 pub use integration::{GmailIntegration, GmailProviderConfig};
 pub use tools::{
     GmailGetMessageTool, GmailInboxReadTool, GmailMarkReadTool, GmailSearchTool, GmailSendTool,

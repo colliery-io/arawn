@@ -15,3 +15,4 @@
 # Integrations
 
 - [Gmail](./integrations/gmail.md)
+- [Google Calendar](./integrations/calendar.md)

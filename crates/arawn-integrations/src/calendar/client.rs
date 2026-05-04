@@ -1,28 +1,28 @@
-//! Gmail-specific client glue. Most plumbing is shared via
-//! [`crate::google_common`]; this module just builds the typed `Gmail<C>` Hub.
+//! Google Calendar-specific Hub builder. Most plumbing is shared via
+//! [`crate::google_common`].
 
 use arawn_auth::OAuthProviderConfig;
-use google_gmail1::Gmail;
+use google_calendar3::CalendarHub as GoogleCalendarHub;
 
 use crate::error::IntegrationError;
 use crate::google_common::{ArawnGetToken, HttpsConnector, TokenStoreHandle, build_https_client};
 
 use super::integration::SERVICE_NAME;
 
-/// Concrete Gmail Hub the integration exposes. Tools call methods on this.
-pub type GmailHub = Gmail<HttpsConnector>;
+/// Concrete CalendarHub the integration exposes.
+pub type CalendarHub = GoogleCalendarHub<HttpsConnector>;
 
-/// Open the persisted Gmail token, build the hyper-util client + auth
+/// Open the persisted Calendar token, build the hyper-util client + auth
 /// adapter, and return a fully-wired Hub. Returns `NotConnected` if the
-/// user hasn't run `/connect gmail` yet.
+/// user hasn't run `/connect google_calendar` yet.
 pub fn client_from_token_store(
     data_dir: std::path::PathBuf,
     oauth_config: OAuthProviderConfig,
-) -> Result<GmailHub, IntegrationError> {
+) -> Result<CalendarHub, IntegrationError> {
     let store = TokenStoreHandle::new(data_dir, SERVICE_NAME);
     let token = store
         .load_token()?
         .ok_or_else(|| IntegrationError::NotConnected(SERVICE_NAME.to_string()))?;
     let auth = ArawnGetToken::new(token, oauth_config, store);
-    Ok(Gmail::new(build_https_client(), auth))
+    Ok(GoogleCalendarHub::new(build_https_client(), auth))
 }

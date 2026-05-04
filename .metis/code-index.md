@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-03T21:54:41Z | 182 files | Python, Rust
+> Generated: 2026-05-04T19:19:12Z | 183 files | Python, Rust
 
 ## Project Structure
 
@@ -118,7 +118,8 @@
 │   │       ├── gmail/
 │   │       │   ├── client.rs
 │   │       │   ├── integration.rs
-│   │       │   └── mod.rs
+│   │       │   ├── mod.rs
+│   │       │   └── tools.rs
 │   │       ├── integration.rs
 │   │       ├── lib.rs
 │   │       └── oauth_flow.rs
@@ -472,16 +473,16 @@
 
 -  `DEFAULT_MODEL` variable L15 — `: &str`
 -  `FILE_LOG_FILTER` variable L18 — `: &str` — Default file log filter: debug for arawn crates, warn for third-party.
--  `main` function L21-498 — `() -> Result<()>`
+-  `main` function L21-525 — `() -> Result<()>`
 -  `Cli` struct L27-46 — `{ command: Option<Command>, data_dir: Option<String>, session: Option<Uuid>, lis...`
 -  `Command` enum L49-68 — `Serve | Tui | Plugin`
--  `run_cli_via_server` function L501-606 — `( url: &str, prompt: &str, session_id: Option<Uuid>, ) -> Result<()>` — Run a CLI prompt by connecting to the running server via WebSocket.
--  `build_llm_client` function L609-631 — `( config: &arawn_bin::LlmConfig, ) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
--  `register_default_tools` function L634-680 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &arawn_bin::ArawnConfig, d...` — Register all default tools into the registry.
--  `connect_mcp_servers` function L683-731 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
--  `register_workflow_tools` function L734-751 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
--  `build_engine_config` function L753-785 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
--  `dirs_path` function L787-796 — `() -> Option<String>`
+-  `run_cli_via_server` function L528-633 — `( url: &str, prompt: &str, session_id: Option<Uuid>, ) -> Result<()>` — Run a CLI prompt by connecting to the running server via WebSocket.
+-  `build_llm_client` function L636-658 — `( config: &arawn_bin::LlmConfig, ) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
+-  `register_default_tools` function L661-707 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &arawn_bin::ArawnConfig, d...` — Register all default tools into the registry.
+-  `connect_mcp_servers` function L710-758 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
+-  `register_workflow_tools` function L761-778 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
+-  `build_engine_config` function L780-812 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
+-  `dirs_path` function L814-823 — `() -> Option<String>`
 
 #### crates/arawn/src/plugin_cmd.rs
 
@@ -2660,8 +2661,9 @@
 
 - pub `credential_store` module L23 — `-` — Provides three things to the rest of arawn:
 - pub `error` module L24 — `-` — ChaCha20Poly1305 + per-data-dir master key that `TokenStore` uses.
-- pub `integration` module L25 — `-` — ChaCha20Poly1305 + per-data-dir master key that `TokenStore` uses.
-- pub `oauth_flow` module L26 — `-` — ChaCha20Poly1305 + per-data-dir master key that `TokenStore` uses.
+- pub `gmail` module L25 — `-` — ChaCha20Poly1305 + per-data-dir master key that `TokenStore` uses.
+- pub `integration` module L26 — `-` — ChaCha20Poly1305 + per-data-dir master key that `TokenStore` uses.
+- pub `oauth_flow` module L27 — `-` — ChaCha20Poly1305 + per-data-dir master key that `TokenStore` uses.
 
 #### crates/arawn-integrations/src/oauth_flow.rs
 
@@ -2681,74 +2683,121 @@
 
 #### crates/arawn-integrations/src/gmail/client.rs
 
-- pub `GmailHttp` interface L22-41 — `{ fn get(), fn post_json(), fn post_form() }` — Minimal HTTP surface needed by `GmailClient`.
-- pub `HttpResponse` struct L45-48 — `{ status: u16, body: String }` — Trimmed HTTP response — only what the Gmail client actually inspects.
-- pub `is_success` function L51-53 — `(&self) -> bool`
-- pub `parse_json` function L54-57 — `(&self) -> Result<Value, IntegrationError>`
-- pub `ReqwestHttp` struct L61-63 — `{ client: reqwest::Client }` — reqwest-backed [`GmailHttp`] used in production.
-- pub `new` function L66-73 — `() -> Self`
-- pub `GmailClient` struct L142-149 — `{ http: Arc<dyn GmailHttp>, token: Token, client_id: String, client_secret: Stri...` — Refresh-aware Gmail REST client.
-- pub `list_messages` function L242-294 — `( &mut self, query: Option<&str>, label: Option<&str>, limit: u32, ) -> Result<V...` — `users.messages.list` — returns IDs, then we fan out to
-- pub `send_message` function L298-321 — `( &mut self, to: &str, subject: &str, body: &str, in_reply_to: Option<&str>, ) -...` — `users.messages.send` — RFC 2822 body, base64url-encoded, sent as
-- pub `mark_read` function L324-337 — `(&mut self, message_id: &str) -> Result<(), IntegrationError>` — `users.messages.modify` — strip the UNREAD label.
-- pub `MessageSummary` struct L341-348 — `{ id: String, thread_id: Option<String>, from: Option<String>, subject: Option<S...`
--  `GMAIL_BASE` variable L16 — `: &str`
--  `HttpResponse` type L50-58 — `= HttpResponse`
--  `ReqwestHttp` type L65-74 — `= ReqwestHttp`
--  `ReqwestHttp` type L76-80 — `impl Default for ReqwestHttp`
--  `default` function L77-79 — `() -> Self`
--  `ReqwestHttp` type L83-136 — `impl GmailHttp for ReqwestHttp`
--  `get` function L84-99 — `( &self, url: &Url, access_token: &str, ) -> Result<HttpResponse, IntegrationErr...`
--  `post_json` function L101-118 — `( &self, url: &Url, access_token: &str, body: &Value, ) -> Result<HttpResponse, ...`
--  `post_form` function L120-135 — `( &self, url: &Url, form: &[(&str, &str)], ) -> Result<HttpResponse, Integration...`
--  `GmailClient` type L151-338 — `= GmailClient`
--  `new` function L152-168 — `( http: Arc<dyn GmailHttp>, token: Token, client_id: String, client_secret: Stri...`
--  `refresh_if_needed` function L172-224 — `(&mut self) -> Result<(), IntegrationError>` — Refresh the access token if it's expired (or about to expire).
--  `authed_get` function L226-229 — `(&mut self, url: Url) -> Result<HttpResponse, IntegrationError>`
--  `authed_post_json` function L231-238 — `( &mut self, url: Url, body: Value, ) -> Result<HttpResponse, IntegrationError>`
--  `parse_message_summary` function L350-379 — `(v: &Value) -> MessageSummary`
--  `build_rfc2822` function L382-400 — `( to: &str, subject: &str, body: &str, in_reply_to: Option<&str>, ) -> String` — Construct a minimal RFC 2822 message.
--  `ListMessagesResponse` struct L403-406 — `{ messages: Option<Vec<MessageStub>> }`
--  `MessageStub` struct L409-411 — `{ id: String }`
--  `RefreshResponse` struct L414-424 — `{ access_token: String, refresh_token: Option<String>, expires_in: Option<u64>, ...`
--  `tests` module L427-484 — `-`
--  `parse_summary_extracts_headers_and_snippet` function L431-451 — `()`
--  `parse_summary_handles_missing_fields` function L454-461 — `()`
--  `rfc2822_includes_required_headers` function L464-476 — `()`
--  `rfc2822_threads_via_in_reply_to` function L479-483 — `()`
+- pub `HttpsConnector` type L32 — `= hyper_rustls::HttpsConnector<HttpConnector>` — HTTPS connector type produced by [`build_gmail_hub`].
+- pub `GmailHub` type L35 — `= Gmail<HttpsConnector>` — Concrete Gmail Hub the integration exposes.
+- pub `build_gmail_hub` function L40-60 — `( token_store: TokenStoreHandle, initial_token: Token, oauth_config: OAuthProvid...` — Build the hyper-util client + HTTPS connector and return a configured
+- pub `ArawnGetToken` struct L67-69 — `{ inner: Arc<ArawnGetTokenInner> }` — `GetToken` impl backed by `arawn-auth`.
+- pub `new` function L81-89 — `(token: Token, oauth_config: OAuthProviderConfig, token_store: TokenStoreHandle)...` — against the `Gmail` Hub.
+- pub `client_from_token_store` function L132-145 — `( data_dir: std::path::PathBuf, oauth_config: OAuthProviderConfig, ) -> Result<G...` — Convenience wrapper for the integration's `client()` factory: opens a
+-  `ArawnGetTokenInner` struct L71-78 — `{ token: AsyncMutex<Token>, oauth: OAuthClient, token_store: TokenStoreHandle }` — against the `Gmail` Hub.
+-  `ArawnGetToken` type L80-90 — `= ArawnGetToken` — against the `Gmail` Hub.
+-  `ArawnGetToken` type L92-127 — `impl GetToken for ArawnGetToken` — against the `Gmail` Hub.
+-  `get_token` function L93-126 — `( &'a self, _scopes: &'a [&str], ) -> std::pin::Pin< Box< dyn std::future::Futur...` — against the `Gmail` Hub.
+-  `tests` module L148-178 — `-` — against the `Gmail` Hub.
+-  `arawn_get_token_returns_unexpired_access_directly` function L155-177 — `()` — Smoke-only — confirms ArawnGetToken can be constructed and dispatches
 
 #### crates/arawn-integrations/src/gmail/integration.rs
 
-- pub `SERVICE_NAME` variable L17 — `: &str` — Stable service name.
-- pub `GmailProviderConfig` struct L21-25 — `{ auth_url: Url, token_url: Url, scopes: Vec<String> }` — Standard Gmail OAuth provider configuration.
-- pub `into_oauth_provider` function L45-53 — `(self, client_id: String, client_secret: String) -> OAuthProviderConfig` — Build the underlying [`OAuthProviderConfig`] given a client_id /
-- pub `GmailIntegration` struct L58-71 — `{ token_store: TokenStore, client_id: String, client_secret: String, http: Arc<d...` — Gmail integration.
-- pub `new` function L75-88 — `( token_store: TokenStore, client_id: String, client_secret: String, http: Arc<d...` — Standard constructor — production callers pass a real ReqwestHttp.
-- pub `with_provider_config` function L91-94 — `(mut self, config: GmailProviderConfig) -> Self` — Override the OAuth provider config — used by tests.
-- pub `client` function L105-122 — `(&self) -> Result<GmailClient, IntegrationError>` — Build a refresh-aware [`GmailClient`] for tools to use.
--  `GmailProviderConfig` type L27-39 — `impl Default for GmailProviderConfig`
--  `default` function L28-38 — `() -> Self`
--  `GmailProviderConfig` type L41-54 — `= GmailProviderConfig`
--  `GmailIntegration` type L73-131 — `= GmailIntegration`
--  `data_dir_from_token_store` function L98-101 — `(&self) -> Option<PathBuf>` — Compute the data dir from the `TokenStore`'s `tokens_dir`.
--  `token_store_handle` function L124-130 — `(&self) -> Arc<TokenStoreHandle>`
--  `GmailIntegration` type L134-169 — `impl Integration for GmailIntegration`
--  `name` function L135-137 — `(&self) -> &str`
--  `is_connected` function L139-144 — `(&self) -> bool`
--  `connect` function L146-163 — `(&self, ctx: &dyn ConnectContext) -> Result<(), IntegrationError>`
--  `disconnect` function L165-168 — `(&self) -> Result<(), IntegrationError>`
--  `TokenStoreHandle` struct L174-176 — `{ data_dir: PathBuf }` — Thin handle so [`GmailClient`] can write refreshed tokens back without
--  `TokenStoreHandle` type L178-184 — `= TokenStoreHandle`
--  `save_token` function L179-183 — `(&self, token: &arawn_auth::Token) -> Result<(), IntegrationError>`
--  `tests` module L187-208 — `-`
--  `default_provider_has_three_gmail_scopes` function L191-197 — `()`
--  `provider_lifts_into_oauth_config` function L200-207 — `()`
+- pub `SERVICE_NAME` variable L16 — `: &str` — Stable service name.
+- pub `GmailProviderConfig` struct L20-24 — `{ auth_url: Url, token_url: Url, scopes: Vec<String> }` — Standard Gmail OAuth provider configuration.
+- pub `into_oauth_provider` function L44-52 — `(self, client_id: String, client_secret: String) -> OAuthProviderConfig` — Build the underlying [`OAuthProviderConfig`] given a client_id /
+- pub `GmailIntegration` struct L57-67 — `{ data_dir: PathBuf, client_id: String, client_secret: String, provider_config: ...` — Gmail integration.
+- pub `new` function L71-78 — `(data_dir: PathBuf, client_id: String, client_secret: String) -> Self` — Standard constructor.
+- pub `with_provider_config` function L81-84 — `(mut self, config: GmailProviderConfig) -> Self` — Override the OAuth provider config — used by tests.
+- pub `hub` function L88-91 — `(&self) -> Result<GmailHub, IntegrationError>` — Build a fully-wired `Gmail` Hub for tools.
+- pub `TokenStoreHandle` struct L148-150 — `{ data_dir: PathBuf }` — Thin handle so the auth adapter (in [`super::client`]) can write
+-  `GmailProviderConfig` type L26-38 — `impl Default for GmailProviderConfig`
+-  `default` function L27-37 — `() -> Self`
+-  `GmailProviderConfig` type L40-53 — `= GmailProviderConfig`
+-  `GmailIntegration` type L69-109 — `= GmailIntegration`
+-  `oauth_config` function L93-104 — `(&self) -> OAuthProviderConfig`
+-  `token_store` function L106-108 — `(&self) -> Result<TokenStore, IntegrationError>`
+-  `GmailIntegration` type L112-139 — `impl Integration for GmailIntegration`
+-  `name` function L113-115 — `(&self) -> &str`
+-  `is_connected` function L117-125 — `(&self) -> bool`
+-  `connect` function L127-132 — `(&self, ctx: &dyn ConnectContext) -> Result<(), IntegrationError>`
+-  `disconnect` function L134-138 — `(&self) -> Result<(), IntegrationError>`
+-  `TokenStoreHandle` type L152-158 — `= TokenStoreHandle`
+-  `save_token` function L153-157 — `(&self, token: &arawn_auth::Token) -> Result<(), IntegrationError>`
+-  `tests` module L161-182 — `-`
+-  `default_provider_has_three_gmail_scopes` function L165-171 — `()`
+-  `provider_lifts_into_oauth_config` function L174-181 — `()`
 
 #### crates/arawn-integrations/src/gmail/mod.rs
 
 -  `client` module L12 — `-` — Provides:
 -  `integration` module L13 — `-` — setup steps users need to complete before connecting.
 -  `tools` module L14 — `-` — setup steps users need to complete before connecting.
+
+#### crates/arawn-integrations/src/gmail/tools.rs
+
+- pub `GmailInboxReadTool` struct L92-94 — `{ integration: Arc<GmailIntegration> }` — picked up by the next call automatically.
+- pub `new` function L97-99 — `(integration: Arc<GmailIntegration>) -> Self` — picked up by the next call automatically.
+- pub `GmailSearchTool` struct L165-167 — `{ integration: Arc<GmailIntegration> }` — picked up by the next call automatically.
+- pub `new` function L170-172 — `(integration: Arc<GmailIntegration>) -> Self` — picked up by the next call automatically.
+- pub `GmailGetMessageTool` struct L238-240 — `{ integration: Arc<GmailIntegration> }` — picked up by the next call automatically.
+- pub `new` function L243-245 — `(integration: Arc<GmailIntegration>) -> Self` — picked up by the next call automatically.
+- pub `GmailSendTool` struct L331-333 — `{ integration: Arc<GmailIntegration> }` — picked up by the next call automatically.
+- pub `new` function L336-338 — `(integration: Arc<GmailIntegration>) -> Self` — picked up by the next call automatically.
+- pub `GmailMarkReadTool` struct L435-437 — `{ integration: Arc<GmailIntegration> }` — picked up by the next call automatically.
+- pub `new` function L440-442 — `(integration: Arc<GmailIntegration>) -> Self` — picked up by the next call automatically.
+-  `MessageSummary` struct L22-30 — `{ id: String, thread_id: Option<String>, from: Option<String>, subject: Option<S...` — One-line summary of a Gmail message — what `inbox_read` and `search` return per row.
+-  `integ_err` function L32-34 — `(e: crate::IntegrationError) -> ToolError` — picked up by the next call automatically.
+-  `google_err` function L36-38 — `(stage: &str, e: google_gmail1::Error) -> ToolError` — picked up by the next call automatically.
+-  `fetch_summaries` function L42-61 — `( hub: &super::client::GmailHub, ids: &[String], ) -> Result<Vec<MessageSummary>...` — Pull metadata + snippet for a list of message ids.
+-  `summary_from_message` function L63-88 — `(m: &Message) -> MessageSummary` — picked up by the next call automatically.
+-  `GmailInboxReadTool` type L96-100 — `= GmailInboxReadTool` — picked up by the next call automatically.
+-  `GmailInboxReadTool` type L103-161 — `impl Tool for GmailInboxReadTool` — picked up by the next call automatically.
+-  `name` function L104-106 — `(&self) -> &str` — picked up by the next call automatically.
+-  `description` function L107-111 — `(&self) -> &str` — picked up by the next call automatically.
+-  `category` function L112-114 — `(&self) -> ToolCategory` — picked up by the next call automatically.
+-  `permission_category` function L115-117 — `(&self) -> PermissionCategory` — picked up by the next call automatically.
+-  `parameters_schema` function L118-134 — `(&self) -> Value` — picked up by the next call automatically.
+-  `execute` function L135-160 — `(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError>` — picked up by the next call automatically.
+-  `GmailSearchTool` type L169-173 — `= GmailSearchTool` — picked up by the next call automatically.
+-  `GmailSearchTool` type L176-234 — `impl Tool for GmailSearchTool` — picked up by the next call automatically.
+-  `name` function L177-179 — `(&self) -> &str` — picked up by the next call automatically.
+-  `description` function L180-183 — `(&self) -> &str` — picked up by the next call automatically.
+-  `category` function L184-186 — `(&self) -> ToolCategory` — picked up by the next call automatically.
+-  `permission_category` function L187-189 — `(&self) -> PermissionCategory` — picked up by the next call automatically.
+-  `parameters_schema` function L190-207 — `(&self) -> Value` — picked up by the next call automatically.
+-  `execute` function L208-233 — `(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError>` — picked up by the next call automatically.
+-  `GmailGetMessageTool` type L242-246 — `= GmailGetMessageTool` — picked up by the next call automatically.
+-  `GmailGetMessageTool` type L249-303 — `impl Tool for GmailGetMessageTool` — picked up by the next call automatically.
+-  `name` function L250-252 — `(&self) -> &str` — picked up by the next call automatically.
+-  `description` function L253-256 — `(&self) -> &str` — picked up by the next call automatically.
+-  `category` function L257-259 — `(&self) -> ToolCategory` — picked up by the next call automatically.
+-  `permission_category` function L260-262 — `(&self) -> PermissionCategory` — picked up by the next call automatically.
+-  `parameters_schema` function L263-271 — `(&self) -> Value` — picked up by the next call automatically.
+-  `execute` function L272-302 — `(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError>` — picked up by the next call automatically.
+-  `extract_plain_text_body` function L307-310 — `(m: &Message) -> Option<String>` — Walk a `Message`'s payload tree looking for the first `text/plain` part.
+-  `walk_for_plain_text` function L312-327 — `(part: &google_gmail1::api::MessagePart) -> Option<String>` — picked up by the next call automatically.
+-  `GmailSendTool` type L335-339 — `= GmailSendTool` — picked up by the next call automatically.
+-  `GmailSendTool` type L342-410 — `impl Tool for GmailSendTool` — picked up by the next call automatically.
+-  `name` function L343-345 — `(&self) -> &str` — picked up by the next call automatically.
+-  `description` function L346-349 — `(&self) -> &str` — picked up by the next call automatically.
+-  `category` function L350-352 — `(&self) -> ToolCategory` — picked up by the next call automatically.
+-  `permission_category` function L353-357 — `(&self) -> PermissionCategory` — picked up by the next call automatically.
+-  `parameters_schema` function L358-372 — `(&self) -> Value` — picked up by the next call automatically.
+-  `execute` function L373-409 — `(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError>` — picked up by the next call automatically.
+-  `build_rfc2822` function L413-431 — `( to: &str, subject: &str, body: &str, in_reply_to: Option<&str>, ) -> String` — Tiny RFC 2822 builder.
+-  `GmailMarkReadTool` type L439-443 — `= GmailMarkReadTool` — picked up by the next call automatically.
+-  `GmailMarkReadTool` type L446-488 — `impl Tool for GmailMarkReadTool` — picked up by the next call automatically.
+-  `name` function L447-449 — `(&self) -> &str` — picked up by the next call automatically.
+-  `description` function L450-452 — `(&self) -> &str` — picked up by the next call automatically.
+-  `category` function L453-455 — `(&self) -> ToolCategory` — picked up by the next call automatically.
+-  `permission_category` function L456-460 — `(&self) -> PermissionCategory` — picked up by the next call automatically.
+-  `parameters_schema` function L461-469 — `(&self) -> Value` — picked up by the next call automatically.
+-  `execute` function L470-487 — `(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError>` — picked up by the next call automatically.
+-  `tests` module L491-617 — `-` — picked up by the next call automatically.
+-  `header` function L495-500 — `(name: &str, value: &str) -> MessagePartHeader` — picked up by the next call automatically.
+-  `summary_from_message_extracts_known_headers` function L503-526 — `()` — picked up by the next call automatically.
+-  `summary_handles_empty_payload` function L529-538 — `()` — picked up by the next call automatically.
+-  `extract_plain_text_finds_top_level_text_plain` function L541-554 — `()` — picked up by the next call automatically.
+-  `extract_plain_text_descends_into_multipart_alternative` function L557-584 — `()` — picked up by the next call automatically.
+-  `extract_plain_text_returns_none_when_html_only` function L587-600 — `()` — picked up by the next call automatically.
+-  `rfc2822_includes_required_headers_and_body` function L603-609 — `()` — picked up by the next call automatically.
+-  `rfc2822_threads_via_in_reply_to` function L612-616 — `()` — picked up by the next call automatically.
 
 ### crates/arawn-llm/src
 
