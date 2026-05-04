@@ -222,6 +222,13 @@ async fn main() -> Result<()> {
 
     // Handle serve mode
     if serve_mode {
+        // Install the rustls crypto provider as the process default. Required
+        // before any integration constructs a hyper-rustls connector
+        // (slack-morphism, the Google API hubs, etc.) — rustls 0.23 with
+        // both ring and aws-lc-rs visible in the dep tree won't auto-pick.
+        // Idempotent.
+        arawn_integrations::install_default_crypto_provider();
+
         // Build the LLM client pool — fail-fast: any misconfigured `[llm.*]`
         // entry surfaces here, not mid-session.
         let llm_pool = Arc::new(arawn_bin::LlmClientPool::from_config(
@@ -445,6 +452,30 @@ async fn main() -> Result<()> {
                 "Google Calendar integration skipped — set ARAWN_GCAL_CLIENT_ID + \
                  ARAWN_GCAL_CLIENT_SECRET (or share ARAWN_GOOGLE_CLIENT_ID / _SECRET with Gmail) \
                  to enable. See docs/src/integrations/calendar.md."
+            );
+        }
+
+        // Register Slack. No env-var sharing with Google — Slack apps are
+        // unrelated. See docs/src/integrations/slack.md.
+        if let (Ok(client_id), Ok(client_secret)) = (
+            std::env::var("ARAWN_SLACK_CLIENT_ID"),
+            std::env::var("ARAWN_SLACK_CLIENT_SECRET"),
+        ) {
+            let slack = Arc::new(arawn_integrations::slack::SlackIntegration::new(
+                std::path::PathBuf::from(&data_dir),
+                client_id,
+                client_secret,
+            ));
+            service.register_integration(Arc::clone(&slack) as Arc<dyn arawn_integrations::Integration>);
+            registry.register(Box::new(arawn_integrations::slack::SlackListChannelsTool::new(Arc::clone(&slack))));
+            registry.register(Box::new(arawn_integrations::slack::SlackHistoryTool::new(Arc::clone(&slack))));
+            registry.register(Box::new(arawn_integrations::slack::SlackPostTool::new(Arc::clone(&slack))));
+            registry.register(Box::new(arawn_integrations::slack::SlackReactTool::new(Arc::clone(&slack))));
+            info!("Slack integration registered (4 tools)");
+        } else {
+            debug!(
+                "Slack integration skipped — set ARAWN_SLACK_CLIENT_ID + \
+                 ARAWN_SLACK_CLIENT_SECRET to enable. See docs/src/integrations/slack.md."
             );
         }
 

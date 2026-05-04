@@ -4,14 +4,14 @@ level: initiative
 title: "External integrations layer — Gmail, Calendar, notifications"
 short_code: "ARAWN-I-0033"
 created_at: 2026-05-02T04:13:45.230690+00:00
-updated_at: 2026-05-03T12:43:15.333878+00:00
+updated_at: 2026-05-04T20:12:47.639918+00:00
 parent: ARAWN-V-0001
 blocked_by: []
 archived: false
 
 tags:
   - "#initiative"
-  - "#phase/decompose"
+  - "#phase/completed"
 
 
 exit_criteria_met: false

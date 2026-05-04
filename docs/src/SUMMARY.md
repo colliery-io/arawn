@@ -16,3 +16,4 @@
 
 - [Gmail](./integrations/gmail.md)
 - [Google Calendar](./integrations/calendar.md)
+- [Slack](./integrations/slack.md)

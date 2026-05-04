@@ -37,7 +37,7 @@ The `arawn-auth` crate already exists with token storage, an OAuth2 helper, and 
 
 Credentials for external integrations live under `~/.arawn/integrations/<service>/`, encrypted at rest using the same scheme `arawn-auth::TokenStore` already uses for OAuth tokens: ChaCha20Poly1305 AEAD with a per-data-dir 32-byte master key (`.master.key`) generated on first use, atomic writes via rename, 0600 file permissions.
 
-OAuth tokens specifically use `TokenStore` directly (it's designed for `Token` structs). Non-OAuth credentials (e.g. Slack webhook URLs) use a small `CredentialStore<T: Serialize + DeserializeOwned>` wrapper sharing the same encryption.
+OAuth tokens specifically use `TokenStore` directly (it's designed for `Token` structs). Non-OAuth credentials use a small `CredentialStore<T: Serialize + DeserializeOwned>` wrapper sharing the same encryption — this exists in the codebase but no integration currently uses it (Slack moved to OAuth in T-0204; see decision-4 below).
 
 Rationale:
 - **Matches what already exists.** An earlier draft of this ADR specified `~/.arawn/identity.age` + age encryption, mirroring "the existing secrets.age pattern." On survey, neither identity.age nor secrets.age actually exist in the codebase — the live encryption scheme is ChaCha20Poly1305 in `arawn-auth::TokenStore`. Introducing age would be a parallel system, not a continuation of an existing one.
@@ -92,6 +92,25 @@ pub trait Integration: Send + Sync {
 Tools that wrap an integration are normal `arawn-engine::Tool` impls — they receive the engine context, look up the integration by name, and use whatever provider-specific client it exposes. The `Integration` trait is for *connection lifecycle*, not for the tool surface.
 
 Rationale: keeps the agent-facing tool API identical to today. Integrations are a behind-the-scenes concept that tools depend on; the agent never sees them directly.
+
+### 4. Slack: OAuth bot, full read/write (revised 2026-05-04)
+
+**Original decision (now superseded):** Slack via incoming webhook only — outbound notifications, simpler than full OAuth. The framing was "agent can ping me" rather than "manage Slack."
+
+**Revised decision:** Slack via OAuth v2 bot tokens. The agent needs to *read* channel history and search to gain context, not just post — restricting to webhooks artificially confines it to "notification sink" when its real value is being a participant.
+
+Auth shape:
+- `https://slack.com/oauth/v2/authorize` for the consent flow (same `/connect <service>` UX as Google).
+- `https://slack.com/api/oauth.v2.access` for the code exchange.
+- Bot scopes requested: `channels:read`, `channels:history`, `groups:read`, `groups:history`, `im:read`, `im:history`, `mpim:history`, `chat:write`, `reactions:write`, `search:read`, `users:read`.
+- Token model: bot tokens, stored via `TokenStore` keyed `slack`. Slack bot tokens **don't expire** by default — refresh is opt-in per Slack app and not enabled for our reference setup. If a Slack workspace turns on token rotation, we surface the resulting "invalid_auth" through the engine error chain so the user knows to reconnect; we don't currently auto-refresh.
+
+Rationale:
+- Read access is the leverage. "Watch the engineering channel and surface what I missed" is a bigger win than "post to #foo when a workflow finishes."
+- The `NotificationChannel` trait abstraction the original decision implied (one trait, many channels) is overengineering before we know we want a second outbound-only channel. Drop it for now; future Discord etc. follow the Gmail pattern (a full integration with its own scope set).
+- `CredentialStore<T>` (decision-1) stays in the codebase as the right tool for non-OAuth credentials; no current integration uses it.
+
+Revisit when: a real notification-only use case appears (e.g. a webhook-only Discord channel where read access isn't possible). At that point, add a webhook-style integration as a sibling, not as a replacement.
 
 ## Consequences
 

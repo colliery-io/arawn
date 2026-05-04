@@ -19,8 +19,11 @@ hyper-util = { version = "0.1", features = ["client", "client-legacy", "tokio"] 
 mime = "0.3"
 rand = "0.8"
 reqwest = { workspace = true }
+rustls = { version = "0.23", default-features = false, features = ["ring"] }
+rvstruct = "0.3"
 serde = { workspace = true }
 serde_json = { workspace = true }
+slack-morphism = { version = "2.20", features = ["hyper"] }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }

@@ -27,8 +27,20 @@ pub mod gmail;
 pub mod google_common;
 pub mod integration;
 pub mod oauth_flow;
+pub mod slack;
 
 pub use credential_store::CredentialStore;
 pub use error::IntegrationError;
 pub use integration::{ConnectContext, Integration, IntegrationStatus};
 pub use oauth_flow::{run_oauth_flow, OAuthOutcome};
+
+/// Install rustls' `ring` crypto provider as the process default. Must be
+/// called once at server startup, before any integration constructs a
+/// hyper-rustls connector — slack-morphism, the Google API hubs, and
+/// reqwest with rustls-tls all share rustls' process-level provider slot.
+///
+/// Idempotent: a second call is silently a no-op. Returning `()` keeps
+/// the call site clean (no `.ok()` ceremony).
+pub fn install_default_crypto_provider() {
+    let _ = rustls::crypto::ring::default_provider().install_default();
+}
