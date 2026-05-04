@@ -6,10 +6,17 @@ edition = "2024"
 [dependencies]
 arawn-auth = { path = "../arawn-auth" }
 arawn-service = { workspace = true }
+arawn-tool = { workspace = true }
 async-trait = { workspace = true }
+base64 = "0.22"
 chacha20poly1305 = "0.10"
 chrono = { workspace = true }
+google-gmail1 = { version = "7", default-features = false, features = ["ring"] }
+hyper-rustls = "0.27"
+hyper-util = { version = "0.1", features = ["client", "client-legacy", "tokio"] }
+mime = "0.3"
 rand = "0.8"
+reqwest = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }

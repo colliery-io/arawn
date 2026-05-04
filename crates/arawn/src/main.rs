@@ -392,6 +392,33 @@ async fn main() -> Result<()> {
         registry.register(Box::new(arawn_engine::WorkstreamCreateTool::new(service.shared_store())));
         registry.register(Box::new(arawn_engine::WorkstreamListTool::new(service.shared_store())));
 
+        // Register Gmail integration if env vars are present. Skipped silently
+        // otherwise — users without Gmail credentials still get a working
+        // server. See docs/src/integrations/gmail.md for the Cloud Console
+        // setup that produces these env vars.
+        if let (Ok(client_id), Ok(client_secret)) = (
+            std::env::var("ARAWN_GMAIL_CLIENT_ID"),
+            std::env::var("ARAWN_GMAIL_CLIENT_SECRET"),
+        ) {
+            let gmail = Arc::new(arawn_integrations::gmail::GmailIntegration::new(
+                std::path::PathBuf::from(&data_dir),
+                client_id,
+                client_secret,
+            ));
+            service.register_integration(Arc::clone(&gmail) as Arc<dyn arawn_integrations::Integration>);
+            registry.register(Box::new(arawn_integrations::gmail::GmailInboxReadTool::new(Arc::clone(&gmail))));
+            registry.register(Box::new(arawn_integrations::gmail::GmailSearchTool::new(Arc::clone(&gmail))));
+            registry.register(Box::new(arawn_integrations::gmail::GmailGetMessageTool::new(Arc::clone(&gmail))));
+            registry.register(Box::new(arawn_integrations::gmail::GmailSendTool::new(Arc::clone(&gmail))));
+            registry.register(Box::new(arawn_integrations::gmail::GmailMarkReadTool::new(Arc::clone(&gmail))));
+            info!("Gmail integration registered (5 tools)");
+        } else {
+            debug!(
+                "Gmail integration skipped — set ARAWN_GMAIL_CLIENT_ID + \
+                 ARAWN_GMAIL_CLIENT_SECRET to enable. See docs/src/integrations/gmail.md."
+            );
+        }
+
         // Start workflow engine (cloacina DefaultRunner — background services start on construction)
         let workflow_config = arawn_workflow::runner::WorkflowRunnerConfig::new(
             std::path::Path::new(&data_dir),

@@ -11,3 +11,7 @@
 - [Security & Permissions](./security.md)
 - [Memory](./memory.md)
 - [Workflows](./workflows.md)
+
+# Integrations
+
+- [Gmail](./integrations/gmail.md)

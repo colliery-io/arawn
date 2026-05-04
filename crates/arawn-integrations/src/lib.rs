@@ -22,6 +22,7 @@
 
 pub mod credential_store;
 pub mod error;
+pub mod gmail;
 pub mod integration;
 pub mod oauth_flow;
 
