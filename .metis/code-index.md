@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-04T20:27:06Z | 192 files | Python, Rust
+> Generated: 2026-05-05T04:32:56Z | 192 files | Python, Rust
 
 ## Project Structure
 
@@ -607,20 +607,22 @@
 
 - pub `CallbackResult` struct L22-25 — `{ code: String, state: String }` — What the callback yielded.
 - pub `CallbackServer` struct L27-30 — `{ listener: TcpListener, redirect_uri: Url }` — responds with a small HTML success page, then shuts down.
-- pub `bind` function L35-48 — `(path: &str) -> Result<Self, AuthError>` — Bind to an OS-assigned port on `127.0.0.1`.
-- pub `redirect_uri` function L50-52 — `(&self) -> &Url` — responds with a small HTML success page, then shuts down.
-- pub `listen` function L56-58 — `(self) -> Result<CallbackResult, AuthError>` — Wait up to [`DEFAULT_TIMEOUT`] for a single redirect, parse it, and
-- pub `listen_with_timeout` function L60-156 — `( self, timeout: Duration, ) -> Result<CallbackResult, AuthError>` — responds with a small HTML success page, then shuts down.
+- pub `bind` function L35-37 — `(path: &str) -> Result<Self, AuthError>` — Bind to an OS-assigned port on `127.0.0.1`.
+- pub `bind_with_port` function L42-44 — `(path: &str, port: u16) -> Result<Self, AuthError>` — Bind to a specific port on `127.0.0.1`.
+- pub `redirect_uri` function L66-68 — `(&self) -> &Url` — responds with a small HTML success page, then shuts down.
+- pub `listen` function L72-74 — `(self) -> Result<CallbackResult, AuthError>` — Wait up to [`DEFAULT_TIMEOUT`] for a single redirect, parse it, and
+- pub `listen_with_timeout` function L76-172 — `( self, timeout: Duration, ) -> Result<CallbackResult, AuthError>` — responds with a small HTML success page, then shuts down.
 -  `DEFAULT_TIMEOUT` variable L16 — `: Duration` — responds with a small HTML success page, then shuts down.
 -  `SUCCESS_PAGE` variable L18 — `: &str` — responds with a small HTML success page, then shuts down.
--  `CallbackServer` type L32-157 — `= CallbackServer` — responds with a small HTML success page, then shuts down.
--  `tests` module L160-229 — `-` — responds with a small HTML success page, then shuts down.
--  `simulate_browser` function L165-177 — `(server_url: &Url, query: &str)` — responds with a small HTML success page, then shuts down.
--  `happy_path_returns_code_and_state` function L180-188 — `()` — responds with a small HTML success page, then shuts down.
--  `missing_code_yields_invalid_config_error` function L191-201 — `()` — responds with a small HTML success page, then shuts down.
--  `provider_error_propagates` function L204-214 — `()` — responds with a small HTML success page, then shuts down.
--  `timeout_returns_error` function L217-221 — `()` — responds with a small HTML success page, then shuts down.
--  `redirect_uri_normalizes_path_with_or_without_slash` function L224-228 — `()` — responds with a small HTML success page, then shuts down.
+-  `CallbackServer` type L32-173 — `= CallbackServer` — responds with a small HTML success page, then shuts down.
+-  `bind_inner` function L46-64 — `(path: &str, port: u16) -> Result<Self, AuthError>` — responds with a small HTML success page, then shuts down.
+-  `tests` module L176-245 — `-` — responds with a small HTML success page, then shuts down.
+-  `simulate_browser` function L181-193 — `(server_url: &Url, query: &str)` — responds with a small HTML success page, then shuts down.
+-  `happy_path_returns_code_and_state` function L196-204 — `()` — responds with a small HTML success page, then shuts down.
+-  `missing_code_yields_invalid_config_error` function L207-217 — `()` — responds with a small HTML success page, then shuts down.
+-  `provider_error_propagates` function L220-230 — `()` — responds with a small HTML success page, then shuts down.
+-  `timeout_returns_error` function L233-237 — `()` — responds with a small HTML success page, then shuts down.
+-  `redirect_uri_normalizes_path_with_or_without_slash` function L240-244 — `()` — responds with a small HTML success page, then shuts down.
 
 #### crates/arawn-auth/src/token_store.rs
 
@@ -2785,14 +2787,14 @@
 #### crates/arawn-integrations/src/oauth_flow.rs
 
 - pub `OAuthOutcome` struct L23-25 — `{ token: Token }` — Result of a successful OAuth flow.
-- pub `run_oauth_flow` function L30-68 — `( provider_config: OAuthProviderConfig, token_store: &TokenStore, service_name: ...` — Drive the OAuth dance end-to-end.
--  `tests` module L71-119 — `-` — 6.
--  `CaptureCtx` struct L78-82 — `{ service: String, auth_url: Mutex<Option<Url>>, progress: Mutex<Vec<String>> }` — Captures everything published; lets tests assert without a real TUI.
--  `CaptureCtx` type L85-95 — `impl ConnectContext for CaptureCtx` — 6.
--  `service` function L86-88 — `(&self) -> &str` — 6.
--  `publish_auth_url` function L89-91 — `(&self, url: &Url)` — 6.
--  `publish_progress` function L92-94 — `(&self, message: &str)` — 6.
--  `ctx_capture_smoke` function L98-118 — `()` — 6.
+- pub `run_oauth_flow` function L30-74 — `( provider_config: OAuthProviderConfig, token_store: &TokenStore, service_name: ...` — Drive the OAuth dance end-to-end.
+-  `tests` module L77-125 — `-` — 6.
+-  `CaptureCtx` struct L84-88 — `{ service: String, auth_url: Mutex<Option<Url>>, progress: Mutex<Vec<String>> }` — Captures everything published; lets tests assert without a real TUI.
+-  `CaptureCtx` type L91-101 — `impl ConnectContext for CaptureCtx` — 6.
+-  `service` function L92-94 — `(&self) -> &str` — 6.
+-  `publish_auth_url` function L95-97 — `(&self, url: &Url)` — 6.
+-  `publish_progress` function L98-100 — `(&self, message: &str)` — 6.
+-  `ctx_capture_smoke` function L104-124 — `()` — 6.
 
 ### crates/arawn-integrations/src/gmail
 
@@ -2919,27 +2921,29 @@
 #### crates/arawn-integrations/src/slack/integration.rs
 
 - pub `SERVICE_NAME` variable L15 — `: &str` — Stable service name.
-- pub `SLACK_OAUTH_SCOPES` variable L18-30 — `: &[&str]` — Bot scopes requested at OAuth time.
-- pub `SlackProviderConfig` struct L34-38 — `{ auth_url: Url, token_url: Url, scopes: Vec<String> }` — Slack OAuth v2 provider config.
-- pub `into_oauth_provider` function L51-59 — `(self, client_id: String, client_secret: String) -> OAuthProviderConfig`
-- pub `SlackIntegration` struct L63-68 — `{ data_dir: PathBuf, client_id: String, client_secret: String, provider_config: ...` — Slack integration.
-- pub `new` function L71-78 — `(data_dir: PathBuf, client_id: String, client_secret: String) -> Self`
-- pub `with_provider_config` function L80-83 — `(mut self, config: SlackProviderConfig) -> Self`
-- pub `context` function L88-94 — `(&self) -> Result<SlackContext, IntegrationError>` — Build a fresh `SlackContext` for tool calls.
--  `SlackProviderConfig` type L40-48 — `impl Default for SlackProviderConfig`
--  `default` function L41-47 — `() -> Self`
--  `SlackProviderConfig` type L50-60 — `= SlackProviderConfig`
--  `SlackIntegration` type L70-112 — `= SlackIntegration`
--  `oauth_config` function L96-107 — `(&self) -> OAuthProviderConfig`
--  `token_store` function L109-111 — `(&self) -> Result<TokenStore, IntegrationError>`
--  `SlackIntegration` type L115-139 — `impl Integration for SlackIntegration`
--  `name` function L116-118 — `(&self) -> &str`
--  `is_connected` function L120-125 — `(&self) -> bool`
--  `connect` function L127-132 — `(&self, ctx: &dyn ConnectContext) -> Result<(), IntegrationError>`
--  `disconnect` function L134-138 — `(&self) -> Result<(), IntegrationError>`
--  `tests` module L142-163 — `-`
--  `default_provider_carries_eleven_bot_scopes` function L146-152 — `()`
--  `provider_lifts_into_oauth_config` function L155-162 — `()`
+- pub `SLACK_OAUTH_SCOPES` variable L24-36 — `: &[&str]` — Bot scopes requested at OAuth time.
+- pub `SlackProviderConfig` struct L40-49 — `{ auth_url: Url, token_url: Url, scopes: Vec<String>, redirect_port: u16 }` — Slack OAuth v2 provider config.
+- pub `DEFAULT_SLACK_REDIRECT_PORT` variable L55 — `: u16` — Default callback port for Slack.
+- pub `into_oauth_provider` function L69-77 — `(self, client_id: String, client_secret: String) -> OAuthProviderConfig`
+- pub `SlackIntegration` struct L81-86 — `{ data_dir: PathBuf, client_id: String, client_secret: String, provider_config: ...` — Slack integration.
+- pub `new` function L89-96 — `(data_dir: PathBuf, client_id: String, client_secret: String) -> Self`
+- pub `with_provider_config` function L98-101 — `(mut self, config: SlackProviderConfig) -> Self`
+- pub `context` function L106-112 — `(&self) -> Result<SlackContext, IntegrationError>` — Build a fresh `SlackContext` for tool calls.
+-  `SlackProviderConfig` type L57-66 — `impl Default for SlackProviderConfig`
+-  `default` function L58-65 — `() -> Self`
+-  `SlackProviderConfig` type L68-78 — `= SlackProviderConfig`
+-  `SlackIntegration` type L88-133 — `= SlackIntegration`
+-  `oauth_config` function L114-116 — `(&self) -> OAuthProviderConfig`
+-  `provider` function L118-128 — `(&self) -> SlackProviderConfig`
+-  `token_store` function L130-132 — `(&self) -> Result<TokenStore, IntegrationError>`
+-  `SlackIntegration` type L136-169 — `impl Integration for SlackIntegration`
+-  `name` function L137-139 — `(&self) -> &str`
+-  `is_connected` function L141-146 — `(&self) -> bool`
+-  `connect` function L148-162 — `(&self, ctx: &dyn ConnectContext) -> Result<(), IntegrationError>`
+-  `disconnect` function L164-168 — `(&self) -> Result<(), IntegrationError>`
+-  `tests` module L172-195 — `-`
+-  `default_provider_carries_eleven_bot_scopes` function L176-184 — `()`
+-  `provider_lifts_into_oauth_config` function L187-194 — `()`
 
 #### crates/arawn-integrations/src/slack/mod.rs
 
@@ -4352,13 +4356,13 @@
 
 #### crates/arawn-tui/src/event_loop.rs
 
-- pub `run_tui` function L29-833 — `(url: &str, model_name: &str) -> Result<(), Box<dyn std::error::Error>>` — Run the TUI connected to the given WebSocket server URL.
+- pub `run_tui` function L29-835 — `(url: &str, model_name: &str) -> Result<(), Box<dyn std::error::Error>>` — Run the TUI connected to the given WebSocket server URL.
 -  `rect_contains` function L24-26 — `(rect: Rect, col: u16, row: u16) -> bool`
--  `format_integrations_list` function L836-851 — `(items: &[serde_json::Value]) -> String` — Render a `list_integrations` response as a markdown table the user can scan.
--  `OpenAttempt` enum L855-859 — `Opened | NoOpener | Failed` — What `try_open_url` did.
--  `try_open_url` function L863-894 — `(url: &str) -> OpenAttempt` — Best-effort browser open.
--  `apply_system_notice` function L899-905 — `(notice: &arawn_service::ServerNotice, app: &mut crate::app::App)` — Push a server-side notice (plugin/config hot-reload outcome) into the
--  `format_permissions_status` function L908-948 — `(status: &serde_json::Value) -> String` — Render `get_permissions_status` JSON as a human-readable system message.
+-  `format_integrations_list` function L838-853 — `(items: &[serde_json::Value]) -> String` — Render a `list_integrations` response as a markdown table the user can scan.
+-  `OpenAttempt` enum L857-861 — `Opened | NoOpener | Failed` — What `try_open_url` did.
+-  `try_open_url` function L865-896 — `(url: &str) -> OpenAttempt` — Best-effort browser open.
+-  `apply_system_notice` function L901-907 — `(notice: &arawn_service::ServerNotice, app: &mut crate::app::App)` — Push a server-side notice (plugin/config hot-reload outcome) into the
+-  `format_permissions_status` function L910-950 — `(status: &serde_json::Value) -> String` — Render `get_permissions_status` JSON as a human-readable system message.
 
 #### crates/arawn-tui/src/lib.rs
 

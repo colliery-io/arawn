@@ -646,12 +646,11 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                     match update {
                         EventUpdate::AppendStreamingText(text) => {
                             debug!(len = text.len(), "update: streaming text");
-                            // Flush any accumulated streaming text as an assistant message
-                            // when we get new text (handles mid-loop narration from tool call turns)
-                            if !app.streaming_text.is_empty() {
-                                let prev = std::mem::take(&mut app.streaming_text);
-                                app.messages.push(ChatMessage::new(ChatRole::Assistant, prev));
-                            }
+                            // Append into the live streaming buffer. Flushing into a
+                            // permanent ChatMessage happens at turn boundaries
+                            // (AddToolCall / Complete / Error), not per-chunk —
+                            // otherwise every streaming token after the first
+                            // gets its own message.
                             app.streaming_text.push_str(&text);
                             return true; // Draw immediately — narration should be visible
                         }
@@ -777,8 +776,13 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                     _ => {}
                 }
 
-                // Drain any immediately queued messages up to the next Flush
-                if !should_break && !flush {
+                // Drain any immediately queued messages so we render once per
+                // burst, not once per event. `apply_update` returns true for
+                // every visible update — so without this drain, each WS message
+                // triggers its own (slow) markdown render and messages back up
+                // faster than they're processed. We only break the drain on a
+                // Close, an error, or when the queue empties.
+                if !should_break {
                     let mut drained: u32 = 0;
                     loop {
                         match client.read.next().now_or_never() {
@@ -787,10 +791,8 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                                 if let Some(notice) = parse_system_notice(&text) {
                                     apply_system_notice(&notice, &mut app);
                                     flush = true;
-                                    break;
                                 } else if let Some(event) = parse_engine_event(&text) {
                                     flush |= apply_update(engine_event_to_update(event), &mut app);
-                                    if flush { break; }
                                 }
                             }
                             Some(Some(Ok(WsMessage::Close(frame)))) => {
