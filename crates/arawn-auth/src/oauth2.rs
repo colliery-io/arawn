@@ -29,8 +29,12 @@ pub struct OAuthProviderConfig {
     /// OAuth client secret. Some providers (Slack) require it for
     /// confidential clients; PKCE-only public clients can use an empty string.
     pub client_secret: String,
-    /// Requested scopes.
+    /// Requested scopes (bot-level for Slack, full scope set for everything else).
     pub scopes: Vec<String>,
+    /// Provider-specific extra query params appended to the auth URL.
+    /// Slack uses this to send `user_scope` for the user-level token half
+    /// of its dual-token model. Empty for providers that don't need it.
+    pub extra_auth_params: Vec<(String, String)>,
 }
 
 /// A user's OAuth credential — what `TokenStore` persists.
@@ -42,6 +46,11 @@ pub struct Token {
     pub scope: Option<String>,
     #[serde(default = "default_token_type")]
     pub token_type: String,
+    /// Captures non-RFC-6749 fields the provider returned (e.g. Slack's
+    /// `authed_user` object holding the user-level access token + scopes).
+    /// Default empty so existing on-disk tokens deserialize cleanly.
+    #[serde(default, skip_serializing_if = "serde_json::Map::is_empty")]
+    pub extras: serde_json::Map<String, serde_json::Value>,
 }
 
 fn default_token_type() -> String {
@@ -114,6 +123,10 @@ impl OAuthClient {
             // Google needs these to return a refresh token on subsequent grants.
             q.append_pair("access_type", "offline");
             q.append_pair("prompt", "consent");
+            // Provider-specific extras (e.g. Slack's `user_scope`).
+            for (k, v) in &self.config.extra_auth_params {
+                q.append_pair(k, v);
+            }
         }
 
         AuthRequest {
@@ -201,6 +214,7 @@ impl OAuthClient {
             expires_at,
             scope: raw.scope,
             token_type: raw.token_type.unwrap_or_else(default_token_type),
+            extras: raw.extras,
         })
     }
 }
@@ -216,6 +230,10 @@ struct TokenResponse {
     scope: Option<String>,
     #[serde(default)]
     token_type: Option<String>,
+    /// Anything beyond the standard RFC 6749 fields. Slack's
+    /// `authed_user`, `team`, `enterprise`, etc. land here.
+    #[serde(flatten)]
+    extras: serde_json::Map<String, serde_json::Value>,
 }
 
 // ---------------------------------------------------------------------------
@@ -279,6 +297,7 @@ mod tests {
             client_id: "client-xyz".into(),
             client_secret: "".into(),
             scopes: vec!["read".into(), "write".into()],
+            extra_auth_params: Vec::new(),
         };
         let client = OAuthClient::new(cfg);
         let redirect: Url = "http://127.0.0.1:1234/callback".parse().unwrap();
@@ -349,6 +368,7 @@ mod tests {
             client_id: "cid".into(),
             client_secret: "secret".into(),
             scopes: vec!["read".into()],
+            extra_auth_params: Vec::new(),
         })
     }
 
@@ -400,6 +420,7 @@ mod tests {
             expires_at: Some(Utc::now() - chrono::Duration::seconds(60)),
             scope: None,
             token_type: "Bearer".into(),
+            extras: serde_json::Map::new(),
         };
         assert!(past.is_expired());
 
@@ -409,6 +430,7 @@ mod tests {
             expires_at: Some(Utc::now() + chrono::Duration::seconds(3600)),
             scope: None,
             token_type: "Bearer".into(),
+            extras: serde_json::Map::new(),
         };
         assert!(!future.is_expired());
 
@@ -418,6 +440,7 @@ mod tests {
             expires_at: None,
             scope: None,
             token_type: "Bearer".into(),
+            extras: serde_json::Map::new(),
         };
         assert!(!no_expiry.is_expired());
     }

@@ -194,6 +194,7 @@ mod tests {
             expires_at: Some(Utc::now() + chrono::Duration::seconds(3600)),
             scope: Some("read write".into()),
             token_type: "Bearer".into(),
+            extras: serde_json::Map::new(),
         }
     }
 

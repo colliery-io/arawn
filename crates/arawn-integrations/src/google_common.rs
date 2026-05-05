@@ -157,6 +157,7 @@ mod tests {
             expires_at: Some(chrono::Utc::now() + chrono::Duration::hours(1)),
             scope: None,
             token_type: "Bearer".into(),
+            extras: serde_json::Map::new(),
         };
         let oauth = OAuthProviderConfig {
             auth_url: "https://example.com/auth".parse().unwrap(),
@@ -164,6 +165,7 @@ mod tests {
             client_id: "id".into(),
             client_secret: "secret".into(),
             scopes: vec![],
+            extra_auth_params: Vec::new(),
         };
         let store = TokenStoreHandle::new(
             tempfile::tempdir().unwrap().path().to_path_buf(),

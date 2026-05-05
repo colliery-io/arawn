@@ -59,6 +59,7 @@ mod tests {
             expires_at: Some(Utc::now() + chrono::Duration::days(365 * 10)),
             scope: Some("channels:read,chat:write".into()),
             token_type: "Bearer".into(),
+            extras: serde_json::Map::new(),
         };
         let ctx = build_slack_client(&token);
         // The wrapped value should round-trip through the ValueStruct.

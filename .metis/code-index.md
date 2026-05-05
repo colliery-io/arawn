@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-05T16:44:01Z | 193 files | Python, Rust
+> Generated: 2026-05-05T19:43:29Z | 193 files | Python, Rust
 
 ## Project Structure
 
@@ -575,35 +575,35 @@
 
 #### crates/arawn-auth/src/oauth2.rs
 
-- pub `OAuthProviderConfig` struct L22-34 — `{ auth_url: Url, token_url: Url, client_id: String, client_secret: String, scope...` — Static configuration for an OAuth2 provider — not the user's credentials.
-- pub `Token` struct L38-45 — `{ access: String, refresh: Option<String>, expires_at: Option<DateTime<Utc>>, sc...` — A user's OAuth credential — what `TokenStore` persists.
-- pub `is_expired` function L52-57 — `(&self) -> bool` — Uses reqwest for HTTP, sha2 + base64 for the PKCE challenge.
-- pub `AuthRequest` struct L62-69 — `{ authorization_url: Url, csrf_state: String, pkce_verifier: String }` — What `OAuthClient::start_flow` hands back.
-- pub `OAuthClient` struct L71-74 — `{ config: OAuthProviderConfig, http: reqwest::Client }` — Uses reqwest for HTTP, sha2 + base64 for the PKCE challenge.
-- pub `new` function L77-85 — `(config: OAuthProviderConfig) -> Self` — Uses reqwest for HTTP, sha2 + base64 for the PKCE challenge.
-- pub `with_http` function L87-89 — `(config: OAuthProviderConfig, http: reqwest::Client) -> Self` — Uses reqwest for HTTP, sha2 + base64 for the PKCE challenge.
-- pub `start_flow` function L97-124 — `(&self, redirect_uri: &Url) -> AuthRequest` — Generate a PKCE verifier + challenge + CSRF state and build the
-- pub `exchange_code` function L127-144 — `( &self, code: &str, redirect_uri: &Url, pkce_verifier: &str, ) -> Result<Token,...` — Exchange an authorization code for a [`Token`].
-- pub `refresh` function L147-170 — `(&self, refresh_token: &str) -> Result<Token, AuthError>` — Use a refresh token to mint a new access token.
--  `default_token_type` function L47-49 — `() -> String` — Uses reqwest for HTTP, sha2 + base64 for the PKCE challenge.
--  `Token` type L51-58 — `= Token` — Uses reqwest for HTTP, sha2 + base64 for the PKCE challenge.
--  `OAuthClient` type L76-206 — `= OAuthClient` — Uses reqwest for HTTP, sha2 + base64 for the PKCE challenge.
--  `post_token` function L172-205 — `(&self, form: &[(&str, &str)]) -> Result<Token, AuthError>` — Uses reqwest for HTTP, sha2 + base64 for the PKCE challenge.
--  `TokenResponse` struct L209-219 — `{ access_token: String, refresh_token: Option<String>, expires_in: Option<u64>, ...` — Uses reqwest for HTTP, sha2 + base64 for the PKCE challenge.
--  `generate_pkce_verifier` function L226-233 — `() -> String` — 64-character URL-safe random string.
--  `pkce_challenge_s256` function L235-238 — `(verifier: &str) -> String` — Uses reqwest for HTTP, sha2 + base64 for the PKCE challenge.
--  `generate_state` function L240-247 — `() -> String` — Uses reqwest for HTTP, sha2 + base64 for the PKCE challenge.
--  `tests` module L250-424 — `-` — Uses reqwest for HTTP, sha2 + base64 for the PKCE challenge.
--  `pkce_challenge_matches_rfc_7636_example` function L254-259 — `()` — Uses reqwest for HTTP, sha2 + base64 for the PKCE challenge.
--  `pkce_verifier_length` function L262-266 — `()` — Uses reqwest for HTTP, sha2 + base64 for the PKCE challenge.
--  `state_length` function L269-272 — `()` — Uses reqwest for HTTP, sha2 + base64 for the PKCE challenge.
--  `start_flow_includes_required_params` function L275-294 — `()` — Uses reqwest for HTTP, sha2 + base64 for the PKCE challenge.
--  `spawn_token_stub` function L299-343 — `( status: u16, body: &'static str, ) -> (Url, tokio::task::JoinHandle<Vec<u8>>)` — Tiny in-process HTTP stub for the OAuth token endpoint.
--  `client_with_token_url` function L345-353 — `(token_url: Url) -> OAuthClient` — Uses reqwest for HTTP, sha2 + base64 for the PKCE challenge.
--  `exchange_code_decodes_token_response` function L356-372 — `()` — Uses reqwest for HTTP, sha2 + base64 for the PKCE challenge.
--  `refresh_failure_with_400_returns_auth_expired` function L375-382 — `()` — Uses reqwest for HTTP, sha2 + base64 for the PKCE challenge.
--  `refresh_preserves_refresh_token_when_provider_omits_it` function L385-393 — `()` — Uses reqwest for HTTP, sha2 + base64 for the PKCE challenge.
--  `token_is_expired_respects_expiration_time` function L396-423 — `()` — Uses reqwest for HTTP, sha2 + base64 for the PKCE challenge.
+- pub `OAuthProviderConfig` struct L22-38 — `{ auth_url: Url, token_url: Url, client_id: String, client_secret: String, scope...` — Static configuration for an OAuth2 provider — not the user's credentials.
+- pub `Token` struct L42-54 — `{ access: String, refresh: Option<String>, expires_at: Option<DateTime<Utc>>, sc...` — A user's OAuth credential — what `TokenStore` persists.
+- pub `is_expired` function L61-66 — `(&self) -> bool` — Uses reqwest for HTTP, sha2 + base64 for the PKCE challenge.
+- pub `AuthRequest` struct L71-78 — `{ authorization_url: Url, csrf_state: String, pkce_verifier: String }` — What `OAuthClient::start_flow` hands back.
+- pub `OAuthClient` struct L80-83 — `{ config: OAuthProviderConfig, http: reqwest::Client }` — Uses reqwest for HTTP, sha2 + base64 for the PKCE challenge.
+- pub `new` function L86-94 — `(config: OAuthProviderConfig) -> Self` — Uses reqwest for HTTP, sha2 + base64 for the PKCE challenge.
+- pub `with_http` function L96-98 — `(config: OAuthProviderConfig, http: reqwest::Client) -> Self` — Uses reqwest for HTTP, sha2 + base64 for the PKCE challenge.
+- pub `start_flow` function L106-137 — `(&self, redirect_uri: &Url) -> AuthRequest` — Generate a PKCE verifier + challenge + CSRF state and build the
+- pub `exchange_code` function L140-157 — `( &self, code: &str, redirect_uri: &Url, pkce_verifier: &str, ) -> Result<Token,...` — Exchange an authorization code for a [`Token`].
+- pub `refresh` function L160-183 — `(&self, refresh_token: &str) -> Result<Token, AuthError>` — Use a refresh token to mint a new access token.
+-  `default_token_type` function L56-58 — `() -> String` — Uses reqwest for HTTP, sha2 + base64 for the PKCE challenge.
+-  `Token` type L60-67 — `= Token` — Uses reqwest for HTTP, sha2 + base64 for the PKCE challenge.
+-  `OAuthClient` type L85-220 — `= OAuthClient` — Uses reqwest for HTTP, sha2 + base64 for the PKCE challenge.
+-  `post_token` function L185-219 — `(&self, form: &[(&str, &str)]) -> Result<Token, AuthError>` — Uses reqwest for HTTP, sha2 + base64 for the PKCE challenge.
+-  `TokenResponse` struct L223-237 — `{ access_token: String, refresh_token: Option<String>, expires_in: Option<u64>, ...` — Uses reqwest for HTTP, sha2 + base64 for the PKCE challenge.
+-  `generate_pkce_verifier` function L244-251 — `() -> String` — 64-character URL-safe random string.
+-  `pkce_challenge_s256` function L253-256 — `(verifier: &str) -> String` — Uses reqwest for HTTP, sha2 + base64 for the PKCE challenge.
+-  `generate_state` function L258-265 — `() -> String` — Uses reqwest for HTTP, sha2 + base64 for the PKCE challenge.
+-  `tests` module L268-447 — `-` — Uses reqwest for HTTP, sha2 + base64 for the PKCE challenge.
+-  `pkce_challenge_matches_rfc_7636_example` function L272-277 — `()` — Uses reqwest for HTTP, sha2 + base64 for the PKCE challenge.
+-  `pkce_verifier_length` function L280-284 — `()` — Uses reqwest for HTTP, sha2 + base64 for the PKCE challenge.
+-  `state_length` function L287-290 — `()` — Uses reqwest for HTTP, sha2 + base64 for the PKCE challenge.
+-  `start_flow_includes_required_params` function L293-313 — `()` — Uses reqwest for HTTP, sha2 + base64 for the PKCE challenge.
+-  `spawn_token_stub` function L318-362 — `( status: u16, body: &'static str, ) -> (Url, tokio::task::JoinHandle<Vec<u8>>)` — Tiny in-process HTTP stub for the OAuth token endpoint.
+-  `client_with_token_url` function L364-373 — `(token_url: Url) -> OAuthClient` — Uses reqwest for HTTP, sha2 + base64 for the PKCE challenge.
+-  `exchange_code_decodes_token_response` function L376-392 — `()` — Uses reqwest for HTTP, sha2 + base64 for the PKCE challenge.
+-  `refresh_failure_with_400_returns_auth_expired` function L395-402 — `()` — Uses reqwest for HTTP, sha2 + base64 for the PKCE challenge.
+-  `refresh_preserves_refresh_token_when_provider_omits_it` function L405-413 — `()` — Uses reqwest for HTTP, sha2 + base64 for the PKCE challenge.
+-  `token_is_expired_respects_expiration_time` function L416-446 — `()` — Uses reqwest for HTTP, sha2 + base64 for the PKCE challenge.
 
 #### crates/arawn-auth/src/server.rs
 
@@ -644,17 +644,17 @@
 -  `set_file_mode` function L167-171 — `(_path: &Path, _mode: u32) -> Result<(), AuthError>` — System spec's security contract and the sensitive-paths deny list.
 -  `set_dir_mode` function L174-176 — `(path: &Path) -> Result<(), AuthError>` — System spec's security contract and the sensitive-paths deny list.
 -  `set_dir_mode` function L179-181 — `(_path: &Path) -> Result<(), AuthError>` — System spec's security contract and the sensitive-paths deny list.
--  `tests` module L185-301 — `-` — System spec's security contract and the sensitive-paths deny list.
--  `sample_token` function L190-198 — `() -> Token` — System spec's security contract and the sensitive-paths deny list.
--  `save_then_load_round_trip` function L201-209 — `()` — System spec's security contract and the sensitive-paths deny list.
--  `load_missing_returns_none` function L212-216 — `()` — System spec's security contract and the sensitive-paths deny list.
--  `delete_then_load_returns_none` function L219-225 — `()` — System spec's security contract and the sensitive-paths deny list.
--  `delete_nonexistent_is_idempotent` function L228-232 — `()` — System spec's security contract and the sensitive-paths deny list.
--  `tampered_ciphertext_fails_decrypt` function L235-250 — `()` — System spec's security contract and the sensitive-paths deny list.
--  `second_open_reuses_master_key` function L253-262 — `()` — System spec's security contract and the sensitive-paths deny list.
--  `missing_master_key_after_save_fails_clearly` function L265-279 — `()` — System spec's security contract and the sensitive-paths deny list.
--  `provider_name_sanitization_rejects_path_chars` function L282-289 — `()` — System spec's security contract and the sensitive-paths deny list.
--  `master_key_has_restrictive_permissions` function L293-300 — `()` — System spec's security contract and the sensitive-paths deny list.
+-  `tests` module L185-302 — `-` — System spec's security contract and the sensitive-paths deny list.
+-  `sample_token` function L190-199 — `() -> Token` — System spec's security contract and the sensitive-paths deny list.
+-  `save_then_load_round_trip` function L202-210 — `()` — System spec's security contract and the sensitive-paths deny list.
+-  `load_missing_returns_none` function L213-217 — `()` — System spec's security contract and the sensitive-paths deny list.
+-  `delete_then_load_returns_none` function L220-226 — `()` — System spec's security contract and the sensitive-paths deny list.
+-  `delete_nonexistent_is_idempotent` function L229-233 — `()` — System spec's security contract and the sensitive-paths deny list.
+-  `tampered_ciphertext_fails_decrypt` function L236-251 — `()` — System spec's security contract and the sensitive-paths deny list.
+-  `second_open_reuses_master_key` function L254-263 — `()` — System spec's security contract and the sensitive-paths deny list.
+-  `missing_master_key_after_save_fails_clearly` function L266-280 — `()` — System spec's security contract and the sensitive-paths deny list.
+-  `provider_name_sanitization_rejects_path_chars` function L283-290 — `()` — System spec's security contract and the sensitive-paths deny list.
+-  `master_key_has_restrictive_permissions` function L294-301 — `()` — System spec's security contract and the sensitive-paths deny list.
 
 ### crates/arawn-core/src
 
@@ -2642,25 +2642,25 @@
 - pub `SERVICE_NAME` variable L16 — `: &str` — Stable service name.
 - pub `CALENDAR_OAUTH_SCOPE` variable L19 — `: &str` — The OAuth scope Google Calendar reads/writes need.
 - pub `GoogleCalendarProviderConfig` struct L22-26 — `{ auth_url: Url, token_url: Url, scopes: Vec<String> }` — Default Google Calendar OAuth provider config.
-- pub `into_oauth_provider` function L39-47 — `(self, client_id: String, client_secret: String) -> OAuthProviderConfig`
-- pub `GoogleCalendarIntegration` struct L51-56 — `{ data_dir: PathBuf, client_id: String, client_secret: String, provider_config: ...` — Google Calendar integration.
-- pub `new` function L59-66 — `(data_dir: PathBuf, client_id: String, client_secret: String) -> Self`
-- pub `with_provider_config` function L68-71 — `(mut self, config: GoogleCalendarProviderConfig) -> Self`
-- pub `hub` function L75-77 — `(&self) -> Result<CalendarHub, IntegrationError>` — Build a fully-wired `CalendarHub` for tools.
+- pub `into_oauth_provider` function L39-48 — `(self, client_id: String, client_secret: String) -> OAuthProviderConfig`
+- pub `GoogleCalendarIntegration` struct L52-57 — `{ data_dir: PathBuf, client_id: String, client_secret: String, provider_config: ...` — Google Calendar integration.
+- pub `new` function L60-67 — `(data_dir: PathBuf, client_id: String, client_secret: String) -> Self`
+- pub `with_provider_config` function L69-72 — `(mut self, config: GoogleCalendarProviderConfig) -> Self`
+- pub `hub` function L76-78 — `(&self) -> Result<CalendarHub, IntegrationError>` — Build a fully-wired `CalendarHub` for tools.
 -  `GoogleCalendarProviderConfig` type L28-36 — `impl Default for GoogleCalendarProviderConfig`
 -  `default` function L29-35 — `() -> Self`
--  `GoogleCalendarProviderConfig` type L38-48 — `= GoogleCalendarProviderConfig`
--  `GoogleCalendarIntegration` type L58-95 — `= GoogleCalendarIntegration`
--  `oauth_config` function L79-90 — `(&self) -> OAuthProviderConfig`
--  `token_store` function L92-94 — `(&self) -> Result<TokenStore, IntegrationError>`
--  `GoogleCalendarIntegration` type L98-122 — `impl Integration for GoogleCalendarIntegration`
--  `name` function L99-101 — `(&self) -> &str`
--  `is_connected` function L103-108 — `(&self) -> bool`
--  `connect` function L110-115 — `(&self, ctx: &dyn ConnectContext) -> Result<(), IntegrationError>`
--  `disconnect` function L117-121 — `(&self) -> Result<(), IntegrationError>`
--  `tests` module L125-142 — `-`
--  `default_provider_has_calendar_events_scope` function L129-132 — `()`
--  `provider_lifts_into_oauth_config` function L135-141 — `()`
+-  `GoogleCalendarProviderConfig` type L38-49 — `= GoogleCalendarProviderConfig`
+-  `GoogleCalendarIntegration` type L59-96 — `= GoogleCalendarIntegration`
+-  `oauth_config` function L80-91 — `(&self) -> OAuthProviderConfig`
+-  `token_store` function L93-95 — `(&self) -> Result<TokenStore, IntegrationError>`
+-  `GoogleCalendarIntegration` type L99-123 — `impl Integration for GoogleCalendarIntegration`
+-  `name` function L100-102 — `(&self) -> &str`
+-  `is_connected` function L104-109 — `(&self) -> bool`
+-  `connect` function L111-116 — `(&self, ctx: &dyn ConnectContext) -> Result<(), IntegrationError>`
+-  `disconnect` function L118-122 — `(&self) -> Result<(), IntegrationError>`
+-  `tests` module L126-143 — `-`
+-  `default_provider_has_calendar_events_scope` function L130-133 — `()`
+-  `provider_lifts_into_oauth_config` function L136-142 — `()`
 
 #### crates/arawn-integrations/src/calendar/mod.rs
 
@@ -2767,8 +2767,8 @@
 -  `ArawnGetToken` type L91-101 — `= ArawnGetToken` — we hand it.
 -  `ArawnGetToken` type L103-146 — `impl GetToken for ArawnGetToken` — we hand it.
 -  `get_token` function L104-145 — `( &'a self, _scopes: &'a [&str], ) -> std::pin::Pin< Box< dyn std::future::Futur...` — we hand it.
--  `tests` module L149-176 — `-` — we hand it.
--  `unexpired_token_returned_directly_no_refresh` function L153-175 — `()` — we hand it.
+-  `tests` module L149-178 — `-` — we hand it.
+-  `unexpired_token_returned_directly_no_refresh` function L153-177 — `()` — we hand it.
 
 #### crates/arawn-integrations/src/integration.rs
 
@@ -2814,25 +2814,25 @@
 
 - pub `SERVICE_NAME` variable L16 — `: &str` — Stable service name.
 - pub `GmailProviderConfig` struct L20-24 — `{ auth_url: Url, token_url: Url, scopes: Vec<String> }` — Standard Gmail OAuth provider configuration.
-- pub `into_oauth_provider` function L44-52 — `(self, client_id: String, client_secret: String) -> OAuthProviderConfig` — Build the underlying [`OAuthProviderConfig`] given a client_id /
-- pub `GmailIntegration` struct L57-67 — `{ data_dir: PathBuf, client_id: String, client_secret: String, provider_config: ...` — Gmail integration.
-- pub `new` function L71-78 — `(data_dir: PathBuf, client_id: String, client_secret: String) -> Self` — Standard constructor.
-- pub `with_provider_config` function L81-84 — `(mut self, config: GmailProviderConfig) -> Self` — Override the OAuth provider config — used by tests.
-- pub `hub` function L88-91 — `(&self) -> Result<GmailHub, IntegrationError>` — Build a fully-wired `Gmail` Hub for tools.
+- pub `into_oauth_provider` function L44-53 — `(self, client_id: String, client_secret: String) -> OAuthProviderConfig` — Build the underlying [`OAuthProviderConfig`] given a client_id /
+- pub `GmailIntegration` struct L58-68 — `{ data_dir: PathBuf, client_id: String, client_secret: String, provider_config: ...` — Gmail integration.
+- pub `new` function L72-79 — `(data_dir: PathBuf, client_id: String, client_secret: String) -> Self` — Standard constructor.
+- pub `with_provider_config` function L82-85 — `(mut self, config: GmailProviderConfig) -> Self` — Override the OAuth provider config — used by tests.
+- pub `hub` function L89-92 — `(&self) -> Result<GmailHub, IntegrationError>` — Build a fully-wired `Gmail` Hub for tools.
 -  `GmailProviderConfig` type L26-38 — `impl Default for GmailProviderConfig`
 -  `default` function L27-37 — `() -> Self`
--  `GmailProviderConfig` type L40-53 — `= GmailProviderConfig`
--  `GmailIntegration` type L69-109 — `= GmailIntegration`
--  `oauth_config` function L93-104 — `(&self) -> OAuthProviderConfig`
--  `token_store` function L106-108 — `(&self) -> Result<TokenStore, IntegrationError>`
--  `GmailIntegration` type L112-139 — `impl Integration for GmailIntegration`
--  `name` function L113-115 — `(&self) -> &str`
--  `is_connected` function L117-125 — `(&self) -> bool`
--  `connect` function L127-132 — `(&self, ctx: &dyn ConnectContext) -> Result<(), IntegrationError>`
--  `disconnect` function L134-138 — `(&self) -> Result<(), IntegrationError>`
--  `tests` module L142-163 — `-`
--  `default_provider_has_three_gmail_scopes` function L146-152 — `()`
--  `provider_lifts_into_oauth_config` function L155-162 — `()`
+-  `GmailProviderConfig` type L40-54 — `= GmailProviderConfig`
+-  `GmailIntegration` type L70-110 — `= GmailIntegration`
+-  `oauth_config` function L94-105 — `(&self) -> OAuthProviderConfig`
+-  `token_store` function L107-109 — `(&self) -> Result<TokenStore, IntegrationError>`
+-  `GmailIntegration` type L113-140 — `impl Integration for GmailIntegration`
+-  `name` function L114-116 — `(&self) -> &str`
+-  `is_connected` function L118-126 — `(&self) -> bool`
+-  `connect` function L128-133 — `(&self, ctx: &dyn ConnectContext) -> Result<(), IntegrationError>`
+-  `disconnect` function L135-139 — `(&self) -> Result<(), IntegrationError>`
+-  `tests` module L143-164 — `-`
+-  `default_provider_has_three_gmail_scopes` function L147-153 — `()`
+-  `provider_lifts_into_oauth_config` function L156-163 — `()`
 
 #### crates/arawn-integrations/src/gmail/mod.rs
 
@@ -2920,37 +2920,43 @@
 - pub `session` function L24-26 — `(&self) -> SlackClientSession<'_, SlackClientHyperHttpsConnector>` — Convenience: open a slack-morphism session against the bundled token.
 - pub `build_slack_client` function L33-40 — `(token: &Token) -> SlackContext` — Build a [`SlackContext`] from a persisted `arawn_auth::Token`.
 -  `SlackContext` type L21-27 — `= SlackContext` — time.
--  `tests` module L43-68 — `-` — time.
--  `build_constructs_bot_token_from_access` function L49-67 — `()` — time.
+-  `tests` module L43-69 — `-` — time.
+-  `build_constructs_bot_token_from_access` function L49-68 — `()` — time.
 
 #### crates/arawn-integrations/src/slack/integration.rs
 
 - pub `SERVICE_NAME` variable L15 — `: &str` — Stable service name.
-- pub `SLACK_OAUTH_SCOPES` variable L24-44 — `: &[&str]` — Bot scopes requested at OAuth time.
-- pub `SlackProviderConfig` struct L48-57 — `{ auth_url: Url, token_url: Url, scopes: Vec<String>, redirect_port: u16 }` — Slack OAuth v2 provider config.
-- pub `DEFAULT_SLACK_REDIRECT_PORT` variable L63 — `: u16` — Default callback port for Slack.
-- pub `into_oauth_provider` function L77-85 — `(self, client_id: String, client_secret: String) -> OAuthProviderConfig`
-- pub `SlackIntegration` struct L89-94 — `{ data_dir: PathBuf, client_id: String, client_secret: String, provider_config: ...` — Slack integration.
-- pub `new` function L97-104 — `(data_dir: PathBuf, client_id: String, client_secret: String) -> Self`
-- pub `with_provider_config` function L106-109 — `(mut self, config: SlackProviderConfig) -> Self`
-- pub `context` function L114-120 — `(&self) -> Result<SlackContext, IntegrationError>` — Build a fresh `SlackContext` for tool calls.
-- pub `granted_scopes` function L126-138 — `(&self) -> Result<std::collections::HashSet<String>, IntegrationError>` — Return the set of scopes granted at OAuth time, parsed from the
--  `SlackProviderConfig` type L65-74 — `impl Default for SlackProviderConfig`
--  `default` function L66-73 — `() -> Self`
--  `SlackProviderConfig` type L76-86 — `= SlackProviderConfig`
--  `SlackIntegration` type L96-159 — `= SlackIntegration`
--  `oauth_config` function L140-142 — `(&self) -> OAuthProviderConfig`
--  `provider` function L144-154 — `(&self) -> SlackProviderConfig`
--  `token_store` function L156-158 — `(&self) -> Result<TokenStore, IntegrationError>`
--  `SlackIntegration` type L162-214 — `impl Integration for SlackIntegration`
--  `name` function L163-165 — `(&self) -> &str`
--  `is_connected` function L167-172 — `(&self) -> bool`
--  `connect` function L174-188 — `(&self, ctx: &dyn ConnectContext) -> Result<(), IntegrationError>`
--  `disconnect` function L190-194 — `(&self) -> Result<(), IntegrationError>`
--  `capabilities_summary` function L196-213 — `(&self) -> Option<String>`
--  `tests` module L217-243 — `-`
--  `default_provider_carries_fourteen_bot_scopes` function L221-232 — `()`
--  `provider_lifts_into_oauth_config` function L235-242 — `()`
+- pub `SLACK_OAUTH_SCOPES` variable L24-51 — `: &[&str]` — Bot scopes requested at OAuth time.
+- pub `SLACK_OAUTH_USER_SCOPES` variable L77-88 — `: &[&str]` — User-token scopes — the second leg of Slack's dual-token OAuth model.
+- pub `SlackProviderConfig` struct L92-101 — `{ auth_url: Url, token_url: Url, scopes: Vec<String>, redirect_port: u16 }` — Slack OAuth v2 provider config.
+- pub `DEFAULT_SLACK_REDIRECT_PORT` variable L107 — `: u16` — Default callback port for Slack.
+- pub `into_oauth_provider` function L121-135 — `(self, client_id: String, client_secret: String) -> OAuthProviderConfig`
+- pub `SlackIntegration` struct L139-144 — `{ data_dir: PathBuf, client_id: String, client_secret: String, provider_config: ...` — Slack integration.
+- pub `new` function L147-154 — `(data_dir: PathBuf, client_id: String, client_secret: String) -> Self`
+- pub `with_provider_config` function L156-159 — `(mut self, config: SlackProviderConfig) -> Self`
+- pub `context` function L164-166 — `(&self) -> Result<SlackContext, IntegrationError>` — Build a `SlackContext` backed by the **bot** token.
+- pub `bot_context` function L170-173 — `(&self) -> Result<SlackContext, IntegrationError>` — Same as [`Self::context`] — kept as the canonical name for the
+- pub `user_context` function L185-213 — `(&self) -> Result<SlackContext, IntegrationError>` — Build a `SlackContext` backed by the **user** token (the half of
+- pub `granted_scopes` function L226-229 — `(&self) -> Result<std::collections::HashSet<String>, IntegrationError>` — Bot-token scope set from the persisted token's `scope` field.
+- pub `granted_user_scopes` function L234-245 — `( &self, ) -> Result<std::collections::HashSet<String>, IntegrationError>` — User-token scope set from `extras.authed_user.scope`.
+-  `parse_scope_string` function L55-60 — `(s: &str) -> std::collections::HashSet<String>` — Split a Slack-style scope string (comma- or whitespace-delimited)
+-  `SlackProviderConfig` type L109-118 — `impl Default for SlackProviderConfig`
+-  `default` function L110-117 — `() -> Self`
+-  `SlackProviderConfig` type L120-136 — `= SlackProviderConfig`
+-  `SlackIntegration` type L146-266 — `= SlackIntegration`
+-  `load_token` function L215-220 — `(&self) -> Result<arawn_auth::Token, IntegrationError>`
+-  `oauth_config` function L247-249 — `(&self) -> OAuthProviderConfig`
+-  `provider` function L251-261 — `(&self) -> SlackProviderConfig`
+-  `token_store` function L263-265 — `(&self) -> Result<TokenStore, IntegrationError>`
+-  `SlackIntegration` type L269-338 — `impl Integration for SlackIntegration`
+-  `name` function L270-272 — `(&self) -> &str`
+-  `is_connected` function L274-279 — `(&self) -> bool`
+-  `connect` function L281-295 — `(&self, ctx: &dyn ConnectContext) -> Result<(), IntegrationError>`
+-  `disconnect` function L297-301 — `(&self) -> Result<(), IntegrationError>`
+-  `capabilities_summary` function L303-337 — `(&self) -> Option<String>`
+-  `tests` module L341-369 — `-`
+-  `default_provider_carries_sixteen_bot_scopes` function L345-358 — `()`
+-  `provider_lifts_into_oauth_config` function L361-368 — `()`
 
 #### crates/arawn-integrations/src/slack/mod.rs
 
@@ -2960,97 +2966,101 @@
 
 #### crates/arawn-integrations/src/slack/tools.rs
 
-- pub `SlackListChannelsTool` struct L166-169 — `{ integration: Arc<SlackIntegration>, description: String }` — questions in the meantime.
-- pub `new` function L172-177 — `(integration: Arc<SlackIntegration>) -> Self` — questions in the meantime.
-- pub `SlackHistoryTool` struct L269-272 — `{ integration: Arc<SlackIntegration>, description: String }` — questions in the meantime.
-- pub `new` function L275-280 — `(integration: Arc<SlackIntegration>) -> Self` — questions in the meantime.
-- pub `SlackPostTool` struct L364-367 — `{ integration: Arc<SlackIntegration>, description: String }` — questions in the meantime.
-- pub `new` function L376-381 — `(integration: Arc<SlackIntegration>) -> Self` — questions in the meantime.
-- pub `SlackReactTool` struct L462-465 — `{ integration: Arc<SlackIntegration>, description: String }` — questions in the meantime.
-- pub `new` function L468-473 — `(integration: Arc<SlackIntegration>) -> Self` — questions in the meantime.
-- pub `SlackUsersListTool` struct L576-579 — `{ integration: Arc<SlackIntegration>, description: String }` — questions in the meantime.
-- pub `new` function L582-587 — `(integration: Arc<SlackIntegration>) -> Self` — questions in the meantime.
-- pub `SlackOpenDmTool` struct L660-663 — `{ integration: Arc<SlackIntegration>, description: String }` — questions in the meantime.
-- pub `new` function L666-671 — `(integration: Arc<SlackIntegration>) -> Self` — questions in the meantime.
+- pub `SlackListChannelsTool` struct L218-221 — `{ integration: Arc<SlackIntegration>, description: String }` — questions in the meantime.
+- pub `new` function L224-229 — `(integration: Arc<SlackIntegration>) -> Self` — questions in the meantime.
+- pub `SlackHistoryTool` struct L312-315 — `{ integration: Arc<SlackIntegration>, description: String }` — questions in the meantime.
+- pub `new` function L318-323 — `(integration: Arc<SlackIntegration>) -> Self` — questions in the meantime.
+- pub `SlackPostTool` struct L414-417 — `{ integration: Arc<SlackIntegration>, description: String }` — questions in the meantime.
+- pub `new` function L426-431 — `(integration: Arc<SlackIntegration>) -> Self` — questions in the meantime.
+- pub `SlackReactTool` struct L512-515 — `{ integration: Arc<SlackIntegration>, description: String }` — questions in the meantime.
+- pub `new` function L518-523 — `(integration: Arc<SlackIntegration>) -> Self` — questions in the meantime.
+- pub `SlackUsersListTool` struct L626-629 — `{ integration: Arc<SlackIntegration>, description: String }` — questions in the meantime.
+- pub `new` function L632-637 — `(integration: Arc<SlackIntegration>) -> Self` — questions in the meantime.
+- pub `SlackOpenDmTool` struct L711-714 — `{ integration: Arc<SlackIntegration>, description: String }` — questions in the meantime.
+- pub `new` function L717-726 — `(integration: Arc<SlackIntegration>) -> Self` — questions in the meantime.
 -  `scope_footer` function L31-37 — `(scopes: &[&str]) -> String` — Format a scope footer for tool descriptions.
--  `granted_scopes` function L42-45 — `(integration: &SlackIntegration) -> Result<HashSet<String>, ToolError>` — Read the granted scope set from the persisted token, splitting on
--  `check_scopes` function L50-66 — `(integration: &SlackIntegration, required: &[&str]) -> Result<(), ToolError>` — Verify the persisted token covers `required`.
--  `integ_err` function L68-70 — `(e: crate::IntegrationError) -> ToolError` — questions in the meantime.
--  `slack_err` function L74-76 — `(stage: &str, e: slack_morphism::errors::SlackClientError) -> ToolError` — `slack-morphism::ClientError` → `ToolError`.
--  `ChannelSummary` struct L82-90 — `{ id: String, name: Option<String>, kind: String, member_count: Option<u64>, is_...` — Compact, agent-friendly channel summary.
--  `summarize_channel` function L92-111 — `(c: &slack_morphism::prelude::SlackChannelInfo) -> ChannelSummary` — questions in the meantime.
--  `MessageSummary` struct L115-126 — `{ ts: String, user: Option<String>, text: Option<String>, thread_ts: Option<Stri...` — Compact message record — what the agent sees from `slack_history`.
--  `ReactionSummary` struct L129-132 — `{ name: String, count: usize }` — questions in the meantime.
--  `summarize_message` function L134-157 — `(m: &slack_morphism::prelude::SlackHistoryMessage) -> MessageSummary` — questions in the meantime.
--  `SLACK_LIST_CHANNELS_BASE` variable L161-163 — `: &str` — questions in the meantime.
--  `SLACK_LIST_CHANNELS_SCOPES` variable L164 — `: &[&str]` — questions in the meantime.
--  `SlackListChannelsTool` type L171-178 — `= SlackListChannelsTool` — questions in the meantime.
--  `SlackListChannelsTool` type L181-257 — `impl Tool for SlackListChannelsTool` — questions in the meantime.
--  `name` function L182-184 — `(&self) -> &str` — questions in the meantime.
--  `description` function L185-187 — `(&self) -> &str` — questions in the meantime.
--  `category` function L188-190 — `(&self) -> ToolCategory` — questions in the meantime.
--  `permission_category` function L191-193 — `(&self) -> PermissionCategory` — questions in the meantime.
--  `parameters_schema` function L194-214 — `(&self) -> Value` — questions in the meantime.
--  `execute` function L215-256 — `(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError>` — questions in the meantime.
--  `SLACK_HISTORY_BASE` variable L261-263 — `: &str` — questions in the meantime.
--  `SLACK_HISTORY_SCOPES` variable L267 — `: &[&str]` — `channels:history` covers public channels (C-prefixed).
--  `SlackHistoryTool` type L274-281 — `= SlackHistoryTool` — questions in the meantime.
--  `SlackHistoryTool` type L284-360 — `impl Tool for SlackHistoryTool` — questions in the meantime.
--  `name` function L285-287 — `(&self) -> &str` — questions in the meantime.
--  `description` function L288-290 — `(&self) -> &str` — questions in the meantime.
--  `category` function L291-293 — `(&self) -> ToolCategory` — questions in the meantime.
--  `permission_category` function L294-296 — `(&self) -> PermissionCategory` — questions in the meantime.
--  `parameters_schema` function L297-322 — `(&self) -> Value` — questions in the meantime.
--  `execute` function L323-359 — `(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError>` — questions in the meantime.
--  `SLACK_POST_BASE` variable L369-372 — `: &str` — questions in the meantime.
--  `SLACK_POST_SCOPES` variable L373 — `: &[&str]` — questions in the meantime.
--  `SlackPostTool` type L375-382 — `= SlackPostTool` — questions in the meantime.
--  `SlackPostTool` type L385-454 — `impl Tool for SlackPostTool` — questions in the meantime.
--  `name` function L386-388 — `(&self) -> &str` — questions in the meantime.
--  `description` function L389-391 — `(&self) -> &str` — questions in the meantime.
--  `category` function L392-394 — `(&self) -> ToolCategory` — questions in the meantime.
--  `permission_category` function L395-397 — `(&self) -> PermissionCategory` — questions in the meantime.
--  `parameters_schema` function L398-417 — `(&self) -> Value` — questions in the meantime.
--  `execute` function L418-453 — `(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError>` — questions in the meantime.
--  `SLACK_REACT_BASE` variable L458-459 — `: &str` — questions in the meantime.
--  `SLACK_REACT_SCOPES` variable L460 — `: &[&str]` — questions in the meantime.
--  `SlackReactTool` type L467-474 — `= SlackReactTool` — questions in the meantime.
--  `SlackReactTool` type L477-534 — `impl Tool for SlackReactTool` — questions in the meantime.
--  `name` function L478-480 — `(&self) -> &str` — questions in the meantime.
--  `description` function L481-483 — `(&self) -> &str` — questions in the meantime.
--  `category` function L484-486 — `(&self) -> ToolCategory` — questions in the meantime.
--  `permission_category` function L487-489 — `(&self) -> PermissionCategory` — questions in the meantime.
--  `parameters_schema` function L490-500 — `(&self) -> Value` — questions in the meantime.
--  `execute` function L501-533 — `(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError>` — questions in the meantime.
--  `UserSummary` struct L541-553 — `{ id: String, name: Option<String>, real_name: Option<String>, display_name: Opt...` — Compact user record.
--  `summarize_user` function L555-567 — `(u: &slack_morphism::prelude::SlackUser) -> UserSummary` — questions in the meantime.
--  `SLACK_USERS_LIST_BASE` variable L569-573 — `: &str` — questions in the meantime.
--  `SLACK_USERS_LIST_SCOPES` variable L574 — `: &[&str]` — questions in the meantime.
--  `SlackUsersListTool` type L581-588 — `= SlackUsersListTool` — questions in the meantime.
--  `SlackUsersListTool` type L591-647 — `impl Tool for SlackUsersListTool` — questions in the meantime.
--  `name` function L592-594 — `(&self) -> &str` — questions in the meantime.
--  `description` function L595-597 — `(&self) -> &str` — questions in the meantime.
--  `category` function L598-600 — `(&self) -> ToolCategory` — questions in the meantime.
--  `permission_category` function L601-603 — `(&self) -> PermissionCategory` — questions in the meantime.
--  `parameters_schema` function L604-624 — `(&self) -> Value` — questions in the meantime.
--  `execute` function L625-646 — `(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError>` — questions in the meantime.
--  `SLACK_OPEN_DM_BASE` variable L651-654 — `: &str` — questions in the meantime.
--  `SLACK_OPEN_DM_SCOPES` variable L658 — `: &[&str]` — `conversations.open` works with either chat:write (typical bot config)
--  `SlackOpenDmTool` type L665-672 — `= SlackOpenDmTool` — questions in the meantime.
--  `SlackOpenDmTool` type L675-735 — `impl Tool for SlackOpenDmTool` — questions in the meantime.
--  `name` function L676-678 — `(&self) -> &str` — questions in the meantime.
--  `description` function L679-681 — `(&self) -> &str` — questions in the meantime.
--  `category` function L682-684 — `(&self) -> ToolCategory` — questions in the meantime.
--  `permission_category` function L685-690 — `(&self) -> PermissionCategory` — questions in the meantime.
--  `parameters_schema` function L691-703 — `(&self) -> Value` — questions in the meantime.
--  `execute` function L704-734 — `(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError>` — questions in the meantime.
--  `tests` module L738-857 — `-` — questions in the meantime.
--  `channel` function L746-760 — `(id: &str, kind: &str) -> SlackChannelInfo` — questions in the meantime.
--  `summarize_channel_classifies_kind_correctly` function L763-772 — `()` — questions in the meantime.
--  `summarize_channel_carries_topic_and_purpose` function L775-784 — `()` — questions in the meantime.
--  `summarize_message_extracts_user_text_and_reactions` function L787-814 — `()` — questions in the meantime.
--  `summarize_user_extracts_handle_and_profile_fields` function L817-844 — `()` — questions in the meantime.
--  `summarize_user_handles_minimal_record` function L847-856 — `()` — questions in the meantime.
+-  `granted_scopes` function L40-42 — `(integration: &SlackIntegration) -> Result<HashSet<String>, ToolError>` — Read the granted bot-token scope set from the persisted token.
+-  `granted_user_scopes` function L46-48 — `(integration: &SlackIntegration) -> Result<HashSet<String>, ToolError>` — Read the granted user-token scope set from the persisted token.
+-  `check_scopes` function L52-54 — `(integration: &SlackIntegration, required: &[&str]) -> Result<(), ToolError>` — Verify the persisted **bot** token covers `required`.
+-  `check_user_scopes` function L57-66 — `( integration: &SlackIntegration, required: &[&str], ) -> Result<(), ToolError>` — Verify the persisted **user** token covers `required`.
+-  `check_in_set` function L68-87 — `( granted: &HashSet<String>, required: &[&str], section_label: &str, ) -> Result...` — questions in the meantime.
+-  `read_ctx_for_listing` function L92-118 — `( integration: &SlackIntegration, include_private: bool, include_dms: bool, ) ->...` — Pick the read context for `slack_list_channels`.
+-  `integ_err` function L120-122 — `(e: crate::IntegrationError) -> ToolError` — questions in the meantime.
+-  `slack_err` function L126-128 — `(stage: &str, e: slack_morphism::errors::SlackClientError) -> ToolError` — `slack-morphism::ClientError` → `ToolError`.
+-  `ChannelSummary` struct L134-142 — `{ id: String, name: Option<String>, kind: String, member_count: Option<u64>, is_...` — Compact, agent-friendly channel summary.
+-  `summarize_channel` function L144-163 — `(c: &slack_morphism::prelude::SlackChannelInfo) -> ChannelSummary` — questions in the meantime.
+-  `MessageSummary` struct L167-178 — `{ ts: String, user: Option<String>, text: Option<String>, thread_ts: Option<Stri...` — Compact message record — what the agent sees from `slack_history`.
+-  `ReactionSummary` struct L181-184 — `{ name: String, count: usize }` — questions in the meantime.
+-  `summarize_message` function L186-209 — `(m: &slack_morphism::prelude::SlackHistoryMessage) -> MessageSummary` — questions in the meantime.
+-  `SLACK_LIST_CHANNELS_BASE` variable L213-215 — `: &str` — questions in the meantime.
+-  `SLACK_LIST_CHANNELS_SCOPES` variable L216 — `: &[&str]` — questions in the meantime.
+-  `SlackListChannelsTool` type L223-230 — `= SlackListChannelsTool` — questions in the meantime.
+-  `SlackListChannelsTool` type L233-300 — `impl Tool for SlackListChannelsTool` — questions in the meantime.
+-  `name` function L234-236 — `(&self) -> &str` — questions in the meantime.
+-  `description` function L237-239 — `(&self) -> &str` — questions in the meantime.
+-  `category` function L240-242 — `(&self) -> ToolCategory` — questions in the meantime.
+-  `permission_category` function L243-245 — `(&self) -> PermissionCategory` — questions in the meantime.
+-  `parameters_schema` function L246-266 — `(&self) -> Value` — questions in the meantime.
+-  `execute` function L267-299 — `(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError>` — questions in the meantime.
+-  `SLACK_HISTORY_BASE` variable L304-306 — `: &str` — questions in the meantime.
+-  `SLACK_HISTORY_SCOPES` variable L310 — `: &[&str]` — `channels:history` covers public channels (C-prefixed).
+-  `SlackHistoryTool` type L317-324 — `= SlackHistoryTool` — questions in the meantime.
+-  `SlackHistoryTool` type L327-410 — `impl Tool for SlackHistoryTool` — questions in the meantime.
+-  `name` function L328-330 — `(&self) -> &str` — questions in the meantime.
+-  `description` function L331-333 — `(&self) -> &str` — questions in the meantime.
+-  `category` function L334-336 — `(&self) -> ToolCategory` — questions in the meantime.
+-  `permission_category` function L337-339 — `(&self) -> PermissionCategory` — questions in the meantime.
+-  `parameters_schema` function L340-365 — `(&self) -> Value` — questions in the meantime.
+-  `execute` function L366-409 — `(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError>` — questions in the meantime.
+-  `SLACK_POST_BASE` variable L419-422 — `: &str` — questions in the meantime.
+-  `SLACK_POST_SCOPES` variable L423 — `: &[&str]` — questions in the meantime.
+-  `SlackPostTool` type L425-432 — `= SlackPostTool` — questions in the meantime.
+-  `SlackPostTool` type L435-504 — `impl Tool for SlackPostTool` — questions in the meantime.
+-  `name` function L436-438 — `(&self) -> &str` — questions in the meantime.
+-  `description` function L439-441 — `(&self) -> &str` — questions in the meantime.
+-  `category` function L442-444 — `(&self) -> ToolCategory` — questions in the meantime.
+-  `permission_category` function L445-447 — `(&self) -> PermissionCategory` — questions in the meantime.
+-  `parameters_schema` function L448-467 — `(&self) -> Value` — questions in the meantime.
+-  `execute` function L468-503 — `(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError>` — questions in the meantime.
+-  `SLACK_REACT_BASE` variable L508-509 — `: &str` — questions in the meantime.
+-  `SLACK_REACT_SCOPES` variable L510 — `: &[&str]` — questions in the meantime.
+-  `SlackReactTool` type L517-524 — `= SlackReactTool` — questions in the meantime.
+-  `SlackReactTool` type L527-584 — `impl Tool for SlackReactTool` — questions in the meantime.
+-  `name` function L528-530 — `(&self) -> &str` — questions in the meantime.
+-  `description` function L531-533 — `(&self) -> &str` — questions in the meantime.
+-  `category` function L534-536 — `(&self) -> ToolCategory` — questions in the meantime.
+-  `permission_category` function L537-539 — `(&self) -> PermissionCategory` — questions in the meantime.
+-  `parameters_schema` function L540-550 — `(&self) -> Value` — questions in the meantime.
+-  `execute` function L551-583 — `(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError>` — questions in the meantime.
+-  `UserSummary` struct L591-603 — `{ id: String, name: Option<String>, real_name: Option<String>, display_name: Opt...` — Compact user record.
+-  `summarize_user` function L605-617 — `(u: &slack_morphism::prelude::SlackUser) -> UserSummary` — questions in the meantime.
+-  `SLACK_USERS_LIST_BASE` variable L619-623 — `: &str` — questions in the meantime.
+-  `SLACK_USERS_LIST_SCOPES` variable L624 — `: &[&str]` — questions in the meantime.
+-  `SlackUsersListTool` type L631-638 — `= SlackUsersListTool` — questions in the meantime.
+-  `SlackUsersListTool` type L641-697 — `impl Tool for SlackUsersListTool` — questions in the meantime.
+-  `name` function L642-644 — `(&self) -> &str` — questions in the meantime.
+-  `description` function L645-647 — `(&self) -> &str` — questions in the meantime.
+-  `category` function L648-650 — `(&self) -> ToolCategory` — questions in the meantime.
+-  `permission_category` function L651-653 — `(&self) -> PermissionCategory` — questions in the meantime.
+-  `parameters_schema` function L654-674 — `(&self) -> Value` — questions in the meantime.
+-  `execute` function L675-696 — `(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError>` — questions in the meantime.
+-  `SLACK_OPEN_DM_BASE` variable L701-704 — `: &str` — questions in the meantime.
+-  `SLACK_OPEN_DM_SCOPE_HINT` variable L709 — `: &[&str]` — `conversations.open` requires `im:write` for 1:1 DMs and `mpim:write`
+-  `SlackOpenDmTool` type L716-727 — `= SlackOpenDmTool` — questions in the meantime.
+-  `SlackOpenDmTool` type L730-799 — `impl Tool for SlackOpenDmTool` — questions in the meantime.
+-  `name` function L731-733 — `(&self) -> &str` — questions in the meantime.
+-  `description` function L734-736 — `(&self) -> &str` — questions in the meantime.
+-  `category` function L737-739 — `(&self) -> ToolCategory` — questions in the meantime.
+-  `permission_category` function L740-745 — `(&self) -> PermissionCategory` — questions in the meantime.
+-  `parameters_schema` function L746-758 — `(&self) -> Value` — questions in the meantime.
+-  `execute` function L759-798 — `(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError>` — questions in the meantime.
+-  `tests` module L802-921 — `-` — questions in the meantime.
+-  `channel` function L810-824 — `(id: &str, kind: &str) -> SlackChannelInfo` — questions in the meantime.
+-  `summarize_channel_classifies_kind_correctly` function L827-836 — `()` — questions in the meantime.
+-  `summarize_channel_carries_topic_and_purpose` function L839-848 — `()` — questions in the meantime.
+-  `summarize_message_extracts_user_text_and_reactions` function L851-878 — `()` — questions in the meantime.
+-  `summarize_user_extracts_handle_and_profile_fields` function L881-908 — `()` — questions in the meantime.
+-  `summarize_user_handles_minimal_record` function L911-920 — `()` — questions in the meantime.
 
 ### crates/arawn-llm/src
 

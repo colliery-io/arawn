@@ -48,6 +48,7 @@ impl GmailProviderConfig {
             client_id,
             client_secret,
             scopes: self.scopes,
+            extra_auth_params: Vec::new(),
         }
     }
 }

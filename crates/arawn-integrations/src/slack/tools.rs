@@ -36,19 +36,40 @@ fn scope_footer(scopes: &[&str]) -> String {
     }
 }
 
-/// Read the granted scope set from the persisted token, splitting on
-/// either commas (Slack's encoding) or whitespace (RFC 6749 default) so
-/// we don't depend on which delimiter the provider used.
+/// Read the granted bot-token scope set from the persisted token.
 fn granted_scopes(integration: &SlackIntegration) -> Result<HashSet<String>, ToolError> {
-    let scopes = integration.granted_scopes().map_err(integ_err)?;
-    Ok(scopes)
+    integration.granted_scopes().map_err(integ_err)
 }
 
-/// Verify the persisted token covers `required`. Returns a clean
-/// `ToolError` naming the specific missing scopes — the LLM can then
-/// tell the user exactly what to add to their Slack app.
+/// Read the granted user-token scope set from the persisted token.
+/// Returns an empty set if no user token is present (older installs).
+fn granted_user_scopes(integration: &SlackIntegration) -> Result<HashSet<String>, ToolError> {
+    integration.granted_user_scopes().map_err(integ_err)
+}
+
+/// Verify the persisted **bot** token covers `required`. Returns a clean
+/// `ToolError` naming the specific missing scopes.
 fn check_scopes(integration: &SlackIntegration, required: &[&str]) -> Result<(), ToolError> {
-    let granted = granted_scopes(integration)?;
+    check_in_set(&granted_scopes(integration)?, required, "Bot Token Scopes")
+}
+
+/// Verify the persisted **user** token covers `required`.
+fn check_user_scopes(
+    integration: &SlackIntegration,
+    required: &[&str],
+) -> Result<(), ToolError> {
+    check_in_set(
+        &granted_user_scopes(integration)?,
+        required,
+        "User Token Scopes",
+    )
+}
+
+fn check_in_set(
+    granted: &HashSet<String>,
+    required: &[&str],
+    section_label: &str,
+) -> Result<(), ToolError> {
     let missing: Vec<&str> = required
         .iter()
         .copied()
@@ -58,11 +79,42 @@ fn check_scopes(integration: &SlackIntegration, required: &[&str]) -> Result<(),
         Ok(())
     } else {
         Err(ToolError::ExecutionFailed(format!(
-            "Missing Slack scope(s): {}. Add to your Slack app's Bot Token Scopes \
+            "Missing Slack scope(s): {}. Add to your Slack app's {section_label} \
              (api.slack.com/apps → OAuth & Permissions), reinstall, then run /connect slack.",
             missing.join(", ")
         )))
     }
+}
+
+/// Pick the read context for `slack_list_channels`. Prefer the user
+/// token if it has the right history scope set for the requested
+/// channel types; fall back to bot context with the bot scope check.
+fn read_ctx_for_listing(
+    integration: &SlackIntegration,
+    include_private: bool,
+    include_dms: bool,
+) -> Result<crate::slack::SlackContext, ToolError> {
+    // Always need channels:read for public; conditional reads:
+    //   include_private → groups:read
+    //   include_dms     → im:read + mpim:read
+    let mut required: Vec<&str> = vec!["channels:read"];
+    if include_private {
+        required.push("groups:read");
+    }
+    if include_dms {
+        required.push("im:read");
+        required.push("mpim:read");
+    }
+    // Try user side first.
+    if integration.user_context().is_ok()
+        && check_user_scopes(integration, &required).is_ok()
+    {
+        return integration.user_context().map_err(integ_err);
+    }
+    // Bot fallback. Bot scopes have a slightly different shape:
+    // channels:read covers public; groups:read covers private (still bot-side).
+    check_scopes(integration, &required)?;
+    integration.bot_context().map_err(integ_err)
 }
 
 fn integ_err(e: crate::IntegrationError) -> ToolError {
@@ -213,23 +265,11 @@ impl Tool for SlackListChannelsTool {
         })
     }
     async fn execute(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
-        check_scopes(&self.integration, SLACK_LIST_CHANNELS_SCOPES)?;
         let include_dms = params.get("include_dms").and_then(|v| v.as_bool()).unwrap_or(false);
         let include_private = params.get("include_private").and_then(|v| v.as_bool()).unwrap_or(true);
         let limit = params.get("limit").and_then(|v| v.as_u64()).unwrap_or(100).min(1000) as u16;
-
-        // Conditional scopes: only check the ones actually needed for this call.
-        let mut conditional: Vec<&str> = Vec::new();
-        if include_private {
-            conditional.push("groups:read");
-        }
-        if include_dms {
-            conditional.push("im:read");
-            conditional.push("mpim:read");
-        }
-        if !conditional.is_empty() {
-            check_scopes(&self.integration, &conditional)?;
-        }
+        // Scope checks happen inside read_ctx_for_listing — it picks
+        // user vs bot context based on which side has the needed scopes.
 
         let mut types = vec![SlackConversationType::Public];
         if include_private {
@@ -245,7 +285,10 @@ impl Tool for SlackListChannelsTool {
             .with_limit(limit)
             .with_exclude_archived(true);
 
-        let ctx = self.integration.context().map_err(integ_err)?;
+        // Read via user token if available — sees every channel the user
+        // is in (including private channels the bot wasn't invited to).
+        // Falls back to the bot context if no user token is persisted.
+        let ctx = read_ctx_for_listing(&self.integration, include_private, include_dms)?;
         let session = ctx.session();
         let resp = session
             .conversations_list(&req)
@@ -333,7 +376,6 @@ impl Tool for SlackHistoryTool {
             Some('M') => &["mpim:history"][..],
             _ => SLACK_HISTORY_SCOPES, // Default to channels:history (covers C-prefixed and unknown).
         };
-        check_scopes(&self.integration, required)?;
         let limit = params.get("limit").and_then(|v| v.as_u64()).unwrap_or(20).min(200) as u16;
         let oldest = params.get("oldest").and_then(|v| v.as_str()).map(|s| SlackTs::new(s.to_string()));
         let latest = params.get("latest").and_then(|v| v.as_str()).map(|s| SlackTs::new(s.to_string()));
@@ -348,7 +390,15 @@ impl Tool for SlackHistoryTool {
             req = req.with_latest(l);
         }
 
-        let ctx = self.integration.context().map_err(integ_err)?;
+        // Read via user token if it has the relevant `*:history` scope —
+        // sees private channels the user is in even though the bot
+        // wasn't invited. Falls back to the bot path otherwise.
+        let ctx = if check_user_scopes(&self.integration, required).is_ok() {
+            self.integration.user_context().map_err(integ_err)?
+        } else {
+            check_scopes(&self.integration, required)?;
+            self.integration.bot_context().map_err(integ_err)?
+        };
         let session = ctx.session();
         let resp = session
             .conversations_history(&req)
@@ -652,10 +702,11 @@ const SLACK_OPEN_DM_BASE: &str = "Open (or look up) a DM channel with one or mor
      the 1:1 DM channel id. With multiple, returns a multi-party DM (mpim) channel id. \
      Idempotent — calling twice with the same users returns the same channel. Use the \
      returned channel id with slack_history to read or slack_post to message.";
-/// `conversations.open` works with either chat:write (typical bot config)
-/// or im:write (explicit). We require chat:write (which most installs grant)
-/// and trust Slack's runtime check for the conditional.
-const SLACK_OPEN_DM_SCOPES: &[&str] = &["chat:write"];
+/// `conversations.open` requires `im:write` for 1:1 DMs and `mpim:write`
+/// for multi-party DMs. We list both in the description (LLM sees both
+/// requirements), but the runtime check selects the right one based on
+/// the call's user_id count.
+const SLACK_OPEN_DM_SCOPE_HINT: &[&str] = &["im:write", "mpim:write"];
 
 pub struct SlackOpenDmTool {
     integration: Arc<SlackIntegration>,
@@ -666,7 +717,11 @@ impl SlackOpenDmTool {
     pub fn new(integration: Arc<SlackIntegration>) -> Self {
         Self {
             integration,
-            description: format!("{}{}", SLACK_OPEN_DM_BASE, scope_footer(SLACK_OPEN_DM_SCOPES)),
+            description: format!(
+                "{}{}",
+                SLACK_OPEN_DM_BASE,
+                scope_footer(SLACK_OPEN_DM_SCOPE_HINT)
+            ),
         }
     }
 }
@@ -702,7 +757,6 @@ impl Tool for SlackOpenDmTool {
         })
     }
     async fn execute(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
-        check_scopes(&self.integration, SLACK_OPEN_DM_SCOPES)?;
         let user_ids: Vec<SlackUserId> = params
             .get("user_ids")
             .and_then(|v| v.as_array())
@@ -714,6 +768,16 @@ impl Tool for SlackOpenDmTool {
         if user_ids.is_empty() {
             return Err(ToolError::ExecutionFailed("'user_ids' must be non-empty".into()));
         }
+
+        // Pick the right scope based on call shape. Slack's
+        // conversations.open uses `im:write` for 1:1 DMs and
+        // `mpim:write` for multi-party DMs — they're not interchangeable.
+        let required: &[&str] = if user_ids.len() == 1 {
+            &["im:write"]
+        } else {
+            &["mpim:write"]
+        };
+        check_scopes(&self.integration, required)?;
 
         let req = SlackApiConversationsOpenRequest::new()
             .with_users(user_ids)
