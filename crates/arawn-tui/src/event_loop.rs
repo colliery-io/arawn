@@ -192,17 +192,78 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                             let selected_index = rx.try_recv().unwrap_or_default();
                             debug!(%request_id, ?selected_index, "modal close");
 
-                            if request_id == "__history_recall__" {
-                                // Local-only modal: map the modal option
-                                // index (reverse order — newest first) back
-                                // to the actual history index, then dispatch
-                                // a recall action.
+                            if request_id == "__history_branch__" {
+                                // Local-only modal: parse the picked
+                                // option's description (formatted by
+                                // open_history_modal as "h=<i> c=<j>") to
+                                // get both the original history index and
+                                // the chat-only index. The chat index is
+                                // what the server's truncate RPC takes.
                                 if let Some(opt_idx) = selected_index
-                                    && let Some(history_idx) =
-                                        app.history.len().checked_sub(1 + opt_idx)
-                                {
-                                    app.handle_action(crate::action::Action::HistoryRecallAt(history_idx));
-                                }
+                                    && let Some(modal_active_options) = {
+                                        // active_modal was already cleared
+                                        // by ModalConfirm, so we can't read
+                                        // it. Instead, recompute from
+                                        // app.history (same logic as
+                                        // open_history_modal).
+                                        let mut chat_entries: Vec<(usize, usize)> = Vec::new();
+                                        let mut chat_idx = 0usize;
+                                        for (i, e) in app.history.iter().enumerate() {
+                                            if e.is_chat {
+                                                chat_entries.push((i, chat_idx));
+                                                chat_idx += 1;
+                                            }
+                                        }
+                                        // Reverse to match newest-first ordering.
+                                        chat_entries.reverse();
+                                        Some(chat_entries)
+                                    }
+                                    && let Some(&(history_idx, chat_idx)) =
+                                        modal_active_options.get(opt_idx)
+                                    && let Some(ref session) = app.current_session.clone() {
+                                        match client
+                                            .truncate_session_at_user_message(session.id, chat_idx)
+                                            .await
+                                        {
+                                            Ok(detail) => {
+                                                // Refresh local messages from the truncated state.
+                                                if let Some(msgs) = detail
+                                                    .get("messages")
+                                                    .and_then(|m| m.as_array())
+                                                {
+                                                    app.messages.clear();
+                                                    for m in msgs {
+                                                        if let (Some(role), Some(content)) = (
+                                                            m.get("role").and_then(|v| v.as_str()),
+                                                            m.get("content").and_then(|v| v.as_str()),
+                                                        ) {
+                                                            let mapped = match role {
+                                                                "user" => crate::app::ChatRole::User,
+                                                                "assistant" => crate::app::ChatRole::Assistant,
+                                                                _ => continue, // skip tool_result/summary on refresh
+                                                            };
+                                                            app.messages.push(ChatMessage::new(mapped, content));
+                                                        }
+                                                    }
+                                                }
+                                                // Load the picked prompt into input for editing.
+                                                app.handle_action(crate::action::Action::HistoryRecallAt(history_idx));
+                                                app.messages.push(ChatMessage::new(
+                                                    crate::app::ChatRole::System,
+                                                    format!("Branched: rewound to before prompt #{}. Edit and submit when ready.", chat_idx + 1),
+                                                ));
+                                                app.dirty = true;
+                                            }
+                                            Err(e) => {
+                                                warn!(error = %e, "branch truncate failed");
+                                                app.messages.push(ChatMessage::new(
+                                                    crate::app::ChatRole::System,
+                                                    format!("Branch failed: {e}"),
+                                                ));
+                                                app.dirty = true;
+                                            }
+                                        }
+                                    }
                             } else {
                                 let params = serde_json::json!({
                                     "request_id": request_id,

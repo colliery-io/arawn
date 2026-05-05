@@ -138,7 +138,10 @@ pub struct App {
     pub pending_command: Option<CommandResult>,
     /// Submitted user prompts in chronological order. Drives Up/Down recall
     /// and the double-Esc history modal. Per-session, in-memory only.
-    pub history: Vec<String>,
+    /// Each entry is `(text, is_chat)` — slash commands have `is_chat = false`
+    /// so the branch modal can filter them out (only chat prompts correspond
+    /// to session turns and are branchable).
+    pub history: Vec<HistoryEntry>,
     /// Index into `history` while the user is browsing prior prompts via
     /// Up/Down. `None` = not browsing (Up/Down scrolls chat as before).
     /// `Some(i)` = currently showing `history[i]` in the input.
@@ -155,6 +158,17 @@ pub struct App {
 /// the history modal; longer than this is treated as two independent
 /// Esc presses (the second one cancels whatever's transient).
 pub const DOUBLE_ESC_WINDOW: std::time::Duration = std::time::Duration::from_millis(500);
+
+/// One entry in the per-session input history.
+#[derive(Debug, Clone, PartialEq)]
+pub struct HistoryEntry {
+    pub text: String,
+    /// True if this submission was a plain chat prompt that produced a
+    /// session turn. False for slash commands (`/integrations`, `/clear`,
+    /// etc.) — those are recallable via Up arrow but aren't branchable
+    /// because they don't correspond to messages on the server.
+    pub is_chat: bool,
+}
 
 impl App {
     pub fn new() -> Self {
@@ -269,6 +283,15 @@ impl App {
                     // Dismiss autocomplete on submit
                     self.autocomplete = None;
 
+                    // Record in input history before any branch clears the
+                    // buffer. Slash commands (/integrations, /connect, ...)
+                    // get the same treatment as plain prompts so Up arrow
+                    // recalls them too — but they're tagged is_chat=false
+                    // so the branch modal can skip them.
+                    let raw_for_history = self.input_buffer.clone();
+                    let is_chat = parse_command(&raw_for_history).is_none();
+                    self.record_input_history(&raw_for_history, is_chat);
+
                     // Check for slash command
                     if let Some(cmd) = parse_command(&self.input_buffer) {
                         let result = execute_command(&cmd, &self.command_registry);
@@ -314,14 +337,8 @@ impl App {
                             }
                         }
                     } else {
-                        // Normal chat message
+                        // Normal chat message — history was already recorded above.
                         let content = self.input_buffer.clone();
-                        // Append to history (skip empty, dedupe consecutive).
-                        if !content.is_empty() && self.history.last() != Some(&content) {
-                            self.history.push(content.clone());
-                        }
-                        self.history_cursor = None;
-                        self.history_draft.clear();
                         self.messages
                             .push(ChatMessage::new(ChatRole::User, content.clone()));
                         self.input_buffer.clear();
@@ -562,7 +579,7 @@ impl App {
             }
             Action::HistoryRecallAt(idx) => {
                 if let Some(entry) = self.history.get(idx).cloned() {
-                    self.input_buffer = entry;
+                    self.input_buffer = entry.text;
                     self.cursor_pos = self.input_buffer.chars().count();
                     self.history_cursor = Some(idx);
                 }
@@ -571,6 +588,23 @@ impl App {
         }
 
         self.dirty
+    }
+
+    /// Append `text` to input history, skipping empty input and deduping
+    /// consecutive duplicates. Resets browse state — the next Up/Down
+    /// starts fresh from the newest entry. `is_chat = false` flags
+    /// slash-command entries so the branch modal can skip them.
+    fn record_input_history(&mut self, text: &str, is_chat: bool) {
+        if !text.is_empty()
+            && self.history.last().map(|e| e.text.as_str()) != Some(text)
+        {
+            self.history.push(HistoryEntry {
+                text: text.to_string(),
+                is_chat,
+            });
+        }
+        self.history_cursor = None;
+        self.history_draft.clear();
     }
 
     /// Move backward in input history. Saves the current draft on first
@@ -588,7 +622,7 @@ impl App {
             Some(i) => i - 1,
         };
         self.history_cursor = Some(next_idx);
-        self.input_buffer = self.history[next_idx].clone();
+        self.input_buffer = self.history[next_idx].text.clone();
         self.cursor_pos = self.input_buffer.chars().count();
     }
 
@@ -599,7 +633,7 @@ impl App {
         if idx + 1 < self.history.len() {
             let next = idx + 1;
             self.history_cursor = Some(next);
-            self.input_buffer = self.history[next].clone();
+            self.input_buffer = self.history[next].text.clone();
             self.cursor_pos = self.input_buffer.chars().count();
         } else {
             // Past newest — restore draft and leave history mode.
@@ -609,47 +643,65 @@ impl App {
         }
     }
 
-    /// Open a modal listing input history (newest first). Selecting an
-    /// entry loads it into the input buffer (does not auto-submit).
+    /// Open a modal listing branchable history entries (chat prompts only,
+    /// newest first). Selecting an entry triggers a session truncate to
+    /// that point and loads the entry into the input buffer for editing.
+    /// Slash commands are excluded — they don't correspond to a server-
+    /// side message turn and aren't branchable.
     fn open_history_modal(&mut self) {
-        if self.history.is_empty() {
-            // Nothing to show — don't bother opening an empty modal.
-            return;
-        }
-        // Newest first; truncate over-long entries for the modal label.
-        let options: Vec<crate::modal::ModalOption> = self
+        // Collect (history_index, chat_index, text) triples for chat
+        // entries only. chat_index is the position in the chat-only
+        // chronological list — what the truncate RPC takes as its
+        // user_message_index.
+        let chat_entries: Vec<(usize, usize, String)> = self
             .history
             .iter()
             .enumerate()
+            .filter(|(_, e)| e.is_chat)
+            .scan(0usize, |chat_idx, (history_idx, e)| {
+                let triple = (history_idx, *chat_idx, e.text.clone());
+                *chat_idx += 1;
+                Some(triple)
+            })
+            .collect();
+
+        if chat_entries.is_empty() {
+            return;
+        }
+
+        // Newest first; truncate over-long entries for the modal label.
+        // The description carries the history index AND chat index so the
+        // event loop can read them back without recomputing.
+        let options: Vec<crate::modal::ModalOption> = chat_entries
+            .iter()
             .rev()
-            .map(|(i, content)| {
-                let label = if content.chars().count() > 80 {
-                    let head: String = content.chars().take(79).collect();
+            .map(|(history_idx, chat_idx, text)| {
+                let label = if text.chars().count() > 80 {
+                    let head: String = text.chars().take(79).collect();
                     format!("{head}…")
                 } else {
-                    content.clone()
+                    text.clone()
                 };
-                // ModalOption stashes the source-history index in its
-                // description for now — the event loop reads it back
-                // when the modal closes via the selected_index path
-                // (selected_index is the modal's option index, which
-                // we map via this rev() ordering).
-                crate::modal::ModalOption::new(label).with_description(format!("history index {i}"))
+                crate::modal::ModalOption::new(label)
+                    .with_description(format!("h={history_idx} c={chat_idx}"))
             })
             .collect();
 
         let (tx, rx) = tokio::sync::oneshot::channel();
-        self.active_modal = Some(crate::modal::ModalState::new(
-            "Input history (most recent first)",
+        let mut modal = crate::modal::ModalState::new(
+            "Branch from a prior prompt — pick one to rewind to and edit",
             options,
             ratatui::style::Color::Cyan,
             tx,
-        ));
-        // We piggyback on the existing pending_modal_response plumbing.
-        // The event loop handles modal close — when it sees a selection,
-        // it dispatches Action::HistoryRecallAt with the *original*
-        // history index (mapping from the modal's reverse order).
-        self.pending_modal_response = Some(("__history_recall__".into(), rx));
+        );
+        modal = modal.with_subtitle(
+            "The session will rewind to before this prompt; the prompt loads into your input for editing.",
+        );
+        self.active_modal = Some(modal);
+        // The event loop handles modal close — recognizes this special
+        // request_id, parses h=/c= from the selected option's description,
+        // calls truncate RPC + loads the text.
+        self.pending_modal_response = Some(("__history_branch__".into(), rx));
     }
 
     /// Update autocomplete suggestions based on current input buffer.
@@ -1141,12 +1193,30 @@ mod tests {
         app.is_generating = false;
     }
 
+    fn history_text(app: &App) -> Vec<&str> {
+        app.history.iter().map(|e| e.text.as_str()).collect()
+    }
+
     #[test]
     fn history_records_submitted_prompts() {
         let mut app = App::new();
         submit_via_input(&mut app, "hello");
         submit_via_input(&mut app, "world");
-        assert_eq!(app.history, vec!["hello".to_string(), "world".to_string()]);
+        assert_eq!(history_text(&app), vec!["hello", "world"]);
+        assert!(app.history.iter().all(|e| e.is_chat));
+    }
+
+    #[test]
+    fn history_records_slash_commands_with_is_chat_false() {
+        let mut app = App::new();
+        submit_via_input(&mut app, "/integrations");
+        submit_via_input(&mut app, "hello");
+        submit_via_input(&mut app, "/clear");
+        assert_eq!(history_text(&app), vec!["/integrations", "hello", "/clear"]);
+        assert_eq!(
+            app.history.iter().map(|e| e.is_chat).collect::<Vec<_>>(),
+            vec![false, true, false]
+        );
     }
 
     #[test]
@@ -1156,10 +1226,35 @@ mod tests {
         submit_via_input(&mut app, "same");
         submit_via_input(&mut app, "different");
         submit_via_input(&mut app, "same");
-        assert_eq!(
-            app.history,
-            vec!["same".to_string(), "different".to_string(), "same".to_string()]
-        );
+        assert_eq!(history_text(&app), vec!["same", "different", "same"]);
+    }
+
+    #[test]
+    fn branch_modal_filters_out_slash_commands() {
+        let mut app = App::new();
+        submit_via_input(&mut app, "first chat");
+        submit_via_input(&mut app, "/integrations");
+        submit_via_input(&mut app, "second chat");
+        submit_via_input(&mut app, "/clear");
+        // Trigger double-Esc to open the branch modal.
+        app.handle_action(Action::EscapeIdle);
+        app.handle_action(Action::EscapeIdle);
+        let modal = app.active_modal.as_ref().expect("modal should be open");
+        // Only the two chat entries should appear, newest first.
+        assert_eq!(modal.options.len(), 2);
+        assert!(modal.options[0].label.contains("second chat"));
+        assert!(modal.options[1].label.contains("first chat"));
+    }
+
+    #[test]
+    fn branch_modal_skipped_when_no_chat_history() {
+        let mut app = App::new();
+        // Only slash commands — no chat prompts to branch from.
+        submit_via_input(&mut app, "/integrations");
+        submit_via_input(&mut app, "/clear");
+        app.handle_action(Action::EscapeIdle);
+        app.handle_action(Action::EscapeIdle);
+        assert!(app.active_modal.is_none());
     }
 
     #[test]

@@ -53,6 +53,23 @@ pub trait ArawnService: Send + Sync {
     /// Load a session with its full message history.
     async fn load_session(&self, id: Uuid) -> Result<SessionDetail, ServiceError>;
 
+    /// Truncate a session back to a specific user-message index, dropping
+    /// everything after (inclusive of the Nth user message and all the
+    /// assistant / tool-call / tool-result messages that followed it).
+    /// Used by the TUI's "branch from a prior prompt" flow — the user
+    /// picks a prompt to rewind to from the history modal, the session
+    /// is truncated to just before it, then the prompt is loaded into
+    /// the input buffer for editing and re-submission.
+    ///
+    /// `user_message_index` is 0-based: 0 truncates everything (back to
+    /// just before the first user prompt). `n` ≥ the count of user
+    /// messages is a no-op. Returns the new (truncated) session detail.
+    async fn truncate_session_at_user_message(
+        &self,
+        id: Uuid,
+        user_message_index: usize,
+    ) -> Result<SessionDetail, ServiceError>;
+
     // --- Chat ---
 
     /// Send a message and receive a stream of engine events (streaming text, tool calls, completion).

@@ -283,6 +283,30 @@ impl WsClient {
         Ok(result.clone())
     }
 
+    /// Rewind a session back to before the Nth user message. Returns the
+    /// full truncated session detail (same shape as `load_session`). Used
+    /// by the "branch from a prior prompt" flow.
+    pub async fn truncate_session_at_user_message(
+        &mut self,
+        session_id: uuid::Uuid,
+        user_message_index: usize,
+    ) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
+        let resp = self
+            .request_response(
+                "truncate_session_at_user_message",
+                json!({
+                    "session_id": session_id.to_string(),
+                    "user_message_index": user_message_index,
+                }),
+            )
+            .await?;
+        if let Some(err) = resp.get("error") {
+            return Err(err["message"].as_str().unwrap_or("unknown error").into());
+        }
+        let result = resp.get("result").ok_or("no result")?;
+        Ok(result.clone())
+    }
+
     pub async fn send_message(
         &mut self,
         session_id: uuid::Uuid,

@@ -535,6 +535,56 @@ impl ArawnService for LocalService {
         })
     }
 
+    async fn truncate_session_at_user_message(
+        &self,
+        id: Uuid,
+        user_message_index: usize,
+    ) -> Result<SessionDetail, ServiceError> {
+        // Refuse if a generation is in flight on this session — truncating
+        // mid-stream would corrupt persistent state.
+        {
+            let active = self.active_sessions.lock().unwrap();
+            if active.contains(&id) {
+                return Err(ServiceError::InvalidOperation(
+                    "Session is currently processing a message; cancel first.".into(),
+                ));
+            }
+        }
+
+        let (_meta, ws_dir) = {
+            let store = self.store.lock().unwrap();
+            let meta = store
+                .get_session_meta(id)?
+                .ok_or_else(|| ServiceError::NotFound(format!("session {id}")))?;
+            let ws_dir = resolve_ws_dir_from_store(&store, meta.workstream_id)?;
+            (meta, ws_dir)
+        };
+
+        let msg_store = JsonlMessageStore::new(&self.data_dir);
+        let all_messages = msg_store.load(id, &ws_dir).await?;
+
+        // Walk to the Nth user message and stop at its index — that's
+        // the count of messages we want to keep before it.
+        let mut user_count = 0usize;
+        let mut keep_count = all_messages.len(); // default no-op
+        for (i, msg) in all_messages.iter().enumerate() {
+            if matches!(msg, arawn_core::Message::User { .. }) {
+                if user_count == user_message_index {
+                    keep_count = i;
+                    break;
+                }
+                user_count += 1;
+            }
+        }
+
+        if keep_count < all_messages.len() {
+            msg_store.truncate(id, &ws_dir, keep_count).await?;
+        }
+
+        // Re-load the truncated session for return.
+        self.load_session(id).await
+    }
+
     #[instrument(skip_all, fields(%session_id))]
     async fn send_message(
         &self,

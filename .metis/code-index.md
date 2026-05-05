@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-05T16:15:00Z | 193 files | Python, Rust
+> Generated: 2026-05-05T16:44:01Z | 193 files | Python, Rust
 
 ## Project Structure
 
@@ -450,36 +450,37 @@
 -  `build_session_context` function L245-352 — `( &self, session_id: Uuid, workstream: &Workstream, ws_dir: &str, workspace_dir:...` — Build a ToolContext and per-session PromptContext for the engine.
 -  `build_engine` function L356-405 — `( &self, prompt_context: Option<arawn_engine::PromptContext>, event_tx: &mpsc::S...` — Build a QueryEngine configured with compactor, skills, plugins, and plan state.
 -  `infer_entity_type` function L410-423 — `(text: &str) -> (arawn_memory::EntityType, String)` — Infer entity type from text patterns.
--  `LocalService` type L428-1294 — `impl ArawnService for LocalService`
+-  `LocalService` type L428-1344 — `impl ArawnService for LocalService`
 -  `list_workstreams` function L429-444 — `(&self) -> Result<Vec<WorkstreamInfo>, ServiceError>`
 -  `create_workstream` function L446-463 — `( &self, name: String, root_dir: PathBuf, ) -> Result<WorkstreamInfo, ServiceErr...`
 -  `list_sessions` function L465-484 — `( &self, workstream_id: Option<Uuid>, ) -> Result<Vec<SessionInfo>, ServiceError...`
 -  `create_session` function L486-507 — `( &self, workstream_id: Option<Uuid>, ) -> Result<SessionInfo, ServiceError>`
 -  `load_session` function L509-536 — `(&self, id: Uuid) -> Result<SessionDetail, ServiceError>`
--  `send_message` function L539-735 — `( &self, session_id: Uuid, content: String, ) -> Result<Pin<Box<dyn futures::Str...`
--  `cancel` function L737-750 — `(&self, session_id: Uuid) -> Result<(), ServiceError>`
--  `promote_session` function L752-803 — `( &self, session_id: Uuid, workstream_name: &str, ) -> Result<PromotionResult, S...`
--  `resolve_user_input` function L805-819 — `( &self, request_id: &str, selected_index: Option<usize>, ) -> Result<(), Servic...`
--  `query_inventory` function L821-886 — `(&self, kind: &str) -> Result<Vec<InventoryItem>, ServiceError>`
--  `list_available_commands` function L888-900 — `(&self) -> Result<Vec<CommandInfo>, ServiceError>`
--  `list_workflows` function L902-933 — `(&self) -> Result<Vec<WorkflowInfo>, ServiceError>`
--  `remember_fact` function L935-981 — `(&self, text: &str) -> Result<MemoryStoreResult, ServiceError>`
--  `memory_summary` function L983-1030 — `(&self) -> Result<MemorySummary, ServiceError>`
--  `forget_entity` function L1032-1082 — `(&self, query: &str) -> Result<ForgetResult, ServiceError>`
--  `get_permission_mode` function L1084-1092 — `(&self) -> Result<PermissionModeInfo, ServiceError>`
--  `set_permission_mode` function L1094-1106 — `(&self, mode_str: &str) -> Result<PermissionModeInfo, ServiceError>`
--  `get_capabilities` function L1108-1118 — `(&self) -> Result<arawn_service::ServerCapabilities, ServiceError>`
--  `get_permissions_status` function L1120-1169 — `(&self) -> Result<arawn_service::PermissionsStatus, ServiceError>`
--  `list_integrations` function L1171-1189 — `(&self) -> Result<Vec<arawn_service::IntegrationStatus>, ServiceError>`
--  `start_oauth_flow` function L1191-1268 — `( &self, service: &str, ) -> Result<arawn_service::OAuthFlowStarted, ServiceErro...`
--  `disconnect_integration` function L1270-1293 — `(&self, service: &str) -> Result<(), ServiceError>`
--  `OAuthFlowCtx` struct L1299-1303 — `{ service: String, url_tx: tokio::sync::Mutex<Option<tokio::sync::oneshot::Sende...` — Glue that lets `LocalService::start_oauth_flow` bridge the integration's
--  `OAuthFlowCtx` type L1306-1328 — `= OAuthFlowCtx`
--  `service` function L1307-1309 — `(&self) -> &str`
--  `publish_auth_url` function L1311-1318 — `(&self, url: &url::Url)`
--  `publish_progress` function L1320-1327 — `(&self, message: &str)`
--  `resolve_ws_dir_from_store` function L1331-1342 — `(store: &Store, ws_id: Option<Uuid>) -> Result<String, ServiceError>` — Resolve workstream directory name from store.
--  `first_sentence` function L1346-1357 — `(s: &str) -> String` — Extract the first sentence and sanitize for use in a markdown table cell.
+-  `truncate_session_at_user_message` function L538-586 — `( &self, id: Uuid, user_message_index: usize, ) -> Result<SessionDetail, Service...`
+-  `send_message` function L589-785 — `( &self, session_id: Uuid, content: String, ) -> Result<Pin<Box<dyn futures::Str...`
+-  `cancel` function L787-800 — `(&self, session_id: Uuid) -> Result<(), ServiceError>`
+-  `promote_session` function L802-853 — `( &self, session_id: Uuid, workstream_name: &str, ) -> Result<PromotionResult, S...`
+-  `resolve_user_input` function L855-869 — `( &self, request_id: &str, selected_index: Option<usize>, ) -> Result<(), Servic...`
+-  `query_inventory` function L871-936 — `(&self, kind: &str) -> Result<Vec<InventoryItem>, ServiceError>`
+-  `list_available_commands` function L938-950 — `(&self) -> Result<Vec<CommandInfo>, ServiceError>`
+-  `list_workflows` function L952-983 — `(&self) -> Result<Vec<WorkflowInfo>, ServiceError>`
+-  `remember_fact` function L985-1031 — `(&self, text: &str) -> Result<MemoryStoreResult, ServiceError>`
+-  `memory_summary` function L1033-1080 — `(&self) -> Result<MemorySummary, ServiceError>`
+-  `forget_entity` function L1082-1132 — `(&self, query: &str) -> Result<ForgetResult, ServiceError>`
+-  `get_permission_mode` function L1134-1142 — `(&self) -> Result<PermissionModeInfo, ServiceError>`
+-  `set_permission_mode` function L1144-1156 — `(&self, mode_str: &str) -> Result<PermissionModeInfo, ServiceError>`
+-  `get_capabilities` function L1158-1168 — `(&self) -> Result<arawn_service::ServerCapabilities, ServiceError>`
+-  `get_permissions_status` function L1170-1219 — `(&self) -> Result<arawn_service::PermissionsStatus, ServiceError>`
+-  `list_integrations` function L1221-1239 — `(&self) -> Result<Vec<arawn_service::IntegrationStatus>, ServiceError>`
+-  `start_oauth_flow` function L1241-1318 — `( &self, service: &str, ) -> Result<arawn_service::OAuthFlowStarted, ServiceErro...`
+-  `disconnect_integration` function L1320-1343 — `(&self, service: &str) -> Result<(), ServiceError>`
+-  `OAuthFlowCtx` struct L1349-1353 — `{ service: String, url_tx: tokio::sync::Mutex<Option<tokio::sync::oneshot::Sende...` — Glue that lets `LocalService::start_oauth_flow` bridge the integration's
+-  `OAuthFlowCtx` type L1356-1378 — `= OAuthFlowCtx`
+-  `service` function L1357-1359 — `(&self) -> &str`
+-  `publish_auth_url` function L1361-1368 — `(&self, url: &url::Url)`
+-  `publish_progress` function L1370-1377 — `(&self, message: &str)`
+-  `resolve_ws_dir_from_store` function L1381-1392 — `(store: &Store, ws_id: Option<Uuid>) -> Result<String, ServiceError>` — Resolve workstream directory name from store.
+-  `first_sentence` function L1396-1407 — `(s: &str) -> String` — Extract the first sentence and sanitize for use in a markdown table cell.
 
 #### crates/arawn/src/main.rs
 
@@ -522,30 +523,30 @@
 
 #### crates/arawn/src/ws_server.rs
 
-- pub `read_token_file` function L143-154 — `() -> Option<String>` — Read the auth token from {data_dir}/server.token.
-- pub `run_server` function L157-192 — `(service: LocalService, port: u16) -> anyhow::Result<()>` — Start the WebSocket server on the given port.
-- pub `handle_connection_public` function L278-280 — `(socket: WebSocket, service: Arc<LocalService>)` — Handle a single WebSocket connection.
+- pub `read_token_file` function L144-155 — `() -> Option<String>` — Read the auth token from {data_dir}/server.token.
+- pub `run_server` function L158-193 — `(service: LocalService, port: u16) -> anyhow::Result<()>` — Start the WebSocket server on the given port.
+- pub `handle_connection_public` function L279-281 — `(socket: WebSocket, service: Arc<LocalService>)` — Handle a single WebSocket connection.
 -  `PROTOCOL_VERSION` variable L24 — `: &str` — Protocol version reported by the `hello` handshake.
--  `RPC_METHODS` variable L27-51 — `: &[&str]` — Canonical RPC method names (returned by `hello`).
--  `Request` struct L55-60 — `{ id: u64, method: String, params: Value }` — JSON-RPC style request from client.
--  `Response` struct L64-70 — `{ id: u64, result: Option<Value>, error: Option<ErrorBody> }` — JSON-RPC style response to client.
--  `ErrorBody` struct L73-78 — `{ code: String, message: String, details: Option<Value> }`
--  `Response` type L80-116 — `= Response`
--  `success` function L81-87 — `(id: u64, result: Value) -> Self`
--  `error` function L89-99 — `(id: u64, code: &str, message: String) -> Self`
--  `from_service_error` function L105-115 — `(id: u64, e: &arawn_service::ServiceError) -> Self` — Build an error response from a [`ServiceError`].
--  `AppState` struct L120-125 — `{ service: Arc<LocalService>, auth_token: Option<String> }` — Shared app state for the WebSocket server.
--  `generate_auth_token` function L128-131 — `() -> String` — Generate a random auth token for WebSocket connections.
--  `write_token_file` function L134-139 — `(data_dir: &std::path::Path, token: &str) -> std::io::Result<std::path::PathBuf>` — Write the auth token to {data_dir}/server.token for clients to read.
--  `shutdown_signal` function L195-217 — `()` — Wait for a shutdown signal (Ctrl-C / SIGTERM).
--  `decision_handler` function L222-241 — `( State(AppState { service, .. }): State<AppState>, Json(req): Json<arawn_workfl...` — HTTP endpoint for workflow decision tasks.
--  `WsQueryParams` struct L245-247 — `{ token: Option<String> }` — Query parameters for WebSocket connection.
--  `ws_handler` function L249-275 — `( ws: WebSocketUpgrade, Query(params): Query<WsQueryParams>, State(state): State...`
--  `handle_connection` function L282-987 — `(socket: WebSocket, service: Arc<LocalService>)`
--  `tests` module L990-1040 — `-`
--  `from_service_error_preserves_structured_detail_for_typed_variants` function L997-1007 — `()` — Typed Storage error should round-trip through the wire payload with
--  `from_service_error_omits_details_for_string_only_variants` function L1013-1024 — `()` — String-only variants (NotFound, InvalidOperation, Internal) keep
--  `from_service_error_preserves_engine_error_kind` function L1030-1039 — `()` — Engine errors surface a `kind` that identifies the inner variant —
+-  `RPC_METHODS` variable L27-52 — `: &[&str]` — Canonical RPC method names (returned by `hello`).
+-  `Request` struct L56-61 — `{ id: u64, method: String, params: Value }` — JSON-RPC style request from client.
+-  `Response` struct L65-71 — `{ id: u64, result: Option<Value>, error: Option<ErrorBody> }` — JSON-RPC style response to client.
+-  `ErrorBody` struct L74-79 — `{ code: String, message: String, details: Option<Value> }`
+-  `Response` type L81-117 — `= Response`
+-  `success` function L82-88 — `(id: u64, result: Value) -> Self`
+-  `error` function L90-100 — `(id: u64, code: &str, message: String) -> Self`
+-  `from_service_error` function L106-116 — `(id: u64, e: &arawn_service::ServiceError) -> Self` — Build an error response from a [`ServiceError`].
+-  `AppState` struct L121-126 — `{ service: Arc<LocalService>, auth_token: Option<String> }` — Shared app state for the WebSocket server.
+-  `generate_auth_token` function L129-132 — `() -> String` — Generate a random auth token for WebSocket connections.
+-  `write_token_file` function L135-140 — `(data_dir: &std::path::Path, token: &str) -> std::io::Result<std::path::PathBuf>` — Write the auth token to {data_dir}/server.token for clients to read.
+-  `shutdown_signal` function L196-218 — `()` — Wait for a shutdown signal (Ctrl-C / SIGTERM).
+-  `decision_handler` function L223-242 — `( State(AppState { service, .. }): State<AppState>, Json(req): Json<arawn_workfl...` — HTTP endpoint for workflow decision tasks.
+-  `WsQueryParams` struct L246-248 — `{ token: Option<String> }` — Query parameters for WebSocket connection.
+-  `ws_handler` function L250-276 — `( ws: WebSocketUpgrade, Query(params): Query<WsQueryParams>, State(state): State...`
+-  `handle_connection` function L283-1041 — `(socket: WebSocket, service: Arc<LocalService>)`
+-  `tests` module L1044-1094 — `-`
+-  `from_service_error_preserves_structured_detail_for_typed_variants` function L1051-1061 — `()` — Typed Storage error should round-trip through the wire payload with
+-  `from_service_error_omits_details_for_string_only_variants` function L1067-1078 — `()` — String-only variants (NotFound, InvalidOperation, Internal) keep
+-  `from_service_error_preserves_engine_error_kind` function L1084-1093 — `()` — Engine errors surface a `kind` that identifies the inner variant —
 
 ### crates/arawn-auth/src
 
@@ -3677,7 +3678,7 @@
 
 - pub `error` module L1 — `-`
 - pub `types` module L2 — `-`
-- pub `ArawnService` interface L26-141 — `{ fn list_workstreams(), fn create_workstream(), fn list_sessions(), fn create_s...` — The service contract between any UI client and the Arawn backend.
+- pub `ArawnService` interface L26-158 — `{ fn list_workstreams(), fn create_workstream(), fn list_sessions(), fn create_s...` — The service contract between any UI client and the Arawn backend.
 
 #### crates/arawn-service/src/types.rs
 
@@ -3744,27 +3745,32 @@
 - pub `new` function L22-26 — `(data_dir: impl Into<PathBuf>) -> Self`
 - pub `append` function L29-58 — `( &self, session_id: Uuid, workstream_dir: &str, msg: &Message, ) -> Result<(), ...` — Append a message to the session's JSONL file.
 - pub `load` function L61-103 — `( &self, session_id: Uuid, workstream_dir: &str, ) -> Result<Vec<Message>, Stora...` — Load all messages for a session from its JSONL file.
-- pub `move_session` function L107-127 — `( &self, session_id: Uuid, from_dir: &str, to_dir: &str, ) -> Result<(), Storage...` — Move a session's JSONL file from one workstream directory to another.
-- pub `path_for` function L140-142 — `(&self, session_id: Uuid, workstream_dir: &str) -> PathBuf` — Get the path for a session (exposed for testing/debugging).
-- pub `sandbox_dir` function L151-160 — `(&self, workstream_dir: &str, session_id: Uuid, is_scratch: bool) -> PathBuf` — Resolve the sandbox root for a session.
-- pub `workstream_dir_name` function L164-170 — `(name: &str, id: Uuid) -> String` — Resolve a workstream directory name: use name if non-empty, fall back to UUID.
--  `JsonlMessageStore` type L21-161 — `= JsonlMessageStore`
--  `session_path` function L131-137 — `(&self, session_id: Uuid, workstream_dir: &str) -> PathBuf` — Resolve the filesystem path for a session's JSONL file.
--  `tests` module L173-461 — `-`
--  `setup` function L179-183 — `() -> (TempDir, JsonlMessageStore)`
--  `append_and_load_roundtrip` function L186-222 — `()`
--  `append_twice_accumulates` function L225-253 — `()`
--  `load_nonexistent_returns_empty` function L256-260 — `()`
--  `scratch_session_path` function L263-284 — `()`
--  `move_session_relocates_file` function L287-324 — `()`
--  `move_nonexistent_session_is_ok` function L327-333 — `()`
--  `jsonl_each_line_is_valid_json` function L336-372 — `()`
--  `sandbox_dir_scratch_is_per_session` function L375-383 — `()`
--  `sandbox_dir_named_is_shared` function L386-391 — `()`
--  `workstream_dir_name_prefers_name` function L394-398 — `()`
--  `workstream_dir_name_falls_back_to_uuid` function L401-404 — `()`
--  `load_skips_malformed_lines` function L407-435 — `()`
--  `new_file_has_version_header` function L438-460 — `()`
+- pub `truncate` function L113-153 — `( &self, session_id: Uuid, workstream_dir: &str, keep_count: usize, ) -> Result<...` — Atomically rewrite the session's JSONL file to keep only the first
+- pub `move_session` function L157-177 — `( &self, session_id: Uuid, from_dir: &str, to_dir: &str, ) -> Result<(), Storage...` — Move a session's JSONL file from one workstream directory to another.
+- pub `path_for` function L190-192 — `(&self, session_id: Uuid, workstream_dir: &str) -> PathBuf` — Get the path for a session (exposed for testing/debugging).
+- pub `sandbox_dir` function L201-210 — `(&self, workstream_dir: &str, session_id: Uuid, is_scratch: bool) -> PathBuf` — Resolve the sandbox root for a session.
+- pub `workstream_dir_name` function L214-220 — `(name: &str, id: Uuid) -> String` — Resolve a workstream directory name: use name if non-empty, fall back to UUID.
+-  `JsonlMessageStore` type L21-211 — `= JsonlMessageStore`
+-  `session_path` function L181-187 — `(&self, session_id: Uuid, workstream_dir: &str) -> PathBuf` — Resolve the filesystem path for a session's JSONL file.
+-  `tests` module L223-562 — `-`
+-  `setup` function L229-233 — `() -> (TempDir, JsonlMessageStore)`
+-  `append_and_load_roundtrip` function L236-272 — `()`
+-  `append_twice_accumulates` function L275-303 — `()`
+-  `load_nonexistent_returns_empty` function L306-310 — `()`
+-  `scratch_session_path` function L313-334 — `()`
+-  `move_session_relocates_file` function L337-374 — `()`
+-  `move_nonexistent_session_is_ok` function L377-383 — `()`
+-  `jsonl_each_line_is_valid_json` function L386-422 — `()`
+-  `sandbox_dir_scratch_is_per_session` function L425-433 — `()`
+-  `sandbox_dir_named_is_shared` function L436-441 — `()`
+-  `workstream_dir_name_prefers_name` function L444-448 — `()`
+-  `workstream_dir_name_falls_back_to_uuid` function L451-454 — `()`
+-  `load_skips_malformed_lines` function L457-485 — `()`
+-  `new_file_has_version_header` function L488-510 — `()`
+-  `truncate_keeps_only_first_n_messages` function L513-533 — `()`
+-  `truncate_to_zero_drops_everything` function L536-543 — `()`
+-  `truncate_beyond_length_is_no_op` function L546-553 — `()`
+-  `truncate_nonexistent_session_is_ok` function L556-561 — `()`
 
 #### crates/arawn-storage/src/layout.rs
 
@@ -4274,48 +4280,54 @@
 - pub `new` function L54-62 — `(role: ChatRole, content: impl Into<String>) -> Self`
 - pub `rendered_lines` function L66-76 — `(&mut self, width: usize) -> &[ratatui::text::Line<'static>]` — Get or compute the cached markdown rendering for assistant messages.
 - pub `ChatRole` enum L80-86 — `User | Assistant | ToolCall | ToolResult | System`
-- pub `App` struct L89-152 — `{ focus: Focus, input_buffer: String, cursor_pos: usize, messages: Vec<ChatMessa...` — All mutable TUI state.
-- pub `DOUBLE_ESC_WINDOW` variable L157 — `: std::time::Duration` — Window for double-Esc detection.
-- pub `new` function L160-198 — `() -> Self`
-- pub `handle_action` function L201-574 — `(&mut self, action: Action) -> bool` — Process an action and mutate state.
-- pub `apply_engine_event` function L698-775 — `(&mut self, event: crate::ws_client::EventUpdate)` — Apply a streaming engine event to the app state (testable without network).
-- pub `load_session_messages` function L779-819 — `(&mut self, detail: &serde_json::Value)` — Load messages from a session detail JSON response into the chat.
-- pub `format_tool_input` function L839-887 — `(tool_name: &str, input: &serde_json::Value) -> String` — Format tool input args into a compact display string.
+- pub `App` struct L89-155 — `{ focus: Focus, input_buffer: String, cursor_pos: usize, messages: Vec<ChatMessa...` — All mutable TUI state.
+- pub `DOUBLE_ESC_WINDOW` variable L160 — `: std::time::Duration` — Window for double-Esc detection.
+- pub `HistoryEntry` struct L164-171 — `{ text: String, is_chat: bool }` — One entry in the per-session input history.
+- pub `new` function L174-212 — `() -> Self`
+- pub `handle_action` function L215-591 — `(&mut self, action: Action) -> bool` — Process an action and mutate state.
+- pub `apply_engine_event` function L750-827 — `(&mut self, event: crate::ws_client::EventUpdate)` — Apply a streaming engine event to the app state (testable without network).
+- pub `load_session_messages` function L831-871 — `(&mut self, detail: &serde_json::Value)` — Load messages from a session detail JSON response into the chat.
+- pub `format_tool_input` function L891-939 — `(tool_name: &str, input: &serde_json::Value) -> String` — Format tool input args into a compact display string.
 -  `ChatMessage` type L53-77 — `= ChatMessage`
--  `App` type L159-836 — `= App`
--  `history_recall_prev` function L578-593 — `(&mut self)` — Move backward in input history.
--  `history_recall_next` function L597-610 — `(&mut self)` — Move forward in input history.
--  `open_history_modal` function L614-653 — `(&mut self)` — Open a modal listing input history (newest first).
--  `update_autocomplete` function L656-685 — `(&mut self)` — Update autocomplete suggestions based on current input buffer.
--  `accept_autocomplete` function L688-695 — `(&mut self)` — Accept the currently selected autocomplete suggestion.
--  `prev_char_boundary` function L821-827 — `(&self) -> usize`
--  `next_char_boundary` function L829-835 — `(&self) -> usize`
--  `App` type L889-893 — `impl Default for App`
--  `default` function L890-892 — `() -> Self`
--  `tests` module L896-1249 — `-`
--  `type_chars_updates_buffer` function L900-906 — `()`
--  `backspace_removes_char` function L909-916 — `()`
--  `submit_moves_to_messages` function L919-931 — `()`
--  `submit_blocked_when_empty` function L934-940 — `()`
--  `submit_blocked_while_generating` function L943-949 — `()`
--  `tab_toggles_focus` function L952-959 — `()`
--  `scroll_updates_offset` function L962-970 — `()`
--  `cancel_stops_generation` function L973-982 — `()`
--  `quit_sets_flag` function L985-989 — `()`
--  `cursor_movement` function L992-1013 — `()`
--  `full_conversation_flow` function L1018-1048 — `()`
--  `tool_call_flow` function L1051-1082 — `()`
--  `error_event_clears_generating` function L1085-1099 — `()`
--  `sidebar_navigation` function L1102-1133 — `()`
--  `submit_via_input` function L1135-1142 — `(app: &mut App, text: &str)`
--  `history_records_submitted_prompts` function L1145-1150 — `()`
--  `history_dedupes_consecutive_duplicates` function L1153-1163 — `()`
--  `up_arrow_recalls_most_recent_when_input_empty` function L1166-1181 — `()`
--  `down_arrow_restores_draft_past_newest` function L1184-1202 — `()`
--  `double_esc_within_window_opens_history_modal` function L1205-1217 — `()`
--  `double_esc_outside_window_does_not_open_modal` function L1220-1228 — `()`
--  `history_recall_at_loads_entry_into_input` function L1231-1239 — `()`
--  `empty_history_modal_is_a_no_op` function L1242-1248 — `()`
+-  `App` type L173-888 — `= App`
+-  `record_input_history` function L597-608 — `(&mut self, text: &str, is_chat: bool)` — Append `text` to input history, skipping empty input and deduping
+-  `history_recall_prev` function L612-627 — `(&mut self)` — Move backward in input history.
+-  `history_recall_next` function L631-644 — `(&mut self)` — Move forward in input history.
+-  `open_history_modal` function L651-705 — `(&mut self)` — Open a modal listing branchable history entries (chat prompts only,
+-  `update_autocomplete` function L708-737 — `(&mut self)` — Update autocomplete suggestions based on current input buffer.
+-  `accept_autocomplete` function L740-747 — `(&mut self)` — Accept the currently selected autocomplete suggestion.
+-  `prev_char_boundary` function L873-879 — `(&self) -> usize`
+-  `next_char_boundary` function L881-887 — `(&self) -> usize`
+-  `App` type L941-945 — `impl Default for App`
+-  `default` function L942-944 — `() -> Self`
+-  `tests` module L948-1344 — `-`
+-  `type_chars_updates_buffer` function L952-958 — `()`
+-  `backspace_removes_char` function L961-968 — `()`
+-  `submit_moves_to_messages` function L971-983 — `()`
+-  `submit_blocked_when_empty` function L986-992 — `()`
+-  `submit_blocked_while_generating` function L995-1001 — `()`
+-  `tab_toggles_focus` function L1004-1011 — `()`
+-  `scroll_updates_offset` function L1014-1022 — `()`
+-  `cancel_stops_generation` function L1025-1034 — `()`
+-  `quit_sets_flag` function L1037-1041 — `()`
+-  `cursor_movement` function L1044-1065 — `()`
+-  `full_conversation_flow` function L1070-1100 — `()`
+-  `tool_call_flow` function L1103-1134 — `()`
+-  `error_event_clears_generating` function L1137-1151 — `()`
+-  `sidebar_navigation` function L1154-1185 — `()`
+-  `submit_via_input` function L1187-1194 — `(app: &mut App, text: &str)`
+-  `history_text` function L1196-1198 — `(app: &App) -> Vec<&str>`
+-  `history_records_submitted_prompts` function L1201-1207 — `()`
+-  `history_records_slash_commands_with_is_chat_false` function L1210-1220 — `()`
+-  `history_dedupes_consecutive_duplicates` function L1223-1230 — `()`
+-  `branch_modal_filters_out_slash_commands` function L1233-1247 — `()`
+-  `branch_modal_skipped_when_no_chat_history` function L1250-1258 — `()`
+-  `up_arrow_recalls_most_recent_when_input_empty` function L1261-1276 — `()`
+-  `down_arrow_restores_draft_past_newest` function L1279-1297 — `()`
+-  `double_esc_within_window_opens_history_modal` function L1300-1312 — `()`
+-  `double_esc_outside_window_does_not_open_modal` function L1315-1323 — `()`
+-  `history_recall_at_loads_entry_into_input` function L1326-1334 — `()`
+-  `empty_history_modal_is_a_no_op` function L1337-1343 — `()`
 
 #### crates/arawn-tui/src/command.rs
 
@@ -4390,16 +4402,16 @@
 
 #### crates/arawn-tui/src/event_loop.rs
 
-- pub `run_tui` function L64-887 — `(url: &str, model_name: &str) -> Result<(), Box<dyn std::error::Error>>` — Run the TUI connected to the given WebSocket server URL.
+- pub `run_tui` function L64-948 — `(url: &str, model_name: &str) -> Result<(), Box<dyn std::error::Error>>` — Run the TUI connected to the given WebSocket server URL.
 -  `MIN_FRAME_INTERVAL` variable L29 — `: Duration` — Minimum interval between renders driven by streaming/event traffic.
 -  `maybe_draw` function L33-45 — `( terminal: &mut Terminal<B>, app: &mut App, ) -> io::Result<()>` — Render if enough time has elapsed since the last draw.
 -  `force_draw` function L49-57 — `( terminal: &mut Terminal<B>, app: &mut App, ) -> io::Result<()>` — Render now regardless of frame budget.
 -  `rect_contains` function L59-61 — `(rect: Rect, col: u16, row: u16) -> bool`
--  `format_integrations_list` function L890-905 — `(items: &[serde_json::Value]) -> String` — Render a `list_integrations` response as a markdown table the user can scan.
--  `OpenAttempt` enum L909-913 — `Opened | NoOpener | Failed` — What `try_open_url` did.
--  `try_open_url` function L917-948 — `(url: &str) -> OpenAttempt` — Best-effort browser open.
--  `apply_system_notice` function L953-959 — `(notice: &arawn_service::ServerNotice, app: &mut crate::app::App)` — Push a server-side notice (plugin/config hot-reload outcome) into the
--  `format_permissions_status` function L962-1002 — `(status: &serde_json::Value) -> String` — Render `get_permissions_status` JSON as a human-readable system message.
+-  `format_integrations_list` function L951-966 — `(items: &[serde_json::Value]) -> String` — Render a `list_integrations` response as a markdown table the user can scan.
+-  `OpenAttempt` enum L970-974 — `Opened | NoOpener | Failed` — What `try_open_url` did.
+-  `try_open_url` function L978-1009 — `(url: &str) -> OpenAttempt` — Best-effort browser open.
+-  `apply_system_notice` function L1014-1020 — `(notice: &arawn_service::ServerNotice, app: &mut crate::app::App)` — Push a server-side notice (plugin/config hot-reload outcome) into the
+-  `format_permissions_status` function L1023-1063 — `(status: &serde_json::Value) -> String` — Render `get_permissions_status` JSON as a human-readable system message.
 
 #### crates/arawn-tui/src/lib.rs
 
@@ -4649,22 +4661,23 @@
 - pub `list_sessions` function L246-257 — `( &mut self, ws_id: Option<uuid::Uuid>, ) -> Result<Vec<SessionInfo>, Box<dyn st...`
 - pub `create_session` function L259-270 — `( &mut self, ws_id: Option<uuid::Uuid>, ) -> Result<SessionInfo, Box<dyn std::er...`
 - pub `load_session` function L272-284 — `( &mut self, session_id: uuid::Uuid, ) -> Result<serde_json::Value, Box<dyn std:...`
-- pub `send_message` function L286-301 — `( &mut self, session_id: uuid::Uuid, content: &str, ) -> Result<(), Box<dyn std:...`
-- pub `parse_engine_event` function L357-377 — `(text: &str) -> Option<EngineEvent>` — Parse a WS message as an EngineEvent.
-- pub `EventUpdate` enum L380-407 — `AppendStreamingText | AddToolCall | AddToolResult | Complete | Error | Warning |...` — Convert an EngineEvent into App state updates.
-- pub `parse_system_notice` function L413-419 — `(text: &str) -> Option<arawn_service::ServerNotice>` — Parse a server-wide notice (plugin/config hot-reload) from a raw WS text
-- pub `engine_event_to_update` function L421-448 — `(event: EngineEvent) -> EventUpdate`
+- pub `truncate_session_at_user_message` function L289-308 — `( &mut self, session_id: uuid::Uuid, user_message_index: usize, ) -> Result<serd...` — Rewind a session back to before the Nth user message.
+- pub `send_message` function L310-325 — `( &mut self, session_id: uuid::Uuid, content: &str, ) -> Result<(), Box<dyn std:...`
+- pub `parse_engine_event` function L381-401 — `(text: &str) -> Option<EngineEvent>` — Parse a WS message as an EngineEvent.
+- pub `EventUpdate` enum L404-431 — `AppendStreamingText | AddToolCall | AddToolResult | Complete | Error | Warning |...` — Convert an EngineEvent into App state updates.
+- pub `parse_system_notice` function L437-443 — `(text: &str) -> Option<arawn_service::ServerNotice>` — Parse a server-wide notice (plugin/config hot-reload) from a raw WS text
+- pub `engine_event_to_update` function L445-472 — `(event: EngineEvent) -> EventUpdate`
 -  `REQUEST_ID` variable L13 — `: AtomicU64`
 -  `next_id` function L15-17 — `() -> u64`
 -  `Pending` type L31 — `= Arc<Mutex<HashMap<u64, oneshot::Sender<Value>>>>`
--  `WsClient` type L51-302 — `= WsClient`
+-  `WsClient` type L51-326 — `= WsClient`
 -  `read_server_token` function L86-100 — `() -> Option<String>` — Read the server auth token from {data_dir}/server.token.
--  `spawn_reader` function L306-354 — `( mut read: futures_util::stream::SplitStream< tokio_tungstenite::WebSocketStrea...` — Spawn the reader task.
--  `tests` module L451-496 — `-`
--  `parses_well_formed_system_notice` function L458-473 — `()`
--  `rejects_engine_event_envelope` function L476-483 — `()`
--  `rejects_response_envelope` function L486-489 — `()`
--  `rejects_malformed_json` function L492-495 — `()`
+-  `spawn_reader` function L330-378 — `( mut read: futures_util::stream::SplitStream< tokio_tungstenite::WebSocketStrea...` — Spawn the reader task.
+-  `tests` module L475-520 — `-`
+-  `parses_well_formed_system_notice` function L482-497 — `()`
+-  `rejects_engine_event_envelope` function L500-507 — `()`
+-  `rejects_response_envelope` function L510-513 — `()`
+-  `rejects_malformed_json` function L516-519 — `()`
 
 ### crates/arawn-workflow
 

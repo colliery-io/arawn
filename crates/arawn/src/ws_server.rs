@@ -31,6 +31,7 @@ const RPC_METHODS: &[&str] = &[
     "list_sessions",
     "create_session",
     "load_session",
+    "truncate_session_at_user_message",
     "send_message",
     "cancel",
     "user_input_response",
@@ -517,6 +518,59 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                         warn!(id, "load_session missing session_id");
                         Response::error(id, "invalid_params", "missing session_id".into())
                     }
+                };
+                if sender
+                    .send(WsMessage::Text(
+                        serde_json::to_string(&resp).unwrap().into(),
+                    ))
+                    .await
+                    .is_err()
+                {
+                    warn!(id, "send failed, client gone");
+                    break;
+                }
+            }
+
+            "truncate_session_at_user_message" => {
+                let session_id = request
+                    .params
+                    .get("session_id")
+                    .and_then(|v| v.as_str())
+                    .and_then(|s| uuid::Uuid::parse_str(s).ok());
+                let user_message_index = request
+                    .params
+                    .get("user_message_index")
+                    .and_then(|v| v.as_u64())
+                    .map(|n| n as usize);
+                debug!(
+                    id,
+                    session_id = ?session_id,
+                    user_message_index,
+                    "truncate_session_at_user_message"
+                );
+                let resp = match (session_id, user_message_index) {
+                    (Some(sid), Some(idx)) => match service
+                        .truncate_session_at_user_message(sid, idx)
+                        .await
+                    {
+                        Ok(detail) => {
+                            debug!(
+                                id,
+                                messages = detail.messages.len(),
+                                "truncate_session_at_user_message ok"
+                            );
+                            Response::success(id, serde_json::to_value(&detail).unwrap())
+                        }
+                        Err(e) => {
+                            warn!(id, error = %e, "truncate_session_at_user_message failed");
+                            Response::from_service_error(id, &e)
+                        }
+                    },
+                    _ => Response::error(
+                        id,
+                        "invalid_params",
+                        "missing session_id or user_message_index".into(),
+                    ),
                 };
                 if sender
                     .send(WsMessage::Text(

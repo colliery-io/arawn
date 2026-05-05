@@ -102,6 +102,56 @@ impl JsonlMessageStore {
         Ok(messages)
     }
 
+    /// Atomically rewrite the session's JSONL file to keep only the first
+    /// `keep_count` messages. Used by the branch-from-prior-prompt flow:
+    /// the caller computes how many messages to keep (e.g. "everything
+    /// before the Nth user message") and we persist that prefix.
+    ///
+    /// Writes to a tmp file in the same directory, fsyncs, then renames
+    /// over the original — so a crash mid-truncate either leaves the
+    /// original intact or yields the new content, never a torn file.
+    pub async fn truncate(
+        &self,
+        session_id: Uuid,
+        workstream_dir: &str,
+        keep_count: usize,
+    ) -> Result<(), StorageError> {
+        let path = self.session_path(session_id, workstream_dir);
+        if !path.exists() {
+            return Ok(());
+        }
+
+        let messages = self.load(session_id, workstream_dir).await?;
+        if keep_count >= messages.len() {
+            return Ok(()); // Nothing to drop.
+        }
+
+        let tmp = path.with_extension("jsonl.tmp");
+        if let Some(parent) = tmp.parent() {
+            fs::create_dir_all(parent).await?;
+        }
+        let mut file = fs::OpenOptions::new()
+            .create(true)
+            .write(true)
+            .truncate(true)
+            .open(&tmp)
+            .await?;
+
+        // Re-emit the version header to keep the file shape consistent
+        // with append()'s first-write behavior.
+        file.write_all(b"{\"_version\":1}\n").await?;
+        for msg in &messages[..keep_count] {
+            let mut line = serde_json::to_string(msg)?;
+            line.push('\n');
+            file.write_all(line.as_bytes()).await?;
+        }
+        file.sync_all().await?;
+        drop(file);
+
+        fs::rename(&tmp, &path).await?;
+        Ok(())
+    }
+
     /// Move a session's JSONL file from one workstream directory to another.
     /// Used during session promotion.
     pub async fn move_session(
@@ -457,5 +507,56 @@ mod tests {
             first_line.contains("\"_version\""),
             "first line should be version header, got: {first_line}"
         );
+    }
+
+    #[tokio::test]
+    async fn truncate_keeps_only_first_n_messages() {
+        let (_tmp, store) = setup();
+        let session_id = Uuid::new_v4();
+        let msgs = vec![
+            Message::User { content: "a".into() },
+            Message::Assistant { content: "A".into(), tool_uses: vec![] },
+            Message::User { content: "b".into() },
+            Message::Assistant { content: "B".into(), tool_uses: vec![] },
+        ];
+        for m in &msgs {
+            store.append(session_id, "scratch", m).await.unwrap();
+        }
+        // Keep first 2 messages → drop "b" and its assistant reply.
+        store.truncate(session_id, "scratch", 2).await.unwrap();
+        let loaded = store.load(session_id, "scratch").await.unwrap();
+        assert_eq!(loaded.len(), 2);
+        match &loaded[0] {
+            Message::User { content } => assert_eq!(content, "a"),
+            _ => panic!("expected user 'a'"),
+        }
+    }
+
+    #[tokio::test]
+    async fn truncate_to_zero_drops_everything() {
+        let (_tmp, store) = setup();
+        let session_id = Uuid::new_v4();
+        store.append(session_id, "scratch", &Message::User { content: "x".into() }).await.unwrap();
+        store.truncate(session_id, "scratch", 0).await.unwrap();
+        let loaded = store.load(session_id, "scratch").await.unwrap();
+        assert!(loaded.is_empty());
+    }
+
+    #[tokio::test]
+    async fn truncate_beyond_length_is_no_op() {
+        let (_tmp, store) = setup();
+        let session_id = Uuid::new_v4();
+        store.append(session_id, "scratch", &Message::User { content: "x".into() }).await.unwrap();
+        store.truncate(session_id, "scratch", 100).await.unwrap();
+        let loaded = store.load(session_id, "scratch").await.unwrap();
+        assert_eq!(loaded.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn truncate_nonexistent_session_is_ok() {
+        let (_tmp, store) = setup();
+        let session_id = Uuid::new_v4();
+        // No file exists; truncate should not error.
+        store.truncate(session_id, "scratch", 0).await.unwrap();
     }
 }
