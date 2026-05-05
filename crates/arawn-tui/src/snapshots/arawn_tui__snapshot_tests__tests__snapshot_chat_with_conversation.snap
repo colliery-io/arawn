@@ -12,7 +12,7 @@ expression: snap
  ·│
   │  The project has a Cargo.toml, crates/ and plugins/ directories.
  ·│
-  │
+  │  ───────────────────────────────────────────────────────────────────────────────────────────────
  ·│
   │
  ▸│

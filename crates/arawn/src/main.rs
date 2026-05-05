@@ -593,8 +593,6 @@ async fn run_cli_via_server(
     session_id: Option<Uuid>,
 ) -> Result<()> {
     use arawn_tui::ws_client::{WsClient, EventUpdate, engine_event_to_update, parse_engine_event};
-    use futures_util::StreamExt;
-    use tokio_tungstenite::tungstenite::Message as WsMessage;
 
     let mut client = WsClient::connect(url).await.map_err(|e| {
         anyhow::anyhow!(
@@ -624,8 +622,10 @@ async fn run_cli_via_server(
         std::process::exit(1);
     }
 
-    let req_id = client
-        .send_request(
+    // request_response awaits the JSON-RPC ack via the dedicated reader
+    // task — it can fail synchronously if the server rejected the request.
+    let ack = client
+        .request_response(
             "send_message",
             serde_json::json!({
                 "session_id": session_uuid.to_string(),
@@ -634,14 +634,26 @@ async fn run_cli_via_server(
         )
         .await
         .map_err(|e| anyhow::anyhow!("Failed to send message: {e}"))?;
+    if let Some(err) = ack.get("error") {
+        let msg = err
+            .get("message")
+            .and_then(|m| m.as_str())
+            .unwrap_or("unknown error");
+        eprintln!("Server error: {msg}");
+        std::process::exit(1);
+    }
 
     eprintln!("Thinking...\n");
 
+    let mut events = client
+        .events_take()
+        .ok_or_else(|| anyhow::anyhow!("ws events channel already taken"))?;
+
     // Stream events until Complete or Error
     let final_text = 'stream: loop {
-        let msg = client.read.next().await;
-        match msg {
-            Some(Ok(WsMessage::Text(text))) => {
+        let ev = events.recv().await;
+        match ev {
+            Some(arawn_tui::ws_client::WsEvent::Text(text)) => {
                 if let Some(event) = parse_engine_event(&text) {
                     match engine_event_to_update(event) {
                         EventUpdate::AddToolCall { name, .. } => {
@@ -662,23 +674,12 @@ async fn run_cli_via_server(
                         _ => {}
                     }
                 }
-                // Check for JSON-RPC error response
-                if let Ok(data) = serde_json::from_str::<serde_json::Value>(&text)
-                    && data.get("id").and_then(|v| v.as_u64()) == Some(req_id)
-                        && data.get("error").is_some()
-                    {
-                        let err = data["error"]["message"]
-                            .as_str()
-                            .unwrap_or("unknown error");
-                        eprintln!("Server error: {err}");
-                        std::process::exit(1);
-                    }
             }
-            Some(Ok(WsMessage::Close(_))) => {
+            Some(arawn_tui::ws_client::WsEvent::Closed) => {
                 eprintln!("Server closed connection");
                 std::process::exit(1);
             }
-            Some(Err(e)) => {
+            Some(arawn_tui::ws_client::WsEvent::Error(e)) => {
                 eprintln!("WebSocket error: {e}");
                 std::process::exit(1);
             }
@@ -686,7 +687,6 @@ async fn run_cli_via_server(
                 eprintln!("Connection lost");
                 std::process::exit(1);
             }
-            _ => {}
         }
     };
 
@@ -869,6 +869,9 @@ fn build_engine_config(
             memories: vec![],
             session_context: String::new(),
             plugin_prompts: vec![],
+            // Filled in by LocalService per-query (it has access to the
+            // integration registry); the template stays None.
+            integration_capabilities: None,
         }),
     }
 }

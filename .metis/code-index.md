@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-05T04:32:56Z | 192 files | Python, Rust
+> Generated: 2026-05-05T14:58:50Z | 193 files | Python, Rust
 
 ## Project Structure
 
@@ -224,6 +224,7 @@
 │   │       ├── snapshot_tests.rs
 │   │       ├── theme.rs
 │   │       ├── tui_prompt.rs
+│   │       ├── wrap.rs
 │   │       └── ws_client.rs
 │   └── arawn-workflow/
 │       ├── build.rs
@@ -444,41 +445,41 @@
 - pub `with_plan_state` function L195-198 — `(mut self, state: Arc<PlanModeState>) -> Self`
 - pub `with_background_tasks` function L200-203 — `(mut self, manager: Arc<BackgroundTaskManager>) -> Self`
 - pub `with_memory_manager` function L205-208 — `(mut self, mgr: Arc<arawn_memory::MemoryManager>) -> Self`
--  `LocalService` type L77-367 — `= LocalService`
+-  `LocalService` type L77-406 — `= LocalService`
 -  `load_session_state` function L212-241 — `( &self, session_id: Uuid, ) -> Result<(arawn_storage::SessionMeta, Workstream, ...` — Load session metadata, resolve workstream, and load message history.
--  `build_session_context` function L245-313 — `( &self, session_id: Uuid, workstream: &Workstream, ws_dir: &str, workspace_dir:...` — Build a ToolContext and per-session PromptContext for the engine.
--  `build_engine` function L317-366 — `( &self, prompt_context: Option<arawn_engine::PromptContext>, event_tx: &mpsc::S...` — Build a QueryEngine configured with compactor, skills, plugins, and plan state.
--  `infer_entity_type` function L371-384 — `(text: &str) -> (arawn_memory::EntityType, String)` — Infer entity type from text patterns.
--  `LocalService` type L389-1255 — `impl ArawnService for LocalService`
--  `list_workstreams` function L390-405 — `(&self) -> Result<Vec<WorkstreamInfo>, ServiceError>`
--  `create_workstream` function L407-424 — `( &self, name: String, root_dir: PathBuf, ) -> Result<WorkstreamInfo, ServiceErr...`
--  `list_sessions` function L426-445 — `( &self, workstream_id: Option<Uuid>, ) -> Result<Vec<SessionInfo>, ServiceError...`
--  `create_session` function L447-468 — `( &self, workstream_id: Option<Uuid>, ) -> Result<SessionInfo, ServiceError>`
--  `load_session` function L470-497 — `(&self, id: Uuid) -> Result<SessionDetail, ServiceError>`
--  `send_message` function L500-696 — `( &self, session_id: Uuid, content: String, ) -> Result<Pin<Box<dyn futures::Str...`
--  `cancel` function L698-711 — `(&self, session_id: Uuid) -> Result<(), ServiceError>`
--  `promote_session` function L713-764 — `( &self, session_id: Uuid, workstream_name: &str, ) -> Result<PromotionResult, S...`
--  `resolve_user_input` function L766-780 — `( &self, request_id: &str, selected_index: Option<usize>, ) -> Result<(), Servic...`
--  `query_inventory` function L782-847 — `(&self, kind: &str) -> Result<Vec<InventoryItem>, ServiceError>`
--  `list_available_commands` function L849-861 — `(&self) -> Result<Vec<CommandInfo>, ServiceError>`
--  `list_workflows` function L863-894 — `(&self) -> Result<Vec<WorkflowInfo>, ServiceError>`
--  `remember_fact` function L896-942 — `(&self, text: &str) -> Result<MemoryStoreResult, ServiceError>`
--  `memory_summary` function L944-991 — `(&self) -> Result<MemorySummary, ServiceError>`
--  `forget_entity` function L993-1043 — `(&self, query: &str) -> Result<ForgetResult, ServiceError>`
--  `get_permission_mode` function L1045-1053 — `(&self) -> Result<PermissionModeInfo, ServiceError>`
--  `set_permission_mode` function L1055-1067 — `(&self, mode_str: &str) -> Result<PermissionModeInfo, ServiceError>`
--  `get_capabilities` function L1069-1079 — `(&self) -> Result<arawn_service::ServerCapabilities, ServiceError>`
--  `get_permissions_status` function L1081-1130 — `(&self) -> Result<arawn_service::PermissionsStatus, ServiceError>`
--  `list_integrations` function L1132-1150 — `(&self) -> Result<Vec<arawn_service::IntegrationStatus>, ServiceError>`
--  `start_oauth_flow` function L1152-1229 — `( &self, service: &str, ) -> Result<arawn_service::OAuthFlowStarted, ServiceErro...`
--  `disconnect_integration` function L1231-1254 — `(&self, service: &str) -> Result<(), ServiceError>`
--  `OAuthFlowCtx` struct L1260-1264 — `{ service: String, url_tx: tokio::sync::Mutex<Option<tokio::sync::oneshot::Sende...` — Glue that lets `LocalService::start_oauth_flow` bridge the integration's
--  `OAuthFlowCtx` type L1267-1289 — `= OAuthFlowCtx`
--  `service` function L1268-1270 — `(&self) -> &str`
--  `publish_auth_url` function L1272-1279 — `(&self, url: &url::Url)`
--  `publish_progress` function L1281-1288 — `(&self, message: &str)`
--  `resolve_ws_dir_from_store` function L1292-1303 — `(store: &Store, ws_id: Option<Uuid>) -> Result<String, ServiceError>` — Resolve workstream directory name from store.
--  `first_sentence` function L1307-1318 — `(s: &str) -> String` — Extract the first sentence and sanitize for use in a markdown table cell.
+-  `build_session_context` function L245-352 — `( &self, session_id: Uuid, workstream: &Workstream, ws_dir: &str, workspace_dir:...` — Build a ToolContext and per-session PromptContext for the engine.
+-  `build_engine` function L356-405 — `( &self, prompt_context: Option<arawn_engine::PromptContext>, event_tx: &mpsc::S...` — Build a QueryEngine configured with compactor, skills, plugins, and plan state.
+-  `infer_entity_type` function L410-423 — `(text: &str) -> (arawn_memory::EntityType, String)` — Infer entity type from text patterns.
+-  `LocalService` type L428-1294 — `impl ArawnService for LocalService`
+-  `list_workstreams` function L429-444 — `(&self) -> Result<Vec<WorkstreamInfo>, ServiceError>`
+-  `create_workstream` function L446-463 — `( &self, name: String, root_dir: PathBuf, ) -> Result<WorkstreamInfo, ServiceErr...`
+-  `list_sessions` function L465-484 — `( &self, workstream_id: Option<Uuid>, ) -> Result<Vec<SessionInfo>, ServiceError...`
+-  `create_session` function L486-507 — `( &self, workstream_id: Option<Uuid>, ) -> Result<SessionInfo, ServiceError>`
+-  `load_session` function L509-536 — `(&self, id: Uuid) -> Result<SessionDetail, ServiceError>`
+-  `send_message` function L539-735 — `( &self, session_id: Uuid, content: String, ) -> Result<Pin<Box<dyn futures::Str...`
+-  `cancel` function L737-750 — `(&self, session_id: Uuid) -> Result<(), ServiceError>`
+-  `promote_session` function L752-803 — `( &self, session_id: Uuid, workstream_name: &str, ) -> Result<PromotionResult, S...`
+-  `resolve_user_input` function L805-819 — `( &self, request_id: &str, selected_index: Option<usize>, ) -> Result<(), Servic...`
+-  `query_inventory` function L821-886 — `(&self, kind: &str) -> Result<Vec<InventoryItem>, ServiceError>`
+-  `list_available_commands` function L888-900 — `(&self) -> Result<Vec<CommandInfo>, ServiceError>`
+-  `list_workflows` function L902-933 — `(&self) -> Result<Vec<WorkflowInfo>, ServiceError>`
+-  `remember_fact` function L935-981 — `(&self, text: &str) -> Result<MemoryStoreResult, ServiceError>`
+-  `memory_summary` function L983-1030 — `(&self) -> Result<MemorySummary, ServiceError>`
+-  `forget_entity` function L1032-1082 — `(&self, query: &str) -> Result<ForgetResult, ServiceError>`
+-  `get_permission_mode` function L1084-1092 — `(&self) -> Result<PermissionModeInfo, ServiceError>`
+-  `set_permission_mode` function L1094-1106 — `(&self, mode_str: &str) -> Result<PermissionModeInfo, ServiceError>`
+-  `get_capabilities` function L1108-1118 — `(&self) -> Result<arawn_service::ServerCapabilities, ServiceError>`
+-  `get_permissions_status` function L1120-1169 — `(&self) -> Result<arawn_service::PermissionsStatus, ServiceError>`
+-  `list_integrations` function L1171-1189 — `(&self) -> Result<Vec<arawn_service::IntegrationStatus>, ServiceError>`
+-  `start_oauth_flow` function L1191-1268 — `( &self, service: &str, ) -> Result<arawn_service::OAuthFlowStarted, ServiceErro...`
+-  `disconnect_integration` function L1270-1293 — `(&self, service: &str) -> Result<(), ServiceError>`
+-  `OAuthFlowCtx` struct L1299-1303 — `{ service: String, url_tx: tokio::sync::Mutex<Option<tokio::sync::oneshot::Sende...` — Glue that lets `LocalService::start_oauth_flow` bridge the integration's
+-  `OAuthFlowCtx` type L1306-1328 — `= OAuthFlowCtx`
+-  `service` function L1307-1309 — `(&self) -> &str`
+-  `publish_auth_url` function L1311-1318 — `(&self, url: &url::Url)`
+-  `publish_progress` function L1320-1327 — `(&self, message: &str)`
+-  `resolve_ws_dir_from_store` function L1331-1342 — `(store: &Store, ws_id: Option<Uuid>) -> Result<String, ServiceError>` — Resolve workstream directory name from store.
+-  `first_sentence` function L1346-1357 — `(s: &str) -> String` — Extract the first sentence and sanitize for use in a markdown table cell.
 
 #### crates/arawn/src/main.rs
 
@@ -492,8 +493,8 @@
 -  `register_default_tools` function L723-769 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &arawn_bin::ArawnConfig, d...` — Register all default tools into the registry.
 -  `connect_mcp_servers` function L772-820 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
 -  `register_workflow_tools` function L823-840 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
--  `build_engine_config` function L842-874 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
--  `dirs_path` function L876-885 — `() -> Option<String>`
+-  `build_engine_config` function L842-877 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
+-  `dirs_path` function L879-888 — `() -> Option<String>`
 
 #### crates/arawn/src/plugin_cmd.rs
 
@@ -1078,56 +1079,57 @@
 #### crates/arawn-engine/src/query_engine.rs
 
 - pub `ProgressEvent` enum L24-41 — `AssistantText | ToolCallStart | ToolCallResult` — Live progress events emitted during the engine loop.
-- pub `PromptContext` struct L46-57 — `{ prompts_dir: Option<std::path::PathBuf>, os: String, shell: String, cwd: std::...` — Cached context for building system prompts per-turn.
-- pub `QueryEngineConfig` struct L61-72 — `{ model: String, max_iterations: usize, system_prompt: String, max_tokens: Optio...` — Configuration for the query engine.
-- pub `QueryEngine` struct L89-110 — `{ llm: Arc<dyn LlmClient>, registry: Arc<ToolRegistry>, config: QueryEngineConfi...` — The agentic loop: prompt → LLM → tool_use → execute → feed result → loop.
-- pub `new` function L113-130 — `(llm: Arc<dyn LlmClient>, registry: Arc<ToolRegistry>) -> Self`
-- pub `with_config` function L132-153 — `( llm: Arc<dyn LlmClient>, registry: Arc<ToolRegistry>, config: QueryEngineConfi...`
-- pub `with_compactor` function L155-158 — `(mut self, compactor: Compactor) -> Self`
-- pub `with_permission_checker` function L160-163 — `(mut self, checker: Arc<PermissionChecker>) -> Self`
-- pub `with_hook_runner` function L165-168 — `(mut self, runner: Arc<HookRunner>) -> Self`
-- pub `with_skill_registry` function L170-173 — `(mut self, registry: Arc<crate::skills::SkillRegistry>) -> Self`
-- pub `with_plugin_registry` function L175-178 — `(mut self, registry: Arc<crate::plugins::PluginRegistry>) -> Self`
-- pub `with_plan_state` function L180-183 — `(mut self, plan_state: Arc<PlanModeState>) -> Self`
-- pub `plan_state` function L186-188 — `(&self) -> Option<&Arc<PlanModeState>>` — Get the plan mode state (if configured).
-- pub `with_background_tasks` function L190-193 — `(mut self, manager: Arc<BackgroundTaskManager>) -> Self`
-- pub `with_progress_sender` function L196-199 — `(mut self, tx: tokio::sync::mpsc::Sender<ProgressEvent>) -> Self` — Set a channel for live progress events during the engine loop.
-- pub `with_cancel_token` function L202-205 — `(mut self, token: tokio_util::sync::CancellationToken) -> Self` — Set a cancellation token — checked at each loop iteration and before tool execution.
-- pub `fire_hook` function L224-230 — `(&self, input: &HookInput) -> Option<crate::hooks::AggregatedHookResult>` — Fire a hook event.
-- pub `run` function L233-552 — `( &mut self, session: &mut Session, ctx: &dyn arawn_tool::ToolContext, ) -> Resu...` — Run the agentic loop for a session.
+- pub `IntegrationCapabilitiesFn` type L54 — `= std::sync::Arc<dyn Fn() -> Vec<String> + Send + Sync>` — Provider for dynamic integration capability summaries.
+- pub `PromptContext` struct L58-73 — `{ prompts_dir: Option<std::path::PathBuf>, os: String, shell: String, cwd: std::...` — Cached context for building system prompts per-turn.
+- pub `QueryEngineConfig` struct L77-88 — `{ model: String, max_iterations: usize, system_prompt: String, max_tokens: Optio...` — Configuration for the query engine.
+- pub `QueryEngine` struct L105-126 — `{ llm: Arc<dyn LlmClient>, registry: Arc<ToolRegistry>, config: QueryEngineConfi...` — The agentic loop: prompt → LLM → tool_use → execute → feed result → loop.
+- pub `new` function L129-146 — `(llm: Arc<dyn LlmClient>, registry: Arc<ToolRegistry>) -> Self`
+- pub `with_config` function L148-169 — `( llm: Arc<dyn LlmClient>, registry: Arc<ToolRegistry>, config: QueryEngineConfi...`
+- pub `with_compactor` function L171-174 — `(mut self, compactor: Compactor) -> Self`
+- pub `with_permission_checker` function L176-179 — `(mut self, checker: Arc<PermissionChecker>) -> Self`
+- pub `with_hook_runner` function L181-184 — `(mut self, runner: Arc<HookRunner>) -> Self`
+- pub `with_skill_registry` function L186-189 — `(mut self, registry: Arc<crate::skills::SkillRegistry>) -> Self`
+- pub `with_plugin_registry` function L191-194 — `(mut self, registry: Arc<crate::plugins::PluginRegistry>) -> Self`
+- pub `with_plan_state` function L196-199 — `(mut self, plan_state: Arc<PlanModeState>) -> Self`
+- pub `plan_state` function L202-204 — `(&self) -> Option<&Arc<PlanModeState>>` — Get the plan mode state (if configured).
+- pub `with_background_tasks` function L206-209 — `(mut self, manager: Arc<BackgroundTaskManager>) -> Self`
+- pub `with_progress_sender` function L212-215 — `(mut self, tx: tokio::sync::mpsc::Sender<ProgressEvent>) -> Self` — Set a channel for live progress events during the engine loop.
+- pub `with_cancel_token` function L218-221 — `(mut self, token: tokio_util::sync::CancellationToken) -> Self` — Set a cancellation token — checked at each loop iteration and before tool execution.
+- pub `fire_hook` function L240-246 — `(&self, input: &HookInput) -> Option<crate::hooks::AggregatedHookResult>` — Fire a hook event.
+- pub `run` function L249-568 — `( &mut self, session: &mut Session, ctx: &dyn arawn_tool::ToolContext, ) -> Resu...` — Run the agentic loop for a session.
 -  `DEFAULT_MAX_ITERATIONS` variable L18 — `: usize`
 -  `MAX_COMPACT_FAILURES` variable L19 — `: u32`
 -  `DEFAULT_SYSTEM_PROMPT` variable L42 — `: &str`
--  `QueryEngineConfig` type L74-86 — `impl Default for QueryEngineConfig`
--  `default` function L75-85 — `() -> Self`
--  `QueryEngine` type L112-891 — `= QueryEngine`
--  `is_cancelled` function L208-210 — `(&self) -> bool` — Check if cancellation has been requested.
--  `emit_progress` function L213-217 — `(&self, event: ProgressEvent)` — Emit a progress event if a sender is configured.
--  `build_request` function L554-644 — `(&self, session: &Session) -> ChatRequest`
--  `stream_response_with_retry` function L664-698 — `( &self, session: &Session, _ctx: &dyn arawn_tool::ToolContext, ) -> Result<Asse...` — Retry the request-build-and-stream cycle when the stream fails mid-flight.
--  `MAX_RETRIES` variable L669 — `: u32`
--  `BASE_DELAY_MS` variable L670 — `: u64`
--  `stream_response` function L700-760 — `( &self, request: ChatRequest, ) -> Result<AssembledResponse, EngineError>`
--  `execute_tool` function L762-890 — `( &self, ctx: &dyn arawn_tool::ToolContext, tool_use_id: &str, name: &str, argum...`
--  `parse_arguments` function L893-902 — `(raw: &str) -> serde_json::Value`
--  `AssembledResponse` struct L905-909 — `{ text: String, tool_calls: Vec<AssembledToolCall>, usage: Option<arawn_llm::Usa...`
--  `AssembledToolCall` struct L911-915 — `{ id: String, name: String, arguments: serde_json::Value }`
--  `ToolResult` struct L917-920 — `{ content: String, is_error: bool }`
--  `filter_tools_for_context` function L925-1037 — `( all_tools: &[arawn_llm::ToolDefinition], session: &Session, registry: &ToolReg...` — Filter tool definitions to only contextually relevant ones for this turn.
--  `tests` module L1040-1228 — `-`
--  `MockLlm` struct L1052-1054 — `{ responses: Mutex<Vec<Vec<ChatChunk>>> }` — Mock LLM that returns pre-scripted responses.
--  `MockLlm` type L1056-1086 — `= MockLlm`
--  `new` function L1057-1061 — `(responses: Vec<Vec<ChatChunk>>) -> Self`
--  `text` function L1064-1071 — `(text: &str) -> Vec<ChatChunk>` — Convenience: text-only response
--  `tool_call` function L1074-1085 — `(id: &str, name: &str, args: &str) -> Vec<ChatChunk>` — Convenience: tool call then done
--  `MockLlm` type L1089-1105 — `impl LlmClient for MockLlm`
--  `stream` function L1090-1104 — `( &self, _request: ChatRequest, ) -> Result< Pin<Box<dyn futures::Stream<Item = ...`
--  `setup` function L1107-1112 — `() -> (Workstream, Session, EngineToolContext)`
--  `text_only_response` function L1115-1128 — `()`
--  `single_tool_call` function L1131-1149 — `()`
--  `tool_not_found` function L1152-1174 — `()`
--  `max_iterations_exceeded` function L1177-1204 — `()`
--  `multi_turn_tool_chain` function L1207-1226 — `()`
+-  `QueryEngineConfig` type L90-102 — `impl Default for QueryEngineConfig`
+-  `default` function L91-101 — `() -> Self`
+-  `QueryEngine` type L128-916 — `= QueryEngine`
+-  `is_cancelled` function L224-226 — `(&self) -> bool` — Check if cancellation has been requested.
+-  `emit_progress` function L229-233 — `(&self, event: ProgressEvent)` — Emit a progress event if a sender is configured.
+-  `build_request` function L570-669 — `(&self, session: &Session) -> ChatRequest`
+-  `stream_response_with_retry` function L689-723 — `( &self, session: &Session, _ctx: &dyn arawn_tool::ToolContext, ) -> Result<Asse...` — Retry the request-build-and-stream cycle when the stream fails mid-flight.
+-  `MAX_RETRIES` variable L694 — `: u32`
+-  `BASE_DELAY_MS` variable L695 — `: u64`
+-  `stream_response` function L725-785 — `( &self, request: ChatRequest, ) -> Result<AssembledResponse, EngineError>`
+-  `execute_tool` function L787-915 — `( &self, ctx: &dyn arawn_tool::ToolContext, tool_use_id: &str, name: &str, argum...`
+-  `parse_arguments` function L918-927 — `(raw: &str) -> serde_json::Value`
+-  `AssembledResponse` struct L930-934 — `{ text: String, tool_calls: Vec<AssembledToolCall>, usage: Option<arawn_llm::Usa...`
+-  `AssembledToolCall` struct L936-940 — `{ id: String, name: String, arguments: serde_json::Value }`
+-  `ToolResult` struct L942-945 — `{ content: String, is_error: bool }`
+-  `filter_tools_for_context` function L950-1062 — `( all_tools: &[arawn_llm::ToolDefinition], session: &Session, registry: &ToolReg...` — Filter tool definitions to only contextually relevant ones for this turn.
+-  `tests` module L1065-1253 — `-`
+-  `MockLlm` struct L1077-1079 — `{ responses: Mutex<Vec<Vec<ChatChunk>>> }` — Mock LLM that returns pre-scripted responses.
+-  `MockLlm` type L1081-1111 — `= MockLlm`
+-  `new` function L1082-1086 — `(responses: Vec<Vec<ChatChunk>>) -> Self`
+-  `text` function L1089-1096 — `(text: &str) -> Vec<ChatChunk>` — Convenience: text-only response
+-  `tool_call` function L1099-1110 — `(id: &str, name: &str, args: &str) -> Vec<ChatChunk>` — Convenience: tool call then done
+-  `MockLlm` type L1114-1130 — `impl LlmClient for MockLlm`
+-  `stream` function L1115-1129 — `( &self, _request: ChatRequest, ) -> Result< Pin<Box<dyn futures::Stream<Item = ...`
+-  `setup` function L1132-1137 — `() -> (Workstream, Session, EngineToolContext)`
+-  `text_only_response` function L1140-1153 — `()`
+-  `single_tool_call` function L1156-1174 — `()`
+-  `tool_not_found` function L1177-1199 — `()`
+-  `max_iterations_exceeded` function L1202-1229 — `()`
+-  `multi_turn_tool_chain` function L1232-1251 — `()`
 
 #### crates/arawn-engine/src/system_prompt.rs
 
@@ -1141,10 +1143,11 @@
 - pub `context_files` function L239-262 — `(mut self, files: &[ContextFile]) -> Self` — Add context files (arawn.md at workstream and global levels).
 - pub `memories` function L265-280 — `(mut self, memories: &[String]) -> Self` — Add relevant memories (future — currently a no-op if empty).
 - pub `session_context` function L283-294 — `(mut self, summary: &str) -> Self` — Add session context (for resumed sessions).
-- pub `plugin_prompts` function L297-313 — `(mut self, prompts: &[String]) -> Self` — Add plugin-contributed prompt fragments.
-- pub `build` function L316-338 — `(mut self) -> String` — Build the final system prompt string, enforcing token budget.
-- pub `ContextFile` struct L351-355 — `{ path: std::path::PathBuf, content: String, truncated: bool }` — A context file loaded from disk.
-- pub `find_context_files` function L358-374 — `(workstream_root: &Path, global_dir: &Path) -> Vec<ContextFile>` — Load context files from workstream root and global config dir.
+- pub `integrations` function L302-321 — `(mut self, summaries: &[String]) -> Self` — Add a section listing connected integrations and their granted
+- pub `plugin_prompts` function L324-340 — `(mut self, prompts: &[String]) -> Self` — Add plugin-contributed prompt fragments.
+- pub `build` function L343-365 — `(mut self) -> String` — Build the final system prompt string, enforcing token budget.
+- pub `ContextFile` struct L378-382 — `{ path: std::path::PathBuf, content: String, truncated: bool }` — A context file loaded from disk.
+- pub `find_context_files` function L385-401 — `(workstream_root: &Path, global_dir: &Path) -> Vec<ContextFile>` — Load context files from workstream root and global config dir.
 -  `DEFAULT_TOKEN_BUDGET` variable L6 — `: u32` — Default token budget for the system prompt (~24k chars).
 -  `MAX_CONTEXT_FILE_CHARS` variable L9 — `: usize` — Max chars for a context file before truncation.
 -  `DEFAULT_IDENTITY` variable L13 — `: &str`
@@ -1159,32 +1162,32 @@
 -  `STATIC_SECTION_DEFAULTS` variable L119-128 — `: &[&str]` — Compiled-in defaults for each static section.
 -  `STATIC_SECTION_PRIORITIES` variable L131-140 — `: &[u8]` — Priority levels for sections.
 -  `PromptSection` struct L144-148 — `{ name: String, content: String, priority: u8 }` — A section in the assembled prompt.
--  `SystemPromptBuilder` type L156-339 — `= SystemPromptBuilder`
--  `SystemPromptBuilder` type L341-345 — `impl Default for SystemPromptBuilder`
--  `default` function L342-344 — `() -> Self`
--  `load_context_file` function L376-395 — `(path: &Path, max_chars: usize) -> Option<ContextFile>`
--  `truncate_70_20` function L398-421 — `(content: &str, max_chars: usize) -> String` — Truncate keeping 70% from the head and 20% from the tail, with a marker in between.
--  `load_section` function L425-433 — `(name: &str, default: &str, prompts_dir: Option<&Path>) -> String`
--  `tests` module L436-751 — `-`
--  `default_assembly_includes_all_static_sections` function L443-459 — `()`
--  `sections_have_headers` function L463-474 — `()`
--  `empty_optional_sections_omitted` function L478-489 — `()`
--  `single_section_override` function L493-504 — `()`
--  `partial_overrides_other_sections_use_defaults` function L508-520 — `()`
--  `missing_override_dir_uses_defaults` function L524-530 — `()`
--  `empty_override_file_produces_empty_section` function L534-544 — `()`
--  `under_budget_all_sections_included` function L548-559 — `()`
--  `over_budget_drops_low_priority_sections` function L563-573 — `()`
--  `identity_survives_budget_cuts` function L577-586 — `()`
--  `truncation_produces_clean_sections` function L590-602 — `()`
--  `context_file_injected` function L606-617 — `()`
--  `context_file_missing_section_omitted` function L621-628 — `()`
--  `large_context_file_truncated` function L632-643 — `()`
--  `tools_section_reflects_tool_list` function L647-666 — `()`
--  `per_turn_freshness_different_tools` function L670-694 — `()`
--  `environment_section_contains_info` function L698-707 — `()`
--  `workstream_section_contains_info` function L711-718 — `()`
--  `snapshot_full_build` function L722-750 — `()`
+-  `SystemPromptBuilder` type L156-366 — `= SystemPromptBuilder`
+-  `SystemPromptBuilder` type L368-372 — `impl Default for SystemPromptBuilder`
+-  `default` function L369-371 — `() -> Self`
+-  `load_context_file` function L403-422 — `(path: &Path, max_chars: usize) -> Option<ContextFile>`
+-  `truncate_70_20` function L425-448 — `(content: &str, max_chars: usize) -> String` — Truncate keeping 70% from the head and 20% from the tail, with a marker in between.
+-  `load_section` function L452-460 — `(name: &str, default: &str, prompts_dir: Option<&Path>) -> String`
+-  `tests` module L463-778 — `-`
+-  `default_assembly_includes_all_static_sections` function L470-486 — `()`
+-  `sections_have_headers` function L490-501 — `()`
+-  `empty_optional_sections_omitted` function L505-516 — `()`
+-  `single_section_override` function L520-531 — `()`
+-  `partial_overrides_other_sections_use_defaults` function L535-547 — `()`
+-  `missing_override_dir_uses_defaults` function L551-557 — `()`
+-  `empty_override_file_produces_empty_section` function L561-571 — `()`
+-  `under_budget_all_sections_included` function L575-586 — `()`
+-  `over_budget_drops_low_priority_sections` function L590-600 — `()`
+-  `identity_survives_budget_cuts` function L604-613 — `()`
+-  `truncation_produces_clean_sections` function L617-629 — `()`
+-  `context_file_injected` function L633-644 — `()`
+-  `context_file_missing_section_omitted` function L648-655 — `()`
+-  `large_context_file_truncated` function L659-670 — `()`
+-  `tools_section_reflects_tool_list` function L674-693 — `()`
+-  `per_turn_freshness_different_tools` function L697-721 — `()`
+-  `environment_section_contains_info` function L725-734 — `()`
+-  `workstream_section_contains_info` function L738-745 — `()`
+-  `snapshot_full_build` function L749-777 — `()`
 
 #### crates/arawn-engine/src/testing.rs
 
@@ -2768,9 +2771,10 @@
 
 #### crates/arawn-integrations/src/integration.rs
 
-- pub `Integration` interface L20-46 — `{ fn name(), fn is_connected(), fn connect(), fn disconnect() }` — Lifecycle contract every external integration implements.
-- pub `ConnectContext` interface L55-66 — `{ fn service(), fn publish_auth_url(), fn publish_progress() }` — Hooks an `Integration::connect` impl needs from its caller (the server).
-- pub `IntegrationStatus` struct L70-73 — `{ name: String, connected: bool }` — Snapshot of one integration's state, returned by `list_integrations` RPC.
+- pub `Integration` interface L20-62 — `{ fn name(), fn is_connected(), fn connect(), fn disconnect(), fn capabilities_s...` — Lifecycle contract every external integration implements.
+- pub `ConnectContext` interface L71-82 — `{ fn service(), fn publish_auth_url(), fn publish_progress() }` — Hooks an `Integration::connect` impl needs from its caller (the server).
+- pub `IntegrationStatus` struct L86-89 — `{ name: String, connected: bool }` — Snapshot of one integration's state, returned by `list_integrations` RPC.
+-  `capabilities_summary` function L59-61 — `(&self) -> Option<String>` — One-line capability summary for the LLM system prompt.
 
 #### crates/arawn-integrations/src/lib.rs
 
@@ -2921,29 +2925,31 @@
 #### crates/arawn-integrations/src/slack/integration.rs
 
 - pub `SERVICE_NAME` variable L15 — `: &str` — Stable service name.
-- pub `SLACK_OAUTH_SCOPES` variable L24-36 — `: &[&str]` — Bot scopes requested at OAuth time.
-- pub `SlackProviderConfig` struct L40-49 — `{ auth_url: Url, token_url: Url, scopes: Vec<String>, redirect_port: u16 }` — Slack OAuth v2 provider config.
-- pub `DEFAULT_SLACK_REDIRECT_PORT` variable L55 — `: u16` — Default callback port for Slack.
-- pub `into_oauth_provider` function L69-77 — `(self, client_id: String, client_secret: String) -> OAuthProviderConfig`
-- pub `SlackIntegration` struct L81-86 — `{ data_dir: PathBuf, client_id: String, client_secret: String, provider_config: ...` — Slack integration.
-- pub `new` function L89-96 — `(data_dir: PathBuf, client_id: String, client_secret: String) -> Self`
-- pub `with_provider_config` function L98-101 — `(mut self, config: SlackProviderConfig) -> Self`
-- pub `context` function L106-112 — `(&self) -> Result<SlackContext, IntegrationError>` — Build a fresh `SlackContext` for tool calls.
--  `SlackProviderConfig` type L57-66 — `impl Default for SlackProviderConfig`
--  `default` function L58-65 — `() -> Self`
--  `SlackProviderConfig` type L68-78 — `= SlackProviderConfig`
--  `SlackIntegration` type L88-133 — `= SlackIntegration`
--  `oauth_config` function L114-116 — `(&self) -> OAuthProviderConfig`
--  `provider` function L118-128 — `(&self) -> SlackProviderConfig`
--  `token_store` function L130-132 — `(&self) -> Result<TokenStore, IntegrationError>`
--  `SlackIntegration` type L136-169 — `impl Integration for SlackIntegration`
--  `name` function L137-139 — `(&self) -> &str`
--  `is_connected` function L141-146 — `(&self) -> bool`
--  `connect` function L148-162 — `(&self, ctx: &dyn ConnectContext) -> Result<(), IntegrationError>`
--  `disconnect` function L164-168 — `(&self) -> Result<(), IntegrationError>`
--  `tests` module L172-195 — `-`
--  `default_provider_carries_eleven_bot_scopes` function L176-184 — `()`
--  `provider_lifts_into_oauth_config` function L187-194 — `()`
+- pub `SLACK_OAUTH_SCOPES` variable L24-44 — `: &[&str]` — Bot scopes requested at OAuth time.
+- pub `SlackProviderConfig` struct L48-57 — `{ auth_url: Url, token_url: Url, scopes: Vec<String>, redirect_port: u16 }` — Slack OAuth v2 provider config.
+- pub `DEFAULT_SLACK_REDIRECT_PORT` variable L63 — `: u16` — Default callback port for Slack.
+- pub `into_oauth_provider` function L77-85 — `(self, client_id: String, client_secret: String) -> OAuthProviderConfig`
+- pub `SlackIntegration` struct L89-94 — `{ data_dir: PathBuf, client_id: String, client_secret: String, provider_config: ...` — Slack integration.
+- pub `new` function L97-104 — `(data_dir: PathBuf, client_id: String, client_secret: String) -> Self`
+- pub `with_provider_config` function L106-109 — `(mut self, config: SlackProviderConfig) -> Self`
+- pub `context` function L114-120 — `(&self) -> Result<SlackContext, IntegrationError>` — Build a fresh `SlackContext` for tool calls.
+- pub `granted_scopes` function L126-138 — `(&self) -> Result<std::collections::HashSet<String>, IntegrationError>` — Return the set of scopes granted at OAuth time, parsed from the
+-  `SlackProviderConfig` type L65-74 — `impl Default for SlackProviderConfig`
+-  `default` function L66-73 — `() -> Self`
+-  `SlackProviderConfig` type L76-86 — `= SlackProviderConfig`
+-  `SlackIntegration` type L96-159 — `= SlackIntegration`
+-  `oauth_config` function L140-142 — `(&self) -> OAuthProviderConfig`
+-  `provider` function L144-154 — `(&self) -> SlackProviderConfig`
+-  `token_store` function L156-158 — `(&self) -> Result<TokenStore, IntegrationError>`
+-  `SlackIntegration` type L162-214 — `impl Integration for SlackIntegration`
+-  `name` function L163-165 — `(&self) -> &str`
+-  `is_connected` function L167-172 — `(&self) -> bool`
+-  `connect` function L174-188 — `(&self, ctx: &dyn ConnectContext) -> Result<(), IntegrationError>`
+-  `disconnect` function L190-194 — `(&self) -> Result<(), IntegrationError>`
+-  `capabilities_summary` function L196-213 — `(&self) -> Option<String>`
+-  `tests` module L217-243 — `-`
+-  `default_provider_carries_fourteen_bot_scopes` function L221-232 — `()`
+-  `provider_lifts_into_oauth_config` function L235-242 — `()`
 
 #### crates/arawn-integrations/src/slack/mod.rs
 
@@ -2953,82 +2959,97 @@
 
 #### crates/arawn-integrations/src/slack/tools.rs
 
-- pub `SlackListChannelsTool` struct L121-123 — `{ integration: Arc<SlackIntegration> }` — questions in the meantime.
-- pub `new` function L126-128 — `(integration: Arc<SlackIntegration>) -> Self` — questions in the meantime.
-- pub `SlackHistoryTool` struct L200-202 — `{ integration: Arc<SlackIntegration> }` — questions in the meantime.
-- pub `new` function L205-207 — `(integration: Arc<SlackIntegration>) -> Self` — questions in the meantime.
-- pub `SlackPostTool` struct L285-287 — `{ integration: Arc<SlackIntegration> }` — questions in the meantime.
-- pub `new` function L290-292 — `(integration: Arc<SlackIntegration>) -> Self` — questions in the meantime.
-- pub `SlackReactTool` struct L370-372 — `{ integration: Arc<SlackIntegration> }` — questions in the meantime.
-- pub `new` function L375-377 — `(integration: Arc<SlackIntegration>) -> Self` — questions in the meantime.
-- pub `SlackUsersListTool` struct L473-475 — `{ integration: Arc<SlackIntegration> }` — questions in the meantime.
-- pub `new` function L478-480 — `(integration: Arc<SlackIntegration>) -> Self` — questions in the meantime.
-- pub `SlackOpenDmTool` struct L546-548 — `{ integration: Arc<SlackIntegration> }` — questions in the meantime.
-- pub `new` function L551-553 — `(integration: Arc<SlackIntegration>) -> Self` — questions in the meantime.
--  `integ_err` function L28-30 — `(e: crate::IntegrationError) -> ToolError` — questions in the meantime.
--  `slack_err` function L34-36 — `(stage: &str, e: slack_morphism::errors::SlackClientError) -> ToolError` — `slack-morphism::ClientError` → `ToolError`.
--  `ChannelSummary` struct L42-50 — `{ id: String, name: Option<String>, kind: String, member_count: Option<u64>, is_...` — Compact, agent-friendly channel summary.
--  `summarize_channel` function L52-71 — `(c: &slack_morphism::prelude::SlackChannelInfo) -> ChannelSummary` — questions in the meantime.
--  `MessageSummary` struct L75-86 — `{ ts: String, user: Option<String>, text: Option<String>, thread_ts: Option<Stri...` — Compact message record — what the agent sees from `slack_history`.
--  `ReactionSummary` struct L89-92 — `{ name: String, count: usize }` — questions in the meantime.
--  `summarize_message` function L94-117 — `(m: &slack_morphism::prelude::SlackHistoryMessage) -> MessageSummary` — questions in the meantime.
--  `SlackListChannelsTool` type L125-129 — `= SlackListChannelsTool` — questions in the meantime.
--  `SlackListChannelsTool` type L132-196 — `impl Tool for SlackListChannelsTool` — questions in the meantime.
--  `name` function L133-135 — `(&self) -> &str` — questions in the meantime.
--  `description` function L136-140 — `(&self) -> &str` — questions in the meantime.
--  `category` function L141-143 — `(&self) -> ToolCategory` — questions in the meantime.
--  `permission_category` function L144-146 — `(&self) -> PermissionCategory` — questions in the meantime.
--  `parameters_schema` function L147-167 — `(&self) -> Value` — questions in the meantime.
--  `execute` function L168-195 — `(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError>` — questions in the meantime.
--  `SlackHistoryTool` type L204-208 — `= SlackHistoryTool` — questions in the meantime.
--  `SlackHistoryTool` type L211-281 — `impl Tool for SlackHistoryTool` — questions in the meantime.
--  `name` function L212-214 — `(&self) -> &str` — questions in the meantime.
--  `description` function L215-219 — `(&self) -> &str` — questions in the meantime.
--  `category` function L220-222 — `(&self) -> ToolCategory` — questions in the meantime.
--  `permission_category` function L223-225 — `(&self) -> PermissionCategory` — questions in the meantime.
--  `parameters_schema` function L226-251 — `(&self) -> Value` — questions in the meantime.
--  `execute` function L252-280 — `(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError>` — questions in the meantime.
--  `SlackPostTool` type L289-293 — `= SlackPostTool` — questions in the meantime.
--  `SlackPostTool` type L296-366 — `impl Tool for SlackPostTool` — questions in the meantime.
--  `name` function L297-299 — `(&self) -> &str` — questions in the meantime.
--  `description` function L300-304 — `(&self) -> &str` — questions in the meantime.
--  `category` function L305-307 — `(&self) -> ToolCategory` — questions in the meantime.
--  `permission_category` function L308-310 — `(&self) -> PermissionCategory` — questions in the meantime.
--  `parameters_schema` function L311-330 — `(&self) -> Value` — questions in the meantime.
--  `execute` function L331-365 — `(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError>` — questions in the meantime.
--  `SlackReactTool` type L374-378 — `= SlackReactTool` — questions in the meantime.
--  `SlackReactTool` type L381-438 — `impl Tool for SlackReactTool` — questions in the meantime.
--  `name` function L382-384 — `(&self) -> &str` — questions in the meantime.
--  `description` function L385-388 — `(&self) -> &str` — questions in the meantime.
--  `category` function L389-391 — `(&self) -> ToolCategory` — questions in the meantime.
--  `permission_category` function L392-394 — `(&self) -> PermissionCategory` — questions in the meantime.
--  `parameters_schema` function L395-405 — `(&self) -> Value` — questions in the meantime.
--  `execute` function L406-437 — `(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError>` — questions in the meantime.
--  `UserSummary` struct L445-457 — `{ id: String, name: Option<String>, real_name: Option<String>, display_name: Opt...` — Compact user record.
--  `summarize_user` function L459-471 — `(u: &slack_morphism::prelude::SlackUser) -> UserSummary` — questions in the meantime.
--  `SlackUsersListTool` type L477-481 — `= SlackUsersListTool` — questions in the meantime.
--  `SlackUsersListTool` type L484-542 — `impl Tool for SlackUsersListTool` — questions in the meantime.
--  `name` function L485-487 — `(&self) -> &str` — questions in the meantime.
--  `description` function L488-493 — `(&self) -> &str` — questions in the meantime.
--  `category` function L494-496 — `(&self) -> ToolCategory` — questions in the meantime.
--  `permission_category` function L497-499 — `(&self) -> PermissionCategory` — questions in the meantime.
--  `parameters_schema` function L500-520 — `(&self) -> Value` — questions in the meantime.
--  `execute` function L521-541 — `(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError>` — questions in the meantime.
--  `SlackOpenDmTool` type L550-554 — `= SlackOpenDmTool` — questions in the meantime.
--  `SlackOpenDmTool` type L557-619 — `impl Tool for SlackOpenDmTool` — questions in the meantime.
--  `name` function L558-560 — `(&self) -> &str` — questions in the meantime.
--  `description` function L561-566 — `(&self) -> &str` — questions in the meantime.
--  `category` function L567-569 — `(&self) -> ToolCategory` — questions in the meantime.
--  `permission_category` function L570-575 — `(&self) -> PermissionCategory` — questions in the meantime.
--  `parameters_schema` function L576-588 — `(&self) -> Value` — questions in the meantime.
--  `execute` function L589-618 — `(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError>` — questions in the meantime.
--  `tests` module L622-741 — `-` — questions in the meantime.
--  `channel` function L630-644 — `(id: &str, kind: &str) -> SlackChannelInfo` — questions in the meantime.
--  `summarize_channel_classifies_kind_correctly` function L647-656 — `()` — questions in the meantime.
--  `summarize_channel_carries_topic_and_purpose` function L659-668 — `()` — questions in the meantime.
--  `summarize_message_extracts_user_text_and_reactions` function L671-698 — `()` — questions in the meantime.
--  `summarize_user_extracts_handle_and_profile_fields` function L701-728 — `()` — questions in the meantime.
--  `summarize_user_handles_minimal_record` function L731-740 — `()` — questions in the meantime.
+- pub `SlackListChannelsTool` struct L166-169 — `{ integration: Arc<SlackIntegration>, description: String }` — questions in the meantime.
+- pub `new` function L172-177 — `(integration: Arc<SlackIntegration>) -> Self` — questions in the meantime.
+- pub `SlackHistoryTool` struct L269-272 — `{ integration: Arc<SlackIntegration>, description: String }` — questions in the meantime.
+- pub `new` function L275-280 — `(integration: Arc<SlackIntegration>) -> Self` — questions in the meantime.
+- pub `SlackPostTool` struct L364-367 — `{ integration: Arc<SlackIntegration>, description: String }` — questions in the meantime.
+- pub `new` function L376-381 — `(integration: Arc<SlackIntegration>) -> Self` — questions in the meantime.
+- pub `SlackReactTool` struct L462-465 — `{ integration: Arc<SlackIntegration>, description: String }` — questions in the meantime.
+- pub `new` function L468-473 — `(integration: Arc<SlackIntegration>) -> Self` — questions in the meantime.
+- pub `SlackUsersListTool` struct L576-579 — `{ integration: Arc<SlackIntegration>, description: String }` — questions in the meantime.
+- pub `new` function L582-587 — `(integration: Arc<SlackIntegration>) -> Self` — questions in the meantime.
+- pub `SlackOpenDmTool` struct L660-663 — `{ integration: Arc<SlackIntegration>, description: String }` — questions in the meantime.
+- pub `new` function L666-671 — `(integration: Arc<SlackIntegration>) -> Self` — questions in the meantime.
+-  `scope_footer` function L31-37 — `(scopes: &[&str]) -> String` — Format a scope footer for tool descriptions.
+-  `granted_scopes` function L42-45 — `(integration: &SlackIntegration) -> Result<HashSet<String>, ToolError>` — Read the granted scope set from the persisted token, splitting on
+-  `check_scopes` function L50-66 — `(integration: &SlackIntegration, required: &[&str]) -> Result<(), ToolError>` — Verify the persisted token covers `required`.
+-  `integ_err` function L68-70 — `(e: crate::IntegrationError) -> ToolError` — questions in the meantime.
+-  `slack_err` function L74-76 — `(stage: &str, e: slack_morphism::errors::SlackClientError) -> ToolError` — `slack-morphism::ClientError` → `ToolError`.
+-  `ChannelSummary` struct L82-90 — `{ id: String, name: Option<String>, kind: String, member_count: Option<u64>, is_...` — Compact, agent-friendly channel summary.
+-  `summarize_channel` function L92-111 — `(c: &slack_morphism::prelude::SlackChannelInfo) -> ChannelSummary` — questions in the meantime.
+-  `MessageSummary` struct L115-126 — `{ ts: String, user: Option<String>, text: Option<String>, thread_ts: Option<Stri...` — Compact message record — what the agent sees from `slack_history`.
+-  `ReactionSummary` struct L129-132 — `{ name: String, count: usize }` — questions in the meantime.
+-  `summarize_message` function L134-157 — `(m: &slack_morphism::prelude::SlackHistoryMessage) -> MessageSummary` — questions in the meantime.
+-  `SLACK_LIST_CHANNELS_BASE` variable L161-163 — `: &str` — questions in the meantime.
+-  `SLACK_LIST_CHANNELS_SCOPES` variable L164 — `: &[&str]` — questions in the meantime.
+-  `SlackListChannelsTool` type L171-178 — `= SlackListChannelsTool` — questions in the meantime.
+-  `SlackListChannelsTool` type L181-257 — `impl Tool for SlackListChannelsTool` — questions in the meantime.
+-  `name` function L182-184 — `(&self) -> &str` — questions in the meantime.
+-  `description` function L185-187 — `(&self) -> &str` — questions in the meantime.
+-  `category` function L188-190 — `(&self) -> ToolCategory` — questions in the meantime.
+-  `permission_category` function L191-193 — `(&self) -> PermissionCategory` — questions in the meantime.
+-  `parameters_schema` function L194-214 — `(&self) -> Value` — questions in the meantime.
+-  `execute` function L215-256 — `(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError>` — questions in the meantime.
+-  `SLACK_HISTORY_BASE` variable L261-263 — `: &str` — questions in the meantime.
+-  `SLACK_HISTORY_SCOPES` variable L267 — `: &[&str]` — `channels:history` covers public channels (C-prefixed).
+-  `SlackHistoryTool` type L274-281 — `= SlackHistoryTool` — questions in the meantime.
+-  `SlackHistoryTool` type L284-360 — `impl Tool for SlackHistoryTool` — questions in the meantime.
+-  `name` function L285-287 — `(&self) -> &str` — questions in the meantime.
+-  `description` function L288-290 — `(&self) -> &str` — questions in the meantime.
+-  `category` function L291-293 — `(&self) -> ToolCategory` — questions in the meantime.
+-  `permission_category` function L294-296 — `(&self) -> PermissionCategory` — questions in the meantime.
+-  `parameters_schema` function L297-322 — `(&self) -> Value` — questions in the meantime.
+-  `execute` function L323-359 — `(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError>` — questions in the meantime.
+-  `SLACK_POST_BASE` variable L369-372 — `: &str` — questions in the meantime.
+-  `SLACK_POST_SCOPES` variable L373 — `: &[&str]` — questions in the meantime.
+-  `SlackPostTool` type L375-382 — `= SlackPostTool` — questions in the meantime.
+-  `SlackPostTool` type L385-454 — `impl Tool for SlackPostTool` — questions in the meantime.
+-  `name` function L386-388 — `(&self) -> &str` — questions in the meantime.
+-  `description` function L389-391 — `(&self) -> &str` — questions in the meantime.
+-  `category` function L392-394 — `(&self) -> ToolCategory` — questions in the meantime.
+-  `permission_category` function L395-397 — `(&self) -> PermissionCategory` — questions in the meantime.
+-  `parameters_schema` function L398-417 — `(&self) -> Value` — questions in the meantime.
+-  `execute` function L418-453 — `(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError>` — questions in the meantime.
+-  `SLACK_REACT_BASE` variable L458-459 — `: &str` — questions in the meantime.
+-  `SLACK_REACT_SCOPES` variable L460 — `: &[&str]` — questions in the meantime.
+-  `SlackReactTool` type L467-474 — `= SlackReactTool` — questions in the meantime.
+-  `SlackReactTool` type L477-534 — `impl Tool for SlackReactTool` — questions in the meantime.
+-  `name` function L478-480 — `(&self) -> &str` — questions in the meantime.
+-  `description` function L481-483 — `(&self) -> &str` — questions in the meantime.
+-  `category` function L484-486 — `(&self) -> ToolCategory` — questions in the meantime.
+-  `permission_category` function L487-489 — `(&self) -> PermissionCategory` — questions in the meantime.
+-  `parameters_schema` function L490-500 — `(&self) -> Value` — questions in the meantime.
+-  `execute` function L501-533 — `(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError>` — questions in the meantime.
+-  `UserSummary` struct L541-553 — `{ id: String, name: Option<String>, real_name: Option<String>, display_name: Opt...` — Compact user record.
+-  `summarize_user` function L555-567 — `(u: &slack_morphism::prelude::SlackUser) -> UserSummary` — questions in the meantime.
+-  `SLACK_USERS_LIST_BASE` variable L569-573 — `: &str` — questions in the meantime.
+-  `SLACK_USERS_LIST_SCOPES` variable L574 — `: &[&str]` — questions in the meantime.
+-  `SlackUsersListTool` type L581-588 — `= SlackUsersListTool` — questions in the meantime.
+-  `SlackUsersListTool` type L591-647 — `impl Tool for SlackUsersListTool` — questions in the meantime.
+-  `name` function L592-594 — `(&self) -> &str` — questions in the meantime.
+-  `description` function L595-597 — `(&self) -> &str` — questions in the meantime.
+-  `category` function L598-600 — `(&self) -> ToolCategory` — questions in the meantime.
+-  `permission_category` function L601-603 — `(&self) -> PermissionCategory` — questions in the meantime.
+-  `parameters_schema` function L604-624 — `(&self) -> Value` — questions in the meantime.
+-  `execute` function L625-646 — `(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError>` — questions in the meantime.
+-  `SLACK_OPEN_DM_BASE` variable L651-654 — `: &str` — questions in the meantime.
+-  `SLACK_OPEN_DM_SCOPES` variable L658 — `: &[&str]` — `conversations.open` works with either chat:write (typical bot config)
+-  `SlackOpenDmTool` type L665-672 — `= SlackOpenDmTool` — questions in the meantime.
+-  `SlackOpenDmTool` type L675-735 — `impl Tool for SlackOpenDmTool` — questions in the meantime.
+-  `name` function L676-678 — `(&self) -> &str` — questions in the meantime.
+-  `description` function L679-681 — `(&self) -> &str` — questions in the meantime.
+-  `category` function L682-684 — `(&self) -> ToolCategory` — questions in the meantime.
+-  `permission_category` function L685-690 — `(&self) -> PermissionCategory` — questions in the meantime.
+-  `parameters_schema` function L691-703 — `(&self) -> Value` — questions in the meantime.
+-  `execute` function L704-734 — `(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError>` — questions in the meantime.
+-  `tests` module L738-857 — `-` — questions in the meantime.
+-  `channel` function L746-760 — `(id: &str, kind: &str) -> SlackChannelInfo` — questions in the meantime.
+-  `summarize_channel_classifies_kind_correctly` function L763-772 — `()` — questions in the meantime.
+-  `summarize_channel_carries_topic_and_purpose` function L775-784 — `()` — questions in the meantime.
+-  `summarize_message_extracts_user_text_and_reactions` function L787-814 — `()` — questions in the meantime.
+-  `summarize_user_extracts_handle_and_profile_fields` function L817-844 — `()` — questions in the meantime.
+-  `summarize_user_handles_minimal_record` function L847-856 — `()` — questions in the meantime.
 
 ### crates/arawn-llm/src
 
@@ -4253,35 +4274,35 @@
 - pub `new` function L54-62 — `(role: ChatRole, content: impl Into<String>) -> Self`
 - pub `rendered_lines` function L66-76 — `(&mut self, width: usize) -> &[ratatui::text::Line<'static>]` — Get or compute the cached markdown rendering for assistant messages.
 - pub `ChatRole` enum L80-86 — `User | Assistant | ToolCall | ToolResult | System`
-- pub `App` struct L89-134 — `{ focus: Focus, input_buffer: String, cursor_pos: usize, messages: Vec<ChatMessa...` — All mutable TUI state.
-- pub `new` function L137-170 — `() -> Self`
-- pub `handle_action` function L173-492 — `(&mut self, action: Action) -> bool` — Process an action and mutate state.
-- pub `apply_engine_event` function L537-614 — `(&mut self, event: crate::ws_client::EventUpdate)` — Apply a streaming engine event to the app state (testable without network).
-- pub `load_session_messages` function L618-658 — `(&mut self, detail: &serde_json::Value)` — Load messages from a session detail JSON response into the chat.
-- pub `format_tool_input` function L678-726 — `(tool_name: &str, input: &serde_json::Value) -> String` — Format tool input args into a compact display string.
+- pub `App` struct L89-139 — `{ focus: Focus, input_buffer: String, cursor_pos: usize, messages: Vec<ChatMessa...` — All mutable TUI state.
+- pub `new` function L142-176 — `() -> Self`
+- pub `handle_action` function L179-498 — `(&mut self, action: Action) -> bool` — Process an action and mutate state.
+- pub `apply_engine_event` function L543-620 — `(&mut self, event: crate::ws_client::EventUpdate)` — Apply a streaming engine event to the app state (testable without network).
+- pub `load_session_messages` function L624-664 — `(&mut self, detail: &serde_json::Value)` — Load messages from a session detail JSON response into the chat.
+- pub `format_tool_input` function L684-732 — `(tool_name: &str, input: &serde_json::Value) -> String` — Format tool input args into a compact display string.
 -  `ChatMessage` type L53-77 — `= ChatMessage`
--  `App` type L136-675 — `= App`
--  `update_autocomplete` function L495-524 — `(&mut self)` — Update autocomplete suggestions based on current input buffer.
--  `accept_autocomplete` function L527-534 — `(&mut self)` — Accept the currently selected autocomplete suggestion.
--  `prev_char_boundary` function L660-666 — `(&self) -> usize`
--  `next_char_boundary` function L668-674 — `(&self) -> usize`
--  `App` type L728-732 — `impl Default for App`
--  `default` function L729-731 — `() -> Self`
--  `tests` module L735-973 — `-`
--  `type_chars_updates_buffer` function L739-745 — `()`
--  `backspace_removes_char` function L748-755 — `()`
--  `submit_moves_to_messages` function L758-770 — `()`
--  `submit_blocked_when_empty` function L773-779 — `()`
--  `submit_blocked_while_generating` function L782-788 — `()`
--  `tab_toggles_focus` function L791-798 — `()`
--  `scroll_updates_offset` function L801-809 — `()`
--  `cancel_stops_generation` function L812-821 — `()`
--  `quit_sets_flag` function L824-828 — `()`
--  `cursor_movement` function L831-852 — `()`
--  `full_conversation_flow` function L857-887 — `()`
--  `tool_call_flow` function L890-921 — `()`
--  `error_event_clears_generating` function L924-938 — `()`
--  `sidebar_navigation` function L941-972 — `()`
+-  `App` type L141-681 — `= App`
+-  `update_autocomplete` function L501-530 — `(&mut self)` — Update autocomplete suggestions based on current input buffer.
+-  `accept_autocomplete` function L533-540 — `(&mut self)` — Accept the currently selected autocomplete suggestion.
+-  `prev_char_boundary` function L666-672 — `(&self) -> usize`
+-  `next_char_boundary` function L674-680 — `(&self) -> usize`
+-  `App` type L734-738 — `impl Default for App`
+-  `default` function L735-737 — `() -> Self`
+-  `tests` module L741-979 — `-`
+-  `type_chars_updates_buffer` function L745-751 — `()`
+-  `backspace_removes_char` function L754-761 — `()`
+-  `submit_moves_to_messages` function L764-776 — `()`
+-  `submit_blocked_when_empty` function L779-785 — `()`
+-  `submit_blocked_while_generating` function L788-794 — `()`
+-  `tab_toggles_focus` function L797-804 — `()`
+-  `scroll_updates_offset` function L807-815 — `()`
+-  `cancel_stops_generation` function L818-827 — `()`
+-  `quit_sets_flag` function L830-834 — `()`
+-  `cursor_movement` function L837-858 — `()`
+-  `full_conversation_flow` function L863-893 — `()`
+-  `tool_call_flow` function L896-927 — `()`
+-  `error_event_clears_generating` function L930-944 — `()`
+-  `sidebar_navigation` function L947-978 — `()`
 
 #### crates/arawn-tui/src/command.rs
 
@@ -4356,13 +4377,16 @@
 
 #### crates/arawn-tui/src/event_loop.rs
 
-- pub `run_tui` function L29-835 — `(url: &str, model_name: &str) -> Result<(), Box<dyn std::error::Error>>` — Run the TUI connected to the given WebSocket server URL.
--  `rect_contains` function L24-26 — `(rect: Rect, col: u16, row: u16) -> bool`
--  `format_integrations_list` function L838-853 — `(items: &[serde_json::Value]) -> String` — Render a `list_integrations` response as a markdown table the user can scan.
--  `OpenAttempt` enum L857-861 — `Opened | NoOpener | Failed` — What `try_open_url` did.
--  `try_open_url` function L865-896 — `(url: &str) -> OpenAttempt` — Best-effort browser open.
--  `apply_system_notice` function L901-907 — `(notice: &arawn_service::ServerNotice, app: &mut crate::app::App)` — Push a server-side notice (plugin/config hot-reload outcome) into the
--  `format_permissions_status` function L910-950 — `(status: &serde_json::Value) -> String` — Render `get_permissions_status` JSON as a human-readable system message.
+- pub `run_tui` function L64-873 — `(url: &str, model_name: &str) -> Result<(), Box<dyn std::error::Error>>` — Run the TUI connected to the given WebSocket server URL.
+-  `MIN_FRAME_INTERVAL` variable L29 — `: Duration` — Minimum interval between renders driven by streaming/event traffic.
+-  `maybe_draw` function L33-45 — `( terminal: &mut Terminal<B>, app: &mut App, ) -> io::Result<()>` — Render if enough time has elapsed since the last draw.
+-  `force_draw` function L49-57 — `( terminal: &mut Terminal<B>, app: &mut App, ) -> io::Result<()>` — Render now regardless of frame budget.
+-  `rect_contains` function L59-61 — `(rect: Rect, col: u16, row: u16) -> bool`
+-  `format_integrations_list` function L876-891 — `(items: &[serde_json::Value]) -> String` — Render a `list_integrations` response as a markdown table the user can scan.
+-  `OpenAttempt` enum L895-899 — `Opened | NoOpener | Failed` — What `try_open_url` did.
+-  `try_open_url` function L903-934 — `(url: &str) -> OpenAttempt` — Best-effort browser open.
+-  `apply_system_notice` function L939-945 — `(notice: &arawn_service::ServerNotice, app: &mut crate::app::App)` — Push a server-side notice (plugin/config hot-reload outcome) into the
+-  `format_permissions_status` function L948-988 — `(status: &serde_json::Value) -> String` — Render `get_permissions_status` JSON as a human-readable system message.
 
 #### crates/arawn-tui/src/lib.rs
 
@@ -4376,7 +4400,8 @@
 - pub `render` module L8 — `-`
 - pub `theme` module L9 — `-`
 - pub `tui_prompt` module L10 — `-`
-- pub `ws_client` module L15 — `-`
+- pub `wrap` module L15 — `-`
+- pub `ws_client` module L16 — `-`
 -  `snapshot` module L12 — `-`
 -  `snapshot_tests` module L14 — `-`
 
@@ -4388,7 +4413,7 @@
 -  `THEME` variable L15-18 — `: LazyLock<Theme>` — suitable for rendering in the chat area.
 -  `CODE_STYLE` variable L42-44 — `: Style` — suitable for rendering in the chat area.
 -  `MdRenderer` struct L46-68 — `{ lines: Vec<Line<'static>>, current_spans: Vec<Span<'static>>, style_stack: Vec...` — suitable for rendering in the chat area.
--  `MdRenderer` type L70-497 — `= MdRenderer` — suitable for rendering in the chat area.
+-  `MdRenderer` type L70-506 — `= MdRenderer` — suitable for rendering in the chat area.
 -  `new` function L71-92 — `(max_width: usize) -> Self` — suitable for rendering in the chat area.
 -  `process` function L94-110 — `(&mut self, event: Event)` — suitable for rendering in the chat area.
 -  `start_tag` function L112-184 — `(&mut self, tag: Tag)` — suitable for rendering in the chat area.
@@ -4401,26 +4426,26 @@
 -  `push_style` function L327-330 — `(&mut self, style: Style)` — suitable for rendering in the chat area.
 -  `pop_style` function L332-335 — `(&mut self)` — suitable for rendering in the chat area.
 -  `recompute_style` function L337-343 — `(&mut self)` — suitable for rendering in the chat area.
--  `emit_full_table` function L347-447 — `(&mut self)` — suitable for rendering in the chat area.
--  `emit_padded_row` function L449-483 — `( &mut self, row: &[String], col_widths: &[usize], cell_style: Style, chrome_sty...` — suitable for rendering in the chat area.
--  `finish` function L485-496 — `(mut self) -> Vec<Line<'static>>` — suitable for rendering in the chat area.
--  `highlight_code` function L501-539 — `(code: &str, lang: Option<&str>) -> Vec<Line<'static>>` — Syntax-highlight a code block, returning one Line per source line.
--  `heading_style` function L541-549 — `(level: u8) -> Style` — suitable for rendering in the chat area.
--  `wrap_text` function L553-632 — `(text: &str, width: usize) -> Vec<String>` — Word-wrap text to fit within a given width.
--  `tests` module L635-811 — `-` — suitable for rendering in the chat area.
--  `spans_text` function L638-650 — `(lines: &[Line]) -> String` — suitable for rendering in the chat area.
--  `plain_text` function L653-657 — `()` — suitable for rendering in the chat area.
--  `heading_levels` function L660-669 — `()` — suitable for rendering in the chat area.
--  `bold_and_italic` function L672-686 — `()` — suitable for rendering in the chat area.
--  `inline_code` function L689-697 — `()` — suitable for rendering in the chat area.
--  `fenced_code_block` function L700-715 — `()` — suitable for rendering in the chat area.
--  `unordered_list` function L718-724 — `()` — suitable for rendering in the chat area.
--  `ordered_list` function L727-732 — `()` — suitable for rendering in the chat area.
--  `table_renders_aligned` function L735-755 — `()` — suitable for rendering in the chat area.
--  `link_shows_url` function L758-763 — `()` — suitable for rendering in the chat area.
--  `no_double_blank_lines` function L766-780 — `()` — suitable for rendering in the chat area.
--  `table_wide_content_preserves_short_columns` function L783-803 — `()` — suitable for rendering in the chat area.
--  `no_trailing_blanks` function L806-810 — `()` — suitable for rendering in the chat area.
+-  `emit_full_table` function L347-456 — `(&mut self)` — suitable for rendering in the chat area.
+-  `emit_padded_row` function L458-492 — `( &mut self, row: &[String], col_widths: &[usize], cell_style: Style, chrome_sty...` — suitable for rendering in the chat area.
+-  `finish` function L494-505 — `(mut self) -> Vec<Line<'static>>` — suitable for rendering in the chat area.
+-  `highlight_code` function L510-548 — `(code: &str, lang: Option<&str>) -> Vec<Line<'static>>` — Syntax-highlight a code block, returning one Line per source line.
+-  `heading_style` function L550-558 — `(level: u8) -> Style` — suitable for rendering in the chat area.
+-  `wrap_text` function L562-641 — `(text: &str, width: usize) -> Vec<String>` — Word-wrap text to fit within a given width.
+-  `tests` module L644-820 — `-` — suitable for rendering in the chat area.
+-  `spans_text` function L647-659 — `(lines: &[Line]) -> String` — suitable for rendering in the chat area.
+-  `plain_text` function L662-666 — `()` — suitable for rendering in the chat area.
+-  `heading_levels` function L669-678 — `()` — suitable for rendering in the chat area.
+-  `bold_and_italic` function L681-695 — `()` — suitable for rendering in the chat area.
+-  `inline_code` function L698-706 — `()` — suitable for rendering in the chat area.
+-  `fenced_code_block` function L709-724 — `()` — suitable for rendering in the chat area.
+-  `unordered_list` function L727-733 — `()` — suitable for rendering in the chat area.
+-  `ordered_list` function L736-741 — `()` — suitable for rendering in the chat area.
+-  `table_renders_aligned` function L744-764 — `()` — suitable for rendering in the chat area.
+-  `link_shows_url` function L767-772 — `()` — suitable for rendering in the chat area.
+-  `no_double_blank_lines` function L775-789 — `()` — suitable for rendering in the chat area.
+-  `table_wide_content_preserves_short_columns` function L792-812 — `()` — suitable for rendering in the chat area.
+-  `no_trailing_blanks` function L815-819 — `()` — suitable for rendering in the chat area.
 
 #### crates/arawn-tui/src/modal.rs
 
@@ -4454,45 +4479,45 @@
 -  `render_status_bar` function L107-192 — `(app: &App, frame: &mut Frame, area: ratatui::layout::Rect)`
 -  `format_tokens` function L195-203 — `(n: u64) -> String` — Format a token count for display: 1234 → "1.2k", 12345 → "12.3k", 500 → "500"
 -  `render_sidebar` function L205-279 — `(app: &App, frame: &mut Frame, area: ratatui::layout::Rect)`
--  `render_chat` function L281-556 — `(app: &mut App, frame: &mut Frame, area: ratatui::layout::Rect)`
--  `render_separator` function L558-562 — `(frame: &mut Frame, area: ratatui::layout::Rect)`
--  `render_input` function L564-613 — `(app: &App, frame: &mut Frame, area: ratatui::layout::Rect)`
--  `render_autocomplete` function L616-674 — `( ac: &crate::command::AutocompleteState, frame: &mut Frame, input_area: ratatui...` — Render the autocomplete dropdown above the input line.
--  `truncate_to` function L677-686 — `(s: &str, max_chars: usize) -> String` — Truncate a string to fit within a display width, adding "…" if needed.
--  `compact_tool_summary` function L689-694 — `(content: &str) -> String` — Extract a compact summary from tool call content for inline display.
--  `truncate_for_display` function L696-702 — `(s: &str, max: usize) -> String`
--  `tests` module L705-1439 — `-`
--  `buffer_to_string` function L711-726 — `(terminal: &Terminal<TestBackend>, row: u16) -> String`
--  `render_empty_app_has_status_bar` function L729-738 — `()`
--  `render_with_messages_shows_content` function L741-767 — `()`
--  `render_with_input_text` function L770-785 — `()`
--  `render_streaming_shows_cursor` function L788-811 — `()`
--  `render_small_terminal` function L814-819 — `()`
--  `render_large_terminal` function L822-827 — `()`
--  `region_text` function L832-844 — `(terminal: &Terminal<TestBackend>, x: u16, y: u16, w: u16, h: u16) -> String` — Extract text from a rectangular region of the buffer.
--  `chat_region_for` function L848-861 — `(terminal: &Terminal<TestBackend>, sidebar_visible: bool) -> String` — Extract the chat area text.
--  `chat_region` function L864-866 — `(terminal: &Terminal<TestBackend>) -> String` — Convenience: chat region for default app (sidebar hidden).
--  `sidebar_region` function L870-878 — `(terminal: &Terminal<TestBackend>) -> String` — Extract the sidebar text (left 20%, rows 1..height-3).
--  `input_region` function L881-886 — `(terminal: &Terminal<TestBackend>) -> String` — Extract the input bar text (second from bottom row).
--  `chat_renders_user_message_with_prefix` function L891-905 — `()`
--  `chat_renders_assistant_message_with_prefix` function L908-922 — `()`
--  `chat_renders_tool_call_with_icon` function L925-950 — `()`
--  `chat_renders_tool_result_collapsed` function L953-981 — `()`
--  `chat_renders_tool_error_result` function L984-1007 — `()`
--  `chat_renders_tool_result_truncated` function L1010-1037 — `()`
--  `chat_streaming_text_appears_in_chat_area` function L1040-1058 — `()`
--  `sidebar_renders_workstream_names` function L1061-1097 — `()`
--  `sidebar_does_not_leak_into_chat` function L1100-1134 — `()`
--  `input_shows_placeholder_when_empty` function L1137-1148 — `()`
--  `input_shows_generating_when_active` function L1151-1164 — `()`
--  `status_bar_shows_generating_indicator` function L1167-1181 — `()`
--  `status_bar_shows_workstream_name` function L1184-1208 — `()`
--  `messages_do_not_appear_in_input_area` function L1211-1234 — `()`
--  `chat_auto_scrolls_to_bottom_with_many_messages` function L1239-1269 — `()`
--  `chat_scroll_up_reveals_older_messages` function L1272-1300 — `()`
--  `chat_few_messages_all_visible` function L1303-1317 — `()`
--  `last_message_visible_above_input` function L1320-1373 — `()`
--  `last_tool_result_visible_above_input` function L1376-1438 — `()`
+-  `render_chat` function L281-605 — `(app: &mut App, frame: &mut Frame, area: ratatui::layout::Rect)`
+-  `render_separator` function L607-611 — `(frame: &mut Frame, area: ratatui::layout::Rect)`
+-  `render_input` function L613-662 — `(app: &App, frame: &mut Frame, area: ratatui::layout::Rect)`
+-  `render_autocomplete` function L665-723 — `( ac: &crate::command::AutocompleteState, frame: &mut Frame, input_area: ratatui...` — Render the autocomplete dropdown above the input line.
+-  `truncate_to` function L726-735 — `(s: &str, max_chars: usize) -> String` — Truncate a string to fit within a display width, adding "…" if needed.
+-  `compact_tool_summary` function L738-743 — `(content: &str) -> String` — Extract a compact summary from tool call content for inline display.
+-  `truncate_for_display` function L745-751 — `(s: &str, max: usize) -> String`
+-  `tests` module L754-1488 — `-`
+-  `buffer_to_string` function L760-775 — `(terminal: &Terminal<TestBackend>, row: u16) -> String`
+-  `render_empty_app_has_status_bar` function L778-787 — `()`
+-  `render_with_messages_shows_content` function L790-816 — `()`
+-  `render_with_input_text` function L819-834 — `()`
+-  `render_streaming_shows_cursor` function L837-860 — `()`
+-  `render_small_terminal` function L863-868 — `()`
+-  `render_large_terminal` function L871-876 — `()`
+-  `region_text` function L881-893 — `(terminal: &Terminal<TestBackend>, x: u16, y: u16, w: u16, h: u16) -> String` — Extract text from a rectangular region of the buffer.
+-  `chat_region_for` function L897-910 — `(terminal: &Terminal<TestBackend>, sidebar_visible: bool) -> String` — Extract the chat area text.
+-  `chat_region` function L913-915 — `(terminal: &Terminal<TestBackend>) -> String` — Convenience: chat region for default app (sidebar hidden).
+-  `sidebar_region` function L919-927 — `(terminal: &Terminal<TestBackend>) -> String` — Extract the sidebar text (left 20%, rows 1..height-3).
+-  `input_region` function L930-935 — `(terminal: &Terminal<TestBackend>) -> String` — Extract the input bar text (second from bottom row).
+-  `chat_renders_user_message_with_prefix` function L940-954 — `()`
+-  `chat_renders_assistant_message_with_prefix` function L957-971 — `()`
+-  `chat_renders_tool_call_with_icon` function L974-999 — `()`
+-  `chat_renders_tool_result_collapsed` function L1002-1030 — `()`
+-  `chat_renders_tool_error_result` function L1033-1056 — `()`
+-  `chat_renders_tool_result_truncated` function L1059-1086 — `()`
+-  `chat_streaming_text_appears_in_chat_area` function L1089-1107 — `()`
+-  `sidebar_renders_workstream_names` function L1110-1146 — `()`
+-  `sidebar_does_not_leak_into_chat` function L1149-1183 — `()`
+-  `input_shows_placeholder_when_empty` function L1186-1197 — `()`
+-  `input_shows_generating_when_active` function L1200-1213 — `()`
+-  `status_bar_shows_generating_indicator` function L1216-1230 — `()`
+-  `status_bar_shows_workstream_name` function L1233-1257 — `()`
+-  `messages_do_not_appear_in_input_area` function L1260-1283 — `()`
+-  `chat_auto_scrolls_to_bottom_with_many_messages` function L1288-1318 — `()`
+-  `chat_scroll_up_reveals_older_messages` function L1321-1349 — `()`
+-  `chat_few_messages_all_visible` function L1352-1366 — `()`
+-  `last_message_visible_above_input` function L1369-1422 — `()`
+-  `last_tool_result_visible_above_input` function L1425-1487 — `()`
 
 #### crates/arawn-tui/src/snapshot.rs
 
@@ -4572,39 +4597,61 @@
 -  `TuiModalPrompt` type L32-66 — `impl ModalPrompt for TuiModalPrompt` — via a oneshot channel.
 -  `prompt` function L33-65 — `(&self, request: ModalRequest) -> Option<usize>` — via a oneshot channel.
 
+#### crates/arawn-tui/src/wrap.rs
+
+- pub `wrap_lines` function L26-38 — `(input: Vec<Line<'a>>, width: usize) -> Vec<Line<'static>>` — Wrap input lines to `width`.
+-  `into_owned` function L42-49 — `(line: Line<'_>) -> Line<'static>` — Force every span into an owned `Cow<'static, str>` so the resulting
+-  `split_newlines` function L53-81 — `(line: Line<'static>) -> Vec<Line<'static>>` — If any span contains `\n`, split the line into multiple lines along
+-  `Tok` struct L85-90 — `{ text: String, style: Style, is_ws: bool, width: usize }` — Token kind: a contiguous run of whitespace or non-whitespace chars,
+-  `tokenize` function L92-125 — `(line: &Line<'static>) -> Vec<Tok>` — ratatui doesn't split spans on newlines.
+-  `wrap_one` function L127-190 — `(line: Line<'static>, width: usize, out: &mut Vec<Line<'static>>)` — ratatui doesn't split spans on newlines.
+-  `tests` module L193-297 — `-` — ratatui doesn't split spans on newlines.
+-  `plain` function L197-199 — `(s: &str) -> Line<'static>` — ratatui doesn't split spans on newlines.
+-  `line_text` function L201-203 — `(line: &Line) -> String` — ratatui doesn't split spans on newlines.
+-  `passthrough_when_under_width` function L206-211 — `()` — ratatui doesn't split spans on newlines.
+-  `word_wraps_at_whitespace` function L214-230 — `()` — ratatui doesn't split spans on newlines.
+-  `hard_breaks_oversize_word` function L233-241 — `()` — ratatui doesn't split spans on newlines.
+-  `splits_on_embedded_newlines` function L244-251 — `()` — ratatui doesn't split spans on newlines.
+-  `preserves_span_styles_through_wrap` function L254-281 — `()` — ratatui doesn't split spans on newlines.
+-  `empty_line_preserved` function L284-289 — `()` — ratatui doesn't split spans on newlines.
+-  `zero_width_is_passthrough` function L292-296 — `()` — ratatui doesn't split spans on newlines.
+
 #### crates/arawn-tui/src/ws_client.rs
 
-- pub `WsClient` struct L17-29 — `{ write: futures_util::stream::SplitSink< tokio_tungstenite::WebSocketStream< to...` — A WebSocket connection to the Arawn server.
-- pub `connect` function L32-46 — `(url: &str) -> Result<Self, Box<dyn std::error::Error>>`
-- pub `send_request` function L66-83 — `( &mut self, method: &str, params: Value, ) -> Result<u64, Box<dyn std::error::E...`
-- pub `list_workstreams` function L85-92 — `( &mut self, ) -> Result<Vec<WorkstreamInfo>, Box<dyn std::error::Error>>`
-- pub `list_workflows` function L94-101 — `( &mut self, ) -> Result<Vec<serde_json::Value>, Box<dyn std::error::Error>>`
-- pub `get_capabilities` function L106-113 — `( &mut self, ) -> Result<serde_json::Value, Box<dyn std::error::Error>>` — Fetch server runtime capabilities.
-- pub `get_permissions_status` function L116-123 — `( &mut self, ) -> Result<serde_json::Value, Box<dyn std::error::Error>>` — Fetch permission rules + recent audit.
-- pub `list_integrations` function L126-133 — `( &mut self, ) -> Result<Vec<serde_json::Value>, Box<dyn std::error::Error>>` — List registered integrations and their connection state.
-- pub `start_oauth_flow` function L138-149 — `( &mut self, service: &str, ) -> Result<serde_json::Value, Box<dyn std::error::E...` — Begin the OAuth flow for a service.
-- pub `disconnect_integration` function L152-162 — `( &mut self, service: &str, ) -> Result<(), Box<dyn std::error::Error>>` — Drop stored credentials for a service.
-- pub `get_permission_mode` function L164-171 — `( &mut self, ) -> Result<String, Box<dyn std::error::Error>>`
-- pub `set_permission_mode` function L173-184 — `( &mut self, mode: &str, ) -> Result<String, Box<dyn std::error::Error>>`
-- pub `list_sessions` function L186-198 — `( &mut self, ws_id: Option<uuid::Uuid>, ) -> Result<Vec<SessionInfo>, Box<dyn st...`
-- pub `create_session` function L200-212 — `( &mut self, ws_id: Option<uuid::Uuid>, ) -> Result<SessionInfo, Box<dyn std::er...`
-- pub `load_session` function L214-222 — `( &mut self, session_id: uuid::Uuid, ) -> Result<serde_json::Value, Box<dyn std:...`
-- pub `send_message` function L224-240 — `( &mut self, session_id: uuid::Uuid, content: &str, ) -> Result<(), Box<dyn std:...`
-- pub `read_response_raw` function L243-245 — `(&mut self) -> Result<Value, Box<dyn std::error::Error>>` — Read the next JSON response from the server (public for sidebar).
-- pub `parse_engine_event` function L276-296 — `(text: &str) -> Option<EngineEvent>` — Parse a WS message as an EngineEvent.
-- pub `EventUpdate` enum L299-326 — `AppendStreamingText | AddToolCall | AddToolResult | Complete | Error | Warning |...` — Convert an EngineEvent into App state updates.
-- pub `parse_system_notice` function L332-338 — `(text: &str) -> Option<arawn_service::ServerNotice>` — Parse a server-wide notice (plugin/config hot-reload) from a raw WS text
-- pub `engine_event_to_update` function L340-367 — `(event: EngineEvent) -> EventUpdate`
--  `REQUEST_ID` variable L10 — `: AtomicU64`
--  `next_id` function L12-14 — `() -> u64`
--  `WsClient` type L31-273 — `= WsClient`
--  `read_server_token` function L50-64 — `() -> Option<String>` — Read the server auth token from {data_dir}/server.token.
--  `read_response` function L248-272 — `(&mut self) -> Result<Value, Box<dyn std::error::Error>>` — Read the next JSON response from the server.
--  `tests` module L370-415 — `-`
--  `parses_well_formed_system_notice` function L377-392 — `()`
--  `rejects_engine_event_envelope` function L395-402 — `()`
--  `rejects_response_envelope` function L405-408 — `()`
--  `rejects_malformed_json` function L411-414 — `()`
+- pub `WsEvent` enum L25-29 — `Text | Closed | Error` — A frame from the reader task.
+- pub `WsClient` struct L40-49 — `{ write: futures_util::stream::SplitSink< tokio_tungstenite::WebSocketStream< to...` — A WebSocket connection to the Arawn server.
+- pub `connect` function L52-75 — `(url: &str) -> Result<Self, Box<dyn std::error::Error>>`
+- pub `events_take` function L80-82 — `(&mut self) -> Option<mpsc::Receiver<WsEvent>>` — Take ownership of the event receiver.
+- pub `send_request` function L102-119 — `( &mut self, method: &str, params: Value, ) -> Result<u64, Box<dyn std::error::E...`
+- pub `request_response` function L124-146 — `( &mut self, method: &str, params: Value, ) -> Result<Value, Box<dyn std::error:...` — Send a request and await its response via the pending-oneshot map.
+- pub `list_workstreams` function L148-154 — `( &mut self, ) -> Result<Vec<WorkstreamInfo>, Box<dyn std::error::Error>>`
+- pub `list_workflows` function L156-162 — `( &mut self, ) -> Result<Vec<serde_json::Value>, Box<dyn std::error::Error>>`
+- pub `get_capabilities` function L167-173 — `( &mut self, ) -> Result<serde_json::Value, Box<dyn std::error::Error>>` — Fetch server runtime capabilities.
+- pub `get_permissions_status` function L176-182 — `( &mut self, ) -> Result<serde_json::Value, Box<dyn std::error::Error>>` — Fetch permission rules + recent audit.
+- pub `list_integrations` function L185-191 — `( &mut self, ) -> Result<Vec<serde_json::Value>, Box<dyn std::error::Error>>` — List registered integrations and their connection state.
+- pub `start_oauth_flow` function L196-208 — `( &mut self, service: &str, ) -> Result<serde_json::Value, Box<dyn std::error::E...` — Begin the OAuth flow for a service.
+- pub `disconnect_integration` function L211-222 — `( &mut self, service: &str, ) -> Result<(), Box<dyn std::error::Error>>` — Drop stored credentials for a service.
+- pub `get_permission_mode` function L224-230 — `( &mut self, ) -> Result<String, Box<dyn std::error::Error>>`
+- pub `set_permission_mode` function L232-244 — `( &mut self, mode: &str, ) -> Result<String, Box<dyn std::error::Error>>`
+- pub `list_sessions` function L246-257 — `( &mut self, ws_id: Option<uuid::Uuid>, ) -> Result<Vec<SessionInfo>, Box<dyn st...`
+- pub `create_session` function L259-270 — `( &mut self, ws_id: Option<uuid::Uuid>, ) -> Result<SessionInfo, Box<dyn std::er...`
+- pub `load_session` function L272-284 — `( &mut self, session_id: uuid::Uuid, ) -> Result<serde_json::Value, Box<dyn std:...`
+- pub `send_message` function L286-301 — `( &mut self, session_id: uuid::Uuid, content: &str, ) -> Result<(), Box<dyn std:...`
+- pub `parse_engine_event` function L357-377 — `(text: &str) -> Option<EngineEvent>` — Parse a WS message as an EngineEvent.
+- pub `EventUpdate` enum L380-407 — `AppendStreamingText | AddToolCall | AddToolResult | Complete | Error | Warning |...` — Convert an EngineEvent into App state updates.
+- pub `parse_system_notice` function L413-419 — `(text: &str) -> Option<arawn_service::ServerNotice>` — Parse a server-wide notice (plugin/config hot-reload) from a raw WS text
+- pub `engine_event_to_update` function L421-448 — `(event: EngineEvent) -> EventUpdate`
+-  `REQUEST_ID` variable L13 — `: AtomicU64`
+-  `next_id` function L15-17 — `() -> u64`
+-  `Pending` type L31 — `= Arc<Mutex<HashMap<u64, oneshot::Sender<Value>>>>`
+-  `WsClient` type L51-302 — `= WsClient`
+-  `read_server_token` function L86-100 — `() -> Option<String>` — Read the server auth token from {data_dir}/server.token.
+-  `spawn_reader` function L306-354 — `( mut read: futures_util::stream::SplitStream< tokio_tungstenite::WebSocketStrea...` — Spawn the reader task.
+-  `tests` module L451-496 — `-`
+-  `parses_well_formed_system_notice` function L458-473 — `()`
+-  `rejects_engine_event_envelope` function L476-483 — `()`
+-  `rejects_response_envelope` function L486-489 — `()`
+-  `rejects_malformed_json` function L492-495 — `()`
 
 ### crates/arawn-workflow
 

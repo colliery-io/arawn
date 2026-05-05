@@ -306,6 +306,45 @@ impl LocalService {
                     .unwrap_or_else(|| pc.memories.clone()),
                 session_context: pc.session_context.clone(),
                 plugin_prompts: pc.plugin_prompts.clone(),
+                // Closure captures the registry Arc; queries it fresh each
+                // turn so /connect and /disconnect reflect immediately.
+                integration_capabilities: Some({
+                    let registry = Arc::clone(&self.integration_registry);
+                    Arc::new(move || -> Vec<String> {
+                        let map = match registry.read() {
+                            Ok(g) => g,
+                            Err(_) => return Vec::new(),
+                        };
+                        let integrations: Vec<_> =
+                            map.values().map(Arc::clone).collect();
+                        drop(map);
+                        // capabilities_summary is async — but we promised
+                        // the closure stays cheap & sync. Run on a fresh
+                        // tokio runtime handle if available, else block.
+                        // Practically: every impl is sync-disk-only (no
+                        // network), so block_in_place + Handle::block_on
+                        // is fine.
+                        let mut out = Vec::new();
+                        let handle = tokio::runtime::Handle::try_current().ok();
+                        for integ in integrations {
+                            let summary = match &handle {
+                                Some(h) => tokio::task::block_in_place(|| {
+                                    h.block_on(integ.capabilities_summary())
+                                }),
+                                None => {
+                                    // No tokio context — should not happen in
+                                    // the engine path, but bail safely.
+                                    None
+                                }
+                            };
+                            if let Some(s) = summary {
+                                out.push(s);
+                            }
+                        }
+                        out.sort();
+                        out
+                    }) as arawn_engine::IntegrationCapabilitiesFn
+                }),
             }
         });
 

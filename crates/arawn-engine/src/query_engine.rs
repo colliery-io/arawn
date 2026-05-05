@@ -41,6 +41,18 @@ pub enum ProgressEvent {
 }
 const DEFAULT_SYSTEM_PROMPT: &str = "You are Arawn, a helpful assistant. When you need to perform actions, use the available tools. Think step by step.";
 
+/// Provider for dynamic integration capability summaries.
+///
+/// Returning a closure rather than a static `Vec<String>` is what makes
+/// the system prompt update live: the engine queries this each turn, so
+/// `/connect slack` flowing into the registry shows up in the next LLM
+/// call without any restart.
+///
+/// Each call should be cheap and synchronous from the prompt-builder's
+/// POV — implementations that need an async query should pre-cache.
+/// Default behavior (no provider) is no integrations section emitted.
+pub type IntegrationCapabilitiesFn = std::sync::Arc<dyn Fn() -> Vec<String> + Send + Sync>;
+
 /// Cached context for building system prompts per-turn.
 #[derive(Clone)]
 pub struct PromptContext {
@@ -54,6 +66,10 @@ pub struct PromptContext {
     pub memories: Vec<String>,
     pub session_context: String,
     pub plugin_prompts: Vec<String>,
+    /// Optional callback queried each turn for connected-integration
+    /// summaries. Lets `/connect <service>` reflect into the next LLM
+    /// call with no restart.
+    pub integration_capabilities: Option<IntegrationCapabilitiesFn>,
 }
 
 /// Configuration for the query engine.
@@ -615,6 +631,14 @@ impl QueryEngine {
                 }
             }
 
+            // Query the integrations provider fresh each turn so /connect
+            // and /disconnect reflect immediately without restart.
+            let integrations = prompt_ctx
+                .integration_capabilities
+                .as_ref()
+                .map(|f| f())
+                .unwrap_or_default();
+
             crate::system_prompt::SystemPromptBuilder::new()
                 .load_static_sections(prompt_ctx.prompts_dir.as_deref())
                 .environment(
@@ -628,6 +652,7 @@ impl QueryEngine {
                 .context_files(&prompt_ctx.context_files)
                 .memories(&prompt_ctx.memories)
                 .session_context(&prompt_ctx.session_context)
+                .integrations(&integrations)
                 .plugin_prompts(&dynamic_prompts)
                 .build()
         } else {

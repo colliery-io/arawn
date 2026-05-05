@@ -97,3 +97,17 @@ Open questions answered (see Resolved section above), [ARAWN-A-0001](../../adrs/
 **Suggested execution order:** T-0200 → T-0201 → T-0202 (proves the framework end-to-end with a real consumer) → T-0203 + T-0204 in parallel.
 
 T-0202 is the MVP — once Gmail works end-to-end, the framework is proven. T-0203 and T-0204 follow the same shape with different wire formats.
+
+### 2026-05-05 — Follow-ups discovered during smoke test
+
+Surfaced while manually exercising `/connect slack` end-to-end. None blocked the integration work; recording here so they're not lost. Promote to their own initiative when someone owns TUI/auth-flow polish.
+
+**Auth flow / callback server:**
+- Failed `/connect <service>` leaves the local callback listener bound for its full 5-minute timeout. Retries fail with `Address already in use` until either the timeout expires or the user restarts `arawn serve`. Fix: cancellable callback server + drop the listener on auth-flow error path.
+
+**TUI rendering — resolved during smoke:**
+- Chat area was clipping at the bottom because `Paragraph::wrap` + `scroll((y, 0))` was driven by an external wrap estimate that disagreed with ratatui's actual wrap. Replaced with a pre-wrap pipeline (`crates/arawn-tui/src/wrap.rs`) that owns wrap and slices the visible window. Resolved.
+- Streaming-token throughput was overrunning the render path: every event triggered its own `terminal.draw`. Moved WS reads onto a dedicated reader task (`WsClient::events_take`) and added a 33ms minimum frame interval (`MIN_FRAME_INTERVAL`). Resolved.
+
+**TUI rendering — open:**
+- Chat doesn't redraw at end of turn unless the next event arrives or extra lines get appended. Currently masked by the `───` end-of-turn rule we emit after each completed turn — adding lines bumps the buffer enough to flush. Removing the marker brings the bug back. Right fix unclear; likely the `force_draw` after `Complete` happens before the final `Assistant` message is visible to the renderer (timing or `last_draw` budget interaction). Investigate: instrument render call counts, confirm `Complete` triggers a real frame, decide whether `Complete` should bypass the frame budget unconditionally.

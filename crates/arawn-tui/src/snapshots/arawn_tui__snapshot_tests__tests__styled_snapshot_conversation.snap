@@ -10,7 +10,7 @@ expression: snap
 «fg:DarkGray,bg:Rgb(25, 25, 30)» ·«fg:DarkGray»│«fg:Rgb(100, 100, 115)»  │  «fg:Red»permission denied
 «fg:DarkGray,bg:Rgb(25, 25, 30)»  «fg:DarkGray»│«fg:Rgb(100, 100, 115)»  └─────────────────────────────────────────────────────────────────────────┘
 «fg:DarkGray,bg:Rgb(25, 25, 30)» ·«fg:DarkGray»│
-«fg:Cyan,bg:Rgb(25, 25, 30)» ▸«fg:DarkGray»│
+«fg:Cyan,bg:Rgb(25, 25, 30)» ▸«fg:DarkGray»│  ───────────────────────────────────────────────────────────────────────────
 «fg:DarkGray,bg:Rgb(25, 25, 30)» ·«fg:DarkGray»│
 «fg:DarkGray,bg:Rgb(25, 25, 30)»  «fg:DarkGray»│
 «fg:DarkGray,bg:Rgb(25, 25, 30)» ·«fg:DarkGray»│

@@ -2,7 +2,7 @@ use ratatui::Frame;
 use ratatui::layout::{Constraint, Direction, Layout};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, Borders, Clear, List, ListItem, Paragraph, Wrap};
+use ratatui::widgets::{Block, Borders, Clear, List, ListItem, Paragraph};
 
 use crate::app::{App, ChatRole, Focus, LayoutRegions, SidebarSection};
 
@@ -296,6 +296,15 @@ fn render_chat(app: &mut App, frame: &mut Frame, area: ratatui::layout::Rect) {
 
     let chat_width = area.width as usize;
 
+    // Snapshot whether the last message is a completed-turn marker
+    // candidate (assistant text or tool result). Captured before the
+    // mutable iteration below so we can use it after the loop without
+    // triggering a borrow conflict.
+    let last_is_completed_turn = matches!(
+        app.messages.last().map(|m| &m.role),
+        Some(ChatRole::Assistant) | Some(ChatRole::ToolResult { .. })
+    );
+
     for (msg_idx, msg) in app.messages.iter_mut().enumerate() {
         match &msg.role {
             ChatRole::User => {
@@ -436,13 +445,36 @@ fn render_chat(app: &mut App, frame: &mut Frame, area: ratatui::layout::Rect) {
                     )));
                 } else {
                     let total_lines = msg.content.lines().count();
-                    let max_preview = 5;
+                    let total_chars = msg.content.chars().count();
+                    let max_preview_lines = 5;
+                    // Per-line char budget: chat width minus the "  │  "
+                    // gutter (5 chars) and a small safety margin, so the
+                    // preview never overflows into wrap territory.
+                    let line_budget = chat_width.saturating_sub(7).max(20);
                     let result_text = Style::default().fg(Color::Rgb(150, 150, 165));
                     let label_style = Style::default().fg(Color::Rgb(130, 130, 145));
-                    let toggle_hint = if total_lines > max_preview {
+
+                    // Two ways the preview can be incomplete: too many
+                    // lines, OR any line is wider than `line_budget`
+                    // (single-line JSON dumps used to leak through here).
+                    let any_line_too_wide = msg
+                        .content
+                        .lines()
+                        .any(|l| l.chars().count() > line_budget);
+                    let truncated_lines = total_lines > max_preview_lines;
+                    let truncated = truncated_lines || any_line_too_wide;
+
+                    let toggle_hint = if truncated {
+                        let label = if truncated_lines {
+                            format!(" ({total_lines} lines — Ctrl+E to expand)")
+                        } else {
+                            format!(" ({total_chars} chars — Ctrl+E to expand)")
+                        };
                         Span::styled(
-                            format!(" ({total_lines} lines — Ctrl+E to expand)"),
-                            Style::default().fg(Color::Rgb(100, 100, 115)).add_modifier(Modifier::ITALIC),
+                            label,
+                            Style::default()
+                                .fg(Color::Rgb(100, 100, 115))
+                                .add_modifier(Modifier::ITALIC),
                         )
                     } else {
                         Span::raw("")
@@ -453,18 +485,33 @@ fn render_chat(app: &mut App, frame: &mut Frame, area: ratatui::layout::Rect) {
                         Span::styled(format!("{name} result"), label_style),
                         toggle_hint,
                     ]));
-                    for result_line in msg.content.lines().take(max_preview) {
+                    for result_line in msg.content.lines().take(max_preview_lines) {
+                        let count = result_line.chars().count();
+                        let display = if count > line_budget {
+                            let head: String = result_line
+                                .chars()
+                                .take(line_budget.saturating_sub(1))
+                                .collect();
+                            format!("{head}…")
+                        } else {
+                            result_line.to_string()
+                        };
                         lines.push(Line::from(vec![
                             Span::styled("  │  ", chrome),
-                            Span::styled(result_line.to_string(), result_text),
+                            Span::styled(display, result_text),
                         ]));
                     }
-                    if total_lines > max_preview {
+                    if truncated_lines {
                         lines.push(Line::from(vec![
                             Span::styled("  │  ", chrome),
                             Span::styled(
-                                format!("… {remaining} more", remaining = total_lines - max_preview),
-                                Style::default().fg(Color::Rgb(120, 120, 135)).add_modifier(Modifier::ITALIC),
+                                format!(
+                                    "… {remaining} more",
+                                    remaining = total_lines - max_preview_lines
+                                ),
+                                Style::default()
+                                    .fg(Color::Rgb(120, 120, 135))
+                                    .add_modifier(Modifier::ITALIC),
                             ),
                         ]));
                     }
@@ -516,42 +563,44 @@ fn render_chat(app: &mut App, frame: &mut Frame, area: ratatui::layout::Rect) {
                 Style::default().fg(Color::DarkGray).add_modifier(Modifier::ITALIC),
             ),
         ]));
+    } else if last_is_completed_turn {
+        // End-of-response marker. Subtle dim horizontal rule beneath the
+        // last completed turn so the user has a clear "agent is done,
+        // your turn" signal — otherwise long output runs into the input
+        // area with no visual delimiter.
+        let rule_width = chat_width.saturating_sub(2).max(3);
+        lines.push(Line::from(""));
+        lines.push(Line::from(Span::styled(
+            format!("  {}", "─".repeat(rule_width)),
+            Style::default().fg(Color::DarkGray),
+        )));
     }
 
-    // Calculate scroll: show bottom of content by default (auto-scroll).
-    // scroll_offset = 0 means "at the bottom". User scrolling up increases it.
-    // Account for line wrapping by estimating visual lines.
+    // Pre-wrap to the chat area's exact width. We own the wrap so the
+    // visual-line count is exact, and so the chat renderer can slice the
+    // visible window directly — no `Paragraph::wrap` + estimated-scroll
+    // mismatch (which used to clip the bottom of long messages).
     let content_width = (area.width as usize).max(1);
-    // Use the actual chat area height — the layout already excludes separator/input/status.
+    let wrapped = crate::wrap::wrap_lines(lines, content_width);
     let visible_height = area.height as usize;
-    let visual_lines: usize = lines
-        .iter()
-        .map(|line| {
-            // Use ratatui's Line::width() for accurate unicode display width
-            let w = line.width();
-            if w == 0 {
-                1
-            } else {
-                w.div_ceil(content_width)
-            }
-        })
-        .sum();
-    let auto_scroll_pos = visual_lines.saturating_sub(visible_height);
-    // Clamp scroll_offset to valid range — can't scroll past the top
+    let total = wrapped.len();
+    let auto_scroll_pos = total.saturating_sub(visible_height);
+
+    // Clamp scroll_offset to valid range — can't scroll past the top.
     if app.scroll_offset > auto_scroll_pos {
         app.scroll_offset = auto_scroll_pos;
     }
-    let scroll_pos = if app.scroll_offset == 0 {
+    let start = if app.scroll_offset == 0 {
         auto_scroll_pos
     } else {
-        auto_scroll_pos - app.scroll_offset
+        auto_scroll_pos.saturating_sub(app.scroll_offset)
     };
+    let end = (start + visible_height).min(total);
+    let view: Vec<Line<'static>> = wrapped[start..end].to_vec();
 
-    let scroll_u16 = u16::try_from(scroll_pos).unwrap_or(u16::MAX);
-    let chat = Paragraph::new(lines)
-        .wrap(Wrap { trim: false })
-        .scroll((scroll_u16, 0));
-
+    // Flat blit — no Wrap, no scroll. The pre-wrapped slice is already the
+    // exact visible content for this Rect.
+    let chat = Paragraph::new(view);
     frame.render_widget(chat, area);
 }
 

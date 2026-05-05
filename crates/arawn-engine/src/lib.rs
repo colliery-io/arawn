@@ -41,7 +41,9 @@ pub use permissions::{
 // (Core/Task/Agent/Web/etc.) for context filtering. Permission-risk classes
 // now live on the Tool trait itself as arawn_tool::PermissionCategory.
 pub use plan::{PlanModeState, PlanModeSnapshot, generate_slug};
-pub use query_engine::{ProgressEvent, PromptContext, QueryEngine, QueryEngineConfig};
+pub use query_engine::{
+    IntegrationCapabilitiesFn, ProgressEvent, PromptContext, QueryEngine, QueryEngineConfig,
+};
 pub use system_prompt::{ContextFile, SystemPromptBuilder, find_context_files};
 pub use token_estimator::{ModelLimits, TokenEstimator};
 pub use tool::{Tool, ToolCategory, ToolError, ToolOutput, ToolRegistry};

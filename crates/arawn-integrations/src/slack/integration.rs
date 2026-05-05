@@ -31,8 +31,16 @@ pub const SLACK_OAUTH_SCOPES: &[&str] = &[
     "mpim:read",
     "mpim:history",
     "chat:write",
+    // Lets `slack_post` send to public channels the bot isn't a member of —
+    // without it, you have to /invite the bot into every channel first.
+    "chat:write.public",
     "reactions:write",
     "users:read",
+    // Populates the `email` field in `slack_users_list` results.
+    "users:read.email",
+    // Lets `slack_history` surface file attachments instead of `[file]`
+    // placeholders.
+    "files:read",
 ];
 
 /// Slack OAuth v2 provider config. Default values match Slack's standard
@@ -111,6 +119,24 @@ impl SlackIntegration {
         Ok(build_slack_client(&token))
     }
 
+    /// Return the set of scopes granted at OAuth time, parsed from the
+    /// persisted token's `scope` field. Slack returns scopes
+    /// comma-delimited; some providers space-delimit; we accept either.
+    /// Returns `NotConnected` if no token is on disk.
+    pub fn granted_scopes(&self) -> Result<std::collections::HashSet<String>, IntegrationError> {
+        let store = self.token_store()?;
+        let token = store
+            .load(SERVICE_NAME)?
+            .ok_or_else(|| IntegrationError::NotConnected(SERVICE_NAME.to_string()))?;
+        let raw = token.scope.unwrap_or_default();
+        let scopes = raw
+            .split(|c: char| c == ',' || c.is_whitespace())
+            .filter(|s| !s.is_empty())
+            .map(|s| s.to_string())
+            .collect();
+        Ok(scopes)
+    }
+
     fn oauth_config(&self) -> OAuthProviderConfig {
         self.provider().into_oauth_provider(self.client_id.clone(), self.client_secret.clone())
     }
@@ -166,6 +192,25 @@ impl Integration for SlackIntegration {
         store.delete(SERVICE_NAME)?;
         Ok(())
     }
+
+    async fn capabilities_summary(&self) -> Option<String> {
+        // Cheap path only — read the persisted token, format granted scopes.
+        // No network. If anything fails (no token, decrypt error, etc.),
+        // return None and let the agent figure it out from tool errors.
+        let scopes = self.granted_scopes().ok()?;
+        if scopes.is_empty() {
+            return None;
+        }
+        // Sort for stable output (the persisted set is unordered).
+        let mut sorted: Vec<&String> = scopes.iter().collect();
+        sorted.sort();
+        let scope_list = sorted
+            .into_iter()
+            .map(|s| s.as_str())
+            .collect::<Vec<_>>()
+            .join(", ");
+        Some(format!("slack (connected; scopes: {scope_list})"))
+    }
 }
 
 #[cfg(test)]
@@ -173,12 +218,15 @@ mod tests {
     use super::*;
 
     #[test]
-    fn default_provider_carries_eleven_bot_scopes() {
+    fn default_provider_carries_fourteen_bot_scopes() {
         let provider = SlackProviderConfig::default();
-        assert_eq!(provider.scopes.len(), 11);
+        assert_eq!(provider.scopes.len(), 14);
         assert!(provider.scopes.iter().any(|s| s == "chat:write"));
+        assert!(provider.scopes.iter().any(|s| s == "chat:write.public"));
         assert!(provider.scopes.iter().any(|s| s == "channels:history"));
         assert!(provider.scopes.iter().any(|s| s == "users:read"));
+        assert!(provider.scopes.iter().any(|s| s == "users:read.email"));
+        assert!(provider.scopes.iter().any(|s| s == "files:read"));
         assert!(provider.scopes.iter().any(|s| s == "mpim:read"));
         assert!(!provider.scopes.iter().any(|s| s == "search:read"));
     }

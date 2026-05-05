@@ -6,6 +6,7 @@
 //! can scan per-channel history to answer most "what was discussed"
 //! questions in the meantime.
 
+use std::collections::HashSet;
 use std::sync::Arc;
 
 use arawn_tool::{PermissionCategory, Tool, ToolCategory, ToolContext, ToolError, ToolOutput};
@@ -24,6 +25,45 @@ use slack_morphism::prelude::{
 use rvstruct::ValueStruct;
 
 use super::integration::SlackIntegration;
+
+/// Format a scope footer for tool descriptions. Appended at construction
+/// time so the LLM sees scope requirements directly in the tool schema.
+fn scope_footer(scopes: &[&str]) -> String {
+    if scopes.is_empty() {
+        String::new()
+    } else {
+        format!("\n\nRequires Slack scope(s): {}.", scopes.join(", "))
+    }
+}
+
+/// Read the granted scope set from the persisted token, splitting on
+/// either commas (Slack's encoding) or whitespace (RFC 6749 default) so
+/// we don't depend on which delimiter the provider used.
+fn granted_scopes(integration: &SlackIntegration) -> Result<HashSet<String>, ToolError> {
+    let scopes = integration.granted_scopes().map_err(integ_err)?;
+    Ok(scopes)
+}
+
+/// Verify the persisted token covers `required`. Returns a clean
+/// `ToolError` naming the specific missing scopes — the LLM can then
+/// tell the user exactly what to add to their Slack app.
+fn check_scopes(integration: &SlackIntegration, required: &[&str]) -> Result<(), ToolError> {
+    let granted = granted_scopes(integration)?;
+    let missing: Vec<&str> = required
+        .iter()
+        .copied()
+        .filter(|s| !granted.contains(*s))
+        .collect();
+    if missing.is_empty() {
+        Ok(())
+    } else {
+        Err(ToolError::ExecutionFailed(format!(
+            "Missing Slack scope(s): {}. Add to your Slack app's Bot Token Scopes \
+             (api.slack.com/apps → OAuth & Permissions), reinstall, then run /connect slack.",
+            missing.join(", ")
+        )))
+    }
+}
 
 fn integ_err(e: crate::IntegrationError) -> ToolError {
     ToolError::ExecutionFailed(e.user_message())
@@ -118,13 +158,22 @@ fn summarize_message(m: &slack_morphism::prelude::SlackHistoryMessage) -> Messag
 
 // ─── /slack_list_channels ─────────────────────────────────────────────────
 
+const SLACK_LIST_CHANNELS_BASE: &str = "List channels (public, private, DMs, group DMs) the bot can see in the connected Slack \
+     workspace. Use this to discover channel ids before reading history. Returns id, name, \
+     kind (public/private/im/mpim), member_count, topic, purpose.";
+const SLACK_LIST_CHANNELS_SCOPES: &[&str] = &["channels:read"];
+
 pub struct SlackListChannelsTool {
     integration: Arc<SlackIntegration>,
+    description: String,
 }
 
 impl SlackListChannelsTool {
     pub fn new(integration: Arc<SlackIntegration>) -> Self {
-        Self { integration }
+        Self {
+            integration,
+            description: format!("{}{}", SLACK_LIST_CHANNELS_BASE, scope_footer(SLACK_LIST_CHANNELS_SCOPES)),
+        }
     }
 }
 
@@ -134,9 +183,7 @@ impl Tool for SlackListChannelsTool {
         "slack_list_channels"
     }
     fn description(&self) -> &str {
-        "List channels (public, private, DMs, group DMs) the bot can see in the connected Slack \
-         workspace. Use this to discover channel ids before reading history. Returns id, name, \
-         kind (public/private/im/mpim), member_count, topic, purpose."
+        &self.description
     }
     fn category(&self) -> ToolCategory {
         ToolCategory::Web
@@ -166,9 +213,23 @@ impl Tool for SlackListChannelsTool {
         })
     }
     async fn execute(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
+        check_scopes(&self.integration, SLACK_LIST_CHANNELS_SCOPES)?;
         let include_dms = params.get("include_dms").and_then(|v| v.as_bool()).unwrap_or(false);
         let include_private = params.get("include_private").and_then(|v| v.as_bool()).unwrap_or(true);
         let limit = params.get("limit").and_then(|v| v.as_u64()).unwrap_or(100).min(1000) as u16;
+
+        // Conditional scopes: only check the ones actually needed for this call.
+        let mut conditional: Vec<&str> = Vec::new();
+        if include_private {
+            conditional.push("groups:read");
+        }
+        if include_dms {
+            conditional.push("im:read");
+            conditional.push("mpim:read");
+        }
+        if !conditional.is_empty() {
+            check_scopes(&self.integration, &conditional)?;
+        }
 
         let mut types = vec![SlackConversationType::Public];
         if include_private {
@@ -197,13 +258,25 @@ impl Tool for SlackListChannelsTool {
 
 // ─── /slack_history ───────────────────────────────────────────────────────
 
+const SLACK_HISTORY_BASE: &str = "Read recent messages from a Slack channel. Returns ts, user (Slack user id like U12345), \
+     text, thread_ts, reply_count, reaction summaries. Channel must be a Slack channel id (C12345 \
+     for public, G12345 for private, D12345 for IM); use slack_list_channels to discover ids.";
+/// `channels:history` covers public channels (C-prefixed). Private (G),
+/// DM (D), and group DM (M) channels need the corresponding `*:history`
+/// scopes — checked at execute time once we see the channel prefix.
+const SLACK_HISTORY_SCOPES: &[&str] = &["channels:history"];
+
 pub struct SlackHistoryTool {
     integration: Arc<SlackIntegration>,
+    description: String,
 }
 
 impl SlackHistoryTool {
     pub fn new(integration: Arc<SlackIntegration>) -> Self {
-        Self { integration }
+        Self {
+            integration,
+            description: format!("{}{}", SLACK_HISTORY_BASE, scope_footer(&["channels:history (or groups:history / im:history / mpim:history depending on channel)"])),
+        }
     }
 }
 
@@ -213,9 +286,7 @@ impl Tool for SlackHistoryTool {
         "slack_history"
     }
     fn description(&self) -> &str {
-        "Read recent messages from a Slack channel. Returns ts, user (Slack user id like U12345), \
-         text, thread_ts, reply_count, reaction summaries. Channel must be a Slack channel id (C12345 \
-         for public, G12345 for private, D12345 for IM); use slack_list_channels to discover ids."
+        &self.description
     }
     fn category(&self) -> ToolCategory {
         ToolCategory::Web
@@ -255,6 +326,14 @@ impl Tool for SlackHistoryTool {
             .and_then(|v| v.as_str())
             .ok_or_else(|| ToolError::ExecutionFailed("missing 'channel'".into()))?
             .to_string();
+        // Scope check by channel-id prefix. C=public, G=private, D=im, M=mpim.
+        let required = match channel.chars().next() {
+            Some('G') => &["groups:history"][..],
+            Some('D') => &["im:history"][..],
+            Some('M') => &["mpim:history"][..],
+            _ => SLACK_HISTORY_SCOPES, // Default to channels:history (covers C-prefixed and unknown).
+        };
+        check_scopes(&self.integration, required)?;
         let limit = params.get("limit").and_then(|v| v.as_u64()).unwrap_or(20).min(200) as u16;
         let oldest = params.get("oldest").and_then(|v| v.as_str()).map(|s| SlackTs::new(s.to_string()));
         let latest = params.get("latest").and_then(|v| v.as_str()).map(|s| SlackTs::new(s.to_string()));
@@ -284,11 +363,21 @@ impl Tool for SlackHistoryTool {
 
 pub struct SlackPostTool {
     integration: Arc<SlackIntegration>,
+    description: String,
 }
+
+const SLACK_POST_BASE: &str = "Post a plain-text message to a Slack channel or as a thread reply. `channel` accepts a \
+     channel id (C12345) or name (#general). For a thread reply, set `thread_ts` to the root \
+     message's ts. Returns the new message's ts. To post to a public channel the bot is NOT \
+     a member of, the optional `chat:write.public` scope is required.";
+const SLACK_POST_SCOPES: &[&str] = &["chat:write"];
 
 impl SlackPostTool {
     pub fn new(integration: Arc<SlackIntegration>) -> Self {
-        Self { integration }
+        Self {
+            integration,
+            description: format!("{}{}", SLACK_POST_BASE, scope_footer(SLACK_POST_SCOPES)),
+        }
     }
 }
 
@@ -298,9 +387,7 @@ impl Tool for SlackPostTool {
         "slack_post"
     }
     fn description(&self) -> &str {
-        "Post a plain-text message to a Slack channel or as a thread reply. `channel` accepts a \
-         channel id (C12345) or name (#general). For a thread reply, set `thread_ts` to the root \
-         message's ts. Returns the new message's ts."
+        &self.description
     }
     fn category(&self) -> ToolCategory {
         ToolCategory::Web
@@ -329,6 +416,7 @@ impl Tool for SlackPostTool {
         })
     }
     async fn execute(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
+        check_scopes(&self.integration, SLACK_POST_SCOPES)?;
         let channel = params
             .get("channel")
             .and_then(|v| v.as_str())
@@ -367,13 +455,21 @@ impl Tool for SlackPostTool {
 
 // ─── /slack_react ─────────────────────────────────────────────────────────
 
+const SLACK_REACT_BASE: &str = "Add an emoji reaction to a Slack message. `name` is the emoji name without colons \
+     (e.g. 'thumbsup', not ':thumbsup:'). `channel` is the channel id, `ts` is the message ts.";
+const SLACK_REACT_SCOPES: &[&str] = &["reactions:write"];
+
 pub struct SlackReactTool {
     integration: Arc<SlackIntegration>,
+    description: String,
 }
 
 impl SlackReactTool {
     pub fn new(integration: Arc<SlackIntegration>) -> Self {
-        Self { integration }
+        Self {
+            integration,
+            description: format!("{}{}", SLACK_REACT_BASE, scope_footer(SLACK_REACT_SCOPES)),
+        }
     }
 }
 
@@ -383,8 +479,7 @@ impl Tool for SlackReactTool {
         "slack_react"
     }
     fn description(&self) -> &str {
-        "Add an emoji reaction to a Slack message. `name` is the emoji name without colons \
-         (e.g. 'thumbsup', not ':thumbsup:'). `channel` is the channel id, `ts` is the message ts."
+        &self.description
     }
     fn category(&self) -> ToolCategory {
         ToolCategory::Web
@@ -404,6 +499,7 @@ impl Tool for SlackReactTool {
         })
     }
     async fn execute(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
+        check_scopes(&self.integration, SLACK_REACT_SCOPES)?;
         let channel = params
             .get("channel")
             .and_then(|v| v.as_str())
@@ -470,13 +566,24 @@ fn summarize_user(u: &slack_morphism::prelude::SlackUser) -> UserSummary {
     }
 }
 
+const SLACK_USERS_LIST_BASE: &str = "List users in the connected Slack workspace. Use this to resolve user IDs (U12345) \
+     from messages and DMs to real names. Returns id, name (handle), real_name, display_name, \
+     email, title, is_bot, deleted. Email is only populated when the `users:read.email` scope \
+     is granted. Workspaces with thousands of users may need pagination — this tool returns up \
+     to 200 per call (use `cursor` from response_metadata for more).";
+const SLACK_USERS_LIST_SCOPES: &[&str] = &["users:read"];
+
 pub struct SlackUsersListTool {
     integration: Arc<SlackIntegration>,
+    description: String,
 }
 
 impl SlackUsersListTool {
     pub fn new(integration: Arc<SlackIntegration>) -> Self {
-        Self { integration }
+        Self {
+            integration,
+            description: format!("{}{}", SLACK_USERS_LIST_BASE, scope_footer(SLACK_USERS_LIST_SCOPES)),
+        }
     }
 }
 
@@ -486,10 +593,7 @@ impl Tool for SlackUsersListTool {
         "slack_users_list"
     }
     fn description(&self) -> &str {
-        "List users in the connected Slack workspace. Use this to resolve user IDs (U12345) \
-         from messages and DMs to real names. Returns id, name (handle), real_name, display_name, \
-         email, title, is_bot, deleted. Workspaces with thousands of users may need pagination — \
-         this tool returns up to 200 per call (use `cursor` from response_metadata for more)."
+        &self.description
     }
     fn category(&self) -> ToolCategory {
         ToolCategory::Web
@@ -519,6 +623,7 @@ impl Tool for SlackUsersListTool {
         })
     }
     async fn execute(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
+        check_scopes(&self.integration, SLACK_USERS_LIST_SCOPES)?;
         let limit = params.get("limit").and_then(|v| v.as_u64()).unwrap_or(200).min(1000) as u16;
         let include_deleted = params.get("include_deleted").and_then(|v| v.as_bool()).unwrap_or(false);
         let include_bots = params.get("include_bots").and_then(|v| v.as_bool()).unwrap_or(false);
@@ -543,13 +648,26 @@ impl Tool for SlackUsersListTool {
 
 // ─── /slack_open_dm ───────────────────────────────────────────────────────
 
+const SLACK_OPEN_DM_BASE: &str = "Open (or look up) a DM channel with one or more users. With a single user_id, returns \
+     the 1:1 DM channel id. With multiple, returns a multi-party DM (mpim) channel id. \
+     Idempotent — calling twice with the same users returns the same channel. Use the \
+     returned channel id with slack_history to read or slack_post to message.";
+/// `conversations.open` works with either chat:write (typical bot config)
+/// or im:write (explicit). We require chat:write (which most installs grant)
+/// and trust Slack's runtime check for the conditional.
+const SLACK_OPEN_DM_SCOPES: &[&str] = &["chat:write"];
+
 pub struct SlackOpenDmTool {
     integration: Arc<SlackIntegration>,
+    description: String,
 }
 
 impl SlackOpenDmTool {
     pub fn new(integration: Arc<SlackIntegration>) -> Self {
-        Self { integration }
+        Self {
+            integration,
+            description: format!("{}{}", SLACK_OPEN_DM_BASE, scope_footer(SLACK_OPEN_DM_SCOPES)),
+        }
     }
 }
 
@@ -559,10 +677,7 @@ impl Tool for SlackOpenDmTool {
         "slack_open_dm"
     }
     fn description(&self) -> &str {
-        "Open (or look up) a DM channel with one or more users. With a single user_id, returns \
-         the 1:1 DM channel id. With multiple, returns a multi-party DM (mpim) channel id. \
-         Idempotent — calling twice with the same users returns the same channel. Use the \
-         returned channel id with slack_history to read or slack_post to message."
+        &self.description
     }
     fn category(&self) -> ToolCategory {
         ToolCategory::Web
@@ -587,6 +702,7 @@ impl Tool for SlackOpenDmTool {
         })
     }
     async fn execute(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
+        check_scopes(&self.integration, SLACK_OPEN_DM_SCOPES)?;
         let user_ids: Vec<SlackUserId> = params
             .get("user_ids")
             .and_then(|v| v.as_array())

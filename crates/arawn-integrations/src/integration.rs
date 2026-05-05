@@ -43,6 +43,22 @@ pub trait Integration: Send + Sync {
     /// Drop stored credentials. Idempotent — disconnecting an already-
     /// disconnected integration is not an error.
     async fn disconnect(&self) -> Result<(), IntegrationError>;
+
+    /// One-line capability summary for the LLM system prompt. `None`
+    /// means "skip — nothing the agent should know about right now"
+    /// (typically because the integration isn't connected). Implementors
+    /// that ARE connected return a string like:
+    ///
+    /// ```text
+    /// slack (connected; scopes: channels:read, chat:write, ...)
+    /// ```
+    ///
+    /// Called per LLM turn — keep it cheap (no network round-trips).
+    /// Default impl returns `None`; only integrations that have
+    /// granted-scope or capability info worth surfacing override this.
+    async fn capabilities_summary(&self) -> Option<String> {
+        None
+    }
 }
 
 /// Hooks an `Integration::connect` impl needs from its caller (the server).

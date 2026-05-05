@@ -1,8 +1,11 @@
+use std::collections::HashMap;
+use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use arawn_service::{EngineEvent, SessionInfo, WorkstreamInfo};
 use futures_util::{SinkExt, StreamExt};
 use serde_json::{Value, json};
+use tokio::sync::{Mutex, mpsc, oneshot};
 use tokio_tungstenite::connect_async;
 use tokio_tungstenite::tungstenite::Message as WsMessage;
 use tracing::{debug, warn};
@@ -13,7 +16,27 @@ fn next_id() -> u64 {
     REQUEST_ID.fetch_add(1, Ordering::Relaxed)
 }
 
+/// A frame from the reader task. Either a raw text payload (engine events,
+/// system notices, anything not tagged with an `id`) or an end-of-stream
+/// signal. Synchronous JSON-RPC responses (which carry `id`) are routed
+/// directly to their `send_request` caller via the pending-oneshot map and
+/// never appear here.
+#[derive(Debug)]
+pub enum WsEvent {
+    Text(String),
+    Closed,
+    Error(String),
+}
+
+type Pending = Arc<Mutex<HashMap<u64, oneshot::Sender<Value>>>>;
+
 /// A WebSocket connection to the Arawn server.
+///
+/// The reader half runs on its own task — it never shares the main task's
+/// time budget with rendering. Synchronous request/response is implemented
+/// by registering a oneshot keyed on the request id; the reader fans
+/// responses to the right oneshot and pushes everything else into the
+/// event channel returned by [`Self::events_take`].
 pub struct WsClient {
     write: futures_util::stream::SplitSink<
         tokio_tungstenite::WebSocketStream<
@@ -21,11 +44,8 @@ pub struct WsClient {
         >,
         WsMessage,
     >,
-    pub read: futures_util::stream::SplitStream<
-        tokio_tungstenite::WebSocketStream<
-            tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>,
-        >,
-    >,
+    pending: Pending,
+    events: Option<mpsc::Receiver<WsEvent>>,
 }
 
 impl WsClient {
@@ -42,7 +62,23 @@ impl WsClient {
         let (ws_stream, resp) = connect_async(&authed_url).await?;
         debug!(status = ?resp.status(), "ws_client connected");
         let (write, read) = ws_stream.split();
-        Ok(Self { write, read })
+
+        let pending: Pending = Arc::new(Mutex::new(HashMap::new()));
+        let (events_tx, events_rx) = mpsc::channel::<WsEvent>(256);
+        spawn_reader(read, Arc::clone(&pending), events_tx);
+
+        Ok(Self {
+            write,
+            pending,
+            events: Some(events_rx),
+        })
+    }
+
+    /// Take ownership of the event receiver. The main loop selects on this
+    /// instead of polling the read half directly. Returns `None` if already
+    /// taken (only meaningful to call once after `connect`).
+    pub fn events_take(&mut self) -> Option<mpsc::Receiver<WsEvent>> {
+        self.events.take()
     }
 
     /// Read the server auth token from {data_dir}/server.token.
@@ -82,11 +118,37 @@ impl WsClient {
         Ok(id)
     }
 
+    /// Send a request and await its response via the pending-oneshot map.
+    /// Replaces the old send-then-read-next pattern, which conflicted with
+    /// the dedicated reader task owning the stream.
+    pub async fn request_response(
+        &mut self,
+        method: &str,
+        params: Value,
+    ) -> Result<Value, Box<dyn std::error::Error>> {
+        let id = next_id();
+        let request = json!({"id": id, "method": method, "params": params});
+        let (tx, rx) = oneshot::channel();
+        self.pending.lock().await.insert(id, tx);
+        debug!(id, method, "ws_client sending request");
+        if let Err(e) = self
+            .write
+            .send(WsMessage::Text(request.to_string().into()))
+            .await
+        {
+            self.pending.lock().await.remove(&id);
+            return Err(e.into());
+        }
+        match rx.await {
+            Ok(value) => Ok(value),
+            Err(_) => Err("connection closed before response".into()),
+        }
+    }
+
     pub async fn list_workstreams(
         &mut self,
     ) -> Result<Vec<WorkstreamInfo>, Box<dyn std::error::Error>> {
-        self.send_request("list_workstreams", json!({})).await?;
-        let resp = self.read_response().await?;
+        let resp = self.request_response("list_workstreams", json!({})).await?;
         let result = resp.get("result").ok_or("no result")?;
         Ok(serde_json::from_value(result.clone())?)
     }
@@ -94,8 +156,7 @@ impl WsClient {
     pub async fn list_workflows(
         &mut self,
     ) -> Result<Vec<serde_json::Value>, Box<dyn std::error::Error>> {
-        self.send_request("list_workflows", json!({})).await?;
-        let resp = self.read_response().await?;
+        let resp = self.request_response("list_workflows", json!({})).await?;
         let result = resp.get("result").ok_or("no result")?;
         Ok(serde_json::from_value(result.clone())?)
     }
@@ -106,8 +167,7 @@ impl WsClient {
     pub async fn get_capabilities(
         &mut self,
     ) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
-        self.send_request("get_capabilities", json!({})).await?;
-        let resp = self.read_response().await?;
+        let resp = self.request_response("get_capabilities", json!({})).await?;
         let result = resp.get("result").ok_or("no result")?;
         Ok(result.clone())
     }
@@ -116,8 +176,7 @@ impl WsClient {
     pub async fn get_permissions_status(
         &mut self,
     ) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
-        self.send_request("get_permissions_status", json!({})).await?;
-        let resp = self.read_response().await?;
+        let resp = self.request_response("get_permissions_status", json!({})).await?;
         let result = resp.get("result").ok_or("no result")?;
         Ok(result.clone())
     }
@@ -126,8 +185,7 @@ impl WsClient {
     pub async fn list_integrations(
         &mut self,
     ) -> Result<Vec<serde_json::Value>, Box<dyn std::error::Error>> {
-        self.send_request("list_integrations", json!({})).await?;
-        let resp = self.read_response().await?;
+        let resp = self.request_response("list_integrations", json!({})).await?;
         let result = resp.get("result").ok_or("no result")?;
         Ok(serde_json::from_value(result.clone())?)
     }
@@ -139,8 +197,9 @@ impl WsClient {
         &mut self,
         service: &str,
     ) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
-        self.send_request("start_oauth_flow", json!({"service": service})).await?;
-        let resp = self.read_response().await?;
+        let resp = self
+            .request_response("start_oauth_flow", json!({"service": service}))
+            .await?;
         if let Some(err) = resp.get("error") {
             return Err(err["message"].as_str().unwrap_or("unknown error").into());
         }
@@ -153,8 +212,9 @@ impl WsClient {
         &mut self,
         service: &str,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        self.send_request("disconnect_integration", json!({"service": service})).await?;
-        let resp = self.read_response().await?;
+        let resp = self
+            .request_response("disconnect_integration", json!({"service": service}))
+            .await?;
         if let Some(err) = resp.get("error") {
             return Err(err["message"].as_str().unwrap_or("unknown error").into());
         }
@@ -164,8 +224,7 @@ impl WsClient {
     pub async fn get_permission_mode(
         &mut self,
     ) -> Result<String, Box<dyn std::error::Error>> {
-        self.send_request("get_permission_mode", json!({})).await?;
-        let resp = self.read_response().await?;
+        let resp = self.request_response("get_permission_mode", json!({})).await?;
         let result = resp.get("result").ok_or("no result")?;
         Ok(result["mode"].as_str().unwrap_or("default").to_string())
     }
@@ -174,8 +233,9 @@ impl WsClient {
         &mut self,
         mode: &str,
     ) -> Result<String, Box<dyn std::error::Error>> {
-        self.send_request("set_permission_mode", json!({"mode": mode})).await?;
-        let resp = self.read_response().await?;
+        let resp = self
+            .request_response("set_permission_mode", json!({"mode": mode}))
+            .await?;
         if let Some(err) = resp.get("error") {
             return Err(err["message"].as_str().unwrap_or("unknown error").into());
         }
@@ -191,8 +251,7 @@ impl WsClient {
             Some(id) => json!({"workstream_id": id.to_string()}),
             None => json!({"workstream_id": null}),
         };
-        self.send_request("list_sessions", params).await?;
-        let resp = self.read_response().await?;
+        let resp = self.request_response("list_sessions", params).await?;
         let result = resp.get("result").ok_or("no result")?;
         Ok(serde_json::from_value(result.clone())?)
     }
@@ -205,8 +264,7 @@ impl WsClient {
             Some(id) => json!({"workstream_id": id.to_string()}),
             None => json!({"workstream_id": null}),
         };
-        self.send_request("create_session", params).await?;
-        let resp = self.read_response().await?;
+        let resp = self.request_response("create_session", params).await?;
         let result = resp.get("result").ok_or("no result")?;
         Ok(serde_json::from_value(result.clone())?)
     }
@@ -215,8 +273,12 @@ impl WsClient {
         &mut self,
         session_id: uuid::Uuid,
     ) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
-        self.send_request("load_session", json!({"session_id": session_id.to_string()})).await?;
-        let resp = self.read_response().await?;
+        let resp = self
+            .request_response(
+                "load_session",
+                json!({"session_id": session_id.to_string()}),
+            )
+            .await?;
         let result = resp.get("result").ok_or("no result")?;
         Ok(result.clone())
     }
@@ -226,50 +288,69 @@ impl WsClient {
         session_id: uuid::Uuid,
         content: &str,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        self.send_request(
-            "send_message",
-            json!({
-                "session_id": session_id.to_string(),
-                "content": content,
-            }),
-        )
-        .await?;
-        // The ack response comes first, then streaming events
-        let _ack = self.read_response().await?;
+        let _ack = self
+            .request_response(
+                "send_message",
+                json!({
+                    "session_id": session_id.to_string(),
+                    "content": content,
+                }),
+            )
+            .await?;
         Ok(())
     }
+}
 
-    /// Read the next JSON response from the server (public for sidebar).
-    pub async fn read_response_raw(&mut self) -> Result<Value, Box<dyn std::error::Error>> {
-        self.read_response().await
-    }
-
-    /// Read the next JSON response from the server.
-    async fn read_response(&mut self) -> Result<Value, Box<dyn std::error::Error>> {
-        while let Some(msg) = self.read.next().await {
-            let msg = msg?;
-            match &msg {
+/// Spawn the reader task. Owns the read half of the stream forever; on
+/// disconnect, sends `WsEvent::Closed` (or `Error`) once and exits.
+fn spawn_reader(
+    mut read: futures_util::stream::SplitStream<
+        tokio_tungstenite::WebSocketStream<
+            tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>,
+        >,
+    >,
+    pending: Pending,
+    events_tx: mpsc::Sender<WsEvent>,
+) {
+    tokio::spawn(async move {
+        while let Some(msg) = read.next().await {
+            let msg = match msg {
+                Ok(m) => m,
+                Err(e) => {
+                    let _ = events_tx.send(WsEvent::Error(e.to_string())).await;
+                    return;
+                }
+            };
+            match msg {
                 WsMessage::Text(text) => {
-                    let value: Value = serde_json::from_str(text)?;
-                    let id = value.get("id").and_then(|v| v.as_u64());
-                    let has_error = value.get("error").is_some();
-                    debug!(id = ?id, has_error, "ws_client recv response");
-                    return Ok(value);
+                    let s = text.to_string();
+                    // Try to route as a JSON-RPC response first (has `id`).
+                    if let Ok(value) = serde_json::from_str::<Value>(&s)
+                        && let Some(id) = value.get("id").and_then(|v| v.as_u64())
+                    {
+                        let mut map = pending.lock().await;
+                        if let Some(tx) = map.remove(&id) {
+                            let _ = tx.send(value);
+                            continue;
+                        }
+                        // Else fall through to event channel — the engine
+                        // sometimes carries `id` on streaming frames too.
+                    }
+                    if events_tx.send(WsEvent::Text(s)).await.is_err() {
+                        return; // receiver dropped — main loop exited
+                    }
                 }
                 WsMessage::Close(frame) => {
-                    warn!(frame = ?frame, "ws_client recv close frame");
+                    warn!(frame = ?frame, "ws reader: close frame");
+                    let _ = events_tx.send(WsEvent::Closed).await;
+                    return;
                 }
-                WsMessage::Ping(_) => {
-                    debug!("ws_client recv ping");
-                }
-                _ => {
-                    debug!(kind = ?std::mem::discriminant(&msg), "ws_client recv non-text frame");
-                }
+                WsMessage::Ping(_) => debug!("ws reader: ping"),
+                _ => debug!(kind = ?std::mem::discriminant(&msg), "ws reader: non-text"),
             }
         }
-        warn!("ws_client connection closed unexpectedly");
-        Err("connection closed".into())
-    }
+        let _ = events_tx.send(WsEvent::Closed).await;
+    });
 }
 
 /// Parse a WS message as an EngineEvent. Returns None if it's not an event (e.g., a response).

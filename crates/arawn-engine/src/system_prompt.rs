@@ -293,6 +293,33 @@ impl SystemPromptBuilder {
         self
     }
 
+    /// Add a section listing connected integrations and their granted
+    /// capabilities. Empty input is a no-op (no section emitted) so the
+    /// agent doesn't see noise when nothing is connected.
+    ///
+    /// The caller is expected to query this fresh each turn — see
+    /// `PromptContext::integration_capabilities`.
+    pub fn integrations(mut self, summaries: &[String]) -> Self {
+        if summaries.is_empty() {
+            return self;
+        }
+        let mut content = String::from(
+            "# Connected integrations\nThe agent has these external integrations available. Use \
+             the listed scopes to know what each integration can do; tools that need additional \
+             scopes will return a clean error naming the gap.\n\n",
+        );
+        for summary in summaries {
+            content.push_str(&format!("- {summary}\n"));
+        }
+        self.sections.push(PromptSection {
+            name: "integrations".into(),
+            content,
+            // Mid-priority — informational, but useful before tool listings.
+            priority: 4,
+        });
+        self
+    }
+
     /// Add plugin-contributed prompt fragments.
     pub fn plugin_prompts(mut self, prompts: &[String]) -> Self {
         if prompts.is_empty() {

@@ -103,6 +103,11 @@ pub struct App {
     pub sidebar_session_index: usize,
     pub should_quit: bool,
     pub dirty: bool,
+    /// Wall-clock instant of the last `terminal.draw()` call. Used to cap
+    /// render rate (see `MIN_FRAME_INTERVAL` in event_loop) so a flood of
+    /// engine events doesn't melt the render path. Initialized to "long
+    /// ago" so the first draw is never throttled.
+    pub last_draw: std::time::Instant,
     /// Pending action that requires the event loop to send a WS message.
     pub pending_submit: Option<String>,
     /// Set of message indices where tool results are expanded (show full content).
@@ -152,6 +157,7 @@ impl App {
             sidebar_session_index: 0,
             should_quit: false,
             dirty: true,
+            last_draw: std::time::Instant::now() - std::time::Duration::from_secs(60),
             pending_submit: None,
             expanded_tool_results: std::collections::HashSet::new(),
             model_name: String::new(),

@@ -421,7 +421,17 @@ impl MdRenderer {
             }
         }
 
-        // Emit header row
+        // Pre-build the three horizontal rules. Each column reserves
+        // `width + 2` chars (one space of padding on each side).
+        let bar_parts: Vec<String> = col_widths.iter().map(|w| "─".repeat(w + 2)).collect();
+        let top = format!("┌{}┐", bar_parts.join("┬"));
+        let mid = format!("├{}┤", bar_parts.join("┼"));
+        let bot = format!("└{}┘", bar_parts.join("┴"));
+
+        // Top border
+        self.lines.push(Line::from(Span::styled(top, chrome)));
+
+        // Header row
         self.emit_padded_row(
             &self.table_header.clone(),
             &col_widths,
@@ -429,21 +439,20 @@ impl MdRenderer {
             chrome,
         );
 
-        // Emit separator
-        let sep_parts: Vec<String> = col_widths.iter().map(|w| "─".repeat(w + 2)).collect();
-        let sep = format!("├{}┤", sep_parts.join("┼"));
-        self.lines.push(Line::from(Span::styled(sep, chrome)));
+        // Header / data separator
+        self.lines.push(Line::from(Span::styled(mid.clone(), chrome)));
 
-        // Emit data rows with horizontal separators between them
-        let row_sep_parts: Vec<String> = col_widths.iter().map(|w| "─".repeat(w + 2)).collect();
-        let row_sep = format!("├{}┤", row_sep_parts.join("┼"));
+        // Data rows with horizontal separators between them
         let rows = self.table_rows.clone();
         for (i, row) in rows.iter().enumerate() {
             self.emit_padded_row(row, &col_widths, Style::default(), chrome);
             if i < rows.len() - 1 {
-                self.lines.push(Line::from(Span::styled(row_sep.clone(), chrome)));
+                self.lines.push(Line::from(Span::styled(mid.clone(), chrome)));
             }
         }
+
+        // Bottom border
+        self.lines.push(Line::from(Span::styled(bot, chrome)));
     }
 
     fn emit_padded_row(

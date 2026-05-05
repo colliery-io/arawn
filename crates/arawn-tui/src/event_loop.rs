@@ -1,4 +1,5 @@
 use std::io;
+use std::time::{Duration, Instant};
 
 use crossterm::event::{
     DisableMouseCapture, EnableMouseCapture, Event as CEvent, EventStream, MouseEventKind,
@@ -8,18 +9,52 @@ use crossterm::execute;
 use crossterm::terminal::{
     EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode,
 };
-use futures_util::{FutureExt, StreamExt};
+use futures_util::StreamExt;
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
-use tokio_tungstenite::tungstenite::Message as WsMessage;
 use tracing::{debug, error, info, warn};
 
 use crate::app::{App, ChatMessage, ChatRole};
 use crate::event::map_key_event;
 use crate::render::render;
 use crate::ws_client::{
-    EventUpdate, WsClient, engine_event_to_update, parse_engine_event, parse_system_notice,
+    EventUpdate, WsClient, WsEvent, engine_event_to_update, parse_engine_event, parse_system_notice,
 };
+
+/// Minimum interval between renders driven by streaming/event traffic.
+/// 33ms ≈ 30fps. Caps the worst case where the engine emits dozens of
+/// events per second; keeps the render path responsive without melting
+/// it. State-change events (modal, error) bypass this — they call
+/// `force_draw`, which renders immediately and resets the clock.
+const MIN_FRAME_INTERVAL: Duration = Duration::from_millis(33);
+
+/// Render if enough time has elapsed since the last draw. Otherwise mark
+/// the app dirty so the next tick (or next force draw) flushes the change.
+fn maybe_draw<B: ratatui::backend::Backend>(
+    terminal: &mut Terminal<B>,
+    app: &mut App,
+) -> io::Result<()> {
+    if app.last_draw.elapsed() >= MIN_FRAME_INTERVAL {
+        terminal.draw(|f| render(app, f))?;
+        app.last_draw = Instant::now();
+        app.dirty = false;
+    } else {
+        app.dirty = true;
+    }
+    Ok(())
+}
+
+/// Render now regardless of frame budget. Use for state-change events
+/// the user must see immediately (errors, modal prompts, completion).
+fn force_draw<B: ratatui::backend::Backend>(
+    terminal: &mut Terminal<B>,
+    app: &mut App,
+) -> io::Result<()> {
+    terminal.draw(|f| render(app, f))?;
+    app.last_draw = Instant::now();
+    app.dirty = false;
+    Ok(())
+}
 
 fn rect_contains(rect: Rect, col: u16, row: u16) -> bool {
     col >= rect.x && col < rect.x + rect.width && row >= rect.y && row < rect.y + rect.height
@@ -61,9 +96,8 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
     app.model_name = model_name.to_string();
 
     // Fetch available commands from server for autocomplete (skills, etc.)
-    if let Ok(_id) = client.send_request("list_commands", serde_json::json!({})).await
-        && let Ok(resp) = client.read_response_raw().await
-            && let Some(commands) = resp.get("result").and_then(|r| r.as_array()) {
+    if let Ok(resp) = client.request_response("list_commands", serde_json::json!({})).await
+        && let Some(commands) = resp.get("result").and_then(|r| r.as_array()) {
                 let skills: Vec<(String, String)> = commands
                     .iter()
                     .filter(|c| c.get("kind").and_then(|k| k.as_str()) == Some("skill"))
@@ -116,20 +150,31 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
         original_hook(info);
     }));
 
+    // Take the WS event receiver. Reader task is already running; main
+    // loop selects on this channel instead of polling the read half
+    // directly, so render time can't back-pressure the socket.
+    let mut events = client
+        .events_take()
+        .ok_or("ws client events channel already taken")?;
+
     // Initial render
-    terminal.draw(|f| render(&mut app, f))?;
+    force_draw(&mut terminal, &mut app)?;
 
     // Event loop
     let mut term_events = EventStream::new();
-    let mut tick_interval = tokio::time::interval(std::time::Duration::from_millis(100));
+    let mut tick_interval = tokio::time::interval(Duration::from_millis(100));
 
     loop {
         tokio::select! {
-            // Spinner tick — only redraw when generating
+            // Spinner tick — flushes any deferred render, advances spinner.
             _ = tick_interval.tick() => {
                 if app.is_generating {
                     app.spinner_frame = (app.spinner_frame + 1) % 10;
-                    terminal.draw(|f| render(&mut app, f))?;
+                    // Always draw on tick while generating so the spinner
+                    // animates and any throttled streaming updates flush.
+                    force_draw(&mut terminal, &mut app)?;
+                } else if app.dirty {
+                    force_draw(&mut terminal, &mut app)?;
                 }
             }
             // Terminal events (key presses)
@@ -172,8 +217,7 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                         match cmd_result {
                             crate::command::CommandResult::QueryInventory(kind) => {
                                 let params = serde_json::json!({"kind": kind});
-                                if let Ok(_id) = client.send_request("query_inventory", params).await
-                                    && let Ok(resp) = client.read_response_raw().await {
+                                if let Ok(resp) = client.request_response("query_inventory", params).await {
                                         if let Some(items) = resp.get("result").and_then(|r| r.as_array()) {
                                             let mut output = format!("**/{kind}** ({} items)\n\n| Name | Description |\n|------|-------------|\n", items.len());
                                             for item in items {
@@ -224,9 +268,8 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                                 app.dirty = true;
                             }
                             crate::command::CommandResult::MemorySummary => {
-                                if let Ok(_id) = client.send_request("get_memory_summary", serde_json::json!({})).await
-                                    && let Ok(resp) = client.read_response_raw().await
-                                        && let Some(result) = resp.get("result") {
+                                if let Ok(resp) = client.request_response("get_memory_summary", serde_json::json!({})).await
+                                    && let Some(result) = resp.get("result") {
                                             let mut output = String::from("**Knowledge Base**\n\n");
                                             for (label, key) in [("Global", "global"), ("Workstream", "workstream")] {
                                                 if let Some(tier) = result.get(key) {
@@ -267,8 +310,7 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                             }
                             crate::command::CommandResult::WorkstreamCreate(name) => {
                                 let params = serde_json::json!({"name": name});
-                                if let Ok(_id) = client.send_request("create_workstream", params).await
-                                    && let Ok(resp) = client.read_response_raw().await {
+                                if let Ok(resp) = client.request_response("create_workstream", params).await {
                                         if resp.get("result").is_some() {
                                             // Refresh workstream list and switch to new one
                                             if let Ok(workstreams) = client.list_workstreams().await {
@@ -368,8 +410,7 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                                         "session_id": session.id.to_string(),
                                         "workstream_name": ws_name,
                                     });
-                                    if let Ok(_id) = client.send_request("promote_session", params).await
-                                        && let Ok(resp) = client.read_response_raw().await {
+                                    if let Ok(resp) = client.request_response("promote_session", params).await {
                                             if resp.get("result").and_then(|r| r.get("status")).and_then(|s| s.as_str()) == Some("promoted") {
                                                 // Refresh state
                                                 if let Ok(workstreams) = client.list_workstreams().await {
@@ -561,8 +602,7 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                     }
 
                     if app.dirty {
-                        terminal.draw(|f| render(&mut app, f))?;
-                        app.dirty = false;
+                        force_draw(&mut terminal, &mut app)?;
                     }
                 }
                 if let CEvent::Mouse(mouse) = event {
@@ -623,24 +663,23 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                         _ => {}
                     }
                     if app.dirty {
-                        terminal.draw(|f| render(&mut app, f))?;
-                        app.dirty = false;
+                        force_draw(&mut terminal, &mut app)?;
                     }
                 }
                 if let CEvent::Resize(_, _) = event {
-                    terminal.draw(|f| render(&mut app, f))?;
+                    force_draw(&mut terminal, &mut app)?;
                 }
             }
 
-            // WebSocket messages (streaming events)
-            // Batch consecutive streaming text tokens before redrawing,
-            // but draw immediately on state changes (tool call, result, complete).
-            Some(msg) = client.read.next() => {
+            // WebSocket events from the dedicated reader task. Streaming
+            // tokens batch into the channel; we drain the queue, apply
+            // everything, then render once. Render budget (MIN_FRAME_INTERVAL)
+            // throttles streaming updates further; state changes bypass it
+            // via `force_render`.
+            Some(ev) = events.recv() => {
                 let mut should_break = false;
-
-                // Process WS messages, accumulating state changes.
-                // Only draw when we receive a Flush event from the server.
-                let mut flush = false;
+                let mut force_render = false;
+                let mut anything_applied = false;
 
                 let apply_update = |update: EventUpdate, app: &mut App| -> bool {
                     match update {
@@ -652,7 +691,12 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                             // otherwise every streaming token after the first
                             // gets its own message.
                             app.streaming_text.push_str(&text);
-                            return true; // Draw immediately — narration should be visible
+                            // Don't force a draw on every token — under fast
+                            // streams, render time exceeds inter-token interval
+                            // and the TUI falls behind. The 100ms spinner tick
+                            // (active while is_generating) redraws periodically
+                            // and picks up the accumulated streaming_text.
+                            return false;
                         }
                         EventUpdate::AddToolCall { name, input, .. } => {
                             debug!(%name, "update: tool call start");
@@ -756,67 +800,61 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                     false
                 };
 
-                match msg {
-                    Ok(WsMessage::Text(text)) => {
-                        if let Some(notice) = parse_system_notice(&text) {
-                            apply_system_notice(&notice, &mut app);
-                            flush = true;
-                        } else if let Some(event) = parse_engine_event(&text) {
-                            flush |= apply_update(engine_event_to_update(event), &mut app);
+                let handle_event = |ev: WsEvent, app: &mut App| -> (bool, bool, bool) {
+                    // (applied, force, broke)
+                    match ev {
+                        WsEvent::Text(text) => {
+                            if let Some(notice) = parse_system_notice(&text) {
+                                apply_system_notice(&notice, app);
+                                (true, true, false)
+                            } else if let Some(event) = parse_engine_event(&text) {
+                                let force = apply_update(engine_event_to_update(event), app);
+                                (true, force, false)
+                            } else {
+                                (false, false, false)
+                            }
+                        }
+                        WsEvent::Closed => {
+                            warn!("server closed connection");
+                            (false, false, true)
+                        }
+                        WsEvent::Error(e) => {
+                            error!(error = %e, "WebSocket error");
+                            (false, false, true)
                         }
                     }
-                    Ok(WsMessage::Close(frame)) => {
-                        warn!(frame = ?frame, "server closed connection");
-                        should_break = true;
-                    }
-                    Err(e) => {
-                        error!(error = %e, "WebSocket error");
-                        should_break = true;
-                    }
-                    _ => {}
-                }
+                };
 
-                // Drain any immediately queued messages so we render once per
-                // burst, not once per event. `apply_update` returns true for
-                // every visible update — so without this drain, each WS message
-                // triggers its own (slow) markdown render and messages back up
-                // faster than they're processed. We only break the drain on a
-                // Close, an error, or when the queue empties.
-                if !should_break {
-                    let mut drained: u32 = 0;
-                    loop {
-                        match client.read.next().now_or_never() {
-                            Some(Some(Ok(WsMessage::Text(text)))) => {
-                                drained += 1;
-                                if let Some(notice) = parse_system_notice(&text) {
-                                    apply_system_notice(&notice, &mut app);
-                                    flush = true;
-                                } else if let Some(event) = parse_engine_event(&text) {
-                                    flush |= apply_update(engine_event_to_update(event), &mut app);
-                                }
-                            }
-                            Some(Some(Ok(WsMessage::Close(frame)))) => {
-                                warn!(frame = ?frame, "server closed during drain");
-                                should_break = true;
-                                break;
-                            }
-                            Some(Some(Err(e))) => {
-                                error!(error = %e, "WebSocket error during drain");
-                                should_break = true;
-                                break;
-                            }
-                            _ => break, // No more queued messages
+                let (a, f, b) = handle_event(ev, &mut app);
+                anything_applied |= a;
+                force_render |= f;
+                should_break |= b;
+
+                // Drain any further events that have already been queued by
+                // the reader task while we were away. Bounded so a runaway
+                // stream can't starve term-events / ticks indefinitely.
+                let mut drained: u32 = 0;
+                while !should_break && drained < 256 {
+                    match events.try_recv() {
+                        Ok(ev) => {
+                            drained += 1;
+                            let (a, f, b) = handle_event(ev, &mut app);
+                            anything_applied |= a;
+                            force_render |= f;
+                            should_break |= b;
                         }
+                        Err(_) => break,
                     }
-                    if drained > 0 {
-                        debug!(drained, flush, "drained queued ws messages");
-                    }
+                }
+                if drained > 0 {
+                    debug!(drained, force_render, "drained queued ws events");
                 }
 
                 if should_break { break; }
-                if flush {
-                    debug!(messages = app.messages.len(), streaming_len = app.streaming_text.len(), "drawing frame");
-                    terminal.draw(|f| render(&mut app, f))?;
+                if force_render {
+                    force_draw(&mut terminal, &mut app)?;
+                } else if anything_applied {
+                    maybe_draw(&mut terminal, &mut app)?;
                 }
             }
         }
