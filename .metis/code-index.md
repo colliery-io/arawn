@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-05T14:58:50Z | 193 files | Python, Rust
+> Generated: 2026-05-05T16:15:00Z | 193 files | Python, Rust
 
 ## Project Structure
 
@@ -4263,7 +4263,7 @@
 
 #### crates/arawn-tui/src/action.rs
 
-- pub `Action` enum L3-49 — `TypeChar | Backspace | Delete | CursorLeft | CursorRight | CursorHome | CursorEn...`
+- pub `Action` enum L3-62 — `TypeChar | Backspace | Delete | CursorLeft | CursorRight | CursorHome | CursorEn...`
 
 #### crates/arawn-tui/src/app.rs
 
@@ -4274,35 +4274,48 @@
 - pub `new` function L54-62 — `(role: ChatRole, content: impl Into<String>) -> Self`
 - pub `rendered_lines` function L66-76 — `(&mut self, width: usize) -> &[ratatui::text::Line<'static>]` — Get or compute the cached markdown rendering for assistant messages.
 - pub `ChatRole` enum L80-86 — `User | Assistant | ToolCall | ToolResult | System`
-- pub `App` struct L89-139 — `{ focus: Focus, input_buffer: String, cursor_pos: usize, messages: Vec<ChatMessa...` — All mutable TUI state.
-- pub `new` function L142-176 — `() -> Self`
-- pub `handle_action` function L179-498 — `(&mut self, action: Action) -> bool` — Process an action and mutate state.
-- pub `apply_engine_event` function L543-620 — `(&mut self, event: crate::ws_client::EventUpdate)` — Apply a streaming engine event to the app state (testable without network).
-- pub `load_session_messages` function L624-664 — `(&mut self, detail: &serde_json::Value)` — Load messages from a session detail JSON response into the chat.
-- pub `format_tool_input` function L684-732 — `(tool_name: &str, input: &serde_json::Value) -> String` — Format tool input args into a compact display string.
+- pub `App` struct L89-152 — `{ focus: Focus, input_buffer: String, cursor_pos: usize, messages: Vec<ChatMessa...` — All mutable TUI state.
+- pub `DOUBLE_ESC_WINDOW` variable L157 — `: std::time::Duration` — Window for double-Esc detection.
+- pub `new` function L160-198 — `() -> Self`
+- pub `handle_action` function L201-574 — `(&mut self, action: Action) -> bool` — Process an action and mutate state.
+- pub `apply_engine_event` function L698-775 — `(&mut self, event: crate::ws_client::EventUpdate)` — Apply a streaming engine event to the app state (testable without network).
+- pub `load_session_messages` function L779-819 — `(&mut self, detail: &serde_json::Value)` — Load messages from a session detail JSON response into the chat.
+- pub `format_tool_input` function L839-887 — `(tool_name: &str, input: &serde_json::Value) -> String` — Format tool input args into a compact display string.
 -  `ChatMessage` type L53-77 — `= ChatMessage`
--  `App` type L141-681 — `= App`
--  `update_autocomplete` function L501-530 — `(&mut self)` — Update autocomplete suggestions based on current input buffer.
--  `accept_autocomplete` function L533-540 — `(&mut self)` — Accept the currently selected autocomplete suggestion.
--  `prev_char_boundary` function L666-672 — `(&self) -> usize`
--  `next_char_boundary` function L674-680 — `(&self) -> usize`
--  `App` type L734-738 — `impl Default for App`
--  `default` function L735-737 — `() -> Self`
--  `tests` module L741-979 — `-`
--  `type_chars_updates_buffer` function L745-751 — `()`
--  `backspace_removes_char` function L754-761 — `()`
--  `submit_moves_to_messages` function L764-776 — `()`
--  `submit_blocked_when_empty` function L779-785 — `()`
--  `submit_blocked_while_generating` function L788-794 — `()`
--  `tab_toggles_focus` function L797-804 — `()`
--  `scroll_updates_offset` function L807-815 — `()`
--  `cancel_stops_generation` function L818-827 — `()`
--  `quit_sets_flag` function L830-834 — `()`
--  `cursor_movement` function L837-858 — `()`
--  `full_conversation_flow` function L863-893 — `()`
--  `tool_call_flow` function L896-927 — `()`
--  `error_event_clears_generating` function L930-944 — `()`
--  `sidebar_navigation` function L947-978 — `()`
+-  `App` type L159-836 — `= App`
+-  `history_recall_prev` function L578-593 — `(&mut self)` — Move backward in input history.
+-  `history_recall_next` function L597-610 — `(&mut self)` — Move forward in input history.
+-  `open_history_modal` function L614-653 — `(&mut self)` — Open a modal listing input history (newest first).
+-  `update_autocomplete` function L656-685 — `(&mut self)` — Update autocomplete suggestions based on current input buffer.
+-  `accept_autocomplete` function L688-695 — `(&mut self)` — Accept the currently selected autocomplete suggestion.
+-  `prev_char_boundary` function L821-827 — `(&self) -> usize`
+-  `next_char_boundary` function L829-835 — `(&self) -> usize`
+-  `App` type L889-893 — `impl Default for App`
+-  `default` function L890-892 — `() -> Self`
+-  `tests` module L896-1249 — `-`
+-  `type_chars_updates_buffer` function L900-906 — `()`
+-  `backspace_removes_char` function L909-916 — `()`
+-  `submit_moves_to_messages` function L919-931 — `()`
+-  `submit_blocked_when_empty` function L934-940 — `()`
+-  `submit_blocked_while_generating` function L943-949 — `()`
+-  `tab_toggles_focus` function L952-959 — `()`
+-  `scroll_updates_offset` function L962-970 — `()`
+-  `cancel_stops_generation` function L973-982 — `()`
+-  `quit_sets_flag` function L985-989 — `()`
+-  `cursor_movement` function L992-1013 — `()`
+-  `full_conversation_flow` function L1018-1048 — `()`
+-  `tool_call_flow` function L1051-1082 — `()`
+-  `error_event_clears_generating` function L1085-1099 — `()`
+-  `sidebar_navigation` function L1102-1133 — `()`
+-  `submit_via_input` function L1135-1142 — `(app: &mut App, text: &str)`
+-  `history_records_submitted_prompts` function L1145-1150 — `()`
+-  `history_dedupes_consecutive_duplicates` function L1153-1163 — `()`
+-  `up_arrow_recalls_most_recent_when_input_empty` function L1166-1181 — `()`
+-  `down_arrow_restores_draft_past_newest` function L1184-1202 — `()`
+-  `double_esc_within_window_opens_history_modal` function L1205-1217 — `()`
+-  `double_esc_outside_window_does_not_open_modal` function L1220-1228 — `()`
+-  `history_recall_at_loads_entry_into_input` function L1231-1239 — `()`
+-  `empty_history_modal_is_a_no_op` function L1242-1248 — `()`
 
 #### crates/arawn-tui/src/command.rs
 
@@ -4360,33 +4373,33 @@
 
 #### crates/arawn-tui/src/event.rs
 
-- pub `map_key_event` function L7-65 — `( key: KeyEvent, focus: Focus, is_generating: bool, has_modal: bool, has_autocom...` — Map a crossterm KeyEvent to an Action, given the current focus.
--  `map_main_key` function L67-83 — `(key: KeyEvent) -> Option<Action>`
--  `map_modal_key` function L85-99 — `(key: KeyEvent) -> Option<Action>`
--  `map_sidebar_key` function L101-109 — `(key: KeyEvent) -> Option<Action>`
--  `tests` module L112-220 — `-`
--  `key` function L114-116 — `(code: KeyCode) -> KeyEvent`
--  `ctrl` function L118-120 — `(c: char) -> KeyEvent`
--  `ctrl_c_quits_from_any_focus` function L123-132 — `()`
--  `tab_toggles_from_any_focus` function L135-144 — `()`
--  `esc_cancels_when_generating` function L147-153 — `()`
--  `main_focus_typing` function L156-169 — `()`
--  `main_focus_scrolling` function L172-185 — `()`
--  `ctrl_e_toggles_tool_results` function L188-199 — `()`
--  `sidebar_focus_navigation` function L202-219 — `()`
+- pub `map_key_event` function L7-67 — `( key: KeyEvent, focus: Focus, is_generating: bool, has_modal: bool, has_autocom...` — Map a crossterm KeyEvent to an Action, given the current focus.
+-  `map_main_key` function L69-85 — `(key: KeyEvent) -> Option<Action>`
+-  `map_modal_key` function L87-101 — `(key: KeyEvent) -> Option<Action>`
+-  `map_sidebar_key` function L103-111 — `(key: KeyEvent) -> Option<Action>`
+-  `tests` module L114-227 — `-`
+-  `key` function L116-118 — `(code: KeyCode) -> KeyEvent`
+-  `ctrl` function L120-122 — `(c: char) -> KeyEvent`
+-  `ctrl_c_quits_from_any_focus` function L125-134 — `()`
+-  `tab_toggles_from_any_focus` function L137-146 — `()`
+-  `esc_cancels_when_generating` function L149-160 — `()`
+-  `main_focus_typing` function L163-176 — `()`
+-  `main_focus_scrolling` function L179-192 — `()`
+-  `ctrl_e_toggles_tool_results` function L195-206 — `()`
+-  `sidebar_focus_navigation` function L209-226 — `()`
 
 #### crates/arawn-tui/src/event_loop.rs
 
-- pub `run_tui` function L64-873 — `(url: &str, model_name: &str) -> Result<(), Box<dyn std::error::Error>>` — Run the TUI connected to the given WebSocket server URL.
+- pub `run_tui` function L64-887 — `(url: &str, model_name: &str) -> Result<(), Box<dyn std::error::Error>>` — Run the TUI connected to the given WebSocket server URL.
 -  `MIN_FRAME_INTERVAL` variable L29 — `: Duration` — Minimum interval between renders driven by streaming/event traffic.
 -  `maybe_draw` function L33-45 — `( terminal: &mut Terminal<B>, app: &mut App, ) -> io::Result<()>` — Render if enough time has elapsed since the last draw.
 -  `force_draw` function L49-57 — `( terminal: &mut Terminal<B>, app: &mut App, ) -> io::Result<()>` — Render now regardless of frame budget.
 -  `rect_contains` function L59-61 — `(rect: Rect, col: u16, row: u16) -> bool`
--  `format_integrations_list` function L876-891 — `(items: &[serde_json::Value]) -> String` — Render a `list_integrations` response as a markdown table the user can scan.
--  `OpenAttempt` enum L895-899 — `Opened | NoOpener | Failed` — What `try_open_url` did.
--  `try_open_url` function L903-934 — `(url: &str) -> OpenAttempt` — Best-effort browser open.
--  `apply_system_notice` function L939-945 — `(notice: &arawn_service::ServerNotice, app: &mut crate::app::App)` — Push a server-side notice (plugin/config hot-reload outcome) into the
--  `format_permissions_status` function L948-988 — `(status: &serde_json::Value) -> String` — Render `get_permissions_status` JSON as a human-readable system message.
+-  `format_integrations_list` function L890-905 — `(items: &[serde_json::Value]) -> String` — Render a `list_integrations` response as a markdown table the user can scan.
+-  `OpenAttempt` enum L909-913 — `Opened | NoOpener | Failed` — What `try_open_url` did.
+-  `try_open_url` function L917-948 — `(url: &str) -> OpenAttempt` — Best-effort browser open.
+-  `apply_system_notice` function L953-959 — `(notice: &arawn_service::ServerNotice, app: &mut crate::app::App)` — Push a server-side notice (plugin/config hot-reload outcome) into the
+-  `format_permissions_status` function L962-1002 — `(status: &serde_json::Value) -> String` — Render `get_permissions_status` JSON as a human-readable system message.
 
 #### crates/arawn-tui/src/lib.rs
 

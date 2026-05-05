@@ -49,7 +49,9 @@ pub fn map_key_event(
         return if is_generating {
             Some(Action::Cancel)
         } else {
-            None
+            // Idle Esc — surface to the app so it can detect a double-press
+            // and open the history modal.
+            Some(Action::EscapeIdle)
         };
     }
 
@@ -149,7 +151,12 @@ mod tests {
             map_key_event(key(KeyCode::Esc), Focus::Main, true, false, false),
             Some(Action::Cancel)
         );
-        assert_eq!(map_key_event(key(KeyCode::Esc), Focus::Main, false, false, false), None);
+        // Idle Esc now surfaces an EscapeIdle action so the app can do
+        // double-press detection for the history modal.
+        assert_eq!(
+            map_key_event(key(KeyCode::Esc), Focus::Main, false, false, false),
+            Some(Action::EscapeIdle)
+        );
     }
 
     #[test]

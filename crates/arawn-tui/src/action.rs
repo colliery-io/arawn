@@ -46,4 +46,17 @@ pub enum Action {
     AutocompleteAccept,
     /// Autocomplete: dismiss dropdown.
     AutocompleteDismiss,
+    /// Esc pressed when nothing transient is active (no modal, no
+    /// autocomplete, not generating). Used for double-Esc detection that
+    /// opens the history modal.
+    EscapeIdle,
+    /// Recall a prompt from input history into the input buffer (Up arrow
+    /// in main focus, when input is empty or already in history mode).
+    HistoryRecallPrev,
+    /// Move forward through history (Down arrow in main focus while in
+    /// history mode); restores the saved draft past the most recent entry.
+    HistoryRecallNext,
+    /// Replace the input buffer with `history[index]`, exiting any
+    /// history-modal selection.
+    HistoryRecallAt(usize),
 }

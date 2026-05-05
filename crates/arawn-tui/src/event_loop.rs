@@ -190,13 +190,27 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                         && let Some((request_id, mut rx)) = app.pending_modal_response.take() {
                             // Err = not ready or cancelled — treat as None.
                             let selected_index = rx.try_recv().unwrap_or_default();
-                            debug!(%request_id, ?selected_index, "sending modal response to server");
-                            let params = serde_json::json!({
-                                "request_id": request_id,
-                                "selected_index": selected_index,
-                            });
-                            if let Err(e) = client.send_request("user_input_response", params).await {
-                                warn!(%request_id, error = %e, "failed to send modal response");
+                            debug!(%request_id, ?selected_index, "modal close");
+
+                            if request_id == "__history_recall__" {
+                                // Local-only modal: map the modal option
+                                // index (reverse order — newest first) back
+                                // to the actual history index, then dispatch
+                                // a recall action.
+                                if let Some(opt_idx) = selected_index
+                                    && let Some(history_idx) =
+                                        app.history.len().checked_sub(1 + opt_idx)
+                                {
+                                    app.handle_action(crate::action::Action::HistoryRecallAt(history_idx));
+                                }
+                            } else {
+                                let params = serde_json::json!({
+                                    "request_id": request_id,
+                                    "selected_index": selected_index,
+                                });
+                                if let Err(e) = client.send_request("user_input_response", params).await {
+                                    warn!(%request_id, error = %e, "failed to send modal response");
+                                }
                             }
                         }
 

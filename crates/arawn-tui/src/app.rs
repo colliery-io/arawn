@@ -136,7 +136,25 @@ pub struct App {
     pub autocomplete: Option<AutocompleteState>,
     /// Pending command result that needs WS interaction (inventory query, skill invoke).
     pub pending_command: Option<CommandResult>,
+    /// Submitted user prompts in chronological order. Drives Up/Down recall
+    /// and the double-Esc history modal. Per-session, in-memory only.
+    pub history: Vec<String>,
+    /// Index into `history` while the user is browsing prior prompts via
+    /// Up/Down. `None` = not browsing (Up/Down scrolls chat as before).
+    /// `Some(i)` = currently showing `history[i]` in the input.
+    pub history_cursor: Option<usize>,
+    /// In-progress draft saved when the user enters history-browsing mode,
+    /// restored when they exit (Down past the most recent entry).
+    pub history_draft: String,
+    /// Wall-clock instant of the most recent Esc press. Used to detect a
+    /// double-Esc (within `DOUBLE_ESC_WINDOW`) → opens the history modal.
+    pub last_esc_at: Option<std::time::Instant>,
 }
+
+/// Window for double-Esc detection. Two Esc presses inside this opens
+/// the history modal; longer than this is treated as two independent
+/// Esc presses (the second one cancels whatever's transient).
+pub const DOUBLE_ESC_WINDOW: std::time::Duration = std::time::Duration::from_millis(500);
 
 impl App {
     pub fn new() -> Self {
@@ -172,6 +190,10 @@ impl App {
             command_registry: CommandRegistry::new(),
             autocomplete: None,
             pending_command: None,
+            history: Vec::new(),
+            history_cursor: None,
+            history_draft: String::new(),
+            last_esc_at: None,
         }
     }
 
@@ -294,6 +316,12 @@ impl App {
                     } else {
                         // Normal chat message
                         let content = self.input_buffer.clone();
+                        // Append to history (skip empty, dedupe consecutive).
+                        if !content.is_empty() && self.history.last() != Some(&content) {
+                            self.history.push(content.clone());
+                        }
+                        self.history_cursor = None;
+                        self.history_draft.clear();
                         self.messages
                             .push(ChatMessage::new(ChatRole::User, content.clone()));
                         self.input_buffer.clear();
@@ -322,11 +350,29 @@ impl App {
                 self.should_quit = true;
             }
             Action::ScrollUp => {
-                // Scroll chat from any focus
-                self.scroll_offset = self.scroll_offset.saturating_add(1);
+                // Up arrow: prefer history recall when input is empty or
+                // we're already in history mode. Falls through to chat
+                // scroll otherwise so muscle memory for scrolling a long
+                // chat is preserved when you've started typing.
+                if self.focus == Focus::Main
+                    && !self.history.is_empty()
+                    && self.active_modal.is_none()
+                    && (self.input_buffer.is_empty() || self.history_cursor.is_some())
+                {
+                    self.history_recall_prev();
+                } else {
+                    self.scroll_offset = self.scroll_offset.saturating_add(1);
+                }
             }
             Action::ScrollDown => {
-                self.scroll_offset = self.scroll_offset.saturating_sub(1);
+                if self.focus == Focus::Main
+                    && self.history_cursor.is_some()
+                    && self.active_modal.is_none()
+                {
+                    self.history_recall_next();
+                } else {
+                    self.scroll_offset = self.scroll_offset.saturating_sub(1);
+                }
             }
             Action::ScrollPageUp => {
                 self.scroll_offset = self.scroll_offset.saturating_add(10);
@@ -492,9 +538,118 @@ impl App {
                     self.dirty = false;
                 }
             }
+            Action::EscapeIdle => {
+                let now = std::time::Instant::now();
+                let double = matches!(
+                    self.last_esc_at,
+                    Some(prev) if now.duration_since(prev) <= DOUBLE_ESC_WINDOW
+                );
+                if double {
+                    self.open_history_modal();
+                    self.last_esc_at = None;
+                } else {
+                    self.last_esc_at = Some(now);
+                    // Single Esc on idle is currently a no-op visually —
+                    // mark not-dirty so we don't repaint for nothing.
+                    self.dirty = false;
+                }
+            }
+            Action::HistoryRecallPrev => {
+                self.history_recall_prev();
+            }
+            Action::HistoryRecallNext => {
+                self.history_recall_next();
+            }
+            Action::HistoryRecallAt(idx) => {
+                if let Some(entry) = self.history.get(idx).cloned() {
+                    self.input_buffer = entry;
+                    self.cursor_pos = self.input_buffer.chars().count();
+                    self.history_cursor = Some(idx);
+                }
+                // Closing the modal is the caller's responsibility (event loop).
+            }
         }
 
         self.dirty
+    }
+
+    /// Move backward in input history. Saves the current draft on first
+    /// entry into history mode so Down can restore it past the newest entry.
+    fn history_recall_prev(&mut self) {
+        if self.history.is_empty() {
+            return;
+        }
+        let next_idx = match self.history_cursor {
+            None => {
+                self.history_draft = self.input_buffer.clone();
+                self.history.len() - 1
+            }
+            Some(0) => return, // already at oldest
+            Some(i) => i - 1,
+        };
+        self.history_cursor = Some(next_idx);
+        self.input_buffer = self.history[next_idx].clone();
+        self.cursor_pos = self.input_buffer.chars().count();
+    }
+
+    /// Move forward in input history. Past the newest entry, restores
+    /// the saved draft and exits history mode.
+    fn history_recall_next(&mut self) {
+        let Some(idx) = self.history_cursor else { return };
+        if idx + 1 < self.history.len() {
+            let next = idx + 1;
+            self.history_cursor = Some(next);
+            self.input_buffer = self.history[next].clone();
+            self.cursor_pos = self.input_buffer.chars().count();
+        } else {
+            // Past newest — restore draft and leave history mode.
+            self.history_cursor = None;
+            self.input_buffer = std::mem::take(&mut self.history_draft);
+            self.cursor_pos = self.input_buffer.chars().count();
+        }
+    }
+
+    /// Open a modal listing input history (newest first). Selecting an
+    /// entry loads it into the input buffer (does not auto-submit).
+    fn open_history_modal(&mut self) {
+        if self.history.is_empty() {
+            // Nothing to show — don't bother opening an empty modal.
+            return;
+        }
+        // Newest first; truncate over-long entries for the modal label.
+        let options: Vec<crate::modal::ModalOption> = self
+            .history
+            .iter()
+            .enumerate()
+            .rev()
+            .map(|(i, content)| {
+                let label = if content.chars().count() > 80 {
+                    let head: String = content.chars().take(79).collect();
+                    format!("{head}…")
+                } else {
+                    content.clone()
+                };
+                // ModalOption stashes the source-history index in its
+                // description for now — the event loop reads it back
+                // when the modal closes via the selected_index path
+                // (selected_index is the modal's option index, which
+                // we map via this rev() ordering).
+                crate::modal::ModalOption::new(label).with_description(format!("history index {i}"))
+            })
+            .collect();
+
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        self.active_modal = Some(crate::modal::ModalState::new(
+            "Input history (most recent first)",
+            options,
+            ratatui::style::Color::Cyan,
+            tx,
+        ));
+        // We piggyback on the existing pending_modal_response plumbing.
+        // The event loop handles modal close — when it sees a selection,
+        // it dispatches Action::HistoryRecallAt with the *original*
+        // history index (mapping from the modal's reverse order).
+        self.pending_modal_response = Some(("__history_recall__".into(), rx));
     }
 
     /// Update autocomplete suggestions based on current input buffer.
@@ -975,5 +1130,120 @@ mod tests {
         assert_eq!(app.sidebar_ws_index, 1); // clamped
         app.handle_action(Action::SidebarUp);
         assert_eq!(app.sidebar_ws_index, 0);
+    }
+
+    fn submit_via_input(app: &mut App, text: &str) {
+        app.input_buffer = text.into();
+        app.cursor_pos = text.chars().count();
+        app.handle_action(Action::Submit);
+        // Reset transient state the event loop would otherwise drive.
+        app.pending_submit = None;
+        app.is_generating = false;
+    }
+
+    #[test]
+    fn history_records_submitted_prompts() {
+        let mut app = App::new();
+        submit_via_input(&mut app, "hello");
+        submit_via_input(&mut app, "world");
+        assert_eq!(app.history, vec!["hello".to_string(), "world".to_string()]);
+    }
+
+    #[test]
+    fn history_dedupes_consecutive_duplicates() {
+        let mut app = App::new();
+        submit_via_input(&mut app, "same");
+        submit_via_input(&mut app, "same");
+        submit_via_input(&mut app, "different");
+        submit_via_input(&mut app, "same");
+        assert_eq!(
+            app.history,
+            vec!["same".to_string(), "different".to_string(), "same".to_string()]
+        );
+    }
+
+    #[test]
+    fn up_arrow_recalls_most_recent_when_input_empty() {
+        let mut app = App::new();
+        submit_via_input(&mut app, "first");
+        submit_via_input(&mut app, "second");
+        // Up should load "second"
+        app.handle_action(Action::ScrollUp);
+        assert_eq!(app.input_buffer, "second");
+        assert_eq!(app.history_cursor, Some(1));
+        // Up again loads "first"
+        app.handle_action(Action::ScrollUp);
+        assert_eq!(app.input_buffer, "first");
+        // Up at oldest stays put
+        app.handle_action(Action::ScrollUp);
+        assert_eq!(app.input_buffer, "first");
+        assert_eq!(app.history_cursor, Some(0));
+    }
+
+    #[test]
+    fn down_arrow_restores_draft_past_newest() {
+        let mut app = App::new();
+        submit_via_input(&mut app, "old");
+        // User starts typing then hits Up — draft saved
+        app.input_buffer = "draft in progress".into();
+        app.cursor_pos = app.input_buffer.chars().count();
+        // Up arrow with non-empty input should NOT recall (falls through to scroll)
+        app.handle_action(Action::ScrollUp);
+        assert_eq!(app.input_buffer, "draft in progress");
+        // Clear input so Up starts history mode
+        app.input_buffer.clear();
+        app.cursor_pos = 0;
+        app.handle_action(Action::ScrollUp);
+        assert_eq!(app.input_buffer, "old");
+        // Down past newest restores empty draft (we cleared it)
+        app.handle_action(Action::ScrollDown);
+        assert_eq!(app.input_buffer, "");
+        assert_eq!(app.history_cursor, None);
+    }
+
+    #[test]
+    fn double_esc_within_window_opens_history_modal() {
+        let mut app = App::new();
+        submit_via_input(&mut app, "a");
+        submit_via_input(&mut app, "b");
+        // First Esc — no modal yet
+        app.handle_action(Action::EscapeIdle);
+        assert!(app.active_modal.is_none());
+        assert!(app.last_esc_at.is_some());
+        // Second Esc immediately — opens modal
+        app.handle_action(Action::EscapeIdle);
+        assert!(app.active_modal.is_some());
+        assert!(app.last_esc_at.is_none());
+    }
+
+    #[test]
+    fn double_esc_outside_window_does_not_open_modal() {
+        let mut app = App::new();
+        submit_via_input(&mut app, "a");
+        app.handle_action(Action::EscapeIdle);
+        // Pretend a long time passed
+        app.last_esc_at = Some(std::time::Instant::now() - std::time::Duration::from_secs(2));
+        app.handle_action(Action::EscapeIdle);
+        assert!(app.active_modal.is_none());
+    }
+
+    #[test]
+    fn history_recall_at_loads_entry_into_input() {
+        let mut app = App::new();
+        submit_via_input(&mut app, "alpha");
+        submit_via_input(&mut app, "bravo");
+        submit_via_input(&mut app, "charlie");
+        app.handle_action(Action::HistoryRecallAt(1));
+        assert_eq!(app.input_buffer, "bravo");
+        assert_eq!(app.history_cursor, Some(1));
+    }
+
+    #[test]
+    fn empty_history_modal_is_a_no_op() {
+        let mut app = App::new();
+        // Trigger double-Esc with no history — should not open a modal
+        app.handle_action(Action::EscapeIdle);
+        app.handle_action(Action::EscapeIdle);
+        assert!(app.active_modal.is_none());
     }
 }
