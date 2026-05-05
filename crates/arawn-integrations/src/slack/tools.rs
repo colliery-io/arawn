@@ -14,8 +14,9 @@ use serde::Serialize;
 use serde_json::{Value, json};
 use slack_morphism::prelude::{
     SlackApiChatPostMessageRequest, SlackApiConversationsHistoryRequest,
-    SlackApiConversationsListRequest, SlackApiReactionsAddRequest, SlackChannelId,
-    SlackConversationType, SlackMessageContent, SlackReactionName, SlackTs,
+    SlackApiConversationsListRequest, SlackApiConversationsOpenRequest,
+    SlackApiReactionsAddRequest, SlackApiUsersListRequest, SlackChannelId,
+    SlackConversationType, SlackMessageContent, SlackReactionName, SlackTs, SlackUserId,
 };
 // `value()` lives on the rvstruct::ValueStruct trait; pull it into scope so
 // SlackChannelId::value() / SlackTs::value() / etc. are callable on the
@@ -436,6 +437,187 @@ impl Tool for SlackReactTool {
     }
 }
 
+// ─── /slack_users_list ────────────────────────────────────────────────────
+
+/// Compact user record. Slack's full `SlackUser` carries dozens of fields;
+/// the agent gets the ones it needs to identify someone.
+#[derive(Debug, Clone, Serialize)]
+struct UserSummary {
+    id: String,
+    /// Slack handle (e.g. `alice` — without the `@`).
+    name: Option<String>,
+    /// Real name (`Alice Anderson`) — usually preferred for display.
+    real_name: Option<String>,
+    /// Display name from profile (often the same as `name`, sometimes overridden).
+    display_name: Option<String>,
+    email: Option<String>,
+    title: Option<String>,
+    is_bot: bool,
+    deleted: bool,
+}
+
+fn summarize_user(u: &slack_morphism::prelude::SlackUser) -> UserSummary {
+    let profile = u.profile.as_ref();
+    UserSummary {
+        id: u.id.value().clone(),
+        name: u.name.clone(),
+        real_name: u.real_name.clone(),
+        display_name: profile.and_then(|p| p.display_name.clone()),
+        email: profile.and_then(|p| p.email.as_ref().map(|e| e.0.clone())),
+        title: profile.and_then(|p| p.title.clone()),
+        is_bot: u.flags.is_bot.unwrap_or(false),
+        deleted: u.deleted.unwrap_or(false),
+    }
+}
+
+pub struct SlackUsersListTool {
+    integration: Arc<SlackIntegration>,
+}
+
+impl SlackUsersListTool {
+    pub fn new(integration: Arc<SlackIntegration>) -> Self {
+        Self { integration }
+    }
+}
+
+#[async_trait]
+impl Tool for SlackUsersListTool {
+    fn name(&self) -> &str {
+        "slack_users_list"
+    }
+    fn description(&self) -> &str {
+        "List users in the connected Slack workspace. Use this to resolve user IDs (U12345) \
+         from messages and DMs to real names. Returns id, name (handle), real_name, display_name, \
+         email, title, is_bot, deleted. Workspaces with thousands of users may need pagination — \
+         this tool returns up to 200 per call (use `cursor` from response_metadata for more)."
+    }
+    fn category(&self) -> ToolCategory {
+        ToolCategory::Web
+    }
+    fn permission_category(&self) -> PermissionCategory {
+        PermissionCategory::ReadOnly
+    }
+    fn parameters_schema(&self) -> Value {
+        json!({
+            "type": "object",
+            "properties": {
+                "limit": {
+                    "type": "integer",
+                    "description": "Max users to return per page (default 200, max 1000)",
+                    "minimum": 1,
+                    "maximum": 1000
+                },
+                "include_deleted": {
+                    "type": "boolean",
+                    "description": "Include deactivated users (default false)"
+                },
+                "include_bots": {
+                    "type": "boolean",
+                    "description": "Include bot users (default false — they're noisy)"
+                }
+            }
+        })
+    }
+    async fn execute(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
+        let limit = params.get("limit").and_then(|v| v.as_u64()).unwrap_or(200).min(1000) as u16;
+        let include_deleted = params.get("include_deleted").and_then(|v| v.as_bool()).unwrap_or(false);
+        let include_bots = params.get("include_bots").and_then(|v| v.as_bool()).unwrap_or(false);
+
+        let req = SlackApiUsersListRequest::new().with_limit(limit);
+        let ctx = self.integration.context().map_err(integ_err)?;
+        let session = ctx.session();
+        let resp = session
+            .users_list(&req)
+            .await
+            .map_err(|e| slack_err("users.list", e))?;
+        let users: Vec<UserSummary> = resp
+            .members
+            .iter()
+            .map(summarize_user)
+            .filter(|u| include_deleted || !u.deleted)
+            .filter(|u| include_bots || !u.is_bot)
+            .collect();
+        Ok(ToolOutput::success(serde_json::to_string(&users).unwrap()))
+    }
+}
+
+// ─── /slack_open_dm ───────────────────────────────────────────────────────
+
+pub struct SlackOpenDmTool {
+    integration: Arc<SlackIntegration>,
+}
+
+impl SlackOpenDmTool {
+    pub fn new(integration: Arc<SlackIntegration>) -> Self {
+        Self { integration }
+    }
+}
+
+#[async_trait]
+impl Tool for SlackOpenDmTool {
+    fn name(&self) -> &str {
+        "slack_open_dm"
+    }
+    fn description(&self) -> &str {
+        "Open (or look up) a DM channel with one or more users. With a single user_id, returns \
+         the 1:1 DM channel id. With multiple, returns a multi-party DM (mpim) channel id. \
+         Idempotent — calling twice with the same users returns the same channel. Use the \
+         returned channel id with slack_history to read or slack_post to message."
+    }
+    fn category(&self) -> ToolCategory {
+        ToolCategory::Web
+    }
+    fn permission_category(&self) -> PermissionCategory {
+        // Opens a conversation — Slack treats this as a write but it's
+        // idempotent and reversible (close anytime). FileWrite is the closest
+        // analogue: allowed in accept_edits, ask in default.
+        PermissionCategory::FileWrite
+    }
+    fn parameters_schema(&self) -> Value {
+        json!({
+            "type": "object",
+            "properties": {
+                "user_ids": {
+                    "type": "array",
+                    "items": { "type": "string" },
+                    "description": "One or more Slack user IDs (e.g. ['U12345']). Single = 1:1 DM, multiple = mpim."
+                }
+            },
+            "required": ["user_ids"]
+        })
+    }
+    async fn execute(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
+        let user_ids: Vec<SlackUserId> = params
+            .get("user_ids")
+            .and_then(|v| v.as_array())
+            .ok_or_else(|| ToolError::ExecutionFailed("missing 'user_ids'".into()))?
+            .iter()
+            .filter_map(|v| v.as_str())
+            .map(|s| SlackUserId::new(s.to_string()))
+            .collect();
+        if user_ids.is_empty() {
+            return Err(ToolError::ExecutionFailed("'user_ids' must be non-empty".into()));
+        }
+
+        let req = SlackApiConversationsOpenRequest::new()
+            .with_users(user_ids)
+            .with_return_im(true);
+
+        let ctx = self.integration.context().map_err(integ_err)?;
+        let session = ctx.session();
+        let resp = session
+            .conversations_open(&req)
+            .await
+            .map_err(|e| slack_err("conversations.open", e))?;
+
+        let payload = json!({
+            "channel_id": resp.channel.id.value(),
+            "already_open": resp.already_open.unwrap_or(false),
+        });
+        Ok(ToolOutput::success(payload.to_string()))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -513,5 +695,47 @@ mod tests {
         assert_eq!(s.reactions.len(), 1);
         assert_eq!(s.reactions[0].name, "thumbsup");
         assert_eq!(s.reactions[0].count, 3);
+    }
+
+    #[test]
+    fn summarize_user_extracts_handle_and_profile_fields() {
+        use slack_morphism::prelude::{
+            EmailAddress, SlackUser, SlackUserFlags, SlackUserProfile,
+        };
+        let mut profile = SlackUserProfile::new();
+        profile.display_name = Some("alice.a".into());
+        profile.email = Some(EmailAddress("alice@example.com".into()));
+        profile.title = Some("Eng Manager".into());
+
+        let mut flags = SlackUserFlags::new();
+        flags = flags.with_is_bot(false);
+
+        let mut u = SlackUser::new(SlackUserId::new("U001".into()), flags);
+        u.name = Some("alice".into());
+        u.real_name = Some("Alice Anderson".into());
+        u.profile = Some(profile);
+        u.deleted = Some(false);
+
+        let s = summarize_user(&u);
+        assert_eq!(s.id, "U001");
+        assert_eq!(s.name.as_deref(), Some("alice"));
+        assert_eq!(s.real_name.as_deref(), Some("Alice Anderson"));
+        assert_eq!(s.display_name.as_deref(), Some("alice.a"));
+        assert_eq!(s.email.as_deref(), Some("alice@example.com"));
+        assert_eq!(s.title.as_deref(), Some("Eng Manager"));
+        assert!(!s.is_bot);
+        assert!(!s.deleted);
+    }
+
+    #[test]
+    fn summarize_user_handles_minimal_record() {
+        use slack_morphism::prelude::{SlackUser, SlackUserFlags};
+        let u = SlackUser::new(SlackUserId::new("U999".into()), SlackUserFlags::new());
+        let s = summarize_user(&u);
+        assert_eq!(s.id, "U999");
+        assert!(s.name.is_none());
+        assert!(s.email.is_none());
+        assert!(!s.is_bot);
+        assert!(!s.deleted);
     }
 }

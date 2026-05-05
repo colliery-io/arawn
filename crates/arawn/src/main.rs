@@ -471,7 +471,9 @@ async fn main() -> Result<()> {
             registry.register(Box::new(arawn_integrations::slack::SlackHistoryTool::new(Arc::clone(&slack))));
             registry.register(Box::new(arawn_integrations::slack::SlackPostTool::new(Arc::clone(&slack))));
             registry.register(Box::new(arawn_integrations::slack::SlackReactTool::new(Arc::clone(&slack))));
-            info!("Slack integration registered (4 tools)");
+            registry.register(Box::new(arawn_integrations::slack::SlackUsersListTool::new(Arc::clone(&slack))));
+            registry.register(Box::new(arawn_integrations::slack::SlackOpenDmTool::new(Arc::clone(&slack))));
+            info!("Slack integration registered (6 tools)");
         } else {
             debug!(
                 "Slack integration skipped — set ARAWN_SLACK_CLIENT_ID + \

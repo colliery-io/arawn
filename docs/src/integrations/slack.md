@@ -2,7 +2,7 @@
 
 The Slack integration is **read/write**, not webhook-only. The agent can browse channel history, post, and react — gain context as a participant, not just a notification sink. ADR-0001 § 4 records the design decision.
 
-Four tools land when Slack is configured: `slack_list_channels`, `slack_history`, `slack_post`, `slack_react`. Cross-channel `slack_search` is deferred to a future ticket (slack-morphism doesn't typed-expose `search.messages`; per-channel history covers most "what was discussed" needs in v1).
+Six tools land when Slack is configured: `slack_list_channels`, `slack_history`, `slack_post`, `slack_react`, `slack_users_list`, `slack_open_dm`. Cross-channel `slack_search` is deferred to a future ticket (slack-morphism doesn't typed-expose `search.messages`; per-channel history covers most "what was discussed" needs in v1).
 
 ## Setup
 
@@ -31,7 +31,7 @@ export ARAWN_SLACK_CLIENT_ID="..."
 export ARAWN_SLACK_CLIENT_SECRET="..."
 ```
 
-If both are present at server startup, the integration registers and the four tools land in the engine. If either is missing, Slack is silently skipped.
+If both are present at server startup, the integration registers and the six tools land in the engine. If either is missing, Slack is silently skipped.
 
 ### 3. Connect
 
@@ -69,10 +69,25 @@ The agent calls `slack_list_channels` to discover the channel id, then `slack_hi
 | `slack_history({channel, limit, oldest?, latest?})` | Last N messages with ts, user (Slack id), text, thread_ts, reply_count, reactions. Default 20, max 200. | ReadOnly |
 | `slack_post({channel, text, thread_ts?})` | Posts plain text. `channel` accepts id or `#name`. Optional `thread_ts` makes it a thread reply. | Other (mode default: ask) |
 | `slack_react({channel, ts, name})` | Adds an emoji reaction. `name` is bare (`thumbsup`, not `:thumbsup:`). | FileWrite |
+| `slack_users_list({limit?, include_deleted?, include_bots?})` | Workspace directory: id, name (handle), real_name, display_name, email, title, is_bot, deleted. Default 200, max 1000. Bots and deactivated users excluded by default. | ReadOnly |
+| `slack_open_dm({user_ids: [..]})` | Returns the DM channel id for the given user(s). Single id → 1:1 DM, multiple → mpim. Idempotent. | FileWrite |
 
-### User IDs
+### User IDs and DMs
 
-`slack_history` returns Slack user IDs (e.g. `U12345`), not display names. The agent resolves them by calling `slack_list_channels` (which surfaces channel members) or by future `slack_users_lookup` if/when it lands. This is intentional — we don't pre-join names because the LLM handles the join correctly and IDs are unambiguous.
+`slack_history` returns Slack user IDs (e.g. `U12345`), not display names. To turn them into people:
+
+1. **`slack_users_list`** — fetches the workspace directory once. The agent caches the id → name mapping for the session.
+2. **`slack_open_dm`** — given a user id, returns the DM channel id. Pass that id to `slack_history` to read the conversation, or to `slack_post` to send a message.
+
+Typical flow for "what did Alice say to me yesterday":
+
+```
+slack_users_list → find U12345 for "Alice"
+slack_open_dm({user_ids: ["U12345"]}) → returns channel D67890
+slack_history({channel: "D67890", oldest: <ts>}) → conversation
+```
+
+We don't pre-join names into history results — the LLM handles the join correctly and IDs are unambiguous.
 
 ### Channel arguments
 

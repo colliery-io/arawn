@@ -122,4 +122,20 @@ ADR-0001 § decision-4 records the design change. This task supersedes the prior
 **Deferred:**
 - `slack_search` — requires raw HTTP since slack-morphism doesn't typed-expose `search.messages`. File a follow-up if/when the agent needs cross-channel search beyond per-channel history.
 - Token refresh for Slack workspaces with token rotation enabled. Auto-refresh would just call `OAuthClient::refresh` which arawn-auth already supports — small follow-up.
-- `slack_users_lookup` for U-id → name resolution. Not needed in v1 since the LLM handles the join from the channel-members data `slack_list_channels` already surfaces.
+
+### 2026-05-04 — Added DM access tools (4 → 6)
+
+User flagged that `slack_list_channels` alone wasn't enough for DMs: even with `include_dms=true`, the channel summary didn't carry the DM peer's user id, so the agent couldn't go from "Alice" → her DM channel. Added two more ReadOnly/FileWrite tools:
+
+| Tool | Permission | Backed by |
+|---|---|---|
+| `slack_users_list` | ReadOnly | `users.list` |
+| `slack_open_dm` | FileWrite (idempotent open) | `conversations.open` |
+
+`slack_users_list` returns id, name (handle), real_name, display_name, email, title, is_bot, deleted — bots and deactivated users excluded by default. Pagination via Slack's response_metadata cursor is exposed for workspaces > 200 users.
+
+`slack_open_dm({user_ids: [..]})` accepts one (1:1 DM) or many (mpim) user ids and returns the channel id. Idempotent — calling twice returns the same channel. Permission is FileWrite rather than ReadOnly because Slack treats `conversations.open` as a write, even though it's reversible. The DM workflow is now: `users_list` → resolve handle → `open_dm` → channel id → `history`/`post`.
+
+Two more unit tests for `summarize_user`. 8 slack tests pass; 0 clippy warnings. Tool count in main.rs: 6.
+
+Docs updated with the DM workflow example.
