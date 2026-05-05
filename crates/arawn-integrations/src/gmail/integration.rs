@@ -127,7 +127,7 @@ impl Integration for GmailIntegration {
     async fn connect(&self, ctx: &dyn ConnectContext) -> Result<(), IntegrationError> {
         let store = self.token_store()?;
         let oauth_config = self.oauth_config();
-        run_oauth_flow(oauth_config, &store, SERVICE_NAME, "/oauth/callback", ctx).await?;
+        run_oauth_flow(oauth_config, &store, SERVICE_NAME, "/oauth/callback", None, ctx).await?;
         Ok(())
     }
 

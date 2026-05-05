@@ -32,10 +32,16 @@ pub async fn run_oauth_flow(
     token_store: &TokenStore,
     service_name: &str,
     callback_path: &str,
+    redirect_port: Option<u16>,
     ctx: &dyn ConnectContext,
 ) -> Result<OAuthOutcome, IntegrationError> {
     // 1. Bind the callback first so we know what redirect_uri to advertise.
-    let callback = CallbackServer::bind(callback_path).await?;
+    // Slack-shaped providers pin the port (their redirect-URI allowlist is
+    // exact-match); Google-shaped providers accept any 127.0.0.1 port.
+    let callback = match redirect_port {
+        Some(port) => CallbackServer::bind_with_port(callback_path, port).await?,
+        None => CallbackServer::bind(callback_path).await?,
+    };
     let redirect_uri = callback.redirect_uri().clone();
 
     // 2. Build the authorization URL.

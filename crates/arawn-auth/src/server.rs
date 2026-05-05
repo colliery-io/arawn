@@ -33,15 +33,31 @@ impl CallbackServer {
     /// Bind to an OS-assigned port on `127.0.0.1`. The redirect URI for the
     /// OAuth flow is available immediately via [`Self::redirect_uri`].
     pub async fn bind(path: &str) -> Result<Self, AuthError> {
-        let listener = TcpListener::bind("127.0.0.1:0")
+        Self::bind_inner(path, 0).await
+    }
+
+    /// Bind to a specific port on `127.0.0.1`. Required for providers like
+    /// Slack whose redirect-URI allowlist is exact-match (no wildcard ports).
+    /// Returns `Network` error if the port is already in use.
+    pub async fn bind_with_port(path: &str, port: u16) -> Result<Self, AuthError> {
+        Self::bind_inner(path, port).await
+    }
+
+    async fn bind_inner(path: &str, port: u16) -> Result<Self, AuthError> {
+        let listener = TcpListener::bind(("127.0.0.1", port))
             .await
-            .map_err(|e| AuthError::Network(format!("bind failed: {e}")))?;
-        let port = listener
+            .map_err(|e| AuthError::Network(format!("bind 127.0.0.1:{port} failed: {e}")))?;
+        let bound_port = listener
             .local_addr()
             .map_err(|e| AuthError::Network(format!("local_addr: {e}")))?
             .port();
         let path = path.strip_prefix('/').unwrap_or(path);
-        let redirect_uri = format!("http://127.0.0.1:{port}/{path}")
+        // Host string is `localhost`, not `127.0.0.1`. The TCP listener binds
+        // to the loopback IP (browsers resolve `localhost` to it), but some
+        // OAuth providers (notably Slack) string-match the redirect URI and
+        // reject `127.0.0.1` even though it's the same address. `localhost`
+        // is accepted everywhere.
+        let redirect_uri = format!("http://localhost:{bound_port}/{path}")
             .parse::<Url>()
             .map_err(|e| AuthError::InvalidConfig(format!("redirect URL: {e}")))?;
         Ok(Self { listener, redirect_uri })

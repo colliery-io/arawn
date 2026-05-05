@@ -15,6 +15,12 @@ use super::client::{SlackContext, build_slack_client};
 pub const SERVICE_NAME: &str = "slack";
 
 /// Bot scopes requested at OAuth time. Per ADR-0001 § 4.
+///
+/// `search:read` was in the original scope list but is dropped: `slack_search`
+/// is deferred (slack-morphism doesn't typed-expose `search.messages`), and
+/// requesting an unused scope causes Slack to reject the OAuth flow with
+/// "Invalid permissions requested" if the workspace admin hasn't pre-approved
+/// it. Re-add when `slack_search` lands.
 pub const SLACK_OAUTH_SCOPES: &[&str] = &[
     "channels:read",
     "channels:history",
@@ -22,10 +28,10 @@ pub const SLACK_OAUTH_SCOPES: &[&str] = &[
     "groups:history",
     "im:read",
     "im:history",
+    "mpim:read",
     "mpim:history",
     "chat:write",
     "reactions:write",
-    "search:read",
     "users:read",
 ];
 
@@ -35,7 +41,18 @@ pub struct SlackProviderConfig {
     pub auth_url: Url,
     pub token_url: Url,
     pub scopes: Vec<String>,
+    /// Pinned port for the local OAuth callback. Slack's redirect-URI
+    /// allowlist is exact-match — no wildcard ports — so we bind a known
+    /// port and the user adds `http://127.0.0.1:<port>/oauth/callback` to
+    /// the Slack app config exactly once.
+    pub redirect_port: u16,
 }
+
+/// Default callback port for Slack. The user adds
+/// `http://127.0.0.1:8080/oauth/callback` to the Slack app's redirect
+/// allowlist; the binary always binds 8080. Override via
+/// [`SlackProviderConfig`] if 8080 is taken on your machine.
+pub const DEFAULT_SLACK_REDIRECT_PORT: u16 = 8080;
 
 impl Default for SlackProviderConfig {
     fn default() -> Self {
@@ -43,6 +60,7 @@ impl Default for SlackProviderConfig {
             auth_url: "https://slack.com/oauth/v2/authorize".parse().unwrap(),
             token_url: "https://slack.com/api/oauth.v2.access".parse().unwrap(),
             scopes: SLACK_OAUTH_SCOPES.iter().map(|s| s.to_string()).collect(),
+            redirect_port: DEFAULT_SLACK_REDIRECT_PORT,
         }
     }
 }
@@ -94,16 +112,19 @@ impl SlackIntegration {
     }
 
     fn oauth_config(&self) -> OAuthProviderConfig {
-        let provider = self
-            .provider_config
+        self.provider().into_oauth_provider(self.client_id.clone(), self.client_secret.clone())
+    }
+
+    fn provider(&self) -> SlackProviderConfig {
+        self.provider_config
             .as_ref()
             .map(|c| SlackProviderConfig {
                 auth_url: c.auth_url.clone(),
                 token_url: c.token_url.clone(),
                 scopes: c.scopes.clone(),
+                redirect_port: c.redirect_port,
             })
-            .unwrap_or_default();
-        provider.into_oauth_provider(self.client_id.clone(), self.client_secret.clone())
+            .unwrap_or_default()
     }
 
     fn token_store(&self) -> Result<TokenStore, IntegrationError> {
@@ -127,7 +148,16 @@ impl Integration for SlackIntegration {
     async fn connect(&self, ctx: &dyn ConnectContext) -> Result<(), IntegrationError> {
         let store = self.token_store()?;
         let oauth_config = self.oauth_config();
-        run_oauth_flow(oauth_config, &store, SERVICE_NAME, "/oauth/callback", ctx).await?;
+        let port = self.provider().redirect_port;
+        run_oauth_flow(
+            oauth_config,
+            &store,
+            SERVICE_NAME,
+            "/oauth/callback",
+            Some(port),
+            ctx,
+        )
+        .await?;
         Ok(())
     }
 
@@ -148,7 +178,9 @@ mod tests {
         assert_eq!(provider.scopes.len(), 11);
         assert!(provider.scopes.iter().any(|s| s == "chat:write"));
         assert!(provider.scopes.iter().any(|s| s == "channels:history"));
-        assert!(provider.scopes.iter().any(|s| s == "search:read"));
+        assert!(provider.scopes.iter().any(|s| s == "users:read"));
+        assert!(provider.scopes.iter().any(|s| s == "mpim:read"));
+        assert!(!provider.scopes.iter().any(|s| s == "search:read"));
     }
 
     #[test]
