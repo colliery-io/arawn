@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-06T02:57:06Z | 202 files | Python, Rust
+> Generated: 2026-05-06T11:03:45Z | 202 files | Python, Rust
 
 ## Project Structure
 
@@ -4671,7 +4671,7 @@
 
 #### crates/arawn-tui/src/action.rs
 
-- pub `Action` enum L3-62 — `TypeChar | Backspace | Delete | CursorLeft | CursorRight | CursorHome | CursorEn...`
+- pub `Action` enum L3-66 — `TypeChar | Backspace | Delete | CursorLeft | CursorRight | CursorHome | CursorEn...`
 
 #### crates/arawn-tui/src/app.rs
 
@@ -4682,54 +4682,58 @@
 - pub `new` function L54-62 — `(role: ChatRole, content: impl Into<String>) -> Self`
 - pub `rendered_lines` function L66-76 — `(&mut self, width: usize) -> &[ratatui::text::Line<'static>]` — Get or compute the cached markdown rendering for assistant messages.
 - pub `ChatRole` enum L80-86 — `User | Assistant | ToolCall | ToolResult | System`
-- pub `App` struct L89-155 — `{ focus: Focus, input_buffer: String, cursor_pos: usize, messages: Vec<ChatMessa...` — All mutable TUI state.
-- pub `DOUBLE_ESC_WINDOW` variable L160 — `: std::time::Duration` — Window for double-Esc detection.
-- pub `HistoryEntry` struct L164-171 — `{ text: String, is_chat: bool }` — One entry in the per-session input history.
-- pub `new` function L174-212 — `() -> Self`
-- pub `handle_action` function L215-591 — `(&mut self, action: Action) -> bool` — Process an action and mutate state.
-- pub `apply_engine_event` function L750-827 — `(&mut self, event: crate::ws_client::EventUpdate)` — Apply a streaming engine event to the app state (testable without network).
-- pub `load_session_messages` function L831-871 — `(&mut self, detail: &serde_json::Value)` — Load messages from a session detail JSON response into the chat.
-- pub `format_tool_input` function L891-939 — `(tool_name: &str, input: &serde_json::Value) -> String` — Format tool input args into a compact display string.
+- pub `App` struct L89-166 — `{ focus: Focus, input_buffer: String, cursor_pos: usize, messages: Vec<ChatMessa...` — All mutable TUI state.
+- pub `DOUBLE_ESC_WINDOW` variable L171 — `: std::time::Duration` — Window for double-Esc detection.
+- pub `HistoryEntry` struct L175-182 — `{ text: String, is_chat: bool }` — One entry in the per-session input history.
+- pub `new` function L185-225 — `() -> Self`
+- pub `handle_action` function L228-629 — `(&mut self, action: Action) -> bool` — Process an action and mutate state.
+- pub `apply_engine_event` function L788-865 — `(&mut self, event: crate::ws_client::EventUpdate)` — Apply a streaming engine event to the app state (testable without network).
+- pub `load_session_messages` function L869-909 — `(&mut self, detail: &serde_json::Value)` — Load messages from a session detail JSON response into the chat.
+- pub `format_tool_input` function L929-977 — `(tool_name: &str, input: &serde_json::Value) -> String` — Format tool input args into a compact display string.
 -  `ChatMessage` type L53-77 — `= ChatMessage`
--  `App` type L173-888 — `= App`
--  `record_input_history` function L597-608 — `(&mut self, text: &str, is_chat: bool)` — Append `text` to input history, skipping empty input and deduping
--  `history_recall_prev` function L612-627 — `(&mut self)` — Move backward in input history.
--  `history_recall_next` function L631-644 — `(&mut self)` — Move forward in input history.
--  `open_history_modal` function L651-705 — `(&mut self)` — Open a modal listing branchable history entries (chat prompts only,
--  `update_autocomplete` function L708-737 — `(&mut self)` — Update autocomplete suggestions based on current input buffer.
--  `accept_autocomplete` function L740-747 — `(&mut self)` — Accept the currently selected autocomplete suggestion.
--  `prev_char_boundary` function L873-879 — `(&self) -> usize`
--  `next_char_boundary` function L881-887 — `(&self) -> usize`
--  `App` type L941-945 — `impl Default for App`
--  `default` function L942-944 — `() -> Self`
--  `tests` module L948-1344 — `-`
--  `type_chars_updates_buffer` function L952-958 — `()`
--  `backspace_removes_char` function L961-968 — `()`
--  `submit_moves_to_messages` function L971-983 — `()`
--  `submit_blocked_when_empty` function L986-992 — `()`
--  `submit_blocked_while_generating` function L995-1001 — `()`
--  `tab_toggles_focus` function L1004-1011 — `()`
--  `scroll_updates_offset` function L1014-1022 — `()`
--  `cancel_stops_generation` function L1025-1034 — `()`
--  `quit_sets_flag` function L1037-1041 — `()`
--  `cursor_movement` function L1044-1065 — `()`
--  `full_conversation_flow` function L1070-1100 — `()`
--  `tool_call_flow` function L1103-1134 — `()`
--  `error_event_clears_generating` function L1137-1151 — `()`
--  `sidebar_navigation` function L1154-1185 — `()`
--  `submit_via_input` function L1187-1194 — `(app: &mut App, text: &str)`
--  `history_text` function L1196-1198 — `(app: &App) -> Vec<&str>`
--  `history_records_submitted_prompts` function L1201-1207 — `()`
--  `history_records_slash_commands_with_is_chat_false` function L1210-1220 — `()`
--  `history_dedupes_consecutive_duplicates` function L1223-1230 — `()`
--  `branch_modal_filters_out_slash_commands` function L1233-1247 — `()`
--  `branch_modal_skipped_when_no_chat_history` function L1250-1258 — `()`
--  `up_arrow_recalls_most_recent_when_input_empty` function L1261-1276 — `()`
--  `down_arrow_restores_draft_past_newest` function L1279-1297 — `()`
--  `double_esc_within_window_opens_history_modal` function L1300-1312 — `()`
--  `double_esc_outside_window_does_not_open_modal` function L1315-1323 — `()`
--  `history_recall_at_loads_entry_into_input` function L1326-1334 — `()`
--  `empty_history_modal_is_a_no_op` function L1337-1343 — `()`
+-  `App` type L184-926 — `= App`
+-  `record_input_history` function L635-646 — `(&mut self, text: &str, is_chat: bool)` — Append `text` to input history, skipping empty input and deduping
+-  `history_recall_prev` function L650-665 — `(&mut self)` — Move backward in input history.
+-  `history_recall_next` function L669-682 — `(&mut self)` — Move forward in input history.
+-  `open_history_modal` function L689-743 — `(&mut self)` — Open a modal listing branchable history entries (chat prompts only,
+-  `update_autocomplete` function L746-775 — `(&mut self)` — Update autocomplete suggestions based on current input buffer.
+-  `accept_autocomplete` function L778-785 — `(&mut self)` — Accept the currently selected autocomplete suggestion.
+-  `prev_char_boundary` function L911-917 — `(&self) -> usize`
+-  `next_char_boundary` function L919-925 — `(&self) -> usize`
+-  `App` type L979-983 — `impl Default for App`
+-  `default` function L980-982 — `() -> Self`
+-  `tests` module L986-1470 — `-`
+-  `type_chars_updates_buffer` function L990-996 — `()`
+-  `backspace_removes_char` function L999-1006 — `()`
+-  `submit_moves_to_messages` function L1009-1021 — `()`
+-  `submit_blocked_when_empty` function L1024-1030 — `()`
+-  `submit_blocked_while_generating` function L1033-1039 — `()`
+-  `tab_toggles_focus` function L1042-1049 — `()`
+-  `scroll_updates_offset` function L1052-1060 — `()`
+-  `cancel_stops_generation` function L1063-1072 — `()`
+-  `quit_sets_flag` function L1075-1079 — `()`
+-  `cursor_movement` function L1082-1103 — `()`
+-  `full_conversation_flow` function L1108-1138 — `()`
+-  `tool_call_flow` function L1141-1172 — `()`
+-  `error_event_clears_generating` function L1175-1189 — `()`
+-  `sidebar_navigation` function L1192-1223 — `()`
+-  `submit_via_input` function L1225-1232 — `(app: &mut App, text: &str)`
+-  `history_text` function L1234-1236 — `(app: &App) -> Vec<&str>`
+-  `history_records_submitted_prompts` function L1239-1245 — `()`
+-  `history_records_slash_commands_with_is_chat_false` function L1248-1258 — `()`
+-  `history_dedupes_consecutive_duplicates` function L1261-1268 — `()`
+-  `branch_modal_filters_out_slash_commands` function L1271-1285 — `()`
+-  `branch_modal_skipped_when_no_chat_history` function L1288-1296 — `()`
+-  `up_arrow_recalls_most_recent_when_input_empty` function L1299-1314 — `()`
+-  `down_arrow_restores_draft_past_newest` function L1317-1335 — `()`
+-  `double_esc_within_window_opens_history_modal` function L1338-1350 — `()`
+-  `double_esc_outside_window_does_not_open_modal` function L1353-1361 — `()`
+-  `history_recall_at_loads_entry_into_input` function L1364-1372 — `()`
+-  `empty_history_modal_is_a_no_op` function L1375-1381 — `()`
+-  `modal_select_index_picks_option_directly` function L1384-1406 — `()`
+-  `cancel_marks_session_for_stale_event_drop` function L1409-1436 — `()`
+-  `next_submit_clears_cancelled_session_marker` function L1439-1453 — `()`
+-  `modal_select_out_of_range_is_no_op` function L1456-1469 — `()`
 
 #### crates/arawn-tui/src/command.rs
 
@@ -4789,31 +4793,31 @@
 
 - pub `map_key_event` function L7-67 — `( key: KeyEvent, focus: Focus, is_generating: bool, has_modal: bool, has_autocom...` — Map a crossterm KeyEvent to an Action, given the current focus.
 -  `map_main_key` function L69-85 — `(key: KeyEvent) -> Option<Action>`
--  `map_modal_key` function L87-101 — `(key: KeyEvent) -> Option<Action>`
--  `map_sidebar_key` function L103-111 — `(key: KeyEvent) -> Option<Action>`
--  `tests` module L114-227 — `-`
--  `key` function L116-118 — `(code: KeyCode) -> KeyEvent`
--  `ctrl` function L120-122 — `(c: char) -> KeyEvent`
--  `ctrl_c_quits_from_any_focus` function L125-134 — `()`
--  `tab_toggles_from_any_focus` function L137-146 — `()`
--  `esc_cancels_when_generating` function L149-160 — `()`
--  `main_focus_typing` function L163-176 — `()`
--  `main_focus_scrolling` function L179-192 — `()`
--  `ctrl_e_toggles_tool_results` function L195-206 — `()`
--  `sidebar_focus_navigation` function L209-226 — `()`
+-  `map_modal_key` function L87-102 — `(key: KeyEvent) -> Option<Action>`
+-  `map_sidebar_key` function L104-112 — `(key: KeyEvent) -> Option<Action>`
+-  `tests` module L115-228 — `-`
+-  `key` function L117-119 — `(code: KeyCode) -> KeyEvent`
+-  `ctrl` function L121-123 — `(c: char) -> KeyEvent`
+-  `ctrl_c_quits_from_any_focus` function L126-135 — `()`
+-  `tab_toggles_from_any_focus` function L138-147 — `()`
+-  `esc_cancels_when_generating` function L150-161 — `()`
+-  `main_focus_typing` function L164-177 — `()`
+-  `main_focus_scrolling` function L180-193 — `()`
+-  `ctrl_e_toggles_tool_results` function L196-207 — `()`
+-  `sidebar_focus_navigation` function L210-227 — `()`
 
 #### crates/arawn-tui/src/event_loop.rs
 
-- pub `run_tui` function L64-948 — `(url: &str, model_name: &str) -> Result<(), Box<dyn std::error::Error>>` — Run the TUI connected to the given WebSocket server URL.
+- pub `run_tui` function L64-967 — `(url: &str, model_name: &str) -> Result<(), Box<dyn std::error::Error>>` — Run the TUI connected to the given WebSocket server URL.
 -  `MIN_FRAME_INTERVAL` variable L29 — `: Duration` — Minimum interval between renders driven by streaming/event traffic.
 -  `maybe_draw` function L33-45 — `( terminal: &mut Terminal<B>, app: &mut App, ) -> io::Result<()>` — Render if enough time has elapsed since the last draw.
 -  `force_draw` function L49-57 — `( terminal: &mut Terminal<B>, app: &mut App, ) -> io::Result<()>` — Render now regardless of frame budget.
 -  `rect_contains` function L59-61 — `(rect: Rect, col: u16, row: u16) -> bool`
--  `format_integrations_list` function L951-966 — `(items: &[serde_json::Value]) -> String` — Render a `list_integrations` response as a markdown table the user can scan.
--  `OpenAttempt` enum L970-974 — `Opened | NoOpener | Failed` — What `try_open_url` did.
--  `try_open_url` function L978-1009 — `(url: &str) -> OpenAttempt` — Best-effort browser open.
--  `apply_system_notice` function L1014-1020 — `(notice: &arawn_service::ServerNotice, app: &mut crate::app::App)` — Push a server-side notice (plugin/config hot-reload outcome) into the
--  `format_permissions_status` function L1023-1063 — `(status: &serde_json::Value) -> String` — Render `get_permissions_status` JSON as a human-readable system message.
+-  `format_integrations_list` function L970-985 — `(items: &[serde_json::Value]) -> String` — Render a `list_integrations` response as a markdown table the user can scan.
+-  `OpenAttempt` enum L989-993 — `Opened | NoOpener | Failed` — What `try_open_url` did.
+-  `try_open_url` function L997-1028 — `(url: &str) -> OpenAttempt` — Best-effort browser open.
+-  `apply_system_notice` function L1033-1039 — `(notice: &arawn_service::ServerNotice, app: &mut crate::app::App)` — Push a server-side notice (plugin/config hot-reload outcome) into the
+-  `format_permissions_status` function L1042-1082 — `(status: &serde_json::Value) -> String` — Render `get_permissions_status` JSON as a human-readable system message.
 
 #### crates/arawn-tui/src/lib.rs
 
@@ -4906,45 +4910,47 @@
 -  `render_status_bar` function L107-192 — `(app: &App, frame: &mut Frame, area: ratatui::layout::Rect)`
 -  `format_tokens` function L195-203 — `(n: u64) -> String` — Format a token count for display: 1234 → "1.2k", 12345 → "12.3k", 500 → "500"
 -  `render_sidebar` function L205-279 — `(app: &App, frame: &mut Frame, area: ratatui::layout::Rect)`
--  `render_chat` function L281-605 — `(app: &mut App, frame: &mut Frame, area: ratatui::layout::Rect)`
--  `render_separator` function L607-611 — `(frame: &mut Frame, area: ratatui::layout::Rect)`
--  `render_input` function L613-662 — `(app: &App, frame: &mut Frame, area: ratatui::layout::Rect)`
--  `render_autocomplete` function L665-723 — `( ac: &crate::command::AutocompleteState, frame: &mut Frame, input_area: ratatui...` — Render the autocomplete dropdown above the input line.
--  `truncate_to` function L726-735 — `(s: &str, max_chars: usize) -> String` — Truncate a string to fit within a display width, adding "…" if needed.
--  `compact_tool_summary` function L738-743 — `(content: &str) -> String` — Extract a compact summary from tool call content for inline display.
--  `truncate_for_display` function L745-751 — `(s: &str, max: usize) -> String`
--  `tests` module L754-1488 — `-`
--  `buffer_to_string` function L760-775 — `(terminal: &Terminal<TestBackend>, row: u16) -> String`
--  `render_empty_app_has_status_bar` function L778-787 — `()`
--  `render_with_messages_shows_content` function L790-816 — `()`
--  `render_with_input_text` function L819-834 — `()`
--  `render_streaming_shows_cursor` function L837-860 — `()`
--  `render_small_terminal` function L863-868 — `()`
--  `render_large_terminal` function L871-876 — `()`
--  `region_text` function L881-893 — `(terminal: &Terminal<TestBackend>, x: u16, y: u16, w: u16, h: u16) -> String` — Extract text from a rectangular region of the buffer.
--  `chat_region_for` function L897-910 — `(terminal: &Terminal<TestBackend>, sidebar_visible: bool) -> String` — Extract the chat area text.
--  `chat_region` function L913-915 — `(terminal: &Terminal<TestBackend>) -> String` — Convenience: chat region for default app (sidebar hidden).
--  `sidebar_region` function L919-927 — `(terminal: &Terminal<TestBackend>) -> String` — Extract the sidebar text (left 20%, rows 1..height-3).
--  `input_region` function L930-935 — `(terminal: &Terminal<TestBackend>) -> String` — Extract the input bar text (second from bottom row).
--  `chat_renders_user_message_with_prefix` function L940-954 — `()`
--  `chat_renders_assistant_message_with_prefix` function L957-971 — `()`
--  `chat_renders_tool_call_with_icon` function L974-999 — `()`
--  `chat_renders_tool_result_collapsed` function L1002-1030 — `()`
--  `chat_renders_tool_error_result` function L1033-1056 — `()`
--  `chat_renders_tool_result_truncated` function L1059-1086 — `()`
--  `chat_streaming_text_appears_in_chat_area` function L1089-1107 — `()`
--  `sidebar_renders_workstream_names` function L1110-1146 — `()`
--  `sidebar_does_not_leak_into_chat` function L1149-1183 — `()`
--  `input_shows_placeholder_when_empty` function L1186-1197 — `()`
--  `input_shows_generating_when_active` function L1200-1213 — `()`
--  `status_bar_shows_generating_indicator` function L1216-1230 — `()`
--  `status_bar_shows_workstream_name` function L1233-1257 — `()`
--  `messages_do_not_appear_in_input_area` function L1260-1283 — `()`
--  `chat_auto_scrolls_to_bottom_with_many_messages` function L1288-1318 — `()`
--  `chat_scroll_up_reveals_older_messages` function L1321-1349 — `()`
--  `chat_few_messages_all_visible` function L1352-1366 — `()`
--  `last_message_visible_above_input` function L1369-1422 — `()`
--  `last_tool_result_visible_above_input` function L1425-1487 — `()`
+-  `render_chat` function L281-624 — `(app: &mut App, frame: &mut Frame, area: ratatui::layout::Rect)`
+-  `render_separator` function L626-630 — `(frame: &mut Frame, area: ratatui::layout::Rect)`
+-  `render_input` function L632-681 — `(app: &App, frame: &mut Frame, area: ratatui::layout::Rect)`
+-  `render_autocomplete` function L684-742 — `( ac: &crate::command::AutocompleteState, frame: &mut Frame, input_area: ratatui...` — Render the autocomplete dropdown above the input line.
+-  `truncate_to` function L745-754 — `(s: &str, max_chars: usize) -> String` — Truncate a string to fit within a display width, adding "…" if needed.
+-  `compact_tool_summary` function L757-762 — `(content: &str) -> String` — Extract a compact summary from tool call content for inline display.
+-  `truncate_for_display` function L764-775 — `(s: &str, max: usize) -> String`
+-  `tests` module L778-1528 — `-`
+-  `truncate_for_display_handles_utf8_at_boundary` function L785-793 — `()`
+-  `truncate_for_display_passes_through_short_strings` function L796-798 — `()`
+-  `buffer_to_string` function L800-815 — `(terminal: &Terminal<TestBackend>, row: u16) -> String`
+-  `render_empty_app_has_status_bar` function L818-827 — `()`
+-  `render_with_messages_shows_content` function L830-856 — `()`
+-  `render_with_input_text` function L859-874 — `()`
+-  `render_streaming_shows_cursor` function L877-900 — `()`
+-  `render_small_terminal` function L903-908 — `()`
+-  `render_large_terminal` function L911-916 — `()`
+-  `region_text` function L921-933 — `(terminal: &Terminal<TestBackend>, x: u16, y: u16, w: u16, h: u16) -> String` — Extract text from a rectangular region of the buffer.
+-  `chat_region_for` function L937-950 — `(terminal: &Terminal<TestBackend>, sidebar_visible: bool) -> String` — Extract the chat area text.
+-  `chat_region` function L953-955 — `(terminal: &Terminal<TestBackend>) -> String` — Convenience: chat region for default app (sidebar hidden).
+-  `sidebar_region` function L959-967 — `(terminal: &Terminal<TestBackend>) -> String` — Extract the sidebar text (left 20%, rows 1..height-3).
+-  `input_region` function L970-975 — `(terminal: &Terminal<TestBackend>) -> String` — Extract the input bar text (second from bottom row).
+-  `chat_renders_user_message_with_prefix` function L980-994 — `()`
+-  `chat_renders_assistant_message_with_prefix` function L997-1011 — `()`
+-  `chat_renders_tool_call_with_icon` function L1014-1039 — `()`
+-  `chat_renders_tool_result_collapsed` function L1042-1070 — `()`
+-  `chat_renders_tool_error_result` function L1073-1096 — `()`
+-  `chat_renders_tool_result_truncated` function L1099-1126 — `()`
+-  `chat_streaming_text_appears_in_chat_area` function L1129-1147 — `()`
+-  `sidebar_renders_workstream_names` function L1150-1186 — `()`
+-  `sidebar_does_not_leak_into_chat` function L1189-1223 — `()`
+-  `input_shows_placeholder_when_empty` function L1226-1237 — `()`
+-  `input_shows_generating_when_active` function L1240-1253 — `()`
+-  `status_bar_shows_generating_indicator` function L1256-1270 — `()`
+-  `status_bar_shows_workstream_name` function L1273-1297 — `()`
+-  `messages_do_not_appear_in_input_area` function L1300-1323 — `()`
+-  `chat_auto_scrolls_to_bottom_with_many_messages` function L1328-1358 — `()`
+-  `chat_scroll_up_reveals_older_messages` function L1361-1389 — `()`
+-  `chat_few_messages_all_visible` function L1392-1406 — `()`
+-  `last_message_visible_above_input` function L1409-1462 — `()`
+-  `last_tool_result_visible_above_input` function L1465-1527 — `()`
 
 #### crates/arawn-tui/src/snapshot.rs
 
@@ -4986,34 +4992,34 @@
 - pub `SUCCESS` variable L28 — `: Color` — Success indicator (✓)
 - pub `CHROME` variable L33 — `: Color` — Box borders around tool calls/results (┌│└)
 - pub `SEPARATOR` variable L36 — `: Color` — Separator line between chat and input
-- pub `STATUS_BAR_BG` variable L39 — `: Color` — Status bar background
-- pub `STATUS_BAR_FG` variable L42 — `: Color` — Status bar text
-- pub `BORDER_INACTIVE` variable L45 — `: Color` — Sidebar border (unfocused)
-- pub `BORDER_ACTIVE` variable L48 — `: Color` — Sidebar border (focused)
-- pub `SIDEBAR_TAB_BG` variable L51 — `: Color` — Sidebar tab strip background
-- pub `RESULT_TEXT` variable L56 — `: Color` — Tool result content text
-- pub `RESULT_LABEL` variable L59 — `: Color` — Tool result labels ("▸ shell result")
-- pub `TOOL_SUMMARY` variable L62 — `: Color` — Tool input summary text (args after tool name)
-- pub `RESULT_HINT` variable L65 — `: Color` — Truncation hints ("… 15 more")
-- pub `INPUT_PROMPT` variable L70 — `: Color` — Input prompt "> "
-- pub `PLACEHOLDER` variable L73 — `: Color` — Placeholder text ("Type your message...")
-- pub `CODE_BG` variable L78 — `: Color` — Code block background
-- pub `CODE_FG` variable L81 — `: Color` — Code block text (fallback when no syntax highlighting)
-- pub `INLINE_CODE_FG` variable L84 — `: Color` — Inline code text
-- pub `INLINE_CODE_BG` variable L87 — `: Color` — Inline code background
-- pub `CODE_LANG` variable L90 — `: Color` — Code block language label
-- pub `HEADING_1` variable L94 — `: Color` — Change colors here to restyle the entire TUI in one place.
-- pub `HEADING_2` variable L95 — `: Color` — Change colors here to restyle the entire TUI in one place.
-- pub `HEADING_3` variable L96 — `: Color` — Change colors here to restyle the entire TUI in one place.
-- pub `HEADING_4` variable L97 — `: Color` — Change colors here to restyle the entire TUI in one place.
-- pub `RULE` variable L102 — `: Color` — Horizontal rules
-- pub `LIST_BULLET` variable L105 — `: Color` — List bullet/number prefix
-- pub `BLOCK_QUOTE` variable L108 — `: Color` — Block quote text
-- pub `LINK` variable L111 — `: Color` — Link text
-- pub `LINK_URL` variable L114 — `: Color` — Link URL shown after link text
-- pub `TABLE_CHROME` variable L117 — `: Color` — Table chrome (│ ├ ┼ ┤)
-- pub `bold` function L121-123 — `(color: Color) -> Style` — Change colors here to restyle the entire TUI in one place.
-- pub `italic` function L125-127 — `(color: Color) -> Style` — Change colors here to restyle the entire TUI in one place.
+- pub `STATUS_BAR_BG` variable L41 — `: Color` — Status bar background.
+- pub `STATUS_BAR_FG` variable L44 — `: Color` — Status bar text
+- pub `BORDER_INACTIVE` variable L47 — `: Color` — Sidebar border (unfocused)
+- pub `BORDER_ACTIVE` variable L50 — `: Color` — Sidebar border (focused)
+- pub `SIDEBAR_TAB_BG` variable L53 — `: Color` — Sidebar tab strip background
+- pub `RESULT_TEXT` variable L58 — `: Color` — Tool result content text
+- pub `RESULT_LABEL` variable L61 — `: Color` — Tool result labels ("▸ shell result")
+- pub `TOOL_SUMMARY` variable L64 — `: Color` — Tool input summary text (args after tool name)
+- pub `RESULT_HINT` variable L67 — `: Color` — Truncation hints ("… 15 more")
+- pub `INPUT_PROMPT` variable L72 — `: Color` — Input prompt "> "
+- pub `PLACEHOLDER` variable L75 — `: Color` — Placeholder text ("Type your message...")
+- pub `CODE_BG` variable L80 — `: Color` — Code block background
+- pub `CODE_FG` variable L83 — `: Color` — Code block text (fallback when no syntax highlighting)
+- pub `INLINE_CODE_FG` variable L86 — `: Color` — Inline code text
+- pub `INLINE_CODE_BG` variable L89 — `: Color` — Inline code background
+- pub `CODE_LANG` variable L92 — `: Color` — Code block language label
+- pub `HEADING_1` variable L96 — `: Color` — Change colors here to restyle the entire TUI in one place.
+- pub `HEADING_2` variable L97 — `: Color` — Change colors here to restyle the entire TUI in one place.
+- pub `HEADING_3` variable L98 — `: Color` — Change colors here to restyle the entire TUI in one place.
+- pub `HEADING_4` variable L99 — `: Color` — Change colors here to restyle the entire TUI in one place.
+- pub `RULE` variable L104 — `: Color` — Horizontal rules
+- pub `LIST_BULLET` variable L107 — `: Color` — List bullet/number prefix
+- pub `BLOCK_QUOTE` variable L110 — `: Color` — Block quote text
+- pub `LINK` variable L113 — `: Color` — Link text
+- pub `LINK_URL` variable L116 — `: Color` — Link URL shown after link text
+- pub `TABLE_CHROME` variable L119 — `: Color` — Table chrome (│ ├ ┼ ┤)
+- pub `bold` function L123-125 — `(color: Color) -> Style` — Change colors here to restyle the entire TUI in one place.
+- pub `italic` function L127-129 — `(color: Color) -> Style` — Change colors here to restyle the entire TUI in one place.
 
 #### crates/arawn-tui/src/tui_prompt.rs
 
@@ -5065,21 +5071,22 @@
 - pub `load_session` function L272-284 — `( &mut self, session_id: uuid::Uuid, ) -> Result<serde_json::Value, Box<dyn std:...`
 - pub `truncate_session_at_user_message` function L289-308 — `( &mut self, session_id: uuid::Uuid, user_message_index: usize, ) -> Result<serd...` — Rewind a session back to before the Nth user message.
 - pub `send_message` function L310-325 — `( &mut self, session_id: uuid::Uuid, content: &str, ) -> Result<(), Box<dyn std:...`
-- pub `parse_engine_event` function L381-401 — `(text: &str) -> Option<EngineEvent>` — Parse a WS message as an EngineEvent.
-- pub `EventUpdate` enum L404-431 — `AppendStreamingText | AddToolCall | AddToolResult | Complete | Error | Warning |...` — Convert an EngineEvent into App state updates.
-- pub `parse_system_notice` function L437-443 — `(text: &str) -> Option<arawn_service::ServerNotice>` — Parse a server-wide notice (plugin/config hot-reload) from a raw WS text
-- pub `engine_event_to_update` function L445-472 — `(event: EngineEvent) -> EventUpdate`
+- pub `cancel` function L332-346 — `( &mut self, session_id: uuid::Uuid, ) -> Result<(), Box<dyn std::error::Error>>` — Tell the server to abort an in-flight generation on this session.
+- pub `parse_engine_event` function L402-422 — `(text: &str) -> Option<EngineEvent>` — Parse a WS message as an EngineEvent.
+- pub `EventUpdate` enum L425-452 — `AppendStreamingText | AddToolCall | AddToolResult | Complete | Error | Warning |...` — Convert an EngineEvent into App state updates.
+- pub `parse_system_notice` function L458-464 — `(text: &str) -> Option<arawn_service::ServerNotice>` — Parse a server-wide notice (plugin/config hot-reload) from a raw WS text
+- pub `engine_event_to_update` function L466-493 — `(event: EngineEvent) -> EventUpdate`
 -  `REQUEST_ID` variable L13 — `: AtomicU64`
 -  `next_id` function L15-17 — `() -> u64`
 -  `Pending` type L31 — `= Arc<Mutex<HashMap<u64, oneshot::Sender<Value>>>>`
--  `WsClient` type L51-326 — `= WsClient`
+-  `WsClient` type L51-347 — `= WsClient`
 -  `read_server_token` function L86-100 — `() -> Option<String>` — Read the server auth token from {data_dir}/server.token.
--  `spawn_reader` function L330-378 — `( mut read: futures_util::stream::SplitStream< tokio_tungstenite::WebSocketStrea...` — Spawn the reader task.
--  `tests` module L475-520 — `-`
--  `parses_well_formed_system_notice` function L482-497 — `()`
--  `rejects_engine_event_envelope` function L500-507 — `()`
--  `rejects_response_envelope` function L510-513 — `()`
--  `rejects_malformed_json` function L516-519 — `()`
+-  `spawn_reader` function L351-399 — `( mut read: futures_util::stream::SplitStream< tokio_tungstenite::WebSocketStrea...` — Spawn the reader task.
+-  `tests` module L496-541 — `-`
+-  `parses_well_formed_system_notice` function L503-518 — `()`
+-  `rejects_engine_event_envelope` function L521-528 — `()`
+-  `rejects_response_envelope` function L531-534 — `()`
+-  `rejects_malformed_json` function L537-540 — `()`
 
 ### crates/arawn-workflow
 
