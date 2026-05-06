@@ -280,6 +280,10 @@ pub struct IntegrationsConfig {
     /// Drive-specific OAuth client. Falls back to `google` when empty.
     #[serde(default)]
     pub drive: IntegrationCredentials,
+    /// Atlassian (Jira + Confluence) OAuth client. One Atlassian Cloud
+    /// app covers both products.
+    #[serde(default)]
+    pub atlassian: IntegrationCredentials,
 }
 
 /// Top-level configuration.

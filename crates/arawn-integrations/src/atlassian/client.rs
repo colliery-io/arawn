@@ -1,0 +1,223 @@
+//! Thin HTTP client over Atlassian Cloud's Jira and Confluence REST APIs.
+//!
+//! Atlassian's Cloud APIs live under `https://api.atlassian.com/ex/...`
+//! with a per-site `cloud_id` substituted in. We don't pull in a Rust
+//! Atlassian SDK because the available crates are sparse / unmaintained;
+//! a hand-rolled client over `reqwest` is ~200 LOC and exactly what we
+//! need.
+//!
+//! Refresh: Atlassian access tokens are 1-hour-lived. This client checks
+//! expiry on each call and refreshes via [`arawn_auth::OAuthClient`]
+//! when needed, persisting the new token through the integration.
+
+use std::sync::Arc;
+
+use arawn_auth::{OAuthClient, Token};
+use chrono::Utc;
+use reqwest::{Client, Method, Response};
+use serde::de::DeserializeOwned;
+use serde::Serialize;
+
+use crate::error::IntegrationError;
+
+use super::integration::{AtlassianIntegration, AtlassianSite};
+
+/// Refresh-aware Atlassian HTTP client. Holds a reference to the
+/// integration so it can re-load and persist tokens across refreshes.
+pub struct AtlassianClient {
+    integration: Arc<AtlassianIntegration>,
+    http: Client,
+}
+
+impl AtlassianClient {
+    pub fn new(integration: Arc<AtlassianIntegration>) -> Self {
+        Self {
+            integration,
+            http: Client::new(),
+        }
+    }
+
+    /// Resolve the target site (defaulting to the first one) and return
+    /// the cloud_id-stamped API base for the given product.
+    fn product_base(
+        &self,
+        product: Product,
+        site: Option<&str>,
+    ) -> Result<(AtlassianSite, String), IntegrationError> {
+        let site = self.integration.select_site(site)?;
+        let base = match product {
+            Product::Jira => format!(
+                "https://api.atlassian.com/ex/jira/{}/rest/api/3",
+                site.id
+            ),
+            Product::Confluence => format!(
+                "https://api.atlassian.com/ex/confluence/{}/wiki/rest/api",
+                site.id
+            ),
+        };
+        Ok((site, base))
+    }
+
+    /// Get a fresh access token. Refreshes via OAuthClient if expired.
+    async fn fresh_access_token(&self) -> Result<String, IntegrationError> {
+        let token = self.integration.load_token()?;
+        if !is_expired(&token) {
+            return Ok(token.access);
+        }
+        // Need refresh.
+        let Some(refresh) = token.refresh.clone() else {
+            return Err(IntegrationError::NotConnected("atlassian (token expired and no refresh token; reconnect)".to_string()));
+        };
+        let oauth = OAuthClient::new(self.integration.oauth_config());
+        let new_token = oauth.refresh(&refresh).await?;
+        self.integration.save_token(&new_token)?;
+        Ok(new_token.access)
+    }
+
+    /// GET a JSON-bodied resource from Jira.
+    pub async fn jira_get<T: DeserializeOwned>(
+        &self,
+        path: &str,
+        site: Option<&str>,
+        query: &[(&str, String)],
+    ) -> Result<T, IntegrationError> {
+        let (_, base) = self.product_base(Product::Jira, site)?;
+        self.send_json(Method::GET, &format!("{base}{path}"), query, None::<&()>)
+            .await
+    }
+
+    /// POST a JSON body to Jira and return the JSON response.
+    pub async fn jira_post<B: Serialize, T: DeserializeOwned>(
+        &self,
+        path: &str,
+        site: Option<&str>,
+        body: &B,
+    ) -> Result<T, IntegrationError> {
+        let (_, base) = self.product_base(Product::Jira, site)?;
+        self.send_json(Method::POST, &format!("{base}{path}"), &[], Some(body))
+            .await
+    }
+
+    /// PUT a JSON body to Jira; returns parsed JSON or unit if the
+    /// endpoint returns 204.
+    pub async fn jira_put<B: Serialize>(
+        &self,
+        path: &str,
+        site: Option<&str>,
+        body: &B,
+    ) -> Result<(), IntegrationError> {
+        let (_, base) = self.product_base(Product::Jira, site)?;
+        self.send_no_body(Method::PUT, &format!("{base}{path}"), &[], Some(body))
+            .await
+    }
+
+    /// GET a JSON-bodied resource from Confluence.
+    pub async fn confluence_get<T: DeserializeOwned>(
+        &self,
+        path: &str,
+        site: Option<&str>,
+        query: &[(&str, String)],
+    ) -> Result<T, IntegrationError> {
+        let (_, base) = self.product_base(Product::Confluence, site)?;
+        self.send_json(Method::GET, &format!("{base}{path}"), query, None::<&()>)
+            .await
+    }
+
+    /// POST a JSON body to Confluence.
+    pub async fn confluence_post<B: Serialize, T: DeserializeOwned>(
+        &self,
+        path: &str,
+        site: Option<&str>,
+        body: &B,
+    ) -> Result<T, IntegrationError> {
+        let (_, base) = self.product_base(Product::Confluence, site)?;
+        self.send_json(Method::POST, &format!("{base}{path}"), &[], Some(body))
+            .await
+    }
+
+    /// PUT a JSON body to Confluence (used by page update).
+    pub async fn confluence_put<B: Serialize, T: DeserializeOwned>(
+        &self,
+        path: &str,
+        site: Option<&str>,
+        body: &B,
+    ) -> Result<T, IntegrationError> {
+        let (_, base) = self.product_base(Product::Confluence, site)?;
+        self.send_json(Method::PUT, &format!("{base}{path}"), &[], Some(body))
+            .await
+    }
+
+    async fn send_json<B: Serialize, T: DeserializeOwned>(
+        &self,
+        method: Method,
+        url: &str,
+        query: &[(&str, String)],
+        body: Option<&B>,
+    ) -> Result<T, IntegrationError> {
+        let resp = self.send(method, url, query, body).await?;
+        let status = resp.status();
+        let text = resp
+            .text()
+            .await
+            .map_err(|e| IntegrationError::Provider(format!("read body: {e}")))?;
+        if !status.is_success() {
+            return Err(IntegrationError::Provider(format!(
+                "HTTP {status}: {text}"
+            )));
+        }
+        serde_json::from_str(&text)
+            .map_err(|e| IntegrationError::Provider(format!("decode body: {e} (raw: {text})")))
+    }
+
+    async fn send_no_body<B: Serialize>(
+        &self,
+        method: Method,
+        url: &str,
+        query: &[(&str, String)],
+        body: Option<&B>,
+    ) -> Result<(), IntegrationError> {
+        let resp = self.send(method, url, query, body).await?;
+        let status = resp.status();
+        if !status.is_success() {
+            let text = resp.text().await.unwrap_or_default();
+            return Err(IntegrationError::Provider(format!(
+                "HTTP {status}: {text}"
+            )));
+        }
+        Ok(())
+    }
+
+    async fn send<B: Serialize>(
+        &self,
+        method: Method,
+        url: &str,
+        query: &[(&str, String)],
+        body: Option<&B>,
+    ) -> Result<Response, IntegrationError> {
+        let access = self.fresh_access_token().await?;
+        let mut req = self.http.request(method, url).bearer_auth(access);
+        if !query.is_empty() {
+            req = req.query(query);
+        }
+        if let Some(b) = body {
+            req = req.json(b);
+        }
+        req.send()
+            .await
+            .map_err(|e| IntegrationError::Provider(format!("network: {e}")))
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+enum Product {
+    Jira,
+    Confluence,
+}
+
+fn is_expired(token: &Token) -> bool {
+    match token.expires_at {
+        // Refresh 60s before actual expiry to avoid races on slow networks.
+        Some(t) => Utc::now() + chrono::Duration::seconds(60) >= t,
+        None => false,
+    }
+}

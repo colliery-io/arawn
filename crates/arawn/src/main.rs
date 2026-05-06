@@ -523,6 +523,39 @@ async fn main() -> Result<()> {
             );
         }
 
+        // Register Atlassian (Jira + Confluence). One OAuth client, one
+        // token; both tool families register together.
+        if let Some((client_id, client_secret)) = resolve(
+            "ARAWN_ATLASSIAN_CLIENT_ID",
+            "ARAWN_ATLASSIAN_CLIENT_SECRET",
+            &config.integrations.atlassian,
+        ) {
+            let atlassian = Arc::new(arawn_integrations::atlassian::AtlassianIntegration::new(
+                std::path::PathBuf::from(&data_dir),
+                client_id,
+                client_secret,
+            ));
+            service.register_integration(Arc::clone(&atlassian) as Arc<dyn arawn_integrations::Integration>);
+            registry.register(Box::new(arawn_integrations::atlassian::JiraSearchTool::new(Arc::clone(&atlassian))));
+            registry.register(Box::new(arawn_integrations::atlassian::JiraGetIssueTool::new(Arc::clone(&atlassian))));
+            registry.register(Box::new(arawn_integrations::atlassian::JiraCreateIssueTool::new(Arc::clone(&atlassian))));
+            registry.register(Box::new(arawn_integrations::atlassian::JiraUpdateIssueTool::new(Arc::clone(&atlassian))));
+            registry.register(Box::new(arawn_integrations::atlassian::JiraAddCommentTool::new(Arc::clone(&atlassian))));
+            registry.register(Box::new(arawn_integrations::atlassian::JiraTransitionIssueTool::new(Arc::clone(&atlassian))));
+            registry.register(Box::new(arawn_integrations::atlassian::ConfluenceSearchTool::new(Arc::clone(&atlassian))));
+            registry.register(Box::new(arawn_integrations::atlassian::ConfluenceGetPageTool::new(Arc::clone(&atlassian))));
+            registry.register(Box::new(arawn_integrations::atlassian::ConfluenceCreatePageTool::new(Arc::clone(&atlassian))));
+            registry.register(Box::new(arawn_integrations::atlassian::ConfluenceUpdatePageTool::new(Arc::clone(&atlassian))));
+            registry.register(Box::new(arawn_integrations::atlassian::ConfluenceListSpacesTool::new(Arc::clone(&atlassian))));
+            info!("Atlassian integration registered (11 tools — 6 Jira, 5 Confluence)");
+        } else {
+            debug!(
+                "Atlassian integration skipped — set ARAWN_ATLASSIAN_CLIENT_ID + \
+                 ARAWN_ATLASSIAN_CLIENT_SECRET (env) or [integrations.atlassian] (config) \
+                 to enable."
+            );
+        }
+
         // Register Slack. No sharing with Google — different OAuth ecosystem.
         if let Some((client_id, client_secret)) = resolve(
             "ARAWN_SLACK_CLIENT_ID",

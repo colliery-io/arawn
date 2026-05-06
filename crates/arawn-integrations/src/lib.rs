@@ -20,6 +20,7 @@
 //! under `<data_dir>/integrations/<service>/`, encrypted with the same
 //! ChaCha20Poly1305 + per-data-dir master key that `TokenStore` uses.
 
+pub mod atlassian;
 pub mod calendar;
 pub mod credential_store;
 pub mod drive;
