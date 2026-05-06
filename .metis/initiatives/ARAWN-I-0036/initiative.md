@@ -202,4 +202,13 @@ Estimated complexity: **M**. Lots of small mechanical wins, no architectural ris
 
 Initiative filed alongside I-0035 after the same parallel three-agent design review. Visual reviewer surfaced ~20 distinct issues; clustering showed they're all symptoms of one root cause: `theme.rs` exists but no caller imports from it. Phase 1 (wiring `theme.rs` into actual call sites) is the single highest-leverage move and should land first. Subsequent phases are mostly mechanical cleanup once the palette layer is real.
 
-Pairs with I-0035 — both should be in flight in parallel so the personal-assistant dashboard surfaces (I-0035) land into a coherent visual system (this initiative). Without I-0036, I-0035's new widgets would inherit the same color overload + drifting grays.
+### 2026-05-06 — Design decisions locked
+
+After discussion the following decisions are locked. Decomposition can proceed against these without further design revisits unless a phase surfaces a real conflict.
+
+- **Palette source:** **Catppuccin Mocha** for the gray ramp and accent colors. Already familiar to the terminal-app audience; well-tuned for dark backgrounds; gives arawn a recognizable mood without inventing a palette from scratch. Hard-RGB the relevant subset into `theme.rs`; do NOT pull a runtime crate dependency.
+- **Tool-call rendering:** **collapsed by default**, throughout — including while streaming. Single-line `⏵ shell · ls -la · 1.2s` (or `· running 1.2s` while in-flight). Bordered card only on error or on Ctrl+E expand. Simpler than the "expanded-while-streaming, collapse on completion" alternative; consistent with the rest of the design intent ("chat content dominates, chrome recedes").
+- **Heading hierarchy:** **pure monochrome ladder.** H1 bold strong, H2 bold default, H3 bold dim, H4 italic dim. No accent in headings. Frees `accent` (Catppuccin Mocha lavender/blue) exclusively for "focused / active interactive" — no exceptions, no aliasing.
+- **Sequencing:** I-0036 lands **fully before** I-0035's later phases. Visual coherence first means the dashboard surfaces from I-0035 inherit a coherent design system rather than landing into the current ad-hoc state.
+
+These decisions resolve the four open product questions from the discussion. Decomposition next: split into 5 tasks matching the existing phase plan (palette wiring → tool-call collapsed → hierarchy fixes → chrome correctness → empty/loading states). Each task small enough to land in one PR.

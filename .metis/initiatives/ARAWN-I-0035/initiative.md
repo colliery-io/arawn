@@ -187,4 +187,22 @@ Initiative filed after a parallel three-agent design review converged on identit
 Pre-existing work this depends on:
 - I-0033 followup item: `workflow_create_decision_task` scaffolding (so workflows can fire briefing-ready notices without per-workflow Rust authoring).
 - I-0033 followup item: default workflow templates (the "watching" mechanism).
-- The visual coherence pass (ARAWN-I-0036) is a peer initiative — should land in parallel for the dashboard surfaces to look like a designed product.
+- ARAWN-I-0036 (TUI visual coherence pass) — **lands fully before this initiative's later phases.** Sequencing decision: the dashboard surfaces should inherit a coherent design system rather than landing into the current ad-hoc visual state.
+
+### 2026-05-06 — Design decisions locked
+
+After discussion, the four open product questions are resolved:
+
+- **Identity scope: workstream-conditioned.** Workstreams already exist as objective/theme containers in arawn; routing identity through them lets users slice activity (a `personal` workstream gets the assistant prompt; a `code/arawn` workstream keeps the engineering prompt). This makes the workstream concept earn its keep beyond just "session grouping". Implementation: workstream metadata gains an `identity_profile` enum (`assistant` | `coding`); `LocalService::build_engine_config` picks the prompt set from there; default for new workstreams is `assistant`.
+
+- **Briefing trigger: `/brief` slash command only.** No auto-fire on first session of the day. Rationale: respects the user's token budget (briefing across 4-6 integrations is a non-trivial spend, and not every session is a "what's happening across my life" session). The auto-fire alternative was rejected because it spends tokens unconditionally — a manual command keeps cost predictable. Future: re-evaluate auto-fire behind an opt-in config flag if `/brief` proves frequently-used.
+
+- **Action items: both naive baseline + agent-curated layer.** The naive baseline (always-on mechanical rules — Slack `@you` mentions, Jira `assignee = currentUser()`, unread emails > N hours, calendar conflicts) gives a predictable floor that always works. The agent-curated layer enriches over time: the agent reads briefing data, decides what's actionable for *you specifically* given workstream context and prior interactions, persists those judgments to memory. Naive items always render; agent-curated items get a distinct visual marker so the user knows "this is the agent's call, not a rule." Implementation: action-item store has both `kind: rule | curated`; the rule path is deterministic, the curated path is populated by a background pass during briefing.
+
+- **Sequencing: I-0036 first, fully.** Then this initiative's phases. Identity correction (Phase 1 — system prompt rewrites + CLI `--help` + welcome message) was tempting to land first since it's small (~200 LOC), but consistency wins: visual coherence first means the welcome message and dashboard surfaces all land into a coherent palette + hierarchy. Identity correction lands as Phase 1 of *this* initiative, not as a one-off ahead of I-0036.
+
+Decomposition next (after I-0036 lands and this initiative transitions to ready/decompose):
+1. Phase 1 — Identity correction (workstream `identity_profile`, prompt rewrites, CLI `--help`, welcome message). ~200 LOC.
+2. Phase 2 — Briefing service (`get_brief` RPC, cross-integration aggregator, `/brief` command). ~400 LOC.
+3. Phase 3 — TUI dashboard surfaces (briefing widget on empty chat, ambient summary line above input, action-item panel as third sidebar section, status-bar life-fields, `/diag` modal for engineer info). ~400 LOC.
+4. Phase 4 — Notification surface (`ServerNotice` category extension, toast renderer, hooks for watcher findings — depends on I-0033 followup work). ~200 LOC.
