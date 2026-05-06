@@ -261,6 +261,23 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                             }
                         }
 
+                    // Handle cancel — fire-and-forget the cancel RPC so the
+                    // server actually stops the model. Without this, only
+                    // the local UI flips while the model keeps running and
+                    // emits a duplicate Complete after the user thought
+                    // they cancelled.
+                    if std::mem::take(&mut app.pending_cancel)
+                        && let Some(ref session) = app.current_session
+                    {
+                        let session_id = session.id;
+                        debug!(session_id = %session_id, "sending cancel RPC");
+                        if let Err(e) = client.cancel(session_id).await {
+                            warn!(error = %e, "cancel RPC failed (model may still be running)");
+                            // Don't surface to the user — local UI is
+                            // already cancelled; this is best-effort.
+                        }
+                    }
+
                     // Handle submit — send message via WS
                     if let Some(content) = app.pending_submit.take()
                         && let Some(ref session) = app.current_session
@@ -743,6 +760,22 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                 let mut anything_applied = false;
 
                 let apply_update = |update: EventUpdate, app: &mut App| -> bool {
+                    // If the user cancelled this session's current turn,
+                    // drop stream events from it — they're stale output
+                    // from work the server hasn't finished aborting yet.
+                    // Errors and Flush still pass through so the user
+                    // sees real failures.
+                    if app.cancelled_session.is_some() {
+                        match &update {
+                            EventUpdate::AppendStreamingText(_)
+                            | EventUpdate::AddToolCall { .. }
+                            | EventUpdate::AddToolResult { .. }
+                            | EventUpdate::Complete(_)
+                            | EventUpdate::Usage { .. }
+                            | EventUpdate::Compaction(_) => return false,
+                            _ => {}
+                        }
+                    }
                     match update {
                         EventUpdate::AppendStreamingText(text) => {
                             debug!(len = text.len(), "update: streaming text");

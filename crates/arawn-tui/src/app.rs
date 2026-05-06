@@ -110,6 +110,17 @@ pub struct App {
     pub last_draw: std::time::Instant,
     /// Pending action that requires the event loop to send a WS message.
     pub pending_submit: Option<String>,
+    /// True when the user pressed Esc during generation. The event loop
+    /// reads this to send a `cancel` RPC to the server, then clears it.
+    /// Without this, "cancel" would only flip `is_generating` locally
+    /// while the model kept running and produced a duplicate Complete.
+    pub pending_cancel: bool,
+    /// Session-id-of-cancellation, set alongside `pending_cancel` to a
+    /// turn marker. While Some, the WS event handler ignores incoming
+    /// stream events (StreamingText / ToolCall / Complete) for that
+    /// session — they're stale output from the cancelled turn. Cleared
+    /// on next user submit.
+    pub cancelled_session: Option<uuid::Uuid>,
     /// Set of message indices where tool results are expanded (show full content).
     pub expanded_tool_results: std::collections::HashSet<usize>,
     /// Current model name (for status bar display).
@@ -191,6 +202,8 @@ impl App {
             dirty: true,
             last_draw: std::time::Instant::now() - std::time::Duration::from_secs(60),
             pending_submit: None,
+            pending_cancel: false,
+            cancelled_session: None,
             expanded_tool_results: std::collections::HashSet::new(),
             model_name: String::new(),
             permission_mode: "default".into(),
@@ -347,6 +360,9 @@ impl App {
                         self.generation_started = Some(std::time::Instant::now());
                         self.scroll_offset = 0;
                         self.pending_submit = Some(content);
+                        // New turn — clear the cancelled marker so stream
+                        // events for this turn render normally.
+                        self.cancelled_session = None;
                     }
                 } else {
                     self.dirty = false;
@@ -565,6 +581,13 @@ impl App {
                             self.streaming_text.clone() + " (cancelled)",
                         ));
                         self.streaming_text.clear();
+                    }
+                    // Tell the event loop to send a `cancel` RPC and to
+                    // start ignoring stream events for this session
+                    // (stale output from the now-aborted turn).
+                    if let Some(ref session) = self.current_session {
+                        self.pending_cancel = true;
+                        self.cancelled_session = Some(session.id);
                     }
                 } else {
                     self.dirty = false;
@@ -1380,6 +1403,53 @@ mod tests {
         // event-loop side of the branch flow, but at the App-only level
         // we just assert the modal closed.
         assert!(app.active_modal.is_none());
+    }
+
+    #[test]
+    fn cancel_marks_session_for_stale_event_drop() {
+        let mut app = App::new();
+        // Set up an in-progress generation on a session.
+        let session = SessionInfo {
+            id: uuid::Uuid::new_v4(),
+            workstream_id: None,
+            created_at: chrono::Utc::now(),
+        };
+        app.current_session = Some(session.clone());
+        app.is_generating = true;
+        app.streaming_text = "partial...".into();
+
+        app.handle_action(Action::Cancel);
+
+        assert!(!app.is_generating, "cancel must clear is_generating");
+        assert!(app.pending_cancel, "cancel must request RPC dispatch");
+        assert_eq!(
+            app.cancelled_session,
+            Some(session.id),
+            "cancel must mark the session so the event loop drops stale stream events"
+        );
+        // The streaming buffer was flushed into a "(cancelled)" message.
+        assert!(app.streaming_text.is_empty());
+        assert!(matches!(
+            app.messages.last().map(|m| &m.role),
+            Some(ChatRole::Assistant)
+        ));
+    }
+
+    #[test]
+    fn next_submit_clears_cancelled_session_marker() {
+        let mut app = App::new();
+        let session = SessionInfo {
+            id: uuid::Uuid::new_v4(),
+            workstream_id: None,
+            created_at: chrono::Utc::now(),
+        };
+        app.current_session = Some(session.clone());
+        app.cancelled_session = Some(session.id);
+
+        // Submit a fresh message — the cancelled marker should clear so
+        // stream events for this NEW turn render normally.
+        submit_via_input(&mut app, "fresh prompt");
+        assert!(app.cancelled_session.is_none());
     }
 
     #[test]

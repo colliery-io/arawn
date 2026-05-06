@@ -323,6 +323,27 @@ impl WsClient {
             .await?;
         Ok(())
     }
+
+    /// Tell the server to abort an in-flight generation on this session.
+    /// Backed by `arawn_service::Service::cancel`. The TUI calls this when
+    /// the user hits Esc mid-generation; without it, the model would keep
+    /// running and emit a duplicate Complete after we've cleared
+    /// `is_generating` locally.
+    pub async fn cancel(
+        &mut self,
+        session_id: uuid::Uuid,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let resp = self
+            .request_response(
+                "cancel",
+                json!({"session_id": session_id.to_string()}),
+            )
+            .await?;
+        if let Some(err) = resp.get("error") {
+            return Err(err["message"].as_str().unwrap_or("cancel failed").into());
+        }
+        Ok(())
+    }
 }
 
 /// Spawn the reader task. Owns the read half of the stream forever; on
