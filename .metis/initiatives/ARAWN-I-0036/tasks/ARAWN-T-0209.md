@@ -4,14 +4,14 @@ level: task
 title: "Phase 2 — Tool-call collapsed rendering (single-line by default)"
 short_code: "ARAWN-T-0209"
 created_at: 2026-05-06T11:21:51.757665+00:00
-updated_at: 2026-05-06T11:21:51.757665+00:00
+updated_at: 2026-05-06T11:59:03.140375+00:00
 parent: ARAWN-I-0036
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -70,6 +70,10 @@ Decision (locked in I-0036): collapsed throughout, including while streaming. Si
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
@@ -173,4 +177,15 @@ Decision (locked in I-0036): collapsed throughout, including while streaming. Si
 
 ## Status Updates **[REQUIRED]**
 
-*To be added during implementation*
+### 2026-05-06 — Implementation complete
+
+- `ChatRole::ToolCall` rendering in `crates/arawn-tui/src/render.rs` now branches on a per-pair "expanded" flag. Default render is a single line: `  ⏵ {name} · {summary} · {elapsed}s` (or `running {elapsed}s {spinner}` while in-flight). Summary is hard-capped at 60 chars (`chars().count()` — Phase 4 / T-0211 will tighten to display-width).
+- Pair detection: a pair is "expanded" if `expanded_tool_results` contains either the call's idx or the result's idx (call_idx + 1). Errors always force the bordered card.
+- `ChatRole::ToolResult` paired-with-collapsed-call now renders without box chrome — soft 4-space gutter, no `└─┘` bottom. `is_error` and toggled-expanded paths keep the bordered card with `│` gutter and `└─┘` bottom.
+- `Action::ToggleToolResult` renamed to `Action::ToggleToolEntry` for the broader semantics. `Action::ToggleAllToolResults` now seeds the expanded set with both call and successful-result indices, so a single Ctrl+E expands every pair.
+- Render unit test `chat_renders_tool_call_with_icon` updated: collapsed mode emits `⏵`, not `✓`.
+- New snapshot test `snapshot_ten_tool_calls_collapsed` captures 10 pairs in a row as the regression guard the acceptance criteria called for.
+- All affected snapshots re-baselined via `cargo insta accept`. Diffs are layout-only — no content drift.
+- `angreal check workspace` and `angreal check clippy` clean. Full unit suite green.
+
+Phase 2 complete.

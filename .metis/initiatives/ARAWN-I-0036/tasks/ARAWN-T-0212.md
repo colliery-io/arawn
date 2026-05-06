@@ -4,14 +4,14 @@ level: task
 title: "Phase 5 — Empty + loading states (idle hero, OAuth heartbeat, thinner cursor)"
 short_code: "ARAWN-T-0212"
 created_at: 2026-05-06T11:22:08.494371+00:00
-updated_at: 2026-05-06T11:22:08.494371+00:00
+updated_at: 2026-05-06T12:14:01.867258+00:00
 parent: ARAWN-I-0036
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -75,6 +75,10 @@ This is I-0036 Phase 5 — visual polish on the moments-when-arawn-is-not-active
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
@@ -186,4 +190,20 @@ This is I-0036 Phase 5 — visual polish on the moments-when-arawn-is-not-active
 
 ## Status Updates **[REQUIRED]**
 
-*To be added during implementation*
+### 2026-05-06 — Implementation complete
+
+- **Idle hero**: `render_chat` short-circuits to `render_idle_hero` when `messages.is_empty() && !is_generating && streaming_text.is_empty()`. Renders a centered `╭─ arawn ─╮` block in `theme::CHROME` + `theme::SUBTEXT0`, plus two key-binding hint lines in `theme::OVERLAY1`. Hero auto-dismisses when the first message arrives (no opt-out keybind needed; per I-0035 Phase 1 a welcome system message will replace it).
+- **OAuth heartbeat**:
+  - `App.oauth_in_flight: Option<(String, Instant)>` added with default `None`.
+  - `IntegrationConnect` handler in `event_loop.rs` sets it on a successful `start_oauth_flow`; `apply_system_notice` clears it on any `[integration]` notice (success or error).
+  - 5-minute auto-clear in the top of `render()` for the network-drop / browser-cancel case.
+  - Esc while `oauth_in_flight.is_some()` (and no autocomplete) clears the heartbeat without going through the generation-cancel path.
+  - Layout: a 1-row `Constraint::Length(1)` row inserted between input and status bar when `oauth_in_flight.is_some()`. Layout shifts only while the heartbeat is up.
+  - `render_oauth_heartbeat` paints `• waiting for {svc} OAuth in browser… {N}s · Esc to cancel`. Bullet pulses between `theme::GENERATING` (yellow) and `theme::OVERLAY0` using `app.spinner_frame / 5` — no new state.
+- **Thinner streaming cursor**: streaming render block now emits `▌` in `theme::BORDER_ACTIVE` (mauve accent) instead of the full block `█` in blue.
+- New snapshot test `snapshot_idle_hero` is the regression guard.
+- `render_streaming_shows_cursor` and `chat_streaming_text_appears_in_chat_area` updated to assert the thin `▌` cursor.
+- All affected snapshots re-baselined via `cargo insta accept`. Diffs are visual polish — no content drift.
+- `angreal check workspace`, `angreal check clippy`, and full unit suite all green.
+
+Phase 5 complete.

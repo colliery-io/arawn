@@ -2,15 +2,15 @@
 source: crates/arawn-tui/src/snapshot_tests.rs
 expression: snap
 ---
-  │⠋ thinking...
+  │❯ what's up
   │
-  │
-  │
-  │
-  │
-  │
-  │
-  │
+  ││ Here's a quick answer with some prose.
+  │  ⏵ shell · ls -la · 0.0s
+  │  ▸ shell result
+  │    file.rs
+  │    file2.rs
+  ││ system:
+  ││ Permission required: shell
   │
   │
   │
@@ -30,5 +30,5 @@ expression: snap
   │
   │
 ────────────────────────────────────────────────────────────────────────────────────────────────────
-> Generating...
- no model │ no workstream ⠋ Thinking...
+> Type your message...
+ no model │ no workstream Ready

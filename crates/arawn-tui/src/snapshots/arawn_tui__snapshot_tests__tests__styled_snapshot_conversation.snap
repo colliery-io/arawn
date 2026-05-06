@@ -2,23 +2,23 @@
 source: crates/arawn-tui/src/snapshot_tests.rs
 expression: snap
 ---
-«fg:DarkGray,bg:Rgb(25, 25, 30)»  «fg:DarkGray»│«fg:Green,bold»❯ hello
-«fg:DarkGray,bg:Rgb(25, 25, 30)» ·«fg:DarkGray»│
-«fg:DarkGray,bg:Rgb(25, 25, 30)»  «fg:DarkGray»│  world
-«fg:DarkGray,bg:Rgb(25, 25, 30)» ·«fg:DarkGray»│«fg:Rgb(100, 100, 115)»  ┌ «fg:Red»✗ «fg:Cyan,bold»shell«fg:Rgb(140, 140, 155)»  Calling shell...«fg:Rgb(100, 100, 115)» ──────────────────────────────────────────────┐
-«fg:DarkGray,bg:Rgb(25, 25, 30)»  «fg:DarkGray»│«fg:Rgb(100, 100, 115)»  │ «fg:Red»✗ «fg:Red,bold»shell error
-«fg:DarkGray,bg:Rgb(25, 25, 30)» ·«fg:DarkGray»│«fg:Rgb(100, 100, 115)»  │  «fg:Red»permission denied
-«fg:DarkGray,bg:Rgb(25, 25, 30)»  «fg:DarkGray»│«fg:Rgb(100, 100, 115)»  └─────────────────────────────────────────────────────────────────────────┘
-«fg:DarkGray,bg:Rgb(25, 25, 30)» ·«fg:DarkGray»│
-«fg:Cyan,bg:Rgb(25, 25, 30)» ▸«fg:DarkGray»│  ───────────────────────────────────────────────────────────────────────────
-«fg:DarkGray,bg:Rgb(25, 25, 30)» ·«fg:DarkGray»│
-«fg:DarkGray,bg:Rgb(25, 25, 30)»  «fg:DarkGray»│
-«fg:DarkGray,bg:Rgb(25, 25, 30)» ·«fg:DarkGray»│
-«fg:DarkGray,bg:Rgb(25, 25, 30)»  «fg:DarkGray»│
-«fg:DarkGray,bg:Rgb(25, 25, 30)» ·«fg:DarkGray»│
-«fg:DarkGray,bg:Rgb(25, 25, 30)»  «fg:DarkGray»│
-«fg:DarkGray,bg:Rgb(25, 25, 30)» ·«fg:DarkGray»│
-«fg:DarkGray,bg:Rgb(25, 25, 30)»  «fg:DarkGray»│
-«fg:DarkGray»────────────────────────────────────────────────────────────────────────────────
-«fg:Green,bold»> «fg:DarkGray»Type your message...
-«fg:White,bg:Rgb(30, 30, 40)» no model«fg:DarkGray,bg:Rgb(30, 30, 40)» │ «fg:White,bg:Rgb(30, 30, 40)»no workstream«fg:Green,bg:Rgb(30, 30, 40)» Ready«bg:Rgb(30, 30, 40)»
+«bg:Rgb(17, 17, 27)»  «fg:Rgb(69, 71, 90)»│«fg:Rgb(166, 227, 161),bold»❯ hello
+«bg:Rgb(17, 17, 27)»  «fg:Rgb(69, 71, 90)»│
+«bg:Rgb(17, 17, 27)»  «fg:Rgb(69, 71, 90)»││ world
+«bg:Rgb(17, 17, 27)»  «fg:Rgb(69, 71, 90)»│  ┌ «fg:Rgb(243, 139, 168)»✗ «fg:Rgb(180, 190, 254),bold»shell«fg:Rgb(147, 153, 178)»  Calling shell...«fg:Rgb(69, 71, 90)» ──────────────────────────────────────────────┐
+«bg:Rgb(17, 17, 27)»  «fg:Rgb(69, 71, 90)»│  │ «fg:Rgb(243, 139, 168)»✗ «fg:Rgb(243, 139, 168),bold»shell error
+«bg:Rgb(17, 17, 27)»  «fg:Rgb(69, 71, 90)»│  │  «fg:Rgb(243, 139, 168)»permission denied
+«bg:Rgb(17, 17, 27)»  «fg:Rgb(69, 71, 90)»│  └─────────────────────────────────────────────────────────────────────────┘
+«bg:Rgb(17, 17, 27)»  «fg:Rgb(69, 71, 90)»│
+«fg:Rgb(203, 166, 247),bg:Rgb(17, 17, 27)» ▸«fg:Rgb(69, 71, 90)»│«fg:Rgb(49, 50, 68)»  ───────────────────────────────────────────────────────────────────────────
+«bg:Rgb(17, 17, 27)»  «fg:Rgb(69, 71, 90)»│
+«bg:Rgb(17, 17, 27)»  «fg:Rgb(69, 71, 90)»│
+«bg:Rgb(17, 17, 27)»  «fg:Rgb(69, 71, 90)»│
+«bg:Rgb(17, 17, 27)»  «fg:Rgb(69, 71, 90)»│
+«bg:Rgb(17, 17, 27)»  «fg:Rgb(69, 71, 90)»│
+«bg:Rgb(17, 17, 27)»  «fg:Rgb(69, 71, 90)»│
+«bg:Rgb(17, 17, 27)»  «fg:Rgb(69, 71, 90)»│
+«bg:Rgb(17, 17, 27)»  «fg:Rgb(69, 71, 90)»│
+«fg:Rgb(49, 50, 68)»────────────────────────────────────────────────────────────────────────────────
+«fg:Rgb(166, 227, 161),bold»> «fg:Rgb(108, 112, 134)»Type your message...
+«fg:Rgb(205, 214, 244),bg:Rgb(24, 24, 37)» no model«fg:Rgb(108, 112, 134),bg:Rgb(24, 24, 37)» │ «fg:Rgb(205, 214, 244),bg:Rgb(24, 24, 37)»no workstream«fg:Rgb(166, 227, 161),bg:Rgb(24, 24, 37)» Ready«bg:Rgb(24, 24, 37)»

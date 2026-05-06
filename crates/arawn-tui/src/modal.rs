@@ -6,6 +6,8 @@
 
 use ratatui::layout::Rect;
 use ratatui::style::{Color, Modifier, Style};
+
+use crate::theme;
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Clear, Paragraph, Wrap};
 use ratatui::Frame;
@@ -130,7 +132,7 @@ pub fn render_modal(modal: &ModalState, frame: &mut Frame) {
     if let Some(ref subtitle) = modal.subtitle {
         lines.push(Line::from(Span::styled(
             subtitle.clone(),
-            Style::default().fg(Color::DarkGray),
+            Style::default().fg(theme::SUBTEXT0),
         )));
         lines.push(Line::from(""));
     }
@@ -141,11 +143,11 @@ pub fn render_modal(modal: &ModalState, frame: &mut Frame) {
         let indicator = if is_focused { "▸ " } else { "  " };
         let label_style = if is_focused {
             Style::default()
-                .fg(Color::White)
+                .fg(theme::TEXT)
                 .add_modifier(Modifier::BOLD)
-                .bg(Color::Rgb(50, 50, 65))
+                .bg(theme::SURFACE0)
         } else {
-            Style::default().fg(Color::Rgb(180, 180, 195))
+            Style::default().fg(theme::SUBTEXT1)
         };
 
         lines.push(Line::from(vec![
@@ -163,7 +165,7 @@ pub fn render_modal(modal: &ModalState, frame: &mut Frame) {
         if let Some(ref desc) = opt.description {
             lines.push(Line::from(Span::styled(
                 format!("    {desc}"),
-                Style::default().fg(Color::DarkGray),
+                Style::default().fg(theme::OVERLAY1),
             )));
         }
     }
@@ -173,7 +175,7 @@ pub fn render_modal(modal: &ModalState, frame: &mut Frame) {
     lines.push(Line::from(Span::styled(
         " ↑↓ navigate  Enter confirm  Esc cancel",
         Style::default()
-            .fg(Color::DarkGray)
+            .fg(theme::OVERLAY1)
             .add_modifier(Modifier::ITALIC),
     )));
 

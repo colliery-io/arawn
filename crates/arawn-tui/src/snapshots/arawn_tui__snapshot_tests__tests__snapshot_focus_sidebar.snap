@@ -12,12 +12,12 @@ expression: snap
 │                  │
 │                  │
 │                  │
-└──────────────────┘
-┌ Sessions ────────┐
+└──────────────────┘                                 ╭─────────────╮
+┌ Sessions ────────┐                                 │    arawn    │
+│                  │                                 ╰─────────────╯
 │                  │
-│                  │
-│                  │
-│                  │
+│                  │                   Type / for commands · Tab to toggle sidebar
+│                  │                          /connect <service> · ↑ recall
 │                  │
 │                  │
 │                  │

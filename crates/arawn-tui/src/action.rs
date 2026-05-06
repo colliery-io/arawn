@@ -26,8 +26,8 @@ pub enum Action {
     ClickSidebarItem(usize),
     /// Click in the input area at a specific column (for cursor placement).
     ClickInput(u16),
-    /// Toggle expand/collapse on a tool result message by index.
-    ToggleToolResult(usize),
+    /// Toggle expand/collapse on a tool call/result entry by message index.
+    ToggleToolEntry(usize),
     /// Toggle expand/collapse on all tool results at once.
     ToggleAllToolResults,
     /// Modal: move focus up.

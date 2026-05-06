@@ -2,23 +2,17 @@
 source: crates/arawn-tui/src/snapshot_tests.rs
 expression: snap
 ---
-  │❯ do something
-  ││ system:
-  ││ Error: API rate limited
+  │❯ search for 日 本 語  docs
+  │  ⏵ 🔥 shell · grep -r 日 本 語  docs/ · 0.0s
+  │  ▸ 🔥 shell result
+  │    docs/日 本 語 /intro.md
+  │    docs/日 本 語 /usage.md
   │
-  │
-  │
-  │
-  │
-  │
-  │
+  │  ───────────────────────────────────────────────────────────────────────────────────────────────
   │
   │
   │
  ▸│
-  │
-  │
-  │
   │
   │
   │

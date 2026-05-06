@@ -3,31 +3,31 @@ source: crates/arawn-tui/src/snapshot_tests.rs
 expression: snap
 ---
   │❯ What files are in the project?
- ·│  ┌ ✓ shell  Calling shell... ─────────────────────────────────────────────────────┐
-  │  │ ▸ shell result
- ·│  │  Cargo.toml
-  │  │  crates/
- ·│  │  plugins/
-  │  └────────────────────────────────────────────────────────────────────────────────┘
- ·│
-  │  The project has a Cargo.toml, crates/ and plugins/ directories.
- ·│
+  │  ⏵ shell · Calling shell... · 0.0s
+  │  ▸ shell result
+  │    Cargo.toml
+  │    crates/
+  │    plugins/
+  │
+  ││ The project has a Cargo.toml, crates/ and plugins/ directories.
+  │
   │  ───────────────────────────────────────────────────────────────────────────────────────────────
- ·│
+  │
+  │
   │
  ▸│
   │
- ·│
   │
- ·│
   │
- ·│
   │
- ·│
   │
- ·│
   │
- ·│
+  │
+  │
+  │
+  │
+  │
+  │
   │
 ────────────────────────────────────────────────────────────────────────────────────────────────────
 > Type your message...

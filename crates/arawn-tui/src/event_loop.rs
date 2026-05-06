@@ -589,6 +589,8 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                                             OpenAttempt::NoOpener => "No browser opener detected on this platform.".to_string(),
                                             OpenAttempt::Failed(err) => format!("Browser open failed: {err}."),
                                         };
+                                        app.oauth_in_flight =
+                                            Some((svc.clone(), std::time::Instant::now()));
                                         format!(
                                             "Connecting **{svc}**…\n\n\
                                              {opener_status}\n\n\
@@ -1035,6 +1037,13 @@ fn apply_system_notice(notice: &arawn_service::ServerNotice, app: &mut crate::ap
     let body = format!("{marker} [{}] {}", notice.category, notice.message);
     app.messages
         .push(crate::app::ChatMessage::new(crate::app::ChatRole::System, body));
+
+    // An integration notice (success or error) ends an in-flight OAuth
+    // dance; clear the heartbeat so the user sees the resolution.
+    if notice.category == "integration" {
+        app.oauth_in_flight = None;
+    }
+
     app.dirty = true;
 }
 

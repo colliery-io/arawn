@@ -179,6 +179,109 @@ mod tests {
     // --- Error message ---
 
     #[test]
+    fn snapshot_idle_hero() {
+        // Regression guard for I-0036 Phase 5: empty chat shows the
+        // centered wordmark + key-binding hints, not a blank surface.
+        let mut app = App::new();
+        app.messages.clear();
+        app.is_generating = false;
+        app.streaming_text.clear();
+
+        let mut terminal = make_terminal(100, 24);
+        let snap = draw(&mut app, &mut terminal);
+        insta::assert_snapshot!(snap);
+    }
+
+    #[test]
+    fn snapshot_unicode_chrome_alignment() {
+        // Regression guard for I-0036 Phase 4: tool calls and result
+        // previews containing wide-cell unicode (CJK, emoji) must stay
+        // aligned. Display-width measurement, not byte / char count.
+        let mut app = App::new();
+        app.messages = vec![
+            ChatMessage::new(ChatRole::User, "search for 日本語 docs"),
+            ChatMessage::new(
+                ChatRole::ToolCall {
+                    name: "🔥shell".into(),
+                },
+                "grep -r 日本語 docs/",
+            ),
+            ChatMessage::new(
+                ChatRole::ToolResult {
+                    name: "🔥shell".into(),
+                    is_error: false,
+                },
+                "docs/日本語/intro.md\ndocs/日本語/usage.md",
+            ),
+        ];
+
+        let mut terminal = make_terminal(100, 24);
+        let snap = draw(&mut app, &mut terminal);
+        insta::assert_snapshot!(snap);
+    }
+
+    #[test]
+    fn snapshot_speaker_gutters() {
+        // Regression guard for I-0036 Phase 3: each speaker has a
+        // distinct gutter signal (user `❯`, assistant `│`, tool `⏵`,
+        // system `│ system:`).
+        let mut app = App::new();
+        app.messages = vec![
+            ChatMessage::new(ChatRole::User, "what's up"),
+            ChatMessage::new(
+                ChatRole::Assistant,
+                "Here's a quick answer with some prose.",
+            ),
+            ChatMessage::new(
+                ChatRole::ToolCall {
+                    name: "shell".into(),
+                },
+                "ls -la",
+            ),
+            ChatMessage::new(
+                ChatRole::ToolResult {
+                    name: "shell".into(),
+                    is_error: false,
+                },
+                "file.rs\nfile2.rs",
+            ),
+            ChatMessage::new(ChatRole::System, "Permission required: shell"),
+        ];
+
+        let mut terminal = make_terminal(100, 30);
+        let snap = draw(&mut app, &mut terminal);
+        insta::assert_snapshot!(snap);
+    }
+
+    #[test]
+    fn snapshot_ten_tool_calls_collapsed() {
+        // Regression guard for I-0036 Phase 2: 10 tool-call/result pairs
+        // should render as compact single lines, not 10 boxed cards.
+        let mut app = App::new();
+        let mut messages = vec![ChatMessage::new(ChatRole::User, "do many things")];
+        for i in 0..10 {
+            messages.push(ChatMessage::new(
+                ChatRole::ToolCall {
+                    name: "shell".into(),
+                },
+                format!("ls -la /tmp/dir-{i}"),
+            ));
+            messages.push(ChatMessage::new(
+                ChatRole::ToolResult {
+                    name: "shell".into(),
+                    is_error: false,
+                },
+                format!("file-{i}.txt\nfile-{i}.log"),
+            ));
+        }
+        app.messages = messages;
+
+        let mut terminal = make_terminal(100, 40);
+        let snap = draw(&mut app, &mut terminal);
+        insta::assert_snapshot!(snap);
+    }
+
+    #[test]
     fn snapshot_error_in_chat() {
         let mut app = App::new();
         app.messages = vec![

@@ -1,0 +1,44 @@
+---
+source: crates/arawn-tui/src/snapshot_tests.rs
+expression: snap
+---
+  │  ▸ shell result
+  │    file-1.txt
+  │    file-1.log
+  │  ⏵ shell · ls -la /tmp/dir-2 · 0.0s
+  │  ▸ shell result
+  │    file-2.txt
+  │    file-2.log
+  │  ⏵ shell · ls -la /tmp/dir-3 · 0.0s
+  │  ▸ shell result
+  │    file-3.txt
+  │    file-3.log
+  │  ⏵ shell · ls -la /tmp/dir-4 · 0.0s
+  │  ▸ shell result
+  │    file-4.txt
+  │    file-4.log
+  │  ⏵ shell · ls -la /tmp/dir-5 · 0.0s
+  │  ▸ shell result
+  │    file-5.txt
+ ▸│    file-5.log
+  │  ⏵ shell · ls -la /tmp/dir-6 · 0.0s
+  │  ▸ shell result
+  │    file-6.txt
+  │    file-6.log
+  │  ⏵ shell · ls -la /tmp/dir-7 · 0.0s
+  │  ▸ shell result
+  │    file-7.txt
+  │    file-7.log
+  │  ⏵ shell · ls -la /tmp/dir-8 · 0.0s
+  │  ▸ shell result
+  │    file-8.txt
+  │    file-8.log
+  │  ⏵ shell · ls -la /tmp/dir-9 · 0.0s
+  │  ▸ shell result
+  │    file-9.txt
+  │    file-9.log
+  │
+  │  ───────────────────────────────────────────────────────────────────────────────────────────────
+────────────────────────────────────────────────────────────────────────────────────────────────────
+> Type your message...
+ no model │ no workstream Ready

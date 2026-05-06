@@ -4,14 +4,14 @@ level: task
 title: "Phase 4 — Chrome correctness (display-width measurement everywhere)"
 short_code: "ARAWN-T-0211"
 created_at: 2026-05-06T11:22:03.216534+00:00
-updated_at: 2026-05-06T11:22:03.216534+00:00
+updated_at: 2026-05-06T12:09:10.481532+00:00
 parent: ARAWN-I-0036
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -68,6 +68,10 @@ Sweep all chrome / box / line-fill code in `arawn-tui` so width measurements use
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
@@ -168,4 +172,17 @@ Sweep all chrome / box / line-fill code in `arawn-tui` so width measurements use
 
 ## Status Updates **[REQUIRED]**
 
-*To be added during implementation*
+### 2026-05-06 — Implementation complete
+
+- Added `crates/arawn-tui/src/width.rs` with `display_width(s)` and `truncate_display(s, max)` — both delegate to `unicode_width::UnicodeWidthStr` and treat the cap as terminal cells, not bytes or chars. The `…` is one cell.
+- Replaced the legacy `truncate_for_display` and `truncate_to` bodies in `render.rs` with thin wrappers around `width::truncate_display` so a single source of truth governs every truncation in the TUI.
+- T-0209 follow-up: collapsed tool-call summary cap now uses `truncate_display` (display cells) instead of `chars().count()`.
+- Tool result preview: `any_line_too_wide` and per-line truncation switched to `display_width` / `truncate_display`.
+- Markdown table column widths and word-min-widths now measure in display cells.
+- Wrap module's tokenizer (`wrap.rs`) records each token's width as `display_width(&buf)`, not `chars().count()`.
+- Input-area cursor X is now derived from `display_width(&input_buffer[..cursor_byte])` in both the scrolled and unscrolled branches. Previously the byte offset was treated as a column count, which placed the cursor in the wrong cell after any non-ASCII char.
+- New snapshot test `snapshot_unicode_chrome_alignment` captures a tool call + result with `🔥` in the name and `日本語` in the path. Chrome bars and gutters stay aligned despite the 2-cell-wide chars.
+- Updated `truncate_for_display_handles_utf8_at_boundary` test to assert the new `…` (1 cell) and display-width semantics.
+- `angreal check workspace`, `angreal check clippy`, and full unit suite all green.
+
+Phase 4 complete.

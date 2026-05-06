@@ -13,6 +13,7 @@ mod snapshot;
 #[cfg(test)]
 mod snapshot_tests;
 pub mod wrap;
+pub mod width;
 pub mod ws_client;
 
 pub use action::Action;

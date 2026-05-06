@@ -131,6 +131,10 @@ pub struct App {
     pub token_usage: (u64, u64),
     /// When generation started (for elapsed time in status bar).
     pub generation_started: Option<std::time::Instant>,
+    /// In-flight `/connect <svc>` OAuth flow: service name + start time.
+    /// Renders a heartbeat line above the status bar so the user knows
+    /// the app isn't frozen while the browser dance is in progress.
+    pub oauth_in_flight: Option<(String, std::time::Instant)>,
     /// Active modal overlay (permission prompt, AskUser, etc.)
     pub active_modal: Option<crate::modal::ModalState>,
     /// Pending modal response to send back to server: (request_id, result_rx)
@@ -211,6 +215,7 @@ impl App {
             active_modal: None,
             pending_modal_response: None,
             generation_started: None,
+            oauth_in_flight: None,
             spinner_frame: 0,
             active_tool: None,
             layout: LayoutRegions::default(),
@@ -483,7 +488,7 @@ impl App {
                 let offset = col.saturating_sub(1) as usize;
                 self.cursor_pos = offset.min(self.input_buffer.len());
             }
-            Action::ToggleToolResult(idx) => {
+            Action::ToggleToolEntry(idx) => {
                 if idx < self.messages.len() {
                     if self.expanded_tool_results.contains(&idx) {
                         self.expanded_tool_results.remove(&idx);
@@ -542,8 +547,12 @@ impl App {
                     self.expanded_tool_results.clear();
                 } else {
                     for (i, msg) in self.messages.iter().enumerate() {
-                        if matches!(msg.role, ChatRole::ToolResult { is_error: false, .. }) {
-                            self.expanded_tool_results.insert(i);
+                        match &msg.role {
+                            ChatRole::ToolResult { is_error: false, .. }
+                            | ChatRole::ToolCall { .. } => {
+                                self.expanded_tool_results.insert(i);
+                            }
+                            _ => {}
                         }
                     }
                 }
@@ -572,6 +581,12 @@ impl App {
                 // Dismiss autocomplete first, then handle cancel
                 if self.autocomplete.is_some() {
                     self.autocomplete = None;
+                } else if self.oauth_in_flight.is_some() {
+                    // Esc during an OAuth dance: drop the heartbeat. The
+                    // server's callback listener still times out on its
+                    // own (5 min) — see I-0033 followup for server-side
+                    // cancellation.
+                    self.oauth_in_flight = None;
                 } else if self.is_generating {
                     self.is_generating = false;
                     self.active_tool = None;

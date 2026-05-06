@@ -11,6 +11,8 @@ use ratatui::text::{Line, Span};
 use syntect::highlighting::{Theme, ThemeSet};
 use syntect::parsing::SyntaxSet;
 
+use crate::theme;
+
 static SYNTAX_SET: LazyLock<SyntaxSet> = LazyLock::new(SyntaxSet::load_defaults_newlines);
 static THEME: LazyLock<Theme> = LazyLock::new(|| {
     let ts = ThemeSet::load_defaults();
@@ -39,9 +41,7 @@ pub fn markdown_to_lines_with_width(text: &str, max_width: usize) -> Vec<Line<'s
     renderer.finish()
 }
 
-const CODE_STYLE: Style = Style::new()
-    .fg(Color::Rgb(180, 180, 180))
-    .bg(Color::Rgb(30, 30, 40));
+const CODE_STYLE: Style = Style::new().fg(theme::CODE_FG).bg(theme::CODE_BG);
 
 struct MdRenderer {
     lines: Vec<Line<'static>>,
@@ -102,7 +102,7 @@ impl MdRenderer {
                 self.flush_line();
                 self.lines.push(Line::from(Span::styled(
                     "───────────────────────────────",
-                    Style::default().fg(Color::DarkGray),
+                    Style::default().fg(theme::RULE),
                 )));
             }
             _ => {}
@@ -146,7 +146,7 @@ impl MdRenderer {
                 self.link_url = Some(dest_url.to_string());
                 self.push_style(
                     Style::default()
-                        .fg(Color::Cyan)
+                        .fg(theme::LINK)
                         .add_modifier(Modifier::UNDERLINED),
                 );
             }
@@ -163,7 +163,7 @@ impl MdRenderer {
             }
             Tag::BlockQuote(_) => {
                 self.flush_line();
-                self.push_style(Style::default().fg(Color::DarkGray));
+                self.push_style(Style::default().fg(theme::BLOCK_QUOTE));
             }
             Tag::Table(alignments) => {
                 self.flush_line();
@@ -201,7 +201,7 @@ impl MdRenderer {
                     self.lines.push(Line::from(Span::styled(
                         lang.clone(),
                         Style::default()
-                            .fg(Color::DarkGray)
+                            .fg(theme::CODE_LANG)
                             .add_modifier(Modifier::ITALIC),
                     )));
                 }
@@ -220,7 +220,7 @@ impl MdRenderer {
                     self.pop_style();
                     self.current_spans.push(Span::styled(
                         format!(" ({url})"),
-                        Style::default().fg(Color::DarkGray),
+                        Style::default().fg(theme::LINK_URL),
                     ));
                 } else {
                     self.pop_style();
@@ -287,7 +287,7 @@ impl MdRenderer {
                 format!("{indent}• ")
             };
             self.current_spans
-                .push(Span::styled(bullet, Style::default().fg(Color::DarkGray)));
+                .push(Span::styled(bullet, Style::default().fg(theme::LIST_BULLET)));
         }
 
         self.current_spans
@@ -296,10 +296,10 @@ impl MdRenderer {
 
     fn inline_code(&mut self, code: &str) {
         let style = Style::default()
-            .fg(Color::Rgb(220, 170, 110))
-            .bg(Color::Rgb(40, 40, 50));
+            .fg(theme::INLINE_CODE_FG)
+            .bg(theme::INLINE_CODE_BG);
         self.current_spans
-            .push(Span::styled(format!("`{code}`"), style));
+            .push(Span::styled(code.to_string(), style));
     }
 
     fn line_break(&mut self) {
@@ -345,7 +345,7 @@ impl MdRenderer {
     // --- Table rendering ---
 
     fn emit_full_table(&mut self) {
-        let chrome = Style::default().fg(Color::DarkGray);
+        let chrome = Style::default().fg(theme::TABLE_CHROME);
         let header_style = Style::default().add_modifier(Modifier::BOLD);
 
         // Calculate column widths from header + all rows
@@ -355,12 +355,12 @@ impl MdRenderer {
         }
         let mut col_widths = vec![0usize; ncols];
         for (i, cell) in self.table_header.iter().enumerate() {
-            col_widths[i] = col_widths[i].max(cell.chars().count());
+            col_widths[i] = col_widths[i].max(crate::width::display_width(cell));
         }
         for row in &self.table_rows {
             for (i, cell) in row.iter().enumerate() {
                 if i < ncols {
-                    col_widths[i] = col_widths[i].max(cell.chars().count());
+                    col_widths[i] = col_widths[i].max(crate::width::display_width(cell));
                 }
             }
         }
@@ -376,14 +376,14 @@ impl MdRenderer {
             let mut min_widths = vec![4usize; ncols];
             for (i, cell) in self.table_header.iter().enumerate() {
                 for word in cell.split_whitespace() {
-                    min_widths[i] = min_widths[i].max(word.chars().count());
+                    min_widths[i] = min_widths[i].max(crate::width::display_width(word));
                 }
             }
             for row in &self.table_rows {
                 for (i, cell) in row.iter().enumerate() {
                     if i < ncols {
                         for word in cell.split_whitespace() {
-                            min_widths[i] = min_widths[i].max(word.chars().count());
+                            min_widths[i] = min_widths[i].max(crate::width::display_width(word));
                         }
                     }
                 }
@@ -516,7 +516,7 @@ fn highlight_code(code: &str, lang: Option<&str>) -> Vec<Line<'static>> {
         .unwrap_or_else(|| SYNTAX_SET.find_syntax_plain_text());
 
     let mut highlighter = HighlightLines::new(syntax, &THEME);
-    let bg = Color::Rgb(30, 30, 40);
+    let bg = theme::CODE_BG;
 
     code.lines()
         .map(|line| {
@@ -548,13 +548,20 @@ fn highlight_code(code: &str, lang: Option<&str>) -> Vec<Line<'static>> {
 }
 
 fn heading_style(level: u8) -> Style {
-    let color = match level {
-        1 => Color::Cyan,
-        2 => Color::Blue,
-        3 => Color::Magenta,
-        _ => Color::White,
-    };
-    Style::default().fg(color).add_modifier(Modifier::BOLD)
+    match level {
+        1 => Style::default()
+            .fg(theme::HEADING_1)
+            .add_modifier(Modifier::BOLD),
+        2 => Style::default()
+            .fg(theme::HEADING_2)
+            .add_modifier(Modifier::BOLD),
+        3 => Style::default()
+            .fg(theme::HEADING_3)
+            .add_modifier(Modifier::BOLD),
+        _ => Style::default()
+            .fg(theme::HEADING_4)
+            .add_modifier(Modifier::ITALIC),
+    }
 }
 
 /// Word-wrap text to fit within a given width. Breaks on word boundaries
@@ -672,9 +679,9 @@ mod tests {
         assert!(text.contains("H1"));
         assert!(text.contains("H2"));
         assert!(text.contains("H3"));
-        assert_eq!(lines[0].spans[0].style.fg, Some(Color::Cyan));
-        assert_eq!(lines[1].spans[0].style.fg, Some(Color::Blue));
-        assert_eq!(lines[2].spans[0].style.fg, Some(Color::Magenta));
+        assert_eq!(lines[0].spans[0].style.fg, Some(theme::HEADING_1));
+        assert_eq!(lines[1].spans[0].style.fg, Some(theme::HEADING_2));
+        assert_eq!(lines[2].spans[0].style.fg, Some(theme::HEADING_3));
     }
 
     #[test]
@@ -702,7 +709,7 @@ mod tests {
             .iter()
             .find(|s| s.content.contains("cargo test"))
             .unwrap();
-        assert_eq!(code_span.style.fg, Some(Color::Rgb(220, 170, 110)));
+        assert_eq!(code_span.style.fg, Some(theme::INLINE_CODE_FG));
     }
 
     #[test]

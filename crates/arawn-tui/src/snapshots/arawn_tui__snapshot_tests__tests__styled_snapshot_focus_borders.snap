@@ -2,23 +2,23 @@
 source: crates/arawn-tui/src/snapshot_tests.rs
 expression: snap
 ---
-«fg:DarkGray,bg:Rgb(25, 25, 30)»  «fg:DarkGray»│
-«fg:DarkGray,bg:Rgb(25, 25, 30)» ·«fg:DarkGray»│
-«fg:DarkGray,bg:Rgb(25, 25, 30)»  «fg:DarkGray»│
-«fg:DarkGray,bg:Rgb(25, 25, 30)» ·«fg:DarkGray»│
-«fg:DarkGray,bg:Rgb(25, 25, 30)»  «fg:DarkGray»│
-«fg:DarkGray,bg:Rgb(25, 25, 30)» ·«fg:DarkGray»│
-«fg:DarkGray,bg:Rgb(25, 25, 30)»  «fg:DarkGray»│
-«fg:DarkGray,bg:Rgb(25, 25, 30)» ·«fg:DarkGray»│
-«fg:Cyan,bg:Rgb(25, 25, 30)» ▸«fg:DarkGray»│
-«fg:DarkGray,bg:Rgb(25, 25, 30)» ·«fg:DarkGray»│
-«fg:DarkGray,bg:Rgb(25, 25, 30)»  «fg:DarkGray»│
-«fg:DarkGray,bg:Rgb(25, 25, 30)» ·«fg:DarkGray»│
-«fg:DarkGray,bg:Rgb(25, 25, 30)»  «fg:DarkGray»│
-«fg:DarkGray,bg:Rgb(25, 25, 30)» ·«fg:DarkGray»│
-«fg:DarkGray,bg:Rgb(25, 25, 30)»  «fg:DarkGray»│
-«fg:DarkGray,bg:Rgb(25, 25, 30)» ·«fg:DarkGray»│
-«fg:DarkGray,bg:Rgb(25, 25, 30)»  «fg:DarkGray»│
-«fg:DarkGray»────────────────────────────────────────────────────────────────────────────────
-«fg:Green,bold»> typing here
-«fg:White,bg:Rgb(30, 30, 40)» no model«fg:DarkGray,bg:Rgb(30, 30, 40)» │ «fg:White,bg:Rgb(30, 30, 40)»no workstream«fg:Green,bg:Rgb(30, 30, 40)» Ready«bg:Rgb(30, 30, 40)»
+«bg:Rgb(17, 17, 27)»  «fg:Rgb(69, 71, 90)»│
+«bg:Rgb(17, 17, 27)»  «fg:Rgb(69, 71, 90)»│
+«bg:Rgb(17, 17, 27)»  «fg:Rgb(69, 71, 90)»│
+«bg:Rgb(17, 17, 27)»  «fg:Rgb(69, 71, 90)»│
+«bg:Rgb(17, 17, 27)»  «fg:Rgb(69, 71, 90)»│
+«bg:Rgb(17, 17, 27)»  «fg:Rgb(69, 71, 90)»│                               «fg:Rgb(69, 71, 90)»╭─────────────╮
+«bg:Rgb(17, 17, 27)»  «fg:Rgb(69, 71, 90)»│                               «fg:Rgb(69, 71, 90)»│    «fg:Rgb(166, 173, 200),bold»arawn«fg:Rgb(69, 71, 90)»    │
+«bg:Rgb(17, 17, 27)»  «fg:Rgb(69, 71, 90)»│                               «fg:Rgb(69, 71, 90)»╰─────────────╯
+«fg:Rgb(203, 166, 247),bg:Rgb(17, 17, 27)» ▸«fg:Rgb(69, 71, 90)»│
+«bg:Rgb(17, 17, 27)»  «fg:Rgb(69, 71, 90)»│                 «fg:Rgb(127, 132, 156)»Type / for commands · Tab to toggle sidebar
+«bg:Rgb(17, 17, 27)»  «fg:Rgb(69, 71, 90)»│                        «fg:Rgb(127, 132, 156)»/connect <service> · ↑ recall
+«bg:Rgb(17, 17, 27)»  «fg:Rgb(69, 71, 90)»│
+«bg:Rgb(17, 17, 27)»  «fg:Rgb(69, 71, 90)»│
+«bg:Rgb(17, 17, 27)»  «fg:Rgb(69, 71, 90)»│
+«bg:Rgb(17, 17, 27)»  «fg:Rgb(69, 71, 90)»│
+«bg:Rgb(17, 17, 27)»  «fg:Rgb(69, 71, 90)»│
+«bg:Rgb(17, 17, 27)»  «fg:Rgb(69, 71, 90)»│
+«fg:Rgb(49, 50, 68)»────────────────────────────────────────────────────────────────────────────────
+«fg:Rgb(166, 227, 161),bold»> typing here
+«fg:Rgb(205, 214, 244),bg:Rgb(24, 24, 37)» no model«fg:Rgb(108, 112, 134),bg:Rgb(24, 24, 37)» │ «fg:Rgb(205, 214, 244),bg:Rgb(24, 24, 37)»no workstream«fg:Rgb(166, 227, 161),bg:Rgb(24, 24, 37)» Ready«bg:Rgb(24, 24, 37)»

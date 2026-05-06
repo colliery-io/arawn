@@ -1,10 +1,11 @@
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Direction, Layout};
-use ratatui::style::{Color, Modifier, Style};
+use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Clear, List, ListItem, Paragraph};
 
 use crate::app::{App, ChatRole, Focus, LayoutRegions, SidebarSection};
+use crate::theme;
 
 const SPINNER_FRAMES: &[char] = &['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
 
@@ -12,13 +13,23 @@ const SPINNER_FRAMES: &[char] = &['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦
 pub fn render(app: &mut App, frame: &mut Frame) {
     let area = frame.area();
 
+    // Auto-clear an OAuth heartbeat that's been waiting longer than the
+    // server-side 5-minute timeout — if no `[integration]` notice ever
+    // arrived (network drop, cancelled in browser), the line should fade.
+    if let Some((_, started)) = &app.oauth_in_flight
+        && started.elapsed() >= std::time::Duration::from_secs(300) {
+            app.oauth_in_flight = None;
+        }
+
+    let oauth_row = if app.oauth_in_flight.is_some() { 1 } else { 0 };
     let vertical = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Min(3),    // chat area
-            Constraint::Length(1), // thin separator
-            Constraint::Length(1), // input (single line, borderless)
-            Constraint::Length(1), // status bar (bottom)
+            Constraint::Min(3),             // chat area
+            Constraint::Length(1),          // thin separator
+            Constraint::Length(1),          // input (single line, borderless)
+            Constraint::Length(oauth_row),  // OAuth heartbeat (0 or 1 row)
+            Constraint::Length(1),          // status bar (bottom)
         ])
         .split(area);
 
@@ -66,7 +77,10 @@ pub fn render(app: &mut App, frame: &mut Frame) {
     render_separator(frame, vertical[1]);
 
     render_input(app, frame, vertical[2]);
-    render_status_bar(app, frame, vertical[3]);
+    if oauth_row == 1 {
+        render_oauth_heartbeat(app, frame, vertical[3]);
+    }
+    render_status_bar(app, frame, vertical[4]);
 
     // Autocomplete dropdown (renders above the input line)
     if let Some(ref ac) = app.autocomplete {
@@ -82,31 +96,32 @@ pub fn render(app: &mut App, frame: &mut Frame) {
 fn render_sidebar_tab(frame: &mut Frame, area: ratatui::layout::Rect) {
     let block = Block::default()
         .borders(Borders::RIGHT)
-        .border_style(Style::default().fg(Color::DarkGray));
+        .border_style(Style::default().fg(theme::BORDER_INACTIVE));
     let inner = block.inner(area);
     frame.render_widget(block, area);
 
     let mid = inner.height / 2;
-    let style = Style::default()
-        .fg(Color::DarkGray)
-        .bg(Color::Rgb(25, 25, 30));
+    let bg_style = Style::default().bg(theme::SIDEBAR_TAB_BG);
     let mut lines: Vec<Line> = Vec::new();
     for i in 0..inner.height {
         if i == mid {
-            lines.push(Line::from(Span::styled(" ▸", style.fg(Color::Cyan))));
-        } else if i % 2 == 0 {
-            lines.push(Line::from(Span::styled("  ", style)));
+            lines.push(Line::from(Span::styled(
+                " ▸",
+                Style::default()
+                    .fg(theme::BORDER_ACTIVE)
+                    .bg(theme::SIDEBAR_TAB_BG),
+            )));
         } else {
-            lines.push(Line::from(Span::styled(" ·", style)));
+            lines.push(Line::from(Span::styled("  ", bg_style)));
         }
     }
-    let widget = Paragraph::new(lines).style(style);
+    let widget = Paragraph::new(lines).style(bg_style);
     frame.render_widget(widget, inner);
 }
 
 fn render_status_bar(app: &App, frame: &mut Frame, area: ratatui::layout::Rect) {
-    let bar_style = Style::default().fg(Color::White).bg(crate::theme::STATUS_BAR_BG);
-    let dim = Style::default().fg(Color::DarkGray).bg(crate::theme::STATUS_BAR_BG);
+    let bar_style = Style::default().fg(theme::STATUS_BAR_FG).bg(theme::STATUS_BAR_BG);
+    let dim = Style::default().fg(theme::OVERLAY0).bg(theme::STATUS_BAR_BG);
     let mut spans = Vec::new();
 
     // Model name
@@ -139,10 +154,10 @@ fn render_status_bar(app: &App, frame: &mut Frame, area: ratatui::layout::Rect) 
     if app.permission_mode != "default" {
         spans.push(Span::styled(" │ ", dim));
         let (label, color) = match app.permission_mode.as_str() {
-            "bypass" => ("BYPASS", Color::Red),
-            "accept_edits" => ("ACCEPT EDITS", Color::Yellow),
-            "plan" => ("PLAN", Color::Cyan),
-            _ => ("DEFAULT", Color::White),
+            "bypass" => ("BYPASS", theme::ERROR),
+            "accept_edits" => ("ACCEPT EDITS", theme::YELLOW),
+            "plan" => ("PLAN", theme::SAPPHIRE),
+            _ => ("DEFAULT", theme::TEXT),
         };
         spans.push(Span::styled(
             label.to_string(),
@@ -167,7 +182,7 @@ fn render_status_bar(app: &App, frame: &mut Frame, area: ratatui::layout::Rect) 
         };
         spans.push(Span::styled(
             state_text,
-            Style::default().fg(Color::Yellow).bg(crate::theme::STATUS_BAR_BG),
+            Style::default().fg(theme::GENERATING).bg(theme::STATUS_BAR_BG),
         ));
         // Elapsed time
         if let Some(started) = app.generation_started {
@@ -175,14 +190,14 @@ fn render_status_bar(app: &App, frame: &mut Frame, area: ratatui::layout::Rect) 
             if elapsed >= 2 {
                 spans.push(Span::styled(
                     format!(" {elapsed}s"),
-                    Style::default().fg(Color::DarkGray).bg(crate::theme::STATUS_BAR_BG),
+                    Style::default().fg(theme::OVERLAY0).bg(theme::STATUS_BAR_BG),
                 ));
             }
         }
     } else {
         spans.push(Span::styled(
             " Ready",
-            Style::default().fg(Color::Green).bg(crate::theme::STATUS_BAR_BG),
+            Style::default().fg(theme::SUCCESS).bg(theme::STATUS_BAR_BG),
         ));
     }
 
@@ -204,9 +219,9 @@ fn format_tokens(n: u64) -> String {
 
 fn render_sidebar(app: &App, frame: &mut Frame, area: ratatui::layout::Rect) {
     let border_color = if app.focus == Focus::Sidebar {
-        Color::Cyan
+        theme::BORDER_ACTIVE
     } else {
-        Color::DarkGray
+        theme::BORDER_INACTIVE
     };
 
     // Split sidebar into workstreams (top) and sessions (bottom)
@@ -279,6 +294,14 @@ fn render_sidebar(app: &App, frame: &mut Frame, area: ratatui::layout::Rect) {
 }
 
 fn render_chat(app: &mut App, frame: &mut Frame, area: ratatui::layout::Rect) {
+    // Idle hero: empty chat, no streaming, not generating. Render a
+    // centered subtle wordmark + key-binding hints so first-launch
+    // doesn't read as a blank terminal.
+    if app.messages.is_empty() && !app.is_generating && app.streaming_text.is_empty() {
+        render_idle_hero(frame, area);
+        return;
+    }
+
     let mut lines: Vec<Line> = Vec::new();
     let num_messages = app.messages.len();
 
@@ -316,7 +339,7 @@ fn render_chat(app: &mut App, frame: &mut Frame, area: ratatui::layout::Rect) {
                     Span::styled(
                         "❯ ",
                         Style::default()
-                            .fg(Color::Green)
+                            .fg(theme::USER)
                             .add_modifier(Modifier::BOLD),
                     ),
                     Span::raw(&msg.content),
@@ -328,97 +351,150 @@ fn render_chat(app: &mut App, frame: &mut Frame, area: ratatui::layout::Rect) {
                     continue;
                 }
                 lines.push(Line::from(""));
-                let content_width = chat_width.saturating_sub(2);
+                let gutter_style = Style::default().fg(theme::CHROME);
+                let content_width = chat_width.saturating_sub(4);
                 for md_line in msg.rendered_lines(content_width) {
-                    let mut indented = vec![Span::raw("  ")];
-                    indented.extend(md_line.spans.clone());
-                    lines.push(Line::from(indented));
+                    let mut prefixed = vec![Span::styled("│ ", gutter_style)];
+                    prefixed.extend(md_line.spans.clone());
+                    lines.push(Line::from(prefixed));
                 }
             }
             ChatRole::ToolCall { name } => {
-                let chrome = Style::default().fg(Color::Rgb(100, 100, 115));
+                let chrome = Style::default().fg(theme::CHROME);
 
                 let (next_is_result, next_is_error) = tool_call_flags[msg_idx];
                 let is_running = !next_is_result && app.is_generating;
 
-                let icon = if is_running {
-                    let frame_char = SPINNER_FRAMES[app.spinner_frame as usize % SPINNER_FRAMES.len()];
-                    Span::styled(
-                        format!("{frame_char} "),
-                        Style::default().fg(Color::Yellow),
-                    )
-                } else if next_is_error {
-                    Span::styled("✗ ", Style::default().fg(Color::Red))
-                } else if next_is_result {
-                    Span::styled("✓ ", Style::default().fg(Color::Green))
+                // Collapsed by default; expand when the user has toggled
+                // either this call or its paired result, or when the
+                // paired result is an error (errors always show body).
+                let pair_toggled = app.expanded_tool_results.contains(&msg_idx)
+                    || (next_is_result
+                        && app.expanded_tool_results.contains(&(msg_idx + 1)));
+                let expand_card = next_is_error || pair_toggled;
+
+                let summary_raw = compact_tool_summary(&msg.content);
+
+                if !expand_card {
+                    // Single-line collapsed render
+                    let mut spans: Vec<Span<'static>> = Vec::with_capacity(8);
+                    spans.push(Span::styled("  ⏵ ", chrome));
+                    spans.push(Span::styled(
+                        name.clone(),
+                        Style::default()
+                            .fg(theme::TOOL_NAME)
+                            .add_modifier(Modifier::BOLD),
+                    ));
+                    if !summary_raw.is_empty() {
+                        let trimmed = crate::width::truncate_display(&summary_raw, 60);
+                        spans.push(Span::styled(" · ", chrome));
+                        spans.push(Span::styled(
+                            trimmed,
+                            Style::default().fg(theme::TOOL_SUMMARY),
+                        ));
+                    }
+                    if is_running {
+                        let elapsed = msg.created_at.elapsed().as_secs_f64();
+                        let frame_char =
+                            SPINNER_FRAMES[app.spinner_frame as usize % SPINNER_FRAMES.len()];
+                        spans.push(Span::styled(" · ", chrome));
+                        spans.push(Span::styled(
+                            format!("running {elapsed:.1}s "),
+                            Style::default().fg(theme::OVERLAY0),
+                        ));
+                        spans.push(Span::styled(
+                            frame_char.to_string(),
+                            Style::default().fg(theme::GENERATING),
+                        ));
+                    } else if next_is_result {
+                        let elapsed = msg.created_at.elapsed().as_secs_f64();
+                        spans.push(Span::styled(" · ", chrome));
+                        spans.push(Span::styled(
+                            format!("{elapsed:.1}s"),
+                            Style::default().fg(theme::OVERLAY0),
+                        ));
+                    }
+                    lines.push(Line::from(spans));
                 } else {
-                    Span::styled("⏳ ", Style::default().fg(Color::Yellow))
-                };
+                    let icon = if is_running {
+                        let frame_char =
+                            SPINNER_FRAMES[app.spinner_frame as usize % SPINNER_FRAMES.len()];
+                        Span::styled(
+                            format!("{frame_char} "),
+                            Style::default().fg(theme::GENERATING),
+                        )
+                    } else if next_is_error {
+                        Span::styled("✗ ", Style::default().fg(theme::ERROR))
+                    } else if next_is_result {
+                        Span::styled("✓ ", Style::default().fg(theme::SUCCESS))
+                    } else {
+                        Span::styled("⏳ ", Style::default().fg(theme::GENERATING))
+                    };
 
-                let tool_name = Span::styled(
-                    name.clone(),
-                    Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
-                );
-                let summary = compact_tool_summary(&msg.content);
-                let summary_span = if summary.is_empty() {
-                    Span::raw("")
-                } else {
-                    Span::styled(format!("  {summary}"), Style::default().fg(Color::Rgb(140, 140, 155)))
-                };
+                    let tool_name = Span::styled(
+                        name.clone(),
+                        Style::default()
+                            .fg(theme::TOOL_NAME)
+                            .add_modifier(Modifier::BOLD),
+                    );
+                    let summary_span = if summary_raw.is_empty() {
+                        Span::raw("")
+                    } else {
+                        Span::styled(
+                            format!("  {summary_raw}"),
+                            Style::default().fg(theme::TOOL_SUMMARY),
+                        )
+                    };
 
-                let elapsed_span = if is_running {
-                    let elapsed = msg.created_at.elapsed().as_secs_f64();
-                    Span::styled(
-                        format!("  {elapsed:.1}s"),
-                        Style::default().fg(Color::DarkGray),
-                    )
-                } else {
-                    Span::raw("")
-                };
+                    let elapsed_span = if is_running {
+                        let elapsed = msg.created_at.elapsed().as_secs_f64();
+                        Span::styled(
+                            format!("  {elapsed:.1}s"),
+                            Style::default().fg(theme::OVERLAY0),
+                        )
+                    } else {
+                        Span::raw("")
+                    };
 
-                // Build the inline header Spans first, then derive the
-                // fill dash count from their **actual display width** —
-                // not byte length. Previously this used `header_text.len()`
-                // (bytes), which drifted from the bottom border whenever
-                // the tool name or summary contained non-ASCII chars.
-                use unicode_width::UnicodeWidthStr;
-                // Box's interior width target (visible columns from `┌` to `┐`).
-                let box_width = chat_width.saturating_sub(2).min(82);
-                let header_spans = [&icon, &tool_name, &summary_span, &elapsed_span];
-                let header_display_width: usize = header_spans
-                    .iter()
-                    .map(|s| UnicodeWidthStr::width(s.content.as_ref()))
-                    .sum();
-                // Fixed chrome chars at top: `┌ ` (2) + ` ` before fill + `┐` (1) = 4.
-                let fill_len = box_width.saturating_sub(header_display_width + 4);
-                let fill = "─".repeat(fill_len);
+                    use unicode_width::UnicodeWidthStr;
+                    let box_width = chat_width.saturating_sub(2).min(82);
+                    let header_spans = [&icon, &tool_name, &summary_span, &elapsed_span];
+                    let header_display_width: usize = header_spans
+                        .iter()
+                        .map(|s| UnicodeWidthStr::width(s.content.as_ref()))
+                        .sum();
+                    let fill_len = box_width.saturating_sub(header_display_width + 4);
+                    let fill = "─".repeat(fill_len);
 
-                lines.push(Line::from(vec![
-                    Span::styled("  ┌ ", chrome),
-                    icon,
-                    tool_name,
-                    summary_span,
-                    elapsed_span,
-                    Span::styled(format!(" {fill}┐"), chrome),
-                ]));
+                    lines.push(Line::from(vec![
+                        Span::styled("  ┌ ", chrome),
+                        icon,
+                        tool_name,
+                        summary_span,
+                        elapsed_span,
+                        Span::styled(format!(" {fill}┐"), chrome),
+                    ]));
+                }
             }
             ChatRole::ToolResult { name, is_error } => {
-                let chrome = Style::default().fg(Color::Rgb(100, 100, 115));
-                let is_expanded = app.expanded_tool_results.contains(&msg_idx);
+                let chrome = Style::default().fg(theme::CHROME);
+                let is_expanded = app.expanded_tool_results.contains(&msg_idx)
+                    || (msg_idx > 0
+                        && app.expanded_tool_results.contains(&(msg_idx - 1)));
 
                 if *is_error {
                     lines.push(Line::from(vec![
                         Span::styled("  │ ", chrome),
-                        Span::styled("✗ ", Style::default().fg(Color::Red)),
+                        Span::styled("✗ ", Style::default().fg(theme::ERROR)),
                         Span::styled(
                             format!("{name} error"),
-                            Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+                            Style::default().fg(theme::ERROR).add_modifier(Modifier::BOLD),
                         ),
                     ]));
                     for err_line in msg.content.lines().take(10) {
                         lines.push(Line::from(vec![
                             Span::styled("  │  ", chrome),
-                            Span::styled(err_line.to_string(), Style::default().fg(Color::Red)),
+                            Span::styled(err_line.to_string(), Style::default().fg(theme::ERROR)),
                         ]));
                     }
                     // Match the top border's box_width so top and bottom
@@ -433,10 +509,10 @@ fn render_chat(app: &mut App, frame: &mut Frame, area: ratatui::layout::Rect) {
                 } else if is_expanded {
                     let toggle_hint = Span::styled(
                         " (Ctrl+E to collapse)",
-                        Style::default().fg(Color::Rgb(100, 100, 115)).add_modifier(Modifier::ITALIC),
+                        Style::default().fg(theme::CHROME).add_modifier(Modifier::ITALIC),
                     );
-                    let result_text = Style::default().fg(Color::Rgb(150, 150, 165));
-                    let label_style = Style::default().fg(Color::Rgb(130, 130, 145));
+                    let result_text = Style::default().fg(theme::RESULT_TEXT);
+                    let label_style = Style::default().fg(theme::RESULT_LABEL);
                     lines.push(Line::from(vec![
                         Span::styled("  │ ", chrome),
                         Span::styled("▾ ", label_style),
@@ -466,8 +542,8 @@ fn render_chat(app: &mut App, frame: &mut Frame, area: ratatui::layout::Rect) {
                     // gutter (5 chars) and a small safety margin, so the
                     // preview never overflows into wrap territory.
                     let line_budget = chat_width.saturating_sub(7).max(20);
-                    let result_text = Style::default().fg(Color::Rgb(150, 150, 165));
-                    let label_style = Style::default().fg(Color::Rgb(130, 130, 145));
+                    let result_text = Style::default().fg(theme::RESULT_TEXT);
+                    let label_style = Style::default().fg(theme::RESULT_LABEL);
 
                     // Two ways the preview can be incomplete: too many
                     // lines, OR any line is wider than `line_budget`
@@ -475,7 +551,7 @@ fn render_chat(app: &mut App, frame: &mut Frame, area: ratatui::layout::Rect) {
                     let any_line_too_wide = msg
                         .content
                         .lines()
-                        .any(|l| l.chars().count() > line_budget);
+                        .any(|l| crate::width::display_width(l) > line_budget);
                     let truncated_lines = total_lines > max_preview_lines;
                     let truncated = truncated_lines || any_line_too_wide;
 
@@ -488,71 +564,51 @@ fn render_chat(app: &mut App, frame: &mut Frame, area: ratatui::layout::Rect) {
                         Span::styled(
                             label,
                             Style::default()
-                                .fg(Color::Rgb(100, 100, 115))
+                                .fg(theme::CHROME)
                                 .add_modifier(Modifier::ITALIC),
                         )
                     } else {
                         Span::raw("")
                     };
                     lines.push(Line::from(vec![
-                        Span::styled("  │ ", chrome),
-                        Span::styled("▸ ", label_style),
+                        Span::styled("  ▸ ", label_style),
                         Span::styled(format!("{name} result"), label_style),
                         toggle_hint,
                     ]));
                     for result_line in msg.content.lines().take(max_preview_lines) {
-                        let count = result_line.chars().count();
-                        let display = if count > line_budget {
-                            let head: String = result_line
-                                .chars()
-                                .take(line_budget.saturating_sub(1))
-                                .collect();
-                            format!("{head}…")
-                        } else {
-                            result_line.to_string()
-                        };
+                        let display = crate::width::truncate_display(result_line, line_budget);
                         lines.push(Line::from(vec![
-                            Span::styled("  │  ", chrome),
+                            Span::raw("    "),
                             Span::styled(display, result_text),
                         ]));
                     }
                     if truncated_lines {
                         lines.push(Line::from(vec![
-                            Span::styled("  │  ", chrome),
+                            Span::raw("    "),
                             Span::styled(
                                 format!(
                                     "… {remaining} more",
                                     remaining = total_lines - max_preview_lines
                                 ),
                                 Style::default()
-                                    .fg(Color::Rgb(120, 120, 135))
+                                    .fg(theme::RESULT_HINT)
                                     .add_modifier(Modifier::ITALIC),
                             ),
                         ]));
                     }
-                    // Match the top border's box_width so top and bottom
-                    // align even with unicode tool names. `└` + N dashes +
-                    // `┘` consumes 2 corner chars, so dashes = box_width - 2.
-                    let box_width = chat_width.saturating_sub(2).min(82);
-                    let bottom_len = box_width.saturating_sub(2);
-                    lines.push(Line::from(Span::styled(
-                        format!("  └{}┘", "─".repeat(bottom_len)),
-                        chrome,
-                    )));
                 }
             }
             ChatRole::System => {
+                let gutter_style = Style::default().fg(theme::SYSTEM);
                 lines.push(Line::from(Span::styled(
-                    "system:",
-                    Style::default()
-                        .fg(Color::Magenta)
-                        .add_modifier(Modifier::ITALIC),
+                    "│ system:",
+                    gutter_style.add_modifier(Modifier::ITALIC),
                 )));
-                let content_width = chat_width.saturating_sub(2);
+                let content_width = chat_width.saturating_sub(4);
                 for md_line in msg.rendered_lines(content_width) {
-                    let mut indented = vec![Span::raw("  ")];
-                    indented.extend(md_line.spans.clone());
-                    lines.push(Line::from(indented));
+                    let mut prefixed = vec![Span::styled("│ ", gutter_style)];
+                    prefixed.extend(md_line.spans.clone());
+                    lines.push(Line::from(prefixed));
                 }
             }
         }
@@ -562,9 +618,9 @@ fn render_chat(app: &mut App, frame: &mut Frame, area: ratatui::layout::Rect) {
     if !app.streaming_text.is_empty() {
         lines.push(Line::from(""));
         lines.push(Line::from(vec![
-            Span::raw("  "),
+            Span::styled("│ ", Style::default().fg(theme::CHROME)),
             Span::raw(app.streaming_text.clone()),
-            Span::styled("█", Style::default().fg(Color::Blue)),
+            Span::styled("▌", Style::default().fg(theme::BORDER_ACTIVE)),
         ]));
     } else if app.is_generating {
         // Waiting for first token — show thinking indicator with elapsed time
@@ -575,11 +631,11 @@ fn render_chat(app: &mut App, frame: &mut Frame, area: ratatui::layout::Rect) {
         lines.push(Line::from(vec![
             Span::styled(
                 format!("{frame_char} "),
-                Style::default().fg(Color::Blue),
+                Style::default().fg(theme::BLUE),
             ),
             Span::styled(
                 format!("thinking...{elapsed}"),
-                Style::default().fg(Color::DarkGray).add_modifier(Modifier::ITALIC),
+                Style::default().fg(theme::OVERLAY0).add_modifier(Modifier::ITALIC),
             ),
         ]));
     } else if last_is_completed_turn {
@@ -591,7 +647,7 @@ fn render_chat(app: &mut App, frame: &mut Frame, area: ratatui::layout::Rect) {
         lines.push(Line::from(""));
         lines.push(Line::from(Span::styled(
             format!("  {}", "─".repeat(rule_width)),
-            Style::default().fg(Color::DarkGray),
+            Style::default().fg(theme::SEPARATOR),
         )));
     }
 
@@ -625,56 +681,70 @@ fn render_chat(app: &mut App, frame: &mut Frame, area: ratatui::layout::Rect) {
 
 fn render_separator(frame: &mut Frame, area: ratatui::layout::Rect) {
     let line = "─".repeat(area.width as usize);
-    let sep = Paragraph::new(line).style(Style::default().fg(Color::DarkGray));
+    let sep = Paragraph::new(line).style(Style::default().fg(theme::SEPARATOR));
     frame.render_widget(sep, area);
 }
 
 fn render_input(app: &App, frame: &mut Frame, area: ratatui::layout::Rect) {
     let prompt = "> ";
     let prompt_style = Style::default()
-        .fg(Color::Green)
+        .fg(theme::INPUT_PROMPT)
         .add_modifier(Modifier::BOLD);
 
     if app.is_generating {
         let line = Line::from(vec![
-            Span::styled(prompt, Style::default().fg(Color::DarkGray)),
-            Span::styled("Generating...", Style::default().fg(Color::DarkGray)),
+            Span::styled(prompt, Style::default().fg(theme::PLACEHOLDER)),
+            Span::styled("Generating...", Style::default().fg(theme::PLACEHOLDER)),
         ]);
         frame.render_widget(Paragraph::new(line), area);
     } else if app.input_buffer.is_empty() {
         let line = Line::from(vec![
             Span::styled(prompt, prompt_style),
-            Span::styled("Type your message...", Style::default().fg(Color::DarkGray)),
+            Span::styled("Type your message...", Style::default().fg(theme::PLACEHOLDER)),
         ]);
         frame.render_widget(Paragraph::new(line), area);
     } else {
-        // Horizontal scroll: keep cursor visible within the available width
+        // Horizontal scroll: keep the cursor (measured in display cells)
+        // visible within the available width.
         let prompt_len = prompt.len();
         let available = (area.width as usize).saturating_sub(prompt_len);
-        let cursor = app.cursor_pos;
         let buf = &app.input_buffer;
+        let cursor_byte = app.cursor_pos.min(buf.len());
+        let cursor_cells = crate::width::display_width(&buf[..cursor_byte]);
 
-        // Compute the visible window start so the cursor is always on screen
-        let scroll_offset = if cursor >= available {
-            cursor - available + 1
-        } else {
-            0
-        };
-        let visible_end = (scroll_offset + available).min(buf.len());
-        let visible = &buf[scroll_offset..visible_end];
+        // Walk forward from the start until we drop enough leading cells
+        // that the cursor lands within the visible window.
+        let mut scroll_byte = 0usize;
+        let mut scroll_cells = 0usize;
+        if cursor_cells >= available {
+            let target_drop = cursor_cells - available + 1;
+            let mut acc = 0usize;
+            for (idx, ch) in buf.char_indices() {
+                if acc >= target_drop {
+                    scroll_byte = idx;
+                    scroll_cells = acc;
+                    break;
+                }
+                acc += crate::width::display_width(&ch.to_string());
+            }
+        }
 
+        let visible = &buf[scroll_byte..];
         let line = Line::from(vec![Span::styled(prompt, prompt_style), Span::raw(visible)]);
         frame.render_widget(Paragraph::new(line), area);
 
         if app.focus == Focus::Main {
-            let cursor_x = area.x + prompt_len as u16 + (cursor - scroll_offset) as u16;
+            let cursor_x =
+                area.x + prompt_len as u16 + (cursor_cells - scroll_cells) as u16;
             frame.set_cursor_position((cursor_x, area.y));
         }
         return;
     }
 
     if app.focus == Focus::Main && !app.is_generating {
-        let x = area.x + prompt.len() as u16 + app.cursor_pos as u16;
+        let cursor_byte = app.cursor_pos.min(app.input_buffer.len());
+        let cursor_cells = crate::width::display_width(&app.input_buffer[..cursor_byte]);
+        let x = area.x + prompt.len() as u16 + cursor_cells as u16;
         let y = area.y;
         frame.set_cursor_position((x, y));
     }
@@ -714,12 +784,12 @@ fn render_autocomplete(
             let prefix = if is_selected { "▸ " } else { "  " };
             let name_style = if is_selected {
                 Style::default()
-                    .fg(Color::Cyan)
+                    .fg(theme::BORDER_ACTIVE)
                     .add_modifier(Modifier::BOLD)
             } else {
-                Style::default().fg(Color::White)
+                Style::default().fg(theme::TEXT)
             };
-            let desc_style = Style::default().fg(Color::DarkGray);
+            let desc_style = Style::default().fg(theme::OVERLAY1);
 
             Line::from(vec![
                 Span::raw(prefix),
@@ -734,23 +804,77 @@ fn render_autocomplete(
 
     let block = Block::default()
         .borders(Borders::ALL)
-        .border_style(Style::default().fg(Color::DarkGray))
-        .style(Style::default().bg(Color::Rgb(30, 30, 35)));
+        .border_style(Style::default().fg(theme::BORDER_INACTIVE))
+        .style(Style::default().bg(theme::SURFACE0));
 
     let paragraph = Paragraph::new(items).block(block);
     frame.render_widget(paragraph, dropdown_area);
 }
 
-/// Truncate a string to fit within a display width, adding "…" if needed.
-fn truncate_to(s: &str, max_chars: usize) -> String {
-    if s.chars().count() <= max_chars {
-        s.to_string()
-    } else if max_chars > 1 {
-        let truncated: String = s.chars().take(max_chars - 1).collect();
-        format!("{truncated}…")
+fn render_oauth_heartbeat(app: &App, frame: &mut Frame, area: ratatui::layout::Rect) {
+    let Some((svc, started)) = &app.oauth_in_flight else {
+        return;
+    };
+    let elapsed = started.elapsed().as_secs();
+    // Pulse the bullet between yellow and overlay every other second
+    // using the existing spinner_frame so no new tick state is needed.
+    let pulse_on = (app.spinner_frame / 5).is_multiple_of(2);
+    let bullet_color = if pulse_on {
+        theme::GENERATING
     } else {
-        String::new()
+        theme::OVERLAY0
+    };
+    let dim = Style::default().fg(theme::OVERLAY1);
+    let line = Line::from(vec![
+        Span::raw(" "),
+        Span::styled("•", Style::default().fg(bullet_color)),
+        Span::styled(
+            format!(" waiting for {svc} OAuth in browser… {elapsed}s · Esc to cancel"),
+            dim,
+        ),
+    ]);
+    frame.render_widget(Paragraph::new(line), area);
+}
+
+fn render_idle_hero(frame: &mut Frame, area: ratatui::layout::Rect) {
+    let chrome = Style::default().fg(theme::CHROME);
+    let dim = Style::default().fg(theme::SUBTEXT0);
+    let hint = Style::default().fg(theme::OVERLAY1);
+
+    let hero_lines: Vec<Line> = vec![
+        Line::from(Span::styled("╭─────────────╮", chrome)),
+        Line::from(vec![
+            Span::styled("│    ", chrome),
+            Span::styled("arawn", dim.add_modifier(Modifier::BOLD)),
+            Span::styled("    │", chrome),
+        ]),
+        Line::from(Span::styled("╰─────────────╯", chrome)),
+        Line::from(""),
+        Line::from(Span::styled(
+            "Type / for commands · Tab to toggle sidebar",
+            hint,
+        )),
+        Line::from(Span::styled(
+            "/connect <service> · ↑ recall",
+            hint,
+        )),
+    ];
+
+    let hero_height = hero_lines.len() as u16;
+    let hero_width = 44u16;
+    if area.width < hero_width || area.height < hero_height {
+        return;
     }
+    let x = area.x + (area.width.saturating_sub(hero_width)) / 2;
+    let y = area.y + (area.height.saturating_sub(hero_height)) / 2;
+    let rect = ratatui::layout::Rect::new(x, y, hero_width, hero_height);
+    let para = Paragraph::new(hero_lines).alignment(ratatui::layout::Alignment::Center);
+    frame.render_widget(para, rect);
+}
+
+/// Truncate a string to fit within a display width, adding "…" if needed.
+fn truncate_to(s: &str, max_cells: usize) -> String {
+    crate::width::truncate_display(s, max_cells)
 }
 
 /// Extract a compact summary from tool call content for inline display.
@@ -762,16 +886,9 @@ fn compact_tool_summary(content: &str) -> String {
 }
 
 fn truncate_for_display(s: &str, max: usize) -> String {
-    // Use char count, not byte count — a previous implementation sliced
-    // `&s[..max]` which panics when `max` lands inside a multi-byte
-    // character (any emoji or non-ASCII char in a tool input). Pattern
-    // mirrors `truncate_to` in the same file.
-    if s.chars().count() <= max {
-        s.to_string()
-    } else {
-        let truncated: String = s.chars().take(max).collect();
-        format!("{truncated}...")
-    }
+    // Display-cell width — covers byte-boundary panic, char-count drift
+    // for CJK, and zero-width / 2-width edge cases in one shot.
+    crate::width::truncate_display(s, max)
 }
 
 #[cfg(test)]
@@ -783,13 +900,15 @@ mod tests {
 
     #[test]
     fn truncate_for_display_handles_utf8_at_boundary() {
-        // 🔥 is 4 bytes — a byte-based slice at index 1, 2, or 3 panics.
-        // Char-based slice at any boundary just stops cleanly.
+        // 🔥 is 4 bytes wide and 2 display cells. Byte-based slicing
+        // panicked at sub-char indices; char-count over-counted because
+        // emoji are 2 cells. Display-width is the correct measure.
         let s = "🔥🔥🔥hello";
-        let _ = truncate_for_display(s, 1); // would panic with byte slicing
+        let _ = truncate_for_display(s, 1);
         let _ = truncate_for_display(s, 2);
-        let out = truncate_for_display(s, 3);
-        assert_eq!(out, "🔥🔥🔥...");
+        // Budget 7 cells: 3×🔥 (6 cells) + ellipsis (1) = 7. Fits exactly.
+        let out = truncate_for_display(s, 7);
+        assert_eq!(out, "🔥🔥🔥…");
     }
 
     #[test]
@@ -896,7 +1015,7 @@ mod tests {
             })
             .collect();
         assert!(full_buffer.contains("partial response"));
-        assert!(full_buffer.contains("█")); // cursor indicator
+        assert!(full_buffer.contains("▌")); // thin cursor indicator (Phase 5)
     }
 
     #[test]
@@ -1033,8 +1152,8 @@ mod tests {
             "chat should show tool name 'shell', got:\n{chat}"
         );
         assert!(
-            chat.contains("✓"),
-            "chat should show ✓ icon for completed tool, got:\n{chat}"
+            chat.contains("⏵"),
+            "chat should show ⏵ marker for collapsed tool call, got:\n{chat}"
         );
     }
 
@@ -1141,8 +1260,8 @@ mod tests {
             "streaming text should be in chat area, got:\n{chat}"
         );
         assert!(
-            chat.contains("█"),
-            "streaming text should show cursor, got:\n{chat}"
+            chat.contains("▌"),
+            "streaming text should show thin cursor, got:\n{chat}"
         );
     }
 

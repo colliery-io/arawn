@@ -98,7 +98,7 @@ fn tokenize(line: &Line<'static>) -> Vec<Tok> {
         for ch in span.content.chars() {
             let ch_is_ws = ch.is_whitespace();
             if !buf.is_empty() && ch_is_ws != buf_is_ws {
-                let width = buf.chars().count();
+                let width = crate::width::display_width(&buf);
                 toks.push(Tok {
                     text: std::mem::take(&mut buf),
                     style,
@@ -112,7 +112,7 @@ fn tokenize(line: &Line<'static>) -> Vec<Tok> {
             buf.push(ch);
         }
         if !buf.is_empty() {
-            let width = buf.chars().count();
+            let width = crate::width::display_width(&buf);
             toks.push(Tok {
                 text: buf,
                 style,

@@ -3,31 +3,31 @@ source: crates/arawn-tui/src/snapshot_tests.rs
 expression: snap
 ---
   │❯ List the crates
- ·│
-  │  Here are the crates in this█
- ·│
   │
- ·│
+  ││ Here are the crates in this▌
   │
- ·│
   │
- ·│
   │
- ·│
+  │
+  │
+  │
+  │
+  │
+  │
   │
  ▸│
   │
- ·│
   │
- ·│
   │
- ·│
   │
- ·│
   │
- ·│
   │
- ·│
+  │
+  │
+  │
+  │
+  │
+  │
   │
 ────────────────────────────────────────────────────────────────────────────────────────────────────
 > Generating...

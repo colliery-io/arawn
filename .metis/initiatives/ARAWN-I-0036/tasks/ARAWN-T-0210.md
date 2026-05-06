@@ -4,14 +4,14 @@ level: task
 title: "Phase 3 — Hierarchy fixes (monochrome headings, inline code, sidebar tab, assistant gutter)"
 short_code: "ARAWN-T-0210"
 created_at: 2026-05-06T11:21:57.519168+00:00
-updated_at: 2026-05-06T11:21:57.519168+00:00
+updated_at: 2026-05-06T12:04:49.253099+00:00
 parent: ARAWN-I-0036
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -74,6 +74,10 @@ This is I-0036 Phase 3. Depends on T-0208 (palette wiring) for the new theme con
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
@@ -187,4 +191,16 @@ This is I-0036 Phase 3. Depends on T-0208 (palette wiring) for the new theme con
 
 ## Status Updates **[REQUIRED]**
 
-*To be added during implementation*
+### 2026-05-06 — Implementation complete
+
+- **Headings — pure monochrome ladder**: in `theme.rs`, `HEADING_1=TEXT`, `HEADING_2=SUBTEXT1`, `HEADING_3=SUBTEXT0`, `HEADING_4=OVERLAY2`. In `markdown.rs`, `heading_style` keeps H1–H3 bold and switches H4 to italic for an extra hierarchy beat. No mauve in any heading.
+- **Inline code — drop the backticks**: `inline_code` now styles the bare code text with peach-on-surface0; the surrounding `` ` `` characters are gone.
+- **Sidebar tab strip — kill the stipple**: `render_sidebar_tab` no longer alternates `· ` / `  ` rows. Single right-border `│` (`BORDER_INACTIVE`), bg-flooded sidebar tab column, and a single `▸` accent indicator (`BORDER_ACTIVE` mauve) at vertical mid-point.
+- **Assistant gutter**: assistant messages render with a thin left rule `│` in `theme::CHROME` (= surface1) running each line, content offset 2 chars right.
+- **System gutter**: system messages render with a `│ ` left rule in `theme::SYSTEM` (mauve) so an internal note is unmistakably distinct from agent prose.
+- **Streaming text**: in-flight assistant prose uses the same `│ ` chrome gutter so the structural weight is consistent before and after the message lands.
+- New snapshot test `snapshot_speaker_gutters` captures the four speaker types in one round and is the regression guard for this phase.
+- All affected snapshots re-baselined via `cargo insta accept`. Diffs are layout/style only — no content drift.
+- `angreal check workspace` and `angreal check clippy` clean. Full unit suite green.
+
+Phase 3 complete.

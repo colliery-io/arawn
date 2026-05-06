@@ -4,14 +4,14 @@ level: task
 title: "Phase 1 — Catppuccin Mocha palette + theme.rs wiring"
 short_code: "ARAWN-T-0208"
 created_at: 2026-05-06T11:21:43.322005+00:00
-updated_at: 2026-05-06T11:21:43.322005+00:00
+updated_at: 2026-05-06T11:52:32.048058+00:00
 parent: ARAWN-I-0036
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -68,6 +68,10 @@ Wire `theme.rs` into actual call sites and replace the ad-hoc color landscape wi
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
@@ -184,4 +188,17 @@ Wire `theme.rs` into actual call sites and replace the ad-hoc color landscape wi
 
 ## Status Updates **[REQUIRED]**
 
-*To be added during implementation*
+### 2026-05-06 — Implementation complete
+
+- Rewrote `crates/arawn-tui/src/theme.rs` with full Catppuccin Mocha palette (12-step gray scale + accents) and a semantic alias layer on top. Mauve is reserved for `BORDER_ACTIVE` only.
+- Replaced every `Color::*` literal in `render.rs`, `markdown.rs`, and `modal.rs` with `theme::*` references. Audit `grep -n "Color::" crates/arawn-tui/src/{render,markdown,modal}.rs` returns only:
+  - `markdown.rs:529` — runtime conversion of syntect's per-token foreground (`Color::Rgb(style.foreground.r, ...)`) — not a literal.
+  - `modal.rs` test code — `Color::Yellow` passed as a stub `border_color` arg in test fixtures (production paths are clean).
+- Heading colors mapped through theme: `HEADING_1=SAPPHIRE`, `HEADING_2=BLUE`, `HEADING_3=PINK` (avoiding mauve), `HEADING_4=TEXT`. Pure-monochrome heading hierarchy is deferred to T-0210 per scope.
+- Code block `bg` (syntect-highlighted lines) now uses `theme::CODE_BG` (= MANTLE), matching arawn's chrome; syntect theme swap left for a follow-up per task guidance.
+- Updated markdown.rs unit tests to assert against the new theme constants.
+- `angreal check workspace` and `angreal check clippy` clean.
+- `cargo insta accept` re-baselined the 5 styled snapshots (`conversation`, `focus_borders`, `generating_state`, `rich_markdown`, `sidebar_focused`). Diffs are color-only — palette shift to Catppuccin Mocha hex values.
+- Full unit suite: 135 + ancillary suites passing, 0 failures.
+
+Phase 1 complete. Ready to transition to completed and move to T-0209.
