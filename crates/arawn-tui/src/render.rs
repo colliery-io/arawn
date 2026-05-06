@@ -743,10 +743,15 @@ fn compact_tool_summary(content: &str) -> String {
 }
 
 fn truncate_for_display(s: &str, max: usize) -> String {
-    if s.len() <= max {
+    // Use char count, not byte count — a previous implementation sliced
+    // `&s[..max]` which panics when `max` lands inside a multi-byte
+    // character (any emoji or non-ASCII char in a tool input). Pattern
+    // mirrors `truncate_to` in the same file.
+    if s.chars().count() <= max {
         s.to_string()
     } else {
-        format!("{}...", &s[..max])
+        let truncated: String = s.chars().take(max).collect();
+        format!("{truncated}...")
     }
 }
 
@@ -756,6 +761,22 @@ mod tests {
     use crate::app::{App, ChatMessage};
     use ratatui::Terminal;
     use ratatui::backend::TestBackend;
+
+    #[test]
+    fn truncate_for_display_handles_utf8_at_boundary() {
+        // 🔥 is 4 bytes — a byte-based slice at index 1, 2, or 3 panics.
+        // Char-based slice at any boundary just stops cleanly.
+        let s = "🔥🔥🔥hello";
+        let _ = truncate_for_display(s, 1); // would panic with byte slicing
+        let _ = truncate_for_display(s, 2);
+        let out = truncate_for_display(s, 3);
+        assert_eq!(out, "🔥🔥🔥...");
+    }
+
+    #[test]
+    fn truncate_for_display_passes_through_short_strings() {
+        assert_eq!(truncate_for_display("hi", 10), "hi");
+    }
 
     fn buffer_to_string(terminal: &Terminal<TestBackend>, row: u16) -> String {
         let width = terminal.backend().buffer().area.width;
