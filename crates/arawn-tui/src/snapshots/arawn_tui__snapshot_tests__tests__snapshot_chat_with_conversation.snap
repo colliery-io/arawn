@@ -3,7 +3,7 @@ source: crates/arawn-tui/src/snapshot_tests.rs
 expression: snap
 ---
   │❯ What files are in the project?
- ·│  ┌ ✓ shell  Calling shell... ────────────────────────────────────────────────────────────────┐
+ ·│  ┌ ✓ shell  Calling shell... ─────────────────────────────────────────────────────┐
   │  │ ▸ shell result
  ·│  │  Cargo.toml
   │  │  crates/

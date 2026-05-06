@@ -376,15 +376,22 @@ fn render_chat(app: &mut App, frame: &mut Frame, area: ratatui::layout::Rect) {
                     Span::raw("")
                 };
 
-                // Build header content to measure its width for the fill dashes
-                let header_text = format!(
-                    "┌ {} {} {}",
-                    if is_running { "⠹" } else if next_is_error { "✗" } else if next_is_result { "✓" } else { "⏳" },
-                    name,
-                    &summary.chars().take(40).collect::<String>(),
-                );
-                let fill_len = chat_width.saturating_sub(header_text.len() + 3); // 3 for "  " prefix + "┐"
-                let fill = "─".repeat(fill_len.min(80));
+                // Build the inline header Spans first, then derive the
+                // fill dash count from their **actual display width** —
+                // not byte length. Previously this used `header_text.len()`
+                // (bytes), which drifted from the bottom border whenever
+                // the tool name or summary contained non-ASCII chars.
+                use unicode_width::UnicodeWidthStr;
+                // Box's interior width target (visible columns from `┌` to `┐`).
+                let box_width = chat_width.saturating_sub(2).min(82);
+                let header_spans = [&icon, &tool_name, &summary_span, &elapsed_span];
+                let header_display_width: usize = header_spans
+                    .iter()
+                    .map(|s| UnicodeWidthStr::width(s.content.as_ref()))
+                    .sum();
+                // Fixed chrome chars at top: `┌ ` (2) + ` ` before fill + `┐` (1) = 4.
+                let fill_len = box_width.saturating_sub(header_display_width + 4);
+                let fill = "─".repeat(fill_len);
 
                 lines.push(Line::from(vec![
                     Span::styled("  ┌ ", chrome),
@@ -414,9 +421,13 @@ fn render_chat(app: &mut App, frame: &mut Frame, area: ratatui::layout::Rect) {
                             Span::styled(err_line.to_string(), Style::default().fg(Color::Red)),
                         ]));
                     }
-                    let bottom_len = chat_width.saturating_sub(4);
+                    // Match the top border's box_width so top and bottom
+                    // align even with unicode tool names. `└` + N dashes +
+                    // `┘` consumes 2 corner chars, so dashes = box_width - 2.
+                    let box_width = chat_width.saturating_sub(2).min(82);
+                    let bottom_len = box_width.saturating_sub(2);
                     lines.push(Line::from(Span::styled(
-                        format!("  └{}┘", "─".repeat(bottom_len.min(80))),
+                        format!("  └{}┘", "─".repeat(bottom_len)),
                         chrome,
                     )));
                 } else if is_expanded {
@@ -438,9 +449,13 @@ fn render_chat(app: &mut App, frame: &mut Frame, area: ratatui::layout::Rect) {
                             Span::styled(result_line.to_string(), result_text),
                         ]));
                     }
-                    let bottom_len = chat_width.saturating_sub(4);
+                    // Match the top border's box_width so top and bottom
+                    // align even with unicode tool names. `└` + N dashes +
+                    // `┘` consumes 2 corner chars, so dashes = box_width - 2.
+                    let box_width = chat_width.saturating_sub(2).min(82);
+                    let bottom_len = box_width.saturating_sub(2);
                     lines.push(Line::from(Span::styled(
-                        format!("  └{}┘", "─".repeat(bottom_len.min(80))),
+                        format!("  └{}┘", "─".repeat(bottom_len)),
                         chrome,
                     )));
                 } else {
@@ -515,9 +530,13 @@ fn render_chat(app: &mut App, frame: &mut Frame, area: ratatui::layout::Rect) {
                             ),
                         ]));
                     }
-                    let bottom_len = chat_width.saturating_sub(4);
+                    // Match the top border's box_width so top and bottom
+                    // align even with unicode tool names. `└` + N dashes +
+                    // `┘` consumes 2 corner chars, so dashes = box_width - 2.
+                    let box_width = chat_width.saturating_sub(2).min(82);
+                    let bottom_len = box_width.saturating_sub(2);
                     lines.push(Line::from(Span::styled(
-                        format!("  └{}┘", "─".repeat(bottom_len.min(80))),
+                        format!("  └{}┘", "─".repeat(bottom_len)),
                         chrome,
                     )));
                 }
