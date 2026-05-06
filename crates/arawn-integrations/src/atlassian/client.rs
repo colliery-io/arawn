@@ -14,6 +14,7 @@ use std::sync::Arc;
 
 use arawn_auth::{OAuthClient, Token};
 use chrono::Utc;
+use jira_v3_openapi::apis::configuration::Configuration as JiraConfig;
 use reqwest::{Client, Method, Response};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -39,6 +40,10 @@ impl AtlassianClient {
 
     /// Resolve the target site (defaulting to the first one) and return
     /// the cloud_id-stamped API base for the given product.
+    ///
+    /// **Confluence is on v2 by default** (`/wiki/api/v2`). v1
+    /// (`/wiki/rest/api`) is reachable via [`Self::confluence_v1_get`]
+    /// for the few endpoints (CQL search) that don't have a v2 yet.
     fn product_base(
         &self,
         product: Product,
@@ -46,11 +51,11 @@ impl AtlassianClient {
     ) -> Result<(AtlassianSite, String), IntegrationError> {
         let site = self.integration.select_site(site)?;
         let base = match product {
-            Product::Jira => format!(
-                "https://api.atlassian.com/ex/jira/{}/rest/api/3",
+            Product::Confluence => format!(
+                "https://api.atlassian.com/ex/confluence/{}/wiki/api/v2",
                 site.id
             ),
-            Product::Confluence => format!(
+            Product::ConfluenceV1 => format!(
                 "https://api.atlassian.com/ex/confluence/{}/wiki/rest/api",
                 site.id
             ),
@@ -74,41 +79,19 @@ impl AtlassianClient {
         Ok(new_token.access)
     }
 
-    /// GET a JSON-bodied resource from Jira.
-    pub async fn jira_get<T: DeserializeOwned>(
-        &self,
-        path: &str,
-        site: Option<&str>,
-        query: &[(&str, String)],
-    ) -> Result<T, IntegrationError> {
-        let (_, base) = self.product_base(Product::Jira, site)?;
-        self.send_json(Method::GET, &format!("{base}{path}"), query, None::<&()>)
-            .await
-    }
-
-    /// POST a JSON body to Jira and return the JSON response.
-    pub async fn jira_post<B: Serialize, T: DeserializeOwned>(
-        &self,
-        path: &str,
-        site: Option<&str>,
-        body: &B,
-    ) -> Result<T, IntegrationError> {
-        let (_, base) = self.product_base(Product::Jira, site)?;
-        self.send_json(Method::POST, &format!("{base}{path}"), &[], Some(body))
-            .await
-    }
-
-    /// PUT a JSON body to Jira; returns parsed JSON or unit if the
-    /// endpoint returns 204.
-    pub async fn jira_put<B: Serialize>(
-        &self,
-        path: &str,
-        site: Option<&str>,
-        body: &B,
-    ) -> Result<(), IntegrationError> {
-        let (_, base) = self.product_base(Product::Jira, site)?;
-        self.send_no_body(Method::PUT, &format!("{base}{path}"), &[], Some(body))
-            .await
+    /// Build a `jira_v3_openapi::Configuration` for the selected site,
+    /// pre-populated with a fresh OAuth bearer token and the cloud_id
+    /// gateway base URL. The generated client appends `/rest/api/3/...`
+    /// itself; we only set the host + cloud_id prefix.
+    pub async fn jira_config(&self, site: Option<&str>) -> Result<JiraConfig, IntegrationError> {
+        let site = self.integration.select_site(site)?;
+        let access = self.fresh_access_token().await?;
+        Ok(JiraConfig {
+            base_path: format!("https://api.atlassian.com/ex/jira/{}", site.id),
+            oauth_access_token: Some(access),
+            user_agent: Some("arawn/0.1".to_string()),
+            ..JiraConfig::default()
+        })
     }
 
     /// GET a JSON-bodied resource from Confluence.
@@ -147,6 +130,19 @@ impl AtlassianClient {
             .await
     }
 
+    /// GET against the legacy Confluence v1 API. Use only for endpoints
+    /// that don't have a v2 equivalent yet (notably CQL search).
+    pub async fn confluence_v1_get<T: DeserializeOwned>(
+        &self,
+        path: &str,
+        site: Option<&str>,
+        query: &[(&str, String)],
+    ) -> Result<T, IntegrationError> {
+        let (_, base) = self.product_base(Product::ConfluenceV1, site)?;
+        self.send_json(Method::GET, &format!("{base}{path}"), query, None::<&()>)
+            .await
+    }
+
     async fn send_json<B: Serialize, T: DeserializeOwned>(
         &self,
         method: Method,
@@ -167,24 +163,6 @@ impl AtlassianClient {
         }
         serde_json::from_str(&text)
             .map_err(|e| IntegrationError::Provider(format!("decode body: {e} (raw: {text})")))
-    }
-
-    async fn send_no_body<B: Serialize>(
-        &self,
-        method: Method,
-        url: &str,
-        query: &[(&str, String)],
-        body: Option<&B>,
-    ) -> Result<(), IntegrationError> {
-        let resp = self.send(method, url, query, body).await?;
-        let status = resp.status();
-        if !status.is_success() {
-            let text = resp.text().await.unwrap_or_default();
-            return Err(IntegrationError::Provider(format!(
-                "HTTP {status}: {text}"
-            )));
-        }
-        Ok(())
     }
 
     async fn send<B: Serialize>(
@@ -210,8 +188,11 @@ impl AtlassianClient {
 
 #[derive(Debug, Clone, Copy)]
 enum Product {
-    Jira,
+    /// Confluence v2 — `/wiki/api/v2`. Default for new endpoints.
     Confluence,
+    /// Confluence v1 — `/wiki/rest/api`. Kept only for CQL search,
+    /// the one v1 endpoint with no v2 replacement.
+    ConfluenceV1,
 }
 
 fn is_expired(token: &Token) -> bool {

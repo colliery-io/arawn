@@ -9,6 +9,10 @@ use tracing::{debug, info};
 pub struct LlmConfig {
     pub provider: String,
     pub model: String,
+    /// Direct API key value. Plaintext — keep this file out of version
+    /// control. Takes precedence over `api_key_env` when set.
+    #[serde(default)]
+    pub api_key: Option<String>,
     #[serde(default = "default_api_key_env")]
     pub api_key_env: String,
     /// Override the default API base URL for this provider.
@@ -47,6 +51,7 @@ impl Default for LlmConfig {
         Self {
             provider: "groq".into(),
             model: "openai/gpt-oss-20b".into(),
+            api_key: None,
             api_key_env: default_api_key_env(),
             base_url: None,
             context_window: default_context_window(),
@@ -413,8 +418,12 @@ impl ArawnConfig {
         self.data_dir().join("prompts")
     }
 
-    /// Resolve API key for an LLM config by reading the env var.
+    /// Resolve API key for an LLM config. Order: explicit `api_key` field
+    /// (plaintext in arawn.toml) → env var named by `api_key_env`.
     pub fn resolve_api_key(llm: &LlmConfig) -> Option<String> {
+        if let Some(key) = llm.api_key.as_ref().filter(|s| !s.is_empty()) {
+            return Some(key.clone());
+        }
         std::env::var(&llm.api_key_env)
             .ok()
             .filter(|s| !s.is_empty())

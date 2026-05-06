@@ -21,15 +21,24 @@ pub const DEFAULT_ATLASSIAN_REDIRECT_PORT: u16 = 8080;
 /// Bot scopes requested at OAuth time. Full read+write to both Jira and
 /// Confluence; `offline_access` for refresh tokens (Atlassian access
 /// tokens expire after ~1 hour).
+///
+/// Confluence v2 endpoints (`/wiki/api/v2/...`) require **granular**
+/// scopes (`read:space:confluence`, etc.); the classic
+/// `read:confluence-content.all` only authorizes v1. Both are listed so
+/// the v1 CQL search and the v2 page/space surface both work.
 pub const ATLASSIAN_OAUTH_SCOPES: &[&str] = &[
-    // Jira
+    // Jira (classic)
     "read:jira-work",
     "write:jira-work",
     "read:jira-user",
-    // Confluence
+    // Confluence v1 (CQL search + space metadata + write fallback)
     "read:confluence-content.all",
-    "write:confluence-content",
     "read:confluence-space.summary",
+    "write:confluence-content",
+    // Confluence v2 (granular — required by /wiki/api/v2/* endpoints)
+    "read:space:confluence",
+    "read:page:confluence",
+    "write:page:confluence",
     // Refresh tokens
     "offline_access",
 ];
@@ -360,17 +369,29 @@ mod tests {
     use super::*;
 
     #[test]
-    fn default_provider_carries_seven_scopes_with_offline_access() {
+    fn default_provider_carries_jira_classic_and_confluence_v2_scopes() {
         let provider = AtlassianProviderConfig::default();
-        assert_eq!(provider.scopes.len(), 7);
+        assert_eq!(provider.scopes.len(), ATLASSIAN_OAUTH_SCOPES.len());
+        // Jira classic scopes
         assert!(provider.scopes.iter().any(|s| s == "read:jira-work"));
         assert!(provider.scopes.iter().any(|s| s == "write:jira-work"));
+        // Confluence v1 (CQL search + space metadata)
         assert!(
             provider
                 .scopes
                 .iter()
                 .any(|s| s == "read:confluence-content.all")
         );
+        assert!(
+            provider
+                .scopes
+                .iter()
+                .any(|s| s == "read:confluence-space.summary")
+        );
+        // Confluence v2 (granular)
+        assert!(provider.scopes.iter().any(|s| s == "read:space:confluence"));
+        assert!(provider.scopes.iter().any(|s| s == "read:page:confluence"));
+        assert!(provider.scopes.iter().any(|s| s == "write:page:confluence"));
         assert!(provider.scopes.iter().any(|s| s == "offline_access"));
     }
 

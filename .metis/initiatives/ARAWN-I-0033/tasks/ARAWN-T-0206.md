@@ -4,14 +4,14 @@ level: task
 title: "Atlassian integration — Jira + Confluence (OAuth, cloud_id discovery, 11 tools)"
 short_code: "ARAWN-T-0206"
 created_at: 2026-05-06T02:41:58.813322+00:00
-updated_at: 2026-05-06T02:42:58.142515+00:00
+updated_at: 2026-05-06T23:18:17.185688+00:00
 parent: ARAWN-I-0033
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -69,6 +69,8 @@ User picked option A from the design conversation — Jira + Confluence in one c
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
@@ -182,6 +184,25 @@ User picked option A from the design conversation — Jira + Confluence in one c
 {Technical risks and mitigation strategies}
 
 ## Status Updates
+
+### 2026-05-06 — UAT passed (after v1→v2 migration via T-0213)
+
+UAT exercised all 11 tools end-to-end against `sa-demo.atlassian.net`. Discovered both Jira and Confluence hand-rolled clients were hitting deprecated endpoints (410/403); the fix landed in T-0213 — Jira swapped to the `jira_v3_openapi` generated client, Confluence hand-updated v1 → v2 paths. After the migration:
+
+- ✅ `atlassian_list_resources`, `confluence_list_spaces`, `jira_search` (now on `/search/jql`), `jira_get_issue`, `confluence_search`, `confluence_get_page`
+- ✅ `jira_create_issue`, `jira_add_comment` (both auto-convert markdown → ADF)
+- ✅ `jira_update_issue` (after `return_issue=true` fix to avoid 204 EOF parse error)
+- ✅ `confluence_create_page` (after adding `write:confluence-content` classic scope — v2 endpoints check both classic and granular)
+- ✅ `confluence_update_page`
+
+Side bugs fixed during UAT (also in T-0213's diff):
+- Markdown → ADF converter (`atlassian/adf.rs`) replacing the prior single-paragraph plain-text wrap. Agent now passes natural markdown for descriptions / comment bodies.
+- Granular Confluence scopes added to the OAuth scope list.
+- 5-minute callback-server timeout shortened to 60s (failed OAuth dance no longer holds port 8080 hostage).
+
+T-0206 ready to close.
+
+
 
 ### 2026-05-06 — Implemented (11 tools), awaiting setup + UAT
 

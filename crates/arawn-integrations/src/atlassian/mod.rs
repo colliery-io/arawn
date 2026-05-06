@@ -17,6 +17,7 @@
 //!
 //! See `docs/src/integrations/atlassian.md` for setup.
 
+mod adf;
 mod client;
 mod confluence;
 mod integration;

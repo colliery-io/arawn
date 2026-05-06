@@ -85,7 +85,7 @@ impl OpenAICompatibleClient {
     pub fn from_config(
         provider: &str,
         base_url: Option<&str>,
-        api_key_env: &str,
+        api_key: Option<String>,
     ) -> Result<Self, LlmError> {
         let (default_url, name) = match provider {
             "groq" => ("https://api.groq.com/openai/v1", "groq"),
@@ -99,15 +99,7 @@ impl OpenAICompatibleClient {
         };
 
         let url = base_url.unwrap_or(default_url);
-
-        let api_key = if api_key_env.is_empty() {
-            None
-        } else {
-            match std::env::var(api_key_env) {
-                Ok(key) if !key.is_empty() => Some(key),
-                _ => None,
-            }
-        };
+        let api_key = api_key.filter(|s| !s.is_empty());
 
         Ok(Self::new(url, api_key, name))
     }
@@ -512,7 +504,7 @@ mod tests {
 
     #[test]
     fn from_config_known_providers() {
-        let client = OpenAICompatibleClient::from_config("ollama", None, "").unwrap();
+        let client = OpenAICompatibleClient::from_config("ollama", None, None).unwrap();
         assert_eq!(client.completions_url(), "http://localhost:11434/v1/chat/completions");
         assert!(client.api_key.is_none());
     }
@@ -522,7 +514,7 @@ mod tests {
         let client = OpenAICompatibleClient::from_config(
             "groq",
             Some("https://custom-groq-proxy.example.com/v1"),
-            "",
+            None,
         ).unwrap();
         assert_eq!(client.completions_url(), "https://custom-groq-proxy.example.com/v1/chat/completions");
     }

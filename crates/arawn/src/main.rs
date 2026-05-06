@@ -800,11 +800,12 @@ async fn run_cli_via_server(
 fn build_llm_client(
     config: &arawn_bin::LlmConfig,
 ) -> Result<Arc<dyn arawn_llm::LlmClient>> {
+    let resolved_key = arawn_bin::ArawnConfig::resolve_api_key(config);
     match config.provider.as_str() {
         "anthropic" => {
-            let api_key = std::env::var(&config.api_key_env).map_err(|_| {
+            let api_key = resolved_key.ok_or_else(|| {
                 anyhow::anyhow!(
-                    "{} environment variable not set (required for Anthropic provider)",
+                    "Anthropic provider requires an API key — set `api_key` in [llm.<name>] or export {}",
                     config.api_key_env
                 )
             })?;
@@ -815,7 +816,7 @@ fn build_llm_client(
             Ok(Arc::new(arawn_llm::OpenAICompatibleClient::from_config(
                 &config.provider,
                 config.base_url.as_deref(),
-                &config.api_key_env,
+                resolved_key,
             )?))
         }
     }

@@ -13,7 +13,11 @@ use url::Url;
 
 use crate::error::AuthError;
 
-const DEFAULT_TIMEOUT: Duration = Duration::from_secs(300);
+// Short enough that a failed OAuth (provider shows its own error page and
+// never redirects back) doesn't hold the bound port hostage. A successful
+// flow takes seconds; if the user takes longer than 60s they can re-issue
+// /connect.
+const DEFAULT_TIMEOUT: Duration = Duration::from_secs(60);
 
 const SUCCESS_PAGE: &str = "<!doctype html><html><head><meta charset=\"utf-8\"><title>arawn — connected</title></head><body style=\"font-family: system-ui, sans-serif; max-width: 480px; margin: 80px auto; text-align: center;\"><h1>✓ Connected</h1><p>You can close this tab and return to your terminal.</p></body></html>";
 

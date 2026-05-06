@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-06T12:14:10Z | 203 files | Python, Rust
+> Generated: 2026-05-06T23:15:06Z | 204 files | Python, Rust
 
 ## Project Structure
 
@@ -114,6 +114,7 @@
 │   ├── arawn-integrations/
 │   │   └── src/
 │   │       ├── atlassian/
+│   │       │   ├── adf.rs
 │   │       │   ├── client.rs
 │   │       │   ├── confluence.rs
 │   │       │   ├── integration.rs
@@ -312,69 +313,69 @@
 
 #### crates/arawn/src/config.rs
 
-- pub `LlmConfig` struct L9-30 — `{ provider: String, model: String, api_key_env: String, base_url: Option<String>...` — A named LLM provider configuration.
-- pub `to_resolved_info` function L63-71 — `(&self) -> arawn_tool::ResolvedLlmInfo` — Project this config into the capability metadata used by
-- pub `EngineConfig` struct L75-82 — `{ llm: String, max_iterations: usize, max_result_size: usize }`
-- pub `CompactorConfig` struct L105-113 — `{ llm: Option<String>, compaction_threshold: f32, keep_recent: usize }`
-- pub `ServerConfig` struct L133-138 — `{ host: String, port: u16 }`
-- pub `StorageConfig` struct L157-160 — `{ data_dir: String }`
-- pub `PromptsConfig` struct L175-178 — `{ token_budget: u32 }`
-- pub `SandboxConfig` struct L194-200 — `{ network_tools: Vec<String> }` — Sandbox configuration for shell command execution.
-- pub `IntegrationCredentials` struct L252-257 — `{ client_id: String, client_secret: String }` — OAuth client credentials for one integration.
-- pub `IntegrationsConfig` struct L264-287 — `{ slack: IntegrationCredentials, google: IntegrationCredentials, gmail: Integrat...` — Per-integration credential blocks.
-- pub `ArawnConfig` struct L291-308 — `{ llm: HashMap<String, LlmConfig>, engine: EngineConfig, compactor: CompactorCon...` — Top-level configuration.
-- pub `load` function L333-366 — `(data_dir: &Path) -> Self` — Load config from `data_dir/arawn.toml`, merging with env var overrides and defaults.
-- pub `engine_llm` function L389-394 — `(&self) -> &LlmConfig` — Resolve the LLM config for the engine.
-- pub `compactor_llm` function L397-404 — `(&self) -> &LlmConfig` — Resolve the LLM config for the compactor.
-- pub `data_dir` function L407-409 — `(&self) -> PathBuf` — Resolve the data directory with ~ expansion.
-- pub `prompts_dir` function L412-414 — `(&self) -> PathBuf` — Resolve the prompts directory.
-- pub `resolve_api_key` function L417-421 — `(llm: &LlmConfig) -> Option<String>` — Resolve API key for an LLM config by reading the env var.
-- pub `generate_default_toml` function L424-515 — `() -> String` — Generate a default config file string with comments.
--  `default_api_key_env` function L32-34 — `() -> String`
--  `default_context_window` function L35-37 — `() -> u32`
--  `default_max_tokens` function L38-40 — `() -> u32`
--  `default_tool_use` function L41-43 — `() -> bool`
--  `LlmConfig` type L45-58 — `impl Default for LlmConfig`
--  `default` function L46-57 — `() -> Self`
--  `LlmConfig` type L60-72 — `= LlmConfig`
--  `default_engine_llm` function L84-86 — `() -> String`
--  `default_max_iterations` function L87-89 — `() -> usize`
--  `default_max_result_size` function L90-92 — `() -> usize`
--  `EngineConfig` type L94-102 — `impl Default for EngineConfig`
--  `default` function L95-101 — `() -> Self`
--  `default_compaction_threshold` function L115-117 — `() -> f32`
--  `default_keep_recent` function L118-120 — `() -> usize`
--  `CompactorConfig` type L122-130 — `impl Default for CompactorConfig`
--  `default` function L123-129 — `() -> Self`
--  `default_host` function L140-142 — `() -> String`
--  `default_port` function L143-145 — `() -> u16`
--  `ServerConfig` type L147-154 — `impl Default for ServerConfig`
--  `default` function L148-153 — `() -> Self`
--  `default_data_dir` function L162-164 — `() -> String`
--  `StorageConfig` type L166-172 — `impl Default for StorageConfig`
--  `default` function L167-171 — `() -> Self`
--  `default_prompt_token_budget` function L180-182 — `() -> u32`
--  `PromptsConfig` type L184-190 — `impl Default for PromptsConfig`
--  `default` function L185-189 — `() -> Self`
--  `default_network_tools` function L202-238 — `() -> Vec<String>`
--  `SandboxConfig` type L240-246 — `impl Default for SandboxConfig`
--  `default` function L241-245 — `() -> Self`
--  `default_llm_configs` function L310-314 — `() -> HashMap<String, LlmConfig>`
--  `ArawnConfig` type L316-329 — `impl Default for ArawnConfig`
--  `default` function L317-328 — `() -> Self`
--  `ArawnConfig` type L331-516 — `= ArawnConfig`
--  `apply_env_overrides` function L368-386 — `(&mut self)`
--  `expand_tilde` function L518-525 — `(path: &str) -> PathBuf`
--  `tests` module L528-655 — `-`
--  `default_config_has_working_values` function L532-541 — `()`
--  `load_from_toml_string` function L544-564 — `()`
--  `compactor_falls_back_to_engine_llm` function L567-572 — `()`
--  `compactor_uses_own_llm_when_specified` function L575-594 — `()`
--  `missing_llm_name_falls_back_to_default_via_load` function L597-613 — `()`
--  `load_missing_file_uses_defaults` function L616-620 — `()`
--  `load_from_tempdir` function L623-641 — `()`
--  `generate_default_toml_is_parseable` function L644-648 — `()`
--  `tilde_expansion` function L651-654 — `()`
+- pub `LlmConfig` struct L9-34 — `{ provider: String, model: String, api_key: Option<String>, api_key_env: String,...` — A named LLM provider configuration.
+- pub `to_resolved_info` function L68-76 — `(&self) -> arawn_tool::ResolvedLlmInfo` — Project this config into the capability metadata used by
+- pub `EngineConfig` struct L80-87 — `{ llm: String, max_iterations: usize, max_result_size: usize }`
+- pub `CompactorConfig` struct L110-118 — `{ llm: Option<String>, compaction_threshold: f32, keep_recent: usize }`
+- pub `ServerConfig` struct L138-143 — `{ host: String, port: u16 }`
+- pub `StorageConfig` struct L162-165 — `{ data_dir: String }`
+- pub `PromptsConfig` struct L180-183 — `{ token_budget: u32 }`
+- pub `SandboxConfig` struct L199-205 — `{ network_tools: Vec<String> }` — Sandbox configuration for shell command execution.
+- pub `IntegrationCredentials` struct L257-262 — `{ client_id: String, client_secret: String }` — OAuth client credentials for one integration.
+- pub `IntegrationsConfig` struct L269-292 — `{ slack: IntegrationCredentials, google: IntegrationCredentials, gmail: Integrat...` — Per-integration credential blocks.
+- pub `ArawnConfig` struct L296-313 — `{ llm: HashMap<String, LlmConfig>, engine: EngineConfig, compactor: CompactorCon...` — Top-level configuration.
+- pub `load` function L338-371 — `(data_dir: &Path) -> Self` — Load config from `data_dir/arawn.toml`, merging with env var overrides and defaults.
+- pub `engine_llm` function L394-399 — `(&self) -> &LlmConfig` — Resolve the LLM config for the engine.
+- pub `compactor_llm` function L402-409 — `(&self) -> &LlmConfig` — Resolve the LLM config for the compactor.
+- pub `data_dir` function L412-414 — `(&self) -> PathBuf` — Resolve the data directory with ~ expansion.
+- pub `prompts_dir` function L417-419 — `(&self) -> PathBuf` — Resolve the prompts directory.
+- pub `resolve_api_key` function L423-430 — `(llm: &LlmConfig) -> Option<String>` — Resolve API key for an LLM config.
+- pub `generate_default_toml` function L433-524 — `() -> String` — Generate a default config file string with comments.
+-  `default_api_key_env` function L36-38 — `() -> String`
+-  `default_context_window` function L39-41 — `() -> u32`
+-  `default_max_tokens` function L42-44 — `() -> u32`
+-  `default_tool_use` function L45-47 — `() -> bool`
+-  `LlmConfig` type L49-63 — `impl Default for LlmConfig`
+-  `default` function L50-62 — `() -> Self`
+-  `LlmConfig` type L65-77 — `= LlmConfig`
+-  `default_engine_llm` function L89-91 — `() -> String`
+-  `default_max_iterations` function L92-94 — `() -> usize`
+-  `default_max_result_size` function L95-97 — `() -> usize`
+-  `EngineConfig` type L99-107 — `impl Default for EngineConfig`
+-  `default` function L100-106 — `() -> Self`
+-  `default_compaction_threshold` function L120-122 — `() -> f32`
+-  `default_keep_recent` function L123-125 — `() -> usize`
+-  `CompactorConfig` type L127-135 — `impl Default for CompactorConfig`
+-  `default` function L128-134 — `() -> Self`
+-  `default_host` function L145-147 — `() -> String`
+-  `default_port` function L148-150 — `() -> u16`
+-  `ServerConfig` type L152-159 — `impl Default for ServerConfig`
+-  `default` function L153-158 — `() -> Self`
+-  `default_data_dir` function L167-169 — `() -> String`
+-  `StorageConfig` type L171-177 — `impl Default for StorageConfig`
+-  `default` function L172-176 — `() -> Self`
+-  `default_prompt_token_budget` function L185-187 — `() -> u32`
+-  `PromptsConfig` type L189-195 — `impl Default for PromptsConfig`
+-  `default` function L190-194 — `() -> Self`
+-  `default_network_tools` function L207-243 — `() -> Vec<String>`
+-  `SandboxConfig` type L245-251 — `impl Default for SandboxConfig`
+-  `default` function L246-250 — `() -> Self`
+-  `default_llm_configs` function L315-319 — `() -> HashMap<String, LlmConfig>`
+-  `ArawnConfig` type L321-334 — `impl Default for ArawnConfig`
+-  `default` function L322-333 — `() -> Self`
+-  `ArawnConfig` type L336-525 — `= ArawnConfig`
+-  `apply_env_overrides` function L373-391 — `(&mut self)`
+-  `expand_tilde` function L527-534 — `(path: &str) -> PathBuf`
+-  `tests` module L537-664 — `-`
+-  `default_config_has_working_values` function L541-550 — `()`
+-  `load_from_toml_string` function L553-573 — `()`
+-  `compactor_falls_back_to_engine_llm` function L576-581 — `()`
+-  `compactor_uses_own_llm_when_specified` function L584-603 — `()`
+-  `missing_llm_name_falls_back_to_default_via_load` function L606-622 — `()`
+-  `load_missing_file_uses_defaults` function L625-629 — `()`
+-  `load_from_tempdir` function L632-650 — `()`
+-  `generate_default_toml_is_parseable` function L653-657 — `()`
+-  `tilde_expansion` function L660-663 — `()`
 
 #### crates/arawn/src/config_watcher.rs
 
@@ -504,12 +505,12 @@
 -  `Cli` struct L27-46 — `{ command: Option<Command>, data_dir: Option<String>, session: Option<Uuid>, lis...`
 -  `Command` enum L49-68 — `Serve | Tui | Plugin`
 -  `run_cli_via_server` function L692-797 — `( url: &str, prompt: &str, session_id: Option<Uuid>, ) -> Result<()>` — Run a CLI prompt by connecting to the running server via WebSocket.
--  `build_llm_client` function L800-822 — `( config: &arawn_bin::LlmConfig, ) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
--  `register_default_tools` function L825-871 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &arawn_bin::ArawnConfig, d...` — Register all default tools into the registry.
--  `connect_mcp_servers` function L874-922 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
--  `register_workflow_tools` function L925-942 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
--  `build_engine_config` function L944-979 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
--  `dirs_path` function L981-990 — `() -> Option<String>`
+-  `build_llm_client` function L800-823 — `( config: &arawn_bin::LlmConfig, ) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
+-  `register_default_tools` function L826-872 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &arawn_bin::ArawnConfig, d...` — Register all default tools into the registry.
+-  `connect_mcp_servers` function L875-923 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
+-  `register_workflow_tools` function L926-943 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
+-  `build_engine_config` function L945-980 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
+-  `dirs_path` function L982-991 — `() -> Option<String>`
 
 #### crates/arawn/src/plugin_cmd.rs
 
@@ -621,24 +622,24 @@
 
 #### crates/arawn-auth/src/server.rs
 
-- pub `CallbackResult` struct L22-25 — `{ code: String, state: String }` — What the callback yielded.
-- pub `CallbackServer` struct L27-30 — `{ listener: TcpListener, redirect_uri: Url }` — responds with a small HTML success page, then shuts down.
-- pub `bind` function L35-37 — `(path: &str) -> Result<Self, AuthError>` — Bind to an OS-assigned port on `127.0.0.1`.
-- pub `bind_with_port` function L42-44 — `(path: &str, port: u16) -> Result<Self, AuthError>` — Bind to a specific port on `127.0.0.1`.
-- pub `redirect_uri` function L66-68 — `(&self) -> &Url` — responds with a small HTML success page, then shuts down.
-- pub `listen` function L72-74 — `(self) -> Result<CallbackResult, AuthError>` — Wait up to [`DEFAULT_TIMEOUT`] for a single redirect, parse it, and
-- pub `listen_with_timeout` function L76-172 — `( self, timeout: Duration, ) -> Result<CallbackResult, AuthError>` — responds with a small HTML success page, then shuts down.
--  `DEFAULT_TIMEOUT` variable L16 — `: Duration` — responds with a small HTML success page, then shuts down.
--  `SUCCESS_PAGE` variable L18 — `: &str` — responds with a small HTML success page, then shuts down.
--  `CallbackServer` type L32-173 — `= CallbackServer` — responds with a small HTML success page, then shuts down.
--  `bind_inner` function L46-64 — `(path: &str, port: u16) -> Result<Self, AuthError>` — responds with a small HTML success page, then shuts down.
--  `tests` module L176-245 — `-` — responds with a small HTML success page, then shuts down.
--  `simulate_browser` function L181-193 — `(server_url: &Url, query: &str)` — responds with a small HTML success page, then shuts down.
--  `happy_path_returns_code_and_state` function L196-204 — `()` — responds with a small HTML success page, then shuts down.
--  `missing_code_yields_invalid_config_error` function L207-217 — `()` — responds with a small HTML success page, then shuts down.
--  `provider_error_propagates` function L220-230 — `()` — responds with a small HTML success page, then shuts down.
--  `timeout_returns_error` function L233-237 — `()` — responds with a small HTML success page, then shuts down.
--  `redirect_uri_normalizes_path_with_or_without_slash` function L240-244 — `()` — responds with a small HTML success page, then shuts down.
+- pub `CallbackResult` struct L26-29 — `{ code: String, state: String }` — What the callback yielded.
+- pub `CallbackServer` struct L31-34 — `{ listener: TcpListener, redirect_uri: Url }` — responds with a small HTML success page, then shuts down.
+- pub `bind` function L39-41 — `(path: &str) -> Result<Self, AuthError>` — Bind to an OS-assigned port on `127.0.0.1`.
+- pub `bind_with_port` function L46-48 — `(path: &str, port: u16) -> Result<Self, AuthError>` — Bind to a specific port on `127.0.0.1`.
+- pub `redirect_uri` function L70-72 — `(&self) -> &Url` — responds with a small HTML success page, then shuts down.
+- pub `listen` function L76-78 — `(self) -> Result<CallbackResult, AuthError>` — Wait up to [`DEFAULT_TIMEOUT`] for a single redirect, parse it, and
+- pub `listen_with_timeout` function L80-176 — `( self, timeout: Duration, ) -> Result<CallbackResult, AuthError>` — responds with a small HTML success page, then shuts down.
+-  `DEFAULT_TIMEOUT` variable L20 — `: Duration` — responds with a small HTML success page, then shuts down.
+-  `SUCCESS_PAGE` variable L22 — `: &str` — responds with a small HTML success page, then shuts down.
+-  `CallbackServer` type L36-177 — `= CallbackServer` — responds with a small HTML success page, then shuts down.
+-  `bind_inner` function L50-68 — `(path: &str, port: u16) -> Result<Self, AuthError>` — responds with a small HTML success page, then shuts down.
+-  `tests` module L180-249 — `-` — responds with a small HTML success page, then shuts down.
+-  `simulate_browser` function L185-197 — `(server_url: &Url, query: &str)` — responds with a small HTML success page, then shuts down.
+-  `happy_path_returns_code_and_state` function L200-208 — `()` — responds with a small HTML success page, then shuts down.
+-  `missing_code_yields_invalid_config_error` function L211-221 — `()` — responds with a small HTML success page, then shuts down.
+-  `provider_error_propagates` function L224-234 — `()` — responds with a small HTML success page, then shuts down.
+-  `timeout_returns_error` function L237-241 — `()` — responds with a small HTML success page, then shuts down.
+-  `redirect_uri_normalizes_path_with_or_without_slash` function L244-248 — `()` — responds with a small HTML success page, then shuts down.
 
 #### crates/arawn-auth/src/token_store.rs
 
@@ -2646,37 +2647,72 @@
 
 > *Semantic summary to be generated by AI agent.*
 
+#### crates/arawn-integrations/src/atlassian/adf.rs
+
+- pub `md_to_adf` function L29-52 — `(md: &str) -> Value` — Convert markdown to an ADF document.
+-  `AdfBuilder` struct L55-66 — `{ marks: Vec<Value>, inline: Vec<Value>, current_block: BlockKind, list_items: V...` — empty paragraph — which Jira accepts).
+-  `BlockKind` enum L69-84 — `None | Paragraph | Heading | BulletList | OrderedList | ListItem | BlockQuote | ...` — empty paragraph — which Jira accepts).
+-  `AdfBuilder` type L86-305 — `= AdfBuilder` — empty paragraph — which Jira accepts).
+-  `process` function L87-139 — `(&mut self, event: Event<'_>, blocks: &mut Vec<Value>)` — empty paragraph — which Jira accepts).
+-  `start_paragraph` function L143-150 — `(&mut self)` — empty paragraph — which Jira accepts).
+-  `end_paragraph` function L152-163 — `(&mut self, blocks: &mut Vec<Value>)` — empty paragraph — which Jira accepts).
+-  `start_heading` function L165-176 — `(&mut self, level: HeadingLevel)` — empty paragraph — which Jira accepts).
+-  `end_heading` function L178-190 — `(&mut self, blocks: &mut Vec<Value>)` — empty paragraph — which Jira accepts).
+-  `start_list` function L192-199 — `(&mut self, start_num: Option<u64>)` — empty paragraph — which Jira accepts).
+-  `end_list` function L201-209 — `(&mut self, blocks: &mut Vec<Value>)` — empty paragraph — which Jira accepts).
+-  `start_item` function L211-215 — `(&mut self)` — empty paragraph — which Jira accepts).
+-  `end_item` function L217-226 — `(&mut self)` — empty paragraph — which Jira accepts).
+-  `start_block_quote` function L228-231 — `(&mut self)` — empty paragraph — which Jira accepts).
+-  `end_block_quote` function L233-238 — `(&mut self, blocks: &mut Vec<Value>)` — empty paragraph — which Jira accepts).
+-  `start_code_block` function L240-245 — `(&mut self, language: Option<String>)` — empty paragraph — which Jira accepts).
+-  `end_code_block` function L247-259 — `(&mut self, blocks: &mut Vec<Value>)` — empty paragraph — which Jira accepts).
+-  `flush_pending` function L261-266 — `(&mut self, blocks: &mut Vec<Value>)` — empty paragraph — which Jira accepts).
+-  `push_text` function L270-276 — `(&mut self, text: &str)` — empty paragraph — which Jira accepts).
+-  `push_inline_code` function L278-284 — `(&mut self, text: &str)` — empty paragraph — which Jira accepts).
+-  `push_hard_break` function L286-288 — `(&mut self)` — empty paragraph — which Jira accepts).
+-  `text_node` function L290-296 — `(&self, text: &str) -> Value` — empty paragraph — which Jira accepts).
+-  `push_mark` function L298-300 — `(&mut self, mark: Value)` — empty paragraph — which Jira accepts).
+-  `pop_mark` function L302-304 — `(&mut self)` — empty paragraph — which Jira accepts).
+-  `tests` module L308-387 — `-` — empty paragraph — which Jira accepts).
+-  `empty_input_produces_doc_with_empty_paragraph` function L312-317 — `()` — empty paragraph — which Jira accepts).
+-  `plain_paragraph` function L320-324 — `()` — empty paragraph — which Jira accepts).
+-  `bold_and_italic` function L327-335 — `()` — empty paragraph — which Jira accepts).
+-  `inline_code` function L338-343 — `()` — empty paragraph — which Jira accepts).
+-  `heading_levels` function L346-352 — `()` — empty paragraph — which Jira accepts).
+-  `bullet_list` function L355-362 — `()` — empty paragraph — which Jira accepts).
+-  `ordered_list` function L365-368 — `()` — empty paragraph — which Jira accepts).
+-  `fenced_code_block_with_language` function L371-377 — `()` — empty paragraph — which Jira accepts).
+-  `link_marks` function L380-386 — `()` — empty paragraph — which Jira accepts).
+
 #### crates/arawn-integrations/src/atlassian/client.rs
 
-- pub `AtlassianClient` struct L27-30 — `{ integration: Arc<AtlassianIntegration>, http: Client }` — Refresh-aware Atlassian HTTP client.
-- pub `new` function L33-38 — `(integration: Arc<AtlassianIntegration>) -> Self` — when needed, persisting the new token through the integration.
-- pub `jira_get` function L78-87 — `( &self, path: &str, site: Option<&str>, query: &[(&str, String)], ) -> Result<T...` — GET a JSON-bodied resource from Jira.
-- pub `jira_post` function L90-99 — `( &self, path: &str, site: Option<&str>, body: &B, ) -> Result<T, IntegrationErr...` — POST a JSON body to Jira and return the JSON response.
-- pub `jira_put` function L103-112 — `( &self, path: &str, site: Option<&str>, body: &B, ) -> Result<(), IntegrationEr...` — PUT a JSON body to Jira; returns parsed JSON or unit if the
-- pub `confluence_get` function L115-124 — `( &self, path: &str, site: Option<&str>, query: &[(&str, String)], ) -> Result<T...` — GET a JSON-bodied resource from Confluence.
-- pub `confluence_post` function L127-136 — `( &self, path: &str, site: Option<&str>, body: &B, ) -> Result<T, IntegrationErr...` — POST a JSON body to Confluence.
-- pub `confluence_put` function L139-148 — `( &self, path: &str, site: Option<&str>, body: &B, ) -> Result<T, IntegrationErr...` — PUT a JSON body to Confluence (used by page update).
--  `AtlassianClient` type L32-209 — `= AtlassianClient` — when needed, persisting the new token through the integration.
--  `product_base` function L42-59 — `( &self, product: Product, site: Option<&str>, ) -> Result<(AtlassianSite, Strin...` — Resolve the target site (defaulting to the first one) and return
--  `fresh_access_token` function L62-75 — `(&self) -> Result<String, IntegrationError>` — Get a fresh access token.
--  `send_json` function L150-170 — `( &self, method: Method, url: &str, query: &[(&str, String)], body: Option<&B>, ...` — when needed, persisting the new token through the integration.
--  `send_no_body` function L172-188 — `( &self, method: Method, url: &str, query: &[(&str, String)], body: Option<&B>, ...` — when needed, persisting the new token through the integration.
--  `send` function L190-208 — `( &self, method: Method, url: &str, query: &[(&str, String)], body: Option<&B>, ...` — when needed, persisting the new token through the integration.
--  `Product` enum L212-215 — `Jira | Confluence` — when needed, persisting the new token through the integration.
--  `is_expired` function L217-223 — `(token: &Token) -> bool` — when needed, persisting the new token through the integration.
+- pub `AtlassianClient` struct L28-31 — `{ integration: Arc<AtlassianIntegration>, http: Client }` — Refresh-aware Atlassian HTTP client.
+- pub `new` function L34-39 — `(integration: Arc<AtlassianIntegration>) -> Self` — when needed, persisting the new token through the integration.
+- pub `jira_config` function L86-95 — `(&self, site: Option<&str>) -> Result<JiraConfig, IntegrationError>` — Build a `jira_v3_openapi::Configuration` for the selected site,
+- pub `confluence_get` function L98-107 — `( &self, path: &str, site: Option<&str>, query: &[(&str, String)], ) -> Result<T...` — GET a JSON-bodied resource from Confluence.
+- pub `confluence_post` function L110-119 — `( &self, path: &str, site: Option<&str>, body: &B, ) -> Result<T, IntegrationErr...` — POST a JSON body to Confluence.
+- pub `confluence_put` function L122-131 — `( &self, path: &str, site: Option<&str>, body: &B, ) -> Result<T, IntegrationErr...` — PUT a JSON body to Confluence (used by page update).
+- pub `confluence_v1_get` function L135-144 — `( &self, path: &str, site: Option<&str>, query: &[(&str, String)], ) -> Result<T...` — GET against the legacy Confluence v1 API.
+-  `AtlassianClient` type L33-187 — `= AtlassianClient` — when needed, persisting the new token through the integration.
+-  `product_base` function L47-64 — `( &self, product: Product, site: Option<&str>, ) -> Result<(AtlassianSite, Strin...` — Resolve the target site (defaulting to the first one) and return
+-  `fresh_access_token` function L67-80 — `(&self) -> Result<String, IntegrationError>` — Get a fresh access token.
+-  `send_json` function L146-166 — `( &self, method: Method, url: &str, query: &[(&str, String)], body: Option<&B>, ...` — when needed, persisting the new token through the integration.
+-  `send` function L168-186 — `( &self, method: Method, url: &str, query: &[(&str, String)], body: Option<&B>, ...` — when needed, persisting the new token through the integration.
+-  `Product` enum L190-196 — `Confluence | ConfluenceV1` — when needed, persisting the new token through the integration.
+-  `is_expired` function L198-204 — `(token: &Token) -> bool` — when needed, persisting the new token through the integration.
 
 #### crates/arawn-integrations/src/atlassian/confluence.rs
 
-- pub `ConfluenceSearchTool` struct L367-370 — `{ integration: Arc<AtlassianIntegration>, description: String }` — Confluence tools — search, get page, create, update, list spaces.
-- pub `new` function L373-381 — `(integration: Arc<AtlassianIntegration>) -> Self` — Confluence tools — search, get page, create, update, list spaces.
-- pub `ConfluenceGetPageTool` struct L465-468 — `{ integration: Arc<AtlassianIntegration>, description: String }` — Confluence tools — search, get page, create, update, list spaces.
-- pub `new` function L471-479 — `(integration: Arc<AtlassianIntegration>) -> Self` — Confluence tools — search, get page, create, update, list spaces.
-- pub `ConfluenceCreatePageTool` struct L560-563 — `{ integration: Arc<AtlassianIntegration>, description: String }` — Confluence tools — search, get page, create, update, list spaces.
-- pub `new` function L566-574 — `(integration: Arc<AtlassianIntegration>) -> Self` — Confluence tools — search, get page, create, update, list spaces.
-- pub `ConfluenceUpdatePageTool` struct L655-658 — `{ integration: Arc<AtlassianIntegration>, description: String }` — Confluence tools — search, get page, create, update, list spaces.
-- pub `new` function L661-669 — `(integration: Arc<AtlassianIntegration>) -> Self` — Confluence tools — search, get page, create, update, list spaces.
-- pub `ConfluenceListSpacesTool` struct L759-762 — `{ integration: Arc<AtlassianIntegration>, description: String }` — Confluence tools — search, get page, create, update, list spaces.
-- pub `new` function L765-773 — `(integration: Arc<AtlassianIntegration>) -> Self` — Confluence tools — search, get page, create, update, list spaces.
+- pub `ConfluenceSearchTool` struct L373-376 — `{ integration: Arc<AtlassianIntegration>, description: String }` — Confluence tools — search, get page, create, update, list spaces.
+- pub `new` function L379-387 — `(integration: Arc<AtlassianIntegration>) -> Self` — Confluence tools — search, get page, create, update, list spaces.
+- pub `ConfluenceGetPageTool` struct L473-476 — `{ integration: Arc<AtlassianIntegration>, description: String }` — Confluence tools — search, get page, create, update, list spaces.
+- pub `new` function L479-487 — `(integration: Arc<AtlassianIntegration>) -> Self` — Confluence tools — search, get page, create, update, list spaces.
+- pub `ConfluenceCreatePageTool` struct L583-586 — `{ integration: Arc<AtlassianIntegration>, description: String }` — Confluence tools — search, get page, create, update, list spaces.
+- pub `new` function L589-597 — `(integration: Arc<AtlassianIntegration>) -> Self` — Confluence tools — search, get page, create, update, list spaces.
+- pub `ConfluenceUpdatePageTool` struct L694-697 — `{ integration: Arc<AtlassianIntegration>, description: String }` — Confluence tools — search, get page, create, update, list spaces.
+- pub `new` function L700-708 — `(integration: Arc<AtlassianIntegration>) -> Self` — Confluence tools — search, get page, create, update, list spaces.
+- pub `ConfluenceListSpacesTool` struct L789-792 — `{ integration: Arc<AtlassianIntegration>, description: String }` — Confluence tools — search, get page, create, update, list spaces.
+- pub `new` function L795-803 — `(integration: Arc<AtlassianIntegration>) -> Self` — Confluence tools — search, get page, create, update, list spaces.
 -  `integ_err` function L14-16 — `(e: crate::IntegrationError) -> ToolError` — Confluence tools — search, get page, create, update, list spaces.
 -  `check_scopes` function L18-37 — `( integration: &AtlassianIntegration, required: &[&str], ) -> Result<(), ToolErr...` — Confluence tools — search, get page, create, update, list spaces.
 -  `site_param` function L39-41 — `(params: &Value) -> Option<&str>` — Confluence tools — search, get page, create, update, list spaces.
@@ -2689,208 +2725,207 @@
 -  `SearchResp` struct L267-270 — `{ results: Vec<RawSearchResult> }` — Confluence tools — search, get page, create, update, list spaces.
 -  `RawSearchResult` struct L273-279 — `{ title: Option<String>, links: serde_json::Map<String, Value>, content: Option<...` — Confluence tools — search, get page, create, update, list spaces.
 -  `RawContentRef` struct L282-287 — `{ id: String, kind: Option<String>, space: Option<RawSpaceRef> }` — Confluence tools — search, get page, create, update, list spaces.
--  `RawSpaceRef` struct L290-293 — `{ key: Option<String>, name: Option<String> }` — Confluence tools — search, get page, create, update, list spaces.
--  `SearchHit` struct L296-302 — `{ id: Option<String>, title: Option<String>, kind: Option<String>, space_key: Op...` — Confluence tools — search, get page, create, update, list spaces.
--  `PageDetailRaw` struct L305-315 — `{ id: String, title: Option<String>, kind: Option<String>, space: Option<RawSpac...` — Confluence tools — search, get page, create, update, list spaces.
--  `RawBody` struct L318-320 — `{ storage: Option<RawBodyContent> }` — Confluence tools — search, get page, create, update, list spaces.
--  `RawBodyContent` struct L323-325 — `{ value: Option<String> }` — Confluence tools — search, get page, create, update, list spaces.
--  `RawVersion` struct L328-330 — `{ number: Option<u64> }` — Confluence tools — search, get page, create, update, list spaces.
--  `PageSummary` struct L333-343 — `{ id: String, title: Option<String>, kind: Option<String>, space_key: Option<Str...` — Confluence tools — search, get page, create, update, list spaces.
--  `SpacesResp` struct L346-349 — `{ results: Vec<RawSpace> }` — Confluence tools — search, get page, create, update, list spaces.
--  `RawSpace` struct L352-357 — `{ key: String, name: Option<String>, kind: Option<String> }` — Confluence tools — search, get page, create, update, list spaces.
--  `CQL_SEARCH_BASE` variable L361-364 — `: &str` — Confluence tools — search, get page, create, update, list spaces.
--  `CQL_SEARCH_SCOPES` variable L365 — `: &[&str]` — Confluence tools — search, get page, create, update, list spaces.
--  `ConfluenceSearchTool` type L372-382 — `= ConfluenceSearchTool` — Confluence tools — search, get page, create, update, list spaces.
--  `ConfluenceSearchTool` type L385-455 — `impl Tool for ConfluenceSearchTool` — Confluence tools — search, get page, create, update, list spaces.
--  `name` function L386-388 — `(&self) -> &str` — Confluence tools — search, get page, create, update, list spaces.
--  `description` function L389-391 — `(&self) -> &str` — Confluence tools — search, get page, create, update, list spaces.
--  `category` function L392-394 — `(&self) -> ToolCategory` — Confluence tools — search, get page, create, update, list spaces.
--  `permission_category` function L395-397 — `(&self) -> PermissionCategory` — Confluence tools — search, get page, create, update, list spaces.
--  `parameters_schema` function L398-408 — `(&self) -> Value` — Confluence tools — search, get page, create, update, list spaces.
--  `execute` function L409-454 — `(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError>` — Confluence tools — search, get page, create, update, list spaces.
--  `CONFLUENCE_GET_PAGE_BASE` variable L459-462 — `: &str` — Confluence tools — search, get page, create, update, list spaces.
--  `CONFLUENCE_GET_PAGE_SCOPES` variable L463 — `: &[&str]` — Confluence tools — search, get page, create, update, list spaces.
--  `ConfluenceGetPageTool` type L470-480 — `= ConfluenceGetPageTool` — Confluence tools — search, get page, create, update, list spaces.
--  `ConfluenceGetPageTool` type L483-550 — `impl Tool for ConfluenceGetPageTool` — Confluence tools — search, get page, create, update, list spaces.
--  `name` function L484-486 — `(&self) -> &str` — Confluence tools — search, get page, create, update, list spaces.
--  `description` function L487-489 — `(&self) -> &str` — Confluence tools — search, get page, create, update, list spaces.
--  `category` function L490-492 — `(&self) -> ToolCategory` — Confluence tools — search, get page, create, update, list spaces.
--  `permission_category` function L493-495 — `(&self) -> PermissionCategory` — Confluence tools — search, get page, create, update, list spaces.
--  `parameters_schema` function L496-506 — `(&self) -> Value` — Confluence tools — search, get page, create, update, list spaces.
--  `execute` function L507-549 — `(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError>` — Confluence tools — search, get page, create, update, list spaces.
--  `CONFLUENCE_CREATE_PAGE_BASE` variable L554-557 — `: &str` — Confluence tools — search, get page, create, update, list spaces.
--  `CONFLUENCE_CREATE_PAGE_SCOPES` variable L558 — `: &[&str]` — Confluence tools — search, get page, create, update, list spaces.
--  `ConfluenceCreatePageTool` type L565-575 — `= ConfluenceCreatePageTool` — Confluence tools — search, get page, create, update, list spaces.
--  `ConfluenceCreatePageTool` type L578-644 — `impl Tool for ConfluenceCreatePageTool` — Confluence tools — search, get page, create, update, list spaces.
--  `name` function L579-581 — `(&self) -> &str` — Confluence tools — search, get page, create, update, list spaces.
--  `description` function L582-584 — `(&self) -> &str` — Confluence tools — search, get page, create, update, list spaces.
--  `category` function L585-587 — `(&self) -> ToolCategory` — Confluence tools — search, get page, create, update, list spaces.
--  `permission_category` function L588-590 — `(&self) -> PermissionCategory` — Confluence tools — search, get page, create, update, list spaces.
--  `parameters_schema` function L591-603 — `(&self) -> Value` — Confluence tools — search, get page, create, update, list spaces.
--  `execute` function L604-643 — `(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError>` — Confluence tools — search, get page, create, update, list spaces.
--  `CONFLUENCE_UPDATE_PAGE_BASE` variable L648-652 — `: &str` — Confluence tools — search, get page, create, update, list spaces.
--  `CONFLUENCE_UPDATE_PAGE_SCOPES` variable L653 — `: &[&str]` — Confluence tools — search, get page, create, update, list spaces.
--  `ConfluenceUpdatePageTool` type L660-670 — `= ConfluenceUpdatePageTool` — Confluence tools — search, get page, create, update, list spaces.
--  `ConfluenceUpdatePageTool` type L673-750 — `impl Tool for ConfluenceUpdatePageTool` — Confluence tools — search, get page, create, update, list spaces.
--  `name` function L674-676 — `(&self) -> &str` — Confluence tools — search, get page, create, update, list spaces.
--  `description` function L677-679 — `(&self) -> &str` — Confluence tools — search, get page, create, update, list spaces.
--  `category` function L680-682 — `(&self) -> ToolCategory` — Confluence tools — search, get page, create, update, list spaces.
--  `permission_category` function L683-685 — `(&self) -> PermissionCategory` — Confluence tools — search, get page, create, update, list spaces.
--  `parameters_schema` function L686-697 — `(&self) -> Value` — Confluence tools — search, get page, create, update, list spaces.
--  `execute` function L698-749 — `(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError>` — Confluence tools — search, get page, create, update, list spaces.
--  `CONFLUENCE_LIST_SPACES_BASE` variable L754-756 — `: &str` — Confluence tools — search, get page, create, update, list spaces.
--  `CONFLUENCE_LIST_SPACES_SCOPES` variable L757 — `: &[&str]` — Confluence tools — search, get page, create, update, list spaces.
--  `ConfluenceListSpacesTool` type L764-774 — `= ConfluenceListSpacesTool` — Confluence tools — search, get page, create, update, list spaces.
--  `SpaceSummary` struct L777-781 — `{ key: String, name: Option<String>, kind: Option<String> }` — Confluence tools — search, get page, create, update, list spaces.
--  `ConfluenceListSpacesTool` type L784-826 — `impl Tool for ConfluenceListSpacesTool` — Confluence tools — search, get page, create, update, list spaces.
--  `name` function L785-787 — `(&self) -> &str` — Confluence tools — search, get page, create, update, list spaces.
--  `description` function L788-790 — `(&self) -> &str` — Confluence tools — search, get page, create, update, list spaces.
--  `category` function L791-793 — `(&self) -> ToolCategory` — Confluence tools — search, get page, create, update, list spaces.
--  `permission_category` function L794-796 — `(&self) -> PermissionCategory` — Confluence tools — search, get page, create, update, list spaces.
--  `parameters_schema` function L797-804 — `(&self) -> Value` — Confluence tools — search, get page, create, update, list spaces.
--  `execute` function L805-825 — `(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError>` — Confluence tools — search, get page, create, update, list spaces.
--  `tests` module L829-884 — `-` — Confluence tools — search, get page, create, update, list spaces.
--  `markdown_paragraphs_become_p_tags` function L833-838 — `()` — Confluence tools — search, get page, create, update, list spaces.
--  `markdown_headers_become_hN_tags` function L841-846 — `()` — Confluence tools — search, get page, create, update, list spaces.
--  `markdown_lists_round_through_ul` function L849-852 — `()` — Confluence tools — search, get page, create, update, list spaces.
--  `markdown_inline_emphasis` function L855-860 — `()` — Confluence tools — search, get page, create, update, list spaces.
--  `markdown_code_block_uses_confluence_macro` function L863-867 — `()` — Confluence tools — search, get page, create, update, list spaces.
--  `xml_escape_handles_lt_gt_amp` function L870-875 — `()` — Confluence tools — search, get page, create, update, list spaces.
--  `storage_to_markdown_strips_basic_tags` function L878-883 — `()` — Confluence tools — search, get page, create, update, list spaces.
+-  `RawSpaceRef` struct L290-292 — `{ key: Option<String> }` — Confluence tools — search, get page, create, update, list spaces.
+-  `SearchHit` struct L295-301 — `{ id: Option<String>, title: Option<String>, kind: Option<String>, space_key: Op...` — Confluence tools — search, get page, create, update, list spaces.
+-  `PageDetailRaw` struct L308-317 — `{ id: String, title: Option<String>, space_id: Option<String>, body: Option<RawB...` — Confluence tools — search, get page, create, update, list spaces.
+-  `RawBody` struct L320-322 — `{ storage: Option<RawBodyContent> }` — Confluence tools — search, get page, create, update, list spaces.
+-  `RawBodyContent` struct L325-327 — `{ value: Option<String> }` — Confluence tools — search, get page, create, update, list spaces.
+-  `RawVersion` struct L330-332 — `{ number: Option<u64> }` — Confluence tools — search, get page, create, update, list spaces.
+-  `PageSummary` struct L335-345 — `{ id: String, title: Option<String>, kind: Option<String>, space_key: Option<Str...` — Confluence tools — search, get page, create, update, list spaces.
+-  `SpacesResp` struct L351-354 — `{ results: Vec<RawSpace> }` — Confluence tools — search, get page, create, update, list spaces.
+-  `RawSpace` struct L357-363 — `{ id: String, key: String, name: Option<String>, kind: Option<String> }` — Confluence tools — search, get page, create, update, list spaces.
+-  `CQL_SEARCH_BASE` variable L367-370 — `: &str` — Confluence tools — search, get page, create, update, list spaces.
+-  `CQL_SEARCH_SCOPES` variable L371 — `: &[&str]` — Confluence tools — search, get page, create, update, list spaces.
+-  `ConfluenceSearchTool` type L378-388 — `= ConfluenceSearchTool` — Confluence tools — search, get page, create, update, list spaces.
+-  `ConfluenceSearchTool` type L391-463 — `impl Tool for ConfluenceSearchTool` — Confluence tools — search, get page, create, update, list spaces.
+-  `name` function L392-394 — `(&self) -> &str` — Confluence tools — search, get page, create, update, list spaces.
+-  `description` function L395-397 — `(&self) -> &str` — Confluence tools — search, get page, create, update, list spaces.
+-  `category` function L398-400 — `(&self) -> ToolCategory` — Confluence tools — search, get page, create, update, list spaces.
+-  `permission_category` function L401-403 — `(&self) -> PermissionCategory` — Confluence tools — search, get page, create, update, list spaces.
+-  `parameters_schema` function L404-414 — `(&self) -> Value` — Confluence tools — search, get page, create, update, list spaces.
+-  `execute` function L415-462 — `(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError>` — Confluence tools — search, get page, create, update, list spaces.
+-  `CONFLUENCE_GET_PAGE_BASE` variable L467-470 — `: &str` — Confluence tools — search, get page, create, update, list spaces.
+-  `CONFLUENCE_GET_PAGE_SCOPES` variable L471 — `: &[&str]` — Confluence tools — search, get page, create, update, list spaces.
+-  `ConfluenceGetPageTool` type L478-488 — `= ConfluenceGetPageTool` — Confluence tools — search, get page, create, update, list spaces.
+-  `ConfluenceGetPageTool` type L491-573 — `impl Tool for ConfluenceGetPageTool` — Confluence tools — search, get page, create, update, list spaces.
+-  `name` function L492-494 — `(&self) -> &str` — Confluence tools — search, get page, create, update, list spaces.
+-  `description` function L495-497 — `(&self) -> &str` — Confluence tools — search, get page, create, update, list spaces.
+-  `category` function L498-500 — `(&self) -> ToolCategory` — Confluence tools — search, get page, create, update, list spaces.
+-  `permission_category` function L501-503 — `(&self) -> PermissionCategory` — Confluence tools — search, get page, create, update, list spaces.
+-  `parameters_schema` function L504-514 — `(&self) -> Value` — Confluence tools — search, get page, create, update, list spaces.
+-  `execute` function L515-572 — `(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError>` — Confluence tools — search, get page, create, update, list spaces.
+-  `CONFLUENCE_CREATE_PAGE_BASE` variable L577-580 — `: &str` — Confluence tools — search, get page, create, update, list spaces.
+-  `CONFLUENCE_CREATE_PAGE_SCOPES` variable L581 — `: &[&str]` — Confluence tools — search, get page, create, update, list spaces.
+-  `ConfluenceCreatePageTool` type L588-598 — `= ConfluenceCreatePageTool` — Confluence tools — search, get page, create, update, list spaces.
+-  `ConfluenceCreatePageTool` type L601-683 — `impl Tool for ConfluenceCreatePageTool` — Confluence tools — search, get page, create, update, list spaces.
+-  `name` function L602-604 — `(&self) -> &str` — Confluence tools — search, get page, create, update, list spaces.
+-  `description` function L605-607 — `(&self) -> &str` — Confluence tools — search, get page, create, update, list spaces.
+-  `category` function L608-610 — `(&self) -> ToolCategory` — Confluence tools — search, get page, create, update, list spaces.
+-  `permission_category` function L611-613 — `(&self) -> PermissionCategory` — Confluence tools — search, get page, create, update, list spaces.
+-  `parameters_schema` function L614-626 — `(&self) -> Value` — Confluence tools — search, get page, create, update, list spaces.
+-  `execute` function L627-682 — `(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError>` — Confluence tools — search, get page, create, update, list spaces.
+-  `CONFLUENCE_UPDATE_PAGE_BASE` variable L687-691 — `: &str` — Confluence tools — search, get page, create, update, list spaces.
+-  `CONFLUENCE_UPDATE_PAGE_SCOPES` variable L692 — `: &[&str]` — Confluence tools — search, get page, create, update, list spaces.
+-  `ConfluenceUpdatePageTool` type L699-709 — `= ConfluenceUpdatePageTool` — Confluence tools — search, get page, create, update, list spaces.
+-  `ConfluenceUpdatePageTool` type L712-780 — `impl Tool for ConfluenceUpdatePageTool` — Confluence tools — search, get page, create, update, list spaces.
+-  `name` function L713-715 — `(&self) -> &str` — Confluence tools — search, get page, create, update, list spaces.
+-  `description` function L716-718 — `(&self) -> &str` — Confluence tools — search, get page, create, update, list spaces.
+-  `category` function L719-721 — `(&self) -> ToolCategory` — Confluence tools — search, get page, create, update, list spaces.
+-  `permission_category` function L722-724 — `(&self) -> PermissionCategory` — Confluence tools — search, get page, create, update, list spaces.
+-  `parameters_schema` function L725-736 — `(&self) -> Value` — Confluence tools — search, get page, create, update, list spaces.
+-  `execute` function L737-779 — `(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError>` — Confluence tools — search, get page, create, update, list spaces.
+-  `CONFLUENCE_LIST_SPACES_BASE` variable L784-786 — `: &str` — Confluence tools — search, get page, create, update, list spaces.
+-  `CONFLUENCE_LIST_SPACES_SCOPES` variable L787 — `: &[&str]` — Confluence tools — search, get page, create, update, list spaces.
+-  `ConfluenceListSpacesTool` type L794-804 — `= ConfluenceListSpacesTool` — Confluence tools — search, get page, create, update, list spaces.
+-  `SpaceSummary` struct L807-812 — `{ id: String, key: String, name: Option<String>, kind: Option<String> }` — Confluence tools — search, get page, create, update, list spaces.
+-  `ConfluenceListSpacesTool` type L815-858 — `impl Tool for ConfluenceListSpacesTool` — Confluence tools — search, get page, create, update, list spaces.
+-  `name` function L816-818 — `(&self) -> &str` — Confluence tools — search, get page, create, update, list spaces.
+-  `description` function L819-821 — `(&self) -> &str` — Confluence tools — search, get page, create, update, list spaces.
+-  `category` function L822-824 — `(&self) -> ToolCategory` — Confluence tools — search, get page, create, update, list spaces.
+-  `permission_category` function L825-827 — `(&self) -> PermissionCategory` — Confluence tools — search, get page, create, update, list spaces.
+-  `parameters_schema` function L828-835 — `(&self) -> Value` — Confluence tools — search, get page, create, update, list spaces.
+-  `execute` function L836-857 — `(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError>` — Confluence tools — search, get page, create, update, list spaces.
+-  `tests` module L861-916 — `-` — Confluence tools — search, get page, create, update, list spaces.
+-  `markdown_paragraphs_become_p_tags` function L865-870 — `()` — Confluence tools — search, get page, create, update, list spaces.
+-  `markdown_headers_become_hN_tags` function L873-878 — `()` — Confluence tools — search, get page, create, update, list spaces.
+-  `markdown_lists_round_through_ul` function L881-884 — `()` — Confluence tools — search, get page, create, update, list spaces.
+-  `markdown_inline_emphasis` function L887-892 — `()` — Confluence tools — search, get page, create, update, list spaces.
+-  `markdown_code_block_uses_confluence_macro` function L895-899 — `()` — Confluence tools — search, get page, create, update, list spaces.
+-  `xml_escape_handles_lt_gt_amp` function L902-907 — `()` — Confluence tools — search, get page, create, update, list spaces.
+-  `storage_to_markdown_strips_basic_tags` function L910-915 — `()` — Confluence tools — search, get page, create, update, list spaces.
 
 #### crates/arawn-integrations/src/atlassian/integration.rs
 
 - pub `SERVICE_NAME` variable L15 — `: &str` — Stable service name.
 - pub `DEFAULT_ATLASSIAN_REDIRECT_PORT` variable L19 — `: u16` — Default fixed port for the OAuth callback.
-- pub `ATLASSIAN_OAUTH_SCOPES` variable L24-35 — `: &[&str]` — Bot scopes requested at OAuth time.
-- pub `AtlassianSite` struct L42-48 — `{ id: String, url: String, name: String, scopes: Vec<String> }` — One Atlassian site (workspace) the user authorized arawn to access.
-- pub `AtlassianProviderConfig` struct L51-56 — `{ auth_url: Url, token_url: Url, scopes: Vec<String>, redirect_port: u16 }` — Default Atlassian OAuth provider config.
-- pub `into_oauth_provider` function L70-86 — `( self, client_id: String, client_secret: String, ) -> OAuthProviderConfig`
-- pub `AtlassianIntegration` struct L90-95 — `{ data_dir: PathBuf, client_id: String, client_secret: String, provider_config: ...` — Atlassian integration.
-- pub `new` function L98-105 — `(data_dir: PathBuf, client_id: String, client_secret: String) -> Self`
-- pub `with_provider_config` function L107-110 — `(mut self, config: AtlassianProviderConfig) -> Self`
-- pub `load_token` function L113-118 — `(&self) -> Result<Token, IntegrationError>` — Load the persisted token.
-- pub `save_token` function L121-125 — `(&self, token: &Token) -> Result<(), IntegrationError>` — Persist the (potentially-refreshed) token back to disk.
-- pub `sites` function L130-139 — `(&self) -> Result<Vec<AtlassianSite>, IntegrationError>` — Read the persisted set of accessible Atlassian sites (cloud_ids
-- pub `select_site` function L143-174 — `( &self, which: Option<&str>, ) -> Result<AtlassianSite, IntegrationError>` — Resolve a site by URL or name (e.g.
-- pub `granted_scopes` function L177-187 — `( &self, ) -> Result<std::collections::HashSet<String>, IntegrationError>` — Read the granted scope set from the persisted token.
-- pub `oauth_config` function L189-194 — `(&self) -> OAuthProviderConfig`
--  `AtlassianProviderConfig` type L58-67 — `impl Default for AtlassianProviderConfig`
--  `default` function L59-66 — `() -> Self`
--  `AtlassianProviderConfig` type L69-87 — `= AtlassianProviderConfig`
--  `AtlassianIntegration` type L97-211 — `= AtlassianIntegration`
--  `provider` function L196-206 — `(&self) -> AtlassianProviderConfig`
--  `token_store` function L208-210 — `(&self) -> Result<TokenStore, IntegrationError>`
--  `AtlassianIntegration` type L214-311 — `impl Integration for AtlassianIntegration`
--  `name` function L215-217 — `(&self) -> &str`
--  `is_connected` function L219-224 — `(&self) -> bool`
--  `connect` function L226-274 — `(&self, ctx: &dyn ConnectContext) -> Result<(), IntegrationError>`
--  `disconnect` function L276-280 — `(&self) -> Result<(), IntegrationError>`
--  `capabilities_summary` function L282-310 — `(&self) -> Option<String>`
--  `RawAccessibleResource` struct L316-322 — `{ id: String, url: String, name: String, scopes: Vec<String> }` — Atlassian's accessible-resources response shape (snake-case-d to
--  `fetch_accessible_resources` function L326-356 — `( access_token: &str, ) -> Result<Vec<AtlassianSite>, IntegrationError>` — Hit `https://api.atlassian.com/oauth/token/accessible-resources` to
--  `tests` module L359-389 — `-`
--  `default_provider_carries_seven_scopes_with_offline_access` function L363-375 — `()`
--  `provider_lifts_into_oauth_config_with_audience` function L378-388 — `()`
+- pub `ATLASSIAN_OAUTH_SCOPES` variable L29-44 — `: &[&str]` — Bot scopes requested at OAuth time.
+- pub `AtlassianSite` struct L51-57 — `{ id: String, url: String, name: String, scopes: Vec<String> }` — One Atlassian site (workspace) the user authorized arawn to access.
+- pub `AtlassianProviderConfig` struct L60-65 — `{ auth_url: Url, token_url: Url, scopes: Vec<String>, redirect_port: u16 }` — Default Atlassian OAuth provider config.
+- pub `into_oauth_provider` function L79-95 — `( self, client_id: String, client_secret: String, ) -> OAuthProviderConfig`
+- pub `AtlassianIntegration` struct L99-104 — `{ data_dir: PathBuf, client_id: String, client_secret: String, provider_config: ...` — Atlassian integration.
+- pub `new` function L107-114 — `(data_dir: PathBuf, client_id: String, client_secret: String) -> Self`
+- pub `with_provider_config` function L116-119 — `(mut self, config: AtlassianProviderConfig) -> Self`
+- pub `load_token` function L122-127 — `(&self) -> Result<Token, IntegrationError>` — Load the persisted token.
+- pub `save_token` function L130-134 — `(&self, token: &Token) -> Result<(), IntegrationError>` — Persist the (potentially-refreshed) token back to disk.
+- pub `sites` function L139-148 — `(&self) -> Result<Vec<AtlassianSite>, IntegrationError>` — Read the persisted set of accessible Atlassian sites (cloud_ids
+- pub `select_site` function L152-183 — `( &self, which: Option<&str>, ) -> Result<AtlassianSite, IntegrationError>` — Resolve a site by URL or name (e.g.
+- pub `granted_scopes` function L186-196 — `( &self, ) -> Result<std::collections::HashSet<String>, IntegrationError>` — Read the granted scope set from the persisted token.
+- pub `oauth_config` function L198-203 — `(&self) -> OAuthProviderConfig`
+-  `AtlassianProviderConfig` type L67-76 — `impl Default for AtlassianProviderConfig`
+-  `default` function L68-75 — `() -> Self`
+-  `AtlassianProviderConfig` type L78-96 — `= AtlassianProviderConfig`
+-  `AtlassianIntegration` type L106-220 — `= AtlassianIntegration`
+-  `provider` function L205-215 — `(&self) -> AtlassianProviderConfig`
+-  `token_store` function L217-219 — `(&self) -> Result<TokenStore, IntegrationError>`
+-  `AtlassianIntegration` type L223-320 — `impl Integration for AtlassianIntegration`
+-  `name` function L224-226 — `(&self) -> &str`
+-  `is_connected` function L228-233 — `(&self) -> bool`
+-  `connect` function L235-283 — `(&self, ctx: &dyn ConnectContext) -> Result<(), IntegrationError>`
+-  `disconnect` function L285-289 — `(&self) -> Result<(), IntegrationError>`
+-  `capabilities_summary` function L291-319 — `(&self) -> Option<String>`
+-  `RawAccessibleResource` struct L325-331 — `{ id: String, url: String, name: String, scopes: Vec<String> }` — Atlassian's accessible-resources response shape (snake-case-d to
+-  `fetch_accessible_resources` function L335-365 — `( access_token: &str, ) -> Result<Vec<AtlassianSite>, IntegrationError>` — Hit `https://api.atlassian.com/oauth/token/accessible-resources` to
+-  `tests` module L368-410 — `-`
+-  `default_provider_carries_jira_classic_and_confluence_v2_scopes` function L372-396 — `()`
+-  `provider_lifts_into_oauth_config_with_audience` function L399-409 — `()`
 
 #### crates/arawn-integrations/src/atlassian/jira.rs
 
-- pub `JiraSearchTool` struct L149-152 — `{ integration: Arc<AtlassianIntegration>, description: String }` — Jira tools — search, get, create, update, comment, transition.
-- pub `new` function L155-163 — `(integration: Arc<AtlassianIntegration>) -> Self` — Jira tools — search, get, create, update, comment, transition.
-- pub `JiraGetIssueTool` struct L240-243 — `{ integration: Arc<AtlassianIntegration>, description: String }` — Jira tools — search, get, create, update, comment, transition.
-- pub `new` function L246-254 — `(integration: Arc<AtlassianIntegration>) -> Self` — Jira tools — search, get, create, update, comment, transition.
-- pub `JiraCreateIssueTool` struct L429-432 — `{ integration: Arc<AtlassianIntegration>, description: String }` — Jira tools — search, get, create, update, comment, transition.
-- pub `new` function L435-443 — `(integration: Arc<AtlassianIntegration>) -> Self` — Jira tools — search, get, create, update, comment, transition.
-- pub `JiraUpdateIssueTool` struct L527-530 — `{ integration: Arc<AtlassianIntegration>, description: String }` — Jira tools — search, get, create, update, comment, transition.
-- pub `new` function L533-541 — `(integration: Arc<AtlassianIntegration>) -> Self` — Jira tools — search, get, create, update, comment, transition.
-- pub `JiraAddCommentTool` struct L598-601 — `{ integration: Arc<AtlassianIntegration>, description: String }` — Jira tools — search, get, create, update, comment, transition.
-- pub `new` function L604-612 — `(integration: Arc<AtlassianIntegration>) -> Self` — Jira tools — search, get, create, update, comment, transition.
-- pub `JiraTransitionIssueTool` struct L682-685 — `{ integration: Arc<AtlassianIntegration>, description: String }` — Jira tools — search, get, create, update, comment, transition.
-- pub `new` function L688-696 — `(integration: Arc<AtlassianIntegration>) -> Self` — Jira tools — search, get, create, update, comment, transition.
--  `integ_err` function L14-16 — `(e: crate::IntegrationError) -> ToolError` — Jira tools — search, get, create, update, comment, transition.
--  `check_scopes` function L18-38 — `( integration: &AtlassianIntegration, required: &[&str], ) -> Result<(), ToolErr...` — Jira tools — search, get, create, update, comment, transition.
--  `site_param` function L40-42 — `(params: &Value) -> Option<&str>` — Jira tools — search, get, create, update, comment, transition.
--  `SearchResults` struct L47-52 — `{ issues: Vec<RawIssue>, total: u64 }` — Jira tools — search, get, create, update, comment, transition.
--  `RawIssue` struct L55-59 — `{ key: String, fields: serde_json::Map<String, Value> }` — Jira tools — search, get, create, update, comment, transition.
--  `IssueSummary` struct L62-71 — `{ key: String, summary: Option<String>, status: Option<String>, issue_type: Opti...` — Jira tools — search, get, create, update, comment, transition.
--  `summarize_issue` function L73-105 — `(raw: &RawIssue) -> IssueSummary` — Jira tools — search, get, create, update, comment, transition.
--  `IssueDetail` struct L108-121 — `{ key: String, summary: Option<String>, status: Option<String>, issue_type: Opti...` — Jira tools — search, get, create, update, comment, transition.
--  `CommentSummary` struct L124-129 — `{ id: String, author: Option<String>, body: Option<String>, created: Option<Stri...` — Jira tools — search, get, create, update, comment, transition.
--  `TransitionSummary` struct L132-137 — `{ id: String, name: String, to: Option<String> }` — Jira tools — search, get, create, update, comment, transition.
--  `JIRA_SEARCH_BASE` variable L141-146 — `: &str` — Jira tools — search, get, create, update, comment, transition.
--  `JIRA_SEARCH_SCOPES` variable L147 — `: &[&str]` — Jira tools — search, get, create, update, comment, transition.
--  `JiraSearchTool` type L154-164 — `= JiraSearchTool` — Jira tools — search, get, create, update, comment, transition.
--  `JiraSearchTool` type L167-231 — `impl Tool for JiraSearchTool` — Jira tools — search, get, create, update, comment, transition.
--  `name` function L168-170 — `(&self) -> &str` — Jira tools — search, get, create, update, comment, transition.
--  `description` function L171-173 — `(&self) -> &str` — Jira tools — search, get, create, update, comment, transition.
--  `category` function L174-176 — `(&self) -> ToolCategory` — Jira tools — search, get, create, update, comment, transition.
--  `permission_category` function L177-179 — `(&self) -> PermissionCategory` — Jira tools — search, get, create, update, comment, transition.
--  `parameters_schema` function L180-195 — `(&self) -> Value` — Jira tools — search, get, create, update, comment, transition.
--  `execute` function L196-230 — `(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError>` — Jira tools — search, get, create, update, comment, transition.
--  `JIRA_GET_ISSUE_BASE` variable L235-237 — `: &str` — Jira tools — search, get, create, update, comment, transition.
--  `JIRA_GET_ISSUE_SCOPES` variable L238 — `: &[&str]` — Jira tools — search, get, create, update, comment, transition.
--  `JiraGetIssueTool` type L245-255 — `= JiraGetIssueTool` — Jira tools — search, get, create, update, comment, transition.
--  `RawIssueDetail` struct L258-262 — `{ key: String, fields: serde_json::Map<String, Value> }` — Jira tools — search, get, create, update, comment, transition.
--  `TransitionsResp` struct L265-268 — `{ transitions: Vec<RawTransition> }` — Jira tools — search, get, create, update, comment, transition.
--  `RawTransition` struct L271-276 — `{ id: String, name: String, to: Option<RawTransitionTo> }` — Jira tools — search, get, create, update, comment, transition.
--  `RawTransitionTo` struct L279-281 — `{ name: Option<String> }` — Jira tools — search, get, create, update, comment, transition.
--  `JiraGetIssueTool` type L284-419 — `impl Tool for JiraGetIssueTool` — Jira tools — search, get, create, update, comment, transition.
--  `name` function L285-287 — `(&self) -> &str` — Jira tools — search, get, create, update, comment, transition.
--  `description` function L288-290 — `(&self) -> &str` — Jira tools — search, get, create, update, comment, transition.
--  `category` function L291-293 — `(&self) -> ToolCategory` — Jira tools — search, get, create, update, comment, transition.
--  `permission_category` function L294-296 — `(&self) -> PermissionCategory` — Jira tools — search, get, create, update, comment, transition.
--  `parameters_schema` function L297-306 — `(&self) -> Value` — Jira tools — search, get, create, update, comment, transition.
--  `execute` function L307-418 — `(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError>` — Jira tools — search, get, create, update, comment, transition.
--  `JIRA_CREATE_ISSUE_BASE` variable L423-426 — `: &str` — Jira tools — search, get, create, update, comment, transition.
--  `JIRA_CREATE_ISSUE_SCOPES` variable L427 — `: &[&str]` — Jira tools — search, get, create, update, comment, transition.
--  `JiraCreateIssueTool` type L434-444 — `= JiraCreateIssueTool` — Jira tools — search, get, create, update, comment, transition.
--  `JiraCreateIssueTool` type L447-517 — `impl Tool for JiraCreateIssueTool` — Jira tools — search, get, create, update, comment, transition.
--  `name` function L448-450 — `(&self) -> &str` — Jira tools — search, get, create, update, comment, transition.
--  `description` function L451-453 — `(&self) -> &str` — Jira tools — search, get, create, update, comment, transition.
--  `category` function L454-456 — `(&self) -> ToolCategory` — Jira tools — search, get, create, update, comment, transition.
--  `permission_category` function L457-459 — `(&self) -> PermissionCategory` — Jira tools — search, get, create, update, comment, transition.
--  `parameters_schema` function L460-472 — `(&self) -> Value` — Jira tools — search, get, create, update, comment, transition.
--  `execute` function L473-516 — `(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError>` — Jira tools — search, get, create, update, comment, transition.
--  `JIRA_UPDATE_ISSUE_BASE` variable L521-524 — `: &str` — Jira tools — search, get, create, update, comment, transition.
--  `JIRA_UPDATE_ISSUE_SCOPES` variable L525 — `: &[&str]` — Jira tools — search, get, create, update, comment, transition.
--  `JiraUpdateIssueTool` type L532-542 — `= JiraUpdateIssueTool` — Jira tools — search, get, create, update, comment, transition.
--  `JiraUpdateIssueTool` type L545-590 — `impl Tool for JiraUpdateIssueTool` — Jira tools — search, get, create, update, comment, transition.
--  `name` function L546-548 — `(&self) -> &str` — Jira tools — search, get, create, update, comment, transition.
--  `description` function L549-551 — `(&self) -> &str` — Jira tools — search, get, create, update, comment, transition.
--  `category` function L552-554 — `(&self) -> ToolCategory` — Jira tools — search, get, create, update, comment, transition.
--  `permission_category` function L555-557 — `(&self) -> PermissionCategory` — Jira tools — search, get, create, update, comment, transition.
--  `parameters_schema` function L558-568 — `(&self) -> Value` — Jira tools — search, get, create, update, comment, transition.
--  `execute` function L569-589 — `(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError>` — Jira tools — search, get, create, update, comment, transition.
--  `JIRA_ADD_COMMENT_BASE` variable L594-595 — `: &str` — Jira tools — search, get, create, update, comment, transition.
--  `JIRA_ADD_COMMENT_SCOPES` variable L596 — `: &[&str]` — Jira tools — search, get, create, update, comment, transition.
--  `JiraAddCommentTool` type L603-613 — `= JiraAddCommentTool` — Jira tools — search, get, create, update, comment, transition.
--  `JiraAddCommentTool` type L616-672 — `impl Tool for JiraAddCommentTool` — Jira tools — search, get, create, update, comment, transition.
--  `name` function L617-619 — `(&self) -> &str` — Jira tools — search, get, create, update, comment, transition.
--  `description` function L620-622 — `(&self) -> &str` — Jira tools — search, get, create, update, comment, transition.
--  `category` function L623-625 — `(&self) -> ToolCategory` — Jira tools — search, get, create, update, comment, transition.
--  `permission_category` function L626-628 — `(&self) -> PermissionCategory` — Jira tools — search, get, create, update, comment, transition.
--  `parameters_schema` function L629-639 — `(&self) -> Value` — Jira tools — search, get, create, update, comment, transition.
--  `execute` function L640-671 — `(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError>` — Jira tools — search, get, create, update, comment, transition.
--  `JIRA_TRANSITION_ISSUE_BASE` variable L676-679 — `: &str` — Jira tools — search, get, create, update, comment, transition.
--  `JIRA_TRANSITION_ISSUE_SCOPES` variable L680 — `: &[&str]` — Jira tools — search, get, create, update, comment, transition.
--  `JiraTransitionIssueTool` type L687-697 — `= JiraTransitionIssueTool` — Jira tools — search, get, create, update, comment, transition.
--  `JiraTransitionIssueTool` type L700-779 — `impl Tool for JiraTransitionIssueTool` — Jira tools — search, get, create, update, comment, transition.
--  `name` function L701-703 — `(&self) -> &str` — Jira tools — search, get, create, update, comment, transition.
--  `description` function L704-706 — `(&self) -> &str` — Jira tools — search, get, create, update, comment, transition.
--  `category` function L707-709 — `(&self) -> ToolCategory` — Jira tools — search, get, create, update, comment, transition.
--  `permission_category` function L710-712 — `(&self) -> PermissionCategory` — Jira tools — search, get, create, update, comment, transition.
--  `parameters_schema` function L713-726 — `(&self) -> Value` — Jira tools — search, get, create, update, comment, transition.
--  `execute` function L727-778 — `(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError>` — Jira tools — search, get, create, update, comment, transition.
--  `tests` module L782-819 — `-` — Jira tools — search, get, create, update, comment, transition.
--  `summarize_issue_extracts_nested_fields` function L786-808 — `()` — Jira tools — search, get, create, update, comment, transition.
--  `summarize_issue_handles_missing_fields` function L811-818 — `()` — Jira tools — search, get, create, update, comment, transition.
+- pub `JiraSearchTool` struct L196-199 — `{ integration: Arc<AtlassianIntegration>, description: String }` — follows API moves with each `cargo update`.
+- pub `new` function L202-210 — `(integration: Arc<AtlassianIntegration>) -> Self` — follows API moves with each `cargo update`.
+- pub `JiraGetIssueTool` struct L303-306 — `{ integration: Arc<AtlassianIntegration>, description: String }` — follows API moves with each `cargo update`.
+- pub `new` function L309-317 — `(integration: Arc<AtlassianIntegration>) -> Self` — follows API moves with each `cargo update`.
+- pub `JiraCreateIssueTool` struct L474-477 — `{ integration: Arc<AtlassianIntegration>, description: String }` — follows API moves with each `cargo update`.
+- pub `new` function L480-488 — `(integration: Arc<AtlassianIntegration>) -> Self` — follows API moves with each `cargo update`.
+- pub `JiraUpdateIssueTool` struct L575-578 — `{ integration: Arc<AtlassianIntegration>, description: String }` — follows API moves with each `cargo update`.
+- pub `new` function L581-589 — `(integration: Arc<AtlassianIntegration>) -> Self` — follows API moves with each `cargo update`.
+- pub `JiraAddCommentTool` struct L680-683 — `{ integration: Arc<AtlassianIntegration>, description: String }` — follows API moves with each `cargo update`.
+- pub `new` function L686-694 — `(integration: Arc<AtlassianIntegration>) -> Self` — follows API moves with each `cargo update`.
+- pub `JiraTransitionIssueTool` struct L759-762 — `{ integration: Arc<AtlassianIntegration>, description: String }` — follows API moves with each `cargo update`.
+- pub `new` function L765-773 — `(integration: Arc<AtlassianIntegration>) -> Self` — follows API moves with each `cargo update`.
+-  `integ_err` function L26-28 — `(e: crate::IntegrationError) -> ToolError` — follows API moves with each `cargo update`.
+-  `check_scopes` function L30-52 — `( integration: &AtlassianIntegration, required: &[&str], ) -> Result<(), ToolErr...` — follows API moves with each `cargo update`.
+-  `site_param` function L54-56 — `(params: &Value) -> Option<&str>` — follows API moves with each `cargo update`.
+-  `openapi_err` function L61-68 — `(e: jira_v3_openapi::apis::Error<E>) -> ToolError` — Map an `openapi::Error<E>` (from the generated client) into our common
+-  `tolerate_empty_body` function L74-84 — `( e: jira_v3_openapi::apis::Error<E>, ) -> Result<(), ToolError>` — Some Jira write endpoints (transitions, edit-without-return) respond
+-  `fields_map` function L89-95 — `(issue: &IssueBean) -> Map<String, Value>` — follows API moves with each `cargo update`.
+-  `IssueSummary` struct L100-109 — `{ key: String, summary: Option<String>, status: Option<String>, issue_type: Opti...` — follows API moves with each `cargo update`.
+-  `summarize_issue` function L111-142 — `(key: &str, fields: &Map<String, Value>) -> IssueSummary` — follows API moves with each `cargo update`.
+-  `IssueDetail` struct L145-158 — `{ key: String, summary: Option<String>, status: Option<String>, issue_type: Opti...` — follows API moves with each `cargo update`.
+-  `CommentSummary` struct L161-166 — `{ id: String, author: Option<String>, body: Option<String>, created: Option<Stri...` — follows API moves with each `cargo update`.
+-  `TransitionSummary` struct L169-174 — `{ id: String, name: String, to: Option<String> }` — follows API moves with each `cargo update`.
+-  `adf_from_markdown` function L179-181 — `(text: &str) -> Value` — follows API moves with each `cargo update`.
+-  `JIRA_SEARCH_BASE` variable L185-193 — `: &str` — follows API moves with each `cargo update`.
+-  `JIRA_SEARCH_SCOPES` variable L194 — `: &[&str]` — follows API moves with each `cargo update`.
+-  `JiraSearchTool` type L201-211 — `= JiraSearchTool` — follows API moves with each `cargo update`.
+-  `JiraSearchTool` type L214-294 — `impl Tool for JiraSearchTool` — follows API moves with each `cargo update`.
+-  `name` function L215-217 — `(&self) -> &str` — follows API moves with each `cargo update`.
+-  `description` function L218-220 — `(&self) -> &str` — follows API moves with each `cargo update`.
+-  `category` function L221-223 — `(&self) -> ToolCategory` — follows API moves with each `cargo update`.
+-  `permission_category` function L224-226 — `(&self) -> PermissionCategory` — follows API moves with each `cargo update`.
+-  `parameters_schema` function L227-242 — `(&self) -> Value` — follows API moves with each `cargo update`.
+-  `execute` function L243-293 — `(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError>` — follows API moves with each `cargo update`.
+-  `JIRA_GET_ISSUE_BASE` variable L298-300 — `: &str` — follows API moves with each `cargo update`.
+-  `JIRA_GET_ISSUE_SCOPES` variable L301 — `: &[&str]` — follows API moves with each `cargo update`.
+-  `JiraGetIssueTool` type L308-318 — `= JiraGetIssueTool` — follows API moves with each `cargo update`.
+-  `JiraGetIssueTool` type L321-463 — `impl Tool for JiraGetIssueTool` — follows API moves with each `cargo update`.
+-  `name` function L322-324 — `(&self) -> &str` — follows API moves with each `cargo update`.
+-  `description` function L325-327 — `(&self) -> &str` — follows API moves with each `cargo update`.
+-  `category` function L328-330 — `(&self) -> ToolCategory` — follows API moves with each `cargo update`.
+-  `permission_category` function L331-333 — `(&self) -> PermissionCategory` — follows API moves with each `cargo update`.
+-  `parameters_schema` function L334-343 — `(&self) -> Value` — follows API moves with each `cargo update`.
+-  `execute` function L344-462 — `(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError>` — follows API moves with each `cargo update`.
+-  `JIRA_CREATE_ISSUE_BASE` variable L467-471 — `: &str` — follows API moves with each `cargo update`.
+-  `JIRA_CREATE_ISSUE_SCOPES` variable L472 — `: &[&str]` — follows API moves with each `cargo update`.
+-  `JiraCreateIssueTool` type L479-489 — `= JiraCreateIssueTool` — follows API moves with each `cargo update`.
+-  `JiraCreateIssueTool` type L492-562 — `impl Tool for JiraCreateIssueTool` — follows API moves with each `cargo update`.
+-  `name` function L493-495 — `(&self) -> &str` — follows API moves with each `cargo update`.
+-  `description` function L496-498 — `(&self) -> &str` — follows API moves with each `cargo update`.
+-  `category` function L499-501 — `(&self) -> ToolCategory` — follows API moves with each `cargo update`.
+-  `permission_category` function L502-504 — `(&self) -> PermissionCategory` — follows API moves with each `cargo update`.
+-  `parameters_schema` function L505-517 — `(&self) -> Value` — follows API moves with each `cargo update`.
+-  `execute` function L518-561 — `(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError>` — follows API moves with each `cargo update`.
+-  `JIRA_UPDATE_ISSUE_BASE` variable L566-572 — `: &str` — follows API moves with each `cargo update`.
+-  `JIRA_UPDATE_ISSUE_SCOPES` variable L573 — `: &[&str]` — follows API moves with each `cargo update`.
+-  `JiraUpdateIssueTool` type L580-590 — `= JiraUpdateIssueTool` — follows API moves with each `cargo update`.
+-  `JiraUpdateIssueTool` type L593-671 — `impl Tool for JiraUpdateIssueTool` — follows API moves with each `cargo update`.
+-  `name` function L594-596 — `(&self) -> &str` — follows API moves with each `cargo update`.
+-  `description` function L597-599 — `(&self) -> &str` — follows API moves with each `cargo update`.
+-  `category` function L600-602 — `(&self) -> ToolCategory` — follows API moves with each `cargo update`.
+-  `permission_category` function L603-605 — `(&self) -> PermissionCategory` — follows API moves with each `cargo update`.
+-  `parameters_schema` function L606-616 — `(&self) -> Value` — follows API moves with each `cargo update`.
+-  `execute` function L617-670 — `(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError>` — follows API moves with each `cargo update`.
+-  `JIRA_ADD_COMMENT_BASE` variable L675-677 — `: &str` — follows API moves with each `cargo update`.
+-  `JIRA_ADD_COMMENT_SCOPES` variable L678 — `: &[&str]` — follows API moves with each `cargo update`.
+-  `JiraAddCommentTool` type L685-695 — `= JiraAddCommentTool` — follows API moves with each `cargo update`.
+-  `JiraAddCommentTool` type L698-749 — `impl Tool for JiraAddCommentTool` — follows API moves with each `cargo update`.
+-  `name` function L699-701 — `(&self) -> &str` — follows API moves with each `cargo update`.
+-  `description` function L702-704 — `(&self) -> &str` — follows API moves with each `cargo update`.
+-  `category` function L705-707 — `(&self) -> ToolCategory` — follows API moves with each `cargo update`.
+-  `permission_category` function L708-710 — `(&self) -> PermissionCategory` — follows API moves with each `cargo update`.
+-  `parameters_schema` function L711-721 — `(&self) -> Value` — follows API moves with each `cargo update`.
+-  `execute` function L722-748 — `(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError>` — follows API moves with each `cargo update`.
+-  `JIRA_TRANSITION_ISSUE_BASE` variable L753-756 — `: &str` — follows API moves with each `cargo update`.
+-  `JIRA_TRANSITION_ISSUE_SCOPES` variable L757 — `: &[&str]` — follows API moves with each `cargo update`.
+-  `JiraTransitionIssueTool` type L764-774 — `= JiraTransitionIssueTool` — follows API moves with each `cargo update`.
+-  `JiraTransitionIssueTool` type L777-860 — `impl Tool for JiraTransitionIssueTool` — follows API moves with each `cargo update`.
+-  `name` function L778-780 — `(&self) -> &str` — follows API moves with each `cargo update`.
+-  `description` function L781-783 — `(&self) -> &str` — follows API moves with each `cargo update`.
+-  `category` function L784-786 — `(&self) -> ToolCategory` — follows API moves with each `cargo update`.
+-  `permission_category` function L787-789 — `(&self) -> PermissionCategory` — follows API moves with each `cargo update`.
+-  `parameters_schema` function L790-803 — `(&self) -> Value` — follows API moves with each `cargo update`.
+-  `execute` function L804-859 — `(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError>` — follows API moves with each `cargo update`.
+-  `tests` module L863-895 — `-` — follows API moves with each `cargo update`.
+-  `summarize_issue_extracts_nested_fields` function L867-886 — `()` — follows API moves with each `cargo update`.
+-  `summarize_issue_handles_missing_fields` function L889-894 — `()` — follows API moves with each `cargo update`.
 
 #### crates/arawn-integrations/src/atlassian/mod.rs
 
--  `client` module L20 — `-` — One OAuth dance, one client_id/secret, one persisted token; both tool
--  `confluence` module L21 — `-` — See `docs/src/integrations/atlassian.md` for setup.
--  `integration` module L22 — `-` — See `docs/src/integrations/atlassian.md` for setup.
--  `jira` module L23 — `-` — See `docs/src/integrations/atlassian.md` for setup.
+-  `adf` module L20 — `-` — One OAuth dance, one client_id/secret, one persisted token; both tool
+-  `client` module L21 — `-` — See `docs/src/integrations/atlassian.md` for setup.
+-  `confluence` module L22 — `-` — See `docs/src/integrations/atlassian.md` for setup.
+-  `integration` module L23 — `-` — See `docs/src/integrations/atlassian.md` for setup.
+-  `jira` module L24 — `-` — See `docs/src/integrations/atlassian.md` for setup.
 
 ### crates/arawn-integrations/src/calendar
 
@@ -3606,40 +3641,40 @@
 - pub `ollama_at` function L64-66 — `(base_url: impl Into<String>) -> Self` — Create a client for Ollama with a custom host/port.
 - pub `openai` function L69-75 — `(api_key: impl Into<String>) -> Self` — Create a client for OpenAI.
 - pub `openai_from_env` function L78-82 — `() -> Result<Self, LlmError>` — Create a client for OpenAI from the OPENAI_API_KEY env var.
-- pub `from_config` function L85-113 — `( provider: &str, base_url: Option<&str>, api_key_env: &str, ) -> Result<Self, L...` — Create from explicit config values.
--  `OpenAICompatibleClient` type L25-139 — `= OpenAICompatibleClient`
--  `build_request_body` function L115-134 — `(&self, request: &ChatRequest) -> Value`
--  `completions_url` function L136-138 — `(&self) -> String`
--  `OpenAICompatibleClient` type L142-177 — `impl LlmClient for OpenAICompatibleClient`
--  `stream` function L143-176 — `( &self, request: ChatRequest, ) -> Result<Pin<Box<dyn Stream<Item = Result<Chat...`
--  `SseParser` struct L181-186 — `{ inner: S, buffer: String, pending_chunks: Vec<ChatChunk>, provider: String }`
--  `new` function L189-196 — `(inner: S, provider: String) -> Self`
--  `Item` type L203 — `= Result<ChatChunk, LlmError>`
--  `poll_next` function L205-241 — `( mut self: Pin<&mut Self>, cx: &mut std::task::Context<'_>, ) -> std::task::Pol...`
--  `try_parse_buffer` function L245-291 — `(&mut self) -> Option<Result<ChatChunk, LlmError>>`
--  `parse_stream_chunk` function L294-339 — `(chunk: &StreamChunk) -> Vec<ChatChunk>`
--  `build_messages` function L343-406 — `(system_prompt: &Option<String>, messages: &[ChatMessage]) -> Vec<Value>`
--  `build_tools` function L408-422 — `(tools: &[ToolDefinition]) -> Vec<Value>`
--  `ApiErrorResponse` struct L427-429 — `{ error: Option<ApiError> }`
--  `ApiError` struct L432-436 — `{ message: String, code: Option<String> }`
--  `StreamChunk` struct L439-444 — `{ choices: Vec<StreamChoice>, usage: Option<StreamUsage> }`
--  `StreamChoice` struct L447-449 — `{ delta: StreamDelta }`
--  `StreamDelta` struct L452-455 — `{ content: Option<String>, tool_calls: Option<Vec<StreamToolCall>> }`
--  `StreamToolCall` struct L458-461 — `{ id: Option<String>, function: Option<StreamFunction> }`
--  `StreamFunction` struct L464-467 — `{ name: Option<String>, arguments: Option<String> }`
--  `StreamUsage` struct L470-473 — `{ prompt_tokens: u32, completion_tokens: u32 }`
--  `tests` module L476-618 — `-`
--  `groq_convenience_constructor` function L481-486 — `()`
--  `ollama_convenience_constructor` function L489-494 — `()`
--  `openai_convenience_constructor` function L497-501 — `()`
--  `custom_base_url` function L504-511 — `()`
--  `from_config_known_providers` function L514-518 — `()`
--  `from_config_custom_url_override` function L521-528 — `()`
--  `build_messages_with_system_prompt` function L531-544 — `()`
--  `parse_text_delta` function L547-560 — `()`
--  `parse_tool_use_start` function L563-582 — `()`
--  `parse_usage` function L585-596 — `()`
--  `no_auth_header_when_no_api_key` function L599-617 — `()`
+- pub `from_config` function L85-105 — `( provider: &str, base_url: Option<&str>, api_key: Option<String>, ) -> Result<S...` — Create from explicit config values.
+-  `OpenAICompatibleClient` type L25-131 — `= OpenAICompatibleClient`
+-  `build_request_body` function L107-126 — `(&self, request: &ChatRequest) -> Value`
+-  `completions_url` function L128-130 — `(&self) -> String`
+-  `OpenAICompatibleClient` type L134-169 — `impl LlmClient for OpenAICompatibleClient`
+-  `stream` function L135-168 — `( &self, request: ChatRequest, ) -> Result<Pin<Box<dyn Stream<Item = Result<Chat...`
+-  `SseParser` struct L173-178 — `{ inner: S, buffer: String, pending_chunks: Vec<ChatChunk>, provider: String }`
+-  `new` function L181-188 — `(inner: S, provider: String) -> Self`
+-  `Item` type L195 — `= Result<ChatChunk, LlmError>`
+-  `poll_next` function L197-233 — `( mut self: Pin<&mut Self>, cx: &mut std::task::Context<'_>, ) -> std::task::Pol...`
+-  `try_parse_buffer` function L237-283 — `(&mut self) -> Option<Result<ChatChunk, LlmError>>`
+-  `parse_stream_chunk` function L286-331 — `(chunk: &StreamChunk) -> Vec<ChatChunk>`
+-  `build_messages` function L335-398 — `(system_prompt: &Option<String>, messages: &[ChatMessage]) -> Vec<Value>`
+-  `build_tools` function L400-414 — `(tools: &[ToolDefinition]) -> Vec<Value>`
+-  `ApiErrorResponse` struct L419-421 — `{ error: Option<ApiError> }`
+-  `ApiError` struct L424-428 — `{ message: String, code: Option<String> }`
+-  `StreamChunk` struct L431-436 — `{ choices: Vec<StreamChoice>, usage: Option<StreamUsage> }`
+-  `StreamChoice` struct L439-441 — `{ delta: StreamDelta }`
+-  `StreamDelta` struct L444-447 — `{ content: Option<String>, tool_calls: Option<Vec<StreamToolCall>> }`
+-  `StreamToolCall` struct L450-453 — `{ id: Option<String>, function: Option<StreamFunction> }`
+-  `StreamFunction` struct L456-459 — `{ name: Option<String>, arguments: Option<String> }`
+-  `StreamUsage` struct L462-465 — `{ prompt_tokens: u32, completion_tokens: u32 }`
+-  `tests` module L468-610 — `-`
+-  `groq_convenience_constructor` function L473-478 — `()`
+-  `ollama_convenience_constructor` function L481-486 — `()`
+-  `openai_convenience_constructor` function L489-493 — `()`
+-  `custom_base_url` function L496-503 — `()`
+-  `from_config_known_providers` function L506-510 — `()`
+-  `from_config_custom_url_override` function L513-520 — `()`
+-  `build_messages_with_system_prompt` function L523-536 — `()`
+-  `parse_text_delta` function L539-552 — `()`
+-  `parse_tool_use_start` function L555-574 — `()`
+-  `parse_usage` function L577-588 — `()`
+-  `no_auth_header_when_no_api_key` function L591-609 — `()`
 
 #### crates/arawn-llm/src/retry.rs
 

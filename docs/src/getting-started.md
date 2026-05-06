@@ -58,6 +58,17 @@ data_dir = "~/.arawn"
 export GROQ_API_KEY=gsk_your_key_here
 ```
 
+Or skip the env var entirely and put the key directly in the config:
+
+```toml
+[llm.default]
+provider = "groq"
+model = "openai/gpt-oss-120b"
+api_key = "gsk_your_key_here"
+```
+
+`api_key` (direct value in TOML) takes precedence over `api_key_env` (env var name) when both are set.
+
 ### Option B: Ollama Cloud
 
 ```toml
@@ -147,6 +158,336 @@ You're set. From here:
 - Read about [the available tools](./intro.md#whats-included) (work in progress).
 - Try a more involved prompt: `Find any TODO comments in this repo and group them by file`.
 - Press `Ctrl+C` in the TUI to quit; the server keeps running.
+
+## 6. Connect integrations
+
+Arawn integrates with Google (Gmail / Calendar / Drive), Slack, and Atlassian (Jira / Confluence). For each one, you have to:
+
+1. Create an OAuth app in the provider's developer console.
+2. Paste the `client_id` / `client_secret` into `~/.arawn/arawn.toml`.
+3. Run `/connect <service>` in the TUI, approve the consent screen in your browser.
+
+Why so hands-on: every provider requires apps to be registered before they'll hand out access to user data. Arawn doesn't ship a pre-registered shared app today (see ARAWN-I-0037 for the long-term plan).
+
+Once connected, tokens are stored encrypted under `~/.arawn/tokens/` and refreshed silently. Tokens never leave your machine.
+
+### Google — Gmail, Calendar, and Drive (one app for all three)
+
+The same Google Cloud project covers all three integrations. Set it up once.
+
+**Time:** ~10 minutes.
+
+#### 1. Create / pick a Google Cloud project
+
+Go to <https://console.cloud.google.com/>. Create a new project (any name) or pick an existing one. Note the **project number** in the dashboard — you'll use it in URLs below.
+
+#### 2. Enable the APIs you want
+
+You only need to enable the APIs for the services you'll use. Replace `<PROJECT>` in the URLs with your project number:
+
+- Gmail: `https://console.cloud.google.com/apis/library/gmail.googleapis.com?project=<PROJECT>`
+- Calendar: `https://console.cloud.google.com/apis/library/calendar-json.googleapis.com?project=<PROJECT>`
+- Drive: `https://console.cloud.google.com/apis/library/drive.googleapis.com?project=<PROJECT>`
+
+Click **Enable** on each. If the button says "Manage", it's already enabled.
+
+> ⚠️ The OAuth scope picker (next step) only shows scopes for **enabled APIs**. If a scope you expect doesn't appear, double-check you enabled the API first.
+
+#### 3. Configure the OAuth consent screen
+
+Left nav → **Google Auth Platform → Branding** (the menu was renamed from "OAuth consent screen" in late 2024). If you don't see "Google Auth Platform", direct URL: `https://console.cloud.google.com/auth/branding?project=<PROJECT>`.
+
+- **User type:** External (unless you're inside a Google Workspace org and only want it for that org's users).
+- **App name:** anything ("arawn-personal" works).
+- **User support email:** your email.
+- **Developer contact:** your email.
+
+Save.
+
+> Your app will be in **Testing mode** by default — Google will warn anyone who connects "this app is unverified". That's fine for personal use; you're capped at 100 test users (i.e. yourself + anyone else you explicitly add). Verification is only needed if you want to ship arawn to strangers.
+
+#### 4. Add OAuth scopes
+
+Left nav → **Google Auth Platform → Data Access**. Direct URL: `https://console.cloud.google.com/auth/scopes?project=<PROJECT>`.
+
+Click **Add or Remove Scopes**. The picker filters by enabled APIs. If a scope doesn't show up, scroll to the bottom of the panel and use **"Manually add scopes"** — paste the URL and click "Add to Table".
+
+Scopes to add (only add the ones for services you'll use):
+
+```
+# Gmail
+https://www.googleapis.com/auth/gmail.readonly
+https://www.googleapis.com/auth/gmail.send
+https://www.googleapis.com/auth/gmail.modify
+
+# Calendar
+https://www.googleapis.com/auth/calendar.events
+
+# Drive (full read+write — arawn defaults to this so upload/update/delete work)
+https://www.googleapis.com/auth/drive
+```
+
+Click **Update**, then **Save**.
+
+#### 5. Add yourself as a test user
+
+Left nav → **Google Auth Platform → Audience**. Under **Test users**, click **+ Add Users** and enter the Google account you'll be connecting. Without this, the consent screen will refuse access.
+
+#### 6. Create the OAuth client
+
+Left nav → **APIs & Services → Credentials**. Direct URL: `https://console.cloud.google.com/apis/credentials?project=<PROJECT>`.
+
+**Create Credentials → OAuth client ID:**
+
+- **Application type:** Desktop app.
+- **Name:** anything ("arawn desktop" works).
+
+Click Create. Copy the **Client ID** and **Client secret** — that's what you put in arawn.
+
+> No redirect URI configuration needed for Desktop apps — Google accepts any localhost callback automatically.
+
+#### 7. Paste into arawn.toml
+
+```toml
+# ~/.arawn/arawn.toml
+
+# One Google OAuth client shared across Gmail, Calendar, Drive.
+[integrations.google]
+client_id = "955517163683-xxxxxxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com"
+client_secret = "GOCSPX-xxxxxxxxxxxxxxxxxxxxxxxx"
+```
+
+If you'd rather use isolated OAuth clients per service, use `[integrations.gmail]`, `[integrations.calendar]`, `[integrations.drive]` instead. The shared `[integrations.google]` block is the recommended default.
+
+#### 8. Restart the server and connect
+
+```sh
+# In the terminal running arawn serve, Ctrl+C, then:
+arawn serve
+```
+
+In the TUI:
+
+```
+/connect gmail
+/connect google_calendar
+/connect google_drive
+```
+
+Each `/connect`:
+
+1. Opens your browser to Google's consent screen.
+2. You sign in (use the Google account you added as a test user).
+3. Click "Allow" — accept the unverified-app warning by clicking "Advanced → Go to `<app name>`".
+4. Browser shows a success page; you can close the tab.
+5. TUI shows `ℹ [integration] connected: <service>`.
+
+Run `/integrations` in the TUI to confirm all three show as connected.
+
+### Slack
+
+**Time:** ~10 minutes.
+
+#### 1. Create a Slack app
+
+Go to <https://api.slack.com/apps> → **Create New App → From scratch**.
+
+- **Name:** anything ("arawn-personal" works).
+- **Workspace:** the workspace you want arawn to operate in. (Multi-workspace support is on the roadmap as ARAWN-I-0034.)
+
+#### 2. Add OAuth scopes
+
+In the app's settings, **OAuth & Permissions → Scopes**.
+
+Add these **Bot Token Scopes**:
+
+```
+channels:history
+channels:read
+chat:write
+chat:write.public
+files:read
+groups:history
+groups:read
+im:history
+im:read
+im:write
+mpim:history
+mpim:read
+mpim:write
+users:read
+users:read.email
+```
+
+Add these **User Token Scopes** (yes, both — Slack's dual-token model means some tools need user-level access to private channels you've joined):
+
+```
+channels:history
+channels:read
+groups:history
+groups:read
+im:history
+im:read
+mpim:history
+mpim:read
+search:read
+```
+
+#### 3. Set the redirect URI
+
+In **OAuth & Permissions → Redirect URLs**, click **Add New Redirect URL** and enter exactly:
+
+```
+http://localhost:8080/oauth/callback
+```
+
+> ⚠️ Use `localhost`, not `127.0.0.1`. Slack does string comparison and rejects `127.0.0.1` even though it resolves to the same address. The port is fixed at 8080 because Slack's allowlist is exact-match (no wildcards) — make sure 8080 is free on your machine when you `/connect`.
+
+Save URLs.
+
+#### 4. Install the app to your workspace
+
+In the app's settings, **Install App → Install to `<Workspace>`**. Slack will show a consent screen with the scopes you asked for. Approve.
+
+After install, you can copy the bot/user tokens from this page if you want — but arawn doesn't use them directly. Arawn does its own OAuth dance via `/connect slack` to get its own tokens.
+
+#### 5. Get the client_id / client_secret
+
+In the app's settings, **Basic Information → App Credentials**. Copy:
+
+- **Client ID** (looks like `2130966322213.11049839823699`)
+- **Client Secret** (32-char hex string)
+
+#### 6. Paste into arawn.toml
+
+```toml
+[integrations.slack]
+client_id = "2130966322213.11049839823699"
+client_secret = "262f1cf7e5773131e68c7b61df992a1b"
+```
+
+#### 7. Restart and connect
+
+```sh
+arawn serve   # restart
+```
+
+In TUI:
+
+```
+/connect slack
+```
+
+Browser opens, you re-approve (this time it's arawn's own OAuth dance, not the install flow). After success, run `/integrations` to confirm.
+
+> If you change scopes later, you must **re-install the app** in step 4 *and* run `/disconnect slack` then `/connect slack` again. Slack's tokens are scope-locked at issue time.
+
+### Atlassian — Jira and Confluence
+
+**Time:** ~10 minutes.
+
+#### 1. Create the OAuth 2.0 (3LO) integration
+
+Go to <https://developer.atlassian.com/console/myapps/> → **Create → OAuth 2.0 integration**.
+
+- **Name:** "arawn-personal" works.
+
+#### 2. Add APIs and scopes
+
+In the app's settings, **Permissions** tab. For each API you want to use, click **Add** then **Configure**.
+
+**Jira API** — add scopes:
+
+```
+read:jira-user
+read:jira-work
+write:jira-work
+```
+
+**Confluence API** — add scopes:
+
+```
+read:confluence-content.all
+write:confluence-content
+read:confluence-space.summary
+```
+
+> Atlassian also has **classic** and **granular** scope versions. The above are the classic scopes which arawn uses. If a scope above doesn't appear, look in the "Classic scopes" section.
+
+#### 3. Set the callback URL
+
+**Authorization** tab → **Callback URL**:
+
+```
+http://localhost:8080/oauth/callback
+```
+
+Same fixed-port-8080 rule as Slack.
+
+Save.
+
+#### 4. Get the client_id / client_secret
+
+**Settings** tab → **Authentication details**. Copy:
+
+- **Client ID**
+- **Secret**
+
+#### 5. Paste into arawn.toml
+
+```toml
+[integrations.atlassian]
+client_id = "your-client-id"
+client_secret = "your-client-secret"
+```
+
+#### 6. Restart and connect
+
+```sh
+arawn serve
+```
+
+In TUI:
+
+```
+/connect atlassian
+```
+
+Atlassian's consent screen will ask which **site** (your Jira/Confluence cloud instance) to grant access to. Pick the one you want. Arawn discovers the underlying `cloud_id` automatically after consent.
+
+### Verifying integrations work
+
+Run `/integrations` in the TUI — every connected service should show:
+
+```
+gmail            connected   (5 tools)
+google_calendar  connected   (3 tools)
+google_drive     connected   (7 tools)
+slack            connected   (6 tools)
+atlassian        connected   (11 tools)
+```
+
+Then try a real prompt for each:
+
+| Service | Test prompt |
+|---|---|
+| Gmail | `list the last 5 emails in my inbox` |
+| Calendar | `what's on my calendar this week?` |
+| Drive | `list the files in my Drive root` |
+| Slack | `list my Slack channels` |
+| Atlassian | `show me my open Jira issues` |
+
+### Common integration errors
+
+| Error | Cause | Fix |
+|---|---|---|
+| `Error 400: redirect_uri_mismatch` | Provider's allowed redirect URI doesn't match what arawn requested | Re-check the redirect URI in the provider console matches the value in the doc above (Slack/Atlassian: exactly `http://localhost:8080/oauth/callback`; Google Desktop apps: any localhost). |
+| `Error 403: access_denied` | You clicked Deny, or your account isn't in the test-users list | Add yourself as a test user in the consent screen settings. |
+| `[integration] error: insufficient_scope` | You connected with one scope set; the agent is trying a tool that needs another | Add the missing scope in the provider console, run `/disconnect <svc>` then `/connect <svc>`. |
+| `[integration] error: invalid_grant` | Stored refresh token expired or was revoked | `/disconnect <svc>` then `/connect <svc>` to re-auth. |
+| `Connection error: failed to reach <host>` | API not enabled in the provider console, or network issue | For Google, confirm the relevant API is enabled in the **Library** (Gmail / Calendar / Drive each need their own enable click). |
+| `[integration] connected` but tools error with permission issues | Token cache vs scope mismatch — common after adding new scopes | Revoke at the provider's permissions page (e.g. <https://myaccount.google.com/permissions>) then `/connect <svc>` fresh. |
+| `Address already in use (port 8080)` during Slack/Atlassian connect | Something else is listening on 8080 | Stop the conflicting process, or wait a few seconds and retry — the bound socket may still be in TIME_WAIT. |
 
 ## CLI one-shot mode
 

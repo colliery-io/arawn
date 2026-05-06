@@ -16,4 +16,6 @@
 
 - [Gmail](./integrations/gmail.md)
 - [Google Calendar](./integrations/calendar.md)
+- [Google Drive](./integrations/drive.md)
 - [Slack](./integrations/slack.md)
+- [Atlassian (Jira + Confluence)](./integrations/atlassian.md)

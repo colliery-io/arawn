@@ -289,7 +289,6 @@ struct RawContentRef {
 #[derive(Debug, Deserialize)]
 struct RawSpaceRef {
     key: Option<String>,
-    name: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -301,13 +300,16 @@ struct SearchHit {
     url: Option<String>,
 }
 
+// Confluence v2 page shape: `{ id, status, title, spaceId, parentId,
+// version: {number, message?}, body: {storage: {value, representation}},
+// _links: {webui, base, edit-ui, ...} }`. Notably no `space` block (only
+// `spaceId`); we resolve the space key separately if the agent needs it.
 #[derive(Debug, Deserialize)]
 struct PageDetailRaw {
     id: String,
     title: Option<String>,
-    #[serde(rename = "type")]
-    kind: Option<String>,
-    space: Option<RawSpaceRef>,
+    #[serde(rename = "spaceId", default)]
+    space_id: Option<String>,
     body: Option<RawBody>,
     version: Option<RawVersion>,
     #[serde(rename = "_links", default)]
@@ -342,6 +344,9 @@ struct PageSummary {
     url: Option<String>,
 }
 
+// Confluence v2 spaces shape: `{ results: [{id, key, name, type, ...}],
+// _links: { next? } }`. id is now numeric (string-encoded), key is the
+// short alpha key the agent already uses.
 #[derive(Debug, Deserialize)]
 struct SpacesResp {
     #[serde(default)]
@@ -350,6 +355,7 @@ struct SpacesResp {
 
 #[derive(Debug, Deserialize)]
 struct RawSpace {
+    id: String,
     key: String,
     name: Option<String>,
     #[serde(rename = "type")]
@@ -421,8 +427,10 @@ impl Tool for ConfluenceSearchTool {
         let site = site_param(&params);
 
         let client = AtlassianClient::new(Arc::clone(&self.integration));
+        // CQL search has no v2 equivalent yet; v1 /search remains
+        // functional per Atlassian's deprecation table.
         let resp: SearchResp = client
-            .confluence_get(
+            .confluence_v1_get(
                 "/search",
                 site,
                 &[("cql", cql), ("limit", limit.to_string())],
@@ -515,11 +523,14 @@ impl Tool for ConfluenceGetPageTool {
         let site = site_param(&params);
 
         let client = AtlassianClient::new(Arc::clone(&self.integration));
+        // v2: GET /pages/{id}?body-format=storage. Body shape is
+        // {value, representation}; no nested space object — we resolve
+        // the space key separately if needed.
         let page: PageDetailRaw = client
             .confluence_get(
-                &format!("/content/{page_id}"),
+                &format!("/pages/{page_id}"),
                 site,
-                &[("expand", "body.storage,version,space".into())],
+                &[("body-format", "storage".into())],
             )
             .await
             .map_err(integ_err)?;
@@ -529,12 +540,24 @@ impl Tool for ConfluenceGetPageTool {
             .as_ref()
             .and_then(|b| b.storage.as_ref())
             .and_then(|s| s.value.clone());
+
+        // Resolve spaceId → key (best-effort; one extra round-trip).
+        let space_key = if let Some(ref sid) = page.space_id {
+            client
+                .confluence_get::<SpacesResp>("/spaces", site, &[])
+                .await
+                .ok()
+                .and_then(|r| r.results.into_iter().find(|s| &s.id == sid)).map(|s| s.key)
+        } else {
+            None
+        };
+
         let summary = PageSummary {
             id: page.id.clone(),
             title: page.title.clone(),
-            kind: page.kind.clone(),
-            space_key: page.space.as_ref().and_then(|s| s.key.clone()),
-            space_name: page.space.as_ref().and_then(|s| s.name.clone()),
+            kind: Some("page".to_string()),
+            space_key,
+            space_name: None,
             body_markdown: storage.as_deref().map(storage_to_markdown),
             body_storage: if want_raw { storage } else { None },
             version: page.version.and_then(|v| v.number),
@@ -619,24 +642,40 @@ impl Tool for ConfluenceCreatePageTool {
         let site = site_param(&params);
 
         let storage = markdown_to_storage(body_md);
+
+        let client = AtlassianClient::new(Arc::clone(&self.integration));
+
+        // v2 wants spaceId, not space.key. One extra GET to resolve.
+        let spaces: SpacesResp = client
+            .confluence_get("/spaces", site, &[])
+            .await
+            .map_err(integ_err)?;
+        let space_id = spaces
+            .results
+            .into_iter()
+            .find(|s| s.key == space_key)
+            .map(|s| s.id)
+            .ok_or_else(|| {
+                ToolError::ExecutionFailed(format!(
+                    "no Confluence space with key '{space_key}' on this site"
+                ))
+            })?;
+
         let mut body = json!({
-            "type": "page",
+            "spaceId": space_id,
+            "status": "current",
             "title": title,
-            "space": { "key": space_key },
             "body": {
-                "storage": {
-                    "value": storage,
-                    "representation": "storage"
-                }
+                "representation": "storage",
+                "value": storage,
             },
         });
         if let Some(pid) = parent_id {
-            body["ancestors"] = json!([{ "id": pid }]);
+            body["parentId"] = json!(pid);
         }
 
-        let client = AtlassianClient::new(Arc::clone(&self.integration));
         let resp: Value = client
-            .confluence_post("/content", site, &body)
+            .confluence_post("/pages", site, &body)
             .await
             .map_err(integ_err)?;
         Ok(ToolOutput::success(resp.to_string()))
@@ -713,36 +752,27 @@ impl Tool for ConfluenceUpdatePageTool {
         let site = site_param(&params);
 
         let client = AtlassianClient::new(Arc::clone(&self.integration));
-        // Fetch current to learn version + type.
+        // v2: GET /pages/{id} for the current version number.
         let current: PageDetailRaw = client
-            .confluence_get(
-                &format!("/content/{page_id}"),
-                site,
-                &[("expand", "version".into())],
-            )
+            .confluence_get(&format!("/pages/{page_id}"), site, &[])
             .await
             .map_err(integ_err)?;
-        let current_version = current
-            .version
-            .and_then(|v| v.number)
-            .unwrap_or(1);
+        let current_version = current.version.and_then(|v| v.number).unwrap_or(1);
 
         let storage = markdown_to_storage(body_md);
         let body = json!({
             "id": page_id,
-            "type": current.kind.unwrap_or_else(|| "page".to_string()),
+            "status": "current",
             "title": title,
             "version": { "number": current_version + 1 },
             "body": {
-                "storage": {
-                    "value": storage,
-                    "representation": "storage"
-                }
+                "representation": "storage",
+                "value": storage,
             },
         });
 
         let resp: Value = client
-            .confluence_put(&format!("/content/{page_id}"), site, &body)
+            .confluence_put(&format!("/pages/{page_id}"), site, &body)
             .await
             .map_err(integ_err)?;
         Ok(ToolOutput::success(resp.to_string()))
@@ -775,6 +805,7 @@ impl ConfluenceListSpacesTool {
 
 #[derive(Debug, Serialize)]
 struct SpaceSummary {
+    id: String,
     key: String,
     name: Option<String>,
     kind: Option<String>,
@@ -807,13 +838,14 @@ impl Tool for ConfluenceListSpacesTool {
         let site = site_param(&params);
         let client = AtlassianClient::new(Arc::clone(&self.integration));
         let resp: SpacesResp = client
-            .confluence_get("/space", site, &[])
+            .confluence_get("/spaces", site, &[])
             .await
             .map_err(integ_err)?;
         let summaries: Vec<SpaceSummary> = resp
             .results
             .into_iter()
             .map(|s| SpaceSummary {
+                id: s.id,
                 key: s.key,
                 name: s.name,
                 kind: s.kind,
