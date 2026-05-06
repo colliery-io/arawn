@@ -38,6 +38,10 @@ pub enum Action {
     ModalConfirm,
     /// Modal: cancel.
     ModalCancel,
+    /// Modal: directly pick option N (number-key shortcut). Idx is
+    /// 0-based; `1` key produces `ModalSelectIndex(0)`. If the index
+    /// is out of range for the current modal, the action is a no-op.
+    ModalSelectIndex(usize),
     /// Autocomplete: move to next suggestion.
     AutocompleteNext,
     /// Autocomplete: move to previous suggestion.

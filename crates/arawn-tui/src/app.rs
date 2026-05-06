@@ -504,6 +504,21 @@ impl App {
                 }
                 self.active_modal = None;
             }
+            Action::ModalSelectIndex(idx) => {
+                if let Some(ref mut modal) = self.active_modal {
+                    if idx < modal.options.len() {
+                        modal.focused_index = idx;
+                        modal.confirm();
+                        self.active_modal = None;
+                    } else {
+                        // Number out of range — silent no-op rather than
+                        // confirming the wrong thing.
+                        self.dirty = false;
+                    }
+                } else {
+                    self.dirty = false;
+                }
+            }
             Action::ToggleAllToolResults => {
                 // If any are expanded, collapse all. Otherwise expand all.
                 let any_expanded = !self.expanded_tool_results.is_empty();
@@ -1340,5 +1355,46 @@ mod tests {
         app.handle_action(Action::EscapeIdle);
         app.handle_action(Action::EscapeIdle);
         assert!(app.active_modal.is_none());
+    }
+
+    #[test]
+    fn modal_select_index_picks_option_directly() {
+        let mut app = App::new();
+        // Open a modal with three options (we use the history modal path
+        // since it's local-only and doesn't need a ws RPC).
+        for label in &["alpha", "bravo", "charlie"] {
+            submit_via_input(&mut app, label);
+        }
+        app.handle_action(Action::EscapeIdle);
+        app.handle_action(Action::EscapeIdle);
+        let modal = app.active_modal.as_ref().expect("modal should be open");
+        assert_eq!(modal.options.len(), 3);
+        assert_eq!(modal.focused_index, 0); // before the action
+
+        // Direct-select option index 2 (third in the list — "alpha", since
+        // the modal renders newest-first: bravo bravo charlie order is
+        // reversed to charlie/bravo/alpha — so index 2 = "alpha").
+        app.handle_action(Action::ModalSelectIndex(2));
+        // Modal closes after selection; the prompt at history index 0
+        // ("alpha") should now be loaded into the input buffer via the
+        // event-loop side of the branch flow, but at the App-only level
+        // we just assert the modal closed.
+        assert!(app.active_modal.is_none());
+    }
+
+    #[test]
+    fn modal_select_out_of_range_is_no_op() {
+        let mut app = App::new();
+        submit_via_input(&mut app, "only one");
+        app.handle_action(Action::EscapeIdle);
+        app.handle_action(Action::EscapeIdle);
+        assert!(app.active_modal.is_some());
+
+        // Modal has 1 option; pressing `5` should not confirm anything.
+        app.handle_action(Action::ModalSelectIndex(4));
+        assert!(
+            app.active_modal.is_some(),
+            "out-of-range index must not close the modal"
+        );
     }
 }
