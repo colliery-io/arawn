@@ -105,8 +105,8 @@ fn render_sidebar_tab(frame: &mut Frame, area: ratatui::layout::Rect) {
 }
 
 fn render_status_bar(app: &App, frame: &mut Frame, area: ratatui::layout::Rect) {
-    let bar_style = Style::default().fg(Color::White).bg(Color::Rgb(30, 30, 40));
-    let dim = Style::default().fg(Color::DarkGray).bg(Color::Rgb(30, 30, 40));
+    let bar_style = Style::default().fg(Color::White).bg(crate::theme::STATUS_BAR_BG);
+    let dim = Style::default().fg(Color::DarkGray).bg(crate::theme::STATUS_BAR_BG);
     let mut spans = Vec::new();
 
     // Model name
@@ -146,7 +146,7 @@ fn render_status_bar(app: &App, frame: &mut Frame, area: ratatui::layout::Rect) 
         };
         spans.push(Span::styled(
             label.to_string(),
-            Style::default().fg(color).bg(Color::Rgb(30, 30, 40)).add_modifier(ratatui::style::Modifier::BOLD),
+            Style::default().fg(color).bg(crate::theme::STATUS_BAR_BG).add_modifier(ratatui::style::Modifier::BOLD),
         ));
     }
 
@@ -167,7 +167,7 @@ fn render_status_bar(app: &App, frame: &mut Frame, area: ratatui::layout::Rect) 
         };
         spans.push(Span::styled(
             state_text,
-            Style::default().fg(Color::Yellow).bg(Color::Rgb(30, 30, 40)),
+            Style::default().fg(Color::Yellow).bg(crate::theme::STATUS_BAR_BG),
         ));
         // Elapsed time
         if let Some(started) = app.generation_started {
@@ -175,19 +175,19 @@ fn render_status_bar(app: &App, frame: &mut Frame, area: ratatui::layout::Rect) 
             if elapsed >= 2 {
                 spans.push(Span::styled(
                     format!(" {elapsed}s"),
-                    Style::default().fg(Color::DarkGray).bg(Color::Rgb(30, 30, 40)),
+                    Style::default().fg(Color::DarkGray).bg(crate::theme::STATUS_BAR_BG),
                 ));
             }
         }
     } else {
         spans.push(Span::styled(
             " Ready",
-            Style::default().fg(Color::Green).bg(Color::Rgb(30, 30, 40)),
+            Style::default().fg(Color::Green).bg(crate::theme::STATUS_BAR_BG),
         ));
     }
 
     let status = Paragraph::new(Line::from(spans))
-        .style(Style::default().bg(Color::Rgb(30, 30, 40)));
+        .style(Style::default().bg(crate::theme::STATUS_BAR_BG));
     frame.render_widget(status, area);
 }
 

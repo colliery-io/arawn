@@ -35,8 +35,10 @@ pub const CHROME: Color = Color::Rgb(100, 100, 115);
 /// Separator line between chat and input
 pub const SEPARATOR: Color = Color::DarkGray;
 
-/// Status bar background
-pub const STATUS_BAR_BG: Color = Color::DarkGray;
+/// Status bar background. The matching value is what render.rs has been
+/// using as a literal (`Rgb(30, 30, 40)`) — the constant previously
+/// said `DarkGray`, which lied about the actual rendered color.
+pub const STATUS_BAR_BG: Color = Color::Rgb(30, 30, 40);
 
 /// Status bar text
 pub const STATUS_BAR_FG: Color = Color::White;
