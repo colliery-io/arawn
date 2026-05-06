@@ -227,25 +227,11 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                                         {
                                             Ok(detail) => {
                                                 // Refresh local messages from the truncated state.
-                                                if let Some(msgs) = detail
-                                                    .get("messages")
-                                                    .and_then(|m| m.as_array())
-                                                {
-                                                    app.messages.clear();
-                                                    for m in msgs {
-                                                        if let (Some(role), Some(content)) = (
-                                                            m.get("role").and_then(|v| v.as_str()),
-                                                            m.get("content").and_then(|v| v.as_str()),
-                                                        ) {
-                                                            let mapped = match role {
-                                                                "user" => crate::app::ChatRole::User,
-                                                                "assistant" => crate::app::ChatRole::Assistant,
-                                                                _ => continue, // skip tool_result/summary on refresh
-                                                            };
-                                                            app.messages.push(ChatMessage::new(mapped, content));
-                                                        }
-                                                    }
-                                                }
+                                                // Use App::load_session_messages so tool_use /
+                                                // tool_result / summary roles round-trip
+                                                // correctly — the previous open-coded loop
+                                                // dropped them.
+                                                app.load_session_messages(&detail);
                                                 // Load the picked prompt into input for editing.
                                                 app.handle_action(crate::action::Action::HistoryRecallAt(history_idx));
                                                 app.messages.push(ChatMessage::new(
