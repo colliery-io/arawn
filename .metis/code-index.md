@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-05T19:43:29Z | 193 files | Python, Rust
+> Generated: 2026-05-06T02:34:04Z | 197 files | Python, Rust
 
 ## Project Structure
 
@@ -119,6 +119,11 @@
 │   │       │   ├── mod.rs
 │   │       │   └── tools.rs
 │   │       ├── credential_store.rs
+│   │       ├── drive/
+│   │       │   ├── client.rs
+│   │       │   ├── integration.rs
+│   │       │   ├── mod.rs
+│   │       │   └── tools.rs
 │   │       ├── error.rs
 │   │       ├── gmail/
 │   │       │   ├── client.rs
@@ -308,14 +313,16 @@
 - pub `StorageConfig` struct L157-160 — `{ data_dir: String }`
 - pub `PromptsConfig` struct L175-178 — `{ token_budget: u32 }`
 - pub `SandboxConfig` struct L194-200 — `{ network_tools: Vec<String> }` — Sandbox configuration for shell command execution.
-- pub `ArawnConfig` struct L250-265 — `{ llm: HashMap<String, LlmConfig>, engine: EngineConfig, compactor: CompactorCon...` — Top-level configuration.
-- pub `load` function L289-322 — `(data_dir: &Path) -> Self` — Load config from `data_dir/arawn.toml`, merging with env var overrides and defaults.
-- pub `engine_llm` function L345-350 — `(&self) -> &LlmConfig` — Resolve the LLM config for the engine.
-- pub `compactor_llm` function L353-360 — `(&self) -> &LlmConfig` — Resolve the LLM config for the compactor.
-- pub `data_dir` function L363-365 — `(&self) -> PathBuf` — Resolve the data directory with ~ expansion.
-- pub `prompts_dir` function L368-370 — `(&self) -> PathBuf` — Resolve the prompts directory.
-- pub `resolve_api_key` function L373-377 — `(llm: &LlmConfig) -> Option<String>` — Resolve API key for an LLM config by reading the env var.
-- pub `generate_default_toml` function L380-471 — `() -> String` — Generate a default config file string with comments.
+- pub `IntegrationCredentials` struct L252-257 — `{ client_id: String, client_secret: String }` — OAuth client credentials for one integration.
+- pub `IntegrationsConfig` struct L264-283 — `{ slack: IntegrationCredentials, google: IntegrationCredentials, gmail: Integrat...` — Per-integration credential blocks.
+- pub `ArawnConfig` struct L287-304 — `{ llm: HashMap<String, LlmConfig>, engine: EngineConfig, compactor: CompactorCon...` — Top-level configuration.
+- pub `load` function L329-362 — `(data_dir: &Path) -> Self` — Load config from `data_dir/arawn.toml`, merging with env var overrides and defaults.
+- pub `engine_llm` function L385-390 — `(&self) -> &LlmConfig` — Resolve the LLM config for the engine.
+- pub `compactor_llm` function L393-400 — `(&self) -> &LlmConfig` — Resolve the LLM config for the compactor.
+- pub `data_dir` function L403-405 — `(&self) -> PathBuf` — Resolve the data directory with ~ expansion.
+- pub `prompts_dir` function L408-410 — `(&self) -> PathBuf` — Resolve the prompts directory.
+- pub `resolve_api_key` function L413-417 — `(llm: &LlmConfig) -> Option<String>` — Resolve API key for an LLM config by reading the env var.
+- pub `generate_default_toml` function L420-511 — `() -> String` — Generate a default config file string with comments.
 -  `default_api_key_env` function L32-34 — `() -> String`
 -  `default_context_window` function L35-37 — `() -> u32`
 -  `default_max_tokens` function L38-40 — `() -> u32`
@@ -345,22 +352,22 @@
 -  `default_network_tools` function L202-238 — `() -> Vec<String>`
 -  `SandboxConfig` type L240-246 — `impl Default for SandboxConfig`
 -  `default` function L241-245 — `() -> Self`
--  `default_llm_configs` function L267-271 — `() -> HashMap<String, LlmConfig>`
--  `ArawnConfig` type L273-285 — `impl Default for ArawnConfig`
--  `default` function L274-284 — `() -> Self`
--  `ArawnConfig` type L287-472 — `= ArawnConfig`
--  `apply_env_overrides` function L324-342 — `(&mut self)`
--  `expand_tilde` function L474-481 — `(path: &str) -> PathBuf`
--  `tests` module L484-611 — `-`
--  `default_config_has_working_values` function L488-497 — `()`
--  `load_from_toml_string` function L500-520 — `()`
--  `compactor_falls_back_to_engine_llm` function L523-528 — `()`
--  `compactor_uses_own_llm_when_specified` function L531-550 — `()`
--  `missing_llm_name_falls_back_to_default_via_load` function L553-569 — `()`
--  `load_missing_file_uses_defaults` function L572-576 — `()`
--  `load_from_tempdir` function L579-597 — `()`
--  `generate_default_toml_is_parseable` function L600-604 — `()`
--  `tilde_expansion` function L607-610 — `()`
+-  `default_llm_configs` function L306-310 — `() -> HashMap<String, LlmConfig>`
+-  `ArawnConfig` type L312-325 — `impl Default for ArawnConfig`
+-  `default` function L313-324 — `() -> Self`
+-  `ArawnConfig` type L327-512 — `= ArawnConfig`
+-  `apply_env_overrides` function L364-382 — `(&mut self)`
+-  `expand_tilde` function L514-521 — `(path: &str) -> PathBuf`
+-  `tests` module L524-651 — `-`
+-  `default_config_has_working_values` function L528-537 — `()`
+-  `load_from_toml_string` function L540-560 — `()`
+-  `compactor_falls_back_to_engine_llm` function L563-568 — `()`
+-  `compactor_uses_own_llm_when_specified` function L571-590 — `()`
+-  `missing_llm_name_falls_back_to_default_via_load` function L593-609 — `()`
+-  `load_missing_file_uses_defaults` function L612-616 — `()`
+-  `load_from_tempdir` function L619-637 — `()`
+-  `generate_default_toml_is_parseable` function L640-644 — `()`
+-  `tilde_expansion` function L647-650 — `()`
 
 #### crates/arawn/src/config_watcher.rs
 
@@ -486,16 +493,16 @@
 
 -  `DEFAULT_MODEL` variable L15 — `: &str`
 -  `FILE_LOG_FILTER` variable L18 — `: &str` — Default file log filter: debug for arawn crates, warn for third-party.
--  `main` function L21-587 — `() -> Result<()>`
+-  `main` function L21-656 — `() -> Result<()>`
 -  `Cli` struct L27-46 — `{ command: Option<Command>, data_dir: Option<String>, session: Option<Uuid>, lis...`
 -  `Command` enum L49-68 — `Serve | Tui | Plugin`
--  `run_cli_via_server` function L590-695 — `( url: &str, prompt: &str, session_id: Option<Uuid>, ) -> Result<()>` — Run a CLI prompt by connecting to the running server via WebSocket.
--  `build_llm_client` function L698-720 — `( config: &arawn_bin::LlmConfig, ) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
--  `register_default_tools` function L723-769 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &arawn_bin::ArawnConfig, d...` — Register all default tools into the registry.
--  `connect_mcp_servers` function L772-820 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
--  `register_workflow_tools` function L823-840 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
--  `build_engine_config` function L842-877 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
--  `dirs_path` function L879-888 — `() -> Option<String>`
+-  `run_cli_via_server` function L659-764 — `( url: &str, prompt: &str, session_id: Option<Uuid>, ) -> Result<()>` — Run a CLI prompt by connecting to the running server via WebSocket.
+-  `build_llm_client` function L767-789 — `( config: &arawn_bin::LlmConfig, ) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
+-  `register_default_tools` function L792-838 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &arawn_bin::ArawnConfig, d...` — Register all default tools into the registry.
+-  `connect_mcp_servers` function L841-889 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
+-  `register_workflow_tools` function L892-909 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
+-  `build_engine_config` function L911-946 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
+-  `dirs_path` function L948-957 — `() -> Option<String>`
 
 #### crates/arawn/src/plugin_cmd.rs
 
@@ -2781,13 +2788,14 @@
 
 - pub `calendar` module L23 — `-` — Provides three things to the rest of arawn:
 - pub `credential_store` module L24 — `-` — ChaCha20Poly1305 + per-data-dir master key that `TokenStore` uses.
-- pub `error` module L25 — `-` — ChaCha20Poly1305 + per-data-dir master key that `TokenStore` uses.
-- pub `gmail` module L26 — `-` — ChaCha20Poly1305 + per-data-dir master key that `TokenStore` uses.
-- pub `google_common` module L27 — `-` — ChaCha20Poly1305 + per-data-dir master key that `TokenStore` uses.
-- pub `integration` module L28 — `-` — ChaCha20Poly1305 + per-data-dir master key that `TokenStore` uses.
-- pub `oauth_flow` module L29 — `-` — ChaCha20Poly1305 + per-data-dir master key that `TokenStore` uses.
-- pub `slack` module L30 — `-` — ChaCha20Poly1305 + per-data-dir master key that `TokenStore` uses.
-- pub `install_default_crypto_provider` function L44-46 — `()` — Install rustls' `ring` crypto provider as the process default.
+- pub `drive` module L25 — `-` — ChaCha20Poly1305 + per-data-dir master key that `TokenStore` uses.
+- pub `error` module L26 — `-` — ChaCha20Poly1305 + per-data-dir master key that `TokenStore` uses.
+- pub `gmail` module L27 — `-` — ChaCha20Poly1305 + per-data-dir master key that `TokenStore` uses.
+- pub `google_common` module L28 — `-` — ChaCha20Poly1305 + per-data-dir master key that `TokenStore` uses.
+- pub `integration` module L29 — `-` — ChaCha20Poly1305 + per-data-dir master key that `TokenStore` uses.
+- pub `oauth_flow` module L30 — `-` — ChaCha20Poly1305 + per-data-dir master key that `TokenStore` uses.
+- pub `slack` module L31 — `-` — ChaCha20Poly1305 + per-data-dir master key that `TokenStore` uses.
+- pub `install_default_crypto_provider` function L45-47 — `()` — Install rustls' `ring` crypto provider as the process default.
 
 #### crates/arawn-integrations/src/oauth_flow.rs
 
@@ -2800,6 +2808,133 @@
 -  `publish_auth_url` function L95-97 — `(&self, url: &Url)` — 6.
 -  `publish_progress` function L98-100 — `(&self, message: &str)` — 6.
 -  `ctx_capture_smoke` function L104-124 — `()` — 6.
+
+### crates/arawn-integrations/src/drive
+
+> *Semantic summary to be generated by AI agent.*
+
+#### crates/arawn-integrations/src/drive/client.rs
+
+- pub `DriveHub` type L13 — `= GoogleDriveHub<HttpsConnector>` — Concrete DriveHub the integration exposes.
+- pub `client_from_token_store` function L18-28 — `( data_dir: std::path::PathBuf, oauth_config: OAuthProviderConfig, ) -> Result<D...` — Open the persisted Drive token, build the hyper-util client + auth
+
+#### crates/arawn-integrations/src/drive/integration.rs
+
+- pub `SERVICE_NAME` variable L16 — `: &str` — Stable service name.
+- pub `DRIVE_OAUTH_SCOPE` variable L23 — `: &str` — Full read+write scope.
+- pub `GoogleDriveProviderConfig` struct L26-30 — `{ auth_url: Url, token_url: Url, scopes: Vec<String> }` — Default Google Drive OAuth provider config.
+- pub `into_oauth_provider` function L43-52 — `(self, client_id: String, client_secret: String) -> OAuthProviderConfig`
+- pub `GoogleDriveIntegration` struct L56-61 — `{ data_dir: PathBuf, client_id: String, client_secret: String, provider_config: ...` — Google Drive integration.
+- pub `new` function L64-71 — `(data_dir: PathBuf, client_id: String, client_secret: String) -> Self`
+- pub `with_provider_config` function L73-76 — `(mut self, config: GoogleDriveProviderConfig) -> Self`
+- pub `hub` function L80-82 — `(&self) -> Result<DriveHub, IntegrationError>` — Build a fully-wired `DriveHub` for tools.
+-  `GoogleDriveProviderConfig` type L32-40 — `impl Default for GoogleDriveProviderConfig`
+-  `default` function L33-39 — `() -> Self`
+-  `GoogleDriveProviderConfig` type L42-53 — `= GoogleDriveProviderConfig`
+-  `GoogleDriveIntegration` type L63-100 — `= GoogleDriveIntegration`
+-  `oauth_config` function L84-95 — `(&self) -> OAuthProviderConfig`
+-  `token_store` function L97-99 — `(&self) -> Result<TokenStore, IntegrationError>`
+-  `GoogleDriveIntegration` type L103-137 — `impl Integration for GoogleDriveIntegration`
+-  `name` function L104-106 — `(&self) -> &str`
+-  `is_connected` function L108-113 — `(&self) -> bool`
+-  `connect` function L115-120 — `(&self, ctx: &dyn ConnectContext) -> Result<(), IntegrationError>`
+-  `disconnect` function L122-126 — `(&self) -> Result<(), IntegrationError>`
+-  `capabilities_summary` function L128-136 — `(&self) -> Option<String>`
+-  `tests` module L140-157 — `-`
+-  `default_provider_has_drive_scope` function L144-147 — `()`
+-  `provider_lifts_into_oauth_config` function L150-156 — `()`
+
+#### crates/arawn-integrations/src/drive/mod.rs
+
+-  `client` module L12 — `-` — - [`GoogleDriveIntegration`] implements [`crate::Integration`].
+-  `integration` module L13 — `-` — See `docs/src/integrations/drive.md` for setup.
+-  `tools` module L14 — `-` — See `docs/src/integrations/drive.md` for setup.
+
+#### crates/arawn-integrations/src/drive/tools.rs
+
+- pub `DriveSearchTool` struct L87-89 — `{ integration: Arc<GoogleDriveIntegration> }` — - `drive_delete` — trash (recoverable) — does not permadelete
+- pub `new` function L92-94 — `(integration: Arc<GoogleDriveIntegration>) -> Self` — - `drive_delete` — trash (recoverable) — does not permadelete
+- pub `DriveListTool` struct L193-195 — `{ integration: Arc<GoogleDriveIntegration> }` — - `drive_delete` — trash (recoverable) — does not permadelete
+- pub `new` function L198-200 — `(integration: Arc<GoogleDriveIntegration>) -> Self` — - `drive_delete` — trash (recoverable) — does not permadelete
+- pub `DriveGetMetadataTool` struct L281-283 — `{ integration: Arc<GoogleDriveIntegration> }` — - `drive_delete` — trash (recoverable) — does not permadelete
+- pub `new` function L286-288 — `(integration: Arc<GoogleDriveIntegration>) -> Self` — - `drive_delete` — trash (recoverable) — does not permadelete
+- pub `DriveReadTool` struct L337-339 — `{ integration: Arc<GoogleDriveIntegration> }` — - `drive_delete` — trash (recoverable) — does not permadelete
+- pub `new` function L342-344 — `(integration: Arc<GoogleDriveIntegration>) -> Self` — - `drive_delete` — trash (recoverable) — does not permadelete
+- pub `DriveUploadTool` struct L497-499 — `{ integration: Arc<GoogleDriveIntegration> }` — - `drive_delete` — trash (recoverable) — does not permadelete
+- pub `new` function L502-504 — `(integration: Arc<GoogleDriveIntegration>) -> Self` — - `drive_delete` — trash (recoverable) — does not permadelete
+- pub `DriveUpdateTool` struct L603-605 — `{ integration: Arc<GoogleDriveIntegration> }` — - `drive_delete` — trash (recoverable) — does not permadelete
+- pub `new` function L608-610 — `(integration: Arc<GoogleDriveIntegration>) -> Self` — - `drive_delete` — trash (recoverable) — does not permadelete
+- pub `DriveDeleteTool` struct L695-697 — `{ integration: Arc<GoogleDriveIntegration> }` — - `drive_delete` — trash (recoverable) — does not permadelete
+- pub `new` function L700-702 — `(integration: Arc<GoogleDriveIntegration>) -> Self` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `integ_err` function L24-26 — `(e: crate::IntegrationError) -> ToolError` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `google_err` function L28-30 — `(stage: &str, e: google_drive3::Error) -> ToolError` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `FileSummary` struct L35-51 — `{ id: Option<String>, name: Option<String>, mime_type: Option<String>, size: Opt...` — Compact file row used by list / search / get-metadata.
+-  `summarize_file` function L53-73 — `(f: &DriveFile, include_parents: bool) -> FileSummary` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `FILE_FIELDS_LIST` variable L77 — `: &str` — Standard projection passed to `fields` so we get the same shape across
+-  `FILE_FIELDS_ONE` variable L78 — `: &str` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `DRIVE_READ_DEFAULT_MAX_BYTES` variable L82 — `: usize` — Cap returned content for `drive_read` so a 50MB binary doesn't fill the
+-  `DRIVE_READ_HARD_MAX_BYTES` variable L83 — `: usize` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `DriveSearchTool` type L91-95 — `= DriveSearchTool` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `DriveSearchTool` type L98-189 — `impl Tool for DriveSearchTool` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `name` function L99-101 — `(&self) -> &str` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `description` function L102-110 — `(&self) -> &str` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `category` function L111-113 — `(&self) -> ToolCategory` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `permission_category` function L114-116 — `(&self) -> PermissionCategory` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `parameters_schema` function L117-142 — `(&self) -> Value` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `execute` function L143-188 — `(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError>` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `DriveListTool` type L197-201 — `= DriveListTool` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `DriveListTool` type L204-277 — `impl Tool for DriveListTool` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `name` function L205-207 — `(&self) -> &str` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `description` function L208-212 — `(&self) -> &str` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `category` function L213-215 — `(&self) -> ToolCategory` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `permission_category` function L216-218 — `(&self) -> PermissionCategory` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `parameters_schema` function L219-239 — `(&self) -> Value` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `execute` function L240-276 — `(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError>` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `DriveGetMetadataTool` type L285-289 — `= DriveGetMetadataTool` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `DriveGetMetadataTool` type L292-333 — `impl Tool for DriveGetMetadataTool` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `name` function L293-295 — `(&self) -> &str` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `description` function L296-300 — `(&self) -> &str` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `category` function L301-303 — `(&self) -> ToolCategory` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `permission_category` function L304-306 — `(&self) -> PermissionCategory` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `parameters_schema` function L307-315 — `(&self) -> Value` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `execute` function L316-332 — `(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError>` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `DriveReadTool` type L341-345 — `= DriveReadTool` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `export_mime_for` function L349-359 — `(google_mime: &str) -> Option<&'static str>` — Pick the export format for Google's native types.
+-  `DriveReadTool` type L362-493 — `impl Tool for DriveReadTool` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `name` function L363-365 — `(&self) -> &str` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `description` function L366-372 — `(&self) -> &str` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `category` function L373-375 — `(&self) -> ToolCategory` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `permission_category` function L376-378 — `(&self) -> PermissionCategory` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `parameters_schema` function L379-393 — `(&self) -> Value` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `execute` function L394-492 — `(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError>` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `DriveUploadTool` type L501-505 — `= DriveUploadTool` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `DriveUploadTool` type L508-599 — `impl Tool for DriveUploadTool` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `name` function L509-511 — `(&self) -> &str` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `description` function L512-517 — `(&self) -> &str` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `category` function L518-520 — `(&self) -> ToolCategory` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `permission_category` function L521-523 — `(&self) -> PermissionCategory` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `parameters_schema` function L524-546 — `(&self) -> Value` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `execute` function L547-598 — `(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError>` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `DriveUpdateTool` type L607-611 — `= DriveUpdateTool` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `DriveUpdateTool` type L614-691 — `impl Tool for DriveUpdateTool` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `name` function L615-617 — `(&self) -> &str` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `description` function L618-623 — `(&self) -> &str` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `category` function L624-626 — `(&self) -> ToolCategory` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `permission_category` function L627-629 — `(&self) -> PermissionCategory` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `parameters_schema` function L630-648 — `(&self) -> Value` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `execute` function L649-690 — `(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError>` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `DriveDeleteTool` type L699-703 — `= DriveDeleteTool` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `DriveDeleteTool` type L706-759 — `impl Tool for DriveDeleteTool` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `name` function L707-709 — `(&self) -> &str` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `description` function L710-716 — `(&self) -> &str` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `category` function L717-719 — `(&self) -> ToolCategory` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `permission_category` function L720-722 — `(&self) -> PermissionCategory` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `parameters_schema` function L723-731 — `(&self) -> Value` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `execute` function L732-758 — `(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError>` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `tests` module L762-808 — `-` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `export_mime_dispatch_covers_known_google_types` function L766-782 — `()` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `summarize_file_extracts_owner_emails` function L785-799 — `()` — - `drive_delete` — trash (recoverable) — does not permadelete
+-  `summarize_file_includes_parents_when_requested` function L802-807 — `()` — - `drive_delete` — trash (recoverable) — does not permadelete
 
 ### crates/arawn-integrations/src/gmail
 

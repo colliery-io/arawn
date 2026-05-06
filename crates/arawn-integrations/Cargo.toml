@@ -12,7 +12,9 @@ base64 = "0.22"
 chacha20poly1305 = "0.10"
 chrono = { workspace = true }
 google-apis-common = { version = "8", default-features = false, features = ["ring"] }
+http-body-util = "0.1"
 google-calendar3 = { version = "7", default-features = false, features = ["ring"] }
+google-drive3 = { version = "7", default-features = false, features = ["ring"] }
 google-gmail1 = { version = "7", default-features = false, features = ["ring"] }
 hyper-rustls = "0.27"
 hyper-util = { version = "0.1", features = ["client", "client-legacy", "tokio"] }

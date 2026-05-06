@@ -245,6 +245,43 @@ impl Default for SandboxConfig {
     }
 }
 
+/// OAuth client credentials for one integration. Stored in plaintext —
+/// keep `arawn.toml` out of version control. Env vars
+/// (`ARAWN_<SERVICE>_CLIENT_ID` / `_SECRET`) override these at startup.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct IntegrationCredentials {
+    #[serde(default)]
+    pub client_id: String,
+    #[serde(default)]
+    pub client_secret: String,
+}
+
+/// Per-integration credential blocks. Each is optional — leaving any of
+/// them out (or omitting the whole `[integrations]` section) just means
+/// that integration is configured via env vars, or skipped if neither
+/// is set.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct IntegrationsConfig {
+    /// Slack OAuth app credentials. One Slack app, multiple workspace
+    /// installs share these.
+    #[serde(default)]
+    pub slack: IntegrationCredentials,
+    /// Shared Google OAuth client used by both Gmail and Calendar
+    /// when service-specific credentials aren't set. Most users have
+    /// one Google Cloud project per arawn install.
+    #[serde(default)]
+    pub google: IntegrationCredentials,
+    /// Gmail-specific OAuth client. Falls back to `google` when empty.
+    #[serde(default)]
+    pub gmail: IntegrationCredentials,
+    /// Calendar-specific OAuth client. Falls back to `google` when empty.
+    #[serde(default)]
+    pub calendar: IntegrationCredentials,
+    /// Drive-specific OAuth client. Falls back to `google` when empty.
+    #[serde(default)]
+    pub drive: IntegrationCredentials,
+}
+
 /// Top-level configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ArawnConfig {
@@ -262,6 +299,8 @@ pub struct ArawnConfig {
     pub prompts: PromptsConfig,
     #[serde(default)]
     pub sandbox: SandboxConfig,
+    #[serde(default)]
+    pub integrations: IntegrationsConfig,
 }
 
 fn default_llm_configs() -> HashMap<String, LlmConfig> {
@@ -280,6 +319,7 @@ impl Default for ArawnConfig {
             storage: StorageConfig::default(),
             prompts: PromptsConfig::default(),
             sandbox: SandboxConfig::default(),
+            integrations: IntegrationsConfig::default(),
         }
     }
 }

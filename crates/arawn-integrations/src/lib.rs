@@ -22,6 +22,7 @@
 
 pub mod calendar;
 pub mod credential_store;
+pub mod drive;
 pub mod error;
 pub mod gmail;
 pub mod google_common;

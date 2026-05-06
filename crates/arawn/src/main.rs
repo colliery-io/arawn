@@ -399,14 +399,40 @@ async fn main() -> Result<()> {
         registry.register(Box::new(arawn_engine::WorkstreamCreateTool::new(service.shared_store())));
         registry.register(Box::new(arawn_engine::WorkstreamListTool::new(service.shared_store())));
 
-        // Register Gmail integration if env vars are present. Skipped silently
-        // otherwise — users without Gmail credentials still get a working
-        // server. See docs/src/integrations/gmail.md for the Cloud Console
-        // setup that produces these env vars.
-        if let (Ok(client_id), Ok(client_secret)) = (
-            std::env::var("ARAWN_GMAIL_CLIENT_ID"),
-            std::env::var("ARAWN_GMAIL_CLIENT_SECRET"),
-        ) {
+        // Resolve OAuth credentials with precedence:
+        //   env var → arawn.toml `[integrations.<service>]` → empty (skip).
+        // This lets users persist creds in config without exporting env
+        // vars on every shell, while keeping env-var override for ad-hoc
+        // testing (different OAuth client per run, etc.).
+        let resolve = |env_id: &str, env_secret: &str, cfg: &arawn_bin::config::IntegrationCredentials| -> Option<(String, String)> {
+            let id = std::env::var(env_id)
+                .ok()
+                .filter(|s| !s.is_empty())
+                .or_else(|| Some(cfg.client_id.clone()).filter(|s| !s.is_empty()))?;
+            let secret = std::env::var(env_secret)
+                .ok()
+                .filter(|s| !s.is_empty())
+                .or_else(|| Some(cfg.client_secret.clone()).filter(|s| !s.is_empty()))?;
+            Some((id, secret))
+        };
+
+        // Register Gmail integration if creds are present (env or config).
+        // Skipped silently otherwise — users without Gmail credentials still
+        // get a working server. See docs/src/integrations/gmail.md.
+        let gmail_creds = resolve(
+            "ARAWN_GMAIL_CLIENT_ID",
+            "ARAWN_GMAIL_CLIENT_SECRET",
+            &config.integrations.gmail,
+        )
+        .or_else(|| {
+            // Fall back to the shared Google credentials.
+            resolve(
+                "ARAWN_GOOGLE_CLIENT_ID",
+                "ARAWN_GOOGLE_CLIENT_SECRET",
+                &config.integrations.google,
+            )
+        });
+        if let Some((client_id, client_secret)) = gmail_creds {
             let gmail = Arc::new(arawn_integrations::gmail::GmailIntegration::new(
                 std::path::PathBuf::from(&data_dir),
                 client_id,
@@ -422,21 +448,26 @@ async fn main() -> Result<()> {
         } else {
             debug!(
                 "Gmail integration skipped — set ARAWN_GMAIL_CLIENT_ID + \
-                 ARAWN_GMAIL_CLIENT_SECRET to enable. See docs/src/integrations/gmail.md."
+                 ARAWN_GMAIL_CLIENT_SECRET (env) or [integrations.gmail] (config) \
+                 to enable. See docs/src/integrations/gmail.md."
             );
         }
 
-        // Register Google Calendar similarly. Reads ARAWN_GCAL_CLIENT_ID /
-        // _SECRET first; falls back to ARAWN_GOOGLE_CLIENT_ID / _SECRET so a
-        // user with one shared OAuth project for both Gmail and Calendar can
-        // configure once. See docs/src/integrations/calendar.md.
-        let gcal_client = std::env::var("ARAWN_GCAL_CLIENT_ID")
-            .ok()
-            .or_else(|| std::env::var("ARAWN_GOOGLE_CLIENT_ID").ok());
-        let gcal_secret = std::env::var("ARAWN_GCAL_CLIENT_SECRET")
-            .ok()
-            .or_else(|| std::env::var("ARAWN_GOOGLE_CLIENT_SECRET").ok());
-        if let (Some(client_id), Some(client_secret)) = (gcal_client, gcal_secret) {
+        // Register Google Calendar. Service-specific creds first; falls back
+        // to the shared Google credentials so one OAuth project covers both.
+        let gcal_creds = resolve(
+            "ARAWN_GCAL_CLIENT_ID",
+            "ARAWN_GCAL_CLIENT_SECRET",
+            &config.integrations.calendar,
+        )
+        .or_else(|| {
+            resolve(
+                "ARAWN_GOOGLE_CLIENT_ID",
+                "ARAWN_GOOGLE_CLIENT_SECRET",
+                &config.integrations.google,
+            )
+        });
+        if let Some((client_id, client_secret)) = gcal_creds {
             let calendar = Arc::new(arawn_integrations::calendar::GoogleCalendarIntegration::new(
                 std::path::PathBuf::from(&data_dir),
                 client_id,
@@ -450,16 +481,53 @@ async fn main() -> Result<()> {
         } else {
             debug!(
                 "Google Calendar integration skipped — set ARAWN_GCAL_CLIENT_ID + \
-                 ARAWN_GCAL_CLIENT_SECRET (or share ARAWN_GOOGLE_CLIENT_ID / _SECRET with Gmail) \
-                 to enable. See docs/src/integrations/calendar.md."
+                 ARAWN_GCAL_CLIENT_SECRET (env) or [integrations.calendar] / \
+                 [integrations.google] (config) to enable."
             );
         }
 
-        // Register Slack. No env-var sharing with Google — Slack apps are
-        // unrelated. See docs/src/integrations/slack.md.
-        if let (Ok(client_id), Ok(client_secret)) = (
-            std::env::var("ARAWN_SLACK_CLIENT_ID"),
-            std::env::var("ARAWN_SLACK_CLIENT_SECRET"),
+        // Register Google Drive. Same fallback chain as Calendar — service-specific
+        // creds first, then the shared Google credentials.
+        let drive_creds = resolve(
+            "ARAWN_GDRIVE_CLIENT_ID",
+            "ARAWN_GDRIVE_CLIENT_SECRET",
+            &config.integrations.drive,
+        )
+        .or_else(|| {
+            resolve(
+                "ARAWN_GOOGLE_CLIENT_ID",
+                "ARAWN_GOOGLE_CLIENT_SECRET",
+                &config.integrations.google,
+            )
+        });
+        if let Some((client_id, client_secret)) = drive_creds {
+            let drive = Arc::new(arawn_integrations::drive::GoogleDriveIntegration::new(
+                std::path::PathBuf::from(&data_dir),
+                client_id,
+                client_secret,
+            ));
+            service.register_integration(Arc::clone(&drive) as Arc<dyn arawn_integrations::Integration>);
+            registry.register(Box::new(arawn_integrations::drive::DriveSearchTool::new(Arc::clone(&drive))));
+            registry.register(Box::new(arawn_integrations::drive::DriveListTool::new(Arc::clone(&drive))));
+            registry.register(Box::new(arawn_integrations::drive::DriveGetMetadataTool::new(Arc::clone(&drive))));
+            registry.register(Box::new(arawn_integrations::drive::DriveReadTool::new(Arc::clone(&drive))));
+            registry.register(Box::new(arawn_integrations::drive::DriveUploadTool::new(Arc::clone(&drive))));
+            registry.register(Box::new(arawn_integrations::drive::DriveUpdateTool::new(Arc::clone(&drive))));
+            registry.register(Box::new(arawn_integrations::drive::DriveDeleteTool::new(Arc::clone(&drive))));
+            info!("Google Drive integration registered (7 tools)");
+        } else {
+            debug!(
+                "Google Drive integration skipped — set ARAWN_GDRIVE_CLIENT_ID + \
+                 ARAWN_GDRIVE_CLIENT_SECRET (env) or [integrations.drive] / \
+                 [integrations.google] (config) to enable."
+            );
+        }
+
+        // Register Slack. No sharing with Google — different OAuth ecosystem.
+        if let Some((client_id, client_secret)) = resolve(
+            "ARAWN_SLACK_CLIENT_ID",
+            "ARAWN_SLACK_CLIENT_SECRET",
+            &config.integrations.slack,
         ) {
             let slack = Arc::new(arawn_integrations::slack::SlackIntegration::new(
                 std::path::PathBuf::from(&data_dir),
@@ -477,7 +545,8 @@ async fn main() -> Result<()> {
         } else {
             debug!(
                 "Slack integration skipped — set ARAWN_SLACK_CLIENT_ID + \
-                 ARAWN_SLACK_CLIENT_SECRET to enable. See docs/src/integrations/slack.md."
+                 ARAWN_SLACK_CLIENT_SECRET (env) or [integrations.slack] (config) \
+                 to enable. See docs/src/integrations/slack.md."
             );
         }
 
