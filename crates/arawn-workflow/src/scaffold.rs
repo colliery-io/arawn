@@ -71,9 +71,9 @@ packaged = []
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-cloacina-macros = "0.5"
-cloacina-workflow = {{ version = "0.5", features = ["packaged"] }}
-cloacina-workflow-plugin = "0.5"
+cloacina-macros = "0.6"
+cloacina-workflow = {{ version = "0.6", features = ["packaged"] }}
+cloacina-workflow-plugin = "0.6"
 async-trait = "0.1"
 chrono = {{ version = "0.4", features = ["serde"] }}
 futures = "0.3"
@@ -82,7 +82,7 @@ serde_json = "1"
 tokio = {{ version = "1", features = ["full"] }}
 
 [build-dependencies]
-cloacina-build = "0.5"
+cloacina-build = "0.6"
 "#
     )
 }

@@ -9,7 +9,7 @@ use tokio::sync::RwLock;
 
 use arawn_tool::{Tool, ToolError, ToolOutput};
 
-use cloacina::prelude::PipelineExecutor;
+use cloacina::WorkflowExecutor;
 
 use crate::runner::WorkflowRunner;
 use crate::scaffold::{self, TaskDef, WorkflowDef};

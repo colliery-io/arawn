@@ -30,4 +30,4 @@ tokio = { workspace = true }
 uuid = { workspace = true }
 
 [build-dependencies]
-cloacina-build = "0.4"
+cloacina-build = "0.6"

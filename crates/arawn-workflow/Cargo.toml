@@ -10,7 +10,7 @@ arawn-tool = { workspace = true }
 arawn-llm = { workspace = true }
 arawn-storage = { workspace = true }
 async-trait = { workspace = true }
-cloacina = { version = "0.4", features = ["sqlite"] }
+cloacina = { version = "0.6", features = ["sqlite"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
 tempfile = { workspace = true }
@@ -20,7 +20,7 @@ tracing = { workspace = true }
 uuid = { workspace = true }
 
 [build-dependencies]
-cloacina-build = "0.4"
+cloacina-build = "0.6"
 
 [dev-dependencies]
 tempfile = { workspace = true }

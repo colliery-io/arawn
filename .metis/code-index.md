@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-06T23:15:06Z | 204 files | Python, Rust
+> Generated: 2026-05-08T11:26:37Z | 204 files | Python, Rust
 
 ## Project Structure
 
@@ -5207,19 +5207,19 @@
 
 #### crates/arawn-workflow/src/runner.rs
 
-- pub `WorkflowRunnerConfig` struct L9-16 — `{ database_path: PathBuf, packages_dir: PathBuf, max_concurrent_tasks: usize }` — Configuration for the workflow runner.
-- pub `new` function L19-25 — `(data_dir: &Path) -> Self` — Wrapper around cloacina's DefaultRunner for arawn server integration.
-- pub `WorkflowRunner` struct L32-34 — `{ runner: DefaultRunner }` — Arawn's workflow engine — wraps cloacina's DefaultRunner.
-- pub `new` function L40-65 — `(config: WorkflowRunnerConfig) -> Result<Self, WorkflowError>` — Initialize the workflow runner with the given configuration.
-- pub `execute` function L68-85 — `( &self, workflow_name: &str, context: serde_json::Value, ) -> Result<PipelineRe...` — Execute a named workflow programmatically.
-- pub `shutdown` function L88-93 — `(&self)` — Graceful shutdown — drains in-flight pipelines.
-- pub `inner` function L96-98 — `(&self) -> &DefaultRunner` — Get a reference to the underlying DefaultRunner.
-- pub `WorkflowError` enum L102-107 — `Init | Runtime` — Wrapper around cloacina's DefaultRunner for arawn server integration.
--  `WorkflowRunnerConfig` type L18-26 — `= WorkflowRunnerConfig` — Wrapper around cloacina's DefaultRunner for arawn server integration.
--  `WorkflowRunner` type L36-99 — `= WorkflowRunner` — Wrapper around cloacina's DefaultRunner for arawn server integration.
--  `tests` module L110-139 — `-` — Wrapper around cloacina's DefaultRunner for arawn server integration.
--  `runner_initializes_and_shuts_down` function L114-128 — `()` — Wrapper around cloacina's DefaultRunner for arawn server integration.
--  `runner_starts_with_empty_packages_dir` function L131-138 — `()` — Wrapper around cloacina's DefaultRunner for arawn server integration.
+- pub `WorkflowRunnerConfig` struct L10-17 — `{ database_path: PathBuf, packages_dir: PathBuf, max_concurrent_tasks: usize }` — Configuration for the workflow runner.
+- pub `new` function L20-26 — `(data_dir: &Path) -> Self` — Wrapper around cloacina's DefaultRunner for arawn server integration.
+- pub `WorkflowRunner` struct L33-35 — `{ runner: DefaultRunner }` — Arawn's workflow engine — wraps cloacina's DefaultRunner.
+- pub `new` function L41-67 — `(config: WorkflowRunnerConfig) -> Result<Self, WorkflowError>` — Initialize the workflow runner with the given configuration.
+- pub `execute` function L70-87 — `( &self, workflow_name: &str, context: serde_json::Value, ) -> Result<WorkflowEx...` — Execute a named workflow programmatically.
+- pub `shutdown` function L90-95 — `(&self)` — Graceful shutdown — drains in-flight pipelines.
+- pub `inner` function L98-100 — `(&self) -> &DefaultRunner` — Get a reference to the underlying DefaultRunner.
+- pub `WorkflowError` enum L104-109 — `Init | Runtime` — Wrapper around cloacina's DefaultRunner for arawn server integration.
+-  `WorkflowRunnerConfig` type L19-27 — `= WorkflowRunnerConfig` — Wrapper around cloacina's DefaultRunner for arawn server integration.
+-  `WorkflowRunner` type L37-101 — `= WorkflowRunner` — Wrapper around cloacina's DefaultRunner for arawn server integration.
+-  `tests` module L112-141 — `-` — Wrapper around cloacina's DefaultRunner for arawn server integration.
+-  `runner_initializes_and_shuts_down` function L116-130 — `()` — Wrapper around cloacina's DefaultRunner for arawn server integration.
+-  `runner_starts_with_empty_packages_dir` function L133-140 — `()` — Wrapper around cloacina's DefaultRunner for arawn server integration.
 
 #### crates/arawn-workflow/src/scaffold.rs
 

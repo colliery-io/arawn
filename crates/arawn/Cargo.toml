@@ -47,4 +47,4 @@ tracing-appender = { workspace = true }
 tracing-subscriber = { workspace = true }
 
 [build-dependencies]
-cloacina-build = "0.4"
+cloacina-build = "0.6"

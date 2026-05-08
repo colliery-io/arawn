@@ -3,6 +3,7 @@
 use std::path::{Path, PathBuf};
 
 use cloacina::prelude::*;
+use cloacina::WorkflowExecutor;
 use tracing::{debug, info};
 
 /// Configuration for the workflow runner.
@@ -49,7 +50,8 @@ impl WorkflowRunner {
             .enable_cron_scheduling(true)
             .registry_storage_path(Some(config.packages_dir.clone()))
             .max_concurrent_tasks(config.max_concurrent_tasks)
-            .build();
+            .build()
+            .map_err(|e| WorkflowError::Init(format!("build runner config: {e}")))?;
 
         let runner = DefaultRunner::with_config(&db_url, runner_config)
             .await
@@ -69,7 +71,7 @@ impl WorkflowRunner {
         &self,
         workflow_name: &str,
         context: serde_json::Value,
-    ) -> Result<PipelineResult, WorkflowError> {
+    ) -> Result<WorkflowExecutionResult, WorkflowError> {
         let ctx = if context.is_object() {
             let json = serde_json::to_string(&context)
                 .map_err(|e| WorkflowError::Runtime(format!("serialize context: {e}")))?;

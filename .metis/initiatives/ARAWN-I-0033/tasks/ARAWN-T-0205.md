@@ -4,14 +4,14 @@ level: task
 title: "Google Drive integration — read + write (search, list, read, upload, update, delete)"
 short_code: "ARAWN-T-0205"
 created_at: 2026-05-06T02:06:34.650400+00:00
-updated_at: 2026-05-06T02:08:04.289994+00:00
+updated_at: 2026-05-06T23:20:13.612039+00:00
 parent: ARAWN-I-0033
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -69,6 +69,8 @@ User picked v1+v2 together (read + write) up front — explicit "I know this wil
 ## Type / Priority
 - Feature
 - P1 — Drive is a major information surface for personal-assistant use ("read my notes folder", "drop today's meeting summary into Drive").
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
@@ -174,6 +176,12 @@ User picked v1+v2 together (read + write) up front — explicit "I know this wil
 {Technical risks and mitigation strategies}
 
 ## Status Updates
+
+### 2026-05-06 — UAT passed, closing
+
+All 7 tools exercised end-to-end on the user's live Drive (list, search, get_metadata, read, upload, update, delete). OAuth dance via shared `[integrations.google]` block worked; permission prompts fire on writes; Google-native file export (Doc → markdown) renders cleanly.
+
+
 
 ### 2026-05-06 — Implemented (7 tools), awaiting UAT
 
