@@ -11,8 +11,8 @@ use std::sync::Arc;
 use arawn_integrations::slack::SlackIntegration;
 use async_trait::async_trait;
 use slack_morphism::prelude::{
-    SlackApiConversationsHistoryRequest, SlackApiConversationsListRequest, SlackChannelId,
-    SlackConversationType, SlackTs,
+    SlackApiConversationsHistoryRequest, SlackApiConversationsListRequest,
+    SlackApiConversationsRepliesRequest, SlackChannelId, SlackConversationType, SlackTs,
 };
 
 use crate::error::FeedError;
@@ -38,6 +38,24 @@ pub trait SlackFeedClient: Send + Sync {
     async fn channel_history(
         &self,
         channel_id: &str,
+        oldest_ts: Option<&str>,
+    ) -> Result<SlackHistoryPage, FeedError>;
+
+    /// Fetch replies in a thread newer than `oldest_ts`. The first call
+    /// (`oldest_ts: None`) returns the parent + every reply; subsequent
+    /// calls with the prior `next_cursor_ts` return only deltas.
+    /// Returned messages are oldest-first.
+    ///
+    /// Slack's API includes the parent message in the first page, so
+    /// the template MUST dedupe against the channel-level cursor it
+    /// already has if the parent is the same message — otherwise the
+    /// parent ends up in two places. (For our `slack/channel-archive`
+    /// template the parent is intentionally written once to the day
+    /// file and once to the thread file as the conversation context.)
+    async fn thread_replies(
+        &self,
+        channel_id: &str,
+        parent_ts: &str,
         oldest_ts: Option<&str>,
     ) -> Result<SlackHistoryPage, FeedError>;
 }
@@ -163,6 +181,53 @@ impl SlackFeedClient for RealSlackClient {
             .collect();
         messages.reverse();
 
+        let next_cursor_ts = messages
+            .iter()
+            .filter_map(|m| m.get("ts").and_then(|v| v.as_str()))
+            .max()
+            .map(str::to_string)
+            .or_else(|| oldest_ts.map(str::to_string));
+
+        Ok(SlackHistoryPage {
+            messages,
+            next_cursor_ts,
+        })
+    }
+
+    async fn thread_replies(
+        &self,
+        channel_id: &str,
+        parent_ts: &str,
+        oldest_ts: Option<&str>,
+    ) -> Result<SlackHistoryPage, FeedError> {
+        let ctx = self
+            .integration
+            .user_context()
+            .or_else(|_| self.integration.bot_context())
+            .map_err(integ_err)?;
+        let session = ctx.session();
+
+        let mut req = SlackApiConversationsRepliesRequest::new(
+            SlackChannelId::new(channel_id.to_string()),
+            SlackTs::new(parent_ts.to_string()),
+        )
+        .with_limit(200);
+        if let Some(o) = oldest_ts {
+            req = req.with_oldest(SlackTs::new(o.to_string()));
+        }
+        let resp = session
+            .conversations_replies(&req)
+            .await
+            .map_err(|e| slack_morphism_err("conversations.replies", e))?;
+
+        let messages: Vec<serde_json::Value> = resp
+            .messages
+            .iter()
+            .map(|m| serde_json::to_value(m).unwrap_or(serde_json::Value::Null))
+            .collect();
+
+        // conversations.replies returns parent + replies oldest-first
+        // already; no reverse needed (unlike history).
         let next_cursor_ts = messages
             .iter()
             .filter_map(|m| m.get("ts").and_then(|v| v.as_str()))

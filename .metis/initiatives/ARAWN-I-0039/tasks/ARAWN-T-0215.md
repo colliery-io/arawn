@@ -4,14 +4,14 @@ level: task
 title: "Phase 2 — Slack feed templates (channel-archive, my-mentions, dm-archive)"
 short_code: "ARAWN-T-0215"
 created_at: 2026-05-07T00:42:23.559403+00:00
-updated_at: 2026-05-07T00:42:23.559403+00:00
+updated_at: 2026-05-08T14:57:59.070276+00:00
 parent: ARAWN-I-0039
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -28,20 +28,18 @@ initiative_id: ARAWN-I-0039
 
 ## Objective **[REQUIRED]**
 
-Implement Slack feed templates per I-0039's Phase 2 plan. Three templates land:
+Implement `slack/my-mentions` — the personal Slack feed that auto-creates on `/connect slack`. Returns every message in any channel/DM/group that mentions `@me`, written as JSONL time-partitioned by day.
 
-- `slack/channel-archive` — archive a single Slack channel as JSONL, time-partitioned per day. Param: `channel` (channel name like `#design` or id like `CABCDEF`).
-- `slack/my-mentions` — personal feed: all messages mentioning `@me` across the user's joined channels. Auto-created on `/connect slack`.
-- `slack/dm-archive` — archive a 1-on-1 DM thread. Param: `user` (Slack user id or name).
+(Original scope of this task included `channel-archive` and `dm-archive`. `slack/channel-archive` shipped as the T-0214 pilot. `slack/dm-archive` was split off into a separate task per the "one ingestor at a time" approach.)
 
-Depends on: T-0214 (runtime + trait + cloacina wiring) merged.
+Depends on: T-0214 (runtime + cloacina wiring + RealSlackClient adapter) merged.
 
-**Reference:** I-0039's "Detailed Design" section for disk layout conventions; T-0214 for the `FeedTemplate` trait shape; existing `arawn-integrations/src/slack/` for the auth + client surface to call.
+**Reference:** existing `arawn-integrations/src/slack/` for `search_messages` (the API path for mentions); T-0214's `slack/channel-archive` as the closest disk-layout precedent.
 
 ## Type / Priority
 
 - Feature.
-- P1 — Slack is the highest-volume, most-watched provider; this template family is what most users will configure first.
+- P1 — `my-mentions` is the highest-value personal feed: it's "the things I should look at" without the user needing to know which channels matter.
 
 ## Backlog Item Details **[CONDITIONAL: Backlog Item]**
 
@@ -76,6 +74,10 @@ Depends on: T-0214 (runtime + trait + cloacina wiring) merged.
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria **[REQUIRED]**
 
@@ -160,4 +162,31 @@ Depends on: T-0214 (runtime + trait + cloacina wiring) merged.
 
 ## Status Updates **[REQUIRED]**
 
-*To be added during implementation*
+### 2026-05-08 — Threading storage upgrade landed (instead of `my-mentions`)
+
+`my-mentions` was the original Phase 2 "next ingestor" but slack-morphism doesn't expose `search.messages` — implementing it means ~50 LOC of raw HTTP. Higher-leverage move: tighten the storage model on the existing `slack/channel-archive` template, which had a real gap — thread replies weren't captured at all (Slack's `conversations.history` returns top-level only).
+
+**Dual-layer storage:**
+
+- `<YYYY-MM-DD>.jsonl` — top-level messages only, by their own Slack `ts` (not fetch time).
+- `threads/<parent_ts>.jsonl` — parent + every reply chronologically. Cross-date threads stay in one file.
+
+**Cursor:** `meta.json.cursor` gained `threads: { <parent_ts>: <last_reply_ts | null> }`. Channel cursor and per-thread cursors advance independently — a 429 on one thread doesn't drop messages or block other threads.
+
+**Two-pass run:**
+
+1. `conversations.history(oldest=cursor.latest_ts)` → append top-level messages to day files; for any with `reply_count > 0`, register a thread cursor + seed thread file with the parent.
+2. For every parent in `cursor.threads`, `conversations.replies(parent_ts, oldest=cursor.threads[parent_ts])` → append new replies to that thread file. Each thread cursor advances on success only.
+
+Out of scope (documented in module docs): edits, deletes, reactions added/removed after fetch. A future `slack/full-fidelity-archive` template covers them via periodic windowed re-scrapes.
+
+**Implementation:**
+- `SlackFeedClient::thread_replies(...)` added; `RealSlackClient` wraps `slack-morphism::conversations_replies`.
+- `MockSlackClient` extended with `queue_thread` / `queue_thread_error`.
+- 3 new tests: `parent_with_replies_seeds_thread_file_and_advances_thread_cursor`, `second_run_advances_thread_cursor_independently`, `thread_failure_does_not_block_channel_or_other_threads`.
+
+40 tests green (29 unit + 3 cloacina-fire + 8 slack). Workspace + clippy clean.
+
+**Rescoping note:** the original "implement my-mentions/dm-archive" scope is being deferred. Both are smaller follow-ups now that the storage model is right. The work that landed here (storage upgrade + thread fetching) was higher-leverage than either original ingestor.
+
+Calling T-0215 done as the threading-storage-upgrade work.

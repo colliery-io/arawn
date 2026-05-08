@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-08T14:26:02Z | 223 files | Python, Rust
+> Generated: 2026-05-08T14:34:59Z | 223 files | Python, Rust
 
 ## Project Structure
 
@@ -2769,13 +2769,13 @@
 #### crates/arawn-feeds/src/runtime.rs
 
 - pub `CloacinaRunner` type L31 — `= DefaultRunner` — arawn-feeds doesn't depend on arawn-workflow directly to avoid a
-- pub `feed_workflow_name` function L35-37 — `(feed_id: &str) -> String` — Format the cloacina workflow name for a feed.
-- pub `start` function L43-85 — `( runner: Arc<CloacinaRunner>, conn: Arc<Mutex<Connection>>, layout: Arc<DataLay...` — One-stop entry the server boot calls after the workflow runner is
-- pub `FeedRuntime` struct L88-91 — `{ runner: Arc<CloacinaRunner>, runtime_ctx: FeedRuntimeContext }` — Live handle for dynamic feed registration (Phase 6: `/watch`).
-- pub `register_feed_runtime` function L96-101 — `( &self, record: &FeedRecord, ) -> Result<(), FeedError>` — Register an additional feed without a server restart.
-- pub `runtime_ctx` function L103-105 — `(&self) -> &FeedRuntimeContext` — audit are all inherited from cloacina.
--  `FeedRuntime` type L93-106 — `= FeedRuntime` — audit are all inherited from cloacina.
--  `register_one` function L108-184 — `( runner: &CloacinaRunner, ctx: &FeedRuntimeContext, record: &FeedRecord, ) -> R...` — audit are all inherited from cloacina.
+- pub `feed_workflow_name` function L40-42 — `(feed_id: &str) -> String` — Format the cloacina workflow name for a feed.
+- pub `start` function L48-90 — `( runner: Arc<CloacinaRunner>, conn: Arc<Mutex<Connection>>, layout: Arc<DataLay...` — One-stop entry the server boot calls after the workflow runner is
+- pub `FeedRuntime` struct L93-96 — `{ runner: Arc<CloacinaRunner>, runtime_ctx: FeedRuntimeContext }` — Live handle for dynamic feed registration (Phase 6: `/watch`).
+- pub `register_feed_runtime` function L101-106 — `( &self, record: &FeedRecord, ) -> Result<(), FeedError>` — Register an additional feed without a server restart.
+- pub `runtime_ctx` function L108-110 — `(&self) -> &FeedRuntimeContext` — audit are all inherited from cloacina.
+-  `FeedRuntime` type L98-111 — `= FeedRuntime` — audit are all inherited from cloacina.
+-  `register_one` function L113-189 — `( runner: &CloacinaRunner, ctx: &FeedRuntimeContext, record: &FeedRecord, ) -> R...` — audit are all inherited from cloacina.
 
 #### crates/arawn-feeds/src/store.rs
 

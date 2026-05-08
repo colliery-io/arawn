@@ -89,7 +89,7 @@
     "crates/arawn-feeds/src/lib.rs": "4c37984bcbccd2de343b2d5fc0148b920f1e1a74c5b14bc10b0dfecf2c100cb5",
     "crates/arawn-feeds/src/meta.rs": "20d8fd9e76c949a96d3b1d585a8eba0fc66a8177219a4a0a259bc7b814d2a317",
     "crates/arawn-feeds/src/registry.rs": "505f55524f73a545da52db90d82d3af8fd25040645dff6380ce06cadedfd3f3c",
-    "crates/arawn-feeds/src/runtime.rs": "f91898ae7b8df0ed7f609edc638d99144d8aa1f9e71ef24e05c8c8c16c42441b",
+    "crates/arawn-feeds/src/runtime.rs": "ecde5714b7fc6c4e6394d70ff39497e266012019986cd7ebf2f0a731c81e3347",
     "crates/arawn-feeds/src/store.rs": "d295966296efaceb9266f2406e152a5a164b74fff3ac686525d5f82a250adf70",
     "crates/arawn-feeds/src/template.rs": "96ade6f1f3fadb523c384e383520be812c01b1c2e9227bfd066426b4ad3c1c0c",
     "crates/arawn-feeds/src/templates/mod.rs": "be816d7b45e01b0708c21add454fdf0ce4015de540a2bfa6f874bf09b724f0ee",

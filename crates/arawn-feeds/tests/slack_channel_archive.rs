@@ -30,21 +30,47 @@ struct MockSlackClient {
     resolved_id: Mutex<String>,
     /// Recorded calls for assertion.
     history_calls: Mutex<Vec<(String, Option<String>)>>,
+    /// Per-parent_ts FIFO of replies pages.
+    thread_responses: Mutex<std::collections::HashMap<String, Vec<SlackHistoryPage>>>,
+    /// Recorded thread calls for assertion: (channel, parent_ts, oldest).
+    thread_calls: Mutex<Vec<(String, String, Option<String>)>>,
+    /// Per-parent_ts forced error queue. If a parent has an error
+    /// queued, the next thread_replies call returns that error instead
+    /// of the next page.
+    thread_errors: Mutex<std::collections::HashMap<String, Vec<FeedError>>>,
 }
 
 impl MockSlackClient {
     fn new() -> Self {
         Self {
-            history_responses: Mutex::new(vec![]),
             resolved_id: Mutex::new("CMOCK".into()),
-            history_calls: Mutex::new(vec![]),
+            ..Default::default()
         }
     }
     fn queue(&self, page: SlackHistoryPage) {
         self.history_responses.lock().unwrap().push(page);
     }
+    fn queue_thread(&self, parent_ts: &str, page: SlackHistoryPage) {
+        self.thread_responses
+            .lock()
+            .unwrap()
+            .entry(parent_ts.into())
+            .or_default()
+            .push(page);
+    }
+    fn queue_thread_error(&self, parent_ts: &str, err: FeedError) {
+        self.thread_errors
+            .lock()
+            .unwrap()
+            .entry(parent_ts.into())
+            .or_default()
+            .push(err);
+    }
     fn calls(&self) -> Vec<(String, Option<String>)> {
         self.history_calls.lock().unwrap().clone()
+    }
+    fn thread_calls(&self) -> Vec<(String, String, Option<String>)> {
+        self.thread_calls.lock().unwrap().clone()
     }
 }
 
@@ -72,6 +98,35 @@ impl SlackFeedClient for MockSlackClient {
         } else {
             Ok(responses.remove(0))
         }
+    }
+
+    async fn thread_replies(
+        &self,
+        channel_id: &str,
+        parent_ts: &str,
+        oldest_ts: Option<&str>,
+    ) -> Result<SlackHistoryPage, FeedError> {
+        self.thread_calls.lock().unwrap().push((
+            channel_id.into(),
+            parent_ts.into(),
+            oldest_ts.map(str::to_string),
+        ));
+        // Errors take precedence so tests can prime "this thread fails
+        // this run" without unbalancing the response queue.
+        let mut errs = self.thread_errors.lock().unwrap();
+        if let Some(q) = errs.get_mut(parent_ts) {
+            if !q.is_empty() {
+                return Err(q.remove(0));
+            }
+        }
+        let mut responses = self.thread_responses.lock().unwrap();
+        let page = responses
+            .get_mut(parent_ts)
+            .and_then(|q| if q.is_empty() { None } else { Some(q.remove(0)) });
+        Ok(page.unwrap_or_else(|| SlackHistoryPage {
+            messages: vec![],
+            next_cursor_ts: oldest_ts.map(str::to_string),
+        }))
     }
 }
 
@@ -265,9 +320,10 @@ async fn empty_run_is_a_no_op_with_status() {
         .collect();
     assert!(entries.is_empty());
 
-    // Cursor still null/preserved
+    // Cursor still null/preserved (top-level + empty threads map)
     let meta = MetaStore::read(&feed_dir).unwrap().unwrap();
-    assert_eq!(meta.cursor, Value::Null);
+    assert_eq!(meta.cursor["latest_ts"], Value::Null);
+    assert_eq!(meta.cursor["threads"], json!({}));
     assert_eq!(meta.last_status.as_deref(), Some("no-new-items"));
 }
 
@@ -336,4 +392,226 @@ async fn run_returns_auth_when_slack_not_connected() {
         .await
         .unwrap_err();
     assert!(matches!(err, FeedError::Auth(_)));
+}
+
+// ─── Thread tests ───────────────────────────────────────────────────
+
+fn slack_msg_with_replies(ts: &str, text: &str, reply_count: u64) -> Value {
+    json!({
+        "type": "message",
+        "ts": ts,
+        "user": "UALICE",
+        "text": text,
+        "reply_count": reply_count,
+    })
+}
+
+#[tokio::test]
+async fn parent_with_replies_seeds_thread_file_and_advances_thread_cursor() {
+    let tmp = tempfile::tempdir().unwrap();
+    let layout = DataLayout::new(tmp.path());
+    let feed_dir = layout
+        .ensure_feed_dir("slack/channel-archive", "design")
+        .unwrap();
+
+    let mock = Arc::new(MockSlackClient::new());
+    use chrono::TimeZone;
+    let parent_ts_secs = chrono::Utc
+        .with_ymd_and_hms(2026, 5, 8, 9, 0, 0)
+        .unwrap()
+        .timestamp();
+    let parent_ts = format!("{parent_ts_secs}.000001");
+    let reply1_ts = format!("{}.000001", parent_ts_secs + 60);
+    let reply2_ts = format!("{}.000001", parent_ts_secs + 120);
+
+    // history returns one parent with replies
+    mock.queue(SlackHistoryPage {
+        messages: vec![slack_msg_with_replies(&parent_ts, "who broke prod?", 2)],
+        next_cursor_ts: Some(parent_ts.clone()),
+    });
+    // thread_replies returns parent + 2 replies (Slack's pattern)
+    mock.queue_thread(
+        &parent_ts,
+        SlackHistoryPage {
+            messages: vec![
+                slack_msg(&parent_ts, "who broke prod?"),
+                slack_msg(&reply1_ts, "investigating"),
+                slack_msg(&reply2_ts, "fixed in #1234"),
+            ],
+            next_cursor_ts: Some(reply2_ts.clone()),
+        },
+    );
+
+    let clients = Arc::new(MockClients { slack: mock.clone() });
+    let ctx = TemplateCtx::new(clients);
+    let template = ChannelArchiveTemplate;
+    let params = TemplateParams::new(json!({ "channel": "#design" }));
+
+    let outcome = run_once(&template, &ctx, &params, &feed_dir).await;
+    assert_eq!(outcome.status, "ok");
+
+    // Day file: just the parent (top-level message)
+    let day_lines = read_jsonl(&feed_dir, "2026-05-08");
+    assert_eq!(day_lines.len(), 1);
+    assert_eq!(day_lines[0]["text"], "who broke prod?");
+
+    // Thread file: parent + 2 replies (parent seeded once via the
+    // history pass, then skipped during replies dedup)
+    let thread_path = feed_dir.join("threads").join(format!("{parent_ts}.jsonl"));
+    let thread_body = std::fs::read_to_string(&thread_path).unwrap();
+    let thread_lines: Vec<Value> = thread_body
+        .lines()
+        .filter(|l| !l.is_empty())
+        .map(|l| serde_json::from_str(l).unwrap())
+        .collect();
+    assert_eq!(thread_lines.len(), 3, "parent + 2 replies in thread file");
+    assert_eq!(thread_lines[0]["text"], "who broke prod?");
+    assert_eq!(thread_lines[1]["text"], "investigating");
+    assert_eq!(thread_lines[2]["text"], "fixed in #1234");
+
+    // Cursors
+    let meta = MetaStore::read(&feed_dir).unwrap().unwrap();
+    assert_eq!(meta.cursor["latest_ts"], parent_ts);
+    assert_eq!(meta.cursor["threads"][&parent_ts], reply2_ts);
+
+    // The thread call carried `oldest=None` (first time)
+    let tc = mock.thread_calls();
+    assert_eq!(tc.len(), 1);
+    assert_eq!(tc[0].1, parent_ts);
+    assert_eq!(tc[0].2, None);
+}
+
+#[tokio::test]
+async fn second_run_advances_thread_cursor_independently() {
+    let tmp = tempfile::tempdir().unwrap();
+    let layout = DataLayout::new(tmp.path());
+    let feed_dir = layout
+        .ensure_feed_dir("slack/channel-archive", "design")
+        .unwrap();
+
+    let mock = Arc::new(MockSlackClient::new());
+    use chrono::TimeZone;
+    let parent_ts_secs = chrono::Utc
+        .with_ymd_and_hms(2026, 5, 8, 9, 0, 0)
+        .unwrap()
+        .timestamp();
+    let parent_ts = format!("{parent_ts_secs}.0001");
+    let r1 = format!("{}.0001", parent_ts_secs + 60);
+    let r2 = format!("{}.0001", parent_ts_secs + 120);
+
+    // Run 1
+    mock.queue(SlackHistoryPage {
+        messages: vec![slack_msg_with_replies(&parent_ts, "?", 1)],
+        next_cursor_ts: Some(parent_ts.clone()),
+    });
+    mock.queue_thread(
+        &parent_ts,
+        SlackHistoryPage {
+            messages: vec![slack_msg(&parent_ts, "?"), slack_msg(&r1, "first reply")],
+            next_cursor_ts: Some(r1.clone()),
+        },
+    );
+    // Run 2: no new top-level, one new reply
+    mock.queue_thread(
+        &parent_ts,
+        SlackHistoryPage {
+            messages: vec![slack_msg(&r2, "later reply")],
+            next_cursor_ts: Some(r2.clone()),
+        },
+    );
+
+    let clients = Arc::new(MockClients { slack: mock.clone() });
+    let ctx = TemplateCtx::new(clients);
+    let template = ChannelArchiveTemplate;
+    let params = TemplateParams::new(json!({ "channel": "#design" }));
+
+    run_once(&template, &ctx, &params, &feed_dir).await;
+    let outcome2 = run_once(&template, &ctx, &params, &feed_dir).await;
+    assert_eq!(outcome2.summary.items_written, 1, "only the new reply");
+
+    let thread_path = feed_dir.join("threads").join(format!("{parent_ts}.jsonl"));
+    let lines: Vec<Value> = std::fs::read_to_string(&thread_path)
+        .unwrap()
+        .lines()
+        .filter(|l| !l.is_empty())
+        .map(|l| serde_json::from_str(l).unwrap())
+        .collect();
+    assert_eq!(lines.len(), 3, "parent + first reply + later reply");
+    assert_eq!(lines[2]["text"], "later reply");
+
+    let meta = MetaStore::read(&feed_dir).unwrap().unwrap();
+    assert_eq!(meta.cursor["threads"][&parent_ts], r2);
+
+    // Second run's thread call carried `oldest=r1`
+    let tc = mock.thread_calls();
+    assert_eq!(tc.len(), 2);
+    assert_eq!(tc[0].2, None);
+    assert_eq!(tc[1].2, Some(r1));
+}
+
+#[tokio::test]
+async fn thread_failure_does_not_block_channel_or_other_threads() {
+    let tmp = tempfile::tempdir().unwrap();
+    let layout = DataLayout::new(tmp.path());
+    let feed_dir = layout
+        .ensure_feed_dir("slack/channel-archive", "design")
+        .unwrap();
+
+    let mock = Arc::new(MockSlackClient::new());
+    use chrono::TimeZone;
+    let parent_ts_secs = chrono::Utc
+        .with_ymd_and_hms(2026, 5, 8, 9, 0, 0)
+        .unwrap()
+        .timestamp();
+    let bad_parent = format!("{parent_ts_secs}.0001");
+    let good_parent = format!("{}.0001", parent_ts_secs + 30);
+    let good_reply = format!("{}.0001", parent_ts_secs + 90);
+
+    mock.queue(SlackHistoryPage {
+        messages: vec![
+            slack_msg_with_replies(&bad_parent, "thread that errors", 5),
+            slack_msg_with_replies(&good_parent, "thread that succeeds", 1),
+        ],
+        next_cursor_ts: Some(good_parent.clone()),
+    });
+    mock.queue_thread_error(
+        &bad_parent,
+        FeedError::RateLimited { retry_after: None },
+    );
+    mock.queue_thread(
+        &good_parent,
+        SlackHistoryPage {
+            messages: vec![
+                slack_msg(&good_parent, "thread that succeeds"),
+                slack_msg(&good_reply, "ok"),
+            ],
+            next_cursor_ts: Some(good_reply.clone()),
+        },
+    );
+
+    let clients = Arc::new(MockClients { slack: mock.clone() });
+    let ctx = TemplateCtx::new(clients);
+    let template = ChannelArchiveTemplate;
+    let params = TemplateParams::new(json!({ "channel": "#design" }));
+
+    let outcome = run_once(&template, &ctx, &params, &feed_dir).await;
+    assert_eq!(outcome.status, "ok"); // run did NOT fail overall
+
+    // Channel cursor advanced
+    let meta = MetaStore::read(&feed_dir).unwrap().unwrap();
+    assert_eq!(meta.cursor["latest_ts"], good_parent);
+
+    // Bad thread: cursor stayed None (will retry next run)
+    assert_eq!(meta.cursor["threads"][&bad_parent], Value::Null);
+    // Good thread: cursor advanced
+    assert_eq!(meta.cursor["threads"][&good_parent], good_reply);
+
+    // Bad thread file has only the parent (seeded from history); no
+    // replies because the call errored.
+    let bad_path = feed_dir
+        .join("threads")
+        .join(format!("{bad_parent}.jsonl"));
+    let bad_lines = std::fs::read_to_string(&bad_path).unwrap();
+    let bad_count = bad_lines.lines().filter(|l| !l.is_empty()).count();
+    assert_eq!(bad_count, 1, "only the parent — replies failed to fetch");
 }

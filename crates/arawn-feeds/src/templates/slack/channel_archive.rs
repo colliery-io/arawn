@@ -1,31 +1,42 @@
 //! `slack/channel-archive` — append every message in one Slack channel
-//! to JSONL, time-partitioned by day.
+//! to JSONL, time-partitioned by day, plus per-thread reply files.
 //!
 //! Disk layout:
 //!
 //! ```text
 //! slack/channel-archive/<feed_id>/
-//!   ├── meta.json            # cursor: { "latest_ts": "..." }
-//!   ├── 2026-05-08.jsonl     # one Slack message per line, append-only
+//!   ├── meta.json                       # cursor: { latest_ts, threads: {...} }
+//!   ├── 2026-05-08.jsonl                # top-level messages (parents + standalone), by ts
 //!   ├── 2026-05-07.jsonl
-//!   └── ...
+//!   └── threads/
+//!       ├── 1746700000.000100.jsonl     # parent + every reply for that thread, by reply ts
+//!       └── ...
 //! ```
 //!
-//! Cursor model: persists Slack `latest_ts` (the highest message ts seen
-//! so far). Subsequent runs ask for messages with `oldest = latest_ts`
-//! so we only fetch new content. First run gets the last 24h.
+//! Two-pass fetch + dual layout:
 //!
-//! Each line is the raw API payload Slack returned — preserves full
-//! fidelity and lets the agent introspect any field via grep / jq.
+//! 1. `conversations.history` returns top-level messages newer than
+//!    `cursor.latest_ts`. Each message is appended to the day file
+//!    matching its own Slack ts (NOT the fetch time).
+//! 2. For every top-level message with `reply_count > 0`, register a
+//!    thread cursor (`cursor.threads[parent_ts]`). For every entry in
+//!    `cursor.threads`, call `conversations.replies` with the
+//!    per-thread cursor; append each new reply to
+//!    `threads/<parent_ts>.jsonl`. Threads files include the parent
+//!    as line 0 the first time we touch the thread, so the file is
+//!    self-contained.
+//!
+//! Cursor model: `{ latest_ts, threads: { <parent_ts>: <last_reply_ts | null> } }`.
+//! `latest_ts` and each thread cursor advance independently — a 429
+//! on one thread doesn't drop the channel cursor or block other threads.
 
 use std::path::Path;
 use std::time::Instant;
 
 use async_trait::async_trait;
 use chrono::{DateTime, TimeZone, Utc};
-use serde_json::{Value, json};
+use serde_json::{Map, Value, json};
 
-use crate::clients::SlackHistoryPage;
 use crate::error::FeedError;
 use crate::template::{FeedTemplate, RunOutcome, TemplateCtx};
 use crate::types::{FeedDefaults, RunSummary, TemplateParams};
@@ -58,7 +69,7 @@ impl FeedTemplate for ChannelArchiveTemplate {
     fn defaults(&self, _params: &TemplateParams) -> FeedDefaults {
         FeedDefaults {
             cadence: "*/15 * * * *".into(),
-            initial_cursor: Value::Null,
+            initial_cursor: json!({ "latest_ts": Value::Null, "threads": {} }),
         }
     }
 
@@ -79,91 +90,173 @@ impl FeedTemplate for ChannelArchiveTemplate {
             .ok_or_else(|| FeedError::InvalidParams("missing `channel` param".into()))?;
         let channel_id = slack.resolve_channel(raw_channel).await?;
 
-        let oldest_ts = cursor.get("latest_ts").and_then(|v| v.as_str()).map(str::to_string);
-        let page = slack
-            .channel_history(&channel_id, oldest_ts.as_deref())
+        // ── State carried across this run ────────────────────────────
+        let mut new_latest_ts: Option<String> = cursor
+            .get("latest_ts")
+            .and_then(|v| v.as_str())
+            .map(str::to_string);
+        let mut threads_cursor: Map<String, Value> = cursor
+            .get("threads")
+            .and_then(|v| v.as_object())
+            .cloned()
+            .unwrap_or_default();
+        let mut total_items: u64 = 0;
+        let mut total_bytes: u64 = 0;
+
+        // ── Pass 1: top-level messages via conversations.history ─────
+        let oldest_top = new_latest_ts.clone();
+        let history = slack
+            .channel_history(&channel_id, oldest_top.as_deref())
             .await?;
 
-        let SlackHistoryPage {
-            messages,
-            next_cursor_ts,
-        } = page;
+        if !history.messages.is_empty() {
+            // Track new threads we discover so pass 2 picks them up.
+            for msg in &history.messages {
+                let ts = msg.get("ts").and_then(|v| v.as_str()).ok_or_else(|| {
+                    FeedError::Schema("slack message missing `ts` string field".into())
+                })?;
+                // Top-level → day file, partitioned by the message's
+                // OWN ts (not fetch time).
+                let bytes = append_message_to_day(feed_dir, msg, ts)?;
+                total_items += 1;
+                total_bytes += bytes;
 
-        if messages.is_empty() {
-            // Cursor unchanged; status reflects the no-op.
-            return Ok(RunOutcome {
-                cursor: cursor.clone(),
-                summary: RunSummary {
-                    items_written: 0,
-                    bytes_written: 0,
-                    duration: started.elapsed(),
-                },
-                status: "no-new-items".into(),
-            });
+                // If the message has replies, register the thread for
+                // pass 2. Also seed the thread file with the parent so
+                // the file is self-contained even if we never see new
+                // replies later.
+                if has_replies(msg) {
+                    let parent_ts = ts.to_string();
+                    if !threads_cursor.contains_key(&parent_ts) {
+                        threads_cursor.insert(parent_ts.clone(), Value::Null);
+                        let parent_bytes = append_message_to_thread(feed_dir, &parent_ts, msg)?;
+                        total_bytes += parent_bytes;
+                    }
+                }
+            }
+            // Advance the channel cursor only after the day-file
+            // writes succeeded.
+            new_latest_ts = history.next_cursor_ts.or(new_latest_ts);
         }
 
-        let bytes = append_messages_partitioned(feed_dir, &messages)?;
-        let new_cursor = match next_cursor_ts {
-            Some(ts) => json!({ "latest_ts": ts }),
-            // Provider didn't suggest one (rare); fall back to the
-            // newest message's `ts`, else preserve prior cursor.
-            None => match newest_ts(&messages) {
-                Some(ts) => json!({ "latest_ts": ts }),
-                None => cursor.clone(),
-            },
+        // ── Pass 2: per-thread reply fetch ───────────────────────────
+        // Each thread advances independently. A failure on one thread
+        // is recorded as Schema/Provider error in tracing but does NOT
+        // abort the whole run nor the channel cursor.
+        let parent_tss: Vec<String> = threads_cursor.keys().cloned().collect();
+        for parent_ts in parent_tss {
+            let prior = threads_cursor
+                .get(&parent_ts)
+                .and_then(|v| v.as_str())
+                .map(str::to_string);
+            match slack
+                .thread_replies(&channel_id, &parent_ts, prior.as_deref())
+                .await
+            {
+                Ok(page) => {
+                    for msg in &page.messages {
+                        // Skip the parent if we've already written it
+                        // to the thread file (first call to
+                        // conversations.replies returns it). We
+                        // dedupe on `ts`: any message with ts ==
+                        // parent_ts that we already seeded gets
+                        // skipped.
+                        let ts = msg
+                            .get("ts")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or_default();
+                        if ts == parent_ts && prior.is_none() {
+                            // Parent already seeded above (or in a
+                            // prior run that captured it). Skip.
+                            continue;
+                        }
+                        let bytes = append_message_to_thread(feed_dir, &parent_ts, msg)?;
+                        total_items += 1;
+                        total_bytes += bytes;
+                    }
+                    if let Some(new_cursor) = page.next_cursor_ts {
+                        threads_cursor.insert(parent_ts.clone(), Value::String(new_cursor));
+                    }
+                }
+                Err(e) => {
+                    tracing::warn!(
+                        parent_ts = %parent_ts,
+                        error = %e,
+                        "thread fetch failed; cursor unchanged for this thread"
+                    );
+                    // Leave threads_cursor[parent_ts] untouched so we
+                    // retry from the same point next run.
+                }
+            }
+        }
+
+        let new_cursor = json!({
+            "latest_ts": new_latest_ts.map(Value::String).unwrap_or(Value::Null),
+            "threads": Value::Object(threads_cursor),
+        });
+
+        let status = if total_items == 0 {
+            "no-new-items".to_string()
+        } else {
+            "ok".to_string()
         };
 
         Ok(RunOutcome {
             cursor: new_cursor,
             summary: RunSummary {
-                items_written: messages.len() as u64,
-                bytes_written: bytes,
+                items_written: total_items,
+                bytes_written: total_bytes,
                 duration: started.elapsed(),
             },
-            status: "ok".into(),
+            status,
         })
     }
 }
 
-/// Append each message to the JSONL file for the day its `ts` falls on.
-/// Returns total bytes written across all files touched.
-fn append_messages_partitioned(
+// ── Disk helpers ────────────────────────────────────────────────────
+
+fn append_message_to_day(
     feed_dir: &Path,
-    messages: &[Value],
+    msg: &Value,
+    ts: &str,
 ) -> Result<u64, FeedError> {
+    let day = ts_to_yyyy_mm_dd(ts)?;
+    let path = feed_dir.join(format!("{day}.jsonl"));
+    append_line(&path, msg)
+}
+
+fn append_message_to_thread(
+    feed_dir: &Path,
+    parent_ts: &str,
+    msg: &Value,
+) -> Result<u64, FeedError> {
+    let dir = feed_dir.join("threads");
+    std::fs::create_dir_all(&dir)
+        .map_err(|e| FeedError::Storage(format!("create threads dir: {e}")))?;
+    let path = dir.join(format!("{parent_ts}.jsonl"));
+    append_line(&path, msg)
+}
+
+fn append_line(path: &Path, msg: &Value) -> Result<u64, FeedError> {
     use std::io::Write;
-    let mut total = 0u64;
-    let mut files: std::collections::HashMap<String, std::fs::File> = Default::default();
+    let line = serde_json::to_string(msg)
+        .map_err(|e| FeedError::Storage(format!("serialize message: {e}")))?;
+    let bytes = format!("{line}\n");
+    let mut f = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)
+        .map_err(|e| FeedError::Storage(format!("open {}: {e}", path.display())))?;
+    f.write_all(bytes.as_bytes())
+        .map_err(|e| FeedError::Storage(format!("append: {e}")))?;
+    Ok(bytes.len() as u64)
+}
 
-    for msg in messages {
-        let ts = msg.get("ts").and_then(|v| v.as_str()).ok_or_else(|| {
-            FeedError::Schema("slack message missing `ts` string field".into())
-        })?;
-        let day = ts_to_yyyy_mm_dd(ts)?;
-        let entry = files.entry(day.clone());
-        let file = match entry {
-            std::collections::hash_map::Entry::Occupied(e) => e.into_mut(),
-            std::collections::hash_map::Entry::Vacant(v) => {
-                let path = feed_dir.join(format!("{day}.jsonl"));
-                let f = std::fs::OpenOptions::new()
-                    .create(true)
-                    .append(true)
-                    .open(&path)
-                    .map_err(|e| {
-                        FeedError::Storage(format!("open {}: {e}", path.display()))
-                    })?;
-                v.insert(f)
-            }
-        };
-
-        let line = serde_json::to_string(msg)
-            .map_err(|e| FeedError::Storage(format!("serialize message: {e}")))?;
-        let bytes = format!("{line}\n");
-        file.write_all(bytes.as_bytes())
-            .map_err(|e| FeedError::Storage(format!("append: {e}")))?;
-        total += bytes.len() as u64;
-    }
-    Ok(total)
+fn has_replies(msg: &Value) -> bool {
+    msg.get("reply_count")
+        .and_then(|v| v.as_u64())
+        .map(|n| n > 0)
+        .unwrap_or(false)
 }
 
 /// Parse Slack's float-string `ts` (`"1715000000.001234"`) and format
@@ -178,14 +271,6 @@ fn ts_to_yyyy_mm_dd(ts: &str) -> Result<String, FeedError> {
         .single()
         .ok_or_else(|| FeedError::Schema(format!("ts {ts} out of range")))?;
     Ok(dt.format("%Y-%m-%d").to_string())
-}
-
-fn newest_ts(messages: &[Value]) -> Option<String> {
-    messages
-        .iter()
-        .filter_map(|m| m.get("ts").and_then(|v| v.as_str()))
-        .max()
-        .map(str::to_string)
 }
 
 #[cfg(test)]
@@ -220,8 +305,6 @@ mod tests {
 
     #[test]
     fn ts_to_yyyy_mm_dd_parses_slack_format() {
-        // Round-trip via chrono so we're testing the parse logic, not
-        // hand-computed unix epoch math.
         use chrono::TimeZone;
         let dt = Utc.with_ymd_and_hms(2026, 5, 8, 12, 30, 0).unwrap();
         let ts = format!("{}.000123", dt.timestamp());
@@ -234,5 +317,12 @@ mod tests {
             ts_to_yyyy_mm_dd("not-a-ts"),
             Err(FeedError::Schema(_))
         ));
+    }
+
+    #[test]
+    fn has_replies_detects_reply_count() {
+        assert!(has_replies(&json!({ "reply_count": 3 })));
+        assert!(!has_replies(&json!({ "reply_count": 0 })));
+        assert!(!has_replies(&json!({})));
     }
 }
