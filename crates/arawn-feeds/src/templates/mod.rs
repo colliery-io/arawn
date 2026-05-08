@@ -14,5 +14,6 @@ pub fn default_registry() -> FeedTemplateRegistry {
     let mut r = FeedTemplateRegistry::new();
     r.register(Arc::new(stub::EchoTemplate));
     r.register(Arc::new(slack::ChannelArchiveTemplate));
+    r.register(Arc::new(slack::DmArchiveTemplate));
     r
 }

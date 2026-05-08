@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-08T14:34:59Z | 223 files | Python, Rust
+> Generated: 2026-05-08T15:57:37Z | 226 files | Python, Rust
 
 ## Project Structure
 
@@ -130,12 +130,15 @@
 │   │   │   │   ├── mod.rs
 │   │   │   │   ├── slack/
 │   │   │   │   │   ├── channel_archive.rs
+│   │   │   │   │   ├── common.rs
+│   │   │   │   │   ├── dm_archive.rs
 │   │   │   │   │   └── mod.rs
 │   │   │   │   └── stub.rs
 │   │   │   └── types.rs
 │   │   └── tests/
 │   │       ├── cloacina_fire.rs
-│   │       └── slack_channel_archive.rs
+│   │       ├── slack_channel_archive.rs
+│   │       └── slack_dm_archive.rs
 │   ├── arawn-integrations/
 │   │   └── src/
 │   │       ├── atlassian/
@@ -2842,20 +2845,26 @@
 
 #### crates/arawn-feeds/src/clients/slack.rs
 
-- pub `SlackFeedClient` interface L28-43 — `{ fn resolve_channel(), fn channel_history() }` — What feeds need from Slack.
-- pub `SlackHistoryPage` struct L49-58 — `{ messages: Vec<serde_json::Value>, next_cursor_ts: Option<String> }` — One page of Slack channel history.
-- pub `RealSlackClient` struct L62-64 — `{ integration: Arc<SlackIntegration> }` — Slack tools use.
-- pub `new` function L67-69 — `(integration: Arc<SlackIntegration>) -> Self` — Slack tools use.
--  `RealSlackClient` type L66-70 — `= RealSlackClient` — Slack tools use.
--  `integ_err` function L72-78 — `(e: arawn_integrations::IntegrationError) -> FeedError` — Slack tools use.
--  `slack_morphism_err` function L80-92 — `(op: &str, e: E) -> FeedError` — Slack tools use.
--  `RealSlackClient` type L95-178 — `impl SlackFeedClient for RealSlackClient` — Slack tools use.
--  `resolve_channel` function L96-132 — `(&self, name_or_id: &str) -> Result<String, FeedError>` — Slack tools use.
--  `channel_history` function L134-177 — `( &self, channel_id: &str, oldest_ts: Option<&str>, ) -> Result<SlackHistoryPage...` — Slack tools use.
--  `looks_like_channel_id` function L180-187 — `(s: &str) -> bool` — Slack tools use.
--  `tests` module L190-208 — `-` — Slack tools use.
--  `channel_id_recognized_by_prefix` function L194-199 — `()` — Slack tools use.
--  `names_not_recognized_as_ids` function L202-207 — `()` — Slack tools use.
+- pub `SlackFeedClient` interface L29-68 — `{ fn resolve_channel(), fn channel_history(), fn thread_replies(), fn open_dm() ...` — What feeds need from Slack.
+- pub `SlackHistoryPage` struct L74-83 — `{ messages: Vec<serde_json::Value>, next_cursor_ts: Option<String> }` — One page of Slack channel history.
+- pub `RealSlackClient` struct L87-89 — `{ integration: Arc<SlackIntegration> }` — Slack tools use.
+- pub `new` function L92-94 — `(integration: Arc<SlackIntegration>) -> Self` — Slack tools use.
+-  `RealSlackClient` type L91-95 — `= RealSlackClient` — Slack tools use.
+-  `integ_err` function L97-103 — `(e: arawn_integrations::IntegrationError) -> FeedError` — Slack tools use.
+-  `slack_morphism_err` function L105-117 — `(op: &str, e: E) -> FeedError` — Slack tools use.
+-  `RealSlackClient` type L120-274 — `impl SlackFeedClient for RealSlackClient` — Slack tools use.
+-  `resolve_channel` function L121-157 — `(&self, name_or_id: &str) -> Result<String, FeedError>` — Slack tools use.
+-  `channel_history` function L159-202 — `( &self, channel_id: &str, oldest_ts: Option<&str>, ) -> Result<SlackHistoryPage...` — Slack tools use.
+-  `thread_replies` function L204-249 — `( &self, channel_id: &str, parent_ts: &str, oldest_ts: Option<&str>, ) -> Result...` — Slack tools use.
+-  `open_dm` function L251-273 — `(&self, user_id_or_name: &str) -> Result<String, FeedError>` — Slack tools use.
+-  `RealSlackClient` type L276-306 — `= RealSlackClient` — Slack tools use.
+-  `resolve_user_name_to_id` function L277-305 — `(&self, name: &str) -> Result<String, FeedError>` — Slack tools use.
+-  `looks_like_user_id` function L308-313 — `(s: &str) -> bool` — Slack tools use.
+-  `looks_like_channel_id` function L315-322 — `(s: &str) -> bool` — Slack tools use.
+-  `tests` module L325-353 — `-` — Slack tools use.
+-  `channel_id_recognized_by_prefix` function L329-334 — `()` — Slack tools use.
+-  `names_not_recognized_as_ids` function L337-342 — `()` — Slack tools use.
+-  `user_id_recognized_by_prefix` function L345-352 — `()` — Slack tools use.
 
 ### crates/arawn-feeds/src/templates
 
@@ -2865,7 +2874,7 @@
 
 - pub `slack` module L3 — `-` — Concrete `FeedTemplate` impls organized per provider.
 - pub `stub` module L4 — `-` — Concrete `FeedTemplate` impls organized per provider.
-- pub `default_registry` function L13-18 — `() -> FeedTemplateRegistry` — Build the registry of every template the binary supports.
+- pub `default_registry` function L13-19 — `() -> FeedTemplateRegistry` — Build the registry of every template the binary supports.
 
 #### crates/arawn-feeds/src/templates/stub.rs
 
@@ -2883,26 +2892,50 @@
 
 #### crates/arawn-feeds/src/templates/slack/channel_archive.rs
 
-- pub `ChannelArchiveTemplate` struct L33 — `-` — fidelity and lets the agent introspect any field via grep / jq.
--  `NAME` variable L35 — `: &str` — fidelity and lets the agent introspect any field via grep / jq.
--  `ChannelArchiveTemplate` type L38-126 — `impl FeedTemplate for ChannelArchiveTemplate` — fidelity and lets the agent introspect any field via grep / jq.
--  `name` function L39-41 — `(&self) -> &'static str` — fidelity and lets the agent introspect any field via grep / jq.
--  `validate` function L43-56 — `(&self, params: &TemplateParams) -> Result<(), FeedError>` — fidelity and lets the agent introspect any field via grep / jq.
--  `defaults` function L58-63 — `(&self, _params: &TemplateParams) -> FeedDefaults` — fidelity and lets the agent introspect any field via grep / jq.
--  `run` function L65-125 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &V...` — fidelity and lets the agent introspect any field via grep / jq.
--  `append_messages_partitioned` function L130-167 — `( feed_dir: &Path, messages: &[Value], ) -> Result<u64, FeedError>` — Append each message to the JSONL file for the day its `ts` falls on.
--  `ts_to_yyyy_mm_dd` function L171-181 — `(ts: &str) -> Result<String, FeedError>` — Parse Slack's float-string `ts` (`"1715000000.001234"`) and format
--  `newest_ts` function L183-189 — `(messages: &[Value]) -> Option<String>` — fidelity and lets the agent introspect any field via grep / jq.
--  `tests` module L192-238 — `-` — fidelity and lets the agent introspect any field via grep / jq.
--  `validate_rejects_missing_channel` function L197-201 — `()` — fidelity and lets the agent introspect any field via grep / jq.
--  `validate_rejects_empty_channel` function L204-210 — `()` — fidelity and lets the agent introspect any field via grep / jq.
--  `validate_accepts_named_or_id_channel` function L213-219 — `()` — fidelity and lets the agent introspect any field via grep / jq.
--  `ts_to_yyyy_mm_dd_parses_slack_format` function L222-229 — `()` — fidelity and lets the agent introspect any field via grep / jq.
--  `ts_to_yyyy_mm_dd_rejects_garbage` function L232-237 — `()` — fidelity and lets the agent introspect any field via grep / jq.
+- pub `ChannelArchiveTemplate` struct L43 — `-` — on one thread doesn't drop the channel cursor or block other threads.
+-  `NAME` variable L45 — `: &str` — on one thread doesn't drop the channel cursor or block other threads.
+-  `ChannelArchiveTemplate` type L48-93 — `impl FeedTemplate for ChannelArchiveTemplate` — on one thread doesn't drop the channel cursor or block other threads.
+-  `name` function L49-51 — `(&self) -> &'static str` — on one thread doesn't drop the channel cursor or block other threads.
+-  `validate` function L53-66 — `(&self, params: &TemplateParams) -> Result<(), FeedError>` — on one thread doesn't drop the channel cursor or block other threads.
+-  `defaults` function L68-73 — `(&self, _params: &TemplateParams) -> FeedDefaults` — on one thread doesn't drop the channel cursor or block other threads.
+-  `run` function L75-92 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &V...` — on one thread doesn't drop the channel cursor or block other threads.
+-  `tests` module L96-124 — `-` — on one thread doesn't drop the channel cursor or block other threads.
+-  `validate_rejects_missing_channel` function L101-105 — `()` — on one thread doesn't drop the channel cursor or block other threads.
+-  `validate_rejects_empty_channel` function L108-114 — `()` — on one thread doesn't drop the channel cursor or block other threads.
+-  `validate_accepts_named_or_id_channel` function L117-123 — `()` — on one thread doesn't drop the channel cursor or block other threads.
+
+#### crates/arawn-feeds/src/templates/slack/common.rs
+
+- pub `archive_channel_with_threads` function L34-150 — `( slack: &dyn SlackFeedClient, channel_id: &str, feed_dir: &Path, cursor: &Value...` — Two-pass dual-layer archive of a single Slack conversation.
+-  `append_message_to_day` function L154-158 — `(feed_dir: &Path, msg: &Value, ts: &str) -> Result<u64, FeedError>` — per-thread reply fetch + thread-file writes, cursor management.
+-  `append_message_to_thread` function L160-170 — `( feed_dir: &Path, parent_ts: &str, msg: &Value, ) -> Result<u64, FeedError>` — per-thread reply fetch + thread-file writes, cursor management.
+-  `append_line` function L172-185 — `(path: &Path, msg: &Value) -> Result<u64, FeedError>` — per-thread reply fetch + thread-file writes, cursor management.
+-  `has_replies` function L187-192 — `(msg: &Value) -> bool` — per-thread reply fetch + thread-file writes, cursor management.
+-  `ts_to_yyyy_mm_dd` function L196-206 — `(ts: &str) -> Result<String, FeedError>` — Parse Slack's float-string `ts` (`"1715000000.001234"`) and format
+-  `tests` module L209-234 — `-` — per-thread reply fetch + thread-file writes, cursor management.
+-  `ts_to_yyyy_mm_dd_parses_slack_format` function L214-218 — `()` — per-thread reply fetch + thread-file writes, cursor management.
+-  `ts_to_yyyy_mm_dd_rejects_garbage` function L221-226 — `()` — per-thread reply fetch + thread-file writes, cursor management.
+-  `has_replies_detects_reply_count` function L229-233 — `()` — per-thread reply fetch + thread-file writes, cursor management.
+
+#### crates/arawn-feeds/src/templates/slack/dm_archive.rs
+
+- pub `DmArchiveTemplate` struct L30 — `-` — ```
+-  `NAME` variable L32 — `: &str` — ```
+-  `DmArchiveTemplate` type L35-83 — `impl FeedTemplate for DmArchiveTemplate` — ```
+-  `name` function L36-38 — `(&self) -> &'static str` — ```
+-  `validate` function L40-53 — `(&self, params: &TemplateParams) -> Result<(), FeedError>` — ```
+-  `defaults` function L55-63 — `(&self, _params: &TemplateParams) -> FeedDefaults` — ```
+-  `run` function L65-82 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &V...` — ```
+-  `tests` module L86-116 — `-` — ```
+-  `validate_rejects_missing_user` function L91-95 — `()` — ```
+-  `validate_rejects_empty_user` function L98-104 — `()` — ```
+-  `validate_accepts_user_id_or_name` function L107-115 — `()` — ```
 
 #### crates/arawn-feeds/src/templates/slack/mod.rs
 
 -  `channel_archive` module L3 — `-` — Slack feed templates.
+-  `common` module L4 — `-` — Slack feed templates.
+-  `dm_archive` module L5 — `-` — Slack feed templates.
 
 ### crates/arawn-feeds/tests
 
@@ -2918,28 +2951,62 @@
 
 #### crates/arawn-feeds/tests/slack_channel_archive.rs
 
--  `MockSlackClient` struct L25-33 — `{ history_responses: Mutex<Vec<SlackHistoryPage>>, resolved_id: Mutex<String>, h...` — every Slack-touching template test will reuse.
--  `MockSlackClient` type L35-49 — `= MockSlackClient` — every Slack-touching template test will reuse.
--  `new` function L36-42 — `() -> Self` — every Slack-touching template test will reuse.
--  `queue` function L43-45 — `(&self, page: SlackHistoryPage)` — every Slack-touching template test will reuse.
--  `calls` function L46-48 — `(&self) -> Vec<(String, Option<String>)>` — every Slack-touching template test will reuse.
--  `MockSlackClient` type L52-76 — `impl SlackFeedClient for MockSlackClient` — every Slack-touching template test will reuse.
--  `resolve_channel` function L53-55 — `(&self, _name_or_id: &str) -> Result<String, FeedError>` — every Slack-touching template test will reuse.
--  `channel_history` function L57-75 — `( &self, channel_id: &str, oldest_ts: Option<&str>, ) -> Result<SlackHistoryPage...` — every Slack-touching template test will reuse.
--  `MockClients` struct L78-80 — `{ slack: Arc<MockSlackClient> }` — every Slack-touching template test will reuse.
--  `MockClients` type L82-86 — `impl FeedClients for MockClients` — every Slack-touching template test will reuse.
--  `slack` function L83-85 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — every Slack-touching template test will reuse.
--  `slack_msg` function L88-95 — `(ts: &str, text: &str) -> Value` — every Slack-touching template test will reuse.
--  `read_jsonl` function L99-109 — `(feed_dir: &PathBuf, day: &str) -> Vec<Value>` — Walk a YYYY-MM-DD.jsonl file in `feed_dir` and return all parsed
--  `run_once` function L111-137 — `( template: &dyn FeedTemplate, ctx: &TemplateCtx, params: &TemplateParams, feed_...` — every Slack-touching template test will reuse.
--  `first_run_writes_messages_and_advances_cursor` function L140-188 — `()` — every Slack-touching template test will reuse.
--  `second_run_passes_cursor_and_only_writes_new` function L191-237 — `()` — every Slack-touching template test will reuse.
--  `empty_run_is_a_no_op_with_status` function L240-272 — `()` — every Slack-touching template test will reuse.
--  `messages_partition_across_days` function L275-313 — `()` — every Slack-touching template test will reuse.
--  `run_returns_auth_when_slack_not_connected` function L316-339 — `()` — every Slack-touching template test will reuse.
--  `NoSlack` struct L317 — `-` — every Slack-touching template test will reuse.
--  `NoSlack` type L318-322 — `impl FeedClients for NoSlack` — every Slack-touching template test will reuse.
--  `slack` function L319-321 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — every Slack-touching template test will reuse.
+-  `MockSlackClient` struct L25-41 — `{ history_responses: Mutex<Vec<SlackHistoryPage>>, resolved_id: Mutex<String>, h...` — every Slack-touching template test will reuse.
+-  `MockSlackClient` type L43-75 — `= MockSlackClient` — every Slack-touching template test will reuse.
+-  `new` function L44-49 — `() -> Self` — every Slack-touching template test will reuse.
+-  `queue` function L50-52 — `(&self, page: SlackHistoryPage)` — every Slack-touching template test will reuse.
+-  `queue_thread` function L53-60 — `(&self, parent_ts: &str, page: SlackHistoryPage)` — every Slack-touching template test will reuse.
+-  `queue_thread_error` function L61-68 — `(&self, parent_ts: &str, err: FeedError)` — every Slack-touching template test will reuse.
+-  `calls` function L69-71 — `(&self) -> Vec<(String, Option<String>)>` — every Slack-touching template test will reuse.
+-  `thread_calls` function L72-74 — `(&self) -> Vec<(String, String, Option<String>)>` — every Slack-touching template test will reuse.
+-  `MockSlackClient` type L78-135 — `impl SlackFeedClient for MockSlackClient` — every Slack-touching template test will reuse.
+-  `resolve_channel` function L79-81 — `(&self, _name_or_id: &str) -> Result<String, FeedError>` — every Slack-touching template test will reuse.
+-  `channel_history` function L83-101 — `( &self, channel_id: &str, oldest_ts: Option<&str>, ) -> Result<SlackHistoryPage...` — every Slack-touching template test will reuse.
+-  `open_dm` function L103-105 — `(&self, _user_id_or_name: &str) -> Result<String, FeedError>` — every Slack-touching template test will reuse.
+-  `thread_replies` function L107-134 — `( &self, channel_id: &str, parent_ts: &str, oldest_ts: Option<&str>, ) -> Result...` — every Slack-touching template test will reuse.
+-  `MockClients` struct L137-139 — `{ slack: Arc<MockSlackClient> }` — every Slack-touching template test will reuse.
+-  `MockClients` type L141-145 — `impl FeedClients for MockClients` — every Slack-touching template test will reuse.
+-  `slack` function L142-144 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — every Slack-touching template test will reuse.
+-  `slack_msg` function L147-154 — `(ts: &str, text: &str) -> Value` — every Slack-touching template test will reuse.
+-  `read_jsonl` function L158-168 — `(feed_dir: &PathBuf, day: &str) -> Vec<Value>` — Walk a YYYY-MM-DD.jsonl file in `feed_dir` and return all parsed
+-  `run_once` function L170-196 — `( template: &dyn FeedTemplate, ctx: &TemplateCtx, params: &TemplateParams, feed_...` — every Slack-touching template test will reuse.
+-  `first_run_writes_messages_and_advances_cursor` function L199-247 — `()` — every Slack-touching template test will reuse.
+-  `second_run_passes_cursor_and_only_writes_new` function L250-296 — `()` — every Slack-touching template test will reuse.
+-  `empty_run_is_a_no_op_with_status` function L299-332 — `()` — every Slack-touching template test will reuse.
+-  `messages_partition_across_days` function L335-373 — `()` — every Slack-touching template test will reuse.
+-  `run_returns_auth_when_slack_not_connected` function L376-399 — `()` — every Slack-touching template test will reuse.
+-  `NoSlack` struct L377 — `-` — every Slack-touching template test will reuse.
+-  `NoSlack` type L378-382 — `impl FeedClients for NoSlack` — every Slack-touching template test will reuse.
+-  `slack` function L379-381 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — every Slack-touching template test will reuse.
+-  `slack_msg_with_replies` function L403-411 — `(ts: &str, text: &str, reply_count: u64) -> Value` — every Slack-touching template test will reuse.
+-  `parent_with_replies_seeds_thread_file_and_advances_thread_cursor` function L414-486 — `()` — every Slack-touching template test will reuse.
+-  `second_run_advances_thread_cursor_independently` function L489-554 — `()` — every Slack-touching template test will reuse.
+-  `thread_failure_does_not_block_channel_or_other_threads` function L557-621 — `()` — every Slack-touching template test will reuse.
+
+#### crates/arawn-feeds/tests/slack_dm_archive.rs
+
+-  `MockSlackClient` struct L21-28 — `{ history_responses: Mutex<Vec<SlackHistoryPage>>, dm_channel_id: Mutex<String>,...` — channel-archive already exercises.
+-  `MockSlackClient` type L30-46 — `= MockSlackClient` — channel-archive already exercises.
+-  `new` function L31-36 — `() -> Self` — channel-archive already exercises.
+-  `queue` function L37-39 — `(&self, page: SlackHistoryPage)` — channel-archive already exercises.
+-  `open_dm_calls` function L40-42 — `(&self) -> Vec<String>` — channel-archive already exercises.
+-  `history_calls` function L43-45 — `(&self) -> Vec<(String, Option<String>)>` — channel-archive already exercises.
+-  `MockSlackClient` type L49-93 — `impl SlackFeedClient for MockSlackClient` — channel-archive already exercises.
+-  `resolve_channel` function L50-52 — `(&self, _name_or_id: &str) -> Result<String, FeedError>` — channel-archive already exercises.
+-  `channel_history` function L54-72 — `( &self, channel_id: &str, oldest_ts: Option<&str>, ) -> Result<SlackHistoryPage...` — channel-archive already exercises.
+-  `thread_replies` function L74-84 — `( &self, _channel_id: &str, _parent_ts: &str, oldest_ts: Option<&str>, ) -> Resu...` — channel-archive already exercises.
+-  `open_dm` function L86-92 — `(&self, user_id_or_name: &str) -> Result<String, FeedError>` — channel-archive already exercises.
+-  `MockClients` struct L95-97 — `{ slack: Arc<MockSlackClient> }` — channel-archive already exercises.
+-  `MockClients` type L99-103 — `impl FeedClients for MockClients` — channel-archive already exercises.
+-  `slack` function L100-102 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — channel-archive already exercises.
+-  `dm_msg` function L105-112 — `(ts: &str, text: &str) -> Value` — channel-archive already exercises.
+-  `read_jsonl` function L114-124 — `(feed_dir: &PathBuf, day: &str) -> Vec<Value>` — channel-archive already exercises.
+-  `run_once` function L126-151 — `( template: &dyn FeedTemplate, ctx: &TemplateCtx, params: &TemplateParams, feed_...` — channel-archive already exercises.
+-  `dm_archive_opens_dm_then_writes_messages` function L154-200 — `()` — channel-archive already exercises.
+-  `dm_archive_returns_auth_when_slack_not_connected` function L203-226 — `()` — channel-archive already exercises.
+-  `NoSlack` struct L204 — `-` — channel-archive already exercises.
+-  `NoSlack` type L205-209 — `impl FeedClients for NoSlack` — channel-archive already exercises.
+-  `slack` function L206-208 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — channel-archive already exercises.
 
 ### crates/arawn-integrations/src/atlassian
 

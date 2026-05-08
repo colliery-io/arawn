@@ -100,6 +100,10 @@ impl SlackFeedClient for MockSlackClient {
         }
     }
 
+    async fn open_dm(&self, _user_id_or_name: &str) -> Result<String, FeedError> {
+        Ok(self.resolved_id.lock().unwrap().clone())
+    }
+
     async fn thread_replies(
         &self,
         channel_id: &str,
@@ -547,6 +551,88 @@ async fn second_run_advances_thread_cursor_independently() {
     assert_eq!(tc.len(), 2);
     assert_eq!(tc[0].2, None);
     assert_eq!(tc[1].2, Some(r1));
+}
+
+#[tokio::test]
+async fn channel_archive_works_for_dm_id_passthrough() {
+    // A user who already knows the DM channel id (D-prefix) can point
+    // channel-archive at it directly — no resolve_channel call needed.
+    let tmp = tempfile::tempdir().unwrap();
+    let layout = DataLayout::new(tmp.path());
+    let feed_dir = layout
+        .ensure_feed_dir("slack/channel-archive", "alice-dm")
+        .unwrap();
+
+    let mock = Arc::new(MockSlackClient::new());
+    *mock.resolved_id.lock().unwrap() = "D123ABC".into();
+    use chrono::TimeZone;
+    let day0 = chrono::Utc
+        .with_ymd_and_hms(2026, 5, 8, 9, 0, 0)
+        .unwrap()
+        .timestamp();
+    mock.queue(SlackHistoryPage {
+        messages: vec![slack_msg(&format!("{day0}.0001"), "dm message")],
+        next_cursor_ts: Some(format!("{day0}.0001")),
+    });
+
+    let clients = Arc::new(MockClients { slack: mock.clone() });
+    let ctx = TemplateCtx::new(clients);
+    let template = ChannelArchiveTemplate;
+    let params = TemplateParams::new(json!({ "channel": "D123ABC" }));
+
+    let outcome = run_once(&template, &ctx, &params, &feed_dir).await;
+    assert_eq!(outcome.summary.items_written, 1);
+
+    // Channel id passed verbatim into history (no name lookup)
+    let calls = mock.calls();
+    assert_eq!(calls[0].0, "D123ABC");
+}
+
+#[tokio::test]
+async fn channel_archive_works_for_mpim_id_passthrough() {
+    // mpims have no human-friendly name; user must pass the M-id.
+    let tmp = tempfile::tempdir().unwrap();
+    let layout = DataLayout::new(tmp.path());
+    let feed_dir = layout
+        .ensure_feed_dir("slack/channel-archive", "team-mpim")
+        .unwrap();
+
+    let mock = Arc::new(MockSlackClient::new());
+    *mock.resolved_id.lock().unwrap() = "MXYZ789".into();
+    use chrono::TimeZone;
+    let day0 = chrono::Utc
+        .with_ymd_and_hms(2026, 5, 8, 9, 0, 0)
+        .unwrap()
+        .timestamp();
+    mock.queue(SlackHistoryPage {
+        messages: vec![slack_msg(&format!("{day0}.0001"), "group dm message")],
+        next_cursor_ts: Some(format!("{day0}.0001")),
+    });
+
+    let clients = Arc::new(MockClients { slack: mock });
+    let ctx = TemplateCtx::new(clients);
+    let template = ChannelArchiveTemplate;
+    let params = TemplateParams::new(json!({ "channel": "MXYZ789" }));
+
+    let outcome = run_once(&template, &ctx, &params, &feed_dir).await;
+    assert_eq!(outcome.summary.items_written, 1);
+}
+
+#[test]
+fn classify_helper_resolves_kinds_for_picker_use() {
+    use arawn_feeds::{ChannelKind, classify_channel_id};
+    assert_eq!(classify_channel_id("CABCDEF"), Some(ChannelKind::Public));
+    assert_eq!(
+        classify_channel_id("GABCDEF"),
+        Some(ChannelKind::Private)
+    );
+    assert_eq!(
+        classify_channel_id("DABCDEF"),
+        Some(ChannelKind::DirectMessage)
+    );
+    assert_eq!(classify_channel_id("MABCDEF"), Some(ChannelKind::GroupDm));
+    // Names → None so /watch picker falls through to name resolution
+    assert_eq!(classify_channel_id("#design"), None);
 }
 
 #[tokio::test]

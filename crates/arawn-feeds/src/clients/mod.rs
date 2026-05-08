@@ -19,7 +19,9 @@ use std::sync::Arc;
 
 pub mod slack;
 
-pub use slack::{RealSlackClient, SlackFeedClient, SlackHistoryPage};
+pub use slack::{
+    ChannelKind, RealSlackClient, SlackFeedClient, SlackHistoryPage, classify_channel_id,
+};
 
 /// Bundle of every provider client a template might want to use.
 /// Implementors return `Some(...)` for providers configured by the
