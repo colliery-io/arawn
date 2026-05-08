@@ -15,5 +15,6 @@ pub fn default_registry() -> FeedTemplateRegistry {
     r.register(Arc::new(stub::EchoTemplate));
     r.register(Arc::new(slack::ChannelArchiveTemplate));
     r.register(Arc::new(slack::DmArchiveTemplate));
+    r.register(Arc::new(slack::MyMentionsTemplate));
     r
 }

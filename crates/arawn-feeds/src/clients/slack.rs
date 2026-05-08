@@ -65,6 +65,36 @@ pub trait SlackFeedClient: Send + Sync {
     /// `conversations.open` returns the existing DM channel if one
     /// already exists; otherwise creates one.
     async fn open_dm(&self, user_id_or_name: &str) -> Result<String, FeedError>;
+
+    /// Identify the user the OAuth token belongs to. Used by
+    /// `slack/my-mentions` to build the `<@user_id>` search query.
+    /// Templates cache the result in their cursor — cheap call, but
+    /// no reason to repeat it every fire.
+    async fn auth_test(&self) -> Result<SlackAuthInfo, FeedError>;
+
+    /// Run a Slack search.messages query and return the result page
+    /// shaped like `SlackHistoryPage` (oldest-first, with a
+    /// `next_cursor_ts` of the highest ts seen).
+    ///
+    /// `query` follows Slack's search query syntax — common pattern
+    /// for mentions is `"<@U01ABC>"` (the literal Slack mention
+    /// token). Add `oldest_ts` to filter to messages newer than the
+    /// cursor; the adapter converts to Slack's `after:YYYY-MM-DD`
+    /// query operator (Slack's search doesn't support exact-ts
+    /// filtering, so we round down to the day and dedupe in the
+    /// caller).
+    async fn search_messages(
+        &self,
+        query: &str,
+        oldest_ts: Option<&str>,
+    ) -> Result<SlackHistoryPage, FeedError>;
+}
+
+/// Subset of Slack `auth.test` response that feeds care about.
+#[derive(Debug, Clone, Default)]
+pub struct SlackAuthInfo {
+    pub user_id: String,
+    pub team_id: String,
 }
 
 /// One page of Slack channel history. Templates don't paginate — the
@@ -271,6 +301,115 @@ impl SlackFeedClient for RealSlackClient {
             .map_err(|e| slack_morphism_err("conversations.open", e))?;
         Ok(resp.channel.id.to_string())
     }
+
+    async fn auth_test(&self) -> Result<SlackAuthInfo, FeedError> {
+        // Prefer the user context — `search.messages` requires user
+        // token anyway, so we identify *that* user.
+        let ctx = self
+            .integration
+            .user_context()
+            .or_else(|_| self.integration.bot_context())
+            .map_err(integ_err)?;
+        let session = ctx.session();
+        let resp = session
+            .auth_test()
+            .await
+            .map_err(|e| slack_morphism_err("auth.test", e))?;
+        Ok(SlackAuthInfo {
+            user_id: resp.user_id.to_string(),
+            team_id: resp.team_id.to_string(),
+        })
+    }
+
+    async fn search_messages(
+        &self,
+        query: &str,
+        oldest_ts: Option<&str>,
+    ) -> Result<SlackHistoryPage, FeedError> {
+        // slack-morphism doesn't expose search.messages; drop down to
+        // raw HTTP against the same user token. Search requires the
+        // `search:read` scope which is user-token only — fail fast
+        // with Auth if there's no user context.
+        use rvstruct::ValueStruct;
+        let user_ctx = self.integration.user_context().map_err(integ_err)?;
+        let user_token = user_ctx.token.token_value.value().to_string();
+
+        // Slack's search supports `after:YYYY-MM-DD` for time-window
+        // filtering. ts → date is lossy (we may re-fetch up to one
+        // day's worth on each tick), so we dedupe in the caller using
+        // the precise ts cursor.
+        let mut full_query = query.to_string();
+        if let Some(ts) = oldest_ts
+            && let Some(date) = ts_to_yyyy_mm_dd(ts) {
+                full_query.push_str(&format!(" after:{date}"));
+            }
+
+        let client = reqwest::Client::new();
+        let resp = client
+            .get("https://slack.com/api/search.messages")
+            .bearer_auth(&user_token)
+            .query(&[
+                ("query", full_query.as_str()),
+                ("sort", "timestamp"),
+                ("sort_dir", "asc"),
+                ("count", "100"),
+                ("highlight", "false"),
+            ])
+            .send()
+            .await
+            .map_err(|e| slack_morphism_err("search.messages send", e))?;
+
+        let body: serde_json::Value = resp
+            .json()
+            .await
+            .map_err(|e| slack_morphism_err("search.messages decode", e))?;
+
+        let ok = body.get("ok").and_then(|v| v.as_bool()).unwrap_or(false);
+        if !ok {
+            let err_str = body
+                .get("error")
+                .and_then(|v| v.as_str())
+                .unwrap_or("unknown");
+            // Map known errors to typed FeedError variants.
+            return Err(match err_str {
+                "missing_scope" | "no_permission" => FeedError::Auth(format!(
+                    "search.messages: missing scope (need `search:read`): {err_str}"
+                )),
+                "not_authed" | "invalid_auth" | "token_revoked" => {
+                    FeedError::Auth(format!("search.messages: {err_str}"))
+                }
+                "ratelimited" => FeedError::RateLimited { retry_after: None },
+                _ => FeedError::Provider(format!("search.messages: {err_str}")),
+            });
+        }
+
+        let matches: Vec<serde_json::Value> = body
+            .pointer("/messages/matches")
+            .and_then(|v| v.as_array())
+            .cloned()
+            .unwrap_or_default();
+        let next_cursor_ts = matches
+            .iter()
+            .filter_map(|m| m.get("ts").and_then(|v| v.as_str()))
+            .max()
+            .map(str::to_string)
+            .or_else(|| oldest_ts.map(str::to_string));
+
+        Ok(SlackHistoryPage {
+            messages: matches,
+            next_cursor_ts,
+        })
+    }
+}
+
+/// Lossy conversion from Slack's float-string `ts` to a `YYYY-MM-DD`
+/// string. Returns `None` on parse failure (caller treats as "no
+/// after: filter" rather than aborting).
+fn ts_to_yyyy_mm_dd(ts: &str) -> Option<String> {
+    use chrono::TimeZone;
+    let secs: i64 = ts.split('.').next()?.parse().ok()?;
+    let dt = chrono::Utc.timestamp_opt(secs, 0).single()?;
+    Some(dt.format("%Y-%m-%d").to_string())
 }
 
 impl RealSlackClient {

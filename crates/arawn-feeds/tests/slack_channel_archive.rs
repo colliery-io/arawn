@@ -16,8 +16,8 @@ use async_trait::async_trait;
 use serde_json::{Value, json};
 
 use arawn_feeds::{
-    DataLayout, FeedClients, FeedError, FeedMeta, FeedTemplate, MetaStore, SlackFeedClient,
-    SlackHistoryPage, TemplateCtx, TemplateParams,
+    DataLayout, FeedClients, FeedError, FeedMeta, FeedTemplate, MetaStore, SlackAuthInfo,
+    SlackFeedClient, SlackHistoryPage, TemplateCtx, TemplateParams,
 };
 use arawn_feeds::templates::slack::ChannelArchiveTemplate;
 
@@ -102,6 +102,18 @@ impl SlackFeedClient for MockSlackClient {
 
     async fn open_dm(&self, _user_id_or_name: &str) -> Result<String, FeedError> {
         Ok(self.resolved_id.lock().unwrap().clone())
+    }
+
+    async fn auth_test(&self) -> Result<SlackAuthInfo, FeedError> {
+        unreachable!("channel-archive tests don't use auth_test");
+    }
+
+    async fn search_messages(
+        &self,
+        _query: &str,
+        _oldest_ts: Option<&str>,
+    ) -> Result<SlackHistoryPage, FeedError> {
+        unreachable!("channel-archive tests don't use search_messages");
     }
 
     async fn thread_replies(

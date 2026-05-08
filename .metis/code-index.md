@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-08T15:57:37Z | 226 files | Python, Rust
+> Generated: 2026-05-08T18:16:05Z | 226 files | Python, Rust
 
 ## Project Structure
 
@@ -2832,16 +2832,16 @@
 #### crates/arawn-feeds/src/clients/mod.rs
 
 - pub `slack` module L20 — `-` — `slack-morphism` directly — keeps templates mock-testable.
-- pub `FeedClients` interface L27-29 — `{ fn slack() }` — Bundle of every provider client a template might want to use.
-- pub `NoopClients` struct L34 — `-` — No-op `FeedClients`: every provider returns `None`.
-- pub `RealClients` struct L46-48 — `{ slack: Option<Arc<dyn SlackFeedClient>> }` — Production bundle.
-- pub `new` function L51-53 — `() -> Self` — `slack-morphism` directly — keeps templates mock-testable.
-- pub `with_slack` function L55-61 — `( mut self, integration: Arc<arawn_integrations::slack::SlackIntegration>, ) -> ...` — `slack-morphism` directly — keeps templates mock-testable.
--  `NoopClients` type L36-40 — `impl FeedClients for NoopClients` — `slack-morphism` directly — keeps templates mock-testable.
--  `slack` function L37-39 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
--  `RealClients` type L50-62 — `= RealClients` — `slack-morphism` directly — keeps templates mock-testable.
--  `RealClients` type L64-68 — `impl FeedClients for RealClients` — `slack-morphism` directly — keeps templates mock-testable.
--  `slack` function L65-67 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
+- pub `FeedClients` interface L29-31 — `{ fn slack() }` — Bundle of every provider client a template might want to use.
+- pub `NoopClients` struct L36 — `-` — No-op `FeedClients`: every provider returns `None`.
+- pub `RealClients` struct L48-50 — `{ slack: Option<Arc<dyn SlackFeedClient>> }` — Production bundle.
+- pub `new` function L53-55 — `() -> Self` — `slack-morphism` directly — keeps templates mock-testable.
+- pub `with_slack` function L57-63 — `( mut self, integration: Arc<arawn_integrations::slack::SlackIntegration>, ) -> ...` — `slack-morphism` directly — keeps templates mock-testable.
+-  `NoopClients` type L38-42 — `impl FeedClients for NoopClients` — `slack-morphism` directly — keeps templates mock-testable.
+-  `slack` function L39-41 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
+-  `RealClients` type L52-64 — `= RealClients` — `slack-morphism` directly — keeps templates mock-testable.
+-  `RealClients` type L66-70 — `impl FeedClients for RealClients` — `slack-morphism` directly — keeps templates mock-testable.
+-  `slack` function L67-69 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
 
 #### crates/arawn-feeds/src/clients/slack.rs
 
@@ -2849,6 +2849,10 @@
 - pub `SlackHistoryPage` struct L74-83 — `{ messages: Vec<serde_json::Value>, next_cursor_ts: Option<String> }` — One page of Slack channel history.
 - pub `RealSlackClient` struct L87-89 — `{ integration: Arc<SlackIntegration> }` — Slack tools use.
 - pub `new` function L92-94 — `(integration: Arc<SlackIntegration>) -> Self` — Slack tools use.
+- pub `ChannelKind` enum L334-347 — `Public | Private | DirectMessage | GroupDm` — Slack conversation kind, classified by id prefix.
+- pub `history_scope` function L353-360 — `(self) -> &'static str` — Required Slack OAuth scope to call `conversations.history` on
+- pub `recommended_template` function L363-370 — `(self) -> &'static str` — Recommended template to archive this kind.
+- pub `classify_channel_id` function L375-387 — `(s: &str) -> Option<ChannelKind>` — Classify a Slack id by its prefix.
 -  `RealSlackClient` type L91-95 — `= RealSlackClient` — Slack tools use.
 -  `integ_err` function L97-103 — `(e: arawn_integrations::IntegrationError) -> FeedError` — Slack tools use.
 -  `slack_morphism_err` function L105-117 — `(op: &str, e: E) -> FeedError` — Slack tools use.
@@ -2860,11 +2864,15 @@
 -  `RealSlackClient` type L276-306 — `= RealSlackClient` — Slack tools use.
 -  `resolve_user_name_to_id` function L277-305 — `(&self, name: &str) -> Result<String, FeedError>` — Slack tools use.
 -  `looks_like_user_id` function L308-313 — `(s: &str) -> bool` — Slack tools use.
--  `looks_like_channel_id` function L315-322 — `(s: &str) -> bool` — Slack tools use.
--  `tests` module L325-353 — `-` — Slack tools use.
--  `channel_id_recognized_by_prefix` function L329-334 — `()` — Slack tools use.
--  `names_not_recognized_as_ids` function L337-342 — `()` — Slack tools use.
--  `user_id_recognized_by_prefix` function L345-352 — `()` — Slack tools use.
+-  `looks_like_channel_id` function L315-317 — `(s: &str) -> bool` — Slack tools use.
+-  `ChannelKind` type L349-371 — `= ChannelKind` — Slack tools use.
+-  `tests` module L390-458 — `-` — Slack tools use.
+-  `channel_id_recognized_by_prefix` function L394-399 — `()` — Slack tools use.
+-  `names_not_recognized_as_ids` function L402-407 — `()` — Slack tools use.
+-  `classify_returns_kind_for_each_prefix` function L410-418 — `()` — Slack tools use.
+-  `channel_kind_exposes_required_scope` function L421-426 — `()` — Slack tools use.
+-  `channel_kind_recommends_correct_template` function L429-447 — `()` — Slack tools use.
+-  `user_id_recognized_by_prefix` function L450-457 — `()` — Slack tools use.
 
 ### crates/arawn-feeds/src/templates
 
@@ -2981,7 +2989,10 @@
 -  `slack_msg_with_replies` function L403-411 — `(ts: &str, text: &str, reply_count: u64) -> Value` — every Slack-touching template test will reuse.
 -  `parent_with_replies_seeds_thread_file_and_advances_thread_cursor` function L414-486 — `()` — every Slack-touching template test will reuse.
 -  `second_run_advances_thread_cursor_independently` function L489-554 — `()` — every Slack-touching template test will reuse.
--  `thread_failure_does_not_block_channel_or_other_threads` function L557-621 — `()` — every Slack-touching template test will reuse.
+-  `channel_archive_works_for_dm_id_passthrough` function L557-589 — `()` — every Slack-touching template test will reuse.
+-  `channel_archive_works_for_mpim_id_passthrough` function L592-619 — `()` — every Slack-touching template test will reuse.
+-  `classify_helper_resolves_kinds_for_picker_use` function L622-636 — `()` — every Slack-touching template test will reuse.
+-  `thread_failure_does_not_block_channel_or_other_threads` function L639-703 — `()` — every Slack-touching template test will reuse.
 
 #### crates/arawn-feeds/tests/slack_dm_archive.rs
 
