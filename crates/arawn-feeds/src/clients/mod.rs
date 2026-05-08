@@ -18,10 +18,12 @@
 use std::sync::Arc;
 
 pub mod calendar;
+pub mod drive;
 pub mod gmail;
 pub mod slack;
 
 pub use calendar::{CalendarFeedClient, RealCalendarClient};
+pub use drive::{DriveFeedClient, DriveFile, RealDriveClient, export_for, is_unsupported_google_native};
 pub use gmail::{GmailFeedClient, RealGmailClient};
 pub use slack::{
     ChannelKind, RealSlackClient, SlackAuthInfo, SlackFeedClient, SlackHistoryPage,
@@ -35,6 +37,7 @@ pub trait FeedClients: Send + Sync {
     fn slack(&self) -> Option<Arc<dyn SlackFeedClient>>;
     fn calendar(&self) -> Option<Arc<dyn CalendarFeedClient>>;
     fn gmail(&self) -> Option<Arc<dyn GmailFeedClient>>;
+    fn drive(&self) -> Option<Arc<dyn DriveFeedClient>>;
 }
 
 /// No-op `FeedClients`: every provider returns `None`. Useful for
@@ -52,6 +55,9 @@ impl FeedClients for NoopClients {
     fn gmail(&self) -> Option<Arc<dyn GmailFeedClient>> {
         None
     }
+    fn drive(&self) -> Option<Arc<dyn DriveFeedClient>> {
+        None
+    }
 }
 
 /// Production bundle. Built at server boot from the integrations the
@@ -62,6 +68,7 @@ pub struct RealClients {
     slack: Option<Arc<dyn SlackFeedClient>>,
     calendar: Option<Arc<dyn CalendarFeedClient>>,
     gmail: Option<Arc<dyn GmailFeedClient>>,
+    drive: Option<Arc<dyn DriveFeedClient>>,
 }
 
 impl RealClients {
@@ -92,6 +99,14 @@ impl RealClients {
         self.gmail = Some(Arc::new(RealGmailClient::new(integration)));
         self
     }
+
+    pub fn with_drive(
+        mut self,
+        integration: Arc<arawn_integrations::drive::GoogleDriveIntegration>,
+    ) -> Self {
+        self.drive = Some(Arc::new(RealDriveClient::new(integration)));
+        self
+    }
 }
 
 impl FeedClients for RealClients {
@@ -103,5 +118,8 @@ impl FeedClients for RealClients {
     }
     fn gmail(&self) -> Option<Arc<dyn GmailFeedClient>> {
         self.gmail.clone()
+    }
+    fn drive(&self) -> Option<Arc<dyn DriveFeedClient>> {
+        self.drive.clone()
     }
 }

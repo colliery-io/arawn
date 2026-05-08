@@ -273,6 +273,8 @@ dependencies = [
  "async-trait",
  "chrono",
  "cloacina",
+ "google-drive3",
+ "http-body-util",
  "reqwest",
  "rusqlite",
  "rvstruct",

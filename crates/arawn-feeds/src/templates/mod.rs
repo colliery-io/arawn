@@ -1,6 +1,7 @@
 //! Concrete `FeedTemplate` impls organized per provider.
 
 pub mod calendar;
+pub mod drive;
 pub mod gmail;
 pub mod slack;
 pub mod stub;
@@ -22,5 +23,7 @@ pub fn default_registry() -> FeedTemplateRegistry {
     r.register(Arc::new(gmail::InboxArchiveTemplate));
     r.register(Arc::new(gmail::SenderFilterTemplate));
     r.register(Arc::new(gmail::LabelArchiveTemplate));
+    r.register(Arc::new(drive::FolderSyncTemplate));
+    r.register(Arc::new(drive::RecentTemplate));
     r
 }

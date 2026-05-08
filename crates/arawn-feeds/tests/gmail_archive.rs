@@ -9,8 +9,8 @@ use async_trait::async_trait;
 use serde_json::{Value, json};
 
 use arawn_feeds::{
-    CalendarFeedClient, DataLayout, FeedClients, FeedError, FeedMeta, FeedTemplate,
-    GmailFeedClient, MetaStore, SlackFeedClient, TemplateCtx, TemplateParams,
+    CalendarFeedClient, DataLayout, DriveFeedClient, FeedClients, FeedError, FeedMeta,
+    FeedTemplate, GmailFeedClient, MetaStore, SlackFeedClient, TemplateCtx, TemplateParams,
 };
 use arawn_feeds::templates::gmail::{
     InboxArchiveTemplate, LabelArchiveTemplate, SenderFilterTemplate,
@@ -109,6 +109,9 @@ impl FeedClients for MockClients {
     }
     fn gmail(&self) -> Option<Arc<dyn GmailFeedClient>> {
         Some(self.gmail.clone())
+    }
+    fn drive(&self) -> Option<Arc<dyn DriveFeedClient>> {
+        None
     }
 }
 
@@ -297,6 +300,9 @@ async fn returns_auth_when_gmail_not_connected() {
             None
         }
         fn gmail(&self) -> Option<Arc<dyn GmailFeedClient>> {
+            None
+        }
+        fn drive(&self) -> Option<Arc<dyn DriveFeedClient>> {
             None
         }
     }

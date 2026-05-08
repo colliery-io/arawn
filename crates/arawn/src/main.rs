@@ -510,6 +510,9 @@ async fn main() -> Result<()> {
                 &config.integrations.google,
             )
         });
+        let drive_integration_for_feeds: Option<
+            Arc<arawn_integrations::drive::GoogleDriveIntegration>,
+        >;
         if let Some((client_id, client_secret)) = drive_creds {
             let drive = Arc::new(arawn_integrations::drive::GoogleDriveIntegration::new(
                 std::path::PathBuf::from(&data_dir),
@@ -525,7 +528,9 @@ async fn main() -> Result<()> {
             registry.register(Box::new(arawn_integrations::drive::DriveUpdateTool::new(Arc::clone(&drive))));
             registry.register(Box::new(arawn_integrations::drive::DriveDeleteTool::new(Arc::clone(&drive))));
             info!("Google Drive integration registered (7 tools)");
+            drive_integration_for_feeds = Some(drive);
         } else {
+            drive_integration_for_feeds = None;
             debug!(
                 "Google Drive integration skipped — set ARAWN_GDRIVE_CLIENT_ID + \
                  ARAWN_GDRIVE_CLIENT_SECRET (env) or [integrations.drive] / \
@@ -645,6 +650,9 @@ async fn main() -> Result<()> {
                     }
                     if let Some(gm) = gmail_integration_for_feeds.as_ref() {
                         clients = clients.with_gmail(Arc::clone(gm));
+                    }
+                    if let Some(dr) = drive_integration_for_feeds.as_ref() {
+                        clients = clients.with_drive(Arc::clone(dr));
                     }
                     let clients: Arc<dyn arawn_feeds::FeedClients> = Arc::new(clients);
 

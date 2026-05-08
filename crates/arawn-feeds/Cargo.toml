@@ -8,6 +8,8 @@ arawn-core = { workspace = true }
 arawn-integrations = { path = "../arawn-integrations" }
 arawn-storage = { workspace = true }
 slack-morphism = { version = "2.20", features = ["hyper"] }
+google-drive3 = { version = "7", default-features = false, features = ["ring"] }
+http-body-util = "0.1"
 reqwest = { workspace = true }
 rvstruct = "0.3"
 async-trait = { workspace = true }
