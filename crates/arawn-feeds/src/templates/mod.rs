@@ -4,6 +4,7 @@ pub mod calendar;
 pub mod confluence;
 pub mod drive;
 pub mod gmail;
+pub mod jira;
 pub mod slack;
 pub mod stub;
 
@@ -27,5 +28,7 @@ pub fn default_registry() -> FeedTemplateRegistry {
     r.register(Arc::new(drive::FolderSyncTemplate));
     r.register(Arc::new(drive::RecentTemplate));
     r.register(Arc::new(confluence::SpaceArchiveTemplate));
+    r.register(Arc::new(jira::ProjectTrackerTemplate));
+    r.register(Arc::new(jira::AssigneeTrackerTemplate));
     r
 }

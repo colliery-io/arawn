@@ -9,8 +9,8 @@ use serde_json::{Value, json};
 
 use arawn_feeds::{
     AtlassianFeedClient, CalendarFeedClient, ConfluencePageBody, ConfluencePageMeta, DataLayout,
-    DriveFeedClient, FeedClients, FeedError, FeedMeta, FeedTemplate, GmailFeedClient, MetaStore,
-    SlackFeedClient, TemplateCtx, TemplateParams,
+    DriveFeedClient, FeedClients, FeedError, FeedMeta, FeedTemplate, GmailFeedClient,
+    JiraIssueDetail, JiraIssueMeta, MetaStore, SlackFeedClient, TemplateCtx, TemplateParams,
 };
 use arawn_feeds::templates::confluence::SpaceArchiveTemplate;
 
@@ -59,6 +59,27 @@ impl AtlassianFeedClient for MockAtlassianClient {
             .push((space_key.into(), since));
         let mut q = self.page_lists.lock().unwrap();
         Ok(if q.is_empty() { vec![] } else { q.remove(0) })
+    }
+
+    async fn jql_search(
+        &self,
+        _: &str,
+        _: u32,
+    ) -> Result<Vec<JiraIssueMeta>, FeedError> {
+        unreachable!("confluence tests don't touch jira")
+    }
+
+    async fn issue_full(
+        &self,
+        _: &str,
+        _: bool,
+        _: bool,
+    ) -> Result<JiraIssueDetail, FeedError> {
+        unreachable!("confluence tests don't touch jira")
+    }
+
+    async fn resolve_project(&self, _: &str) -> Result<String, FeedError> {
+        unreachable!("confluence tests don't touch jira")
     }
 
     async fn page_body_storage(

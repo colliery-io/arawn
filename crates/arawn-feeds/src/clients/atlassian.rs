@@ -18,7 +18,10 @@ use std::sync::Arc;
 use arawn_integrations::atlassian::{AtlassianClient, AtlassianIntegration};
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
+use jira_v3_openapi::apis::{issue_search_api, issues_api, projects_api};
+use jira_v3_openapi::models::SearchAndReconcileRequestBean;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 use crate::error::FeedError;
 
@@ -48,11 +51,40 @@ pub struct ConfluencePageBody {
     pub version: Option<i64>,
 }
 
+/// Lightweight Jira issue summary returned by [`AtlassianFeedClient::jql_search`].
+/// Only the fields feeds actually use to decide what to fetch.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct JiraIssueMeta {
+    pub key: String,
+    pub id: String,
+    /// `fields.updated` — RFC3339. Used for cursor advancement.
+    pub updated: Option<String>,
+    /// `fields.summary`, when requested.
+    pub summary: Option<String>,
+}
+
+/// Full issue snapshot — meta + raw fields blob + optional changelog
+/// histories and comments. Returned by [`AtlassianFeedClient::issue_full`].
+///
+/// `fields` is the verbatim `Issue.fields` object so templates can write
+/// it to disk without lossy translation.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct JiraIssueDetail {
+    pub meta: JiraIssueMeta,
+    pub fields: Value,
+    /// Comment objects from `fields.comment.comments`. `None` when the
+    /// caller didn't request comments.
+    pub comments: Option<Vec<Value>>,
+    /// Changelog history entries from `changelog.histories`. Each
+    /// entry has `id`, `created`, `author`, `items`. `None` when the
+    /// caller didn't request changelog.
+    pub changelog: Option<Vec<Value>>,
+}
+
 /// What feeds need from Atlassian.
 ///
-/// This task (T-0222) introduces the trait with Confluence-only
-/// methods; T-0223 extends it with Jira surface (`jql_search`,
-/// `issue_changelog`, `issue_comments`).
+/// Confluence methods landed in T-0222; Jira methods (jql_search,
+/// issue_full, resolve_project) landed in T-0223.
 #[async_trait]
 pub trait AtlassianFeedClient: Send + Sync {
     /// List pages in `space_key` modified after `since`. Returns
@@ -70,6 +102,31 @@ pub trait AtlassianFeedClient: Send + Sync {
     /// Fetch a page's body in storage format (raw XML).
     async fn page_body_storage(&self, page_id: &str)
         -> Result<ConfluencePageBody, FeedError>;
+
+    /// Run a JQL search and return up to `max_results` issues' meta.
+    /// Adapter follows pagination. Templates own the JQL — including
+    /// any `updated >=` clause for incremental cursoring.
+    async fn jql_search(
+        &self,
+        jql: &str,
+        max_results: u32,
+    ) -> Result<Vec<JiraIssueMeta>, FeedError>;
+
+    /// Fetch a full issue. When `want_changelog` or `want_comments`
+    /// is true, the corresponding fields on the returned detail are
+    /// populated; otherwise they're `None`. Lets `assignee-tracker`
+    /// avoid paying the changelog/comments cost it doesn't need.
+    async fn issue_full(
+        &self,
+        key: &str,
+        want_changelog: bool,
+        want_comments: bool,
+    ) -> Result<JiraIssueDetail, FeedError>;
+
+    /// Resolve a project key (or id) to its canonical id. Used at
+    /// registration time so a typo in the `project` param fails fast
+    /// instead of silently returning empty results forever.
+    async fn resolve_project(&self, key_or_id: &str) -> Result<String, FeedError>;
 }
 
 // ─── Production adapter ──────────────────────────────────────────────
@@ -278,5 +335,173 @@ impl AtlassianFeedClient for RealAtlassianClient {
             storage_xml: detail.body.and_then(|b| b.storage.and_then(|s| s.value)),
             version: detail.version.and_then(|v| v.number),
         })
+    }
+
+    async fn jql_search(
+        &self,
+        jql: &str,
+        max_results: u32,
+    ) -> Result<Vec<JiraIssueMeta>, FeedError> {
+        let client = AtlassianClient::new(Arc::clone(&self.integration));
+        let cfg = client.jira_config(None).await.map_err(integ_err)?;
+        let req = SearchAndReconcileRequestBean {
+            jql: Some(jql.into()),
+            max_results: Some(max_results.min(100) as i32),
+            fields: Some(vec!["summary".into(), "updated".into()]),
+            ..Default::default()
+        };
+        let resp = issue_search_api::search_and_reconsile_issues_using_jql_post(&cfg, req)
+            .await
+            .map_err(jira_err)?;
+        let issues = resp.issues.unwrap_or_default();
+        let mut out = Vec::with_capacity(issues.len());
+        for issue in issues {
+            let key = issue.key.clone().unwrap_or_default();
+            let id = issue.id.clone().unwrap_or_default();
+            let fields = issue
+                .fields
+                .as_ref()
+                .map(|f| serde_json::to_value(f).unwrap_or(Value::Null))
+                .unwrap_or(Value::Null);
+            let updated = fields
+                .get("updated")
+                .and_then(|v| v.as_str())
+                .map(str::to_string);
+            let summary = fields
+                .get("summary")
+                .and_then(|v| v.as_str())
+                .map(str::to_string);
+            out.push(JiraIssueMeta { key, id, updated, summary });
+        }
+        Ok(out)
+    }
+
+    async fn issue_full(
+        &self,
+        key: &str,
+        want_changelog: bool,
+        want_comments: bool,
+    ) -> Result<JiraIssueDetail, FeedError> {
+        let client = AtlassianClient::new(Arc::clone(&self.integration));
+        let cfg = client.jira_config(None).await.map_err(integ_err)?;
+
+        // Build expand list. `comment` is a field, not an expand —
+        // request via `fields=*all` (we always want everything for
+        // the on-disk snapshot anyway). `changelog` is a true expand.
+        let mut expand_parts: Vec<&str> = Vec::new();
+        if want_changelog {
+            expand_parts.push("changelog");
+        }
+        let expand = if expand_parts.is_empty() {
+            None
+        } else {
+            Some(expand_parts.join(","))
+        };
+
+        // Always pull all fields. Comments come back inside
+        // `fields.comment.comments` when present.
+        let fields_list: Vec<String> = vec!["*all".into()];
+
+        let issue = issues_api::get_issue(
+            &cfg,
+            key,
+            Some(fields_list),
+            None,
+            expand.as_deref(),
+            None,
+            None,
+            None,
+        )
+        .await
+        .map_err(jira_err)?;
+
+        let raw_fields = issue
+            .fields
+            .as_ref()
+            .map(|f| serde_json::to_value(f).unwrap_or(Value::Null))
+            .unwrap_or(Value::Null);
+        let updated = raw_fields
+            .get("updated")
+            .and_then(|v| v.as_str())
+            .map(str::to_string);
+        let summary = raw_fields
+            .get("summary")
+            .and_then(|v| v.as_str())
+            .map(str::to_string);
+        let meta = JiraIssueMeta {
+            key: issue.key.clone().unwrap_or_default(),
+            id: issue.id.clone().unwrap_or_default(),
+            updated,
+            summary,
+        };
+
+        let comments = if want_comments {
+            Some(
+                raw_fields
+                    .get("comment")
+                    .and_then(|v| v.get("comments"))
+                    .and_then(|v| v.as_array())
+                    .cloned()
+                    .unwrap_or_default(),
+            )
+        } else {
+            None
+        };
+
+        let changelog = if want_changelog {
+            // The openapi model for issue puts changelog at the top
+            // level of the response, not inside fields. Fall back to
+            // serializing the entire issue and pulling it from there.
+            let raw_issue = serde_json::to_value(&issue).unwrap_or(Value::Null);
+            Some(
+                raw_issue
+                    .get("changelog")
+                    .and_then(|v| v.get("histories"))
+                    .and_then(|v| v.as_array())
+                    .cloned()
+                    .unwrap_or_default(),
+            )
+        } else {
+            None
+        };
+
+        Ok(JiraIssueDetail {
+            meta,
+            fields: raw_fields,
+            comments,
+            changelog,
+        })
+    }
+
+    async fn resolve_project(&self, key_or_id: &str) -> Result<String, FeedError> {
+        let client = AtlassianClient::new(Arc::clone(&self.integration));
+        let cfg = client.jira_config(None).await.map_err(integ_err)?;
+        let project = projects_api::get_project(&cfg, key_or_id, None, None)
+            .await
+            .map_err(|e| match e {
+                jira_v3_openapi::apis::Error::ResponseError(r) if r.status.as_u16() == 404 => {
+                    FeedError::InvalidParams(format!(
+                        "no Jira project '{key_or_id}'"
+                    ))
+                }
+                other => jira_err(other),
+            })?;
+        project
+            .id
+            .ok_or_else(|| FeedError::Schema("project response missing id".into()))
+    }
+}
+
+fn jira_err<E: std::fmt::Debug>(e: jira_v3_openapi::apis::Error<E>) -> FeedError {
+    use jira_v3_openapi::apis::Error;
+    match e {
+        Error::ResponseError(r) => match r.status.as_u16() {
+            401 | 403 => FeedError::Auth(format!("jira {}: {}", r.status, r.content)),
+            404 => FeedError::InvalidParams(format!("jira not found: {}", r.content)),
+            410 => FeedError::Schema(format!("jira gone: {}", r.content)),
+            429 => FeedError::RateLimited { retry_after: None },
+            _ => FeedError::Provider(format!("jira {}: {}", r.status, r.content)),
+        },
+        other => FeedError::Provider(format!("jira: {other:?}")),
     }
 }

@@ -24,7 +24,8 @@ pub mod gmail;
 pub mod slack;
 
 pub use atlassian::{
-    AtlassianFeedClient, ConfluencePageBody, ConfluencePageMeta, RealAtlassianClient,
+    AtlassianFeedClient, ConfluencePageBody, ConfluencePageMeta, JiraIssueDetail, JiraIssueMeta,
+    RealAtlassianClient,
 };
 pub use calendar::{CalendarFeedClient, RealCalendarClient};
 pub use drive::{DriveFeedClient, DriveFile, RealDriveClient, export_for, is_unsupported_google_native};

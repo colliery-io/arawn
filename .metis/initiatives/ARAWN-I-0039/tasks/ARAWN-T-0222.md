@@ -4,14 +4,14 @@ level: task
 title: "Confluence feed template — space-archive"
 short_code: "ARAWN-T-0222"
 created_at: 2026-05-08T21:01:13+00:00
-updated_at: 2026-05-08T22:46:42.832443+00:00
+updated_at: 2026-05-08T23:17:39.155217+00:00
 parent: ARAWN-I-0039
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -35,6 +35,8 @@ Reference: I-0039 Detailed Design; existing `arawn-integrations/src/atlassian/co
 ## Type / Priority
 
 - Feature, P1.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

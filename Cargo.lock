@@ -275,6 +275,7 @@ dependencies = [
  "cloacina",
  "google-drive3",
  "http-body-util",
+ "jira_v3_openapi",
  "reqwest",
  "rusqlite",
  "rvstruct",
