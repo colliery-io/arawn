@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-08T12:57:34Z | 219 files | Python, Rust
+> Generated: 2026-05-08T14:26:02Z | 223 files | Python, Rust
 
 ## Project Structure
 
@@ -114,12 +114,16 @@
 │   ├── arawn-feeds/
 │   │   ├── src/
 │   │   │   ├── cadence.rs
-│   │   │   ├── clients.rs
+│   │   │   ├── clients/
+│   │   │   │   ├── mod.rs
+│   │   │   │   └── slack.rs
+│   │   │   ├── dispatch.rs
 │   │   │   ├── error.rs
 │   │   │   ├── layout.rs
 │   │   │   ├── lib.rs
 │   │   │   ├── meta.rs
 │   │   │   ├── registry.rs
+│   │   │   ├── runtime.rs
 │   │   │   ├── store.rs
 │   │   │   ├── template.rs
 │   │   │   ├── templates/
@@ -130,6 +134,7 @@
 │   │   │   │   └── stub.rs
 │   │   │   └── types.rs
 │   │   └── tests/
+│   │       ├── cloacina_fire.rs
 │   │       └── slack_channel_archive.rs
 │   ├── arawn-integrations/
 │   │   └── src/
@@ -521,16 +526,16 @@
 
 -  `DEFAULT_MODEL` variable L15 — `: &str`
 -  `FILE_LOG_FILTER` variable L18 — `: &str` — Default file log filter: debug for arawn crates, warn for third-party.
--  `main` function L21-689 — `() -> Result<()>`
+-  `main` function L21-737 — `() -> Result<()>`
 -  `Cli` struct L27-46 — `{ command: Option<Command>, data_dir: Option<String>, session: Option<Uuid>, lis...`
 -  `Command` enum L49-68 — `Serve | Tui | Plugin`
--  `run_cli_via_server` function L692-797 — `( url: &str, prompt: &str, session_id: Option<Uuid>, ) -> Result<()>` — Run a CLI prompt by connecting to the running server via WebSocket.
--  `build_llm_client` function L800-823 — `( config: &arawn_bin::LlmConfig, ) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
--  `register_default_tools` function L826-872 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &arawn_bin::ArawnConfig, d...` — Register all default tools into the registry.
--  `connect_mcp_servers` function L875-923 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
--  `register_workflow_tools` function L926-943 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
--  `build_engine_config` function L945-980 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
--  `dirs_path` function L982-991 — `() -> Option<String>`
+-  `run_cli_via_server` function L740-845 — `( url: &str, prompt: &str, session_id: Option<Uuid>, ) -> Result<()>` — Run a CLI prompt by connecting to the running server via WebSocket.
+-  `build_llm_client` function L848-871 — `( config: &arawn_bin::LlmConfig, ) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
+-  `register_default_tools` function L874-920 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &arawn_bin::ArawnConfig, d...` — Register all default tools into the registry.
+-  `connect_mcp_servers` function L923-971 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
+-  `register_workflow_tools` function L974-991 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
+-  `build_engine_config` function L993-1028 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
+-  `dirs_path` function L1030-1039 — `() -> Option<String>`
 
 #### crates/arawn/src/plugin_cmd.rs
 
@@ -2676,14 +2681,25 @@
 -  `sub_fifteen_minute_cadence_is_rejected` function L69-79 — `()` — interval that's also polite to providers' rate limits.
 -  `malformed_cron_is_rejected` function L82-85 — `()` — interval that's also polite to providers' rate limits.
 
-#### crates/arawn-feeds/src/clients.rs
+#### crates/arawn-feeds/src/dispatch.rs
 
-- pub `FeedClients` interface L22-24 — `{ fn slack() }` — Bundle of all provider client traits a template might need.
-- pub `SlackFeedClient` interface L33-47 — `{ fn resolve_channel(), fn channel_history() }` — What feeds need from Slack.
-- pub `SlackHistoryPage` struct L53-62 — `{ messages: Vec<serde_json::Value>, next_cursor_ts: Option<String> }` — One page of Slack channel history.
-- pub `NoopClients` struct L68 — `-` — No-op `FeedClients` impl: every provider returns `None`.
--  `NoopClients` type L70-74 — `impl FeedClients for NoopClients` — returning whatever's needed.
--  `slack` function L71-73 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — returning whatever's needed.
+- pub `FeedRuntimeContext` struct L42-47 — `{ conn: Arc<Mutex<Connection>>, layout: Arc<DataLayout>, registry: Arc<FeedTempl...` — Shared handles the dispatch task needs to actually run.
+- pub `FeedDispatchTask` struct L52-58 — `{ feed_id: String, runtime: FeedRuntimeContext, deps: Vec<TaskNamespace> }` — One cloacina-compatible task per feed.
+- pub `new` function L61-67 — `(feed_id: impl Into<String>, runtime: FeedRuntimeContext) -> Self` — retry/audit machinery handles the rest.
+- pub `run_feed` function L97-176 — `( feed_id: &str, runtime: &FeedRuntimeContext, ) -> Result<crate::template::RunO...` — The actual fetch+write cycle.
+-  `FeedDispatchTask` type L60-68 — `= FeedDispatchTask` — retry/audit machinery handles the rest.
+-  `FeedDispatchTask` type L71-93 — `impl Task for FeedDispatchTask` — retry/audit machinery handles the rest.
+-  `id` function L72-74 — `(&self) -> &str` — retry/audit machinery handles the rest.
+-  `dependencies` function L76-78 — `(&self) -> &[TaskNamespace]` — retry/audit machinery handles the rest.
+-  `execute` function L80-92 — `( &self, context: Context<Value>, ) -> Result<Context<Value>, TaskError>` — retry/audit machinery handles the rest.
+-  `persist_meta_failure` function L178-193 — `( feed_dir: &std::path::Path, template: &str, params: &crate::types::TemplatePar...` — retry/audit machinery handles the rest.
+-  `tests` module L196-331 — `-` — retry/audit machinery handles the rest.
+-  `open_test_db` function L205-220 — `() -> Connection` — retry/audit machinery handles the rest.
+-  `build_runtime` function L222-229 — `(tmp_root: &std::path::Path, conn: Connection) -> FeedRuntimeContext` — retry/audit machinery handles the rest.
+-  `run_feed_executes_stub_template_and_persists_meta` function L232-261 — `()` — retry/audit machinery handles the rest.
+-  `run_feed_increments_cursor_across_invocations` function L264-295 — `()` — retry/audit machinery handles the rest.
+-  `run_feed_skips_disabled_feed` function L298-318 — `()` — retry/audit machinery handles the rest.
+-  `run_feed_returns_storage_error_for_missing_id` function L321-330 — `()` — retry/audit machinery handles the rest.
 
 #### crates/arawn-feeds/src/error.rs
 
@@ -2706,14 +2722,16 @@
 
 - pub `cadence` module L24 — `-` — ingestion across personal + watched spaces.
 - pub `clients` module L25 — `-` — retry, audit, single-instance enforcement.
-- pub `error` module L26 — `-` — retry, audit, single-instance enforcement.
-- pub `layout` module L27 — `-` — retry, audit, single-instance enforcement.
-- pub `meta` module L28 — `-` — retry, audit, single-instance enforcement.
-- pub `registry` module L29 — `-` — retry, audit, single-instance enforcement.
-- pub `store` module L30 — `-` — retry, audit, single-instance enforcement.
-- pub `template` module L31 — `-` — retry, audit, single-instance enforcement.
-- pub `templates` module L32 — `-` — retry, audit, single-instance enforcement.
-- pub `types` module L33 — `-` — retry, audit, single-instance enforcement.
+- pub `dispatch` module L26 — `-` — retry, audit, single-instance enforcement.
+- pub `error` module L27 — `-` — retry, audit, single-instance enforcement.
+- pub `layout` module L28 — `-` — retry, audit, single-instance enforcement.
+- pub `meta` module L29 — `-` — retry, audit, single-instance enforcement.
+- pub `registry` module L30 — `-` — retry, audit, single-instance enforcement.
+- pub `runtime` module L31 — `-` — retry, audit, single-instance enforcement.
+- pub `store` module L32 — `-` — retry, audit, single-instance enforcement.
+- pub `template` module L33 — `-` — retry, audit, single-instance enforcement.
+- pub `templates` module L34 — `-` — retry, audit, single-instance enforcement.
+- pub `types` module L35 — `-` — retry, audit, single-instance enforcement.
 
 #### crates/arawn-feeds/src/meta.rs
 
@@ -2747,6 +2765,17 @@
 -  `run` function L70-78 — `( &self, _ctx: &crate::template::TemplateCtx, _params: &TemplateParams, _feed_di...` — name when firing.
 -  `register_and_lookup_round_trips` function L82-88 — `()` — name when firing.
 -  `require_returns_invalid_params_for_unknown_name` function L91-98 — `()` — name when firing.
+
+#### crates/arawn-feeds/src/runtime.rs
+
+- pub `CloacinaRunner` type L31 — `= DefaultRunner` — arawn-feeds doesn't depend on arawn-workflow directly to avoid a
+- pub `feed_workflow_name` function L35-37 — `(feed_id: &str) -> String` — Format the cloacina workflow name for a feed.
+- pub `start` function L43-85 — `( runner: Arc<CloacinaRunner>, conn: Arc<Mutex<Connection>>, layout: Arc<DataLay...` — One-stop entry the server boot calls after the workflow runner is
+- pub `FeedRuntime` struct L88-91 — `{ runner: Arc<CloacinaRunner>, runtime_ctx: FeedRuntimeContext }` — Live handle for dynamic feed registration (Phase 6: `/watch`).
+- pub `register_feed_runtime` function L96-101 — `( &self, record: &FeedRecord, ) -> Result<(), FeedError>` — Register an additional feed without a server restart.
+- pub `runtime_ctx` function L103-105 — `(&self) -> &FeedRuntimeContext` — audit are all inherited from cloacina.
+-  `FeedRuntime` type L93-106 — `= FeedRuntime` — audit are all inherited from cloacina.
+-  `register_one` function L108-184 — `( runner: &CloacinaRunner, ctx: &FeedRuntimeContext, record: &FeedRecord, ) -> R...` — audit are all inherited from cloacina.
 
 #### crates/arawn-feeds/src/store.rs
 
@@ -2792,6 +2821,41 @@
 - pub `new` function L76-85 — `(template: impl Into<String>, params: TemplateParams, initial_cursor: Value) -> ...` — Shared types passed between the runtime and template impls.
 -  `TemplateParams` type L14-27 — `= TemplateParams` — Shared types passed between the runtime and template impls.
 -  `FeedMeta` type L75-86 — `= FeedMeta` — Shared types passed between the runtime and template impls.
+
+### crates/arawn-feeds/src/clients
+
+> *Semantic summary to be generated by AI agent.*
+
+#### crates/arawn-feeds/src/clients/mod.rs
+
+- pub `slack` module L20 — `-` — `slack-morphism` directly — keeps templates mock-testable.
+- pub `FeedClients` interface L27-29 — `{ fn slack() }` — Bundle of every provider client a template might want to use.
+- pub `NoopClients` struct L34 — `-` — No-op `FeedClients`: every provider returns `None`.
+- pub `RealClients` struct L46-48 — `{ slack: Option<Arc<dyn SlackFeedClient>> }` — Production bundle.
+- pub `new` function L51-53 — `() -> Self` — `slack-morphism` directly — keeps templates mock-testable.
+- pub `with_slack` function L55-61 — `( mut self, integration: Arc<arawn_integrations::slack::SlackIntegration>, ) -> ...` — `slack-morphism` directly — keeps templates mock-testable.
+-  `NoopClients` type L36-40 — `impl FeedClients for NoopClients` — `slack-morphism` directly — keeps templates mock-testable.
+-  `slack` function L37-39 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
+-  `RealClients` type L50-62 — `= RealClients` — `slack-morphism` directly — keeps templates mock-testable.
+-  `RealClients` type L64-68 — `impl FeedClients for RealClients` — `slack-morphism` directly — keeps templates mock-testable.
+-  `slack` function L65-67 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
+
+#### crates/arawn-feeds/src/clients/slack.rs
+
+- pub `SlackFeedClient` interface L28-43 — `{ fn resolve_channel(), fn channel_history() }` — What feeds need from Slack.
+- pub `SlackHistoryPage` struct L49-58 — `{ messages: Vec<serde_json::Value>, next_cursor_ts: Option<String> }` — One page of Slack channel history.
+- pub `RealSlackClient` struct L62-64 — `{ integration: Arc<SlackIntegration> }` — Slack tools use.
+- pub `new` function L67-69 — `(integration: Arc<SlackIntegration>) -> Self` — Slack tools use.
+-  `RealSlackClient` type L66-70 — `= RealSlackClient` — Slack tools use.
+-  `integ_err` function L72-78 — `(e: arawn_integrations::IntegrationError) -> FeedError` — Slack tools use.
+-  `slack_morphism_err` function L80-92 — `(op: &str, e: E) -> FeedError` — Slack tools use.
+-  `RealSlackClient` type L95-178 — `impl SlackFeedClient for RealSlackClient` — Slack tools use.
+-  `resolve_channel` function L96-132 — `(&self, name_or_id: &str) -> Result<String, FeedError>` — Slack tools use.
+-  `channel_history` function L134-177 — `( &self, channel_id: &str, oldest_ts: Option<&str>, ) -> Result<SlackHistoryPage...` — Slack tools use.
+-  `looks_like_channel_id` function L180-187 — `(s: &str) -> bool` — Slack tools use.
+-  `tests` module L190-208 — `-` — Slack tools use.
+-  `channel_id_recognized_by_prefix` function L194-199 — `()` — Slack tools use.
+-  `names_not_recognized_as_ids` function L202-207 — `()` — Slack tools use.
 
 ### crates/arawn-feeds/src/templates
 
@@ -2843,6 +2907,14 @@
 ### crates/arawn-feeds/tests
 
 > *Semantic summary to be generated by AI agent.*
+
+#### crates/arawn-feeds/tests/cloacina_fire.rs
+
+-  `create_feeds_schema` function L26-39 — `(conn: &Connection)` — workflow registration + execution machinery.
+-  `build_runner` function L41-54 — `(workflows_db: &std::path::Path) -> Arc<DefaultRunner>` — workflow registration + execution machinery.
+-  `cloacina_fires_feed_workflow_end_to_end` function L57-127 — `()` — workflow registration + execution machinery.
+-  `cloacina_fires_advance_cursor_across_two_executions` function L130-182 — `()` — workflow registration + execution machinery.
+-  `registering_a_feed_with_unknown_template_is_skipped_at_boot` function L185-242 — `()` — workflow registration + execution machinery.
 
 #### crates/arawn-feeds/tests/slack_channel_archive.rs
 
@@ -5440,12 +5512,13 @@
 - pub `execute` function L70-87 — `( &self, workflow_name: &str, context: serde_json::Value, ) -> Result<WorkflowEx...` — Execute a named workflow programmatically.
 - pub `shutdown` function L90-95 — `(&self)` — Graceful shutdown — drains in-flight pipelines.
 - pub `inner` function L98-100 — `(&self) -> &DefaultRunner` — Get a reference to the underlying DefaultRunner.
-- pub `WorkflowError` enum L104-109 — `Init | Runtime` — Wrapper around cloacina's DefaultRunner for arawn server integration.
+- pub `cloacina_runner` function L105-107 — `(&self) -> std::sync::Arc<DefaultRunner>` — Hand out an `Arc<DefaultRunner>` for callers that need to own
+- pub `WorkflowError` enum L111-116 — `Init | Runtime` — Wrapper around cloacina's DefaultRunner for arawn server integration.
 -  `WorkflowRunnerConfig` type L19-27 — `= WorkflowRunnerConfig` — Wrapper around cloacina's DefaultRunner for arawn server integration.
--  `WorkflowRunner` type L37-101 — `= WorkflowRunner` — Wrapper around cloacina's DefaultRunner for arawn server integration.
--  `tests` module L112-141 — `-` — Wrapper around cloacina's DefaultRunner for arawn server integration.
--  `runner_initializes_and_shuts_down` function L116-130 — `()` — Wrapper around cloacina's DefaultRunner for arawn server integration.
--  `runner_starts_with_empty_packages_dir` function L133-140 — `()` — Wrapper around cloacina's DefaultRunner for arawn server integration.
+-  `WorkflowRunner` type L37-108 — `= WorkflowRunner` — Wrapper around cloacina's DefaultRunner for arawn server integration.
+-  `tests` module L119-148 — `-` — Wrapper around cloacina's DefaultRunner for arawn server integration.
+-  `runner_initializes_and_shuts_down` function L123-137 — `()` — Wrapper around cloacina's DefaultRunner for arawn server integration.
+-  `runner_starts_with_empty_packages_dir` function L140-147 — `()` — Wrapper around cloacina's DefaultRunner for arawn server integration.
 
 #### crates/arawn-workflow/src/scaffold.rs
 

@@ -5,7 +5,9 @@ edition = "2024"
 
 [dependencies]
 arawn-core = { workspace = true }
+arawn-integrations = { path = "../arawn-integrations" }
 arawn-storage = { workspace = true }
+slack-morphism = { version = "2.20", features = ["hyper"] }
 async-trait = { workspace = true }
 chrono = { workspace = true }
 cloacina = { version = "0.6", features = ["sqlite"] }

@@ -25,6 +25,8 @@ arawn-service = { workspace = true }
 arawn-workflow = { path = "../arawn-workflow" }
 arawn-storage = { workspace = true }
 arawn-integrations = { path = "../arawn-integrations" }
+arawn-feeds = { path = "../arawn-feeds" }
+rusqlite = { version = "0.37", features = ["bundled"] }
 axum = { version = "0.8", features = ["ws"] }
 chrono = { workspace = true }
 url = "2"

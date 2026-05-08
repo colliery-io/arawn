@@ -557,6 +557,7 @@ async fn main() -> Result<()> {
         }
 
         // Register Slack. No sharing with Google — different OAuth ecosystem.
+        let slack_integration_for_feeds: Option<Arc<arawn_integrations::slack::SlackIntegration>>;
         if let Some((client_id, client_secret)) = resolve(
             "ARAWN_SLACK_CLIENT_ID",
             "ARAWN_SLACK_CLIENT_SECRET",
@@ -575,7 +576,9 @@ async fn main() -> Result<()> {
             registry.register(Box::new(arawn_integrations::slack::SlackUsersListTool::new(Arc::clone(&slack))));
             registry.register(Box::new(arawn_integrations::slack::SlackOpenDmTool::new(Arc::clone(&slack))));
             info!("Slack integration registered (6 tools)");
+            slack_integration_for_feeds = Some(slack);
         } else {
+            slack_integration_for_feeds = None;
             debug!(
                 "Slack integration skipped — set ARAWN_SLACK_CLIENT_ID + \
                  ARAWN_SLACK_CLIENT_SECRET (env) or [integrations.slack] (config) \
@@ -591,10 +594,13 @@ async fn main() -> Result<()> {
         let shared_runner: arawn_workflow::SharedWorkflowRunner =
             Arc::new(tokio::sync::RwLock::new(None));
 
+        let mut workflow_runner_handle: Option<Arc<arawn_workflow::WorkflowRunner>> = None;
         match arawn_workflow::WorkflowRunner::new(workflow_config).await {
             Ok(runner) => {
                 info!("workflow runner started");
-                *shared_runner.write().await = Some(Arc::new(runner));
+                let arc = Arc::new(runner);
+                *shared_runner.write().await = Some(Arc::clone(&arc));
+                workflow_runner_handle = Some(arc);
             }
             Err(e) => {
                 warn!(error = %e, "workflow runner unavailable — continuing without workflows");
@@ -603,6 +609,48 @@ async fn main() -> Result<()> {
 
         // Register workflow tools (before config watcher takes registry ownership)
         register_workflow_tools(&registry, workflows_dir, Arc::clone(&shared_runner));
+
+        // Continual data feeds (I-0039). Registers per-feed cloacina
+        // cron schedules that route through arawn-feeds' template
+        // dispatcher. Skipped if the workflow runner failed to start —
+        // feeds need cloacina to schedule them.
+        if let Some(workflow_runner) = workflow_runner_handle.as_ref() {
+            let feeds_db_path = std::path::PathBuf::from(&data_dir).join("arawn.db");
+            match rusqlite::Connection::open(&feeds_db_path) {
+                Ok(conn) => {
+                    // arawn-feeds expects the schema to already be in
+                    // place (V2 feeds migration is owned by
+                    // arawn-storage and was applied when `Store::open`
+                    // ran above).
+                    let feeds_conn = Arc::new(tokio::sync::Mutex::new(conn));
+                    let feeds_layout = Arc::new(arawn_feeds::DataLayout::new(&data_dir));
+                    let feeds_registry = Arc::new(arawn_feeds::default_registry());
+
+                    let mut clients = arawn_feeds::RealClients::new();
+                    if let Some(slack) = slack_integration_for_feeds.as_ref() {
+                        clients = clients.with_slack(Arc::clone(slack));
+                    }
+                    let clients: Arc<dyn arawn_feeds::FeedClients> = Arc::new(clients);
+
+                    match arawn_feeds::start(
+                        workflow_runner.cloacina_runner(),
+                        feeds_conn,
+                        feeds_layout,
+                        feeds_registry,
+                        clients,
+                    )
+                    .await
+                    {
+                        Ok(_runtime) => info!("feed runtime started"),
+                        Err(e) => warn!(error = %e, "feed runtime failed to start"),
+                    }
+                }
+                Err(e) => warn!(error = %e, db = %feeds_db_path.display(),
+                    "feed runtime unavailable — could not open arawn.db"),
+            }
+        } else {
+            debug!("feed runtime skipped — workflow runner not available");
+        }
 
         // Wire watchers into the broadcast so reload outcomes reach the TUI.
         let notice_tx_plugin = service.notice_sender();

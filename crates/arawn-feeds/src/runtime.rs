@@ -10,7 +10,7 @@
 use std::sync::Arc;
 
 use cloacina::workflow::WorkflowBuilder;
-use cloacina::{DefaultRunner, Runtime};
+use cloacina::{DefaultRunner, Runtime, TaskNamespace};
 use rusqlite::Connection;
 use tokio::sync::Mutex;
 use tracing::{info, warn};
@@ -32,8 +32,13 @@ pub type CloacinaRunner = DefaultRunner;
 
 /// Format the cloacina workflow name for a feed. One feed = one
 /// workflow_name = one cron schedule.
+///
+/// The separator is a single `_` rather than `::` because cloacina's
+/// `TaskNamespace` Display format is `tenant::package::workflow::task`
+/// — putting `::` inside the workflow name confuses the namespace
+/// parser (it sees more than 4 parts).
 pub fn feed_workflow_name(feed_id: &str) -> String {
-    format!("feed::{feed_id}")
+    format!("feed_{feed_id}")
 }
 
 /// One-stop entry the server boot calls after the workflow runner is
@@ -144,6 +149,26 @@ async fn register_one(
     };
 
     let runtime: Arc<Runtime> = runner.runtime();
+
+    // Register the task at the namespace cloacina's executor uses
+    // when looking up runnable tasks at fire time. `Workflow::add_task`
+    // constructs the namespace as ("public", "embedded", workflow_name,
+    // task.id()); we mirror that here.
+    let task_namespace = TaskNamespace::new(
+        "public",
+        "embedded",
+        &workflow_name,
+        &feed_id,
+    );
+    let task_runtime_ctx = runtime_ctx.clone();
+    let task_feed_id = feed_id.clone();
+    runtime.register_task(task_namespace, move || -> Arc<dyn cloacina::Task> {
+        Arc::new(FeedDispatchTask::new(
+            task_feed_id.clone(),
+            task_runtime_ctx.clone(),
+        ))
+    });
+
     runtime.register_workflow(workflow_name.clone(), constructor);
 
     // 4. Schedule it. UTC for now — feed cadences are absolute, the

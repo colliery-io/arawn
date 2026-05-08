@@ -145,6 +145,7 @@ dependencies = [
  "arawn-core",
  "arawn-embed",
  "arawn-engine",
+ "arawn-feeds",
  "arawn-integrations",
  "arawn-llm",
  "arawn-mcp",
@@ -162,6 +163,7 @@ dependencies = [
  "futures",
  "futures-util",
  "notify",
+ "rusqlite",
  "serde",
  "serde_json",
  "tempfile",
@@ -266,6 +268,7 @@ name = "arawn-feeds"
 version = "0.1.0"
 dependencies = [
  "arawn-core",
+ "arawn-integrations",
  "arawn-storage",
  "async-trait",
  "chrono",
@@ -273,6 +276,7 @@ dependencies = [
  "rusqlite",
  "serde",
  "serde_json",
+ "slack-morphism",
  "tempfile",
  "thiserror 2.0.18",
  "tokio",

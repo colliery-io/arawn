@@ -4,14 +4,14 @@ level: task
 title: "Phase 1 — Feed runtime + cloacina wiring"
 short_code: "ARAWN-T-0214"
 created_at: 2026-05-07T00:42:18.450827+00:00
-updated_at: 2026-05-07T03:42:04.573413+00:00
+updated_at: 2026-05-08T14:34:29.652356+00:00
 parent: ARAWN-I-0039
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -70,6 +70,8 @@ Land the foundation of the I-0039 feed system: a new `arawn-feeds` crate with th
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
@@ -220,3 +222,41 @@ Land the foundation of the I-0039 feed system: a new `arawn-feeds` crate with th
 3. **Integration test through real cloacina** — exercise the full path from `register_cron_workflow` via a manual fire (not waiting 15 min for cron). cloacina exposes a way to trigger a workflow on demand for tests; need to verify the API.
 
 Stopping here as a coherent checkpoint: foundational code is right, tested, and architecture is locked. The remaining work is concrete adapter + boot wiring rather than open design questions.
+
+### 2026-05-08 — RealSlackClient + main.rs boot wiring landed
+
+- Restructured `clients/` from a single `clients.rs` into a per-provider module tree (`clients/mod.rs` for the bundle + `RealClients` builder, `clients/slack.rs` for the trait + `RealSlackClient`). Each new provider gets one new file holding both the trait and the production impl side-by-side.
+- `RealSlackClient` adapter: maps `SlackFeedClient::resolve_channel` → `conversations.list` (prefers user context for private-channel visibility, falls back to bot), maps `channel_history` → `conversations.history` with cursor passthrough; reverses slack-morphism's newest-first into oldest-first; surfaces `Auth` / `RateLimited` / `Provider` errors based on slack-morphism's response shape.
+- Server boot in `crates/arawn/src/main.rs`:
+  - Hoisted the Slack `Arc<SlackIntegration>` so it's reachable after the workflow runner is up.
+  - Hoisted the `WorkflowRunner` Arc so we can grab `cloacina_runner()` for arawn-feeds.
+  - After the workflow runner starts, opens a `rusqlite::Connection` to `arawn.db`, builds `RealClients` with whatever integrations are connected, builds `default_registry()`, and calls `arawn_feeds::start(...)`.
+- Smoke-tested the binary: server logs `feed runtime started registered=0 skipped=0` cleanly. No feeds configured yet (DB empty); registration path is alive and ready.
+- 33 arawn-feeds tests green (28 unit + 5 integration). Workspace + clippy clean.
+
+**Remaining (small, deferred):** an integration test that exercises a real cloacina runner firing a feed end-to-end. The current end-to-end coverage tests `run_feed()` directly (which is what cloacina would invoke). Adding the cloacina-cron-fire layer would be a single test that:
+1. Builds a `WorkflowRunner` against a tempdir.
+2. Calls `arawn_feeds::start` with one stub feed.
+3. Manually triggers via cloacina's execute API and verifies meta.json updates.
+
+Calling T-0214 done — the runtime + first ingestor + boot wiring all land cleanly and the binary boots with the new path. Cloacina-fire integration test can ride along with the next ingestor task (T-0215).
+
+### 2026-05-08 — Authoritative cloacina-fire integration test landed
+
+Pushed through the cloacina-internals investigation. Root cause was a namespace-encoding bug in our workflow naming convention:
+
+- cloacina's `TaskNamespace` is `tenant::package::workflow_id::task_id` joined with `::`.
+- We used `feed::<feed_id>` as the workflow name. Stitched into a namespace it became `public::embedded::feed::<feed_id>::<task_id>` — 5 parts, not 4.
+- `parse_namespace` rejects it during executor task lookup; the workflow_execution sits Pending forever because the task can't be resolved.
+
+Fix: changed `feed_workflow_name` to use `feed_<feed_id>` (single underscore separator) so `::` is reserved for cloacina's namespace separator. One-line change.
+
+New tests in `tests/cloacina_fire.rs`:
+
+- `cloacina_fires_feed_workflow_end_to_end` — stands up a real `DefaultRunner`, registers one stub feed via `arawn_feeds::start`, calls `runner.execute(...)`, verifies `meta.json` updated and JSONL line written. **0.55s wall clock.**
+- `cloacina_fires_advance_cursor_across_two_executions` — three back-to-back `execute` calls, verifies cursor advances, run_count goes to 3, JSONL gets three lines.
+- `registering_a_feed_with_unknown_template_is_skipped_at_boot` — a feed referencing a missing template doesn't abort `start()`; a real feed registered alongside still works.
+
+All 36 arawn-feeds tests pass: 28 unit + 5 slack-mock integration + 3 cloacina-fire integration. Workspace + clippy clean. The full path is now authoritatively covered from cron registration → cloacina scheduler → executor → task lookup → `run_feed` → meta.json persistence.
+
+T-0214 fully done.
