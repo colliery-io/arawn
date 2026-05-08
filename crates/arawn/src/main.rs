@@ -540,6 +540,9 @@ async fn main() -> Result<()> {
 
         // Register Atlassian (Jira + Confluence). One OAuth client, one
         // token; both tool families register together.
+        let atlassian_integration_for_feeds: Option<
+            Arc<arawn_integrations::atlassian::AtlassianIntegration>,
+        >;
         if let Some((client_id, client_secret)) = resolve(
             "ARAWN_ATLASSIAN_CLIENT_ID",
             "ARAWN_ATLASSIAN_CLIENT_SECRET",
@@ -563,7 +566,9 @@ async fn main() -> Result<()> {
             registry.register(Box::new(arawn_integrations::atlassian::ConfluenceUpdatePageTool::new(Arc::clone(&atlassian))));
             registry.register(Box::new(arawn_integrations::atlassian::ConfluenceListSpacesTool::new(Arc::clone(&atlassian))));
             info!("Atlassian integration registered (11 tools — 6 Jira, 5 Confluence)");
+            atlassian_integration_for_feeds = Some(atlassian);
         } else {
+            atlassian_integration_for_feeds = None;
             debug!(
                 "Atlassian integration skipped — set ARAWN_ATLASSIAN_CLIENT_ID + \
                  ARAWN_ATLASSIAN_CLIENT_SECRET (env) or [integrations.atlassian] (config) \
@@ -653,6 +658,9 @@ async fn main() -> Result<()> {
                     }
                     if let Some(dr) = drive_integration_for_feeds.as_ref() {
                         clients = clients.with_drive(Arc::clone(dr));
+                    }
+                    if let Some(at) = atlassian_integration_for_feeds.as_ref() {
+                        clients = clients.with_atlassian(Arc::clone(at));
                     }
                     let clients: Arc<dyn arawn_feeds::FeedClients> = Arc::new(clients);
 

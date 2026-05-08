@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-08T20:44:41Z | 239 files | Python, Rust
+> Generated: 2026-05-08T22:46:18Z | 246 files | Python, Rust
 
 ## Project Structure
 
@@ -116,6 +116,7 @@
 │   │   │   ├── cadence.rs
 │   │   │   ├── clients/
 │   │   │   │   ├── calendar.rs
+│   │   │   │   ├── drive.rs
 │   │   │   │   ├── gmail.rs
 │   │   │   │   ├── mod.rs
 │   │   │   │   └── slack.rs
@@ -132,6 +133,11 @@
 │   │   │   │   ├── calendar/
 │   │   │   │   │   ├── mod.rs
 │   │   │   │   │   └── upcoming_archive.rs
+│   │   │   │   ├── drive/
+│   │   │   │   │   ├── common.rs
+│   │   │   │   │   ├── folder_sync.rs
+│   │   │   │   │   ├── mod.rs
+│   │   │   │   │   └── recent.rs
 │   │   │   │   ├── gmail/
 │   │   │   │   │   ├── common.rs
 │   │   │   │   │   ├── inbox_archive.rs
@@ -150,6 +156,8 @@
 │   │   └── tests/
 │   │       ├── calendar_upcoming_archive.rs
 │   │       ├── cloacina_fire.rs
+│   │       ├── drive_folder_sync.rs
+│   │       ├── drive_recent.rs
 │   │       ├── gmail_archive.rs
 │   │       ├── slack_channel_archive.rs
 │   │       ├── slack_dm_archive.rs
@@ -544,16 +552,16 @@
 
 -  `DEFAULT_MODEL` variable L15 — `: &str`
 -  `FILE_LOG_FILTER` variable L18 — `: &str` — Default file log filter: debug for arawn crates, warn for third-party.
--  `main` function L21-753 — `() -> Result<()>`
+-  `main` function L21-761 — `() -> Result<()>`
 -  `Cli` struct L27-46 — `{ command: Option<Command>, data_dir: Option<String>, session: Option<Uuid>, lis...`
 -  `Command` enum L49-68 — `Serve | Tui | Plugin`
--  `run_cli_via_server` function L756-861 — `( url: &str, prompt: &str, session_id: Option<Uuid>, ) -> Result<()>` — Run a CLI prompt by connecting to the running server via WebSocket.
--  `build_llm_client` function L864-887 — `( config: &arawn_bin::LlmConfig, ) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
--  `register_default_tools` function L890-936 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &arawn_bin::ArawnConfig, d...` — Register all default tools into the registry.
--  `connect_mcp_servers` function L939-987 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
--  `register_workflow_tools` function L990-1007 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
--  `build_engine_config` function L1009-1044 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
--  `dirs_path` function L1046-1055 — `() -> Option<String>`
+-  `run_cli_via_server` function L764-869 — `( url: &str, prompt: &str, session_id: Option<Uuid>, ) -> Result<()>` — Run a CLI prompt by connecting to the running server via WebSocket.
+-  `build_llm_client` function L872-895 — `( config: &arawn_bin::LlmConfig, ) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
+-  `register_default_tools` function L898-944 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &arawn_bin::ArawnConfig, d...` — Register all default tools into the registry.
+-  `connect_mcp_servers` function L947-995 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
+-  `register_workflow_tools` function L998-1015 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
+-  `build_engine_config` function L1017-1052 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
+-  `dirs_path` function L1054-1063 — `() -> Option<String>`
 
 #### crates/arawn/src/plugin_cmd.rs
 
@@ -2855,6 +2863,32 @@
 -  `RealCalendarClient` type L69-96 — `impl CalendarFeedClient for RealCalendarClient` — existing calendar tools use.
 -  `list_events` function L70-95 — `( &self, calendar_id: &str, time_min: DateTime<Utc>, time_max: DateTime<Utc>, ) ...` — existing calendar tools use.
 
+#### crates/arawn-feeds/src/clients/drive.rs
+
+- pub `DriveFile` struct L22-41 — `{ id: String, name: String, mime_type: String, modified_time: Option<String>, md...` — One file as feeds care about it.
+- pub `folder_mime` function L46-48 — `() -> &'static str` — Drive tools use.
+- pub `DriveFeedClient` interface L53-81 — `{ fn resolve_folder(), fn list_folder_children(), fn list_modified_since(), fn d...` — What feeds need from Drive.
+- pub `export_for` function L87-95 — `(mime: &str) -> Option<(&'static str, &'static str)>` — Pick the export mime + filename suffix for Google native types.
+- pub `is_unsupported_google_native` function L99-103 — `(mime: &str) -> bool` — True if `mime` is a Google native type with no export mapping
+- pub `RealDriveClient` struct L112-114 — `{ integration: Arc<GoogleDriveIntegration> }` — Drive tools use.
+- pub `new` function L117-119 — `(integration: Arc<GoogleDriveIntegration>) -> Self` — Drive tools use.
+-  `MIME_FOLDER` variable L43 — `: &str` — Drive tools use.
+-  `DriveFile` type L45-49 — `= DriveFile` — Drive tools use.
+-  `FIELDS_LIST` variable L107-108 — `: &str` — Drive tools use.
+-  `FIELDS_ONE` variable L109-110 — `: &str` — Drive tools use.
+-  `RealDriveClient` type L116-120 — `= RealDriveClient` — Drive tools use.
+-  `integ_err` function L122-128 — `(e: arawn_integrations::IntegrationError) -> FeedError` — Drive tools use.
+-  `google_err` function L130-141 — `(op: &str, msg: String) -> FeedError` — Drive tools use.
+-  `from_api` function L143-155 — `(f: google_drive3::api::File) -> DriveFile` — Drive tools use.
+-  `RealDriveClient` type L158-309 — `impl DriveFeedClient for RealDriveClient` — Drive tools use.
+-  `resolve_folder` function L159-212 — `(&self, path_or_id: &str) -> Result<String, FeedError>` — Drive tools use.
+-  `list_folder_children` function L214-242 — `(&self, folder_id: &str) -> Result<Vec<DriveFile>, FeedError>` — Drive tools use.
+-  `list_modified_since` function L244-270 — `( &self, since: DateTime<Utc>, max_results: u32, ) -> Result<Vec<DriveFile>, Fee...` — Drive tools use.
+-  `download` function L272-308 — `( &self, file_id: &str, export_mime: Option<&str>, ) -> Result<Vec<u8>, FeedErro...` — Drive tools use.
+-  `tests` module L312-339 — `-` — Drive tools use.
+-  `export_for_covers_known_natives` function L316-326 — `()` — Drive tools use.
+-  `unsupported_native_excludes_folders_and_known_exports` function L329-338 — `()` — Drive tools use.
+
 #### crates/arawn-feeds/src/clients/gmail.rs
 
 - pub `GmailFeedClient` interface L24-37 — `{ fn list_message_ids(), fn get_message() }` — What feeds need from Gmail.
@@ -2870,24 +2904,28 @@
 #### crates/arawn-feeds/src/clients/mod.rs
 
 - pub `calendar` module L20 — `-` — `slack-morphism` directly — keeps templates mock-testable.
-- pub `gmail` module L21 — `-` — `slack-morphism` directly — keeps templates mock-testable.
-- pub `slack` module L22 — `-` — `slack-morphism` directly — keeps templates mock-testable.
-- pub `FeedClients` interface L34-38 — `{ fn slack(), fn calendar(), fn gmail() }` — Bundle of every provider client a template might want to use.
-- pub `NoopClients` struct L43 — `-` — No-op `FeedClients`: every provider returns `None`.
-- pub `RealClients` struct L61-65 — `{ slack: Option<Arc<dyn SlackFeedClient>>, calendar: Option<Arc<dyn CalendarFeed...` — Production bundle.
-- pub `new` function L68-70 — `() -> Self` — `slack-morphism` directly — keeps templates mock-testable.
-- pub `with_slack` function L72-78 — `( mut self, integration: Arc<arawn_integrations::slack::SlackIntegration>, ) -> ...` — `slack-morphism` directly — keeps templates mock-testable.
-- pub `with_calendar` function L80-86 — `( mut self, integration: Arc<arawn_integrations::calendar::GoogleCalendarIntegra...` — `slack-morphism` directly — keeps templates mock-testable.
-- pub `with_gmail` function L88-94 — `( mut self, integration: Arc<arawn_integrations::gmail::GmailIntegration>, ) -> ...` — `slack-morphism` directly — keeps templates mock-testable.
--  `NoopClients` type L45-55 — `impl FeedClients for NoopClients` — `slack-morphism` directly — keeps templates mock-testable.
--  `slack` function L46-48 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
--  `calendar` function L49-51 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
--  `gmail` function L52-54 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
--  `RealClients` type L67-95 — `= RealClients` — `slack-morphism` directly — keeps templates mock-testable.
--  `RealClients` type L97-107 — `impl FeedClients for RealClients` — `slack-morphism` directly — keeps templates mock-testable.
--  `slack` function L98-100 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
--  `calendar` function L101-103 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
--  `gmail` function L104-106 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
+- pub `drive` module L21 — `-` — `slack-morphism` directly — keeps templates mock-testable.
+- pub `gmail` module L22 — `-` — `slack-morphism` directly — keeps templates mock-testable.
+- pub `slack` module L23 — `-` — `slack-morphism` directly — keeps templates mock-testable.
+- pub `FeedClients` interface L36-41 — `{ fn slack(), fn calendar(), fn gmail(), fn drive() }` — Bundle of every provider client a template might want to use.
+- pub `NoopClients` struct L46 — `-` — No-op `FeedClients`: every provider returns `None`.
+- pub `RealClients` struct L67-72 — `{ slack: Option<Arc<dyn SlackFeedClient>>, calendar: Option<Arc<dyn CalendarFeed...` — Production bundle.
+- pub `new` function L75-77 — `() -> Self` — `slack-morphism` directly — keeps templates mock-testable.
+- pub `with_slack` function L79-85 — `( mut self, integration: Arc<arawn_integrations::slack::SlackIntegration>, ) -> ...` — `slack-morphism` directly — keeps templates mock-testable.
+- pub `with_calendar` function L87-93 — `( mut self, integration: Arc<arawn_integrations::calendar::GoogleCalendarIntegra...` — `slack-morphism` directly — keeps templates mock-testable.
+- pub `with_gmail` function L95-101 — `( mut self, integration: Arc<arawn_integrations::gmail::GmailIntegration>, ) -> ...` — `slack-morphism` directly — keeps templates mock-testable.
+- pub `with_drive` function L103-109 — `( mut self, integration: Arc<arawn_integrations::drive::GoogleDriveIntegration>,...` — `slack-morphism` directly — keeps templates mock-testable.
+-  `NoopClients` type L48-61 — `impl FeedClients for NoopClients` — `slack-morphism` directly — keeps templates mock-testable.
+-  `slack` function L49-51 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
+-  `calendar` function L52-54 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
+-  `gmail` function L55-57 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
+-  `drive` function L58-60 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
+-  `RealClients` type L74-110 — `= RealClients` — `slack-morphism` directly — keeps templates mock-testable.
+-  `RealClients` type L112-125 — `impl FeedClients for RealClients` — `slack-morphism` directly — keeps templates mock-testable.
+-  `slack` function L113-115 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
+-  `calendar` function L116-118 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
+-  `gmail` function L119-121 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
+-  `drive` function L122-124 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
 
 #### crates/arawn-feeds/src/clients/slack.rs
 
@@ -2950,6 +2988,65 @@
 -  `validate_rejects_bad_window_days` function L200-207 — `()` — - `window_days` (optional, default `7`)
 -  `defaults_use_30min_cadence` function L210-213 — `()` — - `window_days` (optional, default `7`)
 -  `sanitize_keeps_safe_chars` function L216-223 — `()` — - `window_days` (optional, default `7`)
+
+### crates/arawn-feeds/src/templates/drive
+
+> *Semantic summary to be generated by AI agent.*
+
+#### crates/arawn-feeds/src/templates/drive/common.rs
+
+- pub `sanitize_path_component` function L12-25 — `(name: &str) -> String` — Sanitize one path component from a Drive file or folder name into
+- pub `is_under` function L32-54 — `(root: &std::path::Path, candidate: &std::path::Path) -> bool` — Confirm `candidate` lives strictly under `root`.
+- pub `change_token` function L60-66 — `(md5: Option<&str>, modified_time: Option<&str>) -> String` — Map an `md5_checksum` (binary) or `modified_time` (Google natives)
+- pub `modified_to_yyyy_mm_dd` function L70-80 — `(modified_time: Option<&str>) -> Result<String, FeedError>` — Read a `modifiedTime` ISO string into an `i64` ms-since-epoch for
+-  `tests` module L83-114 — `-` — Shared helpers for Drive feed templates.
+-  `sanitize_strips_separators_and_traversal` function L87-95 — `()` — Shared helpers for Drive feed templates.
+-  `change_token_prefers_md5` function L98-103 — `()` — Shared helpers for Drive feed templates.
+-  `modified_to_day_basic` function L106-113 — `()` — Shared helpers for Drive feed templates.
+
+#### crates/arawn-feeds/src/templates/drive/folder_sync.rs
+
+- pub `FolderSyncTemplate` struct L60 — `-` — the API ever surprises us.
+-  `NAME` variable L62 — `: &str` — the API ever surprises us.
+-  `MAX_DEPTH` variable L65 — `: usize` — Cap recursion to keep a misbehaving folder graph from spinning
+-  `Cursor` struct L68-73 — `{ files: BTreeMap<String, FileEntry> }` — the API ever surprises us.
+-  `FileEntry` struct L76-82 — `{ token: String, path: String }` — the API ever surprises us.
+-  `FolderSyncTemplate` type L85-256 — `impl FeedTemplate for FolderSyncTemplate` — the API ever surprises us.
+-  `name` function L86-88 — `(&self) -> &'static str` — the API ever surprises us.
+-  `validate` function L90-100 — `(&self, params: &TemplateParams) -> Result<(), FeedError>` — the API ever surprises us.
+-  `defaults` function L102-107 — `(&self, _params: &TemplateParams) -> FeedDefaults` — the API ever surprises us.
+-  `run` function L109-255 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &V...` — the API ever surprises us.
+-  `RemoteFile` struct L259-263 — `{ file: DriveFile, relative_path: String }` — the API ever surprises us.
+-  `walk` function L267-319 — `( drive: Arc<dyn DriveFeedClient>, folder_id: &'a str, rel_prefix: PathBuf, dept...` — Recursively walk a Drive folder, collecting every file (not
+-  `atomic_write` function L321-328 — `(path: &Path, body: &[u8]) -> Result<(), FeedError>` — the API ever surprises us.
+-  `safe_remove_file` function L330-343 — `(feed_dir: &Path, path: &Path) -> Result<(), FeedError>` — the API ever surprises us.
+-  `prune_empty_dirs` function L345-362 — `(root: &Path)` — the API ever surprises us.
+-  `tests` module L365-384 — `-` — the API ever surprises us.
+-  `validate_requires_folder` function L369-377 — `()` — the API ever surprises us.
+-  `defaults_use_hourly_cadence` function L380-383 — `()` — the API ever surprises us.
+
+#### crates/arawn-feeds/src/templates/drive/mod.rs
+
+- pub `common` module L3 — `-` — Drive feed templates.
+- pub `folder_sync` module L4 — `-` — Drive feed templates.
+- pub `recent` module L5 — `-` — Drive feed templates.
+
+#### crates/arawn-feeds/src/templates/drive/recent.rs
+
+- pub `RecentTemplate` struct L43 — `-` — the first run, when the cursor is null.
+-  `NAME` variable L45 — `: &str` — the first run, when the cursor is null.
+-  `DEFAULT_DAYS_BACK` variable L46 — `: i64` — the first run, when the cursor is null.
+-  `MAX_RESULTS_PER_RUN` variable L47 — `: u32` — the first run, when the cursor is null.
+-  `RecentTemplate` type L50-160 — `impl FeedTemplate for RecentTemplate` — the first run, when the cursor is null.
+-  `name` function L51-53 — `(&self) -> &'static str` — the first run, when the cursor is null.
+-  `validate` function L55-67 — `(&self, params: &TemplateParams) -> Result<(), FeedError>` — the first run, when the cursor is null.
+-  `defaults` function L69-74 — `(&self, _params: &TemplateParams) -> FeedDefaults` — the first run, when the cursor is null.
+-  `run` function L76-159 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &V...` — the first run, when the cursor is null.
+-  `write_file_metadata` function L162-172 — `(path: &Path, file: &DriveFile) -> Result<u64, FeedError>` — the first run, when the cursor is null.
+-  `tests` module L175-196 — `-` — the first run, when the cursor is null.
+-  `validate_default_params` function L179-181 — `()` — the first run, when the cursor is null.
+-  `validate_rejects_bad_days_back` function L184-189 — `()` — the first run, when the cursor is null.
+-  `defaults_use_30min_cadence` function L192-195 — `()` — the first run, when the cursor is null.
 
 ### crates/arawn-feeds/src/templates/gmail
 
@@ -3023,10 +3120,11 @@
 #### crates/arawn-feeds/src/templates/mod.rs
 
 - pub `calendar` module L3 — `-` — Concrete `FeedTemplate` impls organized per provider.
-- pub `gmail` module L4 — `-` — Concrete `FeedTemplate` impls organized per provider.
-- pub `slack` module L5 — `-` — Concrete `FeedTemplate` impls organized per provider.
-- pub `stub` module L6 — `-` — Concrete `FeedTemplate` impls organized per provider.
-- pub `default_registry` function L15-26 — `() -> FeedTemplateRegistry` — Build the registry of every template the binary supports.
+- pub `drive` module L4 — `-` — Concrete `FeedTemplate` impls organized per provider.
+- pub `gmail` module L5 — `-` — Concrete `FeedTemplate` impls organized per provider.
+- pub `slack` module L6 — `-` — Concrete `FeedTemplate` impls organized per provider.
+- pub `stub` module L7 — `-` — Concrete `FeedTemplate` impls organized per provider.
+- pub `default_registry` function L16-29 — `() -> FeedTemplateRegistry` — Build the registry of every template the binary supports.
 
 #### crates/arawn-feeds/src/templates/stub.rs
 
@@ -3118,24 +3216,26 @@
 -  `MockCalendarClient` type L41-55 — `impl CalendarFeedClient for MockCalendarClient` — - Auth error when calendar integration not connected.
 -  `list_events` function L42-54 — `( &self, calendar_id: &str, time_min: DateTime<Utc>, time_max: DateTime<Utc>, ) ...` — - Auth error when calendar integration not connected.
 -  `MockClients` struct L57-59 — `{ calendar: Arc<MockCalendarClient> }` — - Auth error when calendar integration not connected.
--  `MockClients` type L61-71 — `impl FeedClients for MockClients` — - Auth error when calendar integration not connected.
+-  `MockClients` type L61-74 — `impl FeedClients for MockClients` — - Auth error when calendar integration not connected.
 -  `slack` function L62-64 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — - Auth error when calendar integration not connected.
 -  `calendar` function L65-67 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — - Auth error when calendar integration not connected.
 -  `gmail` function L68-70 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — - Auth error when calendar integration not connected.
--  `event` function L73-81 — `(id: &str, summary: &str, start: &str) -> Value` — - Auth error when calendar integration not connected.
--  `read_event_file` function L83-90 — `(feed_dir: &PathBuf, safe_id: &str) -> Option<Value>` — - Auth error when calendar integration not connected.
--  `run_once` function L92-117 — `( template: &dyn FeedTemplate, ctx: &TemplateCtx, params: &TemplateParams, feed_...` — - Auth error when calendar integration not connected.
--  `first_run_writes_one_file_per_event` function L120-163 — `()` — - Auth error when calendar integration not connected.
--  `second_run_overwrites_changed_events` function L166-209 — `()` — - Auth error when calendar integration not connected.
--  `cancelled_events_are_preserved` function L212-240 — `()` — - Auth error when calendar integration not connected.
--  `params_reach_the_client` function L243-265 — `()` — - Auth error when calendar integration not connected.
--  `returns_auth_when_calendar_not_connected` function L268-294 — `()` — - Auth error when calendar integration not connected.
--  `NoCal` struct L269 — `-` — - Auth error when calendar integration not connected.
--  `NoCal` type L270-280 — `impl FeedClients for NoCal` — - Auth error when calendar integration not connected.
--  `slack` function L271-273 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — - Auth error when calendar integration not connected.
--  `calendar` function L274-276 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — - Auth error when calendar integration not connected.
--  `gmail` function L277-279 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — - Auth error when calendar integration not connected.
--  `empty_window_writes_nothing_and_status_no_new_items` function L297-316 — `()` — - Auth error when calendar integration not connected.
+-  `drive` function L71-73 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — - Auth error when calendar integration not connected.
+-  `event` function L76-84 — `(id: &str, summary: &str, start: &str) -> Value` — - Auth error when calendar integration not connected.
+-  `read_event_file` function L86-93 — `(feed_dir: &PathBuf, safe_id: &str) -> Option<Value>` — - Auth error when calendar integration not connected.
+-  `run_once` function L95-120 — `( template: &dyn FeedTemplate, ctx: &TemplateCtx, params: &TemplateParams, feed_...` — - Auth error when calendar integration not connected.
+-  `first_run_writes_one_file_per_event` function L123-166 — `()` — - Auth error when calendar integration not connected.
+-  `second_run_overwrites_changed_events` function L169-212 — `()` — - Auth error when calendar integration not connected.
+-  `cancelled_events_are_preserved` function L215-243 — `()` — - Auth error when calendar integration not connected.
+-  `params_reach_the_client` function L246-268 — `()` — - Auth error when calendar integration not connected.
+-  `returns_auth_when_calendar_not_connected` function L271-300 — `()` — - Auth error when calendar integration not connected.
+-  `NoCal` struct L272 — `-` — - Auth error when calendar integration not connected.
+-  `NoCal` type L273-286 — `impl FeedClients for NoCal` — - Auth error when calendar integration not connected.
+-  `slack` function L274-276 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — - Auth error when calendar integration not connected.
+-  `calendar` function L277-279 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — - Auth error when calendar integration not connected.
+-  `gmail` function L280-282 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — - Auth error when calendar integration not connected.
+-  `drive` function L283-285 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — - Auth error when calendar integration not connected.
+-  `empty_window_writes_nothing_and_status_no_new_items` function L303-322 — `()` — - Auth error when calendar integration not connected.
 
 #### crates/arawn-feeds/tests/cloacina_fire.rs
 
@@ -3144,6 +3244,74 @@
 -  `cloacina_fires_feed_workflow_end_to_end` function L57-127 — `()` — workflow registration + execution machinery.
 -  `cloacina_fires_advance_cursor_across_two_executions` function L130-182 — `()` — workflow registration + execution machinery.
 -  `registering_a_feed_with_unknown_template_is_skipped_at_boot` function L185-242 — `()` — workflow registration + execution machinery.
+
+#### crates/arawn-feeds/tests/drive_folder_sync.rs
+
+-  `MockDriveClient` struct L20-29 — `{ children: Mutex<HashMap<String, Vec<DriveFile>>>, raw_bodies: Mutex<HashMap<St...` — In-memory Drive emulator.
+-  `MockDriveClient` type L31-50 — `= MockDriveClient` — Integration tests for `drive/folder-sync`.
+-  `add_folder` function L32-34 — `(&self, id: &str, children: Vec<DriveFile>)` — Integration tests for `drive/folder-sync`.
+-  `add_raw` function L35-40 — `(&self, file_id: &str, body: &[u8])` — Integration tests for `drive/folder-sync`.
+-  `add_export` function L41-46 — `(&self, file_id: &str, export_mime: &str, body: &[u8])` — Integration tests for `drive/folder-sync`.
+-  `download_calls` function L47-49 — `(&self) -> Vec<(String, Option<String>)>` — Integration tests for `drive/folder-sync`.
+-  `MockDriveClient` type L53-98 — `impl DriveFeedClient for MockDriveClient` — Integration tests for `drive/folder-sync`.
+-  `resolve_folder` function L54-56 — `(&self, path_or_id: &str) -> Result<String, FeedError>` — Integration tests for `drive/folder-sync`.
+-  `list_folder_children` function L57-65 — `(&self, folder_id: &str) -> Result<Vec<DriveFile>, FeedError>` — Integration tests for `drive/folder-sync`.
+-  `list_modified_since` function L66-72 — `( &self, _since: DateTime<Utc>, _max_results: u32, ) -> Result<Vec<DriveFile>, F...` — Integration tests for `drive/folder-sync`.
+-  `download` function L73-97 — `( &self, file_id: &str, export_mime: Option<&str>, ) -> Result<Vec<u8>, FeedErro...` — Integration tests for `drive/folder-sync`.
+-  `MockClients` struct L100-102 — `{ drive: Arc<MockDriveClient> }` — Integration tests for `drive/folder-sync`.
+-  `MockClients` type L104-117 — `impl FeedClients for MockClients` — Integration tests for `drive/folder-sync`.
+-  `slack` function L105-107 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — Integration tests for `drive/folder-sync`.
+-  `calendar` function L108-110 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — Integration tests for `drive/folder-sync`.
+-  `gmail` function L111-113 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — Integration tests for `drive/folder-sync`.
+-  `drive` function L114-116 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — Integration tests for `drive/folder-sync`.
+-  `raw_file` function L119-130 — `(id: &str, name: &str, mime: &str, md5: &str) -> DriveFile` — Integration tests for `drive/folder-sync`.
+-  `folder` function L132-143 — `(id: &str, name: &str) -> DriveFile` — Integration tests for `drive/folder-sync`.
+-  `google_doc` function L145-156 — `(id: &str, name: &str, modified: &str) -> DriveFile` — Integration tests for `drive/folder-sync`.
+-  `run_once` function L158-181 — `( template: &dyn FeedTemplate, ctx: &TemplateCtx, params: &TemplateParams, feed_...` — Integration tests for `drive/folder-sync`.
+-  `mirrors_native_files_and_exports_google_natives` function L184-231 — `()` — Integration tests for `drive/folder-sync`.
+-  `skips_unchanged_via_change_token_cursor` function L234-258 — `()` — Integration tests for `drive/folder-sync`.
+-  `deletes_local_when_remote_deleted` function L261-290 — `()` — Integration tests for `drive/folder-sync`.
+-  `moved_file_cleans_up_old_path` function L293-328 — `()` — Integration tests for `drive/folder-sync`.
+-  `unsupported_google_native_is_skipped` function L331-360 — `()` — Integration tests for `drive/folder-sync`.
+-  `returns_auth_when_drive_not_connected` function L363-392 — `()` — Integration tests for `drive/folder-sync`.
+-  `NoDrive` struct L364 — `-` — Integration tests for `drive/folder-sync`.
+-  `NoDrive` type L365-378 — `impl FeedClients for NoDrive` — Integration tests for `drive/folder-sync`.
+-  `slack` function L366-368 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — Integration tests for `drive/folder-sync`.
+-  `calendar` function L369-371 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — Integration tests for `drive/folder-sync`.
+-  `gmail` function L372-374 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — Integration tests for `drive/folder-sync`.
+-  `drive` function L375-377 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — Integration tests for `drive/folder-sync`.
+-  `validate_rejects_missing_folder` function L395-403 — `()` — Integration tests for `drive/folder-sync`.
+
+#### crates/arawn-feeds/tests/drive_recent.rs
+
+-  `MockDriveClient` struct L17-21 — `{ pages: Mutex<Vec<Vec<DriveFile>>>, calls: Mutex<Vec<DateTime<Utc>>> }` — Integration tests for `drive/recent`.
+-  `MockDriveClient` type L23-30 — `= MockDriveClient` — Integration tests for `drive/recent`.
+-  `queue` function L24-26 — `(&self, files: Vec<DriveFile>)` — Integration tests for `drive/recent`.
+-  `last_since` function L27-29 — `(&self) -> Option<DateTime<Utc>>` — Integration tests for `drive/recent`.
+-  `MockDriveClient` type L33-52 — `impl DriveFeedClient for MockDriveClient` — Integration tests for `drive/recent`.
+-  `resolve_folder` function L34-36 — `(&self, _: &str) -> Result<String, FeedError>` — Integration tests for `drive/recent`.
+-  `list_folder_children` function L37-39 — `(&self, _: &str) -> Result<Vec<DriveFile>, FeedError>` — Integration tests for `drive/recent`.
+-  `list_modified_since` function L40-48 — `( &self, since: DateTime<Utc>, _max_results: u32, ) -> Result<Vec<DriveFile>, Fe...` — Integration tests for `drive/recent`.
+-  `download` function L49-51 — `(&self, _: &str, _: Option<&str>) -> Result<Vec<u8>, FeedError>` — Integration tests for `drive/recent`.
+-  `MockClients` struct L54-56 — `{ drive: Arc<MockDriveClient> }` — Integration tests for `drive/recent`.
+-  `MockClients` type L58-71 — `impl FeedClients for MockClients` — Integration tests for `drive/recent`.
+-  `slack` function L59-61 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — Integration tests for `drive/recent`.
+-  `calendar` function L62-64 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — Integration tests for `drive/recent`.
+-  `gmail` function L65-67 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — Integration tests for `drive/recent`.
+-  `drive` function L68-70 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — Integration tests for `drive/recent`.
+-  `file` function L73-84 — `(id: &str, name: &str, mime: &str, modified: &str) -> DriveFile` — Integration tests for `drive/recent`.
+-  `run_once` function L86-109 — `( template: &dyn FeedTemplate, ctx: &TemplateCtx, params: &TemplateParams, feed_...` — Integration tests for `drive/recent`.
+-  `writes_per_file_metadata_partitioned_by_modified_date` function L112-142 — `()` — Integration tests for `drive/recent`.
+-  `second_run_uses_cursor_as_since` function L145-161 — `()` — Integration tests for `drive/recent`.
+-  `empty_run_is_no_op_with_status` function L164-179 — `()` — Integration tests for `drive/recent`.
+-  `returns_auth_when_drive_not_connected` function L182-208 — `()` — Integration tests for `drive/recent`.
+-  `NoDrive` struct L183 — `-` — Integration tests for `drive/recent`.
+-  `NoDrive` type L184-197 — `impl FeedClients for NoDrive` — Integration tests for `drive/recent`.
+-  `slack` function L185-187 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — Integration tests for `drive/recent`.
+-  `calendar` function L188-190 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — Integration tests for `drive/recent`.
+-  `gmail` function L191-193 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — Integration tests for `drive/recent`.
+-  `drive` function L194-196 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — Integration tests for `drive/recent`.
+-  `validate_rejects_bad_days_back` function L211-216 — `()` — Integration tests for `drive/recent`.
 
 #### crates/arawn-feeds/tests/gmail_archive.rs
 
@@ -3157,24 +3325,26 @@
 -  `list_message_ids` function L69-84 — `( &self, query: &str, max_results: u32, ) -> Result<Vec<String>, FeedError>` — per-template query construction.
 -  `get_message` function L86-96 — `(&self, id: &str) -> Result<Value, FeedError>` — per-template query construction.
 -  `MockClients` struct L99-101 — `{ gmail: Arc<MockGmailClient> }` — per-template query construction.
--  `MockClients` type L103-113 — `impl FeedClients for MockClients` — per-template query construction.
+-  `MockClients` type L103-116 — `impl FeedClients for MockClients` — per-template query construction.
 -  `slack` function L104-106 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — per-template query construction.
 -  `calendar` function L107-109 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — per-template query construction.
 -  `gmail` function L110-112 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — per-template query construction.
--  `run_once` function L115-138 — `( template: &dyn FeedTemplate, ctx: &TemplateCtx, params: &TemplateParams, feed_...` — per-template query construction.
--  `ymd_ms` function L140-146 — `(y: i32, m: u32, d: u32) -> i64` — per-template query construction.
--  `read_msg` function L148-154 — `(feed_dir: &PathBuf, day: &str, id: &str) -> Option<Value>` — per-template query construction.
--  `inbox_archive_writes_per_message_partitioned_by_internal_date` function L157-197 — `()` — per-template query construction.
--  `second_run_skips_already_archived_ids` function L200-238 — `()` — per-template query construction.
--  `sender_filter_query_uses_from_operator` function L241-264 — `()` — per-template query construction.
--  `label_archive_query_uses_label_operator` function L267-287 — `()` — per-template query construction.
--  `returns_auth_when_gmail_not_connected` function L290-316 — `()` — per-template query construction.
--  `NoGmail` struct L291 — `-` — per-template query construction.
--  `NoGmail` type L292-302 — `impl FeedClients for NoGmail` — per-template query construction.
--  `slack` function L293-295 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — per-template query construction.
--  `calendar` function L296-298 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — per-template query construction.
--  `gmail` function L299-301 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — per-template query construction.
--  `message_missing_internal_date_is_a_schema_error` function L319-340 — `()` — per-template query construction.
+-  `drive` function L113-115 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — per-template query construction.
+-  `run_once` function L118-141 — `( template: &dyn FeedTemplate, ctx: &TemplateCtx, params: &TemplateParams, feed_...` — per-template query construction.
+-  `ymd_ms` function L143-149 — `(y: i32, m: u32, d: u32) -> i64` — per-template query construction.
+-  `read_msg` function L151-157 — `(feed_dir: &PathBuf, day: &str, id: &str) -> Option<Value>` — per-template query construction.
+-  `inbox_archive_writes_per_message_partitioned_by_internal_date` function L160-200 — `()` — per-template query construction.
+-  `second_run_skips_already_archived_ids` function L203-241 — `()` — per-template query construction.
+-  `sender_filter_query_uses_from_operator` function L244-267 — `()` — per-template query construction.
+-  `label_archive_query_uses_label_operator` function L270-290 — `()` — per-template query construction.
+-  `returns_auth_when_gmail_not_connected` function L293-322 — `()` — per-template query construction.
+-  `NoGmail` struct L294 — `-` — per-template query construction.
+-  `NoGmail` type L295-308 — `impl FeedClients for NoGmail` — per-template query construction.
+-  `slack` function L296-298 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — per-template query construction.
+-  `calendar` function L299-301 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — per-template query construction.
+-  `gmail` function L302-304 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — per-template query construction.
+-  `drive` function L305-307 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — per-template query construction.
+-  `message_missing_internal_date_is_a_schema_error` function L325-346 — `()` — per-template query construction.
 
 #### crates/arawn-feeds/tests/slack_channel_archive.rs
 
@@ -3194,30 +3364,32 @@
 -  `search_messages` function L112-118 — `( &self, _query: &str, _oldest_ts: Option<&str>, ) -> Result<SlackHistoryPage, F...` — every Slack-touching template test will reuse.
 -  `thread_replies` function L120-147 — `( &self, channel_id: &str, parent_ts: &str, oldest_ts: Option<&str>, ) -> Result...` — every Slack-touching template test will reuse.
 -  `MockClients` struct L150-152 — `{ slack: Arc<MockSlackClient> }` — every Slack-touching template test will reuse.
--  `MockClients` type L154-164 — `impl FeedClients for MockClients` — every Slack-touching template test will reuse.
+-  `MockClients` type L154-167 — `impl FeedClients for MockClients` — every Slack-touching template test will reuse.
 -  `slack` function L155-157 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — every Slack-touching template test will reuse.
 -  `calendar` function L158-160 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — every Slack-touching template test will reuse.
 -  `gmail` function L161-163 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — every Slack-touching template test will reuse.
--  `slack_msg` function L166-173 — `(ts: &str, text: &str) -> Value` — every Slack-touching template test will reuse.
--  `read_jsonl` function L177-187 — `(feed_dir: &PathBuf, day: &str) -> Vec<Value>` — Walk a YYYY-MM-DD.jsonl file in `feed_dir` and return all parsed
--  `run_once` function L189-215 — `( template: &dyn FeedTemplate, ctx: &TemplateCtx, params: &TemplateParams, feed_...` — every Slack-touching template test will reuse.
--  `first_run_writes_messages_and_advances_cursor` function L218-266 — `()` — every Slack-touching template test will reuse.
--  `second_run_passes_cursor_and_only_writes_new` function L269-315 — `()` — every Slack-touching template test will reuse.
--  `empty_run_is_a_no_op_with_status` function L318-351 — `()` — every Slack-touching template test will reuse.
--  `messages_partition_across_days` function L354-392 — `()` — every Slack-touching template test will reuse.
--  `run_returns_auth_when_slack_not_connected` function L395-424 — `()` — every Slack-touching template test will reuse.
--  `NoSlack` struct L396 — `-` — every Slack-touching template test will reuse.
--  `NoSlack` type L397-407 — `impl FeedClients for NoSlack` — every Slack-touching template test will reuse.
--  `slack` function L398-400 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — every Slack-touching template test will reuse.
--  `calendar` function L401-403 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — every Slack-touching template test will reuse.
--  `gmail` function L404-406 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — every Slack-touching template test will reuse.
--  `slack_msg_with_replies` function L428-436 — `(ts: &str, text: &str, reply_count: u64) -> Value` — every Slack-touching template test will reuse.
--  `parent_with_replies_seeds_thread_file_and_advances_thread_cursor` function L439-511 — `()` — every Slack-touching template test will reuse.
--  `second_run_advances_thread_cursor_independently` function L514-579 — `()` — every Slack-touching template test will reuse.
--  `channel_archive_works_for_dm_id_passthrough` function L582-614 — `()` — every Slack-touching template test will reuse.
--  `channel_archive_works_for_mpim_id_passthrough` function L617-644 — `()` — every Slack-touching template test will reuse.
--  `classify_helper_resolves_kinds_for_picker_use` function L647-661 — `()` — every Slack-touching template test will reuse.
--  `thread_failure_does_not_block_channel_or_other_threads` function L664-728 — `()` — every Slack-touching template test will reuse.
+-  `drive` function L164-166 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — every Slack-touching template test will reuse.
+-  `slack_msg` function L169-176 — `(ts: &str, text: &str) -> Value` — every Slack-touching template test will reuse.
+-  `read_jsonl` function L180-190 — `(feed_dir: &PathBuf, day: &str) -> Vec<Value>` — Walk a YYYY-MM-DD.jsonl file in `feed_dir` and return all parsed
+-  `run_once` function L192-218 — `( template: &dyn FeedTemplate, ctx: &TemplateCtx, params: &TemplateParams, feed_...` — every Slack-touching template test will reuse.
+-  `first_run_writes_messages_and_advances_cursor` function L221-269 — `()` — every Slack-touching template test will reuse.
+-  `second_run_passes_cursor_and_only_writes_new` function L272-318 — `()` — every Slack-touching template test will reuse.
+-  `empty_run_is_a_no_op_with_status` function L321-354 — `()` — every Slack-touching template test will reuse.
+-  `messages_partition_across_days` function L357-395 — `()` — every Slack-touching template test will reuse.
+-  `run_returns_auth_when_slack_not_connected` function L398-430 — `()` — every Slack-touching template test will reuse.
+-  `NoSlack` struct L399 — `-` — every Slack-touching template test will reuse.
+-  `NoSlack` type L400-413 — `impl FeedClients for NoSlack` — every Slack-touching template test will reuse.
+-  `slack` function L401-403 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — every Slack-touching template test will reuse.
+-  `calendar` function L404-406 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — every Slack-touching template test will reuse.
+-  `gmail` function L407-409 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — every Slack-touching template test will reuse.
+-  `drive` function L410-412 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — every Slack-touching template test will reuse.
+-  `slack_msg_with_replies` function L434-442 — `(ts: &str, text: &str, reply_count: u64) -> Value` — every Slack-touching template test will reuse.
+-  `parent_with_replies_seeds_thread_file_and_advances_thread_cursor` function L445-517 — `()` — every Slack-touching template test will reuse.
+-  `second_run_advances_thread_cursor_independently` function L520-585 — `()` — every Slack-touching template test will reuse.
+-  `channel_archive_works_for_dm_id_passthrough` function L588-620 — `()` — every Slack-touching template test will reuse.
+-  `channel_archive_works_for_mpim_id_passthrough` function L623-650 — `()` — every Slack-touching template test will reuse.
+-  `classify_helper_resolves_kinds_for_picker_use` function L653-667 — `()` — every Slack-touching template test will reuse.
+-  `thread_failure_does_not_block_channel_or_other_threads` function L670-734 — `()` — every Slack-touching template test will reuse.
 
 #### crates/arawn-feeds/tests/slack_dm_archive.rs
 
@@ -3235,20 +3407,22 @@
 -  `auth_test` function L95-97 — `(&self) -> Result<SlackAuthInfo, FeedError>` — channel-archive already exercises.
 -  `search_messages` function L99-105 — `( &self, _query: &str, _oldest_ts: Option<&str>, ) -> Result<SlackHistoryPage, F...` — channel-archive already exercises.
 -  `MockClients` struct L108-110 — `{ slack: Arc<MockSlackClient> }` — channel-archive already exercises.
--  `MockClients` type L112-122 — `impl FeedClients for MockClients` — channel-archive already exercises.
+-  `MockClients` type L112-125 — `impl FeedClients for MockClients` — channel-archive already exercises.
 -  `slack` function L113-115 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — channel-archive already exercises.
 -  `calendar` function L116-118 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — channel-archive already exercises.
 -  `gmail` function L119-121 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — channel-archive already exercises.
--  `dm_msg` function L124-131 — `(ts: &str, text: &str) -> Value` — channel-archive already exercises.
--  `read_jsonl` function L133-143 — `(feed_dir: &PathBuf, day: &str) -> Vec<Value>` — channel-archive already exercises.
--  `run_once` function L145-170 — `( template: &dyn FeedTemplate, ctx: &TemplateCtx, params: &TemplateParams, feed_...` — channel-archive already exercises.
--  `dm_archive_opens_dm_then_writes_messages` function L173-219 — `()` — channel-archive already exercises.
--  `dm_archive_returns_auth_when_slack_not_connected` function L222-251 — `()` — channel-archive already exercises.
--  `NoSlack` struct L223 — `-` — channel-archive already exercises.
--  `NoSlack` type L224-234 — `impl FeedClients for NoSlack` — channel-archive already exercises.
--  `slack` function L225-227 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — channel-archive already exercises.
--  `calendar` function L228-230 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — channel-archive already exercises.
--  `gmail` function L231-233 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — channel-archive already exercises.
+-  `drive` function L122-124 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — channel-archive already exercises.
+-  `dm_msg` function L127-134 — `(ts: &str, text: &str) -> Value` — channel-archive already exercises.
+-  `read_jsonl` function L136-146 — `(feed_dir: &PathBuf, day: &str) -> Vec<Value>` — channel-archive already exercises.
+-  `run_once` function L148-173 — `( template: &dyn FeedTemplate, ctx: &TemplateCtx, params: &TemplateParams, feed_...` — channel-archive already exercises.
+-  `dm_archive_opens_dm_then_writes_messages` function L176-222 — `()` — channel-archive already exercises.
+-  `dm_archive_returns_auth_when_slack_not_connected` function L225-257 — `()` — channel-archive already exercises.
+-  `NoSlack` struct L226 — `-` — channel-archive already exercises.
+-  `NoSlack` type L227-240 — `impl FeedClients for NoSlack` — channel-archive already exercises.
+-  `slack` function L228-230 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — channel-archive already exercises.
+-  `calendar` function L231-233 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — channel-archive already exercises.
+-  `gmail` function L234-236 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — channel-archive already exercises.
+-  `drive` function L237-239 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — channel-archive already exercises.
 
 #### crates/arawn-feeds/tests/slack_my_mentions.rs
 
@@ -3266,22 +3440,24 @@
 -  `auth_test` function L76-79 — `(&self) -> Result<SlackAuthInfo, FeedError>` — - Empty result writes nothing and reports `no-new-items`.
 -  `search_messages` function L81-99 — `( &self, query: &str, oldest_ts: Option<&str>, ) -> Result<SlackHistoryPage, Fee...` — - Empty result writes nothing and reports `no-new-items`.
 -  `MockClients` struct L102-104 — `{ slack: Arc<MockSlackClient> }` — - Empty result writes nothing and reports `no-new-items`.
--  `MockClients` type L106-116 — `impl FeedClients for MockClients` — - Empty result writes nothing and reports `no-new-items`.
+-  `MockClients` type L106-119 — `impl FeedClients for MockClients` — - Empty result writes nothing and reports `no-new-items`.
 -  `slack` function L107-109 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — - Empty result writes nothing and reports `no-new-items`.
 -  `calendar` function L110-112 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — - Empty result writes nothing and reports `no-new-items`.
 -  `gmail` function L113-115 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — - Empty result writes nothing and reports `no-new-items`.
--  `mention_msg` function L118-127 — `(ts: &str, channel: &str, text: &str) -> Value` — - Empty result writes nothing and reports `no-new-items`.
--  `read_jsonl` function L129-140 — `(feed_dir: &PathBuf, day: &str) -> Vec<Value>` — - Empty result writes nothing and reports `no-new-items`.
--  `run_once` function L142-167 — `( template: &dyn FeedTemplate, ctx: &TemplateCtx, params: &TemplateParams, feed_...` — - Empty result writes nothing and reports `no-new-items`.
--  `first_run_resolves_user_id_and_writes_mentions` function L170-215 — `()` — - Empty result writes nothing and reports `no-new-items`.
--  `second_run_uses_cached_user_id_and_dedupes_overlap` function L218-275 — `()` — - Empty result writes nothing and reports `no-new-items`.
--  `empty_run_is_a_no_op` function L278-308 — `()` — - Empty result writes nothing and reports `no-new-items`.
--  `returns_auth_when_slack_not_connected` function L311-338 — `()` — - Empty result writes nothing and reports `no-new-items`.
--  `NoSlack` struct L312 — `-` — - Empty result writes nothing and reports `no-new-items`.
--  `NoSlack` type L313-323 — `impl FeedClients for NoSlack` — - Empty result writes nothing and reports `no-new-items`.
--  `slack` function L314-316 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — - Empty result writes nothing and reports `no-new-items`.
--  `calendar` function L317-319 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — - Empty result writes nothing and reports `no-new-items`.
--  `gmail` function L320-322 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — - Empty result writes nothing and reports `no-new-items`.
+-  `drive` function L116-118 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — - Empty result writes nothing and reports `no-new-items`.
+-  `mention_msg` function L121-130 — `(ts: &str, channel: &str, text: &str) -> Value` — - Empty result writes nothing and reports `no-new-items`.
+-  `read_jsonl` function L132-143 — `(feed_dir: &PathBuf, day: &str) -> Vec<Value>` — - Empty result writes nothing and reports `no-new-items`.
+-  `run_once` function L145-170 — `( template: &dyn FeedTemplate, ctx: &TemplateCtx, params: &TemplateParams, feed_...` — - Empty result writes nothing and reports `no-new-items`.
+-  `first_run_resolves_user_id_and_writes_mentions` function L173-218 — `()` — - Empty result writes nothing and reports `no-new-items`.
+-  `second_run_uses_cached_user_id_and_dedupes_overlap` function L221-278 — `()` — - Empty result writes nothing and reports `no-new-items`.
+-  `empty_run_is_a_no_op` function L281-311 — `()` — - Empty result writes nothing and reports `no-new-items`.
+-  `returns_auth_when_slack_not_connected` function L314-344 — `()` — - Empty result writes nothing and reports `no-new-items`.
+-  `NoSlack` struct L315 — `-` — - Empty result writes nothing and reports `no-new-items`.
+-  `NoSlack` type L316-329 — `impl FeedClients for NoSlack` — - Empty result writes nothing and reports `no-new-items`.
+-  `slack` function L317-319 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — - Empty result writes nothing and reports `no-new-items`.
+-  `calendar` function L320-322 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — - Empty result writes nothing and reports `no-new-items`.
+-  `gmail` function L323-325 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — - Empty result writes nothing and reports `no-new-items`.
+-  `drive` function L326-328 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — - Empty result writes nothing and reports `no-new-items`.
 
 ### crates/arawn-integrations/src/atlassian
 

@@ -4,14 +4,14 @@ level: task
 title: "Drive feed templates — folder-sync + recent"
 short_code: "ARAWN-T-0221"
 created_at: 2026-05-08T21:01:09.972817+00:00
-updated_at: 2026-05-08T21:04:11.901742+00:00
+updated_at: 2026-05-08T22:46:40.029540+00:00
 parent: ARAWN-I-0039
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -36,6 +36,8 @@ Reference: I-0039 Detailed Design; existing `arawn-integrations/src/drive/`.
 ## Type / Priority
 
 - Feature, P1.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

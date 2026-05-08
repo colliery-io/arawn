@@ -17,11 +17,15 @@
 
 use std::sync::Arc;
 
+pub mod atlassian;
 pub mod calendar;
 pub mod drive;
 pub mod gmail;
 pub mod slack;
 
+pub use atlassian::{
+    AtlassianFeedClient, ConfluencePageBody, ConfluencePageMeta, RealAtlassianClient,
+};
 pub use calendar::{CalendarFeedClient, RealCalendarClient};
 pub use drive::{DriveFeedClient, DriveFile, RealDriveClient, export_for, is_unsupported_google_native};
 pub use gmail::{GmailFeedClient, RealGmailClient};
@@ -38,6 +42,7 @@ pub trait FeedClients: Send + Sync {
     fn calendar(&self) -> Option<Arc<dyn CalendarFeedClient>>;
     fn gmail(&self) -> Option<Arc<dyn GmailFeedClient>>;
     fn drive(&self) -> Option<Arc<dyn DriveFeedClient>>;
+    fn atlassian(&self) -> Option<Arc<dyn AtlassianFeedClient>>;
 }
 
 /// No-op `FeedClients`: every provider returns `None`. Useful for
@@ -58,6 +63,9 @@ impl FeedClients for NoopClients {
     fn drive(&self) -> Option<Arc<dyn DriveFeedClient>> {
         None
     }
+    fn atlassian(&self) -> Option<Arc<dyn AtlassianFeedClient>> {
+        None
+    }
 }
 
 /// Production bundle. Built at server boot from the integrations the
@@ -69,6 +77,7 @@ pub struct RealClients {
     calendar: Option<Arc<dyn CalendarFeedClient>>,
     gmail: Option<Arc<dyn GmailFeedClient>>,
     drive: Option<Arc<dyn DriveFeedClient>>,
+    atlassian: Option<Arc<dyn AtlassianFeedClient>>,
 }
 
 impl RealClients {
@@ -107,6 +116,14 @@ impl RealClients {
         self.drive = Some(Arc::new(RealDriveClient::new(integration)));
         self
     }
+
+    pub fn with_atlassian(
+        mut self,
+        integration: Arc<arawn_integrations::atlassian::AtlassianIntegration>,
+    ) -> Self {
+        self.atlassian = Some(Arc::new(RealAtlassianClient::new(integration)));
+        self
+    }
 }
 
 impl FeedClients for RealClients {
@@ -121,5 +138,8 @@ impl FeedClients for RealClients {
     }
     fn drive(&self) -> Option<Arc<dyn DriveFeedClient>> {
         self.drive.clone()
+    }
+    fn atlassian(&self) -> Option<Arc<dyn AtlassianFeedClient>> {
+        self.atlassian.clone()
     }
 }

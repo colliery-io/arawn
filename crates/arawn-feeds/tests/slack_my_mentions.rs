@@ -14,7 +14,7 @@ use async_trait::async_trait;
 use serde_json::{Value, json};
 
 use arawn_feeds::{
-    CalendarFeedClient, DataLayout, DriveFeedClient, FeedClients, FeedError, FeedMeta,
+    AtlassianFeedClient, CalendarFeedClient, DataLayout, DriveFeedClient, FeedClients, FeedError, FeedMeta,
     FeedTemplate, GmailFeedClient, MetaStore, SlackAuthInfo, SlackFeedClient, SlackHistoryPage,
     TemplateCtx, TemplateParams,
 };
@@ -114,6 +114,9 @@ impl FeedClients for MockClients {
         None
     }
     fn drive(&self) -> Option<Arc<dyn DriveFeedClient>> {
+        None
+    }
+    fn atlassian(&self) -> Option<Arc<dyn AtlassianFeedClient>> {
         None
     }
 }
@@ -324,6 +327,9 @@ async fn returns_auth_when_slack_not_connected() {
             None
         }
         fn drive(&self) -> Option<Arc<dyn DriveFeedClient>> {
+            None
+        }
+        fn atlassian(&self) -> Option<Arc<dyn AtlassianFeedClient>> {
             None
         }
     }

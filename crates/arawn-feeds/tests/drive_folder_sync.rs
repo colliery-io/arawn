@@ -9,7 +9,7 @@ use chrono::{DateTime, Utc};
 use serde_json::json;
 
 use arawn_feeds::{
-    CalendarFeedClient, DataLayout, DriveFeedClient, DriveFile, FeedClients, FeedError, FeedMeta,
+    AtlassianFeedClient, CalendarFeedClient, DataLayout, DriveFeedClient, DriveFile, FeedClients, FeedError, FeedMeta,
     FeedTemplate, GmailFeedClient, MetaStore, SlackFeedClient, TemplateCtx, TemplateParams,
 };
 use arawn_feeds::templates::drive::FolderSyncTemplate;
@@ -113,6 +113,9 @@ impl FeedClients for MockClients {
     }
     fn drive(&self) -> Option<Arc<dyn DriveFeedClient>> {
         Some(self.drive.clone())
+    }
+    fn atlassian(&self) -> Option<Arc<dyn AtlassianFeedClient>> {
+        None
     }
 }
 
@@ -373,6 +376,9 @@ async fn returns_auth_when_drive_not_connected() {
             None
         }
         fn drive(&self) -> Option<Arc<dyn DriveFeedClient>> {
+            None
+        }
+        fn atlassian(&self) -> Option<Arc<dyn AtlassianFeedClient>> {
             None
         }
     }

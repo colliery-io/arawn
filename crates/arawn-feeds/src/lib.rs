@@ -36,10 +36,11 @@ pub mod types;
 
 pub use cadence::{MIN_CADENCE, validate_cadence};
 pub use clients::{
-    CalendarFeedClient, ChannelKind, DriveFeedClient, DriveFile, FeedClients, GmailFeedClient,
-    NoopClients, RealCalendarClient, RealClients, RealDriveClient, RealGmailClient,
-    RealSlackClient, SlackAuthInfo, SlackFeedClient, SlackHistoryPage, classify_channel_id,
-    export_for, is_unsupported_google_native,
+    AtlassianFeedClient, CalendarFeedClient, ChannelKind, ConfluencePageBody, ConfluencePageMeta,
+    DriveFeedClient, DriveFile, FeedClients, GmailFeedClient, NoopClients, RealAtlassianClient,
+    RealCalendarClient, RealClients, RealDriveClient, RealGmailClient, RealSlackClient,
+    SlackAuthInfo, SlackFeedClient, SlackHistoryPage, classify_channel_id, export_for,
+    is_unsupported_google_native,
 };
 pub use dispatch::{FeedDispatchTask, FeedRuntimeContext, run_feed};
 pub use runtime::{CloacinaRunner, FeedRuntime, feed_workflow_name, start};
