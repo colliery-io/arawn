@@ -17,8 +17,10 @@
 
 use std::sync::Arc;
 
+pub mod calendar;
 pub mod slack;
 
+pub use calendar::{CalendarFeedClient, RealCalendarClient};
 pub use slack::{
     ChannelKind, RealSlackClient, SlackAuthInfo, SlackFeedClient, SlackHistoryPage,
     classify_channel_id,
@@ -29,6 +31,7 @@ pub use slack::{
 /// user and `None` for ones they're not connected to.
 pub trait FeedClients: Send + Sync {
     fn slack(&self) -> Option<Arc<dyn SlackFeedClient>>;
+    fn calendar(&self) -> Option<Arc<dyn CalendarFeedClient>>;
 }
 
 /// No-op `FeedClients`: every provider returns `None`. Useful for
@@ -40,6 +43,9 @@ impl FeedClients for NoopClients {
     fn slack(&self) -> Option<Arc<dyn SlackFeedClient>> {
         None
     }
+    fn calendar(&self) -> Option<Arc<dyn CalendarFeedClient>> {
+        None
+    }
 }
 
 /// Production bundle. Built at server boot from the integrations the
@@ -48,6 +54,7 @@ impl FeedClients for NoopClients {
 #[derive(Default)]
 pub struct RealClients {
     slack: Option<Arc<dyn SlackFeedClient>>,
+    calendar: Option<Arc<dyn CalendarFeedClient>>,
 }
 
 impl RealClients {
@@ -62,10 +69,21 @@ impl RealClients {
         self.slack = Some(Arc::new(RealSlackClient::new(integration)));
         self
     }
+
+    pub fn with_calendar(
+        mut self,
+        integration: Arc<arawn_integrations::calendar::GoogleCalendarIntegration>,
+    ) -> Self {
+        self.calendar = Some(Arc::new(RealCalendarClient::new(integration)));
+        self
+    }
 }
 
 impl FeedClients for RealClients {
     fn slack(&self) -> Option<Arc<dyn SlackFeedClient>> {
         self.slack.clone()
+    }
+    fn calendar(&self) -> Option<Arc<dyn CalendarFeedClient>> {
+        self.calendar.clone()
     }
 }

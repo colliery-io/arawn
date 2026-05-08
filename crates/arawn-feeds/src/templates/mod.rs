@@ -1,5 +1,6 @@
 //! Concrete `FeedTemplate` impls organized per provider.
 
+pub mod calendar;
 pub mod slack;
 pub mod stub;
 
@@ -16,5 +17,6 @@ pub fn default_registry() -> FeedTemplateRegistry {
     r.register(Arc::new(slack::ChannelArchiveTemplate));
     r.register(Arc::new(slack::DmArchiveTemplate));
     r.register(Arc::new(slack::MyMentionsTemplate));
+    r.register(Arc::new(calendar::UpcomingArchiveTemplate));
     r
 }

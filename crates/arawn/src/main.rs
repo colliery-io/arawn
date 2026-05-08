@@ -467,6 +467,9 @@ async fn main() -> Result<()> {
                 &config.integrations.google,
             )
         });
+        let calendar_integration_for_feeds: Option<
+            Arc<arawn_integrations::calendar::GoogleCalendarIntegration>,
+        >;
         if let Some((client_id, client_secret)) = gcal_creds {
             let calendar = Arc::new(arawn_integrations::calendar::GoogleCalendarIntegration::new(
                 std::path::PathBuf::from(&data_dir),
@@ -478,7 +481,9 @@ async fn main() -> Result<()> {
             registry.register(Box::new(arawn_integrations::calendar::CalendarCreateEventTool::new(Arc::clone(&calendar))));
             registry.register(Box::new(arawn_integrations::calendar::CalendarFindConflictsTool::new(Arc::clone(&calendar))));
             info!("Google Calendar integration registered (3 tools)");
+            calendar_integration_for_feeds = Some(calendar);
         } else {
+            calendar_integration_for_feeds = None;
             debug!(
                 "Google Calendar integration skipped — set ARAWN_GCAL_CLIENT_ID + \
                  ARAWN_GCAL_CLIENT_SECRET (env) or [integrations.calendar] / \
@@ -629,6 +634,9 @@ async fn main() -> Result<()> {
                     let mut clients = arawn_feeds::RealClients::new();
                     if let Some(slack) = slack_integration_for_feeds.as_ref() {
                         clients = clients.with_slack(Arc::clone(slack));
+                    }
+                    if let Some(cal) = calendar_integration_for_feeds.as_ref() {
+                        clients = clients.with_calendar(Arc::clone(cal));
                     }
                     let clients: Arc<dyn arawn_feeds::FeedClients> = Arc::new(clients);
 
