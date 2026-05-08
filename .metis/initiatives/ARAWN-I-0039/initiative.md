@@ -168,9 +168,22 @@ Each template owns its own layout convention. Common rules:
 - Time-partitioned (`YYYY-MM-DD/`) for high-volume append (Slack channels, emails). Per-record (`per-id/`) for low-volume but mutable (Jira issues with comments).
 - Native-format mirroring for content stores (Drive). The agent's existing `read` / `grep` / `glob` tools just work on these.
 
+### Cloacina coupling — feeds are NOT pipelines
+
+Decision (locked 2026-05-08): **feeds are cloacina cron schedules over per-feed in-process workflows that wrap a single generic dispatcher task.** They are *not* compiled `.cloacina` packages.
+
+For each configured feed we:
+
+1. Register a one-task workflow with `Runtime::register_workflow(format!("feed::{feed_id}"), || WorkflowBuilder::new(...).add_task(Arc::new(FeedDispatchTask { feed_id })).build()?)`. The closure captures the feed's id; the inner `FeedDispatchTask` looks up the template + params from the `feeds` table at run-time.
+2. Register a cron schedule via `runner.register_cron_workflow(&format!("feed::{feed_id}"), &cadence, "UTC")`. cloacina's catchup/retry/audit machinery applies per-feed automatically because each feed has a distinct `workflow_name`.
+
+Only one Rust `Task` impl exists (`FeedDispatchTask`); workflows are thin wrappers naming the feed. Adding a new template is one Rust file in `arawn-feeds/src/templates/<provider>/<name>.rs`. No cargo project per feed, no `.cloacina` archive, no reconciler involvement.
+
+Why not "one shared `arawn_feeds_dispatch` workflow with feed_id passed via context"? `register_cron_workflow` doesn't accept a per-schedule context payload — at fire time the workflow gets a fresh empty context. Without a per-feed `workflow_name` we'd lose audit clarity and have no clean way to recover which feed triggered.
+
 ### Scheduling — cloacina with catchup
 
-arawn already runs cloacina as the workflow runner (`arawn-workflow` crate, started in `main.rs` server bootstrap). We register each configured feed as a cloacina cron task with the feed's cadence as the cron expression. Cloacina handles:
+arawn already runs cloacina as the workflow runner (`arawn-workflow` crate, started in `main.rs` server bootstrap). Each configured feed registers as described above. Cloacina handles:
 
 - **Catchup**: if the machine was asleep at 3am when an hourly feed was due, cloacina's recovery service picks it up on next start. Configurable per-feed (`catchup_max_misses` — collapse N missed runs into one execution rather than running it N times back-to-back).
 - **Single-instance enforcement**: a long-running run won't double-trigger if the next tick fires.

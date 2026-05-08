@@ -192,4 +192,31 @@ Land the foundation of the I-0039 feed system: a new `arawn-feeds` crate with th
 
 ## Status Updates **[REQUIRED]**
 
-*To be added during implementation*
+### 2026-05-08 — Foundation landed; main.rs wiring + RealSlackClient adapter remain
+
+**Done so far** (31 tests green, workspace + clippy clean):
+
+- New `arawn-feeds` crate — error / types / cadence / clients (with mock seam) / layout / meta / registry / store / template / dispatch / runtime / templates modules.
+- V2 migration in arawn-storage: `feeds` table.
+- `FeedTemplate` trait: pure Rust trait, async run signature `(ctx, params, feed_dir, &cursor) -> RunOutcome`. Templates own all on-disk layout under their feed dir; runtime touches only `meta.json`.
+- `FeedClients` mock-injection seam: per-provider client traits (`SlackFeedClient`) abstract upstream surfaces; production wraps `arawn-integrations`, tests use fakes.
+- `MetaStore` with atomic-rename writes (no torn `meta.json` on crash).
+- 15-minute cadence floor enforced via `validate_cadence` (computes 5 next fire-times against `cloacina::CronEvaluator`, rejects any pair under floor).
+- `FeedDispatchTask` impls `cloacina::Task`. `run_feed(feed_id, runtime_ctx)` is the trait body, also exposed for non-cloacina tests. Persists `last_run_at` / `last_status` / `run_count` even on failure (so operators see the latest error in `meta.json`).
+- `arawn_feeds::start(runner, conn, layout, registry, clients)` reads every enabled feed, registers a per-feed workflow via `Runtime::register_workflow` with a closure capturing the feed_id, then schedules it with `register_cron_workflow`. `FeedRuntime::register_feed_runtime(&FeedRecord)` does the same for dynamic `/watch` adds.
+- `arawn-workflow::WorkflowRunner::cloacina_runner()` exposes `Arc<DefaultRunner>` so `arawn-feeds` can register without depending on `arawn-workflow` directly.
+- One real ingestor end-to-end: **`slack/channel-archive`**. Mock `SlackFeedClient` harness in `tests/slack_channel_archive.rs` exercises:
+  - first run writes JSONL + advances cursor
+  - second run carries cursor through, appends only delta
+  - empty-result returns `no-new-items` status without touching cursor
+  - cross-day messages partition into separate `YYYY-MM-DD.jsonl` files
+  - missing slack integration → `FeedError::Auth`
+- One stub template `stub/echo` exercises the runtime end-to-end without any provider.
+
+**Remaining for T-0214 to be truly complete:**
+
+1. **`RealSlackClient` adapter** — the production impl of `SlackFeedClient` wrapping the existing slack-morphism client surface in `arawn-integrations`. Roughly 100 LOC: implement `resolve_channel` + `channel_history`. Lives in `arawn-feeds/src/clients/real.rs` (or `arawn-integrations/src/slack/feed_client.rs` — TBD when we look at the slack-morphism API surface).
+2. **Server boot wiring** in `crates/arawn/src/main.rs`: open a `Connection` to `arawn.db` for the feeds runtime, build the registry + real clients bundle, call `arawn_feeds::start(...)` after the workflow runner is up. Need the `RealSlackClient` adapter from (1) before this lands.
+3. **Integration test through real cloacina** — exercise the full path from `register_cron_workflow` via a manual fire (not waiting 15 min for cron). cloacina exposes a way to trigger a workflow on demand for tests; need to verify the API.
+
+Stopping here as a coherent checkpoint: foundational code is right, tested, and architecture is locked. The remaining work is concrete adapter + boot wiring rather than open design questions.

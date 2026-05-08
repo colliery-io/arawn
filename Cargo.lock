@@ -262,6 +262,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "arawn-feeds"
+version = "0.1.0"
+dependencies = [
+ "arawn-core",
+ "arawn-storage",
+ "async-trait",
+ "chrono",
+ "cloacina",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "arawn-integrations"
 version = "0.1.0"
 dependencies = [

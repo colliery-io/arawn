@@ -98,6 +98,13 @@ impl WorkflowRunner {
     pub fn inner(&self) -> &DefaultRunner {
         &self.runner
     }
+
+    /// Hand out an `Arc<DefaultRunner>` for callers that need to own
+    /// a long-lived handle (e.g. arawn-feeds registering cron tasks
+    /// for each configured feed).
+    pub fn cloacina_runner(&self) -> std::sync::Arc<DefaultRunner> {
+        std::sync::Arc::new(self.runner.clone())
+    }
 }
 
 #[derive(Debug, thiserror::Error)]
