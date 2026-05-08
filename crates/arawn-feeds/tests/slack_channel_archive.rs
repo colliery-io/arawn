@@ -16,8 +16,9 @@ use async_trait::async_trait;
 use serde_json::{Value, json};
 
 use arawn_feeds::{
-    CalendarFeedClient, DataLayout, FeedClients, FeedError, FeedMeta, FeedTemplate, MetaStore,
-    SlackAuthInfo, SlackFeedClient, SlackHistoryPage, TemplateCtx, TemplateParams,
+    CalendarFeedClient, DataLayout, FeedClients, FeedError, FeedMeta, FeedTemplate,
+    GmailFeedClient, MetaStore, SlackAuthInfo, SlackFeedClient, SlackHistoryPage, TemplateCtx,
+    TemplateParams,
 };
 use arawn_feeds::templates::slack::ChannelArchiveTemplate;
 
@@ -155,6 +156,9 @@ impl FeedClients for MockClients {
         Some(self.slack.clone())
     }
     fn calendar(&self) -> Option<Arc<dyn CalendarFeedClient>> {
+        None
+    }
+    fn gmail(&self) -> Option<Arc<dyn GmailFeedClient>> {
         None
     }
 }
@@ -395,6 +399,9 @@ async fn run_returns_auth_when_slack_not_connected() {
             None
         }
         fn calendar(&self) -> Option<Arc<dyn CalendarFeedClient>> {
+            None
+        }
+        fn gmail(&self) -> Option<Arc<dyn GmailFeedClient>> {
             None
         }
     }

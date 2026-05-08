@@ -36,8 +36,9 @@ pub mod types;
 
 pub use cadence::{MIN_CADENCE, validate_cadence};
 pub use clients::{
-    CalendarFeedClient, ChannelKind, FeedClients, NoopClients, RealCalendarClient, RealClients,
-    RealSlackClient, SlackAuthInfo, SlackFeedClient, SlackHistoryPage, classify_channel_id,
+    CalendarFeedClient, ChannelKind, FeedClients, GmailFeedClient, NoopClients,
+    RealCalendarClient, RealClients, RealGmailClient, RealSlackClient, SlackAuthInfo,
+    SlackFeedClient, SlackHistoryPage, classify_channel_id,
 };
 pub use dispatch::{FeedDispatchTask, FeedRuntimeContext, run_feed};
 pub use runtime::{CloacinaRunner, FeedRuntime, feed_workflow_name, start};

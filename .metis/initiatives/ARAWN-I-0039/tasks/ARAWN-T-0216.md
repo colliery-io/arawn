@@ -168,4 +168,84 @@ Depends on: T-0214 (runtime).
 
 ## Status Updates **[REQUIRED]**
 
-*To be added during implementation*
+### 2026-05-08 — calendar/upcoming-archive landed (commit 30f0576)
+
+Calendar half of T-0216 done. First Google-side ingestor — proves the
+cross-provider `*FeedClient` trait pattern (`CalendarFeedClient`
+mirrors `SlackFeedClient`).
+
+**Departures from the original AC** (deliberate, see commit body):
+
+- Storage shape changed from `<feed_id>/<event_id>.json` flat to
+  `<feed_id>/events/<event_id>.json` (the `events/` subdir keeps
+  meta.json visually separate from the per-event archive).
+- `days_ahead` param renamed `window_days` (matches "rolling window
+  of events" framing better than "days ahead from today"). Capped
+  at 1..=60 to prevent runaway-window feeds.
+- No `updatedMin` cursor — full-window fetch each run. At 30-min
+  cadence × ~50 events/window the API cost is trivial, and it
+  sidesteps syncToken expiration / 410-fallback. Cursor is now
+  informational only (`last_synced_at`).
+- Cancelled events preserved with status field round-trip (rather
+  than dropped) so they don't silently disappear between runs.
+
+**Tests**: 6 integration tests covering write semantics, update
+overwrite, cancelled-event preservation, param plumbing, auth
+error, and empty-window no-op. 68 arawn-feeds tests green;
+workspace + clippy clean.
+
+### 2026-05-08 — gmail/{inbox,sender,label}-archive landed
+
+All three Gmail templates done in one pass plus a shared
+`archive_query` helper. Each template is ~60 LOC; the actual
+fetch/dedupe/write logic lives once in `templates/gmail/common.rs`.
+
+**Trait surface** (`GmailFeedClient`): `list_message_ids(query,
+max)` + `get_message(id)`. Templates own query construction; trait
+stays provider-agnostic and trivial to mock.
+
+**Storage**: `<feed_dir>/YYYY-MM-DD/<message_id>.json`, partitioned
+by Gmail's `internalDate` (canonical send time, not fetch time).
+One JSON file per message — random-access by id is the read
+pattern, and per-message bodies are too big to want JSONL append.
+Atomic write via sibling temp + rename.
+
+**Cursor**: `{ latest_internal_date }` (i64 ms). Used to short-
+circuit the per-message check and advance monotonically. Once the
+helper hits a message with `internalDate <= prior_latest`, it
+breaks out — Gmail returns ids most-recent-first.
+
+**Idempotence**: before the per-message `messages.get` call, the
+helper probes every day partition under `feed_dir` for an existing
+`<id>.json`. If found, the API call is skipped entirely. Re-runs
+become cheap, and the archive is robust to a wiped cursor.
+
+**Per-template queries**:
+- `inbox-archive`: `in:inbox newer_than:Nd` (default N=7,
+  cadence 15m).
+- `sender-filter`: `from:"<sender>" newer_than:Nd` (default N=14,
+  cadence 30m). Quoted to survive shell-y addresses.
+- `label-archive`: `label:"<label>" newer_than:Nd` (default N=30,
+  cadence 30m). No registration-time existence check — Gmail's
+  search returns nothing for unknown labels, and labels can mutate
+  out-of-band; cheaper to let the feed run as a no-op.
+
+**Departure from AC**: original called for `users.history.list`
+delta + `messages.list` fallback. Replaced with full-query +
+on-disk dedupe. Reasoning: simpler, removes the historyId-
+expiration branch entirely, and the per-id file probe makes the
+delta-by-API approach unnecessary. `historyId` can be added later
+as an optimization if Gmail quota becomes a concern.
+
+**Tests**: 6 integration tests covering inbox per-day
+partitioning, second-run skip-existing, query construction for
+each template, auth error, and missing-internalDate schema error.
+
+**Production wiring**: hoisted Gmail Arc the same way as Slack and
+Calendar; `RealClients::with_gmail(...)` picks it up. 80
+arawn-feeds tests green; workspace + clippy clean.
+
+**Still pending under T-0216**: auto-create on `/connect gmail` /
+`/connect google_calendar`. Deferred to T-0219 (the management UX
+slash commands), where the auto-creation hook makes more sense
+alongside `/feeds` listing.

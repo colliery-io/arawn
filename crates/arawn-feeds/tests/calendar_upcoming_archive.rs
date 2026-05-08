@@ -15,8 +15,8 @@ use chrono::{DateTime, Utc};
 use serde_json::{Value, json};
 
 use arawn_feeds::{
-    CalendarFeedClient, DataLayout, FeedClients, FeedError, FeedMeta, FeedTemplate, MetaStore,
-    SlackFeedClient, TemplateCtx, TemplateParams,
+    CalendarFeedClient, DataLayout, FeedClients, FeedError, FeedMeta, FeedTemplate,
+    GmailFeedClient, MetaStore, SlackFeedClient, TemplateCtx, TemplateParams,
 };
 use arawn_feeds::templates::calendar::UpcomingArchiveTemplate;
 
@@ -64,6 +64,9 @@ impl FeedClients for MockClients {
     }
     fn calendar(&self) -> Option<Arc<dyn CalendarFeedClient>> {
         Some(self.calendar.clone())
+    }
+    fn gmail(&self) -> Option<Arc<dyn GmailFeedClient>> {
+        None
     }
 }
 
@@ -269,6 +272,9 @@ async fn returns_auth_when_calendar_not_connected() {
             None
         }
         fn calendar(&self) -> Option<Arc<dyn CalendarFeedClient>> {
+            None
+        }
+        fn gmail(&self) -> Option<Arc<dyn GmailFeedClient>> {
             None
         }
     }

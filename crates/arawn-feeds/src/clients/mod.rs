@@ -18,9 +18,11 @@
 use std::sync::Arc;
 
 pub mod calendar;
+pub mod gmail;
 pub mod slack;
 
 pub use calendar::{CalendarFeedClient, RealCalendarClient};
+pub use gmail::{GmailFeedClient, RealGmailClient};
 pub use slack::{
     ChannelKind, RealSlackClient, SlackAuthInfo, SlackFeedClient, SlackHistoryPage,
     classify_channel_id,
@@ -32,6 +34,7 @@ pub use slack::{
 pub trait FeedClients: Send + Sync {
     fn slack(&self) -> Option<Arc<dyn SlackFeedClient>>;
     fn calendar(&self) -> Option<Arc<dyn CalendarFeedClient>>;
+    fn gmail(&self) -> Option<Arc<dyn GmailFeedClient>>;
 }
 
 /// No-op `FeedClients`: every provider returns `None`. Useful for
@@ -46,6 +49,9 @@ impl FeedClients for NoopClients {
     fn calendar(&self) -> Option<Arc<dyn CalendarFeedClient>> {
         None
     }
+    fn gmail(&self) -> Option<Arc<dyn GmailFeedClient>> {
+        None
+    }
 }
 
 /// Production bundle. Built at server boot from the integrations the
@@ -55,6 +61,7 @@ impl FeedClients for NoopClients {
 pub struct RealClients {
     slack: Option<Arc<dyn SlackFeedClient>>,
     calendar: Option<Arc<dyn CalendarFeedClient>>,
+    gmail: Option<Arc<dyn GmailFeedClient>>,
 }
 
 impl RealClients {
@@ -77,6 +84,14 @@ impl RealClients {
         self.calendar = Some(Arc::new(RealCalendarClient::new(integration)));
         self
     }
+
+    pub fn with_gmail(
+        mut self,
+        integration: Arc<arawn_integrations::gmail::GmailIntegration>,
+    ) -> Self {
+        self.gmail = Some(Arc::new(RealGmailClient::new(integration)));
+        self
+    }
 }
 
 impl FeedClients for RealClients {
@@ -85,5 +100,8 @@ impl FeedClients for RealClients {
     }
     fn calendar(&self) -> Option<Arc<dyn CalendarFeedClient>> {
         self.calendar.clone()
+    }
+    fn gmail(&self) -> Option<Arc<dyn GmailFeedClient>> {
+        self.gmail.clone()
     }
 }

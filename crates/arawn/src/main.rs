@@ -432,6 +432,9 @@ async fn main() -> Result<()> {
                 &config.integrations.google,
             )
         });
+        let gmail_integration_for_feeds: Option<
+            Arc<arawn_integrations::gmail::GmailIntegration>,
+        >;
         if let Some((client_id, client_secret)) = gmail_creds {
             let gmail = Arc::new(arawn_integrations::gmail::GmailIntegration::new(
                 std::path::PathBuf::from(&data_dir),
@@ -445,7 +448,9 @@ async fn main() -> Result<()> {
             registry.register(Box::new(arawn_integrations::gmail::GmailSendTool::new(Arc::clone(&gmail))));
             registry.register(Box::new(arawn_integrations::gmail::GmailMarkReadTool::new(Arc::clone(&gmail))));
             info!("Gmail integration registered (5 tools)");
+            gmail_integration_for_feeds = Some(gmail);
         } else {
+            gmail_integration_for_feeds = None;
             debug!(
                 "Gmail integration skipped — set ARAWN_GMAIL_CLIENT_ID + \
                  ARAWN_GMAIL_CLIENT_SECRET (env) or [integrations.gmail] (config) \
@@ -637,6 +642,9 @@ async fn main() -> Result<()> {
                     }
                     if let Some(cal) = calendar_integration_for_feeds.as_ref() {
                         clients = clients.with_calendar(Arc::clone(cal));
+                    }
+                    if let Some(gm) = gmail_integration_for_feeds.as_ref() {
+                        clients = clients.with_gmail(Arc::clone(gm));
                     }
                     let clients: Arc<dyn arawn_feeds::FeedClients> = Arc::new(clients);
 
