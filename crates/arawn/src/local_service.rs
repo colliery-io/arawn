@@ -1293,6 +1293,7 @@ impl ArawnService for LocalService {
         let notice_tx = self.notice_tx.clone();
         let service_name = service.to_string();
         let integration_for_task = Arc::clone(&integration);
+        let feed_runtime_for_task = self.feed_runtime.clone();
 
         tokio::spawn(async move {
             let ctx = OAuthFlowCtx {
@@ -1301,7 +1302,8 @@ impl ArawnService for LocalService {
                 notice_tx: notice_tx.clone(),
             };
             let result = integration_for_task.connect(&ctx).await;
-            let notice = match result {
+            let succeeded = result.is_ok();
+            let notice = match &result {
                 Ok(()) => arawn_service::ServerNotice {
                     level: "info".into(),
                     category: "integration".into(),
@@ -1316,6 +1318,55 @@ impl ArawnService for LocalService {
                 },
             };
             let _ = notice_tx.send(notice);
+
+            // Auto-create the personal default feed for this service,
+            // if one is defined and the feeds runtime is available.
+            // Idempotent: silently swallows the UNIQUE-constraint
+            // duplicate when the feed already exists.
+            if succeeded {
+                let runtime = feed_runtime_for_task.read().unwrap().clone();
+                if let Some(runtime) = runtime
+                    && let Some((template, feed_id)) = default_feed_for_service(&service_name)
+                {
+                    match runtime
+                        .register_feed_dynamic(
+                            template,
+                            feed_id,
+                            arawn_feeds::TemplateParams::default(),
+                            None,
+                        )
+                        .await
+                    {
+                        Ok(_) => {
+                            let _ = notice_tx.send(arawn_service::ServerNotice {
+                                level: "info".into(),
+                                category: "feeds".into(),
+                                message: format!(
+                                    "auto-registered {template} as `{feed_id}` after \
+                                     /connect {service_name}"
+                                ),
+                                timestamp: chrono::Utc::now().to_rfc3339(),
+                            });
+                        }
+                        // Existing feed → silent. Anything else gets
+                        // surfaced so the user knows the auto-create
+                        // didn't take.
+                        Err(arawn_feeds::FeedError::Storage(msg))
+                            if msg.contains("UNIQUE")
+                                || msg.contains("already exists") => {}
+                        Err(e) => {
+                            let _ = notice_tx.send(arawn_service::ServerNotice {
+                                level: "warn".into(),
+                                category: "feeds".into(),
+                                message: format!(
+                                    "auto-create {template} for {service_name} failed: {e}"
+                                ),
+                                timestamp: chrono::Utc::now().to_rfc3339(),
+                            });
+                        }
+                    }
+                }
+            }
         });
 
         // Wait briefly for the integration to publish its auth URL.
@@ -1464,6 +1515,22 @@ impl ArawnService for LocalService {
     }
 }
 
+/// Personal default feed registered automatically the first time
+/// the user runs `/connect <service>`. None means "this integration
+/// has no auto-feed; users must `/watch` explicitly."
+///
+/// Returns `(template_name, feed_id)`.
+fn default_feed_for_service(service: &str) -> Option<(&'static str, &'static str)> {
+    match service {
+        "slack" => Some(("slack/my-mentions", "me")),
+        "gmail" => Some(("gmail/inbox-archive", "me")),
+        "google_calendar" => Some(("calendar/upcoming-archive", "primary")),
+        "google_drive" => Some(("drive/recent", "me")),
+        "atlassian" => Some(("jira/assignee-tracker", "me")),
+        _ => None,
+    }
+}
+
 async fn current_summary(
     runtime: &arawn_feeds::FeedRuntime,
     feed_id: &str,
@@ -1563,5 +1630,45 @@ fn first_sentence(s: &str) -> String {
         clean[..=pos].to_string()
     } else {
         clean
+    }
+}
+
+#[cfg(test)]
+mod feed_default_tests {
+    use super::default_feed_for_service;
+
+    #[test]
+    fn known_services_each_have_a_default_feed() {
+        // Sanity: every integration we ship a personal feed for is
+        // reachable from the auto-create map. If we add a sixth
+        // integration this test won't fail — it's a snapshot, not an
+        // exhaustiveness check — but it fences the existing five
+        // against typos.
+        assert_eq!(
+            default_feed_for_service("slack"),
+            Some(("slack/my-mentions", "me"))
+        );
+        assert_eq!(
+            default_feed_for_service("gmail"),
+            Some(("gmail/inbox-archive", "me"))
+        );
+        assert_eq!(
+            default_feed_for_service("google_calendar"),
+            Some(("calendar/upcoming-archive", "primary"))
+        );
+        assert_eq!(
+            default_feed_for_service("google_drive"),
+            Some(("drive/recent", "me"))
+        );
+        assert_eq!(
+            default_feed_for_service("atlassian"),
+            Some(("jira/assignee-tracker", "me"))
+        );
+    }
+
+    #[test]
+    fn unknown_service_has_no_default_feed() {
+        assert!(default_feed_for_service("zoom").is_none());
+        assert!(default_feed_for_service("").is_none());
     }
 }

@@ -250,7 +250,36 @@ Subcommand path landed end-to-end. Modal upgrade deferred to slice 2b — chat-l
 
 132 arawn-feeds tests + 148 arawn-tui tests green. Workspace + clippy clean.
 
-**Remaining slices**:
-- Slice 2b (later, optional): full ratatui modal with `p`/`r`/`d` keybindings on top of the same backend. Deferred — chat-line UX is functional and the modal is pure sugar.
-- Slice 3: discovery pickers (Slack channels, Jira projects, Confluence spaces, Drive folders).
-- Slice 4: auto-create on `/connect` — absorbs deferred bits from T-0220 / T-0216 / T-0221 / T-0223.
+### 2026-05-08 — slice 4: auto-create personal feeds on `/connect`
+
+Closes the deferred auto-create bits from T-0220, T-0216, T-0221, T-0223. Default-feed mapping lives at the service layer (`local_service::default_feed_for_service`), so the post-OAuth `tokio::spawn` task in `start_oauth_flow` handles auto-registration the moment the integration's `connect()` returns Ok.
+
+**Mapping**:
+- `slack` → `slack/my-mentions` `me`
+- `gmail` → `gmail/inbox-archive` `me`
+- `google_calendar` → `calendar/upcoming-archive` `primary`
+- `google_drive` → `drive/recent` `me`
+- `atlassian` → `jira/assignee-tracker` `me`
+
+**Idempotence**: a re-`/connect` triggers the same auto-create path, but the second `register_feed_dynamic` call hits the `feeds.id` UNIQUE constraint and fails. The post-spawn handler matches that specific error variant and treats it as a no-op (no notice). Anything else surfaces as a `[feeds]` warn-level ServerNotice so the user knows auto-create didn't take.
+
+**Failure isolation**: the auto-create runs *after* the integration's "connected" notice is broadcast. If feeds runtime is unavailable (workflow runner didn't start) or the auto-create fails for any other reason, the integration is still connected — feeds are sugar on top, not a gate.
+
+**Tests** (3 new):
+- `local_service::feed_default_tests::known_services_each_have_a_default_feed` — fences the existing five mappings against typos.
+- `local_service::feed_default_tests::unknown_service_has_no_default_feed`.
+- `tests/dynamic_register::dynamic_register_is_idempotent_via_unique_constraint` — backstop for the auto-create no-op path: registering the same feed twice surfaces a UNIQUE-constraint Storage error.
+
+**T-0219 status**:
+- ✅ Slice 1: non-interactive `/watch` + read-only `/feeds`.
+- ✅ Slice 2: pause / resume / decommission via `/feeds <subcmd>`.
+- ✅ Slice 4: auto-create personal feeds on `/connect`.
+- ⏭ **Slice 3 (discovery pickers) deferred to a separate task.** Pickers are a substantial standalone UX feature — each provider needs:
+  - A `discover()` method on its `*FeedClient` trait + the live RPC route.
+  - A ratatui modal with key-driven filter / select.
+  - Per-provider response shapes (channel list vs project list vs folder enumerator).
+  - Slice 1's text-mode `/watch <template> <feed_id> k=v` form is fully functional in the meantime; pickers are sugar over that.
+
+134 arawn-feeds tests + 148 arawn-tui tests + 33 arawn lib tests green. `angreal check workspace` and `angreal check clippy` clean.
+
+I-0039 is now substantially complete: 12 templates over 5 providers, full runtime registration + management UX, auto-create on connect. Discovery pickers (T-0224 — separate, opens later) and end-to-end UAT (T-0218) are the remaining I-0039 items.

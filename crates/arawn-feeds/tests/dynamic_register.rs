@@ -284,6 +284,63 @@ async fn pause_unknown_feed_returns_invalid_params() {
 }
 
 #[tokio::test]
+async fn dynamic_register_is_idempotent_via_unique_constraint() {
+    // Slice-4 backstop: calling register twice for the same feed_id
+    // surfaces a Storage error containing UNIQUE — the auto-create
+    // path on /connect leans on this to be a no-op when the user
+    // re-runs /connect.
+    let tmp = tempfile::tempdir().unwrap();
+    let data_dir = tmp.path().to_path_buf();
+    let runner_db = data_dir.join("cloacina.db");
+    let runner_url = format!("sqlite://{}", runner_db.display());
+    let cfg = cloacina::DefaultRunnerConfig::builder()
+        .enable_cron_scheduling(true)
+        .enable_registry_reconciler(false)
+        .max_concurrent_tasks(2)
+        .build()
+        .unwrap();
+    let runner = Arc::new(
+        DefaultRunner::with_config(&runner_url, cfg)
+            .await
+            .unwrap(),
+    );
+    let conn = Connection::open(data_dir.join("feeds.db")).unwrap();
+    migrate(&conn);
+    let conn = Arc::new(Mutex::new(conn));
+    let layout = Arc::new(DataLayout::new(&data_dir));
+    let registry = Arc::new(arawn_feeds::default_registry());
+    let clients: Arc<dyn FeedClients> = Arc::new(NoopClients);
+    let runtime = arawn_feeds::start(runner, conn, layout, registry, clients)
+        .await
+        .unwrap();
+
+    runtime
+        .register_feed_dynamic(
+            "stub/echo",
+            "demo",
+            TemplateParams::default(),
+            None,
+        )
+        .await
+        .unwrap();
+
+    let err = runtime
+        .register_feed_dynamic(
+            "stub/echo",
+            "demo",
+            TemplateParams::default(),
+            None,
+        )
+        .await
+        .unwrap_err();
+    let msg = err.to_string();
+    assert!(
+        msg.contains("UNIQUE") || msg.to_lowercase().contains("already"),
+        "expected duplicate-key error, got: {msg}"
+    );
+}
+
+#[tokio::test]
 async fn dynamic_register_rolls_back_on_unknown_template() {
     let tmp = tempfile::tempdir().unwrap();
     let data_dir = tmp.path().to_path_buf();
