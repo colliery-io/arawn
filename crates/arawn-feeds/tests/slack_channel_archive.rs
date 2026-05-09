@@ -117,6 +117,10 @@ impl SlackFeedClient for MockSlackClient {
         unreachable!("channel-archive tests don't use search_messages");
     }
 
+    async fn list_channels(&self) -> Result<Vec<arawn_feeds::SlackChannel>, FeedError> {
+        unreachable!("channel-archive tests don't use list_channels");
+    }
+
     async fn thread_replies(
         &self,
         channel_id: &str,

@@ -97,6 +97,10 @@ impl SlackFeedClient for MockSlackClient {
             Ok(responses.remove(0))
         }
     }
+
+    async fn list_channels(&self) -> Result<Vec<arawn_feeds::SlackChannel>, FeedError> {
+        unreachable!("my-mentions tests don't use list_channels");
+    }
 }
 
 struct MockClients {

@@ -23,6 +23,7 @@ use crate::layout::DataLayout;
 use crate::meta::MetaStore;
 use crate::registry::FeedTemplateRegistry;
 use crate::store::{FeedRecord, FeedStore, new_record};
+use crate::template::{DiscoveryRow, TemplateCtx};
 use crate::types::{FeedMeta, FeedSummary, TemplateParams};
 
 /// arawn-feeds doesn't depend on arawn-workflow directly to avoid a
@@ -260,6 +261,21 @@ impl FeedRuntime {
         }
         info!(%feed_id, bytes_wiped, "feed decommissioned");
         Ok(RemoveOutcome { record, bytes_wiped })
+    }
+
+    /// Run the template's discovery hook. Returns:
+    /// - `Some(rows)` when the template implements `discover` and the
+    ///   provider call succeeded. `rows` may still be empty (no
+    ///   channels accessible, no projects, etc.).
+    /// - `None` when the template doesn't support discovery (free-form
+    ///   params) — callers should print a usage message.
+    pub async fn discover_template(
+        &self,
+        template_name: &str,
+    ) -> Result<Option<Vec<DiscoveryRow>>, FeedError> {
+        let template = self.runtime_ctx.registry.require(template_name)?;
+        let ctx = TemplateCtx::new(self.runtime_ctx.clients.clone());
+        template.discover(&ctx).await
     }
 
     /// List every feed in the DB (enabled or paused) with on-disk

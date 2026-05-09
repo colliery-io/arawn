@@ -4,14 +4,14 @@ level: task
 title: "Phase 6 — /watch slash command + /feeds management UX"
 short_code: "ARAWN-T-0219"
 created_at: 2026-05-07T00:42:53.527120+00:00
-updated_at: 2026-05-09T00:20:07.795585+00:00
+updated_at: 2026-05-09T01:33:41.345231+00:00
 parent: ARAWN-I-0039
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -74,6 +74,8 @@ Depends on: T-0214 (runtime, especially the `register_feed_runtime` stub that th
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

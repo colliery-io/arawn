@@ -21,7 +21,7 @@ use super::common::{
     CursorState, append_logs, write_issue_snapshot,
 };
 use crate::error::FeedError;
-use crate::template::{FeedTemplate, RunOutcome, TemplateCtx};
+use crate::template::{DiscoveryRow, FeedTemplate, RunOutcome, TemplateCtx};
 use crate::types::{FeedDefaults, RunSummary, TemplateParams};
 
 pub struct ProjectTrackerTemplate;
@@ -143,6 +143,27 @@ impl FeedTemplate for ProjectTrackerTemplate {
             },
             status,
         })
+    }
+
+    async fn discover(
+        &self,
+        ctx: &TemplateCtx,
+    ) -> Result<Option<Vec<DiscoveryRow>>, FeedError> {
+        let atlassian = match ctx.clients().atlassian() {
+            Some(c) => c,
+            None => return Ok(None),
+        };
+        let mut projects = atlassian.list_jira_projects().await?;
+        projects.sort_by(|a, b| a.key.cmp(&b.key));
+        let rows = projects
+            .into_iter()
+            .map(|p| DiscoveryRow {
+                label: format!("{}  —  {}", p.key, p.name),
+                hint: Some(format!("id {}", p.id)),
+                params: json!({ "project": p.key }),
+            })
+            .collect();
+        Ok(Some(rows))
     }
 }
 

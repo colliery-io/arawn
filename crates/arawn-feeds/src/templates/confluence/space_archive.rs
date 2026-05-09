@@ -45,7 +45,7 @@ use serde_json::{Value, json};
 
 use crate::clients::ConfluencePageMeta;
 use crate::error::FeedError;
-use crate::template::{FeedTemplate, RunOutcome, TemplateCtx};
+use crate::template::{DiscoveryRow, FeedTemplate, RunOutcome, TemplateCtx};
 use crate::types::{FeedDefaults, RunSummary, TemplateParams};
 
 pub struct SpaceArchiveTemplate;
@@ -169,6 +169,31 @@ impl FeedTemplate for SpaceArchiveTemplate {
             },
             status,
         })
+    }
+
+    async fn discover(
+        &self,
+        ctx: &TemplateCtx,
+    ) -> Result<Option<Vec<DiscoveryRow>>, FeedError> {
+        let atlassian = match ctx.clients().atlassian() {
+            Some(c) => c,
+            None => return Ok(None),
+        };
+        let mut spaces = atlassian.list_confluence_spaces().await?;
+        spaces.sort_by(|a, b| a.key.cmp(&b.key));
+        let rows = spaces
+            .into_iter()
+            .map(|s| DiscoveryRow {
+                label: if s.name.is_empty() {
+                    s.key.clone()
+                } else {
+                    format!("{}  —  {}", s.key, s.name)
+                },
+                hint: None,
+                params: json!({ "space_key": s.key }),
+            })
+            .collect();
+        Ok(Some(rows))
     }
 }
 

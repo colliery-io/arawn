@@ -10,8 +10,8 @@ use uuid::Uuid;
 
 pub use error::ServiceError;
 pub use types::{
-    CommandInfo, EngineEvent, FeedRegisterSpec, FeedRemoveDto, FeedSummaryDto, ForgetCandidate,
-    ForgetResult,
+    CommandInfo, EngineEvent, FeedDiscoverDto, FeedDiscoverRow, FeedRegisterSpec, FeedRemoveDto,
+    FeedSummaryDto, ForgetCandidate, ForgetResult,
     IntegrationStatus, InventoryItem, MemoryStoreResult, MemoryStoreSummary, MemorySummary,
     MemoryTypeCount, ModalPromptOption, OAuthFlowStarted, PermissionAuditEntry,
     PermissionModeInfo, PermissionsStatus, PromotionResult, ServerCapabilities, ServerNotice,
@@ -182,4 +182,13 @@ pub trait ArawnService: Send + Sync {
     /// recursively delete the data dir. Returns the count of bytes
     /// wiped so the caller can confirm. Backs `/feeds rm <id>`.
     async fn feed_remove(&self, feed_id: &str) -> Result<FeedRemoveDto, ServiceError>;
+
+    /// Discover the choosable parameter values for a template. Backs
+    /// the `/watch <template> <feed_id>` picker. Returns `None`
+    /// (rendered as an empty list with a `picker_supported=false`
+    /// flag) when the template doesn't support discovery.
+    async fn feed_discover(
+        &self,
+        template: &str,
+    ) -> Result<FeedDiscoverDto, ServiceError>;
 }

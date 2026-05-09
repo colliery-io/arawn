@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-09T01:16:47Z | 256 files | Python, Rust
+> Generated: 2026-05-09T01:33:49Z | 256 files | Python, Rust
 
 ## Project Structure
 
@@ -530,7 +530,7 @@
 -  `build_session_context` function L270-377 — `( &self, session_id: Uuid, workstream: &Workstream, ws_dir: &str, workspace_dir:...` — Build a ToolContext and per-session PromptContext for the engine.
 -  `build_engine` function L381-430 — `( &self, prompt_context: Option<arawn_engine::PromptContext>, event_tx: &mpsc::S...` — Build a QueryEngine configured with compactor, skills, plugins, and plan state.
 -  `infer_entity_type` function L435-448 — `(text: &str) -> (arawn_memory::EntityType, String)` — Infer entity type from text patterns.
--  `LocalService` type L453-1465 — `impl ArawnService for LocalService`
+-  `LocalService` type L453-1516 — `impl ArawnService for LocalService`
 -  `list_workstreams` function L454-469 — `(&self) -> Result<Vec<WorkstreamInfo>, ServiceError>`
 -  `create_workstream` function L471-488 — `( &self, name: String, root_dir: PathBuf, ) -> Result<WorkstreamInfo, ServiceErr...`
 -  `list_sessions` function L490-509 — `( &self, workstream_id: Option<Uuid>, ) -> Result<Vec<SessionInfo>, ServiceError...`
@@ -552,23 +552,27 @@
 -  `get_capabilities` function L1183-1193 — `(&self) -> Result<arawn_service::ServerCapabilities, ServiceError>`
 -  `get_permissions_status` function L1195-1244 — `(&self) -> Result<arawn_service::PermissionsStatus, ServiceError>`
 -  `list_integrations` function L1246-1264 — `(&self) -> Result<Vec<arawn_service::IntegrationStatus>, ServiceError>`
--  `start_oauth_flow` function L1266-1343 — `( &self, service: &str, ) -> Result<arawn_service::OAuthFlowStarted, ServiceErro...`
--  `disconnect_integration` function L1345-1368 — `(&self, service: &str) -> Result<(), ServiceError>`
--  `feed_register` function L1370-1403 — `( &self, spec: arawn_service::FeedRegisterSpec, ) -> Result<arawn_service::FeedS...`
--  `feed_list` function L1405-1409 — `(&self) -> Result<Vec<arawn_service::FeedSummaryDto>, ServiceError>`
--  `feed_pause` function L1411-1425 — `( &self, feed_id: &str, ) -> Result<arawn_service::FeedSummaryDto, ServiceError>`
--  `feed_resume` function L1427-1441 — `( &self, feed_id: &str, ) -> Result<arawn_service::FeedSummaryDto, ServiceError>`
--  `feed_remove` function L1443-1464 — `( &self, feed_id: &str, ) -> Result<arawn_service::FeedRemoveDto, ServiceError>`
--  `current_summary` function L1467-1477 — `( runtime: &arawn_feeds::FeedRuntime, feed_id: &str, ) -> Result<arawn_service::...`
--  `feed_err` function L1479-1488 — `(e: arawn_feeds::FeedError) -> ServiceError`
--  `feed_summary_to_dto` function L1490-1504 — `(s: arawn_feeds::FeedSummary) -> arawn_service::FeedSummaryDto`
--  `OAuthFlowCtx` struct L1509-1513 — `{ service: String, url_tx: tokio::sync::Mutex<Option<tokio::sync::oneshot::Sende...` — Glue that lets `LocalService::start_oauth_flow` bridge the integration's
--  `OAuthFlowCtx` type L1516-1538 — `= OAuthFlowCtx`
--  `service` function L1517-1519 — `(&self) -> &str`
--  `publish_auth_url` function L1521-1528 — `(&self, url: &url::Url)`
--  `publish_progress` function L1530-1537 — `(&self, message: &str)`
--  `resolve_ws_dir_from_store` function L1541-1552 — `(store: &Store, ws_id: Option<Uuid>) -> Result<String, ServiceError>` — Resolve workstream directory name from store.
--  `first_sentence` function L1556-1567 — `(s: &str) -> String` — Extract the first sentence and sanitize for use in a markdown table cell.
+-  `start_oauth_flow` function L1266-1394 — `( &self, service: &str, ) -> Result<arawn_service::OAuthFlowStarted, ServiceErro...`
+-  `disconnect_integration` function L1396-1419 — `(&self, service: &str) -> Result<(), ServiceError>`
+-  `feed_register` function L1421-1454 — `( &self, spec: arawn_service::FeedRegisterSpec, ) -> Result<arawn_service::FeedS...`
+-  `feed_list` function L1456-1460 — `(&self) -> Result<Vec<arawn_service::FeedSummaryDto>, ServiceError>`
+-  `feed_pause` function L1462-1476 — `( &self, feed_id: &str, ) -> Result<arawn_service::FeedSummaryDto, ServiceError>`
+-  `feed_resume` function L1478-1492 — `( &self, feed_id: &str, ) -> Result<arawn_service::FeedSummaryDto, ServiceError>`
+-  `feed_remove` function L1494-1515 — `( &self, feed_id: &str, ) -> Result<arawn_service::FeedRemoveDto, ServiceError>`
+-  `default_feed_for_service` function L1523-1532 — `(service: &str) -> Option<(&'static str, &'static str)>` — Personal default feed registered automatically the first time
+-  `current_summary` function L1534-1544 — `( runtime: &arawn_feeds::FeedRuntime, feed_id: &str, ) -> Result<arawn_service::...`
+-  `feed_err` function L1546-1555 — `(e: arawn_feeds::FeedError) -> ServiceError`
+-  `feed_summary_to_dto` function L1557-1571 — `(s: arawn_feeds::FeedSummary) -> arawn_service::FeedSummaryDto`
+-  `OAuthFlowCtx` struct L1576-1580 — `{ service: String, url_tx: tokio::sync::Mutex<Option<tokio::sync::oneshot::Sende...` — Glue that lets `LocalService::start_oauth_flow` bridge the integration's
+-  `OAuthFlowCtx` type L1583-1605 — `= OAuthFlowCtx`
+-  `service` function L1584-1586 — `(&self) -> &str`
+-  `publish_auth_url` function L1588-1595 — `(&self, url: &url::Url)`
+-  `publish_progress` function L1597-1604 — `(&self, message: &str)`
+-  `resolve_ws_dir_from_store` function L1608-1619 — `(store: &Store, ws_id: Option<Uuid>) -> Result<String, ServiceError>` — Resolve workstream directory name from store.
+-  `first_sentence` function L1623-1634 — `(s: &str) -> String` — Extract the first sentence and sanitize for use in a markdown table cell.
+-  `feed_default_tests` module L1637-1674 — `-`
+-  `known_services_each_have_a_default_feed` function L1641-1667 — `()`
+-  `unknown_service_has_no_default_feed` function L1670-1673 — `()`
 
 #### crates/arawn/src/main.rs
 
@@ -3513,7 +3517,8 @@
 -  `pause_resume_round_trip_through_cloacina` function L113-182 — `()` — firings happen (so the run_count is 0 and last_run_at is None).
 -  `remove_wipes_cron_row_and_data_dir` function L185-253 — `()` — firings happen (so the run_count is 0 and last_run_at is None).
 -  `pause_unknown_feed_returns_invalid_params` function L256-284 — `()` — firings happen (so the run_count is 0 and last_run_at is None).
--  `dynamic_register_rolls_back_on_unknown_template` function L287-330 — `()` — firings happen (so the run_count is 0 and last_run_at is None).
+-  `dynamic_register_is_idempotent_via_unique_constraint` function L287-341 — `()` — firings happen (so the run_count is 0 and last_run_at is None).
+-  `dynamic_register_rolls_back_on_unknown_template` function L344-387 — `()` — firings happen (so the run_count is 0 and last_run_at is None).
 
 #### crates/arawn-feeds/tests/gmail_archive.rs
 

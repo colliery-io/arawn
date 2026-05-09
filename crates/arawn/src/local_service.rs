@@ -1491,6 +1491,33 @@ impl ArawnService for LocalService {
         Ok(dto)
     }
 
+    async fn feed_discover(
+        &self,
+        template: &str,
+    ) -> Result<arawn_service::FeedDiscoverDto, ServiceError> {
+        let runtime = self.feed_runtime_or_err()?;
+        let rows = runtime.discover_template(template).await.map_err(feed_err)?;
+        Ok(match rows {
+            Some(rows) => arawn_service::FeedDiscoverDto {
+                template: template.into(),
+                picker_supported: true,
+                rows: rows
+                    .into_iter()
+                    .map(|r| arawn_service::FeedDiscoverRow {
+                        label: r.label,
+                        hint: r.hint,
+                        params: r.params,
+                    })
+                    .collect(),
+            },
+            None => arawn_service::FeedDiscoverDto {
+                template: template.into(),
+                picker_supported: false,
+                rows: vec![],
+            },
+        })
+    }
+
     async fn feed_remove(
         &self,
         feed_id: &str,

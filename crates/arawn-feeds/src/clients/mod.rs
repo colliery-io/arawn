@@ -24,14 +24,14 @@ pub mod gmail;
 pub mod slack;
 
 pub use atlassian::{
-    AtlassianFeedClient, ConfluencePageBody, ConfluencePageMeta, JiraIssueDetail, JiraIssueMeta,
-    RealAtlassianClient,
+    AtlassianFeedClient, ConfluencePageBody, ConfluencePageMeta, ConfluenceSpaceMeta,
+    JiraIssueDetail, JiraIssueMeta, JiraProjectMeta, RealAtlassianClient,
 };
 pub use calendar::{CalendarFeedClient, RealCalendarClient};
 pub use drive::{DriveFeedClient, DriveFile, RealDriveClient, export_for, is_unsupported_google_native};
 pub use gmail::{GmailFeedClient, RealGmailClient};
 pub use slack::{
-    ChannelKind, RealSlackClient, SlackAuthInfo, SlackFeedClient, SlackHistoryPage,
+    ChannelKind, RealSlackClient, SlackAuthInfo, SlackChannel, SlackFeedClient, SlackHistoryPage,
     classify_channel_id,
 };
 

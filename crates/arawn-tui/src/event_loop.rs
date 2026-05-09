@@ -612,6 +612,17 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                                 app.messages.push(ChatMessage::new(ChatRole::System, body));
                                 app.dirty = true;
                             }
+                            crate::command::CommandResult::FeedDiscover(template) => {
+                                let body = match template {
+                                    Some(tpl) => match client.feed_discover(&tpl).await {
+                                        Ok(dto) => format_feed_discover(&dto),
+                                        Err(e) => format!("/watch list {tpl} failed: {e}"),
+                                    },
+                                    None => format_known_templates(),
+                                };
+                                app.messages.push(ChatMessage::new(ChatRole::System, body));
+                                app.dirty = true;
+                            }
                             crate::command::CommandResult::FeedRegister(spec) => {
                                 let payload = serde_json::json!({
                                     "template": spec.template,
@@ -1269,4 +1280,83 @@ fn human_size(bytes: u64) -> String {
     } else {
         format!("{bytes} B")
     }
+}
+
+/// Render `feed_discover` results into a chat-pane block. Empty
+/// `picker_supported=false` means the template's params are
+/// free-form — nudge the user toward `/watch <tpl> <id> k=v` instead.
+fn format_feed_discover(dto: &serde_json::Value) -> String {
+    let template = dto
+        .get("template")
+        .and_then(|v| v.as_str())
+        .unwrap_or("?");
+    let supported = dto
+        .get("picker_supported")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+    let rows = dto
+        .get("rows")
+        .and_then(|v| v.as_array())
+        .cloned()
+        .unwrap_or_default();
+    if !supported {
+        return format!(
+            "**{template}** doesn't support discovery — its params \
+             are free-form (sender pattern, label name, folder path, \
+             etc.).\n\n\
+             Use the typed form, e.g.:\n  \
+             /watch {template} <feed_id> <key>=<value>"
+        );
+    }
+    if rows.is_empty() {
+        return format!(
+            "No discoverable values for **{template}**. The integration \
+             may not be connected, or the workspace has none of this kind."
+        );
+    }
+    let mut out = format!("**Pick a value for `{template}`:**\n\n");
+    for row in &rows {
+        let label = row.get("label").and_then(|v| v.as_str()).unwrap_or("?");
+        let hint = row
+            .get("hint")
+            .and_then(|v| v.as_str())
+            .map(|h| format!("  _({h})_"))
+            .unwrap_or_default();
+        // Find the first key/value pair from params and render it as
+        // a copy-pasteable token.
+        let params = row.get("params").cloned().unwrap_or_default();
+        let kv = params
+            .as_object()
+            .and_then(|m| m.iter().next())
+            .map(|(k, v)| {
+                let val = v
+                    .as_str()
+                    .map(str::to_string)
+                    .unwrap_or_else(|| v.to_string());
+                format!("{k}={val}")
+            })
+            .unwrap_or_else(|| "?".into());
+        out.push_str(&format!("- {label}{hint}\n  `{kv}`\n"));
+    }
+    out.push_str(&format!(
+        "\n_To register: `/watch {template} <feed_id> <key>=<value>`._"
+    ));
+    out
+}
+
+/// Static help for `/watch list` with no template — points the user
+/// at the canonical list and shows the discovery shortcut.
+fn format_known_templates() -> String {
+    "**Available feed templates:**\n\n\
+     - slack/channel-archive · slack/dm-archive · slack/my-mentions\n\
+     - calendar/upcoming-archive\n\
+     - gmail/inbox-archive · gmail/sender-filter · gmail/label-archive\n\
+     - drive/folder-sync · drive/recent\n\
+     - confluence/space-archive\n\
+     - jira/project-tracker · jira/assignee-tracker\n\n\
+     Run `/watch list <template>` to pick a value when the template \
+     supports discovery (slack/channel-archive, jira/project-tracker, \
+     confluence/space-archive). Use the typed form `/watch <template> \
+     <feed_id> key=value` for the rest."
+        .into()
 }

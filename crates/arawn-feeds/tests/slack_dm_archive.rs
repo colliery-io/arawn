@@ -103,6 +103,10 @@ impl SlackFeedClient for MockSlackClient {
     ) -> Result<SlackHistoryPage, FeedError> {
         unreachable!("dm-archive tests don't use search_messages");
     }
+
+    async fn list_channels(&self) -> Result<Vec<arawn_feeds::SlackChannel>, FeedError> {
+        unreachable!("dm-archive tests don't use list_channels");
+    }
 }
 
 struct MockClients {

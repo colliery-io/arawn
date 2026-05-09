@@ -95,4 +95,38 @@ pub trait FeedTemplate: Send + Sync {
         feed_dir: &Path,
         cursor: &Value,
     ) -> Result<RunOutcome, FeedError>;
+
+    /// Optional discovery hook for the `/watch` picker.
+    ///
+    /// Templates whose required params are enumerable from the
+    /// provider API (a Slack channel, a Jira project, a Confluence
+    /// space) override this to return a list of `(label, params)`
+    /// pairs; the TUI shows them as a selectable list and submits
+    /// the chosen `params` directly to `feed_register`.
+    ///
+    /// Templates whose params are free-form (a Gmail sender pattern,
+    /// a Drive folder path, an arbitrary cadence override) leave the
+    /// default `Ok(None)` — the TUI then prints a usage message
+    /// instead of opening an empty picker.
+    async fn discover(
+        &self,
+        _ctx: &TemplateCtx,
+    ) -> Result<Option<Vec<DiscoveryRow>>, FeedError> {
+        Ok(None)
+    }
+}
+
+/// One pickable choice surfaced by `FeedTemplate::discover`.
+///
+/// `label` is what the picker shows (e.g. `"#design"`, `"ENG —
+/// Engineering"`). `params` is the JSON object the user's choice
+/// resolves to — handed straight to `feed_register` without further
+/// shaping. `hint` is an optional second line for context (id,
+/// privacy marker, member count).
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct DiscoveryRow {
+    pub label: String,
+    #[serde(default)]
+    pub hint: Option<String>,
+    pub params: Value,
 }

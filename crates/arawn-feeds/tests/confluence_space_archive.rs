@@ -82,6 +82,18 @@ impl AtlassianFeedClient for MockAtlassianClient {
         unreachable!("confluence tests don't touch jira")
     }
 
+    async fn list_jira_projects(
+        &self,
+    ) -> Result<Vec<arawn_feeds::JiraProjectMeta>, FeedError> {
+        unreachable!("confluence tests don't touch jira")
+    }
+
+    async fn list_confluence_spaces(
+        &self,
+    ) -> Result<Vec<arawn_feeds::ConfluenceSpaceMeta>, FeedError> {
+        unreachable!("space-archive tests don't use list_confluence_spaces");
+    }
+
     async fn page_body_storage(
         &self,
         page_id: &str,

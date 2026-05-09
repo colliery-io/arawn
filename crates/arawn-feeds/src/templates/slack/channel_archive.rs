@@ -37,7 +37,7 @@ use serde_json::{Value, json};
 
 use super::common::archive_channel_with_threads;
 use crate::error::FeedError;
-use crate::template::{FeedTemplate, RunOutcome, TemplateCtx};
+use crate::template::{DiscoveryRow, FeedTemplate, RunOutcome, TemplateCtx};
 use crate::types::{FeedDefaults, TemplateParams};
 
 pub struct ChannelArchiveTemplate;
@@ -89,6 +89,42 @@ impl FeedTemplate for ChannelArchiveTemplate {
         let channel_id = slack.resolve_channel(raw_channel).await?;
 
         archive_channel_with_threads(slack.as_ref(), &channel_id, feed_dir, cursor).await
+    }
+
+    async fn discover(
+        &self,
+        ctx: &TemplateCtx,
+    ) -> Result<Option<Vec<DiscoveryRow>>, FeedError> {
+        let slack = match ctx.clients().slack() {
+            Some(c) => c,
+            None => return Ok(None),
+        };
+        let mut channels = slack.list_channels().await?;
+        // Stable, friendly order: by name.
+        channels.sort_by(|a, b| a.name.cmp(&b.name));
+        let rows = channels
+            .into_iter()
+            .map(|ch| {
+                let mut tags = Vec::new();
+                if ch.is_private {
+                    tags.push("private");
+                }
+                if ch.is_dm {
+                    tags.push("dm/group");
+                }
+                let hint = if tags.is_empty() {
+                    Some(ch.id.clone())
+                } else {
+                    Some(format!("{}  ·  {}", ch.id, tags.join(", ")))
+                };
+                DiscoveryRow {
+                    label: format!("#{}", ch.name),
+                    hint,
+                    params: json!({ "channel": ch.id }),
+                }
+            })
+            .collect();
+        Ok(Some(rows))
     }
 }
 

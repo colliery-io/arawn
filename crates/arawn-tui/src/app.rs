@@ -354,7 +354,8 @@ impl App {
                             | CommandResult::FeedList
                             | CommandResult::FeedPause(_)
                             | CommandResult::FeedResume(_)
-                            | CommandResult::FeedRemove { .. } => {
+                            | CommandResult::FeedRemove { .. }
+                            | CommandResult::FeedDiscover(_) => {
                                 // These need WS interaction — store for event loop to handle
                                 self.pending_command = Some(result);
                             }

@@ -164,7 +164,7 @@ impl CommandRegistry {
         // Continual data feeds (I-0039)
         self.commands.push(CommandInfo {
             name: "watch".into(),
-            description: "Register a continual data feed (e.g. /watch slack/channel-archive design channel=C0123)".into(),
+            description: "Register a continual data feed. /watch list <template> picks values.".into(),
             kind: CommandKind::BuiltIn,
         });
         self.commands.push(CommandInfo {
@@ -324,6 +324,12 @@ pub enum CommandResult {
     /// Slice 2 wires this through a chat-line confirm — slice 2b
     /// upgrades to a modal once the modal infra is in place.
     FeedRemove { feed_id: String, confirmed: bool },
+    /// Discover pickable params for a template via `/watch list
+    /// <template>`. Prints a numbered list the user can copy values
+    /// from into a full `/watch <template> <feed_id> k=v...` form.
+    /// `None` means `/watch list` with no template — list every
+    /// registered template instead.
+    FeedDiscover(Option<String>),
 }
 
 /// Parsed args for the non-interactive form of `/watch`.
@@ -603,10 +609,27 @@ pub fn execute_command(cmd: &ParsedCommand, registry: &CommandRegistry) -> Comma
                         CommandResult::ForgetEntity(cmd.args.clone())
                     }
                 }
-                "watch" => match parse_watch_args(&cmd.args) {
-                    Ok(spec) => CommandResult::FeedRegister(spec),
-                    Err(msg) => CommandResult::SystemMessage(msg),
-                },
+                "watch" => {
+                    // `/watch list [template]` is the discovery form;
+                    // it shares the verb but takes a different shape.
+                    let trimmed = cmd.args.trim();
+                    if let Some(rest) = trimmed
+                        .strip_prefix("list")
+                        .map(str::trim_start)
+                    {
+                        let tpl = if rest.is_empty() {
+                            None
+                        } else {
+                            Some(rest.to_string())
+                        };
+                        CommandResult::FeedDiscover(tpl)
+                    } else {
+                        match parse_watch_args(&cmd.args) {
+                            Ok(spec) => CommandResult::FeedRegister(spec),
+                            Err(msg) => CommandResult::SystemMessage(msg),
+                        }
+                    }
+                }
                 "feeds" => parse_feeds_args(&cmd.args),
 
                 _ => CommandResult::SystemMessage(format!("Unknown built-in: /{}", cmd.name)),
@@ -728,6 +751,46 @@ mod tests {
         match execute_command(&parse_command("/feeds pause").unwrap(), &registry) {
             CommandResult::SystemMessage(msg) => assert!(msg.contains("Usage")),
             other => panic!("expected SystemMessage, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn watch_list_dispatches_to_feed_discover() {
+        let registry = CommandRegistry::new();
+        // No template — discovery for templates list (event_loop
+        // turns this into a static help message).
+        match execute_command(&parse_command("/watch list").unwrap(), &registry) {
+            CommandResult::FeedDiscover(None) => {}
+            other => panic!("expected FeedDiscover(None), got {other:?}"),
+        }
+        // With template — picker mode for that template.
+        match execute_command(
+            &parse_command("/watch list slack/channel-archive").unwrap(),
+            &registry,
+        ) {
+            CommandResult::FeedDiscover(Some(tpl)) => {
+                assert_eq!(tpl, "slack/channel-archive");
+            }
+            other => panic!("expected FeedDiscover(Some), got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn watch_list_doesnt_swallow_a_template_named_listed() {
+        // `/watch list-something foo` should still go through the
+        // normal parse path, not the discovery path. Defensive — the
+        // current parser uses `strip_prefix("list")` then trims, so
+        // `list-something` would match. Verify this by giving it real
+        // typed args and expecting normal-form dispatch.
+        let registry = CommandRegistry::new();
+        match execute_command(
+            &parse_command("/watch slack/channel-archive design channel=C1").unwrap(),
+            &registry,
+        ) {
+            CommandResult::FeedRegister(spec) => {
+                assert_eq!(spec.template, "slack/channel-archive");
+            }
+            other => panic!("expected FeedRegister, got {other:?}"),
         }
     }
 

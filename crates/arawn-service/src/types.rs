@@ -325,3 +325,26 @@ pub struct FeedRemoveDto {
     pub template: String,
     pub bytes_wiped: u64,
 }
+
+/// One pickable row from `feed_discover`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FeedDiscoverRow {
+    /// What the picker shows in the main column.
+    pub label: String,
+    /// Optional second-line context (id, member count, privacy tag).
+    #[serde(default)]
+    pub hint: Option<String>,
+    /// Params object the user's selection resolves to. Submitted
+    /// straight to `feed_register` without further shaping.
+    pub params: serde_json::Value,
+}
+
+/// Response from `feed_discover`. `picker_supported = false` means
+/// the template's params are free-form — the caller should print a
+/// usage message rather than open an empty picker.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FeedDiscoverDto {
+    pub template: String,
+    pub picker_supported: bool,
+    pub rows: Vec<FeedDiscoverRow>,
+}

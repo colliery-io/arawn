@@ -276,6 +276,22 @@ impl WsClient {
         Ok(result.clone())
     }
 
+    /// Fetch discoverable params for a template. Backs the
+    /// `/watch <template> <feed_id>` picker.
+    pub async fn feed_discover(
+        &mut self,
+        template: &str,
+    ) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
+        let resp = self
+            .request_response("feed_discover", json!({"template": template}))
+            .await?;
+        if let Some(err) = resp.get("error") {
+            return Err(err["message"].as_str().unwrap_or("unknown error").into());
+        }
+        let result = resp.get("result").ok_or("no result")?;
+        Ok(result.clone())
+    }
+
     /// Decommission a feed by id. Backs `/feeds rm <id>`.
     pub async fn feed_remove(
         &mut self,

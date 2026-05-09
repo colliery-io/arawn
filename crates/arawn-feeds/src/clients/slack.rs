@@ -88,6 +88,22 @@ pub trait SlackFeedClient: Send + Sync {
         query: &str,
         oldest_ts: Option<&str>,
     ) -> Result<SlackHistoryPage, FeedError>;
+
+    /// List channels the user can access. Used by the `/watch` picker
+    /// for `slack/channel-archive`. Returns public + private channels
+    /// + group DMs (anything the bot/user token can post to).
+    /// Excludes archived.
+    async fn list_channels(&self) -> Result<Vec<SlackChannel>, FeedError>;
+}
+
+/// Channel summary as the picker cares about it.
+#[derive(Debug, Clone)]
+pub struct SlackChannel {
+    pub id: String,
+    pub name: String,
+    /// `true` for private channels and DMs.
+    pub is_private: bool,
+    pub is_dm: bool,
 }
 
 /// Subset of Slack `auth.test` response that feeds care about.
@@ -399,6 +415,44 @@ impl SlackFeedClient for RealSlackClient {
             messages: matches,
             next_cursor_ts,
         })
+    }
+
+    async fn list_channels(&self) -> Result<Vec<SlackChannel>, FeedError> {
+        let ctx = self
+            .integration
+            .user_context()
+            .or_else(|_| self.integration.bot_context())
+            .map_err(integ_err)?;
+        let session = ctx.session();
+        let req = SlackApiConversationsListRequest::new()
+            .with_types(vec![
+                SlackConversationType::Public,
+                SlackConversationType::Private,
+                SlackConversationType::Mpim,
+            ])
+            .with_limit(1000)
+            .with_exclude_archived(true);
+        let resp = session
+            .conversations_list(&req)
+            .await
+            .map_err(|e| slack_morphism_err("conversations.list", e))?;
+        let channels = resp
+            .channels
+            .iter()
+            .map(|ch| {
+                let id = ch.id.to_string();
+                // Group DMs and IMs may have no name; fall back to id.
+                let name = ch.name.clone().unwrap_or_else(|| id.clone());
+                SlackChannel {
+                    id,
+                    name,
+                    is_private: ch.flags.is_private.unwrap_or(false),
+                    is_dm: ch.flags.is_im.unwrap_or(false)
+                        || ch.flags.is_mpim.unwrap_or(false),
+                }
+            })
+            .collect();
+        Ok(channels)
     }
 }
 

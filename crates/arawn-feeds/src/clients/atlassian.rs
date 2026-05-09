@@ -127,6 +127,31 @@ pub trait AtlassianFeedClient: Send + Sync {
     /// registration time so a typo in the `project` param fails fast
     /// instead of silently returning empty results forever.
     async fn resolve_project(&self, key_or_id: &str) -> Result<String, FeedError>;
+
+    /// List Jira projects the user can access. Powers the `/watch
+    /// jira/project-tracker` picker.
+    async fn list_jira_projects(&self) -> Result<Vec<JiraProjectMeta>, FeedError>;
+
+    /// List Confluence spaces the user can access. Powers the
+    /// `/watch confluence/space-archive` picker.
+    async fn list_confluence_spaces(
+        &self,
+    ) -> Result<Vec<ConfluenceSpaceMeta>, FeedError>;
+}
+
+/// Project summary as the picker cares about it.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct JiraProjectMeta {
+    pub id: String,
+    pub key: String,
+    pub name: String,
+}
+
+/// Space summary as the picker cares about it.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ConfluenceSpaceMeta {
+    pub key: String,
+    pub name: String,
 }
 
 // ─── Production adapter ──────────────────────────────────────────────
@@ -490,6 +515,59 @@ impl AtlassianFeedClient for RealAtlassianClient {
             .id
             .ok_or_else(|| FeedError::Schema("project response missing id".into()))
     }
+
+    async fn list_jira_projects(&self) -> Result<Vec<JiraProjectMeta>, FeedError> {
+        let client = AtlassianClient::new(Arc::clone(&self.integration));
+        let cfg = client.jira_config(None).await.map_err(integ_err)?;
+        // get_all_projects is deprecated but still works; the
+        // search-projects endpoint is paginated and harder to mock.
+        // For picker ergonomics this is fine — projects list is
+        // O(tens) for any real workspace.
+        #[allow(deprecated)]
+        let projects = projects_api::get_all_projects(&cfg, None, None, None)
+            .await
+            .map_err(jira_err)?;
+        Ok(projects
+            .into_iter()
+            .filter_map(|p| {
+                let id = p.id?;
+                let key = p.key?;
+                let name = p.name.unwrap_or_else(|| key.clone());
+                Some(JiraProjectMeta { id, key, name })
+            })
+            .collect())
+    }
+
+    async fn list_confluence_spaces(
+        &self,
+    ) -> Result<Vec<ConfluenceSpaceMeta>, FeedError> {
+        let client = AtlassianClient::new(Arc::clone(&self.integration));
+        let resp: V2SpacesResp = client
+            .confluence_get("/spaces", None, &[("limit", "250".into())])
+            .await
+            .map_err(integ_err)?;
+        Ok(resp
+            .results
+            .into_iter()
+            .map(|s| ConfluenceSpaceMeta {
+                key: s.key,
+                name: s.name.unwrap_or_default(),
+            })
+            .collect())
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct V2SpacesResp {
+    #[serde(default)]
+    results: Vec<V2Space>,
+}
+
+#[derive(Debug, Deserialize)]
+struct V2Space {
+    key: String,
+    #[serde(default)]
+    name: Option<String>,
 }
 
 fn jira_err<E: std::fmt::Debug>(e: jira_v3_openapi::apis::Error<E>) -> FeedError {

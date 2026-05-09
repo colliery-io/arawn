@@ -106,6 +106,18 @@ impl AtlassianFeedClient for MockAtlassian {
         self.project_resolved.lock().unwrap().push(key_or_id.into());
         Ok(format!("id-{key_or_id}"))
     }
+
+    async fn list_jira_projects(
+        &self,
+    ) -> Result<Vec<arawn_feeds::JiraProjectMeta>, FeedError> {
+        unreachable!("jira tests don't use list_jira_projects");
+    }
+
+    async fn list_confluence_spaces(
+        &self,
+    ) -> Result<Vec<arawn_feeds::ConfluenceSpaceMeta>, FeedError> {
+        unreachable!("jira tests don't use list_confluence_spaces");
+    }
 }
 
 struct MockClients {
