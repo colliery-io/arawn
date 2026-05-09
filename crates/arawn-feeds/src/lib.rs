@@ -43,7 +43,7 @@ pub use clients::{
     classify_channel_id, export_for, is_unsupported_google_native,
 };
 pub use dispatch::{FeedDispatchTask, FeedRuntimeContext, run_feed};
-pub use runtime::{CloacinaRunner, FeedRuntime, feed_workflow_name, start};
+pub use runtime::{CloacinaRunner, FeedRuntime, RemoveOutcome, feed_workflow_name, start};
 pub use error::FeedError;
 pub use layout::DataLayout;
 pub use meta::MetaStore;

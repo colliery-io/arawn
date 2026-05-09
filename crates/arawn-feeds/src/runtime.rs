@@ -176,6 +176,92 @@ impl FeedRuntime {
         Ok(record)
     }
 
+    /// Pause a feed: drop its cloacina cron schedule and flip the row
+    /// to `enabled=0`. The data dir is left intact so a future
+    /// `resume_feed` can pick up where the cursor left off.
+    ///
+    /// Idempotent: calling pause on an already-paused feed is a no-op
+    /// from the user's perspective (returns Ok).
+    pub async fn pause_feed(&self, feed_id: &str) -> Result<FeedRecord, FeedError> {
+        let record = {
+            let c = self.runtime_ctx.conn.lock().await;
+            FeedStore::new(&c)
+                .get(feed_id)?
+                .ok_or_else(|| FeedError::InvalidParams(format!("no feed '{feed_id}'")))?
+        };
+        // Delete the cron schedule first — it's the load-bearing step.
+        // If it fails we leave the DB row alone so we're not surprised
+        // by a "paused" feed that's still firing.
+        delete_schedule_for(&self.runner, &feed_workflow_name(feed_id)).await?;
+        {
+            let c = self.runtime_ctx.conn.lock().await;
+            FeedStore::new(&c).set_enabled(feed_id, false)?;
+        }
+        info!(%feed_id, "feed paused");
+        Ok(FeedRecord { enabled: false, ..record })
+    }
+
+    /// Resume a previously-paused feed: re-register the cloacina
+    /// cron schedule using the row's persisted cadence, then flip
+    /// `enabled=1`.
+    pub async fn resume_feed(&self, feed_id: &str) -> Result<FeedRecord, FeedError> {
+        let mut record = {
+            let c = self.runtime_ctx.conn.lock().await;
+            FeedStore::new(&c)
+                .get(feed_id)?
+                .ok_or_else(|| FeedError::InvalidParams(format!("no feed '{feed_id}'")))?
+        };
+        record.enabled = true;
+        // Re-register first; only flip the DB if cron registration
+        // succeeds (otherwise the row would say "active" but nothing
+        // would fire).
+        register_one(&self.runner, &self.runtime_ctx, &record).await?;
+        {
+            let c = self.runtime_ctx.conn.lock().await;
+            FeedStore::new(&c).set_enabled(feed_id, true)?;
+        }
+        info!(%feed_id, "feed resumed");
+        Ok(record)
+    }
+
+    /// Decommission: drop the cloacina cron schedule, delete the DB
+    /// row, and recursively delete the feed's data dir.
+    ///
+    /// Order is deliberately cron→fs→row: if cron deletion fails we
+    /// haven't lost any data, and if fs deletion fails the row stays
+    /// so the user can retry. Returns the now-deleted record + the
+    /// number of bytes wiped from disk.
+    pub async fn remove_feed(
+        &self,
+        feed_id: &str,
+    ) -> Result<RemoveOutcome, FeedError> {
+        let record = {
+            let c = self.runtime_ctx.conn.lock().await;
+            FeedStore::new(&c)
+                .get(feed_id)?
+                .ok_or_else(|| FeedError::InvalidParams(format!("no feed '{feed_id}'")))?
+        };
+        delete_schedule_for(&self.runner, &feed_workflow_name(feed_id)).await?;
+
+        let feed_dir = self
+            .runtime_ctx
+            .layout
+            .feed_dir(&record.template, feed_id)?;
+        let bytes_wiped = dir_size_bytes(&feed_dir);
+        if feed_dir.exists() {
+            std::fs::remove_dir_all(&feed_dir).map_err(|e| {
+                FeedError::Storage(format!("rm -rf {}: {e}", feed_dir.display()))
+            })?;
+        }
+
+        {
+            let c = self.runtime_ctx.conn.lock().await;
+            FeedStore::new(&c).delete(feed_id)?;
+        }
+        info!(%feed_id, bytes_wiped, "feed decommissioned");
+        Ok(RemoveOutcome { record, bytes_wiped })
+    }
+
     /// List every feed in the DB (enabled or paused) with on-disk
     /// status info.
     pub async fn list_summaries(&self) -> Result<Vec<FeedSummary>, FeedError> {
@@ -210,6 +296,39 @@ impl FeedRuntime {
         }
         Ok(out)
     }
+}
+
+/// Outcome of a successful `remove_feed` — the row that was deleted
+/// plus how many bytes the data dir contained. Useful for the
+/// confirm-modal "this deletes <N> bytes" message and audit logs.
+#[derive(Debug, Clone)]
+pub struct RemoveOutcome {
+    pub record: FeedRecord,
+    pub bytes_wiped: u64,
+}
+
+/// Look up cloacina's cron schedule by workflow name and delete it
+/// if present. Idempotent: returns Ok even if no schedule matches.
+async fn delete_schedule_for(
+    runner: &CloacinaRunner,
+    workflow_name: &str,
+) -> Result<(), FeedError> {
+    // 1000 is well above any realistic feed count and avoids
+    // pagination — cloacina itself caps server-side at 100k.
+    let schedules = runner
+        .list_cron_schedules(false, 1000, 0)
+        .await
+        .map_err(|e| FeedError::Provider(format!("list_cron_schedules: {e}")))?;
+    if let Some(s) = schedules
+        .into_iter()
+        .find(|s| s.workflow_name == workflow_name)
+    {
+        runner
+            .delete_cron_schedule(s.id)
+            .await
+            .map_err(|e| FeedError::Provider(format!("delete_cron_schedule: {e}")))?;
+    }
+    Ok(())
 }
 
 fn dir_size_bytes(path: &std::path::Path) -> u64 {

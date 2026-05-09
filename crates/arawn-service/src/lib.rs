@@ -10,7 +10,8 @@ use uuid::Uuid;
 
 pub use error::ServiceError;
 pub use types::{
-    CommandInfo, EngineEvent, FeedRegisterSpec, FeedSummaryDto, ForgetCandidate, ForgetResult,
+    CommandInfo, EngineEvent, FeedRegisterSpec, FeedRemoveDto, FeedSummaryDto, ForgetCandidate,
+    ForgetResult,
     IntegrationStatus, InventoryItem, MemoryStoreResult, MemoryStoreSummary, MemorySummary,
     MemoryTypeCount, ModalPromptOption, OAuthFlowStarted, PermissionAuditEntry,
     PermissionModeInfo, PermissionsStatus, PromotionResult, ServerCapabilities, ServerNotice,
@@ -168,4 +169,17 @@ pub trait ArawnService: Send + Sync {
     /// List every configured feed (enabled + paused) with last-run
     /// status and on-disk size. Backs `/feeds`.
     async fn feed_list(&self) -> Result<Vec<FeedSummaryDto>, ServiceError>;
+
+    /// Pause a feed: drop its cron schedule, leave the data dir
+    /// intact. Idempotent. Backs `/feeds pause <id>`.
+    async fn feed_pause(&self, feed_id: &str) -> Result<FeedSummaryDto, ServiceError>;
+
+    /// Resume a paused feed: re-register its cron schedule with the
+    /// persisted cadence + cursor. Backs `/feeds resume <id>`.
+    async fn feed_resume(&self, feed_id: &str) -> Result<FeedSummaryDto, ServiceError>;
+
+    /// Decommission a feed: drop the cron schedule, delete the row,
+    /// recursively delete the data dir. Returns the count of bytes
+    /// wiped so the caller can confirm. Backs `/feeds rm <id>`.
+    async fn feed_remove(&self, feed_id: &str) -> Result<FeedRemoveDto, ServiceError>;
 }

@@ -110,6 +110,180 @@ async fn dynamic_register_full_flow() {
 }
 
 #[tokio::test]
+async fn pause_resume_round_trip_through_cloacina() {
+    let tmp = tempfile::tempdir().unwrap();
+    let data_dir = tmp.path().to_path_buf();
+
+    let runner_db = data_dir.join("cloacina.db");
+    let runner_url = format!("sqlite://{}", runner_db.display());
+    let cfg = cloacina::DefaultRunnerConfig::builder()
+        .enable_cron_scheduling(true)
+        .enable_registry_reconciler(false)
+        .max_concurrent_tasks(2)
+        .build()
+        .unwrap();
+    let runner = Arc::new(
+        DefaultRunner::with_config(&runner_url, cfg)
+            .await
+            .unwrap(),
+    );
+
+    let conn = Connection::open(data_dir.join("feeds.db")).unwrap();
+    migrate(&conn);
+    let conn = Arc::new(Mutex::new(conn));
+    let layout = Arc::new(DataLayout::new(&data_dir));
+    let registry = Arc::new(arawn_feeds::default_registry());
+    let clients: Arc<dyn FeedClients> = Arc::new(NoopClients);
+
+    let runtime = arawn_feeds::start(
+        Arc::clone(&runner),
+        Arc::clone(&conn),
+        Arc::clone(&layout),
+        Arc::clone(&registry),
+        Arc::clone(&clients),
+    )
+    .await
+    .unwrap();
+
+    runtime
+        .register_feed_dynamic(
+            "stub/echo",
+            "demo",
+            TemplateParams::new(json!({"message": "hi"})),
+            None,
+        )
+        .await
+        .unwrap();
+    let workflow_name = arawn_feeds::feed_workflow_name("demo");
+
+    // Sanity: cron schedule exists pre-pause.
+    let scheds = runner.list_cron_schedules(false, 100, 0).await.unwrap();
+    assert!(scheds.iter().any(|s| s.workflow_name == workflow_name));
+
+    // Pause: row goes enabled=0, cron schedule disappears.
+    runtime.pause_feed("demo").await.unwrap();
+    let summaries = runtime.list_summaries().await.unwrap();
+    assert!(!summaries.iter().find(|s| s.id == "demo").unwrap().enabled);
+    let scheds = runner.list_cron_schedules(false, 100, 0).await.unwrap();
+    assert!(
+        !scheds.iter().any(|s| s.workflow_name == workflow_name),
+        "cron schedule deleted on pause"
+    );
+
+    // Resume: row flips back, cron schedule re-appears.
+    runtime.resume_feed("demo").await.unwrap();
+    let summaries = runtime.list_summaries().await.unwrap();
+    assert!(summaries.iter().find(|s| s.id == "demo").unwrap().enabled);
+    let scheds = runner.list_cron_schedules(false, 100, 0).await.unwrap();
+    assert!(
+        scheds.iter().any(|s| s.workflow_name == workflow_name),
+        "cron schedule re-registered on resume"
+    );
+}
+
+#[tokio::test]
+async fn remove_wipes_cron_row_and_data_dir() {
+    let tmp = tempfile::tempdir().unwrap();
+    let data_dir = tmp.path().to_path_buf();
+
+    let runner_db = data_dir.join("cloacina.db");
+    let runner_url = format!("sqlite://{}", runner_db.display());
+    let cfg = cloacina::DefaultRunnerConfig::builder()
+        .enable_cron_scheduling(true)
+        .enable_registry_reconciler(false)
+        .max_concurrent_tasks(2)
+        .build()
+        .unwrap();
+    let runner = Arc::new(
+        DefaultRunner::with_config(&runner_url, cfg)
+            .await
+            .unwrap(),
+    );
+
+    let conn = Connection::open(data_dir.join("feeds.db")).unwrap();
+    migrate(&conn);
+    let conn = Arc::new(Mutex::new(conn));
+    let layout = Arc::new(DataLayout::new(&data_dir));
+    let registry = Arc::new(arawn_feeds::default_registry());
+    let clients: Arc<dyn FeedClients> = Arc::new(NoopClients);
+
+    let runtime = arawn_feeds::start(
+        Arc::clone(&runner),
+        Arc::clone(&conn),
+        Arc::clone(&layout),
+        Arc::clone(&registry),
+        Arc::clone(&clients),
+    )
+    .await
+    .unwrap();
+
+    runtime
+        .register_feed_dynamic(
+            "stub/echo",
+            "demo",
+            TemplateParams::new(json!({"message": "hi"})),
+            None,
+        )
+        .await
+        .unwrap();
+
+    // Drop a marker file in the feed dir so we can prove the wipe.
+    let feed_dir = layout.feed_dir("stub/echo", "demo").unwrap();
+    std::fs::write(feed_dir.join("marker"), b"some bytes").unwrap();
+    assert!(feed_dir.join("marker").exists());
+
+    let outcome = runtime.remove_feed("demo").await.unwrap();
+    assert_eq!(outcome.record.id, "demo");
+    assert!(outcome.bytes_wiped > 0, "wiped count reflects the marker file");
+
+    // Row gone.
+    {
+        let c = conn.lock().await;
+        assert!(arawn_feeds::FeedStore::new(&c)
+            .get("demo")
+            .unwrap()
+            .is_none());
+    }
+    // Dir gone.
+    assert!(!feed_dir.exists());
+    // Cron schedule gone.
+    let workflow_name = arawn_feeds::feed_workflow_name("demo");
+    let scheds = runner.list_cron_schedules(false, 100, 0).await.unwrap();
+    assert!(!scheds.iter().any(|s| s.workflow_name == workflow_name));
+}
+
+#[tokio::test]
+async fn pause_unknown_feed_returns_invalid_params() {
+    let tmp = tempfile::tempdir().unwrap();
+    let data_dir = tmp.path().to_path_buf();
+    let runner_db = data_dir.join("cloacina.db");
+    let runner_url = format!("sqlite://{}", runner_db.display());
+    let cfg = cloacina::DefaultRunnerConfig::builder()
+        .enable_cron_scheduling(true)
+        .enable_registry_reconciler(false)
+        .max_concurrent_tasks(2)
+        .build()
+        .unwrap();
+    let runner = Arc::new(
+        DefaultRunner::with_config(&runner_url, cfg)
+            .await
+            .unwrap(),
+    );
+    let conn = Connection::open(data_dir.join("feeds.db")).unwrap();
+    migrate(&conn);
+    let conn = Arc::new(Mutex::new(conn));
+    let layout = Arc::new(DataLayout::new(&data_dir));
+    let registry = Arc::new(arawn_feeds::default_registry());
+    let clients: Arc<dyn FeedClients> = Arc::new(NoopClients);
+    let runtime = arawn_feeds::start(runner, conn, layout, registry, clients)
+        .await
+        .unwrap();
+
+    let err = runtime.pause_feed("nope").await.unwrap_err();
+    assert!(matches!(err, arawn_feeds::FeedError::InvalidParams(_)));
+}
+
+#[tokio::test]
 async fn dynamic_register_rolls_back_on_unknown_template() {
     let tmp = tempfile::tempdir().unwrap();
     let data_dir = tmp.path().to_path_buf();

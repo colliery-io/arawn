@@ -634,6 +634,102 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                                 app.messages.push(ChatMessage::new(ChatRole::System, body));
                                 app.dirty = true;
                             }
+                            crate::command::CommandResult::FeedPause(id) => {
+                                let body = match client.feed_pause(&id).await {
+                                    Ok(dto) => format!(
+                                        "Paused **{}**. Cron schedule deleted; \
+                                         data dir at `{}` left intact.\n\n\
+                                         _Run /feeds resume {} to bring it back._",
+                                        dto.get("template").and_then(|v| v.as_str()).unwrap_or("?"),
+                                        dto.get("data_dir").and_then(|v| v.as_str()).unwrap_or("?"),
+                                        id,
+                                    ),
+                                    Err(e) => format!("/feeds pause {id} failed: {e}"),
+                                };
+                                app.messages.push(ChatMessage::new(ChatRole::System, body));
+                                app.dirty = true;
+                            }
+                            crate::command::CommandResult::FeedResume(id) => {
+                                let body = match client.feed_resume(&id).await {
+                                    Ok(dto) => format!(
+                                        "Resumed **{}**. Cron re-registered with cadence `{}`.",
+                                        dto.get("template").and_then(|v| v.as_str()).unwrap_or("?"),
+                                        dto.get("cadence").and_then(|v| v.as_str()).unwrap_or("?"),
+                                    ),
+                                    Err(e) => format!("/feeds resume {id} failed: {e}"),
+                                };
+                                app.messages.push(ChatMessage::new(ChatRole::System, body));
+                                app.dirty = true;
+                            }
+                            crate::command::CommandResult::FeedRemove {
+                                feed_id,
+                                confirmed,
+                            } => {
+                                if !confirmed {
+                                    // Slice 2 confirm path: print a
+                                    // preview of what would be wiped
+                                    // and ask the user to re-run with
+                                    // --yes. Modal upgrade lands later.
+                                    let body = match client.feed_list().await {
+                                        Ok(list) => match list
+                                            .iter()
+                                            .find(|f| {
+                                                f.get("id").and_then(|v| v.as_str())
+                                                    == Some(feed_id.as_str())
+                                            })
+                                            .cloned()
+                                        {
+                                            Some(f) => {
+                                                let template = f
+                                                    .get("template")
+                                                    .and_then(|v| v.as_str())
+                                                    .unwrap_or("?");
+                                                let dir = f
+                                                    .get("data_dir")
+                                                    .and_then(|v| v.as_str())
+                                                    .unwrap_or("?");
+                                                let size = f
+                                                    .get("data_size_bytes")
+                                                    .and_then(|v| v.as_u64())
+                                                    .unwrap_or(0);
+                                                format!(
+                                                    "**Confirm decommission of `{feed_id}` ({template})?**\n\n\
+                                                     This will:\n\
+                                                     - Delete the cron schedule\n\
+                                                     - Delete the DB row\n\
+                                                     - Recursively wipe `{dir}` ({} on disk)\n\n\
+                                                     _Cannot be undone._\n\n\
+                                                     Re-run `/feeds rm {feed_id} --yes` to proceed.",
+                                                    human_size(size)
+                                                )
+                                            }
+                                            None => format!("No feed named '{feed_id}'."),
+                                        },
+                                        Err(e) => format!("/feeds rm preview failed: {e}"),
+                                    };
+                                    app.messages.push(ChatMessage::new(ChatRole::System, body));
+                                    app.dirty = true;
+                                } else {
+                                    let body = match client.feed_remove(&feed_id).await {
+                                        Ok(dto) => format!(
+                                            "Decommissioned **{}** (`{}`). \
+                                             Wiped {} from disk.",
+                                            dto.get("template")
+                                                .and_then(|v| v.as_str())
+                                                .unwrap_or("?"),
+                                            feed_id,
+                                            human_size(
+                                                dto.get("bytes_wiped")
+                                                    .and_then(|v| v.as_u64())
+                                                    .unwrap_or(0),
+                                            ),
+                                        ),
+                                        Err(e) => format!("/feeds rm {feed_id} failed: {e}"),
+                                    };
+                                    app.messages.push(ChatMessage::new(ChatRole::System, body));
+                                    app.dirty = true;
+                                }
+                            }
                             _ => {} // Other command results handled in app.handle_action
                         }
                     }

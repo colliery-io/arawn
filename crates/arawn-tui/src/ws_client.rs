@@ -246,6 +246,51 @@ impl WsClient {
         Ok(serde_json::from_value(result.clone())?)
     }
 
+    /// Pause a feed by id. Backs `/feeds pause <id>`.
+    pub async fn feed_pause(
+        &mut self,
+        feed_id: &str,
+    ) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
+        let resp = self
+            .request_response("feed_pause", json!({"feed_id": feed_id}))
+            .await?;
+        if let Some(err) = resp.get("error") {
+            return Err(err["message"].as_str().unwrap_or("unknown error").into());
+        }
+        let result = resp.get("result").ok_or("no result")?;
+        Ok(result.clone())
+    }
+
+    /// Resume a paused feed by id. Backs `/feeds resume <id>`.
+    pub async fn feed_resume(
+        &mut self,
+        feed_id: &str,
+    ) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
+        let resp = self
+            .request_response("feed_resume", json!({"feed_id": feed_id}))
+            .await?;
+        if let Some(err) = resp.get("error") {
+            return Err(err["message"].as_str().unwrap_or("unknown error").into());
+        }
+        let result = resp.get("result").ok_or("no result")?;
+        Ok(result.clone())
+    }
+
+    /// Decommission a feed by id. Backs `/feeds rm <id>`.
+    pub async fn feed_remove(
+        &mut self,
+        feed_id: &str,
+    ) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
+        let resp = self
+            .request_response("feed_remove", json!({"feed_id": feed_id}))
+            .await?;
+        if let Some(err) = resp.get("error") {
+            return Err(err["message"].as_str().unwrap_or("unknown error").into());
+        }
+        let result = resp.get("result").ok_or("no result")?;
+        Ok(result.clone())
+    }
+
     pub async fn get_permission_mode(
         &mut self,
     ) -> Result<String, Box<dyn std::error::Error>> {

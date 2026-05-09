@@ -215,7 +215,42 @@ End-to-end registration plumbing landed. Filling in T-0214's `register_feed_runt
 
 129 arawn-feeds tests + 144 arawn-tui tests green. Workspace + clippy clean.
 
-**Remaining slices** (separate commits under this same task):
-- Slice 2: `/feeds` modal with row actions — pause / resume / decommission with confirm.
+### 2026-05-08 — slice 2: pause / resume / decommission row actions
+
+Subcommand path landed end-to-end. Modal upgrade deferred to slice 2b — chat-line confirm is fine for now and proves the backend.
+
+**arawn-feeds** (`runtime.rs`):
+- `pause_feed(id)` — drops the cloacina cron schedule (load-bearing step first; if cron deletion fails the row stays alone), then flips DB `enabled=0`. Idempotent — pausing an already-paused feed is a no-op from the caller's perspective.
+- `resume_feed(id)` — re-registers cron via `register_one` first; only flips DB `enabled=1` once the schedule is back so we never have a row that says "active" with nothing firing.
+- `remove_feed(id) -> RemoveOutcome` — order is cron→fs→row: if cron deletion fails we haven't lost any data, if fs deletion fails the row stays so the user can retry. Returns `bytes_wiped` so the confirm message can show what was removed.
+- New `delete_schedule_for(workflow_name)` helper looks up by workflow name + delete; idempotent if the schedule isn't there.
+- `RemoveOutcome { record, bytes_wiped }` re-exported.
+
+**Why delete cron rather than just disable**: cloacina's `register_cron_workflow` always inserts a new schedule (no upsert). After pause + resume across a server restart, a `set_enabled(false)` approach would leave the disabled schedule in cloacina's DB and the boot loop would create a new one alongside it — double firing. Deleting the schedule on pause keeps arawn-feeds DB authoritative.
+
+**arawn-service**: trait gains `feed_pause`/`feed_resume`/`feed_remove`. New `FeedRemoveDto` carries `id/template/bytes_wiped`.
+
+**arawn (server)**: trait impls dispatch to the runtime; each emits a category="feeds" `ServerNotice`. `ws_server` registers three new RPC methods.
+
+**arawn-tui**:
+- `parse_feeds_args` now parses `pause|resume|rm <id>` subcommands. Empty args → list (slice 1 behavior).
+- `/feeds rm <id>` → confirm preview (template, dir, on-disk size). User re-runs `/feeds rm <id> --yes` to commit. The `--yes` (or `-y`) flag is wired so scripts can skip the confirm step.
+- New `CommandResult` variants: `FeedPause(String)`, `FeedResume(String)`, `FeedRemove { feed_id, confirmed }`.
+- `event_loop` dispatches via `WsClient::feed_pause` / `feed_resume` / `feed_remove`.
+- For the unconfirmed `/feeds rm <id>` form, the event loop fetches the current summary first to show "deletes <N> bytes from `<dir>`" — same info the AC wanted in the modal.
+
+**Tests**:
+- `command::tests::feeds_pause_and_resume_dispatch`
+- `command::tests::feeds_rm_requires_confirm_flag`
+- `command::tests::feeds_pause_without_id_is_a_usage_message`
+- `command::tests::feeds_unknown_subcommand_lists_usage`
+- `tests/dynamic_register::pause_resume_round_trip_through_cloacina` — real `DefaultRunner`; verifies cron schedule disappears on pause and re-appears on resume.
+- `tests/dynamic_register::remove_wipes_cron_row_and_data_dir` — drops a marker file in the feed dir, confirms it's wiped + bytes_wiped is non-zero, plus row + cron schedule both disappear.
+- `tests/dynamic_register::pause_unknown_feed_returns_invalid_params` — error path.
+
+132 arawn-feeds tests + 148 arawn-tui tests green. Workspace + clippy clean.
+
+**Remaining slices**:
+- Slice 2b (later, optional): full ratatui modal with `p`/`r`/`d` keybindings on top of the same backend. Deferred — chat-line UX is functional and the modal is pure sugar.
 - Slice 3: discovery pickers (Slack channels, Jira projects, Confluence spaces, Drive folders).
-- Slice 4: auto-create on `/connect` — absorbs deferred bits from T-0220 (slack mentions), T-0216 (gmail/calendar), T-0221 (drive/recent), T-0223 (jira/assignee-tracker).
+- Slice 4: auto-create on `/connect` — absorbs deferred bits from T-0220 / T-0216 / T-0221 / T-0223.

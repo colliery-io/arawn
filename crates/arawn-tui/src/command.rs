@@ -169,7 +169,7 @@ impl CommandRegistry {
         });
         self.commands.push(CommandInfo {
             name: "feeds".into(),
-            description: "List configured data feeds with last-run status".into(),
+            description: "List/manage data feeds (subcommands: pause, resume, rm)".into(),
             kind: CommandKind::BuiltIn,
         });
         // Memory commands
@@ -316,6 +316,14 @@ pub enum CommandResult {
     FeedRegister(WatchSpec),
     /// List configured feeds via `/feeds` (read-only).
     FeedList,
+    /// Pause a feed via `/feeds pause <id>`.
+    FeedPause(String),
+    /// Resume a paused feed via `/feeds resume <id>`.
+    FeedResume(String),
+    /// Decommission a feed via `/feeds rm <id>` (with confirm token).
+    /// Slice 2 wires this through a chat-line confirm — slice 2b
+    /// upgrades to a modal once the modal infra is in place.
+    FeedRemove { feed_id: String, confirmed: bool },
 }
 
 /// Parsed args for the non-interactive form of `/watch`.
@@ -431,6 +439,53 @@ fn tokenize_kv(s: &str) -> Result<Vec<String>, String> {
         out.push(cur);
     }
     Ok(out)
+}
+
+/// Parse the args of `/feeds` into a CommandResult.
+///
+/// Forms:
+/// - `/feeds` — list (read-only).
+/// - `/feeds pause <id>` — pause a feed.
+/// - `/feeds resume <id>` — resume a paused feed.
+/// - `/feeds rm <id>` — open the confirm-and-delete flow.
+/// - `/feeds rm <id> --yes` — skip the confirm (for scripts / tests).
+pub fn parse_feeds_args(args: &str) -> CommandResult {
+    let trimmed = args.trim();
+    if trimmed.is_empty() {
+        return CommandResult::FeedList;
+    }
+    let mut tokens = trimmed.split_whitespace();
+    let sub = tokens.next().unwrap_or("");
+    match sub {
+        "pause" => match tokens.next() {
+            Some(id) => CommandResult::FeedPause(id.into()),
+            None => CommandResult::SystemMessage("Usage: /feeds pause <id>".into()),
+        },
+        "resume" => match tokens.next() {
+            Some(id) => CommandResult::FeedResume(id.into()),
+            None => CommandResult::SystemMessage("Usage: /feeds resume <id>".into()),
+        },
+        "rm" | "remove" => match tokens.next() {
+            Some(id) => {
+                let confirmed = tokens.any(|t| t == "--yes" || t == "-y");
+                CommandResult::FeedRemove {
+                    feed_id: id.into(),
+                    confirmed,
+                }
+            }
+            None => {
+                CommandResult::SystemMessage("Usage: /feeds rm <id> [--yes]".into())
+            }
+        },
+        other => CommandResult::SystemMessage(format!(
+            "Unknown /feeds subcommand: '{other}'.\n\
+             Usage:\n  \
+             /feeds                    — list feeds\n  \
+             /feeds pause <id>         — pause a feed\n  \
+             /feeds resume <id>        — resume a paused feed\n  \
+             /feeds rm <id> [--yes]    — decommission a feed"
+        )),
+    }
 }
 
 /// Execute a parsed slash command against the registry.
@@ -552,7 +607,7 @@ pub fn execute_command(cmd: &ParsedCommand, registry: &CommandRegistry) -> Comma
                     Ok(spec) => CommandResult::FeedRegister(spec),
                     Err(msg) => CommandResult::SystemMessage(msg),
                 },
-                "feeds" => CommandResult::FeedList,
+                "feeds" => parse_feeds_args(&cmd.args),
 
                 _ => CommandResult::SystemMessage(format!("Unknown built-in: /{}", cmd.name)),
             },
@@ -635,6 +690,53 @@ mod tests {
         match execute_command(&cmd, &registry) {
             CommandResult::FeedList => {}
             other => panic!("expected FeedList, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn feeds_pause_and_resume_dispatch() {
+        let registry = CommandRegistry::new();
+        match execute_command(&parse_command("/feeds pause design").unwrap(), &registry) {
+            CommandResult::FeedPause(id) => assert_eq!(id, "design"),
+            other => panic!("expected FeedPause, got {other:?}"),
+        }
+        match execute_command(&parse_command("/feeds resume design").unwrap(), &registry) {
+            CommandResult::FeedResume(id) => assert_eq!(id, "design"),
+            other => panic!("expected FeedResume, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn feeds_rm_requires_confirm_flag() {
+        let registry = CommandRegistry::new();
+        match execute_command(&parse_command("/feeds rm design").unwrap(), &registry) {
+            CommandResult::FeedRemove { feed_id, confirmed } => {
+                assert_eq!(feed_id, "design");
+                assert!(!confirmed, "without --yes, removal is not confirmed");
+            }
+            other => panic!("expected FeedRemove, got {other:?}"),
+        }
+        match execute_command(&parse_command("/feeds rm design --yes").unwrap(), &registry) {
+            CommandResult::FeedRemove { confirmed, .. } => assert!(confirmed),
+            other => panic!("expected FeedRemove, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn feeds_pause_without_id_is_a_usage_message() {
+        let registry = CommandRegistry::new();
+        match execute_command(&parse_command("/feeds pause").unwrap(), &registry) {
+            CommandResult::SystemMessage(msg) => assert!(msg.contains("Usage")),
+            other => panic!("expected SystemMessage, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn feeds_unknown_subcommand_lists_usage() {
+        let registry = CommandRegistry::new();
+        match execute_command(&parse_command("/feeds wat").unwrap(), &registry) {
+            CommandResult::SystemMessage(msg) => assert!(msg.contains("Unknown")),
+            other => panic!("expected SystemMessage, got {other:?}"),
         }
     }
 

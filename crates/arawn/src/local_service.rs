@@ -1407,6 +1407,73 @@ impl ArawnService for LocalService {
         let summaries = runtime.list_summaries().await.map_err(feed_err)?;
         Ok(summaries.into_iter().map(feed_summary_to_dto).collect())
     }
+
+    async fn feed_pause(
+        &self,
+        feed_id: &str,
+    ) -> Result<arawn_service::FeedSummaryDto, ServiceError> {
+        let runtime = self.feed_runtime_or_err()?;
+        runtime.pause_feed(feed_id).await.map_err(feed_err)?;
+        let dto = current_summary(&runtime, feed_id).await?;
+        let _ = self.notice_tx.send(arawn_service::ServerNotice {
+            level: "info".into(),
+            category: "feeds".into(),
+            message: format!("feed {feed_id} paused"),
+            timestamp: chrono::Utc::now().to_rfc3339(),
+        });
+        Ok(dto)
+    }
+
+    async fn feed_resume(
+        &self,
+        feed_id: &str,
+    ) -> Result<arawn_service::FeedSummaryDto, ServiceError> {
+        let runtime = self.feed_runtime_or_err()?;
+        runtime.resume_feed(feed_id).await.map_err(feed_err)?;
+        let dto = current_summary(&runtime, feed_id).await?;
+        let _ = self.notice_tx.send(arawn_service::ServerNotice {
+            level: "info".into(),
+            category: "feeds".into(),
+            message: format!("feed {feed_id} resumed"),
+            timestamp: chrono::Utc::now().to_rfc3339(),
+        });
+        Ok(dto)
+    }
+
+    async fn feed_remove(
+        &self,
+        feed_id: &str,
+    ) -> Result<arawn_service::FeedRemoveDto, ServiceError> {
+        let runtime = self.feed_runtime_or_err()?;
+        let outcome = runtime.remove_feed(feed_id).await.map_err(feed_err)?;
+        let dto = arawn_service::FeedRemoveDto {
+            id: outcome.record.id.clone(),
+            template: outcome.record.template.clone(),
+            bytes_wiped: outcome.bytes_wiped,
+        };
+        let _ = self.notice_tx.send(arawn_service::ServerNotice {
+            level: "info".into(),
+            category: "feeds".into(),
+            message: format!(
+                "feed {} removed ({} bytes wiped)",
+                outcome.record.id, outcome.bytes_wiped
+            ),
+            timestamp: chrono::Utc::now().to_rfc3339(),
+        });
+        Ok(dto)
+    }
+}
+
+async fn current_summary(
+    runtime: &arawn_feeds::FeedRuntime,
+    feed_id: &str,
+) -> Result<arawn_service::FeedSummaryDto, ServiceError> {
+    let summaries = runtime.list_summaries().await.map_err(feed_err)?;
+    summaries
+        .into_iter()
+        .find(|s| s.id == feed_id)
+        .map(feed_summary_to_dto)
+        .ok_or_else(|| ServiceError::NotFound(format!("feed {feed_id}")))
 }
 
 fn feed_err(e: arawn_feeds::FeedError) -> ServiceError {

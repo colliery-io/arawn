@@ -316,3 +316,12 @@ pub struct FeedSummaryDto {
     pub data_size_bytes: u64,
     pub data_dir: String,
 }
+
+/// Returned by `feed_remove` so the TUI can confirm the wipe with a
+/// "deleted N bytes" message.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FeedRemoveDto {
+    pub id: String,
+    pub template: String,
+    pub bytes_wiped: u64,
+}

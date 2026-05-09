@@ -51,6 +51,9 @@ const RPC_METHODS: &[&str] = &[
     "disconnect_integration",
     "feed_register",
     "feed_list",
+    "feed_pause",
+    "feed_resume",
+    "feed_remove",
 ];
 
 /// JSON-RPC style request from client.
@@ -1055,6 +1058,60 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                 debug!(id, "feed_list");
                 let resp = match service.feed_list().await {
                     Ok(list) => Response::success(id, serde_json::to_value(&list).unwrap()),
+                    Err(e) => Response::from_service_error(id, &e),
+                };
+                let _ = sender
+                    .send(WsMessage::Text(
+                        serde_json::to_string(&resp).unwrap().into(),
+                    ))
+                    .await;
+            }
+
+            "feed_pause" => {
+                let fid = request
+                    .params
+                    .get("feed_id")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                debug!(id, %fid, "feed_pause");
+                let resp = match service.feed_pause(fid).await {
+                    Ok(dto) => Response::success(id, serde_json::to_value(&dto).unwrap()),
+                    Err(e) => Response::from_service_error(id, &e),
+                };
+                let _ = sender
+                    .send(WsMessage::Text(
+                        serde_json::to_string(&resp).unwrap().into(),
+                    ))
+                    .await;
+            }
+
+            "feed_resume" => {
+                let fid = request
+                    .params
+                    .get("feed_id")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                debug!(id, %fid, "feed_resume");
+                let resp = match service.feed_resume(fid).await {
+                    Ok(dto) => Response::success(id, serde_json::to_value(&dto).unwrap()),
+                    Err(e) => Response::from_service_error(id, &e),
+                };
+                let _ = sender
+                    .send(WsMessage::Text(
+                        serde_json::to_string(&resp).unwrap().into(),
+                    ))
+                    .await;
+            }
+
+            "feed_remove" => {
+                let fid = request
+                    .params
+                    .get("feed_id")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                debug!(id, %fid, "feed_remove");
+                let resp = match service.feed_remove(fid).await {
+                    Ok(dto) => Response::success(id, serde_json::to_value(&dto).unwrap()),
                     Err(e) => Response::from_service_error(id, &e),
                 };
                 let _ = sender
