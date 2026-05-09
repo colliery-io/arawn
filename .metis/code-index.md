@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-09T01:33:49Z | 256 files | Python, Rust
+> Generated: 2026-05-09T03:13:43Z | 257 files | Python, Rust
 
 ## Project Structure
 
@@ -166,6 +166,7 @@
 │   │       ├── calendar_upcoming_archive.rs
 │   │       ├── cloacina_fire.rs
 │   │       ├── confluence_space_archive.rs
+│   │       ├── discovery.rs
 │   │       ├── drive_folder_sync.rs
 │   │       ├── drive_recent.rs
 │   │       ├── dynamic_register.rs
@@ -530,7 +531,7 @@
 -  `build_session_context` function L270-377 — `( &self, session_id: Uuid, workstream: &Workstream, ws_dir: &str, workspace_dir:...` — Build a ToolContext and per-session PromptContext for the engine.
 -  `build_engine` function L381-430 — `( &self, prompt_context: Option<arawn_engine::PromptContext>, event_tx: &mpsc::S...` — Build a QueryEngine configured with compactor, skills, plugins, and plan state.
 -  `infer_entity_type` function L435-448 — `(text: &str) -> (arawn_memory::EntityType, String)` — Infer entity type from text patterns.
--  `LocalService` type L453-1516 — `impl ArawnService for LocalService`
+-  `LocalService` type L453-1543 — `impl ArawnService for LocalService`
 -  `list_workstreams` function L454-469 — `(&self) -> Result<Vec<WorkstreamInfo>, ServiceError>`
 -  `create_workstream` function L471-488 — `( &self, name: String, root_dir: PathBuf, ) -> Result<WorkstreamInfo, ServiceErr...`
 -  `list_sessions` function L490-509 — `( &self, workstream_id: Option<Uuid>, ) -> Result<Vec<SessionInfo>, ServiceError...`
@@ -558,21 +559,22 @@
 -  `feed_list` function L1456-1460 — `(&self) -> Result<Vec<arawn_service::FeedSummaryDto>, ServiceError>`
 -  `feed_pause` function L1462-1476 — `( &self, feed_id: &str, ) -> Result<arawn_service::FeedSummaryDto, ServiceError>`
 -  `feed_resume` function L1478-1492 — `( &self, feed_id: &str, ) -> Result<arawn_service::FeedSummaryDto, ServiceError>`
--  `feed_remove` function L1494-1515 — `( &self, feed_id: &str, ) -> Result<arawn_service::FeedRemoveDto, ServiceError>`
--  `default_feed_for_service` function L1523-1532 — `(service: &str) -> Option<(&'static str, &'static str)>` — Personal default feed registered automatically the first time
--  `current_summary` function L1534-1544 — `( runtime: &arawn_feeds::FeedRuntime, feed_id: &str, ) -> Result<arawn_service::...`
--  `feed_err` function L1546-1555 — `(e: arawn_feeds::FeedError) -> ServiceError`
--  `feed_summary_to_dto` function L1557-1571 — `(s: arawn_feeds::FeedSummary) -> arawn_service::FeedSummaryDto`
--  `OAuthFlowCtx` struct L1576-1580 — `{ service: String, url_tx: tokio::sync::Mutex<Option<tokio::sync::oneshot::Sende...` — Glue that lets `LocalService::start_oauth_flow` bridge the integration's
--  `OAuthFlowCtx` type L1583-1605 — `= OAuthFlowCtx`
--  `service` function L1584-1586 — `(&self) -> &str`
--  `publish_auth_url` function L1588-1595 — `(&self, url: &url::Url)`
--  `publish_progress` function L1597-1604 — `(&self, message: &str)`
--  `resolve_ws_dir_from_store` function L1608-1619 — `(store: &Store, ws_id: Option<Uuid>) -> Result<String, ServiceError>` — Resolve workstream directory name from store.
--  `first_sentence` function L1623-1634 — `(s: &str) -> String` — Extract the first sentence and sanitize for use in a markdown table cell.
--  `feed_default_tests` module L1637-1674 — `-`
--  `known_services_each_have_a_default_feed` function L1641-1667 — `()`
--  `unknown_service_has_no_default_feed` function L1670-1673 — `()`
+-  `feed_discover` function L1494-1519 — `( &self, template: &str, ) -> Result<arawn_service::FeedDiscoverDto, ServiceErro...`
+-  `feed_remove` function L1521-1542 — `( &self, feed_id: &str, ) -> Result<arawn_service::FeedRemoveDto, ServiceError>`
+-  `default_feed_for_service` function L1550-1559 — `(service: &str) -> Option<(&'static str, &'static str)>` — Personal default feed registered automatically the first time
+-  `current_summary` function L1561-1571 — `( runtime: &arawn_feeds::FeedRuntime, feed_id: &str, ) -> Result<arawn_service::...`
+-  `feed_err` function L1573-1582 — `(e: arawn_feeds::FeedError) -> ServiceError`
+-  `feed_summary_to_dto` function L1584-1598 — `(s: arawn_feeds::FeedSummary) -> arawn_service::FeedSummaryDto`
+-  `OAuthFlowCtx` struct L1603-1607 — `{ service: String, url_tx: tokio::sync::Mutex<Option<tokio::sync::oneshot::Sende...` — Glue that lets `LocalService::start_oauth_flow` bridge the integration's
+-  `OAuthFlowCtx` type L1610-1632 — `= OAuthFlowCtx`
+-  `service` function L1611-1613 — `(&self) -> &str`
+-  `publish_auth_url` function L1615-1622 — `(&self, url: &url::Url)`
+-  `publish_progress` function L1624-1631 — `(&self, message: &str)`
+-  `resolve_ws_dir_from_store` function L1635-1646 — `(store: &Store, ws_id: Option<Uuid>) -> Result<String, ServiceError>` — Resolve workstream directory name from store.
+-  `first_sentence` function L1650-1661 — `(s: &str) -> String` — Extract the first sentence and sanitize for use in a markdown table cell.
+-  `feed_default_tests` module L1664-1701 — `-`
+-  `known_services_each_have_a_default_feed` function L1668-1694 — `()`
+-  `unknown_service_has_no_default_feed` function L1697-1700 — `()`
 
 #### crates/arawn/src/main.rs
 
@@ -615,30 +617,30 @@
 
 #### crates/arawn/src/ws_server.rs
 
-- pub `read_token_file` function L149-160 — `() -> Option<String>` — Read the auth token from {data_dir}/server.token.
-- pub `run_server` function L163-198 — `(service: LocalService, port: u16) -> anyhow::Result<()>` — Start the WebSocket server on the given port.
-- pub `handle_connection_public` function L284-286 — `(socket: WebSocket, service: Arc<LocalService>)` — Handle a single WebSocket connection.
+- pub `read_token_file` function L150-161 — `() -> Option<String>` — Read the auth token from {data_dir}/server.token.
+- pub `run_server` function L164-199 — `(service: LocalService, port: u16) -> anyhow::Result<()>` — Start the WebSocket server on the given port.
+- pub `handle_connection_public` function L285-287 — `(socket: WebSocket, service: Arc<LocalService>)` — Handle a single WebSocket connection.
 -  `PROTOCOL_VERSION` variable L24 — `: &str` — Protocol version reported by the `hello` handshake.
--  `RPC_METHODS` variable L27-57 — `: &[&str]` — Canonical RPC method names (returned by `hello`).
--  `Request` struct L61-66 — `{ id: u64, method: String, params: Value }` — JSON-RPC style request from client.
--  `Response` struct L70-76 — `{ id: u64, result: Option<Value>, error: Option<ErrorBody> }` — JSON-RPC style response to client.
--  `ErrorBody` struct L79-84 — `{ code: String, message: String, details: Option<Value> }`
--  `Response` type L86-122 — `= Response`
--  `success` function L87-93 — `(id: u64, result: Value) -> Self`
--  `error` function L95-105 — `(id: u64, code: &str, message: String) -> Self`
--  `from_service_error` function L111-121 — `(id: u64, e: &arawn_service::ServiceError) -> Self` — Build an error response from a [`ServiceError`].
--  `AppState` struct L126-131 — `{ service: Arc<LocalService>, auth_token: Option<String> }` — Shared app state for the WebSocket server.
--  `generate_auth_token` function L134-137 — `() -> String` — Generate a random auth token for WebSocket connections.
--  `write_token_file` function L140-145 — `(data_dir: &std::path::Path, token: &str) -> std::io::Result<std::path::PathBuf>` — Write the auth token to {data_dir}/server.token for clients to read.
--  `shutdown_signal` function L201-223 — `()` — Wait for a shutdown signal (Ctrl-C / SIGTERM).
--  `decision_handler` function L228-247 — `( State(AppState { service, .. }): State<AppState>, Json(req): Json<arawn_workfl...` — HTTP endpoint for workflow decision tasks.
--  `WsQueryParams` struct L251-253 — `{ token: Option<String> }` — Query parameters for WebSocket connection.
--  `ws_handler` function L255-281 — `( ws: WebSocketUpgrade, Query(params): Query<WsQueryParams>, State(state): State...`
--  `handle_connection` function L288-1137 — `(socket: WebSocket, service: Arc<LocalService>)`
--  `tests` module L1140-1190 — `-`
--  `from_service_error_preserves_structured_detail_for_typed_variants` function L1147-1157 — `()` — Typed Storage error should round-trip through the wire payload with
--  `from_service_error_omits_details_for_string_only_variants` function L1163-1174 — `()` — String-only variants (NotFound, InvalidOperation, Internal) keep
--  `from_service_error_preserves_engine_error_kind` function L1180-1189 — `()` — Engine errors surface a `kind` that identifies the inner variant —
+-  `RPC_METHODS` variable L27-58 — `: &[&str]` — Canonical RPC method names (returned by `hello`).
+-  `Request` struct L62-67 — `{ id: u64, method: String, params: Value }` — JSON-RPC style request from client.
+-  `Response` struct L71-77 — `{ id: u64, result: Option<Value>, error: Option<ErrorBody> }` — JSON-RPC style response to client.
+-  `ErrorBody` struct L80-85 — `{ code: String, message: String, details: Option<Value> }`
+-  `Response` type L87-123 — `= Response`
+-  `success` function L88-94 — `(id: u64, result: Value) -> Self`
+-  `error` function L96-106 — `(id: u64, code: &str, message: String) -> Self`
+-  `from_service_error` function L112-122 — `(id: u64, e: &arawn_service::ServiceError) -> Self` — Build an error response from a [`ServiceError`].
+-  `AppState` struct L127-132 — `{ service: Arc<LocalService>, auth_token: Option<String> }` — Shared app state for the WebSocket server.
+-  `generate_auth_token` function L135-138 — `() -> String` — Generate a random auth token for WebSocket connections.
+-  `write_token_file` function L141-146 — `(data_dir: &std::path::Path, token: &str) -> std::io::Result<std::path::PathBuf>` — Write the auth token to {data_dir}/server.token for clients to read.
+-  `shutdown_signal` function L202-224 — `()` — Wait for a shutdown signal (Ctrl-C / SIGTERM).
+-  `decision_handler` function L229-248 — `( State(AppState { service, .. }): State<AppState>, Json(req): Json<arawn_workfl...` — HTTP endpoint for workflow decision tasks.
+-  `WsQueryParams` struct L252-254 — `{ token: Option<String> }` — Query parameters for WebSocket connection.
+-  `ws_handler` function L256-282 — `( ws: WebSocketUpgrade, Query(params): Query<WsQueryParams>, State(state): State...`
+-  `handle_connection` function L289-1156 — `(socket: WebSocket, service: Arc<LocalService>)`
+-  `tests` module L1159-1209 — `-`
+-  `from_service_error_preserves_structured_detail_for_typed_variants` function L1166-1176 — `()` — Typed Storage error should round-trip through the wire payload with
+-  `from_service_error_omits_details_for_string_only_variants` function L1182-1193 — `()` — String-only variants (NotFound, InvalidOperation, Internal) keep
+-  `from_service_error_preserves_engine_error_kind` function L1199-1208 — `()` — Engine errors surface a `kind` that identifies the inner variant —
 
 ### crates/arawn-auth/src
 
@@ -2820,23 +2822,24 @@
 
 #### crates/arawn-feeds/src/runtime.rs
 
-- pub `CloacinaRunner` type L33 — `= DefaultRunner` — arawn-feeds doesn't depend on arawn-workflow directly to avoid a
-- pub `feed_workflow_name` function L42-44 — `(feed_id: &str) -> String` — Format the cloacina workflow name for a feed.
-- pub `start` function L50-92 — `( runner: Arc<CloacinaRunner>, conn: Arc<Mutex<Connection>>, layout: Arc<DataLay...` — One-stop entry the server boot calls after the workflow runner is
-- pub `FeedRuntime` struct L95-98 — `{ runner: Arc<CloacinaRunner>, runtime_ctx: FeedRuntimeContext }` — Live handle for dynamic feed registration (Phase 6: `/watch`).
-- pub `register_feed_runtime` function L103-108 — `( &self, record: &FeedRecord, ) -> Result<(), FeedError>` — Register an additional feed without a server restart.
-- pub `runtime_ctx` function L110-112 — `(&self) -> &FeedRuntimeContext` — audit are all inherited from cloacina.
-- pub `register_feed_dynamic` function L126-177 — `( &self, template: &str, feed_id: &str, params: TemplateParams, cadence_override...` — Full dynamic-registration flow used by the `/watch` command.
-- pub `pause_feed` function L185-202 — `(&self, feed_id: &str) -> Result<FeedRecord, FeedError>` — Pause a feed: drop its cloacina cron schedule and flip the row
-- pub `resume_feed` function L207-225 — `(&self, feed_id: &str) -> Result<FeedRecord, FeedError>` — Resume a previously-paused feed: re-register the cloacina
-- pub `remove_feed` function L234-263 — `( &self, feed_id: &str, ) -> Result<RemoveOutcome, FeedError>` — Decommission: drop the cloacina cron schedule, delete the DB
-- pub `list_summaries` function L267-298 — `(&self) -> Result<Vec<FeedSummary>, FeedError>` — List every feed in the DB (enabled or paused) with on-disk
-- pub `RemoveOutcome` struct L305-308 — `{ record: FeedRecord, bytes_wiped: u64 }` — Outcome of a successful `remove_feed` — the row that was deleted
--  `FeedRuntime` type L100-299 — `= FeedRuntime` — audit are all inherited from cloacina.
--  `delete_schedule_for` function L312-332 — `( runner: &CloacinaRunner, workflow_name: &str, ) -> Result<(), FeedError>` — Look up cloacina's cron schedule by workflow name and delete it
--  `dir_size_bytes` function L334-354 — `(path: &std::path::Path) -> u64` — audit are all inherited from cloacina.
--  `walk` function L335-350 — `(p: &std::path::Path, acc: &mut u64)` — audit are all inherited from cloacina.
--  `register_one` function L356-432 — `( runner: &CloacinaRunner, ctx: &FeedRuntimeContext, record: &FeedRecord, ) -> R...` — audit are all inherited from cloacina.
+- pub `CloacinaRunner` type L34 — `= DefaultRunner` — arawn-feeds doesn't depend on arawn-workflow directly to avoid a
+- pub `feed_workflow_name` function L43-45 — `(feed_id: &str) -> String` — Format the cloacina workflow name for a feed.
+- pub `start` function L51-93 — `( runner: Arc<CloacinaRunner>, conn: Arc<Mutex<Connection>>, layout: Arc<DataLay...` — One-stop entry the server boot calls after the workflow runner is
+- pub `FeedRuntime` struct L96-99 — `{ runner: Arc<CloacinaRunner>, runtime_ctx: FeedRuntimeContext }` — Live handle for dynamic feed registration (Phase 6: `/watch`).
+- pub `register_feed_runtime` function L104-109 — `( &self, record: &FeedRecord, ) -> Result<(), FeedError>` — Register an additional feed without a server restart.
+- pub `runtime_ctx` function L111-113 — `(&self) -> &FeedRuntimeContext` — audit are all inherited from cloacina.
+- pub `register_feed_dynamic` function L127-178 — `( &self, template: &str, feed_id: &str, params: TemplateParams, cadence_override...` — Full dynamic-registration flow used by the `/watch` command.
+- pub `pause_feed` function L186-203 — `(&self, feed_id: &str) -> Result<FeedRecord, FeedError>` — Pause a feed: drop its cloacina cron schedule and flip the row
+- pub `resume_feed` function L208-226 — `(&self, feed_id: &str) -> Result<FeedRecord, FeedError>` — Resume a previously-paused feed: re-register the cloacina
+- pub `remove_feed` function L235-264 — `( &self, feed_id: &str, ) -> Result<RemoveOutcome, FeedError>` — Decommission: drop the cloacina cron schedule, delete the DB
+- pub `discover_template` function L272-279 — `( &self, template_name: &str, ) -> Result<Option<Vec<DiscoveryRow>>, FeedError>` — Run the template's discovery hook.
+- pub `list_summaries` function L283-314 — `(&self) -> Result<Vec<FeedSummary>, FeedError>` — List every feed in the DB (enabled or paused) with on-disk
+- pub `RemoveOutcome` struct L321-324 — `{ record: FeedRecord, bytes_wiped: u64 }` — Outcome of a successful `remove_feed` — the row that was deleted
+-  `FeedRuntime` type L101-315 — `= FeedRuntime` — audit are all inherited from cloacina.
+-  `delete_schedule_for` function L328-348 — `( runner: &CloacinaRunner, workflow_name: &str, ) -> Result<(), FeedError>` — Look up cloacina's cron schedule by workflow name and delete it
+-  `dir_size_bytes` function L350-370 — `(path: &std::path::Path) -> u64` — audit are all inherited from cloacina.
+-  `walk` function L351-366 — `(p: &std::path::Path, acc: &mut u64)` — audit are all inherited from cloacina.
+-  `register_one` function L372-448 — `( runner: &CloacinaRunner, ctx: &FeedRuntimeContext, record: &FeedRecord, ) -> R...` — audit are all inherited from cloacina.
 
 #### crates/arawn-feeds/src/store.rs
 
@@ -2867,8 +2870,10 @@
 - pub `new` function L41-43 — `(clients: Arc<dyn FeedClients>) -> Self` — use to reach providers and emit logs).
 - pub `noop` function L48-52 — `() -> Self` — Test-only convenience: a ctx where every provider client returns
 - pub `clients` function L54-56 — `(&self) -> &Arc<dyn FeedClients>` — use to reach providers and emit logs).
-- pub `FeedTemplate` interface L65-98 — `{ fn name(), fn validate(), fn defaults(), fn run() }` — One named, parameterized fetch+write recipe owned by an integration.
+- pub `FeedTemplate` interface L65-117 — `{ fn name(), fn validate(), fn defaults(), fn run(), fn discover() }` — One named, parameterized fetch+write recipe owned by an integration.
+- pub `DiscoveryRow` struct L127-132 — `{ label: String, hint: Option<String>, params: Value }` — One pickable choice surfaced by `FeedTemplate::discover`.
 -  `TemplateCtx` type L40-57 — `= TemplateCtx` — use to reach providers and emit logs).
+-  `discover` function L111-116 — `( &self, _ctx: &TemplateCtx, ) -> Result<Option<Vec<DiscoveryRow>>, FeedError>` — Optional discovery hook for the `/watch` picker.
 
 #### crates/arawn-feeds/src/types.rs
 
@@ -2894,28 +2899,34 @@
 - pub `ConfluencePageBody` struct L46-52 — `{ id: String, storage_xml: Option<String>, version: Option<i64> }` — Body of a Confluence page in storage format (raw XML).
 - pub `JiraIssueMeta` struct L57-64 — `{ key: String, id: String, updated: Option<String>, summary: Option<String> }` — Lightweight Jira issue summary returned by [`AtlassianFeedClient::jql_search`].
 - pub `JiraIssueDetail` struct L72-82 — `{ meta: JiraIssueMeta, fields: Value, comments: Option<Vec<Value>>, changelog: O...` — Full issue snapshot — meta + raw fields blob + optional changelog
-- pub `AtlassianFeedClient` interface L89-130 — `{ fn space_pages_modified_since(), fn page_body_storage(), fn jql_search(), fn i...` — What feeds need from Atlassian.
-- pub `RealAtlassianClient` struct L134-136 — `{ integration: Arc<AtlassianIntegration> }` — Confluence/Jira tools use.
-- pub `new` function L139-141 — `(integration: Arc<AtlassianIntegration>) -> Self` — Confluence/Jira tools use.
--  `RealAtlassianClient` type L138-142 — `= RealAtlassianClient` — Confluence/Jira tools use.
--  `integ_err` function L144-151 — `(e: arawn_integrations::IntegrationError) -> FeedError` — Confluence/Jira tools use.
--  `classify_provider_error` function L156-173 — `(msg: &str) -> FeedError` — Provider errors arrive as opaque strings from the Atlassian client.
--  `V1SearchResp` struct L178-183 — `{ results: Vec<V1SearchResult>, links: serde_json::Map<String, serde_json::Value...` — Confluence/Jira tools use.
--  `V1SearchResult` struct L186-194 — `{ title: Option<String>, content: Option<V1Content>, last_modified: Option<Strin...` — Confluence/Jira tools use.
--  `V1Content` struct L197-201 — `{ id: String, space: Option<V1Space>, version: Option<V1Version> }` — Confluence/Jira tools use.
--  `V1Space` struct L204-206 — `{ key: Option<String> }` — Confluence/Jira tools use.
--  `V1Version` struct L209-212 — `{ number: Option<i64>, when: Option<String> }` — Confluence/Jira tools use.
--  `V2PageDetail` struct L217-221 — `{ id: String, body: Option<V2Body>, version: Option<V2Version> }` — Confluence/Jira tools use.
--  `V2Body` struct L224-226 — `{ storage: Option<V2BodyStorage> }` — Confluence/Jira tools use.
--  `V2BodyStorage` struct L229-231 — `{ value: Option<String> }` — Confluence/Jira tools use.
--  `V2Version` struct L234-236 — `{ number: Option<i64> }` — Confluence/Jira tools use.
--  `RealAtlassianClient` type L239-493 — `impl AtlassianFeedClient for RealAtlassianClient` — Confluence/Jira tools use.
--  `space_pages_modified_since` function L240-318 — `( &self, space_key: &str, since: Option<DateTime<Utc>>, ) -> Result<Vec<Confluen...` — Confluence/Jira tools use.
--  `page_body_storage` function L320-338 — `( &self, page_id: &str, ) -> Result<ConfluencePageBody, FeedError>` — Confluence/Jira tools use.
--  `jql_search` function L340-377 — `( &self, jql: &str, max_results: u32, ) -> Result<Vec<JiraIssueMeta>, FeedError>` — Confluence/Jira tools use.
--  `issue_full` function L379-474 — `( &self, key: &str, want_changelog: bool, want_comments: bool, ) -> Result<JiraI...` — Confluence/Jira tools use.
--  `resolve_project` function L476-492 — `(&self, key_or_id: &str) -> Result<String, FeedError>` — Confluence/Jira tools use.
--  `jira_err` function L495-507 — `(e: jira_v3_openapi::apis::Error<E>) -> FeedError` — Confluence/Jira tools use.
+- pub `AtlassianFeedClient` interface L89-140 — `{ fn space_pages_modified_since(), fn page_body_storage(), fn jql_search(), fn i...` — What feeds need from Atlassian.
+- pub `JiraProjectMeta` struct L144-148 — `{ id: String, key: String, name: String }` — Project summary as the picker cares about it.
+- pub `ConfluenceSpaceMeta` struct L152-155 — `{ key: String, name: String }` — Space summary as the picker cares about it.
+- pub `RealAtlassianClient` struct L159-161 — `{ integration: Arc<AtlassianIntegration> }` — Confluence/Jira tools use.
+- pub `new` function L164-166 — `(integration: Arc<AtlassianIntegration>) -> Self` — Confluence/Jira tools use.
+-  `RealAtlassianClient` type L163-167 — `= RealAtlassianClient` — Confluence/Jira tools use.
+-  `integ_err` function L169-176 — `(e: arawn_integrations::IntegrationError) -> FeedError` — Confluence/Jira tools use.
+-  `classify_provider_error` function L181-198 — `(msg: &str) -> FeedError` — Provider errors arrive as opaque strings from the Atlassian client.
+-  `V1SearchResp` struct L203-208 — `{ results: Vec<V1SearchResult>, links: serde_json::Map<String, serde_json::Value...` — Confluence/Jira tools use.
+-  `V1SearchResult` struct L211-219 — `{ title: Option<String>, content: Option<V1Content>, last_modified: Option<Strin...` — Confluence/Jira tools use.
+-  `V1Content` struct L222-226 — `{ id: String, space: Option<V1Space>, version: Option<V1Version> }` — Confluence/Jira tools use.
+-  `V1Space` struct L229-231 — `{ key: Option<String> }` — Confluence/Jira tools use.
+-  `V1Version` struct L234-237 — `{ number: Option<i64>, when: Option<String> }` — Confluence/Jira tools use.
+-  `V2PageDetail` struct L242-246 — `{ id: String, body: Option<V2Body>, version: Option<V2Version> }` — Confluence/Jira tools use.
+-  `V2Body` struct L249-251 — `{ storage: Option<V2BodyStorage> }` — Confluence/Jira tools use.
+-  `V2BodyStorage` struct L254-256 — `{ value: Option<String> }` — Confluence/Jira tools use.
+-  `V2Version` struct L259-261 — `{ number: Option<i64> }` — Confluence/Jira tools use.
+-  `RealAtlassianClient` type L264-558 — `impl AtlassianFeedClient for RealAtlassianClient` — Confluence/Jira tools use.
+-  `space_pages_modified_since` function L265-343 — `( &self, space_key: &str, since: Option<DateTime<Utc>>, ) -> Result<Vec<Confluen...` — Confluence/Jira tools use.
+-  `page_body_storage` function L345-363 — `( &self, page_id: &str, ) -> Result<ConfluencePageBody, FeedError>` — Confluence/Jira tools use.
+-  `jql_search` function L365-402 — `( &self, jql: &str, max_results: u32, ) -> Result<Vec<JiraIssueMeta>, FeedError>` — Confluence/Jira tools use.
+-  `issue_full` function L404-499 — `( &self, key: &str, want_changelog: bool, want_comments: bool, ) -> Result<JiraI...` — Confluence/Jira tools use.
+-  `resolve_project` function L501-517 — `(&self, key_or_id: &str) -> Result<String, FeedError>` — Confluence/Jira tools use.
+-  `list_jira_projects` function L519-539 — `(&self) -> Result<Vec<JiraProjectMeta>, FeedError>` — Confluence/Jira tools use.
+-  `list_confluence_spaces` function L541-557 — `( &self, ) -> Result<Vec<ConfluenceSpaceMeta>, FeedError>` — Confluence/Jira tools use.
+-  `V2SpacesResp` struct L561-564 — `{ results: Vec<V2Space> }` — Confluence/Jira tools use.
+-  `V2Space` struct L567-571 — `{ key: String, name: Option<String> }` — Confluence/Jira tools use.
+-  `jira_err` function L573-585 — `(e: jira_v3_openapi::apis::Error<E>) -> FeedError` — Confluence/Jira tools use.
 
 #### crates/arawn-feeds/src/clients/calendar.rs
 
@@ -2998,38 +3009,40 @@
 
 #### crates/arawn-feeds/src/clients/slack.rs
 
-- pub `SlackFeedClient` interface L29-91 — `{ fn resolve_channel(), fn channel_history(), fn thread_replies(), fn open_dm(),...` — What feeds need from Slack.
-- pub `SlackAuthInfo` struct L95-98 — `{ user_id: String, team_id: String }` — Subset of Slack `auth.test` response that feeds care about.
-- pub `SlackHistoryPage` struct L104-113 — `{ messages: Vec<serde_json::Value>, next_cursor_ts: Option<String> }` — One page of Slack channel history.
-- pub `RealSlackClient` struct L117-119 — `{ integration: Arc<SlackIntegration> }` — Slack tools use.
-- pub `new` function L122-124 — `(integration: Arc<SlackIntegration>) -> Self` — Slack tools use.
-- pub `ChannelKind` enum L473-486 — `Public | Private | DirectMessage | GroupDm` — Slack conversation kind, classified by id prefix.
-- pub `history_scope` function L492-499 — `(self) -> &'static str` — Required Slack OAuth scope to call `conversations.history` on
-- pub `recommended_template` function L502-509 — `(self) -> &'static str` — Recommended template to archive this kind.
-- pub `classify_channel_id` function L514-526 — `(s: &str) -> Option<ChannelKind>` — Classify a Slack id by its prefix.
--  `RealSlackClient` type L121-125 — `= RealSlackClient` — Slack tools use.
--  `integ_err` function L127-133 — `(e: arawn_integrations::IntegrationError) -> FeedError` — Slack tools use.
--  `slack_morphism_err` function L135-147 — `(op: &str, e: E) -> FeedError` — Slack tools use.
--  `RealSlackClient` type L150-403 — `impl SlackFeedClient for RealSlackClient` — Slack tools use.
--  `resolve_channel` function L151-187 — `(&self, name_or_id: &str) -> Result<String, FeedError>` — Slack tools use.
--  `channel_history` function L189-232 — `( &self, channel_id: &str, oldest_ts: Option<&str>, ) -> Result<SlackHistoryPage...` — Slack tools use.
--  `thread_replies` function L234-279 — `( &self, channel_id: &str, parent_ts: &str, oldest_ts: Option<&str>, ) -> Result...` — Slack tools use.
--  `open_dm` function L281-303 — `(&self, user_id_or_name: &str) -> Result<String, FeedError>` — Slack tools use.
--  `auth_test` function L305-322 — `(&self) -> Result<SlackAuthInfo, FeedError>` — Slack tools use.
--  `search_messages` function L324-402 — `( &self, query: &str, oldest_ts: Option<&str>, ) -> Result<SlackHistoryPage, Fee...` — Slack tools use.
--  `ts_to_yyyy_mm_dd` function L408-413 — `(ts: &str) -> Option<String>` — Lossy conversion from Slack's float-string `ts` to a `YYYY-MM-DD`
--  `RealSlackClient` type L415-445 — `= RealSlackClient` — Slack tools use.
--  `resolve_user_name_to_id` function L416-444 — `(&self, name: &str) -> Result<String, FeedError>` — Slack tools use.
--  `looks_like_user_id` function L447-452 — `(s: &str) -> bool` — Slack tools use.
--  `looks_like_channel_id` function L454-456 — `(s: &str) -> bool` — Slack tools use.
--  `ChannelKind` type L488-510 — `= ChannelKind` — Slack tools use.
--  `tests` module L529-597 — `-` — Slack tools use.
--  `channel_id_recognized_by_prefix` function L533-538 — `()` — Slack tools use.
--  `names_not_recognized_as_ids` function L541-546 — `()` — Slack tools use.
--  `classify_returns_kind_for_each_prefix` function L549-557 — `()` — Slack tools use.
--  `channel_kind_exposes_required_scope` function L560-565 — `()` — Slack tools use.
--  `channel_kind_recommends_correct_template` function L568-586 — `()` — Slack tools use.
--  `user_id_recognized_by_prefix` function L589-596 — `()` — Slack tools use.
+- pub `SlackFeedClient` interface L29-97 — `{ fn resolve_channel(), fn channel_history(), fn thread_replies(), fn open_dm(),...` — What feeds need from Slack.
+- pub `SlackChannel` struct L101-107 — `{ id: String, name: String, is_private: bool, is_dm: bool }` — Channel summary as the picker cares about it.
+- pub `SlackAuthInfo` struct L111-114 — `{ user_id: String, team_id: String }` — Subset of Slack `auth.test` response that feeds care about.
+- pub `SlackHistoryPage` struct L120-129 — `{ messages: Vec<serde_json::Value>, next_cursor_ts: Option<String> }` — One page of Slack channel history.
+- pub `RealSlackClient` struct L133-135 — `{ integration: Arc<SlackIntegration> }` — Slack tools use.
+- pub `new` function L138-140 — `(integration: Arc<SlackIntegration>) -> Self` — Slack tools use.
+- pub `ChannelKind` enum L527-540 — `Public | Private | DirectMessage | GroupDm` — Slack conversation kind, classified by id prefix.
+- pub `history_scope` function L546-553 — `(self) -> &'static str` — Required Slack OAuth scope to call `conversations.history` on
+- pub `recommended_template` function L556-563 — `(self) -> &'static str` — Recommended template to archive this kind.
+- pub `classify_channel_id` function L568-580 — `(s: &str) -> Option<ChannelKind>` — Classify a Slack id by its prefix.
+-  `RealSlackClient` type L137-141 — `= RealSlackClient` — Slack tools use.
+-  `integ_err` function L143-149 — `(e: arawn_integrations::IntegrationError) -> FeedError` — Slack tools use.
+-  `slack_morphism_err` function L151-163 — `(op: &str, e: E) -> FeedError` — Slack tools use.
+-  `RealSlackClient` type L166-457 — `impl SlackFeedClient for RealSlackClient` — Slack tools use.
+-  `resolve_channel` function L167-203 — `(&self, name_or_id: &str) -> Result<String, FeedError>` — Slack tools use.
+-  `channel_history` function L205-248 — `( &self, channel_id: &str, oldest_ts: Option<&str>, ) -> Result<SlackHistoryPage...` — Slack tools use.
+-  `thread_replies` function L250-295 — `( &self, channel_id: &str, parent_ts: &str, oldest_ts: Option<&str>, ) -> Result...` — Slack tools use.
+-  `open_dm` function L297-319 — `(&self, user_id_or_name: &str) -> Result<String, FeedError>` — Slack tools use.
+-  `auth_test` function L321-338 — `(&self) -> Result<SlackAuthInfo, FeedError>` — Slack tools use.
+-  `search_messages` function L340-418 — `( &self, query: &str, oldest_ts: Option<&str>, ) -> Result<SlackHistoryPage, Fee...` — Slack tools use.
+-  `list_channels` function L420-456 — `(&self) -> Result<Vec<SlackChannel>, FeedError>` — Slack tools use.
+-  `ts_to_yyyy_mm_dd` function L462-467 — `(ts: &str) -> Option<String>` — Lossy conversion from Slack's float-string `ts` to a `YYYY-MM-DD`
+-  `RealSlackClient` type L469-499 — `= RealSlackClient` — Slack tools use.
+-  `resolve_user_name_to_id` function L470-498 — `(&self, name: &str) -> Result<String, FeedError>` — Slack tools use.
+-  `looks_like_user_id` function L501-506 — `(s: &str) -> bool` — Slack tools use.
+-  `looks_like_channel_id` function L508-510 — `(s: &str) -> bool` — Slack tools use.
+-  `ChannelKind` type L542-564 — `= ChannelKind` — Slack tools use.
+-  `tests` module L583-651 — `-` — Slack tools use.
+-  `channel_id_recognized_by_prefix` function L587-592 — `()` — Slack tools use.
+-  `names_not_recognized_as_ids` function L595-600 — `()` — Slack tools use.
+-  `classify_returns_kind_for_each_prefix` function L603-611 — `()` — Slack tools use.
+-  `channel_kind_exposes_required_scope` function L614-619 — `()` — Slack tools use.
+-  `channel_kind_recommends_correct_template` function L622-640 — `()` — Slack tools use.
+-  `user_id_recognized_by_prefix` function L643-650 — `()` — Slack tools use.
 
 ### crates/arawn-feeds/src/templates/calendar
 
@@ -3070,16 +3083,17 @@
 
 - pub `SpaceArchiveTemplate` struct L51 — `-` — - Attachments.
 -  `NAME` variable L53 — `: &str` — - Attachments.
--  `SpaceArchiveTemplate` type L56-173 — `impl FeedTemplate for SpaceArchiveTemplate` — - Attachments.
+-  `SpaceArchiveTemplate` type L56-198 — `impl FeedTemplate for SpaceArchiveTemplate` — - Attachments.
 -  `name` function L57-59 — `(&self) -> &'static str` — - Attachments.
 -  `validate` function L61-75 — `(&self, params: &TemplateParams) -> Result<(), FeedError>` — - Attachments.
 -  `defaults` function L77-82 — `(&self, _params: &TemplateParams) -> FeedDefaults` — - Attachments.
 -  `run` function L84-172 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &V...` — - Attachments.
--  `write_meta` function L175-186 — `(page_dir: &Path, page: &ConfluencePageMeta) -> Result<u64, FeedError>` — - Attachments.
--  `write_body` function L188-198 — `(page_dir: &Path, storage_xml: Option<&str>) -> Result<u64, FeedError>` — - Attachments.
--  `tests` module L201-220 — `-` — - Attachments.
--  `validate_requires_space_key` function L205-213 — `()` — - Attachments.
--  `defaults_use_30min_cadence` function L216-219 — `()` — - Attachments.
+-  `discover` function L174-197 — `( &self, ctx: &TemplateCtx, ) -> Result<Option<Vec<DiscoveryRow>>, FeedError>` — - Attachments.
+-  `write_meta` function L200-211 — `(page_dir: &Path, page: &ConfluencePageMeta) -> Result<u64, FeedError>` — - Attachments.
+-  `write_body` function L213-223 — `(page_dir: &Path, storage_xml: Option<&str>) -> Result<u64, FeedError>` — - Attachments.
+-  `tests` module L226-245 — `-` — - Attachments.
+-  `validate_requires_space_key` function L230-238 — `()` — - Attachments.
+-  `defaults_use_30min_cadence` function L241-244 — `()` — - Attachments.
 
 ### crates/arawn-feeds/src/templates/drive
 
@@ -3252,15 +3266,16 @@
 - pub `ProjectTrackerTemplate` struct L27 — `-` — plus a per-issue `{ last_comment_id, last_history_id }` map.
 -  `NAME` variable L29 — `: &str` — plus a per-issue `{ last_comment_id, last_history_id }` map.
 -  `MAX_RESULTS_PER_RUN` variable L30 — `: u32` — plus a per-issue `{ last_comment_id, last_history_id }` map.
--  `ProjectTrackerTemplate` type L33-147 — `impl FeedTemplate for ProjectTrackerTemplate` — plus a per-issue `{ last_comment_id, last_history_id }` map.
+-  `ProjectTrackerTemplate` type L33-168 — `impl FeedTemplate for ProjectTrackerTemplate` — plus a per-issue `{ last_comment_id, last_history_id }` map.
 -  `name` function L34-36 — `(&self) -> &'static str` — plus a per-issue `{ last_comment_id, last_history_id }` map.
 -  `validate` function L38-52 — `(&self, params: &TemplateParams) -> Result<(), FeedError>` — plus a per-issue `{ last_comment_id, last_history_id }` map.
 -  `defaults` function L54-62 — `(&self, _params: &TemplateParams) -> FeedDefaults` — plus a per-issue `{ last_comment_id, last_history_id }` map.
 -  `run` function L64-146 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &V...` — plus a per-issue `{ last_comment_id, last_history_id }` map.
--  `build_jql` function L149-159 — `(project: &str, since: Option<&str>) -> String` — plus a per-issue `{ last_comment_id, last_history_id }` map.
--  `tests` module L162-187 — `-` — plus a per-issue `{ last_comment_id, last_history_id }` map.
--  `validate_requires_project` function L166-174 — `()` — plus a per-issue `{ last_comment_id, last_history_id }` map.
--  `jql_includes_since_when_present` function L177-186 — `()` — plus a per-issue `{ last_comment_id, last_history_id }` map.
+-  `discover` function L148-167 — `( &self, ctx: &TemplateCtx, ) -> Result<Option<Vec<DiscoveryRow>>, FeedError>` — plus a per-issue `{ last_comment_id, last_history_id }` map.
+-  `build_jql` function L170-180 — `(project: &str, since: Option<&str>) -> String` — plus a per-issue `{ last_comment_id, last_history_id }` map.
+-  `tests` module L183-208 — `-` — plus a per-issue `{ last_comment_id, last_history_id }` map.
+-  `validate_requires_project` function L187-195 — `()` — plus a per-issue `{ last_comment_id, last_history_id }` map.
+-  `jql_includes_since_when_present` function L198-207 — `()` — plus a per-issue `{ last_comment_id, last_history_id }` map.
 
 ### crates/arawn-feeds/src/templates
 
@@ -3295,15 +3310,16 @@
 
 - pub `ChannelArchiveTemplate` struct L43 — `-` — on one thread doesn't drop the channel cursor or block other threads.
 -  `NAME` variable L45 — `: &str` — on one thread doesn't drop the channel cursor or block other threads.
--  `ChannelArchiveTemplate` type L48-93 — `impl FeedTemplate for ChannelArchiveTemplate` — on one thread doesn't drop the channel cursor or block other threads.
+-  `ChannelArchiveTemplate` type L48-129 — `impl FeedTemplate for ChannelArchiveTemplate` — on one thread doesn't drop the channel cursor or block other threads.
 -  `name` function L49-51 — `(&self) -> &'static str` — on one thread doesn't drop the channel cursor or block other threads.
 -  `validate` function L53-66 — `(&self, params: &TemplateParams) -> Result<(), FeedError>` — on one thread doesn't drop the channel cursor or block other threads.
 -  `defaults` function L68-73 — `(&self, _params: &TemplateParams) -> FeedDefaults` — on one thread doesn't drop the channel cursor or block other threads.
 -  `run` function L75-92 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &V...` — on one thread doesn't drop the channel cursor or block other threads.
--  `tests` module L96-124 — `-` — on one thread doesn't drop the channel cursor or block other threads.
--  `validate_rejects_missing_channel` function L101-105 — `()` — on one thread doesn't drop the channel cursor or block other threads.
--  `validate_rejects_empty_channel` function L108-114 — `()` — on one thread doesn't drop the channel cursor or block other threads.
--  `validate_accepts_named_or_id_channel` function L117-123 — `()` — on one thread doesn't drop the channel cursor or block other threads.
+-  `discover` function L94-128 — `( &self, ctx: &TemplateCtx, ) -> Result<Option<Vec<DiscoveryRow>>, FeedError>` — on one thread doesn't drop the channel cursor or block other threads.
+-  `tests` module L132-160 — `-` — on one thread doesn't drop the channel cursor or block other threads.
+-  `validate_rejects_missing_channel` function L137-141 — `()` — on one thread doesn't drop the channel cursor or block other threads.
+-  `validate_rejects_empty_channel` function L144-150 — `()` — on one thread doesn't drop the channel cursor or block other threads.
+-  `validate_accepts_named_or_id_channel` function L153-159 — `()` — on one thread doesn't drop the channel cursor or block other threads.
 
 #### crates/arawn-feeds/src/templates/slack/common.rs
 
@@ -3407,36 +3423,71 @@
 -  `fail_body_for` function L38-40 — `(&self, page_id: &str)` — Integration tests for `confluence/space-archive`.
 -  `list_calls` function L41-43 — `(&self) -> Vec<(String, Option<DateTime<Utc>>)>` — Integration tests for `confluence/space-archive`.
 -  `body_calls` function L44-46 — `(&self) -> Vec<String>` — Integration tests for `confluence/space-archive`.
--  `MockAtlassianClient` type L50-100 — `impl AtlassianFeedClient for MockAtlassianClient` — Integration tests for `confluence/space-archive`.
+-  `MockAtlassianClient` type L50-112 — `impl AtlassianFeedClient for MockAtlassianClient` — Integration tests for `confluence/space-archive`.
 -  `space_pages_modified_since` function L51-62 — `( &self, space_key: &str, since: Option<DateTime<Utc>>, ) -> Result<Vec<Confluen...` — Integration tests for `confluence/space-archive`.
 -  `jql_search` function L64-70 — `( &self, _: &str, _: u32, ) -> Result<Vec<JiraIssueMeta>, FeedError>` — Integration tests for `confluence/space-archive`.
 -  `issue_full` function L72-79 — `( &self, _: &str, _: bool, _: bool, ) -> Result<JiraIssueDetail, FeedError>` — Integration tests for `confluence/space-archive`.
 -  `resolve_project` function L81-83 — `(&self, _: &str) -> Result<String, FeedError>` — Integration tests for `confluence/space-archive`.
--  `page_body_storage` function L85-99 — `( &self, page_id: &str, ) -> Result<ConfluencePageBody, FeedError>` — Integration tests for `confluence/space-archive`.
--  `MockClients` struct L102-104 — `{ atlassian: Arc<MockAtlassianClient> }` — Integration tests for `confluence/space-archive`.
--  `MockClients` type L106-122 — `impl FeedClients for MockClients` — Integration tests for `confluence/space-archive`.
--  `slack` function L107-109 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — Integration tests for `confluence/space-archive`.
--  `calendar` function L110-112 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — Integration tests for `confluence/space-archive`.
--  `gmail` function L113-115 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — Integration tests for `confluence/space-archive`.
--  `drive` function L116-118 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — Integration tests for `confluence/space-archive`.
--  `atlassian` function L119-121 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — Integration tests for `confluence/space-archive`.
--  `page` function L124-133 — `(id: &str, title: &str, modified: &str, version: i64) -> ConfluencePageMeta` — Integration tests for `confluence/space-archive`.
--  `run_once` function L135-158 — `( template: &dyn FeedTemplate, ctx: &TemplateCtx, params: &TemplateParams, feed_...` — Integration tests for `confluence/space-archive`.
--  `writes_per_page_metadata_and_body` function L161-197 — `()` — Integration tests for `confluence/space-archive`.
--  `second_run_passes_cursor_as_since` function L200-226 — `()` — Integration tests for `confluence/space-archive`.
--  `body_fetch_failure_skips_page_without_aborting_run` function L229-255 — `()` — Integration tests for `confluence/space-archive`.
--  `body_overwritten_on_re_fetch` function L258-284 — `()` — Integration tests for `confluence/space-archive`.
--  `page_with_no_body_writes_empty_xml` function L287-305 — `()` — Integration tests for `confluence/space-archive`.
--  `empty_run_is_no_op_with_status` function L308-321 — `()` — Integration tests for `confluence/space-archive`.
--  `returns_auth_when_atlassian_not_connected` function L324-356 — `()` — Integration tests for `confluence/space-archive`.
--  `NoAtlassian` struct L325 — `-` — Integration tests for `confluence/space-archive`.
--  `NoAtlassian` type L326-342 — `impl FeedClients for NoAtlassian` — Integration tests for `confluence/space-archive`.
--  `slack` function L327-329 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — Integration tests for `confluence/space-archive`.
--  `calendar` function L330-332 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — Integration tests for `confluence/space-archive`.
--  `gmail` function L333-335 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — Integration tests for `confluence/space-archive`.
--  `drive` function L336-338 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — Integration tests for `confluence/space-archive`.
--  `atlassian` function L339-341 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — Integration tests for `confluence/space-archive`.
--  `validate_rejects_missing_space_key` function L359-367 — `()` — Integration tests for `confluence/space-archive`.
+-  `list_jira_projects` function L85-89 — `( &self, ) -> Result<Vec<arawn_feeds::JiraProjectMeta>, FeedError>` — Integration tests for `confluence/space-archive`.
+-  `list_confluence_spaces` function L91-95 — `( &self, ) -> Result<Vec<arawn_feeds::ConfluenceSpaceMeta>, FeedError>` — Integration tests for `confluence/space-archive`.
+-  `page_body_storage` function L97-111 — `( &self, page_id: &str, ) -> Result<ConfluencePageBody, FeedError>` — Integration tests for `confluence/space-archive`.
+-  `MockClients` struct L114-116 — `{ atlassian: Arc<MockAtlassianClient> }` — Integration tests for `confluence/space-archive`.
+-  `MockClients` type L118-134 — `impl FeedClients for MockClients` — Integration tests for `confluence/space-archive`.
+-  `slack` function L119-121 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — Integration tests for `confluence/space-archive`.
+-  `calendar` function L122-124 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — Integration tests for `confluence/space-archive`.
+-  `gmail` function L125-127 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — Integration tests for `confluence/space-archive`.
+-  `drive` function L128-130 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — Integration tests for `confluence/space-archive`.
+-  `atlassian` function L131-133 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — Integration tests for `confluence/space-archive`.
+-  `page` function L136-145 — `(id: &str, title: &str, modified: &str, version: i64) -> ConfluencePageMeta` — Integration tests for `confluence/space-archive`.
+-  `run_once` function L147-170 — `( template: &dyn FeedTemplate, ctx: &TemplateCtx, params: &TemplateParams, feed_...` — Integration tests for `confluence/space-archive`.
+-  `writes_per_page_metadata_and_body` function L173-209 — `()` — Integration tests for `confluence/space-archive`.
+-  `second_run_passes_cursor_as_since` function L212-238 — `()` — Integration tests for `confluence/space-archive`.
+-  `body_fetch_failure_skips_page_without_aborting_run` function L241-267 — `()` — Integration tests for `confluence/space-archive`.
+-  `body_overwritten_on_re_fetch` function L270-296 — `()` — Integration tests for `confluence/space-archive`.
+-  `page_with_no_body_writes_empty_xml` function L299-317 — `()` — Integration tests for `confluence/space-archive`.
+-  `empty_run_is_no_op_with_status` function L320-333 — `()` — Integration tests for `confluence/space-archive`.
+-  `returns_auth_when_atlassian_not_connected` function L336-368 — `()` — Integration tests for `confluence/space-archive`.
+-  `NoAtlassian` struct L337 — `-` — Integration tests for `confluence/space-archive`.
+-  `NoAtlassian` type L338-354 — `impl FeedClients for NoAtlassian` — Integration tests for `confluence/space-archive`.
+-  `slack` function L339-341 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — Integration tests for `confluence/space-archive`.
+-  `calendar` function L342-344 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — Integration tests for `confluence/space-archive`.
+-  `gmail` function L345-347 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — Integration tests for `confluence/space-archive`.
+-  `drive` function L348-350 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — Integration tests for `confluence/space-archive`.
+-  `atlassian` function L351-353 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — Integration tests for `confluence/space-archive`.
+-  `validate_rejects_missing_space_key` function L371-379 — `()` — Integration tests for `confluence/space-archive`.
+
+#### crates/arawn-feeds/tests/discovery.rs
+
+-  `StubClients` struct L22-26 — `{ slack_channels: Vec<SlackChannel>, jira_projects: Vec<JiraProjectMeta>, conflu...` — return `None`.
+-  `StubSlack` struct L28 — `-` — return `None`.
+-  `StubSlack` type L31-66 — `impl SlackFeedClient for StubSlack` — return `None`.
+-  `resolve_channel` function L32-34 — `(&self, _: &str) -> Result<String, FeedError>` — return `None`.
+-  `channel_history` function L35-41 — `( &self, _: &str, _: Option<&str>, ) -> Result<SlackHistoryPage, FeedError>` — return `None`.
+-  `thread_replies` function L42-49 — `( &self, _: &str, _: &str, _: Option<&str>, ) -> Result<SlackHistoryPage, FeedEr...` — return `None`.
+-  `open_dm` function L50-52 — `(&self, _: &str) -> Result<String, FeedError>` — return `None`.
+-  `auth_test` function L53-55 — `(&self) -> Result<SlackAuthInfo, FeedError>` — return `None`.
+-  `search_messages` function L56-62 — `( &self, _: &str, _: Option<&str>, ) -> Result<SlackHistoryPage, FeedError>` — return `None`.
+-  `list_channels` function L63-65 — `(&self) -> Result<Vec<SlackChannel>, FeedError>` — return `None`.
+-  `StubAtlassian` struct L68-71 — `{ projects: Vec<JiraProjectMeta>, spaces: Vec<ConfluenceSpaceMeta> }` — return `None`.
+-  `StubAtlassian` type L74-107 — `impl AtlassianFeedClient for StubAtlassian` — return `None`.
+-  `space_pages_modified_since` function L75-81 — `( &self, _: &str, _: Option<DateTime<Utc>>, ) -> Result<Vec<ConfluencePageMeta>,...` — return `None`.
+-  `page_body_storage` function L82-84 — `(&self, _: &str) -> Result<ConfluencePageBody, FeedError>` — return `None`.
+-  `jql_search` function L85-87 — `(&self, _: &str, _: u32) -> Result<Vec<JiraIssueMeta>, FeedError>` — return `None`.
+-  `issue_full` function L88-95 — `( &self, _: &str, _: bool, _: bool, ) -> Result<JiraIssueDetail, FeedError>` — return `None`.
+-  `resolve_project` function L96-98 — `(&self, _: &str) -> Result<String, FeedError>` — return `None`.
+-  `list_jira_projects` function L99-101 — `(&self) -> Result<Vec<JiraProjectMeta>, FeedError>` — return `None`.
+-  `list_confluence_spaces` function L102-106 — `( &self, ) -> Result<Vec<ConfluenceSpaceMeta>, FeedError>` — return `None`.
+-  `StubClients` type L109-136 — `impl FeedClients for StubClients` — return `None`.
+-  `slack` function L110-116 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — return `None`.
+-  `calendar` function L117-119 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — return `None`.
+-  `gmail` function L120-122 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — return `None`.
+-  `drive` function L123-125 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — return `None`.
+-  `atlassian` function L126-135 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — return `None`.
+-  `slack_channel_archive_discovers_channels` function L139-176 — `()` — return `None`.
+-  `jira_project_tracker_discovers_projects` function L179-205 — `()` — return `None`.
+-  `confluence_space_archive_discovers_spaces` function L208-233 — `()` — return `None`.
+-  `discover_returns_none_when_provider_missing` function L236-246 — `()` — return `None`.
+-  `non_pickable_template_returns_none` function L249-260 — `()` — return `None`.
 
 #### crates/arawn-feeds/tests/drive_folder_sync.rs
 
@@ -3564,39 +3615,41 @@
 -  `fail_full` function L45-47 — `(&self, key: &str)` — Integration tests for the two Jira templates.
 -  `jql_calls` function L48-50 — `(&self) -> Vec<(String, u32)>` — Integration tests for the two Jira templates.
 -  `full_calls` function L51-53 — `(&self) -> Vec<(String, bool, bool)>` — Integration tests for the two Jira templates.
--  `MockAtlassian` type L57-109 — `impl AtlassianFeedClient for MockAtlassian` — Integration tests for the two Jira templates.
+-  `MockAtlassian` type L57-121 — `impl AtlassianFeedClient for MockAtlassian` — Integration tests for the two Jira templates.
 -  `space_pages_modified_since` function L58-64 — `( &self, _: &str, _: Option<DateTime<Utc>>, ) -> Result<Vec<ConfluencePageMeta>,...` — Integration tests for the two Jira templates.
 -  `page_body_storage` function L65-67 — `(&self, _: &str) -> Result<ConfluencePageBody, FeedError>` — Integration tests for the two Jira templates.
 -  `jql_search` function L69-80 — `( &self, jql: &str, max_results: u32, ) -> Result<Vec<JiraIssueMeta>, FeedError>` — Integration tests for the two Jira templates.
 -  `issue_full` function L82-103 — `( &self, key: &str, want_changelog: bool, want_comments: bool, ) -> Result<JiraI...` — Integration tests for the two Jira templates.
 -  `resolve_project` function L105-108 — `(&self, key_or_id: &str) -> Result<String, FeedError>` — Integration tests for the two Jira templates.
--  `MockClients` struct L111-113 — `{ atlassian: Arc<MockAtlassian> }` — Integration tests for the two Jira templates.
--  `MockClients` type L115-131 — `impl FeedClients for MockClients` — Integration tests for the two Jira templates.
--  `slack` function L116-118 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — Integration tests for the two Jira templates.
--  `calendar` function L119-121 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — Integration tests for the two Jira templates.
--  `gmail` function L122-124 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — Integration tests for the two Jira templates.
--  `drive` function L125-127 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — Integration tests for the two Jira templates.
--  `atlassian` function L128-130 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — Integration tests for the two Jira templates.
--  `issue_meta` function L133-140 — `(key: &str, updated: &str) -> JiraIssueMeta` — Integration tests for the two Jira templates.
--  `issue_detail` function L142-158 — `( key: &str, updated: &str, comments: Option<Vec<Value>>, changelog: Option<Vec<...` — Integration tests for the two Jira templates.
--  `comment` function L160-167 — `(id: &str, body: &str) -> Value` — Integration tests for the two Jira templates.
--  `history` function L169-175 — `(id: &str, field: &str, to: &str) -> Value` — Integration tests for the two Jira templates.
--  `run_once` function L177-200 — `( template: &dyn FeedTemplate, ctx: &TemplateCtx, params: &TemplateParams, feed_...` — Integration tests for the two Jira templates.
--  `read_jsonl` function L202-212 — `(path: &PathBuf) -> Vec<Value>` — Integration tests for the two Jira templates.
--  `project_tracker_appends_new_comments_overwrites_issue_snapshot` function L217-274 — `()` — Integration tests for the two Jira templates.
--  `project_tracker_history_advances_independently_of_comments` function L277-319 — `()` — Integration tests for the two Jira templates.
--  `project_tracker_partial_failure_doesnt_block_other_issues` function L322-352 — `()` — Integration tests for the two Jira templates.
--  `project_tracker_validates_project` function L355-363 — `()` — Integration tests for the two Jira templates.
--  `assignee_tracker_writes_only_issue_json_no_logs` function L368-407 — `()` — Integration tests for the two Jira templates.
--  `assignee_tracker_uses_currentUser_jql_and_advances_cursor` function L410-445 — `()` — Integration tests for the two Jira templates.
--  `returns_auth_when_atlassian_not_connected` function L448-480 — `()` — Integration tests for the two Jira templates.
--  `NoAtlassian` struct L449 — `-` — Integration tests for the two Jira templates.
--  `NoAtlassian` type L450-466 — `impl FeedClients for NoAtlassian` — Integration tests for the two Jira templates.
--  `slack` function L451-453 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — Integration tests for the two Jira templates.
--  `calendar` function L454-456 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — Integration tests for the two Jira templates.
--  `gmail` function L457-459 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — Integration tests for the two Jira templates.
--  `drive` function L460-462 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — Integration tests for the two Jira templates.
--  `atlassian` function L463-465 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — Integration tests for the two Jira templates.
+-  `list_jira_projects` function L110-114 — `( &self, ) -> Result<Vec<arawn_feeds::JiraProjectMeta>, FeedError>` — Integration tests for the two Jira templates.
+-  `list_confluence_spaces` function L116-120 — `( &self, ) -> Result<Vec<arawn_feeds::ConfluenceSpaceMeta>, FeedError>` — Integration tests for the two Jira templates.
+-  `MockClients` struct L123-125 — `{ atlassian: Arc<MockAtlassian> }` — Integration tests for the two Jira templates.
+-  `MockClients` type L127-143 — `impl FeedClients for MockClients` — Integration tests for the two Jira templates.
+-  `slack` function L128-130 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — Integration tests for the two Jira templates.
+-  `calendar` function L131-133 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — Integration tests for the two Jira templates.
+-  `gmail` function L134-136 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — Integration tests for the two Jira templates.
+-  `drive` function L137-139 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — Integration tests for the two Jira templates.
+-  `atlassian` function L140-142 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — Integration tests for the two Jira templates.
+-  `issue_meta` function L145-152 — `(key: &str, updated: &str) -> JiraIssueMeta` — Integration tests for the two Jira templates.
+-  `issue_detail` function L154-170 — `( key: &str, updated: &str, comments: Option<Vec<Value>>, changelog: Option<Vec<...` — Integration tests for the two Jira templates.
+-  `comment` function L172-179 — `(id: &str, body: &str) -> Value` — Integration tests for the two Jira templates.
+-  `history` function L181-187 — `(id: &str, field: &str, to: &str) -> Value` — Integration tests for the two Jira templates.
+-  `run_once` function L189-212 — `( template: &dyn FeedTemplate, ctx: &TemplateCtx, params: &TemplateParams, feed_...` — Integration tests for the two Jira templates.
+-  `read_jsonl` function L214-224 — `(path: &PathBuf) -> Vec<Value>` — Integration tests for the two Jira templates.
+-  `project_tracker_appends_new_comments_overwrites_issue_snapshot` function L229-286 — `()` — Integration tests for the two Jira templates.
+-  `project_tracker_history_advances_independently_of_comments` function L289-331 — `()` — Integration tests for the two Jira templates.
+-  `project_tracker_partial_failure_doesnt_block_other_issues` function L334-364 — `()` — Integration tests for the two Jira templates.
+-  `project_tracker_validates_project` function L367-375 — `()` — Integration tests for the two Jira templates.
+-  `assignee_tracker_writes_only_issue_json_no_logs` function L380-419 — `()` — Integration tests for the two Jira templates.
+-  `assignee_tracker_uses_currentUser_jql_and_advances_cursor` function L422-457 — `()` — Integration tests for the two Jira templates.
+-  `returns_auth_when_atlassian_not_connected` function L460-492 — `()` — Integration tests for the two Jira templates.
+-  `NoAtlassian` struct L461 — `-` — Integration tests for the two Jira templates.
+-  `NoAtlassian` type L462-478 — `impl FeedClients for NoAtlassian` — Integration tests for the two Jira templates.
+-  `slack` function L463-465 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — Integration tests for the two Jira templates.
+-  `calendar` function L466-468 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — Integration tests for the two Jira templates.
+-  `gmail` function L469-471 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — Integration tests for the two Jira templates.
+-  `drive` function L472-474 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — Integration tests for the two Jira templates.
+-  `atlassian` function L475-477 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — Integration tests for the two Jira templates.
 
 #### crates/arawn-feeds/tests/slack_channel_archive.rs
 
@@ -3608,42 +3661,43 @@
 -  `queue_thread_error` function L62-69 — `(&self, parent_ts: &str, err: FeedError)` — every Slack-touching template test will reuse.
 -  `calls` function L70-72 — `(&self) -> Vec<(String, Option<String>)>` — every Slack-touching template test will reuse.
 -  `thread_calls` function L73-75 — `(&self) -> Vec<(String, String, Option<String>)>` — every Slack-touching template test will reuse.
--  `MockSlackClient` type L79-148 — `impl SlackFeedClient for MockSlackClient` — every Slack-touching template test will reuse.
+-  `MockSlackClient` type L79-152 — `impl SlackFeedClient for MockSlackClient` — every Slack-touching template test will reuse.
 -  `resolve_channel` function L80-82 — `(&self, _name_or_id: &str) -> Result<String, FeedError>` — every Slack-touching template test will reuse.
 -  `channel_history` function L84-102 — `( &self, channel_id: &str, oldest_ts: Option<&str>, ) -> Result<SlackHistoryPage...` — every Slack-touching template test will reuse.
 -  `open_dm` function L104-106 — `(&self, _user_id_or_name: &str) -> Result<String, FeedError>` — every Slack-touching template test will reuse.
 -  `auth_test` function L108-110 — `(&self) -> Result<SlackAuthInfo, FeedError>` — every Slack-touching template test will reuse.
 -  `search_messages` function L112-118 — `( &self, _query: &str, _oldest_ts: Option<&str>, ) -> Result<SlackHistoryPage, F...` — every Slack-touching template test will reuse.
--  `thread_replies` function L120-147 — `( &self, channel_id: &str, parent_ts: &str, oldest_ts: Option<&str>, ) -> Result...` — every Slack-touching template test will reuse.
--  `MockClients` struct L150-152 — `{ slack: Arc<MockSlackClient> }` — every Slack-touching template test will reuse.
--  `MockClients` type L154-170 — `impl FeedClients for MockClients` — every Slack-touching template test will reuse.
--  `slack` function L155-157 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — every Slack-touching template test will reuse.
--  `calendar` function L158-160 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — every Slack-touching template test will reuse.
--  `gmail` function L161-163 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — every Slack-touching template test will reuse.
--  `drive` function L164-166 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — every Slack-touching template test will reuse.
--  `atlassian` function L167-169 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — every Slack-touching template test will reuse.
--  `slack_msg` function L172-179 — `(ts: &str, text: &str) -> Value` — every Slack-touching template test will reuse.
--  `read_jsonl` function L183-193 — `(feed_dir: &PathBuf, day: &str) -> Vec<Value>` — Walk a YYYY-MM-DD.jsonl file in `feed_dir` and return all parsed
--  `run_once` function L195-221 — `( template: &dyn FeedTemplate, ctx: &TemplateCtx, params: &TemplateParams, feed_...` — every Slack-touching template test will reuse.
--  `first_run_writes_messages_and_advances_cursor` function L224-272 — `()` — every Slack-touching template test will reuse.
--  `second_run_passes_cursor_and_only_writes_new` function L275-321 — `()` — every Slack-touching template test will reuse.
--  `empty_run_is_a_no_op_with_status` function L324-357 — `()` — every Slack-touching template test will reuse.
--  `messages_partition_across_days` function L360-398 — `()` — every Slack-touching template test will reuse.
--  `run_returns_auth_when_slack_not_connected` function L401-436 — `()` — every Slack-touching template test will reuse.
--  `NoSlack` struct L402 — `-` — every Slack-touching template test will reuse.
--  `NoSlack` type L403-419 — `impl FeedClients for NoSlack` — every Slack-touching template test will reuse.
--  `slack` function L404-406 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — every Slack-touching template test will reuse.
--  `calendar` function L407-409 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — every Slack-touching template test will reuse.
--  `gmail` function L410-412 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — every Slack-touching template test will reuse.
--  `drive` function L413-415 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — every Slack-touching template test will reuse.
--  `atlassian` function L416-418 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — every Slack-touching template test will reuse.
--  `slack_msg_with_replies` function L440-448 — `(ts: &str, text: &str, reply_count: u64) -> Value` — every Slack-touching template test will reuse.
--  `parent_with_replies_seeds_thread_file_and_advances_thread_cursor` function L451-523 — `()` — every Slack-touching template test will reuse.
--  `second_run_advances_thread_cursor_independently` function L526-591 — `()` — every Slack-touching template test will reuse.
--  `channel_archive_works_for_dm_id_passthrough` function L594-626 — `()` — every Slack-touching template test will reuse.
--  `channel_archive_works_for_mpim_id_passthrough` function L629-656 — `()` — every Slack-touching template test will reuse.
--  `classify_helper_resolves_kinds_for_picker_use` function L659-673 — `()` — every Slack-touching template test will reuse.
--  `thread_failure_does_not_block_channel_or_other_threads` function L676-740 — `()` — every Slack-touching template test will reuse.
+-  `list_channels` function L120-122 — `(&self) -> Result<Vec<arawn_feeds::SlackChannel>, FeedError>` — every Slack-touching template test will reuse.
+-  `thread_replies` function L124-151 — `( &self, channel_id: &str, parent_ts: &str, oldest_ts: Option<&str>, ) -> Result...` — every Slack-touching template test will reuse.
+-  `MockClients` struct L154-156 — `{ slack: Arc<MockSlackClient> }` — every Slack-touching template test will reuse.
+-  `MockClients` type L158-174 — `impl FeedClients for MockClients` — every Slack-touching template test will reuse.
+-  `slack` function L159-161 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — every Slack-touching template test will reuse.
+-  `calendar` function L162-164 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — every Slack-touching template test will reuse.
+-  `gmail` function L165-167 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — every Slack-touching template test will reuse.
+-  `drive` function L168-170 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — every Slack-touching template test will reuse.
+-  `atlassian` function L171-173 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — every Slack-touching template test will reuse.
+-  `slack_msg` function L176-183 — `(ts: &str, text: &str) -> Value` — every Slack-touching template test will reuse.
+-  `read_jsonl` function L187-197 — `(feed_dir: &PathBuf, day: &str) -> Vec<Value>` — Walk a YYYY-MM-DD.jsonl file in `feed_dir` and return all parsed
+-  `run_once` function L199-225 — `( template: &dyn FeedTemplate, ctx: &TemplateCtx, params: &TemplateParams, feed_...` — every Slack-touching template test will reuse.
+-  `first_run_writes_messages_and_advances_cursor` function L228-276 — `()` — every Slack-touching template test will reuse.
+-  `second_run_passes_cursor_and_only_writes_new` function L279-325 — `()` — every Slack-touching template test will reuse.
+-  `empty_run_is_a_no_op_with_status` function L328-361 — `()` — every Slack-touching template test will reuse.
+-  `messages_partition_across_days` function L364-402 — `()` — every Slack-touching template test will reuse.
+-  `run_returns_auth_when_slack_not_connected` function L405-440 — `()` — every Slack-touching template test will reuse.
+-  `NoSlack` struct L406 — `-` — every Slack-touching template test will reuse.
+-  `NoSlack` type L407-423 — `impl FeedClients for NoSlack` — every Slack-touching template test will reuse.
+-  `slack` function L408-410 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — every Slack-touching template test will reuse.
+-  `calendar` function L411-413 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — every Slack-touching template test will reuse.
+-  `gmail` function L414-416 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — every Slack-touching template test will reuse.
+-  `drive` function L417-419 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — every Slack-touching template test will reuse.
+-  `atlassian` function L420-422 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — every Slack-touching template test will reuse.
+-  `slack_msg_with_replies` function L444-452 — `(ts: &str, text: &str, reply_count: u64) -> Value` — every Slack-touching template test will reuse.
+-  `parent_with_replies_seeds_thread_file_and_advances_thread_cursor` function L455-527 — `()` — every Slack-touching template test will reuse.
+-  `second_run_advances_thread_cursor_independently` function L530-595 — `()` — every Slack-touching template test will reuse.
+-  `channel_archive_works_for_dm_id_passthrough` function L598-630 — `()` — every Slack-touching template test will reuse.
+-  `channel_archive_works_for_mpim_id_passthrough` function L633-660 — `()` — every Slack-touching template test will reuse.
+-  `classify_helper_resolves_kinds_for_picker_use` function L663-677 — `()` — every Slack-touching template test will reuse.
+-  `thread_failure_does_not_block_channel_or_other_threads` function L680-744 — `()` — every Slack-touching template test will reuse.
 
 #### crates/arawn-feeds/tests/slack_dm_archive.rs
 
@@ -3653,32 +3707,33 @@
 -  `queue` function L38-40 — `(&self, page: SlackHistoryPage)` — channel-archive already exercises.
 -  `open_dm_calls` function L41-43 — `(&self) -> Vec<String>` — channel-archive already exercises.
 -  `history_calls` function L44-46 — `(&self) -> Vec<(String, Option<String>)>` — channel-archive already exercises.
--  `MockSlackClient` type L50-106 — `impl SlackFeedClient for MockSlackClient` — channel-archive already exercises.
+-  `MockSlackClient` type L50-110 — `impl SlackFeedClient for MockSlackClient` — channel-archive already exercises.
 -  `resolve_channel` function L51-53 — `(&self, _name_or_id: &str) -> Result<String, FeedError>` — channel-archive already exercises.
 -  `channel_history` function L55-73 — `( &self, channel_id: &str, oldest_ts: Option<&str>, ) -> Result<SlackHistoryPage...` — channel-archive already exercises.
 -  `thread_replies` function L75-85 — `( &self, _channel_id: &str, _parent_ts: &str, oldest_ts: Option<&str>, ) -> Resu...` — channel-archive already exercises.
 -  `open_dm` function L87-93 — `(&self, user_id_or_name: &str) -> Result<String, FeedError>` — channel-archive already exercises.
 -  `auth_test` function L95-97 — `(&self) -> Result<SlackAuthInfo, FeedError>` — channel-archive already exercises.
 -  `search_messages` function L99-105 — `( &self, _query: &str, _oldest_ts: Option<&str>, ) -> Result<SlackHistoryPage, F...` — channel-archive already exercises.
--  `MockClients` struct L108-110 — `{ slack: Arc<MockSlackClient> }` — channel-archive already exercises.
--  `MockClients` type L112-128 — `impl FeedClients for MockClients` — channel-archive already exercises.
--  `slack` function L113-115 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — channel-archive already exercises.
--  `calendar` function L116-118 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — channel-archive already exercises.
--  `gmail` function L119-121 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — channel-archive already exercises.
--  `drive` function L122-124 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — channel-archive already exercises.
--  `atlassian` function L125-127 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — channel-archive already exercises.
--  `dm_msg` function L130-137 — `(ts: &str, text: &str) -> Value` — channel-archive already exercises.
--  `read_jsonl` function L139-149 — `(feed_dir: &PathBuf, day: &str) -> Vec<Value>` — channel-archive already exercises.
--  `run_once` function L151-176 — `( template: &dyn FeedTemplate, ctx: &TemplateCtx, params: &TemplateParams, feed_...` — channel-archive already exercises.
--  `dm_archive_opens_dm_then_writes_messages` function L179-225 — `()` — channel-archive already exercises.
--  `dm_archive_returns_auth_when_slack_not_connected` function L228-263 — `()` — channel-archive already exercises.
--  `NoSlack` struct L229 — `-` — channel-archive already exercises.
--  `NoSlack` type L230-246 — `impl FeedClients for NoSlack` — channel-archive already exercises.
--  `slack` function L231-233 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — channel-archive already exercises.
--  `calendar` function L234-236 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — channel-archive already exercises.
--  `gmail` function L237-239 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — channel-archive already exercises.
--  `drive` function L240-242 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — channel-archive already exercises.
--  `atlassian` function L243-245 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — channel-archive already exercises.
+-  `list_channels` function L107-109 — `(&self) -> Result<Vec<arawn_feeds::SlackChannel>, FeedError>` — channel-archive already exercises.
+-  `MockClients` struct L112-114 — `{ slack: Arc<MockSlackClient> }` — channel-archive already exercises.
+-  `MockClients` type L116-132 — `impl FeedClients for MockClients` — channel-archive already exercises.
+-  `slack` function L117-119 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — channel-archive already exercises.
+-  `calendar` function L120-122 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — channel-archive already exercises.
+-  `gmail` function L123-125 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — channel-archive already exercises.
+-  `drive` function L126-128 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — channel-archive already exercises.
+-  `atlassian` function L129-131 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — channel-archive already exercises.
+-  `dm_msg` function L134-141 — `(ts: &str, text: &str) -> Value` — channel-archive already exercises.
+-  `read_jsonl` function L143-153 — `(feed_dir: &PathBuf, day: &str) -> Vec<Value>` — channel-archive already exercises.
+-  `run_once` function L155-180 — `( template: &dyn FeedTemplate, ctx: &TemplateCtx, params: &TemplateParams, feed_...` — channel-archive already exercises.
+-  `dm_archive_opens_dm_then_writes_messages` function L183-229 — `()` — channel-archive already exercises.
+-  `dm_archive_returns_auth_when_slack_not_connected` function L232-267 — `()` — channel-archive already exercises.
+-  `NoSlack` struct L233 — `-` — channel-archive already exercises.
+-  `NoSlack` type L234-250 — `impl FeedClients for NoSlack` — channel-archive already exercises.
+-  `slack` function L235-237 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — channel-archive already exercises.
+-  `calendar` function L238-240 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — channel-archive already exercises.
+-  `gmail` function L241-243 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — channel-archive already exercises.
+-  `drive` function L244-246 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — channel-archive already exercises.
+-  `atlassian` function L247-249 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — channel-archive already exercises.
 
 #### crates/arawn-feeds/tests/slack_my_mentions.rs
 
@@ -3688,34 +3743,35 @@
 -  `queue_search` function L41-43 — `(&self, page: SlackHistoryPage)` — - Empty result writes nothing and reports `no-new-items`.
 -  `auth_test_count` function L44-46 — `(&self) -> u32` — - Empty result writes nothing and reports `no-new-items`.
 -  `search_calls` function L47-49 — `(&self) -> Vec<(String, Option<String>)>` — - Empty result writes nothing and reports `no-new-items`.
--  `MockSlackClient` type L53-100 — `impl SlackFeedClient for MockSlackClient` — - Empty result writes nothing and reports `no-new-items`.
+-  `MockSlackClient` type L53-104 — `impl SlackFeedClient for MockSlackClient` — - Empty result writes nothing and reports `no-new-items`.
 -  `resolve_channel` function L54-56 — `(&self, _: &str) -> Result<String, FeedError>` — - Empty result writes nothing and reports `no-new-items`.
 -  `channel_history` function L57-63 — `( &self, _: &str, _: Option<&str>, ) -> Result<SlackHistoryPage, FeedError>` — - Empty result writes nothing and reports `no-new-items`.
 -  `thread_replies` function L64-71 — `( &self, _: &str, _: &str, _: Option<&str>, ) -> Result<SlackHistoryPage, FeedEr...` — - Empty result writes nothing and reports `no-new-items`.
 -  `open_dm` function L72-74 — `(&self, _: &str) -> Result<String, FeedError>` — - Empty result writes nothing and reports `no-new-items`.
 -  `auth_test` function L76-79 — `(&self) -> Result<SlackAuthInfo, FeedError>` — - Empty result writes nothing and reports `no-new-items`.
 -  `search_messages` function L81-99 — `( &self, query: &str, oldest_ts: Option<&str>, ) -> Result<SlackHistoryPage, Fee...` — - Empty result writes nothing and reports `no-new-items`.
--  `MockClients` struct L102-104 — `{ slack: Arc<MockSlackClient> }` — - Empty result writes nothing and reports `no-new-items`.
--  `MockClients` type L106-122 — `impl FeedClients for MockClients` — - Empty result writes nothing and reports `no-new-items`.
--  `slack` function L107-109 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — - Empty result writes nothing and reports `no-new-items`.
--  `calendar` function L110-112 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — - Empty result writes nothing and reports `no-new-items`.
--  `gmail` function L113-115 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — - Empty result writes nothing and reports `no-new-items`.
--  `drive` function L116-118 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — - Empty result writes nothing and reports `no-new-items`.
--  `atlassian` function L119-121 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — - Empty result writes nothing and reports `no-new-items`.
--  `mention_msg` function L124-133 — `(ts: &str, channel: &str, text: &str) -> Value` — - Empty result writes nothing and reports `no-new-items`.
--  `read_jsonl` function L135-146 — `(feed_dir: &PathBuf, day: &str) -> Vec<Value>` — - Empty result writes nothing and reports `no-new-items`.
--  `run_once` function L148-173 — `( template: &dyn FeedTemplate, ctx: &TemplateCtx, params: &TemplateParams, feed_...` — - Empty result writes nothing and reports `no-new-items`.
--  `first_run_resolves_user_id_and_writes_mentions` function L176-221 — `()` — - Empty result writes nothing and reports `no-new-items`.
--  `second_run_uses_cached_user_id_and_dedupes_overlap` function L224-281 — `()` — - Empty result writes nothing and reports `no-new-items`.
--  `empty_run_is_a_no_op` function L284-314 — `()` — - Empty result writes nothing and reports `no-new-items`.
--  `returns_auth_when_slack_not_connected` function L317-350 — `()` — - Empty result writes nothing and reports `no-new-items`.
--  `NoSlack` struct L318 — `-` — - Empty result writes nothing and reports `no-new-items`.
--  `NoSlack` type L319-335 — `impl FeedClients for NoSlack` — - Empty result writes nothing and reports `no-new-items`.
--  `slack` function L320-322 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — - Empty result writes nothing and reports `no-new-items`.
--  `calendar` function L323-325 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — - Empty result writes nothing and reports `no-new-items`.
--  `gmail` function L326-328 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — - Empty result writes nothing and reports `no-new-items`.
--  `drive` function L329-331 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — - Empty result writes nothing and reports `no-new-items`.
--  `atlassian` function L332-334 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — - Empty result writes nothing and reports `no-new-items`.
+-  `list_channels` function L101-103 — `(&self) -> Result<Vec<arawn_feeds::SlackChannel>, FeedError>` — - Empty result writes nothing and reports `no-new-items`.
+-  `MockClients` struct L106-108 — `{ slack: Arc<MockSlackClient> }` — - Empty result writes nothing and reports `no-new-items`.
+-  `MockClients` type L110-126 — `impl FeedClients for MockClients` — - Empty result writes nothing and reports `no-new-items`.
+-  `slack` function L111-113 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — - Empty result writes nothing and reports `no-new-items`.
+-  `calendar` function L114-116 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — - Empty result writes nothing and reports `no-new-items`.
+-  `gmail` function L117-119 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — - Empty result writes nothing and reports `no-new-items`.
+-  `drive` function L120-122 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — - Empty result writes nothing and reports `no-new-items`.
+-  `atlassian` function L123-125 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — - Empty result writes nothing and reports `no-new-items`.
+-  `mention_msg` function L128-137 — `(ts: &str, channel: &str, text: &str) -> Value` — - Empty result writes nothing and reports `no-new-items`.
+-  `read_jsonl` function L139-150 — `(feed_dir: &PathBuf, day: &str) -> Vec<Value>` — - Empty result writes nothing and reports `no-new-items`.
+-  `run_once` function L152-177 — `( template: &dyn FeedTemplate, ctx: &TemplateCtx, params: &TemplateParams, feed_...` — - Empty result writes nothing and reports `no-new-items`.
+-  `first_run_resolves_user_id_and_writes_mentions` function L180-225 — `()` — - Empty result writes nothing and reports `no-new-items`.
+-  `second_run_uses_cached_user_id_and_dedupes_overlap` function L228-285 — `()` — - Empty result writes nothing and reports `no-new-items`.
+-  `empty_run_is_a_no_op` function L288-318 — `()` — - Empty result writes nothing and reports `no-new-items`.
+-  `returns_auth_when_slack_not_connected` function L321-354 — `()` — - Empty result writes nothing and reports `no-new-items`.
+-  `NoSlack` struct L322 — `-` — - Empty result writes nothing and reports `no-new-items`.
+-  `NoSlack` type L323-339 — `impl FeedClients for NoSlack` — - Empty result writes nothing and reports `no-new-items`.
+-  `slack` function L324-326 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — - Empty result writes nothing and reports `no-new-items`.
+-  `calendar` function L327-329 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — - Empty result writes nothing and reports `no-new-items`.
+-  `gmail` function L330-332 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — - Empty result writes nothing and reports `no-new-items`.
+-  `drive` function L333-335 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — - Empty result writes nothing and reports `no-new-items`.
+-  `atlassian` function L336-338 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — - Empty result writes nothing and reports `no-new-items`.
 
 ### crates/arawn-integrations/src/atlassian
 
@@ -5190,7 +5246,7 @@
 
 - pub `error` module L1 — `-`
 - pub `types` module L2 — `-`
-- pub `ArawnService` interface L27-185 — `{ fn list_workstreams(), fn create_workstream(), fn list_sessions(), fn create_s...` — The service contract between any UI client and the Arawn backend.
+- pub `ArawnService` interface L27-194 — `{ fn list_workstreams(), fn create_workstream(), fn list_sessions(), fn create_s...` — The service contract between any UI client and the Arawn backend.
 
 #### crates/arawn-service/src/types.rs
 
@@ -5219,6 +5275,8 @@
 - pub `FeedRegisterSpec` struct L287-300 — `{ template: String, feed_id: String, params: serde_json::Value, cadence: Option<...` — Args for `ArawnService::feed_register`.
 - pub `FeedSummaryDto` struct L306-318 — `{ id: String, template: String, cadence: String, enabled: bool, created_at: Stri...` — User-facing snapshot of one feed for the `/feeds` list.
 - pub `FeedRemoveDto` struct L323-327 — `{ id: String, template: String, bytes_wiped: u64 }` — Returned by `feed_remove` so the TUI can confirm the wipe with a
+- pub `FeedDiscoverRow` struct L331-340 — `{ label: String, hint: Option<String>, params: serde_json::Value }` — One pickable row from `feed_discover`.
+- pub `FeedDiscoverDto` struct L346-350 — `{ template: String, picker_supported: bool, rows: Vec<FeedDiscoverRow> }` — Response from `feed_discover`.
 
 ### crates/arawn-storage/src
 
@@ -5799,54 +5857,54 @@
 - pub `DOUBLE_ESC_WINDOW` variable L175 — `: std::time::Duration` — Window for double-Esc detection.
 - pub `HistoryEntry` struct L179-186 — `{ text: String, is_chat: bool }` — One entry in the per-session input history.
 - pub `new` function L189-230 — `() -> Self`
-- pub `handle_action` function L233-649 — `(&mut self, action: Action) -> bool` — Process an action and mutate state.
-- pub `apply_engine_event` function L808-885 — `(&mut self, event: crate::ws_client::EventUpdate)` — Apply a streaming engine event to the app state (testable without network).
-- pub `load_session_messages` function L889-929 — `(&mut self, detail: &serde_json::Value)` — Load messages from a session detail JSON response into the chat.
-- pub `format_tool_input` function L949-997 — `(tool_name: &str, input: &serde_json::Value) -> String` — Format tool input args into a compact display string.
+- pub `handle_action` function L233-650 — `(&mut self, action: Action) -> bool` — Process an action and mutate state.
+- pub `apply_engine_event` function L809-886 — `(&mut self, event: crate::ws_client::EventUpdate)` — Apply a streaming engine event to the app state (testable without network).
+- pub `load_session_messages` function L890-930 — `(&mut self, detail: &serde_json::Value)` — Load messages from a session detail JSON response into the chat.
+- pub `format_tool_input` function L950-998 — `(tool_name: &str, input: &serde_json::Value) -> String` — Format tool input args into a compact display string.
 -  `ChatMessage` type L53-77 — `= ChatMessage`
--  `App` type L188-946 — `= App`
--  `record_input_history` function L655-666 — `(&mut self, text: &str, is_chat: bool)` — Append `text` to input history, skipping empty input and deduping
--  `history_recall_prev` function L670-685 — `(&mut self)` — Move backward in input history.
--  `history_recall_next` function L689-702 — `(&mut self)` — Move forward in input history.
--  `open_history_modal` function L709-763 — `(&mut self)` — Open a modal listing branchable history entries (chat prompts only,
--  `update_autocomplete` function L766-795 — `(&mut self)` — Update autocomplete suggestions based on current input buffer.
--  `accept_autocomplete` function L798-805 — `(&mut self)` — Accept the currently selected autocomplete suggestion.
--  `prev_char_boundary` function L931-937 — `(&self) -> usize`
--  `next_char_boundary` function L939-945 — `(&self) -> usize`
--  `App` type L999-1003 — `impl Default for App`
--  `default` function L1000-1002 — `() -> Self`
--  `tests` module L1006-1490 — `-`
--  `type_chars_updates_buffer` function L1010-1016 — `()`
--  `backspace_removes_char` function L1019-1026 — `()`
--  `submit_moves_to_messages` function L1029-1041 — `()`
--  `submit_blocked_when_empty` function L1044-1050 — `()`
--  `submit_blocked_while_generating` function L1053-1059 — `()`
--  `tab_toggles_focus` function L1062-1069 — `()`
--  `scroll_updates_offset` function L1072-1080 — `()`
--  `cancel_stops_generation` function L1083-1092 — `()`
--  `quit_sets_flag` function L1095-1099 — `()`
--  `cursor_movement` function L1102-1123 — `()`
--  `full_conversation_flow` function L1128-1158 — `()`
--  `tool_call_flow` function L1161-1192 — `()`
--  `error_event_clears_generating` function L1195-1209 — `()`
--  `sidebar_navigation` function L1212-1243 — `()`
--  `submit_via_input` function L1245-1252 — `(app: &mut App, text: &str)`
--  `history_text` function L1254-1256 — `(app: &App) -> Vec<&str>`
--  `history_records_submitted_prompts` function L1259-1265 — `()`
--  `history_records_slash_commands_with_is_chat_false` function L1268-1278 — `()`
--  `history_dedupes_consecutive_duplicates` function L1281-1288 — `()`
--  `branch_modal_filters_out_slash_commands` function L1291-1305 — `()`
--  `branch_modal_skipped_when_no_chat_history` function L1308-1316 — `()`
--  `up_arrow_recalls_most_recent_when_input_empty` function L1319-1334 — `()`
--  `down_arrow_restores_draft_past_newest` function L1337-1355 — `()`
--  `double_esc_within_window_opens_history_modal` function L1358-1370 — `()`
--  `double_esc_outside_window_does_not_open_modal` function L1373-1381 — `()`
--  `history_recall_at_loads_entry_into_input` function L1384-1392 — `()`
--  `empty_history_modal_is_a_no_op` function L1395-1401 — `()`
--  `modal_select_index_picks_option_directly` function L1404-1426 — `()`
--  `cancel_marks_session_for_stale_event_drop` function L1429-1456 — `()`
--  `next_submit_clears_cancelled_session_marker` function L1459-1473 — `()`
--  `modal_select_out_of_range_is_no_op` function L1476-1489 — `()`
+-  `App` type L188-947 — `= App`
+-  `record_input_history` function L656-667 — `(&mut self, text: &str, is_chat: bool)` — Append `text` to input history, skipping empty input and deduping
+-  `history_recall_prev` function L671-686 — `(&mut self)` — Move backward in input history.
+-  `history_recall_next` function L690-703 — `(&mut self)` — Move forward in input history.
+-  `open_history_modal` function L710-764 — `(&mut self)` — Open a modal listing branchable history entries (chat prompts only,
+-  `update_autocomplete` function L767-796 — `(&mut self)` — Update autocomplete suggestions based on current input buffer.
+-  `accept_autocomplete` function L799-806 — `(&mut self)` — Accept the currently selected autocomplete suggestion.
+-  `prev_char_boundary` function L932-938 — `(&self) -> usize`
+-  `next_char_boundary` function L940-946 — `(&self) -> usize`
+-  `App` type L1000-1004 — `impl Default for App`
+-  `default` function L1001-1003 — `() -> Self`
+-  `tests` module L1007-1491 — `-`
+-  `type_chars_updates_buffer` function L1011-1017 — `()`
+-  `backspace_removes_char` function L1020-1027 — `()`
+-  `submit_moves_to_messages` function L1030-1042 — `()`
+-  `submit_blocked_when_empty` function L1045-1051 — `()`
+-  `submit_blocked_while_generating` function L1054-1060 — `()`
+-  `tab_toggles_focus` function L1063-1070 — `()`
+-  `scroll_updates_offset` function L1073-1081 — `()`
+-  `cancel_stops_generation` function L1084-1093 — `()`
+-  `quit_sets_flag` function L1096-1100 — `()`
+-  `cursor_movement` function L1103-1124 — `()`
+-  `full_conversation_flow` function L1129-1159 — `()`
+-  `tool_call_flow` function L1162-1193 — `()`
+-  `error_event_clears_generating` function L1196-1210 — `()`
+-  `sidebar_navigation` function L1213-1244 — `()`
+-  `submit_via_input` function L1246-1253 — `(app: &mut App, text: &str)`
+-  `history_text` function L1255-1257 — `(app: &App) -> Vec<&str>`
+-  `history_records_submitted_prompts` function L1260-1266 — `()`
+-  `history_records_slash_commands_with_is_chat_false` function L1269-1279 — `()`
+-  `history_dedupes_consecutive_duplicates` function L1282-1289 — `()`
+-  `branch_modal_filters_out_slash_commands` function L1292-1306 — `()`
+-  `branch_modal_skipped_when_no_chat_history` function L1309-1317 — `()`
+-  `up_arrow_recalls_most_recent_when_input_empty` function L1320-1335 — `()`
+-  `down_arrow_restores_draft_past_newest` function L1338-1356 — `()`
+-  `double_esc_within_window_opens_history_modal` function L1359-1371 — `()`
+-  `double_esc_outside_window_does_not_open_modal` function L1374-1382 — `()`
+-  `history_recall_at_loads_entry_into_input` function L1385-1393 — `()`
+-  `empty_history_modal_is_a_no_op` function L1396-1402 — `()`
+-  `modal_select_index_picks_option_directly` function L1405-1427 — `()`
+-  `cancel_marks_session_for_stale_event_drop` function L1430-1457 — `()`
+-  `next_submit_clears_cancelled_session_marker` function L1460-1474 — `()`
+-  `modal_select_out_of_range_is_no_op` function L1477-1490 — `()`
 
 #### crates/arawn-tui/src/command.rs
 
@@ -5866,54 +5924,56 @@
 - pub `prev` function L250-258 — `(&mut self)` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
 - pub `selected_command` function L260-262 — `(&self) -> Option<&CommandInfo>` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
 - pub `is_empty` function L264-266 — `(&self) -> bool` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
-- pub `CommandResult` enum L271-327 — `SystemMessage | ClearChat | EnterPlan | QueryInventory | InvokeSkill | RememberF...` — The result of executing a built-in command.
-- pub `WatchSpec` struct L340-345 — `{ template: String, feed_id: String, params: serde_json::Value, cadence: Option<...` — Parsed args for the non-interactive form of `/watch`.
-- pub `parse_watch_args` function L357-406 — `(args: &str) -> Result<WatchSpec, String>` — Parse the args body of `/watch`.
-- pub `parse_feeds_args` function L452-489 — `(args: &str) -> CommandResult` — Parse the args of `/feeds` into a CommandResult.
-- pub `execute_command` function L492-625 — `(cmd: &ParsedCommand, registry: &CommandRegistry) -> CommandResult` — Execute a parsed slash command against the registry.
+- pub `CommandResult` enum L271-333 — `SystemMessage | ClearChat | EnterPlan | QueryInventory | InvokeSkill | RememberF...` — The result of executing a built-in command.
+- pub `WatchSpec` struct L346-351 — `{ template: String, feed_id: String, params: serde_json::Value, cadence: Option<...` — Parsed args for the non-interactive form of `/watch`.
+- pub `parse_watch_args` function L363-412 — `(args: &str) -> Result<WatchSpec, String>` — Parse the args body of `/watch`.
+- pub `parse_feeds_args` function L458-495 — `(args: &str) -> CommandResult` — Parse the args of `/feeds` into a CommandResult.
+- pub `execute_command` function L498-648 — `(cmd: &ParsedCommand, registry: &CommandRegistry) -> CommandResult` — Execute a parsed slash command against the registry.
 -  `CommandRegistry` type L65-225 — `= CommandRegistry` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
 -  `register_builtins` function L72-191 — `(&mut self)` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
 -  `AutocompleteState` type L236-267 — `= AutocompleteState` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `tokenize_kv` function L411-442 — `(s: &str) -> Result<Vec<String>, String>` — Tokenizer that respects double-quoted runs so a param value can
--  `tests` module L628-1055 — `-` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `parse_simple_command` function L632-636 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `watch_parses_template_id_and_string_param` function L639-646 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `watch_parses_typed_and_quoted_params_and_cadence_override` function L649-660 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `watch_rejects_missing_args_and_bad_template` function L663-670 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `watch_command_dispatch_returns_feed_register` function L673-684 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `feeds_command_dispatch_returns_feed_list` function L687-694 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `feeds_pause_and_resume_dispatch` function L697-707 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `feeds_rm_requires_confirm_flag` function L710-723 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `feeds_pause_without_id_is_a_usage_message` function L726-732 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `feeds_unknown_subcommand_lists_usage` function L735-741 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `parse_command_with_args` function L744-748 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `parse_not_a_command` function L751-755 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `parse_slash_only` function L758-760 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `parse_with_leading_whitespace` function L763-766 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `registry_has_builtins` function L769-776 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `registry_matching_prefix` function L779-785 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `registry_matching_empty_returns_all` function L788-792 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `registry_skills` function L795-804 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `autocomplete_navigation` function L807-825 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_help` function L828-835 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_clear` function L838-842 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_unknown` function L845-852 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_inventory` function L855-862 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_skill` function L865-876 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_remember_with_text_returns_remember_fact` function L883-892 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_remember_without_text_returns_usage_message` function L895-905 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_memory_returns_memory_summary` function L908-915 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_forget_with_query_returns_forget_entity` function L918-927 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_forget_without_query_returns_usage_message` function L930-939 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_workflows_list_returns_workflow_list` function L942-952 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `every_advertised_builtin_dispatches_or_explains` function L960-983 — `()` — Audit: every built-in command in /help must dispatch to a CommandResult
--  `execute_integrations_returns_list_variant` function L988-995 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_connect_with_service_returns_connect_variant` function L998-1005 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_connect_without_service_returns_usage_message` function L1008-1018 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_disconnect_with_service_returns_disconnect_variant` function L1021-1028 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_disconnect_without_service_returns_usage_message` function L1031-1038 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `capabilities_banner_doc_path_pinned` function L1043-1054 — `()` — Capabilities banner copy in event_loop.rs points users at this docs
--  `PINNED` variable L1046 — `: &str` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `tokenize_kv` function L417-448 — `(s: &str) -> Result<Vec<String>, String>` — Tokenizer that respects double-quoted runs so a param value can
+-  `tests` module L651-1118 — `-` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `parse_simple_command` function L655-659 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `watch_parses_template_id_and_string_param` function L662-669 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `watch_parses_typed_and_quoted_params_and_cadence_override` function L672-683 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `watch_rejects_missing_args_and_bad_template` function L686-693 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `watch_command_dispatch_returns_feed_register` function L696-707 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `feeds_command_dispatch_returns_feed_list` function L710-717 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `feeds_pause_and_resume_dispatch` function L720-730 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `feeds_rm_requires_confirm_flag` function L733-746 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `feeds_pause_without_id_is_a_usage_message` function L749-755 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `watch_list_dispatches_to_feed_discover` function L758-776 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `watch_list_doesnt_swallow_a_template_named_listed` function L779-795 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `feeds_unknown_subcommand_lists_usage` function L798-804 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `parse_command_with_args` function L807-811 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `parse_not_a_command` function L814-818 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `parse_slash_only` function L821-823 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `parse_with_leading_whitespace` function L826-829 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `registry_has_builtins` function L832-839 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `registry_matching_prefix` function L842-848 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `registry_matching_empty_returns_all` function L851-855 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `registry_skills` function L858-867 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `autocomplete_navigation` function L870-888 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_help` function L891-898 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_clear` function L901-905 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_unknown` function L908-915 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_inventory` function L918-925 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_skill` function L928-939 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_remember_with_text_returns_remember_fact` function L946-955 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_remember_without_text_returns_usage_message` function L958-968 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_memory_returns_memory_summary` function L971-978 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_forget_with_query_returns_forget_entity` function L981-990 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_forget_without_query_returns_usage_message` function L993-1002 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_workflows_list_returns_workflow_list` function L1005-1015 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `every_advertised_builtin_dispatches_or_explains` function L1023-1046 — `()` — Audit: every built-in command in /help must dispatch to a CommandResult
+-  `execute_integrations_returns_list_variant` function L1051-1058 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_connect_with_service_returns_connect_variant` function L1061-1068 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_connect_without_service_returns_usage_message` function L1071-1081 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_disconnect_with_service_returns_disconnect_variant` function L1084-1091 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_disconnect_without_service_returns_usage_message` function L1094-1101 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `capabilities_banner_doc_path_pinned` function L1106-1117 — `()` — Capabilities banner copy in event_loop.rs points users at this docs
+-  `PINNED` variable L1109 — `: &str` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
 
 #### crates/arawn-tui/src/event.rs
 
@@ -5934,22 +5994,24 @@
 
 #### crates/arawn-tui/src/event_loop.rs
 
-- pub `run_tui` function L64-1087 — `(url: &str, model_name: &str) -> Result<(), Box<dyn std::error::Error>>` — Run the TUI connected to the given WebSocket server URL.
+- pub `run_tui` function L64-1098 — `(url: &str, model_name: &str) -> Result<(), Box<dyn std::error::Error>>` — Run the TUI connected to the given WebSocket server URL.
 -  `MIN_FRAME_INTERVAL` variable L29 — `: Duration` — Minimum interval between renders driven by streaming/event traffic.
 -  `maybe_draw` function L33-45 — `( terminal: &mut Terminal<B>, app: &mut App, ) -> io::Result<()>` — Render if enough time has elapsed since the last draw.
 -  `force_draw` function L49-57 — `( terminal: &mut Terminal<B>, app: &mut App, ) -> io::Result<()>` — Render now regardless of frame budget.
 -  `rect_contains` function L59-61 — `(rect: Rect, col: u16, row: u16) -> bool`
--  `format_integrations_list` function L1090-1105 — `(items: &[serde_json::Value]) -> String` — Render a `list_integrations` response as a markdown table the user can scan.
--  `OpenAttempt` enum L1109-1113 — `Opened | NoOpener | Failed` — What `try_open_url` did.
--  `try_open_url` function L1117-1148 — `(url: &str) -> OpenAttempt` — Best-effort browser open.
--  `apply_system_notice` function L1153-1166 — `(notice: &arawn_service::ServerNotice, app: &mut crate::app::App)` — Push a server-side notice (plugin/config hot-reload outcome) into the
--  `format_permissions_status` function L1169-1209 — `(status: &serde_json::Value) -> String` — Render `get_permissions_status` JSON as a human-readable system message.
--  `format_feed_registered` function L1212-1223 — `(dto: &serde_json::Value) -> String` — Render a freshly-registered feed into a chat-ready system message.
--  `format_feed_list` function L1228-1257 — `(list: &[serde_json::Value]) -> String` — Render the `/feeds` listing as a markdown table-ish block.
--  `human_size` function L1259-1272 — `(bytes: u64) -> String`
--  `KB` variable L1260 — `: u64`
--  `MB` variable L1261 — `: u64`
--  `GB` variable L1262 — `: u64`
+-  `format_integrations_list` function L1101-1116 — `(items: &[serde_json::Value]) -> String` — Render a `list_integrations` response as a markdown table the user can scan.
+-  `OpenAttempt` enum L1120-1124 — `Opened | NoOpener | Failed` — What `try_open_url` did.
+-  `try_open_url` function L1128-1159 — `(url: &str) -> OpenAttempt` — Best-effort browser open.
+-  `apply_system_notice` function L1164-1177 — `(notice: &arawn_service::ServerNotice, app: &mut crate::app::App)` — Push a server-side notice (plugin/config hot-reload outcome) into the
+-  `format_permissions_status` function L1180-1220 — `(status: &serde_json::Value) -> String` — Render `get_permissions_status` JSON as a human-readable system message.
+-  `format_feed_registered` function L1223-1234 — `(dto: &serde_json::Value) -> String` — Render a freshly-registered feed into a chat-ready system message.
+-  `format_feed_list` function L1239-1268 — `(list: &[serde_json::Value]) -> String` — Render the `/feeds` listing as a markdown table-ish block.
+-  `human_size` function L1270-1283 — `(bytes: u64) -> String`
+-  `KB` variable L1271 — `: u64`
+-  `MB` variable L1272 — `: u64`
+-  `GB` variable L1273 — `: u64`
+-  `format_feed_discover` function L1288-1345 — `(dto: &serde_json::Value) -> String` — Render `feed_discover` results into a chat-pane block.
+-  `format_known_templates` function L1349-1362 — `() -> String` — Static help for `/watch list` with no template — points the user
 
 #### crates/arawn-tui/src/lib.rs
 
@@ -6238,30 +6300,31 @@
 - pub `feed_list` function L238-247 — `( &mut self, ) -> Result<Vec<serde_json::Value>, Box<dyn std::error::Error>>` — List configured feeds.
 - pub `feed_pause` function L250-262 — `( &mut self, feed_id: &str, ) -> Result<serde_json::Value, Box<dyn std::error::E...` — Pause a feed by id.
 - pub `feed_resume` function L265-277 — `( &mut self, feed_id: &str, ) -> Result<serde_json::Value, Box<dyn std::error::E...` — Resume a paused feed by id.
-- pub `feed_remove` function L280-292 — `( &mut self, feed_id: &str, ) -> Result<serde_json::Value, Box<dyn std::error::E...` — Decommission a feed by id.
-- pub `get_permission_mode` function L294-300 — `( &mut self, ) -> Result<String, Box<dyn std::error::Error>>`
-- pub `set_permission_mode` function L302-314 — `( &mut self, mode: &str, ) -> Result<String, Box<dyn std::error::Error>>`
-- pub `list_sessions` function L316-327 — `( &mut self, ws_id: Option<uuid::Uuid>, ) -> Result<Vec<SessionInfo>, Box<dyn st...`
-- pub `create_session` function L329-340 — `( &mut self, ws_id: Option<uuid::Uuid>, ) -> Result<SessionInfo, Box<dyn std::er...`
-- pub `load_session` function L342-354 — `( &mut self, session_id: uuid::Uuid, ) -> Result<serde_json::Value, Box<dyn std:...`
-- pub `truncate_session_at_user_message` function L359-378 — `( &mut self, session_id: uuid::Uuid, user_message_index: usize, ) -> Result<serd...` — Rewind a session back to before the Nth user message.
-- pub `send_message` function L380-395 — `( &mut self, session_id: uuid::Uuid, content: &str, ) -> Result<(), Box<dyn std:...`
-- pub `cancel` function L402-416 — `( &mut self, session_id: uuid::Uuid, ) -> Result<(), Box<dyn std::error::Error>>` — Tell the server to abort an in-flight generation on this session.
-- pub `parse_engine_event` function L472-492 — `(text: &str) -> Option<EngineEvent>` — Parse a WS message as an EngineEvent.
-- pub `EventUpdate` enum L495-522 — `AppendStreamingText | AddToolCall | AddToolResult | Complete | Error | Warning |...` — Convert an EngineEvent into App state updates.
-- pub `parse_system_notice` function L528-534 — `(text: &str) -> Option<arawn_service::ServerNotice>` — Parse a server-wide notice (plugin/config hot-reload) from a raw WS text
-- pub `engine_event_to_update` function L536-563 — `(event: EngineEvent) -> EventUpdate`
+- pub `feed_discover` function L281-293 — `( &mut self, template: &str, ) -> Result<serde_json::Value, Box<dyn std::error::...` — Fetch discoverable params for a template.
+- pub `feed_remove` function L296-308 — `( &mut self, feed_id: &str, ) -> Result<serde_json::Value, Box<dyn std::error::E...` — Decommission a feed by id.
+- pub `get_permission_mode` function L310-316 — `( &mut self, ) -> Result<String, Box<dyn std::error::Error>>`
+- pub `set_permission_mode` function L318-330 — `( &mut self, mode: &str, ) -> Result<String, Box<dyn std::error::Error>>`
+- pub `list_sessions` function L332-343 — `( &mut self, ws_id: Option<uuid::Uuid>, ) -> Result<Vec<SessionInfo>, Box<dyn st...`
+- pub `create_session` function L345-356 — `( &mut self, ws_id: Option<uuid::Uuid>, ) -> Result<SessionInfo, Box<dyn std::er...`
+- pub `load_session` function L358-370 — `( &mut self, session_id: uuid::Uuid, ) -> Result<serde_json::Value, Box<dyn std:...`
+- pub `truncate_session_at_user_message` function L375-394 — `( &mut self, session_id: uuid::Uuid, user_message_index: usize, ) -> Result<serd...` — Rewind a session back to before the Nth user message.
+- pub `send_message` function L396-411 — `( &mut self, session_id: uuid::Uuid, content: &str, ) -> Result<(), Box<dyn std:...`
+- pub `cancel` function L418-432 — `( &mut self, session_id: uuid::Uuid, ) -> Result<(), Box<dyn std::error::Error>>` — Tell the server to abort an in-flight generation on this session.
+- pub `parse_engine_event` function L488-508 — `(text: &str) -> Option<EngineEvent>` — Parse a WS message as an EngineEvent.
+- pub `EventUpdate` enum L511-538 — `AppendStreamingText | AddToolCall | AddToolResult | Complete | Error | Warning |...` — Convert an EngineEvent into App state updates.
+- pub `parse_system_notice` function L544-550 — `(text: &str) -> Option<arawn_service::ServerNotice>` — Parse a server-wide notice (plugin/config hot-reload) from a raw WS text
+- pub `engine_event_to_update` function L552-579 — `(event: EngineEvent) -> EventUpdate`
 -  `REQUEST_ID` variable L13 — `: AtomicU64`
 -  `next_id` function L15-17 — `() -> u64`
 -  `Pending` type L31 — `= Arc<Mutex<HashMap<u64, oneshot::Sender<Value>>>>`
--  `WsClient` type L51-417 — `= WsClient`
+-  `WsClient` type L51-433 — `= WsClient`
 -  `read_server_token` function L86-100 — `() -> Option<String>` — Read the server auth token from {data_dir}/server.token.
--  `spawn_reader` function L421-469 — `( mut read: futures_util::stream::SplitStream< tokio_tungstenite::WebSocketStrea...` — Spawn the reader task.
--  `tests` module L566-611 — `-`
--  `parses_well_formed_system_notice` function L573-588 — `()`
--  `rejects_engine_event_envelope` function L591-598 — `()`
--  `rejects_response_envelope` function L601-604 — `()`
--  `rejects_malformed_json` function L607-610 — `()`
+-  `spawn_reader` function L437-485 — `( mut read: futures_util::stream::SplitStream< tokio_tungstenite::WebSocketStrea...` — Spawn the reader task.
+-  `tests` module L582-627 — `-`
+-  `parses_well_formed_system_notice` function L589-604 — `()`
+-  `rejects_engine_event_envelope` function L607-614 — `()`
+-  `rejects_response_envelope` function L617-620 — `()`
+-  `rejects_malformed_json` function L623-626 — `()`
 
 ### crates/arawn-workflow
 
