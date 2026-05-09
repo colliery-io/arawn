@@ -80,4 +80,30 @@ None. `confluence/space-archive` is unusable until this is fixed. `/feeds rm sd`
 
 ## Status Updates
 
-*To be added during implementation*
+### 2026-05-09 — first hypothesis disproven; real cause still unknown
+
+Initial hypothesis was that the persisted token was minted by an older arawn build with fewer scopes. Added a `missing_scopes()` method on `AtlassianIntegration` that compares `granted_scopes()` against the current `ATLASSIAN_OAUTH_SCOPES` list, plus a startup `warn!` that fires if any are missing.
+
+**Result:** the warning does NOT fire for the affected user's token. Their token has every scope the current binary requests, including the v2 grants (`read:page:confluence`, `read:space:confluence`).
+
+So the 401 `scope does not match` is coming from an endpoint that needs a scope NOT in our requested list. Possibilities to investigate:
+
+1. **CQL `/search` may need `read:confluence-content.summary`** specifically — different scope than `read:confluence-content.all`. The `.all` is documented as broader, but Atlassian may treat them as orthogonal rather than inclusive.
+2. **CQL `/search` may need `search:confluence`** — a search-specific granular scope added when Atlassian split the legacy scopes.
+3. **`/wiki/api/v2/pages/{id}?body-format=storage` may need an additional scope when the body format is `storage`**, beyond `read:page:confluence`.
+4. **Token-context mismatch.** The `confluence_v1_get` helper might pick the bot-app context where the feed needs the user-3LO context (or vice versa). Worth checking: does the existing `confluence_search` tool (which calls the same `/search` endpoint) succeed for this user? If yes, the difference is the auth context, not the scope.
+
+### Investigation plan
+
+- [ ] User to test: does `/confluence_search cql=type=page AND space=SD` work via the tool path? If yes, the diagnosis is auth-context, not scope.
+- [ ] Inspect the persisted token's `scope` field directly to confirm which scopes the user actually has.
+- [ ] Try the failing endpoint(s) by hand with the persisted token (`curl -H 'Authorization: Bearer ...'`) to isolate which call returns 401 — is it `/search` or `/pages/{id}` or both? The error in the log is from one of them; we don't know which.
+- [ ] Check Atlassian developer console for the OAuth app's actual granted scopes vs what we request — sometimes Atlassian downgrades scope grants silently.
+
+### Startup-warning safeguard landed regardless
+
+`AtlassianIntegration::missing_scopes()` and the `[atlassian]` startup warn message landed in this commit. They'll catch the *original* hypothesis (older token + fewer scopes) for any user who has one. Doesn't help the current case but prevents the same triage path next time.
+
+### Workaround for the user (current)
+
+`/disconnect atlassian` + `/connect atlassian` doesn't fix this case (token already has the right scopes), so the `sd` feed will keep failing until the actual scope is identified. `/feeds rm sd` to clear the failing schedule, or `/feeds pause sd` to stop the cron firings until the fix lands.

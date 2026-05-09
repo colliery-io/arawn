@@ -1491,6 +1491,29 @@ impl ArawnService for LocalService {
         Ok(dto)
     }
 
+    async fn feed_run(
+        &self,
+        feed_id: &str,
+    ) -> Result<arawn_service::FeedSummaryDto, ServiceError> {
+        let runtime = self.feed_runtime_or_err()?;
+        runtime
+            .run_feed_once(feed_id)
+            .await
+            .map_err(feed_err)?;
+        let dto = current_summary(&runtime, feed_id).await?;
+        let _ = self.notice_tx.send(arawn_service::ServerNotice {
+            level: "info".into(),
+            category: "feeds".into(),
+            message: format!(
+                "feed {feed_id} run on demand — {} items, status {}",
+                "?",
+                dto.last_status.as_deref().unwrap_or("?"),
+            ),
+            timestamp: chrono::Utc::now().to_rfc3339(),
+        });
+        Ok(dto)
+    }
+
     async fn feed_discover(
         &self,
         template: &str,

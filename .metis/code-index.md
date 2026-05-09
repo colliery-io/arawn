@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-09T10:50:29Z | 257 files | Python, Rust
+> Generated: 2026-05-09T12:40:25Z | 257 files | Python, Rust
 
 ## Project Structure
 
@@ -580,16 +580,16 @@
 
 -  `DEFAULT_MODEL` variable L15 — `: &str`
 -  `FILE_LOG_FILTER` variable L18 — `: &str` — Default file log filter: debug for arawn crates, warn for third-party.
--  `main` function L21-774 — `() -> Result<()>`
+-  `main` function L21-787 — `() -> Result<()>`
 -  `Cli` struct L27-46 — `{ command: Option<Command>, data_dir: Option<String>, session: Option<Uuid>, lis...`
 -  `Command` enum L49-68 — `Serve | Tui | Plugin`
--  `run_cli_via_server` function L777-882 — `( url: &str, prompt: &str, session_id: Option<Uuid>, ) -> Result<()>` — Run a CLI prompt by connecting to the running server via WebSocket.
--  `build_llm_client` function L885-908 — `( config: &arawn_bin::LlmConfig, ) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
--  `register_default_tools` function L911-957 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &arawn_bin::ArawnConfig, d...` — Register all default tools into the registry.
--  `connect_mcp_servers` function L960-1008 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
--  `register_workflow_tools` function L1011-1028 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
--  `build_engine_config` function L1030-1065 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
--  `dirs_path` function L1067-1076 — `() -> Option<String>`
+-  `run_cli_via_server` function L790-895 — `( url: &str, prompt: &str, session_id: Option<Uuid>, ) -> Result<()>` — Run a CLI prompt by connecting to the running server via WebSocket.
+-  `build_llm_client` function L898-921 — `( config: &arawn_bin::LlmConfig, ) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
+-  `register_default_tools` function L924-970 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &arawn_bin::ArawnConfig, d...` — Register all default tools into the registry.
+-  `connect_mcp_servers` function L973-1021 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
+-  `register_workflow_tools` function L1024-1041 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
+-  `build_engine_config` function L1043-1078 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
+-  `dirs_path` function L1080-1089 — `() -> Option<String>`
 
 #### crates/arawn/src/plugin_cmd.rs
 
@@ -3323,16 +3323,16 @@
 
 #### crates/arawn-feeds/src/templates/slack/common.rs
 
-- pub `archive_channel_with_threads` function L34-150 — `( slack: &dyn SlackFeedClient, channel_id: &str, feed_dir: &Path, cursor: &Value...` — Two-pass dual-layer archive of a single Slack conversation.
--  `append_message_to_day` function L154-158 — `(feed_dir: &Path, msg: &Value, ts: &str) -> Result<u64, FeedError>` — per-thread reply fetch + thread-file writes, cursor management.
--  `append_message_to_thread` function L160-170 — `( feed_dir: &Path, parent_ts: &str, msg: &Value, ) -> Result<u64, FeedError>` — per-thread reply fetch + thread-file writes, cursor management.
--  `append_line` function L172-185 — `(path: &Path, msg: &Value) -> Result<u64, FeedError>` — per-thread reply fetch + thread-file writes, cursor management.
--  `has_replies` function L187-192 — `(msg: &Value) -> bool` — per-thread reply fetch + thread-file writes, cursor management.
--  `ts_to_yyyy_mm_dd` function L196-206 — `(ts: &str) -> Result<String, FeedError>` — Parse Slack's float-string `ts` (`"1715000000.001234"`) and format
--  `tests` module L209-234 — `-` — per-thread reply fetch + thread-file writes, cursor management.
--  `ts_to_yyyy_mm_dd_parses_slack_format` function L214-218 — `()` — per-thread reply fetch + thread-file writes, cursor management.
--  `ts_to_yyyy_mm_dd_rejects_garbage` function L221-226 — `()` — per-thread reply fetch + thread-file writes, cursor management.
--  `has_replies_detects_reply_count` function L229-233 — `()` — per-thread reply fetch + thread-file writes, cursor management.
+- pub `archive_channel_with_threads` function L34-169 — `( slack: &dyn SlackFeedClient, channel_id: &str, feed_dir: &Path, cursor: &Value...` — Two-pass dual-layer archive of a single Slack conversation.
+-  `append_message_to_day` function L173-177 — `(feed_dir: &Path, msg: &Value, ts: &str) -> Result<u64, FeedError>` — per-thread reply fetch + thread-file writes, cursor management.
+-  `append_message_to_thread` function L179-189 — `( feed_dir: &Path, parent_ts: &str, msg: &Value, ) -> Result<u64, FeedError>` — per-thread reply fetch + thread-file writes, cursor management.
+-  `append_line` function L191-204 — `(path: &Path, msg: &Value) -> Result<u64, FeedError>` — per-thread reply fetch + thread-file writes, cursor management.
+-  `has_replies` function L206-211 — `(msg: &Value) -> bool` — per-thread reply fetch + thread-file writes, cursor management.
+-  `ts_to_yyyy_mm_dd` function L215-225 — `(ts: &str) -> Result<String, FeedError>` — Parse Slack's float-string `ts` (`"1715000000.001234"`) and format
+-  `tests` module L228-253 — `-` — per-thread reply fetch + thread-file writes, cursor management.
+-  `ts_to_yyyy_mm_dd_parses_slack_format` function L233-237 — `()` — per-thread reply fetch + thread-file writes, cursor management.
+-  `ts_to_yyyy_mm_dd_rejects_garbage` function L240-245 — `()` — per-thread reply fetch + thread-file writes, cursor management.
+-  `has_replies_detects_reply_count` function L248-252 — `()` — per-thread reply fetch + thread-file writes, cursor management.
 
 #### crates/arawn-feeds/src/templates/slack/dm_archive.rs
 
@@ -3928,36 +3928,37 @@
 
 - pub `SERVICE_NAME` variable L15 — `: &str` — Stable service name.
 - pub `DEFAULT_ATLASSIAN_REDIRECT_PORT` variable L19 — `: u16` — Default fixed port for the OAuth callback.
-- pub `ATLASSIAN_OAUTH_SCOPES` variable L29-44 — `: &[&str]` — Bot scopes requested at OAuth time.
-- pub `AtlassianSite` struct L51-57 — `{ id: String, url: String, name: String, scopes: Vec<String> }` — One Atlassian site (workspace) the user authorized arawn to access.
-- pub `AtlassianProviderConfig` struct L60-65 — `{ auth_url: Url, token_url: Url, scopes: Vec<String>, redirect_port: u16 }` — Default Atlassian OAuth provider config.
-- pub `into_oauth_provider` function L79-95 — `( self, client_id: String, client_secret: String, ) -> OAuthProviderConfig`
-- pub `AtlassianIntegration` struct L99-104 — `{ data_dir: PathBuf, client_id: String, client_secret: String, provider_config: ...` — Atlassian integration.
-- pub `new` function L107-114 — `(data_dir: PathBuf, client_id: String, client_secret: String) -> Self`
-- pub `with_provider_config` function L116-119 — `(mut self, config: AtlassianProviderConfig) -> Self`
-- pub `load_token` function L122-127 — `(&self) -> Result<Token, IntegrationError>` — Load the persisted token.
-- pub `save_token` function L130-134 — `(&self, token: &Token) -> Result<(), IntegrationError>` — Persist the (potentially-refreshed) token back to disk.
-- pub `sites` function L139-148 — `(&self) -> Result<Vec<AtlassianSite>, IntegrationError>` — Read the persisted set of accessible Atlassian sites (cloud_ids
-- pub `select_site` function L152-183 — `( &self, which: Option<&str>, ) -> Result<AtlassianSite, IntegrationError>` — Resolve a site by URL or name (e.g.
-- pub `granted_scopes` function L186-196 — `( &self, ) -> Result<std::collections::HashSet<String>, IntegrationError>` — Read the granted scope set from the persisted token.
-- pub `oauth_config` function L198-203 — `(&self) -> OAuthProviderConfig`
--  `AtlassianProviderConfig` type L67-76 — `impl Default for AtlassianProviderConfig`
--  `default` function L68-75 — `() -> Self`
--  `AtlassianProviderConfig` type L78-96 — `= AtlassianProviderConfig`
--  `AtlassianIntegration` type L106-220 — `= AtlassianIntegration`
--  `provider` function L205-215 — `(&self) -> AtlassianProviderConfig`
--  `token_store` function L217-219 — `(&self) -> Result<TokenStore, IntegrationError>`
--  `AtlassianIntegration` type L223-320 — `impl Integration for AtlassianIntegration`
--  `name` function L224-226 — `(&self) -> &str`
--  `is_connected` function L228-233 — `(&self) -> bool`
--  `connect` function L235-283 — `(&self, ctx: &dyn ConnectContext) -> Result<(), IntegrationError>`
--  `disconnect` function L285-289 — `(&self) -> Result<(), IntegrationError>`
--  `capabilities_summary` function L291-319 — `(&self) -> Option<String>`
--  `RawAccessibleResource` struct L325-331 — `{ id: String, url: String, name: String, scopes: Vec<String> }` — Atlassian's accessible-resources response shape (snake-case-d to
--  `fetch_accessible_resources` function L335-365 — `( access_token: &str, ) -> Result<Vec<AtlassianSite>, IntegrationError>` — Hit `https://api.atlassian.com/oauth/token/accessible-resources` to
--  `tests` module L368-410 — `-`
--  `default_provider_carries_jira_classic_and_confluence_v2_scopes` function L372-396 — `()`
--  `provider_lifts_into_oauth_config_with_audience` function L399-409 — `()`
+- pub `ATLASSIAN_OAUTH_SCOPES` variable L29-47 — `: &[&str]` — Bot scopes requested at OAuth time.
+- pub `AtlassianSite` struct L54-60 — `{ id: String, url: String, name: String, scopes: Vec<String> }` — One Atlassian site (workspace) the user authorized arawn to access.
+- pub `AtlassianProviderConfig` struct L63-68 — `{ auth_url: Url, token_url: Url, scopes: Vec<String>, redirect_port: u16 }` — Default Atlassian OAuth provider config.
+- pub `into_oauth_provider` function L82-98 — `( self, client_id: String, client_secret: String, ) -> OAuthProviderConfig`
+- pub `AtlassianIntegration` struct L102-107 — `{ data_dir: PathBuf, client_id: String, client_secret: String, provider_config: ...` — Atlassian integration.
+- pub `new` function L110-117 — `(data_dir: PathBuf, client_id: String, client_secret: String) -> Self`
+- pub `with_provider_config` function L119-122 — `(mut self, config: AtlassianProviderConfig) -> Self`
+- pub `load_token` function L125-130 — `(&self) -> Result<Token, IntegrationError>` — Load the persisted token.
+- pub `save_token` function L133-137 — `(&self, token: &Token) -> Result<(), IntegrationError>` — Persist the (potentially-refreshed) token back to disk.
+- pub `sites` function L142-151 — `(&self) -> Result<Vec<AtlassianSite>, IntegrationError>` — Read the persisted set of accessible Atlassian sites (cloud_ids
+- pub `select_site` function L155-186 — `( &self, which: Option<&str>, ) -> Result<AtlassianSite, IntegrationError>` — Resolve a site by URL or name (e.g.
+- pub `granted_scopes` function L189-199 — `( &self, ) -> Result<std::collections::HashSet<String>, IntegrationError>` — Read the granted scope set from the persisted token.
+- pub `missing_scopes` function L210-224 — `(&self) -> Option<Vec<String>>` — Compare the persisted token's scopes against what the current
+- pub `oauth_config` function L226-231 — `(&self) -> OAuthProviderConfig`
+-  `AtlassianProviderConfig` type L70-79 — `impl Default for AtlassianProviderConfig`
+-  `default` function L71-78 — `() -> Self`
+-  `AtlassianProviderConfig` type L81-99 — `= AtlassianProviderConfig`
+-  `AtlassianIntegration` type L109-248 — `= AtlassianIntegration`
+-  `provider` function L233-243 — `(&self) -> AtlassianProviderConfig`
+-  `token_store` function L245-247 — `(&self) -> Result<TokenStore, IntegrationError>`
+-  `AtlassianIntegration` type L251-348 — `impl Integration for AtlassianIntegration`
+-  `name` function L252-254 — `(&self) -> &str`
+-  `is_connected` function L256-261 — `(&self) -> bool`
+-  `connect` function L263-311 — `(&self, ctx: &dyn ConnectContext) -> Result<(), IntegrationError>`
+-  `disconnect` function L313-317 — `(&self) -> Result<(), IntegrationError>`
+-  `capabilities_summary` function L319-347 — `(&self) -> Option<String>`
+-  `RawAccessibleResource` struct L353-359 — `{ id: String, url: String, name: String, scopes: Vec<String> }` — Atlassian's accessible-resources response shape (snake-case-d to
+-  `fetch_accessible_resources` function L363-393 — `( access_token: &str, ) -> Result<Vec<AtlassianSite>, IntegrationError>` — Hit `https://api.atlassian.com/oauth/token/accessible-resources` to
+-  `tests` module L396-438 — `-`
+-  `default_provider_carries_jira_classic_and_confluence_v2_scopes` function L400-424 — `()`
+-  `provider_lifts_into_oauth_config_with_audience` function L427-437 — `()`
 
 #### crates/arawn-integrations/src/atlassian/jira.rs
 

@@ -4,14 +4,14 @@ level: task
 title: "cloacina 0.6 cron_recovery feedback loop — schedule_executions never marked complete"
 short_code: "ARAWN-T-0226"
 created_at: 2026-05-09T00:00:00+00:00
-updated_at: 2026-05-09T00:00:00+00:00
+updated_at: 2026-05-09T17:11:03.216535+00:00
 parent: ARAWN-I-0039
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -59,6 +59,10 @@ cloacina's `CronRecoveryService::check_and_recover_lost_executions()` then queri
 
 `crates/arawn-workflow/src/runner.rs` now calls `.cron_enable_recovery(false)` on the runner config. Trade-off: feeds will no longer auto-recover from missed firings (e.g. server crashed during a scheduled run). Acceptable for current usage — feeds are continual and the next regular cron tick will pick up where the cursor left off.
 
+## Acceptance Criteria
+
+## Acceptance Criteria
+
 ## Acceptance Criteria for the real fix
 
 - [ ] Identify *which* cloacina internal is responsible for marking `schedule_executions.completed_at`. Likely candidates: `WorkflowExecutor::on_complete`, the audit pipeline, or a separate `mark_schedule_complete` hook that's never being called for embedded (non-package) workflows.
@@ -78,4 +82,8 @@ cloacina's `CronRecoveryService::check_and_recover_lost_executions()` then queri
 
 ### 2026-05-09 — workaround landed during T-0218 UAT
 
-`cron_enable_recovery(false)` set in `runner.rs` to stop the bleeding. Real fix requires upstream investigation; filed as this task. The slack feed that was hammering the API has been paused via `/feeds pause` and will be resumed once we reset the cursor (it overshot to `latest_ts: 1778167136.964759` over the spurious runs, so we need to either accept those messages as legit-archived or wipe + re-register).
+`cron_enable_recovery(false)` set in `runner.rs` to stop the bleeding. Real fix required upstream investigation; filed as CLOACI-T-0572 against cloacina.
+
+### 2026-05-09 — fixed upstream in cloacina 0.6.1
+
+cloacina 0.6.1 ships with the cron success/failure path correctly calling `.complete()` on the schedule_executions row. Bumped via `cargo update -p cloacina --precise 0.6.1` and `cargo update -p cloacina-build --precise 0.6.1`. Re-enabled `cron_enable_recovery(true)` (default) by removing the explicit `.cron_enable_recovery(false)` override in `arawn-workflow/src/runner.rs`. Server restarted on 0.6.1. Cron firings should now stay at the declared cadence with proper recovery for missed firings across server restarts.

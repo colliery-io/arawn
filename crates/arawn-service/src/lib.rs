@@ -183,6 +183,11 @@ pub trait ArawnService: Send + Sync {
     /// wiped so the caller can confirm. Backs `/feeds rm <id>`.
     async fn feed_remove(&self, feed_id: &str) -> Result<FeedRemoveDto, ServiceError>;
 
+    /// Trigger a one-off run of a feed, outside its cron schedule.
+    /// Backs `/feeds run <id>`. Returns the post-run summary
+    /// (refreshed last_run_at, last_status, etc.).
+    async fn feed_run(&self, feed_id: &str) -> Result<FeedSummaryDto, ServiceError>;
+
     /// Discover the choosable parameter values for a template. Backs
     /// the `/watch <template> <feed_id>` picker. Returns `None`
     /// (rendered as an empty list with a `picker_supported=false`

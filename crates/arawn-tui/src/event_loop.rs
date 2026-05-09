@@ -645,6 +645,24 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                                 app.messages.push(ChatMessage::new(ChatRole::System, body));
                                 app.dirty = true;
                             }
+                            crate::command::CommandResult::FeedRun(id) => {
+                                let body = match client.feed_run(&id).await {
+                                    Ok(dto) => format!(
+                                        "Ran **{}** (`{}`) on demand.\n\n\
+                                         - Last status: `{}`\n\
+                                         - Last run: {}\n\
+                                         - Run count: {}",
+                                        dto.get("template").and_then(|v| v.as_str()).unwrap_or("?"),
+                                        id,
+                                        dto.get("last_status").and_then(|v| v.as_str()).unwrap_or("?"),
+                                        dto.get("last_run_at").and_then(|v| v.as_str()).unwrap_or("?"),
+                                        dto.get("run_count").and_then(|v| v.as_u64()).unwrap_or(0),
+                                    ),
+                                    Err(e) => format!("/feeds run {id} failed: {e}"),
+                                };
+                                app.messages.push(ChatMessage::new(ChatRole::System, body));
+                                app.dirty = true;
+                            }
                             crate::command::CommandResult::FeedPause(id) => {
                                 let body = match client.feed_pause(&id).await {
                                     Ok(dto) => format!(

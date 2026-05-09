@@ -276,6 +276,21 @@ impl WsClient {
         Ok(result.clone())
     }
 
+    /// Trigger a one-off run of a feed by id. Backs `/feeds run <id>`.
+    pub async fn feed_run(
+        &mut self,
+        feed_id: &str,
+    ) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
+        let resp = self
+            .request_response("feed_run", json!({"feed_id": feed_id}))
+            .await?;
+        if let Some(err) = resp.get("error") {
+            return Err(err["message"].as_str().unwrap_or("unknown error").into());
+        }
+        let result = resp.get("result").ok_or("no result")?;
+        Ok(result.clone())
+    }
+
     /// Fetch discoverable params for a template. Backs the
     /// `/watch <template> <feed_id>` picker.
     pub async fn feed_discover(

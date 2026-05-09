@@ -913,9 +913,9 @@ checksum = "c8d4a3bb8b1e0c1050499d1815f5ab16d04f0959b233085fb31653fbfc9d98f9"
 
 [[package]]
 name = "cloacina"
-version = "0.6.0"
+version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "986e411d4057e6e6a7dd901a863ed2d8785dd2029d721a44f91a973c81ad7239"
+checksum = "a541475a72fb127a3864d87aa65f3db72c06880e7a78493590e592be5b2aec8f"
 dependencies = [
  "aes-gcm",
  "anyhow",
@@ -972,18 +972,18 @@ dependencies = [
 
 [[package]]
 name = "cloacina-build"
-version = "0.6.0"
+version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "45fe719564365b27d997deffac55f1d3392867a24271934292130b727a2ac0c1"
+checksum = "c1a00208eeb7096f9f776e710830f03c3abd825c42e645a0ac1976270db44b33"
 dependencies = [
  "pyo3-build-config",
 ]
 
 [[package]]
 name = "cloacina-computation-graph"
-version = "0.6.0"
+version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1936780e2af240532a58763e0055de3139d952756bfe9e318f7801c8eb1121aa"
+checksum = "bf03ca4f5ca42daaaf670e91d6c006dffd72984edece503b8ae03eb43efcf291"
 dependencies = [
  "bincode",
  "once_cell",
@@ -996,9 +996,9 @@ dependencies = [
 
 [[package]]
 name = "cloacina-macros"
-version = "0.6.0"
+version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1fd893f02cd307befc1bed6015f6b4a280e8bfb2fb61b1be1ab93574920f8b10"
+checksum = "15f9a1c3b8ac036520f8a0a1514ad9e0c95a53f6eb22d761637cfa16bc87ef5e"
 dependencies = [
  "async-trait",
  "once_cell",
@@ -1011,9 +1011,9 @@ dependencies = [
 
 [[package]]
 name = "cloacina-workflow"
-version = "0.6.0"
+version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d1d5a8ab4a2a58e06a2e208e859ce417c1c0bdc1f53e87902f06d0e46d4a7f65"
+checksum = "b52d3bbb5bb6081c6257206e717fa123ba8ebf754993f701a83e9e602cdeff58"
 dependencies = [
  "async-trait",
  "chrono",
@@ -1030,9 +1030,9 @@ dependencies = [
 
 [[package]]
 name = "cloacina-workflow-plugin"
-version = "0.6.0"
+version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "75e2181c56c98163c87e51d77342c08067cccf2e92ac08748f5a43d1c359e0d9"
+checksum = "24cef447e6ad136c9e592ed9b85188f40a3ca1176ee4e2d8cfa48dda3fa3eb08"
 dependencies = [
  "cloacina-computation-graph",
  "cloacina-workflow",

@@ -48,17 +48,6 @@ impl WorkflowRunner {
         let runner_config = DefaultRunnerConfig::builder()
             .enable_registry_reconciler(true)
             .enable_cron_scheduling(true)
-            // Disable cron recovery: with cloacina 0.6 the
-            // schedule_executions row never gets `completed_at`
-            // populated on successful workflow completion, so the
-            // recovery service treats every successful execution as
-            // "lost" and schedules another one immediately. The result
-            // is a tight feedback loop firing the workflow every ~13s
-            // instead of on its cron cadence. Found during T-0218 UAT
-            // (filed as ARAWN-T-0226). Until cloacina marks executions
-            // complete, we'd rather miss a recovery than burn API
-            // budget hammering integrations.
-            .cron_enable_recovery(false)
             .registry_storage_path(Some(config.packages_dir.clone()))
             .max_concurrent_tasks(config.max_concurrent_tasks)
             .build()

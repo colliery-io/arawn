@@ -566,6 +566,19 @@ async fn main() -> Result<()> {
             registry.register(Box::new(arawn_integrations::atlassian::ConfluenceUpdatePageTool::new(Arc::clone(&atlassian))));
             registry.register(Box::new(arawn_integrations::atlassian::ConfluenceListSpacesTool::new(Arc::clone(&atlassian))));
             info!("Atlassian integration registered (11 tools — 6 Jira, 5 Confluence)");
+            // If the persisted token was minted by an older arawn
+            // build that requested fewer scopes, surface that now —
+            // confluence feeds will 401 with "scope does not match"
+            // until the user re-runs /connect atlassian.
+            if let Some(missing) = atlassian.missing_scopes() {
+                warn!(
+                    missing = ?missing,
+                    "Atlassian token is missing scopes from the current build. \
+                     Run `/disconnect atlassian` then `/connect atlassian` to \
+                     mint a fresh token. Affected feeds (e.g. confluence/space-archive) \
+                     will fail with 401 'scope does not match' until then."
+                );
+            }
             atlassian_integration_for_feeds = Some(atlassian);
         } else {
             atlassian_integration_for_feeds = None;

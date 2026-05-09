@@ -330,6 +330,9 @@ pub enum CommandResult {
     /// `None` means `/watch list` with no template — list every
     /// registered template instead.
     FeedDiscover(Option<String>),
+    /// Trigger a one-off run of a feed via `/feeds run <id>` —
+    /// useful for testing without waiting for the next cron tick.
+    FeedRun(String),
 }
 
 /// Parsed args for the non-interactive form of `/watch`.
@@ -483,10 +486,15 @@ pub fn parse_feeds_args(args: &str) -> CommandResult {
                 CommandResult::SystemMessage("Usage: /feeds rm <id> [--yes]".into())
             }
         },
+        "run" => match tokens.next() {
+            Some(id) => CommandResult::FeedRun(id.into()),
+            None => CommandResult::SystemMessage("Usage: /feeds run <id>".into()),
+        },
         other => CommandResult::SystemMessage(format!(
             "Unknown /feeds subcommand: '{other}'.\n\
              Usage:\n  \
              /feeds                    — list feeds\n  \
+             /feeds run <id>           — trigger a one-off run now\n  \
              /feeds pause <id>         — pause a feed\n  \
              /feeds resume <id>        — resume a paused feed\n  \
              /feeds rm <id> [--yes]    — decommission a feed"

@@ -33,12 +33,15 @@ pub const ATLASSIAN_OAUTH_SCOPES: &[&str] = &[
     "read:jira-user",
     // Confluence v1 (CQL search + space metadata + write fallback)
     "read:confluence-content.all",
+    "read:confluence-content.summary",
+    "search:confluence",
     "read:confluence-space.summary",
     "write:confluence-content",
     // Confluence v2 (granular — required by /wiki/api/v2/* endpoints)
     "read:space:confluence",
     "read:page:confluence",
     "write:page:confluence",
+    "read:content-details:confluence",
     // Refresh tokens
     "offline_access",
 ];
@@ -193,6 +196,31 @@ impl AtlassianIntegration {
             .filter(|s| !s.is_empty())
             .map(|s| s.to_string())
             .collect())
+    }
+
+    /// Compare the persisted token's scopes against what the current
+    /// build expects. Returns the set the user's token is *missing*.
+    /// A non-empty result means the token was minted by an older
+    /// version of arawn and needs `/disconnect atlassian` +
+    /// `/connect atlassian` to mint a fresh one.
+    ///
+    /// Returns `None` if no token is persisted (`granted_scopes` will
+    /// fail with `NotConnected`, which is the integration-not-connected
+    /// case, not a scope mismatch).
+    pub fn missing_scopes(&self) -> Option<Vec<String>> {
+        let granted = self.granted_scopes().ok()?;
+        let required: std::collections::HashSet<&str> =
+            ATLASSIAN_OAUTH_SCOPES.iter().copied().collect();
+        let missing: Vec<String> = required
+            .iter()
+            .filter(|s| !granted.contains(**s))
+            .map(|s| s.to_string())
+            .collect();
+        if missing.is_empty() {
+            None
+        } else {
+            Some(missing)
+        }
     }
 
     pub fn oauth_config(&self) -> OAuthProviderConfig {

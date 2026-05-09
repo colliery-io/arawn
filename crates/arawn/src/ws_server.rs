@@ -55,6 +55,7 @@ const RPC_METHODS: &[&str] = &[
     "feed_resume",
     "feed_remove",
     "feed_discover",
+    "feed_run",
 ];
 
 /// JSON-RPC style request from client.
@@ -1094,6 +1095,24 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                     .unwrap_or("");
                 debug!(id, %fid, "feed_resume");
                 let resp = match service.feed_resume(fid).await {
+                    Ok(dto) => Response::success(id, serde_json::to_value(&dto).unwrap()),
+                    Err(e) => Response::from_service_error(id, &e),
+                };
+                let _ = sender
+                    .send(WsMessage::Text(
+                        serde_json::to_string(&resp).unwrap().into(),
+                    ))
+                    .await;
+            }
+
+            "feed_run" => {
+                let fid = request
+                    .params
+                    .get("feed_id")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                debug!(id, %fid, "feed_run");
+                let resp = match service.feed_run(fid).await {
                     Ok(dto) => Response::success(id, serde_json::to_value(&dto).unwrap()),
                     Err(e) => Response::from_service_error(id, &e),
                 };

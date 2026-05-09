@@ -177,6 +177,22 @@ impl FeedRuntime {
         Ok(record)
     }
 
+    /// Trigger a one-off run of an enabled feed, outside the cron
+    /// schedule. Backs `/feeds run <id>` — useful for "test now,
+    /// don't wait 30 min" debugging plus ops scenarios where the
+    /// schedule slipped.
+    ///
+    /// Goes through the same `dispatch::run_feed` code the cloacina
+    /// cron path uses, so cursor advancement and meta.json writes
+    /// behave identically. Disabled feeds short-circuit with
+    /// `status="skipped-disabled"` (existing dispatch behavior).
+    pub async fn run_feed_once(
+        &self,
+        feed_id: &str,
+    ) -> Result<crate::template::RunOutcome, FeedError> {
+        crate::dispatch::run_feed(feed_id, &self.runtime_ctx).await
+    }
+
     /// Pause a feed: drop its cloacina cron schedule and flip the row
     /// to `enabled=0`. The data dir is left intact so a future
     /// `resume_feed` can pick up where the cursor left off.
