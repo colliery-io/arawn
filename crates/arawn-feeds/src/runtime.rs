@@ -20,8 +20,10 @@ use crate::clients::FeedClients;
 use crate::dispatch::{FeedDispatchTask, FeedRuntimeContext};
 use crate::error::FeedError;
 use crate::layout::DataLayout;
+use crate::meta::MetaStore;
 use crate::registry::FeedTemplateRegistry;
-use crate::store::{FeedRecord, FeedStore};
+use crate::store::{FeedRecord, FeedStore, new_record};
+use crate::types::{FeedMeta, FeedSummary, TemplateParams};
 
 /// arawn-feeds doesn't depend on arawn-workflow directly to avoid a
 /// dependency cycle; instead we take an `Arc<DefaultRunner>` (the
@@ -108,6 +110,128 @@ impl FeedRuntime {
     pub fn runtime_ctx(&self) -> &FeedRuntimeContext {
         &self.runtime_ctx
     }
+
+    /// Full dynamic-registration flow used by the `/watch` command.
+    ///
+    /// 1. Validate template exists + params shape.
+    /// 2. Build the FeedRecord (using template-supplied cadence
+    ///    default if `cadence_override` is None).
+    /// 3. Persist row.
+    /// 4. Write initial `meta.json` with the template's initial cursor.
+    /// 5. Register cloacina workflow + cron via `register_one`.
+    ///
+    /// Failures roll back: if cron registration fails, the DB row is
+    /// removed so the next boot doesn't try to register a half-baked
+    /// feed.
+    pub async fn register_feed_dynamic(
+        &self,
+        template: &str,
+        feed_id: &str,
+        params: TemplateParams,
+        cadence_override: Option<String>,
+    ) -> Result<FeedRecord, FeedError> {
+        // Step 1 — template + params validation up front so a bad
+        // call never touches disk or DB.
+        let tmpl = self.runtime_ctx.registry.require(template)?;
+        tmpl.validate(&params)?;
+        let defaults = tmpl.defaults(&params);
+        let cadence = cadence_override.unwrap_or(defaults.cadence);
+        validate_cadence(&cadence)?;
+
+        // Step 2 — record.
+        let record = new_record(feed_id, template, params.clone(), cadence);
+
+        // Step 3 — persist row.
+        {
+            let c = self.runtime_ctx.conn.lock().await;
+            FeedStore::new(&c).insert(&record)?;
+        }
+
+        // Step 4 — initial meta.json. Best-effort — if this fails the
+        // row exists but no meta yet; the dispatcher will recreate it
+        // on first run. We still surface the error since the user
+        // would rather see "couldn't write meta" now than silently
+        // drift.
+        let feed_dir = self
+            .runtime_ctx
+            .layout
+            .ensure_feed_dir(template, feed_id)?;
+        let meta = FeedMeta::new(template, params, defaults.initial_cursor);
+        if let Err(e) = MetaStore::write(&feed_dir, &meta) {
+            // Rollback the DB row — meta + row stay consistent.
+            let c = self.runtime_ctx.conn.lock().await;
+            let _ = FeedStore::new(&c).delete(feed_id);
+            return Err(e);
+        }
+
+        // Step 5 — cron registration.
+        if let Err(e) = register_one(&self.runner, &self.runtime_ctx, &record).await {
+            // Rollback the DB row so a re-run of /watch isn't blocked
+            // by a UNIQUE constraint on a half-registered feed.
+            let c = self.runtime_ctx.conn.lock().await;
+            let _ = FeedStore::new(&c).delete(feed_id);
+            return Err(e);
+        }
+
+        Ok(record)
+    }
+
+    /// List every feed in the DB (enabled or paused) with on-disk
+    /// status info.
+    pub async fn list_summaries(&self) -> Result<Vec<FeedSummary>, FeedError> {
+        let records = {
+            let c = self.runtime_ctx.conn.lock().await;
+            FeedStore::new(&c).list_all()?
+        };
+        let mut out = Vec::with_capacity(records.len());
+        for r in records {
+            // Bad template names shouldn't happen for rows the runtime
+            // created, but skip defensively rather than poison the
+            // whole list call.
+            let feed_dir = match self.runtime_ctx.layout.feed_dir(&r.template, &r.id) {
+                Ok(p) => p,
+                Err(_) => continue,
+            };
+            let meta = MetaStore::read(&feed_dir).ok().flatten();
+            let data_size_bytes = dir_size_bytes(&feed_dir);
+            out.push(FeedSummary {
+                id: r.id,
+                template: r.template,
+                cadence: r.cadence,
+                enabled: r.enabled,
+                created_at: r.created_at.to_rfc3339(),
+                updated_at: r.updated_at.to_rfc3339(),
+                last_run_at: meta.as_ref().and_then(|m| m.last_run_at.clone()),
+                last_status: meta.as_ref().and_then(|m| m.last_status.clone()),
+                run_count: meta.as_ref().map(|m| m.run_count).unwrap_or(0),
+                data_size_bytes,
+                data_dir: feed_dir.to_string_lossy().to_string(),
+            });
+        }
+        Ok(out)
+    }
+}
+
+fn dir_size_bytes(path: &std::path::Path) -> u64 {
+    fn walk(p: &std::path::Path, acc: &mut u64) {
+        let entries = match std::fs::read_dir(p) {
+            Ok(it) => it,
+            Err(_) => return,
+        };
+        for e in entries.flatten() {
+            let Ok(ft) = e.file_type() else { continue };
+            let path = e.path();
+            if ft.is_dir() {
+                walk(&path, acc);
+            } else if ft.is_file()
+                && let Ok(md) = path.metadata() {
+                    *acc += md.len();
+                }
+        }
+    }
+    let mut total = 0u64;
+    walk(path, &mut total);
+    total
 }
 
 async fn register_one(

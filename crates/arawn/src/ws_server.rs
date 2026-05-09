@@ -49,6 +49,8 @@ const RPC_METHODS: &[&str] = &[
     "list_integrations",
     "start_oauth_flow",
     "disconnect_integration",
+    "feed_register",
+    "feed_list",
 ];
 
 /// JSON-RPC style request from client.
@@ -1016,6 +1018,43 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                 debug!(id, %svc, "disconnect_integration");
                 let resp = match service.disconnect_integration(svc).await {
                     Ok(()) => Response::success(id, serde_json::json!({"ok": true})),
+                    Err(e) => Response::from_service_error(id, &e),
+                };
+                let _ = sender
+                    .send(WsMessage::Text(
+                        serde_json::to_string(&resp).unwrap().into(),
+                    ))
+                    .await;
+            }
+
+            "feed_register" => {
+                debug!(id, "feed_register");
+                let resp = match serde_json::from_value::<arawn_service::FeedRegisterSpec>(
+                    request.params.clone(),
+                ) {
+                    Ok(spec) => match service.feed_register(spec).await {
+                        Ok(dto) => {
+                            Response::success(id, serde_json::to_value(&dto).unwrap())
+                        }
+                        Err(e) => Response::from_service_error(id, &e),
+                    },
+                    Err(e) => Response::error(
+                        id,
+                        "invalid_params",
+                        format!("feed_register params: {e}"),
+                    ),
+                };
+                let _ = sender
+                    .send(WsMessage::Text(
+                        serde_json::to_string(&resp).unwrap().into(),
+                    ))
+                    .await;
+            }
+
+            "feed_list" => {
+                debug!(id, "feed_list");
+                let resp = match service.feed_list().await {
+                    Ok(list) => Response::success(id, serde_json::to_value(&list).unwrap()),
                     Err(e) => Response::from_service_error(id, &e),
                 };
                 let _ = sender

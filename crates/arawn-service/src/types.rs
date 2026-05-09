@@ -277,3 +277,42 @@ pub struct OAuthFlowStarted {
     /// and also prints it for copy/paste.
     pub auth_url: String,
 }
+
+// ─── Feeds ──────────────────────────────────────────────────────────
+
+/// Args for `ArawnService::feed_register`. Mirrors the `/watch`
+/// command surface: template name + free-form params + optional
+/// caller-chosen feed id and cadence override.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FeedRegisterSpec {
+    /// Template name like `"slack/channel-archive"`.
+    pub template: String,
+    /// Caller-chosen feed id. Must be unique within the template.
+    /// E.g. `"design-channel"` for `slack/channel-archive`.
+    pub feed_id: String,
+    /// Template-specific params (e.g. `{"channel": "C0123"}`). Schema
+    /// validation happens template-side.
+    #[serde(default)]
+    pub params: serde_json::Value,
+    /// Optional cron override. When `None`, the template's default
+    /// cadence is used. Must clear the 15-minute floor either way.
+    pub cadence: Option<String>,
+}
+
+/// User-facing snapshot of one feed for the `/feeds` list.
+/// Re-shape of `arawn_feeds::FeedSummary` so the service layer doesn't
+/// re-export the feeds crate's type directly.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FeedSummaryDto {
+    pub id: String,
+    pub template: String,
+    pub cadence: String,
+    pub enabled: bool,
+    pub created_at: String,
+    pub updated_at: String,
+    pub last_run_at: Option<String>,
+    pub last_status: Option<String>,
+    pub run_count: u64,
+    pub data_size_bytes: u64,
+    pub data_dir: String,
+}

@@ -673,7 +673,12 @@ async fn main() -> Result<()> {
                     )
                     .await
                     {
-                        Ok(_runtime) => info!("feed runtime started"),
+                        Ok(runtime) => {
+                            // Hand the live runtime to the service so
+                            // `/watch` and `/feeds` route through it.
+                            service.set_feed_runtime(Arc::new(runtime));
+                            info!("feed runtime started");
+                        }
                         Err(e) => warn!(error = %e, "feed runtime failed to start"),
                     }
                 }

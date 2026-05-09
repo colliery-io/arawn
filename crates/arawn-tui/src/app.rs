@@ -349,7 +349,9 @@ impl App {
                             | CommandResult::PermissionsStatus
                             | CommandResult::IntegrationsList
                             | CommandResult::IntegrationConnect(_)
-                            | CommandResult::IntegrationDisconnect(_) => {
+                            | CommandResult::IntegrationDisconnect(_)
+                            | CommandResult::FeedRegister(_)
+                            | CommandResult::FeedList => {
                                 // These need WS interaction — store for event loop to handle
                                 self.pending_command = Some(result);
                             }

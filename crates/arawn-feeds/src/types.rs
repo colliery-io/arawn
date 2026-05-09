@@ -84,3 +84,30 @@ impl FeedMeta {
         }
     }
 }
+
+/// User-facing snapshot of one feed: the row state, last-run health
+/// from `meta.json`, and the size of its data dir.
+///
+/// Returned by `FeedRuntime::list_summaries` and shown in the
+/// `/feeds` modal. Kept Serializable so it round-trips through the
+/// service WS without a re-shaping layer.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FeedSummary {
+    pub id: String,
+    pub template: String,
+    pub cadence: String,
+    pub enabled: bool,
+    pub created_at: String,
+    pub updated_at: String,
+    /// `meta.json.last_run_at` if any run has completed.
+    pub last_run_at: Option<String>,
+    /// Free-form short status from the last run ("ok", "no-new-items",
+    /// "rate-limited", "auth-error", ...).
+    pub last_status: Option<String>,
+    /// Monotonic count of run attempts (success + failure).
+    pub run_count: u64,
+    /// Recursive byte size of the feed's data dir at list time.
+    pub data_size_bytes: u64,
+    /// Resolved on-disk path of the feed's data dir.
+    pub data_dir: String,
+}

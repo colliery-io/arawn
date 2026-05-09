@@ -10,11 +10,11 @@ use uuid::Uuid;
 
 pub use error::ServiceError;
 pub use types::{
-    CommandInfo, EngineEvent, ForgetCandidate, ForgetResult, IntegrationStatus, InventoryItem,
-    MemoryStoreResult, MemoryStoreSummary, MemorySummary, MemoryTypeCount, ModalPromptOption,
-    OAuthFlowStarted, PermissionAuditEntry, PermissionModeInfo, PermissionsStatus,
-    PromotionResult, ServerCapabilities, ServerNotice, SessionDetail, SessionInfo, WorkflowInfo,
-    WorkstreamInfo,
+    CommandInfo, EngineEvent, FeedRegisterSpec, FeedSummaryDto, ForgetCandidate, ForgetResult,
+    IntegrationStatus, InventoryItem, MemoryStoreResult, MemoryStoreSummary, MemorySummary,
+    MemoryTypeCount, ModalPromptOption, OAuthFlowStarted, PermissionAuditEntry,
+    PermissionModeInfo, PermissionsStatus, PromotionResult, ServerCapabilities, ServerNotice,
+    SessionDetail, SessionInfo, WorkflowInfo, WorkstreamInfo,
 };
 
 /// The service contract between any UI client and the Arawn backend.
@@ -155,4 +155,17 @@ pub trait ArawnService: Send + Sync {
 
     /// Drop stored credentials for `service`. Idempotent.
     async fn disconnect_integration(&self, service: &str) -> Result<(), ServiceError>;
+
+    // --- Feeds (continual data acquisition) ---
+
+    /// Register a new feed at runtime. Backs the `/watch` slash
+    /// command. Returns the freshly-created feed summary.
+    async fn feed_register(
+        &self,
+        spec: FeedRegisterSpec,
+    ) -> Result<FeedSummaryDto, ServiceError>;
+
+    /// List every configured feed (enabled + paused) with last-run
+    /// status and on-disk size. Backs `/feeds`.
+    async fn feed_list(&self) -> Result<Vec<FeedSummaryDto>, ServiceError>;
 }

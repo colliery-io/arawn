@@ -72,6 +72,11 @@ pub struct LocalService {
     /// look up their integration here at construction time.
     integration_registry:
         Arc<std::sync::RwLock<HashMap<String, Arc<dyn arawn_integrations::Integration>>>>,
+    /// Live handle to the arawn-feeds runtime, set after the workflow
+    /// runner comes up. `None` when feeds couldn't start (no workflow
+    /// runner, no DB, etc.) — `/watch` and `/feeds` then return a
+    /// clear "feeds runtime unavailable" error.
+    feed_runtime: Arc<std::sync::RwLock<Option<Arc<arawn_feeds::FeedRuntime>>>>,
 }
 
 impl LocalService {
@@ -101,7 +106,27 @@ impl LocalService {
             permission_audit: arawn_engine::permissions::new_shared_audit(),
             notice_tx: tokio::sync::broadcast::channel(64).0,
             integration_registry: Arc::new(std::sync::RwLock::new(HashMap::new())),
+            feed_runtime: Arc::new(std::sync::RwLock::new(None)),
         }
+    }
+
+    /// Hand the live feed runtime to the service so `/watch` and
+    /// `/feeds` can dispatch to it. Called from main.rs after
+    /// `arawn_feeds::start` returns.
+    pub fn set_feed_runtime(&self, runtime: Arc<arawn_feeds::FeedRuntime>) {
+        *self.feed_runtime.write().unwrap() = Some(runtime);
+    }
+
+    fn feed_runtime_or_err(&self) -> Result<Arc<arawn_feeds::FeedRuntime>, ServiceError> {
+        self.feed_runtime
+            .read()
+            .unwrap()
+            .clone()
+            .ok_or_else(|| {
+                ServiceError::Internal(
+                    "feeds runtime unavailable — workflow runner not running".into(),
+                )
+            })
     }
 
     /// Register an external integration. Called from main.rs at startup
@@ -1340,6 +1365,74 @@ impl ArawnService for LocalService {
             timestamp: chrono::Utc::now().to_rfc3339(),
         });
         Ok(())
+    }
+
+    async fn feed_register(
+        &self,
+        spec: arawn_service::FeedRegisterSpec,
+    ) -> Result<arawn_service::FeedSummaryDto, ServiceError> {
+        let runtime = self.feed_runtime_or_err()?;
+        let params = arawn_feeds::TemplateParams::new(spec.params);
+        let record = runtime
+            .register_feed_dynamic(&spec.template, &spec.feed_id, params, spec.cadence)
+            .await
+            .map_err(feed_err)?;
+
+        // Re-list to grab the freshly-written meta + dir size in one
+        // place rather than synthesizing a half-populated DTO from the
+        // bare record.
+        let summaries = runtime.list_summaries().await.map_err(feed_err)?;
+        let dto = summaries
+            .into_iter()
+            .find(|s| s.id == record.id)
+            .map(feed_summary_to_dto)
+            .ok_or_else(|| {
+                ServiceError::Internal(format!(
+                    "feed {} registered but not visible in list",
+                    record.id
+                ))
+            })?;
+
+        let _ = self.notice_tx.send(arawn_service::ServerNotice {
+            level: "info".into(),
+            category: "feeds".into(),
+            message: format!("feed {} ({}) registered", dto.id, dto.template),
+            timestamp: chrono::Utc::now().to_rfc3339(),
+        });
+        Ok(dto)
+    }
+
+    async fn feed_list(&self) -> Result<Vec<arawn_service::FeedSummaryDto>, ServiceError> {
+        let runtime = self.feed_runtime_or_err()?;
+        let summaries = runtime.list_summaries().await.map_err(feed_err)?;
+        Ok(summaries.into_iter().map(feed_summary_to_dto).collect())
+    }
+}
+
+fn feed_err(e: arawn_feeds::FeedError) -> ServiceError {
+    use arawn_feeds::FeedError;
+    match e {
+        FeedError::InvalidParams(msg) => ServiceError::InvalidOperation(msg),
+        FeedError::Auth(msg) => {
+            ServiceError::InvalidOperation(format!("auth: {msg}"))
+        }
+        other => ServiceError::Internal(other.to_string()),
+    }
+}
+
+fn feed_summary_to_dto(s: arawn_feeds::FeedSummary) -> arawn_service::FeedSummaryDto {
+    arawn_service::FeedSummaryDto {
+        id: s.id,
+        template: s.template,
+        cadence: s.cadence,
+        enabled: s.enabled,
+        created_at: s.created_at,
+        updated_at: s.updated_at,
+        last_run_at: s.last_run_at,
+        last_status: s.last_status,
+        run_count: s.run_count,
+        data_size_bytes: s.data_size_bytes,
+        data_dir: s.data_dir,
     }
 }
 

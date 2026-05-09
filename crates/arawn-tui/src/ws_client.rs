@@ -221,6 +221,31 @@ impl WsClient {
         Ok(())
     }
 
+    /// Register a new feed at runtime. Backs `/watch`.
+    pub async fn feed_register(
+        &mut self,
+        spec: serde_json::Value,
+    ) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
+        let resp = self.request_response("feed_register", spec).await?;
+        if let Some(err) = resp.get("error") {
+            return Err(err["message"].as_str().unwrap_or("unknown error").into());
+        }
+        let result = resp.get("result").ok_or("no result")?;
+        Ok(result.clone())
+    }
+
+    /// List configured feeds. Backs `/feeds`.
+    pub async fn feed_list(
+        &mut self,
+    ) -> Result<Vec<serde_json::Value>, Box<dyn std::error::Error>> {
+        let resp = self.request_response("feed_list", json!({})).await?;
+        if let Some(err) = resp.get("error") {
+            return Err(err["message"].as_str().unwrap_or("unknown error").into());
+        }
+        let result = resp.get("result").ok_or("no result")?;
+        Ok(serde_json::from_value(result.clone())?)
+    }
+
     pub async fn get_permission_mode(
         &mut self,
     ) -> Result<String, Box<dyn std::error::Error>> {

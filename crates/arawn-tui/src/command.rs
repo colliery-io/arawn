@@ -161,6 +161,17 @@ impl CommandRegistry {
             description: "Drop stored credentials for an integration".into(),
             kind: CommandKind::BuiltIn,
         });
+        // Continual data feeds (I-0039)
+        self.commands.push(CommandInfo {
+            name: "watch".into(),
+            description: "Register a continual data feed (e.g. /watch slack/channel-archive design channel=C0123)".into(),
+            kind: CommandKind::BuiltIn,
+        });
+        self.commands.push(CommandInfo {
+            name: "feeds".into(),
+            description: "List configured data feeds with last-run status".into(),
+            kind: CommandKind::BuiltIn,
+        });
         // Memory commands
         self.commands.push(CommandInfo {
             name: "remember".into(),
@@ -300,6 +311,126 @@ pub enum CommandResult {
     IntegrationConnect(String),
     /// Drop stored credentials for an integration. Argument is the service name.
     IntegrationDisconnect(String),
+    /// Register a continual data feed via `/watch <template> <feed_id> [k=v]...`.
+    /// Slice 1 of T-0219: non-interactive form only — pickers land later.
+    FeedRegister(WatchSpec),
+    /// List configured feeds via `/feeds` (read-only).
+    FeedList,
+}
+
+/// Parsed args for the non-interactive form of `/watch`.
+///
+/// Form: `/watch <template> <feed_id> [param=value]... [@cadence=<cron>]`
+///
+/// The template name is the canonical `<provider>/<template>` (e.g.
+/// `slack/channel-archive`); `feed_id` is a caller-chosen identifier
+/// like `design` or `me`. Params after that are space-separated
+/// `key=value` pairs; values may be quoted to include spaces.
+/// `@cadence=<cron>` is reserved syntax — when present, overrides the
+/// template's default cadence.
+#[derive(Debug, Clone, PartialEq)]
+pub struct WatchSpec {
+    pub template: String,
+    pub feed_id: String,
+    pub params: serde_json::Value,
+    pub cadence: Option<String>,
+}
+
+/// Parse the args body of `/watch`. Returns either a fully-formed
+/// `WatchSpec` or a human-readable usage error.
+///
+/// Recognized forms:
+/// - `<template> <feed_id>` — defaults for everything.
+/// - `<template> <feed_id> key=value [key=value ...]` — params.
+/// - `<template> <feed_id> ... @cadence=<cron>` — cadence override.
+///
+/// Quoting: a `key="value with spaces"` token is honored. Inner
+/// double-quotes can be escaped with `\"`.
+pub fn parse_watch_args(args: &str) -> Result<WatchSpec, String> {
+    let tokens = tokenize_kv(args.trim())
+        .map_err(|e| format!("/watch: {e}"))?;
+    if tokens.len() < 2 {
+        return Err(
+            "Usage: /watch <provider/template> <feed_id> [key=value ...]\n\
+             Example: /watch slack/channel-archive design channel=C0123ABCD"
+                .into(),
+        );
+    }
+    let template = tokens[0].clone();
+    if !template.contains('/') {
+        return Err(format!(
+            "/watch: template '{template}' must be '<provider>/<template>' \
+             (e.g. slack/channel-archive)"
+        ));
+    }
+    let feed_id = tokens[1].clone();
+    if feed_id.is_empty() {
+        return Err("/watch: feed_id cannot be empty".into());
+    }
+
+    let mut params = serde_json::Map::new();
+    let mut cadence: Option<String> = None;
+    for tok in &tokens[2..] {
+        let (k, v) = tok
+            .split_once('=')
+            .ok_or_else(|| format!("/watch: '{tok}' is not key=value"))?;
+        if k == "@cadence" {
+            cadence = Some(v.to_string());
+            continue;
+        }
+        // Param values are strings unless they parse as a JSON literal
+        // (true/false/number/null). Lets `count=5` and `enabled=true`
+        // arrive typed without burdening the user with quoting.
+        let value = if let Ok(j) = serde_json::from_str::<serde_json::Value>(v) {
+            j
+        } else {
+            serde_json::Value::String(v.to_string())
+        };
+        params.insert(k.to_string(), value);
+    }
+
+    Ok(WatchSpec {
+        template,
+        feed_id,
+        params: serde_json::Value::Object(params),
+        cadence,
+    })
+}
+
+/// Tokenizer that respects double-quoted runs so a param value can
+/// include spaces. Doesn't try to be a full shell parser — just
+/// enough for the `/watch` use case.
+fn tokenize_kv(s: &str) -> Result<Vec<String>, String> {
+    let mut out: Vec<String> = Vec::new();
+    let mut cur = String::new();
+    let mut in_quotes = false;
+    let mut chars = s.chars().peekable();
+    while let Some(c) = chars.next() {
+        match c {
+            '"' => in_quotes = !in_quotes,
+            '\\' if in_quotes => match chars.next() {
+                Some('"') => cur.push('"'),
+                Some(other) => {
+                    cur.push('\\');
+                    cur.push(other);
+                }
+                None => return Err("trailing backslash".into()),
+            },
+            c if c.is_whitespace() && !in_quotes => {
+                if !cur.is_empty() {
+                    out.push(std::mem::take(&mut cur));
+                }
+            }
+            c => cur.push(c),
+        }
+    }
+    if in_quotes {
+        return Err("unterminated double-quote".into());
+    }
+    if !cur.is_empty() {
+        out.push(cur);
+    }
+    Ok(out)
 }
 
 /// Execute a parsed slash command against the registry.
@@ -417,6 +548,11 @@ pub fn execute_command(cmd: &ParsedCommand, registry: &CommandRegistry) -> Comma
                         CommandResult::ForgetEntity(cmd.args.clone())
                     }
                 }
+                "watch" => match parse_watch_args(&cmd.args) {
+                    Ok(spec) => CommandResult::FeedRegister(spec),
+                    Err(msg) => CommandResult::SystemMessage(msg),
+                },
+                "feeds" => CommandResult::FeedList,
 
                 _ => CommandResult::SystemMessage(format!("Unknown built-in: /{}", cmd.name)),
             },
@@ -442,6 +578,64 @@ mod tests {
         let cmd = parse_command("/help").unwrap();
         assert_eq!(cmd.name, "help");
         assert_eq!(cmd.args, "");
+    }
+
+    #[test]
+    fn watch_parses_template_id_and_string_param() {
+        let spec = parse_watch_args("slack/channel-archive design channel=C0123ABCD")
+            .expect("valid watch args");
+        assert_eq!(spec.template, "slack/channel-archive");
+        assert_eq!(spec.feed_id, "design");
+        assert_eq!(spec.params["channel"], "C0123ABCD");
+        assert!(spec.cadence.is_none());
+    }
+
+    #[test]
+    fn watch_parses_typed_and_quoted_params_and_cadence_override() {
+        // Cron expressions contain spaces, so the override must be
+        // quoted as a single token: `@cadence="*/30 * * * *"`.
+        let spec = parse_watch_args(
+            "gmail/sender-filter alerts sender_pattern=\"alerts@vendor.com\" days_back=14 @cadence=\"*/30 * * * *\"",
+        )
+        .expect("valid watch args");
+        assert_eq!(spec.feed_id, "alerts");
+        assert_eq!(spec.params["sender_pattern"], "alerts@vendor.com");
+        assert_eq!(spec.params["days_back"], 14);
+        assert_eq!(spec.cadence.as_deref(), Some("*/30 * * * *"));
+    }
+
+    #[test]
+    fn watch_rejects_missing_args_and_bad_template() {
+        assert!(parse_watch_args("").is_err());
+        assert!(parse_watch_args("slack/channel-archive").is_err());
+        // template missing the provider/ prefix
+        assert!(parse_watch_args("standalone-name design").is_err());
+        // malformed key=value
+        assert!(parse_watch_args("slack/channel-archive design malformed").is_err());
+    }
+
+    #[test]
+    fn watch_command_dispatch_returns_feed_register() {
+        let registry = CommandRegistry::new();
+        let cmd = parse_command("/watch slack/channel-archive design channel=C123").unwrap();
+        match execute_command(&cmd, &registry) {
+            CommandResult::FeedRegister(spec) => {
+                assert_eq!(spec.template, "slack/channel-archive");
+                assert_eq!(spec.feed_id, "design");
+                assert_eq!(spec.params["channel"], "C123");
+            }
+            other => panic!("expected FeedRegister, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn feeds_command_dispatch_returns_feed_list() {
+        let registry = CommandRegistry::new();
+        let cmd = parse_command("/feeds").unwrap();
+        match execute_command(&cmd, &registry) {
+            CommandResult::FeedList => {}
+            other => panic!("expected FeedList, got {other:?}"),
+        }
     }
 
     #[test]

@@ -51,4 +51,4 @@ pub use registry::FeedTemplateRegistry;
 pub use store::{FeedRecord, FeedStore, new_record};
 pub use template::{FeedTemplate, RunOutcome, TemplateCtx};
 pub use templates::default_registry;
-pub use types::{FeedDefaults, FeedMeta, RunSummary, TemplateParams};
+pub use types::{FeedDefaults, FeedMeta, FeedSummary, RunSummary, TemplateParams};

@@ -612,6 +612,28 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                                 app.messages.push(ChatMessage::new(ChatRole::System, body));
                                 app.dirty = true;
                             }
+                            crate::command::CommandResult::FeedRegister(spec) => {
+                                let payload = serde_json::json!({
+                                    "template": spec.template,
+                                    "feed_id": spec.feed_id,
+                                    "params": spec.params,
+                                    "cadence": spec.cadence,
+                                });
+                                let body = match client.feed_register(payload).await {
+                                    Ok(dto) => format_feed_registered(&dto),
+                                    Err(e) => format!("/watch failed: {e}"),
+                                };
+                                app.messages.push(ChatMessage::new(ChatRole::System, body));
+                                app.dirty = true;
+                            }
+                            crate::command::CommandResult::FeedList => {
+                                let body = match client.feed_list().await {
+                                    Ok(list) => format_feed_list(&list),
+                                    Err(e) => format!("/feeds failed: {e}"),
+                                };
+                                app.messages.push(ChatMessage::new(ChatRole::System, body));
+                                app.dirty = true;
+                            }
                             _ => {} // Other command results handled in app.handle_action
                         }
                     }
@@ -1088,4 +1110,67 @@ fn format_permissions_status(status: &serde_json::Value) -> String {
         }
     }
     out
+}
+
+/// Render a freshly-registered feed into a chat-ready system message.
+fn format_feed_registered(dto: &serde_json::Value) -> String {
+    let template = dto.get("template").and_then(|v| v.as_str()).unwrap_or("?");
+    let id = dto.get("id").and_then(|v| v.as_str()).unwrap_or("?");
+    let cadence = dto.get("cadence").and_then(|v| v.as_str()).unwrap_or("?");
+    let dir = dto.get("data_dir").and_then(|v| v.as_str()).unwrap_or("?");
+    format!(
+        "Registered **{template}** as `{id}`.\n\n\
+         - Cadence: `{cadence}`\n\
+         - Data dir: `{dir}`\n\n\
+         _Will fire on the next cron tick. Run /feeds to see status._"
+    )
+}
+
+/// Render the `/feeds` listing as a markdown table-ish block. Compact
+/// enough to fit in the chat pane without needing a modal — the modal
+/// upgrade lands in slice 2 of T-0219.
+fn format_feed_list(list: &[serde_json::Value]) -> String {
+    if list.is_empty() {
+        return "No feeds configured. Run /watch to register one.".into();
+    }
+    let mut s = String::from("**Configured feeds:**\n\n");
+    for f in list {
+        let id = f.get("id").and_then(|v| v.as_str()).unwrap_or("?");
+        let template = f.get("template").and_then(|v| v.as_str()).unwrap_or("?");
+        let cadence = f.get("cadence").and_then(|v| v.as_str()).unwrap_or("?");
+        let enabled = f.get("enabled").and_then(|v| v.as_bool()).unwrap_or(false);
+        let last_run = f
+            .get("last_run_at")
+            .and_then(|v| v.as_str())
+            .unwrap_or("(never)");
+        let last_status = f
+            .get("last_status")
+            .and_then(|v| v.as_str())
+            .unwrap_or("-");
+        let size = f
+            .get("data_size_bytes")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(0);
+        let state = if enabled { "active" } else { "paused" };
+        s.push_str(&format!(
+            "- **{template}** `{id}` — `{cadence}` · {state} · last: {last_run} ({last_status}) · {} on disk\n",
+            human_size(size)
+        ));
+    }
+    s
+}
+
+fn human_size(bytes: u64) -> String {
+    const KB: u64 = 1024;
+    const MB: u64 = KB * 1024;
+    const GB: u64 = MB * 1024;
+    if bytes >= GB {
+        format!("{:.1} GiB", bytes as f64 / GB as f64)
+    } else if bytes >= MB {
+        format!("{:.1} MiB", bytes as f64 / MB as f64)
+    } else if bytes >= KB {
+        format!("{:.1} KiB", bytes as f64 / KB as f64)
+    } else {
+        format!("{bytes} B")
+    }
 }

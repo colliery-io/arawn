@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-08T22:54:34Z | 250 files | Python, Rust
+> Generated: 2026-05-08T23:26:33Z | 255 files | Python, Rust
 
 ## Project Structure
 
@@ -148,6 +148,11 @@
 │   │   │   │   │   ├── label_archive.rs
 │   │   │   │   │   ├── mod.rs
 │   │   │   │   │   └── sender_filter.rs
+│   │   │   │   ├── jira/
+│   │   │   │   │   ├── assignee_tracker.rs
+│   │   │   │   │   ├── common.rs
+│   │   │   │   │   ├── mod.rs
+│   │   │   │   │   └── project_tracker.rs
 │   │   │   │   ├── mod.rs
 │   │   │   │   ├── slack/
 │   │   │   │   │   ├── channel_archive.rs
@@ -164,6 +169,7 @@
 │   │       ├── drive_folder_sync.rs
 │   │       ├── drive_recent.rs
 │   │       ├── gmail_archive.rs
+│   │       ├── jira_trackers.rs
 │   │       ├── slack_channel_archive.rs
 │   │       ├── slack_dm_archive.rs
 │   │       └── slack_my_mentions.rs
@@ -2859,26 +2865,32 @@
 
 #### crates/arawn-feeds/src/clients/atlassian.rs
 
-- pub `ConfluencePageMeta` struct L28-39 — `{ id: String, title: String, space_key: String, version: Option<i64>, modified_t...` — Page metadata as feeds care about it.
-- pub `ConfluencePageBody` struct L43-49 — `{ id: String, storage_xml: Option<String>, version: Option<i64> }` — Body of a Confluence page in storage format (raw XML).
-- pub `AtlassianFeedClient` interface L57-73 — `{ fn space_pages_modified_since(), fn page_body_storage() }` — What feeds need from Atlassian.
-- pub `RealAtlassianClient` struct L77-79 — `{ integration: Arc<AtlassianIntegration> }` — Confluence/Jira tools use.
-- pub `new` function L82-84 — `(integration: Arc<AtlassianIntegration>) -> Self` — Confluence/Jira tools use.
--  `RealAtlassianClient` type L81-85 — `= RealAtlassianClient` — Confluence/Jira tools use.
--  `integ_err` function L87-94 — `(e: arawn_integrations::IntegrationError) -> FeedError` — Confluence/Jira tools use.
--  `classify_provider_error` function L99-116 — `(msg: &str) -> FeedError` — Provider errors arrive as opaque strings from the Atlassian client.
--  `V1SearchResp` struct L121-126 — `{ results: Vec<V1SearchResult>, links: serde_json::Map<String, serde_json::Value...` — Confluence/Jira tools use.
--  `V1SearchResult` struct L129-137 — `{ title: Option<String>, content: Option<V1Content>, last_modified: Option<Strin...` — Confluence/Jira tools use.
--  `V1Content` struct L140-144 — `{ id: String, space: Option<V1Space>, version: Option<V1Version> }` — Confluence/Jira tools use.
--  `V1Space` struct L147-149 — `{ key: Option<String> }` — Confluence/Jira tools use.
--  `V1Version` struct L152-155 — `{ number: Option<i64>, when: Option<String> }` — Confluence/Jira tools use.
--  `V2PageDetail` struct L160-164 — `{ id: String, body: Option<V2Body>, version: Option<V2Version> }` — Confluence/Jira tools use.
--  `V2Body` struct L167-169 — `{ storage: Option<V2BodyStorage> }` — Confluence/Jira tools use.
--  `V2BodyStorage` struct L172-174 — `{ value: Option<String> }` — Confluence/Jira tools use.
--  `V2Version` struct L177-179 — `{ number: Option<i64> }` — Confluence/Jira tools use.
--  `RealAtlassianClient` type L182-282 — `impl AtlassianFeedClient for RealAtlassianClient` — Confluence/Jira tools use.
--  `space_pages_modified_since` function L183-261 — `( &self, space_key: &str, since: Option<DateTime<Utc>>, ) -> Result<Vec<Confluen...` — Confluence/Jira tools use.
--  `page_body_storage` function L263-281 — `( &self, page_id: &str, ) -> Result<ConfluencePageBody, FeedError>` — Confluence/Jira tools use.
+- pub `ConfluencePageMeta` struct L31-42 — `{ id: String, title: String, space_key: String, version: Option<i64>, modified_t...` — Page metadata as feeds care about it.
+- pub `ConfluencePageBody` struct L46-52 — `{ id: String, storage_xml: Option<String>, version: Option<i64> }` — Body of a Confluence page in storage format (raw XML).
+- pub `JiraIssueMeta` struct L57-64 — `{ key: String, id: String, updated: Option<String>, summary: Option<String> }` — Lightweight Jira issue summary returned by [`AtlassianFeedClient::jql_search`].
+- pub `JiraIssueDetail` struct L72-82 — `{ meta: JiraIssueMeta, fields: Value, comments: Option<Vec<Value>>, changelog: O...` — Full issue snapshot — meta + raw fields blob + optional changelog
+- pub `AtlassianFeedClient` interface L89-130 — `{ fn space_pages_modified_since(), fn page_body_storage(), fn jql_search(), fn i...` — What feeds need from Atlassian.
+- pub `RealAtlassianClient` struct L134-136 — `{ integration: Arc<AtlassianIntegration> }` — Confluence/Jira tools use.
+- pub `new` function L139-141 — `(integration: Arc<AtlassianIntegration>) -> Self` — Confluence/Jira tools use.
+-  `RealAtlassianClient` type L138-142 — `= RealAtlassianClient` — Confluence/Jira tools use.
+-  `integ_err` function L144-151 — `(e: arawn_integrations::IntegrationError) -> FeedError` — Confluence/Jira tools use.
+-  `classify_provider_error` function L156-173 — `(msg: &str) -> FeedError` — Provider errors arrive as opaque strings from the Atlassian client.
+-  `V1SearchResp` struct L178-183 — `{ results: Vec<V1SearchResult>, links: serde_json::Map<String, serde_json::Value...` — Confluence/Jira tools use.
+-  `V1SearchResult` struct L186-194 — `{ title: Option<String>, content: Option<V1Content>, last_modified: Option<Strin...` — Confluence/Jira tools use.
+-  `V1Content` struct L197-201 — `{ id: String, space: Option<V1Space>, version: Option<V1Version> }` — Confluence/Jira tools use.
+-  `V1Space` struct L204-206 — `{ key: Option<String> }` — Confluence/Jira tools use.
+-  `V1Version` struct L209-212 — `{ number: Option<i64>, when: Option<String> }` — Confluence/Jira tools use.
+-  `V2PageDetail` struct L217-221 — `{ id: String, body: Option<V2Body>, version: Option<V2Version> }` — Confluence/Jira tools use.
+-  `V2Body` struct L224-226 — `{ storage: Option<V2BodyStorage> }` — Confluence/Jira tools use.
+-  `V2BodyStorage` struct L229-231 — `{ value: Option<String> }` — Confluence/Jira tools use.
+-  `V2Version` struct L234-236 — `{ number: Option<i64> }` — Confluence/Jira tools use.
+-  `RealAtlassianClient` type L239-493 — `impl AtlassianFeedClient for RealAtlassianClient` — Confluence/Jira tools use.
+-  `space_pages_modified_since` function L240-318 — `( &self, space_key: &str, since: Option<DateTime<Utc>>, ) -> Result<Vec<Confluen...` — Confluence/Jira tools use.
+-  `page_body_storage` function L320-338 — `( &self, page_id: &str, ) -> Result<ConfluencePageBody, FeedError>` — Confluence/Jira tools use.
+-  `jql_search` function L340-377 — `( &self, jql: &str, max_results: u32, ) -> Result<Vec<JiraIssueMeta>, FeedError>` — Confluence/Jira tools use.
+-  `issue_full` function L379-474 — `( &self, key: &str, want_changelog: bool, want_comments: bool, ) -> Result<JiraI...` — Confluence/Jira tools use.
+-  `resolve_project` function L476-492 — `(&self, key_or_id: &str) -> Result<String, FeedError>` — Confluence/Jira tools use.
+-  `jira_err` function L495-507 — `(e: jira_v3_openapi::apis::Error<E>) -> FeedError` — Confluence/Jira tools use.
 
 #### crates/arawn-feeds/src/clients/calendar.rs
 
@@ -2936,28 +2948,28 @@
 - pub `drive` module L22 — `-` — `slack-morphism` directly — keeps templates mock-testable.
 - pub `gmail` module L23 — `-` — `slack-morphism` directly — keeps templates mock-testable.
 - pub `slack` module L24 — `-` — `slack-morphism` directly — keeps templates mock-testable.
-- pub `FeedClients` interface L40-46 — `{ fn slack(), fn calendar(), fn gmail(), fn drive(), fn atlassian() }` — Bundle of every provider client a template might want to use.
-- pub `NoopClients` struct L51 — `-` — No-op `FeedClients`: every provider returns `None`.
-- pub `RealClients` struct L75-81 — `{ slack: Option<Arc<dyn SlackFeedClient>>, calendar: Option<Arc<dyn CalendarFeed...` — Production bundle.
-- pub `new` function L84-86 — `() -> Self` — `slack-morphism` directly — keeps templates mock-testable.
-- pub `with_slack` function L88-94 — `( mut self, integration: Arc<arawn_integrations::slack::SlackIntegration>, ) -> ...` — `slack-morphism` directly — keeps templates mock-testable.
-- pub `with_calendar` function L96-102 — `( mut self, integration: Arc<arawn_integrations::calendar::GoogleCalendarIntegra...` — `slack-morphism` directly — keeps templates mock-testable.
-- pub `with_gmail` function L104-110 — `( mut self, integration: Arc<arawn_integrations::gmail::GmailIntegration>, ) -> ...` — `slack-morphism` directly — keeps templates mock-testable.
-- pub `with_drive` function L112-118 — `( mut self, integration: Arc<arawn_integrations::drive::GoogleDriveIntegration>,...` — `slack-morphism` directly — keeps templates mock-testable.
-- pub `with_atlassian` function L120-126 — `( mut self, integration: Arc<arawn_integrations::atlassian::AtlassianIntegration...` — `slack-morphism` directly — keeps templates mock-testable.
--  `NoopClients` type L53-69 — `impl FeedClients for NoopClients` — `slack-morphism` directly — keeps templates mock-testable.
--  `slack` function L54-56 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
--  `calendar` function L57-59 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
--  `gmail` function L60-62 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
--  `drive` function L63-65 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
--  `atlassian` function L66-68 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
--  `RealClients` type L83-127 — `= RealClients` — `slack-morphism` directly — keeps templates mock-testable.
--  `RealClients` type L129-145 — `impl FeedClients for RealClients` — `slack-morphism` directly — keeps templates mock-testable.
--  `slack` function L130-132 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
--  `calendar` function L133-135 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
--  `gmail` function L136-138 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
--  `drive` function L139-141 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
--  `atlassian` function L142-144 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
+- pub `FeedClients` interface L41-47 — `{ fn slack(), fn calendar(), fn gmail(), fn drive(), fn atlassian() }` — Bundle of every provider client a template might want to use.
+- pub `NoopClients` struct L52 — `-` — No-op `FeedClients`: every provider returns `None`.
+- pub `RealClients` struct L76-82 — `{ slack: Option<Arc<dyn SlackFeedClient>>, calendar: Option<Arc<dyn CalendarFeed...` — Production bundle.
+- pub `new` function L85-87 — `() -> Self` — `slack-morphism` directly — keeps templates mock-testable.
+- pub `with_slack` function L89-95 — `( mut self, integration: Arc<arawn_integrations::slack::SlackIntegration>, ) -> ...` — `slack-morphism` directly — keeps templates mock-testable.
+- pub `with_calendar` function L97-103 — `( mut self, integration: Arc<arawn_integrations::calendar::GoogleCalendarIntegra...` — `slack-morphism` directly — keeps templates mock-testable.
+- pub `with_gmail` function L105-111 — `( mut self, integration: Arc<arawn_integrations::gmail::GmailIntegration>, ) -> ...` — `slack-morphism` directly — keeps templates mock-testable.
+- pub `with_drive` function L113-119 — `( mut self, integration: Arc<arawn_integrations::drive::GoogleDriveIntegration>,...` — `slack-morphism` directly — keeps templates mock-testable.
+- pub `with_atlassian` function L121-127 — `( mut self, integration: Arc<arawn_integrations::atlassian::AtlassianIntegration...` — `slack-morphism` directly — keeps templates mock-testable.
+-  `NoopClients` type L54-70 — `impl FeedClients for NoopClients` — `slack-morphism` directly — keeps templates mock-testable.
+-  `slack` function L55-57 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
+-  `calendar` function L58-60 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
+-  `gmail` function L61-63 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
+-  `drive` function L64-66 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
+-  `atlassian` function L67-69 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
+-  `RealClients` type L84-128 — `= RealClients` — `slack-morphism` directly — keeps templates mock-testable.
+-  `RealClients` type L130-146 — `impl FeedClients for RealClients` — `slack-morphism` directly — keeps templates mock-testable.
+-  `slack` function L131-133 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
+-  `calendar` function L134-136 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
+-  `gmail` function L137-139 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
+-  `drive` function L140-142 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
+-  `atlassian` function L143-145 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
 
 #### crates/arawn-feeds/src/clients/slack.rs
 
@@ -3168,6 +3180,63 @@
 -  `validate_requires_sender_pattern` function L104-112 — `()` — [`super::common`].
 -  `validate_rejects_bad_days_back` function L115-121 — `()` — [`super::common`].
 
+### crates/arawn-feeds/src/templates/jira
+
+> *Semantic summary to be generated by AI agent.*
+
+#### crates/arawn-feeds/src/templates/jira/assignee_tracker.rs
+
+- pub `AssigneeTrackerTemplate` struct L24 — `-` — are no append-only logs to advance independently of the snapshot.
+-  `NAME` variable L26 — `: &str` — are no append-only logs to advance independently of the snapshot.
+-  `MAX_RESULTS_PER_RUN` variable L27 — `: u32` — are no append-only logs to advance independently of the snapshot.
+-  `AssigneeTrackerTemplate` type L30-113 — `impl FeedTemplate for AssigneeTrackerTemplate` — are no append-only logs to advance independently of the snapshot.
+-  `name` function L31-33 — `(&self) -> &'static str` — are no append-only logs to advance independently of the snapshot.
+-  `validate` function L35-37 — `(&self, _params: &TemplateParams) -> Result<(), FeedError>` — are no append-only logs to advance independently of the snapshot.
+-  `defaults` function L39-47 — `(&self, _params: &TemplateParams) -> FeedDefaults` — are no append-only logs to advance independently of the snapshot.
+-  `run` function L49-112 — `( &self, ctx: &TemplateCtx, _params: &TemplateParams, feed_dir: &Path, cursor: &...` — are no append-only logs to advance independently of the snapshot.
+-  `build_jql` function L115-122 — `(since: Option<&str>) -> String` — are no append-only logs to advance independently of the snapshot.
+-  `tests` module L125-146 — `-` — are no append-only logs to advance independently of the snapshot.
+-  `validate_takes_no_params` function L129-133 — `()` — are no append-only logs to advance independently of the snapshot.
+-  `jql_uses_currentUser` function L136-145 — `()` — are no append-only logs to advance independently of the snapshot.
+
+#### crates/arawn-feeds/src/templates/jira/common.rs
+
+- pub `PerIssueCursor` struct L50-58 — `{ last_comment_id: Option<String>, last_history_id: Option<String> }` — Per-issue cursor state.
+- pub `CursorState` struct L61-69 — `{ latest_updated_iso: Option<String>, issues: BTreeMap<String, PerIssueCursor> }` — `assignee-tracker` feed only carries `latest_updated_iso`.
+- pub `from_value` function L72-74 — `(v: &Value) -> Self` — `assignee-tracker` feed only carries `latest_updated_iso`.
+- pub `into_value` function L75-77 — `(self) -> Value` — `assignee-tracker` feed only carries `latest_updated_iso`.
+- pub `write_json_atomic` function L81-88 — `(path: &Path, body: &[u8]) -> Result<(), FeedError>` — Atomic-rename write of a JSON snapshot to `path`.
+- pub `append_jsonl` function L92-112 — `(path: &Path, line: &Value) -> Result<u64, FeedError>` — Append a single JSON-serializable item as one line to `path`.
+- pub `IssueWriteOutcome` struct L115-120 — `{ bytes_written: u64, cursor: PerIssueCursor }` — Result of writing one issue's snapshot + (optional) logs.
+- pub `write_issue_snapshot` function L123-143 — `( issue_dir: &Path, detail: &JiraIssueDetail, ) -> Result<u64, FeedError>` — Write `<issue_dir>/issue.json` (overwrite).
+- pub `append_logs` function L151-202 — `( issue_dir: &Path, detail: &JiraIssueDetail, prior: PerIssueCursor, ) -> Result...` — Write any new comments + changelog entries to per-issue jsonl
+-  `CursorState` type L71-78 — `= CursorState` — `assignee-tracker` feed only carries `latest_updated_iso`.
+-  `parse_id` function L204-206 — `(s: Option<&str>) -> Option<u64>` — `assignee-tracker` feed only carries `latest_updated_iso`.
+-  `tests` module L209-243 — `-` — `assignee-tracker` feed only carries `latest_updated_iso`.
+-  `cursor_round_trips_through_value` function L213-235 — `()` — `assignee-tracker` feed only carries `latest_updated_iso`.
+-  `parse_id_handles_missing_and_numeric` function L238-242 — `()` — `assignee-tracker` feed only carries `latest_updated_iso`.
+
+#### crates/arawn-feeds/src/templates/jira/mod.rs
+
+- pub `assignee_tracker` module L3 — `-` — Jira feed templates.
+- pub `common` module L4 — `-` — Jira feed templates.
+- pub `project_tracker` module L5 — `-` — Jira feed templates.
+
+#### crates/arawn-feeds/src/templates/jira/project_tracker.rs
+
+- pub `ProjectTrackerTemplate` struct L27 — `-` — plus a per-issue `{ last_comment_id, last_history_id }` map.
+-  `NAME` variable L29 — `: &str` — plus a per-issue `{ last_comment_id, last_history_id }` map.
+-  `MAX_RESULTS_PER_RUN` variable L30 — `: u32` — plus a per-issue `{ last_comment_id, last_history_id }` map.
+-  `ProjectTrackerTemplate` type L33-147 — `impl FeedTemplate for ProjectTrackerTemplate` — plus a per-issue `{ last_comment_id, last_history_id }` map.
+-  `name` function L34-36 — `(&self) -> &'static str` — plus a per-issue `{ last_comment_id, last_history_id }` map.
+-  `validate` function L38-52 — `(&self, params: &TemplateParams) -> Result<(), FeedError>` — plus a per-issue `{ last_comment_id, last_history_id }` map.
+-  `defaults` function L54-62 — `(&self, _params: &TemplateParams) -> FeedDefaults` — plus a per-issue `{ last_comment_id, last_history_id }` map.
+-  `run` function L64-146 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &V...` — plus a per-issue `{ last_comment_id, last_history_id }` map.
+-  `build_jql` function L149-159 — `(project: &str, since: Option<&str>) -> String` — plus a per-issue `{ last_comment_id, last_history_id }` map.
+-  `tests` module L162-187 — `-` — plus a per-issue `{ last_comment_id, last_history_id }` map.
+-  `validate_requires_project` function L166-174 — `()` — plus a per-issue `{ last_comment_id, last_history_id }` map.
+-  `jql_includes_since_when_present` function L177-186 — `()` — plus a per-issue `{ last_comment_id, last_history_id }` map.
+
 ### crates/arawn-feeds/src/templates
 
 > *Semantic summary to be generated by AI agent.*
@@ -3178,9 +3247,10 @@
 - pub `confluence` module L4 — `-` — Concrete `FeedTemplate` impls organized per provider.
 - pub `drive` module L5 — `-` — Concrete `FeedTemplate` impls organized per provider.
 - pub `gmail` module L6 — `-` — Concrete `FeedTemplate` impls organized per provider.
-- pub `slack` module L7 — `-` — Concrete `FeedTemplate` impls organized per provider.
-- pub `stub` module L8 — `-` — Concrete `FeedTemplate` impls organized per provider.
-- pub `default_registry` function L17-31 — `() -> FeedTemplateRegistry` — Build the registry of every template the binary supports.
+- pub `jira` module L7 — `-` — Concrete `FeedTemplate` impls organized per provider.
+- pub `slack` module L8 — `-` — Concrete `FeedTemplate` impls organized per provider.
+- pub `stub` module L9 — `-` — Concrete `FeedTemplate` impls organized per provider.
+- pub `default_registry` function L18-34 — `() -> FeedTemplateRegistry` — Build the registry of every template the binary supports.
 
 #### crates/arawn-feeds/src/templates/stub.rs
 
@@ -3312,33 +3382,36 @@
 -  `fail_body_for` function L38-40 — `(&self, page_id: &str)` — Integration tests for `confluence/space-archive`.
 -  `list_calls` function L41-43 — `(&self) -> Vec<(String, Option<DateTime<Utc>>)>` — Integration tests for `confluence/space-archive`.
 -  `body_calls` function L44-46 — `(&self) -> Vec<String>` — Integration tests for `confluence/space-archive`.
--  `MockAtlassianClient` type L50-79 — `impl AtlassianFeedClient for MockAtlassianClient` — Integration tests for `confluence/space-archive`.
+-  `MockAtlassianClient` type L50-100 — `impl AtlassianFeedClient for MockAtlassianClient` — Integration tests for `confluence/space-archive`.
 -  `space_pages_modified_since` function L51-62 — `( &self, space_key: &str, since: Option<DateTime<Utc>>, ) -> Result<Vec<Confluen...` — Integration tests for `confluence/space-archive`.
--  `page_body_storage` function L64-78 — `( &self, page_id: &str, ) -> Result<ConfluencePageBody, FeedError>` — Integration tests for `confluence/space-archive`.
--  `MockClients` struct L81-83 — `{ atlassian: Arc<MockAtlassianClient> }` — Integration tests for `confluence/space-archive`.
--  `MockClients` type L85-101 — `impl FeedClients for MockClients` — Integration tests for `confluence/space-archive`.
--  `slack` function L86-88 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — Integration tests for `confluence/space-archive`.
--  `calendar` function L89-91 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — Integration tests for `confluence/space-archive`.
--  `gmail` function L92-94 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — Integration tests for `confluence/space-archive`.
--  `drive` function L95-97 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — Integration tests for `confluence/space-archive`.
--  `atlassian` function L98-100 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — Integration tests for `confluence/space-archive`.
--  `page` function L103-112 — `(id: &str, title: &str, modified: &str, version: i64) -> ConfluencePageMeta` — Integration tests for `confluence/space-archive`.
--  `run_once` function L114-137 — `( template: &dyn FeedTemplate, ctx: &TemplateCtx, params: &TemplateParams, feed_...` — Integration tests for `confluence/space-archive`.
--  `writes_per_page_metadata_and_body` function L140-176 — `()` — Integration tests for `confluence/space-archive`.
--  `second_run_passes_cursor_as_since` function L179-205 — `()` — Integration tests for `confluence/space-archive`.
--  `body_fetch_failure_skips_page_without_aborting_run` function L208-234 — `()` — Integration tests for `confluence/space-archive`.
--  `body_overwritten_on_re_fetch` function L237-263 — `()` — Integration tests for `confluence/space-archive`.
--  `page_with_no_body_writes_empty_xml` function L266-284 — `()` — Integration tests for `confluence/space-archive`.
--  `empty_run_is_no_op_with_status` function L287-300 — `()` — Integration tests for `confluence/space-archive`.
--  `returns_auth_when_atlassian_not_connected` function L303-335 — `()` — Integration tests for `confluence/space-archive`.
--  `NoAtlassian` struct L304 — `-` — Integration tests for `confluence/space-archive`.
--  `NoAtlassian` type L305-321 — `impl FeedClients for NoAtlassian` — Integration tests for `confluence/space-archive`.
--  `slack` function L306-308 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — Integration tests for `confluence/space-archive`.
--  `calendar` function L309-311 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — Integration tests for `confluence/space-archive`.
--  `gmail` function L312-314 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — Integration tests for `confluence/space-archive`.
--  `drive` function L315-317 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — Integration tests for `confluence/space-archive`.
--  `atlassian` function L318-320 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — Integration tests for `confluence/space-archive`.
--  `validate_rejects_missing_space_key` function L338-346 — `()` — Integration tests for `confluence/space-archive`.
+-  `jql_search` function L64-70 — `( &self, _: &str, _: u32, ) -> Result<Vec<JiraIssueMeta>, FeedError>` — Integration tests for `confluence/space-archive`.
+-  `issue_full` function L72-79 — `( &self, _: &str, _: bool, _: bool, ) -> Result<JiraIssueDetail, FeedError>` — Integration tests for `confluence/space-archive`.
+-  `resolve_project` function L81-83 — `(&self, _: &str) -> Result<String, FeedError>` — Integration tests for `confluence/space-archive`.
+-  `page_body_storage` function L85-99 — `( &self, page_id: &str, ) -> Result<ConfluencePageBody, FeedError>` — Integration tests for `confluence/space-archive`.
+-  `MockClients` struct L102-104 — `{ atlassian: Arc<MockAtlassianClient> }` — Integration tests for `confluence/space-archive`.
+-  `MockClients` type L106-122 — `impl FeedClients for MockClients` — Integration tests for `confluence/space-archive`.
+-  `slack` function L107-109 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — Integration tests for `confluence/space-archive`.
+-  `calendar` function L110-112 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — Integration tests for `confluence/space-archive`.
+-  `gmail` function L113-115 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — Integration tests for `confluence/space-archive`.
+-  `drive` function L116-118 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — Integration tests for `confluence/space-archive`.
+-  `atlassian` function L119-121 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — Integration tests for `confluence/space-archive`.
+-  `page` function L124-133 — `(id: &str, title: &str, modified: &str, version: i64) -> ConfluencePageMeta` — Integration tests for `confluence/space-archive`.
+-  `run_once` function L135-158 — `( template: &dyn FeedTemplate, ctx: &TemplateCtx, params: &TemplateParams, feed_...` — Integration tests for `confluence/space-archive`.
+-  `writes_per_page_metadata_and_body` function L161-197 — `()` — Integration tests for `confluence/space-archive`.
+-  `second_run_passes_cursor_as_since` function L200-226 — `()` — Integration tests for `confluence/space-archive`.
+-  `body_fetch_failure_skips_page_without_aborting_run` function L229-255 — `()` — Integration tests for `confluence/space-archive`.
+-  `body_overwritten_on_re_fetch` function L258-284 — `()` — Integration tests for `confluence/space-archive`.
+-  `page_with_no_body_writes_empty_xml` function L287-305 — `()` — Integration tests for `confluence/space-archive`.
+-  `empty_run_is_no_op_with_status` function L308-321 — `()` — Integration tests for `confluence/space-archive`.
+-  `returns_auth_when_atlassian_not_connected` function L324-356 — `()` — Integration tests for `confluence/space-archive`.
+-  `NoAtlassian` struct L325 — `-` — Integration tests for `confluence/space-archive`.
+-  `NoAtlassian` type L326-342 — `impl FeedClients for NoAtlassian` — Integration tests for `confluence/space-archive`.
+-  `slack` function L327-329 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — Integration tests for `confluence/space-archive`.
+-  `calendar` function L330-332 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — Integration tests for `confluence/space-archive`.
+-  `gmail` function L333-335 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — Integration tests for `confluence/space-archive`.
+-  `drive` function L336-338 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — Integration tests for `confluence/space-archive`.
+-  `atlassian` function L339-341 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — Integration tests for `confluence/space-archive`.
+-  `validate_rejects_missing_space_key` function L359-367 — `()` — Integration tests for `confluence/space-archive`.
 
 #### crates/arawn-feeds/tests/drive_folder_sync.rs
 
@@ -3446,6 +3519,49 @@
 -  `drive` function L308-310 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — per-template query construction.
 -  `atlassian` function L311-313 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — per-template query construction.
 -  `message_missing_internal_date_is_a_schema_error` function L331-352 — `()` — per-template query construction.
+
+#### crates/arawn-feeds/tests/jira_trackers.rs
+
+-  `MockAtlassian` struct L20-31 — `{ jql_pages: Mutex<Vec<Vec<JiraIssueMeta>>>, issue_details: Mutex<HashMap<String...` — In-memory atlassian emulator.
+-  `MockAtlassian` type L33-54 — `= MockAtlassian` — Integration tests for the two Jira templates.
+-  `queue_search` function L34-36 — `(&self, list: Vec<JiraIssueMeta>)` — Integration tests for the two Jira templates.
+-  `queue_detail` function L37-44 — `(&self, key: &str, detail: JiraIssueDetail)` — Integration tests for the two Jira templates.
+-  `fail_full` function L45-47 — `(&self, key: &str)` — Integration tests for the two Jira templates.
+-  `jql_calls` function L48-50 — `(&self) -> Vec<(String, u32)>` — Integration tests for the two Jira templates.
+-  `full_calls` function L51-53 — `(&self) -> Vec<(String, bool, bool)>` — Integration tests for the two Jira templates.
+-  `MockAtlassian` type L57-109 — `impl AtlassianFeedClient for MockAtlassian` — Integration tests for the two Jira templates.
+-  `space_pages_modified_since` function L58-64 — `( &self, _: &str, _: Option<DateTime<Utc>>, ) -> Result<Vec<ConfluencePageMeta>,...` — Integration tests for the two Jira templates.
+-  `page_body_storage` function L65-67 — `(&self, _: &str) -> Result<ConfluencePageBody, FeedError>` — Integration tests for the two Jira templates.
+-  `jql_search` function L69-80 — `( &self, jql: &str, max_results: u32, ) -> Result<Vec<JiraIssueMeta>, FeedError>` — Integration tests for the two Jira templates.
+-  `issue_full` function L82-103 — `( &self, key: &str, want_changelog: bool, want_comments: bool, ) -> Result<JiraI...` — Integration tests for the two Jira templates.
+-  `resolve_project` function L105-108 — `(&self, key_or_id: &str) -> Result<String, FeedError>` — Integration tests for the two Jira templates.
+-  `MockClients` struct L111-113 — `{ atlassian: Arc<MockAtlassian> }` — Integration tests for the two Jira templates.
+-  `MockClients` type L115-131 — `impl FeedClients for MockClients` — Integration tests for the two Jira templates.
+-  `slack` function L116-118 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — Integration tests for the two Jira templates.
+-  `calendar` function L119-121 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — Integration tests for the two Jira templates.
+-  `gmail` function L122-124 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — Integration tests for the two Jira templates.
+-  `drive` function L125-127 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — Integration tests for the two Jira templates.
+-  `atlassian` function L128-130 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — Integration tests for the two Jira templates.
+-  `issue_meta` function L133-140 — `(key: &str, updated: &str) -> JiraIssueMeta` — Integration tests for the two Jira templates.
+-  `issue_detail` function L142-158 — `( key: &str, updated: &str, comments: Option<Vec<Value>>, changelog: Option<Vec<...` — Integration tests for the two Jira templates.
+-  `comment` function L160-167 — `(id: &str, body: &str) -> Value` — Integration tests for the two Jira templates.
+-  `history` function L169-175 — `(id: &str, field: &str, to: &str) -> Value` — Integration tests for the two Jira templates.
+-  `run_once` function L177-200 — `( template: &dyn FeedTemplate, ctx: &TemplateCtx, params: &TemplateParams, feed_...` — Integration tests for the two Jira templates.
+-  `read_jsonl` function L202-212 — `(path: &PathBuf) -> Vec<Value>` — Integration tests for the two Jira templates.
+-  `project_tracker_appends_new_comments_overwrites_issue_snapshot` function L217-274 — `()` — Integration tests for the two Jira templates.
+-  `project_tracker_history_advances_independently_of_comments` function L277-319 — `()` — Integration tests for the two Jira templates.
+-  `project_tracker_partial_failure_doesnt_block_other_issues` function L322-352 — `()` — Integration tests for the two Jira templates.
+-  `project_tracker_validates_project` function L355-363 — `()` — Integration tests for the two Jira templates.
+-  `assignee_tracker_writes_only_issue_json_no_logs` function L368-407 — `()` — Integration tests for the two Jira templates.
+-  `assignee_tracker_uses_currentUser_jql_and_advances_cursor` function L410-445 — `()` — Integration tests for the two Jira templates.
+-  `returns_auth_when_atlassian_not_connected` function L448-480 — `()` — Integration tests for the two Jira templates.
+-  `NoAtlassian` struct L449 — `-` — Integration tests for the two Jira templates.
+-  `NoAtlassian` type L450-466 — `impl FeedClients for NoAtlassian` — Integration tests for the two Jira templates.
+-  `slack` function L451-453 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — Integration tests for the two Jira templates.
+-  `calendar` function L454-456 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — Integration tests for the two Jira templates.
+-  `gmail` function L457-459 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — Integration tests for the two Jira templates.
+-  `drive` function L460-462 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — Integration tests for the two Jira templates.
+-  `atlassian` function L463-465 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — Integration tests for the two Jira templates.
 
 #### crates/arawn-feeds/tests/slack_channel_archive.rs
 

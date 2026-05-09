@@ -4,14 +4,14 @@ level: task
 title: "Phase 6 — /watch slash command + /feeds management UX"
 short_code: "ARAWN-T-0219"
 created_at: 2026-05-07T00:42:53.527120+00:00
-updated_at: 2026-05-07T00:42:53.527120+00:00
+updated_at: 2026-05-09T00:20:07.795585+00:00
 parent: ARAWN-I-0039
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/active"
 
 
 exit_criteria_met: false
@@ -74,6 +74,8 @@ Depends on: T-0214 (runtime, especially the `register_feed_runtime` stub that th
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
 
 ## Acceptance Criteria **[REQUIRED]**
 
@@ -177,4 +179,43 @@ Depends on: T-0214 (runtime, especially the `register_feed_runtime` stub that th
 
 ## Status Updates **[REQUIRED]**
 
-*To be added during implementation*
+### 2026-05-08 — slice 1: non-interactive `/watch` + read-only `/feeds`
+
+End-to-end registration plumbing landed. Filling in T-0214's `register_feed_runtime` stub with the real flow.
+
+**arawn-feeds**:
+- `FeedRuntime::register_feed_dynamic(template, feed_id, params, cadence_override)` — full flow: validate template + params + cadence, persist row, write initial `meta.json`, register cloacina cron. Failure rolls back the DB row so `/watch` re-tries aren't blocked by half-baked state.
+- `FeedRuntime::list_summaries()` — every feed (enabled + paused) with last-run health from `meta.json` + recursive disk-size walk.
+- `FeedSummary` Serializable type re-exported from the crate root.
+
+**arawn-service**:
+- Trait gains `feed_register(spec) -> FeedSummaryDto` + `feed_list() -> Vec<FeedSummaryDto>`.
+- New `FeedRegisterSpec` and `FeedSummaryDto` types in `service::types`.
+
+**arawn (server)**:
+- `LocalService::set_feed_runtime(Arc<FeedRuntime>)` — main.rs hands the live runtime to the service after `arawn_feeds::start`.
+- Both trait methods implemented; `feed_register` emits a `[feeds] feed <id> registered` ServerNotice.
+- `ws_server` registers the two new RPC methods.
+
+**arawn-tui**:
+- `/watch` and `/feeds` registered as built-in commands.
+- `parse_watch_args` lexes `<template> <feed_id> [k=v]... [@cadence="..."]` with quote-aware tokenization. Param values are typed via `serde_json::from_str` — `count=5` arrives as a number, `enabled=true` as bool, anything else as string. Cron with spaces must be quoted (`@cadence="*/30 * * * *"`).
+- `CommandResult::FeedRegister(WatchSpec)` and `FeedList` variants; event_loop dispatches via `WsClient::feed_register` / `feed_list`.
+- Slice-1 rendering is a chat-pane system message — modal upgrade lands in slice 2.
+- Helper `format_feed_list` renders a markdown-ish list with cadence, state, last-run, status, human-readable size.
+
+**Tests**:
+- `command::tests::watch_parses_template_id_and_string_param` — minimal form.
+- `command::tests::watch_parses_typed_and_quoted_params_and_cadence_override` — typed values + quoted cron.
+- `command::tests::watch_rejects_missing_args_and_bad_template` — gates.
+- `command::tests::watch_command_dispatch_returns_feed_register` — end-to-end through registry.
+- `command::tests::feeds_command_dispatch_returns_feed_list`.
+- `tests/dynamic_register.rs::dynamic_register_full_flow` — real `DefaultRunner` + sqlite, exercises validate→insert→meta→cron through to `list_summaries`.
+- `tests/dynamic_register.rs::dynamic_register_rolls_back_on_unknown_template` — failure path leaves the DB clean.
+
+129 arawn-feeds tests + 144 arawn-tui tests green. Workspace + clippy clean.
+
+**Remaining slices** (separate commits under this same task):
+- Slice 2: `/feeds` modal with row actions — pause / resume / decommission with confirm.
+- Slice 3: discovery pickers (Slack channels, Jira projects, Confluence spaces, Drive folders).
+- Slice 4: auto-create on `/connect` — absorbs deferred bits from T-0220 (slack mentions), T-0216 (gmail/calendar), T-0221 (drive/recent), T-0223 (jira/assignee-tracker).
