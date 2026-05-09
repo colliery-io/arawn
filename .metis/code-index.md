@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-09T03:13:43Z | 257 files | Python, Rust
+> Generated: 2026-05-09T10:50:29Z | 257 files | Python, Rust
 
 ## Project Structure
 
@@ -5928,52 +5928,53 @@
 - pub `WatchSpec` struct L346-351 — `{ template: String, feed_id: String, params: serde_json::Value, cadence: Option<...` — Parsed args for the non-interactive form of `/watch`.
 - pub `parse_watch_args` function L363-412 — `(args: &str) -> Result<WatchSpec, String>` — Parse the args body of `/watch`.
 - pub `parse_feeds_args` function L458-495 — `(args: &str) -> CommandResult` — Parse the args of `/feeds` into a CommandResult.
-- pub `execute_command` function L498-648 — `(cmd: &ParsedCommand, registry: &CommandRegistry) -> CommandResult` — Execute a parsed slash command against the registry.
+- pub `execute_command` function L498-662 — `(cmd: &ParsedCommand, registry: &CommandRegistry) -> CommandResult` — Execute a parsed slash command against the registry.
 -  `CommandRegistry` type L65-225 — `= CommandRegistry` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
 -  `register_builtins` function L72-191 — `(&mut self)` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
 -  `AutocompleteState` type L236-267 — `= AutocompleteState` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
 -  `tokenize_kv` function L417-448 — `(s: &str) -> Result<Vec<String>, String>` — Tokenizer that respects double-quoted runs so a param value can
--  `tests` module L651-1118 — `-` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `parse_simple_command` function L655-659 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `watch_parses_template_id_and_string_param` function L662-669 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `watch_parses_typed_and_quoted_params_and_cadence_override` function L672-683 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `watch_rejects_missing_args_and_bad_template` function L686-693 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `watch_command_dispatch_returns_feed_register` function L696-707 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `feeds_command_dispatch_returns_feed_list` function L710-717 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `feeds_pause_and_resume_dispatch` function L720-730 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `feeds_rm_requires_confirm_flag` function L733-746 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `feeds_pause_without_id_is_a_usage_message` function L749-755 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `watch_list_dispatches_to_feed_discover` function L758-776 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `watch_list_doesnt_swallow_a_template_named_listed` function L779-795 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `feeds_unknown_subcommand_lists_usage` function L798-804 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `parse_command_with_args` function L807-811 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `parse_not_a_command` function L814-818 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `parse_slash_only` function L821-823 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `parse_with_leading_whitespace` function L826-829 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `registry_has_builtins` function L832-839 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `registry_matching_prefix` function L842-848 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `registry_matching_empty_returns_all` function L851-855 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `registry_skills` function L858-867 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `autocomplete_navigation` function L870-888 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_help` function L891-898 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_clear` function L901-905 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_unknown` function L908-915 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_inventory` function L918-925 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_skill` function L928-939 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_remember_with_text_returns_remember_fact` function L946-955 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_remember_without_text_returns_usage_message` function L958-968 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_memory_returns_memory_summary` function L971-978 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_forget_with_query_returns_forget_entity` function L981-990 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_forget_without_query_returns_usage_message` function L993-1002 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_workflows_list_returns_workflow_list` function L1005-1015 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `every_advertised_builtin_dispatches_or_explains` function L1023-1046 — `()` — Audit: every built-in command in /help must dispatch to a CommandResult
--  `execute_integrations_returns_list_variant` function L1051-1058 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_connect_with_service_returns_connect_variant` function L1061-1068 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_connect_without_service_returns_usage_message` function L1071-1081 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_disconnect_with_service_returns_disconnect_variant` function L1084-1091 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_disconnect_without_service_returns_usage_message` function L1094-1101 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `capabilities_banner_doc_path_pinned` function L1106-1117 — `()` — Capabilities banner copy in event_loop.rs points users at this docs
--  `PINNED` variable L1109 — `: &str` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `tests` module L665-1147 — `-` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `parse_simple_command` function L669-673 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `watch_parses_template_id_and_string_param` function L676-683 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `watch_parses_typed_and_quoted_params_and_cadence_override` function L686-697 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `watch_rejects_missing_args_and_bad_template` function L700-707 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `watch_command_dispatch_returns_feed_register` function L710-721 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `feeds_command_dispatch_returns_feed_list` function L724-731 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `feeds_pause_and_resume_dispatch` function L734-744 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `feeds_rm_requires_confirm_flag` function L747-760 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `feeds_pause_without_id_is_a_usage_message` function L763-769 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `watch_list_dispatches_to_feed_discover` function L772-790 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `watch_list_rejects_extra_args_with_hint` function L793-805 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `watch_list_doesnt_swallow_a_template_named_listed` function L808-824 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `feeds_unknown_subcommand_lists_usage` function L827-833 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `parse_command_with_args` function L836-840 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `parse_not_a_command` function L843-847 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `parse_slash_only` function L850-852 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `parse_with_leading_whitespace` function L855-858 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `registry_has_builtins` function L861-868 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `registry_matching_prefix` function L871-877 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `registry_matching_empty_returns_all` function L880-884 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `registry_skills` function L887-896 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `autocomplete_navigation` function L899-917 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_help` function L920-927 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_clear` function L930-934 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_unknown` function L937-944 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_inventory` function L947-954 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_skill` function L957-968 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_remember_with_text_returns_remember_fact` function L975-984 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_remember_without_text_returns_usage_message` function L987-997 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_memory_returns_memory_summary` function L1000-1007 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_forget_with_query_returns_forget_entity` function L1010-1019 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_forget_without_query_returns_usage_message` function L1022-1031 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_workflows_list_returns_workflow_list` function L1034-1044 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `every_advertised_builtin_dispatches_or_explains` function L1052-1075 — `()` — Audit: every built-in command in /help must dispatch to a CommandResult
+-  `execute_integrations_returns_list_variant` function L1080-1087 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_connect_with_service_returns_connect_variant` function L1090-1097 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_connect_without_service_returns_usage_message` function L1100-1110 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_disconnect_with_service_returns_disconnect_variant` function L1113-1120 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_disconnect_without_service_returns_usage_message` function L1123-1130 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `capabilities_banner_doc_path_pinned` function L1135-1146 — `()` — Capabilities banner copy in event_loop.rs points users at this docs
+-  `PINNED` variable L1138 — `: &str` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
 
 #### crates/arawn-tui/src/event.rs
 
@@ -6374,17 +6375,17 @@
 - pub `WorkflowRunnerConfig` struct L10-17 — `{ database_path: PathBuf, packages_dir: PathBuf, max_concurrent_tasks: usize }` — Configuration for the workflow runner.
 - pub `new` function L20-26 — `(data_dir: &Path) -> Self` — Wrapper around cloacina's DefaultRunner for arawn server integration.
 - pub `WorkflowRunner` struct L33-35 — `{ runner: DefaultRunner }` — Arawn's workflow engine — wraps cloacina's DefaultRunner.
-- pub `new` function L41-67 — `(config: WorkflowRunnerConfig) -> Result<Self, WorkflowError>` — Initialize the workflow runner with the given configuration.
-- pub `execute` function L70-87 — `( &self, workflow_name: &str, context: serde_json::Value, ) -> Result<WorkflowEx...` — Execute a named workflow programmatically.
-- pub `shutdown` function L90-95 — `(&self)` — Graceful shutdown — drains in-flight pipelines.
-- pub `inner` function L98-100 — `(&self) -> &DefaultRunner` — Get a reference to the underlying DefaultRunner.
-- pub `cloacina_runner` function L105-107 — `(&self) -> std::sync::Arc<DefaultRunner>` — Hand out an `Arc<DefaultRunner>` for callers that need to own
-- pub `WorkflowError` enum L111-116 — `Init | Runtime` — Wrapper around cloacina's DefaultRunner for arawn server integration.
+- pub `new` function L41-78 — `(config: WorkflowRunnerConfig) -> Result<Self, WorkflowError>` — Initialize the workflow runner with the given configuration.
+- pub `execute` function L81-98 — `( &self, workflow_name: &str, context: serde_json::Value, ) -> Result<WorkflowEx...` — Execute a named workflow programmatically.
+- pub `shutdown` function L101-106 — `(&self)` — Graceful shutdown — drains in-flight pipelines.
+- pub `inner` function L109-111 — `(&self) -> &DefaultRunner` — Get a reference to the underlying DefaultRunner.
+- pub `cloacina_runner` function L116-118 — `(&self) -> std::sync::Arc<DefaultRunner>` — Hand out an `Arc<DefaultRunner>` for callers that need to own
+- pub `WorkflowError` enum L122-127 — `Init | Runtime` — Wrapper around cloacina's DefaultRunner for arawn server integration.
 -  `WorkflowRunnerConfig` type L19-27 — `= WorkflowRunnerConfig` — Wrapper around cloacina's DefaultRunner for arawn server integration.
--  `WorkflowRunner` type L37-108 — `= WorkflowRunner` — Wrapper around cloacina's DefaultRunner for arawn server integration.
--  `tests` module L119-148 — `-` — Wrapper around cloacina's DefaultRunner for arawn server integration.
--  `runner_initializes_and_shuts_down` function L123-137 — `()` — Wrapper around cloacina's DefaultRunner for arawn server integration.
--  `runner_starts_with_empty_packages_dir` function L140-147 — `()` — Wrapper around cloacina's DefaultRunner for arawn server integration.
+-  `WorkflowRunner` type L37-119 — `= WorkflowRunner` — Wrapper around cloacina's DefaultRunner for arawn server integration.
+-  `tests` module L130-159 — `-` — Wrapper around cloacina's DefaultRunner for arawn server integration.
+-  `runner_initializes_and_shuts_down` function L134-148 — `()` — Wrapper around cloacina's DefaultRunner for arawn server integration.
+-  `runner_starts_with_empty_packages_dir` function L151-158 — `()` — Wrapper around cloacina's DefaultRunner for arawn server integration.
 
 #### crates/arawn-workflow/src/scaffold.rs
 

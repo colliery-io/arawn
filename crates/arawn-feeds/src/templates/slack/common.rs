@@ -58,10 +58,19 @@ pub async fn archive_channel_with_threads(
         .await?;
 
     if !history.messages.is_empty() {
+        let history_floor = oldest_top.clone();
         for msg in &history.messages {
             let ts = msg.get("ts").and_then(|v| v.as_str()).ok_or_else(|| {
                 FeedError::Schema("slack message missing `ts` string field".into())
             })?;
+            // Slack's `oldest` parameter on conversations.history is
+            // inclusive — the boundary message comes back on every
+            // call. Skip it explicitly to avoid duplicate writes.
+            if let Some(floor) = history_floor.as_deref()
+                && ts <= floor
+            {
+                continue;
+            }
             // Top-level → day file, partitioned by the message's
             // OWN ts (not fetch time).
             let bytes = append_message_to_day(feed_dir, msg, ts)?;
@@ -104,9 +113,19 @@ pub async fn archive_channel_with_threads(
                         .get("ts")
                         .and_then(|v| v.as_str())
                         .unwrap_or_default();
-                    // Skip the parent if we just seeded it from
-                    // history (first call returns parent + replies).
-                    if ts == parent_ts && prior.is_none() {
+                    // The parent is always returned by
+                    // conversations.replies. We seed it into the
+                    // thread file once during pass-1 and never want
+                    // to re-write it from pass-2.
+                    if ts == parent_ts {
+                        continue;
+                    }
+                    // Slack's `oldest` is inclusive: the boundary
+                    // reply comes back on every subsequent call. Skip
+                    // anything we've already persisted.
+                    if let Some(floor) = prior.as_deref()
+                        && ts <= floor
+                    {
                         continue;
                     }
                     let bytes = append_message_to_thread(feed_dir, &parent_ts, msg)?;

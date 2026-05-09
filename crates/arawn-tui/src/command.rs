@@ -611,18 +611,32 @@ pub fn execute_command(cmd: &ParsedCommand, registry: &CommandRegistry) -> Comma
                 }
                 "watch" => {
                     // `/watch list [template]` is the discovery form;
-                    // it shares the verb but takes a different shape.
+                    // shares the verb with `/watch <template> <id>`.
+                    // Only `list` followed by whitespace (or end of
+                    // args) counts — `list-something` keeps the
+                    // normal-form path.
                     let trimmed = cmd.args.trim();
-                    if let Some(rest) = trimmed
-                        .strip_prefix("list")
-                        .map(str::trim_start)
-                    {
-                        let tpl = if rest.is_empty() {
-                            None
+                    let mut tokens = trimmed.split_whitespace();
+                    let first = tokens.next().unwrap_or("");
+                    if first == "list" {
+                        // Take exactly one further token as the
+                        // template; anything after is rejected with a
+                        // hint so users don't think they can pre-pick
+                        // a channel by name. (Discovery is two steps:
+                        // list, then run /watch.)
+                        let template = tokens.next().map(String::from);
+                        if let Some(extra) = tokens.next() {
+                            CommandResult::SystemMessage(format!(
+                                "/watch list takes at most one argument (got extra `{extra}`).\n\n\
+                                 Usage:\n  \
+                                 /watch list                         — show all templates\n  \
+                                 /watch list <template>              — show pickable values for that template\n\n\
+                                 Then register with:\n  \
+                                 /watch <template> <feed_id> <key>=<value>"
+                            ))
                         } else {
-                            Some(rest.to_string())
-                        };
-                        CommandResult::FeedDiscover(tpl)
+                            CommandResult::FeedDiscover(template)
+                        }
                     } else {
                         match parse_watch_args(&cmd.args) {
                             Ok(spec) => CommandResult::FeedRegister(spec),
@@ -772,6 +786,21 @@ mod tests {
                 assert_eq!(tpl, "slack/channel-archive");
             }
             other => panic!("expected FeedDiscover(Some), got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn watch_list_rejects_extra_args_with_hint() {
+        let registry = CommandRegistry::new();
+        match execute_command(
+            &parse_command("/watch list slack/channel-archive domino-data-labs").unwrap(),
+            &registry,
+        ) {
+            CommandResult::SystemMessage(msg) => {
+                assert!(msg.contains("at most one argument"));
+                assert!(msg.contains("domino-data-labs"));
+            }
+            other => panic!("expected SystemMessage, got {other:?}"),
         }
     }
 
