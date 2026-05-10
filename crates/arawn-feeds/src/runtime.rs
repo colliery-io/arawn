@@ -84,6 +84,18 @@ pub async fn start(
         }
     }
 
+    // Resume in-progress backfills (rows with enabled=0 +
+    // last_status="backfilling"). These are the leftovers of a
+    // backfill loop interrupted by a crash or restart.
+    let all_feeds = {
+        let c = conn.lock().await;
+        FeedStore::new(&c).list_all()?
+    };
+    let resumed = resume_pending_backfills(runner.clone(), runtime_ctx.clone(), &all_feeds);
+    if resumed > 0 {
+        info!(resumed, "resumed in-progress backfill loops");
+    }
+
     info!(registered, skipped, "feed runtime started");
 
     Ok(FeedRuntime {
@@ -139,8 +151,23 @@ impl FeedRuntime {
         let cadence = cadence_override.unwrap_or(defaults.cadence);
         validate_cadence(&cadence)?;
 
-        // Step 2 — record.
-        let record = new_record(feed_id, template, params.clone(), cadence);
+        // Detect the `since=` first-run-seed mode. When present, we
+        // insert the row as `enabled=0` and run a backfill loop in a
+        // spawned task; cron registration only happens after the
+        // loop completes successfully. See ARAWN-T-0227.
+        let has_since = params
+            .as_value()
+            .get("since")
+            .and_then(|v| v.as_str())
+            .is_some_and(|s| !s.is_empty());
+
+        // Step 2 — record. `enabled` starts false in backfill mode so
+        // a fresh cron registration can't fire while the loop is
+        // walking pages.
+        let mut record = new_record(feed_id, template, params.clone(), cadence);
+        if has_since {
+            record.enabled = false;
+        }
 
         // Step 3 — persist row.
         {
@@ -148,16 +175,17 @@ impl FeedRuntime {
             FeedStore::new(&c).insert(&record)?;
         }
 
-        // Step 4 — initial meta.json. Best-effort — if this fails the
-        // row exists but no meta yet; the dispatcher will recreate it
-        // on first run. We still surface the error since the user
-        // would rather see "couldn't write meta" now than silently
-        // drift.
+        // Step 4 — initial meta.json. In backfill mode we tag
+        // `last_status="backfilling"` so a server restart mid-loop
+        // can resume from the persisted cursor.
         let feed_dir = self
             .runtime_ctx
             .layout
             .ensure_feed_dir(template, feed_id)?;
-        let meta = FeedMeta::new(template, params, defaults.initial_cursor);
+        let mut meta = FeedMeta::new(template, params, defaults.initial_cursor);
+        if has_since {
+            meta.last_status = Some("backfilling".into());
+        }
         if let Err(e) = MetaStore::write(&feed_dir, &meta) {
             // Rollback the DB row — meta + row stay consistent.
             let c = self.runtime_ctx.conn.lock().await;
@@ -165,7 +193,20 @@ impl FeedRuntime {
             return Err(e);
         }
 
-        // Step 5 — cron registration.
+        if has_since {
+            // Backfill mode: spawn the loop, leave cron unregistered
+            // until the loop completes. The slash-command response
+            // returns immediately; the user sees a follow-up notice
+            // when the backfill finishes.
+            spawn_backfill_task(
+                Arc::clone(&self.runner),
+                self.runtime_ctx.clone(),
+                feed_id.to_string(),
+            );
+            return Ok(record);
+        }
+
+        // Step 5 — cron registration (steady-state path).
         if let Err(e) = register_one(&self.runner, &self.runtime_ctx, &record).await {
             // Rollback the DB row so a re-run of /watch isn't blocked
             // by a UNIQUE constraint on a half-registered feed.
@@ -328,6 +369,181 @@ impl FeedRuntime {
         }
         Ok(out)
     }
+}
+
+/// Hard cap on backfill loop iterations. ~10k pages × 200 messages =
+/// 2M Slack messages — well past any realistic single-channel scale.
+/// Reaching this exits cleanly with `last_status="backfill-failed:
+/// page-cap exceeded"`.
+const BACKFILL_PAGE_CAP: u32 = 10_000;
+
+/// Spawn the backfill loop as a detached tokio task. Repeatedly calls
+/// `dispatch::run_feed` until either the run reports zero items
+/// (caught up), the cursor stops advancing (template/provider bug
+/// guard), or the page cap is hit. On clean completion, flips the
+/// row to `enabled=1` and registers the cron schedule.
+///
+/// Resilience covered in this v1: cursor-stalled detection, page cap,
+/// and the underlying `run_feed` already persists the cursor
+/// atomically per page so a crash mid-loop is safe (boot resumption
+/// picks up via `resume_pending_backfills`). Network-blip retry,
+/// rate-limit Retry-After parsing, and per-page Schema-skip remain
+/// follow-ups (see ARAWN-T-0227).
+fn spawn_backfill_task(
+    runner: Arc<CloacinaRunner>,
+    runtime_ctx: FeedRuntimeContext,
+    feed_id: String,
+) {
+    tokio::spawn(async move {
+        let outcome = run_backfill_loop(&runner, &runtime_ctx, &feed_id).await;
+        match outcome {
+            Ok(stats) => {
+                info!(
+                    feed_id = %feed_id,
+                    pages = stats.pages,
+                    items = stats.items,
+                    "backfill complete"
+                );
+                if let Err(e) = finalize_backfill_success(&runner, &runtime_ctx, &feed_id).await
+                {
+                    warn!(
+                        feed_id = %feed_id,
+                        error = %e,
+                        "backfill: failed to flip enabled=1 / register cron"
+                    );
+                }
+            }
+            Err(e) => {
+                warn!(feed_id = %feed_id, error = %e, "backfill failed");
+                let _ = mark_backfill_failed(&runtime_ctx, &feed_id, &e.to_string()).await;
+            }
+        }
+    });
+}
+
+#[derive(Default)]
+struct BackfillStats {
+    pages: u32,
+    items: u64,
+}
+
+async fn run_backfill_loop(
+    _runner: &Arc<CloacinaRunner>,
+    runtime_ctx: &FeedRuntimeContext,
+    feed_id: &str,
+) -> Result<BackfillStats, FeedError> {
+    let mut stats = BackfillStats::default();
+    let mut prev_cursor: Option<serde_json::Value> = None;
+
+    while stats.pages < BACKFILL_PAGE_CAP {
+        let outcome = crate::dispatch::run_feed_force(feed_id, runtime_ctx).await?;
+        stats.pages += 1;
+        stats.items += outcome.summary.items_written;
+
+        // Caught up: empty page → done.
+        if outcome.summary.items_written == 0 {
+            return Ok(stats);
+        }
+
+        // Cursor-stalled guard: items came back but cursor didn't
+        // advance → template / provider bug. Bail rather than spin.
+        if let Some(prior) = &prev_cursor
+            && prior == &outcome.cursor
+        {
+            return Err(FeedError::Provider(
+                "backfill cursor stalled — template returned items but cursor unchanged".into(),
+            ));
+        }
+        prev_cursor = Some(outcome.cursor);
+    }
+
+    Err(FeedError::Provider(format!(
+        "backfill page cap of {BACKFILL_PAGE_CAP} exceeded"
+    )))
+}
+
+async fn finalize_backfill_success(
+    runner: &Arc<CloacinaRunner>,
+    runtime_ctx: &FeedRuntimeContext,
+    feed_id: &str,
+) -> Result<(), FeedError> {
+    // Re-load the record to register cron with current state.
+    let record = {
+        let c = runtime_ctx.conn.lock().await;
+        FeedStore::new(&c)
+            .get(feed_id)?
+            .ok_or_else(|| FeedError::Storage(format!("feed '{feed_id}' missing post-backfill")))?
+    };
+
+    // Register cron first — only flip enabled=1 if cron actually
+    // takes, so we never leave a row that says "active" but has no
+    // schedule.
+    let mut to_register = record.clone();
+    to_register.enabled = true;
+    register_one(runner, runtime_ctx, &to_register).await?;
+
+    {
+        let c = runtime_ctx.conn.lock().await;
+        FeedStore::new(&c).set_enabled(feed_id, true)?;
+    }
+    Ok(())
+}
+
+async fn mark_backfill_failed(
+    runtime_ctx: &FeedRuntimeContext,
+    feed_id: &str,
+    err: &str,
+) -> Result<(), FeedError> {
+    let record = {
+        let c = runtime_ctx.conn.lock().await;
+        FeedStore::new(&c).get(feed_id)?
+    };
+    let Some(record) = record else {
+        // Feed got removed mid-backfill; nothing to update.
+        return Ok(());
+    };
+    let feed_dir = runtime_ctx
+        .layout
+        .feed_dir(&record.template, &record.id)?;
+    if let Some(mut meta) = MetaStore::read(&feed_dir)? {
+        meta.last_status = Some(format!("backfill-failed: {err}"));
+        MetaStore::write(&feed_dir, &meta)?;
+    }
+    Ok(())
+}
+
+/// On boot, find feeds whose `meta.json.last_status == "backfilling"`
+/// and re-spawn the loop. Their DB row is `enabled=0` so cron won't
+/// fire them; only the spawn re-runs the loop.
+pub fn resume_pending_backfills(
+    runner: Arc<CloacinaRunner>,
+    runtime_ctx: FeedRuntimeContext,
+    records: &[FeedRecord],
+) -> usize {
+    let mut resumed = 0;
+    for record in records {
+        if record.enabled {
+            continue;
+        }
+        let feed_dir = match runtime_ctx.layout.feed_dir(&record.template, &record.id) {
+            Ok(p) => p,
+            Err(_) => continue,
+        };
+        let last_status = MetaStore::read(&feed_dir)
+            .ok()
+            .flatten()
+            .and_then(|m| m.last_status);
+        if last_status.as_deref() == Some("backfilling") {
+            info!(feed_id = %record.id, "resuming backfill from persisted cursor");
+            spawn_backfill_task(
+                Arc::clone(&runner),
+                runtime_ctx.clone(),
+                record.id.clone(),
+            );
+            resumed += 1;
+        }
+    }
+    resumed
 }
 
 /// Outcome of a successful `remove_feed` — the row that was deleted

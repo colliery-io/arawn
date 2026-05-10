@@ -35,7 +35,7 @@ use std::path::Path;
 use async_trait::async_trait;
 use serde_json::{Value, json};
 
-use super::common::archive_channel_with_threads;
+use super::common::{archive_channel_with_threads, synth_since_cursor};
 use crate::error::FeedError;
 use crate::template::{DiscoveryRow, FeedTemplate, RunOutcome, TemplateCtx};
 use crate::types::{FeedDefaults, TemplateParams};
@@ -88,7 +88,21 @@ impl FeedTemplate for ChannelArchiveTemplate {
             .ok_or_else(|| FeedError::InvalidParams("missing `channel` param".into()))?;
         let channel_id = slack.resolve_channel(raw_channel).await?;
 
-        archive_channel_with_threads(slack.as_ref(), &channel_id, feed_dir, cursor).await
+        // First-run-only `since=` seed: when the cursor is null and
+        // params has a `since` ISO datetime, synthesize a cursor with
+        // `latest_ts` set to that moment so `channel_history` pulls
+        // from there forward instead of Slack's default 200-recent
+        // page. After cursor advances on subsequent runs, `since` is
+        // ignored. See ARAWN-T-0227.
+        let effective_cursor = synth_since_cursor(cursor, params)?;
+
+        archive_channel_with_threads(
+            slack.as_ref(),
+            &channel_id,
+            feed_dir,
+            &effective_cursor,
+        )
+        .await
     }
 
     async fn discover(

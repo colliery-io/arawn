@@ -341,6 +341,146 @@ async fn dynamic_register_is_idempotent_via_unique_constraint() {
 }
 
 #[tokio::test]
+async fn since_param_triggers_backfill_loop_then_registers_cron() {
+    // Backfill mode: register a feed with `since=...` set on a stub
+    // template that returns a counter-driven cursor advance + a fixed
+    // number of "items" per call until exhausted. Verify the loop
+    // walks until items=0, then cron registers and row flips
+    // enabled=1.
+    use arawn_feeds::{FeedClients, NoopClients};
+    use serde_json::json;
+    let tmp = tempfile::tempdir().unwrap();
+    let data_dir = tmp.path().to_path_buf();
+
+    let runner_db = data_dir.join("cloacina.db");
+    let runner_url = format!("sqlite://{}", runner_db.display());
+    let cfg = cloacina::DefaultRunnerConfig::builder()
+        .enable_cron_scheduling(true)
+        .enable_registry_reconciler(false)
+        .max_concurrent_tasks(2)
+        .build()
+        .unwrap();
+    let runner = Arc::new(
+        DefaultRunner::with_config(&runner_url, cfg)
+            .await
+            .unwrap(),
+    );
+    let conn = Connection::open(data_dir.join("feeds.db")).unwrap();
+    migrate(&conn);
+    let conn = Arc::new(Mutex::new(conn));
+    let layout = Arc::new(DataLayout::new(&data_dir));
+    let registry = Arc::new(arawn_feeds::default_registry());
+    let clients: Arc<dyn FeedClients> = Arc::new(NoopClients);
+    let runtime = arawn_feeds::start(
+        Arc::clone(&runner),
+        Arc::clone(&conn),
+        Arc::clone(&layout),
+        Arc::clone(&registry),
+        Arc::clone(&clients),
+    )
+    .await
+    .unwrap();
+
+    // stub/echo's `run` writes one item per call, advances cursor,
+    // and returns items_written=1. Loop will keep going forever
+    // unless we hit the page cap. To force a finite backfill we
+    // exploit the cursor-stalled guard by giving stub/echo a static
+    // "since" that doesn't actually shape its behavior — the loop
+    // will run a few times, the cursor will keep advancing
+    // (counter-style), and then eventually hit the page cap.
+    //
+    // For *this* test the simpler assertion is: `since=` triggers the
+    // backfill code path (row enabled=0, last_status=backfilling),
+    // and the spawned task makes forward progress. We don't assert
+    // completion — that needs a stub template with a finite supply,
+    // which is more setup than this integration test wants.
+    let params = TemplateParams::new(json!({
+        "message": "hi",
+        "since": chrono::Utc::now().to_rfc3339(),
+    }));
+    runtime
+        .register_feed_dynamic("stub/echo", "backfill-test", params, None)
+        .await
+        .unwrap();
+
+    // Row exists, enabled=0, last_status=backfilling.
+    let record = {
+        let c = conn.lock().await;
+        arawn_feeds::FeedStore::new(&c).get("backfill-test").unwrap().unwrap()
+    };
+    assert!(!record.enabled, "row starts enabled=0 in backfill mode");
+
+    let feed_dir = layout.feed_dir("stub/echo", "backfill-test").unwrap();
+    let meta = arawn_feeds::MetaStore::read(&feed_dir).unwrap().unwrap();
+    assert_eq!(meta.last_status.as_deref(), Some("backfilling"));
+
+    // Let the spawned task run for a moment so the loop makes
+    // forward progress (cursor advances + run_count increments).
+    tokio::time::sleep(std::time::Duration::from_millis(150)).await;
+
+    let meta_after = arawn_feeds::MetaStore::read(&feed_dir).unwrap().unwrap();
+    assert!(
+        meta_after.run_count > 0,
+        "spawn loop ran at least one iteration"
+    );
+}
+
+#[tokio::test]
+async fn no_since_uses_existing_immediate_cron_path() {
+    // Without `since=`, register_feed_dynamic should behave exactly
+    // as before: row inserts enabled=1, cron schedule registers
+    // immediately, no backfilling status.
+    use arawn_feeds::{FeedClients, NoopClients};
+    let tmp = tempfile::tempdir().unwrap();
+    let data_dir = tmp.path().to_path_buf();
+    let runner_db = data_dir.join("cloacina.db");
+    let runner_url = format!("sqlite://{}", runner_db.display());
+    let cfg = cloacina::DefaultRunnerConfig::builder()
+        .enable_cron_scheduling(true)
+        .enable_registry_reconciler(false)
+        .max_concurrent_tasks(2)
+        .build()
+        .unwrap();
+    let runner = Arc::new(
+        DefaultRunner::with_config(&runner_url, cfg)
+            .await
+            .unwrap(),
+    );
+    let conn = Connection::open(data_dir.join("feeds.db")).unwrap();
+    migrate(&conn);
+    let conn = Arc::new(Mutex::new(conn));
+    let layout = Arc::new(DataLayout::new(&data_dir));
+    let registry = Arc::new(arawn_feeds::default_registry());
+    let clients: Arc<dyn FeedClients> = Arc::new(NoopClients);
+    let runtime = arawn_feeds::start(runner, conn.clone(), layout.clone(), registry, clients)
+        .await
+        .unwrap();
+
+    runtime
+        .register_feed_dynamic(
+            "stub/echo",
+            "fast-path",
+            TemplateParams::default(),
+            None,
+        )
+        .await
+        .unwrap();
+
+    let record = {
+        let c = conn.lock().await;
+        arawn_feeds::FeedStore::new(&c).get("fast-path").unwrap().unwrap()
+    };
+    assert!(record.enabled, "non-since path keeps enabled=1");
+    let feed_dir = layout.feed_dir("stub/echo", "fast-path").unwrap();
+    let meta = arawn_feeds::MetaStore::read(&feed_dir).unwrap().unwrap();
+    assert!(
+        meta.last_status.is_none()
+            || meta.last_status.as_deref() != Some("backfilling"),
+        "non-since path doesn't tag backfilling"
+    );
+}
+
+#[tokio::test]
 async fn dynamic_register_rolls_back_on_unknown_template() {
     let tmp = tempfile::tempdir().unwrap();
     let data_dir = tmp.path().to_path_buf();

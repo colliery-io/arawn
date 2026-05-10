@@ -168,6 +168,41 @@ pub async fn archive_channel_with_threads(
     })
 }
 
+/// First-run `since=` seeding for slack archive templates.
+///
+/// When the cursor is null and `params.since` is set to an RFC3339
+/// datetime, synthesize a cursor `{ "latest_ts": <slack-ts> }` so the
+/// existing helper passes `oldest_ts` to Slack's `conversations.history`
+/// instead of taking the default 200-recent page. After the cursor
+/// advances on subsequent runs, `since` is ignored.
+///
+/// Returns the cursor unchanged when no synthesis is needed.
+pub fn synth_since_cursor(
+    cursor: &Value,
+    params: &crate::types::TemplateParams,
+) -> Result<Value, FeedError> {
+    // Cursor wins once it exists.
+    if cursor
+        .get("latest_ts")
+        .and_then(|v| v.as_str())
+        .is_some_and(|s| !s.is_empty())
+    {
+        return Ok(cursor.clone());
+    }
+    let since_iso = match params.get_str("since") {
+        Some(s) if !s.is_empty() => s,
+        _ => return Ok(cursor.clone()),
+    };
+    let dt = chrono::DateTime::parse_from_rfc3339(since_iso).map_err(|e| {
+        FeedError::InvalidParams(format!(
+            "since value '{since_iso}' is not RFC3339: {e}"
+        ))
+    })?;
+    let secs = dt.timestamp();
+    let slack_ts = format!("{secs}.000000");
+    Ok(json!({ "latest_ts": slack_ts, "threads": {} }))
+}
+
 // ── Disk helpers ────────────────────────────────────────────────────
 
 fn append_message_to_day(feed_dir: &Path, msg: &Value, ts: &str) -> Result<u64, FeedError> {

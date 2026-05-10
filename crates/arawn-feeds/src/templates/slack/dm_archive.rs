@@ -22,7 +22,7 @@ use std::path::Path;
 use async_trait::async_trait;
 use serde_json::{Value, json};
 
-use super::common::archive_channel_with_threads;
+use super::common::{archive_channel_with_threads, synth_since_cursor};
 use crate::error::FeedError;
 use crate::template::{FeedTemplate, RunOutcome, TemplateCtx};
 use crate::types::{FeedDefaults, TemplateParams};
@@ -78,7 +78,14 @@ impl FeedTemplate for DmArchiveTemplate {
             .ok_or_else(|| FeedError::InvalidParams("missing `user` param".into()))?;
         let dm_channel_id = slack.open_dm(user).await?;
 
-        archive_channel_with_threads(slack.as_ref(), &dm_channel_id, feed_dir, cursor).await
+        let effective_cursor = synth_since_cursor(cursor, params)?;
+        archive_channel_with_threads(
+            slack.as_ref(),
+            &dm_channel_id,
+            feed_dir,
+            &effective_cursor,
+        )
+        .await
     }
 }
 

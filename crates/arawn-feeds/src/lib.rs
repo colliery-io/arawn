@@ -43,7 +43,7 @@ pub use clients::{
     RealGmailClient, RealSlackClient, SlackAuthInfo, SlackChannel, SlackFeedClient, SlackHistoryPage,
     classify_channel_id, export_for, is_unsupported_google_native,
 };
-pub use dispatch::{FeedDispatchTask, FeedRuntimeContext, run_feed};
+pub use dispatch::{FeedDispatchTask, FeedRuntimeContext, run_feed, run_feed_force};
 pub use runtime::{CloacinaRunner, FeedRuntime, RemoveOutcome, feed_workflow_name, start};
 pub use error::FeedError;
 pub use layout::DataLayout;

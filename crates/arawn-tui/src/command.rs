@@ -395,6 +395,17 @@ pub fn parse_watch_args(args: &str) -> Result<WatchSpec, String> {
             cadence = Some(v.to_string());
             continue;
         }
+        if k == "since" {
+            // Resolve at parse time to a canonical RFC3339 string so
+            // every template gets the same shape. Accepts:
+            //   - RFC3339 datetime: 2026-01-01T12:00:00Z
+            //   - ISO date (treated as midnight UTC): 2026-01-01
+            //   - Relative duration: 7d / 12h / 6w / 6mo
+            let iso = parse_since(v)
+                .map_err(|e| format!("/watch: bad since value '{v}': {e}"))?;
+            params.insert("since".into(), serde_json::Value::String(iso));
+            continue;
+        }
         // Param values are strings unless they parse as a JSON literal
         // (true/false/number/null). Lets `count=5` and `enabled=true`
         // arrive typed without burdening the user with quoting.
@@ -412,6 +423,62 @@ pub fn parse_watch_args(args: &str) -> Result<WatchSpec, String> {
         params: serde_json::Value::Object(params),
         cadence,
     })
+}
+
+/// Parse a `since=` value into a canonical RFC3339 UTC string.
+///
+/// Accepts:
+/// - `2026-01-01T12:00:00Z` — RFC3339 datetime, returned as-is.
+/// - `2026-01-01` — ISO date, expanded to that day's midnight UTC.
+/// - `Nd` / `Nh` / `Nw` / `Nmo` — relative duration walked back from now.
+fn parse_since(s: &str) -> Result<String, String> {
+    let s = s.trim();
+    if s.is_empty() {
+        return Err("empty value".into());
+    }
+
+    // Relative form first — easiest to disambiguate from a digit-led ISO date.
+    if let Some(captures) = parse_relative_duration(s) {
+        let (n, unit) = captures;
+        let secs = match unit {
+            "h" => n * 3600,
+            "d" => n * 86400,
+            "w" => n * 86400 * 7,
+            "mo" => n * 86400 * 30,
+            _ => return Err(format!("unknown duration unit '{unit}'")),
+        };
+        let dt = chrono::Utc::now() - chrono::Duration::seconds(secs);
+        return Ok(dt.to_rfc3339());
+    }
+
+    // RFC3339 datetime.
+    if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(s) {
+        return Ok(dt.with_timezone(&chrono::Utc).to_rfc3339());
+    }
+
+    // Bare date `YYYY-MM-DD` → midnight UTC.
+    if let Ok(d) = chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d") {
+        let dt = d.and_hms_opt(0, 0, 0).unwrap().and_utc();
+        return Ok(dt.to_rfc3339());
+    }
+
+    Err("expected RFC3339 datetime, YYYY-MM-DD, or relative like 7d/12h/6mo".into())
+}
+
+/// Pull `<digits><unit>` out of the input. Returns `(n, unit)` with the
+/// unit kept lowercased for the caller's match arm.
+fn parse_relative_duration(s: &str) -> Option<(i64, &str)> {
+    let s = s.trim();
+    let split_at = s.bytes().position(|b| !b.is_ascii_digit())?;
+    if split_at == 0 {
+        return None;
+    }
+    let n: i64 = s[..split_at].parse().ok()?;
+    let unit = &s[split_at..];
+    match unit {
+        "h" | "d" | "w" | "mo" => Some((n, unit)),
+        _ => None,
+    }
 }
 
 /// Tokenizer that respects double-quoted runs so a param value can
@@ -702,6 +769,52 @@ mod tests {
         assert_eq!(spec.params["sender_pattern"], "alerts@vendor.com");
         assert_eq!(spec.params["days_back"], 14);
         assert_eq!(spec.cadence.as_deref(), Some("*/30 * * * *"));
+    }
+
+    #[test]
+    fn watch_parses_since_relative_duration() {
+        let spec = parse_watch_args("slack/channel-archive design channel=C123 since=180d")
+            .expect("valid watch args");
+        let since = spec.params["since"].as_str().expect("since string");
+        // RFC3339 parseable + earlier than now.
+        let dt = chrono::DateTime::parse_from_rfc3339(since).unwrap();
+        let now = chrono::Utc::now();
+        assert!(now - dt.with_timezone(&chrono::Utc) > chrono::Duration::days(179));
+    }
+
+    #[test]
+    fn watch_parses_since_iso_date() {
+        let spec = parse_watch_args(
+            "slack/channel-archive design channel=C123 since=2026-01-01",
+        )
+        .expect("valid watch args");
+        assert_eq!(
+            spec.params["since"].as_str().unwrap(),
+            "2026-01-01T00:00:00+00:00"
+        );
+    }
+
+    #[test]
+    fn watch_parses_since_rfc3339() {
+        let spec = parse_watch_args(
+            "slack/channel-archive design channel=C123 since=2026-01-01T12:00:00Z",
+        )
+        .expect("valid watch args");
+        let s = spec.params["since"].as_str().unwrap();
+        // chrono normalizes Z → +00:00 in to_rfc3339; both are valid.
+        assert!(s.starts_with("2026-01-01T12:00:00"));
+    }
+
+    #[test]
+    fn watch_rejects_garbage_since() {
+        assert!(parse_watch_args(
+            "slack/channel-archive design channel=C123 since=tomorrow"
+        )
+        .is_err());
+        assert!(parse_watch_args(
+            "slack/channel-archive design channel=C123 since=180banana"
+        )
+        .is_err());
     }
 
     #[test]

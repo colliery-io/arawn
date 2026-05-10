@@ -94,9 +94,33 @@ impl Task for FeedDispatchTask {
 
 /// The actual fetch+write cycle. Pulled out of the trait impl so it's
 /// also callable from tests without standing up a cloacina runtime.
+///
+/// Honors the row's `enabled` flag: disabled feeds short-circuit
+/// with `status="skipped-disabled"`. The backfill loop in
+/// `runtime::spawn_backfill_task` needs to bypass that check (it
+/// runs against an enabled=0 row by design); use [`run_feed_force`]
+/// there.
 pub async fn run_feed(
     feed_id: &str,
     runtime: &FeedRuntimeContext,
+) -> Result<crate::template::RunOutcome, FeedError> {
+    run_feed_inner(feed_id, runtime, false).await
+}
+
+/// Variant that ignores the `enabled` flag — used by the backfill
+/// loop, which runs against rows it deliberately set to `enabled=0`
+/// to prevent cron firings during the loop.
+pub async fn run_feed_force(
+    feed_id: &str,
+    runtime: &FeedRuntimeContext,
+) -> Result<crate::template::RunOutcome, FeedError> {
+    run_feed_inner(feed_id, runtime, true).await
+}
+
+async fn run_feed_inner(
+    feed_id: &str,
+    runtime: &FeedRuntimeContext,
+    force: bool,
 ) -> Result<crate::template::RunOutcome, FeedError> {
     // 1. Look up the feed row.
     let record = {
@@ -107,7 +131,7 @@ pub async fn run_feed(
             .ok_or_else(|| FeedError::Storage(format!("feed '{feed_id}' not in DB")))?
     };
 
-    if !record.enabled {
+    if !record.enabled && !force {
         // Disabled feeds shouldn't have an active cron schedule, but
         // if one fires anyway (e.g. mid-pause race) we no-op cleanly.
         return Ok(crate::template::RunOutcome {
