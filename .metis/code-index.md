@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-10T01:08:00Z | 257 files | Python, Rust
+> Generated: 2026-05-10T11:14:27Z | 257 files | Python, Rust
 
 ## Project Structure
 
@@ -3239,15 +3239,15 @@
 - pub `AssigneeTrackerTemplate` struct L24 — `-` — are no append-only logs to advance independently of the snapshot.
 -  `NAME` variable L26 — `: &str` — are no append-only logs to advance independently of the snapshot.
 -  `MAX_RESULTS_PER_RUN` variable L27 — `: u32` — are no append-only logs to advance independently of the snapshot.
--  `AssigneeTrackerTemplate` type L30-113 — `impl FeedTemplate for AssigneeTrackerTemplate` — are no append-only logs to advance independently of the snapshot.
+-  `AssigneeTrackerTemplate` type L30-120 — `impl FeedTemplate for AssigneeTrackerTemplate` — are no append-only logs to advance independently of the snapshot.
 -  `name` function L31-33 — `(&self) -> &'static str` — are no append-only logs to advance independently of the snapshot.
 -  `validate` function L35-37 — `(&self, _params: &TemplateParams) -> Result<(), FeedError>` — are no append-only logs to advance independently of the snapshot.
 -  `defaults` function L39-47 — `(&self, _params: &TemplateParams) -> FeedDefaults` — are no append-only logs to advance independently of the snapshot.
--  `run` function L49-112 — `( &self, ctx: &TemplateCtx, _params: &TemplateParams, feed_dir: &Path, cursor: &...` — are no append-only logs to advance independently of the snapshot.
--  `build_jql` function L115-122 — `(since: Option<&str>) -> String` — are no append-only logs to advance independently of the snapshot.
--  `tests` module L125-146 — `-` — are no append-only logs to advance independently of the snapshot.
--  `validate_takes_no_params` function L129-133 — `()` — are no append-only logs to advance independently of the snapshot.
--  `jql_uses_currentUser` function L136-145 — `()` — are no append-only logs to advance independently of the snapshot.
+-  `run` function L49-119 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &V...` — are no append-only logs to advance independently of the snapshot.
+-  `build_jql` function L122-129 — `(since: Option<&str>) -> String` — are no append-only logs to advance independently of the snapshot.
+-  `tests` module L132-153 — `-` — are no append-only logs to advance independently of the snapshot.
+-  `validate_takes_no_params` function L136-140 — `()` — are no append-only logs to advance independently of the snapshot.
+-  `jql_uses_currentUser` function L143-152 — `()` — are no append-only logs to advance independently of the snapshot.
 
 #### crates/arawn-feeds/src/templates/jira/common.rs
 
@@ -3277,16 +3277,18 @@
 - pub `ProjectTrackerTemplate` struct L27 — `-` — plus a per-issue `{ last_comment_id, last_history_id }` map.
 -  `NAME` variable L29 — `: &str` — plus a per-issue `{ last_comment_id, last_history_id }` map.
 -  `MAX_RESULTS_PER_RUN` variable L30 — `: u32` — plus a per-issue `{ last_comment_id, last_history_id }` map.
--  `ProjectTrackerTemplate` type L33-168 — `impl FeedTemplate for ProjectTrackerTemplate` — plus a per-issue `{ last_comment_id, last_history_id }` map.
+-  `ProjectTrackerTemplate` type L33-177 — `impl FeedTemplate for ProjectTrackerTemplate` — plus a per-issue `{ last_comment_id, last_history_id }` map.
 -  `name` function L34-36 — `(&self) -> &'static str` — plus a per-issue `{ last_comment_id, last_history_id }` map.
 -  `validate` function L38-52 — `(&self, params: &TemplateParams) -> Result<(), FeedError>` — plus a per-issue `{ last_comment_id, last_history_id }` map.
 -  `defaults` function L54-62 — `(&self, _params: &TemplateParams) -> FeedDefaults` — plus a per-issue `{ last_comment_id, last_history_id }` map.
--  `run` function L64-146 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &V...` — plus a per-issue `{ last_comment_id, last_history_id }` map.
--  `discover` function L148-167 — `( &self, ctx: &TemplateCtx, ) -> Result<Option<Vec<DiscoveryRow>>, FeedError>` — plus a per-issue `{ last_comment_id, last_history_id }` map.
--  `build_jql` function L170-180 — `(project: &str, since: Option<&str>) -> String` — plus a per-issue `{ last_comment_id, last_history_id }` map.
--  `tests` module L183-208 — `-` — plus a per-issue `{ last_comment_id, last_history_id }` map.
--  `validate_requires_project` function L187-195 — `()` — plus a per-issue `{ last_comment_id, last_history_id }` map.
--  `jql_includes_since_when_present` function L198-207 — `()` — plus a per-issue `{ last_comment_id, last_history_id }` map.
+-  `run` function L64-155 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &V...` — plus a per-issue `{ last_comment_id, last_history_id }` map.
+-  `discover` function L157-176 — `( &self, ctx: &TemplateCtx, ) -> Result<Option<Vec<DiscoveryRow>>, FeedError>` — plus a per-issue `{ last_comment_id, last_history_id }` map.
+-  `effective_since` function L189-199 — `(cursor_iso: Option<&str>, params_since: Option<&str>) -> Option<String>` — Resolve the JQL time-floor for this run.
+-  `build_jql` function L201-211 — `(project: &str, since: Option<&str>) -> String` — plus a per-issue `{ last_comment_id, last_history_id }` map.
+-  `tests` module L214-264 — `-` — plus a per-issue `{ last_comment_id, last_history_id }` map.
+-  `validate_requires_project` function L218-226 — `()` — plus a per-issue `{ last_comment_id, last_history_id }` map.
+-  `effective_since_prefers_cursor_then_falls_back_to_params` function L229-251 — `()` — plus a per-issue `{ last_comment_id, last_history_id }` map.
+-  `jql_includes_since_when_present` function L254-263 — `()` — plus a per-issue `{ last_comment_id, last_history_id }` map.
 
 ### crates/arawn-feeds/src/templates
 
@@ -3334,17 +3336,17 @@
 
 #### crates/arawn-feeds/src/templates/slack/common.rs
 
-- pub `archive_channel_with_threads` function L34-169 — `( slack: &dyn SlackFeedClient, channel_id: &str, feed_dir: &Path, cursor: &Value...` — Two-pass dual-layer archive of a single Slack conversation.
-- pub `synth_since_cursor` function L180-204 — `( cursor: &Value, params: &crate::types::TemplateParams, ) -> Result<Value, Feed...` — First-run `since=` seeding for slack archive templates.
--  `append_message_to_day` function L208-212 — `(feed_dir: &Path, msg: &Value, ts: &str) -> Result<u64, FeedError>` — per-thread reply fetch + thread-file writes, cursor management.
--  `append_message_to_thread` function L214-224 — `( feed_dir: &Path, parent_ts: &str, msg: &Value, ) -> Result<u64, FeedError>` — per-thread reply fetch + thread-file writes, cursor management.
--  `append_line` function L226-239 — `(path: &Path, msg: &Value) -> Result<u64, FeedError>` — per-thread reply fetch + thread-file writes, cursor management.
--  `has_replies` function L241-246 — `(msg: &Value) -> bool` — per-thread reply fetch + thread-file writes, cursor management.
--  `ts_to_yyyy_mm_dd` function L250-260 — `(ts: &str) -> Result<String, FeedError>` — Parse Slack's float-string `ts` (`"1715000000.001234"`) and format
--  `tests` module L263-288 — `-` — per-thread reply fetch + thread-file writes, cursor management.
--  `ts_to_yyyy_mm_dd_parses_slack_format` function L268-272 — `()` — per-thread reply fetch + thread-file writes, cursor management.
--  `ts_to_yyyy_mm_dd_rejects_garbage` function L275-280 — `()` — per-thread reply fetch + thread-file writes, cursor management.
--  `has_replies_detects_reply_count` function L283-287 — `()` — per-thread reply fetch + thread-file writes, cursor management.
+- pub `archive_channel_with_threads` function L34-183 — `( slack: &dyn SlackFeedClient, channel_id: &str, feed_dir: &Path, cursor: &Value...` — Two-pass dual-layer archive of a single Slack conversation.
+- pub `synth_since_cursor` function L194-218 — `( cursor: &Value, params: &crate::types::TemplateParams, ) -> Result<Value, Feed...` — First-run `since=` seeding for slack archive templates.
+-  `append_message_to_day` function L222-226 — `(feed_dir: &Path, msg: &Value, ts: &str) -> Result<u64, FeedError>` — per-thread reply fetch + thread-file writes, cursor management.
+-  `append_message_to_thread` function L228-238 — `( feed_dir: &Path, parent_ts: &str, msg: &Value, ) -> Result<u64, FeedError>` — per-thread reply fetch + thread-file writes, cursor management.
+-  `append_line` function L240-253 — `(path: &Path, msg: &Value) -> Result<u64, FeedError>` — per-thread reply fetch + thread-file writes, cursor management.
+-  `has_replies` function L255-260 — `(msg: &Value) -> bool` — per-thread reply fetch + thread-file writes, cursor management.
+-  `ts_to_yyyy_mm_dd` function L264-274 — `(ts: &str) -> Result<String, FeedError>` — Parse Slack's float-string `ts` (`"1715000000.001234"`) and format
+-  `tests` module L277-302 — `-` — per-thread reply fetch + thread-file writes, cursor management.
+-  `ts_to_yyyy_mm_dd_parses_slack_format` function L282-286 — `()` — per-thread reply fetch + thread-file writes, cursor management.
+-  `ts_to_yyyy_mm_dd_rejects_garbage` function L289-294 — `()` — per-thread reply fetch + thread-file writes, cursor management.
+-  `has_replies_detects_reply_count` function L297-301 — `()` — per-thread reply fetch + thread-file writes, cursor management.
 
 #### crates/arawn-feeds/src/templates/slack/dm_archive.rs
 

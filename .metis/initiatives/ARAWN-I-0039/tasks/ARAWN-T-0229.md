@@ -4,14 +4,14 @@ level: task
 title: "Confluence space-archive feed: 401 scope mismatch on CQL search + page body"
 short_code: "ARAWN-T-0229"
 created_at: 2026-05-09T00:00:00+00:00
-updated_at: 2026-05-09T00:00:00+00:00
+updated_at: 2026-05-10T01:26:03.603238+00:00
 parent: ARAWN-I-0039
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/active"
 
 
 exit_criteria_met: false
@@ -107,3 +107,20 @@ So the 401 `scope does not match` is coming from an endpoint that needs a scope 
 ### Workaround for the user (current)
 
 `/disconnect atlassian` + `/connect atlassian` doesn't fix this case (token already has the right scopes), so the `sd` feed will keep failing until the actual scope is identified. `/feeds rm sd` to clear the failing schedule, or `/feeds pause sd` to stop the cron firings until the fix lands.
+
+### 2026-05-10 — fixed: scope additions + fresh /connect
+
+The three guessed-at scopes did the right thing. After landing them in `ATLASSIAN_OAUTH_SCOPES` and the user re-running `/disconnect atlassian` + `/connect atlassian` (twice — first attempt's accessible-resources discovery silently failed and stored an empty sites list), all three atlassian feeds came up clean:
+
+- `confluence/space-archive sd` — `status=ok`, 5 page dirs, 56K, cursor advancing.
+- `jira/assignee-tracker me` — `status=no-new-items`, 46 issue dirs, 704K.
+- `jira/project-tracker API` — `status=no-new-items`, 8 issue dirs, 148K.
+
+The missing scopes were:
+- `search:confluence` — granular CQL `/search` scope.
+- `read:confluence-content.summary` — required alongside `.all` for some v1 paths.
+- `read:content-details:confluence` — needed by v2 `?body-format=storage`.
+
+The `missing_scopes()` startup-warning safeguard from the first commit also stays in place to catch the older-token-with-fewer-scopes case for future users.
+
+Side note worth filing as its own follow-up: the silent-fail path in `AtlassianIntegration::connect` when accessible-resources discovery fails. The first reconnect persisted an empty sites list, the next `feed_run` failed with "no accessible sites — reconnect", and the user had to reconnect again. The integration should either retry discovery or refuse to persist the token if discovery fails. Filed separately.

@@ -49,7 +49,7 @@ impl FeedTemplate for AssigneeTrackerTemplate {
     async fn run(
         &self,
         ctx: &TemplateCtx,
-        _params: &TemplateParams,
+        params: &TemplateParams,
         feed_dir: &Path,
         cursor: &Value,
     ) -> Result<RunOutcome, FeedError> {
@@ -59,7 +59,14 @@ impl FeedTemplate for AssigneeTrackerTemplate {
         })?;
 
         let mut state = CursorState::from_value(cursor);
-        let jql = build_jql(state.latest_updated_iso.as_deref());
+        // First-run-only `since=` seed — see project_tracker for the
+        // shared semantic. After cursor advances past `since`, it's
+        // ignored.
+        let effective_since = super::project_tracker::effective_since(
+            state.latest_updated_iso.as_deref(),
+            params.0.get("since").and_then(|v| v.as_str()),
+        );
+        let jql = build_jql(effective_since.as_deref());
         let issues = atlassian.jql_search(&jql, MAX_RESULTS_PER_RUN).await?;
 
         let mut total_items: u64 = 0;

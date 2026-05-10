@@ -80,7 +80,16 @@ impl FeedTemplate for ProjectTrackerTemplate {
             .to_string();
 
         let mut state = CursorState::from_value(cursor);
-        let jql = build_jql(&project, state.latest_updated_iso.as_deref());
+        // First-run-only `since=` seed: when the cursor is null and
+        // `params.since` is set, fold it into the JQL `updated >=`
+        // clause instead of letting the query drop the time floor
+        // entirely. After cursor advances past `since`, params.since
+        // is ignored. See ARAWN-T-0233.
+        let effective_since = effective_since(
+            state.latest_updated_iso.as_deref(),
+            params.0.get("since").and_then(|v| v.as_str()),
+        );
+        let jql = build_jql(&project, effective_since.as_deref());
         let issues = atlassian.jql_search(&jql, MAX_RESULTS_PER_RUN).await?;
 
         let mut total_items: u64 = 0;
@@ -167,6 +176,28 @@ impl FeedTemplate for ProjectTrackerTemplate {
     }
 }
 
+/// Resolve the JQL time-floor for this run.
+///
+/// - Cursor present → use it (cursor wins).
+/// - Cursor null + `since` (RFC3339) → convert to JQL's `YYYY-MM-DD HH:mm` form.
+/// - Neither → None (no time clause; full table scan, capped at 100).
+///
+/// Uses the same shape as `assignee_tracker::effective_since` —
+/// duplicated rather than shared to keep the templates' time-format
+/// concerns local. If a third Jira template lands, hoist into a
+/// shared helper.
+pub(super) fn effective_since(cursor_iso: Option<&str>, params_since: Option<&str>) -> Option<String> {
+    if let Some(prior) = cursor_iso
+        && !prior.is_empty()
+    {
+        return Some(prior.to_string());
+    }
+    let since = params_since.filter(|s| !s.is_empty())?;
+    chrono::DateTime::parse_from_rfc3339(since)
+        .ok()
+        .map(|dt| dt.with_timezone(&chrono::Utc).format("%Y-%m-%d %H:%M").to_string())
+}
+
 fn build_jql(project: &str, since: Option<&str>) -> String {
     // Project keys are uppercase letters/numbers — safe to inline
     // without quoting. ORDER BY ensures deterministic cursor advance.
@@ -192,6 +223,31 @@ mod tests {
         assert!(ProjectTrackerTemplate.validate(&p).is_err());
         let p = TemplateParams(json!({ "project": "ENG" }));
         ProjectTrackerTemplate.validate(&p).unwrap();
+    }
+
+    #[test]
+    fn effective_since_prefers_cursor_then_falls_back_to_params() {
+        // Cursor wins when present.
+        let cur = Some("2026-05-01T12:00:00.000+0000");
+        let p = Some("2026-01-01T00:00:00+00:00");
+        assert_eq!(effective_since(cur, p), Some(cur.unwrap().to_string()));
+
+        // Cursor null + since set → since converted to JQL form.
+        let p = Some("2026-01-01T00:00:00+00:00");
+        assert_eq!(
+            effective_since(None, p),
+            Some("2026-01-01 00:00".to_string())
+        );
+
+        // Both null → None.
+        assert_eq!(effective_since(None, None), None);
+
+        // Garbage since (not RFC3339) → None.
+        assert_eq!(effective_since(None, Some("yesterday")), None);
+
+        // Empty cursor falls through to since.
+        let p = Some("2026-01-01T00:00:00+00:00");
+        assert_eq!(effective_since(Some(""), p), Some("2026-01-01 00:00".into()));
     }
 
     #[test]
