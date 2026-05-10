@@ -665,6 +665,16 @@ async fn register_one(
     // 4. Schedule it. UTC for now — feed cadences are absolute, the
     // user expresses cron in UTC. (A future task may wire workstream
     // / user timezone in.)
+    //
+    // Idempotency: cloacina's `register_cron_workflow` always inserts
+    // a new row — there's no upsert. So every call to register_one
+    // (boot-time scan + every /watch + every resume) would accumulate
+    // a duplicate cron schedule for the same workflow_name, and each
+    // cron tick fires ALL of them. Surfaced during T-0218 UAT —
+    // 7 schedules per feed after a few server restarts. Clean it up
+    // here by deleting any pre-existing schedule for this
+    // workflow_name before we register the new one.
+    delete_schedule_for(runner, &workflow_name).await?;
     runner
         .register_cron_workflow(&workflow_name, &record.cadence, "UTC")
         .await
