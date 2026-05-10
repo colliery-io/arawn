@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-10T11:28:34Z | 257 files | Python, Rust
+> Generated: 2026-05-10T13:22:27Z | 257 files | Python, Rust
 
 ## Project Structure
 
@@ -2968,13 +2968,18 @@
 -  `google_err` function L130-141 — `(op: &str, msg: String) -> FeedError` — Drive tools use.
 -  `from_api` function L143-155 — `(f: google_drive3::api::File) -> DriveFile` — Drive tools use.
 -  `RealDriveClient` type L158-309 — `impl DriveFeedClient for RealDriveClient` — Drive tools use.
--  `resolve_folder` function L159-212 — `(&self, path_or_id: &str) -> Result<String, FeedError>` — Drive tools use.
--  `list_folder_children` function L214-242 — `(&self, folder_id: &str) -> Result<Vec<DriveFile>, FeedError>` — Drive tools use.
--  `list_modified_since` function L244-270 — `( &self, since: DateTime<Utc>, max_results: u32, ) -> Result<Vec<DriveFile>, Fee...` — Drive tools use.
+-  `resolve_folder` function L159-197 — `(&self, path_or_id: &str) -> Result<String, FeedError>` — Drive tools use.
+-  `list_folder_children` function L199-227 — `(&self, folder_id: &str) -> Result<Vec<DriveFile>, FeedError>` — Drive tools use.
+-  `list_modified_since` function L229-270 — `( &self, since: DateTime<Utc>, max_results: u32, ) -> Result<Vec<DriveFile>, Fee...` — Drive tools use.
+-  `DRIVE_MAX_PAGE_SIZE` variable L238 — `: u32` — Drive tools use.
 -  `download` function L272-308 — `( &self, file_id: &str, export_mime: Option<&str>, ) -> Result<Vec<u8>, FeedErro...` — Drive tools use.
--  `tests` module L312-339 — `-` — Drive tools use.
--  `export_for_covers_known_natives` function L316-326 — `()` — Drive tools use.
--  `unsupported_native_excludes_folders_and_known_exports` function L329-338 — `()` — Drive tools use.
+-  `try_id_lookup` function L316-334 — `( integration: &arawn_integrations::drive::GoogleDriveIntegration, id: &str, ) -...` — Try a Drive `files.get` against `path_or_id` as a literal id.
+-  `walk_path` function L340-370 — `( integration: &arawn_integrations::drive::GoogleDriveIntegration, path: &str, )...` — Walk a slash-delimited folder path under My Drive root one
+-  `is_not_found` function L376-379 — `(provider_msg: &str) -> bool` — Detect Drive's 404 error body in a `FeedError::Provider` message.
+-  `tests` module L382-423 — `-` — Drive tools use.
+-  `export_for_covers_known_natives` function L386-396 — `()` — Drive tools use.
+-  `is_not_found_recognizes_drive_404_shapes` function L399-410 — `()` — Drive tools use.
+-  `unsupported_native_excludes_folders_and_known_exports` function L413-422 — `()` — Drive tools use.
 
 #### crates/arawn-feeds/src/clients/gmail.rs
 
@@ -2984,9 +2989,10 @@
 -  `RealGmailClient` type L45-49 — `= RealGmailClient` — provider-agnostic and makes mocking trivial.
 -  `integ_err` function L51-57 — `(e: arawn_integrations::IntegrationError) -> FeedError` — provider-agnostic and makes mocking trivial.
 -  `google_err` function L59-70 — `(op: &str, msg: String) -> FeedError` — provider-agnostic and makes mocking trivial.
--  `RealGmailClient` type L73-108 — `impl GmailFeedClient for RealGmailClient` — provider-agnostic and makes mocking trivial.
--  `list_message_ids` function L74-94 — `( &self, query: &str, max_results: u32, ) -> Result<Vec<String>, FeedError>` — provider-agnostic and makes mocking trivial.
--  `get_message` function L96-107 — `(&self, id: &str) -> Result<Value, FeedError>` — provider-agnostic and makes mocking trivial.
+-  `RealGmailClient` type L73-130 — `impl GmailFeedClient for RealGmailClient` — provider-agnostic and makes mocking trivial.
+-  `list_message_ids` function L74-116 — `( &self, query: &str, max_results: u32, ) -> Result<Vec<String>, FeedError>` — provider-agnostic and makes mocking trivial.
+-  `GMAIL_MAX_PAGE_SIZE` variable L85 — `: u32` — provider-agnostic and makes mocking trivial.
+-  `get_message` function L118-129 — `(&self, id: &str) -> Result<Value, FeedError>` — provider-agnostic and makes mocking trivial.
 
 #### crates/arawn-feeds/src/clients/mod.rs
 
@@ -3154,16 +3160,17 @@
 -  `NAME` variable L45 — `: &str` — the first run, when the cursor is null.
 -  `DEFAULT_DAYS_BACK` variable L46 — `: i64` — the first run, when the cursor is null.
 -  `MAX_RESULTS_PER_RUN` variable L47 — `: u32` — the first run, when the cursor is null.
--  `RecentTemplate` type L50-160 — `impl FeedTemplate for RecentTemplate` — the first run, when the cursor is null.
--  `name` function L51-53 — `(&self) -> &'static str` — the first run, when the cursor is null.
--  `validate` function L55-67 — `(&self, params: &TemplateParams) -> Result<(), FeedError>` — the first run, when the cursor is null.
--  `defaults` function L69-74 — `(&self, _params: &TemplateParams) -> FeedDefaults` — the first run, when the cursor is null.
--  `run` function L76-159 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &V...` — the first run, when the cursor is null.
--  `write_file_metadata` function L162-172 — `(path: &Path, file: &DriveFile) -> Result<u64, FeedError>` — the first run, when the cursor is null.
--  `tests` module L175-196 — `-` — the first run, when the cursor is null.
--  `validate_default_params` function L179-181 — `()` — the first run, when the cursor is null.
--  `validate_rejects_bad_days_back` function L184-189 — `()` — the first run, when the cursor is null.
--  `defaults_use_30min_cadence` function L192-195 — `()` — the first run, when the cursor is null.
+-  `BACKFILL_MAX_RESULTS` variable L51 — `: u32` — Cap used when in backfill mode (cursor null + `since` present).
+-  `RecentTemplate` type L54-181 — `impl FeedTemplate for RecentTemplate` — the first run, when the cursor is null.
+-  `name` function L55-57 — `(&self) -> &'static str` — the first run, when the cursor is null.
+-  `validate` function L59-71 — `(&self, params: &TemplateParams) -> Result<(), FeedError>` — the first run, when the cursor is null.
+-  `defaults` function L73-78 — `(&self, _params: &TemplateParams) -> FeedDefaults` — the first run, when the cursor is null.
+-  `run` function L80-180 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &V...` — the first run, when the cursor is null.
+-  `write_file_metadata` function L183-193 — `(path: &Path, file: &DriveFile) -> Result<u64, FeedError>` — the first run, when the cursor is null.
+-  `tests` module L196-217 — `-` — the first run, when the cursor is null.
+-  `validate_default_params` function L200-202 — `()` — the first run, when the cursor is null.
+-  `validate_rejects_bad_days_back` function L205-210 — `()` — the first run, when the cursor is null.
+-  `defaults_use_30min_cadence` function L213-216 — `()` — the first run, when the cursor is null.
 
 ### crates/arawn-feeds/src/templates/gmail
 
@@ -3171,43 +3178,49 @@
 
 #### crates/arawn-feeds/src/templates/gmail/common.rs
 
-- pub `DEFAULT_MAX_RESULTS` variable L49 — `: u32` — Hard cap on how many ids we'll pull per run.
-- pub `archive_query` function L57-140 — `( gmail: Arc<dyn GmailFeedClient>, feed_dir: &Path, query: &str, cursor: &Value,...` — Run a Gmail archive over `query`, writing every new message under
--  `existing_message_path` function L147-160 — `(feed_dir: &Path, id: &str) -> Option<std::path::PathBuf>` — Probe every day partition under `feed_dir` for an existing
--  `parse_internal_date` function L162-170 — `(msg: &Value) -> Option<i64>` — list ordering, so it's the right key.
--  `ms_to_yyyy_mm_dd` function L172-180 — `(ms: i64) -> Result<String, FeedError>` — list ordering, so it's the right key.
--  `write_message_file` function L182-195 — `(path: &Path, msg: &Value) -> Result<u64, FeedError>` — list ordering, so it's the right key.
--  `tests` module L198-219 — `-` — list ordering, so it's the right key.
--  `ms_to_yyyy_mm_dd_basic` function L202-208 — `()` — list ordering, so it's the right key.
--  `parse_internal_date_string_or_number` function L211-218 — `()` — list ordering, so it's the right key.
+- pub `DEFAULT_MAX_RESULTS` variable L49 — `: u32` — Steady-state per-call cap.
+- pub `BACKFILL_MAX_RESULTS` variable L55 — `: u32` — Cap used by the backfill spawn loop (T-0234).
+- pub `compose_time_bound` function L66-83 — `( cursor: &Value, params_since: Option<&str>, days_back: u64, ) -> (String, u32)` — Compose the time-bound clause + per-call cap for one Gmail run.
+- pub `archive_query` function L92-174 — `( gmail: Arc<dyn GmailFeedClient>, feed_dir: &Path, query: &str, cursor: &Value,...` — Run a Gmail archive over `query`, writing every new message under
+-  `existing_message_path` function L181-194 — `(feed_dir: &Path, id: &str) -> Option<std::path::PathBuf>` — Probe every day partition under `feed_dir` for an existing
+-  `parse_internal_date` function L196-204 — `(msg: &Value) -> Option<i64>` — list ordering, so it's the right key.
+-  `ms_to_yyyy_mm_dd` function L206-214 — `(ms: i64) -> Result<String, FeedError>` — list ordering, so it's the right key.
+-  `write_message_file` function L216-229 — `(path: &Path, msg: &Value) -> Result<u64, FeedError>` — list ordering, so it's the right key.
+-  `tests` module L232-289 — `-` — list ordering, so it's the right key.
+-  `ms_to_yyyy_mm_dd_basic` function L236-242 — `()` — list ordering, so it's the right key.
+-  `compose_time_bound_steady_state_uses_newer_than` function L245-251 — `()` — list ordering, so it's the right key.
+-  `compose_time_bound_first_run_with_since_uses_after` function L254-261 — `()` — list ordering, so it's the right key.
+-  `compose_time_bound_first_run_without_since_falls_back_to_days_back` function L264-269 — `()` — list ordering, so it's the right key.
+-  `compose_time_bound_garbage_since_falls_back` function L272-278 — `()` — list ordering, so it's the right key.
+-  `parse_internal_date_string_or_number` function L281-288 — `()` — list ordering, so it's the right key.
 
 #### crates/arawn-feeds/src/templates/gmail/inbox_archive.rs
 
 - pub `InboxArchiveTemplate` struct L25 — `-` — pause.
 -  `NAME` variable L27 — `: &str` — pause.
 -  `DEFAULT_DAYS_BACK` variable L28 — `: u32` — pause.
--  `InboxArchiveTemplate` type L31-75 — `impl FeedTemplate for InboxArchiveTemplate` — pause.
+-  `InboxArchiveTemplate` type L31-80 — `impl FeedTemplate for InboxArchiveTemplate` — pause.
 -  `name` function L32-34 — `(&self) -> &'static str` — pause.
 -  `validate` function L36-48 — `(&self, params: &TemplateParams) -> Result<(), FeedError>` — pause.
 -  `defaults` function L50-55 — `(&self, _params: &TemplateParams) -> FeedDefaults` — pause.
--  `run` function L57-74 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &V...` — pause.
--  `tests` module L78-103 — `-` — pause.
--  `validate_default_params` function L82-86 — `()` — pause.
--  `validate_rejects_bad_days_back` function L89-96 — `()` — pause.
--  `defaults_use_15min_cadence` function L99-102 — `()` — pause.
+-  `run` function L57-79 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &V...` — pause.
+-  `tests` module L83-108 — `-` — pause.
+-  `validate_default_params` function L87-91 — `()` — pause.
+-  `validate_rejects_bad_days_back` function L94-101 — `()` — pause.
+-  `defaults_use_15min_cadence` function L104-107 — `()` — pause.
 
 #### crates/arawn-feeds/src/templates/gmail/label_archive.rs
 
 - pub `LabelArchiveTemplate` struct L33 — `-` — the feed run as a no-op than to bind validity at registration time.
 -  `NAME` variable L35 — `: &str` — the feed run as a no-op than to bind validity at registration time.
 -  `DEFAULT_DAYS_BACK` variable L36 — `: u32` — the feed run as a no-op than to bind validity at registration time.
--  `LabelArchiveTemplate` type L39-96 — `impl FeedTemplate for LabelArchiveTemplate` — the feed run as a no-op than to bind validity at registration time.
+-  `LabelArchiveTemplate` type L39-101 — `impl FeedTemplate for LabelArchiveTemplate` — the feed run as a no-op than to bind validity at registration time.
 -  `name` function L40-42 — `(&self) -> &'static str` — the feed run as a no-op than to bind validity at registration time.
 -  `validate` function L44-64 — `(&self, params: &TemplateParams) -> Result<(), FeedError>` — the feed run as a no-op than to bind validity at registration time.
 -  `defaults` function L66-71 — `(&self, _params: &TemplateParams) -> FeedDefaults` — the feed run as a no-op than to bind validity at registration time.
--  `run` function L73-95 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &V...` — the feed run as a no-op than to bind validity at registration time.
--  `tests` module L99-112 — `-` — the feed run as a no-op than to bind validity at registration time.
--  `validate_requires_label` function L103-111 — `()` — the feed run as a no-op than to bind validity at registration time.
+-  `run` function L73-100 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &V...` — the feed run as a no-op than to bind validity at registration time.
+-  `tests` module L104-117 — `-` — the feed run as a no-op than to bind validity at registration time.
+-  `validate_requires_label` function L108-116 — `()` — the feed run as a no-op than to bind validity at registration time.
 
 #### crates/arawn-feeds/src/templates/gmail/mod.rs
 
@@ -3221,14 +3234,14 @@
 - pub `SenderFilterTemplate` struct L28 — `-` — [`super::common`].
 -  `NAME` variable L30 — `: &str` — [`super::common`].
 -  `DEFAULT_DAYS_BACK` variable L31 — `: u32` — [`super::common`].
--  `SenderFilterTemplate` type L34-97 — `impl FeedTemplate for SenderFilterTemplate` — [`super::common`].
+-  `SenderFilterTemplate` type L34-102 — `impl FeedTemplate for SenderFilterTemplate` — [`super::common`].
 -  `name` function L35-37 — `(&self) -> &'static str` — [`super::common`].
 -  `validate` function L39-63 — `(&self, params: &TemplateParams) -> Result<(), FeedError>` — [`super::common`].
 -  `defaults` function L65-70 — `(&self, _params: &TemplateParams) -> FeedDefaults` — [`super::common`].
--  `run` function L72-96 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &V...` — [`super::common`].
--  `tests` module L100-122 — `-` — [`super::common`].
--  `validate_requires_sender_pattern` function L104-112 — `()` — [`super::common`].
--  `validate_rejects_bad_days_back` function L115-121 — `()` — [`super::common`].
+-  `run` function L72-101 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &V...` — [`super::common`].
+-  `tests` module L105-127 — `-` — [`super::common`].
+-  `validate_requires_sender_pattern` function L109-117 — `()` — [`super::common`].
+-  `validate_rejects_bad_days_back` function L120-126 — `()` — [`super::common`].
 
 ### crates/arawn-feeds/src/templates/jira
 

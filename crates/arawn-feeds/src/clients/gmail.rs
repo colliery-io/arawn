@@ -76,21 +76,43 @@ impl GmailFeedClient for RealGmailClient {
         query: &str,
         max_results: u32,
     ) -> Result<Vec<String>, FeedError> {
+        // Walk Gmail's `nextPageToken` until we have `max_results` ids
+        // or the result set is exhausted. Per-page is capped at
+        // Gmail's max of 500. For the cron-tick path, callers pass a
+        // small `max_results` (~100) and we make a single call. For
+        // the backfill path (T-0234), callers pass a larger
+        // `max_results` (e.g. 5000) and we paginate until done.
+        const GMAIL_MAX_PAGE_SIZE: u32 = 500;
         let hub = self.integration.hub().map_err(integ_err)?;
-        let (_resp, list) = hub
-            .users()
-            .messages_list("me")
-            .q(query)
-            .max_results(max_results)
-            .doit()
-            .await
-            .map_err(|e| google_err("messages.list", e.to_string()))?;
-        Ok(list
-            .messages
-            .unwrap_or_default()
-            .into_iter()
-            .filter_map(|m| m.id)
-            .collect())
+        let mut collected: Vec<String> = Vec::new();
+        let mut page_token: Option<String> = None;
+        while collected.len() < max_results as usize {
+            let remaining = max_results as usize - collected.len();
+            let page_size = (remaining as u32).min(GMAIL_MAX_PAGE_SIZE);
+            let mut req = hub
+                .users()
+                .messages_list("me")
+                .q(query)
+                .max_results(page_size);
+            if let Some(t) = page_token.as_deref() {
+                req = req.page_token(t);
+            }
+            let (_resp, list) = req
+                .doit()
+                .await
+                .map_err(|e| google_err("messages.list", e.to_string()))?;
+            collected.extend(
+                list.messages
+                    .unwrap_or_default()
+                    .into_iter()
+                    .filter_map(|m| m.id),
+            );
+            match list.next_page_token {
+                Some(t) if !t.is_empty() => page_token = Some(t),
+                _ => break,
+            }
+        }
+        Ok(collected)
     }
 
     async fn get_message(&self, id: &str) -> Result<Value, FeedError> {

@@ -43,22 +43,58 @@ use crate::error::FeedError;
 use crate::template::RunOutcome;
 use crate::types::RunSummary;
 
-/// Hard cap on how many ids we'll pull per run. Gmail caps `maxResults`
-/// at 500; we pick a smaller default — feeds are continual, so any
-/// excess gets picked up next tick instead of fighting one giant page.
+/// Steady-state per-call cap. Gmail's per-page max is 500; this
+/// smaller default means a single steady-state cron tick fetches at
+/// most 100 ids and trusts the next tick to pick up any excess.
 pub const DEFAULT_MAX_RESULTS: u32 = 100;
+
+/// Cap used by the backfill spawn loop (T-0234). Sized to cover most
+/// practical history windows in a single helper invocation; the
+/// adapter walks Gmail's pageToken until it has this many ids or the
+/// result set is exhausted.
+pub const BACKFILL_MAX_RESULTS: u32 = 5_000;
+
+/// Compose the time-bound clause + per-call cap for one Gmail run.
+///
+/// First-run with `params.since` set → `after:<unix_ts>` (the Gmail
+/// operator that takes a unix-seconds floor) plus the backfill cap.
+/// Otherwise the template's default `newer_than:<days_back>d` plus
+/// the steady-state cap.
+///
+/// Returns `(time_clause, max_results)`. Templates concatenate the
+/// time clause onto their base query (e.g. `"in:inbox"`).
+pub fn compose_time_bound(
+    cursor: &Value,
+    params_since: Option<&str>,
+    days_back: u64,
+) -> (String, u32) {
+    let cursor_set = cursor
+        .get("latest_internal_date")
+        .and_then(|v| v.as_i64())
+        .is_some();
+    if !cursor_set
+        && let Some(since) = params_since.filter(|s| !s.is_empty())
+        && let Ok(dt) = chrono::DateTime::parse_from_rfc3339(since)
+    {
+        let secs = dt.timestamp();
+        return (format!("after:{secs}"), BACKFILL_MAX_RESULTS);
+    }
+    (format!("newer_than:{days_back}d"), DEFAULT_MAX_RESULTS)
+}
 
 /// Run a Gmail archive over `query`, writing every new message under
 /// `feed_dir`. Shared by every Gmail template.
 ///
 /// `query` should already include any time bound the caller cares
-/// about (e.g. `"newer_than:7d"`); we don't add one here so each
-/// template owns the exact semantics of its window.
+/// about (composed via [`compose_time_bound`]); we don't add one
+/// here so each template owns the base shape (e.g. `in:inbox`,
+/// `from:foo`).
 pub async fn archive_query(
     gmail: Arc<dyn GmailFeedClient>,
     feed_dir: &Path,
     query: &str,
     cursor: &Value,
+    max_results: u32,
 ) -> Result<RunOutcome, FeedError> {
     let started = Instant::now();
 
@@ -66,9 +102,7 @@ pub async fn archive_query(
         .get("latest_internal_date")
         .and_then(|v| v.as_i64());
 
-    let ids = gmail
-        .list_message_ids(query, DEFAULT_MAX_RESULTS)
-        .await?;
+    let ids = gmail.list_message_ids(query, max_results).await?;
 
     let mut total_items: u64 = 0;
     let mut total_bytes: u64 = 0;
@@ -205,6 +239,42 @@ mod tests {
             .unwrap()
             .timestamp_millis();
         assert_eq!(ms_to_yyyy_mm_dd(ms).unwrap(), "2026-05-08");
+    }
+
+    #[test]
+    fn compose_time_bound_steady_state_uses_newer_than() {
+        // Cursor present → steady-state, params.since ignored.
+        let cursor = json!({ "latest_internal_date": 1778414400000_i64 });
+        let (clause, cap) = compose_time_bound(&cursor, Some("2026-01-01T00:00:00Z"), 7);
+        assert_eq!(clause, "newer_than:7d");
+        assert_eq!(cap, DEFAULT_MAX_RESULTS);
+    }
+
+    #[test]
+    fn compose_time_bound_first_run_with_since_uses_after() {
+        // Cursor null + since set → backfill mode.
+        let cursor = json!({ "latest_internal_date": Value::Null });
+        let (clause, cap) = compose_time_bound(&cursor, Some("2026-01-01T00:00:00+00:00"), 7);
+        // 2026-01-01T00:00:00Z = 1767225600 unix seconds
+        assert_eq!(clause, "after:1767225600");
+        assert_eq!(cap, BACKFILL_MAX_RESULTS);
+    }
+
+    #[test]
+    fn compose_time_bound_first_run_without_since_falls_back_to_days_back() {
+        let cursor = json!({ "latest_internal_date": Value::Null });
+        let (clause, cap) = compose_time_bound(&cursor, None, 30);
+        assert_eq!(clause, "newer_than:30d");
+        assert_eq!(cap, DEFAULT_MAX_RESULTS);
+    }
+
+    #[test]
+    fn compose_time_bound_garbage_since_falls_back() {
+        // Bad RFC3339 → treat as if since wasn't set.
+        let cursor = json!({ "latest_internal_date": Value::Null });
+        let (clause, cap) = compose_time_bound(&cursor, Some("yesterday"), 7);
+        assert_eq!(clause, "newer_than:7d");
+        assert_eq!(cap, DEFAULT_MAX_RESULTS);
     }
 
     #[test]

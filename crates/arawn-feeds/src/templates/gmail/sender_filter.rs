@@ -20,7 +20,7 @@ use std::path::Path;
 use async_trait::async_trait;
 use serde_json::{Value, json};
 
-use super::common::archive_query;
+use super::common::{archive_query, compose_time_bound};
 use crate::error::FeedError;
 use crate::template::{FeedTemplate, RunOutcome, TemplateCtx};
 use crate::types::{FeedDefaults, TemplateParams};
@@ -89,10 +89,15 @@ impl FeedTemplate for SenderFilterTemplate {
             .get("days_back")
             .and_then(|v| v.as_u64())
             .unwrap_or(DEFAULT_DAYS_BACK as u64);
+        let (time_clause, max_results) = compose_time_bound(
+            cursor,
+            params.0.get("since").and_then(|v| v.as_str()),
+            days_back,
+        );
         // Quote in case the sender contains shell-y characters; Gmail
         // accepts quoted from: values.
-        let query = format!("from:\"{sender}\" newer_than:{days_back}d");
-        archive_query(gmail, feed_dir, &query, cursor).await
+        let query = format!("from:\"{sender}\" {time_clause}");
+        archive_query(gmail, feed_dir, &query, cursor, max_results).await
     }
 }
 

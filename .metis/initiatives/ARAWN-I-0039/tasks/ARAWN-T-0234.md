@@ -4,17 +4,18 @@ level: task
 title: "Gmail + Drive cold-start backfill: pageToken pagination + walk-backward cursor"
 short_code: "ARAWN-T-0234"
 created_at: 2026-05-10T00:00:00+00:00
-updated_at: 2026-05-10T00:00:00+00:00
+updated_at: 2026-05-10T13:25:10.697274+00:00
 parent: ARAWN-I-0039
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
+initiative_id: NULL
 ---
 
 # Gmail + Drive cold-start backfill: pageToken pagination + walk-backward cursor
@@ -56,6 +57,10 @@ Alternative: keep the cursor as a timestamp but use `before:<oldest_seen>` to wa
 
 ## Acceptance Criteria
 
+## Acceptance Criteria
+
+## Acceptance Criteria
+
 - [ ] `RealGmailClient::list_message_ids` paginates internally (or exposes pageToken). Cap at e.g. 5 pages per call to keep cron-tick latency bounded.
 - [ ] `RealDriveClient::list_modified_since` same.
 - [ ] Backfill mode in `templates/gmail/common.rs::archive_query`: when `params.since` is set + cursor is null, walk pages within the spawn-loop iteration until either no more pages OR a per-iteration cap.
@@ -75,4 +80,35 @@ Alternative: keep the cursor as a timestamp but use `before:<oldest_seen>` to wa
 
 ## Status Updates
 
-*To be added during implementation*
+### 2026-05-10 — landed: adapter-internal pageToken pagination
+
+Took the simpler shape than the task plan suggested: instead of the cursor storing a pageToken across spawn-loop iterations, the adapter walks `nextPageToken` internally within a single helper call up to `max_results` total ids. Templates pick the cap per-call:
+
+- **Steady-state cron**: existing small caps (gmail 100, drive 200) → one API page → no behavior change.
+- **Backfill (cursor null + `params.since` set)**: bumps cap to 5000 → adapter walks pages until exhausted or 5000 ids accumulated.
+
+Spawn loop convergence is now 2 iterations regardless of how big the backfill is:
+- iter 1: paginated walk pulls everything in the window, writes all to disk, cursor advances to newest.
+- iter 2: same walk; every id matches `existing_message_path` skip (gmail) or cursor skip (drive). `items_written = 0`, loop exits.
+
+### Implementation
+
+- `RealGmailClient::list_message_ids` walks Gmail's nextPageToken with per-page cap of 500 (Gmail's API max). Caller's `max_results` is the total ceiling.
+- `RealDriveClient::list_modified_since` walks Drive's nextPageToken with per-page cap of 1000. Same shape.
+- New `compose_time_bound(cursor, params_since, days_back) -> (String, u32)` helper in `gmail/common.rs`. Returns `("after:<unix_ts>", BACKFILL_MAX_RESULTS)` for backfill mode, `("newer_than:<N>d", DEFAULT_MAX_RESULTS)` otherwise. All three Gmail templates call it.
+- `drive/recent.rs::run` mirrors the same logic inline (no helper since drive only has one template).
+
+### Tests
+
+4 new unit tests for `compose_time_bound`:
+- steady-state with cursor wins (since ignored)
+- first-run with since uses `after:<unix>` + backfill cap
+- first-run without since uses `newer_than:<days_back>d` + default cap
+- garbage RFC3339 since falls back to days_back path
+
+146 arawn-feeds tests green. Workspace + clippy clean.
+
+### Out of scope (still)
+
+- **Rate-limit Retry-After parsing for Gmail/Drive**. Backfill helpers can hit Gmail's per-user quota on 5000-id sweeps; current behavior is to surface `RateLimited` to the spawn loop and exit `backfill-failed`. User retries. T-0227's resilience matrix item 3 covers this.
+- **`slack/my-mentions` cold-start**. Day-grained `after:` operator needs different shape; deferred.

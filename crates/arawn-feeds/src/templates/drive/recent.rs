@@ -45,6 +45,10 @@ pub struct RecentTemplate;
 const NAME: &str = "drive/recent";
 const DEFAULT_DAYS_BACK: i64 = 7;
 const MAX_RESULTS_PER_RUN: u32 = 200;
+/// Cap used when in backfill mode (cursor null + `since` present).
+/// The drive adapter walks Drive's pageToken until it has this many
+/// files or the result set is exhausted. See ARAWN-T-0234.
+const BACKFILL_MAX_RESULTS: u32 = 5_000;
 
 #[async_trait]
 impl FeedTemplate for RecentTemplate {
@@ -91,19 +95,36 @@ impl FeedTemplate for RecentTemplate {
             .and_then(|v| v.as_u64())
             .unwrap_or(DEFAULT_DAYS_BACK as u64) as i64;
 
-        // Cursor wins when present; only fall back to days_back on
-        // first run.
-        let since: DateTime<Utc> = match cursor
+        // Cursor wins when present. On first run with `params.since`
+        // set, that's the time floor and we hit the backfill cap to
+        // cover deeper history (T-0234). Otherwise fall back to
+        // `now - days_back`.
+        let cursor_iso = cursor
             .get("latest_modified_iso")
             .and_then(|v| v.as_str())
-        {
-            Some(s) if !s.is_empty() => DateTime::parse_from_rfc3339(s)
-                .map_err(|e| FeedError::Schema(format!("bad cursor latest_modified_iso: {e}")))?
-                .with_timezone(&Utc),
-            _ => Utc::now() - Duration::days(days_back),
+            .filter(|s| !s.is_empty());
+        let params_since = params
+            .0
+            .get("since")
+            .and_then(|v| v.as_str())
+            .filter(|s| !s.is_empty());
+        let (since, max_results): (DateTime<Utc>, u32) = match (cursor_iso, params_since) {
+            (Some(s), _) => (
+                DateTime::parse_from_rfc3339(s)
+                    .map_err(|e| FeedError::Schema(format!("bad cursor latest_modified_iso: {e}")))?
+                    .with_timezone(&Utc),
+                MAX_RESULTS_PER_RUN,
+            ),
+            (None, Some(since_iso)) => (
+                DateTime::parse_from_rfc3339(since_iso)
+                    .map_err(|e| FeedError::InvalidParams(format!("bad since: {e}")))?
+                    .with_timezone(&Utc),
+                BACKFILL_MAX_RESULTS,
+            ),
+            (None, None) => (Utc::now() - Duration::days(days_back), MAX_RESULTS_PER_RUN),
         };
 
-        let files = drive.list_modified_since(since, MAX_RESULTS_PER_RUN).await?;
+        let files = drive.list_modified_since(since, max_results).await?;
 
         let mut total_items: u64 = 0;
         let mut total_bytes: u64 = 0;

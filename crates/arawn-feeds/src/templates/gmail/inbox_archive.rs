@@ -17,7 +17,7 @@ use std::path::Path;
 use async_trait::async_trait;
 use serde_json::{Value, json};
 
-use super::common::archive_query;
+use super::common::{archive_query, compose_time_bound};
 use crate::error::FeedError;
 use crate::template::{FeedTemplate, RunOutcome, TemplateCtx};
 use crate::types::{FeedDefaults, TemplateParams};
@@ -69,8 +69,13 @@ impl FeedTemplate for InboxArchiveTemplate {
             .get("days_back")
             .and_then(|v| v.as_u64())
             .unwrap_or(DEFAULT_DAYS_BACK as u64);
-        let query = format!("in:inbox newer_than:{days_back}d");
-        archive_query(gmail, feed_dir, &query, cursor).await
+        let (time_clause, max_results) = compose_time_bound(
+            cursor,
+            params.0.get("since").and_then(|v| v.as_str()),
+            days_back,
+        );
+        let query = format!("in:inbox {time_clause}");
+        archive_query(gmail, feed_dir, &query, cursor, max_results).await
     }
 }
 

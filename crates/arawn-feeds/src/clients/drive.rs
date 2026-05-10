@@ -231,27 +231,42 @@ impl DriveFeedClient for RealDriveClient {
         since: DateTime<Utc>,
         max_results: u32,
     ) -> Result<Vec<DriveFile>, FeedError> {
+        // Walk Drive's `nextPageToken` until we have `max_results`
+        // files or the result set is exhausted. Per-page is capped at
+        // Drive's max of 1000. Cron-tick callers pass a small cap
+        // (~200) for one call; backfill (T-0234) passes larger.
+        const DRIVE_MAX_PAGE_SIZE: u32 = 1000;
         let hub = self.integration.hub().map_err(integ_err)?;
         let q = format!(
             "modifiedTime > '{}' and trashed = false",
             since.to_rfc3339()
         );
-        let (_, resp) = hub
-            .files()
-            .list()
-            .q(&q)
-            .order_by("modifiedTime desc")
-            .page_size(max_results.min(1000) as i32)
-            .param("fields", FIELDS_LIST)
-            .doit()
-            .await
-            .map_err(|e| google_err("files.list(modified)", e.to_string()))?;
-        Ok(resp
-            .files
-            .unwrap_or_default()
-            .into_iter()
-            .map(from_api)
-            .collect())
+        let mut collected: Vec<DriveFile> = Vec::new();
+        let mut page_token: Option<String> = None;
+        while collected.len() < max_results as usize {
+            let remaining = max_results as usize - collected.len();
+            let page_size = (remaining as u32).min(DRIVE_MAX_PAGE_SIZE) as i32;
+            let mut req = hub
+                .files()
+                .list()
+                .q(&q)
+                .order_by("modifiedTime desc")
+                .page_size(page_size)
+                .param("fields", FIELDS_LIST);
+            if let Some(t) = page_token.as_deref() {
+                req = req.page_token(t);
+            }
+            let (_, resp) = req
+                .doit()
+                .await
+                .map_err(|e| google_err("files.list(modified)", e.to_string()))?;
+            collected.extend(resp.files.unwrap_or_default().into_iter().map(from_api));
+            match resp.next_page_token {
+                Some(t) if !t.is_empty() => page_token = Some(t),
+                _ => break,
+            }
+        }
+        Ok(collected)
     }
 
     async fn download(
