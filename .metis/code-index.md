@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-10T00:53:36Z | 257 files | Python, Rust
+> Generated: 2026-05-10T01:08:00Z | 257 files | Python, Rust
 
 ## Project Structure
 
@@ -2850,7 +2850,7 @@
 -  `delete_schedule_for` function L560-580 — `( runner: &CloacinaRunner, workflow_name: &str, ) -> Result<(), FeedError>` — Look up cloacina's cron schedule by workflow name and delete it
 -  `dir_size_bytes` function L582-602 — `(path: &std::path::Path) -> u64` — audit are all inherited from cloacina.
 -  `walk` function L583-598 — `(p: &std::path::Path, acc: &mut u64)` — audit are all inherited from cloacina.
--  `register_one` function L604-680 — `( runner: &CloacinaRunner, ctx: &FeedRuntimeContext, record: &FeedRecord, ) -> R...` — audit are all inherited from cloacina.
+-  `register_one` function L604-690 — `( runner: &CloacinaRunner, ctx: &FeedRuntimeContext, record: &FeedRecord, ) -> R...` — audit are all inherited from cloacina.
 
 #### crates/arawn-feeds/src/store.rs
 

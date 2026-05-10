@@ -132,8 +132,22 @@ pub async fn archive_channel_with_threads(
                     total_items += 1;
                     total_bytes += bytes;
                 }
+                // Cursor must advance monotonically. Slack's
+                // conversations.replies always returns the parent
+                // message regardless of `oldest`, so when no replies
+                // match the filter, `max(messages.ts) == parent_ts`,
+                // which is < the prior cursor (since replies are
+                // newer). Regressing would re-pull every reply on
+                // the next iteration.
                 if let Some(new_cursor) = page.next_cursor_ts {
-                    threads_cursor.insert(parent_ts.clone(), Value::String(new_cursor));
+                    let should_advance = match prior.as_deref() {
+                        Some(prior_ts) => new_cursor.as_str() > prior_ts,
+                        None => true,
+                    };
+                    if should_advance {
+                        threads_cursor
+                            .insert(parent_ts.clone(), Value::String(new_cursor));
+                    }
                 }
             }
             Err(e) => {
