@@ -74,7 +74,13 @@ impl AtlassianClient {
             return Err(IntegrationError::NotConnected("atlassian (token expired and no refresh token; reconnect)".to_string()));
         };
         let oauth = OAuthClient::new(self.integration.oauth_config());
-        let new_token = oauth.refresh(&refresh).await?;
+        let mut new_token = oauth.refresh(&refresh).await?;
+        // Carry forward extras (notably `sites` populated during
+        // connect()'s accessible-resources discovery). Without this,
+        // every refresh wipes the sites list and the next API call
+        // fails with "no accessible sites — reconnect" — see
+        // ARAWN-T-0235.
+        merge_prior_extras(&mut new_token, &token.extras);
         self.integration.save_token(&new_token)?;
         Ok(new_token.access)
     }
@@ -200,5 +206,93 @@ fn is_expired(token: &Token) -> bool {
         // Refresh 60s before actual expiry to avoid races on slow networks.
         Some(t) => Utc::now() + chrono::Duration::seconds(60) >= t,
         None => false,
+    }
+}
+
+/// Carry the prior token's extras into the refreshed token. New
+/// keys from the refresh response (rare for atlassian) take
+/// precedence; everything else (notably `sites`) is preserved so
+/// `select_site` keeps working post-refresh.
+///
+/// Extracted from `fresh_access_token` so the merge semantic is
+/// testable without an HTTP mock.
+fn merge_prior_extras(
+    new_token: &mut Token,
+    prior_extras: &serde_json::Map<String, serde_json::Value>,
+) {
+    for (k, v) in prior_extras.iter() {
+        new_token
+            .extras
+            .entry(k.clone())
+            .or_insert_with(|| v.clone());
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    fn token_with_extras(extras: serde_json::Map<String, serde_json::Value>) -> Token {
+        Token {
+            access: "stub-access".into(),
+            refresh: Some("stub-refresh".into()),
+            expires_at: None,
+            scope: None,
+            token_type: "Bearer".into(),
+            extras,
+        }
+    }
+
+    #[test]
+    fn refresh_preserves_sites_when_new_token_extras_empty() {
+        let prior_extras = {
+            let mut m = serde_json::Map::new();
+            m.insert(
+                "sites".into(),
+                json!([{"id":"abc","url":"https://acme.atlassian.net","name":"acme","scopes":[]}]),
+            );
+            m
+        };
+        let mut new_token = token_with_extras(serde_json::Map::new());
+        merge_prior_extras(&mut new_token, &prior_extras);
+        assert!(
+            new_token.extras.get("sites").is_some(),
+            "sites must survive the refresh"
+        );
+    }
+
+    #[test]
+    fn refresh_doesnt_overwrite_extras_the_provider_set() {
+        // Hypothetical: provider puts a "scope" or "session_id" in
+        // refresh response extras. Our merge keeps that.
+        let prior_extras = {
+            let mut m = serde_json::Map::new();
+            m.insert("sites".into(), json!(["site-a"]));
+            m.insert("session_id".into(), json!("old-id"));
+            m
+        };
+        let mut new_token = token_with_extras({
+            let mut m = serde_json::Map::new();
+            m.insert("session_id".into(), json!("new-id"));
+            m
+        });
+        merge_prior_extras(&mut new_token, &prior_extras);
+        // sites carried forward
+        assert_eq!(new_token.extras["sites"], json!(["site-a"]));
+        // session_id from new token wins
+        assert_eq!(new_token.extras["session_id"], json!("new-id"));
+    }
+
+    #[test]
+    fn refresh_with_empty_prior_extras_is_no_op() {
+        let mut new_token = token_with_extras({
+            let mut m = serde_json::Map::new();
+            m.insert("foo".into(), json!("bar"));
+            m
+        });
+        merge_prior_extras(&mut new_token, &serde_json::Map::new());
+        assert_eq!(new_token.extras["foo"], json!("bar"));
+        assert_eq!(new_token.extras.len(), 1);
     }
 }

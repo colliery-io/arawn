@@ -274,14 +274,18 @@ impl Integration for AtlassianIntegration {
         )
         .await?;
 
-        // Post-token: discover accessible_resources (the cloud_id list)
-        // and stash it in the token's extras. Failure here is a soft
-        // error — the token works for direct API calls but tools won't
-        // know which sites are available.
+        // Post-token: discover accessible_resources (the cloud_id
+        // list) and stash it in the token's extras. Without sites,
+        // every API call fails with "no accessible sites — reconnect"
+        // — discovery success is a hard requirement, not best-effort
+        // (see ARAWN-T-0235 Bug A). Retry with backoff on transient
+        // failures, then refuse to keep the token if discovery still
+        // can't populate a non-empty sites list.
         ctx.publish_progress("discovering accessible Atlassian sites…")
             .await;
-        match fetch_accessible_resources(&outcome.token.access).await {
-            Ok(sites) => {
+        let sites = retry_accessible_resources(&outcome.token.access, 3).await;
+        match sites {
+            Ok(sites) if !sites.is_empty() => {
                 let mut token = outcome.token.clone();
                 token.extras.insert(
                     "sites".to_string(),
@@ -299,12 +303,26 @@ impl Integration for AtlassianIntegration {
                 ))
                 .await;
             }
+            Ok(_empty) => {
+                // OAuth succeeded but the user has no Atlassian
+                // workspaces accessible to this token — almost
+                // certainly a missing or wrong scope grant. Drop the
+                // token and surface the error.
+                store.delete(SERVICE_NAME)?;
+                return Err(IntegrationError::NotConnected(
+                    "atlassian connect succeeded but no accessible sites were returned — \
+                     verify the OAuth app has Jira+Confluence scopes and your account is \
+                     a member of at least one site, then run /connect atlassian again"
+                        .into(),
+                ));
+            }
             Err(e) => {
                 tracing::warn!(error = %e, "atlassian accessible-resources discovery failed");
-                ctx.publish_progress(&format!(
-                    "warning: site discovery failed ({e}). Tools may need an explicit `site` arg."
-                ))
-                .await;
+                store.delete(SERVICE_NAME)?;
+                return Err(IntegrationError::NotConnected(format!(
+                    "atlassian accessible-resources discovery failed after retries ({e}). \
+                     Token discarded — re-run /connect atlassian to retry."
+                )));
             }
         }
         Ok(())
@@ -360,6 +378,42 @@ struct RawAccessibleResource {
 
 /// Hit `https://api.atlassian.com/oauth/token/accessible-resources` to
 /// learn which cloud sites the freshly-issued token has access to.
+/// Wrap `fetch_accessible_resources` with up to `attempts` retries
+/// on transient failure. Backoff is 200ms, 800ms, 3.2s — fits well
+/// inside a normal /connect interaction without making the user wait
+/// long if Atlassian is up. Used by `connect()` so a flaky network
+/// during the OAuth dance doesn't silently produce an empty-sites
+/// token.
+async fn retry_accessible_resources(
+    access: &str,
+    attempts: u32,
+) -> Result<Vec<AtlassianSite>, IntegrationError> {
+    let mut last_err: Option<IntegrationError> = None;
+    for attempt in 0..attempts {
+        if attempt > 0 {
+            let delay_ms = 200u64 * 4u64.pow(attempt - 1);
+            tokio::time::sleep(std::time::Duration::from_millis(delay_ms)).await;
+        }
+        match fetch_accessible_resources(access).await {
+            Ok(sites) => return Ok(sites),
+            Err(e) => {
+                tracing::warn!(
+                    attempt = attempt + 1,
+                    max = attempts,
+                    error = %e,
+                    "accessible-resources discovery attempt failed"
+                );
+                last_err = Some(e);
+            }
+        }
+    }
+    Err(last_err.unwrap_or_else(|| {
+        IntegrationError::Format(
+            "accessible-resources discovery failed with no error captured".into(),
+        )
+    }))
+}
+
 async fn fetch_accessible_resources(
     access_token: &str,
 ) -> Result<Vec<AtlassianSite>, IntegrationError> {
