@@ -65,4 +65,17 @@ The fallback should only fire on 404 specifically; any other error (auth, rate-l
 
 ## Status Updates
 
-*To be added during implementation*
+### 2026-05-10 — landed
+
+`RealDriveClient::resolve_folder` refactored. Old behavior preserved for `root`, raw IDs, and slash-paths. New: bare names try the ID path first; on 404 (detected via `is_not_found(provider_msg)`), fall back to a single-segment path-walk under My Drive root. If both fail, error message names both forms tried:
+
+> "no folder named or with id 'Letters' under My Drive — try a slash-prefixed path like '/Letters' or paste the folder ID from its Drive URL"
+
+Three free helpers extracted for testability:
+- `try_id_lookup(integration, id)` — ID-lookup with 404-as-Provider semantics
+- `walk_path(integration, path)` — slash-delimited path resolver (used by both the slash-form caller and the bare-name fallback)
+- `is_not_found(msg)` — string-matches Drive's 404 error body shapes
+
+One new unit test (`is_not_found_recognizes_drive_404_shapes`) covering 404 / "File not found" / "notFound" + negative cases (HTTP 500, 403, timeout). Mock-driven integration tests for the fallback path are noted as a v2 gap — landing the fix during UAT to unblock the next user who types a bare folder name.
+
+142 arawn-feeds tests green; workspace + clippy clean.

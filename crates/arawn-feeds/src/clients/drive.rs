@@ -157,58 +157,43 @@ fn from_api(f: google_drive3::api::File) -> DriveFile {
 #[async_trait]
 impl DriveFeedClient for RealDriveClient {
     async fn resolve_folder(&self, path_or_id: &str) -> Result<String, FeedError> {
-        // Plain "root" or anything that parses as a Drive id (no
-        // slashes, no spaces) — treat as id directly.
+        // Plain "root" → My Drive root.
         if path_or_id == "root" {
             return Ok("root".into());
         }
+
+        // Bare name (no slash): try as ID first, fall back to a
+        // single-segment path lookup if the ID lookup hits 404.
+        // Most-natural-thing-the-user-types ("Letters") shouldn't
+        // 404 just because it's not a Drive ID — see ARAWN-T-0232.
         if !path_or_id.contains('/') {
-            // Could be a literal id; verify by fetching metadata.
-            let hub = self.integration.hub().map_err(integ_err)?;
-            let (_, file) = hub
-                .files()
-                .get(path_or_id)
-                .param("fields", FIELDS_ONE)
-                .doit()
-                .await
-                .map_err(|e| google_err("files.get(folder)", e.to_string()))?;
-            if file.mime_type.as_deref() != Some(MIME_FOLDER) {
-                return Err(FeedError::InvalidParams(format!(
-                    "'{path_or_id}' resolves to a file, not a folder"
-                )));
+            match try_id_lookup(&self.integration, path_or_id).await {
+                Ok(id) => return Ok(id),
+                Err(FeedError::InvalidParams(_)) => {
+                    // Not a folder — fall through to path lookup,
+                    // user might have a name that looks like an id.
+                }
+                Err(FeedError::Provider(msg)) if is_not_found(&msg) => {
+                    // Bare-name → 404 → try as path under root.
+                }
+                Err(other) => return Err(other),
             }
-            return Ok(file.id.unwrap_or_default());
+            // Fall back to path-walk treating the bare name as a
+            // single segment under My Drive root.
+            return walk_path(&self.integration, path_or_id).await.map_err(|e| {
+                if let FeedError::InvalidParams(_) = &e {
+                    FeedError::InvalidParams(format!(
+                        "no folder named or with id '{path_or_id}' under My Drive — \
+                         try a slash-prefixed path like '/{path_or_id}' or paste the \
+                         folder ID from its Drive URL"
+                    ))
+                } else {
+                    e
+                }
+            });
         }
 
-        // Slash-delimited path under My Drive: walk one segment at a
-        // time. Each segment becomes a `name = '<seg>' and '<parent>'
-        // in parents and mimeType = '<folder-mime>'` query.
-        let hub = self.integration.hub().map_err(integ_err)?;
-        let mut current = "root".to_string();
-        for segment in path_or_id.split('/').filter(|s| !s.is_empty()) {
-            let escaped = segment.replace('\'', "\\'");
-            let q = format!(
-                "name = '{escaped}' and '{current}' in parents and \
-                 mimeType = '{MIME_FOLDER}' and trashed = false"
-            );
-            let (_, resp) = hub
-                .files()
-                .list()
-                .q(&q)
-                .param("fields", FIELDS_LIST)
-                .page_size(2)
-                .doit()
-                .await
-                .map_err(|e| google_err("files.list(resolve)", e.to_string()))?;
-            let mut iter = resp.files.unwrap_or_default().into_iter();
-            let first = iter.next().ok_or_else(|| {
-                FeedError::InvalidParams(format!(
-                    "no folder named '{segment}' under id '{current}'"
-                ))
-            })?;
-            current = first.id.unwrap_or_default();
-        }
-        Ok(current)
+        walk_path(&self.integration, path_or_id).await
     }
 
     async fn list_folder_children(&self, folder_id: &str) -> Result<Vec<DriveFile>, FeedError> {
@@ -308,6 +293,76 @@ impl DriveFeedClient for RealDriveClient {
     }
 }
 
+/// Try a Drive `files.get` against `path_or_id` as a literal id.
+/// Returns the file's id on success (only if the resolved file is a
+/// folder); maps a "file is not a folder" hit to `InvalidParams` and
+/// a 404 to a `Provider` error whose message starts with the upstream
+/// 404 body — callers use [`is_not_found`] to detect it.
+async fn try_id_lookup(
+    integration: &arawn_integrations::drive::GoogleDriveIntegration,
+    id: &str,
+) -> Result<String, FeedError> {
+    let hub = integration.hub().map_err(integ_err)?;
+    let (_, file) = hub
+        .files()
+        .get(id)
+        .param("fields", FIELDS_ONE)
+        .doit()
+        .await
+        .map_err(|e| google_err("files.get(folder)", e.to_string()))?;
+    if file.mime_type.as_deref() != Some(MIME_FOLDER) {
+        return Err(FeedError::InvalidParams(format!(
+            "'{id}' resolves to a file, not a folder"
+        )));
+    }
+    Ok(file.id.unwrap_or_default())
+}
+
+/// Walk a slash-delimited folder path under My Drive root one
+/// segment at a time. A bare segment (no slash) is treated as a
+/// single-segment path. Used by both the `folder=/Letters` form and
+/// the bare-name fallback when an id lookup 404s.
+async fn walk_path(
+    integration: &arawn_integrations::drive::GoogleDriveIntegration,
+    path: &str,
+) -> Result<String, FeedError> {
+    let hub = integration.hub().map_err(integ_err)?;
+    let mut current = "root".to_string();
+    for segment in path.split('/').filter(|s| !s.is_empty()) {
+        let escaped = segment.replace('\'', "\\'");
+        let q = format!(
+            "name = '{escaped}' and '{current}' in parents and \
+             mimeType = '{MIME_FOLDER}' and trashed = false"
+        );
+        let (_, resp) = hub
+            .files()
+            .list()
+            .q(&q)
+            .param("fields", FIELDS_LIST)
+            .page_size(2)
+            .doit()
+            .await
+            .map_err(|e| google_err("files.list(resolve)", e.to_string()))?;
+        let mut iter = resp.files.unwrap_or_default().into_iter();
+        let first = iter.next().ok_or_else(|| {
+            FeedError::InvalidParams(format!(
+                "no folder named '{segment}' under id '{current}'"
+            ))
+        })?;
+        current = first.id.unwrap_or_default();
+    }
+    Ok(current)
+}
+
+/// Detect Drive's 404 error body in a `FeedError::Provider` message.
+/// The slack/atlassian-style "match on string contents" approach —
+/// upstream `google-drive3` doesn't surface a typed status code at
+/// the layer we get the error.
+pub(crate) fn is_not_found(provider_msg: &str) -> bool {
+    let lc = provider_msg.to_ascii_lowercase();
+    lc.contains("404") || lc.contains("notfound") || lc.contains("not found")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -323,6 +378,20 @@ mod tests {
             Some(("text/csv", "csv"))
         );
         assert!(export_for("application/pdf").is_none());
+    }
+
+    #[test]
+    fn is_not_found_recognizes_drive_404_shapes() {
+        assert!(is_not_found(
+            "files.get(folder): HTTP 404: \
+             {\"error\":{\"code\":404,\"errors\":[{\"reason\":\"notFound\"}]}}"
+        ));
+        assert!(is_not_found("File not found: Letters."));
+        assert!(is_not_found("404"));
+        // Other errors don't trigger the bare-name fallback.
+        assert!(!is_not_found("HTTP 500: internal server error"));
+        assert!(!is_not_found("HTTP 403: forbidden"));
+        assert!(!is_not_found("connection timed out"));
     }
 
     #[test]

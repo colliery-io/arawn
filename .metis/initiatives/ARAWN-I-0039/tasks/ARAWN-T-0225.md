@@ -57,4 +57,17 @@ b) Use `is_channel` + `is_group` directly to derive the right tag.
 
 ## Status Updates
 
-*To be added during implementation*
+### 2026-05-10 — can't reproduce in current session
+
+Re-ran `/watch list slack/channel-archive` mid-UAT after several hours of session activity. `#general` now correctly shows **no** `private` tag, while genuinely-private channels keep theirs. Sample picker output:
+
+```
+{"hint": "C023Y17JN9G", "label": "#general", "params": {"channel": "..."}}
+{"hint": "C05NJ3ARS79  ·  private", "label": "#accrete", ...}
+{"hint": "C02UK7K22K0  ·  private", "label": "#astro", ...}
+{"hint": "C07P9N0G8CQ  ·  private", "label": "#domino-data-labs", ...}
+```
+
+The original screenshot did show `#general` mistagged. The most likely cause is that the slack adapter's `user_context().or_else(bot_context())` fallback was returning the bot context at first; the bot token's view of conversations.list may set `is_private=true` more aggressively than a user token does. Once the user context became available (after the session refreshed it), the picker started reading the right values.
+
+**Punting** — bug isn't currently reproducible. If it resurfaces, the fix path is to derive privacy state from `is_channel` + `is_group` rather than relying solely on `is_private` (`is_group=true` is the canonical legacy "private channel" marker). Re-open with a fresh repro if needed.

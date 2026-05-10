@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-10T11:14:27Z | 257 files | Python, Rust
+> Generated: 2026-05-10T11:28:34Z | 257 files | Python, Rust
 
 ## Project Structure
 
@@ -3834,18 +3834,24 @@
 
 - pub `AtlassianClient` struct L28-31 — `{ integration: Arc<AtlassianIntegration>, http: Client }` — Refresh-aware Atlassian HTTP client.
 - pub `new` function L34-39 — `(integration: Arc<AtlassianIntegration>) -> Self` — when needed, persisting the new token through the integration.
-- pub `jira_config` function L86-95 — `(&self, site: Option<&str>) -> Result<JiraConfig, IntegrationError>` — Build a `jira_v3_openapi::Configuration` for the selected site,
-- pub `confluence_get` function L98-107 — `( &self, path: &str, site: Option<&str>, query: &[(&str, String)], ) -> Result<T...` — GET a JSON-bodied resource from Confluence.
-- pub `confluence_post` function L110-119 — `( &self, path: &str, site: Option<&str>, body: &B, ) -> Result<T, IntegrationErr...` — POST a JSON body to Confluence.
-- pub `confluence_put` function L122-131 — `( &self, path: &str, site: Option<&str>, body: &B, ) -> Result<T, IntegrationErr...` — PUT a JSON body to Confluence (used by page update).
-- pub `confluence_v1_get` function L135-144 — `( &self, path: &str, site: Option<&str>, query: &[(&str, String)], ) -> Result<T...` — GET against the legacy Confluence v1 API.
--  `AtlassianClient` type L33-187 — `= AtlassianClient` — when needed, persisting the new token through the integration.
+- pub `jira_config` function L92-101 — `(&self, site: Option<&str>) -> Result<JiraConfig, IntegrationError>` — Build a `jira_v3_openapi::Configuration` for the selected site,
+- pub `confluence_get` function L104-113 — `( &self, path: &str, site: Option<&str>, query: &[(&str, String)], ) -> Result<T...` — GET a JSON-bodied resource from Confluence.
+- pub `confluence_post` function L116-125 — `( &self, path: &str, site: Option<&str>, body: &B, ) -> Result<T, IntegrationErr...` — POST a JSON body to Confluence.
+- pub `confluence_put` function L128-137 — `( &self, path: &str, site: Option<&str>, body: &B, ) -> Result<T, IntegrationErr...` — PUT a JSON body to Confluence (used by page update).
+- pub `confluence_v1_get` function L141-150 — `( &self, path: &str, site: Option<&str>, query: &[(&str, String)], ) -> Result<T...` — GET against the legacy Confluence v1 API.
+-  `AtlassianClient` type L33-193 — `= AtlassianClient` — when needed, persisting the new token through the integration.
 -  `product_base` function L47-64 — `( &self, product: Product, site: Option<&str>, ) -> Result<(AtlassianSite, Strin...` — Resolve the target site (defaulting to the first one) and return
--  `fresh_access_token` function L67-80 — `(&self) -> Result<String, IntegrationError>` — Get a fresh access token.
--  `send_json` function L146-166 — `( &self, method: Method, url: &str, query: &[(&str, String)], body: Option<&B>, ...` — when needed, persisting the new token through the integration.
--  `send` function L168-186 — `( &self, method: Method, url: &str, query: &[(&str, String)], body: Option<&B>, ...` — when needed, persisting the new token through the integration.
--  `Product` enum L190-196 — `Confluence | ConfluenceV1` — when needed, persisting the new token through the integration.
--  `is_expired` function L198-204 — `(token: &Token) -> bool` — when needed, persisting the new token through the integration.
+-  `fresh_access_token` function L67-86 — `(&self) -> Result<String, IntegrationError>` — Get a fresh access token.
+-  `send_json` function L152-172 — `( &self, method: Method, url: &str, query: &[(&str, String)], body: Option<&B>, ...` — when needed, persisting the new token through the integration.
+-  `send` function L174-192 — `( &self, method: Method, url: &str, query: &[(&str, String)], body: Option<&B>, ...` — when needed, persisting the new token through the integration.
+-  `Product` enum L196-202 — `Confluence | ConfluenceV1` — when needed, persisting the new token through the integration.
+-  `is_expired` function L204-210 — `(token: &Token) -> bool` — when needed, persisting the new token through the integration.
+-  `merge_prior_extras` function L219-229 — `( new_token: &mut Token, prior_extras: &serde_json::Map<String, serde_json::Valu...` — Carry the prior token's extras into the refreshed token.
+-  `tests` module L232-298 — `-` — when needed, persisting the new token through the integration.
+-  `token_with_extras` function L236-245 — `(extras: serde_json::Map<String, serde_json::Value>) -> Token` — when needed, persisting the new token through the integration.
+-  `refresh_preserves_sites_when_new_token_extras_empty` function L248-263 — `()` — when needed, persisting the new token through the integration.
+-  `refresh_doesnt_overwrite_extras_the_provider_set` function L266-285 — `()` — when needed, persisting the new token through the integration.
+-  `refresh_with_empty_prior_extras_is_no_op` function L288-297 — `()` — when needed, persisting the new token through the integration.
 
 #### crates/arawn-integrations/src/atlassian/confluence.rs
 
@@ -3964,17 +3970,18 @@
 -  `AtlassianIntegration` type L109-248 — `= AtlassianIntegration`
 -  `provider` function L233-243 — `(&self) -> AtlassianProviderConfig`
 -  `token_store` function L245-247 — `(&self) -> Result<TokenStore, IntegrationError>`
--  `AtlassianIntegration` type L251-348 — `impl Integration for AtlassianIntegration`
+-  `AtlassianIntegration` type L251-366 — `impl Integration for AtlassianIntegration`
 -  `name` function L252-254 — `(&self) -> &str`
 -  `is_connected` function L256-261 — `(&self) -> bool`
--  `connect` function L263-311 — `(&self, ctx: &dyn ConnectContext) -> Result<(), IntegrationError>`
--  `disconnect` function L313-317 — `(&self) -> Result<(), IntegrationError>`
--  `capabilities_summary` function L319-347 — `(&self) -> Option<String>`
--  `RawAccessibleResource` struct L353-359 — `{ id: String, url: String, name: String, scopes: Vec<String> }` — Atlassian's accessible-resources response shape (snake-case-d to
--  `fetch_accessible_resources` function L363-393 — `( access_token: &str, ) -> Result<Vec<AtlassianSite>, IntegrationError>` — Hit `https://api.atlassian.com/oauth/token/accessible-resources` to
--  `tests` module L396-438 — `-`
--  `default_provider_carries_jira_classic_and_confluence_v2_scopes` function L400-424 — `()`
--  `provider_lifts_into_oauth_config_with_audience` function L427-437 — `()`
+-  `connect` function L263-329 — `(&self, ctx: &dyn ConnectContext) -> Result<(), IntegrationError>`
+-  `disconnect` function L331-335 — `(&self) -> Result<(), IntegrationError>`
+-  `capabilities_summary` function L337-365 — `(&self) -> Option<String>`
+-  `RawAccessibleResource` struct L371-377 — `{ id: String, url: String, name: String, scopes: Vec<String> }` — Atlassian's accessible-resources response shape (snake-case-d to
+-  `retry_accessible_resources` function L387-415 — `( access: &str, attempts: u32, ) -> Result<Vec<AtlassianSite>, IntegrationError>` — Hit `https://api.atlassian.com/oauth/token/accessible-resources` to
+-  `fetch_accessible_resources` function L417-447 — `( access_token: &str, ) -> Result<Vec<AtlassianSite>, IntegrationError>`
+-  `tests` module L450-492 — `-`
+-  `default_provider_carries_jira_classic_and_confluence_v2_scopes` function L454-478 — `()`
+-  `provider_lifts_into_oauth_config_with_audience` function L481-491 — `()`
 
 #### crates/arawn-integrations/src/atlassian/jira.rs
 
