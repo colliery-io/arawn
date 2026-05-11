@@ -4,14 +4,14 @@ level: task
 title: "Phase 3 — Gmail + Calendar feed templates"
 short_code: "ARAWN-T-0216"
 created_at: 2026-05-07T00:42:27.570116+00:00
-updated_at: 2026-05-07T00:42:27.570116+00:00
+updated_at: 2026-05-10T14:43:06.860848+00:00
 parent: ARAWN-I-0039
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -77,6 +77,10 @@ Depends on: T-0214 (runtime).
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria **[REQUIRED]**
 
@@ -249,3 +253,10 @@ arawn-feeds tests green; workspace + clippy clean.
 `/connect google_calendar`. Deferred to T-0219 (the management UX
 slash commands), where the auto-creation hook makes more sense
 alongside `/feeds` listing.
+
+### 2026-05-10 — closing: deferred auto-create landed in T-0219 slice 4
+
+Auto-create for `gmail/inbox-archive` and `calendar/upcoming-archive`
+landed via T-0219's `default_feed_for_service` mapping (commit on
+2026-05-08). All AC items now satisfied. UAT verified all four
+templates fire end-to-end. Closing.

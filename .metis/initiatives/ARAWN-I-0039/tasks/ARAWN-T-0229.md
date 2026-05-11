@@ -4,14 +4,14 @@ level: task
 title: "Confluence space-archive feed: 401 scope mismatch on CQL search + page body"
 short_code: "ARAWN-T-0229"
 created_at: 2026-05-09T00:00:00+00:00
-updated_at: 2026-05-10T01:26:03.603238+00:00
+updated_at: 2026-05-10T14:43:28.022527+00:00
 parent: ARAWN-I-0039
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false

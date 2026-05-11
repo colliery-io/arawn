@@ -4,17 +4,18 @@ level: task
 title: "drive folder-sync: bare folder name should fall back to path lookup on 404"
 short_code: "ARAWN-T-0232"
 created_at: 2026-05-10T00:00:00+00:00
-updated_at: 2026-05-10T00:00:00+00:00
+updated_at: 2026-05-10T14:43:26.087989+00:00
 parent: ARAWN-I-0039
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
+initiative_id: NULL
 ---
 
 # drive folder-sync: bare folder name should fall back to path lookup on 404
@@ -54,6 +55,10 @@ Smarter `resolve_folder`:
 4. If both fail, raise a clear error message: `"no folder named or with id 'Letters' under My Drive"`.
 
 The fallback should only fire on 404 specifically; any other error (auth, rate-limit, server) propagates.
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

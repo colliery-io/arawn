@@ -142,10 +142,18 @@ impl FeedTemplate for RecentTemplate {
                 Err(_) => continue,
             };
             let day_dir = feed_dir.join(&day);
+            let path = day_dir.join(format!("{}.json", file.id));
+            // Drive's modifiedTime can round-trip through chrono with
+            // sub-ms precision loss, so a backfill iter 2 may see the
+            // boundary file return again. Skip if we already wrote it —
+            // this keeps items_written honest so the spawn-loop's
+            // cursor-stalled guard doesn't fire on a re-seen file.
+            if path.exists() {
+                continue;
+            }
             std::fs::create_dir_all(&day_dir).map_err(|e| {
                 FeedError::Storage(format!("create {}: {e}", day_dir.display()))
             })?;
-            let path = day_dir.join(format!("{}.json", file.id));
             let bytes = write_file_metadata(&path, file)?;
             total_items += 1;
             total_bytes += bytes;

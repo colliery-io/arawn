@@ -214,6 +214,34 @@ async fn returns_auth_when_drive_not_connected() {
 }
 
 #[tokio::test]
+async fn second_run_skips_already_archived_boundary_file() {
+    // T-0236 regression: Drive can return the cursor-boundary file
+    // again on iter 2 because cursor precision is lossier than Drive's
+    // internal timestamp. With the path.exists() skip, the rewrite is
+    // a no-op so the spawn-loop's cursor-stalled guard never fires.
+    let tmp = tempfile::tempdir().unwrap();
+    let layout = DataLayout::new(tmp.path());
+    let feed_dir = layout.ensure_feed_dir("drive/recent", "me").unwrap();
+
+    let mock = Arc::new(MockDriveClient::default());
+    mock.queue(vec![file("f1", "x.txt", "text/plain", "2026-05-08T10:00:00Z")]);
+    // Iter 2: Drive returns the same file again (boundary precision).
+    mock.queue(vec![file("f1", "x.txt", "text/plain", "2026-05-08T10:00:00Z")]);
+    let ctx = TemplateCtx::new(Arc::new(MockClients { drive: mock.clone() }));
+
+    let first = run_once(&RecentTemplate, &ctx, &TemplateParams::default(), &feed_dir).await;
+    assert_eq!(first.summary.items_written, 1);
+
+    let second = run_once(&RecentTemplate, &ctx, &TemplateParams::default(), &feed_dir).await;
+    assert_eq!(second.summary.items_written, 0, "re-seen boundary file must not double-count");
+    assert_eq!(second.status, "no-new-items");
+    // Cursor stays at the same value — that's fine; items_written == 0
+    // means the spawn-loop converges, not stalls.
+    let meta = MetaStore::read(&feed_dir).unwrap().unwrap();
+    assert_eq!(meta.cursor["latest_modified_iso"], "2026-05-08T10:00:00Z");
+}
+
+#[tokio::test]
 async fn validate_rejects_bad_days_back() {
     let p = TemplateParams(json!({ "days_back": 0 }));
     assert!(RecentTemplate.validate(&p).is_err());

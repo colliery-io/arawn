@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-10T13:22:27Z | 257 files | Python, Rust
+> Generated: 2026-05-11T13:17:26Z | 257 files | Python, Rust
 
 ## Project Structure
 
@@ -3161,16 +3161,16 @@
 -  `DEFAULT_DAYS_BACK` variable L46 — `: i64` — the first run, when the cursor is null.
 -  `MAX_RESULTS_PER_RUN` variable L47 — `: u32` — the first run, when the cursor is null.
 -  `BACKFILL_MAX_RESULTS` variable L51 — `: u32` — Cap used when in backfill mode (cursor null + `since` present).
--  `RecentTemplate` type L54-181 — `impl FeedTemplate for RecentTemplate` — the first run, when the cursor is null.
+-  `RecentTemplate` type L54-189 — `impl FeedTemplate for RecentTemplate` — the first run, when the cursor is null.
 -  `name` function L55-57 — `(&self) -> &'static str` — the first run, when the cursor is null.
 -  `validate` function L59-71 — `(&self, params: &TemplateParams) -> Result<(), FeedError>` — the first run, when the cursor is null.
 -  `defaults` function L73-78 — `(&self, _params: &TemplateParams) -> FeedDefaults` — the first run, when the cursor is null.
--  `run` function L80-180 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &V...` — the first run, when the cursor is null.
--  `write_file_metadata` function L183-193 — `(path: &Path, file: &DriveFile) -> Result<u64, FeedError>` — the first run, when the cursor is null.
--  `tests` module L196-217 — `-` — the first run, when the cursor is null.
--  `validate_default_params` function L200-202 — `()` — the first run, when the cursor is null.
--  `validate_rejects_bad_days_back` function L205-210 — `()` — the first run, when the cursor is null.
--  `defaults_use_30min_cadence` function L213-216 — `()` — the first run, when the cursor is null.
+-  `run` function L80-188 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &V...` — the first run, when the cursor is null.
+-  `write_file_metadata` function L191-201 — `(path: &Path, file: &DriveFile) -> Result<u64, FeedError>` — the first run, when the cursor is null.
+-  `tests` module L204-225 — `-` — the first run, when the cursor is null.
+-  `validate_default_params` function L208-210 — `()` — the first run, when the cursor is null.
+-  `validate_rejects_bad_days_back` function L213-218 — `()` — the first run, when the cursor is null.
+-  `defaults_use_30min_cadence` function L221-224 — `()` — the first run, when the cursor is null.
 
 ### crates/arawn-feeds/src/templates/gmail
 
@@ -3586,7 +3586,8 @@
 -  `gmail` function L194-196 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — Integration tests for `drive/recent`.
 -  `drive` function L197-199 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — Integration tests for `drive/recent`.
 -  `atlassian` function L200-202 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — Integration tests for `drive/recent`.
--  `validate_rejects_bad_days_back` function L217-222 — `()` — Integration tests for `drive/recent`.
+-  `second_run_skips_already_archived_boundary_file` function L217-242 — `()` — Integration tests for `drive/recent`.
+-  `validate_rejects_bad_days_back` function L245-250 — `()` — Integration tests for `drive/recent`.
 
 #### crates/arawn-feeds/tests/dynamic_register.rs
 

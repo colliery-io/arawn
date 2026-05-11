@@ -4,17 +4,18 @@ level: task
 title: "Atlassian token refresh drops sites extras (and silent-fail on first connect)"
 short_code: "ARAWN-T-0235"
 created_at: 2026-05-10T00:00:00+00:00
-updated_at: 2026-05-10T00:00:00+00:00
+updated_at: 2026-05-10T14:43:27.330157+00:00
 parent: ARAWN-I-0039
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
+initiative_id: NULL
 ---
 
 # Atlassian token refresh drops sites extras (and silent-fail on first connect)
@@ -84,6 +85,10 @@ async fn fresh_access_token(&self) -> Result<String, ...> {
 ```
 
 Alternative (more correct but more work): re-run `fetch_accessible_resources` on every refresh. Costs an extra HTTP call per refresh but stays in sync if the user added/removed sites in Atlassian's admin UI.
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

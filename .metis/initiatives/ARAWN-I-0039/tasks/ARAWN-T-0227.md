@@ -1,17 +1,17 @@
 ---
-id: backfill-escape-hatch-feeds
+id: optional-since-arg-on-watch
 level: task
 title: "Optional `since=` arg on /watch — backfill loop before cron starts"
 short_code: "ARAWN-T-0227"
 created_at: 2026-05-09T00:00:00+00:00
-updated_at: 2026-05-09T00:00:00+00:00
+updated_at: 2026-05-10T14:43:24.562983+00:00
 parent: ARAWN-I-0039
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -141,6 +141,10 @@ If the server restarts mid-backfill:
 - DB row has `enabled=0`, `meta.last_status = "backfilling"`, cursor at wherever the last successful page got.
 - On boot in `arawn_feeds::start`: any row with `enabled=0 AND last_status=="backfilling"` triggers a backfill-resume task. Same spawn path.
 - If the user wants to give up, `/feeds rm <id>` works (it deletes the row regardless of state).
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

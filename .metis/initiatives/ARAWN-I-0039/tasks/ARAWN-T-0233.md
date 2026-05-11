@@ -4,17 +4,18 @@ level: task
 title: "Plumb `since=` into gmail/*, drive/recent, jira/* (cold-start backfill)"
 short_code: "ARAWN-T-0233"
 created_at: 2026-05-10T00:00:00+00:00
-updated_at: 2026-05-10T00:00:00+00:00
+updated_at: 2026-05-10T14:43:25.331022+00:00
 parent: ARAWN-I-0039
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
+initiative_id: NULL
 ---
 
 # Plumb `since=` into gmail/*, drive/recent, jira/* (cold-start backfill)
@@ -54,6 +55,10 @@ Fixing them needs adapter-level pagination support (follow `pageToken` / `nextPa
 - The cursor-monotonic `if x > prior` advance pattern is already in every template under change (audit confirmed).
 
 So the per-template work is purely: **plumb `params.since` into the time-floor on first run**. ~5–10 LOC each.
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
