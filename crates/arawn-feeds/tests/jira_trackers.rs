@@ -490,3 +490,37 @@ async fn returns_auth_when_atlassian_not_connected() {
         .unwrap_err();
     assert!(matches!(err, FeedError::Auth(_)));
 }
+
+#[tokio::test]
+async fn assignee_tracker_partial_failure_doesnt_block_other_issues() {
+    // T-0237: parity with project_tracker_partial_failure — one issue's
+    // detail fetch fails, the rest of the batch still writes.
+    let tmp = tempfile::tempdir().unwrap();
+    let layout = DataLayout::new(tmp.path());
+    let feed_dir = layout
+        .ensure_feed_dir("jira/assignee-tracker", "me")
+        .unwrap();
+
+    let mock = Arc::new(MockAtlassian::default());
+    mock.queue_search(vec![
+        issue_meta("ENG-X", "2026-05-08T09:00:00.000+0000"),
+        issue_meta("ENG-Y", "2026-05-08T10:00:00.000+0000"),
+    ]);
+    mock.fail_full("ENG-X");
+    mock.queue_detail(
+        "ENG-Y",
+        issue_detail("ENG-Y", "2026-05-08T10:00:00.000+0000", None, None),
+    );
+
+    let ctx = TemplateCtx::new(Arc::new(MockClients { atlassian: mock }));
+    let outcome = run_once(
+        &AssigneeTrackerTemplate,
+        &ctx,
+        &TemplateParams::default(),
+        &feed_dir,
+    )
+    .await;
+    assert_eq!(outcome.summary.items_written, 1);
+    assert!(!feed_dir.join("ENG-X").exists(), "ENG-X skipped");
+    assert!(feed_dir.join("ENG-Y").join("issue.json").exists());
+}

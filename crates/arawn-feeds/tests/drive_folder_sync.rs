@@ -407,3 +407,37 @@ async fn validate_rejects_missing_folder() {
     let p = TemplateParams(json!({ "folder": "abc" }));
     FolderSyncTemplate.validate(&p).unwrap();
 }
+
+#[tokio::test]
+async fn skips_file_with_provider_error_and_continues_batch() {
+    // Schema-skip resilience: one file's download fails → the rest
+    // still write and the run doesn't abort.
+    let tmp = tempfile::tempdir().unwrap();
+    let layout = DataLayout::new(tmp.path());
+    let feed_dir = layout
+        .ensure_feed_dir("drive/folder-sync", "Reports")
+        .unwrap();
+
+    let mock = Arc::new(MockDriveClient::default());
+    mock.add_folder(
+        "folder123",
+        vec![
+            raw_file("good1", "a.txt", "text/plain", "md1"),
+            raw_file("bad",   "b.txt", "text/plain", "md2"),
+            raw_file("good2", "c.txt", "text/plain", "md3"),
+        ],
+    );
+    // good1 + good2 have bodies queued; "bad" has none → mock returns
+    // FeedError::Provider on download, simulating a per-file failure.
+    mock.add_raw("good1", b"alpha");
+    mock.add_raw("good2", b"gamma");
+
+    let ctx = TemplateCtx::new(Arc::new(MockClients { drive: mock.clone() }));
+    let params = TemplateParams(json!({ "folder": "folder123" }));
+    let outcome = run_once(&FolderSyncTemplate, &ctx, &params, &feed_dir).await;
+    assert_eq!(outcome.summary.items_written, 2, "good files still written");
+    assert_eq!(outcome.status, "ok");
+    assert!(feed_dir.join("a.txt").exists());
+    assert!(feed_dir.join("c.txt").exists());
+    assert!(!feed_dir.join("b.txt").exists(), "skipped file isn't materialized");
+}

@@ -180,3 +180,44 @@ wrap it without code changes.
 
 `finalize_backfill_success` grew an `Option<&str>` to carry the
 deferred status when applicable; complete path passes `None`.
+
+### 2026-05-11 — item 3 landed: schema-skip audit
+
+Audit + fix-up across the six provider templates:
+
+| template | status | change |
+|---|---|---|
+| gmail/* | ✗ → ✓ | `parse_internal_date` failure now warn+continue instead of Schema-bail. Existing "schema error" test repurposed to assert the new skip behavior. |
+| drive/recent | ✓ | already correct (bad mime/date → continue) |
+| drive/folder-sync | ✗ → ✓ | per-file download Schema/Provider errors now warn+continue (Auth/Storage still propagate). |
+| jira/project-tracker | ✓ | already correct; existing `project_tracker_partial_failure_doesnt_block_other_issues` covers it |
+| jira/assignee-tracker | ✓ | already correct; **new** `assignee_tracker_partial_failure_doesnt_block_other_issues` regression test |
+| confluence/space-archive | ✓ | already correct; existing `body_fetch_failure_skips_page_without_aborting_run` covers it |
+| calendar/upcoming-archive | ✓ | already correct (skips on missing id); **new** `malformed_event_without_id_is_skipped` regression test |
+
+Net: 3 new tests + 1 updated test asserting the gmail fix. The
+acceptance criterion of "each of the six provider templates has a
+test asserting one bad item doesn't stop the batch" is now true.
+
+### Summary
+
+All three scope items landed. `angreal check workspace` + `angreal
+check clippy` clean. Full feeds test suite green (76 lib unit tests
++ 89 integration tests across 13 files).
+
+Acceptance criteria status:
+- [x] `parse_retry_after` helper, both forms, unit tests
+- [~] Gmail/Drive: unreachable without crate fork — documented;
+  retry_after: None covered by item 2's default backoff
+- [x] Atlassian (Confluence): typed RateLimited from raw reqwest
+- [x] runtime.rs backfill loop sleeps on RateLimited, 5-min cap,
+  surfaces `backfill-rate-limited` and resumes via cron
+- [x] Transient 5xx exponential backoff, 3-attempt cap
+- [x] Per-template schema-skip audit + tests for all six providers
+- [x] workspace + clippy clean
+- [~] Backoff sleep tests use real tokio::time::sleep (not
+  virtual-clock); pure helper is unit tested. End-to-end loop
+  testing with virtual clock would need a more invasive seam — left
+  as a follow-up given the loop's own complexity is low.
+
+Ready for review.

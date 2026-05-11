@@ -127,9 +127,20 @@ pub async fn archive_query(
             Err(other) => return Err(other),
         };
 
-        let internal_date = parse_internal_date(&msg).ok_or_else(|| {
-            FeedError::Schema(format!("message {id} missing internalDate"))
-        })?;
+        // Missing/unparseable internalDate is a malformed item, not a
+        // catastrophic failure — skip it and keep processing the batch
+        // (same policy as the get_message Schema/Provider arm above).
+        let internal_date = match parse_internal_date(&msg) {
+            Some(d) => d,
+            None => {
+                tracing::warn!(
+                    target: "arawn::feeds",
+                    %id,
+                    "skipping gmail message: missing/unparseable internalDate"
+                );
+                continue;
+            }
+        };
         if let Some(prev) = prior_latest
             && internal_date <= prev
         {

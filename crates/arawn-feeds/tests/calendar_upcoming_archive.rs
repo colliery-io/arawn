@@ -326,3 +326,41 @@ async fn empty_window_writes_nothing_and_status_no_new_items() {
     assert_eq!(outcome.summary.items_written, 0);
     assert_eq!(outcome.status, "no-new-items");
 }
+
+#[tokio::test]
+async fn malformed_event_without_id_is_skipped() {
+    // T-0237: a Calendar event with no `id` field is treated as
+    // malformed and skipped — the other events in the batch still
+    // write.
+    let tmp = tempfile::tempdir().unwrap();
+    let layout = DataLayout::new(tmp.path());
+    let feed_dir = layout
+        .ensure_feed_dir("calendar/upcoming-archive", "primary")
+        .unwrap();
+
+    let mock = Arc::new(MockCalendarClient::default());
+    mock.queue(vec![
+        event("good1", "First", "2026-05-09T15:00:00Z"),
+        // Malformed — no `id`.
+        json!({
+            "summary": "no-id event",
+            "status": "confirmed",
+            "start": { "dateTime": "2026-05-10T15:00:00Z" },
+            "end":   { "dateTime": "2026-05-10T16:00:00Z" },
+        }),
+        event("good2", "Second", "2026-05-11T15:00:00Z"),
+    ]);
+
+    let clients = Arc::new(MockClients { calendar: mock });
+    let ctx = TemplateCtx::new(clients);
+    let outcome = run_once(
+        &UpcomingArchiveTemplate,
+        &ctx,
+        &TemplateParams::default(),
+        &feed_dir,
+    )
+    .await;
+    assert_eq!(outcome.summary.items_written, 2, "good events still written");
+    assert!(read_event_file(&feed_dir, "good1").is_some());
+    assert!(read_event_file(&feed_dir, "good2").is_some());
+}

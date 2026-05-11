@@ -328,7 +328,11 @@ async fn returns_auth_when_gmail_not_connected() {
 }
 
 #[tokio::test]
-async fn message_missing_internal_date_is_a_schema_error() {
+async fn malformed_message_skipped_without_aborting_batch() {
+    // T-0237: a message with missing/unparseable internalDate is treated
+    // as a malformed item and skipped — the rest of the batch still
+    // writes. Previously this returned FeedError::Schema and poisoned
+    // the whole run.
     let tmp = tempfile::tempdir().unwrap();
     let layout = DataLayout::new(tmp.path());
     let feed_dir = layout
@@ -336,17 +340,32 @@ async fn message_missing_internal_date_is_a_schema_error() {
         .unwrap();
 
     let mock = Arc::new(MockGmailClient::default());
-    // Message lacking `internalDate`.
-    mock.queue_messages(vec![json!({
-        "id": "broken",
-        "threadId": "t-broken",
-        "snippet": "no internalDate field",
-    })]);
+    mock.queue_messages(vec![
+        json!({
+            "id": "good1",
+            "threadId": "t1",
+            "internalDate": "1778414400000",
+            "snippet": "ok",
+        }),
+        json!({
+            // Malformed — no internalDate.
+            "id": "broken",
+            "threadId": "t-broken",
+            "snippet": "no internalDate field",
+        }),
+        json!({
+            "id": "good2",
+            "threadId": "t2",
+            "internalDate": "1778500800000",
+            "snippet": "also ok",
+        }),
+    ]);
     let ctx = TemplateCtx::new(Arc::new(MockClients { gmail: mock }));
 
-    let err = InboxArchiveTemplate
+    let outcome = InboxArchiveTemplate
         .run(&ctx, &TemplateParams::default(), &feed_dir, &Value::Null)
         .await
-        .unwrap_err();
-    assert!(matches!(err, FeedError::Schema(_)));
+        .expect("malformed item should skip, not fail");
+    assert_eq!(outcome.summary.items_written, 2, "good messages still written");
+    assert_eq!(outcome.status, "ok");
 }

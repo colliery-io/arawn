@@ -192,7 +192,24 @@ impl FeedTemplate for FolderSyncTemplate {
                 }
 
                 let export = export_for(&remote_file.file.mime_type).map(|(m, _)| m);
-                let bytes = drive.download(id, export).await?;
+                // Per-file Schema/Provider errors shouldn't poison the
+                // whole sync — warn + skip, mirroring jira/confluence.
+                // Auth and Storage still propagate (they're not
+                // recoverable by skipping one file).
+                let bytes = match drive.download(id, export).await {
+                    Ok(b) => b,
+                    Err(FeedError::Schema(msg)) | Err(FeedError::Provider(msg)) => {
+                        tracing::warn!(
+                            target: "arawn::feeds",
+                            %id,
+                            name = %remote_file.file.name,
+                            error = %msg,
+                            "drive/folder-sync: skipping file with provider/schema error"
+                        );
+                        continue;
+                    }
+                    Err(other) => return Err(other),
+                };
                 if !is_under(feed_dir, &target_abs) {
                     return Err(FeedError::Storage(format!(
                         "refusing to write outside feed_dir: {}",
