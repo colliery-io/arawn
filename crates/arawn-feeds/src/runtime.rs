@@ -377,6 +377,39 @@ impl FeedRuntime {
 /// page-cap exceeded"`.
 const BACKFILL_PAGE_CAP: u32 = 10_000;
 
+/// Base delay used when a provider rate-limits us without a Retry-After
+/// header, and the starting unit for transient-error exponential backoff.
+const BASE_BACKOFF: std::time::Duration = std::time::Duration::from_secs(2);
+
+/// Wall-clock cap on cumulative rate-limit waits inside a single
+/// backfill run. Past this, we defer the rest to the next cron tick
+/// (cursor is already persisted per page).
+const MAX_RATE_LIMIT_WAIT: std::time::Duration = std::time::Duration::from_secs(5 * 60);
+
+/// How many consecutive transient errors (Provider/Storage) we'll
+/// retry before bailing. Each retry waits BASE_BACKOFF * 2^(attempt-1).
+const TRANSIENT_MAX_ATTEMPTS: u32 = 3;
+
+/// Pure helper: backoff for the Nth consecutive transient retry
+/// (1-indexed). Capped to avoid silly waits if anyone bumps the
+/// attempt counter. No jitter here — jitter is added at the call site
+/// so this stays unit-testable.
+fn transient_backoff(attempt: u32) -> std::time::Duration {
+    let shift = attempt.saturating_sub(1).min(6);
+    BASE_BACKOFF * 2u32.pow(shift)
+}
+
+/// How a backfill ended. Both variants are "good enough" outcomes that
+/// flip the row to enabled=1; the difference is the meta status we
+/// record. Hard failures return `Err` instead and stay enabled=0.
+enum BackfillExit {
+    /// Drained — no more items.
+    Complete(BackfillStats),
+    /// Hit the rate-limit wall-clock cap mid-run. Cursor is persisted;
+    /// the next cron tick resumes from there.
+    RateLimitDeferred(BackfillStats),
+}
+
 /// Spawn the backfill loop as a detached tokio task. Repeatedly calls
 /// `dispatch::run_feed` until either the run reports zero items
 /// (caught up), the cursor stops advancing (template/provider bug
@@ -397,19 +430,41 @@ fn spawn_backfill_task(
     tokio::spawn(async move {
         let outcome = run_backfill_loop(&runner, &runtime_ctx, &feed_id).await;
         match outcome {
-            Ok(stats) => {
+            Ok(BackfillExit::Complete(stats)) => {
                 info!(
                     feed_id = %feed_id,
                     pages = stats.pages,
                     items = stats.items,
                     "backfill complete"
                 );
-                if let Err(e) = finalize_backfill_success(&runner, &runtime_ctx, &feed_id).await
+                if let Err(e) = finalize_backfill_success(&runner, &runtime_ctx, &feed_id, None).await
                 {
                     warn!(
                         feed_id = %feed_id,
                         error = %e,
                         "backfill: failed to flip enabled=1 / register cron"
+                    );
+                }
+            }
+            Ok(BackfillExit::RateLimitDeferred(stats)) => {
+                info!(
+                    feed_id = %feed_id,
+                    pages = stats.pages,
+                    items = stats.items,
+                    "backfill deferred (rate-limited) — cron will resume from cursor"
+                );
+                if let Err(e) = finalize_backfill_success(
+                    &runner,
+                    &runtime_ctx,
+                    &feed_id,
+                    Some("backfill-rate-limited"),
+                )
+                .await
+                {
+                    warn!(
+                        feed_id = %feed_id,
+                        error = %e,
+                        "backfill: failed to flip enabled=1 / register cron after rate-limit defer"
                     );
                 }
             }
@@ -431,18 +486,64 @@ async fn run_backfill_loop(
     _runner: &Arc<CloacinaRunner>,
     runtime_ctx: &FeedRuntimeContext,
     feed_id: &str,
-) -> Result<BackfillStats, FeedError> {
+) -> Result<BackfillExit, FeedError> {
     let mut stats = BackfillStats::default();
     let mut prev_cursor: Option<serde_json::Value> = None;
+    let mut rate_limit_wait_total = std::time::Duration::ZERO;
+    let mut transient_attempts: u32 = 0;
 
     while stats.pages < BACKFILL_PAGE_CAP {
-        let outcome = crate::dispatch::run_feed_force(feed_id, runtime_ctx).await?;
+        let result = crate::dispatch::run_feed_force(feed_id, runtime_ctx).await;
+        let outcome = match result {
+            Ok(o) => {
+                transient_attempts = 0;
+                o
+            }
+            Err(FeedError::RateLimited { retry_after }) => {
+                let wait = retry_after.unwrap_or(BASE_BACKOFF);
+                if rate_limit_wait_total + wait > MAX_RATE_LIMIT_WAIT {
+                    info!(
+                        feed_id = %feed_id,
+                        waited_secs = rate_limit_wait_total.as_secs(),
+                        "backfill rate-limit cap reached — deferring to next cron tick"
+                    );
+                    return Ok(BackfillExit::RateLimitDeferred(stats));
+                }
+                rate_limit_wait_total += wait;
+                info!(
+                    feed_id = %feed_id,
+                    wait_secs = wait.as_secs(),
+                    total_waited_secs = rate_limit_wait_total.as_secs(),
+                    "backfill rate-limited — sleeping then retrying"
+                );
+                tokio::time::sleep(wait).await;
+                continue;
+            }
+            Err(e @ (FeedError::Provider(_) | FeedError::Storage(_))) => {
+                transient_attempts += 1;
+                if transient_attempts > TRANSIENT_MAX_ATTEMPTS {
+                    return Err(e);
+                }
+                let wait = transient_backoff(transient_attempts);
+                warn!(
+                    feed_id = %feed_id,
+                    attempt = transient_attempts,
+                    wait_secs = wait.as_secs(),
+                    error = %e,
+                    "backfill transient error — retrying with backoff"
+                );
+                tokio::time::sleep(wait).await;
+                continue;
+            }
+            Err(e) => return Err(e),
+        };
+
         stats.pages += 1;
         stats.items += outcome.summary.items_written;
 
         // Caught up: empty page → done.
         if outcome.summary.items_written == 0 {
-            return Ok(stats);
+            return Ok(BackfillExit::Complete(stats));
         }
 
         // Cursor-stalled guard: items came back but cursor didn't
@@ -466,6 +567,7 @@ async fn finalize_backfill_success(
     runner: &Arc<CloacinaRunner>,
     runtime_ctx: &FeedRuntimeContext,
     feed_id: &str,
+    meta_status: Option<&str>,
 ) -> Result<(), FeedError> {
     // Re-load the record to register cron with current state.
     let record = {
@@ -485,6 +587,19 @@ async fn finalize_backfill_success(
     {
         let c = runtime_ctx.conn.lock().await;
         FeedStore::new(&c).set_enabled(feed_id, true)?;
+    }
+
+    // Surface a non-default meta status when the backfill ended in a
+    // soft-defer (e.g. rate-limit cap). Cron will overwrite this on the
+    // next successful run.
+    if let Some(status) = meta_status {
+        let feed_dir = runtime_ctx
+            .layout
+            .feed_dir(&record.template, &record.id)?;
+        if let Some(mut meta) = MetaStore::read(&feed_dir)? {
+            meta.last_status = Some(status.to_string());
+            MetaStore::write(&feed_dir, &meta)?;
+        }
     }
     Ok(())
 }
@@ -688,3 +803,25 @@ async fn register_one(
     );
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::Duration;
+
+    #[test]
+    fn transient_backoff_doubles_per_attempt() {
+        assert_eq!(transient_backoff(1), Duration::from_secs(2));
+        assert_eq!(transient_backoff(2), Duration::from_secs(4));
+        assert_eq!(transient_backoff(3), Duration::from_secs(8));
+    }
+
+    #[test]
+    fn transient_backoff_clamps() {
+        // Past the clamp the value stops growing exponentially; we just
+        // care that it doesn't overflow / return an absurd sleep.
+        let big = transient_backoff(20);
+        assert!(big <= Duration::from_secs(2 * 64));
+    }
+}
+

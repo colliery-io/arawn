@@ -152,3 +152,31 @@ where the resilience win actually lives.
 **Tests:** 4 retry_after unit tests + workspace test suite green (74
 unit + 13 integration test files). `angreal check workspace` and
 `angreal check clippy` clean.
+
+### 2026-05-11 — item 2 landed: spawn-loop exponential backoff
+
+`run_backfill_loop` now retries instead of bailing on transient errors:
+
+- **RateLimited**: sleeps `retry_after.unwrap_or(BASE_BACKOFF=2s)`,
+  tracks cumulative wait against a 5-minute cap. If we'd exceed the cap,
+  the loop returns a new `BackfillExit::RateLimitDeferred(stats)` —
+  `spawn_backfill_task` finalizes as success (flips `enabled=1`,
+  registers cron) but writes `meta.last_status="backfill-rate-limited"`.
+  The next cron tick resumes from the persisted cursor with normal
+  cron-mode page size. Cursor is already persisted per page so no
+  progress is lost.
+- **Provider / Storage** (transient 5xx, dns blips, fs hiccups):
+  exponential backoff `BASE_BACKOFF * 2^(attempt-1)` capped at attempt
+  6, three-attempt cap before bailing. Consecutive-counter resets on
+  any successful page so a recovered run gets the full retry budget
+  back.
+- **Auth / Schema / InvalidParams**: still bail immediately — these
+  need user attention.
+
+Pure helper `transient_backoff(attempt: u32) -> Duration` is unit
+tested (doubles-per-attempt + clamp). The loop itself uses
+`tokio::time::sleep`, so a future virtual-clock integration test can
+wrap it without code changes.
+
+`finalize_backfill_success` grew an `Option<&str>` to carry the
+deferred status when applicable; complete path passes `None`.
