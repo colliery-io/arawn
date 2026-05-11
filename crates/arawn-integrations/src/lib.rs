@@ -29,10 +29,12 @@ pub mod gmail;
 pub mod google_common;
 pub mod integration;
 pub mod oauth_flow;
+pub mod retry_after;
 pub mod slack;
 
 pub use credential_store::CredentialStore;
 pub use error::IntegrationError;
+pub use retry_after::parse_retry_after;
 pub use integration::{ConnectContext, Integration, IntegrationStatus};
 pub use oauth_flow::{run_oauth_flow, OAuthOutcome};
 

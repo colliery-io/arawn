@@ -2,6 +2,8 @@
 
 use std::time::Duration;
 
+pub use arawn_integrations::parse_retry_after;
+
 #[derive(Debug, thiserror::Error)]
 pub enum FeedError {
     /// OAuth token expired/revoked, scope removed, or otherwise unable to

@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-11T13:17:26Z | 257 files | Python, Rust
+> Generated: 2026-05-11T16:27:08Z | 258 files | Python, Rust
 
 ## Project Structure
 
@@ -205,6 +205,7 @@
 │   │       ├── integration.rs
 │   │       ├── lib.rs
 │   │       ├── oauth_flow.rs
+│   │       ├── retry_after.rs
 │   │       └── slack/
 │   │           ├── client.rs
 │   │           ├── integration.rs
@@ -2760,7 +2761,7 @@
 
 #### crates/arawn-feeds/src/error.rs
 
-- pub `FeedError` enum L6-38 — `Auth | RateLimited | Storage | Schema | Provider | InvalidParams` — Error type used by templates and the runtime.
+- pub `FeedError` enum L8-40 — `Auth | RateLimited | Storage | Schema | Provider | InvalidParams` — Error type used by templates and the runtime.
 
 #### crates/arawn-feeds/src/layout.rs
 
@@ -2916,28 +2917,28 @@
 - pub `RealAtlassianClient` struct L159-161 — `{ integration: Arc<AtlassianIntegration> }` — Confluence/Jira tools use.
 - pub `new` function L164-166 — `(integration: Arc<AtlassianIntegration>) -> Self` — Confluence/Jira tools use.
 -  `RealAtlassianClient` type L163-167 — `= RealAtlassianClient` — Confluence/Jira tools use.
--  `integ_err` function L169-176 — `(e: arawn_integrations::IntegrationError) -> FeedError` — Confluence/Jira tools use.
--  `classify_provider_error` function L181-198 — `(msg: &str) -> FeedError` — Provider errors arrive as opaque strings from the Atlassian client.
--  `V1SearchResp` struct L203-208 — `{ results: Vec<V1SearchResult>, links: serde_json::Map<String, serde_json::Value...` — Confluence/Jira tools use.
--  `V1SearchResult` struct L211-219 — `{ title: Option<String>, content: Option<V1Content>, last_modified: Option<Strin...` — Confluence/Jira tools use.
--  `V1Content` struct L222-226 — `{ id: String, space: Option<V1Space>, version: Option<V1Version> }` — Confluence/Jira tools use.
--  `V1Space` struct L229-231 — `{ key: Option<String> }` — Confluence/Jira tools use.
--  `V1Version` struct L234-237 — `{ number: Option<i64>, when: Option<String> }` — Confluence/Jira tools use.
--  `V2PageDetail` struct L242-246 — `{ id: String, body: Option<V2Body>, version: Option<V2Version> }` — Confluence/Jira tools use.
--  `V2Body` struct L249-251 — `{ storage: Option<V2BodyStorage> }` — Confluence/Jira tools use.
--  `V2BodyStorage` struct L254-256 — `{ value: Option<String> }` — Confluence/Jira tools use.
--  `V2Version` struct L259-261 — `{ number: Option<i64> }` — Confluence/Jira tools use.
--  `RealAtlassianClient` type L264-558 — `impl AtlassianFeedClient for RealAtlassianClient` — Confluence/Jira tools use.
--  `space_pages_modified_since` function L265-343 — `( &self, space_key: &str, since: Option<DateTime<Utc>>, ) -> Result<Vec<Confluen...` — Confluence/Jira tools use.
--  `page_body_storage` function L345-363 — `( &self, page_id: &str, ) -> Result<ConfluencePageBody, FeedError>` — Confluence/Jira tools use.
--  `jql_search` function L365-402 — `( &self, jql: &str, max_results: u32, ) -> Result<Vec<JiraIssueMeta>, FeedError>` — Confluence/Jira tools use.
--  `issue_full` function L404-499 — `( &self, key: &str, want_changelog: bool, want_comments: bool, ) -> Result<JiraI...` — Confluence/Jira tools use.
--  `resolve_project` function L501-517 — `(&self, key_or_id: &str) -> Result<String, FeedError>` — Confluence/Jira tools use.
--  `list_jira_projects` function L519-539 — `(&self) -> Result<Vec<JiraProjectMeta>, FeedError>` — Confluence/Jira tools use.
--  `list_confluence_spaces` function L541-557 — `( &self, ) -> Result<Vec<ConfluenceSpaceMeta>, FeedError>` — Confluence/Jira tools use.
--  `V2SpacesResp` struct L561-564 — `{ results: Vec<V2Space> }` — Confluence/Jira tools use.
--  `V2Space` struct L567-571 — `{ key: String, name: Option<String> }` — Confluence/Jira tools use.
--  `jira_err` function L573-585 — `(e: jira_v3_openapi::apis::Error<E>) -> FeedError` — Confluence/Jira tools use.
+-  `integ_err` function L169-179 — `(e: arawn_integrations::IntegrationError) -> FeedError` — Confluence/Jira tools use.
+-  `classify_provider_error` function L184-201 — `(msg: &str) -> FeedError` — Provider errors arrive as opaque strings from the Atlassian client.
+-  `V1SearchResp` struct L206-211 — `{ results: Vec<V1SearchResult>, links: serde_json::Map<String, serde_json::Value...` — Confluence/Jira tools use.
+-  `V1SearchResult` struct L214-222 — `{ title: Option<String>, content: Option<V1Content>, last_modified: Option<Strin...` — Confluence/Jira tools use.
+-  `V1Content` struct L225-229 — `{ id: String, space: Option<V1Space>, version: Option<V1Version> }` — Confluence/Jira tools use.
+-  `V1Space` struct L232-234 — `{ key: Option<String> }` — Confluence/Jira tools use.
+-  `V1Version` struct L237-240 — `{ number: Option<i64>, when: Option<String> }` — Confluence/Jira tools use.
+-  `V2PageDetail` struct L245-249 — `{ id: String, body: Option<V2Body>, version: Option<V2Version> }` — Confluence/Jira tools use.
+-  `V2Body` struct L252-254 — `{ storage: Option<V2BodyStorage> }` — Confluence/Jira tools use.
+-  `V2BodyStorage` struct L257-259 — `{ value: Option<String> }` — Confluence/Jira tools use.
+-  `V2Version` struct L262-264 — `{ number: Option<i64> }` — Confluence/Jira tools use.
+-  `RealAtlassianClient` type L267-561 — `impl AtlassianFeedClient for RealAtlassianClient` — Confluence/Jira tools use.
+-  `space_pages_modified_since` function L268-346 — `( &self, space_key: &str, since: Option<DateTime<Utc>>, ) -> Result<Vec<Confluen...` — Confluence/Jira tools use.
+-  `page_body_storage` function L348-366 — `( &self, page_id: &str, ) -> Result<ConfluencePageBody, FeedError>` — Confluence/Jira tools use.
+-  `jql_search` function L368-405 — `( &self, jql: &str, max_results: u32, ) -> Result<Vec<JiraIssueMeta>, FeedError>` — Confluence/Jira tools use.
+-  `issue_full` function L407-502 — `( &self, key: &str, want_changelog: bool, want_comments: bool, ) -> Result<JiraI...` — Confluence/Jira tools use.
+-  `resolve_project` function L504-520 — `(&self, key_or_id: &str) -> Result<String, FeedError>` — Confluence/Jira tools use.
+-  `list_jira_projects` function L522-542 — `(&self) -> Result<Vec<JiraProjectMeta>, FeedError>` — Confluence/Jira tools use.
+-  `list_confluence_spaces` function L544-560 — `( &self, ) -> Result<Vec<ConfluenceSpaceMeta>, FeedError>` — Confluence/Jira tools use.
+-  `V2SpacesResp` struct L564-567 — `{ results: Vec<V2Space> }` — Confluence/Jira tools use.
+-  `V2Space` struct L570-574 — `{ key: String, name: Option<String> }` — Confluence/Jira tools use.
+-  `jira_err` function L576-588 — `(e: jira_v3_openapi::apis::Error<E>) -> FeedError` — Confluence/Jira tools use.
 
 #### crates/arawn-feeds/src/clients/calendar.rs
 
@@ -2945,10 +2946,10 @@
 - pub `RealCalendarClient` struct L37-39 — `{ integration: Arc<GoogleCalendarIntegration> }` — existing calendar tools use.
 - pub `new` function L42-44 — `(integration: Arc<GoogleCalendarIntegration>) -> Self` — existing calendar tools use.
 -  `RealCalendarClient` type L41-45 — `= RealCalendarClient` — existing calendar tools use.
--  `integ_err` function L47-53 — `(e: arawn_integrations::IntegrationError) -> FeedError` — existing calendar tools use.
--  `google_err` function L55-66 — `(op: &str, msg: String) -> FeedError` — existing calendar tools use.
--  `RealCalendarClient` type L69-96 — `impl CalendarFeedClient for RealCalendarClient` — existing calendar tools use.
--  `list_events` function L70-95 — `( &self, calendar_id: &str, time_min: DateTime<Utc>, time_max: DateTime<Utc>, ) ...` — existing calendar tools use.
+-  `integ_err` function L47-54 — `(e: arawn_integrations::IntegrationError) -> FeedError` — existing calendar tools use.
+-  `google_err` function L56-67 — `(op: &str, msg: String) -> FeedError` — existing calendar tools use.
+-  `RealCalendarClient` type L70-97 — `impl CalendarFeedClient for RealCalendarClient` — existing calendar tools use.
+-  `list_events` function L71-96 — `( &self, calendar_id: &str, time_min: DateTime<Utc>, time_max: DateTime<Utc>, ) ...` — existing calendar tools use.
 
 #### crates/arawn-feeds/src/clients/drive.rs
 
@@ -2964,22 +2965,22 @@
 -  `FIELDS_LIST` variable L107-108 — `: &str` — Drive tools use.
 -  `FIELDS_ONE` variable L109-110 — `: &str` — Drive tools use.
 -  `RealDriveClient` type L116-120 — `= RealDriveClient` — Drive tools use.
--  `integ_err` function L122-128 — `(e: arawn_integrations::IntegrationError) -> FeedError` — Drive tools use.
--  `google_err` function L130-141 — `(op: &str, msg: String) -> FeedError` — Drive tools use.
--  `from_api` function L143-155 — `(f: google_drive3::api::File) -> DriveFile` — Drive tools use.
--  `RealDriveClient` type L158-309 — `impl DriveFeedClient for RealDriveClient` — Drive tools use.
--  `resolve_folder` function L159-197 — `(&self, path_or_id: &str) -> Result<String, FeedError>` — Drive tools use.
--  `list_folder_children` function L199-227 — `(&self, folder_id: &str) -> Result<Vec<DriveFile>, FeedError>` — Drive tools use.
--  `list_modified_since` function L229-270 — `( &self, since: DateTime<Utc>, max_results: u32, ) -> Result<Vec<DriveFile>, Fee...` — Drive tools use.
--  `DRIVE_MAX_PAGE_SIZE` variable L238 — `: u32` — Drive tools use.
--  `download` function L272-308 — `( &self, file_id: &str, export_mime: Option<&str>, ) -> Result<Vec<u8>, FeedErro...` — Drive tools use.
--  `try_id_lookup` function L316-334 — `( integration: &arawn_integrations::drive::GoogleDriveIntegration, id: &str, ) -...` — Try a Drive `files.get` against `path_or_id` as a literal id.
--  `walk_path` function L340-370 — `( integration: &arawn_integrations::drive::GoogleDriveIntegration, path: &str, )...` — Walk a slash-delimited folder path under My Drive root one
--  `is_not_found` function L376-379 — `(provider_msg: &str) -> bool` — Detect Drive's 404 error body in a `FeedError::Provider` message.
--  `tests` module L382-423 — `-` — Drive tools use.
--  `export_for_covers_known_natives` function L386-396 — `()` — Drive tools use.
--  `is_not_found_recognizes_drive_404_shapes` function L399-410 — `()` — Drive tools use.
--  `unsupported_native_excludes_folders_and_known_exports` function L413-422 — `()` — Drive tools use.
+-  `integ_err` function L122-129 — `(e: arawn_integrations::IntegrationError) -> FeedError` — Drive tools use.
+-  `google_err` function L131-142 — `(op: &str, msg: String) -> FeedError` — Drive tools use.
+-  `from_api` function L144-156 — `(f: google_drive3::api::File) -> DriveFile` — Drive tools use.
+-  `RealDriveClient` type L159-310 — `impl DriveFeedClient for RealDriveClient` — Drive tools use.
+-  `resolve_folder` function L160-198 — `(&self, path_or_id: &str) -> Result<String, FeedError>` — Drive tools use.
+-  `list_folder_children` function L200-228 — `(&self, folder_id: &str) -> Result<Vec<DriveFile>, FeedError>` — Drive tools use.
+-  `list_modified_since` function L230-271 — `( &self, since: DateTime<Utc>, max_results: u32, ) -> Result<Vec<DriveFile>, Fee...` — Drive tools use.
+-  `DRIVE_MAX_PAGE_SIZE` variable L239 — `: u32` — Drive tools use.
+-  `download` function L273-309 — `( &self, file_id: &str, export_mime: Option<&str>, ) -> Result<Vec<u8>, FeedErro...` — Drive tools use.
+-  `try_id_lookup` function L317-335 — `( integration: &arawn_integrations::drive::GoogleDriveIntegration, id: &str, ) -...` — Try a Drive `files.get` against `path_or_id` as a literal id.
+-  `walk_path` function L341-371 — `( integration: &arawn_integrations::drive::GoogleDriveIntegration, path: &str, )...` — Walk a slash-delimited folder path under My Drive root one
+-  `is_not_found` function L377-380 — `(provider_msg: &str) -> bool` — Detect Drive's 404 error body in a `FeedError::Provider` message.
+-  `tests` module L383-424 — `-` — Drive tools use.
+-  `export_for_covers_known_natives` function L387-397 — `()` — Drive tools use.
+-  `is_not_found_recognizes_drive_404_shapes` function L400-411 — `()` — Drive tools use.
+-  `unsupported_native_excludes_folders_and_known_exports` function L414-423 — `()` — Drive tools use.
 
 #### crates/arawn-feeds/src/clients/gmail.rs
 
@@ -2987,12 +2988,12 @@
 - pub `RealGmailClient` struct L41-43 — `{ integration: Arc<GmailIntegration> }` — provider-agnostic and makes mocking trivial.
 - pub `new` function L46-48 — `(integration: Arc<GmailIntegration>) -> Self` — provider-agnostic and makes mocking trivial.
 -  `RealGmailClient` type L45-49 — `= RealGmailClient` — provider-agnostic and makes mocking trivial.
--  `integ_err` function L51-57 — `(e: arawn_integrations::IntegrationError) -> FeedError` — provider-agnostic and makes mocking trivial.
--  `google_err` function L59-70 — `(op: &str, msg: String) -> FeedError` — provider-agnostic and makes mocking trivial.
--  `RealGmailClient` type L73-130 — `impl GmailFeedClient for RealGmailClient` — provider-agnostic and makes mocking trivial.
--  `list_message_ids` function L74-116 — `( &self, query: &str, max_results: u32, ) -> Result<Vec<String>, FeedError>` — provider-agnostic and makes mocking trivial.
--  `GMAIL_MAX_PAGE_SIZE` variable L85 — `: u32` — provider-agnostic and makes mocking trivial.
--  `get_message` function L118-129 — `(&self, id: &str) -> Result<Value, FeedError>` — provider-agnostic and makes mocking trivial.
+-  `integ_err` function L51-58 — `(e: arawn_integrations::IntegrationError) -> FeedError` — provider-agnostic and makes mocking trivial.
+-  `google_err` function L60-71 — `(op: &str, msg: String) -> FeedError` — provider-agnostic and makes mocking trivial.
+-  `RealGmailClient` type L74-131 — `impl GmailFeedClient for RealGmailClient` — provider-agnostic and makes mocking trivial.
+-  `list_message_ids` function L75-117 — `( &self, query: &str, max_results: u32, ) -> Result<Vec<String>, FeedError>` — provider-agnostic and makes mocking trivial.
+-  `GMAIL_MAX_PAGE_SIZE` variable L86 — `: u32` — provider-agnostic and makes mocking trivial.
+-  `get_message` function L119-130 — `(&self, id: &str) -> Result<Value, FeedError>` — provider-agnostic and makes mocking trivial.
 
 #### crates/arawn-feeds/src/clients/mod.rs
 
@@ -3032,34 +3033,35 @@
 - pub `SlackHistoryPage` struct L120-129 — `{ messages: Vec<serde_json::Value>, next_cursor_ts: Option<String> }` — One page of Slack channel history.
 - pub `RealSlackClient` struct L133-135 — `{ integration: Arc<SlackIntegration> }` — Slack tools use.
 - pub `new` function L138-140 — `(integration: Arc<SlackIntegration>) -> Self` — Slack tools use.
-- pub `ChannelKind` enum L527-540 — `Public | Private | DirectMessage | GroupDm` — Slack conversation kind, classified by id prefix.
-- pub `history_scope` function L546-553 — `(self) -> &'static str` — Required Slack OAuth scope to call `conversations.history` on
-- pub `recommended_template` function L556-563 — `(self) -> &'static str` — Recommended template to archive this kind.
-- pub `classify_channel_id` function L568-580 — `(s: &str) -> Option<ChannelKind>` — Classify a Slack id by its prefix.
+- pub `ChannelKind` enum L554-567 — `Public | Private | DirectMessage | GroupDm` — Slack conversation kind, classified by id prefix.
+- pub `history_scope` function L573-580 — `(self) -> &'static str` — Required Slack OAuth scope to call `conversations.history` on
+- pub `recommended_template` function L583-590 — `(self) -> &'static str` — Recommended template to archive this kind.
+- pub `classify_channel_id` function L595-607 — `(s: &str) -> Option<ChannelKind>` — Classify a Slack id by its prefix.
 -  `RealSlackClient` type L137-141 — `= RealSlackClient` — Slack tools use.
 -  `integ_err` function L143-149 — `(e: arawn_integrations::IntegrationError) -> FeedError` — Slack tools use.
--  `slack_morphism_err` function L151-163 — `(op: &str, e: E) -> FeedError` — Slack tools use.
--  `RealSlackClient` type L166-457 — `impl SlackFeedClient for RealSlackClient` — Slack tools use.
--  `resolve_channel` function L167-203 — `(&self, name_or_id: &str) -> Result<String, FeedError>` — Slack tools use.
--  `channel_history` function L205-248 — `( &self, channel_id: &str, oldest_ts: Option<&str>, ) -> Result<SlackHistoryPage...` — Slack tools use.
--  `thread_replies` function L250-295 — `( &self, channel_id: &str, parent_ts: &str, oldest_ts: Option<&str>, ) -> Result...` — Slack tools use.
--  `open_dm` function L297-319 — `(&self, user_id_or_name: &str) -> Result<String, FeedError>` — Slack tools use.
--  `auth_test` function L321-338 — `(&self) -> Result<SlackAuthInfo, FeedError>` — Slack tools use.
--  `search_messages` function L340-418 — `( &self, query: &str, oldest_ts: Option<&str>, ) -> Result<SlackHistoryPage, Fee...` — Slack tools use.
--  `list_channels` function L420-456 — `(&self) -> Result<Vec<SlackChannel>, FeedError>` — Slack tools use.
--  `ts_to_yyyy_mm_dd` function L462-467 — `(ts: &str) -> Option<String>` — Lossy conversion from Slack's float-string `ts` to a `YYYY-MM-DD`
--  `RealSlackClient` type L469-499 — `= RealSlackClient` — Slack tools use.
--  `resolve_user_name_to_id` function L470-498 — `(&self, name: &str) -> Result<String, FeedError>` — Slack tools use.
--  `looks_like_user_id` function L501-506 — `(s: &str) -> bool` — Slack tools use.
--  `looks_like_channel_id` function L508-510 — `(s: &str) -> bool` — Slack tools use.
--  `ChannelKind` type L542-564 — `= ChannelKind` — Slack tools use.
--  `tests` module L583-651 — `-` — Slack tools use.
--  `channel_id_recognized_by_prefix` function L587-592 — `()` — Slack tools use.
--  `names_not_recognized_as_ids` function L595-600 — `()` — Slack tools use.
--  `classify_returns_kind_for_each_prefix` function L603-611 — `()` — Slack tools use.
--  `channel_kind_exposes_required_scope` function L614-619 — `()` — Slack tools use.
--  `channel_kind_recommends_correct_template` function L622-640 — `()` — Slack tools use.
--  `user_id_recognized_by_prefix` function L643-650 — `()` — Slack tools use.
+-  `slack_morphism_err` function L151-170 — `(op: &str, e: E) -> FeedError` — Slack tools use.
+-  `find_slack_retry_after` function L174-190 — `( e: &(dyn std::error::Error + 'static), ) -> Option<Option<std::time::Duration>...` — Walk the source chain of a slack-morphism error looking for a typed
+-  `RealSlackClient` type L193-484 — `impl SlackFeedClient for RealSlackClient` — Slack tools use.
+-  `resolve_channel` function L194-230 — `(&self, name_or_id: &str) -> Result<String, FeedError>` — Slack tools use.
+-  `channel_history` function L232-275 — `( &self, channel_id: &str, oldest_ts: Option<&str>, ) -> Result<SlackHistoryPage...` — Slack tools use.
+-  `thread_replies` function L277-322 — `( &self, channel_id: &str, parent_ts: &str, oldest_ts: Option<&str>, ) -> Result...` — Slack tools use.
+-  `open_dm` function L324-346 — `(&self, user_id_or_name: &str) -> Result<String, FeedError>` — Slack tools use.
+-  `auth_test` function L348-365 — `(&self) -> Result<SlackAuthInfo, FeedError>` — Slack tools use.
+-  `search_messages` function L367-445 — `( &self, query: &str, oldest_ts: Option<&str>, ) -> Result<SlackHistoryPage, Fee...` — Slack tools use.
+-  `list_channels` function L447-483 — `(&self) -> Result<Vec<SlackChannel>, FeedError>` — Slack tools use.
+-  `ts_to_yyyy_mm_dd` function L489-494 — `(ts: &str) -> Option<String>` — Lossy conversion from Slack's float-string `ts` to a `YYYY-MM-DD`
+-  `RealSlackClient` type L496-526 — `= RealSlackClient` — Slack tools use.
+-  `resolve_user_name_to_id` function L497-525 — `(&self, name: &str) -> Result<String, FeedError>` — Slack tools use.
+-  `looks_like_user_id` function L528-533 — `(s: &str) -> bool` — Slack tools use.
+-  `looks_like_channel_id` function L535-537 — `(s: &str) -> bool` — Slack tools use.
+-  `ChannelKind` type L569-591 — `= ChannelKind` — Slack tools use.
+-  `tests` module L610-678 — `-` — Slack tools use.
+-  `channel_id_recognized_by_prefix` function L614-619 — `()` — Slack tools use.
+-  `names_not_recognized_as_ids` function L622-627 — `()` — Slack tools use.
+-  `classify_returns_kind_for_each_prefix` function L630-638 — `()` — Slack tools use.
+-  `channel_kind_exposes_required_scope` function L641-646 — `()` — Slack tools use.
+-  `channel_kind_recommends_correct_template` function L649-667 — `()` — Slack tools use.
+-  `user_id_recognized_by_prefix` function L670-677 — `()` — Slack tools use.
 
 ### crates/arawn-feeds/src/templates/calendar
 
@@ -3853,19 +3855,19 @@
 - pub `confluence_post` function L116-125 — `( &self, path: &str, site: Option<&str>, body: &B, ) -> Result<T, IntegrationErr...` — POST a JSON body to Confluence.
 - pub `confluence_put` function L128-137 — `( &self, path: &str, site: Option<&str>, body: &B, ) -> Result<T, IntegrationErr...` — PUT a JSON body to Confluence (used by page update).
 - pub `confluence_v1_get` function L141-150 — `( &self, path: &str, site: Option<&str>, query: &[(&str, String)], ) -> Result<T...` — GET against the legacy Confluence v1 API.
--  `AtlassianClient` type L33-193 — `= AtlassianClient` — when needed, persisting the new token through the integration.
+-  `AtlassianClient` type L33-204 — `= AtlassianClient` — when needed, persisting the new token through the integration.
 -  `product_base` function L47-64 — `( &self, product: Product, site: Option<&str>, ) -> Result<(AtlassianSite, Strin...` — Resolve the target site (defaulting to the first one) and return
 -  `fresh_access_token` function L67-86 — `(&self) -> Result<String, IntegrationError>` — Get a fresh access token.
--  `send_json` function L152-172 — `( &self, method: Method, url: &str, query: &[(&str, String)], body: Option<&B>, ...` — when needed, persisting the new token through the integration.
--  `send` function L174-192 — `( &self, method: Method, url: &str, query: &[(&str, String)], body: Option<&B>, ...` — when needed, persisting the new token through the integration.
--  `Product` enum L196-202 — `Confluence | ConfluenceV1` — when needed, persisting the new token through the integration.
--  `is_expired` function L204-210 — `(token: &Token) -> bool` — when needed, persisting the new token through the integration.
--  `merge_prior_extras` function L219-229 — `( new_token: &mut Token, prior_extras: &serde_json::Map<String, serde_json::Valu...` — Carry the prior token's extras into the refreshed token.
--  `tests` module L232-298 — `-` — when needed, persisting the new token through the integration.
--  `token_with_extras` function L236-245 — `(extras: serde_json::Map<String, serde_json::Value>) -> Token` — when needed, persisting the new token through the integration.
--  `refresh_preserves_sites_when_new_token_extras_empty` function L248-263 — `()` — when needed, persisting the new token through the integration.
--  `refresh_doesnt_overwrite_extras_the_provider_set` function L266-285 — `()` — when needed, persisting the new token through the integration.
--  `refresh_with_empty_prior_extras_is_no_op` function L288-297 — `()` — when needed, persisting the new token through the integration.
+-  `send_json` function L152-183 — `( &self, method: Method, url: &str, query: &[(&str, String)], body: Option<&B>, ...` — when needed, persisting the new token through the integration.
+-  `send` function L185-203 — `( &self, method: Method, url: &str, query: &[(&str, String)], body: Option<&B>, ...` — when needed, persisting the new token through the integration.
+-  `Product` enum L207-213 — `Confluence | ConfluenceV1` — when needed, persisting the new token through the integration.
+-  `is_expired` function L215-221 — `(token: &Token) -> bool` — when needed, persisting the new token through the integration.
+-  `merge_prior_extras` function L230-240 — `( new_token: &mut Token, prior_extras: &serde_json::Map<String, serde_json::Valu...` — Carry the prior token's extras into the refreshed token.
+-  `tests` module L243-309 — `-` — when needed, persisting the new token through the integration.
+-  `token_with_extras` function L247-256 — `(extras: serde_json::Map<String, serde_json::Value>) -> Token` — when needed, persisting the new token through the integration.
+-  `refresh_preserves_sites_when_new_token_extras_empty` function L259-274 — `()` — when needed, persisting the new token through the integration.
+-  `refresh_doesnt_overwrite_extras_the_provider_set` function L277-296 — `()` — when needed, persisting the new token through the integration.
+-  `refresh_with_empty_prior_extras_is_no_op` function L299-308 — `()` — when needed, persisting the new token through the integration.
 
 #### crates/arawn-integrations/src/atlassian/confluence.rs
 
@@ -4215,9 +4217,9 @@
 
 #### crates/arawn-integrations/src/error.rs
 
-- pub `IntegrationError` enum L7-28 — `UnknownService | NotConnected | Auth | Io | Format | Provider | Cancelled` — Errors surfaced by the integration layer.
-- pub `user_message` function L32-46 — `(&self) -> String` — User-facing one-liner suitable for the engine error chain (T-0191).
--  `IntegrationError` type L30-47 — `= IntegrationError`
+- pub `IntegrationError` enum L9-37 — `UnknownService | NotConnected | Auth | Io | Format | Provider | RateLimited | Ca...` — Errors surfaced by the integration layer.
+- pub `user_message` function L41-59 — `(&self) -> String` — User-facing one-liner suitable for the engine error chain (T-0191).
+-  `IntegrationError` type L39-60 — `= IntegrationError`
 
 #### crates/arawn-integrations/src/google_common.rs
 
@@ -4255,8 +4257,9 @@
 - pub `google_common` module L29 — `-` — ChaCha20Poly1305 + per-data-dir master key that `TokenStore` uses.
 - pub `integration` module L30 — `-` — ChaCha20Poly1305 + per-data-dir master key that `TokenStore` uses.
 - pub `oauth_flow` module L31 — `-` — ChaCha20Poly1305 + per-data-dir master key that `TokenStore` uses.
-- pub `slack` module L32 — `-` — ChaCha20Poly1305 + per-data-dir master key that `TokenStore` uses.
-- pub `install_default_crypto_provider` function L46-48 — `()` — Install rustls' `ring` crypto provider as the process default.
+- pub `retry_after` module L32 — `-` — ChaCha20Poly1305 + per-data-dir master key that `TokenStore` uses.
+- pub `slack` module L33 — `-` — ChaCha20Poly1305 + per-data-dir master key that `TokenStore` uses.
+- pub `install_default_crypto_provider` function L48-50 — `()` — Install rustls' `ring` crypto provider as the process default.
 
 #### crates/arawn-integrations/src/oauth_flow.rs
 
@@ -4269,6 +4272,17 @@
 -  `publish_auth_url` function L95-97 — `(&self, url: &Url)` — 6.
 -  `publish_progress` function L98-100 — `(&self, message: &str)` — 6.
 -  `ctx_capture_smoke` function L104-124 — `()` — 6.
+
+#### crates/arawn-integrations/src/retry_after.rs
+
+- pub `parse_retry_after` function L18-20 — `(raw: Option<&str>) -> Option<Duration>` — Parse a `Retry-After` header value.
+-  `parse_retry_after_at` function L22-37 — `(raw: Option<&str>, now: DateTime<Utc>) -> Option<Duration>` — re-exports it.
+-  `tests` module L40-74 — `-` — re-exports it.
+-  `at` function L43-45 — `(s: &str) -> DateTime<Utc>` — re-exports it.
+-  `delta_seconds` function L48-52 — `()` — re-exports it.
+-  `http_date_future` function L55-59 — `()` — re-exports it.
+-  `http_date_past_clamps_to_zero` function L62-66 — `()` — re-exports it.
+-  `missing_or_garbage` function L69-73 — `()` — re-exports it.
 
 ### crates/arawn-integrations/src/drive
 

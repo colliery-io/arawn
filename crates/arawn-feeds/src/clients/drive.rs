@@ -123,6 +123,7 @@ fn integ_err(e: arawn_integrations::IntegrationError) -> FeedError {
     use arawn_integrations::IntegrationError;
     match e {
         IntegrationError::NotConnected(msg) => FeedError::Auth(msg),
+        IntegrationError::RateLimited { retry_after } => FeedError::RateLimited { retry_after },
         other => FeedError::Provider(other.user_message()),
     }
 }

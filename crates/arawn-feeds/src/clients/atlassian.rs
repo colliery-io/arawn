@@ -170,6 +170,9 @@ fn integ_err(e: arawn_integrations::IntegrationError) -> FeedError {
     use arawn_integrations::IntegrationError;
     match &e {
         IntegrationError::NotConnected(msg) => FeedError::Auth(msg.clone()),
+        IntegrationError::RateLimited { retry_after } => FeedError::RateLimited {
+            retry_after: *retry_after,
+        },
         IntegrationError::Provider(msg) => classify_provider_error(msg),
         _ => FeedError::Provider(e.user_message()),
     }

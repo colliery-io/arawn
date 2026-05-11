@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use thiserror::Error;
 
 /// Errors surfaced by the integration layer. Wraps `AuthError` from
@@ -23,6 +25,13 @@ pub enum IntegrationError {
     #[error("provider error: {0}")]
     Provider(String),
 
+    /// Upstream returned a 429 / typed rate-limit error. `retry_after`
+    /// is the parsed `Retry-After` header (delta-seconds or HTTP-date),
+    /// when the provider supplied one. The feeds layer translates this
+    /// to `FeedError::RateLimited` so the spawn-loop can back off.
+    #[error("rate limited{}", retry_after.as_ref().map(|d| format!(" (retry after {}s)", d.as_secs())).unwrap_or_default())]
+    RateLimited { retry_after: Option<Duration> },
+
     #[error("OAuth flow cancelled by user")]
     Cancelled,
 }
@@ -41,6 +50,10 @@ impl IntegrationError {
             IntegrationError::Io(e) => format!("Credential storage error: {e}"),
             IntegrationError::Format(msg) => format!("Credential format error: {msg}"),
             IntegrationError::Provider(msg) => format!("Provider error: {msg}"),
+            IntegrationError::RateLimited { retry_after } => match retry_after {
+                Some(d) => format!("Rate limited. Retry after {}s.", d.as_secs()),
+                None => "Rate limited. Try again in a moment.".to_string(),
+            },
             IntegrationError::Cancelled => "OAuth flow cancelled.".to_string(),
         }
     }

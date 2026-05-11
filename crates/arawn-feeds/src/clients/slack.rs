@@ -148,7 +148,14 @@ fn integ_err(e: arawn_integrations::IntegrationError) -> FeedError {
     }
 }
 
-fn slack_morphism_err<E: std::fmt::Display>(op: &str, e: E) -> FeedError {
+fn slack_morphism_err<E: std::error::Error + 'static>(op: &str, e: E) -> FeedError {
+    // slack-morphism's typed RateLimitError carries `Option<Duration>`
+    // for the parsed Retry-After. Walk the source chain so we catch it
+    // whether `e` is `SlackClientError::RateLimitError(...)` directly or
+    // a wrapper that exposes it via `.source()`.
+    if let Some(retry_after) = find_slack_retry_after(&e) {
+        return FeedError::RateLimited { retry_after };
+    }
     let msg = e.to_string();
     if msg.contains("rate") || msg.contains("ratelimit") || msg.contains("Retry-After") {
         FeedError::RateLimited { retry_after: None }
@@ -160,6 +167,26 @@ fn slack_morphism_err<E: std::fmt::Display>(op: &str, e: E) -> FeedError {
     } else {
         FeedError::Provider(format!("{op}: {msg}"))
     }
+}
+
+/// Walk the source chain of a slack-morphism error looking for a typed
+/// `SlackRateLimitError`. Returns its `retry_after` if found.
+fn find_slack_retry_after(
+    e: &(dyn std::error::Error + 'static),
+) -> Option<Option<std::time::Duration>> {
+    use slack_morphism::errors::{SlackClientError, SlackRateLimitError};
+    let mut cur: Option<&(dyn std::error::Error + 'static)> = Some(e);
+    while let Some(err) = cur {
+        if let Some(c) = err.downcast_ref::<SlackClientError>()
+            && let SlackClientError::RateLimitError(r) = c {
+                return Some(r.retry_after);
+            }
+        if let Some(r) = err.downcast_ref::<SlackRateLimitError>() {
+            return Some(r.retry_after);
+        }
+        cur = err.source();
+    }
+    None
 }
 
 #[async_trait]

@@ -158,6 +158,17 @@ impl AtlassianClient {
     ) -> Result<T, IntegrationError> {
         let resp = self.send(method, url, query, body).await?;
         let status = resp.status();
+        // Capture Retry-After before consuming the body — Atlassian
+        // surfaces it on 429s. parse_retry_after handles delta-seconds
+        // and HTTP-date forms.
+        if status.as_u16() == 429 {
+            let retry_after = resp
+                .headers()
+                .get("retry-after")
+                .and_then(|v| v.to_str().ok())
+                .and_then(|s| crate::parse_retry_after(Some(s)));
+            return Err(IntegrationError::RateLimited { retry_after });
+        }
         let text = resp
             .text()
             .await

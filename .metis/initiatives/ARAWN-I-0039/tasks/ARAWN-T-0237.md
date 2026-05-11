@@ -4,14 +4,14 @@ level: task
 title: "Feed resilience matrix: Retry-After, exponential backoff, schema-skip"
 short_code: "ARAWN-T-0237"
 created_at: 2026-05-11T13:32:00.770563+00:00
-updated_at: 2026-05-11T13:32:00.770563+00:00
+updated_at: 2026-05-11T13:55:33.330716+00:00
 parent: ARAWN-I-0039
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/active"
 
 
 exit_criteria_met: false
@@ -89,6 +89,8 @@ and asserts the rest write.
 
 ## Acceptance Criteria
 
+## Acceptance Criteria
+
 - [ ] Provider-agnostic helper that turns 429 responses into
   `FeedError::RateLimited(secs)` with the right `Retry-After` seconds
   (integer or HTTP-date form). Unit tests for both forms.
@@ -120,4 +122,33 @@ and asserts the rest write.
 
 ## Status Updates
 
-*To be added during implementation*
+### 2026-05-11 — item 1 landed: Retry-After parsing where reachable
+
+**Reachable (wired):**
+- `parse_retry_after(Option<&str>) -> Option<Duration>` helper in
+  `arawn-integrations/src/retry_after.rs`. Handles delta-seconds and
+  RFC 1123 HTTP-date (clamped to zero if in the past). 4 unit tests.
+- `IntegrationError::RateLimited { retry_after }` new variant; all four
+  feeds clients (`gmail`, `drive`, `calendar`, `atlassian`) propagate
+  it to `FeedError::RateLimited`.
+- **Slack** — slack-morphism's typed `SlackRateLimitError.retry_after`
+  is now caught by walking the error's source chain in
+  `slack_morphism_err`. Previously dropped on the floor.
+- **Confluence** — `atlassian/client.rs::send_json` checks for
+  `status == 429` before consuming the body, parses the `Retry-After`
+  header from the raw reqwest `Response`, and returns the typed
+  `IntegrationError::RateLimited`.
+
+**Unreachable without forking upstream crates:**
+- **Gmail / Drive** — `google-apis-common::Error` doesn't expose
+  response headers; the existing string-sniffing fallback stays.
+- **Jira** — `jira_v3_openapi::apis::ResponseContent` has only
+  `status`/`content`/`entity`, no `headers`.
+
+For those, `retry_after: None` flows through. Item 2 (spawn-loop
+exponential backoff) provides a default backoff for None, which is
+where the resilience win actually lives.
+
+**Tests:** 4 retry_after unit tests + workspace test suite green (74
+unit + 13 integration test files). `angreal check workspace` and
+`angreal check clippy` clean.
