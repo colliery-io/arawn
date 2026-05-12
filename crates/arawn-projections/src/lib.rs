@@ -16,6 +16,7 @@ pub mod atlassian;
 pub mod calendar;
 pub mod dispatch;
 pub mod drive;
+pub mod embed;
 pub mod error;
 pub mod gmail;
 pub mod schema;
@@ -24,6 +25,7 @@ pub mod store;
 pub mod types;
 
 pub use dispatch::project_feed_dir;
+pub use embed::{run_embed_pass, EmbedPassOutcome, Embedder};
 pub use error::ProjectionError;
 pub use store::{ProjectionStore, WriteOutcome};
 pub use types::{Projection, ProjectionRow};

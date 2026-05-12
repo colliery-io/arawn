@@ -26,6 +26,12 @@ pub struct ProjectionStore {
 }
 
 impl ProjectionStore {
+    /// Accessor for sibling modules (e.g. `embed`) that need to issue
+    /// raw SQL against the same connection.
+    pub(crate) fn conn(&self) -> &Mutex<Connection> {
+        &self.conn
+    }
+
     pub fn open(path: &Path) -> Result<Self, ProjectionError> {
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)?;

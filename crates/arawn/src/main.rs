@@ -6,6 +6,31 @@ use tracing_subscriber::{EnvFilter, Layer, fmt, layer::SubscriberExt, util::Subs
 use uuid::Uuid;
 
 use arawn_core::Workstream;
+
+/// Adapter from `arawn_embed::Embedder` to the trait
+/// `arawn_projections::Embedder` expects. Lets the embed pass run
+/// against whatever backend arawn-embed is configured for.
+struct EmbedderBridge {
+    inner: Arc<dyn arawn_embed::Embedder>,
+}
+
+impl arawn_projections::Embedder for EmbedderBridge {
+    fn embed_batch<'a>(
+        &'a self,
+        texts: &'a [&'a str],
+    ) -> std::pin::Pin<
+        Box<dyn std::future::Future<Output = Result<Vec<Vec<f32>>, String>> + Send + 'a>,
+    > {
+        let inner = Arc::clone(&self.inner);
+        let texts = texts.to_vec();
+        Box::pin(async move {
+            inner
+                .embed_batch(&texts)
+                .await
+                .map_err(|e| e.to_string())
+        })
+    }
+}
 use arawn_engine::QueryEngineConfig;
 use arawn_engine::SkillTool;
 use arawn_engine::plugins::PluginRuntime;
@@ -349,6 +374,48 @@ async fn main() -> Result<()> {
                 path = %projections_db_path.display(),
                 "feed_search unavailable — projections db could not be opened"
             ),
+        }
+
+        // Embed pass: walks projection rows whose embedding is NULL
+        // and fills them in via the configured embedder. Runs every
+        // 5 minutes on a tokio task; soft-fails if either the
+        // projections db or the embedder is unavailable.
+        if let Some(emb) = embedder.clone() {
+            let projections_db_path = std::path::PathBuf::from(&data_dir).join("projections.db");
+            if let Ok(store) = arawn_projections::ProjectionStore::open(&projections_db_path) {
+                let store = Arc::new(store);
+                let bridge = Arc::new(EmbedderBridge {
+                    inner: emb,
+                }) as Arc<dyn arawn_projections::Embedder>;
+                tokio::spawn(async move {
+                    let mut interval = tokio::time::interval(
+                        std::time::Duration::from_secs(300),
+                    );
+                    // First tick fires immediately — kick off an embed
+                    // pass at startup so backfill rows from prior runs
+                    // get covered without waiting 5 min.
+                    loop {
+                        interval.tick().await;
+                        match arawn_projections::run_embed_pass(
+                            &store, bridge.as_ref(), 32, 512,
+                        )
+                        .await
+                        {
+                            Ok(out) if out.embedded > 0 || out.skipped_empty > 0 => {
+                                info!(
+                                    embedded = out.embedded,
+                                    skipped = out.skipped_empty,
+                                    errors = out.errors,
+                                    "projection embed pass"
+                                );
+                            }
+                            Ok(_) => debug!("projection embed pass: nothing pending"),
+                            Err(e) => warn!(error = %e, "projection embed pass failed"),
+                        }
+                    }
+                });
+                info!("projection embed pass scheduled (every 5 min)");
+            }
         }
 
         // Load new-style plugins (Claude Code compatible)

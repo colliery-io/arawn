@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-12T03:44:59Z | 266 files | Python, Rust
+> Generated: 2026-05-12T12:52:55Z | 272 files | Python, Rust
 
 ## Project Structure
 
@@ -91,6 +91,7 @@
 │   │           ├── ask_user.rs
 │   │           ├── enter_plan_mode.rs
 │   │           ├── exit_plan_mode.rs
+│   │           ├── feed_search.rs
 │   │           ├── file_edit.rs
 │   │           ├── file_read.rs
 │   │           ├── file_write.rs
@@ -246,10 +247,15 @@
 │   │       └── recall_eval.rs
 │   ├── arawn-projections/
 │   │   ├── src/
+│   │   │   ├── atlassian.rs
+│   │   │   ├── calendar.rs
+│   │   │   ├── dispatch.rs
+│   │   │   ├── drive.rs
 │   │   │   ├── error.rs
 │   │   │   ├── gmail.rs
 │   │   │   ├── lib.rs
 │   │   │   ├── schema.rs
+│   │   │   ├── slack.rs
 │   │   │   ├── store.rs
 │   │   │   └── types.rs
 │   │   └── tests/
@@ -593,16 +599,16 @@
 
 -  `DEFAULT_MODEL` variable L15 — `: &str`
 -  `FILE_LOG_FILTER` variable L18 — `: &str` — Default file log filter: debug for arawn crates, warn for third-party.
--  `main` function L21-787 — `() -> Result<()>`
+-  `main` function L21-830 — `() -> Result<()>`
 -  `Cli` struct L27-46 — `{ command: Option<Command>, data_dir: Option<String>, session: Option<Uuid>, lis...`
 -  `Command` enum L49-68 — `Serve | Tui | Plugin`
--  `run_cli_via_server` function L790-895 — `( url: &str, prompt: &str, session_id: Option<Uuid>, ) -> Result<()>` — Run a CLI prompt by connecting to the running server via WebSocket.
--  `build_llm_client` function L898-921 — `( config: &arawn_bin::LlmConfig, ) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
--  `register_default_tools` function L924-970 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &arawn_bin::ArawnConfig, d...` — Register all default tools into the registry.
--  `connect_mcp_servers` function L973-1021 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
--  `register_workflow_tools` function L1024-1041 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
--  `build_engine_config` function L1043-1078 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
--  `dirs_path` function L1080-1089 — `() -> Option<String>`
+-  `run_cli_via_server` function L833-938 — `( url: &str, prompt: &str, session_id: Option<Uuid>, ) -> Result<()>` — Run a CLI prompt by connecting to the running server via WebSocket.
+-  `build_llm_client` function L941-964 — `( config: &arawn_bin::LlmConfig, ) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
+-  `register_default_tools` function L967-1013 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &arawn_bin::ArawnConfig, d...` — Register all default tools into the registry.
+-  `connect_mcp_servers` function L1016-1064 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
+-  `register_workflow_tools` function L1067-1084 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
+-  `build_engine_config` function L1086-1121 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
+-  `dirs_path` function L1123-1132 — `() -> Option<String>`
 
 #### crates/arawn/src/plugin_cmd.rs
 
@@ -2199,6 +2205,22 @@
 -  `plan_written_to_disk` function L159-169 — `()`
 -  `exit_plan_mode_is_read_only` function L172-176 — `()`
 
+#### crates/arawn-engine/src/tools/feed_search.rs
+
+- pub `FeedSearchTool` struct L31-33 — `{ store: Arc<ProjectionStore> }` — fusion, no API change.
+- pub `new` function L36-38 — `(store: Arc<ProjectionStore>) -> Self` — fusion, no API change.
+-  `KNOWN_FEED_TYPES` variable L19-29 — `: &[&str]` — fusion, no API change.
+-  `FeedSearchTool` type L35-39 — `= FeedSearchTool` — fusion, no API change.
+-  `FeedSearchTool` type L42-180 — `impl Tool for FeedSearchTool` — fusion, no API change.
+-  `name` function L43-45 — `(&self) -> &str` — fusion, no API change.
+-  `description` function L47-51 — `(&self) -> &str` — fusion, no API change.
+-  `is_read_only` function L53-55 — `(&self) -> bool` — fusion, no API change.
+-  `category` function L57-59 — `(&self) -> ToolCategory` — fusion, no API change.
+-  `parameters_schema` function L61-89 — `(&self) -> Value` — fusion, no API change.
+-  `execute` function L91-179 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — fusion, no API change.
+-  `Hit` struct L182-185 — `{ score: f32, row: arawn_projections::ProjectionRow }` — fusion, no API change.
+-  `snippet` function L187-193 — `(text: &str, cap: usize) -> String` — fusion, no API change.
+
 #### crates/arawn-engine/src/tools/file_edit.rs
 
 - pub `FileEditTool` struct L8 — `-` — Edit a file by replacing a string.
@@ -2363,23 +2385,24 @@
 - pub `exit_plan_mode` module L4 — `-`
 - pub `file_edit` module L5 — `-`
 - pub `file_read` module L6 — `-`
-- pub `file_write` module L7 — `-`
-- pub `glob` module L8 — `-`
-- pub `grep` module L9 — `-`
-- pub `memory_search` module L10 — `-`
-- pub `memory_store` module L11 — `-`
-- pub `safe_env` module L12 — `-`
-- pub `sensitive_paths` module L13 — `-`
-- pub `shell` module L14 — `-`
-- pub `skill` module L15 — `-`
-- pub `sleep` module L16 — `-`
-- pub `task_list` module L17 — `-`
-- pub `task_output` module L18 — `-`
-- pub `task_stop` module L19 — `-`
-- pub `think` module L20 — `-`
-- pub `web_fetch` module L21 — `-`
-- pub `web_search` module L22 — `-`
-- pub `workstream` module L23 — `-`
+- pub `feed_search` module L7 — `-`
+- pub `file_write` module L8 — `-`
+- pub `glob` module L9 — `-`
+- pub `grep` module L10 — `-`
+- pub `memory_search` module L11 — `-`
+- pub `memory_store` module L12 — `-`
+- pub `safe_env` module L13 — `-`
+- pub `sensitive_paths` module L14 — `-`
+- pub `shell` module L15 — `-`
+- pub `skill` module L16 — `-`
+- pub `sleep` module L17 — `-`
+- pub `task_list` module L18 — `-`
+- pub `task_output` module L19 — `-`
+- pub `task_stop` module L20 — `-`
+- pub `think` module L21 — `-`
+- pub `web_fetch` module L22 — `-`
+- pub `web_search` module L23 — `-`
+- pub `workstream` module L24 — `-`
 
 #### crates/arawn-engine/src/tools/safe_env.rs
 
@@ -2750,25 +2773,25 @@
 
 #### crates/arawn-feeds/src/dispatch.rs
 
-- pub `FeedRuntimeContext` struct L42-47 — `{ conn: Arc<Mutex<Connection>>, layout: Arc<DataLayout>, registry: Arc<FeedTempl...` — Shared handles the dispatch task needs to actually run.
-- pub `FeedDispatchTask` struct L52-58 — `{ feed_id: String, runtime: FeedRuntimeContext, deps: Vec<TaskNamespace> }` — One cloacina-compatible task per feed.
-- pub `new` function L61-67 — `(feed_id: impl Into<String>, runtime: FeedRuntimeContext) -> Self` — retry/audit machinery handles the rest.
-- pub `run_feed` function L103-108 — `( feed_id: &str, runtime: &FeedRuntimeContext, ) -> Result<crate::template::RunO...` — The actual fetch+write cycle.
-- pub `run_feed_force` function L113-118 — `( feed_id: &str, runtime: &FeedRuntimeContext, ) -> Result<crate::template::RunO...` — Variant that ignores the `enabled` flag — used by the backfill
--  `FeedDispatchTask` type L60-68 — `= FeedDispatchTask` — retry/audit machinery handles the rest.
--  `FeedDispatchTask` type L71-93 — `impl Task for FeedDispatchTask` — retry/audit machinery handles the rest.
--  `id` function L72-74 — `(&self) -> &str` — retry/audit machinery handles the rest.
--  `dependencies` function L76-78 — `(&self) -> &[TaskNamespace]` — retry/audit machinery handles the rest.
--  `execute` function L80-92 — `( &self, context: Context<Value>, ) -> Result<Context<Value>, TaskError>` — retry/audit machinery handles the rest.
--  `run_feed_inner` function L120-200 — `( feed_id: &str, runtime: &FeedRuntimeContext, force: bool, ) -> Result<crate::t...` — retry/audit machinery handles the rest.
--  `persist_meta_failure` function L202-217 — `( feed_dir: &std::path::Path, template: &str, params: &crate::types::TemplatePar...` — retry/audit machinery handles the rest.
--  `tests` module L220-355 — `-` — retry/audit machinery handles the rest.
--  `open_test_db` function L229-244 — `() -> Connection` — retry/audit machinery handles the rest.
--  `build_runtime` function L246-253 — `(tmp_root: &std::path::Path, conn: Connection) -> FeedRuntimeContext` — retry/audit machinery handles the rest.
--  `run_feed_executes_stub_template_and_persists_meta` function L256-285 — `()` — retry/audit machinery handles the rest.
--  `run_feed_increments_cursor_across_invocations` function L288-319 — `()` — retry/audit machinery handles the rest.
--  `run_feed_skips_disabled_feed` function L322-342 — `()` — retry/audit machinery handles the rest.
--  `run_feed_returns_storage_error_for_missing_id` function L345-354 — `()` — retry/audit machinery handles the rest.
+- pub `FeedRuntimeContext` struct L42-52 — `{ conn: Arc<Mutex<Connection>>, layout: Arc<DataLayout>, registry: Arc<FeedTempl...` — Shared handles the dispatch task needs to actually run.
+- pub `FeedDispatchTask` struct L57-63 — `{ feed_id: String, runtime: FeedRuntimeContext, deps: Vec<TaskNamespace> }` — One cloacina-compatible task per feed.
+- pub `new` function L66-72 — `(feed_id: impl Into<String>, runtime: FeedRuntimeContext) -> Self` — retry/audit machinery handles the rest.
+- pub `run_feed` function L108-113 — `( feed_id: &str, runtime: &FeedRuntimeContext, ) -> Result<crate::template::RunO...` — The actual fetch+write cycle.
+- pub `run_feed_force` function L118-123 — `( feed_id: &str, runtime: &FeedRuntimeContext, ) -> Result<crate::template::RunO...` — Variant that ignores the `enabled` flag — used by the backfill
+-  `FeedDispatchTask` type L65-73 — `= FeedDispatchTask` — retry/audit machinery handles the rest.
+-  `FeedDispatchTask` type L76-98 — `impl Task for FeedDispatchTask` — retry/audit machinery handles the rest.
+-  `id` function L77-79 — `(&self) -> &str` — retry/audit machinery handles the rest.
+-  `dependencies` function L81-83 — `(&self) -> &[TaskNamespace]` — retry/audit machinery handles the rest.
+-  `execute` function L85-97 — `( &self, context: Context<Value>, ) -> Result<Context<Value>, TaskError>` — retry/audit machinery handles the rest.
+-  `run_feed_inner` function L125-234 — `( feed_id: &str, runtime: &FeedRuntimeContext, force: bool, ) -> Result<crate::t...` — retry/audit machinery handles the rest.
+-  `persist_meta_failure` function L236-251 — `( feed_dir: &std::path::Path, template: &str, params: &crate::types::TemplatePar...` — retry/audit machinery handles the rest.
+-  `tests` module L254-390 — `-` — retry/audit machinery handles the rest.
+-  `open_test_db` function L263-278 — `() -> Connection` — retry/audit machinery handles the rest.
+-  `build_runtime` function L280-288 — `(tmp_root: &std::path::Path, conn: Connection) -> FeedRuntimeContext` — retry/audit machinery handles the rest.
+-  `run_feed_executes_stub_template_and_persists_meta` function L291-320 — `()` — retry/audit machinery handles the rest.
+-  `run_feed_increments_cursor_across_invocations` function L323-354 — `()` — retry/audit machinery handles the rest.
+-  `run_feed_skips_disabled_feed` function L357-377 — `()` — retry/audit machinery handles the rest.
+-  `run_feed_returns_storage_error_for_missing_id` function L380-389 — `()` — retry/audit machinery handles the rest.
 
 #### crates/arawn-feeds/src/error.rs
 
@@ -2839,38 +2862,38 @@
 
 - pub `CloacinaRunner` type L34 — `= DefaultRunner` — arawn-feeds doesn't depend on arawn-workflow directly to avoid a
 - pub `feed_workflow_name` function L43-45 — `(feed_id: &str) -> String` — Format the cloacina workflow name for a feed.
-- pub `start` function L51-105 — `( runner: Arc<CloacinaRunner>, conn: Arc<Mutex<Connection>>, layout: Arc<DataLay...` — One-stop entry the server boot calls after the workflow runner is
-- pub `FeedRuntime` struct L108-111 — `{ runner: Arc<CloacinaRunner>, runtime_ctx: FeedRuntimeContext }` — Live handle for dynamic feed registration (Phase 6: `/watch`).
-- pub `register_feed_runtime` function L116-121 — `( &self, record: &FeedRecord, ) -> Result<(), FeedError>` — Register an additional feed without a server restart.
-- pub `runtime_ctx` function L123-125 — `(&self) -> &FeedRuntimeContext` — audit are all inherited from cloacina.
-- pub `register_feed_dynamic` function L139-219 — `( &self, template: &str, feed_id: &str, params: TemplateParams, cadence_override...` — Full dynamic-registration flow used by the `/watch` command.
-- pub `run_feed_once` function L230-235 — `( &self, feed_id: &str, ) -> Result<crate::template::RunOutcome, FeedError>` — Trigger a one-off run of an enabled feed, outside the cron
-- pub `pause_feed` function L243-260 — `(&self, feed_id: &str) -> Result<FeedRecord, FeedError>` — Pause a feed: drop its cloacina cron schedule and flip the row
-- pub `resume_feed` function L265-283 — `(&self, feed_id: &str) -> Result<FeedRecord, FeedError>` — Resume a previously-paused feed: re-register the cloacina
-- pub `remove_feed` function L292-321 — `( &self, feed_id: &str, ) -> Result<RemoveOutcome, FeedError>` — Decommission: drop the cloacina cron schedule, delete the DB
-- pub `discover_template` function L329-336 — `( &self, template_name: &str, ) -> Result<Option<Vec<DiscoveryRow>>, FeedError>` — Run the template's discovery hook.
-- pub `list_summaries` function L340-371 — `(&self) -> Result<Vec<FeedSummary>, FeedError>` — List every feed in the DB (enabled or paused) with on-disk
-- pub `resume_pending_backfills` function L633-662 — `( runner: Arc<CloacinaRunner>, runtime_ctx: FeedRuntimeContext, records: &[FeedR...` — On boot, find feeds whose `meta.json.last_status == "backfilling"`
-- pub `RemoveOutcome` struct L668-671 — `{ record: FeedRecord, bytes_wiped: u64 }` — Outcome of a successful `remove_feed` — the row that was deleted
--  `FeedRuntime` type L113-372 — `= FeedRuntime` — audit are all inherited from cloacina.
--  `BACKFILL_PAGE_CAP` variable L378 — `: u32` — Hard cap on backfill loop iterations.
--  `BASE_BACKOFF` variable L382 — `: std::time::Duration` — Base delay used when a provider rate-limits us without a Retry-After
--  `MAX_RATE_LIMIT_WAIT` variable L387 — `: std::time::Duration` — Wall-clock cap on cumulative rate-limit waits inside a single
--  `TRANSIENT_MAX_ATTEMPTS` variable L391 — `: u32` — How many consecutive transient errors (Provider/Storage) we'll
--  `transient_backoff` function L397-400 — `(attempt: u32) -> std::time::Duration` — Pure helper: backoff for the Nth consecutive transient retry
--  `BackfillExit` enum L405-411 — `Complete | RateLimitDeferred` — How a backfill ended.
--  `spawn_backfill_task` function L425-477 — `( runner: Arc<CloacinaRunner>, runtime_ctx: FeedRuntimeContext, feed_id: String,...` — Spawn the backfill loop as a detached tokio task.
--  `BackfillStats` struct L480-483 — `{ pages: u32, items: u64 }` — audit are all inherited from cloacina.
--  `run_backfill_loop` function L485-564 — `( _runner: &Arc<CloacinaRunner>, runtime_ctx: &FeedRuntimeContext, feed_id: &str...` — audit are all inherited from cloacina.
--  `finalize_backfill_success` function L566-605 — `( runner: &Arc<CloacinaRunner>, runtime_ctx: &FeedRuntimeContext, feed_id: &str,...` — audit are all inherited from cloacina.
--  `mark_backfill_failed` function L607-628 — `( runtime_ctx: &FeedRuntimeContext, feed_id: &str, err: &str, ) -> Result<(), Fe...` — audit are all inherited from cloacina.
--  `delete_schedule_for` function L675-695 — `( runner: &CloacinaRunner, workflow_name: &str, ) -> Result<(), FeedError>` — Look up cloacina's cron schedule by workflow name and delete it
--  `dir_size_bytes` function L697-717 — `(path: &std::path::Path) -> u64` — audit are all inherited from cloacina.
--  `walk` function L698-713 — `(p: &std::path::Path, acc: &mut u64)` — audit are all inherited from cloacina.
--  `register_one` function L719-805 — `( runner: &CloacinaRunner, ctx: &FeedRuntimeContext, record: &FeedRecord, ) -> R...` — audit are all inherited from cloacina.
--  `tests` module L808-826 — `-` — audit are all inherited from cloacina.
--  `transient_backoff_doubles_per_attempt` function L813-817 — `()` — audit are all inherited from cloacina.
--  `transient_backoff_clamps` function L820-825 — `()` — audit are all inherited from cloacina.
+- pub `start` function L51-107 — `( runner: Arc<CloacinaRunner>, conn: Arc<Mutex<Connection>>, layout: Arc<DataLay...` — One-stop entry the server boot calls after the workflow runner is
+- pub `FeedRuntime` struct L110-113 — `{ runner: Arc<CloacinaRunner>, runtime_ctx: FeedRuntimeContext }` — Live handle for dynamic feed registration (Phase 6: `/watch`).
+- pub `register_feed_runtime` function L118-123 — `( &self, record: &FeedRecord, ) -> Result<(), FeedError>` — Register an additional feed without a server restart.
+- pub `runtime_ctx` function L125-127 — `(&self) -> &FeedRuntimeContext` — audit are all inherited from cloacina.
+- pub `register_feed_dynamic` function L141-221 — `( &self, template: &str, feed_id: &str, params: TemplateParams, cadence_override...` — Full dynamic-registration flow used by the `/watch` command.
+- pub `run_feed_once` function L232-237 — `( &self, feed_id: &str, ) -> Result<crate::template::RunOutcome, FeedError>` — Trigger a one-off run of an enabled feed, outside the cron
+- pub `pause_feed` function L245-262 — `(&self, feed_id: &str) -> Result<FeedRecord, FeedError>` — Pause a feed: drop its cloacina cron schedule and flip the row
+- pub `resume_feed` function L267-285 — `(&self, feed_id: &str) -> Result<FeedRecord, FeedError>` — Resume a previously-paused feed: re-register the cloacina
+- pub `remove_feed` function L294-323 — `( &self, feed_id: &str, ) -> Result<RemoveOutcome, FeedError>` — Decommission: drop the cloacina cron schedule, delete the DB
+- pub `discover_template` function L331-338 — `( &self, template_name: &str, ) -> Result<Option<Vec<DiscoveryRow>>, FeedError>` — Run the template's discovery hook.
+- pub `list_summaries` function L342-373 — `(&self) -> Result<Vec<FeedSummary>, FeedError>` — List every feed in the DB (enabled or paused) with on-disk
+- pub `resume_pending_backfills` function L635-664 — `( runner: Arc<CloacinaRunner>, runtime_ctx: FeedRuntimeContext, records: &[FeedR...` — On boot, find feeds whose `meta.json.last_status == "backfilling"`
+- pub `RemoveOutcome` struct L670-673 — `{ record: FeedRecord, bytes_wiped: u64 }` — Outcome of a successful `remove_feed` — the row that was deleted
+-  `FeedRuntime` type L115-374 — `= FeedRuntime` — audit are all inherited from cloacina.
+-  `BACKFILL_PAGE_CAP` variable L380 — `: u32` — Hard cap on backfill loop iterations.
+-  `BASE_BACKOFF` variable L384 — `: std::time::Duration` — Base delay used when a provider rate-limits us without a Retry-After
+-  `MAX_RATE_LIMIT_WAIT` variable L389 — `: std::time::Duration` — Wall-clock cap on cumulative rate-limit waits inside a single
+-  `TRANSIENT_MAX_ATTEMPTS` variable L393 — `: u32` — How many consecutive transient errors (Provider/Storage) we'll
+-  `transient_backoff` function L399-402 — `(attempt: u32) -> std::time::Duration` — Pure helper: backoff for the Nth consecutive transient retry
+-  `BackfillExit` enum L407-413 — `Complete | RateLimitDeferred` — How a backfill ended.
+-  `spawn_backfill_task` function L427-479 — `( runner: Arc<CloacinaRunner>, runtime_ctx: FeedRuntimeContext, feed_id: String,...` — Spawn the backfill loop as a detached tokio task.
+-  `BackfillStats` struct L482-485 — `{ pages: u32, items: u64 }` — audit are all inherited from cloacina.
+-  `run_backfill_loop` function L487-566 — `( _runner: &Arc<CloacinaRunner>, runtime_ctx: &FeedRuntimeContext, feed_id: &str...` — audit are all inherited from cloacina.
+-  `finalize_backfill_success` function L568-607 — `( runner: &Arc<CloacinaRunner>, runtime_ctx: &FeedRuntimeContext, feed_id: &str,...` — audit are all inherited from cloacina.
+-  `mark_backfill_failed` function L609-630 — `( runtime_ctx: &FeedRuntimeContext, feed_id: &str, err: &str, ) -> Result<(), Fe...` — audit are all inherited from cloacina.
+-  `delete_schedule_for` function L677-697 — `( runner: &CloacinaRunner, workflow_name: &str, ) -> Result<(), FeedError>` — Look up cloacina's cron schedule by workflow name and delete it
+-  `dir_size_bytes` function L699-719 — `(path: &std::path::Path) -> u64` — audit are all inherited from cloacina.
+-  `walk` function L700-715 — `(p: &std::path::Path, acc: &mut u64)` — audit are all inherited from cloacina.
+-  `register_one` function L721-807 — `( runner: &CloacinaRunner, ctx: &FeedRuntimeContext, record: &FeedRecord, ) -> R...` — audit are all inherited from cloacina.
+-  `tests` module L810-828 — `-` — audit are all inherited from cloacina.
+-  `transient_backoff_doubles_per_attempt` function L815-819 — `()` — audit are all inherited from cloacina.
+-  `transient_backoff_clamps` function L822-827 — `()` — audit are all inherited from cloacina.
 
 #### crates/arawn-feeds/src/store.rs
 
@@ -3459,9 +3482,9 @@
 
 -  `create_feeds_schema` function L26-39 — `(conn: &Connection)` — workflow registration + execution machinery.
 -  `build_runner` function L41-54 — `(workflows_db: &std::path::Path) -> Arc<DefaultRunner>` — workflow registration + execution machinery.
--  `cloacina_fires_feed_workflow_end_to_end` function L57-127 — `()` — workflow registration + execution machinery.
--  `cloacina_fires_advance_cursor_across_two_executions` function L130-182 — `()` — workflow registration + execution machinery.
--  `registering_a_feed_with_unknown_template_is_skipped_at_boot` function L185-242 — `()` — workflow registration + execution machinery.
+-  `cloacina_fires_feed_workflow_end_to_end` function L57-128 — `()` — workflow registration + execution machinery.
+-  `cloacina_fires_advance_cursor_across_two_executions` function L131-184 — `()` — workflow registration + execution machinery.
+-  `registering_a_feed_with_unknown_template_is_skipped_at_boot` function L187-245 — `()` — workflow registration + execution machinery.
 
 #### crates/arawn-feeds/tests/confluence_space_archive.rs
 
@@ -3615,14 +3638,14 @@
 #### crates/arawn-feeds/tests/dynamic_register.rs
 
 -  `migrate` function L17-32 — `(conn: &Connection)` — firings happen (so the run_count is 0 and last_run_at is None).
--  `dynamic_register_full_flow` function L35-110 — `()` — firings happen (so the run_count is 0 and last_run_at is None).
--  `pause_resume_round_trip_through_cloacina` function L113-182 — `()` — firings happen (so the run_count is 0 and last_run_at is None).
--  `remove_wipes_cron_row_and_data_dir` function L185-253 — `()` — firings happen (so the run_count is 0 and last_run_at is None).
--  `pause_unknown_feed_returns_invalid_params` function L256-284 — `()` — firings happen (so the run_count is 0 and last_run_at is None).
--  `dynamic_register_is_idempotent_via_unique_constraint` function L287-341 — `()` — firings happen (so the run_count is 0 and last_run_at is None).
--  `since_param_triggers_backfill_loop_then_registers_cron` function L344-426 — `()` — firings happen (so the run_count is 0 and last_run_at is None).
--  `no_since_uses_existing_immediate_cron_path` function L429-481 — `()` — firings happen (so the run_count is 0 and last_run_at is None).
--  `dynamic_register_rolls_back_on_unknown_template` function L484-527 — `()` — firings happen (so the run_count is 0 and last_run_at is None).
+-  `dynamic_register_full_flow` function L35-111 — `()` — firings happen (so the run_count is 0 and last_run_at is None).
+-  `pause_resume_round_trip_through_cloacina` function L114-184 — `()` — firings happen (so the run_count is 0 and last_run_at is None).
+-  `remove_wipes_cron_row_and_data_dir` function L187-256 — `()` — firings happen (so the run_count is 0 and last_run_at is None).
+-  `pause_unknown_feed_returns_invalid_params` function L259-287 — `()` — firings happen (so the run_count is 0 and last_run_at is None).
+-  `dynamic_register_is_idempotent_via_unique_constraint` function L290-344 — `()` — firings happen (so the run_count is 0 and last_run_at is None).
+-  `since_param_triggers_backfill_loop_then_registers_cron` function L347-430 — `()` — firings happen (so the run_count is 0 and last_run_at is None).
+-  `no_since_uses_existing_immediate_cron_path` function L433-485 — `()` — firings happen (so the run_count is 0 and last_run_at is None).
+-  `dynamic_register_rolls_back_on_unknown_template` function L488-531 — `()` — firings happen (so the run_count is 0 and last_run_at is None).
 
 #### crates/arawn-feeds/tests/gmail_archive.rs
 
@@ -5318,6 +5341,86 @@
 
 > *Semantic summary to be generated by AI agent.*
 
+#### crates/arawn-projections/src/atlassian.rs
+
+- pub `JIRA_ISSUES` variable L33 — `: &str` — ```
+- pub `JIRA_COMMENTS` variable L34 — `: &str` — ```
+- pub `JIRA_HISTORY` variable L35 — `: &str` — ```
+- pub `CONFLUENCE_PAGES` variable L36 — `: &str` — ```
+- pub `JiraIssueProjection` struct L39-52 — `{ id: String, feed_id: String, source_id: String, source_ts: DateTime<Utc>, proj...` — ```
+- pub `JiraCommentProjection` struct L92-100 — `{ id: String, feed_id: String, source_id: String, source_ts: DateTime<Utc>, issu...` — ```
+- pub `JiraHistoryProjection` struct L130-140 — `{ id: String, feed_id: String, source_id: String, source_ts: DateTime<Utc>, issu...` — ```
+- pub `ConfluencePageProjection` struct L180-191 — `{ id: String, feed_id: String, source_id: String, source_ts: DateTime<Utc>, spac...` — ```
+- pub `walk_jira_feed_dir` function L235-242 — `( feed_id: &str, feed_dir: &Path, ) -> Result<JiraWalkResult, ProjectionError>` — Walk a Jira feed dir.
+- pub `JiraWalkResult` struct L245-249 — `{ issues: Vec<JiraIssueProjection>, comments: Vec<JiraCommentProjection>, histor...` — ```
+- pub `walk_confluence_feed_dir` function L522-602 — `( feed_id: &str, feed_dir: &Path, ) -> Result<Vec<ConfluencePageProjection>, Pro...` — Walk a Confluence space-archive dir.
+-  `JiraIssueProjection` type L54-89 — `impl Projection for JiraIssueProjection` — ```
+-  `feed_type` function L55-57 — `(&self) -> &'static str` — ```
+-  `row` function L58-88 — `(&self) -> ProjectionRow` — ```
+-  `JiraCommentProjection` type L102-127 — `impl Projection for JiraCommentProjection` — ```
+-  `feed_type` function L103-105 — `(&self) -> &'static str` — ```
+-  `row` function L106-126 — `(&self) -> ProjectionRow` — ```
+-  `JiraHistoryProjection` type L142-177 — `impl Projection for JiraHistoryProjection` — ```
+-  `feed_type` function L143-145 — `(&self) -> &'static str` — ```
+-  `row` function L146-176 — `(&self) -> ProjectionRow` — ```
+-  `ConfluencePageProjection` type L193-215 — `impl Projection for ConfluencePageProjection` — ```
+-  `feed_type` function L194-196 — `(&self) -> &'static str` — ```
+-  `row` function L197-214 — `(&self) -> ProjectionRow` — ```
+-  `hash_id` function L217-224 — `(prefix: &str, feed_id: &str, source: &str) -> String` — ```
+-  `parse_dt` function L226-230 — `(s: &str) -> DateTime<Utc>` — ```
+-  `visit_jira` function L251-297 — `( feed_id: &str, dir: &Path, out: &mut JiraWalkResult, depth: usize, ) -> Result...` — ```
+-  `read_jira_issue` function L299-394 — `( feed_id: &str, path: &Path, ) -> Result<Option<JiraIssueProjection>, Projectio...` — ```
+-  `read_jira_comments` function L396-443 — `( feed_id: &str, issue_key: &str, path: &Path, out: &mut Vec<JiraCommentProjecti...` — ```
+-  `read_jira_history` function L445-519 — `( feed_id: &str, issue_key: &str, path: &Path, out: &mut Vec<JiraHistoryProjecti...` — ```
+-  `tests` module L605-712 — `-` — ```
+-  `jira_issue_from_disk` function L610-642 — `()` — ```
+-  `jira_comments_and_history` function L645-684 — `()` — ```
+-  `confluence_page_from_disk` function L687-711 — `()` — ```
+
+#### crates/arawn-projections/src/calendar.rs
+
+- pub `FEED_TYPE` variable L20 — `: &str` — we store one projection row per file.
+- pub `CalendarEventProjection` struct L23-39 — `{ id: String, feed_id: String, source_id: String, source_ts: DateTime<Utc>, cale...` — we store one projection row per file.
+- pub `projection_id` function L81-88 — `(feed_id: &str, event_id: &str) -> String` — we store one projection row per file.
+- pub `from_calendar_event` function L111-178 — `(feed_id: &str, v: &Value) -> Option<CalendarEventProjection>` — we store one projection row per file.
+- pub `walk_feed_dir` function L180-210 — `( feed_id: &str, feed_dir: &Path, ) -> Result<Vec<CalendarEventProjection>, Proj...` — we store one projection row per file.
+-  `CalendarEventProjection` type L41-79 — `impl Projection for CalendarEventProjection` — we store one projection row per file.
+-  `feed_type` function L42-44 — `(&self) -> &'static str` — we store one projection row per file.
+-  `row` function L46-78 — `(&self) -> ProjectionRow` — we store one projection row per file.
+-  `parse_event_time` function L90-109 — `(v: Option<&Value>) -> (Option<DateTime<Utc>>, bool)` — we store one projection row per file.
+-  `tests` module L213-280 — `-` — we store one projection row per file.
+-  `parses_dated_event` function L218-236 — `()` — we store one projection row per file.
+-  `parses_all_day_event` function L239-249 — `()` — we store one projection row per file.
+-  `walks_events_dir` function L252-273 — `()` — we store one projection row per file.
+-  `skips_event_without_start` function L276-279 — `()` — we store one projection row per file.
+
+#### crates/arawn-projections/src/dispatch.rs
+
+- pub `project_feed_dir` function L27-142 — `( store: &ProjectionStore, template_name: &str, feed_id: &str, feed_dir: &Path, ...` — Project every item under the on-disk mirror for `feed_id`, walking
+-  `SubBatch` enum L144-148 — `Issues | Comments | History` — and after backfill.
+-  `SubKind` enum L150-154 — `IssueKey | CommentId | HistoryId` — and after backfill.
+-  `atlassian_write_subbatch` function L156-174 — `( store: &ProjectionStore, feed_type: &str, feed_id: &str, sub: SubBatch, _kind:...` — and after backfill.
+-  `dedup_and_write_single_type` function L176-200 — `( store: &ProjectionStore, feed_type: &str, feed_id: &str, parsed: Vec<P>, sourc...` — and after backfill.
+
+#### crates/arawn-projections/src/drive.rs
+
+- pub `FEED_TYPE` variable L24 — `: &str` — body_hash is the file size + path so a re-run is still a no-op.
+- pub `DriveFileProjection` struct L32-42 — `{ id: String, feed_id: String, source_id: String, source_ts: DateTime<Utc>, path...` — body_hash is the file size + path so a re-run is still a no-op.
+- pub `projection_id` function L69-76 — `(feed_id: &str, file_id: &str) -> String` — body_hash is the file size + path so a re-run is still a no-op.
+- pub `walk_feed_dir` function L78-135 — `( feed_id: &str, feed_dir: &Path, ) -> Result<Vec<DriveFileProjection>, Projecti...` — body_hash is the file size + path so a re-run is still a no-op.
+-  `MAX_BODY_BYTES` variable L29 — `: usize` — Heuristic: only embed files whose body looks like text.
+-  `DriveFileProjection` type L44-67 — `impl Projection for DriveFileProjection` — body_hash is the file size + path so a re-run is still a no-op.
+-  `feed_type` function L45-47 — `(&self) -> &'static str` — body_hash is the file size + path so a re-run is still a no-op.
+-  `row` function L49-66 — `(&self) -> ProjectionRow` — body_hash is the file size + path so a re-run is still a no-op.
+-  `read_text_body` function L140-161 — `(path: &Path) -> (String, u64)` — Read a file as utf-8 text, truncated to `MAX_BODY_BYTES`.
+-  `read_capped` function L163-179 — `(path: &Path, cap: usize) -> Result<Vec<u8>, std::io::Error>` — body_hash is the file size + path so a re-run is still a no-op.
+-  `tests` module L182-260 — `-` — body_hash is the file size + path so a re-run is still a no-op.
+-  `write_meta` function L186-188 — `(dir: &Path, meta: Value)` — body_hash is the file size + path so a re-run is still a no-op.
+-  `walks_files_from_meta` function L191-224 — `()` — body_hash is the file size + path so a re-run is still a no-op.
+-  `missing_meta_returns_empty` function L227-231 — `()` — body_hash is the file size + path so a re-run is still a no-op.
+-  `tolerates_top_level_files_key` function L234-244 — `()` — body_hash is the file size + path so a re-run is still a no-op.
+-  `missing_local_file_still_produces_metadata_row` function L247-259 — `()` — body_hash is the file size + path so a re-run is still a no-op.
+
 #### crates/arawn-projections/src/error.rs
 
 - pub `ProjectionError` enum L4-13 — `Storage | Schema | Io`
@@ -5353,16 +5456,41 @@
 
 #### crates/arawn-projections/src/lib.rs
 
-- pub `error` module L15 — `-` — Projections sit between raw feed mirrors (on-disk files) and the
-- pub `gmail` module L16 — `-` — - Decouples feed-side fidelity (raw mirror) from query-side shape.
-- pub `schema` module L17 — `-` — - Decouples feed-side fidelity (raw mirror) from query-side shape.
-- pub `store` module L18 — `-` — - Decouples feed-side fidelity (raw mirror) from query-side shape.
-- pub `types` module L19 — `-` — - Decouples feed-side fidelity (raw mirror) from query-side shape.
+- pub `atlassian` module L15 — `-` — Projections sit between raw feed mirrors (on-disk files) and the
+- pub `calendar` module L16 — `-` — - Decouples feed-side fidelity (raw mirror) from query-side shape.
+- pub `dispatch` module L17 — `-` — - Decouples feed-side fidelity (raw mirror) from query-side shape.
+- pub `drive` module L18 — `-` — - Decouples feed-side fidelity (raw mirror) from query-side shape.
+- pub `error` module L19 — `-` — - Decouples feed-side fidelity (raw mirror) from query-side shape.
+- pub `gmail` module L20 — `-` — - Decouples feed-side fidelity (raw mirror) from query-side shape.
+- pub `schema` module L21 — `-` — - Decouples feed-side fidelity (raw mirror) from query-side shape.
+- pub `slack` module L22 — `-` — - Decouples feed-side fidelity (raw mirror) from query-side shape.
+- pub `store` module L23 — `-` — - Decouples feed-side fidelity (raw mirror) from query-side shape.
+- pub `types` module L24 — `-` — - Decouples feed-side fidelity (raw mirror) from query-side shape.
 
 #### crates/arawn-projections/src/schema.rs
 
 - pub `ensure_feed_type_tables` function L43-88 — `( conn: &Connection, feed_type: &str, ) -> Result<(), ProjectionError>` — Idempotently create all schema for a given feed type.
 - pub `apply_pragmas` function L91-95 — `(conn: &Connection) -> Result<(), ProjectionError>` — Set basic pragmas for a projection database.
+
+#### crates/arawn-projections/src/slack.rs
+
+- pub `TOPLEVEL_FEED_TYPE` variable L21 — `: &str` — ```
+- pub `THREAD_FEED_TYPE` variable L22 — `: &str` — ```
+- pub `SlackMessageProjection` struct L25-36 — `{ id: String, feed_id: String, source_id: String, source_ts: DateTime<Utc>, chan...` — ```
+- pub `projection_id` function L81-88 — `(feed_id: &str, slack_ts: &str) -> String` — ```
+- pub `parse_slack_ts` function L92-97 — `(ts: &str) -> Option<DateTime<Utc>>` — Slack `ts` is `"<unix_secs>.<microseconds>"`.
+- pub `from_slack_message` function L99-147 — `( feed_id: &str, msg: &Value, is_thread_reply: bool, ) -> Option<SlackMessagePro...` — ```
+- pub `walk_feed_dir` function L166-225 — `( feed_id: &str, feed_dir: &Path, ) -> Result<Vec<SlackMessageProjection>, Proje...` — ```
+-  `SlackMessageProjection` type L38-66 — `impl Projection for SlackMessageProjection` — ```
+-  `feed_type` function L39-45 — `(&self) -> &'static str` — ```
+-  `row` function L47-65 — `(&self) -> ProjectionRow` — ```
+-  `synth_title` function L68-79 — `(p: &SlackMessageProjection) -> String` — ```
+-  `parse_jsonl` function L149-164 — `(path: &Path) -> Result<Vec<Value>, ProjectionError>` — ```
+-  `tests` module L228-297 — `-` — ```
+-  `parses_ts` function L233-236 — `()` — ```
+-  `from_message_basic` function L239-254 — `()` — ```
+-  `thread_reply_routes_to_thread_table` function L257-267 — `()` — ```
+-  `walks_top_level_and_threads` function L270-296 — `()` — ```
 
 #### crates/arawn-projections/src/store.rs
 

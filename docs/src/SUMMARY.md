@@ -14,6 +14,7 @@
 - [Continual Data Feeds](./feeds/index.md)
   - [Template Catalog](./feeds/template-catalog.md)
   - [Agent Read Patterns](./feeds/agent-read-patterns.md)
+  - [feed_search Tool](./feeds/feed-search.md)
 
 # Integrations
 
