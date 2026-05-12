@@ -6,20 +6,24 @@ use serde_json::{Value, json};
 use tracing::debug;
 
 use arawn_embed::Embedder;
-use arawn_memory::{Entity, EntityType, MemoryManager, MemoryStore, RelationType};
+use arawn_memory::{Entity, EntityType, MemoryStore, RelationType};
 
 use crate::tool::{Tool, ToolCategory, ToolError, ToolOutput};
+use crate::workstream_router::MemoryHandle;
 
 /// Tool that searches the knowledge base using composite retrieval:
 /// semantic similarity + FTS5 text search + tag filtering + graph expansion.
 pub struct MemorySearchTool {
-    memory: Arc<MemoryManager>,
+    memory: MemoryHandle,
     embedder: Option<Arc<dyn Embedder>>,
 }
 
 impl MemorySearchTool {
-    pub fn new(memory: Arc<MemoryManager>, embedder: Option<Arc<dyn Embedder>>) -> Self {
-        Self { memory, embedder }
+    pub fn new(memory: impl Into<MemoryHandle>, embedder: Option<Arc<dyn Embedder>>) -> Self {
+        Self {
+            memory: memory.into(),
+            embedder,
+        }
     }
 }
 
@@ -110,13 +114,21 @@ impl Tool for MemorySearchTool {
             .and_then(|v| v.as_bool())
             .unwrap_or(false);
 
+        // Resolve the active workstream's memory manager. With a
+        // `MemoryHandle::Routed`, this picks the manager for the
+        // session's currently-active workstream.
+        let manager = self
+            .memory
+            .manager()
+            .map_err(|e| ToolError::ExecutionFailed(format!("memory routing: {e}")))?;
+
         // Collect results from each store, keyed by entity ID to deduplicate
         let mut scored: HashMap<uuid::Uuid, ScoredEntity> = HashMap::new();
 
         let stores_to_search: Vec<&Arc<MemoryStore>> = match scope {
-            "global" => vec![&self.memory.global],
-            "workstream" => vec![&self.memory.workstream],
-            _ => vec![&self.memory.global, &self.memory.workstream],
+            "global" => vec![&manager.global],
+            "workstream" => vec![&manager.workstream],
+            _ => vec![&manager.global, &manager.workstream],
         };
 
         for store in &stores_to_search {

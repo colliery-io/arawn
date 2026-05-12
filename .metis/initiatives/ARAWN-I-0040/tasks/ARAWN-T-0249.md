@@ -4,14 +4,14 @@ level: task
 title: "Workstream slash commands"
 short_code: "ARAWN-T-0249"
 created_at: 2026-05-12T23:25:50.552963+00:00
-updated_at: 2026-05-12T23:25:50.552963+00:00
+updated_at: 2026-05-12T23:46:31.809132+00:00
 parent: ARAWN-I-0040
 blocked_by: [ARAWN-T-0248]
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -62,6 +62,10 @@ Slash commands return text via the existing slash-command response channel. For 
 
 ## Acceptance Criteria
 
+## Acceptance Criteria
+
+## Acceptance Criteria
+
 - [ ] All 8 commands implemented and reachable from the engine slash-command handler.
 - [ ] `switch` updates the in-memory session active workstream (touches T-0250's primitive).
 - [ ] `delete` refuses `scratch` and refuses the currently-active workstream with a clear error.
@@ -91,4 +95,43 @@ Tasks reference a session-level "active workstream." The shared state lives wher
 
 ## Status Updates
 
-*To be added during implementation*
+### 2026-05-12 — 8 tools registered + SessionWorkstream shim
+
+**Files.**
+- `crates/arawn-engine/src/tools/workstream.rs` — rewrote. Eight `Tool` impls (one per slash command) plus a `SessionWorkstream` shim. The two existing stub tools (`WorkstreamCreateTool`, `WorkstreamListTool`) got renamed at the tool-name level (`workstream_new`, `workstream_list`) and gained the new fields; rest are new types.
+- `crates/arawn-engine/src/tools/mod.rs` + `lib.rs` — re-export the new types.
+- `crates/arawn-storage/src/store.rs` — added the `Store` wrappers the tools call into: `list_all_workstreams`, `update_workstream_description`, `add_workstream_binding`, `remove_workstream_binding`, `soft_delete_workstream`, `ensure_scratch_workstream`.
+- `crates/arawn/src/main.rs` — registers all 8 tools, threads a shared `SessionWorkstream` shim through `switch`/`show`/`list`/`delete`. Calls `ensure_scratch_workstream()` at boot.
+
+**Commands shipped:**
+- `workstream_new` (params: name, display_name?, description?) — replaces the stub. Validates via registry; refuses scratch and bad slugs.
+- `workstream_list` (param: all?) — emits `{active, workstreams: [{name, display_name, description, bindings, archived, active}]}`. Active workstream is flagged.
+- `workstream_switch` (param: name) — sets session-active; returns a banner line + previous/new for the UI to surface. Refuses archived workstreams.
+- `workstream_show` (param: name?) — defaults to active when no name supplied. Emits the full record.
+- `workstream_describe` (params: name, description) — updates description.
+- `workstream_bind` / `workstream_unbind` (params: name, feed_id) — idempotent.
+- `workstream_delete` (param: name) — soft-delete; refuses scratch and the currently-active workstream.
+
+**SessionWorkstream shim.** `Arc<Mutex<String>>` wrapper. Initialized at startup to "scratch". `switch` mutates it; `list`/`show`/`delete` read it. T-0250 replaces this with the real `Session::workstream_name` field; the shim makes T-0249 testable on its own without blocking on T-0250.
+
+**Tests: 11 in `tools::workstream` passing.**
+- create_succeeds_with_valid_slug
+- create_refuses_scratch
+- switch_updates_active + switch_unknown_errors
+- show_defaults_to_active
+- describe_updates_description
+- bind_and_unbind_round_trip
+- delete_refuses_scratch + delete_refuses_currently_active + delete_soft_marks_archived
+- list_marks_active
+
+Plus engine full suite: **541 passed**, 0 failed. `angreal check clippy` clean.
+
+**Acceptance criteria.**
+- [x] All 8 commands implemented and reachable from the engine slash-command handler.
+- [x] `switch` updates the in-memory session active workstream (via SessionWorkstream — T-0250 swaps for Session field).
+- [x] `delete` refuses scratch and refuses the currently-active workstream with a clear error.
+- [x] `show` works with no args (uses active) and with an explicit name.
+- [x] Tests cover happy path + refusal paths.
+- [x] `angreal check clippy` clean.
+
+T-0250 unblocked.

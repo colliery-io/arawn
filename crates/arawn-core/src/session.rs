@@ -5,12 +5,17 @@ use crate::Message;
 use crate::session_stats::SessionStats;
 
 /// A conversation session.
-/// Scratch sessions start with `workstream_id = None`.
-/// Once promoted to a workstream, the binding is immutable.
+/// Scratch sessions start with `workstream_id = None` and
+/// `workstream_name = "scratch"`. Once promoted to a workstream,
+/// the binding moves to the named workstream's KB.
 #[derive(Debug, Clone)]
 pub struct Session {
     pub id: Uuid,
     workstream_id: Option<Uuid>,
+    /// Slug of the workstream this session contributes to. Memory
+    /// routing in the engine reads this to pick which KB to write to /
+    /// search. Defaults to `scratch`.
+    workstream_name: String,
     messages: Vec<Message>,
     pub created_at: DateTime<Utc>,
     pub stats: SessionStats,
@@ -22,10 +27,19 @@ impl Session {
         Self {
             id: Uuid::new_v4(),
             workstream_id: Some(workstream_id),
+            workstream_name: crate::workstream::SCRATCH_NAME.to_string(),
             messages: Vec::new(),
             created_at: Utc::now(),
             stats: SessionStats::new(),
         }
+    }
+
+    /// Create a session bound to a workstream by name. Use this on
+    /// the new-session path so memory routing picks the right KB.
+    pub fn new_with_workstream(workstream_id: Uuid, workstream_name: impl Into<String>) -> Self {
+        let mut s = Self::new(workstream_id);
+        s.workstream_name = workstream_name.into();
+        s
     }
 
     /// Reconstruct a session from persisted parts (DB load path).
@@ -38,6 +52,7 @@ impl Session {
         Self {
             id,
             workstream_id,
+            workstream_name: crate::workstream::SCRATCH_NAME.to_string(),
             messages,
             created_at,
             stats: SessionStats::new(),
@@ -55,6 +70,7 @@ impl Session {
         Self {
             id,
             workstream_id,
+            workstream_name: crate::workstream::SCRATCH_NAME.to_string(),
             messages,
             created_at,
             stats,
@@ -66,6 +82,7 @@ impl Session {
         Self {
             id: Uuid::new_v4(),
             workstream_id: None,
+            workstream_name: crate::workstream::SCRATCH_NAME.to_string(),
             messages: Vec::new(),
             created_at: Utc::now(),
             stats: SessionStats::new(),
@@ -74,6 +91,20 @@ impl Session {
 
     pub fn workstream_id(&self) -> Option<Uuid> {
         self.workstream_id
+    }
+
+    /// Current workstream slug for this session. Memory tools read
+    /// this to pick which KB to write to / search.
+    pub fn workstream_name(&self) -> &str {
+        &self.workstream_name
+    }
+
+    /// Update the active workstream binding. Both the slug (used for
+    /// KB routing) and the Uuid (used for session-table FK) update
+    /// atomically. Called by `/workstream switch`.
+    pub fn set_workstream(&mut self, name: impl Into<String>, id: Uuid) {
+        self.workstream_name = name.into();
+        self.workstream_id = Some(id);
     }
 
     /// Returns true if this is a scratch session (not yet promoted).

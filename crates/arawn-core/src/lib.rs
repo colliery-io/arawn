@@ -8,4 +8,4 @@ pub use error::CoreError;
 pub use message::{Message, ToolUse};
 pub use session::Session;
 pub use session_stats::SessionStats;
-pub use workstream::Workstream;
+pub use workstream::{SCRATCH_NAME, Workstream, WorkstreamNameError, validate_name};

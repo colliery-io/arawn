@@ -56,6 +56,13 @@ impl Store {
     // --- Workstream operations ---
 
     pub fn create_workstream(&self, ws: &Workstream) -> Result<(), StorageError> {
+        // `scratch` is reserved by the registry's `create` path — route
+        // callers through `ensure_scratch` for backward compatibility
+        // with code that pre-dated the registry refactor.
+        if ws.name == arawn_core::SCRATCH_NAME {
+            self.ensure_scratch_workstream()?;
+            return Ok(());
+        }
         let store = WorkstreamStore::new(&self.db);
         store.create(ws)?;
 
@@ -76,6 +83,42 @@ impl Store {
 
     pub fn list_workstreams(&self) -> Result<Vec<Workstream>, StorageError> {
         WorkstreamStore::new(&self.db).list()
+    }
+
+    pub fn list_all_workstreams(&self) -> Result<Vec<Workstream>, StorageError> {
+        WorkstreamStore::new(&self.db).list_all()
+    }
+
+    pub fn update_workstream_description(
+        &self,
+        name: &str,
+        description: &str,
+    ) -> Result<(), StorageError> {
+        WorkstreamStore::new(&self.db).update_description(name, description)
+    }
+
+    pub fn add_workstream_binding(&self, name: &str, feed_id: &str) -> Result<(), StorageError> {
+        WorkstreamStore::new(&self.db).add_binding(name, feed_id)
+    }
+
+    pub fn remove_workstream_binding(
+        &self,
+        name: &str,
+        feed_id: &str,
+    ) -> Result<(), StorageError> {
+        WorkstreamStore::new(&self.db).remove_binding(name, feed_id)
+    }
+
+    pub fn soft_delete_workstream(&self, name: &str) -> Result<(), StorageError> {
+        WorkstreamStore::new(&self.db).soft_delete(name)
+    }
+
+    /// Idempotently ensure the `scratch` workstream exists. Safe to
+    /// call on every boot; the on-disk dir is created if absent.
+    pub fn ensure_scratch_workstream(&self) -> Result<Workstream, StorageError> {
+        let scratch_dir = self.data_dir.join("workstreams").join("scratch");
+        let _ = std::fs::create_dir_all(&scratch_dir);
+        WorkstreamStore::new(&self.db).ensure_scratch(&scratch_dir)
     }
 
     // --- Session operations ---

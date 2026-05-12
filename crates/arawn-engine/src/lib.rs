@@ -17,6 +17,7 @@ pub mod token_estimator;
 pub mod tool;
 pub mod tool_result_limiter;
 pub mod tools;
+pub mod workstream_router;
 
 pub use background::{
     BackgroundTaskManager, BackgroundTaskKind, BackgroundTaskStatus, TaskNotification, TaskSummary,
@@ -46,6 +47,7 @@ pub use query_engine::{
 };
 pub use system_prompt::{ContextFile, SystemPromptBuilder, find_context_files};
 pub use token_estimator::{ModelLimits, TokenEstimator};
+pub use workstream_router::{MemoryHandle, WorkstreamMemoryRouter};
 pub use tool::{Tool, ToolCategory, ToolError, ToolOutput, ToolRegistry};
 pub use skills::{SkillDefinition, SkillRegistry, format_skill_listing, load_merged_skills};
 pub use tools::{
@@ -53,5 +55,7 @@ pub use tools::{
     FileWriteTool, GlobTool, GrepTool, SessionTaskStore, ShellTool, SkillTool, SleepTool,
     FeedSearchTool, MemorySearchTool, MemoryStoreTool, TaskCreateTool, TaskGetTool, TaskListTool, TaskOutputTool, TaskStopTool,
     TaskUpdateTool, ThinkTool, WebFetchTool, WebSearchTool,
-    WorkstreamCreateTool, WorkstreamListTool,
+    SessionWorkstream, WorkstreamBindTool, WorkstreamCreateTool, WorkstreamDeleteTool,
+    WorkstreamDescribeTool, WorkstreamListTool, WorkstreamShowTool, WorkstreamSwitchTool,
+    WorkstreamUnbindTool,
 };

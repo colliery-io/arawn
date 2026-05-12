@@ -5,7 +5,6 @@ use tracing::{debug, error, info, warn};
 use tracing_subscriber::{EnvFilter, Layer, fmt, layer::SubscriberExt, util::SubscriberInitExt};
 use uuid::Uuid;
 
-use arawn_core::Workstream;
 
 /// Adapter from `arawn_embed::Embedder` to the trait
 /// `arawn_projections::Embedder` expects. Lets the embed pass run
@@ -209,15 +208,15 @@ async fn main() -> Result<()> {
     // Ensure scratch workstream exists
     // Note: scratch sessions get per-session workspaces, but the workstream root_dir
     // is a placeholder — the actual workspace is resolved per-session at runtime.
-    let scratch_dir = std::path::PathBuf::from(&data_dir).join("workstreams/scratch");
+    let _scratch_dir = std::path::PathBuf::from(&data_dir).join("workstreams/scratch");
     let workstream = match store.find_workstream_by_name("scratch")? {
         Some(ws) => {
             debug!("reusing existing scratch workstream");
             ws
         }
         None => {
-            let ws = Workstream::scratch(&scratch_dir);
-            store.create_workstream(&ws)?;
+            // Scratch is reserved; create via the dedicated path.
+            let ws = store.ensure_scratch_workstream()?;
             info!("created scratch workstream");
             ws
         }
@@ -346,17 +345,32 @@ async fn main() -> Result<()> {
             Arc::clone(&plan_state),
         );
 
-        // Register memory tools (if memory system is available)
-        if let Some(ref mgr) = memory_manager {
+        // Active-workstream shim shared between workstream slash
+        // commands and the memory router. T-0250 routes memory tools
+        // through this primitive so `/workstream switch` redirects
+        // memory_store / memory_search to the new workstream's KB
+        // on subsequent calls.
+        let active_workstream = arawn_engine::SessionWorkstream::scratch();
+
+        // Register memory tools (if memory system is available).
+        // Use the routed handle so the active workstream determines
+        // which KB the tools read/write.
+        if memory_manager.is_some() {
+            let router = Arc::new(arawn_engine::WorkstreamMemoryRouter::new(
+                std::path::PathBuf::from(&data_dir),
+                Some(embed_config.dimensions),
+                embedder.clone(),
+                active_workstream.clone(),
+            ));
             registry.register(Box::new(arawn_engine::MemoryStoreTool::new(
-                Arc::clone(mgr),
+                Arc::clone(&router),
                 embedder.clone(),
             )));
             registry.register(Box::new(arawn_engine::MemorySearchTool::new(
-                Arc::clone(mgr),
+                Arc::clone(&router),
                 embedder.clone(),
             )));
-            info!("memory tools registered (store + search)");
+            info!("memory tools registered (workstream-routed store + search)");
         }
 
         // feed_search tool — read-only over the projections db. Opens
@@ -480,9 +494,42 @@ async fn main() -> Result<()> {
             service = service.with_memory_manager(Arc::clone(mgr));
         }
 
-        // Register workstream tools (need the shared store from the service)
-        registry.register(Box::new(arawn_engine::WorkstreamCreateTool::new(service.shared_store())));
-        registry.register(Box::new(arawn_engine::WorkstreamListTool::new(service.shared_store())));
+        // Register workstream tools (need the shared store from the service).
+        // The active-workstream shim is shared across the switch/show/list/delete
+        // tools AND the memory router so they observe the same session-level state.
+        // Idempotently materialize the scratch workstream so first-boot users
+        // land in a valid scope.
+        if let Err(e) = service.shared_store().lock().unwrap().ensure_scratch_workstream() {
+            warn!(error = %e, "failed to ensure scratch workstream");
+        }
+        registry.register(Box::new(arawn_engine::WorkstreamCreateTool::new(
+            service.shared_store(),
+        )));
+        registry.register(Box::new(
+            arawn_engine::WorkstreamListTool::new(service.shared_store())
+                .with_active(active_workstream.clone()),
+        ));
+        registry.register(Box::new(arawn_engine::WorkstreamSwitchTool::new(
+            service.shared_store(),
+            active_workstream.clone(),
+        )));
+        registry.register(Box::new(arawn_engine::WorkstreamShowTool::new(
+            service.shared_store(),
+            active_workstream.clone(),
+        )));
+        registry.register(Box::new(arawn_engine::WorkstreamDescribeTool::new(
+            service.shared_store(),
+        )));
+        registry.register(Box::new(arawn_engine::WorkstreamBindTool::new(
+            service.shared_store(),
+        )));
+        registry.register(Box::new(arawn_engine::WorkstreamUnbindTool::new(
+            service.shared_store(),
+        )));
+        registry.register(Box::new(arawn_engine::WorkstreamDeleteTool::new(
+            service.shared_store(),
+            active_workstream.clone(),
+        )));
 
         // Resolve OAuth credentials with precedence:
         //   env var → arawn.toml `[integrations.<service>]` → empty (skip).

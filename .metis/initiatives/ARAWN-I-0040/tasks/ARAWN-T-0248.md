@@ -4,14 +4,14 @@ level: task
 title: "Workstream registry + lazy KB binding + scratch default"
 short_code: "ARAWN-T-0248"
 created_at: 2026-05-12T23:25:49.418998+00:00
-updated_at: 2026-05-12T23:25:49.418998+00:00
+updated_at: 2026-05-12T23:36:04.870294+00:00
 parent: ARAWN-I-0040
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -92,6 +92,10 @@ The `bindings` column stores `[feed_id, …]` as JSON. Phase 3 doesn't act on bi
 
 ## Acceptance Criteria
 
+## Acceptance Criteria
+
+## Acceptance Criteria
+
 - [ ] `workstreams` table created via `arawn-storage` migration; `scratch` row inserted on first boot.
 - [ ] `WorkstreamRegistry` CRUD round-trips through the table.
 - [ ] Name validation refuses bad slugs (`Pat!`, `..`, empty, > 64 chars) and reserves `scratch`.
@@ -124,4 +128,37 @@ The `bindings` column stores `[feed_id, …]` as JSON. Phase 3 doesn't act on bi
 
 ## Status Updates
 
-*To be added during implementation*
+### 2026-05-12 — Registry expanded; scratch + soft-delete + bindings live
+
+**What I found.** A `WorkstreamStore` already existed in `arawn-storage` with the V1 minimal columns (`id, name, root_dir, created_at`). Sessions FK to `workstreams(id)` so the Uuid is load-bearing; can't replace it with `name` as PK without a session-table migration that wasn't in scope. Kept `id` as PK and added the new columns + a UNIQUE INDEX on `name`.
+
+**Files.**
+- `crates/arawn-storage/migrations/V3__workstreams.sql` — `ALTER TABLE` adding `display_name, description, bindings, archived, updated_at` + indexes; backfills `display_name = name` and `updated_at = created_at` for existing rows.
+- `crates/arawn-core/src/workstream.rs` — rewrote. `Workstream` now carries `display_name, description, bindings, archived, updated_at`. Constructor is permissive (no validation); registry validates on insert. New exports: `SCRATCH_NAME`, `validate_name`, `WorkstreamNameError`.
+- `crates/arawn-storage/src/workstream_store.rs` — rewrote as the full registry. `ensure_scratch(path)`, `create` (validates name, refuses `scratch`, errors on duplicate), `find_by_name`, `get(uuid)`, `list` / `list_all` (filter by archived), `update_description`, `set_bindings` / `add_binding` / `remove_binding`, `soft_delete` (refuses scratch), `delete(uuid)` (hard, retained for V1 compat).
+- `crates/arawn-memory/src/manager.rs` — added `MemoryManager::for_workstream(data_dir, name, dims)` as a named wrapper over `open`.
+
+**Tests.**
+- `arawn-core` workstream: 5 tests (name validation, scratch slug, struct defaults).
+- `arawn-storage` workstream_store: 9 new tests covering create / roundtrip / duplicate / invalid-slug / scratch-reserved / `ensure_scratch` idempotency / `update_description` / bindings add+remove+dedup / `soft_delete` marks archived / `soft_delete` refuses scratch / list-orders-by-updated_at.
+- `arawn-storage` full suite: **50 passed**, 0 failed.
+- `arawn-core` lib: **30 passed**.
+- `arawn-memory` lib: **60 passed** (no regression from the new `for_workstream` method).
+- `cargo check --workspace --tests` clean.
+
+**Decisions worth keeping.**
+- **`id` retained as PK.** Sessions FK on `workstream_id = workstreams.id`, which the V1 migration baked in. Changing that would mean a chained migration touching the sessions table — out of scope for T-0248. The `name` column is UNIQUE so the user-facing addressing is unambiguous; the Uuid is internal.
+- **Constructor stays permissive.** `Workstream::new("anything", path)` doesn't validate, since the type is used in tests and one-off shells where the registry isn't involved. Validation lives in `validate_name` and is invoked by `WorkstreamStore::create`.
+- **Soft-delete is the default.** `delete(uuid)` is retained for V1 callers but new code uses `soft_delete(name)`. On-disk KB at `<root_dir>/memory.db` is intentionally left alone — operator can clean up manually or reactivate by flipping `archived = 0`.
+- **Lazy KB.** `MemoryManager::for_workstream` is just a renamed wrapper over `open(data_dir, name, dims)` — the underlying `MemoryStore::open` is what creates the file on first access, so the laziness comes from arawn-memory's existing behavior.
+
+**Acceptance criteria.**
+- [x] `workstreams` table extended via migration; scratch row created at runtime via `ensure_scratch`.
+- [x] CRUD round-trips through the table.
+- [x] Name validation refuses bad slugs and reserves `scratch`.
+- [x] `MemoryManager::for_workstream(name)` opens the workstream KB at the expected path; file is created lazily.
+- [x] Delete is soft (`archived = 1`); scratch cannot be deleted.
+- [x] Unit tests cover all the named criteria.
+- [x] `cargo check --workspace --tests` clean.
+
+T-0249 unblocked.

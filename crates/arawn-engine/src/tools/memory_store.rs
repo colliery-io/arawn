@@ -6,20 +6,24 @@ use tracing::{debug, info};
 
 use arawn_embed::Embedder;
 use arawn_memory::{
-    ConfidenceSource, Entity, EntityType, MemoryManager, RelationType, Scope, StoreFactResult,
+    ConfidenceSource, Entity, EntityType, RelationType, Scope, StoreFactResult,
 };
 
 use crate::tool::{Tool, ToolCategory, ToolError, ToolOutput};
+use crate::workstream_router::MemoryHandle;
 
 /// Tool that stores knowledge in the KB with search-before-create deduplication.
 pub struct MemoryStoreTool {
-    memory: Arc<MemoryManager>,
+    memory: MemoryHandle,
     embedder: Option<Arc<dyn Embedder>>,
 }
 
 impl MemoryStoreTool {
-    pub fn new(memory: Arc<MemoryManager>, embedder: Option<Arc<dyn Embedder>>) -> Self {
-        Self { memory, embedder }
+    pub fn new(memory: impl Into<MemoryHandle>, embedder: Option<Arc<dyn Embedder>>) -> Self {
+        Self {
+            memory: memory.into(),
+            embedder,
+        }
     }
 }
 
@@ -124,8 +128,12 @@ impl Tool for MemoryStoreTool {
             entity = entity.with_content(c);
         }
 
-        // Route to appropriate store
-        let store = self.memory.store_for(scope);
+        // Route to appropriate store for the active workstream
+        let manager = self
+            .memory
+            .manager()
+            .map_err(|e| ToolError::ExecutionFailed(format!("memory routing: {e}")))?;
+        let store = manager.store_for(scope);
 
         // Search-before-create via store_fact
         let result = store

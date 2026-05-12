@@ -70,6 +70,18 @@ impl MemoryManager {
         })
     }
 
+    /// Convenience wrapper: open a memory manager scoped to a named
+    /// workstream. The workstream KB lives at
+    /// `<data_dir>/workstreams/<name>/memory.db` and is created on
+    /// first write. The global KB is shared across workstreams.
+    pub fn for_workstream(
+        data_dir: &Path,
+        workstream_name: &str,
+        embedding_dims: Option<usize>,
+    ) -> Result<Self, MemoryError> {
+        Self::open(data_dir, workstream_name, embedding_dims)
+    }
+
     /// Create a MemoryManager from pre-built stores (for testing).
     pub fn open_with_stores(global: Arc<MemoryStore>, workstream: Arc<MemoryStore>) -> Self {
         Self {

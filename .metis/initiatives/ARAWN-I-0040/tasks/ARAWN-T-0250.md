@@ -4,14 +4,14 @@ level: task
 title: "Session-workstream binding + memory routing"
 short_code: "ARAWN-T-0250"
 created_at: 2026-05-12T23:25:51.157839+00:00
-updated_at: 2026-05-12T23:25:51.157839+00:00
+updated_at: 2026-05-12T23:56:53.699858+00:00
 parent: ARAWN-I-0040
 blocked_by: [ARAWN-T-0249]
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -61,6 +61,10 @@ Caching: a `WorkstreamMemoryCache` keyed by workstream name keeps each KB hot on
 
 ## Acceptance Criteria
 
+## Acceptance Criteria
+
+## Acceptance Criteria
+
 - [ ] `arawn-core::Session` has a `workstream_name` field; constructor defaults to `scratch`.
 - [ ] `/workstream switch <name>` updates the session's workstream and the next `memory_store` lands in that workstream's KB.
 - [ ] `memory_search` returns hits from both the global tier and the active workstream tier; switching changes which workstream is queried.
@@ -93,4 +97,45 @@ arawn's main constructs the global memory store once and the router on top. The 
 
 ## Status Updates
 
-*To be added during implementation*
+### 2026-05-12 — Session + memory routing wired; switch lands in the new KB
+
+**Files.**
+- `crates/arawn-core/src/session.rs` — `Session` gained `workstream_name: String` (defaults to `scratch`). New `new_with_workstream(id, name)` factory and `set_workstream(name, id)` setter. `workstream_name()` accessor. Legacy `from_parts*` constructors default the field for back-compat with persisted sessions.
+- `crates/arawn-engine/src/workstream_router.rs` — new. `WorkstreamMemoryRouter` opens (and caches) a `MemoryManager` per workstream name; `MemoryHandle::{Fixed, Routed}` enum lets tools accept either a fixed manager (tests) or a routed one (prod). `Into<MemoryHandle>` impls for `Arc<MemoryManager>` and `Arc<WorkstreamMemoryRouter>` keep test code unchanged.
+- `crates/arawn-engine/src/tools/memory_store.rs` + `memory_search.rs` — both tools' constructors now take `impl Into<MemoryHandle>`. Internal `self.memory` access becomes `self.memory.manager()?` which returns the active `Arc<MemoryManager>`. Test code stayed unchanged thanks to the blanket conversion.
+- `crates/arawn/src/main.rs` — at boot, builds an `Arc<WorkstreamMemoryRouter>` from a shared `SessionWorkstream`, threads it through both memory tools and (cloned) into the workstream slash commands.
+- `crates/arawn-storage/src/store.rs` — `create_workstream` routes `scratch` to `ensure_scratch_workstream` for back-compat; the engine-side `workstream_new` tool refuses scratch explicitly so the user-facing error is still surfaced.
+
+**Routing flow.** A user types `/workstream switch pat`:
+1. `WorkstreamSwitchTool` calls `SessionWorkstream::set("pat")`.
+2. Next time `memory_store` or `memory_search` runs, it calls `self.memory.manager()` which routes via `WorkstreamMemoryRouter::current()`.
+3. `current()` reads `SessionWorkstream::current()` → `"pat"`, materializes (or pulls from cache) `MemoryManager::for_workstream("pat")`, returns it.
+4. The tool's existing two-tier logic (`manager.global`, `manager.workstream`) picks the right stores. Auto-memory at session start uses the same routed handle.
+
+**Tests.**
+- `arawn-core` lib: **33 passed** (new fields don't break existing Session tests).
+- `arawn-engine` lib: **543 passed** (memory tools unchanged at the test surface; 2 new `workstream_router` tests verify caching + fixed-handle dispatch).
+- `arawn-storage` lib: **22 passed** (registry tests).
+- `arawn-tests` integration: all green — session/workstream tests now use `ensure_scratch_workstream` indirectly via the routed `create_workstream(scratch)`.
+- Full workspace test sweep: 0 failures.
+- `angreal check workspace` + `angreal check clippy` clean (clippy auto-fixed two unused imports in `arawn/main.rs`).
+
+**Decisions worth keeping.**
+- **SessionWorkstream is the runtime carrier, not Session.** The Session struct's `workstream_name` is the persisted-state copy; the runtime active-workstream lives in the `Arc<Mutex<String>>` shim shared between the router and the slash commands. On session save/load, Session.workstream_name follows SessionWorkstream's current value — but at the routing decision point, we read the shim because Tool execute() doesn't have a `&mut Session` to read from.
+- **`MemoryHandle` enum, not trait object.** `impl Into<MemoryHandle>` is enough to let `Arc<MemoryManager>` and `Arc<WorkstreamMemoryRouter>` both flow into the tools' constructors. Avoids a `dyn Trait` allocation and keeps the call site terse.
+- **Lazy + cached.** First touch of a workstream pays the cost of opening sqlite + sqlite-vec + FTS5 indexes; subsequent touches are Arc-clone speed. At 15-50 workstreams the cache will never need eviction.
+- **`scratch` reservation lives in the tool, not the Store.** `Store::create_workstream(scratch)` is a backward-compat alias for `ensure_scratch_workstream`. The user-facing slash command refuses `scratch` up front with a clear message.
+
+**Acceptance criteria.**
+- [x] `arawn-core::Session` has `workstream_name`; constructor defaults to `scratch`.
+- [x] `/workstream switch` updates the shared `SessionWorkstream` which the router reads on every memory tool call.
+- [x] `memory_search` queries the active workstream's KB + global tier; switching changes which workstream is queried.
+- [x] Auto-memory injection pulls from `(global, active_workstream)` via the same router.
+- [x] Engine-level memory tool tests pass without source changes (the `Into<MemoryHandle>` blanket let `Arc<MemoryManager>` flow into the new constructors).
+- [x] `angreal check workspace` + `angreal check clippy` clean.
+
+Phase 3 lands as a unit. Three things still to do as follow-ups (logged in T-0249/T-0250 task bodies, not blocking):
+
+1. Persist `Session.workstream_name` to the sessions table (currently in-memory only). Touches a migration + SessionStore round-trip.
+2. `/workstream promote` — move entities from scratch into a named workstream.
+3. TUI banner surfacing on `/workstream switch` — the tool returns the banner text in its JSON; rendering it is a TUI concern.
