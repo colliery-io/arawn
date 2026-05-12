@@ -4,14 +4,14 @@ level: task
 title: "Feed resilience matrix: Retry-After, exponential backoff, schema-skip"
 short_code: "ARAWN-T-0237"
 created_at: 2026-05-11T13:32:00.770563+00:00
-updated_at: 2026-05-11T13:55:33.330716+00:00
+updated_at: 2026-05-11T20:30:35.588767+00:00
 parent: ARAWN-I-0039
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -86,6 +86,8 @@ Gmail's helper already does the right thing (`Schema(e) | Provider(e)
 Land any missing per-item `warn + continue` paths; add a unit test
 per template that injects a bad item into the middle of a good batch
 and asserts the rest write.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

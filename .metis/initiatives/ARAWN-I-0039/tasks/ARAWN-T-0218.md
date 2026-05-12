@@ -4,14 +4,14 @@ level: task
 title: "Phase 5 — End-to-end validation + agent read-pattern docs"
 short_code: "ARAWN-T-0218"
 created_at: 2026-05-07T00:42:49.568283+00:00
-updated_at: 2026-05-09T04:17:51.001919+00:00
+updated_at: 2026-05-12T00:39:45.004052+00:00
 parent: ARAWN-I-0039
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -72,6 +72,8 @@ Depends on: T-0214 (runtime), T-0215 (Slack), T-0216 (Gmail+Cal), T-0217 (Jira+C
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

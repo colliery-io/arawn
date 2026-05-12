@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-11T16:27:08Z | 258 files | Python, Rust
+> Generated: 2026-05-11T20:01:18Z | 258 files | Python, Rust
 
 ## Project Structure
 
@@ -2839,19 +2839,27 @@
 - pub `remove_feed` function L292-321 — `( &self, feed_id: &str, ) -> Result<RemoveOutcome, FeedError>` — Decommission: drop the cloacina cron schedule, delete the DB
 - pub `discover_template` function L329-336 — `( &self, template_name: &str, ) -> Result<Option<Vec<DiscoveryRow>>, FeedError>` — Run the template's discovery hook.
 - pub `list_summaries` function L340-371 — `(&self) -> Result<Vec<FeedSummary>, FeedError>` — List every feed in the DB (enabled or paused) with on-disk
-- pub `resume_pending_backfills` function L518-547 — `( runner: Arc<CloacinaRunner>, runtime_ctx: FeedRuntimeContext, records: &[FeedR...` — On boot, find feeds whose `meta.json.last_status == "backfilling"`
-- pub `RemoveOutcome` struct L553-556 — `{ record: FeedRecord, bytes_wiped: u64 }` — Outcome of a successful `remove_feed` — the row that was deleted
+- pub `resume_pending_backfills` function L633-662 — `( runner: Arc<CloacinaRunner>, runtime_ctx: FeedRuntimeContext, records: &[FeedR...` — On boot, find feeds whose `meta.json.last_status == "backfilling"`
+- pub `RemoveOutcome` struct L668-671 — `{ record: FeedRecord, bytes_wiped: u64 }` — Outcome of a successful `remove_feed` — the row that was deleted
 -  `FeedRuntime` type L113-372 — `= FeedRuntime` — audit are all inherited from cloacina.
 -  `BACKFILL_PAGE_CAP` variable L378 — `: u32` — Hard cap on backfill loop iterations.
--  `spawn_backfill_task` function L392-422 — `( runner: Arc<CloacinaRunner>, runtime_ctx: FeedRuntimeContext, feed_id: String,...` — Spawn the backfill loop as a detached tokio task.
--  `BackfillStats` struct L425-428 — `{ pages: u32, items: u64 }` — audit are all inherited from cloacina.
--  `run_backfill_loop` function L430-463 — `( _runner: &Arc<CloacinaRunner>, runtime_ctx: &FeedRuntimeContext, feed_id: &str...` — audit are all inherited from cloacina.
--  `finalize_backfill_success` function L465-490 — `( runner: &Arc<CloacinaRunner>, runtime_ctx: &FeedRuntimeContext, feed_id: &str,...` — audit are all inherited from cloacina.
--  `mark_backfill_failed` function L492-513 — `( runtime_ctx: &FeedRuntimeContext, feed_id: &str, err: &str, ) -> Result<(), Fe...` — audit are all inherited from cloacina.
--  `delete_schedule_for` function L560-580 — `( runner: &CloacinaRunner, workflow_name: &str, ) -> Result<(), FeedError>` — Look up cloacina's cron schedule by workflow name and delete it
--  `dir_size_bytes` function L582-602 — `(path: &std::path::Path) -> u64` — audit are all inherited from cloacina.
--  `walk` function L583-598 — `(p: &std::path::Path, acc: &mut u64)` — audit are all inherited from cloacina.
--  `register_one` function L604-690 — `( runner: &CloacinaRunner, ctx: &FeedRuntimeContext, record: &FeedRecord, ) -> R...` — audit are all inherited from cloacina.
+-  `BASE_BACKOFF` variable L382 — `: std::time::Duration` — Base delay used when a provider rate-limits us without a Retry-After
+-  `MAX_RATE_LIMIT_WAIT` variable L387 — `: std::time::Duration` — Wall-clock cap on cumulative rate-limit waits inside a single
+-  `TRANSIENT_MAX_ATTEMPTS` variable L391 — `: u32` — How many consecutive transient errors (Provider/Storage) we'll
+-  `transient_backoff` function L397-400 — `(attempt: u32) -> std::time::Duration` — Pure helper: backoff for the Nth consecutive transient retry
+-  `BackfillExit` enum L405-411 — `Complete | RateLimitDeferred` — How a backfill ended.
+-  `spawn_backfill_task` function L425-477 — `( runner: Arc<CloacinaRunner>, runtime_ctx: FeedRuntimeContext, feed_id: String,...` — Spawn the backfill loop as a detached tokio task.
+-  `BackfillStats` struct L480-483 — `{ pages: u32, items: u64 }` — audit are all inherited from cloacina.
+-  `run_backfill_loop` function L485-564 — `( _runner: &Arc<CloacinaRunner>, runtime_ctx: &FeedRuntimeContext, feed_id: &str...` — audit are all inherited from cloacina.
+-  `finalize_backfill_success` function L566-605 — `( runner: &Arc<CloacinaRunner>, runtime_ctx: &FeedRuntimeContext, feed_id: &str,...` — audit are all inherited from cloacina.
+-  `mark_backfill_failed` function L607-628 — `( runtime_ctx: &FeedRuntimeContext, feed_id: &str, err: &str, ) -> Result<(), Fe...` — audit are all inherited from cloacina.
+-  `delete_schedule_for` function L675-695 — `( runner: &CloacinaRunner, workflow_name: &str, ) -> Result<(), FeedError>` — Look up cloacina's cron schedule by workflow name and delete it
+-  `dir_size_bytes` function L697-717 — `(path: &std::path::Path) -> u64` — audit are all inherited from cloacina.
+-  `walk` function L698-713 — `(p: &std::path::Path, acc: &mut u64)` — audit are all inherited from cloacina.
+-  `register_one` function L719-805 — `( runner: &CloacinaRunner, ctx: &FeedRuntimeContext, record: &FeedRecord, ) -> R...` — audit are all inherited from cloacina.
+-  `tests` module L808-826 — `-` — audit are all inherited from cloacina.
+-  `transient_backoff_doubles_per_attempt` function L813-817 — `()` — audit are all inherited from cloacina.
+-  `transient_backoff_clamps` function L820-825 — `()` — audit are all inherited from cloacina.
 
 #### crates/arawn-feeds/src/store.rs
 
@@ -3136,19 +3144,19 @@
 -  `MAX_DEPTH` variable L65 — `: usize` — Cap recursion to keep a misbehaving folder graph from spinning
 -  `Cursor` struct L68-73 — `{ files: BTreeMap<String, FileEntry> }` — the API ever surprises us.
 -  `FileEntry` struct L76-82 — `{ token: String, path: String }` — the API ever surprises us.
--  `FolderSyncTemplate` type L85-256 — `impl FeedTemplate for FolderSyncTemplate` — the API ever surprises us.
+-  `FolderSyncTemplate` type L85-273 — `impl FeedTemplate for FolderSyncTemplate` — the API ever surprises us.
 -  `name` function L86-88 — `(&self) -> &'static str` — the API ever surprises us.
 -  `validate` function L90-100 — `(&self, params: &TemplateParams) -> Result<(), FeedError>` — the API ever surprises us.
 -  `defaults` function L102-107 — `(&self, _params: &TemplateParams) -> FeedDefaults` — the API ever surprises us.
--  `run` function L109-255 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &V...` — the API ever surprises us.
--  `RemoteFile` struct L259-263 — `{ file: DriveFile, relative_path: String }` — the API ever surprises us.
--  `walk` function L267-319 — `( drive: Arc<dyn DriveFeedClient>, folder_id: &'a str, rel_prefix: PathBuf, dept...` — Recursively walk a Drive folder, collecting every file (not
--  `atomic_write` function L321-328 — `(path: &Path, body: &[u8]) -> Result<(), FeedError>` — the API ever surprises us.
--  `safe_remove_file` function L330-343 — `(feed_dir: &Path, path: &Path) -> Result<(), FeedError>` — the API ever surprises us.
--  `prune_empty_dirs` function L345-362 — `(root: &Path)` — the API ever surprises us.
--  `tests` module L365-384 — `-` — the API ever surprises us.
--  `validate_requires_folder` function L369-377 — `()` — the API ever surprises us.
--  `defaults_use_hourly_cadence` function L380-383 — `()` — the API ever surprises us.
+-  `run` function L109-272 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &V...` — the API ever surprises us.
+-  `RemoteFile` struct L276-280 — `{ file: DriveFile, relative_path: String }` — the API ever surprises us.
+-  `walk` function L284-336 — `( drive: Arc<dyn DriveFeedClient>, folder_id: &'a str, rel_prefix: PathBuf, dept...` — Recursively walk a Drive folder, collecting every file (not
+-  `atomic_write` function L338-345 — `(path: &Path, body: &[u8]) -> Result<(), FeedError>` — the API ever surprises us.
+-  `safe_remove_file` function L347-360 — `(feed_dir: &Path, path: &Path) -> Result<(), FeedError>` — the API ever surprises us.
+-  `prune_empty_dirs` function L362-379 — `(root: &Path)` — the API ever surprises us.
+-  `tests` module L382-401 — `-` — the API ever surprises us.
+-  `validate_requires_folder` function L386-394 — `()` — the API ever surprises us.
+-  `defaults_use_hourly_cadence` function L397-400 — `()` — the API ever surprises us.
 
 #### crates/arawn-feeds/src/templates/drive/mod.rs
 
@@ -3183,18 +3191,18 @@
 - pub `DEFAULT_MAX_RESULTS` variable L49 — `: u32` — Steady-state per-call cap.
 - pub `BACKFILL_MAX_RESULTS` variable L55 — `: u32` — Cap used by the backfill spawn loop (T-0234).
 - pub `compose_time_bound` function L66-83 — `( cursor: &Value, params_since: Option<&str>, days_back: u64, ) -> (String, u32)` — Compose the time-bound clause + per-call cap for one Gmail run.
-- pub `archive_query` function L92-174 — `( gmail: Arc<dyn GmailFeedClient>, feed_dir: &Path, query: &str, cursor: &Value,...` — Run a Gmail archive over `query`, writing every new message under
--  `existing_message_path` function L181-194 — `(feed_dir: &Path, id: &str) -> Option<std::path::PathBuf>` — Probe every day partition under `feed_dir` for an existing
--  `parse_internal_date` function L196-204 — `(msg: &Value) -> Option<i64>` — list ordering, so it's the right key.
--  `ms_to_yyyy_mm_dd` function L206-214 — `(ms: i64) -> Result<String, FeedError>` — list ordering, so it's the right key.
--  `write_message_file` function L216-229 — `(path: &Path, msg: &Value) -> Result<u64, FeedError>` — list ordering, so it's the right key.
--  `tests` module L232-289 — `-` — list ordering, so it's the right key.
--  `ms_to_yyyy_mm_dd_basic` function L236-242 — `()` — list ordering, so it's the right key.
--  `compose_time_bound_steady_state_uses_newer_than` function L245-251 — `()` — list ordering, so it's the right key.
--  `compose_time_bound_first_run_with_since_uses_after` function L254-261 — `()` — list ordering, so it's the right key.
--  `compose_time_bound_first_run_without_since_falls_back_to_days_back` function L264-269 — `()` — list ordering, so it's the right key.
--  `compose_time_bound_garbage_since_falls_back` function L272-278 — `()` — list ordering, so it's the right key.
--  `parse_internal_date_string_or_number` function L281-288 — `()` — list ordering, so it's the right key.
+- pub `archive_query` function L92-185 — `( gmail: Arc<dyn GmailFeedClient>, feed_dir: &Path, query: &str, cursor: &Value,...` — Run a Gmail archive over `query`, writing every new message under
+-  `existing_message_path` function L192-205 — `(feed_dir: &Path, id: &str) -> Option<std::path::PathBuf>` — Probe every day partition under `feed_dir` for an existing
+-  `parse_internal_date` function L207-215 — `(msg: &Value) -> Option<i64>` — list ordering, so it's the right key.
+-  `ms_to_yyyy_mm_dd` function L217-225 — `(ms: i64) -> Result<String, FeedError>` — list ordering, so it's the right key.
+-  `write_message_file` function L227-240 — `(path: &Path, msg: &Value) -> Result<u64, FeedError>` — list ordering, so it's the right key.
+-  `tests` module L243-300 — `-` — list ordering, so it's the right key.
+-  `ms_to_yyyy_mm_dd_basic` function L247-253 — `()` — list ordering, so it's the right key.
+-  `compose_time_bound_steady_state_uses_newer_than` function L256-262 — `()` — list ordering, so it's the right key.
+-  `compose_time_bound_first_run_with_since_uses_after` function L265-272 — `()` — list ordering, so it's the right key.
+-  `compose_time_bound_first_run_without_since_falls_back_to_days_back` function L275-280 — `()` — list ordering, so it's the right key.
+-  `compose_time_bound_garbage_since_falls_back` function L283-289 — `()` — list ordering, so it's the right key.
+-  `parse_internal_date_string_or_number` function L292-299 — `()` — list ordering, so it's the right key.
 
 #### crates/arawn-feeds/src/templates/gmail/inbox_archive.rs
 
@@ -3434,6 +3442,7 @@
 -  `drive` function L286-288 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — - Auth error when calendar integration not connected.
 -  `atlassian` function L289-291 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — - Auth error when calendar integration not connected.
 -  `empty_window_writes_nothing_and_status_no_new_items` function L309-328 — `()` — - Auth error when calendar integration not connected.
+-  `malformed_event_without_id_is_skipped` function L331-366 — `()` — - Auth error when calendar integration not connected.
 
 #### crates/arawn-feeds/tests/cloacina_fire.rs
 
@@ -3556,6 +3565,7 @@
 -  `drive` function L378-380 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — Integration tests for `drive/folder-sync`.
 -  `atlassian` function L381-383 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — Integration tests for `drive/folder-sync`.
 -  `validate_rejects_missing_folder` function L401-409 — `()` — Integration tests for `drive/folder-sync`.
+-  `skips_file_with_provider_error_and_continues_batch` function L412-443 — `()` — Integration tests for `drive/folder-sync`.
 
 #### crates/arawn-feeds/tests/drive_recent.rs
 
@@ -3636,7 +3646,7 @@
 -  `gmail` function L305-307 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — per-template query construction.
 -  `drive` function L308-310 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — per-template query construction.
 -  `atlassian` function L311-313 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — per-template query construction.
--  `message_missing_internal_date_is_a_schema_error` function L331-352 — `()` — per-template query construction.
+-  `malformed_message_skipped_without_aborting_batch` function L331-371 — `()` — per-template query construction.
 
 #### crates/arawn-feeds/tests/jira_trackers.rs
 
@@ -3682,6 +3692,7 @@
 -  `gmail` function L469-471 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — Integration tests for the two Jira templates.
 -  `drive` function L472-474 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — Integration tests for the two Jira templates.
 -  `atlassian` function L475-477 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — Integration tests for the two Jira templates.
+-  `assignee_tracker_partial_failure_doesnt_block_other_issues` function L495-526 — `()` — Integration tests for the two Jira templates.
 
 #### crates/arawn-feeds/tests/slack_channel_archive.rs
 
