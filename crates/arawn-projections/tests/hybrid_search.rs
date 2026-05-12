@@ -14,19 +14,31 @@ struct KeywordEmbedder;
 
 impl KeywordEmbedder {
     fn vec_for(text: &str) -> Vec<f32> {
-        // 3-d: [contains "alpha", contains "beta", contains "gamma"]
+        // 384-d (matches the projection schema). The first 3 dims
+        // encode keyword presence; the rest are zero so two texts
+        // mentioning the same token cluster in the same direction.
         let lower = text.to_lowercase();
-        let alpha = if lower.contains("alpha") { 1.0 } else { 0.0 };
-        let beta = if lower.contains("beta") { 1.0 } else { 0.0 };
-        let gamma = if lower.contains("gamma") { 1.0 } else { 0.0 };
-        normalize(vec![alpha, beta, gamma])
+        let mut v = vec![0.0_f32; 384];
+        if lower.contains("alpha") {
+            v[0] = 1.0;
+        }
+        if lower.contains("beta") {
+            v[1] = 1.0;
+        }
+        if lower.contains("gamma") {
+            v[2] = 1.0;
+        }
+        normalize(v)
     }
 }
 
 fn normalize(mut v: Vec<f32>) -> Vec<f32> {
     let n: f32 = v.iter().map(|x| x * x).sum::<f32>().sqrt();
     if n == 0.0 {
-        return vec![1.0, 0.0, 0.0]; // arbitrary unit vec; lets short bodies still get a direction
+        // Arbitrary unit vector — lets short bodies still get a direction.
+        let mut out = vec![0.0_f32; v.len().max(384)];
+        out[0] = 1.0;
+        return out;
     }
     for x in v.iter_mut() {
         *x /= n;

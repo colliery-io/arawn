@@ -386,11 +386,13 @@ dependencies = [
  "rusqlite",
  "serde",
  "serde_json",
+ "sqlite-vec",
  "tempfile",
  "thiserror 2.0.18",
  "tokio",
  "tracing",
  "uuid",
+ "zerocopy",
 ]
 
 [[package]]

@@ -181,8 +181,8 @@ pub struct PendingEmbedRow {
 }
 
 impl ProjectionStore {
-    /// Find rows in `<feed_type>` whose `<feed_type>_embeddings.embedding`
-    /// is currently NULL, capped at `limit`. Used by the embed pass.
+    /// Find rows in `<feed_type>` whose embed status is `pending`,
+    /// capped at `limit`. Used by the embed pass.
     pub fn pending_embedding_rows(
         &self,
         feed_type: &str,
@@ -197,7 +197,7 @@ impl ProjectionStore {
             "SELECT p.id, p.body_text \
              FROM {feed_type} p \
              JOIN {feed_type}_embeddings e ON e.projection_id = p.id \
-             WHERE e.embedding IS NULL \
+             WHERE e.status = 'pending' \
              LIMIT ?1"
         );
         let mut stmt = conn
@@ -218,48 +218,64 @@ impl ProjectionStore {
         Ok(out)
     }
 
-    /// Write a freshly computed embedding into `<feed_type>_embeddings`.
-    /// An empty slice writes a single zero byte so the column is
-    /// non-NULL (marks the row as "embed attempted, intentionally
-    /// skipped" — see `MIN_BODY_CHARS` policy).
+    /// Write a freshly computed embedding for a projection row. The
+    /// vec0 virtual table holds the actual vector; the bookkeeping
+    /// table flips status to `embedded`. An empty `vector` slice
+    /// marks the row as intentionally `skipped` (see `MIN_BODY_CHARS`).
     pub fn write_embedding(
         &self,
         feed_type: &str,
         projection_id: &str,
         vector: &[f32],
     ) -> Result<(), ProjectionError> {
+        use zerocopy::IntoBytes;
         let conn = self
             .conn()
             .lock()
             .map_err(|_| ProjectionError::Storage("conn lock poisoned".into()))?;
         crate::schema::ensure_feed_type_tables(&conn, feed_type)?;
-        let blob: Vec<u8> = if vector.is_empty() {
-            vec![0u8]
-        } else {
-            let mut buf = Vec::with_capacity(vector.len() * 4);
-            for v in vector {
-                buf.extend_from_slice(&v.to_le_bytes());
-            }
-            buf
-        };
-        let sql = format!(
-            "UPDATE {feed_type}_embeddings SET embedding = ?1 WHERE projection_id = ?2"
-        );
-        let rows = conn
-            .execute(&sql, params![blob, projection_id])
-            .map_err(|e| ProjectionError::Storage(format!("write embedding: {e}")))?;
-        if rows == 0 {
-            // No matching cache row — happens if the projection was
-            // created outside the normal write path. Re-create with
-            // the freshly computed embedding.
-            let upsert_sql = format!(
-                "INSERT INTO {feed_type}_embeddings (projection_id, body_hash, embedding) \
-                 VALUES (?1, '', ?2) \
-                 ON CONFLICT(projection_id) DO UPDATE SET embedding = excluded.embedding"
+
+        if vector.is_empty() {
+            // Intentional skip — just flip the status, no vec0 write.
+            let sql = format!(
+                "UPDATE {feed_type}_embeddings SET status = 'skipped' \
+                 WHERE projection_id = ?1"
             );
-            conn.execute(&upsert_sql, params![projection_id, blob])
-                .map_err(|e| ProjectionError::Storage(format!("upsert embedding: {e}")))?;
+            conn.execute(&sql, params![projection_id])
+                .map_err(|e| ProjectionError::Storage(format!("mark skipped: {e}")))?;
+            return Ok(());
         }
+
+        if vector.len() != crate::schema::EMBEDDING_DIMS {
+            return Err(ProjectionError::Schema(format!(
+                "embedding dim mismatch: expected {}, got {}",
+                crate::schema::EMBEDDING_DIMS,
+                vector.len()
+            )));
+        }
+
+        // vec0 doesn't support INSERT OR REPLACE — delete first.
+        let del_sql = format!(
+            "DELETE FROM {feed_type}_vec WHERE projection_id = ?1"
+        );
+        conn.execute(&del_sql, params![projection_id])
+            .map_err(|e| ProjectionError::Storage(format!("vec delete: {e}")))?;
+        let ins_sql = format!(
+            "INSERT INTO {feed_type}_vec (projection_id, embedding) VALUES (?1, ?2)"
+        );
+        conn.execute(&ins_sql, params![projection_id, vector.as_bytes()])
+            .map_err(|e| ProjectionError::Storage(format!("vec insert: {e}")))?;
+
+        // Flip status to embedded. INSERT-or-update in case the row
+        // arrived via a path that skipped the writer's invalidate
+        // (defensive).
+        let meta_sql = format!(
+            "INSERT INTO {feed_type}_embeddings (projection_id, body_hash, status) \
+             VALUES (?1, '', 'embedded') \
+             ON CONFLICT(projection_id) DO UPDATE SET status = 'embedded'"
+        );
+        conn.execute(&meta_sql, params![projection_id])
+            .map_err(|e| ProjectionError::Storage(format!("mark embedded: {e}")))?;
         Ok(())
     }
 }

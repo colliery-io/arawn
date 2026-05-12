@@ -1,43 +1,42 @@
 //! Projection table schema.
 //!
-//! One table per feed type, with a paired FTS5 virtual table for text
-//! search and an `<table>_embeddings` raw-blob table for semantic
-//! search. Tables follow a shared shape so the agent-facing search
-//! tool (T-0247) can iterate them uniformly:
+//! Per feed type, three tables:
 //!
-//! ```text
-//! <feed_type> (
-//!   id TEXT PRIMARY KEY,           -- (feed_id, source_id) → hashed
-//!   feed_id TEXT,
-//!   source_id TEXT,
-//!   source_ts TEXT,                -- RFC3339
-//!   title TEXT,                    -- synthesized per feed type
-//!   body_text TEXT,
-//!   metadata TEXT,                 -- JSON; per-type fields
-//!   created_at TEXT,
-//!   updated_at TEXT,
-//!   body_hash TEXT,                -- sha256(body_text) for embed dirty-check
-//!   UNIQUE(feed_id, source_id)
-//! )
-//!
-//! <feed_type>_fts USING fts5(
-//!   projection_id UNINDEXED, title, body_text, tokenize='unicode61'
-//! )
-//!
-//! <feed_type>_embeddings (
-//!   projection_id TEXT PRIMARY KEY,
-//!   body_hash TEXT NOT NULL,       -- cached against body_text
-//!   embedding BLOB
-//! )
-//! ```
+//! - **`<feed_type>`** — normalized data rows (id, feed_id, source_id,
+//!   source_ts, title, body_text, metadata JSON, body_hash, timestamps).
+//! - **`<feed_type>_fts`** — FTS5 virtual table over title + body_text.
+//! - **`<feed_type>_embeddings`** — bookkeeping for the embed pass:
+//!   `projection_id PRIMARY KEY, body_hash, status TEXT`. Status is one
+//!   of `pending` (newly written or body changed), `embedded` (vector
+//!   in the vec0 table), or `skipped` (body too short to embed).
+//! - **`<feed_type>_vec`** — sqlite-vec `vec0` virtual table holding
+//!   the actual `float[EMBEDDING_DIMS]` vectors, keyed by projection_id.
 //!
 //! Per-feed-type *additional* normalized columns (sender, channel,
-//! thread_id, …) live in `metadata` JSON. Hot-path filtering fields
-//! get hoisted to indexed columns in follow-up tasks if needed.
+//! thread_id, …) live in the data table's `metadata` JSON. Hot-path
+//! filtering fields get hoisted to indexed columns in follow-up tasks
+//! if needed.
 
 use rusqlite::Connection;
 
 use crate::error::ProjectionError;
+
+/// Embedding dimensionality. Matches `arawn-embed`'s all-MiniLM-L6-v2.
+/// All projection feed types share the same dimension because they
+/// share an embedder.
+pub const EMBEDDING_DIMS: usize = 384;
+
+/// One-shot initialization of the sqlite-vec extension. Must be
+/// called before opening any projection database that uses vectors.
+/// Idempotent — backed by `sqlite3_auto_extension`.
+pub fn init_vector_extension() {
+    use rusqlite::ffi::sqlite3_auto_extension;
+    use sqlite_vec::sqlite3_vec_init;
+    unsafe {
+        #[allow(clippy::missing_transmute_annotations)]
+        sqlite3_auto_extension(Some(std::mem::transmute(sqlite3_vec_init as *const ())));
+    }
+}
 
 /// Idempotently create all schema for a given feed type.
 pub fn ensure_feed_type_tables(
@@ -78,11 +77,24 @@ pub fn ensure_feed_type_tables(
         "CREATE TABLE IF NOT EXISTS {feed_type}_embeddings (
             projection_id TEXT PRIMARY KEY,
             body_hash TEXT NOT NULL,
-            embedding BLOB
-        );"
+            status TEXT NOT NULL DEFAULT 'pending'
+                CHECK (status IN ('pending', 'embedded', 'skipped'))
+        );
+        CREATE INDEX IF NOT EXISTS idx_{feed_type}_emb_status
+            ON {feed_type}_embeddings(status);"
     );
     conn.execute_batch(&embed_sql)
         .map_err(|e| ProjectionError::Schema(format!("create {feed_type}_embeddings: {e}")))?;
+
+    let vec_sql = format!(
+        "CREATE VIRTUAL TABLE IF NOT EXISTS {feed_type}_vec USING vec0(
+            projection_id TEXT PRIMARY KEY,
+            embedding float[{dims}]
+        );",
+        dims = EMBEDDING_DIMS
+    );
+    conn.execute_batch(&vec_sql)
+        .map_err(|e| ProjectionError::Schema(format!("create {feed_type}_vec: {e}")))?;
 
     Ok(())
 }

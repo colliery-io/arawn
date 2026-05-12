@@ -36,6 +36,8 @@ impl ProjectionStore {
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)?;
         }
+        // Auto-load sqlite-vec for this and subsequent connections.
+        schema::init_vector_extension();
         let conn = Connection::open(path)
             .map_err(|e| ProjectionError::Storage(format!("open db: {e}")))?;
         schema::apply_pragmas(&conn)?;
@@ -45,6 +47,7 @@ impl ProjectionStore {
     }
 
     pub fn in_memory() -> Result<Self, ProjectionError> {
+        schema::init_vector_extension();
         let conn = Connection::open_in_memory()
             .map_err(|e| ProjectionError::Storage(format!("open in-memory: {e}")))?;
         Ok(Self {
@@ -161,61 +164,41 @@ impl ProjectionStore {
     }
 
     /// Vector similarity search over a single feed type. Returns up
-    /// to `limit` projection ids sorted by descending cosine similarity
-    /// against `query_vec`. Rows without a real embedding (NULL or the
-    /// sentinel single-byte skip-marker) are ignored.
-    ///
-    /// Cosine over a few thousand rows of 384-d vectors is fine for
-    /// personal-scale corpora; if a projection table grows past
-    /// ~10k rows we should move to sqlite-vec like `arawn-memory`.
+    /// to `limit` projection ids sorted by ascending distance against
+    /// `query_vec` (closer first). Skipped / pending rows naturally
+    /// drop out because they have no row in `<feed_type>_vec`.
     pub fn vector_search(
         &self,
         feed_type: &str,
         query_vec: &[f32],
         limit: usize,
     ) -> Result<Vec<String>, ProjectionError> {
+        use zerocopy::IntoBytes;
         if query_vec.is_empty() {
             return Ok(Vec::new());
         }
         let conn = self.conn.lock().unwrap();
         schema::ensure_feed_type_tables(&conn, feed_type)?;
         let sql = format!(
-            "SELECT projection_id, embedding \
-             FROM {feed_type}_embeddings \
-             WHERE embedding IS NOT NULL"
+            "SELECT projection_id FROM {feed_type}_vec \
+             WHERE embedding MATCH ?1 \
+             ORDER BY distance \
+             LIMIT ?2"
         );
         let mut stmt = conn
             .prepare(&sql)
             .map_err(|e| ProjectionError::Storage(format!("prepare vec: {e}")))?;
         let rows = stmt
-            .query_map([], |r| {
-                let id: String = r.get(0)?;
-                let blob: Vec<u8> = r.get(1)?;
-                Ok((id, blob))
-            })
+            .query_map(
+                params![query_vec.as_bytes(), limit as i64],
+                |r| r.get::<_, String>(0),
+            )
             .map_err(|e| ProjectionError::Storage(format!("vec: {e}")))?;
-
-        let q_norm = vec_norm(query_vec);
-        if q_norm == 0.0 {
-            return Ok(Vec::new());
+        let mut out = Vec::new();
+        for r in rows {
+            out.push(r.map_err(|e| ProjectionError::Storage(e.to_string()))?);
         }
-        let mut scored: Vec<(String, f32)> = Vec::new();
-        for row in rows {
-            let (id, blob) = row.map_err(|e| ProjectionError::Storage(e.to_string()))?;
-            // Skip sentinel "intentionally not embedded" markers.
-            if blob.len() < query_vec.len() * 4 {
-                continue;
-            }
-            let v = decode_f32_blob(&blob);
-            if v.len() != query_vec.len() {
-                continue;
-            }
-            let sim = cosine_similarity_pre(query_vec, q_norm, &v);
-            scored.push((id, sim));
-        }
-        scored.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-        scored.truncate(limit);
-        Ok(scored.into_iter().map(|(id, _)| id).collect())
+        Ok(out)
     }
 
     /// FTS search over a single feed type. Returns `(projection_id,
@@ -302,36 +285,6 @@ enum WriteAction {
     Inserted,
     Updated,
     Unchanged,
-}
-
-fn decode_f32_blob(blob: &[u8]) -> Vec<f32> {
-    let n = blob.len() / 4;
-    let mut out = Vec::with_capacity(n);
-    for i in 0..n {
-        let bytes: [u8; 4] = [
-            blob[i * 4],
-            blob[i * 4 + 1],
-            blob[i * 4 + 2],
-            blob[i * 4 + 3],
-        ];
-        out.push(f32::from_le_bytes(bytes));
-    }
-    out
-}
-
-fn vec_norm(v: &[f32]) -> f32 {
-    v.iter().map(|x| x * x).sum::<f32>().sqrt()
-}
-
-/// Cosine similarity given the query's pre-computed norm. Returns
-/// 0.0 for degenerate inputs.
-fn cosine_similarity_pre(q: &[f32], q_norm: f32, doc: &[f32]) -> f32 {
-    let dot: f32 = q.iter().zip(doc.iter()).map(|(a, b)| a * b).sum();
-    let d_norm = vec_norm(doc);
-    if q_norm == 0.0 || d_norm == 0.0 {
-        return 0.0;
-    }
-    dot / (q_norm * d_norm)
 }
 
 fn body_hash(body_text: &str) -> String {
@@ -457,22 +410,29 @@ fn fts_upsert(
     Ok(())
 }
 
+/// Mark a projection row's embedding as pending re-compute. On
+/// insert / body-changed update we drop any old vector and stamp the
+/// status as `pending`; the embed pass will fill in a fresh vector.
 fn embedding_invalidate(
     tx: &rusqlite::Transaction<'_>,
     feed_type: &str,
     projection_id: &str,
     body_hash: &str,
 ) -> Result<(), ProjectionError> {
-    // Upsert into <feed_type>_embeddings with the new body_hash and
-    // NULL embedding. The embed pass detects rows where body_hash
-    // differs from the embedded vector's keyed hash and refreshes.
-    let sql = format!(
-        "INSERT INTO {feed_type}_embeddings (projection_id, body_hash, embedding) \
-         VALUES (?1, ?2, NULL) \
+    let meta_sql = format!(
+        "INSERT INTO {feed_type}_embeddings (projection_id, body_hash, status) \
+         VALUES (?1, ?2, 'pending') \
          ON CONFLICT(projection_id) DO UPDATE SET body_hash = excluded.body_hash, \
-             embedding = NULL"
+             status = 'pending'"
     );
-    tx.execute(&sql, params![projection_id, body_hash])
-        .map_err(|e| ProjectionError::Storage(format!("embed cache: {e}")))?;
+    tx.execute(&meta_sql, params![projection_id, body_hash])
+        .map_err(|e| ProjectionError::Storage(format!("embed meta: {e}")))?;
+    // Drop any stale vector — the body changed, so the old vector is
+    // no longer valid for this row.
+    let vec_sql = format!(
+        "DELETE FROM {feed_type}_vec WHERE projection_id = ?1"
+    );
+    tx.execute(&vec_sql, params![projection_id])
+        .map_err(|e| ProjectionError::Storage(format!("embed vec drop: {e}")))?;
     Ok(())
 }

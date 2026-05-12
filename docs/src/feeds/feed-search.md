@@ -175,9 +175,9 @@ Hybrid FTS5 + semantic similarity, fused via reciprocal rank fusion
 (RRF). For each feed type:
 
 1. **FTS5 ranked list** — BM25-like text match over title + body_text.
-2. **Vector ranked list** — cosine similarity between the query
-   embedding and each row's embedded body_text (when an embedder is
-   configured at startup).
+2. **Vector ranked list** — `vec0` (sqlite-vec) similarity search
+   against the per-feed-type vector table (when an embedder is
+   configured at startup). Distance is ascending; closer wins.
 
 Both lists contribute `1 / (k + rank + 1)` to the row's score with
 `k = 60` (Cormack et al. 2009). A row appearing in both lists gets

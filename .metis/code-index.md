@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-12T16:52:58Z | 274 files | Python, Rust
+> Generated: 2026-05-12T17:52:27Z | 275 files | Python, Rust
 
 ## Project Structure
 
@@ -261,7 +261,8 @@
 │   │   │   └── types.rs
 │   │   └── tests/
 │   │       ├── embed_pass.rs
-│   │       └── gmail_e2e.rs
+│   │       ├── gmail_e2e.rs
+│   │       └── hybrid_search.rs
 │   ├── arawn-service/
 │   │   └── src/
 │   │       ├── error.rs
@@ -604,16 +605,16 @@
 -  `embed_batch` function L18-32 — `( &'a self, texts: &'a [&'a str], ) -> std::pin::Pin< Box<dyn std::future::Futur...`
 -  `DEFAULT_MODEL` variable L40 — `: &str`
 -  `FILE_LOG_FILTER` variable L43 — `: &str` — Default file log filter: debug for arawn crates, warn for third-party.
--  `main` function L46-897 — `() -> Result<()>`
+-  `main` function L46-898 — `() -> Result<()>`
 -  `Cli` struct L52-71 — `{ command: Option<Command>, data_dir: Option<String>, session: Option<Uuid>, lis...`
 -  `Command` enum L74-93 — `Serve | Tui | Plugin`
--  `run_cli_via_server` function L900-1005 — `( url: &str, prompt: &str, session_id: Option<Uuid>, ) -> Result<()>` — Run a CLI prompt by connecting to the running server via WebSocket.
--  `build_llm_client` function L1008-1031 — `( config: &arawn_bin::LlmConfig, ) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
--  `register_default_tools` function L1034-1080 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &arawn_bin::ArawnConfig, d...` — Register all default tools into the registry.
--  `connect_mcp_servers` function L1083-1131 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
--  `register_workflow_tools` function L1134-1151 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
--  `build_engine_config` function L1153-1188 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
--  `dirs_path` function L1190-1199 — `() -> Option<String>`
+-  `run_cli_via_server` function L901-1006 — `( url: &str, prompt: &str, session_id: Option<Uuid>, ) -> Result<()>` — Run a CLI prompt by connecting to the running server via WebSocket.
+-  `build_llm_client` function L1009-1032 — `( config: &arawn_bin::LlmConfig, ) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
+-  `register_default_tools` function L1035-1081 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &arawn_bin::ArawnConfig, d...` — Register all default tools into the registry.
+-  `connect_mcp_servers` function L1084-1132 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
+-  `register_workflow_tools` function L1135-1152 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
+-  `build_engine_config` function L1154-1189 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
+-  `dirs_path` function L1191-1200 — `() -> Option<String>`
 
 #### crates/arawn/src/plugin_cmd.rs
 
@@ -2212,19 +2213,25 @@
 
 #### crates/arawn-engine/src/tools/feed_search.rs
 
-- pub `FeedSearchTool` struct L31-33 — `{ store: Arc<ProjectionStore> }` — fusion, no API change.
-- pub `new` function L36-38 — `(store: Arc<ProjectionStore>) -> Self` — fusion, no API change.
--  `KNOWN_FEED_TYPES` variable L19-29 — `: &[&str]` — fusion, no API change.
--  `FeedSearchTool` type L35-39 — `= FeedSearchTool` — fusion, no API change.
--  `FeedSearchTool` type L42-180 — `impl Tool for FeedSearchTool` — fusion, no API change.
--  `name` function L43-45 — `(&self) -> &str` — fusion, no API change.
--  `description` function L47-51 — `(&self) -> &str` — fusion, no API change.
--  `is_read_only` function L53-55 — `(&self) -> bool` — fusion, no API change.
--  `category` function L57-59 — `(&self) -> ToolCategory` — fusion, no API change.
--  `parameters_schema` function L61-89 — `(&self) -> Value` — fusion, no API change.
--  `execute` function L91-179 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — fusion, no API change.
--  `Hit` struct L182-185 — `{ score: f32, row: arawn_projections::ProjectionRow }` — fusion, no API change.
--  `snippet` function L187-193 — `(text: &str, cap: usize) -> String` — fusion, no API change.
+- pub `FeedSearchTool` struct L38-43 — `{ store: Arc<ProjectionStore>, embedder: Option<Arc<dyn Embedder>> }` — fusion, no API change.
+- pub `new` function L46-48 — `(store: Arc<ProjectionStore>, embedder: Option<Arc<dyn Embedder>>) -> Self` — fusion, no API change.
+-  `KNOWN_FEED_TYPES` variable L21-31 — `: &[&str]` — fusion, no API change.
+-  `RRF_K` variable L36 — `: f32` — RRF constant (Cormack et al.
+-  `FeedSearchTool` type L45-49 — `= FeedSearchTool` — fusion, no API change.
+-  `FeedSearchTool` type L52-230 — `impl Tool for FeedSearchTool` — fusion, no API change.
+-  `name` function L53-55 — `(&self) -> &str` — fusion, no API change.
+-  `description` function L57-62 — `(&self) -> &str` — fusion, no API change.
+-  `is_read_only` function L64-66 — `(&self) -> bool` — fusion, no API change.
+-  `category` function L68-70 — `(&self) -> ToolCategory` — fusion, no API change.
+-  `parameters_schema` function L72-100 — `(&self) -> Value` — fusion, no API change.
+-  `execute` function L102-229 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — fusion, no API change.
+-  `Hit` struct L232-235 — `{ score: f32, row: arawn_projections::ProjectionRow }` — fusion, no API change.
+-  `FusedHit` struct L238-242 — `{ feed_type: String, projection_id: String, score: f32 }` — Per-(feed_type, projection_id) accumulator for RRF scores.
+-  `FusedHit` type L244-252 — `= FusedHit` — fusion, no API change.
+-  `new` function L245-251 — `(feed_type: String, projection_id: String) -> Self` — fusion, no API change.
+-  `key` function L254-256 — `(feed_type: &str, projection_id: &str) -> String` — fusion, no API change.
+-  `rrf_score` function L259-261 — `(rank: usize) -> f32` — Reciprocal rank fusion contribution from a single ranked list.
+-  `snippet` function L263-269 — `(text: &str, cap: usize) -> String` — fusion, no API change.
 
 #### crates/arawn-engine/src/tools/file_edit.rs
 
@@ -5521,16 +5528,20 @@
 - pub `write_batch` function L69-107 — `( &self, projections: &[P], ) -> Result<WriteOutcome, ProjectionError>` — Write many projections in one transaction.
 - pub `missing_source_ids` function L112-151 — `( &self, feed_type: &str, feed_id: &str, candidate_source_ids: &[String], ) -> R...` — Returns ids that are NOT yet projected for a given feed.
 - pub `count` function L154-161 — `(&self, feed_type: &str) -> Result<usize, ProjectionError>` — Total rows for a feed_type — useful for tests and ops.
-- pub `fts_search` function L165-187 — `( &self, feed_type: &str, query: &str, limit: usize, ) -> Result<Vec<String>, Pr...` — FTS search over a single feed type.
-- pub `get_row` function L190-233 — `( &self, feed_type: &str, projection_id: &str, ) -> Result<Option<ProjectionRow>...` — Get a single projection row by primary key.
-- pub `WriteOutcome` struct L237-241 — `{ inserted: usize, updated: usize, unchanged: usize }` — detect stale entries cheaply.
--  `ProjectionStore` type L28-234 — `= ProjectionStore` — detect stale entries cheaply.
+- pub `vector_search` function L171-219 — `( &self, feed_type: &str, query_vec: &[f32], limit: usize, ) -> Result<Vec<Strin...` — Vector similarity search over a single feed type.
+- pub `fts_search` function L223-245 — `( &self, feed_type: &str, query: &str, limit: usize, ) -> Result<Vec<String>, Pr...` — FTS search over a single feed type.
+- pub `get_row` function L248-291 — `( &self, feed_type: &str, projection_id: &str, ) -> Result<Option<ProjectionRow>...` — Get a single projection row by primary key.
+- pub `WriteOutcome` struct L295-299 — `{ inserted: usize, updated: usize, unchanged: usize }` — detect stale entries cheaply.
+-  `ProjectionStore` type L28-292 — `= ProjectionStore` — detect stale entries cheaply.
 -  `conn` function L31-33 — `(&self) -> &Mutex<Connection>` — Accessor for sibling modules (e.g.
--  `WriteAction` enum L243-247 — `Inserted | Updated | Unchanged` — detect stale entries cheaply.
--  `body_hash` function L249-254 — `(body_text: &str) -> String` — detect stale entries cheaply.
--  `write_row` function L256-350 — `( tx: &rusqlite::Transaction<'_>, feed_type: &str, row: &ProjectionRow, ) -> Res...` — detect stale entries cheaply.
--  `fts_upsert` function L352-370 — `( tx: &rusqlite::Transaction<'_>, feed_type: &str, projection_id: &str, title: &...` — detect stale entries cheaply.
--  `embedding_invalidate` function L372-390 — `( tx: &rusqlite::Transaction<'_>, feed_type: &str, projection_id: &str, body_has...` — detect stale entries cheaply.
+-  `WriteAction` enum L301-305 — `Inserted | Updated | Unchanged` — detect stale entries cheaply.
+-  `decode_f32_blob` function L307-320 — `(blob: &[u8]) -> Vec<f32>` — detect stale entries cheaply.
+-  `vec_norm` function L322-324 — `(v: &[f32]) -> f32` — detect stale entries cheaply.
+-  `cosine_similarity_pre` function L328-335 — `(q: &[f32], q_norm: f32, doc: &[f32]) -> f32` — Cosine similarity given the query's pre-computed norm.
+-  `body_hash` function L337-342 — `(body_text: &str) -> String` — detect stale entries cheaply.
+-  `write_row` function L344-438 — `( tx: &rusqlite::Transaction<'_>, feed_type: &str, row: &ProjectionRow, ) -> Res...` — detect stale entries cheaply.
+-  `fts_upsert` function L440-458 — `( tx: &rusqlite::Transaction<'_>, feed_type: &str, projection_id: &str, title: &...` — detect stale entries cheaply.
+-  `embedding_invalidate` function L460-478 — `( tx: &rusqlite::Transaction<'_>, feed_type: &str, projection_id: &str, body_has...` — detect stale entries cheaply.
 
 #### crates/arawn-projections/src/types.rs
 
@@ -5564,6 +5575,20 @@
 -  `body_change_updates_and_refreshes_fts` function L99-126 — `()` — projections, search via FTS, re-run and confirm idempotency.
 -  `missing_source_ids_returns_unprojected` function L129-153 — `()` — projections, search via FTS, re-run and confirm idempotency.
 -  `rerun_after_partial_failure_picks_up_missing` function L156-190 — `()` — projections, search via FTS, re-run and confirm idempotency.
+
+#### crates/arawn-projections/tests/hybrid_search.rs
+
+-  `KeywordEmbedder` struct L13 — `-` — Embedder that maps text → unit vector along a content-derived
+-  `KeywordEmbedder` type L15-24 — `= KeywordEmbedder` — sentinel-marked rows, and tolerates degenerate input.
+-  `vec_for` function L16-23 — `(text: &str) -> Vec<f32>` — sentinel-marked rows, and tolerates degenerate input.
+-  `normalize` function L26-35 — `(mut v: Vec<f32>) -> Vec<f32>` — sentinel-marked rows, and tolerates degenerate input.
+-  `KeywordEmbedder` type L37-45 — `impl Embedder for KeywordEmbedder` — sentinel-marked rows, and tolerates degenerate input.
+-  `embed_batch` function L38-44 — `( &'a self, texts: &'a [&'a str], ) -> Pin<Box<dyn Future<Output = Result<Vec<Ve...` — sentinel-marked rows, and tolerates degenerate input.
+-  `fixture` function L47-60 — `(id: &str, body: &str) -> gmail::GmailMessageProjection` — sentinel-marked rows, and tolerates degenerate input.
+-  `vector_search_ranks_by_cosine_similarity` function L63-78 — `()` — sentinel-marked rows, and tolerates degenerate input.
+-  `vector_search_ignores_sentinel_and_null_rows` function L81-100 — `()` — sentinel-marked rows, and tolerates degenerate input.
+-  `pending_rows_round_trip` function L103-115 — `()` — sentinel-marked rows, and tolerates degenerate input.
+-  `empty_query_vec_returns_empty` function L118-123 — `()` — sentinel-marked rows, and tolerates degenerate input.
 
 ### crates/arawn-service/src
 
