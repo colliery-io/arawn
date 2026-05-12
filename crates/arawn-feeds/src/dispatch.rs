@@ -44,6 +44,11 @@ pub struct FeedRuntimeContext {
     pub layout: Arc<DataLayout>,
     pub registry: Arc<FeedTemplateRegistry>,
     pub clients: Arc<dyn FeedClients>,
+    /// Optional projection store. When set, every successful feed run
+    /// fans out to project items into the per-feed-type tables. Left
+    /// optional so feeds can run standalone (e.g. tests) without a
+    /// projection backend.
+    pub projections: Option<Arc<arawn_projections::ProjectionStore>>,
 }
 
 /// One cloacina-compatible task per feed. Captures the feed's id so we
@@ -196,6 +201,35 @@ async fn run_feed_inner(
         "feed run complete"
     );
 
+    // 7. Fan out into the projection layer if configured. Projection
+    // failures must not fail the feed run — they're a downstream view.
+    if let Some(projections) = runtime.projections.as_ref() {
+        match arawn_projections::project_feed_dir(
+            projections,
+            &record.template,
+            &record.id,
+            &feed_dir,
+        ) {
+            Ok(out) => {
+                if out.inserted > 0 || out.updated > 0 {
+                    info!(
+                        feed_id = %record.id,
+                        template = %record.template,
+                        inserted = out.inserted,
+                        updated = out.updated,
+                        "projection sync"
+                    );
+                }
+            }
+            Err(e) => warn!(
+                feed_id = %record.id,
+                template = %record.template,
+                error = %e,
+                "projection sync failed; feed run still considered successful"
+            ),
+        }
+    }
+
     Ok(outcome)
 }
 
@@ -249,6 +283,7 @@ mod tests {
             layout: Arc::new(DataLayout::new(tmp_root)),
             registry: Arc::new(default_registry()),
             clients: Arc::new(NoopClients),
+            projections: None,
         }
     }
 

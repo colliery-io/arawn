@@ -334,6 +334,23 @@ async fn main() -> Result<()> {
             info!("memory tools registered (store + search)");
         }
 
+        // feed_search tool — read-only over the projections db. Opens
+        // (or creates) the same store the feed dispatch hook writes to.
+        let projections_db_path = std::path::PathBuf::from(&data_dir).join("projections.db");
+        match arawn_projections::ProjectionStore::open(&projections_db_path) {
+            Ok(store) => {
+                registry.register(Box::new(arawn_engine::FeedSearchTool::new(Arc::new(
+                    store,
+                ))));
+                info!("feed_search tool registered");
+            }
+            Err(e) => warn!(
+                error = %e,
+                path = %projections_db_path.display(),
+                "feed_search unavailable — projections db could not be opened"
+            ),
+        }
+
         // Load new-style plugins (Claude Code compatible)
         let plugins_root = std::path::PathBuf::from(&data_dir).join("plugins");
         let skill_registry = Arc::new(SkillRegistry::new());
@@ -677,12 +694,38 @@ async fn main() -> Result<()> {
                     }
                     let clients: Arc<dyn arawn_feeds::FeedClients> = Arc::new(clients);
 
+                    // Projection store: separate sqlite db colocated
+                    // with the feeds db. Optional — if it can't be
+                    // opened we log and continue without projections.
+                    let projections_db_path = std::path::PathBuf::from(&data_dir)
+                        .join("projections.db");
+                    let projections = match arawn_projections::ProjectionStore::open(
+                        &projections_db_path,
+                    ) {
+                        Ok(store) => {
+                            info!(
+                                path = %projections_db_path.display(),
+                                "projection store opened"
+                            );
+                            Some(Arc::new(store))
+                        }
+                        Err(e) => {
+                            warn!(
+                                error = %e,
+                                path = %projections_db_path.display(),
+                                "projection store unavailable — feeds will run without projections"
+                            );
+                            None
+                        }
+                    };
+
                     match arawn_feeds::start(
                         workflow_runner.cloacina_runner(),
                         feeds_conn,
                         feeds_layout,
                         feeds_registry,
                         clients,
+                        projections,
                     )
                     .await
                     {

@@ -17,6 +17,7 @@ members = [
     "crates/arawn-workflow",
     "crates/arawn-integrations",
     "crates/arawn-feeds",
+    "crates/arawn-projections",
 ]
 
 [workspace.dependencies]

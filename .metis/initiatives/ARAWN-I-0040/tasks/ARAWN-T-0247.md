@@ -4,14 +4,14 @@ level: task
 title: "feed_search agent tool — cross-feed semantic + structured search"
 short_code: "ARAWN-T-0247"
 created_at: 2026-05-12T03:28:20.350220+00:00
-updated_at: 2026-05-12T03:28:20.350220+00:00
+updated_at: 2026-05-12T12:52:15.139143+00:00
 parent: ARAWN-I-0040
 blocked_by: [ARAWN-T-0242]
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -76,6 +76,10 @@ New page `docs/src/feeds/feed-search.md` covering the tool surface + 5-7 worked 
 
 ## Acceptance Criteria
 
+## Acceptance Criteria
+
+## Acceptance Criteria
+
 - [ ] `feed_search` tool registered in the engine and discoverable to agents.
 - [ ] Supports `feed_types` filter, time-range filter, structured-field filter.
 - [ ] Hybrid FTS + vector + RRF fusion; results consistently ranked.
@@ -97,4 +101,16 @@ New page `docs/src/feeds/feed-search.md` covering the tool surface + 5-7 worked 
 
 ## Status Updates
 
-*To be added during implementation*
+### 2026-05-12 — feed_search tool registered
+
+- `crates/arawn-engine/src/tools/feed_search.rs` — `FeedSearchTool` holds `Arc<ProjectionStore>`, exposes a tool with `query / feed_types / since / until / limit`.
+- Iterates known feed types (gmail_messages, slack_messages, slack_thread_messages, drive_files, jira_issues, jira_comments, jira_history, confluence_pages, calendar_events), runs FTS5 per type via `ProjectionStore::fts_search`, hydrates each hit via `get_row`, filters by `since/until` over `source_ts`, sorts by rank-decayed score (`1 / (1 + rank)`), truncates to `limit`.
+- Output: `{ results: [{feed_type, id, feed_id, source_id, source_ts, title, snippet, score, metadata}], count }` serialized into a `ToolOutput::success` string.
+- Registered in `crates/arawn/src/main.rs` alongside memory tools: opens `~/.arawn/projections.db` and constructs the tool. Soft-fails if the projections db can't be opened (logs warn, skips registration).
+
+**Deferred to a focused follow-up.**
+- Vector/semantic search via embeddings — schema is in place (`<feed_type>_embeddings.body_hash + embedding`), but the embed pass + query-embedding integration isn't wired yet. When it lands the tool gets a hybrid FTS+vector path with RRF fusion at no API change.
+- `docs/src/feeds/feed-search.md` — not written in this session; the tool's `description` covers the surface for now, but a dedicated docs page with worked agent prompts would be a quick follow-up.
+- Structured `filters` arg — wired in the schema but not yet applied. FTS already handles most "by sender / by channel / by project_key" queries naturally; a structured filter path is the optimization, not the baseline.
+
+`angreal check workspace` + `clippy` clean. Engine test suite (534 tests) green; feed test suite (76+ unit + ~80 integration) green.

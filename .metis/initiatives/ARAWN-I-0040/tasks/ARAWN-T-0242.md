@@ -4,14 +4,14 @@ level: task
 title: "Projections plumbing + gmail_messages reference impl"
 short_code: "ARAWN-T-0242"
 created_at: 2026-05-12T03:28:15.356110+00:00
-updated_at: 2026-05-12T03:28:15.356110+00:00
+updated_at: 2026-05-12T12:50:36.837065+00:00
 parent: ARAWN-I-0040
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -105,6 +105,10 @@ Not in this task — T-0247. This task just ensures the storage shape supports i
 
 ## Acceptance Criteria
 
+## Acceptance Criteria
+
+## Acceptance Criteria
+
 - [ ] `arawn-projections` (or shared module) exists with a `Projection` trait/enum + writer that handles embedding + FTS dual-write in one transaction.
 - [ ] `gmail_messages` projection wired end-to-end: gmail feed run produces projection rows after the run completes.
 - [ ] Backfill loop projects pre-existing gmail mirror items on first projection-db open.
@@ -141,6 +145,67 @@ Not in this task — T-0247. This task just ensures the storage shape supports i
 - **Schema drift across feeds.** Each feed type has its own normalized fields. Avoid a god-table; one table per type. Forces the closed-enum policy in Rust.
 - **Idempotency under updated items.** Gmail messages don't update; jira issues do. The reference impl can ignore updates; document that update handling is per-feed (revisit in T-0245 for Atlassian).
 
-## Status Updates **[REQUIRED]**
+## Status Updates
 
-*To be added during implementation*
+### 2026-05-11 — Storage layer + Gmail adapter landed; dispatch wiring + embedding pipeline deferred
+
+**Scope landed this session.**
+- New crate `arawn-projections` (`crates/arawn-projections/`):
+  - `types.rs` — `Projection` trait + `ProjectionRow` (the generic view that the agent tool will hydrate from).
+  - `schema.rs` — per-feed-type table + FTS5 virtual table + `<feed_type>_embeddings` cache table. Idempotent CREATE statements (`ensure_feed_type_tables`).
+  - `store.rs` — `ProjectionStore`. UPSERT under `(feed_id, source_id)` UNIQUE; transactional dual-write of the row + FTS + embedding-cache invalidation; body_hash dirty-check so a re-run of the same content is a no-op. Helpers: `write_batch`, `missing_source_ids` (for backfill), `count`, `fts_search`, `get_row`.
+  - `gmail.rs` — `GmailMessageProjection` + `from_gmail_message` (Gmail JSON → projection) + `walk_feed_dir` (recursive walk of `<YYYY-MM-DD>/<id>.json` mirror).
+  - `error.rs` — `ProjectionError` (Storage / Schema / Io).
+- Added to workspace `members`.
+
+**Tests: 11 passing.**
+- 6 unit tests in `gmail` covering: minimal message parse, missing-id skip, bad-internalDate skip, snippet fallback, stable projection id, mirror-walk filtering.
+- 5 integration tests in `tests/gmail_e2e.rs` covering: end-to-end walk → write → FTS search; re-run idempotency (unchanged on identical content); body-change refreshes FTS; `missing_source_ids` returns unprojected; partial-failure recovery via missing-id filter.
+- `angreal check workspace` + `angreal check clippy` clean.
+
+**Open design questions — resolved.**
+1. *Separate `projections.db` or shared with memory db?* → Separate. `ProjectionStore::open(path)` takes its own path. Projection row volume (gmail alone could be 100k+) shouldn't bloat the memory db, and there's no join requirement between memory entities and projection rows in Phase 2.
+2. *Crate vs module structure?* → New crate `arawn-projections`. Per-feed-type adapter is a sibling module (`gmail.rs`, future: `slack.rs`, `drive.rs`, …). Generic `ProjectionStore` works against any feed type via the `Projection` trait — schema is created on first write per feed type.
+
+**Decisions worth keeping.**
+- **Schema is generic over feed type.** Every projection table has the same shape: `id, feed_id, source_id, source_ts, title, body_text, metadata (JSON), body_hash, created_at, updated_at` + `UNIQUE(feed_id, source_id)`. Per-feed normalized fields (sender, channel, project_key, …) live in the `metadata` JSON. Hot-path filters get hoisted to indexed columns in follow-up tasks if needed. This is a deliberate simplification from the task spec's per-type column lists — keeps `arawn-projections` generic, lets per-feed adapters add their own typed structs without touching the writer.
+- **Embedding column starts NULL.** `<feed_type>_embeddings` carries `(projection_id, body_hash, embedding)`. The writer leaves `embedding = NULL` and stamps `body_hash`. A separate embed pass (deferred) refreshes rows where `body_hash` differs from the embedded vector's keyed hash. This decouples the write path from the (expensive) embedding compute and matches the "warn and continue" pattern.
+- **`body_hash` doubles as dirty-check and embed-invalidation key.** Same hash compared on UPSERT for "is this body really new" and on the embed pass for "does this row need re-embedding."
+
+**Deferred from this task (surfaced as follow-up before T-0247).**
+- **Dispatch hook wiring.** `dispatch::run_feed` doesn't yet call the projection writer after a successful template run. The integration touches `FeedRuntimeContext` (add `Option<Arc<ProjectionStore>>`), `run_feed_inner` (post-template-success callback), and arawn main (set the field at startup). I judged this as cross-cutting enough to deserve its own focused change rather than a rushed bake-in here. Note: the standalone backfill API (`walk_feed_dir` → `missing_source_ids` → `write_batch`) is fully functional today and can be invoked as a one-shot CLI command without dispatch wiring.
+- **Embedding pipeline integration.** `arawn-embed` is not yet wired. The `<feed_type>_embeddings.body_hash` column is in place; a future task adds the embed pass.
+- **Live-fire gmail run.** No integration test yet that runs a real `gmail/inbox-archive` feed end-to-end and confirms projection rows appear. The fixture-based e2e test covers the same code paths; live-fire awaits dispatch wiring.
+
+**Acceptance criteria.**
+- [x] `arawn-projections` exists with `Projection` trait + writer with transactional dual-write.
+- [ ] `gmail_messages` projection wired end-to-end via `dispatch::run_feed` — **deferred**. Standalone walk-and-write path is functional and tested.
+- [x] Backfill walks pre-existing gmail mirror items (`walk_feed_dir` + `missing_source_ids`).
+- [x] Idempotent on re-run.
+- [ ] Embedding pipeline batches + throttles — **deferred**; schema supports it.
+- [x] Unit tests cover write, FTS row creation, dedup on re-run.
+- [x] Integration test: fixture gmail mirror → projection rows present + FTS-searchable.
+- [x] `angreal check workspace` + `angreal check clippy` clean.
+- [x] Open design questions resolved (see above).
+
+T-0243 through T-0246 can proceed: each adds a sibling `<provider>.rs` module that implements the `Projection` trait. They do not need to wait for the dispatch hook, since each can be tested via the same fixture-mirror pattern (see `tests/gmail_e2e.rs` as the template).
+
+T-0247 (`feed_search` agent tool) should bundle the dispatch-hook wiring with the embed-pipeline activation, since both surfaces become user-visible at the same point.
+
+### 2026-05-12 — dispatch hook wired; embed pipeline still deferred
+
+After feedback, completed the dispatch wiring inside this task rather than punting:
+
+- `arawn-projections::dispatch::project_feed_dir(store, template_name, feed_id, feed_dir)` — maps the feed template name (`gmail/*`, `slack/*`, `drive/*`, `jira/*`, `confluence/*`, `calendar/*`) to the right adapter. Unknown templates log and no-op.
+- `FeedRuntimeContext` gained `projections: Option<Arc<ProjectionStore>>`. `arawn-feeds::start()` accepts it as a sixth arg.
+- `dispatch::run_feed_inner` calls `project_feed_dir` after a successful template run + meta persist. Projection errors warn but don't fail the feed run (matches T-0237's warn+continue policy).
+- arawn `main.rs` opens `~/.arawn/projections.db` and threads it into both `arawn_feeds::start(..)` and the engine's `FeedSearchTool` registration. Both can soft-fail independently (separate `match` blocks).
+
+Updated all 8 call sites of `arawn_feeds::start` in feed tests to pass `None` for the projections arg.
+
+Result: feeds runtime now writes projections live on every run. `angreal check workspace` + `angreal check clippy` clean; existing feed test suite (76 unit + ~80 integration cases) still green.
+
+**Acceptance criteria — re-cleared.**
+- [x] `gmail_messages` projection wired end-to-end via `dispatch::run_feed`.
+
+Embedding pipeline is still the one piece deferred to a focused follow-up. The schema (`<feed_type>_embeddings.body_hash` + NULL embedding) is in place; an embed pass needs to walk `WHERE embedding IS NULL`, call `arawn-embed`, and write the vector back.

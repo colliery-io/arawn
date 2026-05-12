@@ -65,6 +65,7 @@ async fn dynamic_register_full_flow() {
         Arc::clone(&layout),
         Arc::clone(&registry),
         Arc::clone(&clients),
+        None,
     )
     .await
     .expect("feeds start");
@@ -141,6 +142,7 @@ async fn pause_resume_round_trip_through_cloacina() {
         Arc::clone(&layout),
         Arc::clone(&registry),
         Arc::clone(&clients),
+        None,
     )
     .await
     .unwrap();
@@ -213,6 +215,7 @@ async fn remove_wipes_cron_row_and_data_dir() {
         Arc::clone(&layout),
         Arc::clone(&registry),
         Arc::clone(&clients),
+        None,
     )
     .await
     .unwrap();
@@ -275,7 +278,7 @@ async fn pause_unknown_feed_returns_invalid_params() {
     let layout = Arc::new(DataLayout::new(&data_dir));
     let registry = Arc::new(arawn_feeds::default_registry());
     let clients: Arc<dyn FeedClients> = Arc::new(NoopClients);
-    let runtime = arawn_feeds::start(runner, conn, layout, registry, clients)
+    let runtime = arawn_feeds::start(runner, conn, layout, registry, clients, None)
         .await
         .unwrap();
 
@@ -310,7 +313,7 @@ async fn dynamic_register_is_idempotent_via_unique_constraint() {
     let layout = Arc::new(DataLayout::new(&data_dir));
     let registry = Arc::new(arawn_feeds::default_registry());
     let clients: Arc<dyn FeedClients> = Arc::new(NoopClients);
-    let runtime = arawn_feeds::start(runner, conn, layout, registry, clients)
+    let runtime = arawn_feeds::start(runner, conn, layout, registry, clients, None)
         .await
         .unwrap();
 
@@ -377,6 +380,7 @@ async fn since_param_triggers_backfill_loop_then_registers_cron() {
         Arc::clone(&layout),
         Arc::clone(&registry),
         Arc::clone(&clients),
+        None,
     )
     .await
     .unwrap();
@@ -452,7 +456,7 @@ async fn no_since_uses_existing_immediate_cron_path() {
     let layout = Arc::new(DataLayout::new(&data_dir));
     let registry = Arc::new(arawn_feeds::default_registry());
     let clients: Arc<dyn FeedClients> = Arc::new(NoopClients);
-    let runtime = arawn_feeds::start(runner, conn.clone(), layout.clone(), registry, clients)
+    let runtime = arawn_feeds::start(runner, conn.clone(), layout.clone(), registry, clients, None)
         .await
         .unwrap();
 
@@ -506,7 +510,7 @@ async fn dynamic_register_rolls_back_on_unknown_template() {
     let registry = Arc::new(arawn_feeds::default_registry());
     let clients: Arc<dyn FeedClients> = Arc::new(NoopClients);
 
-    let runtime = arawn_feeds::start(runner, conn.clone(), layout, registry, clients)
+    let runtime = arawn_feeds::start(runner, conn.clone(), layout, registry, clients, None)
         .await
         .unwrap();
 

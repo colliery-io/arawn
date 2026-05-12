@@ -4,14 +4,14 @@ level: task
 title: "Slack projections — slack_messages + slack_thread_messages"
 short_code: "ARAWN-T-0243"
 created_at: 2026-05-12T03:28:16.488434+00:00
-updated_at: 2026-05-12T03:28:16.488434+00:00
+updated_at: 2026-05-12T12:52:12.315616+00:00
 parent: ARAWN-I-0040
 blocked_by: [ARAWN-T-0242]
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -40,6 +40,10 @@ Implement Slack projections — `slack_messages` and `slack_thread_messages` —
 
 ## Acceptance Criteria
 
+## Acceptance Criteria
+
+## Acceptance Criteria
+
 - [ ] Both Slack tables exist with FTS + embedding, populated on `slack-messages` / `slack-thread-messages` feed runs.
 - [ ] Idempotent on re-run (UNIQUE on `(feed_id, source_id)`).
 - [ ] Backfill walks the existing mirror.
@@ -58,6 +62,14 @@ Implement Slack projections — `slack_messages` and `slack_thread_messages` —
 
 
 
-## Status Updates **[REQUIRED]**
+## Status Updates
 
-*To be added during implementation*
+### 2026-05-12 — Slack adapter landed
+
+- `crates/arawn-projections/src/slack.rs` — `SlackMessageProjection` with `is_thread_reply: bool` routing to either `slack_messages` or `slack_thread_messages` table.
+- `parse_slack_ts` converts `"<secs>.<micros>"` Slack timestamps. `walk_feed_dir` reads top-level `<YYYY-MM-DD>.jsonl` plus `threads/<parent_ts>.jsonl`, skipping the duplicate parent line in each thread file.
+- Dispatcher splits the parsed projections into top-level + reply lists and dedups each against the right table.
+- 4 unit tests: ts parsing, basic message, thread-reply routing, walk-and-distinguish.
+- `angreal check workspace` + `clippy` clean.
+
+Per T-0242's schema decisions, normalized fields (channel_id, sender_id, thread_ts, reactions) live in the metadata JSON; only id/feed_id/source_id/source_ts/title/body_text/body_hash are columns.

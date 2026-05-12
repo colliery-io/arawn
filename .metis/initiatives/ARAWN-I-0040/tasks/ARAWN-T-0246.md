@@ -4,14 +4,14 @@ level: task
 title: "Calendar projection — calendar_events"
 short_code: "ARAWN-T-0246"
 created_at: 2026-05-12T03:28:19.683286+00:00
-updated_at: 2026-05-12T03:28:19.683286+00:00
+updated_at: 2026-05-12T12:52:14.599968+00:00
 parent: ARAWN-I-0040
 blocked_by: [ARAWN-T-0242]
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -40,6 +40,10 @@ Implement the `calendar_events` projection on top of T-0242's plumbing. Each cal
 
 ## Acceptance Criteria
 
+## Acceptance Criteria
+
+## Acceptance Criteria
+
 - [ ] `calendar_events` table created with FTS + embedding, populated after `calendar-upcoming` / `calendar-archive` feed runs.
 - [ ] Idempotent; UPDATE refreshes embedding when summary/description changes.
 - [ ] Recurring instances stored as distinct rows with shared `recurring_event_id`.
@@ -57,4 +61,12 @@ Implement the `calendar_events` projection on top of T-0242's plumbing. Each cal
 
 ## Status Updates
 
-*To be added during implementation*
+### 2026-05-12 — Calendar adapter landed
+
+- `crates/arawn-projections/src/calendar.rs` — `CalendarEventProjection`. `parse_event_time` handles both `dateTime` (RFC3339) and `date` (all-day → midnight UTC) forms.
+- `walk_feed_dir` reads `<feed_dir>/events/<event_id>.json` per the upcoming-archive mirror shape.
+- 4 unit tests: dateTime event, all-day event normalization, multi-event walk, malformed-event skip.
+- Wired into dispatcher (`calendar` provider).
+- Recurring instances are stored as separate rows with `recurring_event_id` in metadata for later grouping.
+
+`angreal check workspace` + `clippy` clean.

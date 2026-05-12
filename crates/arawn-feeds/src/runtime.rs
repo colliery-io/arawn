@@ -54,12 +54,14 @@ pub async fn start(
     layout: Arc<DataLayout>,
     registry: Arc<FeedTemplateRegistry>,
     clients: Arc<dyn FeedClients>,
+    projections: Option<Arc<arawn_projections::ProjectionStore>>,
 ) -> Result<FeedRuntime, FeedError> {
     let runtime_ctx = FeedRuntimeContext {
         conn: conn.clone(),
         layout: layout.clone(),
         registry: registry.clone(),
         clients: clients.clone(),
+        projections: projections.clone(),
     };
 
     let feeds = {

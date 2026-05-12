@@ -150,6 +150,7 @@ dependencies = [
  "arawn-llm",
  "arawn-mcp",
  "arawn-memory",
+ "arawn-projections",
  "arawn-service",
  "arawn-storage",
  "arawn-tool",
@@ -236,6 +237,7 @@ dependencies = [
  "arawn-embed",
  "arawn-llm",
  "arawn-memory",
+ "arawn-projections",
  "arawn-storage",
  "arawn-tool",
  "async-trait",
@@ -269,6 +271,7 @@ version = "0.1.0"
 dependencies = [
  "arawn-core",
  "arawn-integrations",
+ "arawn-projections",
  "arawn-storage",
  "async-trait",
  "chrono",
@@ -373,6 +376,20 @@ dependencies = [
  "ureq",
  "uuid",
  "zerocopy",
+]
+
+[[package]]
+name = "arawn-projections"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tracing",
+ "uuid",
 ]
 
 [[package]]
