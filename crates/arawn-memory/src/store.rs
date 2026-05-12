@@ -1,20 +1,34 @@
-//! SQLite-backed knowledge base store with FTS5 search and relations.
+//! Knowledge base store: graphqlite (Cypher / EAV) for entities + relations,
+//! plus a colocated FTS5 virtual table and (optional) vector extension table
+//! on the same sqlite handle.
+//!
+//! The graphqlite-backed node graph is the sole source of truth for entity
+//! and relation records. FTS5 + vector tables are derived projections kept in
+//! sync via explicit Rust dual-writes inside a single sqlite transaction.
 
 use std::path::Path;
 use std::sync::Mutex;
 
 use chrono::{DateTime, Utc};
-use rusqlite::{Connection, params};
+use graphqlite::Connection as GraphConnection;
+use rusqlite::params;
 use tracing::{debug, info};
 use uuid::Uuid;
 
+use crate::cypher_schema::{
+    entity_label, entity_to_props, node_to_entity, relation_type_from_str, relation_type_str,
+};
 use crate::error::MemoryError;
 use crate::types::*;
 use crate::vector;
 
-/// Knowledge base store backed by SQLite with FTS5 and relations.
+/// Knowledge base store.
+///
+/// Holds a single `graphqlite::Connection`. Cypher operations run via
+/// `.cypher_builder(...)`; raw SQL for the FTS5 index, vector table, and
+/// transaction control runs via `.sqlite_connection()`.
 pub struct MemoryStore {
-    conn: Mutex<Connection>,
+    conn: Mutex<GraphConnection>,
 }
 
 impl MemoryStore {
@@ -25,10 +39,11 @@ impl MemoryStore {
                 .map_err(|e| MemoryError::Storage(format!("create dir: {e}")))?;
         }
 
-        let conn = Connection::open(path)
+        let conn = GraphConnection::open(path)
             .map_err(|e| MemoryError::Storage(format!("open db: {e}")))?;
 
-        conn.execute_batch("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;")
+        conn.sqlite_connection()
+            .execute_batch("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;")
             .map_err(|e| MemoryError::Storage(format!("pragmas: {e}")))?;
 
         let store = Self {
@@ -41,7 +56,7 @@ impl MemoryStore {
 
     /// Create an in-memory store (for testing).
     pub fn in_memory() -> Result<Self, MemoryError> {
-        let conn = Connection::open_in_memory()
+        let conn = GraphConnection::open_in_memory()
             .map_err(|e| MemoryError::Storage(format!("open in-memory: {e}")))?;
         let store = Self {
             conn: Mutex::new(conn),
@@ -52,156 +67,101 @@ impl MemoryStore {
 
     fn migrate(&self) -> Result<(), MemoryError> {
         let conn = self.conn.lock().unwrap();
-        conn.execute_batch(
-            "CREATE TABLE IF NOT EXISTS entities (
-                id TEXT PRIMARY KEY,
-                entity_type TEXT NOT NULL,
-                title TEXT NOT NULL,
-                content TEXT,
-                confidence_source TEXT NOT NULL DEFAULT 'inferred',
-                reinforcement_count INTEGER NOT NULL DEFAULT 0,
-                superseded INTEGER NOT NULL DEFAULT 0,
-                tags TEXT NOT NULL DEFAULT '[]',
-                source_session TEXT,
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL,
-                accessed_at TEXT NOT NULL
-            );
+        let sql = conn.sqlite_connection();
 
-            CREATE TABLE IF NOT EXISTS relations (
-                source_id TEXT NOT NULL,
-                relation_type TEXT NOT NULL,
-                target_id TEXT NOT NULL,
-                created_at TEXT NOT NULL,
-                PRIMARY KEY (source_id, relation_type, target_id)
-            );
-
-            CREATE INDEX IF NOT EXISTS idx_entities_type ON entities(entity_type);
-            CREATE INDEX IF NOT EXISTS idx_entities_superseded ON entities(superseded);
-            CREATE INDEX IF NOT EXISTS idx_relations_source ON relations(source_id);
-            CREATE INDEX IF NOT EXISTS idx_relations_target ON relations(target_id);",
+        // Drop the T-0239 legacy tables. graphqlite EAV is the source of
+        // truth now; the FTS5 virtual table below is keyed on `entity_id`
+        // directly rather than via a rowid linkage to a parent table.
+        // No userbase to migrate per I-0040.
+        sql.execute_batch(
+            "DROP TRIGGER IF EXISTS entities_ai;
+             DROP TRIGGER IF EXISTS entities_ad;
+             DROP TRIGGER IF EXISTS entities_au;
+             DROP TABLE IF EXISTS entities_fts;
+             DROP TABLE IF EXISTS entities;
+             DROP TABLE IF EXISTS relations;",
         )
-        .map_err(|e| MemoryError::Storage(format!("migrate: {e}")))?;
+        .map_err(|e| MemoryError::Storage(format!("drop legacy: {e}")))?;
 
-        // FTS5 virtual table (fails silently if already exists)
-        let _ = conn.execute_batch(
+        // Standalone FTS5 keyed on entity_id (uuid string). No external-content
+        // linkage — entity records live in graphqlite EAV, not a parent table.
+        sql.execute_batch(
             "CREATE VIRTUAL TABLE IF NOT EXISTS entities_fts USING fts5(
-                title, content, content=entities, content_rowid=rowid
-            );
-
-            CREATE TRIGGER IF NOT EXISTS entities_ai AFTER INSERT ON entities BEGIN
-                INSERT INTO entities_fts(rowid, title, content)
-                VALUES (new.rowid, new.title, new.content);
-            END;
-
-            CREATE TRIGGER IF NOT EXISTS entities_ad AFTER DELETE ON entities BEGIN
-                INSERT INTO entities_fts(entities_fts, rowid, title, content)
-                VALUES ('delete', old.rowid, old.title, old.content);
-            END;
-
-            CREATE TRIGGER IF NOT EXISTS entities_au AFTER UPDATE ON entities BEGIN
-                INSERT INTO entities_fts(entities_fts, rowid, title, content)
-                VALUES ('delete', old.rowid, old.title, old.content);
-                INSERT INTO entities_fts(rowid, title, content)
-                VALUES (new.rowid, new.title, new.content);
-            END;",
-        );
+                entity_id UNINDEXED,
+                title,
+                content,
+                tokenize = 'unicode61'
+            );",
+        )
+        .map_err(|e| MemoryError::Storage(format!("fts5 migrate: {e}")))?;
 
         Ok(())
     }
 
     // === Entity CRUD ===
+    //
+    // Each write runs Cypher + FTS5 (and the optional vector cleanup on
+    // delete) inside one sqlite transaction. The Cypher executor uses the
+    // same `rusqlite::Connection` under the hood, so a BEGIN/COMMIT around
+    // the whole flow gives us atomicity across both APIs.
 
     pub fn insert_entity(&self, entity: &Entity) -> Result<(), MemoryError> {
         let conn = self.conn.lock().unwrap();
-        let tags_json = serde_json::to_string(&entity.tags).unwrap_or_else(|_| "[]".into());
-
-        conn.execute(
-            "INSERT INTO entities (id, entity_type, title, content, confidence_source,
-             reinforcement_count, superseded, tags, source_session, created_at, updated_at, accessed_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
-            params![
-                entity.id.to_string(),
-                entity.entity_type.as_str(),
-                entity.title,
-                entity.content,
-                entity.confidence_source.as_str(),
-                entity.reinforcement_count,
-                entity.superseded as i32,
-                tags_json,
-                entity.source_session.map(|u| u.to_string()),
-                entity.created_at.to_rfc3339(),
-                entity.updated_at.to_rfc3339(),
-                entity.accessed_at.to_rfc3339(),
-            ],
-        )
-        .map_err(|e| MemoryError::Storage(format!("insert entity: {e}")))?;
-
+        with_tx(&conn, |conn| {
+            cypher_upsert_entity(conn, entity)?;
+            fts_upsert(conn.sqlite_connection(), entity)?;
+            Ok(())
+        })?;
         debug!(id = %entity.id, title = %entity.title, "entity inserted");
         Ok(())
     }
 
     pub fn get_entity(&self, id: Uuid) -> Result<Option<Entity>, MemoryError> {
         let conn = self.conn.lock().unwrap();
-        let mut stmt = conn
-            .prepare("SELECT * FROM entities WHERE id = ?1")
-            .map_err(|e| MemoryError::Storage(format!("prepare: {e}")))?;
-
-        let result = stmt
-            .query_row(params![id.to_string()], |row| Ok(row_to_entity(row)))
-            .optional()
-            .map_err(|e| MemoryError::Storage(format!("get entity: {e}")))?;
-
-        match result {
-            Some(Ok(entity)) => Ok(Some(entity)),
-            Some(Err(e)) => Err(e),
-            None => Ok(None),
-        }
+        fetch_entity_by_id(&conn, id)
     }
 
     pub fn update_entity(&self, entity: &Entity) -> Result<(), MemoryError> {
         let conn = self.conn.lock().unwrap();
-        let tags_json = serde_json::to_string(&entity.tags).unwrap_or_else(|_| "[]".into());
-
-        conn.execute(
-            "UPDATE entities SET title=?2, content=?3, confidence_source=?4,
-             reinforcement_count=?5, superseded=?6, tags=?7, updated_at=?8, accessed_at=?9
-             WHERE id=?1",
-            params![
-                entity.id.to_string(),
-                entity.title,
-                entity.content,
-                entity.confidence_source.as_str(),
-                entity.reinforcement_count,
-                entity.superseded as i32,
-                tags_json,
-                entity.updated_at.to_rfc3339(),
-                entity.accessed_at.to_rfc3339(),
-            ],
-        )
-        .map_err(|e| MemoryError::Storage(format!("update entity: {e}")))?;
+        with_tx(&conn, |conn| {
+            cypher_upsert_entity(conn, entity)?;
+            fts_upsert(conn.sqlite_connection(), entity)?;
+            Ok(())
+        })?;
         Ok(())
     }
 
     pub fn delete_entity(&self, id: Uuid) -> Result<bool, MemoryError> {
         let conn = self.conn.lock().unwrap();
-        let deleted = conn
-            .execute("DELETE FROM entities WHERE id = ?1", params![id.to_string()])
-            .map_err(|e| MemoryError::Storage(format!("delete entity: {e}")))?;
+        let id_str = id.to_string();
 
-        // Clean up relations
-        let _ = conn.execute(
-            "DELETE FROM relations WHERE source_id = ?1 OR target_id = ?1",
-            params![id.to_string()],
-        );
+        // Check existence before deleting so the bool return is meaningful.
+        let existed = cypher_entity_exists(&conn, &id_str)?;
+        if !existed {
+            return Ok(false);
+        }
 
-        // Clean up embedding (if vector table exists)
-        let _ = conn.execute(
-            "DELETE FROM entity_embeddings WHERE entity_id = ?1",
-            params![id.to_string()],
-        );
+        with_tx(&conn, |conn| {
+            conn.cypher_builder("MATCH (n {id: $id}) DETACH DELETE n")
+                .param("id", id_str.clone())
+                .run()
+                .map_err(|e| MemoryError::Storage(format!("cypher delete entity: {e}")))?;
 
-        Ok(deleted > 0)
+            let sql = conn.sqlite_connection();
+            sql.execute(
+                "DELETE FROM entities_fts WHERE entity_id = ?1",
+                params![id_str.clone()],
+            )
+            .map_err(|e| MemoryError::Storage(format!("fts delete: {e}")))?;
+
+            // Vector table is created lazily — ignore if absent.
+            let _ = sql.execute(
+                "DELETE FROM entity_embeddings WHERE entity_id = ?1",
+                params![id_str.clone()],
+            );
+            Ok(())
+        })?;
+        Ok(true)
     }
 
     pub fn list_by_type(
@@ -210,116 +170,96 @@ impl MemoryStore {
         limit: usize,
     ) -> Result<Vec<Entity>, MemoryError> {
         let conn = self.conn.lock().unwrap();
-        let mut stmt = conn
-            .prepare(
-                "SELECT * FROM entities WHERE entity_type = ?1 AND superseded = 0
-                 ORDER BY updated_at DESC LIMIT ?2",
-            )
-            .map_err(|e| MemoryError::Storage(format!("prepare: {e}")))?;
-
-        let rows = stmt
-            .query_map(params![entity_type.as_str(), limit as i64], |row| {
-                Ok(row_to_entity(row))
-            })
-            .map_err(|e| MemoryError::Storage(format!("list: {e}")))?;
-
-        let mut entities = Vec::new();
-        for row in rows {
-            match row {
-                Ok(Ok(entity)) => entities.push(entity),
-                Ok(Err(e)) => return Err(e),
-                Err(e) => return Err(MemoryError::Storage(format!("row: {e}"))),
-            }
-        }
-        Ok(entities)
+        let label = entity_label(entity_type);
+        let query = format!(
+            "MATCH (n:{label}) WHERE n.superseded = false RETURN n ORDER BY n.updated_at DESC LIMIT $lim"
+        );
+        let result = conn
+            .cypher_builder(&query)
+            .param("lim", limit as i64)
+            .run()
+            .map_err(|e| MemoryError::Storage(format!("cypher list_by_type: {e}")))?;
+        rows_to_entities(&result)
     }
 
     /// List all non-superseded entities ranked by confidence: stated > observed > inferred,
     /// then by reinforcement count, then recency. Used for L1 memory generation.
+    ///
+    /// Ranking is computed in Rust — graphqlite's Cypher dialect doesn't accept
+    /// `CASE` expressions, and the entity set is small enough that pulling
+    /// candidates and sorting client-side is cheaper than designing an
+    /// equivalent Cypher predicate.
     pub fn list_all_ranked(&self, limit: usize) -> Result<Vec<Entity>, MemoryError> {
         let conn = self.conn.lock().unwrap();
-        let mut stmt = conn
-            .prepare(
-                "SELECT * FROM entities WHERE superseded = 0
-                 ORDER BY
-                   CASE confidence_source
-                     WHEN 'stated' THEN 3
-                     WHEN 'observed' THEN 2
-                     WHEN 'inferred' THEN 1
-                     ELSE 0
-                   END DESC,
-                   reinforcement_count DESC,
-                   updated_at DESC
-                 LIMIT ?1",
-            )
-            .map_err(|e| MemoryError::Storage(format!("prepare: {e}")))?;
-
-        let rows = stmt
-            .query_map(params![limit as i64], |row| Ok(row_to_entity(row)))
-            .map_err(|e| MemoryError::Storage(format!("list: {e}")))?;
-
-        let mut entities = Vec::new();
-        for row in rows {
-            match row {
-                Ok(Ok(entity)) => entities.push(entity),
-                Ok(Err(e)) => return Err(e),
-                Err(e) => return Err(MemoryError::Storage(format!("row: {e}"))),
-            }
-        }
+        let result = conn
+            .cypher("MATCH (n) WHERE n.superseded = false RETURN n")
+            .map_err(|e| MemoryError::Storage(format!("cypher list_all_ranked: {e}")))?;
+        let mut entities = rows_to_entities(&result)?;
+        entities.sort_by(|a, b| {
+            let rank = |c: ConfidenceSource| match c {
+                ConfidenceSource::Stated => 3,
+                ConfidenceSource::Observed => 2,
+                ConfidenceSource::Inferred => 1,
+            };
+            rank(b.confidence_source)
+                .cmp(&rank(a.confidence_source))
+                .then(b.reinforcement_count.cmp(&a.reinforcement_count))
+                .then(b.updated_at.cmp(&a.updated_at))
+        });
+        entities.truncate(limit);
         Ok(entities)
     }
 
     pub fn count_by_type(&self, entity_type: EntityType) -> Result<usize, MemoryError> {
         let conn = self.conn.lock().unwrap();
-        let count: i64 = conn
-            .query_row(
-                "SELECT COUNT(*) FROM entities WHERE entity_type = ?1 AND superseded = 0",
-                params![entity_type.as_str()],
-                |row| row.get(0),
-            )
-            .map_err(|e| MemoryError::Storage(format!("count: {e}")))?;
-        Ok(count as usize)
+        let label = entity_label(entity_type);
+        let query = format!(
+            "MATCH (n:{label}) WHERE n.superseded = false RETURN count(n) AS cnt"
+        );
+        let result = conn
+            .cypher(&query)
+            .map_err(|e| MemoryError::Storage(format!("cypher count_by_type: {e}")))?;
+        let cnt: i64 = if result.is_empty() {
+            0
+        } else {
+            result[0].get("cnt").unwrap_or(0)
+        };
+        Ok(cnt.max(0) as usize)
     }
 
     pub fn count_all(&self) -> Result<usize, MemoryError> {
         let conn = self.conn.lock().unwrap();
-        let count: i64 = conn
-            .query_row(
-                "SELECT COUNT(*) FROM entities WHERE superseded = 0",
-                [],
-                |row| row.get(0),
-            )
-            .map_err(|e| MemoryError::Storage(format!("count: {e}")))?;
-        Ok(count as usize)
+        let result = conn
+            .cypher("MATCH (n) WHERE n.superseded = false RETURN count(n) AS cnt")
+            .map_err(|e| MemoryError::Storage(format!("cypher count_all: {e}")))?;
+        let cnt: i64 = if result.is_empty() {
+            0
+        } else {
+            result[0].get("cnt").unwrap_or(0)
+        };
+        Ok(cnt.max(0) as usize)
     }
 
     // === FTS5 Search ===
+    //
+    // FTS5 returns entity_ids ranked by relevance; we fetch full entities
+    // via Cypher. Superseded filter happens at the Cypher fetch — we
+    // over-fetch FTS by 2× to compensate for drops.
 
     pub fn search(&self, query: &str, limit: usize) -> Result<Vec<Entity>, MemoryError> {
         let conn = self.conn.lock().unwrap();
-        let mut stmt = conn
-            .prepare(
-                "SELECT e.* FROM entities e
-                 JOIN entities_fts fts ON e.rowid = fts.rowid
-                 WHERE entities_fts MATCH ?1 AND e.superseded = 0
-                 ORDER BY rank
-                 LIMIT ?2",
-            )
-            .map_err(|e| MemoryError::Storage(format!("prepare search: {e}")))?;
-
-        let rows = stmt
-            .query_map(params![query, limit as i64], |row| Ok(row_to_entity(row)))
-            .map_err(|e| MemoryError::Storage(format!("search: {e}")))?;
-
-        let mut entities = Vec::new();
-        for row in rows {
-            match row {
-                Ok(Ok(entity)) => entities.push(entity),
-                Ok(Err(e)) => return Err(e),
-                Err(e) => return Err(MemoryError::Storage(format!("row: {e}"))),
-            }
+        let ids = fts_search(conn.sqlite_connection(), query, None, limit * 2)?;
+        let mut out = Vec::with_capacity(limit);
+        for id in ids {
+            if let Some(e) = fetch_entity_by_id(&conn, id)?
+                && !e.superseded {
+                    out.push(e);
+                    if out.len() == limit {
+                        break;
+                    }
+                }
         }
-        Ok(entities)
+        Ok(out)
     }
 
     pub fn search_by_type(
@@ -329,32 +269,18 @@ impl MemoryStore {
         limit: usize,
     ) -> Result<Vec<Entity>, MemoryError> {
         let conn = self.conn.lock().unwrap();
-        let mut stmt = conn
-            .prepare(
-                "SELECT e.* FROM entities e
-                 JOIN entities_fts fts ON e.rowid = fts.rowid
-                 WHERE entities_fts MATCH ?1 AND e.entity_type = ?2 AND e.superseded = 0
-                 ORDER BY rank
-                 LIMIT ?3",
-            )
-            .map_err(|e| MemoryError::Storage(format!("prepare: {e}")))?;
-
-        let rows = stmt
-            .query_map(
-                params![query, entity_type.as_str(), limit as i64],
-                |row| Ok(row_to_entity(row)),
-            )
-            .map_err(|e| MemoryError::Storage(format!("search: {e}")))?;
-
-        let mut entities = Vec::new();
-        for row in rows {
-            match row {
-                Ok(Ok(entity)) => entities.push(entity),
-                Ok(Err(e)) => return Err(e),
-                Err(e) => return Err(MemoryError::Storage(format!("row: {e}"))),
-            }
+        let ids = fts_search(conn.sqlite_connection(), query, None, limit * 4)?;
+        let mut out = Vec::with_capacity(limit);
+        for id in ids {
+            if let Some(e) = fetch_entity_by_id(&conn, id)?
+                && !e.superseded && e.entity_type == entity_type {
+                    out.push(e);
+                    if out.len() == limit {
+                        break;
+                    }
+                }
         }
-        Ok(entities)
+        Ok(out)
     }
 
     // === Relations ===
@@ -366,55 +292,43 @@ impl MemoryStore {
         target_id: Uuid,
     ) -> Result<(), MemoryError> {
         let conn = self.conn.lock().unwrap();
-        conn.execute(
-            "INSERT OR IGNORE INTO relations (source_id, relation_type, target_id, created_at)
-             VALUES (?1, ?2, ?3, ?4)",
-            params![
-                source_id.to_string(),
-                relation_type.as_str(),
-                target_id.to_string(),
-                Utc::now().to_rfc3339(),
-            ],
-        )
-        .map_err(|e| MemoryError::Storage(format!("add relation: {e}")))?;
-        Ok(())
+        let now = Utc::now().to_rfc3339();
+        cypher_upsert_relation(&conn, source_id, relation_type, target_id, &now)
     }
 
     pub fn get_relations(&self, entity_id: Uuid) -> Result<Vec<Relation>, MemoryError> {
         let conn = self.conn.lock().unwrap();
-        let id_str = entity_id.to_string();
-        let mut stmt = conn
-            .prepare(
-                "SELECT source_id, relation_type, target_id, created_at FROM relations
-                 WHERE source_id = ?1 OR target_id = ?1",
+        let out = conn
+            .cypher_builder(
+                "MATCH (a {id: $id})-[r]->(b) RETURN a.id AS src, type(r) AS rt, b.id AS tgt, r.created_at AS ts",
             )
-            .map_err(|e| MemoryError::Storage(format!("prepare: {e}")))?;
-
-        let rows = stmt
-            .query_map(params![id_str], |row| {
-                let source_str: String = row.get(0)?;
-                let rel_str: String = row.get(1)?;
-                let target_str: String = row.get(2)?;
-                let created_str: String = row.get(3)?;
-                Ok((source_str, rel_str, target_str, created_str))
-            })
-            .map_err(|e| MemoryError::Storage(format!("query: {e}")))?;
+            .param("id", entity_id.to_string())
+            .run()
+            .map_err(|e| MemoryError::Storage(format!("cypher get_relations out: {e}")))?;
+        let inc = conn
+            .cypher_builder(
+                "MATCH (a)-[r]->(b {id: $id}) RETURN a.id AS src, type(r) AS rt, b.id AS tgt, r.created_at AS ts",
+            )
+            .param("id", entity_id.to_string())
+            .run()
+            .map_err(|e| MemoryError::Storage(format!("cypher get_relations in: {e}")))?;
 
         let mut relations = Vec::new();
-        for row in rows {
-            let (source_str, rel_str, target_str, created_str) =
-                row.map_err(|e| MemoryError::Storage(format!("row: {e}")))?;
-
-            if let (Ok(source), Some(rel_type), Ok(target)) = (
-                Uuid::parse_str(&source_str),
-                RelationType::from_str(&rel_str),
-                Uuid::parse_str(&target_str),
+        for row in out.iter().chain(inc.iter()) {
+            let src: String = row.get("src").unwrap_or_default();
+            let rt: String = row.get("rt").unwrap_or_default();
+            let tgt: String = row.get("tgt").unwrap_or_default();
+            let ts: String = row.get("ts").unwrap_or_default();
+            if let (Ok(s), Some(r), Ok(t)) = (
+                Uuid::parse_str(&src),
+                relation_type_from_str(&rt),
+                Uuid::parse_str(&tgt),
             ) {
                 relations.push(Relation {
-                    source_id: source,
-                    relation_type: rel_type,
-                    target_id: target,
-                    created_at: DateTime::parse_from_rfc3339(&created_str)
+                    source_id: s,
+                    relation_type: r,
+                    target_id: t,
+                    created_at: DateTime::parse_from_rfc3339(&ts)
                         .map(|dt| dt.with_timezone(&Utc))
                         .unwrap_or_else(|_| Utc::now()),
                 });
@@ -425,28 +339,16 @@ impl MemoryStore {
 
     pub fn get_neighbors(&self, entity_id: Uuid) -> Result<Vec<(Uuid, RelationType)>, MemoryError> {
         let conn = self.conn.lock().unwrap();
-        let id_str = entity_id.to_string();
-        let mut stmt = conn
-            .prepare(
-                "SELECT target_id, relation_type FROM relations WHERE source_id = ?1
-                 UNION
-                 SELECT source_id, relation_type FROM relations WHERE target_id = ?1",
-            )
-            .map_err(|e| MemoryError::Storage(format!("prepare: {e}")))?;
-
-        let rows = stmt
-            .query_map(params![id_str], |row| {
-                let id_str: String = row.get(0)?;
-                let rel_str: String = row.get(1)?;
-                Ok((id_str, rel_str))
-            })
-            .map_err(|e| MemoryError::Storage(format!("query: {e}")))?;
-
+        let result = conn
+            .cypher_builder("MATCH (n {id: $id})-[r]-(m) RETURN DISTINCT m.id AS mid, type(r) AS rt")
+            .param("id", entity_id.to_string())
+            .run()
+            .map_err(|e| MemoryError::Storage(format!("cypher get_neighbors: {e}")))?;
         let mut neighbors = Vec::new();
-        for row in rows {
-            let (id_str, rel_str) =
-                row.map_err(|e| MemoryError::Storage(format!("row: {e}")))?;
-            if let (Ok(id), Some(rel)) = (Uuid::parse_str(&id_str), RelationType::from_str(&rel_str)) {
+        for row in result.iter() {
+            let mid: String = row.get("mid").unwrap_or_default();
+            let rt: String = row.get("rt").unwrap_or_default();
+            if let (Ok(id), Some(rel)) = (Uuid::parse_str(&mid), relation_type_from_str(&rt)) {
                 neighbors.push((id, rel));
             }
         }
@@ -460,66 +362,91 @@ impl MemoryStore {
         target_id: Uuid,
     ) -> Result<bool, MemoryError> {
         let conn = self.conn.lock().unwrap();
-        let deleted = conn
-            .execute(
-                "DELETE FROM relations WHERE source_id = ?1 AND relation_type = ?2 AND target_id = ?3",
-                params![
-                    source_id.to_string(),
-                    relation_type.as_str(),
-                    target_id.to_string(),
-                ],
-            )
-            .map_err(|e| MemoryError::Storage(format!("delete relation: {e}")))?;
-        Ok(deleted > 0)
+        let rt = relation_type_str(relation_type);
+        let exists_query = format!(
+            "MATCH (a {{id: $src}})-[r:{rt}]->(b {{id: $tgt}}) RETURN count(r) AS cnt"
+        );
+        let exists = conn
+            .cypher_builder(&exists_query)
+            .param("src", source_id.to_string())
+            .param("tgt", target_id.to_string())
+            .run()
+            .map_err(|e| MemoryError::Storage(format!("cypher edge exists: {e}")))?;
+        let cnt: i64 = if exists.is_empty() {
+            0
+        } else {
+            exists[0].get("cnt").unwrap_or(0)
+        };
+        if cnt == 0 {
+            return Ok(false);
+        }
+
+        let delete_query = format!(
+            "MATCH (a {{id: $src}})-[r:{rt}]->(b {{id: $tgt}}) DELETE r"
+        );
+        conn.cypher_builder(&delete_query)
+            .param("src", source_id.to_string())
+            .param("tgt", target_id.to_string())
+            .run()
+            .map_err(|e| MemoryError::Storage(format!("cypher delete relation: {e}")))?;
+        Ok(true)
     }
 
     // === Search-Before-Create ===
 
     /// Store a fact with search-before-create deduplication.
-    /// Searches for existing entities of the same type with similar titles.
-    /// Returns Inserted, Reinforced, or Superseded.
+    /// Searches for existing entities of the same type via FTS5; an exact
+    /// (case-insensitive) title match reinforces the existing entity.
     pub fn store_fact(&self, entity: &Entity) -> Result<StoreFactResult, MemoryError> {
-        // Search for existing entities of the same type.
         // Quote the title for FTS5 to prevent special character interpretation.
         let fts_query = format!("\"{}\"", entity.title.replace('"', "\"\""));
         let candidates = self.search_by_type(&fts_query, entity.entity_type, 5)?;
 
-        // Check for exact or near-exact title match
         let title_lower = entity.title.to_lowercase();
         for candidate in &candidates {
-            let candidate_lower = candidate.title.to_lowercase();
-
-            if candidate_lower == title_lower {
-                // Exact match — reinforce
+            if candidate.title.to_lowercase() == title_lower {
                 return self.reinforce_entity(candidate.id);
             }
         }
 
-        // No match — insert new
         self.insert_entity(entity)?;
         Ok(StoreFactResult::Inserted {
             entity_id: entity.id,
         })
     }
 
-    /// Reinforce an existing entity (increment count, update timestamp).
+    /// Reinforce an existing entity (increment count, refresh timestamps).
     fn reinforce_entity(&self, entity_id: Uuid) -> Result<StoreFactResult, MemoryError> {
         let conn = self.conn.lock().unwrap();
         let now = Utc::now().to_rfc3339();
-        conn.execute(
-            "UPDATE entities SET reinforcement_count = reinforcement_count + 1,
-             updated_at = ?2, accessed_at = ?2 WHERE id = ?1",
-            params![entity_id.to_string(), now],
-        )
-        .map_err(|e| MemoryError::Storage(format!("reinforce: {e}")))?;
+        let id_str = entity_id.to_string();
 
-        let new_count: u32 = conn
-            .query_row(
-                "SELECT reinforcement_count FROM entities WHERE id = ?1",
-                params![entity_id.to_string()],
-                |row| row.get(0),
-            )
-            .map_err(|e| MemoryError::Storage(format!("get count: {e}")))?;
+        // Read the current count via Cypher, increment in Rust, write back.
+        // graphqlite's Cypher doesn't support arithmetic SET against a property
+        // reference, so we round-trip the value.
+        let row = conn
+            .cypher_builder("MATCH (n {id: $id}) RETURN n.reinforcement_count AS cnt")
+            .param("id", id_str.clone())
+            .run()
+            .map_err(|e| MemoryError::Storage(format!("cypher read count: {e}")))?;
+        let current: i64 = if row.is_empty() {
+            return Err(MemoryError::Storage(format!(
+                "reinforce: entity {entity_id} not found"
+            )));
+        } else {
+            row[0].get("cnt").unwrap_or(0)
+        };
+        let new_count = (current + 1).max(0) as u32;
+
+        conn.cypher_builder(
+            "MATCH (n {id: $id}) \
+             SET n.reinforcement_count = $cnt, n.updated_at = $now, n.accessed_at = $now",
+        )
+        .param("id", id_str)
+        .param("cnt", new_count as i64)
+        .param("now", now)
+        .run()
+        .map_err(|e| MemoryError::Storage(format!("cypher reinforce: {e}")))?;
 
         debug!(id = %entity_id, count = new_count, "entity reinforced");
         Ok(StoreFactResult::Reinforced {
@@ -534,19 +461,16 @@ impl MemoryStore {
         old_id: Uuid,
         new_entity: &Entity,
     ) -> Result<StoreFactResult, MemoryError> {
-        // Mark old as superseded
         let conn = self.conn.lock().unwrap();
-        conn.execute(
-            "UPDATE entities SET superseded = 1, updated_at = ?2 WHERE id = ?1",
-            params![old_id.to_string(), Utc::now().to_rfc3339()],
-        )
-        .map_err(|e| MemoryError::Storage(format!("supersede: {e}")))?;
+        let now = Utc::now().to_rfc3339();
+        conn.cypher_builder("MATCH (n {id: $id}) SET n.superseded = true, n.updated_at = $now")
+            .param("id", old_id.to_string())
+            .param("now", now)
+            .run()
+            .map_err(|e| MemoryError::Storage(format!("cypher supersede: {e}")))?;
         drop(conn);
 
-        // Insert new entity
         self.insert_entity(new_entity)?;
-
-        // Add supersedes relation
         self.add_relation(new_entity.id, RelationType::Supersedes, old_id)?;
 
         debug!(old = %old_id, new = %new_entity.id, "entity superseded");
@@ -562,14 +486,14 @@ impl MemoryStore {
     /// Must be called after opening the store if embeddings are enabled.
     pub fn init_vectors(&self, dims: usize) -> Result<(), MemoryError> {
         let conn = self.conn.lock().unwrap();
-        vector::create_vector_table(&conn, dims)?;
+        vector::create_vector_table(conn.sqlite_connection(), dims)?;
         Ok(())
     }
 
     /// Store an embedding for an entity.
     pub fn store_embedding(&self, entity_id: Uuid, embedding: &[f32]) -> Result<(), MemoryError> {
         let conn = self.conn.lock().unwrap();
-        vector::store_embedding(&conn, entity_id, embedding)
+        vector::store_embedding(conn.sqlite_connection(), entity_id, embedding)
     }
 
     /// Search for entities similar to a query embedding.
@@ -579,7 +503,7 @@ impl MemoryStore {
         limit: usize,
     ) -> Result<Vec<vector::SimilarityResult>, MemoryError> {
         let conn = self.conn.lock().unwrap();
-        vector::search_similar(&conn, query_embedding, limit)
+        vector::search_similar(conn.sqlite_connection(), query_embedding, limit)
     }
 
     /// Search for entities similar to a query, filtered to a subset.
@@ -590,23 +514,27 @@ impl MemoryStore {
         limit: usize,
     ) -> Result<Vec<vector::SimilarityResult>, MemoryError> {
         let conn = self.conn.lock().unwrap();
-        vector::search_similar_filtered(&conn, query_embedding, entity_ids, limit)
+        vector::search_similar_filtered(conn.sqlite_connection(), query_embedding, entity_ids, limit)
     }
 
     /// Check if an entity has a stored embedding.
     pub fn has_embedding(&self, entity_id: Uuid) -> Result<bool, MemoryError> {
         let conn = self.conn.lock().unwrap();
-        vector::has_embedding(&conn, entity_id)
+        vector::has_embedding(conn.sqlite_connection(), entity_id)
     }
 
     /// Count total stored embeddings.
     pub fn count_embeddings(&self) -> Result<usize, MemoryError> {
         let conn = self.conn.lock().unwrap();
-        vector::count_embeddings(&conn)
+        vector::count_embeddings(conn.sqlite_connection())
     }
 
     // === Tags ===
 
+    /// Tag search loads all non-superseded entities and filters in Rust.
+    /// Tags are stored as a JSON-string property; native Cypher matching
+    /// against JSON strings isn't expressible in graphqlite's dialect.
+    /// Adequate for memory-scale corpora; revisit if hot.
     pub fn search_by_tags(
         &self,
         tags: &[String],
@@ -615,102 +543,213 @@ impl MemoryStore {
         if tags.is_empty() {
             return Ok(Vec::new());
         }
-
         let conn = self.conn.lock().unwrap();
-        // Build JSON containment check for each tag
-        let conditions: Vec<String> = tags
-            .iter()
-            .enumerate()
-            .map(|(i, _)| format!("json_each.value = ?{}", i + 2))
-            .collect();
-        let where_clause = conditions.join(" OR ");
-
-        let sql = format!(
-            "SELECT DISTINCT e.* FROM entities e, json_each(e.tags)
-             WHERE ({where_clause}) AND e.superseded = 0
-             ORDER BY e.updated_at DESC LIMIT ?1"
-        );
-
-        let mut stmt = conn
-            .prepare(&sql)
-            .map_err(|e| MemoryError::Storage(format!("prepare tags: {e}")))?;
-
-        let mut param_values: Vec<Box<dyn rusqlite::types::ToSql>> = Vec::new();
-        param_values.push(Box::new(limit as i64));
-        for tag in tags {
-            param_values.push(Box::new(tag.clone()));
-        }
-
-        let refs: Vec<&dyn rusqlite::types::ToSql> = param_values.iter().map(|p| p.as_ref()).collect();
-
-        let rows = stmt
-            .query_map(refs.as_slice(), |row| Ok(row_to_entity(row)))
-            .map_err(|e| MemoryError::Storage(format!("tags query: {e}")))?;
-
-        let mut entities = Vec::new();
-        for row in rows {
-            match row {
-                Ok(Ok(entity)) => entities.push(entity),
-                Ok(Err(e)) => return Err(e),
-                Err(e) => return Err(MemoryError::Storage(format!("row: {e}"))),
-            }
-        }
+        let result = conn
+            .cypher("MATCH (n) WHERE n.superseded = false RETURN n")
+            .map_err(|e| MemoryError::Storage(format!("cypher search_by_tags: {e}")))?;
+        let mut entities = rows_to_entities(&result)?;
+        entities.retain(|e| e.tags.iter().any(|t| tags.contains(t)));
+        entities.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
+        entities.truncate(limit);
         Ok(entities)
     }
 }
 
-// === Row Mapping ===
+// === Cypher helpers ===
 
-fn row_to_entity(row: &rusqlite::Row) -> Result<Entity, MemoryError> {
-    let id_str: String = row.get(0).map_err(|e| MemoryError::Storage(format!("id: {e}")))?;
-    let type_str: String = row.get(1).map_err(|e| MemoryError::Storage(format!("type: {e}")))?;
-    let title: String = row.get(2).map_err(|e| MemoryError::Storage(format!("title: {e}")))?;
-    let content: Option<String> = row.get(3).map_err(|e| MemoryError::Storage(format!("content: {e}")))?;
-    let conf_str: String = row.get(4).map_err(|e| MemoryError::Storage(format!("conf: {e}")))?;
-    let reinforcement: u32 = row.get(5).map_err(|e| MemoryError::Storage(format!("reinf: {e}")))?;
-    let superseded: i32 = row.get(6).map_err(|e| MemoryError::Storage(format!("super: {e}")))?;
-    let tags_json: String = row.get(7).map_err(|e| MemoryError::Storage(format!("tags: {e}")))?;
-    let session_str: Option<String> = row.get(8).map_err(|e| MemoryError::Storage(format!("session: {e}")))?;
-    let created_str: String = row.get(9).map_err(|e| MemoryError::Storage(format!("created: {e}")))?;
-    let updated_str: String = row.get(10).map_err(|e| MemoryError::Storage(format!("updated: {e}")))?;
-    let accessed_str: String = row.get(11).map_err(|e| MemoryError::Storage(format!("accessed: {e}")))?;
-
-    let parse_dt = |s: &str| -> DateTime<Utc> {
-        DateTime::parse_from_rfc3339(s)
-            .map(|dt| dt.with_timezone(&Utc))
-            .unwrap_or_else(|_| Utc::now())
-    };
-
-    Ok(Entity {
-        id: Uuid::parse_str(&id_str).map_err(|e| MemoryError::Storage(format!("parse id: {e}")))?,
-        entity_type: EntityType::from_str(&type_str)
-            .ok_or_else(|| MemoryError::Storage(format!("unknown type: {type_str}")))?,
-        title,
-        content,
-        confidence_source: ConfidenceSource::from_str(&conf_str).unwrap_or(ConfidenceSource::Inferred),
-        reinforcement_count: reinforcement,
-        superseded: superseded != 0,
-        tags: serde_json::from_str(&tags_json).unwrap_or_default(),
-        source_session: session_str.and_then(|s| Uuid::parse_str(&s).ok()),
-        created_at: parse_dt(&created_str),
-        updated_at: parse_dt(&updated_str),
-        accessed_at: parse_dt(&accessed_str),
-    })
-}
-
-/// Extension trait for optional query results.
-trait OptionalExt<T> {
-    fn optional(self) -> Result<Option<T>, rusqlite::Error>;
-}
-
-impl<T> OptionalExt<T> for Result<T, rusqlite::Error> {
-    fn optional(self) -> Result<Option<T>, rusqlite::Error> {
-        match self {
-            Ok(val) => Ok(Some(val)),
-            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-            Err(e) => Err(e),
+/// Run `body` inside a sqlite transaction on the shared connection. Cypher
+/// queries issued via the same `GraphConnection` are part of the same sqlite
+/// session, so a single BEGIN/COMMIT pair envelops both APIs.
+fn with_tx<F>(conn: &GraphConnection, body: F) -> Result<(), MemoryError>
+where
+    F: FnOnce(&GraphConnection) -> Result<(), MemoryError>,
+{
+    let sql = conn.sqlite_connection();
+    sql.execute_batch("BEGIN")
+        .map_err(|e| MemoryError::Storage(format!("begin tx: {e}")))?;
+    match body(conn) {
+        Ok(()) => sql
+            .execute_batch("COMMIT")
+            .map_err(|e| MemoryError::Storage(format!("commit tx: {e}"))),
+        Err(e) => {
+            let _ = sql.execute_batch("ROLLBACK");
+            Err(e)
         }
     }
+}
+
+fn cypher_entity_exists(conn: &GraphConnection, id: &str) -> Result<bool, MemoryError> {
+    let res = conn
+        .cypher_builder("MATCH (n {id: $id}) RETURN count(n) AS cnt")
+        .param("id", id)
+        .run()
+        .map_err(|e| MemoryError::Storage(format!("cypher exists: {e}")))?;
+    let cnt: i64 = if res.is_empty() {
+        0
+    } else {
+        res[0].get("cnt").unwrap_or(0)
+    };
+    Ok(cnt > 0)
+}
+
+fn fetch_entity_by_id(conn: &GraphConnection, id: Uuid) -> Result<Option<Entity>, MemoryError> {
+    let res = conn
+        .cypher_builder("MATCH (n {id: $id}) RETURN n LIMIT 1")
+        .param("id", id.to_string())
+        .run()
+        .map_err(|e| MemoryError::Storage(format!("cypher get entity: {e}")))?;
+    if res.is_empty() {
+        return Ok(None);
+    }
+    let node = res[0]
+        .get_value("n")
+        .ok_or_else(|| MemoryError::Storage("missing column 'n'".into()))?;
+    Ok(Some(node_to_entity(node)?))
+}
+
+/// MERGE-style upsert: create node-with-label if absent, otherwise SET every
+/// scalar from `entity_to_props`. We emulate `MERGE` explicitly because
+/// `MERGE … SET n += $props` is not part of graphqlite's Cypher dialect.
+fn cypher_upsert_entity(
+    conn: &GraphConnection,
+    entity: &Entity,
+) -> Result<(), MemoryError> {
+    let label = entity_label(entity.entity_type);
+    let id = entity.id.to_string();
+    let props = entity_to_props(entity);
+
+    if cypher_entity_exists(conn, &id)? {
+        let query =
+            "MATCH (n {id: $id}) \
+             SET n.title = $title, n.content = $content, \
+                 n.confidence_source = $confidence_source, \
+                 n.reinforcement_count = $reinforcement_count, \
+                 n.superseded = $superseded, n.tags = $tags, \
+                 n.source_session = $source_session, \
+                 n.created_at = $created_at, n.updated_at = $updated_at, \
+                 n.accessed_at = $accessed_at";
+        conn.cypher_builder(query)
+            .params(&props)
+            .run()
+            .map_err(|e| MemoryError::Storage(format!("cypher SET: {e}")))?;
+    } else {
+        let query = format!(
+            "CREATE (n:{label} {{id: $id, title: $title, content: $content, \
+             confidence_source: $confidence_source, \
+             reinforcement_count: $reinforcement_count, \
+             superseded: $superseded, tags: $tags, \
+             source_session: $source_session, \
+             created_at: $created_at, updated_at: $updated_at, \
+             accessed_at: $accessed_at}})"
+        );
+        conn.cypher_builder(&query)
+            .params(&props)
+            .run()
+            .map_err(|e| MemoryError::Storage(format!("cypher CREATE: {e}")))?;
+    }
+    Ok(())
+}
+
+/// MERGE-style edge upsert. Edge type is from the closed `RelationType` enum,
+/// so inlining it into the Cypher template is safe (no user data).
+fn cypher_upsert_relation(
+    conn: &GraphConnection,
+    source_id: Uuid,
+    relation_type: RelationType,
+    target_id: Uuid,
+    created_at: &str,
+) -> Result<(), MemoryError> {
+    let rt = relation_type_str(relation_type);
+    let exists_query = format!(
+        "MATCH (a {{id: $src}})-[r:{rt}]->(b {{id: $tgt}}) RETURN count(r) AS cnt"
+    );
+    let exists = conn
+        .cypher_builder(&exists_query)
+        .param("src", source_id.to_string())
+        .param("tgt", target_id.to_string())
+        .run()
+        .map_err(|e| MemoryError::Storage(format!("cypher edge exists: {e}")))?;
+    let cnt: i64 = if exists.is_empty() {
+        0
+    } else {
+        exists[0].get("cnt").unwrap_or(0)
+    };
+    if cnt > 0 {
+        return Ok(());
+    }
+    let create_query = format!(
+        "MATCH (a {{id: $src}}), (b {{id: $tgt}}) \
+         CREATE (a)-[:{rt} {{created_at: $ts}}]->(b)"
+    );
+    conn.cypher_builder(&create_query)
+        .param("src", source_id.to_string())
+        .param("tgt", target_id.to_string())
+        .param("ts", created_at.to_string())
+        .run()
+        .map_err(|e| MemoryError::Storage(format!("cypher create edge: {e}")))?;
+    Ok(())
+}
+
+/// Map a `MATCH … RETURN n` result set into `Vec<Entity>`.
+fn rows_to_entities(result: &graphqlite::CypherResult) -> Result<Vec<Entity>, MemoryError> {
+    let mut entities = Vec::with_capacity(result.len());
+    for row in result.iter() {
+        if let Some(node) = row.get_value("n") {
+            entities.push(node_to_entity(node)?);
+        }
+    }
+    Ok(entities)
+}
+
+// === FTS5 helpers ===
+
+/// Upsert the FTS row for an entity. FTS5 has no MERGE; emulate via
+/// DELETE-then-INSERT (idempotent under the same `entity_id`).
+fn fts_upsert(sql: &rusqlite::Connection, entity: &Entity) -> Result<(), MemoryError> {
+    let id = entity.id.to_string();
+    sql.execute(
+        "DELETE FROM entities_fts WHERE entity_id = ?1",
+        params![id.clone()],
+    )
+    .map_err(|e| MemoryError::Storage(format!("fts delete-before-insert: {e}")))?;
+    sql.execute(
+        "INSERT INTO entities_fts (entity_id, title, content) VALUES (?1, ?2, ?3)",
+        params![id, entity.title, entity.content],
+    )
+    .map_err(|e| MemoryError::Storage(format!("fts insert: {e}")))?;
+    Ok(())
+}
+
+/// FTS5 text search returning ranked entity_ids. Caller does any
+/// superseded/type filtering after fetching the entities via Cypher.
+///
+/// `query` is the raw FTS5 MATCH expression; callers that want literal-text
+/// matching should pre-quote (`"hello world"`).
+fn fts_search(
+    sql: &rusqlite::Connection,
+    query: &str,
+    _scope: Option<()>,
+    limit: usize,
+) -> Result<Vec<Uuid>, MemoryError> {
+    let mut stmt = sql
+        .prepare(
+            "SELECT entity_id FROM entities_fts WHERE entities_fts MATCH ?1 ORDER BY rank LIMIT ?2",
+        )
+        .map_err(|e| MemoryError::Storage(format!("prepare fts search: {e}")))?;
+    let rows = stmt
+        .query_map(params![query, limit as i64], |row| {
+            let id_str: String = row.get(0)?;
+            Ok(id_str)
+        })
+        .map_err(|e| MemoryError::Storage(format!("fts search: {e}")))?;
+    let mut ids = Vec::new();
+    for row in rows {
+        let id_str = row.map_err(|e| MemoryError::Storage(format!("row: {e}")))?;
+        if let Ok(id) = Uuid::parse_str(&id_str) {
+            ids.push(id);
+        }
+    }
+    Ok(ids)
 }
 
 #[cfg(test)]
@@ -750,6 +789,10 @@ mod tests {
 
         let retrieved = store.get_entity(entity.id).unwrap().unwrap();
         assert_eq!(retrieved.title, "Rust is very fast");
+
+        // FTS reflects the new title.
+        let found = store.search("very fast", 5).unwrap();
+        assert!(found.iter().any(|e| e.id == entity.id));
     }
 
     #[test]
@@ -760,6 +803,10 @@ mod tests {
 
         assert!(store.delete_entity(entity.id).unwrap());
         assert!(store.get_entity(entity.id).unwrap().is_none());
+        // FTS row also gone.
+        assert!(store.search("temporary", 5).unwrap().is_empty());
+        // Second delete returns false.
+        assert!(!store.delete_entity(entity.id).unwrap());
     }
 
     #[test]
@@ -856,7 +903,6 @@ mod tests {
         let e1 = Entity::new(EntityType::Fact, "User prefers Rust");
         store.insert_entity(&e1).unwrap();
 
-        // Same title — should reinforce
         let e2 = Entity::new(EntityType::Fact, "User prefers Rust");
         match store.store_fact(&e2).unwrap() {
             StoreFactResult::Reinforced { entity_id, new_count } => {
@@ -899,11 +945,9 @@ mod tests {
             _ => panic!("expected Superseded"),
         }
 
-        // Old should be superseded
         let old_entity = store.get_entity(old.id).unwrap().unwrap();
         assert!(old_entity.superseded);
 
-        // Supersedes relation should exist
         let rels = store.get_relations(new.id).unwrap();
         assert!(rels.iter().any(|r| r.relation_type == RelationType::Supersedes));
     }
@@ -955,5 +999,22 @@ mod tests {
         let results = store.search("Rust", 10).unwrap();
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].id, new.id);
+    }
+
+    #[test]
+    fn fts_row_present_after_insert_and_gone_after_delete() {
+        // Proves FTS dual-write is inside the same transaction as the Cypher
+        // write — a search hits the row immediately after insert, and after
+        // delete the row is gone from both backends.
+        let store = test_store();
+        let entity = Entity::new(EntityType::Fact, "Goldfinch sighting");
+        store.insert_entity(&entity).unwrap();
+
+        let res = store.search("Goldfinch", 5).unwrap();
+        assert_eq!(res.len(), 1);
+        assert_eq!(res[0].id, entity.id);
+
+        store.delete_entity(entity.id).unwrap();
+        assert!(store.search("Goldfinch", 5).unwrap().is_empty());
     }
 }

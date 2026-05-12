@@ -4,14 +4,14 @@ level: task
 title: "MemoryStore CRUD on graphqlite via Cypher (entities + relations)"
 short_code: "ARAWN-T-0239"
 created_at: 2026-05-12T01:33:02.233952+00:00
-updated_at: 2026-05-12T01:33:02.233952+00:00
+updated_at: 2026-05-12T02:52:57.802966+00:00
 parent: ARAWN-I-0040
-blocked_by: ["ARAWN-T-0238"]
+blocked_by: [ARAWN-T-0238]
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/active"
 
 
 exit_criteria_met: false
@@ -72,6 +72,8 @@ The Rust signatures of `MemoryStore::insert_entity`, `MemoryStore::get_entity`, 
 
 ## Acceptance Criteria
 
+## Acceptance Criteria
+
 - [ ] `MemoryStore` opens a graphqlite-backed DB on construction (loads the extension via the `Graph` API or `Connection`).
 - [ ] All Entity CRUD methods write through Cypher; all Relation CRUD methods write through Cypher.
 - [ ] All Entity/Relation CRUD methods read through Cypher.
@@ -106,4 +108,52 @@ The Rust signatures of `MemoryStore::insert_entity`, `MemoryStore::get_entity`, 
 
 ## Status Updates
 
-*To be added during implementation*
+### 2026-05-11 — CRUD on graphqlite (dual-write writes, Cypher-only reads)
+
+**Approach.** Rather than break FTS/vector tests in the intermediate state (which T-0240 will retire), CRUD writes dual-write the legacy `entities`/`relations` SQL tables alongside Cypher. CRUD **reads** are exclusively Cypher. T-0240 will retire the SQL writes when FTS+vector colocate against graphqlite.
+
+**Files.**
+- `crates/arawn-memory/src/cypher_schema.rs` — new. Closed-enum ↔ Cypher label/edge mapping, Entity ↔ JSON-property projection, `node_to_entity` parser for `MATCH … RETURN n` shape.
+- `crates/arawn-memory/src/store.rs` — `MemoryStore.conn: Mutex<graphqlite::Connection>` (single sqlite handle, both APIs). All CRUD methods rewritten; FTS/vector code uses `.sqlite_connection()` against the same handle.
+- `crates/arawn-memory/src/lib.rs` — `pub mod cypher_schema`.
+- `.metis/adrs/ARAWN-A-0002.md` — new ADR per the task's acceptance criterion.
+
+**Schema mapping summary.**
+- Label per entity type: `Fact`, `Decision`, `Convention`, `Preference`, `Person`, `Note`.
+- Edge type per relation: `RELATES_TO`, `CONTRADICTS`, `SUPPORTS`, `SUPERSEDES`, `EXTRACTED_FROM`, `MENTIONS`, `BELONGS_TO`.
+- Tags stored as JSON-string property (chose over multi-label — see ADR rationale).
+- Datetimes as RFC3339 strings; booleans as Cypher bool; counts as i64.
+
+**CRUD methods now on Cypher.**
+- Reads: `get_entity`, `list_by_type`, `count_by_type`, `count_all`, `get_relations`, `get_neighbors` → Cypher.
+- Writes: `insert_entity`, `update_entity`, `delete_entity` (with `DETACH DELETE`), `add_relation`, `delete_relation`, `reinforce_entity` (counter mirrored), `supersede_entity` → dual-write.
+- `list_all_ranked` → Cypher fetch + sort in Rust (graphqlite rejected `CASE` in `ORDER BY`; see Findings).
+
+**Untouched (per task — T-0240 territory).** `search`, `search_by_type`, `search_by_tags`, `store_fact`, vector ops. All routed via `conn.sqlite_connection()` so they continue working against legacy tables this round.
+
+**Cypher emulation choices.**
+- Used explicit existence-check + CREATE / SET split rather than `MERGE … SET n += $props`. graphqlite's MERGE has constraints we'd rather avoid pinning down here; the explicit pattern matches what `Graph::upsert_node` does internally.
+- Always `cypher_builder().param(...)` for user data. Labels and edge types come from closed Rust enums and are interpolated into the query string — safe.
+
+**Findings.**
+1. **graphqlite's Cypher does not accept `CASE` in `RETURN`/`ORDER BY`** — surfaced when `list_all_ranked` tried `(CASE n.confidence_source WHEN 'stated' THEN 3 …)`. Worked around by Rust-side sorting after a single `MATCH (n) WHERE n.superseded = false RETURN n`. Worth filing upstream against graphqlite; acceptable workaround at memory-scale corpora.
+2. **`Connection::sqlite_connection()` is the right escape hatch** for FTS/vector. One handle, two APIs, no transaction-coordination headaches.
+
+**Tests.**
+- `cargo test -p arawn-memory --lib`: **62 passed**, 0 failed (3-of-3 consecutive runs green).
+- `cargo test -p arawn-memory --test recall_eval`: **8 passed**, 0 failed.
+- `cargo test -p arawn-tests` (engine-level memory_tools, memory_stack): all green, no source changes — public API stayed stable.
+- New `store::tests` that prove reads are Cypher-backed: delete the legacy SQL rows under the store, then assert `get_entity` / `count_*` / `list_*` / relations still return the data (only the Cypher path can satisfy them).
+- New `cypher_schema::tests` cover label/edge roundtrip and tags-as-JSON-string serialization.
+- `angreal check workspace` + `angreal check clippy` clean.
+
+**Acceptance criteria.**
+- [x] `MemoryStore` opens a graphqlite-backed DB on construction.
+- [x] All Entity CRUD writes dual-write through Cypher; Relation CRUD writes likewise.
+- [x] All Entity/Relation CRUD reads go through Cypher.
+- [x] Schema enforcement at the Rust public API boundary (closed enums + `entity_to_props`).
+- [x] Existing CRUD unit tests pass (and so do the FTS/vector/store_fact/supersede tests by virtue of dual-write).
+- [x] `angreal check workspace` + `angreal check clippy` clean.
+- [x] ADR `ARAWN-A-0002.md` drafted.
+
+T-0240 unblocked. The legacy SQL tables remain populated this round so FTS triggers and vector index continue working; T-0240 will retire them when FTS5+vector colocate against the graphqlite tables.

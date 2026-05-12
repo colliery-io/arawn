@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-11T20:01:18Z | 258 files | Python, Rust
+> Generated: 2026-05-12T03:05:57Z | 259 files | Python, Rust
 
 ## Project Structure
 
@@ -231,6 +231,7 @@
 │   │       └── manager.rs
 │   ├── arawn-memory/
 │   │   ├── src/
+│   │   │   ├── cypher_schema.rs
 │   │   │   ├── error.rs
 │   │   │   ├── inject.rs
 │   │   │   ├── lib.rs
@@ -5033,6 +5034,19 @@
 
 **Dependencies**: `rusqlite` (SQLite + FTS5), `sqlite-vec` extension (vector search), `arawn-embed` (Embedder trait), `uuid`, `chrono`.
 
+#### crates/arawn-memory/src/cypher_schema.rs
+
+- pub `entity_label` function L24-33 — `(t: EntityType) -> &'static str` — Cypher node label for an `EntityType`.
+- pub `entity_type_from_label` function L36-46 — `(s: &str) -> Option<EntityType>` — Inverse of `entity_label`.
+- pub `relation_type_str` function L49-59 — `(t: RelationType) -> &'static str` — Cypher relationship type for a `RelationType`.
+- pub `relation_type_from_str` function L62-73 — `(s: &str) -> Option<RelationType>` — Inverse of `relation_type_str`.
+- pub `entity_to_props` function L79-94 — `(e: &Entity) -> JsonValue` — Project an `Entity` into a Cypher parameter map (`$props`).
+- pub `node_to_entity` function L100-178 — `(node: &Value) -> Result<Entity, MemoryError>` — Parse a node `Value` (as returned by `MATCH (n) RETURN n`) into an `Entity`.
+-  `tests` module L181-222 — `-` — user input.
+-  `label_roundtrip` function L185-196 — `()` — user input.
+-  `relation_roundtrip` function L199-211 — `()` — user input.
+-  `entity_to_props_serializes_tags_as_json_string` function L214-221 — `()` — user input.
+
 #### crates/arawn-memory/src/error.rs
 
 - pub `MemoryError` enum L4-13 — `Storage | NotFound | Validation`
@@ -5053,14 +5067,17 @@
 
 #### crates/arawn-memory/src/lib.rs
 
-- pub `error` module L6 — `-` — Provides graph-backed entity storage with FTS5 search, typed relations,
-- pub `inject` module L7 — `-` — confidence scoring, tag support, and search-before-create deduplication.
-- pub `manager` module L8 — `-` — confidence scoring, tag support, and search-before-create deduplication.
-- pub `shortcodes` module L9 — `-` — confidence scoring, tag support, and search-before-create deduplication.
-- pub `stack` module L10 — `-` — confidence scoring, tag support, and search-before-create deduplication.
-- pub `store` module L11 — `-` — confidence scoring, tag support, and search-before-create deduplication.
-- pub `types` module L12 — `-` — confidence scoring, tag support, and search-before-create deduplication.
-- pub `vector` module L13 — `-` — confidence scoring, tag support, and search-before-create deduplication.
+- pub `cypher_schema` module L6 — `-` — Provides graph-backed entity storage with FTS5 search, typed relations,
+- pub `error` module L7 — `-` — confidence scoring, tag support, and search-before-create deduplication.
+- pub `inject` module L8 — `-` — confidence scoring, tag support, and search-before-create deduplication.
+- pub `manager` module L9 — `-` — confidence scoring, tag support, and search-before-create deduplication.
+- pub `shortcodes` module L10 — `-` — confidence scoring, tag support, and search-before-create deduplication.
+- pub `stack` module L11 — `-` — confidence scoring, tag support, and search-before-create deduplication.
+- pub `store` module L12 — `-` — confidence scoring, tag support, and search-before-create deduplication.
+- pub `types` module L13 — `-` — confidence scoring, tag support, and search-before-create deduplication.
+- pub `vector` module L14 — `-` — confidence scoring, tag support, and search-before-create deduplication.
+-  `graphqlite_smoke` module L27-51 — `-` — confidence scoring, tag support, and search-before-create deduplication.
+-  `graphqlite_node_and_edge_roundtrip` function L31-50 — `()` — confidence scoring, tag support, and search-before-create deduplication.
 
 #### crates/arawn-memory/src/manager.rs
 
@@ -5118,56 +5135,62 @@
 
 #### crates/arawn-memory/src/store.rs
 
-- pub `MemoryStore` struct L16-18 — `{ conn: Mutex<Connection> }` — Knowledge base store backed by SQLite with FTS5 and relations.
-- pub `open` function L22-40 — `(path: &Path) -> Result<Self, MemoryError>` — Open or create a memory database at the given path.
-- pub `in_memory` function L43-51 — `() -> Result<Self, MemoryError>` — Create an in-memory store (for testing).
-- pub `insert_entity` function L115-142 — `(&self, entity: &Entity) -> Result<(), MemoryError>` — SQLite-backed knowledge base store with FTS5 search and relations.
-- pub `get_entity` function L144-160 — `(&self, id: Uuid) -> Result<Option<Entity>, MemoryError>` — SQLite-backed knowledge base store with FTS5 search and relations.
-- pub `update_entity` function L162-184 — `(&self, entity: &Entity) -> Result<(), MemoryError>` — SQLite-backed knowledge base store with FTS5 search and relations.
-- pub `delete_entity` function L186-205 — `(&self, id: Uuid) -> Result<bool, MemoryError>` — SQLite-backed knowledge base store with FTS5 search and relations.
-- pub `list_by_type` function L207-235 — `( &self, entity_type: EntityType, limit: usize, ) -> Result<Vec<Entity>, MemoryE...` — SQLite-backed knowledge base store with FTS5 search and relations.
-- pub `list_all_ranked` function L239-270 — `(&self, limit: usize) -> Result<Vec<Entity>, MemoryError>` — List all non-superseded entities ranked by confidence: stated > observed > inferred,
-- pub `count_by_type` function L272-282 — `(&self, entity_type: EntityType) -> Result<usize, MemoryError>` — SQLite-backed knowledge base store with FTS5 search and relations.
-- pub `count_all` function L284-294 — `(&self) -> Result<usize, MemoryError>` — SQLite-backed knowledge base store with FTS5 search and relations.
-- pub `search` function L298-323 — `(&self, query: &str, limit: usize) -> Result<Vec<Entity>, MemoryError>` — SQLite-backed knowledge base store with FTS5 search and relations.
-- pub `search_by_type` function L325-358 — `( &self, query: &str, entity_type: EntityType, limit: usize, ) -> Result<Vec<Ent...` — SQLite-backed knowledge base store with FTS5 search and relations.
-- pub `add_relation` function L362-381 — `( &self, source_id: Uuid, relation_type: RelationType, target_id: Uuid, ) -> Res...` — SQLite-backed knowledge base store with FTS5 search and relations.
-- pub `get_relations` function L383-424 — `(&self, entity_id: Uuid) -> Result<Vec<Relation>, MemoryError>` — SQLite-backed knowledge base store with FTS5 search and relations.
-- pub `get_neighbors` function L426-454 — `(&self, entity_id: Uuid) -> Result<Vec<(Uuid, RelationType)>, MemoryError>` — SQLite-backed knowledge base store with FTS5 search and relations.
-- pub `delete_relation` function L456-474 — `( &self, source_id: Uuid, relation_type: RelationType, target_id: Uuid, ) -> Res...` — SQLite-backed knowledge base store with FTS5 search and relations.
-- pub `store_fact` function L481-503 — `(&self, entity: &Entity) -> Result<StoreFactResult, MemoryError>` — Store a fact with search-before-create deduplication.
-- pub `supersede_entity` function L532-557 — `( &self, old_id: Uuid, new_entity: &Entity, ) -> Result<StoreFactResult, MemoryE...` — Supersede an existing entity with a new one.
-- pub `init_vectors` function L563-567 — `(&self, dims: usize) -> Result<(), MemoryError>` — Initialize vector storage with the given dimensions.
-- pub `store_embedding` function L570-573 — `(&self, entity_id: Uuid, embedding: &[f32]) -> Result<(), MemoryError>` — Store an embedding for an entity.
-- pub `search_similar` function L576-583 — `( &self, query_embedding: &[f32], limit: usize, ) -> Result<Vec<vector::Similari...` — Search for entities similar to a query embedding.
-- pub `search_similar_filtered` function L586-594 — `( &self, query_embedding: &[f32], entity_ids: &[Uuid], limit: usize, ) -> Result...` — Search for entities similar to a query, filtered to a subset.
-- pub `has_embedding` function L597-600 — `(&self, entity_id: Uuid) -> Result<bool, MemoryError>` — Check if an entity has a stored embedding.
-- pub `count_embeddings` function L603-606 — `(&self) -> Result<usize, MemoryError>` — Count total stored embeddings.
-- pub `search_by_tags` function L610-659 — `( &self, tags: &[String], limit: usize, ) -> Result<Vec<Entity>, MemoryError>` — SQLite-backed knowledge base store with FTS5 search and relations.
--  `MemoryStore` type L20-660 — `= MemoryStore` — SQLite-backed knowledge base store with FTS5 search and relations.
--  `migrate` function L53-111 — `(&self) -> Result<(), MemoryError>` — SQLite-backed knowledge base store with FTS5 search and relations.
--  `reinforce_entity` function L506-529 — `(&self, entity_id: Uuid) -> Result<StoreFactResult, MemoryError>` — Reinforce an existing entity (increment count, update timestamp).
--  `row_to_entity` function L664-699 — `(row: &rusqlite::Row) -> Result<Entity, MemoryError>` — SQLite-backed knowledge base store with FTS5 search and relations.
--  `OptionalExt` interface L702-704 — `{ fn optional() }` — Extension trait for optional query results.
--  `optional` function L707-713 — `(self) -> Result<Option<T>, rusqlite::Error>` — SQLite-backed knowledge base store with FTS5 search and relations.
--  `tests` module L717-959 — `-` — SQLite-backed knowledge base store with FTS5 search and relations.
--  `test_store` function L720-722 — `() -> MemoryStore` — SQLite-backed knowledge base store with FTS5 search and relations.
--  `insert_and_get` function L725-733 — `()` — SQLite-backed knowledge base store with FTS5 search and relations.
--  `get_nonexistent` function L736-739 — `()` — SQLite-backed knowledge base store with FTS5 search and relations.
--  `update_entity` function L742-753 — `()` — SQLite-backed knowledge base store with FTS5 search and relations.
--  `delete_entity` function L756-763 — `()` — SQLite-backed knowledge base store with FTS5 search and relations.
--  `list_by_type` function L766-777 — `()` — SQLite-backed knowledge base store with FTS5 search and relations.
--  `count_by_type` function L780-789 — `()` — SQLite-backed knowledge base store with FTS5 search and relations.
--  `fts5_search` function L792-805 — `()` — SQLite-backed knowledge base store with FTS5 search and relations.
--  `fts5_search_by_type` function L808-818 — `()` — SQLite-backed knowledge base store with FTS5 search and relations.
--  `relations_crud` function L821-840 — `()` — SQLite-backed knowledge base store with FTS5 search and relations.
--  `store_fact_insert` function L843-851 — `()` — SQLite-backed knowledge base store with FTS5 search and relations.
--  `store_fact_reinforce` function L854-868 — `()` — SQLite-backed knowledge base store with FTS5 search and relations.
--  `store_fact_reinforce_case_insensitive` function L871-883 — `()` — SQLite-backed knowledge base store with FTS5 search and relations.
--  `supersede_entity` function L886-909 — `()` — SQLite-backed knowledge base store with FTS5 search and relations.
--  `tags_on_entity` function L912-920 — `()` — SQLite-backed knowledge base store with FTS5 search and relations.
--  `search_by_tags` function L923-944 — `()` — SQLite-backed knowledge base store with FTS5 search and relations.
--  `superseded_excluded_from_search` function L947-958 — `()` — SQLite-backed knowledge base store with FTS5 search and relations.
+- pub `MemoryStore` struct L30-32 — `{ conn: Mutex<GraphConnection> }` — Knowledge base store.
+- pub `open` function L36-55 — `(path: &Path) -> Result<Self, MemoryError>` — Open or create a memory database at the given path.
+- pub `in_memory` function L58-66 — `() -> Result<Self, MemoryError>` — Create an in-memory store (for testing).
+- pub `insert_entity` function L108-117 — `(&self, entity: &Entity) -> Result<(), MemoryError>` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+- pub `get_entity` function L119-122 — `(&self, id: Uuid) -> Result<Option<Entity>, MemoryError>` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+- pub `update_entity` function L124-132 — `(&self, entity: &Entity) -> Result<(), MemoryError>` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+- pub `delete_entity` function L134-165 — `(&self, id: Uuid) -> Result<bool, MemoryError>` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+- pub `list_by_type` function L167-183 — `( &self, entity_type: EntityType, limit: usize, ) -> Result<Vec<Entity>, MemoryE...` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+- pub `list_all_ranked` function L192-211 — `(&self, limit: usize) -> Result<Vec<Entity>, MemoryError>` — List all non-superseded entities ranked by confidence: stated > observed > inferred,
+- pub `count_by_type` function L213-228 — `(&self, entity_type: EntityType) -> Result<usize, MemoryError>` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+- pub `count_all` function L230-241 — `(&self) -> Result<usize, MemoryError>` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+- pub `search` function L249-263 — `(&self, query: &str, limit: usize) -> Result<Vec<Entity>, MemoryError>` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+- pub `search_by_type` function L265-284 — `( &self, query: &str, entity_type: EntityType, limit: usize, ) -> Result<Vec<Ent...` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+- pub `add_relation` function L288-297 — `( &self, source_id: Uuid, relation_type: RelationType, target_id: Uuid, ) -> Res...` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+- pub `get_relations` function L299-338 — `(&self, entity_id: Uuid) -> Result<Vec<Relation>, MemoryError>` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+- pub `get_neighbors` function L340-356 — `(&self, entity_id: Uuid) -> Result<Vec<(Uuid, RelationType)>, MemoryError>` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+- pub `delete_relation` function L358-393 — `( &self, source_id: Uuid, relation_type: RelationType, target_id: Uuid, ) -> Res...` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+- pub `store_fact` function L400-416 — `(&self, entity: &Entity) -> Result<StoreFactResult, MemoryError>` — Store a fact with search-before-create deduplication.
+- pub `supersede_entity` function L459-481 — `( &self, old_id: Uuid, new_entity: &Entity, ) -> Result<StoreFactResult, MemoryE...` — Supersede an existing entity with a new one.
+- pub `init_vectors` function L487-491 — `(&self, dims: usize) -> Result<(), MemoryError>` — Initialize vector storage with the given dimensions.
+- pub `store_embedding` function L494-497 — `(&self, entity_id: Uuid, embedding: &[f32]) -> Result<(), MemoryError>` — Store an embedding for an entity.
+- pub `search_similar` function L500-507 — `( &self, query_embedding: &[f32], limit: usize, ) -> Result<Vec<vector::Similari...` — Search for entities similar to a query embedding.
+- pub `search_similar_filtered` function L510-518 — `( &self, query_embedding: &[f32], entity_ids: &[Uuid], limit: usize, ) -> Result...` — Search for entities similar to a query, filtered to a subset.
+- pub `has_embedding` function L521-524 — `(&self, entity_id: Uuid) -> Result<bool, MemoryError>` — Check if an entity has a stored embedding.
+- pub `count_embeddings` function L527-530 — `(&self) -> Result<usize, MemoryError>` — Count total stored embeddings.
+- pub `search_by_tags` function L538-555 — `( &self, tags: &[String], limit: usize, ) -> Result<Vec<Entity>, MemoryError>` — Tag search loads all non-superseded entities and filters in Rust.
+-  `MemoryStore` type L34-556 — `= MemoryStore` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `migrate` function L68-99 — `(&self) -> Result<(), MemoryError>` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `reinforce_entity` function L419-456 — `(&self, entity_id: Uuid) -> Result<StoreFactResult, MemoryError>` — Reinforce an existing entity (increment count, refresh timestamps).
+-  `with_tx` function L563-579 — `(conn: &GraphConnection, body: F) -> Result<(), MemoryError>` — Run `body` inside a sqlite transaction on the shared connection.
+-  `cypher_entity_exists` function L581-593 — `(conn: &GraphConnection, id: &str) -> Result<bool, MemoryError>` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `fetch_entity_by_id` function L595-608 — `(conn: &GraphConnection, id: Uuid) -> Result<Option<Entity>, MemoryError>` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `cypher_upsert_entity` function L613-651 — `( conn: &GraphConnection, entity: &Entity, ) -> Result<(), MemoryError>` — MERGE-style upsert: create node-with-label if absent, otherwise SET every
+-  `cypher_upsert_relation` function L655-691 — `( conn: &GraphConnection, source_id: Uuid, relation_type: RelationType, target_i...` — MERGE-style edge upsert.
+-  `rows_to_entities` function L694-702 — `(result: &graphqlite::CypherResult) -> Result<Vec<Entity>, MemoryError>` — Map a `MATCH … RETURN n` result set into `Vec<Entity>`.
+-  `fts_upsert` function L708-721 — `(sql: &rusqlite::Connection, entity: &Entity) -> Result<(), MemoryError>` — Upsert the FTS row for an entity.
+-  `fts_search` function L728-753 — `( sql: &rusqlite::Connection, query: &str, _scope: Option<()>, limit: usize, ) -...` — FTS5 text search returning ranked entity_ids.
+-  `tests` module L756-1020 — `-` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `test_store` function L759-761 — `() -> MemoryStore` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `insert_and_get` function L764-772 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `get_nonexistent` function L775-778 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `update_entity` function L781-796 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `delete_entity` function L799-810 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `list_by_type` function L813-824 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `count_by_type` function L827-836 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `fts5_search` function L839-852 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `fts5_search_by_type` function L855-865 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `relations_crud` function L868-887 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `store_fact_insert` function L890-898 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `store_fact_reinforce` function L901-914 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `store_fact_reinforce_case_insensitive` function L917-929 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `supersede_entity` function L932-953 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `tags_on_entity` function L956-964 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `search_by_tags` function L967-988 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `superseded_excluded_from_search` function L991-1002 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `fts_row_present_after_insert_and_gone_after_delete` function L1005-1019 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
 
 #### crates/arawn-memory/src/types.rs
 

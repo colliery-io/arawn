@@ -4,14 +4,14 @@ level: initiative
 title: "Continual data feeds — opinionated, configurable, local-first ingestion across personal + watched spaces"
 short_code: "ARAWN-I-0039"
 created_at: 2026-05-06T23:33:02.124351+00:00
-updated_at: 2026-05-07T00:47:44.941295+00:00
+updated_at: 2026-05-12T00:47:40.961433+00:00
 parent: ARAWN-V-0001
 blocked_by: []
 archived: false
 
 tags:
   - "#initiative"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false

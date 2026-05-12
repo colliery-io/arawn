@@ -4,14 +4,14 @@ level: task
 title: "Wire graphqlite into the workspace + smoke test"
 short_code: "ARAWN-T-0238"
 created_at: 2026-05-12T01:33:01.093535+00:00
-updated_at: 2026-05-12T01:33:01.093535+00:00
+updated_at: 2026-05-12T01:44:51.985443+00:00
 parent: ARAWN-I-0040
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/active"
 
 
 exit_criteria_met: false
@@ -40,6 +40,8 @@ graphqlite v0.4.4 lives at `/Users/dstorey/Desktop/graphqlite/bindings/rust`. It
   - Verifies the node and edge round-trip.
 - Confirm the bundled extension loads cleanly inside the arawn workspace's sqlite version (graphqlite uses `rusqlite` with `bundled` + `load_extension` features). If our existing crates use a conflicting `rusqlite` major version, surface the conflict here so T-0239 doesn't trip over it.
 - Document the result in this task's status updates: which crate(s) carry the dep, any rusqlite version coordination needed, and the exact path/version pinned.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
@@ -81,4 +83,31 @@ None upstream within arawn. Downstream: T-0239 depends on this.
 
 ## Status Updates
 
-*To be added during implementation*
+### 2026-05-11 — Wired graphqlite + smoke test green
+
+**Workspace dep.** Added `graphqlite = { path = "../graphqlite/bindings/rust" }` to root `Cargo.toml` `[workspace.dependencies]`. `arawn-memory` consumes it via `graphqlite = { workspace = true }`.
+
+**rusqlite version coordination.** No pinning needed. Inventory of sqlite consumers:
+- `arawn-memory`, `arawn-feeds`, `arawn-storage`, `arawn` (bin) — all `rusqlite = "0.37", features = ["bundled"]`.
+- `graphqlite` — `rusqlite = ">=0.31", features = ["bundled", "load_extension"]`.
+
+Cargo resolves to a single `rusqlite v0.37.0` for the whole workspace. `angreal check workspace` shows only one `Checking rusqlite v0.37.0`. The `load_extension` feature requested by graphqlite is additive — joins the existing `bundled` features without conflict. No version pinning required for T-0239.
+
+**Smoke test.** Inline `#[cfg(test)] mod graphqlite_smoke` in `crates/arawn-memory/src/lib.rs`:
+- Opens a graphqlite DB at a tempdir path.
+- `upsert_node("n1", [("name","alice")], "Test")` + `upsert_node("n2", [("name","bob")], "Test")`.
+- `upsert_edge("n1","n2", iter::empty(), "R")`.
+- Asserts `has_node`, `has_edge`, and `stats().node_count == 2 && edge_count == 1`.
+
+Result: `cargo test -p arawn-memory --lib graphqlite_smoke` — 1 passed, 0 failed.
+
+**Stderr noise observation (non-blocking).** The bundled graphqlite C extension prints copious `[CYPHER_DEBUG]` lines to stderr on every Cypher call (parser AST traversal, generated SQL, node-free tracing). Doesn't affect correctness, but it will flood logs/CI output once T-0239 starts issuing Cypher per-entity. Worth filing upstream against graphqlite to gate behind a debug feature; for now we live with it. Revisit if it pollutes T-0241 bench output.
+
+**Acceptance criteria.**
+- [x] `graphqlite` in `[workspace.dependencies]`, consumed by `arawn-memory`.
+- [x] Smoke test: open DB, write 2 nodes + 1 edge, read back via the high-level Graph API. `cargo test` clean.
+- [x] `angreal check workspace` clean — no rusqlite conflicts.
+- [x] `angreal check clippy` clean.
+- [x] rusqlite version coordination documented above.
+
+T-0239 unblocked.

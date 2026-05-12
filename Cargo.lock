@@ -361,6 +361,7 @@ dependencies = [
  "arawn-embed",
  "async-trait",
  "chrono",
+ "graphqlite",
  "rusqlite",
  "serde",
  "serde_json",
@@ -2273,6 +2274,16 @@ dependencies = [
  "tokio",
  "url",
  "yup-oauth2",
+]
+
+[[package]]
+name = "graphqlite"
+version = "0.4.4"
+dependencies = [
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "thiserror 1.0.69",
 ]
 
 [[package]]
