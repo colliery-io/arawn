@@ -131,33 +131,46 @@ Every steward action writes a journal entry with: subroutine, inputs (entity ids
 
 ## Detailed Design
 
-### Phase 0 — graphqlite inventory spike
+### Phase 0 — graphqlite inventory spike (DONE 2026-05-11)
 
-1–2 days. Inventory:
+**Findings:**
 
-- Current schema-management surface (DDL, type system, indexes, constraints).
-- Migration story (versioned schemas, up/down, or alter-only).
-- Query API (typed traversal, or raw sqlite passthrough).
-- FTS / vector integration story.
+GraphQLite (v0.4.4) is a SQLite extension with full Cypher query support, EAV property-graph storage, typed labels + relationships, parameterized queries (`cypher_builder`), bulk insert, and built-in graph algorithms. Rust binding exists and is sufficient.
 
-Output: a memo with the delta needed for Phase 1 and the decisions to ADR.
+**What's there:**
 
-### Phase 1 — graphqlite schema management + arawn-memory rebuild
+- Multi-label nodes (maps to `EntityType` — Fact, Decision, Convention, Preference, Person, Note).
+- Typed relationships (maps to `RelationType` — RelatesTo, Contradicts, Supports, Supersedes, ExtractedFrom, Mentions, BelongsTo).
+- Properties typed by inference (int / text / real / bool / json) with covering indexes — fits `confidence_source`, `reinforcement_count`, `superseded`, etc. cleanly.
+- Full Cypher (MATCH, CREATE, MERGE, SET, DELETE, WITH, UNWIND, RETURN).
+- `Graph` high-level API for upsert / get / delete / traversal; `Connection.cypher_builder` for parameterized queries.
 
-Whatever the spike says graphqlite needs to grow:
+**What's intentionally not there:**
 
-- Schema-definition DDL: node types, edge types, attributes (string/int/ts/blob/json), required/optional, indexes, constraints.
-- Schema migration: versioned schemas, up/down, validate-current.
-- Type-aware traversal query API.
+- **No declarative schema.** EAV is schemaless by design; any property can be any type on any node.
+- **No FTS.** No full-text search built in.
+- **No vector search.** No embedding similarity built in.
+- **No migration tooling** — not needed because schemaless.
 
-Then rebuild arawn-memory on it:
+**Decisions taken from the spike:**
 
-- Define the memory schema in graphqlite DDL (6 entity types, 7 relation types, confidence fields, scope, FTS, vectors).
-- Rewrite `MemoryStore` / `MemoryManager` against graphqlite. Keep the public Rust API stable so engine tools and auto-memory keep working.
-- LongMemEval bench passes on the new backend.
-- All existing memory tests pass.
+1. **Do not add schema-management to graphqlite as part of this initiative.** Schema enforcement for arawn-memory's small, domain-coupled type system lives in Rust at the public API. This is `ARAWN-A-0002`.
+2. **FTS5 + vector indexes stay in arawn-memory's existing tables, colocated in the same sqlite DB as the graphqlite tables.** All-in-one-DB makes cross-index joins free (raw SQL escape hatch where Cypher can't see those tables).
+3. **Default to Cypher for memory's read/write paths.** Raw SQL only for the FTS / vector / cross-index paths Cypher can't reach. The `cypher_builder` parameterized API is the canonical surface.
+4. **Phase 1 is smaller than originally sketched** — no graphqlite schema-mgmt to build means Phase 1 is just "rewrite MemoryStore against graphqlite + keep FTS/vectors alongside."
 
-No migration tooling. Existing memory DBs get blown away on next boot.
+### Phase 1 — arawn-memory rebuilt on graphqlite
+
+- Add `graphqlite` as a workspace dependency.
+- Define the memory schema as Rust types — entity/relation type enums validated at the public API boundary. No graphqlite-side schema features.
+- Rewrite `MemoryStore` so entity / relation CRUD goes through `Graph` (or `Connection.cypher_builder` for parameterized queries). One node per `Entity` (labelled with its `EntityType`), one edge per `Relation` (typed by `RelationType`). Confidence fields, reinforcement, supersession all become node properties.
+- Keep `MemoryManager`'s scope routing (Global vs. Workstream) intact — each workstream and the global tier each get their own sqlite DB with graphqlite extension loaded.
+- Keep arawn-memory's FTS5 virtual tables and vector tables in the same DB. Implement search-before-create dedup as a SQL/Cypher hybrid: FTS+vector filter via SQL, fetch + write via Cypher.
+- Public Rust API (`MemoryStore::insert_entity`, `MemoryStore::search`, etc.) stays stable so engine tools and auto-memory keep working unchanged.
+- LongMemEval bench passes; all existing memory tests pass.
+- No migration tooling. Existing memory DBs get blown away on next boot — there is no userbase.
+
+Sizing: ~1 week of focused work.
 
 ### Phase 2 — per-feed-type projections + `feed_search`
 
@@ -238,9 +251,8 @@ Considered. Rejected for now in favour of tag vocabularies on a closed type syst
 
 ## Acceptance Criteria
 
-- [ ] Phase 0 spike report committed to the repo (location TBD) with concrete sizing + ADR list.
-- [ ] graphqlite has the schema management surface arawn-memory needs (DDL, migration, validation, typed traversal). Tests in graphqlite proper.
-- [ ] `arawn-memory` runs on graphqlite. LongMemEval bench passes. All existing memory tests green. Engine tools (`memory_store`, `memory_search`, auto-memory) unchanged from a caller's perspective.
+- [x] Phase 0 spike done; findings captured in this initiative under "Phase 0 — graphqlite inventory spike".
+- [ ] `arawn-memory` runs on graphqlite. Entity/Relation CRUD goes through Cypher; FTS5 + vector tables colocated in the same DB. Schema enforcement lives in Rust at the public API. LongMemEval bench passes. All existing memory tests green. Engine tools (`memory_store`, `memory_search`, auto-memory) unchanged from a caller's perspective.
 - [ ] Projections written automatically by the feed runtime for every feed type. Backfill on existing feed data. `feed_search` registered as an agent tool and exercised by an end-to-end test.
 - [ ] Workstream lifecycle commands (`new`/`list`/`switch`/`bind`/`describe`/`unbind`/`delete`) wired into the TUI and routed through the engine. Workstreams persist across restarts; KBs auto-loaded on boot.
 - [ ] Per-workstream extractor runs as a cloacina workflow against bound sources. Backfill mode covers pre-existing projection rows. Idempotent re-runs.
@@ -252,13 +264,13 @@ Considered. Rejected for now in favour of tag vocabularies on a closed type syst
 
 ## ADRs (Phase 1 deliverables)
 
-- **ARAWN-A-0002** — Memory storage on graphqlite. Pin the migration approach + invariants we preserve (semantics, public API).
+- **ARAWN-A-0002** — Memory storage on graphqlite, schema enforcement in Rust. Pin: graphqlite stays schemaless (EAV); arawn-memory's entity/relation type system is enforced at the Rust public-API boundary; we don't add schema-management to graphqlite as part of this initiative; FTS5 + vector indexes colocate in the same sqlite DB as graphqlite tables; default to Cypher for query paths with raw SQL only as an escape hatch where Cypher can't see the table.
 - **ARAWN-A-0003** — Workstream tag vocabularies on closed entity types. The "no per-workstream ontology" decision in writing.
 - **ARAWN-A-0004** — Steward bounded blast radius. What it can change, what it can't, journaling and rollback contract.
 
 ## Risks
 
-- **graphqlite scope creep.** Designing schema management in a vacuum is the same trap as designing the ontology upfront. Mitigation: palace is the first consumer and drives the requirements; non-palace generic features get filed as follow-ups, not built speculatively.
+- **graphqlite scope creep.** Tempting to upstream "useful" features into graphqlite as we build palaces. Mitigation: graphqlite is treated as a stable dependency for this initiative; if we hit a missing feature, file it as a graphqlite issue and work around it in arawn. Don't fork-and-extend.
 - **Steward going off the rails.** A continuously-running LLM rewriting its own KB is powerful and scary. Mitigation: bounded blast radius per pass; journal everything with diffs; explicit rollback; never delete provenance.
 - **Vocabulary drift.** Tag conventions per workstream may degrade over time (LLM uses inconsistent tags). Mitigation: the `map` subroutine flags inconsistencies; refine flow gives the user a knob.
 - **Embedding cost at scale.** Projecting every feed item produces a lot of embeddings. Mitigation: cheap local embedder (already in arawn-memory), batched on ingest, throttle config.
@@ -270,8 +282,8 @@ Phase tasks will be decomposed in the `decompose` phase after the Phase 0 spike.
 
 | Phase | Description | Sizing |
 |---|---|---|
-| 0 | graphqlite inventory spike | 1–2 days |
-| 1 | graphqlite schema-mgmt + memory rebuild | 1–2 weeks |
+| 0 | graphqlite inventory spike | ✓ done |
+| 1 | arawn-memory rebuilt on graphqlite | ~1 week |
 | 2 | projections + `feed_search` | 1–2 weeks |
 | 3 | workstream management | 3–5 days |
 | 4 | projection → workstream extractor | 1–2 weeks |
@@ -279,4 +291,4 @@ Phase tasks will be decomposed in the `decompose` phase after the Phase 0 spike.
 | 6 | agent tools | 3–5 days |
 | 7 | UAT + docs | 3–5 days |
 
-Total: ~6–8 weeks of focused work. Each phase exits with a runtime-integrated, smoke-tested deliverable.
+Total: ~5–7 weeks of focused work. Each phase exits with a runtime-integrated, smoke-tested deliverable.
