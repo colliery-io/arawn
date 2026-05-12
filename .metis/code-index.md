@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-12T17:52:27Z | 275 files | Python, Rust
+> Generated: 2026-05-12T18:48:02Z | 275 files | Python, Rust
 
 ## Project Structure
 
@@ -5440,11 +5440,11 @@
 - pub `Embedder` interface L51-56 — `{ fn embed_batch() }` — Lightweight embedding interface this crate consumes.
 - pub `run_embed_pass` function L60-104 — `( store: &ProjectionStore, embedder: &dyn Embedder, batch_size: usize, max_per_p...` — Run a single embed pass over every embeddable feed type, capped at
 - pub `PendingEmbedRow` struct L178-181 — `{ projection_id: String, body_text: String }` — A row pending embedding: the `<feed_type>` row's projection id +
-- pub `pending_embedding_rows` function L186-219 — `( &self, feed_type: &str, limit: usize, ) -> Result<Vec<PendingEmbedRow>, Projec...` — Find rows in `<feed_type>` whose `<feed_type>_embeddings.embedding`
-- pub `write_embedding` function L225-264 — `( &self, feed_type: &str, projection_id: &str, vector: &[f32], ) -> Result<(), P...` — Write a freshly computed embedding into `<feed_type>_embeddings`.
+- pub `pending_embedding_rows` function L186-219 — `( &self, feed_type: &str, limit: usize, ) -> Result<Vec<PendingEmbedRow>, Projec...` — Find rows in `<feed_type>` whose embed status is `pending`,
+- pub `write_embedding` function L225-280 — `( &self, feed_type: &str, projection_id: &str, vector: &[f32], ) -> Result<(), P...` — Write a freshly computed embedding for a projection row.
 -  `MIN_BODY_CHARS` variable L38 — `: usize` — Minimum body length worth embedding.
 -  `embed_batch` function L106-173 — `( store: &ProjectionStore, feed_type: &str, rows: &[PendingEmbedRow], embedder: ...` — `crates/arawn/src/main.rs`.
--  `ProjectionStore` type L183-265 — `= ProjectionStore` — `crates/arawn/src/main.rs`.
+-  `ProjectionStore` type L183-281 — `= ProjectionStore` — `crates/arawn/src/main.rs`.
 
 #### crates/arawn-projections/src/error.rs
 
@@ -5495,8 +5495,10 @@
 
 #### crates/arawn-projections/src/schema.rs
 
-- pub `ensure_feed_type_tables` function L43-88 — `( conn: &Connection, feed_type: &str, ) -> Result<(), ProjectionError>` — Idempotently create all schema for a given feed type.
-- pub `apply_pragmas` function L91-95 — `(conn: &Connection) -> Result<(), ProjectionError>` — Set basic pragmas for a projection database.
+- pub `EMBEDDING_DIMS` variable L27 — `: usize` — Embedding dimensionality.
+- pub `init_vector_extension` function L32-39 — `()` — One-shot initialization of the sqlite-vec extension.
+- pub `ensure_feed_type_tables` function L42-100 — `( conn: &Connection, feed_type: &str, ) -> Result<(), ProjectionError>` — Idempotently create all schema for a given feed type.
+- pub `apply_pragmas` function L103-107 — `(conn: &Connection) -> Result<(), ProjectionError>` — Set basic pragmas for a projection database.
 
 #### crates/arawn-projections/src/slack.rs
 
@@ -5521,27 +5523,24 @@
 #### crates/arawn-projections/src/store.rs
 
 - pub `ProjectionStore` struct L24-26 — `{ conn: Mutex<Connection> }` — Sqlite-backed projection store.
-- pub `open` function L35-45 — `(path: &Path) -> Result<Self, ProjectionError>` — detect stale entries cheaply.
-- pub `in_memory` function L47-53 — `() -> Result<Self, ProjectionError>` — detect stale entries cheaply.
-- pub `ensure_feed_type` function L56-59 — `(&self, feed_type: &str) -> Result<(), ProjectionError>` — Ensure schema for a feed type exists.
-- pub `write` function L64-66 — `(&self, projection: &P) -> Result<WriteOutcome, ProjectionError>` — Write a single projection inside a transaction: row UPSERT,
-- pub `write_batch` function L69-107 — `( &self, projections: &[P], ) -> Result<WriteOutcome, ProjectionError>` — Write many projections in one transaction.
-- pub `missing_source_ids` function L112-151 — `( &self, feed_type: &str, feed_id: &str, candidate_source_ids: &[String], ) -> R...` — Returns ids that are NOT yet projected for a given feed.
-- pub `count` function L154-161 — `(&self, feed_type: &str) -> Result<usize, ProjectionError>` — Total rows for a feed_type — useful for tests and ops.
-- pub `vector_search` function L171-219 — `( &self, feed_type: &str, query_vec: &[f32], limit: usize, ) -> Result<Vec<Strin...` — Vector similarity search over a single feed type.
-- pub `fts_search` function L223-245 — `( &self, feed_type: &str, query: &str, limit: usize, ) -> Result<Vec<String>, Pr...` — FTS search over a single feed type.
-- pub `get_row` function L248-291 — `( &self, feed_type: &str, projection_id: &str, ) -> Result<Option<ProjectionRow>...` — Get a single projection row by primary key.
-- pub `WriteOutcome` struct L295-299 — `{ inserted: usize, updated: usize, unchanged: usize }` — detect stale entries cheaply.
--  `ProjectionStore` type L28-292 — `= ProjectionStore` — detect stale entries cheaply.
+- pub `open` function L35-47 — `(path: &Path) -> Result<Self, ProjectionError>` — detect stale entries cheaply.
+- pub `in_memory` function L49-56 — `() -> Result<Self, ProjectionError>` — detect stale entries cheaply.
+- pub `ensure_feed_type` function L59-62 — `(&self, feed_type: &str) -> Result<(), ProjectionError>` — Ensure schema for a feed type exists.
+- pub `write` function L67-69 — `(&self, projection: &P) -> Result<WriteOutcome, ProjectionError>` — Write a single projection inside a transaction: row UPSERT,
+- pub `write_batch` function L72-110 — `( &self, projections: &[P], ) -> Result<WriteOutcome, ProjectionError>` — Write many projections in one transaction.
+- pub `missing_source_ids` function L115-154 — `( &self, feed_type: &str, feed_id: &str, candidate_source_ids: &[String], ) -> R...` — Returns ids that are NOT yet projected for a given feed.
+- pub `count` function L157-164 — `(&self, feed_type: &str) -> Result<usize, ProjectionError>` — Total rows for a feed_type — useful for tests and ops.
+- pub `vector_search` function L170-202 — `( &self, feed_type: &str, query_vec: &[f32], limit: usize, ) -> Result<Vec<Strin...` — Vector similarity search over a single feed type.
+- pub `fts_search` function L206-228 — `( &self, feed_type: &str, query: &str, limit: usize, ) -> Result<Vec<String>, Pr...` — FTS search over a single feed type.
+- pub `get_row` function L231-274 — `( &self, feed_type: &str, projection_id: &str, ) -> Result<Option<ProjectionRow>...` — Get a single projection row by primary key.
+- pub `WriteOutcome` struct L278-282 — `{ inserted: usize, updated: usize, unchanged: usize }` — detect stale entries cheaply.
+-  `ProjectionStore` type L28-275 — `= ProjectionStore` — detect stale entries cheaply.
 -  `conn` function L31-33 — `(&self) -> &Mutex<Connection>` — Accessor for sibling modules (e.g.
--  `WriteAction` enum L301-305 — `Inserted | Updated | Unchanged` — detect stale entries cheaply.
--  `decode_f32_blob` function L307-320 — `(blob: &[u8]) -> Vec<f32>` — detect stale entries cheaply.
--  `vec_norm` function L322-324 — `(v: &[f32]) -> f32` — detect stale entries cheaply.
--  `cosine_similarity_pre` function L328-335 — `(q: &[f32], q_norm: f32, doc: &[f32]) -> f32` — Cosine similarity given the query's pre-computed norm.
--  `body_hash` function L337-342 — `(body_text: &str) -> String` — detect stale entries cheaply.
--  `write_row` function L344-438 — `( tx: &rusqlite::Transaction<'_>, feed_type: &str, row: &ProjectionRow, ) -> Res...` — detect stale entries cheaply.
--  `fts_upsert` function L440-458 — `( tx: &rusqlite::Transaction<'_>, feed_type: &str, projection_id: &str, title: &...` — detect stale entries cheaply.
--  `embedding_invalidate` function L460-478 — `( tx: &rusqlite::Transaction<'_>, feed_type: &str, projection_id: &str, body_has...` — detect stale entries cheaply.
+-  `WriteAction` enum L284-288 — `Inserted | Updated | Unchanged` — detect stale entries cheaply.
+-  `body_hash` function L290-295 — `(body_text: &str) -> String` — detect stale entries cheaply.
+-  `write_row` function L297-391 — `( tx: &rusqlite::Transaction<'_>, feed_type: &str, row: &ProjectionRow, ) -> Res...` — detect stale entries cheaply.
+-  `fts_upsert` function L393-411 — `( tx: &rusqlite::Transaction<'_>, feed_type: &str, projection_id: &str, title: &...` — detect stale entries cheaply.
+-  `embedding_invalidate` function L416-438 — `( tx: &rusqlite::Transaction<'_>, feed_type: &str, projection_id: &str, body_has...` — Mark a projection row's embedding as pending re-compute.
 
 #### crates/arawn-projections/src/types.rs
 
@@ -5579,16 +5578,16 @@
 #### crates/arawn-projections/tests/hybrid_search.rs
 
 -  `KeywordEmbedder` struct L13 — `-` — Embedder that maps text → unit vector along a content-derived
--  `KeywordEmbedder` type L15-24 — `= KeywordEmbedder` — sentinel-marked rows, and tolerates degenerate input.
--  `vec_for` function L16-23 — `(text: &str) -> Vec<f32>` — sentinel-marked rows, and tolerates degenerate input.
--  `normalize` function L26-35 — `(mut v: Vec<f32>) -> Vec<f32>` — sentinel-marked rows, and tolerates degenerate input.
--  `KeywordEmbedder` type L37-45 — `impl Embedder for KeywordEmbedder` — sentinel-marked rows, and tolerates degenerate input.
--  `embed_batch` function L38-44 — `( &'a self, texts: &'a [&'a str], ) -> Pin<Box<dyn Future<Output = Result<Vec<Ve...` — sentinel-marked rows, and tolerates degenerate input.
--  `fixture` function L47-60 — `(id: &str, body: &str) -> gmail::GmailMessageProjection` — sentinel-marked rows, and tolerates degenerate input.
--  `vector_search_ranks_by_cosine_similarity` function L63-78 — `()` — sentinel-marked rows, and tolerates degenerate input.
--  `vector_search_ignores_sentinel_and_null_rows` function L81-100 — `()` — sentinel-marked rows, and tolerates degenerate input.
--  `pending_rows_round_trip` function L103-115 — `()` — sentinel-marked rows, and tolerates degenerate input.
--  `empty_query_vec_returns_empty` function L118-123 — `()` — sentinel-marked rows, and tolerates degenerate input.
+-  `KeywordEmbedder` type L15-33 — `= KeywordEmbedder` — sentinel-marked rows, and tolerates degenerate input.
+-  `vec_for` function L16-32 — `(text: &str) -> Vec<f32>` — sentinel-marked rows, and tolerates degenerate input.
+-  `normalize` function L35-47 — `(mut v: Vec<f32>) -> Vec<f32>` — sentinel-marked rows, and tolerates degenerate input.
+-  `KeywordEmbedder` type L49-57 — `impl Embedder for KeywordEmbedder` — sentinel-marked rows, and tolerates degenerate input.
+-  `embed_batch` function L50-56 — `( &'a self, texts: &'a [&'a str], ) -> Pin<Box<dyn Future<Output = Result<Vec<Ve...` — sentinel-marked rows, and tolerates degenerate input.
+-  `fixture` function L59-72 — `(id: &str, body: &str) -> gmail::GmailMessageProjection` — sentinel-marked rows, and tolerates degenerate input.
+-  `vector_search_ranks_by_cosine_similarity` function L75-90 — `()` — sentinel-marked rows, and tolerates degenerate input.
+-  `vector_search_ignores_sentinel_and_null_rows` function L93-112 — `()` — sentinel-marked rows, and tolerates degenerate input.
+-  `pending_rows_round_trip` function L115-127 — `()` — sentinel-marked rows, and tolerates degenerate input.
+-  `empty_query_vec_returns_empty` function L130-135 — `()` — sentinel-marked rows, and tolerates degenerate input.
 
 ### crates/arawn-service/src
 
