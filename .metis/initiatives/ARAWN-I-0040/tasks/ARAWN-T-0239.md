@@ -4,14 +4,14 @@ level: task
 title: "MemoryStore CRUD on graphqlite via Cypher (entities + relations)"
 short_code: "ARAWN-T-0239"
 created_at: 2026-05-12T01:33:02.233952+00:00
-updated_at: 2026-05-12T02:52:57.802966+00:00
+updated_at: 2026-05-12T03:25:31.650801+00:00
 parent: ARAWN-I-0040
 blocked_by: [ARAWN-T-0238]
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -69,6 +69,8 @@ The Rust signatures of `MemoryStore::insert_entity`, `MemoryStore::get_entity`, 
 
 - LongMemEval bench — T-0241.
 - Migration of existing memory DBs — out of scope per the no-userbase decision in I-0040.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

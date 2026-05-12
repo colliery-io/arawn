@@ -4,14 +4,14 @@ level: task
 title: "Wire graphqlite into the workspace + smoke test"
 short_code: "ARAWN-T-0238"
 created_at: 2026-05-12T01:33:01.093535+00:00
-updated_at: 2026-05-12T01:44:51.985443+00:00
+updated_at: 2026-05-12T03:25:30.871885+00:00
 parent: ARAWN-I-0040
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -40,6 +40,8 @@ graphqlite v0.4.4 lives at `/Users/dstorey/Desktop/graphqlite/bindings/rust`. It
   - Verifies the node and edge round-trip.
 - Confirm the bundled extension loads cleanly inside the arawn workspace's sqlite version (graphqlite uses `rusqlite` with `bundled` + `load_extension` features). If our existing crates use a conflicting `rusqlite` major version, surface the conflict here so T-0239 doesn't trip over it.
 - Document the result in this task's status updates: which crate(s) carry the dep, any rusqlite version coordination needed, and the exact path/version pinned.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

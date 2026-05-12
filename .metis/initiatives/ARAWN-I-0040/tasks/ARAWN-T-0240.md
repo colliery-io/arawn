@@ -4,14 +4,14 @@ level: task
 title: "FTS5 + vector indexes colocated with graphqlite; hybrid search-before-create dedup"
 short_code: "ARAWN-T-0240"
 created_at: 2026-05-12T01:33:03.386272+00:00
-updated_at: 2026-05-12T03:01:45.699378+00:00
+updated_at: 2026-05-12T03:25:32.391800+00:00
 parent: ARAWN-I-0040
 blocked_by: [ARAWN-T-0239]
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -71,6 +71,8 @@ Returns `StoreFactResult::{Inserted, Reinforced, Superseded}` unchanged.
 ### What's deferred
 
 - LongMemEval bench tuning — T-0241. We expect bench parity but don't gate this task on it; semantic deltas surface in T-0241's analysis.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

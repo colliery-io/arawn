@@ -4,14 +4,14 @@ level: task
 title: "Memory test suite + LongMemEval bench green on graphqlite backend"
 short_code: "ARAWN-T-0241"
 created_at: 2026-05-12T01:33:04.344914+00:00
-updated_at: 2026-05-12T03:21:38.921940+00:00
+updated_at: 2026-05-12T03:25:33.038724+00:00
 parent: ARAWN-I-0040
 blocked_by: [ARAWN-T-0240]
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -51,6 +51,8 @@ Tests that assert the *storage shape* (e.g. "there's a row in the `entities` tab
 
 - Phase 2 (projections) and beyond.
 - Engine-level / TUI smoke tests that aren't directly memory-related.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
