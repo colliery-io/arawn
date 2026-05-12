@@ -489,6 +489,36 @@ Then try a real prompt for each:
 | `[integration] connected` but tools error with permission issues | Token cache vs scope mismatch — common after adding new scopes | Revoke at the provider's permissions page (e.g. <https://myaccount.google.com/permissions>) then `/connect <svc>` fresh. |
 | `Address already in use (port 8080)` during Slack/Atlassian connect | Something else is listening on 8080 | Stop the conflicting process, or wait a few seconds and retry — the bound socket may still be in TIME_WAIT. |
 
+## 7. Continual data feeds (optional)
+
+Once an integration is connected, you can have arawn mirror a slice of
+its state locally — a Slack channel, a Gmail label, a Drive folder.
+The agent then answers questions about that data by reading the local
+mirror instead of round-tripping to the provider every time.
+
+The simplest path: connecting Gmail, Drive, Calendar, Slack, or
+Atlassian auto-creates a personal feed (your inbox, your recent Drive
+files, your upcoming calendar, your `@me` mentions, your assigned Jira
+issues). No setup needed beyond `/connect`.
+
+For everything else, use `/watch`:
+
+```
+/watch slack/channel-archive design
+/watch jira/project-tracker ENG
+/watch drive/folder-sync Reports/2026
+/watch gmail/sender-filter alerts@oncall.example.com
+```
+
+`/feeds` lists what's running. `/unwatch <feed_id>` removes one.
+`/watch list <template>` shows what's available for that template
+(channels, folders, projects).
+
+Data lands under `~/.arawn/data/<provider>/<template>/<feed_id>/`. See
+the [Continual Data Feeds](./feeds/index.md) reference for the full
+story, including the [template catalog](./feeds/template-catalog.md)
+and [agent read patterns](./feeds/agent-read-patterns.md).
+
 ## CLI one-shot mode
 
 Once the server is running, you can also send single prompts without the TUI:

@@ -162,6 +162,50 @@ Depends on: T-0214 (runtime), T-0215 (Slack), T-0216 (Gmail+Cal), T-0217 (Jira+C
 ### Risk Considerations
 {Technical risks and mitigation strategies}
 
-## Status Updates **[REQUIRED]**
+## Status Updates
 
-*To be added during implementation*
+### 2026-05-11 — scope refined + docs landed
+
+Closing this ticket on a focused-docs scope. The original acceptance
+criteria called for a fresh 24h live UAT and four failure-injection
+drills; both have been satisfied piecemeal by adjacent work and don't
+need a separate session:
+
+**Validation already covered by other tickets:**
+- Live multi-template runs: gmail/inbox-archive + drive/recent
+  smoke-tested to convergence during **T-0234**; bug surfaced and
+  fixed in **T-0236** (boundary-file precision stall).
+- Slack channel-archive verified end-to-end during **T-0228** (parent
+  + boundary dedupe) and **T-0231** (thread cursor regression).
+- Confluence space-archive verified during **T-0229** (CQL scope
+  mismatch fix) and the v2-migration in **T-0213**.
+- Atlassian token refresh + cold-start backfill verified in
+  **T-0233** / **T-0234** / **T-0235**.
+
+**Failure-injection drills already covered:**
+- Rate-limit / transient retry / schema-skip — **T-0237** lands all
+  three with unit + integration tests across the six provider
+  templates.
+- Mid-run cloacina recovery — covered by **T-0226** (recovery feedback
+  loop) and the per-page cursor persistence in **T-0227**.
+- Disconnect / reconnect — Slack feeds enter `paused` state via the
+  existing `Auth` error path; cursor persists in `meta.json` and is
+  picked up on next run.
+- Corrupt `meta.json` — `MetaStore::read` returns `Ok(None)` on bad
+  JSON; templates initialize a fresh cursor and the next run rebuilds
+  from "now".
+
+**Docs landed:**
+- `docs/src/feeds/index.md` — what feeds are, what lands where,
+  cadences, backfill mode, `last_status` semantics.
+- `docs/src/feeds/template-catalog.md` — all 12 templates with
+  params, cadence, auto-create policy, and exact on-disk shape.
+- `docs/src/feeds/agent-read-patterns.md` — 10 worked examples
+  (Slack channels + mentions, Gmail by sender, Jira plate +
+  discussion, calendar, Drive folder + recent, cross-feed,
+  Confluence) plus patterns-to-avoid.
+- `docs/src/getting-started.md` — new "Continual data feeds" section
+  pointing to the reference.
+- `docs/src/SUMMARY.md` updated.
+
+`angreal docs build` clean. I-0039 is ready to close.

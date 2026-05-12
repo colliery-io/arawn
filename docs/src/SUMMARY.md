@@ -11,6 +11,9 @@
 - [Security & Permissions](./security.md)
 - [Memory](./memory.md)
 - [Workflows](./workflows.md)
+- [Continual Data Feeds](./feeds/index.md)
+  - [Template Catalog](./feeds/template-catalog.md)
+  - [Agent Read Patterns](./feeds/agent-read-patterns.md)
 
 # Integrations
 
