@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-12T12:52:55Z | 272 files | Python, Rust
+> Generated: 2026-05-12T16:52:58Z | 274 files | Python, Rust
 
 ## Project Structure
 
@@ -251,6 +251,7 @@
 │   │   │   ├── calendar.rs
 │   │   │   ├── dispatch.rs
 │   │   │   ├── drive.rs
+│   │   │   ├── embed.rs
 │   │   │   ├── error.rs
 │   │   │   ├── gmail.rs
 │   │   │   ├── lib.rs
@@ -259,6 +260,7 @@
 │   │   │   ├── store.rs
 │   │   │   └── types.rs
 │   │   └── tests/
+│   │       ├── embed_pass.rs
 │   │       └── gmail_e2e.rs
 │   ├── arawn-service/
 │   │   └── src/
@@ -597,18 +599,21 @@
 
 #### crates/arawn/src/main.rs
 
--  `DEFAULT_MODEL` variable L15 — `: &str`
--  `FILE_LOG_FILTER` variable L18 — `: &str` — Default file log filter: debug for arawn crates, warn for third-party.
--  `main` function L21-830 — `() -> Result<()>`
--  `Cli` struct L27-46 — `{ command: Option<Command>, data_dir: Option<String>, session: Option<Uuid>, lis...`
--  `Command` enum L49-68 — `Serve | Tui | Plugin`
--  `run_cli_via_server` function L833-938 — `( url: &str, prompt: &str, session_id: Option<Uuid>, ) -> Result<()>` — Run a CLI prompt by connecting to the running server via WebSocket.
--  `build_llm_client` function L941-964 — `( config: &arawn_bin::LlmConfig, ) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
--  `register_default_tools` function L967-1013 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &arawn_bin::ArawnConfig, d...` — Register all default tools into the registry.
--  `connect_mcp_servers` function L1016-1064 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
--  `register_workflow_tools` function L1067-1084 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
--  `build_engine_config` function L1086-1121 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
--  `dirs_path` function L1123-1132 — `() -> Option<String>`
+-  `EmbedderBridge` struct L13-15 — `{ inner: Arc<dyn arawn_embed::Embedder> }` — Adapter from `arawn_embed::Embedder` to the trait
+-  `EmbedderBridge` type L17-33 — `= EmbedderBridge`
+-  `embed_batch` function L18-32 — `( &'a self, texts: &'a [&'a str], ) -> std::pin::Pin< Box<dyn std::future::Futur...`
+-  `DEFAULT_MODEL` variable L40 — `: &str`
+-  `FILE_LOG_FILTER` variable L43 — `: &str` — Default file log filter: debug for arawn crates, warn for third-party.
+-  `main` function L46-897 — `() -> Result<()>`
+-  `Cli` struct L52-71 — `{ command: Option<Command>, data_dir: Option<String>, session: Option<Uuid>, lis...`
+-  `Command` enum L74-93 — `Serve | Tui | Plugin`
+-  `run_cli_via_server` function L900-1005 — `( url: &str, prompt: &str, session_id: Option<Uuid>, ) -> Result<()>` — Run a CLI prompt by connecting to the running server via WebSocket.
+-  `build_llm_client` function L1008-1031 — `( config: &arawn_bin::LlmConfig, ) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
+-  `register_default_tools` function L1034-1080 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &arawn_bin::ArawnConfig, d...` — Register all default tools into the registry.
+-  `connect_mcp_servers` function L1083-1131 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
+-  `register_workflow_tools` function L1134-1151 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
+-  `build_engine_config` function L1153-1188 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
+-  `dirs_path` function L1190-1199 — `() -> Option<String>`
 
 #### crates/arawn/src/plugin_cmd.rs
 
@@ -5421,6 +5426,19 @@
 -  `tolerates_top_level_files_key` function L234-244 — `()` — body_hash is the file size + path so a re-run is still a no-op.
 -  `missing_local_file_still_produces_metadata_row` function L247-259 — `()` — body_hash is the file size + path so a re-run is still a no-op.
 
+#### crates/arawn-projections/src/embed.rs
+
+- pub `EMBEDDABLE_FEED_TYPES` variable L24-33 — `: &[&str]` — Feed types whose body_text is worth embedding.
+- pub `EmbedPassOutcome` struct L41-45 — `{ embedded: usize, skipped_empty: usize, errors: usize }` — `crates/arawn/src/main.rs`.
+- pub `Embedder` interface L51-56 — `{ fn embed_batch() }` — Lightweight embedding interface this crate consumes.
+- pub `run_embed_pass` function L60-104 — `( store: &ProjectionStore, embedder: &dyn Embedder, batch_size: usize, max_per_p...` — Run a single embed pass over every embeddable feed type, capped at
+- pub `PendingEmbedRow` struct L178-181 — `{ projection_id: String, body_text: String }` — A row pending embedding: the `<feed_type>` row's projection id +
+- pub `pending_embedding_rows` function L186-219 — `( &self, feed_type: &str, limit: usize, ) -> Result<Vec<PendingEmbedRow>, Projec...` — Find rows in `<feed_type>` whose `<feed_type>_embeddings.embedding`
+- pub `write_embedding` function L225-264 — `( &self, feed_type: &str, projection_id: &str, vector: &[f32], ) -> Result<(), P...` — Write a freshly computed embedding into `<feed_type>_embeddings`.
+-  `MIN_BODY_CHARS` variable L38 — `: usize` — Minimum body length worth embedding.
+-  `embed_batch` function L106-173 — `( store: &ProjectionStore, feed_type: &str, rows: &[PendingEmbedRow], embedder: ...` — `crates/arawn/src/main.rs`.
+-  `ProjectionStore` type L183-265 — `= ProjectionStore` — `crates/arawn/src/main.rs`.
+
 #### crates/arawn-projections/src/error.rs
 
 - pub `ProjectionError` enum L4-13 — `Storage | Schema | Io`
@@ -5460,12 +5478,13 @@
 - pub `calendar` module L16 — `-` — - Decouples feed-side fidelity (raw mirror) from query-side shape.
 - pub `dispatch` module L17 — `-` — - Decouples feed-side fidelity (raw mirror) from query-side shape.
 - pub `drive` module L18 — `-` — - Decouples feed-side fidelity (raw mirror) from query-side shape.
-- pub `error` module L19 — `-` — - Decouples feed-side fidelity (raw mirror) from query-side shape.
-- pub `gmail` module L20 — `-` — - Decouples feed-side fidelity (raw mirror) from query-side shape.
-- pub `schema` module L21 — `-` — - Decouples feed-side fidelity (raw mirror) from query-side shape.
-- pub `slack` module L22 — `-` — - Decouples feed-side fidelity (raw mirror) from query-side shape.
-- pub `store` module L23 — `-` — - Decouples feed-side fidelity (raw mirror) from query-side shape.
-- pub `types` module L24 — `-` — - Decouples feed-side fidelity (raw mirror) from query-side shape.
+- pub `embed` module L19 — `-` — - Decouples feed-side fidelity (raw mirror) from query-side shape.
+- pub `error` module L20 — `-` — - Decouples feed-side fidelity (raw mirror) from query-side shape.
+- pub `gmail` module L21 — `-` — - Decouples feed-side fidelity (raw mirror) from query-side shape.
+- pub `schema` module L22 — `-` — - Decouples feed-side fidelity (raw mirror) from query-side shape.
+- pub `slack` module L23 — `-` — - Decouples feed-side fidelity (raw mirror) from query-side shape.
+- pub `store` module L24 — `-` — - Decouples feed-side fidelity (raw mirror) from query-side shape.
+- pub `types` module L25 — `-` — - Decouples feed-side fidelity (raw mirror) from query-side shape.
 
 #### crates/arawn-projections/src/schema.rs
 
@@ -5495,22 +5514,23 @@
 #### crates/arawn-projections/src/store.rs
 
 - pub `ProjectionStore` struct L24-26 — `{ conn: Mutex<Connection> }` — Sqlite-backed projection store.
-- pub `open` function L29-39 — `(path: &Path) -> Result<Self, ProjectionError>` — detect stale entries cheaply.
-- pub `in_memory` function L41-47 — `() -> Result<Self, ProjectionError>` — detect stale entries cheaply.
-- pub `ensure_feed_type` function L50-53 — `(&self, feed_type: &str) -> Result<(), ProjectionError>` — Ensure schema for a feed type exists.
-- pub `write` function L58-60 — `(&self, projection: &P) -> Result<WriteOutcome, ProjectionError>` — Write a single projection inside a transaction: row UPSERT,
-- pub `write_batch` function L63-101 — `( &self, projections: &[P], ) -> Result<WriteOutcome, ProjectionError>` — Write many projections in one transaction.
-- pub `missing_source_ids` function L106-145 — `( &self, feed_type: &str, feed_id: &str, candidate_source_ids: &[String], ) -> R...` — Returns ids that are NOT yet projected for a given feed.
-- pub `count` function L148-155 — `(&self, feed_type: &str) -> Result<usize, ProjectionError>` — Total rows for a feed_type — useful for tests and ops.
-- pub `fts_search` function L159-181 — `( &self, feed_type: &str, query: &str, limit: usize, ) -> Result<Vec<String>, Pr...` — FTS search over a single feed type.
-- pub `get_row` function L184-227 — `( &self, feed_type: &str, projection_id: &str, ) -> Result<Option<ProjectionRow>...` — Get a single projection row by primary key.
-- pub `WriteOutcome` struct L231-235 — `{ inserted: usize, updated: usize, unchanged: usize }` — detect stale entries cheaply.
--  `ProjectionStore` type L28-228 — `= ProjectionStore` — detect stale entries cheaply.
--  `WriteAction` enum L237-241 — `Inserted | Updated | Unchanged` — detect stale entries cheaply.
--  `body_hash` function L243-248 — `(body_text: &str) -> String` — detect stale entries cheaply.
--  `write_row` function L250-344 — `( tx: &rusqlite::Transaction<'_>, feed_type: &str, row: &ProjectionRow, ) -> Res...` — detect stale entries cheaply.
--  `fts_upsert` function L346-364 — `( tx: &rusqlite::Transaction<'_>, feed_type: &str, projection_id: &str, title: &...` — detect stale entries cheaply.
--  `embedding_invalidate` function L366-384 — `( tx: &rusqlite::Transaction<'_>, feed_type: &str, projection_id: &str, body_has...` — detect stale entries cheaply.
+- pub `open` function L35-45 — `(path: &Path) -> Result<Self, ProjectionError>` — detect stale entries cheaply.
+- pub `in_memory` function L47-53 — `() -> Result<Self, ProjectionError>` — detect stale entries cheaply.
+- pub `ensure_feed_type` function L56-59 — `(&self, feed_type: &str) -> Result<(), ProjectionError>` — Ensure schema for a feed type exists.
+- pub `write` function L64-66 — `(&self, projection: &P) -> Result<WriteOutcome, ProjectionError>` — Write a single projection inside a transaction: row UPSERT,
+- pub `write_batch` function L69-107 — `( &self, projections: &[P], ) -> Result<WriteOutcome, ProjectionError>` — Write many projections in one transaction.
+- pub `missing_source_ids` function L112-151 — `( &self, feed_type: &str, feed_id: &str, candidate_source_ids: &[String], ) -> R...` — Returns ids that are NOT yet projected for a given feed.
+- pub `count` function L154-161 — `(&self, feed_type: &str) -> Result<usize, ProjectionError>` — Total rows for a feed_type — useful for tests and ops.
+- pub `fts_search` function L165-187 — `( &self, feed_type: &str, query: &str, limit: usize, ) -> Result<Vec<String>, Pr...` — FTS search over a single feed type.
+- pub `get_row` function L190-233 — `( &self, feed_type: &str, projection_id: &str, ) -> Result<Option<ProjectionRow>...` — Get a single projection row by primary key.
+- pub `WriteOutcome` struct L237-241 — `{ inserted: usize, updated: usize, unchanged: usize }` — detect stale entries cheaply.
+-  `ProjectionStore` type L28-234 — `= ProjectionStore` — detect stale entries cheaply.
+-  `conn` function L31-33 — `(&self) -> &Mutex<Connection>` — Accessor for sibling modules (e.g.
+-  `WriteAction` enum L243-247 — `Inserted | Updated | Unchanged` — detect stale entries cheaply.
+-  `body_hash` function L249-254 — `(body_text: &str) -> String` — detect stale entries cheaply.
+-  `write_row` function L256-350 — `( tx: &rusqlite::Transaction<'_>, feed_type: &str, row: &ProjectionRow, ) -> Res...` — detect stale entries cheaply.
+-  `fts_upsert` function L352-370 — `( tx: &rusqlite::Transaction<'_>, feed_type: &str, projection_id: &str, title: &...` — detect stale entries cheaply.
+-  `embedding_invalidate` function L372-390 — `( tx: &rusqlite::Transaction<'_>, feed_type: &str, projection_id: &str, body_has...` — detect stale entries cheaply.
 
 #### crates/arawn-projections/src/types.rs
 
@@ -5520,6 +5540,20 @@
 ### crates/arawn-projections/tests
 
 > *Semantic summary to be generated by AI agent.*
+
+#### crates/arawn-projections/tests/embed_pass.rs
+
+-  `StubEmbedder` struct L12-15 — `{ calls: AtomicUsize, dim: usize }` — embedder, writes vectors back, skips short bodies.
+-  `StubEmbedder` type L17-27 — `= StubEmbedder` — embedder, writes vectors back, skips short bodies.
+-  `new` function L18-23 — `(dim: usize) -> Self` — embedder, writes vectors back, skips short bodies.
+-  `calls` function L24-26 — `(&self) -> usize` — embedder, writes vectors back, skips short bodies.
+-  `StubEmbedder` type L29-45 — `impl Embedder for StubEmbedder` — embedder, writes vectors back, skips short bodies.
+-  `embed_batch` function L30-44 — `( &'a self, texts: &'a [&'a str], ) -> Pin<Box<dyn Future<Output = Result<Vec<Ve...` — embedder, writes vectors back, skips short bodies.
+-  `fixture_message` function L47-60 — `(id: &str, body: &str) -> gmail::GmailMessageProjection` — embedder, writes vectors back, skips short bodies.
+-  `embeds_rows_with_null_embedding` function L63-81 — `()` — embedder, writes vectors back, skips short bodies.
+-  `skips_short_bodies_but_marks_them` function L84-102 — `()` — embedder, writes vectors back, skips short bodies.
+-  `max_per_pass_caps_work` function L105-124 — `()` — embedder, writes vectors back, skips short bodies.
+-  `known_feed_types_are_a_strict_subset_of_routed_types` function L127-143 — `()` — embedder, writes vectors back, skips short bodies.
 
 #### crates/arawn-projections/tests/gmail_e2e.rs
 

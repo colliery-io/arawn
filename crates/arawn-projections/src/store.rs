@@ -160,6 +160,64 @@ impl ProjectionStore {
         Ok(cnt as usize)
     }
 
+    /// Vector similarity search over a single feed type. Returns up
+    /// to `limit` projection ids sorted by descending cosine similarity
+    /// against `query_vec`. Rows without a real embedding (NULL or the
+    /// sentinel single-byte skip-marker) are ignored.
+    ///
+    /// Cosine over a few thousand rows of 384-d vectors is fine for
+    /// personal-scale corpora; if a projection table grows past
+    /// ~10k rows we should move to sqlite-vec like `arawn-memory`.
+    pub fn vector_search(
+        &self,
+        feed_type: &str,
+        query_vec: &[f32],
+        limit: usize,
+    ) -> Result<Vec<String>, ProjectionError> {
+        if query_vec.is_empty() {
+            return Ok(Vec::new());
+        }
+        let conn = self.conn.lock().unwrap();
+        schema::ensure_feed_type_tables(&conn, feed_type)?;
+        let sql = format!(
+            "SELECT projection_id, embedding \
+             FROM {feed_type}_embeddings \
+             WHERE embedding IS NOT NULL"
+        );
+        let mut stmt = conn
+            .prepare(&sql)
+            .map_err(|e| ProjectionError::Storage(format!("prepare vec: {e}")))?;
+        let rows = stmt
+            .query_map([], |r| {
+                let id: String = r.get(0)?;
+                let blob: Vec<u8> = r.get(1)?;
+                Ok((id, blob))
+            })
+            .map_err(|e| ProjectionError::Storage(format!("vec: {e}")))?;
+
+        let q_norm = vec_norm(query_vec);
+        if q_norm == 0.0 {
+            return Ok(Vec::new());
+        }
+        let mut scored: Vec<(String, f32)> = Vec::new();
+        for row in rows {
+            let (id, blob) = row.map_err(|e| ProjectionError::Storage(e.to_string()))?;
+            // Skip sentinel "intentionally not embedded" markers.
+            if blob.len() < query_vec.len() * 4 {
+                continue;
+            }
+            let v = decode_f32_blob(&blob);
+            if v.len() != query_vec.len() {
+                continue;
+            }
+            let sim = cosine_similarity_pre(query_vec, q_norm, &v);
+            scored.push((id, sim));
+        }
+        scored.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        scored.truncate(limit);
+        Ok(scored.into_iter().map(|(id, _)| id).collect())
+    }
+
     /// FTS search over a single feed type. Returns `(projection_id,
     /// rank)`. Caller hydrates the full row via `get_row`.
     pub fn fts_search(
@@ -244,6 +302,36 @@ enum WriteAction {
     Inserted,
     Updated,
     Unchanged,
+}
+
+fn decode_f32_blob(blob: &[u8]) -> Vec<f32> {
+    let n = blob.len() / 4;
+    let mut out = Vec::with_capacity(n);
+    for i in 0..n {
+        let bytes: [u8; 4] = [
+            blob[i * 4],
+            blob[i * 4 + 1],
+            blob[i * 4 + 2],
+            blob[i * 4 + 3],
+        ];
+        out.push(f32::from_le_bytes(bytes));
+    }
+    out
+}
+
+fn vec_norm(v: &[f32]) -> f32 {
+    v.iter().map(|x| x * x).sum::<f32>().sqrt()
+}
+
+/// Cosine similarity given the query's pre-computed norm. Returns
+/// 0.0 for degenerate inputs.
+fn cosine_similarity_pre(q: &[f32], q_norm: f32, doc: &[f32]) -> f32 {
+    let dot: f32 = q.iter().zip(doc.iter()).map(|(a, b)| a * b).sum();
+    let d_norm = vec_norm(doc);
+    if q_norm == 0.0 || d_norm == 0.0 {
+        return 0.0;
+    }
+    dot / (q_norm * d_norm)
 }
 
 fn body_hash(body_text: &str) -> String {

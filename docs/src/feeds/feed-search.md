@@ -171,15 +171,27 @@ greppable.
 
 ## Ranking model
 
-FTS5 returns hits ordered by its internal BM25-like rank; we apply a
-rank-decay score `1 / (1 + rank)` so the top match scores ≈1.0 and
-later hits decay smoothly. Cross-feed-type merging is done after each
-per-type query so a high-confidence slack match can outrank a fuzzy
-gmail one even when more gmail rows match.
+Hybrid FTS5 + semantic similarity, fused via reciprocal rank fusion
+(RRF). For each feed type:
 
-When the semantic-similarity pipeline lands (deferred follow-up; see
-T-0247 status), `feed_search` will gain a vector path and merge
-results via RRF fusion. The tool surface stays the same.
+1. **FTS5 ranked list** — BM25-like text match over title + body_text.
+2. **Vector ranked list** — cosine similarity between the query
+   embedding and each row's embedded body_text (when an embedder is
+   configured at startup).
+
+Both lists contribute `1 / (k + rank + 1)` to the row's score with
+`k = 60` (Cormack et al. 2009). A row appearing in both lists gets
+roughly double the score of a row appearing in only one, which is
+the desired "agreement is signal" behavior.
+
+If no embedder is configured (or query embedding fails) the tool
+falls back to FTS-only and the score is just the FTS contribution.
+The result shape is identical either way; the score column is
+comparable within a single response but not across calls.
+
+Cross-feed-type merging is done after each per-type fusion so a
+high-confidence slack match can outrank a fuzzy gmail one even when
+more gmail rows match.
 
 ## Operational notes
 
@@ -188,5 +200,10 @@ results via RRF fusion. The tool surface stays the same.
 - A schema gets created per feed type on first write; an empty
   `feed_search` (no rows for a type yet) returns no results rather
   than erroring.
+- Embeddings are filled in by a background pass that runs every
+  5 minutes (and once at startup). Rows projected in the last few
+  minutes may be FTS-only until the next embed cycle catches up.
+- `jira_history` is FTS-only by design — its body is too thin
+  ("`<field>` changed `<from>` → `<to>`") to embed usefully.
 - Stale projection rows (after a feed item is deleted upstream) are
   not auto-pruned; this is acceptable today and revisited in Phase 5.

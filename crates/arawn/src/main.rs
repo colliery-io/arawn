@@ -364,9 +364,10 @@ async fn main() -> Result<()> {
         let projections_db_path = std::path::PathBuf::from(&data_dir).join("projections.db");
         match arawn_projections::ProjectionStore::open(&projections_db_path) {
             Ok(store) => {
-                registry.register(Box::new(arawn_engine::FeedSearchTool::new(Arc::new(
-                    store,
-                ))));
+                registry.register(Box::new(arawn_engine::FeedSearchTool::new(
+                    Arc::new(store),
+                    embedder.clone(),
+                )));
                 info!("feed_search tool registered");
             }
             Err(e) => warn!(

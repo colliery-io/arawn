@@ -6,12 +6,14 @@
 //! When the embed pass lands the tool gets a hybrid path with RRF
 //! fusion, no API change.
 
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use async_trait::async_trait;
 use chrono::DateTime;
 use serde_json::{Value, json};
 
+use arawn_embed::Embedder;
 use arawn_projections::ProjectionStore;
 
 use crate::tool::{Tool, ToolCategory, ToolError, ToolOutput};
@@ -28,13 +30,21 @@ const KNOWN_FEED_TYPES: &[&str] = &[
     "calendar_events",
 ];
 
+/// RRF constant (Cormack et al. 2009). Same value the memory bench
+/// uses; smaller values favor top-ranked items, larger values smooth
+/// the contribution from each list.
+const RRF_K: f32 = 60.0;
+
 pub struct FeedSearchTool {
     store: Arc<ProjectionStore>,
+    /// Optional embedder; when present the tool runs hybrid FTS +
+    /// vector search and RRF-fuses the two rankings.
+    embedder: Option<Arc<dyn Embedder>>,
 }
 
 impl FeedSearchTool {
-    pub fn new(store: Arc<ProjectionStore>) -> Self {
-        Self { store }
+    pub fn new(store: Arc<ProjectionStore>, embedder: Option<Arc<dyn Embedder>>) -> Self {
+        Self { store, embedder }
     }
 }
 
@@ -46,7 +56,8 @@ impl Tool for FeedSearchTool {
 
     fn description(&self) -> &str {
         "Search across continual data feeds (gmail, slack, drive, jira, confluence, calendar). \
-         Use this for cross-feed lookups when no workstream is declared. Ranks by FTS5 relevance.\n\n\
+         Use this for cross-feed lookups when no workstream is declared. Ranks by hybrid \
+         FTS5 + semantic similarity (RRF-fused) when an embedder is configured.\n\n\
          Use `feed_types` to scope (e.g. just slack), `since`/`until` (RFC3339) for time windows."
     }
 
@@ -120,36 +131,75 @@ impl Tool for FeedSearchTool {
             .unwrap_or(10)
             .min(50) as usize;
 
-        let mut hits: Vec<Hit> = Vec::new();
+        // Compute the query embedding once (when available) so we can
+        // pair FTS + vector ranks per feed type.
+        let query_vec = match self.embedder.as_ref() {
+            Some(emb) => match emb.embed(query).await {
+                Ok(v) => Some(v),
+                Err(e) => {
+                    tracing::warn!(error = %e, "feed_search: query embedding failed; falling back to FTS-only");
+                    None
+                }
+            },
+            None => None,
+        };
+
+        let mut fused: HashMap<String, FusedHit> = HashMap::new();
         for ft in &feed_types {
-            let ids = self
+            // FTS ranks
+            let fts_ids = self
                 .store
-                .fts_search(ft, query, limit * 2)
+                .fts_search(ft, query, limit * 4)
                 .map_err(|e| ToolError::ExecutionFailed(format!("fts ({ft}): {e}")))?;
-            for (rank, id) in ids.into_iter().enumerate() {
-                let row = match self
-                    .store
-                    .get_row(ft, &id)
-                    .map_err(|e| ToolError::ExecutionFailed(format!("hydrate ({ft}): {e}")))?
-                {
-                    Some(r) => r,
-                    None => continue,
-                };
-                if let Some(s) = since
-                    && row.source_ts < s.with_timezone(&chrono::Utc)
-                {
-                    continue;
-                }
-                if let Some(u) = until
-                    && row.source_ts > u.with_timezone(&chrono::Utc)
-                {
-                    continue;
-                }
-                hits.push(Hit {
-                    score: 1.0 / (1.0 + rank as f32),
-                    row,
-                });
+            for (rank, id) in fts_ids.iter().enumerate() {
+                fused
+                    .entry(key(ft, id))
+                    .or_insert_with(|| FusedHit::new(ft.clone(), id.clone()))
+                    .score += rrf_score(rank);
             }
+
+            // Vector ranks (when an embedder is wired and produced a vector)
+            if let Some(qv) = query_vec.as_ref() {
+                let vec_ids = self
+                    .store
+                    .vector_search(ft, qv, limit * 4)
+                    .map_err(|e| ToolError::ExecutionFailed(format!("vec ({ft}): {e}")))?;
+                for (rank, id) in vec_ids.iter().enumerate() {
+                    fused
+                        .entry(key(ft, id))
+                        .or_insert_with(|| FusedHit::new(ft.clone(), id.clone()))
+                        .score += rrf_score(rank);
+                }
+            }
+        }
+
+        // Hydrate + filter by time window in one pass; drops anything
+        // outside [since, until] before sorting.
+        let mut hits: Vec<Hit> = Vec::new();
+        for (_, fh) in fused.into_iter() {
+            let row = match self
+                .store
+                .get_row(&fh.feed_type, &fh.projection_id)
+                .map_err(|e| {
+                    ToolError::ExecutionFailed(format!("hydrate ({}): {e}", fh.feed_type))
+                })? {
+                Some(r) => r,
+                None => continue,
+            };
+            if let Some(s) = since
+                && row.source_ts < s.with_timezone(&chrono::Utc)
+            {
+                continue;
+            }
+            if let Some(u) = until
+                && row.source_ts > u.with_timezone(&chrono::Utc)
+            {
+                continue;
+            }
+            hits.push(Hit {
+                score: fh.score,
+                row,
+            });
         }
         hits.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
         hits.truncate(limit);
@@ -182,6 +232,32 @@ impl Tool for FeedSearchTool {
 struct Hit {
     score: f32,
     row: arawn_projections::ProjectionRow,
+}
+
+/// Per-(feed_type, projection_id) accumulator for RRF scores.
+struct FusedHit {
+    feed_type: String,
+    projection_id: String,
+    score: f32,
+}
+
+impl FusedHit {
+    fn new(feed_type: String, projection_id: String) -> Self {
+        Self {
+            feed_type,
+            projection_id,
+            score: 0.0,
+        }
+    }
+}
+
+fn key(feed_type: &str, projection_id: &str) -> String {
+    format!("{feed_type}::{projection_id}")
+}
+
+/// Reciprocal rank fusion contribution from a single ranked list.
+fn rrf_score(rank: usize) -> f32 {
+    1.0 / (RRF_K + rank as f32 + 1.0)
 }
 
 fn snippet(text: &str, cap: usize) -> String {
