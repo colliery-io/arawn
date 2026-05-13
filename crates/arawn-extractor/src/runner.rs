@@ -54,6 +54,9 @@ pub struct ExtractorRunner {
     memory: MemoryResolver,
     chain: Arc<dyn ExtractionChain>,
     batch_size: usize,
+    /// In-flight backfill gate. Prevents two simultaneous backfills
+    /// for the same (workstream, feed_type) from racing.
+    in_flight: Arc<std::sync::Mutex<std::collections::HashSet<(String, String)>>>,
 }
 
 impl ExtractorRunner {
@@ -69,6 +72,7 @@ impl ExtractorRunner {
             memory,
             chain,
             batch_size: DEFAULT_BATCH_SIZE,
+            in_flight: Arc::new(std::sync::Mutex::new(std::collections::HashSet::new())),
         }
     }
 
@@ -156,6 +160,117 @@ impl ExtractorRunner {
             );
         }
         Ok(stats)
+    }
+
+    /// Run `run_for_workstream` in a loop until either the projection
+    /// stream is exhausted, an error halts the cursor, or `max_duration`
+    /// elapses. Used when a workstream binds a new source so existing
+    /// projection rows get walked through the chain.
+    ///
+    /// Returns aggregated stats across all loop iterations.
+    pub async fn run_for_workstream_until_exhausted(
+        &self,
+        workstream: &Workstream,
+        feed_type: &str,
+        max_duration: std::time::Duration,
+    ) -> Result<RunStats, ExtractionError> {
+        let deadline = std::time::Instant::now() + max_duration;
+        let mut total = RunStats::default();
+        loop {
+            if std::time::Instant::now() >= deadline {
+                debug!(
+                    workstream = %workstream.name,
+                    feed_type = feed_type,
+                    "backfill wall-clock cap hit; next trigger will resume"
+                );
+                break;
+            }
+            let stats = self.run_for_workstream(workstream, feed_type).await?;
+            if stats.processed == 0 {
+                break;
+            }
+            total.processed += stats.processed;
+            total.kept += stats.kept;
+            total.skipped += stats.skipped;
+            total.errors += stats.errors;
+            total.entities_written += stats.entities_written;
+            total.relations_written += stats.relations_written;
+            if stats.errors > 0 {
+                // Chain returned an error; cursor stayed put. Bail so
+                // we don't spin forever on a poison row.
+                break;
+            }
+        }
+        Ok(total)
+    }
+
+    /// Spawn a backfill task for `(workstream_name, feed_types)`. Each
+    /// `feed_type` gets its own `run_for_workstream_until_exhausted`
+    /// invocation under the 10-minute wall-clock cap. Idempotent: if a
+    /// backfill for the same `(workstream, feed_type)` is already in
+    /// flight the new request is dropped.
+    ///
+    /// Fire-and-forget — the function returns immediately and the
+    /// task runs in the tokio runtime.
+    pub fn spawn_backfill(self: Arc<Self>, workstream_name: String, feed_types: Vec<String>) {
+        const MAX: std::time::Duration = std::time::Duration::from_secs(10 * 60);
+        for feed_type in feed_types {
+            let key = (workstream_name.clone(), feed_type.clone());
+            {
+                let mut guard = self.in_flight.lock().unwrap();
+                if !guard.insert(key.clone()) {
+                    debug!(
+                        workstream = %workstream_name,
+                        feed_type = %feed_type,
+                        "backfill already in flight; skipping"
+                    );
+                    continue;
+                }
+            }
+            let runner = Arc::clone(&self);
+            let ws_name = workstream_name.clone();
+            let ft = feed_type.clone();
+            tokio::spawn(async move {
+                // Look up the workstream record for the run.
+                let workstream = {
+                    let store = runner.store.lock().unwrap();
+                    match store.find_workstream_by_name(&ws_name) {
+                        Ok(Some(ws)) => ws,
+                        Ok(None) => {
+                            warn!(workstream = %ws_name, "backfill: workstream not found");
+                            runner.in_flight.lock().unwrap().remove(&key);
+                            return;
+                        }
+                        Err(e) => {
+                            warn!(error = %e, "backfill: workstream lookup failed");
+                            runner.in_flight.lock().unwrap().remove(&key);
+                            return;
+                        }
+                    }
+                };
+                match runner
+                    .run_for_workstream_until_exhausted(&workstream, &ft, MAX)
+                    .await
+                {
+                    Ok(stats) => info!(
+                        workstream = %ws_name,
+                        feed_type = %ft,
+                        processed = stats.processed,
+                        kept = stats.kept,
+                        skipped = stats.skipped,
+                        errors = stats.errors,
+                        "backfill complete"
+                    ),
+                    Err(e) => warn!(
+                        workstream = %ws_name,
+                        feed_type = %ft,
+                        error = %e,
+                        "backfill failed"
+                    ),
+                }
+                runner.in_flight.lock().unwrap().remove(&key);
+            });
+        }
     }
 
     /// Iterate every active (non-archived) workstream and run extraction
@@ -370,6 +485,63 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(stats.processed, 0);
+    }
+
+    #[tokio::test]
+    async fn run_until_exhausted_walks_all_pages() {
+        let (_tmp, store, proj, resolver) = setup();
+        // Seed 7 rows; batch size of 3 forces multiple iterations.
+        let rows: Vec<_> = (0..7)
+            .map(|i| fixture_proj(&format!("m{i}"), "body", i as i64))
+            .collect();
+        proj.write_batch(&rows).unwrap();
+
+        let runner = ExtractorRunner::new(store, proj, resolver, Arc::new(StubChain))
+            .with_batch_size(3);
+        let stats = runner
+            .run_for_workstream_until_exhausted(
+                &ws("pat"),
+                "gmail_messages",
+                std::time::Duration::from_secs(30),
+            )
+            .await
+            .unwrap();
+        assert_eq!(stats.processed, 7);
+    }
+
+    #[tokio::test]
+    async fn spawn_backfill_is_idempotent_for_in_flight_key() {
+        let (_tmp, store, proj, resolver) = setup();
+        proj.write_batch(&[fixture_proj("m1", "body", 0)]).unwrap();
+        // Pre-mark the key as in-flight so the spawn becomes a no-op.
+        let runner = Arc::new(ExtractorRunner::new(
+            Arc::clone(&store),
+            proj,
+            resolver,
+            Arc::new(StubChain),
+        ));
+        runner
+            .in_flight
+            .lock()
+            .unwrap()
+            .insert(("pat".into(), "gmail_messages".into()));
+        // create the workstream so the spawn doesn't bail on lookup.
+        store
+            .lock()
+            .unwrap()
+            .create_workstream(&Workstream::new("pat", std::env::temp_dir().join("pat")))
+            .unwrap();
+        // spawn_backfill returns immediately; the second call is the
+        // one we're asserting is dropped.
+        Arc::clone(&runner)
+            .spawn_backfill("pat".into(), vec!["gmail_messages".into()]);
+        // Cursor should NOT have advanced because the second spawn was
+        // a no-op.
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        let s = store.lock().unwrap();
+        let cs = ExtractorCursorStore::new(s.database());
+        let c = cs.get("pat", "gmail_messages").unwrap();
+        assert!(c.is_none(), "cursor should not have advanced");
     }
 
     #[tokio::test]

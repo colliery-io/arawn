@@ -4,14 +4,14 @@ level: task
 title: "Extraction chain prompts — classify, extract, link-by-name, write"
 short_code: "ARAWN-T-0252"
 created_at: 2026-05-13T01:28:13.468772+00:00
-updated_at: 2026-05-13T03:15:42.240064+00:00
+updated_at: 2026-05-13T03:20:39.930191+00:00
 parent: ARAWN-I-0040
 blocked_by: [ARAWN-T-0251]
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -106,6 +106,8 @@ Reads `LlmClientPool::client_for(Extraction)` — falls through to Interaction w
 
 ## Acceptance Criteria
 
+## Acceptance Criteria
+
 - [ ] `CotChain` implements `ExtractionChain` (from T-0251) end-to-end through all 4 stages.
 - [ ] Stage 1 short-circuits cleanly (returns `skipped: true`) when out of scope.
 - [ ] Stage 3's link-by-name resolution uses FTS against the active workstream's KB; misses are dropped with a warn.
@@ -130,4 +132,44 @@ Each stage expects a JSON response. Use serde to parse; on malformed JSON, log l
 
 ## Status Updates
 
-*To be added during implementation*
+### 2026-05-13 — CotChain landed; 4 stages compose end-to-end
+
+**Files.**
+- `crates/arawn-extractor/src/cot.rs` — `CotChain` struct, `ExtractionChain` impl, parse helpers, FTS-resolve helper, `projection_id_to_uuid` (Uuid v5 from the projection row id for stable provenance edges).
+- `crates/arawn-extractor/src/llm_text.rs` — `complete_text` drains the streaming `LlmClient` into a single string; `extract_json_block` tolerates models that fence JSON in ```json or surround it with prose.
+- `crates/arawn-extractor/src/lib.rs` — `pub mod cot; pub use CotChain;`.
+- `crates/arawn-extractor/Cargo.toml` — added `futures` (for stream consumption) and the `v5` feature on uuid.
+
+**Stage shapes** (matches the task spec):
+- Stage 1 classify → JSON `{in_scope, reason}`. Short-circuits with `skipped: true` if out of scope.
+- Stage 2 extract → JSON array of `{entity_type, title, content?, tags?}`. Unknown entity_types are skipped at write time with a warn.
+- Stage 3 link-by-name → JSON array of `{from, rel, to_name}`. Names refer to titles, not ids.
+- Stage 4 write → `store_fact` for entities, resolve links (new-entities map → FTS workstream tier → FTS global tier), `add_relation` for resolved links, plus EXTRACTED_FROM provenance edge (Uuid v5 of the projection_id).
+
+**Decisions kept from the task spec.**
+- **Open-coded JSON between stages**, not structured tool-use. The CoT chain is intended for free / cheap models that often don't support structured tool calls; plain JSON in a fenced or prose-wrapped response is universally returnable. `extract_json_block` makes the parser tolerant.
+- **FTS-resolve falls back from workstream → global tier.** If a link target lives in global memory (e.g. a Person), we still resolve it.
+- **Provenance edge uses the projection_id namespaced as Uuid v5.** Stable across runs, so re-running an item that was already extracted reinforces (via store_fact dedup) instead of duplicating edges.
+- **Body truncation at 4k chars per stage.** Free models often have small context windows. Truncation marker preserved so models notice.
+
+**Tests.**
+- 9 unit tests in `cot.rs` — classify parse (in/out of scope), candidates parse (empty/basic), links parse, entity/relation type case-insensitivity, deterministic uuid v5, truncate.
+- 4 unit tests in `llm_text.rs` — JSON-from-fence, JSON-from-prose, nested braces, missing-json fallback.
+- All 17 extractor unit tests pass (4 from T-0251 runner + 13 new).
+- Full workspace test sweep: 0 failures.
+- `angreal check clippy` clean.
+
+**Deferred.**
+- Construction-time wiring (arawn main building `CotChain` from `extraction_llm()` + `LlmClientPool::resolve(...)` and passing into the runner). The runner still uses StubChain by default; switching to CotChain is a single line in arawn main and is folded into T-0254's integration setup.
+- Quality tuning of prompts. Per the task scope: "good enough to round-trip"; real-data tuning happens once we see actual outputs.
+
+**Acceptance criteria.**
+- [x] `CotChain` implements `ExtractionChain` end-to-end through all 4 stages.
+- [x] Stage 1 short-circuits cleanly with `skipped: true` when out of scope.
+- [x] Stage 3's link-by-name uses FTS; misses drop with warn.
+- [x] Stage 4 uses `store_fact` for entities and `add_relation` for edges.
+- [x] Each entity gets a provenance `EXTRACTED_FROM` edge to the projection row's id (as Uuid v5).
+- [x] Unit tests cover each stage in isolation with deterministic LLM responses.
+- [x] `angreal check workspace` + `angreal check clippy` clean.
+
+T-0254 (integration tests) can now plug a MockLlm-backed `CotChain` into the runner.

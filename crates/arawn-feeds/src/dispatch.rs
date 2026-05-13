@@ -277,7 +277,7 @@ async fn run_feed_inner(
 /// Slack writes to two tables (top-level + thread replies); other
 /// templates write to one each. Used to decide which extractor
 /// invocations to fan out after a feed run.
-fn projection_feed_types_for(template_name: &str) -> Vec<String> {
+pub fn projection_feed_types_for(template_name: &str) -> Vec<String> {
     let provider = template_name.split('/').next().unwrap_or(template_name);
     match provider {
         "gmail" => vec!["gmail_messages".into()],

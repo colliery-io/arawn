@@ -381,22 +381,32 @@ async fn main() -> Result<()> {
             info!("memory tools registered (workstream-routed store + search)");
         }
 
-        // feed_search tool — read-only over the projections db. Opens
-        // (or creates) the same store the feed dispatch hook writes to.
+        // Shared projection store — feed_search, embed pass, feed
+        // dispatch, and the extractor all read/write the same file.
+        // Opening once and sharing the Arc keeps the connection pool
+        // tight and lets us thread the same handle into the
+        // ExtractorRunner that the backfill hook needs.
         let projections_db_path = std::path::PathBuf::from(&data_dir).join("projections.db");
-        match arawn_projections::ProjectionStore::open(&projections_db_path) {
-            Ok(store) => {
-                registry.register(Box::new(arawn_engine::FeedSearchTool::new(
-                    Arc::new(store),
-                    embedder.clone(),
-                )));
-                info!("feed_search tool registered");
-            }
-            Err(e) => warn!(
-                error = %e,
-                path = %projections_db_path.display(),
-                "feed_search unavailable — projections db could not be opened"
-            ),
+        let projections: Option<Arc<arawn_projections::ProjectionStore>> =
+            match arawn_projections::ProjectionStore::open(&projections_db_path) {
+                Ok(store) => Some(Arc::new(store)),
+                Err(e) => {
+                    warn!(
+                        error = %e,
+                        path = %projections_db_path.display(),
+                        "projection store unavailable — feed_search / extractor degraded"
+                    );
+                    None
+                }
+            };
+
+        // feed_search tool — read-only over the projections db.
+        if let Some(ref proj) = projections {
+            registry.register(Box::new(arawn_engine::FeedSearchTool::new(
+                Arc::clone(proj),
+                embedder.clone(),
+            )));
+            info!("feed_search tool registered");
         }
 
         // Embed pass: walks projection rows whose embedding is NULL
@@ -503,6 +513,32 @@ async fn main() -> Result<()> {
             service = service.with_memory_manager(Arc::clone(mgr));
         }
 
+        // Build the per-workstream extractor up-front so the
+        // /workstream bind hook can spawn a backfill on first
+        // binding. Requires both the projection store and the memory
+        // router. StubChain for now; T-0254's tests swap in CotChain.
+        let extractor_runner: Option<Arc<arawn_extractor::ExtractorRunner>> =
+            match (projections.as_ref(), workstream_router.as_ref()) {
+                (Some(proj), Some(router)) => {
+                    let router_clone = Arc::clone(router);
+                    let memory_resolver: arawn_extractor::runner::MemoryResolver =
+                        Arc::new(move |name: &str| {
+                            router_clone.for_workstream(name).map_err(|e| {
+                                arawn_extractor::ExtractionError::Memory(e.to_string())
+                            })
+                        });
+                    let chain: Arc<dyn arawn_extractor::ExtractionChain> =
+                        Arc::new(arawn_extractor::StubChain);
+                    Some(Arc::new(arawn_extractor::ExtractorRunner::new(
+                        service.shared_store(),
+                        Arc::clone(proj),
+                        memory_resolver,
+                        chain,
+                    )))
+                }
+                _ => None,
+            };
+
         // Register workstream tools (need the shared store from the service).
         // The active-workstream shim is shared across the switch/show/list/delete
         // tools AND the memory router so they observe the same session-level state.
@@ -529,9 +565,63 @@ async fn main() -> Result<()> {
         registry.register(Box::new(arawn_engine::WorkstreamDescribeTool::new(
             service.shared_store(),
         )));
-        registry.register(Box::new(arawn_engine::WorkstreamBindTool::new(
-            service.shared_store(),
-        )));
+        {
+            let mut bind_tool = arawn_engine::WorkstreamBindTool::new(service.shared_store());
+            if let Some(ref runner) = extractor_runner {
+                // BindBackfillHook impl: on `/workstream bind`, look up
+                // the feed_id in the feed store, map template →
+                // projection feed_types, and spawn the extractor
+                // backfill. Soft-fails when the feed isn't in the
+                // store (e.g. unknown id) so the bind itself still
+                // succeeds.
+                struct ExtractorBindHook {
+                    runner: Arc<arawn_extractor::ExtractorRunner>,
+                    store: Arc<std::sync::Mutex<arawn_storage::Store>>,
+                }
+                impl arawn_engine::BindBackfillHook for ExtractorBindHook {
+                    fn on_bind(&self, workstream_name: &str, feed_id: &str) {
+                        // Reach into the feeds table via the shared
+                        // storage Database to resolve template → feed_types.
+                        let template = {
+                            let store = self.store.lock().unwrap();
+                            let feed_store = arawn_feeds::FeedStore::new(
+                                store.database().conn(),
+                            );
+                            match feed_store.get(feed_id) {
+                                Ok(Some(rec)) => rec.template,
+                                _ => {
+                                    debug!(
+                                        feed_id = %feed_id,
+                                        "bind hook: feed not found; skipping backfill"
+                                    );
+                                    return;
+                                }
+                            }
+                        };
+                        let feed_types =
+                            arawn_feeds::projection_feed_types_for(&template);
+                        if feed_types.is_empty() {
+                            debug!(
+                                template = %template,
+                                "bind hook: template has no projection mapping"
+                            );
+                            return;
+                        }
+                        Arc::clone(&self.runner).spawn_backfill(
+                            workstream_name.to_string(),
+                            feed_types,
+                        );
+                    }
+                }
+                let hook: Arc<dyn arawn_engine::BindBackfillHook> =
+                    Arc::new(ExtractorBindHook {
+                        runner: Arc::clone(runner),
+                        store: service.shared_store(),
+                    });
+                bind_tool = bind_tool.with_backfill_hook(hook);
+            }
+            registry.register(Box::new(bind_tool));
+        }
         registry.register(Box::new(arawn_engine::WorkstreamUnbindTool::new(
             service.shared_store(),
         )));
@@ -832,55 +922,11 @@ async fn main() -> Result<()> {
                     }
                     let clients: Arc<dyn arawn_feeds::FeedClients> = Arc::new(clients);
 
-                    // Projection store: separate sqlite db colocated
-                    // with the feeds db. Optional — if it can't be
-                    // opened we log and continue without projections.
-                    let projections_db_path = std::path::PathBuf::from(&data_dir)
-                        .join("projections.db");
-                    let projections = match arawn_projections::ProjectionStore::open(
-                        &projections_db_path,
-                    ) {
-                        Ok(store) => {
-                            info!(
-                                path = %projections_db_path.display(),
-                                "projection store opened"
-                            );
-                            Some(Arc::new(store))
-                        }
-                        Err(e) => {
-                            warn!(
-                                error = %e,
-                                path = %projections_db_path.display(),
-                                "projection store unavailable — feeds will run without projections"
-                            );
-                            None
-                        }
-                    };
-
-                    // Build the extractor runner when both projections
-                    // and the memory router are available. StubChain for
-                    // T-0251 — T-0252 swaps in the real CoT chain.
-                    let extractor: Option<Arc<arawn_extractor::ExtractorRunner>> =
-                        match (projections.as_ref(), workstream_router.as_ref()) {
-                            (Some(proj), Some(router)) => {
-                                let router_clone = Arc::clone(router);
-                                let memory_resolver: arawn_extractor::runner::MemoryResolver =
-                                    Arc::new(move |name: &str| {
-                                        router_clone.for_workstream(name).map_err(|e| {
-                                            arawn_extractor::ExtractionError::Memory(e.to_string())
-                                        })
-                                    });
-                                let chain: Arc<dyn arawn_extractor::ExtractionChain> =
-                                    Arc::new(arawn_extractor::StubChain);
-                                Some(Arc::new(arawn_extractor::ExtractorRunner::new(
-                                    service.shared_store(),
-                                    Arc::clone(proj),
-                                    memory_resolver,
-                                    chain,
-                                )))
-                            }
-                            _ => None,
-                        };
+                    // Reuse the outer projection store + extractor runner
+                    // built earlier so the bind hook, feed_search, embed
+                    // pass, and feed dispatch all share one instance.
+                    let feeds_projections = projections.clone();
+                    let feeds_extractor = extractor_runner.clone();
 
                     match arawn_feeds::start(
                         workflow_runner.cloacina_runner(),
@@ -888,8 +934,8 @@ async fn main() -> Result<()> {
                         feeds_layout,
                         feeds_registry,
                         clients,
-                        projections,
-                        extractor,
+                        feeds_projections,
+                        feeds_extractor,
                     )
                     .await
                     {

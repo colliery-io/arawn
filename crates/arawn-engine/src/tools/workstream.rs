@@ -462,13 +462,26 @@ impl Tool for WorkstreamDescribeTool {
 // workstream_bind / workstream_unbind
 // ============================================================================
 
+/// Side-channel that fires when `/workstream bind` lands a new
+/// binding. Implementations spawn whatever work is needed (typically
+/// an extractor backfill over the bound feed's projection rows).
+pub trait BindBackfillHook: Send + Sync {
+    fn on_bind(&self, workstream_name: &str, feed_id: &str);
+}
+
 pub struct WorkstreamBindTool {
     store: Arc<Mutex<Store>>,
+    hook: Option<Arc<dyn BindBackfillHook>>,
 }
 
 impl WorkstreamBindTool {
     pub fn new(store: Arc<Mutex<Store>>) -> Self {
-        Self { store }
+        Self { store, hook: None }
+    }
+
+    pub fn with_backfill_hook(mut self, hook: Arc<dyn BindBackfillHook>) -> Self {
+        self.hook = Some(hook);
+        self
     }
 }
 
@@ -516,11 +529,22 @@ impl Tool for WorkstreamBindTool {
         if name.is_empty() || feed_id.is_empty() {
             return Ok(ToolOutput::error("name and feed_id are required".to_string()));
         }
-        let store = self.store.lock().unwrap();
-        match store.add_workstream_binding(&name, &feed_id) {
-            Ok(()) => Ok(ToolOutput::success(
-                json!({"name": name, "feed_id": feed_id}).to_string(),
-            )),
+        let result = {
+            let store = self.store.lock().unwrap();
+            store.add_workstream_binding(&name, &feed_id)
+        };
+        match result {
+            Ok(()) => {
+                // Fire backfill hook if wired. Drop store lock first
+                // — the hook spawns its own task and shouldn't hold
+                // our lock.
+                if let Some(hook) = self.hook.as_ref() {
+                    hook.on_bind(&name, &feed_id);
+                }
+                Ok(ToolOutput::success(
+                    json!({"name": name, "feed_id": feed_id}).to_string(),
+                ))
+            }
             Err(e) => Ok(ToolOutput::error(format!("failed: {e}"))),
         }
     }

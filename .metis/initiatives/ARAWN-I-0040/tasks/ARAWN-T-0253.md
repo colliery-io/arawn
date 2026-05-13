@@ -4,14 +4,14 @@ level: task
 title: "Backfill loop — walk existing projection rows on new binding"
 short_code: "ARAWN-T-0253"
 created_at: 2026-05-13T01:28:14.585042+00:00
-updated_at: 2026-05-13T01:28:14.585042+00:00
+updated_at: 2026-05-13T03:32:49.144430+00:00
 parent: ARAWN-I-0040
 blocked_by: [ARAWN-T-0251]
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -66,6 +66,10 @@ Each iteration processes `BATCH_SIZE` rows (default 50), uses the cursor for pag
 
 ## Acceptance Criteria
 
+## Acceptance Criteria
+
+## Acceptance Criteria
+
 - [ ] `ExtractorRunner::trigger_backfill(workstream, feed_id)` exists; called by `WorkstreamBindTool`.
 - [ ] Spawn-loop processes existing projection rows in batches until caught up.
 - [ ] Cursor advances monotonically; partial backfill resumes from where it left off after a restart.
@@ -96,4 +100,28 @@ Multiple binds for the same workstream in quick succession should not race. Chea
 
 ## Status Updates
 
-*To be added during implementation*
+### 2026-05-12 — Implementation complete
+
+**Runner-side (arawn-extractor):**
+- Added `in_flight: Arc<Mutex<HashSet<(workstream, feed_type)>>>` field on `ExtractorRunner` to gate concurrent backfills for the same (workstream, feed_type) pair.
+- Added `run_for_workstream_until_exhausted(workstream, feed_type, max_duration)` — loops `run_for_workstream` until `processed == 0` (caught up) or the wall-clock cap fires.
+- Added `spawn_backfill(self: Arc<Self>, workstream, feed_types)` — fire-and-forget tokio::spawn per feed_type. Honors a 10-minute wall-clock cap and clears the in-flight key on completion.
+- Tests: `run_until_exhausted_walks_all_pages` (7 rows, batch_size 3 → 3 pages then exit) and `spawn_backfill_is_idempotent_for_in_flight_key` (second spawn for same key is a no-op).
+
+**Engine-side (arawn-engine):**
+- Defined `BindBackfillHook` trait in `tools::workstream` so engine doesn't need to depend on `arawn-extractor` or `arawn-feeds`.
+- `WorkstreamBindTool::with_backfill_hook(hook)` builder lets the binary wire in the concrete impl.
+- `execute()` drops the storage mutex before calling the hook, so spawning the backfill doesn't hold the lock.
+
+**Feeds-side (arawn-feeds):**
+- Exposed `projection_feed_types_for(template)` as `pub` and re-exported it from the crate root so the bind hook can map template → projection feed_type list.
+
+**Binary wiring (arawn):**
+- Hoisted `projections` and `extractor_runner` to outer scope so feed_search, embed pass, bind hook, and feed dispatch share one instance.
+- Added inline `ExtractorBindHook` struct in `main.rs` that resolves `feed_id` → template via `FeedStore`, maps via `projection_feed_types_for`, then calls `runner.spawn_backfill`. Soft-fails when the feed isn't found.
+- Deduplicated the second `ExtractorRunner` construction that lived in the feed-dispatch block; that block now reuses the outer `extractor_runner.clone()`.
+
+**Validation:**
+- `cargo build -p arawn` — clean.
+- `angreal test unit` — full workspace passes (extractor 19 tests, no regressions elsewhere).
+- `angreal check clippy` — exit 0 (two pre-existing warnings unrelated to this task).

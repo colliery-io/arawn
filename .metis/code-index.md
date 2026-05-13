@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-13T03:09:17Z | 281 files | Python, Rust
+> Generated: 2026-05-13T03:26:51Z | 283 files | Python, Rust
 
 ## Project Structure
 
@@ -116,8 +116,10 @@
 │   ├── arawn-extractor/
 │   │   └── src/
 │   │       ├── chain.rs
+│   │       ├── cot.rs
 │   │       ├── error.rs
 │   │       ├── lib.rs
+│   │       ├── llm_text.rs
 │   │       └── runner.rs
 │   ├── arawn-feeds/
 │   │   ├── src/
@@ -617,16 +619,19 @@
 -  `embed_batch` function L17-31 — `( &'a self, texts: &'a [&'a str], ) -> std::pin::Pin< Box<dyn std::future::Futur...`
 -  `DEFAULT_MODEL` variable L39 — `: &str`
 -  `FILE_LOG_FILTER` variable L42 — `: &str` — Default file log filter: debug for arawn crates, warn for third-party.
--  `main` function L45-994 — `() -> Result<()>`
+-  `main` function L45-1084 — `() -> Result<()>`
 -  `Cli` struct L51-70 — `{ command: Option<Command>, data_dir: Option<String>, session: Option<Uuid>, lis...`
 -  `Command` enum L73-92 — `Serve | Tui | Plugin`
--  `run_cli_via_server` function L997-1102 — `( url: &str, prompt: &str, session_id: Option<Uuid>, ) -> Result<()>` — Run a CLI prompt by connecting to the running server via WebSocket.
--  `build_llm_client` function L1105-1128 — `( config: &arawn_bin::LlmConfig, ) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
--  `register_default_tools` function L1131-1177 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &arawn_bin::ArawnConfig, d...` — Register all default tools into the registry.
--  `connect_mcp_servers` function L1180-1228 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
--  `register_workflow_tools` function L1231-1248 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
--  `build_engine_config` function L1250-1285 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
--  `dirs_path` function L1287-1296 — `() -> Option<String>`
+-  `ExtractorBindHook` struct L577-580 — `{ runner: Arc<arawn_extractor::ExtractorRunner>, store: Arc<std::sync::Mutex<ara...`
+-  `ExtractorBindHook` type L581-615 — `= ExtractorBindHook`
+-  `on_bind` function L582-614 — `(&self, workstream_name: &str, feed_id: &str)`
+-  `run_cli_via_server` function L1087-1192 — `( url: &str, prompt: &str, session_id: Option<Uuid>, ) -> Result<()>` — Run a CLI prompt by connecting to the running server via WebSocket.
+-  `build_llm_client` function L1195-1218 — `( config: &arawn_bin::LlmConfig, ) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
+-  `register_default_tools` function L1221-1267 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &arawn_bin::ArawnConfig, d...` — Register all default tools into the registry.
+-  `connect_mcp_servers` function L1270-1318 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
+-  `register_workflow_tools` function L1321-1338 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
+-  `build_engine_config` function L1340-1375 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
+-  `dirs_path` function L1377-1386 — `() -> Option<String>`
 
 #### crates/arawn/src/plugin_cmd.rs
 
@@ -2802,14 +2807,16 @@
 - pub `new` function L328-330 — `(store: Arc<Mutex<Store>>, active: SessionWorkstream) -> Self` — the shim is enough to make `switch` / `show` work.
 - pub `WorkstreamDescribeTool` struct L401-403 — `{ store: Arc<Mutex<Store>> }` — the shim is enough to make `switch` / `show` work.
 - pub `new` function L406-408 — `(store: Arc<Mutex<Store>>) -> Self` — the shim is enough to make `switch` / `show` work.
-- pub `WorkstreamBindTool` struct L465-467 — `{ store: Arc<Mutex<Store>> }` — the shim is enough to make `switch` / `show` work.
-- pub `new` function L470-472 — `(store: Arc<Mutex<Store>>) -> Self` — the shim is enough to make `switch` / `show` work.
-- pub `WorkstreamUnbindTool` struct L529-531 — `{ store: Arc<Mutex<Store>> }` — the shim is enough to make `switch` / `show` work.
-- pub `new` function L534-536 — `(store: Arc<Mutex<Store>>) -> Self` — the shim is enough to make `switch` / `show` work.
-- pub `WorkstreamPromoteTool` struct L600-603 — `{ store: Arc<Mutex<Store>>, router: Arc<crate::workstream_router::WorkstreamMemo...` — Move one entity from the `scratch` workstream into a named target.
-- pub `new` function L606-611 — `( store: Arc<Mutex<Store>>, router: Arc<crate::workstream_router::WorkstreamMemo...` — the shim is enough to make `switch` / `show` work.
-- pub `WorkstreamDeleteTool` struct L754-757 — `{ store: Arc<Mutex<Store>>, active: SessionWorkstream }` — the shim is enough to make `switch` / `show` work.
-- pub `new` function L760-762 — `(store: Arc<Mutex<Store>>, active: SessionWorkstream) -> Self` — the shim is enough to make `switch` / `show` work.
+- pub `BindBackfillHook` interface L468-470 — `{ fn on_bind() }` — Side-channel that fires when `/workstream bind` lands a new
+- pub `WorkstreamBindTool` struct L472-475 — `{ store: Arc<Mutex<Store>>, hook: Option<Arc<dyn BindBackfillHook>> }` — the shim is enough to make `switch` / `show` work.
+- pub `new` function L478-480 — `(store: Arc<Mutex<Store>>) -> Self` — the shim is enough to make `switch` / `show` work.
+- pub `with_backfill_hook` function L482-485 — `(mut self, hook: Arc<dyn BindBackfillHook>) -> Self` — the shim is enough to make `switch` / `show` work.
+- pub `WorkstreamUnbindTool` struct L553-555 — `{ store: Arc<Mutex<Store>> }` — the shim is enough to make `switch` / `show` work.
+- pub `new` function L558-560 — `(store: Arc<Mutex<Store>>) -> Self` — the shim is enough to make `switch` / `show` work.
+- pub `WorkstreamPromoteTool` struct L624-627 — `{ store: Arc<Mutex<Store>>, router: Arc<crate::workstream_router::WorkstreamMemo...` — Move one entity from the `scratch` workstream into a named target.
+- pub `new` function L630-635 — `( store: Arc<Mutex<Store>>, router: Arc<crate::workstream_router::WorkstreamMemo...` — the shim is enough to make `switch` / `show` work.
+- pub `WorkstreamDeleteTool` struct L778-781 — `{ store: Arc<Mutex<Store>>, active: SessionWorkstream }` — the shim is enough to make `switch` / `show` work.
+- pub `new` function L784-786 — `(store: Arc<Mutex<Store>>, active: SessionWorkstream) -> Self` — the shim is enough to make `switch` / `show` work.
 -  `SessionWorkstream` type L30-48 — `= SessionWorkstream` — the shim is enough to make `switch` / `show` work.
 -  `SessionWorkstream` type L50-54 — `impl Default for SessionWorkstream` — the shim is enough to make `switch` / `show` work.
 -  `default` function L51-53 — `() -> Self` — the shim is enough to make `switch` / `show` work.
@@ -2850,50 +2857,50 @@
 -  `category` function L422-424 — `(&self) -> ToolCategory` — the shim is enough to make `switch` / `show` work.
 -  `parameters_schema` function L426-435 — `(&self) -> Value` — the shim is enough to make `switch` / `show` work.
 -  `execute` function L437-458 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — the shim is enough to make `switch` / `show` work.
--  `WorkstreamBindTool` type L469-473 — `= WorkstreamBindTool` — the shim is enough to make `switch` / `show` work.
--  `WorkstreamBindTool` type L476-527 — `impl Tool for WorkstreamBindTool` — the shim is enough to make `switch` / `show` work.
--  `name` function L477-479 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
--  `description` function L481-484 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
--  `category` function L486-488 — `(&self) -> ToolCategory` — the shim is enough to make `switch` / `show` work.
--  `parameters_schema` function L490-499 — `(&self) -> Value` — the shim is enough to make `switch` / `show` work.
--  `execute` function L501-526 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — the shim is enough to make `switch` / `show` work.
--  `WorkstreamUnbindTool` type L533-537 — `= WorkstreamUnbindTool` — the shim is enough to make `switch` / `show` work.
--  `WorkstreamUnbindTool` type L540-590 — `impl Tool for WorkstreamUnbindTool` — the shim is enough to make `switch` / `show` work.
--  `name` function L541-543 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
--  `description` function L545-547 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
--  `category` function L549-551 — `(&self) -> ToolCategory` — the shim is enough to make `switch` / `show` work.
--  `parameters_schema` function L553-562 — `(&self) -> Value` — the shim is enough to make `switch` / `show` work.
--  `execute` function L564-589 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — the shim is enough to make `switch` / `show` work.
--  `WorkstreamPromoteTool` type L605-612 — `= WorkstreamPromoteTool` — the shim is enough to make `switch` / `show` work.
--  `WorkstreamPromoteTool` type L615-748 — `impl Tool for WorkstreamPromoteTool` — the shim is enough to make `switch` / `show` work.
--  `name` function L616-618 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
--  `description` function L620-625 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
--  `category` function L627-629 — `(&self) -> ToolCategory` — the shim is enough to make `switch` / `show` work.
--  `parameters_schema` function L631-640 — `(&self) -> Value` — the shim is enough to make `switch` / `show` work.
--  `execute` function L642-747 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — the shim is enough to make `switch` / `show` work.
--  `WorkstreamDeleteTool` type L759-763 — `= WorkstreamDeleteTool` — the shim is enough to make `switch` / `show` work.
--  `WorkstreamDeleteTool` type L766-814 — `impl Tool for WorkstreamDeleteTool` — the shim is enough to make `switch` / `show` work.
--  `name` function L767-769 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
--  `description` function L771-774 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
--  `category` function L776-778 — `(&self) -> ToolCategory` — the shim is enough to make `switch` / `show` work.
--  `parameters_schema` function L780-786 — `(&self) -> Value` — the shim is enough to make `switch` / `show` work.
--  `execute` function L788-813 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — the shim is enough to make `switch` / `show` work.
--  `tests` module L817-1084 — `-` — the shim is enough to make `switch` / `show` work.
--  `setup` function L821-826 — `() -> (tempfile::TempDir, Arc<Mutex<Store>>, SessionWorkstream)` — the shim is enough to make `switch` / `show` work.
--  `test_ctx` function L828-832 — `(tmp: &tempfile::TempDir) -> crate::context::EngineToolContext` — the shim is enough to make `switch` / `show` work.
--  `create_succeeds_with_valid_slug` function L835-844 — `()` — the shim is enough to make `switch` / `show` work.
--  `create_refuses_scratch` function L847-855 — `()` — the shim is enough to make `switch` / `show` work.
--  `switch_updates_active` function L858-872 — `()` — the shim is enough to make `switch` / `show` work.
--  `switch_unknown_errors` function L875-884 — `()` — the shim is enough to make `switch` / `show` work.
--  `show_defaults_to_active` function L887-893 — `()` — the shim is enough to make `switch` / `show` work.
--  `describe_updates_description` function L896-919 — `()` — the shim is enough to make `switch` / `show` work.
--  `bind_and_unbind_round_trip` function L922-952 — `()` — the shim is enough to make `switch` / `show` work.
--  `delete_refuses_scratch` function L955-964 — `()` — the shim is enough to make `switch` / `show` work.
--  `delete_refuses_currently_active` function L967-982 — `()` — the shim is enough to make `switch` / `show` work.
--  `delete_soft_marks_archived` function L985-1002 — `()` — the shim is enough to make `switch` / `show` work.
--  `promote_moves_entity_from_scratch_to_target` function L1005-1045 — `()` — the shim is enough to make `switch` / `show` work.
--  `promote_refuses_unknown_target` function L1048-1067 — `()` — the shim is enough to make `switch` / `show` work.
--  `list_marks_active` function L1070-1083 — `()` — the shim is enough to make `switch` / `show` work.
+-  `WorkstreamBindTool` type L477-486 — `= WorkstreamBindTool` — the shim is enough to make `switch` / `show` work.
+-  `WorkstreamBindTool` type L489-551 — `impl Tool for WorkstreamBindTool` — the shim is enough to make `switch` / `show` work.
+-  `name` function L490-492 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
+-  `description` function L494-497 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
+-  `category` function L499-501 — `(&self) -> ToolCategory` — the shim is enough to make `switch` / `show` work.
+-  `parameters_schema` function L503-512 — `(&self) -> Value` — the shim is enough to make `switch` / `show` work.
+-  `execute` function L514-550 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — the shim is enough to make `switch` / `show` work.
+-  `WorkstreamUnbindTool` type L557-561 — `= WorkstreamUnbindTool` — the shim is enough to make `switch` / `show` work.
+-  `WorkstreamUnbindTool` type L564-614 — `impl Tool for WorkstreamUnbindTool` — the shim is enough to make `switch` / `show` work.
+-  `name` function L565-567 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
+-  `description` function L569-571 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
+-  `category` function L573-575 — `(&self) -> ToolCategory` — the shim is enough to make `switch` / `show` work.
+-  `parameters_schema` function L577-586 — `(&self) -> Value` — the shim is enough to make `switch` / `show` work.
+-  `execute` function L588-613 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — the shim is enough to make `switch` / `show` work.
+-  `WorkstreamPromoteTool` type L629-636 — `= WorkstreamPromoteTool` — the shim is enough to make `switch` / `show` work.
+-  `WorkstreamPromoteTool` type L639-772 — `impl Tool for WorkstreamPromoteTool` — the shim is enough to make `switch` / `show` work.
+-  `name` function L640-642 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
+-  `description` function L644-649 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
+-  `category` function L651-653 — `(&self) -> ToolCategory` — the shim is enough to make `switch` / `show` work.
+-  `parameters_schema` function L655-664 — `(&self) -> Value` — the shim is enough to make `switch` / `show` work.
+-  `execute` function L666-771 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — the shim is enough to make `switch` / `show` work.
+-  `WorkstreamDeleteTool` type L783-787 — `= WorkstreamDeleteTool` — the shim is enough to make `switch` / `show` work.
+-  `WorkstreamDeleteTool` type L790-838 — `impl Tool for WorkstreamDeleteTool` — the shim is enough to make `switch` / `show` work.
+-  `name` function L791-793 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
+-  `description` function L795-798 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
+-  `category` function L800-802 — `(&self) -> ToolCategory` — the shim is enough to make `switch` / `show` work.
+-  `parameters_schema` function L804-810 — `(&self) -> Value` — the shim is enough to make `switch` / `show` work.
+-  `execute` function L812-837 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — the shim is enough to make `switch` / `show` work.
+-  `tests` module L841-1108 — `-` — the shim is enough to make `switch` / `show` work.
+-  `setup` function L845-850 — `() -> (tempfile::TempDir, Arc<Mutex<Store>>, SessionWorkstream)` — the shim is enough to make `switch` / `show` work.
+-  `test_ctx` function L852-856 — `(tmp: &tempfile::TempDir) -> crate::context::EngineToolContext` — the shim is enough to make `switch` / `show` work.
+-  `create_succeeds_with_valid_slug` function L859-868 — `()` — the shim is enough to make `switch` / `show` work.
+-  `create_refuses_scratch` function L871-879 — `()` — the shim is enough to make `switch` / `show` work.
+-  `switch_updates_active` function L882-896 — `()` — the shim is enough to make `switch` / `show` work.
+-  `switch_unknown_errors` function L899-908 — `()` — the shim is enough to make `switch` / `show` work.
+-  `show_defaults_to_active` function L911-917 — `()` — the shim is enough to make `switch` / `show` work.
+-  `describe_updates_description` function L920-943 — `()` — the shim is enough to make `switch` / `show` work.
+-  `bind_and_unbind_round_trip` function L946-976 — `()` — the shim is enough to make `switch` / `show` work.
+-  `delete_refuses_scratch` function L979-988 — `()` — the shim is enough to make `switch` / `show` work.
+-  `delete_refuses_currently_active` function L991-1006 — `()` — the shim is enough to make `switch` / `show` work.
+-  `delete_soft_marks_archived` function L1009-1026 — `()` — the shim is enough to make `switch` / `show` work.
+-  `promote_moves_entity_from_scratch_to_target` function L1029-1069 — `()` — the shim is enough to make `switch` / `show` work.
+-  `promote_refuses_unknown_target` function L1072-1091 — `()` — the shim is enough to make `switch` / `show` work.
+-  `list_marks_active` function L1094-1107 — `()` — the shim is enough to make `switch` / `show` work.
 
 ### crates/arawn-extractor/src
 
@@ -2906,6 +2913,45 @@
 - pub `StubChain` struct L45 — `-` — No-op chain.
 -  `StubChain` type L48-61 — `impl ExtractionChain for StubChain` — real 4-stage chain (classify → extract → link-by-name → write).
 -  `run` function L49-60 — `( &self, _workstream: &Workstream, _row: &ProjectionRow, _kb: &MemoryManager, ) ...` — real 4-stage chain (classify → extract → link-by-name → write).
+
+#### crates/arawn-extractor/src/cot.rs
+
+- pub `CotChain` struct L37-43 — `{ client: Arc<dyn LlmClient>, model: String, link_score_floor: f32 }` — The real CoT chain.
+- pub `new` function L46-52 — `(client: Arc<dyn LlmClient>, model: impl Into<String>) -> Self` — steward (Phase 5) refines vocabulary later.
+- pub `with_link_score_floor` function L54-57 — `(mut self, floor: f32) -> Self` — steward (Phase 5) refines vocabulary later.
+-  `CotChain` type L45-58 — `= CotChain` — steward (Phase 5) refines vocabulary later.
+-  `CotChain` type L61-96 — `impl ExtractionChain for CotChain` — steward (Phase 5) refines vocabulary later.
+-  `run` function L62-95 — `( &self, workstream: &Workstream, row: &ProjectionRow, kb: &MemoryManager, ) -> ...` — steward (Phase 5) refines vocabulary later.
+-  `ClassifyResult` struct L103-107 — `{ in_scope: bool, reason: String }` — steward (Phase 5) refines vocabulary later.
+-  `CotChain` type L109-139 — `= CotChain` — steward (Phase 5) refines vocabulary later.
+-  `classify` function L110-138 — `( &self, ws: &Workstream, row: &ProjectionRow, ) -> Result<ClassifyResult, Extra...` — steward (Phase 5) refines vocabulary later.
+-  `parse_classify` function L141-145 — `(raw: &str) -> Result<ClassifyResult, ExtractionError>` — steward (Phase 5) refines vocabulary later.
+-  `ExtractedCandidate` struct L152-159 — `{ entity_type: String, title: String, content: String, tags: Vec<String> }` — steward (Phase 5) refines vocabulary later.
+-  `CotChain` type L161-189 — `= CotChain` — steward (Phase 5) refines vocabulary later.
+-  `extract` function L162-188 — `( &self, ws: &Workstream, row: &ProjectionRow, ) -> Result<Vec<ExtractedCandidat...` — steward (Phase 5) refines vocabulary later.
+-  `parse_candidates` function L191-195 — `(raw: &str) -> Result<Vec<ExtractedCandidate>, ExtractionError>` — steward (Phase 5) refines vocabulary later.
+-  `LinkProposal` struct L202-206 — `{ from: String, rel: String, to_name: String }` — steward (Phase 5) refines vocabulary later.
+-  `CotChain` type L208-247 — `= CotChain` — steward (Phase 5) refines vocabulary later.
+-  `link_by_name` function L209-246 — `( &self, ws: &Workstream, candidates: &[ExtractedCandidate], ) -> Result<Vec<Lin...` — steward (Phase 5) refines vocabulary later.
+-  `parse_links` function L249-253 — `(raw: &str) -> Result<Vec<LinkProposal>, ExtractionError>` — steward (Phase 5) refines vocabulary later.
+-  `CotChain` type L259-334 — `= CotChain` — steward (Phase 5) refines vocabulary later.
+-  `write` function L260-333 — `( &self, row: &ProjectionRow, candidates: &[ExtractedCandidate], links: &[LinkPr...` — steward (Phase 5) refines vocabulary later.
+-  `resolve_by_fts` function L338-352 — `( kb: &MemoryManager, name: &str, _floor: f32, ) -> Option<(Uuid, Scope)>` — FTS-resolve a name against both KB tiers.
+-  `first_fts_hit` function L354-359 — `(store: &Arc<MemoryStore>, query: &str) -> Option<Uuid>` — steward (Phase 5) refines vocabulary later.
+-  `parse_entity_type` function L361-363 — `(s: &str) -> Option<EntityType>` — steward (Phase 5) refines vocabulary later.
+-  `parse_relation_type` function L365-367 — `(s: &str) -> Option<RelationType>` — steward (Phase 5) refines vocabulary later.
+-  `projection_id_to_uuid` function L371-373 — `(projection_id: &str) -> Uuid` — Derive a deterministic Uuid v5 from the projection row id so the
+-  `truncate` function L375-380 — `(s: &str, max_chars: usize) -> String` — steward (Phase 5) refines vocabulary later.
+-  `tests` module L383-456 — `-` — steward (Phase 5) refines vocabulary later.
+-  `parse_classify_in_scope` function L387-392 — `()` — steward (Phase 5) refines vocabulary later.
+-  `parse_classify_out_of_scope` function L395-399 — `()` — steward (Phase 5) refines vocabulary later.
+-  `parse_candidates_empty_array` function L402-405 — `()` — steward (Phase 5) refines vocabulary later.
+-  `parse_candidates_basic` function L408-415 — `()` — steward (Phase 5) refines vocabulary later.
+-  `parse_links_basic` function L418-423 — `()` — steward (Phase 5) refines vocabulary later.
+-  `entity_type_lowercased_for_parse` function L426-430 — `()` — steward (Phase 5) refines vocabulary later.
+-  `relation_type_lowercased_for_parse` function L433-437 — `()` — steward (Phase 5) refines vocabulary later.
+-  `projection_id_to_uuid_is_deterministic` function L440-446 — `()` — steward (Phase 5) refines vocabulary later.
+-  `truncate_preserves_short_input` function L449-455 — `()` — steward (Phase 5) refines vocabulary later.
 
 #### crates/arawn-extractor/src/error.rs
 
@@ -2922,29 +2968,46 @@
 #### crates/arawn-extractor/src/lib.rs
 
 - pub `chain` module L10 — `-` — Sits between feed-driven projections and per-workstream memory KBs.
-- pub `error` module L11 — `-` — pick up only new rows.
-- pub `runner` module L12 — `-` — pick up only new rows.
+- pub `cot` module L11 — `-` — pick up only new rows.
+- pub `error` module L12 — `-` — pick up only new rows.
+- pub `llm_text` module L13 — `-` — pick up only new rows.
+- pub `runner` module L14 — `-` — pick up only new rows.
+
+#### crates/arawn-extractor/src/llm_text.rs
+
+- pub `complete_text` function L19-54 — `( client: &Arc<dyn LlmClient>, model: &str, system: &str, user: &str, ) -> Resul...` — Send a single-turn (system + user) chat request and collect every
+- pub `extract_json_block` function L59-83 — `(raw: &str) -> Option<&str>` — Many LLMs wrap JSON output in ```json fences or prose.
+-  `tests` module L86-111 — `-` — before parsing JSON, so streaming buys us nothing — just collect.
+-  `extracts_object_from_fenced_block` function L90-93 — `()` — before parsing JSON, so streaming buys us nothing — just collect.
+-  `extracts_array_from_prose` function L96-99 — `()` — before parsing JSON, so streaming buys us nothing — just collect.
+-  `handles_nested_braces` function L102-105 — `()` — before parsing JSON, so streaming buys us nothing — just collect.
+-  `returns_none_when_absent` function L108-110 — `()` — before parsing JSON, so streaming buys us nothing — just collect.
 
 #### crates/arawn-extractor/src/runner.rs
 
 - pub `RunStats` struct L26-33 — `{ processed: usize, kept: usize, skipped: usize, errors: usize, entities_written...` — Stats for one `run_for_workstream` invocation.
 - pub `DEFAULT_BATCH_SIZE` variable L37 — `: usize` — Default cap on rows per `run_for_workstream` invocation.
 - pub `MemoryResolver` type L42-46 — `= Arc< dyn Fn(&str) -> Result<Arc<arawn_memory::MemoryManager>, ExtractionError>...` — Function that materializes the `MemoryManager` for a workstream
-- pub `ExtractorRunner` struct L51-57 — `{ store: Arc<std::sync::Mutex<Store>>, projections: Arc<ProjectionStore>, memory...` — The runner owns the bits that survive across calls — store handles,
-- pub `new` function L60-73 — `( store: Arc<std::sync::Mutex<Store>>, projections: Arc<ProjectionStore>, memory...` — hook after a projection write.
-- pub `with_batch_size` function L75-78 — `(mut self, n: usize) -> Self` — hook after a projection write.
-- pub `run_for_workstream` function L84-159 — `( &self, workstream: &Workstream, feed_type: &str, ) -> Result<RunStats, Extract...` — Process one batch of new projection rows for `workstream`.
-- pub `run_for_all_workstreams` function L165-199 — `( &self, feed_type: &str, ) -> Result<Vec<(String, RunStats)>, ExtractionError>` — Iterate every active (non-archived) workstream and run extraction
--  `ExtractorRunner` type L59-200 — `= ExtractorRunner` — hook after a projection write.
--  `fetch_projection_rows` function L204-264 — `( store: &ProjectionStore, feed_type: &str, cursor_ts: Option<DateTime<Utc>>, li...` — Page projection rows of a given feed_type whose `source_ts` is
--  `tests` module L267-395 — `-` — hook after a projection write.
--  `ws` function L273-277 — `(name: &str) -> Workstream` — hook after a projection write.
--  `fixture_proj` function L279-292 — `(id: &str, body: &str, ts_offset: i64) -> GmailMessageProjection` — hook after a projection write.
--  `setup` function L294-316 — `() -> ( tempfile::TempDir, Arc<std::sync::Mutex<Store>>, Arc<ProjectionStore>, M...` — hook after a projection write.
--  `empty_projection_table_is_a_noop` function L319-327 — `()` — hook after a projection write.
--  `stub_chain_advances_cursor_and_marks_skipped` function L330-357 — `()` — hook after a projection write.
--  `rerun_with_no_new_rows_is_a_noop` function L360-373 — `()` — hook after a projection write.
--  `run_for_all_workstreams_iterates_active_only` function L376-394 — `()` — hook after a projection write.
+- pub `ExtractorRunner` struct L51-60 — `{ store: Arc<std::sync::Mutex<Store>>, projections: Arc<ProjectionStore>, memory...` — The runner owns the bits that survive across calls — store handles,
+- pub `new` function L63-77 — `( store: Arc<std::sync::Mutex<Store>>, projections: Arc<ProjectionStore>, memory...` — hook after a projection write.
+- pub `with_batch_size` function L79-82 — `(mut self, n: usize) -> Self` — hook after a projection write.
+- pub `run_for_workstream` function L88-163 — `( &self, workstream: &Workstream, feed_type: &str, ) -> Result<RunStats, Extract...` — Process one batch of new projection rows for `workstream`.
+- pub `run_for_workstream_until_exhausted` function L171-205 — `( &self, workstream: &Workstream, feed_type: &str, max_duration: std::time::Dura...` — Run `run_for_workstream` in a loop until either the projection
+- pub `spawn_backfill` function L215-274 — `(self: Arc<Self>, workstream_name: String, feed_types: Vec<String>)` — Spawn a backfill task for `(workstream_name, feed_types)`.
+- pub `run_for_all_workstreams` function L280-314 — `( &self, feed_type: &str, ) -> Result<Vec<(String, RunStats)>, ExtractionError>` — Iterate every active (non-archived) workstream and run extraction
+-  `ExtractorRunner` type L62-315 — `= ExtractorRunner` — hook after a projection write.
+-  `MAX` variable L216 — `: std::time::Duration` — hook after a projection write.
+-  `fetch_projection_rows` function L319-379 — `( store: &ProjectionStore, feed_type: &str, cursor_ts: Option<DateTime<Utc>>, li...` — Page projection rows of a given feed_type whose `source_ts` is
+-  `tests` module L382-567 — `-` — hook after a projection write.
+-  `ws` function L388-392 — `(name: &str) -> Workstream` — hook after a projection write.
+-  `fixture_proj` function L394-407 — `(id: &str, body: &str, ts_offset: i64) -> GmailMessageProjection` — hook after a projection write.
+-  `setup` function L409-431 — `() -> ( tempfile::TempDir, Arc<std::sync::Mutex<Store>>, Arc<ProjectionStore>, M...` — hook after a projection write.
+-  `empty_projection_table_is_a_noop` function L434-442 — `()` — hook after a projection write.
+-  `stub_chain_advances_cursor_and_marks_skipped` function L445-472 — `()` — hook after a projection write.
+-  `rerun_with_no_new_rows_is_a_noop` function L475-488 — `()` — hook after a projection write.
+-  `run_until_exhausted_walks_all_pages` function L491-510 — `()` — hook after a projection write.
+-  `spawn_backfill_is_idempotent_for_in_flight_key` function L513-545 — `()` — hook after a projection write.
+-  `run_for_all_workstreams_iterates_active_only` function L548-566 — `()` — hook after a projection write.
 
 ### crates/arawn-feeds/src
 
@@ -2966,13 +3029,13 @@
 - pub `new` function L71-77 — `(feed_id: impl Into<String>, runtime: FeedRuntimeContext) -> Self` — retry/audit machinery handles the rest.
 - pub `run_feed` function L113-118 — `( feed_id: &str, runtime: &FeedRuntimeContext, ) -> Result<crate::template::RunO...` — The actual fetch+write cycle.
 - pub `run_feed_force` function L123-128 — `( feed_id: &str, runtime: &FeedRuntimeContext, ) -> Result<crate::template::RunO...` — Variant that ignores the `enabled` flag — used by the backfill
+- pub `projection_feed_types_for` function L280-295 — `(template_name: &str) -> Vec<String>` — Map a feed template name to the projection feed_types it produces.
 -  `FeedDispatchTask` type L70-78 — `= FeedDispatchTask` — retry/audit machinery handles the rest.
 -  `FeedDispatchTask` type L81-103 — `impl Task for FeedDispatchTask` — retry/audit machinery handles the rest.
 -  `id` function L82-84 — `(&self) -> &str` — retry/audit machinery handles the rest.
 -  `dependencies` function L86-88 — `(&self) -> &[TaskNamespace]` — retry/audit machinery handles the rest.
 -  `execute` function L90-102 — `( &self, context: Context<Value>, ) -> Result<Context<Value>, TaskError>` — retry/audit machinery handles the rest.
 -  `run_feed_inner` function L130-274 — `( feed_id: &str, runtime: &FeedRuntimeContext, force: bool, ) -> Result<crate::t...` — retry/audit machinery handles the rest.
--  `projection_feed_types_for` function L280-295 — `(template_name: &str) -> Vec<String>` — Map a feed template name to the projection feed_types it produces.
 -  `persist_meta_failure` function L297-312 — `( feed_dir: &std::path::Path, template: &str, params: &crate::types::TemplatePar...` — retry/audit machinery handles the rest.
 -  `tests` module L315-452 — `-` — retry/audit machinery handles the rest.
 -  `open_test_db` function L324-339 — `() -> Connection` — retry/audit machinery handles the rest.

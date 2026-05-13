@@ -45,7 +45,7 @@ pub use think::ThinkTool;
 pub use web_fetch::WebFetchTool;
 pub use web_search::WebSearchTool;
 pub use workstream::{
-    SessionWorkstream, WorkstreamBindTool, WorkstreamCreateTool, WorkstreamDeleteTool,
-    WorkstreamDescribeTool, WorkstreamListTool, WorkstreamPromoteTool, WorkstreamShowTool,
-    WorkstreamSwitchTool, WorkstreamUnbindTool,
+    BindBackfillHook, SessionWorkstream, WorkstreamBindTool, WorkstreamCreateTool,
+    WorkstreamDeleteTool, WorkstreamDescribeTool, WorkstreamListTool, WorkstreamPromoteTool,
+    WorkstreamShowTool, WorkstreamSwitchTool, WorkstreamUnbindTool,
 };

@@ -55,7 +55,7 @@ pub use tools::{
     FileWriteTool, GlobTool, GrepTool, SessionTaskStore, ShellTool, SkillTool, SleepTool,
     FeedSearchTool, MemorySearchTool, MemoryStoreTool, TaskCreateTool, TaskGetTool, TaskListTool, TaskOutputTool, TaskStopTool,
     TaskUpdateTool, ThinkTool, WebFetchTool, WebSearchTool,
-    SessionWorkstream, WorkstreamBindTool, WorkstreamCreateTool, WorkstreamDeleteTool,
-    WorkstreamDescribeTool, WorkstreamListTool, WorkstreamPromoteTool, WorkstreamShowTool,
-    WorkstreamSwitchTool, WorkstreamUnbindTool,
+    BindBackfillHook, SessionWorkstream, WorkstreamBindTool, WorkstreamCreateTool,
+    WorkstreamDeleteTool, WorkstreamDescribeTool, WorkstreamListTool, WorkstreamPromoteTool,
+    WorkstreamShowTool, WorkstreamSwitchTool, WorkstreamUnbindTool,
 };
