@@ -4,14 +4,14 @@ level: task
 title: "Steward scaffolding — cloacina workflow, journal table, rollback infra"
 short_code: "ARAWN-T-0256"
 created_at: 2026-05-13T03:47:04.271108+00:00
-updated_at: 2026-05-13T03:47:04.271108+00:00
+updated_at: 2026-05-13T04:08:52.015086+00:00
 parent: ARAWN-I-0040
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -63,6 +63,10 @@ initiative_id: ARAWN-I-0040
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria **[REQUIRED]**
 
@@ -131,6 +135,29 @@ initiative_id: ARAWN-I-0040
 ### Risk Considerations
 {Technical risks and mitigation strategies}
 
-## Status Updates **[REQUIRED]**
+## Status Updates
 
-*To be added during implementation*
+### 2026-05-13 — Scaffolding complete
+
+**New crate `arawn-steward` (5 modules, ~700 lines).**
+
+- `error::StewardError` — local error type with `From` impls for `rusqlite`, `serde_json`, and `arawn_memory::MemoryError`.
+- `journal::Journal` — opens (or creates) `steward_journal` colocated with each workstream's `memory.db` via a separate rusqlite connection. CRUD: `write_ahead(record) -> id` (returns sqlite rowid), `get(id)`, `recent(limit)`, `pending_proposals(limit)`, `revert(id) -> RevertResult { newly_reverted }` (idempotent). Schema matches ADR-0003 (ts/subroutine/action/inputs_json/outputs_json/model/prompt_hash/applied/reverted_at) plus two indexes (ts; applied+reverted_at for pending-proposal queries). `Journal::prompt_hash(input)` is a deterministic uuid-v5 string used by subroutines.
+- `subroutine::StewardSubroutine` trait + `IdentitySubroutine` no-op so the scaffolding is exercisable end-to-end before T-0257 lands re-shelve/dust.
+- `runner::StewardRunner` — walks active workstreams via `Store::list_workstreams`, runs each configured subroutine sequentially per workstream, caches `Journal` instances per workstream to keep sqlite handles warm. `SubroutineCaps` is per-subroutine with a default fallback — defaults are placeholders per ADR-0003 (real values come from the Phase-5 harness later).
+
+**Wiring (arawn binary).**
+- Added `arawn-steward` to workspace + `crates/arawn/Cargo.toml` deps.
+- `main.rs` spawns a tokio interval task (every 1h for dev) that calls `runner.run_pass_for_all()`. Gated on the workstream router being present so steward + memory routing stay in lockstep.
+
+**Tests (15 total across the crate, 9 inline + 6 in submodules):**
+- `journal::tests` — write/read round-trip; revert idempotency; recent ordering; pending_proposals filter on applied+reverted; deterministic prompt_hash; schema idempotent on reopen.
+- `runner::tests` — pass visits every active workstream and skips archived; caps overrides take precedence; journal persists across passes (two passes → two rows).
+
+`cargo test -p arawn-steward` → 9/9. Full workspace tests + clippy green.
+
+**Design notes / deferred:**
+- Cloacina workflow per workstream was the original sketch in I-0040; I chose a tokio interval task (mirrors the embed pass) for v1. Cleaner, fewer moving parts, and the per-workstream-cron flavor wasn't pulling its weight at this scale. Easy to swap to cloacina later if cadence-per-workstream config becomes a real need.
+- Subroutine error during a pass is logged + counted but does not abort remaining subroutines on the same workstream. Matches the extractor's "soft-fail per workstream" pattern.
+- The journal lives in the *same sqlite file* as the workstream's graphqlite KB (per ADR-A-0002 colocation pattern). Multiple rusqlite connections to the file are fine; journal table is disjoint from graphqlite tables.
+- `IdentitySubroutine` deliberately reports `is_mutating() = false` so the proposal-shaped journal path gets exercised. The trait's `is_mutating()` flag isn't enforced yet — T-0257 wires the runner to refuse mutating writes from a non-mutating subroutine.

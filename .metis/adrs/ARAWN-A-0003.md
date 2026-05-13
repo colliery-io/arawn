@@ -5,7 +5,7 @@ title: "Steward bounded blast radius — what it can change, journal, rollback c
 number: 1
 short_code: "ARAWN-A-0003"
 created_at: 2026-05-13T03:46:59.335499+00:00
-updated_at: 2026-05-13T03:46:59.335499+00:00
+updated_at: 2026-05-13T04:01:26.875592+00:00
 decision_date: 
 decision_maker: 
 parent: 
@@ -13,7 +13,7 @@ archived: false
 
 tags:
   - "#adr"
-  - "#phase/draft"
+  - "#phase/decided"
 
 
 exit_criteria_met: false
@@ -45,18 +45,14 @@ This ADR locks down what the steward is *allowed* to change, how every change is
 
 | Subroutine | Verbs allowed | Verbs forbidden |
 |---|---|---|
-| **re-shelve** | `mark superseded`, `add SUPERSEDES relation`, `set merged_into pointer property` | `DELETE entity`, `DELETE relation`, content edits |
+| **re-shelve** | `mark superseded`, `add SUPERSEDES relation`, `set merged_into pointer property`, `combine content fields` (copy non-empty fields from the deprecated entity into the survivor), `DELETE entity` (only when the LLM judges the entity erroneous, not merely duplicate) | removing `EXTRACTED_FROM` provenance edges or the projection rows they point at |
 | **dust** | `INSERT new summary entity`, `add SUMMARIZES relations to source entities` | `mark sources superseded`, any deletion |
 | **map** | (proposal-only — writes to `steward_proposals` table) | any mutation of nodes/edges in the KB graph |
 | **door-watch** | (proposal-only) | any mutation |
 
 **Never delete provenance.** No subroutine may remove an `EXTRACTED_FROM` edge or the row it points at.
 
-**2. Per-pass blast-radius caps** (configurable; defaults stated):
-
-- re-shelve: ≤ N merges per pass (default `N=10`).
-- dust: ≤ M summary entities per pass (default `M=5`).
-- map / door-watch: ≤ K proposals per pass (default `K=20`).
+**2. Per-pass blast-radius caps.** Each subroutine has a configurable per-pass cap on actions (merges / summaries / proposals). Defaults are intentionally *not* baked into this ADR — initial values are placeholders in `arawn.toml`; real values come out of a test-harness exercise that runs the steward against representative workstream fixtures and measures convergence vs. damage rate. The harness is part of Phase 5 deliverables.
 
 If a pass would exceed its cap, the steward writes a journal note and stops the subroutine. The cap protects against an LLM that goes pathological — you lose at most a cap-bounded amount of damage.
 
@@ -81,7 +77,7 @@ Every steward action — *including proposals* — gets exactly one journal row.
 
 **4. Rollback contract.** `Journal::revert(action_id)` reads `outputs_json`, applies the inverse, and sets `reverted_at`. Per subroutine:
 
-- **re-shelve** revert: unset `superseded` on `old`, remove the SUPERSEDES edge, clear `merged_into`.
+- **re-shelve** revert: unset `superseded` on `old`, remove the SUPERSEDES edge, clear `merged_into`. When the action was `combine content`, restore the survivor's pre-merge field snapshot from `outputs_json`. When the action was `delete entity`, re-insert from the full entity snapshot stored in `outputs_json` (the journal carries the entire deleted row so revert is reconstitutable).
 - **dust** revert: delete the summary entity + its SUMMARIZES edges (the source entities were untouched).
 - **map / door-watch** revert: mark the proposal as rejected (it never mutated, so revert is a metadata flip).
 

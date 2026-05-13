@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-13T03:41:16Z | 283 files | Python, Rust
+> Generated: 2026-05-13T03:55:02Z | 284 files | Python, Rust
 
 ## Project Structure
 
@@ -103,6 +103,7 @@
 │   │       │   ├── safe_env.rs
 │   │       │   ├── sensitive_paths.rs
 │   │       │   ├── shell.rs
+│   │       │   ├── signal.rs
 │   │       │   ├── skill.rs
 │   │       │   ├── sleep.rs
 │   │       │   ├── task_list.rs
@@ -619,19 +620,19 @@
 -  `embed_batch` function L17-31 — `( &'a self, texts: &'a [&'a str], ) -> std::pin::Pin< Box<dyn std::future::Futur...`
 -  `DEFAULT_MODEL` variable L39 — `: &str`
 -  `FILE_LOG_FILTER` variable L42 — `: &str` — Default file log filter: debug for arawn crates, warn for third-party.
--  `main` function L45-1040 — `() -> Result<()>`
+-  `main` function L45-1050 — `() -> Result<()>`
 -  `Cli` struct L51-70 — `{ command: Option<Command>, data_dir: Option<String>, session: Option<Uuid>, lis...`
 -  `Command` enum L73-92 — `Serve | Tui | Plugin`
--  `ExtractorBindHook` struct L577-580 — `{ runner: Arc<arawn_extractor::ExtractorRunner>, store: Arc<std::sync::Mutex<ara...`
--  `ExtractorBindHook` type L581-615 — `= ExtractorBindHook`
--  `on_bind` function L582-614 — `(&self, workstream_name: &str, feed_id: &str)`
--  `run_cli_via_server` function L1043-1148 — `( url: &str, prompt: &str, session_id: Option<Uuid>, ) -> Result<()>` — Run a CLI prompt by connecting to the running server via WebSocket.
--  `build_llm_client` function L1151-1174 — `( config: &arawn_bin::LlmConfig, ) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
--  `register_default_tools` function L1177-1223 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &arawn_bin::ArawnConfig, d...` — Register all default tools into the registry.
--  `connect_mcp_servers` function L1226-1274 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
--  `register_workflow_tools` function L1277-1294 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
--  `build_engine_config` function L1296-1331 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
--  `dirs_path` function L1333-1342 — `() -> Option<String>`
+-  `ExtractorBindHook` struct L587-590 — `{ runner: Arc<arawn_extractor::ExtractorRunner>, store: Arc<std::sync::Mutex<ara...`
+-  `ExtractorBindHook` type L591-625 — `= ExtractorBindHook`
+-  `on_bind` function L592-624 — `(&self, workstream_name: &str, feed_id: &str)`
+-  `run_cli_via_server` function L1053-1158 — `( url: &str, prompt: &str, session_id: Option<Uuid>, ) -> Result<()>` — Run a CLI prompt by connecting to the running server via WebSocket.
+-  `build_llm_client` function L1161-1184 — `( config: &arawn_bin::LlmConfig, ) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
+-  `register_default_tools` function L1187-1233 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &arawn_bin::ArawnConfig, d...` — Register all default tools into the registry.
+-  `connect_mcp_servers` function L1236-1284 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
+-  `register_workflow_tools` function L1287-1304 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
+-  `build_engine_config` function L1306-1341 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
+-  `dirs_path` function L1343-1352 — `() -> Option<String>`
 
 #### crates/arawn/src/plugin_cmd.rs
 
@@ -2454,15 +2455,16 @@
 - pub `safe_env` module L13 — `-`
 - pub `sensitive_paths` module L14 — `-`
 - pub `shell` module L15 — `-`
-- pub `skill` module L16 — `-`
-- pub `sleep` module L17 — `-`
-- pub `task_list` module L18 — `-`
-- pub `task_output` module L19 — `-`
-- pub `task_stop` module L20 — `-`
-- pub `think` module L21 — `-`
-- pub `web_fetch` module L22 — `-`
-- pub `web_search` module L23 — `-`
-- pub `workstream` module L24 — `-`
+- pub `signal` module L16 — `-`
+- pub `skill` module L17 — `-`
+- pub `sleep` module L18 — `-`
+- pub `task_list` module L19 — `-`
+- pub `task_output` module L20 — `-`
+- pub `task_stop` module L21 — `-`
+- pub `think` module L22 — `-`
+- pub `web_fetch` module L23 — `-`
+- pub `web_search` module L24 — `-`
+- pub `workstream` module L25 — `-`
 
 #### crates/arawn-engine/src/tools/safe_env.rs
 
@@ -2541,6 +2543,58 @@
 -  `sandbox_build_tool_workflow` function L907-929 — `()`
 -  `sandbox_write_outside_blocked` function L933-970 — `()`
 -  `sandbox_read_sensitive_path_blocked` function L974-1002 — `()`
+
+#### crates/arawn-engine/src/tools/signal.rs
+
+- pub `SignalSearchTool` struct L81-85 — `{ memory: MemoryHandle, router: Option<Arc<WorkstreamMemoryRouter>>, embedder: O...` — Person) is reachable via the existing `memory_search` tool.
+- pub `new` function L88-102 — `( memory: impl Into<MemoryHandle>, embedder: Option<Arc<dyn Embedder>>, ) -> Sel...` — Person) is reachable via the existing `memory_search` tool.
+- pub `SignalQueryTool` struct L241-244 — `{ memory: MemoryHandle, router: Option<Arc<WorkstreamMemoryRouter>> }` — Person) is reachable via the existing `memory_search` tool.
+- pub `new` function L247-254 — `(memory: impl Into<MemoryHandle>) -> Self` — Person) is reachable via the existing `memory_search` tool.
+- pub `SignalTimelineTool` struct L376-379 — `{ memory: MemoryHandle, router: Option<Arc<WorkstreamMemoryRouter>> }` — Person) is reachable via the existing `memory_search` tool.
+- pub `new` function L382-389 — `(memory: impl Into<MemoryHandle>) -> Self` — Person) is reachable via the existing `memory_search` tool.
+-  `RRF_K` variable L29 — `: f32` — RRF constant — same value `feed_search` uses.
+-  `rrf` function L31-33 — `(rank: usize) -> f32` — Person) is reachable via the existing `memory_search` tool.
+-  `resolve_manager` function L38-53 — `( handle: &MemoryHandle, explicit: Option<&str>, router: Option<&Arc<WorkstreamM...` — Resolve the manager for the active workstream, or the explicit
+-  `entity_summary` function L55-67 — `(e: &Entity) -> Value` — Person) is reachable via the existing `memory_search` tool.
+-  `snippet` function L69-75 — `(s: &str, cap: usize) -> String` — Person) is reachable via the existing `memory_search` tool.
+-  `SignalSearchTool` type L87-103 — `= SignalSearchTool` — Person) is reachable via the existing `memory_search` tool.
+-  `SignalSearchTool` type L106-221 — `impl Tool for SignalSearchTool` — Person) is reachable via the existing `memory_search` tool.
+-  `name` function L107-109 — `(&self) -> &str` — Person) is reachable via the existing `memory_search` tool.
+-  `description` function L111-116 — `(&self) -> &str` — Person) is reachable via the existing `memory_search` tool.
+-  `is_read_only` function L118-120 — `(&self) -> bool` — Person) is reachable via the existing `memory_search` tool.
+-  `category` function L122-124 — `(&self) -> ToolCategory` — Person) is reachable via the existing `memory_search` tool.
+-  `parameters_schema` function L126-139 — `(&self) -> Value` — Person) is reachable via the existing `memory_search` tool.
+-  `execute` function L141-220 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — Person) is reachable via the existing `memory_search` tool.
+-  `FusedHit` struct L223-226 — `{ entity: Entity, score: f32 }` — Person) is reachable via the existing `memory_search` tool.
+-  `FusedHit` type L228-235 — `= FusedHit` — Person) is reachable via the existing `memory_search` tool.
+-  `new` function L229-234 — `(entity: Entity) -> Self` — Person) is reachable via the existing `memory_search` tool.
+-  `SignalQueryTool` type L246-255 — `= SignalQueryTool` — Person) is reachable via the existing `memory_search` tool.
+-  `SignalQueryTool` type L258-370 — `impl Tool for SignalQueryTool` — Person) is reachable via the existing `memory_search` tool.
+-  `name` function L259-261 — `(&self) -> &str` — Person) is reachable via the existing `memory_search` tool.
+-  `description` function L263-268 — `(&self) -> &str` — Person) is reachable via the existing `memory_search` tool.
+-  `is_read_only` function L270-272 — `(&self) -> bool` — Person) is reachable via the existing `memory_search` tool.
+-  `category` function L274-276 — `(&self) -> ToolCategory` — Person) is reachable via the existing `memory_search` tool.
+-  `parameters_schema` function L278-297 — `(&self) -> Value` — Person) is reachable via the existing `memory_search` tool.
+-  `execute` function L299-369 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — Person) is reachable via the existing `memory_search` tool.
+-  `SignalTimelineTool` type L381-390 — `= SignalTimelineTool` — Person) is reachable via the existing `memory_search` tool.
+-  `SignalTimelineTool` type L393-482 — `impl Tool for SignalTimelineTool` — Person) is reachable via the existing `memory_search` tool.
+-  `name` function L394-396 — `(&self) -> &str` — Person) is reachable via the existing `memory_search` tool.
+-  `description` function L398-402 — `(&self) -> &str` — Person) is reachable via the existing `memory_search` tool.
+-  `is_read_only` function L404-406 — `(&self) -> bool` — Person) is reachable via the existing `memory_search` tool.
+-  `category` function L408-410 — `(&self) -> ToolCategory` — Person) is reachable via the existing `memory_search` tool.
+-  `parameters_schema` function L412-422 — `(&self) -> Value` — Person) is reachable via the existing `memory_search` tool.
+-  `execute` function L424-481 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — Person) is reachable via the existing `memory_search` tool.
+-  `tests` module L489-681 — `-` — Person) is reachable via the existing `memory_search` tool.
+-  `setup` function L495-502 — `() -> (TempDir, Arc<MemoryManager>, crate::context::EngineToolContext)` — Person) is reachable via the existing `memory_search` tool.
+-  `seed` function L504-525 — `(mgr: &MemoryManager)` — Person) is reachable via the existing `memory_search` tool.
+-  `signal_search_finds_decision_by_title` function L528-546 — `()` — Person) is reachable via the existing `memory_search` tool.
+-  `signal_search_empty_kb_returns_zero` function L549-558 — `()` — Person) is reachable via the existing `memory_search` tool.
+-  `signal_query_filters_by_entity_type` function L561-578 — `()` — Person) is reachable via the existing `memory_search` tool.
+-  `signal_query_filters_by_tag_any_of` function L581-596 — `()` — Person) is reachable via the existing `memory_search` tool.
+-  `signal_query_no_filters_returns_all_active` function L599-606 — `()` — Person) is reachable via the existing `memory_search` tool.
+-  `signal_query_window_filters` function L609-623 — `()` — Person) is reachable via the existing `memory_search` tool.
+-  `signal_timeline_orders_desc_and_caps_to_window` function L626-641 — `()` — Person) is reachable via the existing `memory_search` tool.
+-  `explicit_workstream_arg_routes_via_router` function L644-680 — `()` — Person) is reachable via the existing `memory_search` tool.
 
 #### crates/arawn-engine/src/tools/skill.rs
 

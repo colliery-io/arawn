@@ -549,6 +549,53 @@ async fn main() -> Result<()> {
                 _ => None,
             };
 
+        // Steward — T-0256 scaffolding. Walks every active workstream
+        // on a coarse cadence; identity subroutine only until
+        // T-0257/T-0258 land the real ones. Spawned only when the
+        // workstream router is available (steward writes per-workstream
+        // journals into each KB).
+        if let Some(ref router) = workstream_router {
+            let router_clone = Arc::clone(router);
+            let mem_resolver: arawn_steward::runner::MemoryResolver =
+                Arc::new(move |name: &str| {
+                    router_clone.for_workstream(name).map_err(|e| {
+                        arawn_steward::StewardError::Memory(e.to_string())
+                    })
+                });
+            let subs: Vec<Arc<dyn arawn_steward::StewardSubroutine>> =
+                vec![Arc::new(arawn_steward::IdentitySubroutine::default())];
+            let steward_runner = Arc::new(arawn_steward::StewardRunner::new(
+                service.shared_store(),
+                std::path::PathBuf::from(&data_dir),
+                mem_resolver,
+                subs,
+            ));
+            // Coarse default cadence (1 hour) for dev — Phase 5's
+            // test-harness work tunes this once real subroutines land.
+            let interval_secs: u64 = 60 * 60;
+            tokio::spawn(async move {
+                let mut tick = tokio::time::interval(
+                    std::time::Duration::from_secs(interval_secs),
+                );
+                // First tick fires immediately; the identity subroutine
+                // is a noop so this is safe at boot.
+                loop {
+                    tick.tick().await;
+                    match steward_runner.run_pass_for_all().await {
+                        Ok(s) if s.actions_journaled > 0 || s.errors > 0 => info!(
+                            workstreams = s.workstreams_visited,
+                            actions = s.actions_journaled,
+                            errors = s.errors,
+                            "steward pass"
+                        ),
+                        Ok(_) => debug!("steward pass: nothing to do"),
+                        Err(e) => warn!(error = %e, "steward pass failed"),
+                    }
+                }
+            });
+            info!("steward scheduled (every 1h, identity subroutine only)");
+        }
+
         // Register workstream tools (need the shared store from the service).
         // The active-workstream shim is shared across the switch/show/list/delete
         // tools AND the memory router so they observe the same session-level state.
