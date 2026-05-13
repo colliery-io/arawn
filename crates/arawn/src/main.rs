@@ -576,9 +576,32 @@ async fn main() -> Result<()> {
             let reshelve = Arc::new(arawn_steward::ReshelveSubroutine::new(
                 llm_pool.engine(),
                 llm_pool.engine_config().model.clone(),
-                cursor_factory,
+                Arc::clone(&cursor_factory),
             ));
-            let subs: Vec<Arc<dyn arawn_steward::StewardSubroutine>> = vec![reshelve];
+            let map_sub = Arc::new(arawn_steward::MapSubroutine::new(
+                llm_pool.engine(),
+                llm_pool.engine_config().model.clone(),
+                Arc::clone(&cursor_factory),
+            ));
+            // Door-watch needs cross-workstream visibility: pass it the
+            // shared Store + the same memory resolver the runner uses.
+            let dw_resolver: arawn_steward::runner::MemoryResolver = {
+                let router_clone = Arc::clone(router);
+                Arc::new(move |name: &str| {
+                    router_clone.for_workstream(name).map_err(|e| {
+                        arawn_steward::StewardError::Memory(e.to_string())
+                    })
+                })
+            };
+            let doorwatch = Arc::new(arawn_steward::DoorWatchSubroutine::new(
+                llm_pool.engine(),
+                llm_pool.engine_config().model.clone(),
+                Arc::clone(&cursor_factory),
+                service.shared_store(),
+                dw_resolver,
+            ));
+            let subs: Vec<Arc<dyn arawn_steward::StewardSubroutine>> =
+                vec![reshelve, map_sub, doorwatch];
             let steward_runner = Arc::new(arawn_steward::StewardRunner::new(
                 service.shared_store(),
                 std::path::PathBuf::from(&data_dir),
@@ -608,7 +631,7 @@ async fn main() -> Result<()> {
                     }
                 }
             });
-            info!("steward scheduled (every 1h, reshelve subroutine active)");
+            info!("steward scheduled (every 1h, reshelve + map + doorwatch)");
         }
 
         // Register workstream tools (need the shared store from the service).

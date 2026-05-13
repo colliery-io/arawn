@@ -20,16 +20,20 @@
 //! T-0259 wires the /workstream refine / journal / rollback commands.
 
 pub mod cursor;
+pub mod doorwatch;
 pub mod error;
 pub mod journal;
 pub mod llm_text;
+pub mod map;
 pub mod reshelve;
 pub mod runner;
 pub mod subroutine;
 
 pub use cursor::CursorStore;
+pub use doorwatch::{DoorWatchConfig, DoorWatchSubroutine};
 pub use error::StewardError;
 pub use journal::{Journal, JournalRecord, JournalRow, RevertResult};
+pub use map::{MapConfig, MapSubroutine};
 pub use reshelve::{ReshelveConfig, ReshelveSubroutine};
 pub use runner::{StewardRunner, StewardStats, SubroutineCaps};
 pub use subroutine::{IdentitySubroutine, StewardSubroutine, SubroutineCtx, SubroutineOutcome};

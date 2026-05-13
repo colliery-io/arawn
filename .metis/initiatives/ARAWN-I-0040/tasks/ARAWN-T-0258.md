@@ -4,14 +4,14 @@ level: task
 title: "Steward map + door-watch subroutines (proposal-only)"
 short_code: "ARAWN-T-0258"
 created_at: 2026-05-13T03:47:11.229919+00:00
-updated_at: 2026-05-13T03:47:11.229919+00:00
+updated_at: 2026-05-13T11:07:41.770556+00:00
 parent: ARAWN-I-0040
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -63,6 +63,10 @@ initiative_id: ARAWN-I-0040
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria **[REQUIRED]**
 
@@ -131,6 +135,40 @@ initiative_id: ARAWN-I-0040
 ### Risk Considerations
 {Technical risks and mitigation strategies}
 
-## Status Updates **[REQUIRED]**
+## Status Updates
 
-*To be added during implementation*
+### 2026-05-13 — Complete
+
+Both proposal-only subroutines wired and journaled per ARAWN-A-0003.
+
+**Map (`crates/arawn-steward/src/map.rs`):**
+- Trigger: cursor-based on `updated_at` (mirrors reshelve).
+- For each focus entity, the LLM is given the focus + a sample of neighbor entities (top-of-`list_all_ranked` minus self, capped by config) and asked for missing relations. Allowed `rel` set: `relates_to | supports | contradicts | mentions | belongs_to`. `supersedes` and `extracted_from` are explicitly excluded (their owners are reshelve and the extractor).
+- Validation: rel must parse + be in the proposable set; self-loops are dropped; proposals that don't reference the focus on either side are dropped (LLM-hallucinated ids).
+- Each surviving proposal is journaled as `applied = false` so it surfaces through `pending_proposals` and is rejectable via `Journal::revert`.
+
+**Door-watch (`crates/arawn-steward/src/doorwatch.rs`):**
+- Trigger: cursor-based on the source workstream's entities.
+- Cross-workstream by design — it pulls the active workstream list from `Store::list_workstreams` and uses a `MemoryResolver` to open each *other* workstream's KB (cached). A sample of `neighbors_per_workstream` entities from each bucket is fed to the LLM alongside the focus.
+- Scans *all* entity types per user direction (no filter).
+- Validation: the LLM's `to_id` must actually appear in the cited `to_workstream` bucket — hallucinated ids are dropped.
+- Proposals journal in the *source* workstream and never mutate either side.
+
+**Wiring (`crates/arawn/src/main.rs`):**
+- Subroutine vector now `[reshelve, map_sub, doorwatch]`. All three use the engine pool's client + configured model; default 1h cadence remains.
+- Door-watch threads `service.shared_store()` and a dedicated memory resolver through the router so it can scan other workstreams without re-opening the master store per call.
+
+**Tests (inline, 6 new):**
+- `map::proposes_valid_edges_and_drops_invalid` — confirms one valid edge survives while a self-loop and a `supersedes` rel get rejected.
+- `map::cap_stops_after_n_proposals` — blast cap honored mid-batch.
+- `map::cursor_advances_and_skips_on_rerun` — second pass calls zero LLM.
+- `doorwatch::proposes_identity_when_match_found` — happy-path cross-workstream proposal.
+- `doorwatch::hallucinated_target_id_is_dropped` — guards against bogus uuids.
+- `doorwatch::no_other_workstreams_means_zero_proposals` — single-workstream environment is a no-op (no LLM call, cursor still progresses).
+
+`cargo test -p arawn-steward`: **21/21**. Workspace + clippy green.
+
+**Notes / deferred:**
+- Door-watch is O(W × focus_batch) LLM calls per pass where W = #other workstreams — fine at ~15 workstreams (i.e. ~5 focus × 15 → 75 LLM calls/hour cap is the bound, not workstream count). Revisit if scale changes.
+- Proposals are stored in source workstream's journal; the target workstream's user only sees them via cross-workstream tooling that doesn't exist yet — T-0259 surfaces them in `/workstream refine`.
+- `is_mutating()` flag exists on the trait but the runner still trusts subroutines; T-0259 / a future hardening pass can wire the check explicitly.
