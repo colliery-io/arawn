@@ -1,0 +1,241 @@
+{
+  "$comment": "Synthetic UAT fixture for I-0040 (signal extraction). Two workstreams with deliberate noise: real decisions worth extracting, off-topic items, near-duplicates for re-shelve, a cross-workstream identity candidate for door-watch, and an idle cluster for manual dust. Timestamps are absolute so behavior is stable across CI runs.",
+  "workstreams": [
+    {
+      "name": "work",
+      "description": "Pat's day job at Acme — backend platform team. Focus: infrastructure decisions, on-call rotations, RFCs, eng-org logistics.",
+      "rows": [
+        {
+          "feed_type": "gmail_messages",
+          "source_id": "w-g-001",
+          "source_ts": "2026-02-10T15:00:00Z",
+          "sender": "platform-eng@acme.com",
+          "recipients": ["pat@acme.com"],
+          "subject": "RFC-0042: Postgres for the new ledger service",
+          "body_text": "After two weeks of comparison we are picking Postgres 16 for the ledger service. Rationale: jsonb support, mature replication tooling, and the team already operates Postgres for billing. Decision is final; migration target is end of Q2."
+        },
+        {
+          "feed_type": "gmail_messages",
+          "source_id": "w-g-002",
+          "source_ts": "2026-02-20T09:30:00Z",
+          "sender": "platform-eng@acme.com",
+          "recipients": ["pat@acme.com"],
+          "subject": "Re: Postgres decision — confirmed at architecture review",
+          "body_text": "Architecture review signed off on the Postgres-for-ledger decision. No dissent. We'll start the migration plan next week."
+        },
+        {
+          "feed_type": "gmail_messages",
+          "source_id": "w-g-003",
+          "source_ts": "2026-03-04T14:00:00Z",
+          "sender": "people-ops@acme.com",
+          "recipients": ["pat@acme.com"],
+          "subject": "On-call rotation policy update",
+          "body_text": "Effective March 15: weekday on-call shifts shorten from 7 days to 5 days. Weekend coverage stays the same. Pager rotation tool will reflect this automatically; no action needed unless you swap with someone."
+        },
+        {
+          "feed_type": "gmail_messages",
+          "source_id": "w-g-004",
+          "source_ts": "2026-03-10T11:15:00Z",
+          "sender": "noreply@cafeteria.acme.com",
+          "recipients": ["all-staff@acme.com"],
+          "subject": "This week's lunch menu",
+          "body_text": "Monday: lasagna. Tuesday: salad bar. Wednesday: tacos. Thursday: ramen. Friday: pizza. Allergen info on the cafeteria portal."
+        },
+        {
+          "feed_type": "gmail_messages",
+          "source_id": "w-g-005",
+          "source_ts": "2026-03-12T16:45:00Z",
+          "sender": "alice.chen@acme.com",
+          "recipients": ["pat@acme.com"],
+          "subject": "Re: Code review process — final decision",
+          "body_text": "Locking in the new review policy: every PR requires two reviewers, one of whom must be on the owning team. Exception: trivial doc-only changes (one reviewer ok). Effective April 1."
+        },
+        {
+          "feed_type": "slack_messages",
+          "source_id": "w-s-001",
+          "source_ts": "2026-03-15T13:20:00Z",
+          "channel_id": "C-platform-arch",
+          "sender_id": "U-alice",
+          "text": "Quick reminder: Postgres for ledger is the decision; please stop re-litigating mysql in PR reviews. Read RFC-0042 if you missed the rationale."
+        },
+        {
+          "feed_type": "slack_messages",
+          "source_id": "w-s-002",
+          "source_ts": "2026-04-02T10:00:00Z",
+          "channel_id": "C-platform-arch",
+          "sender_id": "U-pat",
+          "text": "Two-reviewer rule is now enforced by the bot. Trivial doc PRs still allow single-reviewer override; flag with the `docs-only` label."
+        },
+        {
+          "feed_type": "slack_messages",
+          "source_id": "w-s-003",
+          "source_ts": "2026-04-09T17:30:00Z",
+          "channel_id": "C-random",
+          "sender_id": "U-bob",
+          "text": "Coffee machine on floor 3 is broken again. Submitting a ticket. Floor 5 still works."
+        },
+        {
+          "feed_type": "slack_messages",
+          "source_id": "w-s-004",
+          "source_ts": "2026-04-14T08:15:00Z",
+          "channel_id": "C-team-pat",
+          "sender_id": "U-people-ops",
+          "text": "Alice Chen will be on parental leave from June 1 through August 15. Her on-call shifts during that period will be redistributed to the rest of the rotation."
+        },
+        {
+          "feed_type": "gmail_messages",
+          "source_id": "w-g-006",
+          "source_ts": "2026-04-15T09:00:00Z",
+          "sender": "calendar-noreply@acme.com",
+          "recipients": ["pat@acme.com"],
+          "subject": "Reminder: weekly platform sync at 10am",
+          "body_text": "Your weekly meeting Platform Sync starts in 1 hour. Conference room Boreal."
+        },
+        {
+          "feed_type": "gmail_messages",
+          "source_id": "w-g-007",
+          "source_ts": "2026-04-22T13:00:00Z",
+          "sender": "alice.chen@acme.com",
+          "recipients": ["pat@acme.com"],
+          "subject": "Ledger migration kickoff",
+          "body_text": "Kicking off the Postgres-for-ledger migration. Initial cutover plan: shadow writes for two weeks, then cut reads, then cut writes. I'm leading; Bob is co-lead. Spec doc forthcoming."
+        },
+        {
+          "feed_type": "slack_messages",
+          "source_id": "w-s-005",
+          "source_ts": "2026-01-05T11:00:00Z",
+          "channel_id": "C-old-project-falcon",
+          "sender_id": "U-pat",
+          "text": "Falcon project retro: the migration succeeded but the rollout window was too tight. Next time give ourselves a 2-week buffer."
+        },
+        {
+          "feed_type": "slack_messages",
+          "source_id": "w-s-006",
+          "source_ts": "2026-01-08T15:30:00Z",
+          "channel_id": "C-old-project-falcon",
+          "sender_id": "U-alice",
+          "text": "Closing out Falcon — final metrics: 99.7% successful cutover, 0.3% required manual intervention. Documenting lessons in the wiki."
+        },
+        {
+          "feed_type": "slack_messages",
+          "source_id": "w-s-007",
+          "source_ts": "2026-01-12T09:45:00Z",
+          "channel_id": "C-old-project-falcon",
+          "sender_id": "U-bob",
+          "text": "Falcon code is now archived. Read-only repo at github.com/acme/falcon-archived."
+        },
+        {
+          "feed_type": "slack_messages",
+          "source_id": "w-s-008",
+          "source_ts": "2026-04-25T14:00:00Z",
+          "channel_id": "C-platform-arch",
+          "sender_id": "U-bob",
+          "text": "I think we should reconsider mysql for ledger. Postgres has all this jsonb complexity we don't need."
+        }
+      ]
+    },
+    {
+      "name": "dnd",
+      "description": "Tuesday-night D&D campaign. Track party members, key NPCs, ongoing plot threads, items acquired, decisions about the campaign world.",
+      "rows": [
+        {
+          "feed_type": "slack_messages",
+          "source_id": "d-s-001",
+          "source_ts": "2026-02-04T20:30:00Z",
+          "channel_id": "C-dnd-party",
+          "sender_id": "U-dm",
+          "text": "Decision from tonight's session: the party rejected the king's offer of fealty and will pursue the artifact independently. Aligning campaign for next session around that branch."
+        },
+        {
+          "feed_type": "slack_messages",
+          "source_id": "d-s-002",
+          "source_ts": "2026-02-11T21:00:00Z",
+          "channel_id": "C-dnd-party",
+          "sender_id": "U-alice",
+          "text": "Alice the Bard found a Cloak of Many Tongues in the witch's hut. DM confirms it works on any humanoid language. I'm keeping it for charisma checks."
+        },
+        {
+          "feed_type": "slack_messages",
+          "source_id": "d-s-003",
+          "source_ts": "2026-02-18T20:45:00Z",
+          "channel_id": "C-dnd-party",
+          "sender_id": "U-dm",
+          "text": "House rule update: critical hits now do max damage on the rolled die plus a normal damage roll. Replaces the double-dice rule. Effective immediately."
+        },
+        {
+          "feed_type": "slack_messages",
+          "source_id": "d-s-004",
+          "source_ts": "2026-02-25T19:50:00Z",
+          "channel_id": "C-dnd-party",
+          "sender_id": "U-pat",
+          "text": "Quick reminder: my character (Thorne the Cleric) is dedicated to Pelor. Healing word, light, sacred flame all require sunlight reference in the description. I'll keep flagging if I forget."
+        },
+        {
+          "feed_type": "slack_messages",
+          "source_id": "d-s-005",
+          "source_ts": "2026-03-04T21:15:00Z",
+          "channel_id": "C-dnd-party",
+          "sender_id": "U-dm",
+          "text": "We are skipping next week's session — half the party is traveling. Resuming March 18."
+        },
+        {
+          "feed_type": "slack_messages",
+          "source_id": "d-s-006",
+          "source_ts": "2026-03-18T20:30:00Z",
+          "channel_id": "C-dnd-party",
+          "sender_id": "U-bob",
+          "text": "Found a lead on the artifact: the merchant Calidor at the night market knows its last owner. The party agreed to meet him next session."
+        },
+        {
+          "feed_type": "slack_messages",
+          "source_id": "d-s-007",
+          "source_ts": "2026-03-25T21:45:00Z",
+          "channel_id": "C-dnd-party",
+          "sender_id": "U-dm",
+          "text": "Calidor the merchant turned out to be working for the same cult the party fought in chapter 2. He escaped. Active plot thread: track Calidor."
+        },
+        {
+          "feed_type": "slack_messages",
+          "source_id": "d-s-008",
+          "source_ts": "2026-04-01T20:00:00Z",
+          "channel_id": "C-dnd-party",
+          "sender_id": "U-alice",
+          "text": "Alice Chen (different from Alice the Bard) joined the campaign tonight as a backup player. Will play Lyra, a half-elf rogue, when someone needs to skip a session."
+        },
+        {
+          "feed_type": "slack_messages",
+          "source_id": "d-s-009",
+          "source_ts": "2026-04-08T20:45:00Z",
+          "channel_id": "C-dnd-party",
+          "sender_id": "U-dm",
+          "text": "Ruling tonight on Cloak of Many Tongues: it only translates spoken language, not written. Alice the Bard kept asking. Locking this in so we stop relitigating."
+        },
+        {
+          "feed_type": "slack_messages",
+          "source_id": "d-s-010",
+          "source_ts": "2026-04-15T21:30:00Z",
+          "channel_id": "C-dnd-party",
+          "sender_id": "U-dm",
+          "text": "Crit rule reminder: max die + normal roll. NOT double dice. We had three crits tonight and people kept doing it the old way."
+        },
+        {
+          "feed_type": "gmail_messages",
+          "source_id": "d-g-001",
+          "source_ts": "2026-04-20T08:00:00Z",
+          "sender": "dm@example.com",
+          "recipients": ["dnd-party@example.com"],
+          "subject": "Next session prep — what to bring",
+          "body_text": "Bring your latest character sheet. We'll start with the cult tracking arc and the visit to the night market. Snacks: I have chips, please bring something else if you want variety."
+        },
+        {
+          "feed_type": "slack_messages",
+          "source_id": "d-s-011",
+          "source_ts": "2026-04-22T20:00:00Z",
+          "channel_id": "C-random",
+          "sender_id": "U-pat",
+          "text": "What's everyone watching this week? I just finished season 2 of the new sci-fi show."
+        }
+      ]
+    }
+  ]
+}

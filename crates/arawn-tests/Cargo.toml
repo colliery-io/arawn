@@ -18,6 +18,8 @@ arawn-memory = { path = "../arawn-memory" }
 arawn-service = { workspace = true }
 arawn-storage = { workspace = true }
 arawn-workflow = { path = "../arawn-workflow" }
+arawn-projections = { path = "../arawn-projections" }
+arawn-extractor = { path = "../arawn-extractor" }
 axum = { version = "0.8", features = ["ws"] }
 futures-util = "0.3"
 tokio-tungstenite = "0.26"

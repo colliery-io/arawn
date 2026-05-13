@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-13T12:45:29Z | 298 files | Python, Rust
+> Generated: 2026-05-13T12:52:48Z | 298 files | Python, Rust
 
 ## Project Structure
 
@@ -6106,16 +6106,16 @@
 -  `classify` function L214-247 — `( &self, focus: &Entity, buckets: &[(String, Vec<Entity>)], ) -> Result<Vec<Iden...` — either side.
 -  `record` function L249-301 — `( &self, focus: &Entity, m: &IdentityMatch, ctx: &SubroutineCtx, buckets: &[(Str...` — either side.
 -  `brief` function L304-311 — `(e: &Entity) -> serde_json::Value` — either side.
--  `tests` module L314-490 — `-` — either side.
+-  `tests` module L314-499 — `-` — either side.
 -  `ScriptedMock` struct L327-329 — `{ responses: Mutex<VecDeque<Value>> }` — either side.
 -  `ScriptedMock` type L330-336 — `= ScriptedMock` — either side.
 -  `new` function L331-335 — `(resp: Vec<Value>) -> Self` — either side.
 -  `ScriptedMock` type L338-352 — `impl LlmClient for ScriptedMock` — either side.
 -  `stream` function L339-351 — `( &self, _req: ChatRequest, ) -> Result< Pin<Box<dyn futures::Stream<Item = Resu...` — either side.
 -  `setup_multi_workstream` function L354-380 — `() -> ( tempfile::TempDir, Arc<Mutex<Store>>, MemoryResolver, Arc<dyn Fn(&str) -...` — either side.
--  `proposes_identity_when_match_found` function L383-415 — `()` — either side.
--  `hallucinated_target_id_is_dropped` function L418-448 — `()` — either side.
--  `no_other_workstreams_means_zero_proposals` function L451-489 — `()` — either side.
+-  `proposes_identity_when_match_found` function L383-418 — `()` — either side.
+-  `hallucinated_target_id_is_dropped` function L421-454 — `()` — either side.
+-  `no_other_workstreams_means_zero_proposals` function L457-498 — `()` — either side.
 
 #### crates/arawn-steward/src/dust.rs
 
@@ -6167,28 +6167,35 @@
 - pub `JournalRow` struct L35-46 — `{ id: i64, ts: DateTime<Utc>, subroutine: String, action: String, inputs_json: S...` — A journal row as read back from sqlite.
 - pub `RevertResult` struct L52-57 — `{ row: JournalRow, newly_reverted: bool }` — Outcome of a `Journal::revert` call.
 - pub `AppliedResult` struct L62-65 — `{ row: JournalRow, newly_applied: bool }` — Outcome of `Journal::mark_applied`.
-- pub `Journal` struct L71-75 — `{ conn: Arc<Mutex<Connection>>, workstream: String, path: PathBuf }` — Workstream-scoped journal.
-- pub `open` function L83-96 — `(data_dir: &Path, workstream_name: &str) -> Result<Self, StewardError>` — Open (or create) the journal for `workstream_name` rooted at
-- pub `workstream` function L98-100 — `(&self) -> &str` — `Journal::revert(action_id)` to reconstruct the inverse.
-- pub `path` function L102-104 — `(&self) -> &Path` — `Journal::revert(action_id)` to reconstruct the inverse.
-- pub `write_ahead` function L114-134 — `(&self, record: &JournalRecord) -> Result<i64, StewardError>` — Write a journal row *before* the mutation.
-- pub `get` function L137-149 — `(&self, id: i64) -> Result<Option<JournalRow>, StewardError>` — Fetch one row by id.
-- pub `recent` function L152-165 — `(&self, limit: usize) -> Result<Vec<JournalRow>, StewardError>` — Last `limit` rows, newest first.
-- pub `pending_proposals` function L169-184 — `(&self, limit: usize) -> Result<Vec<JournalRow>, StewardError>` — Rows where `applied = 0` (proposals from map / door-watch) and
-- pub `mark_applied` function L190-220 — `(&self, id: i64) -> Result<AppliedResult, StewardError>` — Flip a row from `applied = false` to `applied = true`.
-- pub `revert` function L226-252 — `(&self, id: i64) -> Result<RevertResult, StewardError>` — Mark a row reverted.
-- pub `prompt_hash` function L257-260 — `(input: impl AsRef<[u8]>) -> String` — Build a deterministic prompt-hash id from arbitrary input bytes.
--  `Journal` type L77-261 — `= Journal` — `Journal::revert(action_id)` to reconstruct the inverse.
--  `ensure_schema` function L263-282 — `(conn: &Connection) -> Result<(), StewardError>` — `Journal::revert(action_id)` to reconstruct the inverse.
--  `row_to_record` function L284-310 — `(r: &rusqlite::Row<'_>) -> Result<JournalRow, StewardError>` — `Journal::revert(action_id)` to reconstruct the inverse.
--  `tests` module L313-402 — `-` — `Journal::revert(action_id)` to reconstruct the inverse.
--  `sample` function L316-326 — `() -> JournalRecord` — `Journal::revert(action_id)` to reconstruct the inverse.
--  `write_then_read` function L329-338 — `()` — `Journal::revert(action_id)` to reconstruct the inverse.
--  `revert_flips_metadata_idempotently` function L341-351 — `()` — `Journal::revert(action_id)` to reconstruct the inverse.
--  `recent_returns_newest_first` function L354-363 — `()` — `Journal::revert(action_id)` to reconstruct the inverse.
--  `pending_proposals_filters_applied_and_reverted` function L366-382 — `()` — `Journal::revert(action_id)` to reconstruct the inverse.
--  `prompt_hash_is_deterministic` function L385-391 — `()` — `Journal::revert(action_id)` to reconstruct the inverse.
--  `schema_idempotent_on_reopen` function L394-401 — `()` — `Journal::revert(action_id)` to reconstruct the inverse.
+- pub `JournalGate` struct L73-76 — `{ journal: Arc<Journal>, mutating_allowed: bool }` — Small write-side facade over `Journal`.
+- pub `new` function L79-84 — `(journal: Arc<Journal>, mutating_allowed: bool) -> Self` — `Journal::revert(action_id)` to reconstruct the inverse.
+- pub `write_ahead` function L88-98 — `(&self, record: &JournalRecord) -> Result<i64, StewardError>` — Forward a write to the underlying journal, refusing `applied=true`
+- pub `workstream` function L100-102 — `(&self) -> &str` — `Journal::revert(action_id)` to reconstruct the inverse.
+- pub `Journal` struct L109-113 — `{ conn: Arc<Mutex<Connection>>, workstream: String, path: PathBuf }` — Workstream-scoped journal.
+- pub `open` function L121-134 — `(data_dir: &Path, workstream_name: &str) -> Result<Self, StewardError>` — Open (or create) the journal for `workstream_name` rooted at
+- pub `workstream` function L136-138 — `(&self) -> &str` — `Journal::revert(action_id)` to reconstruct the inverse.
+- pub `path` function L140-142 — `(&self) -> &Path` — `Journal::revert(action_id)` to reconstruct the inverse.
+- pub `write_ahead` function L152-172 — `(&self, record: &JournalRecord) -> Result<i64, StewardError>` — Write a journal row *before* the mutation.
+- pub `get` function L175-187 — `(&self, id: i64) -> Result<Option<JournalRow>, StewardError>` — Fetch one row by id.
+- pub `recent` function L190-203 — `(&self, limit: usize) -> Result<Vec<JournalRow>, StewardError>` — Last `limit` rows, newest first.
+- pub `pending_proposals` function L207-222 — `(&self, limit: usize) -> Result<Vec<JournalRow>, StewardError>` — Rows where `applied = 0` (proposals from map / door-watch) and
+- pub `mark_applied` function L228-258 — `(&self, id: i64) -> Result<AppliedResult, StewardError>` — Flip a row from `applied = false` to `applied = true`.
+- pub `revert` function L264-290 — `(&self, id: i64) -> Result<RevertResult, StewardError>` — Mark a row reverted.
+- pub `prompt_hash` function L295-298 — `(input: impl AsRef<[u8]>) -> String` — Build a deterministic prompt-hash id from arbitrary input bytes.
+-  `JournalGate` type L78-103 — `= JournalGate` — `Journal::revert(action_id)` to reconstruct the inverse.
+-  `Journal` type L115-299 — `= Journal` — `Journal::revert(action_id)` to reconstruct the inverse.
+-  `ensure_schema` function L301-320 — `(conn: &Connection) -> Result<(), StewardError>` — `Journal::revert(action_id)` to reconstruct the inverse.
+-  `row_to_record` function L322-348 — `(r: &rusqlite::Row<'_>) -> Result<JournalRow, StewardError>` — `Journal::revert(action_id)` to reconstruct the inverse.
+-  `tests` module L351-476 — `-` — `Journal::revert(action_id)` to reconstruct the inverse.
+-  `sample` function L354-364 — `() -> JournalRecord` — `Journal::revert(action_id)` to reconstruct the inverse.
+-  `write_then_read` function L367-376 — `()` — `Journal::revert(action_id)` to reconstruct the inverse.
+-  `revert_flips_metadata_idempotently` function L379-389 — `()` — `Journal::revert(action_id)` to reconstruct the inverse.
+-  `recent_returns_newest_first` function L392-401 — `()` — `Journal::revert(action_id)` to reconstruct the inverse.
+-  `pending_proposals_filters_applied_and_reverted` function L404-420 — `()` — `Journal::revert(action_id)` to reconstruct the inverse.
+-  `prompt_hash_is_deterministic` function L423-429 — `()` — `Journal::revert(action_id)` to reconstruct the inverse.
+-  `gate_blocks_applied_writes_when_proposal_only` function L432-454 — `()` — `Journal::revert(action_id)` to reconstruct the inverse.
+-  `gate_allows_applied_writes_when_mutating` function L457-465 — `()` — `Journal::revert(action_id)` to reconstruct the inverse.
+-  `schema_idempotent_on_reopen` function L468-475 — `()` — `Journal::revert(action_id)` to reconstruct the inverse.
 
 #### crates/arawn-steward/src/lib.rs
 
@@ -6230,17 +6237,17 @@
 -  `propose_for` function L191-220 — `( &self, focus: &Entity, neighbors: &[&Entity], _ctx: &SubroutineCtx, ) -> Resul...` — Per ARAWN-A-0003 map never mutates the KB graph.
 -  `record_proposal` function L222-279 — `( &self, focus: &Entity, prop: &ProposedEdge, ctx: &SubroutineCtx, ) -> Result<(...` — Per ARAWN-A-0003 map never mutates the KB graph.
 -  `brief` function L282-289 — `(e: &Entity) -> serde_json::Value` — Per ARAWN-A-0003 map never mutates the KB graph.
--  `tests` module L292-429 — `-` — Per ARAWN-A-0003 map never mutates the KB graph.
+-  `tests` module L292-431 — `-` — Per ARAWN-A-0003 map never mutates the KB graph.
 -  `ScriptedMock` struct L307-309 — `{ responses: Mutex<VecDeque<Value>> }` — Per ARAWN-A-0003 map never mutates the KB graph.
 -  `ScriptedMock` type L310-316 — `= ScriptedMock` — Per ARAWN-A-0003 map never mutates the KB graph.
 -  `new` function L311-315 — `(resp: Vec<Value>) -> Self` — Per ARAWN-A-0003 map never mutates the KB graph.
 -  `ScriptedMock` type L318-333 — `impl LlmClient for ScriptedMock` — Per ARAWN-A-0003 map never mutates the KB graph.
 -  `stream` function L319-332 — `( &self, _req: ChatRequest, ) -> Result< Pin<Box<dyn futures::Stream<Item = Resu...` — Per ARAWN-A-0003 map never mutates the KB graph.
 -  `setup` function L335-346 — `() -> (tempfile::TempDir, Arc<MemoryManager>, Arc<Journal>, Arc< dyn Fn(&str) ->...` — Per ARAWN-A-0003 map never mutates the KB graph.
--  `ctx` function L348-360 — `( tmp: &tempfile::TempDir, mem: &Arc<MemoryManager>, j: &Arc<Journal>, cap: usiz...` — Per ARAWN-A-0003 map never mutates the KB graph.
--  `proposes_valid_edges_and_drops_invalid` function L363-393 — `()` — Per ARAWN-A-0003 map never mutates the KB graph.
--  `cap_stops_after_n_proposals` function L396-415 — `()` — Per ARAWN-A-0003 map never mutates the KB graph.
--  `cursor_advances_and_skips_on_rerun` function L418-428 — `()` — Per ARAWN-A-0003 map never mutates the KB graph.
+-  `ctx` function L348-362 — `( tmp: &tempfile::TempDir, mem: &Arc<MemoryManager>, j: &Arc<Journal>, cap: usiz...` — Per ARAWN-A-0003 map never mutates the KB graph.
+-  `proposes_valid_edges_and_drops_invalid` function L365-395 — `()` — Per ARAWN-A-0003 map never mutates the KB graph.
+-  `cap_stops_after_n_proposals` function L398-417 — `()` — Per ARAWN-A-0003 map never mutates the KB graph.
+-  `cursor_advances_and_skips_on_rerun` function L420-430 — `()` — Per ARAWN-A-0003 map never mutates the KB graph.
 
 #### crates/arawn-steward/src/reshelve.rs
 
@@ -6263,7 +6270,7 @@
 -  `apply_merge` function L291-389 — `( &self, focus: &Entity, cand: &Entity, verdict: &PairVerdict, ctx: &SubroutineC...` — LLM proposes the action; Rust picks the survivor.
 -  `apply_delete` function L391-421 — `( &self, focus: &Entity, verdict: &PairVerdict, ctx: &SubroutineCtx, outcome: &m...` — LLM proposes the action; Rust picks the survivor.
 -  `fts_quote` function L427-429 — `(s: &str) -> String` — FTS5 phrase-quote helper.
--  `tests` module L432-683 — `-` — LLM proposes the action; Rust picks the survivor.
+-  `tests` module L432-689 — `-` — LLM proposes the action; Rust picks the survivor.
 -  `ScriptedMock` struct L450-452 — `{ responses: Mutex<VecDeque<Value>> }` — Queue-based mock that returns scripted JSON for each call.
 -  `ScriptedMock` type L454-460 — `= ScriptedMock` — LLM proposes the action; Rust picks the survivor.
 -  `new` function L455-459 — `(responses: Vec<Value>) -> Self` — LLM proposes the action; Rust picks the survivor.
@@ -6271,13 +6278,13 @@
 -  `stream` function L464-483 — `( &self, _req: ChatRequest, ) -> Result< Pin<Box<dyn futures::Stream<Item = Resu...` — LLM proposes the action; Rust picks the survivor.
 -  `Fixture` struct L486-493 — `{ tmp: tempfile::TempDir, memory: Arc<MemoryManager>, journal: Arc<Journal>, cur...` — LLM proposes the action; Rust picks the survivor.
 -  `setup` function L495-510 — `() -> Fixture` — LLM proposes the action; Rust picks the survivor.
--  `ctx` function L512-519 — `(fx: &Fixture, cap: usize) -> SubroutineCtx` — LLM proposes the action; Rust picks the survivor.
--  `fact` function L521-527 — `(title: &str, content: &str, reinforce: u32) -> Entity` — LLM proposes the action; Rust picks the survivor.
--  `merge_picks_most_reinforced_survivor` function L530-572 — `()` — LLM proposes the action; Rust picks the survivor.
--  `erroneous_deletes_focus` function L575-601 — `()` — LLM proposes the action; Rust picks the survivor.
--  `none_verdict_leaves_kb_untouched_but_advances_cursor` function L604-628 — `()` — LLM proposes the action; Rust picks the survivor.
--  `second_pass_skips_already_processed_entities` function L631-653 — `()` — LLM proposes the action; Rust picks the survivor.
--  `cap_stops_after_n_applied` function L656-682 — `()` — LLM proposes the action; Rust picks the survivor.
+-  `ctx` function L512-525 — `(fx: &Fixture, cap: usize) -> SubroutineCtx` — LLM proposes the action; Rust picks the survivor.
+-  `fact` function L527-533 — `(title: &str, content: &str, reinforce: u32) -> Entity` — LLM proposes the action; Rust picks the survivor.
+-  `merge_picks_most_reinforced_survivor` function L536-578 — `()` — LLM proposes the action; Rust picks the survivor.
+-  `erroneous_deletes_focus` function L581-607 — `()` — LLM proposes the action; Rust picks the survivor.
+-  `none_verdict_leaves_kb_untouched_but_advances_cursor` function L610-634 — `()` — LLM proposes the action; Rust picks the survivor.
+-  `second_pass_skips_already_processed_entities` function L637-659 — `()` — LLM proposes the action; Rust picks the survivor.
+-  `cap_stops_after_n_applied` function L662-688 — `()` — LLM proposes the action; Rust picks the survivor.
 
 #### crates/arawn-steward/src/rollback.rs
 
@@ -6304,32 +6311,32 @@
 - pub `new` function L100-114 — `( store: Arc<Mutex<Store>>, data_dir: impl Into<PathBuf>, memory: MemoryResolver...` — exercised end-to-end via `IdentitySubroutine`.
 - pub `with_caps` function L116-119 — `(mut self, caps: SubroutineCaps) -> Self` — exercised end-to-end via `IdentitySubroutine`.
 - pub `journal_for` function L122-132 — `(&self, workstream_name: &str) -> Result<Arc<Journal>, StewardError>` — Open / fetch the cached journal for a workstream.
-- pub `run_pass_for_workstream` function L137-187 — `( &self, workstream: &Workstream, ) -> Result<StewardStats, StewardError>` — Run one pass over `workstream`: every subroutine, in declared
-- pub `run_pass_for_all` function L190-229 — `(&self) -> Result<StewardStats, StewardError>` — Run one pass across every active (non-archived) workstream.
+- pub `run_pass_for_workstream` function L137-193 — `( &self, workstream: &Workstream, ) -> Result<StewardStats, StewardError>` — Run one pass over `workstream`: every subroutine, in declared
+- pub `run_pass_for_all` function L196-235 — `(&self) -> Result<StewardStats, StewardError>` — Run one pass across every active (non-archived) workstream.
 -  `SubroutineCaps` type L29-45 — `impl Default for SubroutineCaps` — exercised end-to-end via `IdentitySubroutine`.
 -  `default` function L33-44 — `() -> Self` — Placeholder defaults that exist only so tests + first-boot don't
 -  `SubroutineCaps` type L47-66 — `= SubroutineCaps` — exercised end-to-end via `IdentitySubroutine`.
--  `StewardRunner` type L99-230 — `= StewardRunner` — exercised end-to-end via `IdentitySubroutine`.
--  `tests` module L233-318 — `-` — exercised end-to-end via `IdentitySubroutine`.
--  `setup` function L237-253 — `() -> ( tempfile::TempDir, Arc<Mutex<Store>>, MemoryResolver, )` — exercised end-to-end via `IdentitySubroutine`.
--  `pass_visits_every_active_workstream` function L256-284 — `()` — exercised end-to-end via `IdentitySubroutine`.
--  `caps_override_takes_precedence` function L287-301 — `()` — exercised end-to-end via `IdentitySubroutine`.
--  `journal_persists_across_passes` function L304-317 — `()` — exercised end-to-end via `IdentitySubroutine`.
+-  `StewardRunner` type L99-236 — `= StewardRunner` — exercised end-to-end via `IdentitySubroutine`.
+-  `tests` module L239-324 — `-` — exercised end-to-end via `IdentitySubroutine`.
+-  `setup` function L243-259 — `() -> ( tempfile::TempDir, Arc<Mutex<Store>>, MemoryResolver, )` — exercised end-to-end via `IdentitySubroutine`.
+-  `pass_visits_every_active_workstream` function L262-290 — `()` — exercised end-to-end via `IdentitySubroutine`.
+-  `caps_override_takes_precedence` function L293-307 — `()` — exercised end-to-end via `IdentitySubroutine`.
+-  `journal_persists_across_passes` function L310-323 — `()` — exercised end-to-end via `IdentitySubroutine`.
 
 #### crates/arawn-steward/src/subroutine.rs
 
-- pub `SubroutineCtx` struct L22-30 — `{ workstream: Workstream, memory: Arc<MemoryManager>, journal: Arc<Journal>, cap...` — Per-pass context handed to a subroutine.
-- pub `SubroutineOutcome` struct L36-41 — `{ actions_journaled: usize, mutations_applied: usize, proposals_recorded: usize,...` — What a subroutine did.
-- pub `StewardSubroutine` interface L44-59 — `{ fn name(), fn is_mutating(), fn run() }` — subroutine on this pass.
-- pub `IdentitySubroutine` struct L64-66 — `{ name: String }` — No-op subroutine that writes exactly one journal row per invocation
-- pub `new` function L75-77 — `(name: impl Into<String>) -> Self` — subroutine on this pass.
--  `IdentitySubroutine` type L68-72 — `impl Default for IdentitySubroutine` — subroutine on this pass.
--  `default` function L69-71 — `() -> Self` — subroutine on this pass.
--  `IdentitySubroutine` type L74-78 — `= IdentitySubroutine` — subroutine on this pass.
--  `IdentitySubroutine` type L81-117 — `impl StewardSubroutine for IdentitySubroutine` — subroutine on this pass.
--  `name` function L82-84 — `(&self) -> &str` — subroutine on this pass.
--  `is_mutating` function L86-91 — `(&self) -> bool` — subroutine on this pass.
--  `run` function L93-116 — `(&self, ctx: &SubroutineCtx) -> Result<SubroutineOutcome, StewardError>` — subroutine on this pass.
+- pub `SubroutineCtx` struct L22-33 — `{ workstream: Workstream, memory: Arc<MemoryManager>, journal: Arc<JournalGate>,...` — Per-pass context handed to a subroutine.
+- pub `SubroutineOutcome` struct L39-44 — `{ actions_journaled: usize, mutations_applied: usize, proposals_recorded: usize,...` — What a subroutine did.
+- pub `StewardSubroutine` interface L47-62 — `{ fn name(), fn is_mutating(), fn run() }` — subroutine on this pass.
+- pub `IdentitySubroutine` struct L67-69 — `{ name: String }` — No-op subroutine that writes exactly one journal row per invocation
+- pub `new` function L78-80 — `(name: impl Into<String>) -> Self` — subroutine on this pass.
+-  `IdentitySubroutine` type L71-75 — `impl Default for IdentitySubroutine` — subroutine on this pass.
+-  `default` function L72-74 — `() -> Self` — subroutine on this pass.
+-  `IdentitySubroutine` type L77-81 — `= IdentitySubroutine` — subroutine on this pass.
+-  `IdentitySubroutine` type L84-120 — `impl StewardSubroutine for IdentitySubroutine` — subroutine on this pass.
+-  `name` function L85-87 — `(&self) -> &str` — subroutine on this pass.
+-  `is_mutating` function L89-94 — `(&self) -> bool` — subroutine on this pass.
+-  `run` function L96-119 — `(&self, ctx: &SubroutineCtx) -> Result<SubroutineOutcome, StewardError>` — subroutine on this pass.
 
 ### crates/arawn-storage/src
 

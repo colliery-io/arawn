@@ -27,6 +27,12 @@ pub struct Scenario {
     pub objective: String,
     pub turns: Vec<ScenarioTurn>,
     pub mechanical: MechanicalThresholds,
+    /// Optional path to a JSON fixture (relative to `arawn-tests`'s
+    /// CARGO_MANIFEST_DIR) loaded by `uat_fixture::apply` before the
+    /// server starts. Used to pre-populate projections (and drive the
+    /// extractor) so the agent sees a warm KB on turn 1.
+    #[serde(default)]
+    pub seed_fixture: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -594,6 +600,7 @@ fn github_monitor_scenario() -> Scenario {
             min_memory_entities: 0,
             max_tool_errors: 2,
         },
+        seed_fixture: None,
     }
 }
 
@@ -629,11 +636,74 @@ fn work_signal_pipeline_scenario() -> Scenario {
             min_memory_entities: 0,
             max_tool_errors: 2,
         },
+        seed_fixture: None,
+    }
+}
+
+#[path = "uat_fixture.rs"]
+mod uat_fixture;
+
+/// I-0040 end-to-end UAT: synthetic gmail + slack feed rows for two
+/// workstreams, extractor runs during seed so the KB is warm, agent
+/// then drives signal_search / signal_query / signal_timeline /
+/// workstream_journal / workstream_dust / workstream_refine /
+/// workstream_apply / workstream_rollback against real data.
+fn signal_extraction_e2e_scenario() -> Scenario {
+    Scenario {
+        name: "signal-extraction-e2e".to_string(),
+        objective: "Drive the I-0040 read + curation surface against two seeded workstreams. The seed loader pre-populates projections.db with synthetic gmail + slack rows for `work` and `dnd` workstreams, then runs the extractor synchronously so the agent sees a warm KB on turn 1.".to_string(),
+        turns: vec![
+            ScenarioTurn {
+                user_message: "Switch to the `work` workstream, then use signal_search to find what we decided about Postgres. Quote the decision title and any key rationale.".to_string(),
+                judge_expectation: "Agent should call workstream_switch (or workstream_show) then signal_search with a query like \"postgres\". Should surface the ledger/postgres decision extracted from the seeded gmail rows.".to_string(),
+            },
+            ScenarioTurn {
+                user_message: "Use signal_query to list every Convention in this workstream — I want to see what process rules are codified.".to_string(),
+                judge_expectation: "Agent should call signal_query with entity_type=\"convention\". Should return at least the on-call and code-review conventions extracted from the seeded rows.".to_string(),
+            },
+            ScenarioTurn {
+                user_message: "Now switch to the `dnd` workstream. What's the latest plot thread we're tracking? Use signal_timeline to see what's been added recently.".to_string(),
+                judge_expectation: "Agent should call workstream_switch then signal_timeline. Should mention the Calidor / cult tracking arc as a recent plot thread.".to_string(),
+            },
+            ScenarioTurn {
+                user_message: "We have a couple of old falcon-project entries in the `work` workstream that are stale. Switch back to `work` and run workstream_dust on the falcon cluster — preview the proposed summary before we commit anything.".to_string(),
+                judge_expectation: "Agent should switch workstreams and call workstream_dust with tags=[\"falcon\"] (or similar). Returns dust proposals with a summary entity. Should report the proposal id(s) but NOT auto-apply.".to_string(),
+            },
+            ScenarioTurn {
+                user_message: "List all pending steward proposals via workstream_refine so I can see what map / dust / doorwatch have suggested.".to_string(),
+                judge_expectation: "Agent should call workstream_refine. Output should include the dust proposal from the previous turn (applied=false).".to_string(),
+            },
+            ScenarioTurn {
+                user_message: "Apply the falcon dust proposal — pass the id you saw in refine to workstream_apply.".to_string(),
+                judge_expectation: "Agent should call workstream_apply with the dust proposal's id. Status should be \"applied\". A new summary entity now exists in the work KB.".to_string(),
+            },
+            ScenarioTurn {
+                user_message: "Confirm the apply worked: signal_search for \"falcon\" — you should see the new summary entity.".to_string(),
+                judge_expectation: "signal_search should return the dust summary among the hits. Confirms apply mutated the KB as expected.".to_string(),
+            },
+            ScenarioTurn {
+                user_message: "Actually, roll that apply back — I want to double-check the originals are still there. Use workstream_rollback with the same id.".to_string(),
+                judge_expectation: "Agent calls workstream_rollback. Status: \"reverted\". A subsequent signal_search for \"falcon\" should show the originals but not the summary (the summary's SUMMARIZES edges are gone and the summary entity is removed from the KB).".to_string(),
+            },
+        ],
+        mechanical: MechanicalThresholds {
+            min_files_created: 0,
+            min_workflows_created: 0,
+            // Seed runs the extractor; even modestly stingy classification
+            // should produce >= 6 entities across the two workstreams.
+            min_memory_entities: 6,
+            max_tool_errors: 3,
+        },
+        seed_fixture: Some("tests/fixtures/uat/signal-extraction-e2e.json".to_string()),
     }
 }
 
 fn all_scenarios() -> Vec<Scenario> {
-    vec![github_monitor_scenario(), work_signal_pipeline_scenario()]
+    vec![
+        github_monitor_scenario(),
+        work_signal_pipeline_scenario(),
+        signal_extraction_e2e_scenario(),
+    ]
 }
 
 // ============================================================================
@@ -680,6 +750,39 @@ async fn uat_run() {
         println!("  [{}/{}] Scenario: {}", results.len() + 1, scenarios.len(), scenario.name);
 
         let mut harness = UatHarness::new(&scenario_dir, &model, &provider, &api_key_env);
+
+        // If the scenario declares a seed fixture, load it BEFORE the
+        // server boots so the agent sees a warm KB on turn 1. Fixture
+        // path is relative to the arawn-tests manifest dir.
+        if let Some(ref fixture_rel) = scenario.seed_fixture {
+            let fixture_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(fixture_rel);
+            println!("    Seeding from fixture: {}", fixture_path.display());
+            let fx = uat_fixture::load(&fixture_path).expect("load fixture");
+            let applied =
+                uat_fixture::apply(&fx, &scenario_dir).expect("apply fixture");
+
+            // Build a transient LLM client matching the server config
+            // and drive the extractor synchronously across each
+            // (workstream, feed_type). Skipping this would leave the KB
+            // empty — extraction is part of the pipeline under test.
+            let client = uat_fixture::build_seed_llm_client(&provider, &model, &api_key_env)
+                .expect("build seed llm");
+            let cap = Duration::from_secs(15 * 60);
+            let processed = uat_fixture::drive_extraction(
+                &applied,
+                &scenario_dir,
+                client,
+                model.clone(),
+                cap,
+            )
+            .await
+            .expect("drive extraction");
+            println!(
+                "    Seed extraction complete: {} projection rows processed across {} workstreams",
+                processed,
+                applied.per_workstream.len()
+            );
+        }
 
         // Start server
         harness.start_server().expect("start server");
