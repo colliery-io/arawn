@@ -378,7 +378,17 @@ async fn main() -> Result<()> {
                 Arc::clone(router),
                 embedder.clone(),
             )));
-            info!("memory tools registered (workstream-routed store + search)");
+            registry.register(Box::new(arawn_engine::SignalSearchTool::new(
+                Arc::clone(router),
+                embedder.clone(),
+            )));
+            registry.register(Box::new(arawn_engine::SignalQueryTool::new(
+                Arc::clone(router),
+            )));
+            registry.register(Box::new(arawn_engine::SignalTimelineTool::new(
+                Arc::clone(router),
+            )));
+            info!("memory + signal tools registered (workstream-routed)");
         }
 
         // Shared projection store — feed_search, embed pass, feed

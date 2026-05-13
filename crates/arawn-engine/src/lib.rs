@@ -53,7 +53,8 @@ pub use skills::{SkillDefinition, SkillRegistry, format_skill_listing, load_merg
 pub use tools::{
     AgentTool, AskUserTool, EnterPlanModeTool, ExitPlanModeTool, FileEditTool, FileReadTool,
     FileWriteTool, GlobTool, GrepTool, SessionTaskStore, ShellTool, SkillTool, SleepTool,
-    FeedSearchTool, MemorySearchTool, MemoryStoreTool, TaskCreateTool, TaskGetTool, TaskListTool, TaskOutputTool, TaskStopTool,
+    FeedSearchTool, MemorySearchTool, MemoryStoreTool, SignalQueryTool, SignalSearchTool,
+    SignalTimelineTool, TaskCreateTool, TaskGetTool, TaskListTool, TaskOutputTool, TaskStopTool,
     TaskUpdateTool, ThinkTool, WebFetchTool, WebSearchTool,
     BindBackfillHook, SessionWorkstream, WorkstreamBindTool, WorkstreamCreateTool,
     WorkstreamDeleteTool, WorkstreamDescribeTool, WorkstreamListTool, WorkstreamPromoteTool,

@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-13T03:26:51Z | 283 files | Python, Rust
+> Generated: 2026-05-13T03:41:16Z | 283 files | Python, Rust
 
 ## Project Structure
 
@@ -619,19 +619,19 @@
 -  `embed_batch` function L17-31 — `( &'a self, texts: &'a [&'a str], ) -> std::pin::Pin< Box<dyn std::future::Futur...`
 -  `DEFAULT_MODEL` variable L39 — `: &str`
 -  `FILE_LOG_FILTER` variable L42 — `: &str` — Default file log filter: debug for arawn crates, warn for third-party.
--  `main` function L45-1084 — `() -> Result<()>`
+-  `main` function L45-1040 — `() -> Result<()>`
 -  `Cli` struct L51-70 — `{ command: Option<Command>, data_dir: Option<String>, session: Option<Uuid>, lis...`
 -  `Command` enum L73-92 — `Serve | Tui | Plugin`
 -  `ExtractorBindHook` struct L577-580 — `{ runner: Arc<arawn_extractor::ExtractorRunner>, store: Arc<std::sync::Mutex<ara...`
 -  `ExtractorBindHook` type L581-615 — `= ExtractorBindHook`
 -  `on_bind` function L582-614 — `(&self, workstream_name: &str, feed_id: &str)`
--  `run_cli_via_server` function L1087-1192 — `( url: &str, prompt: &str, session_id: Option<Uuid>, ) -> Result<()>` — Run a CLI prompt by connecting to the running server via WebSocket.
--  `build_llm_client` function L1195-1218 — `( config: &arawn_bin::LlmConfig, ) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
--  `register_default_tools` function L1221-1267 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &arawn_bin::ArawnConfig, d...` — Register all default tools into the registry.
--  `connect_mcp_servers` function L1270-1318 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
--  `register_workflow_tools` function L1321-1338 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
--  `build_engine_config` function L1340-1375 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
--  `dirs_path` function L1377-1386 — `() -> Option<String>`
+-  `run_cli_via_server` function L1043-1148 — `( url: &str, prompt: &str, session_id: Option<Uuid>, ) -> Result<()>` — Run a CLI prompt by connecting to the running server via WebSocket.
+-  `build_llm_client` function L1151-1174 — `( config: &arawn_bin::LlmConfig, ) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
+-  `register_default_tools` function L1177-1223 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &arawn_bin::ArawnConfig, d...` — Register all default tools into the registry.
+-  `connect_mcp_servers` function L1226-1274 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
+-  `register_workflow_tools` function L1277-1294 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
+-  `build_engine_config` function L1296-1331 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
+-  `dirs_path` function L1333-1342 — `() -> Option<String>`
 
 #### crates/arawn/src/plugin_cmd.rs
 
@@ -2952,6 +2952,34 @@
 -  `relation_type_lowercased_for_parse` function L433-437 — `()` — steward (Phase 5) refines vocabulary later.
 -  `projection_id_to_uuid_is_deterministic` function L440-446 — `()` — steward (Phase 5) refines vocabulary later.
 -  `truncate_preserves_short_input` function L449-455 — `()` — steward (Phase 5) refines vocabulary later.
+-  `integration` module L464-902 — `-` — steward (Phase 5) refines vocabulary later.
+-  `KeyedMockLlm` struct L490-497 — `{ classify: Mutex<VecDeque<Value>>, extract: Mutex<VecDeque<Value>>, link: Mutex...` — Inspects the system prompt to detect which CoT stage is calling
+-  `KeyedMockLlm` type L499-527 — `= KeyedMockLlm` — steward (Phase 5) refines vocabulary later.
+-  `new` function L500-509 — `() -> Self` — steward (Phase 5) refines vocabulary later.
+-  `default_classify` function L511-514 — `(self, v: Value) -> Self` — steward (Phase 5) refines vocabulary later.
+-  `default_extract` function L515-518 — `(self, v: Value) -> Self` — steward (Phase 5) refines vocabulary later.
+-  `default_link` function L519-522 — `(self, v: Value) -> Self` — steward (Phase 5) refines vocabulary later.
+-  `push_classify` function L524-526 — `(&self, v: Value)` — steward (Phase 5) refines vocabulary later.
+-  `classify_stage` function L529-531 — `(sys: &str) -> bool` — steward (Phase 5) refines vocabulary later.
+-  `extract_stage` function L532-534 — `(sys: &str) -> bool` — steward (Phase 5) refines vocabulary later.
+-  `link_stage` function L535-537 — `(sys: &str) -> bool` — steward (Phase 5) refines vocabulary later.
+-  `KeyedMockLlm` type L540-580 — `= KeyedMockLlm` — steward (Phase 5) refines vocabulary later.
+-  `stream` function L541-579 — `( &self, request: ChatRequest, ) -> Result< Pin<Box<dyn futures::Stream<Item = R...` — steward (Phase 5) refines vocabulary later.
+-  `ws` function L584-588 — `(name: &str, desc: &str) -> Workstream` — steward (Phase 5) refines vocabulary later.
+-  `fixture_proj` function L590-603 — `(id: &str, body: &str, ts_offset: i64) -> GmailMessageProjection` — steward (Phase 5) refines vocabulary later.
+-  `Fixture` struct L605-611 — `{ _tmp: tempfile::TempDir, store: Arc<std::sync::Mutex<Store>>, proj: Arc<Projec...` — steward (Phase 5) refines vocabulary later.
+-  `setup` function L613-648 — `() -> Fixture` — steward (Phase 5) refines vocabulary later.
+-  `Fixture` type L650-663 — `= Fixture` — steward (Phase 5) refines vocabulary later.
+-  `kb` function L651-656 — `(&self, name: &str) -> Arc<MemoryManager>` — steward (Phase 5) refines vocabulary later.
+-  `cursor` function L658-662 — `(&self, ws_name: &str, feed_type: &str) -> Option<chrono::DateTime<chrono::Utc>>` — steward (Phase 5) refines vocabulary later.
+-  `runner_with` function L665-679 — `( fx: &Fixture, mock: Arc<KeyedMockLlm>, batch_size: usize, ) -> ExtractorRunner` — steward (Phase 5) refines vocabulary later.
+-  `happy_path_extracts_into_workstream` function L684-716 — `()` — steward (Phase 5) refines vocabulary later.
+-  `out_of_scope_skips_but_advances_cursor` function L719-740 — `()` — steward (Phase 5) refines vocabulary later.
+-  `link_by_name_resolves_to_existing_kb_entity` function L743-778 — `()` — steward (Phase 5) refines vocabulary later.
+-  `link_to_missing_target_is_dropped_without_panic` function L781-804 — `()` — steward (Phase 5) refines vocabulary later.
+-  `backfill_walks_existing_rows` function L807-833 — `()` — steward (Phase 5) refines vocabulary later.
+-  `rerun_is_idempotent_via_cursor` function L836-861 — `()` — steward (Phase 5) refines vocabulary later.
+-  `two_workstreams_each_get_the_entity` function L864-901 — `()` — steward (Phase 5) refines vocabulary later.
 
 #### crates/arawn-extractor/src/error.rs
 
