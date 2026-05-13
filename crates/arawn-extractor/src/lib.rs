@@ -8,9 +8,12 @@
 //! pick up only new rows.
 
 pub mod chain;
+pub mod cot;
 pub mod error;
+pub mod llm_text;
 pub mod runner;
 
 pub use chain::{ChainOutcome, ExtractionChain, StubChain};
+pub use cot::CotChain;
 pub use error::ExtractionError;
 pub use runner::{ExtractorRunner, RunStats};
