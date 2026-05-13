@@ -454,3 +454,449 @@ mod tests {
         assert!(t.contains("[truncated]"));
     }
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// Integration tests — CotChain + ExtractorRunner end-to-end with a stage-
+// keyed mock LLM. T-0254.
+// ─────────────────────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod integration {
+    use super::*;
+    use std::collections::VecDeque;
+    use std::pin::Pin;
+    use std::sync::Mutex;
+
+    use async_trait::async_trait;
+    use futures::stream;
+    use serde_json::Value;
+
+    use arawn_core::Workstream;
+    use arawn_llm::{
+        LlmError,
+        types::{ChatChunk, ChatRequest},
+    };
+    use arawn_memory::{ConfidenceSource, Entity, EntityType, MemoryManager};
+    use arawn_projections::{ProjectionStore, gmail::GmailMessageProjection};
+    use arawn_storage::{ExtractorCursorStore, Store};
+
+    use crate::runner::{ExtractorRunner, MemoryResolver};
+
+    // ── Stage-keyed mock LLM ─────────────────────────────────────────────
+
+    /// Inspects the system prompt to detect which CoT stage is calling
+    /// and returns the next scripted response for that stage. Falls back
+    /// to per-stage default when the queue is empty.
+    struct KeyedMockLlm {
+        classify: Mutex<VecDeque<Value>>,
+        extract: Mutex<VecDeque<Value>>,
+        link: Mutex<VecDeque<Value>>,
+        classify_default: Mutex<Option<Value>>,
+        extract_default: Mutex<Option<Value>>,
+        link_default: Mutex<Option<Value>>,
+    }
+
+    impl KeyedMockLlm {
+        fn new() -> Self {
+            Self {
+                classify: Mutex::new(VecDeque::new()),
+                extract: Mutex::new(VecDeque::new()),
+                link: Mutex::new(VecDeque::new()),
+                classify_default: Mutex::new(None),
+                extract_default: Mutex::new(None),
+                link_default: Mutex::new(None),
+            }
+        }
+
+        fn default_classify(self, v: Value) -> Self {
+            *self.classify_default.lock().unwrap() = Some(v);
+            self
+        }
+        fn default_extract(self, v: Value) -> Self {
+            *self.extract_default.lock().unwrap() = Some(v);
+            self
+        }
+        fn default_link(self, v: Value) -> Self {
+            *self.link_default.lock().unwrap() = Some(v);
+            self
+        }
+        #[allow(dead_code)]
+        fn push_classify(&self, v: Value) {
+            self.classify.lock().unwrap().push_back(v);
+        }
+    }
+
+    fn classify_stage(sys: &str) -> bool {
+        sys.contains("You decide whether")
+    }
+    fn extract_stage(sys: &str) -> bool {
+        sys.contains("Pull typed knowledge entities")
+    }
+    fn link_stage(sys: &str) -> bool {
+        sys.contains("Propose relations")
+    }
+
+    #[async_trait]
+    impl arawn_llm::LlmClient for KeyedMockLlm {
+        async fn stream(
+            &self,
+            request: ChatRequest,
+        ) -> Result<
+            Pin<Box<dyn futures::Stream<Item = Result<ChatChunk, LlmError>> + Send>>,
+            LlmError,
+        > {
+            let sys = request.system_prompt.unwrap_or_default();
+            let payload: Value = if classify_stage(&sys) {
+                self.classify
+                    .lock()
+                    .unwrap()
+                    .pop_front()
+                    .or_else(|| self.classify_default.lock().unwrap().clone())
+                    .unwrap_or_else(|| serde_json::json!({"in_scope": false, "reason": ""}))
+            } else if extract_stage(&sys) {
+                self.extract
+                    .lock()
+                    .unwrap()
+                    .pop_front()
+                    .or_else(|| self.extract_default.lock().unwrap().clone())
+                    .unwrap_or_else(|| serde_json::json!([]))
+            } else if link_stage(&sys) {
+                self.link
+                    .lock()
+                    .unwrap()
+                    .pop_front()
+                    .or_else(|| self.link_default.lock().unwrap().clone())
+                    .unwrap_or_else(|| serde_json::json!([]))
+            } else {
+                panic!("KeyedMockLlm: unrecognized system prompt: {sys}");
+            };
+            let text = payload.to_string();
+            let chunks: Vec<Result<ChatChunk, LlmError>> = vec![
+                Ok(ChatChunk::TextDelta { text }),
+                Ok(ChatChunk::Done { usage: None }),
+            ];
+            Ok(Box::pin(stream::iter(chunks)))
+        }
+    }
+
+    // ── Fixture helpers ──────────────────────────────────────────────────
+
+    fn ws(name: &str, desc: &str) -> Workstream {
+        let mut w = Workstream::new(name, std::env::temp_dir().join(name));
+        w.description = desc.to_string();
+        w
+    }
+
+    fn fixture_proj(id: &str, body: &str, ts_offset: i64) -> GmailMessageProjection {
+        GmailMessageProjection {
+            id: arawn_projections::gmail::projection_id("feed-1", id),
+            feed_id: "feed-1".into(),
+            source_id: id.into(),
+            source_ts: chrono::Utc::now() + chrono::Duration::seconds(ts_offset),
+            sender: Some("a@e.com".into()),
+            recipients: vec![],
+            subject: format!("subj-{id}"),
+            body_text: body.into(),
+            thread_id: None,
+            labels: vec![],
+        }
+    }
+
+    struct Fixture {
+        _tmp: tempfile::TempDir,
+        store: Arc<std::sync::Mutex<Store>>,
+        proj: Arc<ProjectionStore>,
+        resolver: MemoryResolver,
+        kb_cache: Arc<std::sync::Mutex<std::collections::HashMap<String, Arc<MemoryManager>>>>,
+    }
+
+    fn setup() -> Fixture {
+        let tmp = tempfile::tempdir().unwrap();
+        let store = Store::open(tmp.path()).unwrap();
+        store.ensure_scratch_workstream().unwrap();
+        let store = Arc::new(std::sync::Mutex::new(store));
+
+        let proj_path = tmp.path().join("projections.db");
+        let proj = Arc::new(ProjectionStore::open(&proj_path).unwrap());
+
+        // Cache MemoryManagers per workstream so the test can reach into
+        // the same KB the runner used (a fresh resolver instance would
+        // open a new MemoryStore handle each call).
+        let cache: Arc<std::sync::Mutex<std::collections::HashMap<String, Arc<MemoryManager>>>> =
+            Arc::new(std::sync::Mutex::new(std::collections::HashMap::new()));
+        let cache_clone = Arc::clone(&cache);
+        let data_dir = tmp.path().to_path_buf();
+        let resolver: MemoryResolver = Arc::new(move |name: &str| {
+            let mut guard = cache_clone.lock().unwrap();
+            if let Some(existing) = guard.get(name) {
+                return Ok(Arc::clone(existing));
+            }
+            let mgr = MemoryManager::for_workstream(&data_dir, name, None)
+                .map(Arc::new)
+                .map_err(|e| ExtractionError::Memory(e.to_string()))?;
+            guard.insert(name.to_string(), Arc::clone(&mgr));
+            Ok(mgr)
+        });
+
+        Fixture {
+            _tmp: tmp,
+            store,
+            proj,
+            resolver,
+            kb_cache: cache,
+        }
+    }
+
+    impl Fixture {
+        fn kb(&self, name: &str) -> Arc<MemoryManager> {
+            // Force materialization through the resolver so the cache
+            // is populated, then return the same handle.
+            let _ = (self.resolver)(name).unwrap();
+            self.kb_cache.lock().unwrap().get(name).cloned().unwrap()
+        }
+
+        fn cursor(&self, ws_name: &str, feed_type: &str) -> Option<chrono::DateTime<chrono::Utc>> {
+            let s = self.store.lock().unwrap();
+            let cs = ExtractorCursorStore::new(s.database());
+            cs.get(ws_name, feed_type).unwrap().and_then(|c| c.last_source_ts)
+        }
+    }
+
+    fn runner_with(
+        fx: &Fixture,
+        mock: Arc<KeyedMockLlm>,
+        batch_size: usize,
+    ) -> ExtractorRunner {
+        let chain: Arc<dyn ExtractionChain> =
+            Arc::new(CotChain::new(mock as Arc<dyn arawn_llm::LlmClient>, "mock-model"));
+        ExtractorRunner::new(
+            Arc::clone(&fx.store),
+            Arc::clone(&fx.proj),
+            Arc::clone(&fx.resolver),
+            chain,
+        )
+        .with_batch_size(batch_size)
+    }
+
+    // ── Scenarios ────────────────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn happy_path_extracts_into_workstream() {
+        let fx = setup();
+        fx.proj
+            .write_batch(&[fixture_proj("m1", "we picked Postgres for storage", 0)])
+            .unwrap();
+
+        let mock = Arc::new(
+            KeyedMockLlm::new()
+                .default_classify(serde_json::json!({"in_scope": true, "reason": "in scope"}))
+                .default_extract(serde_json::json!([
+                    {"entity_type": "decision", "title": "use postgres",
+                     "content": "we picked postgres", "tags": ["db"]}
+                ]))
+                .default_link(serde_json::json!([])),
+        );
+        let runner = runner_with(&fx, mock, 50);
+        let stats = runner
+            .run_for_workstream(&ws("pat", "pat's stuff"), "gmail_messages")
+            .await
+            .unwrap();
+        assert_eq!(stats.processed, 1);
+        assert_eq!(stats.kept, 1);
+        assert_eq!(stats.entities_written, 1);
+        assert!(fx.cursor("pat", "gmail_messages").is_some());
+
+        // Entity actually landed in the workstream KB.
+        let kb = fx.kb("pat");
+        let hits = kb.workstream.search("postgres", 5).unwrap();
+        assert!(
+            hits.iter().any(|e| e.title.contains("postgres")),
+            "expected entity in workstream KB; got {hits:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn out_of_scope_skips_but_advances_cursor() {
+        let fx = setup();
+        fx.proj
+            .write_batch(&[fixture_proj("m1", "unrelated newsletter", 0)])
+            .unwrap();
+        let mock = Arc::new(
+            KeyedMockLlm::new()
+                .default_classify(serde_json::json!({"in_scope": false, "reason": "noise"})),
+        );
+        let runner = runner_with(&fx, mock, 50);
+        let stats = runner
+            .run_for_workstream(&ws("pat", "pat's stuff"), "gmail_messages")
+            .await
+            .unwrap();
+        assert_eq!(stats.processed, 1);
+        assert_eq!(stats.skipped, 1);
+        assert_eq!(stats.kept, 0);
+        assert!(
+            fx.cursor("pat", "gmail_messages").is_some(),
+            "cursor must advance even for skipped rows"
+        );
+    }
+
+    #[tokio::test]
+    async fn link_by_name_resolves_to_existing_kb_entity() {
+        let fx = setup();
+        // Pre-seed the workstream KB with a fact the link will target.
+        {
+            let kb = fx.kb("pat");
+            let prior = Entity::new(EntityType::Fact, "open question: which auth library?")
+                .with_confidence(ConfidenceSource::Stated);
+            kb.workstream.store_fact(&prior).unwrap();
+        }
+        fx.proj
+            .write_batch(&[fixture_proj("m1", "we chose oauth2-rs to close out auth", 0)])
+            .unwrap();
+
+        let mock = Arc::new(
+            KeyedMockLlm::new()
+                .default_classify(serde_json::json!({"in_scope": true, "reason": "ok"}))
+                .default_extract(serde_json::json!([
+                    {"entity_type": "decision", "title": "use oauth2-rs",
+                     "content": "settles the auth question"}
+                ]))
+                .default_link(serde_json::json!([
+                    {"from": "use oauth2-rs", "rel": "supersedes",
+                     "to_name": "open question: which auth library?"}
+                ])),
+        );
+        let runner = runner_with(&fx, mock, 50);
+        let stats = runner
+            .run_for_workstream(&ws("pat", "pat's stuff"), "gmail_messages")
+            .await
+            .unwrap();
+        assert_eq!(stats.kept, 1);
+        assert_eq!(
+            stats.relations_written, 1,
+            "link should have resolved via FTS to the pre-seeded entity"
+        );
+    }
+
+    #[tokio::test]
+    async fn link_to_missing_target_is_dropped_without_panic() {
+        let fx = setup();
+        fx.proj.write_batch(&[fixture_proj("m1", "body", 0)]).unwrap();
+        let mock = Arc::new(
+            KeyedMockLlm::new()
+                .default_classify(serde_json::json!({"in_scope": true, "reason": "ok"}))
+                .default_extract(serde_json::json!([
+                    {"entity_type": "decision", "title": "alpha"}
+                ]))
+                .default_link(serde_json::json!([
+                    {"from": "alpha", "rel": "supports", "to_name": "does-not-exist-anywhere"}
+                ])),
+        );
+        let runner = runner_with(&fx, mock, 50);
+        let stats = runner
+            .run_for_workstream(&ws("pat", "pat's stuff"), "gmail_messages")
+            .await
+            .unwrap();
+        assert_eq!(stats.entities_written, 1);
+        assert_eq!(
+            stats.relations_written, 0,
+            "unresolved link target must be dropped, not written"
+        );
+    }
+
+    #[tokio::test]
+    async fn backfill_walks_existing_rows() {
+        let fx = setup();
+        let rows: Vec<_> = (0..5)
+            .map(|i| fixture_proj(&format!("m{i}"), &format!("body {i}"), i as i64))
+            .collect();
+        fx.proj.write_batch(&rows).unwrap();
+
+        let mock = Arc::new(
+            KeyedMockLlm::new()
+                .default_classify(serde_json::json!({"in_scope": true, "reason": "ok"}))
+                .default_extract(serde_json::json!([
+                    {"entity_type": "note", "title": "captured"}
+                ]))
+                .default_link(serde_json::json!([])),
+        );
+        let runner = runner_with(&fx, mock, 2);
+        let stats = runner
+            .run_for_workstream_until_exhausted(
+                &ws("pat", "pat's stuff"),
+                "gmail_messages",
+                std::time::Duration::from_secs(30),
+            )
+            .await
+            .unwrap();
+        assert_eq!(stats.processed, 5);
+        assert_eq!(stats.kept, 5);
+    }
+
+    #[tokio::test]
+    async fn rerun_is_idempotent_via_cursor() {
+        let fx = setup();
+        fx.proj.write_batch(&[fixture_proj("m1", "body", 0)]).unwrap();
+        let mock = Arc::new(
+            KeyedMockLlm::new()
+                .default_classify(serde_json::json!({"in_scope": true, "reason": "ok"}))
+                .default_extract(serde_json::json!([
+                    {"entity_type": "note", "title": "n"}
+                ]))
+                .default_link(serde_json::json!([])),
+        );
+        let runner = runner_with(&fx, mock, 50);
+        let first = runner
+            .run_for_workstream(&ws("pat", "pat's stuff"), "gmail_messages")
+            .await
+            .unwrap();
+        assert_eq!(first.processed, 1);
+        let second = runner
+            .run_for_workstream(&ws("pat", "pat's stuff"), "gmail_messages")
+            .await
+            .unwrap();
+        assert_eq!(
+            second.processed, 0,
+            "second run should be a no-op once the cursor caught up"
+        );
+    }
+
+    #[tokio::test]
+    async fn two_workstreams_each_get_the_entity() {
+        let fx = setup();
+        fx.proj
+            .write_batch(&[fixture_proj("m1", "shared message", 0)])
+            .unwrap();
+
+        // Same default response works for both workstreams — classify
+        // is_scope=true, extract one entity, no links.
+        let mock = Arc::new(
+            KeyedMockLlm::new()
+                .default_classify(serde_json::json!({"in_scope": true, "reason": "ok"}))
+                .default_extract(serde_json::json!([
+                    {"entity_type": "fact", "title": "shared finding"}
+                ]))
+                .default_link(serde_json::json!([])),
+        );
+        let runner = runner_with(&fx, mock, 50);
+        let s1 = runner
+            .run_for_workstream(&ws("pat", "pat's stuff"), "gmail_messages")
+            .await
+            .unwrap();
+        let s2 = runner
+            .run_for_workstream(&ws("auth-migration", "auth work"), "gmail_messages")
+            .await
+            .unwrap();
+        assert_eq!(s1.entities_written, 1);
+        assert_eq!(s2.entities_written, 1);
+
+        // Both KBs hold the entity independently.
+        let pat_hits = fx.kb("pat").workstream.search("shared", 5).unwrap();
+        let auth_hits = fx
+            .kb("auth-migration")
+            .workstream
+            .search("shared", 5)
+            .unwrap();
+        assert!(!pat_hits.is_empty(), "pat KB should contain the fact");
+        assert!(!auth_hits.is_empty(), "auth-migration KB should contain the fact");
+    }
+}

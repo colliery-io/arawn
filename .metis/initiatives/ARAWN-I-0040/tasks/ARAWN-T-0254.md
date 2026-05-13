@@ -4,14 +4,14 @@ level: task
 title: "Extractor integration tests — fixture projections + mock LLM"
 short_code: "ARAWN-T-0254"
 created_at: 2026-05-13T01:28:15.413201+00:00
-updated_at: 2026-05-13T01:28:15.413201+00:00
+updated_at: 2026-05-13T03:41:04.986612+00:00
 parent: ARAWN-I-0040
 blocked_by: [ARAWN-T-0252, ARAWN-T-0253]
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -87,6 +87,10 @@ Failures (no matching response) return a clear error so test diagnostics are obv
 
 ## Acceptance Criteria
 
+## Acceptance Criteria
+
+## Acceptance Criteria
+
 - [ ] `MockLlm` available; integration test suite uses it.
 - [ ] All 7 scenarios above pass.
 - [ ] No real network calls in the test suite.
@@ -110,4 +114,31 @@ The CoT chain's stages each map to one LLM call. With scripted mock responses, e
 
 ## Status Updates
 
-*To be added during implementation*
+### 2026-05-12 — Implementation complete
+
+**Stage-keyed mock LLM (test-only, inline in `cot.rs`).**
+Instead of consuming a strict response queue, `KeyedMockLlm` inspects the request's `system_prompt` for stage-distinguishing phrases ("You decide whether" → classify, "Pull typed knowledge entities" → extract, "Propose relations" → link) and dispatches to a per-stage queue with optional per-stage default. Defaults are the right ergonomic primitive for these tests: nearly every scenario wants the same classify+extract+link response regardless of which projection row is being processed, so setting a default is one line vs. pushing N copies.
+
+**Test infrastructure: `Fixture`.**
+- Opens a tempdir-backed `Store` (with scratch workstream) and `ProjectionStore`.
+- Provides a `MemoryResolver` that caches `MemoryManager` handles per workstream so the test can read back the exact KB the chain wrote into (a naive resolver returns a fresh handle each call, defeating assertions).
+
+**7 scenarios implemented as `#[tokio::test]`s in `cot::integration`:**
+
+1. `happy_path_extracts_into_workstream` — single row, classify=true → one decision written; cursor advanced; entity searchable in workstream KB via FTS.
+2. `out_of_scope_skips_but_advances_cursor` — classify=false skips, but the cursor still advances so the row isn't re-classified next pass.
+3. `link_by_name_resolves_to_existing_kb_entity` — pre-seeds a Fact in the workstream KB; CoT emits a `supersedes` link by `to_name`; assertion checks `relations_written == 1`, proving the FTS-resolve path fired.
+4. `link_to_missing_target_is_dropped_without_panic` — link's `to_name` isn't in the KB and isn't a sibling; entity written, edge dropped silently.
+5. `backfill_walks_existing_rows` — 5 rows / batch_size 2 via `run_for_workstream_until_exhausted`; all 5 processed across multiple iterations.
+6. `rerun_is_idempotent_via_cursor` — second run returns `processed = 0` because the cursor caught up.
+7. `two_workstreams_each_get_the_entity` — same projection row, two workstreams; both classify=true; entity lands in both KBs independently.
+
+**Validation:**
+- `cargo test -p arawn-extractor` — 26 pass (19 prior + 7 new); 0 failures.
+- `angreal test unit` — full workspace green.
+- `angreal check clippy` — exit 0.
+
+**Notes:**
+- Tests stay inline in `cot.rs` rather than a separate `tests/` file per project convention (inline test modules preferred).
+- No real network calls; UAT against real LLMs is Phase 7.
+- The KeyedMockLlm wraps `arawn-llm`'s `LlmClient` trait directly rather than reusing the in-order `MockLlmClient`, because the CoT chain issues calls in a fixed-per-stage order that maps better to stage-keyed dispatch than to a flat queue.
