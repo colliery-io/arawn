@@ -64,6 +64,44 @@ pub struct AppliedResult {
     pub newly_applied: bool,
 }
 
+/// Small write-side facade over `Journal`. Subroutines receive a
+/// `JournalGate` rather than the raw `Journal` so the `StewardRunner`
+/// can enforce per-subroutine contracts at the type level — chiefly,
+/// non-mutating subroutines may only write `applied = false`
+/// (proposal) rows. Other journal operations the subroutine doesn't
+/// need are intentionally absent from the surface.
+pub struct JournalGate {
+    journal: Arc<Journal>,
+    mutating_allowed: bool,
+}
+
+impl JournalGate {
+    pub fn new(journal: Arc<Journal>, mutating_allowed: bool) -> Self {
+        Self {
+            journal,
+            mutating_allowed,
+        }
+    }
+
+    /// Forward a write to the underlying journal, refusing `applied=true`
+    /// records when the gate is in proposal-only mode.
+    pub fn write_ahead(&self, record: &JournalRecord) -> Result<i64, StewardError> {
+        if record.applied && !self.mutating_allowed {
+            return Err(StewardError::Subroutine {
+                name: record.subroutine.clone(),
+                message:
+                    "non-mutating subroutine attempted an `applied=true` write; rejected"
+                        .into(),
+            });
+        }
+        self.journal.write_ahead(record)
+    }
+
+    pub fn workstream(&self) -> &str {
+        self.journal.workstream()
+    }
+}
+
 /// Workstream-scoped journal. Opens its own rusqlite connection to the
 /// workstream's `memory.db`. Multiple connections to the same file are
 /// fine — graphqlite + steward live in the same db but use disjoint
@@ -388,6 +426,42 @@ mod tests {
         let c = Journal::prompt_hash("y");
         assert_eq!(a, b);
         assert_ne!(a, c);
+    }
+
+    #[test]
+    fn gate_blocks_applied_writes_when_proposal_only() {
+        let tmp = tempfile::tempdir().unwrap();
+        let j = Arc::new(Journal::open(tmp.path(), "ws-a").unwrap());
+        let gate = JournalGate::new(Arc::clone(&j), false);
+
+        // Proposal write goes through.
+        let mut rec = sample();
+        rec.applied = false;
+        gate.write_ahead(&rec).unwrap();
+
+        // Mutation write is rejected.
+        rec.applied = true;
+        let err = gate.write_ahead(&rec).unwrap_err();
+        assert!(
+            matches!(err, StewardError::Subroutine { .. }),
+            "expected Subroutine error, got: {err:?}"
+        );
+
+        // And the rejected row should not have hit the table.
+        let rows = j.recent(10).unwrap();
+        assert_eq!(rows.len(), 1, "rejected write must not persist");
+        assert!(!rows[0].applied);
+    }
+
+    #[test]
+    fn gate_allows_applied_writes_when_mutating() {
+        let tmp = tempfile::tempdir().unwrap();
+        let j = Arc::new(Journal::open(tmp.path(), "ws-a").unwrap());
+        let gate = JournalGate::new(Arc::clone(&j), true);
+        let mut rec = sample();
+        rec.applied = true;
+        let id = gate.write_ahead(&rec).unwrap();
+        assert!(id > 0);
     }
 
     #[test]

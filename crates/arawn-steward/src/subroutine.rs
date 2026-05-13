@@ -15,14 +15,17 @@ use arawn_core::Workstream;
 use arawn_memory::MemoryManager;
 
 use crate::error::StewardError;
-use crate::journal::{Journal, JournalRecord};
+use crate::journal::{Journal, JournalGate, JournalRecord};
 
 /// Per-pass context handed to a subroutine. The runner constructs one
 /// before each subroutine run.
 pub struct SubroutineCtx {
     pub workstream: Workstream,
     pub memory: Arc<MemoryManager>,
-    pub journal: Arc<Journal>,
+    /// Gated journal handle — `applied=true` writes are rejected at
+    /// the gate when the runner has flagged this subroutine as non-
+    /// mutating. Use `.write_ahead(record)` as before.
+    pub journal: Arc<JournalGate>,
     /// Maximum actions this subroutine may apply on this pass. Per
     /// ARAWN-A-0003 the steward stops at the cap and writes a journal
     /// note rather than throwing — `applied < cap_hit` is fine.

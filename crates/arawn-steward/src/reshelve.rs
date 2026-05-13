@@ -510,10 +510,16 @@ mod tests {
     }
 
     fn ctx(fx: &Fixture, cap: usize) -> SubroutineCtx {
+        // Reshelve is a mutating subroutine — gate lets through
+        // applied=true journal writes.
+        let gate = Arc::new(crate::journal::JournalGate::new(
+            Arc::clone(&fx.journal),
+            true,
+        ));
         SubroutineCtx {
             workstream: Workstream::new("ws-pat", fx.tmp.path().join("ws-pat")),
             memory: Arc::clone(&fx.memory),
-            journal: Arc::clone(&fx.journal),
+            journal: gate,
             cap,
         }
     }

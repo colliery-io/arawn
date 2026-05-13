@@ -13,7 +13,7 @@ use arawn_memory::MemoryManager;
 use arawn_storage::Store;
 
 use crate::error::StewardError;
-use crate::journal::Journal;
+use crate::journal::{Journal, JournalGate};
 use crate::subroutine::{StewardSubroutine, SubroutineCtx};
 
 /// Per-subroutine action caps. Per ARAWN-A-0003 defaults are
@@ -149,10 +149,16 @@ impl StewardRunner {
         for sub in &self.subroutines {
             stats.subroutine_runs += 1;
             let cap = self.caps.cap_for(sub.name());
+            // Gate writes per subroutine contract: non-mutating
+            // subroutines may only emit proposals.
+            let gate = Arc::new(JournalGate::new(
+                Arc::clone(&journal),
+                sub.is_mutating(),
+            ));
             let ctx = SubroutineCtx {
                 workstream: workstream.clone(),
                 memory: Arc::clone(&memory),
-                journal: Arc::clone(&journal),
+                journal: gate,
                 cap,
             };
             match sub.run(&ctx).await {

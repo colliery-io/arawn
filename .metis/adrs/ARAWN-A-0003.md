@@ -85,6 +85,8 @@ Revert is always reversible (you can re-revert by rolling the action forward); t
 
 **5. Write-ahead, per-pass transactions.** Each subroutine pass runs inside a single sqlite transaction. The journal row is written first; if the mutation fails, the transaction rolls back and the journal entry never appears (atomic). Cross-subroutine ordering: subroutines run sequentially within a pass to keep transactional reasoning simple; parallelism is per-workstream, not per-subroutine.
 
+> **Implementation note (2026-05-13):** the v1 implementation does *not* span sqlite transactions across the journal-row write and the KB mutation — the journal opens its own rusqlite connection to the workstream's `memory.db` while `MemoryStore` uses graphqlite's `GraphConnection`. They're separate connections, so the two writes are not atomic at the sqlite level. This is a conscious deferral: the write-ahead-with-pre-state-snapshot pattern keeps the system *recoverable* even under partial failure (revert reads `outputs_json` and restores the pre-state regardless of which half of the action landed). True atomicity would require sharing one sqlite connection between the journal and the KB store — a refactor that touches `arawn-memory`'s public API. Land that when concurrent-pass support arrives or when we see a real corruption case; today's serial steward keeps the recoverability bound tight enough.
+
 **6. Workstream isolation.** A steward pass operates on exactly one workstream's KB. Cross-workstream effects (door-watch) write proposals to the *source* workstream's journal; they never mutate the target workstream.
 
 ## Rationale

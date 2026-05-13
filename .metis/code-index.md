@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-13T11:25:32Z | 296 files | Python, Rust
+> Generated: 2026-05-13T12:45:29Z | 298 files | Python, Rust
 
 ## Project Structure
 
@@ -281,8 +281,10 @@
 │   │       └── types.rs
 │   ├── arawn-steward/
 │   │   └── src/
+│   │       ├── accept.rs
 │   │       ├── cursor.rs
 │   │       ├── doorwatch.rs
+│   │       ├── dust.rs
 │   │       ├── error.rs
 │   │       ├── journal.rs
 │   │       ├── lib.rs
@@ -634,19 +636,19 @@
 -  `embed_batch` function L17-31 — `( &'a self, texts: &'a [&'a str], ) -> std::pin::Pin< Box<dyn std::future::Futur...`
 -  `DEFAULT_MODEL` variable L39 — `: &str`
 -  `FILE_LOG_FILTER` variable L42 — `: &str` — Default file log filter: debug for arawn crates, warn for third-party.
--  `main` function L45-1152 — `() -> Result<()>`
+-  `main` function L45-1162 — `() -> Result<()>`
 -  `Cli` struct L51-70 — `{ command: Option<Command>, data_dir: Option<String>, session: Option<Uuid>, lis...`
 -  `Command` enum L73-92 — `Serve | Tui | Plugin`
 -  `ExtractorBindHook` struct L672-675 — `{ runner: Arc<arawn_extractor::ExtractorRunner>, store: Arc<std::sync::Mutex<ara...`
 -  `ExtractorBindHook` type L676-710 — `= ExtractorBindHook`
 -  `on_bind` function L677-709 — `(&self, workstream_name: &str, feed_id: &str)`
--  `run_cli_via_server` function L1155-1260 — `( url: &str, prompt: &str, session_id: Option<Uuid>, ) -> Result<()>` — Run a CLI prompt by connecting to the running server via WebSocket.
--  `build_llm_client` function L1263-1286 — `( config: &arawn_bin::LlmConfig, ) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
--  `register_default_tools` function L1289-1335 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &arawn_bin::ArawnConfig, d...` — Register all default tools into the registry.
--  `connect_mcp_servers` function L1338-1386 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
--  `register_workflow_tools` function L1389-1406 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
--  `build_engine_config` function L1408-1443 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
--  `dirs_path` function L1445-1454 — `() -> Option<String>`
+-  `run_cli_via_server` function L1165-1270 — `( url: &str, prompt: &str, session_id: Option<Uuid>, ) -> Result<()>` — Run a CLI prompt by connecting to the running server via WebSocket.
+-  `build_llm_client` function L1273-1296 — `( config: &arawn_bin::LlmConfig, ) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
+-  `register_default_tools` function L1299-1345 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &arawn_bin::ArawnConfig, d...` — Register all default tools into the registry.
+-  `connect_mcp_servers` function L1348-1396 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
+-  `register_workflow_tools` function L1399-1416 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
+-  `build_engine_config` function L1418-1453 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
+-  `dirs_path` function L1455-1464 — `() -> Option<String>`
 
 #### crates/arawn/src/plugin_cmd.rs
 
@@ -2654,49 +2656,71 @@
 
 #### crates/arawn-engine/src/tools/steward.rs
 
-- pub `WorkstreamJournalTool` struct L64-67 — `{ data_dir: PathBuf, router: Arc<WorkstreamMemoryRouter> }` — via `arawn_steward::rollback::apply_inverse`.
-- pub `new` function L70-75 — `(data_dir: impl Into<PathBuf>, router: Arc<WorkstreamMemoryRouter>) -> Self` — via `arawn_steward::rollback::apply_inverse`.
-- pub `WorkstreamRefineTool` struct L139-142 — `{ data_dir: PathBuf, router: Arc<WorkstreamMemoryRouter> }` — via `arawn_steward::rollback::apply_inverse`.
-- pub `new` function L145-150 — `(data_dir: impl Into<PathBuf>, router: Arc<WorkstreamMemoryRouter>) -> Self` — via `arawn_steward::rollback::apply_inverse`.
-- pub `WorkstreamRollbackTool` struct L214-217 — `{ data_dir: PathBuf, router: Arc<WorkstreamMemoryRouter> }` — via `arawn_steward::rollback::apply_inverse`.
-- pub `new` function L220-225 — `(data_dir: impl Into<PathBuf>, router: Arc<WorkstreamMemoryRouter>) -> Self` — via `arawn_steward::rollback::apply_inverse`.
--  `open_journal` function L21-24 — `(data_dir: &PathBuf, workstream: &str) -> Result<Journal, ToolError>` — via `arawn_steward::rollback::apply_inverse`.
--  `resolve_workstream` function L26-43 — `( memory: &MemoryHandle, explicit: Option<&str>, ) -> Result<String, ToolError>` — via `arawn_steward::rollback::apply_inverse`.
--  `row_summary` function L46-58 — `(row: &arawn_steward::JournalRow) -> Value` — Lightweight summary of one journal row for tool output.
--  `WorkstreamJournalTool` type L69-76 — `= WorkstreamJournalTool` — via `arawn_steward::rollback::apply_inverse`.
--  `WorkstreamJournalTool` type L79-133 — `impl Tool for WorkstreamJournalTool` — via `arawn_steward::rollback::apply_inverse`.
--  `name` function L80-82 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
--  `description` function L84-88 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
--  `is_read_only` function L90-92 — `(&self) -> bool` — via `arawn_steward::rollback::apply_inverse`.
--  `category` function L94-96 — `(&self) -> ToolCategory` — via `arawn_steward::rollback::apply_inverse`.
--  `parameters_schema` function L98-106 — `(&self) -> Value` — via `arawn_steward::rollback::apply_inverse`.
--  `execute` function L108-132 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — via `arawn_steward::rollback::apply_inverse`.
--  `WorkstreamRefineTool` type L144-151 — `= WorkstreamRefineTool` — via `arawn_steward::rollback::apply_inverse`.
--  `WorkstreamRefineTool` type L154-208 — `impl Tool for WorkstreamRefineTool` — via `arawn_steward::rollback::apply_inverse`.
--  `name` function L155-157 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
--  `description` function L159-163 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
--  `is_read_only` function L165-167 — `(&self) -> bool` — via `arawn_steward::rollback::apply_inverse`.
--  `category` function L169-171 — `(&self) -> ToolCategory` — via `arawn_steward::rollback::apply_inverse`.
--  `parameters_schema` function L173-181 — `(&self) -> Value` — via `arawn_steward::rollback::apply_inverse`.
--  `execute` function L183-207 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — via `arawn_steward::rollback::apply_inverse`.
--  `WorkstreamRollbackTool` type L219-226 — `= WorkstreamRollbackTool` — via `arawn_steward::rollback::apply_inverse`.
--  `WorkstreamRollbackTool` type L229-297 — `impl Tool for WorkstreamRollbackTool` — via `arawn_steward::rollback::apply_inverse`.
--  `name` function L230-232 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
--  `description` function L234-238 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
--  `is_read_only` function L240-242 — `(&self) -> bool` — via `arawn_steward::rollback::apply_inverse`.
--  `category` function L244-246 — `(&self) -> ToolCategory` — via `arawn_steward::rollback::apply_inverse`.
--  `parameters_schema` function L248-257 — `(&self) -> Value` — via `arawn_steward::rollback::apply_inverse`.
--  `execute` function L259-296 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — via `arawn_steward::rollback::apply_inverse`.
--  `_unused` function L302-304 — `(memory: &MemoryHandle, explicit: Option<&str>) -> Result<String, ToolError>` — via `arawn_steward::rollback::apply_inverse`.
--  `tests` module L307-444 — `-` — via `arawn_steward::rollback::apply_inverse`.
--  `setup` function L315-331 — `() -> ( TempDir, Arc<WorkstreamMemoryRouter>, crate::context::EngineToolContext,...` — via `arawn_steward::rollback::apply_inverse`.
--  `write_proposal_row` function L333-345 — `(j: &Journal) -> i64` — via `arawn_steward::rollback::apply_inverse`.
--  `write_delete_row` function L347-358 — `(j: &Journal, e: &Entity) -> i64` — via `arawn_steward::rollback::apply_inverse`.
--  `journal_lists_recent_rows` function L361-371 — `()` — via `arawn_steward::rollback::apply_inverse`.
--  `refine_returns_pending_proposals_only` function L374-395 — `()` — via `arawn_steward::rollback::apply_inverse`.
--  `rollback_reverts_delete_action_end_to_end` function L398-419 — `()` — via `arawn_steward::rollback::apply_inverse`.
--  `rollback_is_idempotent` function L422-435 — `()` — via `arawn_steward::rollback::apply_inverse`.
--  `rollback_unknown_id_errors` function L438-443 — `()` — via `arawn_steward::rollback::apply_inverse`.
+- pub `WorkstreamJournalTool` struct L65-68 — `{ data_dir: PathBuf, router: Arc<WorkstreamMemoryRouter> }` — via `arawn_steward::rollback::apply_inverse`.
+- pub `new` function L71-76 — `(data_dir: impl Into<PathBuf>, router: Arc<WorkstreamMemoryRouter>) -> Self` — via `arawn_steward::rollback::apply_inverse`.
+- pub `WorkstreamRefineTool` struct L140-143 — `{ data_dir: PathBuf, router: Arc<WorkstreamMemoryRouter> }` — via `arawn_steward::rollback::apply_inverse`.
+- pub `new` function L146-151 — `(data_dir: impl Into<PathBuf>, router: Arc<WorkstreamMemoryRouter>) -> Self` — via `arawn_steward::rollback::apply_inverse`.
+- pub `WorkstreamRollbackTool` struct L215-218 — `{ data_dir: PathBuf, router: Arc<WorkstreamMemoryRouter> }` — via `arawn_steward::rollback::apply_inverse`.
+- pub `new` function L221-226 — `(data_dir: impl Into<PathBuf>, router: Arc<WorkstreamMemoryRouter>) -> Self` — via `arawn_steward::rollback::apply_inverse`.
+- pub `WorkstreamDustTool` struct L311-316 — `{ data_dir: PathBuf, router: Arc<WorkstreamMemoryRouter>, client: Arc<dyn LlmCli...` — via `arawn_steward::rollback::apply_inverse`.
+- pub `new` function L319-331 — `( data_dir: impl Into<PathBuf>, router: Arc<WorkstreamMemoryRouter>, client: Arc...` — via `arawn_steward::rollback::apply_inverse`.
+- pub `WorkstreamApplyTool` struct L450-453 — `{ data_dir: PathBuf, router: Arc<WorkstreamMemoryRouter> }` — via `arawn_steward::rollback::apply_inverse`.
+- pub `new` function L456-461 — `(data_dir: impl Into<PathBuf>, router: Arc<WorkstreamMemoryRouter>) -> Self` — via `arawn_steward::rollback::apply_inverse`.
+-  `open_journal` function L22-25 — `(data_dir: &PathBuf, workstream: &str) -> Result<Journal, ToolError>` — via `arawn_steward::rollback::apply_inverse`.
+-  `resolve_workstream` function L27-44 — `( memory: &MemoryHandle, explicit: Option<&str>, ) -> Result<String, ToolError>` — via `arawn_steward::rollback::apply_inverse`.
+-  `row_summary` function L47-59 — `(row: &arawn_steward::JournalRow) -> Value` — Lightweight summary of one journal row for tool output.
+-  `WorkstreamJournalTool` type L70-77 — `= WorkstreamJournalTool` — via `arawn_steward::rollback::apply_inverse`.
+-  `WorkstreamJournalTool` type L80-134 — `impl Tool for WorkstreamJournalTool` — via `arawn_steward::rollback::apply_inverse`.
+-  `name` function L81-83 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
+-  `description` function L85-89 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
+-  `is_read_only` function L91-93 — `(&self) -> bool` — via `arawn_steward::rollback::apply_inverse`.
+-  `category` function L95-97 — `(&self) -> ToolCategory` — via `arawn_steward::rollback::apply_inverse`.
+-  `parameters_schema` function L99-107 — `(&self) -> Value` — via `arawn_steward::rollback::apply_inverse`.
+-  `execute` function L109-133 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — via `arawn_steward::rollback::apply_inverse`.
+-  `WorkstreamRefineTool` type L145-152 — `= WorkstreamRefineTool` — via `arawn_steward::rollback::apply_inverse`.
+-  `WorkstreamRefineTool` type L155-209 — `impl Tool for WorkstreamRefineTool` — via `arawn_steward::rollback::apply_inverse`.
+-  `name` function L156-158 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
+-  `description` function L160-164 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
+-  `is_read_only` function L166-168 — `(&self) -> bool` — via `arawn_steward::rollback::apply_inverse`.
+-  `category` function L170-172 — `(&self) -> ToolCategory` — via `arawn_steward::rollback::apply_inverse`.
+-  `parameters_schema` function L174-182 — `(&self) -> Value` — via `arawn_steward::rollback::apply_inverse`.
+-  `execute` function L184-208 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — via `arawn_steward::rollback::apply_inverse`.
+-  `WorkstreamRollbackTool` type L220-227 — `= WorkstreamRollbackTool` — via `arawn_steward::rollback::apply_inverse`.
+-  `WorkstreamRollbackTool` type L230-298 — `impl Tool for WorkstreamRollbackTool` — via `arawn_steward::rollback::apply_inverse`.
+-  `name` function L231-233 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
+-  `description` function L235-239 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
+-  `is_read_only` function L241-243 — `(&self) -> bool` — via `arawn_steward::rollback::apply_inverse`.
+-  `category` function L245-247 — `(&self) -> ToolCategory` — via `arawn_steward::rollback::apply_inverse`.
+-  `parameters_schema` function L249-258 — `(&self) -> Value` — via `arawn_steward::rollback::apply_inverse`.
+-  `execute` function L260-297 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — via `arawn_steward::rollback::apply_inverse`.
+-  `_unused` function L303-305 — `(memory: &MemoryHandle, explicit: Option<&str>) -> Result<String, ToolError>` — via `arawn_steward::rollback::apply_inverse`.
+-  `WorkstreamDustTool` type L318-332 — `= WorkstreamDustTool` — via `arawn_steward::rollback::apply_inverse`.
+-  `WorkstreamDustTool` type L335-444 — `impl Tool for WorkstreamDustTool` — via `arawn_steward::rollback::apply_inverse`.
+-  `name` function L336-338 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
+-  `description` function L340-346 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
+-  `is_read_only` function L348-351 — `(&self) -> bool` — via `arawn_steward::rollback::apply_inverse`.
+-  `category` function L353-355 — `(&self) -> ToolCategory` — via `arawn_steward::rollback::apply_inverse`.
+-  `parameters_schema` function L357-377 — `(&self) -> Value` — via `arawn_steward::rollback::apply_inverse`.
+-  `execute` function L379-443 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — via `arawn_steward::rollback::apply_inverse`.
+-  `WorkstreamApplyTool` type L455-462 — `= WorkstreamApplyTool` — via `arawn_steward::rollback::apply_inverse`.
+-  `WorkstreamApplyTool` type L465-536 — `impl Tool for WorkstreamApplyTool` — via `arawn_steward::rollback::apply_inverse`.
+-  `name` function L466-468 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
+-  `description` function L470-475 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
+-  `is_read_only` function L477-479 — `(&self) -> bool` — via `arawn_steward::rollback::apply_inverse`.
+-  `category` function L481-483 — `(&self) -> ToolCategory` — via `arawn_steward::rollback::apply_inverse`.
+-  `parameters_schema` function L485-494 — `(&self) -> Value` — via `arawn_steward::rollback::apply_inverse`.
+-  `execute` function L496-535 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — via `arawn_steward::rollback::apply_inverse`.
+-  `tests` module L539-739 — `-` — via `arawn_steward::rollback::apply_inverse`.
+-  `setup` function L547-563 — `() -> ( TempDir, Arc<WorkstreamMemoryRouter>, crate::context::EngineToolContext,...` — via `arawn_steward::rollback::apply_inverse`.
+-  `write_proposal_row` function L565-577 — `(j: &Journal) -> i64` — via `arawn_steward::rollback::apply_inverse`.
+-  `write_delete_row` function L579-590 — `(j: &Journal, e: &Entity) -> i64` — via `arawn_steward::rollback::apply_inverse`.
+-  `journal_lists_recent_rows` function L593-603 — `()` — via `arawn_steward::rollback::apply_inverse`.
+-  `refine_returns_pending_proposals_only` function L606-627 — `()` — via `arawn_steward::rollback::apply_inverse`.
+-  `rollback_reverts_delete_action_end_to_end` function L630-651 — `()` — via `arawn_steward::rollback::apply_inverse`.
+-  `rollback_is_idempotent` function L654-667 — `()` — via `arawn_steward::rollback::apply_inverse`.
+-  `apply_then_rollback_round_trip_for_map_proposal` function L670-707 — `()` — via `arawn_steward::rollback::apply_inverse`.
+-  `apply_refuses_reverted_row` function L710-730 — `()` — via `arawn_steward::rollback::apply_inverse`.
+-  `rollback_unknown_id_errors` function L733-738 — `()` — via `arawn_steward::rollback::apply_inverse`.
 
 #### crates/arawn-engine/src/tools/task_list.rs
 
@@ -5467,14 +5491,14 @@
 
 - pub `entity_label` function L24-33 — `(t: EntityType) -> &'static str` — Cypher node label for an `EntityType`.
 - pub `entity_type_from_label` function L36-46 — `(s: &str) -> Option<EntityType>` — Inverse of `entity_label`.
-- pub `relation_type_str` function L49-59 — `(t: RelationType) -> &'static str` — Cypher relationship type for a `RelationType`.
-- pub `relation_type_from_str` function L62-73 — `(s: &str) -> Option<RelationType>` — Inverse of `relation_type_str`.
-- pub `entity_to_props` function L79-94 — `(e: &Entity) -> JsonValue` — Project an `Entity` into a Cypher parameter map (`$props`).
-- pub `node_to_entity` function L100-178 — `(node: &Value) -> Result<Entity, MemoryError>` — Parse a node `Value` (as returned by `MATCH (n) RETURN n`) into an `Entity`.
--  `tests` module L181-222 — `-` — user input.
--  `label_roundtrip` function L185-196 — `()` — user input.
--  `relation_roundtrip` function L199-211 — `()` — user input.
--  `entity_to_props_serializes_tags_as_json_string` function L214-221 — `()` — user input.
+- pub `relation_type_str` function L49-60 — `(t: RelationType) -> &'static str` — Cypher relationship type for a `RelationType`.
+- pub `relation_type_from_str` function L63-75 — `(s: &str) -> Option<RelationType>` — Inverse of `relation_type_str`.
+- pub `entity_to_props` function L81-96 — `(e: &Entity) -> JsonValue` — Project an `Entity` into a Cypher parameter map (`$props`).
+- pub `node_to_entity` function L102-180 — `(node: &Value) -> Result<Entity, MemoryError>` — Parse a node `Value` (as returned by `MATCH (n) RETURN n`) into an `Entity`.
+-  `tests` module L183-224 — `-` — user input.
+-  `label_roundtrip` function L187-198 — `()` — user input.
+-  `relation_roundtrip` function L201-213 — `()` — user input.
+-  `entity_to_props_serializes_tags_as_json_string` function L216-223 — `()` — user input.
 
 #### crates/arawn-memory/src/error.rs
 
@@ -5629,36 +5653,36 @@
 - pub `from_str` function L32-42 — `(s: &str) -> Option<Self>` — Core types for the knowledge base memory system.
 - pub `default_scope` function L45-50 — `(&self) -> Scope` — Default scope for this entity type.
 - pub `Scope` enum L56-59 — `Global | Workstream` — Which KB tier an entity belongs to.
-- pub `RelationType` enum L64-72 — `RelatesTo | Contradicts | Supports | Supersedes | ExtractedFrom | Mentions | Bel...` — Type of relationship between entities.
-- pub `as_str` function L75-85 — `(&self) -> &'static str` — Core types for the knowledge base memory system.
-- pub `from_str` function L88-99 — `(s: &str) -> Option<Self>` — Core types for the knowledge base memory system.
-- pub `ConfidenceSource` enum L105-112 — `Stated | Observed | Inferred` — How confident we are in this entity's accuracy.
-- pub `base_score` function L115-121 — `(&self) -> f32` — Core types for the knowledge base memory system.
-- pub `as_str` function L123-129 — `(&self) -> &'static str` — Core types for the knowledge base memory system.
-- pub `from_str` function L132-139 — `(s: &str) -> Option<Self>` — Core types for the knowledge base memory system.
-- pub `compute_confidence` function L143-168 — `( source: ConfidenceSource, reinforcement_count: u32, days_since_update: f64, su...` — Compute confidence score with reinforcement and staleness.
-- pub `Entity` struct L172-185 — `{ id: Uuid, entity_type: EntityType, title: String, content: Option<String>, con...` — A knowledge entity stored in the KB.
-- pub `new` function L188-204 — `(entity_type: EntityType, title: impl Into<String>) -> Self` — Core types for the knowledge base memory system.
-- pub `with_content` function L206-209 — `(mut self, content: impl Into<String>) -> Self` — Core types for the knowledge base memory system.
-- pub `with_confidence` function L211-214 — `(mut self, source: ConfidenceSource) -> Self` — Core types for the knowledge base memory system.
-- pub `with_tags` function L216-219 — `(mut self, tags: Vec<String>) -> Self` — Core types for the knowledge base memory system.
-- pub `with_session` function L221-224 — `(mut self, session_id: Uuid) -> Self` — Core types for the knowledge base memory system.
-- pub `confidence_score` function L227-235 — `(&self) -> f32` — Compute the current confidence score.
-- pub `Relation` struct L240-245 — `{ source_id: Uuid, relation_type: RelationType, target_id: Uuid, created_at: Dat...` — A directed relation between two entities.
-- pub `StoreFactResult` enum L249-262 — `Inserted | Reinforced | Superseded` — Result of a store_fact operation (search-before-create).
+- pub `RelationType` enum L64-76 — `RelatesTo | Contradicts | Supports | Supersedes | ExtractedFrom | Mentions | Bel...` — Type of relationship between entities.
+- pub `as_str` function L79-90 — `(&self) -> &'static str` — Core types for the knowledge base memory system.
+- pub `from_str` function L93-105 — `(s: &str) -> Option<Self>` — Core types for the knowledge base memory system.
+- pub `ConfidenceSource` enum L111-118 — `Stated | Observed | Inferred` — How confident we are in this entity's accuracy.
+- pub `base_score` function L121-127 — `(&self) -> f32` — Core types for the knowledge base memory system.
+- pub `as_str` function L129-135 — `(&self) -> &'static str` — Core types for the knowledge base memory system.
+- pub `from_str` function L138-145 — `(s: &str) -> Option<Self>` — Core types for the knowledge base memory system.
+- pub `compute_confidence` function L149-174 — `( source: ConfidenceSource, reinforcement_count: u32, days_since_update: f64, su...` — Compute confidence score with reinforcement and staleness.
+- pub `Entity` struct L178-191 — `{ id: Uuid, entity_type: EntityType, title: String, content: Option<String>, con...` — A knowledge entity stored in the KB.
+- pub `new` function L194-210 — `(entity_type: EntityType, title: impl Into<String>) -> Self` — Core types for the knowledge base memory system.
+- pub `with_content` function L212-215 — `(mut self, content: impl Into<String>) -> Self` — Core types for the knowledge base memory system.
+- pub `with_confidence` function L217-220 — `(mut self, source: ConfidenceSource) -> Self` — Core types for the knowledge base memory system.
+- pub `with_tags` function L222-225 — `(mut self, tags: Vec<String>) -> Self` — Core types for the knowledge base memory system.
+- pub `with_session` function L227-230 — `(mut self, session_id: Uuid) -> Self` — Core types for the knowledge base memory system.
+- pub `confidence_score` function L233-241 — `(&self) -> f32` — Compute the current confidence score.
+- pub `Relation` struct L246-251 — `{ source_id: Uuid, relation_type: RelationType, target_id: Uuid, created_at: Dat...` — A directed relation between two entities.
+- pub `StoreFactResult` enum L255-268 — `Inserted | Reinforced | Superseded` — Result of a store_fact operation (search-before-create).
 -  `EntityType` type L19-51 — `= EntityType` — Core types for the knowledge base memory system.
--  `RelationType` type L74-100 — `= RelationType` — Core types for the knowledge base memory system.
--  `ConfidenceSource` type L114-140 — `= ConfidenceSource` — Core types for the knowledge base memory system.
--  `Entity` type L187-236 — `= Entity` — Core types for the knowledge base memory system.
--  `tests` module L265-345 — `-` — Core types for the knowledge base memory system.
--  `entity_type_roundtrip` function L269-280 — `()` — Core types for the knowledge base memory system.
--  `relation_type_roundtrip` function L283-295 — `()` — Core types for the knowledge base memory system.
--  `confidence_stated_fresh` function L298-301 — `()` — Core types for the knowledge base memory system.
--  `confidence_reinforced` function L304-308 — `()` — Core types for the knowledge base memory system.
--  `confidence_stale` function L311-315 — `()` — Core types for the knowledge base memory system.
--  `confidence_superseded_is_zero` function L318-321 — `()` — Core types for the knowledge base memory system.
--  `entity_builder` function L324-334 — `()` — Core types for the knowledge base memory system.
--  `default_scopes` function L337-344 — `()` — Core types for the knowledge base memory system.
+-  `RelationType` type L78-106 — `= RelationType` — Core types for the knowledge base memory system.
+-  `ConfidenceSource` type L120-146 — `= ConfidenceSource` — Core types for the knowledge base memory system.
+-  `Entity` type L193-242 — `= Entity` — Core types for the knowledge base memory system.
+-  `tests` module L271-351 — `-` — Core types for the knowledge base memory system.
+-  `entity_type_roundtrip` function L275-286 — `()` — Core types for the knowledge base memory system.
+-  `relation_type_roundtrip` function L289-301 — `()` — Core types for the knowledge base memory system.
+-  `confidence_stated_fresh` function L304-307 — `()` — Core types for the knowledge base memory system.
+-  `confidence_reinforced` function L310-314 — `()` — Core types for the knowledge base memory system.
+-  `confidence_stale` function L317-321 — `()` — Core types for the knowledge base memory system.
+-  `confidence_superseded_is_zero` function L324-327 — `()` — Core types for the knowledge base memory system.
+-  `entity_builder` function L330-340 — `()` — Core types for the knowledge base memory system.
+-  `default_scopes` function L343-350 — `()` — Core types for the knowledge base memory system.
 
 #### crates/arawn-memory/src/vector.rs
 
@@ -6038,6 +6062,21 @@
 
 > *Semantic summary to be generated by AI agent.*
 
+#### crates/arawn-steward/src/accept.rs
+
+- pub `apply_forward` function L26-37 — `(row: &JournalRow, kb: &Arc<MemoryManager>) -> Result<(), StewardError>` — Apply the forward mutation described by `row.outputs_json` to `kb`.
+-  `DustOutputs` struct L40-43 — `{ summary: Entity, source_ids: Vec<Uuid> }` — (`workstream_apply <id>`).
+-  `dust_summarize` function L45-64 — `(row: &JournalRow, kb: &Arc<MemoryManager>) -> Result<(), StewardError>` — (`workstream_apply <id>`).
+-  `MapOutputs` struct L67-71 — `{ from_id: Uuid, rel: String, to_id: Uuid }` — (`workstream_apply <id>`).
+-  `map_propose_relation` function L73-87 — `(row: &JournalRow, kb: &Arc<MemoryManager>) -> Result<(), StewardError>` — (`workstream_apply <id>`).
+-  `tests` module L90-174 — `-` — (`workstream_apply <id>`).
+-  `setup_kb` function L96-100 — `() -> (tempfile::TempDir, Arc<MemoryManager>)` — (`workstream_apply <id>`).
+-  `row` function L102-115 — `(sub: &str, act: &str, outputs: serde_json::Value) -> JournalRow` — (`workstream_apply <id>`).
+-  `map_apply_adds_relation` function L118-133 — `()` — (`workstream_apply <id>`).
+-  `dust_apply_inserts_summary_and_edges` function L136-158 — `()` — (`workstream_apply <id>`).
+-  `doorwatch_apply_is_noop` function L161-165 — `()` — (`workstream_apply <id>`).
+-  `unknown_action_errors` function L168-173 — `()` — (`workstream_apply <id>`).
+
 #### crates/arawn-steward/src/cursor.rs
 
 - pub `CursorStore` struct L14-16 — `{ conn: Arc<Mutex<Connection>> }` — the last pass.
@@ -6078,6 +6117,40 @@
 -  `hallucinated_target_id_is_dropped` function L418-448 — `()` — either side.
 -  `no_other_workstreams_means_zero_proposals` function L451-489 — `()` — either side.
 
+#### crates/arawn-steward/src/dust.rs
+
+- pub `SUBROUTINE_NAME` variable L27 — `: &str` — SUMMARIZES edges.
+- pub `ClusterMode` enum L30-35 — `Tag | Provenance` — SUMMARIZES edges.
+- pub `from_str` function L38-44 — `(s: &str) -> Option<Self>` — SUMMARIZES edges.
+- pub `DustOpts` struct L48-60 — `{ cluster_by: ClusterMode, min_cluster_size: usize, idle_days: i64, limit: usize...` — SUMMARIZES edges.
+- pub `DustOutcome` struct L76-81 — `{ clusters_found: usize, proposals_written: usize, proposal_ids: Vec<i64>, limit...` — SUMMARIZES edges.
+- pub `DustEngine` struct L83-86 — `{ client: Arc<dyn LlmClient>, model: String }` — SUMMARIZES edges.
+- pub `new` function L89-94 — `(client: Arc<dyn LlmClient>, model: impl Into<String>) -> Self` — SUMMARIZES edges.
+- pub `run` function L98-142 — `( &self, kb: &Arc<MemoryManager>, journal: &Journal, opts: &DustOpts, ) -> Resul...` — Run one dust pass on `kb`, writing proposals into `journal`.
+-  `ClusterMode` type L37-45 — `= ClusterMode` — SUMMARIZES edges.
+-  `DustOpts` type L62-73 — `impl Default for DustOpts` — SUMMARIZES edges.
+-  `default` function L63-72 — `() -> Self` — SUMMARIZES edges.
+-  `DustEngine` type L88-237 — `= DustEngine` — SUMMARIZES edges.
+-  `summarize_cluster` function L144-204 — `( &self, cluster_key: &str, members: &[Entity], _kb: &Arc<MemoryManager>, journa...` — SUMMARIZES edges.
+-  `ask_for_summary` function L206-236 — `( &self, cluster_key: &str, members: &[&Entity], ) -> Result<ProposedSummary, St...` — SUMMARIZES edges.
+-  `ProposedSummary` struct L240-246 — `{ title: String, content: String, tags: Vec<String> }` — SUMMARIZES edges.
+-  `cluster_by_tag` function L248-268 — `(active: &[Entity], opts: &DustOpts) -> Vec<(String, Vec<Entity>)>` — SUMMARIZES edges.
+-  `cluster_by_provenance` function L270-294 — `( active: &[Entity], kb: &Arc<MemoryManager>, _opts: &DustOpts, ) -> Result<Vec<...` — SUMMARIZES edges.
+-  `_ts` function L299-301 — `() -> DateTime<Utc>` — SUMMARIZES edges.
+-  `tests` module L304-458 — `-` — SUMMARIZES edges.
+-  `ScriptedMock` struct L318-320 — `{ responses: Mutex<VecDeque<Value>> }` — SUMMARIZES edges.
+-  `ScriptedMock` type L321-327 — `= ScriptedMock` — SUMMARIZES edges.
+-  `new` function L322-326 — `(v: Vec<Value>) -> Self` — SUMMARIZES edges.
+-  `ScriptedMock` type L329-343 — `impl LlmClient for ScriptedMock` — SUMMARIZES edges.
+-  `stream` function L330-342 — `( &self, _req: ChatRequest, ) -> Result< Pin<Box<dyn futures::Stream<Item = Resu...` — SUMMARIZES edges.
+-  `make_stale_entity` function L345-351 — `(title: &str, tag: &str, days_old: i64) -> Entity` — SUMMARIZES edges.
+-  `setup` function L353-358 — `() -> (tempfile::TempDir, Arc<MemoryManager>, Journal)` — SUMMARIZES edges.
+-  `tag_cluster_writes_proposal_when_all_idle` function L361-379 — `()` — SUMMARIZES edges.
+-  `cluster_with_one_fresh_member_is_skipped` function L382-392 — `()` — SUMMARIZES edges.
+-  `min_cluster_size_filters_out_small_clusters` function L395-407 — `()` — SUMMARIZES edges.
+-  `limit_caps_proposals_per_run` function L410-431 — `()` — SUMMARIZES edges.
+-  `prior_dust_summaries_are_excluded_from_new_clusters` function L434-457 — `()` — SUMMARIZES edges.
+
 #### crates/arawn-steward/src/error.rs
 
 - pub `StewardError` enum L4-29 — `Storage | Memory | Journal | Subroutine | CapExceeded | NotFound | Parse`
@@ -6093,40 +6166,44 @@
 - pub `JournalRecord` struct L21-31 — `{ subroutine: String, action: String, inputs_json: String, outputs_json: String,...` — One row about to be (or already) written to the journal.
 - pub `JournalRow` struct L35-46 — `{ id: i64, ts: DateTime<Utc>, subroutine: String, action: String, inputs_json: S...` — A journal row as read back from sqlite.
 - pub `RevertResult` struct L52-57 — `{ row: JournalRow, newly_reverted: bool }` — Outcome of a `Journal::revert` call.
-- pub `Journal` struct L63-67 — `{ conn: Arc<Mutex<Connection>>, workstream: String, path: PathBuf }` — Workstream-scoped journal.
-- pub `open` function L75-88 — `(data_dir: &Path, workstream_name: &str) -> Result<Self, StewardError>` — Open (or create) the journal for `workstream_name` rooted at
-- pub `workstream` function L90-92 — `(&self) -> &str` — `Journal::revert(action_id)` to reconstruct the inverse.
-- pub `path` function L94-96 — `(&self) -> &Path` — `Journal::revert(action_id)` to reconstruct the inverse.
-- pub `write_ahead` function L106-126 — `(&self, record: &JournalRecord) -> Result<i64, StewardError>` — Write a journal row *before* the mutation.
-- pub `get` function L129-141 — `(&self, id: i64) -> Result<Option<JournalRow>, StewardError>` — Fetch one row by id.
-- pub `recent` function L144-157 — `(&self, limit: usize) -> Result<Vec<JournalRow>, StewardError>` — Last `limit` rows, newest first.
-- pub `pending_proposals` function L161-176 — `(&self, limit: usize) -> Result<Vec<JournalRow>, StewardError>` — Rows where `applied = 0` (proposals from map / door-watch) and
-- pub `revert` function L182-208 — `(&self, id: i64) -> Result<RevertResult, StewardError>` — Mark a row reverted.
-- pub `prompt_hash` function L213-216 — `(input: impl AsRef<[u8]>) -> String` — Build a deterministic prompt-hash id from arbitrary input bytes.
--  `Journal` type L69-217 — `= Journal` — `Journal::revert(action_id)` to reconstruct the inverse.
--  `ensure_schema` function L219-238 — `(conn: &Connection) -> Result<(), StewardError>` — `Journal::revert(action_id)` to reconstruct the inverse.
--  `row_to_record` function L240-266 — `(r: &rusqlite::Row<'_>) -> Result<JournalRow, StewardError>` — `Journal::revert(action_id)` to reconstruct the inverse.
--  `tests` module L269-358 — `-` — `Journal::revert(action_id)` to reconstruct the inverse.
--  `sample` function L272-282 — `() -> JournalRecord` — `Journal::revert(action_id)` to reconstruct the inverse.
--  `write_then_read` function L285-294 — `()` — `Journal::revert(action_id)` to reconstruct the inverse.
--  `revert_flips_metadata_idempotently` function L297-307 — `()` — `Journal::revert(action_id)` to reconstruct the inverse.
--  `recent_returns_newest_first` function L310-319 — `()` — `Journal::revert(action_id)` to reconstruct the inverse.
--  `pending_proposals_filters_applied_and_reverted` function L322-338 — `()` — `Journal::revert(action_id)` to reconstruct the inverse.
--  `prompt_hash_is_deterministic` function L341-347 — `()` — `Journal::revert(action_id)` to reconstruct the inverse.
--  `schema_idempotent_on_reopen` function L350-357 — `()` — `Journal::revert(action_id)` to reconstruct the inverse.
+- pub `AppliedResult` struct L62-65 — `{ row: JournalRow, newly_applied: bool }` — Outcome of `Journal::mark_applied`.
+- pub `Journal` struct L71-75 — `{ conn: Arc<Mutex<Connection>>, workstream: String, path: PathBuf }` — Workstream-scoped journal.
+- pub `open` function L83-96 — `(data_dir: &Path, workstream_name: &str) -> Result<Self, StewardError>` — Open (or create) the journal for `workstream_name` rooted at
+- pub `workstream` function L98-100 — `(&self) -> &str` — `Journal::revert(action_id)` to reconstruct the inverse.
+- pub `path` function L102-104 — `(&self) -> &Path` — `Journal::revert(action_id)` to reconstruct the inverse.
+- pub `write_ahead` function L114-134 — `(&self, record: &JournalRecord) -> Result<i64, StewardError>` — Write a journal row *before* the mutation.
+- pub `get` function L137-149 — `(&self, id: i64) -> Result<Option<JournalRow>, StewardError>` — Fetch one row by id.
+- pub `recent` function L152-165 — `(&self, limit: usize) -> Result<Vec<JournalRow>, StewardError>` — Last `limit` rows, newest first.
+- pub `pending_proposals` function L169-184 — `(&self, limit: usize) -> Result<Vec<JournalRow>, StewardError>` — Rows where `applied = 0` (proposals from map / door-watch) and
+- pub `mark_applied` function L190-220 — `(&self, id: i64) -> Result<AppliedResult, StewardError>` — Flip a row from `applied = false` to `applied = true`.
+- pub `revert` function L226-252 — `(&self, id: i64) -> Result<RevertResult, StewardError>` — Mark a row reverted.
+- pub `prompt_hash` function L257-260 — `(input: impl AsRef<[u8]>) -> String` — Build a deterministic prompt-hash id from arbitrary input bytes.
+-  `Journal` type L77-261 — `= Journal` — `Journal::revert(action_id)` to reconstruct the inverse.
+-  `ensure_schema` function L263-282 — `(conn: &Connection) -> Result<(), StewardError>` — `Journal::revert(action_id)` to reconstruct the inverse.
+-  `row_to_record` function L284-310 — `(r: &rusqlite::Row<'_>) -> Result<JournalRow, StewardError>` — `Journal::revert(action_id)` to reconstruct the inverse.
+-  `tests` module L313-402 — `-` — `Journal::revert(action_id)` to reconstruct the inverse.
+-  `sample` function L316-326 — `() -> JournalRecord` — `Journal::revert(action_id)` to reconstruct the inverse.
+-  `write_then_read` function L329-338 — `()` — `Journal::revert(action_id)` to reconstruct the inverse.
+-  `revert_flips_metadata_idempotently` function L341-351 — `()` — `Journal::revert(action_id)` to reconstruct the inverse.
+-  `recent_returns_newest_first` function L354-363 — `()` — `Journal::revert(action_id)` to reconstruct the inverse.
+-  `pending_proposals_filters_applied_and_reverted` function L366-382 — `()` — `Journal::revert(action_id)` to reconstruct the inverse.
+-  `prompt_hash_is_deterministic` function L385-391 — `()` — `Journal::revert(action_id)` to reconstruct the inverse.
+-  `schema_idempotent_on_reopen` function L394-401 — `()` — `Journal::revert(action_id)` to reconstruct the inverse.
 
 #### crates/arawn-steward/src/lib.rs
 
-- pub `cursor` module L22 — `-` — The steward continuously re-reads each workstream's KB and applies
-- pub `doorwatch` module L23 — `-` — T-0259 wires the /workstream refine / journal / rollback commands.
-- pub `error` module L24 — `-` — T-0259 wires the /workstream refine / journal / rollback commands.
-- pub `journal` module L25 — `-` — T-0259 wires the /workstream refine / journal / rollback commands.
-- pub `llm_text` module L26 — `-` — T-0259 wires the /workstream refine / journal / rollback commands.
-- pub `map` module L27 — `-` — T-0259 wires the /workstream refine / journal / rollback commands.
-- pub `reshelve` module L28 — `-` — T-0259 wires the /workstream refine / journal / rollback commands.
-- pub `rollback` module L29 — `-` — T-0259 wires the /workstream refine / journal / rollback commands.
-- pub `runner` module L30 — `-` — T-0259 wires the /workstream refine / journal / rollback commands.
-- pub `subroutine` module L31 — `-` — T-0259 wires the /workstream refine / journal / rollback commands.
+- pub `accept` module L22 — `-` — The steward continuously re-reads each workstream's KB and applies
+- pub `cursor` module L23 — `-` — T-0259 wires the /workstream refine / journal / rollback commands.
+- pub `doorwatch` module L24 — `-` — T-0259 wires the /workstream refine / journal / rollback commands.
+- pub `dust` module L25 — `-` — T-0259 wires the /workstream refine / journal / rollback commands.
+- pub `error` module L26 — `-` — T-0259 wires the /workstream refine / journal / rollback commands.
+- pub `journal` module L27 — `-` — T-0259 wires the /workstream refine / journal / rollback commands.
+- pub `llm_text` module L28 — `-` — T-0259 wires the /workstream refine / journal / rollback commands.
+- pub `map` module L29 — `-` — T-0259 wires the /workstream refine / journal / rollback commands.
+- pub `reshelve` module L30 — `-` — T-0259 wires the /workstream refine / journal / rollback commands.
+- pub `rollback` module L31 — `-` — T-0259 wires the /workstream refine / journal / rollback commands.
+- pub `runner` module L32 — `-` — T-0259 wires the /workstream refine / journal / rollback commands.
+- pub `subroutine` module L33 — `-` — T-0259 wires the /workstream refine / journal / rollback commands.
 
 #### crates/arawn-steward/src/llm_text.rs
 

@@ -351,10 +351,12 @@ mod tests {
         j: &Arc<Journal>,
         cap: usize,
     ) -> SubroutineCtx {
+        // Map is proposal-only.
+        let gate = Arc::new(crate::journal::JournalGate::new(Arc::clone(j), false));
         SubroutineCtx {
             workstream: Workstream::new("ws", tmp.path().join("ws")),
             memory: Arc::clone(mem),
-            journal: Arc::clone(j),
+            journal: gate,
             cap,
         }
     }

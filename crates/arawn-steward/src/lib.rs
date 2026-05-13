@@ -36,7 +36,7 @@ pub use cursor::CursorStore;
 pub use doorwatch::{DoorWatchConfig, DoorWatchSubroutine};
 pub use dust::{ClusterMode, DustEngine, DustOpts, DustOutcome};
 pub use error::StewardError;
-pub use journal::{AppliedResult, Journal, JournalRecord, JournalRow, RevertResult};
+pub use journal::{AppliedResult, Journal, JournalGate, JournalRecord, JournalRow, RevertResult};
 pub use map::{MapConfig, MapSubroutine};
 pub use reshelve::{ReshelveConfig, ReshelveSubroutine};
 pub use runner::{StewardRunner, StewardStats, SubroutineCaps};

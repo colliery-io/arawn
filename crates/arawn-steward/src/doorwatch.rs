@@ -404,7 +404,10 @@ mod tests {
         let ctx = SubroutineCtx {
             workstream: Workstream::new("pat", tmp.path().join("pat")),
             memory: Arc::clone(&pat),
-            journal: Arc::clone(&journal),
+            journal: Arc::new(crate::journal::JournalGate::new(
+                Arc::clone(&journal),
+                false,
+            )),
             cap: 10,
         };
         let out = sub.run(&ctx).await.unwrap();
@@ -440,7 +443,10 @@ mod tests {
         let ctx = SubroutineCtx {
             workstream: Workstream::new("pat", tmp.path().join("pat")),
             memory: Arc::clone(&pat),
-            journal: Arc::clone(&journal),
+            journal: Arc::new(crate::journal::JournalGate::new(
+                Arc::clone(&journal),
+                false,
+            )),
             cap: 10,
         };
         let out = sub.run(&ctx).await.unwrap();
@@ -481,7 +487,10 @@ mod tests {
         let ctx = SubroutineCtx {
             workstream: Workstream::new("scratch", tmp.path().join("scratch")),
             memory: Arc::clone(&mem),
-            journal: Arc::clone(&journal),
+            journal: Arc::new(crate::journal::JournalGate::new(
+                Arc::clone(&journal),
+                false,
+            )),
             cap: 10,
         };
         let out = sub.run(&ctx).await.unwrap();
