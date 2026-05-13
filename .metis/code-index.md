@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-12T23:57:07Z | 276 files | Python, Rust
+> Generated: 2026-05-13T00:16:20Z | 276 files | Python, Rust
 
 ## Project Structure
 
@@ -606,16 +606,16 @@
 -  `embed_batch` function L17-31 — `( &'a self, texts: &'a [&'a str], ) -> std::pin::Pin< Box<dyn std::future::Futur...`
 -  `DEFAULT_MODEL` variable L39 — `: &str`
 -  `FILE_LOG_FILTER` variable L42 — `: &str` — Default file log filter: debug for arawn crates, warn for third-party.
--  `main` function L45-945 — `() -> Result<()>`
+-  `main` function L45-959 — `() -> Result<()>`
 -  `Cli` struct L51-70 — `{ command: Option<Command>, data_dir: Option<String>, session: Option<Uuid>, lis...`
 -  `Command` enum L73-92 — `Serve | Tui | Plugin`
--  `run_cli_via_server` function L948-1053 — `( url: &str, prompt: &str, session_id: Option<Uuid>, ) -> Result<()>` — Run a CLI prompt by connecting to the running server via WebSocket.
--  `build_llm_client` function L1056-1079 — `( config: &arawn_bin::LlmConfig, ) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
--  `register_default_tools` function L1082-1128 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &arawn_bin::ArawnConfig, d...` — Register all default tools into the registry.
--  `connect_mcp_servers` function L1131-1179 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
--  `register_workflow_tools` function L1182-1199 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
--  `build_engine_config` function L1201-1236 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
--  `dirs_path` function L1238-1247 — `() -> Option<String>`
+-  `run_cli_via_server` function L962-1067 — `( url: &str, prompt: &str, session_id: Option<Uuid>, ) -> Result<()>` — Run a CLI prompt by connecting to the running server via WebSocket.
+-  `build_llm_client` function L1070-1093 — `( config: &arawn_bin::LlmConfig, ) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
+-  `register_default_tools` function L1096-1142 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &arawn_bin::ArawnConfig, d...` — Register all default tools into the registry.
+-  `connect_mcp_servers` function L1145-1193 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
+-  `register_workflow_tools` function L1196-1213 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
+-  `build_engine_config` function L1215-1250 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
+-  `dirs_path` function L1252-1261 — `() -> Option<String>`
 
 #### crates/arawn/src/plugin_cmd.rs
 
@@ -2787,16 +2787,18 @@
 - pub `with_active` function L166-169 — `(mut self, active: SessionWorkstream) -> Self` — the shim is enough to make `switch` / `show` work.
 - pub `WorkstreamSwitchTool` struct L242-245 — `{ store: Arc<Mutex<Store>>, active: SessionWorkstream }` — the shim is enough to make `switch` / `show` work.
 - pub `new` function L248-250 — `(store: Arc<Mutex<Store>>, active: SessionWorkstream) -> Self` — the shim is enough to make `switch` / `show` work.
-- pub `WorkstreamShowTool` struct L320-323 — `{ store: Arc<Mutex<Store>>, active: SessionWorkstream }` — the shim is enough to make `switch` / `show` work.
-- pub `new` function L326-328 — `(store: Arc<Mutex<Store>>, active: SessionWorkstream) -> Self` — the shim is enough to make `switch` / `show` work.
-- pub `WorkstreamDescribeTool` struct L399-401 — `{ store: Arc<Mutex<Store>> }` — the shim is enough to make `switch` / `show` work.
-- pub `new` function L404-406 — `(store: Arc<Mutex<Store>>) -> Self` — the shim is enough to make `switch` / `show` work.
-- pub `WorkstreamBindTool` struct L463-465 — `{ store: Arc<Mutex<Store>> }` — the shim is enough to make `switch` / `show` work.
-- pub `new` function L468-470 — `(store: Arc<Mutex<Store>>) -> Self` — the shim is enough to make `switch` / `show` work.
-- pub `WorkstreamUnbindTool` struct L527-529 — `{ store: Arc<Mutex<Store>> }` — the shim is enough to make `switch` / `show` work.
-- pub `new` function L532-534 — `(store: Arc<Mutex<Store>>) -> Self` — the shim is enough to make `switch` / `show` work.
-- pub `WorkstreamDeleteTool` struct L594-597 — `{ store: Arc<Mutex<Store>>, active: SessionWorkstream }` — the shim is enough to make `switch` / `show` work.
-- pub `new` function L600-602 — `(store: Arc<Mutex<Store>>, active: SessionWorkstream) -> Self` — the shim is enough to make `switch` / `show` work.
+- pub `WorkstreamShowTool` struct L322-325 — `{ store: Arc<Mutex<Store>>, active: SessionWorkstream }` — the shim is enough to make `switch` / `show` work.
+- pub `new` function L328-330 — `(store: Arc<Mutex<Store>>, active: SessionWorkstream) -> Self` — the shim is enough to make `switch` / `show` work.
+- pub `WorkstreamDescribeTool` struct L401-403 — `{ store: Arc<Mutex<Store>> }` — the shim is enough to make `switch` / `show` work.
+- pub `new` function L406-408 — `(store: Arc<Mutex<Store>>) -> Self` — the shim is enough to make `switch` / `show` work.
+- pub `WorkstreamBindTool` struct L465-467 — `{ store: Arc<Mutex<Store>> }` — the shim is enough to make `switch` / `show` work.
+- pub `new` function L470-472 — `(store: Arc<Mutex<Store>>) -> Self` — the shim is enough to make `switch` / `show` work.
+- pub `WorkstreamUnbindTool` struct L529-531 — `{ store: Arc<Mutex<Store>> }` — the shim is enough to make `switch` / `show` work.
+- pub `new` function L534-536 — `(store: Arc<Mutex<Store>>) -> Self` — the shim is enough to make `switch` / `show` work.
+- pub `WorkstreamPromoteTool` struct L600-603 — `{ store: Arc<Mutex<Store>>, router: Arc<crate::workstream_router::WorkstreamMemo...` — Move one entity from the `scratch` workstream into a named target.
+- pub `new` function L606-611 — `( store: Arc<Mutex<Store>>, router: Arc<crate::workstream_router::WorkstreamMemo...` — the shim is enough to make `switch` / `show` work.
+- pub `WorkstreamDeleteTool` struct L754-757 — `{ store: Arc<Mutex<Store>>, active: SessionWorkstream }` — the shim is enough to make `switch` / `show` work.
+- pub `new` function L760-762 — `(store: Arc<Mutex<Store>>, active: SessionWorkstream) -> Self` — the shim is enough to make `switch` / `show` work.
 -  `SessionWorkstream` type L30-48 — `= SessionWorkstream` — the shim is enough to make `switch` / `show` work.
 -  `SessionWorkstream` type L50-54 — `impl Default for SessionWorkstream` — the shim is enough to make `switch` / `show` work.
 -  `default` function L51-53 — `() -> Self` — the shim is enough to make `switch` / `show` work.
@@ -2816,62 +2818,71 @@
 -  `parameters_schema` function L190-198 — `(&self) -> Value` — the shim is enough to make `switch` / `show` work.
 -  `execute` function L200-235 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — the shim is enough to make `switch` / `show` work.
 -  `WorkstreamSwitchTool` type L247-251 — `= WorkstreamSwitchTool` — the shim is enough to make `switch` / `show` work.
--  `WorkstreamSwitchTool` type L254-314 — `impl Tool for WorkstreamSwitchTool` — the shim is enough to make `switch` / `show` work.
+-  `WorkstreamSwitchTool` type L254-316 — `impl Tool for WorkstreamSwitchTool` — the shim is enough to make `switch` / `show` work.
 -  `name` function L255-257 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
 -  `description` function L259-263 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
 -  `category` function L265-267 — `(&self) -> ToolCategory` — the shim is enough to make `switch` / `show` work.
 -  `parameters_schema` function L269-275 — `(&self) -> Value` — the shim is enough to make `switch` / `show` work.
--  `execute` function L277-313 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — the shim is enough to make `switch` / `show` work.
--  `WorkstreamShowTool` type L325-329 — `= WorkstreamShowTool` — the shim is enough to make `switch` / `show` work.
--  `WorkstreamShowTool` type L332-393 — `impl Tool for WorkstreamShowTool` — the shim is enough to make `switch` / `show` work.
--  `name` function L333-335 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
--  `description` function L337-340 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
--  `is_read_only` function L342-344 — `(&self) -> bool` — the shim is enough to make `switch` / `show` work.
--  `category` function L346-348 — `(&self) -> ToolCategory` — the shim is enough to make `switch` / `show` work.
--  `parameters_schema` function L350-358 — `(&self) -> Value` — the shim is enough to make `switch` / `show` work.
--  `execute` function L360-392 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — the shim is enough to make `switch` / `show` work.
--  `WorkstreamDescribeTool` type L403-407 — `= WorkstreamDescribeTool` — the shim is enough to make `switch` / `show` work.
--  `WorkstreamDescribeTool` type L410-457 — `impl Tool for WorkstreamDescribeTool` — the shim is enough to make `switch` / `show` work.
--  `name` function L411-413 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
--  `description` function L415-418 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
--  `category` function L420-422 — `(&self) -> ToolCategory` — the shim is enough to make `switch` / `show` work.
--  `parameters_schema` function L424-433 — `(&self) -> Value` — the shim is enough to make `switch` / `show` work.
--  `execute` function L435-456 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — the shim is enough to make `switch` / `show` work.
--  `WorkstreamBindTool` type L467-471 — `= WorkstreamBindTool` — the shim is enough to make `switch` / `show` work.
--  `WorkstreamBindTool` type L474-525 — `impl Tool for WorkstreamBindTool` — the shim is enough to make `switch` / `show` work.
--  `name` function L475-477 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
--  `description` function L479-482 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
--  `category` function L484-486 — `(&self) -> ToolCategory` — the shim is enough to make `switch` / `show` work.
--  `parameters_schema` function L488-497 — `(&self) -> Value` — the shim is enough to make `switch` / `show` work.
--  `execute` function L499-524 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — the shim is enough to make `switch` / `show` work.
--  `WorkstreamUnbindTool` type L531-535 — `= WorkstreamUnbindTool` — the shim is enough to make `switch` / `show` work.
--  `WorkstreamUnbindTool` type L538-588 — `impl Tool for WorkstreamUnbindTool` — the shim is enough to make `switch` / `show` work.
--  `name` function L539-541 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
--  `description` function L543-545 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
--  `category` function L547-549 — `(&self) -> ToolCategory` — the shim is enough to make `switch` / `show` work.
--  `parameters_schema` function L551-560 — `(&self) -> Value` — the shim is enough to make `switch` / `show` work.
--  `execute` function L562-587 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — the shim is enough to make `switch` / `show` work.
--  `WorkstreamDeleteTool` type L599-603 — `= WorkstreamDeleteTool` — the shim is enough to make `switch` / `show` work.
--  `WorkstreamDeleteTool` type L606-654 — `impl Tool for WorkstreamDeleteTool` — the shim is enough to make `switch` / `show` work.
--  `name` function L607-609 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
--  `description` function L611-614 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
--  `category` function L616-618 — `(&self) -> ToolCategory` — the shim is enough to make `switch` / `show` work.
--  `parameters_schema` function L620-626 — `(&self) -> Value` — the shim is enough to make `switch` / `show` work.
--  `execute` function L628-653 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — the shim is enough to make `switch` / `show` work.
--  `tests` module L657-859 — `-` — the shim is enough to make `switch` / `show` work.
--  `setup` function L661-666 — `() -> (tempfile::TempDir, Arc<Mutex<Store>>, SessionWorkstream)` — the shim is enough to make `switch` / `show` work.
--  `test_ctx` function L668-672 — `(tmp: &tempfile::TempDir) -> crate::context::EngineToolContext` — the shim is enough to make `switch` / `show` work.
--  `create_succeeds_with_valid_slug` function L675-684 — `()` — the shim is enough to make `switch` / `show` work.
--  `create_refuses_scratch` function L687-695 — `()` — the shim is enough to make `switch` / `show` work.
--  `switch_updates_active` function L698-712 — `()` — the shim is enough to make `switch` / `show` work.
--  `switch_unknown_errors` function L715-724 — `()` — the shim is enough to make `switch` / `show` work.
--  `show_defaults_to_active` function L727-733 — `()` — the shim is enough to make `switch` / `show` work.
--  `describe_updates_description` function L736-759 — `()` — the shim is enough to make `switch` / `show` work.
--  `bind_and_unbind_round_trip` function L762-792 — `()` — the shim is enough to make `switch` / `show` work.
--  `delete_refuses_scratch` function L795-804 — `()` — the shim is enough to make `switch` / `show` work.
--  `delete_refuses_currently_active` function L807-822 — `()` — the shim is enough to make `switch` / `show` work.
--  `delete_soft_marks_archived` function L825-842 — `()` — the shim is enough to make `switch` / `show` work.
--  `list_marks_active` function L845-858 — `()` — the shim is enough to make `switch` / `show` work.
+-  `execute` function L277-315 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — the shim is enough to make `switch` / `show` work.
+-  `WorkstreamShowTool` type L327-331 — `= WorkstreamShowTool` — the shim is enough to make `switch` / `show` work.
+-  `WorkstreamShowTool` type L334-395 — `impl Tool for WorkstreamShowTool` — the shim is enough to make `switch` / `show` work.
+-  `name` function L335-337 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
+-  `description` function L339-342 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
+-  `is_read_only` function L344-346 — `(&self) -> bool` — the shim is enough to make `switch` / `show` work.
+-  `category` function L348-350 — `(&self) -> ToolCategory` — the shim is enough to make `switch` / `show` work.
+-  `parameters_schema` function L352-360 — `(&self) -> Value` — the shim is enough to make `switch` / `show` work.
+-  `execute` function L362-394 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — the shim is enough to make `switch` / `show` work.
+-  `WorkstreamDescribeTool` type L405-409 — `= WorkstreamDescribeTool` — the shim is enough to make `switch` / `show` work.
+-  `WorkstreamDescribeTool` type L412-459 — `impl Tool for WorkstreamDescribeTool` — the shim is enough to make `switch` / `show` work.
+-  `name` function L413-415 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
+-  `description` function L417-420 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
+-  `category` function L422-424 — `(&self) -> ToolCategory` — the shim is enough to make `switch` / `show` work.
+-  `parameters_schema` function L426-435 — `(&self) -> Value` — the shim is enough to make `switch` / `show` work.
+-  `execute` function L437-458 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — the shim is enough to make `switch` / `show` work.
+-  `WorkstreamBindTool` type L469-473 — `= WorkstreamBindTool` — the shim is enough to make `switch` / `show` work.
+-  `WorkstreamBindTool` type L476-527 — `impl Tool for WorkstreamBindTool` — the shim is enough to make `switch` / `show` work.
+-  `name` function L477-479 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
+-  `description` function L481-484 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
+-  `category` function L486-488 — `(&self) -> ToolCategory` — the shim is enough to make `switch` / `show` work.
+-  `parameters_schema` function L490-499 — `(&self) -> Value` — the shim is enough to make `switch` / `show` work.
+-  `execute` function L501-526 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — the shim is enough to make `switch` / `show` work.
+-  `WorkstreamUnbindTool` type L533-537 — `= WorkstreamUnbindTool` — the shim is enough to make `switch` / `show` work.
+-  `WorkstreamUnbindTool` type L540-590 — `impl Tool for WorkstreamUnbindTool` — the shim is enough to make `switch` / `show` work.
+-  `name` function L541-543 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
+-  `description` function L545-547 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
+-  `category` function L549-551 — `(&self) -> ToolCategory` — the shim is enough to make `switch` / `show` work.
+-  `parameters_schema` function L553-562 — `(&self) -> Value` — the shim is enough to make `switch` / `show` work.
+-  `execute` function L564-589 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — the shim is enough to make `switch` / `show` work.
+-  `WorkstreamPromoteTool` type L605-612 — `= WorkstreamPromoteTool` — the shim is enough to make `switch` / `show` work.
+-  `WorkstreamPromoteTool` type L615-748 — `impl Tool for WorkstreamPromoteTool` — the shim is enough to make `switch` / `show` work.
+-  `name` function L616-618 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
+-  `description` function L620-625 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
+-  `category` function L627-629 — `(&self) -> ToolCategory` — the shim is enough to make `switch` / `show` work.
+-  `parameters_schema` function L631-640 — `(&self) -> Value` — the shim is enough to make `switch` / `show` work.
+-  `execute` function L642-747 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — the shim is enough to make `switch` / `show` work.
+-  `WorkstreamDeleteTool` type L759-763 — `= WorkstreamDeleteTool` — the shim is enough to make `switch` / `show` work.
+-  `WorkstreamDeleteTool` type L766-814 — `impl Tool for WorkstreamDeleteTool` — the shim is enough to make `switch` / `show` work.
+-  `name` function L767-769 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
+-  `description` function L771-774 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
+-  `category` function L776-778 — `(&self) -> ToolCategory` — the shim is enough to make `switch` / `show` work.
+-  `parameters_schema` function L780-786 — `(&self) -> Value` — the shim is enough to make `switch` / `show` work.
+-  `execute` function L788-813 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — the shim is enough to make `switch` / `show` work.
+-  `tests` module L817-1084 — `-` — the shim is enough to make `switch` / `show` work.
+-  `setup` function L821-826 — `() -> (tempfile::TempDir, Arc<Mutex<Store>>, SessionWorkstream)` — the shim is enough to make `switch` / `show` work.
+-  `test_ctx` function L828-832 — `(tmp: &tempfile::TempDir) -> crate::context::EngineToolContext` — the shim is enough to make `switch` / `show` work.
+-  `create_succeeds_with_valid_slug` function L835-844 — `()` — the shim is enough to make `switch` / `show` work.
+-  `create_refuses_scratch` function L847-855 — `()` — the shim is enough to make `switch` / `show` work.
+-  `switch_updates_active` function L858-872 — `()` — the shim is enough to make `switch` / `show` work.
+-  `switch_unknown_errors` function L875-884 — `()` — the shim is enough to make `switch` / `show` work.
+-  `show_defaults_to_active` function L887-893 — `()` — the shim is enough to make `switch` / `show` work.
+-  `describe_updates_description` function L896-919 — `()` — the shim is enough to make `switch` / `show` work.
+-  `bind_and_unbind_round_trip` function L922-952 — `()` — the shim is enough to make `switch` / `show` work.
+-  `delete_refuses_scratch` function L955-964 — `()` — the shim is enough to make `switch` / `show` work.
+-  `delete_refuses_currently_active` function L967-982 — `()` — the shim is enough to make `switch` / `show` work.
+-  `delete_soft_marks_archived` function L985-1002 — `()` — the shim is enough to make `switch` / `show` work.
+-  `promote_moves_entity_from_scratch_to_target` function L1005-1045 — `()` — the shim is enough to make `switch` / `show` work.
+-  `promote_refuses_unknown_target` function L1048-1067 — `()` — the shim is enough to make `switch` / `show` work.
+-  `list_marks_active` function L1070-1083 — `()` — the shim is enough to make `switch` / `show` work.
 
 ### crates/arawn-feeds/src
 
@@ -5846,28 +5857,29 @@
 
 - pub `SessionStore` struct L10-12 — `{ db: &'a Database }` — CRUD operations for session metadata in SQLite.
 - pub `new` function L15-17 — `(db: &'a Database) -> Self`
-- pub `create` function L19-29 — `(&self, session: &Session) -> Result<(), StorageError>`
-- pub `get` function L31-53 — `(&self, id: Uuid) -> Result<Option<SessionMeta>, StorageError>`
-- pub `list_for_workstream` function L55-77 — `(&self, ws_id: Uuid) -> Result<Vec<SessionMeta>, StorageError>`
-- pub `list_scratch` function L79-101 — `(&self) -> Result<Vec<SessionMeta>, StorageError>`
-- pub `delete` function L104-110 — `(&self, session_id: Uuid) -> Result<bool, StorageError>` — Delete a session record from SQLite by ID.
-- pub `update_stats` function L113-125 — `(&self, session_id: Uuid, stats: &SessionStats) -> Result<(), StorageError>` — Update session token/turn stats in SQLite.
-- pub `update_workstream_id` function L127-137 — `( &self, session_id: Uuid, new_ws_id: Uuid, ) -> Result<bool, StorageError>`
-- pub `SessionMeta` struct L142-147 — `{ id: Uuid, workstream_id: Option<Uuid>, created_at: DateTime<Utc>, stats: Sessi...` — Session metadata as stored in SQLite (no messages — those are in JSONL).
-- pub `into_session` function L153-158 — `(self) -> Session` — Convert to an arawn_core::Session (without messages — load those separately).
--  `SessionMeta` type L149-159 — `= SessionMeta`
--  `SessionRow` struct L161-169 — `{ id: String, workstream_id: Option<String>, created_at: String, input_tokens: i...`
--  `SessionRow` type L171-198 — `= SessionRow`
--  `into_meta` function L172-197 — `(self) -> Result<SessionMeta, StorageError>`
--  `tests` module L201-326 — `-`
--  `setup` function L205-207 — `() -> Database`
--  `create_and_get_session` function L210-223 — `()`
--  `create_scratch_session` function L226-236 — `()`
--  `get_nonexistent_returns_none` function L239-243 — `()`
--  `list_for_workstream` function L246-268 — `()`
--  `list_scratch_sessions` function L271-289 — `()`
--  `update_workstream_id_promotes_scratch` function L292-307 — `()`
--  `update_workstream_id_on_bound_session_returns_false` function L310-325 — `()`
+- pub `create` function L19-30 — `(&self, session: &Session) -> Result<(), StorageError>`
+- pub `get` function L32-55 — `(&self, id: Uuid) -> Result<Option<SessionMeta>, StorageError>`
+- pub `list_for_workstream` function L57-80 — `(&self, ws_id: Uuid) -> Result<Vec<SessionMeta>, StorageError>`
+- pub `list_scratch` function L82-105 — `(&self) -> Result<Vec<SessionMeta>, StorageError>`
+- pub `delete` function L108-114 — `(&self, session_id: Uuid) -> Result<bool, StorageError>` — Delete a session record from SQLite by ID.
+- pub `update_stats` function L117-129 — `(&self, session_id: Uuid, stats: &SessionStats) -> Result<(), StorageError>` — Update session token/turn stats in SQLite.
+- pub `update_workstream_id` function L131-141 — `( &self, session_id: Uuid, new_ws_id: Uuid, ) -> Result<bool, StorageError>`
+- pub `update_workstream_name` function L146-156 — `( &self, session_id: Uuid, new_name: &str, ) -> Result<bool, StorageError>` — Update the persisted workstream slug for a session.
+- pub `SessionMeta` struct L161-167 — `{ id: Uuid, workstream_id: Option<Uuid>, workstream_name: String, created_at: Da...` — Session metadata as stored in SQLite (no messages — those are in JSONL).
+- pub `into_session` function L171-184 — `(self) -> Session` — Convert to an arawn_core::Session (without messages — load those separately).
+-  `SessionMeta` type L169-185 — `= SessionMeta`
+-  `SessionRow` struct L187-196 — `{ id: String, workstream_id: Option<String>, workstream_name: String, created_at...`
+-  `SessionRow` type L198-226 — `= SessionRow`
+-  `into_meta` function L199-225 — `(self) -> Result<SessionMeta, StorageError>`
+-  `tests` module L229-354 — `-`
+-  `setup` function L233-235 — `() -> Database`
+-  `create_and_get_session` function L238-251 — `()`
+-  `create_scratch_session` function L254-264 — `()`
+-  `get_nonexistent_returns_none` function L267-271 — `()`
+-  `list_for_workstream` function L274-296 — `()`
+-  `list_scratch_sessions` function L299-317 — `()`
+-  `update_workstream_id_promotes_scratch` function L320-335 — `()`
+-  `update_workstream_id_on_bound_session_returns_false` function L338-353 — `()`
 
 #### crates/arawn-storage/src/store.rs
 

@@ -77,6 +77,12 @@ pub struct LocalService {
     /// runner, no DB, etc.) — `/watch` and `/feeds` then return a
     /// clear "feeds runtime unavailable" error.
     feed_runtime: Arc<std::sync::RwLock<Option<Arc<arawn_feeds::FeedRuntime>>>>,
+    /// Shared active-workstream shim. Memory tools read this to route
+    /// memory_store / memory_search to the right KB. Set on session
+    /// resume from the persisted Session.workstream_name so the
+    /// active workstream re-establishes without the user re-typing
+    /// `/workstream switch`.
+    active_workstream: Option<arawn_engine::SessionWorkstream>,
 }
 
 impl LocalService {
@@ -107,7 +113,16 @@ impl LocalService {
             notice_tx: tokio::sync::broadcast::channel(64).0,
             integration_registry: Arc::new(std::sync::RwLock::new(HashMap::new())),
             feed_runtime: Arc::new(std::sync::RwLock::new(None)),
+            active_workstream: None,
         }
+    }
+
+    /// Wire the shared `SessionWorkstream` shim. Memory tools read
+    /// this for routing; load_session_state restores it from the
+    /// persisted name on resume.
+    pub fn with_active_workstream(mut self, ws: arawn_engine::SessionWorkstream) -> Self {
+        self.active_workstream = Some(ws);
+        self
     }
 
     /// Hand the live feed runtime to the service so `/watch` and
@@ -261,6 +276,18 @@ impl LocalService {
 
             (meta, workstream, ws_dir)
         };
+
+        // Re-establish the active workstream from the persisted
+        // session record. Falls back gracefully when the shim isn't
+        // wired (e.g. tests that bypass `with_active_workstream`).
+        if let Some(active) = self.active_workstream.as_ref() {
+            let name = if !meta.workstream_name.is_empty() {
+                meta.workstream_name.clone()
+            } else {
+                workstream.name.clone()
+            };
+            active.set(name);
+        }
 
         Ok((meta, workstream, ws_dir, Vec::new()))
     }

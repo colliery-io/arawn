@@ -488,7 +488,8 @@ async fn main() -> Result<()> {
         .with_skill_registry(Arc::clone(&skill_registry))
         .with_plugin_registry(Arc::clone(&plugin_runtime.registry))
         .with_plan_state(plan_state)
-        .with_background_tasks(bg_manager);
+        .with_background_tasks(bg_manager)
+        .with_active_workstream(active_workstream.clone());
 
         if let Some(ref mgr) = memory_manager {
             service = service.with_memory_manager(Arc::clone(mgr));
