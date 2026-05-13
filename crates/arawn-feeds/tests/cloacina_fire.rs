@@ -89,6 +89,7 @@ async fn cloacina_fires_feed_workflow_end_to_end() {
         registry,
         clients,
         None,
+        None,
     )
     .await
     .expect("feed runtime starts");
@@ -158,6 +159,7 @@ async fn cloacina_fires_advance_cursor_across_two_executions() {
         registry,
         clients,
         None,
+        None,
     )
     .await
     .unwrap();
@@ -223,6 +225,7 @@ async fn registering_a_feed_with_unknown_template_is_skipped_at_boot() {
         layout.clone(),
         registry,
         clients,
+        None,
         None,
     )
     .await

@@ -352,22 +352,30 @@ async fn main() -> Result<()> {
         // on subsequent calls.
         let active_workstream = arawn_engine::SessionWorkstream::scratch();
 
-        // Register memory tools (if memory system is available).
-        // Use the routed handle so the active workstream determines
-        // which KB the tools read/write.
-        if memory_manager.is_some() {
-            let router = Arc::new(arawn_engine::WorkstreamMemoryRouter::new(
+        // Workstream memory router — hoisted to outer scope so the
+        // per-workstream extractor (T-0251) can resolve KBs through
+        // the same cache as the memory tools.
+        let workstream_router: Option<Arc<arawn_engine::WorkstreamMemoryRouter>> = if memory_manager.is_some() {
+            Some(Arc::new(arawn_engine::WorkstreamMemoryRouter::new(
                 std::path::PathBuf::from(&data_dir),
                 Some(embed_config.dimensions),
                 embedder.clone(),
                 active_workstream.clone(),
-            ));
+            )))
+        } else {
+            None
+        };
+
+        // Register memory tools (if memory system is available).
+        // Use the routed handle so the active workstream determines
+        // which KB the tools read/write.
+        if let Some(ref router) = workstream_router {
             registry.register(Box::new(arawn_engine::MemoryStoreTool::new(
-                Arc::clone(&router),
+                Arc::clone(router),
                 embedder.clone(),
             )));
             registry.register(Box::new(arawn_engine::MemorySearchTool::new(
-                Arc::clone(&router),
+                Arc::clone(router),
                 embedder.clone(),
             )));
             info!("memory tools registered (workstream-routed store + search)");
@@ -849,6 +857,31 @@ async fn main() -> Result<()> {
                         }
                     };
 
+                    // Build the extractor runner when both projections
+                    // and the memory router are available. StubChain for
+                    // T-0251 — T-0252 swaps in the real CoT chain.
+                    let extractor: Option<Arc<arawn_extractor::ExtractorRunner>> =
+                        match (projections.as_ref(), workstream_router.as_ref()) {
+                            (Some(proj), Some(router)) => {
+                                let router_clone = Arc::clone(router);
+                                let memory_resolver: arawn_extractor::runner::MemoryResolver =
+                                    Arc::new(move |name: &str| {
+                                        router_clone.for_workstream(name).map_err(|e| {
+                                            arawn_extractor::ExtractionError::Memory(e.to_string())
+                                        })
+                                    });
+                                let chain: Arc<dyn arawn_extractor::ExtractionChain> =
+                                    Arc::new(arawn_extractor::StubChain);
+                                Some(Arc::new(arawn_extractor::ExtractorRunner::new(
+                                    service.shared_store(),
+                                    Arc::clone(proj),
+                                    memory_resolver,
+                                    chain,
+                                )))
+                            }
+                            _ => None,
+                        };
+
                     match arawn_feeds::start(
                         workflow_runner.cloacina_runner(),
                         feeds_conn,
@@ -856,6 +889,7 @@ async fn main() -> Result<()> {
                         feeds_registry,
                         clients,
                         projections,
+                        extractor,
                     )
                     .await
                     {

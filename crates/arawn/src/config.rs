@@ -134,6 +134,19 @@ impl Default for CompactorConfig {
     }
 }
 
+/// Configuration for the per-workstream extractor (I-0040 phase 4).
+///
+/// `llm` names an entry in the `[llm.<name>]` map. If `None` or empty,
+/// extraction falls through to the engine's LLM. This lets users wire
+/// a free / inexpensive model for extraction without affecting the
+/// main interaction LLM.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct ExtractionConfig {
+    /// LLM name — if None/empty, falls back to engine's LLM.
+    #[serde(default)]
+    pub llm: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServerConfig {
     #[serde(default = "default_host")]
@@ -301,6 +314,8 @@ pub struct ArawnConfig {
     #[serde(default)]
     pub compactor: CompactorConfig,
     #[serde(default)]
+    pub extraction: ExtractionConfig,
+    #[serde(default)]
     pub server: ServerConfig,
     #[serde(default)]
     pub storage: StorageConfig,
@@ -324,6 +339,7 @@ impl Default for ArawnConfig {
             llm: default_llm_configs(),
             engine: EngineConfig::default(),
             compactor: CompactorConfig::default(),
+            extraction: ExtractionConfig::default(),
             server: ServerConfig::default(),
             storage: StorageConfig::default(),
             prompts: PromptsConfig::default(),
@@ -406,6 +422,28 @@ impl ArawnConfig {
             return llm;
         }
         self.engine_llm()
+    }
+
+    /// Resolve the LLM config for the per-workstream extractor.
+    /// Falls back to engine's LLM if `[extraction]` is absent or names
+    /// a missing entry.
+    pub fn extraction_llm(&self) -> &LlmConfig {
+        if let Some(ref name) = self.extraction.llm
+            && let Some(llm) = self.llm.get(name)
+        {
+            return llm;
+        }
+        self.engine_llm()
+    }
+
+    /// The configured name of the extraction LLM (or the engine's
+    /// name when no override is set). Used by `LlmClientPool::resolve`
+    /// callers that want the fall-through resolved upfront.
+    pub fn extraction_llm_name(&self) -> &str {
+        match &self.extraction.llm {
+            Some(name) if !name.is_empty() && self.llm.contains_key(name) => name,
+            _ => &self.engine.llm,
+        }
     }
 
     /// Resolve the data directory with ~ expansion.

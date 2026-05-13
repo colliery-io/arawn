@@ -49,6 +49,11 @@ pub struct FeedRuntimeContext {
     /// optional so feeds can run standalone (e.g. tests) without a
     /// projection backend.
     pub projections: Option<Arc<arawn_projections::ProjectionStore>>,
+    /// Optional per-workstream extractor. When set (and projections is
+    /// also set), each successful feed run fans out to the extractor
+    /// after projection writes — every active workstream evaluates the
+    /// new projection rows against its scope.
+    pub extractor: Option<Arc<arawn_extractor::ExtractorRunner>>,
 }
 
 /// One cloacina-compatible task per feed. Captures the feed's id so we
@@ -203,7 +208,7 @@ async fn run_feed_inner(
 
     // 7. Fan out into the projection layer if configured. Projection
     // failures must not fail the feed run — they're a downstream view.
-    if let Some(projections) = runtime.projections.as_ref() {
+    let projections_touched_types = if let Some(projections) = runtime.projections.as_ref() {
         match arawn_projections::project_feed_dir(
             projections,
             &record.template,
@@ -220,17 +225,73 @@ async fn run_feed_inner(
                         "projection sync"
                     );
                 }
+                projection_feed_types_for(&record.template)
             }
-            Err(e) => warn!(
-                feed_id = %record.id,
-                template = %record.template,
-                error = %e,
-                "projection sync failed; feed run still considered successful"
-            ),
+            Err(e) => {
+                warn!(
+                    feed_id = %record.id,
+                    template = %record.template,
+                    error = %e,
+                    "projection sync failed; feed run still considered successful"
+                );
+                Vec::new()
+            }
+        }
+    } else {
+        Vec::new()
+    };
+
+    // 8. Fan out into the per-workstream extractor for each
+    // projection feed_type this template touched. Reactive trigger
+    // (downstream of capture) per the I-0040 phase 4 design.
+    // Soft-fails — extractor errors must not fail the feed run.
+    if let Some(extractor) = runtime.extractor.as_ref() {
+        for feed_type in projections_touched_types {
+            match extractor.run_for_all_workstreams(&feed_type).await {
+                Ok(per_ws) => {
+                    let total_kept: usize = per_ws.iter().map(|(_, s)| s.kept).sum();
+                    if total_kept > 0 {
+                        info!(
+                            feed_id = %record.id,
+                            feed_type = %feed_type,
+                            workstreams = per_ws.len(),
+                            kept = total_kept,
+                            "extractor fan-out"
+                        );
+                    }
+                }
+                Err(e) => warn!(
+                    feed_id = %record.id,
+                    feed_type = %feed_type,
+                    error = %e,
+                    "extractor fan-out failed; feed run still successful"
+                ),
+            }
         }
     }
 
     Ok(outcome)
+}
+
+/// Map a feed template name to the projection feed_types it produces.
+/// Slack writes to two tables (top-level + thread replies); other
+/// templates write to one each. Used to decide which extractor
+/// invocations to fan out after a feed run.
+fn projection_feed_types_for(template_name: &str) -> Vec<String> {
+    let provider = template_name.split('/').next().unwrap_or(template_name);
+    match provider {
+        "gmail" => vec!["gmail_messages".into()],
+        "slack" => vec!["slack_messages".into(), "slack_thread_messages".into()],
+        "drive" => vec!["drive_files".into()],
+        "jira" => vec![
+            "jira_issues".into(),
+            "jira_comments".into(),
+            "jira_history".into(),
+        ],
+        "confluence" => vec!["confluence_pages".into()],
+        "calendar" => vec!["calendar_events".into()],
+        _ => Vec::new(),
+    }
 }
 
 fn persist_meta_failure(
@@ -284,6 +345,7 @@ mod tests {
             registry: Arc::new(default_registry()),
             clients: Arc::new(NoopClients),
             projections: None,
+            extractor: None,
         }
     }
 

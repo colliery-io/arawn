@@ -55,6 +55,7 @@ pub async fn start(
     registry: Arc<FeedTemplateRegistry>,
     clients: Arc<dyn FeedClients>,
     projections: Option<Arc<arawn_projections::ProjectionStore>>,
+    extractor: Option<Arc<arawn_extractor::ExtractorRunner>>,
 ) -> Result<FeedRuntime, FeedError> {
     let runtime_ctx = FeedRuntimeContext {
         conn: conn.clone(),
@@ -62,6 +63,7 @@ pub async fn start(
         registry: registry.clone(),
         clients: clients.clone(),
         projections: projections.clone(),
+        extractor: extractor.clone(),
     };
 
     let feeds = {

@@ -28,7 +28,11 @@ pub struct ProjectionStore {
 impl ProjectionStore {
     /// Accessor for sibling modules (e.g. `embed`) that need to issue
     /// raw SQL against the same connection.
-    pub(crate) fn conn(&self) -> &Mutex<Connection> {
+    /// Access the underlying rusqlite connection mutex. Used by
+    /// sibling crates that need to run their own queries against the
+    /// projection tables (e.g. arawn-extractor's runner walks
+    /// `<feed_type>` rows by source_ts).
+    pub fn conn(&self) -> &Mutex<Connection> {
         &self.conn
     }
 

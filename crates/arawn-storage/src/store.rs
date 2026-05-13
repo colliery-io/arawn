@@ -44,6 +44,13 @@ impl Store {
     }
 
     /// Data directory path.
+    /// Access the underlying `Database` for crates that need to
+    /// construct their own per-table stores (e.g. arawn-extractor's
+    /// `ExtractorCursorStore`).
+    pub fn database(&self) -> &Database {
+        &self.db
+    }
+
     pub fn data_dir(&self) -> &Path {
         &self.data_dir
     }

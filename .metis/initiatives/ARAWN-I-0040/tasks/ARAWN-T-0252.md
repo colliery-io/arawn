@@ -4,14 +4,14 @@ level: task
 title: "Extraction chain prompts — classify, extract, link-by-name, write"
 short_code: "ARAWN-T-0252"
 created_at: 2026-05-13T01:28:13.468772+00:00
-updated_at: 2026-05-13T01:28:13.468772+00:00
+updated_at: 2026-05-13T03:15:42.240064+00:00
 parent: ARAWN-I-0040
 blocked_by: [ARAWN-T-0251]
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/active"
 
 
 exit_criteria_met: false
@@ -101,6 +101,8 @@ Reads `LlmClientPool::client_for(Extraction)` — falls through to Interaction w
 - Integration tests with mock LLM (T-0254).
 - Tag vocabulary refinement — steward (Phase 5).
 - Quality tuning of individual prompts — separate follow-up once we have real data.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

@@ -4,14 +4,14 @@ level: task
 title: "Extractor plumbing — cursors, dispatch trigger, LLM config, chain trait"
 short_code: "ARAWN-T-0251"
 created_at: 2026-05-13T01:28:12.393919+00:00
-updated_at: 2026-05-13T01:28:12.393919+00:00
+updated_at: 2026-05-13T03:15:41.856736+00:00
 parent: ARAWN-I-0040
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -109,6 +109,10 @@ Looks up the cursor, queries `<feed_type> WHERE source_ts > cursor ORDER BY sour
 
 ## Acceptance Criteria
 
+## Acceptance Criteria
+
+## Acceptance Criteria
+
 - [ ] `extractor_cursors` table created via V5 migration; CRUD round-trips.
 - [ ] `ExtractionChain` trait + `StubChain` impl compile and round-trip a no-op.
 - [ ] `ExtractorRunner` advances the cursor monotonically; idempotent on re-run.
@@ -142,4 +146,41 @@ At trigger time the runner needs the list of active workstreams. Queries `Workst
 
 ## Status Updates
 
-*To be added during implementation*
+### 2026-05-13 — Skeleton landed end-to-end with StubChain
+
+**Files.**
+- `crates/arawn-storage/migrations/V5__extractor_cursors.sql` — new table.
+- `crates/arawn-storage/src/extractor_cursor_store.rs` — `ExtractorCursorStore` with `get / advance (monotonic) / list_for_workstream`. 4 unit tests.
+- `crates/arawn-storage/src/store.rs` — `pub fn database()` accessor so the extractor can build its own per-table store on the shared `Database`.
+- `crates/arawn-projections/src/store.rs` — `conn()` accessor promoted from `pub(crate)` to `pub` so the extractor can run paged queries against `<feed_type>` tables.
+- `crates/arawn-extractor/` (new crate) — `chain.rs` (trait + `ChainOutcome` + `StubChain`), `runner.rs` (`ExtractorRunner` with `run_for_workstream` + `run_for_all_workstreams` + `MemoryResolver` closure type + projection paging), `error.rs`, `lib.rs`. 4 integration tests.
+- `crates/arawn-feeds/src/dispatch.rs` — `FeedRuntimeContext.extractor: Option<Arc<ExtractorRunner>>`; `run_feed_inner` fans out to `extractor.run_for_all_workstreams(feed_type)` for each projection feed_type the template touched, after projection writes. `projection_feed_types_for(template_name)` helper maps `gmail/*` → `gmail_messages`, `slack/*` → both slack tables, etc.
+- `crates/arawn-feeds/src/runtime.rs` — `start()` takes a seventh arg `extractor: Option<Arc<ExtractorRunner>>`.
+- `crates/arawn-feeds/tests/*.rs` — all 9 `arawn_feeds::start` call sites updated with the new arg.
+- `crates/arawn/src/config.rs` — `ExtractionConfig { llm: Option<String> }` added to `ArawnConfig`. New methods: `extraction_llm()` + `extraction_llm_name()`, both falling through to engine when absent.
+- `crates/arawn/src/main.rs` — workstream router hoisted to outer scope; built once and shared between memory tools and the extractor's `MemoryResolver` closure. Extractor wired into `arawn_feeds::start` when both projections and the router are available. StubChain for now — T-0252 swaps in `CotChain`.
+
+**Routing flow (steady state).** Feed dispatch finishes template run → projection writes happen → for each projection feed_type the template wrote (e.g. `slack_messages` + `slack_thread_messages` for slack archives), `ExtractorRunner::run_for_all_workstreams(feed_type)` iterates every active workstream. Each workstream: read cursor → query `<feed_type> WHERE source_ts > cursor ORDER BY source_ts LIMIT 50` → run the chain (StubChain returns skipped) → advance cursor to highest processed source_ts. Errors block cursor advancement so retry happens on next cycle.
+
+**Decisions worth keeping.**
+- **Cursor monotonicity at the SQL layer.** The `advance` SQL uses a CASE in the ON CONFLICT clause so a backwards advance is silently a no-op. Defense against concurrent writers (e.g. backfill running while dispatch fires) clobbering each other.
+- **MemoryResolver as closure.** Lets the extractor depend only on `arawn_memory::MemoryManager` while in production the closure points at the same `WorkstreamMemoryRouter` cache the memory tools use. Test code passes a closure that opens an in-memory `MemoryManager` per call. No new trait.
+- **No direct `arawn-llm` use in T-0251.** StubChain doesn't call the LLM, so the actual `LlmClientPool` plumbing is just the config + `extraction_llm()` accessor. T-0252 will pick that up when writing the real chain.
+- **Reactive trigger, not cron.** Already discussed in the decomposition; reaffirmed in the implementation. Dispatch hook fires after projection writes; backfill (T-0253) will reuse the same `run_for_workstream` entry point.
+
+**Tests.**
+- 4 unit tests in `arawn_storage::extractor_cursor_store::tests` (get-none-for-unknown, insert-then-update, no-backwards, list-for-workstream).
+- 4 integration tests in `arawn_extractor::runner::tests` (empty-table no-op, StubChain advances cursor + marks skipped, re-run is no-op, run-for-all-workstreams skips archived).
+- Full workspace test sweep: 0 failures across all crates.
+- `angreal check clippy` clean.
+
+**Acceptance criteria.**
+- [x] `extractor_cursors` table created via V5 migration; CRUD round-trips.
+- [x] `ExtractionChain` trait + `StubChain` impl compile and round-trip a no-op.
+- [x] `ExtractorRunner` advances the cursor monotonically; idempotent on re-run.
+- [x] Feed dispatch hook fires the runner for each enabled workstream after projection writes. Soft-fails per existing T-0237 pattern.
+- [x] `[llm.extraction]` config parses; falls through to `[llm]` when absent.
+- [x] Unit tests cover the named surfaces.
+- [x] `angreal check workspace` + `angreal check clippy` clean.
+
+T-0252 (CotChain) and T-0253 (backfill) unblocked.
