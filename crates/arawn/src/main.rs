@@ -530,6 +530,20 @@ async fn main() -> Result<()> {
             service.shared_store(),
             active_workstream.clone(),
         )));
+        // workstream_promote needs the router so it can reach into
+        // arbitrary workstream KBs (not just the active one).
+        if memory_manager.is_some() {
+            let promote_router = Arc::new(arawn_engine::WorkstreamMemoryRouter::new(
+                std::path::PathBuf::from(&data_dir),
+                Some(embed_config.dimensions),
+                embedder.clone(),
+                active_workstream.clone(),
+            ));
+            registry.register(Box::new(arawn_engine::WorkstreamPromoteTool::new(
+                service.shared_store(),
+                promote_router,
+            )));
+        }
 
         // Resolve OAuth credentials with precedence:
         //   env var → arawn.toml `[integrations.<service>]` → empty (skip).

@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-12T18:48:02Z | 275 files | Python, Rust
+> Generated: 2026-05-12T23:57:07Z | 276 files | Python, Rust
 
 ## Project Structure
 
@@ -86,32 +86,33 @@
 │   │       ├── token_estimator.rs
 │   │       ├── tool.rs
 │   │       ├── tool_result_limiter.rs
-│   │       └── tools/
-│   │           ├── agent.rs
-│   │           ├── ask_user.rs
-│   │           ├── enter_plan_mode.rs
-│   │           ├── exit_plan_mode.rs
-│   │           ├── feed_search.rs
-│   │           ├── file_edit.rs
-│   │           ├── file_read.rs
-│   │           ├── file_write.rs
-│   │           ├── glob.rs
-│   │           ├── grep.rs
-│   │           ├── memory_search.rs
-│   │           ├── memory_store.rs
-│   │           ├── mod.rs
-│   │           ├── safe_env.rs
-│   │           ├── sensitive_paths.rs
-│   │           ├── shell.rs
-│   │           ├── skill.rs
-│   │           ├── sleep.rs
-│   │           ├── task_list.rs
-│   │           ├── task_output.rs
-│   │           ├── task_stop.rs
-│   │           ├── think.rs
-│   │           ├── web_fetch.rs
-│   │           ├── web_search.rs
-│   │           └── workstream.rs
+│   │       ├── tools/
+│   │       │   ├── agent.rs
+│   │       │   ├── ask_user.rs
+│   │       │   ├── enter_plan_mode.rs
+│   │       │   ├── exit_plan_mode.rs
+│   │       │   ├── feed_search.rs
+│   │       │   ├── file_edit.rs
+│   │       │   ├── file_read.rs
+│   │       │   ├── file_write.rs
+│   │       │   ├── glob.rs
+│   │       │   ├── grep.rs
+│   │       │   ├── memory_search.rs
+│   │       │   ├── memory_store.rs
+│   │       │   ├── mod.rs
+│   │       │   ├── safe_env.rs
+│   │       │   ├── sensitive_paths.rs
+│   │       │   ├── shell.rs
+│   │       │   ├── skill.rs
+│   │       │   ├── sleep.rs
+│   │       │   ├── task_list.rs
+│   │       │   ├── task_output.rs
+│   │       │   ├── task_stop.rs
+│   │       │   ├── think.rs
+│   │       │   ├── web_fetch.rs
+│   │       │   ├── web_search.rs
+│   │       │   └── workstream.rs
+│   │       └── workstream_router.rs
 │   ├── arawn-feeds/
 │   │   ├── src/
 │   │   │   ├── cadence.rs
@@ -600,21 +601,21 @@
 
 #### crates/arawn/src/main.rs
 
--  `EmbedderBridge` struct L13-15 — `{ inner: Arc<dyn arawn_embed::Embedder> }` — Adapter from `arawn_embed::Embedder` to the trait
--  `EmbedderBridge` type L17-33 — `= EmbedderBridge`
--  `embed_batch` function L18-32 — `( &'a self, texts: &'a [&'a str], ) -> std::pin::Pin< Box<dyn std::future::Futur...`
--  `DEFAULT_MODEL` variable L40 — `: &str`
--  `FILE_LOG_FILTER` variable L43 — `: &str` — Default file log filter: debug for arawn crates, warn for third-party.
--  `main` function L46-898 — `() -> Result<()>`
--  `Cli` struct L52-71 — `{ command: Option<Command>, data_dir: Option<String>, session: Option<Uuid>, lis...`
--  `Command` enum L74-93 — `Serve | Tui | Plugin`
--  `run_cli_via_server` function L901-1006 — `( url: &str, prompt: &str, session_id: Option<Uuid>, ) -> Result<()>` — Run a CLI prompt by connecting to the running server via WebSocket.
--  `build_llm_client` function L1009-1032 — `( config: &arawn_bin::LlmConfig, ) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
--  `register_default_tools` function L1035-1081 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &arawn_bin::ArawnConfig, d...` — Register all default tools into the registry.
--  `connect_mcp_servers` function L1084-1132 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
--  `register_workflow_tools` function L1135-1152 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
--  `build_engine_config` function L1154-1189 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
--  `dirs_path` function L1191-1200 — `() -> Option<String>`
+-  `EmbedderBridge` struct L12-14 — `{ inner: Arc<dyn arawn_embed::Embedder> }` — Adapter from `arawn_embed::Embedder` to the trait
+-  `EmbedderBridge` type L16-32 — `= EmbedderBridge`
+-  `embed_batch` function L17-31 — `( &'a self, texts: &'a [&'a str], ) -> std::pin::Pin< Box<dyn std::future::Futur...`
+-  `DEFAULT_MODEL` variable L39 — `: &str`
+-  `FILE_LOG_FILTER` variable L42 — `: &str` — Default file log filter: debug for arawn crates, warn for third-party.
+-  `main` function L45-945 — `() -> Result<()>`
+-  `Cli` struct L51-70 — `{ command: Option<Command>, data_dir: Option<String>, session: Option<Uuid>, lis...`
+-  `Command` enum L73-92 — `Serve | Tui | Plugin`
+-  `run_cli_via_server` function L948-1053 — `( url: &str, prompt: &str, session_id: Option<Uuid>, ) -> Result<()>` — Run a CLI prompt by connecting to the running server via WebSocket.
+-  `build_llm_client` function L1056-1079 — `( config: &arawn_bin::LlmConfig, ) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
+-  `register_default_tools` function L1082-1128 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &arawn_bin::ArawnConfig, d...` — Register all default tools into the registry.
+-  `connect_mcp_servers` function L1131-1179 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
+-  `register_workflow_tools` function L1182-1199 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
+-  `build_engine_config` function L1201-1236 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
+-  `dirs_path` function L1238-1247 — `() -> Option<String>`
 
 #### crates/arawn/src/plugin_cmd.rs
 
@@ -814,39 +815,42 @@
 
 #### crates/arawn-core/src/session.rs
 
-- pub `Session` struct L11-17 — `{ id: Uuid, workstream_id: Option<Uuid>, messages: Vec<Message>, created_at: Dat...` — A conversation session.
-- pub `new` function L21-29 — `(workstream_id: Uuid) -> Self` — Create a session bound to a workstream.
-- pub `from_parts` function L32-45 — `( id: Uuid, workstream_id: Option<Uuid>, created_at: DateTime<Utc>, messages: Ve...` — Reconstruct a session from persisted parts (DB load path).
-- pub `from_parts_with_stats` function L48-62 — `( id: Uuid, workstream_id: Option<Uuid>, created_at: DateTime<Utc>, messages: Ve...` — Reconstruct a session with stats from persisted parts.
-- pub `scratch` function L65-73 — `() -> Self` — Create a scratch session (no workstream binding yet).
-- pub `workstream_id` function L75-77 — `(&self) -> Option<Uuid>`
-- pub `is_scratch` function L80-82 — `(&self) -> bool` — Returns true if this is a scratch session (not yet promoted).
-- pub `promote` function L85-92 — `(&mut self, workstream_id: Uuid)` — Promote a scratch session to a workstream.
-- pub `add_message` function L94-96 — `(&mut self, msg: Message)`
-- pub `messages` function L98-100 — `(&self) -> &[Message]`
-- pub `microcompact` function L106-170 — `(&mut self, keep_recent: usize) -> usize` — Clear old tool results to save context space without an LLM call.
-- pub `compact` function L174-207 — `(&mut self, summary_content: String, keep_recent: usize) -> usize` — Replace old messages with a Summary, keeping the last `keep_recent` messages verbatim.
-- pub `load_compacted` function L211-221 — `(messages: Vec<Message>) -> Vec<Message>` — Load messages with compaction awareness — if a Summary exists, use the
--  `Session` type L19-222 — `= Session`
--  `TARGETED_TOOLS` variable L107-113 — `: &[&str]`
--  `STUB_THRESHOLD` variable L114 — `: usize`
--  `tests` module L225-531 — `-`
--  `session_bound_to_workstream` function L231-236 — `()`
--  `scratch_session_has_no_workstream` function L239-243 — `()`
--  `promote_scratch_session` function L246-252 — `()`
--  `promote_already_bound_panics` function L256-259 — `()`
--  `session_starts_with_no_messages` function L262-265 — `()`
--  `session_message_ordering_preserved` function L268-295 — `()`
--  `session_ids_are_unique` function L298-303 — `()`
--  `compact_replaces_old_with_summary` function L306-335 — `()`
--  `compact_too_few_messages_noop` function L338-350 — `()`
--  `load_compacted_skips_before_summary` function L353-378 — `()`
--  `load_compacted_no_summary_returns_all` function L381-393 — `()`
--  `microcompact_clears_old_tool_results` function L396-436 — `()`
--  `microcompact_preserves_recent_results` function L439-458 — `()`
--  `microcompact_skips_small_results` function L461-482 — `()`
--  `microcompact_skips_errors` function L485-506 — `()`
--  `microcompact_skips_non_targeted_tools` function L509-530 — `()`
+- pub `Session` struct L12-22 — `{ id: Uuid, workstream_id: Option<Uuid>, workstream_name: String, messages: Vec<...` — A conversation session.
+- pub `new` function L26-35 — `(workstream_id: Uuid) -> Self` — Create a session bound to a workstream.
+- pub `new_with_workstream` function L39-43 — `(workstream_id: Uuid, workstream_name: impl Into<String>) -> Self` — Create a session bound to a workstream by name.
+- pub `from_parts` function L46-60 — `( id: Uuid, workstream_id: Option<Uuid>, created_at: DateTime<Utc>, messages: Ve...` — Reconstruct a session from persisted parts (DB load path).
+- pub `from_parts_with_stats` function L63-78 — `( id: Uuid, workstream_id: Option<Uuid>, created_at: DateTime<Utc>, messages: Ve...` — Reconstruct a session with stats from persisted parts.
+- pub `scratch` function L81-90 — `() -> Self` — Create a scratch session (no workstream binding yet).
+- pub `workstream_id` function L92-94 — `(&self) -> Option<Uuid>`
+- pub `workstream_name` function L98-100 — `(&self) -> &str` — Current workstream slug for this session.
+- pub `set_workstream` function L105-108 — `(&mut self, name: impl Into<String>, id: Uuid)` — Update the active workstream binding.
+- pub `is_scratch` function L111-113 — `(&self) -> bool` — Returns true if this is a scratch session (not yet promoted).
+- pub `promote` function L116-123 — `(&mut self, workstream_id: Uuid)` — Promote a scratch session to a workstream.
+- pub `add_message` function L125-127 — `(&mut self, msg: Message)`
+- pub `messages` function L129-131 — `(&self) -> &[Message]`
+- pub `microcompact` function L137-201 — `(&mut self, keep_recent: usize) -> usize` — Clear old tool results to save context space without an LLM call.
+- pub `compact` function L205-238 — `(&mut self, summary_content: String, keep_recent: usize) -> usize` — Replace old messages with a Summary, keeping the last `keep_recent` messages verbatim.
+- pub `load_compacted` function L242-252 — `(messages: Vec<Message>) -> Vec<Message>` — Load messages with compaction awareness — if a Summary exists, use the
+-  `Session` type L24-253 — `= Session`
+-  `TARGETED_TOOLS` variable L138-144 — `: &[&str]`
+-  `STUB_THRESHOLD` variable L145 — `: usize`
+-  `tests` module L256-562 — `-`
+-  `session_bound_to_workstream` function L262-267 — `()`
+-  `scratch_session_has_no_workstream` function L270-274 — `()`
+-  `promote_scratch_session` function L277-283 — `()`
+-  `promote_already_bound_panics` function L287-290 — `()`
+-  `session_starts_with_no_messages` function L293-296 — `()`
+-  `session_message_ordering_preserved` function L299-326 — `()`
+-  `session_ids_are_unique` function L329-334 — `()`
+-  `compact_replaces_old_with_summary` function L337-366 — `()`
+-  `compact_too_few_messages_noop` function L369-381 — `()`
+-  `load_compacted_skips_before_summary` function L384-409 — `()`
+-  `load_compacted_no_summary_returns_all` function L412-424 — `()`
+-  `microcompact_clears_old_tool_results` function L427-467 — `()`
+-  `microcompact_preserves_recent_results` function L470-489 — `()`
+-  `microcompact_skips_small_results` function L492-513 — `()`
+-  `microcompact_skips_errors` function L516-537 — `()`
+-  `microcompact_skips_non_targeted_tools` function L540-561 — `()`
 
 #### crates/arawn-core/src/session_stats.rs
 
@@ -864,14 +868,23 @@
 
 #### crates/arawn-core/src/workstream.rs
 
-- pub `Workstream` struct L9-14 — `{ id: Uuid, name: String, root_dir: PathBuf, created_at: DateTime<Utc> }` — A workstream — the primary organizational unit.
-- pub `new` function L17-24 — `(name: impl Into<String>, root_dir: impl Into<PathBuf>) -> Self`
-- pub `scratch` function L27-29 — `(root_dir: impl Into<PathBuf>) -> Self` — Create the default scratch workstream for ad-hoc sessions.
--  `Workstream` type L16-30 — `= Workstream`
--  `tests` module L33-56 — `-`
--  `workstream_creation` function L37-41 — `()`
--  `scratch_workstream` function L44-48 — `()`
--  `workstream_ids_are_unique` function L51-55 — `()`
+- pub `SCRATCH_NAME` variable L14 — `: &str` — Reserved workstream slug — auto-created on first boot and undeletable.
+- pub `validate_name` function L18-36 — `(name: &str) -> Result<(), WorkstreamNameError>` — Validation for workstream slugs.
+- pub `WorkstreamNameError` enum L39-44 — `Empty | TooLong | BadLeading | BadChar` — feeds extractor prompts in Phase 4.
+- pub `Workstream` struct L66-90 — `{ id: Uuid, name: String, display_name: String, description: String, root_dir: P...` — A workstream — the primary organizational unit.
+- pub `new` function L93-107 — `(name: impl Into<String>, root_dir: impl Into<PathBuf>) -> Self` — feeds extractor prompts in Phase 4.
+- pub `scratch` function L110-112 — `(root_dir: impl Into<PathBuf>) -> Self` — Create the default scratch workstream for ad-hoc sessions.
+- pub `is_scratch` function L114-116 — `(&self) -> bool` — feeds extractor prompts in Phase 4.
+-  `WorkstreamNameError` type L46-60 — `= WorkstreamNameError` — feeds extractor prompts in Phase 4.
+-  `fmt` function L47-59 — `(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result` — feeds extractor prompts in Phase 4.
+-  `WorkstreamNameError` type L62 — `= WorkstreamNameError` — feeds extractor prompts in Phase 4.
+-  `Workstream` type L92-117 — `= Workstream` — feeds extractor prompts in Phase 4.
+-  `tests` module L120-164 — `-` — feeds extractor prompts in Phase 4.
+-  `workstream_creation_uses_name_as_display_by_default` function L124-131 — `()` — feeds extractor prompts in Phase 4.
+-  `scratch_workstream` function L134-138 — `()` — feeds extractor prompts in Phase 4.
+-  `workstream_ids_are_unique` function L141-145 — `()` — feeds extractor prompts in Phase 4.
+-  `name_validation_accepts_valid_slugs` function L148-152 — `()` — feeds extractor prompts in Phase 4.
+-  `name_validation_rejects_invalid_slugs` function L155-163 — `()` — feeds extractor prompts in Phase 4.
 
 ### crates/arawn-embed/src
 
@@ -1167,6 +1180,7 @@
 - pub `tool` module L17 — `-`
 - pub `tool_result_limiter` module L18 — `-`
 - pub `tools` module L19 — `-`
+- pub `workstream_router` module L20 — `-`
 
 #### crates/arawn-engine/src/plan.rs
 
@@ -1445,6 +1459,24 @@
 -  `truncated_output_contains_preview` function L147-157 — `()`
 -  `error_flag_preserved` function L160-168 — `()`
 -  `custom_threshold` function L171-180 — `()`
+
+#### crates/arawn-engine/src/workstream_router.rs
+
+- pub `WorkstreamMemoryRouter` struct L21-27 — `{ data_dir: PathBuf, embedding_dims: Option<usize>, embedder: Option<Arc<dyn Emb...` — Lazy + cached map of workstream-name → `MemoryManager`.
+- pub `new` function L30-43 — `( data_dir: impl Into<PathBuf>, embedding_dims: Option<usize>, embedder: Option<...` — existing fixed-manager tests continue working unchanged.
+- pub `current` function L47-50 — `(&self) -> Result<Arc<MemoryManager>, MemoryError>` — Resolve the active workstream's memory manager.
+- pub `for_workstream` function L52-66 — `(&self, name: &str) -> Result<Arc<MemoryManager>, MemoryError>` — existing fixed-manager tests continue working unchanged.
+- pub `MemoryHandle` enum L73-76 — `Fixed | Routed` — Memory tools depend on one of these.
+- pub `manager` function L81-86 — `(&self) -> Result<Arc<MemoryManager>, MemoryError>` — Resolve the active manager.
+-  `WorkstreamMemoryRouter` type L29-67 — `= WorkstreamMemoryRouter` — existing fixed-manager tests continue working unchanged.
+-  `MemoryHandle` type L78-87 — `= MemoryHandle` — existing fixed-manager tests continue working unchanged.
+-  `MemoryHandle` type L89-93 — `= MemoryHandle` — existing fixed-manager tests continue working unchanged.
+-  `from` function L90-92 — `(m: Arc<MemoryManager>) -> Self` — existing fixed-manager tests continue working unchanged.
+-  `MemoryHandle` type L95-99 — `= MemoryHandle` — existing fixed-manager tests continue working unchanged.
+-  `from` function L96-98 — `(r: Arc<WorkstreamMemoryRouter>) -> Self` — existing fixed-manager tests continue working unchanged.
+-  `tests` module L102-127 — `-` — existing fixed-manager tests continue working unchanged.
+-  `router_caches_per_workstream` function L106-118 — `()` — existing fixed-manager tests continue working unchanged.
+-  `fixed_handle_dispatches` function L121-126 — `()` — existing fixed-manager tests continue working unchanged.
 
 ### crates/arawn-engine/src/hooks
 
@@ -2347,47 +2379,47 @@
 
 #### crates/arawn-engine/src/tools/memory_search.rs
 
-- pub `MemorySearchTool` struct L15-18 — `{ memory: Arc<MemoryManager>, embedder: Option<Arc<dyn Embedder>> }` — Tool that searches the knowledge base using composite retrieval:
-- pub `new` function L21-23 — `(memory: Arc<MemoryManager>, embedder: Option<Arc<dyn Embedder>>) -> Self`
--  `MemorySearchTool` type L20-24 — `= MemorySearchTool`
--  `MemorySearchTool` type L27-260 — `impl Tool for MemorySearchTool`
--  `name` function L28-30 — `(&self) -> &str`
--  `description` function L32-36 — `(&self) -> &str`
--  `is_read_only` function L38-40 — `(&self) -> bool`
--  `category` function L42-44 — `(&self) -> ToolCategory`
--  `parameters_schema` function L46-80 — `(&self) -> Value`
--  `execute` function L82-259 — `(&self, _ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput,...`
--  `ScoredEntity` struct L262-268 — `{ entity: Entity, fts_score: f32, semantic_score: f32, confidence: f32, related:...`
--  `ScoredEntity` type L270-274 — `= ScoredEntity`
--  `composite` function L271-273 — `(&self) -> f32`
--  `tests` module L277-388 — `-`
--  `setup` function L284-291 — `() -> (TempDir, Arc<MemoryManager>, crate::context::EngineToolContext)`
--  `populate` function L293-315 — `(mgr: &MemoryManager)`
--  `search_fts_both_tiers` function L318-331 — `()`
--  `search_with_type_filter` function L334-346 — `()`
--  `search_global_only` function L349-360 — `()`
--  `search_no_results` function L363-373 — `()`
--  `search_with_tags` function L376-387 — `()`
+- pub `MemorySearchTool` struct L16-19 — `{ memory: MemoryHandle, embedder: Option<Arc<dyn Embedder>> }` — Tool that searches the knowledge base using composite retrieval:
+- pub `new` function L22-27 — `(memory: impl Into<MemoryHandle>, embedder: Option<Arc<dyn Embedder>>) -> Self`
+-  `MemorySearchTool` type L21-28 — `= MemorySearchTool`
+-  `MemorySearchTool` type L31-272 — `impl Tool for MemorySearchTool`
+-  `name` function L32-34 — `(&self) -> &str`
+-  `description` function L36-40 — `(&self) -> &str`
+-  `is_read_only` function L42-44 — `(&self) -> bool`
+-  `category` function L46-48 — `(&self) -> ToolCategory`
+-  `parameters_schema` function L50-84 — `(&self) -> Value`
+-  `execute` function L86-271 — `(&self, _ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput,...`
+-  `ScoredEntity` struct L274-280 — `{ entity: Entity, fts_score: f32, semantic_score: f32, confidence: f32, related:...`
+-  `ScoredEntity` type L282-286 — `= ScoredEntity`
+-  `composite` function L283-285 — `(&self) -> f32`
+-  `tests` module L289-400 — `-`
+-  `setup` function L296-303 — `() -> (TempDir, Arc<MemoryManager>, crate::context::EngineToolContext)`
+-  `populate` function L305-327 — `(mgr: &MemoryManager)`
+-  `search_fts_both_tiers` function L330-343 — `()`
+-  `search_with_type_filter` function L346-358 — `()`
+-  `search_global_only` function L361-372 — `()`
+-  `search_no_results` function L375-385 — `()`
+-  `search_with_tags` function L388-399 — `()`
 
 #### crates/arawn-engine/src/tools/memory_store.rs
 
-- pub `MemoryStoreTool` struct L15-18 — `{ memory: Arc<MemoryManager>, embedder: Option<Arc<dyn Embedder>> }` — Tool that stores knowledge in the KB with search-before-create deduplication.
-- pub `new` function L21-23 — `(memory: Arc<MemoryManager>, embedder: Option<Arc<dyn Embedder>>) -> Self`
--  `MemoryStoreTool` type L20-24 — `= MemoryStoreTool`
--  `MemoryStoreTool` type L27-204 — `impl Tool for MemoryStoreTool`
--  `name` function L28-30 — `(&self) -> &str`
--  `description` function L32-43 — `(&self) -> &str`
--  `category` function L45-47 — `(&self) -> ToolCategory`
--  `parameters_schema` function L49-79 — `(&self) -> Value`
--  `execute` function L81-203 — `(&self, ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ...`
--  `tests` module L207-316 — `-`
--  `setup` function L214-223 — `() -> (TempDir, Arc<MemoryManager>, crate::context::EngineToolContext)`
--  `store_new_fact` function L226-238 — `()`
--  `store_preference_goes_global` function L241-251 — `()`
--  `store_decision_goes_workstream` function L254-264 — `()`
--  `store_reinforces_duplicate` function L267-282 — `()`
--  `store_with_tags` function L285-298 — `()`
--  `store_with_explicit_scope_override` function L301-315 — `()`
+- pub `MemoryStoreTool` struct L16-19 — `{ memory: MemoryHandle, embedder: Option<Arc<dyn Embedder>> }` — Tool that stores knowledge in the KB with search-before-create deduplication.
+- pub `new` function L22-27 — `(memory: impl Into<MemoryHandle>, embedder: Option<Arc<dyn Embedder>>) -> Self`
+-  `MemoryStoreTool` type L21-28 — `= MemoryStoreTool`
+-  `MemoryStoreTool` type L31-212 — `impl Tool for MemoryStoreTool`
+-  `name` function L32-34 — `(&self) -> &str`
+-  `description` function L36-47 — `(&self) -> &str`
+-  `category` function L49-51 — `(&self) -> ToolCategory`
+-  `parameters_schema` function L53-83 — `(&self) -> Value`
+-  `execute` function L85-211 — `(&self, ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ...`
+-  `tests` module L215-324 — `-`
+-  `setup` function L222-231 — `() -> (TempDir, Arc<MemoryManager>, crate::context::EngineToolContext)`
+-  `store_new_fact` function L234-246 — `()`
+-  `store_preference_goes_global` function L249-259 — `()`
+-  `store_decision_goes_workstream` function L262-272 — `()`
+-  `store_reinforces_duplicate` function L275-290 — `()`
+-  `store_with_tags` function L293-306 — `()`
+-  `store_with_explicit_scope_override` function L309-323 — `()`
 
 #### crates/arawn-engine/src/tools/mod.rs
 
@@ -2743,32 +2775,103 @@
 
 #### crates/arawn-engine/src/tools/workstream.rs
 
-- pub `WorkstreamCreateTool` struct L12-14 — `{ store: Arc<Mutex<Store>> }` — Tool for creating a new workstream.
-- pub `new` function L17-19 — `(store: Arc<Mutex<Store>>) -> Self`
-- pub `WorkstreamListTool` struct L89-91 — `{ store: Arc<Mutex<Store>> }` — Tool for listing available workstreams.
-- pub `new` function L94-96 — `(store: Arc<Mutex<Store>>) -> Self`
--  `WorkstreamCreateTool` type L16-20 — `= WorkstreamCreateTool`
--  `WorkstreamCreateTool` type L23-86 — `impl Tool for WorkstreamCreateTool`
--  `name` function L24-26 — `(&self) -> &str`
--  `description` function L28-32 — `(&self) -> &str`
--  `category` function L34-36 — `(&self) -> ToolCategory`
--  `parameters_schema` function L38-49 — `(&self) -> Value`
--  `execute` function L51-85 — `(&self, ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ...`
--  `WorkstreamListTool` type L93-97 — `= WorkstreamListTool`
--  `WorkstreamListTool` type L100-147 — `impl Tool for WorkstreamListTool`
--  `name` function L101-103 — `(&self) -> &str`
--  `description` function L105-107 — `(&self) -> &str`
--  `is_read_only` function L109-111 — `(&self) -> bool`
--  `category` function L113-115 — `(&self) -> ToolCategory`
--  `parameters_schema` function L117-123 — `(&self) -> Value`
--  `execute` function L125-146 — `(&self, _ctx: &dyn arawn_tool::ToolContext, _params: Value) -> Result<ToolOutput...`
--  `tests` module L150-216 — `-`
--  `setup` function L155-161 — `() -> (tempfile::TempDir, Arc<Mutex<Store>>)`
--  `test_ctx` function L163-167 — `(tmp: &tempfile::TempDir) -> crate::context::EngineToolContext`
--  `create_workstream_succeeds` function L170-179 — `()`
--  `create_duplicate_workstream_errors` function L182-192 — `()`
--  `create_workstream_empty_name_errors` function L195-203 — `()`
--  `list_workstreams_includes_scratch` function L206-215 — `()`
+- pub `SessionWorkstream` struct L26-28 — `{ inner: Arc<Mutex<String>> }` — Holder for the session-active workstream name.
+- pub `new` function L31-35 — `(initial: impl Into<String>) -> Self` — the shim is enough to make `switch` / `show` work.
+- pub `scratch` function L37-39 — `() -> Self` — the shim is enough to make `switch` / `show` work.
+- pub `current` function L41-43 — `(&self) -> String` — the shim is enough to make `switch` / `show` work.
+- pub `set` function L45-47 — `(&self, name: impl Into<String>)` — the shim is enough to make `switch` / `show` work.
+- pub `WorkstreamCreateTool` struct L60-62 — `{ store: Arc<Mutex<Store>> }` — the shim is enough to make `switch` / `show` work.
+- pub `new` function L65-67 — `(store: Arc<Mutex<Store>>) -> Self` — the shim is enough to make `switch` / `show` work.
+- pub `WorkstreamListTool` struct L153-156 — `{ store: Arc<Mutex<Store>>, active: SessionWorkstream }` — the shim is enough to make `switch` / `show` work.
+- pub `new` function L159-164 — `(store: Arc<Mutex<Store>>) -> Self` — the shim is enough to make `switch` / `show` work.
+- pub `with_active` function L166-169 — `(mut self, active: SessionWorkstream) -> Self` — the shim is enough to make `switch` / `show` work.
+- pub `WorkstreamSwitchTool` struct L242-245 — `{ store: Arc<Mutex<Store>>, active: SessionWorkstream }` — the shim is enough to make `switch` / `show` work.
+- pub `new` function L248-250 — `(store: Arc<Mutex<Store>>, active: SessionWorkstream) -> Self` — the shim is enough to make `switch` / `show` work.
+- pub `WorkstreamShowTool` struct L320-323 — `{ store: Arc<Mutex<Store>>, active: SessionWorkstream }` — the shim is enough to make `switch` / `show` work.
+- pub `new` function L326-328 — `(store: Arc<Mutex<Store>>, active: SessionWorkstream) -> Self` — the shim is enough to make `switch` / `show` work.
+- pub `WorkstreamDescribeTool` struct L399-401 — `{ store: Arc<Mutex<Store>> }` — the shim is enough to make `switch` / `show` work.
+- pub `new` function L404-406 — `(store: Arc<Mutex<Store>>) -> Self` — the shim is enough to make `switch` / `show` work.
+- pub `WorkstreamBindTool` struct L463-465 — `{ store: Arc<Mutex<Store>> }` — the shim is enough to make `switch` / `show` work.
+- pub `new` function L468-470 — `(store: Arc<Mutex<Store>>) -> Self` — the shim is enough to make `switch` / `show` work.
+- pub `WorkstreamUnbindTool` struct L527-529 — `{ store: Arc<Mutex<Store>> }` — the shim is enough to make `switch` / `show` work.
+- pub `new` function L532-534 — `(store: Arc<Mutex<Store>>) -> Self` — the shim is enough to make `switch` / `show` work.
+- pub `WorkstreamDeleteTool` struct L594-597 — `{ store: Arc<Mutex<Store>>, active: SessionWorkstream }` — the shim is enough to make `switch` / `show` work.
+- pub `new` function L600-602 — `(store: Arc<Mutex<Store>>, active: SessionWorkstream) -> Self` — the shim is enough to make `switch` / `show` work.
+-  `SessionWorkstream` type L30-48 — `= SessionWorkstream` — the shim is enough to make `switch` / `show` work.
+-  `SessionWorkstream` type L50-54 — `impl Default for SessionWorkstream` — the shim is enough to make `switch` / `show` work.
+-  `default` function L51-53 — `() -> Self` — the shim is enough to make `switch` / `show` work.
+-  `WorkstreamCreateTool` type L64-68 — `= WorkstreamCreateTool` — the shim is enough to make `switch` / `show` work.
+-  `WorkstreamCreateTool` type L71-147 — `impl Tool for WorkstreamCreateTool` — the shim is enough to make `switch` / `show` work.
+-  `name` function L72-74 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
+-  `description` function L76-80 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
+-  `category` function L82-84 — `(&self) -> ToolCategory` — the shim is enough to make `switch` / `show` work.
+-  `parameters_schema` function L86-96 — `(&self) -> Value` — the shim is enough to make `switch` / `show` work.
+-  `execute` function L98-146 — `( &self, ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutpu...` — the shim is enough to make `switch` / `show` work.
+-  `WorkstreamListTool` type L158-170 — `= WorkstreamListTool` — the shim is enough to make `switch` / `show` work.
+-  `WorkstreamListTool` type L173-236 — `impl Tool for WorkstreamListTool` — the shim is enough to make `switch` / `show` work.
+-  `name` function L174-176 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
+-  `description` function L178-180 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
+-  `is_read_only` function L182-184 — `(&self) -> bool` — the shim is enough to make `switch` / `show` work.
+-  `category` function L186-188 — `(&self) -> ToolCategory` — the shim is enough to make `switch` / `show` work.
+-  `parameters_schema` function L190-198 — `(&self) -> Value` — the shim is enough to make `switch` / `show` work.
+-  `execute` function L200-235 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — the shim is enough to make `switch` / `show` work.
+-  `WorkstreamSwitchTool` type L247-251 — `= WorkstreamSwitchTool` — the shim is enough to make `switch` / `show` work.
+-  `WorkstreamSwitchTool` type L254-314 — `impl Tool for WorkstreamSwitchTool` — the shim is enough to make `switch` / `show` work.
+-  `name` function L255-257 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
+-  `description` function L259-263 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
+-  `category` function L265-267 — `(&self) -> ToolCategory` — the shim is enough to make `switch` / `show` work.
+-  `parameters_schema` function L269-275 — `(&self) -> Value` — the shim is enough to make `switch` / `show` work.
+-  `execute` function L277-313 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — the shim is enough to make `switch` / `show` work.
+-  `WorkstreamShowTool` type L325-329 — `= WorkstreamShowTool` — the shim is enough to make `switch` / `show` work.
+-  `WorkstreamShowTool` type L332-393 — `impl Tool for WorkstreamShowTool` — the shim is enough to make `switch` / `show` work.
+-  `name` function L333-335 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
+-  `description` function L337-340 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
+-  `is_read_only` function L342-344 — `(&self) -> bool` — the shim is enough to make `switch` / `show` work.
+-  `category` function L346-348 — `(&self) -> ToolCategory` — the shim is enough to make `switch` / `show` work.
+-  `parameters_schema` function L350-358 — `(&self) -> Value` — the shim is enough to make `switch` / `show` work.
+-  `execute` function L360-392 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — the shim is enough to make `switch` / `show` work.
+-  `WorkstreamDescribeTool` type L403-407 — `= WorkstreamDescribeTool` — the shim is enough to make `switch` / `show` work.
+-  `WorkstreamDescribeTool` type L410-457 — `impl Tool for WorkstreamDescribeTool` — the shim is enough to make `switch` / `show` work.
+-  `name` function L411-413 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
+-  `description` function L415-418 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
+-  `category` function L420-422 — `(&self) -> ToolCategory` — the shim is enough to make `switch` / `show` work.
+-  `parameters_schema` function L424-433 — `(&self) -> Value` — the shim is enough to make `switch` / `show` work.
+-  `execute` function L435-456 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — the shim is enough to make `switch` / `show` work.
+-  `WorkstreamBindTool` type L467-471 — `= WorkstreamBindTool` — the shim is enough to make `switch` / `show` work.
+-  `WorkstreamBindTool` type L474-525 — `impl Tool for WorkstreamBindTool` — the shim is enough to make `switch` / `show` work.
+-  `name` function L475-477 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
+-  `description` function L479-482 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
+-  `category` function L484-486 — `(&self) -> ToolCategory` — the shim is enough to make `switch` / `show` work.
+-  `parameters_schema` function L488-497 — `(&self) -> Value` — the shim is enough to make `switch` / `show` work.
+-  `execute` function L499-524 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — the shim is enough to make `switch` / `show` work.
+-  `WorkstreamUnbindTool` type L531-535 — `= WorkstreamUnbindTool` — the shim is enough to make `switch` / `show` work.
+-  `WorkstreamUnbindTool` type L538-588 — `impl Tool for WorkstreamUnbindTool` — the shim is enough to make `switch` / `show` work.
+-  `name` function L539-541 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
+-  `description` function L543-545 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
+-  `category` function L547-549 — `(&self) -> ToolCategory` — the shim is enough to make `switch` / `show` work.
+-  `parameters_schema` function L551-560 — `(&self) -> Value` — the shim is enough to make `switch` / `show` work.
+-  `execute` function L562-587 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — the shim is enough to make `switch` / `show` work.
+-  `WorkstreamDeleteTool` type L599-603 — `= WorkstreamDeleteTool` — the shim is enough to make `switch` / `show` work.
+-  `WorkstreamDeleteTool` type L606-654 — `impl Tool for WorkstreamDeleteTool` — the shim is enough to make `switch` / `show` work.
+-  `name` function L607-609 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
+-  `description` function L611-614 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
+-  `category` function L616-618 — `(&self) -> ToolCategory` — the shim is enough to make `switch` / `show` work.
+-  `parameters_schema` function L620-626 — `(&self) -> Value` — the shim is enough to make `switch` / `show` work.
+-  `execute` function L628-653 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — the shim is enough to make `switch` / `show` work.
+-  `tests` module L657-859 — `-` — the shim is enough to make `switch` / `show` work.
+-  `setup` function L661-666 — `() -> (tempfile::TempDir, Arc<Mutex<Store>>, SessionWorkstream)` — the shim is enough to make `switch` / `show` work.
+-  `test_ctx` function L668-672 — `(tmp: &tempfile::TempDir) -> crate::context::EngineToolContext` — the shim is enough to make `switch` / `show` work.
+-  `create_succeeds_with_valid_slug` function L675-684 — `()` — the shim is enough to make `switch` / `show` work.
+-  `create_refuses_scratch` function L687-695 — `()` — the shim is enough to make `switch` / `show` work.
+-  `switch_updates_active` function L698-712 — `()` — the shim is enough to make `switch` / `show` work.
+-  `switch_unknown_errors` function L715-724 — `()` — the shim is enough to make `switch` / `show` work.
+-  `show_defaults_to_active` function L727-733 — `()` — the shim is enough to make `switch` / `show` work.
+-  `describe_updates_description` function L736-759 — `()` — the shim is enough to make `switch` / `show` work.
+-  `bind_and_unbind_round_trip` function L762-792 — `()` — the shim is enough to make `switch` / `show` work.
+-  `delete_refuses_scratch` function L795-804 — `()` — the shim is enough to make `switch` / `show` work.
+-  `delete_refuses_currently_active` function L807-822 — `()` — the shim is enough to make `switch` / `show` work.
+-  `delete_soft_marks_archived` function L825-842 — `()` — the shim is enough to make `switch` / `show` work.
+-  `list_marks_active` function L845-858 — `()` — the shim is enough to make `switch` / `show` work.
 
 ### crates/arawn-feeds/src
 
@@ -5128,25 +5231,26 @@
 
 - pub `MemoryManager` struct L19-28 — `{ global: Arc<MemoryStore>, workstream: Arc<MemoryStore>, vectors_enabled: bool,...` — Two-tier memory manager holding global and workstream knowledge bases.
 - pub `open` function L34-71 — `(data_dir: &Path, ws_dir: &str, embedding_dims: Option<usize>) -> Result<Self, M...` — Open both KB tiers.
-- pub `open_with_stores` function L74-81 — `(global: Arc<MemoryStore>, workstream: Arc<MemoryStore>) -> Self` — Create a MemoryManager from pre-built stores (for testing).
-- pub `with_embedder` function L84-87 — `(mut self, embedder: Arc<dyn Embedder>) -> Self` — Attach an embedder for automatic embedding on ingest and vector-enhanced retrieval.
-- pub `embedder` function L90-92 — `(&self) -> Option<&Arc<dyn Embedder>>` — Get the embedder if available.
-- pub `store_fact_embedded` function L97-131 — `( &self, entity: &Entity, scope: Option<Scope>, ) -> Result<StoreFactResult, Mem...` — Store a fact with automatic embedding.
-- pub `store_for` function L134-139 — `(&self, scope: Scope) -> &Arc<MemoryStore>` — Get the store for a given scope.
-- pub `store_for_type` function L142-144 — `(&self, entity_type: EntityType) -> &Arc<MemoryStore>` — Get the store for a given entity type (uses default scope).
-- pub `vectors_enabled` function L147-149 — `(&self) -> bool` — Whether vector storage is available.
-- pub `retrieve_topical` function L154-244 — `( &self, keywords: &[String], budget_tokens: usize, ) -> Vec<crate::types::Entit...` — Retrieve entities matching keywords from both tiers.
-- pub `try_open_memory` function L248-260 — `( data_dir: &Path, ws_dir: &str, embedding_dims: Option<usize>, ) -> Option<Arc<...` — Try to open a MemoryManager, returning None on failure (graceful degradation).
--  `MemoryManager` type L30-245 — `= MemoryManager` — It abstracts the two-tier scoping and routes entities to the appropriate store.
--  `tests` module L263-370 — `-` — It abstracts the two-tier scoping and routes entities to the appropriate store.
--  `setup` function L268-273 — `() -> (TempDir, MemoryManager)` — It abstracts the two-tier scoping and routes entities to the appropriate store.
--  `setup_with_vectors` function L275-280 — `() -> (TempDir, MemoryManager)` — It abstracts the two-tier scoping and routes entities to the appropriate store.
--  `opens_both_stores` function L283-292 — `()` — It abstracts the two-tier scoping and routes entities to the appropriate store.
--  `scope_routing` function L295-325 — `()` — It abstracts the two-tier scoping and routes entities to the appropriate store.
--  `vectors_disabled_by_default` function L328-331 — `()` — It abstracts the two-tier scoping and routes entities to the appropriate store.
--  `vectors_enabled_with_dims` function L334-345 — `()` — It abstracts the two-tier scoping and routes entities to the appropriate store.
--  `graceful_degradation` function L348-352 — `()` — It abstracts the two-tier scoping and routes entities to the appropriate store.
--  `stores_are_independent` function L355-369 — `()` — It abstracts the two-tier scoping and routes entities to the appropriate store.
+- pub `for_workstream` function L77-83 — `( data_dir: &Path, workstream_name: &str, embedding_dims: Option<usize>, ) -> Re...` — Convenience wrapper: open a memory manager scoped to a named
+- pub `open_with_stores` function L86-93 — `(global: Arc<MemoryStore>, workstream: Arc<MemoryStore>) -> Self` — Create a MemoryManager from pre-built stores (for testing).
+- pub `with_embedder` function L96-99 — `(mut self, embedder: Arc<dyn Embedder>) -> Self` — Attach an embedder for automatic embedding on ingest and vector-enhanced retrieval.
+- pub `embedder` function L102-104 — `(&self) -> Option<&Arc<dyn Embedder>>` — Get the embedder if available.
+- pub `store_fact_embedded` function L109-143 — `( &self, entity: &Entity, scope: Option<Scope>, ) -> Result<StoreFactResult, Mem...` — Store a fact with automatic embedding.
+- pub `store_for` function L146-151 — `(&self, scope: Scope) -> &Arc<MemoryStore>` — Get the store for a given scope.
+- pub `store_for_type` function L154-156 — `(&self, entity_type: EntityType) -> &Arc<MemoryStore>` — Get the store for a given entity type (uses default scope).
+- pub `vectors_enabled` function L159-161 — `(&self) -> bool` — Whether vector storage is available.
+- pub `retrieve_topical` function L166-256 — `( &self, keywords: &[String], budget_tokens: usize, ) -> Vec<crate::types::Entit...` — Retrieve entities matching keywords from both tiers.
+- pub `try_open_memory` function L260-272 — `( data_dir: &Path, ws_dir: &str, embedding_dims: Option<usize>, ) -> Option<Arc<...` — Try to open a MemoryManager, returning None on failure (graceful degradation).
+-  `MemoryManager` type L30-257 — `= MemoryManager` — It abstracts the two-tier scoping and routes entities to the appropriate store.
+-  `tests` module L275-382 — `-` — It abstracts the two-tier scoping and routes entities to the appropriate store.
+-  `setup` function L280-285 — `() -> (TempDir, MemoryManager)` — It abstracts the two-tier scoping and routes entities to the appropriate store.
+-  `setup_with_vectors` function L287-292 — `() -> (TempDir, MemoryManager)` — It abstracts the two-tier scoping and routes entities to the appropriate store.
+-  `opens_both_stores` function L295-304 — `()` — It abstracts the two-tier scoping and routes entities to the appropriate store.
+-  `scope_routing` function L307-337 — `()` — It abstracts the two-tier scoping and routes entities to the appropriate store.
+-  `vectors_disabled_by_default` function L340-343 — `()` — It abstracts the two-tier scoping and routes entities to the appropriate store.
+-  `vectors_enabled_with_dims` function L346-357 — `()` — It abstracts the two-tier scoping and routes entities to the appropriate store.
+-  `graceful_degradation` function L360-364 — `()` — It abstracts the two-tier scoping and routes entities to the appropriate store.
+-  `stores_are_independent` function L367-381 — `()` — It abstracts the two-tier scoping and routes entities to the appropriate store.
 
 #### crates/arawn-memory/src/shortcodes.rs
 
@@ -5771,59 +5875,81 @@
 - pub `open` function L25-44 — `(data_dir: impl Into<PathBuf>) -> Result<Self, StorageError>` — Open or create a store at the given data directory.
 - pub `data_dir` function L47-49 — `(&self) -> &Path` — Data directory path.
 - pub `message_store` function L52-54 — `(&self) -> &JsonlMessageStore` — Get the JSONL message store (for direct access in service layer).
-- pub `create_workstream` function L58-67 — `(&self, ws: &Workstream) -> Result<(), StorageError>`
-- pub `get_workstream` function L69-71 — `(&self, id: Uuid) -> Result<Option<Workstream>, StorageError>`
-- pub `find_workstream_by_name` function L73-75 — `(&self, name: &str) -> Result<Option<Workstream>, StorageError>`
-- pub `list_workstreams` function L77-79 — `(&self) -> Result<Vec<Workstream>, StorageError>`
-- pub `create_session` function L83-85 — `(&self, session: &Session) -> Result<(), StorageError>`
-- pub `get_session_meta` function L87-89 — `(&self, id: Uuid) -> Result<Option<SessionMeta>, StorageError>`
-- pub `list_sessions_for_workstream` function L91-96 — `( &self, ws_id: Uuid, ) -> Result<Vec<SessionMeta>, StorageError>`
-- pub `list_scratch_sessions` function L98-100 — `(&self) -> Result<Vec<SessionMeta>, StorageError>`
-- pub `reconcile_sessions` function L104-136 — `(&self) -> Result<usize, StorageError>` — Remove SQLite session records whose JSONL files no longer exist on disk.
-- pub `load_session` function L153-170 — `(&self, id: Uuid) -> Result<Option<Session>, StorageError>` — Load a full session (metadata + messages) by ID.
-- pub `update_session_stats` function L172-178 — `( &self, session_id: Uuid, stats: &arawn_core::SessionStats, ) -> Result<(), Sto...`
-- pub `append_message` function L182-189 — `( &self, session_id: Uuid, workstream_dir: &str, msg: &Message, ) -> Result<(), ...`
-- pub `load_messages` function L191-197 — `( &self, session_id: Uuid, workstream_dir: &str, ) -> Result<Vec<Message>, Stora...`
-- pub `promote_session` function L203-256 — `( &self, session_id: Uuid, new_ws_id: Uuid, ) -> Result<(), StorageError>` — Promote a scratch session to a workstream.
-- pub `sandbox_for` function L259-262 — `(&self, workstream_dir: &str, session_id: Uuid, is_scratch: bool) -> PathBuf` — Resolve the sandbox root for a session.
-- pub `promote_session_metadata` function L266-278 — `( &self, session_id: Uuid, new_ws_id: Uuid, ) -> Result<(), StorageError>` — Sync-only part of session promotion: update SQLite workstream_id.
-- pub `move_session_jsonl` function L281-290 — `( &self, session_id: Uuid, from_ws_dir: &str, to_ws_dir: &str, ) -> Result<(), S...` — Async part of session promotion: move the JSONL file between workstream dirs.
--  `Store` type L22-291 — `= Store`
--  `resolve_ws_dir` function L140-150 — `(&self, ws_id: Option<Uuid>) -> Result<String, StorageError>` — Resolve the directory name for a workstream by UUID.
--  `copy_dir_contents` function L294-307 — `(src: &Path, dst: &Path) -> Result<(), StorageError>` — Recursively copy directory contents from src to dst.
--  `tests` module L310-479 — `-`
--  `setup` function L314-318 — `() -> (TempDir, Store)`
--  `open_creates_directories_and_db` function L321-327 — `()`
--  `open_is_idempotent` function L330-335 — `()`
--  `create_and_list_workstreams` function L338-346 — `()`
--  `create_scratch_session_and_append_messages` function L349-367 — `()`
--  `load_full_session` function L370-393 — `()`
--  `promote_session_full_flow` function L396-436 — `()`
--  `promote_bound_session_fails` function L439-452 — `()`
--  `load_nonexistent_session_returns_none` function L455-459 — `()`
--  `sandbox_for_scratch_is_per_session` function L462-469 — `()`
--  `sandbox_for_named_is_shared` function L472-478 — `()`
+- pub `create_workstream` function L58-74 — `(&self, ws: &Workstream) -> Result<(), StorageError>`
+- pub `get_workstream` function L76-78 — `(&self, id: Uuid) -> Result<Option<Workstream>, StorageError>`
+- pub `find_workstream_by_name` function L80-82 — `(&self, name: &str) -> Result<Option<Workstream>, StorageError>`
+- pub `list_workstreams` function L84-86 — `(&self) -> Result<Vec<Workstream>, StorageError>`
+- pub `list_all_workstreams` function L88-90 — `(&self) -> Result<Vec<Workstream>, StorageError>`
+- pub `update_workstream_description` function L92-98 — `( &self, name: &str, description: &str, ) -> Result<(), StorageError>`
+- pub `add_workstream_binding` function L100-102 — `(&self, name: &str, feed_id: &str) -> Result<(), StorageError>`
+- pub `remove_workstream_binding` function L104-110 — `( &self, name: &str, feed_id: &str, ) -> Result<(), StorageError>`
+- pub `soft_delete_workstream` function L112-114 — `(&self, name: &str) -> Result<(), StorageError>`
+- pub `ensure_scratch_workstream` function L118-122 — `(&self) -> Result<Workstream, StorageError>` — Idempotently ensure the `scratch` workstream exists.
+- pub `create_session` function L126-128 — `(&self, session: &Session) -> Result<(), StorageError>`
+- pub `get_session_meta` function L130-132 — `(&self, id: Uuid) -> Result<Option<SessionMeta>, StorageError>`
+- pub `list_sessions_for_workstream` function L134-139 — `( &self, ws_id: Uuid, ) -> Result<Vec<SessionMeta>, StorageError>`
+- pub `list_scratch_sessions` function L141-143 — `(&self) -> Result<Vec<SessionMeta>, StorageError>`
+- pub `reconcile_sessions` function L147-179 — `(&self) -> Result<usize, StorageError>` — Remove SQLite session records whose JSONL files no longer exist on disk.
+- pub `load_session` function L196-213 — `(&self, id: Uuid) -> Result<Option<Session>, StorageError>` — Load a full session (metadata + messages) by ID.
+- pub `update_session_stats` function L215-221 — `( &self, session_id: Uuid, stats: &arawn_core::SessionStats, ) -> Result<(), Sto...`
+- pub `append_message` function L225-232 — `( &self, session_id: Uuid, workstream_dir: &str, msg: &Message, ) -> Result<(), ...`
+- pub `load_messages` function L234-240 — `( &self, session_id: Uuid, workstream_dir: &str, ) -> Result<Vec<Message>, Stora...`
+- pub `promote_session` function L246-299 — `( &self, session_id: Uuid, new_ws_id: Uuid, ) -> Result<(), StorageError>` — Promote a scratch session to a workstream.
+- pub `sandbox_for` function L302-305 — `(&self, workstream_dir: &str, session_id: Uuid, is_scratch: bool) -> PathBuf` — Resolve the sandbox root for a session.
+- pub `promote_session_metadata` function L309-321 — `( &self, session_id: Uuid, new_ws_id: Uuid, ) -> Result<(), StorageError>` — Sync-only part of session promotion: update SQLite workstream_id.
+- pub `move_session_jsonl` function L324-333 — `( &self, session_id: Uuid, from_ws_dir: &str, to_ws_dir: &str, ) -> Result<(), S...` — Async part of session promotion: move the JSONL file between workstream dirs.
+-  `Store` type L22-334 — `= Store`
+-  `resolve_ws_dir` function L183-193 — `(&self, ws_id: Option<Uuid>) -> Result<String, StorageError>` — Resolve the directory name for a workstream by UUID.
+-  `copy_dir_contents` function L337-350 — `(src: &Path, dst: &Path) -> Result<(), StorageError>` — Recursively copy directory contents from src to dst.
+-  `tests` module L353-522 — `-`
+-  `setup` function L357-361 — `() -> (TempDir, Store)`
+-  `open_creates_directories_and_db` function L364-370 — `()`
+-  `open_is_idempotent` function L373-378 — `()`
+-  `create_and_list_workstreams` function L381-389 — `()`
+-  `create_scratch_session_and_append_messages` function L392-410 — `()`
+-  `load_full_session` function L413-436 — `()`
+-  `promote_session_full_flow` function L439-479 — `()`
+-  `promote_bound_session_fails` function L482-495 — `()`
+-  `load_nonexistent_session_returns_none` function L498-502 — `()`
+-  `sandbox_for_scratch_is_per_session` function L505-512 — `()`
+-  `sandbox_for_named_is_shared` function L515-521 — `()`
 
 #### crates/arawn-storage/src/workstream_store.rs
 
-- pub `WorkstreamStore` struct L12-14 — `{ db: &'a Database }` — CRUD operations for workstream metadata in SQLite.
-- pub `new` function L17-19 — `(db: &'a Database) -> Self`
-- pub `create` function L21-32 — `(&self, ws: &Workstream) -> Result<(), StorageError>`
-- pub `get` function L34-54 — `(&self, id: Uuid) -> Result<Option<Workstream>, StorageError>`
-- pub `find_by_name` function L56-76 — `(&self, name: &str) -> Result<Option<Workstream>, StorageError>`
-- pub `list` function L78-97 — `(&self) -> Result<Vec<Workstream>, StorageError>`
-- pub `delete` function L99-105 — `(&self, id: Uuid) -> Result<bool, StorageError>`
--  `WorkstreamRow` struct L108-113 — `{ id: String, name: String, root_dir: String, created_at: String }`
--  `WorkstreamRow` type L115-130 — `= WorkstreamRow`
--  `into_workstream` function L116-129 — `(self) -> Result<Workstream, StorageError>`
--  `tests` module L133-204 — `-`
--  `setup` function L136-138 — `() -> Database`
--  `create_and_get_roundtrip` function L141-152 — `()`
--  `get_nonexistent_returns_none` function L155-159 — `()`
--  `find_by_name` function L162-172 — `()`
--  `list_workstreams` function L175-185 — `()`
--  `delete_workstream` function L188-196 — `()`
--  `delete_nonexistent_returns_false` function L199-203 — `()`
+- pub `WorkstreamStore` struct L22-24 — `{ db: &'a Database }` — Workstream registry.
+- pub `new` function L27-29 — `(db: &'a Database) -> Self` — for users.
+- pub `ensure_scratch` function L33-40 — `(&self, scratch_root: &Path) -> Result<Workstream, StorageError>` — Idempotently create the `scratch` workstream at the given root.
+- pub `create` function L44-58 — `(&self, ws: &Workstream) -> Result<(), StorageError>` — Create a new workstream.
+- pub `get` function L88-96 — `(&self, id: Uuid) -> Result<Option<Workstream>, StorageError>` — for users.
+- pub `find_by_name` function L98-106 — `(&self, name: &str) -> Result<Option<Workstream>, StorageError>` — for users.
+- pub `list` function L109-111 — `(&self) -> Result<Vec<Workstream>, StorageError>` — List active (non-archived) workstreams, newest update first.
+- pub `list_all` function L114-116 — `(&self) -> Result<Vec<Workstream>, StorageError>` — List all workstreams including soft-deleted (archived) ones.
+- pub `update_description` function L137-152 — `( &self, name: &str, description: &str, ) -> Result<(), StorageError>` — for users.
+- pub `set_bindings` function L154-167 — `(&self, name: &str, bindings: &[String]) -> Result<(), StorageError>` — for users.
+- pub `add_binding` function L169-178 — `(&self, name: &str, feed_id: &str) -> Result<(), StorageError>` — for users.
+- pub `remove_binding` function L180-186 — `(&self, name: &str, feed_id: &str) -> Result<(), StorageError>` — for users.
+- pub `soft_delete` function L191-207 — `(&self, name: &str) -> Result<(), StorageError>` — Soft-delete: sets `archived = 1`.
+- pub `delete` function L211-217 — `(&self, id: Uuid) -> Result<bool, StorageError>` — Hard-delete by id.
+-  `insert_row` function L60-86 — `(&self, ws: &Workstream) -> Result<(), StorageError>` — for users.
+-  `list_with_archived` function L118-135 — `(&self, include_archived: bool) -> Result<Vec<Workstream>, StorageError>` — for users.
+-  `SELECT_COLS_WHERE_ID` variable L220-223 — `: &str` — for users.
+-  `SELECT_COLS_WHERE_NAME` variable L225-228 — `: &str` — for users.
+-  `row_to_workstream` function L230-263 — `(row: &rusqlite::Row<'_>) -> Result<Workstream, StorageError>` — for users.
+-  `parse_dt` function L265-269 — `(s: &str) -> Result<DateTime<Utc>, StorageError>` — for users.
+-  `rusqlite_map_err` function L271-273 — `(e: StorageError) -> rusqlite::Error` — for users.
+-  `name_err` function L275-277 — `(e: WorkstreamNameError) -> StorageError` — for users.
+-  `tests` module L280-403 — `-` — for users.
+-  `setup` function L283-285 — `() -> Database` — for users.
+-  `create_and_roundtrip` function L288-300 — `()` — for users.
+-  `create_rejects_scratch` function L303-309 — `()` — for users.
+-  `create_rejects_invalid_slug` function L312-323 — `()` — for users.
+-  `create_rejects_duplicate` function L326-332 — `()` — for users.
+-  `ensure_scratch_idempotent` function L335-342 — `()` — for users.
+-  `update_description` function L345-352 — `()` — for users.
+-  `bindings_add_and_remove` function L355-367 — `()` — for users.
+-  `soft_delete_marks_archived` function L370-381 — `()` — for users.
+-  `soft_delete_refuses_scratch` function L384-390 — `()` — for users.
+-  `list_orders_by_updated_at_desc` function L393-402 — `()` — for users.
 
 ### crates/arawn-tests
 

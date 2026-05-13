@@ -56,6 +56,6 @@ pub use tools::{
     FeedSearchTool, MemorySearchTool, MemoryStoreTool, TaskCreateTool, TaskGetTool, TaskListTool, TaskOutputTool, TaskStopTool,
     TaskUpdateTool, ThinkTool, WebFetchTool, WebSearchTool,
     SessionWorkstream, WorkstreamBindTool, WorkstreamCreateTool, WorkstreamDeleteTool,
-    WorkstreamDescribeTool, WorkstreamListTool, WorkstreamShowTool, WorkstreamSwitchTool,
-    WorkstreamUnbindTool,
+    WorkstreamDescribeTool, WorkstreamListTool, WorkstreamPromoteTool, WorkstreamShowTool,
+    WorkstreamSwitchTool, WorkstreamUnbindTool,
 };

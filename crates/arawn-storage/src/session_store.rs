@@ -18,10 +18,11 @@ impl<'a> SessionStore<'a> {
 
     pub fn create(&self, session: &Session) -> Result<(), StorageError> {
         self.db.conn().execute(
-            "INSERT INTO sessions (id, workstream_id, created_at) VALUES (?1, ?2, ?3)",
+            "INSERT INTO sessions (id, workstream_id, workstream_name, created_at) VALUES (?1, ?2, ?3, ?4)",
             (
                 session.id.to_string(),
                 session.workstream_id().map(|id| id.to_string()),
+                session.workstream_name(),
                 session.created_at.to_rfc3339(),
             ),
         )?;
@@ -30,18 +31,19 @@ impl<'a> SessionStore<'a> {
 
     pub fn get(&self, id: Uuid) -> Result<Option<SessionMeta>, StorageError> {
         let mut stmt = self.db.conn().prepare(
-            "SELECT id, workstream_id, created_at, input_tokens, output_tokens, turns, tool_calls FROM sessions WHERE id = ?1",
+            "SELECT id, workstream_id, workstream_name, created_at, input_tokens, output_tokens, turns, tool_calls FROM sessions WHERE id = ?1",
         )?;
 
         let result = stmt.query_row([id.to_string()], |row| {
             Ok(SessionRow {
                 id: row.get(0)?,
                 workstream_id: row.get(1)?,
-                created_at: row.get(2)?,
-                input_tokens: row.get(3)?,
-                output_tokens: row.get(4)?,
-                turns: row.get(5)?,
-                tool_calls: row.get(6)?,
+                workstream_name: row.get(2)?,
+                created_at: row.get(3)?,
+                input_tokens: row.get(4)?,
+                output_tokens: row.get(5)?,
+                turns: row.get(6)?,
+                tool_calls: row.get(7)?,
             })
         });
 
@@ -54,18 +56,19 @@ impl<'a> SessionStore<'a> {
 
     pub fn list_for_workstream(&self, ws_id: Uuid) -> Result<Vec<SessionMeta>, StorageError> {
         let mut stmt = self.db.conn().prepare(
-            "SELECT id, workstream_id, created_at, input_tokens, output_tokens, turns, tool_calls FROM sessions WHERE workstream_id = ?1 ORDER BY created_at",
+            "SELECT id, workstream_id, workstream_name, created_at, input_tokens, output_tokens, turns, tool_calls FROM sessions WHERE workstream_id = ?1 ORDER BY created_at",
         )?;
 
         let rows = stmt.query_map([ws_id.to_string()], |row| {
             Ok(SessionRow {
                 id: row.get(0)?,
                 workstream_id: row.get(1)?,
-                created_at: row.get(2)?,
-                input_tokens: row.get(3)?,
-                output_tokens: row.get(4)?,
-                turns: row.get(5)?,
-                tool_calls: row.get(6)?,
+                workstream_name: row.get(2)?,
+                created_at: row.get(3)?,
+                input_tokens: row.get(4)?,
+                output_tokens: row.get(5)?,
+                turns: row.get(6)?,
+                tool_calls: row.get(7)?,
             })
         })?;
 
@@ -78,18 +81,19 @@ impl<'a> SessionStore<'a> {
 
     pub fn list_scratch(&self) -> Result<Vec<SessionMeta>, StorageError> {
         let mut stmt = self.db.conn().prepare(
-            "SELECT id, workstream_id, created_at, input_tokens, output_tokens, turns, tool_calls FROM sessions WHERE workstream_id IS NULL ORDER BY created_at",
+            "SELECT id, workstream_id, workstream_name, created_at, input_tokens, output_tokens, turns, tool_calls FROM sessions WHERE workstream_id IS NULL ORDER BY created_at",
         )?;
 
         let rows = stmt.query_map([], |row| {
             Ok(SessionRow {
                 id: row.get(0)?,
                 workstream_id: row.get(1)?,
-                created_at: row.get(2)?,
-                input_tokens: row.get(3)?,
-                output_tokens: row.get(4)?,
-                turns: row.get(5)?,
-                tool_calls: row.get(6)?,
+                workstream_name: row.get(2)?,
+                created_at: row.get(3)?,
+                input_tokens: row.get(4)?,
+                output_tokens: row.get(5)?,
+                turns: row.get(6)?,
+                tool_calls: row.get(7)?,
             })
         })?;
 
@@ -135,6 +139,21 @@ impl<'a> SessionStore<'a> {
         )?;
         Ok(affected > 0)
     }
+
+    /// Update the persisted workstream slug for a session. Called when
+    /// `/workstream switch` lands in a new workstream so resumption
+    /// can re-establish the active workstream without a JOIN.
+    pub fn update_workstream_name(
+        &self,
+        session_id: Uuid,
+        new_name: &str,
+    ) -> Result<bool, StorageError> {
+        let affected = self.db.conn().execute(
+            "UPDATE sessions SET workstream_name = ?1 WHERE id = ?2",
+            (new_name, session_id.to_string()),
+        )?;
+        Ok(affected > 0)
+    }
 }
 
 /// Session metadata as stored in SQLite (no messages — those are in JSONL).
@@ -142,25 +161,33 @@ impl<'a> SessionStore<'a> {
 pub struct SessionMeta {
     pub id: Uuid,
     pub workstream_id: Option<Uuid>,
+    pub workstream_name: String,
     pub created_at: DateTime<Utc>,
     pub stats: SessionStats,
 }
 
 impl SessionMeta {
     /// Convert to an arawn_core::Session (without messages — load those separately).
-    /// Note: This creates a new Session with a new UUID. To reconstruct with the
-    /// stored ID, use Session::with_id (to be added) or set up the session manually.
     pub fn into_session(self) -> Session {
-        match self.workstream_id {
+        let mut s = match self.workstream_id {
             Some(ws_id) => Session::new(ws_id),
             None => Session::scratch(),
+        };
+        if !self.workstream_name.is_empty() {
+            // Preserve the persisted slug without clobbering the id
+            // (the FK is already correct or stays None for scratch).
+            if let Some(ws_id) = self.workstream_id {
+                s.set_workstream(self.workstream_name, ws_id);
+            }
         }
+        s
     }
 }
 
 struct SessionRow {
     id: String,
     workstream_id: Option<String>,
+    workstream_name: String,
     created_at: String,
     input_tokens: i64,
     output_tokens: i64,
@@ -186,6 +213,7 @@ impl SessionRow {
         Ok(SessionMeta {
             id,
             workstream_id,
+            workstream_name: self.workstream_name,
             created_at,
             stats: SessionStats {
                 input_tokens: self.input_tokens as u64,
