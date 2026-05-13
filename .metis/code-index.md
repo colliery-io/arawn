@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-13T12:52:48Z | 298 files | Python, Rust
+> Generated: 2026-05-13T13:26:59Z | 300 files | Python, Rust
 
 ## Project Structure
 
@@ -323,6 +323,8 @@
 │   │       ├── skills.rs
 │   │       ├── tool_artifacts.rs
 │   │       ├── uat.rs
+│   │       ├── uat_fixture.rs
+│   │       ├── uat_fixture_smoke.rs
 │   │       ├── websocket.rs
 │   │       └── workflows.rs
 │   ├── arawn-tool/
@@ -6748,49 +6750,78 @@
 
 #### crates/arawn-tests/tests/uat.rs
 
-- pub `Scenario` struct L25-30 — `{ name: String, objective: String, turns: Vec<ScenarioTurn>, mechanical: Mechani...` — Or via angreal: angreal test uat --model gemma4
-- pub `ScenarioTurn` struct L33-36 — `{ user_message: String, judge_expectation: String }` — Or via angreal: angreal test uat --model gemma4
-- pub `MechanicalThresholds` struct L39-45 — `{ min_files_created: usize, min_workflows_created: usize, min_memory_entities: u...` — Or via angreal: angreal test uat --model gemma4
-- pub `TurnResult` struct L52-63 — `{ turn_number: usize, user_message: String, assistant_text: String, tool_calls: ...` — Or via angreal: angreal test uat --model gemma4
-- pub `ToolCallRecord` struct L66-70 — `{ id: String, name: String, input: Value }` — Or via angreal: angreal test uat --model gemma4
-- pub `ToolResultRecord` struct L73-77 — `{ id: String, content: String, is_error: bool }` — Or via angreal: angreal test uat --model gemma4
-- pub `ScenarioResult` struct L84-91 — `{ scenario_name: String, model: String, turns: Vec<TurnResult>, mechanical: Mech...` — Or via angreal: angreal test uat --model gemma4
-- pub `MechanicalCheckResult` struct L94-102 — `{ all_turns_completed: bool, no_errors: bool, tool_use_occurred: bool, files_cre...` — Or via angreal: angreal test uat --model gemma4
-- pub `UatHarness` struct L185-189 — `{ data_dir: PathBuf, port: u16, server_process: Option<Child> }` — Or via angreal: angreal test uat --model gemma4
-- pub `new` function L193-246 — `(base_dir: &Path, model: &str, provider: &str, api_key_env: &str) -> Self` — Create a new harness with an isolated data directory.
-- pub `start_server` function L249-272 — `(&mut self) -> Result<(), String>` — Start the arawn server process.
-- pub `wait_for_ready` function L275-299 — `(&self, timeout: Duration) -> Result<(), String>` — Wait for the server to be ready by polling the WebSocket endpoint.
-- pub `ws_url` function L301-313 — `(&self) -> String` — Or via angreal: angreal test uat --model gemma4
-- pub `run_scenario` function L316-375 — `(&self, scenario: &Scenario, model: &str) -> ScenarioResult` — Run a scenario: create session, drive all turns, collect results.
-- pub `write_artifacts` function L481-529 — `(&self, result: &ScenarioResult, scenario: &Scenario)` — Write all artifacts to the results directory.
-- pub `stop` function L532-538 — `(&mut self)` — Stop the server process.
--  `TurnAccumulator` struct L110-117 — `{ assistant_text: String, tool_calls: Vec<ToolCallRecord>, tool_results: Vec<Too...` — State accumulated while consuming engine events for a single turn.
--  `count_workflows_in` function L121-129 — `(dir: &Path) -> usize` — Count subdirectories of `dir`.
--  `apply_event` function L133-179 — `(event: &Value, acc: &mut TurnAccumulator) -> bool` — Apply one engine event JSON value to the accumulator.
--  `UatHarness` type L191-539 — `= UatHarness` — Or via angreal: angreal test uat --model gemma4
--  `rpc_create_session` function L377-403 — `( &self, write: &mut futures_util::stream::SplitSink< tokio_tungstenite::WebSock...` — Or via angreal: angreal test uat --model gemma4
--  `drive_turn` function L405-458 — `( &self, write: &mut futures_util::stream::SplitSink< tokio_tungstenite::WebSock...` — Or via angreal: angreal test uat --model gemma4
--  `list_workspace_files` function L460-473 — `(&self) -> Vec<String>` — Or via angreal: angreal test uat --model gemma4
--  `count_installed_workflows` function L476-478 — `(&self) -> usize` — Count installed workflows under `<data_dir>/workflows/`.
--  `UatHarness` type L541-545 — `impl Drop for UatHarness` — Or via angreal: angreal test uat --model gemma4
--  `drop` function L542-544 — `(&mut self)` — Or via angreal: angreal test uat --model gemma4
--  `walkdir` function L548-563 — `(dir: &Path) -> Result<Vec<PathBuf>, std::io::Error>` — Recursively list all files under a directory.
--  `github_monitor_scenario` function L569-598 — `() -> Scenario` — Or via angreal: angreal test uat --model gemma4
--  `work_signal_pipeline_scenario` function L600-633 — `() -> Scenario` — Or via angreal: angreal test uat --model gemma4
--  `all_scenarios` function L635-637 — `() -> Vec<Scenario>` — Or via angreal: angreal test uat --model gemma4
--  `uat_run` function L645-745 — `()` — Or via angreal: angreal test uat --model gemma4
--  `tests` module L753-900 — `-` — Or via angreal: angreal test uat --model gemma4
--  `count_workflows_returns_zero_for_missing_dir` function L759-762 — `()` — Or via angreal: angreal test uat --model gemma4
--  `count_workflows_returns_zero_for_empty_dir` function L765-768 — `()` — Or via angreal: angreal test uat --model gemma4
--  `count_workflows_counts_subdirs_only` function L771-779 — `()` — Or via angreal: angreal test uat --model gemma4
--  `apply_event_captures_error_message` function L784-800 — `()` — Or via angreal: angreal test uat --model gemma4
--  `apply_event_error_with_missing_message_field_keeps_none` function L803-809 — `()` — Or via angreal: angreal test uat --model gemma4
--  `apply_event_complete_sets_final_text` function L812-819 — `()` — Or via angreal: angreal test uat --model gemma4
--  `apply_event_streaming_text_appends` function L822-830 — `()` — Or via angreal: angreal test uat --model gemma4
--  `apply_event_ignores_rpc_ack` function L833-840 — `()` — Or via angreal: angreal test uat --model gemma4
--  `apply_event_records_tool_calls_and_results` function L843-863 — `()` — Or via angreal: angreal test uat --model gemma4
--  `turn_result_serializes_error_message_when_present` function L868-882 — `()` — Or via angreal: angreal test uat --model gemma4
--  `turn_result_omits_error_message_when_none` function L885-899 — `()` — Or via angreal: angreal test uat --model gemma4
+- pub `Scenario` struct L25-36 — `{ name: String, objective: String, turns: Vec<ScenarioTurn>, mechanical: Mechani...` — Or via angreal: angreal test uat --model gemma4
+- pub `ScenarioTurn` struct L39-42 — `{ user_message: String, judge_expectation: String }` — Or via angreal: angreal test uat --model gemma4
+- pub `MechanicalThresholds` struct L45-51 — `{ min_files_created: usize, min_workflows_created: usize, min_memory_entities: u...` — Or via angreal: angreal test uat --model gemma4
+- pub `TurnResult` struct L58-69 — `{ turn_number: usize, user_message: String, assistant_text: String, tool_calls: ...` — Or via angreal: angreal test uat --model gemma4
+- pub `ToolCallRecord` struct L72-76 — `{ id: String, name: String, input: Value }` — Or via angreal: angreal test uat --model gemma4
+- pub `ToolResultRecord` struct L79-83 — `{ id: String, content: String, is_error: bool }` — Or via angreal: angreal test uat --model gemma4
+- pub `ScenarioResult` struct L90-97 — `{ scenario_name: String, model: String, turns: Vec<TurnResult>, mechanical: Mech...` — Or via angreal: angreal test uat --model gemma4
+- pub `MechanicalCheckResult` struct L100-108 — `{ all_turns_completed: bool, no_errors: bool, tool_use_occurred: bool, files_cre...` — Or via angreal: angreal test uat --model gemma4
+- pub `UatHarness` struct L191-195 — `{ data_dir: PathBuf, port: u16, server_process: Option<Child> }` — Or via angreal: angreal test uat --model gemma4
+- pub `new` function L199-252 — `(base_dir: &Path, model: &str, provider: &str, api_key_env: &str) -> Self` — Create a new harness with an isolated data directory.
+- pub `start_server` function L255-278 — `(&mut self) -> Result<(), String>` — Start the arawn server process.
+- pub `wait_for_ready` function L281-305 — `(&self, timeout: Duration) -> Result<(), String>` — Wait for the server to be ready by polling the WebSocket endpoint.
+- pub `ws_url` function L307-319 — `(&self) -> String` — Or via angreal: angreal test uat --model gemma4
+- pub `run_scenario` function L322-381 — `(&self, scenario: &Scenario, model: &str) -> ScenarioResult` — Run a scenario: create session, drive all turns, collect results.
+- pub `write_artifacts` function L487-535 — `(&self, result: &ScenarioResult, scenario: &Scenario)` — Write all artifacts to the results directory.
+- pub `stop` function L538-544 — `(&mut self)` — Stop the server process.
+-  `TurnAccumulator` struct L116-123 — `{ assistant_text: String, tool_calls: Vec<ToolCallRecord>, tool_results: Vec<Too...` — State accumulated while consuming engine events for a single turn.
+-  `count_workflows_in` function L127-135 — `(dir: &Path) -> usize` — Count subdirectories of `dir`.
+-  `apply_event` function L139-185 — `(event: &Value, acc: &mut TurnAccumulator) -> bool` — Apply one engine event JSON value to the accumulator.
+-  `UatHarness` type L197-545 — `= UatHarness` — Or via angreal: angreal test uat --model gemma4
+-  `rpc_create_session` function L383-409 — `( &self, write: &mut futures_util::stream::SplitSink< tokio_tungstenite::WebSock...` — Or via angreal: angreal test uat --model gemma4
+-  `drive_turn` function L411-464 — `( &self, write: &mut futures_util::stream::SplitSink< tokio_tungstenite::WebSock...` — Or via angreal: angreal test uat --model gemma4
+-  `list_workspace_files` function L466-479 — `(&self) -> Vec<String>` — Or via angreal: angreal test uat --model gemma4
+-  `count_installed_workflows` function L482-484 — `(&self) -> usize` — Count installed workflows under `<data_dir>/workflows/`.
+-  `UatHarness` type L547-551 — `impl Drop for UatHarness` — Or via angreal: angreal test uat --model gemma4
+-  `drop` function L548-550 — `(&mut self)` — Or via angreal: angreal test uat --model gemma4
+-  `walkdir` function L554-569 — `(dir: &Path) -> Result<Vec<PathBuf>, std::io::Error>` — Recursively list all files under a directory.
+-  `github_monitor_scenario` function L575-605 — `() -> Scenario` — Or via angreal: angreal test uat --model gemma4
+-  `work_signal_pipeline_scenario` function L607-641 — `() -> Scenario` — Or via angreal: angreal test uat --model gemma4
+-  `uat_fixture` module L644 — `-` — Or via angreal: angreal test uat --model gemma4
+-  `signal_extraction_e2e_scenario` function L651-699 — `() -> Scenario` — I-0040 end-to-end UAT: synthetic gmail + slack feed rows for two
+-  `all_scenarios` function L701-707 — `() -> Vec<Scenario>` — Or via angreal: angreal test uat --model gemma4
+-  `uat_run` function L715-848 — `()` — Or via angreal: angreal test uat --model gemma4
+-  `tests` module L856-1003 — `-` — Or via angreal: angreal test uat --model gemma4
+-  `count_workflows_returns_zero_for_missing_dir` function L862-865 — `()` — Or via angreal: angreal test uat --model gemma4
+-  `count_workflows_returns_zero_for_empty_dir` function L868-871 — `()` — Or via angreal: angreal test uat --model gemma4
+-  `count_workflows_counts_subdirs_only` function L874-882 — `()` — Or via angreal: angreal test uat --model gemma4
+-  `apply_event_captures_error_message` function L887-903 — `()` — Or via angreal: angreal test uat --model gemma4
+-  `apply_event_error_with_missing_message_field_keeps_none` function L906-912 — `()` — Or via angreal: angreal test uat --model gemma4
+-  `apply_event_complete_sets_final_text` function L915-922 — `()` — Or via angreal: angreal test uat --model gemma4
+-  `apply_event_streaming_text_appends` function L925-933 — `()` — Or via angreal: angreal test uat --model gemma4
+-  `apply_event_ignores_rpc_ack` function L936-943 — `()` — Or via angreal: angreal test uat --model gemma4
+-  `apply_event_records_tool_calls_and_results` function L946-966 — `()` — Or via angreal: angreal test uat --model gemma4
+-  `turn_result_serializes_error_message_when_present` function L971-985 — `()` — Or via angreal: angreal test uat --model gemma4
+-  `turn_result_omits_error_message_when_none` function L988-1002 — `()` — Or via angreal: angreal test uat --model gemma4
+
+#### crates/arawn-tests/tests/uat_fixture.rs
+
+- pub `Fixture` struct L43-45 — `{ workstreams: Vec<WorkstreamFixture> }` — Top-level fixture file.
+- pub `WorkstreamFixture` struct L48-52 — `{ name: String, description: String, rows: Vec<FixtureRow> }` — warm KB on the first turn.
+- pub `FixtureRow` enum L59-62 — `GmailMessages | SlackMessages` — Discriminated row variants by `feed_type`.
+- pub `GmailFixtureRow` struct L65-81 — `{ source_id: String, source_ts: DateTime<Utc>, sender: Option<String>, recipient...` — warm KB on the first turn.
+- pub `SlackFixtureRow` struct L84-98 — `{ source_id: String, source_ts: DateTime<Utc>, channel_id: Option<String>, sende...` — warm KB on the first turn.
+- pub `load` function L101-105 — `(path: impl AsRef<Path>) -> Result<Fixture, String>` — Read a fixture from disk.
+- pub `Applied` struct L110-114 — `{ store: Arc<std::sync::Mutex<Store>>, projections: Arc<ProjectionStore>, per_wo...` — Apply a fixture against `data_dir`.
+- pub `AppliedWorkstream` struct L116-120 — `{ workstream: Workstream, feed_types: Vec<String> }` — warm KB on the first turn.
+- pub `apply` function L122-192 — `(fixture: &Fixture, data_dir: &Path) -> Result<Applied, String>` — warm KB on the first turn.
+- pub `build_seed_llm_client` function L237-262 — `( provider: &str, model: &str, api_key_env: &str, ) -> Result<Arc<dyn LlmClient>...` — Build an `LlmClient` for the seed-time extractor using the same
+- pub `drive_extraction` function L267-299 — `( applied: &Applied, data_dir: &Path, client: Arc<dyn LlmClient>, model: String,...` — Drive `ExtractorRunner::run_for_workstream_until_exhausted` for each
+-  `synthetic_feed_id` function L194-196 — `(workstream: &str, override_: &Option<String>) -> String` — warm KB on the first turn.
+-  `gmail_to_projection` function L198-212 — `(workstream: &str, row: &GmailFixtureRow) -> GmailMessageProjection` — warm KB on the first turn.
+-  `slack_to_projection` function L214-231 — `(workstream: &str, row: &SlackFixtureRow) -> SlackMessageProjection` — warm KB on the first turn.
+-  `tests` module L306-377 — `-` — warm KB on the first turn.
+-  `sample_fixture` function L309-340 — `() -> Fixture` — warm KB on the first turn.
+-  `fixture_roundtrips_through_json` function L343-349 — `()` — warm KB on the first turn.
+-  `apply_creates_workstream_and_writes_rows` function L352-366 — `()` — warm KB on the first turn.
+-  `load_from_disk_round_trip` function L369-376 — `()` — warm KB on the first turn.
+
+#### crates/arawn-tests/tests/uat_fixture_smoke.rs
+
+-  `uat_fixture` module L4 — `-` — row counts match what the UAT scenario expects.
+-  `signal_extraction_e2e_fixture_parses` function L7-27 — `()` — row counts match what the UAT scenario expects.
 
 #### crates/arawn-tests/tests/websocket.rs
 

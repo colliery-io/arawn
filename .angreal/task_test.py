@@ -1,7 +1,9 @@
 """Test commands for Arawn."""
 
 import os
+import pathlib
 import subprocess
+import sys
 
 import angreal
 from angreal.integrations.flox import Flox
@@ -193,11 +195,64 @@ def test_uat(model="gemma4:31b-cloud", provider="https://ollama.com/v1", api_key
         if scenario:
             env["UAT_SCENARIO"] = scenario
 
-        subprocess.run(
-            ["cargo", "test", "-p", "arawn-tests", "--test", "uat", "--", "--ignored", "--nocapture"],
-            env=env,
-            check=True,
-        )
+        # Resolve repo root regardless of where angreal is invoked from.
+        repo_root = pathlib.Path(__file__).resolve().parent.parent
+        secrets_file = repo_root / "tests" / "secrets" / "uat.enc.yaml"
+
+        cargo_cmd = ["cargo", "test", "-p", "arawn-tests", "--test", "uat", "--", "--ignored", "--nocapture"]
+
+        if secrets_file.exists():
+            # `sops exec-env` decrypts the file, exports every key as
+            # an env var, then execs the inner command. Failures bubble
+            # up (e.g. SOPS_AGE_KEY_FILE not set, missing recipient).
+            cmd = ["sops", "exec-env", str(secrets_file), " ".join(cargo_cmd)]
+            print(f"  Using sops-encrypted secrets from {secrets_file.relative_to(repo_root)}")
+        else:
+            # No encrypted bundle — fall back to whatever's already in
+            # the shell env. This is the legacy path and is fine for
+            # developers who haven't onboarded to sops yet.
+            cmd = cargo_cmd
+            print("  No tests/secrets/uat.enc.yaml — relying on shell env vars")
+
+        subprocess.run(cmd, env=env, check=True)
+
+
+@test()
+@angreal.command(name="secrets-edit", about="Open the UAT secrets bundle in $EDITOR via sops")
+@angreal.argument(name="file", long="file", help="Encrypted file under tests/secrets/", default="uat.enc.yaml")
+def test_secrets_edit(file="uat.enc.yaml"):
+    """Edit a sops-encrypted secrets bundle in place.
+
+    Requires SOPS_AGE_KEY_FILE to point at your AGE private key
+    (typically ~/.config/sops/age/keys.txt). See tests/secrets/README.md
+    for onboarding.
+    """
+    repo_root = pathlib.Path(__file__).resolve().parent.parent
+    target = repo_root / "tests" / "secrets" / file
+    if not target.exists():
+        print(f"  No such file: {target}")
+        print("  See tests/secrets/README.md → 'Bootstrapping the first file'")
+        sys.exit(1)
+    subprocess.run(["sops", "edit", str(target)], check=True)
+
+
+@test()
+@angreal.command(name="secrets-updatekeys", about="Re-encrypt UAT secrets to the current .sops.yaml recipient list")
+def test_secrets_updatekeys():
+    """Refresh every sops-encrypted file under tests/secrets/ so it
+    matches the current recipient list in `.sops.yaml`.
+
+    Run this after adding or removing a recipient.
+    """
+    repo_root = pathlib.Path(__file__).resolve().parent.parent
+    secrets_dir = repo_root / "tests" / "secrets"
+    encrypted = list(secrets_dir.glob("*.enc.yaml")) + list(secrets_dir.glob("*.enc.json")) + list(secrets_dir.glob("*.enc.toml"))
+    if not encrypted:
+        print("  No encrypted files under tests/secrets/ — nothing to do.")
+        return
+    for f in encrypted:
+        print(f"  updatekeys {f.relative_to(repo_root)}")
+        subprocess.run(["sops", "updatekeys", "--yes", str(f)], check=True)
 
 
 @test()
