@@ -55,6 +55,7 @@ pub fn relation_type_str(t: RelationType) -> &'static str {
         RelationType::ExtractedFrom => "EXTRACTED_FROM",
         RelationType::Mentions => "MENTIONS",
         RelationType::BelongsTo => "BELONGS_TO",
+        RelationType::Summarizes => "SUMMARIZES",
     }
 }
 
@@ -68,6 +69,7 @@ pub fn relation_type_from_str(s: &str) -> Option<RelationType> {
         "EXTRACTED_FROM" => Some(RelationType::ExtractedFrom),
         "MENTIONS" => Some(RelationType::Mentions),
         "BELONGS_TO" => Some(RelationType::BelongsTo),
+        "SUMMARIZES" => Some(RelationType::Summarizes),
         _ => None,
     }
 }

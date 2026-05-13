@@ -69,6 +69,10 @@ pub enum RelationType {
     ExtractedFrom,
     Mentions,
     BelongsTo,
+    /// Edge from a steward-written summary entity to one of the source
+    /// entities it summarizes. Allowed by the dust subroutine per
+    /// ARAWN-A-0003.
+    Summarizes,
 }
 
 impl RelationType {
@@ -81,6 +85,7 @@ impl RelationType {
             Self::ExtractedFrom => "extracted_from",
             Self::Mentions => "mentions",
             Self::BelongsTo => "belongs_to",
+            Self::Summarizes => "summarizes",
         }
     }
 
@@ -94,6 +99,7 @@ impl RelationType {
             "extracted_from" => Some(Self::ExtractedFrom),
             "mentions" => Some(Self::Mentions),
             "belongs_to" => Some(Self::BelongsTo),
+            "summarizes" => Some(Self::Summarizes),
             _ => None,
         }
     }

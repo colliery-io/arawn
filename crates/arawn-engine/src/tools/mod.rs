@@ -39,7 +39,10 @@ pub use memory_search::MemorySearchTool;
 pub use memory_store::MemoryStoreTool;
 pub use shell::ShellTool;
 pub use signal::{SignalQueryTool, SignalSearchTool, SignalTimelineTool};
-pub use steward::{WorkstreamJournalTool, WorkstreamRefineTool, WorkstreamRollbackTool};
+pub use steward::{
+    WorkstreamApplyTool, WorkstreamDustTool, WorkstreamJournalTool, WorkstreamRefineTool,
+    WorkstreamRollbackTool,
+};
 pub use skill::SkillTool;
 pub use sleep::SleepTool;
 pub use task_list::{SessionTaskStore, TaskCreateTool, TaskGetTool, TaskListTool, TaskUpdateTool};

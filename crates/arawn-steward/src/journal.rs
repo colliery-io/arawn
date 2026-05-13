@@ -56,6 +56,14 @@ pub struct RevertResult {
     pub newly_reverted: bool,
 }
 
+/// Outcome of `Journal::mark_applied`. Mirrors `RevertResult` so the
+/// proposal-accept path has a symmetric idempotency surface.
+#[derive(Debug, Clone)]
+pub struct AppliedResult {
+    pub row: JournalRow,
+    pub newly_applied: bool,
+}
+
 /// Workstream-scoped journal. Opens its own rusqlite connection to the
 /// workstream's `memory.db`. Multiple connections to the same file are
 /// fine — graphqlite + steward live in the same db but use disjoint
@@ -173,6 +181,42 @@ impl Journal {
             out.push(row??);
         }
         Ok(out)
+    }
+
+    /// Flip a row from `applied = false` to `applied = true`. Used by
+    /// the proposal-accept path (`workstream_apply`). Idempotent: a row
+    /// already applied returns `newly_applied = false`. Returns the
+    /// (re-read) row so the caller has the post-flip state.
+    pub fn mark_applied(&self, id: i64) -> Result<AppliedResult, StewardError> {
+        let Some(row) = self.get(id)? else {
+            return Err(StewardError::NotFound(format!("journal row {id}")));
+        };
+        if row.applied {
+            return Ok(AppliedResult {
+                row,
+                newly_applied: false,
+            });
+        }
+        if row.reverted_at.is_some() {
+            return Err(StewardError::Journal(format!(
+                "row {id} is reverted; cannot apply"
+            )));
+        }
+        {
+            let conn = self.conn.lock().unwrap();
+            conn.execute(
+                "UPDATE steward_journal SET applied = 1 WHERE id = ?1 \
+                 AND applied = 0 AND reverted_at IS NULL",
+                params![id],
+            )?;
+        }
+        let row = self
+            .get(id)?
+            .ok_or_else(|| StewardError::Journal(format!("row {id} vanished post-apply")))?;
+        Ok(AppliedResult {
+            row,
+            newly_applied: true,
+        })
     }
 
     /// Mark a row reverted. Idempotent: a second call returns the row

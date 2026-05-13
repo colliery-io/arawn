@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-13T09:52:13Z | 292 files | Python, Rust
+> Generated: 2026-05-13T11:25:32Z | 296 files | Python, Rust
 
 ## Project Structure
 
@@ -106,6 +106,7 @@
 │   │       │   ├── signal.rs
 │   │       │   ├── skill.rs
 │   │       │   ├── sleep.rs
+│   │       │   ├── steward.rs
 │   │       │   ├── task_list.rs
 │   │       │   ├── task_output.rs
 │   │       │   ├── task_stop.rs
@@ -281,11 +282,14 @@
 │   ├── arawn-steward/
 │   │   └── src/
 │   │       ├── cursor.rs
+│   │       ├── doorwatch.rs
 │   │       ├── error.rs
 │   │       ├── journal.rs
 │   │       ├── lib.rs
 │   │       ├── llm_text.rs
+│   │       ├── map.rs
 │   │       ├── reshelve.rs
+│   │       ├── rollback.rs
 │   │       ├── runner.rs
 │   │       └── subroutine.rs
 │   ├── arawn-storage/
@@ -630,19 +634,19 @@
 -  `embed_batch` function L17-31 — `( &'a self, texts: &'a [&'a str], ) -> std::pin::Pin< Box<dyn std::future::Futur...`
 -  `DEFAULT_MODEL` variable L39 — `: &str`
 -  `FILE_LOG_FILTER` variable L42 — `: &str` — Default file log filter: debug for arawn crates, warn for third-party.
--  `main` function L45-1112 — `() -> Result<()>`
+-  `main` function L45-1152 — `() -> Result<()>`
 -  `Cli` struct L51-70 — `{ command: Option<Command>, data_dir: Option<String>, session: Option<Uuid>, lis...`
 -  `Command` enum L73-92 — `Serve | Tui | Plugin`
--  `ExtractorBindHook` struct L649-652 — `{ runner: Arc<arawn_extractor::ExtractorRunner>, store: Arc<std::sync::Mutex<ara...`
--  `ExtractorBindHook` type L653-687 — `= ExtractorBindHook`
--  `on_bind` function L654-686 — `(&self, workstream_name: &str, feed_id: &str)`
--  `run_cli_via_server` function L1115-1220 — `( url: &str, prompt: &str, session_id: Option<Uuid>, ) -> Result<()>` — Run a CLI prompt by connecting to the running server via WebSocket.
--  `build_llm_client` function L1223-1246 — `( config: &arawn_bin::LlmConfig, ) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
--  `register_default_tools` function L1249-1295 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &arawn_bin::ArawnConfig, d...` — Register all default tools into the registry.
--  `connect_mcp_servers` function L1298-1346 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
--  `register_workflow_tools` function L1349-1366 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
--  `build_engine_config` function L1368-1403 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
--  `dirs_path` function L1405-1414 — `() -> Option<String>`
+-  `ExtractorBindHook` struct L672-675 — `{ runner: Arc<arawn_extractor::ExtractorRunner>, store: Arc<std::sync::Mutex<ara...`
+-  `ExtractorBindHook` type L676-710 — `= ExtractorBindHook`
+-  `on_bind` function L677-709 — `(&self, workstream_name: &str, feed_id: &str)`
+-  `run_cli_via_server` function L1155-1260 — `( url: &str, prompt: &str, session_id: Option<Uuid>, ) -> Result<()>` — Run a CLI prompt by connecting to the running server via WebSocket.
+-  `build_llm_client` function L1263-1286 — `( config: &arawn_bin::LlmConfig, ) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
+-  `register_default_tools` function L1289-1335 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &arawn_bin::ArawnConfig, d...` — Register all default tools into the registry.
+-  `connect_mcp_servers` function L1338-1386 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
+-  `register_workflow_tools` function L1389-1406 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
+-  `build_engine_config` function L1408-1443 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
+-  `dirs_path` function L1445-1454 — `() -> Option<String>`
 
 #### crates/arawn/src/plugin_cmd.rs
 
@@ -1492,18 +1496,19 @@
 - pub `WorkstreamMemoryRouter` struct L21-27 — `{ data_dir: PathBuf, embedding_dims: Option<usize>, embedder: Option<Arc<dyn Emb...` — Lazy + cached map of workstream-name → `MemoryManager`.
 - pub `new` function L30-43 — `( data_dir: impl Into<PathBuf>, embedding_dims: Option<usize>, embedder: Option<...` — existing fixed-manager tests continue working unchanged.
 - pub `current` function L47-50 — `(&self) -> Result<Arc<MemoryManager>, MemoryError>` — Resolve the active workstream's memory manager.
-- pub `for_workstream` function L52-66 — `(&self, name: &str) -> Result<Arc<MemoryManager>, MemoryError>` — existing fixed-manager tests continue working unchanged.
-- pub `MemoryHandle` enum L73-76 — `Fixed | Routed` — Memory tools depend on one of these.
-- pub `manager` function L81-86 — `(&self) -> Result<Arc<MemoryManager>, MemoryError>` — Resolve the active manager.
--  `WorkstreamMemoryRouter` type L29-67 — `= WorkstreamMemoryRouter` — existing fixed-manager tests continue working unchanged.
--  `MemoryHandle` type L78-87 — `= MemoryHandle` — existing fixed-manager tests continue working unchanged.
--  `MemoryHandle` type L89-93 — `= MemoryHandle` — existing fixed-manager tests continue working unchanged.
--  `from` function L90-92 — `(m: Arc<MemoryManager>) -> Self` — existing fixed-manager tests continue working unchanged.
+- pub `current_name` function L54-56 — `(&self) -> String` — Name of the active workstream — useful for tools that need to
+- pub `for_workstream` function L58-72 — `(&self, name: &str) -> Result<Arc<MemoryManager>, MemoryError>` — existing fixed-manager tests continue working unchanged.
+- pub `MemoryHandle` enum L79-82 — `Fixed | Routed` — Memory tools depend on one of these.
+- pub `manager` function L87-92 — `(&self) -> Result<Arc<MemoryManager>, MemoryError>` — Resolve the active manager.
+-  `WorkstreamMemoryRouter` type L29-73 — `= WorkstreamMemoryRouter` — existing fixed-manager tests continue working unchanged.
+-  `MemoryHandle` type L84-93 — `= MemoryHandle` — existing fixed-manager tests continue working unchanged.
 -  `MemoryHandle` type L95-99 — `= MemoryHandle` — existing fixed-manager tests continue working unchanged.
--  `from` function L96-98 — `(r: Arc<WorkstreamMemoryRouter>) -> Self` — existing fixed-manager tests continue working unchanged.
--  `tests` module L102-127 — `-` — existing fixed-manager tests continue working unchanged.
--  `router_caches_per_workstream` function L106-118 — `()` — existing fixed-manager tests continue working unchanged.
--  `fixed_handle_dispatches` function L121-126 — `()` — existing fixed-manager tests continue working unchanged.
+-  `from` function L96-98 — `(m: Arc<MemoryManager>) -> Self` — existing fixed-manager tests continue working unchanged.
+-  `MemoryHandle` type L101-105 — `= MemoryHandle` — existing fixed-manager tests continue working unchanged.
+-  `from` function L102-104 — `(r: Arc<WorkstreamMemoryRouter>) -> Self` — existing fixed-manager tests continue working unchanged.
+-  `tests` module L108-133 — `-` — existing fixed-manager tests continue working unchanged.
+-  `router_caches_per_workstream` function L112-124 — `()` — existing fixed-manager tests continue working unchanged.
+-  `fixed_handle_dispatches` function L127-132 — `()` — existing fixed-manager tests continue working unchanged.
 
 ### crates/arawn-engine/src/hooks
 
@@ -2466,15 +2471,16 @@
 - pub `sensitive_paths` module L14 — `-`
 - pub `shell` module L15 — `-`
 - pub `signal` module L16 — `-`
-- pub `skill` module L17 — `-`
-- pub `sleep` module L18 — `-`
-- pub `task_list` module L19 — `-`
-- pub `task_output` module L20 — `-`
-- pub `task_stop` module L21 — `-`
-- pub `think` module L22 — `-`
-- pub `web_fetch` module L23 — `-`
-- pub `web_search` module L24 — `-`
-- pub `workstream` module L25 — `-`
+- pub `steward` module L17 — `-`
+- pub `skill` module L18 — `-`
+- pub `sleep` module L19 — `-`
+- pub `task_list` module L20 — `-`
+- pub `task_output` module L21 — `-`
+- pub `task_stop` module L22 — `-`
+- pub `think` module L23 — `-`
+- pub `web_fetch` module L24 — `-`
+- pub `web_search` module L25 — `-`
+- pub `workstream` module L26 — `-`
 
 #### crates/arawn-engine/src/tools/safe_env.rs
 
@@ -2645,6 +2651,52 @@
 -  `sleep_short_duration` function L103-115 — `()`
 -  `sleep_negative_errors` function L118-126 — `()`
 -  `sleep_clamped` function L129-142 — `()`
+
+#### crates/arawn-engine/src/tools/steward.rs
+
+- pub `WorkstreamJournalTool` struct L64-67 — `{ data_dir: PathBuf, router: Arc<WorkstreamMemoryRouter> }` — via `arawn_steward::rollback::apply_inverse`.
+- pub `new` function L70-75 — `(data_dir: impl Into<PathBuf>, router: Arc<WorkstreamMemoryRouter>) -> Self` — via `arawn_steward::rollback::apply_inverse`.
+- pub `WorkstreamRefineTool` struct L139-142 — `{ data_dir: PathBuf, router: Arc<WorkstreamMemoryRouter> }` — via `arawn_steward::rollback::apply_inverse`.
+- pub `new` function L145-150 — `(data_dir: impl Into<PathBuf>, router: Arc<WorkstreamMemoryRouter>) -> Self` — via `arawn_steward::rollback::apply_inverse`.
+- pub `WorkstreamRollbackTool` struct L214-217 — `{ data_dir: PathBuf, router: Arc<WorkstreamMemoryRouter> }` — via `arawn_steward::rollback::apply_inverse`.
+- pub `new` function L220-225 — `(data_dir: impl Into<PathBuf>, router: Arc<WorkstreamMemoryRouter>) -> Self` — via `arawn_steward::rollback::apply_inverse`.
+-  `open_journal` function L21-24 — `(data_dir: &PathBuf, workstream: &str) -> Result<Journal, ToolError>` — via `arawn_steward::rollback::apply_inverse`.
+-  `resolve_workstream` function L26-43 — `( memory: &MemoryHandle, explicit: Option<&str>, ) -> Result<String, ToolError>` — via `arawn_steward::rollback::apply_inverse`.
+-  `row_summary` function L46-58 — `(row: &arawn_steward::JournalRow) -> Value` — Lightweight summary of one journal row for tool output.
+-  `WorkstreamJournalTool` type L69-76 — `= WorkstreamJournalTool` — via `arawn_steward::rollback::apply_inverse`.
+-  `WorkstreamJournalTool` type L79-133 — `impl Tool for WorkstreamJournalTool` — via `arawn_steward::rollback::apply_inverse`.
+-  `name` function L80-82 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
+-  `description` function L84-88 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
+-  `is_read_only` function L90-92 — `(&self) -> bool` — via `arawn_steward::rollback::apply_inverse`.
+-  `category` function L94-96 — `(&self) -> ToolCategory` — via `arawn_steward::rollback::apply_inverse`.
+-  `parameters_schema` function L98-106 — `(&self) -> Value` — via `arawn_steward::rollback::apply_inverse`.
+-  `execute` function L108-132 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — via `arawn_steward::rollback::apply_inverse`.
+-  `WorkstreamRefineTool` type L144-151 — `= WorkstreamRefineTool` — via `arawn_steward::rollback::apply_inverse`.
+-  `WorkstreamRefineTool` type L154-208 — `impl Tool for WorkstreamRefineTool` — via `arawn_steward::rollback::apply_inverse`.
+-  `name` function L155-157 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
+-  `description` function L159-163 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
+-  `is_read_only` function L165-167 — `(&self) -> bool` — via `arawn_steward::rollback::apply_inverse`.
+-  `category` function L169-171 — `(&self) -> ToolCategory` — via `arawn_steward::rollback::apply_inverse`.
+-  `parameters_schema` function L173-181 — `(&self) -> Value` — via `arawn_steward::rollback::apply_inverse`.
+-  `execute` function L183-207 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — via `arawn_steward::rollback::apply_inverse`.
+-  `WorkstreamRollbackTool` type L219-226 — `= WorkstreamRollbackTool` — via `arawn_steward::rollback::apply_inverse`.
+-  `WorkstreamRollbackTool` type L229-297 — `impl Tool for WorkstreamRollbackTool` — via `arawn_steward::rollback::apply_inverse`.
+-  `name` function L230-232 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
+-  `description` function L234-238 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
+-  `is_read_only` function L240-242 — `(&self) -> bool` — via `arawn_steward::rollback::apply_inverse`.
+-  `category` function L244-246 — `(&self) -> ToolCategory` — via `arawn_steward::rollback::apply_inverse`.
+-  `parameters_schema` function L248-257 — `(&self) -> Value` — via `arawn_steward::rollback::apply_inverse`.
+-  `execute` function L259-296 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — via `arawn_steward::rollback::apply_inverse`.
+-  `_unused` function L302-304 — `(memory: &MemoryHandle, explicit: Option<&str>) -> Result<String, ToolError>` — via `arawn_steward::rollback::apply_inverse`.
+-  `tests` module L307-444 — `-` — via `arawn_steward::rollback::apply_inverse`.
+-  `setup` function L315-331 — `() -> ( TempDir, Arc<WorkstreamMemoryRouter>, crate::context::EngineToolContext,...` — via `arawn_steward::rollback::apply_inverse`.
+-  `write_proposal_row` function L333-345 — `(j: &Journal) -> i64` — via `arawn_steward::rollback::apply_inverse`.
+-  `write_delete_row` function L347-358 — `(j: &Journal, e: &Entity) -> i64` — via `arawn_steward::rollback::apply_inverse`.
+-  `journal_lists_recent_rows` function L361-371 — `()` — via `arawn_steward::rollback::apply_inverse`.
+-  `refine_returns_pending_proposals_only` function L374-395 — `()` — via `arawn_steward::rollback::apply_inverse`.
+-  `rollback_reverts_delete_action_end_to_end` function L398-419 — `()` — via `arawn_steward::rollback::apply_inverse`.
+-  `rollback_is_idempotent` function L422-435 — `()` — via `arawn_steward::rollback::apply_inverse`.
+-  `rollback_unknown_id_errors` function L438-443 — `()` — via `arawn_steward::rollback::apply_inverse`.
 
 #### crates/arawn-engine/src/tools/task_list.rs
 
@@ -5996,6 +6048,36 @@
 -  `tests` module L74-92 — `-` — the last pass.
 -  `round_trip_and_monotonic` function L78-91 — `()` — the last pass.
 
+#### crates/arawn-steward/src/doorwatch.rs
+
+- pub `DoorWatchConfig` struct L33-38 — `{ focus_batch: usize, neighbors_per_workstream: usize }` — either side.
+- pub `DoorWatchSubroutine` struct L49-56 — `{ client: Arc<dyn LlmClient>, model: String, config: DoorWatchConfig, cursor_fac...` — either side.
+- pub `new` function L59-74 — `( client: Arc<dyn LlmClient>, model: impl Into<String>, cursor_factory: Arc<dyn ...` — either side.
+- pub `with_config` function L76-79 — `(mut self, config: DoorWatchConfig) -> Self` — either side.
+-  `SUBROUTINE_NAME` variable L30 — `: &str` — either side.
+-  `DoorWatchConfig` type L40-47 — `impl Default for DoorWatchConfig` — either side.
+-  `default` function L41-46 — `() -> Self` — either side.
+-  `DoorWatchSubroutine` type L58-80 — `= DoorWatchSubroutine` — either side.
+-  `IdentityMatch` struct L83-88 — `{ to_workstream: String, to_id: String, reason: String }` — either side.
+-  `DoorWatchSubroutine` type L91-211 — `impl StewardSubroutine for DoorWatchSubroutine` — either side.
+-  `name` function L92-94 — `(&self) -> &str` — either side.
+-  `is_mutating` function L96-98 — `(&self) -> bool` — either side.
+-  `run` function L100-210 — `(&self, ctx: &SubroutineCtx) -> Result<SubroutineOutcome, StewardError>` — either side.
+-  `DoorWatchSubroutine` type L213-302 — `= DoorWatchSubroutine` — either side.
+-  `classify` function L214-247 — `( &self, focus: &Entity, buckets: &[(String, Vec<Entity>)], ) -> Result<Vec<Iden...` — either side.
+-  `record` function L249-301 — `( &self, focus: &Entity, m: &IdentityMatch, ctx: &SubroutineCtx, buckets: &[(Str...` — either side.
+-  `brief` function L304-311 — `(e: &Entity) -> serde_json::Value` — either side.
+-  `tests` module L314-490 — `-` — either side.
+-  `ScriptedMock` struct L327-329 — `{ responses: Mutex<VecDeque<Value>> }` — either side.
+-  `ScriptedMock` type L330-336 — `= ScriptedMock` — either side.
+-  `new` function L331-335 — `(resp: Vec<Value>) -> Self` — either side.
+-  `ScriptedMock` type L338-352 — `impl LlmClient for ScriptedMock` — either side.
+-  `stream` function L339-351 — `( &self, _req: ChatRequest, ) -> Result< Pin<Box<dyn futures::Stream<Item = Resu...` — either side.
+-  `setup_multi_workstream` function L354-380 — `() -> ( tempfile::TempDir, Arc<Mutex<Store>>, MemoryResolver, Arc<dyn Fn(&str) -...` — either side.
+-  `proposes_identity_when_match_found` function L383-415 — `()` — either side.
+-  `hallucinated_target_id_is_dropped` function L418-448 — `()` — either side.
+-  `no_other_workstreams_means_zero_proposals` function L451-489 — `()` — either side.
+
 #### crates/arawn-steward/src/error.rs
 
 - pub `StewardError` enum L4-29 — `Storage | Memory | Journal | Subroutine | CapExceeded | NotFound | Parse`
@@ -6036,17 +6118,52 @@
 #### crates/arawn-steward/src/lib.rs
 
 - pub `cursor` module L22 — `-` — The steward continuously re-reads each workstream's KB and applies
-- pub `error` module L23 — `-` — T-0259 wires the /workstream refine / journal / rollback commands.
-- pub `journal` module L24 — `-` — T-0259 wires the /workstream refine / journal / rollback commands.
-- pub `llm_text` module L25 — `-` — T-0259 wires the /workstream refine / journal / rollback commands.
-- pub `reshelve` module L26 — `-` — T-0259 wires the /workstream refine / journal / rollback commands.
-- pub `runner` module L27 — `-` — T-0259 wires the /workstream refine / journal / rollback commands.
-- pub `subroutine` module L28 — `-` — T-0259 wires the /workstream refine / journal / rollback commands.
+- pub `doorwatch` module L23 — `-` — T-0259 wires the /workstream refine / journal / rollback commands.
+- pub `error` module L24 — `-` — T-0259 wires the /workstream refine / journal / rollback commands.
+- pub `journal` module L25 — `-` — T-0259 wires the /workstream refine / journal / rollback commands.
+- pub `llm_text` module L26 — `-` — T-0259 wires the /workstream refine / journal / rollback commands.
+- pub `map` module L27 — `-` — T-0259 wires the /workstream refine / journal / rollback commands.
+- pub `reshelve` module L28 — `-` — T-0259 wires the /workstream refine / journal / rollback commands.
+- pub `rollback` module L29 — `-` — T-0259 wires the /workstream refine / journal / rollback commands.
+- pub `runner` module L30 — `-` — T-0259 wires the /workstream refine / journal / rollback commands.
+- pub `subroutine` module L31 — `-` — T-0259 wires the /workstream refine / journal / rollback commands.
 
 #### crates/arawn-steward/src/llm_text.rs
 
 - pub `complete_text` function L17-53 — `( client: &Arc<dyn LlmClient>, model: &str, system: &str, user: &str, ) -> Resul...` — `arawn-llm` once a third consumer appears.
 - pub `extract_json_block` function L57-81 — `(raw: &str) -> Option<&str>` — First balanced `{...}` or `[...]` substring — same parser as
+
+#### crates/arawn-steward/src/map.rs
+
+- pub `MapConfig` struct L40-46 — `{ batch_size: usize, neighbors_per_focus: usize }` — Per ARAWN-A-0003 map never mutates the KB graph.
+- pub `MapSubroutine` struct L57-62 — `{ client: Arc<dyn LlmClient>, model: String, config: MapConfig, cursor_factory: ...` — Per ARAWN-A-0003 map never mutates the KB graph.
+- pub `new` function L65-76 — `( client: Arc<dyn LlmClient>, model: impl Into<String>, cursor_factory: Arc<dyn ...` — Per ARAWN-A-0003 map never mutates the KB graph.
+- pub `with_config` function L78-81 — `(mut self, config: MapConfig) -> Self` — Per ARAWN-A-0003 map never mutates the KB graph.
+-  `SUBROUTINE_NAME` variable L24 — `: &str` — Per ARAWN-A-0003 map never mutates the KB graph.
+-  `is_proposable` function L28-37 — `(rel: RelationType) -> bool` — Relations map is allowed to propose.
+-  `MapConfig` type L48-55 — `impl Default for MapConfig` — Per ARAWN-A-0003 map never mutates the KB graph.
+-  `default` function L49-54 — `() -> Self` — Per ARAWN-A-0003 map never mutates the KB graph.
+-  `MapSubroutine` type L64-82 — `= MapSubroutine` — Per ARAWN-A-0003 map never mutates the KB graph.
+-  `ProposedEdge` struct L85-91 — `{ from_id: String, rel: String, to_id: String, reason: String }` — Per ARAWN-A-0003 map never mutates the KB graph.
+-  `MapSubroutine` type L94-188 — `impl StewardSubroutine for MapSubroutine` — Per ARAWN-A-0003 map never mutates the KB graph.
+-  `name` function L95-97 — `(&self) -> &str` — Per ARAWN-A-0003 map never mutates the KB graph.
+-  `is_mutating` function L99-101 — `(&self) -> bool` — Per ARAWN-A-0003 map never mutates the KB graph.
+-  `run` function L103-187 — `(&self, ctx: &SubroutineCtx) -> Result<SubroutineOutcome, StewardError>` — Per ARAWN-A-0003 map never mutates the KB graph.
+-  `MapSubroutine` type L190-280 — `= MapSubroutine` — Per ARAWN-A-0003 map never mutates the KB graph.
+-  `propose_for` function L191-220 — `( &self, focus: &Entity, neighbors: &[&Entity], _ctx: &SubroutineCtx, ) -> Resul...` — Per ARAWN-A-0003 map never mutates the KB graph.
+-  `record_proposal` function L222-279 — `( &self, focus: &Entity, prop: &ProposedEdge, ctx: &SubroutineCtx, ) -> Result<(...` — Per ARAWN-A-0003 map never mutates the KB graph.
+-  `brief` function L282-289 — `(e: &Entity) -> serde_json::Value` — Per ARAWN-A-0003 map never mutates the KB graph.
+-  `tests` module L292-429 — `-` — Per ARAWN-A-0003 map never mutates the KB graph.
+-  `ScriptedMock` struct L307-309 — `{ responses: Mutex<VecDeque<Value>> }` — Per ARAWN-A-0003 map never mutates the KB graph.
+-  `ScriptedMock` type L310-316 — `= ScriptedMock` — Per ARAWN-A-0003 map never mutates the KB graph.
+-  `new` function L311-315 — `(resp: Vec<Value>) -> Self` — Per ARAWN-A-0003 map never mutates the KB graph.
+-  `ScriptedMock` type L318-333 — `impl LlmClient for ScriptedMock` — Per ARAWN-A-0003 map never mutates the KB graph.
+-  `stream` function L319-332 — `( &self, _req: ChatRequest, ) -> Result< Pin<Box<dyn futures::Stream<Item = Resu...` — Per ARAWN-A-0003 map never mutates the KB graph.
+-  `setup` function L335-346 — `() -> (tempfile::TempDir, Arc<MemoryManager>, Arc<Journal>, Arc< dyn Fn(&str) ->...` — Per ARAWN-A-0003 map never mutates the KB graph.
+-  `ctx` function L348-360 — `( tmp: &tempfile::TempDir, mem: &Arc<MemoryManager>, j: &Arc<Journal>, cap: usiz...` — Per ARAWN-A-0003 map never mutates the KB graph.
+-  `proposes_valid_edges_and_drops_invalid` function L363-393 — `()` — Per ARAWN-A-0003 map never mutates the KB graph.
+-  `cap_stops_after_n_proposals` function L396-415 — `()` — Per ARAWN-A-0003 map never mutates the KB graph.
+-  `cursor_advances_and_skips_on_rerun` function L418-428 — `()` — Per ARAWN-A-0003 map never mutates the KB graph.
 
 #### crates/arawn-steward/src/reshelve.rs
 
@@ -6084,6 +6201,19 @@
 -  `none_verdict_leaves_kb_untouched_but_advances_cursor` function L604-628 — `()` — LLM proposes the action; Rust picks the survivor.
 -  `second_pass_skips_already_processed_entities` function L631-653 — `()` — LLM proposes the action; Rust picks the survivor.
 -  `cap_stops_after_n_applied` function L656-682 — `()` — LLM proposes the action; Rust picks the survivor.
+
+#### crates/arawn-steward/src/rollback.rs
+
+- pub `apply_inverse` function L22-41 — `(row: &JournalRow, kb: &Arc<MemoryManager>) -> Result<(), StewardError>` — Apply the inverse mutation described by `row.outputs_json` to `kb`.
+-  `MergeOutputs` struct L44-49 — `{ survivor_id: Uuid, deprecated_id: Uuid, pre_survivor: Entity, pre_deprecated: ...` — `(subroutine, action)` so the contract stays in one place.
+-  `reshelve_merge_inverse` function L51-67 — `(row: &JournalRow, kb: &Arc<MemoryManager>) -> Result<(), StewardError>` — `(subroutine, action)` so the contract stays in one place.
+-  `DeleteOutputs` struct L70-72 — `{ entity: Entity }` — `(subroutine, action)` so the contract stays in one place.
+-  `reshelve_delete_inverse` function L74-80 — `(row: &JournalRow, kb: &Arc<MemoryManager>) -> Result<(), StewardError>` — `(subroutine, action)` so the contract stays in one place.
+-  `tests` module L83-152 — `-` — `(subroutine, action)` so the contract stays in one place.
+-  `setup_kb` function L87-91 — `() -> (tempfile::TempDir, Arc<MemoryManager>)` — `(subroutine, action)` so the contract stays in one place.
+-  `proposal_inverse_is_noop` function L94-109 — `()` — `(subroutine, action)` so the contract stays in one place.
+-  `reshelve_delete_inverse_reinserts_entity` function L112-132 — `()` — `(subroutine, action)` so the contract stays in one place.
+-  `unknown_action_returns_error` function L135-151 — `()` — `(subroutine, action)` so the contract stays in one place.
 
 #### crates/arawn-steward/src/runner.rs
 

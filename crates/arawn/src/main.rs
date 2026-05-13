@@ -740,6 +740,16 @@ async fn main() -> Result<()> {
                 std::path::PathBuf::from(&data_dir),
                 Arc::clone(router),
             )));
+            registry.register(Box::new(arawn_engine::WorkstreamApplyTool::new(
+                std::path::PathBuf::from(&data_dir),
+                Arc::clone(router),
+            )));
+            registry.register(Box::new(arawn_engine::WorkstreamDustTool::new(
+                std::path::PathBuf::from(&data_dir),
+                Arc::clone(router),
+                llm_pool.engine(),
+                llm_pool.engine_config().model.clone(),
+            )));
         }
         // workstream_promote needs the router so it can reach into
         // arbitrary workstream KBs (not just the active one).
