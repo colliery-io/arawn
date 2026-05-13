@@ -57,6 +57,7 @@ pub use tools::{
     SignalTimelineTool, TaskCreateTool, TaskGetTool, TaskListTool, TaskOutputTool, TaskStopTool,
     TaskUpdateTool, ThinkTool, WebFetchTool, WebSearchTool,
     BindBackfillHook, SessionWorkstream, WorkstreamBindTool, WorkstreamCreateTool,
-    WorkstreamDeleteTool, WorkstreamDescribeTool, WorkstreamListTool, WorkstreamPromoteTool,
-    WorkstreamShowTool, WorkstreamSwitchTool, WorkstreamUnbindTool,
+    WorkstreamDeleteTool, WorkstreamDescribeTool, WorkstreamJournalTool, WorkstreamListTool,
+    WorkstreamPromoteTool, WorkstreamRefineTool, WorkstreamRollbackTool, WorkstreamShowTool,
+    WorkstreamSwitchTool, WorkstreamUnbindTool,
 };

@@ -8,6 +8,7 @@ arawn-core = { workspace = true }
 arawn-llm = { workspace = true }
 arawn-memory = { path = "../arawn-memory" }
 arawn-projections = { path = "../arawn-projections" }
+arawn-steward = { path = "../arawn-steward" }
 arawn-storage = { workspace = true }
 arawn-tool = { workspace = true }
 arawn-embed = { path = "../arawn-embed" }

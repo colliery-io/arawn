@@ -724,6 +724,23 @@ async fn main() -> Result<()> {
             service.shared_store(),
             active_workstream.clone(),
         )));
+        // Steward surface — journal / refine / rollback. Routed
+        // through the existing workstream memory router so default-to-
+        // active behavior matches the rest of the workstream tools.
+        if let Some(ref router) = workstream_router {
+            registry.register(Box::new(arawn_engine::WorkstreamJournalTool::new(
+                std::path::PathBuf::from(&data_dir),
+                Arc::clone(router),
+            )));
+            registry.register(Box::new(arawn_engine::WorkstreamRefineTool::new(
+                std::path::PathBuf::from(&data_dir),
+                Arc::clone(router),
+            )));
+            registry.register(Box::new(arawn_engine::WorkstreamRollbackTool::new(
+                std::path::PathBuf::from(&data_dir),
+                Arc::clone(router),
+            )));
+        }
         // workstream_promote needs the router so it can reach into
         // arbitrary workstream KBs (not just the active one).
         if memory_manager.is_some() {

@@ -26,6 +26,7 @@ pub mod journal;
 pub mod llm_text;
 pub mod map;
 pub mod reshelve;
+pub mod rollback;
 pub mod runner;
 pub mod subroutine;
 

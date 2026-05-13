@@ -49,6 +49,12 @@ impl WorkstreamMemoryRouter {
         self.for_workstream(&name)
     }
 
+    /// Name of the active workstream — useful for tools that need to
+    /// open external per-workstream stores (e.g. the steward journal).
+    pub fn current_name(&self) -> String {
+        self.session.current()
+    }
+
     pub fn for_workstream(&self, name: &str) -> Result<Arc<MemoryManager>, MemoryError> {
         if let Some(existing) = self.cache.lock().unwrap().get(name).cloned() {
             return Ok(existing);
