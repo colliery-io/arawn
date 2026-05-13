@@ -19,12 +19,17 @@
 //! T-0258 lands map + door-watch (proposal-only).
 //! T-0259 wires the /workstream refine / journal / rollback commands.
 
+pub mod cursor;
 pub mod error;
 pub mod journal;
+pub mod llm_text;
+pub mod reshelve;
 pub mod runner;
 pub mod subroutine;
 
+pub use cursor::CursorStore;
 pub use error::StewardError;
 pub use journal::{Journal, JournalRecord, JournalRow, RevertResult};
+pub use reshelve::{ReshelveConfig, ReshelveSubroutine};
 pub use runner::{StewardRunner, StewardStats, SubroutineCaps};
 pub use subroutine::{IdentitySubroutine, StewardSubroutine, SubroutineCtx, SubroutineOutcome};

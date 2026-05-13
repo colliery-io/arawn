@@ -443,10 +443,12 @@ name = "arawn-steward"
 version = "0.1.0"
 dependencies = [
  "arawn-core",
+ "arawn-llm",
  "arawn-memory",
  "arawn-storage",
  "async-trait",
  "chrono",
+ "futures",
  "rusqlite",
  "serde",
  "serde_json",

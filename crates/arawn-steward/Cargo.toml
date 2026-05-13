@@ -7,7 +7,9 @@ edition = "2024"
 arawn-core = { path = "../arawn-core" }
 arawn-memory = { path = "../arawn-memory" }
 arawn-storage = { workspace = true }
+arawn-llm = { workspace = true }
 async-trait = { workspace = true }
+futures = { workspace = true }
 chrono = { workspace = true }
 rusqlite = { version = "0.37", features = ["bundled"] }
 serde = { workspace = true }

@@ -4,14 +4,14 @@ level: task
 title: "Steward re-shelve + dust subroutines (dedupe + stale summarization)"
 short_code: "ARAWN-T-0257"
 created_at: 2026-05-13T03:47:07.876525+00:00
-updated_at: 2026-05-13T03:47:07.876525+00:00
+updated_at: 2026-05-13T09:51:51.166753+00:00
 parent: ARAWN-I-0040
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -63,6 +63,10 @@ initiative_id: ARAWN-I-0040
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria **[REQUIRED]**
 
@@ -131,6 +135,35 @@ initiative_id: ARAWN-I-0040
 ### Risk Considerations
 {Technical risks and mitigation strategies}
 
-## Status Updates **[REQUIRED]**
+## Status Updates
 
-*To be added during implementation*
+### 2026-05-13 — Rescoped to re-shelve only; complete
+
+Dust deferred — design question on the stale-cluster trigger isn't settled yet (per user). Spinning out a follow-up task once we have a definition for "stale" worth keying off.
+
+**Design choices applied (per user):**
+- Re-shelve trigger: only entities `updated_at > cursor` (created or touched since last pass). A `steward_cursors(subroutine, last_updated_at)` table colocates with the journal in each workstream's KB sqlite, monotonic via `ON CONFLICT ... CASE WHEN excluded > existing`.
+- Merge survivor: most-reinforced wins; tie-break on newer `created_at`. The LLM is *not* consulted for survivor identity — it only judges duplicate / erroneous, and proposes `combined_content` when duplicate.
+- "Combine content fields" is allowed per amended ADR-0003: tag union, LLM-proposed content (falling back to survivor's existing or the deprecated's if survivor was empty), reinforcement_count summed + 1.
+- "Delete entity" allowed when LLM judges the entity *erroneous* (verdict carries `delete_target: "focus" | "candidate"`).
+
+**Implementation (`crates/arawn-steward`):**
+- `cursor::CursorStore` — sqlite-backed cursor table colocated with the workstream's `memory.db`. Monotonic advance via SQL CASE.
+- `llm_text` — local copy of the streaming-drain helper from arawn-extractor; promote to arawn-llm when a 3rd consumer appears.
+- `reshelve::ReshelveSubroutine` — full pipeline: walk touched entities since cursor → FTS candidates per focus → LLM verdict per pair → apply merge / delete with write-ahead journal payload sufficient for revert. Per-iteration re-fetch of focus state so prior actions in the same pass don't operate on stale snapshots.
+- `lib.rs` re-exports.
+- `main.rs` swaps `IdentitySubroutine` out for `ReshelveSubroutine` wired to `llm_pool.engine()` + the engine's configured model.
+
+**Tests (inline, 5 new):**
+- `merge_picks_most_reinforced_survivor` — verifies survivor identity, content replacement, supersession, reinforcement merge.
+- `erroneous_deletes_focus` — exercises `delete_target: "candidate"` path.
+- `none_verdict_leaves_kb_untouched_but_advances_cursor` — proves the cursor moves even with zero mutations so we don't re-scan.
+- `second_pass_skips_already_processed_entities` — cursor effective on second pass (would panic on empty ScriptedMock otherwise).
+- `cap_stops_after_n_applied` — blast-radius cap is honored.
+
+Total `cargo test -p arawn-steward`: **15/15** green. Workspace tests + clippy exit 0.
+
+**Deferred / known limits:**
+- Dust subroutine deferred (see context above).
+- Per-pass transaction isolation (ADR-0003 §5) isn't wired yet — write-ahead row + mutation happen as separate sqlite ops on different connections (journal vs graphqlite). For revert purposes this is fine (journal contains pre-state); for crash atomicity it's not. Land that when journal & memory share a connection.
+- Cap counts *applied actions*, not *entities considered*; this is the right shape but worth re-litigating once we have telemetry.

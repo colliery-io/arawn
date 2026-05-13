@@ -562,8 +562,23 @@ async fn main() -> Result<()> {
                         arawn_steward::StewardError::Memory(e.to_string())
                     })
                 });
-            let subs: Vec<Arc<dyn arawn_steward::StewardSubroutine>> =
-                vec![Arc::new(arawn_steward::IdentitySubroutine::default())];
+            // Reshelve uses the engine LLM by default. Cursor factory
+            // opens a fresh CursorStore per workstream against the
+            // same data dir.
+            let data_dir_clone = std::path::PathBuf::from(&data_dir);
+            let cursor_factory: Arc<
+                dyn Fn(&str) -> Result<arawn_steward::CursorStore, arawn_steward::StewardError>
+                    + Send
+                    + Sync,
+            > = Arc::new(move |name: &str| {
+                arawn_steward::CursorStore::open(&data_dir_clone, name)
+            });
+            let reshelve = Arc::new(arawn_steward::ReshelveSubroutine::new(
+                llm_pool.engine(),
+                llm_pool.engine_config().model.clone(),
+                cursor_factory,
+            ));
+            let subs: Vec<Arc<dyn arawn_steward::StewardSubroutine>> = vec![reshelve];
             let steward_runner = Arc::new(arawn_steward::StewardRunner::new(
                 service.shared_store(),
                 std::path::PathBuf::from(&data_dir),
@@ -593,7 +608,7 @@ async fn main() -> Result<()> {
                     }
                 }
             });
-            info!("steward scheduled (every 1h, identity subroutine only)");
+            info!("steward scheduled (every 1h, reshelve subroutine active)");
         }
 
         // Register workstream tools (need the shared store from the service).
