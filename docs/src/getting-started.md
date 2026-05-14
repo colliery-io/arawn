@@ -519,6 +519,51 @@ the [Continual Data Feeds](./feeds/index.md) reference for the full
 story, including the [template catalog](./feeds/template-catalog.md)
 and [agent read patterns](./feeds/agent-read-patterns.md).
 
+## 8. Workstream palaces (optional)
+
+Feeds give you raw content. A **workstream palace** is the curated
+layer on top — a typed knowledge graph the agent builds about one
+specific thing you track (a project, a person, a campaign). Bind a
+feed to a workstream and the extractor turns each new projection row
+into typed entities (decisions, conventions, facts, ...) with tags
+drawn from a per-workstream ontology.
+
+Quick start:
+
+```
+/workstream create work --description "Pat's day job — Acme platform team"
+```
+
+The agent walks you through proposing an initial tag ontology (5–12
+tags), confirms with you, and creates the workstream. Then bind a
+feed:
+
+```
+/workstream switch work
+/workstream bind work fixture-work-gmail   # or any feed_id from /feeds
+```
+
+Extraction starts on the next feed run (or immediately for already-
+mirrored rows via the backfill loop). Query the resulting palace
+with the [signal_* tools](./palaces/agent-read-patterns.md):
+
+```
+signal_search "what did we decide about postgres?"
+signal_query  { entity_type: "decision", since: "2026-04-01T00:00:00Z" }
+signal_timeline { limit: 10 }
+```
+
+Periodically the steward proposes maintenance — ontology growth via
+the [tag-promoter](./palaces/steward.md#extract-suggest-add), new
+relations, dust summaries of cold material. Review with
+`workstream_refine`, commit with `workstream_apply <id>`, undo with
+`workstream_rollback <id>`.
+
+Full story: [Workstream Palaces](./palaces/index.md). Read the
+[index](./palaces/index.md) for the three-layer mental model, then
+[extraction](./palaces/extraction.md) and [steward](./palaces/steward.md)
+for the working pieces.
+
 ## CLI one-shot mode
 
 Once the server is running, you can also send single prompts without the TUI:

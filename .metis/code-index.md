@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-14T20:09:45Z | 301 files | Python, Rust
+> Generated: 2026-05-14T20:43:14Z | 302 files | Python, Rust
 
 ## Project Structure
 
@@ -294,7 +294,8 @@
 │   │       ├── reshelve.rs
 │   │       ├── rollback.rs
 │   │       ├── runner.rs
-│   │       └── subroutine.rs
+│   │       ├── subroutine.rs
+│   │       └── tag_promoter.rs
 │   ├── arawn-storage/
 │   │   └── src/
 │   │       ├── database.rs
@@ -639,19 +640,19 @@
 -  `embed_batch` function L17-31 — `( &'a self, texts: &'a [&'a str], ) -> std::pin::Pin< Box<dyn std::future::Futur...`
 -  `DEFAULT_MODEL` variable L39 — `: &str`
 -  `FILE_LOG_FILTER` variable L42 — `: &str` — Default file log filter: debug for arawn crates, warn for third-party.
--  `main` function L45-1167 — `() -> Result<()>`
+-  `main` function L45-1177 — `() -> Result<()>`
 -  `Cli` struct L51-70 — `{ command: Option<Command>, data_dir: Option<String>, session: Option<Uuid>, lis...`
 -  `Command` enum L73-92 — `Serve | Tui | Plugin`
--  `ExtractorBindHook` struct L677-680 — `{ runner: Arc<arawn_extractor::ExtractorRunner>, store: Arc<std::sync::Mutex<ara...`
--  `ExtractorBindHook` type L681-715 — `= ExtractorBindHook`
--  `on_bind` function L682-714 — `(&self, workstream_name: &str, feed_id: &str)`
--  `run_cli_via_server` function L1170-1275 — `( url: &str, prompt: &str, session_id: Option<Uuid>, ) -> Result<()>` — Run a CLI prompt by connecting to the running server via WebSocket.
--  `build_llm_client` function L1278-1301 — `( config: &arawn_bin::LlmConfig, ) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
--  `register_default_tools` function L1304-1350 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &arawn_bin::ArawnConfig, d...` — Register all default tools into the registry.
--  `connect_mcp_servers` function L1353-1401 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
--  `register_workflow_tools` function L1404-1421 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
--  `build_engine_config` function L1423-1458 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
--  `dirs_path` function L1460-1469 — `() -> Option<String>`
+-  `ExtractorBindHook` struct L682-685 — `{ runner: Arc<arawn_extractor::ExtractorRunner>, store: Arc<std::sync::Mutex<ara...`
+-  `ExtractorBindHook` type L686-720 — `= ExtractorBindHook`
+-  `on_bind` function L687-719 — `(&self, workstream_name: &str, feed_id: &str)`
+-  `run_cli_via_server` function L1180-1285 — `( url: &str, prompt: &str, session_id: Option<Uuid>, ) -> Result<()>` — Run a CLI prompt by connecting to the running server via WebSocket.
+-  `build_llm_client` function L1288-1311 — `( config: &arawn_bin::LlmConfig, ) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
+-  `register_default_tools` function L1314-1360 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &arawn_bin::ArawnConfig, d...` — Register all default tools into the registry.
+-  `connect_mcp_servers` function L1363-1411 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
+-  `register_workflow_tools` function L1414-1431 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
+-  `build_engine_config` function L1433-1468 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
+-  `dirs_path` function L1470-1479 — `() -> Option<String>`
 
 #### crates/arawn/src/plugin_cmd.rs
 
@@ -2665,10 +2666,12 @@
 - pub `new` function L151-156 — `(data_dir: impl Into<PathBuf>, router: Arc<WorkstreamMemoryRouter>) -> Self` — via `arawn_steward::rollback::apply_inverse`.
 - pub `WorkstreamRollbackTool` struct L225-228 — `{ data_dir: PathBuf, router: Arc<WorkstreamMemoryRouter> }` — via `arawn_steward::rollback::apply_inverse`.
 - pub `new` function L231-236 — `(data_dir: impl Into<PathBuf>, router: Arc<WorkstreamMemoryRouter>) -> Self` — via `arawn_steward::rollback::apply_inverse`.
-- pub `WorkstreamDustTool` struct L326-331 — `{ data_dir: PathBuf, router: Arc<WorkstreamMemoryRouter>, client: Arc<dyn LlmCli...` — via `arawn_steward::rollback::apply_inverse`.
-- pub `new` function L334-346 — `( data_dir: impl Into<PathBuf>, router: Arc<WorkstreamMemoryRouter>, client: Arc...` — via `arawn_steward::rollback::apply_inverse`.
-- pub `WorkstreamApplyTool` struct L506-509 — `{ data_dir: PathBuf, router: Arc<WorkstreamMemoryRouter> }` — via `arawn_steward::rollback::apply_inverse`.
-- pub `new` function L512-517 — `(data_dir: impl Into<PathBuf>, router: Arc<WorkstreamMemoryRouter>) -> Self` — via `arawn_steward::rollback::apply_inverse`.
+- pub `WorkstreamDustTool` struct L334-339 — `{ data_dir: PathBuf, router: Arc<WorkstreamMemoryRouter>, client: Arc<dyn LlmCli...` — via `arawn_steward::rollback::apply_inverse`.
+- pub `new` function L342-354 — `( data_dir: impl Into<PathBuf>, router: Arc<WorkstreamMemoryRouter>, client: Arc...` — via `arawn_steward::rollback::apply_inverse`.
+- pub `WorkstreamApplyTool` struct L514-517 — `{ data_dir: PathBuf, router: Arc<WorkstreamMemoryRouter> }` — via `arawn_steward::rollback::apply_inverse`.
+- pub `new` function L520-525 — `(data_dir: impl Into<PathBuf>, router: Arc<WorkstreamMemoryRouter>) -> Self` — via `arawn_steward::rollback::apply_inverse`.
+- pub `WorkstreamTagTool` struct L623-626 — `{ data_dir: PathBuf, router: Arc<WorkstreamMemoryRouter> }` — Direct CRUD on the workstream's tag ontology.
+- pub `new` function L629-634 — `(data_dir: impl Into<PathBuf>, router: Arc<WorkstreamMemoryRouter>) -> Self` — via `arawn_steward::rollback::apply_inverse`.
 -  `open_journal` function L22-25 — `(data_dir: &PathBuf, workstream: &str) -> Result<Journal, ToolError>` — via `arawn_steward::rollback::apply_inverse`.
 -  `resolve_workstream` function L27-44 — `( memory: &MemoryHandle, explicit: Option<&str>, ) -> Result<String, ToolError>` — via `arawn_steward::rollback::apply_inverse`.
 -  `row_summary` function L47-59 — `(row: &arawn_steward::JournalRow) -> Value` — Lightweight summary of one journal row for tool output.
@@ -2689,41 +2692,51 @@
 -  `parameters_schema` function L184-192 — `(&self) -> Value` — via `arawn_steward::rollback::apply_inverse`.
 -  `execute` function L194-218 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — via `arawn_steward::rollback::apply_inverse`.
 -  `WorkstreamRollbackTool` type L230-237 — `= WorkstreamRollbackTool` — via `arawn_steward::rollback::apply_inverse`.
--  `WorkstreamRollbackTool` type L240-313 — `impl Tool for WorkstreamRollbackTool` — via `arawn_steward::rollback::apply_inverse`.
+-  `WorkstreamRollbackTool` type L240-321 — `impl Tool for WorkstreamRollbackTool` — via `arawn_steward::rollback::apply_inverse`.
 -  `name` function L241-243 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
 -  `description` function L245-249 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
 -  `is_read_only` function L251-253 — `(&self) -> bool` — via `arawn_steward::rollback::apply_inverse`.
 -  `category` function L255-262 — `(&self) -> ToolCategory` — via `arawn_steward::rollback::apply_inverse`.
 -  `parameters_schema` function L264-273 — `(&self) -> Value` — via `arawn_steward::rollback::apply_inverse`.
--  `execute` function L275-312 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — via `arawn_steward::rollback::apply_inverse`.
--  `_unused` function L318-320 — `(memory: &MemoryHandle, explicit: Option<&str>) -> Result<String, ToolError>` — via `arawn_steward::rollback::apply_inverse`.
--  `WorkstreamDustTool` type L333-347 — `= WorkstreamDustTool` — via `arawn_steward::rollback::apply_inverse`.
--  `WorkstreamDustTool` type L350-500 — `impl Tool for WorkstreamDustTool` — via `arawn_steward::rollback::apply_inverse`.
--  `name` function L351-353 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
--  `description` function L355-361 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
--  `is_read_only` function L363-366 — `(&self) -> bool` — via `arawn_steward::rollback::apply_inverse`.
--  `category` function L368-375 — `(&self) -> ToolCategory` — via `arawn_steward::rollback::apply_inverse`.
--  `parameters_schema` function L377-397 — `(&self) -> Value` — via `arawn_steward::rollback::apply_inverse`.
--  `execute` function L399-499 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — via `arawn_steward::rollback::apply_inverse`.
--  `WorkstreamApplyTool` type L511-518 — `= WorkstreamApplyTool` — via `arawn_steward::rollback::apply_inverse`.
--  `WorkstreamApplyTool` type L521-597 — `impl Tool for WorkstreamApplyTool` — via `arawn_steward::rollback::apply_inverse`.
--  `name` function L522-524 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
--  `description` function L526-531 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
--  `is_read_only` function L533-535 — `(&self) -> bool` — via `arawn_steward::rollback::apply_inverse`.
--  `category` function L537-544 — `(&self) -> ToolCategory` — via `arawn_steward::rollback::apply_inverse`.
--  `parameters_schema` function L546-555 — `(&self) -> Value` — via `arawn_steward::rollback::apply_inverse`.
--  `execute` function L557-596 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — via `arawn_steward::rollback::apply_inverse`.
--  `tests` module L600-800 — `-` — via `arawn_steward::rollback::apply_inverse`.
--  `setup` function L608-624 — `() -> ( TempDir, Arc<WorkstreamMemoryRouter>, crate::context::EngineToolContext,...` — via `arawn_steward::rollback::apply_inverse`.
--  `write_proposal_row` function L626-638 — `(j: &Journal) -> i64` — via `arawn_steward::rollback::apply_inverse`.
--  `write_delete_row` function L640-651 — `(j: &Journal, e: &Entity) -> i64` — via `arawn_steward::rollback::apply_inverse`.
--  `journal_lists_recent_rows` function L654-664 — `()` — via `arawn_steward::rollback::apply_inverse`.
--  `refine_returns_pending_proposals_only` function L667-688 — `()` — via `arawn_steward::rollback::apply_inverse`.
--  `rollback_reverts_delete_action_end_to_end` function L691-712 — `()` — via `arawn_steward::rollback::apply_inverse`.
--  `rollback_is_idempotent` function L715-728 — `()` — via `arawn_steward::rollback::apply_inverse`.
--  `apply_then_rollback_round_trip_for_map_proposal` function L731-768 — `()` — via `arawn_steward::rollback::apply_inverse`.
--  `apply_refuses_reverted_row` function L771-791 — `()` — via `arawn_steward::rollback::apply_inverse`.
--  `rollback_unknown_id_errors` function L794-799 — `()` — via `arawn_steward::rollback::apply_inverse`.
+-  `execute` function L275-320 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — via `arawn_steward::rollback::apply_inverse`.
+-  `_unused` function L326-328 — `(memory: &MemoryHandle, explicit: Option<&str>) -> Result<String, ToolError>` — via `arawn_steward::rollback::apply_inverse`.
+-  `WorkstreamDustTool` type L341-355 — `= WorkstreamDustTool` — via `arawn_steward::rollback::apply_inverse`.
+-  `WorkstreamDustTool` type L358-508 — `impl Tool for WorkstreamDustTool` — via `arawn_steward::rollback::apply_inverse`.
+-  `name` function L359-361 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
+-  `description` function L363-369 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
+-  `is_read_only` function L371-374 — `(&self) -> bool` — via `arawn_steward::rollback::apply_inverse`.
+-  `category` function L376-383 — `(&self) -> ToolCategory` — via `arawn_steward::rollback::apply_inverse`.
+-  `parameters_schema` function L385-405 — `(&self) -> Value` — via `arawn_steward::rollback::apply_inverse`.
+-  `execute` function L407-507 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — via `arawn_steward::rollback::apply_inverse`.
+-  `WorkstreamApplyTool` type L519-526 — `= WorkstreamApplyTool` — via `arawn_steward::rollback::apply_inverse`.
+-  `WorkstreamApplyTool` type L529-612 — `impl Tool for WorkstreamApplyTool` — via `arawn_steward::rollback::apply_inverse`.
+-  `name` function L530-532 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
+-  `description` function L534-539 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
+-  `is_read_only` function L541-543 — `(&self) -> bool` — via `arawn_steward::rollback::apply_inverse`.
+-  `category` function L545-552 — `(&self) -> ToolCategory` — via `arawn_steward::rollback::apply_inverse`.
+-  `parameters_schema` function L554-563 — `(&self) -> Value` — via `arawn_steward::rollback::apply_inverse`.
+-  `execute` function L565-611 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — via `arawn_steward::rollback::apply_inverse`.
+-  `WorkstreamTagTool` type L628-635 — `= WorkstreamTagTool` — via `arawn_steward::rollback::apply_inverse`.
+-  `WorkstreamTagTool` type L638-771 — `impl Tool for WorkstreamTagTool` — via `arawn_steward::rollback::apply_inverse`.
+-  `name` function L639-641 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
+-  `description` function L643-649 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
+-  `is_read_only` function L651-653 — `(&self) -> bool` — via `arawn_steward::rollback::apply_inverse`.
+-  `category` function L655-657 — `(&self) -> ToolCategory` — via `arawn_steward::rollback::apply_inverse`.
+-  `parameters_schema` function L659-679 — `(&self) -> Value` — via `arawn_steward::rollback::apply_inverse`.
+-  `execute` function L681-770 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — via `arawn_steward::rollback::apply_inverse`.
+-  `tests` module L774-1087 — `-` — via `arawn_steward::rollback::apply_inverse`.
+-  `setup` function L782-798 — `() -> ( TempDir, Arc<WorkstreamMemoryRouter>, crate::context::EngineToolContext,...` — via `arawn_steward::rollback::apply_inverse`.
+-  `write_proposal_row` function L800-812 — `(j: &Journal) -> i64` — via `arawn_steward::rollback::apply_inverse`.
+-  `write_delete_row` function L814-825 — `(j: &Journal, e: &Entity) -> i64` — via `arawn_steward::rollback::apply_inverse`.
+-  `journal_lists_recent_rows` function L828-838 — `()` — via `arawn_steward::rollback::apply_inverse`.
+-  `refine_returns_pending_proposals_only` function L841-862 — `()` — via `arawn_steward::rollback::apply_inverse`.
+-  `rollback_reverts_delete_action_end_to_end` function L865-886 — `()` — via `arawn_steward::rollback::apply_inverse`.
+-  `rollback_is_idempotent` function L889-902 — `()` — via `arawn_steward::rollback::apply_inverse`.
+-  `apply_then_rollback_round_trip_for_map_proposal` function L905-942 — `()` — via `arawn_steward::rollback::apply_inverse`.
+-  `apply_refuses_reverted_row` function L945-965 — `()` — via `arawn_steward::rollback::apply_inverse`.
+-  `workstream_tag_list_add_remove_round_trip` function L968-1030 — `()` — via `arawn_steward::rollback::apply_inverse`.
+-  `workstream_apply_promotes_tag_into_ontology` function L1033-1078 — `()` — via `arawn_steward::rollback::apply_inverse`.
+-  `rollback_unknown_id_errors` function L1081-1086 — `()` — via `arawn_steward::rollback::apply_inverse`.
 
 #### crates/arawn-engine/src/tools/task_list.rs
 
@@ -6123,18 +6136,23 @@
 
 #### crates/arawn-steward/src/accept.rs
 
-- pub `apply_forward` function L26-37 — `(row: &JournalRow, kb: &Arc<MemoryManager>) -> Result<(), StewardError>` — Apply the forward mutation described by `row.outputs_json` to `kb`.
--  `DustOutputs` struct L40-43 — `{ summary: Entity, source_ids: Vec<Uuid> }` — (`workstream_apply <id>`).
--  `dust_summarize` function L45-64 — `(row: &JournalRow, kb: &Arc<MemoryManager>) -> Result<(), StewardError>` — (`workstream_apply <id>`).
--  `MapOutputs` struct L67-71 — `{ from_id: Uuid, rel: String, to_id: Uuid }` — (`workstream_apply <id>`).
--  `map_propose_relation` function L73-87 — `(row: &JournalRow, kb: &Arc<MemoryManager>) -> Result<(), StewardError>` — (`workstream_apply <id>`).
--  `tests` module L90-174 — `-` — (`workstream_apply <id>`).
--  `setup_kb` function L96-100 — `() -> (tempfile::TempDir, Arc<MemoryManager>)` — (`workstream_apply <id>`).
--  `row` function L102-115 — `(sub: &str, act: &str, outputs: serde_json::Value) -> JournalRow` — (`workstream_apply <id>`).
--  `map_apply_adds_relation` function L118-133 — `()` — (`workstream_apply <id>`).
--  `dust_apply_inserts_summary_and_edges` function L136-158 — `()` — (`workstream_apply <id>`).
--  `doorwatch_apply_is_noop` function L161-165 — `()` — (`workstream_apply <id>`).
--  `unknown_action_errors` function L168-173 — `()` — (`workstream_apply <id>`).
+- pub `AcceptCtx` struct L21-27 — `{ kb: &'a Arc<MemoryManager>, workstream_root: &'a Path }` — Context handed to the accept dispatch.
+- pub `apply_forward` function L41-53 — `(row: &JournalRow, ctx: &AcceptCtx<'_>) -> Result<(), StewardError>` — Apply the forward mutation described by `row.outputs_json`.
+-  `PromoteOutputs` struct L56-58 — `{ tag: String }` — (`workstream_apply <id>`).
+-  `promote_tag` function L60-72 — `(row: &JournalRow, ctx: &AcceptCtx<'_>) -> Result<(), StewardError>` — (`workstream_apply <id>`).
+-  `DustOutputs` struct L75-78 — `{ summary: Entity, source_ids: Vec<Uuid> }` — (`workstream_apply <id>`).
+-  `dust_summarize` function L80-99 — `(row: &JournalRow, kb: &Arc<MemoryManager>) -> Result<(), StewardError>` — (`workstream_apply <id>`).
+-  `MapOutputs` struct L102-106 — `{ from_id: Uuid, rel: String, to_id: Uuid }` — (`workstream_apply <id>`).
+-  `map_propose_relation` function L108-122 — `(row: &JournalRow, kb: &Arc<MemoryManager>) -> Result<(), StewardError>` — (`workstream_apply <id>`).
+-  `tests` module L125-244 — `-` — (`workstream_apply <id>`).
+-  `setup_kb` function L131-135 — `() -> (tempfile::TempDir, Arc<MemoryManager>)` — (`workstream_apply <id>`).
+-  `ws_root` function L140-142 — `(tmp: &tempfile::TempDir) -> std::path::PathBuf` — `MemoryManager::open(data_dir, "ws", _)` actually creates the
+-  `row` function L144-157 — `(sub: &str, act: &str, outputs: serde_json::Value) -> JournalRow` — (`workstream_apply <id>`).
+-  `map_apply_adds_relation` function L160-176 — `()` — (`workstream_apply <id>`).
+-  `dust_apply_inserts_summary_and_edges` function L179-202 — `()` — (`workstream_apply <id>`).
+-  `doorwatch_apply_is_noop` function L205-210 — `()` — (`workstream_apply <id>`).
+-  `tag_promoter_apply_adds_to_ontology` function L213-233 — `()` — (`workstream_apply <id>`).
+-  `unknown_action_errors` function L236-243 — `()` — (`workstream_apply <id>`).
 
 #### crates/arawn-steward/src/cursor.rs
 
@@ -6230,31 +6248,32 @@
 - pub `new` function L79-84 — `(journal: Arc<Journal>, mutating_allowed: bool) -> Self` — `Journal::revert(action_id)` to reconstruct the inverse.
 - pub `write_ahead` function L88-98 — `(&self, record: &JournalRecord) -> Result<i64, StewardError>` — Forward a write to the underlying journal, refusing `applied=true`
 - pub `workstream` function L100-102 — `(&self) -> &str` — `Journal::revert(action_id)` to reconstruct the inverse.
-- pub `Journal` struct L109-113 — `{ conn: Arc<Mutex<Connection>>, workstream: String, path: PathBuf }` — Workstream-scoped journal.
-- pub `open` function L121-134 — `(data_dir: &Path, workstream_name: &str) -> Result<Self, StewardError>` — Open (or create) the journal for `workstream_name` rooted at
-- pub `workstream` function L136-138 — `(&self) -> &str` — `Journal::revert(action_id)` to reconstruct the inverse.
-- pub `path` function L140-142 — `(&self) -> &Path` — `Journal::revert(action_id)` to reconstruct the inverse.
-- pub `write_ahead` function L152-172 — `(&self, record: &JournalRecord) -> Result<i64, StewardError>` — Write a journal row *before* the mutation.
-- pub `get` function L175-187 — `(&self, id: i64) -> Result<Option<JournalRow>, StewardError>` — Fetch one row by id.
-- pub `recent` function L190-203 — `(&self, limit: usize) -> Result<Vec<JournalRow>, StewardError>` — Last `limit` rows, newest first.
-- pub `pending_proposals` function L207-222 — `(&self, limit: usize) -> Result<Vec<JournalRow>, StewardError>` — Rows where `applied = 0` (proposals from map / door-watch) and
-- pub `mark_applied` function L228-258 — `(&self, id: i64) -> Result<AppliedResult, StewardError>` — Flip a row from `applied = false` to `applied = true`.
-- pub `revert` function L264-290 — `(&self, id: i64) -> Result<RevertResult, StewardError>` — Mark a row reverted.
-- pub `prompt_hash` function L295-298 — `(input: impl AsRef<[u8]>) -> String` — Build a deterministic prompt-hash id from arbitrary input bytes.
--  `JournalGate` type L78-103 — `= JournalGate` — `Journal::revert(action_id)` to reconstruct the inverse.
--  `Journal` type L115-299 — `= Journal` — `Journal::revert(action_id)` to reconstruct the inverse.
--  `ensure_schema` function L301-320 — `(conn: &Connection) -> Result<(), StewardError>` — `Journal::revert(action_id)` to reconstruct the inverse.
--  `row_to_record` function L322-348 — `(r: &rusqlite::Row<'_>) -> Result<JournalRow, StewardError>` — `Journal::revert(action_id)` to reconstruct the inverse.
--  `tests` module L351-476 — `-` — `Journal::revert(action_id)` to reconstruct the inverse.
--  `sample` function L354-364 — `() -> JournalRecord` — `Journal::revert(action_id)` to reconstruct the inverse.
--  `write_then_read` function L367-376 — `()` — `Journal::revert(action_id)` to reconstruct the inverse.
--  `revert_flips_metadata_idempotently` function L379-389 — `()` — `Journal::revert(action_id)` to reconstruct the inverse.
--  `recent_returns_newest_first` function L392-401 — `()` — `Journal::revert(action_id)` to reconstruct the inverse.
--  `pending_proposals_filters_applied_and_reverted` function L404-420 — `()` — `Journal::revert(action_id)` to reconstruct the inverse.
--  `prompt_hash_is_deterministic` function L423-429 — `()` — `Journal::revert(action_id)` to reconstruct the inverse.
--  `gate_blocks_applied_writes_when_proposal_only` function L432-454 — `()` — `Journal::revert(action_id)` to reconstruct the inverse.
--  `gate_allows_applied_writes_when_mutating` function L457-465 — `()` — `Journal::revert(action_id)` to reconstruct the inverse.
--  `schema_idempotent_on_reopen` function L468-475 — `()` — `Journal::revert(action_id)` to reconstruct the inverse.
+- pub `inner_journal` function L110-112 — `(&self) -> &Journal` — Read-side accessor onto the underlying journal.
+- pub `Journal` struct L119-123 — `{ conn: Arc<Mutex<Connection>>, workstream: String, path: PathBuf }` — Workstream-scoped journal.
+- pub `open` function L131-144 — `(data_dir: &Path, workstream_name: &str) -> Result<Self, StewardError>` — Open (or create) the journal for `workstream_name` rooted at
+- pub `workstream` function L146-148 — `(&self) -> &str` — `Journal::revert(action_id)` to reconstruct the inverse.
+- pub `path` function L150-152 — `(&self) -> &Path` — `Journal::revert(action_id)` to reconstruct the inverse.
+- pub `write_ahead` function L162-182 — `(&self, record: &JournalRecord) -> Result<i64, StewardError>` — Write a journal row *before* the mutation.
+- pub `get` function L185-197 — `(&self, id: i64) -> Result<Option<JournalRow>, StewardError>` — Fetch one row by id.
+- pub `recent` function L200-213 — `(&self, limit: usize) -> Result<Vec<JournalRow>, StewardError>` — Last `limit` rows, newest first.
+- pub `pending_proposals` function L217-232 — `(&self, limit: usize) -> Result<Vec<JournalRow>, StewardError>` — Rows where `applied = 0` (proposals from map / door-watch) and
+- pub `mark_applied` function L238-268 — `(&self, id: i64) -> Result<AppliedResult, StewardError>` — Flip a row from `applied = false` to `applied = true`.
+- pub `revert` function L274-300 — `(&self, id: i64) -> Result<RevertResult, StewardError>` — Mark a row reverted.
+- pub `prompt_hash` function L305-308 — `(input: impl AsRef<[u8]>) -> String` — Build a deterministic prompt-hash id from arbitrary input bytes.
+-  `JournalGate` type L78-113 — `= JournalGate` — `Journal::revert(action_id)` to reconstruct the inverse.
+-  `Journal` type L125-309 — `= Journal` — `Journal::revert(action_id)` to reconstruct the inverse.
+-  `ensure_schema` function L311-330 — `(conn: &Connection) -> Result<(), StewardError>` — `Journal::revert(action_id)` to reconstruct the inverse.
+-  `row_to_record` function L332-358 — `(r: &rusqlite::Row<'_>) -> Result<JournalRow, StewardError>` — `Journal::revert(action_id)` to reconstruct the inverse.
+-  `tests` module L361-486 — `-` — `Journal::revert(action_id)` to reconstruct the inverse.
+-  `sample` function L364-374 — `() -> JournalRecord` — `Journal::revert(action_id)` to reconstruct the inverse.
+-  `write_then_read` function L377-386 — `()` — `Journal::revert(action_id)` to reconstruct the inverse.
+-  `revert_flips_metadata_idempotently` function L389-399 — `()` — `Journal::revert(action_id)` to reconstruct the inverse.
+-  `recent_returns_newest_first` function L402-411 — `()` — `Journal::revert(action_id)` to reconstruct the inverse.
+-  `pending_proposals_filters_applied_and_reverted` function L414-430 — `()` — `Journal::revert(action_id)` to reconstruct the inverse.
+-  `prompt_hash_is_deterministic` function L433-439 — `()` — `Journal::revert(action_id)` to reconstruct the inverse.
+-  `gate_blocks_applied_writes_when_proposal_only` function L442-464 — `()` — `Journal::revert(action_id)` to reconstruct the inverse.
+-  `gate_allows_applied_writes_when_mutating` function L467-475 — `()` — `Journal::revert(action_id)` to reconstruct the inverse.
+-  `schema_idempotent_on_reopen` function L478-485 — `()` — `Journal::revert(action_id)` to reconstruct the inverse.
 
 #### crates/arawn-steward/src/lib.rs
 
@@ -6270,6 +6289,7 @@
 - pub `rollback` module L31 — `-` — T-0259 wires the /workstream refine / journal / rollback commands.
 - pub `runner` module L32 — `-` — T-0259 wires the /workstream refine / journal / rollback commands.
 - pub `subroutine` module L33 — `-` — T-0259 wires the /workstream refine / journal / rollback commands.
+- pub `tag_promoter` module L34 — `-` — T-0259 wires the /workstream refine / journal / rollback commands.
 
 #### crates/arawn-steward/src/llm_text.rs
 
@@ -6347,19 +6367,24 @@
 
 #### crates/arawn-steward/src/rollback.rs
 
-- pub `apply_inverse` function L22-46 — `(row: &JournalRow, kb: &Arc<MemoryManager>) -> Result<(), StewardError>` — Apply the inverse mutation described by `row.outputs_json` to `kb`.
--  `MergeOutputs` struct L49-54 — `{ survivor_id: Uuid, deprecated_id: Uuid, pre_survivor: Entity, pre_deprecated: ...` — `(subroutine, action)` so the contract stays in one place.
--  `reshelve_merge_inverse` function L56-72 — `(row: &JournalRow, kb: &Arc<MemoryManager>) -> Result<(), StewardError>` — `(subroutine, action)` so the contract stays in one place.
--  `DeleteOutputs` struct L75-77 — `{ entity: Entity }` — `(subroutine, action)` so the contract stays in one place.
--  `DustSummarizeOutputs` struct L83-85 — `{ summary: Entity }` — `dust/summarize` writes its outputs as `{summary: Entity, source_ids: [...], ...}`.
--  `dust_summarize_inverse` function L87-97 — `(row: &JournalRow, kb: &Arc<MemoryManager>) -> Result<(), StewardError>` — `(subroutine, action)` so the contract stays in one place.
--  `reshelve_delete_inverse` function L99-105 — `(row: &JournalRow, kb: &Arc<MemoryManager>) -> Result<(), StewardError>` — `(subroutine, action)` so the contract stays in one place.
--  `tests` module L108-207 — `-` — `(subroutine, action)` so the contract stays in one place.
--  `setup_kb` function L112-116 — `() -> (tempfile::TempDir, Arc<MemoryManager>)` — `(subroutine, action)` so the contract stays in one place.
--  `proposal_inverse_is_noop` function L119-134 — `()` — `(subroutine, action)` so the contract stays in one place.
--  `reshelve_delete_inverse_reinserts_entity` function L137-157 — `()` — `(subroutine, action)` so the contract stays in one place.
--  `dust_summarize_inverse_deletes_summary` function L160-187 — `()` — `(subroutine, action)` so the contract stays in one place.
--  `unknown_action_returns_error` function L190-206 — `()` — `(subroutine, action)` so the contract stays in one place.
+- pub `RollbackCtx` struct L22-25 — `{ kb: &'a Arc<MemoryManager>, workstream_root: &'a Path }` — Context handed to the rollback dispatch — mirrors `accept::AcceptCtx`.
+- pub `apply_inverse` function L31-58 — `(row: &JournalRow, ctx: &RollbackCtx<'_>) -> Result<(), StewardError>` — Apply the inverse mutation described by `row.outputs_json`.
+-  `PromoteTagOutputs` struct L61-63 — `{ tag: String }` — `(subroutine, action)` so the contract stays in one place.
+-  `tag_promoter_inverse` function L65-76 — `( row: &JournalRow, ctx: &RollbackCtx<'_>, ) -> Result<(), StewardError>` — `(subroutine, action)` so the contract stays in one place.
+-  `MergeOutputs` struct L79-84 — `{ survivor_id: Uuid, deprecated_id: Uuid, pre_survivor: Entity, pre_deprecated: ...` — `(subroutine, action)` so the contract stays in one place.
+-  `reshelve_merge_inverse` function L86-102 — `(row: &JournalRow, kb: &Arc<MemoryManager>) -> Result<(), StewardError>` — `(subroutine, action)` so the contract stays in one place.
+-  `DeleteOutputs` struct L105-107 — `{ entity: Entity }` — `(subroutine, action)` so the contract stays in one place.
+-  `DustSummarizeOutputs` struct L113-115 — `{ summary: Entity }` — `dust/summarize` writes its outputs as `{summary: Entity, source_ids: [...], ...}`.
+-  `dust_summarize_inverse` function L117-127 — `(row: &JournalRow, kb: &Arc<MemoryManager>) -> Result<(), StewardError>` — `(subroutine, action)` so the contract stays in one place.
+-  `reshelve_delete_inverse` function L129-135 — `(row: &JournalRow, kb: &Arc<MemoryManager>) -> Result<(), StewardError>` — `(subroutine, action)` so the contract stays in one place.
+-  `tests` module L138-274 — `-` — `(subroutine, action)` so the contract stays in one place.
+-  `setup_kb` function L142-146 — `() -> (tempfile::TempDir, Arc<MemoryManager>)` — `(subroutine, action)` so the contract stays in one place.
+-  `ws_root` function L148-150 — `(tmp: &tempfile::TempDir) -> std::path::PathBuf` — `(subroutine, action)` so the contract stays in one place.
+-  `proposal_inverse_is_noop` function L153-169 — `()` — `(subroutine, action)` so the contract stays in one place.
+-  `reshelve_delete_inverse_reinserts_entity` function L172-193 — `()` — `(subroutine, action)` so the contract stays in one place.
+-  `dust_summarize_inverse_deletes_summary` function L196-224 — `()` — `(subroutine, action)` so the contract stays in one place.
+-  `tag_promoter_inverse_removes_from_ontology` function L227-252 — `()` — `(subroutine, action)` so the contract stays in one place.
+-  `unknown_action_returns_error` function L255-273 — `()` — `(subroutine, action)` so the contract stays in one place.
 
 #### crates/arawn-steward/src/runner.rs
 
@@ -6399,6 +6424,36 @@
 -  `name` function L85-87 — `(&self) -> &str` — subroutine on this pass.
 -  `is_mutating` function L89-94 — `(&self) -> bool` — subroutine on this pass.
 -  `run` function L96-119 — `(&self, ctx: &SubroutineCtx) -> Result<SubroutineOutcome, StewardError>` — subroutine on this pass.
+
+#### crates/arawn-steward/src/tag_promoter.rs
+
+- pub `SUBROUTINE_NAME` variable L26 — `: &str` — `(tag-promoter, promote_tag)` (T-0266).
+- pub `ACTION_NAME` variable L27 — `: &str` — `(tag-promoter, promote_tag)` (T-0266).
+- pub `TagPromoterConfig` struct L30-43 — `{ min_count: usize, sample_entities: usize, max_entities_scanned: usize }` — `(tag-promoter, promote_tag)` (T-0266).
+- pub `TagPromoterSubroutine` struct L55-57 — `{ config: TagPromoterConfig }` — `(tag-promoter, promote_tag)` (T-0266).
+- pub `new` function L66-68 — `(config: TagPromoterConfig) -> Self` — `(tag-promoter, promote_tag)` (T-0266).
+-  `TagPromoterConfig` type L45-53 — `impl Default for TagPromoterConfig` — `(tag-promoter, promote_tag)` (T-0266).
+-  `default` function L46-52 — `() -> Self` — `(tag-promoter, promote_tag)` (T-0266).
+-  `TagPromoterSubroutine` type L59-63 — `impl Default for TagPromoterSubroutine` — `(tag-promoter, promote_tag)` (T-0266).
+-  `default` function L60-62 — `() -> Self` — `(tag-promoter, promote_tag)` (T-0266).
+-  `TagPromoterSubroutine` type L65-69 — `= TagPromoterSubroutine` — `(tag-promoter, promote_tag)` (T-0266).
+-  `TagPromoterSubroutine` type L72-169 — `impl StewardSubroutine for TagPromoterSubroutine` — `(tag-promoter, promote_tag)` (T-0266).
+-  `name` function L73-75 — `(&self) -> &str` — `(tag-promoter, promote_tag)` (T-0266).
+-  `is_mutating` function L77-79 — `(&self) -> bool` — `(tag-promoter, promote_tag)` (T-0266).
+-  `run` function L81-168 — `(&self, ctx: &SubroutineCtx) -> Result<SubroutineOutcome, StewardError>` — `(tag-promoter, promote_tag)` (T-0266).
+-  `TagStats` struct L84-87 — `{ count: usize, samples: Vec<Uuid> }` — `(tag-promoter, promote_tag)` (T-0266).
+-  `record_proposal` function L171-192 — `( ctx: &SubroutineCtx, tag: &str, samples: &[Uuid], count: usize, ) -> Result<i6...` — `(tag-promoter, promote_tag)` (T-0266).
+-  `tests` module L195-378 — `-` — `(tag-promoter, promote_tag)` (T-0266).
+-  `setup` function L205-222 — `() -> ( tempfile::TempDir, Arc<MemoryManager>, Arc<JournalGate>, Workstream, )` — `(tag-promoter, promote_tag)` (T-0266).
+-  `entity_with_discovered` function L224-227 — `(title: &str, tags: &[&str]) -> Entity` — `(tag-promoter, promote_tag)` (T-0266).
+-  `ctx` function L229-241 — `( mem: &Arc<MemoryManager>, gate: &Arc<JournalGate>, workstream: &Workstream, ca...` — `(tag-promoter, promote_tag)` (T-0266).
+-  `promotes_tag_at_threshold` function L244-264 — `()` — `(tag-promoter, promote_tag)` (T-0266).
+-  `below_threshold_no_proposal` function L267-280 — `()` — `(tag-promoter, promote_tag)` (T-0266).
+-  `skips_tags_already_in_ontology` function L283-296 — `()` — `(tag-promoter, promote_tag)` (T-0266).
+-  `skips_steward_internal_markers` function L299-312 — `()` — `(tag-promoter, promote_tag)` (T-0266).
+-  `dedupes_against_pending_proposals` function L315-332 — `()` — `(tag-promoter, promote_tag)` (T-0266).
+-  `cap_caps_proposals_per_pass` function L335-353 — `()` — `(tag-promoter, promote_tag)` (T-0266).
+-  `normalizes_case_and_whitespace_during_tally` function L356-377 — `()` — `(tag-promoter, promote_tag)` (T-0266).
 
 ### crates/arawn-storage/src
 

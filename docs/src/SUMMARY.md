@@ -15,6 +15,11 @@
   - [Template Catalog](./feeds/template-catalog.md)
   - [Agent Read Patterns](./feeds/agent-read-patterns.md)
   - [feed_search Tool](./feeds/feed-search.md)
+- [Workstream Palaces](./palaces/index.md)
+  - [Projections](./palaces/projections.md)
+  - [Extraction](./palaces/extraction.md)
+  - [The Steward](./palaces/steward.md)
+  - [Agent Read Patterns](./palaces/agent-read-patterns.md)
 
 # Integrations
 
