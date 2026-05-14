@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-14T18:03:17Z | 301 files | Python, Rust
+> Generated: 2026-05-14T18:56:07Z | 301 files | Python, Rust
 
 ## Project Structure
 
@@ -6346,16 +6346,19 @@
 
 #### crates/arawn-steward/src/rollback.rs
 
-- pub `apply_inverse` function L22-41 — `(row: &JournalRow, kb: &Arc<MemoryManager>) -> Result<(), StewardError>` — Apply the inverse mutation described by `row.outputs_json` to `kb`.
--  `MergeOutputs` struct L44-49 — `{ survivor_id: Uuid, deprecated_id: Uuid, pre_survivor: Entity, pre_deprecated: ...` — `(subroutine, action)` so the contract stays in one place.
--  `reshelve_merge_inverse` function L51-67 — `(row: &JournalRow, kb: &Arc<MemoryManager>) -> Result<(), StewardError>` — `(subroutine, action)` so the contract stays in one place.
--  `DeleteOutputs` struct L70-72 — `{ entity: Entity }` — `(subroutine, action)` so the contract stays in one place.
--  `reshelve_delete_inverse` function L74-80 — `(row: &JournalRow, kb: &Arc<MemoryManager>) -> Result<(), StewardError>` — `(subroutine, action)` so the contract stays in one place.
--  `tests` module L83-152 — `-` — `(subroutine, action)` so the contract stays in one place.
--  `setup_kb` function L87-91 — `() -> (tempfile::TempDir, Arc<MemoryManager>)` — `(subroutine, action)` so the contract stays in one place.
--  `proposal_inverse_is_noop` function L94-109 — `()` — `(subroutine, action)` so the contract stays in one place.
--  `reshelve_delete_inverse_reinserts_entity` function L112-132 — `()` — `(subroutine, action)` so the contract stays in one place.
--  `unknown_action_returns_error` function L135-151 — `()` — `(subroutine, action)` so the contract stays in one place.
+- pub `apply_inverse` function L22-46 — `(row: &JournalRow, kb: &Arc<MemoryManager>) -> Result<(), StewardError>` — Apply the inverse mutation described by `row.outputs_json` to `kb`.
+-  `MergeOutputs` struct L49-54 — `{ survivor_id: Uuid, deprecated_id: Uuid, pre_survivor: Entity, pre_deprecated: ...` — `(subroutine, action)` so the contract stays in one place.
+-  `reshelve_merge_inverse` function L56-72 — `(row: &JournalRow, kb: &Arc<MemoryManager>) -> Result<(), StewardError>` — `(subroutine, action)` so the contract stays in one place.
+-  `DeleteOutputs` struct L75-77 — `{ entity: Entity }` — `(subroutine, action)` so the contract stays in one place.
+-  `DustSummarizeOutputs` struct L83-85 — `{ summary: Entity }` — `dust/summarize` writes its outputs as `{summary: Entity, source_ids: [...], ...}`.
+-  `dust_summarize_inverse` function L87-97 — `(row: &JournalRow, kb: &Arc<MemoryManager>) -> Result<(), StewardError>` — `(subroutine, action)` so the contract stays in one place.
+-  `reshelve_delete_inverse` function L99-105 — `(row: &JournalRow, kb: &Arc<MemoryManager>) -> Result<(), StewardError>` — `(subroutine, action)` so the contract stays in one place.
+-  `tests` module L108-207 — `-` — `(subroutine, action)` so the contract stays in one place.
+-  `setup_kb` function L112-116 — `() -> (tempfile::TempDir, Arc<MemoryManager>)` — `(subroutine, action)` so the contract stays in one place.
+-  `proposal_inverse_is_noop` function L119-134 — `()` — `(subroutine, action)` so the contract stays in one place.
+-  `reshelve_delete_inverse_reinserts_entity` function L137-157 — `()` — `(subroutine, action)` so the contract stays in one place.
+-  `dust_summarize_inverse_deletes_summary` function L160-187 — `()` — `(subroutine, action)` so the contract stays in one place.
+-  `unknown_action_returns_error` function L190-206 — `()` — `(subroutine, action)` so the contract stays in one place.
 
 #### crates/arawn-steward/src/runner.rs
 

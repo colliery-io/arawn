@@ -227,7 +227,7 @@
     "crates/arawn-steward/src/llm_text.rs": "9f64d4cb0cb2d842872e2cc168cdd80284e30225e0533941824ba9ca8f0c2597",
     "crates/arawn-steward/src/map.rs": "e28aba9696a5170fa20f8a26d3754f765ec3d1e3e96e01998cd8ddeb0db51931",
     "crates/arawn-steward/src/reshelve.rs": "0aa880cd8a886b29f125c508d876f347635db45ab0aa93ac39578cfe4fd14a1d",
-    "crates/arawn-steward/src/rollback.rs": "26385ce9bb0f10dbc039861ac2b3fcd756110dcf3e553002a24501cff5c69540",
+    "crates/arawn-steward/src/rollback.rs": "3e1956a6d4f261d23a1461fa89ece844fcf7d682cf155696f2fadce990b1bd76",
     "crates/arawn-steward/src/runner.rs": "7ada4648f5ed6161e784809898e26859b3005da15235b06fd3d4fef5c9ad24c1",
     "crates/arawn-steward/src/subroutine.rs": "ded20cc26a0547d84f8eb7d2284a37b288b5c3390a5e5844a077ec948361e42d",
     "crates/arawn-storage/src/database.rs": "b27b7dddfbe03beb244f800da5eae2f41cf2538656c24d5311361db47aa7b3ba",

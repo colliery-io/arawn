@@ -354,6 +354,24 @@ impl CotChain {
             if !cand.content.is_empty() {
                 entity = entity.with_content(cand.content.clone());
             }
+            // Anchor entity freshness to the source projection row's
+            // `source_ts`, not to the extraction wall-clock. Three
+            // payoffs:
+            //   1. Dust (`workstream_dust`) measures staleness via
+            //      `updated_at`. If we used now(), every freshly-
+            //      extracted entity would look fresh — even when its
+            //      source content is years old. That defeats dust's
+            //      whole "summarize cold material" semantic.
+            //   2. `signal_timeline` orders by `created_at`. Anchoring
+            //      to source_ts gives the agent a true chronology of
+            //      when the underlying events happened.
+            //   3. Reinforcement via `reinforce_entity` resets
+            //      `updated_at` to now() when the same fact is seen
+            //      again, so live content still looks live — only
+            //      the initial extraction inherits source-age.
+            entity.created_at = row.source_ts;
+            entity.updated_at = row.source_ts;
+            entity.accessed_at = row.source_ts;
             let store = kb.store_for(scope);
             let result = store.store_fact(&entity)?;
             let id = match result {
@@ -986,5 +1004,48 @@ mod integration {
             .unwrap();
         assert!(!pat_hits.is_empty(), "pat KB should contain the fact");
         assert!(!auth_hits.is_empty(), "auth-migration KB should contain the fact");
+    }
+
+    #[tokio::test]
+    async fn entity_dates_inherit_source_ts_not_extraction_time() {
+        // Projection row from 90 days ago. The extracted entity's
+        // created_at / updated_at / accessed_at should anchor to that
+        // source ts so dust / signal_timeline see the actual age of
+        // the underlying content.
+        let fx = setup();
+        let mut old_row = fixture_proj("m1", "we picked Postgres for storage", 0);
+        let ninety_days_ago = chrono::Utc::now() - chrono::Duration::days(90);
+        old_row.source_ts = ninety_days_ago;
+        fx.proj.write_batch(&[old_row]).unwrap();
+
+        let mock = Arc::new(
+            KeyedMockLlm::new()
+                .default_classify(serde_json::json!({"in_scope": true, "reason": "ok"}))
+                .default_extract(serde_json::json!([
+                    {"entity_type": "decision", "title": "use postgres",
+                     "tags_ontology": [], "tags_discovered": ["db"]}
+                ]))
+                .default_link(serde_json::json!([])),
+        );
+        let runner = runner_with(&fx, mock, 50);
+        let stats = runner
+            .run_for_workstream(&ws("pat", "pat's stuff"), "gmail_messages")
+            .await
+            .unwrap();
+        assert_eq!(stats.kept, 1);
+
+        let kb = fx.kb("pat");
+        let hits = kb.workstream.search("postgres", 5).unwrap();
+        let entity = hits
+            .iter()
+            .find(|e| e.title.contains("postgres"))
+            .expect("postgres entity present");
+        // Allow a small wall-clock fuzz around the 90-day anchor.
+        let drift = (entity.updated_at - ninety_days_ago).num_seconds().abs();
+        assert!(
+            drift < 5,
+            "expected updated_at within 5s of source_ts, drift was {drift}s"
+        );
+        assert_eq!(entity.updated_at, entity.created_at);
     }
 }
