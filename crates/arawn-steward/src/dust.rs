@@ -154,21 +154,26 @@ impl DustEngine {
         let sample: Vec<&Entity> = members.iter().take(opts.max_members_in_prompt).collect();
         let summary_payload = self.ask_for_summary(cluster_key, &sample).await?;
 
-        // Construct the summary entity. Tag with the cluster key + a
-        // steward marker so `re-shelve` can recognize and skip dust
-        // outputs in a future hardening pass.
-        let mut summary_tags = vec!["steward:dust".to_string()];
+        // Construct the summary entity. The cluster key (ontology tag
+        // when clustering by tag) goes on `tags_ontology` so future
+        // signal_query / dust passes find the summary alongside the
+        // sources. The `steward:dust` marker lives on the discovered
+        // set so cluster-by-ontology won't accidentally include
+        // prior summaries as members of a new cluster.
+        let mut tags_ontology = Vec::new();
         if matches!(opts.cluster_by, ClusterMode::Tag) {
-            summary_tags.push(cluster_key.to_string());
+            tags_ontology.push(cluster_key.to_string());
         }
+        let mut tags_discovered = vec!["steward:dust".to_string()];
         for t in summary_payload.tags {
-            if !summary_tags.contains(&t) {
-                summary_tags.push(t);
+            if !tags_discovered.contains(&t) && !tags_ontology.contains(&t) {
+                tags_discovered.push(t);
             }
         }
         let summary = Entity::new(EntityType::Note, summary_payload.title)
             .with_content(summary_payload.content)
-            .with_tags(summary_tags)
+            .with_tags(tags_discovered)
+            .with_tags_ontology(tags_ontology)
             .with_confidence(ConfidenceSource::Inferred);
 
         let source_ids: Vec<Uuid> = members.iter().map(|e| e.id).collect();
@@ -246,13 +251,20 @@ struct ProposedSummary {
 }
 
 fn cluster_by_tag(active: &[Entity], opts: &DustOpts) -> Vec<(String, Vec<Entity>)> {
+    // Per ADR-0004 dust clusters on `tags_ontology` only — that's the
+    // deterministic substrate, drawn from the workstream's declared
+    // closed list. `tags_discovered` is too noisy to cluster on
+    // directly (variants like `falcon` vs `falcon-project` defeat
+    // exact-string grouping).
     let mut by_tag: HashMap<String, Vec<Entity>> = HashMap::new();
     for e in active {
         // Skip prior dust outputs so we don't re-summarize summaries.
+        // The marker still lives on the discovered set since it's a
+        // steward-internal annotation, not part of any user ontology.
         if e.tags.iter().any(|t| t == "steward:dust") {
             continue;
         }
-        for t in &e.tags {
+        for t in &e.tags_ontology {
             if let Some(filter) = &opts.tag_filter
                 && !filter.iter().any(|f| f == t)
             {
@@ -343,8 +355,9 @@ mod tests {
     }
 
     fn make_stale_entity(title: &str, tag: &str, days_old: i64) -> Entity {
+        // Dust clusters on tags_ontology — populate that field directly.
         let mut e = Entity::new(EntityType::Fact, title)
-            .with_tags(vec![tag.into()]);
+            .with_tags_ontology(vec![tag.into()]);
         e.created_at = Utc::now() - Duration::days(days_old);
         e.updated_at = e.created_at;
         e
@@ -437,9 +450,12 @@ mod tests {
         for i in 0..3 {
             mgr.workstream.insert_entity(&make_stale_entity(&format!("e{i}"), "p", 60)).unwrap();
         }
-        // A prior dust summary with the same tag — should be skipped.
+        // A prior dust summary with the same ontology tag — should
+        // be skipped via the steward:dust marker on the discovered set
+        // even though it shares the cluster key on ontology.
         let mut prior = Entity::new(EntityType::Note, "old summary")
-            .with_tags(vec!["steward:dust".into(), "p".into()]);
+            .with_tags_ontology(vec!["p".into()])
+            .with_tags(vec!["steward:dust".into()]);
         prior.created_at = Utc::now() - Duration::days(60);
         prior.updated_at = prior.created_at;
         mgr.workstream.insert_entity(&prior).unwrap();

@@ -185,6 +185,13 @@ def test_uat(model="gemma4:31b-cloud", provider="https://ollama.com/v1", api_key
         angreal test uat --model llama-3.3-70b --provider groq --api-key-env GROQ_API_KEY
         angreal test uat --scenario github-monitor
     """
+    # Apply defaults defensively — angreal may pass None for unspecified
+    # args depending on how the argparse layer is wired, and subprocess
+    # rejects None env values with a confusing TypeError.
+    model = model or "gemma4:31b-cloud"
+    provider = provider or "https://ollama.com/v1"
+    api_key_env = api_key_env if api_key_env is not None else "OLLAMA_API_KEY"
+
     with Flox("."):
         env = {
             **os.environ,
@@ -194,9 +201,14 @@ def test_uat(model="gemma4:31b-cloud", provider="https://ollama.com/v1", api_key
         }
         if scenario:
             env["UAT_SCENARIO"] = scenario
+        # Final guard: drop anything that's still None — subprocess
+        # refuses to inherit a None-valued env entry.
+        env = {k: v for k, v in env.items() if v is not None}
 
-        # Resolve repo root regardless of where angreal is invoked from.
-        repo_root = pathlib.Path(__file__).resolve().parent.parent
+        # Resolve repo root. `__file__` isn't reliable under angreal's
+        # task loader (may be a cached path), so prefer the CWD, which
+        # angreal sets to the project root.
+        repo_root = pathlib.Path.cwd()
         secrets_file = repo_root / "tests" / "secrets" / "uat.enc.yaml"
 
         cargo_cmd = ["cargo", "test", "-p", "arawn-tests", "--test", "uat", "--", "--ignored", "--nocapture"]
@@ -212,7 +224,7 @@ def test_uat(model="gemma4:31b-cloud", provider="https://ollama.com/v1", api_key
             # the shell env. This is the legacy path and is fine for
             # developers who haven't onboarded to sops yet.
             cmd = cargo_cmd
-            print("  No tests/secrets/uat.enc.yaml — relying on shell env vars")
+            print(f"  No {secrets_file} — relying on shell env vars")
 
         subprocess.run(cmd, env=env, check=True)
 

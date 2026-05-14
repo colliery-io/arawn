@@ -4,6 +4,18 @@
     {
       "name": "work",
       "description": "Pat's day job at Acme — backend platform team. Focus: infrastructure decisions, on-call rotations, RFCs, eng-org logistics.",
+      "tags_ontology": [
+        "falcon",
+        "ledger",
+        "postgres",
+        "on-call",
+        "code-review",
+        "rfc",
+        "team",
+        "infrastructure",
+        "migration",
+        "process"
+      ],
       "rows": [
         {
           "feed_type": "gmail_messages",
@@ -137,6 +149,18 @@
     {
       "name": "dnd",
       "description": "Tuesday-night D&D campaign. Track party members, key NPCs, ongoing plot threads, items acquired, decisions about the campaign world.",
+      "tags_ontology": [
+        "session-prep",
+        "house-rules",
+        "plot-thread",
+        "item",
+        "npc",
+        "party-member",
+        "ruling",
+        "calidor",
+        "cult",
+        "artifact"
+      ],
       "rows": [
         {
           "feed_type": "slack_messages",

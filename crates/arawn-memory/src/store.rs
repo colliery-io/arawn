@@ -69,15 +69,21 @@ impl MemoryStore {
         let conn = self.conn.lock().unwrap();
         let sql = conn.sqlite_connection();
 
-        // Drop the T-0239 legacy tables. graphqlite EAV is the source of
-        // truth now; the FTS5 virtual table below is keyed on `entity_id`
-        // directly rather than via a rowid linkage to a parent table.
-        // No userbase to migrate per I-0040.
+        // Drop the T-0239 legacy schema (pre-graphqlite world). These
+        // tables shouldn't exist on any current db; the drops are
+        // defensive and idempotent for that one-time transition.
+        //
+        // CRITICAL: do NOT drop `entities_fts` here. `MemoryStore::open`
+        // runs on every workstream KB load — dropping the FTS table on
+        // reopen wipes the index for every entity ever extracted. The
+        // CREATE below is `IF NOT EXISTS` precisely so a re-open is a
+        // no-op when the schema is already current. (Bug landed during
+        // the original T-0239 graphqlite migration; UATs surfaced it
+        // post-seed when the server's reopen wiped seed FTS rows.)
         sql.execute_batch(
             "DROP TRIGGER IF EXISTS entities_ai;
              DROP TRIGGER IF EXISTS entities_ad;
              DROP TRIGGER IF EXISTS entities_au;
-             DROP TABLE IF EXISTS entities_fts;
              DROP TABLE IF EXISTS entities;
              DROP TABLE IF EXISTS relations;",
         )
@@ -625,6 +631,7 @@ fn cypher_upsert_entity(
                  n.confidence_source = $confidence_source, \
                  n.reinforcement_count = $reinforcement_count, \
                  n.superseded = $superseded, n.tags = $tags, \
+                 n.tags_ontology = $tags_ontology, \
                  n.source_session = $source_session, \
                  n.created_at = $created_at, n.updated_at = $updated_at, \
                  n.accessed_at = $accessed_at";
@@ -638,6 +645,7 @@ fn cypher_upsert_entity(
              confidence_source: $confidence_source, \
              reinforcement_count: $reinforcement_count, \
              superseded: $superseded, tags: $tags, \
+             tags_ontology: $tags_ontology, \
              source_session: $source_session, \
              created_at: $created_at, updated_at: $updated_at, \
              accessed_at: $accessed_at}})"
@@ -705,6 +713,12 @@ fn rows_to_entities(result: &graphqlite::CypherResult) -> Result<Vec<Entity>, Me
 
 /// Upsert the FTS row for an entity. FTS5 has no MERGE; emulate via
 /// DELETE-then-INSERT (idempotent under the same `entity_id`).
+///
+/// The FTS5 virtual table has two text columns (title, content). To
+/// give `signal_search` recall across both tag fields without adding
+/// columns (and a schema migration), we fold each tag list into the
+/// indexed `content` blob. Filtering by tag remains an exact-match
+/// operation against the entity's tag arrays — FTS is recall-only.
 fn fts_upsert(sql: &rusqlite::Connection, entity: &Entity) -> Result<(), MemoryError> {
     let id = entity.id.to_string();
     sql.execute(
@@ -712,9 +726,22 @@ fn fts_upsert(sql: &rusqlite::Connection, entity: &Entity) -> Result<(), MemoryE
         params![id.clone()],
     )
     .map_err(|e| MemoryError::Storage(format!("fts delete-before-insert: {e}")))?;
+    let mut content_text = entity.content.clone().unwrap_or_default();
+    if !entity.tags.is_empty() {
+        if !content_text.is_empty() {
+            content_text.push('\n');
+        }
+        content_text.push_str(&entity.tags.join(" "));
+    }
+    if !entity.tags_ontology.is_empty() {
+        if !content_text.is_empty() {
+            content_text.push('\n');
+        }
+        content_text.push_str(&entity.tags_ontology.join(" "));
+    }
     sql.execute(
         "INSERT INTO entities_fts (entity_id, title, content) VALUES (?1, ?2, ?3)",
-        params![id, entity.title, entity.content],
+        params![id, entity.title, content_text],
     )
     .map_err(|e| MemoryError::Storage(format!("fts insert: {e}")))?;
     Ok(())

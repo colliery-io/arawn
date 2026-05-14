@@ -32,7 +32,7 @@ use serde_json::Value;
 use arawn_core::Workstream;
 use arawn_extractor::{CotChain, ExtractionChain, ExtractorRunner};
 use arawn_llm::LlmClient;
-use arawn_memory::MemoryManager;
+use arawn_memory::{AddedVia, MemoryManager, TagOntologyStore};
 use arawn_projections::ProjectionStore;
 use arawn_projections::gmail::GmailMessageProjection;
 use arawn_projections::slack::SlackMessageProjection;
@@ -48,6 +48,13 @@ pub struct Fixture {
 pub struct WorkstreamFixture {
     pub name: String,
     pub description: String,
+    /// Per ADR-0004 a workstream's tag ontology must exist before
+    /// extraction can populate `tags_ontology` on entities. Required at
+    /// fixture-apply time; if a fixture predates this field, fall back
+    /// to an empty list and the extractor will run with
+    /// discovered-only tags.
+    #[serde(default)]
+    pub tags_ontology: Vec<String>,
     pub rows: Vec<FixtureRow>,
 }
 
@@ -143,6 +150,19 @@ pub fn apply(fixture: &Fixture, data_dir: &Path) -> Result<Applied, String> {
             .find_workstream_by_name(&ws_def.name)
             .map_err(|e| format!("find ws `{}`: {e}", ws_def.name))?
             .unwrap_or(ws);
+
+        // Seed the declared tag ontology (ADR-0004). The fixture's
+        // `tags_ontology` field carries the closed-list tags the
+        // extractor will be allowed to attach to entities. Skips when
+        // empty so a transitional fixture without ontology still
+        // applies (extractor falls back to discovered-only).
+        if !ws_def.tags_ontology.is_empty() {
+            let ontology = TagOntologyStore::open(data_dir, &ws_def.name)
+                .map_err(|e| format!("ontology open `{}`: {e}", ws_def.name))?;
+            ontology
+                .add_many(ws_def.tags_ontology.iter().cloned(), AddedVia::Manual)
+                .map_err(|e| format!("ontology seed `{}`: {e}", ws_def.name))?;
+        }
 
         // Group rows by Projection trait variant, write each batch.
         let mut gmail_rows: Vec<GmailMessageProjection> = Vec::new();
@@ -311,6 +331,7 @@ mod tests {
             workstreams: vec![WorkstreamFixture {
                 name: "work".into(),
                 description: "Pat's day job".into(),
+                tags_ontology: vec!["postgres".into(), "ledger".into()],
                 rows: vec![
                     FixtureRow::GmailMessages(GmailFixtureRow {
                         source_id: "m1".into(),

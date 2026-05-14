@@ -149,6 +149,18 @@ impl Store {
         SessionStore::new(&self.db).list_scratch()
     }
 
+    /// Persist a session's active workstream name. Called by
+    /// `WorkstreamSwitchTool` so the active workstream survives the
+    /// session-load auto-restore on the next turn (without this,
+    /// switches are in-memory only and revert).
+    pub fn update_session_workstream_name(
+        &self,
+        session_id: Uuid,
+        workstream_name: &str,
+    ) -> Result<bool, StorageError> {
+        SessionStore::new(&self.db).update_workstream_name(session_id, workstream_name)
+    }
+
     /// Remove SQLite session records whose JSONL files no longer exist on disk.
     /// Call on startup to clean up after manual filesystem deletions.
     pub fn reconcile_sessions(&self) -> Result<usize, StorageError> {

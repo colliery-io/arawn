@@ -174,6 +174,20 @@ pub fn compute_confidence(
 }
 
 /// A knowledge entity stored in the KB.
+///
+/// Tag model (ADR-0004):
+/// - `tags_ontology` — drawn exclusively from the owning workstream's
+///   declared tag list. Substrate for dust clustering, `signal_query`
+///   filtering, and other operations that need deterministic grouping.
+/// - `tags` (semantically "discovered") — free-form LLM emission.
+///   Searched by `signal_search` for recall; promoted into the ontology
+///   over time via the `tag-promoter` steward subroutine.
+///
+/// The field name `tags` is kept for backwards compatibility with the
+/// many existing callers; it now exclusively carries the discovered
+/// half of the split. New code should set `tags_ontology` via
+/// `with_tags_ontology` and `tags` via `with_tags_discovered`
+/// (alias to `with_tags`).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Entity {
     pub id: Uuid,
@@ -183,7 +197,15 @@ pub struct Entity {
     pub confidence_source: ConfidenceSource,
     pub reinforcement_count: u32,
     pub superseded: bool,
+    /// Free-form LLM-emitted tags. Carries content the workstream's
+    /// ontology hasn't yet absorbed. See `tags_ontology` for the
+    /// closed-list counterpart.
     pub tags: Vec<String>,
+    /// Closed-list tags drawn from the workstream's declared ontology.
+    /// Filtered against the ontology at extract time — only in-list
+    /// strings survive. This is the field dust clusters on.
+    #[serde(default)]
+    pub tags_ontology: Vec<String>,
     pub source_session: Option<Uuid>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -202,6 +224,7 @@ impl Entity {
             reinforcement_count: 0,
             superseded: false,
             tags: Vec::new(),
+            tags_ontology: Vec::new(),
             source_session: None,
             created_at: now,
             updated_at: now,
@@ -219,8 +242,22 @@ impl Entity {
         self
     }
 
+    /// Set the discovered (free-form) tags. Alias: `with_tags_discovered`.
     pub fn with_tags(mut self, tags: Vec<String>) -> Self {
         self.tags = tags;
+        self
+    }
+
+    /// Explicit alias for `with_tags` — set the discovered tag set.
+    pub fn with_tags_discovered(self, tags: Vec<String>) -> Self {
+        self.with_tags(tags)
+    }
+
+    /// Set the ontology (closed-list) tags. These must come from the
+    /// workstream's declared ontology; callers that don't filter
+    /// upstream are bypassing the contract.
+    pub fn with_tags_ontology(mut self, tags: Vec<String>) -> Self {
+        self.tags_ontology = tags;
         self
     }
 

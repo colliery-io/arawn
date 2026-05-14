@@ -58,7 +58,8 @@ fn entity_summary(e: &Entity) -> Value {
         "entity_type": e.entity_type.as_str(),
         "title": e.title,
         "content_snippet": e.content.as_deref().map(|c| snippet(c, 240)),
-        "tags": e.tags,
+        "tags_ontology": e.tags_ontology,
+        "tags_discovered": e.tags,
         "confidence": e.confidence_score(),
         "reinforcement_count": e.reinforcement_count,
         "created_at": e.created_at.to_rfc3339(),
@@ -286,7 +287,11 @@ impl Tool for SignalQueryTool {
                 "tags": {
                     "type": "array",
                     "items": { "type": "string" },
-                    "description": "Match any of these tags (OR semantics)"
+                    "description": "Match any of these tags (OR semantics). Filters against `tags_ontology` by default — set `include_discovered: true` to also match against `tags_discovered`."
+                },
+                "include_discovered": {
+                    "type": "boolean",
+                    "description": "When true, the `tags` filter also matches against the LLM-free `tags_discovered` field. Default false (ontology-only)."
                 },
                 "since": { "type": "string", "description": "RFC3339; updated_at >= since" },
                 "until": { "type": "string", "description": "RFC3339; updated_at <= until" },
@@ -314,6 +319,10 @@ impl Tool for SignalQueryTool {
                     .collect()
             })
             .unwrap_or_default();
+        let include_discovered = params
+            .get("include_discovered")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
         let since = params
             .get("since")
             .and_then(|v| v.as_str())
@@ -348,7 +357,13 @@ impl Tool for SignalQueryTool {
         };
 
         if !tags.is_empty() {
-            candidates.retain(|e| e.tags.iter().any(|t| tags.contains(t)));
+            // ADR-0004: default filter is ontology-only (deterministic).
+            // `include_discovered` widens to LLM-free tags for recall.
+            candidates.retain(|e| {
+                let onto_hit = e.tags_ontology.iter().any(|t| tags.contains(t));
+                let disc_hit = include_discovered && e.tags.iter().any(|t| tags.contains(t));
+                onto_hit || disc_hit
+            });
         }
         if let Some(s) = since {
             candidates.retain(|e| e.updated_at >= s);
@@ -502,24 +517,26 @@ mod tests {
     }
 
     fn seed(mgr: &MemoryManager) {
+        // signal_query defaults to filtering on tags_ontology (ADR-0004).
+        // Tests seed ontology tags directly.
         mgr.workstream
             .insert_entity(
                 &Entity::new(EntityType::Decision, "use postgres for storage")
                     .with_content("chose postgres over mysql for jsonb support")
-                    .with_tags(vec!["db".into(), "infra".into()])
+                    .with_tags_ontology(vec!["db".into(), "infra".into()])
                     .with_confidence(ConfidenceSource::Stated),
             )
             .unwrap();
         mgr.workstream
             .insert_entity(
                 &Entity::new(EntityType::Convention, "PRs require two reviewers")
-                    .with_tags(vec!["process".into()]),
+                    .with_tags_ontology(vec!["process".into()]),
             )
             .unwrap();
         mgr.workstream
             .insert_entity(
                 &Entity::new(EntityType::Note, "alice is on parental leave through june")
-                    .with_tags(vec!["team".into()]),
+                    .with_tags_ontology(vec!["team".into()]),
             )
             .unwrap();
     }

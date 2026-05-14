@@ -80,6 +80,8 @@ pub fn relation_type_from_str(s: &str) -> Option<RelationType> {
 /// considered and rejected — see ADR-A-0002.
 pub fn entity_to_props(e: &Entity) -> JsonValue {
     let tags_json = serde_json::to_string(&e.tags).unwrap_or_else(|_| "[]".into());
+    let tags_ontology_json =
+        serde_json::to_string(&e.tags_ontology).unwrap_or_else(|_| "[]".into());
     json!({
         "id": e.id.to_string(),
         "title": e.title,
@@ -88,6 +90,7 @@ pub fn entity_to_props(e: &Entity) -> JsonValue {
         "reinforcement_count": e.reinforcement_count as i64,
         "superseded": e.superseded,
         "tags": tags_json,
+        "tags_ontology": tags_ontology_json,
         "source_session": e.source_session.map(|u| u.to_string()),
         "created_at": e.created_at.to_rfc3339(),
         "updated_at": e.updated_at.to_rfc3339(),
@@ -145,14 +148,18 @@ pub fn node_to_entity(node: &Value) -> Result<Entity, MemoryError> {
     let reinforcement_count = get_i64("reinforcement_count").unwrap_or(0).max(0) as u32;
     let superseded = get_bool("superseded").unwrap_or(false);
 
-    let tags: Vec<String> = match props.get("tags") {
-        Some(Value::String(s)) => serde_json::from_str(s).unwrap_or_default(),
-        Some(Value::Array(arr)) => arr
-            .iter()
-            .filter_map(|v| v.as_str().map(String::from))
-            .collect(),
-        _ => Vec::new(),
+    let parse_tags = |k: &str| -> Vec<String> {
+        match props.get(k) {
+            Some(Value::String(s)) => serde_json::from_str(s).unwrap_or_default(),
+            Some(Value::Array(arr)) => arr
+                .iter()
+                .filter_map(|v| v.as_str().map(String::from))
+                .collect(),
+            _ => Vec::new(),
+        }
     };
+    let tags = parse_tags("tags");
+    let tags_ontology = parse_tags("tags_ontology");
 
     let source_session = get_str("source_session").and_then(|s| Uuid::parse_str(s).ok());
 
@@ -172,6 +179,7 @@ pub fn node_to_entity(node: &Value) -> Result<Entity, MemoryError> {
         reinforcement_count,
         superseded,
         tags,
+        tags_ontology,
         source_session,
         created_at: parse_dt("created_at"),
         updated_at: parse_dt("updated_at"),

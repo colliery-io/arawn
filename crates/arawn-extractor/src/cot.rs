@@ -23,7 +23,7 @@ use arawn_core::Workstream;
 use arawn_llm::LlmClient;
 use arawn_memory::{
     ConfidenceSource, Entity, EntityType, MemoryManager, MemoryStore, RelationType, Scope,
-    StoreFactResult,
+    StoreFactResult, TagOntologyStore, normalize_tag,
 };
 use arawn_projections::ProjectionRow;
 
@@ -81,8 +81,25 @@ impl ExtractionChain for CotChain {
             });
         }
 
+        // Load the workstream's declared ontology — Stage 2's prompt
+        // shows it to the model and Stage 4 filters LLM emissions
+        // against it. Soft-fail to empty so an absent ontology table
+        // doesn't break the chain (extractor will produce
+        // discovered-only entities until the ontology exists).
+        let ontology = match TagOntologyStore::open_at(&workstream.root_dir) {
+            Ok(store) => store.tags().unwrap_or_default(),
+            Err(e) => {
+                warn!(
+                    workstream = %workstream.name,
+                    error = %e,
+                    "ontology unavailable; extracting with empty ontology"
+                );
+                Vec::new()
+            }
+        };
+
         // ── Stage 2: extract ────────────────────────────────────────────
-        let candidates = self.extract(workstream, row).await?;
+        let candidates = self.extract(workstream, row, &ontology).await?;
         if candidates.is_empty() {
             return Ok(ChainOutcome::default());
         }
@@ -91,7 +108,7 @@ impl ExtractionChain for CotChain {
         let link_proposals = self.link_by_name(workstream, &candidates).await?;
 
         // ── Stage 4: write ──────────────────────────────────────────────
-        self.write(row, &candidates, &link_proposals, kb).await
+        self.write(row, &candidates, &link_proposals, kb, &ontology).await
     }
 }
 
@@ -154,8 +171,15 @@ struct ExtractedCandidate {
     title: String,
     #[serde(default)]
     content: String,
+    /// LLM-emitted ontology tags. Filtered against the workstream's
+    /// declared ontology before writing — anything not in the list is
+    /// dropped. Per ADR-0004 this is the substrate dust clusters on.
     #[serde(default)]
-    tags: Vec<String>,
+    tags_ontology: Vec<String>,
+    /// LLM-emitted free-form tags. Pass through verbatim. Material for
+    /// the `tag-promoter` steward subroutine to propose promotion.
+    #[serde(default)]
+    tags_discovered: Vec<String>,
 }
 
 impl CotChain {
@@ -163,23 +187,48 @@ impl CotChain {
         &self,
         ws: &Workstream,
         row: &ProjectionRow,
+        ontology: &[String],
     ) -> Result<Vec<ExtractedCandidate>, ExtractionError> {
+        let ontology_block = if ontology.is_empty() {
+            "(empty — workstream has no ontology yet; emit only `tags_discovered` for now)".to_string()
+        } else {
+            ontology.join(", ")
+        };
         let system = "Pull typed knowledge entities out of the content. Output ONLY \
-                      a JSON array. Each item: {\"entity_type\": one of \
-                      [fact, decision, convention, preference, person, note], \
-                      \"title\": short, \"content\": optional longer text, \
-                      \"tags\": optional array of short slugs}. \
-                      Be conservative — only entities that genuinely belong in \
-                      this workstream's KB. Empty array is a valid answer.";
+                      a JSON array. Each item: \
+                      {\"entity_type\": one of [fact, decision, convention, \
+                       preference, person, note], \
+                       \"title\": short, \
+                       \"content\": optional longer text, \
+                       \"tags_ontology\": array of tags drawn EXCLUSIVELY from \
+                       the workstream's declared ontology (see user prompt). \
+                       Pick the ontology tags that genuinely apply — empty \
+                       array is fine if none fit. Do NOT mint new ontology \
+                       tags here. \
+                       \"tags_discovered\": array of 1–4 free-form tags you \
+                       think describe the content. These are NOT constrained \
+                       to the ontology and become candidates for promotion \
+                       later. Include specific identifiers (project names, \
+                       system names, person names, RFC numbers) when they \
+                       appear.}\n\
+                      \n\
+                      Be conservative on entity emission — only entities that \
+                      genuinely belong in this workstream's KB. Empty array \
+                      is a valid answer.";
         let user = format!(
-            "Workstream: {name}\nDescription: {desc}\n\n\
-             Title: {title}\nBody:\n{body}\n",
+            "Workstream: {name}\n\
+             Description: {desc}\n\
+             Declared ontology (use these EXACT strings for tags_ontology): {ontology_block}\n\
+             \n\
+             Title: {title}\n\
+             Body:\n{body}\n",
             name = ws.name,
             desc = if ws.description.is_empty() {
                 "(no description set)"
             } else {
                 ws.description.as_str()
             },
+            ontology_block = ontology_block,
             title = row.title,
             body = truncate(&row.body_text, 4_000),
         );
@@ -263,7 +312,15 @@ impl CotChain {
         candidates: &[ExtractedCandidate],
         links: &[LinkProposal],
         kb: &MemoryManager,
+        ontology: &[String],
     ) -> Result<ChainOutcome, ExtractionError> {
+        // Per ADR-0004: ontology tags emitted by the LLM are filtered
+        // against the workstream's declared ontology before writing.
+        // Anything not in the list is dropped silently — the LLM
+        // doesn't get to invent ontology tags here.
+        let ontology_set: std::collections::HashSet<String> =
+            ontology.iter().map(|t| normalize_tag(t)).collect();
+
         // 1. Write entities; record title → id for link resolution.
         let mut title_to_id: HashMap<String, (Uuid, Scope)> = HashMap::new();
         let mut entities_written: Vec<Uuid> = Vec::new();
@@ -273,9 +330,27 @@ impl CotChain {
                 continue;
             };
             let scope = et.default_scope();
+
+            // Filter ontology tags to declared list (case-folded).
+            let kept_ontology: Vec<String> = cand
+                .tags_ontology
+                .iter()
+                .map(|t| normalize_tag(t))
+                .filter(|t| ontology_set.contains(t))
+                .collect();
+            // Normalize discovered tags too so promotion candidates are
+            // stable across casing/whitespace variants.
+            let discovered: Vec<String> = cand
+                .tags_discovered
+                .iter()
+                .map(|t| normalize_tag(t))
+                .filter(|t| !t.is_empty())
+                .collect();
+
             let mut entity = Entity::new(et, cand.title.clone())
                 .with_confidence(ConfidenceSource::Inferred)
-                .with_tags(cand.tags.clone());
+                .with_tags(discovered)
+                .with_tags_ontology(kept_ontology);
             if !cand.content.is_empty() {
                 entity = entity.with_content(cand.content.clone());
             }
@@ -406,12 +481,25 @@ mod tests {
 
     #[test]
     fn parse_candidates_basic() {
-        let raw = "[{\"entity_type\":\"decision\",\"title\":\"use rust\",\"content\":\"chose rust over go\",\"tags\":[\"lang\"]}]";
+        let raw = "[{\"entity_type\":\"decision\",\"title\":\"use rust\",\
+                    \"content\":\"chose rust over go\",\
+                    \"tags_ontology\":[\"languages\"],\
+                    \"tags_discovered\":[\"rust\",\"systems\"]}]";
         let v = parse_candidates(raw).unwrap();
         assert_eq!(v.len(), 1);
         assert_eq!(v[0].entity_type, "decision");
         assert_eq!(v[0].title, "use rust");
-        assert_eq!(v[0].tags, vec!["lang"]);
+        assert_eq!(v[0].tags_ontology, vec!["languages"]);
+        assert_eq!(v[0].tags_discovered, vec!["rust", "systems"]);
+    }
+
+    #[test]
+    fn parse_candidates_tolerates_missing_tag_fields() {
+        let raw = "[{\"entity_type\":\"note\",\"title\":\"x\"}]";
+        let v = parse_candidates(raw).unwrap();
+        assert_eq!(v.len(), 1);
+        assert!(v[0].tags_ontology.is_empty());
+        assert!(v[0].tags_discovered.is_empty());
     }
 
     #[test]

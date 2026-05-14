@@ -74,9 +74,12 @@ impl Tool for WorkstreamCreateTool {
     }
 
     fn description(&self) -> &str {
-        "Create a new workstream — an isolated scope for one thing you track \
-         (a person, a project, a hobby). Name must be a slug \
-         (lowercase, digits, '-' and '_' only). Does not switch into it."
+        "Create a new workstream with a declared tag ontology. Per ADR-0004 \
+         the ontology is required at creation — the agent should propose it \
+         via `workstream_propose_ontology(description)`, confirm with the \
+         user, then call this tool with the agreed `tags_ontology`. Name \
+         must be a slug (lowercase, digits, '-' and '_' only). Does not \
+         switch into the new workstream."
     }
 
     fn category(&self) -> ToolCategory {
@@ -89,9 +92,14 @@ impl Tool for WorkstreamCreateTool {
             "properties": {
                 "name": {"type": "string", "description": "Slug name (e.g. 'pat', 'auth-migration')"},
                 "display_name": {"type": "string", "description": "Optional human label (defaults to name)"},
-                "description": {"type": "string", "description": "Optional free-text description"}
+                "description": {"type": "string", "description": "Required free-text description — what this workstream tracks"},
+                "tags_ontology": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Required non-empty list of initial ontology tags. These form the closed list of tags the extractor may attach to entities. Add more later via `workstream_apply` of `tag-promoter` proposals or directly with `workstream_tag add`."
+                }
             },
-            "required": ["name"]
+            "required": ["name", "description", "tags_ontology"]
         })
     }
 
@@ -114,35 +122,95 @@ impl Tool for WorkstreamCreateTool {
             .and_then(|v| v.as_str())
             .map(String::from)
             .unwrap_or_else(|| name.clone());
-        let description = params
-            .get("description")
-            .and_then(|v| v.as_str())
-            .unwrap_or_default()
-            .to_string();
+        let description = match params.get("description").and_then(|v| v.as_str()) {
+            Some(s) if !s.trim().is_empty() => s.to_string(),
+            _ => {
+                return Ok(ToolOutput::error(
+                    "description is required — it shapes ontology proposals and seeds the extractor".to_string(),
+                ));
+            }
+        };
 
-        let root_dir = ctx
-            .data_dir()
-            .map(|d| d.join("workstreams").join(&name))
-            .unwrap_or_else(|| std::path::PathBuf::from(&name));
+        // Ontology is required and non-empty. Normalize + dedupe so a
+        // caller that sends `["Falcon", "falcon ", "FALCON"]` lands a
+        // single `falcon` tag.
+        let tags_ontology: Vec<String> = match params.get("tags_ontology").and_then(|v| v.as_array()) {
+            Some(arr) if !arr.is_empty() => {
+                let mut seen = std::collections::HashSet::new();
+                let mut out = Vec::new();
+                for v in arr {
+                    if let Some(s) = v.as_str() {
+                        let canonical = arawn_memory::normalize_tag(s);
+                        if !canonical.is_empty() && seen.insert(canonical.clone()) {
+                            out.push(canonical);
+                        }
+                    }
+                }
+                if out.is_empty() {
+                    return Ok(ToolOutput::error(
+                        "tags_ontology contained no valid tags after normalization".to_string(),
+                    ));
+                }
+                out
+            }
+            _ => {
+                return Ok(ToolOutput::error(
+                    "tags_ontology is required — pass a non-empty array of initial ontology tags (use `workstream_propose_ontology` to suggest)".to_string(),
+                ));
+            }
+        };
+
+        let data_dir = match ctx.data_dir() {
+            Some(d) => d.to_path_buf(),
+            None => {
+                return Ok(ToolOutput::error(
+                    "no data_dir available — required to materialize the workstream's KB + ontology".to_string(),
+                ));
+            }
+        };
+        let root_dir = data_dir.join("workstreams").join(&name);
 
         let mut ws = Workstream::new(&name, &root_dir);
         ws.display_name = display_name;
         ws.description = description;
 
-        let store = self.store.lock().unwrap();
-        match store.create_workstream(&ws) {
-            Ok(()) => Ok(ToolOutput::success(
-                json!({
-                    "name": ws.name,
-                    "display_name": ws.display_name,
-                    "root_dir": ws.root_dir.display().to_string(),
-                })
-                .to_string(),
-            )),
-            Err(e) => Ok(ToolOutput::error(format!(
-                "failed to create workstream: {e}"
-            ))),
+        // Insert the workstream record first; if ontology seeding fails
+        // afterwards the record stays — user can re-run `workstream_tag
+        // add` to recover. The alternative (rollback the workstream)
+        // doubles the failure modes for negligible benefit.
+        {
+            let store = self.store.lock().unwrap();
+            if let Err(e) = store.create_workstream(&ws) {
+                return Ok(ToolOutput::error(format!("failed to create workstream: {e}")));
+            }
         }
+
+        // Seed the ontology in the workstream's colocated table.
+        let ontology = match arawn_memory::TagOntologyStore::open(&data_dir, &name) {
+            Ok(o) => o,
+            Err(e) => {
+                return Ok(ToolOutput::error(format!(
+                    "workstream record created but ontology open failed: {e}"
+                )));
+            }
+        };
+        if let Err(e) =
+            ontology.add_many(tags_ontology.iter().cloned(), arawn_memory::AddedVia::Manual)
+        {
+            return Ok(ToolOutput::error(format!(
+                "workstream record created but ontology seed failed: {e}"
+            )));
+        }
+
+        Ok(ToolOutput::success(
+            json!({
+                "name": ws.name,
+                "display_name": ws.display_name,
+                "root_dir": ws.root_dir.display().to_string(),
+                "tags_ontology": tags_ontology,
+            })
+            .to_string(),
+        ))
     }
 }
 
@@ -276,7 +344,7 @@ impl Tool for WorkstreamSwitchTool {
 
     async fn execute(
         &self,
-        _ctx: &dyn arawn_tool::ToolContext,
+        ctx: &dyn arawn_tool::ToolContext,
         params: Value,
     ) -> Result<ToolOutput, ToolError> {
         let name = match params.get("name").and_then(|v| v.as_str()) {
@@ -298,7 +366,24 @@ impl Tool for WorkstreamSwitchTool {
             )));
         }
         let prev = self.active.current();
+        // Update the in-memory shim first so any tool call running in
+        // the same turn sees the new active workstream.
         self.active.set(&ws.name);
+        // Persist on the session record too — `LocalService` re-reads
+        // `meta.workstream_name` on every session-load (i.e. every
+        // turn over WS) and pushes it back into the SessionWorkstream
+        // shim. Without this write, the in-memory set above would be
+        // overwritten by the stale persisted value on the next turn
+        // and the switch would silently revert.
+        let session_id = ctx.session_id();
+        if let Err(e) = store.update_session_workstream_name(session_id, &ws.name) {
+            tracing::warn!(
+                error = %e,
+                session = %session_id,
+                workstream = %ws.name,
+                "workstream_switch: failed to persist on session — switch is in-memory only, will revert on next turn"
+            );
+        }
         // Lead with the human-readable banner so the TUI / agent
         // surfaces the switch clearly; structured fields trail.
         let banner = format!(
@@ -856,15 +941,27 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn create_succeeds_with_valid_slug() {
+    async fn create_succeeds_with_valid_slug_description_and_ontology() {
         let (tmp, store, _) = setup();
         let tool = WorkstreamCreateTool::new(store.clone());
         let result = tool
-            .execute(&test_ctx(&tmp), json!({"name": "pat"}))
+            .execute(
+                &test_ctx(&tmp),
+                json!({
+                    "name": "pat",
+                    "description": "Pat's day job",
+                    "tags_ontology": ["postgres", "ledger"]
+                }),
+            )
             .await
             .unwrap();
         assert!(!result.is_error, "got: {}", result.content);
         assert!(result.content.contains("pat"));
+        // Ontology is materialized — both seed tags should be present.
+        let ont = arawn_memory::TagOntologyStore::open(tmp.path(), "pat").unwrap();
+        assert_eq!(ont.count().unwrap(), 2);
+        assert!(ont.contains("postgres").unwrap());
+        assert!(ont.contains("ledger").unwrap());
     }
 
     #[tokio::test]
@@ -872,10 +969,73 @@ mod tests {
         let (tmp, store, _) = setup();
         let tool = WorkstreamCreateTool::new(store.clone());
         let result = tool
-            .execute(&test_ctx(&tmp), json!({"name": "scratch"}))
+            .execute(
+                &test_ctx(&tmp),
+                json!({
+                    "name": "scratch",
+                    "description": "x",
+                    "tags_ontology": ["x"]
+                }),
+            )
             .await
             .unwrap();
         assert!(result.is_error);
+    }
+
+    #[tokio::test]
+    async fn create_refuses_missing_description() {
+        let (tmp, store, _) = setup();
+        let tool = WorkstreamCreateTool::new(store.clone());
+        let result = tool
+            .execute(
+                &test_ctx(&tmp),
+                json!({"name": "pat", "tags_ontology": ["x"]}),
+            )
+            .await
+            .unwrap();
+        assert!(result.is_error);
+        assert!(result.content.contains("description"));
+    }
+
+    #[tokio::test]
+    async fn create_refuses_empty_ontology() {
+        let (tmp, store, _) = setup();
+        let tool = WorkstreamCreateTool::new(store.clone());
+        let result = tool
+            .execute(
+                &test_ctx(&tmp),
+                json!({
+                    "name": "pat",
+                    "description": "x",
+                    "tags_ontology": []
+                }),
+            )
+            .await
+            .unwrap();
+        assert!(result.is_error);
+        assert!(result.content.contains("tags_ontology"));
+    }
+
+    #[tokio::test]
+    async fn create_dedupes_and_normalizes_ontology() {
+        let (tmp, store, _) = setup();
+        let tool = WorkstreamCreateTool::new(store.clone());
+        let result = tool
+            .execute(
+                &test_ctx(&tmp),
+                json!({
+                    "name": "pat",
+                    "description": "x",
+                    "tags_ontology": ["Falcon", "falcon ", "FALCON", "ledger"]
+                }),
+            )
+            .await
+            .unwrap();
+        assert!(!result.is_error, "got: {}", result.content);
+        let ont = arawn_memory::TagOntologyStore::open(tmp.path(), "pat").unwrap();
+        assert_eq!(ont.count().unwrap(), 2);
+        assert!(ont.contains("falcon").unwrap());
+        assert!(ont.contains("ledger").unwrap());
     }
 
     #[tokio::test]
