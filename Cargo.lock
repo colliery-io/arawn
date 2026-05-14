@@ -490,6 +490,7 @@ dependencies = [
  "arawn-memory",
  "arawn-projections",
  "arawn-service",
+ "arawn-steward",
  "arawn-storage",
  "arawn-tool",
  "arawn-workflow",

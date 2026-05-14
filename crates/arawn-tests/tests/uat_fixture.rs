@@ -318,6 +318,49 @@ pub async fn drive_extraction(
     Ok(total)
 }
 
+/// Drive the `tag-promoter` steward subroutine across every workstream
+/// after seeding. Pure-stats (no LLM call) — counts `tags_discovered`
+/// frequencies and journals promotion proposals. Run this AFTER
+/// `drive_extraction` so the discovered set is populated.
+///
+/// Returns the total number of promotion proposals written across all
+/// workstreams. Cap per workstream is generous (50) since this is for
+/// UAT scenarios — production caps live in `arawn.toml`.
+pub async fn drive_tag_promoter(
+    applied: &Applied,
+    data_dir: &Path,
+) -> Result<usize, String> {
+    use arawn_steward::{
+        Journal, JournalGate, StewardSubroutine, SubroutineCtx,
+        TagPromoterSubroutine,
+    };
+    let sub = TagPromoterSubroutine::default();
+    let mut total = 0usize;
+    for aw in &applied.per_workstream {
+        let mgr = MemoryManager::for_workstream(data_dir, &aw.workstream.name, None)
+            .map(Arc::new)
+            .map_err(|e| format!("open kb `{}`: {e}", aw.workstream.name))?;
+        let journal = Arc::new(
+            Journal::open(data_dir, &aw.workstream.name)
+                .map_err(|e| format!("open journal `{}`: {e}", aw.workstream.name))?,
+        );
+        // proposal-only — gate accepts only applied=false writes
+        let gate = Arc::new(JournalGate::new(Arc::clone(&journal), false));
+        let ctx = SubroutineCtx {
+            workstream: aw.workstream.clone(),
+            memory: mgr,
+            journal: gate,
+            cap: 50,
+        };
+        let outcome = sub
+            .run(&ctx)
+            .await
+            .map_err(|e| format!("tag-promoter `{}`: {e}", aw.workstream.name))?;
+        total += outcome.proposals_recorded;
+    }
+    Ok(total)
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // Tests
 // ─────────────────────────────────────────────────────────────────────────

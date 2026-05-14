@@ -698,11 +698,54 @@ fn signal_extraction_e2e_scenario() -> Scenario {
     }
 }
 
+/// I-0040 T-0268: tag-promoter Extract→Suggest→Add cycle UAT.
+/// Reuses the signal-extraction-e2e fixture, but exercises the
+/// ontology growth path:
+///   1. Inspect the active workstream's ontology.
+///   2. Review pending steward proposals (tag-promoter should have
+///      surfaced multiple promotion candidates after seed).
+///   3. Apply one promotion.
+///   4. Verify it now appears in the ontology with `added_via=promotion`.
+///   5. Roll back.
+///   6. Verify it's gone again.
+fn tag_promoter_cycle_scenario() -> Scenario {
+    Scenario {
+        name: "tag-promoter-cycle".to_string(),
+        objective: "Drive the I-0040 Extract→Suggest→Add cycle for tag promotion. The seed loader runs the tag-promoter subroutine after extraction so pending promotion proposals exist before turn 1.".to_string(),
+        turns: vec![
+            ScenarioTurn {
+                user_message: "Switch to the `work` workstream, then use workstream_show to tell me what's currently in this workstream's tag ontology.".to_string(),
+                judge_expectation: "Agent calls workstream_switch then workstream_show; reports the seeded ontology tags (falcon, ledger, postgres, on-call, code-review, rfc, team, infrastructure, migration, process).".to_string(),
+            },
+            ScenarioTurn {
+                user_message: "Use workstream_refine to list any pending steward proposals — especially tag-promotion proposals. Summarize what each one would do if I applied it.".to_string(),
+                judge_expectation: "Agent calls workstream_refine and reports at least one tag-promoter proposal with a tag name and a count. May explain each proposal would add the proposed tag to the ontology.".to_string(),
+            },
+            ScenarioTurn {
+                user_message: "Pick the most useful-looking tag-promotion proposal and apply it with workstream_apply, then confirm the new tag appears in the ontology.".to_string(),
+                judge_expectation: "Agent calls workstream_apply with a proposal id, then workstream_show (or workstream_tag list) to verify the new tag with `added_via=promotion`.".to_string(),
+            },
+            ScenarioTurn {
+                user_message: "Actually let's undo that — roll it back and check the ontology again so I can see the tag is gone.".to_string(),
+                judge_expectation: "Agent calls workstream_rollback with the same id, then verifies via workstream_show / workstream_tag list that the tag is no longer present (or status is `not_found`).".to_string(),
+            },
+        ],
+        mechanical: MechanicalThresholds {
+            min_files_created: 0,
+            min_workflows_created: 0,
+            min_memory_entities: 4,
+            max_tool_errors: 2,
+        },
+        seed_fixture: Some("tests/fixtures/uat/signal-extraction-e2e.json".to_string()),
+    }
+}
+
 fn all_scenarios() -> Vec<Scenario> {
     vec![
         github_monitor_scenario(),
         work_signal_pipeline_scenario(),
         signal_extraction_e2e_scenario(),
+        tag_promoter_cycle_scenario(),
     ]
 }
 
@@ -782,6 +825,21 @@ async fn uat_run() {
                 processed,
                 applied.per_workstream.len()
             );
+
+            // Drive the tag-promoter steward subroutine so any
+            // tag_promoter UAT scenario sees pending promotion proposals
+            // when the agent calls workstream_refine. Pure-stats, no
+            // LLM cost — safe to run on every seeded scenario; if there
+            // are no recurring discovered tags, it's a no-op.
+            let promoted = uat_fixture::drive_tag_promoter(&applied, &scenario_dir)
+                .await
+                .expect("drive tag-promoter");
+            if promoted > 0 {
+                println!(
+                    "    Seed tag-promoter: {} promotion proposals journaled",
+                    promoted
+                );
+            }
         }
 
         // Start server

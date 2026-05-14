@@ -4,14 +4,14 @@ level: task
 title: "UAT scenario for tag-promoter Extract→Suggest→Add cycle"
 short_code: "ARAWN-T-0268"
 created_at: 2026-05-14T20:48:26.287341+00:00
-updated_at: 2026-05-14T20:48:26.287341+00:00
+updated_at: 2026-05-14T20:59:59.163505+00:00
 parent: ARAWN-I-0040
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/active"
 
 
 exit_criteria_met: false
@@ -63,6 +63,8 @@ initiative_id: ARAWN-I-0040
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
 
 ## Acceptance Criteria **[REQUIRED]**
 
@@ -131,6 +133,47 @@ initiative_id: ARAWN-I-0040
 ### Risk Considerations
 {Technical risks and mitigation strategies}
 
-## Status Updates **[REQUIRED]**
+## Status Updates
 
-*To be added during implementation*
+### 2026-05-14 — Scaffolding complete; awaiting UAT run
+
+**Seed-side tag-promoter driver (`uat_fixture::drive_tag_promoter`).**
+After `drive_extraction` populates entities (and therefore `tags_discovered`),
+this helper instantiates `TagPromoterSubroutine::default()` and runs it
+against each seeded workstream via a normal `SubroutineCtx`. Pure-stats —
+no LLM cost. Proposals land in the workstream journal as `applied=false`
+rows ready for the agent to discover via `workstream_refine`.
+
+The harness in `uat.rs` now calls `drive_tag_promoter` immediately after
+`drive_extraction` on every seeded scenario; it's a no-op when no
+recurring discovered tags exist.
+
+**`arawn-tests` Cargo.toml** gained an `arawn-steward` path dep so the
+seed helper can reach `TagPromoterSubroutine` + `Journal` + `JournalGate`
++ `SubroutineCtx`.
+
+**New scenario `tag-promoter-cycle`** (`tests/uat.rs`):
+- Reuses the existing `signal-extraction-e2e.json` fixture (no new
+  fixture file needed — the same 26-row seed produces enough recurring
+  discovered tags for tag-promoter to find candidates).
+- 4 turns:
+  1. `workstream_switch work` + `workstream_show` — agent lists the seeded ontology.
+  2. `workstream_refine` — agent surfaces pending tag-promoter proposals.
+  3. `workstream_apply <id>` — agent commits one promotion; verifies via show/list.
+  4. `workstream_rollback <id>` — agent undoes; verifies the tag is gone again.
+- Mechanical: `min_memory_entities=4`, `max_tool_errors=2`.
+- Excluded from default UAT runs unless `UAT_SCENARIO=tag-promoter-cycle` is set.
+
+**Verification:**
+- `cargo build -p arawn-tests --tests` clean.
+- `cargo test -p arawn-tests --test uat_fixture --test uat_fixture_smoke` — 7/7.
+- `angreal check clippy` exit 0.
+
+**Next step (user-side):**
+```
+UAT_SCENARIO=tag-promoter-cycle angreal test uat
+angreal test uat-judge --results /tmp/arawn-uat-<ts>
+```
+
+Findings from that run will land here. Until then this task stays
+"active" so it shows up on actionable-work lists.
