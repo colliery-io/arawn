@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-14T16:37:15Z | 301 files | Python, Rust
+> Generated: 2026-05-14T17:21:32Z | 301 files | Python, Rust
 
 ## Project Structure
 
@@ -2569,53 +2569,53 @@
 
 - pub `SignalSearchTool` struct L82-86 — `{ memory: MemoryHandle, router: Option<Arc<WorkstreamMemoryRouter>>, embedder: O...` — Person) is reachable via the existing `memory_search` tool.
 - pub `new` function L89-103 — `( memory: impl Into<MemoryHandle>, embedder: Option<Arc<dyn Embedder>>, ) -> Sel...` — Person) is reachable via the existing `memory_search` tool.
-- pub `SignalQueryTool` struct L242-245 — `{ memory: MemoryHandle, router: Option<Arc<WorkstreamMemoryRouter>> }` — Person) is reachable via the existing `memory_search` tool.
-- pub `new` function L248-255 — `(memory: impl Into<MemoryHandle>) -> Self` — Person) is reachable via the existing `memory_search` tool.
-- pub `SignalTimelineTool` struct L391-394 — `{ memory: MemoryHandle, router: Option<Arc<WorkstreamMemoryRouter>> }` — Person) is reachable via the existing `memory_search` tool.
-- pub `new` function L397-404 — `(memory: impl Into<MemoryHandle>) -> Self` — Person) is reachable via the existing `memory_search` tool.
+- pub `SignalQueryTool` struct L248-251 — `{ memory: MemoryHandle, router: Option<Arc<WorkstreamMemoryRouter>> }` — Person) is reachable via the existing `memory_search` tool.
+- pub `new` function L254-261 — `(memory: impl Into<MemoryHandle>) -> Self` — Person) is reachable via the existing `memory_search` tool.
+- pub `SignalTimelineTool` struct L403-406 — `{ memory: MemoryHandle, router: Option<Arc<WorkstreamMemoryRouter>> }` — Person) is reachable via the existing `memory_search` tool.
+- pub `new` function L409-416 — `(memory: impl Into<MemoryHandle>) -> Self` — Person) is reachable via the existing `memory_search` tool.
 -  `RRF_K` variable L29 — `: f32` — RRF constant — same value `feed_search` uses.
 -  `rrf` function L31-33 — `(rank: usize) -> f32` — Person) is reachable via the existing `memory_search` tool.
 -  `resolve_manager` function L38-53 — `( handle: &MemoryHandle, explicit: Option<&str>, router: Option<&Arc<WorkstreamM...` — Resolve the manager for the active workstream, or the explicit
 -  `entity_summary` function L55-68 — `(e: &Entity) -> Value` — Person) is reachable via the existing `memory_search` tool.
 -  `snippet` function L70-76 — `(s: &str, cap: usize) -> String` — Person) is reachable via the existing `memory_search` tool.
 -  `SignalSearchTool` type L88-104 — `= SignalSearchTool` — Person) is reachable via the existing `memory_search` tool.
--  `SignalSearchTool` type L107-222 — `impl Tool for SignalSearchTool` — Person) is reachable via the existing `memory_search` tool.
+-  `SignalSearchTool` type L107-228 — `impl Tool for SignalSearchTool` — Person) is reachable via the existing `memory_search` tool.
 -  `name` function L108-110 — `(&self) -> &str` — Person) is reachable via the existing `memory_search` tool.
 -  `description` function L112-117 — `(&self) -> &str` — Person) is reachable via the existing `memory_search` tool.
 -  `is_read_only` function L119-121 — `(&self) -> bool` — Person) is reachable via the existing `memory_search` tool.
--  `category` function L123-125 — `(&self) -> ToolCategory` — Person) is reachable via the existing `memory_search` tool.
--  `parameters_schema` function L127-140 — `(&self) -> Value` — Person) is reachable via the existing `memory_search` tool.
--  `execute` function L142-221 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — Person) is reachable via the existing `memory_search` tool.
--  `FusedHit` struct L224-227 — `{ entity: Entity, score: f32 }` — Person) is reachable via the existing `memory_search` tool.
--  `FusedHit` type L229-236 — `= FusedHit` — Person) is reachable via the existing `memory_search` tool.
--  `new` function L230-235 — `(entity: Entity) -> Self` — Person) is reachable via the existing `memory_search` tool.
--  `SignalQueryTool` type L247-256 — `= SignalQueryTool` — Person) is reachable via the existing `memory_search` tool.
--  `SignalQueryTool` type L259-385 — `impl Tool for SignalQueryTool` — Person) is reachable via the existing `memory_search` tool.
--  `name` function L260-262 — `(&self) -> &str` — Person) is reachable via the existing `memory_search` tool.
--  `description` function L264-269 — `(&self) -> &str` — Person) is reachable via the existing `memory_search` tool.
--  `is_read_only` function L271-273 — `(&self) -> bool` — Person) is reachable via the existing `memory_search` tool.
--  `category` function L275-277 — `(&self) -> ToolCategory` — Person) is reachable via the existing `memory_search` tool.
--  `parameters_schema` function L279-302 — `(&self) -> Value` — Person) is reachable via the existing `memory_search` tool.
--  `execute` function L304-384 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — Person) is reachable via the existing `memory_search` tool.
--  `SignalTimelineTool` type L396-405 — `= SignalTimelineTool` — Person) is reachable via the existing `memory_search` tool.
--  `SignalTimelineTool` type L408-497 — `impl Tool for SignalTimelineTool` — Person) is reachable via the existing `memory_search` tool.
--  `name` function L409-411 — `(&self) -> &str` — Person) is reachable via the existing `memory_search` tool.
--  `description` function L413-417 — `(&self) -> &str` — Person) is reachable via the existing `memory_search` tool.
--  `is_read_only` function L419-421 — `(&self) -> bool` — Person) is reachable via the existing `memory_search` tool.
--  `category` function L423-425 — `(&self) -> ToolCategory` — Person) is reachable via the existing `memory_search` tool.
--  `parameters_schema` function L427-437 — `(&self) -> Value` — Person) is reachable via the existing `memory_search` tool.
--  `execute` function L439-496 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — Person) is reachable via the existing `memory_search` tool.
--  `tests` module L504-698 — `-` — Person) is reachable via the existing `memory_search` tool.
--  `setup` function L510-517 — `() -> (TempDir, Arc<MemoryManager>, crate::context::EngineToolContext)` — Person) is reachable via the existing `memory_search` tool.
--  `seed` function L519-542 — `(mgr: &MemoryManager)` — Person) is reachable via the existing `memory_search` tool.
--  `signal_search_finds_decision_by_title` function L545-563 — `()` — Person) is reachable via the existing `memory_search` tool.
--  `signal_search_empty_kb_returns_zero` function L566-575 — `()` — Person) is reachable via the existing `memory_search` tool.
--  `signal_query_filters_by_entity_type` function L578-595 — `()` — Person) is reachable via the existing `memory_search` tool.
--  `signal_query_filters_by_tag_any_of` function L598-613 — `()` — Person) is reachable via the existing `memory_search` tool.
--  `signal_query_no_filters_returns_all_active` function L616-623 — `()` — Person) is reachable via the existing `memory_search` tool.
--  `signal_query_window_filters` function L626-640 — `()` — Person) is reachable via the existing `memory_search` tool.
--  `signal_timeline_orders_desc_and_caps_to_window` function L643-658 — `()` — Person) is reachable via the existing `memory_search` tool.
--  `explicit_workstream_arg_routes_via_router` function L661-697 — `()` — Person) is reachable via the existing `memory_search` tool.
+-  `category` function L123-131 — `(&self) -> ToolCategory` — Person) is reachable via the existing `memory_search` tool.
+-  `parameters_schema` function L133-146 — `(&self) -> Value` — Person) is reachable via the existing `memory_search` tool.
+-  `execute` function L148-227 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — Person) is reachable via the existing `memory_search` tool.
+-  `FusedHit` struct L230-233 — `{ entity: Entity, score: f32 }` — Person) is reachable via the existing `memory_search` tool.
+-  `FusedHit` type L235-242 — `= FusedHit` — Person) is reachable via the existing `memory_search` tool.
+-  `new` function L236-241 — `(entity: Entity) -> Self` — Person) is reachable via the existing `memory_search` tool.
+-  `SignalQueryTool` type L253-262 — `= SignalQueryTool` — Person) is reachable via the existing `memory_search` tool.
+-  `SignalQueryTool` type L265-397 — `impl Tool for SignalQueryTool` — Person) is reachable via the existing `memory_search` tool.
+-  `name` function L266-268 — `(&self) -> &str` — Person) is reachable via the existing `memory_search` tool.
+-  `description` function L270-275 — `(&self) -> &str` — Person) is reachable via the existing `memory_search` tool.
+-  `is_read_only` function L277-279 — `(&self) -> bool` — Person) is reachable via the existing `memory_search` tool.
+-  `category` function L281-289 — `(&self) -> ToolCategory` — Person) is reachable via the existing `memory_search` tool.
+-  `parameters_schema` function L291-314 — `(&self) -> Value` — Person) is reachable via the existing `memory_search` tool.
+-  `execute` function L316-396 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — Person) is reachable via the existing `memory_search` tool.
+-  `SignalTimelineTool` type L408-417 — `= SignalTimelineTool` — Person) is reachable via the existing `memory_search` tool.
+-  `SignalTimelineTool` type L420-515 — `impl Tool for SignalTimelineTool` — Person) is reachable via the existing `memory_search` tool.
+-  `name` function L421-423 — `(&self) -> &str` — Person) is reachable via the existing `memory_search` tool.
+-  `description` function L425-429 — `(&self) -> &str` — Person) is reachable via the existing `memory_search` tool.
+-  `is_read_only` function L431-433 — `(&self) -> bool` — Person) is reachable via the existing `memory_search` tool.
+-  `category` function L435-443 — `(&self) -> ToolCategory` — Person) is reachable via the existing `memory_search` tool.
+-  `parameters_schema` function L445-455 — `(&self) -> Value` — Person) is reachable via the existing `memory_search` tool.
+-  `execute` function L457-514 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — Person) is reachable via the existing `memory_search` tool.
+-  `tests` module L522-716 — `-` — Person) is reachable via the existing `memory_search` tool.
+-  `setup` function L528-535 — `() -> (TempDir, Arc<MemoryManager>, crate::context::EngineToolContext)` — Person) is reachable via the existing `memory_search` tool.
+-  `seed` function L537-560 — `(mgr: &MemoryManager)` — Person) is reachable via the existing `memory_search` tool.
+-  `signal_search_finds_decision_by_title` function L563-581 — `()` — Person) is reachable via the existing `memory_search` tool.
+-  `signal_search_empty_kb_returns_zero` function L584-593 — `()` — Person) is reachable via the existing `memory_search` tool.
+-  `signal_query_filters_by_entity_type` function L596-613 — `()` — Person) is reachable via the existing `memory_search` tool.
+-  `signal_query_filters_by_tag_any_of` function L616-631 — `()` — Person) is reachable via the existing `memory_search` tool.
+-  `signal_query_no_filters_returns_all_active` function L634-641 — `()` — Person) is reachable via the existing `memory_search` tool.
+-  `signal_query_window_filters` function L644-658 — `()` — Person) is reachable via the existing `memory_search` tool.
+-  `signal_timeline_orders_desc_and_caps_to_window` function L661-676 — `()` — Person) is reachable via the existing `memory_search` tool.
+-  `explicit_workstream_arg_routes_via_router` function L679-715 — `()` — Person) is reachable via the existing `memory_search` tool.
 
 #### crates/arawn-engine/src/tools/skill.rs
 
@@ -2661,69 +2661,69 @@
 
 - pub `WorkstreamJournalTool` struct L65-68 — `{ data_dir: PathBuf, router: Arc<WorkstreamMemoryRouter> }` — via `arawn_steward::rollback::apply_inverse`.
 - pub `new` function L71-76 — `(data_dir: impl Into<PathBuf>, router: Arc<WorkstreamMemoryRouter>) -> Self` — via `arawn_steward::rollback::apply_inverse`.
-- pub `WorkstreamRefineTool` struct L140-143 — `{ data_dir: PathBuf, router: Arc<WorkstreamMemoryRouter> }` — via `arawn_steward::rollback::apply_inverse`.
-- pub `new` function L146-151 — `(data_dir: impl Into<PathBuf>, router: Arc<WorkstreamMemoryRouter>) -> Self` — via `arawn_steward::rollback::apply_inverse`.
-- pub `WorkstreamRollbackTool` struct L215-218 — `{ data_dir: PathBuf, router: Arc<WorkstreamMemoryRouter> }` — via `arawn_steward::rollback::apply_inverse`.
-- pub `new` function L221-226 — `(data_dir: impl Into<PathBuf>, router: Arc<WorkstreamMemoryRouter>) -> Self` — via `arawn_steward::rollback::apply_inverse`.
-- pub `WorkstreamDustTool` struct L311-316 — `{ data_dir: PathBuf, router: Arc<WorkstreamMemoryRouter>, client: Arc<dyn LlmCli...` — via `arawn_steward::rollback::apply_inverse`.
-- pub `new` function L319-331 — `( data_dir: impl Into<PathBuf>, router: Arc<WorkstreamMemoryRouter>, client: Arc...` — via `arawn_steward::rollback::apply_inverse`.
-- pub `WorkstreamApplyTool` struct L450-453 — `{ data_dir: PathBuf, router: Arc<WorkstreamMemoryRouter> }` — via `arawn_steward::rollback::apply_inverse`.
-- pub `new` function L456-461 — `(data_dir: impl Into<PathBuf>, router: Arc<WorkstreamMemoryRouter>) -> Self` — via `arawn_steward::rollback::apply_inverse`.
+- pub `WorkstreamRefineTool` struct L145-148 — `{ data_dir: PathBuf, router: Arc<WorkstreamMemoryRouter> }` — via `arawn_steward::rollback::apply_inverse`.
+- pub `new` function L151-156 — `(data_dir: impl Into<PathBuf>, router: Arc<WorkstreamMemoryRouter>) -> Self` — via `arawn_steward::rollback::apply_inverse`.
+- pub `WorkstreamRollbackTool` struct L225-228 — `{ data_dir: PathBuf, router: Arc<WorkstreamMemoryRouter> }` — via `arawn_steward::rollback::apply_inverse`.
+- pub `new` function L231-236 — `(data_dir: impl Into<PathBuf>, router: Arc<WorkstreamMemoryRouter>) -> Self` — via `arawn_steward::rollback::apply_inverse`.
+- pub `WorkstreamDustTool` struct L326-331 — `{ data_dir: PathBuf, router: Arc<WorkstreamMemoryRouter>, client: Arc<dyn LlmCli...` — via `arawn_steward::rollback::apply_inverse`.
+- pub `new` function L334-346 — `( data_dir: impl Into<PathBuf>, router: Arc<WorkstreamMemoryRouter>, client: Arc...` — via `arawn_steward::rollback::apply_inverse`.
+- pub `WorkstreamApplyTool` struct L470-473 — `{ data_dir: PathBuf, router: Arc<WorkstreamMemoryRouter> }` — via `arawn_steward::rollback::apply_inverse`.
+- pub `new` function L476-481 — `(data_dir: impl Into<PathBuf>, router: Arc<WorkstreamMemoryRouter>) -> Self` — via `arawn_steward::rollback::apply_inverse`.
 -  `open_journal` function L22-25 — `(data_dir: &PathBuf, workstream: &str) -> Result<Journal, ToolError>` — via `arawn_steward::rollback::apply_inverse`.
 -  `resolve_workstream` function L27-44 — `( memory: &MemoryHandle, explicit: Option<&str>, ) -> Result<String, ToolError>` — via `arawn_steward::rollback::apply_inverse`.
 -  `row_summary` function L47-59 — `(row: &arawn_steward::JournalRow) -> Value` — Lightweight summary of one journal row for tool output.
 -  `WorkstreamJournalTool` type L70-77 — `= WorkstreamJournalTool` — via `arawn_steward::rollback::apply_inverse`.
--  `WorkstreamJournalTool` type L80-134 — `impl Tool for WorkstreamJournalTool` — via `arawn_steward::rollback::apply_inverse`.
+-  `WorkstreamJournalTool` type L80-139 — `impl Tool for WorkstreamJournalTool` — via `arawn_steward::rollback::apply_inverse`.
 -  `name` function L81-83 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
 -  `description` function L85-89 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
 -  `is_read_only` function L91-93 — `(&self) -> bool` — via `arawn_steward::rollback::apply_inverse`.
--  `category` function L95-97 — `(&self) -> ToolCategory` — via `arawn_steward::rollback::apply_inverse`.
--  `parameters_schema` function L99-107 — `(&self) -> Value` — via `arawn_steward::rollback::apply_inverse`.
--  `execute` function L109-133 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — via `arawn_steward::rollback::apply_inverse`.
--  `WorkstreamRefineTool` type L145-152 — `= WorkstreamRefineTool` — via `arawn_steward::rollback::apply_inverse`.
--  `WorkstreamRefineTool` type L155-209 — `impl Tool for WorkstreamRefineTool` — via `arawn_steward::rollback::apply_inverse`.
--  `name` function L156-158 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
--  `description` function L160-164 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
--  `is_read_only` function L166-168 — `(&self) -> bool` — via `arawn_steward::rollback::apply_inverse`.
--  `category` function L170-172 — `(&self) -> ToolCategory` — via `arawn_steward::rollback::apply_inverse`.
--  `parameters_schema` function L174-182 — `(&self) -> Value` — via `arawn_steward::rollback::apply_inverse`.
--  `execute` function L184-208 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — via `arawn_steward::rollback::apply_inverse`.
--  `WorkstreamRollbackTool` type L220-227 — `= WorkstreamRollbackTool` — via `arawn_steward::rollback::apply_inverse`.
--  `WorkstreamRollbackTool` type L230-298 — `impl Tool for WorkstreamRollbackTool` — via `arawn_steward::rollback::apply_inverse`.
--  `name` function L231-233 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
--  `description` function L235-239 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
--  `is_read_only` function L241-243 — `(&self) -> bool` — via `arawn_steward::rollback::apply_inverse`.
--  `category` function L245-247 — `(&self) -> ToolCategory` — via `arawn_steward::rollback::apply_inverse`.
--  `parameters_schema` function L249-258 — `(&self) -> Value` — via `arawn_steward::rollback::apply_inverse`.
--  `execute` function L260-297 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — via `arawn_steward::rollback::apply_inverse`.
--  `_unused` function L303-305 — `(memory: &MemoryHandle, explicit: Option<&str>) -> Result<String, ToolError>` — via `arawn_steward::rollback::apply_inverse`.
--  `WorkstreamDustTool` type L318-332 — `= WorkstreamDustTool` — via `arawn_steward::rollback::apply_inverse`.
--  `WorkstreamDustTool` type L335-444 — `impl Tool for WorkstreamDustTool` — via `arawn_steward::rollback::apply_inverse`.
--  `name` function L336-338 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
--  `description` function L340-346 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
--  `is_read_only` function L348-351 — `(&self) -> bool` — via `arawn_steward::rollback::apply_inverse`.
--  `category` function L353-355 — `(&self) -> ToolCategory` — via `arawn_steward::rollback::apply_inverse`.
--  `parameters_schema` function L357-377 — `(&self) -> Value` — via `arawn_steward::rollback::apply_inverse`.
--  `execute` function L379-443 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — via `arawn_steward::rollback::apply_inverse`.
--  `WorkstreamApplyTool` type L455-462 — `= WorkstreamApplyTool` — via `arawn_steward::rollback::apply_inverse`.
--  `WorkstreamApplyTool` type L465-536 — `impl Tool for WorkstreamApplyTool` — via `arawn_steward::rollback::apply_inverse`.
--  `name` function L466-468 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
--  `description` function L470-475 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
--  `is_read_only` function L477-479 — `(&self) -> bool` — via `arawn_steward::rollback::apply_inverse`.
--  `category` function L481-483 — `(&self) -> ToolCategory` — via `arawn_steward::rollback::apply_inverse`.
--  `parameters_schema` function L485-494 — `(&self) -> Value` — via `arawn_steward::rollback::apply_inverse`.
--  `execute` function L496-535 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — via `arawn_steward::rollback::apply_inverse`.
--  `tests` module L539-739 — `-` — via `arawn_steward::rollback::apply_inverse`.
--  `setup` function L547-563 — `() -> ( TempDir, Arc<WorkstreamMemoryRouter>, crate::context::EngineToolContext,...` — via `arawn_steward::rollback::apply_inverse`.
--  `write_proposal_row` function L565-577 — `(j: &Journal) -> i64` — via `arawn_steward::rollback::apply_inverse`.
--  `write_delete_row` function L579-590 — `(j: &Journal, e: &Entity) -> i64` — via `arawn_steward::rollback::apply_inverse`.
--  `journal_lists_recent_rows` function L593-603 — `()` — via `arawn_steward::rollback::apply_inverse`.
--  `refine_returns_pending_proposals_only` function L606-627 — `()` — via `arawn_steward::rollback::apply_inverse`.
--  `rollback_reverts_delete_action_end_to_end` function L630-651 — `()` — via `arawn_steward::rollback::apply_inverse`.
--  `rollback_is_idempotent` function L654-667 — `()` — via `arawn_steward::rollback::apply_inverse`.
--  `apply_then_rollback_round_trip_for_map_proposal` function L670-707 — `()` — via `arawn_steward::rollback::apply_inverse`.
--  `apply_refuses_reverted_row` function L710-730 — `()` — via `arawn_steward::rollback::apply_inverse`.
--  `rollback_unknown_id_errors` function L733-738 — `()` — via `arawn_steward::rollback::apply_inverse`.
+-  `category` function L95-102 — `(&self) -> ToolCategory` — via `arawn_steward::rollback::apply_inverse`.
+-  `parameters_schema` function L104-112 — `(&self) -> Value` — via `arawn_steward::rollback::apply_inverse`.
+-  `execute` function L114-138 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — via `arawn_steward::rollback::apply_inverse`.
+-  `WorkstreamRefineTool` type L150-157 — `= WorkstreamRefineTool` — via `arawn_steward::rollback::apply_inverse`.
+-  `WorkstreamRefineTool` type L160-219 — `impl Tool for WorkstreamRefineTool` — via `arawn_steward::rollback::apply_inverse`.
+-  `name` function L161-163 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
+-  `description` function L165-169 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
+-  `is_read_only` function L171-173 — `(&self) -> bool` — via `arawn_steward::rollback::apply_inverse`.
+-  `category` function L175-182 — `(&self) -> ToolCategory` — via `arawn_steward::rollback::apply_inverse`.
+-  `parameters_schema` function L184-192 — `(&self) -> Value` — via `arawn_steward::rollback::apply_inverse`.
+-  `execute` function L194-218 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — via `arawn_steward::rollback::apply_inverse`.
+-  `WorkstreamRollbackTool` type L230-237 — `= WorkstreamRollbackTool` — via `arawn_steward::rollback::apply_inverse`.
+-  `WorkstreamRollbackTool` type L240-313 — `impl Tool for WorkstreamRollbackTool` — via `arawn_steward::rollback::apply_inverse`.
+-  `name` function L241-243 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
+-  `description` function L245-249 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
+-  `is_read_only` function L251-253 — `(&self) -> bool` — via `arawn_steward::rollback::apply_inverse`.
+-  `category` function L255-262 — `(&self) -> ToolCategory` — via `arawn_steward::rollback::apply_inverse`.
+-  `parameters_schema` function L264-273 — `(&self) -> Value` — via `arawn_steward::rollback::apply_inverse`.
+-  `execute` function L275-312 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — via `arawn_steward::rollback::apply_inverse`.
+-  `_unused` function L318-320 — `(memory: &MemoryHandle, explicit: Option<&str>) -> Result<String, ToolError>` — via `arawn_steward::rollback::apply_inverse`.
+-  `WorkstreamDustTool` type L333-347 — `= WorkstreamDustTool` — via `arawn_steward::rollback::apply_inverse`.
+-  `WorkstreamDustTool` type L350-464 — `impl Tool for WorkstreamDustTool` — via `arawn_steward::rollback::apply_inverse`.
+-  `name` function L351-353 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
+-  `description` function L355-361 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
+-  `is_read_only` function L363-366 — `(&self) -> bool` — via `arawn_steward::rollback::apply_inverse`.
+-  `category` function L368-375 — `(&self) -> ToolCategory` — via `arawn_steward::rollback::apply_inverse`.
+-  `parameters_schema` function L377-397 — `(&self) -> Value` — via `arawn_steward::rollback::apply_inverse`.
+-  `execute` function L399-463 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — via `arawn_steward::rollback::apply_inverse`.
+-  `WorkstreamApplyTool` type L475-482 — `= WorkstreamApplyTool` — via `arawn_steward::rollback::apply_inverse`.
+-  `WorkstreamApplyTool` type L485-561 — `impl Tool for WorkstreamApplyTool` — via `arawn_steward::rollback::apply_inverse`.
+-  `name` function L486-488 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
+-  `description` function L490-495 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
+-  `is_read_only` function L497-499 — `(&self) -> bool` — via `arawn_steward::rollback::apply_inverse`.
+-  `category` function L501-508 — `(&self) -> ToolCategory` — via `arawn_steward::rollback::apply_inverse`.
+-  `parameters_schema` function L510-519 — `(&self) -> Value` — via `arawn_steward::rollback::apply_inverse`.
+-  `execute` function L521-560 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — via `arawn_steward::rollback::apply_inverse`.
+-  `tests` module L564-764 — `-` — via `arawn_steward::rollback::apply_inverse`.
+-  `setup` function L572-588 — `() -> ( TempDir, Arc<WorkstreamMemoryRouter>, crate::context::EngineToolContext,...` — via `arawn_steward::rollback::apply_inverse`.
+-  `write_proposal_row` function L590-602 — `(j: &Journal) -> i64` — via `arawn_steward::rollback::apply_inverse`.
+-  `write_delete_row` function L604-615 — `(j: &Journal, e: &Entity) -> i64` — via `arawn_steward::rollback::apply_inverse`.
+-  `journal_lists_recent_rows` function L618-628 — `()` — via `arawn_steward::rollback::apply_inverse`.
+-  `refine_returns_pending_proposals_only` function L631-652 — `()` — via `arawn_steward::rollback::apply_inverse`.
+-  `rollback_reverts_delete_action_end_to_end` function L655-676 — `()` — via `arawn_steward::rollback::apply_inverse`.
+-  `rollback_is_idempotent` function L679-692 — `()` — via `arawn_steward::rollback::apply_inverse`.
+-  `apply_then_rollback_round_trip_for_map_proposal` function L695-732 — `()` — via `arawn_steward::rollback::apply_inverse`.
+-  `apply_refuses_reverted_row` function L735-755 — `()` — via `arawn_steward::rollback::apply_inverse`.
+-  `rollback_unknown_id_errors` function L758-763 — `()` — via `arawn_steward::rollback::apply_inverse`.
 
 #### crates/arawn-engine/src/tools/task_list.rs
 

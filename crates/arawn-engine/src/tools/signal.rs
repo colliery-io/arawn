@@ -121,7 +121,13 @@ impl Tool for SignalSearchTool {
     }
 
     fn category(&self) -> ToolCategory {
-        ToolCategory::Memory
+        // signal_* operate on per-workstream KBs, so they belong to
+        // the Workstream category — the query engine's filter scopes
+        // tool exposure by category based on keywords in the user
+        // message. Putting them in Memory caused the dust/refine/
+        // signal_search chain to vanish from the tool list whenever
+        // the user prompt didn't include "remember"/"recall"/etc.
+        ToolCategory::Workstream
     }
 
     fn parameters_schema(&self) -> Value {
@@ -273,7 +279,13 @@ impl Tool for SignalQueryTool {
     }
 
     fn category(&self) -> ToolCategory {
-        ToolCategory::Memory
+        // signal_* operate on per-workstream KBs, so they belong to
+        // the Workstream category — the query engine's filter scopes
+        // tool exposure by category based on keywords in the user
+        // message. Putting them in Memory caused the dust/refine/
+        // signal_search chain to vanish from the tool list whenever
+        // the user prompt didn't include "remember"/"recall"/etc.
+        ToolCategory::Workstream
     }
 
     fn parameters_schema(&self) -> Value {
@@ -421,7 +433,13 @@ impl Tool for SignalTimelineTool {
     }
 
     fn category(&self) -> ToolCategory {
-        ToolCategory::Memory
+        // signal_* operate on per-workstream KBs, so they belong to
+        // the Workstream category — the query engine's filter scopes
+        // tool exposure by category based on keywords in the user
+        // message. Putting them in Memory caused the dust/refine/
+        // signal_search chain to vanish from the tool list whenever
+        // the user prompt didn't include "remember"/"recall"/etc.
+        ToolCategory::Workstream
     }
 
     fn parameters_schema(&self) -> Value {

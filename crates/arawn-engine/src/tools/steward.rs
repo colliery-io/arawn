@@ -93,7 +93,12 @@ impl Tool for WorkstreamJournalTool {
     }
 
     fn category(&self) -> ToolCategory {
-        ToolCategory::Memory
+        // Workstream-scoped curation tools (journal/refine/rollback/
+        // dust/apply) belong to the Workstream category. Memory used
+        // to be the home which caused the query-engine's keyword
+        // filter to drop them from the tool list whenever the user
+        // didn't say "remember"/"recall"/etc. See signal.rs comment.
+        ToolCategory::Workstream
     }
 
     fn parameters_schema(&self) -> Value {
@@ -168,7 +173,12 @@ impl Tool for WorkstreamRefineTool {
     }
 
     fn category(&self) -> ToolCategory {
-        ToolCategory::Memory
+        // Workstream-scoped curation tools (journal/refine/rollback/
+        // dust/apply) belong to the Workstream category. Memory used
+        // to be the home which caused the query-engine's keyword
+        // filter to drop them from the tool list whenever the user
+        // didn't say "remember"/"recall"/etc. See signal.rs comment.
+        ToolCategory::Workstream
     }
 
     fn parameters_schema(&self) -> Value {
@@ -243,7 +253,12 @@ impl Tool for WorkstreamRollbackTool {
     }
 
     fn category(&self) -> ToolCategory {
-        ToolCategory::Memory
+        // Workstream-scoped curation tools (journal/refine/rollback/
+        // dust/apply) belong to the Workstream category. Memory used
+        // to be the home which caused the query-engine's keyword
+        // filter to drop them from the tool list whenever the user
+        // didn't say "remember"/"recall"/etc. See signal.rs comment.
+        ToolCategory::Workstream
     }
 
     fn parameters_schema(&self) -> Value {
@@ -351,7 +366,12 @@ impl Tool for WorkstreamDustTool {
     }
 
     fn category(&self) -> ToolCategory {
-        ToolCategory::Memory
+        // Workstream-scoped curation tools (journal/refine/rollback/
+        // dust/apply) belong to the Workstream category. Memory used
+        // to be the home which caused the query-engine's keyword
+        // filter to drop them from the tool list whenever the user
+        // didn't say "remember"/"recall"/etc. See signal.rs comment.
+        ToolCategory::Workstream
     }
 
     fn parameters_schema(&self) -> Value {
@@ -479,7 +499,12 @@ impl Tool for WorkstreamApplyTool {
     }
 
     fn category(&self) -> ToolCategory {
-        ToolCategory::Memory
+        // Workstream-scoped curation tools (journal/refine/rollback/
+        // dust/apply) belong to the Workstream category. Memory used
+        // to be the home which caused the query-engine's keyword
+        // filter to drop them from the tool list whenever the user
+        // didn't say "remember"/"recall"/etc. See signal.rs comment.
+        ToolCategory::Workstream
     }
 
     fn parameters_schema(&self) -> Value {
