@@ -450,16 +450,52 @@ impl Tool for WorkstreamDustTool {
                 proposals.push(row_summary(&row));
             }
         }
-        Ok(ToolOutput::success(
-            json!({
-                "workstream": workstream,
-                "clusters_found": outcome.clusters_found,
-                "proposals_written": outcome.proposals_written,
-                "limit_hit": outcome.limit_hit,
-                "proposals": proposals,
-            })
-            .to_string(),
-        ))
+
+        // When we found zero clusters, give the agent a self-recovery
+        // hint: surface the workstream's available ontology tags and a
+        // small set of suggested retry parameters. Most "I picked the
+        // wrong tag string" failures resolve on the very next call once
+        // the agent can see what tags actually exist.
+        let mut payload = json!({
+            "workstream": workstream,
+            "clusters_found": outcome.clusters_found,
+            "proposals_written": outcome.proposals_written,
+            "limit_hit": outcome.limit_hit,
+            "proposals": proposals,
+        });
+        if outcome.clusters_found == 0 {
+            let available_tags: Vec<String> =
+                arawn_memory::TagOntologyStore::open(&self.data_dir, &workstream)
+                    .and_then(|s| s.tags())
+                    .unwrap_or_default();
+            let mut suggestions = Vec::new();
+            if !opts.tag_filter.as_ref().map(|v| v.is_empty()).unwrap_or(true) {
+                suggestions.push("retry without the `tags` filter to scan all ontology tags".to_string());
+            }
+            if opts.min_cluster_size > 2 {
+                suggestions.push(format!(
+                    "lower `min_cluster_size` (current default {}) — small clusters often miss the default 3-member floor",
+                    opts.min_cluster_size
+                ));
+            }
+            if opts.idle_days > 7 {
+                suggestions.push(format!(
+                    "lower `idle_days` (current {}) — entities may not all be stale enough",
+                    opts.idle_days
+                ));
+            }
+            if let Value::Object(ref mut m) = payload {
+                m.insert("available_tags".into(), json!(available_tags));
+                m.insert("suggestions".into(), json!(suggestions));
+                m.insert(
+                    "hint".into(),
+                    json!(
+                        "no clusters formed — pick a tag from `available_tags` (these are the workstream's declared ontology), or retry without a `tags` filter. The literal string you passed must match exactly."
+                    ),
+                );
+            }
+        }
+        Ok(ToolOutput::success(payload.to_string()))
     }
 }
 

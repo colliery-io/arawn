@@ -58,6 +58,6 @@ pub use tools::{
     TaskUpdateTool, ThinkTool, WebFetchTool, WebSearchTool,
     BindBackfillHook, SessionWorkstream, WorkstreamBindTool, WorkstreamCreateTool,
     WorkstreamApplyTool, WorkstreamDeleteTool, WorkstreamDescribeTool, WorkstreamDustTool,
-    WorkstreamJournalTool, WorkstreamListTool, WorkstreamPromoteTool, WorkstreamRefineTool,
+    WorkstreamJournalTool, WorkstreamListTool, WorkstreamPromoteTool, WorkstreamProposeOntologyTool, WorkstreamRefineTool,
     WorkstreamRollbackTool, WorkstreamShowTool, WorkstreamSwitchTool, WorkstreamUnbindTool,
 };

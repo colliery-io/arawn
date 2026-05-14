@@ -54,5 +54,5 @@ pub use web_search::WebSearchTool;
 pub use workstream::{
     BindBackfillHook, SessionWorkstream, WorkstreamBindTool, WorkstreamCreateTool,
     WorkstreamDeleteTool, WorkstreamDescribeTool, WorkstreamListTool, WorkstreamPromoteTool,
-    WorkstreamShowTool, WorkstreamSwitchTool, WorkstreamUnbindTool,
+    WorkstreamProposeOntologyTool, WorkstreamShowTool, WorkstreamSwitchTool, WorkstreamUnbindTool,
 };

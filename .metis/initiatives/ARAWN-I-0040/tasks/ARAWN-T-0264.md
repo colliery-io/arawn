@@ -4,14 +4,14 @@ level: task
 title: "Workstream create UX — ontology required, propose tool, agent skill playbook"
 short_code: "ARAWN-T-0264"
 created_at: 2026-05-14T13:43:14.201211+00:00
-updated_at: 2026-05-14T13:43:14.201211+00:00
+updated_at: 2026-05-14T18:02:48.650532+00:00
 parent: ARAWN-I-0040
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -63,6 +63,10 @@ initiative_id: ARAWN-I-0040
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria **[REQUIRED]**
 
@@ -131,6 +135,42 @@ initiative_id: ARAWN-I-0040
 ### Risk Considerations
 {Technical risks and mitigation strategies}
 
-## Status Updates **[REQUIRED]**
+## Status Updates
 
-*To be added during implementation*
+### 2026-05-14 — Complete
+
+Four deliverables shipped, all driven by the UAT 17:27 finding that the agent guessed `falcon-project` instead of the actual ontology tag `falcon` and didn't self-correct:
+
+**1. `workstream_show` surfaces the ontology.**
+- Added `tags_ontology: [...]` to the JSON payload. Description updated to call out the use case: "use this before `workstream_dust` or `signal_query` with a tag filter so you pick a tag that actually exists."
+- Soft-fails to empty when `ctx.data_dir()` is missing — keeps tests that don't seed an ontology working.
+- Inline test `show_includes_ontology`.
+
+**2. `workstream_dust` gives self-recovery hints on zero clusters.**
+- When `outcome.clusters_found == 0`, the response now also includes:
+  - `available_tags` — the workstream's full declared ontology, so the agent can spot the right string.
+  - `suggestions` — context-aware tips (drop the `tags` filter; lower `min_cluster_size`; lower `idle_days`).
+  - `hint` — one-line summary telling the agent how to retry.
+- No structural change when clusters were found.
+
+**3. `workstream_propose_ontology` tool.**
+- New LLM-backed tool: takes a description, returns `{ tags: [...], rationale: "..." }`.
+- System prompt is explicit about slug format (`lowercase-with-dashes`), encourages 5–12 tags, and emphasizes specific identifiers over generic categories — the lesson from the failed "drift toward stability" bet.
+- Tags returned by the LLM are normalized + deduped before being handed back to the agent.
+- Embedded a tiny `propose_llm_call` helper + `extract_json_block` inline. There are now four consumers of this pattern (extractor / steward / engine / engine again); consolidating into `arawn-llm` is a separate cleanup. Comment marks the intent.
+
+**4. `workstream-create` agent skill.**
+- Markdown playbook at `crates/arawn-engine/src/skills/builtin/workstream-create.md`, registered in the builtin skill list.
+- Walks the three phases: ask for description → propose+confirm → confirm name+create.
+- Triggers on `/workstream create`, "make a workstream for...", etc.
+- Documents related tools and the v2 growth path via tag-promoter.
+
+**Wiring (`main.rs`):**
+- `WorkstreamProposeOntologyTool` registered with `llm_pool.engine()` + the configured model alongside the rest of the workstream tools.
+
+**Tests:**
+- 1 new in workstream.rs (`show_includes_ontology`). Existing 23 workstream tests + 7 steward tool tests all pass; clippy exit 0.
+
+**Out of scope (T-0265 / T-0266):**
+- `tag-promoter` steward subroutine (Suggest stage of the cycle).
+- `workstream_apply` dispatch for `tag-promoter` proposals + `workstream_tag list/add/remove` (Add stage).

@@ -660,6 +660,11 @@ async fn main() -> Result<()> {
         registry.register(Box::new(arawn_engine::WorkstreamDescribeTool::new(
             service.shared_store(),
         )));
+        // T-0264: LLM-backed initial-ontology proposer for `/workstream-create`.
+        registry.register(Box::new(arawn_engine::WorkstreamProposeOntologyTool::new(
+            llm_pool.engine(),
+            llm_pool.engine_config().model.clone(),
+        )));
         {
             let mut bind_tool = arawn_engine::WorkstreamBindTool::new(service.shared_store());
             if let Some(ref runner) = extractor_runner {

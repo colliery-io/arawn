@@ -423,7 +423,11 @@ impl Tool for WorkstreamShowTool {
 
     fn description(&self) -> &str {
         "Show the active workstream's details (or a named one). \
-         Includes display_name, description, bindings."
+         Includes display_name, description, bindings, and — crucially \
+         for downstream tools — the workstream's declared tag ontology. \
+         Use this before calling `workstream_dust` or `signal_query` \
+         with a tag filter so you pick a tag that actually exists in \
+         the ontology."
     }
 
     fn is_read_only(&self) -> bool {
@@ -446,7 +450,7 @@ impl Tool for WorkstreamShowTool {
 
     async fn execute(
         &self,
-        _ctx: &dyn arawn_tool::ToolContext,
+        ctx: &dyn arawn_tool::ToolContext,
         params: Value,
     ) -> Result<ToolOutput, ToolError> {
         let name = params
@@ -463,6 +467,19 @@ impl Tool for WorkstreamShowTool {
                 "workstream '{name}' not found"
             )));
         };
+        drop(store);
+
+        // Surface the workstream's declared tag ontology — agents that
+        // call this tool before `workstream_dust` / `signal_query` can
+        // pick valid tags instead of guessing. Soft-fail to empty when
+        // the data dir is unavailable or the ontology table is missing.
+        let ontology_tags: Vec<String> = match ctx.data_dir() {
+            Some(dir) => arawn_memory::TagOntologyStore::open(dir, &ws.name)
+                .and_then(|s| s.tags())
+                .unwrap_or_default(),
+            None => Vec::new(),
+        };
+
         Ok(ToolOutput::success(
             json!({
                 "name": ws.name,
@@ -473,6 +490,7 @@ impl Tool for WorkstreamShowTool {
                 "created_at": ws.created_at.to_rfc3339(),
                 "updated_at": ws.updated_at.to_rfc3339(),
                 "active": ws.name == self.active.current(),
+                "tags_ontology": ontology_tags,
             })
             .to_string(),
         ))
@@ -922,6 +940,211 @@ impl Tool for WorkstreamDeleteTool {
     }
 }
 
+// ============================================================================
+// workstream_propose_ontology
+// ============================================================================
+
+/// LLM-backed tool: take a workstream description, return a proposed
+/// initial ontology (list of tag slugs) + rationale. The agent uses
+/// this during the `/workstream-create` flow — see the
+/// `workstream-create` skill for the playbook.
+pub struct WorkstreamProposeOntologyTool {
+    client: Arc<dyn arawn_llm::LlmClient>,
+    model: String,
+}
+
+impl WorkstreamProposeOntologyTool {
+    pub fn new(client: Arc<dyn arawn_llm::LlmClient>, model: impl Into<String>) -> Self {
+        Self {
+            client,
+            model: model.into(),
+        }
+    }
+}
+
+#[async_trait]
+impl Tool for WorkstreamProposeOntologyTool {
+    fn name(&self) -> &str {
+        "workstream_propose_ontology"
+    }
+
+    fn description(&self) -> &str {
+        "Given a free-text description of a workstream, propose an initial \
+         tag ontology (closed list of tag slugs the extractor will be allowed \
+         to use). Returns `{ tags: [...], rationale: \"...\" }`. The agent \
+         calls this during the create flow, shows the proposal to the user, \
+         iterates if needed, then calls `workstream_new` with the agreed list. \
+         Tag slugs are short (`lowercase-with-dashes`), describe the kinds of \
+         things you'll track (projects, people, processes), and should number \
+         5–12 — keep it focused; new tags grow into the ontology via the \
+         tag-promoter steward subroutine over time."
+    }
+
+    fn is_read_only(&self) -> bool {
+        true
+    }
+
+    fn category(&self) -> ToolCategory {
+        ToolCategory::Workstream
+    }
+
+    fn parameters_schema(&self) -> Value {
+        json!({
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "description": "Free-text description of the workstream — what it tracks, who's involved, what's in scope."
+                }
+            },
+            "required": ["description"]
+        })
+    }
+
+    async fn execute(
+        &self,
+        _ctx: &dyn arawn_tool::ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
+        let description = match params.get("description").and_then(|v| v.as_str()) {
+            Some(s) if !s.trim().is_empty() => s.trim().to_string(),
+            _ => {
+                return Ok(ToolOutput::error(
+                    "description is required".to_string(),
+                ));
+            }
+        };
+
+        let system = "You propose an initial tag ontology for a personal \
+                      knowledge-base workstream. Output ONLY a JSON object: \
+                      {\"tags\": [array of 5–12 lowercase slug strings], \
+                      \"rationale\": \"one short paragraph explaining what \
+                      kinds of things each cluster of tags captures\"}.\n\n\
+                      Tag slug rules:\n\
+                      - lowercase letters, digits, '-' only (e.g. \
+                      `on-call`, `rfc`, `falcon`, `house-rules`)\n\
+                      - prefer concrete identifiers (project names, system \
+                      names, person names, ritual names) over generic \
+                      categories — these form natural clusters\n\
+                      - include 1–2 broad categorical tags (e.g. \
+                      `infrastructure`, `process`) so the ontology has \
+                      buckets for content that doesn't fit a specific name\n\
+                      - tags are a STARTING point. They grow over time via \
+                      the tag-promoter subroutine. Don't try to anticipate \
+                      everything — pick 5–12 that cover the obvious shape \
+                      of this workstream.";
+        let user = format!(
+            "Workstream description:\n{description}\n\n\
+             Propose the initial ontology.",
+        );
+
+        let raw = match propose_llm_call(&self.client, &self.model, system, &user).await {
+            Ok(s) => s,
+            Err(e) => {
+                return Ok(ToolOutput::error(format!("LLM call failed: {e}")));
+            }
+        };
+        let json_block = match extract_json_block(&raw) {
+            Some(s) => s,
+            None => {
+                return Ok(ToolOutput::error(format!(
+                    "no JSON block in LLM response: {raw}"
+                )));
+            }
+        };
+        #[derive(serde::Deserialize)]
+        struct Proposal {
+            tags: Vec<String>,
+            #[serde(default)]
+            rationale: String,
+        }
+        let mut proposal: Proposal = match serde_json::from_str(json_block) {
+            Ok(p) => p,
+            Err(e) => {
+                return Ok(ToolOutput::error(format!(
+                    "couldn't parse LLM JSON: {e} — raw: {raw}"
+                )));
+            }
+        };
+        // Normalize tags (lowercase + trim), dedupe, drop empties.
+        let mut seen = std::collections::HashSet::new();
+        proposal.tags = proposal
+            .tags
+            .into_iter()
+            .map(|t| arawn_memory::normalize_tag(&t))
+            .filter(|t| !t.is_empty() && seen.insert(t.clone()))
+            .collect();
+
+        Ok(ToolOutput::success(
+            json!({
+                "tags": proposal.tags,
+                "rationale": proposal.rationale,
+            })
+            .to_string(),
+        ))
+    }
+}
+
+/// Tiny streaming-drain helper. Mirrors `arawn-extractor::llm_text::complete_text`
+/// and `arawn-steward::llm_text::complete_text`. There are now 3 consumers;
+/// the right home is `arawn-llm` but consolidation is a separate cleanup pass.
+async fn propose_llm_call(
+    client: &Arc<dyn arawn_llm::LlmClient>,
+    model: &str,
+    system: &str,
+    user: &str,
+) -> Result<String, String> {
+    use futures::StreamExt;
+    let req = arawn_llm::types::ChatRequest {
+        model: model.to_string(),
+        system_prompt: Some(system.to_string()),
+        messages: vec![arawn_llm::types::ChatMessage {
+            role: "user".to_string(),
+            content: arawn_llm::types::ChatContent::Text(user.to_string()),
+            tool_calls: Vec::new(),
+            tool_call_id: None,
+        }],
+        tools: Vec::new(),
+        max_tokens: None,
+    };
+    let mut stream = client.stream(req).await.map_err(|e| e.to_string())?;
+    let mut out = String::new();
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk.map_err(|e| e.to_string())?;
+        if let arawn_llm::types::ChatChunk::TextDelta { text } = chunk {
+            out.push_str(&text);
+        }
+    }
+    Ok(out)
+}
+
+/// Same balanced-bracket scan as `arawn-extractor::llm_text::extract_json_block`.
+fn extract_json_block(raw: &str) -> Option<&str> {
+    let bytes = raw.as_bytes();
+    let mut depth = 0i32;
+    let mut start: Option<usize> = None;
+    let mut open: Option<u8> = None;
+    for (i, &b) in bytes.iter().enumerate() {
+        match (open, b) {
+            (None, b'{') | (None, b'[') => {
+                start = Some(i);
+                open = Some(b);
+                depth = 1;
+            }
+            (Some(b'{'), b'{') | (Some(b'['), b'[') => depth += 1,
+            (Some(b'{'), b'}') | (Some(b'['), b']') => {
+                depth -= 1;
+                if depth == 0 {
+                    let end = i + 1;
+                    return Some(&raw[start.unwrap()..end]);
+                }
+            }
+            _ => {}
+        }
+    }
+    None
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1248,6 +1471,34 @@ mod tests {
             .unwrap();
         assert!(result.is_error);
         assert!(result.content.contains("not found"));
+    }
+
+    #[tokio::test]
+    async fn show_includes_ontology() {
+        let (tmp, store, active) = setup();
+        store
+            .lock()
+            .unwrap()
+            .create_workstream(&Workstream::new("pat", tmp.path().join("workstreams/pat")))
+            .unwrap();
+        // Seed the ontology table directly.
+        let ont = arawn_memory::TagOntologyStore::open(tmp.path(), "pat").unwrap();
+        ont.add("falcon", arawn_memory::AddedVia::Manual).unwrap();
+        ont.add("ledger", arawn_memory::AddedVia::Manual).unwrap();
+
+        active.set("pat");
+        let tool = WorkstreamShowTool::new(store.clone(), active);
+        let r = tool.execute(&test_ctx(&tmp), json!({})).await.unwrap();
+        assert!(!r.is_error, "got: {}", r.content);
+        let v: serde_json::Value = serde_json::from_str(&r.content).unwrap();
+        let tags: Vec<String> = v["tags_ontology"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|t| t.as_str().unwrap().to_string())
+            .collect();
+        assert!(tags.contains(&"falcon".to_string()));
+        assert!(tags.contains(&"ledger".to_string()));
     }
 
     #[tokio::test]
