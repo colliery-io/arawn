@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-14T18:56:07Z | 301 files | Python, Rust
+> Generated: 2026-05-14T20:09:45Z | 301 files | Python, Rust
 
 ## Project Structure
 
@@ -3094,53 +3094,54 @@
 -  `CotChain` type L257-296 — `= CotChain` — steward (Phase 5) refines vocabulary later.
 -  `link_by_name` function L258-295 — `( &self, ws: &Workstream, candidates: &[ExtractedCandidate], ) -> Result<Vec<Lin...` — steward (Phase 5) refines vocabulary later.
 -  `parse_links` function L298-302 — `(raw: &str) -> Result<Vec<LinkProposal>, ExtractionError>` — steward (Phase 5) refines vocabulary later.
--  `CotChain` type L308-409 — `= CotChain` — steward (Phase 5) refines vocabulary later.
--  `write` function L309-408 — `( &self, row: &ProjectionRow, candidates: &[ExtractedCandidate], links: &[LinkPr...` — steward (Phase 5) refines vocabulary later.
--  `resolve_by_fts` function L413-427 — `( kb: &MemoryManager, name: &str, _floor: f32, ) -> Option<(Uuid, Scope)>` — FTS-resolve a name against both KB tiers.
--  `first_fts_hit` function L429-434 — `(store: &Arc<MemoryStore>, query: &str) -> Option<Uuid>` — steward (Phase 5) refines vocabulary later.
--  `parse_entity_type` function L436-438 — `(s: &str) -> Option<EntityType>` — steward (Phase 5) refines vocabulary later.
--  `parse_relation_type` function L440-442 — `(s: &str) -> Option<RelationType>` — steward (Phase 5) refines vocabulary later.
--  `projection_id_to_uuid` function L446-448 — `(projection_id: &str) -> Uuid` — Derive a deterministic Uuid v5 from the projection row id so the
--  `truncate` function L450-455 — `(s: &str, max_chars: usize) -> String` — steward (Phase 5) refines vocabulary later.
--  `tests` module L458-544 — `-` — steward (Phase 5) refines vocabulary later.
--  `parse_classify_in_scope` function L462-467 — `()` — steward (Phase 5) refines vocabulary later.
--  `parse_classify_out_of_scope` function L470-474 — `()` — steward (Phase 5) refines vocabulary later.
--  `parse_candidates_empty_array` function L477-480 — `()` — steward (Phase 5) refines vocabulary later.
--  `parse_candidates_basic` function L483-494 — `()` — steward (Phase 5) refines vocabulary later.
--  `parse_candidates_tolerates_missing_tag_fields` function L497-503 — `()` — steward (Phase 5) refines vocabulary later.
--  `parse_links_basic` function L506-511 — `()` — steward (Phase 5) refines vocabulary later.
--  `entity_type_lowercased_for_parse` function L514-518 — `()` — steward (Phase 5) refines vocabulary later.
--  `relation_type_lowercased_for_parse` function L521-525 — `()` — steward (Phase 5) refines vocabulary later.
--  `projection_id_to_uuid_is_deterministic` function L528-534 — `()` — steward (Phase 5) refines vocabulary later.
--  `truncate_preserves_short_input` function L537-543 — `()` — steward (Phase 5) refines vocabulary later.
--  `integration` module L552-990 — `-` — steward (Phase 5) refines vocabulary later.
--  `KeyedMockLlm` struct L578-585 — `{ classify: Mutex<VecDeque<Value>>, extract: Mutex<VecDeque<Value>>, link: Mutex...` — Inspects the system prompt to detect which CoT stage is calling
--  `KeyedMockLlm` type L587-615 — `= KeyedMockLlm` — steward (Phase 5) refines vocabulary later.
--  `new` function L588-597 — `() -> Self` — steward (Phase 5) refines vocabulary later.
--  `default_classify` function L599-602 — `(self, v: Value) -> Self` — steward (Phase 5) refines vocabulary later.
--  `default_extract` function L603-606 — `(self, v: Value) -> Self` — steward (Phase 5) refines vocabulary later.
--  `default_link` function L607-610 — `(self, v: Value) -> Self` — steward (Phase 5) refines vocabulary later.
--  `push_classify` function L612-614 — `(&self, v: Value)` — steward (Phase 5) refines vocabulary later.
--  `classify_stage` function L617-619 — `(sys: &str) -> bool` — steward (Phase 5) refines vocabulary later.
--  `extract_stage` function L620-622 — `(sys: &str) -> bool` — steward (Phase 5) refines vocabulary later.
--  `link_stage` function L623-625 — `(sys: &str) -> bool` — steward (Phase 5) refines vocabulary later.
--  `KeyedMockLlm` type L628-668 — `= KeyedMockLlm` — steward (Phase 5) refines vocabulary later.
--  `stream` function L629-667 — `( &self, request: ChatRequest, ) -> Result< Pin<Box<dyn futures::Stream<Item = R...` — steward (Phase 5) refines vocabulary later.
--  `ws` function L672-676 — `(name: &str, desc: &str) -> Workstream` — steward (Phase 5) refines vocabulary later.
--  `fixture_proj` function L678-691 — `(id: &str, body: &str, ts_offset: i64) -> GmailMessageProjection` — steward (Phase 5) refines vocabulary later.
--  `Fixture` struct L693-699 — `{ _tmp: tempfile::TempDir, store: Arc<std::sync::Mutex<Store>>, proj: Arc<Projec...` — steward (Phase 5) refines vocabulary later.
--  `setup` function L701-736 — `() -> Fixture` — steward (Phase 5) refines vocabulary later.
--  `Fixture` type L738-751 — `= Fixture` — steward (Phase 5) refines vocabulary later.
--  `kb` function L739-744 — `(&self, name: &str) -> Arc<MemoryManager>` — steward (Phase 5) refines vocabulary later.
--  `cursor` function L746-750 — `(&self, ws_name: &str, feed_type: &str) -> Option<chrono::DateTime<chrono::Utc>>` — steward (Phase 5) refines vocabulary later.
--  `runner_with` function L753-767 — `( fx: &Fixture, mock: Arc<KeyedMockLlm>, batch_size: usize, ) -> ExtractorRunner` — steward (Phase 5) refines vocabulary later.
--  `happy_path_extracts_into_workstream` function L772-804 — `()` — steward (Phase 5) refines vocabulary later.
--  `out_of_scope_skips_but_advances_cursor` function L807-828 — `()` — steward (Phase 5) refines vocabulary later.
--  `link_by_name_resolves_to_existing_kb_entity` function L831-866 — `()` — steward (Phase 5) refines vocabulary later.
--  `link_to_missing_target_is_dropped_without_panic` function L869-892 — `()` — steward (Phase 5) refines vocabulary later.
--  `backfill_walks_existing_rows` function L895-921 — `()` — steward (Phase 5) refines vocabulary later.
--  `rerun_is_idempotent_via_cursor` function L924-949 — `()` — steward (Phase 5) refines vocabulary later.
--  `two_workstreams_each_get_the_entity` function L952-989 — `()` — steward (Phase 5) refines vocabulary later.
+-  `CotChain` type L308-427 — `= CotChain` — steward (Phase 5) refines vocabulary later.
+-  `write` function L309-426 — `( &self, row: &ProjectionRow, candidates: &[ExtractedCandidate], links: &[LinkPr...` — steward (Phase 5) refines vocabulary later.
+-  `resolve_by_fts` function L431-445 — `( kb: &MemoryManager, name: &str, _floor: f32, ) -> Option<(Uuid, Scope)>` — FTS-resolve a name against both KB tiers.
+-  `first_fts_hit` function L447-452 — `(store: &Arc<MemoryStore>, query: &str) -> Option<Uuid>` — steward (Phase 5) refines vocabulary later.
+-  `parse_entity_type` function L454-456 — `(s: &str) -> Option<EntityType>` — steward (Phase 5) refines vocabulary later.
+-  `parse_relation_type` function L458-460 — `(s: &str) -> Option<RelationType>` — steward (Phase 5) refines vocabulary later.
+-  `projection_id_to_uuid` function L464-466 — `(projection_id: &str) -> Uuid` — Derive a deterministic Uuid v5 from the projection row id so the
+-  `truncate` function L468-473 — `(s: &str, max_chars: usize) -> String` — steward (Phase 5) refines vocabulary later.
+-  `tests` module L476-562 — `-` — steward (Phase 5) refines vocabulary later.
+-  `parse_classify_in_scope` function L480-485 — `()` — steward (Phase 5) refines vocabulary later.
+-  `parse_classify_out_of_scope` function L488-492 — `()` — steward (Phase 5) refines vocabulary later.
+-  `parse_candidates_empty_array` function L495-498 — `()` — steward (Phase 5) refines vocabulary later.
+-  `parse_candidates_basic` function L501-512 — `()` — steward (Phase 5) refines vocabulary later.
+-  `parse_candidates_tolerates_missing_tag_fields` function L515-521 — `()` — steward (Phase 5) refines vocabulary later.
+-  `parse_links_basic` function L524-529 — `()` — steward (Phase 5) refines vocabulary later.
+-  `entity_type_lowercased_for_parse` function L532-536 — `()` — steward (Phase 5) refines vocabulary later.
+-  `relation_type_lowercased_for_parse` function L539-543 — `()` — steward (Phase 5) refines vocabulary later.
+-  `projection_id_to_uuid_is_deterministic` function L546-552 — `()` — steward (Phase 5) refines vocabulary later.
+-  `truncate_preserves_short_input` function L555-561 — `()` — steward (Phase 5) refines vocabulary later.
+-  `integration` module L570-1051 — `-` — steward (Phase 5) refines vocabulary later.
+-  `KeyedMockLlm` struct L596-603 — `{ classify: Mutex<VecDeque<Value>>, extract: Mutex<VecDeque<Value>>, link: Mutex...` — Inspects the system prompt to detect which CoT stage is calling
+-  `KeyedMockLlm` type L605-633 — `= KeyedMockLlm` — steward (Phase 5) refines vocabulary later.
+-  `new` function L606-615 — `() -> Self` — steward (Phase 5) refines vocabulary later.
+-  `default_classify` function L617-620 — `(self, v: Value) -> Self` — steward (Phase 5) refines vocabulary later.
+-  `default_extract` function L621-624 — `(self, v: Value) -> Self` — steward (Phase 5) refines vocabulary later.
+-  `default_link` function L625-628 — `(self, v: Value) -> Self` — steward (Phase 5) refines vocabulary later.
+-  `push_classify` function L630-632 — `(&self, v: Value)` — steward (Phase 5) refines vocabulary later.
+-  `classify_stage` function L635-637 — `(sys: &str) -> bool` — steward (Phase 5) refines vocabulary later.
+-  `extract_stage` function L638-640 — `(sys: &str) -> bool` — steward (Phase 5) refines vocabulary later.
+-  `link_stage` function L641-643 — `(sys: &str) -> bool` — steward (Phase 5) refines vocabulary later.
+-  `KeyedMockLlm` type L646-686 — `= KeyedMockLlm` — steward (Phase 5) refines vocabulary later.
+-  `stream` function L647-685 — `( &self, request: ChatRequest, ) -> Result< Pin<Box<dyn futures::Stream<Item = R...` — steward (Phase 5) refines vocabulary later.
+-  `ws` function L690-694 — `(name: &str, desc: &str) -> Workstream` — steward (Phase 5) refines vocabulary later.
+-  `fixture_proj` function L696-709 — `(id: &str, body: &str, ts_offset: i64) -> GmailMessageProjection` — steward (Phase 5) refines vocabulary later.
+-  `Fixture` struct L711-717 — `{ _tmp: tempfile::TempDir, store: Arc<std::sync::Mutex<Store>>, proj: Arc<Projec...` — steward (Phase 5) refines vocabulary later.
+-  `setup` function L719-754 — `() -> Fixture` — steward (Phase 5) refines vocabulary later.
+-  `Fixture` type L756-769 — `= Fixture` — steward (Phase 5) refines vocabulary later.
+-  `kb` function L757-762 — `(&self, name: &str) -> Arc<MemoryManager>` — steward (Phase 5) refines vocabulary later.
+-  `cursor` function L764-768 — `(&self, ws_name: &str, feed_type: &str) -> Option<chrono::DateTime<chrono::Utc>>` — steward (Phase 5) refines vocabulary later.
+-  `runner_with` function L771-785 — `( fx: &Fixture, mock: Arc<KeyedMockLlm>, batch_size: usize, ) -> ExtractorRunner` — steward (Phase 5) refines vocabulary later.
+-  `happy_path_extracts_into_workstream` function L790-822 — `()` — steward (Phase 5) refines vocabulary later.
+-  `out_of_scope_skips_but_advances_cursor` function L825-846 — `()` — steward (Phase 5) refines vocabulary later.
+-  `link_by_name_resolves_to_existing_kb_entity` function L849-884 — `()` — steward (Phase 5) refines vocabulary later.
+-  `link_to_missing_target_is_dropped_without_panic` function L887-910 — `()` — steward (Phase 5) refines vocabulary later.
+-  `backfill_walks_existing_rows` function L913-939 — `()` — steward (Phase 5) refines vocabulary later.
+-  `rerun_is_idempotent_via_cursor` function L942-967 — `()` — steward (Phase 5) refines vocabulary later.
+-  `two_workstreams_each_get_the_entity` function L970-1007 — `()` — steward (Phase 5) refines vocabulary later.
+-  `entity_dates_inherit_source_ts_not_extraction_time` function L1010-1050 — `()` — steward (Phase 5) refines vocabulary later.
 
 #### crates/arawn-extractor/src/error.rs
 

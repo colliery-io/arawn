@@ -296,13 +296,21 @@ impl Tool for WorkstreamRollbackTool {
             ));
         }
         // Apply the per-subroutine inverse mutation against the
-        // workstream's KB, then flip the metadata.
+        // workstream's KB, then flip the metadata. Pass the workstream
+        // root so tag-promoter reversals can reach the ontology table.
         let kb = self
             .router
             .for_workstream(&workstream)
             .map_err(|e| ToolError::ExecutionFailed(format!("memory routing: {e}")))?;
-        rollback::apply_inverse(&row, &kb)
-            .map_err(|e| ToolError::ExecutionFailed(format!("rollback: {e}")))?;
+        let ws_root = self.data_dir.join("workstreams").join(&workstream);
+        rollback::apply_inverse(
+            &row,
+            &arawn_steward::RollbackCtx {
+                kb: &kb,
+                workstream_root: &ws_root,
+            },
+        )
+        .map_err(|e| ToolError::ExecutionFailed(format!("rollback: {e}")))?;
         let _ = j
             .revert(id)
             .map_err(|e| ToolError::ExecutionFailed(format!("journal revert: {e}")))?;
@@ -586,13 +594,179 @@ impl Tool for WorkstreamApplyTool {
             .router
             .for_workstream(&workstream)
             .map_err(|e| ToolError::ExecutionFailed(format!("memory routing: {e}")))?;
-        accept::apply_forward(&row, &kb)
-            .map_err(|e| ToolError::ExecutionFailed(format!("apply: {e}")))?;
+        let ws_root = self.data_dir.join("workstreams").join(&workstream);
+        accept::apply_forward(
+            &row,
+            &arawn_steward::AcceptCtx {
+                kb: &kb,
+                workstream_root: &ws_root,
+            },
+        )
+        .map_err(|e| ToolError::ExecutionFailed(format!("apply: {e}")))?;
         j.mark_applied(id)
             .map_err(|e| ToolError::ExecutionFailed(format!("journal mark_applied: {e}")))?;
         Ok(ToolOutput::success(
             json!({"id": id, "status": "applied"}).to_string(),
         ))
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// workstream_tag — manual ontology management
+// ─────────────────────────────────────────────────────────────────────────
+
+/// Direct CRUD on the workstream's tag ontology. The agent reaches for
+/// this when the user wants to add or remove tags outside the propose-
+/// accept cycle (or to inspect the current vocabulary). For automated
+/// growth, the `tag-promoter` steward subroutine + `workstream_apply`
+/// is the preferred path.
+pub struct WorkstreamTagTool {
+    data_dir: PathBuf,
+    router: Arc<WorkstreamMemoryRouter>,
+}
+
+impl WorkstreamTagTool {
+    pub fn new(data_dir: impl Into<PathBuf>, router: Arc<WorkstreamMemoryRouter>) -> Self {
+        Self {
+            data_dir: data_dir.into(),
+            router,
+        }
+    }
+}
+
+#[async_trait]
+impl Tool for WorkstreamTagTool {
+    fn name(&self) -> &str {
+        "workstream_tag"
+    }
+
+    fn description(&self) -> &str {
+        "Manage the active workstream's tag ontology directly. `op: list` \
+         returns every tag with `added_via` provenance. `op: add` inserts a \
+         new tag (idempotent). `op: remove` deletes a tag. Use this for \
+         curation outside the propose-accept cycle — for organic growth, \
+         let `tag-promoter` propose and `workstream_apply` commit."
+    }
+
+    fn is_read_only(&self) -> bool {
+        false
+    }
+
+    fn category(&self) -> ToolCategory {
+        ToolCategory::Workstream
+    }
+
+    fn parameters_schema(&self) -> Value {
+        json!({
+            "type": "object",
+            "properties": {
+                "op": {
+                    "type": "string",
+                    "enum": ["list", "add", "remove"],
+                    "description": "Which ontology operation to perform."
+                },
+                "tag": {
+                    "type": "string",
+                    "description": "Required for add / remove."
+                },
+                "workstream": {
+                    "type": "string",
+                    "description": "Override the active workstream."
+                }
+            },
+            "required": ["op"]
+        })
+    }
+
+    async fn execute(
+        &self,
+        _ctx: &dyn arawn_tool::ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
+        let op = match params.get("op").and_then(|v| v.as_str()) {
+            Some(s) => s.to_string(),
+            None => {
+                return Ok(ToolOutput::error("op is required".to_string()));
+            }
+        };
+        let workstream = match params.get("workstream").and_then(|v| v.as_str()) {
+            Some(s) => s.to_string(),
+            None => self.router.current_name(),
+        };
+        let ws_root = self.data_dir.join("workstreams").join(&workstream);
+        let ontology = arawn_memory::TagOntologyStore::open_at(&ws_root)
+            .map_err(|e| ToolError::ExecutionFailed(format!("open ontology: {e}")))?;
+
+        match op.as_str() {
+            "list" => {
+                let entries = ontology
+                    .list()
+                    .map_err(|e| ToolError::ExecutionFailed(format!("list: {e}")))?;
+                let rows: Vec<Value> = entries
+                    .iter()
+                    .map(|e| {
+                        json!({
+                            "tag": e.tag,
+                            "added_at": e.added_at.to_rfc3339(),
+                            "added_via": e.added_via.as_str(),
+                        })
+                    })
+                    .collect();
+                Ok(ToolOutput::success(
+                    json!({
+                        "workstream": workstream,
+                        "count": rows.len(),
+                        "tags": rows,
+                    })
+                    .to_string(),
+                ))
+            }
+            "add" => {
+                let tag = match params.get("tag").and_then(|v| v.as_str()) {
+                    Some(s) if !s.trim().is_empty() => s.to_string(),
+                    _ => {
+                        return Ok(ToolOutput::error(
+                            "tag is required for op=add".to_string(),
+                        ));
+                    }
+                };
+                ontology
+                    .add(&tag, arawn_memory::AddedVia::Manual)
+                    .map_err(|e| ToolError::ExecutionFailed(format!("add: {e}")))?;
+                Ok(ToolOutput::success(
+                    json!({
+                        "workstream": workstream,
+                        "tag": arawn_memory::normalize_tag(&tag),
+                        "status": "added",
+                    })
+                    .to_string(),
+                ))
+            }
+            "remove" => {
+                let tag = match params.get("tag").and_then(|v| v.as_str()) {
+                    Some(s) if !s.trim().is_empty() => s.to_string(),
+                    _ => {
+                        return Ok(ToolOutput::error(
+                            "tag is required for op=remove".to_string(),
+                        ));
+                    }
+                };
+                let removed = ontology
+                    .remove(&tag)
+                    .map_err(|e| ToolError::ExecutionFailed(format!("remove: {e}")))?;
+                Ok(ToolOutput::success(
+                    json!({
+                        "workstream": workstream,
+                        "tag": arawn_memory::normalize_tag(&tag),
+                        "status": if removed { "removed" } else { "not_found" },
+                    })
+                    .to_string(),
+                ))
+            }
+            other => Ok(ToolOutput::error(format!(
+                "unknown op `{other}` — must be one of: list, add, remove"
+            ))),
+        }
     }
 }
 
@@ -788,6 +962,119 @@ mod tests {
         let apply_tool = WorkstreamApplyTool::new(tmp.path(), Arc::clone(&router));
         let err = apply_tool.execute(&ctx, json!({"id": id})).await;
         assert!(err.is_err());
+    }
+
+    #[tokio::test]
+    async fn workstream_tag_list_add_remove_round_trip() {
+        let (tmp, router, ctx) = setup();
+        let tool = WorkstreamTagTool::new(tmp.path(), Arc::clone(&router));
+
+        // list on empty ontology
+        let r: Value = serde_json::from_str(
+            &tool
+                .execute(&ctx, json!({"op": "list"}))
+                .await
+                .unwrap()
+                .content,
+        )
+        .unwrap();
+        assert_eq!(r["count"], 0);
+
+        // add
+        let r: Value = serde_json::from_str(
+            &tool
+                .execute(&ctx, json!({"op": "add", "tag": "Falcon "}))
+                .await
+                .unwrap()
+                .content,
+        )
+        .unwrap();
+        // Normalized form lands in payload.
+        assert_eq!(r["tag"], "falcon");
+        assert_eq!(r["status"], "added");
+
+        // list shows it
+        let r: Value = serde_json::from_str(
+            &tool
+                .execute(&ctx, json!({"op": "list"}))
+                .await
+                .unwrap()
+                .content,
+        )
+        .unwrap();
+        assert_eq!(r["count"], 1);
+        assert_eq!(r["tags"][0]["tag"], "falcon");
+        assert_eq!(r["tags"][0]["added_via"], "manual");
+
+        // remove
+        let r: Value = serde_json::from_str(
+            &tool
+                .execute(&ctx, json!({"op": "remove", "tag": "falcon"}))
+                .await
+                .unwrap()
+                .content,
+        )
+        .unwrap();
+        assert_eq!(r["status"], "removed");
+
+        // remove again → not_found
+        let r: Value = serde_json::from_str(
+            &tool
+                .execute(&ctx, json!({"op": "remove", "tag": "falcon"}))
+                .await
+                .unwrap()
+                .content,
+        )
+        .unwrap();
+        assert_eq!(r["status"], "not_found");
+    }
+
+    #[tokio::test]
+    async fn workstream_apply_promotes_tag_into_ontology() {
+        let (tmp, router, ctx) = setup();
+        // Write a pending tag-promoter proposal.
+        let j = Journal::open(tmp.path(), "ws-pat").unwrap();
+        let rec = JournalRecord {
+            subroutine: "tag-promoter".into(),
+            action: "promote_tag".into(),
+            inputs_json: json!({"tag": "calidor"}).to_string(),
+            outputs_json: json!({"tag": "calidor", "count": 5}).to_string(),
+            model: "n/a".into(),
+            prompt_hash: "h".into(),
+            applied: false,
+        };
+        let id = j.write_ahead(&rec).unwrap();
+
+        let apply_tool = WorkstreamApplyTool::new(tmp.path(), Arc::clone(&router));
+        let r: Value = serde_json::from_str(
+            &apply_tool
+                .execute(&ctx, json!({"id": id}))
+                .await
+                .unwrap()
+                .content,
+        )
+        .unwrap();
+        assert_eq!(r["status"], "applied");
+
+        // Ontology now has `calidor` with added_via=promotion.
+        let ws_root = tmp.path().join("workstreams").join("ws-pat");
+        let ont = arawn_memory::TagOntologyStore::open_at(&ws_root).unwrap();
+        let entry = ont.get("calidor").unwrap().unwrap();
+        assert_eq!(entry.added_via, arawn_memory::AddedVia::Promotion);
+
+        // Rollback removes it.
+        let rollback = WorkstreamRollbackTool::new(tmp.path(), Arc::clone(&router));
+        let r: Value = serde_json::from_str(
+            &rollback
+                .execute(&ctx, json!({"id": id}))
+                .await
+                .unwrap()
+                .content,
+        )
+        .unwrap();
+        assert_eq!(r["status"], "reverted");
+        let ont = arawn_memory::TagOntologyStore::open_at(&ws_root).unwrap();
+        assert!(!ont.contains("calidor").unwrap());
     }
 
     #[tokio::test]

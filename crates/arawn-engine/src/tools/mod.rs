@@ -41,7 +41,7 @@ pub use shell::ShellTool;
 pub use signal::{SignalQueryTool, SignalSearchTool, SignalTimelineTool};
 pub use steward::{
     WorkstreamApplyTool, WorkstreamDustTool, WorkstreamJournalTool, WorkstreamRefineTool,
-    WorkstreamRollbackTool,
+    WorkstreamRollbackTool, WorkstreamTagTool,
 };
 pub use skill::SkillTool;
 pub use sleep::SleepTool;

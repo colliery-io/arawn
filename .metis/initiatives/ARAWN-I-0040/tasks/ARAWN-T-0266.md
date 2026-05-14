@@ -4,14 +4,14 @@ level: task
 title: "Tag promotion accept path + workstream_tag manual management tool (Add)"
 short_code: "ARAWN-T-0266"
 created_at: 2026-05-14T13:43:31.717462+00:00
-updated_at: 2026-05-14T13:43:31.717462+00:00
+updated_at: 2026-05-14T20:42:43.808730+00:00
 parent: ARAWN-I-0040
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -63,6 +63,10 @@ initiative_id: ARAWN-I-0040
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria **[REQUIRED]**
 
@@ -131,6 +135,38 @@ initiative_id: ARAWN-I-0040
 ### Risk Considerations
 {Technical risks and mitigation strategies}
 
-## Status Updates **[REQUIRED]**
+## Status Updates
 
-*To be added during implementation*
+### 2026-05-14 — Complete
+
+Closes the Add half of the Extract→Suggest→Add cycle from ADR-0004.
+
+**Accept-path dispatch (`arawn-steward::accept`).**
+- Introduced `AcceptCtx { kb, workstream_root }` — the previous `(row, kb)` signature didn't carry the workstream root, but tag promotion writes to `workstream_tag_ontology` which lives at the workstream's KB dir.
+- New arm `(tag-promoter, promote_tag)` — opens `TagOntologyStore::open_at(workstream_root)` and inserts the tag with `added_via = AddedVia::Promotion`. Idempotent at the storage layer (re-applying preserves first-`via`).
+- All existing accept-path arms (`dust/summarize`, `map/propose_relation`, `doorwatch/propose_identity`, reshelve/identity no-ops) ported to the new ctx.
+- Test `tag_promoter_apply_adds_to_ontology` pins the round-trip.
+
+**Rollback-path dispatch (`arawn-steward::rollback`).**
+- Mirrored `AcceptCtx` → `RollbackCtx { kb, workstream_root }`.
+- New arm `(tag-promoter, promote_tag)` — opens the ontology store and removes the tag. Returns `Ok` whether the row existed or not (idempotent revert).
+- Test `tag_promoter_inverse_removes_from_ontology` pins it.
+
+**`workstream_tag` agent tool (`arawn-engine`).** Manual CRUD outside the propose/accept cycle:
+- `op: "list"` → returns every tag with `added_via` provenance + count.
+- `op: "add"` → inserts a tag (normalized + idempotent; `added_via = Manual`).
+- `op: "remove"` → deletes a tag; reports `removed` vs `not_found`.
+- Optional `workstream` override; defaults to active.
+- Registered alongside the rest of the workstream tools in `main.rs`.
+
+**Engine-side tool wiring updated.** `WorkstreamApplyTool` and `WorkstreamRollbackTool` both construct the new `AcceptCtx` / `RollbackCtx` from `(self.data_dir, workstream)` so per-subroutine arms that need the ontology table see it. The router still resolves the KB; the ws_root path is computed from `data_dir + workstreams + name`.
+
+**Tests added:**
+- `accept::tag_promoter_apply_adds_to_ontology`
+- `rollback::tag_promoter_inverse_removes_from_ontology`
+- `tools::steward::tests::workstream_tag_list_add_remove_round_trip`
+- `tools::steward::tests::workstream_apply_promotes_tag_into_ontology` — end-to-end via WorkstreamApplyTool + WorkstreamRollbackTool through the engine tool surface.
+
+**Validation:** workspace builds clean. `cargo test -p arawn-steward` 45/45. `cargo test -p arawn-engine steward` 9/9 (2 new). clippy exit 0.
+
+**Cycle status:** End-to-end Extract → (auto) Suggest → (human) Add → Rollback path now works for `tag-promoter` proposals exactly like it does for `dust` proposals. The agent can `workstream_refine` to see pending promotions, `workstream_apply <id>` to commit, `workstream_rollback <id>` to undo. Manual escape hatch via `workstream_tag list|add|remove`.

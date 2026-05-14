@@ -31,8 +31,11 @@ pub mod reshelve;
 pub mod rollback;
 pub mod runner;
 pub mod subroutine;
+pub mod tag_promoter;
 
+pub use accept::AcceptCtx;
 pub use cursor::CursorStore;
+pub use rollback::RollbackCtx;
 pub use doorwatch::{DoorWatchConfig, DoorWatchSubroutine};
 pub use dust::{ClusterMode, DustEngine, DustOpts, DustOutcome};
 pub use error::StewardError;
@@ -41,3 +44,4 @@ pub use map::{MapConfig, MapSubroutine};
 pub use reshelve::{ReshelveConfig, ReshelveSubroutine};
 pub use runner::{StewardRunner, StewardStats, SubroutineCaps};
 pub use subroutine::{IdentitySubroutine, StewardSubroutine, SubroutineCtx, SubroutineOutcome};
+pub use tag_promoter::{TagPromoterConfig, TagPromoterSubroutine};

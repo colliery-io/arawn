@@ -100,6 +100,16 @@ impl JournalGate {
     pub fn workstream(&self) -> &str {
         self.journal.workstream()
     }
+
+    /// Read-side accessor onto the underlying journal. Subroutines that
+    /// need to query existing rows (e.g. `tag-promoter` deduping against
+    /// pending proposals) use this. The gate's write contract is still
+    /// enforced via `write_ahead` — this accessor only exposes the
+    /// `Journal`'s own surface, which is intentionally read-heavy and
+    /// has no `applied=true` mutation footgun.
+    pub fn inner_journal(&self) -> &Journal {
+        &self.journal
+    }
 }
 
 /// Workstream-scoped journal. Opens its own rusqlite connection to the

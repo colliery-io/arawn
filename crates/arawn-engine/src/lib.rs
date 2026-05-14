@@ -59,5 +59,6 @@ pub use tools::{
     BindBackfillHook, SessionWorkstream, WorkstreamBindTool, WorkstreamCreateTool,
     WorkstreamApplyTool, WorkstreamDeleteTool, WorkstreamDescribeTool, WorkstreamDustTool,
     WorkstreamJournalTool, WorkstreamListTool, WorkstreamPromoteTool, WorkstreamProposeOntologyTool, WorkstreamRefineTool,
-    WorkstreamRollbackTool, WorkstreamShowTool, WorkstreamSwitchTool, WorkstreamUnbindTool,
+    WorkstreamRollbackTool, WorkstreamShowTool, WorkstreamSwitchTool, WorkstreamTagTool,
+    WorkstreamUnbindTool,
 };

@@ -600,8 +600,13 @@ async fn main() -> Result<()> {
                 service.shared_store(),
                 dw_resolver,
             ));
+            // T-0265: tag-promoter subroutine (Suggest stage of ADR-0004).
+            // Counts `tags_discovered` frequencies and proposes promotion
+            // of recurring tags into the workstream's declared ontology.
+            // Pure-stats subroutine — no LLM client needed.
+            let tag_promoter = Arc::new(arawn_steward::TagPromoterSubroutine::default());
             let subs: Vec<Arc<dyn arawn_steward::StewardSubroutine>> =
-                vec![reshelve, map_sub, doorwatch];
+                vec![reshelve, map_sub, doorwatch, tag_promoter];
             let steward_runner = Arc::new(arawn_steward::StewardRunner::new(
                 service.shared_store(),
                 std::path::PathBuf::from(&data_dir),
@@ -754,6 +759,11 @@ async fn main() -> Result<()> {
                 Arc::clone(router),
                 llm_pool.engine(),
                 llm_pool.engine_config().model.clone(),
+            )));
+            // T-0266: manual ontology CRUD outside the propose/accept cycle.
+            registry.register(Box::new(arawn_engine::WorkstreamTagTool::new(
+                std::path::PathBuf::from(&data_dir),
+                Arc::clone(router),
             )));
         }
         // workstream_promote needs the router so it can reach into

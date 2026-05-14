@@ -85,7 +85,7 @@
     "crates/arawn-engine/src/tools/workstream.rs": "4a883f4edd3b69d18be180879b2b0578e9920ae0d04ebac8395bb46ca3c28a63",
     "crates/arawn-engine/src/workstream_router.rs": "d52e2061aeb044c5897f8c825a0672f4ae744182b3f28fbc98e4bb77c9f9a506",
     "crates/arawn-extractor/src/chain.rs": "814c8e6108802b9ecfc926ce3b094ac16d005c6d7cc410447b8252e9fda5753b",
-    "crates/arawn-extractor/src/cot.rs": "9ad0f57cadf231fced068a76afd5a7807bb4f6d62b0cf26c822c33e1be9fc182",
+    "crates/arawn-extractor/src/cot.rs": "cd15c022c14e3456ca971389b36033aba43d54369ae346413381d1db66d29601",
     "crates/arawn-extractor/src/error.rs": "b1495adbcefc6036bdd7c5e1d9fcd55e74e0581f941864d0f57381bb2f758cfe",
     "crates/arawn-extractor/src/lib.rs": "c08b2c8f68fd5adaafc5f9abcb2a979b337424b90be36f6956ed9a0c35e5e0e3",
     "crates/arawn-extractor/src/llm_text.rs": "a7ffa9cf2adcd9b99ad3cd0be7e144c7295b8169c6bcd8ef77c3de243cdf62c0",
