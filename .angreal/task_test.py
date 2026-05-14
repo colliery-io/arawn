@@ -229,12 +229,29 @@ def test_secrets_edit(file="uat.enc.yaml"):
     """
     repo_root = pathlib.Path(__file__).resolve().parent.parent
     target = repo_root / "tests" / "secrets" / file
+    rel = target.relative_to(repo_root)
+
+    # sops 3.10+ `edit` only operates on existing encrypted files. For
+    # a new bundle: write a one-line placeholder at the target path
+    # (which matches .sops.yaml's path_regex so the creation_rule
+    # resolves), then encrypt-in-place. After that the file has sops
+    # metadata and `edit` works for all subsequent updates.
     if not target.exists():
-        print(f"  Creating new encrypted bundle at {target.relative_to(repo_root)}")
-        print("  sops will open an empty template — replace with your real values")
+        print(f"  Creating new encrypted bundle at {rel}")
         target.parent.mkdir(parents=True, exist_ok=True)
-    # Run from repo root so .sops.yaml's path_regex matches the target.
-    subprocess.run(["sops", "edit", str(target.relative_to(repo_root))], cwd=repo_root, check=True)
+        # Stub content the dev should immediately replace via sops edit.
+        target.write_text(
+            "# Replace with real keys. Names should match the env var\n"
+            "# the UAT harness reads (e.g. OLLAMA_API_KEY).\n"
+            "PLACEHOLDER_KEY: \"replace-me\"\n"
+        )
+        subprocess.run(
+            ["sops", "--encrypt", "--in-place", str(rel)],
+            cwd=repo_root,
+            check=True,
+        )
+        print("  Bundle created; opening for edit so you can replace the placeholder.")
+    subprocess.run(["sops", "edit", str(rel)], cwd=repo_root, check=True)
 
 
 @test()

@@ -129,35 +129,37 @@ no first recipient pubkey baked in. After your pubkey is in
 `.sops.yaml`:
 
 ```sh
-# From the repo root:
-sops edit tests/secrets/uat.enc.yaml
-```
-
-`sops edit` against a non-existent path that matches `.sops.yaml`'s
-`path_regex` creates a new file, opens an empty template in `$EDITOR`,
-encrypts the result to your recipient list on save. Replace the
-template body with your real keys, save, quit:
-
-```yaml
-OLLAMA_API_KEY: "sk-..."
-```
-
-Then commit:
-
-```sh
+cd <repo root>
+echo 'OLLAMA_API_KEY: "your-real-key"' > tests/secrets/uat.enc.yaml
+sops --encrypt --in-place tests/secrets/uat.enc.yaml
 git add tests/secrets/uat.enc.yaml
 git commit -m "secrets: initial UAT key bundle"
 ```
 
-> **Why not `sops --encrypt /tmp/plain.yaml > tests/secrets/foo.enc.yaml`?**
-> sops looks up the matching `creation_rule` using the *input* file's
-> path. `/tmp/plain.yaml` doesn't match the `tests/secrets/...` regex,
-> so you get `no matching creation rules found`. `sops edit` uses the
-> *target* path, which is what we actually want.
+Two things going on here:
 
-You can also use the angreal wrapper which runs `sops edit` from the
-correct CWD for you and creates the file if missing:
+1. **The file path matters for sops's creation_rule lookup.** sops
+   resolves the rule from `.sops.yaml` against the *path you give it*.
+   We write the plaintext directly at `tests/secrets/uat.enc.yaml`,
+   which matches the `path_regex`, so the AGE recipient list resolves
+   automatically. (Writing to `/tmp/foo.yaml` and piping doesn't
+   match — you'd get `no matching creation rules found`.)
+
+2. **`sops --encrypt --in-place` rewrites the file as ciphertext.**
+   The plaintext you just wrote is replaced with sops's envelope
+   format. Don't worry about cleaning up — the in-place op overwrites.
+
+Common gotcha: **`sops edit` doesn't create files in sops 3.10+.** It
+only opens already-encrypted files for editing. The recipe above is
+the explicit create path. After the first run, all subsequent updates
+use `sops edit tests/secrets/uat.enc.yaml` normally.
+
+Or use the angreal wrapper which handles new-file creation for you:
 
 ```sh
 angreal test secrets-edit
 ```
+
+It detects a missing file, writes a stub, runs `sops --encrypt
+--in-place`, and then drops into `sops edit` so you can replace the
+placeholder with real keys.
