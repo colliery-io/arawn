@@ -230,10 +230,11 @@ def test_secrets_edit(file="uat.enc.yaml"):
     repo_root = pathlib.Path(__file__).resolve().parent.parent
     target = repo_root / "tests" / "secrets" / file
     if not target.exists():
-        print(f"  No such file: {target}")
-        print("  See tests/secrets/README.md → 'Bootstrapping the first file'")
-        sys.exit(1)
-    subprocess.run(["sops", "edit", str(target)], check=True)
+        print(f"  Creating new encrypted bundle at {target.relative_to(repo_root)}")
+        print("  sops will open an empty template — replace with your real values")
+        target.parent.mkdir(parents=True, exist_ok=True)
+    # Run from repo root so .sops.yaml's path_regex matches the target.
+    subprocess.run(["sops", "edit", str(target.relative_to(repo_root))], cwd=repo_root, check=True)
 
 
 @test()

@@ -30,4 +30,4 @@ creation_rules:
       # Format: <age1...>  # <human-readable owner>
       # Example:
       #   - age1qrtkst5snfmgg3aqekzwgcgpejs0r6lr2tw7xqcerkwq9q0p2qjqaay05u  # dstorey
-      - REPLACE_ME_WITH_FIRST_RECIPIENT_PUBKEY
+      - age1tp700tygysjl2txjrpphsqdangadjkd4vj38a470lvad2hhvee2s7apl7w

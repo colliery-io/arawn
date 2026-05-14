@@ -125,15 +125,39 @@ comments) stay plaintext so diffs are readable.
 ## Bootstrapping the first file
 
 This repo doesn't ship a pre-encrypted `uat.enc.yaml` because there's
-no first recipient pubkey baked in. To bootstrap from scratch:
+no first recipient pubkey baked in. After your pubkey is in
+`.sops.yaml`:
 
 ```sh
-# After your pubkey is in .sops.yaml:
-cat > /tmp/uat.yaml <<'EOF'
-OLLAMA_API_KEY: "your-key-here"
-EOF
-sops --encrypt /tmp/uat.yaml > tests/secrets/uat.enc.yaml
-shred -u /tmp/uat.yaml         # or just rm — never commit the plaintext
+# From the repo root:
+sops edit tests/secrets/uat.enc.yaml
+```
+
+`sops edit` against a non-existent path that matches `.sops.yaml`'s
+`path_regex` creates a new file, opens an empty template in `$EDITOR`,
+encrypts the result to your recipient list on save. Replace the
+template body with your real keys, save, quit:
+
+```yaml
+OLLAMA_API_KEY: "sk-..."
+```
+
+Then commit:
+
+```sh
 git add tests/secrets/uat.enc.yaml
 git commit -m "secrets: initial UAT key bundle"
+```
+
+> **Why not `sops --encrypt /tmp/plain.yaml > tests/secrets/foo.enc.yaml`?**
+> sops looks up the matching `creation_rule` using the *input* file's
+> path. `/tmp/plain.yaml` doesn't match the `tests/secrets/...` regex,
+> so you get `no matching creation rules found`. `sops edit` uses the
+> *target* path, which is what we actually want.
+
+You can also use the angreal wrapper which runs `sops edit` from the
+correct CWD for you and creates the file if missing:
+
+```sh
+angreal test secrets-edit
 ```
