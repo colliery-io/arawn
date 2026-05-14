@@ -27,6 +27,11 @@ pub fn apply_inverse(row: &JournalRow, kb: &Arc<MemoryManager>) -> Result<(), St
     match (row.subroutine.as_str(), row.action.as_str()) {
         ("reshelve", "merge") => reshelve_merge_inverse(row, kb),
         ("reshelve", "delete") => reshelve_delete_inverse(row, kb),
+        // Dust mutates by inserting a summary entity (+ SUMMARIZES
+        // edges to sources) at apply time; the inverse is to delete
+        // the summary entity, which DETACH DELETEs its edges too.
+        // Source entities were never touched.
+        ("dust", "summarize") => dust_summarize_inverse(row, kb),
         // Proposal-only subroutines mutate nothing — `Journal::revert`
         // alone is enough.
         ("map", "propose_relation") => Ok(()),
@@ -69,6 +74,26 @@ fn reshelve_merge_inverse(row: &JournalRow, kb: &Arc<MemoryManager>) -> Result<(
 #[derive(Debug, Deserialize)]
 struct DeleteOutputs {
     entity: Entity,
+}
+
+/// `dust/summarize` writes its outputs as `{summary: Entity, source_ids: [...], ...}`.
+/// Only the summary's id is needed for the inverse — `MemoryStore::delete_entity`
+/// uses `DETACH DELETE` so the SUMMARIZES edges go with it.
+#[derive(Debug, Deserialize)]
+struct DustSummarizeOutputs {
+    summary: Entity,
+}
+
+fn dust_summarize_inverse(row: &JournalRow, kb: &Arc<MemoryManager>) -> Result<(), StewardError> {
+    let payload: DustSummarizeOutputs = serde_json::from_str(&row.outputs_json)
+        .map_err(|e| StewardError::Parse(format!("dust/summarize payload: {e}")))?;
+    let removed = kb.workstream.delete_entity(payload.summary.id)?;
+    debug!(
+        summary = %payload.summary.id,
+        removed,
+        "rollback: dust summary entity deleted"
+    );
+    Ok(())
 }
 
 fn reshelve_delete_inverse(row: &JournalRow, kb: &Arc<MemoryManager>) -> Result<(), StewardError> {
@@ -129,6 +154,36 @@ mod tests {
         apply_inverse(&row, &kb).unwrap();
         let fetched = kb.workstream.get_entity(e.id).unwrap().unwrap();
         assert_eq!(fetched.title, "restore me");
+    }
+
+    #[test]
+    fn dust_summarize_inverse_deletes_summary() {
+        let (_tmp, kb) = setup_kb();
+        let summary = Entity::new(EntityType::Note, "summary of falcon")
+            .with_content("the falcon project, distilled");
+        kb.workstream.insert_entity(&summary).unwrap();
+        assert!(kb.workstream.get_entity(summary.id).unwrap().is_some());
+
+        let payload = serde_json::json!({
+            "cluster_key": "falcon",
+            "summary": &summary,
+            "source_ids": [],
+        })
+        .to_string();
+        let row = JournalRow {
+            id: 1,
+            ts: chrono::Utc::now(),
+            subroutine: "dust".into(),
+            action: "summarize".into(),
+            inputs_json: "{}".into(),
+            outputs_json: payload,
+            model: "m".into(),
+            prompt_hash: "h".into(),
+            applied: true,
+            reverted_at: None,
+        };
+        apply_inverse(&row, &kb).unwrap();
+        assert!(kb.workstream.get_entity(summary.id).unwrap().is_none());
     }
 
     #[test]
