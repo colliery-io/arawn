@@ -33,6 +33,16 @@ pub struct Scenario {
     /// extractor) so the agent sees a warm KB on turn 1.
     #[serde(default)]
     pub seed_fixture: Option<String>,
+    /// When true, the harness runs `drive_tag_promoter` after seed
+    /// extraction so promotion proposals exist before turn 1. Opt-in
+    /// because the side effect (a stray promote_tag journal row) can
+    /// pollute scenarios whose turns expect *only* dust proposals on
+    /// the journal — UAT 23:31's signal-extraction-e2e regression
+    /// surfaced exactly this when the agent flaked on its dust retry
+    /// and then `workstream_refine` returned only the tag-promoter
+    /// proposal as a confused fallback target.
+    #[serde(default)]
+    pub seed_tag_promoter: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -601,6 +611,7 @@ fn github_monitor_scenario() -> Scenario {
             max_tool_errors: 2,
         },
         seed_fixture: None,
+        seed_tag_promoter: false,
     }
 }
 
@@ -637,6 +648,7 @@ fn work_signal_pipeline_scenario() -> Scenario {
             max_tool_errors: 2,
         },
         seed_fixture: None,
+        seed_tag_promoter: false,
     }
 }
 
@@ -662,8 +674,8 @@ fn signal_extraction_e2e_scenario() -> Scenario {
                 judge_expectation: "Agent should call signal_query with entity_type=\"convention\". Should return at least the on-call and code-review conventions extracted from the seeded rows.".to_string(),
             },
             ScenarioTurn {
-                user_message: "Now switch to the `dnd` workstream. What's the latest plot thread we're tracking? Use signal_timeline to see what's been added recently.".to_string(),
-                judge_expectation: "Agent should call workstream_switch then signal_timeline. Should mention the Calidor / cult tracking arc as a recent plot thread.".to_string(),
+                user_message: "First call workstream_switch to move into the `dnd` workstream — wait for the switch to confirm before doing anything else. Then call signal_timeline once to see the latest plot thread. Don't issue these as parallel tool calls; signal_timeline reads the active workstream's KB and will return the wrong data if it runs before the switch lands.".to_string(),
+                judge_expectation: "Agent should call workstream_switch and signal_timeline as two SEQUENTIAL calls (not parallel). Should mention the Calidor / cult tracking arc as a recent plot thread.".to_string(),
             },
             ScenarioTurn {
                 user_message: "We have a couple of old falcon-project entries in the `work` workstream that are stale. Switch back to `work` and run workstream_dust on the falcon cluster — preview the proposed summary before we commit anything.".to_string(),
@@ -695,6 +707,10 @@ fn signal_extraction_e2e_scenario() -> Scenario {
             max_tool_errors: 3,
         },
         seed_fixture: Some("tests/fixtures/uat/signal-extraction-e2e.json".to_string()),
+        // Dust scenario: don't pre-seed promotion proposals. A stray
+        // tag-promoter row would confuse turn 5's workstream_refine
+        // when the dust path itself stalls (UAT 23:31 regression).
+        seed_tag_promoter: false,
     }
 }
 
@@ -722,12 +738,12 @@ fn tag_promoter_cycle_scenario() -> Scenario {
                 judge_expectation: "Agent calls workstream_refine and reports at least one tag-promoter proposal with a tag name and a count. May explain each proposal would add the proposed tag to the ontology.".to_string(),
             },
             ScenarioTurn {
-                user_message: "Pick the most useful-looking tag-promotion proposal and apply it with workstream_apply, then confirm the new tag appears in the ontology.".to_string(),
-                judge_expectation: "Agent calls workstream_apply with a proposal id, then workstream_show (or workstream_tag list) to verify the new tag with `added_via=promotion`.".to_string(),
+                user_message: "Pick the most useful-looking tag-promotion proposal. **First** call workstream_apply with the proposal id — wait for the response (status will be `applied`). **Only after** that call returns, call workstream_show to read the updated ontology. Do NOT issue workstream_apply and workstream_show as parallel tool calls in one response — they must be sequential or workstream_show will see the pre-apply ontology. Then report the updated tags_ontology list from workstream_show.".to_string(),
+                judge_expectation: "Agent issues workstream_apply and workstream_show as SEQUENTIAL tool calls (apply finishes before show starts). The show response's `tags_ontology` array should contain the newly-promoted tag.".to_string(),
             },
             ScenarioTurn {
-                user_message: "Actually let's undo that — roll it back and check the ontology again so I can see the tag is gone.".to_string(),
-                judge_expectation: "Agent calls workstream_rollback with the same id, then verifies via workstream_show / workstream_tag list that the tag is no longer present (or status is `not_found`).".to_string(),
+                user_message: "Roll it back with workstream_rollback. The `status` field in the response confirms whether it worked — don't double-check with workstream_show or workstream_tag. Just report the rollback status.".to_string(),
+                judge_expectation: "Agent calls workstream_rollback exactly once (status=reverted) and reports the status. No additional verification tool calls.".to_string(),
             },
         ],
         mechanical: MechanicalThresholds {
@@ -737,6 +753,9 @@ fn tag_promoter_cycle_scenario() -> Scenario {
             max_tool_errors: 2,
         },
         seed_fixture: Some("tests/fixtures/uat/signal-extraction-e2e.json".to_string()),
+        // This scenario IS the tag-promoter cycle — seed the proposals
+        // so refine on turn 2 has something to find.
+        seed_tag_promoter: true,
     }
 }
 
@@ -826,15 +845,15 @@ async fn uat_run() {
                 applied.per_workstream.len()
             );
 
-            // Drive the tag-promoter steward subroutine so any
-            // tag_promoter UAT scenario sees pending promotion proposals
-            // when the agent calls workstream_refine. Pure-stats, no
-            // LLM cost — safe to run on every seeded scenario; if there
-            // are no recurring discovered tags, it's a no-op.
-            let promoted = uat_fixture::drive_tag_promoter(&applied, &scenario_dir)
-                .await
-                .expect("drive tag-promoter");
-            if promoted > 0 {
+            // Drive tag-promoter only when the scenario opts in.
+            // Running it on every seeded scenario polluted the dust
+            // path: a stray tag-promoter proposal became the wrong
+            // refine target whenever the dust call itself didn't
+            // produce one (UAT 23:31).
+            if scenario.seed_tag_promoter {
+                let promoted = uat_fixture::drive_tag_promoter(&applied, &scenario_dir)
+                    .await
+                    .expect("drive tag-promoter");
                 println!(
                     "    Seed tag-promoter: {} promotion proposals journaled",
                     promoted

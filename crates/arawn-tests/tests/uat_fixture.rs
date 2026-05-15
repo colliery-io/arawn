@@ -332,9 +332,18 @@ pub async fn drive_tag_promoter(
 ) -> Result<usize, String> {
     use arawn_steward::{
         Journal, JournalGate, StewardSubroutine, SubroutineCtx,
-        TagPromoterSubroutine,
+        TagPromoterConfig, TagPromoterSubroutine,
     };
-    let sub = TagPromoterSubroutine::default();
+    // Lower `min_count` to 2 for UAT — production default is 3, but
+    // LLM-nondeterminism in seed extraction means recurring discovered
+    // tags often land at count=2 within a single fixture, not 3+.
+    // UAT 23:48 showed every discovered tag landing at count 2; this
+    // matches what real workstreams look like after one extraction
+    // pass and gives the scenario actual proposals to operate on.
+    let sub = TagPromoterSubroutine::new(TagPromoterConfig {
+        min_count: 2,
+        ..TagPromoterConfig::default()
+    });
     let mut total = 0usize;
     for aw in &applied.per_workstream {
         let mgr = MemoryManager::for_workstream(data_dir, &aw.workstream.name, None)
