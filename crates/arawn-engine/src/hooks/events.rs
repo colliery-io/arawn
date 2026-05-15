@@ -80,6 +80,11 @@ pub enum HookEvent {
     Elicitation,
     /// When the user responds to an elicitation.
     ElicitationResult,
+
+    // --- Safety ---
+    /// When the prompt-injection guard sanitises or blocks an
+    /// inbound text payload.
+    PromptInjectionVerdict,
 }
 
 impl HookEvent {
@@ -110,6 +115,7 @@ impl HookEvent {
         HookEvent::TaskCompleted,
         HookEvent::Elicitation,
         HookEvent::ElicitationResult,
+        HookEvent::PromptInjectionVerdict,
     ];
 
     /// Whether this event can block execution (PreToolUse, PermissionRequest, UserPromptSubmit).
@@ -169,6 +175,9 @@ impl HookEvent {
             HookEvent::TaskCompleted => "When a task completes",
             HookEvent::Elicitation => "When the model requests structured user input",
             HookEvent::ElicitationResult => "When the user responds to an elicitation",
+            HookEvent::PromptInjectionVerdict => {
+                "When the prompt-injection guard sanitises or blocks inbound text"
+            }
         }
     }
 }
@@ -303,6 +312,17 @@ pub enum HookInput {
     ElicitationResult {
         response: serde_json::Value,
     },
+
+    // --- Safety ---
+    /// Fired by inbound-text boundaries when the prompt-injection
+    /// guard returns a non-Allow verdict. `context` is the source
+    /// tag (e.g. `"web_fetch"`), `verdict` is `"sanitize"` or
+    /// `"block"`, and `reasons` lists every finding that fired.
+    PromptInjectionVerdict {
+        context: String,
+        verdict: String,
+        reasons: Vec<String>,
+    },
 }
 
 impl HookInput {
@@ -334,6 +354,7 @@ impl HookInput {
             HookInput::TaskCompleted { .. } => HookEvent::TaskCompleted,
             HookInput::Elicitation { .. } => HookEvent::Elicitation,
             HookInput::ElicitationResult { .. } => HookEvent::ElicitationResult,
+            HookInput::PromptInjectionVerdict { .. } => HookEvent::PromptInjectionVerdict,
         }
     }
 
@@ -360,7 +381,7 @@ mod tests {
 
     #[test]
     fn all_events_count() {
-        assert_eq!(HookEvent::ALL.len(), 25);
+        assert_eq!(HookEvent::ALL.len(), 26);
     }
 
     #[test]

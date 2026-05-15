@@ -186,6 +186,7 @@ fn event_to_key(event: HookEvent) -> &'static str {
         HookEvent::TaskCompleted => "TaskCompleted",
         HookEvent::Elicitation => "Elicitation",
         HookEvent::ElicitationResult => "ElicitationResult",
+        HookEvent::PromptInjectionVerdict => "PromptInjectionVerdict",
     }
 }
 

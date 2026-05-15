@@ -204,26 +204,52 @@ impl Tool for FeedSearchTool {
         hits.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
         hits.truncate(limit);
 
+        // Run each hit's body through the prompt-injection guard.
+        // Blocked hits are dropped from the result with a tracing
+        // warning; sanitised hits surface their sanitised snippet so
+        // the model sees the quarantine markers.
+        let mut blocked = 0usize;
+        let mut sanitised = 0usize;
         let results: Vec<Value> = hits
             .into_iter()
-            .map(|h| {
-                json!({
+            .filter_map(|h| {
+                let verdict = crate::prompt_injection::enforce(&h.row.body_text, "feed_search");
+                let body_for_snippet: String = match &verdict {
+                    crate::prompt_injection::Verdict::Allow => h.row.body_text.clone(),
+                    crate::prompt_injection::Verdict::Sanitize { sanitized, .. } => {
+                        sanitised += 1;
+                        sanitized.clone()
+                    }
+                    crate::prompt_injection::Verdict::Block { reasons } => {
+                        blocked += 1;
+                        tracing::warn!(
+                            feed_id = %h.row.feed_id,
+                            id = %h.row.id,
+                            ?reasons,
+                            "feed_search dropping blocked hit"
+                        );
+                        return None;
+                    }
+                };
+                Some(json!({
                     "feed_type": h.row.feed_type,
                     "id": h.row.id,
                     "feed_id": h.row.feed_id,
                     "source_id": h.row.source_id,
                     "source_ts": h.row.source_ts.to_rfc3339(),
                     "title": h.row.title,
-                    "snippet": snippet(&h.row.body_text, 240),
+                    "snippet": snippet(&body_for_snippet, 240),
                     "score": h.score,
                     "metadata": h.row.metadata,
-                })
+                }))
             })
             .collect();
 
         let body = json!({
             "results": results,
             "count": results.len(),
+            "blocked": blocked,
+            "sanitised": sanitised,
         });
         Ok(ToolOutput::success(body.to_string()))
     }

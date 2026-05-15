@@ -9,6 +9,7 @@ pub mod hooks;
 pub mod permissions;
 pub mod plan;
 pub mod plugins;
+pub mod prompt_injection;
 pub mod query_engine;
 pub mod skills;
 pub mod system_prompt;

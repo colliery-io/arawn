@@ -233,11 +233,31 @@ async fn finish(
     url: &str,
     text: String,
 ) -> Result<ToolOutput, ToolError> {
+    // Run inbound web content through the prompt-injection guard
+    // before it reaches the LLM (either via summarization or as a
+    // returned ToolOutput that will feed the model on the next turn).
+    let verdict = crate::prompt_injection::enforce(&text, "web_fetch");
+    let safe_text = match &verdict {
+        crate::prompt_injection::Verdict::Allow => text,
+        crate::prompt_injection::Verdict::Sanitize { sanitized, .. } => {
+            tracing::warn!(url, "web_fetch payload sanitised by prompt-injection guard");
+            sanitized.clone()
+        }
+        crate::prompt_injection::Verdict::Block { reasons } => {
+            tracing::warn!(url, ?reasons, "web_fetch payload blocked by prompt-injection guard");
+            return Ok(ToolOutput::error(format!(
+                "Content from {url} was blocked by the prompt-injection guard. \
+                 Reasons: {}",
+                reasons.join("; ")
+            )));
+        }
+    };
+
     if !prompt.is_empty()
         && let (Some(llm), Some(model)) = (ctx.llm(), ctx.model()) {
-            return summarize_with_llm(llm, model, prompt, url, &text).await;
+            return summarize_with_llm(llm, model, prompt, url, &safe_text).await;
         }
-    Ok(ToolOutput::success(text))
+    Ok(ToolOutput::success(safe_text))
 }
 
 async fn summarize_with_llm(
