@@ -84,6 +84,12 @@ pub struct EngineConfig {
     pub max_iterations: usize,
     #[serde(default = "default_max_result_size")]
     pub max_result_size: usize,
+    /// Default wall-clock timeout for individual tool calls, in seconds.
+    /// Overridable per call by the agent via the `timeout_secs` tool argument,
+    /// and process-wide by the `ARAWN_TOOL_TIMEOUT_SECS` env var (env wins).
+    /// When unset or zero, falls back to 120s.
+    #[serde(default)]
+    pub tool_timeout_secs: Option<u64>,
 }
 
 fn default_engine_llm() -> String {
@@ -102,6 +108,7 @@ impl Default for EngineConfig {
             llm: default_engine_llm(),
             max_iterations: default_max_iterations(),
             max_result_size: default_max_result_size(),
+            tool_timeout_secs: None,
         }
     }
 }

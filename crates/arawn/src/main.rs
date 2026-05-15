@@ -1464,6 +1464,7 @@ fn build_engine_config(
             // integration registry); the template stays None.
             integration_capabilities: None,
         }),
+        tool_timeout_secs: config.engine.tool_timeout_secs,
     }
 }
 

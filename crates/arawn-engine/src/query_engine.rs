@@ -14,6 +14,7 @@ use crate::permissions::{PermissionChecker, PermissionDecision};
 use crate::plan::PlanModeState;
 use crate::token_estimator::{ModelLimits, TokenEstimator};
 use crate::tool::ToolRegistry;
+use crate::tool_timeout;
 
 const DEFAULT_MAX_ITERATIONS: usize = 200;
 const MAX_COMPACT_FAILURES: u32 = 3;
@@ -85,6 +86,10 @@ pub struct QueryEngineConfig {
     pub data_dir: Option<std::path::PathBuf>,
     /// Per-turn prompt building context. If set, system_prompt is ignored.
     pub prompt_context: Option<PromptContext>,
+    /// Default wall-clock timeout for tool calls, in seconds. None falls back
+    /// to the `ARAWN_TOOL_TIMEOUT_SECS` env var, then to 120s. The agent can
+    /// override per-call via the `timeout_secs` argument on any tool.
+    pub tool_timeout_secs: Option<u64>,
 }
 
 impl Default for QueryEngineConfig {
@@ -97,6 +102,7 @@ impl Default for QueryEngineConfig {
             model_limits: ModelLimits::default(),
             data_dir: None,
             prompt_context: None,
+            tool_timeout_secs: None,
         }
     }
 }
@@ -872,9 +878,51 @@ impl QueryEngine {
             }
         };
 
-        
+        // Strip the agent's per-call `timeout_secs` override (if any) before
+        // the args reach the tool. Resolve the effective budget; invalid
+        // overrides surface to the agent as an error.
+        let mut tool_args = arguments.clone();
+        let call_override = match tool_timeout::extract_override(&mut tool_args) {
+            Ok(v) => v,
+            Err(msg) => {
+                warn!(name, error = %msg, "invalid timeout_secs override");
+                return ToolResult {
+                    content: format!("Tool '{name}' rejected: {msg}"),
+                    is_error: true,
+                };
+            }
+        };
+        let (budget, source) =
+            tool_timeout::resolve(call_override, self.config.tool_timeout_secs);
 
-        match tool.execute(ctx, arguments.clone()).await {
+        let exec = tool.execute(ctx, tool_args);
+        let result = match tokio::time::timeout(budget, exec).await {
+            Ok(r) => r,
+            Err(_) => {
+                let detail = match source {
+                    "override" => format!("override of {}s", budget.as_secs()),
+                    _ => format!("default of {}s", budget.as_secs()),
+                };
+                let msg = format!(
+                    "Tool '{name}' exceeded its {detail} budget; the call was cancelled."
+                );
+                warn!(name, budget_secs = budget.as_secs(), source, "tool timed out");
+                if let Some(ref runner) = self.hook_runner {
+                    let hook_input = HookInput::PostToolUseFailure {
+                        tool_name: name.to_string(),
+                        tool_input: arguments.clone(),
+                        error: format!("timeout after {}s ({source})", budget.as_secs()),
+                    };
+                    let _ = runner.run(&hook_input).await;
+                }
+                return ToolResult {
+                    content: msg,
+                    is_error: true,
+                };
+            }
+        };
+
+        match result {
             Ok(output) => {
                 debug!(name, is_error = output.is_error, "tool completed");
 
@@ -1068,6 +1116,7 @@ mod tests {
     use crate::tools::ThinkTool;
     use arawn_core::Workstream;
     use arawn_llm::LlmError;
+    use arawn_tool::{Tool, ToolOutput};
     use async_trait::async_trait;
     use futures::stream;
     use std::pin::Pin;
@@ -1250,4 +1299,161 @@ mod tests {
         assert_eq!(session.messages().len(), 6);
     }
 
+    /// Tool that intentionally sleeps for a duration so timeout tests can
+    /// drive cancellation behaviour deterministically.
+    struct SlowTool {
+        sleep_ms: u64,
+    }
+
+    #[async_trait]
+    impl Tool for SlowTool {
+        fn name(&self) -> &str {
+            "slow"
+        }
+        fn description(&self) -> &str {
+            "sleeps for a configurable duration"
+        }
+        fn parameters_schema(&self) -> serde_json::Value {
+            serde_json::json!({"type": "object", "properties": {}})
+        }
+        async fn execute(
+            &self,
+            _ctx: &dyn arawn_tool::ToolContext,
+            _params: serde_json::Value,
+        ) -> Result<ToolOutput, arawn_tool::ToolError> {
+            tokio::time::sleep(std::time::Duration::from_millis(self.sleep_ms)).await;
+            Ok(ToolOutput::success("slept"))
+        }
+        fn is_read_only(&self) -> bool {
+            true
+        }
+    }
+
+    #[tokio::test]
+    async fn tool_completes_when_default_budget_is_large() {
+        let (_ws, mut session, ctx) = setup();
+        session.add_message(Message::User { content: "do it".into() });
+
+        let llm = Arc::new(MockLlm::new(vec![
+            MockLlm::tool_call("call_1", "slow", "{}"),
+            MockLlm::text("done"),
+        ]));
+        let registry = Arc::new(ToolRegistry::new());
+        registry.register(Box::new(SlowTool { sleep_ms: 50 }));
+        let config = QueryEngineConfig {
+            max_iterations: 5,
+            system_prompt: "t".into(),
+            tool_timeout_secs: Some(5),
+            ..Default::default()
+        };
+        let mut engine = QueryEngine::with_config(llm, registry, config);
+        let result = engine.run(&mut session, &ctx).await.unwrap();
+        assert_eq!(result, "done");
+    }
+
+    #[tokio::test]
+    async fn slow_tool_times_out_under_short_default() {
+        let (_ws, mut session, ctx) = setup();
+        session.add_message(Message::User { content: "do it".into() });
+
+        let llm = Arc::new(MockLlm::new(vec![
+            MockLlm::tool_call("call_1", "slow", "{}"),
+            MockLlm::text("acknowledged"),
+        ]));
+        let registry = Arc::new(ToolRegistry::new());
+        registry.register(Box::new(SlowTool { sleep_ms: 2000 }));
+        let config = QueryEngineConfig {
+            max_iterations: 5,
+            system_prompt: "t".into(),
+            tool_timeout_secs: Some(1),
+            ..Default::default()
+        };
+        let mut engine = QueryEngine::with_config(llm, registry, config);
+        let _ = engine.run(&mut session, &ctx).await.unwrap();
+        let tool_result = session
+            .messages()
+            .iter()
+            .find_map(|m| match m {
+                Message::ToolResult { content, .. } => Some(content.clone()),
+                _ => None,
+            })
+            .expect("expected a ToolResult message");
+        assert!(
+            tool_result.contains("timed out")
+                || tool_result.contains("cancelled")
+                || tool_result.contains("exceeded"),
+            "expected timeout error in tool result, got: {tool_result}"
+        );
+    }
+
+    #[tokio::test]
+    async fn agent_override_fires_before_default_would() {
+        let (_ws, mut session, ctx) = setup();
+        session.add_message(Message::User { content: "be impatient".into() });
+
+        let llm = Arc::new(MockLlm::new(vec![
+            MockLlm::tool_call("call_1", "slow", r#"{"timeout_secs":1}"#),
+            MockLlm::text("ack"),
+        ]));
+        let registry = Arc::new(ToolRegistry::new());
+        registry.register(Box::new(SlowTool { sleep_ms: 3000 }));
+        let config = QueryEngineConfig {
+            max_iterations: 5,
+            system_prompt: "t".into(),
+            tool_timeout_secs: Some(60),
+            ..Default::default()
+        };
+        let mut engine = QueryEngine::with_config(llm, registry, config);
+        let started = std::time::Instant::now();
+        let _ = engine.run(&mut session, &ctx).await.unwrap();
+        let elapsed = started.elapsed();
+        assert!(
+            elapsed < std::time::Duration::from_secs(2),
+            "override should have fired in ~1s, took {elapsed:?}"
+        );
+        let tool_result = session
+            .messages()
+            .iter()
+            .find_map(|m| match m {
+                Message::ToolResult { content, .. } => Some(content.clone()),
+                _ => None,
+            })
+            .expect("expected a ToolResult message");
+        assert!(
+            tool_result.contains("override"),
+            "expected error to mention override, got: {tool_result}"
+        );
+    }
+
+    #[tokio::test]
+    async fn invalid_override_surfaces_as_tool_error() {
+        let (_ws, mut session, ctx) = setup();
+        session.add_message(Message::User { content: "bad arg".into() });
+
+        let llm = Arc::new(MockLlm::new(vec![
+            MockLlm::tool_call("call_1", "slow", r#"{"timeout_secs":0}"#),
+            MockLlm::text("ack"),
+        ]));
+        let registry = Arc::new(ToolRegistry::new());
+        registry.register(Box::new(SlowTool { sleep_ms: 50 }));
+        let config = QueryEngineConfig {
+            max_iterations: 5,
+            system_prompt: "t".into(),
+            ..Default::default()
+        };
+        let mut engine = QueryEngine::with_config(llm, registry, config);
+        let _ = engine.run(&mut session, &ctx).await.unwrap();
+        let tool_result = session
+            .messages()
+            .iter()
+            .find_map(|m| match m {
+                Message::ToolResult { content, .. } => Some(content.clone()),
+                _ => None,
+            })
+            .expect("expected a ToolResult");
+        assert!(
+            tool_result.contains("timeout_secs"),
+            "expected error to name the bad arg, got: {tool_result}"
+        );
+    }
 }

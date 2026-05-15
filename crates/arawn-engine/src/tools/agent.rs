@@ -200,6 +200,10 @@ impl Tool for AgentTool {
             model_limits: ctx.model_limits().clone(),
             data_dir: ctx.data_dir().cloned(),
             prompt_context: None,
+            // Sub-agent timeout falls through to env / 120s. If the parent
+            // engine's config-level timeout ever needs to propagate, surface
+            // it via ToolContext and thread it here.
+            tool_timeout_secs: None,
         };
 
         // Sub-agent gets a compactor

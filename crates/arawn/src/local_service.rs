@@ -425,6 +425,7 @@ impl LocalService {
                 model_limits: self.config.model_limits.clone(),
                 data_dir: Some(self.data_dir.clone()),
                 prompt_context,
+                tool_timeout_secs: self.config.tool_timeout_secs,
             },
         )
         .with_compactor(compactor);

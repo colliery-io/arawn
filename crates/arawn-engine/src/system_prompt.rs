@@ -79,7 +79,8 @@ const DEFAULT_USING_TOOLS: &str = r#"# Using your tools
 - Reserve shell exclusively for commands that require shell execution.
 - You can call multiple tools in a single response. If you intend to call multiple tools and there are no dependencies between them, make all independent tool calls in parallel. Maximize use of parallel tool calls where possible to increase efficiency.
 - For complex multi-step tasks (3+ distinct steps), use EnterPlanMode to research and design your approach before taking action. Plan mode restricts you to observation-only tools while you explore. Call ExitPlanMode when ready to execute.
-- For tasks requiring deep research or parallel investigation, use the Agent tool to spawn sub-agents. Do NOT use Agent for simple lookups — use grep, glob, or file_read directly. Agents are for work that would fill your context with intermediate output you don't need to keep."#;
+- For tasks requiring deep research or parallel investigation, use the Agent tool to spawn sub-agents. Do NOT use Agent for simple lookups — use grep, glob, or file_read directly. Agents are for work that would fill your context with intermediate output you don't need to keep.
+- Every tool accepts an optional `timeout_secs` argument that sets a wall-clock budget for that call. The default is 120 seconds. Pass a larger value when you expect a long-running command (builds, large fetches, slow web pages); pass a smaller value to fail fast on operations that should be quick. When a tool times out the call is cancelled — you'll see an error and can decide whether to retry with a larger budget."#;
 
 const DEFAULT_TONE: &str = r#"# Tone and style
 - Only use emojis if the user explicitly requests it.
