@@ -4,14 +4,14 @@ level: task
 title: "UAT scenario for tag-promoter Extract→Suggest→Add cycle"
 short_code: "ARAWN-T-0268"
 created_at: 2026-05-14T20:48:26.287341+00:00
-updated_at: 2026-05-14T20:59:59.163505+00:00
+updated_at: 2026-05-15T11:22:11.391471+00:00
 parent: ARAWN-I-0040
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -63,6 +63,8 @@ initiative_id: ARAWN-I-0040
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
@@ -169,11 +171,46 @@ seed helper can reach `TagPromoterSubroutine` + `Journal` + `JournalGate`
 - `cargo test -p arawn-tests --test uat_fixture --test uat_fixture_smoke` — 7/7.
 - `angreal check clippy` exit 0.
 
-**Next step (user-side):**
-```
-UAT_SCENARIO=tag-promoter-cycle angreal test uat
-angreal test uat-judge --results /tmp/arawn-uat-<ts>
-```
+### 2026-05-15 — Validated, PASS
 
-Findings from that run will land here. Until then this task stays
-"active" so it shows up on actionable-work lists.
+Multi-run UAT validation pass against `gemma4:31b-cloud`:
+
+- **signal-extraction-e2e** (`/tmp/arawn-uat-20260515-014716`):
+  PASS, completion 5/5, quality 4/5. Full dust cycle exercised
+  (workstream_refine → workstream_apply → signal_search verify →
+  workstream_rollback). Quality dip is gemma's parallel-tool habit
+  on turn 3 (switch+timeline batched), recovered.
+
+- **tag-promoter-cycle** (`/tmp/arawn-uat-20260515-104010`):
+  PASS, completion 5/5, quality 4/5. Full Suggest→Add→Rollback
+  exercised on a real tag-promoter proposal. Quality dip is the
+  same parallel-dispatch flake on apply+show; runtime executed
+  them in the right order so data was correct, but the agent
+  disobeyed the explicit "sequential" instruction in the prompt.
+
+Three follow-up fixes landed alongside (commit `4b1e9b5`):
+
+1. `seed_tag_promoter` is now opt-in per Scenario. Running it
+   unconditionally polluted signal-extraction-e2e with a stray
+   promote_tag journal row that became the wrong rollback target
+   when the dust path flaked.
+
+2. `drive_tag_promoter` uses `min_count=2` for UAT (production
+   default stays at 3). LLM-nondeterminism in seed extraction
+   means recurring discovered tags often land at count=2 within a
+   single fixture; the tighter threshold tolerates the variance.
+
+3. tag-promoter-cycle turn 3 prompt explicitly forbids parallel
+   `workstream_apply` + `workstream_show` dispatch — mirrors the
+   fix already applied to signal-extraction-e2e turn 3.
+
+**Known residual:** gemma still occasionally batches parallel tool
+calls when the prompt clearly tells it to serialize. Quality
+ceiling on these scenarios is 4/5 until either (a) a stricter model
+follows ordering instructions reliably or (b) we add engine-side
+tool-call dependency tracking. Tracking as future work; not
+blocking.
+
+Closing T-0268 — UAT scenarios for both halves of the
+Extract→Suggest→Add cycle are in place, both pass, both have stable
+expected behaviors documented in the judge_expectation strings.

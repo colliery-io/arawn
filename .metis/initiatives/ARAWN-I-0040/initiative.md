@@ -4,14 +4,14 @@ level: initiative
 title: "Signal extraction — graphqlite-backed memory + per-feed projections + workstream palaces"
 short_code: "ARAWN-I-0040"
 created_at: 2026-05-12T01:09:56.555061+00:00
-updated_at: 2026-05-12T01:35:36.504886+00:00
+updated_at: 2026-05-15T11:22:16.823339+00:00
 parent: ARAWN-V-0001
 blocked_by: []
 archived: false
 
 tags:
   - "#initiative"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -248,6 +248,8 @@ Considered when shipability under pressure was a factor. Rejected after the "no 
 ### Per-workstream ontology types (open `EntityType`)
 
 Considered. Rejected for now in favour of tag vocabularies on a closed type system. The six existing types have done real work; opening them is a one-way door we shouldn't take without strong evidence.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
