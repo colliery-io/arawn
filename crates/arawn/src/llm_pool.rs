@@ -12,10 +12,10 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use anyhow::{Context, Result, anyhow};
-use arawn_llm::LlmClient;
+use arawn_llm::{LlmClient, ModelHint};
 use arawn_tool::{LlmPreference, LlmResolution, MatchQuality};
 
-use crate::config::{ArawnConfig, LlmConfig};
+use crate::config::{ArawnConfig, HintRoutingConfig, LlmConfig};
 
 /// A pool of named LLM clients built from an [`ArawnConfig`].
 pub struct LlmClientPool {
@@ -23,6 +23,10 @@ pub struct LlmClientPool {
     configs: HashMap<String, LlmConfig>,
     engine_name: String,
     compactor_name: String,
+    /// Hint tier → `[llm.NAME]`. Each entry is a *resolved* profile name
+    /// (one that exists in `clients`); unresolved hints fall back to
+    /// `engine_name` at lookup time so the map can simply be empty.
+    hint_names: HashMap<ModelHint, String>,
 }
 
 impl std::fmt::Debug for LlmClientPool {
@@ -66,8 +70,15 @@ impl LlmClientPool {
         // return an entry that exists in the map.
         let engine_name = resolve_engine_name(config, &clients)?;
         let compactor_name = resolve_compactor_name(config, &engine_name);
+        let hint_names = resolve_hint_names(&config.routing.hints, &clients);
 
-        Ok(Self { clients, configs, engine_name, compactor_name })
+        Ok(Self {
+            clients,
+            configs,
+            engine_name,
+            compactor_name,
+            hint_names,
+        })
     }
 
     /// Construct a pool from a pre-built map of clients. Mostly useful for
@@ -82,7 +93,13 @@ impl LlmClientPool {
         let compactor_name = compactor_name.into();
         debug_assert!(clients.contains_key(&engine_name));
         debug_assert!(clients.contains_key(&compactor_name));
-        Self { clients, configs, engine_name, compactor_name }
+        Self {
+            clients,
+            configs,
+            engine_name,
+            compactor_name,
+            hint_names: HashMap::new(),
+        }
     }
 
     /// Build a single-entry pool wrapping `client` as both engine and
@@ -98,6 +115,7 @@ impl LlmClientPool {
             configs,
             engine_name: "default".to_string(),
             compactor_name: "default".to_string(),
+            hint_names: HashMap::new(),
         }
     }
 
@@ -136,6 +154,44 @@ impl LlmClientPool {
 
     pub fn compactor_name(&self) -> &str {
         &self.compactor_name
+    }
+
+    /// Resolve a model-string at the call-site boundary.
+    ///
+    /// - `hint:lightweight|medium|heavy` → the client and concrete model
+    ///   for the named profile (`[routing.hints]` → `[llm.NAME]`).
+    /// - Unknown `hint:*` → falls back to the engine LLM. Logged via
+    ///   tracing so misconfigurations surface.
+    /// - Anything else → treated as a concrete model name. The pool
+    ///   returns the engine client (it does not look the model up across
+    ///   providers — that is intentional, the caller already chose the
+    ///   client elsewhere). The string is passed back unchanged.
+    ///
+    /// The returned model string is what the caller should put into
+    /// `ChatRequest.model`. The returned client is what should serve it.
+    pub fn resolve_hint(&self, model_str: &str) -> (Arc<dyn LlmClient>, String) {
+        if let Some(hint) = arawn_llm::classify_hint(model_str) {
+            if let Some(name) = self.hint_names.get(&hint)
+                && let (Some(client), Some(cfg)) = (self.clients.get(name), self.configs.get(name))
+            {
+                return (Arc::clone(client), cfg.model.clone());
+            }
+            // Configured profile vanished, or hint not in [routing.hints] —
+            // fall through to engine.
+            let engine_cfg = self.engine_config();
+            return (self.engine(), engine_cfg.model.clone());
+        }
+        if arawn_llm::is_hint_shape(model_str) {
+            // Hint-shaped but unparseable — log and fall back to engine.
+            tracing::warn!(
+                hint = %model_str,
+                "unknown hint tier; falling back to engine LLM"
+            );
+            let engine_cfg = self.engine_config();
+            return (self.engine(), engine_cfg.model.clone());
+        }
+        // Concrete model string — engine client, model as-is.
+        (self.engine(), model_str.to_string())
     }
 
     /// Iterator over (name, config) pairs.
@@ -245,6 +301,30 @@ impl LlmClientPool {
     pub fn is_empty(&self) -> bool {
         self.clients.is_empty()
     }
+}
+
+fn resolve_hint_names(
+    cfg: &HintRoutingConfig,
+    clients: &HashMap<String, Arc<dyn LlmClient>>,
+) -> HashMap<ModelHint, String> {
+    let mut out = HashMap::new();
+    let mut accept = |tier: ModelHint, name: &Option<String>| {
+        if let Some(n) = name
+            && clients.contains_key(n)
+        {
+            out.insert(tier, n.clone());
+        } else if let Some(n) = name {
+            tracing::warn!(
+                tier = %tier.as_str(),
+                profile = %n,
+                "[routing.hints] references unknown [llm.NAME]; falling back to engine"
+            );
+        }
+    };
+    accept(ModelHint::Lightweight, &cfg.lightweight);
+    accept(ModelHint::Medium, &cfg.medium);
+    accept(ModelHint::Heavy, &cfg.heavy);
+    out
 }
 
 fn resolve_engine_name(
@@ -533,5 +613,91 @@ model = "x"
         assert!(result.is_err());
         let msg = format!("{}", result.unwrap_err());
         assert!(msg.contains("[llm.broken]"), "error should name the bad entry: {msg}");
+    }
+
+    fn build_two_profile_pool() -> LlmClientPool {
+        // Two profiles, distinct concrete models, distinct clients.
+        let config: ArawnConfig = toml::from_str(
+            r#"
+[llm.default]
+provider = "groq"
+model = "heavy-model"
+
+[llm.cheap]
+provider = "groq"
+model = "lightweight-model"
+
+[routing.hints]
+lightweight = "cheap"
+medium = "default"
+heavy = "default"
+"#,
+        )
+        .unwrap();
+        LlmClientPool::from_config(&config, mock_builder).unwrap()
+    }
+
+    #[test]
+    fn resolve_hint_uses_configured_profile_for_lightweight() {
+        let pool = build_two_profile_pool();
+        let (_, model) = pool.resolve_hint("hint:lightweight");
+        assert_eq!(model, "lightweight-model");
+    }
+
+    #[test]
+    fn resolve_hint_uses_configured_profile_for_medium() {
+        let pool = build_two_profile_pool();
+        let (_, model) = pool.resolve_hint("hint:medium");
+        assert_eq!(model, "heavy-model"); // medium → default in this config
+    }
+
+    #[test]
+    fn resolve_hint_falls_back_to_engine_when_unconfigured() {
+        let config: ArawnConfig = toml::from_str(
+            r#"
+[llm.default]
+provider = "groq"
+model = "only-model"
+"#,
+        )
+        .unwrap();
+        let pool = LlmClientPool::from_config(&config, mock_builder).unwrap();
+        let (_, model) = pool.resolve_hint("hint:lightweight");
+        assert_eq!(model, "only-model");
+    }
+
+    #[test]
+    fn resolve_hint_unknown_hint_falls_back_to_engine() {
+        let pool = build_two_profile_pool();
+        let (_, model) = pool.resolve_hint("hint:reaction");
+        assert_eq!(model, "heavy-model");
+    }
+
+    #[test]
+    fn resolve_hint_concrete_model_passes_through() {
+        let pool = build_two_profile_pool();
+        let (_, model) = pool.resolve_hint("custom-fine-tune");
+        assert_eq!(model, "custom-fine-tune");
+    }
+
+    #[test]
+    fn resolve_hint_with_missing_profile_falls_back_silently() {
+        // [routing.hints] names a profile that doesn't exist in [llm.*].
+        // The resolver should drop the entry at construction and the
+        // hint should fall through to engine.
+        let config: ArawnConfig = toml::from_str(
+            r#"
+[llm.default]
+provider = "groq"
+model = "engine-model"
+
+[routing.hints]
+medium = "nonexistent"
+"#,
+        )
+        .unwrap();
+        let pool = LlmClientPool::from_config(&config, mock_builder).unwrap();
+        let (_, model) = pool.resolve_hint("hint:medium");
+        assert_eq!(model, "engine-model");
     }
 }

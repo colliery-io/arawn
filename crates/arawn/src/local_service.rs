@@ -410,15 +410,18 @@ impl LocalService {
         prompt_context: Option<arawn_engine::PromptContext>,
         event_tx: &mpsc::Sender<EngineEvent>,
     ) -> QueryEngine {
-        let compactor = Compactor::new(
-            self.llm_pool.compactor(),
-            self.llm_pool.compactor_config().model.clone(),
-        );
+        // Resolve `hint:*` at the engine/compactor boundary. The pool maps
+        // each hint to a concrete model via `[routing.hints]`; passing
+        // anything else through unchanged.
+        let (compactor_client, compactor_model) =
+            self.llm_pool.resolve_hint(&arawn_llm::ModelHint::Medium.as_hint());
+        let compactor = Compactor::new(compactor_client, compactor_model);
+        let (engine_client, engine_model) = self.llm_pool.resolve_hint(&self.config.model);
         let mut engine = QueryEngine::with_config(
-            self.llm_pool.engine(),
+            engine_client,
             self.registry.clone(),
             QueryEngineConfig {
-                model: self.config.model.clone(),
+                model: engine_model,
                 max_iterations: self.config.max_iterations,
                 system_prompt: self.config.system_prompt.clone(),
                 max_tokens: self.config.max_tokens,

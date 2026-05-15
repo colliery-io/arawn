@@ -332,6 +332,32 @@ pub struct ArawnConfig {
     pub sandbox: SandboxConfig,
     #[serde(default)]
     pub integrations: IntegrationsConfig,
+    #[serde(default)]
+    pub routing: RoutingConfig,
+}
+
+/// Routing configuration. Today only the hint→profile map; T-0278 adds
+/// privacy / latency / usage-pressure inputs alongside.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct RoutingConfig {
+    #[serde(default)]
+    pub hints: HintRoutingConfig,
+}
+
+/// Maps each `ModelHint` tier to a named `[llm.NAME]` profile. Any field
+/// left `None` falls back to the engine LLM, so the minimal config
+/// (no `[routing.hints]` section at all) keeps current behaviour.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct HintRoutingConfig {
+    /// `[llm.NAME]` to use for `hint:lightweight`. Falls back to engine.
+    #[serde(default)]
+    pub lightweight: Option<String>,
+    /// `[llm.NAME]` to use for `hint:medium`. Falls back to engine.
+    #[serde(default)]
+    pub medium: Option<String>,
+    /// `[llm.NAME]` to use for `hint:heavy`. Falls back to engine.
+    #[serde(default)]
+    pub heavy: Option<String>,
 }
 
 fn default_llm_configs() -> HashMap<String, LlmConfig> {
@@ -352,6 +378,7 @@ impl Default for ArawnConfig {
             prompts: PromptsConfig::default(),
             sandbox: SandboxConfig::default(),
             integrations: IntegrationsConfig::default(),
+            routing: RoutingConfig::default(),
         }
     }
 }

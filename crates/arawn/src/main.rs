@@ -573,14 +573,21 @@ async fn main() -> Result<()> {
             > = Arc::new(move |name: &str| {
                 arawn_steward::CursorStore::open(&data_dir_clone, name)
             });
+            // Steward subroutines are focused summarisation/extraction
+            // tasks — `hint:medium` is the right tier. Resolved through
+            // the pool so future-T-0278 routing changes pick up here.
+            let (reshelve_client, reshelve_model) =
+                llm_pool.resolve_hint(&arawn_llm::ModelHint::Medium.as_hint());
             let reshelve = Arc::new(arawn_steward::ReshelveSubroutine::new(
-                llm_pool.engine(),
-                llm_pool.engine_config().model.clone(),
+                reshelve_client,
+                reshelve_model,
                 Arc::clone(&cursor_factory),
             ));
+            let (map_client, map_model) =
+                llm_pool.resolve_hint(&arawn_llm::ModelHint::Medium.as_hint());
             let map_sub = Arc::new(arawn_steward::MapSubroutine::new(
-                llm_pool.engine(),
-                llm_pool.engine_config().model.clone(),
+                map_client,
+                map_model,
                 Arc::clone(&cursor_factory),
             ));
             // Door-watch needs cross-workstream visibility: pass it the
@@ -593,9 +600,11 @@ async fn main() -> Result<()> {
                     })
                 })
             };
+            let (dw_client, dw_model) =
+                llm_pool.resolve_hint(&arawn_llm::ModelHint::Medium.as_hint());
             let doorwatch = Arc::new(arawn_steward::DoorWatchSubroutine::new(
-                llm_pool.engine(),
-                llm_pool.engine_config().model.clone(),
+                dw_client,
+                dw_model,
                 Arc::clone(&cursor_factory),
                 service.shared_store(),
                 dw_resolver,
@@ -1437,7 +1446,10 @@ fn build_engine_config(
 ) -> QueryEngineConfig {
     let engine_llm = config.engine_llm();
     QueryEngineConfig {
-        model: engine_llm.model.clone(),
+        // Emit a hint instead of a concrete model name. The pool resolves
+        // this at engine-construction time in `local_service`. T-0278 will
+        // promote this to per-call resolution.
+        model: arawn_llm::ModelHint::Heavy.as_hint(),
         max_iterations: config.engine.max_iterations,
         system_prompt: String::new(),
         max_tokens: Some(engine_llm.max_tokens),
