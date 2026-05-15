@@ -142,6 +142,7 @@ name = "arawn"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "arawn-auth",
  "arawn-core",
  "arawn-embed",
  "arawn-engine",
@@ -365,6 +366,7 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
+ "tempfile",
  "thiserror 2.0.18",
  "tokio",
  "tracing",
