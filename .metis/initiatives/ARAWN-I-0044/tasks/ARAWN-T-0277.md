@@ -1,17 +1,17 @@
 ---
-id: token-usage-tracker
+id: token-usage-tracker-typed
 level: task
 title: "Token usage tracker — typed TokenUsage records with per-model rollups"
 short_code: "ARAWN-T-0277"
 created_at: 2026-05-15T14:13:05.229977+00:00
-updated_at: 2026-05-15T14:13:05.229977+00:00
+updated_at: 2026-05-15T19:09:57.084507+00:00
 parent: ARAWN-I-0044
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -52,3 +52,26 @@ Every LLM call in `arawn-llm` emits a `TokenUsageRecord { provider, model, promp
 ## Notes
 - This is what unfreezes `T-0270` (redirect-link shortener) and `T-0274` (TokenJuice). The decision rule there is "revisit when telemetry shows a specific tool or boundary blowing context" — token-count rollups by `call_site` are exactly the signal needed.
 - The routing policy (`T-0278`) reads recent usage instead of cost. Its hint shape becomes something like `UsagePressure::{Low, High}` rather than `CostSensitivity::{Normal, High}` — wording change captured on T-0278.
+
+## Status Updates
+
+**2026-05-15 — implementation landed.**
+
+**Module placement deviation:** task said `crates/arawn-engine/src/token_usage/`. Moved to `crates/arawn-llm/src/usage/` so the steward + extractor crates can wire it in without taking a new `arawn-engine` dep (same reasoning as T-0275's gate).
+
+- New `crates/arawn-llm/src/usage/` module:
+  - `mod.rs` — `TokenUsageRecord`, `ModelUsageStats`, `UsagePeriod` ({Day, Week, Month, All}), `UsageSummary`, `CallSiteStats`. `UsageTracker::open(data_dir)` writes append-only JSONL to `<data_dir>/token_usage.jsonl`. `record()` and `read_all()` are best-effort (failures log, never bubble). `summary()` produces rollups filtered by period + optional model name; opt-in `by_site` adds a per-`call_site` breakdown.
+  - `tracking_client.rs` — `UsageTrackingClient` LlmClient decorator. Wraps another `LlmClient`; on every streamed `ChatChunk::Done { usage: Some(_) }` records a `TokenUsageRecord` via the global tracker. Streams that end without a Done chunk emit a tracing debug — the log under-counts in that case, by design.
+- Process-wide singleton: `install(Arc<UsageTracker>)` is idempotent; `global()` reads the active instance; `record()` is a no-op (with tracing debug) when no tracker is installed so non-bin callers / unit tests don't crash.
+- **Tokens, not dollars.** No `cost_usd`, no pricing table, no currency anywhere in the record / summary / CLI surface. Permanently out of scope per the task body.
+
+Wiring:
+
+- `crates/arawn/src/llm_pool.rs`: pool layering is now `raw → RetryClient → UsageTrackingClient → WarmingClient`. Every entry's traffic flows through the decorator.
+- `crates/arawn/src/main.rs`: tracker installed at startup via `arawn_llm::usage::install(...)` before the pool builds. New `Command::Usage { --period, --model, --by-site, --json }` reads the on-disk log without spinning up the engine.
+
+CLI verified end-to-end against a fresh temp dir: `arawn usage --period day` prints the human-readable empty-window message; `arawn usage --json` returns a parseable `UsageSummary` JSON.
+
+Tests: 10 in `arawn_llm::usage::tests` (record round-trip, by-model rollup, model filter, day window, by-site grouping, empty log, malformed-line skip, global-without-install no-panic). 1 in `tracking_client::tests` verifying the decorator records on a Done-with-usage chunk. Full workspace suite: **1575 passed / 0 failed.**
+
+**Follow-up for T-0278:** the routing policy reads recent usage from `UsageTracker::summary(period, Some(model), false)` to compute `UsagePressure::High` when totals exceed a configurable per-period threshold. The tracker shape is already what T-0278 needs.

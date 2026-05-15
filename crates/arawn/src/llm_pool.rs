@@ -54,12 +54,18 @@ impl LlmClientPool {
             let raw = build(llm_config).with_context(|| {
                 format!("failed to build LLM client for [llm.{name}]")
             })?;
-            // Layering: raw provider → RetryClient (retries on transient errors)
-            // → WarmingClient (TTL-cached warmup + cold-restart retry).
+            // Layering: raw provider
+            //   → RetryClient        (retries on transient errors)
+            //   → UsageTrackingClient (records token usage to the
+            //     process-wide tracker — T-0277)
+            //   → WarmingClient      (TTL-cached warmup + cold-restart retry)
             let with_retry: Arc<dyn LlmClient> =
                 Arc::new(arawn_llm::RetryClient::new(raw));
+            let tracked: Arc<dyn LlmClient> = Arc::new(
+                arawn_llm::usage::UsageTrackingClient::new(with_retry, llm_config.provider.clone()),
+            );
             let warmed: Arc<dyn LlmClient> = Arc::new(
-                arawn_llm::WarmingClient::new(with_retry, llm_config.provider.clone()),
+                arawn_llm::WarmingClient::new(tracked, llm_config.provider.clone()),
             );
             clients.insert(name.clone(), warmed);
             configs.insert(name.clone(), llm_config.clone());

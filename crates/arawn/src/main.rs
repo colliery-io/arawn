@@ -95,6 +95,21 @@ async fn main() -> Result<()> {
             #[arg(long)]
             json: bool,
         },
+        /// Show token usage rollups recorded by the local LLM tracker
+        Usage {
+            /// Window: day | week | month | all
+            #[arg(long, default_value = "week")]
+            period: String,
+            /// Filter to a specific model name
+            #[arg(long)]
+            model: Option<String>,
+            /// Group rollups by `call_site` tag as well
+            #[arg(long)]
+            by_site: bool,
+            /// Emit JSON instead of human-readable text
+            #[arg(long)]
+            json: bool,
+        },
     }
 
     let cli = Cli::parse();
@@ -131,6 +146,35 @@ async fn main() -> Result<()> {
             print!("{}", report.render_human());
         }
         std::process::exit(report.exit_code());
+    }
+
+    // Handle usage subcommand immediately (exits process). Reads
+    // the on-disk token-usage log without spinning up the full
+    // engine.
+    if let Some(Command::Usage { period, model, by_site, json }) = &cli.command {
+        let base = cli.data_dir.as_deref()
+            .map(String::from)
+            .or_else(dirs_path)
+            .unwrap_or_else(|| ".arawn".into());
+        let data_dir = std::path::PathBuf::from(base);
+        let period = match period.to_ascii_lowercase().as_str() {
+            "day" => arawn_llm::usage::UsagePeriod::Day,
+            "week" => arawn_llm::usage::UsagePeriod::Week,
+            "month" => arawn_llm::usage::UsagePeriod::Month,
+            "all" => arawn_llm::usage::UsagePeriod::All,
+            other => {
+                eprintln!("unknown --period {other}; expected day|week|month|all");
+                std::process::exit(2);
+            }
+        };
+        let tracker = arawn_llm::usage::UsageTracker::open(&data_dir);
+        let summary = tracker.summary(period, model.as_deref(), *by_site);
+        if *json {
+            println!("{}", serde_json::to_string_pretty(&summary).unwrap());
+        } else {
+            print!("{}", render_usage_human(&summary));
+        }
+        std::process::exit(0);
     }
 
     let serve_mode = matches!(cli.command, Some(Command::Serve { .. }));
@@ -276,6 +320,14 @@ async fn main() -> Result<()> {
         // both ring and aws-lc-rs visible in the dep tree won't auto-pick.
         // Idempotent.
         arawn_integrations::install_default_crypto_provider();
+
+        // Install the process-wide token usage tracker *before* the
+        // pool builds — the pool wraps every entry in a
+        // `UsageTrackingClient` decorator that calls into the
+        // tracker. Installation is idempotent.
+        arawn_llm::usage::install(Arc::new(arawn_llm::usage::UsageTracker::open(
+            std::path::Path::new(&data_dir),
+        )));
 
         // Build the LLM client pool — fail-fast: any misconfigured `[llm.*]`
         // entry surfaces here, not mid-session.
@@ -1502,6 +1554,45 @@ fn build_engine_config(
         }),
         tool_timeout_secs: config.engine.tool_timeout_secs,
     }
+}
+
+/// Human-readable renderer for the `arawn usage` command.
+fn render_usage_human(s: &arawn_llm::usage::UsageSummary) -> String {
+    let mut out = String::new();
+    out.push_str(&format!(
+        "Token usage — period: {} ({} record(s), {} prompt, {} completion)\n",
+        s.period, s.total_calls, s.total_prompt_tokens, s.total_completion_tokens
+    ));
+    if s.models.is_empty() {
+        out.push_str("\n(no records in this window)\n");
+        return out;
+    }
+    out.push_str("\n");
+    out.push_str("By model:\n");
+    for m in &s.models {
+        out.push_str(&format!(
+            "  {provider:>10} {model:<32}  {calls:>6} call(s)  prompt {p:>10}  completion {c:>10}  total {t:>10}\n",
+            provider = m.provider,
+            model = m.model,
+            calls = m.call_count,
+            p = m.total_prompt_tokens,
+            c = m.total_completion_tokens,
+            t = m.total_tokens(),
+        ));
+    }
+    if !s.by_site.is_empty() {
+        out.push_str("\nBy call site:\n");
+        for site in &s.by_site {
+            out.push_str(&format!(
+                "  {site:<32}  {calls:>6} call(s)  prompt {p:>10}  completion {c:>10}\n",
+                site = site.call_site,
+                calls = site.call_count,
+                p = site.total_prompt_tokens,
+                c = site.total_completion_tokens,
+            ));
+        }
+    }
+    out
 }
 
 fn dirs_path() -> Option<String> {
