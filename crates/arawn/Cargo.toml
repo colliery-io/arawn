@@ -17,6 +17,7 @@ arawn-core = { workspace = true }
 arawn-embed = { path = "../arawn-embed" }
 arawn-mcp = { path = "../arawn-mcp" }
 arawn-tui = { path = "../arawn-tui" }
+arawn-auth = { workspace = true }
 arawn-engine = { workspace = true }
 arawn-llm = { workspace = true }
 arawn-memory = { path = "../arawn-memory" }

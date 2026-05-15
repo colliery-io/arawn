@@ -89,6 +89,12 @@ async fn main() -> Result<()> {
             #[arg(trailing_var_arg = true)]
             args: Vec<String>,
         },
+        /// Run diagnostic checks against the local install
+        Doctor {
+            /// Emit machine-readable JSON instead of human-readable text
+            #[arg(long)]
+            json: bool,
+        },
     }
 
     let cli = Cli::parse();
@@ -107,6 +113,24 @@ async fn main() -> Result<()> {
                 std::process::exit(1);
             }
         }
+    }
+
+    // Handle doctor subcommand immediately (exits process).
+    // Doctor must run before the heavy startup path so a broken config
+    // does not panic on the way to actually reporting "config broken".
+    if let Some(Command::Doctor { json }) = &cli.command {
+        let base = cli.data_dir.as_deref()
+            .map(String::from)
+            .or_else(dirs_path)
+            .unwrap_or_else(|| ".arawn".into());
+        let data_dir = std::path::PathBuf::from(base);
+        let report = arawn_bin::doctor::run(&data_dir).await;
+        if *json {
+            println!("{}", report.render_json());
+        } else {
+            print!("{}", report.render_human());
+        }
+        std::process::exit(report.exit_code());
     }
 
     let serve_mode = matches!(cli.command, Some(Command::Serve { .. }));

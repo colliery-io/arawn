@@ -1,6 +1,7 @@
 pub mod channel_prompt;
 pub mod config;
 pub mod config_watcher;
+pub mod doctor;
 pub mod llm_pool;
 pub mod local_service;
 pub mod plugin_cmd;
