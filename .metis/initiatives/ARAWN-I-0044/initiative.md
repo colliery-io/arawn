@@ -4,14 +4,14 @@ level: initiative
 title: "OpenHuman comparative adoption — lift the small wins, decide on the big ones"
 short_code: "ARAWN-I-0044"
 created_at: 2026-05-15T14:00:16.710286+00:00
-updated_at: 2026-05-15T14:00:16.710286+00:00
+updated_at: 2026-05-15T21:22:52.699167+00:00
 parent: ARAWN-V-0001
 blocked_by: []
 archived: false
 
 tags:
   - "#initiative"
-  - "#phase/discovery"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -93,13 +93,16 @@ plus `ARAWN-S-0004` (the tier-3/4 spec) and the tier-1/2 tasks attached below.
    tool or inbound boundary burning measurable tokens. Kept on the
    initiative so the design work is not lost.
 
-3. **Tier 3 (architectural)** — *not decomposed yet*. The companion
-   specification `ARAWN-S-0004` enumerates the open questions; this
-   initiative blocks on resolving those before tier-3 tasks land. The
-   spec is the discovery vehicle.
+3. **Tier 3 (architectural)** — **spun out to `ARAWN-I-0048`** so this
+   initiative can close once tier-1 + tier-2-late are tracked. The
+   tier-3 questions are slow, deliberate architectural decisions;
+   keeping them inside a shipped initiative would obscure both. The
+   spec `ARAWN-S-0004` remains the working document; I-0048 tracks
+   progress on it.
 
-4. **Tier 4 (non-adoption)** — codified in the spec as decisions, not
-   tasks. They exist to prevent silent drift.
+4. **Tier 4 (non-adoption)** — codified in `ARAWN-S-0004` §F–I as
+   decisions, not tasks. They exist to prevent silent drift and are
+   not in-scope for any active initiative.
 
 ### Source material
 
@@ -129,16 +132,36 @@ plus `ARAWN-S-0004` (the tier-3/4 spec) and the tier-1/2 tasks attached below.
 2. Land tier-2 tasks. Most are independent; only `T-0278` (routing
    policy) is sequenced — it depends on `T-0272` and `T-0277`. No ADRs
    required for these tasks; each task document is self-contained.
-3. Resolve the tier-3 spec (`ARAWN-S-0004`) — read, comment, decide
-   per question (A–E). Each `Decide` outcome either generates a new
-   task on this initiative or is closed as deferred.
-4. Tier-4 items: archive into the spec as decided-non-goals; revisit
+3. Tier-3 drive-out happens on `ARAWN-I-0048` against `ARAWN-S-0004`
+   §A–E.
+4. Tier-4 items in `ARAWN-S-0004` §F–I are decided-non-goals; revisit
    only on a deliberate vision change.
 
 ## Exit Criteria
 
-- All tier-1 and tier-2 tasks completed or explicitly deferred with
-  rationale.
-- Tier-3 spec moved to `published` (every question has a recorded
-  decision, even if the decision is "defer").
-- Tier-4 spec section locked — no open questions left.
+- ✅ All tier-1 tasks (T-0269, T-0271–T-0273, T-0275–T-0278) completed.
+- Tier-2-late tasks (T-0270, T-0274) tracked as deferred with explicit
+  telemetry-triggered revisit conditions on each task doc.
+- Tier-3 drive-out spun out to `ARAWN-I-0048`; tier-4 locked in the
+  spec.
+
+## Outcome
+
+Tier 1 of the openhuman comparative adoption shipped:
+
+| Task | Subsystem | Commit |
+|---|---|---|
+| T-0269 | Tool wall-clock timeout (agent-overridable) | a62211a |
+| T-0272 | Hint-style model routing taxonomy | b73800a |
+| T-0271 | `arawn doctor` CLI + RPC | 58810a4 |
+| T-0273 | Centralised prompt-injection guard | 88478ad |
+| T-0275 | LLM resource gate (1-slot local cap) | 5b3d61e |
+| T-0276 | Approval tiering (tool, shape) + audit log | 32df4ab |
+| T-0277 | Token usage tracker (tokens only, no dollars) | 815742e |
+| T-0278 | Routing policy (health-aware local/remote) | 19678d1 |
+
+Workspace test count grew from ~583 to **1602 passed / 0 failed**.
+Net +~1000 tests across the eight tasks. Documented deviations from
+the openhuman comparative dive recorded on each task doc; major
+ones: token tracker records tokens not dollars; routing module lives
+in `arawn-llm` not `arawn-engine` (steward + extractor reuse).

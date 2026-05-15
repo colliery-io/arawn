@@ -20,11 +20,14 @@ initiative_id: NULL
 
 # OpenHuman comparative adoption — tier 3 architectural questions + tier 4 non-adoption decisions
 
-> **Status:** draft. Each tier-3 question is open and needs an explicit
-> *Decide* outcome (adopt now / adopt later / defer indefinitely / reject)
-> before the parent initiative ARAWN-I-0044 can exit discovery. Tier-4 items
+> **Status:** draft. Tier-3 drive-out is tracked on **ARAWN-I-0048**.
+> Each §A–E question is open and needs an explicit *Decide* outcome
+> (adopt now / adopt later / defer indefinitely / reject). Tier-4 items
 > are documented as decisions, not questions — they exist so future
 > contributors do not relitigate them silently.
+>
+> Originally parented to ARAWN-I-0044; that initiative shipped tier 1
+> and closed. The spec remains the working document for §A–E decisions.
 
 ## Overview **[REQUIRED]**
 
