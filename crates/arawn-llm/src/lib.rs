@@ -7,6 +7,7 @@ pub mod hints;
 pub mod mock;
 pub mod openai_compat;
 pub mod retry;
+pub mod routing;
 pub mod types;
 pub mod usage;
 pub mod warming;

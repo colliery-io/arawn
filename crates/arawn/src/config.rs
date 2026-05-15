@@ -336,12 +336,31 @@ pub struct ArawnConfig {
     pub routing: RoutingConfig,
 }
 
-/// Routing configuration. Today only the hint→profile map; T-0278 adds
-/// privacy / latency / usage-pressure inputs alongside.
+/// Routing configuration. Holds the hint→profile map (T-0272) and
+/// the local/remote provider names that drive the health-aware
+/// routing policy (T-0278).
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct RoutingConfig {
     #[serde(default)]
     pub hints: HintRoutingConfig,
+    #[serde(default)]
+    pub providers: ProvidersRoutingConfig,
+}
+
+/// Names of the `[llm.NAME]` profiles that play the Local and Remote
+/// roles in the routing policy. When `local` is unset, the policy
+/// collapses to "always Remote" (no fallback, no privacy short-
+/// circuit).
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct ProvidersRoutingConfig {
+    /// `[llm.NAME]` to use as the Local provider. Typically an
+    /// `OpenAICompatibleClient` pointing at a local Ollama instance.
+    #[serde(default)]
+    pub local: Option<String>,
+    /// `[llm.NAME]` to use as the Remote provider. Falls back to
+    /// the engine profile when unset.
+    #[serde(default)]
+    pub remote: Option<String>,
 }
 
 /// Maps each `ModelHint` tier to a named `[llm.NAME]` profile. Any field

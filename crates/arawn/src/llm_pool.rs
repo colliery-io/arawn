@@ -13,9 +13,12 @@ use std::sync::Arc;
 
 use anyhow::{Context, Result, anyhow};
 use arawn_llm::{LlmClient, ModelHint};
+use arawn_llm::routing::{
+    IntelligentRoutingProvider, LocalHealthChecker, ProviderHandle, RoutingHints, SharedHealth,
+};
 use arawn_tool::{LlmPreference, LlmResolution, MatchQuality};
 
-use crate::config::{ArawnConfig, HintRoutingConfig, LlmConfig};
+use crate::config::{ArawnConfig, HintRoutingConfig, LlmConfig, ProvidersRoutingConfig};
 
 /// A pool of named LLM clients built from an [`ArawnConfig`].
 pub struct LlmClientPool {
@@ -23,6 +26,16 @@ pub struct LlmClientPool {
     configs: HashMap<String, LlmConfig>,
     engine_name: String,
     compactor_name: String,
+    /// Resolved Local/Remote profile names for the routing policy
+    /// (T-0278). `None` means the role is unconfigured; the routing
+    /// provider degrades to "always Remote" / "no fallback" in that
+    /// case.
+    local_provider_name: Option<String>,
+    remote_provider_name: Option<String>,
+    /// Shared health snapshot for the local provider. Stored even
+    /// when no local profile is configured (it returns
+    /// `NotConfigured` in that case).
+    local_health: SharedHealth,
     /// Hint tier → `[llm.NAME]`. Each entry is a *resolved* profile name
     /// (one that exists in `clients`); unresolved hints fall back to
     /// `engine_name` at lookup time so the map can simply be empty.
@@ -77,12 +90,22 @@ impl LlmClientPool {
         let engine_name = resolve_engine_name(config, &clients)?;
         let compactor_name = resolve_compactor_name(config, &engine_name);
         let hint_names = resolve_hint_names(&config.routing.hints, &clients);
+        let (local_provider_name, remote_provider_name) =
+            resolve_routing_provider_names(&config.routing.providers, &clients, &engine_name);
+        let local_health: SharedHealth = Arc::new(if local_provider_name.is_some() {
+            LocalHealthChecker::configured()
+        } else {
+            LocalHealthChecker::not_configured()
+        });
 
         Ok(Self {
             clients,
             configs,
             engine_name,
             compactor_name,
+            local_provider_name,
+            remote_provider_name,
+            local_health,
             hint_names,
         })
     }
@@ -104,6 +127,9 @@ impl LlmClientPool {
             configs,
             engine_name,
             compactor_name,
+            local_provider_name: None,
+            remote_provider_name: None,
+            local_health: Arc::new(LocalHealthChecker::not_configured()),
             hint_names: HashMap::new(),
         }
     }
@@ -121,6 +147,9 @@ impl LlmClientPool {
             configs,
             engine_name: "default".to_string(),
             compactor_name: "default".to_string(),
+            local_provider_name: None,
+            remote_provider_name: None,
+            local_health: Arc::new(LocalHealthChecker::not_configured()),
             hint_names: HashMap::new(),
         }
     }
@@ -160,6 +189,52 @@ impl LlmClientPool {
 
     pub fn compactor_name(&self) -> &str {
         &self.compactor_name
+    }
+
+    /// Build an [`IntelligentRoutingProvider`] from the configured
+    /// Local/Remote profiles. Returns `None` when no local profile
+    /// is configured — without a Local target there is no routing
+    /// decision to make, and callers should fall back to the
+    /// existing engine client + `resolve_hint`.
+    ///
+    /// The returned provider is a cheap struct — fine to construct
+    /// per-call when hints vary. The underlying clients and health
+    /// checker are shared.
+    pub fn routing_provider(
+        &self,
+        hints: RoutingHints,
+    ) -> Option<IntelligentRoutingProvider> {
+        // Routing exists to choose Local-vs-Remote. Without a Local
+        // profile the call collapses to "always Remote" — which is
+        // identical to passthrough through the engine client. Tell
+        // the caller to skip the layer entirely in that case.
+        self.local_provider_name.as_ref()?;
+        let remote_name = self.remote_provider_name.as_ref()?;
+        let remote = ProviderHandle {
+            client: Arc::clone(self.clients.get(remote_name)?),
+            model: self.configs.get(remote_name)?.model.clone(),
+        };
+        let local = self
+            .local_provider_name
+            .as_ref()
+            .and_then(|n| {
+                let client = Arc::clone(self.clients.get(n)?);
+                let model = self.configs.get(n)?.model.clone();
+                Some(ProviderHandle { client, model })
+            });
+        Some(IntelligentRoutingProvider::new(
+            local,
+            remote,
+            Arc::clone(&self.local_health),
+            hints,
+        ))
+    }
+
+    /// Shared handle to the local-health checker. The pool itself is
+    /// the only writer in production; tests use this to drive the
+    /// `Healthy/Unhealthy` transitions.
+    pub fn local_health(&self) -> SharedHealth {
+        Arc::clone(&self.local_health)
     }
 
     /// Resolve a model-string at the call-site boundary.
@@ -331,6 +406,40 @@ fn resolve_hint_names(
     accept(ModelHint::Medium, &cfg.medium);
     accept(ModelHint::Heavy, &cfg.heavy);
     out
+}
+
+fn resolve_routing_provider_names(
+    cfg: &ProvidersRoutingConfig,
+    clients: &HashMap<String, Arc<dyn LlmClient>>,
+    engine_name: &str,
+) -> (Option<String>, Option<String>) {
+    let local = cfg.local.as_ref().and_then(|n| {
+        if clients.contains_key(n) {
+            Some(n.clone())
+        } else {
+            tracing::warn!(
+                profile = %n,
+                "[routing.providers.local] references unknown [llm.NAME]; routing will run Remote-only"
+            );
+            None
+        }
+    });
+    let remote = cfg
+        .remote
+        .as_ref()
+        .and_then(|n| {
+            if clients.contains_key(n) {
+                Some(n.clone())
+            } else {
+                tracing::warn!(
+                    profile = %n,
+                    "[routing.providers.remote] references unknown [llm.NAME]; falling back to engine"
+                );
+                None
+            }
+        })
+        .or_else(|| Some(engine_name.to_string()));
+    (local, remote)
 }
 
 fn resolve_engine_name(
@@ -705,5 +814,91 @@ medium = "nonexistent"
         let pool = LlmClientPool::from_config(&config, mock_builder).unwrap();
         let (_, model) = pool.resolve_hint("hint:medium");
         assert_eq!(model, "engine-model");
+    }
+
+    #[test]
+    fn routing_provider_is_none_when_unconfigured() {
+        let config: ArawnConfig = toml::from_str(
+            r#"
+[llm.default]
+provider = "groq"
+model = "engine-model"
+"#,
+        )
+        .unwrap();
+        let pool = LlmClientPool::from_config(&config, mock_builder).unwrap();
+        assert!(pool.routing_provider(RoutingHints::default()).is_none());
+    }
+
+    #[test]
+    fn routing_provider_resolves_local_and_remote_from_config() {
+        let config: ArawnConfig = toml::from_str(
+            r#"
+[llm.default]
+provider = "groq"
+model = "cloud-model"
+
+[llm.local]
+provider = "ollama"
+model = "ollama-model"
+
+[routing.providers]
+local = "local"
+remote = "default"
+"#,
+        )
+        .unwrap();
+        let pool = LlmClientPool::from_config(&config, mock_builder).unwrap();
+        let provider = pool.routing_provider(RoutingHints::default());
+        assert!(provider.is_some(), "routing provider should be wired");
+        // Health is configured (local profile exists) → starts Healthy.
+        assert!(matches!(
+            pool.local_health().snapshot(),
+            arawn_llm::routing::LocalHealth::Healthy
+        ));
+    }
+
+    #[test]
+    fn routing_provider_local_only_still_works_with_remote_engine_fallback() {
+        // No explicit remote → remote falls back to engine profile.
+        let config: ArawnConfig = toml::from_str(
+            r#"
+[llm.default]
+provider = "groq"
+model = "engine-model"
+
+[llm.local]
+provider = "ollama"
+model = "ollama-model"
+
+[routing.providers]
+local = "local"
+"#,
+        )
+        .unwrap();
+        let pool = LlmClientPool::from_config(&config, mock_builder).unwrap();
+        assert!(pool.routing_provider(RoutingHints::default()).is_some());
+    }
+
+    #[test]
+    fn missing_local_profile_disables_routing_local_path() {
+        // Names a local that doesn't exist — health stays NotConfigured.
+        let config: ArawnConfig = toml::from_str(
+            r#"
+[llm.default]
+provider = "groq"
+model = "engine-model"
+
+[routing.providers]
+local = "does-not-exist"
+remote = "default"
+"#,
+        )
+        .unwrap();
+        let pool = LlmClientPool::from_config(&config, mock_builder).unwrap();
+        assert!(matches!(
+            pool.local_health().snapshot(),
+            arawn_llm::routing::LocalHealth::NotConfigured
+        ));
     }
 }
