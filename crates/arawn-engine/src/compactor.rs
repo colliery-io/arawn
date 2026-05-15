@@ -159,6 +159,11 @@ impl Compactor {
     }
 
     async fn call_llm(&self, request: ChatRequest) -> Result<String, EngineError> {
+        // Compaction is local-bound work too (same backend as the
+        // engine today). Gate it for laptop-RAM safety.
+        let _gate = arawn_llm::gate::acquire_local().await.map_err(|e| {
+            EngineError::Other(anyhow::anyhow!("llm gate refused acquire: {e:?}"))
+        })?;
         let mut stream = self.llm.stream(request).await?;
         let mut text = String::new();
 

@@ -732,6 +732,13 @@ impl QueryEngine {
         &self,
         request: ChatRequest,
     ) -> Result<AssembledResponse, EngineError> {
+        // Acquire a local-bound permit before issuing the request.
+        // T-0278 will switch the agent loop to RemotePermit when the
+        // routing policy picks Remote; until then everything goes
+        // through the 1-slot local gate for laptop-RAM safety.
+        let _gate = arawn_llm::gate::acquire_local().await.map_err(|e| {
+            EngineError::Other(anyhow::anyhow!("llm gate refused acquire: {e:?}"))
+        })?;
         let mut stream = self.llm.stream(request).await?;
         let mut response = AssembledResponse::default();
         let mut current_tool_id = String::new();

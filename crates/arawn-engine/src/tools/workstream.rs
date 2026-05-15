@@ -1107,6 +1107,9 @@ async fn propose_llm_call(
         tools: Vec::new(),
         max_tokens: None,
     };
+    let _gate = arawn_llm::gate::acquire_local()
+        .await
+        .map_err(|e| format!("llm gate refused acquire: {e:?}"))?;
     let mut stream = client.stream(req).await.map_err(|e| e.to_string())?;
     let mut out = String::new();
     while let Some(chunk) = stream.next().await {

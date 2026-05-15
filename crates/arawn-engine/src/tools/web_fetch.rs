@@ -287,6 +287,9 @@ async fn summarize_with_llm(
         max_tokens: Some(4096),
     };
 
+    let _gate = arawn_llm::gate::acquire_local().await.map_err(|e| {
+        ToolError::ExecutionFailed(format!("llm gate refused acquire: {e:?}"))
+    })?;
     let mut stream = llm
         .stream(request)
         .await

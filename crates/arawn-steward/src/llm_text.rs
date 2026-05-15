@@ -32,6 +32,15 @@ pub async fn complete_text(
         tools: Vec::new(),
         max_tokens: None,
     };
+    // Steward subroutines are local-bound work — gate them through
+    // the process-wide LLM resource gate so a background scan does
+    // not stack memory on top of an in-flight agent call.
+    let _gate = arawn_llm::gate::acquire_local()
+        .await
+        .map_err(|e| StewardError::Subroutine {
+            name: "llm".into(),
+            message: format!("llm gate refused acquire: {e:?}"),
+        })?;
     let mut stream = client
         .stream(req)
         .await

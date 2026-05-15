@@ -4,14 +4,14 @@ level: task
 title: "LLM resource gate — process-wide concurrency cap for local-model work"
 short_code: "ARAWN-T-0275"
 created_at: 2026-05-15T14:12:54.580759+00:00
-updated_at: 2026-05-15T14:12:54.580759+00:00
+updated_at: 2026-05-15T18:14:48.845799+00:00
 parent: ARAWN-I-0044
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -52,3 +52,36 @@ A process-wide gate that every would-be LLM caller passes through. For local-bou
 - The 1-slot local default is non-negotiable for the laptop-RAM contract. Anything that wants to relax it must change the config; the code default stays at 1.
 - If/when the routing policy (`T-0278`) lands, the call sites move there — but the gate itself stays in `arawn-engine` because workflow/steward/feeds also need it independently of routing.
 - Cost-aware policy (back off when daily budget is near cap) is a follow-up once `T-0277` exists; out of scope here.
+
+## Status Updates
+
+**2026-05-15 — implementation landed.**
+
+**Deviation from acceptance spec:** task said module location was `crates/arawn-engine/src/llm_gate/`. Moved to `crates/arawn-llm/src/gate/` because two of the four callers (steward, extractor) don't depend on `arawn-engine` — putting the gate in arawn-engine would have forced new upstream deps on lower-level crates. `arawn-llm` is the LLM-domain crate that *every* LLM consumer already depends on.
+
+- New `crates/arawn-llm/src/gate/` module:
+  - `mod.rs` — public API: `acquire_local() -> Future<Result<LocalPermit, AcquireError>>`, `try_acquire_local() -> Result<LocalPermit, AcquireError>`, `acquire_remote() -> RemotePermit`, `set_policy(Policy)`, `set_signals(Signals)`, `current_policy()`, `current_signals()`.
+  - `policy.rs` — `Policy { local_slots: usize, free_ram_pause_bytes: Option<u64>, on_battery_extra_pause_bytes: Option<u64> }`, `Signals { free_ram_bytes, on_battery }`, `Capacity { Available | Pause(reason) }`, `decide(&policy, &signals)`.
+  - `signals.rs` — `sample()` stub returning `Signals::default()`. The real RAM/battery probe lands as a follow-up; the gate API + tests are shaped to slot it in without touching call sites.
+- Defaults: `Policy { local_slots: 1, free_ram_pause_bytes: None, on_battery_extra_pause_bytes: None }`. The 1-slot cap is the laptop-RAM safety contract from `feedback_local_llm_load.md`.
+- `LocalPermit` is RAII (drop returns the slot). `RemotePermit` is a marker type, never blocks.
+- State: single process-wide `GateState` behind `OnceLock`. `set_policy` mints a fresh semaphore at the new size; outstanding permits drain into the old one. Tests use a `TEST_LOCK` mutex + `reset_for_test()` to serialise gate-mutating tests.
+
+**Call sites wired (4 direct + 2 incidental):**
+
+| Site | Local/Remote | Justification |
+|---|---|---|
+| `arawn-engine::query_engine::stream_response` | Local | Main agent loop. Will switch to Remote once T-0278 routes. |
+| `arawn-engine::compactor::call_llm` | Local | Compaction runs on the same backend. |
+| `arawn-engine::tools::web_fetch::summarize_with_llm` | Local | Web summary path. |
+| `arawn-engine::tools::workstream::propose_llm_call` | Local | WorkstreamProposeOntology tool. |
+| `arawn-steward::llm_text::complete_text` | Local | Steward subroutines. |
+| `arawn-extractor::llm_text::complete_text` | Local | Memory extraction (latent — not yet live but wired now). |
+
+Every site acquires a `LocalPermit`. Once T-0278 lands the agent loop and any cloud-bound caller switch to `RemotePermit`; the gate API is already shaped for that.
+
+**Tests:** 11 in `arawn_llm::gate` (4 policy decide-table tests + 7 acquire/serialise/pause tests). Full workspace suite remains green.
+
+**Documented follow-ups:**
+- Real RAM/battery probe in `signals::sample()` (needs `sysinfo` dep). Tracked in this task body as a note; can land standalone since the API is stable.
+- Switch agent loop to `RemotePermit` when configured LLM is cloud — part of T-0278 routing policy.

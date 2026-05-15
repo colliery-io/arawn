@@ -35,6 +35,10 @@ pub async fn complete_text(
         max_tokens: None,
     };
 
+    // Extraction is local-bound work — gate it.
+    let _gate = arawn_llm::gate::acquire_local()
+        .await
+        .map_err(|e| ExtractionError::Llm(format!("llm gate refused acquire: {e:?}")))?;
     let mut stream = client
         .stream(req)
         .await

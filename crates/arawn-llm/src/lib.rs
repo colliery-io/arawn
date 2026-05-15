@@ -1,6 +1,7 @@
 pub mod anthropic;
 pub mod client;
 pub mod error;
+pub mod gate;
 pub mod groq;
 pub mod hints;
 pub mod mock;
