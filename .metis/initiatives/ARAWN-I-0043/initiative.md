@@ -4,14 +4,14 @@ level: initiative
 title: "Weekly retro ceremony — scheduled Friday introspection mixing feedback + diary"
 short_code: "ARAWN-I-0043"
 created_at: 2026-05-15T12:25:33.234303+00:00
-updated_at: 2026-05-15T12:25:33.234303+00:00
+updated_at: 2026-05-15T23:48:00.309162+00:00
 parent: ARAWN-V-0001
 blocked_by: []
 archived: false
 
 tags:
   - "#initiative"
-  - "#phase/discovery"
+  - "#phase/active"
 
 
 exit_criteria_met: false
