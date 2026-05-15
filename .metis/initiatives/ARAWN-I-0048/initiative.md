@@ -82,14 +82,22 @@ the spec — update both when a decision lands.
 
 ### Dependencies
 
-- The *Tree summarizer* (§C) plays directly into the ceremony initiatives
-  (I-0041 daily, I-0042 weekly, I-0043 retro). Decide §C *before* I-0041
-  enters design phase so the ceremony can plug in cleanly.
-- The *Triage drop tier* (§E) intersects the integration initiatives
-  (I-0045 GitHub, I-0046 Linear, I-0047 Google Docs comments) — without
-  a drop tier, every inbound from those integrations becomes a workstream
-  candidate. Best decided before any integration initiative ships.
-- §A, §B, §D have no hard dependencies on other in-flight work.
+None of the §A–E questions are hard blockers for in-flight work.
+
+The ceremony initiatives (I-0041 daily, I-0042 weekly, I-0043 retro)
+and the integration initiatives (I-0045 GitHub, I-0046 Linear,
+I-0047 Google Docs comments) were all scoped *before* the openhuman
+comparative dive and carry their own design intent. §C (tree
+summarizer) and §E (triage drop tier) are decisions about whether
+to adopt openhuman's patterns as a shared backend, not prerequisites
+those other initiatives have to wait on. If §C / §E later resolve
+to *adopt now*, the ceremony or integration work may opt to refactor
+onto the shared layer; if they resolve to *defer / reject*, the
+existing scoping stands.
+
+The §A–E questions can be resolved in any order. Priority is
+operator-driven (which decision is the user most curious about right
+now), not blocked by downstream work.
 
 ## Alternatives Considered **[REQUIRED]**
 
@@ -108,13 +116,25 @@ the spec — update both when a decision lands.
 
 Discovery-phase deliverables:
 
-1. Walk §A–E in priority order. Suggested order based on downstream
-   blocking: §C (blocks I-0041) → §E (blocks I-0045/46/47) → §B (event
-   bus enables several decoupled subsystems) → §D (memory architecture)
-   → §A (config refactor — the most invasive, lowest unblock value).
+1. Walk §A–E in whatever order makes sense to the operator. No hard
+   ordering — each question is independent and the in-flight
+   ceremony / integration initiatives are not gated on these
+   decisions (see Dependencies above).
 2. For each `Decide:`, follow Metis's human-in-the-loop discipline for
    initiative-level architectural decisions.
 3. Track adopt-decisions as tasks on this initiative.
+
+Rough sense of effort, smallest to largest, for picking what to do
+when you have an afternoon:
+- §E triage drop tier — smallest, mostly a layer in front of
+  `workstream_router`.
+- §D learning candidate/producer split — needs an ADR before code;
+  ADR effort, no code today.
+- §B typed event bus — moderate; pays off when ≥3 cross-cutting
+  consumers exist.
+- §C tree summarizer — moderate; standalone library, no consumer
+  pressure.
+- §A per-domain config refactor — largest; touches every subsystem.
 
 ## Exit Criteria
 
