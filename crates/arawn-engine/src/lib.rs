@@ -1,4 +1,5 @@
 pub mod agent_defs;
+pub mod approval;
 pub mod background;
 pub mod compact_prompt;
 pub mod compactor;

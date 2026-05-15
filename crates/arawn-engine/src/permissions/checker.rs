@@ -107,11 +107,21 @@ pub trait ModalPrompt: Send + Sync {
 }
 
 /// In-memory store for session-scoped permission grants.
-/// When a user selects "Allow Always", the tool is added here
-/// and won't be prompted again for the rest of the session.
+/// When a user selects "Allow Always", a `(tool_name, ArgShape)`
+/// entry is added here and matching calls won't be prompted again
+/// for the rest of the session. `ArgShape` lives in
+/// [`crate::approval::allowlist`] — see that module for the
+/// normalisation rules.
+///
+/// Previously this type was keyed by tool name alone; T-0276 changed
+/// the key to `(tool, shape)` so an approved `file_write` to
+/// `~/Desktop/proj/foo.rs` does not also auto-approve `file_write`
+/// to `/etc/`. The historical zero-arg `grant(tool_name)` /
+/// `is_granted(tool_name)` API survives as a shape-agnostic
+/// wildcard.
 #[derive(Debug, Default)]
 pub struct SessionGrants {
-    grants: std::collections::HashSet<String>,
+    inner: crate::approval::SessionAllowlist,
 }
 
 impl SessionGrants {
@@ -119,19 +129,39 @@ impl SessionGrants {
         Self::default()
     }
 
-    /// Record a session grant for a tool name.
+    /// Wildcard grant — matches any input on this tool. Kept for
+    /// backwards-compat with the pre-T-0276 API.
     pub fn grant(&mut self, tool_name: String) {
-        self.grants.insert(tool_name);
+        let shape = crate::approval::ArgShape(format!("{tool_name}:*"));
+        self.inner.grant(tool_name, shape);
     }
 
-    /// Check if a tool has been granted for this session.
+    /// Shape-aware grant. New preferred API.
+    pub fn grant_shape(&mut self, tool_name: String, shape: crate::approval::ArgShape) {
+        self.inner.grant(tool_name, shape);
+    }
+
+    /// Wildcard check — true if a wildcard grant exists for this
+    /// tool. Kept for backwards-compat.
     pub fn is_granted(&self, tool_name: &str) -> bool {
-        self.grants.contains(tool_name)
+        let wildcard = crate::approval::ArgShape(format!("{tool_name}:*"));
+        self.inner.is_granted(tool_name, &wildcard)
+    }
+
+    /// Shape-aware check. New preferred API. Falls back to wildcard
+    /// when no exact shape match is found, so legacy `grant(tool)`
+    /// calls still honour shape-aware lookups.
+    pub fn is_granted_shape(&self, tool_name: &str, shape: &crate::approval::ArgShape) -> bool {
+        if self.inner.is_granted(tool_name, shape) {
+            return true;
+        }
+        let wildcard = crate::approval::ArgShape(format!("{tool_name}:*"));
+        self.inner.is_granted(tool_name, &wildcard)
     }
 
     /// Clear all session grants.
     pub fn clear(&mut self) {
-        self.grants.clear();
+        self.inner.clear();
     }
 }
 
@@ -219,6 +249,10 @@ pub struct PermissionChecker {
     grants: std::sync::Mutex<SessionGrants>,
     prompter: Option<Box<dyn ModalPrompt>>,
     audit: SharedAudit,
+    /// Optional on-disk approval audit log. None disables disk
+    /// persistence; the in-memory `audit` field still records
+    /// rule/prompt decisions for the `/permissions` UI.
+    approval_audit: Option<std::sync::Arc<crate::approval::ApprovalAudit>>,
 }
 
 impl PermissionChecker {
@@ -231,6 +265,7 @@ impl PermissionChecker {
             grants: std::sync::Mutex::new(SessionGrants::new()),
             prompter: None,
             audit: new_shared_audit(),
+            approval_audit: None,
         }
     }
 
@@ -239,6 +274,15 @@ impl PermissionChecker {
     /// buffer (fine for tests); production callers pass one in here.
     pub fn with_audit(mut self, audit: SharedAudit) -> Self {
         self.audit = audit;
+        self
+    }
+
+    /// Wire the on-disk approval audit log. Pass `None` to disable.
+    pub fn with_approval_audit(
+        mut self,
+        audit: Option<std::sync::Arc<crate::approval::ApprovalAudit>>,
+    ) -> Self {
+        self.approval_audit = audit;
         self
     }
 
@@ -365,9 +409,16 @@ impl PermissionChecker {
             return (PermissionDecision::Denied, reason);
         }
 
-        // 2. Session grants short-circuit (only checked after deny rules pass)
-        if self.grants.lock().unwrap().is_granted(tool_name) {
-            debug!(tool_name, "session grant hit — allowed");
+        // 2. Session grants short-circuit (only checked after deny rules pass).
+        // Match either an exact (tool, shape) grant or a pre-T-0276 wildcard.
+        let shape = crate::approval::ArgShape::for_tool(tool_name, tool_input);
+        if self
+            .grants
+            .lock()
+            .unwrap()
+            .is_granted_shape(tool_name, &shape)
+        {
+            debug!(tool_name, shape = %shape.as_str(), "session grant hit — allowed");
             let reason = DecisionReason::SessionGrant;
             self.record_audit(tool_name, tool_input, PermissionDecision::Allowed, &reason);
             return (PermissionDecision::Allowed, reason);
@@ -432,19 +483,59 @@ impl PermissionChecker {
                         ModalOption::new("Deny").with_description("Block this tool call"),
                     ],
                 };
-                match prompter.prompt(request).await {
-                    Some(0) => PermissionDecision::Allowed,                // Allow Once
-                    Some(1) => {                                            // Allow Always
-                        self.grants.lock().unwrap().grant(tool_name.to_string());
-                        PermissionDecision::Allowed
+                let response = prompter.prompt(request).await;
+                let shape = crate::approval::ArgShape::for_tool(tool_name, tool_input);
+                let (decision, tier) = match response {
+                    Some(0) => (PermissionDecision::Allowed, crate::approval::ApprovalTier::AllowOnce),
+                    Some(1) => {
+                        self.grants
+                            .lock()
+                            .unwrap()
+                            .grant_shape(tool_name.to_string(), shape.clone());
+                        (
+                            PermissionDecision::Allowed,
+                            crate::approval::ApprovalTier::AllowForSession,
+                        )
                     }
-                    _ => PermissionDecision::Denied,                        // Deny or cancel
-                }
+                    _ => (
+                        PermissionDecision::Denied,
+                        crate::approval::ApprovalTier::Deny,
+                    ),
+                };
+                // Append to the on-disk approval audit if it is wired.
+                self.record_approval(tool_name, &shape, tier, tool_input);
+                decision
             }
             None => {
-                warn!(tool_name, "ask decision but no prompter — denying");
+                warn!(tool_name, "ask decision but no prompter — denying (fail closed)");
+                let shape = crate::approval::ArgShape::for_tool(tool_name, tool_input);
+                self.record_approval(
+                    tool_name,
+                    &shape,
+                    crate::approval::ApprovalTier::FailedClosed,
+                    tool_input,
+                );
                 PermissionDecision::Denied
             }
+        }
+    }
+
+    fn record_approval(
+        &self,
+        tool_name: &str,
+        shape: &crate::approval::ArgShape,
+        tier: crate::approval::ApprovalTier,
+        tool_input: &str,
+    ) {
+        if let Some(audit) = self.approval_audit.as_ref() {
+            audit.record(crate::approval::AuditRecord {
+                ts: crate::approval::now_secs(),
+                session_id: None,
+                tool_name: tool_name.to_string(),
+                shape: shape.as_str().to_string(),
+                tier,
+                reason: Some(truncate_input(tool_input, 200)),
+            });
         }
     }
 
@@ -676,6 +767,48 @@ mod tests {
         assert_eq!(
             checker.check("think", "", PermissionCategory::ReadOnly).await,
             PermissionDecision::Allowed
+        );
+    }
+
+    #[tokio::test]
+    async fn shape_aware_grant_only_allows_matching_shape() {
+        use crate::approval::ArgShape;
+        // Allow once for `shell` with command "ls" should not auto-allow
+        // a later `shell` with command "rm -rf /".
+        let rules = vec![PermissionRule::new(RuleKind::Ask, "shell")];
+        let checker = PermissionChecker::new(rules)
+            .with_prompter(Box::new(MockPrompter::allow_always()));
+        // First call: prompted, granted for shape "shell:ls".
+        let safe_input = r#"{"command":"ls"}"#;
+        assert_eq!(
+            checker
+                .check("shell", safe_input, PermissionCategory::Shell)
+                .await,
+            PermissionDecision::Allowed
+        );
+        let safe_shape = ArgShape::for_tool("shell", safe_input);
+        assert!(checker.grants.lock().unwrap().is_granted_shape("shell", &safe_shape));
+        let dangerous_shape =
+            ArgShape::for_tool("shell", r#"{"command":"rm -rf /"}"#);
+        assert!(
+            !checker
+                .grants
+                .lock()
+                .unwrap()
+                .is_granted_shape("shell", &dangerous_shape)
+        );
+    }
+
+    #[tokio::test]
+    async fn fail_closed_when_no_prompter() {
+        let rules = vec![PermissionRule::new(RuleKind::Ask, "shell")];
+        let checker = PermissionChecker::new(rules);
+        // No prompter → Ask resolves to Denied.
+        assert_eq!(
+            checker
+                .check("shell", r#"{"command":"ls"}"#, PermissionCategory::Shell)
+                .await,
+            PermissionDecision::Denied
         );
     }
 
