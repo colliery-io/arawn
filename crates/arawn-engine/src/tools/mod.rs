@@ -24,6 +24,7 @@ pub mod think;
 pub mod web_fetch;
 pub mod web_search;
 pub mod workstream;
+pub mod ceremony;
 
 pub use agent::AgentTool;
 pub use ask_user::AskUserTool;
@@ -55,4 +56,7 @@ pub use workstream::{
     BindBackfillHook, SessionWorkstream, WorkstreamBindTool, WorkstreamCreateTool,
     WorkstreamDeleteTool, WorkstreamDescribeTool, WorkstreamListTool, WorkstreamPromoteTool,
     WorkstreamProposeOntologyTool, WorkstreamShowTool, WorkstreamSwitchTool, WorkstreamUnbindTool,
+};
+pub use ceremony::{
+    RetroCurrentTool, RetroListItemsTool, RetroPatchItemTool, RetroRunTool, RetroSaveDiaryTool,
 };

@@ -64,4 +64,7 @@ pub use tools::{
     WorkstreamRollbackTool, WorkstreamShowTool, WorkstreamSwitchTool, WorkstreamTagTool,
     WorkstreamUnbindTool,
 };
+pub use tools::{
+    RetroCurrentTool, RetroListItemsTool, RetroPatchItemTool, RetroRunTool, RetroSaveDiaryTool,
+};
 pub use workstream_router::{MemoryHandle, WorkstreamMemoryRouter};

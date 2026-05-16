@@ -1343,7 +1343,29 @@ async fn main() -> Result<()> {
                     }
 
                     service.set_ceremony_service(Arc::clone(&cer_service));
-                    info!("ceremony engine wired (retro plugin registered)");
+
+                    // Register retro_* agent tools. The registry is
+                    // interior-mutable (RwLock), so adding tools
+                    // after LocalService was built is fine — the
+                    // engine resolves tools by name on each
+                    // dispatch and picks up the new entries.
+                    registry.register(Box::new(arawn_engine::RetroRunTool::new(Arc::clone(
+                        &cer_service,
+                    ))));
+                    registry.register(Box::new(arawn_engine::RetroCurrentTool::new(Arc::clone(
+                        &cer_service,
+                    ))));
+                    registry.register(Box::new(arawn_engine::RetroListItemsTool::new(Arc::clone(
+                        &cer_service,
+                    ))));
+                    registry.register(Box::new(arawn_engine::RetroSaveDiaryTool::new(Arc::clone(
+                        &cer_service,
+                    ))));
+                    registry.register(Box::new(arawn_engine::RetroPatchItemTool::new(Arc::clone(
+                        &cer_service,
+                    ))));
+
+                    info!("ceremony engine wired (retro plugin + 5 agent tools registered)");
                 }
                 Err(e) => warn!(error = %e, db = %cer_db_path.display(),
                     "ceremony engine unavailable — could not open arawn.db"),

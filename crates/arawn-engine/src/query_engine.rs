@@ -1091,6 +1091,15 @@ fn filter_tools_for_context(
         active_categories.insert(ToolCategory::Workstream);
     }
 
+    // Ceremony: retro/ceremony/standup/diary mentions
+    if last_user_msg.contains("retro")
+        || last_user_msg.contains("ceremony")
+        || last_user_msg.contains("standup")
+        || last_user_msg.contains("diary")
+    {
+        active_categories.insert(ToolCategory::Ceremony);
+    }
+
     // Include categories of any previously-used tools
     for name in &used_tool_names {
         if let Some(tool) = registry.get(name) {

@@ -4,15 +4,14 @@ level: task
 title: "Ceremony agent tools (retro_*)"
 short_code: "ARAWN-T-0293"
 created_at: 2026-05-16T03:22:46.609267+00:00
-updated_at: 2026-05-16T03:22:46.609267+00:00
+updated_at: 2026-05-16T11:59:27.406554+00:00
 parent: ARAWN-I-0043
-blocked_by:
-  - ARAWN-T-0292
+blocked_by: [ARAWN-T-0292]
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/active"
 
 
 exit_criteria_met: false
@@ -67,4 +66,37 @@ engine.
 
 ## Status Updates
 
-*To be added during implementation*
+### 2026-05-16 — five tools shipped
+
+- Added `arawn-ceremonies` to `arawn-engine`'s `Cargo.toml`; `rusqlite` + `uuid`
+  added as dev-deps for the test module.
+- Added `ToolCategory::Ceremony` to `arawn-tool`; `query_engine.rs`
+  activates the category on `retro`/`ceremony`/`standup`/`diary`
+  mentions in the last user message so the agent only sees these
+  tools when relevant.
+- New `crates/arawn-engine/src/tools/ceremony.rs` with:
+  - `RetroRunTool` (`retro_run`) — fires the dispatcher, returns
+    `{ status: "generated", tablet_id }` or
+    `{ status: "skipped", reason }`.
+  - `RetroCurrentTool` (`retro_current`, read-only) — returns the
+    current ISO week's `TabletDto` or `null`.
+  - `RetroListItemsTool` (`retro_list_items`, read-only) — returns
+    items with `citation_id` preserved; description explicitly
+    instructs the agent to quote citation ids verbatim (judge
+    grounding criterion for T-0294).
+  - `RetroSaveDiaryTool` (`retro_save_diary`) — proxies
+    `upsert_diary`.
+  - `RetroPatchItemTool` (`retro_patch_item`) — proxies
+    `patch_item` with `ItemPatch` deserialisation.
+- All five exported from `arawn-engine::lib` and registered in
+  `main.rs` right after `set_ceremony_service` (registry's interior
+  mutability means late registration is fine).
+- Eight unit tests covering validation paths, error mapping, and
+  schema shape (`tools::ceremony::tests::*` — all green).
+
+### Acceptance status
+
+All five tools registered, JSON schemas declared, citation
+forwarding verified. End-to-end coverage rolls into [[ARAWN-T-0294]].
+
+Completed 2026-05-16.

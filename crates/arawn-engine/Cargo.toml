@@ -9,6 +9,7 @@ arawn-llm = { workspace = true }
 arawn-memory = { path = "../arawn-memory" }
 arawn-projections = { path = "../arawn-projections" }
 arawn-steward = { path = "../arawn-steward" }
+arawn-ceremonies = { path = "../arawn-ceremonies" }
 arawn-storage = { workspace = true }
 arawn-tool = { workspace = true }
 arawn-embed = { path = "../arawn-embed" }
@@ -38,3 +39,5 @@ uuid = { workspace = true }
 [dev-dependencies]
 insta = "1"
 serial_test = "3"
+rusqlite = { version = "0.37", features = ["bundled"] }
+uuid = { workspace = true }

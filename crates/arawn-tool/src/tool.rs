@@ -28,6 +28,8 @@ pub enum ToolCategory {
     Utility,
     /// Background task management (task_output, task_stop)
     BackgroundTask,
+    /// Scheduled introspection ceremonies (retro_*, daily prep, etc.)
+    Ceremony,
 }
 
 /// Risk class of a tool — used by the permission system to decide fallback

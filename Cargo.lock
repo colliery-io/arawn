@@ -257,6 +257,7 @@ name = "arawn-engine"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "arawn-ceremonies",
  "arawn-core",
  "arawn-embed",
  "arawn-llm",
@@ -276,6 +277,7 @@ dependencies = [
  "lru 0.16.3",
  "notify",
  "reqwest",
+ "rusqlite",
  "sandbox-runtime",
  "serde",
  "serde_json",
