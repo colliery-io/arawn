@@ -4,16 +4,14 @@ level: task
 title: "Binary wiring — weekly plugin into ceremony runner"
 short_code: "ARAWN-T-0304"
 created_at: 2026-05-16T16:38:05.817688+00:00
-updated_at: 2026-05-16T16:38:05.817688+00:00
+updated_at: 2026-05-16T16:57:57.202115+00:00
 parent: ARAWN-I-0042
-blocked_by:
-  - ARAWN-T-0301
-  - ARAWN-T-0303
+blocked_by: [ARAWN-T-0301, ARAWN-T-0303]
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false

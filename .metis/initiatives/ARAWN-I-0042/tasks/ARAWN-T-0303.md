@@ -4,14 +4,14 @@ level: task
 title: "Weekly agent tools (weekly_* family)"
 short_code: "ARAWN-T-0303"
 created_at: 2026-05-16T16:38:00.660848+00:00
-updated_at: 2026-05-16T16:51:19.058308+00:00
+updated_at: 2026-05-16T16:57:26.930718+00:00
 parent: ARAWN-I-0042
 blocked_by: [ARAWN-T-0302]
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
