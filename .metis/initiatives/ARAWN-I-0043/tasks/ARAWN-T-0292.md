@@ -1,0 +1,80 @@
+---
+id: ceremony-ws-rpc-surface-binary
+level: task
+title: "Ceremony WS-RPC surface + binary wiring"
+short_code: "ARAWN-T-0292"
+created_at: 2026-05-16T03:22:46.609267+00:00
+updated_at: 2026-05-16T03:24:50.703582+00:00
+parent: ARAWN-I-0043
+blocked_by: []
+archived: false
+
+tags:
+  - "#task"
+  - "#phase/active"
+
+
+exit_criteria_met: false
+initiative_id: ARAWN-I-0043
+---
+
+# Ceremony WS-RPC surface + binary wiring
+
+## Parent Initiative
+
+[[ARAWN-I-0043]]
+
+## Objective
+
+Expose `arawn-ceremonies` (T-0279–T-0291) on the running binary so it can be
+driven over WS-RPC. Today the crate ships engine + service + retro plugin + UAT
+with `MockLlmClient`, but nothing in `bin/arawn` instantiates it. Without this
+the agent (and the UAT runner) cannot reach the ceremony engine at all.
+
+## Acceptance Criteria
+
+- [ ] WS-RPC dispatcher serves these methods, each delegating to `CeremonyService`:
+  - [ ] `ceremonies.get_retro_current` → `service.get_today(kind="retro")` or `get_by_period(current_iso_week)`
+  - [ ] `ceremonies.get_retro_by_period { period_key }`
+  - [ ] `ceremonies.list_items { tablet_id }`
+  - [ ] `ceremonies.patch_item { item_id, patch }`
+  - [ ] `ceremonies.add_item { tablet_id, request }`
+  - [ ] `ceremonies.upsert_diary { tablet_id, body }`
+  - [ ] `ceremonies.run { kind }` (triggers dispatcher synchronously, returns `DispatchOutcome`)
+  - [ ] `ceremonies.list_notifications`
+- [ ] Binary startup wires the ceremony stack:
+  - [ ] Construct shared `ConnHandle` from the same `arawn.db` rusqlite connection used by the rest of the binary.
+  - [ ] Build `DetectorRegistry` from `retro_v1_catalog()`.
+  - [ ] Instantiate `RetroCeremony` with the configured LlmClient + a `"hint:medium"` model string.
+  - [ ] Register on a `PluginRegistry`.
+  - [ ] Build `CeremonyService` + `CeremonyRunner` (engine-backed `CeremonyDispatcher`).
+  - [ ] Register cloacina cron for the retro plugin via `runner.register_one(...)`.
+  - [ ] Register cloacina cron for `sweep_unreviewed_retros` (Sunday 23:59 local).
+  - [ ] Mount RPC handlers on the dispatcher.
+- [ ] Smoke test: a WS-RPC client calling `ceremonies.run { kind: "retro" }` against a binary booted with the seeded `retro-ceremony.json` fixture returns a `DispatchOutcome::Generated { tablet_id }`, and a follow-up `ceremonies.list_items { tablet_id }` returns ≥1 item.
+- [ ] Integration test in `crates/arawn-service` (or wherever the dispatcher lives) exercising at least `get_retro_current` + `list_items` + `upsert_diary` round-trip.
+
+## Implementation Notes
+
+### Technical Approach
+
+1. Locate the WS-RPC dispatcher (`crates/arawn-service` or `crates/arawn/src/bin/...`); copy the registration pattern used by existing method families (e.g. `workstreams.*`).
+2. Add a `ceremonies` module with one handler per RPC method. Each handler takes JSON args, calls a `CeremonyService` method, serializes the result. Errors map to `CeremonyError → JsonRpcError`.
+3. In the binary's startup wiring, the `LlmClient` instance must be shared with the rest of the agent (do not build a second client). The model string is `"hint:medium"` so the hint-style routing from T-0272 picks a reasonable default.
+4. The `EngineDispatcher` is the `CeremonyDispatcher` impl passed to `CeremonyRunner`. The runner registers cron via cloacina; cron expression comes from `RetroCeremony::default_schedule()` (`"0 16 * * FRI"`).
+
+### Dependencies
+
+- Builds on the engine, service, runner, retro plugin, and detectors shipped in T-0281–T-0291.
+- Consumes the LlmClient + DB connection already in the binary.
+- Unblocks [[ARAWN-T-0293]] (agent tools) and [[ARAWN-T-0294]] (UAT scenario).
+
+### Risk Considerations
+
+- **DB connection sharing**: The rusqlite connection is `Arc<Mutex<Connection>>`. Holding the lock during long-running `compose()` would block all SQL; the engine already releases the lock around `plugin.compose()` because compose doesn't take `&ConnHandle`. Verify this still holds in the wired-up path.
+- **Cloacina double-registration on hot reload**: `register_one` currently has no schedule-dedupe (documented in `runner.rs`). For v1 the binary registers exactly once at startup; flag this in code with a comment.
+- **Hint routing fallback**: If `arawn-llm`'s hint resolver can't satisfy `"hint:medium"`, the retro plugin will error at compose time. Confirm the binary's LLM config has at least one provider tagged `medium`.
+
+## Status Updates
+
+*To be added during implementation*
