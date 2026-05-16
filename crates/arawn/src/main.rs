@@ -1280,9 +1280,9 @@ async fn main() -> Result<()> {
                     // The retro plugin only needs the client at compose
                     // time; the dispatcher passes the model string
                     // through to the LLM call directly.
-                    let (retro_client, _retro_model) =
+                    let (retro_client, retro_model) =
                         llm_pool.resolve_hint(&arawn_llm::ModelHint::Medium.as_hint());
-                    let retro = arawn_ceremonies::RetroCeremony::new(retro_client, "hint:medium")
+                    let retro = arawn_ceremonies::RetroCeremony::new(retro_client, retro_model)
                         .with_detectors(arawn_ceremonies::retro_v1_catalog());
 
                     let plugin_reg = arawn_ceremonies::PluginRegistry::new();
