@@ -4,14 +4,14 @@ level: initiative
 title: "Daily prep ceremony — scheduled morning brief with agenda + todo surface"
 short_code: "ARAWN-I-0041"
 created_at: 2026-05-15T12:25:30.219600+00:00
-updated_at: 2026-05-16T14:07:46.089845+00:00
+updated_at: 2026-05-16T16:32:09.284974+00:00
 parent: ARAWN-V-0001
 blocked_by: []
 archived: false
 
 tags:
   - "#initiative"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false

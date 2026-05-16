@@ -4,14 +4,14 @@ level: task
 title: "Daily UAT scenario + fixture + seeder — LLM-judged end-to-end"
 short_code: "ARAWN-T-0300"
 created_at: 2026-05-16T14:00:00+00:00
-updated_at: 2026-05-16T16:17:51.888076+00:00
+updated_at: 2026-05-16T16:31:47.069615+00:00
 parent: ARAWN-I-0041
 blocked_by: [ARAWN-T-0298, ARAWN-T-0299]
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -30,8 +30,6 @@ Add a real-LLM scenario to `angreal test uat` that exercises the
 daily ceremony end-to-end through the binary's WS-RPC + daily_*
 agent tools. Mirrors the retro UAT structure shipped in
 [[ARAWN-T-0294]].
-
-## Acceptance Criteria
 
 ## Acceptance Criteria
 
