@@ -116,6 +116,29 @@ impl Store {
         WorkstreamStore::new(&self.db).remove_binding(name, feed_id)
     }
 
+    /// Find the workstream (by name) that has the given `feed_id` in
+    /// its bindings list. Returns `Ok(None)` when no workstream owns
+    /// the feed (e.g. unbound system feeds, or feed_ids that fell out
+    /// of the registry). The `feeds` table itself has no
+    /// `workstream_id` column today; the mapping lives in the
+    /// `workstreams.bindings` JSON array per workstream row, so this
+    /// scans active (non-archived) workstreams in updated-at order.
+    ///
+    /// Cache the result at the call site — workstreams change rarely
+    /// at runtime and per-row lookups would be wasteful.
+    pub fn find_workstream_for_feed(
+        &self,
+        feed_id: &str,
+    ) -> Result<Option<String>, StorageError> {
+        let workstreams = WorkstreamStore::new(&self.db).list()?;
+        for ws in workstreams {
+            if ws.bindings.iter().any(|b| b == feed_id) {
+                return Ok(Some(ws.name));
+            }
+        }
+        Ok(None)
+    }
+
     pub fn soft_delete_workstream(&self, name: &str) -> Result<(), StorageError> {
         WorkstreamStore::new(&self.db).soft_delete(name)
     }

@@ -11,12 +11,14 @@
 //! day-range / time-range read API on the store yet (one would be a
 //! reasonable follow-up, but we don't need it for the daily plugin).
 //!
-//! Workstream-tagging for attention signals is left as `None` for
-//! v1: the projection tables don't carry a workstream column, and
-//! the central feeds registry that owns the mapping lives in
-//! `arawn-storage`. The trait DTO field exists so we can light it up
-//! later without churning the plugin contract.
+//! Workstream-tagging for attention signals routes each row's
+//! `feed_id` through `arawn_storage::Store::find_workstream_for_feed`
+//! (a thin wrapper over the `workstreams.bindings` registry). Results
+//! are cached per adapter instance — workstreams change rarely and
+//! re-querying per row would be wasteful. Cached `None` (no owner)
+//! and stale name values are acceptable until process restart.
 
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 use arawn_ceremonies::plugins::{
@@ -27,6 +29,7 @@ use arawn_projections::ProjectionStore;
 use arawn_storage::Store;
 use async_trait::async_trait;
 use chrono::{DateTime, NaiveDate, TimeZone, Utc};
+use chrono_tz::Tz;
 use rusqlite::params;
 
 const EXCERPT_CHARS: usize = 300;
@@ -51,30 +54,58 @@ fn parse_rfc3339(s: &str) -> Result<DateTime<Utc>, CeremonyError> {
 
 /// Production `CalendarSource` backed by the `calendar_events`
 /// projection table.
+///
+/// `tz` is the timezone the day-window is bracketed in before
+/// converting to UTC for the BETWEEN query. Defaults to UTC (matching
+/// pre-T-0306 behaviour and "Local" config fallback).
 pub struct ProjectionsCalendarSource {
     projections: Arc<ProjectionStore>,
+    tz: Tz,
 }
 
 impl ProjectionsCalendarSource {
     pub fn new(projections: Arc<ProjectionStore>) -> Self {
-        Self { projections }
+        Self {
+            projections,
+            tz: chrono_tz::UTC,
+        }
+    }
+
+    /// Builder: set the timezone used to bracket day windows in
+    /// `events_for`. Pass `chrono_tz::UTC` (the default) to keep the
+    /// pre-T-0306 UTC semantics.
+    pub fn with_tz(mut self, tz: Tz) -> Self {
+        self.tz = tz;
+        self
     }
 }
 
 #[async_trait]
 impl CalendarSource for ProjectionsCalendarSource {
     async fn events_for(&self, date: NaiveDate) -> Result<Vec<CalEvent>, CeremonyError> {
-        // Day window: [00:00:00Z, 23:59:59.999Z] of `date` (UTC).
-        // The trait docs note that the contract is "events whose
-        // local-time start falls on `date`"; v1 we treat date as UTC
-        // since the projection only stores UTC source_ts. Timezone
-        // handling is a follow-up — flagged on the task.
-        let start = Utc
-            .from_utc_datetime(&date.and_hms_opt(0, 0, 0).unwrap())
-            .to_rfc3339();
-        let end = Utc
-            .from_utc_datetime(&date.and_hms_opt(23, 59, 59).unwrap())
-            .to_rfc3339();
+        // Day window: bracket `date` as [00:00:00, 23:59:59] in
+        // `self.tz`, then convert both bounds to UTC for the BETWEEN
+        // query against the projection's UTC `source_ts`. When
+        // `tz == chrono_tz::UTC` this matches the pre-T-0306 behaviour
+        // exactly. DST ambiguity is resolved by picking the earliest
+        // candidate (single() falls back to from_local_datetime's
+        // earliest variant).
+        let day_start_naive = date.and_hms_opt(0, 0, 0).unwrap();
+        let day_end_naive = date.and_hms_opt(23, 59, 59).unwrap();
+        let start_local = self
+            .tz
+            .from_local_datetime(&day_start_naive)
+            .earliest()
+            .or_else(|| self.tz.from_local_datetime(&day_start_naive).latest())
+            .ok_or_else(|| storage_err("day_start localisation failed"))?;
+        let end_local = self
+            .tz
+            .from_local_datetime(&day_end_naive)
+            .latest()
+            .or_else(|| self.tz.from_local_datetime(&day_end_naive).earliest())
+            .ok_or_else(|| storage_err("day_end localisation failed"))?;
+        let start = start_local.with_timezone(&Utc).to_rfc3339();
+        let end = end_local.with_timezone(&Utc).to_rfc3339();
 
         // Make sure the table exists (no-op if it does).
         self.projections
@@ -159,17 +190,57 @@ impl CalendarSource for ProjectionsCalendarSource {
 /// Production `AttentionSource` backed by `gmail_messages` +
 /// `slack_messages` projection tables.
 ///
-/// `store` is held for future workstream-tag joins (currently
-/// unused — see module docs on the v1 limitation).
+/// `store` resolves each row's `feed_id` to a workstream name (via
+/// `Store::find_workstream_for_feed`). Results are cached in
+/// `feed_workstream_cache` keyed by feed_id, with both `Some(name)`
+/// and `None` (no owner) memoised — see module docs on the cache
+/// invalidation policy.
 pub struct ProjectionsAttentionSource {
     projections: Arc<ProjectionStore>,
-    #[allow(dead_code)]
     store: Arc<Mutex<Store>>,
+    feed_workstream_cache: Arc<Mutex<HashMap<String, Option<String>>>>,
 }
 
 impl ProjectionsAttentionSource {
     pub fn new(projections: Arc<ProjectionStore>, store: Arc<Mutex<Store>>) -> Self {
-        Self { projections, store }
+        Self {
+            projections,
+            store,
+            feed_workstream_cache: Arc::new(Mutex::new(HashMap::new())),
+        }
+    }
+
+    /// Cached `feed_id → workstream name` lookup. Cache misses query
+    /// `Store::find_workstream_for_feed` and memoise both `Some` and
+    /// `None` results. Storage errors surface to the caller; the
+    /// attention adapter then maps them into a `CeremonyError`.
+    fn workstream_for_feed(
+        &self,
+        feed_id: &str,
+    ) -> Result<Option<String>, CeremonyError> {
+        {
+            let cache = self
+                .feed_workstream_cache
+                .lock()
+                .map_err(|_| storage_err("feed_workstream_cache mutex poisoned"))?;
+            if let Some(hit) = cache.get(feed_id) {
+                return Ok(hit.clone());
+            }
+        }
+        let store = self
+            .store
+            .lock()
+            .map_err(|_| storage_err("store mutex poisoned"))?;
+        let resolved = store
+            .find_workstream_for_feed(feed_id)
+            .map_err(|e| storage_err(format!("find_workstream_for_feed({feed_id}): {e}")))?;
+        drop(store);
+        let mut cache = self
+            .feed_workstream_cache
+            .lock()
+            .map_err(|_| storage_err("feed_workstream_cache mutex poisoned"))?;
+        cache.insert(feed_id.to_string(), resolved.clone());
+        Ok(resolved)
     }
 }
 
@@ -199,11 +270,11 @@ impl AttentionSource for ProjectionsAttentionSource {
             .lock()
             .map_err(|_| storage_err("projection connection mutex poisoned"))?;
 
-        let sql = "SELECT id, source_id, source_ts, title, body_text, kind FROM ( \
-                       SELECT id, source_id, source_ts, title, body_text, 'gmail' AS kind \
+        let sql = "SELECT id, source_id, source_ts, title, body_text, kind, feed_id FROM ( \
+                       SELECT id, source_id, source_ts, title, body_text, 'gmail' AS kind, feed_id \
                          FROM gmail_messages WHERE source_ts > ?1 \
                        UNION ALL \
-                       SELECT id, source_id, source_ts, title, body_text, 'slack' AS kind \
+                       SELECT id, source_id, source_ts, title, body_text, 'slack' AS kind, feed_id \
                          FROM slack_messages WHERE source_ts > ?1 \
                    ) ORDER BY source_ts DESC LIMIT ?2";
 
@@ -215,7 +286,19 @@ impl AttentionSource for ProjectionsAttentionSource {
             .query(params![cursor_str, cap as i64])
             .map_err(|e| storage_err(format!("query attention: {e}")))?;
 
-        let mut out = Vec::new();
+        // Pull rows into an intermediate buffer while holding only
+        // the projection-conn lock; resolve workstreams after release
+        // to avoid holding two storage locks at once (the Store mutex
+        // is acquired inside `workstream_for_feed`).
+        struct Raw {
+            id: String,
+            source_id: String,
+            ts: DateTime<Utc>,
+            summary: String,
+            kind: String,
+            feed_id: String,
+        }
+        let mut raws: Vec<Raw> = Vec::new();
         while let Some(row) = rows
             .next()
             .map_err(|e| storage_err(format!("attention row: {e}")))?
@@ -238,6 +321,9 @@ impl AttentionSource for ProjectionsAttentionSource {
             let kind: String = row
                 .get(5)
                 .map_err(|e| storage_err(format!("col kind: {e}")))?;
+            let feed_id: String = row
+                .get(6)
+                .map_err(|e| storage_err(format!("col feed_id: {e}")))?;
 
             let ts = parse_rfc3339(&source_ts_str)?;
             let summary = if !title.is_empty() {
@@ -245,14 +331,29 @@ impl AttentionSource for ProjectionsAttentionSource {
             } else {
                 truncate_excerpt(&body_text)
             };
-            out.push(SignalRow {
+            raws.push(Raw {
                 id,
-                source_kind: kind,
                 source_id,
                 ts,
                 summary,
-                // v1: no workstream tagging — see module docs.
-                workstream: None,
+                kind,
+                feed_id,
+            });
+        }
+        drop(rows);
+        drop(stmt);
+        drop(conn);
+
+        let mut out = Vec::with_capacity(raws.len());
+        for r in raws {
+            let workstream = self.workstream_for_feed(&r.feed_id)?;
+            out.push(SignalRow {
+                id: r.id,
+                source_kind: r.kind,
+                source_id: r.source_id,
+                ts: r.ts,
+                summary: r.summary,
+                workstream,
             });
         }
         Ok(out)
@@ -406,5 +507,88 @@ mod tests {
         // Stable ids flow through.
         let ids: Vec<&str> = out.iter().map(|s| s.id.as_str()).collect();
         assert!(ids.contains(&g3.id.as_str()));
+    }
+
+    /// 2026-05-17T01:30:00Z is "May 17" in UTC but "May 16 18:30" in
+    /// US/Pacific (PDT, UTC-7). `events_for(2026-05-16)` should pick
+    /// up the event under US/Pacific and miss it under UTC.
+    #[tokio::test(flavor = "current_thread")]
+    async fn calendar_respects_configured_timezone() {
+        let (projections, _store, _tmp) = make_store_pair();
+
+        let start_utc = DateTime::parse_from_rfc3339("2026-05-17T01:30:00Z")
+            .unwrap()
+            .with_timezone(&Utc);
+        let end_utc = start_utc + Duration::hours(1);
+        let ev = cal_event("tz1", start_utc, end_utc);
+        projections.write_batch(&[ev.clone()]).unwrap();
+
+        let may16 = NaiveDate::from_ymd_opt(2026, 5, 16).unwrap();
+
+        // UTC bracket of May 16 is [00:00Z, 23:59:59Z] — misses 01:30Z May 17.
+        let utc_src = ProjectionsCalendarSource::new(Arc::clone(&projections));
+        let utc_hits = utc_src.events_for(may16).await.unwrap();
+        assert!(
+            utc_hits.iter().all(|e| e.id != ev.id),
+            "expected UTC May 16 to miss the May-17-UTC event; got {utc_hits:?}"
+        );
+
+        // US/Pacific bracket of May 16 covers up to ~07:00Z May 17.
+        let pst_src = ProjectionsCalendarSource::new(Arc::clone(&projections))
+            .with_tz(chrono_tz::US::Pacific);
+        let pst_hits = pst_src.events_for(may16).await.unwrap();
+        let pst_ids: Vec<&str> = pst_hits.iter().map(|e| e.id.as_str()).collect();
+        assert!(
+            pst_ids.contains(&ev.id.as_str()),
+            "expected US/Pacific May 16 to include the May-17-UTC event; got {pst_hits:?}"
+        );
+    }
+
+    /// Rows whose `feed_id` is bound to a workstream tag with that
+    /// workstream's name; rows with an unregistered `feed_id` stay
+    /// `None`.
+    #[tokio::test(flavor = "current_thread")]
+    async fn attention_tags_workstream_from_feed_registry() {
+        let (projections, store, tmp) = make_store_pair();
+
+        // Register a workstream that owns "gmail-feed" but not
+        // "slack-feed".
+        {
+            let s = store.lock().unwrap();
+            let ws_root = tmp.path().join("data/workstreams/work");
+            std::fs::create_dir_all(&ws_root).unwrap();
+            let ws = arawn_core::Workstream::new("work", &ws_root);
+            s.create_workstream(&ws).unwrap();
+            s.add_workstream_binding("work", "gmail-feed").unwrap();
+        }
+
+        let now = Utc::now();
+        // Bound feed: gmail (feed_id = "gmail-feed" per gmail_signal).
+        let g = gmail_signal("g-bound", now - Duration::minutes(5));
+        // Unbound feed: slack (feed_id = "slack-feed", not registered).
+        let s = slack_signal("s-unbound", now - Duration::minutes(10));
+        projections.write_batch(&[g.clone()]).unwrap();
+        projections.write_batch(&[s.clone()]).unwrap();
+
+        let src = ProjectionsAttentionSource::new(projections, store);
+        let cursor = now - Duration::hours(1);
+        let out = src.since(cursor, 10).await.unwrap();
+        let g_row = out
+            .iter()
+            .find(|r| r.id == g.id)
+            .expect("gmail row present");
+        assert_eq!(
+            g_row.workstream.as_deref(),
+            Some("work"),
+            "expected gmail-feed → work tag; got {g_row:?}"
+        );
+        let s_row = out
+            .iter()
+            .find(|r| r.id == s.id)
+            .expect("slack row present");
+        assert!(
+            s_row.workstream.is_none(),
+            "expected unbound slack-feed → None; got {s_row:?}"
+        );
     }
 }

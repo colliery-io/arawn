@@ -34,6 +34,7 @@ arawn-ceremonies = { path = "../arawn-ceremonies" }
 rusqlite = { version = "0.37", features = ["bundled"] }
 axum = { version = "0.8", features = ["ws"] }
 chrono = { workspace = true }
+chrono-tz = "0.10"
 url = "2"
 futures = { workspace = true }
 serde = { workspace = true }

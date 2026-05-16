@@ -1301,39 +1301,108 @@ async fn main() -> Result<()> {
                     }
 
                     // Daily + weekly both depend on the projection
-                    // store for calendar + attention sources. Build
-                    // the shared Arc<dyn> handles once so both plugins
-                    // (and weekly's tool registrations) can reuse them.
+                    // store for calendar + attention sources. The
+                    // attention source is timezone-agnostic and can
+                    // be shared; the calendar source brackets day
+                    // windows in the configured ceremony timezone, so
+                    // daily and weekly each need their own instance
+                    // when their `[ceremonies.<kind>].timezone` strings
+                    // differ. We resolve the tz strings up-front and
+                    // build per-plugin calendar handles below.
                     let daily_actually_enabled = daily_enabled && projections.is_some();
                     let weekly_actually_enabled = weekly_enabled && projections.is_some();
-                    let projection_sources: Option<(
-                        Arc<dyn arawn_ceremonies::CalendarSource>,
-                        Arc<dyn arawn_ceremonies::AttentionSource>,
-                    )> = if (daily_actually_enabled || weekly_actually_enabled)
-                        && let Some(projections) = projections.as_ref()
-                    {
-                        let projections = Arc::clone(projections);
-                        let calendar: Arc<dyn arawn_ceremonies::CalendarSource> =
-                            Arc::new(arawn_engine::ProjectionsCalendarSource::new(Arc::clone(
-                                &projections,
-                            )));
-                        let attention: Arc<dyn arawn_ceremonies::AttentionSource> = Arc::new(
-                            arawn_engine::ProjectionsAttentionSource::new(
-                                Arc::clone(&projections),
+
+                    // Local helper: parse a CeremonyConfig.timezone
+                    // into a chrono_tz::Tz, defaulting to UTC for
+                    // "local"/missing values and warn-falling-back on
+                    // unknown IANA zones. Kept inline because it's
+                    // only used here.
+                    fn resolve_ceremony_tz(
+                        kind: &str,
+                        raw: Option<&str>,
+                    ) -> chrono_tz::Tz {
+                        use std::str::FromStr;
+                        match raw {
+                            None => chrono_tz::UTC,
+                            Some(s) => {
+                                let trimmed = s.trim();
+                                if trimmed.is_empty()
+                                    || trimmed.eq_ignore_ascii_case("local")
+                                {
+                                    tracing::debug!(
+                                        kind,
+                                        "ceremony timezone '{trimmed}' → UTC fallback"
+                                    );
+                                    chrono_tz::UTC
+                                } else {
+                                    chrono_tz::Tz::from_str(trimmed).unwrap_or_else(|_| {
+                                        warn!(
+                                            kind,
+                                            raw = %trimmed,
+                                            "unknown ceremony timezone — falling back to UTC"
+                                        );
+                                        chrono_tz::UTC
+                                    })
+                                }
+                            }
+                        }
+                    }
+
+                    let daily_tz = resolve_ceremony_tz(
+                        "daily",
+                        daily_cfg.and_then(|c| c.timezone.as_deref()),
+                    );
+                    let weekly_tz = resolve_ceremony_tz(
+                        "weekly",
+                        weekly_cfg.and_then(|c| c.timezone.as_deref()),
+                    );
+
+                    let attention_source: Option<Arc<dyn arawn_ceremonies::AttentionSource>> =
+                        if (daily_actually_enabled || weekly_actually_enabled)
+                            && let Some(projections) = projections.as_ref()
+                        {
+                            Some(Arc::new(arawn_engine::ProjectionsAttentionSource::new(
+                                Arc::clone(projections),
                                 service.shared_store(),
-                            ),
-                        );
-                        Some((calendar, attention))
-                    } else {
-                        None
-                    };
+                            )))
+                        } else {
+                            None
+                        };
+
+                    let daily_calendar: Option<Arc<dyn arawn_ceremonies::CalendarSource>> =
+                        if daily_actually_enabled
+                            && let Some(projections) = projections.as_ref()
+                        {
+                            Some(Arc::new(
+                                arawn_engine::ProjectionsCalendarSource::new(Arc::clone(
+                                    projections,
+                                ))
+                                .with_tz(daily_tz),
+                            ))
+                        } else {
+                            None
+                        };
+                    let weekly_calendar: Option<Arc<dyn arawn_ceremonies::CalendarSource>> =
+                        if weekly_actually_enabled
+                            && let Some(projections) = projections.as_ref()
+                        {
+                            Some(Arc::new(
+                                arawn_engine::ProjectionsCalendarSource::new(Arc::clone(
+                                    projections,
+                                ))
+                                .with_tz(weekly_tz),
+                            ))
+                        } else {
+                            None
+                        };
 
                     // Daily plugin construction (gated). Requires the
                     // projection store for calendar + attention
                     // sources; degrades to "daily disabled" if it
                     // isn't available.
                     if daily_actually_enabled
-                        && let Some((calendar, attention)) = projection_sources.as_ref()
+                        && let (Some(calendar), Some(attention)) =
+                            (daily_calendar.as_ref(), attention_source.as_ref())
                     {
                         let model_hint = daily_cfg
                             .and_then(|c| c.model.clone())
@@ -1357,7 +1426,8 @@ async fn main() -> Result<()> {
                     // Weekly plugin construction (gated). Same
                     // projection-store dependency as daily.
                     if weekly_actually_enabled
-                        && let Some((calendar, attention)) = projection_sources.as_ref()
+                        && let (Some(calendar), Some(attention)) =
+                            (weekly_calendar.as_ref(), attention_source.as_ref())
                     {
                         let model_hint = weekly_cfg
                             .and_then(|c| c.model.clone())
