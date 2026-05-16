@@ -5,6 +5,7 @@ pub mod jsonl;
 pub mod layout;
 pub mod session_store;
 pub mod store;
+pub mod todos;
 pub mod workstream_store;
 
 pub use database::Database;
@@ -14,4 +15,5 @@ pub use jsonl::{JsonlMessageStore, workstream_dir_name};
 pub use layout::DataLayout;
 pub use session_store::{SessionMeta, SessionStore};
 pub use store::Store;
+pub use todos::{ListFilter, NewTodo, Todo, TodoPatch, TodoService};
 pub use workstream_store::WorkstreamStore;

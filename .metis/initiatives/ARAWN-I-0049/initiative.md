@@ -4,14 +4,14 @@ level: initiative
 title: "Generic todo system + ceremony state refactor"
 short_code: "ARAWN-I-0049"
 created_at: 2026-05-16T22:22:56.668462+00:00
-updated_at: 2026-05-16T22:51:38.711834+00:00
+updated_at: 2026-05-16T22:59:52.947897+00:00
 parent: ARAWN-V-0001
 blocked_by: []
 archived: false
 
 tags:
   - "#initiative"
-  - "#phase/decompose"
+  - "#phase/active"
 
 
 exit_criteria_met: false

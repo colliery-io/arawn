@@ -4,15 +4,14 @@ level: task
 title: "todos table + TodoService scaffold"
 short_code: "ARAWN-T-0309"
 created_at: 2026-05-16T22:52:28.796013+00:00
-updated_at: 2026-05-16T22:52:28.796013+00:00
+updated_at: 2026-05-16T23:04:04.238407+00:00
 parent: ARAWN-I-0049
 blocked_by: []
-effort: M
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -33,21 +32,40 @@ I-0049 builds on.
 
 ## Acceptance Criteria
 
-- [ ] Refinery V7 migration creates `todos` table per the
+- [x] Refinery V7 migration creates `todos` table per the
       [[ARAWN-I-0049]] sketch (id, body, rationale, kind,
       workstream, created_at, due_at, done_at, archived_at, attrs)
       with `kind`, `done_at`, `workstream` indexes.
-- [ ] `TodoService` (new `arawn-storage::todos` module, no
+- [x] `TodoService` (new `arawn-storage::todos` module, no
       separate crate) exposes: `create / mark_done / undo /
       patch / archive / list(filter) / search(query) / get(id)`.
-- [ ] `NewTodo` / `TodoPatch` / `ListFilter` types implement
+- [x] `NewTodo` / `TodoPatch` / `ListFilter` types implement
       `serde::{Serialize, Deserialize}` for downstream RPC.
-- [ ] `list` filter supports: kind, workstream, `done_at IS NULL`,
+- [x] `list` filter supports: kind, workstream, `done_at IS NULL`,
       due-window, free-text body LIKE for v1 (FTS deferred).
-- [ ] Unit tests cover every service method including the
+- [x] Unit tests cover every service method including the
       idempotence of `mark_done` and the soft-delete semantics
       of `archive`.
-- [ ] No production caller wired in yet — this task is scaffold-only.
+- [x] No production caller wired in yet — this task is scaffold-only.
+
+## Status Updates
+
+### 2026-05-16 — shipped
+
+- `migrations/V7__todos.sql` adds the `todos` table + 3 indexes.
+- `arawn-storage::todos` exposes `TodoService` with `create`,
+  `get`, `mark_done`, `undo`, `patch`, `archive`, `list`, `search`.
+- `NewTodo`/`TodoPatch`/`ListFilter`/`Todo` derive serde.
+- 13 new unit tests, all green. Workspace `cargo test -p
+  arawn-storage` 70/70.
+- Clippy + fmt clean on the new module.
+- `attrs` stored as opaque JSON text — kind-specific payload
+  shape stays at the caller's discretion.
+- Soft-delete via `archived_at`; default `list`/`search` exclude
+  archived rows.
+- LIKE search escapes `%`/`_` so user input containing them
+  doesn't widen the match.
+- No callers yet; T-0310 wires events + RPC.
 
 ## Implementation Notes
 
@@ -75,7 +93,3 @@ I-0049 builds on.
 - Schema lock-in: get the column shape right now; later
   alterations on SQLite are painful. The sketch column list
   is intentionally minimal but extensible via `attrs`.
-
-## Status Updates
-
-*To be added during implementation*
