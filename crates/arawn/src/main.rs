@@ -1270,18 +1270,29 @@ async fn main() -> Result<()> {
         // `ceremonies.*` calls through. Skipped when the workflow
         // runner failed to start — without cloacina there is no cron
         // surface to register against.
-        if let Some(workflow_runner) = workflow_runner_handle.as_ref() {
+        // Per-ceremony overrides from `[ceremonies.<kind>]` in
+        // arawn.toml. Absent table or missing fields → use the
+        // plugin's compiled-in defaults.
+        let retro_cfg = config.ceremonies.get("retro");
+        let retro_enabled = retro_cfg.is_none_or(arawn_bin::CeremonyConfig::is_enabled);
+
+        if let Some(workflow_runner) = workflow_runner_handle.as_ref()
+            && retro_enabled
+        {
             let cer_db_path = std::path::PathBuf::from(&data_dir).join("arawn.db");
             match rusqlite::Connection::open(&cer_db_path) {
                 Ok(conn) => {
                     let conn_handle = arawn_ceremonies::ConnHandle::new(conn);
 
-                    // Resolve a `hint:medium` client for retro compose.
-                    // The retro plugin only needs the client at compose
-                    // time; the dispatcher passes the model string
-                    // through to the LLM call directly.
-                    let (retro_client, retro_model) =
-                        llm_pool.resolve_hint(&arawn_llm::ModelHint::Medium.as_hint());
+                    // Model hint: override from config if present,
+                    // otherwise the standard `hint:medium`. Resolved
+                    // through llm_pool.resolve_hint either way so
+                    // hint shortcuts and concrete model names both
+                    // work.
+                    let model_hint = retro_cfg
+                        .and_then(|c| c.model.clone())
+                        .unwrap_or_else(|| arawn_llm::ModelHint::Medium.as_hint());
+                    let (retro_client, retro_model) = llm_pool.resolve_hint(&model_hint);
                     let retro = arawn_ceremonies::RetroCeremony::new(retro_client, retro_model)
                         .with_detectors(arawn_ceremonies::retro_v1_catalog());
 
@@ -1312,12 +1323,26 @@ async fn main() -> Result<()> {
                         .with_events(event_tx),
                     );
 
-                    // Register cron schedules for every plugin in the
-                    // registry (just retro for v1). Idempotent —
-                    // `register_one` drops any prior schedule for the
+                    // Register cron schedules per plugin, applying
+                    // any `[ceremonies.<kind>]` schedule override.
+                    // Invalid cron expressions log a warn and fall
+                    // back to the plugin default rather than aborting
+                    // startup. `register_one_with_schedule` is
+                    // idempotent — drops any prior schedule for the
                     // same workflow name first.
-                    if let Err(e) = runner.start().await {
-                        warn!(error = %e, "ceremony runner failed to register cron — manual runs still work");
+                    let retro_sched_override = retro_cfg.and_then(|c| {
+                        c.schedule.as_ref().map(|expr| {
+                            arawn_ceremonies::CronSchedule::new(
+                                expr.clone(),
+                                c.timezone.clone().unwrap_or_else(|| "Local".to_string()),
+                            )
+                        })
+                    });
+                    if let Err(e) = runner
+                        .register_one_with_schedule("retro", retro_sched_override)
+                        .await
+                    {
+                        warn!(error = %e, "ceremony runner failed to register retro cron — manual runs still work");
                     }
 
                     // Spawn the Sunday-night sweep. Cloacina doesn't

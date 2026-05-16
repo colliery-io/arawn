@@ -334,6 +334,44 @@ pub struct ArawnConfig {
     pub integrations: IntegrationsConfig,
     #[serde(default)]
     pub routing: RoutingConfig,
+    /// Per-ceremony override map. Absent table = every ceremony uses
+    /// its `Ceremony::default_schedule()` and a `hint:medium` model.
+    /// Keyed by ceremony `kind` (e.g. `"retro"`, `"daily"`).
+    #[serde(default)]
+    pub ceremonies: HashMap<String, CeremonyConfig>,
+}
+
+/// One ceremony's runtime overrides. Every field is optional; an
+/// empty `[ceremonies.<kind>]` table is equivalent to no table at
+/// all (regression-safety).
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct CeremonyConfig {
+    /// When `Some(false)`, the binary skips wiring this ceremony
+    /// entirely — no plugin registered, no cron, no RPC routes, no
+    /// agent tools. Defaults to enabled.
+    #[serde(default)]
+    pub enabled: Option<bool>,
+    /// Cron expression overriding the plugin's
+    /// `default_schedule()`. Invalid expressions log a warn and
+    /// fall back to the default — startup does not abort.
+    #[serde(default)]
+    pub schedule: Option<String>,
+    /// Timezone for the cron expression. `"local"` (default) or an
+    /// IANA zone like `"America/Los_Angeles"`.
+    #[serde(default)]
+    pub timezone: Option<String>,
+    /// Model string for compose calls — hint shortcut
+    /// (`"hint:medium"`, etc.) or a concrete model name resolved
+    /// through `LlmClientPool::resolve_hint`.
+    #[serde(default)]
+    pub model: Option<String>,
+}
+
+impl CeremonyConfig {
+    /// `enabled` field defaulting to `true`.
+    pub fn is_enabled(&self) -> bool {
+        self.enabled.unwrap_or(true)
+    }
 }
 
 /// Routing configuration. Holds the hint→profile map (T-0272) and
@@ -398,6 +436,7 @@ impl Default for ArawnConfig {
             sandbox: SandboxConfig::default(),
             integrations: IntegrationsConfig::default(),
             routing: RoutingConfig::default(),
+            ceremonies: HashMap::new(),
         }
     }
 }
@@ -610,6 +649,19 @@ network_tools = [
     "ssh", "scp", "rsync",
     "brew",
 ]
+
+# Ceremony overrides
+# ------------------
+# Each `[ceremonies.<kind>]` table overrides the compiled-in defaults for
+# one ceremony plugin. All fields are optional; an absent table means the
+# plugin uses its `default_schedule()` and `hint:medium` as the compose
+# model. Config changes require a restart — hot-reload is not supported.
+#
+# [ceremonies.retro]
+# enabled = true                          # set false to disable retro entirely
+# schedule = "0 16 * * FRI"               # cron expression (5 fields)
+# timezone = "Local"                      # "Local" or an IANA zone (e.g. "America/Los_Angeles")
+# model = "hint:medium"                   # hint shortcut or concrete model name from [llm.*]
 "##
         .to_string()
     }
@@ -751,5 +803,61 @@ port = 9999
     fn tilde_expansion() {
         let expanded = expand_tilde("~/.arawn");
         assert!(!expanded.to_string_lossy().starts_with('~'));
+    }
+
+    #[test]
+    fn empty_config_has_no_ceremony_overrides() {
+        // Regression-safety: a config file with no `[ceremonies]`
+        // section parses to an empty map. The binary treats this
+        // as "every ceremony uses its compiled-in defaults".
+        let cfg: ArawnConfig = toml::from_str("").unwrap();
+        assert!(cfg.ceremonies.is_empty());
+    }
+
+    #[test]
+    fn ceremonies_table_parses_full_block() {
+        let s = r#"
+[ceremonies.retro]
+enabled = true
+schedule = "0 17 * * FRI"
+timezone = "America/Los_Angeles"
+model = "hint:heavy"
+"#;
+        let cfg: ArawnConfig = toml::from_str(s).unwrap();
+        let retro = cfg.ceremonies.get("retro").expect("retro section");
+        assert_eq!(retro.enabled, Some(true));
+        assert_eq!(retro.schedule.as_deref(), Some("0 17 * * FRI"));
+        assert_eq!(retro.timezone.as_deref(), Some("America/Los_Angeles"));
+        assert_eq!(retro.model.as_deref(), Some("hint:heavy"));
+        assert!(retro.is_enabled());
+    }
+
+    #[test]
+    fn ceremonies_disabled_observed() {
+        let s = r#"
+[ceremonies.retro]
+enabled = false
+"#;
+        let cfg: ArawnConfig = toml::from_str(s).unwrap();
+        let retro = cfg.ceremonies.get("retro").expect("retro section");
+        assert_eq!(retro.enabled, Some(false));
+        assert!(!retro.is_enabled());
+        // Unset fields stay None — the override path skips them.
+        assert!(retro.schedule.is_none());
+        assert!(retro.model.is_none());
+    }
+
+    #[test]
+    fn ceremonies_partial_block_keeps_other_fields_none() {
+        let s = r#"
+[ceremonies.daily]
+schedule = "0 7 * * MON-FRI"
+"#;
+        let cfg: ArawnConfig = toml::from_str(s).unwrap();
+        let daily = cfg.ceremonies.get("daily").expect("daily section");
+        assert_eq!(daily.schedule.as_deref(), Some("0 7 * * MON-FRI"));
+        assert!(daily.is_enabled()); // unset → defaults to enabled
+        assert!(daily.model.is_none());
+        assert!(daily.timezone.is_none());
     }
 }

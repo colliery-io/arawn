@@ -101,14 +101,26 @@ impl CeremonyRunner {
     }
 
     /// Register a single plugin by kind. Used by `start` and by
-    /// hot-add paths.
+    /// hot-add paths. The plugin's `default_schedule()` is used.
     pub async fn register_one(&self, kind: &str) -> Result<(), CeremonyError> {
+        self.register_one_with_schedule(kind, None).await
+    }
+
+    /// Like [`register_one`] but lets the caller override the cron
+    /// expression + timezone. Used by the binary to apply
+    /// `[ceremonies.<kind>]` overrides from arawn.toml. `None`
+    /// falls back to the plugin's `default_schedule()`.
+    pub async fn register_one_with_schedule(
+        &self,
+        kind: &str,
+        schedule_override: Option<crate::plugin::CronSchedule>,
+    ) -> Result<(), CeremonyError> {
         let plugin = self
             .registry
             .get(kind)
             .ok_or_else(|| CeremonyError::Other(format!("no plugin registered for kind '{kind}'")))?;
 
-        let schedule = plugin.default_schedule();
+        let schedule = schedule_override.unwrap_or_else(|| plugin.default_schedule());
         let workflow_name = workflow_name(kind);
 
         // Build the workflow constructor. cloacina may call this
