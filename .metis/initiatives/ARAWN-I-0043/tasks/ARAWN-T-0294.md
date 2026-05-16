@@ -4,14 +4,14 @@ level: task
 title: "Retro UAT scenario + fixture — LLM-judged end-to-end"
 short_code: "ARAWN-T-0294"
 created_at: 2026-05-16T03:22:46.609267+00:00
-updated_at: 2026-05-16T12:31:00.608709+00:00
+updated_at: 2026-05-16T12:38:55.787472+00:00
 parent: ARAWN-I-0043
 blocked_by: [ARAWN-T-0292, ARAWN-T-0293]
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
