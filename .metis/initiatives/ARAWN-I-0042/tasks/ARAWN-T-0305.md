@@ -4,16 +4,14 @@ level: task
 title: "Weekly UAT scenario + fixture + seeder — Monday confirm flow LLM-judged"
 short_code: "ARAWN-T-0305"
 created_at: 2026-05-16T16:38:11.674109+00:00
-updated_at: 2026-05-16T16:38:11.674109+00:00
+updated_at: 2026-05-16T16:58:20.603966+00:00
 parent: ARAWN-I-0042
-blocked_by:
-  - ARAWN-T-0303
-  - ARAWN-T-0304
+blocked_by: [ARAWN-T-0303, ARAWN-T-0304]
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/active"
 
 
 exit_criteria_met: false
@@ -101,4 +99,37 @@ confirms a subset.
 
 ## Status Updates
 
-*To be added during implementation*
+### 2026-05-16 — UAT shipped + judged PASS (after bug fix)
+
+- New fixture `crates/arawn-tests/tests/fixtures/uat/weekly-ceremony.json`,
+  seeder `crates/arawn-tests/tests/uat_weekly_seed.rs`, `seed_weekly_ceremony`
+  field on Scenario, harness plumbing, four-turn
+  `weekly_ceremony_scenario()` registered in `all_scenarios()`.
+  All six prior scenarios updated to `seed_weekly_ceremony: false`.
+- Seeder writes: prior weekly tablet with inbound items, prior
+  retro with diary + 2 patterns, 4 hot rolling todos, ~10 calendar
+  events Mon–Fri of the current week. Idempotent. 2 seeder unit
+  tests green.
+
+### Bug found and fixed mid-UAT
+
+First UAT run FAILED (completion 2/5). Turn 3's
+`weekly_list_priorities` returned empty even though the
+priorities section had 6 candidates. Root cause: T-0302's
+`list_priorities` filtered candidate items on
+`kind='priority'`, but the weekly plugin (T-0301) emits items
+with `kind='pattern'` per retro's claim-shape convention.
+Dropped the kind constraint on both `confirm_priority`'s
+validation and `list_priorities`'s candidate query —
+section_key='priorities' is the canonical "candidate" marker.
+All 94 existing arawn-ceremonies lib tests still pass.
+
+### Re-run UAT — PASS
+
+gemma4:31b-cloud, completion=5/5, quality=4/5. Turns 1, 2, 4
+scored 5/5/5/5. Turn 3 docked on adherence (3/5) — model
+batched the two confirmations + verification list in one
+parallel response; outcome was still correct. Same documented
+quirk as retro/daily Turn 3.
+
+Completed 2026-05-16.

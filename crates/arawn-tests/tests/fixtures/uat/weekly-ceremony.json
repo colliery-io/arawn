@@ -1,0 +1,80 @@
+{
+  "$comment": "T-0305 UAT fixture for the weekly ceremony. Three workstreams with seeded gmail + slack rows whose source_ts is recent (relative to today=2026-05-16 pinned via MEMORY) so the attention adapter surfaces them as deadline candidates for the weekly's `deadlines` section. Ceremony-side state (prior weekly tablet inbound items, prior retro diary + patterns, rolling todos hot, current-week calendar events) is seeded by uat_weekly_seed::apply after this fixture lands; it computes times from chrono::Utc::now() so dates stay synced with the test run.",
+  "workstreams": [
+    {
+      "name": "proj-a",
+      "description": "Postgres migration workstream — active this week.",
+      "tags_ontology": ["postgres", "migration"],
+      "rows": [
+        {
+          "feed_type": "gmail_messages",
+          "source_id": "pa-weekly-001",
+          "source_ts": "2026-05-16T08:00:00Z",
+          "sender": "platform-eng@acme.com",
+          "recipients": ["pat@acme.com"],
+          "subject": "Postgres cutover due Friday EOD",
+          "body_text": "Cutover runbook approval is the long pole. Deadline Friday EOD."
+        },
+        {
+          "feed_type": "gmail_messages",
+          "source_id": "pa-weekly-002",
+          "source_ts": "2026-05-16T09:15:00Z",
+          "sender": "dba@acme.com",
+          "recipients": ["#proj-a"],
+          "subject": "replication lag",
+          "body_text": "Need a decision on replication lag tolerance by end of week."
+        }
+      ]
+    },
+    {
+      "name": "proj-b",
+      "description": "On-call rotation cleanup — active this week.",
+      "tags_ontology": ["on-call", "rotation"],
+      "rows": [
+        {
+          "feed_type": "gmail_messages",
+          "source_id": "pb-weekly-001",
+          "source_ts": "2026-05-16T07:30:00Z",
+          "sender": "sre@acme.com",
+          "recipients": ["pat@acme.com"],
+          "subject": "On-call coverage gap due Wednesday",
+          "body_text": "Saturday primary still unassigned — please confirm by Wednesday."
+        },
+        {
+          "feed_type": "gmail_messages",
+          "source_id": "pb-weekly-002",
+          "source_ts": "2026-05-16T10:00:00Z",
+          "sender": "ops-bot@acme.com",
+          "recipients": ["#proj-b"],
+          "subject": "post-mortem expires",
+          "body_text": "Pager post-mortem action items expire Friday if unowned."
+        }
+      ]
+    },
+    {
+      "name": "proj-c",
+      "description": "Shared-schema RFC — needs attention this week.",
+      "tags_ontology": ["rfc", "schema"],
+      "rows": [
+        {
+          "feed_type": "gmail_messages",
+          "source_id": "pc-weekly-001",
+          "source_ts": "2026-05-16T06:45:00Z",
+          "sender": "rfc-bot@acme.com",
+          "recipients": ["pat@acme.com"],
+          "subject": "RFC-0042 decision deadline this week",
+          "body_text": "Architect wants a go/no-go decision by end of week. Blocks proj-c rollout."
+        },
+        {
+          "feed_type": "gmail_messages",
+          "source_id": "pc-weekly-002",
+          "source_ts": "2026-05-16T11:20:00Z",
+          "sender": "architect@acme.com",
+          "recipients": ["#proj-c"],
+          "subject": "schema sync",
+          "body_text": "Need async sync this week — SRE pushback on migration timeline due Thursday."
+        }
+      ]
+    }
+  ]
+}

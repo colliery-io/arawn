@@ -56,6 +56,14 @@ pub struct Scenario {
     /// plugin's gather has data in all four sections.
     #[serde(default)]
     pub seed_daily_ceremony: bool,
+    /// When true, after fixture apply the harness runs
+    /// `uat_weekly_seed::apply` to populate ceremony tables (prior
+    /// weekly tablet + inbound items, prior retro diary + patterns,
+    /// hot rolling todos) and the `calendar_events` projection table
+    /// across the current ISO week so the weekly plugin's gather has
+    /// data in all five sections.
+    #[serde(default)]
+    pub seed_weekly_ceremony: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -627,6 +635,7 @@ fn github_monitor_scenario() -> Scenario {
         seed_tag_promoter: false,
         seed_retro_ceremony: false,
         seed_daily_ceremony: false,
+        seed_weekly_ceremony: false,
     }
 }
 
@@ -666,6 +675,7 @@ fn work_signal_pipeline_scenario() -> Scenario {
         seed_tag_promoter: false,
         seed_retro_ceremony: false,
         seed_daily_ceremony: false,
+        seed_weekly_ceremony: false,
     }
 }
 
@@ -673,6 +683,7 @@ fn work_signal_pipeline_scenario() -> Scenario {
 mod uat_fixture;
 mod uat_retro_seed;
 mod uat_daily_seed;
+mod uat_weekly_seed;
 
 /// I-0040 end-to-end UAT: synthetic gmail + slack feed rows for two
 /// workstreams, extractor runs during seed so the KB is warm, agent
@@ -732,6 +743,7 @@ fn signal_extraction_e2e_scenario() -> Scenario {
         seed_tag_promoter: false,
         seed_retro_ceremony: false,
         seed_daily_ceremony: false,
+        seed_weekly_ceremony: false,
     }
 }
 
@@ -779,6 +791,7 @@ fn tag_promoter_cycle_scenario() -> Scenario {
         seed_tag_promoter: true,
         seed_retro_ceremony: false,
         seed_daily_ceremony: false,
+        seed_weekly_ceremony: false,
     }
 }
 
@@ -817,6 +830,7 @@ fn retro_ceremony_scenario() -> Scenario {
         seed_tag_promoter: false,
         seed_retro_ceremony: true,
         seed_daily_ceremony: false,
+        seed_weekly_ceremony: false,
     }
 }
 
@@ -856,6 +870,53 @@ fn daily_ceremony_scenario() -> Scenario {
         seed_tag_promoter: false,
         seed_retro_ceremony: false,
         seed_daily_ceremony: true,
+        seed_weekly_ceremony: false,
+    }
+}
+
+/// I-0042 weekly ceremony end-to-end: seed three workstreams + a
+/// week's worth of calendar events, a prior weekly tablet with open
+/// inbound items, a prior retro with diary + patterns, and 4 hot
+/// rolling todos. Drive the agent through weekly_run →
+/// weekly_list_items → weekly_list_priorities + weekly_confirm_priority
+/// (×2 sequential) → weekly_reject_priority for the rest. Judge
+/// verifies (a) weekly_run returns a tablet id, (b) items grouped by
+/// section with citation_ids verbatim, (c) two sequential confirms
+/// followed by a list call showing `source: confirmed`, (d) the
+/// rejections leave only the confirmed pair in the final list.
+fn weekly_ceremony_scenario() -> Scenario {
+    Scenario {
+        name: "weekly-ceremony".to_string(),
+        objective: "Drive the I-0042 weekly ceremony end-to-end. Three workstreams (proj-a, proj-b, proj-c) are seeded with recent gmail + slack rows so the attention adapter surfaces deadline candidates. The weekly seeder writes the current week's calendar (~10 events across Mon–Sun), a prior weekly tablet with 2 open inbound items, a prior retro (2 weeks ago) with diary + patterns, and 4 hot rolling todos (created > 7 days ago). The weekly plugin's gather should populate all five sections (priorities, calendar_shape, deadlines, from_last_retro, inbound).".to_string(),
+        turns: vec![
+            ScenarioTurn {
+                user_message: "Run this week's prep ceremony and report the tablet id you get back.".to_string(),
+                judge_expectation: "Agent calls weekly_run exactly once and reports the tablet_id from the response. Status should be `generated` (or `skipped` with a tablet_id-bearing reason if a tablet from a prior run still exists in the data dir).".to_string(),
+            },
+            ScenarioTurn {
+                user_message: "Use weekly_list_items with the tablet id. Group items by section and quote each citation_id verbatim — copy them character-for-character.".to_string(),
+                judge_expectation: "Agent calls weekly_list_items with the tablet id from turn 1. The reply groups items by section_key (`priorities`, `calendar_shape`, `deadlines`, `from_last_retro`, `inbound` — some may be empty depending on what the LLM composed). citation_id values are quoted verbatim in backticks or otherwise clearly delimited, not paraphrased into prose.".to_string(),
+            },
+            ScenarioTurn {
+                user_message: "Use weekly_list_priorities to list the priority candidates. Pick the **two** most useful ones. For each, call weekly_confirm_priority. **First** issue each confirmation and wait for its response, **then** call weekly_list_priorities again to verify both show `source: confirmed`. Do NOT issue the confirmations in parallel with the verification call — they must be sequential.".to_string(),
+                judge_expectation: "Agent issues 2 sequential weekly_confirm_priority calls (each completes before the next starts) followed by a weekly_list_priorities call. The two confirmed priorities have `source: confirmed` in the response.".to_string(),
+            },
+            ScenarioTurn {
+                user_message: "Reject every remaining candidate via weekly_reject_priority. Issue each rejection sequentially (not in parallel). Then call weekly_list_priorities one final time and report only the confirmed priorities.".to_string(),
+                judge_expectation: "Agent issues weekly_reject_priority calls sequentially (one per remaining candidate), then a final weekly_list_priorities call. The response contains only the confirmed pair from turn 3.".to_string(),
+            },
+        ],
+        mechanical: MechanicalThresholds {
+            min_files_created: 0,
+            min_workflows_created: 0,
+            min_memory_entities: 0,
+            max_tool_errors: 1,
+        },
+        seed_fixture: Some("tests/fixtures/uat/weekly-ceremony.json".to_string()),
+        seed_tag_promoter: false,
+        seed_retro_ceremony: false,
+        seed_daily_ceremony: false,
+        seed_weekly_ceremony: true,
     }
 }
 
@@ -867,6 +928,7 @@ fn all_scenarios() -> Vec<Scenario> {
         tag_promoter_cycle_scenario(),
         retro_ceremony_scenario(),
         daily_ceremony_scenario(),
+        weekly_ceremony_scenario(),
     ]
 }
 
@@ -975,6 +1037,19 @@ async fn uat_run() {
                 println!(
                     "    Seed daily ceremony: {} daily tablets, {} rolling todos, {} priorities, {} calendar events",
                     s.daily_tablets, s.rolling_todos, s.priorities, s.calendar_events
+                );
+            }
+
+            if scenario.seed_weekly_ceremony {
+                let s = uat_weekly_seed::apply(&scenario_dir).expect("seed weekly state");
+                println!(
+                    "    Seed weekly ceremony: {} prior weekly tablets, {} inbound items, {} prior retros, {} patterns, {} rolling todos, {} calendar events",
+                    s.prior_weekly_tablets,
+                    s.inbound_items,
+                    s.prior_retros,
+                    s.patterns,
+                    s.rolling_todos,
+                    s.calendar_events
                 );
             }
         }

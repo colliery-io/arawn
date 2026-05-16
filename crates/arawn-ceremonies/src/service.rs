@@ -373,7 +373,12 @@ impl CeremonyService {
                     "no item with id '{item_id}'"
                 ))
             })?;
-        if section_key != "priorities" || kind != "priority" {
+        // Kind is intentionally not constrained — the weekly plugin
+        // emits priority candidates with kind="pattern" (matching the
+        // LLM-claim shape). What identifies an item as a priority
+        // candidate is its section_key.
+        let _ = kind;
+        if section_key != "priorities" {
             return Err(CeremonyError::invalid_tablet_state(format!(
                 "item '{item_id}' is not a priority candidate \
                  (section_key='{section_key}', kind='{kind}')"
@@ -586,9 +591,14 @@ impl CeremonyService {
         let mut candidates: Vec<PriorityDto> = {
             let mut stmt = conn
                 .prepare(
+                    // Kind unconstrained — section_key='priorities' is
+                    // the canonical "candidate priority" marker. The
+                    // weekly plugin emits these with kind='pattern'
+                    // (its LLM-claim default); filtering on kind here
+                    // would hide every real candidate.
                     "SELECT id, tablet_id, body, citation_id, ordinal \
                      FROM ceremony_items \
-                     WHERE tablet_id = ?1 AND section_key = 'priorities' AND kind = 'priority' \
+                     WHERE tablet_id = ?1 AND section_key = 'priorities' \
                        AND id NOT IN ( \
                            SELECT citation_id FROM ceremony_priorities \
                            WHERE tablet_id = ?1 AND citation_id IS NOT NULL \
