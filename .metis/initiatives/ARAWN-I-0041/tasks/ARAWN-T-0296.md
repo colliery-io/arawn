@@ -4,14 +4,14 @@ level: task
 title: "Daily plugin — Ceremony trait impl with gather + compose"
 short_code: "ARAWN-T-0296"
 created_at: 2026-05-16T14:00:00+00:00
-updated_at: 2026-05-16T14:10:45.341862+00:00
+updated_at: 2026-05-16T14:16:26.531093+00:00
 parent: ARAWN-I-0041
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -31,8 +31,6 @@ trait impl that runs the gather→compose pipeline on the existing
 engine. Mirrors `RetroCeremony`'s shape (gather payload → LLM
 compose → `ComposedItem` writes with citation_ids) but produces a
 daily tablet rather than a retro one.
-
-## Acceptance Criteria
 
 ## Acceptance Criteria
 
