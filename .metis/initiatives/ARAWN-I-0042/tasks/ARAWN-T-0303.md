@@ -4,15 +4,14 @@ level: task
 title: "Weekly agent tools (weekly_* family)"
 short_code: "ARAWN-T-0303"
 created_at: 2026-05-16T16:38:00.660848+00:00
-updated_at: 2026-05-16T16:38:00.660848+00:00
+updated_at: 2026-05-16T16:51:19.058308+00:00
 parent: ARAWN-I-0042
-blocked_by:
-  - ARAWN-T-0302
+blocked_by: [ARAWN-T-0302]
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/active"
 
 
 exit_criteria_met: false
@@ -68,4 +67,19 @@ the Monday confirmation flow. Three priority-mutation tools
 
 ## Status Updates
 
-*To be added during implementation*
+### 2026-05-16 — seven weekly tools shipped
+
+- New `crates/arawn-engine/src/tools/weekly.rs` (~600 lines):
+  WeeklyRunTool, WeeklyCurrentTool, WeeklyListItemsTool,
+  WeeklyListPrioritiesTool, WeeklyConfirmPriorityTool,
+  WeeklyRejectPriorityTool, WeeklyAddPriorityTool.
+- All carry `ToolCategory::Ceremony`. Keyword gate extended
+  with `weekly | week | priority | priorities`.
+- Re-exported from `arawn-engine::lib` next to daily.
+- 13 unit tests pass. Full arawn-engine lib suite: 657 (was
+  644).
+
+Tool registration in `main.rs` happens under T-0304's
+`weekly_actually_enabled` guard.
+
+Completed 2026-05-16.

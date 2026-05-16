@@ -68,6 +68,8 @@ pub use tools::{
 pub use tools::{
     DailyAddTodoTool, DailyCurrentTool, DailyListItemsTool, DailyPatchItemTool, DailyRunTool,
     RetroCurrentTool, RetroListItemsTool, RetroPatchItemTool, RetroRunTool, RetroSaveDiaryTool,
+    WeeklyAddPriorityTool, WeeklyConfirmPriorityTool, WeeklyCurrentTool, WeeklyListItemsTool,
+    WeeklyListPrioritiesTool, WeeklyRejectPriorityTool, WeeklyRunTool,
 };
 pub use ceremony_sources::{ProjectionsAttentionSource, ProjectionsCalendarSource};
 pub use workstream_router::{MemoryHandle, WorkstreamMemoryRouter};

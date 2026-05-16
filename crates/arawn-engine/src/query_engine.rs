@@ -1099,6 +1099,10 @@ fn filter_tools_for_context(
         || last_user_msg.contains("daily")
         || last_user_msg.contains("today")
         || last_user_msg.contains("brief")
+        || last_user_msg.contains("weekly")
+        || last_user_msg.contains("week")
+        || last_user_msg.contains("priorities")
+        || last_user_msg.contains("priority")
     {
         active_categories.insert(ToolCategory::Ceremony);
     }

@@ -26,6 +26,7 @@ pub mod web_search;
 pub mod workstream;
 pub mod ceremony;
 pub mod daily;
+pub mod weekly;
 
 pub use agent::AgentTool;
 pub use ask_user::AskUserTool;
@@ -63,4 +64,8 @@ pub use ceremony::{
 };
 pub use daily::{
     DailyAddTodoTool, DailyCurrentTool, DailyListItemsTool, DailyPatchItemTool, DailyRunTool,
+};
+pub use weekly::{
+    WeeklyAddPriorityTool, WeeklyConfirmPriorityTool, WeeklyCurrentTool, WeeklyListItemsTool,
+    WeeklyListPrioritiesTool, WeeklyRejectPriorityTool, WeeklyRunTool,
 };

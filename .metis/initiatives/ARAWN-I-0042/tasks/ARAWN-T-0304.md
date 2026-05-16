@@ -80,4 +80,24 @@ Slot the weekly plugin into the existing ceremony wiring in
 
 ## Status Updates
 
-*To be added during implementation*
+### 2026-05-16 — weekly wired into binary
+
+- `main.rs` ceremony block extended for the third plugin:
+  `weekly_cfg`/`weekly_enabled`/`weekly_actually_enabled` flags
+  threaded through alongside retro + daily. Outer gate now
+  fires when any of the three is enabled.
+- Hoisted the calendar + attention `Arc<dyn>` source pair out
+  of the daily block so weekly reuses the same constructions
+  (no duplicated `ProjectionsCalendarSource::new` calls).
+- WeeklyCeremony registered on the shared `PluginRegistry`,
+  cron registered via
+  `runner.register_one_with_schedule("weekly", sched)`, all 7
+  weekly_* tools registered under
+  `weekly_actually_enabled`.
+- `info!` line on success reports retro + daily + weekly flags.
+- `arawn.toml` template grows a commented-out
+  `[ceremonies.weekly]` block matching retro/daily.
+- Binary compiles clean; arawn-engine lib suite (657 incl.
+  weekly tools) green; arawn lib (57) green.
+
+Completed 2026-05-16.

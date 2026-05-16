@@ -1275,9 +1275,11 @@ async fn main() -> Result<()> {
         let retro_enabled = retro_cfg.is_none_or(arawn_bin::CeremonyConfig::is_enabled);
         let daily_cfg = config.ceremonies.get("daily");
         let daily_enabled = daily_cfg.is_none_or(arawn_bin::CeremonyConfig::is_enabled);
+        let weekly_cfg = config.ceremonies.get("weekly");
+        let weekly_enabled = weekly_cfg.is_none_or(arawn_bin::CeremonyConfig::is_enabled);
 
         if let Some(workflow_runner) = workflow_runner_handle.as_ref()
-            && (retro_enabled || daily_enabled)
+            && (retro_enabled || daily_enabled || weekly_enabled)
         {
             let cer_db_path = std::path::PathBuf::from(&data_dir).join("arawn.db");
             match rusqlite::Connection::open(&cer_db_path) {
@@ -1298,17 +1300,19 @@ async fn main() -> Result<()> {
                         }
                     }
 
-                    // Daily plugin construction (gated). Requires the
-                    // projection store for calendar + attention
-                    // sources; degrades to "daily disabled" if it
-                    // isn't available.
+                    // Daily + weekly both depend on the projection
+                    // store for calendar + attention sources. Build
+                    // the shared Arc<dyn> handles once so both plugins
+                    // (and weekly's tool registrations) can reuse them.
                     let daily_actually_enabled = daily_enabled && projections.is_some();
-                    if daily_actually_enabled {
-                        let projections = Arc::clone(projections.as_ref().unwrap());
-                        let model_hint = daily_cfg
-                            .and_then(|c| c.model.clone())
-                            .unwrap_or_else(|| arawn_llm::ModelHint::Medium.as_hint());
-                        let (daily_client, daily_model) = llm_pool.resolve_hint(&model_hint);
+                    let weekly_actually_enabled = weekly_enabled && projections.is_some();
+                    let projection_sources: Option<(
+                        Arc<dyn arawn_ceremonies::CalendarSource>,
+                        Arc<dyn arawn_ceremonies::AttentionSource>,
+                    )> = if (daily_actually_enabled || weekly_actually_enabled)
+                        && let Some(projections) = projections.as_ref()
+                    {
+                        let projections = Arc::clone(projections);
                         let calendar: Arc<dyn arawn_ceremonies::CalendarSource> =
                             Arc::new(arawn_engine::ProjectionsCalendarSource::new(Arc::clone(
                                 &projections,
@@ -1319,11 +1323,27 @@ async fn main() -> Result<()> {
                                 service.shared_store(),
                             ),
                         );
+                        Some((calendar, attention))
+                    } else {
+                        None
+                    };
+
+                    // Daily plugin construction (gated). Requires the
+                    // projection store for calendar + attention
+                    // sources; degrades to "daily disabled" if it
+                    // isn't available.
+                    if daily_actually_enabled
+                        && let Some((calendar, attention)) = projection_sources.as_ref()
+                    {
+                        let model_hint = daily_cfg
+                            .and_then(|c| c.model.clone())
+                            .unwrap_or_else(|| arawn_llm::ModelHint::Medium.as_hint());
+                        let (daily_client, daily_model) = llm_pool.resolve_hint(&model_hint);
                         let daily = arawn_ceremonies::DailyCeremony::new(
                             daily_client,
                             daily_model,
-                            calendar,
-                            attention,
+                            Arc::clone(calendar),
+                            Arc::clone(attention),
                         );
                         if let Err(e) = plugin_reg.register(Arc::new(daily)) {
                             warn!(error = %e, "ceremony daily plugin registration failed");
@@ -1331,6 +1351,30 @@ async fn main() -> Result<()> {
                     } else if daily_enabled {
                         warn!(
                             "daily ceremony enabled in config but projection store unavailable — skipping"
+                        );
+                    }
+
+                    // Weekly plugin construction (gated). Same
+                    // projection-store dependency as daily.
+                    if weekly_actually_enabled
+                        && let Some((calendar, attention)) = projection_sources.as_ref()
+                    {
+                        let model_hint = weekly_cfg
+                            .and_then(|c| c.model.clone())
+                            .unwrap_or_else(|| arawn_llm::ModelHint::Medium.as_hint());
+                        let (weekly_client, weekly_model) = llm_pool.resolve_hint(&model_hint);
+                        let weekly = arawn_ceremonies::WeeklyCeremony::new(
+                            weekly_client,
+                            weekly_model,
+                            Arc::clone(calendar),
+                            Arc::clone(attention),
+                        );
+                        if let Err(e) = plugin_reg.register(Arc::new(weekly)) {
+                            warn!(error = %e, "ceremony weekly plugin registration failed");
+                        }
+                    } else if weekly_enabled {
+                        warn!(
+                            "weekly ceremony enabled in config but projection store unavailable — skipping"
                         );
                     }
 
@@ -1384,6 +1428,19 @@ async fn main() -> Result<()> {
                         });
                         if let Err(e) = runner.register_one_with_schedule("daily", sched).await {
                             warn!(error = %e, "ceremony runner failed to register daily cron — manual runs still work");
+                        }
+                    }
+                    if weekly_actually_enabled {
+                        let sched = weekly_cfg.and_then(|c| {
+                            c.schedule.as_ref().map(|expr| {
+                                arawn_ceremonies::CronSchedule::new(
+                                    expr.clone(),
+                                    c.timezone.clone().unwrap_or_else(|| "Local".to_string()),
+                                )
+                            })
+                        });
+                        if let Err(e) = runner.register_one_with_schedule("weekly", sched).await {
+                            warn!(error = %e, "ceremony runner failed to register weekly cron — manual runs still work");
                         }
                     }
 
@@ -1446,9 +1503,35 @@ async fn main() -> Result<()> {
                         )));
                     }
 
+                    // Weekly agent tools (gated on weekly_actually_enabled).
+                    if weekly_actually_enabled {
+                        registry.register(Box::new(arawn_engine::WeeklyRunTool::new(Arc::clone(
+                            &cer_service,
+                        ))));
+                        registry.register(Box::new(arawn_engine::WeeklyCurrentTool::new(
+                            Arc::clone(&cer_service),
+                        )));
+                        registry.register(Box::new(arawn_engine::WeeklyListItemsTool::new(
+                            Arc::clone(&cer_service),
+                        )));
+                        registry.register(Box::new(arawn_engine::WeeklyListPrioritiesTool::new(
+                            Arc::clone(&cer_service),
+                        )));
+                        registry.register(Box::new(arawn_engine::WeeklyConfirmPriorityTool::new(
+                            Arc::clone(&cer_service),
+                        )));
+                        registry.register(Box::new(arawn_engine::WeeklyRejectPriorityTool::new(
+                            Arc::clone(&cer_service),
+                        )));
+                        registry.register(Box::new(arawn_engine::WeeklyAddPriorityTool::new(
+                            Arc::clone(&cer_service),
+                        )));
+                    }
+
                     info!(
                         retro = retro_enabled,
                         daily = daily_actually_enabled,
+                        weekly = weekly_actually_enabled,
                         "ceremony engine wired"
                     );
                 }

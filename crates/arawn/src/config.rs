@@ -662,6 +662,12 @@ network_tools = [
 # schedule = "0 16 * * FRI"               # cron expression (5 fields)
 # timezone = "Local"                      # "Local" or an IANA zone (e.g. "America/Los_Angeles")
 # model = "hint:medium"                   # hint shortcut or concrete model name from [llm.*]
+#
+# [ceremonies.weekly]
+# enabled = true                          # set false to disable weekly entirely
+# schedule = "0 9 * * MON"                # cron expression (5 fields)
+# timezone = "Local"                      # "Local" or an IANA zone (e.g. "America/Los_Angeles")
+# model = "hint:medium"                   # hint shortcut or concrete model name from [llm.*]
 "##
         .to_string()
     }
