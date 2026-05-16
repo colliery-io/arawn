@@ -5,17 +5,19 @@ title: "TokenJuice-style rule-driven tool-output compaction layer"
 short_code: "ARAWN-T-0274"
 created_at: 2026-05-15T14:12:50.950323+00:00
 updated_at: 2026-05-15T14:12:50.950323+00:00
-parent: ARAWN-I-0044
+parent: 
 blocked_by: []
-archived: true
+archived: false
 
 tags:
   - "#task"
+  - "#feature"
   - "#phase/todo"
 
 
 exit_criteria_met: false
-initiative_id: ARAWN-I-0044
+initiative_id: NULL
+backlog_category: feature
 ---
 
 # TokenJuice-style tool-output compaction
