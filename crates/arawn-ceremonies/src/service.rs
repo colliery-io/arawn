@@ -25,6 +25,7 @@ use uuid::Uuid;
 
 use crate::CeremonyError;
 use crate::engine::ConnHandle;
+use crate::events::{CeremonyEvent, CeremonyEventSender, emit as emit_event};
 use crate::runner::{CeremonyDispatcher, DispatchOutcome};
 use crate::types::{ItemKind, TabletStatus};
 
@@ -93,11 +94,24 @@ pub struct AddItemRequest {
 pub struct CeremonyService {
     conn: ConnHandle,
     dispatcher: Arc<dyn CeremonyDispatcher>,
+    events: Option<CeremonyEventSender>,
 }
 
 impl CeremonyService {
     pub fn new(conn: ConnHandle, dispatcher: Arc<dyn CeremonyDispatcher>) -> Self {
-        Self { conn, dispatcher }
+        Self {
+            conn,
+            dispatcher,
+            events: None,
+        }
+    }
+
+    /// Attach the event sender. The dispatcher should already have
+    /// one; this clones the same channel so item-mutation events
+    /// fire on the same broadcast as tablet generation.
+    pub fn with_events(mut self, sender: CeremonyEventSender) -> Self {
+        self.events = Some(sender);
+        self
     }
 
     /// `ceremonies.get_today` — today's daily tablet, if any.
@@ -194,6 +208,16 @@ impl CeremonyService {
                 row_to_item,
             )
             .map_err(|e| CeremonyError::Storage(format!("patch_item reload: {e}")))?;
+        drop(conn);
+        if let Some(events) = &self.events {
+            emit_event(
+                events,
+                CeremonyEvent::ItemUpdated {
+                    item_id: dto.id.clone(),
+                    tablet_id: dto.tablet_id.clone(),
+                },
+            );
+        }
         Ok(dto)
     }
 
@@ -230,9 +254,9 @@ impl CeremonyService {
             ],
         )
         .map_err(|e| CeremonyError::Storage(format!("add_item insert: {e}")))?;
-        Ok(ItemDto {
-            id,
-            tablet_id: req.tablet_id,
+        let dto = ItemDto {
+            id: id.clone(),
+            tablet_id: req.tablet_id.clone(),
             section_key: req.section_key,
             ordinal: next_ordinal,
             kind: kind_str(&req.kind).to_string(),
@@ -240,7 +264,18 @@ impl CeremonyService {
             citation_id: None,
             done_at: None,
             created_at,
-        })
+        };
+        drop(conn);
+        if let Some(events) = &self.events {
+            emit_event(
+                events,
+                CeremonyEvent::ItemUpdated {
+                    item_id: id,
+                    tablet_id: req.tablet_id,
+                },
+            );
+        }
+        Ok(dto)
     }
 
     /// `ceremonies.run` — manual trigger; idempotent per period_key.
@@ -519,5 +554,74 @@ mod tests {
         let service = CeremonyService::new(conn, dispatcher);
         let today = service.get_today().unwrap();
         assert!(today.is_none());
+    }
+
+    #[tokio::test]
+    async fn dispatch_emits_tablet_generated_event() {
+        use crate::CeremonyEvent;
+        let (tx, mut rx) = crate::event_channel();
+        let (_tmp, conn) = open_test_db();
+        let reg = PluginRegistry::new();
+        let items = vec![NewItem::user(UserItem {
+            tablet_id: "retro-2026-W20".into(),
+            section_key: "diary".into(),
+            ordinal: 0,
+            kind: ItemKind::Freeform,
+            body: json!({}),
+        })];
+        reg.register(Arc::new(ScriptedPlugin {
+            kind: "retro",
+            items: std::sync::Mutex::new(items),
+            period: "2026-W20".into(),
+        }))
+        .unwrap();
+        let dispatcher =
+            Arc::new(EngineDispatcher::new(conn.clone(), reg).with_events(tx.clone()));
+        let service = CeremonyService::new(conn, dispatcher.clone()).with_events(tx);
+        service.run("retro").await.unwrap();
+        let event = rx.recv().await.unwrap();
+        match event {
+            CeremonyEvent::TabletGenerated {
+                tablet_id,
+                kind,
+                period_key,
+            } => {
+                assert_eq!(tablet_id, "retro-2026-W20");
+                assert_eq!(kind, "retro");
+                assert_eq!(period_key, "2026-W20");
+            }
+            other => panic!("expected TabletGenerated, got {other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn patch_item_emits_item_updated_event() {
+        use crate::CeremonyEvent;
+        let (tx, mut rx) = crate::event_channel();
+        let (_tmp, service, tablet_id) =
+            build_service_with_items("retro", "2026-W20", "retro");
+        // Replace service with one that has events wired.
+        let service = service.with_events(tx);
+        service.run("retro").await.unwrap();
+        let items = service.list_items(&tablet_id, Some("what_happened")).unwrap();
+        let id = &items[0].id;
+        service
+            .patch_item(
+                id,
+                ItemPatch {
+                    done: Some(true),
+                    body: None,
+                },
+            )
+            .unwrap();
+        // Drain until we see ItemUpdated for this id; service.run
+        // does not currently fire an event (dispatcher has no
+        // sender in this helper), so the first event off the wire
+        // should be the patch.
+        let event = rx.recv().await.unwrap();
+        assert!(matches!(
+            event,
+            CeremonyEvent::ItemUpdated { ref item_id, .. } if item_id == id
+        ));
     }
 }

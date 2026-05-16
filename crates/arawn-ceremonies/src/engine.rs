@@ -39,6 +39,7 @@ use rusqlite::{Connection, OptionalExtension, params};
 use uuid::Uuid;
 
 use crate::CeremonyError;
+use crate::events::{CeremonyEvent, CeremonyEventSender, emit as emit_event};
 use crate::plugin::{Ceremony, CeremonyCtx, ComposedItem, NewItem, UserItem};
 use crate::registry::PluginRegistry;
 use crate::runner::{CeremonyDispatcher, DispatchOutcome};
@@ -60,11 +61,27 @@ impl ConnHandle {
 pub struct EngineDispatcher {
     conn: ConnHandle,
     registry: PluginRegistry,
+    /// Optional event channel. When `None`, state-change events are
+    /// dropped silently (used by tests that don't care). Production
+    /// always wires this so the WS layer can forward to clients.
+    events: Option<CeremonyEventSender>,
 }
 
 impl EngineDispatcher {
     pub fn new(conn: ConnHandle, registry: PluginRegistry) -> Self {
-        Self { conn, registry }
+        Self {
+            conn,
+            registry,
+            events: None,
+        }
+    }
+
+    /// Attach the event sender. Cloned senders share the channel —
+    /// the dispatcher, service, and any plugin that wants to emit
+    /// all hold one. Chainable.
+    pub fn with_events(mut self, sender: CeremonyEventSender) -> Self {
+        self.events = Some(sender);
+        self
     }
 }
 
@@ -108,6 +125,16 @@ impl CeremonyDispatcher for EngineDispatcher {
         match result {
             Ok(tablet_id) => {
                 commit(&self.conn)?;
+                if let Some(events) = &self.events {
+                    emit_event(
+                        events,
+                        CeremonyEvent::TabletGenerated {
+                            tablet_id: tablet_id.clone(),
+                            kind: kind.to_string(),
+                            period_key: period_key.clone(),
+                        },
+                    );
+                }
                 Ok(DispatchOutcome::Generated { tablet_id })
             }
             Err(e) => {
@@ -139,7 +166,19 @@ impl EngineDispatcher {
         if let Some(detector) = plugin.patterns() {
             let patterns = detector.detect(&ctx).await?;
             for pattern in patterns {
-                let _id = ctx.write_pattern_row(pattern).await?;
+                let iso_week = pattern.iso_week.clone();
+                let pattern_key = pattern.pattern_key.clone();
+                let id = ctx.write_pattern_row(pattern).await?;
+                if let Some(events) = &self.events {
+                    emit_event(
+                        events,
+                        CeremonyEvent::PatternDetected {
+                            pattern_id: id,
+                            iso_week,
+                            pattern_key,
+                        },
+                    );
+                }
             }
         }
 

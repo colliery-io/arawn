@@ -13,6 +13,7 @@
 
 pub mod engine;
 pub mod error;
+pub mod events;
 pub mod plugin;
 pub mod registry;
 pub mod runner;
@@ -25,6 +26,7 @@ pub use plugin::{
     PatternDetector, UserItem,
 };
 pub use engine::{ConnHandle, EngineCtx, EngineDispatcher};
+pub use events::{CeremonyEvent, CeremonyEventReceiver, CeremonyEventSender, channel as event_channel};
 pub use registry::PluginRegistry;
 pub use runner::{
     CeremonyDispatcher, CeremonyDispatchTask, CeremonyRunner, DispatchOutcome,
