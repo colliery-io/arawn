@@ -20,6 +20,7 @@ members = [
     "crates/arawn-projections",
     "crates/arawn-extractor",
     "crates/arawn-steward",
+    "crates/arawn-ceremonies",
 ]
 
 [workspace.dependencies]
