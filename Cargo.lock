@@ -211,6 +211,7 @@ dependencies = [
  "async-trait",
  "chrono",
  "cloacina",
+ "futures",
  "rusqlite",
  "serde",
  "serde_json",
