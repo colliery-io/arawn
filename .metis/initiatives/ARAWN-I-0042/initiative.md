@@ -4,14 +4,14 @@ level: initiative
 title: "Weekly prep ceremony — scheduled Monday brief setting priorities for the week"
 short_code: "ARAWN-I-0042"
 created_at: 2026-05-15T12:25:31.682847+00:00
-updated_at: 2026-05-15T12:25:31.682847+00:00
+updated_at: 2026-05-16T16:40:57.426305+00:00
 parent: ARAWN-V-0001
 blocked_by: []
 archived: false
 
 tags:
   - "#initiative"
-  - "#phase/discovery"
+  - "#phase/active"
 
 
 exit_criteria_met: false
@@ -152,6 +152,35 @@ Tue–Sun `/week` is read-only (returns the same data; no confirm UI shown).
 - **Combine weekly prep into daily prep "every Monday do extra stuff"** — rejected. The Monday confirmation step needs distinct UX; mixing it into daily prep makes both worse.
 - **Auto-confirm priorities (skip user step)** — rejected. The point of priorities is the user committing to them; rubber-stamping defeats the purpose.
 - **OKR / quarterly framing** — rejected. Too long a cycle for first-pass; weekly already exercises the ceremony machinery enough.
+
+## Design Decisions (2026-05-16)
+
+Locked as I-0042 moves out of discovery, building on the shared
+engine (I-0043), the shared config surface (T-0295), and the
+daily plugin (I-0041) already shipping in production:
+
+1. **Cadence — configurable, default Monday 07:00 local.** Read
+   from `[ceremonies.weekly]` in `arawn.toml` via the same
+   `CeremonyConfig` surface retro and daily already use.
+2. **Five compose sections**: `priorities` (LLM-proposed 5–7
+   candidates with citation_ids), `calendar_shape` (week meeting /
+   deep-work stats), `deadlines` (this week's due items),
+   `from_last_retro` (carry-forward excerpts), `inbound` (un-done
+   prior weekly + open steward proposals).
+3. **Two-write paradigm for priorities.** Weekly compose only
+   writes `ceremony_items` in the `priorities` section
+   (`kind=priority`). The user confirms via the new
+   `weekly_confirm_priority(item_id)` agent tool, which writes a
+   `ceremony_priorities` row referencing the item's citation_id.
+   Reject deletes the item. The engine + `NewItem` enum stay
+   untouched — no new write variants needed.
+4. **Daily ↔ weekly already coupled.** Daily's `alignment` section
+   reads `ceremony_priorities WHERE confirmed_at IS NOT NULL`
+   (shipped in [[ARAWN-T-0296]]). The retro↔weekly loop closes via
+   retro's `priority_completion_ratio` detector, which already
+   reads weekly-confirmed priorities.
+5. **Cross-workstream by default**; per-workstream filtering
+   deferred (same posture as daily).
 
 ## Implementation Plan
 
