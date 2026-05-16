@@ -1264,41 +1264,74 @@ async fn main() -> Result<()> {
             debug!("feed runtime skipped — workflow runner not available");
         }
 
-        // Ceremony engine (I-0043). Wires the retro plugin + detectors
-        // into the cloacina runtime for scheduled Friday introspection
-        // and registers a service handle the WS-RPC dispatcher routes
-        // `ceremonies.*` calls through. Skipped when the workflow
-        // runner failed to start — without cloacina there is no cron
-        // surface to register against.
-        // Per-ceremony overrides from `[ceremonies.<kind>]` in
-        // arawn.toml. Absent table or missing fields → use the
-        // plugin's compiled-in defaults.
+        // Ceremony engine (I-0043 + I-0041). The shared infra
+        // (connection, plugin registry, dispatcher, service, runner)
+        // is built when the cloacina workflow runner is available.
+        // Per-plugin enablement is gated on `[ceremonies.<kind>]`
+        // in arawn.toml: retro and daily each have their own
+        // enabled-flag and override surface. Absent table or
+        // missing fields → use the plugin's compiled-in defaults.
         let retro_cfg = config.ceremonies.get("retro");
         let retro_enabled = retro_cfg.is_none_or(arawn_bin::CeremonyConfig::is_enabled);
+        let daily_cfg = config.ceremonies.get("daily");
+        let daily_enabled = daily_cfg.is_none_or(arawn_bin::CeremonyConfig::is_enabled);
 
         if let Some(workflow_runner) = workflow_runner_handle.as_ref()
-            && retro_enabled
+            && (retro_enabled || daily_enabled)
         {
             let cer_db_path = std::path::PathBuf::from(&data_dir).join("arawn.db");
             match rusqlite::Connection::open(&cer_db_path) {
                 Ok(conn) => {
                     let conn_handle = arawn_ceremonies::ConnHandle::new(conn);
-
-                    // Model hint: override from config if present,
-                    // otherwise the standard `hint:medium`. Resolved
-                    // through llm_pool.resolve_hint either way so
-                    // hint shortcuts and concrete model names both
-                    // work.
-                    let model_hint = retro_cfg
-                        .and_then(|c| c.model.clone())
-                        .unwrap_or_else(|| arawn_llm::ModelHint::Medium.as_hint());
-                    let (retro_client, retro_model) = llm_pool.resolve_hint(&model_hint);
-                    let retro = arawn_ceremonies::RetroCeremony::new(retro_client, retro_model)
-                        .with_detectors(arawn_ceremonies::retro_v1_catalog());
-
                     let plugin_reg = arawn_ceremonies::PluginRegistry::new();
-                    if let Err(e) = plugin_reg.register(Arc::new(retro)) {
-                        warn!(error = %e, "ceremony retro plugin registration failed");
+
+                    // Retro plugin construction (gated).
+                    if retro_enabled {
+                        let model_hint = retro_cfg
+                            .and_then(|c| c.model.clone())
+                            .unwrap_or_else(|| arawn_llm::ModelHint::Medium.as_hint());
+                        let (retro_client, retro_model) = llm_pool.resolve_hint(&model_hint);
+                        let retro = arawn_ceremonies::RetroCeremony::new(retro_client, retro_model)
+                            .with_detectors(arawn_ceremonies::retro_v1_catalog());
+                        if let Err(e) = plugin_reg.register(Arc::new(retro)) {
+                            warn!(error = %e, "ceremony retro plugin registration failed");
+                        }
+                    }
+
+                    // Daily plugin construction (gated). Requires the
+                    // projection store for calendar + attention
+                    // sources; degrades to "daily disabled" if it
+                    // isn't available.
+                    let daily_actually_enabled = daily_enabled && projections.is_some();
+                    if daily_actually_enabled {
+                        let projections = Arc::clone(projections.as_ref().unwrap());
+                        let model_hint = daily_cfg
+                            .and_then(|c| c.model.clone())
+                            .unwrap_or_else(|| arawn_llm::ModelHint::Medium.as_hint());
+                        let (daily_client, daily_model) = llm_pool.resolve_hint(&model_hint);
+                        let calendar: Arc<dyn arawn_ceremonies::CalendarSource> =
+                            Arc::new(arawn_engine::ProjectionsCalendarSource::new(Arc::clone(
+                                &projections,
+                            )));
+                        let attention: Arc<dyn arawn_ceremonies::AttentionSource> = Arc::new(
+                            arawn_engine::ProjectionsAttentionSource::new(
+                                Arc::clone(&projections),
+                                service.shared_store(),
+                            ),
+                        );
+                        let daily = arawn_ceremonies::DailyCeremony::new(
+                            daily_client,
+                            daily_model,
+                            calendar,
+                            attention,
+                        );
+                        if let Err(e) = plugin_reg.register(Arc::new(daily)) {
+                            warn!(error = %e, "ceremony daily plugin registration failed");
+                        }
+                    } else if daily_enabled {
+                        warn!(
+                            "daily ceremony enabled in config but projection store unavailable — skipping"
+                        );
                     }
 
                     let (event_tx, _event_rx) = arawn_ceremonies::event_channel();
@@ -1323,33 +1356,39 @@ async fn main() -> Result<()> {
                         .with_events(event_tx),
                     );
 
-                    // Register cron schedules per plugin, applying
-                    // any `[ceremonies.<kind>]` schedule override.
-                    // Invalid cron expressions log a warn and fall
-                    // back to the plugin default rather than aborting
-                    // startup. `register_one_with_schedule` is
-                    // idempotent — drops any prior schedule for the
-                    // same workflow name first.
-                    let retro_sched_override = retro_cfg.and_then(|c| {
-                        c.schedule.as_ref().map(|expr| {
-                            arawn_ceremonies::CronSchedule::new(
-                                expr.clone(),
-                                c.timezone.clone().unwrap_or_else(|| "Local".to_string()),
-                            )
-                        })
-                    });
-                    if let Err(e) = runner
-                        .register_one_with_schedule("retro", retro_sched_override)
-                        .await
-                    {
-                        warn!(error = %e, "ceremony runner failed to register retro cron — manual runs still work");
+                    // Cron registration per enabled plugin. Each
+                    // `[ceremonies.<kind>]` schedule override applied
+                    // here; invalid expressions log a warn and fall
+                    // back to plugin default rather than abort.
+                    if retro_enabled {
+                        let sched = retro_cfg.and_then(|c| {
+                            c.schedule.as_ref().map(|expr| {
+                                arawn_ceremonies::CronSchedule::new(
+                                    expr.clone(),
+                                    c.timezone.clone().unwrap_or_else(|| "Local".to_string()),
+                                )
+                            })
+                        });
+                        if let Err(e) = runner.register_one_with_schedule("retro", sched).await {
+                            warn!(error = %e, "ceremony runner failed to register retro cron — manual runs still work");
+                        }
+                    }
+                    if daily_actually_enabled {
+                        let sched = daily_cfg.and_then(|c| {
+                            c.schedule.as_ref().map(|expr| {
+                                arawn_ceremonies::CronSchedule::new(
+                                    expr.clone(),
+                                    c.timezone.clone().unwrap_or_else(|| "Local".to_string()),
+                                )
+                            })
+                        });
+                        if let Err(e) = runner.register_one_with_schedule("daily", sched).await {
+                            warn!(error = %e, "ceremony runner failed to register daily cron — manual runs still work");
+                        }
                     }
 
-                    // Spawn the Sunday-night sweep. Cloacina doesn't
-                    // own this — it's a thin tokio interval that
-                    // calls `sweep_unreviewed_retros` once an hour.
-                    // Cheap, idempotent, no-op when nothing matches.
-                    {
+                    // Sunday-night sweep — retro-only.
+                    if retro_enabled {
                         let sweep_handle = conn_handle.clone();
                         tokio::spawn(async move {
                             let mut interval =
@@ -1369,34 +1408,40 @@ async fn main() -> Result<()> {
 
                     service.set_ceremony_service(Arc::clone(&cer_service));
 
-                    // Register retro_* agent tools. The registry is
-                    // interior-mutable (RwLock), so adding tools
-                    // after LocalService was built is fine — the
-                    // engine resolves tools by name on each
-                    // dispatch and picks up the new entries.
-                    registry.register(Box::new(arawn_engine::RetroRunTool::new(Arc::clone(
-                        &cer_service,
-                    ))));
-                    registry.register(Box::new(arawn_engine::RetroCurrentTool::new(Arc::clone(
-                        &cer_service,
-                    ))));
-                    registry.register(Box::new(arawn_engine::RetroListItemsTool::new(Arc::clone(
-                        &cer_service,
-                    ))));
-                    registry.register(Box::new(arawn_engine::RetroSaveDiaryTool::new(Arc::clone(
-                        &cer_service,
-                    ))));
-                    registry.register(Box::new(arawn_engine::RetroPatchItemTool::new(Arc::clone(
-                        &cer_service,
-                    ))));
+                    // Retro agent tools (gated on retro_enabled).
+                    if retro_enabled {
+                        registry.register(Box::new(arawn_engine::RetroRunTool::new(Arc::clone(
+                            &cer_service,
+                        ))));
+                        registry.register(Box::new(arawn_engine::RetroCurrentTool::new(
+                            Arc::clone(&cer_service),
+                        )));
+                        registry.register(Box::new(arawn_engine::RetroListItemsTool::new(
+                            Arc::clone(&cer_service),
+                        )));
+                        registry.register(Box::new(arawn_engine::RetroSaveDiaryTool::new(
+                            Arc::clone(&cer_service),
+                        )));
+                        registry.register(Box::new(arawn_engine::RetroPatchItemTool::new(
+                            Arc::clone(&cer_service),
+                        )));
+                    }
 
-                    info!("ceremony engine wired (retro plugin + 5 agent tools registered)");
+                    // Daily agent tools land in T-0298; for now the
+                    // RPC surface alone (ceremonies.run { kind: "daily" })
+                    // is reachable.
+
+                    info!(
+                        retro = retro_enabled,
+                        daily = daily_actually_enabled,
+                        "ceremony engine wired"
+                    );
                 }
                 Err(e) => warn!(error = %e, db = %cer_db_path.display(),
                     "ceremony engine unavailable — could not open arawn.db"),
             }
         } else {
-            debug!("ceremony engine skipped — workflow runner not available");
+            debug!("ceremony engine skipped — workflow runner not available or all ceremonies disabled");
         }
 
         // Wire watchers into the broadcast so reload outcomes reach the TUI.

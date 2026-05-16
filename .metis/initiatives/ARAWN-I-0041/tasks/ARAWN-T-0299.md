@@ -3,17 +3,15 @@ id: binary-wiring-daily-plugin-into
 level: task
 title: "Binary wiring — daily plugin into ceremony runner"
 short_code: "ARAWN-T-0299"
-created_at: 2026-05-16T14:00:00.000000+00:00
-updated_at: 2026-05-16T14:00:00.000000+00:00
+created_at: 2026-05-16T14:00:00+00:00
+updated_at: 2026-05-16T16:10:16.823684+00:00
 parent: ARAWN-I-0041
-blocked_by:
-  - ARAWN-T-0296
-  - ARAWN-T-0297
+blocked_by: [ARAWN-T-0296, ARAWN-T-0297]
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/active"
 
 
 exit_criteria_met: false
@@ -34,6 +32,8 @@ register on the shared `PluginRegistry`, apply
 runner. The ceremony engine, RPC dispatch, and event channel are
 already in place from [[ARAWN-T-0292]]; this task slots a second
 plugin into the existing wiring.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
@@ -95,4 +95,24 @@ plugin into the existing wiring.
 
 ## Status Updates
 
-*To be added during implementation*
+### 2026-05-16 — daily wired into binary
+
+- Restructured `main.rs`'s ceremony block so retro and daily are
+  independently gated by their `[ceremonies.<kind>]` enabled flags.
+  Shared infra (conn, plugin registry, dispatcher, runner, service)
+  builds once when the cloacina runner is up and at least one
+  ceremony is enabled.
+- Daily wiring constructs `ProjectionsCalendarSource` +
+  `ProjectionsAttentionSource` from the existing projection
+  store + `service.shared_store()`, resolves the daily model hint
+  via `llm_pool.resolve_hint`, builds `DailyCeremony`, registers
+  on the shared `PluginRegistry`, and registers cron via
+  `runner.register_one_with_schedule("daily", ...)`. If
+  `projections` is `None`, logs a warn and gracefully skips daily.
+- Retro path preserved verbatim. `info!` on success reports both
+  flags.
+- Daily agent tools land in [[ARAWN-T-0298]]; the WS-RPC surface
+  `ceremonies.run { kind: "daily" }` is already reachable via the
+  shared dispatcher.
+
+Completed 2026-05-16.
