@@ -1427,9 +1427,24 @@ async fn main() -> Result<()> {
                         )));
                     }
 
-                    // Daily agent tools land in T-0298; for now the
-                    // RPC surface alone (ceremonies.run { kind: "daily" })
-                    // is reachable.
+                    // Daily agent tools (gated on daily_actually_enabled).
+                    if daily_actually_enabled {
+                        registry.register(Box::new(arawn_engine::DailyRunTool::new(Arc::clone(
+                            &cer_service,
+                        ))));
+                        registry.register(Box::new(arawn_engine::DailyCurrentTool::new(
+                            Arc::clone(&cer_service),
+                        )));
+                        registry.register(Box::new(arawn_engine::DailyListItemsTool::new(
+                            Arc::clone(&cer_service),
+                        )));
+                        registry.register(Box::new(arawn_engine::DailyPatchItemTool::new(
+                            Arc::clone(&cer_service),
+                        )));
+                        registry.register(Box::new(arawn_engine::DailyAddTodoTool::new(
+                            Arc::clone(&cer_service),
+                        )));
+                    }
 
                     info!(
                         retro = retro_enabled,

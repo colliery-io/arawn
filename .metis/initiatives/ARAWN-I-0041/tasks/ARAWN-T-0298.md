@@ -3,16 +3,15 @@ id: daily-agent-tools-daily-family
 level: task
 title: "Daily agent tools (daily_* family)"
 short_code: "ARAWN-T-0298"
-created_at: 2026-05-16T14:00:00.000000+00:00
-updated_at: 2026-05-16T14:00:00.000000+00:00
+created_at: 2026-05-16T14:00:00+00:00
+updated_at: 2026-05-16T16:13:18.690130+00:00
 parent: ARAWN-I-0041
-blocked_by:
-  - ARAWN-T-0299
+blocked_by: [ARAWN-T-0299]
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/active"
 
 
 exit_criteria_met: false
@@ -31,6 +30,8 @@ Five agent-callable tools mirroring the `retro_*` family from
 [[ARAWN-T-0293]], adapted for daily: surface today's tablet, list
 items, toggle todo done, and let the user add a fresh todo via the
 user-write path.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
@@ -91,4 +92,21 @@ user-write path.
 
 ## Status Updates
 
-*To be added during implementation*
+### 2026-05-16 — five daily tools shipped
+
+- New `crates/arawn-engine/src/tools/daily.rs` (~470 lines) with
+  `DailyRunTool`, `DailyCurrentTool`, `DailyListItemsTool`,
+  `DailyPatchItemTool`, `DailyAddTodoTool`.
+- `DailyAddTodoTool` looks up today's tablet, calls `add_item`
+  with section_key=`todos`, and *also* inserts a row into
+  `ceremony_todos_rolling` (new
+  `CeremonyService::add_rolling_todo` helper) so retro's
+  `rollover_heat` detector sees the new todo next week.
+- `ToolCategory::Ceremony` keyword gate extended with
+  `daily | today | brief`.
+- Five tools registered in `main.rs` under `daily_actually_enabled`.
+- 9 unit tests pass (5 validation + schemas + `daily_current`
+  positive case + end-to-end `daily_add_todo` verifying both
+  inserts). Full `arawn-engine --lib` suite (644 tests) green.
+
+Completed 2026-05-16.

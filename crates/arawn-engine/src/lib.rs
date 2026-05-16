@@ -66,6 +66,7 @@ pub use tools::{
     WorkstreamUnbindTool,
 };
 pub use tools::{
+    DailyAddTodoTool, DailyCurrentTool, DailyListItemsTool, DailyPatchItemTool, DailyRunTool,
     RetroCurrentTool, RetroListItemsTool, RetroPatchItemTool, RetroRunTool, RetroSaveDiaryTool,
 };
 pub use ceremony_sources::{ProjectionsAttentionSource, ProjectionsCalendarSource};

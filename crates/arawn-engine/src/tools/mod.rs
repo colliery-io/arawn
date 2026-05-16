@@ -25,6 +25,7 @@ pub mod web_fetch;
 pub mod web_search;
 pub mod workstream;
 pub mod ceremony;
+pub mod daily;
 
 pub use agent::AgentTool;
 pub use ask_user::AskUserTool;
@@ -59,4 +60,7 @@ pub use workstream::{
 };
 pub use ceremony::{
     RetroCurrentTool, RetroListItemsTool, RetroPatchItemTool, RetroRunTool, RetroSaveDiaryTool,
+};
+pub use daily::{
+    DailyAddTodoTool, DailyCurrentTool, DailyListItemsTool, DailyPatchItemTool, DailyRunTool,
 };

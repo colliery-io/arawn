@@ -1096,6 +1096,9 @@ fn filter_tools_for_context(
         || last_user_msg.contains("ceremony")
         || last_user_msg.contains("standup")
         || last_user_msg.contains("diary")
+        || last_user_msg.contains("daily")
+        || last_user_msg.contains("today")
+        || last_user_msg.contains("brief")
     {
         active_categories.insert(ToolCategory::Ceremony);
     }

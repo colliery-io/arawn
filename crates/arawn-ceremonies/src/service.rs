@@ -283,6 +283,36 @@ impl CeremonyService {
         self.dispatcher.dispatch(kind).await
     }
 
+    /// User-write helper used by `daily_add_todo`: insert a row into
+    /// `ceremony_todos_rolling` so future daily generations + the
+    /// retro `rollover_heat` detector pick it up. The caller is
+    /// responsible for the parallel `ceremony_items` insert via
+    /// `add_item` (the rolling table is purely the persistence layer
+    /// for cross-tablet todo continuity). Returns the new
+    /// `todo_id`. No event is emitted — matches `add_item`'s
+    /// item-DTO-return shape.
+    pub fn add_rolling_todo(
+        &self,
+        body: &str,
+        origin_tablet_id: &str,
+    ) -> Result<String, CeremonyError> {
+        let conn = self
+            .conn
+            .0
+            .lock()
+            .map_err(|_| CeremonyError::Storage("connection mutex poisoned".into()))?;
+        let todo_id = Uuid::new_v4().to_string();
+        let created_at = Utc::now().to_rfc3339();
+        conn.execute(
+            "INSERT INTO ceremony_todos_rolling \
+             (todo_id, body, origin_tablet_id, created_at, last_seen_tablet_id) \
+             VALUES (?1, ?2, ?3, ?4, ?3)",
+            params![&todo_id, body, origin_tablet_id, &created_at],
+        )
+        .map_err(|e| CeremonyError::Storage(format!("add_rolling_todo insert: {e}")))?;
+        Ok(todo_id)
+    }
+
     /// `ceremonies.upsert_diary` — writes (or replaces) the user's
     /// diary entry on a retro tablet. The body is stored verbatim
     /// — no markdown parsing, no transformations. `word_count` is
