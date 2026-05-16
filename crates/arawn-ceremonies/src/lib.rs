@@ -14,6 +14,7 @@
 pub mod engine;
 pub mod error;
 pub mod events;
+pub mod nightly;
 pub mod patterns;
 pub mod plugin;
 pub mod plugins;
@@ -31,6 +32,7 @@ pub use plugin::{
 pub use engine::{ConnHandle, EngineCtx, EngineDispatcher};
 pub use events::{CeremonyEvent, CeremonyEventReceiver, CeremonyEventSender, channel as event_channel};
 pub use patterns::{Detector, DetectorCtx, DetectorRegistry};
+pub use nightly::sweep_unreviewed_retros;
 pub use plugins::{
     PriorityCompletionDetector, RetroCeremony, RolloverHeatDetector,
     WorkstreamNeglectDetector, retro_v1_catalog,

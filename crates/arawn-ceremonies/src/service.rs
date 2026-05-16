@@ -283,6 +283,81 @@ impl CeremonyService {
         self.dispatcher.dispatch(kind).await
     }
 
+    /// `ceremonies.upsert_diary` — writes (or replaces) the user's
+    /// diary entry on a retro tablet. The body is stored verbatim
+    /// — no markdown parsing, no transformations. `word_count` is
+    /// a simple whitespace split. On success, flips the tablet's
+    /// status from `open` to `reviewed` and fires
+    /// `CeremonyEvent::DiaryUpdated`.
+    ///
+    /// Idempotent: a re-upsert replaces the previous body, updates
+    /// `written_at` to now, recomputes `word_count`. The tablet's
+    /// status remains `reviewed` (re-upserting on a `reviewed`
+    /// tablet doesn't bump it back to `open`).
+    pub fn upsert_diary(
+        &self,
+        tablet_id: &str,
+        body: &str,
+    ) -> Result<(), CeremonyError> {
+        let word_count = body.split_whitespace().count() as i64;
+        let written_at = Utc::now().to_rfc3339();
+        let conn = self
+            .conn
+            .0
+            .lock()
+            .map_err(|_| CeremonyError::Storage("connection mutex poisoned".into()))?;
+        // Verify the tablet exists + is a retro. Other ceremonies
+        // don't accept diary entries — they don't have a diary
+        // section.
+        let tablet_kind: Option<String> = conn
+            .query_row(
+                "SELECT kind FROM ceremony_tablets WHERE id = ?1",
+                params![tablet_id],
+                |row| row.get(0),
+            )
+            .optional()
+            .map_err(|e| CeremonyError::Storage(format!("upsert_diary lookup: {e}")))?;
+        let kind = tablet_kind.ok_or_else(|| {
+            CeremonyError::invalid_tablet_state(format!(
+                "no tablet with id '{tablet_id}'"
+            ))
+        })?;
+        if kind != "retro" {
+            return Err(CeremonyError::invalid_tablet_state(format!(
+                "diary only valid on retro tablets; '{tablet_id}' is kind '{kind}'"
+            )));
+        }
+
+        // Upsert via INSERT OR REPLACE since tablet_id is the PK.
+        conn.execute(
+            "INSERT OR REPLACE INTO ceremony_diary (tablet_id, body, written_at, word_count) \
+             VALUES (?1, ?2, ?3, ?4)",
+            params![tablet_id, body, &written_at, word_count],
+        )
+        .map_err(|e| CeremonyError::Storage(format!("upsert_diary write: {e}")))?;
+
+        // Flip status to 'reviewed' if it was 'open'. Leave
+        // 'reviewed' and 'archived' alone (re-upsert shouldn't
+        // un-archive or "reset" a tablet).
+        conn.execute(
+            "UPDATE ceremony_tablets SET status = 'reviewed' \
+             WHERE id = ?1 AND status = 'open'",
+            params![tablet_id],
+        )
+        .map_err(|e| CeremonyError::Storage(format!("upsert_diary status: {e}")))?;
+
+        drop(conn);
+        if let Some(events) = &self.events {
+            emit_event(
+                events,
+                CeremonyEvent::DiaryUpdated {
+                    tablet_id: tablet_id.to_string(),
+                },
+            );
+        }
+        Ok(())
+    }
+
     /// `ceremonies.list_notifications` — tablets the user has not
     /// interacted with yet. Today this is `status = "open"`; the
     /// retro adds an `unreviewed` state on the Sunday transition
@@ -592,6 +667,120 @@ mod tests {
             }
             other => panic!("expected TabletGenerated, got {other:?}"),
         }
+    }
+
+    #[tokio::test]
+    async fn upsert_diary_writes_row_and_flips_status() {
+        let (_tmp, service, tablet_id) =
+            build_service_with_items("retro", "2026-W20", "retro");
+        service.run("retro").await.unwrap();
+        service.upsert_diary(&tablet_id, "Felt productive.").unwrap();
+        // Diary row + tablet status = reviewed.
+        let dto = service.get_by_period("retro", "2026-W20").unwrap().unwrap();
+        assert_eq!(dto.status, "reviewed");
+        // Read the diary row directly.
+        let (conn, _, _) = service_internals(&service);
+        let c = conn.0.lock().unwrap();
+        let body: String = c
+            .query_row(
+                "SELECT body FROM ceremony_diary WHERE tablet_id = ?1",
+                rusqlite::params![&tablet_id],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(body, "Felt productive.");
+        let word_count: i64 = c
+            .query_row(
+                "SELECT word_count FROM ceremony_diary WHERE tablet_id = ?1",
+                rusqlite::params![&tablet_id],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(word_count, 2);
+    }
+
+    #[tokio::test]
+    async fn upsert_diary_is_idempotent_and_replaces_body() {
+        let (_tmp, service, tablet_id) =
+            build_service_with_items("retro", "2026-W20", "retro");
+        service.run("retro").await.unwrap();
+        service.upsert_diary(&tablet_id, "first version").unwrap();
+        service.upsert_diary(&tablet_id, "rewritten").unwrap();
+        // Read the body in its own scope so the lock drops before
+        // the next service call (std::sync::Mutex doesn't re-enter).
+        let body: String = {
+            let (conn, _, _) = service_internals(&service);
+            let c = conn.0.lock().unwrap();
+            c.query_row(
+                "SELECT body FROM ceremony_diary WHERE tablet_id = ?1",
+                rusqlite::params![&tablet_id],
+                |row| row.get(0),
+            )
+            .unwrap()
+        };
+        assert_eq!(body, "rewritten");
+        // Status stays reviewed; doesn't ping-pong back to open.
+        let dto = service.get_by_period("retro", "2026-W20").unwrap().unwrap();
+        assert_eq!(dto.status, "reviewed");
+    }
+
+    #[tokio::test]
+    async fn upsert_diary_rejects_non_retro_tablet() {
+        let (_tmp, conn) = open_test_db();
+        // Hand-roll a daily tablet so we can prove the kind check.
+        let c = conn.0.lock().unwrap();
+        c.execute(
+            "INSERT INTO ceremony_tablets (id, kind, period_key, generated_at, status, workstreams_scanned) \
+             VALUES ('daily-1', 'daily', '2026-05-15', '2026-05-15T07:00:00Z', 'open', '[]')",
+            [],
+        )
+        .unwrap();
+        drop(c);
+        let dispatcher = Arc::new(EngineDispatcher::new(conn.clone(), PluginRegistry::new()));
+        let service = CeremonyService::new(conn, dispatcher);
+        let err = service.upsert_diary("daily-1", "shouldn't work").unwrap_err();
+        assert!(matches!(err, CeremonyError::InvalidTabletState(_)));
+    }
+
+    #[tokio::test]
+    async fn upsert_diary_rejects_unknown_tablet() {
+        let (_tmp, conn) = open_test_db();
+        let dispatcher = Arc::new(EngineDispatcher::new(conn.clone(), PluginRegistry::new()));
+        let service = CeremonyService::new(conn, dispatcher);
+        let err = service.upsert_diary("nope", "x").unwrap_err();
+        assert!(matches!(err, CeremonyError::InvalidTabletState(_)));
+    }
+
+    #[tokio::test]
+    async fn upsert_diary_emits_diary_updated_event() {
+        use crate::CeremonyEvent;
+        let (tx, mut rx) = crate::event_channel();
+        let (_tmp, service, tablet_id) =
+            build_service_with_items("retro", "2026-W20", "retro");
+        let service = service.with_events(tx);
+        service.run("retro").await.unwrap();
+        service.upsert_diary(&tablet_id, "thoughts").unwrap();
+        // Drain until we see DiaryUpdated.
+        loop {
+            let event = rx.recv().await.unwrap();
+            if let CeremonyEvent::DiaryUpdated { tablet_id: tid } = event {
+                assert_eq!(tid, tablet_id);
+                break;
+            }
+        }
+    }
+
+    /// Tiny accessor for the in-test connection so the diary tests
+    /// can read raw rows without going through more service
+    /// methods. The service exposes the conn it was constructed
+    /// with; we reach in for tests only.
+    fn service_internals(
+        service: &CeremonyService,
+    ) -> (ConnHandle, (), ()) {
+        // service.conn is private — clone it via a friend
+        // accessor. Since this lives in the same module the
+        // private field is reachable.
+        (service.conn.clone(), (), ())
     }
 
     #[tokio::test]
