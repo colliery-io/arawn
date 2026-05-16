@@ -38,8 +38,8 @@ pub use render::{RetroView, render_retro};
 pub use plugins::{
     AttentionSource, CalEvent, CalendarSource, DailyCeremony, NoopCalendarSource,
     PriorityCompletionDetector, RetroCeremony, RolloverHeatDetector, SignalRow,
-    StaticAttentionSource, StaticCalendarSource, WorkstreamNeglectDetector,
-    retro_v1_catalog,
+    StaticAttentionSource, StaticCalendarSource, WeeklyCeremony,
+    WorkstreamNeglectDetector, retro_v1_catalog,
 };
 pub use registry::PluginRegistry;
 pub use rollup::{CentralDbWorkstreams, RollupSource, WorkstreamList, compute_for_week, read_rollup_value};

@@ -9,8 +9,10 @@ pub mod daily;
 pub mod gather_sources;
 pub mod retro;
 pub mod retro_detectors;
+pub mod weekly;
 
 pub use daily::DailyCeremony;
+pub use weekly::WeeklyCeremony;
 pub use gather_sources::{
     AttentionSource, CalEvent, CalendarSource, NoopCalendarSource, SignalRow,
     StaticAttentionSource, StaticCalendarSource,

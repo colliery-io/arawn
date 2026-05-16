@@ -4,14 +4,14 @@ level: task
 title: "Weekly plugin — Ceremony trait impl with gather + compose (5 sections)"
 short_code: "ARAWN-T-0301"
 created_at: 2026-05-16T16:37:46.058159+00:00
-updated_at: 2026-05-16T16:37:46.058159+00:00
+updated_at: 2026-05-16T16:41:13.031802+00:00
 parent: ARAWN-I-0042
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/active"
 
 
 exit_criteria_met: false
@@ -93,4 +93,26 @@ table.
 
 ## Status Updates
 
-*To be added during implementation*
+### 2026-05-16 — weekly plugin shipped
+
+- New `crates/arawn-ceremonies/src/plugins/weekly.rs` (~640
+  lines) implementing the `Ceremony` trait. `iso_week`
+  period_key, `0 7 * * MON` default schedule.
+- Five-section gather: `calendar_summary` (Mon..Sun aggregate
+  via `CalendarSource::events_for`), `deadlines` (filtered
+  `AttentionSource::since(monday)` with due/deadline heuristic
+  + recent fallback), `last_retro_excerpts` (diary + top-3
+  patterns of most-recent retro), `prior_weekly_inbound` (open
+  items from prior weekly tablet), `rolling_todo_hot` (open
+  todos created > 7d ago). Caps per section: 10/4/10/10.
+- Compose validates section_keys against the allowed set and
+  citation_ids against the gather registry; emits items with
+  `ItemKind::Pattern` (matches retro's convention — daily's
+  Freeform diverges but consistency with retro wins here).
+- Re-exported from `arawn-ceremonies::lib`.
+- Two in-crate tests pass (period_key format + end-to-end
+  dispatch via `EngineDispatcher` asserting one item per
+  section with valid citations). Full ceremonies suite (87 lib
+  + 2 UAT) green.
+
+Completed 2026-05-16.
