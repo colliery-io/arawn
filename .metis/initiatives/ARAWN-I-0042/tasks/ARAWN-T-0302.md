@@ -4,14 +4,14 @@ level: task
 title: "Priorities service + RPC methods (confirm/reject/add/list)"
 short_code: "ARAWN-T-0302"
 created_at: 2026-05-16T16:37:55.787456+00:00
-updated_at: 2026-05-16T16:45:39.533257+00:00
+updated_at: 2026-05-16T16:50:43.763246+00:00
 parent: ARAWN-I-0042
 blocked_by: [ARAWN-T-0301]
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
