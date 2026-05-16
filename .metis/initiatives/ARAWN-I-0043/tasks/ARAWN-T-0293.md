@@ -4,14 +4,14 @@ level: task
 title: "Ceremony agent tools (retro_*)"
 short_code: "ARAWN-T-0293"
 created_at: 2026-05-16T03:22:46.609267+00:00
-updated_at: 2026-05-16T11:59:27.406554+00:00
+updated_at: 2026-05-16T12:30:21.244840+00:00
 parent: ARAWN-I-0043
 blocked_by: [ARAWN-T-0292]
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
