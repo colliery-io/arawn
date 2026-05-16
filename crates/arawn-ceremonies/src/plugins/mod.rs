@@ -5,9 +5,16 @@
 //! weekly prep (I-0042) plug in alongside as separate modules
 //! later.
 
+pub mod daily;
+pub mod gather_sources;
 pub mod retro;
 pub mod retro_detectors;
 
+pub use daily::DailyCeremony;
+pub use gather_sources::{
+    AttentionSource, CalEvent, CalendarSource, NoopCalendarSource, SignalRow,
+    StaticAttentionSource, StaticCalendarSource,
+};
 pub use retro::RetroCeremony;
 pub use retro_detectors::{
     PriorityCompletionDetector, RolloverHeatDetector, WorkstreamNeglectDetector,

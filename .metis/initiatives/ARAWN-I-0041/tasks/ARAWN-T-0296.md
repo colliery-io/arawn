@@ -3,13 +3,15 @@ id: daily-plugin-ceremony-trait-impl
 level: task
 title: "Daily plugin — Ceremony trait impl with gather + compose"
 short_code: "ARAWN-T-0296"
+created_at: 2026-05-16T14:00:00+00:00
+updated_at: 2026-05-16T14:10:45.341862+00:00
 parent: ARAWN-I-0041
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/active"
 
 
 exit_criteria_met: false
@@ -29,6 +31,8 @@ trait impl that runs the gather→compose pipeline on the existing
 engine. Mirrors `RetroCeremony`'s shape (gather payload → LLM
 compose → `ComposedItem` writes with citation_ids) but produces a
 daily tablet rather than a retro one.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
@@ -100,4 +104,25 @@ daily tablet rather than a retro one.
 
 ## Status Updates
 
-*To be added during implementation*
+### 2026-05-16 — daily plugin shipped
+
+- New `crates/arawn-ceremonies/src/plugins/daily.rs` (513 lines)
+  with `DailyCeremony` implementing `Ceremony`. period_key returns
+  `YYYY-MM-DD`, default schedule `0 7 * * MON-FRI` local, no
+  interactive actions, no pattern detectors.
+- New `crates/arawn-ceremonies/src/plugins/gather_sources.rs`
+  defining the `CalendarSource` + `AttentionSource` traits with
+  `CalEvent` / `SignalRow` DTOs, plus three stub impls
+  (`NoopCalendarSource`, `StaticCalendarSource`,
+  `StaticAttentionSource`) for tests.
+- Gather caps: calendar ≤ 12, attention ≤ 10, todos ≤ 20,
+  priorities ≤ 5. Citation registry built from gather payload ids;
+  compose validates each LLM-emitted `citation_id` is in the
+  registry before constructing `NewItem::Composed`.
+- Re-exports added in `lib.rs` for downstream binary wiring.
+- Five in-crate tests pass: period_key shape, gather collects all
+  four sections, compose rejects unknown/empty citations,
+  end-to-end dispatch via `EngineDispatcher`. Full ceremonies
+  suite (85 lib + 2 UAT) still passes.
+
+Completed 2026-05-16.

@@ -36,8 +36,10 @@ pub use patterns::{Detector, DetectorCtx, DetectorRegistry};
 pub use nightly::sweep_unreviewed_retros;
 pub use render::{RetroView, render_retro};
 pub use plugins::{
-    PriorityCompletionDetector, RetroCeremony, RolloverHeatDetector,
-    WorkstreamNeglectDetector, retro_v1_catalog,
+    AttentionSource, CalEvent, CalendarSource, DailyCeremony, NoopCalendarSource,
+    PriorityCompletionDetector, RetroCeremony, RolloverHeatDetector, SignalRow,
+    StaticAttentionSource, StaticCalendarSource, WorkstreamNeglectDetector,
+    retro_v1_catalog,
 };
 pub use registry::PluginRegistry;
 pub use rollup::{CentralDbWorkstreams, RollupSource, WorkstreamList, compute_for_week, read_rollup_value};

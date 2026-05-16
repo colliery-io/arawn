@@ -3,6 +3,8 @@ id: binary-wiring-daily-plugin-into
 level: task
 title: "Binary wiring — daily plugin into ceremony runner"
 short_code: "ARAWN-T-0299"
+created_at: 2026-05-16T14:00:00.000000+00:00
+updated_at: 2026-05-16T14:00:00.000000+00:00
 parent: ARAWN-I-0041
 blocked_by:
   - ARAWN-T-0296
