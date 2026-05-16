@@ -16,6 +16,7 @@ pub mod error;
 pub mod plugin;
 pub mod registry;
 pub mod runner;
+pub mod service;
 pub mod types;
 
 pub use error::CeremonyError;
@@ -27,5 +28,8 @@ pub use engine::{ConnHandle, EngineCtx, EngineDispatcher};
 pub use registry::PluginRegistry;
 pub use runner::{
     CeremonyDispatcher, CeremonyDispatchTask, CeremonyRunner, DispatchOutcome,
+};
+pub use service::{
+    AddItemRequest, CeremonyService, ItemDto, ItemPatch, NotificationDto, TabletDto,
 };
 pub use types::{DetectedPattern, GatheredFacts, ItemKind, TabletStatus};
