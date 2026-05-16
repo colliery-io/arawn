@@ -179,6 +179,19 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
             }
             // Terminal events (key presses)
             Some(Ok(event)) = term_events.next() => {
+                // Ceremony overlays (priority modal / diary editor)
+                // capture all input. Drive them directly with the raw
+                // key event so multi-key bindings (space/d/a/ctrl-s)
+                // work without inflating the global Action enum.
+                if let CEvent::Key(key) = event
+                    && app.ceremony_overlay.is_some()
+                {
+                    handle_ceremony_overlay_key(&mut client, &mut app, key).await;
+                    if app.dirty {
+                        force_draw(&mut terminal, &mut app)?;
+                    }
+                    continue;
+                }
                 if let CEvent::Key(key) = event
                     && let Some(action) = map_key_event(key, app.focus, app.is_generating, app.active_modal.is_some(), app.autocomplete.is_some())
                 {
@@ -772,12 +785,43 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                                 let iso_week = current_iso_week();
                                 let body = render_ceremony_week(&mut client, &iso_week).await;
                                 app.messages.push(ChatMessage::new(ChatRole::System, body));
+                                // If the tablet is `open`, open the
+                                // interactive priority modal on top of
+                                // the chat surface. Otherwise stay
+                                // read-only (renderer already pushed
+                                // the markdown view).
+                                if let Some((tablet_id, status)) =
+                                    fetch_tablet_id_and_status(&mut client, "weekly", &iso_week).await
+                                    && status == "open"
+                                {
+                                    let priorities = fetch_priorities(&mut client, &tablet_id).await;
+                                    app.ceremony_overlay = Some(
+                                        crate::ceremony_modal::CeremonyOverlay::Priority(
+                                            crate::ceremony_modal::PriorityModalState::new(
+                                                tablet_id,
+                                                priorities,
+                                            ),
+                                        ),
+                                    );
+                                }
                                 app.dirty = true;
                             }
                             crate::command::CommandResult::CeremonyShowRetro => {
                                 let iso_week = current_iso_week();
                                 let body = render_ceremony_retro(&mut client, &iso_week).await;
                                 app.messages.push(ChatMessage::new(ChatRole::System, body));
+                                if let Some((tablet_id, _status)) =
+                                    fetch_tablet_id_and_status(&mut client, "retro", &iso_week).await
+                                {
+                                    let body = fetch_diary_body(&mut client, &tablet_id).await;
+                                    app.ceremony_overlay = Some(
+                                        crate::ceremony_modal::CeremonyOverlay::Diary(
+                                            crate::ceremony_modal::DiaryEditorState::new(
+                                                tablet_id, body,
+                                            ),
+                                        ),
+                                    );
+                                }
                                 app.dirty = true;
                             }
                             _ => {} // Other command results handled in app.handle_action
@@ -1115,6 +1159,17 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                 }
 
                 if should_break { break; }
+
+                // Pending overlay refresh from a ceremony_event notice
+                // (T-0308 slice 3). Runs RPCs after the event drain so
+                // we don't hold the borrow-checker over an await inside
+                // the closure-based event handler.
+                if app.pending_ceremony_refresh {
+                    app.pending_ceremony_refresh = false;
+                    refresh_active_ceremony_overlay(&mut client, &mut app).await;
+                    force_render = true;
+                }
+
                 if force_render {
                     force_draw(&mut terminal, &mut app)?;
                 } else if anything_applied {
@@ -1201,6 +1256,15 @@ fn try_open_url(url: &str) -> OpenAttempt {
 /// chat history as a system message. Failures get an "✗" prefix; successes
 /// get an info marker. Both stay visible — fade-out is future work.
 fn apply_system_notice(notice: &arawn_service::ServerNotice, app: &mut crate::app::App) {
+    // Ceremony events are silent — they only trigger an overlay
+    // refresh (T-0308 slice 3). Pushing them into chat would spam
+    // the user with `ItemUpdated` rows on every keypress.
+    if notice.category == "ceremony_event" {
+        ceremony_event_should_refresh(notice, app);
+        app.dirty = true;
+        return;
+    }
+
     let marker = if notice.level == "error" { "✗" } else { "ℹ" };
     let body = format!("{marker} [{}] {}", notice.category, notice.message);
     app.messages
@@ -1213,6 +1277,30 @@ fn apply_system_notice(notice: &arawn_service::ServerNotice, app: &mut crate::ap
     }
 
     app.dirty = true;
+}
+
+/// If a ceremony_event notice targets the tablet the user is currently
+/// viewing in a ceremony overlay, flag the overlay for refresh. Pure
+/// state mutation — the async RPC happens in the event loop after this.
+fn ceremony_event_should_refresh(notice: &arawn_service::ServerNotice, app: &mut crate::app::App) {
+    // `message` carries the serialised CeremonyEvent JSON.
+    let Ok(payload) = serde_json::from_str::<serde_json::Value>(&notice.message) else {
+        return;
+    };
+    let event_tablet = payload
+        .get("data")
+        .and_then(|d| d.get("tablet_id"))
+        .and_then(|v| v.as_str());
+    let overlay_tablet = match app.ceremony_overlay.as_ref() {
+        Some(crate::ceremony_modal::CeremonyOverlay::Priority(p)) => Some(p.tablet_id.as_str()),
+        Some(crate::ceremony_modal::CeremonyOverlay::Diary(d)) => Some(d.tablet_id.as_str()),
+        None => None,
+    };
+    if let (Some(et), Some(ot)) = (event_tablet, overlay_tablet)
+        && et == ot
+    {
+        app.pending_ceremony_refresh = true;
+    }
 }
 
 /// Render `get_permissions_status` JSON as a human-readable system message.
@@ -1525,6 +1613,274 @@ async fn render_ceremony_retro(
         diary: None,
     };
     arawn_ceremonies::render_retro(&view)
+}
+
+/// Re-fetch the tablet for `(kind, period_key)` and return its id +
+/// status. None if no tablet exists (the read-only renderer already
+/// pushed the "no tablet for …" message).
+async fn fetch_tablet_id_and_status(
+    client: &mut crate::ws_client::WsClient,
+    kind: &str,
+    period_key: &str,
+) -> Option<(String, String)> {
+    let params = serde_json::json!({"kind": kind, "period_key": period_key});
+    let resp = client
+        .request_response("ceremonies.get_by_period", params)
+        .await
+        .ok()?;
+    let result = resp.get("result")?;
+    if result.is_null() {
+        return None;
+    }
+    let tablet: arawn_ceremonies::TabletDto = serde_json::from_value(result.clone()).ok()?;
+    Some((tablet.id, tablet.status))
+}
+
+/// Pull any existing diary body from the retro tablet by listing its
+/// Fetch the diary body for a retro tablet via the dedicated
+/// `ceremonies.get_diary` RPC. Returns "" when no diary row exists.
+async fn fetch_diary_body(
+    client: &mut crate::ws_client::WsClient,
+    tablet_id: &str,
+) -> String {
+    let resp = match client
+        .request_response(
+            "ceremonies.get_diary",
+            serde_json::json!({"tablet_id": tablet_id}),
+        )
+        .await
+    {
+        Ok(v) => v,
+        Err(_) => return String::new(),
+    };
+    resp.get("result")
+        .and_then(|r| r.get("body"))
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string())
+        .unwrap_or_default()
+}
+
+/// Drive the active ceremony overlay from a raw key event. Routes the
+/// outcome to the corresponding RPC, then re-fetches the underlying
+/// data so the overlay reflects the new state.
+async fn handle_ceremony_overlay_key(
+    client: &mut crate::ws_client::WsClient,
+    app: &mut App,
+    key: crossterm::event::KeyEvent,
+) {
+    use crate::ceremony_modal::{CeremonyOverlay, DiaryOutcome, PriorityOutcome};
+
+    app.dirty = true;
+    let Some(overlay) = app.ceremony_overlay.as_mut() else {
+        return;
+    };
+    match overlay {
+        CeremonyOverlay::Priority(state) => {
+            let outcome = state.handle_key(key);
+            let tablet_id = state.tablet_id.clone();
+            match outcome {
+                PriorityOutcome::None => {}
+                PriorityOutcome::Close => {
+                    app.ceremony_overlay = None;
+                }
+                PriorityOutcome::Confirm { item_id } => {
+                    let res = client
+                        .request_response(
+                            "ceremonies.confirm_priority",
+                            serde_json::json!({"item_id": item_id}),
+                        )
+                        .await;
+                    apply_priority_rpc_result(app, &tablet_id, client, res).await;
+                }
+                PriorityOutcome::Reject { item_id } => {
+                    let res = client
+                        .request_response(
+                            "ceremonies.reject_priority",
+                            serde_json::json!({"item_id": item_id}),
+                        )
+                        .await;
+                    apply_priority_rpc_result(app, &tablet_id, client, res).await;
+                }
+                PriorityOutcome::Add { tablet_id, body } => {
+                    let res = client
+                        .request_response(
+                            "ceremonies.add_priority",
+                            serde_json::json!({
+                                "tablet_id": tablet_id,
+                                "body": body,
+                                "rationale": "",
+                            }),
+                        )
+                        .await;
+                    apply_priority_rpc_result(app, &tablet_id, client, res).await;
+                }
+            }
+        }
+        CeremonyOverlay::Diary(state) => {
+            let outcome = state.handle_key(key);
+            match outcome {
+                DiaryOutcome::None => {}
+                DiaryOutcome::Close => {
+                    app.ceremony_overlay = None;
+                }
+                DiaryOutcome::Save { tablet_id, body } => {
+                    let res = client
+                        .request_response(
+                            "ceremonies.upsert_diary",
+                            serde_json::json!({
+                                "tablet_id": tablet_id,
+                                "body": body,
+                            }),
+                        )
+                        .await;
+                    if let Some(CeremonyOverlay::Diary(d)) = app.ceremony_overlay.as_mut() {
+                        match res {
+                            Ok(v) if v.get("error").is_some() => {
+                                d.last_error = Some(
+                                    v.get("error")
+                                        .and_then(|e| e.get("message"))
+                                        .and_then(|m| m.as_str())
+                                        .unwrap_or("rpc error")
+                                        .to_string(),
+                                );
+                            }
+                            Ok(_) => {
+                                d.editing = false;
+                                d.last_error = None;
+                            }
+                            Err(e) => d.last_error = Some(e.to_string()),
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// After a priority RPC, refresh the modal's priorities list (or stash
+/// the error). Shared by confirm/reject/add.
+async fn apply_priority_rpc_result(
+    app: &mut App,
+    tablet_id: &str,
+    client: &mut crate::ws_client::WsClient,
+    res: Result<serde_json::Value, Box<dyn std::error::Error>>,
+) {
+    use crate::ceremony_modal::CeremonyOverlay;
+    let err = match res {
+        Ok(v) => v
+            .get("error")
+            .and_then(|e| e.get("message"))
+            .and_then(|m| m.as_str())
+            .map(|s| s.to_string()),
+        Err(e) => Some(e.to_string()),
+    };
+    let fresh = fetch_priorities(client, tablet_id).await;
+    if let Some(CeremonyOverlay::Priority(p)) = app.ceremony_overlay.as_mut() {
+        p.set_priorities(fresh);
+        p.last_error = err;
+    }
+}
+
+/// Re-pull underlying data for whichever ceremony overlay is active so
+/// it picks up server-side mutations (agent runs, other clients,
+/// background sweeps). Called from the event loop after a
+/// `ceremony_event` notice flags `pending_ceremony_refresh`.
+async fn refresh_active_ceremony_overlay(
+    client: &mut crate::ws_client::WsClient,
+    app: &mut App,
+) {
+    use crate::ceremony_modal::CeremonyOverlay;
+    match app.ceremony_overlay.as_ref() {
+        Some(CeremonyOverlay::Priority(p)) => {
+            let tablet_id = p.tablet_id.clone();
+            let fresh = fetch_priorities(client, &tablet_id).await;
+            if let Some(CeremonyOverlay::Priority(p)) = app.ceremony_overlay.as_mut() {
+                p.set_priorities(fresh);
+            }
+        }
+        Some(CeremonyOverlay::Diary(d)) => {
+            // Only refresh body when not editing (default to "edit
+            // wins" — see T-0308 risk note: user's local buffer wins
+            // over concurrent server updates).
+            if !d.editing {
+                let tablet_id = d.tablet_id.clone();
+                let body = fetch_diary_body(client, &tablet_id).await;
+                if let Some(CeremonyOverlay::Diary(d)) = app.ceremony_overlay.as_mut() {
+                    d.body = body;
+                    d.cursor = d.body.len();
+                }
+            }
+        }
+        None => {}
+    }
+}
+
+#[cfg(test)]
+mod ceremony_refresh_tests {
+    use super::*;
+    use crate::app::App;
+    use crate::ceremony_modal::{CeremonyOverlay, PriorityModalState};
+
+    fn notice_for(tablet_id: &str) -> arawn_service::ServerNotice {
+        arawn_service::ServerNotice {
+            level: "info".into(),
+            category: "ceremony_event".into(),
+            message: serde_json::json!({
+                "event": "PriorityConfirmed",
+                "data": {"priority_id": "p1", "tablet_id": tablet_id},
+            })
+            .to_string(),
+            timestamp: "2026-05-16T00:00:00Z".into(),
+        }
+    }
+
+    #[test]
+    fn ceremony_event_for_active_tablet_flags_refresh() {
+        let mut app = App::new();
+        app.ceremony_overlay = Some(CeremonyOverlay::Priority(PriorityModalState::new(
+            "t1".into(),
+            vec![],
+        )));
+        apply_system_notice(&notice_for("t1"), &mut app);
+        assert!(
+            app.pending_ceremony_refresh,
+            "matching tablet must flag a refresh"
+        );
+    }
+
+    #[test]
+    fn ceremony_event_for_other_tablet_is_ignored() {
+        let mut app = App::new();
+        app.ceremony_overlay = Some(CeremonyOverlay::Priority(PriorityModalState::new(
+            "t1".into(),
+            vec![],
+        )));
+        apply_system_notice(&notice_for("other"), &mut app);
+        assert!(!app.pending_ceremony_refresh);
+    }
+
+    #[test]
+    fn ceremony_event_with_no_overlay_is_ignored() {
+        let mut app = App::new();
+        apply_system_notice(&notice_for("t1"), &mut app);
+        assert!(!app.pending_ceremony_refresh);
+        // And does NOT spam chat — silent category.
+        assert!(app.messages.is_empty());
+    }
+
+    #[test]
+    fn non_ceremony_notices_still_render_into_chat() {
+        let mut app = App::new();
+        let n = arawn_service::ServerNotice {
+            level: "info".into(),
+            category: "plugin_reload".into(),
+            message: "reloaded".into(),
+            timestamp: "2026-05-16T00:00:00Z".into(),
+        };
+        apply_system_notice(&n, &mut app);
+        assert_eq!(app.messages.len(), 1);
+        assert!(!app.pending_ceremony_refresh);
+    }
 }
 
 async fn fetch_items(

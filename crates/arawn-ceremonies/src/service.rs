@@ -652,6 +652,24 @@ impl CeremonyService {
     /// `written_at` to now, recomputes `word_count`. The tablet's
     /// status remains `reviewed` (re-upserting on a `reviewed`
     /// tablet doesn't bump it back to `open`).
+    /// `ceremonies.get_diary` — returns the diary body for a retro
+    /// tablet, or `None` if no diary has been written. Pure read;
+    /// no events emitted.
+    pub fn get_diary(&self, tablet_id: &str) -> Result<Option<String>, CeremonyError> {
+        let conn = self
+            .conn
+            .0
+            .lock()
+            .map_err(|_| CeremonyError::Storage("connection mutex poisoned".into()))?;
+        conn.query_row(
+            "SELECT body FROM ceremony_diary WHERE tablet_id = ?1",
+            params![tablet_id],
+            |row| row.get::<_, String>(0),
+        )
+        .optional()
+        .map_err(|e| CeremonyError::Storage(format!("get_diary: {e}")))
+    }
+
     pub fn upsert_diary(
         &self,
         tablet_id: &str,

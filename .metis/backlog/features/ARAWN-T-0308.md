@@ -4,16 +4,15 @@ level: task
 title: "Ceremony TUI Phase 2 — interactive priorities + diary + WS auto-refresh"
 short_code: "ARAWN-T-0308"
 created_at: 2026-05-16T19:49:30.659157+00:00
-updated_at: 2026-05-16T19:49:30.659157+00:00
-parent:
-blocked_by:
-  - ARAWN-T-0307
+updated_at: 2026-05-16T20:11:04.881432+00:00
+parent: 
+blocked_by: [ARAWN-T-0307]
 archived: false
 
 tags:
   - "#task"
-  - "#phase/backlog"
   - "#feature"
+  - "#phase/active"
 
 
 exit_criteria_met: false
@@ -111,4 +110,44 @@ on ceremony state changes.
 
 ## Status Updates
 
-*To be added during implementation*
+### 2026-05-16 — all three slices shipped
+
+**Slice 1 — Priority modal (DONE):**
+- New `ceremony_modal.rs` with `PriorityModalState`/`PriorityOutcome`.
+  Multi-key handler: `space=confirm`, `d=reject`, `a=add`, `q=quit`.
+- `/week` opens the modal automatically when tablet status=`open`.
+  RPC routing → `confirm_priority`/`reject_priority`/`add_priority`.
+  Post-mutation re-fetch + re-render.
+
+**Slice 2 — Diary editor (DONE):**
+- `DiaryEditorState`/`DiaryOutcome` in the same module. `/retro` opens
+  the editor with the existing diary body (loaded via the new
+  `ceremonies.get_diary` RPC — see fix below). `e` enters edit
+  mode, `ctrl-s` saves, `esc` cancels.
+
+**Slice 3 — WS auto-refresh (DONE):**
+- `arawn/src/main.rs` spawns a forwarder task that consumes the
+  ceremony `event_tx` broadcast and pushes `ServerNotice`s with
+  `category: "ceremony_event"` + JSON payload onto the existing
+  notice channel.
+- TUI's `apply_system_notice` recognises the category, silences
+  the chat output, and sets `pending_ceremony_refresh`. The next
+  event-loop tick calls `refresh_active_ceremony_overlay` which
+  re-fetches the active modal's data.
+
+### Bug fix mid-flight
+
+The agent assumed `upsert_diary` also wrote a `ceremony_items`
+row with `section_key="diary"`, but it doesn't — only the
+`ceremony_diary` table is touched. So `fetch_diary_body` via
+`list_items` would always return empty. Added a dedicated
+`CeremonyService::get_diary(tablet_id) -> Option<String>` plus
+`ceremonies.get_diary` RPC method; rewrote `fetch_diary_body`
+to use it.
+
+### Tests
+
+- 13 new modal-state tests + 4 event-loop dispatch tests.
+- arawn-tui 172/172, arawn-ceremonies service tests unchanged.
+
+Completed 2026-05-16.

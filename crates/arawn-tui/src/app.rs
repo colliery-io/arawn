@@ -167,6 +167,16 @@ pub struct App {
     /// Wall-clock instant of the most recent Esc press. Used to detect a
     /// double-Esc (within `DOUBLE_ESC_WINDOW`) → opens the history modal.
     pub last_esc_at: Option<std::time::Instant>,
+    /// Active interactive ceremony overlay (priorities or diary) for the
+    /// `/week` and `/retro` flows. Captures all key input while present;
+    /// see `crate::ceremony_modal`. Distinct from `active_modal` because
+    /// these surfaces need multi-key bindings the oneshot-driven modal
+    /// can't express.
+    pub ceremony_overlay: Option<crate::ceremony_modal::CeremonyOverlay>,
+    /// Set when a `ceremony_event` ServerNotice arrives that touches the
+    /// active overlay's tablet. The event loop drains this after each
+    /// WS event batch and runs a refresh RPC. None = no refresh pending.
+    pub pending_ceremony_refresh: bool,
 }
 
 /// Window for double-Esc detection. Two Esc presses inside this opens
@@ -226,6 +236,8 @@ impl App {
             history_cursor: None,
             history_draft: String::new(),
             last_esc_at: None,
+            ceremony_overlay: None,
+            pending_ceremony_refresh: false,
         }
     }
 

@@ -91,6 +91,11 @@ pub fn render(app: &mut App, frame: &mut Frame) {
     if let Some(ref modal) = app.active_modal {
         crate::modal::render_modal(modal, frame);
     }
+    // Ceremony overlays (priority list / diary editor) render above
+    // standard modals. Only one can be active at a time.
+    if let Some(ref overlay) = app.ceremony_overlay {
+        crate::ceremony_modal::render_overlay(overlay, frame);
+    }
 }
 
 fn render_sidebar_tab(frame: &mut Frame, area: ratatui::layout::Rect) {

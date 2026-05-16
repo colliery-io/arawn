@@ -1,5 +1,6 @@
 pub mod action;
 pub mod app;
+pub mod ceremony_modal;
 pub mod command;
 pub mod event;
 pub mod event_loop;

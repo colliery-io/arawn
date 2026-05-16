@@ -62,6 +62,7 @@ const RPC_METHODS: &[&str] = &[
     "ceremonies.patch_item",
     "ceremonies.add_item",
     "ceremonies.upsert_diary",
+    "ceremonies.get_diary",
     "ceremonies.run",
     "ceremonies.list_notifications",
     "ceremonies.confirm_priority",
@@ -1336,6 +1337,25 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                         } else {
                             match cer.upsert_diary(&tablet_id, &body) {
                                 Ok(()) => Response::success(id, serde_json::json!({"ok": true})),
+                                Err(e) => Response::from_ceremony_error(id, &e),
+                            }
+                        }
+                    }
+                    "ceremonies.get_diary" => {
+                        let tablet_id = request
+                            .params
+                            .get("tablet_id")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("")
+                            .to_string();
+                        if tablet_id.is_empty() {
+                            Response::error(id, "invalid_params", "tablet_id is required".into())
+                        } else {
+                            match cer.get_diary(&tablet_id) {
+                                Ok(Some(body)) => {
+                                    Response::success(id, serde_json::json!({"body": body}))
+                                }
+                                Ok(None) => Response::success(id, Value::Null),
                                 Err(e) => Response::from_ceremony_error(id, &e),
                             }
                         }

@@ -1448,7 +1448,36 @@ async fn main() -> Result<()> {
                         );
                     }
 
-                    let (event_tx, _event_rx) = arawn_ceremonies::event_channel();
+                    let (event_tx, mut event_rx) = arawn_ceremonies::event_channel();
+                    // Forward ceremony events onto the existing notice
+                    // broadcast so the TUI's read loop can react (see
+                    // T-0308 slice 3). Drop-stale (lagged) errors are
+                    // silently ignored — the receiver re-subscribes on
+                    // the next event.
+                    {
+                        let notice_tx_cer = service.notice_sender();
+                        tokio::spawn(async move {
+                            loop {
+                                match event_rx.recv().await {
+                                    Ok(ev) => {
+                                        let message = serde_json::to_string(&ev)
+                                            .unwrap_or_else(|_| "{}".to_string());
+                                        let notice = arawn_service::ServerNotice {
+                                            level: "info".into(),
+                                            category: "ceremony_event".into(),
+                                            message,
+                                            timestamp: chrono::Utc::now().to_rfc3339(),
+                                        };
+                                        let _ = notice_tx_cer.send(notice);
+                                    }
+                                    Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => {
+                                        continue;
+                                    }
+                                    Err(_) => break,
+                                }
+                            }
+                        });
+                    }
                     let dispatcher = Arc::new(
                         arawn_ceremonies::EngineDispatcher::new(
                             conn_handle.clone(),
