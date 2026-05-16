@@ -11,6 +11,7 @@
 //! future is "implement [`Ceremony`], register it" — no schema
 //! changes, no RPC plumbing.
 
+pub mod engine;
 pub mod error;
 pub mod plugin;
 pub mod registry;
@@ -22,6 +23,7 @@ pub use plugin::{
     Ceremony, CeremonyCtx, ComposedItem, CronSchedule, InteractiveAction, NewItem,
     PatternDetector, UserItem,
 };
+pub use engine::{ConnHandle, EngineCtx, EngineDispatcher};
 pub use registry::PluginRegistry;
 pub use runner::{
     CeremonyDispatcher, CeremonyDispatchTask, CeremonyRunner, DispatchOutcome,
