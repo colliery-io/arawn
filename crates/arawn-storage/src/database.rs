@@ -104,4 +104,103 @@ mod tests {
         let _db = Database::open(&db_path).unwrap();
         assert!(db_path.exists());
     }
+
+    #[test]
+    fn v6_ceremony_tables_present() {
+        let db = Database::in_memory().unwrap();
+        let expected = [
+            "ceremony_tablets",
+            "ceremony_sections",
+            "ceremony_items",
+            "ceremony_todos_rolling",
+            "ceremony_priorities",
+            "ceremony_activity_rollup",
+            "ceremony_patterns_detected",
+            "ceremony_diary",
+        ];
+        for table in expected {
+            let count: i64 = db
+                .conn()
+                .query_row(
+                    "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=?1",
+                    [table],
+                    |row| row.get(0),
+                )
+                .unwrap();
+            assert_eq!(count, 1, "missing table after V6 migration: {table}");
+        }
+    }
+
+    #[test]
+    fn v6_ceremony_tablets_accepts_a_row_and_uniques_on_kind_period() {
+        let db = Database::in_memory().unwrap();
+        db.conn()
+            .execute(
+                "INSERT INTO ceremony_tablets (id, kind, period_key, generated_at, status, workstreams_scanned) \
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+                [
+                    "daily-2026-05-15",
+                    "daily",
+                    "2026-05-15",
+                    "2026-05-15T07:00:00Z",
+                    "open",
+                    "[]",
+                ],
+            )
+            .unwrap();
+        // Same (kind, period_key) collides on UNIQUE.
+        let dup = db.conn().execute(
+            "INSERT INTO ceremony_tablets (id, kind, period_key, generated_at, status, workstreams_scanned) \
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            [
+                "daily-2026-05-15-dup",
+                "daily",
+                "2026-05-15",
+                "2026-05-15T07:00:00Z",
+                "open",
+                "[]",
+            ],
+        );
+        assert!(dup.is_err(), "expected UNIQUE(kind, period_key) violation");
+    }
+
+    #[test]
+    fn v6_ceremony_items_accepts_null_citation_for_user_path() {
+        let db = Database::in_memory().unwrap();
+        db.conn()
+            .execute(
+                "INSERT INTO ceremony_tablets (id, kind, period_key, generated_at, status, workstreams_scanned) \
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+                [
+                    "retro-2026-W20",
+                    "retro",
+                    "2026-W20",
+                    "2026-05-15T16:00:00Z",
+                    "open",
+                    "[]",
+                ],
+            )
+            .unwrap();
+        // Insert a user-write item (citation_id NULL).
+        db.conn()
+            .execute(
+                "INSERT INTO ceremony_items (id, tablet_id, section_key, ordinal, kind, body, citation_id, created_at) \
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, NULL, ?7)",
+                [
+                    "item-1",
+                    "retro-2026-W20",
+                    "diary",
+                    "0",
+                    "freeform",
+                    "{\"text\":\"hello\"}",
+                    "2026-05-15T16:30:00Z",
+                ],
+            )
+            .unwrap();
+        let count: i64 = db
+            .conn()
+            .query_row("SELECT COUNT(*) FROM ceremony_items", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(count, 1);
+    }
 }

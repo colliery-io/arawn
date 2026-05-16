@@ -1,18 +1,17 @@
 ---
----
 id: ceremony-sqlite-schema-migration
 level: task
 title: "Ceremony SQLite schema migration in arawn-storage"
 short_code: "ARAWN-T-0280"
 created_at: 2026-05-15T23:44:50.940827+00:00
-updated_at: 2026-05-15T23:44:50.940827+00:00
+updated_at: 2026-05-16T00:23:03.929799+00:00
 parent: ARAWN-I-0043
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -46,3 +45,26 @@ The Rust types that map onto these tables — those land with the engine + plugi
 
 ## Notes
 The `citation_id` column is `TEXT NULL` because the user-write path bypasses citation. Enforcement is Rust-side via the two-write-path API, not a NOT NULL constraint.
+## Status Updates
+
+**2026-05-16 — implementation landed.**
+
+- New migration `crates/arawn-storage/migrations/V6__ceremonies.sql`. Numbered after V5 (extractor cursors). One file, eight tables, single migration.
+- Schema:
+  - `ceremony_tablets` (PK id, UNIQUE (kind, period_key)) — top-level row, `priorities_confirmed_at` null on non-weekly.
+  - `ceremony_sections` (PK tablet_id+section_key) — declared section ordering.
+  - `ceremony_items` (PK id) — `citation_id` nullable (user-write path), `body` JSON.
+  - `ceremony_todos_rolling` (PK todo_id) — cross-day persistence.
+  - `ceremony_priorities` (PK id) — weekly candidates + confirmation timestamp.
+  - `ceremony_activity_rollup` (PK iso_week+workstream+metric_key) — generic per-week aggregate.
+  - `ceremony_patterns_detected` (PK id) — pattern findings with cited source rows in `payload`.
+  - `ceremony_diary` (PK tablet_id) — user-written diary body + word count.
+- ON DELETE CASCADE wired wherever a parent row exists, so wiping a tablet drops every dependent row in one transaction.
+- Indexes on common query paths: `(tablet_id)`, `(tablet_id, section_key, ordinal)`, `(kind)`, `(status)`, `(iso_week)`, `(confirmed_at)`, `(last_seen_tablet_id)`.
+- Three integration tests in `arawn-storage::database::tests`:
+  - `v6_ceremony_tables_present` — every table is created.
+  - `v6_ceremony_tablets_accepts_a_row_and_uniques_on_kind_period` — UNIQUE enforcement.
+  - `v6_ceremony_items_accepts_null_citation_for_user_path` — confirms the schema permits the user-write path.
+- All 57 pre-existing `arawn-storage` tests still pass.
+
+Next: T-0281 (cloacina workflow runner).
