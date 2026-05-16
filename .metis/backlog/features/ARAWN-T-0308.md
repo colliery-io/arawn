@@ -4,7 +4,7 @@ level: task
 title: "Ceremony TUI Phase 2 — interactive priorities + diary + WS auto-refresh"
 short_code: "ARAWN-T-0308"
 created_at: 2026-05-16T19:49:30.659157+00:00
-updated_at: 2026-05-16T20:11:04.881432+00:00
+updated_at: 2026-05-16T20:21:11.950179+00:00
 parent: 
 blocked_by: [ARAWN-T-0307]
 archived: false
@@ -12,7 +12,7 @@ archived: false
 tags:
   - "#task"
   - "#feature"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
