@@ -4,14 +4,14 @@ level: task
 title: "Ceremony WS-RPC surface + binary wiring"
 short_code: "ARAWN-T-0292"
 created_at: 2026-05-16T03:22:46.609267+00:00
-updated_at: 2026-05-16T03:24:50.703582+00:00
+updated_at: 2026-05-16T03:55:02.562154+00:00
 parent: ARAWN-I-0043
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
