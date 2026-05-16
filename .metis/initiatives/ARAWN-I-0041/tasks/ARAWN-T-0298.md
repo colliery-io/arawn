@@ -4,14 +4,14 @@ level: task
 title: "Daily agent tools (daily_* family)"
 short_code: "ARAWN-T-0298"
 created_at: 2026-05-16T14:00:00+00:00
-updated_at: 2026-05-16T16:13:18.690130+00:00
+updated_at: 2026-05-16T16:17:36.027528+00:00
 parent: ARAWN-I-0041
 blocked_by: [ARAWN-T-0299]
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -30,8 +30,6 @@ Five agent-callable tools mirroring the `retro_*` family from
 [[ARAWN-T-0293]], adapted for daily: surface today's tablet, list
 items, toggle todo done, and let the user add a fresh todo via the
 user-write path.
-
-## Acceptance Criteria
 
 ## Acceptance Criteria
 
