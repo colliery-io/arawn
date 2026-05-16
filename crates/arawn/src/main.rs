@@ -5,7 +5,6 @@ use tracing::{debug, error, info, warn};
 use tracing_subscriber::{EnvFilter, Layer, fmt, layer::SubscriberExt, util::SubscriberInitExt};
 use uuid::Uuid;
 
-
 /// Adapter from `arawn_embed::Embedder` to the trait
 /// `arawn_projections::Embedder` expects. Lets the embed pass run
 /// against whatever backend arawn-embed is configured for.
@@ -22,12 +21,7 @@ impl arawn_projections::Embedder for EmbedderBridge {
     > {
         let inner = Arc::clone(&self.inner);
         let texts = texts.to_vec();
-        Box::pin(async move {
-            inner
-                .embed_batch(&texts)
-                .await
-                .map_err(|e| e.to_string())
-        })
+        Box::pin(async move { inner.embed_batch(&texts).await.map_err(|e| e.to_string()) })
     }
 }
 use arawn_engine::QueryEngineConfig;
@@ -116,7 +110,9 @@ async fn main() -> Result<()> {
 
     // Handle plugin subcommand immediately (exits process)
     if let Some(Command::Plugin { args: plugin_args }) = &cli.command {
-        let base = cli.data_dir.as_deref()
+        let base = cli
+            .data_dir
+            .as_deref()
             .map(String::from)
             .or_else(dirs_path)
             .unwrap_or_else(|| ".arawn".into());
@@ -134,7 +130,9 @@ async fn main() -> Result<()> {
     // Doctor must run before the heavy startup path so a broken config
     // does not panic on the way to actually reporting "config broken".
     if let Some(Command::Doctor { json }) = &cli.command {
-        let base = cli.data_dir.as_deref()
+        let base = cli
+            .data_dir
+            .as_deref()
             .map(String::from)
             .or_else(dirs_path)
             .unwrap_or_else(|| ".arawn".into());
@@ -151,8 +149,16 @@ async fn main() -> Result<()> {
     // Handle usage subcommand immediately (exits process). Reads
     // the on-disk token-usage log without spinning up the full
     // engine.
-    if let Some(Command::Usage { period, model, by_site, json }) = &cli.command {
-        let base = cli.data_dir.as_deref()
+    if let Some(Command::Usage {
+        period,
+        model,
+        by_site,
+        json,
+    }) = &cli.command
+    {
+        let base = cli
+            .data_dir
+            .as_deref()
             .map(String::from)
             .or_else(dirs_path)
             .unwrap_or_else(|| ".arawn".into());
@@ -243,8 +249,7 @@ async fn main() -> Result<()> {
             _log_guard = None;
             tracing_subscriber::fmt()
                 .with_env_filter(
-                    EnvFilter::try_from_default_env()
-                        .unwrap_or_else(|_| EnvFilter::new("info")),
+                    EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")),
                 )
                 .with_target(false)
                 .with_writer(std::io::stderr)
@@ -362,7 +367,9 @@ async fn main() -> Result<()> {
                         .map(|c| c.provider.as_str())
                         .unwrap_or("?");
                     match result {
-                        Ok(()) => info!(name = %name, provider = %provider, model = %model, "LLM warmup OK"),
+                        Ok(()) => {
+                            info!(name = %name, provider = %provider, model = %model, "LLM warmup OK")
+                        }
                         Err(e) => error!(
                             name = %name,
                             provider = %provider,
@@ -377,17 +384,18 @@ async fn main() -> Result<()> {
 
         // Initialize embedding model
         let embed_config = arawn_embed::EmbeddingConfig::default();
-        let embedder: Option<Arc<dyn arawn_embed::Embedder>> =
-            match arawn_embed::create_embedder(&embed_config) {
-                Ok(e) => {
-                    info!(model = %embed_config.model, dims = embed_config.dimensions, "embedding model loaded");
-                    Some(e)
-                }
-                Err(e) => {
-                    warn!(error = %e, "embedding model unavailable — memory system will use FTS only");
-                    None
-                }
-            };
+        let embedder: Option<Arc<dyn arawn_embed::Embedder>> = match arawn_embed::create_embedder(
+            &embed_config,
+        ) {
+            Ok(e) => {
+                info!(model = %embed_config.model, dims = embed_config.dimensions, "embedding model loaded");
+                Some(e)
+            }
+            Err(e) => {
+                warn!(error = %e, "embedding model unavailable — memory system will use FTS only");
+                None
+            }
+        };
 
         // Initialize memory system (two-tier KB) with optional embedder
         let ws_dir = arawn_storage::workstream_dir_name(&workstream.name, workstream.id);
@@ -431,16 +439,17 @@ async fn main() -> Result<()> {
         // Workstream memory router — hoisted to outer scope so the
         // per-workstream extractor (T-0251) can resolve KBs through
         // the same cache as the memory tools.
-        let workstream_router: Option<Arc<arawn_engine::WorkstreamMemoryRouter>> = if memory_manager.is_some() {
-            Some(Arc::new(arawn_engine::WorkstreamMemoryRouter::new(
-                std::path::PathBuf::from(&data_dir),
-                Some(embed_config.dimensions),
-                embedder.clone(),
-                active_workstream.clone(),
-            )))
-        } else {
-            None
-        };
+        let workstream_router: Option<Arc<arawn_engine::WorkstreamMemoryRouter>> =
+            if memory_manager.is_some() {
+                Some(Arc::new(arawn_engine::WorkstreamMemoryRouter::new(
+                    std::path::PathBuf::from(&data_dir),
+                    Some(embed_config.dimensions),
+                    embedder.clone(),
+                    active_workstream.clone(),
+                )))
+            } else {
+                None
+            };
 
         // Register memory tools (if memory system is available).
         // Use the routed handle so the active workstream determines
@@ -458,12 +467,12 @@ async fn main() -> Result<()> {
                 Arc::clone(router),
                 embedder.clone(),
             )));
-            registry.register(Box::new(arawn_engine::SignalQueryTool::new(
-                Arc::clone(router),
-            )));
-            registry.register(Box::new(arawn_engine::SignalTimelineTool::new(
-                Arc::clone(router),
-            )));
+            registry.register(Box::new(arawn_engine::SignalQueryTool::new(Arc::clone(
+                router,
+            ))));
+            registry.register(Box::new(arawn_engine::SignalTimelineTool::new(Arc::clone(
+                router,
+            ))));
             info!("memory + signal tools registered (workstream-routed)");
         }
 
@@ -503,22 +512,17 @@ async fn main() -> Result<()> {
             let projections_db_path = std::path::PathBuf::from(&data_dir).join("projections.db");
             if let Ok(store) = arawn_projections::ProjectionStore::open(&projections_db_path) {
                 let store = Arc::new(store);
-                let bridge = Arc::new(EmbedderBridge {
-                    inner: emb,
-                }) as Arc<dyn arawn_projections::Embedder>;
+                let bridge =
+                    Arc::new(EmbedderBridge { inner: emb }) as Arc<dyn arawn_projections::Embedder>;
                 tokio::spawn(async move {
-                    let mut interval = tokio::time::interval(
-                        std::time::Duration::from_secs(300),
-                    );
+                    let mut interval = tokio::time::interval(std::time::Duration::from_secs(300));
                     // First tick fires immediately — kick off an embed
                     // pass at startup so backfill rows from prior runs
                     // get covered without waiting 5 min.
                     loop {
                         interval.tick().await;
-                        match arawn_projections::run_embed_pass(
-                            &store, bridge.as_ref(), 32, 512,
-                        )
-                        .await
+                        match arawn_projections::run_embed_pass(&store, bridge.as_ref(), 32, 512)
+                            .await
                         {
                             Ok(out) if out.embedded > 0 || out.skipped_empty > 0 => {
                                 info!(
@@ -561,22 +565,28 @@ async fn main() -> Result<()> {
         if let Some(ref mgr) = memory_manager {
             let kb_memories = arawn_memory::load_memories_for_injection(mgr, None, None);
             if !kb_memories.is_empty()
-                && let Some(ref mut ctx) = engine_config.prompt_context {
-                    ctx.memories = kb_memories;
-                    info!(count = ctx.memories.len(), "KB memories injected into prompt");
-                }
+                && let Some(ref mut ctx) = engine_config.prompt_context
+            {
+                ctx.memories = kb_memories;
+                info!(
+                    count = ctx.memories.len(),
+                    "KB memories injected into prompt"
+                );
+            }
         }
 
         // Inject MCP server descriptions into the system prompt
         let mcp_prompt = mcp_manager.system_prompt();
         if !mcp_prompt.is_empty()
-            && let Some(ref mut ctx) = engine_config.prompt_context {
-                ctx.plugin_prompts.push(mcp_prompt);
-            }
+            && let Some(ref mut ctx) = engine_config.prompt_context
+        {
+            ctx.plugin_prompts.push(mcp_prompt);
+        }
 
         // Load permission rules from config
         let config_path = std::path::PathBuf::from(&data_dir).join("arawn.toml");
-        let permission_rules = arawn_engine::permissions::load_permissions_from_file(&config_path).into_rules();
+        let permission_rules =
+            arawn_engine::permissions::load_permissions_from_file(&config_path).into_rules();
 
         // Wrap MCP manager for sharing with config watcher
         let mcp_manager = Arc::new(tokio::sync::Mutex::new(mcp_manager));
@@ -634,9 +644,9 @@ async fn main() -> Result<()> {
             let router_clone = Arc::clone(router);
             let mem_resolver: arawn_steward::runner::MemoryResolver =
                 Arc::new(move |name: &str| {
-                    router_clone.for_workstream(name).map_err(|e| {
-                        arawn_steward::StewardError::Memory(e.to_string())
-                    })
+                    router_clone
+                        .for_workstream(name)
+                        .map_err(|e| arawn_steward::StewardError::Memory(e.to_string()))
                 });
             // Reshelve uses the engine LLM by default. Cursor factory
             // opens a fresh CursorStore per workstream against the
@@ -646,9 +656,7 @@ async fn main() -> Result<()> {
                 dyn Fn(&str) -> Result<arawn_steward::CursorStore, arawn_steward::StewardError>
                     + Send
                     + Sync,
-            > = Arc::new(move |name: &str| {
-                arawn_steward::CursorStore::open(&data_dir_clone, name)
-            });
+            > = Arc::new(move |name: &str| arawn_steward::CursorStore::open(&data_dir_clone, name));
             // Steward subroutines are focused summarisation/extraction
             // tasks — `hint:medium` is the right tier. Resolved through
             // the pool so future-T-0278 routing changes pick up here.
@@ -671,9 +679,9 @@ async fn main() -> Result<()> {
             let dw_resolver: arawn_steward::runner::MemoryResolver = {
                 let router_clone = Arc::clone(router);
                 Arc::new(move |name: &str| {
-                    router_clone.for_workstream(name).map_err(|e| {
-                        arawn_steward::StewardError::Memory(e.to_string())
-                    })
+                    router_clone
+                        .for_workstream(name)
+                        .map_err(|e| arawn_steward::StewardError::Memory(e.to_string()))
                 })
             };
             let (dw_client, dw_model) =
@@ -702,9 +710,7 @@ async fn main() -> Result<()> {
             // test-harness work tunes this once real subroutines land.
             let interval_secs: u64 = 60 * 60;
             tokio::spawn(async move {
-                let mut tick = tokio::time::interval(
-                    std::time::Duration::from_secs(interval_secs),
-                );
+                let mut tick = tokio::time::interval(std::time::Duration::from_secs(interval_secs));
                 // First tick fires immediately; the identity subroutine
                 // is a noop so this is safe at boot.
                 loop {
@@ -729,7 +735,12 @@ async fn main() -> Result<()> {
         // tools AND the memory router so they observe the same session-level state.
         // Idempotently materialize the scratch workstream so first-boot users
         // land in a valid scope.
-        if let Err(e) = service.shared_store().lock().unwrap().ensure_scratch_workstream() {
+        if let Err(e) = service
+            .shared_store()
+            .lock()
+            .unwrap()
+            .ensure_scratch_workstream()
+        {
             warn!(error = %e, "failed to ensure scratch workstream");
         }
         registry.register(Box::new(arawn_engine::WorkstreamCreateTool::new(
@@ -774,9 +785,7 @@ async fn main() -> Result<()> {
                         // storage Database to resolve template → feed_types.
                         let template = {
                             let store = self.store.lock().unwrap();
-                            let feed_store = arawn_feeds::FeedStore::new(
-                                store.database().conn(),
-                            );
+                            let feed_store = arawn_feeds::FeedStore::new(store.database().conn());
                             match feed_store.get(feed_id) {
                                 Ok(Some(rec)) => rec.template,
                                 _ => {
@@ -788,8 +797,7 @@ async fn main() -> Result<()> {
                                 }
                             }
                         };
-                        let feed_types =
-                            arawn_feeds::projection_feed_types_for(&template);
+                        let feed_types = arawn_feeds::projection_feed_types_for(&template);
                         if feed_types.is_empty() {
                             debug!(
                                 template = %template,
@@ -797,17 +805,14 @@ async fn main() -> Result<()> {
                             );
                             return;
                         }
-                        Arc::clone(&self.runner).spawn_backfill(
-                            workstream_name.to_string(),
-                            feed_types,
-                        );
+                        Arc::clone(&self.runner)
+                            .spawn_backfill(workstream_name.to_string(), feed_types);
                     }
                 }
-                let hook: Arc<dyn arawn_engine::BindBackfillHook> =
-                    Arc::new(ExtractorBindHook {
-                        runner: Arc::clone(runner),
-                        store: service.shared_store(),
-                    });
+                let hook: Arc<dyn arawn_engine::BindBackfillHook> = Arc::new(ExtractorBindHook {
+                    runner: Arc::clone(runner),
+                    store: service.shared_store(),
+                });
                 bind_tool = bind_tool.with_backfill_hook(hook);
             }
             registry.register(Box::new(bind_tool));
@@ -871,7 +876,10 @@ async fn main() -> Result<()> {
         // This lets users persist creds in config without exporting env
         // vars on every shell, while keeping env-var override for ad-hoc
         // testing (different OAuth client per run, etc.).
-        let resolve = |env_id: &str, env_secret: &str, cfg: &arawn_bin::config::IntegrationCredentials| -> Option<(String, String)> {
+        let resolve = |env_id: &str,
+                       env_secret: &str,
+                       cfg: &arawn_bin::config::IntegrationCredentials|
+         -> Option<(String, String)> {
             let id = std::env::var(env_id)
                 .ok()
                 .filter(|s| !s.is_empty())
@@ -899,21 +907,31 @@ async fn main() -> Result<()> {
                 &config.integrations.google,
             )
         });
-        let gmail_integration_for_feeds: Option<
-            Arc<arawn_integrations::gmail::GmailIntegration>,
-        >;
+        let gmail_integration_for_feeds: Option<Arc<arawn_integrations::gmail::GmailIntegration>>;
         if let Some((client_id, client_secret)) = gmail_creds {
             let gmail = Arc::new(arawn_integrations::gmail::GmailIntegration::new(
                 std::path::PathBuf::from(&data_dir),
                 client_id,
                 client_secret,
             ));
-            service.register_integration(Arc::clone(&gmail) as Arc<dyn arawn_integrations::Integration>);
-            registry.register(Box::new(arawn_integrations::gmail::GmailInboxReadTool::new(Arc::clone(&gmail))));
-            registry.register(Box::new(arawn_integrations::gmail::GmailSearchTool::new(Arc::clone(&gmail))));
-            registry.register(Box::new(arawn_integrations::gmail::GmailGetMessageTool::new(Arc::clone(&gmail))));
-            registry.register(Box::new(arawn_integrations::gmail::GmailSendTool::new(Arc::clone(&gmail))));
-            registry.register(Box::new(arawn_integrations::gmail::GmailMarkReadTool::new(Arc::clone(&gmail))));
+            service.register_integration(
+                Arc::clone(&gmail) as Arc<dyn arawn_integrations::Integration>
+            );
+            registry.register(Box::new(
+                arawn_integrations::gmail::GmailInboxReadTool::new(Arc::clone(&gmail)),
+            ));
+            registry.register(Box::new(arawn_integrations::gmail::GmailSearchTool::new(
+                Arc::clone(&gmail),
+            )));
+            registry.register(Box::new(
+                arawn_integrations::gmail::GmailGetMessageTool::new(Arc::clone(&gmail)),
+            ));
+            registry.register(Box::new(arawn_integrations::gmail::GmailSendTool::new(
+                Arc::clone(&gmail),
+            )));
+            registry.register(Box::new(arawn_integrations::gmail::GmailMarkReadTool::new(
+                Arc::clone(&gmail),
+            )));
             info!("Gmail integration registered (5 tools)");
             gmail_integration_for_feeds = Some(gmail);
         } else {
@@ -943,15 +961,25 @@ async fn main() -> Result<()> {
             Arc<arawn_integrations::calendar::GoogleCalendarIntegration>,
         >;
         if let Some((client_id, client_secret)) = gcal_creds {
-            let calendar = Arc::new(arawn_integrations::calendar::GoogleCalendarIntegration::new(
-                std::path::PathBuf::from(&data_dir),
-                client_id,
-                client_secret,
+            let calendar = Arc::new(
+                arawn_integrations::calendar::GoogleCalendarIntegration::new(
+                    std::path::PathBuf::from(&data_dir),
+                    client_id,
+                    client_secret,
+                ),
+            );
+            service.register_integration(
+                Arc::clone(&calendar) as Arc<dyn arawn_integrations::Integration>
+            );
+            registry.register(Box::new(
+                arawn_integrations::calendar::CalendarUpcomingTool::new(Arc::clone(&calendar)),
             ));
-            service.register_integration(Arc::clone(&calendar) as Arc<dyn arawn_integrations::Integration>);
-            registry.register(Box::new(arawn_integrations::calendar::CalendarUpcomingTool::new(Arc::clone(&calendar))));
-            registry.register(Box::new(arawn_integrations::calendar::CalendarCreateEventTool::new(Arc::clone(&calendar))));
-            registry.register(Box::new(arawn_integrations::calendar::CalendarFindConflictsTool::new(Arc::clone(&calendar))));
+            registry.register(Box::new(
+                arawn_integrations::calendar::CalendarCreateEventTool::new(Arc::clone(&calendar)),
+            ));
+            registry.register(Box::new(
+                arawn_integrations::calendar::CalendarFindConflictsTool::new(Arc::clone(&calendar)),
+            ));
             info!("Google Calendar integration registered (3 tools)");
             calendar_integration_for_feeds = Some(calendar);
         } else {
@@ -986,14 +1014,30 @@ async fn main() -> Result<()> {
                 client_id,
                 client_secret,
             ));
-            service.register_integration(Arc::clone(&drive) as Arc<dyn arawn_integrations::Integration>);
-            registry.register(Box::new(arawn_integrations::drive::DriveSearchTool::new(Arc::clone(&drive))));
-            registry.register(Box::new(arawn_integrations::drive::DriveListTool::new(Arc::clone(&drive))));
-            registry.register(Box::new(arawn_integrations::drive::DriveGetMetadataTool::new(Arc::clone(&drive))));
-            registry.register(Box::new(arawn_integrations::drive::DriveReadTool::new(Arc::clone(&drive))));
-            registry.register(Box::new(arawn_integrations::drive::DriveUploadTool::new(Arc::clone(&drive))));
-            registry.register(Box::new(arawn_integrations::drive::DriveUpdateTool::new(Arc::clone(&drive))));
-            registry.register(Box::new(arawn_integrations::drive::DriveDeleteTool::new(Arc::clone(&drive))));
+            service.register_integration(
+                Arc::clone(&drive) as Arc<dyn arawn_integrations::Integration>
+            );
+            registry.register(Box::new(arawn_integrations::drive::DriveSearchTool::new(
+                Arc::clone(&drive),
+            )));
+            registry.register(Box::new(arawn_integrations::drive::DriveListTool::new(
+                Arc::clone(&drive),
+            )));
+            registry.register(Box::new(
+                arawn_integrations::drive::DriveGetMetadataTool::new(Arc::clone(&drive)),
+            ));
+            registry.register(Box::new(arawn_integrations::drive::DriveReadTool::new(
+                Arc::clone(&drive),
+            )));
+            registry.register(Box::new(arawn_integrations::drive::DriveUploadTool::new(
+                Arc::clone(&drive),
+            )));
+            registry.register(Box::new(arawn_integrations::drive::DriveUpdateTool::new(
+                Arc::clone(&drive),
+            )));
+            registry.register(Box::new(arawn_integrations::drive::DriveDeleteTool::new(
+                Arc::clone(&drive),
+            )));
             info!("Google Drive integration registered (7 tools)");
             drive_integration_for_feeds = Some(drive);
         } else {
@@ -1020,18 +1064,48 @@ async fn main() -> Result<()> {
                 client_id,
                 client_secret,
             ));
-            service.register_integration(Arc::clone(&atlassian) as Arc<dyn arawn_integrations::Integration>);
-            registry.register(Box::new(arawn_integrations::atlassian::JiraSearchTool::new(Arc::clone(&atlassian))));
-            registry.register(Box::new(arawn_integrations::atlassian::JiraGetIssueTool::new(Arc::clone(&atlassian))));
-            registry.register(Box::new(arawn_integrations::atlassian::JiraCreateIssueTool::new(Arc::clone(&atlassian))));
-            registry.register(Box::new(arawn_integrations::atlassian::JiraUpdateIssueTool::new(Arc::clone(&atlassian))));
-            registry.register(Box::new(arawn_integrations::atlassian::JiraAddCommentTool::new(Arc::clone(&atlassian))));
-            registry.register(Box::new(arawn_integrations::atlassian::JiraTransitionIssueTool::new(Arc::clone(&atlassian))));
-            registry.register(Box::new(arawn_integrations::atlassian::ConfluenceSearchTool::new(Arc::clone(&atlassian))));
-            registry.register(Box::new(arawn_integrations::atlassian::ConfluenceGetPageTool::new(Arc::clone(&atlassian))));
-            registry.register(Box::new(arawn_integrations::atlassian::ConfluenceCreatePageTool::new(Arc::clone(&atlassian))));
-            registry.register(Box::new(arawn_integrations::atlassian::ConfluenceUpdatePageTool::new(Arc::clone(&atlassian))));
-            registry.register(Box::new(arawn_integrations::atlassian::ConfluenceListSpacesTool::new(Arc::clone(&atlassian))));
+            service.register_integration(
+                Arc::clone(&atlassian) as Arc<dyn arawn_integrations::Integration>
+            );
+            registry.register(Box::new(
+                arawn_integrations::atlassian::JiraSearchTool::new(Arc::clone(&atlassian)),
+            ));
+            registry.register(Box::new(
+                arawn_integrations::atlassian::JiraGetIssueTool::new(Arc::clone(&atlassian)),
+            ));
+            registry.register(Box::new(
+                arawn_integrations::atlassian::JiraCreateIssueTool::new(Arc::clone(&atlassian)),
+            ));
+            registry.register(Box::new(
+                arawn_integrations::atlassian::JiraUpdateIssueTool::new(Arc::clone(&atlassian)),
+            ));
+            registry.register(Box::new(
+                arawn_integrations::atlassian::JiraAddCommentTool::new(Arc::clone(&atlassian)),
+            ));
+            registry.register(Box::new(
+                arawn_integrations::atlassian::JiraTransitionIssueTool::new(Arc::clone(&atlassian)),
+            ));
+            registry.register(Box::new(
+                arawn_integrations::atlassian::ConfluenceSearchTool::new(Arc::clone(&atlassian)),
+            ));
+            registry.register(Box::new(
+                arawn_integrations::atlassian::ConfluenceGetPageTool::new(Arc::clone(&atlassian)),
+            ));
+            registry.register(Box::new(
+                arawn_integrations::atlassian::ConfluenceCreatePageTool::new(Arc::clone(
+                    &atlassian,
+                )),
+            ));
+            registry.register(Box::new(
+                arawn_integrations::atlassian::ConfluenceUpdatePageTool::new(Arc::clone(
+                    &atlassian,
+                )),
+            ));
+            registry.register(Box::new(
+                arawn_integrations::atlassian::ConfluenceListSpacesTool::new(Arc::clone(
+                    &atlassian,
+                )),
+            ));
             info!("Atlassian integration registered (11 tools — 6 Jira, 5 Confluence)");
             // If the persisted token was minted by an older arawn
             // build that requested fewer scopes, surface that now —
@@ -1068,13 +1142,27 @@ async fn main() -> Result<()> {
                 client_id,
                 client_secret,
             ));
-            service.register_integration(Arc::clone(&slack) as Arc<dyn arawn_integrations::Integration>);
-            registry.register(Box::new(arawn_integrations::slack::SlackListChannelsTool::new(Arc::clone(&slack))));
-            registry.register(Box::new(arawn_integrations::slack::SlackHistoryTool::new(Arc::clone(&slack))));
-            registry.register(Box::new(arawn_integrations::slack::SlackPostTool::new(Arc::clone(&slack))));
-            registry.register(Box::new(arawn_integrations::slack::SlackReactTool::new(Arc::clone(&slack))));
-            registry.register(Box::new(arawn_integrations::slack::SlackUsersListTool::new(Arc::clone(&slack))));
-            registry.register(Box::new(arawn_integrations::slack::SlackOpenDmTool::new(Arc::clone(&slack))));
+            service.register_integration(
+                Arc::clone(&slack) as Arc<dyn arawn_integrations::Integration>
+            );
+            registry.register(Box::new(
+                arawn_integrations::slack::SlackListChannelsTool::new(Arc::clone(&slack)),
+            ));
+            registry.register(Box::new(arawn_integrations::slack::SlackHistoryTool::new(
+                Arc::clone(&slack),
+            )));
+            registry.register(Box::new(arawn_integrations::slack::SlackPostTool::new(
+                Arc::clone(&slack),
+            )));
+            registry.register(Box::new(arawn_integrations::slack::SlackReactTool::new(
+                Arc::clone(&slack),
+            )));
+            registry.register(Box::new(
+                arawn_integrations::slack::SlackUsersListTool::new(Arc::clone(&slack)),
+            ));
+            registry.register(Box::new(arawn_integrations::slack::SlackOpenDmTool::new(
+                Arc::clone(&slack),
+            )));
             info!("Slack integration registered (6 tools)");
             slack_integration_for_feeds = Some(slack);
         } else {
@@ -1087,9 +1175,8 @@ async fn main() -> Result<()> {
         }
 
         // Start workflow engine (cloacina DefaultRunner — background services start on construction)
-        let workflow_config = arawn_workflow::runner::WorkflowRunnerConfig::new(
-            std::path::Path::new(&data_dir),
-        );
+        let workflow_config =
+            arawn_workflow::runner::WorkflowRunnerConfig::new(std::path::Path::new(&data_dir));
         let workflows_dir = std::path::PathBuf::from(&data_dir).join("workflows");
         let shared_runner: arawn_workflow::SharedWorkflowRunner =
             Arc::new(tokio::sync::RwLock::new(None));
@@ -1177,13 +1264,105 @@ async fn main() -> Result<()> {
             debug!("feed runtime skipped — workflow runner not available");
         }
 
+        // Ceremony engine (I-0043). Wires the retro plugin + detectors
+        // into the cloacina runtime for scheduled Friday introspection
+        // and registers a service handle the WS-RPC dispatcher routes
+        // `ceremonies.*` calls through. Skipped when the workflow
+        // runner failed to start — without cloacina there is no cron
+        // surface to register against.
+        if let Some(workflow_runner) = workflow_runner_handle.as_ref() {
+            let cer_db_path = std::path::PathBuf::from(&data_dir).join("arawn.db");
+            match rusqlite::Connection::open(&cer_db_path) {
+                Ok(conn) => {
+                    let conn_handle = arawn_ceremonies::ConnHandle::new(conn);
+
+                    // Resolve a `hint:medium` client for retro compose.
+                    // The retro plugin only needs the client at compose
+                    // time; the dispatcher passes the model string
+                    // through to the LLM call directly.
+                    let (retro_client, _retro_model) =
+                        llm_pool.resolve_hint(&arawn_llm::ModelHint::Medium.as_hint());
+                    let retro = arawn_ceremonies::RetroCeremony::new(retro_client, "hint:medium")
+                        .with_detectors(arawn_ceremonies::retro_v1_catalog());
+
+                    let plugin_reg = arawn_ceremonies::PluginRegistry::new();
+                    if let Err(e) = plugin_reg.register(Arc::new(retro)) {
+                        warn!(error = %e, "ceremony retro plugin registration failed");
+                    }
+
+                    let (event_tx, _event_rx) = arawn_ceremonies::event_channel();
+                    let dispatcher = Arc::new(
+                        arawn_ceremonies::EngineDispatcher::new(
+                            conn_handle.clone(),
+                            plugin_reg.clone(),
+                        )
+                        .with_events(event_tx.clone()),
+                    );
+                    let runner = arawn_ceremonies::CeremonyRunner::new(
+                        plugin_reg,
+                        workflow_runner.cloacina_runner(),
+                        Arc::clone(&dispatcher) as Arc<dyn arawn_ceremonies::CeremonyDispatcher>,
+                    );
+                    let cer_service = Arc::new(
+                        arawn_ceremonies::CeremonyService::new(
+                            conn_handle.clone(),
+                            Arc::clone(&dispatcher)
+                                as Arc<dyn arawn_ceremonies::CeremonyDispatcher>,
+                        )
+                        .with_events(event_tx),
+                    );
+
+                    // Register cron schedules for every plugin in the
+                    // registry (just retro for v1). Idempotent —
+                    // `register_one` drops any prior schedule for the
+                    // same workflow name first.
+                    if let Err(e) = runner.start().await {
+                        warn!(error = %e, "ceremony runner failed to register cron — manual runs still work");
+                    }
+
+                    // Spawn the Sunday-night sweep. Cloacina doesn't
+                    // own this — it's a thin tokio interval that
+                    // calls `sweep_unreviewed_retros` once an hour.
+                    // Cheap, idempotent, no-op when nothing matches.
+                    {
+                        let sweep_handle = conn_handle.clone();
+                        tokio::spawn(async move {
+                            let mut interval =
+                                tokio::time::interval(std::time::Duration::from_secs(3600));
+                            interval
+                                .set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+                            loop {
+                                interval.tick().await;
+                                match arawn_ceremonies::sweep_unreviewed_retros(&sweep_handle) {
+                                    Ok(0) => {}
+                                    Ok(n) => info!(transitioned = n, "retro sweep"),
+                                    Err(e) => warn!(error = %e, "retro sweep failed"),
+                                }
+                            }
+                        });
+                    }
+
+                    service.set_ceremony_service(Arc::clone(&cer_service));
+                    info!("ceremony engine wired (retro plugin registered)");
+                }
+                Err(e) => warn!(error = %e, db = %cer_db_path.display(),
+                    "ceremony engine unavailable — could not open arawn.db"),
+            }
+        } else {
+            debug!("ceremony engine skipped — workflow runner not available");
+        }
+
         // Wire watchers into the broadcast so reload outcomes reach the TUI.
         let notice_tx_plugin = service.notice_sender();
         let _plugin_watcher = plugin_runtime.watch(
             Arc::clone(&skill_registry),
             Some(Arc::new(move |is_error: bool, msg: String| {
                 let notice = arawn_service::ServerNotice {
-                    level: if is_error { "error".into() } else { "info".into() },
+                    level: if is_error {
+                        "error".into()
+                    } else {
+                        "info".into()
+                    },
                     category: "plugin_reload".into(),
                     message: msg,
                     timestamp: chrono::Utc::now().to_rfc3339(),
@@ -1203,7 +1382,11 @@ async fn main() -> Result<()> {
         )
         .with_notify(Arc::new(move |is_error: bool, msg: String| {
             let notice = arawn_service::ServerNotice {
-                level: if is_error { "error".into() } else { "info".into() },
+                level: if is_error {
+                    "error".into()
+                } else {
+                    "info".into()
+                },
                 category: "config_reload".into(),
                 message: msg,
                 timestamp: chrono::Utc::now().to_rfc3339(),
@@ -1262,12 +1445,8 @@ async fn main() -> Result<()> {
 }
 
 /// Run a CLI prompt by connecting to the running server via WebSocket.
-async fn run_cli_via_server(
-    url: &str,
-    prompt: &str,
-    session_id: Option<Uuid>,
-) -> Result<()> {
-    use arawn_tui::ws_client::{WsClient, EventUpdate, engine_event_to_update, parse_engine_event};
+async fn run_cli_via_server(url: &str, prompt: &str, session_id: Option<Uuid>) -> Result<()> {
+    use arawn_tui::ws_client::{EventUpdate, WsClient, engine_event_to_update, parse_engine_event};
 
     let mut client = WsClient::connect(url).await.map_err(|e| {
         anyhow::anyhow!(
@@ -1283,9 +1462,10 @@ async fn run_cli_via_server(
             id
         }
         None => {
-            let s = client.create_session(None).await.map_err(|e| {
-                anyhow::anyhow!("Failed to create session: {e}")
-            })?;
+            let s = client
+                .create_session(None)
+                .await
+                .map_err(|e| anyhow::anyhow!("Failed to create session: {e}"))?;
             eprintln!("Session: {}", s.id);
             s.id
         }
@@ -1370,9 +1550,7 @@ async fn run_cli_via_server(
 }
 
 /// Build the appropriate LLM client based on provider config.
-fn build_llm_client(
-    config: &arawn_bin::LlmConfig,
-) -> Result<Arc<dyn arawn_llm::LlmClient>> {
+fn build_llm_client(config: &arawn_bin::LlmConfig) -> Result<Arc<dyn arawn_llm::LlmClient>> {
     let resolved_key = arawn_bin::ArawnConfig::resolve_api_key(config);
     match config.provider.as_str() {
         "anthropic" => {
@@ -1458,9 +1636,7 @@ async fn connect_mcp_servers(
             servers = mcp_config.servers.len(),
             "connecting to config MCP servers"
         );
-        mcp_manager
-            .connect_all(&mcp_config.servers, registry)
-            .await;
+        mcp_manager.connect_all(&mcp_config.servers, registry).await;
     }
 
     if !plugin_result.mcp_servers.is_empty() {
@@ -1479,9 +1655,7 @@ async fn connect_mcp_servers(
             servers = plugin_mcp_configs.len(),
             "connecting to plugin MCP servers"
         );
-        mcp_manager
-            .connect_all(&plugin_mcp_configs, registry)
-            .await;
+        mcp_manager.connect_all(&plugin_mcp_configs, registry).await;
     }
 
     if mcp_manager.tool_count() > 0 {
@@ -1567,7 +1741,7 @@ fn render_usage_human(s: &arawn_llm::usage::UsageSummary) -> String {
         out.push_str("\n(no records in this window)\n");
         return out;
     }
-    out.push_str("\n");
+    out.push('\n');
     out.push_str("By model:\n");
     for m in &s.models {
         out.push_str(&format!(

@@ -10,10 +10,9 @@ use uuid::Uuid;
 
 use arawn_core::{Message, Session, Workstream};
 use arawn_engine::{
-    BackgroundTaskManager, Compactor, PlanModeState, PermissionChecker, PermissionRule,
+    BackgroundTaskManager, Compactor, PermissionChecker, PermissionRule, PlanModeState,
     QueryEngine, QueryEngineConfig, ToolContext, ToolRegistry,
 };
-use tracing::instrument;
 use arawn_llm::LlmClient;
 use arawn_service::{
     ArawnService, CommandInfo, EngineEvent, ForgetCandidate, ForgetResult, InventoryItem,
@@ -21,6 +20,7 @@ use arawn_service::{
     PromotionResult, ServiceError, SessionDetail, SessionInfo, WorkflowInfo, WorkstreamInfo,
 };
 use arawn_storage::{JsonlMessageStore, Store, workstream_dir_name};
+use tracing::instrument;
 
 use crate::channel_prompt::{ChannelModalPrompt, PendingModals};
 use crate::llm_pool::LlmClientPool;
@@ -83,6 +83,12 @@ pub struct LocalService {
     /// active workstream re-establishes without the user re-typing
     /// `/workstream switch`.
     active_workstream: Option<arawn_engine::SessionWorkstream>,
+    /// Shared ceremony service — wired by main.rs after the cloacina
+    /// runtime is available. Set late (post-construction) via
+    /// `set_ceremony_service`, mirroring `feed_runtime`'s lifecycle.
+    /// `None` when the binary skipped ceremony wiring (workflow
+    /// runner unavailable).
+    ceremony_service: Arc<std::sync::RwLock<Option<Arc<arawn_ceremonies::CeremonyService>>>>,
 }
 
 impl LocalService {
@@ -100,7 +106,9 @@ impl LocalService {
             registry,
             config,
             permission_rules: Arc::new(std::sync::RwLock::new(Vec::new())),
-            permission_mode: Arc::new(std::sync::RwLock::new(arawn_engine::permissions::PermissionMode::Default)),
+            permission_mode: Arc::new(std::sync::RwLock::new(
+                arawn_engine::permissions::PermissionMode::Default,
+            )),
             skill_registry: None,
             plugin_registry: None,
             pending_modals: crate::new_pending_modals(),
@@ -114,7 +122,19 @@ impl LocalService {
             integration_registry: Arc::new(std::sync::RwLock::new(HashMap::new())),
             feed_runtime: Arc::new(std::sync::RwLock::new(None)),
             active_workstream: None,
+            ceremony_service: Arc::new(std::sync::RwLock::new(None)),
         }
+    }
+
+    /// Wire the ceremony service. Called from main.rs after the
+    /// cloacina runtime starts.
+    pub fn set_ceremony_service(&self, svc: Arc<arawn_ceremonies::CeremonyService>) {
+        *self.ceremony_service.write().unwrap() = Some(svc);
+    }
+
+    /// Shared reference to the ceremony service, if wired.
+    pub fn ceremony_service(&self) -> Option<Arc<arawn_ceremonies::CeremonyService>> {
+        self.ceremony_service.read().unwrap().clone()
     }
 
     /// Wire the shared `SessionWorkstream` shim. Memory tools read
@@ -133,15 +153,9 @@ impl LocalService {
     }
 
     fn feed_runtime_or_err(&self) -> Result<Arc<arawn_feeds::FeedRuntime>, ServiceError> {
-        self.feed_runtime
-            .read()
-            .unwrap()
-            .clone()
-            .ok_or_else(|| {
-                ServiceError::Internal(
-                    "feeds runtime unavailable — workflow runner not running".into(),
-                )
-            })
+        self.feed_runtime.read().unwrap().clone().ok_or_else(|| {
+            ServiceError::Internal("feeds runtime unavailable — workflow runner not running".into())
+        })
     }
 
     /// Register an external integration. Called from main.rs at startup
@@ -149,7 +163,10 @@ impl LocalService {
     pub fn register_integration(&self, integration: Arc<dyn arawn_integrations::Integration>) {
         let name = integration.name().to_string();
         info!(name = %name, "registering integration");
-        self.integration_registry.write().unwrap().insert(name, integration);
+        self.integration_registry
+            .write()
+            .unwrap()
+            .insert(name, integration);
     }
 
     /// Shared reference to the integration registry — for tools that want
@@ -164,7 +181,9 @@ impl LocalService {
     /// Each call returns a fresh receiver — every subscriber gets every
     /// notice. Receivers that fall behind by more than 64 messages drop
     /// oldest first.
-    pub fn subscribe_notices(&self) -> tokio::sync::broadcast::Receiver<arawn_service::ServerNotice> {
+    pub fn subscribe_notices(
+        &self,
+    ) -> tokio::sync::broadcast::Receiver<arawn_service::ServerNotice> {
         self.notice_tx.subscribe()
     }
 
@@ -218,16 +237,24 @@ impl LocalService {
         Arc::clone(&self.permission_rules)
     }
 
-    pub fn shared_permission_mode(&self) -> Arc<std::sync::RwLock<arawn_engine::permissions::PermissionMode>> {
+    pub fn shared_permission_mode(
+        &self,
+    ) -> Arc<std::sync::RwLock<arawn_engine::permissions::PermissionMode>> {
         Arc::clone(&self.permission_mode)
     }
 
-    pub fn with_skill_registry(mut self, registry: Arc<arawn_engine::skills::SkillRegistry>) -> Self {
+    pub fn with_skill_registry(
+        mut self,
+        registry: Arc<arawn_engine::skills::SkillRegistry>,
+    ) -> Self {
         self.skill_registry = Some(registry);
         self
     }
 
-    pub fn with_plugin_registry(mut self, registry: Arc<arawn_engine::plugins::PluginRegistry>) -> Self {
+    pub fn with_plugin_registry(
+        mut self,
+        registry: Arc<arawn_engine::plugins::PluginRegistry>,
+    ) -> Self {
         self.plugin_registry = Some(registry);
         self
     }
@@ -256,21 +283,18 @@ impl LocalService {
         let (meta, workstream, ws_dir) = {
             let store = self.store.lock().unwrap();
             let meta = store
-                .get_session_meta(session_id)
-                ?
+                .get_session_meta(session_id)?
                 .ok_or_else(|| ServiceError::NotFound(format!("session {session_id}")))?;
 
             let ws_dir = resolve_ws_dir_from_store(&store, meta.workstream_id)?;
 
             let workstream = if let Some(ws_id) = meta.workstream_id {
                 store
-                    .get_workstream(ws_id)
-                    ?
+                    .get_workstream(ws_id)?
                     .ok_or_else(|| ServiceError::NotFound(format!("workstream {ws_id}")))?
             } else {
                 store
-                    .find_workstream_by_name("scratch")
-                    ?
+                    .find_workstream_by_name("scratch")?
                     .ok_or_else(|| ServiceError::NotFound("scratch workstream".into()))?
             };
 
@@ -312,8 +336,7 @@ impl LocalService {
             .join(ws_dir)
             .join("arawn.md");
         let pool = Arc::clone(&self.llm_pool);
-        let resolver: Arc<arawn_tool::LlmResolverFn> =
-            Arc::new(move |pref| pool.resolve(pref));
+        let resolver: Arc<arawn_tool::LlmResolverFn> = Arc::new(move |pref| pool.resolve(pref));
         let ctx = ToolContext::new(&ws_for_ctx, session_id)
             .with_allowed_paths(vec![global_arawn_md, workstream_arawn_md])
             .with_llm(self.llm_pool.engine(), self.config.model.clone())
@@ -367,8 +390,7 @@ impl LocalService {
                             Ok(g) => g,
                             Err(_) => return Vec::new(),
                         };
-                        let integrations: Vec<_> =
-                            map.values().map(Arc::clone).collect();
+                        let integrations: Vec<_> = map.values().map(Arc::clone).collect();
                         drop(map);
                         // capabilities_summary is async — but we promised
                         // the closure stays cheap & sync. Run on a fresh
@@ -413,8 +435,9 @@ impl LocalService {
         // Resolve `hint:*` at the engine/compactor boundary. The pool maps
         // each hint to a concrete model via `[routing.hints]`; passing
         // anything else through unchanged.
-        let (compactor_client, compactor_model) =
-            self.llm_pool.resolve_hint(&arawn_llm::ModelHint::Medium.as_hint());
+        let (compactor_client, compactor_model) = self
+            .llm_pool
+            .resolve_hint(&arawn_llm::ModelHint::Medium.as_hint());
         let compactor = Compactor::new(compactor_client, compactor_model);
         let (engine_client, engine_model) = self.llm_pool.resolve_hint(&self.config.model);
         let mut engine = QueryEngine::with_config(
@@ -444,8 +467,7 @@ impl LocalService {
         {
             let rules = self.permission_rules.read().unwrap().clone();
             if !rules.is_empty() {
-                let prompt =
-                    ChannelModalPrompt::new(event_tx.clone(), self.pending_modals.clone());
+                let prompt = ChannelModalPrompt::new(event_tx.clone(), self.pending_modals.clone());
                 let mode = *self.permission_mode.read().unwrap();
                 let checker = PermissionChecker::new(rules)
                     .with_mode(mode)
@@ -461,17 +483,24 @@ impl LocalService {
     }
 }
 
-
 /// Infer entity type from text patterns.
 fn infer_entity_type(text: &str) -> (arawn_memory::EntityType, String) {
     use arawn_memory::EntityType;
     let lower = text.to_lowercase();
 
-    if lower.starts_with("i prefer") || lower.starts_with("prefer ") || lower.contains("preference") {
+    if lower.starts_with("i prefer") || lower.starts_with("prefer ") || lower.contains("preference")
+    {
         (EntityType::Preference, text.to_string())
-    } else if lower.starts_with("we decided") || lower.starts_with("decision:") || lower.contains("decided to") {
+    } else if lower.starts_with("we decided")
+        || lower.starts_with("decision:")
+        || lower.contains("decided to")
+    {
         (EntityType::Decision, text.to_string())
-    } else if lower.starts_with("convention:") || lower.starts_with("the convention is") || lower.starts_with("always ") || lower.starts_with("never ") {
+    } else if lower.starts_with("convention:")
+        || lower.starts_with("the convention is")
+        || lower.starts_with("always ")
+        || lower.starts_with("never ")
+    {
         (EntityType::Convention, text.to_string())
     } else {
         (EntityType::Fact, text.to_string())
@@ -484,9 +513,7 @@ use async_trait::async_trait;
 impl ArawnService for LocalService {
     async fn list_workstreams(&self) -> Result<Vec<WorkstreamInfo>, ServiceError> {
         let store = self.store.lock().unwrap();
-        let workstreams = store
-            .list_workstreams()
-            ?;
+        let workstreams = store.list_workstreams()?;
 
         Ok(workstreams
             .into_iter()
@@ -506,9 +533,7 @@ impl ArawnService for LocalService {
     ) -> Result<WorkstreamInfo, ServiceError> {
         let ws = Workstream::new(&name, &root_dir);
         let store = self.store.lock().unwrap();
-        store
-            .create_workstream(&ws)
-            ?;
+        store.create_workstream(&ws)?;
 
         Ok(WorkstreamInfo {
             id: ws.id,
@@ -526,8 +551,7 @@ impl ArawnService for LocalService {
         let metas = match workstream_id {
             Some(ws_id) => store.list_sessions_for_workstream(ws_id),
             None => store.list_scratch_sessions(),
-        }
-        ?;
+        }?;
 
         Ok(metas
             .into_iter()
@@ -549,9 +573,7 @@ impl ArawnService for LocalService {
         };
 
         let store = self.store.lock().unwrap();
-        store
-            .create_session(&session)
-            ?;
+        store.create_session(&session)?;
 
         info!(session_id = %session.id, "session created via service");
 
@@ -567,8 +589,7 @@ impl ArawnService for LocalService {
         let (meta, ws_dir) = {
             let store = self.store.lock().unwrap();
             let meta = store
-                .get_session_meta(id)
-                ?
+                .get_session_meta(id)?
                 .ok_or_else(|| ServiceError::NotFound(format!("session {id}")))?;
 
             let ws_dir = resolve_ws_dir_from_store(&store, meta.workstream_id)?;
@@ -577,10 +598,7 @@ impl ArawnService for LocalService {
 
         // Load messages from JSONL (async, no lock needed)
         let msg_store = JsonlMessageStore::new(&self.data_dir);
-        let all_messages = msg_store
-            .load(id, &ws_dir)
-            .await
-            ?;
+        let all_messages = msg_store.load(id, &ws_dir).await?;
         let messages = Session::load_compacted(all_messages);
 
         Ok(SessionDetail {
@@ -662,10 +680,7 @@ impl ArawnService for LocalService {
 
         // Load messages from JSONL
         let msg_store = JsonlMessageStore::new(&self.data_dir);
-        let all_messages = msg_store
-            .load(session_id, &ws_dir)
-            .await
-            ?;
+        let all_messages = msg_store.load(session_id, &ws_dir).await?;
         let messages = Session::load_compacted(all_messages);
 
         let mut session =
@@ -678,10 +693,7 @@ impl ArawnService for LocalService {
         session.add_message(user_msg.clone());
 
         let message_store = JsonlMessageStore::new(&self.data_dir);
-        message_store
-            .append(session_id, &ws_dir, &user_msg)
-            .await
-            ?;
+        message_store.append(session_id, &ws_dir, &user_msg).await?;
 
         // Resolve workspace directory
         let is_scratch = workstream.name == "scratch";
@@ -708,7 +720,10 @@ impl ArawnService for LocalService {
         // Create cancellation token for this session
         let cancel_token = tokio_util::sync::CancellationToken::new();
         engine = engine.with_cancel_token(cancel_token.clone());
-        self.cancel_tokens.lock().unwrap().insert(session_id, cancel_token);
+        self.cancel_tokens
+            .lock()
+            .unwrap()
+            .insert(session_id, cancel_token);
 
         let data_dir = self.data_dir.clone();
         let store = self.store.clone();
@@ -789,14 +804,17 @@ impl ArawnService for LocalService {
 
                     // Persist stats
                     if let Ok(s) = store.lock()
-                        && let Err(e) = s.update_session_stats(session_id, &session.stats) {
-                            warn!(error = %e, "failed to update session stats");
-                        }
+                        && let Err(e) = s.update_session_stats(session_id, &session.stats)
+                    {
+                        warn!(error = %e, "failed to update session stats");
+                    }
 
-                    let _ = tx.send(EngineEvent::Usage {
-                        input_tokens: session.stats.input_tokens,
-                        output_tokens: session.stats.output_tokens,
-                    }).await;
+                    let _ = tx
+                        .send(EngineEvent::Usage {
+                            input_tokens: session.stats.input_tokens,
+                            output_tokens: session.stats.output_tokens,
+                        })
+                        .await;
 
                     // Surface persistence failures as warnings before Complete
                     if !persist_errors.is_empty() {
@@ -820,9 +838,10 @@ impl ArawnService for LocalService {
                         }
                     }
                     if let Ok(s) = store.lock()
-                        && let Err(se) = s.update_session_stats(session_id, &session.stats) {
-                            warn!(error = %se, "failed to update session stats in error path");
-                        }
+                        && let Err(se) = s.update_session_stats(session_id, &session.stats)
+                    {
+                        warn!(error = %se, "failed to update session stats in error path");
+                    }
                     let _ = tx
                         .send(EngineEvent::Error {
                             message: e.to_string(),
@@ -863,15 +882,16 @@ impl ArawnService for LocalService {
         let (ws_id, ws_name, ws_dir, scratch_workspace, target_workspace) = {
             let store = self.store.lock().unwrap();
             let ws = store
-                .find_workstream_by_name(workstream_name)
-                ?
-                .ok_or_else(|| {
-                    ServiceError::NotFound(format!("workstream '{workstream_name}'"))
-                })?;
+                .find_workstream_by_name(workstream_name)?
+                .ok_or_else(|| ServiceError::NotFound(format!("workstream '{workstream_name}'")))?;
 
             let ws_dir = arawn_storage::workstream_dir_name(&ws.name, ws.id);
-            let scratch_ws = store.sandbox_for("scratch", session_id, true).join("workspace");
-            let target_ws = store.sandbox_for(&ws_dir, session_id, false).join("workspace");
+            let scratch_ws = store
+                .sandbox_for("scratch", session_id, true)
+                .join("workspace");
+            let target_ws = store
+                .sandbox_for(&ws_dir, session_id, false)
+                .join("workspace");
 
             (ws.id, ws.name, ws_dir, scratch_ws, target_ws)
         };
@@ -879,8 +899,7 @@ impl ArawnService for LocalService {
         let msg_store = arawn_storage::JsonlMessageStore::new(&self.data_dir);
         msg_store
             .move_session(session_id, "scratch", &ws_dir)
-            .await
-            ?;
+            .await?;
 
         let sqlite_result = {
             let store = self.store.lock().unwrap();
@@ -893,10 +912,9 @@ impl ArawnService for LocalService {
         }
 
         if scratch_workspace.exists() {
-            let _ = tokio::fs::create_dir_all(
-                target_workspace.parent().unwrap_or(&target_workspace),
-            )
-            .await;
+            let _ =
+                tokio::fs::create_dir_all(target_workspace.parent().unwrap_or(&target_workspace))
+                    .await;
             if let Err(e) = tokio::fs::rename(&scratch_workspace, &target_workspace).await {
                 warn!(error = %e, "workspace rename failed during promotion, files remain in scratch");
             }
@@ -1009,32 +1027,31 @@ impl ArawnService for LocalService {
         let workflows_dir = self.data_dir.join("workflows");
         let mut workflows = Vec::new();
         if workflows_dir.exists()
-            && let Ok(entries) = std::fs::read_dir(&workflows_dir) {
-                for entry in entries.flatten() {
-                    if entry.path().is_dir() {
-                        let name = entry.file_name().to_string_lossy().to_string();
-                        let pkg_toml = entry.path().join("package.toml");
-                        let cron = pkg_toml
-                            .exists()
-                            .then(|| {
-                                std::fs::read_to_string(&pkg_toml).ok().and_then(|s| {
-                                    s.lines()
-                                        .find(|l| l.contains("cron"))
-                                        .map(|l| {
-                                            l.split('=')
-                                                .nth(1)
-                                                .unwrap_or("")
-                                                .trim()
-                                                .trim_matches('"')
-                                                .to_string()
-                                        })
+            && let Ok(entries) = std::fs::read_dir(&workflows_dir)
+        {
+            for entry in entries.flatten() {
+                if entry.path().is_dir() {
+                    let name = entry.file_name().to_string_lossy().to_string();
+                    let pkg_toml = entry.path().join("package.toml");
+                    let cron = pkg_toml
+                        .exists()
+                        .then(|| {
+                            std::fs::read_to_string(&pkg_toml).ok().and_then(|s| {
+                                s.lines().find(|l| l.contains("cron")).map(|l| {
+                                    l.split('=')
+                                        .nth(1)
+                                        .unwrap_or("")
+                                        .trim()
+                                        .trim_matches('"')
+                                        .to_string()
                                 })
                             })
-                            .flatten();
-                        workflows.push(WorkflowInfo { name, cron });
-                    }
+                        })
+                        .flatten();
+                    workflows.push(WorkflowInfo { name, cron });
                 }
             }
+        }
         Ok(workflows)
     }
 
@@ -1047,17 +1064,13 @@ impl ArawnService for LocalService {
             .ok_or_else(|| ServiceError::Internal("Memory system not available".into()))?;
 
         let (entity_type, title) = infer_entity_type(text);
-        let mut entity =
-            Entity::new(entity_type, &title).with_confidence(ConfidenceSource::Stated);
+        let mut entity = Entity::new(entity_type, &title).with_confidence(ConfidenceSource::Stated);
         if text.len() > title.len() + 5 {
             entity = entity.with_content(text);
         }
 
         // Use store_fact_embedded to auto-embed if embedder is available
-        let result = memory
-            .store_fact_embedded(&entity, None)
-            .await
-            ?;
+        let result = memory.store_fact_embedded(&entity, None).await?;
 
         match result {
             arawn_memory::StoreFactResult::Inserted { entity_id } => {
@@ -1142,7 +1155,10 @@ impl ArawnService for LocalService {
             .ok_or_else(|| ServiceError::Internal("Memory system not available".into()))?;
 
         let mut candidates = Vec::new();
-        for (store, label) in [(&memory.global, "global"), (&memory.workstream, "workstream")] {
+        for (store, label) in [
+            (&memory.global, "global"),
+            (&memory.workstream, "workstream"),
+        ] {
             if let Ok(results) = store.search(query, 5) {
                 for e in results {
                     candidates.push((e, label));
@@ -1197,7 +1213,10 @@ impl ArawnService for LocalService {
         })
     }
 
-    async fn set_permission_mode(&self, mode_str: &str) -> Result<PermissionModeInfo, ServiceError> {
+    async fn set_permission_mode(
+        &self,
+        mode_str: &str,
+    ) -> Result<PermissionModeInfo, ServiceError> {
         let mode: arawn_engine::permissions::PermissionMode =
             serde_json::from_value(serde_json::json!(mode_str)).map_err(|_| {
                 ServiceError::InvalidOperation(format!(
@@ -1223,7 +1242,9 @@ impl ArawnService for LocalService {
         })
     }
 
-    async fn get_permissions_status(&self) -> Result<arawn_service::PermissionsStatus, ServiceError> {
+    async fn get_permissions_status(
+        &self,
+    ) -> Result<arawn_service::PermissionsStatus, ServiceError> {
         use arawn_engine::permissions::{PermissionDecision, RuleKind};
 
         let rules = self.permission_rules.read().unwrap().clone();
@@ -1274,7 +1295,9 @@ impl ArawnService for LocalService {
         })
     }
 
-    async fn list_integrations(&self) -> Result<Vec<arawn_service::IntegrationStatus>, ServiceError> {
+    async fn list_integrations(
+        &self,
+    ) -> Result<Vec<arawn_service::IntegrationStatus>, ServiceError> {
         // Snapshot the registry to a Vec before awaiting on each integration's
         // is_connected() check — don't hold the RwLock across await points.
         let entries: Vec<(String, Arc<dyn arawn_integrations::Integration>)> = self
@@ -1383,8 +1406,7 @@ impl ArawnService for LocalService {
                         // surfaced so the user knows the auto-create
                         // didn't take.
                         Err(arawn_feeds::FeedError::Storage(msg))
-                            if msg.contains("UNIQUE")
-                                || msg.contains("already exists") => {}
+                            if msg.contains("UNIQUE") || msg.contains("already exists") => {}
                         Err(e) => {
                             let _ = notice_tx.send(arawn_service::ServerNotice {
                                 level: "warn".into(),
@@ -1522,15 +1544,9 @@ impl ArawnService for LocalService {
         Ok(dto)
     }
 
-    async fn feed_run(
-        &self,
-        feed_id: &str,
-    ) -> Result<arawn_service::FeedSummaryDto, ServiceError> {
+    async fn feed_run(&self, feed_id: &str) -> Result<arawn_service::FeedSummaryDto, ServiceError> {
         let runtime = self.feed_runtime_or_err()?;
-        runtime
-            .run_feed_once(feed_id)
-            .await
-            .map_err(feed_err)?;
+        runtime.run_feed_once(feed_id).await.map_err(feed_err)?;
         let dto = current_summary(&runtime, feed_id).await?;
         let _ = self.notice_tx.send(arawn_service::ServerNotice {
             level: "info".into(),
@@ -1550,7 +1566,10 @@ impl ArawnService for LocalService {
         template: &str,
     ) -> Result<arawn_service::FeedDiscoverDto, ServiceError> {
         let runtime = self.feed_runtime_or_err()?;
-        let rows = runtime.discover_template(template).await.map_err(feed_err)?;
+        let rows = runtime
+            .discover_template(template)
+            .await
+            .map_err(feed_err)?;
         Ok(match rows {
             Some(rows) => arawn_service::FeedDiscoverDto {
                 template: template.into(),
@@ -1628,9 +1647,7 @@ fn feed_err(e: arawn_feeds::FeedError) -> ServiceError {
     use arawn_feeds::FeedError;
     match e {
         FeedError::InvalidParams(msg) => ServiceError::InvalidOperation(msg),
-        FeedError::Auth(msg) => {
-            ServiceError::InvalidOperation(format!("auth: {msg}"))
-        }
+        FeedError::Auth(msg) => ServiceError::InvalidOperation(format!("auth: {msg}")),
         other => ServiceError::Internal(other.to_string()),
     }
 }
@@ -1690,8 +1707,7 @@ fn resolve_ws_dir_from_store(store: &Store, ws_id: Option<Uuid>) -> Result<Strin
     match ws_id {
         Some(id) => {
             let ws = store
-                .get_workstream(id)
-                ?
+                .get_workstream(id)?
                 .ok_or_else(|| ServiceError::NotFound(format!("workstream {id}")))?;
             Ok(workstream_dir_name(&ws.name, ws.id))
         }

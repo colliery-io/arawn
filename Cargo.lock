@@ -143,6 +143,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "arawn-auth",
+ "arawn-ceremonies",
  "arawn-core",
  "arawn-embed",
  "arawn-engine",

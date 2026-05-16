@@ -77,4 +77,58 @@ the agent (and the UAT runner) cannot reach the ceremony engine at all.
 
 ## Status Updates
 
-*To be added during implementation*
+### 2026-05-15 — wiring landed
+
+- Added `arawn-ceremonies` to `arawn`'s `Cargo.toml`.
+- `LocalService` gets `set_ceremony_service` + `ceremony_service` accessors
+  (interior-mutable `Arc<RwLock<Option<...>>>` mirroring `feed_runtime`'s
+  late-binding pattern — needed because the cloacina runtime isn't
+  available until after `LocalService::new`).
+- `main.rs` (after the workflow-runner block): opens a dedicated
+  rusqlite `Connection` to `arawn.db` for the ceremony engine,
+  resolves a `hint:medium` LLM client via `llm_pool.resolve_hint`,
+  constructs `RetroCeremony` with the v1 detector catalog, wraps in
+  `PluginRegistry`, builds `EngineDispatcher` + event channel +
+  `CeremonyService` + `CeremonyRunner`, registers cron via
+  `runner.start()`, and spawns an hourly nightly-sweep tokio task
+  (calls `sweep_unreviewed_retros`). The service handle is wired
+  into `LocalService` via `set_ceremony_service`. Whole block is
+  guarded on `workflow_runner_handle` being available; degrades to
+  "ceremony engine skipped" with a warn line otherwise.
+- `ws_server.rs`: added 8 RPC method arms under a `ceremonies.*`
+  prefix matcher, plus a `from_ceremony_error` helper that emits
+  `code: "ceremony_error"` with `details.kind` for variant
+  discrimination. New method names registered in `RPC_METHODS`.
+
+### Acceptance status
+
+All RPC methods + binary wiring criteria are met. Two deferred items:
+
+1. **Binary-level smoke test**: `cargo test`-level coverage exists at
+   the crate boundary (engine + service + retro plugin tested under
+   `MockLlmClient` via the T-0291 in-crate UAT). The integration
+   point this task adds — the RPC method arms — is mechanical
+   delegation. The real end-to-end test belongs to [[ARAWN-T-0294]]
+   (LLM-judged UAT scenario), which exercises the dispatcher,
+   binary, agent tools, and engine in one pass. Documenting that as
+   the integration coverage for this slice instead of cutting a
+   redundant binary-level test.
+2. **`get_today` for daily kind**: Listed in the original acceptance
+   criteria; not wired because daily ceremonies don't exist yet
+   (I-0041 is still in discovery). Skipped intentionally — adding
+   `ceremonies.get_today` now would freeze a contract before the
+   daily plugin is designed.
+
+### Architectural notes
+
+- Used a dedicated rusqlite `Connection` rather than sharing the
+  `Store`'s connection. SQLite WAL handles cross-connection
+  concurrency; isolates ceremony writes from main-store mutex
+  contention. ConnHandle is the engine's natural boundary type.
+- Cron sweep is a tokio interval, not a cloacina workflow — the
+  sweep is a single-row `UPDATE`, not a multi-step ceremony, so
+  the cloacina overhead isn't worth it. Hourly cadence is
+  conservative; Sunday-night-only could be done later by passing
+  `chrono::Weekday`.
+
+Completed 2026-05-15.

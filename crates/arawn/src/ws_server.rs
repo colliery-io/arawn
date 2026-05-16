@@ -56,6 +56,14 @@ const RPC_METHODS: &[&str] = &[
     "feed_remove",
     "feed_discover",
     "feed_run",
+    "ceremonies.get_retro_current",
+    "ceremonies.get_by_period",
+    "ceremonies.list_items",
+    "ceremonies.patch_item",
+    "ceremonies.add_item",
+    "ceremonies.upsert_diary",
+    "ceremonies.run",
+    "ceremonies.list_notifications",
 ];
 
 /// JSON-RPC style request from client.
@@ -106,6 +114,31 @@ impl Response {
         }
     }
 
+    /// Build an error response from a `CeremonyError`. Ceremony errors
+    /// aren't `ServiceError`s — they bubble straight out of
+    /// `arawn-ceremonies` — so we wrap them under a single
+    /// `ceremony_error` code with the variant name as a discriminator.
+    fn from_ceremony_error(id: u64, e: &arawn_ceremonies::CeremonyError) -> Self {
+        let kind = match e {
+            arawn_ceremonies::CeremonyError::Storage(_) => "storage",
+            arawn_ceremonies::CeremonyError::Llm(_) => "llm",
+            arawn_ceremonies::CeremonyError::InvalidTabletState(_) => "invalid_tablet_state",
+            arawn_ceremonies::CeremonyError::MissingCitation(_) => "missing_citation",
+            arawn_ceremonies::CeremonyError::DuplicateKind(_) => "duplicate_kind",
+            arawn_ceremonies::CeremonyError::InsufficientHistory(_) => "insufficient_history",
+            arawn_ceremonies::CeremonyError::Other(_) => "other",
+        };
+        Self {
+            id,
+            result: None,
+            error: Some(ErrorBody {
+                code: "ceremony_error".to_string(),
+                message: e.to_string(),
+                details: Some(serde_json::json!({ "kind": kind })),
+            }),
+        }
+    }
+
     /// Build an error response from a [`ServiceError`]. Preserves the
     /// stable code, the display message, and — for variants that wrap
     /// typed sources — a structured `details` object with the inner
@@ -135,11 +168,18 @@ struct AppState {
 /// Generate a random auth token for WebSocket connections.
 fn generate_auth_token() -> String {
     // Use two UUIDs concatenated for sufficient entropy (256 bits)
-    format!("{}{}", uuid::Uuid::new_v4().simple(), uuid::Uuid::new_v4().simple())
+    format!(
+        "{}{}",
+        uuid::Uuid::new_v4().simple(),
+        uuid::Uuid::new_v4().simple()
+    )
 }
 
 /// Write the auth token to {data_dir}/server.token for clients to read.
-fn write_token_file(data_dir: &std::path::Path, token: &str) -> std::io::Result<std::path::PathBuf> {
+fn write_token_file(
+    data_dir: &std::path::Path,
+    token: &str,
+) -> std::io::Result<std::path::PathBuf> {
     std::fs::create_dir_all(data_dir)?;
     let token_path = data_dir.join("server.token");
     std::fs::write(&token_path, token)?;
@@ -149,16 +189,16 @@ fn write_token_file(data_dir: &std::path::Path, token: &str) -> std::io::Result<
 /// Read the auth token from {data_dir}/server.token.
 /// Falls back to ARAWN_DATA_DIR env var, then ~/.arawn.
 pub fn read_token_file() -> Option<String> {
-    let data_dir = std::env::var("ARAWN_DATA_DIR")
-        .ok()
-        .or_else(|| {
-            std::env::var("HOME")
-                .or_else(|_| std::env::var("USERPROFILE"))
-                .ok()
-                .map(|h| format!("{h}/.arawn"))
-        })?;
+    let data_dir = std::env::var("ARAWN_DATA_DIR").ok().or_else(|| {
+        std::env::var("HOME")
+            .or_else(|_| std::env::var("USERPROFILE"))
+            .ok()
+            .map(|h| format!("{h}/.arawn"))
+    })?;
     let token_path = std::path::PathBuf::from(data_dir).join("server.token");
-    std::fs::read_to_string(token_path).ok().map(|s| s.trim().to_string())
+    std::fs::read_to_string(token_path)
+        .ok()
+        .map(|s| s.trim().to_string())
 }
 
 /// Start the WebSocket server on the given port.
@@ -273,7 +313,11 @@ async fn ws_handler(
             }
             None => {
                 warn!("ws_handler: missing auth token");
-                return (StatusCode::UNAUTHORIZED, "Auth token required. Connect with /ws?token=<token>").into_response();
+                return (
+                    StatusCode::UNAUTHORIZED,
+                    "Auth token required. Connect with /ws?token=<token>",
+                )
+                    .into_response();
             }
         }
     }
@@ -556,23 +600,22 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                     "truncate_session_at_user_message"
                 );
                 let resp = match (session_id, user_message_index) {
-                    (Some(sid), Some(idx)) => match service
-                        .truncate_session_at_user_message(sid, idx)
-                        .await
-                    {
-                        Ok(detail) => {
-                            debug!(
-                                id,
-                                messages = detail.messages.len(),
-                                "truncate_session_at_user_message ok"
-                            );
-                            Response::success(id, serde_json::to_value(&detail).unwrap())
+                    (Some(sid), Some(idx)) => {
+                        match service.truncate_session_at_user_message(sid, idx).await {
+                            Ok(detail) => {
+                                debug!(
+                                    id,
+                                    messages = detail.messages.len(),
+                                    "truncate_session_at_user_message ok"
+                                );
+                                Response::success(id, serde_json::to_value(&detail).unwrap())
+                            }
+                            Err(e) => {
+                                warn!(id, error = %e, "truncate_session_at_user_message failed");
+                                Response::from_service_error(id, &e)
+                            }
                         }
-                        Err(e) => {
-                            warn!(id, error = %e, "truncate_session_at_user_message failed");
-                            Response::from_service_error(id, &e)
-                        }
-                    },
+                    }
                     _ => Response::error(
                         id,
                         "invalid_params",
@@ -1038,16 +1081,12 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                     request.params.clone(),
                 ) {
                     Ok(spec) => match service.feed_register(spec).await {
-                        Ok(dto) => {
-                            Response::success(id, serde_json::to_value(&dto).unwrap())
-                        }
+                        Ok(dto) => Response::success(id, serde_json::to_value(&dto).unwrap()),
                         Err(e) => Response::from_service_error(id, &e),
                     },
-                    Err(e) => Response::error(
-                        id,
-                        "invalid_params",
-                        format!("feed_register params: {e}"),
-                    ),
+                    Err(e) => {
+                        Response::error(id, "invalid_params", format!("feed_register params: {e}"))
+                    }
                 };
                 let _ = sender
                     .send(WsMessage::Text(
@@ -1159,6 +1198,195 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                     .await;
             }
 
+            method if method.starts_with("ceremonies.") => {
+                let cer = match service.ceremony_service() {
+                    Some(svc) => svc,
+                    None => {
+                        let resp = Response::error(
+                            id,
+                            "ceremony_unavailable",
+                            "ceremony engine not wired (workflow runner unavailable at boot)"
+                                .into(),
+                        );
+                        let _ = sender
+                            .send(WsMessage::Text(
+                                serde_json::to_string(&resp).unwrap().into(),
+                            ))
+                            .await;
+                        continue;
+                    }
+                };
+                let resp: Response = match method {
+                    "ceremonies.get_retro_current" => {
+                        let iso_week =
+                            arawn_ceremonies::RetroCeremony::iso_week(chrono::Utc::now());
+                        match cer.get_by_period("retro", &iso_week) {
+                            Ok(Some(t)) => Response::success(id, serde_json::to_value(&t).unwrap()),
+                            Ok(None) => Response::success(id, Value::Null),
+                            Err(e) => Response::from_ceremony_error(id, &e),
+                        }
+                    }
+                    "ceremonies.get_by_period" => {
+                        let kind = request
+                            .params
+                            .get("kind")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("");
+                        let period_key = request
+                            .params
+                            .get("period_key")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("");
+                        if kind.is_empty() || period_key.is_empty() {
+                            Response::error(
+                                id,
+                                "invalid_params",
+                                "kind and period_key are required".into(),
+                            )
+                        } else {
+                            match cer.get_by_period(kind, period_key) {
+                                Ok(Some(t)) => {
+                                    Response::success(id, serde_json::to_value(&t).unwrap())
+                                }
+                                Ok(None) => Response::success(id, Value::Null),
+                                Err(e) => Response::from_ceremony_error(id, &e),
+                            }
+                        }
+                    }
+                    "ceremonies.list_items" => {
+                        let tablet_id = request
+                            .params
+                            .get("tablet_id")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("")
+                            .to_string();
+                        let section_key = request
+                            .params
+                            .get("section_key")
+                            .and_then(|v| v.as_str())
+                            .map(|s| s.to_string());
+                        if tablet_id.is_empty() {
+                            Response::error(id, "invalid_params", "tablet_id is required".into())
+                        } else {
+                            match cer.list_items(&tablet_id, section_key.as_deref()) {
+                                Ok(items) => {
+                                    Response::success(id, serde_json::to_value(&items).unwrap())
+                                }
+                                Err(e) => Response::from_ceremony_error(id, &e),
+                            }
+                        }
+                    }
+                    "ceremonies.patch_item" => {
+                        let item_id = request
+                            .params
+                            .get("item_id")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("")
+                            .to_string();
+                        let patch_val = request.params.get("patch").cloned().unwrap_or(Value::Null);
+                        let patch: arawn_ceremonies::ItemPatch =
+                            serde_json::from_value(patch_val).unwrap_or_default();
+                        if item_id.is_empty() {
+                            Response::error(id, "invalid_params", "item_id is required".into())
+                        } else {
+                            match cer.patch_item(&item_id, patch) {
+                                Ok(dto) => {
+                                    Response::success(id, serde_json::to_value(&dto).unwrap())
+                                }
+                                Err(e) => Response::from_ceremony_error(id, &e),
+                            }
+                        }
+                    }
+                    "ceremonies.add_item" => {
+                        match serde_json::from_value::<arawn_ceremonies::AddItemRequest>(
+                            request.params.clone(),
+                        ) {
+                            Ok(req) => match cer.add_item(req) {
+                                Ok(dto) => {
+                                    Response::success(id, serde_json::to_value(&dto).unwrap())
+                                }
+                                Err(e) => Response::from_ceremony_error(id, &e),
+                            },
+                            Err(e) => Response::error(
+                                id,
+                                "invalid_params",
+                                format!("add_item params: {e}"),
+                            ),
+                        }
+                    }
+                    "ceremonies.upsert_diary" => {
+                        let tablet_id = request
+                            .params
+                            .get("tablet_id")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("")
+                            .to_string();
+                        let body = request
+                            .params
+                            .get("body")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("")
+                            .to_string();
+                        if tablet_id.is_empty() {
+                            Response::error(id, "invalid_params", "tablet_id is required".into())
+                        } else {
+                            match cer.upsert_diary(&tablet_id, &body) {
+                                Ok(()) => Response::success(id, serde_json::json!({"ok": true})),
+                                Err(e) => Response::from_ceremony_error(id, &e),
+                            }
+                        }
+                    }
+                    "ceremonies.run" => {
+                        let kind = request
+                            .params
+                            .get("kind")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("retro")
+                            .to_string();
+                        match cer.run(&kind).await {
+                            Ok(arawn_ceremonies::DispatchOutcome::Generated { tablet_id }) => {
+                                Response::success(
+                                    id,
+                                    serde_json::json!({
+                                        "status": "generated",
+                                        "tablet_id": tablet_id,
+                                    }),
+                                )
+                            }
+                            Ok(arawn_ceremonies::DispatchOutcome::Skipped { reason }) => {
+                                Response::success(
+                                    id,
+                                    serde_json::json!({
+                                        "status": "skipped",
+                                        "reason": reason,
+                                    }),
+                                )
+                            }
+                            Err(e) => Response::from_ceremony_error(id, &e),
+                        }
+                    }
+                    "ceremonies.list_notifications" => match cer.list_notifications() {
+                        Ok(n) => Response::success(id, serde_json::to_value(&n).unwrap()),
+                        Err(e) => Response::from_ceremony_error(id, &e),
+                    },
+                    other => Response::error(
+                        id,
+                        "method_not_found",
+                        format!("unknown ceremonies method: {other}"),
+                    ),
+                };
+                if sender
+                    .send(WsMessage::Text(
+                        serde_json::to_string(&resp).unwrap().into(),
+                    ))
+                    .await
+                    .is_err()
+                {
+                    warn!(id, "send failed, client gone");
+                    break;
+                }
+            }
+
             unknown => {
                 warn!(id, method = %unknown, "unknown RPC method");
                 let resp =
@@ -1189,7 +1417,11 @@ mod tests {
 
         let body = resp.error.unwrap();
         assert_eq!(body.code, "storage_error");
-        assert!(body.message.contains("not found"), "message: {}", body.message);
+        assert!(
+            body.message.contains("not found"),
+            "message: {}",
+            body.message
+        );
         let details = body.details.unwrap();
         assert_eq!(details["kind"], "not_found");
     }
