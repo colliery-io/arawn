@@ -4,14 +4,14 @@ level: task
 title: "Weekly plugin — Ceremony trait impl with gather + compose (5 sections)"
 short_code: "ARAWN-T-0301"
 created_at: 2026-05-16T16:37:46.058159+00:00
-updated_at: 2026-05-16T16:41:13.031802+00:00
+updated_at: 2026-05-16T16:45:23.668783+00:00
 parent: ARAWN-I-0042
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
