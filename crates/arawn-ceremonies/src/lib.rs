@@ -31,7 +31,10 @@ pub use plugin::{
 pub use engine::{ConnHandle, EngineCtx, EngineDispatcher};
 pub use events::{CeremonyEvent, CeremonyEventReceiver, CeremonyEventSender, channel as event_channel};
 pub use patterns::{Detector, DetectorCtx, DetectorRegistry};
-pub use plugins::RetroCeremony;
+pub use plugins::{
+    PriorityCompletionDetector, RetroCeremony, RolloverHeatDetector,
+    WorkstreamNeglectDetector, retro_v1_catalog,
+};
 pub use registry::PluginRegistry;
 pub use rollup::{CentralDbWorkstreams, RollupSource, WorkstreamList, compute_for_week, read_rollup_value};
 pub use runner::{

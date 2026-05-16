@@ -395,6 +395,14 @@ fn parse_llm_items(text: &str) -> Option<Vec<ComposedItemSpec>> {
     None
 }
 
+/// Re-export the iso-week date helper so the catalog (T-0288) can
+/// use the same Mon..Sun math without duplicating it. The public
+/// name is intentionally noisy so it doesn't get mistaken for part
+/// of the public crate API.
+pub(crate) fn monday_sunday_for_iso_week_public(iso_week: &str) -> Option<(String, String)> {
+    monday_sunday_for_iso_week(iso_week)
+}
+
 /// Compute Monday and Sunday `YYYY-MM-DD` strings that bracket an
 /// ISO week. Used to filter daily tablets by period_key. Returns
 /// `None` when the input is malformed.

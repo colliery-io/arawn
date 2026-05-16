@@ -6,5 +6,10 @@
 //! later.
 
 pub mod retro;
+pub mod retro_detectors;
 
 pub use retro::RetroCeremony;
+pub use retro_detectors::{
+    PriorityCompletionDetector, RolloverHeatDetector, WorkstreamNeglectDetector,
+    v1_catalog as retro_v1_catalog,
+};
