@@ -4,14 +4,14 @@ level: initiative
 title: "Daily prep ceremony — scheduled morning brief with agenda + todo surface"
 short_code: "ARAWN-I-0041"
 created_at: 2026-05-15T12:25:30.219600+00:00
-updated_at: 2026-05-15T12:25:30.219600+00:00
+updated_at: 2026-05-16T14:07:46.089845+00:00
 parent: ARAWN-V-0001
 blocked_by: []
 archived: false
 
 tags:
   - "#initiative"
-  - "#phase/discovery"
+  - "#phase/active"
 
 
 exit_criteria_met: false
@@ -143,6 +143,16 @@ Citation discipline matters: this is the only thing keeping the brief grounded v
 - **Chat-only output ("just print it in the TUI when you start")** — rejected. Ceremonies must be persistent so the retro can read them back and the user can mark todos done over the course of the day.
 - **External cron + CLI** — rejected for v1. Keeps activation friction up and complicates state (where does the artifact go if arawn isn't running?). Cloacina in-process is simpler.
 - **One unified "brief" with mode flag instead of three initiatives** — rejected. Daily/weekly/retro have distinct content shapes and cadences; sharing the artifact-writing + scheduling plumbing is enough.
+
+## Design Decisions (2026-05-16)
+
+Locked decisions captured as the initiative moves out of discovery, building on what already shipped in [[ARAWN-I-0043]]:
+
+1. **Cadence — configurable, default weekday mornings 07:00 local.** Default cron `0 7 * * MON-FRI`. Read from `[ceremonies.daily]` in `arawn.toml`. The shared `CeremonyConfig` surface (enabled / schedule / timezone / model) shipped under [[ARAWN-T-0295]]; daily consumes it from day one.
+2. **Four compose sections.** `calendar` (today's events with prep notes), `todos` (carried-over rolling todos), `attention` (new signals since the prior daily tablet's `generated_at`), `alignment` (current ISO week's confirmed priorities pulled from the retro/weekly tablet). Every composed item carries a `citation_id` pointing to a gather-payload row — same two-write-path contract as retro.
+3. **Daily ↔ retro coupling, both directions.** Daily *writes* to `ceremony_todos_rolling` (so retro's `rollover_heat` detector picks them up). Daily *reads* the current week's confirmed `ceremony_priorities` for the `alignment` section. Schema is already in V6; no migration needed.
+4. **Interaction surface = WS-RPC, not REST.** The original discovery doc proposed `/api/ceremonies/*` HTTP routes. Reality landed on WS-RPC `ceremonies.*` methods in [[ARAWN-T-0292]]. Daily reuses the existing dispatch path; new methods added only if a daily-specific shape demands it (likely none — `ceremonies.run { kind: "daily" }` already works).
+5. **Cross-workstream by default.** Gather queries are workstream-agnostic; filtering is a future opt-in via `[ceremonies.daily].workstreams = [...]` — deferred from v1.
 
 ## Implementation Plan
 
