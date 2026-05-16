@@ -4,14 +4,14 @@ level: task
 title: "Binary wiring — daily plugin into ceremony runner"
 short_code: "ARAWN-T-0299"
 created_at: 2026-05-16T14:00:00+00:00
-updated_at: 2026-05-16T16:10:16.823684+00:00
+updated_at: 2026-05-16T16:13:02.400880+00:00
 parent: ARAWN-I-0041
 blocked_by: [ARAWN-T-0296, ARAWN-T-0297]
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -32,8 +32,6 @@ register on the shared `PluginRegistry`, apply
 runner. The ceremony engine, RPC dispatch, and event channel are
 already in place from [[ARAWN-T-0292]]; this task slots a second
 plugin into the existing wiring.
-
-## Acceptance Criteria
 
 ## Acceptance Criteria
 
