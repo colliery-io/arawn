@@ -4,14 +4,14 @@ level: task
 title: "Calendar + attention gather adapters (pluggable sources)"
 short_code: "ARAWN-T-0297"
 created_at: 2026-05-16T14:00:00+00:00
-updated_at: 2026-05-16T16:04:47.237579+00:00
+updated_at: 2026-05-16T16:09:58.984712+00:00
 parent: ARAWN-I-0041
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -31,8 +31,6 @@ Define two pluggable source traits in `arawn-ceremonies`
 backed by the existing feed / projection stores. Mirrors the
 `RollupSource` pattern from [[ARAWN-T-0285]] so the daily plugin
 doesn't take hard deps on `arawn-feeds` / `arawn-projections`.
-
-## Acceptance Criteria
 
 ## Acceptance Criteria
 
