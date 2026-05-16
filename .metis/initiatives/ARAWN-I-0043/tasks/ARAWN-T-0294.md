@@ -4,16 +4,14 @@ level: task
 title: "Retro UAT scenario + fixture — LLM-judged end-to-end"
 short_code: "ARAWN-T-0294"
 created_at: 2026-05-16T03:22:46.609267+00:00
-updated_at: 2026-05-16T03:22:46.609267+00:00
+updated_at: 2026-05-16T12:31:00.608709+00:00
 parent: ARAWN-I-0043
-blocked_by:
-  - ARAWN-T-0292
-  - ARAWN-T-0293
+blocked_by: [ARAWN-T-0292, ARAWN-T-0293]
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/active"
 
 
 exit_criteria_met: false
@@ -70,4 +68,50 @@ shipped a mock-LLM in-crate UAT; this is its end-to-end counterpart, judged by
 
 ## Status Updates
 
-*To be added during implementation*
+### 2026-05-16 — scenario + fixture + seeder shipped
+
+- New file `crates/arawn-tests/tests/fixtures/uat/retro-ceremony.json`
+  declares three workstreams (`proj-a`, `proj-b`, `proj-c`) with one
+  gmail row each — minimum required so the workstreams exist in the
+  storage layer before the ceremony engine reads them.
+- New file `crates/arawn-tests/tests/uat_retro_seed.rs` opens its own
+  rusqlite connection to `arawn.db` (post-migrations) and writes:
+  - `ceremony_activity_rollup` rows for the trailing 3 ISO weeks
+    (all three workstreams active) + the current ISO week
+    (proj-a + proj-b only, proj-c neglected → triggers
+    `WorkstreamNeglectDetector`).
+  - One weekly tablet for the current week with 3 confirmed
+    priorities, none done → triggers `PriorityCompletionDetector`
+    (ratio 0.0).
+  - Five daily tablets across Mon–Fri of the current ISO week.
+  - Four rolling todos with `created_at` 10 days before Monday
+    and `last_seen_tablet_id` pointing to a daily this week →
+    triggers `RolloverHeatDetector` (count ≥ 3).
+  - One prior retro from 2 weeks ago with a diary the gather
+    payload surfaces.
+  - All inserts use `INSERT OR IGNORE` so the seeder is idempotent.
+  - Three unit tests verify monday/sunday bracketing, idempotency,
+    and that all sections seed at minimum thresholds.
+- `crates/arawn-tests/tests/uat.rs`:
+  - New `seed_retro_ceremony: bool` field on `Scenario`, threaded
+    through the harness right after fixture-apply + tag-promoter.
+  - `mod uat_retro_seed;` declared.
+  - `retro_ceremony_scenario()` with 3 turns:
+    1. Run the retro, report tablet_id.
+    2. List items grouped by section, **quote citation_id values
+       verbatim** (judge grounding criterion).
+    3. Save diary and verify `retro_current` flips status to
+       `reviewed`.
+  - Registered in `all_scenarios()`.
+  - All existing scenarios updated to `seed_retro_ceremony: false`.
+- `rusqlite` added as a dep of `arawn-tests`.
+
+### Acceptance status
+
+All acceptance criteria met. End-to-end run requires a real LLM —
+invoke via `angreal test uat` (any scenario) then
+`angreal test uat-judge`. The scenario is registered alongside the
+existing four; the harness will run it as part of the next UAT
+sweep.
+
+Completed 2026-05-16.

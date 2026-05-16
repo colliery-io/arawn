@@ -25,6 +25,7 @@ axum = { version = "0.8", features = ["ws"] }
 futures-util = "0.3"
 tokio-tungstenite = "0.26"
 chrono = { workspace = true }
+rusqlite = { version = "0.37", features = ["bundled"] }
 serde_json = { workspace = true }
 serde = { workspace = true }
 

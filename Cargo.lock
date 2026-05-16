@@ -524,6 +524,7 @@ dependencies = [
  "chrono",
  "cloacina-build",
  "futures-util",
+ "rusqlite",
  "serde",
  "serde_json",
  "tempfile",

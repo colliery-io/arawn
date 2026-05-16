@@ -43,6 +43,12 @@ pub struct Scenario {
     /// proposal as a confused fallback target.
     #[serde(default)]
     pub seed_tag_promoter: bool,
+    /// When true, after fixture apply the harness runs
+    /// `uat_retro_seed::apply` to populate ceremony tables (rollup,
+    /// priorities, todos, prior retro diary) so the retro plugin's
+    /// gather + pattern detectors have data to work with.
+    #[serde(default)]
+    pub seed_retro_ceremony: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -612,6 +618,7 @@ fn github_monitor_scenario() -> Scenario {
         },
         seed_fixture: None,
         seed_tag_promoter: false,
+        seed_retro_ceremony: false,
     }
 }
 
@@ -649,11 +656,13 @@ fn work_signal_pipeline_scenario() -> Scenario {
         },
         seed_fixture: None,
         seed_tag_promoter: false,
+        seed_retro_ceremony: false,
     }
 }
 
 #[path = "uat_fixture.rs"]
 mod uat_fixture;
+mod uat_retro_seed;
 
 /// I-0040 end-to-end UAT: synthetic gmail + slack feed rows for two
 /// workstreams, extractor runs during seed so the KB is warm, agent
@@ -711,6 +720,7 @@ fn signal_extraction_e2e_scenario() -> Scenario {
         // tag-promoter row would confuse turn 5's workstream_refine
         // when the dust path itself stalls (UAT 23:31 regression).
         seed_tag_promoter: false,
+        seed_retro_ceremony: false,
     }
 }
 
@@ -756,6 +766,44 @@ fn tag_promoter_cycle_scenario() -> Scenario {
         // This scenario IS the tag-promoter cycle — seed the proposals
         // so refine on turn 2 has something to find.
         seed_tag_promoter: true,
+        seed_retro_ceremony: false,
+    }
+}
+
+/// I-0043 retro ceremony end-to-end: seed three workstreams + prior
+/// rollup/priority/todo/diary state, drive the agent through
+/// retro_run → retro_list_items → retro_save_diary against a real
+/// LLM. Judge verifies the agent (a) calls retro_run and reports a
+/// tablet id, (b) lists items grouped by section with citation_id
+/// values quoted verbatim, (c) persists a diary and confirms the
+/// tablet status flips.
+fn retro_ceremony_scenario() -> Scenario {
+    Scenario {
+        name: "retro-ceremony".to_string(),
+        objective: "Drive the I-0043 retro ceremony end-to-end. Three workstreams are seeded (proj-a, proj-b, proj-c) with 3 prior weeks of rollup activity. The current ISO week has 3 confirmed priorities all not-done (priority_completion_ratio fires), 4 rolling todos with last_seen this week (rollover_heat fires), and no rollup for proj-c in the current week (workstream_neglect fires). One prior retro tablet from 2 weeks ago seeds a diary the gather payload surfaces.".to_string(),
+        turns: vec![
+            ScenarioTurn {
+                user_message: "Run this week's retro and tell me the tablet id you get back.".to_string(),
+                judge_expectation: "Agent calls retro_run exactly once and reports the tablet_id from the response. Status should be `generated` (or `skipped` with a tablet_id-bearing reason if a tablet from a prior run still exists in the data dir).".to_string(),
+            },
+            ScenarioTurn {
+                user_message: "Use retro_list_items with that tablet id. Group the items by section and, for each item, quote the citation_id verbatim. Do not paraphrase the ids — copy them character-for-character so I can trace each line back to the source row.".to_string(),
+                judge_expectation: "Agent calls retro_list_items with the tablet id from turn 1. The reply groups items by section_key (`what_happened` and `patterns`). For each item it surfaces the citation_id field verbatim (e.g. `prio-001`, `todo-003`, `pat-…`) — citation ids are quoted in backticks or otherwise distinguishable, not paraphrased into prose. At least three items reported across the two sections.".to_string(),
+            },
+            ScenarioTurn {
+                user_message: "Save this diary entry: 'Felt focused; proj-c starved this week.' Then call retro_current and confirm the tablet status changed.".to_string(),
+                judge_expectation: "Agent calls retro_save_diary with the tablet id and the literal body string, then calls retro_current and reports `status: reviewed` (was `open` before the save).".to_string(),
+            },
+        ],
+        mechanical: MechanicalThresholds {
+            min_files_created: 0,
+            min_workflows_created: 0,
+            min_memory_entities: 0,
+            max_tool_errors: 1,
+        },
+        seed_fixture: Some("tests/fixtures/uat/retro-ceremony.json".to_string()),
+        seed_tag_promoter: false,
+        seed_retro_ceremony: true,
     }
 }
 
@@ -765,6 +813,7 @@ fn all_scenarios() -> Vec<Scenario> {
         work_signal_pipeline_scenario(),
         signal_extraction_e2e_scenario(),
         tag_promoter_cycle_scenario(),
+        retro_ceremony_scenario(),
     ]
 }
 
@@ -857,6 +906,14 @@ async fn uat_run() {
                 println!(
                     "    Seed tag-promoter: {} promotion proposals journaled",
                     promoted
+                );
+            }
+
+            if scenario.seed_retro_ceremony {
+                let s = uat_retro_seed::apply(&scenario_dir).expect("seed retro state");
+                println!(
+                    "    Seed retro ceremony: {} rollup rows, {} daily tablets, {} todos, {} priorities, {} prior retros",
+                    s.rollup_rows, s.daily_tablets, s.rolling_todos, s.priorities, s.prior_retros
                 );
             }
         }
