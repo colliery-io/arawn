@@ -4,7 +4,7 @@ level: task
 title: "Configurable ceremony schedule + model — [ceremonies.<kind>] in arawn.toml"
 short_code: "ARAWN-T-0295"
 created_at: 2026-05-16T13:52:45.909172+00:00
-updated_at: 2026-05-16T13:53:29.213868+00:00
+updated_at: 2026-05-16T13:58:52.440971+00:00
 parent: 
 blocked_by: []
 archived: false
@@ -12,7 +12,7 @@ archived: false
 tags:
   - "#task"
   - "#tech-debt"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
