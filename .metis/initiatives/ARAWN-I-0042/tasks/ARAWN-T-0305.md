@@ -4,14 +4,14 @@ level: task
 title: "Weekly UAT scenario + fixture + seeder — Monday confirm flow LLM-judged"
 short_code: "ARAWN-T-0305"
 created_at: 2026-05-16T16:38:11.674109+00:00
-updated_at: 2026-05-16T16:58:20.603966+00:00
+updated_at: 2026-05-16T18:25:29.928279+00:00
 parent: ARAWN-I-0042
 blocked_by: [ARAWN-T-0303, ARAWN-T-0304]
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false

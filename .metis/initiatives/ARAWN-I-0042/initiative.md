@@ -4,14 +4,14 @@ level: initiative
 title: "Weekly prep ceremony — scheduled Monday brief setting priorities for the week"
 short_code: "ARAWN-I-0042"
 created_at: 2026-05-15T12:25:31.682847+00:00
-updated_at: 2026-05-16T16:40:57.426305+00:00
+updated_at: 2026-05-16T18:25:43.999150+00:00
 parent: ARAWN-V-0001
 blocked_by: []
 archived: false
 
 tags:
   - "#initiative"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
