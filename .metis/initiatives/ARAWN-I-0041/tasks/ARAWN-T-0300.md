@@ -3,17 +3,15 @@ id: daily-uat-scenario-fixture-seeder
 level: task
 title: "Daily UAT scenario + fixture + seeder — LLM-judged end-to-end"
 short_code: "ARAWN-T-0300"
-created_at: 2026-05-16T14:00:00.000000+00:00
-updated_at: 2026-05-16T14:00:00.000000+00:00
+created_at: 2026-05-16T14:00:00+00:00
+updated_at: 2026-05-16T16:17:51.888076+00:00
 parent: ARAWN-I-0041
-blocked_by:
-  - ARAWN-T-0298
-  - ARAWN-T-0299
+blocked_by: [ARAWN-T-0298, ARAWN-T-0299]
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/active"
 
 
 exit_criteria_met: false
@@ -32,6 +30,8 @@ Add a real-LLM scenario to `angreal test uat` that exercises the
 daily ceremony end-to-end through the binary's WS-RPC + daily_*
 agent tools. Mirrors the retro UAT structure shipped in
 [[ARAWN-T-0294]].
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
@@ -101,4 +101,17 @@ agent tools. Mirrors the retro UAT structure shipped in
 
 ## Status Updates
 
-*To be added during implementation*
+### 2026-05-16 — UAT shipped and graded PASS
+
+- New fixture + seeder + scenario shipped per spec. Calendar
+  events written via `CalendarEventProjection` typed writer
+  (avoids raw-SQL coupling to the schema).
+- 2 seeder unit tests pass. Full uat-target build clean.
+- **Real-LLM run** (gemma4:31b-cloud): PASS, completion=4/5,
+  quality=4/5. Turn 1+2 scored 5/5/5/5. Turn 3 docked on
+  adherence (model parallelised daily_add_todo +
+  daily_list_items — same gemma4 quirk documented on retro
+  Turn 3). The new todo still surfaced correctly so the
+  ceremony engine + agent tools work end-to-end.
+
+Completed 2026-05-16.

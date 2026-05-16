@@ -49,6 +49,13 @@ pub struct Scenario {
     /// gather + pattern detectors have data to work with.
     #[serde(default)]
     pub seed_retro_ceremony: bool,
+    /// When true, after fixture apply the harness runs
+    /// `uat_daily_seed::apply` to populate ceremony tables (rolling
+    /// todos, weekly tablet + priorities, placeholder daily tablet)
+    /// and the `calendar_events` projection table so the daily
+    /// plugin's gather has data in all four sections.
+    #[serde(default)]
+    pub seed_daily_ceremony: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -619,6 +626,7 @@ fn github_monitor_scenario() -> Scenario {
         seed_fixture: None,
         seed_tag_promoter: false,
         seed_retro_ceremony: false,
+        seed_daily_ceremony: false,
     }
 }
 
@@ -657,12 +665,14 @@ fn work_signal_pipeline_scenario() -> Scenario {
         seed_fixture: None,
         seed_tag_promoter: false,
         seed_retro_ceremony: false,
+        seed_daily_ceremony: false,
     }
 }
 
 #[path = "uat_fixture.rs"]
 mod uat_fixture;
 mod uat_retro_seed;
+mod uat_daily_seed;
 
 /// I-0040 end-to-end UAT: synthetic gmail + slack feed rows for two
 /// workstreams, extractor runs during seed so the KB is warm, agent
@@ -721,6 +731,7 @@ fn signal_extraction_e2e_scenario() -> Scenario {
         // when the dust path itself stalls (UAT 23:31 regression).
         seed_tag_promoter: false,
         seed_retro_ceremony: false,
+        seed_daily_ceremony: false,
     }
 }
 
@@ -767,6 +778,7 @@ fn tag_promoter_cycle_scenario() -> Scenario {
         // so refine on turn 2 has something to find.
         seed_tag_promoter: true,
         seed_retro_ceremony: false,
+        seed_daily_ceremony: false,
     }
 }
 
@@ -804,6 +816,46 @@ fn retro_ceremony_scenario() -> Scenario {
         seed_fixture: Some("tests/fixtures/uat/retro-ceremony.json".to_string()),
         seed_tag_promoter: false,
         seed_retro_ceremony: true,
+        seed_daily_ceremony: false,
+    }
+}
+
+/// I-0041 daily ceremony end-to-end: seed three workstreams +
+/// rolling todos, a weekly tablet with confirmed priorities, and
+/// today's calendar events. Drive the agent through daily_run →
+/// daily_list_items → daily_add_todo → daily_list_items against a
+/// real LLM. Judge verifies (a) daily_run returns a tablet id, (b)
+/// daily_list_items groups items by section with citation_ids quoted
+/// verbatim, (c) daily_add_todo + daily_list_items run sequentially
+/// and the new todo appears in the list response.
+fn daily_ceremony_scenario() -> Scenario {
+    Scenario {
+        name: "daily-ceremony".to_string(),
+        objective: "Drive the I-0041 daily ceremony end-to-end. Three workstreams (proj-a, proj-b, proj-c) are seeded with recent gmail rows so the attention adapter has signals to surface. The ceremony seeder writes 4 rolling todos (open), 2 confirmed weekly priorities, a placeholder daily tablet for yesterday, and 6 calendar events for today. The daily plugin's gather should populate all four sections (calendar, todos, attention, alignment).".to_string(),
+        turns: vec![
+            ScenarioTurn {
+                user_message: "Run today's daily brief and tell me the tablet id you get back.".to_string(),
+                judge_expectation: "Agent calls daily_run exactly once and reports the tablet_id from the response. Status should be `generated` (or `skipped` with a tablet_id-bearing reason if a tablet from a prior run still exists in the data dir).".to_string(),
+            },
+            ScenarioTurn {
+                user_message: "Use daily_list_items with that tablet id. Group items by section and quote each citation_id verbatim — copy them character-for-character, don't paraphrase.".to_string(),
+                judge_expectation: "Agent calls daily_list_items with the tablet id from turn 1. The reply groups items by section_key (`calendar`, `todos`, `attention`, `alignment` — some may be empty depending on what the LLM composed). citation_id values are quoted verbatim in backticks or otherwise clearly delimited, not paraphrased into prose.".to_string(),
+            },
+            ScenarioTurn {
+                user_message: "Add this todo: 'Email the SRE team about the proj-c RFC.' **First** call daily_add_todo with the literal body. Wait for the response. **Only after** that call returns, call daily_list_items with section_key=`todos` and report the new item back to me. Do NOT issue daily_add_todo and daily_list_items as parallel tool calls — they must be sequential.".to_string(),
+                judge_expectation: "Agent issues daily_add_todo and daily_list_items as SEQUENTIAL tool calls (add_todo finishes before list_items starts). The new todo appears in the list_items response with the literal body string 'Email the SRE team about the proj-c RFC.'".to_string(),
+            },
+        ],
+        mechanical: MechanicalThresholds {
+            min_files_created: 0,
+            min_workflows_created: 0,
+            min_memory_entities: 0,
+            max_tool_errors: 1,
+        },
+        seed_fixture: Some("tests/fixtures/uat/daily-ceremony.json".to_string()),
+        seed_tag_promoter: false,
+        seed_retro_ceremony: false,
+        seed_daily_ceremony: true,
     }
 }
 
@@ -814,6 +866,7 @@ fn all_scenarios() -> Vec<Scenario> {
         signal_extraction_e2e_scenario(),
         tag_promoter_cycle_scenario(),
         retro_ceremony_scenario(),
+        daily_ceremony_scenario(),
     ]
 }
 
@@ -914,6 +967,14 @@ async fn uat_run() {
                 println!(
                     "    Seed retro ceremony: {} rollup rows, {} daily tablets, {} todos, {} priorities, {} prior retros",
                     s.rollup_rows, s.daily_tablets, s.rolling_todos, s.priorities, s.prior_retros
+                );
+            }
+
+            if scenario.seed_daily_ceremony {
+                let s = uat_daily_seed::apply(&scenario_dir).expect("seed daily state");
+                println!(
+                    "    Seed daily ceremony: {} daily tablets, {} rolling todos, {} priorities, {} calendar events",
+                    s.daily_tablets, s.rolling_todos, s.priorities, s.calendar_events
                 );
             }
         }
