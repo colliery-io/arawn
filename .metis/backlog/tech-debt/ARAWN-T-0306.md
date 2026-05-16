@@ -4,7 +4,7 @@ level: task
 title: "Ceremony source adapters — timezone + workstream tagging"
 short_code: "ARAWN-T-0306"
 created_at: 2026-05-16T18:27:25.158519+00:00
-updated_at: 2026-05-16T18:28:36.758961+00:00
+updated_at: 2026-05-16T18:35:32.109746+00:00
 parent: 
 blocked_by: []
 archived: false
@@ -12,7 +12,7 @@ archived: false
 tags:
   - "#task"
   - "#tech-debt"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
