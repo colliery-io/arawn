@@ -3,15 +3,15 @@ id: calendar-attention-gather-adapters
 level: task
 title: "Calendar + attention gather adapters (pluggable sources)"
 short_code: "ARAWN-T-0297"
-created_at: 2026-05-16T14:00:00.000000+00:00
-updated_at: 2026-05-16T14:00:00.000000+00:00
+created_at: 2026-05-16T14:00:00+00:00
+updated_at: 2026-05-16T16:04:47.237579+00:00
 parent: ARAWN-I-0041
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/active"
 
 
 exit_criteria_met: false
@@ -31,6 +31,8 @@ Define two pluggable source traits in `arawn-ceremonies`
 backed by the existing feed / projection stores. Mirrors the
 `RollupSource` pattern from [[ARAWN-T-0285]] so the daily plugin
 doesn't take hard deps on `arawn-feeds` / `arawn-projections`.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
@@ -90,4 +92,17 @@ doesn't take hard deps on `arawn-feeds` / `arawn-projections`.
 
 ## Status Updates
 
-*To be added during implementation*
+### 2026-05-16 — real adapters shipped
+
+- New `crates/arawn-engine/src/ceremony_sources.rs` (~340 lines)
+  with `ProjectionsCalendarSource` (queries `calendar_events` for
+  the requested UTC day) and `ProjectionsAttentionSource` (UNIONs
+  `gmail_messages` + `slack_messages` with cursor + cap).
+- Re-exported from `arawn-engine::lib`. `rusqlite` promoted from
+  dev to regular dep for the raw queries.
+- Two unit tests pass; full 635-test arawn-engine suite green.
+- Deferred to follow-ups: timezone handling (UTC for now;
+  documented), workstream tagging on SignalRow (None for v1;
+  documented).
+
+Completed 2026-05-16.

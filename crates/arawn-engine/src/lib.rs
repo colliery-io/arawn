@@ -1,6 +1,7 @@
 pub mod agent_defs;
 pub mod approval;
 pub mod background;
+pub mod ceremony_sources;
 pub mod compact_prompt;
 pub mod compactor;
 pub mod context;
@@ -67,4 +68,5 @@ pub use tools::{
 pub use tools::{
     RetroCurrentTool, RetroListItemsTool, RetroPatchItemTool, RetroRunTool, RetroSaveDiaryTool,
 };
+pub use ceremony_sources::{ProjectionsAttentionSource, ProjectionsCalendarSource};
 pub use workstream_router::{MemoryHandle, WorkstreamMemoryRouter};
