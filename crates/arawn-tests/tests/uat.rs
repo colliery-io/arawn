@@ -791,8 +791,8 @@ fn retro_ceremony_scenario() -> Scenario {
                 judge_expectation: "Agent calls retro_list_items with the tablet id from turn 1. The reply groups items by section_key (`what_happened` and `patterns`). For each item it surfaces the citation_id field verbatim (e.g. `prio-001`, `todo-003`, `pat-…`) — citation ids are quoted in backticks or otherwise distinguishable, not paraphrased into prose. At least three items reported across the two sections.".to_string(),
             },
             ScenarioTurn {
-                user_message: "Save this diary entry: 'Felt focused; proj-c starved this week.' Then call retro_current and confirm the tablet status changed.".to_string(),
-                judge_expectation: "Agent calls retro_save_diary with the tablet id and the literal body string, then calls retro_current and reports `status: reviewed` (was `open` before the save).".to_string(),
+                user_message: "Save this diary entry: 'Felt focused; proj-c starved this week.' **First** call retro_save_diary with the tablet id and the literal body — wait for the response (status will be `saved`). **Only after** that call returns, call retro_current. Do NOT issue retro_save_diary and retro_current as parallel tool calls in one response — they must be sequential or retro_current will see the pre-save status. Then report the tablet status from retro_current.".to_string(),
+                judge_expectation: "Agent issues retro_save_diary and retro_current as SEQUENTIAL tool calls (save_diary finishes before retro_current starts). retro_current's response should show `status: reviewed` (was `open` before the save).".to_string(),
             },
         ],
         mechanical: MechanicalThresholds {
