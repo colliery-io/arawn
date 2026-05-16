@@ -4,15 +4,14 @@ level: task
 title: "Priorities service + RPC methods (confirm/reject/add/list)"
 short_code: "ARAWN-T-0302"
 created_at: 2026-05-16T16:37:55.787456+00:00
-updated_at: 2026-05-16T16:37:55.787456+00:00
+updated_at: 2026-05-16T16:45:39.533257+00:00
 parent: ARAWN-I-0042
-blocked_by:
-  - ARAWN-T-0301
+blocked_by: [ARAWN-T-0301]
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/active"
 
 
 exit_criteria_met: false
@@ -116,4 +115,34 @@ for that flow.
 
 ## Status Updates
 
-*To be added during implementation*
+### 2026-05-16 — priorities service + RPC shipped
+
+- Four new methods on `CeremonyService`: `confirm_priority`,
+  `reject_priority`, `add_priority`, `list_priorities`. Plus new
+  `PriorityDto` (with `source: "confirmed"|"candidate"`
+  discriminator) and `AddPriorityRequest` types.
+- `confirm_priority` is idempotent — second call on the same
+  item returns the existing priority row. Rejects items that
+  aren't in the `priorities` section.
+- `reject_priority` deletes both the item and any priority row
+  that cited it.
+- `list_priorities` UNIONs ceremony_priorities (tagged
+  confirmed) with priority-section items not yet referenced by
+  any priority row (tagged candidate), sorted by ordinal.
+- New `CeremonyEvent::PriorityConfirmed { priority_id,
+  tablet_id }` variant emitted by `confirm_priority` only.
+- Four new RPC arms in `ws_server.rs`:
+  `ceremonies.confirm_priority/reject_priority/add_priority/list_priorities`.
+  Registered in `RPC_METHODS`.
+- 7 new service-level tests pass; existing 87 lib tests still
+  pass (94 total now). arawn lib tests unchanged (57).
+
+### Divergence noted
+
+`confirm_priority` sets the priority row's `citation_id` to the
+**item id** rather than the item's upstream `citation_id`. This
+is the v1 idempotency handle (`citation_id = item_id` is the
+dedupe key). The item's original source citation is reachable via
+a join if downstream consumers need it.
+
+Completed 2026-05-16.

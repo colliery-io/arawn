@@ -64,6 +64,10 @@ const RPC_METHODS: &[&str] = &[
     "ceremonies.upsert_diary",
     "ceremonies.run",
     "ceremonies.list_notifications",
+    "ceremonies.confirm_priority",
+    "ceremonies.reject_priority",
+    "ceremonies.add_priority",
+    "ceremonies.list_priorities",
 ];
 
 /// JSON-RPC style request from client.
@@ -1369,6 +1373,75 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                         Ok(n) => Response::success(id, serde_json::to_value(&n).unwrap()),
                         Err(e) => Response::from_ceremony_error(id, &e),
                     },
+                    "ceremonies.confirm_priority" => {
+                        let item_id = request
+                            .params
+                            .get("item_id")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("")
+                            .to_string();
+                        if item_id.is_empty() {
+                            Response::error(id, "invalid_params", "item_id is required".into())
+                        } else {
+                            match cer.confirm_priority(&item_id) {
+                                Ok(dto) => {
+                                    Response::success(id, serde_json::to_value(&dto).unwrap())
+                                }
+                                Err(e) => Response::from_ceremony_error(id, &e),
+                            }
+                        }
+                    }
+                    "ceremonies.reject_priority" => {
+                        let item_id = request
+                            .params
+                            .get("item_id")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("")
+                            .to_string();
+                        if item_id.is_empty() {
+                            Response::error(id, "invalid_params", "item_id is required".into())
+                        } else {
+                            match cer.reject_priority(&item_id) {
+                                Ok(()) => Response::success(id, serde_json::json!({"ok": true})),
+                                Err(e) => Response::from_ceremony_error(id, &e),
+                            }
+                        }
+                    }
+                    "ceremonies.add_priority" => {
+                        match serde_json::from_value::<arawn_ceremonies::AddPriorityRequest>(
+                            request.params.clone(),
+                        ) {
+                            Ok(req) => match cer.add_priority(req) {
+                                Ok(dto) => {
+                                    Response::success(id, serde_json::to_value(&dto).unwrap())
+                                }
+                                Err(e) => Response::from_ceremony_error(id, &e),
+                            },
+                            Err(e) => Response::error(
+                                id,
+                                "invalid_params",
+                                format!("add_priority params: {e}"),
+                            ),
+                        }
+                    }
+                    "ceremonies.list_priorities" => {
+                        let tablet_id = request
+                            .params
+                            .get("tablet_id")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("")
+                            .to_string();
+                        if tablet_id.is_empty() {
+                            Response::error(id, "invalid_params", "tablet_id is required".into())
+                        } else {
+                            match cer.list_priorities(&tablet_id) {
+                                Ok(list) => {
+                                    Response::success(id, serde_json::to_value(&list).unwrap())
+                                }
+                                Err(e) => Response::from_ceremony_error(id, &e),
+                            }
+                        }
+                    }
                     other => Response::error(
                         id,
                         "method_not_found",

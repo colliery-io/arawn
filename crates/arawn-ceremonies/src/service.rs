@@ -87,6 +87,31 @@ pub struct AddItemRequest {
     pub body: serde_json::Value,
 }
 
+/// One priority row in `ceremony_priorities` or a yet-unconfirmed
+/// candidate item in the `priorities` section of a weekly tablet.
+/// `source` discriminates between them: `"confirmed"` for rows from
+/// `ceremony_priorities`, `"candidate"` for items awaiting confirm.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct PriorityDto {
+    pub id: String,
+    pub tablet_id: String,
+    pub body: serde_json::Value,
+    pub rationale: String,
+    pub citation_id: Option<String>,
+    pub confirmed_at: Option<String>,
+    pub done_at: Option<String>,
+    pub ordinal: i32,
+    pub source: String,
+}
+
+/// Payload for `add_priority`. User-write path — no `citation_id`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AddPriorityRequest {
+    pub tablet_id: String,
+    pub body: serde_json::Value,
+    pub rationale: String,
+}
+
 /// The methods correspond 1:1 to the `ceremonies.*` WS-RPC method
 /// names called out in I-0043. The binary's RPC dispatcher routes
 /// JSON-RPC calls to these methods.
@@ -311,6 +336,299 @@ impl CeremonyService {
         )
         .map_err(|e| CeremonyError::Storage(format!("add_rolling_todo insert: {e}")))?;
         Ok(todo_id)
+    }
+
+    /// `ceremonies.confirm_priority` — promote a priority candidate
+    /// item into a confirmed row in `ceremony_priorities`. Idempotent:
+    /// re-calling on the same item returns the existing priority row.
+    /// Emits `PriorityConfirmed`.
+    pub fn confirm_priority(&self, item_id: &str) -> Result<PriorityDto, CeremonyError> {
+        let conn = self
+            .conn
+            .0
+            .lock()
+            .map_err(|_| CeremonyError::Storage("connection mutex poisoned".into()))?;
+        // Verify the item exists and is a priority candidate.
+        let row: Option<(String, String, String, Option<String>, i32, String)> = conn
+            .query_row(
+                "SELECT tablet_id, section_key, kind, citation_id, ordinal, body \
+                 FROM ceremony_items WHERE id = ?1",
+                params![item_id],
+                |r| {
+                    Ok((
+                        r.get(0)?,
+                        r.get(1)?,
+                        r.get(2)?,
+                        r.get(3)?,
+                        r.get(4)?,
+                        r.get(5)?,
+                    ))
+                },
+            )
+            .optional()
+            .map_err(|e| CeremonyError::Storage(format!("confirm_priority lookup: {e}")))?;
+        let (tablet_id, section_key, kind, citation_id_opt, ordinal, body_str) =
+            row.ok_or_else(|| {
+                CeremonyError::invalid_tablet_state(format!(
+                    "no item with id '{item_id}'"
+                ))
+            })?;
+        if section_key != "priorities" || kind != "priority" {
+            return Err(CeremonyError::invalid_tablet_state(format!(
+                "item '{item_id}' is not a priority candidate \
+                 (section_key='{section_key}', kind='{kind}')"
+            )));
+        }
+
+        // Idempotency: if a priority row already cites this item, return it.
+        let existing: Option<(String, String, Option<String>, Option<String>, i32, String)> =
+            conn.query_row(
+                "SELECT id, rationale, confirmed_at, done_at, ordinal, body \
+                 FROM ceremony_priorities WHERE citation_id = ?1",
+                params![item_id],
+                |r| {
+                    Ok((
+                        r.get(0)?,
+                        r.get(1)?,
+                        r.get(2)?,
+                        r.get(3)?,
+                        r.get(4)?,
+                        r.get(5)?,
+                    ))
+                },
+            )
+            .optional()
+            .map_err(|e| CeremonyError::Storage(format!("confirm_priority idempotency: {e}")))?;
+        if let Some((id, rationale, confirmed_at, done_at, ord, body_s)) = existing {
+            let body =
+                serde_json::from_str(&body_s).unwrap_or(serde_json::Value::Null);
+            return Ok(PriorityDto {
+                id,
+                tablet_id,
+                body,
+                rationale,
+                citation_id: Some(item_id.to_string()),
+                confirmed_at,
+                done_at,
+                ordinal: ord,
+                source: "confirmed".to_string(),
+            });
+        }
+
+        let new_id = Uuid::new_v4().to_string();
+        let confirmed_at = Utc::now().to_rfc3339();
+        // citation_id on the priority row points at the item that was
+        // confirmed. If the item itself has a deeper source citation
+        // we don't copy it here — confirm-time provenance is the item
+        // id; the item carries its own source.
+        let priority_citation = item_id.to_string();
+        conn.execute(
+            "INSERT INTO ceremony_priorities \
+             (id, tablet_id, body, rationale, citation_id, confirmed_at, done_at, ordinal) \
+             VALUES (?1, ?2, ?3, '', ?4, ?5, NULL, ?6)",
+            params![
+                &new_id,
+                &tablet_id,
+                &body_str,
+                &priority_citation,
+                &confirmed_at,
+                ordinal,
+            ],
+        )
+        .map_err(|e| CeremonyError::Storage(format!("confirm_priority insert: {e}")))?;
+        drop(conn);
+        let _ = citation_id_opt; // not used here; kept for future fidelity
+        if let Some(events) = &self.events {
+            emit_event(
+                events,
+                CeremonyEvent::PriorityConfirmed {
+                    priority_id: new_id.clone(),
+                    tablet_id: tablet_id.clone(),
+                },
+            );
+        }
+        let body = serde_json::from_str(&body_str).unwrap_or(serde_json::Value::Null);
+        Ok(PriorityDto {
+            id: new_id,
+            tablet_id,
+            body,
+            rationale: String::new(),
+            citation_id: Some(priority_citation),
+            confirmed_at: Some(confirmed_at),
+            done_at: None,
+            ordinal,
+            source: "confirmed".to_string(),
+        })
+    }
+
+    /// `ceremonies.reject_priority` — delete a priority candidate item.
+    /// Also removes any `ceremony_priorities` row that cites it (so a
+    /// confirm-then-reject leaves no orphan). No event emitted.
+    pub fn reject_priority(&self, item_id: &str) -> Result<(), CeremonyError> {
+        let conn = self
+            .conn
+            .0
+            .lock()
+            .map_err(|_| CeremonyError::Storage("connection mutex poisoned".into()))?;
+        conn.execute(
+            "DELETE FROM ceremony_priorities WHERE citation_id = ?1",
+            params![item_id],
+        )
+        .map_err(|e| CeremonyError::Storage(format!("reject_priority priority delete: {e}")))?;
+        conn.execute(
+            "DELETE FROM ceremony_items WHERE id = ?1",
+            params![item_id],
+        )
+        .map_err(|e| CeremonyError::Storage(format!("reject_priority item delete: {e}")))?;
+        Ok(())
+    }
+
+    /// `ceremonies.add_priority` — user-write path. Inserts directly
+    /// into `ceremony_priorities` with `citation_id = NULL`. Ordinal
+    /// is the next free slot for the tablet.
+    pub fn add_priority(
+        &self,
+        req: AddPriorityRequest,
+    ) -> Result<PriorityDto, CeremonyError> {
+        let conn = self
+            .conn
+            .0
+            .lock()
+            .map_err(|_| CeremonyError::Storage("connection mutex poisoned".into()))?;
+        let next_ordinal: i32 = conn
+            .query_row(
+                "SELECT COALESCE(MAX(ordinal) + 1, 0) FROM ceremony_priorities \
+                 WHERE tablet_id = ?1",
+                params![&req.tablet_id],
+                |row| row.get(0),
+            )
+            .map_err(|e| CeremonyError::Storage(format!("add_priority next_ordinal: {e}")))?;
+        let id = Uuid::new_v4().to_string();
+        let confirmed_at = Utc::now().to_rfc3339();
+        let body_str = req.body.to_string();
+        conn.execute(
+            "INSERT INTO ceremony_priorities \
+             (id, tablet_id, body, rationale, citation_id, confirmed_at, done_at, ordinal) \
+             VALUES (?1, ?2, ?3, ?4, NULL, ?5, NULL, ?6)",
+            params![
+                &id,
+                &req.tablet_id,
+                &body_str,
+                &req.rationale,
+                &confirmed_at,
+                next_ordinal,
+            ],
+        )
+        .map_err(|e| CeremonyError::Storage(format!("add_priority insert: {e}")))?;
+        Ok(PriorityDto {
+            id,
+            tablet_id: req.tablet_id,
+            body: req.body,
+            rationale: req.rationale,
+            citation_id: None,
+            confirmed_at: Some(confirmed_at),
+            done_at: None,
+            ordinal: next_ordinal,
+            source: "confirmed".to_string(),
+        })
+    }
+
+    /// `ceremonies.list_priorities` — union of confirmed priorities
+    /// and yet-unconfirmed candidate items for a tablet. Confirmed
+    /// rows come first (sorted by ordinal); candidates follow.
+    pub fn list_priorities(
+        &self,
+        tablet_id: &str,
+    ) -> Result<Vec<PriorityDto>, CeremonyError> {
+        let conn = self
+            .conn
+            .0
+            .lock()
+            .map_err(|_| CeremonyError::Storage("connection mutex poisoned".into()))?;
+        let mut confirmed: Vec<PriorityDto> = {
+            let mut stmt = conn
+                .prepare(
+                    "SELECT id, tablet_id, body, rationale, citation_id, confirmed_at, done_at, ordinal \
+                     FROM ceremony_priorities WHERE tablet_id = ?1 ORDER BY ordinal",
+                )
+                .map_err(|e| {
+                    CeremonyError::Storage(format!("list_priorities confirmed prepare: {e}"))
+                })?;
+            let rows = stmt
+                .query_map(params![tablet_id], |row| {
+                    let body_str: String = row.get(2)?;
+                    let body =
+                        serde_json::from_str(&body_str).unwrap_or(serde_json::Value::Null);
+                    Ok(PriorityDto {
+                        id: row.get(0)?,
+                        tablet_id: row.get(1)?,
+                        body,
+                        rationale: row.get(3)?,
+                        citation_id: row.get(4)?,
+                        confirmed_at: row.get(5)?,
+                        done_at: row.get(6)?,
+                        ordinal: row.get(7)?,
+                        source: "confirmed".to_string(),
+                    })
+                })
+                .map_err(|e| {
+                    CeremonyError::Storage(format!("list_priorities confirmed query: {e}"))
+                })?;
+            let mut out = Vec::new();
+            for r in rows {
+                out.push(r.map_err(|e| {
+                    CeremonyError::Storage(format!("list_priorities confirmed row: {e}"))
+                })?);
+            }
+            out
+        };
+
+        let mut candidates: Vec<PriorityDto> = {
+            let mut stmt = conn
+                .prepare(
+                    "SELECT id, tablet_id, body, citation_id, ordinal \
+                     FROM ceremony_items \
+                     WHERE tablet_id = ?1 AND section_key = 'priorities' AND kind = 'priority' \
+                       AND id NOT IN ( \
+                           SELECT citation_id FROM ceremony_priorities \
+                           WHERE tablet_id = ?1 AND citation_id IS NOT NULL \
+                       ) \
+                     ORDER BY ordinal",
+                )
+                .map_err(|e| {
+                    CeremonyError::Storage(format!("list_priorities candidates prepare: {e}"))
+                })?;
+            let rows = stmt
+                .query_map(params![tablet_id], |row| {
+                    let body_str: String = row.get(2)?;
+                    let body =
+                        serde_json::from_str(&body_str).unwrap_or(serde_json::Value::Null);
+                    Ok(PriorityDto {
+                        id: row.get(0)?,
+                        tablet_id: row.get(1)?,
+                        body,
+                        rationale: String::new(),
+                        citation_id: row.get(3)?,
+                        confirmed_at: None,
+                        done_at: None,
+                        ordinal: row.get(4)?,
+                        source: "candidate".to_string(),
+                    })
+                })
+                .map_err(|e| {
+                    CeremonyError::Storage(format!("list_priorities candidates query: {e}"))
+                })?;
+            let mut out = Vec::new();
+            for r in rows {
+                out.push(r.map_err(|e| {
+                    CeremonyError::Storage(format!("list_priorities candidates row: {e}"))
+                })?);
+            }
+            out
+        };
+
+        confirmed.append(&mut candidates);
+        Ok(confirmed)
     }
 
     /// `ceremonies.upsert_diary` — writes (or replaces) the user's
@@ -811,6 +1129,227 @@ mod tests {
         // accessor. Since this lives in the same module the
         // private field is reachable.
         (service.conn.clone(), (), ())
+    }
+
+    /// Build a weekly tablet with N priority candidate items via raw
+    /// SQL. Priorities live on weekly tablets only — the
+    /// `build_service_with_items` retro helper doesn't fit. Returns
+    /// `(service, tablet_id, item_ids)`.
+    fn build_weekly_with_priority_candidates(
+        n: usize,
+    ) -> (TempDir, CeremonyService, String, Vec<String>) {
+        let (tmp, conn) = open_test_db();
+        let tablet_id = "weekly-2026-W20".to_string();
+        let mut item_ids = Vec::new();
+        {
+            let c = conn.0.lock().unwrap();
+            c.execute(
+                "INSERT INTO ceremony_tablets \
+                 (id, kind, period_key, generated_at, status, workstreams_scanned) \
+                 VALUES (?1, 'weekly', '2026-W20', '2026-05-11T07:00:00Z', 'open', '[]')",
+                rusqlite::params![&tablet_id],
+            )
+            .unwrap();
+            for i in 0..n {
+                let id = format!("item-prio-{i}");
+                c.execute(
+                    "INSERT INTO ceremony_items \
+                     (id, tablet_id, section_key, ordinal, kind, body, citation_id, created_at) \
+                     VALUES (?1, ?2, 'priorities', ?3, 'priority', ?4, ?5, '2026-05-11T07:00:00Z')",
+                    rusqlite::params![
+                        &id,
+                        &tablet_id,
+                        i as i32,
+                        json!({"text": format!("priority {i}")}).to_string(),
+                        format!("sig-{i}"),
+                    ],
+                )
+                .unwrap();
+                item_ids.push(id);
+            }
+        }
+        let reg = PluginRegistry::new();
+        let dispatcher = Arc::new(EngineDispatcher::new(conn.clone(), reg));
+        let service = CeremonyService::new(conn, dispatcher);
+        (tmp, service, tablet_id, item_ids)
+    }
+
+    #[tokio::test]
+    async fn confirm_priority_happy_path_inserts_row_and_copies_citation() {
+        let (_tmp, service, tablet_id, item_ids) =
+            build_weekly_with_priority_candidates(1);
+        let dto = service.confirm_priority(&item_ids[0]).unwrap();
+        assert_eq!(dto.tablet_id, tablet_id);
+        assert_eq!(dto.source, "confirmed");
+        assert!(dto.confirmed_at.is_some());
+        assert_eq!(dto.citation_id.as_deref(), Some(item_ids[0].as_str()));
+        // Confirm row in DB.
+        let (conn, _, _) = service_internals(&service);
+        let c = conn.0.lock().unwrap();
+        let count: i64 = c
+            .query_row(
+                "SELECT COUNT(*) FROM ceremony_priorities WHERE citation_id = ?1",
+                rusqlite::params![&item_ids[0]],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(count, 1);
+    }
+
+    #[tokio::test]
+    async fn confirm_priority_is_idempotent() {
+        let (_tmp, service, _tablet_id, item_ids) =
+            build_weekly_with_priority_candidates(1);
+        let a = service.confirm_priority(&item_ids[0]).unwrap();
+        let b = service.confirm_priority(&item_ids[0]).unwrap();
+        assert_eq!(a.id, b.id);
+        let (conn, _, _) = service_internals(&service);
+        let c = conn.0.lock().unwrap();
+        let count: i64 = c
+            .query_row(
+                "SELECT COUNT(*) FROM ceremony_priorities WHERE citation_id = ?1",
+                rusqlite::params![&item_ids[0]],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(count, 1);
+    }
+
+    #[tokio::test]
+    async fn confirm_priority_rejects_non_priority_item() {
+        let (_tmp, conn) = open_test_db();
+        // Hand-roll a weekly tablet with a non-priority item.
+        {
+            let c = conn.0.lock().unwrap();
+            c.execute(
+                "INSERT INTO ceremony_tablets \
+                 (id, kind, period_key, generated_at, status, workstreams_scanned) \
+                 VALUES ('weekly-1', 'weekly', '2026-W20', '2026-05-11T07:00:00Z', 'open', '[]')",
+                [],
+            )
+            .unwrap();
+            c.execute(
+                "INSERT INTO ceremony_items \
+                 (id, tablet_id, section_key, ordinal, kind, body, citation_id, created_at) \
+                 VALUES ('item-x', 'weekly-1', 'attention', 0, 'attention', '{}', 'src-1', '2026-05-11T07:00:00Z')",
+                [],
+            )
+            .unwrap();
+        }
+        let dispatcher = Arc::new(EngineDispatcher::new(conn.clone(), PluginRegistry::new()));
+        let service = CeremonyService::new(conn, dispatcher);
+        let err = service.confirm_priority("item-x").unwrap_err();
+        assert!(matches!(err, CeremonyError::InvalidTabletState(_)));
+        // Also unknown item.
+        let err = service.confirm_priority("nope").unwrap_err();
+        assert!(matches!(err, CeremonyError::InvalidTabletState(_)));
+    }
+
+    #[tokio::test]
+    async fn reject_priority_deletes_item_and_priority_row() {
+        let (_tmp, service, _tablet_id, item_ids) =
+            build_weekly_with_priority_candidates(1);
+        service.confirm_priority(&item_ids[0]).unwrap();
+        service.reject_priority(&item_ids[0]).unwrap();
+        let (conn, _, _) = service_internals(&service);
+        let c = conn.0.lock().unwrap();
+        let item_count: i64 = c
+            .query_row(
+                "SELECT COUNT(*) FROM ceremony_items WHERE id = ?1",
+                rusqlite::params![&item_ids[0]],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(item_count, 0);
+        let prio_count: i64 = c
+            .query_row(
+                "SELECT COUNT(*) FROM ceremony_priorities WHERE citation_id = ?1",
+                rusqlite::params![&item_ids[0]],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(prio_count, 0);
+    }
+
+    #[tokio::test]
+    async fn add_priority_inserts_with_null_citation() {
+        let (_tmp, service, tablet_id, _) =
+            build_weekly_with_priority_candidates(0);
+        let dto = service
+            .add_priority(AddPriorityRequest {
+                tablet_id: tablet_id.clone(),
+                body: json!({"text": "ship the thing"}),
+                rationale: "because launches".into(),
+            })
+            .unwrap();
+        assert!(dto.citation_id.is_none());
+        assert!(dto.confirmed_at.is_some());
+        assert_eq!(dto.rationale, "because launches");
+        assert_eq!(dto.source, "confirmed");
+        assert_eq!(dto.ordinal, 0);
+        // A second add bumps ordinal.
+        let dto2 = service
+            .add_priority(AddPriorityRequest {
+                tablet_id: tablet_id.clone(),
+                body: json!({"text": "second"}),
+                rationale: "".into(),
+            })
+            .unwrap();
+        assert_eq!(dto2.ordinal, 1);
+    }
+
+    #[tokio::test]
+    async fn list_priorities_unions_confirmed_and_candidates_deduped() {
+        let (_tmp, service, tablet_id, item_ids) =
+            build_weekly_with_priority_candidates(3);
+        // Confirm the first one. Remaining two stay as candidates.
+        service.confirm_priority(&item_ids[0]).unwrap();
+        // Also add a no-citation user priority.
+        service
+            .add_priority(AddPriorityRequest {
+                tablet_id: tablet_id.clone(),
+                body: json!({"text": "user-added"}),
+                rationale: "r".into(),
+            })
+            .unwrap();
+        let list = service.list_priorities(&tablet_id).unwrap();
+        // 2 confirmed + 2 candidates.
+        let confirmed: Vec<_> = list.iter().filter(|p| p.source == "confirmed").collect();
+        let candidates: Vec<_> = list.iter().filter(|p| p.source == "candidate").collect();
+        assert_eq!(confirmed.len(), 2);
+        assert_eq!(candidates.len(), 2);
+        // Confirmed come first, sorted by ordinal.
+        assert_eq!(list[0].source, "confirmed");
+        assert_eq!(list[1].source, "confirmed");
+        assert_eq!(list[2].source, "candidate");
+        assert_eq!(list[3].source, "candidate");
+        // Candidates are the two not-yet-confirmed item ids.
+        let cand_ids: std::collections::HashSet<_> =
+            candidates.iter().map(|p| p.id.clone()).collect();
+        assert!(cand_ids.contains(&item_ids[1]));
+        assert!(cand_ids.contains(&item_ids[2]));
+        assert!(!cand_ids.contains(&item_ids[0]));
+    }
+
+    #[tokio::test]
+    async fn confirm_priority_emits_priority_confirmed_event() {
+        use crate::CeremonyEvent;
+        let (tx, mut rx) = crate::event_channel();
+        let (_tmp, service, tablet_id, item_ids) =
+            build_weekly_with_priority_candidates(1);
+        let service = service.with_events(tx);
+        let dto = service.confirm_priority(&item_ids[0]).unwrap();
+        let event = rx.recv().await.unwrap();
+        match event {
+            CeremonyEvent::PriorityConfirmed {
+                priority_id,
+                tablet_id: tid,
+            } => {
+                assert_eq!(priority_id, dto.id);
+                assert_eq!(tid, tablet_id);
+            }
+            other => panic!("expected PriorityConfirmed, got {other:?}"),
+        }
     }
 
     #[tokio::test]

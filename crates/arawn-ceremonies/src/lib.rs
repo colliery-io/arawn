@@ -47,6 +47,7 @@ pub use runner::{
     CeremonyDispatcher, CeremonyDispatchTask, CeremonyRunner, DispatchOutcome,
 };
 pub use service::{
-    AddItemRequest, CeremonyService, ItemDto, ItemPatch, NotificationDto, TabletDto,
+    AddItemRequest, AddPriorityRequest, CeremonyService, ItemDto, ItemPatch, NotificationDto,
+    PriorityDto, TabletDto,
 };
 pub use types::{DetectedPattern, GatheredFacts, ItemKind, TabletStatus};

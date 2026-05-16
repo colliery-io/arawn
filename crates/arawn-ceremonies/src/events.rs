@@ -48,9 +48,12 @@ pub enum CeremonyEvent {
         iso_week: String,
         pattern_key: String,
     },
-    /// A weekly priority was confirmed (fired by T-0042's
-    /// `confirm_priority` action, not this initiative).
-    PriorityConfirmed { priority_id: String },
+    /// A weekly priority was confirmed (fired by T-0302's
+    /// `confirm_priority` service method on the Monday confirm flow).
+    PriorityConfirmed {
+        priority_id: String,
+        tablet_id: String,
+    },
 }
 
 /// Sender side of the broadcast channel. Clone to share across the
