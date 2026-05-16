@@ -141,6 +141,19 @@ pub trait CeremonyCtx: Send + Sync {
         &self,
         pattern: DetectedPattern,
     ) -> Result<String, CeremonyError>;
+
+    /// Capability check — does this ctx have a SQL connection
+    /// behind it (i.e. is it the production `EngineCtx`)? Returns
+    /// `None` on stub contexts that don't have rollup access.
+    /// Default `None`; the engine ctx overrides.
+    ///
+    /// Used by [`crate::patterns::DetectorRegistry`] to decide
+    /// whether per-rule detectors can run. Stub ctxs in tests can
+    /// still drive composed-item writes via `write_pattern_row`
+    /// but cannot read history.
+    fn conn_handle(&self) -> Option<&crate::engine::ConnHandle> {
+        None
+    }
 }
 
 /// Pattern detector framework hook. Plugins that surface

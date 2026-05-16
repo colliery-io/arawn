@@ -236,6 +236,9 @@ impl CeremonyCtx for EngineCtx {
     fn tablet_id(&self) -> &str {
         &self.tablet_id
     }
+    fn conn_handle(&self) -> Option<&ConnHandle> {
+        Some(&self.conn)
+    }
 
     async fn write_pattern_row(
         &self,

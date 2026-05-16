@@ -14,6 +14,7 @@
 pub mod engine;
 pub mod error;
 pub mod events;
+pub mod patterns;
 pub mod plugin;
 pub mod registry;
 pub mod rollup;
@@ -28,6 +29,7 @@ pub use plugin::{
 };
 pub use engine::{ConnHandle, EngineCtx, EngineDispatcher};
 pub use events::{CeremonyEvent, CeremonyEventReceiver, CeremonyEventSender, channel as event_channel};
+pub use patterns::{Detector, DetectorCtx, DetectorRegistry};
 pub use registry::PluginRegistry;
 pub use rollup::{CentralDbWorkstreams, RollupSource, WorkstreamList, compute_for_week, read_rollup_value};
 pub use runner::{
