@@ -356,7 +356,10 @@ impl App {
                             | CommandResult::FeedResume(_)
                             | CommandResult::FeedRemove { .. }
                             | CommandResult::FeedDiscover(_)
-                            | CommandResult::FeedRun(_) => {
+                            | CommandResult::FeedRun(_)
+                            | CommandResult::CeremonyShowToday
+                            | CommandResult::CeremonyShowWeek
+                            | CommandResult::CeremonyShowRetro => {
                                 // These need WS interaction — store for event loop to handle
                                 self.pending_command = Some(result);
                             }

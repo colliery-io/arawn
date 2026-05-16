@@ -759,6 +759,27 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                                     app.dirty = true;
                                 }
                             }
+                            crate::command::CommandResult::CeremonyShowToday => {
+                                let today = chrono::Utc::now()
+                                    .date_naive()
+                                    .format("%Y-%m-%d")
+                                    .to_string();
+                                let body = render_ceremony_today(&mut client, &today).await;
+                                app.messages.push(ChatMessage::new(ChatRole::System, body));
+                                app.dirty = true;
+                            }
+                            crate::command::CommandResult::CeremonyShowWeek => {
+                                let iso_week = current_iso_week();
+                                let body = render_ceremony_week(&mut client, &iso_week).await;
+                                app.messages.push(ChatMessage::new(ChatRole::System, body));
+                                app.dirty = true;
+                            }
+                            crate::command::CommandResult::CeremonyShowRetro => {
+                                let iso_week = current_iso_week();
+                                let body = render_ceremony_retro(&mut client, &iso_week).await;
+                                app.messages.push(ChatMessage::new(ChatRole::System, body));
+                                app.dirty = true;
+                            }
                             _ => {} // Other command results handled in app.handle_action
                         }
                     }
@@ -1377,4 +1398,169 @@ fn format_known_templates() -> String {
      confluence/space-archive). Use the typed form `/watch <template> \
      <feed_id> key=value` for the rest."
         .into()
+}
+
+/// ISO-week period key in the canonical `YYYY-WNN` form used by the
+/// ceremony engine. Inlined here so the TUI doesn't depend on
+/// arawn-ceremonies purely for this two-line helper.
+fn current_iso_week() -> String {
+    use chrono::Datelike;
+    let iso = chrono::Utc::now().iso_week();
+    format!("{:04}-W{:02}", iso.year(), iso.week())
+}
+
+/// Fetch the daily tablet for `today`, then list its items, then
+/// render. Single string is the system-message body.
+async fn render_ceremony_today(
+    client: &mut crate::ws_client::WsClient,
+    today: &str,
+) -> String {
+    let params = serde_json::json!({"kind": "daily", "period_key": today});
+    let resp = match client.request_response("ceremonies.get_by_period", params).await {
+        Ok(v) => v,
+        Err(e) => return format!("/today failed: {e}"),
+    };
+    let result = match resp.get("result") {
+        Some(r) => r,
+        None => {
+            let err = resp
+                .get("error")
+                .and_then(|e| e.get("message"))
+                .and_then(|m| m.as_str())
+                .unwrap_or("unknown error");
+            return format!("/today failed: {err}");
+        }
+    };
+    if result.is_null() {
+        return format!(
+            "No daily tablet for today ({today}) — run `/agent daily_run` or wait for the scheduled fire."
+        );
+    }
+    let tablet: arawn_ceremonies::TabletDto = match serde_json::from_value(result.clone()) {
+        Ok(t) => t,
+        Err(e) => return format!("/today: malformed tablet response: {e}"),
+    };
+    let items = fetch_items(client, &tablet.id).await;
+    let view = arawn_ceremonies::DailyView { tablet, items };
+    arawn_ceremonies::render_daily(&view)
+}
+
+/// Fetch the weekly tablet for the current ISO week, then items, then
+/// priorities, then render.
+async fn render_ceremony_week(
+    client: &mut crate::ws_client::WsClient,
+    iso_week: &str,
+) -> String {
+    let params = serde_json::json!({"kind": "weekly", "period_key": iso_week});
+    let resp = match client.request_response("ceremonies.get_by_period", params).await {
+        Ok(v) => v,
+        Err(e) => return format!("/week failed: {e}"),
+    };
+    let result = match resp.get("result") {
+        Some(r) => r,
+        None => {
+            let err = resp
+                .get("error")
+                .and_then(|e| e.get("message"))
+                .and_then(|m| m.as_str())
+                .unwrap_or("unknown error");
+            return format!("/week failed: {err}");
+        }
+    };
+    if result.is_null() {
+        return format!(
+            "No weekly tablet for {iso_week} — run `/agent weekly_run` or wait for Monday's scheduled fire."
+        );
+    }
+    let tablet: arawn_ceremonies::TabletDto = match serde_json::from_value(result.clone()) {
+        Ok(t) => t,
+        Err(e) => return format!("/week: malformed tablet response: {e}"),
+    };
+    let items = fetch_items(client, &tablet.id).await;
+    let priorities = fetch_priorities(client, &tablet.id).await;
+    let view = arawn_ceremonies::WeeklyView {
+        tablet,
+        items,
+        priorities,
+    };
+    arawn_ceremonies::render_weekly(&view)
+}
+
+/// Fetch the retro tablet for the current ISO week, then items, then
+/// render. Diary fetch is a future RPC (T-0290 notes this) — pass
+/// `None` for now so the renderer prints the placeholder.
+async fn render_ceremony_retro(
+    client: &mut crate::ws_client::WsClient,
+    iso_week: &str,
+) -> String {
+    let params = serde_json::json!({"kind": "retro", "period_key": iso_week});
+    let resp = match client.request_response("ceremonies.get_by_period", params).await {
+        Ok(v) => v,
+        Err(e) => return format!("/retro failed: {e}"),
+    };
+    let result = match resp.get("result") {
+        Some(r) => r,
+        None => {
+            let err = resp
+                .get("error")
+                .and_then(|e| e.get("message"))
+                .and_then(|m| m.as_str())
+                .unwrap_or("unknown error");
+            return format!("/retro failed: {err}");
+        }
+    };
+    if result.is_null() {
+        return format!(
+            "No retro tablet for {iso_week} — run `/agent retro_run` or wait for Friday's scheduled fire."
+        );
+    }
+    let tablet: arawn_ceremonies::TabletDto = match serde_json::from_value(result.clone()) {
+        Ok(t) => t,
+        Err(e) => return format!("/retro: malformed tablet response: {e}"),
+    };
+    let items = fetch_items(client, &tablet.id).await;
+    let view = arawn_ceremonies::RetroView {
+        tablet,
+        items,
+        diary: None,
+    };
+    arawn_ceremonies::render_retro(&view)
+}
+
+async fn fetch_items(
+    client: &mut crate::ws_client::WsClient,
+    tablet_id: &str,
+) -> Vec<arawn_ceremonies::ItemDto> {
+    let resp = match client
+        .request_response(
+            "ceremonies.list_items",
+            serde_json::json!({"tablet_id": tablet_id}),
+        )
+        .await
+    {
+        Ok(v) => v,
+        Err(_) => return Vec::new(),
+    };
+    resp.get("result")
+        .and_then(|r| serde_json::from_value(r.clone()).ok())
+        .unwrap_or_default()
+}
+
+async fn fetch_priorities(
+    client: &mut crate::ws_client::WsClient,
+    tablet_id: &str,
+) -> Vec<arawn_ceremonies::PriorityDto> {
+    let resp = match client
+        .request_response(
+            "ceremonies.list_priorities",
+            serde_json::json!({"tablet_id": tablet_id}),
+        )
+        .await
+    {
+        Ok(v) => v,
+        Err(_) => return Vec::new(),
+    };
+    resp.get("result")
+        .and_then(|r| serde_json::from_value(r.clone()).ok())
+        .unwrap_or_default()
 }

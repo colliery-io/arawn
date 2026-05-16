@@ -41,7 +41,7 @@
 //! slash-command wiring to the binary integration; the renderer
 //! shipped here is the contract.
 
-use crate::service::{ItemDto, TabletDto};
+use crate::service::{ItemDto, PriorityDto, TabletDto};
 
 /// What the renderer needs to draw a retro tablet. The TUI
 /// assembles this from the three RPC calls (`get_retro_current`,
@@ -121,6 +121,192 @@ fn items_in_section<'a>(items: &'a [ItemDto], section_key: &str) -> Vec<&'a Item
     let mut filtered: Vec<&ItemDto> = items.iter().filter(|i| i.section_key == section_key).collect();
     filtered.sort_by_key(|i| i.ordinal);
     filtered
+}
+
+/// What the renderer needs to draw a daily tablet. The TUI assembles
+/// this from `ceremonies.get_by_period("daily", today)` plus
+/// `ceremonies.list_items`. Sections are the canonical four:
+/// `calendar`, `todos`, `attention`, `alignment`.
+#[derive(Debug, Clone)]
+pub struct DailyView {
+    pub tablet: TabletDto,
+    pub items: Vec<ItemDto>,
+}
+
+/// Render a daily tablet to markdown.
+pub fn render_daily(view: &DailyView) -> String {
+    let mut out = String::new();
+    out.push_str(&format!("# Today — {}\n\n", view.tablet.period_key));
+    out.push_str(&format!(
+        "_Generated {} · status: {}_\n\n",
+        view.tablet.generated_at, view.tablet.status
+    ));
+
+    let sections: [(&str, &str, &str); 4] = [
+        (
+            "calendar",
+            "## Today's calendar",
+            "_(no calendar events for today — the day is yours)_",
+        ),
+        (
+            "todos",
+            "## Carried-over todos",
+            "_(no todos rolled over from yesterday)_",
+        ),
+        (
+            "attention",
+            "## New since yesterday",
+            "_(no new signals captured since yesterday's tablet)_",
+        ),
+        (
+            "alignment",
+            "## This week's priorities",
+            "_(no weekly priorities set — run /week on Monday to plan them)_",
+        ),
+    ];
+
+    for (key, heading, placeholder) in sections {
+        out.push_str(heading);
+        out.push_str("\n\n");
+        let rows = items_in_section(&view.items, key);
+        if rows.is_empty() {
+            out.push_str(placeholder);
+            out.push_str("\n\n");
+        } else {
+            for item in &rows {
+                render_item_bullet(&mut out, item);
+            }
+            out.push('\n');
+        }
+    }
+
+    render_footnotes(&mut out, view.items.iter().filter_map(|i| i.citation_id.clone()));
+    out
+}
+
+/// What the renderer needs to draw a weekly tablet. The TUI assembles
+/// this from `ceremonies.get_by_period("weekly", iso_week)` plus
+/// `ceremonies.list_items` plus `ceremonies.list_priorities`.
+#[derive(Debug, Clone)]
+pub struct WeeklyView {
+    pub tablet: TabletDto,
+    pub items: Vec<ItemDto>,
+    pub priorities: Vec<PriorityDto>,
+}
+
+/// Render a weekly tablet to markdown.
+pub fn render_weekly(view: &WeeklyView) -> String {
+    let mut out = String::new();
+    out.push_str(&format!("# Week of {}\n\n", view.tablet.period_key));
+    let priorities_confirmed = view.tablet.priorities_confirmed_at.is_some();
+    out.push_str(&format!(
+        "_Generated {} · status: {} · priorities confirmed: {}_\n\n",
+        view.tablet.generated_at,
+        view.tablet.status,
+        if priorities_confirmed { "yes" } else { "no" }
+    ));
+
+    // Priorities section uses the explicit `priorities` list rather
+    // than the items section — confirmed rows and candidates render
+    // with different glyphs so the user can see the state at a glance.
+    out.push_str("## Priorities\n\n");
+    if view.priorities.is_empty() {
+        out.push_str(
+            "_(no priorities yet — the weekly ceremony proposes candidates Monday morning)_\n\n",
+        );
+    } else {
+        let mut sorted: Vec<&PriorityDto> = view.priorities.iter().collect();
+        sorted.sort_by_key(|p| p.ordinal);
+        for p in &sorted {
+            render_priority_bullet(&mut out, p);
+        }
+        out.push('\n');
+    }
+
+    let rest: [(&str, &str, &str); 4] = [
+        (
+            "calendar_shape",
+            "## Calendar shape",
+            "_(no calendar summary available for this week)_",
+        ),
+        (
+            "deadlines",
+            "## Deadlines",
+            "_(no upcoming deadlines surfaced)_",
+        ),
+        (
+            "from_last_retro",
+            "## From last retro",
+            "_(no carry-over from last week's retro)_",
+        ),
+        (
+            "inbound",
+            "## Inbound",
+            "_(no inbound items rolled over from last week)_",
+        ),
+    ];
+
+    for (key, heading, placeholder) in rest {
+        out.push_str(heading);
+        out.push_str("\n\n");
+        let rows = items_in_section(&view.items, key);
+        if rows.is_empty() {
+            out.push_str(placeholder);
+            out.push_str("\n\n");
+        } else {
+            for item in &rows {
+                render_item_bullet(&mut out, item);
+            }
+            out.push('\n');
+        }
+    }
+
+    // Footnotes — pull citations from items AND priorities (both can
+    // be backed by source rows the user might want to grep).
+    let item_cites = view.items.iter().filter_map(|i| i.citation_id.clone());
+    let prio_cites = view.priorities.iter().filter_map(|p| p.citation_id.clone());
+    render_footnotes(&mut out, item_cites.chain(prio_cites));
+    out
+}
+
+fn render_priority_bullet(out: &mut String, p: &PriorityDto) {
+    // `confirmed` priorities get a check-mark; candidates get a
+    // question mark so the open Monday-morning flow is obvious.
+    let glyph = match p.source.as_str() {
+        "confirmed" => "[x]",
+        _ => "[ ]",
+    };
+    let body_text = p
+        .body
+        .get("text")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| serde_json::to_string(&p.body).unwrap_or_default());
+    let cite = p
+        .citation_id
+        .as_ref()
+        .map(|c| format!("  [^cite-{c}]"))
+        .unwrap_or_default();
+    if p.rationale.trim().is_empty() {
+        out.push_str(&format!("- {glyph} {body_text}{cite}\n"));
+    } else {
+        out.push_str(&format!(
+            "- {glyph} {body_text} — _{}_{cite}\n",
+            p.rationale.trim()
+        ));
+    }
+}
+
+fn render_footnotes<I: Iterator<Item = String>>(out: &mut String, citations: I) {
+    let mut cites: Vec<String> = citations.collect();
+    cites.sort();
+    cites.dedup();
+    if !cites.is_empty() {
+        out.push_str("---\n\n");
+        for c in &cites {
+            out.push_str(&format!("[^cite-{c}]: source row `{c}`\n"));
+        }
+    }
 }
 
 fn render_item_bullet(out: &mut String, item: &ItemDto) {
@@ -289,6 +475,187 @@ mod tests {
         let md = render_retro(&view);
         assert!(md.contains("- user-added\n"));
         assert!(!md.contains("[^cite-"));
+    }
+
+    fn daily_tablet(date: &str, status: &str) -> TabletDto {
+        TabletDto {
+            id: format!("daily-{date}"),
+            kind: "daily".into(),
+            period_key: date.into(),
+            generated_at: "2026-05-16T07:00:00Z".into(),
+            status: status.into(),
+            workstreams_scanned: json!([]),
+            priorities_confirmed_at: None,
+        }
+    }
+
+    fn weekly_tablet(iso_week: &str, status: &str, confirmed: Option<&str>) -> TabletDto {
+        TabletDto {
+            id: format!("weekly-{iso_week}"),
+            kind: "weekly".into(),
+            period_key: iso_week.into(),
+            generated_at: "2026-05-11T08:00:00Z".into(),
+            status: status.into(),
+            workstreams_scanned: json!([]),
+            priorities_confirmed_at: confirmed.map(String::from),
+        }
+    }
+
+    fn priority(
+        ordinal: i32,
+        source: &str,
+        text: &str,
+        rationale: &str,
+        citation: Option<&str>,
+    ) -> PriorityDto {
+        PriorityDto {
+            id: format!("prio-{ordinal}"),
+            tablet_id: "weekly-2026-W20".into(),
+            body: json!({"text": text}),
+            rationale: rationale.into(),
+            citation_id: citation.map(String::from),
+            confirmed_at: if source == "confirmed" {
+                Some("2026-05-11T09:00:00Z".into())
+            } else {
+                None
+            },
+            done_at: None,
+            ordinal,
+            source: source.into(),
+        }
+    }
+
+    #[test]
+    fn daily_renders_all_four_sections_in_order() {
+        let view = DailyView {
+            tablet: daily_tablet("2026-05-16", "open"),
+            items: vec![
+                item("calendar", 0, "Standup at 14:00.", Some("evt-1")),
+                item("todos", 0, "Continue plugin work.", Some("todo-1")),
+                item("attention", 0, "Respond to urgent email.", Some("sig-1")),
+                item("alignment", 0, "Ties to weekly priority.", Some("prio-1")),
+            ],
+        };
+        let md = render_daily(&view);
+        assert!(md.contains("# Today — 2026-05-16"));
+        assert!(md.contains("status: open"));
+        let cal = md.find("## Today's calendar").unwrap();
+        let todos = md.find("## Carried-over todos").unwrap();
+        let attn = md.find("## New since yesterday").unwrap();
+        let align = md.find("## This week's priorities").unwrap();
+        assert!(cal < todos);
+        assert!(todos < attn);
+        assert!(attn < align);
+        assert!(md.contains("- Standup at 14:00.  [^cite-evt-1]"));
+        assert!(md.contains("- Continue plugin work.  [^cite-todo-1]"));
+        assert!(md.contains("[^cite-evt-1]: source row `evt-1`"));
+    }
+
+    #[test]
+    fn daily_empty_sections_render_placeholders() {
+        let view = DailyView {
+            tablet: daily_tablet("2026-05-16", "open"),
+            items: vec![],
+        };
+        let md = render_daily(&view);
+        assert!(md.contains("the day is yours"));
+        assert!(md.contains("no todos rolled over"));
+        assert!(md.contains("no new signals"));
+        assert!(md.contains("no weekly priorities set"));
+    }
+
+    #[test]
+    fn daily_footnotes_deduplicate() {
+        let view = DailyView {
+            tablet: daily_tablet("2026-05-16", "open"),
+            items: vec![
+                item("calendar", 0, "a", Some("sig-1")),
+                item("todos", 0, "b", Some("sig-1")),
+                item("attention", 0, "c", Some("sig-1")),
+            ],
+        };
+        let md = render_daily(&view);
+        let count = md.matches("[^cite-sig-1]: source row").count();
+        assert_eq!(count, 1);
+    }
+
+    #[test]
+    fn weekly_renders_priorities_and_five_sections() {
+        let view = WeeklyView {
+            tablet: weekly_tablet("2026-W20", "open", Some("2026-05-11T09:00:00Z")),
+            items: vec![
+                item("calendar_shape", 0, "7 meetings.", Some("summary-w20")),
+                item("deadlines", 0, "Tax form Friday.", Some("sig-due-1")),
+                item(
+                    "from_last_retro",
+                    0,
+                    "Protect mornings.",
+                    Some("diary-prev"),
+                ),
+                item("inbound", 0, "Vendor follow-up.", Some("wk-prev-1")),
+            ],
+            priorities: vec![
+                priority(0, "confirmed", "Ship OAuth refresh.", "high impact", Some("hot-1")),
+                priority(1, "candidate", "Plan Q3 review.", "", None),
+            ],
+        };
+        let md = render_weekly(&view);
+        assert!(md.contains("# Week of 2026-W20"));
+        assert!(md.contains("priorities confirmed: yes"));
+        let prios = md.find("## Priorities").unwrap();
+        let cal = md.find("## Calendar shape").unwrap();
+        let dl = md.find("## Deadlines").unwrap();
+        let flr = md.find("## From last retro").unwrap();
+        let inb = md.find("## Inbound").unwrap();
+        assert!(prios < cal);
+        assert!(cal < dl);
+        assert!(dl < flr);
+        assert!(flr < inb);
+        // Confirmed glyph differs from candidate glyph.
+        assert!(md.contains("- [x] Ship OAuth refresh."));
+        assert!(md.contains("- [ ] Plan Q3 review."));
+        // Rationale renders for confirmed entries.
+        assert!(md.contains("_high impact_"));
+        // Priority citation participates in footnotes.
+        assert!(md.contains("[^cite-hot-1]: source row `hot-1`"));
+    }
+
+    #[test]
+    fn weekly_unconfirmed_status_shows_no() {
+        let view = WeeklyView {
+            tablet: weekly_tablet("2026-W20", "open", None),
+            items: vec![],
+            priorities: vec![],
+        };
+        let md = render_weekly(&view);
+        assert!(md.contains("priorities confirmed: no"));
+    }
+
+    #[test]
+    fn weekly_empty_sections_render_placeholders() {
+        let view = WeeklyView {
+            tablet: weekly_tablet("2026-W20", "open", None),
+            items: vec![],
+            priorities: vec![],
+        };
+        let md = render_weekly(&view);
+        assert!(md.contains("no priorities yet"));
+        assert!(md.contains("no calendar summary"));
+        assert!(md.contains("no upcoming deadlines"));
+        assert!(md.contains("no carry-over from last week"));
+        assert!(md.contains("no inbound items"));
+    }
+
+    #[test]
+    fn weekly_footnotes_dedupe_across_items_and_priorities() {
+        let view = WeeklyView {
+            tablet: weekly_tablet("2026-W20", "open", None),
+            items: vec![item("deadlines", 0, "x", Some("shared-1"))],
+            priorities: vec![priority(0, "confirmed", "y", "r", Some("shared-1"))],
+        };
+        let md = render_weekly(&view);
+        let count = md.matches("[^cite-shared-1]: source row").count();
+        assert_eq!(count, 1);
     }
 
     #[test]

@@ -552,6 +552,7 @@ dependencies = [
 name = "arawn-tui"
 version = "0.1.0"
 dependencies = [
+ "arawn-ceremonies",
  "arawn-engine",
  "arawn-service",
  "async-trait",

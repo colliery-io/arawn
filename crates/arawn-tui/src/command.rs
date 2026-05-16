@@ -188,6 +188,22 @@ impl CommandRegistry {
             description: "Remove an entity from the knowledge base".into(),
             kind: CommandKind::BuiltIn,
         });
+        // Ceremony tablets (T-0307)
+        self.commands.push(CommandInfo {
+            name: "today".into(),
+            description: "Show today's daily ceremony tablet".into(),
+            kind: CommandKind::BuiltIn,
+        });
+        self.commands.push(CommandInfo {
+            name: "week".into(),
+            description: "Show this week's weekly ceremony tablet".into(),
+            kind: CommandKind::BuiltIn,
+        });
+        self.commands.push(CommandInfo {
+            name: "retro".into(),
+            description: "Show this week's retro ceremony tablet".into(),
+            kind: CommandKind::BuiltIn,
+        });
     }
 
     /// Add skill commands from the server's cached skill list.
@@ -333,6 +349,15 @@ pub enum CommandResult {
     /// Trigger a one-off run of a feed via `/feeds run <id>` —
     /// useful for testing without waiting for the next cron tick.
     FeedRun(String),
+    /// Fetch + render today's daily ceremony tablet as a system
+    /// message (T-0307 phase 1, read-only).
+    CeremonyShowToday,
+    /// Fetch + render this week's weekly ceremony tablet as a system
+    /// message (T-0307 phase 1, read-only).
+    CeremonyShowWeek,
+    /// Fetch + render this week's retro ceremony tablet as a system
+    /// message (T-0307 phase 1, read-only).
+    CeremonyShowRetro,
 }
 
 /// Parsed args for the non-interactive form of `/watch`.
@@ -720,6 +745,9 @@ pub fn execute_command(cmd: &ParsedCommand, registry: &CommandRegistry) -> Comma
                     }
                 }
                 "feeds" => parse_feeds_args(&cmd.args),
+                "today" => CommandResult::CeremonyShowToday,
+                "week" => CommandResult::CeremonyShowWeek,
+                "retro" => CommandResult::CeremonyShowRetro,
 
                 _ => CommandResult::SystemMessage(format!("Unknown built-in: /{}", cmd.name)),
             },

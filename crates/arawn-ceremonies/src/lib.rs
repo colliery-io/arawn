@@ -34,7 +34,7 @@ pub use engine::{ConnHandle, EngineCtx, EngineDispatcher};
 pub use events::{CeremonyEvent, CeremonyEventReceiver, CeremonyEventSender, channel as event_channel};
 pub use patterns::{Detector, DetectorCtx, DetectorRegistry};
 pub use nightly::sweep_unreviewed_retros;
-pub use render::{RetroView, render_retro};
+pub use render::{DailyView, RetroView, WeeklyView, render_daily, render_retro, render_weekly};
 pub use plugins::{
     AttentionSource, CalEvent, CalendarSource, DailyCeremony, NoopCalendarSource,
     PriorityCompletionDetector, RetroCeremony, RolloverHeatDetector, SignalRow,
