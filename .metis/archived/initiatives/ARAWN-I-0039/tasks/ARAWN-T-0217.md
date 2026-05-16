@@ -81,6 +81,8 @@ Depends on: T-0214 (runtime), T-0213 (Atlassian v2 client landed already).
 
 ## Acceptance Criteria
 
+## Acceptance Criteria
+
 ## Acceptance Criteria **[REQUIRED]**
 
 - [ ] All five templates registered.

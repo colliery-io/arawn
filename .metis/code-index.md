@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-15T19:46:42Z | 322 files | Python, Rust
+> Generated: 2026-05-16T20:21:39Z | 350 files | Python, Rust
 
 ## Project Structure
 
@@ -26,6 +26,30 @@
 │   │       ├── oauth2.rs
 │   │       ├── server.rs
 │   │       └── token_store.rs
+│   ├── arawn-ceremonies/
+│   │   ├── src/
+│   │   │   ├── engine.rs
+│   │   │   ├── error.rs
+│   │   │   ├── events.rs
+│   │   │   ├── lib.rs
+│   │   │   ├── nightly.rs
+│   │   │   ├── patterns.rs
+│   │   │   ├── plugin.rs
+│   │   │   ├── plugins/
+│   │   │   │   ├── daily.rs
+│   │   │   │   ├── gather_sources.rs
+│   │   │   │   ├── mod.rs
+│   │   │   │   ├── retro.rs
+│   │   │   │   ├── retro_detectors.rs
+│   │   │   │   └── weekly.rs
+│   │   │   ├── registry.rs
+│   │   │   ├── render.rs
+│   │   │   ├── rollup.rs
+│   │   │   ├── runner.rs
+│   │   │   ├── service.rs
+│   │   │   └── types.rs
+│   │   └── tests/
+│   │       └── retro_uat.rs
 │   ├── arawn-core/
 │   │   └── src/
 │   │       ├── error.rs
@@ -49,6 +73,7 @@
 │   │       │   ├── audit.rs
 │   │       │   └── mod.rs
 │   │       ├── background.rs
+│   │       ├── ceremony_sources.rs
 │   │       ├── compact_prompt.rs
 │   │       ├── compactor.rs
 │   │       ├── context.rs
@@ -100,6 +125,8 @@
 │   │       ├── tools/
 │   │       │   ├── agent.rs
 │   │       │   ├── ask_user.rs
+│   │       │   ├── ceremony.rs
+│   │       │   ├── daily.rs
 │   │       │   ├── enter_plan_mode.rs
 │   │       │   ├── exit_plan_mode.rs
 │   │       │   ├── feed_search.rs
@@ -124,6 +151,7 @@
 │   │       │   ├── think.rs
 │   │       │   ├── web_fetch.rs
 │   │       │   ├── web_search.rs
+│   │       │   ├── weekly.rs
 │   │       │   └── workstream.rs
 │   │       └── workstream_router.rs
 │   ├── arawn-extractor/
@@ -350,8 +378,11 @@
 │   │       ├── skills.rs
 │   │       ├── tool_artifacts.rs
 │   │       ├── uat.rs
+│   │       ├── uat_daily_seed.rs
 │   │       ├── uat_fixture.rs
 │   │       ├── uat_fixture_smoke.rs
+│   │       ├── uat_retro_seed.rs
+│   │       ├── uat_weekly_seed.rs
 │   │       ├── websocket.rs
 │   │       └── workflows.rs
 │   ├── arawn-tool/
@@ -366,6 +397,7 @@
 │   │   └── src/
 │   │       ├── action.rs
 │   │       ├── app.rs
+│   │       ├── ceremony_modal.rs
 │   │       ├── command.rs
 │   │       ├── event.rs
 │   │       ├── event_loop.rs
@@ -465,19 +497,21 @@
 - pub `SandboxConfig` struct L219-225 — `{ network_tools: Vec<String> }` — Sandbox configuration for shell command execution.
 - pub `IntegrationCredentials` struct L277-282 — `{ client_id: String, client_secret: String }` — OAuth client credentials for one integration.
 - pub `IntegrationsConfig` struct L289-312 — `{ slack: IntegrationCredentials, google: IntegrationCredentials, gmail: Integrat...` — Per-integration credential blocks.
-- pub `ArawnConfig` struct L316-337 — `{ llm: HashMap<String, LlmConfig>, engine: EngineConfig, compactor: CompactorCon...` — Top-level configuration.
-- pub `RoutingConfig` struct L343-348 — `{ hints: HintRoutingConfig, providers: ProvidersRoutingConfig }` — Routing configuration.
-- pub `ProvidersRoutingConfig` struct L355-364 — `{ local: Option<String>, remote: Option<String> }` — Names of the `[llm.NAME]` profiles that play the Local and Remote
-- pub `HintRoutingConfig` struct L370-380 — `{ lightweight: Option<String>, medium: Option<String>, heavy: Option<String> }` — Maps each `ModelHint` tier to a named `[llm.NAME]` profile.
-- pub `load` function L407-440 — `(data_dir: &Path) -> Self` — Load config from `data_dir/arawn.toml`, merging with env var overrides and defaults.
-- pub `engine_llm` function L463-468 — `(&self) -> &LlmConfig` — Resolve the LLM config for the engine.
-- pub `compactor_llm` function L471-478 — `(&self) -> &LlmConfig` — Resolve the LLM config for the compactor.
-- pub `extraction_llm` function L483-490 — `(&self) -> &LlmConfig` — Resolve the LLM config for the per-workstream extractor.
-- pub `extraction_llm_name` function L495-500 — `(&self) -> &str` — The configured name of the extraction LLM (or the engine's
-- pub `data_dir` function L503-505 — `(&self) -> PathBuf` — Resolve the data directory with ~ expansion.
-- pub `prompts_dir` function L508-510 — `(&self) -> PathBuf` — Resolve the prompts directory.
-- pub `resolve_api_key` function L514-521 — `(llm: &LlmConfig) -> Option<String>` — Resolve API key for an LLM config.
-- pub `generate_default_toml` function L524-615 — `() -> String` — Generate a default config file string with comments.
+- pub `ArawnConfig` struct L316-342 — `{ llm: HashMap<String, LlmConfig>, engine: EngineConfig, compactor: CompactorCon...` — Top-level configuration.
+- pub `CeremonyConfig` struct L348-368 — `{ enabled: Option<bool>, schedule: Option<String>, timezone: Option<String>, mod...` — One ceremony's runtime overrides.
+- pub `is_enabled` function L372-374 — `(&self) -> bool` — `enabled` field defaulting to `true`.
+- pub `RoutingConfig` struct L381-386 — `{ hints: HintRoutingConfig, providers: ProvidersRoutingConfig }` — Routing configuration.
+- pub `ProvidersRoutingConfig` struct L393-402 — `{ local: Option<String>, remote: Option<String> }` — Names of the `[llm.NAME]` profiles that play the Local and Remote
+- pub `HintRoutingConfig` struct L408-418 — `{ lightweight: Option<String>, medium: Option<String>, heavy: Option<String> }` — Maps each `ModelHint` tier to a named `[llm.NAME]` profile.
+- pub `load` function L446-479 — `(data_dir: &Path) -> Self` — Load config from `data_dir/arawn.toml`, merging with env var overrides and defaults.
+- pub `engine_llm` function L502-507 — `(&self) -> &LlmConfig` — Resolve the LLM config for the engine.
+- pub `compactor_llm` function L510-517 — `(&self) -> &LlmConfig` — Resolve the LLM config for the compactor.
+- pub `extraction_llm` function L522-529 — `(&self) -> &LlmConfig` — Resolve the LLM config for the per-workstream extractor.
+- pub `extraction_llm_name` function L534-539 — `(&self) -> &str` — The configured name of the extraction LLM (or the engine's
+- pub `data_dir` function L542-544 — `(&self) -> PathBuf` — Resolve the data directory with ~ expansion.
+- pub `prompts_dir` function L547-549 — `(&self) -> PathBuf` — Resolve the prompts directory.
+- pub `resolve_api_key` function L553-560 — `(llm: &LlmConfig) -> Option<String>` — Resolve API key for an LLM config.
+- pub `generate_default_toml` function L563-673 — `() -> String` — Generate a default config file string with comments.
 -  `default_api_key_env` function L36-38 — `() -> String`
 -  `default_context_window` function L39-41 — `() -> u32`
 -  `default_max_tokens` function L42-44 — `() -> u32`
@@ -507,22 +541,27 @@
 -  `default_network_tools` function L227-263 — `() -> Vec<String>`
 -  `SandboxConfig` type L265-271 — `impl Default for SandboxConfig`
 -  `default` function L266-270 — `() -> Self`
--  `default_llm_configs` function L382-386 — `() -> HashMap<String, LlmConfig>`
--  `ArawnConfig` type L388-403 — `impl Default for ArawnConfig`
--  `default` function L389-402 — `() -> Self`
--  `ArawnConfig` type L405-616 — `= ArawnConfig`
--  `apply_env_overrides` function L442-460 — `(&mut self)`
--  `expand_tilde` function L618-625 — `(path: &str) -> PathBuf`
--  `tests` module L628-755 — `-`
--  `default_config_has_working_values` function L632-641 — `()`
--  `load_from_toml_string` function L644-664 — `()`
--  `compactor_falls_back_to_engine_llm` function L667-672 — `()`
--  `compactor_uses_own_llm_when_specified` function L675-694 — `()`
--  `missing_llm_name_falls_back_to_default_via_load` function L697-713 — `()`
--  `load_missing_file_uses_defaults` function L716-720 — `()`
--  `load_from_tempdir` function L723-741 — `()`
--  `generate_default_toml_is_parseable` function L744-748 — `()`
--  `tilde_expansion` function L751-754 — `()`
+-  `CeremonyConfig` type L370-375 — `= CeremonyConfig`
+-  `default_llm_configs` function L420-424 — `() -> HashMap<String, LlmConfig>`
+-  `ArawnConfig` type L426-442 — `impl Default for ArawnConfig`
+-  `default` function L427-441 — `() -> Self`
+-  `ArawnConfig` type L444-674 — `= ArawnConfig`
+-  `apply_env_overrides` function L481-499 — `(&mut self)`
+-  `expand_tilde` function L676-683 — `(path: &str) -> PathBuf`
+-  `tests` module L686-869 — `-`
+-  `default_config_has_working_values` function L690-699 — `()`
+-  `load_from_toml_string` function L702-722 — `()`
+-  `compactor_falls_back_to_engine_llm` function L725-730 — `()`
+-  `compactor_uses_own_llm_when_specified` function L733-752 — `()`
+-  `missing_llm_name_falls_back_to_default_via_load` function L755-771 — `()`
+-  `load_missing_file_uses_defaults` function L774-778 — `()`
+-  `load_from_tempdir` function L781-799 — `()`
+-  `generate_default_toml_is_parseable` function L802-806 — `()`
+-  `tilde_expansion` function L809-812 — `()`
+-  `empty_config_has_no_ceremony_overrides` function L815-821 — `()`
+-  `ceremonies_table_parses_full_block` function L824-839 — `()`
+-  `ceremonies_disabled_observed` function L842-854 — `()`
+-  `ceremonies_partial_block_keeps_other_fields_none` function L857-868 — `()`
 
 #### crates/arawn/src/config_watcher.rs
 
@@ -642,102 +681,105 @@
 
 #### crates/arawn/src/local_service.rs
 
-- pub `LocalService` struct L31-86 — `{ store: Arc<Mutex<Store>>, data_dir: PathBuf, llm_pool: Arc<LlmClientPool>, reg...` — In-process implementation of ArawnService.
-- pub `new` function L89-118 — `( store: Store, data_dir: PathBuf, llm_pool: Arc<LlmClientPool>, registry: Arc<T...`
-- pub `with_active_workstream` function L123-126 — `(mut self, ws: arawn_engine::SessionWorkstream) -> Self` — Wire the shared `SessionWorkstream` shim.
-- pub `set_feed_runtime` function L131-133 — `(&self, runtime: Arc<arawn_feeds::FeedRuntime>)` — Hand the live feed runtime to the service so `/watch` and
-- pub `register_integration` function L149-153 — `(&self, integration: Arc<dyn arawn_integrations::Integration>)` — Register an external integration.
-- pub `shared_integrations` function L157-161 — `( &self, ) -> Arc<std::sync::RwLock<HashMap<String, Arc<dyn arawn_integrations::...` — Shared reference to the integration registry — for tools that want
-- pub `subscribe_notices` function L167-169 — `(&self) -> tokio::sync::broadcast::Receiver<arawn_service::ServerNotice>` — Subscribe to server-wide notices (plugin/config hot-reload, etc.).
-- pub `notice_sender` function L173-175 — `(&self) -> tokio::sync::broadcast::Sender<arawn_service::ServerNotice>` — Get a sender clone — used to wire watchers (plugin runtime, config
-- pub `with_permission_rules` function L177-180 — `(self, rules: Vec<PermissionRule>) -> Self`
-- pub `shared_store` function L184-186 — `(&self) -> Arc<Mutex<Store>>` — Get a reference to the shared permission rules for hot-reload.
-- pub `shared_llm` function L188-190 — `(&self) -> Arc<dyn LlmClient>`
-- pub `shared_compactor_llm` function L194-196 — `(&self) -> Arc<dyn LlmClient>` — Compactor LLM (separate client when `[compactor]` config selects a
-- pub `compactor_model` function L199-201 — `(&self) -> &str` — Model name used by the compactor.
-- pub `shared_llm_pool` function L205-207 — `(&self) -> Arc<LlmClientPool>` — Shared reference to the LLM pool — used by tools/agents that resolve
-- pub `shared_registry` function L209-211 — `(&self) -> Arc<ToolRegistry>`
-- pub `engine_config` function L213-215 — `(&self) -> &QueryEngineConfig`
-- pub `shared_permission_rules` function L217-219 — `(&self) -> Arc<std::sync::RwLock<Vec<PermissionRule>>>`
-- pub `shared_permission_mode` function L221-223 — `(&self) -> Arc<std::sync::RwLock<arawn_engine::permissions::PermissionMode>>`
-- pub `with_skill_registry` function L225-228 — `(mut self, registry: Arc<arawn_engine::skills::SkillRegistry>) -> Self`
-- pub `with_plugin_registry` function L230-233 — `(mut self, registry: Arc<arawn_engine::plugins::PluginRegistry>) -> Self`
-- pub `with_plan_state` function L235-238 — `(mut self, state: Arc<PlanModeState>) -> Self`
-- pub `with_background_tasks` function L240-243 — `(mut self, manager: Arc<BackgroundTaskManager>) -> Self`
-- pub `with_memory_manager` function L245-248 — `(mut self, mgr: Arc<arawn_memory::MemoryManager>) -> Self`
--  `LocalService` type L88-462 — `= LocalService`
--  `feed_runtime_or_err` function L135-145 — `(&self) -> Result<Arc<arawn_feeds::FeedRuntime>, ServiceError>`
--  `load_session_state` function L252-293 — `( &self, session_id: Uuid, ) -> Result<(arawn_storage::SessionMeta, Workstream, ...` — Load session metadata, resolve workstream, and load message history.
--  `build_session_context` function L297-404 — `( &self, session_id: Uuid, workstream: &Workstream, ws_dir: &str, workspace_dir:...` — Build a ToolContext and per-session PromptContext for the engine.
--  `build_engine` function L408-461 — `( &self, prompt_context: Option<arawn_engine::PromptContext>, event_tx: &mpsc::S...` — Build a QueryEngine configured with compactor, skills, plugins, and plan state.
--  `infer_entity_type` function L466-479 — `(text: &str) -> (arawn_memory::EntityType, String)` — Infer entity type from text patterns.
--  `LocalService` type L484-1597 — `impl ArawnService for LocalService`
--  `list_workstreams` function L485-500 — `(&self) -> Result<Vec<WorkstreamInfo>, ServiceError>`
--  `create_workstream` function L502-519 — `( &self, name: String, root_dir: PathBuf, ) -> Result<WorkstreamInfo, ServiceErr...`
--  `list_sessions` function L521-540 — `( &self, workstream_id: Option<Uuid>, ) -> Result<Vec<SessionInfo>, ServiceError...`
--  `create_session` function L542-563 — `( &self, workstream_id: Option<Uuid>, ) -> Result<SessionInfo, ServiceError>`
--  `load_session` function L565-592 — `(&self, id: Uuid) -> Result<SessionDetail, ServiceError>`
--  `truncate_session_at_user_message` function L594-642 — `( &self, id: Uuid, user_message_index: usize, ) -> Result<SessionDetail, Service...`
--  `send_message` function L645-841 — `( &self, session_id: Uuid, content: String, ) -> Result<Pin<Box<dyn futures::Str...`
--  `cancel` function L843-856 — `(&self, session_id: Uuid) -> Result<(), ServiceError>`
--  `promote_session` function L858-909 — `( &self, session_id: Uuid, workstream_name: &str, ) -> Result<PromotionResult, S...`
--  `resolve_user_input` function L911-925 — `( &self, request_id: &str, selected_index: Option<usize>, ) -> Result<(), Servic...`
--  `query_inventory` function L927-992 — `(&self, kind: &str) -> Result<Vec<InventoryItem>, ServiceError>`
--  `list_available_commands` function L994-1006 — `(&self) -> Result<Vec<CommandInfo>, ServiceError>`
--  `list_workflows` function L1008-1039 — `(&self) -> Result<Vec<WorkflowInfo>, ServiceError>`
--  `remember_fact` function L1041-1087 — `(&self, text: &str) -> Result<MemoryStoreResult, ServiceError>`
--  `memory_summary` function L1089-1136 — `(&self) -> Result<MemorySummary, ServiceError>`
--  `forget_entity` function L1138-1188 — `(&self, query: &str) -> Result<ForgetResult, ServiceError>`
--  `get_permission_mode` function L1190-1198 — `(&self) -> Result<PermissionModeInfo, ServiceError>`
--  `set_permission_mode` function L1200-1212 — `(&self, mode_str: &str) -> Result<PermissionModeInfo, ServiceError>`
--  `get_capabilities` function L1214-1224 — `(&self) -> Result<arawn_service::ServerCapabilities, ServiceError>`
--  `get_permissions_status` function L1226-1275 — `(&self) -> Result<arawn_service::PermissionsStatus, ServiceError>`
--  `list_integrations` function L1277-1295 — `(&self) -> Result<Vec<arawn_service::IntegrationStatus>, ServiceError>`
--  `start_oauth_flow` function L1297-1425 — `( &self, service: &str, ) -> Result<arawn_service::OAuthFlowStarted, ServiceErro...`
--  `disconnect_integration` function L1427-1450 — `(&self, service: &str) -> Result<(), ServiceError>`
--  `feed_register` function L1452-1485 — `( &self, spec: arawn_service::FeedRegisterSpec, ) -> Result<arawn_service::FeedS...`
--  `feed_list` function L1487-1491 — `(&self) -> Result<Vec<arawn_service::FeedSummaryDto>, ServiceError>`
--  `feed_pause` function L1493-1507 — `( &self, feed_id: &str, ) -> Result<arawn_service::FeedSummaryDto, ServiceError>`
--  `feed_resume` function L1509-1523 — `( &self, feed_id: &str, ) -> Result<arawn_service::FeedSummaryDto, ServiceError>`
--  `feed_run` function L1525-1546 — `( &self, feed_id: &str, ) -> Result<arawn_service::FeedSummaryDto, ServiceError>`
--  `feed_discover` function L1548-1573 — `( &self, template: &str, ) -> Result<arawn_service::FeedDiscoverDto, ServiceErro...`
--  `feed_remove` function L1575-1596 — `( &self, feed_id: &str, ) -> Result<arawn_service::FeedRemoveDto, ServiceError>`
--  `default_feed_for_service` function L1604-1613 — `(service: &str) -> Option<(&'static str, &'static str)>` — Personal default feed registered automatically the first time
--  `current_summary` function L1615-1625 — `( runtime: &arawn_feeds::FeedRuntime, feed_id: &str, ) -> Result<arawn_service::...`
--  `feed_err` function L1627-1636 — `(e: arawn_feeds::FeedError) -> ServiceError`
--  `feed_summary_to_dto` function L1638-1652 — `(s: arawn_feeds::FeedSummary) -> arawn_service::FeedSummaryDto`
--  `OAuthFlowCtx` struct L1657-1661 — `{ service: String, url_tx: tokio::sync::Mutex<Option<tokio::sync::oneshot::Sende...` — Glue that lets `LocalService::start_oauth_flow` bridge the integration's
--  `OAuthFlowCtx` type L1664-1686 — `= OAuthFlowCtx`
--  `service` function L1665-1667 — `(&self) -> &str`
--  `publish_auth_url` function L1669-1676 — `(&self, url: &url::Url)`
--  `publish_progress` function L1678-1685 — `(&self, message: &str)`
--  `resolve_ws_dir_from_store` function L1689-1700 — `(store: &Store, ws_id: Option<Uuid>) -> Result<String, ServiceError>` — Resolve workstream directory name from store.
--  `first_sentence` function L1704-1715 — `(s: &str) -> String` — Extract the first sentence and sanitize for use in a markdown table cell.
--  `feed_default_tests` module L1718-1755 — `-`
--  `known_services_each_have_a_default_feed` function L1722-1748 — `()`
--  `unknown_service_has_no_default_feed` function L1751-1754 — `()`
+- pub `LocalService` struct L31-92 — `{ store: Arc<Mutex<Store>>, data_dir: PathBuf, llm_pool: Arc<LlmClientPool>, reg...` — In-process implementation of ArawnService.
+- pub `new` function L95-127 — `( store: Store, data_dir: PathBuf, llm_pool: Arc<LlmClientPool>, registry: Arc<T...`
+- pub `set_ceremony_service` function L131-133 — `(&self, svc: Arc<arawn_ceremonies::CeremonyService>)` — Wire the ceremony service.
+- pub `ceremony_service` function L136-138 — `(&self) -> Option<Arc<arawn_ceremonies::CeremonyService>>` — Shared reference to the ceremony service, if wired.
+- pub `with_active_workstream` function L143-146 — `(mut self, ws: arawn_engine::SessionWorkstream) -> Self` — Wire the shared `SessionWorkstream` shim.
+- pub `set_feed_runtime` function L151-153 — `(&self, runtime: Arc<arawn_feeds::FeedRuntime>)` — Hand the live feed runtime to the service so `/watch` and
+- pub `register_integration` function L163-170 — `(&self, integration: Arc<dyn arawn_integrations::Integration>)` — Register an external integration.
+- pub `shared_integrations` function L174-178 — `( &self, ) -> Arc<std::sync::RwLock<HashMap<String, Arc<dyn arawn_integrations::...` — Shared reference to the integration registry — for tools that want
+- pub `subscribe_notices` function L184-188 — `( &self, ) -> tokio::sync::broadcast::Receiver<arawn_service::ServerNotice>` — Subscribe to server-wide notices (plugin/config hot-reload, etc.).
+- pub `notice_sender` function L192-194 — `(&self) -> tokio::sync::broadcast::Sender<arawn_service::ServerNotice>` — Get a sender clone — used to wire watchers (plugin runtime, config
+- pub `with_permission_rules` function L196-199 — `(self, rules: Vec<PermissionRule>) -> Self`
+- pub `shared_store` function L203-205 — `(&self) -> Arc<Mutex<Store>>` — Get a reference to the shared permission rules for hot-reload.
+- pub `shared_llm` function L207-209 — `(&self) -> Arc<dyn LlmClient>`
+- pub `shared_compactor_llm` function L213-215 — `(&self) -> Arc<dyn LlmClient>` — Compactor LLM (separate client when `[compactor]` config selects a
+- pub `compactor_model` function L218-220 — `(&self) -> &str` — Model name used by the compactor.
+- pub `shared_llm_pool` function L224-226 — `(&self) -> Arc<LlmClientPool>` — Shared reference to the LLM pool — used by tools/agents that resolve
+- pub `shared_registry` function L228-230 — `(&self) -> Arc<ToolRegistry>`
+- pub `engine_config` function L232-234 — `(&self) -> &QueryEngineConfig`
+- pub `shared_permission_rules` function L236-238 — `(&self) -> Arc<std::sync::RwLock<Vec<PermissionRule>>>`
+- pub `shared_permission_mode` function L240-244 — `( &self, ) -> Arc<std::sync::RwLock<arawn_engine::permissions::PermissionMode>>`
+- pub `with_skill_registry` function L246-252 — `( mut self, registry: Arc<arawn_engine::skills::SkillRegistry>, ) -> Self`
+- pub `with_plugin_registry` function L254-260 — `( mut self, registry: Arc<arawn_engine::plugins::PluginRegistry>, ) -> Self`
+- pub `with_plan_state` function L262-265 — `(mut self, state: Arc<PlanModeState>) -> Self`
+- pub `with_background_tasks` function L267-270 — `(mut self, manager: Arc<BackgroundTaskManager>) -> Self`
+- pub `with_memory_manager` function L272-275 — `(mut self, mgr: Arc<arawn_memory::MemoryManager>) -> Self`
+-  `LocalService` type L94-484 — `= LocalService`
+-  `feed_runtime_or_err` function L155-159 — `(&self) -> Result<Arc<arawn_feeds::FeedRuntime>, ServiceError>`
+-  `load_session_state` function L279-317 — `( &self, session_id: Uuid, ) -> Result<(arawn_storage::SessionMeta, Workstream, ...` — Load session metadata, resolve workstream, and load message history.
+-  `build_session_context` function L321-426 — `( &self, session_id: Uuid, workstream: &Workstream, ws_dir: &str, workspace_dir:...` — Build a ToolContext and per-session PromptContext for the engine.
+-  `build_engine` function L430-483 — `( &self, prompt_context: Option<arawn_engine::PromptContext>, event_tx: &mpsc::S...` — Build a QueryEngine configured with compactor, skills, plugins, and plan state.
+-  `infer_entity_type` function L487-508 — `(text: &str) -> (arawn_memory::EntityType, String)` — Infer entity type from text patterns.
+-  `LocalService` type L513-1616 — `impl ArawnService for LocalService`
+-  `list_workstreams` function L514-527 — `(&self) -> Result<Vec<WorkstreamInfo>, ServiceError>`
+-  `create_workstream` function L529-544 — `( &self, name: String, root_dir: PathBuf, ) -> Result<WorkstreamInfo, ServiceErr...`
+-  `list_sessions` function L546-564 — `( &self, workstream_id: Option<Uuid>, ) -> Result<Vec<SessionInfo>, ServiceError...`
+-  `create_session` function L566-585 — `( &self, workstream_id: Option<Uuid>, ) -> Result<SessionInfo, ServiceError>`
+-  `load_session` function L587-610 — `(&self, id: Uuid) -> Result<SessionDetail, ServiceError>`
+-  `truncate_session_at_user_message` function L612-660 — `( &self, id: Uuid, user_message_index: usize, ) -> Result<SessionDetail, Service...`
+-  `send_message` function L663-860 — `( &self, session_id: Uuid, content: String, ) -> Result<Pin<Box<dyn futures::Str...`
+-  `cancel` function L862-875 — `(&self, session_id: Uuid) -> Result<(), ServiceError>`
+-  `promote_session` function L877-927 — `( &self, session_id: Uuid, workstream_name: &str, ) -> Result<PromotionResult, S...`
+-  `resolve_user_input` function L929-943 — `( &self, request_id: &str, selected_index: Option<usize>, ) -> Result<(), Servic...`
+-  `query_inventory` function L945-1010 — `(&self, kind: &str) -> Result<Vec<InventoryItem>, ServiceError>`
+-  `list_available_commands` function L1012-1024 — `(&self) -> Result<Vec<CommandInfo>, ServiceError>`
+-  `list_workflows` function L1026-1056 — `(&self) -> Result<Vec<WorkflowInfo>, ServiceError>`
+-  `remember_fact` function L1058-1100 — `(&self, text: &str) -> Result<MemoryStoreResult, ServiceError>`
+-  `memory_summary` function L1102-1149 — `(&self) -> Result<MemorySummary, ServiceError>`
+-  `forget_entity` function L1151-1204 — `(&self, query: &str) -> Result<ForgetResult, ServiceError>`
+-  `get_permission_mode` function L1206-1214 — `(&self) -> Result<PermissionModeInfo, ServiceError>`
+-  `set_permission_mode` function L1216-1231 — `( &self, mode_str: &str, ) -> Result<PermissionModeInfo, ServiceError>`
+-  `get_capabilities` function L1233-1243 — `(&self) -> Result<arawn_service::ServerCapabilities, ServiceError>`
+-  `get_permissions_status` function L1245-1296 — `( &self, ) -> Result<arawn_service::PermissionsStatus, ServiceError>`
+-  `list_integrations` function L1298-1318 — `( &self, ) -> Result<Vec<arawn_service::IntegrationStatus>, ServiceError>`
+-  `start_oauth_flow` function L1320-1447 — `( &self, service: &str, ) -> Result<arawn_service::OAuthFlowStarted, ServiceErro...`
+-  `disconnect_integration` function L1449-1472 — `(&self, service: &str) -> Result<(), ServiceError>`
+-  `feed_register` function L1474-1507 — `( &self, spec: arawn_service::FeedRegisterSpec, ) -> Result<arawn_service::FeedS...`
+-  `feed_list` function L1509-1513 — `(&self) -> Result<Vec<arawn_service::FeedSummaryDto>, ServiceError>`
+-  `feed_pause` function L1515-1529 — `( &self, feed_id: &str, ) -> Result<arawn_service::FeedSummaryDto, ServiceError>`
+-  `feed_resume` function L1531-1545 — `( &self, feed_id: &str, ) -> Result<arawn_service::FeedSummaryDto, ServiceError>`
+-  `feed_run` function L1547-1562 — `(&self, feed_id: &str) -> Result<arawn_service::FeedSummaryDto, ServiceError>`
+-  `feed_discover` function L1564-1592 — `( &self, template: &str, ) -> Result<arawn_service::FeedDiscoverDto, ServiceErro...`
+-  `feed_remove` function L1594-1615 — `( &self, feed_id: &str, ) -> Result<arawn_service::FeedRemoveDto, ServiceError>`
+-  `default_feed_for_service` function L1623-1632 — `(service: &str) -> Option<(&'static str, &'static str)>` — Personal default feed registered automatically the first time
+-  `current_summary` function L1634-1644 — `( runtime: &arawn_feeds::FeedRuntime, feed_id: &str, ) -> Result<arawn_service::...`
+-  `feed_err` function L1646-1653 — `(e: arawn_feeds::FeedError) -> ServiceError`
+-  `feed_summary_to_dto` function L1655-1669 — `(s: arawn_feeds::FeedSummary) -> arawn_service::FeedSummaryDto`
+-  `OAuthFlowCtx` struct L1674-1678 — `{ service: String, url_tx: tokio::sync::Mutex<Option<tokio::sync::oneshot::Sende...` — Glue that lets `LocalService::start_oauth_flow` bridge the integration's
+-  `OAuthFlowCtx` type L1681-1703 — `= OAuthFlowCtx`
+-  `service` function L1682-1684 — `(&self) -> &str`
+-  `publish_auth_url` function L1686-1693 — `(&self, url: &url::Url)`
+-  `publish_progress` function L1695-1702 — `(&self, message: &str)`
+-  `resolve_ws_dir_from_store` function L1706-1716 — `(store: &Store, ws_id: Option<Uuid>) -> Result<String, ServiceError>` — Resolve workstream directory name from store.
+-  `first_sentence` function L1720-1731 — `(s: &str) -> String` — Extract the first sentence and sanitize for use in a markdown table cell.
+-  `feed_default_tests` module L1734-1771 — `-`
+-  `known_services_each_have_a_default_feed` function L1738-1764 — `()`
+-  `unknown_service_has_no_default_feed` function L1767-1770 — `()`
 
 #### crates/arawn/src/main.rs
 
--  `EmbedderBridge` struct L12-14 — `{ inner: Arc<dyn arawn_embed::Embedder> }` — Adapter from `arawn_embed::Embedder` to the trait
--  `EmbedderBridge` type L16-32 — `= EmbedderBridge`
--  `embed_batch` function L17-31 — `( &'a self, texts: &'a [&'a str], ) -> std::pin::Pin< Box<dyn std::future::Futur...`
--  `DEFAULT_MODEL` variable L39 — `: &str`
--  `FILE_LOG_FILTER` variable L42 — `: &str` — Default file log filter: debug for arawn crates, warn for third-party.
--  `main` function L45-1262 — `() -> Result<()>`
--  `Cli` struct L51-70 — `{ command: Option<Command>, data_dir: Option<String>, session: Option<Uuid>, lis...`
--  `Command` enum L73-113 — `Serve | Tui | Plugin | Doctor | Usage`
--  `ExtractorBindHook` struct L767-770 — `{ runner: Arc<arawn_extractor::ExtractorRunner>, store: Arc<std::sync::Mutex<ara...`
--  `ExtractorBindHook` type L771-805 — `= ExtractorBindHook`
--  `on_bind` function L772-804 — `(&self, workstream_name: &str, feed_id: &str)`
--  `run_cli_via_server` function L1265-1370 — `( url: &str, prompt: &str, session_id: Option<Uuid>, ) -> Result<()>` — Run a CLI prompt by connecting to the running server via WebSocket.
--  `build_llm_client` function L1373-1396 — `( config: &arawn_bin::LlmConfig, ) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
--  `register_default_tools` function L1399-1445 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &arawn_bin::ArawnConfig, d...` — Register all default tools into the registry.
--  `connect_mcp_servers` function L1448-1496 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
--  `register_workflow_tools` function L1499-1516 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
--  `build_engine_config` function L1518-1557 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
--  `render_usage_human` function L1560-1596 — `(s: &arawn_llm::usage::UsageSummary) -> String` — Human-readable renderer for the `arawn usage` command.
--  `dirs_path` function L1598-1607 — `() -> Option<String>`
+-  `EmbedderBridge` struct L11-13 — `{ inner: Arc<dyn arawn_embed::Embedder> }` — Adapter from `arawn_embed::Embedder` to the trait
+-  `EmbedderBridge` type L15-26 — `= EmbedderBridge`
+-  `embed_batch` function L16-25 — `( &'a self, texts: &'a [&'a str], ) -> std::pin::Pin< Box<dyn std::future::Futur...`
+-  `DEFAULT_MODEL` variable L33 — `: &str`
+-  `FILE_LOG_FILTER` variable L36 — `: &str` — Default file log filter: debug for arawn crates, warn for third-party.
+-  `main` function L39-1734 — `() -> Result<()>`
+-  `Cli` struct L45-64 — `{ command: Option<Command>, data_dir: Option<String>, session: Option<Uuid>, lis...`
+-  `Command` enum L67-107 — `Serve | Tui | Plugin | Doctor | Usage`
+-  `ExtractorBindHook` struct L778-781 — `{ runner: Arc<arawn_extractor::ExtractorRunner>, store: Arc<std::sync::Mutex<ara...`
+-  `ExtractorBindHook` type L782-811 — `= ExtractorBindHook`
+-  `on_bind` function L783-810 — `(&self, workstream_name: &str, feed_id: &str)`
+-  `resolve_ceremony_tz` function L1320-1349 — `( kind: &str, raw: Option<&str>, ) -> chrono_tz::Tz`
+-  `run_cli_via_server` function L1737-1839 — `(url: &str, prompt: &str, session_id: Option<Uuid>) -> Result<()>` — Run a CLI prompt by connecting to the running server via WebSocket.
+-  `build_llm_client` function L1842-1863 — `(config: &arawn_bin::LlmConfig) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
+-  `register_default_tools` function L1866-1912 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &arawn_bin::ArawnConfig, d...` — Register all default tools into the registry.
+-  `connect_mcp_servers` function L1915-1959 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
+-  `register_workflow_tools` function L1962-1979 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
+-  `build_engine_config` function L1981-2020 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
+-  `render_usage_human` function L2023-2059 — `(s: &arawn_llm::usage::UsageSummary) -> String` — Human-readable renderer for the `arawn usage` command.
+-  `dirs_path` function L2061-2070 — `() -> Option<String>`
 
 #### crates/arawn/src/plugin_cmd.rs
 
@@ -765,30 +807,31 @@
 
 #### crates/arawn/src/ws_server.rs
 
-- pub `read_token_file` function L151-162 — `() -> Option<String>` — Read the auth token from {data_dir}/server.token.
-- pub `run_server` function L165-200 — `(service: LocalService, port: u16) -> anyhow::Result<()>` — Start the WebSocket server on the given port.
-- pub `handle_connection_public` function L286-288 — `(socket: WebSocket, service: Arc<LocalService>)` — Handle a single WebSocket connection.
+- pub `read_token_file` function L196-207 — `() -> Option<String>` — Read the auth token from {data_dir}/server.token.
+- pub `run_server` function L210-245 — `(service: LocalService, port: u16) -> anyhow::Result<()>` — Start the WebSocket server on the given port.
+- pub `handle_connection_public` function L335-337 — `(socket: WebSocket, service: Arc<LocalService>)` — Handle a single WebSocket connection.
 -  `PROTOCOL_VERSION` variable L24 — `: &str` — Protocol version reported by the `hello` handshake.
--  `RPC_METHODS` variable L27-59 — `: &[&str]` — Canonical RPC method names (returned by `hello`).
--  `Request` struct L63-68 — `{ id: u64, method: String, params: Value }` — JSON-RPC style request from client.
--  `Response` struct L72-78 — `{ id: u64, result: Option<Value>, error: Option<ErrorBody> }` — JSON-RPC style response to client.
--  `ErrorBody` struct L81-86 — `{ code: String, message: String, details: Option<Value> }`
--  `Response` type L88-124 — `= Response`
--  `success` function L89-95 — `(id: u64, result: Value) -> Self`
--  `error` function L97-107 — `(id: u64, code: &str, message: String) -> Self`
--  `from_service_error` function L113-123 — `(id: u64, e: &arawn_service::ServiceError) -> Self` — Build an error response from a [`ServiceError`].
--  `AppState` struct L128-133 — `{ service: Arc<LocalService>, auth_token: Option<String> }` — Shared app state for the WebSocket server.
--  `generate_auth_token` function L136-139 — `() -> String` — Generate a random auth token for WebSocket connections.
--  `write_token_file` function L142-147 — `(data_dir: &std::path::Path, token: &str) -> std::io::Result<std::path::PathBuf>` — Write the auth token to {data_dir}/server.token for clients to read.
--  `shutdown_signal` function L203-225 — `()` — Wait for a shutdown signal (Ctrl-C / SIGTERM).
--  `decision_handler` function L230-249 — `( State(AppState { service, .. }): State<AppState>, Json(req): Json<arawn_workfl...` — HTTP endpoint for workflow decision tasks.
--  `WsQueryParams` struct L253-255 — `{ token: Option<String> }` — Query parameters for WebSocket connection.
--  `ws_handler` function L257-283 — `( ws: WebSocketUpgrade, Query(params): Query<WsQueryParams>, State(state): State...`
--  `handle_connection` function L290-1175 — `(socket: WebSocket, service: Arc<LocalService>)`
--  `tests` module L1178-1228 — `-`
--  `from_service_error_preserves_structured_detail_for_typed_variants` function L1185-1195 — `()` — Typed Storage error should round-trip through the wire payload with
--  `from_service_error_omits_details_for_string_only_variants` function L1201-1212 — `()` — String-only variants (NotFound, InvalidOperation, Internal) keep
--  `from_service_error_preserves_engine_error_kind` function L1218-1227 — `()` — Engine errors surface a `kind` that identifies the inner variant —
+-  `RPC_METHODS` variable L27-72 — `: &[&str]` — Canonical RPC method names (returned by `hello`).
+-  `Request` struct L76-81 — `{ id: u64, method: String, params: Value }` — JSON-RPC style request from client.
+-  `Response` struct L85-91 — `{ id: u64, result: Option<Value>, error: Option<ErrorBody> }` — JSON-RPC style response to client.
+-  `ErrorBody` struct L94-99 — `{ code: String, message: String, details: Option<Value> }`
+-  `Response` type L101-162 — `= Response`
+-  `success` function L102-108 — `(id: u64, result: Value) -> Self`
+-  `error` function L110-120 — `(id: u64, code: &str, message: String) -> Self`
+-  `from_ceremony_error` function L126-145 — `(id: u64, e: &arawn_ceremonies::CeremonyError) -> Self` — Build an error response from a `CeremonyError`.
+-  `from_service_error` function L151-161 — `(id: u64, e: &arawn_service::ServiceError) -> Self` — Build an error response from a [`ServiceError`].
+-  `AppState` struct L166-171 — `{ service: Arc<LocalService>, auth_token: Option<String> }` — Shared app state for the WebSocket server.
+-  `generate_auth_token` function L174-181 — `() -> String` — Generate a random auth token for WebSocket connections.
+-  `write_token_file` function L184-192 — `( data_dir: &std::path::Path, token: &str, ) -> std::io::Result<std::path::PathB...` — Write the auth token to {data_dir}/server.token for clients to read.
+-  `shutdown_signal` function L248-270 — `()` — Wait for a shutdown signal (Ctrl-C / SIGTERM).
+-  `decision_handler` function L275-294 — `( State(AppState { service, .. }): State<AppState>, Json(req): Json<arawn_workfl...` — HTTP endpoint for workflow decision tasks.
+-  `WsQueryParams` struct L298-300 — `{ token: Option<String> }` — Query parameters for WebSocket connection.
+-  `ws_handler` function L302-332 — `( ws: WebSocketUpgrade, Query(params): Query<WsQueryParams>, State(state): State...`
+-  `handle_connection` function L339-1496 — `(socket: WebSocket, service: Arc<LocalService>)`
+-  `tests` module L1499-1553 — `-`
+-  `from_service_error_preserves_structured_detail_for_typed_variants` function L1506-1520 — `()` — Typed Storage error should round-trip through the wire payload with
+-  `from_service_error_omits_details_for_string_only_variants` function L1526-1537 — `()` — String-only variants (NotFound, InvalidOperation, Internal) keep
+-  `from_service_error_preserves_engine_error_kind` function L1543-1552 — `()` — Engine errors surface a `kind` that identifies the inner variant —
 
 ### crates/arawn-auth/src
 
@@ -897,6 +940,594 @@
 -  `missing_master_key_after_save_fails_clearly` function L266-280 — `()` — System spec's security contract and the sensitive-paths deny list.
 -  `provider_name_sanitization_rejects_path_chars` function L283-290 — `()` — System spec's security contract and the sensitive-paths deny list.
 -  `master_key_has_restrictive_permissions` function L294-301 — `()` — System spec's security contract and the sensitive-paths deny list.
+
+### crates/arawn-ceremonies/src
+
+> *Semantic summary to be generated by AI agent.*
+
+#### crates/arawn-ceremonies/src/engine.rs
+
+- pub `ConnHandle` struct L51 — `-` — Wraps a shared SQLite connection.
+- pub `new` function L54-56 — `(conn: Connection) -> Self` — step 9.
+- pub `EngineDispatcher` struct L61-68 — `{ conn: ConnHandle, registry: PluginRegistry, events: Option<CeremonyEventSender...` — The concrete [`CeremonyDispatcher`].
+- pub `new` function L71-77 — `(conn: ConnHandle, registry: PluginRegistry) -> Self` — step 9.
+- pub `with_events` function L82-85 — `(mut self, sender: CeremonyEventSender) -> Self` — Attach the event sender.
+- pub `EngineCtx` struct L207-211 — `{ conn: ConnHandle, tablet_id: String, period_key: String }` — Per-run [`CeremonyCtx`].
+- pub `new` function L214-220 — `(conn: ConnHandle, tablet_id: String, period_key: String) -> Self` — step 9.
+- pub `conn` function L226-228 — `(&self) -> &ConnHandle` — Access to the underlying connection for plugins that need to
+-  `ConnHandle` type L53-57 — `= ConnHandle` — step 9.
+-  `EngineDispatcher` type L70-86 — `= EngineDispatcher` — step 9.
+-  `EngineDispatcher` type L89-146 — `impl CeremonyDispatcher for EngineDispatcher` — step 9.
+-  `dispatch` function L90-145 — `(&self, kind: &str) -> Result<DispatchOutcome, CeremonyError>` — step 9.
+-  `EngineDispatcher` type L148-202 — `= EngineDispatcher` — step 9.
+-  `run_pipeline` function L149-201 — `( &self, plugin: &dyn Ceremony, period_key: &str, now: chrono::DateTime<Utc>, ) ...` — step 9.
+-  `EngineCtx` type L213-229 — `= EngineCtx` — step 9.
+-  `EngineCtx` type L232-260 — `impl CeremonyCtx for EngineCtx` — step 9.
+-  `period_key` function L233-235 — `(&self) -> &str` — step 9.
+-  `tablet_id` function L236-238 — `(&self) -> &str` — step 9.
+-  `conn_handle` function L239-241 — `(&self) -> Option<&ConnHandle>` — step 9.
+-  `write_pattern_row` function L243-259 — `( &self, pattern: DetectedPattern, ) -> Result<String, CeremonyError>` — step 9.
+-  `current_tablet_status` function L264-287 — `( conn: &ConnHandle, kind: &str, period_key: &str, ) -> Result<Option<TabletStat...` — step 9.
+-  `insert_tablet` function L289-307 — `( conn: &ConnHandle, tablet_id: &str, kind: &str, period_key: &str, now: chrono:...` — step 9.
+-  `next_ordinal` function L309-316 — `( ordinal_by_section: &mut std::collections::HashMap<String, i32>, section_key: ...` — step 9.
+-  `write_composed_item` function L318-351 — `( conn: &ConnHandle, item: &ComposedItem, ordinal_by_section: &mut std::collecti...` — step 9.
+-  `write_user_item` function L353-379 — `( conn: &ConnHandle, item: &UserItem, ordinal_by_section: &mut std::collections:...` — step 9.
+-  `begin` function L381-389 — `(conn: &ConnHandle) -> Result<(), CeremonyError>` — step 9.
+-  `commit` function L391-399 — `(conn: &ConnHandle) -> Result<(), CeremonyError>` — step 9.
+-  `rollback` function L401-409 — `(conn: &ConnHandle) -> Result<(), CeremonyError>` — step 9.
+-  `kind_str` function L411-421 — `(k: &ItemKind) -> &'static str` — step 9.
+-  `tests` module L424-613 — `-` — step 9.
+-  `open_test_db` function L434-444 — `() -> (TempDir, ConnHandle)` — step 9.
+-  `ScriptedPlugin` struct L447-450 — `{ kind: &'static str, items: std::sync::Mutex<Vec<NewItem>> }` — step 9.
+-  `ScriptedPlugin` type L451-458 — `= ScriptedPlugin` — step 9.
+-  `new` function L452-457 — `(kind: &'static str, items: Vec<NewItem>) -> Self` — step 9.
+-  `ScriptedPlugin` type L460-480 — `impl Ceremony for ScriptedPlugin` — step 9.
+-  `kind` function L461-463 — `(&self) -> &'static str` — step 9.
+-  `period_key` function L464-466 — `(&self, _now: chrono::DateTime<Utc>) -> String` — step 9.
+-  `default_schedule` function L467-469 — `(&self) -> CronSchedule` — step 9.
+-  `gather` function L470-472 — `(&self, _ctx: &dyn CeremonyCtx) -> Result<GatheredFacts, CeremonyError>` — step 9.
+-  `compose` function L473-479 — `( &self, _ctx: &dyn CeremonyCtx, _facts: GatheredFacts, ) -> Result<Vec<NewItem>...` — step 9.
+-  `item_composed` function L482-491 — `(tablet_id: &str, section: &str, citation: &str) -> NewItem` — step 9.
+-  `item_user` function L493-501 — `(tablet_id: &str, section: &str) -> NewItem` — step 9.
+-  `count_rows` function L503-507 — `(conn: &ConnHandle, table: &str) -> i64` — step 9.
+-  `happy_path_writes_tablet_and_composed_item_with_citation` function L512-528 — `()` — step 9.
+-  `composed_item_missing_citation_rolls_back_whole_run` function L531-545 — `()` — step 9.
+-  `user_item_without_citation_is_accepted` function L548-567 — `()` — step 9.
+-  `idempotency_skips_when_open_tablet_exists` function L570-582 — `()` — step 9.
+-  `unknown_kind_errors` function L585-591 — `()` — step 9.
+-  `write_pattern_row_returns_id_and_writes` function L594-612 — `()` — step 9.
+
+#### crates/arawn-ceremonies/src/error.rs
+
+- pub `CeremonyError` enum L6-43 — `MissingCitation | DuplicateKind | InvalidTabletState | InsufficientHistory | Sto...` — Errors surfaced by the ceremony engine and plugins.
+- pub `missing_citation` function L46-48 — `(detail: impl Into<String>) -> Self` — Errors surfaced by the ceremony engine and plugins.
+- pub `duplicate_kind` function L49-51 — `(kind: impl Into<String>) -> Self` — Errors surfaced by the ceremony engine and plugins.
+- pub `invalid_tablet_state` function L52-54 — `(detail: impl Into<String>) -> Self` — Errors surfaced by the ceremony engine and plugins.
+- pub `insufficient_history` function L55-57 — `(detail: impl Into<String>) -> Self` — Errors surfaced by the ceremony engine and plugins.
+-  `CeremonyError` type L45-58 — `= CeremonyError` — Errors surfaced by the ceremony engine and plugins.
+
+#### crates/arawn-ceremonies/src/events.rs
+
+- pub `DEFAULT_CAPACITY` variable L23 — `: usize` — Default broadcast channel capacity.
+- pub `CeremonyEvent` enum L29-57 — `TabletGenerated | ItemUpdated | DiaryUpdated | PatternDetected | PriorityConfirm...` — All ceremony state-change events.
+- pub `CeremonyEventSender` type L61 — `= broadcast::Sender<CeremonyEvent>` — Sender side of the broadcast channel.
+- pub `CeremonyEventReceiver` type L66 — `= broadcast::Receiver<CeremonyEvent>` — Receiver side.
+- pub `channel` function L71-73 — `() -> (CeremonyEventSender, CeremonyEventReceiver)` — Build a fresh event channel with the default capacity.
+- pub `emit` function L79-81 — `(sender: &CeremonyEventSender, event: CeremonyEvent)` — Send an event, swallowing the "no subscribers" error.
+-  `tests` module L84-145 — `-` — forwards events to clients.
+-  `tablet_generated_round_trips` function L88-103 — `()` — forwards events to clients.
+-  `item_updated_serialises_as_tagged_json` function L106-114 — `()` — forwards events to clients.
+-  `emit_with_no_subscribers_is_silent` function L117-127 — `()` — forwards events to clients.
+-  `two_subscribers_each_receive` function L130-144 — `()` — forwards events to clients.
+
+#### crates/arawn-ceremonies/src/lib.rs
+
+- pub `engine` module L14 — `-` — Each ceremony (daily prep, weekly prep, retro, future user-defined
+- pub `error` module L15 — `-` — changes, no RPC plumbing.
+- pub `events` module L16 — `-` — changes, no RPC plumbing.
+- pub `nightly` module L17 — `-` — changes, no RPC plumbing.
+- pub `patterns` module L18 — `-` — changes, no RPC plumbing.
+- pub `plugin` module L19 — `-` — changes, no RPC plumbing.
+- pub `plugins` module L20 — `-` — changes, no RPC plumbing.
+- pub `registry` module L21 — `-` — changes, no RPC plumbing.
+- pub `render` module L22 — `-` — changes, no RPC plumbing.
+- pub `rollup` module L23 — `-` — changes, no RPC plumbing.
+- pub `runner` module L24 — `-` — changes, no RPC plumbing.
+- pub `service` module L25 — `-` — changes, no RPC plumbing.
+- pub `types` module L26 — `-` — changes, no RPC plumbing.
+
+#### crates/arawn-ceremonies/src/nightly.rs
+
+- pub `sweep_unreviewed_retros` function L25-42 — `(conn: &ConnHandle) -> Result<usize, CeremonyError>` — Transition `open` retro tablets that have no diary row to
+-  `tests` module L45-157 — `-` — still `open` with no diary row from a prior ISO week.
+-  `open_test_db` function L50-57 — `() -> (TempDir, ConnHandle)` — still `open` with no diary row from a prior ISO week.
+-  `insert_retro` function L59-67 — `(conn: &ConnHandle, id: &str, period_key: &str, status: &str)` — still `open` with no diary row from a prior ISO week.
+-  `insert_diary` function L69-77 — `(conn: &ConnHandle, tablet_id: &str, body: &str)` — still `open` with no diary row from a prior ISO week.
+-  `status` function L79-87 — `(conn: &ConnHandle, id: &str) -> String` — still `open` with no diary row from a prior ISO week.
+-  `open_retro_from_prior_week_without_diary_transitions` function L90-99 — `()` — still `open` with no diary row from a prior ISO week.
+-  `open_retro_with_diary_is_left_alone` function L102-109 — `()` — still `open` with no diary row from a prior ISO week.
+-  `reviewed_retro_is_left_alone` function L112-118 — `()` — still `open` with no diary row from a prior ISO week.
+-  `current_week_open_retro_is_skipped` function L121-130 — `()` — still `open` with no diary row from a prior ISO week.
+-  `sweep_is_idempotent` function L133-139 — `()` — still `open` with no diary row from a prior ISO week.
+-  `sweep_only_touches_retros` function L142-156 — `()` — still `open` with no diary row from a prior ISO week.
+
+#### crates/arawn-ceremonies/src/patterns.rs
+
+- pub `Detector` interface L30-52 — `{ fn key(), fn require_history_weeks(), fn detect() }` — One rule that contributes zero or more pattern rows.
+- pub `DetectorCtx` struct L57-60 — `{ current_iso_week: String, conn: &'a ConnHandle }` — Read-only surface a [`Detector`] uses to query historical data.
+- pub `new` function L63-68 — `(current_iso_week: String, conn: &'a ConnHandle) -> Self` — without the patterns section.
+- pub `weeks_of_history` function L73-88 — `(&self) -> Result<u32, CeremonyError>` — Distinct iso_weeks present in `ceremony_activity_rollup`
+- pub `metric_sum_trailing` function L93-126 — `( &self, workstream: &str, metric_key: &str, lookback_weeks: u32, ) -> Result<Op...` — Sum of a metric for one workstream across the trailing
+- pub `current_metric_value` function L131-137 — `( &self, workstream: &str, metric_key: &str, ) -> Result<Option<f64>, CeremonyEr...` — Current-week value for one workstream/metric.
+- pub `DetectorRegistry` struct L143-145 — `{ detectors: Vec<Arc<dyn Detector>> }` — Aggregates a set of [`Detector`]s and implements
+- pub `new` function L156-158 — `() -> Self` — without the patterns section.
+- pub `with` function L160-163 — `(mut self, detector: Arc<dyn Detector>) -> Self` — without the patterns section.
+- pub `detectors` function L165-167 — `(&self) -> &[Arc<dyn Detector>]` — without the patterns section.
+-  `require_history_weeks` function L42-44 — `(&self) -> u32` — Minimum number of prior ISO weeks of rollup history this
+-  `DetectorRegistry` type L147-153 — `impl Default for DetectorRegistry` — without the patterns section.
+-  `default` function L148-152 — `() -> Self` — without the patterns section.
+-  `DetectorRegistry` type L155-168 — `= DetectorRegistry` — without the patterns section.
+-  `DetectorRegistry` type L179-210 — `impl PatternDetector for DetectorRegistry` — The PatternDetector impl that the engine calls.
+-  `detect` function L180-209 — `( &self, ctx: &dyn CeremonyCtx, ) -> Result<Vec<DetectedPattern>, CeremonyError>` — without the patterns section.
+-  `tests` module L213-411 — `-` — without the patterns section.
+-  `open_test_db` function L219-226 — `() -> (TempDir, ConnHandle)` — without the patterns section.
+-  `seed_rollup` function L228-241 — `( conn: &ConnHandle, rows: &[(&str, &str, &str, f64)], // (iso_week, workstream,...` — without the patterns section.
+-  `weeks_of_history_counts_distinct_prior_weeks` function L246-259 — `()` — without the patterns section.
+-  `metric_sum_trailing_sums_lookback` function L262-284 — `()` — without the patterns section.
+-  `current_metric_value_returns_some_for_present_zero` function L287-295 — `()` — without the patterns section.
+-  `current_metric_value_returns_none_for_absent_row` function L298-302 — `()` — without the patterns section.
+-  `AlwaysFiresDetector` struct L306-309 — `{ key: &'static str, history: u32 }` — without the patterns section.
+-  `AlwaysFiresDetector` type L311-329 — `impl Detector for AlwaysFiresDetector` — without the patterns section.
+-  `key` function L312-314 — `(&self) -> &'static str` — without the patterns section.
+-  `require_history_weeks` function L315-317 — `(&self) -> u32` — without the patterns section.
+-  `detect` function L318-328 — `( &self, ctx: &DetectorCtx<'_>, ) -> Result<Vec<DetectedPattern>, CeremonyError>` — without the patterns section.
+-  `registry_aggregates_multiple_detectors` function L332-343 — `()` — without the patterns section.
+-  `registry_skips_detectors_with_insufficient_history` function L346-364 — `()` — without the patterns section.
+-  `registry_with_enough_history_fires_all` function L367-384 — `()` — without the patterns section.
+-  `registry_errors_when_ctx_is_not_engine_ctx` function L387-410 — `()` — without the patterns section.
+-  `DummyCtx` struct L390 — `-` — without the patterns section.
+-  `DummyCtx` type L392-405 — `impl CeremonyCtx for DummyCtx` — without the patterns section.
+-  `period_key` function L393-395 — `(&self) -> &str` — without the patterns section.
+-  `tablet_id` function L396-398 — `(&self) -> &str` — without the patterns section.
+-  `write_pattern_row` function L399-404 — `( &self, _pattern: DetectedPattern, ) -> Result<String, CeremonyError>` — without the patterns section.
+
+#### crates/arawn-ceremonies/src/plugin.rs
+
+- pub `CronSchedule` struct L23-31 — `{ expression: String, timezone: String }` — Cron-like schedule.
+- pub `new` function L34-39 — `(expression: impl Into<String>, timezone: impl Into<String>) -> Self` — enforcement, RPC, broadcast events) lives in the engine.
+- pub `local` function L44-49 — `(expression: impl Into<String>) -> Self` — Convenience: a schedule in the user's local timezone.
+- pub `InteractiveAction` struct L62-67 — `{ key: String, label: String }` — Stable identifier for an interactive action a plugin contributes
+- pub `ComposedItem` struct L72-81 — `{ tablet_id: String, section_key: String, ordinal: i32, kind: ItemKind, body: se...` — Item the LLM path produces.
+- pub `UserItem` struct L86-92 — `{ tablet_id: String, section_key: String, ordinal: i32, kind: ItemKind, body: se...` — Item the user-write path produces.
+- pub `NewItem` enum L98-105 — `Composed | User` — Items the compose phase returns to the engine.
+- pub `composed` function L108-110 — `(item: ComposedItem) -> Self` — enforcement, RPC, broadcast events) lives in the engine.
+- pub `user` function L111-113 — `(item: UserItem) -> Self` — enforcement, RPC, broadcast events) lives in the engine.
+- pub `tablet_id` function L114-119 — `(&self) -> &str` — enforcement, RPC, broadcast events) lives in the engine.
+- pub `CeremonyCtx` interface L127-157 — `{ fn period_key(), fn tablet_id(), fn write_pattern_row(), fn conn_handle() }` — Context handed to a plugin during gather + compose.
+- pub `PatternDetector` interface L166-171 — `{ fn detect() }` — Pattern detector framework hook.
+- pub `Ceremony` interface L175-213 — `{ fn kind(), fn period_key(), fn default_schedule(), fn gather(), fn compose(), ...` — Contract every ceremony plugin implements.
+-  `CronSchedule` type L33-50 — `= CronSchedule` — enforcement, RPC, broadcast events) lives in the engine.
+-  `CronSchedule` type L52-56 — `= CronSchedule` — enforcement, RPC, broadcast events) lives in the engine.
+-  `fmt` function L53-55 — `(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result` — enforcement, RPC, broadcast events) lives in the engine.
+-  `NewItem` type L107-120 — `= NewItem` — enforcement, RPC, broadcast events) lives in the engine.
+-  `conn_handle` function L154-156 — `(&self) -> Option<&crate::engine::ConnHandle>` — Capability check — does this ctx have a SQL connection
+-  `interactive_actions` function L204-206 — `(&self) -> Vec<InteractiveAction>` — Plugin-contributed interactive actions (e.g.
+-  `patterns` function L210-212 — `(&self) -> Option<&dyn PatternDetector>` — Optional pattern detector.
+
+#### crates/arawn-ceremonies/src/registry.rs
+
+- pub `PluginRegistry` struct L18-20 — `{ inner: Arc<std::sync::RwLock<HashMap<String, Arc<dyn Ceremony>>>> }` — Holds the `Ceremony` plugins registered with the engine.
+- pub `new` function L23-25 — `() -> Self` — and you register it here — no other plumbing touches it.
+- pub `register` function L30-38 — `(&self, plugin: Arc<dyn Ceremony>) -> Result<(), CeremonyError>` — Register a plugin.
+- pub `get` function L42-48 — `(&self, kind: &str) -> Option<Arc<dyn Ceremony>>` — Look up a plugin by `kind`.
+- pub `all` function L54-61 — `(&self) -> Vec<Arc<dyn Ceremony>>` — Snapshot of every registered plugin, in undefined order.
+- pub `len` function L64-66 — `(&self) -> usize` — Number of registered plugins.
+- pub `is_empty` function L68-70 — `(&self) -> bool` — and you register it here — no other plumbing touches it.
+-  `PluginRegistry` type L22-71 — `= PluginRegistry` — and you register it here — no other plumbing touches it.
+-  `tests` module L74-166 — `-` — and you register it here — no other plumbing touches it.
+-  `StubCeremony` struct L81-83 — `{ kind: &'static str }` — and you register it here — no other plumbing touches it.
+-  `StubCeremony` type L86-109 — `impl Ceremony for StubCeremony` — and you register it here — no other plumbing touches it.
+-  `kind` function L87-89 — `(&self) -> &'static str` — and you register it here — no other plumbing touches it.
+-  `period_key` function L90-92 — `(&self, _now: DateTime<Utc>) -> String` — and you register it here — no other plumbing touches it.
+-  `default_schedule` function L93-95 — `(&self) -> CronSchedule` — and you register it here — no other plumbing touches it.
+-  `gather` function L96-101 — `( &self, _ctx: &dyn crate::plugin::CeremonyCtx, ) -> Result<GatheredFacts, Cerem...` — and you register it here — no other plumbing touches it.
+-  `compose` function L102-108 — `( &self, _ctx: &dyn crate::plugin::CeremonyCtx, _facts: GatheredFacts, ) -> Resu...` — and you register it here — no other plumbing touches it.
+-  `stub` function L111-113 — `(kind: &'static str) -> Arc<dyn Ceremony>` — and you register it here — no other plumbing touches it.
+-  `register_and_get_by_kind` function L116-122 — `()` — and you register it here — no other plumbing touches it.
+-  `unknown_kind_returns_none` function L125-129 — `()` — and you register it here — no other plumbing touches it.
+-  `duplicate_kind_is_rejected` function L132-137 — `()` — and you register it here — no other plumbing touches it.
+-  `all_returns_every_registered_plugin` function L140-148 — `()` — and you register it here — no other plumbing touches it.
+-  `empty_registry` function L151-156 — `()` — and you register it here — no other plumbing touches it.
+-  `registry_is_clone_share` function L159-165 — `()` — and you register it here — no other plumbing touches it.
+
+#### crates/arawn-ceremonies/src/render.rs
+
+- pub `RetroView` struct L50-56 — `{ tablet: TabletDto, items: Vec<ItemDto>, diary: Option<String> }` — What the renderer needs to draw a retro tablet.
+- pub `render_retro` function L59-118 — `(view: &RetroView) -> String` — Render a retro tablet to markdown.
+- pub `DailyView` struct L131-134 — `{ tablet: TabletDto, items: Vec<ItemDto> }` — What the renderer needs to draw a daily tablet.
+- pub `render_daily` function L137-185 — `(view: &DailyView) -> String` — Render a daily tablet to markdown.
+- pub `WeeklyView` struct L191-195 — `{ tablet: TabletDto, items: Vec<ItemDto>, priorities: Vec<PriorityDto> }` — What the renderer needs to draw a weekly tablet.
+- pub `render_weekly` function L198-270 — `(view: &WeeklyView) -> String` — Render a weekly tablet to markdown.
+-  `items_in_section` function L120-124 — `(items: &'a [ItemDto], section_key: &str) -> Vec<&'a ItemDto>` — shipped here is the contract.
+-  `render_priority_bullet` function L272-298 — `(out: &mut String, p: &PriorityDto)` — shipped here is the contract.
+-  `render_footnotes` function L300-310 — `(out: &mut String, citations: I)` — shipped here is the contract.
+-  `render_item_bullet` function L312-325 — `(out: &mut String, item: &ItemDto)` — shipped here is the contract.
+-  `tests` module L328-681 — `-` — shipped here is the contract.
+-  `tablet` function L332-342 — `(iso_week: &str, status: &str) -> TabletDto` — shipped here is the contract.
+-  `item` function L344-356 — `(section: &str, ordinal: i32, text: &str, citation: Option<&str>) -> ItemDto` — shipped here is the contract.
+-  `full_retro_renders_with_all_three_sections` function L359-385 — `()` — shipped here is the contract.
+-  `empty_what_happened_renders_placeholder` function L388-396 — `()` — shipped here is the contract.
+-  `empty_patterns_renders_bootstrap_message` function L399-409 — `()` — shipped here is the contract.
+-  `missing_diary_renders_placeholder` function L412-420 — `()` — shipped here is the contract.
+-  `blank_diary_renders_placeholder` function L423-431 — `()` — shipped here is the contract.
+-  `items_are_sorted_by_ordinal` function L434-450 — `()` — shipped here is the contract.
+-  `footnotes_deduplicate_repeated_citations` function L453-466 — `()` — shipped here is the contract.
+-  `missing_citation_just_omits_marker` function L469-478 — `()` — shipped here is the contract.
+-  `daily_tablet` function L480-490 — `(date: &str, status: &str) -> TabletDto` — shipped here is the contract.
+-  `weekly_tablet` function L492-502 — `(iso_week: &str, status: &str, confirmed: Option<&str>) -> TabletDto` — shipped here is the contract.
+-  `priority` function L504-526 — `( ordinal: i32, source: &str, text: &str, rationale: &str, citation: Option<&str...` — shipped here is the contract.
+-  `daily_renders_all_four_sections_in_order` function L529-552 — `()` — shipped here is the contract.
+-  `daily_empty_sections_render_placeholders` function L555-565 — `()` — shipped here is the contract.
+-  `daily_footnotes_deduplicate` function L568-580 — `()` — shipped here is the contract.
+-  `weekly_renders_priorities_and_five_sections` function L583-621 — `()` — shipped here is the contract.
+-  `weekly_unconfirmed_status_shows_no` function L624-632 — `()` — shipped here is the contract.
+-  `weekly_empty_sections_render_placeholders` function L635-647 — `()` — shipped here is the contract.
+-  `weekly_footnotes_dedupe_across_items_and_priorities` function L650-659 — `()` — shipped here is the contract.
+-  `body_falls_back_to_raw_json_when_text_missing` function L662-680 — `()` — shipped here is the contract.
+
+#### crates/arawn-ceremonies/src/rollup.rs
+
+- pub `RollupSource` interface L31-54 — `{ fn metric_key(), fn compute() }` — One contributor to the activity rollup.
+- pub `WorkstreamList` interface L60-62 — `{ fn active_workstreams() }` — Active workstreams the rollup walks.
+- pub `CentralDbWorkstreams` struct L66-68 — `{ conn: ConnHandle }` — Default impl that queries the central `workstreams` table for
+- pub `compute_for_week` function L102-149 — `( iso_week: &str, workstreams: &dyn WorkstreamList, sources: &[Arc<dyn RollupSou...` — Computes the rollup for one ISO week.
+- pub `read_rollup_value` function L153-173 — `( conn: &ConnHandle, iso_week: &str, workstream: &str, metric_key: &str, ) -> Re...` — Convenience: read a single rollup value back.
+-  `CentralDbWorkstreams` type L70-91 — `impl WorkstreamList for CentralDbWorkstreams` — plus stub sources for tests.
+-  `active_workstreams` function L71-90 — `(&self) -> Result<Vec<String>, CeremonyError>` — plus stub sources for tests.
+-  `tests` module L178-366 — `-` — plus stub sources for tests.
+-  `open_test_db` function L182-189 — `() -> (TempDir, ConnHandle)` — plus stub sources for tests.
+-  `StubWorkstreams` struct L191 — `-` — plus stub sources for tests.
+-  `StubWorkstreams` type L192-196 — `impl WorkstreamList for StubWorkstreams` — plus stub sources for tests.
+-  `active_workstreams` function L193-195 — `(&self) -> Result<Vec<String>, CeremonyError>` — plus stub sources for tests.
+-  `ConstSource` struct L200-203 — `{ key: &'static str, value_per_workstream: std::collections::HashMap<String, f64...` — Constant per-workstream source.
+-  `ConstSource` type L205-216 — `impl RollupSource for ConstSource` — plus stub sources for tests.
+-  `metric_key` function L206-208 — `(&self) -> &str` — plus stub sources for tests.
+-  `compute` function L209-215 — `( &self, _iso_week: &str, workstream: &str, ) -> Result<Option<f64>, CeremonyErr...` — plus stub sources for tests.
+-  `make_source` function L218-230 — `( key: &'static str, values: &[(&str, f64)], ) -> Arc<dyn RollupSource>` — plus stub sources for tests.
+-  `computes_rollup_for_two_workstreams_two_sources` function L233-259 — `()` — plus stub sources for tests.
+-  `missing_workstream_value_is_skipped_silently` function L262-283 — `()` — plus stub sources for tests.
+-  `rerun_for_same_week_replaces_not_appends` function L286-317 — `()` — plus stub sources for tests.
+-  `central_db_workstreams_lists_active_only` function L320-354 — `()` — plus stub sources for tests.
+-  `empty_sources_writes_nothing` function L357-365 — `()` — plus stub sources for tests.
+
+#### crates/arawn-ceremonies/src/runner.rs
+
+- pub `CeremonyDispatcher` interface L39-52 — `{ fn dispatch() }` — Trait the runner calls into when a workflow fires (cron-driven)
+- pub `DispatchOutcome` enum L57-63 — `Generated | Skipped` — What happened during a `dispatch` call.
+- pub `CeremonyRunner` struct L68-72 — `{ registry: PluginRegistry, cloacina: Arc<DefaultRunner>, dispatcher: Arc<dyn Ce...` — Process-wide runner.
+- pub `new` function L75-85 — `( registry: PluginRegistry, cloacina: Arc<DefaultRunner>, dispatcher: Arc<dyn Ce...` — contract; T-0282 implements the dispatcher.
+- pub `registry` function L87-89 — `(&self) -> &PluginRegistry` — contract; T-0282 implements the dispatcher.
+- pub `start` function L96-101 — `(&self) -> Result<(), CeremonyError>` — Register every plugin in the registry with cloacina: one
+- pub `register_one` function L105-107 — `(&self, kind: &str) -> Result<(), CeremonyError>` — Register a single plugin by kind.
+- pub `register_one_with_schedule` function L113-180 — `( &self, kind: &str, schedule_override: Option<crate::plugin::CronSchedule>, ) -...` — Like [`register_one`] but lets the caller override the cron
+- pub `run_once` function L187-190 — `(&self, kind: &str) -> Result<DispatchOutcome, CeremonyError>` — Manual trigger for a ceremony.
+- pub `CeremonyDispatchTask` struct L195-199 — `{ kind: String, dispatcher: Arc<dyn CeremonyDispatcher>, deps: Vec<TaskNamespace...` — Cloacina `Task` impl.
+- pub `new` function L202-208 — `(kind: impl Into<String>, dispatcher: Arc<dyn CeremonyDispatcher>) -> Self` — contract; T-0282 implements the dispatcher.
+-  `CeremonyRunner` type L74-191 — `= CeremonyRunner` — contract; T-0282 implements the dispatcher.
+-  `CeremonyDispatchTask` type L201-209 — `= CeremonyDispatchTask` — contract; T-0282 implements the dispatcher.
+-  `CeremonyDispatchTask` type L212-241 — `impl Task for CeremonyDispatchTask` — contract; T-0282 implements the dispatcher.
+-  `id` function L213-215 — `(&self) -> &str` — contract; T-0282 implements the dispatcher.
+-  `dependencies` function L217-219 — `(&self) -> &[TaskNamespace]` — contract; T-0282 implements the dispatcher.
+-  `execute` function L221-240 — `(&self, context: Context<Value>) -> Result<Context<Value>, TaskError>` — contract; T-0282 implements the dispatcher.
+-  `workflow_name` function L246-248 — `(kind: &str) -> String` — Format the cloacina workflow name for a ceremony kind.
+-  `delete_schedule_for` function L254-270 — `( _runner: &DefaultRunner, workflow_name: &str, ) -> Result<(), CeremonyError>` — Idempotent cron-schedule cleanup.
+-  `tests` module L273-449 — `-` — contract; T-0282 implements the dispatcher.
+-  `StubCeremony` struct L281-283 — `{ kind: &'static str }` — contract; T-0282 implements the dispatcher.
+-  `StubCeremony` type L285-305 — `impl Ceremony for StubCeremony` — contract; T-0282 implements the dispatcher.
+-  `kind` function L286-288 — `(&self) -> &'static str` — contract; T-0282 implements the dispatcher.
+-  `period_key` function L289-291 — `(&self, _now: chrono::DateTime<Utc>) -> String` — contract; T-0282 implements the dispatcher.
+-  `default_schedule` function L292-294 — `(&self) -> CronSchedule` — contract; T-0282 implements the dispatcher.
+-  `gather` function L295-297 — `(&self, _ctx: &dyn CeremonyCtx) -> Result<GatheredFacts, CeremonyError>` — contract; T-0282 implements the dispatcher.
+-  `compose` function L298-304 — `( &self, _ctx: &dyn CeremonyCtx, _facts: GatheredFacts, ) -> Result<Vec<NewItem>...` — contract; T-0282 implements the dispatcher.
+-  `RecordingDispatcher` struct L311-314 — `{ calls: Mutex<Vec<String>>, already_generated: Mutex<Vec<String>> }` — Records every dispatch + simulates the idempotency contract
+-  `RecordingDispatcher` type L315-328 — `= RecordingDispatcher` — contract; T-0282 implements the dispatcher.
+-  `new` function L316-321 — `() -> Arc<Self>` — contract; T-0282 implements the dispatcher.
+-  `call_count` function L322-324 — `(&self) -> usize` — contract; T-0282 implements the dispatcher.
+-  `called` function L325-327 — `(&self, kind: &str) -> usize` — contract; T-0282 implements the dispatcher.
+-  `RecordingDispatcher` type L330-344 — `impl CeremonyDispatcher for RecordingDispatcher` — contract; T-0282 implements the dispatcher.
+-  `dispatch` function L331-343 — `(&self, kind: &str) -> Result<DispatchOutcome, CeremonyError>` — contract; T-0282 implements the dispatcher.
+-  `registry_with` function L346-352 — `(kinds: &[&'static str]) -> PluginRegistry` — contract; T-0282 implements the dispatcher.
+-  `TestRunner` struct L373-376 — `{ registry: PluginRegistry, dispatcher: Arc<dyn CeremonyDispatcher> }` — Test-only constructor that bypasses cloacina, since the
+-  `TestRunner` type L377-389 — `= TestRunner` — contract; T-0282 implements the dispatcher.
+-  `new` function L378-380 — `(registry: PluginRegistry, dispatcher: Arc<dyn CeremonyDispatcher>) -> Self` — contract; T-0282 implements the dispatcher.
+-  `run_once` function L381-388 — `(&self, kind: &str) -> Result<DispatchOutcome, CeremonyError>` — contract; T-0282 implements the dispatcher.
+-  `run_once_invokes_dispatcher` function L392-400 — `()` — contract; T-0282 implements the dispatcher.
+-  `second_run_once_for_same_period_skips` function L403-415 — `()` — contract; T-0282 implements the dispatcher.
+-  `run_once_unknown_kind_errors` function L418-424 — `()` — contract; T-0282 implements the dispatcher.
+-  `workflow_name_is_deterministic` function L427-430 — `()` — contract; T-0282 implements the dispatcher.
+-  `dispatch_task_propagates_error_as_task_error` function L433-448 — `()` — contract; T-0282 implements the dispatcher.
+-  `FailingDispatcher` struct L437 — `-` — contract; T-0282 implements the dispatcher.
+-  `FailingDispatcher` type L439-443 — `impl CeremonyDispatcher for FailingDispatcher` — contract; T-0282 implements the dispatcher.
+-  `dispatch` function L440-442 — `(&self, _kind: &str) -> Result<DispatchOutcome, CeremonyError>` — contract; T-0282 implements the dispatcher.
+
+#### crates/arawn-ceremonies/src/service.rs
+
+- pub `TabletDto` struct L34-42 — `{ id: String, kind: String, period_key: String, generated_at: String, status: St...` — One tablet as the RPC clients see it.
+- pub `ItemDto` struct L46-56 — `{ id: String, tablet_id: String, section_key: String, ordinal: i32, kind: String...` — One item row.
+- pub `NotificationDto` struct L60-66 — `{ tablet_id: String, kind: String, period_key: String, status: String, generated...` — Notification surface: tablets the user has yet to interact with.
+- pub `ItemPatch` struct L71-79 — `{ done: Option<bool>, body: Option<serde_json::Value> }` — Mutation payload for `patch_item`.
+- pub `AddItemRequest` struct L83-88 — `{ tablet_id: String, section_key: String, kind: ItemKind, body: serde_json::Valu...` — Payload for `add_item`.
+- pub `PriorityDto` struct L95-105 — `{ id: String, tablet_id: String, body: serde_json::Value, rationale: String, cit...` — One priority row in `ceremony_priorities` or a yet-unconfirmed
+- pub `AddPriorityRequest` struct L109-113 — `{ tablet_id: String, body: serde_json::Value, rationale: String }` — Payload for `add_priority`.
+- pub `CeremonyService` struct L119-123 — `{ conn: ConnHandle, dispatcher: Arc<dyn CeremonyDispatcher>, events: Option<Cere...` — The methods correspond 1:1 to the `ceremonies.*` WS-RPC method
+- pub `new` function L126-132 — `(conn: ConnHandle, dispatcher: Arc<dyn CeremonyDispatcher>) -> Self` — Filed as a follow-up.
+- pub `with_events` function L137-140 — `(mut self, sender: CeremonyEventSender) -> Self` — Attach the event sender.
+- pub `get_today` function L145-148 — `(&self) -> Result<Option<TabletDto>, CeremonyError>` — `ceremonies.get_today` — today's daily tablet, if any.
+- pub `get_by_period` function L151-169 — `( &self, kind: &str, period_key: &str, ) -> Result<Option<TabletDto>, CeremonyEr...` — `ceremonies.get_by_period` — specific tablet.
+- pub `list_items` function L173-199 — `( &self, tablet_id: &str, section_key: Option<&str>, ) -> Result<Vec<ItemDto>, C...` — `ceremonies.list_items` — items in a tablet, optionally
+- pub `patch_item` function L203-247 — `( &self, item_id: &str, patch: ItemPatch, ) -> Result<ItemDto, CeremonyError>` — `ceremonies.patch_item` — toggle done, edit body.
+- pub `add_item` function L252-304 — `(&self, req: AddItemRequest) -> Result<ItemDto, CeremonyError>` — `ceremonies.add_item` — user-write path.
+- pub `run` function L307-309 — `(&self, kind: &str) -> Result<DispatchOutcome, CeremonyError>` — `ceremonies.run` — manual trigger; idempotent per period_key.
+- pub `add_rolling_todo` function L319-339 — `( &self, body: &str, origin_tablet_id: &str, ) -> Result<String, CeremonyError>` — User-write helper used by `daily_add_todo`: insert a row into
+- pub `confirm_priority` function L345-467 — `(&self, item_id: &str) -> Result<PriorityDto, CeremonyError>` — `ceremonies.confirm_priority` — promote a priority candidate
+- pub `reject_priority` function L472-489 — `(&self, item_id: &str) -> Result<(), CeremonyError>` — `ceremonies.reject_priority` — delete a priority candidate item.
+- pub `add_priority` function L494-539 — `( &self, req: AddPriorityRequest, ) -> Result<PriorityDto, CeremonyError>` — `ceremonies.add_priority` — user-write path.
+- pub `list_priorities` function L544-642 — `( &self, tablet_id: &str, ) -> Result<Vec<PriorityDto>, CeremonyError>` — `ceremonies.list_priorities` — union of confirmed priorities
+- pub `get_diary` function L658-671 — `(&self, tablet_id: &str) -> Result<Option<String>, CeremonyError>` — `ceremonies.upsert_diary` — writes (or replaces) the user's
+- pub `upsert_diary` function L673-735 — `( &self, tablet_id: &str, body: &str, ) -> Result<(), CeremonyError>` — Filed as a follow-up.
+- pub `list_notifications` function L741-771 — `(&self) -> Result<Vec<NotificationDto>, CeremonyError>` — `ceremonies.list_notifications` — tablets the user has not
+-  `CeremonyService` type L125-772 — `= CeremonyService` — Filed as a follow-up.
+-  `row_to_tablet` function L776-789 — `(row: &rusqlite::Row<'_>) -> rusqlite::Result<TabletDto>` — Filed as a follow-up.
+-  `row_to_item` function L791-805 — `(row: &rusqlite::Row<'_>) -> rusqlite::Result<ItemDto>` — Filed as a follow-up.
+-  `kind_str` function L807-817 — `(k: &ItemKind) -> &'static str` — Filed as a follow-up.
+-  `status_str` function L823-825 — `(s: TabletStatus) -> &'static str` — Tiny use-once helper so callers that only need to render a
+-  `tests` module L828-1413 — `-` — Filed as a follow-up.
+-  `open_test_db` function L839-846 — `() -> (TempDir, ConnHandle)` — Filed as a follow-up.
+-  `ScriptedPlugin` struct L848-852 — `{ kind: &'static str, items: std::sync::Mutex<Vec<NewItem>>, period: String }` — Filed as a follow-up.
+-  `ScriptedPlugin` type L854-874 — `impl Ceremony for ScriptedPlugin` — Filed as a follow-up.
+-  `kind` function L855-857 — `(&self) -> &'static str` — Filed as a follow-up.
+-  `period_key` function L858-860 — `(&self, _now: chrono::DateTime<Utc>) -> String` — Filed as a follow-up.
+-  `default_schedule` function L861-863 — `(&self) -> CronSchedule` — Filed as a follow-up.
+-  `gather` function L864-866 — `(&self, _ctx: &dyn CeremonyCtx) -> Result<GatheredFacts, CeremonyError>` — Filed as a follow-up.
+-  `compose` function L867-873 — `( &self, _ctx: &dyn CeremonyCtx, _facts: GatheredFacts, ) -> Result<Vec<NewItem>...` — Filed as a follow-up.
+-  `build_service_with_items` function L876-912 — `( kind: &'static str, period: &str, tablet_id_prefix: &str, ) -> (TempDir, Cerem...` — Filed as a follow-up.
+-  `run_generates_and_get_by_period_reads_back` function L915-923 — `()` — Filed as a follow-up.
+-  `list_items_filters_by_section` function L926-936 — `()` — Filed as a follow-up.
+-  `patch_item_toggles_done` function L939-967 — `()` — Filed as a follow-up.
+-  `add_item_inserts_user_row_with_null_citation_and_next_ordinal` function L970-988 — `()` — Filed as a follow-up.
+-  `list_notifications_surfaces_open_tablets` function L991-999 — `()` — Filed as a follow-up.
+-  `get_today_returns_none_when_no_daily_tablet` function L1002-1008 — `()` — Filed as a follow-up.
+-  `dispatch_emits_tablet_generated_event` function L1011-1046 — `()` — Filed as a follow-up.
+-  `upsert_diary_writes_row_and_flips_status` function L1049-1076 — `()` — Filed as a follow-up.
+-  `upsert_diary_is_idempotent_and_replaces_body` function L1079-1101 — `()` — Filed as a follow-up.
+-  `upsert_diary_rejects_non_retro_tablet` function L1104-1119 — `()` — Filed as a follow-up.
+-  `upsert_diary_rejects_unknown_tablet` function L1122-1128 — `()` — Filed as a follow-up.
+-  `upsert_diary_emits_diary_updated_event` function L1131-1147 — `()` — Filed as a follow-up.
+-  `service_internals` function L1153-1160 — `( service: &CeremonyService, ) -> (ConnHandle, (), ())` — Tiny accessor for the in-test connection so the diary tests
+-  `build_weekly_with_priority_candidates` function L1166-1203 — `( n: usize, ) -> (TempDir, CeremonyService, String, Vec<String>)` — Build a weekly tablet with N priority candidate items via raw
+-  `confirm_priority_happy_path_inserts_row_and_copies_citation` function L1206-1225 — `()` — Filed as a follow-up.
+-  `confirm_priority_is_idempotent` function L1228-1244 — `()` — Filed as a follow-up.
+-  `confirm_priority_rejects_non_priority_item` function L1247-1274 — `()` — Filed as a follow-up.
+-  `reject_priority_deletes_item_and_priority_row` function L1277-1300 — `()` — Filed as a follow-up.
+-  `add_priority_inserts_with_null_citation` function L1303-1327 — `()` — Filed as a follow-up.
+-  `list_priorities_unions_confirmed_and_candidates_deduped` function L1330-1360 — `()` — Filed as a follow-up.
+-  `confirm_priority_emits_priority_confirmed_event` function L1363-1381 — `()` — Filed as a follow-up.
+-  `patch_item_emits_item_updated_event` function L1384-1412 — `()` — Filed as a follow-up.
+
+#### crates/arawn-ceremonies/src/types.rs
+
+- pub `TabletStatus` enum L10-20 — `Open | Reviewed | Unreviewed | Archived` — Tablet lifecycle status.
+- pub `as_str` function L23-30 — `(self) -> &'static str` — Value types used by ceremony plugins and the engine.
+- pub `ItemKind` enum L37-45 — `CalendarEvent | Attention | Proposal | Todo | Pattern | Priority | Freeform` — What kind of row a `ceremony_items` entry represents.
+- pub `GatheredFacts` struct L52-58 — `{ payload: serde_json::Value, gathered_at: DateTime<Utc> }` — Output of the deterministic gather phase.
+- pub `new` function L61-66 — `(payload: serde_json::Value) -> Self` — Value types used by ceremony plugins and the engine.
+- pub `DetectedPattern` struct L72-82 — `{ iso_week: String, pattern_key: String, magnitude: f64, payload: serde_json::Va...` — A pattern row to be written to `ceremony_patterns_detected`.
+-  `TabletStatus` type L22-31 — `= TabletStatus` — Value types used by ceremony plugins and the engine.
+-  `GatheredFacts` type L60-67 — `= GatheredFacts` — Value types used by ceremony plugins and the engine.
+
+### crates/arawn-ceremonies/src/plugins
+
+> *Semantic summary to be generated by AI agent.*
+
+#### crates/arawn-ceremonies/src/plugins/daily.rs
+
+- pub `DailyCeremony` struct L47-55 — `{ llm: Arc<dyn arawn_llm::LlmClient>, model: String, calendar_source: Arc<dyn Ca...` — The daily plugin.
+- pub `new` function L58-70 — `( llm: Arc<dyn arawn_llm::LlmClient>, model: impl Into<String>, calendar_source:...` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+- pub `period_date` function L75-77 — `(now: DateTime<Utc>) -> String` — Format a `DateTime<Utc>` as the `YYYY-MM-DD` period key used
+- pub `iso_week` function L81-84 — `(now: DateTime<Utc>) -> String` — Format the current ISO week (`YYYY-Www`) for a moment.
+-  `CAP_CALENDAR` variable L41 — `: usize` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `CAP_ATTENTION` variable L42 — `: usize` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `CAP_TODOS` variable L43 — `: usize` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `CAP_PRIORITIES` variable L44 — `: usize` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `DailyCeremony` type L57-85 — `= DailyCeremony` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `DailyGather` struct L90-97 — `{ date: String, iso_week: String, calendar_events: Vec<CalEvent>, rolling_todos:...` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `TodoRow` struct L100-104 — `{ todo_id: String, body: String, created_at: String }` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `PriorityRow` struct L107-111 — `{ id: String, body: String, rationale: String }` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `DailyCeremony` type L114-329 — `impl Ceremony for DailyCeremony` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `kind` function L115-117 — `(&self) -> &'static str` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `period_key` function L119-121 — `(&self, now: DateTime<Utc>) -> String` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `default_schedule` function L123-127 — `(&self) -> CronSchedule` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `interactive_actions` function L129-131 — `(&self) -> Vec<InteractiveAction>` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `patterns` function L133-135 — `(&self) -> Option<&dyn PatternDetector>` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `gather` function L137-249 — `(&self, ctx: &dyn CeremonyCtx) -> Result<GatheredFacts, CeremonyError>` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `compose` function L251-328 — `( &self, ctx: &dyn CeremonyCtx, facts: GatheredFacts, ) -> Result<Vec<NewItem>, ...` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `SYSTEM_PROMPT` variable L331-337 — `: &str` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `build_compose_prompt` function L339-352 — `(facts: &GatheredFacts, valid_ids: &HashSet<String>) -> String` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `ComposedItemSpec` struct L355-359 — `{ section_key: String, citation_id: String, body: serde_json::Value }` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `is_valid_section` function L361-363 — `(s: &str) -> bool` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `collect_valid_ids` function L369-386 — `(payload: &serde_json::Value) -> HashSet<String>` — Walk the gather payload and collect every id field the compose
+-  `parse_llm_items` function L389-412 — `(text: &str) -> Option<Vec<ComposedItemSpec>>` — Pull the first balanced JSON array out of the LLM's response.
+-  `tests` module L415-648 — `-` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `open_test_db` function L426-433 — `() -> (TempDir, ConnHandle)` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `make_llm_with_response` function L435-439 — `(text: &str) -> Arc<dyn arawn_llm::LlmClient>` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `seed_daily_history` function L441-481 — `(conn: &ConnHandle, period_key: &str, iso_week: &str)` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `sample_calendar_events` function L483-510 — `() -> Vec<CalEvent>` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `sample_signals` function L512-523 — `() -> Vec<SignalRow>` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `period_key_formats_yyyy_mm_dd` function L526-531 — `()` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `gather_collects_four_section_payload` function L534-552 — `()` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `compose_rejects_unknown_citation` function L555-572 — `()` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `compose_rejects_empty_citation` function L575-592 — `()` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `end_to_end_dispatch_writes_tablet_and_items` function L595-647 — `()` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+
+#### crates/arawn-ceremonies/src/plugins/gather_sources.rs
+
+- pub `CalEvent` struct L21-28 — `{ id: String, title: String, start: DateTime<Utc>, end: DateTime<Utc>, attendees...` — One calendar event surfaced to the daily plugin's gather payload.
+- pub `SignalRow` struct L33-40 — `{ id: String, source_kind: String, source_id: String, ts: DateTime<Utc>, summary...` — One attention signal (cross-feed unread/important item) the daily
+- pub `CalendarSource` interface L44-46 — `{ fn events_for() }` — Read interface the daily plugin uses to pull today's calendar.
+- pub `AttentionSource` interface L51-57 — `{ fn since() }` — Read interface the daily plugin uses to pull attention signals
+- pub `NoopCalendarSource` struct L62 — `-` — No-op calendar source.
+- pub `StaticCalendarSource` struct L73 — `-` — Calendar source that returns a fixed set of events regardless of
+- pub `StaticAttentionSource` struct L84 — `-` — Attention source that returns a fixed set of signals.
+-  `NoopCalendarSource` type L65-69 — `impl CalendarSource for NoopCalendarSource` — work.
+-  `events_for` function L66-68 — `(&self, _date: NaiveDate) -> Result<Vec<CalEvent>, CeremonyError>` — work.
+-  `StaticCalendarSource` type L76-80 — `impl CalendarSource for StaticCalendarSource` — work.
+-  `events_for` function L77-79 — `(&self, _date: NaiveDate) -> Result<Vec<CalEvent>, CeremonyError>` — work.
+-  `StaticAttentionSource` type L87-95 — `impl AttentionSource for StaticAttentionSource` — work.
+-  `since` function L88-94 — `( &self, _cursor: DateTime<Utc>, cap: usize, ) -> Result<Vec<SignalRow>, Ceremon...` — work.
+
+#### crates/arawn-ceremonies/src/plugins/mod.rs
+
+- pub `daily` module L8 — `-` — Each submodule implements `Ceremony` for one ceremony kind.
+- pub `gather_sources` module L9 — `-` — later.
+- pub `retro` module L10 — `-` — later.
+- pub `retro_detectors` module L11 — `-` — later.
+- pub `weekly` module L12 — `-` — later.
+
+#### crates/arawn-ceremonies/src/plugins/retro.rs
+
+- pub `RetroCeremony` struct L41-51 — `{ llm: Arc<dyn arawn_llm::LlmClient>, model: String, detectors: DetectorRegistry...` — The retro plugin.
+- pub `new` function L54-60 — `(llm: Arc<dyn arawn_llm::LlmClient>, model: impl Into<String>) -> Self` — does not gate again.
+- pub `with_detectors` function L64-67 — `(mut self, detectors: DetectorRegistry) -> Self` — Attach the detector registry (typically the v1 catalog
+- pub `iso_week` function L72-75 — `(now: DateTime<Utc>) -> String` — Compute the ISO-week string (`YYYY-Www`) for a given moment.
+-  `RetroCeremony` type L53-76 — `= RetroCeremony` — does not gate again.
+-  `GatherPayload` struct L81-87 — `{ iso_week: String, daily_tablets: Vec<DailyTabletSummary>, confirmed_priorities...` — does not gate again.
+-  `DailyTabletSummary` struct L90-94 — `{ tablet_id: String, period_key: String, item_count: i64 }` — does not gate again.
+-  `PrioritySummary` struct L97-101 — `{ id: String, body: String, done: bool }` — does not gate again.
+-  `RollupRow` struct L104-108 — `{ workstream: String, metric_key: String, value: f64 }` — does not gate again.
+-  `PriorRetro` struct L111-114 — `{ iso_week: String, diary_excerpt: Option<String> }` — does not gate again.
+-  `RetroCeremony` type L117-346 — `impl Ceremony for RetroCeremony` — does not gate again.
+-  `kind` function L118-120 — `(&self) -> &'static str` — does not gate again.
+-  `period_key` function L122-124 — `(&self, now: DateTime<Utc>) -> String` — does not gate again.
+-  `default_schedule` function L126-130 — `(&self) -> CronSchedule` — does not gate again.
+-  `interactive_actions` function L132-137 — `(&self) -> Vec<InteractiveAction>` — does not gate again.
+-  `patterns` function L139-141 — `(&self) -> Option<&dyn PatternDetector>` — does not gate again.
+-  `gather` function L143-276 — `(&self, ctx: &dyn CeremonyCtx) -> Result<GatheredFacts, CeremonyError>` — does not gate again.
+-  `compose` function L278-345 — `( &self, ctx: &dyn CeremonyCtx, facts: GatheredFacts, ) -> Result<Vec<NewItem>, ...` — does not gate again.
+-  `SYSTEM_PROMPT` variable L348-353 — `: &str` — does not gate again.
+-  `build_compose_prompt` function L355-361 — `(facts: &GatheredFacts) -> String` — does not gate again.
+-  `ComposedItemSpec` struct L364-368 — `{ section: String, citation_id: String, body: serde_json::Value }` — does not gate again.
+-  `parse_llm_items` function L373-396 — `(text: &str) -> Option<Vec<ComposedItemSpec>>` — Pull the first balanced JSON array out of the LLM's response.
+-  `monday_sunday_for_iso_week_public` function L402-404 — `(iso_week: &str) -> Option<(String, String)>` — Re-export the iso-week date helper so the catalog (T-0288) can
+-  `monday_sunday_for_iso_week` function L409-420 — `(iso_week: &str) -> Option<(String, String)>` — Compute Monday and Sunday `YYYY-MM-DD` strings that bracket an
+-  `tests` module L423-620 — `-` — does not gate again.
+-  `open_test_db` function L431-438 — `() -> (TempDir, ConnHandle)` — does not gate again.
+-  `make_llm_with_response` function L440-444 — `(text: &str) -> Arc<dyn arawn_llm::LlmClient>` — does not gate again.
+-  `seed_minimal_history` function L446-488 — `(conn: &ConnHandle, iso_week: &str)` — does not gate again.
+-  `iso_week_format_is_yyyy_w_ww` function L491-495 — `()` — does not gate again.
+-  `monday_sunday_brackets_iso_week_20` function L498-502 — `()` — does not gate again.
+-  `gather_collects_week_payload` function L505-521 — `()` — does not gate again.
+-  `compose_parses_llm_array_into_composed_items` function L524-545 — `()` — does not gate again.
+-  `compose_rejects_empty_citation_with_missing_citation_error` function L548-560 — `()` — does not gate again.
+-  `compose_parses_array_with_surrounding_prose` function L563-579 — `()` — does not gate again.
+-  `end_to_end_dispatch_against_real_engine` function L582-619 — `()` — does not gate again.
+
+#### crates/arawn-ceremonies/src/plugins/retro_detectors.rs
+
+- pub `PriorityCompletionDetector` struct L34 — `-` — Confirmed weekly priorities → fraction marked done.
+- pub `RolloverHeatDetector` struct L97 — `-` — Un-done todos that existed before the current week and are still
+- pub `WorkstreamNeglectDetector` struct L179 — `-` — Workstreams that produced rollup activity in any of the prior 3
+- pub `v1_catalog` function L268-273 — `() -> DetectorRegistry` — The v1 catalog.
+-  `PriorityCompletionDetector` type L37-90 — `impl Detector for PriorityCompletionDetector` — Fires once per neglected workstream.
+-  `key` function L38-40 — `(&self) -> &'static str` — Fires once per neglected workstream.
+-  `require_history_weeks` function L42-44 — `(&self) -> u32` — Fires once per neglected workstream.
+-  `detect` function L46-89 — `( &self, ctx: &DetectorCtx<'_>, ) -> Result<Vec<DetectedPattern>, CeremonyError>` — Fires once per neglected workstream.
+-  `RolloverHeatDetector` type L100-172 — `impl Detector for RolloverHeatDetector` — Fires once per neglected workstream.
+-  `key` function L101-103 — `(&self) -> &'static str` — Fires once per neglected workstream.
+-  `require_history_weeks` function L105-107 — `(&self) -> u32` — Fires once per neglected workstream.
+-  `detect` function L109-171 — `( &self, ctx: &DetectorCtx<'_>, ) -> Result<Vec<DetectedPattern>, CeremonyError>` — Fires once per neglected workstream.
+-  `WorkstreamNeglectDetector` type L182-262 — `impl Detector for WorkstreamNeglectDetector` — Fires once per neglected workstream.
+-  `key` function L183-185 — `(&self) -> &'static str` — Fires once per neglected workstream.
+-  `require_history_weeks` function L187-189 — `(&self) -> u32` — Fires once per neglected workstream.
+-  `detect` function L191-261 — `( &self, ctx: &DetectorCtx<'_>, ) -> Result<Vec<DetectedPattern>, CeremonyError>` — Fires once per neglected workstream.
+-  `tests` module L276-529 — `-` — Fires once per neglected workstream.
+-  `open_test_db` function L283-290 — `() -> (TempDir, ConnHandle)` — Fires once per neglected workstream.
+-  `insert_tablet` function L292-306 — `( conn: &ConnHandle, id: &str, kind: &str, period_key: &str, generated_at: &str,...` — Fires once per neglected workstream.
+-  `insert_priority` function L308-329 — `( conn: &ConnHandle, id: &str, tablet_id: &str, confirmed: bool, done: bool, )` — Fires once per neglected workstream.
+-  `priority_completion_fires_below_threshold` function L334-347 — `()` — Fires once per neglected workstream.
+-  `priority_completion_quiet_above_threshold` function L350-360 — `()` — Fires once per neglected workstream.
+-  `priority_completion_quiet_when_no_priorities` function L363-368 — `()` — Fires once per neglected workstream.
+-  `insert_rolling_todo` function L372-393 — `( conn: &ConnHandle, id: &str, created_at: &str, last_seen_tablet: &str, done: b...` — Fires once per neglected workstream.
+-  `rollover_heat_fires_at_threshold` function L396-409 — `()` — Fires once per neglected workstream.
+-  `rollover_heat_quiet_below_threshold` function L412-420 — `()` — Fires once per neglected workstream.
+-  `rollover_heat_ignores_done_and_in_week_creations` function L423-435 — `()` — Fires once per neglected workstream.
+-  `insert_rollup` function L439-453 — `( conn: &ConnHandle, iso_week: &str, workstream: &str, metric: &str, value: f64,...` — Fires once per neglected workstream.
+-  `workstream_neglect_fires_per_neglected_workstream` function L456-473 — `()` — Fires once per neglected workstream.
+-  `workstream_neglect_quiet_when_all_active` function L476-485 — `()` — Fires once per neglected workstream.
+-  `workstream_neglect_requires_three_weeks_history` function L488-493 — `()` — Fires once per neglected workstream.
+-  `v1_catalog_runs_all_three_when_history_sufficient` function L498-515 — `()` — Fires once per neglected workstream.
+-  `v1_catalog_skips_workstream_neglect_when_history_short` function L518-528 — `()` — Fires once per neglected workstream.
+
+#### crates/arawn-ceremonies/src/plugins/weekly.rs
+
+- pub `WeeklyCeremony` struct L54-62 — `{ llm: Arc<dyn arawn_llm::LlmClient>, model: String, calendar_source: Arc<dyn Ca...` — The weekly plugin.
+- pub `new` function L65-77 — `( llm: Arc<dyn arawn_llm::LlmClient>, model: impl Into<String>, calendar_source:...` — `NewItem::Composed` is constructed.
+- pub `iso_week` function L83-86 — `(now: DateTime<Utc>) -> String` — Format the ISO-week string (`YYYY-Www`) for a moment.
+-  `CAP_DEADLINES` variable L45 — `: usize` — `NewItem::Composed` is constructed.
+-  `CAP_LAST_RETRO` variable L46 — `: usize` — `NewItem::Composed` is constructed.
+-  `CAP_PRIOR_WEEKLY` variable L47 — `: usize` — `NewItem::Composed` is constructed.
+-  `CAP_ROLLING_HOT` variable L48 — `: usize` — `NewItem::Composed` is constructed.
+-  `ROLLING_HOT_AGE_DAYS` variable L49 — `: i64` — `NewItem::Composed` is constructed.
+-  `WORKDAY_HOURS_PER_DAY` variable L50 — `: f64` — `NewItem::Composed` is constructed.
+-  `AFTERNOON_HOUR_UTC` variable L51 — `: u32` — `NewItem::Composed` is constructed.
+-  `WeeklyCeremony` type L64-78 — `= WeeklyCeremony` — `NewItem::Composed` is constructed.
+-  `WeeklyGather` struct L91-98 — `{ iso_week: String, calendar_summary: Vec<CalendarSummary>, deadlines: Vec<Signa...` — `NewItem::Composed` is constructed.
+-  `CalendarSummary` struct L101-108 — `{ id: String, iso_week: String, meeting_count: u32, deep_work_hours: f64, busies...` — `NewItem::Composed` is constructed.
+-  `RetroExcerpt` struct L111-115 — `{ id: String, kind: &'static str, body: String }` — `NewItem::Composed` is constructed.
+-  `InboundRow` struct L118-121 — `{ id: String, body: String }` — `NewItem::Composed` is constructed.
+-  `HotTodoRow` struct L124-127 — `{ todo_id: String, body: String }` — `NewItem::Composed` is constructed.
+-  `WeeklyCeremony` type L130-465 — `impl Ceremony for WeeklyCeremony` — `NewItem::Composed` is constructed.
+-  `kind` function L131-133 — `(&self) -> &'static str` — `NewItem::Composed` is constructed.
+-  `period_key` function L135-137 — `(&self, now: DateTime<Utc>) -> String` — `NewItem::Composed` is constructed.
+-  `default_schedule` function L139-141 — `(&self) -> CronSchedule` — `NewItem::Composed` is constructed.
+-  `interactive_actions` function L143-145 — `(&self) -> Vec<InteractiveAction>` — `NewItem::Composed` is constructed.
+-  `patterns` function L147-149 — `(&self) -> Option<&dyn PatternDetector>` — `NewItem::Composed` is constructed.
+-  `gather` function L151-390 — `(&self, ctx: &dyn CeremonyCtx) -> Result<GatheredFacts, CeremonyError>` — `NewItem::Composed` is constructed.
+-  `compose` function L392-464 — `( &self, ctx: &dyn CeremonyCtx, facts: GatheredFacts, ) -> Result<Vec<NewItem>, ...` — `NewItem::Composed` is constructed.
+-  `SYSTEM_PROMPT` variable L467-475 — `: &str` — `NewItem::Composed` is constructed.
+-  `build_compose_prompt` function L477-490 — `(facts: &GatheredFacts, valid_ids: &HashSet<String>) -> String` — `NewItem::Composed` is constructed.
+-  `ComposedItemSpec` struct L493-497 — `{ section: String, citation_id: String, body: serde_json::Value }` — `NewItem::Composed` is constructed.
+-  `is_valid_section` function L499-504 — `(s: &str) -> bool` — `NewItem::Composed` is constructed.
+-  `is_deadline_flavoured` function L506-513 — `(summary: &str) -> bool` — `NewItem::Composed` is constructed.
+-  `weekday_label` function L515-525 — `(wd: Weekday) -> &'static str` — `NewItem::Composed` is constructed.
+-  `collect_valid_ids` function L529-547 — `(payload: &serde_json::Value) -> HashSet<String>` — Walk the gather payload and collect every id the compose phase may
+-  `parse_llm_items` function L550-573 — `(text: &str) -> Option<Vec<ComposedItemSpec>>` — Pull the first balanced JSON array out of the LLM's response.
+-  `monday_sunday_for_iso_week` function L577-587 — `(iso_week_str: &str) -> Option<(NaiveDate, NaiveDate)>` — Compute Monday and Sunday `YYYY-MM-DD` dates bracketing an ISO
+-  `tests` module L593-811 — `-` — `NewItem::Composed` is constructed.
+-  `open_test_db` function L604-611 — `() -> (TempDir, ConnHandle)` — `NewItem::Composed` is constructed.
+-  `make_llm_with_response` function L613-617 — `(text: &str) -> Arc<dyn arawn_llm::LlmClient>` — `NewItem::Composed` is constructed.
+-  `sample_calendar_events_for` function L619-636 — `(date: NaiveDate) -> Vec<CalEvent>` — `NewItem::Composed` is constructed.
+-  `PerDayCalendar` struct L639 — `-` — Calendar source that returns one afternoon event per day.
+-  `PerDayCalendar` type L642-649 — `impl CalendarSource for PerDayCalendar` — `NewItem::Composed` is constructed.
+-  `events_for` function L643-648 — `( &self, date: NaiveDate, ) -> Result<Vec<CalEvent>, CeremonyError>` — `NewItem::Composed` is constructed.
+-  `sample_signals` function L651-664 — `(monday: NaiveDate) -> Vec<SignalRow>` — `NewItem::Composed` is constructed.
+-  `seed_weekly_history` function L666-728 — `(conn: &ConnHandle, this_iso_week: &str)` — `NewItem::Composed` is constructed.
+-  `iso_week_format_is_yyyy_w_ww` function L731-736 — `()` — `NewItem::Composed` is constructed.
+-  `end_to_end_dispatch_writes_tablet_and_items` function L739-810 — `()` — `NewItem::Composed` is constructed.
+
+### crates/arawn-ceremonies/tests
+
+> *Semantic summary to be generated by AI agent.*
+
+#### crates/arawn-ceremonies/tests/retro_uat.rs
+
+-  `open_test_db` function L29-36 — `() -> (TempDir, ConnHandle)` — populates from the daily tablets seeded for the current week.
+-  `mock_compose_response` function L40-54 — `(citations: &[(&str, &str, &str)]) -> Arc<MockLlmClient>` — Stable LLM response that cites a seed item id.
+-  `seed_daily_tablet` function L56-75 — `(conn: &ConnHandle, id: &str, date: &str, item_id: &str, todo_body: &str)` — populates from the daily tablets seeded for the current week.
+-  `seed_weekly_tablet_with_priorities` function L77-113 — `( conn: &ConnHandle, id: &str, iso_week: &str, priorities: &[(&str, bool, bool)]...` — populates from the daily tablets seeded for the current week.
+-  `seed_rollup_row` function L115-123 — `(conn: &ConnHandle, iso_week: &str, ws: &str, key: &str, val: f64)` — populates from the daily tablets seeded for the current week.
+-  `seed_rolling_todo` function L125-145 — `( conn: &ConnHandle, id: &str, created_at: &str, last_seen_tablet: &str, done: b...` — populates from the daily tablets seeded for the current week.
+-  `uat_4_week_retro_with_pattern_detection` function L148-316 — `()` — populates from the daily tablets seeded for the current week.
+-  `uat_bootstrap_no_history_still_ships_retro` function L319-373 — `()` — populates from the daily tablets seeded for the current week.
 
 ### crates/arawn-core/src
 
@@ -1183,6 +1814,35 @@
 -  `cancel_nonexistent_returns_false` function L475-478 — `()` — conversation so the LLM knows what finished.
 -  `duplicate_complete_only_notifies_once` function L481-500 — `()` — conversation so the LLM knows what finished.
 
+#### crates/arawn-engine/src/ceremony_sources.rs
+
+- pub `ProjectionsCalendarSource` struct L61-64 — `{ projections: Arc<ProjectionStore>, tz: Tz }` — Production `CalendarSource` backed by the `calendar_events`
+- pub `new` function L67-72 — `(projections: Arc<ProjectionStore>) -> Self` — and stale name values are acceptable until process restart.
+- pub `with_tz` function L77-80 — `(mut self, tz: Tz) -> Self` — Builder: set the timezone used to bracket day windows in
+- pub `ProjectionsAttentionSource` struct L198-202 — `{ projections: Arc<ProjectionStore>, store: Arc<Mutex<Store>>, feed_workstream_c...` — Production `AttentionSource` backed by `gmail_messages` +
+- pub `new` function L205-211 — `(projections: Arc<ProjectionStore>, store: Arc<Mutex<Store>>) -> Self` — and stale name values are acceptable until process restart.
+-  `EXCERPT_CHARS` variable L35 — `: usize` — and stale name values are acceptable until process restart.
+-  `storage_err` function L37-39 — `(msg: impl Into<String>) -> CeremonyError` — and stale name values are acceptable until process restart.
+-  `truncate_excerpt` function L41-47 — `(s: &str) -> String` — and stale name values are acceptable until process restart.
+-  `parse_rfc3339` function L49-53 — `(s: &str) -> Result<DateTime<Utc>, CeremonyError>` — and stale name values are acceptable until process restart.
+-  `ProjectionsCalendarSource` type L66-81 — `= ProjectionsCalendarSource` — and stale name values are acceptable until process restart.
+-  `ProjectionsCalendarSource` type L84-188 — `impl CalendarSource for ProjectionsCalendarSource` — and stale name values are acceptable until process restart.
+-  `events_for` function L85-187 — `(&self, date: NaiveDate) -> Result<Vec<CalEvent>, CeremonyError>` — and stale name values are acceptable until process restart.
+-  `ProjectionsAttentionSource` type L204-245 — `= ProjectionsAttentionSource` — and stale name values are acceptable until process restart.
+-  `workstream_for_feed` function L217-244 — `( &self, feed_id: &str, ) -> Result<Option<String>, CeremonyError>` — Cached `feed_id → workstream name` lookup.
+-  `ProjectionsAttentionSource` type L248-361 — `impl AttentionSource for ProjectionsAttentionSource` — and stale name values are acceptable until process restart.
+-  `since` function L249-360 — `( &self, cursor: DateTime<Utc>, cap: usize, ) -> Result<Vec<SignalRow>, Ceremony...` — and stale name values are acceptable until process restart.
+-  `Raw` struct L293-300 — `{ id: String, source_id: String, ts: DateTime<Utc>, summary: String, kind: Strin...` — and stale name values are acceptable until process restart.
+-  `tests` module L364-594 — `-` — and stale name values are acceptable until process restart.
+-  `make_store_pair` function L373-382 — `() -> (Arc<ProjectionStore>, Arc<Mutex<Store>>, tempfile::TempDir)` — and stale name values are acceptable until process restart.
+-  `cal_event` function L384-406 — `( id_seed: &str, start: DateTime<Utc>, end: DateTime<Utc>, ) -> CalendarEventPro...` — and stale name values are acceptable until process restart.
+-  `calendar_returns_events_for_day` function L409-437 — `()` — and stale name values are acceptable until process restart.
+-  `gmail_signal` function L439-452 — `(id_seed: &str, ts: DateTime<Utc>) -> GmailMessageProjection` — and stale name values are acceptable until process restart.
+-  `slack_signal` function L454-467 — `(id_seed: &str, ts: DateTime<Utc>) -> SlackMessageProjection` — and stale name values are acceptable until process restart.
+-  `attention_returns_recent_capped` function L470-510 — `()` — and stale name values are acceptable until process restart.
+-  `calendar_respects_configured_timezone` function L516-545 — `()` — 2026-05-17T01:30:00Z is "May 17" in UTC but "May 16 18:30" in
+-  `attention_tags_workstream_from_feed_registry` function L551-593 — `()` — Rows whose `feed_id` is bound to a workstream tag with that
+
 #### crates/arawn-engine/src/compact_prompt.rs
 
 - pub `get_compact_prompt` function L38-48 — `() -> String` — Get the full compaction prompt (summarize entire conversation).
@@ -1286,26 +1946,27 @@
 - pub `agent_defs` module L1 — `-`
 - pub `approval` module L2 — `-`
 - pub `background` module L3 — `-`
-- pub `compact_prompt` module L4 — `-`
-- pub `compactor` module L5 — `-`
-- pub `context` module L6 — `-`
-- pub `diff` module L7 — `-`
-- pub `error` module L8 — `-`
-- pub `hooks` module L9 — `-`
-- pub `permissions` module L10 — `-`
-- pub `plan` module L11 — `-`
-- pub `plugins` module L12 — `-`
-- pub `prompt_injection` module L13 — `-`
-- pub `query_engine` module L14 — `-`
-- pub `skills` module L15 — `-`
-- pub `system_prompt` module L16 — `-`
-- pub `testing` module L17 — `-`
-- pub `token_estimator` module L18 — `-`
-- pub `tool` module L19 — `-`
-- pub `tool_result_limiter` module L20 — `-`
-- pub `tool_timeout` module L21 — `-`
-- pub `tools` module L22 — `-`
-- pub `workstream_router` module L23 — `-`
+- pub `ceremony_sources` module L4 — `-`
+- pub `compact_prompt` module L5 — `-`
+- pub `compactor` module L6 — `-`
+- pub `context` module L7 — `-`
+- pub `diff` module L8 — `-`
+- pub `error` module L9 — `-`
+- pub `hooks` module L10 — `-`
+- pub `permissions` module L11 — `-`
+- pub `plan` module L12 — `-`
+- pub `plugins` module L13 — `-`
+- pub `prompt_injection` module L14 — `-`
+- pub `query_engine` module L15 — `-`
+- pub `skills` module L16 — `-`
+- pub `system_prompt` module L17 — `-`
+- pub `testing` module L18 — `-`
+- pub `token_estimator` module L19 — `-`
+- pub `tool` module L20 — `-`
+- pub `tool_result_limiter` module L21 — `-`
+- pub `tool_timeout` module L22 — `-`
+- pub `tools` module L23 — `-`
+- pub `workstream_router` module L24 — `-`
 
 #### crates/arawn-engine/src/plan.rs
 
@@ -1374,32 +2035,32 @@
 -  `AssembledResponse` struct L985-989 — `{ text: String, tool_calls: Vec<AssembledToolCall>, usage: Option<arawn_llm::Usa...`
 -  `AssembledToolCall` struct L991-995 — `{ id: String, name: String, arguments: serde_json::Value }`
 -  `ToolResult` struct L997-1000 — `{ content: String, is_error: bool }`
--  `filter_tools_for_context` function L1005-1117 — `( all_tools: &[arawn_llm::ToolDefinition], session: &Session, registry: &ToolReg...` — Filter tool definitions to only contextually relevant ones for this turn.
--  `tests` module L1120-1466 — `-`
--  `MockLlm` struct L1133-1135 — `{ responses: Mutex<Vec<Vec<ChatChunk>>> }` — Mock LLM that returns pre-scripted responses.
--  `MockLlm` type L1137-1167 — `= MockLlm`
--  `new` function L1138-1142 — `(responses: Vec<Vec<ChatChunk>>) -> Self`
--  `text` function L1145-1152 — `(text: &str) -> Vec<ChatChunk>` — Convenience: text-only response
--  `tool_call` function L1155-1166 — `(id: &str, name: &str, args: &str) -> Vec<ChatChunk>` — Convenience: tool call then done
--  `MockLlm` type L1170-1186 — `impl LlmClient for MockLlm`
--  `stream` function L1171-1185 — `( &self, _request: ChatRequest, ) -> Result< Pin<Box<dyn futures::Stream<Item = ...`
--  `setup` function L1188-1193 — `() -> (Workstream, Session, EngineToolContext)`
--  `text_only_response` function L1196-1209 — `()`
--  `single_tool_call` function L1212-1230 — `()`
--  `tool_not_found` function L1233-1255 — `()`
--  `max_iterations_exceeded` function L1258-1285 — `()`
--  `multi_turn_tool_chain` function L1288-1307 — `()`
--  `SlowTool` struct L1311-1313 — `{ sleep_ms: u64 }` — Tool that intentionally sleeps for a duration so timeout tests can
--  `SlowTool` type L1316-1337 — `impl Tool for SlowTool`
--  `name` function L1317-1319 — `(&self) -> &str`
--  `description` function L1320-1322 — `(&self) -> &str`
--  `parameters_schema` function L1323-1325 — `(&self) -> serde_json::Value`
--  `execute` function L1326-1333 — `( &self, _ctx: &dyn arawn_tool::ToolContext, _params: serde_json::Value, ) -> Re...`
--  `is_read_only` function L1334-1336 — `(&self) -> bool`
--  `tool_completes_when_default_budget_is_large` function L1340-1359 — `()`
--  `slow_tool_times_out_under_short_default` function L1362-1394 — `()`
--  `agent_override_fires_before_default_would` function L1397-1433 — `()`
--  `invalid_override_surfaces_as_tool_error` function L1436-1465 — `()`
+-  `filter_tools_for_context` function L1005-1133 — `( all_tools: &[arawn_llm::ToolDefinition], session: &Session, registry: &ToolReg...` — Filter tool definitions to only contextually relevant ones for this turn.
+-  `tests` module L1136-1482 — `-`
+-  `MockLlm` struct L1149-1151 — `{ responses: Mutex<Vec<Vec<ChatChunk>>> }` — Mock LLM that returns pre-scripted responses.
+-  `MockLlm` type L1153-1183 — `= MockLlm`
+-  `new` function L1154-1158 — `(responses: Vec<Vec<ChatChunk>>) -> Self`
+-  `text` function L1161-1168 — `(text: &str) -> Vec<ChatChunk>` — Convenience: text-only response
+-  `tool_call` function L1171-1182 — `(id: &str, name: &str, args: &str) -> Vec<ChatChunk>` — Convenience: tool call then done
+-  `MockLlm` type L1186-1202 — `impl LlmClient for MockLlm`
+-  `stream` function L1187-1201 — `( &self, _request: ChatRequest, ) -> Result< Pin<Box<dyn futures::Stream<Item = ...`
+-  `setup` function L1204-1209 — `() -> (Workstream, Session, EngineToolContext)`
+-  `text_only_response` function L1212-1225 — `()`
+-  `single_tool_call` function L1228-1246 — `()`
+-  `tool_not_found` function L1249-1271 — `()`
+-  `max_iterations_exceeded` function L1274-1301 — `()`
+-  `multi_turn_tool_chain` function L1304-1323 — `()`
+-  `SlowTool` struct L1327-1329 — `{ sleep_ms: u64 }` — Tool that intentionally sleeps for a duration so timeout tests can
+-  `SlowTool` type L1332-1353 — `impl Tool for SlowTool`
+-  `name` function L1333-1335 — `(&self) -> &str`
+-  `description` function L1336-1338 — `(&self) -> &str`
+-  `parameters_schema` function L1339-1341 — `(&self) -> serde_json::Value`
+-  `execute` function L1342-1349 — `( &self, _ctx: &dyn arawn_tool::ToolContext, _params: serde_json::Value, ) -> Re...`
+-  `is_read_only` function L1350-1352 — `(&self) -> bool`
+-  `tool_completes_when_default_budget_is_large` function L1356-1375 — `()`
+-  `slow_tool_times_out_under_short_default` function L1378-1410 — `()`
+-  `agent_override_fires_before_default_would` function L1413-1449 — `()`
+-  `invalid_override_surfaces_as_tool_error` function L1452-1481 — `()`
 
 #### crates/arawn-engine/src/system_prompt.rs
 
@@ -2507,6 +3168,140 @@
 -  `multiple_questions` function L219-244 — `()`
 -  `empty_questions_errors` function L247-252 — `()`
 
+#### crates/arawn-engine/src/tools/ceremony.rs
+
+- pub `RetroRunTool` struct L29-31 — `{ svc: Arc<CeremonyService> }` — that the agent surfaces those ids when summarising what happened.
+- pub `new` function L34-36 — `(svc: Arc<CeremonyService>) -> Self` — that the agent surfaces those ids when summarising what happened.
+- pub `RetroCurrentTool` struct L89-91 — `{ svc: Arc<CeremonyService> }` — that the agent surfaces those ids when summarising what happened.
+- pub `new` function L94-96 — `(svc: Arc<CeremonyService>) -> Self` — that the agent surfaces those ids when summarising what happened.
+- pub `RetroListItemsTool` struct L149-151 — `{ svc: Arc<CeremonyService> }` — that the agent surfaces those ids when summarising what happened.
+- pub `new` function L154-156 — `(svc: Arc<CeremonyService>) -> Self` — that the agent surfaces those ids when summarising what happened.
+- pub `RetroSaveDiaryTool` struct L222-224 — `{ svc: Arc<CeremonyService> }` — that the agent surfaces those ids when summarising what happened.
+- pub `new` function L227-229 — `(svc: Arc<CeremonyService>) -> Self` — that the agent surfaces those ids when summarising what happened.
+- pub `RetroPatchItemTool` struct L289-291 — `{ svc: Arc<CeremonyService> }` — that the agent surfaces those ids when summarising what happened.
+- pub `new` function L294-296 — `(svc: Arc<CeremonyService>) -> Self` — that the agent surfaces those ids when summarising what happened.
+-  `map_err` function L21-23 — `(e: arawn_ceremonies::CeremonyError) -> ToolOutput` — that the agent surfaces those ids when summarising what happened.
+-  `RetroRunTool` type L33-37 — `= RetroRunTool` — that the agent surfaces those ids when summarising what happened.
+-  `RetroRunTool` type L40-83 — `impl Tool for RetroRunTool` — that the agent surfaces those ids when summarising what happened.
+-  `name` function L41-43 — `(&self) -> &str` — that the agent surfaces those ids when summarising what happened.
+-  `description` function L45-54 — `(&self) -> &str` — that the agent surfaces those ids when summarising what happened.
+-  `category` function L56-58 — `(&self) -> ToolCategory` — that the agent surfaces those ids when summarising what happened.
+-  `parameters_schema` function L60-66 — `(&self) -> Value` — that the agent surfaces those ids when summarising what happened.
+-  `execute` function L68-82 — `( &self, _ctx: &dyn arawn_tool::ToolContext, _params: Value, ) -> Result<ToolOut...` — that the agent surfaces those ids when summarising what happened.
+-  `RetroCurrentTool` type L93-97 — `= RetroCurrentTool` — that the agent surfaces those ids when summarising what happened.
+-  `RetroCurrentTool` type L100-143 — `impl Tool for RetroCurrentTool` — that the agent surfaces those ids when summarising what happened.
+-  `name` function L101-103 — `(&self) -> &str` — that the agent surfaces those ids when summarising what happened.
+-  `description` function L105-111 — `(&self) -> &str` — that the agent surfaces those ids when summarising what happened.
+-  `category` function L113-115 — `(&self) -> ToolCategory` — that the agent surfaces those ids when summarising what happened.
+-  `is_read_only` function L117-119 — `(&self) -> bool` — that the agent surfaces those ids when summarising what happened.
+-  `parameters_schema` function L121-127 — `(&self) -> Value` — that the agent surfaces those ids when summarising what happened.
+-  `execute` function L129-142 — `( &self, _ctx: &dyn arawn_tool::ToolContext, _params: Value, ) -> Result<ToolOut...` — that the agent surfaces those ids when summarising what happened.
+-  `RetroListItemsTool` type L153-157 — `= RetroListItemsTool` — that the agent surfaces those ids when summarising what happened.
+-  `RetroListItemsTool` type L160-216 — `impl Tool for RetroListItemsTool` — that the agent surfaces those ids when summarising what happened.
+-  `name` function L161-163 — `(&self) -> &str` — that the agent surfaces those ids when summarising what happened.
+-  `description` function L165-174 — `(&self) -> &str` — that the agent surfaces those ids when summarising what happened.
+-  `category` function L176-178 — `(&self) -> ToolCategory` — that the agent surfaces those ids when summarising what happened.
+-  `is_read_only` function L180-182 — `(&self) -> bool` — that the agent surfaces those ids when summarising what happened.
+-  `parameters_schema` function L184-194 — `(&self) -> Value` — that the agent surfaces those ids when summarising what happened.
+-  `execute` function L196-215 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — that the agent surfaces those ids when summarising what happened.
+-  `RetroSaveDiaryTool` type L226-230 — `= RetroSaveDiaryTool` — that the agent surfaces those ids when summarising what happened.
+-  `RetroSaveDiaryTool` type L233-283 — `impl Tool for RetroSaveDiaryTool` — that the agent surfaces those ids when summarising what happened.
+-  `name` function L234-236 — `(&self) -> &str` — that the agent surfaces those ids when summarising what happened.
+-  `description` function L238-244 — `(&self) -> &str` — that the agent surfaces those ids when summarising what happened.
+-  `category` function L246-248 — `(&self) -> ToolCategory` — that the agent surfaces those ids when summarising what happened.
+-  `parameters_schema` function L250-260 — `(&self) -> Value` — that the agent surfaces those ids when summarising what happened.
+-  `execute` function L262-282 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — that the agent surfaces those ids when summarising what happened.
+-  `RetroPatchItemTool` type L293-297 — `= RetroPatchItemTool` — that the agent surfaces those ids when summarising what happened.
+-  `RetroPatchItemTool` type L300-360 — `impl Tool for RetroPatchItemTool` — that the agent surfaces those ids when summarising what happened.
+-  `name` function L301-303 — `(&self) -> &str` — that the agent surfaces those ids when summarising what happened.
+-  `description` function L305-311 — `(&self) -> &str` — that the agent surfaces those ids when summarising what happened.
+-  `category` function L313-315 — `(&self) -> ToolCategory` — that the agent surfaces those ids when summarising what happened.
+-  `parameters_schema` function L317-334 — `(&self) -> Value` — that the agent surfaces those ids when summarising what happened.
+-  `execute` function L336-359 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — that the agent surfaces those ids when summarising what happened.
+-  `_add_item_unused` function L367 — `(_: AddItemRequest)` — that the agent surfaces those ids when summarising what happened.
+-  `tests` module L370-522 — `-` — that the agent surfaces those ids when summarising what happened.
+-  `StubDispatcher` struct L382 — `-` — that the agent surfaces those ids when summarising what happened.
+-  `StubDispatcher` type L385-391 — `impl CeremonyDispatcher for StubDispatcher` — that the agent surfaces those ids when summarising what happened.
+-  `dispatch` function L386-390 — `(&self, _kind: &str) -> Result<DispatchOutcome, CeremonyError>` — that the agent surfaces those ids when summarising what happened.
+-  `open_svc` function L393-404 — `() -> (TempDir, Arc<CeremonyService>)` — that the agent surfaces those ids when summarising what happened.
+-  `seed_retro_tablet` function L406-416 — `(svc: &CeremonyService, id: &str, week: &str)` — that the agent surfaces those ids when summarising what happened.
+-  `ctx` function L421-424 — `() -> crate::context::EngineToolContext` — that the agent surfaces those ids when summarising what happened.
+-  `retro_run_returns_generated_payload` function L427-434 — `()` — that the agent surfaces those ids when summarising what happened.
+-  `retro_current_returns_null_when_no_tablet` function L437-443 — `()` — that the agent surfaces those ids when summarising what happened.
+-  `retro_list_items_rejects_missing_tablet_id` function L446-452 — `()` — that the agent surfaces those ids when summarising what happened.
+-  `retro_save_diary_rejects_missing_tablet_id` function L455-461 — `()` — that the agent surfaces those ids when summarising what happened.
+-  `retro_save_diary_rejects_non_retro_tablet` function L464-483 — `()` — that the agent surfaces those ids when summarising what happened.
+-  `retro_patch_item_validates_input` function L486-492 — `()` — that the agent surfaces those ids when summarising what happened.
+-  `schemas_have_required_field_arrays` function L495-509 — `()` — that the agent surfaces those ids when summarising what happened.
+-  `add_item_request_compiles` function L514-521 — `()` — that the agent surfaces those ids when summarising what happened.
+
+#### crates/arawn-engine/src/tools/daily.rs
+
+- pub `DailyRunTool` struct L33-35 — `{ svc: Arc<CeremonyService> }` — detector see it.
+- pub `new` function L38-40 — `(svc: Arc<CeremonyService>) -> Self` — detector see it.
+- pub `DailyCurrentTool` struct L92-94 — `{ svc: Arc<CeremonyService> }` — detector see it.
+- pub `new` function L97-99 — `(svc: Arc<CeremonyService>) -> Self` — detector see it.
+- pub `DailyListItemsTool` struct L152-154 — `{ svc: Arc<CeremonyService> }` — detector see it.
+- pub `new` function L157-159 — `(svc: Arc<CeremonyService>) -> Self` — detector see it.
+- pub `DailyPatchItemTool` struct L226-228 — `{ svc: Arc<CeremonyService> }` — detector see it.
+- pub `new` function L231-233 — `(svc: Arc<CeremonyService>) -> Self` — detector see it.
+- pub `DailyAddTodoTool` struct L304-306 — `{ svc: Arc<CeremonyService> }` — detector see it.
+- pub `new` function L309-311 — `(svc: Arc<CeremonyService>) -> Self` — detector see it.
+-  `map_err` function L25-27 — `(e: arawn_ceremonies::CeremonyError) -> ToolOutput` — detector see it.
+-  `DailyRunTool` type L37-41 — `= DailyRunTool` — detector see it.
+-  `DailyRunTool` type L44-86 — `impl Tool for DailyRunTool` — detector see it.
+-  `name` function L45-47 — `(&self) -> &str` — detector see it.
+-  `description` function L49-57 — `(&self) -> &str` — detector see it.
+-  `category` function L59-61 — `(&self) -> ToolCategory` — detector see it.
+-  `parameters_schema` function L63-69 — `(&self) -> Value` — detector see it.
+-  `execute` function L71-85 — `( &self, _ctx: &dyn arawn_tool::ToolContext, _params: Value, ) -> Result<ToolOut...` — detector see it.
+-  `DailyCurrentTool` type L96-100 — `= DailyCurrentTool` — detector see it.
+-  `DailyCurrentTool` type L103-146 — `impl Tool for DailyCurrentTool` — detector see it.
+-  `name` function L104-106 — `(&self) -> &str` — detector see it.
+-  `description` function L108-114 — `(&self) -> &str` — detector see it.
+-  `category` function L116-118 — `(&self) -> ToolCategory` — detector see it.
+-  `is_read_only` function L120-122 — `(&self) -> bool` — detector see it.
+-  `parameters_schema` function L124-130 — `(&self) -> Value` — detector see it.
+-  `execute` function L132-145 — `( &self, _ctx: &dyn arawn_tool::ToolContext, _params: Value, ) -> Result<ToolOut...` — detector see it.
+-  `DailyListItemsTool` type L156-160 — `= DailyListItemsTool` — detector see it.
+-  `DailyListItemsTool` type L163-220 — `impl Tool for DailyListItemsTool` — detector see it.
+-  `name` function L164-166 — `(&self) -> &str` — detector see it.
+-  `description` function L168-178 — `(&self) -> &str` — detector see it.
+-  `category` function L180-182 — `(&self) -> ToolCategory` — detector see it.
+-  `is_read_only` function L184-186 — `(&self) -> bool` — detector see it.
+-  `parameters_schema` function L188-198 — `(&self) -> Value` — detector see it.
+-  `execute` function L200-219 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — detector see it.
+-  `DailyPatchItemTool` type L230-234 — `= DailyPatchItemTool` — detector see it.
+-  `DailyPatchItemTool` type L237-298 — `impl Tool for DailyPatchItemTool` — detector see it.
+-  `name` function L238-240 — `(&self) -> &str` — detector see it.
+-  `description` function L242-249 — `(&self) -> &str` — detector see it.
+-  `category` function L251-253 — `(&self) -> ToolCategory` — detector see it.
+-  `parameters_schema` function L255-272 — `(&self) -> Value` — detector see it.
+-  `execute` function L274-297 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — detector see it.
+-  `DailyAddTodoTool` type L308-312 — `= DailyAddTodoTool` — detector see it.
+-  `DailyAddTodoTool` type L315-387 — `impl Tool for DailyAddTodoTool` — detector see it.
+-  `name` function L316-318 — `(&self) -> &str` — detector see it.
+-  `description` function L320-328 — `(&self) -> &str` — detector see it.
+-  `category` function L330-332 — `(&self) -> ToolCategory` — detector see it.
+-  `parameters_schema` function L334-343 — `(&self) -> Value` — detector see it.
+-  `execute` function L345-386 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — detector see it.
+-  `tests` module L390-555 — `-` — detector see it.
+-  `StubDispatcher` struct L401 — `-` — detector see it.
+-  `StubDispatcher` type L404-410 — `impl CeremonyDispatcher for StubDispatcher` — detector see it.
+-  `dispatch` function L405-409 — `(&self, _kind: &str) -> Result<DispatchOutcome, CeremonyError>` — detector see it.
+-  `open_svc` function L412-423 — `() -> (TempDir, Arc<CeremonyService>)` — detector see it.
+-  `seed_today_daily_tablet` function L425-437 — `(tmp_path: &std::path::Path) -> String` — detector see it.
+-  `ctx` function L442-445 — `() -> crate::context::EngineToolContext` — detector see it.
+-  `daily_run_returns_generated_payload` function L448-455 — `()` — detector see it.
+-  `daily_current_returns_null_when_no_tablet` function L458-464 — `()` — detector see it.
+-  `daily_current_returns_tablet_when_present` function L467-474 — `()` — detector see it.
+-  `daily_list_items_rejects_missing_tablet_id` function L477-483 — `()` — detector see it.
+-  `daily_patch_item_validates_input` function L486-492 — `()` — detector see it.
+-  `daily_add_todo_requires_body` function L495-501 — `()` — detector see it.
+-  `daily_add_todo_errors_when_no_tablet` function L504-513 — `()` — detector see it.
+-  `daily_add_todo_inserts_item_and_rolling_row` function L516-538 — `()` — detector see it.
+-  `schemas_have_required_field_arrays` function L541-554 — `()` — detector see it.
+
 #### crates/arawn-engine/src/tools/enter_plan_mode.rs
 
 - pub `EnterPlanModeTool` struct L12-14 — `{ plan_state: Arc<PlanModeState> }` — Tool that enters plan mode — restricts the agent to observation-only tools
@@ -2752,6 +3547,9 @@
 - pub `web_fetch` module L24 — `-`
 - pub `web_search` module L25 — `-`
 - pub `workstream` module L26 — `-`
+- pub `ceremony` module L27 — `-`
+- pub `daily` module L28 — `-`
+- pub `weekly` module L29 — `-`
 
 #### crates/arawn-engine/src/tools/safe_env.rs
 
@@ -3209,6 +4007,97 @@
 -  `blocked_domains_filter` function L348-373 — `()`
 -  `allowed_domains_builds_site_clause` function L376-389 — `()`
 -  `is_read_only` function L392-395 — `()`
+
+#### crates/arawn-engine/src/tools/weekly.rs
+
+- pub `WeeklyRunTool` struct L37-39 — `{ svc: Arc<CeremonyService> }` — confirmed priority directly into `ceremony_priorities`.
+- pub `new` function L42-44 — `(svc: Arc<CeremonyService>) -> Self` — confirmed priority directly into `ceremony_priorities`.
+- pub `WeeklyCurrentTool` struct L98-100 — `{ svc: Arc<CeremonyService> }` — confirmed priority directly into `ceremony_priorities`.
+- pub `new` function L103-105 — `(svc: Arc<CeremonyService>) -> Self` — confirmed priority directly into `ceremony_priorities`.
+- pub `WeeklyListItemsTool` struct L158-160 — `{ svc: Arc<CeremonyService> }` — confirmed priority directly into `ceremony_priorities`.
+- pub `new` function L163-165 — `(svc: Arc<CeremonyService>) -> Self` — confirmed priority directly into `ceremony_priorities`.
+- pub `WeeklyListPrioritiesTool` struct L233-235 — `{ svc: Arc<CeremonyService> }` — confirmed priority directly into `ceremony_priorities`.
+- pub `new` function L238-240 — `(svc: Arc<CeremonyService>) -> Self` — confirmed priority directly into `ceremony_priorities`.
+- pub `WeeklyConfirmPriorityTool` struct L303-305 — `{ svc: Arc<CeremonyService> }` — confirmed priority directly into `ceremony_priorities`.
+- pub `new` function L308-310 — `(svc: Arc<CeremonyService>) -> Self` — confirmed priority directly into `ceremony_priorities`.
+- pub `WeeklyRejectPriorityTool` struct L365-367 — `{ svc: Arc<CeremonyService> }` — confirmed priority directly into `ceremony_priorities`.
+- pub `new` function L370-372 — `(svc: Arc<CeremonyService>) -> Self` — confirmed priority directly into `ceremony_priorities`.
+- pub `WeeklyAddPriorityTool` struct L425-427 — `{ svc: Arc<CeremonyService> }` — confirmed priority directly into `ceremony_priorities`.
+- pub `new` function L430-432 — `(svc: Arc<CeremonyService>) -> Self` — confirmed priority directly into `ceremony_priorities`.
+-  `map_err` function L29-31 — `(e: arawn_ceremonies::CeremonyError) -> ToolOutput` — confirmed priority directly into `ceremony_priorities`.
+-  `WeeklyRunTool` type L41-45 — `= WeeklyRunTool` — confirmed priority directly into `ceremony_priorities`.
+-  `WeeklyRunTool` type L48-92 — `impl Tool for WeeklyRunTool` — confirmed priority directly into `ceremony_priorities`.
+-  `name` function L49-51 — `(&self) -> &str` — confirmed priority directly into `ceremony_priorities`.
+-  `description` function L53-63 — `(&self) -> &str` — confirmed priority directly into `ceremony_priorities`.
+-  `category` function L65-67 — `(&self) -> ToolCategory` — confirmed priority directly into `ceremony_priorities`.
+-  `parameters_schema` function L69-75 — `(&self) -> Value` — confirmed priority directly into `ceremony_priorities`.
+-  `execute` function L77-91 — `( &self, _ctx: &dyn arawn_tool::ToolContext, _params: Value, ) -> Result<ToolOut...` — confirmed priority directly into `ceremony_priorities`.
+-  `WeeklyCurrentTool` type L102-106 — `= WeeklyCurrentTool` — confirmed priority directly into `ceremony_priorities`.
+-  `WeeklyCurrentTool` type L109-152 — `impl Tool for WeeklyCurrentTool` — confirmed priority directly into `ceremony_priorities`.
+-  `name` function L110-112 — `(&self) -> &str` — confirmed priority directly into `ceremony_priorities`.
+-  `description` function L114-120 — `(&self) -> &str` — confirmed priority directly into `ceremony_priorities`.
+-  `category` function L122-124 — `(&self) -> ToolCategory` — confirmed priority directly into `ceremony_priorities`.
+-  `is_read_only` function L126-128 — `(&self) -> bool` — confirmed priority directly into `ceremony_priorities`.
+-  `parameters_schema` function L130-136 — `(&self) -> Value` — confirmed priority directly into `ceremony_priorities`.
+-  `execute` function L138-151 — `( &self, _ctx: &dyn arawn_tool::ToolContext, _params: Value, ) -> Result<ToolOut...` — confirmed priority directly into `ceremony_priorities`.
+-  `WeeklyListItemsTool` type L162-166 — `= WeeklyListItemsTool` — confirmed priority directly into `ceremony_priorities`.
+-  `WeeklyListItemsTool` type L169-227 — `impl Tool for WeeklyListItemsTool` — confirmed priority directly into `ceremony_priorities`.
+-  `name` function L170-172 — `(&self) -> &str` — confirmed priority directly into `ceremony_priorities`.
+-  `description` function L174-185 — `(&self) -> &str` — confirmed priority directly into `ceremony_priorities`.
+-  `category` function L187-189 — `(&self) -> ToolCategory` — confirmed priority directly into `ceremony_priorities`.
+-  `is_read_only` function L191-193 — `(&self) -> bool` — confirmed priority directly into `ceremony_priorities`.
+-  `parameters_schema` function L195-205 — `(&self) -> Value` — confirmed priority directly into `ceremony_priorities`.
+-  `execute` function L207-226 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — confirmed priority directly into `ceremony_priorities`.
+-  `WeeklyListPrioritiesTool` type L237-241 — `= WeeklyListPrioritiesTool` — confirmed priority directly into `ceremony_priorities`.
+-  `WeeklyListPrioritiesTool` type L244-297 — `impl Tool for WeeklyListPrioritiesTool` — confirmed priority directly into `ceremony_priorities`.
+-  `name` function L245-247 — `(&self) -> &str` — confirmed priority directly into `ceremony_priorities`.
+-  `description` function L249-260 — `(&self) -> &str` — confirmed priority directly into `ceremony_priorities`.
+-  `category` function L262-264 — `(&self) -> ToolCategory` — confirmed priority directly into `ceremony_priorities`.
+-  `is_read_only` function L266-268 — `(&self) -> bool` — confirmed priority directly into `ceremony_priorities`.
+-  `parameters_schema` function L270-279 — `(&self) -> Value` — confirmed priority directly into `ceremony_priorities`.
+-  `execute` function L281-296 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — confirmed priority directly into `ceremony_priorities`.
+-  `WeeklyConfirmPriorityTool` type L307-311 — `= WeeklyConfirmPriorityTool` — confirmed priority directly into `ceremony_priorities`.
+-  `WeeklyConfirmPriorityTool` type L314-359 — `impl Tool for WeeklyConfirmPriorityTool` — confirmed priority directly into `ceremony_priorities`.
+-  `name` function L315-317 — `(&self) -> &str` — confirmed priority directly into `ceremony_priorities`.
+-  `description` function L319-326 — `(&self) -> &str` — confirmed priority directly into `ceremony_priorities`.
+-  `category` function L328-330 — `(&self) -> ToolCategory` — confirmed priority directly into `ceremony_priorities`.
+-  `parameters_schema` function L332-341 — `(&self) -> Value` — confirmed priority directly into `ceremony_priorities`.
+-  `execute` function L343-358 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — confirmed priority directly into `ceremony_priorities`.
+-  `WeeklyRejectPriorityTool` type L369-373 — `= WeeklyRejectPriorityTool` — confirmed priority directly into `ceremony_priorities`.
+-  `WeeklyRejectPriorityTool` type L376-419 — `impl Tool for WeeklyRejectPriorityTool` — confirmed priority directly into `ceremony_priorities`.
+-  `name` function L377-379 — `(&self) -> &str` — confirmed priority directly into `ceremony_priorities`.
+-  `description` function L381-386 — `(&self) -> &str` — confirmed priority directly into `ceremony_priorities`.
+-  `category` function L388-390 — `(&self) -> ToolCategory` — confirmed priority directly into `ceremony_priorities`.
+-  `parameters_schema` function L392-401 — `(&self) -> Value` — confirmed priority directly into `ceremony_priorities`.
+-  `execute` function L403-418 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — confirmed priority directly into `ceremony_priorities`.
+-  `WeeklyAddPriorityTool` type L429-433 — `= WeeklyAddPriorityTool` — confirmed priority directly into `ceremony_priorities`.
+-  `WeeklyAddPriorityTool` type L436-497 — `impl Tool for WeeklyAddPriorityTool` — confirmed priority directly into `ceremony_priorities`.
+-  `name` function L437-439 — `(&self) -> &str` — confirmed priority directly into `ceremony_priorities`.
+-  `description` function L441-448 — `(&self) -> &str` — confirmed priority directly into `ceremony_priorities`.
+-  `category` function L450-452 — `(&self) -> ToolCategory` — confirmed priority directly into `ceremony_priorities`.
+-  `parameters_schema` function L454-465 — `(&self) -> Value` — confirmed priority directly into `ceremony_priorities`.
+-  `execute` function L467-496 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — confirmed priority directly into `ceremony_priorities`.
+-  `tests` module L500-772 — `-` — confirmed priority directly into `ceremony_priorities`.
+-  `StubDispatcher` struct L511 — `-` — confirmed priority directly into `ceremony_priorities`.
+-  `StubDispatcher` type L514-520 — `impl CeremonyDispatcher for StubDispatcher` — confirmed priority directly into `ceremony_priorities`.
+-  `dispatch` function L515-519 — `(&self, _kind: &str) -> Result<DispatchOutcome, CeremonyError>` — confirmed priority directly into `ceremony_priorities`.
+-  `open_svc` function L522-533 — `() -> (TempDir, Arc<CeremonyService>)` — confirmed priority directly into `ceremony_priorities`.
+-  `seed_current_weekly_tablet` function L535-547 — `(tmp_path: &std::path::Path) -> String` — confirmed priority directly into `ceremony_priorities`.
+-  `seed_priority_candidate_item` function L549-565 — `(tmp_path: &std::path::Path, tablet_id: &str) -> String` — confirmed priority directly into `ceremony_priorities`.
+-  `ctx` function L570-573 — `() -> crate::context::EngineToolContext` — confirmed priority directly into `ceremony_priorities`.
+-  `weekly_run_returns_generated_payload` function L576-583 — `()` — confirmed priority directly into `ceremony_priorities`.
+-  `weekly_current_returns_null_when_no_tablet` function L586-592 — `()` — confirmed priority directly into `ceremony_priorities`.
+-  `weekly_current_returns_tablet_when_present` function L595-606 — `()` — confirmed priority directly into `ceremony_priorities`.
+-  `weekly_list_items_rejects_missing_tablet_id` function L609-615 — `()` — confirmed priority directly into `ceremony_priorities`.
+-  `weekly_list_priorities_rejects_missing_tablet_id` function L618-624 — `()` — confirmed priority directly into `ceremony_priorities`.
+-  `weekly_list_priorities_returns_array_for_empty_tablet` function L627-637 — `()` — confirmed priority directly into `ceremony_priorities`.
+-  `weekly_confirm_priority_requires_item_id` function L640-646 — `()` — confirmed priority directly into `ceremony_priorities`.
+-  `weekly_confirm_priority_promotes_candidate` function L649-670 — `()` — confirmed priority directly into `ceremony_priorities`.
+-  `weekly_reject_priority_requires_item_id` function L673-679 — `()` — confirmed priority directly into `ceremony_priorities`.
+-  `weekly_reject_priority_deletes_candidate` function L682-702 — `()` — confirmed priority directly into `ceremony_priorities`.
+-  `weekly_add_priority_requires_tablet_and_body` function L705-719 — `()` — confirmed priority directly into `ceremony_priorities`.
+-  `weekly_add_priority_inserts_row` function L722-749 — `()` — confirmed priority directly into `ceremony_priorities`.
+-  `schemas_have_required_field_arrays` function L752-771 — `()` — confirmed priority directly into `ceremony_priorities`.
 
 #### crates/arawn-engine/src/tools/workstream.rs
 
@@ -6957,10 +7846,13 @@
 -  `embedded` module L8-11 — `-`
 -  `Database` type L18-50 — `= Database`
 -  `run_migrations` function L38-44 — `(&mut self) -> Result<(), StorageError>` — Run all pending refinery migrations.
--  `tests` module L53-107 — `-`
+-  `tests` module L53-206 — `-`
 -  `in_memory_db_has_tables` function L58-82 — `()`
 -  `migrations_are_idempotent` function L85-96 — `()`
 -  `file_based_db_creates_file` function L99-106 — `()`
+-  `v6_ceremony_tables_present` function L109-132 — `()`
+-  `v6_ceremony_tablets_accepts_a_row_and_uniques_on_kind_period` function L135-165 — `()`
+-  `v6_ceremony_items_accepts_null_citation_for_user_path` function L168-205 — `()`
 
 #### crates/arawn-storage/src/error.rs
 
@@ -7081,37 +7973,38 @@
 - pub `update_workstream_description` function L99-105 — `( &self, name: &str, description: &str, ) -> Result<(), StorageError>`
 - pub `add_workstream_binding` function L107-109 — `(&self, name: &str, feed_id: &str) -> Result<(), StorageError>`
 - pub `remove_workstream_binding` function L111-117 — `( &self, name: &str, feed_id: &str, ) -> Result<(), StorageError>`
-- pub `soft_delete_workstream` function L119-121 — `(&self, name: &str) -> Result<(), StorageError>`
-- pub `ensure_scratch_workstream` function L125-129 — `(&self) -> Result<Workstream, StorageError>` — Idempotently ensure the `scratch` workstream exists.
-- pub `create_session` function L133-135 — `(&self, session: &Session) -> Result<(), StorageError>`
-- pub `get_session_meta` function L137-139 — `(&self, id: Uuid) -> Result<Option<SessionMeta>, StorageError>`
-- pub `list_sessions_for_workstream` function L141-146 — `( &self, ws_id: Uuid, ) -> Result<Vec<SessionMeta>, StorageError>`
-- pub `list_scratch_sessions` function L148-150 — `(&self) -> Result<Vec<SessionMeta>, StorageError>`
-- pub `update_session_workstream_name` function L156-162 — `( &self, session_id: Uuid, workstream_name: &str, ) -> Result<bool, StorageError...` — Persist a session's active workstream name.
-- pub `reconcile_sessions` function L166-198 — `(&self) -> Result<usize, StorageError>` — Remove SQLite session records whose JSONL files no longer exist on disk.
-- pub `load_session` function L215-232 — `(&self, id: Uuid) -> Result<Option<Session>, StorageError>` — Load a full session (metadata + messages) by ID.
-- pub `update_session_stats` function L234-240 — `( &self, session_id: Uuid, stats: &arawn_core::SessionStats, ) -> Result<(), Sto...`
-- pub `append_message` function L244-251 — `( &self, session_id: Uuid, workstream_dir: &str, msg: &Message, ) -> Result<(), ...`
-- pub `load_messages` function L253-259 — `( &self, session_id: Uuid, workstream_dir: &str, ) -> Result<Vec<Message>, Stora...`
-- pub `promote_session` function L265-318 — `( &self, session_id: Uuid, new_ws_id: Uuid, ) -> Result<(), StorageError>` — Promote a scratch session to a workstream.
-- pub `sandbox_for` function L321-324 — `(&self, workstream_dir: &str, session_id: Uuid, is_scratch: bool) -> PathBuf` — Resolve the sandbox root for a session.
-- pub `promote_session_metadata` function L328-340 — `( &self, session_id: Uuid, new_ws_id: Uuid, ) -> Result<(), StorageError>` — Sync-only part of session promotion: update SQLite workstream_id.
-- pub `move_session_jsonl` function L343-352 — `( &self, session_id: Uuid, from_ws_dir: &str, to_ws_dir: &str, ) -> Result<(), S...` — Async part of session promotion: move the JSONL file between workstream dirs.
--  `Store` type L22-353 — `= Store`
--  `resolve_ws_dir` function L202-212 — `(&self, ws_id: Option<Uuid>) -> Result<String, StorageError>` — Resolve the directory name for a workstream by UUID.
--  `copy_dir_contents` function L356-369 — `(src: &Path, dst: &Path) -> Result<(), StorageError>` — Recursively copy directory contents from src to dst.
--  `tests` module L372-541 — `-`
--  `setup` function L376-380 — `() -> (TempDir, Store)`
--  `open_creates_directories_and_db` function L383-389 — `()`
--  `open_is_idempotent` function L392-397 — `()`
--  `create_and_list_workstreams` function L400-408 — `()`
--  `create_scratch_session_and_append_messages` function L411-429 — `()`
--  `load_full_session` function L432-455 — `()`
--  `promote_session_full_flow` function L458-498 — `()`
--  `promote_bound_session_fails` function L501-514 — `()`
--  `load_nonexistent_session_returns_none` function L517-521 — `()`
--  `sandbox_for_scratch_is_per_session` function L524-531 — `()`
--  `sandbox_for_named_is_shared` function L534-540 — `()`
+- pub `find_workstream_for_feed` function L129-140 — `( &self, feed_id: &str, ) -> Result<Option<String>, StorageError>` — Find the workstream (by name) that has the given `feed_id` in
+- pub `soft_delete_workstream` function L142-144 — `(&self, name: &str) -> Result<(), StorageError>`
+- pub `ensure_scratch_workstream` function L148-152 — `(&self) -> Result<Workstream, StorageError>` — Idempotently ensure the `scratch` workstream exists.
+- pub `create_session` function L156-158 — `(&self, session: &Session) -> Result<(), StorageError>`
+- pub `get_session_meta` function L160-162 — `(&self, id: Uuid) -> Result<Option<SessionMeta>, StorageError>`
+- pub `list_sessions_for_workstream` function L164-169 — `( &self, ws_id: Uuid, ) -> Result<Vec<SessionMeta>, StorageError>`
+- pub `list_scratch_sessions` function L171-173 — `(&self) -> Result<Vec<SessionMeta>, StorageError>`
+- pub `update_session_workstream_name` function L179-185 — `( &self, session_id: Uuid, workstream_name: &str, ) -> Result<bool, StorageError...` — Persist a session's active workstream name.
+- pub `reconcile_sessions` function L189-221 — `(&self) -> Result<usize, StorageError>` — Remove SQLite session records whose JSONL files no longer exist on disk.
+- pub `load_session` function L238-255 — `(&self, id: Uuid) -> Result<Option<Session>, StorageError>` — Load a full session (metadata + messages) by ID.
+- pub `update_session_stats` function L257-263 — `( &self, session_id: Uuid, stats: &arawn_core::SessionStats, ) -> Result<(), Sto...`
+- pub `append_message` function L267-274 — `( &self, session_id: Uuid, workstream_dir: &str, msg: &Message, ) -> Result<(), ...`
+- pub `load_messages` function L276-282 — `( &self, session_id: Uuid, workstream_dir: &str, ) -> Result<Vec<Message>, Stora...`
+- pub `promote_session` function L288-341 — `( &self, session_id: Uuid, new_ws_id: Uuid, ) -> Result<(), StorageError>` — Promote a scratch session to a workstream.
+- pub `sandbox_for` function L344-347 — `(&self, workstream_dir: &str, session_id: Uuid, is_scratch: bool) -> PathBuf` — Resolve the sandbox root for a session.
+- pub `promote_session_metadata` function L351-363 — `( &self, session_id: Uuid, new_ws_id: Uuid, ) -> Result<(), StorageError>` — Sync-only part of session promotion: update SQLite workstream_id.
+- pub `move_session_jsonl` function L366-375 — `( &self, session_id: Uuid, from_ws_dir: &str, to_ws_dir: &str, ) -> Result<(), S...` — Async part of session promotion: move the JSONL file between workstream dirs.
+-  `Store` type L22-376 — `= Store`
+-  `resolve_ws_dir` function L225-235 — `(&self, ws_id: Option<Uuid>) -> Result<String, StorageError>` — Resolve the directory name for a workstream by UUID.
+-  `copy_dir_contents` function L379-392 — `(src: &Path, dst: &Path) -> Result<(), StorageError>` — Recursively copy directory contents from src to dst.
+-  `tests` module L395-564 — `-`
+-  `setup` function L399-403 — `() -> (TempDir, Store)`
+-  `open_creates_directories_and_db` function L406-412 — `()`
+-  `open_is_idempotent` function L415-420 — `()`
+-  `create_and_list_workstreams` function L423-431 — `()`
+-  `create_scratch_session_and_append_messages` function L434-452 — `()`
+-  `load_full_session` function L455-478 — `()`
+-  `promote_session_full_flow` function L481-521 — `()`
+-  `promote_bound_session_fails` function L524-537 — `()`
+-  `load_nonexistent_session_returns_none` function L540-544 — `()`
+-  `sandbox_for_scratch_is_per_session` function L547-554 — `()`
+-  `sandbox_for_named_is_shared` function L557-563 — `()`
 
 #### crates/arawn-storage/src/workstream_store.rs
 
@@ -7343,52 +8236,67 @@
 
 #### crates/arawn-tests/tests/uat.rs
 
-- pub `Scenario` struct L25-46 — `{ name: String, objective: String, turns: Vec<ScenarioTurn>, mechanical: Mechani...` — Or via angreal: angreal test uat --model gemma4
-- pub `ScenarioTurn` struct L49-52 — `{ user_message: String, judge_expectation: String }` — Or via angreal: angreal test uat --model gemma4
-- pub `MechanicalThresholds` struct L55-61 — `{ min_files_created: usize, min_workflows_created: usize, min_memory_entities: u...` — Or via angreal: angreal test uat --model gemma4
-- pub `TurnResult` struct L68-79 — `{ turn_number: usize, user_message: String, assistant_text: String, tool_calls: ...` — Or via angreal: angreal test uat --model gemma4
-- pub `ToolCallRecord` struct L82-86 — `{ id: String, name: String, input: Value }` — Or via angreal: angreal test uat --model gemma4
-- pub `ToolResultRecord` struct L89-93 — `{ id: String, content: String, is_error: bool }` — Or via angreal: angreal test uat --model gemma4
-- pub `ScenarioResult` struct L100-107 — `{ scenario_name: String, model: String, turns: Vec<TurnResult>, mechanical: Mech...` — Or via angreal: angreal test uat --model gemma4
-- pub `MechanicalCheckResult` struct L110-118 — `{ all_turns_completed: bool, no_errors: bool, tool_use_occurred: bool, files_cre...` — Or via angreal: angreal test uat --model gemma4
-- pub `UatHarness` struct L201-205 — `{ data_dir: PathBuf, port: u16, server_process: Option<Child> }` — Or via angreal: angreal test uat --model gemma4
-- pub `new` function L209-262 — `(base_dir: &Path, model: &str, provider: &str, api_key_env: &str) -> Self` — Create a new harness with an isolated data directory.
-- pub `start_server` function L265-288 — `(&mut self) -> Result<(), String>` — Start the arawn server process.
-- pub `wait_for_ready` function L291-315 — `(&self, timeout: Duration) -> Result<(), String>` — Wait for the server to be ready by polling the WebSocket endpoint.
-- pub `ws_url` function L317-329 — `(&self) -> String` — Or via angreal: angreal test uat --model gemma4
-- pub `run_scenario` function L332-391 — `(&self, scenario: &Scenario, model: &str) -> ScenarioResult` — Run a scenario: create session, drive all turns, collect results.
-- pub `write_artifacts` function L497-545 — `(&self, result: &ScenarioResult, scenario: &Scenario)` — Write all artifacts to the results directory.
-- pub `stop` function L548-554 — `(&mut self)` — Stop the server process.
--  `TurnAccumulator` struct L126-133 — `{ assistant_text: String, tool_calls: Vec<ToolCallRecord>, tool_results: Vec<Too...` — State accumulated while consuming engine events for a single turn.
--  `count_workflows_in` function L137-145 — `(dir: &Path) -> usize` — Count subdirectories of `dir`.
--  `apply_event` function L149-195 — `(event: &Value, acc: &mut TurnAccumulator) -> bool` — Apply one engine event JSON value to the accumulator.
--  `UatHarness` type L207-555 — `= UatHarness` — Or via angreal: angreal test uat --model gemma4
--  `rpc_create_session` function L393-419 — `( &self, write: &mut futures_util::stream::SplitSink< tokio_tungstenite::WebSock...` — Or via angreal: angreal test uat --model gemma4
--  `drive_turn` function L421-474 — `( &self, write: &mut futures_util::stream::SplitSink< tokio_tungstenite::WebSock...` — Or via angreal: angreal test uat --model gemma4
--  `list_workspace_files` function L476-489 — `(&self) -> Vec<String>` — Or via angreal: angreal test uat --model gemma4
--  `count_installed_workflows` function L492-494 — `(&self) -> usize` — Count installed workflows under `<data_dir>/workflows/`.
--  `UatHarness` type L557-561 — `impl Drop for UatHarness` — Or via angreal: angreal test uat --model gemma4
--  `drop` function L558-560 — `(&mut self)` — Or via angreal: angreal test uat --model gemma4
--  `walkdir` function L564-579 — `(dir: &Path) -> Result<Vec<PathBuf>, std::io::Error>` — Recursively list all files under a directory.
--  `github_monitor_scenario` function L585-616 — `() -> Scenario` — Or via angreal: angreal test uat --model gemma4
--  `work_signal_pipeline_scenario` function L618-653 — `() -> Scenario` — Or via angreal: angreal test uat --model gemma4
--  `uat_fixture` module L656 — `-` — Or via angreal: angreal test uat --model gemma4
--  `signal_extraction_e2e_scenario` function L663-715 — `() -> Scenario` — I-0040 end-to-end UAT: synthetic gmail + slack feed rows for two
--  `tag_promoter_cycle_scenario` function L727-760 — `() -> Scenario` — I-0040 T-0268: tag-promoter Extract→Suggest→Add cycle UAT.
--  `all_scenarios` function L762-769 — `() -> Vec<Scenario>` — Or via angreal: angreal test uat --model gemma4
--  `uat_run` function L777-925 — `()` — Or via angreal: angreal test uat --model gemma4
--  `tests` module L933-1080 — `-` — Or via angreal: angreal test uat --model gemma4
--  `count_workflows_returns_zero_for_missing_dir` function L939-942 — `()` — Or via angreal: angreal test uat --model gemma4
--  `count_workflows_returns_zero_for_empty_dir` function L945-948 — `()` — Or via angreal: angreal test uat --model gemma4
--  `count_workflows_counts_subdirs_only` function L951-959 — `()` — Or via angreal: angreal test uat --model gemma4
--  `apply_event_captures_error_message` function L964-980 — `()` — Or via angreal: angreal test uat --model gemma4
--  `apply_event_error_with_missing_message_field_keeps_none` function L983-989 — `()` — Or via angreal: angreal test uat --model gemma4
--  `apply_event_complete_sets_final_text` function L992-999 — `()` — Or via angreal: angreal test uat --model gemma4
--  `apply_event_streaming_text_appends` function L1002-1010 — `()` — Or via angreal: angreal test uat --model gemma4
--  `apply_event_ignores_rpc_ack` function L1013-1020 — `()` — Or via angreal: angreal test uat --model gemma4
--  `apply_event_records_tool_calls_and_results` function L1023-1043 — `()` — Or via angreal: angreal test uat --model gemma4
--  `turn_result_serializes_error_message_when_present` function L1048-1062 — `()` — Or via angreal: angreal test uat --model gemma4
--  `turn_result_omits_error_message_when_none` function L1065-1079 — `()` — Or via angreal: angreal test uat --model gemma4
+- pub `Scenario` struct L25-67 — `{ name: String, objective: String, turns: Vec<ScenarioTurn>, mechanical: Mechani...` — Or via angreal: angreal test uat --model gemma4
+- pub `ScenarioTurn` struct L70-73 — `{ user_message: String, judge_expectation: String }` — Or via angreal: angreal test uat --model gemma4
+- pub `MechanicalThresholds` struct L76-82 — `{ min_files_created: usize, min_workflows_created: usize, min_memory_entities: u...` — Or via angreal: angreal test uat --model gemma4
+- pub `TurnResult` struct L89-100 — `{ turn_number: usize, user_message: String, assistant_text: String, tool_calls: ...` — Or via angreal: angreal test uat --model gemma4
+- pub `ToolCallRecord` struct L103-107 — `{ id: String, name: String, input: Value }` — Or via angreal: angreal test uat --model gemma4
+- pub `ToolResultRecord` struct L110-114 — `{ id: String, content: String, is_error: bool }` — Or via angreal: angreal test uat --model gemma4
+- pub `ScenarioResult` struct L121-128 — `{ scenario_name: String, model: String, turns: Vec<TurnResult>, mechanical: Mech...` — Or via angreal: angreal test uat --model gemma4
+- pub `MechanicalCheckResult` struct L131-139 — `{ all_turns_completed: bool, no_errors: bool, tool_use_occurred: bool, files_cre...` — Or via angreal: angreal test uat --model gemma4
+- pub `UatHarness` struct L222-226 — `{ data_dir: PathBuf, port: u16, server_process: Option<Child> }` — Or via angreal: angreal test uat --model gemma4
+- pub `new` function L230-283 — `(base_dir: &Path, model: &str, provider: &str, api_key_env: &str) -> Self` — Create a new harness with an isolated data directory.
+- pub `start_server` function L286-309 — `(&mut self) -> Result<(), String>` — Start the arawn server process.
+- pub `wait_for_ready` function L312-336 — `(&self, timeout: Duration) -> Result<(), String>` — Wait for the server to be ready by polling the WebSocket endpoint.
+- pub `ws_url` function L338-350 — `(&self) -> String` — Or via angreal: angreal test uat --model gemma4
+- pub `run_scenario` function L353-412 — `(&self, scenario: &Scenario, model: &str) -> ScenarioResult` — Run a scenario: create session, drive all turns, collect results.
+- pub `write_artifacts` function L518-566 — `(&self, result: &ScenarioResult, scenario: &Scenario)` — Write all artifacts to the results directory.
+- pub `stop` function L569-575 — `(&mut self)` — Stop the server process.
+-  `TurnAccumulator` struct L147-154 — `{ assistant_text: String, tool_calls: Vec<ToolCallRecord>, tool_results: Vec<Too...` — State accumulated while consuming engine events for a single turn.
+-  `count_workflows_in` function L158-166 — `(dir: &Path) -> usize` — Count subdirectories of `dir`.
+-  `apply_event` function L170-216 — `(event: &Value, acc: &mut TurnAccumulator) -> bool` — Apply one engine event JSON value to the accumulator.
+-  `UatHarness` type L228-576 — `= UatHarness` — Or via angreal: angreal test uat --model gemma4
+-  `rpc_create_session` function L414-440 — `( &self, write: &mut futures_util::stream::SplitSink< tokio_tungstenite::WebSock...` — Or via angreal: angreal test uat --model gemma4
+-  `drive_turn` function L442-495 — `( &self, write: &mut futures_util::stream::SplitSink< tokio_tungstenite::WebSock...` — Or via angreal: angreal test uat --model gemma4
+-  `list_workspace_files` function L497-510 — `(&self) -> Vec<String>` — Or via angreal: angreal test uat --model gemma4
+-  `count_installed_workflows` function L513-515 — `(&self) -> usize` — Count installed workflows under `<data_dir>/workflows/`.
+-  `UatHarness` type L578-582 — `impl Drop for UatHarness` — Or via angreal: angreal test uat --model gemma4
+-  `drop` function L579-581 — `(&mut self)` — Or via angreal: angreal test uat --model gemma4
+-  `walkdir` function L585-600 — `(dir: &Path) -> Result<Vec<PathBuf>, std::io::Error>` — Recursively list all files under a directory.
+-  `github_monitor_scenario` function L606-640 — `() -> Scenario` — Or via angreal: angreal test uat --model gemma4
+-  `work_signal_pipeline_scenario` function L642-680 — `() -> Scenario` — Or via angreal: angreal test uat --model gemma4
+-  `uat_fixture` module L683 — `-` — Or via angreal: angreal test uat --model gemma4
+-  `uat_retro_seed` module L684 — `-` — Or via angreal: angreal test uat --model gemma4
+-  `uat_daily_seed` module L685 — `-` — Or via angreal: angreal test uat --model gemma4
+-  `uat_weekly_seed` module L686 — `-` — Or via angreal: angreal test uat --model gemma4
+-  `signal_extraction_e2e_scenario` function L693-748 — `() -> Scenario` — I-0040 end-to-end UAT: synthetic gmail + slack feed rows for two
+-  `tag_promoter_cycle_scenario` function L760-796 — `() -> Scenario` — I-0040 T-0268: tag-promoter Extract→Suggest→Add cycle UAT.
+-  `retro_ceremony_scenario` function L805-835 — `() -> Scenario` — I-0043 retro ceremony end-to-end: seed three workstreams + prior
+-  `daily_ceremony_scenario` function L845-875 — `() -> Scenario` — I-0041 daily ceremony end-to-end: seed three workstreams +
+-  `weekly_ceremony_scenario` function L887-921 — `() -> Scenario` — I-0042 weekly ceremony end-to-end: seed three workstreams + a
+-  `all_scenarios` function L923-933 — `() -> Vec<Scenario>` — Or via angreal: angreal test uat --model gemma4
+-  `uat_run` function L941-1118 — `()` — Or via angreal: angreal test uat --model gemma4
+-  `tests` module L1126-1273 — `-` — Or via angreal: angreal test uat --model gemma4
+-  `count_workflows_returns_zero_for_missing_dir` function L1132-1135 — `()` — Or via angreal: angreal test uat --model gemma4
+-  `count_workflows_returns_zero_for_empty_dir` function L1138-1141 — `()` — Or via angreal: angreal test uat --model gemma4
+-  `count_workflows_counts_subdirs_only` function L1144-1152 — `()` — Or via angreal: angreal test uat --model gemma4
+-  `apply_event_captures_error_message` function L1157-1173 — `()` — Or via angreal: angreal test uat --model gemma4
+-  `apply_event_error_with_missing_message_field_keeps_none` function L1176-1182 — `()` — Or via angreal: angreal test uat --model gemma4
+-  `apply_event_complete_sets_final_text` function L1185-1192 — `()` — Or via angreal: angreal test uat --model gemma4
+-  `apply_event_streaming_text_appends` function L1195-1203 — `()` — Or via angreal: angreal test uat --model gemma4
+-  `apply_event_ignores_rpc_ack` function L1206-1213 — `()` — Or via angreal: angreal test uat --model gemma4
+-  `apply_event_records_tool_calls_and_results` function L1216-1236 — `()` — Or via angreal: angreal test uat --model gemma4
+-  `turn_result_serializes_error_message_when_present` function L1241-1255 — `()` — Or via angreal: angreal test uat --model gemma4
+-  `turn_result_omits_error_message_when_none` function L1258-1272 — `()` — Or via angreal: angreal test uat --model gemma4
+
+#### crates/arawn-tests/tests/uat_daily_seed.rs
+
+- pub `apply` function L31-162 — `(data_dir: &Path) -> Result<DailySeedSummary, String>` — Seed daily ceremony state under `data_dir`.
+- pub `DailySeedSummary` struct L165-170 — `{ daily_tablets: usize, rolling_todos: usize, priorities: usize, calendar_events...` — self-contained.
+-  `iso_week_str` function L176-179 — `(dt: DateTime<Utc>) -> String` — self-contained.
+-  `tests` module L182-249 — `-` — self-contained.
+-  `apply_seeds_all_sections` function L187-226 — `()` — self-contained.
+-  `apply_is_idempotent` function L229-248 — `()` — self-contained.
 
 #### crates/arawn-tests/tests/uat_fixture.rs
 
@@ -7417,6 +8325,32 @@
 
 -  `uat_fixture` module L4 — `-` — row counts match what the UAT scenario expects.
 -  `signal_extraction_e2e_fixture_parses` function L7-27 — `()` — row counts match what the UAT scenario expects.
+
+#### crates/arawn-tests/tests/uat_retro_seed.rs
+
+- pub `apply` function L25-46 — `(data_dir: &Path) -> Result<SeedSummary, String>` — Seed ceremony state for the retro UAT scenario rooted at
+- pub `SeedSummary` struct L49-55 — `{ rollup_rows: usize, daily_tablets: usize, rolling_todos: usize, priorities: us...` — by `Store::open` during fixture apply.
+-  `seed_workstream_rollup` function L64-105 — `( conn: &Connection, cur_iso: &str, prior_weeks: &[DateTime<Utc>], sum: &mut See...` — Three workstreams across 3 prior weeks + current week.
+-  `seed_weekly_tablet_with_priorities` function L109-141 — `( conn: &Connection, cur_iso: &str, sum: &mut SeedSummary, ) -> Result<(), Strin...` — Weekly tablet for the current week with 3 confirmed priorities,
+-  `seed_daily_tablets_and_todos` function L147-204 — `( conn: &Connection, _cur_iso: &str, monday: NaiveDate, sunday: NaiveDate, sum: ...` — Five daily tablets across the current week (Mon–Fri) plus three
+-  `seed_prior_retro_with_diary` function L210-237 — `( conn: &Connection, prior_two_weeks: &DateTime<Utc>, sum: &mut SeedSummary, ) -...` — Prior retro from two weeks ago with a diary the gather payload
+-  `iso_week_str` function L243-246 — `(dt: DateTime<Utc>) -> String` — by `Store::open` during fixture apply.
+-  `monday_sunday` function L250-256 — `(dt: DateTime<Utc>) -> (NaiveDate, NaiveDate)` — Monday and Sunday of the ISO week containing `dt`, as
+-  `tests` module L259-299 — `-` — by `Store::open` during fixture apply.
+-  `monday_sunday_brackets_the_week` function L264-271 — `()` — by `Store::open` during fixture apply.
+-  `apply_seeds_all_sections` function L274-288 — `()` — by `Store::open` during fixture apply.
+-  `apply_is_idempotent` function L291-298 — `()` — by `Store::open` during fixture apply.
+
+#### crates/arawn-tests/tests/uat_weekly_seed.rs
+
+- pub `apply` function L32-249 — `(data_dir: &Path) -> Result<WeeklySeedSummary, String>` — Seed weekly ceremony state under `data_dir`.
+- pub `WeeklySeedSummary` struct L252-260 — `{ prior_weekly_tablets: usize, inbound_items: usize, prior_retros: usize, prior_...` — scenario stays self-contained.
+-  `iso_week_str` function L266-269 — `(dt: DateTime<Utc>) -> String` — scenario stays self-contained.
+-  `monday_sunday` function L271-277 — `(dt: DateTime<Utc>) -> (NaiveDate, NaiveDate)` — scenario stays self-contained.
+-  `build_event` function L279-312 — `( id: &str, feed_id: &str, date: NaiveDate, start_hm: (u32, u32), end_hm: Option...` — scenario stays self-contained.
+-  `tests` module L315-387 — `-` — scenario stays self-contained.
+-  `apply_seeds_all_sections` function L320-365 — `()` — scenario stays self-contained.
+-  `apply_is_idempotent` function L368-386 — `()` — scenario stays self-contained.
 
 #### crates/arawn-tests/tests/websocket.rs
 
@@ -7544,17 +8478,17 @@
 
 #### crates/arawn-tool/src/tool.rs
 
-- pub `ToolCategory` enum L12-31 — `Core | Task | Agent | Web | Memory | Plan | Workstream | Utility | BackgroundTas...` — Category of a tool — used for permission checking, context filtering, and
-- pub `PermissionCategory` enum L37-48 — `ReadOnly | FileWrite | Shell | Other` — Risk class of a tool — used by the permission system to decide fallback
-- pub `ToolOutput` struct L52-55 — `{ content: String, is_error: bool }` — Output from a tool execution.
-- pub `success` function L58-63 — `(content: impl Into<String>) -> Self`
-- pub `error` function L65-70 — `(content: impl Into<String>) -> Self`
-- pub `Tool` interface L75-118 — `{ fn name(), fn description(), fn parameters_schema(), fn execute(), fn is_read_...` — A tool that can be invoked by the LLM.
--  `ToolOutput` type L57-71 — `= ToolOutput`
--  `is_read_only` function L86-88 — `(&self) -> bool` — Whether this tool is side-effect-free (observation only).
--  `category` function L91-93 — `(&self) -> ToolCategory` — Tool category for context filtering and feature-area grouping.
--  `permission_category` function L100-109 — `(&self) -> PermissionCategory` — Permission risk class for permission-mode fallback decisions.
--  `llm_preference` function L115-117 — `(&self) -> Option<LlmPreference>` — Optional preferred LLM for this tool.
+- pub `ToolCategory` enum L12-33 — `Core | Task | Agent | Web | Memory | Plan | Workstream | Utility | BackgroundTas...` — Category of a tool — used for permission checking, context filtering, and
+- pub `PermissionCategory` enum L39-50 — `ReadOnly | FileWrite | Shell | Other` — Risk class of a tool — used by the permission system to decide fallback
+- pub `ToolOutput` struct L54-57 — `{ content: String, is_error: bool }` — Output from a tool execution.
+- pub `success` function L60-65 — `(content: impl Into<String>) -> Self`
+- pub `error` function L67-72 — `(content: impl Into<String>) -> Self`
+- pub `Tool` interface L77-120 — `{ fn name(), fn description(), fn parameters_schema(), fn execute(), fn is_read_...` — A tool that can be invoked by the LLM.
+-  `ToolOutput` type L59-73 — `= ToolOutput`
+-  `is_read_only` function L88-90 — `(&self) -> bool` — Whether this tool is side-effect-free (observation only).
+-  `category` function L93-95 — `(&self) -> ToolCategory` — Tool category for context filtering and feature-area grouping.
+-  `permission_category` function L102-111 — `(&self) -> PermissionCategory` — Permission risk class for permission-mode fallback decisions.
+-  `llm_preference` function L117-119 — `(&self) -> Option<LlmPreference>` — Optional preferred LLM for this tool.
 
 ### crates/arawn-tui/src
 
@@ -7587,58 +8521,100 @@
 - pub `new` function L54-62 — `(role: ChatRole, content: impl Into<String>) -> Self`
 - pub `rendered_lines` function L66-76 — `(&mut self, width: usize) -> &[ratatui::text::Line<'static>]` — Get or compute the cached markdown rendering for assistant messages.
 - pub `ChatRole` enum L80-86 — `User | Assistant | ToolCall | ToolResult | System`
-- pub `App` struct L89-170 — `{ focus: Focus, input_buffer: String, cursor_pos: usize, messages: Vec<ChatMessa...` — All mutable TUI state.
-- pub `DOUBLE_ESC_WINDOW` variable L175 — `: std::time::Duration` — Window for double-Esc detection.
-- pub `HistoryEntry` struct L179-186 — `{ text: String, is_chat: bool }` — One entry in the per-session input history.
-- pub `new` function L189-230 — `() -> Self`
-- pub `handle_action` function L233-651 — `(&mut self, action: Action) -> bool` — Process an action and mutate state.
-- pub `apply_engine_event` function L810-887 — `(&mut self, event: crate::ws_client::EventUpdate)` — Apply a streaming engine event to the app state (testable without network).
-- pub `load_session_messages` function L891-931 — `(&mut self, detail: &serde_json::Value)` — Load messages from a session detail JSON response into the chat.
-- pub `format_tool_input` function L951-999 — `(tool_name: &str, input: &serde_json::Value) -> String` — Format tool input args into a compact display string.
+- pub `App` struct L89-180 — `{ focus: Focus, input_buffer: String, cursor_pos: usize, messages: Vec<ChatMessa...` — All mutable TUI state.
+- pub `DOUBLE_ESC_WINDOW` variable L185 — `: std::time::Duration` — Window for double-Esc detection.
+- pub `HistoryEntry` struct L189-196 — `{ text: String, is_chat: bool }` — One entry in the per-session input history.
+- pub `new` function L199-242 — `() -> Self`
+- pub `handle_action` function L245-666 — `(&mut self, action: Action) -> bool` — Process an action and mutate state.
+- pub `apply_engine_event` function L825-902 — `(&mut self, event: crate::ws_client::EventUpdate)` — Apply a streaming engine event to the app state (testable without network).
+- pub `load_session_messages` function L906-946 — `(&mut self, detail: &serde_json::Value)` — Load messages from a session detail JSON response into the chat.
+- pub `format_tool_input` function L966-1014 — `(tool_name: &str, input: &serde_json::Value) -> String` — Format tool input args into a compact display string.
 -  `ChatMessage` type L53-77 — `= ChatMessage`
--  `App` type L188-948 — `= App`
--  `record_input_history` function L657-668 — `(&mut self, text: &str, is_chat: bool)` — Append `text` to input history, skipping empty input and deduping
--  `history_recall_prev` function L672-687 — `(&mut self)` — Move backward in input history.
--  `history_recall_next` function L691-704 — `(&mut self)` — Move forward in input history.
--  `open_history_modal` function L711-765 — `(&mut self)` — Open a modal listing branchable history entries (chat prompts only,
--  `update_autocomplete` function L768-797 — `(&mut self)` — Update autocomplete suggestions based on current input buffer.
--  `accept_autocomplete` function L800-807 — `(&mut self)` — Accept the currently selected autocomplete suggestion.
--  `prev_char_boundary` function L933-939 — `(&self) -> usize`
--  `next_char_boundary` function L941-947 — `(&self) -> usize`
--  `App` type L1001-1005 — `impl Default for App`
--  `default` function L1002-1004 — `() -> Self`
--  `tests` module L1008-1492 — `-`
--  `type_chars_updates_buffer` function L1012-1018 — `()`
--  `backspace_removes_char` function L1021-1028 — `()`
--  `submit_moves_to_messages` function L1031-1043 — `()`
--  `submit_blocked_when_empty` function L1046-1052 — `()`
--  `submit_blocked_while_generating` function L1055-1061 — `()`
--  `tab_toggles_focus` function L1064-1071 — `()`
--  `scroll_updates_offset` function L1074-1082 — `()`
--  `cancel_stops_generation` function L1085-1094 — `()`
--  `quit_sets_flag` function L1097-1101 — `()`
--  `cursor_movement` function L1104-1125 — `()`
--  `full_conversation_flow` function L1130-1160 — `()`
--  `tool_call_flow` function L1163-1194 — `()`
--  `error_event_clears_generating` function L1197-1211 — `()`
--  `sidebar_navigation` function L1214-1245 — `()`
--  `submit_via_input` function L1247-1254 — `(app: &mut App, text: &str)`
--  `history_text` function L1256-1258 — `(app: &App) -> Vec<&str>`
--  `history_records_submitted_prompts` function L1261-1267 — `()`
--  `history_records_slash_commands_with_is_chat_false` function L1270-1280 — `()`
--  `history_dedupes_consecutive_duplicates` function L1283-1290 — `()`
--  `branch_modal_filters_out_slash_commands` function L1293-1307 — `()`
--  `branch_modal_skipped_when_no_chat_history` function L1310-1318 — `()`
--  `up_arrow_recalls_most_recent_when_input_empty` function L1321-1336 — `()`
--  `down_arrow_restores_draft_past_newest` function L1339-1357 — `()`
--  `double_esc_within_window_opens_history_modal` function L1360-1372 — `()`
--  `double_esc_outside_window_does_not_open_modal` function L1375-1383 — `()`
--  `history_recall_at_loads_entry_into_input` function L1386-1394 — `()`
--  `empty_history_modal_is_a_no_op` function L1397-1403 — `()`
--  `modal_select_index_picks_option_directly` function L1406-1428 — `()`
--  `cancel_marks_session_for_stale_event_drop` function L1431-1458 — `()`
--  `next_submit_clears_cancelled_session_marker` function L1461-1475 — `()`
--  `modal_select_out_of_range_is_no_op` function L1478-1491 — `()`
+-  `App` type L198-963 — `= App`
+-  `record_input_history` function L672-683 — `(&mut self, text: &str, is_chat: bool)` — Append `text` to input history, skipping empty input and deduping
+-  `history_recall_prev` function L687-702 — `(&mut self)` — Move backward in input history.
+-  `history_recall_next` function L706-719 — `(&mut self)` — Move forward in input history.
+-  `open_history_modal` function L726-780 — `(&mut self)` — Open a modal listing branchable history entries (chat prompts only,
+-  `update_autocomplete` function L783-812 — `(&mut self)` — Update autocomplete suggestions based on current input buffer.
+-  `accept_autocomplete` function L815-822 — `(&mut self)` — Accept the currently selected autocomplete suggestion.
+-  `prev_char_boundary` function L948-954 — `(&self) -> usize`
+-  `next_char_boundary` function L956-962 — `(&self) -> usize`
+-  `App` type L1016-1020 — `impl Default for App`
+-  `default` function L1017-1019 — `() -> Self`
+-  `tests` module L1023-1507 — `-`
+-  `type_chars_updates_buffer` function L1027-1033 — `()`
+-  `backspace_removes_char` function L1036-1043 — `()`
+-  `submit_moves_to_messages` function L1046-1058 — `()`
+-  `submit_blocked_when_empty` function L1061-1067 — `()`
+-  `submit_blocked_while_generating` function L1070-1076 — `()`
+-  `tab_toggles_focus` function L1079-1086 — `()`
+-  `scroll_updates_offset` function L1089-1097 — `()`
+-  `cancel_stops_generation` function L1100-1109 — `()`
+-  `quit_sets_flag` function L1112-1116 — `()`
+-  `cursor_movement` function L1119-1140 — `()`
+-  `full_conversation_flow` function L1145-1175 — `()`
+-  `tool_call_flow` function L1178-1209 — `()`
+-  `error_event_clears_generating` function L1212-1226 — `()`
+-  `sidebar_navigation` function L1229-1260 — `()`
+-  `submit_via_input` function L1262-1269 — `(app: &mut App, text: &str)`
+-  `history_text` function L1271-1273 — `(app: &App) -> Vec<&str>`
+-  `history_records_submitted_prompts` function L1276-1282 — `()`
+-  `history_records_slash_commands_with_is_chat_false` function L1285-1295 — `()`
+-  `history_dedupes_consecutive_duplicates` function L1298-1305 — `()`
+-  `branch_modal_filters_out_slash_commands` function L1308-1322 — `()`
+-  `branch_modal_skipped_when_no_chat_history` function L1325-1333 — `()`
+-  `up_arrow_recalls_most_recent_when_input_empty` function L1336-1351 — `()`
+-  `down_arrow_restores_draft_past_newest` function L1354-1372 — `()`
+-  `double_esc_within_window_opens_history_modal` function L1375-1387 — `()`
+-  `double_esc_outside_window_does_not_open_modal` function L1390-1398 — `()`
+-  `history_recall_at_loads_entry_into_input` function L1401-1409 — `()`
+-  `empty_history_modal_is_a_no_op` function L1412-1418 — `()`
+-  `modal_select_index_picks_option_directly` function L1421-1443 — `()`
+-  `cancel_marks_session_for_stale_event_drop` function L1446-1473 — `()`
+-  `next_submit_clears_cancelled_session_marker` function L1476-1490 — `()`
+-  `modal_select_out_of_range_is_no_op` function L1493-1506 — `()`
+
+#### crates/arawn-tui/src/ceremony_modal.rs
+
+- pub `CeremonyOverlay` enum L20-23 — `Priority | Diary` — One of the two interactive ceremony surfaces.
+- pub `PriorityModalState` struct L30-39 — `{ tablet_id: String, priorities: Vec<arawn_ceremonies::PriorityDto>, focused_ind...` — State for the `/week` priority confirm/reject/add overlay.
+- pub `PriorityOutcome` enum L43-54 — `None | Confirm | Reject | Add | Close` — What the event loop should do after `handle_key`.
+- pub `new` function L57-65 — `(tablet_id: String, priorities: Vec<arawn_ceremonies::PriorityDto>) -> Self` — The event loop pulls outcomes off them and routes RPCs.
+- pub `set_priorities` function L69-74 — `(&mut self, priorities: Vec<arawn_ceremonies::PriorityDto>)` — Replace the priority list (e.g.
+- pub `focus_prev` function L76-80 — `(&mut self)` — The event loop pulls outcomes off them and routes RPCs.
+- pub `focus_next` function L82-86 — `(&mut self)` — The event loop pulls outcomes off them and routes RPCs.
+- pub `handle_key` function L94-150 — `(&mut self, key: KeyEvent) -> PriorityOutcome` — Drive the state machine from a key event.
+- pub `DiaryEditorState` struct L158-167 — `{ tablet_id: String, body: String, cursor: usize, editing: bool, last_error: Opt...` — State for the `/retro` diary editor.
+- pub `DiaryOutcome` enum L170-174 — `None | Save | Close` — The event loop pulls outcomes off them and routes RPCs.
+- pub `new` function L177-186 — `(tablet_id: String, body: String) -> Self` — The event loop pulls outcomes off them and routes RPCs.
+- pub `handle_key` function L188-249 — `(&mut self, key: KeyEvent) -> DiaryOutcome` — The event loop pulls outcomes off them and routes RPCs.
+- pub `render_overlay` function L273-278 — `(overlay: &CeremonyOverlay, frame: &mut Frame)` — The event loop pulls outcomes off them and routes RPCs.
+-  `PriorityModalState` type L56-151 — `= PriorityModalState` — The event loop pulls outcomes off them and routes RPCs.
+-  `focused_item_id` function L88-90 — `(&self) -> Option<String>` — The event loop pulls outcomes off them and routes RPCs.
+-  `DiaryEditorState` type L176-267 — `= DiaryEditorState` — The event loop pulls outcomes off them and routes RPCs.
+-  `insert_char` function L251-254 — `(&mut self, c: char)` — The event loop pulls outcomes off them and routes RPCs.
+-  `backspace` function L256-266 — `(&mut self)` — The event loop pulls outcomes off them and routes RPCs.
+-  `render_priority_modal` function L280-359 — `(state: &PriorityModalState, frame: &mut Frame)` — The event loop pulls outcomes off them and routes RPCs.
+-  `render_diary_editor` function L361-418 — `(state: &DiaryEditorState, frame: &mut Frame)` — The event loop pulls outcomes off them and routes RPCs.
+-  `centered_rect` function L420-424 — `(width: u16, height: u16, area: Rect) -> Rect` — The event loop pulls outcomes off them and routes RPCs.
+-  `tests` module L427-596 — `-` — The event loop pulls outcomes off them and routes RPCs.
+-  `key` function L431-433 — `(code: KeyCode) -> KeyEvent` — The event loop pulls outcomes off them and routes RPCs.
+-  `ctrl` function L434-436 — `(c: char) -> KeyEvent` — The event loop pulls outcomes off them and routes RPCs.
+-  `make_priority` function L438-450 — `(id: &str, body: &str, confirmed: bool) -> PriorityDto` — The event loop pulls outcomes off them and routes RPCs.
+-  `make_state` function L452-455 — `(n: usize) -> PriorityModalState` — The event loop pulls outcomes off them and routes RPCs.
+-  `priority_focus_nav_clamps` function L460-471 — `()` — The event loop pulls outcomes off them and routes RPCs.
+-  `priority_space_confirms_focused_item` function L474-479 — `()` — The event loop pulls outcomes off them and routes RPCs.
+-  `priority_d_rejects_focused_item` function L482-486 — `()` — The event loop pulls outcomes off them and routes RPCs.
+-  `priority_a_opens_add_buffer_and_collects_input` function L489-501 — `()` — The event loop pulls outcomes off them and routes RPCs.
+-  `priority_add_esc_cancels_without_emitting` function L504-511 — `()` — The event loop pulls outcomes off them and routes RPCs.
+-  `priority_add_empty_body_does_not_emit` function L514-519 — `()` — The event loop pulls outcomes off them and routes RPCs.
+-  `priority_q_and_esc_close_overlay` function L522-527 — `()` — The event loop pulls outcomes off them and routes RPCs.
+-  `priority_set_priorities_clamps_focused_index` function L530-535 — `()` — The event loop pulls outcomes off them and routes RPCs.
+-  `diary_e_enters_edit_mode_and_q_closes` function L540-548 — `()` — The event loop pulls outcomes off them and routes RPCs.
+-  `diary_char_insert_and_newline_and_backspace` function L551-563 — `()` — The event loop pulls outcomes off them and routes RPCs.
+-  `diary_ctrl_s_emits_save_with_body` function L566-574 — `()` — The event loop pulls outcomes off them and routes RPCs.
+-  `diary_esc_in_edit_mode_leaves_edit_but_keeps_body` function L577-583 — `()` — The event loop pulls outcomes off them and routes RPCs.
+-  `diary_cursor_left_right_navigates` function L586-595 — `()` — The event loop pulls outcomes off them and routes RPCs.
 
 #### crates/arawn-tui/src/command.rs
 
@@ -7648,73 +8624,73 @@
 - pub `parse_command` function L37-57 — `(input: &str) -> Option<ParsedCommand>` — Parse a slash command from the input buffer.
 - pub `CommandRegistry` struct L61-63 — `{ commands: Vec<CommandInfo> }` — The command registry — holds all available slash commands.
 - pub `new` function L66-70 — `() -> Self` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
-- pub `register_skills` function L194-204 — `(&mut self, skills: Vec<(String, String)>)` — Add skill commands from the server's cached skill list.
-- pub `all` function L207-209 — `(&self) -> &[CommandInfo]` — Get all commands.
-- pub `matching` function L212-218 — `(&self, prefix: &str) -> Vec<&CommandInfo>` — Find commands matching a prefix (for autocomplete).
-- pub `find` function L221-224 — `(&self, name: &str) -> Option<&CommandInfo>` — Look up a command by exact name.
-- pub `AutocompleteState` struct L229-234 — `{ suggestions: Vec<CommandInfo>, selected: usize }` — Autocomplete state for the slash command dropdown.
-- pub `new` function L237-242 — `(suggestions: Vec<CommandInfo>) -> Self` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
-- pub `next` function L244-248 — `(&mut self)` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
-- pub `prev` function L250-258 — `(&mut self)` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
-- pub `selected_command` function L260-262 — `(&self) -> Option<&CommandInfo>` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
-- pub `is_empty` function L264-266 — `(&self) -> bool` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
-- pub `CommandResult` enum L271-336 — `SystemMessage | ClearChat | EnterPlan | QueryInventory | InvokeSkill | RememberF...` — The result of executing a built-in command.
-- pub `WatchSpec` struct L349-354 — `{ template: String, feed_id: String, params: serde_json::Value, cadence: Option<...` — Parsed args for the non-interactive form of `/watch`.
-- pub `parse_watch_args` function L366-426 — `(args: &str) -> Result<WatchSpec, String>` — Parse the args body of `/watch`.
-- pub `parse_feeds_args` function L528-570 — `(args: &str) -> CommandResult` — Parse the args of `/feeds` into a CommandResult.
-- pub `execute_command` function L573-737 — `(cmd: &ParsedCommand, registry: &CommandRegistry) -> CommandResult` — Execute a parsed slash command against the registry.
--  `CommandRegistry` type L65-225 — `= CommandRegistry` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `register_builtins` function L72-191 — `(&mut self)` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `AutocompleteState` type L236-267 — `= AutocompleteState` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `parse_since` function L434-466 — `(s: &str) -> Result<String, String>` — Parse a `since=` value into a canonical RFC3339 UTC string.
--  `parse_relative_duration` function L470-482 — `(s: &str) -> Option<(i64, &str)>` — Pull `<digits><unit>` out of the input.
--  `tokenize_kv` function L487-518 — `(s: &str) -> Result<Vec<String>, String>` — Tokenizer that respects double-quoted runs so a param value can
--  `tests` module L740-1268 — `-` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `parse_simple_command` function L744-748 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `watch_parses_template_id_and_string_param` function L751-758 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `watch_parses_typed_and_quoted_params_and_cadence_override` function L761-772 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `watch_parses_since_relative_duration` function L775-783 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `watch_parses_since_iso_date` function L786-795 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `watch_parses_since_rfc3339` function L798-806 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `watch_rejects_garbage_since` function L809-818 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `watch_rejects_missing_args_and_bad_template` function L821-828 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `watch_command_dispatch_returns_feed_register` function L831-842 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `feeds_command_dispatch_returns_feed_list` function L845-852 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `feeds_pause_and_resume_dispatch` function L855-865 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `feeds_rm_requires_confirm_flag` function L868-881 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `feeds_pause_without_id_is_a_usage_message` function L884-890 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `watch_list_dispatches_to_feed_discover` function L893-911 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `watch_list_rejects_extra_args_with_hint` function L914-926 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `watch_list_doesnt_swallow_a_template_named_listed` function L929-945 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `feeds_unknown_subcommand_lists_usage` function L948-954 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `parse_command_with_args` function L957-961 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `parse_not_a_command` function L964-968 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `parse_slash_only` function L971-973 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `parse_with_leading_whitespace` function L976-979 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `registry_has_builtins` function L982-989 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `registry_matching_prefix` function L992-998 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `registry_matching_empty_returns_all` function L1001-1005 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `registry_skills` function L1008-1017 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `autocomplete_navigation` function L1020-1038 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_help` function L1041-1048 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_clear` function L1051-1055 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_unknown` function L1058-1065 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_inventory` function L1068-1075 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_skill` function L1078-1089 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_remember_with_text_returns_remember_fact` function L1096-1105 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_remember_without_text_returns_usage_message` function L1108-1118 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_memory_returns_memory_summary` function L1121-1128 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_forget_with_query_returns_forget_entity` function L1131-1140 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_forget_without_query_returns_usage_message` function L1143-1152 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_workflows_list_returns_workflow_list` function L1155-1165 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `every_advertised_builtin_dispatches_or_explains` function L1173-1196 — `()` — Audit: every built-in command in /help must dispatch to a CommandResult
--  `execute_integrations_returns_list_variant` function L1201-1208 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_connect_with_service_returns_connect_variant` function L1211-1218 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_connect_without_service_returns_usage_message` function L1221-1231 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_disconnect_with_service_returns_disconnect_variant` function L1234-1241 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_disconnect_without_service_returns_usage_message` function L1244-1251 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `capabilities_banner_doc_path_pinned` function L1256-1267 — `()` — Capabilities banner copy in event_loop.rs points users at this docs
--  `PINNED` variable L1259 — `: &str` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+- pub `register_skills` function L210-220 — `(&mut self, skills: Vec<(String, String)>)` — Add skill commands from the server's cached skill list.
+- pub `all` function L223-225 — `(&self) -> &[CommandInfo]` — Get all commands.
+- pub `matching` function L228-234 — `(&self, prefix: &str) -> Vec<&CommandInfo>` — Find commands matching a prefix (for autocomplete).
+- pub `find` function L237-240 — `(&self, name: &str) -> Option<&CommandInfo>` — Look up a command by exact name.
+- pub `AutocompleteState` struct L245-250 — `{ suggestions: Vec<CommandInfo>, selected: usize }` — Autocomplete state for the slash command dropdown.
+- pub `new` function L253-258 — `(suggestions: Vec<CommandInfo>) -> Self` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+- pub `next` function L260-264 — `(&mut self)` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+- pub `prev` function L266-274 — `(&mut self)` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+- pub `selected_command` function L276-278 — `(&self) -> Option<&CommandInfo>` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+- pub `is_empty` function L280-282 — `(&self) -> bool` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+- pub `CommandResult` enum L287-361 — `SystemMessage | ClearChat | EnterPlan | QueryInventory | InvokeSkill | RememberF...` — The result of executing a built-in command.
+- pub `WatchSpec` struct L374-379 — `{ template: String, feed_id: String, params: serde_json::Value, cadence: Option<...` — Parsed args for the non-interactive form of `/watch`.
+- pub `parse_watch_args` function L391-451 — `(args: &str) -> Result<WatchSpec, String>` — Parse the args body of `/watch`.
+- pub `parse_feeds_args` function L553-595 — `(args: &str) -> CommandResult` — Parse the args of `/feeds` into a CommandResult.
+- pub `execute_command` function L598-765 — `(cmd: &ParsedCommand, registry: &CommandRegistry) -> CommandResult` — Execute a parsed slash command against the registry.
+-  `CommandRegistry` type L65-241 — `= CommandRegistry` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `register_builtins` function L72-207 — `(&mut self)` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `AutocompleteState` type L252-283 — `= AutocompleteState` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `parse_since` function L459-491 — `(s: &str) -> Result<String, String>` — Parse a `since=` value into a canonical RFC3339 UTC string.
+-  `parse_relative_duration` function L495-507 — `(s: &str) -> Option<(i64, &str)>` — Pull `<digits><unit>` out of the input.
+-  `tokenize_kv` function L512-543 — `(s: &str) -> Result<Vec<String>, String>` — Tokenizer that respects double-quoted runs so a param value can
+-  `tests` module L768-1296 — `-` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `parse_simple_command` function L772-776 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `watch_parses_template_id_and_string_param` function L779-786 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `watch_parses_typed_and_quoted_params_and_cadence_override` function L789-800 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `watch_parses_since_relative_duration` function L803-811 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `watch_parses_since_iso_date` function L814-823 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `watch_parses_since_rfc3339` function L826-834 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `watch_rejects_garbage_since` function L837-846 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `watch_rejects_missing_args_and_bad_template` function L849-856 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `watch_command_dispatch_returns_feed_register` function L859-870 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `feeds_command_dispatch_returns_feed_list` function L873-880 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `feeds_pause_and_resume_dispatch` function L883-893 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `feeds_rm_requires_confirm_flag` function L896-909 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `feeds_pause_without_id_is_a_usage_message` function L912-918 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `watch_list_dispatches_to_feed_discover` function L921-939 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `watch_list_rejects_extra_args_with_hint` function L942-954 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `watch_list_doesnt_swallow_a_template_named_listed` function L957-973 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `feeds_unknown_subcommand_lists_usage` function L976-982 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `parse_command_with_args` function L985-989 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `parse_not_a_command` function L992-996 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `parse_slash_only` function L999-1001 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `parse_with_leading_whitespace` function L1004-1007 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `registry_has_builtins` function L1010-1017 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `registry_matching_prefix` function L1020-1026 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `registry_matching_empty_returns_all` function L1029-1033 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `registry_skills` function L1036-1045 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `autocomplete_navigation` function L1048-1066 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_help` function L1069-1076 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_clear` function L1079-1083 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_unknown` function L1086-1093 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_inventory` function L1096-1103 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_skill` function L1106-1117 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_remember_with_text_returns_remember_fact` function L1124-1133 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_remember_without_text_returns_usage_message` function L1136-1146 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_memory_returns_memory_summary` function L1149-1156 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_forget_with_query_returns_forget_entity` function L1159-1168 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_forget_without_query_returns_usage_message` function L1171-1180 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_workflows_list_returns_workflow_list` function L1183-1193 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `every_advertised_builtin_dispatches_or_explains` function L1201-1224 — `()` — Audit: every built-in command in /help must dispatch to a CommandResult
+-  `execute_integrations_returns_list_variant` function L1229-1236 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_connect_with_service_returns_connect_variant` function L1239-1246 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_connect_without_service_returns_usage_message` function L1249-1259 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_disconnect_with_service_returns_disconnect_variant` function L1262-1269 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_disconnect_without_service_returns_usage_message` function L1272-1279 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `capabilities_banner_doc_path_pinned` function L1284-1295 — `()` — Capabilities banner copy in event_loop.rs points users at this docs
+-  `PINNED` variable L1287 — `: &str` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
 
 #### crates/arawn-tui/src/event.rs
 
@@ -7735,42 +8711,61 @@
 
 #### crates/arawn-tui/src/event_loop.rs
 
-- pub `run_tui` function L64-1116 — `(url: &str, model_name: &str) -> Result<(), Box<dyn std::error::Error>>` — Run the TUI connected to the given WebSocket server URL.
+- pub `run_tui` function L64-1192 — `(url: &str, model_name: &str) -> Result<(), Box<dyn std::error::Error>>` — Run the TUI connected to the given WebSocket server URL.
 -  `MIN_FRAME_INTERVAL` variable L29 — `: Duration` — Minimum interval between renders driven by streaming/event traffic.
 -  `maybe_draw` function L33-45 — `( terminal: &mut Terminal<B>, app: &mut App, ) -> io::Result<()>` — Render if enough time has elapsed since the last draw.
 -  `force_draw` function L49-57 — `( terminal: &mut Terminal<B>, app: &mut App, ) -> io::Result<()>` — Render now regardless of frame budget.
 -  `rect_contains` function L59-61 — `(rect: Rect, col: u16, row: u16) -> bool`
--  `format_integrations_list` function L1119-1134 — `(items: &[serde_json::Value]) -> String` — Render a `list_integrations` response as a markdown table the user can scan.
--  `OpenAttempt` enum L1138-1142 — `Opened | NoOpener | Failed` — What `try_open_url` did.
--  `try_open_url` function L1146-1177 — `(url: &str) -> OpenAttempt` — Best-effort browser open.
--  `apply_system_notice` function L1182-1195 — `(notice: &arawn_service::ServerNotice, app: &mut crate::app::App)` — Push a server-side notice (plugin/config hot-reload outcome) into the
--  `format_permissions_status` function L1198-1238 — `(status: &serde_json::Value) -> String` — Render `get_permissions_status` JSON as a human-readable system message.
--  `format_feed_registered` function L1241-1252 — `(dto: &serde_json::Value) -> String` — Render a freshly-registered feed into a chat-ready system message.
--  `format_feed_list` function L1257-1286 — `(list: &[serde_json::Value]) -> String` — Render the `/feeds` listing as a markdown table-ish block.
--  `human_size` function L1288-1301 — `(bytes: u64) -> String`
--  `KB` variable L1289 — `: u64`
--  `MB` variable L1290 — `: u64`
--  `GB` variable L1291 — `: u64`
--  `format_feed_discover` function L1306-1363 — `(dto: &serde_json::Value) -> String` — Render `feed_discover` results into a chat-pane block.
--  `format_known_templates` function L1367-1380 — `() -> String` — Static help for `/watch list` with no template — points the user
+-  `format_integrations_list` function L1195-1210 — `(items: &[serde_json::Value]) -> String` — Render a `list_integrations` response as a markdown table the user can scan.
+-  `OpenAttempt` enum L1214-1218 — `Opened | NoOpener | Failed` — What `try_open_url` did.
+-  `try_open_url` function L1222-1253 — `(url: &str) -> OpenAttempt` — Best-effort browser open.
+-  `apply_system_notice` function L1258-1280 — `(notice: &arawn_service::ServerNotice, app: &mut crate::app::App)` — Push a server-side notice (plugin/config hot-reload outcome) into the
+-  `ceremony_event_should_refresh` function L1285-1304 — `(notice: &arawn_service::ServerNotice, app: &mut crate::app::App)` — If a ceremony_event notice targets the tablet the user is currently
+-  `format_permissions_status` function L1307-1347 — `(status: &serde_json::Value) -> String` — Render `get_permissions_status` JSON as a human-readable system message.
+-  `format_feed_registered` function L1350-1361 — `(dto: &serde_json::Value) -> String` — Render a freshly-registered feed into a chat-ready system message.
+-  `format_feed_list` function L1366-1395 — `(list: &[serde_json::Value]) -> String` — Render the `/feeds` listing as a markdown table-ish block.
+-  `human_size` function L1397-1410 — `(bytes: u64) -> String`
+-  `KB` variable L1398 — `: u64`
+-  `MB` variable L1399 — `: u64`
+-  `GB` variable L1400 — `: u64`
+-  `format_feed_discover` function L1415-1472 — `(dto: &serde_json::Value) -> String` — Render `feed_discover` results into a chat-pane block.
+-  `format_known_templates` function L1476-1489 — `() -> String` — Static help for `/watch list` with no template — points the user
+-  `current_iso_week` function L1494-1498 — `() -> String` — ISO-week period key in the canonical `YYYY-WNN` form used by the
+-  `render_ceremony_today` function L1502-1534 — `( client: &mut crate::ws_client::WsClient, today: &str, ) -> String` — Fetch the daily tablet for `today`, then list its items, then
+-  `render_ceremony_week` function L1538-1575 — `( client: &mut crate::ws_client::WsClient, iso_week: &str, ) -> String` — Fetch the weekly tablet for the current ISO week, then items, then
+-  `render_ceremony_retro` function L1580-1616 — `( client: &mut crate::ws_client::WsClient, iso_week: &str, ) -> String` — Fetch the retro tablet for the current ISO week, then items, then
+-  `fetch_tablet_id_and_status` function L1621-1637 — `( client: &mut crate::ws_client::WsClient, kind: &str, period_key: &str, ) -> Op...` — Re-fetch the tablet for `(kind, period_key)` and return its id +
+-  `fetch_diary_body` function L1642-1661 — `( client: &mut crate::ws_client::WsClient, tablet_id: &str, ) -> String` — Pull any existing diary body from the retro tablet by listing its
+-  `handle_ceremony_overlay_key` function L1666-1758 — `( client: &mut crate::ws_client::WsClient, app: &mut App, key: crossterm::event:...` — Drive the active ceremony overlay from a raw key event.
+-  `apply_priority_rpc_result` function L1762-1782 — `( app: &mut App, tablet_id: &str, client: &mut crate::ws_client::WsClient, res: ...` — After a priority RPC, refresh the modal's priorities list (or stash
+-  `refresh_active_ceremony_overlay` function L1788-1816 — `( client: &mut crate::ws_client::WsClient, app: &mut App, )` — Re-pull underlying data for whichever ceremony overlay is active so
+-  `ceremony_refresh_tests` module L1819-1884 — `-`
+-  `notice_for` function L1824-1835 — `(tablet_id: &str) -> arawn_service::ServerNotice`
+-  `ceremony_event_for_active_tablet_flags_refresh` function L1838-1849 — `()`
+-  `ceremony_event_for_other_tablet_is_ignored` function L1852-1860 — `()`
+-  `ceremony_event_with_no_overlay_is_ignored` function L1863-1869 — `()`
+-  `non_ceremony_notices_still_render_into_chat` function L1872-1883 — `()`
+-  `fetch_items` function L1886-1903 — `( client: &mut crate::ws_client::WsClient, tablet_id: &str, ) -> Vec<arawn_cerem...`
+-  `fetch_priorities` function L1905-1922 — `( client: &mut crate::ws_client::WsClient, tablet_id: &str, ) -> Vec<arawn_cerem...`
 
 #### crates/arawn-tui/src/lib.rs
 
 - pub `action` module L1 — `-`
 - pub `app` module L2 — `-`
-- pub `command` module L3 — `-`
-- pub `event` module L4 — `-`
-- pub `event_loop` module L5 — `-`
-- pub `markdown` module L6 — `-`
-- pub `modal` module L7 — `-`
-- pub `render` module L8 — `-`
-- pub `theme` module L9 — `-`
-- pub `tui_prompt` module L10 — `-`
-- pub `wrap` module L15 — `-`
-- pub `width` module L16 — `-`
-- pub `ws_client` module L17 — `-`
--  `snapshot` module L12 — `-`
--  `snapshot_tests` module L14 — `-`
+- pub `ceremony_modal` module L3 — `-`
+- pub `command` module L4 — `-`
+- pub `event` module L5 — `-`
+- pub `event_loop` module L6 — `-`
+- pub `markdown` module L7 — `-`
+- pub `modal` module L8 — `-`
+- pub `render` module L9 — `-`
+- pub `theme` module L10 — `-`
+- pub `tui_prompt` module L11 — `-`
+- pub `wrap` module L16 — `-`
+- pub `width` module L17 — `-`
+- pub `ws_client` module L18 — `-`
+-  `snapshot` module L13 — `-`
+-  `snapshot_tests` module L15 — `-`
 
 #### crates/arawn-tui/src/markdown.rs
 
@@ -7840,55 +8835,55 @@
 
 #### crates/arawn-tui/src/render.rs
 
-- pub `render` function L13-94 — `(app: &mut App, frame: &mut Frame)` — Render function.
+- pub `render` function L13-99 — `(app: &mut App, frame: &mut Frame)` — Render function.
 -  `SPINNER_FRAMES` variable L10 — `: &[char]`
--  `render_sidebar_tab` function L96-120 — `(frame: &mut Frame, area: ratatui::layout::Rect)`
--  `render_status_bar` function L122-207 — `(app: &App, frame: &mut Frame, area: ratatui::layout::Rect)`
--  `format_tokens` function L210-218 — `(n: u64) -> String` — Format a token count for display: 1234 → "1.2k", 12345 → "12.3k", 500 → "500"
--  `render_sidebar` function L220-294 — `(app: &App, frame: &mut Frame, area: ratatui::layout::Rect)`
--  `render_chat` function L296-680 — `(app: &mut App, frame: &mut Frame, area: ratatui::layout::Rect)`
--  `render_separator` function L682-686 — `(frame: &mut Frame, area: ratatui::layout::Rect)`
--  `render_input` function L688-751 — `(app: &App, frame: &mut Frame, area: ratatui::layout::Rect)`
--  `render_autocomplete` function L754-812 — `( ac: &crate::command::AutocompleteState, frame: &mut Frame, input_area: ratatui...` — Render the autocomplete dropdown above the input line.
--  `render_oauth_heartbeat` function L814-837 — `(app: &App, frame: &mut Frame, area: ratatui::layout::Rect)`
--  `render_idle_hero` function L839-873 — `(frame: &mut Frame, area: ratatui::layout::Rect)`
--  `truncate_to` function L876-878 — `(s: &str, max_cells: usize) -> String` — Truncate a string to fit within a display width, adding "…" if needed.
--  `compact_tool_summary` function L881-886 — `(content: &str) -> String` — Extract a compact summary from tool call content for inline display.
--  `truncate_for_display` function L888-892 — `(s: &str, max: usize) -> String`
--  `tests` module L895-1647 — `-`
--  `truncate_for_display_handles_utf8_at_boundary` function L902-912 — `()`
--  `truncate_for_display_passes_through_short_strings` function L915-917 — `()`
--  `buffer_to_string` function L919-934 — `(terminal: &Terminal<TestBackend>, row: u16) -> String`
--  `render_empty_app_has_status_bar` function L937-946 — `()`
--  `render_with_messages_shows_content` function L949-975 — `()`
--  `render_with_input_text` function L978-993 — `()`
--  `render_streaming_shows_cursor` function L996-1019 — `()`
--  `render_small_terminal` function L1022-1027 — `()`
--  `render_large_terminal` function L1030-1035 — `()`
--  `region_text` function L1040-1052 — `(terminal: &Terminal<TestBackend>, x: u16, y: u16, w: u16, h: u16) -> String` — Extract text from a rectangular region of the buffer.
--  `chat_region_for` function L1056-1069 — `(terminal: &Terminal<TestBackend>, sidebar_visible: bool) -> String` — Extract the chat area text.
--  `chat_region` function L1072-1074 — `(terminal: &Terminal<TestBackend>) -> String` — Convenience: chat region for default app (sidebar hidden).
--  `sidebar_region` function L1078-1086 — `(terminal: &Terminal<TestBackend>) -> String` — Extract the sidebar text (left 20%, rows 1..height-3).
--  `input_region` function L1089-1094 — `(terminal: &Terminal<TestBackend>) -> String` — Extract the input bar text (second from bottom row).
--  `chat_renders_user_message_with_prefix` function L1099-1113 — `()`
--  `chat_renders_assistant_message_with_prefix` function L1116-1130 — `()`
--  `chat_renders_tool_call_with_icon` function L1133-1158 — `()`
--  `chat_renders_tool_result_collapsed` function L1161-1189 — `()`
--  `chat_renders_tool_error_result` function L1192-1215 — `()`
--  `chat_renders_tool_result_truncated` function L1218-1245 — `()`
--  `chat_streaming_text_appears_in_chat_area` function L1248-1266 — `()`
--  `sidebar_renders_workstream_names` function L1269-1305 — `()`
--  `sidebar_does_not_leak_into_chat` function L1308-1342 — `()`
--  `input_shows_placeholder_when_empty` function L1345-1356 — `()`
--  `input_shows_generating_when_active` function L1359-1372 — `()`
--  `status_bar_shows_generating_indicator` function L1375-1389 — `()`
--  `status_bar_shows_workstream_name` function L1392-1416 — `()`
--  `messages_do_not_appear_in_input_area` function L1419-1442 — `()`
--  `chat_auto_scrolls_to_bottom_with_many_messages` function L1447-1477 — `()`
--  `chat_scroll_up_reveals_older_messages` function L1480-1508 — `()`
--  `chat_few_messages_all_visible` function L1511-1525 — `()`
--  `last_message_visible_above_input` function L1528-1581 — `()`
--  `last_tool_result_visible_above_input` function L1584-1646 — `()`
+-  `render_sidebar_tab` function L101-125 — `(frame: &mut Frame, area: ratatui::layout::Rect)`
+-  `render_status_bar` function L127-212 — `(app: &App, frame: &mut Frame, area: ratatui::layout::Rect)`
+-  `format_tokens` function L215-223 — `(n: u64) -> String` — Format a token count for display: 1234 → "1.2k", 12345 → "12.3k", 500 → "500"
+-  `render_sidebar` function L225-299 — `(app: &App, frame: &mut Frame, area: ratatui::layout::Rect)`
+-  `render_chat` function L301-685 — `(app: &mut App, frame: &mut Frame, area: ratatui::layout::Rect)`
+-  `render_separator` function L687-691 — `(frame: &mut Frame, area: ratatui::layout::Rect)`
+-  `render_input` function L693-756 — `(app: &App, frame: &mut Frame, area: ratatui::layout::Rect)`
+-  `render_autocomplete` function L759-817 — `( ac: &crate::command::AutocompleteState, frame: &mut Frame, input_area: ratatui...` — Render the autocomplete dropdown above the input line.
+-  `render_oauth_heartbeat` function L819-842 — `(app: &App, frame: &mut Frame, area: ratatui::layout::Rect)`
+-  `render_idle_hero` function L844-878 — `(frame: &mut Frame, area: ratatui::layout::Rect)`
+-  `truncate_to` function L881-883 — `(s: &str, max_cells: usize) -> String` — Truncate a string to fit within a display width, adding "…" if needed.
+-  `compact_tool_summary` function L886-891 — `(content: &str) -> String` — Extract a compact summary from tool call content for inline display.
+-  `truncate_for_display` function L893-897 — `(s: &str, max: usize) -> String`
+-  `tests` module L900-1652 — `-`
+-  `truncate_for_display_handles_utf8_at_boundary` function L907-917 — `()`
+-  `truncate_for_display_passes_through_short_strings` function L920-922 — `()`
+-  `buffer_to_string` function L924-939 — `(terminal: &Terminal<TestBackend>, row: u16) -> String`
+-  `render_empty_app_has_status_bar` function L942-951 — `()`
+-  `render_with_messages_shows_content` function L954-980 — `()`
+-  `render_with_input_text` function L983-998 — `()`
+-  `render_streaming_shows_cursor` function L1001-1024 — `()`
+-  `render_small_terminal` function L1027-1032 — `()`
+-  `render_large_terminal` function L1035-1040 — `()`
+-  `region_text` function L1045-1057 — `(terminal: &Terminal<TestBackend>, x: u16, y: u16, w: u16, h: u16) -> String` — Extract text from a rectangular region of the buffer.
+-  `chat_region_for` function L1061-1074 — `(terminal: &Terminal<TestBackend>, sidebar_visible: bool) -> String` — Extract the chat area text.
+-  `chat_region` function L1077-1079 — `(terminal: &Terminal<TestBackend>) -> String` — Convenience: chat region for default app (sidebar hidden).
+-  `sidebar_region` function L1083-1091 — `(terminal: &Terminal<TestBackend>) -> String` — Extract the sidebar text (left 20%, rows 1..height-3).
+-  `input_region` function L1094-1099 — `(terminal: &Terminal<TestBackend>) -> String` — Extract the input bar text (second from bottom row).
+-  `chat_renders_user_message_with_prefix` function L1104-1118 — `()`
+-  `chat_renders_assistant_message_with_prefix` function L1121-1135 — `()`
+-  `chat_renders_tool_call_with_icon` function L1138-1163 — `()`
+-  `chat_renders_tool_result_collapsed` function L1166-1194 — `()`
+-  `chat_renders_tool_error_result` function L1197-1220 — `()`
+-  `chat_renders_tool_result_truncated` function L1223-1250 — `()`
+-  `chat_streaming_text_appears_in_chat_area` function L1253-1271 — `()`
+-  `sidebar_renders_workstream_names` function L1274-1310 — `()`
+-  `sidebar_does_not_leak_into_chat` function L1313-1347 — `()`
+-  `input_shows_placeholder_when_empty` function L1350-1361 — `()`
+-  `input_shows_generating_when_active` function L1364-1377 — `()`
+-  `status_bar_shows_generating_indicator` function L1380-1394 — `()`
+-  `status_bar_shows_workstream_name` function L1397-1421 — `()`
+-  `messages_do_not_appear_in_input_area` function L1424-1447 — `()`
+-  `chat_auto_scrolls_to_bottom_with_many_messages` function L1452-1482 — `()`
+-  `chat_scroll_up_reveals_older_messages` function L1485-1513 — `()`
+-  `chat_few_messages_all_visible` function L1516-1530 — `()`
+-  `last_message_visible_above_input` function L1533-1586 — `()`
+-  `last_tool_result_visible_above_input` function L1589-1651 — `()`
 
 #### crates/arawn-tui/src/snapshot.rs
 
