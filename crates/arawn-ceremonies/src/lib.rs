@@ -14,6 +14,7 @@
 pub mod error;
 pub mod plugin;
 pub mod registry;
+pub mod runner;
 pub mod types;
 
 pub use error::CeremonyError;
@@ -22,4 +23,7 @@ pub use plugin::{
     PatternDetector, UserItem,
 };
 pub use registry::PluginRegistry;
+pub use runner::{
+    CeremonyDispatcher, CeremonyDispatchTask, CeremonyRunner, DispatchOutcome,
+};
 pub use types::{DetectedPattern, GatheredFacts, ItemKind, TabletStatus};
