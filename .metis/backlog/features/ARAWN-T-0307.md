@@ -4,7 +4,7 @@ level: task
 title: "Ceremony TUI slash commands — /today /week /retro"
 short_code: "ARAWN-T-0307"
 created_at: 2026-05-16T18:27:31.889657+00:00
-updated_at: 2026-05-16T19:41:04.897496+00:00
+updated_at: 2026-05-16T19:49:19.092891+00:00
 parent: 
 blocked_by: []
 archived: false
@@ -12,7 +12,7 @@ archived: false
 tags:
   - "#task"
   - "#feature"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
