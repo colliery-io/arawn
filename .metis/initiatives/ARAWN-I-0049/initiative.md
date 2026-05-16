@@ -4,14 +4,14 @@ level: initiative
 title: "Generic todo system + ceremony state refactor"
 short_code: "ARAWN-I-0049"
 created_at: 2026-05-16T22:22:56.668462+00:00
-updated_at: 2026-05-16T22:22:56.668462+00:00
+updated_at: 2026-05-16T22:51:38.711834+00:00
 parent: ARAWN-V-0001
 blocked_by: []
 archived: false
 
 tags:
   - "#initiative"
-  - "#phase/discovery"
+  - "#phase/decompose"
 
 
 exit_criteria_met: false
@@ -80,6 +80,25 @@ ceremonies (chat → "remind me to do X" → tool → done).
   + `ceremony_todos_rolling` survive as thin indexes pointing
   into `todos` so retro/daily/weekly gather queries stay
   schema-stable.
+
+## Design Decisions (locked 2026-05-16)
+
+- **Single `todos` table with a free-form `kind` text discriminant.**
+  `kind` is open-ended (not an enum) so future kinds — Linear sync,
+  GH issues, etc. — drop in without schema changes.
+- **Ceremony index tables become FK pointers.** `ceremony_priorities`
+  keeps its row identity but body/state move to `todos`; `todo_id`
+  is a foreign key. `ceremony_todos_rolling` retires behind a view
+  over `todos WHERE kind='rollover'`.
+- **User-todo workstream scoping**: defaults to `NULL` (global).
+  Workstream tagging is explicit at create time (`todo_create
+  { workstream: "..." }`), not auto-derived from conversation
+  context.
+- **No recurrence / reminders in v1.** Schema carries `due_at`
+  for future use; nothing reads it on a schedule.
+- **Rationale preservation: in scope for v1.** Weekly confirm flow
+  copies the LLM-generated rationale into `todos.rationale` rather
+  than discarding it.
 
 ## Detailed Design (sketch — to firm up in design phase)
 
@@ -208,9 +227,8 @@ Decompose during design phase. Rough shape (probably 6-8 tasks):
    `daily_mark_priority_done` (or `todo_done`) → run retro →
    judge sees `priority_completion_ratio` reflect the real
    ratio.
-8. (optional) Rationale preservation cleanup — confirm flow
-   copies the LLM-generated rationale into `todos.rationale`
-   instead of `""`.
+8. Rationale preservation — confirm flow copies the
+   LLM-generated rationale into `todos.rationale` instead of `""`.
 
 ## Exit Criteria
 
