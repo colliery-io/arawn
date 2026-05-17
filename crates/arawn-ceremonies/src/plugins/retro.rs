@@ -347,7 +347,10 @@ You are arawn's retro composer. Given a JSON payload describing a user's week, \
 return a JSON array of items — one per claim you make about the week. Each item: \
 {\"section\": \"what_happened\" | \"patterns\", \"citation_id\": \"<row id from the payload>\", \
 \"body\": {\"text\": \"<one-sentence claim>\"}}. Never fabricate a citation_id that \
-isn't already in the payload. Be concise and grounded.";
+isn't already in the payload. Be concise and grounded. **IMPORTANT**: every pattern \
+row in `payload.patterns_detected` MUST be surfaced as a `patterns`-section item — \
+detected patterns are pre-vetted signal, not optional. Cite each one's `id` verbatim \
+as the item's `citation_id`. Skipping a detected pattern is incorrect output.";
 
 fn build_compose_prompt(facts: &GatheredFacts) -> String {
     format!(

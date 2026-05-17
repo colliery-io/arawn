@@ -161,25 +161,48 @@ impl EngineDispatcher {
         let ctx = EngineCtx::new(self.conn.clone(), tablet_id.clone(), period_key.to_string());
 
         // 7: gather (deterministic).
-        let facts: GatheredFacts = plugin.gather(&ctx).await?;
+        let mut facts: GatheredFacts = plugin.gather(&ctx).await?;
 
-        // 8: pattern detector (optional).
+        // 8: pattern detector (optional). Detected patterns get
+        // written to `ceremony_patterns_detected` AND injected back
+        // into `facts.payload.patterns_detected` so the compose LLM
+        // can cite them. Without this re-injection, compose has no
+        // way to surface a freshly-detected pattern — its prompt only
+        // sees the gather payload. (I-0049 T-0316 surfaced this gap
+        // when priority_completion_ratio fired in the DB but never
+        // landed in the retro's patterns section.)
         if let Some(detector) = plugin.patterns() {
             let patterns = detector.detect(&ctx).await?;
+            let mut written: Vec<serde_json::Value> = Vec::with_capacity(patterns.len());
             for pattern in patterns {
                 let iso_week = pattern.iso_week.clone();
                 let pattern_key = pattern.pattern_key.clone();
+                let magnitude = pattern.magnitude;
+                let payload = pattern.payload.clone();
                 let id = ctx.write_pattern_row(pattern).await?;
                 if let Some(events) = &self.events {
                     emit_event(
                         events,
                         CeremonyEvent::PatternDetected {
-                            pattern_id: id,
-                            iso_week,
-                            pattern_key,
+                            pattern_id: id.clone(),
+                            iso_week: iso_week.clone(),
+                            pattern_key: pattern_key.clone(),
                         },
                     );
                 }
+                written.push(serde_json::json!({
+                    "id": id,
+                    "iso_week": iso_week,
+                    "pattern_key": pattern_key,
+                    "magnitude": magnitude,
+                    "payload": payload,
+                }));
+            }
+            if let Some(payload_obj) = facts.payload.as_object_mut() {
+                payload_obj.insert(
+                    "patterns_detected".to_string(),
+                    serde_json::Value::Array(written),
+                );
             }
         }
 
