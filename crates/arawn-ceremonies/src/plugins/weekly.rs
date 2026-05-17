@@ -461,9 +461,11 @@ upcoming week (calendar shape, deadlines, last retro, last weekly inbound, hot \
 rolling todos), return a JSON array of items — one per claim. Each item: \
 {\"section\": \"priorities\" | \"calendar_shape\" | \"deadlines\" | \
 \"from_last_retro\" | \"inbound\", \"citation_id\": \"<row id from the payload>\", \
-\"body\": {\"text\": \"<one-sentence claim>\"}}. The priorities section should \
-have 5-7 candidates. Never fabricate a citation_id that isn't in the payload. \
-Be concise and grounded.";
+\"body\": {\"text\": \"<one-sentence claim>\", \"rationale\": \"<one-sentence why \
+this matters this week, citing the signal>\"}}. Rationale is required for \
+priorities (so confirm-flow can preserve it as todos.rationale) and optional \
+for other sections. The priorities section should have 5-7 candidates. Never \
+fabricate a citation_id that isn't in the payload. Be concise and grounded.";
 
 fn build_compose_prompt(facts: &GatheredFacts, valid_ids: &HashSet<String>) -> String {
     let mut ids: Vec<&String> = valid_ids.iter().collect();

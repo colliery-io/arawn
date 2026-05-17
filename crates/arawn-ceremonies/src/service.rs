@@ -432,6 +432,19 @@ impl CeremonyService {
         let new_todo_id = Uuid::new_v4().to_string();
         let confirmed_at = Utc::now().to_rfc3339();
         let priority_citation = item_id.to_string();
+        // I-0049 T-0315 — preserve the LLM-generated rationale.
+        // Weekly compose emits body: {text, rationale}; pull the
+        // rationale out so it lands on `todos.rationale` rather
+        // than being discarded. NULL when absent / empty so the
+        // canonical "no rationale" state is consistent.
+        let rationale: Option<String> = serde_json::from_str::<serde_json::Value>(&body_str)
+            .ok()
+            .and_then(|v| {
+                v.get("rationale")
+                    .and_then(|r| r.as_str())
+                    .map(|s| s.to_string())
+            })
+            .filter(|s| !s.trim().is_empty());
         // Post-cutover: body/rationale/done_at live on the todo. The
         // priority row is a thin link carrying ordinal + confirmed_at.
         let attrs = serde_json::json!({
@@ -444,8 +457,8 @@ impl CeremonyService {
         conn.execute(
             "INSERT INTO todos \
                  (id, body, rationale, kind, workstream, created_at, due_at, done_at, archived_at, attrs) \
-             VALUES (?1, ?2, '', 'weekly_priority', NULL, ?3, NULL, NULL, NULL, ?4)",
-            params![&new_todo_id, &body_str, &confirmed_at, &attrs],
+             VALUES (?1, ?2, ?3, 'weekly_priority', NULL, ?4, NULL, NULL, NULL, ?5)",
+            params![&new_todo_id, &body_str, &rationale, &confirmed_at, &attrs],
         )
         .map_err(|e| CeremonyError::Storage(format!("confirm_priority todo insert: {e}")))?;
         conn.execute(
@@ -471,7 +484,7 @@ impl CeremonyService {
             id: new_id,
             tablet_id,
             body,
-            rationale: String::new(),
+            rationale: rationale.unwrap_or_default(),
             citation_id: Some(priority_citation),
             confirmed_at: Some(confirmed_at),
             done_at: None,
@@ -1252,6 +1265,75 @@ mod tests {
             )
             .unwrap();
         assert_eq!(count, 1);
+    }
+
+    #[tokio::test]
+    async fn confirm_priority_preserves_rationale_from_body() {
+        // I-0049 T-0315 — body: {text, rationale} flows into
+        // todos.rationale rather than being discarded.
+        let (tmp, conn) = open_test_db();
+        let tablet_id = "weekly-2026-W20".to_string();
+        let item_id = "item-with-rationale".to_string();
+        {
+            let c = conn.0.lock().unwrap();
+            c.execute(
+                "INSERT INTO ceremony_tablets \
+                 (id, kind, period_key, generated_at, status, workstreams_scanned) \
+                 VALUES (?1, 'weekly', '2026-W20', '2026-05-11T07:00:00Z', 'open', '[]')",
+                rusqlite::params![&tablet_id],
+            )
+            .unwrap();
+            c.execute(
+                "INSERT INTO ceremony_items \
+                 (id, tablet_id, section_key, ordinal, kind, body, citation_id, created_at) \
+                 VALUES (?1, ?2, 'priorities', 0, 'priority', ?3, 'sig-0', '2026-05-11T07:00:00Z')",
+                rusqlite::params![
+                    &item_id,
+                    &tablet_id,
+                    json!({"text":"ship auth migration","rationale":"unblocks compliance audit"})
+                        .to_string(),
+                ],
+            )
+            .unwrap();
+        }
+        let dispatcher = Arc::new(EngineDispatcher::new(conn.clone(), PluginRegistry::new()));
+        let service = CeremonyService::new(conn.clone(), dispatcher);
+        let dto = service.confirm_priority(&item_id).unwrap();
+        assert_eq!(dto.rationale, "unblocks compliance audit");
+        // Round-trip through storage too.
+        let c = conn.0.lock().unwrap();
+        let stored: Option<String> = c
+            .query_row(
+                "SELECT t.rationale FROM ceremony_priorities cp \
+                 JOIN todos t ON t.id = cp.todo_id \
+                 WHERE cp.id = ?1",
+                rusqlite::params![&dto.id],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(stored.as_deref(), Some("unblocks compliance audit"));
+        drop(tmp);
+    }
+
+    #[tokio::test]
+    async fn confirm_priority_leaves_rationale_null_when_body_has_none() {
+        // body has only `text` — confirm should leave todos.rationale
+        // NULL rather than synthesising one.
+        let (_tmp, service, _tablet_id, item_ids) = build_weekly_with_priority_candidates(1);
+        let dto = service.confirm_priority(&item_ids[0]).unwrap();
+        assert!(dto.rationale.is_empty());
+        let (conn, _, _) = service_internals(&service);
+        let c = conn.0.lock().unwrap();
+        let stored: Option<String> = c
+            .query_row(
+                "SELECT t.rationale FROM ceremony_priorities cp \
+                 JOIN todos t ON t.id = cp.todo_id \
+                 WHERE cp.id = ?1",
+                rusqlite::params![&dto.id],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert!(stored.is_none(), "rationale should be NULL, got {stored:?}");
     }
 
     #[tokio::test]
