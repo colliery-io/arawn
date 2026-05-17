@@ -55,10 +55,11 @@ impl Detector for PriorityCompletionDetector {
             .query_row(
                 "SELECT \
                    SUM(CASE WHEN p.confirmed_at IS NOT NULL THEN 1 ELSE 0 END), \
-                   SUM(CASE WHEN p.confirmed_at IS NOT NULL AND p.done_at IS NOT NULL \
+                   SUM(CASE WHEN p.confirmed_at IS NOT NULL AND td.done_at IS NOT NULL \
                             THEN 1 ELSE 0 END) \
                  FROM ceremony_priorities p \
                  JOIN ceremony_tablets t ON p.tablet_id = t.id \
+                 JOIN todos td ON td.id = p.todo_id \
                  WHERE t.kind = 'weekly' AND t.period_key = ?1",
                 params![&ctx.current_iso_week],
                 |row| {
@@ -301,21 +302,31 @@ mod tests {
 
     fn insert_priority(conn: &ConnHandle, id: &str, tablet_id: &str, confirmed: bool, done: bool) {
         let c = conn.0.lock().unwrap();
+        let todo_id = format!("td-{id}");
+        let done_at = if done {
+            Some("2026-05-15T17:00:00Z")
+        } else {
+            None
+        };
+        let attrs =
+            serde_json::json!({"tablet_id": tablet_id, "ordinal": 0, "citation_id": null}).to_string();
         c.execute(
-            "INSERT INTO ceremony_priorities (id, tablet_id, body, rationale, citation_id, \
-             confirmed_at, done_at, ordinal) VALUES (?1, ?2, ?3, ?4, NULL, ?5, ?6, 0)",
+            "INSERT INTO todos (id, body, rationale, kind, workstream, created_at, \
+                                due_at, done_at, archived_at, attrs) \
+             VALUES (?1, 'x', 'y', 'weekly_priority', NULL, '2026-05-11T07:00:00Z', \
+                     NULL, ?2, NULL, ?3)",
+            params![&todo_id, &done_at, &attrs],
+        )
+        .unwrap();
+        c.execute(
+            "INSERT INTO ceremony_priorities (id, tablet_id, todo_id, confirmed_at, ordinal) \
+             VALUES (?1, ?2, ?3, ?4, 0)",
             params![
                 id,
                 tablet_id,
-                "x",
-                "y",
+                &todo_id,
                 if confirmed {
                     Some("2026-05-11T08:00:00Z")
-                } else {
-                    None
-                },
-                if done {
-                    Some("2026-05-15T17:00:00Z")
                 } else {
                     None
                 },
@@ -385,20 +396,26 @@ mod tests {
         done: bool,
     ) {
         let c = conn.0.lock().unwrap();
+        // Post-V9: ceremony_todos_rolling is a view; writes go to the
+        // canonical `todos` table with kind='rollover'.
+        let attrs = serde_json::json!({
+            "origin_tablet_id": last_seen_tablet,
+            "last_seen_tablet_id": last_seen_tablet,
+        })
+        .to_string();
         c.execute(
-            "INSERT INTO ceremony_todos_rolling (todo_id, body, origin_tablet_id, created_at, \
-             done_at, last_seen_tablet_id) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            "INSERT INTO todos (id, body, rationale, kind, workstream, created_at, \
+                                due_at, done_at, archived_at, attrs) \
+             VALUES (?1, 'x', NULL, 'rollover', NULL, ?2, NULL, ?3, NULL, ?4)",
             params![
                 id,
-                "x",
-                last_seen_tablet, // origin doesn't matter for this test
                 created_at,
                 if done {
                     Some("2026-05-15T17:00:00Z")
                 } else {
                     None
                 },
-                last_seen_tablet,
+                &attrs,
             ],
         )
         .unwrap();

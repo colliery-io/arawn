@@ -328,11 +328,19 @@ impl CeremonyService {
             .map_err(|_| CeremonyError::Storage("connection mutex poisoned".into()))?;
         let todo_id = Uuid::new_v4().to_string();
         let created_at = Utc::now().to_rfc3339();
+        let attrs = serde_json::json!({
+            "origin_tablet_id": origin_tablet_id,
+            "last_seen_tablet_id": origin_tablet_id,
+        })
+        .to_string();
+        // Post-cutover (V9): ceremony_todos_rolling is a read-only
+        // view over `todos WHERE kind='rollover'`. Writes go to
+        // `todos` directly with the rollover-shaped attrs.
         conn.execute(
-            "INSERT INTO ceremony_todos_rolling \
-             (todo_id, body, origin_tablet_id, created_at, last_seen_tablet_id) \
-             VALUES (?1, ?2, ?3, ?4, ?3)",
-            params![&todo_id, body, origin_tablet_id, &created_at],
+            "INSERT INTO todos \
+                 (id, body, rationale, kind, workstream, created_at, due_at, done_at, archived_at, attrs) \
+             VALUES (?1, ?2, NULL, 'rollover', NULL, ?3, NULL, NULL, NULL, ?4)",
+            params![&todo_id, body, &created_at, &attrs],
         )
         .map_err(|e| CeremonyError::Storage(format!("add_rolling_todo insert: {e}")))?;
         Ok(todo_id)
@@ -383,11 +391,14 @@ impl CeremonyService {
             )));
         }
 
-        // Idempotency: if a priority row already cites this item, return it.
-        let existing: Option<(String, String, Option<String>, Option<String>, i32, String)> = conn
+        // Idempotency: if a priority row already cites this item via
+        // its linked todo's attrs.citation_id, return it.
+        let existing: Option<(String, Option<String>, Option<String>, Option<String>, i32, String)> = conn
             .query_row(
-                "SELECT id, rationale, confirmed_at, done_at, ordinal, body \
-                 FROM ceremony_priorities WHERE citation_id = ?1",
+                "SELECT cp.id, t.rationale, cp.confirmed_at, t.done_at, cp.ordinal, t.body \
+                 FROM ceremony_priorities cp \
+                 JOIN todos t ON t.id = cp.todo_id \
+                 WHERE json_extract(t.attrs, '$.citation_id') = ?1",
                 params![item_id],
                 |r| {
                     Ok((
@@ -408,7 +419,7 @@ impl CeremonyService {
                 id,
                 tablet_id,
                 body,
-                rationale,
+                rationale: rationale.unwrap_or_default(),
                 citation_id: Some(item_id.to_string()),
                 confirmed_at,
                 done_at,
@@ -418,28 +429,34 @@ impl CeremonyService {
         }
 
         let new_id = Uuid::new_v4().to_string();
+        let new_todo_id = Uuid::new_v4().to_string();
         let confirmed_at = Utc::now().to_rfc3339();
-        // citation_id on the priority row points at the item that was
-        // confirmed. If the item itself has a deeper source citation
-        // we don't copy it here — confirm-time provenance is the item
-        // id; the item carries its own source.
         let priority_citation = item_id.to_string();
+        // Post-cutover: body/rationale/done_at live on the todo. The
+        // priority row is a thin link carrying ordinal + confirmed_at.
+        let attrs = serde_json::json!({
+            "tablet_id": &tablet_id,
+            "ordinal": ordinal,
+            "confirmed_at": &confirmed_at,
+            "citation_id": &priority_citation,
+        })
+        .to_string();
+        conn.execute(
+            "INSERT INTO todos \
+                 (id, body, rationale, kind, workstream, created_at, due_at, done_at, archived_at, attrs) \
+             VALUES (?1, ?2, '', 'weekly_priority', NULL, ?3, NULL, NULL, NULL, ?4)",
+            params![&new_todo_id, &body_str, &confirmed_at, &attrs],
+        )
+        .map_err(|e| CeremonyError::Storage(format!("confirm_priority todo insert: {e}")))?;
         conn.execute(
             "INSERT INTO ceremony_priorities \
-             (id, tablet_id, body, rationale, citation_id, confirmed_at, done_at, ordinal) \
-             VALUES (?1, ?2, ?3, '', ?4, ?5, NULL, ?6)",
-            params![
-                &new_id,
-                &tablet_id,
-                &body_str,
-                &priority_citation,
-                &confirmed_at,
-                ordinal,
-            ],
+                 (id, tablet_id, todo_id, confirmed_at, ordinal) \
+             VALUES (?1, ?2, ?3, ?4, ?5)",
+            params![&new_id, &tablet_id, &new_todo_id, &confirmed_at, ordinal],
         )
         .map_err(|e| CeremonyError::Storage(format!("confirm_priority insert: {e}")))?;
         drop(conn);
-        let _ = citation_id_opt; // not used here; kept for future fidelity
+        let _ = citation_id_opt;
         if let Some(events) = &self.events {
             emit_event(
                 events,
@@ -472,9 +489,32 @@ impl CeremonyService {
             .0
             .lock()
             .map_err(|_| CeremonyError::Storage("connection mutex poisoned".into()))?;
+        // Post-cutover: citation_id sits on the linked todo's attrs.
+        // Delete the priority row whose linked todo cites this item;
+        // ON DELETE CASCADE on todo_id keeps the todo too if we
+        // explicitly drop it. We delete the todo first so its
+        // mark-done events don't fire orphaned later.
         conn.execute(
-            "DELETE FROM ceremony_priorities WHERE citation_id = ?1",
+            "DELETE FROM todos \
+             WHERE id IN ( \
+                 SELECT cp.todo_id FROM ceremony_priorities cp \
+                 JOIN todos t ON t.id = cp.todo_id \
+                 WHERE json_extract(t.attrs, '$.citation_id') = ?1 \
+             )",
             params![item_id],
+        )
+        .map_err(|e| CeremonyError::Storage(format!("reject_priority todo delete: {e}")))?;
+        // FK ON DELETE CASCADE on todo_id removes the priority row;
+        // belt-and-braces explicit delete in case the todo never
+        // existed (e.g. legacy paths) so we still clean orphans.
+        conn.execute(
+            "DELETE FROM ceremony_priorities \
+             WHERE id IN ( \
+                 SELECT cp.id FROM ceremony_priorities cp \
+                 LEFT JOIN todos t ON t.id = cp.todo_id \
+                 WHERE t.id IS NULL \
+             )",
+            [],
         )
         .map_err(|e| CeremonyError::Storage(format!("reject_priority priority delete: {e}")))?;
         conn.execute("DELETE FROM ceremony_items WHERE id = ?1", params![item_id])
@@ -500,20 +540,29 @@ impl CeremonyService {
             )
             .map_err(|e| CeremonyError::Storage(format!("add_priority next_ordinal: {e}")))?;
         let id = Uuid::new_v4().to_string();
+        let new_todo_id = Uuid::new_v4().to_string();
         let confirmed_at = Utc::now().to_rfc3339();
         let body_str = req.body.to_string();
+        // User-write path — citation_id stays NULL on the todo attrs.
+        let attrs = serde_json::json!({
+            "tablet_id": &req.tablet_id,
+            "ordinal": next_ordinal,
+            "confirmed_at": &confirmed_at,
+            "citation_id": serde_json::Value::Null,
+        })
+        .to_string();
+        conn.execute(
+            "INSERT INTO todos \
+                 (id, body, rationale, kind, workstream, created_at, due_at, done_at, archived_at, attrs) \
+             VALUES (?1, ?2, ?3, 'weekly_priority', NULL, ?4, NULL, NULL, NULL, ?5)",
+            params![&new_todo_id, &body_str, &req.rationale, &confirmed_at, &attrs],
+        )
+        .map_err(|e| CeremonyError::Storage(format!("add_priority todo insert: {e}")))?;
         conn.execute(
             "INSERT INTO ceremony_priorities \
-             (id, tablet_id, body, rationale, citation_id, confirmed_at, done_at, ordinal) \
-             VALUES (?1, ?2, ?3, ?4, NULL, ?5, NULL, ?6)",
-            params![
-                &id,
-                &req.tablet_id,
-                &body_str,
-                &req.rationale,
-                &confirmed_at,
-                next_ordinal,
-            ],
+                 (id, tablet_id, todo_id, confirmed_at, ordinal) \
+             VALUES (?1, ?2, ?3, ?4, ?5)",
+            params![&id, &req.tablet_id, &new_todo_id, &confirmed_at, next_ordinal],
         )
         .map_err(|e| CeremonyError::Storage(format!("add_priority insert: {e}")))?;
         Ok(PriorityDto {
@@ -541,8 +590,12 @@ impl CeremonyService {
         let mut confirmed: Vec<PriorityDto> = {
             let mut stmt = conn
                 .prepare(
-                    "SELECT id, tablet_id, body, rationale, citation_id, confirmed_at, done_at, ordinal \
-                     FROM ceremony_priorities WHERE tablet_id = ?1 ORDER BY ordinal",
+                    "SELECT cp.id, cp.tablet_id, t.body, COALESCE(t.rationale, ''), \
+                            json_extract(t.attrs, '$.citation_id') AS citation_id, \
+                            cp.confirmed_at, t.done_at, cp.ordinal \
+                     FROM ceremony_priorities cp \
+                     JOIN todos t ON t.id = cp.todo_id \
+                     WHERE cp.tablet_id = ?1 ORDER BY cp.ordinal",
                 )
                 .map_err(|e| {
                     CeremonyError::Storage(format!("list_priorities confirmed prepare: {e}"))
@@ -587,8 +640,11 @@ impl CeremonyService {
                      FROM ceremony_items \
                      WHERE tablet_id = ?1 AND section_key = 'priorities' \
                        AND id NOT IN ( \
-                           SELECT citation_id FROM ceremony_priorities \
-                           WHERE tablet_id = ?1 AND citation_id IS NOT NULL \
+                           SELECT json_extract(t.attrs, '$.citation_id') \
+                           FROM ceremony_priorities cp \
+                           JOIN todos t ON t.id = cp.todo_id \
+                           WHERE cp.tablet_id = ?1 \
+                             AND json_extract(t.attrs, '$.citation_id') IS NOT NULL \
                        ) \
                      ORDER BY ordinal",
                 )
@@ -1190,7 +1246,7 @@ mod tests {
         let c = conn.0.lock().unwrap();
         let count: i64 = c
             .query_row(
-                "SELECT COUNT(*) FROM ceremony_priorities WHERE citation_id = ?1",
+                "SELECT COUNT(*) FROM ceremony_priorities cp JOIN todos t ON t.id = cp.todo_id WHERE json_extract(t.attrs, '$.citation_id') = ?1",
                 rusqlite::params![&item_ids[0]],
                 |r| r.get(0),
             )
@@ -1208,7 +1264,7 @@ mod tests {
         let c = conn.0.lock().unwrap();
         let count: i64 = c
             .query_row(
-                "SELECT COUNT(*) FROM ceremony_priorities WHERE citation_id = ?1",
+                "SELECT COUNT(*) FROM ceremony_priorities cp JOIN todos t ON t.id = cp.todo_id WHERE json_extract(t.attrs, '$.citation_id') = ?1",
                 rusqlite::params![&item_ids[0]],
                 |r| r.get(0),
             )
@@ -1263,7 +1319,7 @@ mod tests {
         assert_eq!(item_count, 0);
         let prio_count: i64 = c
             .query_row(
-                "SELECT COUNT(*) FROM ceremony_priorities WHERE citation_id = ?1",
+                "SELECT COUNT(*) FROM ceremony_priorities cp JOIN todos t ON t.id = cp.todo_id WHERE json_extract(t.attrs, '$.citation_id') = ?1",
                 rusqlite::params![&item_ids[0]],
                 |r| r.get(0),
             )

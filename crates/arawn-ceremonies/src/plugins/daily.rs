@@ -209,8 +209,10 @@ impl Ceremony for DailyCeremony {
                 .map_err(|_| CeremonyError::Storage("connection mutex poisoned".into()))?;
             let mut stmt = conn
                 .prepare(
-                    "SELECT p.id, p.body, p.rationale FROM ceremony_priorities p \
+                    "SELECT p.id, td.body, COALESCE(td.rationale, '') \
+                     FROM ceremony_priorities p \
                      JOIN ceremony_tablets t ON p.tablet_id = t.id \
+                     JOIN todos td ON td.id = p.todo_id \
                      WHERE t.kind = 'weekly' AND t.period_key = ?1 \
                            AND p.confirmed_at IS NOT NULL \
                      ORDER BY p.ordinal LIMIT ?2",
@@ -445,17 +447,24 @@ mod tests {
             params!["daily-origin", "2026-05-10", "2026-05-10T07:00:00Z"],
         )
         .unwrap();
-        // Two rolling todos, both open.
+        // Post-V9: rolling todos live in `todos` (view exposes them
+        // back as ceremony_todos_rolling for reads).
         c.execute(
-            "INSERT INTO ceremony_todos_rolling (todo_id, body, origin_tablet_id, created_at, done_at, last_seen_tablet_id) \
-             VALUES (?1, ?2, 'daily-origin', ?3, NULL, 'daily-origin')",
-            params!["todo-1", "Finish daily plugin", "2026-05-10T07:00:00Z"],
+            "INSERT INTO todos (id, body, rationale, kind, workstream, created_at, \
+                                due_at, done_at, archived_at, attrs) \
+             VALUES ('todo-1', 'Finish daily plugin', NULL, 'rollover', NULL, \
+                     '2026-05-10T07:00:00Z', NULL, NULL, NULL, \
+                     json_object('origin_tablet_id','daily-origin','last_seen_tablet_id','daily-origin'))",
+            [],
         )
         .unwrap();
         c.execute(
-            "INSERT INTO ceremony_todos_rolling (todo_id, body, origin_tablet_id, created_at, done_at, last_seen_tablet_id) \
-             VALUES (?1, ?2, 'daily-origin', ?3, NULL, 'daily-origin')",
-            params!["todo-2", "Write tests", "2026-05-11T07:00:00Z"],
+            "INSERT INTO todos (id, body, rationale, kind, workstream, created_at, \
+                                due_at, done_at, archived_at, attrs) \
+             VALUES ('todo-2', 'Write tests', NULL, 'rollover', NULL, \
+                     '2026-05-11T07:00:00Z', NULL, NULL, NULL, \
+                     json_object('origin_tablet_id','daily-origin','last_seen_tablet_id','daily-origin'))",
+            [],
         )
         .unwrap();
         // Weekly tablet + confirmed priority for this iso_week.
@@ -466,9 +475,17 @@ mod tests {
         )
         .unwrap();
         c.execute(
-            "INSERT INTO ceremony_priorities (id, tablet_id, body, rationale, citation_id, confirmed_at, done_at, ordinal) \
-             VALUES (?1, 'weekly-tablet', ?2, ?3, NULL, ?4, NULL, 0)",
-            params!["prio-1", "Ship daily plugin", "from last retro", "2026-05-11T08:00:00Z"],
+            "INSERT INTO todos (id, body, rationale, kind, workstream, created_at, \
+                                due_at, done_at, archived_at, attrs) \
+             VALUES ('td-prio-1', 'Ship daily plugin', 'from last retro', 'weekly_priority', \
+                     NULL, '2026-05-11T08:00:00Z', NULL, NULL, NULL, '{}')",
+            [],
+        )
+        .unwrap();
+        c.execute(
+            "INSERT INTO ceremony_priorities (id, tablet_id, todo_id, confirmed_at, ordinal) \
+             VALUES (?1, 'weekly-tablet', 'td-prio-1', ?2, 0)",
+            params!["prio-1", "2026-05-11T08:00:00Z"],
         )
         .unwrap();
         // Ensure the period_key under test doesn't already have a

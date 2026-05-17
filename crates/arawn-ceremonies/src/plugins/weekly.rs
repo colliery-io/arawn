@@ -704,8 +704,10 @@ mod tests {
         // A hot rolling todo created > 7d ago.
         let old = (Utc::now() - Duration::days(14)).to_rfc3339();
         c.execute(
-            "INSERT INTO ceremony_todos_rolling (todo_id, body, origin_tablet_id, created_at, done_at, last_seen_tablet_id) \
-             VALUES (?1, ?2, 'daily-origin', ?3, NULL, 'daily-origin')",
+            "INSERT INTO todos (id, body, rationale, kind, workstream, created_at, \
+                                due_at, done_at, archived_at, attrs) \
+             VALUES (?1, ?2, NULL, 'rollover', NULL, ?3, NULL, NULL, NULL, \
+                     json_object('origin_tablet_id','daily-origin','last_seen_tablet_id','daily-origin'))",
             params!["hot-todo-1", "Wire OAuth refresh", old],
         )
         .unwrap();

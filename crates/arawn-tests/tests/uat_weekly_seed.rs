@@ -137,10 +137,11 @@ pub fn apply(data_dir: &Path) -> Result<WeeklySeedSummary, String> {
     ];
     for (id, body) in todos {
         conn.execute(
-            "INSERT OR IGNORE INTO ceremony_todos_rolling \
-             (todo_id, body, origin_tablet_id, created_at, done_at, last_seen_tablet_id) \
-             VALUES (?1, ?2, ?3, ?4, NULL, ?3)",
-            params![id, body, &prior_weekly_id, &created_old],
+            "INSERT OR IGNORE INTO todos \
+             (id, body, rationale, kind, workstream, created_at, due_at, done_at, archived_at, attrs) \
+             VALUES (?1, ?2, NULL, 'rollover', NULL, ?3, NULL, NULL, NULL, \
+                     json_object('origin_tablet_id', ?4, 'last_seen_tablet_id', ?4))",
+            params![id, body, &created_old, &prior_weekly_id],
         )
         .map_err(|e| format!("hot todo: {e}"))?;
         summary.rolling_todos += 1;

@@ -191,8 +191,9 @@ impl Ceremony for RetroCeremony {
         // this iso_week's period_key (kind=weekly).
         let mut stmt = conn
             .prepare(
-                "SELECT p.id, p.body, p.done_at FROM ceremony_priorities p \
+                "SELECT p.id, td.body, td.done_at FROM ceremony_priorities p \
                  JOIN ceremony_tablets t ON p.tablet_id = t.id \
+                 JOIN todos td ON td.id = p.todo_id \
                  WHERE t.kind = 'weekly' AND t.period_key = ?1 \
                        AND p.confirmed_at IS NOT NULL \
                  ORDER BY p.ordinal",
@@ -482,10 +483,20 @@ mod tests {
             params!["weekly-W20", iso_week, "2026-05-11T07:00:00Z"],
         )
         .unwrap();
+        // Post-V9: priorities are thin links to todos. Insert the
+        // todo first, then the priority row.
         c.execute(
-            "INSERT INTO ceremony_priorities (id, tablet_id, body, rationale, citation_id, confirmed_at, done_at, ordinal) \
-             VALUES (?1, ?2, ?3, ?4, NULL, ?5, NULL, 0)",
-            params!["prio-1", "weekly-W20", "Ship retro plugin", "carry-over", "2026-05-11T08:00:00Z"],
+            "INSERT INTO todos (id, body, rationale, kind, workstream, created_at, \
+                                due_at, done_at, archived_at, attrs) \
+             VALUES ('td-prio-1', 'Ship retro plugin', 'carry-over', 'weekly_priority', \
+                     NULL, '2026-05-11T08:00:00Z', NULL, NULL, NULL, '{}')",
+            [],
+        )
+        .unwrap();
+        c.execute(
+            "INSERT INTO ceremony_priorities (id, tablet_id, todo_id, confirmed_at, ordinal) \
+             VALUES (?1, ?2, ?3, ?4, 0)",
+            params!["prio-1", "weekly-W20", "td-prio-1", "2026-05-11T08:00:00Z"],
         )
         .unwrap();
     }

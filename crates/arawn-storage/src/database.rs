@@ -129,17 +129,16 @@ mod tests {
     #[test]
     fn v6_ceremony_tables_present() {
         let db = Database::in_memory().unwrap();
-        let expected = [
+        let expected_tables = [
             "ceremony_tablets",
             "ceremony_sections",
             "ceremony_items",
-            "ceremony_todos_rolling",
             "ceremony_priorities",
             "ceremony_activity_rollup",
             "ceremony_patterns_detected",
             "ceremony_diary",
         ];
-        for table in expected {
+        for table in expected_tables {
             let count: i64 = db
                 .conn()
                 .query_row(
@@ -150,6 +149,17 @@ mod tests {
                 .unwrap();
             assert_eq!(count, 1, "missing table after V6 migration: {table}");
         }
+        // Post-V9: ceremony_todos_rolling is a view over `todos`.
+        let view_count: i64 = db
+            .conn()
+            .query_row(
+                "SELECT COUNT(*) FROM sqlite_master \
+                 WHERE type='view' AND name='ceremony_todos_rolling'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(view_count, 1, "ceremony_todos_rolling view missing");
     }
 
     #[test]

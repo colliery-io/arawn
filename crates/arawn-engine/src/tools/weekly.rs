@@ -659,7 +659,9 @@ mod tests {
         let conn = Connection::open(tmp.path().join("test.db")).unwrap();
         let cnt: i64 = conn
             .query_row(
-                "SELECT COUNT(*) FROM ceremony_priorities WHERE citation_id = ?1",
+                "SELECT COUNT(*) FROM ceremony_priorities cp \
+                 JOIN todos t ON t.id = cp.todo_id \
+                 WHERE json_extract(t.attrs, '$.citation_id') = ?1",
                 params![&item_id],
                 |row| row.get(0),
             )
@@ -738,7 +740,10 @@ mod tests {
         let conn = Connection::open(tmp.path().join("test.db")).unwrap();
         let cnt: i64 = conn
             .query_row(
-                "SELECT COUNT(*) FROM ceremony_priorities WHERE tablet_id = ?1 AND citation_id IS NULL",
+                "SELECT COUNT(*) FROM ceremony_priorities cp \
+                 JOIN todos t ON t.id = cp.todo_id \
+                 WHERE cp.tablet_id = ?1 \
+                   AND json_extract(t.attrs, '$.citation_id') IS NULL",
                 params![&tablet_id],
                 |row| row.get(0),
             )

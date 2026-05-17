@@ -79,10 +79,11 @@ pub fn apply(data_dir: &Path) -> Result<DailySeedSummary, String> {
     ];
     for (id, body) in todos {
         conn.execute(
-            "INSERT OR IGNORE INTO ceremony_todos_rolling \
-             (todo_id, body, origin_tablet_id, created_at, done_at, last_seen_tablet_id) \
-             VALUES (?1, ?2, ?3, ?4, NULL, ?3)",
-            params![id, body, &origin_id, &created_at],
+            "INSERT OR IGNORE INTO todos \
+             (id, body, rationale, kind, workstream, created_at, due_at, done_at, archived_at, attrs) \
+             VALUES (?1, ?2, NULL, 'rollover', NULL, ?3, NULL, NULL, NULL, \
+                     json_object('origin_tablet_id', ?4, 'last_seen_tablet_id', ?4))",
+            params![id, body, &created_at, &origin_id],
         )
         .map_err(|e| format!("rolling todo insert: {e}"))?;
         summary.rolling_todos += 1;
@@ -111,18 +112,19 @@ pub fn apply(data_dir: &Path) -> Result<DailySeedSummary, String> {
         ),
     ];
     for (idx, (id, body, rationale)) in priorities.iter().enumerate() {
+        let todo_id = format!("td-{id}");
+        conn.execute(
+            "INSERT OR IGNORE INTO todos \
+             (id, body, rationale, kind, workstream, created_at, due_at, done_at, archived_at, attrs) \
+             VALUES (?1, ?2, ?3, 'weekly_priority', NULL, ?4, NULL, NULL, NULL, '{}')",
+            params![&todo_id, body, rationale, &weekly_generated],
+        )
+        .map_err(|e| format!("priority todo insert: {e}"))?;
         conn.execute(
             "INSERT OR IGNORE INTO ceremony_priorities \
-             (id, tablet_id, body, rationale, citation_id, confirmed_at, done_at, ordinal) \
-             VALUES (?1, ?2, ?3, ?4, NULL, ?5, NULL, ?6)",
-            params![
-                id,
-                &weekly_id,
-                body,
-                rationale,
-                &weekly_generated,
-                idx as i64
-            ],
+             (id, tablet_id, todo_id, confirmed_at, ordinal) \
+             VALUES (?1, ?2, ?3, ?4, ?5)",
+            params![id, &weekly_id, &todo_id, &weekly_generated, idx as i64],
         )
         .map_err(|e| format!("priority insert: {e}"))?;
         summary.priorities += 1;

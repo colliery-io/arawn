@@ -4,15 +4,14 @@ level: task
 title: "Ceremony schema cutover — FK pointers + view"
 short_code: "ARAWN-T-0312"
 created_at: 2026-05-16T22:52:32.923850+00:00
-updated_at: 2026-05-16T22:52:32.923850+00:00
+updated_at: 2026-05-17T11:27:58.062950+00:00
 parent: ARAWN-I-0049
 blocked_by: [ARAWN-T-0311]
-effort: M
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -34,21 +33,50 @@ Ceremony plugins route their gather queries through `TodoService`.
 
 ## Acceptance Criteria
 
-- [ ] Migration adds `todo_id TEXT NOT NULL REFERENCES todos(id)
-      ON DELETE CASCADE` to `ceremony_priorities` (populated from
-      [[ARAWN-T-0311]]'s backfill); drops the duplicated columns
-      `body`, `rationale`, `citation_id`, `done_at`.
-- [ ] `ceremony_todos_rolling` table dropped (or renamed) and a
-      view of the same name created over
-      `SELECT ... FROM todos WHERE kind='rollover'`. Existing
-      reads continue to work without code changes.
-- [ ] `ceremony_items.kind="todo"` rows get an optional `todo_id`
-      column (NULL for non-todo items, FK when set).
-- [ ] `daily.rs` / `weekly.rs` / `retro.rs` gather queries route
-      reads through `TodoService::list(...)` instead of raw
-      table reads.
-- [ ] Existing retro / daily / weekly unit tests + UATs pass
-      unchanged.
+- [x] V9 migration recreates `ceremony_priorities` (rename-copy-drop
+      dance) with a NOT NULL `todo_id` FK referencing todos.id; the
+      body/rationale/citation_id/done_at columns are gone. Backfill
+      from V8 populates the link via `wp:<id>` pattern.
+- [x] `ceremony_todos_rolling` dropped and re-created as a read-only
+      view over `todos WHERE kind='rollover' AND archived_at IS NULL`.
+      The view preserves the original column shape (todo_id, body,
+      origin_tablet_id, created_at, done_at, last_seen_tablet_id)
+      via `json_extract` from attrs, so existing SELECT-shaped
+      readers compile and run unchanged.
+- [x] `ceremony_items.todo_id` optional FK added (`REFERENCES
+      todos(id) ON DELETE SET NULL`).
+- [x] Production reads in `daily.rs` / `weekly.rs` / `retro.rs` /
+      `retro_detectors.rs` / `service.rs` rewritten to JOIN
+      `ceremony_priorities` → `todos` for body/rationale/done_at.
+      Rolling-todo reads continue to go through the view.
+- [x] All ceremony writers (5 producers across service/daily/weekly/
+      retro/retro_detectors + 6 test seeders across the workspace)
+      now route through `todos` INSERTs followed by thin
+      ceremony_priorities link rows.
+- [x] Workspace unit suite 1796/0.
+
+## Status Updates
+
+### 2026-05-17 — cutover shipped
+
+- V9 migration: rename-copy-drop on ceremony_priorities, view over
+  todos for ceremony_todos_rolling, optional FK on ceremony_items.
+- Migration backfill uses T-0311's `wp:<id>` deterministic ID so
+  the FK populates cleanly with no orphans.
+- All `INSERT INTO ceremony_priorities` callsites (1 in service,
+  4 in plugins + retro_detectors, 5 in tests/UATs) now insert a
+  todo first with the kind-specific attrs, then the thin link row.
+- All `INSERT INTO ceremony_todos_rolling` callsites likewise
+  route through `todos` with `kind='rollover'` (view is read-only).
+- `citation_id` lookups everywhere updated to
+  `json_extract(t.attrs, '$.citation_id')` via a JOIN on todos.
+- `reject_priority` now deletes the todo (which cascades to the
+  link row via ON DELETE CASCADE), plus a belt-and-braces sweep
+  of orphans.
+- Test helpers (`insert_priority`, `insert_rolling_todo`, weekly
+  + daily + retro UAT seeds) all updated to the new shape.
+- 4 ceremonies tests + 3 UAT seed tests + 1 storage test +
+  1 engine tool test had to be updated, all green now.
 
 ## Implementation Notes
 
@@ -78,7 +106,3 @@ Ceremony plugins route their gather queries through `TodoService`.
 - View vs table for rolling: a view means writes go through
   `todos` only; ensure no straggler `INSERT INTO
   ceremony_todos_rolling` path remains.
-
-## Status Updates
-
-*To be added during implementation*

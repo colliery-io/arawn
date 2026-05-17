@@ -88,20 +88,31 @@ fn seed_weekly_tablet_with_priorities(
     )
     .unwrap();
     for (i, (pid, confirmed, done)) in priorities.iter().enumerate() {
+        let todo_id = format!("td-{pid}");
         c.execute(
-            "INSERT INTO ceremony_priorities (id, tablet_id, body, rationale, citation_id, \
-             confirmed_at, done_at, ordinal) \
-             VALUES (?1, ?2, 'body', 'rationale', NULL, ?3, ?4, ?5)",
+            "INSERT INTO todos (id, body, rationale, kind, workstream, created_at, \
+                                due_at, done_at, archived_at, attrs) \
+             VALUES (?1, 'body', 'rationale', 'weekly_priority', NULL, '2026-05-11T07:00:00Z', \
+                     NULL, ?2, NULL, '{}')",
             params![
-                pid,
-                id,
-                if *confirmed {
-                    Some("2026-05-11T08:00:00Z")
+                &todo_id,
+                if *done {
+                    Some("2026-05-15T17:00:00Z")
                 } else {
                     None
                 },
-                if *done {
-                    Some("2026-05-15T17:00:00Z")
+            ],
+        )
+        .unwrap();
+        c.execute(
+            "INSERT INTO ceremony_priorities (id, tablet_id, todo_id, confirmed_at, ordinal) \
+             VALUES (?1, ?2, ?3, ?4, ?5)",
+            params![
+                pid,
+                id,
+                &todo_id,
+                if *confirmed {
+                    Some("2026-05-11T08:00:00Z")
                 } else {
                     None
                 },
@@ -131,11 +142,12 @@ fn seed_rolling_todo(
 ) {
     let c = conn.0.lock().unwrap();
     c.execute(
-        "INSERT INTO ceremony_todos_rolling (todo_id, body, origin_tablet_id, created_at, done_at, last_seen_tablet_id) \
-         VALUES (?1, 'rolled-over', ?2, ?3, ?4, ?5)",
+        "INSERT INTO todos (id, body, rationale, kind, workstream, created_at, \
+                            due_at, done_at, archived_at, attrs) \
+         VALUES (?1, 'rolled-over', NULL, 'rollover', NULL, ?2, NULL, ?3, NULL, \
+                 json_object('origin_tablet_id', ?4, 'last_seen_tablet_id', ?4))",
         params![
             id,
-            last_seen_tablet,
             created_at,
             if done { Some("2026-05-15T17:00:00Z") } else { None },
             last_seen_tablet,
