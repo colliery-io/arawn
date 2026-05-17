@@ -43,6 +43,27 @@ impl Database {
         Ok(())
     }
 
+    /// Test-only constructor that stops migrations at the given
+    /// version. Used to assemble pre-upgrade fixtures so backfill
+    /// migrations can be exercised against realistic input.
+    #[cfg(test)]
+    pub fn in_memory_at_version(version: i32) -> Result<Self, StorageError> {
+        use refinery::Target;
+        let conn = rusqlite::Connection::open_in_memory()?;
+        let mut db = Self { conn };
+        embedded::migrations::runner()
+            .set_target(Target::Version(version))
+            .run(&mut db.conn)
+            .map_err(|e| StorageError::Migration(e.to_string()))?;
+        Ok(db)
+    }
+
+    /// Test-only — run any remaining pending migrations to head.
+    #[cfg(test)]
+    pub fn run_pending_migrations(&mut self) -> Result<(), StorageError> {
+        self.run_migrations()
+    }
+
     /// Get a reference to the underlying connection.
     pub fn conn(&self) -> &Connection {
         &self.conn

@@ -673,6 +673,124 @@ mod tests {
     }
 
     #[test]
+    fn v8_backfills_ceremony_priorities_and_rolling_todos() {
+        // Build V7 with ceremony state seeded, then apply V8 backfill.
+        let mut db = Database::in_memory_at_version(7).unwrap();
+        {
+            let conn = db.conn();
+            // Seed two tablets — a weekly with two priorities, a daily
+            // with two rollover todos.
+            conn.execute(
+                "INSERT INTO ceremony_tablets (id, kind, period_key, generated_at, status, workstreams_scanned) \
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+                ["weekly-2026-W20", "weekly", "2026-W20", "2026-05-11T08:00:00Z", "reviewed", "[]"],
+            ).unwrap();
+            conn.execute(
+                "INSERT INTO ceremony_tablets (id, kind, period_key, generated_at, status, workstreams_scanned) \
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+                ["daily-2026-05-15", "daily", "2026-05-15", "2026-05-15T07:00:00Z", "open", "[]"],
+            ).unwrap();
+            // Two confirmed priorities — one done, one open.
+            for (idx, (id, body, done)) in [
+                ("p-a", "ship I-0049", Some("2026-05-14T12:00:00Z")),
+                ("p-b", "ship I-0050", None),
+            ]
+            .iter()
+            .enumerate()
+            {
+                conn.execute(
+                    "INSERT INTO ceremony_priorities (id, tablet_id, body, rationale, citation_id, confirmed_at, done_at, ordinal) \
+                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+                    rusqlite::params![
+                        id,
+                        "weekly-2026-W20",
+                        body,
+                        "",
+                        "cite-x",
+                        "2026-05-11T09:00:00Z",
+                        *done,
+                        idx as i64,
+                    ],
+                )
+                .unwrap();
+            }
+            // Two rollover todos — one done, one open.
+            for (id, body, done) in [
+                ("t-a", "review pr", Some("2026-05-15T11:00:00Z")),
+                ("t-b", "write doc", None),
+            ] {
+                conn.execute(
+                    "INSERT INTO ceremony_todos_rolling (todo_id, body, origin_tablet_id, created_at, done_at, last_seen_tablet_id) \
+                     VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+                    rusqlite::params![
+                        id,
+                        body,
+                        "daily-2026-05-15",
+                        "2026-05-14T07:00:00Z",
+                        done,
+                        "daily-2026-05-15",
+                    ],
+                )
+                .unwrap();
+            }
+        }
+        // Run V8.
+        db.run_pending_migrations().unwrap();
+
+        let svc = TodoService::new(&db);
+        let all = svc
+            .list(ListFilter {
+                include_archived: Some(true),
+                ..Default::default()
+            })
+            .unwrap();
+        // 2 priorities + 2 rollover = 4.
+        assert_eq!(all.len(), 4);
+
+        // Weekly priority round-trip.
+        let p_a = svc.get("wp:p-a").unwrap().expect("wp:p-a backfilled");
+        assert_eq!(p_a.kind, "weekly_priority");
+        assert_eq!(p_a.body, "ship I-0049");
+        assert!(p_a.done_at.is_some());
+        assert!(p_a.rationale.is_none(), "empty rationale becomes NULL");
+        assert_eq!(p_a.attrs["tablet_id"], "weekly-2026-W20");
+        assert_eq!(p_a.attrs["ordinal"], 0);
+        assert_eq!(p_a.attrs["confirmed_at"], "2026-05-11T09:00:00Z");
+        assert_eq!(p_a.attrs["citation_id"], "cite-x");
+        // created_at copied from the parent tablet's generated_at.
+        assert_eq!(p_a.created_at.to_rfc3339(), "2026-05-11T08:00:00+00:00");
+
+        let p_b = svc.get("wp:p-b").unwrap().expect("wp:p-b backfilled");
+        assert!(p_b.done_at.is_none());
+
+        // Rollover round-trip.
+        let t_a = svc.get("rl:t-a").unwrap().expect("rl:t-a backfilled");
+        assert_eq!(t_a.kind, "rollover");
+        assert_eq!(t_a.body, "review pr");
+        assert!(t_a.done_at.is_some());
+        assert_eq!(t_a.attrs["origin_tablet_id"], "daily-2026-05-15");
+        assert_eq!(t_a.attrs["last_seen_tablet_id"], "daily-2026-05-15");
+
+        let t_b = svc.get("rl:t-b").unwrap().expect("rl:t-b backfilled");
+        assert!(t_b.done_at.is_none());
+    }
+
+    #[test]
+    fn v8_backfill_is_a_no_op_on_empty_ceremony_state() {
+        // Fresh DB with no ceremony rows — V8 should run cleanly and
+        // produce zero todos.
+        let db = db();
+        let svc = TodoService::new(&db);
+        let all = svc
+            .list(ListFilter {
+                include_archived: Some(true),
+                ..Default::default()
+            })
+            .unwrap();
+        assert_eq!(all.len(), 0);
+    }
+
+    #[test]
     fn events_emitted_on_create_done_undo_patch_archive() {
         let db = db();
         let (tx, mut rx) = todo_event_channel();
