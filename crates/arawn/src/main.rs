@@ -1632,6 +1632,33 @@ async fn main() -> Result<()> {
             );
         }
 
+        // Forward TodoEvents onto the notice broadcast so the TUI and
+        // any other notice subscriber can react. Mirrors the ceremony
+        // event forwarder pattern (T-0308).
+        {
+            let notice_tx_todo = service.notice_sender();
+            let mut todo_rx = service.subscribe_todo_events();
+            tokio::spawn(async move {
+                loop {
+                    match todo_rx.recv().await {
+                        Ok(ev) => {
+                            let message =
+                                serde_json::to_string(&ev).unwrap_or_else(|_| "{}".to_string());
+                            let notice = arawn_service::ServerNotice {
+                                level: "info".into(),
+                                category: "todo_event".into(),
+                                message,
+                                timestamp: chrono::Utc::now().to_rfc3339(),
+                            };
+                            let _ = notice_tx_todo.send(notice);
+                        }
+                        Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => continue,
+                        Err(_) => break,
+                    }
+                }
+            });
+        }
+
         // Wire watchers into the broadcast so reload outcomes reach the TUI.
         let notice_tx_plugin = service.notice_sender();
         let _plugin_watcher = plugin_runtime.watch(

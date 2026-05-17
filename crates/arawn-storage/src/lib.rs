@@ -15,5 +15,8 @@ pub use jsonl::{JsonlMessageStore, workstream_dir_name};
 pub use layout::DataLayout;
 pub use session_store::{SessionMeta, SessionStore};
 pub use store::Store;
-pub use todos::{ListFilter, NewTodo, Todo, TodoPatch, TodoService};
+pub use todos::{
+    ListFilter, NewTodo, Todo, TodoEvent, TodoEventReceiver, TodoEventSender, TodoPatch,
+    TodoService, todo_event_channel,
+};
 pub use workstream_store::WorkstreamStore;

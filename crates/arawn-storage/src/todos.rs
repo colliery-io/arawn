@@ -16,10 +16,56 @@
 use chrono::{DateTime, Utc};
 use rusqlite::{OptionalExtension, params_from_iter, types::Value};
 use serde::{Deserialize, Serialize};
+use tokio::sync::broadcast;
 use uuid::Uuid;
 
 use crate::database::Database;
 use crate::error::StorageError;
+
+/// Broadcast channel capacity for `TodoEvent`. Same order as
+/// CeremonyEvent — burst of `Updated` on a list-confirm shouldn't
+/// drop on a single slow subscriber.
+pub const TODO_EVENT_CAPACITY: usize = 64;
+
+/// All todo state-change events. Payloads stay tight (id/kind/done_at)
+/// so the channel scales; subscribers can re-fetch the full row via
+/// `TodoService::get` if they need more.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(tag = "event", content = "data")]
+pub enum TodoEvent {
+    Created {
+        id: String,
+        kind: String,
+    },
+    Completed {
+        id: String,
+        kind: String,
+        done_at: DateTime<Utc>,
+    },
+    /// Emitted on `patch`, `undo`, and other in-place mutations.
+    Updated {
+        id: String,
+        kind: String,
+    },
+    Archived {
+        id: String,
+        kind: String,
+    },
+}
+
+pub type TodoEventSender = broadcast::Sender<TodoEvent>;
+pub type TodoEventReceiver = broadcast::Receiver<TodoEvent>;
+
+/// Build a fresh todo-event channel with the default capacity.
+pub fn todo_event_channel() -> (TodoEventSender, TodoEventReceiver) {
+    broadcast::channel(TODO_EVENT_CAPACITY)
+}
+
+fn emit(sender: &Option<TodoEventSender>, event: TodoEvent) {
+    if let Some(tx) = sender {
+        let _ = tx.send(event);
+    }
+}
 
 /// One todo row.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -79,11 +125,20 @@ pub struct ListFilter {
 
 pub struct TodoService<'a> {
     db: &'a Database,
+    events: Option<TodoEventSender>,
 }
 
 impl<'a> TodoService<'a> {
     pub fn new(db: &'a Database) -> Self {
-        Self { db }
+        Self { db, events: None }
+    }
+
+    /// Attach a broadcast sender. Every mutating method emits a
+    /// `TodoEvent` to subscribers; methods are no-op for events when
+    /// no sender is wired (tests, read-only contexts).
+    pub fn with_events(mut self, events: TodoEventSender) -> Self {
+        self.events = Some(events);
+        self
     }
 
     pub fn create(&self, req: NewTodo) -> Result<Todo, StorageError> {
@@ -116,9 +171,17 @@ impl<'a> TodoService<'a> {
                 attrs_str,
             ),
         )?;
-        self.get(&id)?.ok_or_else(|| {
+        let row = self.get(&id)?.ok_or_else(|| {
             StorageError::InvalidOperation(format!("todo {id} vanished after insert"))
-        })
+        })?;
+        emit(
+            &self.events,
+            TodoEvent::Created {
+                id: row.id.clone(),
+                kind: row.kind.clone(),
+            },
+        );
+        Ok(row)
     }
 
     pub fn get(&self, id: &str) -> Result<Option<Todo>, StorageError> {
@@ -149,8 +212,20 @@ impl<'a> TodoService<'a> {
             "UPDATE todos SET done_at = ?1 WHERE id = ?2 AND done_at IS NULL",
             (now.to_rfc3339(), id),
         )?;
-        self.get(id)?
-            .ok_or_else(|| StorageError::NotFound(format!("todo {id}")))
+        let row = self
+            .get(id)?
+            .ok_or_else(|| StorageError::NotFound(format!("todo {id}")))?;
+        if let Some(done_at) = row.done_at {
+            emit(
+                &self.events,
+                TodoEvent::Completed {
+                    id: row.id.clone(),
+                    kind: row.kind.clone(),
+                    done_at,
+                },
+            );
+        }
+        Ok(row)
     }
 
     /// Idempotent — undoing a not-done row is a no-op.
@@ -164,8 +239,17 @@ impl<'a> TodoService<'a> {
         self.db
             .conn()
             .execute("UPDATE todos SET done_at = NULL WHERE id = ?1", [id])?;
-        self.get(id)?
-            .ok_or_else(|| StorageError::NotFound(format!("todo {id}")))
+        let row = self
+            .get(id)?
+            .ok_or_else(|| StorageError::NotFound(format!("todo {id}")))?;
+        emit(
+            &self.events,
+            TodoEvent::Updated {
+                id: row.id.clone(),
+                kind: row.kind.clone(),
+            },
+        );
+        Ok(row)
     }
 
     pub fn patch(&self, id: &str, patch: TodoPatch) -> Result<Todo, StorageError> {
@@ -210,8 +294,17 @@ impl<'a> TodoService<'a> {
         let sql = format!("UPDATE todos SET {} WHERE id = ?", sets.join(", "));
         params.push(Value::Text(id.to_string()));
         self.db.conn().execute(&sql, params_from_iter(params))?;
-        self.get(id)?
-            .ok_or_else(|| StorageError::NotFound(format!("todo {id}")))
+        let row = self
+            .get(id)?
+            .ok_or_else(|| StorageError::NotFound(format!("todo {id}")))?;
+        emit(
+            &self.events,
+            TodoEvent::Updated {
+                id: row.id.clone(),
+                kind: row.kind.clone(),
+            },
+        );
+        Ok(row)
     }
 
     /// Soft-delete. The row stays in the table so backrefs from
@@ -229,6 +322,13 @@ impl<'a> TodoService<'a> {
             "UPDATE todos SET archived_at = ?1 WHERE id = ?2",
             (now.to_rfc3339(), id),
         )?;
+        emit(
+            &self.events,
+            TodoEvent::Archived {
+                id: existing.id.clone(),
+                kind: existing.kind.clone(),
+            },
+        );
         Ok(())
     }
 
@@ -570,6 +670,62 @@ mod tests {
         let hits = svc.search("migration").unwrap();
         assert_eq!(hits.len(), 1, "only un-archived match returned");
         assert_eq!(hits[0].id, a.id);
+    }
+
+    #[test]
+    fn events_emitted_on_create_done_undo_patch_archive() {
+        let db = db();
+        let (tx, mut rx) = todo_event_channel();
+        let svc = TodoService::new(&db).with_events(tx);
+
+        let t = svc.create(new_user("alpha")).unwrap();
+        let _ = svc.mark_done(&t.id).unwrap();
+        let _ = svc.undo(&t.id).unwrap();
+        let _ = svc
+            .patch(
+                &t.id,
+                TodoPatch {
+                    body: Some("alpha v2".into()),
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+        svc.archive(&t.id).unwrap();
+
+        // Drain the channel and inspect the variants in order.
+        let mut variants: Vec<&'static str> = Vec::new();
+        while let Ok(ev) = rx.try_recv() {
+            variants.push(match ev {
+                TodoEvent::Created { .. } => "Created",
+                TodoEvent::Completed { .. } => "Completed",
+                TodoEvent::Updated { .. } => "Updated",
+                TodoEvent::Archived { .. } => "Archived",
+            });
+        }
+        assert_eq!(
+            variants,
+            vec!["Created", "Completed", "Updated", "Updated", "Archived"]
+        );
+    }
+
+    #[test]
+    fn events_skipped_on_idempotent_paths() {
+        let db = db();
+        let (tx, mut rx) = todo_event_channel();
+        let svc = TodoService::new(&db).with_events(tx);
+        let t = svc.create(new_user("idempotent")).unwrap();
+        // Drain the Created event.
+        let _ = rx.try_recv().unwrap();
+        // Second mark_done is a no-op — no event.
+        svc.mark_done(&t.id).unwrap();
+        let _ = rx.try_recv().unwrap(); // first real Completed
+        svc.mark_done(&t.id).unwrap(); // idempotent
+        assert!(rx.try_recv().is_err(), "no event on idempotent mark_done");
+        // Undoing twice — the second is a no-op.
+        svc.undo(&t.id).unwrap();
+        let _ = rx.try_recv().unwrap();
+        svc.undo(&t.id).unwrap();
+        assert!(rx.try_recv().is_err(), "no event on idempotent undo");
     }
 
     #[test]

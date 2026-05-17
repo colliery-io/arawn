@@ -4,15 +4,14 @@ level: task
 title: "TodoEvent broadcast + todos.* WS-RPC methods"
 short_code: "ARAWN-T-0310"
 created_at: 2026-05-16T22:52:29.858042+00:00
-updated_at: 2026-05-16T22:52:29.858042+00:00
+updated_at: 2026-05-17T01:28:23.681386+00:00
 parent: ARAWN-I-0049
 blocked_by: [ARAWN-T-0309]
-effort: S
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -33,17 +32,42 @@ talk to.
 
 ## Acceptance Criteria
 
-- [ ] `TodoEvent::{Created, Completed, Updated, Archived}` variants
-      emitted by every mutating `TodoService` method onto the
-      existing `tokio::sync::broadcast` notice channel.
-- [ ] WS-RPC methods registered: `todos.create / list / get /
+- [x] `TodoEvent::{Created, Completed, Updated, Archived}` variants
+      emitted by every mutating `TodoService` method via the
+      `with_events` builder.
+- [x] WS-RPC methods registered: `todos.create / list / get /
       done / undo / patch / archive / search`.
-- [ ] Each method maps `TodoServiceError` → a stable error code
-      (`todo_error`) with `details.kind` discriminator.
-- [ ] `RPC_METHODS` array in `ws_server.rs` updated; `todos.*`
-      prefix matcher added.
-- [ ] Service-level integration test invokes create → list →
-      done → undo round-trip via the RPC layer.
+- [x] Each method maps `StorageError` → `todo_error` with
+      `details.kind` discriminator (`not_found`, `invalid_operation`,
+      `database`, `io`, `json`, `migration`).
+- [x] `RPC_METHODS` array in `ws_server.rs` updated; `todos.*`
+      prefix matcher dispatches through `handle_todo_rpc`.
+- [x] Service-level integration test (`todos_rpc_round_trip` in
+      arawn-tests/websocket.rs) drives create → list → get → done
+      → undo → patch → search → archive end-to-end. Second test
+      verifies the error envelope on a missing id.
+
+## Status Updates
+
+### 2026-05-17 — shipped
+
+- `TodoEvent` tagged enum with 4 variants + `todo_event_channel`
+  helper. Payloads stay tight (id + kind, plus `done_at` on
+  Completed) so the broadcast stays responsive.
+- `TodoService::with_events(sender)` builder — opt-in event
+  emission. Mutations emit only on real state transitions
+  (idempotent paths stay quiet).
+- `LocalService.todo_event_tx` + `todo_event_sender()` /
+  `subscribe_todo_events()` accessors. RPC handlers clone the
+  sender when constructing a `TodoService`.
+- Forwarder task in main.rs wraps `TodoEvent` into
+  `ServerNotice { category: "todo_event", message: serde_json }`
+  on the existing notice broadcast — same shape the TUI's
+  category-dispatcher already understands.
+- 2 new storage unit tests (event ordering across all 5 ops;
+  idempotent paths skip emission) + 2 new WS integration tests.
+- arawn-storage 70/70, arawn-tests/websocket 16/16, full
+  workspace build clean.
 
 ## Implementation Notes
 
@@ -69,7 +93,3 @@ talk to.
 - Channel saturation: high-volume `Updated` events could spam
   the broadcast. Keep payload tight (id + kind + done_at) and
   let consumers re-fetch on demand if they need more detail.
-
-## Status Updates
-
-*To be added during implementation*

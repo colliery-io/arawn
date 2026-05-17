@@ -89,6 +89,11 @@ pub struct LocalService {
     /// `None` when the binary skipped ceremony wiring (workflow
     /// runner unavailable).
     ceremony_service: Arc<std::sync::RwLock<Option<Arc<arawn_ceremonies::CeremonyService>>>>,
+    /// Broadcast sender for `TodoEvent`s. The WS layer hands a clone
+    /// to every `todos.*` RPC handler that mutates state. A forwarder
+    /// task in main.rs translates events onto `notice_tx` with
+    /// `category="todo_event"`.
+    todo_event_tx: arawn_storage::TodoEventSender,
 }
 
 impl LocalService {
@@ -123,7 +128,20 @@ impl LocalService {
             feed_runtime: Arc::new(std::sync::RwLock::new(None)),
             active_workstream: None,
             ceremony_service: Arc::new(std::sync::RwLock::new(None)),
+            todo_event_tx: arawn_storage::todo_event_channel().0,
         }
+    }
+
+    /// Sender for todo events — RPC handlers clone this when
+    /// constructing a `TodoService` so mutations propagate.
+    pub fn todo_event_sender(&self) -> arawn_storage::TodoEventSender {
+        self.todo_event_tx.clone()
+    }
+
+    /// Subscribe to the todo event channel — main.rs spawns a
+    /// forwarder task that wraps events into `ServerNotice`s.
+    pub fn subscribe_todo_events(&self) -> arawn_storage::TodoEventReceiver {
+        self.todo_event_tx.subscribe()
     }
 
     /// Wire the ceremony service. Called from main.rs after the

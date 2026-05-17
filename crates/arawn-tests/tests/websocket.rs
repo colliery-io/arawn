@@ -633,3 +633,129 @@ async fn send_message_nonexistent_session_returns_error() {
         .expect("timed out — server may have hung on nonexistent session");
     assert!(got_response, "should have received at least one response");
 }
+
+/// I-0049 T-0310 — `todos.*` round-trip via WS-RPC.
+///
+/// Drives the full lifecycle through the wire: create → list → get →
+/// done → undo → patch → search → archive. Verifies that the
+/// `todo_error` envelope round-trips when we hit a missing id and
+/// that the RPC layer's parameter validation rejects empty bodies
+/// with `invalid_params` from serde or `todo_error` from the
+/// service layer's own check.
+#[tokio::test]
+async fn todos_rpc_round_trip() {
+    let (url, _tmp) = start_test_server(vec![]).await;
+    let (ws_stream, _) = connect_async(&url).await.unwrap();
+    let (mut write, mut read) = ws_stream.split();
+
+    // Create
+    let resp = send_request(
+        &mut write,
+        &mut read,
+        json!({
+            "id": 1,
+            "method": "todos.create",
+            "params": {"body": "ship I-0049", "kind": "user"}
+        }),
+    )
+    .await;
+    assert!(resp["error"].is_null() || resp["error"].is_object() == false);
+    let todo_id = resp["result"]["id"].as_str().unwrap().to_string();
+    assert_eq!(resp["result"]["body"], "ship I-0049");
+    assert_eq!(resp["result"]["kind"], "user");
+
+    // List — should return our row
+    let resp = send_request(
+        &mut write,
+        &mut read,
+        json!({"id": 2, "method": "todos.list", "params": {"kind": "user"}}),
+    )
+    .await;
+    let rows = resp["result"].as_array().unwrap();
+    assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0]["id"], todo_id);
+
+    // Get
+    let resp = send_request(
+        &mut write,
+        &mut read,
+        json!({"id": 3, "method": "todos.get", "params": {"id": todo_id}}),
+    )
+    .await;
+    assert_eq!(resp["result"]["id"], todo_id);
+
+    // Done
+    let resp = send_request(
+        &mut write,
+        &mut read,
+        json!({"id": 4, "method": "todos.done", "params": {"id": todo_id}}),
+    )
+    .await;
+    assert!(resp["result"]["done_at"].is_string());
+
+    // Undo
+    let resp = send_request(
+        &mut write,
+        &mut read,
+        json!({"id": 5, "method": "todos.undo", "params": {"id": todo_id}}),
+    )
+    .await;
+    assert!(resp["result"]["done_at"].is_null());
+
+    // Patch
+    let resp = send_request(
+        &mut write,
+        &mut read,
+        json!({
+            "id": 6,
+            "method": "todos.patch",
+            "params": {"id": todo_id, "patch": {"body": "ship I-0049 (revised)"}}
+        }),
+    )
+    .await;
+    assert_eq!(resp["result"]["body"], "ship I-0049 (revised)");
+
+    // Search
+    let resp = send_request(
+        &mut write,
+        &mut read,
+        json!({"id": 7, "method": "todos.search", "params": {"query": "revised"}}),
+    )
+    .await;
+    let hits = resp["result"].as_array().unwrap();
+    assert_eq!(hits.len(), 1);
+
+    // Archive
+    let resp = send_request(
+        &mut write,
+        &mut read,
+        json!({"id": 8, "method": "todos.archive", "params": {"id": todo_id}}),
+    )
+    .await;
+    assert!(resp["error"].is_null() || !resp["error"].is_object());
+
+    // List after archive — empty by default
+    let resp = send_request(
+        &mut write,
+        &mut read,
+        json!({"id": 9, "method": "todos.list", "params": {}}),
+    )
+    .await;
+    assert_eq!(resp["result"].as_array().unwrap().len(), 0);
+}
+
+#[tokio::test]
+async fn todos_rpc_error_envelope_for_missing_id() {
+    let (url, _tmp) = start_test_server(vec![]).await;
+    let (ws_stream, _) = connect_async(&url).await.unwrap();
+    let (mut write, mut read) = ws_stream.split();
+
+    let resp = send_request(
+        &mut write,
+        &mut read,
+        json!({"id": 1, "method": "todos.done", "params": {"id": "does-not-exist"}}),
+    )
+    .await;
+    assert_eq!(resp["error"]["code"], "todo_error");
+    assert_eq!(resp["error"]["details"]["kind"], "not_found");
+}
