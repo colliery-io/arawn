@@ -389,9 +389,7 @@ impl Tool for DailyAddTodoTool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use arawn_ceremonies::{
-        CeremonyDispatcher, CeremonyError, ConnHandle, DispatchOutcome,
-    };
+    use arawn_ceremonies::{CeremonyDispatcher, CeremonyError, ConnHandle, DispatchOutcome};
     use async_trait::async_trait;
     use rusqlite::{Connection, params};
     use serde_json::json;
@@ -470,7 +468,11 @@ mod tests {
         let tool = DailyCurrentTool::new(svc);
         let out = tool.execute(&ctx(), json!({})).await.unwrap();
         assert!(!out.is_error);
-        assert!(out.content.contains(&id), "expected tablet id in: {}", out.content);
+        assert!(
+            out.content.contains(&id),
+            "expected tablet id in: {}",
+            out.content
+        );
     }
 
     #[tokio::test]
@@ -549,7 +551,12 @@ mod tests {
         ];
         for t in tools {
             let schema = t.parameters_schema();
-            assert_eq!(schema["type"], "object", "{} schema missing object type", t.name());
+            assert_eq!(
+                schema["type"],
+                "object",
+                "{} schema missing object type",
+                t.name()
+            );
         }
     }
 }

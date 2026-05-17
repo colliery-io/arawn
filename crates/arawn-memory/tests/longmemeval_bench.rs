@@ -22,10 +22,7 @@ use arawn_memory::*;
 /// Reciprocal Rank Fusion: merge multiple ranked lists into one.
 /// score(doc) = sum over lists: 1 / (k + rank_in_list)
 /// k=60 is standard (Cormack et al. 2009).
-fn reciprocal_rank_fusion(
-    ranked_lists: &[Vec<&str>],
-    k: f64,
-) -> Vec<(String, f64)> {
+fn reciprocal_rank_fusion(ranked_lists: &[Vec<&str>], k: f64) -> Vec<(String, f64)> {
     let mut scores: HashMap<String, f64> = HashMap::new();
     for list in ranked_lists {
         for (rank, id) in list.iter().enumerate() {
@@ -150,11 +147,7 @@ fn ndcg_at_k(retrieved_ids: &[&str], ground_truth_ids: &[String], k: usize) -> f
         idcg += 1.0 / (i as f64 + 2.0).log2();
     }
 
-    if idcg == 0.0 {
-        0.0
-    } else {
-        dcg / idcg
-    }
+    if idcg == 0.0 { 0.0 } else { dcg / idcg }
 }
 
 // ============================================================================
@@ -165,8 +158,7 @@ const DATASET_URL: &str = "https://huggingface.co/datasets/xiaowu0162/longmemeva
 
 fn dataset_path() -> PathBuf {
     let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
-    PathBuf::from(home)
-        .join(".arawn/benchmarks/longmemeval_s_cleaned.json")
+    PathBuf::from(home).join(".arawn/benchmarks/longmemeval_s_cleaned.json")
 }
 
 fn download_dataset() -> Result<PathBuf, String> {
@@ -176,18 +168,15 @@ fn download_dataset() -> Result<PathBuf, String> {
     }
 
     println!("  Downloading LongMemEval dataset from HuggingFace...");
-    std::fs::create_dir_all(path.parent().unwrap())
-        .map_err(|e| format!("create dir: {e}"))?;
+    std::fs::create_dir_all(path.parent().unwrap()).map_err(|e| format!("create dir: {e}"))?;
 
     let response = ureq::get(DATASET_URL)
         .call()
         .map_err(|e| format!("download: {e}"))?;
 
     let mut reader = response.into_body().into_reader();
-    let mut file = std::fs::File::create(&path)
-        .map_err(|e| format!("create file: {e}"))?;
-    std::io::copy(&mut reader, &mut file)
-        .map_err(|e| format!("write file: {e}"))?;
+    let mut file = std::fs::File::create(&path).map_err(|e| format!("create file: {e}"))?;
+    std::io::copy(&mut reader, &mut file).map_err(|e| format!("write file: {e}"))?;
 
     println!("  Dataset saved to {}", path.display());
     Ok(path)
@@ -291,8 +280,14 @@ fn longmemeval_benchmark() {
         }
     }
 
-    println!("  Embeddings cached for {} sessions", session_embeddings.len());
-    println!("\n  Evaluating {} questions (per-question index, user-turns only)...\n", entries.len());
+    println!(
+        "  Embeddings cached for {} sessions",
+        session_embeddings.len()
+    );
+    println!(
+        "\n  Evaluating {} questions (per-question index, user-turns only)...\n",
+        entries.len()
+    );
 
     // Evaluate each question with its own haystack
     let mut results_by_type: HashMap<String, Vec<(f64, f64, f64, f64)>> = HashMap::new();
@@ -368,7 +363,12 @@ fn longmemeval_benchmark() {
 
         if (qi + 1) % 100 == 0 {
             let running_r5 = total_r5_any / count as f64 * 100.0;
-            println!("    [{}/{}] running R@5(any): {:.1}%", qi + 1, entries.len(), running_r5);
+            println!(
+                "    [{}/{}] running R@5(any): {:.1}%",
+                qi + 1,
+                entries.len(),
+                running_r5
+            );
         }
     }
 
@@ -380,8 +380,7 @@ fn longmemeval_benchmark() {
     );
     println!("----------------------------------------------------------------------");
 
-    let mut types: Vec<(&String, &Vec<(f64, f64, f64, f64)>)> =
-        results_by_type.iter().collect();
+    let mut types: Vec<(&String, &Vec<(f64, f64, f64, f64)>)> = results_by_type.iter().collect();
     types.sort_by_key(|(t, _)| t.to_string());
 
     for (qtype, scores) in &types {
@@ -420,7 +419,10 @@ fn longmemeval_benchmark() {
     println!("\n  MemPalace baseline (raw mode, same model):        R@5 = 96.6%");
     println!("  v1 (global index, session-level):               R@5 = 28.4%");
     println!("  v2 (global index, turn-level):                  R@5 = 38.8%");
-    println!("  v5 (per-question index, user-turns, session):   R@5 = {:.1}%\n", avg_r5_any * 100.0);
+    println!(
+        "  v5 (per-question index, user-turns, session):   R@5 = {:.1}%\n",
+        avg_r5_any * 100.0
+    );
 
     // Don't assert a threshold — this is a benchmark, not a pass/fail test.
     // Just report the numbers for comparison.

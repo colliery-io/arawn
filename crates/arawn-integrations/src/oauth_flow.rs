@@ -50,7 +50,8 @@ pub async fn run_oauth_flow(
 
     // 3. Publish the URL.
     ctx.publish_auth_url(&auth_request.authorization_url).await;
-    ctx.publish_progress("waiting for browser authorization (5 min timeout)…").await;
+    ctx.publish_progress("waiting for browser authorization (5 min timeout)…")
+        .await;
 
     // 4. Wait for the callback.
     let result = callback.listen().await?;
@@ -62,7 +63,8 @@ pub async fn run_oauth_flow(
             auth_request.csrf_state, result.state
         )));
     }
-    ctx.publish_progress("exchanging authorization code for token…").await;
+    ctx.publish_progress("exchanging authorization code for token…")
+        .await;
     let token = client
         .exchange_code(&result.code, &redirect_uri, &auth_request.pkce_verifier)
         .await?;

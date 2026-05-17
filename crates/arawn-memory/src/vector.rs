@@ -134,9 +134,16 @@ pub fn search_similar(
         .map_err(|e| MemoryError::Storage(format!("search: {e}")))?;
 
     let mut results = Vec::new();
-    while let Some(row) = rows.next().map_err(|e| MemoryError::Storage(format!("row: {e}")))? {
-        let id_str: String = row.get(0).map_err(|e| MemoryError::Storage(format!("id: {e}")))?;
-        let distance: f32 = row.get(1).map_err(|e| MemoryError::Storage(format!("dist: {e}")))?;
+    while let Some(row) = rows
+        .next()
+        .map_err(|e| MemoryError::Storage(format!("row: {e}")))?
+    {
+        let id_str: String = row
+            .get(0)
+            .map_err(|e| MemoryError::Storage(format!("id: {e}")))?;
+        let distance: f32 = row
+            .get(1)
+            .map_err(|e| MemoryError::Storage(format!("dist: {e}")))?;
 
         if let Ok(entity_id) = Uuid::parse_str(&id_str) {
             results.push(SimilarityResult {
@@ -193,9 +200,16 @@ pub fn search_similar_filtered(
         .map_err(|e| MemoryError::Storage(format!("filtered search: {e}")))?;
 
     let mut results = Vec::new();
-    while let Some(row) = rows.next().map_err(|e| MemoryError::Storage(format!("row: {e}")))? {
-        let id_str: String = row.get(0).map_err(|e| MemoryError::Storage(format!("id: {e}")))?;
-        let distance: f32 = row.get(1).map_err(|e| MemoryError::Storage(format!("dist: {e}")))?;
+    while let Some(row) = rows
+        .next()
+        .map_err(|e| MemoryError::Storage(format!("row: {e}")))?
+    {
+        let id_str: String = row
+            .get(0)
+            .map_err(|e| MemoryError::Storage(format!("id: {e}")))?;
+        let distance: f32 = row
+            .get(1)
+            .map_err(|e| MemoryError::Storage(format!("dist: {e}")))?;
 
         if let Ok(entity_id) = Uuid::parse_str(&id_str) {
             results.push(SimilarityResult {

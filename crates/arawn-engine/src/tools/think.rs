@@ -39,7 +39,11 @@ impl Tool for ThinkTool {
         })
     }
 
-    async fn execute(&self, _ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
+    async fn execute(
+        &self,
+        _ctx: &dyn arawn_tool::ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
         let thought = params
             .get("thought")
             .and_then(|v| v.as_str())

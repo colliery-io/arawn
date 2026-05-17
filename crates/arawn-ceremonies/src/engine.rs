@@ -89,10 +89,9 @@ impl EngineDispatcher {
 impl CeremonyDispatcher for EngineDispatcher {
     async fn dispatch(&self, kind: &str) -> Result<DispatchOutcome, CeremonyError> {
         // 1–2: plugin + period
-        let plugin = self
-            .registry
-            .get(kind)
-            .ok_or_else(|| CeremonyError::Other(format!("no plugin registered for kind '{kind}'")))?;
+        let plugin = self.registry.get(kind).ok_or_else(|| {
+            CeremonyError::Other(format!("no plugin registered for kind '{kind}'"))
+        })?;
         let now = Utc::now();
         let period_key = plugin.period_key(now);
 
@@ -112,7 +111,9 @@ impl CeremonyDispatcher for EngineDispatcher {
             // re-open this for explicit `force` runs — defer to a
             // follow-up.
             return Ok(DispatchOutcome::Skipped {
-                reason: format!("tablet for ({kind}, {period_key}) already open — refusing to overwrite"),
+                reason: format!(
+                    "tablet for ({kind}, {period_key}) already open — refusing to overwrite"
+                ),
             });
         }
 
@@ -193,7 +194,9 @@ impl EngineDispatcher {
             std::collections::HashMap::new();
         for item in new_items {
             match item {
-                NewItem::Composed(c) => write_composed_item(&self.conn, &c, &mut ordinal_by_section)?,
+                NewItem::Composed(c) => {
+                    write_composed_item(&self.conn, &c, &mut ordinal_by_section)?
+                }
                 NewItem::User(u) => write_user_item(&self.conn, &u, &mut ordinal_by_section)?,
             }
         }
@@ -240,15 +243,14 @@ impl CeremonyCtx for EngineCtx {
         Some(&self.conn)
     }
 
-    async fn write_pattern_row(
-        &self,
-        pattern: DetectedPattern,
-    ) -> Result<String, CeremonyError> {
+    async fn write_pattern_row(&self, pattern: DetectedPattern) -> Result<String, CeremonyError> {
         let id = Uuid::new_v4().to_string();
         let payload = pattern.payload.to_string();
-        let conn = self.conn.0.lock().map_err(|_| {
-            CeremonyError::Storage("connection mutex poisoned".to_string())
-        })?;
+        let conn = self
+            .conn
+            .0
+            .lock()
+            .map_err(|_| CeremonyError::Storage("connection mutex poisoned".to_string()))?;
         conn.execute(
             "INSERT INTO ceremony_patterns_detected (id, iso_week, pattern_key, magnitude, payload, surfaced_in_retro) \
              VALUES (?1, ?2, ?3, ?4, ?5, 0)",
@@ -310,7 +312,9 @@ fn next_ordinal(
     ordinal_by_section: &mut std::collections::HashMap<String, i32>,
     section_key: &str,
 ) -> i32 {
-    let next = ordinal_by_section.entry(section_key.to_string()).or_insert(-1);
+    let next = ordinal_by_section
+        .entry(section_key.to_string())
+        .or_insert(-1);
     *next += 1;
     *next
 }
@@ -502,8 +506,10 @@ mod tests {
 
     fn count_rows(conn: &ConnHandle, table: &str) -> i64 {
         let c = conn.0.lock().unwrap();
-        c.query_row(&format!("SELECT COUNT(*) FROM {table}"), [], |row| row.get(0))
-            .unwrap()
+        c.query_row(&format!("SELECT COUNT(*) FROM {table}"), [], |row| {
+            row.get(0)
+        })
+        .unwrap()
     }
 
     // --- Tests ---
@@ -514,7 +520,8 @@ mod tests {
         let reg = PluginRegistry::new();
         // Tablet id format = "{kind}-{period_key}" → "retro-2026-W20"
         let items = vec![item_composed("retro-2026-W20", "what_happened", "sig-1")];
-        reg.register(Arc::new(ScriptedPlugin::new("retro", items))).unwrap();
+        reg.register(Arc::new(ScriptedPlugin::new("retro", items)))
+            .unwrap();
         let disp = EngineDispatcher::new(conn.clone(), reg);
         let outcome = disp.dispatch("retro").await.unwrap();
         match outcome {
@@ -535,7 +542,8 @@ mod tests {
             item_composed("retro-2026-W20", "what_happened", "sig-1"),
             item_composed("retro-2026-W20", "what_happened", ""), // missing
         ];
-        reg.register(Arc::new(ScriptedPlugin::new("retro", items))).unwrap();
+        reg.register(Arc::new(ScriptedPlugin::new("retro", items)))
+            .unwrap();
         let disp = EngineDispatcher::new(conn.clone(), reg);
         let err = disp.dispatch("retro").await.unwrap_err();
         assert!(matches!(err, CeremonyError::MissingCitation(_)));
@@ -549,7 +557,8 @@ mod tests {
         let (_tmp, conn) = open_test_db();
         let reg = PluginRegistry::new();
         let items = vec![item_user("retro-2026-W20", "diary")];
-        reg.register(Arc::new(ScriptedPlugin::new("retro", items))).unwrap();
+        reg.register(Arc::new(ScriptedPlugin::new("retro", items)))
+            .unwrap();
         let disp = EngineDispatcher::new(conn.clone(), reg);
         let outcome = disp.dispatch("retro").await.unwrap();
         assert!(matches!(outcome, DispatchOutcome::Generated { .. }));

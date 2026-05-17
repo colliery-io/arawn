@@ -57,13 +57,18 @@ impl<'a> MemoryStack<'a> {
 
         // People from global KB
         if let Ok(people) = self.manager.global.list_by_type(EntityType::Person, 5)
-            && !people.is_empty() {
-                let names: Vec<&str> = people.iter().map(|e| e.title.as_str()).collect();
-                out.push_str(&format!("people: {}\n", names.join(", ")));
-            }
+            && !people.is_empty()
+        {
+            let names: Vec<&str> = people.iter().map(|e| e.title.as_str()).collect();
+            out.push_str(&format!("people: {}\n", names.join(", ")));
+        }
 
         // Core conventions from workstream KB
-        if let Ok(conventions) = self.manager.workstream.list_by_type(EntityType::Convention, 3) {
+        if let Ok(conventions) = self
+            .manager
+            .workstream
+            .list_by_type(EntityType::Convention, 3)
+        {
             for c in &conventions {
                 out.push_str(&format!("convention: {}\n", c.title));
             }
@@ -77,17 +82,26 @@ impl<'a> MemoryStack<'a> {
     fn render_l1_with_names(&self, budget_tokens: usize) -> (String, Vec<String>) {
         // Gather ranked entities from both tiers
         let global = self.manager.global.list_all_ranked(30).unwrap_or_default();
-        let workstream = self.manager.workstream.list_all_ranked(50).unwrap_or_default();
+        let workstream = self
+            .manager
+            .workstream
+            .list_all_ranked(50)
+            .unwrap_or_default();
 
         // Merge and re-sort by confidence score (descending)
         let mut all: Vec<Entity> = global.into_iter().chain(workstream).collect();
-        all.sort_by(|a, b| b.confidence_score().partial_cmp(&a.confidence_score()).unwrap_or(std::cmp::Ordering::Equal));
+        all.sort_by(|a, b| {
+            b.confidence_score()
+                .partial_cmp(&a.confidence_score())
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
 
         // Deduplicate against L0 entities (Person/Convention already shown)
         let l0_types = [EntityType::Person, EntityType::Convention];
 
         // Group by type and render within budget
-        let mut sections: std::collections::BTreeMap<&str, Vec<String>> = std::collections::BTreeMap::new();
+        let mut sections: std::collections::BTreeMap<&str, Vec<String>> =
+            std::collections::BTreeMap::new();
         let mut entity_names: Vec<String> = Vec::new();
         let mut total_tokens = 20; // header overhead
 
@@ -127,13 +141,23 @@ impl<'a> MemoryStack<'a> {
     /// Get the entity titles included in L1 (for L2 deduplication).
     pub fn l1_entity_titles(&self) -> Vec<String> {
         let global = self.manager.global.list_all_ranked(30).unwrap_or_default();
-        let workstream = self.manager.workstream.list_all_ranked(50).unwrap_or_default();
+        let workstream = self
+            .manager
+            .workstream
+            .list_all_ranked(50)
+            .unwrap_or_default();
 
         let mut all: Vec<Entity> = global.into_iter().chain(workstream).collect();
-        all.sort_by(|a, b| b.confidence_score().partial_cmp(&a.confidence_score()).unwrap_or(std::cmp::Ordering::Equal));
+        all.sort_by(|a, b| {
+            b.confidence_score()
+                .partial_cmp(&a.confidence_score())
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
 
         all.iter()
-            .filter(|e| e.entity_type != EntityType::Person && e.entity_type != EntityType::Convention)
+            .filter(|e| {
+                e.entity_type != EntityType::Person && e.entity_type != EntityType::Convention
+            })
             .take(50)
             .map(|e| e.title.clone())
             .collect()
@@ -150,7 +174,8 @@ impl<'a> MemoryStack<'a> {
         let entities = self.manager.retrieve_topical(keywords, budget_tokens);
 
         // Deduplicate against L1
-        let l1_set: std::collections::HashSet<&str> = l1_titles.iter().map(|s| s.as_str()).collect();
+        let l1_set: std::collections::HashSet<&str> =
+            l1_titles.iter().map(|s| s.as_str()).collect();
         let unique: Vec<&Entity> = entities
             .iter()
             .filter(|e| !l1_set.contains(e.title.as_str()))
@@ -200,8 +225,13 @@ mod tests {
         let (_tmp, mgr) = setup();
         // Add many entities
         for i in 0..50 {
-            let mut e = Entity::new(EntityType::Fact, &format!("Fact number {i} with some extra text to fill tokens"));
-            e.content = Some(format!("Content for fact {i} that adds more tokens to the output"));
+            let mut e = Entity::new(
+                EntityType::Fact,
+                &format!("Fact number {i} with some extra text to fill tokens"),
+            );
+            e.content = Some(format!(
+                "Content for fact {i} that adds more tokens to the output"
+            ));
             mgr.workstream.insert_entity(&e).unwrap();
         }
 
@@ -239,7 +269,10 @@ mod tests {
         // Stated should appear before inferred in the output
         let stated_pos = output.find("Stated fact").unwrap_or(usize::MAX);
         let inferred_pos = output.find("Inferred fact").unwrap_or(usize::MAX);
-        assert!(stated_pos < inferred_pos, "stated should come before inferred");
+        assert!(
+            stated_pos < inferred_pos,
+            "stated should come before inferred"
+        );
     }
 
     #[test]

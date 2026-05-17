@@ -29,8 +29,8 @@ pub use confluence::{
     ConfluenceSearchTool, ConfluenceUpdatePageTool,
 };
 pub use integration::{
-    ATLASSIAN_OAUTH_SCOPES, AtlassianIntegration, AtlassianProviderConfig,
-    AtlassianSite, DEFAULT_ATLASSIAN_REDIRECT_PORT,
+    ATLASSIAN_OAUTH_SCOPES, AtlassianIntegration, AtlassianProviderConfig, AtlassianSite,
+    DEFAULT_ATLASSIAN_REDIRECT_PORT,
 };
 pub use jira::{
     JiraAddCommentTool, JiraCreateIssueTool, JiraGetIssueTool, JiraSearchTool,

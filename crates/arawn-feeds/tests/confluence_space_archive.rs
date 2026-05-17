@@ -7,12 +7,12 @@ use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde_json::{Value, json};
 
+use arawn_feeds::templates::confluence::SpaceArchiveTemplate;
 use arawn_feeds::{
     AtlassianFeedClient, CalendarFeedClient, ConfluencePageBody, ConfluencePageMeta, DataLayout,
     DriveFeedClient, FeedClients, FeedError, FeedMeta, FeedTemplate, GmailFeedClient,
     JiraIssueDetail, JiraIssueMeta, MetaStore, SlackFeedClient, TemplateCtx, TemplateParams,
 };
-use arawn_feeds::templates::confluence::SpaceArchiveTemplate;
 
 #[derive(Default)]
 struct MockAtlassianClient {
@@ -61,20 +61,11 @@ impl AtlassianFeedClient for MockAtlassianClient {
         Ok(if q.is_empty() { vec![] } else { q.remove(0) })
     }
 
-    async fn jql_search(
-        &self,
-        _: &str,
-        _: u32,
-    ) -> Result<Vec<JiraIssueMeta>, FeedError> {
+    async fn jql_search(&self, _: &str, _: u32) -> Result<Vec<JiraIssueMeta>, FeedError> {
         unreachable!("confluence tests don't touch jira")
     }
 
-    async fn issue_full(
-        &self,
-        _: &str,
-        _: bool,
-        _: bool,
-    ) -> Result<JiraIssueDetail, FeedError> {
+    async fn issue_full(&self, _: &str, _: bool, _: bool) -> Result<JiraIssueDetail, FeedError> {
         unreachable!("confluence tests don't touch jira")
     }
 
@@ -82,9 +73,7 @@ impl AtlassianFeedClient for MockAtlassianClient {
         unreachable!("confluence tests don't touch jira")
     }
 
-    async fn list_jira_projects(
-        &self,
-    ) -> Result<Vec<arawn_feeds::JiraProjectMeta>, FeedError> {
+    async fn list_jira_projects(&self) -> Result<Vec<arawn_feeds::JiraProjectMeta>, FeedError> {
         unreachable!("confluence tests don't touch jira")
     }
 
@@ -94,13 +83,12 @@ impl AtlassianFeedClient for MockAtlassianClient {
         unreachable!("space-archive tests don't use list_confluence_spaces");
     }
 
-    async fn page_body_storage(
-        &self,
-        page_id: &str,
-    ) -> Result<ConfluencePageBody, FeedError> {
+    async fn page_body_storage(&self, page_id: &str) -> Result<ConfluencePageBody, FeedError> {
         self.body_calls.lock().unwrap().push(page_id.into());
         if self.fail_body.lock().unwrap().contains(page_id) {
-            return Err(FeedError::Provider(format!("simulated body fetch fail for {page_id}")));
+            return Err(FeedError::Provider(format!(
+                "simulated body fetch fail for {page_id}"
+            )));
         }
         let xml = self.bodies.lock().unwrap().get(page_id).cloned().flatten();
         Ok(ConfluencePageBody {
@@ -185,7 +173,9 @@ async fn writes_per_page_metadata_and_body() {
     mock.set_body("p1", Some("<p>plan body</p>".into()));
     mock.set_body("p2", Some("<p>notes body</p>".into()));
 
-    let ctx = TemplateCtx::new(Arc::new(MockClients { atlassian: mock.clone() }));
+    let ctx = TemplateCtx::new(Arc::new(MockClients {
+        atlassian: mock.clone(),
+    }));
     let params = TemplateParams(json!({ "space_key": "ENG" }));
     let outcome = run_once(&SpaceArchiveTemplate, &ctx, &params, &feed_dir).await;
     assert_eq!(outcome.summary.items_written, 2);
@@ -199,8 +189,7 @@ async fn writes_per_page_metadata_and_body() {
     assert_eq!(p1_meta["title"], "Project plan");
     assert_eq!(p1_meta["version"], 3);
 
-    let p1_body =
-        std::fs::read_to_string(feed_dir.join("p1").join("body.storage.xml")).unwrap();
+    let p1_body = std::fs::read_to_string(feed_dir.join("p1").join("body.storage.xml")).unwrap();
     assert_eq!(p1_body, "<p>plan body</p>");
 
     // Cursor advances to highest modified_time seen.
@@ -221,7 +210,9 @@ async fn second_run_passes_cursor_as_since() {
     mock.set_body("p1", Some("<p>b1</p>".into()));
     mock.queue_pages(vec![]); // run 2 returns nothing
 
-    let ctx = TemplateCtx::new(Arc::new(MockClients { atlassian: mock.clone() }));
+    let ctx = TemplateCtx::new(Arc::new(MockClients {
+        atlassian: mock.clone(),
+    }));
     let params = TemplateParams(json!({ "space_key": "ENG" }));
     run_once(&SpaceArchiveTemplate, &ctx, &params, &feed_dir).await;
     run_once(&SpaceArchiveTemplate, &ctx, &params, &feed_dir).await;
@@ -253,7 +244,9 @@ async fn body_fetch_failure_skips_page_without_aborting_run() {
     mock.fail_body_for("p1");
     mock.set_body("p2", Some("<p>good body</p>".into()));
 
-    let ctx = TemplateCtx::new(Arc::new(MockClients { atlassian: mock.clone() }));
+    let ctx = TemplateCtx::new(Arc::new(MockClients {
+        atlassian: mock.clone(),
+    }));
     let params = TemplateParams(json!({ "space_key": "ENG" }));
     let outcome = run_once(&SpaceArchiveTemplate, &ctx, &params, &feed_dir).await;
     assert_eq!(
@@ -285,12 +278,12 @@ async fn body_overwritten_on_re_fetch() {
     run_once(&SpaceArchiveTemplate, &ctx, &params, &feed_dir).await;
     run_once(&SpaceArchiveTemplate, &ctx, &params, &feed_dir).await;
 
-    let body =
-        std::fs::read_to_string(feed_dir.join("p").join("body.storage.xml")).unwrap();
+    let body = std::fs::read_to_string(feed_dir.join("p").join("body.storage.xml")).unwrap();
     assert_eq!(body, "<p>v2</p>", "body overwrites with latest version");
-    let meta_value: Value =
-        serde_json::from_str(&std::fs::read_to_string(feed_dir.join("p").join("page.json")).unwrap())
-            .unwrap();
+    let meta_value: Value = serde_json::from_str(
+        &std::fs::read_to_string(feed_dir.join("p").join("page.json")).unwrap(),
+    )
+    .unwrap();
     assert_eq!(meta_value["title"], "Title v2");
     assert_eq!(meta_value["version"], 2);
 }
@@ -369,9 +362,11 @@ async fn returns_auth_when_atlassian_not_connected() {
 
 #[tokio::test]
 async fn validate_rejects_missing_space_key() {
-    assert!(SpaceArchiveTemplate
-        .validate(&TemplateParams::default())
-        .is_err());
+    assert!(
+        SpaceArchiveTemplate
+            .validate(&TemplateParams::default())
+            .is_err()
+    );
     let p = TemplateParams(json!({ "space_key": "" }));
     assert!(SpaceArchiveTemplate.validate(&p).is_err());
     let p = TemplateParams(json!({ "space_key": "ENG" }));

@@ -76,9 +76,10 @@ impl FeedTemplate for SenderFilterTemplate {
         feed_dir: &Path,
         cursor: &Value,
     ) -> Result<RunOutcome, FeedError> {
-        let gmail = ctx.clients().gmail().ok_or_else(|| {
-            FeedError::Auth("gmail integration not connected".into())
-        })?;
+        let gmail = ctx
+            .clients()
+            .gmail()
+            .ok_or_else(|| FeedError::Auth("gmail integration not connected".into()))?;
         let sender = params
             .0
             .get("sender_pattern")
@@ -107,9 +108,11 @@ mod tests {
 
     #[test]
     fn validate_requires_sender_pattern() {
-        assert!(SenderFilterTemplate
-            .validate(&TemplateParams::default())
-            .is_err());
+        assert!(
+            SenderFilterTemplate
+                .validate(&TemplateParams::default())
+                .is_err()
+        );
         let p = TemplateParams(json!({ "sender_pattern": "" }));
         assert!(SenderFilterTemplate.validate(&p).is_err());
         let p = TemplateParams(json!({ "sender_pattern": "alice@example.com" }));

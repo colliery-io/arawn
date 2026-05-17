@@ -1317,18 +1317,13 @@ async fn main() -> Result<()> {
                     // "local"/missing values and warn-falling-back on
                     // unknown IANA zones. Kept inline because it's
                     // only used here.
-                    fn resolve_ceremony_tz(
-                        kind: &str,
-                        raw: Option<&str>,
-                    ) -> chrono_tz::Tz {
+                    fn resolve_ceremony_tz(kind: &str, raw: Option<&str>) -> chrono_tz::Tz {
                         use std::str::FromStr;
                         match raw {
                             None => chrono_tz::UTC,
                             Some(s) => {
                                 let trimmed = s.trim();
-                                if trimmed.is_empty()
-                                    || trimmed.eq_ignore_ascii_case("local")
-                                {
+                                if trimmed.is_empty() || trimmed.eq_ignore_ascii_case("local") {
                                     tracing::debug!(
                                         kind,
                                         "ceremony timezone '{trimmed}' → UTC fallback"
@@ -1348,10 +1343,8 @@ async fn main() -> Result<()> {
                         }
                     }
 
-                    let daily_tz = resolve_ceremony_tz(
-                        "daily",
-                        daily_cfg.and_then(|c| c.timezone.as_deref()),
-                    );
+                    let daily_tz =
+                        resolve_ceremony_tz("daily", daily_cfg.and_then(|c| c.timezone.as_deref()));
                     let weekly_tz = resolve_ceremony_tz(
                         "weekly",
                         weekly_cfg.and_then(|c| c.timezone.as_deref()),
@@ -1370,9 +1363,7 @@ async fn main() -> Result<()> {
                         };
 
                     let daily_calendar: Option<Arc<dyn arawn_ceremonies::CalendarSource>> =
-                        if daily_actually_enabled
-                            && let Some(projections) = projections.as_ref()
-                        {
+                        if daily_actually_enabled && let Some(projections) = projections.as_ref() {
                             Some(Arc::new(
                                 arawn_engine::ProjectionsCalendarSource::new(Arc::clone(
                                     projections,
@@ -1383,9 +1374,7 @@ async fn main() -> Result<()> {
                             None
                         };
                     let weekly_calendar: Option<Arc<dyn arawn_ceremonies::CalendarSource>> =
-                        if weekly_actually_enabled
-                            && let Some(projections) = projections.as_ref()
-                        {
+                        if weekly_actually_enabled && let Some(projections) = projections.as_ref() {
                             Some(Arc::new(
                                 arawn_engine::ProjectionsCalendarSource::new(Arc::clone(
                                     projections,
@@ -1638,7 +1627,9 @@ async fn main() -> Result<()> {
                     "ceremony engine unavailable — could not open arawn.db"),
             }
         } else {
-            debug!("ceremony engine skipped — workflow runner not available or all ceremonies disabled");
+            debug!(
+                "ceremony engine skipped — workflow runner not available or all ceremonies disabled"
+            );
         }
 
         // Wire watchers into the broadcast so reload outcomes reach the TUI.

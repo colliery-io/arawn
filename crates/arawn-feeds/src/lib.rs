@@ -37,20 +37,20 @@ pub mod types;
 pub use cadence::{MIN_CADENCE, validate_cadence};
 pub use clients::{
     AtlassianFeedClient, CalendarFeedClient, ChannelKind, ConfluencePageBody, ConfluencePageMeta,
-    ConfluenceSpaceMeta, DriveFeedClient, DriveFile, FeedClients, GmailFeedClient,
-    JiraIssueDetail, JiraIssueMeta, JiraProjectMeta,
-    NoopClients, RealAtlassianClient, RealCalendarClient, RealClients, RealDriveClient,
-    RealGmailClient, RealSlackClient, SlackAuthInfo, SlackChannel, SlackFeedClient, SlackHistoryPage,
-    classify_channel_id, export_for, is_unsupported_google_native,
+    ConfluenceSpaceMeta, DriveFeedClient, DriveFile, FeedClients, GmailFeedClient, JiraIssueDetail,
+    JiraIssueMeta, JiraProjectMeta, NoopClients, RealAtlassianClient, RealCalendarClient,
+    RealClients, RealDriveClient, RealGmailClient, RealSlackClient, SlackAuthInfo, SlackChannel,
+    SlackFeedClient, SlackHistoryPage, classify_channel_id, export_for,
+    is_unsupported_google_native,
 };
 pub use dispatch::{
     FeedDispatchTask, FeedRuntimeContext, projection_feed_types_for, run_feed, run_feed_force,
 };
-pub use runtime::{CloacinaRunner, FeedRuntime, RemoveOutcome, feed_workflow_name, start};
 pub use error::FeedError;
 pub use layout::DataLayout;
 pub use meta::MetaStore;
 pub use registry::FeedTemplateRegistry;
+pub use runtime::{CloacinaRunner, FeedRuntime, RemoveOutcome, feed_workflow_name, start};
 pub use store::{FeedRecord, FeedStore, new_record};
 pub use template::{DiscoveryRow, FeedTemplate, RunOutcome, TemplateCtx};
 pub use templates::default_registry;

@@ -79,7 +79,9 @@ pub fn render_retro(view: &RetroView) -> String {
 
     out.push_str("## Patterns\n\n");
     if patterns.is_empty() {
-        out.push_str("_(insufficient history — detectors require a few prior weeks of rollup data)_\n\n");
+        out.push_str(
+            "_(insufficient history — detectors require a few prior weeks of rollup data)_\n\n",
+        );
     } else {
         for item in &patterns {
             render_item_bullet(&mut out, item);
@@ -94,7 +96,9 @@ pub fn render_retro(view: &RetroView) -> String {
             out.push_str("\n\n");
         }
         _ => {
-            out.push_str("_(write a few sentences about how the week felt; saved to diary on close)_\n\n");
+            out.push_str(
+                "_(write a few sentences about how the week felt; saved to diary on close)_\n\n",
+            );
         }
     }
 
@@ -118,7 +122,10 @@ pub fn render_retro(view: &RetroView) -> String {
 }
 
 fn items_in_section<'a>(items: &'a [ItemDto], section_key: &str) -> Vec<&'a ItemDto> {
-    let mut filtered: Vec<&ItemDto> = items.iter().filter(|i| i.section_key == section_key).collect();
+    let mut filtered: Vec<&ItemDto> = items
+        .iter()
+        .filter(|i| i.section_key == section_key)
+        .collect();
     filtered.sort_by_key(|i| i.ordinal);
     filtered
 }
@@ -180,7 +187,10 @@ pub fn render_daily(view: &DailyView) -> String {
         }
     }
 
-    render_footnotes(&mut out, view.items.iter().filter_map(|i| i.citation_id.clone()));
+    render_footnotes(
+        &mut out,
+        view.items.iter().filter_map(|i| i.citation_id.clone()),
+    );
     out
 }
 
@@ -362,7 +372,12 @@ mod tests {
             items: vec![
                 item("what_happened", 0, "Shipped the doc.", Some("sig-1")),
                 item("what_happened", 1, "Two deep-work blocks.", Some("event-7")),
-                item("patterns", 0, "Priority completion below 50%.", Some("pat-9")),
+                item(
+                    "patterns",
+                    0,
+                    "Priority completion below 50%.",
+                    Some("pat-9"),
+                ),
             ],
             diary: Some("Felt productive but interrupted often.".into()),
         };
@@ -595,7 +610,13 @@ mod tests {
                 item("inbound", 0, "Vendor follow-up.", Some("wk-prev-1")),
             ],
             priorities: vec![
-                priority(0, "confirmed", "Ship OAuth refresh.", "high impact", Some("hot-1")),
+                priority(
+                    0,
+                    "confirmed",
+                    "Ship OAuth refresh.",
+                    "high impact",
+                    Some("hot-1"),
+                ),
                 priority(1, "candidate", "Plan Q3 review.", "", None),
             ],
         };

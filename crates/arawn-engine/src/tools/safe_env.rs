@@ -43,7 +43,9 @@ const SAFE_PREFIXES: &[&str] = &[
 /// Returns a filtered copy of the parent process environment, dropping any
 /// variable that doesn't match the safe allowlist.
 pub fn safe_env() -> HashMap<String, String> {
-    std::env::vars().filter(|(k, _)| is_safe_env_name(k)).collect()
+    std::env::vars()
+        .filter(|(k, _)| is_safe_env_name(k))
+        .collect()
 }
 
 /// Returns true if `name` is on the safe allowlist.

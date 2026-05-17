@@ -137,10 +137,7 @@ pub trait CeremonyCtx: Send + Sync {
     /// dependent composed items can cite its returned id. T-0282
     /// implements; this trait method ships now so the surface is
     /// stable.
-    async fn write_pattern_row(
-        &self,
-        pattern: DetectedPattern,
-    ) -> Result<String, CeremonyError>;
+    async fn write_pattern_row(&self, pattern: DetectedPattern) -> Result<String, CeremonyError>;
 
     /// Capability check — does this ctx have a SQL connection
     /// behind it (i.e. is it the production `EngineCtx`)? Returns

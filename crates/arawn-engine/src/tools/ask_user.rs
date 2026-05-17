@@ -82,7 +82,11 @@ impl Tool for AskUserTool {
         })
     }
 
-    async fn execute(&self, _ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
+    async fn execute(
+        &self,
+        _ctx: &dyn arawn_tool::ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
         let questions = params
             .get("questions")
             .and_then(|v| v.as_array())

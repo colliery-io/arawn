@@ -101,9 +101,9 @@ impl HookFileWatcher {
             let relevant_paths: Vec<&PathBuf> = all_paths
                 .iter()
                 .filter(|p| {
-                    self.paths.iter().any(|watch| {
-                        p.starts_with(watch) || p.as_path() == watch.as_path()
-                    })
+                    self.paths
+                        .iter()
+                        .any(|watch| p.starts_with(watch) || p.as_path() == watch.as_path())
                 })
                 .collect();
 

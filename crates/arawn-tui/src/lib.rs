@@ -7,14 +7,14 @@ pub mod event_loop;
 pub mod markdown;
 pub mod modal;
 pub mod render;
-pub mod theme;
-pub mod tui_prompt;
 #[cfg(test)]
 mod snapshot;
 #[cfg(test)]
 mod snapshot_tests;
-pub mod wrap;
+pub mod theme;
+pub mod tui_prompt;
 pub mod width;
+pub mod wrap;
 pub mod ws_client;
 
 pub use action::Action;

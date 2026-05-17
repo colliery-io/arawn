@@ -521,9 +521,7 @@ mod tests {
 
     #[tokio::test]
     async fn harness_permission_checker_blocks_tool() {
-        use crate::permissions::{
-            MockModalPrompt, PermissionChecker, PermissionRule, RuleKind,
-        };
+        use crate::permissions::{MockModalPrompt, PermissionChecker, PermissionRule, RuleKind};
 
         let checker = Arc::new(
             PermissionChecker::new(vec![PermissionRule::new(RuleKind::Deny, "shell")])
@@ -560,9 +558,7 @@ mod tests {
 
     #[tokio::test]
     async fn harness_permission_checker_allows_tool() {
-        use crate::permissions::{
-            MockModalPrompt, PermissionChecker, PermissionRule, RuleKind,
-        };
+        use crate::permissions::{MockModalPrompt, PermissionChecker, PermissionRule, RuleKind};
 
         let checker = Arc::new(
             PermissionChecker::new(vec![PermissionRule::new(RuleKind::Allow, "think")])
@@ -716,10 +712,7 @@ mod tests {
         // The assistant message at index 1 should have both text content and tool_uses
         let msgs = result.session_messages();
         match &msgs[1] {
-            Message::Assistant {
-                content,
-                tool_uses,
-            } => {
+            Message::Assistant { content, tool_uses } => {
                 assert_eq!(content, "Let me think about this.");
                 assert_eq!(tool_uses.len(), 1);
                 assert_eq!(tool_uses[0].name, "think");
@@ -843,10 +836,7 @@ mod tests {
         // The assistant message should have both narration text and tool uses
         let msgs = result.session_messages();
         match &msgs[1] {
-            Message::Assistant {
-                content,
-                tool_uses,
-            } => {
+            Message::Assistant { content, tool_uses } => {
                 assert!(
                     content.contains("narration after tool"),
                     "expected narration text, got: {content}"
@@ -1000,23 +990,11 @@ mod tests {
             .with_max_iterations(10)
             .with_script(vec![
                 // 1st call — will execute and fail (file not found)
-                MockResponse::tool_call(
-                    "c1",
-                    "file_read",
-                    r#"{"path":"nonexistent.txt"}"#,
-                ),
+                MockResponse::tool_call("c1", "file_read", r#"{"path":"nonexistent.txt"}"#),
                 // 2nd identical call — will execute and fail again
-                MockResponse::tool_call(
-                    "c2",
-                    "file_read",
-                    r#"{"path":"nonexistent.txt"}"#,
-                ),
+                MockResponse::tool_call("c2", "file_read", r#"{"path":"nonexistent.txt"}"#),
                 // 3rd identical call — should be blocked by circuit breaker
-                MockResponse::tool_call(
-                    "c3",
-                    "file_read",
-                    r#"{"path":"nonexistent.txt"}"#,
-                ),
+                MockResponse::tool_call("c3", "file_read", r#"{"path":"nonexistent.txt"}"#),
                 MockResponse::text("Gave up."),
             ])
             .build();
@@ -1284,9 +1262,7 @@ mod tests {
 
     #[tokio::test]
     async fn harness_permission_denial_then_llm_recovery() {
-        use crate::permissions::{
-            MockModalPrompt, PermissionChecker, PermissionRule, RuleKind,
-        };
+        use crate::permissions::{MockModalPrompt, PermissionChecker, PermissionRule, RuleKind};
 
         // Deny shell, allow think
         let checker = Arc::new(
@@ -1305,7 +1281,11 @@ mod tests {
                 // LLM tries shell first — will be denied
                 MockResponse::tool_call("c1", "shell", r#"{"command":"echo hi"}"#),
                 // LLM sees the denial and pivots to think
-                MockResponse::tool_call("c2", "think", r#"{"thought":"shell denied, using think"}"#),
+                MockResponse::tool_call(
+                    "c2",
+                    "think",
+                    r#"{"thought":"shell denied, using think"}"#,
+                ),
                 // LLM produces final answer
                 MockResponse::text("Recovered using alternative approach."),
             ])
@@ -1327,7 +1307,10 @@ mod tests {
             .collect();
 
         assert_eq!(tool_results.len(), 2);
-        assert!(tool_results[0].1, "first tool result should be error (denied)");
+        assert!(
+            tool_results[0].1,
+            "first tool result should be error (denied)"
+        );
         assert!(
             tool_results[0].0.contains("denied") || tool_results[0].0.contains("Permission"),
             "first result should mention denial"
@@ -1396,9 +1379,7 @@ mod tests {
     #[tokio::test]
     async fn harness_hook_and_permission_both_wired() {
         use crate::hooks::{HookConfig, HookRunner};
-        use crate::permissions::{
-            MockModalPrompt, PermissionChecker, PermissionRule, RuleKind,
-        };
+        use crate::permissions::{MockModalPrompt, PermissionChecker, PermissionRule, RuleKind};
 
         let tmp_dir = TempDir::new().unwrap();
 
@@ -1510,7 +1491,11 @@ mod tests {
                 // 1. Try to read nonexistent file — will fail
                 MockResponse::tool_call("c1", "file_read", r#"{"path":"missing.txt"}"#),
                 // 2. LLM analyzes the error
-                MockResponse::tool_call("c2", "think", r#"{"thought":"file not found, try real.txt"}"#),
+                MockResponse::tool_call(
+                    "c2",
+                    "think",
+                    r#"{"thought":"file not found, try real.txt"}"#,
+                ),
                 // 3. Read the correct file
                 MockResponse::tool_call("c3", "file_read", r#"{"path":"real.txt"}"#),
                 // 4. Final response
@@ -1667,21 +1652,9 @@ mod tests {
         for (i, expected_text) in narrations.iter().enumerate() {
             let msg_idx = 1 + i * 2; // indices 1, 3, 5
             match &msgs[msg_idx] {
-                Message::Assistant {
-                    content,
-                    tool_uses,
-                } => {
-                    assert_eq!(
-                        content, expected_text,
-                        "turn {} narration mismatch",
-                        i + 1
-                    );
-                    assert_eq!(
-                        tool_uses.len(),
-                        1,
-                        "turn {} should have 1 tool use",
-                        i + 1
-                    );
+                Message::Assistant { content, tool_uses } => {
+                    assert_eq!(content, expected_text, "turn {} narration mismatch", i + 1);
+                    assert_eq!(tool_uses.len(), 1, "turn {} should have 1 tool use", i + 1);
                 }
                 other => panic!("expected Assistant at index {msg_idx}, got: {other:?}"),
             }
@@ -1806,9 +1779,7 @@ mod tests {
 
     #[tokio::test]
     async fn harness_permission_denial_cascade_then_success() {
-        use crate::permissions::{
-            MockModalPrompt, PermissionChecker, PermissionRule, RuleKind,
-        };
+        use crate::permissions::{MockModalPrompt, PermissionChecker, PermissionRule, RuleKind};
 
         let checker = Arc::new(
             PermissionChecker::new(vec![
@@ -1842,16 +1813,28 @@ mod tests {
             .filter_map(|m| match m {
                 Message::ToolResult {
                     is_error, content, ..
-                } => Some((*is_error, content.contains("denied") || content.contains("Permission"))),
+                } => Some((
+                    *is_error,
+                    content.contains("denied") || content.contains("Permission"),
+                )),
                 _ => None,
             })
             .collect();
 
         // 3 denials (error=true, contains denial msg), then 1 success
         assert_eq!(tool_results.len(), 4);
-        assert!(tool_results[0].0 && tool_results[0].1, "1st should be denied");
-        assert!(tool_results[1].0 && tool_results[1].1, "2nd should be denied");
-        assert!(tool_results[2].0 && tool_results[2].1, "3rd should be denied");
+        assert!(
+            tool_results[0].0 && tool_results[0].1,
+            "1st should be denied"
+        );
+        assert!(
+            tool_results[1].0 && tool_results[1].1,
+            "2nd should be denied"
+        );
+        assert!(
+            tool_results[2].0 && tool_results[2].1,
+            "3rd should be denied"
+        );
         assert!(!tool_results[3].0, "4th (think) should succeed");
     }
 
@@ -1911,10 +1894,7 @@ mod tests {
             first_results[0].1
         );
         // shell should be blocked by plan mode
-        assert!(
-            first_results[1].0,
-            "shell should be blocked in plan mode"
-        );
+        assert!(first_results[1].0, "shell should be blocked in plan mode");
         assert!(
             first_results[1].1.contains("Plan mode"),
             "error should mention plan mode, got: {}",

@@ -100,8 +100,7 @@ pub trait AtlassianFeedClient: Send + Sync {
     ) -> Result<Vec<ConfluencePageMeta>, FeedError>;
 
     /// Fetch a page's body in storage format (raw XML).
-    async fn page_body_storage(&self, page_id: &str)
-        -> Result<ConfluencePageBody, FeedError>;
+    async fn page_body_storage(&self, page_id: &str) -> Result<ConfluencePageBody, FeedError>;
 
     /// Run a JQL search and return up to `max_results` issues' meta.
     /// Adapter follows pagination. Templates own the JQL — including
@@ -134,9 +133,7 @@ pub trait AtlassianFeedClient: Send + Sync {
 
     /// List Confluence spaces the user can access. Powers the
     /// `/watch confluence/space-archive` picker.
-    async fn list_confluence_spaces(
-        &self,
-    ) -> Result<Vec<ConfluenceSpaceMeta>, FeedError>;
+    async fn list_confluence_spaces(&self) -> Result<Vec<ConfluenceSpaceMeta>, FeedError>;
 }
 
 /// Project summary as the picker cares about it.
@@ -183,8 +180,7 @@ fn integ_err(e: arawn_integrations::IntegrationError) -> FeedError {
 /// auth. Everything else stays a generic Provider error.
 fn classify_provider_error(msg: &str) -> FeedError {
     let lc = msg.to_ascii_lowercase();
-    if lc.contains("429") || lc.contains("rate limit") || lc.contains("too many requests")
-    {
+    if lc.contains("429") || lc.contains("rate limit") || lc.contains("too many requests") {
         FeedError::RateLimited { retry_after: None }
     } else if lc.contains("410") || lc.contains("gone") {
         FeedError::Schema(format!("atlassian gone: {msg}"))
@@ -345,10 +341,7 @@ impl AtlassianFeedClient for RealAtlassianClient {
         Ok(all)
     }
 
-    async fn page_body_storage(
-        &self,
-        page_id: &str,
-    ) -> Result<ConfluencePageBody, FeedError> {
+    async fn page_body_storage(&self, page_id: &str) -> Result<ConfluencePageBody, FeedError> {
         let client = AtlassianClient::new(Arc::clone(&self.integration));
         let detail: V2PageDetail = client
             .confluence_get(
@@ -399,7 +392,12 @@ impl AtlassianFeedClient for RealAtlassianClient {
                 .get("summary")
                 .and_then(|v| v.as_str())
                 .map(str::to_string);
-            out.push(JiraIssueMeta { key, id, updated, summary });
+            out.push(JiraIssueMeta {
+                key,
+                id,
+                updated,
+                summary,
+            });
         }
         Ok(out)
     }
@@ -508,9 +506,7 @@ impl AtlassianFeedClient for RealAtlassianClient {
             .await
             .map_err(|e| match e {
                 jira_v3_openapi::apis::Error::ResponseError(r) if r.status.as_u16() == 404 => {
-                    FeedError::InvalidParams(format!(
-                        "no Jira project '{key_or_id}'"
-                    ))
+                    FeedError::InvalidParams(format!("no Jira project '{key_or_id}'"))
                 }
                 other => jira_err(other),
             })?;
@@ -541,9 +537,7 @@ impl AtlassianFeedClient for RealAtlassianClient {
             .collect())
     }
 
-    async fn list_confluence_spaces(
-        &self,
-    ) -> Result<Vec<ConfluenceSpaceMeta>, FeedError> {
+    async fn list_confluence_spaces(&self) -> Result<Vec<ConfluenceSpaceMeta>, FeedError> {
         let client = AtlassianClient::new(Arc::clone(&self.integration));
         let resp: V2SpacesResp = client
             .confluence_get("/spaces", None, &[("limit", "250".into())])

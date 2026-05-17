@@ -17,9 +17,7 @@ use std::time::Instant;
 use async_trait::async_trait;
 use serde_json::{Value, json};
 
-use super::common::{
-    CursorState, append_logs, write_issue_snapshot,
-};
+use super::common::{CursorState, append_logs, write_issue_snapshot};
 use crate::error::FeedError;
 use crate::template::{DiscoveryRow, FeedTemplate, RunOutcome, TemplateCtx};
 use crate::types::{FeedDefaults, RunSummary, TemplateParams};
@@ -40,13 +38,9 @@ impl FeedTemplate for ProjectTrackerTemplate {
             .0
             .get("project")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| {
-                FeedError::InvalidParams("missing required param: project".into())
-            })?;
+            .ok_or_else(|| FeedError::InvalidParams("missing required param: project".into()))?;
         if project.trim().is_empty() {
-            return Err(FeedError::InvalidParams(
-                "project must not be empty".into(),
-            ));
+            return Err(FeedError::InvalidParams("project must not be empty".into()));
         }
         Ok(())
     }
@@ -69,9 +63,10 @@ impl FeedTemplate for ProjectTrackerTemplate {
         cursor: &Value,
     ) -> Result<RunOutcome, FeedError> {
         let started = Instant::now();
-        let atlassian = ctx.clients().atlassian().ok_or_else(|| {
-            FeedError::Auth("atlassian integration not connected".into())
-        })?;
+        let atlassian = ctx
+            .clients()
+            .atlassian()
+            .ok_or_else(|| FeedError::Auth("atlassian integration not connected".into()))?;
         let project = params
             .0
             .get("project")
@@ -123,17 +118,16 @@ impl FeedTemplate for ProjectTrackerTemplate {
                 .cloned()
                 .unwrap_or_default();
             let outcome = append_logs(&issue_dir, &detail, prior)?;
-            state
-                .issues
-                .insert(detail.meta.key.clone(), outcome.cursor);
+            state.issues.insert(detail.meta.key.clone(), outcome.cursor);
 
             total_items += 1;
             total_bytes += snap_bytes + outcome.bytes_written;
 
             if let Some(updated) = detail.meta.updated.as_deref()
-                && new_latest.as_deref().map(|n| updated > n).unwrap_or(true) {
-                    new_latest = Some(updated.to_string());
-                }
+                && new_latest.as_deref().map(|n| updated > n).unwrap_or(true)
+            {
+                new_latest = Some(updated.to_string());
+            }
         }
 
         state.latest_updated_iso = new_latest;
@@ -154,10 +148,7 @@ impl FeedTemplate for ProjectTrackerTemplate {
         })
     }
 
-    async fn discover(
-        &self,
-        ctx: &TemplateCtx,
-    ) -> Result<Option<Vec<DiscoveryRow>>, FeedError> {
+    async fn discover(&self, ctx: &TemplateCtx) -> Result<Option<Vec<DiscoveryRow>>, FeedError> {
         let atlassian = match ctx.clients().atlassian() {
             Some(c) => c,
             None => return Ok(None),
@@ -186,16 +177,21 @@ impl FeedTemplate for ProjectTrackerTemplate {
 /// duplicated rather than shared to keep the templates' time-format
 /// concerns local. If a third Jira template lands, hoist into a
 /// shared helper.
-pub(super) fn effective_since(cursor_iso: Option<&str>, params_since: Option<&str>) -> Option<String> {
+pub(super) fn effective_since(
+    cursor_iso: Option<&str>,
+    params_since: Option<&str>,
+) -> Option<String> {
     if let Some(prior) = cursor_iso
         && !prior.is_empty()
     {
         return Some(prior.to_string());
     }
     let since = params_since.filter(|s| !s.is_empty())?;
-    chrono::DateTime::parse_from_rfc3339(since)
-        .ok()
-        .map(|dt| dt.with_timezone(&chrono::Utc).format("%Y-%m-%d %H:%M").to_string())
+    chrono::DateTime::parse_from_rfc3339(since).ok().map(|dt| {
+        dt.with_timezone(&chrono::Utc)
+            .format("%Y-%m-%d %H:%M")
+            .to_string()
+    })
 }
 
 fn build_jql(project: &str, since: Option<&str>) -> String {
@@ -216,9 +212,11 @@ mod tests {
 
     #[test]
     fn validate_requires_project() {
-        assert!(ProjectTrackerTemplate
-            .validate(&TemplateParams::default())
-            .is_err());
+        assert!(
+            ProjectTrackerTemplate
+                .validate(&TemplateParams::default())
+                .is_err()
+        );
         let p = TemplateParams(json!({ "project": "" }));
         assert!(ProjectTrackerTemplate.validate(&p).is_err());
         let p = TemplateParams(json!({ "project": "ENG" }));
@@ -247,15 +245,15 @@ mod tests {
 
         // Empty cursor falls through to since.
         let p = Some("2026-01-01T00:00:00+00:00");
-        assert_eq!(effective_since(Some(""), p), Some("2026-01-01 00:00".into()));
+        assert_eq!(
+            effective_since(Some(""), p),
+            Some("2026-01-01 00:00".into())
+        );
     }
 
     #[test]
     fn jql_includes_since_when_present() {
-        assert_eq!(
-            build_jql("ENG", None),
-            "project = ENG ORDER BY updated ASC"
-        );
+        assert_eq!(build_jql("ENG", None), "project = ENG ORDER BY updated ASC");
         assert_eq!(
             build_jql("ENG", Some("2026-05-08 09:00")),
             "project = ENG AND updated >= \"2026-05-08 09:00\" ORDER BY updated ASC"

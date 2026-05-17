@@ -10,10 +10,10 @@ use std::path::Path;
 
 use tracing::{debug, warn};
 
-use crate::error::ProjectionError;
 use crate::atlassian;
 use crate::calendar;
 use crate::drive;
+use crate::error::ProjectionError;
 use crate::gmail;
 use crate::slack;
 use crate::store::{ProjectionStore, WriteOutcome};
@@ -73,13 +73,9 @@ pub fn project_feed_dir(
         }
         "confluence" => {
             let parsed = atlassian::walk_confluence_feed_dir(feed_id, feed_dir)?;
-            dedup_and_write_single_type(
-                store,
-                atlassian::CONFLUENCE_PAGES,
-                feed_id,
-                parsed,
-                |p| p.source_id.clone(),
-            )?
+            dedup_and_write_single_type(store, atlassian::CONFLUENCE_PAGES, feed_id, parsed, |p| {
+                p.source_id.clone()
+            })?
         }
         "calendar" => {
             let parsed = calendar::walk_feed_dir(feed_id, feed_dir)?;
@@ -98,23 +94,17 @@ pub fn project_feed_dir(
             let (top, reply): (Vec<_>, Vec<_>) =
                 parsed.into_iter().partition(|p| !p.is_thread_reply);
             let mut combined = WriteOutcome::default();
-            let o = dedup_and_write_single_type(
-                store,
-                slack::TOPLEVEL_FEED_TYPE,
-                feed_id,
-                top,
-                |p| p.source_id.clone(),
-            )?;
+            let o =
+                dedup_and_write_single_type(store, slack::TOPLEVEL_FEED_TYPE, feed_id, top, |p| {
+                    p.source_id.clone()
+                })?;
             combined.inserted += o.inserted;
             combined.updated += o.updated;
             combined.unchanged += o.unchanged;
-            let o = dedup_and_write_single_type(
-                store,
-                slack::THREAD_FEED_TYPE,
-                feed_id,
-                reply,
-                |p| p.source_id.clone(),
-            )?;
+            let o =
+                dedup_and_write_single_type(store, slack::THREAD_FEED_TYPE, feed_id, reply, |p| {
+                    p.source_id.clone()
+                })?;
             combined.inserted += o.inserted;
             combined.updated += o.updated;
             combined.unchanged += o.unchanged;

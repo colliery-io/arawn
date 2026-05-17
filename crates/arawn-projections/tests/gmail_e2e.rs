@@ -1,8 +1,8 @@
 //! End-to-end projection flow: walk a fixture gmail feed dir, write
 //! projections, search via FTS, re-run and confirm idempotency.
 
-use arawn_projections::gmail::{self, GmailMessageProjection, FEED_TYPE};
 use arawn_projections::ProjectionStore;
+use arawn_projections::gmail::{self, FEED_TYPE, GmailMessageProjection};
 use serde_json::json;
 
 fn write_msg(dir: &std::path::Path, day: &str, id: &str, msg: serde_json::Value) {
@@ -37,13 +37,23 @@ fn end_to_end_walk_write_search() {
         feed_dir.path(),
         "2026-05-10",
         "m1",
-        fixture_msg("m1", 1_700_000_000_000, "Quarterly planning", "Discussion of Q3 targets"),
+        fixture_msg(
+            "m1",
+            1_700_000_000_000,
+            "Quarterly planning",
+            "Discussion of Q3 targets",
+        ),
     );
     write_msg(
         feed_dir.path(),
         "2026-05-11",
         "m2",
-        fixture_msg("m2", 1_700_086_400_000, "Lunch?", "Want to grab tacos at noon"),
+        fixture_msg(
+            "m2",
+            1_700_086_400_000,
+            "Lunch?",
+            "Want to grab tacos at noon",
+        ),
     );
 
     let store = ProjectionStore::in_memory().unwrap();
@@ -61,7 +71,12 @@ fn end_to_end_walk_write_search() {
     let row = store.get_row(FEED_TYPE, &ids[0]).unwrap().unwrap();
     assert_eq!(row.title, "Quarterly planning");
     assert_eq!(row.feed_id, "gmail-inbox");
-    assert!(row.metadata.get("sender").and_then(|v| v.as_str()).is_some());
+    assert!(
+        row.metadata
+            .get("sender")
+            .and_then(|v| v.as_str())
+            .is_some()
+    );
 
     // FTS finds the lunch message.
     let ids = store.fts_search(FEED_TYPE, "tacos", 5).unwrap();
@@ -143,11 +158,7 @@ fn missing_source_ids_returns_unprojected() {
     store.write(&p).unwrap();
 
     let missing = store
-        .missing_source_ids(FEED_TYPE, "g", &[
-            "m1".into(),
-            "m2".into(),
-            "m3".into(),
-        ])
+        .missing_source_ids(FEED_TYPE, "g", &["m1".into(), "m2".into(), "m3".into()])
         .unwrap();
     assert_eq!(missing, vec!["m2".to_string(), "m3".to_string()]);
 }

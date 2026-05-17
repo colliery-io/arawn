@@ -30,8 +30,7 @@ use arawn_projections::calendar::{CalendarEventProjection, FEED_TYPE as CAL_FEED
 /// Seed daily ceremony state under `data_dir`. Idempotent.
 pub fn apply(data_dir: &Path) -> Result<DailySeedSummary, String> {
     let db_path = data_dir.join("arawn.db");
-    let conn = Connection::open(&db_path)
-        .map_err(|e| format!("open {db_path:?}: {e}"))?;
+    let conn = Connection::open(&db_path).map_err(|e| format!("open {db_path:?}: {e}"))?;
 
     let now = Utc::now();
     let today = now.date_naive();
@@ -65,9 +64,18 @@ pub fn apply(data_dir: &Path) -> Result<DailySeedSummary, String> {
     let created_at = (now - Duration::days(2)).to_rfc3339();
     let todos = [
         ("daily-todo-001", "Review proj-a postgres cutover runbook"),
-        ("daily-todo-002", "Reply to proj-b pager storm post-mortem draft"),
-        ("daily-todo-003", "Schedule async sync for proj-c shared schema RFC"),
-        ("daily-todo-004", "Confirm Saturday on-call coverage backfill"),
+        (
+            "daily-todo-002",
+            "Reply to proj-b pager storm post-mortem draft",
+        ),
+        (
+            "daily-todo-003",
+            "Schedule async sync for proj-c shared schema RFC",
+        ),
+        (
+            "daily-todo-004",
+            "Confirm Saturday on-call coverage backfill",
+        ),
     ];
     for (id, body) in todos {
         conn.execute(
@@ -107,7 +115,14 @@ pub fn apply(data_dir: &Path) -> Result<DailySeedSummary, String> {
             "INSERT OR IGNORE INTO ceremony_priorities \
              (id, tablet_id, body, rationale, citation_id, confirmed_at, done_at, ordinal) \
              VALUES (?1, ?2, ?3, ?4, NULL, ?5, NULL, ?6)",
-            params![id, &weekly_id, body, rationale, &weekly_generated, idx as i64],
+            params![
+                id,
+                &weekly_id,
+                body,
+                rationale,
+                &weekly_generated,
+                idx as i64
+            ],
         )
         .map_err(|e| format!("priority insert: {e}"))?;
         summary.priorities += 1;
@@ -123,12 +138,66 @@ pub fn apply(data_dir: &Path) -> Result<DailySeedSummary, String> {
 
     let feed_id = "uat-daily-calendar";
     let events: Vec<CalendarEventProjection> = vec![
-        ("daily-evt-001", "Standup", 9, 0, 9, 15, vec!["alice@acme.com", "pat@acme.com"], "Daily team standup"),
-        ("daily-evt-002", "Postgres cutover go/no-go", 11, 0, 12, 0, vec!["dba@acme.com", "pat@acme.com"], "Final cutover decision for proj-a."),
-        ("daily-evt-003", "1:1 with manager", 13, 30, 14, 0, vec!["manager@acme.com", "pat@acme.com"], "Weekly 1:1."),
-        ("daily-evt-004", "proj-c RFC review", 15, 0, 16, 0, vec!["architect@acme.com", "pat@acme.com"], "Shared schema RFC walkthrough."),
-        ("daily-evt-005", "On-call handoff", 17, 0, 17, 30, vec!["sre@acme.com", "pat@acme.com"], "Hand off pager + open incidents."),
-        ("daily-evt-006", "Deep work block", 8, 0, 9, 0, vec!["pat@acme.com"], "Focus block — review proj-a runbook."),
+        (
+            "daily-evt-001",
+            "Standup",
+            9,
+            0,
+            9,
+            15,
+            vec!["alice@acme.com", "pat@acme.com"],
+            "Daily team standup",
+        ),
+        (
+            "daily-evt-002",
+            "Postgres cutover go/no-go",
+            11,
+            0,
+            12,
+            0,
+            vec!["dba@acme.com", "pat@acme.com"],
+            "Final cutover decision for proj-a.",
+        ),
+        (
+            "daily-evt-003",
+            "1:1 with manager",
+            13,
+            30,
+            14,
+            0,
+            vec!["manager@acme.com", "pat@acme.com"],
+            "Weekly 1:1.",
+        ),
+        (
+            "daily-evt-004",
+            "proj-c RFC review",
+            15,
+            0,
+            16,
+            0,
+            vec!["architect@acme.com", "pat@acme.com"],
+            "Shared schema RFC walkthrough.",
+        ),
+        (
+            "daily-evt-005",
+            "On-call handoff",
+            17,
+            0,
+            17,
+            30,
+            vec!["sre@acme.com", "pat@acme.com"],
+            "Hand off pager + open incidents.",
+        ),
+        (
+            "daily-evt-006",
+            "Deep work block",
+            8,
+            0,
+            9,
+            0,
+            vec!["pat@acme.com"],
+            "Focus block — review proj-a runbook.",
+        ),
     ]
     .into_iter()
     .map(|(id, title, sh, sm, eh, em, attendees, desc)| {

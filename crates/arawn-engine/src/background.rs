@@ -37,7 +37,9 @@ fn rand_bytes() -> [u8; 4] {
         .unwrap_or_default()
         .as_nanos();
     let thread_id = std::thread::current().id();
-    let hash = t.wrapping_mul(6364136223846793005).wrapping_add(format!("{thread_id:?}").len() as u128);
+    let hash = t
+        .wrapping_mul(6364136223846793005)
+        .wrapping_add(format!("{thread_id:?}").len() as u128);
     buf.copy_from_slice(&hash.to_le_bytes()[..4]);
     buf
 }
@@ -69,8 +71,13 @@ impl TaskNotification {
 /// What kind of background task this is.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum BackgroundTaskKind {
-    Shell { command: String },
-    Agent { prompt: String, agent_type: Option<String> },
+    Shell {
+        command: String,
+    },
+    Agent {
+        prompt: String,
+        agent_type: Option<String>,
+    },
 }
 
 /// Current status of a background task.
@@ -206,7 +213,9 @@ impl BackgroundTaskManager {
         if let Some(task) = tasks.get_mut(task_id) {
             let summary = match &status {
                 BackgroundTaskStatus::Completed { exit_code } => {
-                    let code_str = exit_code.map(|c| format!(" (exit code {c})")).unwrap_or_default();
+                    let code_str = exit_code
+                        .map(|c| format!(" (exit code {c})"))
+                        .unwrap_or_default();
                     format!(
                         "Background {} \"{}\"{code_str}",
                         match &task.kind {
@@ -252,23 +261,32 @@ impl BackgroundTaskManager {
 
     /// Get a task's current status.
     pub fn status(&self, task_id: &str) -> Option<BackgroundTaskStatus> {
-        self.tasks.read().unwrap().get(task_id).map(|t| t.status.clone())
+        self.tasks
+            .read()
+            .unwrap()
+            .get(task_id)
+            .map(|t| t.status.clone())
     }
 
     /// Read a task's captured output.
     pub fn read_output(&self, task_id: &str) -> Option<String> {
-        self.tasks.read().unwrap().get(task_id).map(|t| t.read_output())
+        self.tasks
+            .read()
+            .unwrap()
+            .get(task_id)
+            .map(|t| t.read_output())
     }
 
     /// Cancel a running task.
     pub fn cancel(&self, task_id: &str) -> bool {
         let tasks = self.tasks.read().unwrap();
         if let Some(task) = tasks.get(task_id)
-            && task.status == BackgroundTaskStatus::Running {
-                debug!(task_id, "cancelling background task");
-                task.cancel_token.cancel();
-                return true;
-            }
+            && task.status == BackgroundTaskStatus::Running
+        {
+            debug!(task_id, "cancelling background task");
+            task.cancel_token.cancel();
+            return true;
+        }
         false
     }
 
@@ -346,7 +364,12 @@ mod tests {
     fn task_status_is_terminal() {
         assert!(!BackgroundTaskStatus::Running.is_terminal());
         assert!(BackgroundTaskStatus::Completed { exit_code: None }.is_terminal());
-        assert!(BackgroundTaskStatus::Failed { error: String::new() }.is_terminal());
+        assert!(
+            BackgroundTaskStatus::Failed {
+                error: String::new()
+            }
+            .is_terminal()
+        );
         assert!(BackgroundTaskStatus::Killed.is_terminal());
     }
 
@@ -379,10 +402,7 @@ mod tests {
         );
 
         assert_eq!(mgr.running_count(), 1);
-        assert_eq!(
-            mgr.status(&id),
-            Some(BackgroundTaskStatus::Running)
-        );
+        assert_eq!(mgr.status(&id), Some(BackgroundTaskStatus::Running));
 
         mgr.complete(&id, BackgroundTaskStatus::Completed { exit_code: Some(0) });
 

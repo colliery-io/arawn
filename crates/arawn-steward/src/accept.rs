@@ -60,8 +60,7 @@ struct PromoteOutputs {
 fn promote_tag(row: &JournalRow, ctx: &AcceptCtx<'_>) -> Result<(), StewardError> {
     let payload: PromoteOutputs = serde_json::from_str(&row.outputs_json)
         .map_err(|e| StewardError::Parse(format!("tag-promoter/promote_tag payload: {e}")))?;
-    let ontology = TagOntologyStore::open_at(ctx.workstream_root)
-        .map_err(StewardError::from)?;
+    let ontology = TagOntologyStore::open_at(ctx.workstream_root).map_err(StewardError::from)?;
     ontology.add(&payload.tag, AddedVia::Promotion)?;
     debug!(
         tag = %payload.tag,
@@ -82,9 +81,9 @@ fn dust_summarize(row: &JournalRow, kb: &Arc<MemoryManager>) -> Result<(), Stewa
         .map_err(|e| StewardError::Parse(format!("dust/summarize payload: {e}")))?;
     kb.workstream.insert_entity(&payload.summary)?;
     for src in &payload.source_ids {
-        if let Err(e) = kb
-            .workstream
-            .add_relation(payload.summary.id, RelationType::Summarizes, *src)
+        if let Err(e) =
+            kb.workstream
+                .add_relation(payload.summary.id, RelationType::Summarizes, *src)
         {
             // One bad src shouldn't drop the whole apply.
             debug!(error = %e, src = %src, "dust apply: SUMMARIZES edge skipped");
@@ -169,10 +168,19 @@ mod tests {
             json!({"from_id": a.id, "rel": "relates_to", "to_id": b.id}),
         );
         let root = ws_root(&tmp);
-        apply_forward(&r, &AcceptCtx { kb: &kb, workstream_root: &root }).unwrap();
+        apply_forward(
+            &r,
+            &AcceptCtx {
+                kb: &kb,
+                workstream_root: &root,
+            },
+        )
+        .unwrap();
         let rels = kb.workstream.get_relations(a.id).unwrap();
-        assert!(rels.iter().any(|x| x.target_id == b.id
-            && matches!(x.relation_type, RelationType::RelatesTo)));
+        assert!(
+            rels.iter()
+                .any(|x| x.target_id == b.id && matches!(x.relation_type, RelationType::RelatesTo))
+        );
     }
 
     #[test]
@@ -182,15 +190,22 @@ mod tests {
         let b = Entity::new(EntityType::Note, "old project b");
         kb.workstream.insert_entity(&a).unwrap();
         kb.workstream.insert_entity(&b).unwrap();
-        let summary = Entity::new(EntityType::Note, "summary of project x")
-            .with_content("compressed gist");
+        let summary =
+            Entity::new(EntityType::Note, "summary of project x").with_content("compressed gist");
         let r = row(
             "dust",
             "summarize",
             json!({"summary": summary, "source_ids": [a.id, b.id]}),
         );
         let root = ws_root(&tmp);
-        apply_forward(&r, &AcceptCtx { kb: &kb, workstream_root: &root }).unwrap();
+        apply_forward(
+            &r,
+            &AcceptCtx {
+                kb: &kb,
+                workstream_root: &root,
+            },
+        )
+        .unwrap();
         let fetched = kb.workstream.get_entity(summary.id).unwrap().unwrap();
         assert_eq!(fetched.title, "summary of project x");
         let edges = kb.workstream.get_relations(summary.id).unwrap();
@@ -206,7 +221,14 @@ mod tests {
         let (tmp, kb) = setup_kb();
         let r = row("doorwatch", "propose_identity", json!({"x": 1}));
         let root = ws_root(&tmp);
-        apply_forward(&r, &AcceptCtx { kb: &kb, workstream_root: &root }).unwrap();
+        apply_forward(
+            &r,
+            &AcceptCtx {
+                kb: &kb,
+                workstream_root: &root,
+            },
+        )
+        .unwrap();
     }
 
     #[test]
@@ -222,7 +244,14 @@ mod tests {
             "promote_tag",
             json!({"tag": "calidor", "count": 5, "sample_entity_ids": []}),
         );
-        apply_forward(&r, &AcceptCtx { kb: &kb, workstream_root: &root }).unwrap();
+        apply_forward(
+            &r,
+            &AcceptCtx {
+                kb: &kb,
+                workstream_root: &root,
+            },
+        )
+        .unwrap();
 
         // Re-open to read; should now contain the tag with
         // added_via=Promotion.
@@ -237,8 +266,14 @@ mod tests {
         let (tmp, kb) = setup_kb();
         let r = row("dust", "obscure", json!({}));
         let root = ws_root(&tmp);
-        let err = apply_forward(&r, &AcceptCtx { kb: &kb, workstream_root: &root })
-            .unwrap_err();
+        let err = apply_forward(
+            &r,
+            &AcceptCtx {
+                kb: &kb,
+                workstream_root: &root,
+            },
+        )
+        .unwrap_err();
         assert!(matches!(err, StewardError::Subroutine { .. }));
     }
 }

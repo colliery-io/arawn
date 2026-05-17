@@ -8,6 +8,4 @@ mod definition;
 mod loader;
 
 pub use definition::{SkillDefinition, SkillSource, parse_skill_markdown};
-pub use loader::{
-    SkillRegistry, format_skill_listing, load_merged_skills, load_skills_dir,
-};
+pub use loader::{SkillRegistry, format_skill_listing, load_merged_skills, load_skills_dir};

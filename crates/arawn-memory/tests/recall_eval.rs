@@ -57,21 +57,57 @@ fn build_fixture_store() -> Arc<MemoryStore> {
 
     // === Facts (10) ===
     let facts = [
-        ("Rust performance tuning", Some("Use cargo flamegraph for profiling. Avoid unnecessary allocations in hot loops. Prefer stack allocation over heap where possible.")),
-        ("PostgreSQL connection pooling", Some("We use deadpool-diesel with max 20 connections per service. Connection timeout is 5 seconds.")),
-        ("API rate limiting", Some("Rate limit is 100 requests per minute per API key. Burst of 20 allowed.")),
-        ("Deployment pipeline uses GitHub Actions", Some("CI runs on push to main. Deploys to staging automatically, production requires manual approval.")),
-        ("Session data stored in Redis", Some("Sessions expire after 24 hours. Redis cluster with 3 nodes.")),
-        ("Frontend uses React 18 with TypeScript", Some("Strict TypeScript config. No any types allowed in production code.")),
-        ("Database migrations use refinery", Some("Migrations are SQL files in migrations/ directory. Applied on server startup.")),
-        ("Logging uses structured JSON format", Some("All services emit JSON logs to stdout. Collected by Datadog agent.")),
-        ("Authentication via OAuth2 with PKCE", Some("Auth provider is Auth0. Refresh tokens valid for 30 days.")),
-        ("Search index is Meilisearch", Some("Full-text search for user content. Reindexed every 5 minutes from PostgreSQL.")),
+        (
+            "Rust performance tuning",
+            Some(
+                "Use cargo flamegraph for profiling. Avoid unnecessary allocations in hot loops. Prefer stack allocation over heap where possible.",
+            ),
+        ),
+        (
+            "PostgreSQL connection pooling",
+            Some(
+                "We use deadpool-diesel with max 20 connections per service. Connection timeout is 5 seconds.",
+            ),
+        ),
+        (
+            "API rate limiting",
+            Some("Rate limit is 100 requests per minute per API key. Burst of 20 allowed."),
+        ),
+        (
+            "Deployment pipeline uses GitHub Actions",
+            Some(
+                "CI runs on push to main. Deploys to staging automatically, production requires manual approval.",
+            ),
+        ),
+        (
+            "Session data stored in Redis",
+            Some("Sessions expire after 24 hours. Redis cluster with 3 nodes."),
+        ),
+        (
+            "Frontend uses React 18 with TypeScript",
+            Some("Strict TypeScript config. No any types allowed in production code."),
+        ),
+        (
+            "Database migrations use refinery",
+            Some("Migrations are SQL files in migrations/ directory. Applied on server startup."),
+        ),
+        (
+            "Logging uses structured JSON format",
+            Some("All services emit JSON logs to stdout. Collected by Datadog agent."),
+        ),
+        (
+            "Authentication via OAuth2 with PKCE",
+            Some("Auth provider is Auth0. Refresh tokens valid for 30 days."),
+        ),
+        (
+            "Search index is Meilisearch",
+            Some("Full-text search for user content. Reindexed every 5 minutes from PostgreSQL."),
+        ),
     ];
 
     for (title, content) in &facts {
-        let mut entity = Entity::new(EntityType::Fact, *title)
-            .with_confidence(ConfidenceSource::Stated);
+        let mut entity =
+            Entity::new(EntityType::Fact, *title).with_confidence(ConfidenceSource::Stated);
         if let Some(c) = content {
             entity = entity.with_content(*c);
         }
@@ -80,19 +116,45 @@ fn build_fixture_store() -> Arc<MemoryStore> {
 
     // === Decisions (8) ===
     let decisions = [
-        ("We decided to use gRPC for inter-service communication", Some("REST was too slow for real-time features. gRPC gives us streaming and better performance.")),
-        ("We decided to monorepo all services", Some("Easier dependency management and atomic cross-service changes.")),
-        ("We decided against GraphQL for v1", Some("Too much complexity for our team size. REST with OpenAPI is sufficient.")),
-        ("Decided to use SQLite for local development", Some("Production uses PostgreSQL but SQLite simplifies local dev setup.")),
-        ("Decision: no ORM, raw SQL with type-safe queries", Some("ORMs hide performance issues. We use sqlx for compile-time checked queries.")),
-        ("We chose Axum over Actix for the web framework", Some("Better tokio integration, simpler middleware model, and tower compatibility.")),
-        ("Decided to run background jobs via cloacina pipelines", Some("Replaces ad-hoc cron jobs with observable DAG workflows.")),
-        ("Decision: feature flags via LaunchDarkly", Some("Gradual rollouts, A/B testing, kill switches for all new features.")),
+        (
+            "We decided to use gRPC for inter-service communication",
+            Some(
+                "REST was too slow for real-time features. gRPC gives us streaming and better performance.",
+            ),
+        ),
+        (
+            "We decided to monorepo all services",
+            Some("Easier dependency management and atomic cross-service changes."),
+        ),
+        (
+            "We decided against GraphQL for v1",
+            Some("Too much complexity for our team size. REST with OpenAPI is sufficient."),
+        ),
+        (
+            "Decided to use SQLite for local development",
+            Some("Production uses PostgreSQL but SQLite simplifies local dev setup."),
+        ),
+        (
+            "Decision: no ORM, raw SQL with type-safe queries",
+            Some("ORMs hide performance issues. We use sqlx for compile-time checked queries."),
+        ),
+        (
+            "We chose Axum over Actix for the web framework",
+            Some("Better tokio integration, simpler middleware model, and tower compatibility."),
+        ),
+        (
+            "Decided to run background jobs via cloacina pipelines",
+            Some("Replaces ad-hoc cron jobs with observable DAG workflows."),
+        ),
+        (
+            "Decision: feature flags via LaunchDarkly",
+            Some("Gradual rollouts, A/B testing, kill switches for all new features."),
+        ),
     ];
 
     for (title, content) in &decisions {
-        let mut entity = Entity::new(EntityType::Decision, *title)
-            .with_confidence(ConfidenceSource::Stated);
+        let mut entity =
+            Entity::new(EntityType::Decision, *title).with_confidence(ConfidenceSource::Stated);
         if let Some(c) = content {
             entity = entity.with_content(*c);
         }
@@ -105,15 +167,21 @@ fn build_fixture_store() -> Arc<MemoryStore> {
         ("Never commit directly to main — always use PRs", None),
         ("Every PR requires at least one approval", None),
         ("Error types implement thiserror::Error", None),
-        ("Tests go in inline #[cfg(test)] modules, not separate files", None),
+        (
+            "Tests go in inline #[cfg(test)] modules, not separate files",
+            None,
+        ),
         ("Use tracing crate for all logging, not println", None),
-        ("Commit messages follow conventional commits format", Some("feat:, fix:, refactor:, docs:, test:, chore:")),
+        (
+            "Commit messages follow conventional commits format",
+            Some("feat:, fix:, refactor:, docs:, test:, chore:"),
+        ),
         ("All public functions must have doc comments", None),
     ];
 
     for (title, content) in &conventions {
-        let mut entity = Entity::new(EntityType::Convention, *title)
-            .with_confidence(ConfidenceSource::Stated);
+        let mut entity =
+            Entity::new(EntityType::Convention, *title).with_confidence(ConfidenceSource::Stated);
         if let Some(c) = content {
             entity = entity.with_content(*c);
         }
@@ -133,26 +201,47 @@ fn build_fixture_store() -> Arc<MemoryStore> {
     ];
 
     for title in &preferences {
-        let entity = Entity::new(EntityType::Preference, *title)
-            .with_confidence(ConfidenceSource::Stated);
+        let entity =
+            Entity::new(EntityType::Preference, *title).with_confidence(ConfidenceSource::Stated);
         store.store_fact(&entity).unwrap();
     }
 
     // === People (8) ===
     let people = [
-        ("Alice Chen", Some("Tech lead. Rust expert. Owns the engine crate.")),
-        ("Bob Martinez", Some("Backend engineer. Works on API and database layers.")),
+        (
+            "Alice Chen",
+            Some("Tech lead. Rust expert. Owns the engine crate."),
+        ),
+        (
+            "Bob Martinez",
+            Some("Backend engineer. Works on API and database layers."),
+        ),
         ("Carol Singh", Some("Frontend engineer. React specialist.")),
-        ("Dave Kim", Some("DevOps. Manages CI/CD, infrastructure, and monitoring.")),
-        ("Eve Thompson", Some("Product manager. Prioritizes features and roadmap.")),
-        ("Frank Liu", Some("Security engineer. Reviews auth and permission code.")),
-        ("Grace Park", Some("QA lead. Writes integration tests and regression suites.")),
-        ("Hiro Tanaka", Some("Data engineer. Manages search index and analytics pipeline.")),
+        (
+            "Dave Kim",
+            Some("DevOps. Manages CI/CD, infrastructure, and monitoring."),
+        ),
+        (
+            "Eve Thompson",
+            Some("Product manager. Prioritizes features and roadmap."),
+        ),
+        (
+            "Frank Liu",
+            Some("Security engineer. Reviews auth and permission code."),
+        ),
+        (
+            "Grace Park",
+            Some("QA lead. Writes integration tests and regression suites."),
+        ),
+        (
+            "Hiro Tanaka",
+            Some("Data engineer. Manages search index and analytics pipeline."),
+        ),
     ];
 
     for (title, content) in &people {
-        let mut entity = Entity::new(EntityType::Person, *title)
-            .with_confidence(ConfidenceSource::Stated);
+        let mut entity =
+            Entity::new(EntityType::Person, *title).with_confidence(ConfidenceSource::Stated);
         if let Some(c) = content {
             entity = entity.with_content(*c);
         }
@@ -161,19 +250,30 @@ fn build_fixture_store() -> Arc<MemoryStore> {
 
     // === Notes (8) ===
     let notes = [
-        ("Memory system uses two-tier architecture", Some("Global KB for cross-workstream knowledge, workstream KB for project-specific facts.")),
+        (
+            "Memory system uses two-tier architecture",
+            Some(
+                "Global KB for cross-workstream knowledge, workstream KB for project-specific facts.",
+            ),
+        ),
         ("Compaction threshold is 85% of context window", None),
         ("Agent nesting limited to depth 3", None),
         ("WebSocket auth uses per-session tokens", None),
         ("MCP servers connect via stdio transport", None),
         ("Plugin hot-reload watches filesystem for changes", None),
-        ("TUI uses ratatui with crossterm backend", Some("Terminal UI renders markdown, tables, and code blocks with syntax highlighting.")),
-        ("Embedding model is 384-dimensional", Some("Uses ONNX runtime for local inference. No external API calls for embeddings.")),
+        (
+            "TUI uses ratatui with crossterm backend",
+            Some("Terminal UI renders markdown, tables, and code blocks with syntax highlighting."),
+        ),
+        (
+            "Embedding model is 384-dimensional",
+            Some("Uses ONNX runtime for local inference. No external API calls for embeddings."),
+        ),
     ];
 
     for (title, content) in &notes {
-        let mut entity = Entity::new(EntityType::Note, *title)
-            .with_confidence(ConfidenceSource::Observed);
+        let mut entity =
+            Entity::new(EntityType::Note, *title).with_confidence(ConfidenceSource::Observed);
         if let Some(c) = content {
             entity = entity.with_content(*c);
         }
@@ -188,8 +288,11 @@ fn build_fixture_store() -> Arc<MemoryStore> {
         store.store_fact(&entity).unwrap(); // reinforces
     }
     for _ in 0..2 {
-        let entity = Entity::new(EntityType::Convention, "Always use snake_case for Rust identifiers")
-            .with_confidence(ConfidenceSource::Stated);
+        let entity = Entity::new(
+            EntityType::Convention,
+            "Always use snake_case for Rust identifiers",
+        )
+        .with_confidence(ConfidenceSource::Stated);
         store.store_fact(&entity).unwrap();
     }
 
@@ -271,7 +374,6 @@ fn build_query_corpus() -> Vec<QueryCase> {
             expected: vec!["We decided to use gRPC for inter-service communication"],
             category: QueryCategory::ExactTitle,
         },
-
         // --- Keyword overlap ---
         QueryCase {
             description: "keyword: rust",
@@ -285,9 +387,7 @@ fn build_query_corpus() -> Vec<QueryCase> {
         QueryCase {
             description: "keyword: database",
             query: "database",
-            expected: vec![
-                "Database migrations use refinery",
-            ],
+            expected: vec!["Database migrations use refinery"],
             category: QueryCategory::KeywordOverlap,
         },
         QueryCase {
@@ -308,7 +408,6 @@ fn build_query_corpus() -> Vec<QueryCase> {
             expected: vec!["Frank Liu"],
             category: QueryCategory::KeywordOverlap,
         },
-
         // --- Content search (matches body, not title) ---
         QueryCase {
             description: "content: flamegraph",
@@ -340,7 +439,6 @@ fn build_query_corpus() -> Vec<QueryCase> {
             expected: vec!["TUI uses ratatui with crossterm backend"],
             category: QueryCategory::ContentSearch,
         },
-
         // --- Paraphrase (same meaning, different words) ---
         QueryCase {
             description: "paraphrase: naming convention",
@@ -375,7 +473,6 @@ fn build_query_corpus() -> Vec<QueryCase> {
             expected: vec!["Decided to run background jobs via cloacina pipelines"],
             category: QueryCategory::Paraphrase,
         },
-
         // --- Negative queries (should return nothing relevant) ---
         QueryCase {
             description: "negative: kubernetes",
@@ -431,20 +528,12 @@ fn fts_recall_evaluation() {
         let r = recall_at_k(&search_results, &case.expected, 5);
         let p = if case.expected.is_empty() {
             // For negative queries, precision = 1.0 if no results, 0.0 if any
-            if search_results.is_empty() {
-                1.0
-            } else {
-                0.0
-            }
+            if search_results.is_empty() { 1.0 } else { 0.0 }
         } else {
             precision_at_k(&search_results, &case.expected, 5)
         };
         let m = if case.expected.is_empty() {
-            if search_results.is_empty() {
-                1.0
-            } else {
-                0.0
-            }
+            if search_results.is_empty() { 1.0 } else { 0.0 }
         } else {
             mrr(&search_results, &case.expected)
         };
@@ -521,7 +610,11 @@ fn memory_stack_l1_coverage() {
     println!("  MEMORY STACK L1 COVERAGE");
     println!("======================================================================");
     println!("  Budget: 900 tokens");
-    println!("  Generated context ({} chars, ~{} tokens):", context.len(), context.len() / 4);
+    println!(
+        "  Generated context ({} chars, ~{} tokens):",
+        context.len(),
+        context.len() / 4
+    );
     println!("----------------------------------------------------------------------");
     println!("{context}");
     println!("======================================================================\n");
@@ -553,7 +646,11 @@ fn memory_stack_l2_topical_retrieval() {
     let l1_titles = stack.l1_entity_titles();
 
     // Simulate user message about deployment
-    let keywords = vec!["deployment".to_string(), "pipeline".to_string(), "CI".to_string()];
+    let keywords = vec![
+        "deployment".to_string(),
+        "pipeline".to_string(),
+        "CI".to_string(),
+    ];
     let l2 = stack.topical_context(&keywords, &l1_titles, 400);
 
     println!("\n======================================================================");
@@ -567,7 +664,9 @@ fn memory_stack_l2_topical_retrieval() {
         println!("{text}");
 
         // Should find deployment-related entities
-        let deployment_found = text.contains("Deployment") || text.contains("pipeline") || text.contains("GitHub Actions");
+        let deployment_found = text.contains("Deployment")
+            || text.contains("pipeline")
+            || text.contains("GitHub Actions");
         println!("\n  Deployment-related content found: {deployment_found}");
         assert!(
             deployment_found,
@@ -600,7 +699,9 @@ fn superseded_entities_excluded_from_all_searches() {
 
     // Direct FTS search should not return superseded entities
     let results = store.search("REST for all APIs", 10).unwrap_or_default();
-    let has_superseded = results.iter().any(|e| e.title == "We use REST for all APIs");
+    let has_superseded = results
+        .iter()
+        .any(|e| e.title == "We use REST for all APIs");
     assert!(
         !has_superseded,
         "Superseded entity 'We use REST for all APIs' should not appear in FTS results"
@@ -662,7 +763,9 @@ fn edge_case_very_short_query() {
 fn edge_case_no_matches() {
     let store = build_fixture_store();
 
-    let results = store.search("xyzzy_nonexistent_term_12345", 5).unwrap_or_default();
+    let results = store
+        .search("xyzzy_nonexistent_term_12345", 5)
+        .unwrap_or_default();
     assert!(
         results.is_empty(),
         "Completely unrelated query should return no results"
@@ -683,7 +786,9 @@ fn vector_search_recall_real_embeddings() {
     let embedder = match arawn_embed::create_embedder(&config) {
         Ok(e) => e,
         Err(e) => {
-            println!("\n  SKIPPING vector_search_recall_real_embeddings — embedder unavailable: {e}");
+            println!(
+                "\n  SKIPPING vector_search_recall_real_embeddings — embedder unavailable: {e}"
+            );
             return;
         }
     };
@@ -699,67 +804,180 @@ fn vector_search_recall_real_embeddings() {
     // 40 entities — diverse topics with deliberate distractors that share vocabulary
     let entities = [
         // Performance cluster (multiple related entries)
-        ("Rust performance tuning", "Use cargo flamegraph for profiling. Avoid unnecessary allocations in hot loops. Prefer stack allocation over heap."),
-        ("Frontend performance budget", "First contentful paint under 1.5s. Bundle size limit 200KB gzipped. Lazy load below-fold components."),
-        ("Database query performance", "All queries must use indexes. EXPLAIN ANALYZE any query taking over 100ms. No N+1 queries."),
-        ("Load testing with k6", "Run k6 scripts against staging before every release. Target 500 RPS at p99 under 200ms."),
-
+        (
+            "Rust performance tuning",
+            "Use cargo flamegraph for profiling. Avoid unnecessary allocations in hot loops. Prefer stack allocation over heap.",
+        ),
+        (
+            "Frontend performance budget",
+            "First contentful paint under 1.5s. Bundle size limit 200KB gzipped. Lazy load below-fold components.",
+        ),
+        (
+            "Database query performance",
+            "All queries must use indexes. EXPLAIN ANALYZE any query taking over 100ms. No N+1 queries.",
+        ),
+        (
+            "Load testing with k6",
+            "Run k6 scripts against staging before every release. Target 500 RPS at p99 under 200ms.",
+        ),
         // Database cluster (multiple related entries)
-        ("PostgreSQL connection pooling", "We use deadpool-diesel with max 20 connections per service. Connection timeout is 5 seconds."),
-        ("Database migrations use refinery", "Migrations are SQL files in migrations/ directory. Applied on server startup. Never modify existing migrations."),
-        ("Redis caching strategy", "Cache invalidation via pub/sub. TTL 5 minutes for most keys. Session data TTL 24 hours."),
-        ("SQLite for local development", "Production uses PostgreSQL but SQLite simplifies local dev. Tests use in-memory SQLite."),
-
+        (
+            "PostgreSQL connection pooling",
+            "We use deadpool-diesel with max 20 connections per service. Connection timeout is 5 seconds.",
+        ),
+        (
+            "Database migrations use refinery",
+            "Migrations are SQL files in migrations/ directory. Applied on server startup. Never modify existing migrations.",
+        ),
+        (
+            "Redis caching strategy",
+            "Cache invalidation via pub/sub. TTL 5 minutes for most keys. Session data TTL 24 hours.",
+        ),
+        (
+            "SQLite for local development",
+            "Production uses PostgreSQL but SQLite simplifies local dev. Tests use in-memory SQLite.",
+        ),
         // Auth/Security cluster
-        ("Authentication via OAuth2 with PKCE", "Auth provider is Auth0. Refresh tokens valid for 30 days. PKCE flow for SPAs."),
-        ("API rate limiting", "Rate limit is 100 requests per minute per API key. Burst of 20 allowed. 429 response with Retry-After header."),
-        ("CORS policy", "Allow origins from app.example.com and staging.example.com. Credentials allowed. Preflight cached 1 hour."),
-        ("Session token rotation", "Rotate session tokens every 4 hours. Old tokens valid for 5 minutes after rotation for graceful handoff."),
-
+        (
+            "Authentication via OAuth2 with PKCE",
+            "Auth provider is Auth0. Refresh tokens valid for 30 days. PKCE flow for SPAs.",
+        ),
+        (
+            "API rate limiting",
+            "Rate limit is 100 requests per minute per API key. Burst of 20 allowed. 429 response with Retry-After header.",
+        ),
+        (
+            "CORS policy",
+            "Allow origins from app.example.com and staging.example.com. Credentials allowed. Preflight cached 1 hour.",
+        ),
+        (
+            "Session token rotation",
+            "Rotate session tokens every 4 hours. Old tokens valid for 5 minutes after rotation for graceful handoff.",
+        ),
         // Deployment/CI cluster
-        ("Deployment pipeline uses GitHub Actions", "CI runs on push to main. Deploys to staging automatically, production requires manual approval."),
-        ("Feature branch environments", "Every PR gets a preview environment via Vercel. Auto-destroyed after merge. Database seeded from fixtures."),
-        ("Rollback procedure", "Revert the merge commit on main. CI will auto-deploy the previous version. Database rollback via down migration."),
-        ("Infrastructure as code with Terraform", "All cloud resources defined in terraform/. State stored in S3. Plan runs on PR, apply on merge."),
-
+        (
+            "Deployment pipeline uses GitHub Actions",
+            "CI runs on push to main. Deploys to staging automatically, production requires manual approval.",
+        ),
+        (
+            "Feature branch environments",
+            "Every PR gets a preview environment via Vercel. Auto-destroyed after merge. Database seeded from fixtures.",
+        ),
+        (
+            "Rollback procedure",
+            "Revert the merge commit on main. CI will auto-deploy the previous version. Database rollback via down migration.",
+        ),
+        (
+            "Infrastructure as code with Terraform",
+            "All cloud resources defined in terraform/. State stored in S3. Plan runs on PR, apply on merge.",
+        ),
         // Communication/API cluster
-        ("We decided to use gRPC for inter-service communication", "REST was too slow for real-time features. gRPC gives us streaming and better performance."),
-        ("WebSocket for real-time updates", "Client subscribes via WS. Server pushes events for chat, notifications, and live collaboration."),
-        ("GraphQL considered but rejected", "Too much complexity for our team size. REST with OpenAPI is sufficient for v1."),
-        ("API versioning via URL path", "v1/v2 prefix in URL. Breaking changes require new version. Old versions supported for 6 months."),
-
+        (
+            "We decided to use gRPC for inter-service communication",
+            "REST was too slow for real-time features. gRPC gives us streaming and better performance.",
+        ),
+        (
+            "WebSocket for real-time updates",
+            "Client subscribes via WS. Server pushes events for chat, notifications, and live collaboration.",
+        ),
+        (
+            "GraphQL considered but rejected",
+            "Too much complexity for our team size. REST with OpenAPI is sufficient for v1.",
+        ),
+        (
+            "API versioning via URL path",
+            "v1/v2 prefix in URL. Breaking changes require new version. Old versions supported for 6 months.",
+        ),
         // Logging/Monitoring cluster
-        ("Logging uses structured JSON format", "All services emit JSON logs to stdout. Collected by Datadog agent. Log level INFO in prod."),
-        ("Error tracking with Sentry", "Unhandled exceptions auto-reported. Breadcrumbs for context. PII scrubbed before submission."),
-        ("Metrics via Prometheus", "Custom metrics exposed on /metrics endpoint. Grafana dashboards for each service. Alert on p99 > 500ms."),
-        ("Distributed tracing with OpenTelemetry", "Trace context propagated via headers. Jaeger for visualization. Sample rate 10% in prod."),
-
+        (
+            "Logging uses structured JSON format",
+            "All services emit JSON logs to stdout. Collected by Datadog agent. Log level INFO in prod.",
+        ),
+        (
+            "Error tracking with Sentry",
+            "Unhandled exceptions auto-reported. Breadcrumbs for context. PII scrubbed before submission.",
+        ),
+        (
+            "Metrics via Prometheus",
+            "Custom metrics exposed on /metrics endpoint. Grafana dashboards for each service. Alert on p99 > 500ms.",
+        ),
+        (
+            "Distributed tracing with OpenTelemetry",
+            "Trace context propagated via headers. Jaeger for visualization. Sample rate 10% in prod.",
+        ),
         // Code conventions cluster
-        ("Always use snake_case for Rust identifiers", "Naming convention for all Rust code in the project. Enforced by clippy."),
-        ("Error types implement thiserror", "All error enums derive thiserror::Error. Variants have #[error] messages. Use anyhow for application code."),
-        ("Tests go in inline modules", "Unit tests in #[cfg(test)] mod tests at bottom of file. Integration tests in tests/ directory."),
-        ("Commit messages follow conventional commits", "feat:, fix:, refactor:, docs:, test:, chore: prefixes. Scope in parentheses."),
-
+        (
+            "Always use snake_case for Rust identifiers",
+            "Naming convention for all Rust code in the project. Enforced by clippy.",
+        ),
+        (
+            "Error types implement thiserror",
+            "All error enums derive thiserror::Error. Variants have #[error] messages. Use anyhow for application code.",
+        ),
+        (
+            "Tests go in inline modules",
+            "Unit tests in #[cfg(test)] mod tests at bottom of file. Integration tests in tests/ directory.",
+        ),
+        (
+            "Commit messages follow conventional commits",
+            "feat:, fix:, refactor:, docs:, test:, chore: prefixes. Scope in parentheses.",
+        ),
         // Web framework cluster
-        ("We chose Axum over Actix for the web framework", "Better tokio integration, simpler middleware model, and tower compatibility."),
-        ("Middleware ordering matters", "Auth middleware runs first, then rate limiting, then CORS, then the handler. Order defined in Router::layer."),
-        ("Request validation with validator crate", "All input DTOs derive Validate. Return 422 with field-level errors on failure."),
-
+        (
+            "We chose Axum over Actix for the web framework",
+            "Better tokio integration, simpler middleware model, and tower compatibility.",
+        ),
+        (
+            "Middleware ordering matters",
+            "Auth middleware runs first, then rate limiting, then CORS, then the handler. Order defined in Router::layer.",
+        ),
+        (
+            "Request validation with validator crate",
+            "All input DTOs derive Validate. Return 422 with field-level errors on failure.",
+        ),
         // Frontend cluster
-        ("Frontend uses React 18 with TypeScript", "Strict TypeScript config. No any types allowed in production code."),
-        ("State management with Zustand", "Zustand stores for global state. React Query for server state. No Redux."),
-        ("Component library is Radix UI", "Unstyled accessible primitives. Custom styling via Tailwind. No Material UI."),
-
+        (
+            "Frontend uses React 18 with TypeScript",
+            "Strict TypeScript config. No any types allowed in production code.",
+        ),
+        (
+            "State management with Zustand",
+            "Zustand stores for global state. React Query for server state. No Redux.",
+        ),
+        (
+            "Component library is Radix UI",
+            "Unstyled accessible primitives. Custom styling via Tailwind. No Material UI.",
+        ),
         // Search cluster
-        ("Search index is Meilisearch", "Full-text search for user content. Reindexed every 5 minutes from PostgreSQL."),
-        ("Search ranking uses BM25 plus custom boosting", "Title matches weighted 3x. Recent content boosted. Typo tolerance enabled."),
-
+        (
+            "Search index is Meilisearch",
+            "Full-text search for user content. Reindexed every 5 minutes from PostgreSQL.",
+        ),
+        (
+            "Search ranking uses BM25 plus custom boosting",
+            "Title matches weighted 3x. Recent content boosted. Typo tolerance enabled.",
+        ),
         // People (distractors that share vocabulary with technical topics)
-        ("Alice Chen", "Tech lead. Rust expert. Owns the engine crate and performance optimization."),
-        ("Bob Martinez", "Backend engineer. Works on API layer, database migrations, and connection pooling."),
-        ("Dave Kim", "DevOps engineer. Manages CI/CD pipelines, Terraform infrastructure, and monitoring."),
-        ("Frank Liu", "Security engineer. Reviews auth flows, rate limiting, and CORS configuration."),
-        ("Hiro Tanaka", "Data engineer. Manages Meilisearch index, analytics pipeline, and Redis caching."),
+        (
+            "Alice Chen",
+            "Tech lead. Rust expert. Owns the engine crate and performance optimization.",
+        ),
+        (
+            "Bob Martinez",
+            "Backend engineer. Works on API layer, database migrations, and connection pooling.",
+        ),
+        (
+            "Dave Kim",
+            "DevOps engineer. Manages CI/CD pipelines, Terraform infrastructure, and monitoring.",
+        ),
+        (
+            "Frank Liu",
+            "Security engineer. Reviews auth flows, rate limiting, and CORS configuration.",
+        ),
+        (
+            "Hiro Tanaka",
+            "Data engineer. Manages Meilisearch index, analytics pipeline, and Redis caching.",
+        ),
     ];
 
     let mut entity_ids: Vec<(uuid::Uuid, &str)> = Vec::new();
@@ -781,13 +999,34 @@ fn vector_search_recall_real_embeddings() {
     let queries: Vec<(&str, &str)> = vec![
         // Paraphrase queries that should work with semantic search
         ("how to make code faster", "Rust performance tuning"),
-        ("database connection management", "PostgreSQL connection pooling"),
-        ("continuous integration and deployment", "Deployment pipeline uses GitHub Actions"),
-        ("user login and security tokens", "Authentication via OAuth2 with PKCE"),
-        ("naming conventions for variables", "Always use snake_case for Rust identifiers"),
-        ("which web server framework do we use", "We chose Axum over Actix for the web framework"),
-        ("observability and log collection", "Logging uses structured JSON format"),
-        ("microservice communication protocol", "We decided to use gRPC for inter-service communication"),
+        (
+            "database connection management",
+            "PostgreSQL connection pooling",
+        ),
+        (
+            "continuous integration and deployment",
+            "Deployment pipeline uses GitHub Actions",
+        ),
+        (
+            "user login and security tokens",
+            "Authentication via OAuth2 with PKCE",
+        ),
+        (
+            "naming conventions for variables",
+            "Always use snake_case for Rust identifiers",
+        ),
+        (
+            "which web server framework do we use",
+            "We chose Axum over Actix for the web framework",
+        ),
+        (
+            "observability and log collection",
+            "Logging uses structured JSON format",
+        ),
+        (
+            "microservice communication protocol",
+            "We decided to use gRPC for inter-service communication",
+        ),
     ];
 
     println!("\n======================================================================");
@@ -829,7 +1068,13 @@ fn vector_search_recall_real_embeddings() {
         }
 
         let dist = results.first().map(|r| r.distance).unwrap_or(f32::MAX);
-        let marker = if hit_1 { "HIT" } else if hit_3 { "top3" } else { "MISS" };
+        let marker = if hit_1 {
+            "HIT"
+        } else if hit_3 {
+            "top3"
+        } else {
+            "MISS"
+        };
 
         println!(
             "  {:<50} {:>8} {:>10.4}",
@@ -843,8 +1088,18 @@ fn vector_search_recall_real_embeddings() {
     let recall_3 = hits_at_3 as f64 / total as f64;
 
     println!("----------------------------------------------------------------------");
-    println!("  Recall@1: {:.0}% ({}/{})", recall_1 * 100.0, hits_at_1, total);
-    println!("  Recall@3: {:.0}% ({}/{})", recall_3 * 100.0, hits_at_3, total);
+    println!(
+        "  Recall@1: {:.0}% ({}/{})",
+        recall_1 * 100.0,
+        hits_at_1,
+        total
+    );
+    println!(
+        "  Recall@3: {:.0}% ({}/{})",
+        recall_3 * 100.0,
+        hits_at_3,
+        total
+    );
     println!("======================================================================\n");
 
     // Real embeddings should achieve at least 50% recall@3 on paraphrases

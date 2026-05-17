@@ -46,11 +46,8 @@ pub trait RollupSource: Send + Sync {
     /// simply not written. Use this for sources that only apply
     /// to some workstreams (e.g. Slack-only metrics on a
     /// workstream without Slack configured).
-    async fn compute(
-        &self,
-        iso_week: &str,
-        workstream: &str,
-    ) -> Result<Option<f64>, CeremonyError>;
+    async fn compute(&self, iso_week: &str, workstream: &str)
+    -> Result<Option<f64>, CeremonyError>;
 }
 
 /// Active workstreams the rollup walks. Sourced from `workstreams`
@@ -82,9 +79,9 @@ impl WorkstreamList for CentralDbWorkstreams {
             .map_err(|e| CeremonyError::Storage(format!("active_workstreams query: {e}")))?;
         let mut out = Vec::new();
         for r in rows {
-            out.push(r.map_err(|e| {
-                CeremonyError::Storage(format!("active_workstreams row: {e}"))
-            })?);
+            out.push(
+                r.map_err(|e| CeremonyError::Storage(format!("active_workstreams row: {e}")))?,
+            );
         }
         Ok(out)
     }
@@ -215,10 +212,7 @@ mod tests {
         }
     }
 
-    fn make_source(
-        key: &'static str,
-        values: &[(&str, f64)],
-    ) -> Arc<dyn RollupSource> {
+    fn make_source(key: &'static str, values: &[(&str, f64)]) -> Arc<dyn RollupSource> {
         let mut m = std::collections::HashMap::new();
         for (k, v) in values {
             m.insert((*k).to_string(), *v);
@@ -235,10 +229,7 @@ mod tests {
         let workstreams = StubWorkstreams(vec!["proj-a".into(), "proj-b".into()]);
         let sources: Vec<Arc<dyn RollupSource>> = vec![
             make_source("emails_sent", &[("proj-a", 12.0), ("proj-b", 4.0)]),
-            make_source(
-                "meetings_attended",
-                &[("proj-a", 3.0), ("proj-b", 1.0)],
-            ),
+            make_source("meetings_attended", &[("proj-a", 3.0), ("proj-b", 1.0)]),
         ];
         let n = compute_for_week("2026-W20", &workstreams, &sources, &conn)
             .await

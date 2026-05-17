@@ -206,9 +206,7 @@ fn apply_event(event: &Value, acc: &mut TurnAccumulator) -> bool {
         }
         Some("Error") => {
             acc.engine_error = true;
-            acc.error_message = event["data"]["message"]
-                .as_str()
-                .map(|s| s.to_string());
+            acc.error_message = event["data"]["message"].as_str().map(|s| s.to_string());
             true
         }
         _ => false, // Flush, Usage, Warning, etc.
@@ -298,7 +296,13 @@ network_tools = ["gh", "curl"]
         });
 
         let child = Command::new(&binary)
-            .args(["--data-dir", &self.data_dir.to_string_lossy(), "serve", "--port", &self.port.to_string()])
+            .args([
+                "--data-dir",
+                &self.data_dir.to_string_lossy(),
+                "serve",
+                "--port",
+                &self.port.to_string(),
+            ])
             .stdout(std::process::Stdio::null())
             .stderr(std::process::Stdio::piped())
             .spawn()
@@ -366,13 +370,9 @@ network_tools = ["gh", "curl"]
         let mut turns = Vec::new();
         for (i, turn) in scenario.turns.iter().enumerate() {
             let turn_start = Instant::now();
-            let result = self.drive_turn(
-                &mut write,
-                &mut read,
-                session_id,
-                i + 1,
-                &turn.user_message,
-            ).await;
+            let result = self
+                .drive_turn(&mut write, &mut read, session_id, i + 1, &turn.user_message)
+                .await;
             let mut result = result;
             result.duration_ms = turn_start.elapsed().as_millis() as u64;
             turns.push(result);
@@ -386,7 +386,11 @@ network_tools = ["gh", "curl"]
         let all_completed = turns.iter().all(|t| t.completed);
         let no_engine_errors = turns.iter().all(|t| !t.engine_error);
         let tool_use = turns.iter().any(|t| !t.tool_calls.is_empty());
-        let tool_errors = turns.iter().flat_map(|t| &t.tool_results).filter(|r| r.is_error).count();
+        let tool_errors = turns
+            .iter()
+            .flat_map(|t| &t.tool_results)
+            .filter(|r| r.is_error)
+            .count();
 
         let mech_pass = all_completed
             && no_engine_errors
@@ -414,16 +418,23 @@ network_tools = ["gh", "curl"]
     async fn rpc_create_session(
         &self,
         write: &mut futures_util::stream::SplitSink<
-            tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>,
+            tokio_tungstenite::WebSocketStream<
+                tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>,
+            >,
             WsMessage,
         >,
         read: &mut futures_util::stream::SplitStream<
-            tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>,
+            tokio_tungstenite::WebSocketStream<
+                tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>,
+            >,
         >,
     ) -> Uuid {
         use futures_util::SinkExt;
         let req = json!({"id": 1, "method": "create_session", "params": {"workstream_id": null}});
-        write.send(WsMessage::Text(req.to_string().into())).await.unwrap();
+        write
+            .send(WsMessage::Text(req.to_string().into()))
+            .await
+            .unwrap();
 
         // Read response
         while let Some(Ok(msg)) = read.next().await {
@@ -442,11 +453,15 @@ network_tools = ["gh", "curl"]
     async fn drive_turn(
         &self,
         write: &mut futures_util::stream::SplitSink<
-            tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>,
+            tokio_tungstenite::WebSocketStream<
+                tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>,
+            >,
             WsMessage,
         >,
         read: &mut futures_util::stream::SplitStream<
-            tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>,
+            tokio_tungstenite::WebSocketStream<
+                tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>,
+            >,
         >,
         session_id: Uuid,
         turn_number: usize,
@@ -460,7 +475,10 @@ network_tools = ["gh", "curl"]
             "method": "send_message",
             "params": {"session_id": session_id.to_string(), "content": user_message}
         });
-        write.send(WsMessage::Text(req.to_string().into())).await.unwrap();
+        write
+            .send(WsMessage::Text(req.to_string().into()))
+            .await
+            .unwrap();
 
         let mut acc = TurnAccumulator::default();
 
@@ -516,7 +534,8 @@ network_tools = ["gh", "curl"]
 
     /// Write all artifacts to the results directory.
     pub fn write_artifacts(&self, result: &ScenarioResult, scenario: &Scenario) {
-        let results_dir = self.data_dir
+        let results_dir = self
+            .data_dir
             .join("uat-results")
             .join(&result.scenario_name)
             .join(&result.model);
@@ -533,14 +552,24 @@ network_tools = ["gh", "curl"]
 
         // mechanical.json
         let mech_path = results_dir.join("mechanical.json");
-        std::fs::write(&mech_path, serde_json::to_string_pretty(&result.mechanical).unwrap()).unwrap();
+        std::fs::write(
+            &mech_path,
+            serde_json::to_string_pretty(&result.mechanical).unwrap(),
+        )
+        .unwrap();
 
         // scenario.md (rubric for judge)
-        let mut rubric = format!("# {}\n\n## Objective\n{}\n\n## Per-Turn Expectations\n",
-            scenario.name, scenario.objective);
+        let mut rubric = format!(
+            "# {}\n\n## Objective\n{}\n\n## Per-Turn Expectations\n",
+            scenario.name, scenario.objective
+        );
         for (i, turn) in scenario.turns.iter().enumerate() {
-            rubric.push_str(&format!("\n### Turn {}\n**User**: {}\n**Expectation**: {}\n",
-                i + 1, turn.user_message, turn.judge_expectation));
+            rubric.push_str(&format!(
+                "\n### Turn {}\n**User**: {}\n**Expectation**: {}\n",
+                i + 1,
+                turn.user_message,
+                turn.judge_expectation
+            ));
         }
         std::fs::write(results_dir.join("scenario.md"), &rubric).unwrap();
 
@@ -679,10 +708,10 @@ fn work_signal_pipeline_scenario() -> Scenario {
     }
 }
 
+mod uat_daily_seed;
 #[path = "uat_fixture.rs"]
 mod uat_fixture;
 mod uat_retro_seed;
-mod uat_daily_seed;
 mod uat_weekly_seed;
 
 /// I-0040 end-to-end UAT: synthetic gmail + slack feed rows for two
@@ -941,8 +970,10 @@ fn all_scenarios() -> Vec<Scenario> {
 async fn uat_run() {
     // Config from env vars
     let model = std::env::var("UAT_MODEL").unwrap_or_else(|_| "gemma4:31b-cloud".to_string());
-    let provider = std::env::var("UAT_PROVIDER").unwrap_or_else(|_| "https://ollama.com/v1".to_string());
-    let api_key_env = std::env::var("UAT_API_KEY_ENV").unwrap_or_else(|_| "OLLAMA_API_KEY".to_string());
+    let provider =
+        std::env::var("UAT_PROVIDER").unwrap_or_else(|_| "https://ollama.com/v1".to_string());
+    let api_key_env =
+        std::env::var("UAT_API_KEY_ENV").unwrap_or_else(|_| "OLLAMA_API_KEY".to_string());
     let scenario_filter = std::env::var("UAT_SCENARIO").ok();
 
     let ts = chrono::Utc::now().format("%Y%m%d-%H%M%S");
@@ -960,12 +991,18 @@ async fn uat_run() {
         .output()
         .expect("cargo build");
     if !build.status.success() {
-        eprintln!("  BUILD FAILED:\n{}", String::from_utf8_lossy(&build.stderr));
+        eprintln!(
+            "  BUILD FAILED:\n{}",
+            String::from_utf8_lossy(&build.stderr)
+        );
         panic!("cargo build failed");
     }
 
     let scenarios: Vec<Scenario> = match scenario_filter {
-        Some(ref name) => all_scenarios().into_iter().filter(|s| s.name == *name).collect(),
+        Some(ref name) => all_scenarios()
+            .into_iter()
+            .filter(|s| s.name == *name)
+            .collect(),
         None => all_scenarios(),
     };
 
@@ -973,7 +1010,12 @@ async fn uat_run() {
 
     for scenario in &scenarios {
         let scenario_dir = base_dir.join(&scenario.name);
-        println!("  [{}/{}] Scenario: {}", results.len() + 1, scenarios.len(), scenario.name);
+        println!(
+            "  [{}/{}] Scenario: {}",
+            results.len() + 1,
+            scenarios.len(),
+            scenario.name
+        );
 
         let mut harness = UatHarness::new(&scenario_dir, &model, &provider, &api_key_env);
 
@@ -984,8 +1026,7 @@ async fn uat_run() {
             let fixture_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(fixture_rel);
             println!("    Seeding from fixture: {}", fixture_path.display());
             let fx = uat_fixture::load(&fixture_path).expect("load fixture");
-            let applied =
-                uat_fixture::apply(&fx, &scenario_dir).expect("apply fixture");
+            let applied = uat_fixture::apply(&fx, &scenario_dir).expect("apply fixture");
 
             // Build a transient LLM client matching the server config
             // and drive the extractor synchronously across each
@@ -994,15 +1035,10 @@ async fn uat_run() {
             let client = uat_fixture::build_seed_llm_client(&provider, &model, &api_key_env)
                 .expect("build seed llm");
             let cap = Duration::from_secs(15 * 60);
-            let processed = uat_fixture::drive_extraction(
-                &applied,
-                &scenario_dir,
-                client,
-                model.clone(),
-                cap,
-            )
-            .await
-            .expect("drive extraction");
+            let processed =
+                uat_fixture::drive_extraction(&applied, &scenario_dir, client, model.clone(), cap)
+                    .await
+                    .expect("drive extraction");
             println!(
                 "    Seed extraction complete: {} projection rows processed across {} workstreams",
                 processed,
@@ -1057,7 +1093,10 @@ async fn uat_run() {
         // Start server
         harness.start_server().expect("start server");
         println!("    Waiting for server...");
-        harness.wait_for_ready(Duration::from_secs(60)).await.expect("server ready");
+        harness
+            .wait_for_ready(Duration::from_secs(60))
+            .await
+            .expect("server ready");
         println!("    Server ready on port {}", harness.port);
 
         // Run scenario
@@ -1067,16 +1106,22 @@ async fn uat_run() {
         harness.write_artifacts(&result, scenario);
 
         // Print summary
-        println!("    Turns: {} | Files: {} | Workflows: {} | Tool errors: {} | Mechanical: {}",
+        println!(
+            "    Turns: {} | Files: {} | Workflows: {} | Tool errors: {} | Mechanical: {}",
             result.turns.len(),
             result.mechanical.files_created,
             result.mechanical.workflows_created,
             result.mechanical.tool_errors,
-            if result.mechanical.pass { "PASS" } else { "FAIL" },
+            if result.mechanical.pass {
+                "PASS"
+            } else {
+                "FAIL"
+            },
         );
         for turn in &result.turns {
             let tools: Vec<&str> = turn.tool_calls.iter().map(|t| t.name.as_str()).collect();
-            println!("      Turn {}: {} tool(s) [{}] — {:.0}s {}",
+            println!(
+                "      Turn {}: {} tool(s) [{}] — {:.0}s {}",
                 turn.turn_number,
                 turn.tool_calls.len(),
                 tools.join(", "),
@@ -1096,10 +1141,14 @@ async fn uat_run() {
     println!("\n======================================================================");
     println!("  UAT SUMMARY — {model}");
     println!("----------------------------------------------------------------------");
-    println!("  {:<30} {:>10} {:>8} {:>10} {:>8} {:>8}", "Scenario", "Mechanical", "Files", "Workflows", "Errors", "Time");
+    println!(
+        "  {:<30} {:>10} {:>8} {:>10} {:>8} {:>8}",
+        "Scenario", "Mechanical", "Files", "Workflows", "Errors", "Time"
+    );
     println!("----------------------------------------------------------------------");
     for r in &results {
-        println!("  {:<30} {:>10} {:>8} {:>10} {:>8} {:>7.0}s",
+        println!(
+            "  {:<30} {:>10} {:>8} {:>10} {:>8} {:>7.0}s",
             r.scenario_name,
             if r.mechanical.pass { "PASS" } else { "FAIL" },
             r.mechanical.files_created,
@@ -1110,7 +1159,10 @@ async fn uat_run() {
     }
     println!("======================================================================");
     println!("  Results: {}", base_dir.display());
-    println!("  Judge:   angreal test uat-judge --results {}\n", base_dir.display());
+    println!(
+        "  Judge:   angreal test uat-judge --results {}\n",
+        base_dir.display()
+    );
 
     // Fail if any mechanical check failed
     let all_pass = results.iter().all(|r| r.mechanical.pass);
@@ -1251,7 +1303,10 @@ mod tests {
             duration_ms: 500,
         };
         let json = serde_json::to_string(&result).unwrap();
-        assert!(json.contains(r#""error_message":"HTTP 403: bad""#), "got: {json}");
+        assert!(
+            json.contains(r#""error_message":"HTTP 403: bad""#),
+            "got: {json}"
+        );
     }
 
     #[test]

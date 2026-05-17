@@ -6,7 +6,7 @@ use std::pin::Pin;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use arawn_projections::{
-    embed::EMBEDDABLE_FEED_TYPES, gmail, run_embed_pass, Embedder, ProjectionStore,
+    Embedder, ProjectionStore, embed::EMBEDDABLE_FEED_TYPES, gmail, run_embed_pass,
 };
 
 struct StubEmbedder {

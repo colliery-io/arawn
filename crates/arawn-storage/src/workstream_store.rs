@@ -125,8 +125,7 @@ impl<'a> WorkstreamStore<'a> {
              bindings, archived, updated_at \
              FROM workstreams WHERE archived = 0 ORDER BY updated_at DESC"
         })?;
-        let rows = stmt
-            .query_map([], |row| row_to_workstream(row).map_err(rusqlite_map_err))?;
+        let rows = stmt.query_map([], |row| row_to_workstream(row).map_err(rusqlite_map_err))?;
         let mut out = Vec::new();
         for r in rows {
             out.push(r?);
@@ -134,11 +133,7 @@ impl<'a> WorkstreamStore<'a> {
         Ok(out)
     }
 
-    pub fn update_description(
-        &self,
-        name: &str,
-        description: &str,
-    ) -> Result<(), StorageError> {
+    pub fn update_description(&self, name: &str, description: &str) -> Result<(), StorageError> {
         let updated = self.db.conn().execute(
             "UPDATE workstreams SET description = ?1, updated_at = ?2 WHERE name = ?3",
             (description, Utc::now().to_rfc3339(), name),
@@ -167,9 +162,9 @@ impl<'a> WorkstreamStore<'a> {
     }
 
     pub fn add_binding(&self, name: &str, feed_id: &str) -> Result<(), StorageError> {
-        let ws = self
-            .find_by_name(name)?
-            .ok_or_else(|| StorageError::InvalidOperation(format!("workstream '{name}' not found")))?;
+        let ws = self.find_by_name(name)?.ok_or_else(|| {
+            StorageError::InvalidOperation(format!("workstream '{name}' not found"))
+        })?;
         let mut bindings = ws.bindings;
         if !bindings.iter().any(|b| b == feed_id) {
             bindings.push(feed_id.to_string());
@@ -178,9 +173,9 @@ impl<'a> WorkstreamStore<'a> {
     }
 
     pub fn remove_binding(&self, name: &str, feed_id: &str) -> Result<(), StorageError> {
-        let ws = self
-            .find_by_name(name)?
-            .ok_or_else(|| StorageError::InvalidOperation(format!("workstream '{name}' not found")))?;
+        let ws = self.find_by_name(name)?.ok_or_else(|| {
+            StorageError::InvalidOperation(format!("workstream '{name}' not found"))
+        })?;
         let bindings: Vec<String> = ws.bindings.into_iter().filter(|b| b != feed_id).collect();
         self.set_bindings(name, &bindings)
     }
@@ -217,13 +212,11 @@ impl<'a> WorkstreamStore<'a> {
     }
 }
 
-const SELECT_COLS_WHERE_ID: &str =
-    "SELECT id, name, root_dir, created_at, display_name, description, \
+const SELECT_COLS_WHERE_ID: &str = "SELECT id, name, root_dir, created_at, display_name, description, \
      bindings, archived, updated_at \
      FROM workstreams WHERE id = ?1";
 
-const SELECT_COLS_WHERE_NAME: &str =
-    "SELECT id, name, root_dir, created_at, display_name, description, \
+const SELECT_COLS_WHERE_NAME: &str = "SELECT id, name, root_dir, created_at, display_name, description, \
      bindings, archived, updated_at \
      FROM workstreams WHERE name = ?1";
 
@@ -252,7 +245,11 @@ fn row_to_workstream(row: &rusqlite::Row<'_>) -> Result<Workstream, StorageError
     Ok(Workstream {
         id,
         name: name.clone(),
-        display_name: if display_name.is_empty() { name } else { display_name },
+        display_name: if display_name.is_empty() {
+            name
+        } else {
+            display_name
+        },
         description,
         root_dir: PathBuf::from(root_dir),
         bindings,
@@ -327,7 +324,9 @@ mod tests {
         let db = setup();
         let store = WorkstreamStore::new(&db);
         store.create(&Workstream::new("dupe", "/tmp/a")).unwrap();
-        let err = store.create(&Workstream::new("dupe", "/tmp/b")).unwrap_err();
+        let err = store
+            .create(&Workstream::new("dupe", "/tmp/b"))
+            .unwrap_err();
         assert!(format!("{err}").contains("already exists"));
     }
 

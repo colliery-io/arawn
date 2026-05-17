@@ -34,9 +34,9 @@ pub mod slack;
 
 pub use credential_store::CredentialStore;
 pub use error::IntegrationError;
-pub use retry_after::parse_retry_after;
 pub use integration::{ConnectContext, Integration, IntegrationStatus};
-pub use oauth_flow::{run_oauth_flow, OAuthOutcome};
+pub use oauth_flow::{OAuthOutcome, run_oauth_flow};
+pub use retry_after::parse_retry_after;
 
 /// Install rustls' `ring` crypto provider as the process default. Must be
 /// called once at server startup, before any integration constructs a

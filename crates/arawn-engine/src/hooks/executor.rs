@@ -24,11 +24,7 @@ impl CommandHookExecutor {
     /// Execute a command hook with the given input.
     ///
     /// `cwd` is the working directory for the subprocess (typically the project root).
-    pub async fn execute(
-        hook: &CommandHookDef,
-        input: &HookInput,
-        cwd: &Path,
-    ) -> HookResult {
+    pub async fn execute(hook: &CommandHookDef, input: &HookInput, cwd: &Path) -> HookResult {
         let timeout_secs = hook.timeout.unwrap_or(DEFAULT_TIMEOUT_SECS);
         let timeout = Duration::from_secs(timeout_secs);
 
@@ -119,10 +115,7 @@ impl CommandHookExecutor {
                 // future was dropped, so tokio will clean up the child process.
                 warn!(command = %hook.command, timeout_secs, "hook timed out");
                 HookResult::Block {
-                    reason: format!(
-                        "Hook timed out after {timeout_secs}s: {}",
-                        hook.command
-                    ),
+                    reason: format!("Hook timed out after {timeout_secs}s: {}", hook.command),
                     stderr: String::new(),
                 }
             }

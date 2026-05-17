@@ -106,8 +106,7 @@ pub fn is_unsupported_google_native(mime: &str) -> bool {
 
 const FIELDS_LIST: &str =
     "nextPageToken,files(id,name,mimeType,size,modifiedTime,md5Checksum,parents,trashed)";
-const FIELDS_ONE: &str =
-    "id,name,mimeType,size,modifiedTime,md5Checksum,parents,trashed";
+const FIELDS_ONE: &str = "id,name,mimeType,size,modifiedTime,md5Checksum,parents,trashed";
 
 pub struct RealDriveClient {
     integration: Arc<GoogleDriveIntegration>,
@@ -361,9 +360,7 @@ async fn walk_path(
             .map_err(|e| google_err("files.list(resolve)", e.to_string()))?;
         let mut iter = resp.files.unwrap_or_default().into_iter();
         let first = iter.next().ok_or_else(|| {
-            FeedError::InvalidParams(format!(
-                "no folder named '{segment}' under id '{current}'"
-            ))
+            FeedError::InvalidParams(format!("no folder named '{segment}' under id '{current}'"))
         })?;
         current = first.id.unwrap_or_default();
     }

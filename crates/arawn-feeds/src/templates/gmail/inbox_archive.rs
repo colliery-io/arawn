@@ -61,9 +61,10 @@ impl FeedTemplate for InboxArchiveTemplate {
         feed_dir: &Path,
         cursor: &Value,
     ) -> Result<RunOutcome, FeedError> {
-        let gmail = ctx.clients().gmail().ok_or_else(|| {
-            FeedError::Auth("gmail integration not connected".into())
-        })?;
+        let gmail = ctx
+            .clients()
+            .gmail()
+            .ok_or_else(|| FeedError::Auth("gmail integration not connected".into()))?;
         let days_back = params
             .0
             .get("days_back")

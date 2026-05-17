@@ -84,14 +84,12 @@ impl WsClient {
     /// Read the server auth token from {data_dir}/server.token.
     /// Checks ARAWN_DATA_DIR env var first, falls back to ~/.arawn.
     fn read_server_token() -> Option<String> {
-        let data_dir = std::env::var("ARAWN_DATA_DIR")
-            .ok()
-            .or_else(|| {
-                std::env::var("HOME")
-                    .or_else(|_| std::env::var("USERPROFILE"))
-                    .ok()
-                    .map(|h| format!("{h}/.arawn"))
-            })?;
+        let data_dir = std::env::var("ARAWN_DATA_DIR").ok().or_else(|| {
+            std::env::var("HOME")
+                .or_else(|_| std::env::var("USERPROFILE"))
+                .ok()
+                .map(|h| format!("{h}/.arawn"))
+        })?;
         let token_path = std::path::PathBuf::from(data_dir).join("server.token");
         std::fs::read_to_string(token_path)
             .ok()
@@ -176,7 +174,9 @@ impl WsClient {
     pub async fn get_permissions_status(
         &mut self,
     ) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
-        let resp = self.request_response("get_permissions_status", json!({})).await?;
+        let resp = self
+            .request_response("get_permissions_status", json!({}))
+            .await?;
         let result = resp.get("result").ok_or("no result")?;
         Ok(result.clone())
     }
@@ -185,7 +185,9 @@ impl WsClient {
     pub async fn list_integrations(
         &mut self,
     ) -> Result<Vec<serde_json::Value>, Box<dyn std::error::Error>> {
-        let resp = self.request_response("list_integrations", json!({})).await?;
+        let resp = self
+            .request_response("list_integrations", json!({}))
+            .await?;
         let result = resp.get("result").ok_or("no result")?;
         Ok(serde_json::from_value(result.clone())?)
     }
@@ -322,10 +324,10 @@ impl WsClient {
         Ok(result.clone())
     }
 
-    pub async fn get_permission_mode(
-        &mut self,
-    ) -> Result<String, Box<dyn std::error::Error>> {
-        let resp = self.request_response("get_permission_mode", json!({})).await?;
+    pub async fn get_permission_mode(&mut self) -> Result<String, Box<dyn std::error::Error>> {
+        let resp = self
+            .request_response("get_permission_mode", json!({}))
+            .await?;
         let result = resp.get("result").ok_or("no result")?;
         Ok(result["mode"].as_str().unwrap_or("default").to_string())
     }
@@ -435,10 +437,7 @@ impl WsClient {
         session_id: uuid::Uuid,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let resp = self
-            .request_response(
-                "cancel",
-                json!({"session_id": session_id.to_string()}),
-            )
+            .request_response("cancel", json!({"session_id": session_id.to_string()}))
             .await?;
         if let Some(err) = resp.get("error") {
             return Err(err["message"].as_str().unwrap_or("cancel failed").into());
@@ -505,7 +504,11 @@ pub fn parse_engine_event(text: &str) -> Option<EngineEvent> {
 
     // EngineEvent uses tagged serde: {"event": "...", "data": {...}}
     if value.get("event").is_some() {
-        let event_type = value.get("event").and_then(|e| e.as_str()).unwrap_or("?").to_string();
+        let event_type = value
+            .get("event")
+            .and_then(|e| e.as_str())
+            .unwrap_or("?")
+            .to_string();
         match serde_json::from_value::<EngineEvent>(value) {
             Ok(event) => {
                 debug!(event_type = %event_type, "parsed engine event");
@@ -540,7 +543,10 @@ pub enum EventUpdate {
     Warning(String),
     Compaction(usize),
     /// Token usage update.
-    Usage { input_tokens: u64, output_tokens: u64 },
+    Usage {
+        input_tokens: u64,
+        output_tokens: u64,
+    },
     /// Server requests user input via a modal dialog.
     UserInputRequest {
         request_id: String,
@@ -585,10 +591,24 @@ pub fn engine_event_to_update(event: EngineEvent) -> EventUpdate {
         EngineEvent::CompactionOccurred {
             messages_summarized,
         } => EventUpdate::Compaction(messages_summarized),
-        EngineEvent::Usage { input_tokens, output_tokens } => EventUpdate::Usage { input_tokens, output_tokens },
-        EngineEvent::UserInputRequest { request_id, title, subtitle, options } => {
-            EventUpdate::UserInputRequest { request_id, title, subtitle, options }
-        }
+        EngineEvent::Usage {
+            input_tokens,
+            output_tokens,
+        } => EventUpdate::Usage {
+            input_tokens,
+            output_tokens,
+        },
+        EngineEvent::UserInputRequest {
+            request_id,
+            title,
+            subtitle,
+            options,
+        } => EventUpdate::UserInputRequest {
+            request_id,
+            title,
+            subtitle,
+            options,
+        },
         EngineEvent::Flush => EventUpdate::Flush,
     }
 }

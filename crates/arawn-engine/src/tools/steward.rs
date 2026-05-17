@@ -24,15 +24,13 @@ fn open_journal(data_dir: &PathBuf, workstream: &str) -> Result<Journal, ToolErr
         .map_err(|e| ToolError::ExecutionFailed(format!("open journal `{workstream}`: {e}")))
 }
 
-fn resolve_workstream(
-    memory: &MemoryHandle,
-    explicit: Option<&str>,
-) -> Result<String, ToolError> {
+fn resolve_workstream(memory: &MemoryHandle, explicit: Option<&str>) -> Result<String, ToolError> {
     if let Some(name) = explicit {
         return Ok(name.to_string());
     }
     match memory {
-        MemoryHandle::Routed(r) => Ok(r.current()
+        MemoryHandle::Routed(r) => Ok(r
+            .current()
             .map_err(|e| ToolError::ExecutionFailed(format!("memory routing: {e}")))?
             .embedder()
             .map(|_| String::new()) // unused; we only want the workstream name through the session
@@ -477,8 +475,14 @@ impl Tool for WorkstreamDustTool {
                     .and_then(|s| s.tags())
                     .unwrap_or_default();
             let mut suggestions = Vec::new();
-            if !opts.tag_filter.as_ref().map(|v| v.is_empty()).unwrap_or(true) {
-                suggestions.push("retry without the `tags` filter to scan all ontology tags".to_string());
+            if !opts
+                .tag_filter
+                .as_ref()
+                .map(|v| v.is_empty())
+                .unwrap_or(true)
+            {
+                suggestions
+                    .push("retry without the `tags` filter to scan all ontology tags".to_string());
             }
             if opts.min_cluster_size > 2 {
                 suggestions.push(format!(
@@ -725,9 +729,7 @@ impl Tool for WorkstreamTagTool {
                 let tag = match params.get("tag").and_then(|v| v.as_str()) {
                     Some(s) if !s.trim().is_empty() => s.to_string(),
                     _ => {
-                        return Ok(ToolOutput::error(
-                            "tag is required for op=add".to_string(),
-                        ));
+                        return Ok(ToolOutput::error("tag is required for op=add".to_string()));
                     }
                 };
                 ontology
@@ -786,12 +788,7 @@ mod tests {
     ) {
         let tmp = TempDir::new().unwrap();
         let session = crate::tools::SessionWorkstream::new("ws-pat");
-        let router = Arc::new(WorkstreamMemoryRouter::new(
-            tmp.path(),
-            None,
-            None,
-            session,
-        ));
+        let router = Arc::new(WorkstreamMemoryRouter::new(tmp.path(), None, None, session));
         let ws = Workstream::scratch(tmp.path());
         let ctx = crate::context::EngineToolContext::new(&ws, Uuid::new_v4());
         (tmp, router, ctx)
@@ -802,8 +799,9 @@ mod tests {
             subroutine: "map".into(),
             action: "propose_relation".into(),
             inputs_json: "{}".into(),
-            outputs_json: json!({"from_id": Uuid::new_v4(), "rel": "relates_to", "to_id": Uuid::new_v4()})
-                .to_string(),
+            outputs_json:
+                json!({"from_id": Uuid::new_v4(), "rel": "relates_to", "to_id": Uuid::new_v4()})
+                    .to_string(),
             model: "test".into(),
             prompt_hash: "h".into(),
             applied: false,
@@ -874,10 +872,7 @@ mod tests {
         let id = write_delete_row(&j, &e);
 
         let tool = WorkstreamRollbackTool::new(tmp.path(), Arc::clone(&router));
-        let r = tool
-            .execute(&ctx, json!({"id": id}))
-            .await
-            .unwrap();
+        let r = tool.execute(&ctx, json!({"id": id})).await.unwrap();
         let v: Value = serde_json::from_str(&r.content).unwrap();
         assert_eq!(v["status"], "reverted");
         // Entity restored
@@ -915,8 +910,7 @@ mod tests {
             subroutine: "map".into(),
             action: "propose_relation".into(),
             inputs_json: "{}".into(),
-            outputs_json: json!({"from_id": a.id, "rel": "relates_to", "to_id": b.id})
-                .to_string(),
+            outputs_json: json!({"from_id": a.id, "rel": "relates_to", "to_id": b.id}).to_string(),
             model: "test".into(),
             prompt_hash: "h".into(),
             applied: false,
@@ -926,7 +920,11 @@ mod tests {
         // Apply → relation should now exist.
         let apply_tool = WorkstreamApplyTool::new(tmp.path(), Arc::clone(&router));
         let r: Value = serde_json::from_str(
-            &apply_tool.execute(&ctx, json!({"id": id})).await.unwrap().content,
+            &apply_tool
+                .execute(&ctx, json!({"id": id}))
+                .await
+                .unwrap()
+                .content,
         )
         .unwrap();
         assert_eq!(r["status"], "applied");
@@ -935,7 +933,11 @@ mod tests {
 
         // Idempotency: second apply returns already_applied.
         let r2: Value = serde_json::from_str(
-            &apply_tool.execute(&ctx, json!({"id": id})).await.unwrap().content,
+            &apply_tool
+                .execute(&ctx, json!({"id": id}))
+                .await
+                .unwrap()
+                .content,
         )
         .unwrap();
         assert_eq!(r2["status"], "already_applied");

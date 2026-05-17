@@ -53,7 +53,11 @@ impl Tool for WebSearchTool {
         })
     }
 
-    async fn execute(&self, _ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
+    async fn execute(
+        &self,
+        _ctx: &dyn arawn_tool::ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
         let query = params
             .get("query")
             .and_then(|v| v.as_str())

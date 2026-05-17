@@ -27,13 +27,9 @@ fn integ_err(e: crate::IntegrationError) -> ToolError {
     ToolError::ExecutionFailed(e.user_message())
 }
 
-fn check_scopes(
-    integration: &AtlassianIntegration,
-    required: &[&str],
-) -> Result<(), ToolError> {
-    let granted: std::collections::HashSet<String> = integration
-        .granted_scopes()
-        .map_err(integ_err)?;
+fn check_scopes(integration: &AtlassianIntegration, required: &[&str]) -> Result<(), ToolError> {
+    let granted: std::collections::HashSet<String> =
+        integration.granted_scopes().map_err(integ_err)?;
     let missing: Vec<&str> = required
         .iter()
         .copied()
@@ -111,7 +107,10 @@ struct IssueSummary {
 fn summarize_issue(key: &str, fields: &Map<String, Value>) -> IssueSummary {
     IssueSummary {
         key: key.to_string(),
-        summary: fields.get("summary").and_then(|v| v.as_str()).map(String::from),
+        summary: fields
+            .get("summary")
+            .and_then(|v| v.as_str())
+            .map(String::from),
         status: fields
             .get("status")
             .and_then(|v| v.get("name"))
@@ -137,7 +136,10 @@ fn summarize_issue(key: &str, fields: &Map<String, Value>) -> IssueSummary {
             .and_then(|v| v.get("displayName"))
             .and_then(|v| v.as_str())
             .map(String::from),
-        updated: fields.get("updated").and_then(|v| v.as_str()).map(String::from),
+        updated: fields
+            .get("updated")
+            .and_then(|v| v.as_str())
+            .map(String::from),
     }
 }
 
@@ -240,7 +242,11 @@ impl Tool for JiraSearchTool {
             "required": ["jql"]
         })
     }
-    async fn execute(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
+    async fn execute(
+        &self,
+        _ctx: &dyn ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
         check_scopes(&self.integration, JIRA_SEARCH_SCOPES)?;
         let jql = params
             .get("jql")
@@ -341,7 +347,11 @@ impl Tool for JiraGetIssueTool {
             "required": ["key"]
         })
     }
-    async fn execute(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
+    async fn execute(
+        &self,
+        _ctx: &dyn ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
         check_scopes(&self.integration, JIRA_GET_ISSUE_SCOPES)?;
         let key = params
             .get("key")
@@ -389,7 +399,11 @@ impl Tool for JiraGetIssueTool {
             .map(|arr| {
                 arr.iter()
                     .map(|c| CommentSummary {
-                        id: c.get("id").and_then(|v| v.as_str()).unwrap_or_default().to_string(),
+                        id: c
+                            .get("id")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or_default()
+                            .to_string(),
                         author: c
                             .get("author")
                             .and_then(|v| v.get("displayName"))
@@ -515,7 +529,11 @@ impl Tool for JiraCreateIssueTool {
             "required": ["project_key", "summary", "issue_type"]
         })
     }
-    async fn execute(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
+    async fn execute(
+        &self,
+        _ctx: &dyn ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
         check_scopes(&self.integration, JIRA_CREATE_ISSUE_SCOPES)?;
         let project_key = params
             .get("project_key")
@@ -614,7 +632,11 @@ impl Tool for JiraUpdateIssueTool {
             "required": ["key", "fields"]
         })
     }
-    async fn execute(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
+    async fn execute(
+        &self,
+        _ctx: &dyn ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
         check_scopes(&self.integration, JIRA_UPDATE_ISSUE_SCOPES)?;
         let key = params
             .get("key")
@@ -654,19 +676,12 @@ impl Tool for JiraUpdateIssueTool {
         // `return_issue=true` makes the endpoint respond with a JSON
         // body. Without it Atlassian returns 204 No Content and the
         // generated client errors trying to parse an empty body.
-        issues_api::edit_issue(
-            &cfg,
-            &key,
-            details,
-            None,
-            None,
-            None,
-            Some(true),
-            None,
-        )
-        .await
-        .map_err(openapi_err)?;
-        Ok(ToolOutput::success(json!({"key": key, "ok": true}).to_string()))
+        issues_api::edit_issue(&cfg, &key, details, None, None, None, Some(true), None)
+            .await
+            .map_err(openapi_err)?;
+        Ok(ToolOutput::success(
+            json!({"key": key, "ok": true}).to_string(),
+        ))
     }
 }
 
@@ -719,7 +734,11 @@ impl Tool for JiraAddCommentTool {
             "required": ["key", "body"]
         })
     }
-    async fn execute(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
+    async fn execute(
+        &self,
+        _ctx: &dyn ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
         check_scopes(&self.integration, JIRA_ADD_COMMENT_SCOPES)?;
         let key = params
             .get("key")
@@ -801,7 +820,11 @@ impl Tool for JiraTransitionIssueTool {
             "required": ["key", "transition_name"]
         })
     }
-    async fn execute(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
+    async fn execute(
+        &self,
+        _ctx: &dyn ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
         check_scopes(&self.integration, JIRA_TRANSITION_ISSUE_SCOPES)?;
         let key = params
             .get("key")

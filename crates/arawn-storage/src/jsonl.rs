@@ -463,9 +463,18 @@ mod tests {
             .unwrap();
 
         // Get the correct serialization format
-        let msg1 = serde_json::to_string(&Message::User { content: "first".into() }).unwrap();
-        let msg2 = serde_json::to_string(&Message::User { content: "second".into() }).unwrap();
-        let msg3 = serde_json::to_string(&Message::User { content: "third".into() }).unwrap();
+        let msg1 = serde_json::to_string(&Message::User {
+            content: "first".into(),
+        })
+        .unwrap();
+        let msg2 = serde_json::to_string(&Message::User {
+            content: "second".into(),
+        })
+        .unwrap();
+        let msg3 = serde_json::to_string(&Message::User {
+            content: "third".into(),
+        })
+        .unwrap();
 
         // Write a mix of valid and invalid lines
         let content = format!(
@@ -514,10 +523,20 @@ mod tests {
         let (_tmp, store) = setup();
         let session_id = Uuid::new_v4();
         let msgs = vec![
-            Message::User { content: "a".into() },
-            Message::Assistant { content: "A".into(), tool_uses: vec![] },
-            Message::User { content: "b".into() },
-            Message::Assistant { content: "B".into(), tool_uses: vec![] },
+            Message::User {
+                content: "a".into(),
+            },
+            Message::Assistant {
+                content: "A".into(),
+                tool_uses: vec![],
+            },
+            Message::User {
+                content: "b".into(),
+            },
+            Message::Assistant {
+                content: "B".into(),
+                tool_uses: vec![],
+            },
         ];
         for m in &msgs {
             store.append(session_id, "scratch", m).await.unwrap();
@@ -536,7 +555,16 @@ mod tests {
     async fn truncate_to_zero_drops_everything() {
         let (_tmp, store) = setup();
         let session_id = Uuid::new_v4();
-        store.append(session_id, "scratch", &Message::User { content: "x".into() }).await.unwrap();
+        store
+            .append(
+                session_id,
+                "scratch",
+                &Message::User {
+                    content: "x".into(),
+                },
+            )
+            .await
+            .unwrap();
         store.truncate(session_id, "scratch", 0).await.unwrap();
         let loaded = store.load(session_id, "scratch").await.unwrap();
         assert!(loaded.is_empty());
@@ -546,7 +574,16 @@ mod tests {
     async fn truncate_beyond_length_is_no_op() {
         let (_tmp, store) = setup();
         let session_id = Uuid::new_v4();
-        store.append(session_id, "scratch", &Message::User { content: "x".into() }).await.unwrap();
+        store
+            .append(
+                session_id,
+                "scratch",
+                &Message::User {
+                    content: "x".into(),
+                },
+            )
+            .await
+            .unwrap();
         store.truncate(session_id, "scratch", 100).await.unwrap();
         let loaded = store.load(session_id, "scratch").await.unwrap();
         assert_eq!(loaded.len(), 1);

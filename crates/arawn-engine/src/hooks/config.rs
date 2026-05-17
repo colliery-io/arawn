@@ -56,10 +56,7 @@ impl HookConfig {
     /// Merge another config into this one. Hooks from `other` are appended.
     pub fn merge(&mut self, other: HookConfig) {
         for (event_key, groups) in other.events {
-            self.events
-                .entry(event_key)
-                .or_default()
-                .extend(groups);
+            self.events.entry(event_key).or_default().extend(groups);
         }
     }
 
@@ -108,19 +105,11 @@ pub struct CommandHookDef {
 #[derive(Debug, Clone)]
 pub enum HookResult {
     /// Hook allowed the operation (exit code 0).
-    Allow {
-        stdout: String,
-    },
+    Allow { stdout: String },
     /// Hook blocked the operation (exit code 2).
-    Block {
-        reason: String,
-        stderr: String,
-    },
+    Block { reason: String, stderr: String },
     /// Hook produced a warning but didn't block (other exit codes).
-    Warn {
-        message: String,
-        stderr: String,
-    },
+    Warn { message: String, stderr: String },
 }
 
 impl HookResult {
@@ -330,12 +319,11 @@ mod tests {
 
     #[test]
     fn command_hook_def_timeout() {
-        let hook: CommandHookDef =
-            serde_json::from_value(serde_json::json!({
-                "type": "command",
-                "command": "echo hi"
-            }))
-            .unwrap();
+        let hook: CommandHookDef = serde_json::from_value(serde_json::json!({
+            "type": "command",
+            "command": "echo hi"
+        }))
+        .unwrap();
         assert_eq!(hook.timeout, None);
 
         let hook: CommandHookDef = serde_json::from_value(serde_json::json!({

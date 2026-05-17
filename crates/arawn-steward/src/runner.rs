@@ -81,9 +81,8 @@ pub struct StewardStats {
 /// Function that materializes the `MemoryManager` for a workstream.
 /// In production this is `WorkstreamMemoryRouter::for_workstream`; in
 /// tests an inline closure works.
-pub type MemoryResolver = Arc<
-    dyn Fn(&str) -> Result<Arc<MemoryManager>, StewardError> + Send + Sync,
->;
+pub type MemoryResolver =
+    Arc<dyn Fn(&str) -> Result<Arc<MemoryManager>, StewardError> + Send + Sync>;
 
 pub struct StewardRunner {
     store: Arc<Mutex<Store>>,
@@ -151,10 +150,7 @@ impl StewardRunner {
             let cap = self.caps.cap_for(sub.name());
             // Gate writes per subroutine contract: non-mutating
             // subroutines may only emit proposals.
-            let gate = Arc::new(JournalGate::new(
-                Arc::clone(&journal),
-                sub.is_mutating(),
-            ));
+            let gate = Arc::new(JournalGate::new(Arc::clone(&journal), sub.is_mutating()));
             let ctx = SubroutineCtx {
                 workstream: workstream.clone(),
                 memory: Arc::clone(&memory),
@@ -240,11 +236,7 @@ mod tests {
     use super::*;
     use crate::subroutine::IdentitySubroutine;
 
-    fn setup() -> (
-        tempfile::TempDir,
-        Arc<Mutex<Store>>,
-        MemoryResolver,
-    ) {
+    fn setup() -> (tempfile::TempDir, Arc<Mutex<Store>>, MemoryResolver) {
         let tmp = tempfile::tempdir().unwrap();
         let store = Store::open(tmp.path()).unwrap();
         store.ensure_scratch_workstream().unwrap();
@@ -263,16 +255,10 @@ mod tests {
         let (_tmp, store, resolver) = setup();
         {
             let s = store.lock().unwrap();
-            s.create_workstream(&Workstream::new(
-                "pat",
-                std::env::temp_dir().join("pat"),
-            ))
-            .unwrap();
-            s.create_workstream(&Workstream::new(
-                "old",
-                std::env::temp_dir().join("old"),
-            ))
-            .unwrap();
+            s.create_workstream(&Workstream::new("pat", std::env::temp_dir().join("pat")))
+                .unwrap();
+            s.create_workstream(&Workstream::new("old", std::env::temp_dir().join("old")))
+                .unwrap();
             s.soft_delete_workstream("old").unwrap();
         }
         let runner = StewardRunner::new(

@@ -34,12 +34,9 @@ use serde::Serialize;
 
 use crate::CeremonyError;
 use crate::plugin::{
-    Ceremony, CeremonyCtx, ComposedItem, CronSchedule, InteractiveAction, NewItem,
-    PatternDetector,
+    Ceremony, CeremonyCtx, ComposedItem, CronSchedule, InteractiveAction, NewItem, PatternDetector,
 };
-use crate::plugins::gather_sources::{
-    AttentionSource, CalendarSource, SignalRow,
-};
+use crate::plugins::gather_sources::{AttentionSource, CalendarSource, SignalRow};
 use crate::types::{GatheredFacts, ItemKind};
 
 const CAP_DEADLINES: usize = 10;
@@ -180,9 +177,7 @@ impl Ceremony for WeeklyCeremony {
                 total_meeting_hours += dur;
             }
             // Free afternoon: no event starting at or after 13:00 UTC.
-            let has_afternoon = events
-                .iter()
-                .any(|e| e.start.hour() >= AFTERNOON_HOUR_UTC);
+            let has_afternoon = events.iter().any(|e| e.start.hour() >= AFTERNOON_HOUR_UTC);
             if !has_afternoon {
                 free_afternoons += 1;
             }
@@ -289,8 +284,8 @@ impl Ceremony for WeeklyCeremony {
                     })
                     .map_err(|e| CeremonyError::Storage(format!("patterns query: {e}")))?;
                 for r in rows {
-                    let (pid, key, mag) = r
-                        .map_err(|e| CeremonyError::Storage(format!("patterns row: {e}")))?;
+                    let (pid, key, mag) =
+                        r.map_err(|e| CeremonyError::Storage(format!("patterns row: {e}")))?;
                     out.push(RetroExcerpt {
                         id: format!("pattern-{pid}"),
                         kind: "pattern",
@@ -336,9 +331,7 @@ impl Ceremony for WeeklyCeremony {
                     })
                     .map_err(|e| CeremonyError::Storage(format!("inbound query: {e}")))?;
                 for r in rows {
-                    out.push(
-                        r.map_err(|e| CeremonyError::Storage(format!("inbound row: {e}")))?,
-                    );
+                    out.push(r.map_err(|e| CeremonyError::Storage(format!("inbound row: {e}")))?);
                 }
             }
             out
@@ -369,9 +362,7 @@ impl Ceremony for WeeklyCeremony {
                 .map_err(|e| CeremonyError::Storage(format!("hot todos query: {e}")))?;
             let mut out = Vec::new();
             for r in rows {
-                out.push(
-                    r.map_err(|e| CeremonyError::Storage(format!("hot todos row: {e}")))?,
-                );
+                out.push(r.map_err(|e| CeremonyError::Storage(format!("hot todos row: {e}")))?);
             }
             out
         };
@@ -595,9 +586,7 @@ mod tests {
     use crate::CeremonyDispatcher;
     use crate::PluginRegistry;
     use crate::engine::{ConnHandle, EngineDispatcher};
-    use crate::plugins::gather_sources::{
-        CalEvent, StaticAttentionSource,
-    };
+    use crate::plugins::gather_sources::{CalEvent, StaticAttentionSource};
     use rusqlite::params;
     use tempfile::TempDir;
 
@@ -640,10 +629,7 @@ mod tests {
 
     #[async_trait]
     impl CalendarSource for PerDayCalendar {
-        async fn events_for(
-            &self,
-            date: NaiveDate,
-        ) -> Result<Vec<CalEvent>, CeremonyError> {
+        async fn events_for(&self, date: NaiveDate) -> Result<Vec<CalEvent>, CeremonyError> {
             Ok(sample_calendar_events_for(date))
         }
     }

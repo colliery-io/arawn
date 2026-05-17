@@ -51,7 +51,11 @@ impl Tool for SkillTool {
         })
     }
 
-    async fn execute(&self, _ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
+    async fn execute(
+        &self,
+        _ctx: &dyn arawn_tool::ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
         let skill_name = params
             .get("skill")
             .and_then(|v| v.as_str())
@@ -138,7 +142,10 @@ mod tests {
 
     fn ctx() -> crate::context::EngineToolContext {
         use arawn_core::Workstream;
-        crate::context::EngineToolContext::new(&Workstream::new("test", "/tmp"), uuid::Uuid::new_v4())
+        crate::context::EngineToolContext::new(
+            &Workstream::new("test", "/tmp"),
+            uuid::Uuid::new_v4(),
+        )
     }
 
     #[tokio::test]

@@ -9,7 +9,7 @@ use arawn_core::Workstream;
 use arawn_engine::{QueryEngineConfig, ThinkTool, ToolRegistry};
 use arawn_llm::{MockLlmClient, MockResponse};
 use arawn_service::{ArawnService, EngineEvent};
-use arawn_storage::{Store, JsonlMessageStore};
+use arawn_storage::{JsonlMessageStore, Store};
 
 fn setup_service(responses: Vec<MockResponse>) -> (TempDir, arawn_bin::LocalService) {
     let tmp = TempDir::new().unwrap();
@@ -29,29 +29,22 @@ fn setup_service(responses: Vec<MockResponse>) -> (TempDir, arawn_bin::LocalServ
     };
 
     let pool = Arc::new(arawn_bin::LlmClientPool::single(llm, config.model.clone()));
-    let service = arawn_bin::LocalService::new(
-        store,
-        tmp.path().to_path_buf(),
-        pool,
-        registry,
-        config,
-    );
+    let service =
+        arawn_bin::LocalService::new(store, tmp.path().to_path_buf(), pool, registry, config);
 
     (tmp, service)
 }
 
 #[tokio::test]
 async fn separate_engine_and_compactor_llms_are_stored_distinctly() {
-    use std::collections::HashMap;
     use arawn_bin::LlmConfig;
+    use std::collections::HashMap;
 
     let tmp = TempDir::new().unwrap();
     let store = Store::open(tmp.path()).unwrap();
 
-    let engine_llm: Arc<dyn arawn_llm::LlmClient> =
-        Arc::new(MockLlmClient::new(vec![]));
-    let compactor_llm: Arc<dyn arawn_llm::LlmClient> =
-        Arc::new(MockLlmClient::new(vec![]));
+    let engine_llm: Arc<dyn arawn_llm::LlmClient> = Arc::new(MockLlmClient::new(vec![]));
+    let compactor_llm: Arc<dyn arawn_llm::LlmClient> = Arc::new(MockLlmClient::new(vec![]));
 
     let mut clients = HashMap::new();
     clients.insert("engine".to_string(), engine_llm);
@@ -60,15 +53,24 @@ async fn separate_engine_and_compactor_llms_are_stored_distinctly() {
     let mut configs = HashMap::new();
     configs.insert(
         "engine".to_string(),
-        LlmConfig { model: "engine-model".into(), ..LlmConfig::default() },
+        LlmConfig {
+            model: "engine-model".into(),
+            ..LlmConfig::default()
+        },
     );
     configs.insert(
         "compactor".to_string(),
-        LlmConfig { model: "compactor-model".into(), ..LlmConfig::default() },
+        LlmConfig {
+            model: "compactor-model".into(),
+            ..LlmConfig::default()
+        },
     );
 
     let pool = Arc::new(arawn_bin::LlmClientPool::from_clients(
-        clients, configs, "engine", "compactor",
+        clients,
+        configs,
+        "engine",
+        "compactor",
     ));
 
     let registry = Arc::new(ToolRegistry::new());
@@ -78,15 +80,13 @@ async fn separate_engine_and_compactor_llms_are_stored_distinctly() {
         ..Default::default()
     };
 
-    let service = arawn_bin::LocalService::new(
-        store,
-        tmp.path().to_path_buf(),
-        pool,
-        registry,
-        config,
-    );
+    let service =
+        arawn_bin::LocalService::new(store, tmp.path().to_path_buf(), pool, registry, config);
 
-    assert!(!Arc::ptr_eq(&service.shared_llm(), &service.shared_compactor_llm()));
+    assert!(!Arc::ptr_eq(
+        &service.shared_llm(),
+        &service.shared_compactor_llm()
+    ));
     assert_eq!(service.compactor_model(), "compactor-model");
     assert_eq!(service.engine_config().model, "engine-model");
 }
@@ -204,7 +204,10 @@ async fn create_workstream_with_default_root_dir() {
     let (tmp, service) = setup_service(vec![]);
 
     let ws = service
-        .create_workstream("test-project".into(), tmp.path().join("workstreams/test-project"))
+        .create_workstream(
+            "test-project".into(),
+            tmp.path().join("workstreams/test-project"),
+        )
         .await
         .unwrap();
 
@@ -248,7 +251,10 @@ async fn promote_scratch_session_to_workstream() {
     );
 
     // Promote to finances workstream
-    let result = service.promote_session(session.id, "finances").await.unwrap();
+    let result = service
+        .promote_session(session.id, "finances")
+        .await
+        .unwrap();
     assert_eq!(result.workstream_name, "finances");
 
     // Session should still load with its messages from the new location
@@ -289,7 +295,10 @@ async fn promote_non_scratch_session_fails() {
 
     // Promoting a non-scratch session should fail
     let result = service.promote_session(session.id, "project-b").await;
-    assert!(result.is_err(), "promoting a non-scratch session should fail");
+    assert!(
+        result.is_err(),
+        "promoting a non-scratch session should fail"
+    );
 }
 
 #[tokio::test]
@@ -350,9 +359,9 @@ async fn list_sessions_returns_multiple() {
 #[tokio::test]
 async fn engine_error_produces_error_event() {
     // Use MockResponse::error to simulate LLM failure
-    let (_tmp, service) = setup_service(vec![MockResponse::error(
-        arawn_llm::LlmError::Auth("invalid key".into()),
-    )]);
+    let (_tmp, service) = setup_service(vec![MockResponse::error(arawn_llm::LlmError::Auth(
+        "invalid key".into(),
+    ))]);
 
     let session = service.create_session(None).await.unwrap();
 
@@ -368,7 +377,10 @@ async fn engine_error_produces_error_event() {
         }
     }
 
-    assert!(got_error, "should have received Error event for LLM failure");
+    assert!(
+        got_error,
+        "should have received Error event for LLM failure"
+    );
 }
 
 #[tokio::test]

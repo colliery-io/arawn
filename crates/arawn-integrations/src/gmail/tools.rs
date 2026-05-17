@@ -132,8 +132,16 @@ impl Tool for GmailInboxReadTool {
             }
         })
     }
-    async fn execute(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
-        let limit = params.get("limit").and_then(|v| v.as_u64()).unwrap_or(10).min(50) as u32;
+    async fn execute(
+        &self,
+        _ctx: &dyn ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
+        let limit = params
+            .get("limit")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(10)
+            .min(50) as u32;
         let label = params
             .get("label")
             .and_then(|v| v.as_str())
@@ -156,7 +164,9 @@ impl Tool for GmailInboxReadTool {
             .filter_map(|m| m.id)
             .collect();
         let summaries = fetch_summaries(&hub, &ids).await?;
-        Ok(ToolOutput::success(serde_json::to_string(&summaries).unwrap()))
+        Ok(ToolOutput::success(
+            serde_json::to_string(&summaries).unwrap(),
+        ))
     }
 }
 
@@ -205,13 +215,21 @@ impl Tool for GmailSearchTool {
             "required": ["query"]
         })
     }
-    async fn execute(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
+    async fn execute(
+        &self,
+        _ctx: &dyn ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
         let query = params
             .get("query")
             .and_then(|v| v.as_str())
             .ok_or_else(|| ToolError::ExecutionFailed("missing 'query' parameter".into()))?
             .to_string();
-        let limit = params.get("limit").and_then(|v| v.as_u64()).unwrap_or(10).min(50) as u32;
+        let limit = params
+            .get("limit")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(10)
+            .min(50) as u32;
 
         let hub = self.integration.hub().map_err(integ_err)?;
         let (_resp, list) = hub
@@ -229,7 +247,9 @@ impl Tool for GmailSearchTool {
             .filter_map(|m| m.id)
             .collect();
         let summaries = fetch_summaries(&hub, &ids).await?;
-        Ok(ToolOutput::success(serde_json::to_string(&summaries).unwrap()))
+        Ok(ToolOutput::success(
+            serde_json::to_string(&summaries).unwrap(),
+        ))
     }
 }
 
@@ -269,7 +289,11 @@ impl Tool for GmailGetMessageTool {
             "required": ["message_id"]
         })
     }
-    async fn execute(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
+    async fn execute(
+        &self,
+        _ctx: &dyn ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
         let id = params
             .get("message_id")
             .and_then(|v| v.as_str())
@@ -370,7 +394,11 @@ impl Tool for GmailSendTool {
             "required": ["to", "subject", "body"]
         })
     }
-    async fn execute(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
+    async fn execute(
+        &self,
+        _ctx: &dyn ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
         let to = params
             .get("to")
             .and_then(|v| v.as_str())
@@ -467,7 +495,11 @@ impl Tool for GmailMarkReadTool {
             "required": ["message_id"]
         })
     }
-    async fn execute(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
+    async fn execute(
+        &self,
+        _ctx: &dyn ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
         let id = params
             .get("message_id")
             .and_then(|v| v.as_str())
@@ -483,7 +515,9 @@ impl Tool for GmailMarkReadTool {
             .doit()
             .await
             .map_err(|e| google_err("messages.modify", e))?;
-        Ok(ToolOutput::success(json!({"id": id, "status": "marked_read"}).to_string()))
+        Ok(ToolOutput::success(
+            json!({"id": id, "status": "marked_read"}).to_string(),
+        ))
     }
 }
 
@@ -580,7 +614,10 @@ mod tests {
             }),
             ..Default::default()
         };
-        assert_eq!(extract_plain_text_body(&m).as_deref(), Some("plain version"));
+        assert_eq!(
+            extract_plain_text_body(&m).as_deref(),
+            Some("plain version")
+        );
     }
 
     #[test]

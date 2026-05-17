@@ -72,9 +72,8 @@ impl TagOntologyStore {
     /// workstream's root path on a `Workstream` record and don't want
     /// to re-derive `data_dir + name`.
     pub fn open_at(ws_dir: &Path) -> Result<Self, MemoryError> {
-        std::fs::create_dir_all(ws_dir).map_err(|e| {
-            MemoryError::Storage(format!("create workstream dir: {e}"))
-        })?;
+        std::fs::create_dir_all(ws_dir)
+            .map_err(|e| MemoryError::Storage(format!("create workstream dir: {e}")))?;
         let conn = Connection::open(ws_dir.join("memory.db"))
             .map_err(|e| MemoryError::Storage(format!("open ontology db: {e}")))?;
         ensure_schema(&conn)?;
@@ -143,14 +142,10 @@ impl TagOntologyStore {
     pub fn list(&self) -> Result<Vec<OntologyEntry>, MemoryError> {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn
-            .prepare(
-                "SELECT tag, added_at, added_via FROM workstream_tag_ontology ORDER BY tag",
-            )
+            .prepare("SELECT tag, added_at, added_via FROM workstream_tag_ontology ORDER BY tag")
             .map_err(|e| MemoryError::Storage(format!("ontology list prepare: {e}")))?;
         let rows = stmt
-            .query_map([], |r| {
-                Ok(parse_row(r))
-            })
+            .query_map([], |r| Ok(parse_row(r)))
             .map_err(|e| MemoryError::Storage(format!("ontology list query: {e}")))?;
         let mut out = Vec::new();
         for r in rows {
@@ -168,11 +163,9 @@ impl TagOntologyStore {
     pub fn count(&self) -> Result<usize, MemoryError> {
         let conn = self.conn.lock().unwrap();
         let n: i64 = conn
-            .query_row(
-                "SELECT COUNT(*) FROM workstream_tag_ontology",
-                [],
-                |r| r.get(0),
-            )
+            .query_row("SELECT COUNT(*) FROM workstream_tag_ontology", [], |r| {
+                r.get(0)
+            })
             .map_err(|e| MemoryError::Storage(format!("ontology count: {e}")))?;
         Ok(n.max(0) as usize)
     }
@@ -204,8 +197,7 @@ impl TagOntologyStore {
         if candidates.is_empty() {
             return Ok(Vec::new());
         }
-        let known: std::collections::HashSet<String> =
-            self.tags()?.into_iter().collect();
+        let known: std::collections::HashSet<String> = self.tags()?.into_iter().collect();
         Ok(candidates
             .iter()
             .map(|t| normalize_tag(t))
@@ -247,9 +239,8 @@ fn parse_row(r: &rusqlite::Row<'_>) -> Result<OntologyEntry, MemoryError> {
     let added_at = DateTime::parse_from_rfc3339(&added_at_str)
         .map_err(|e| MemoryError::Storage(format!("parse added_at: {e}")))?
         .with_timezone(&Utc);
-    let added_via = AddedVia::from_str(&added_via_str).ok_or_else(|| {
-        MemoryError::Storage(format!("unknown added_via `{added_via_str}`"))
-    })?;
+    let added_via = AddedVia::from_str(&added_via_str)
+        .ok_or_else(|| MemoryError::Storage(format!("unknown added_via `{added_via_str}`")))?;
     Ok(OntologyEntry {
         tag,
         added_at,
@@ -310,10 +301,7 @@ mod tests {
     fn filter_returns_only_known_tags_normalized() {
         let (_tmp, store) = setup();
         store
-            .add_many(
-                ["falcon".into(), "postgres".into()],
-                AddedVia::Manual,
-            )
+            .add_many(["falcon".into(), "postgres".into()], AddedVia::Manual)
             .unwrap();
         let kept = store
             .filter(&[

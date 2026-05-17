@@ -6,9 +6,8 @@ use std::sync::Arc;
 
 use arawn_auth::Token;
 use slack_morphism::prelude::{
-    SlackApiToken, SlackApiTokenType, SlackApiTokenValue, SlackClient,
-    SlackClientHyperConnector, SlackClientHyperHttpsConnector, SlackClientSession,
-    SlackHyperClient,
+    SlackApiToken, SlackApiTokenType, SlackApiTokenValue, SlackClient, SlackClientHyperConnector,
+    SlackClientHyperHttpsConnector, SlackClientSession, SlackHyperClient,
 };
 
 /// Bundle the slack-morphism client + token a tool needs to make API calls.
@@ -31,12 +30,15 @@ impl SlackContext {
 /// without rebuilding the connector — but constructing a new one per call
 /// is also fine; slack-morphism's connector is internally Arc'd.
 pub fn build_slack_client(token: &Token) -> SlackContext {
-    let connector = SlackClientHyperConnector::new()
-        .expect("rustls native roots available for Slack client");
+    let connector =
+        SlackClientHyperConnector::new().expect("rustls native roots available for Slack client");
     let client = Arc::new(SlackClient::new(connector));
     let api_token = SlackApiToken::new(SlackApiTokenValue::new(token.access.clone()))
         .with_token_type(SlackApiTokenType::Bot);
-    SlackContext { client, token: api_token }
+    SlackContext {
+        client,
+        token: api_token,
+    }
 }
 
 #[cfg(test)]

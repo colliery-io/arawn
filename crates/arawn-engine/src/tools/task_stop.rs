@@ -50,7 +50,11 @@ impl Tool for TaskStopTool {
         })
     }
 
-    async fn execute(&self, _ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
+    async fn execute(
+        &self,
+        _ctx: &dyn arawn_tool::ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
         let task_id = params
             .get("task_id")
             .and_then(|v| v.as_str())
@@ -70,7 +74,8 @@ impl Tool for TaskStopTool {
                 // The spawned task will detect cancellation and call complete(Killed)
                 // Give it a moment to propagate
                 tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
-                self.bg_manager.complete(task_id, BackgroundTaskStatus::Killed);
+                self.bg_manager
+                    .complete(task_id, BackgroundTaskStatus::Killed);
                 Ok(ToolOutput::success(format!("Task {task_id} stopped.")))
             }
         }
@@ -110,7 +115,9 @@ mod tests {
         let handle = tokio::spawn(async move { token_clone.cancelled().await });
 
         let (id, _) = mgr.register(
-            BackgroundTaskKind::Shell { command: "sleep 999".into() },
+            BackgroundTaskKind::Shell {
+                command: "sleep 999".into(),
+            },
             "sleep".into(),
             handle,
             token,
@@ -124,10 +131,7 @@ mod tests {
 
         assert!(!result.is_error);
         assert!(result.content.contains("stopped"));
-        assert_eq!(
-            mgr.status(&id),
-            Some(BackgroundTaskStatus::Killed)
-        );
+        assert_eq!(mgr.status(&id), Some(BackgroundTaskStatus::Killed));
     }
 
     #[tokio::test]
@@ -137,7 +141,9 @@ mod tests {
         let handle = tokio::spawn(async {});
 
         let (id, _) = mgr.register(
-            BackgroundTaskKind::Shell { command: "echo".into() },
+            BackgroundTaskKind::Shell {
+                command: "echo".into(),
+            },
             "echo".into(),
             handle,
             token,

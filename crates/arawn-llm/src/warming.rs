@@ -44,11 +44,7 @@ impl WarmingClient {
         Self::with_ttl(inner, provider, DEFAULT_WARMUP_TTL)
     }
 
-    pub fn with_ttl(
-        inner: Arc<dyn LlmClient>,
-        provider: impl Into<String>,
-        ttl: Duration,
-    ) -> Self {
+    pub fn with_ttl(inner: Arc<dyn LlmClient>, provider: impl Into<String>, ttl: Duration) -> Self {
         Self {
             inner,
             provider: provider.into(),
@@ -198,10 +194,8 @@ mod tests {
         async fn stream(
             &self,
             request: ChatRequest,
-        ) -> Result<
-            Pin<Box<dyn Stream<Item = Result<ChatChunk, LlmError>> + Send>>,
-            LlmError,
-        > {
+        ) -> Result<Pin<Box<dyn Stream<Item = Result<ChatChunk, LlmError>> + Send>>, LlmError>
+        {
             self.calls.fetch_add(1, Ordering::SeqCst);
             self.inner.stream(request).await
         }
@@ -276,10 +270,10 @@ mod tests {
     async fn stream_retries_once_on_cold_restart_signature() {
         // Sequence: explicit warmup OK → stream gets 503 → invalidate → re-warm OK → retry stream OK.
         let inner = Arc::new(CountingClient::new(vec![
-            ok_response(),                                                  // explicit warmup
+            ok_response(), // explicit warmup
             MockResponse::error(LlmError::ServerError("HTTP 503: model loading".into())), // first stream attempt
-            ok_response(),                                                  // re-warmup after invalidate
-            ok_response(),                                                  // retry stream
+            ok_response(), // re-warmup after invalidate
+            ok_response(), // retry stream
         ]));
         let counter = inner.clone();
         let client = WarmingClient::new(inner, "test");
@@ -287,7 +281,11 @@ mod tests {
         client.warmup("model-a").await.unwrap();
         let result = client.stream(user_request("model-a")).await;
         assert!(result.is_ok(), "expected retry to succeed");
-        assert_eq!(counter.calls(), 4, "warmup + bad stream + re-warm + retry stream");
+        assert_eq!(
+            counter.calls(),
+            4,
+            "warmup + bad stream + re-warm + retry stream"
+        );
     }
 
     #[tokio::test]
@@ -303,7 +301,11 @@ mod tests {
         client.warmup("model-a").await.unwrap();
         let result = client.stream(user_request("model-a")).await;
         assert!(matches!(result, Err(LlmError::Auth(_))));
-        assert_eq!(counter.calls(), 2, "warmup + single failed stream, no retry");
+        assert_eq!(
+            counter.calls(),
+            2,
+            "warmup + single failed stream, no retry"
+        );
     }
 
     #[tokio::test]
@@ -329,9 +331,7 @@ mod tests {
         assert!(!looks_like_cold_restart(&LlmError::ServerError(
             "HTTP 500: internal".into()
         )));
-        assert!(!looks_like_cold_restart(&LlmError::Auth(
-            "HTTP 401".into()
-        )));
+        assert!(!looks_like_cold_restart(&LlmError::Auth("HTTP 401".into())));
         assert!(!looks_like_cold_restart(&LlmError::RateLimited(
             "HTTP 429".into()
         )));

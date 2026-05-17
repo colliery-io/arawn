@@ -136,11 +136,25 @@ impl Session {
     /// Returns total characters cleared.
     pub fn microcompact(&mut self, keep_recent: usize) -> usize {
         const TARGETED_TOOLS: &[&str] = &[
-            "shell", "Bash", "file_read", "Read", "FileRead",
-            "grep", "Grep", "glob", "Glob",
-            "web_fetch", "WebFetch", "web_search", "WebSearch",
-            "file_write", "Write", "FileWrite",
-            "file_edit", "Edit", "FileEdit",
+            "shell",
+            "Bash",
+            "file_read",
+            "Read",
+            "FileRead",
+            "grep",
+            "Grep",
+            "glob",
+            "Glob",
+            "web_fetch",
+            "WebFetch",
+            "web_search",
+            "WebSearch",
+            "file_write",
+            "Write",
+            "FileWrite",
+            "file_edit",
+            "Edit",
+            "FileEdit",
         ];
         const STUB_THRESHOLD: usize = 100; // Don't clear results shorter than this
 
@@ -427,7 +441,9 @@ mod tests {
     fn microcompact_clears_old_tool_results() {
         let mut session = Session::scratch();
         // Turn 1: user + assistant(tool) + tool_result
-        session.add_message(Message::User { content: "find files".into() });
+        session.add_message(Message::User {
+            content: "find files".into(),
+        });
         session.add_message(Message::Assistant {
             content: "".into(),
             tool_uses: vec![ToolUse {
@@ -448,7 +464,9 @@ mod tests {
         });
         // Several more turns to push turn 1 past the cutoff
         for i in 0..8 {
-            session.add_message(Message::User { content: format!("q{i}") });
+            session.add_message(Message::User {
+                content: format!("q{i}"),
+            });
             session.add_message(Message::Assistant {
                 content: format!("a{i}"),
                 tool_uses: vec![],
@@ -456,11 +474,17 @@ mod tests {
         }
 
         let chars_cleared = session.microcompact(6);
-        assert!(chars_cleared >= 500, "should clear the large shell result, cleared={chars_cleared}");
+        assert!(
+            chars_cleared >= 500,
+            "should clear the large shell result, cleared={chars_cleared}"
+        );
 
         // The old tool result should be a stub
         if let Message::ToolResult { content, .. } = &session.messages()[2] {
-            assert!(content.contains("[Previous shell result cleared"), "got: {content}");
+            assert!(
+                content.contains("[Previous shell result cleared"),
+                "got: {content}"
+            );
         } else {
             panic!("expected ToolResult at index 2");
         }
@@ -469,7 +493,9 @@ mod tests {
     #[test]
     fn microcompact_preserves_recent_results() {
         let mut session = Session::scratch();
-        session.add_message(Message::User { content: "read file".into() });
+        session.add_message(Message::User {
+            content: "read file".into(),
+        });
         session.add_message(Message::Assistant {
             content: "".into(),
             tool_uses: vec![ToolUse {
@@ -492,7 +518,9 @@ mod tests {
     fn microcompact_skips_small_results() {
         let mut session = Session::scratch();
         for i in 0..10 {
-            session.add_message(Message::User { content: format!("q{i}") });
+            session.add_message(Message::User {
+                content: format!("q{i}"),
+            });
             session.add_message(Message::Assistant {
                 content: "".into(),
                 tool_uses: vec![ToolUse {
@@ -516,7 +544,9 @@ mod tests {
     fn microcompact_skips_errors() {
         let mut session = Session::scratch();
         for i in 0..10 {
-            session.add_message(Message::User { content: format!("q{i}") });
+            session.add_message(Message::User {
+                content: format!("q{i}"),
+            });
             session.add_message(Message::Assistant {
                 content: "".into(),
                 tool_uses: vec![ToolUse {
@@ -540,7 +570,9 @@ mod tests {
     fn microcompact_skips_non_targeted_tools() {
         let mut session = Session::scratch();
         for i in 0..10 {
-            session.add_message(Message::User { content: format!("q{i}") });
+            session.add_message(Message::User {
+                content: format!("q{i}"),
+            });
             session.add_message(Message::Assistant {
                 content: "".into(),
                 tool_uses: vec![ToolUse {

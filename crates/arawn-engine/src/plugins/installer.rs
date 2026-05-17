@@ -111,18 +111,19 @@ pub fn install_plugin(
     let known_path = plugins_root.join("known_marketplaces.json");
     let known = KnownMarketplaces::load(&known_path);
 
-    let market_entry = known
-        .get(&identifier.marketplace)
-        .ok_or_else(|| {
-            format!(
-                "marketplace '{}' not found. Add it first with `arawn plugin marketplace add`",
-                identifier.marketplace
-            )
-        })?;
+    let market_entry = known.get(&identifier.marketplace).ok_or_else(|| {
+        format!(
+            "marketplace '{}' not found. Add it first with `arawn plugin marketplace add`",
+            identifier.marketplace
+        )
+    })?;
 
     let marketplaces_dir = plugins_root.join("marketplaces");
-    let manifest =
-        fetch_marketplace(&market_entry.source, &identifier.marketplace, &marketplaces_dir)?;
+    let manifest = fetch_marketplace(
+        &market_entry.source,
+        &identifier.marketplace,
+        &marketplaces_dir,
+    )?;
 
     let plugin_entry = resolve_plugin(&manifest, &identifier.name).ok_or_else(|| {
         format!(
@@ -144,10 +145,7 @@ pub fn install_plugin(
         .join(&version);
 
     // Resolve the marketplace directory (for relative path sources)
-    let marketplace_clone_dir = market_entry
-        .install_location
-        .as_ref()
-        .map(PathBuf::from);
+    let marketplace_clone_dir = market_entry.install_location.as_ref().map(PathBuf::from);
 
     // Clone/download the plugin into the cache
     clone_plugin_to_cache(
@@ -201,9 +199,8 @@ pub fn uninstall_plugin(
             .join(&identifier.marketplace)
             .join(&identifier.name);
         if cache_dir.exists() {
-            std::fs::remove_dir_all(&cache_dir).map_err(|e| {
-                format!("failed to remove cache dir {}: {e}", cache_dir.display())
-            })?;
+            std::fs::remove_dir_all(&cache_dir)
+                .map_err(|e| format!("failed to remove cache dir {}: {e}", cache_dir.display()))?;
         }
     }
 
@@ -220,30 +217,30 @@ fn clone_plugin_to_cache(
 ) -> Result<(), String> {
     // If cache already exists, treat as update (remove and re-clone)
     if cache_path.exists() {
-        std::fs::remove_dir_all(cache_path)
-            .map_err(|e| format!("failed to clear cache: {e}"))?;
+        std::fs::remove_dir_all(cache_path).map_err(|e| format!("failed to clear cache: {e}"))?;
     }
 
     // Check for relative path source — copy from marketplace clone dir
     if let Some(ref src) = plugin.source
-        && let Some(rel_path) = src.relative_path() {
-            let market_dir = marketplace_dir.ok_or_else(|| {
-                "plugin source is a relative path but no marketplace directory available".to_string()
-            })?;
-            let stripped = rel_path.strip_prefix("./").unwrap_or(rel_path);
-            let source_dir = market_dir.join(stripped);
-            if !source_dir.exists() {
-                return Err(format!(
-                    "plugin source path '{}' not found in marketplace at {}",
-                    rel_path,
-                    market_dir.display()
-                ));
-            }
-            std::fs::create_dir_all(cache_path)
-                .map_err(|e| format!("failed to create cache dir: {e}"))?;
-            copy_dir_recursive(&source_dir, cache_path)?;
-            return Ok(());
+        && let Some(rel_path) = src.relative_path()
+    {
+        let market_dir = marketplace_dir.ok_or_else(|| {
+            "plugin source is a relative path but no marketplace directory available".to_string()
+        })?;
+        let stripped = rel_path.strip_prefix("./").unwrap_or(rel_path);
+        let source_dir = market_dir.join(stripped);
+        if !source_dir.exists() {
+            return Err(format!(
+                "plugin source path '{}' not found in marketplace at {}",
+                rel_path,
+                market_dir.display()
+            ));
         }
+        std::fs::create_dir_all(cache_path)
+            .map_err(|e| format!("failed to create cache dir: {e}"))?;
+        copy_dir_recursive(&source_dir, cache_path)?;
+        return Ok(());
+    }
 
     // Determine git URL and optional subdirectory
     let (git_url, git_ref, subdir) = if let Some(ref src) = plugin.source {
@@ -259,10 +256,7 @@ fn clone_plugin_to_cache(
                 path.clone(),
             ),
             PluginSourceRef::Git {
-                url,
-                git_ref,
-                path,
-                ..
+                url, git_ref, path, ..
             } => (url.clone(), git_ref.clone(), path.clone()),
             PluginSourceRef::RelativePath(_) => unreachable!("handled above"),
         }
@@ -271,11 +265,7 @@ fn clone_plugin_to_cache(
         let url = market_source
             .git_url()
             .ok_or_else(|| "no git URL available for plugin source".to_string())?;
-        (
-            url,
-            market_source.git_ref().map(String::from),
-            None,
-        )
+        (url, market_source.git_ref().map(String::from), None)
     };
 
     // Clone to temp directory
@@ -302,10 +292,7 @@ fn clone_plugin_to_cache(
     let source_dir = if let Some(ref sub) = subdir {
         let sub_path = temp_clone.join(sub);
         if !sub_path.exists() {
-            return Err(format!(
-                "subdirectory '{}' not found in cloned repo",
-                sub
-            ));
+            return Err(format!("subdirectory '{}' not found in cloned repo", sub));
         }
         sub_path
     } else {
@@ -313,8 +300,7 @@ fn clone_plugin_to_cache(
     };
 
     // Copy to cache path
-    std::fs::create_dir_all(cache_path)
-        .map_err(|e| format!("failed to create cache dir: {e}"))?;
+    std::fs::create_dir_all(cache_path).map_err(|e| format!("failed to create cache dir: {e}"))?;
 
     copy_dir_recursive(&source_dir, cache_path)?;
 

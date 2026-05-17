@@ -153,14 +153,14 @@ impl Default for PlanModeState {
 /// Picks up to 4 lowercase words, joined by hyphens.
 pub fn generate_slug(description: &str) -> String {
     let stop_words: &[&str] = &[
-        "the", "a", "an", "is", "are", "was", "were", "be", "been", "being", "have", "has",
-        "had", "do", "does", "did", "will", "would", "could", "should", "may", "might", "shall",
-        "can", "to", "of", "in", "for", "on", "with", "at", "by", "from", "as", "into",
-        "through", "during", "before", "after", "above", "below", "between", "and", "but", "or",
-        "nor", "not", "so", "yet", "both", "either", "neither", "each", "every", "all", "any",
-        "few", "more", "most", "other", "some", "such", "no", "only", "own", "same", "than",
-        "too", "very", "just", "that", "this", "these", "those", "i", "me", "my", "we", "our",
-        "you", "your", "it", "its", "they", "them", "their",
+        "the", "a", "an", "is", "are", "was", "were", "be", "been", "being", "have", "has", "had",
+        "do", "does", "did", "will", "would", "could", "should", "may", "might", "shall", "can",
+        "to", "of", "in", "for", "on", "with", "at", "by", "from", "as", "into", "through",
+        "during", "before", "after", "above", "below", "between", "and", "but", "or", "nor", "not",
+        "so", "yet", "both", "either", "neither", "each", "every", "all", "any", "few", "more",
+        "most", "other", "some", "such", "no", "only", "own", "same", "than", "too", "very",
+        "just", "that", "this", "these", "those", "i", "me", "my", "we", "our", "you", "your",
+        "it", "its", "they", "them", "their",
     ];
 
     let words: Vec<String> = description
@@ -189,7 +189,10 @@ mod tests {
 
     #[test]
     fn generate_slug_basic() {
-        assert_eq!(generate_slug("refactor auth middleware"), "refactor-auth-middleware");
+        assert_eq!(
+            generate_slug("refactor auth middleware"),
+            "refactor-auth-middleware"
+        );
     }
 
     #[test]
@@ -227,7 +230,9 @@ mod tests {
         assert!(!state.is_active());
 
         // Enter plan mode — plan file in session working dir
-        let plan_file = state.enter(PermissionMode::Default, "test-plan", tmp.path()).unwrap();
+        let plan_file = state
+            .enter(PermissionMode::Default, "test-plan", tmp.path())
+            .unwrap();
         assert!(state.is_active());
         assert!(plan_file.exists());
         assert_eq!(plan_file, tmp.path().join("test-plan.plan.md"));
@@ -262,7 +267,9 @@ mod tests {
         assert!(!snap.active);
         assert!(snap.plan_file.is_none());
 
-        state.enter(PermissionMode::AcceptEdits, "snap-test", tmp.path()).unwrap();
+        state
+            .enter(PermissionMode::AcceptEdits, "snap-test", tmp.path())
+            .unwrap();
         let snap = state.snapshot();
         assert!(snap.active);
         assert_eq!(snap.plan_slug.as_deref(), Some("snap-test"));

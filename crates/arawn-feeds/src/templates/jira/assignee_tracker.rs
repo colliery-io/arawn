@@ -54,9 +54,10 @@ impl FeedTemplate for AssigneeTrackerTemplate {
         cursor: &Value,
     ) -> Result<RunOutcome, FeedError> {
         let started = Instant::now();
-        let atlassian = ctx.clients().atlassian().ok_or_else(|| {
-            FeedError::Auth("atlassian integration not connected".into())
-        })?;
+        let atlassian = ctx
+            .clients()
+            .atlassian()
+            .ok_or_else(|| FeedError::Auth("atlassian integration not connected".into()))?;
 
         let mut state = CursorState::from_value(cursor);
         // First-run-only `since=` seed — see project_tracker for the
@@ -95,9 +96,10 @@ impl FeedTemplate for AssigneeTrackerTemplate {
             total_bytes += snap_bytes;
 
             if let Some(updated) = detail.meta.updated.as_deref()
-                && new_latest.as_deref().map(|n| updated > n).unwrap_or(true) {
-                    new_latest = Some(updated.to_string());
-                }
+                && new_latest.as_deref().map(|n| updated > n).unwrap_or(true)
+            {
+                new_latest = Some(updated.to_string());
+            }
         }
 
         state.latest_updated_iso = new_latest;

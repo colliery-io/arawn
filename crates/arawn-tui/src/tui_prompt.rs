@@ -46,12 +46,7 @@ impl ModalPrompt for TuiModalPrompt {
             })
             .collect();
 
-        let mut modal = ModalState::new(
-            &request.title,
-            options,
-            Color::Yellow,
-            result_tx,
-        );
+        let mut modal = ModalState::new(&request.title, options, Color::Yellow, result_tx);
 
         if let Some(subtitle) = request.subtitle {
             modal = modal.with_subtitle(subtitle);

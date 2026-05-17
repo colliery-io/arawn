@@ -219,9 +219,7 @@ impl MemoryStore {
     pub fn count_by_type(&self, entity_type: EntityType) -> Result<usize, MemoryError> {
         let conn = self.conn.lock().unwrap();
         let label = entity_label(entity_type);
-        let query = format!(
-            "MATCH (n:{label}) WHERE n.superseded = false RETURN count(n) AS cnt"
-        );
+        let query = format!("MATCH (n:{label}) WHERE n.superseded = false RETURN count(n) AS cnt");
         let result = conn
             .cypher(&query)
             .map_err(|e| MemoryError::Storage(format!("cypher count_by_type: {e}")))?;
@@ -258,12 +256,13 @@ impl MemoryStore {
         let mut out = Vec::with_capacity(limit);
         for id in ids {
             if let Some(e) = fetch_entity_by_id(&conn, id)?
-                && !e.superseded {
-                    out.push(e);
-                    if out.len() == limit {
-                        break;
-                    }
+                && !e.superseded
+            {
+                out.push(e);
+                if out.len() == limit {
+                    break;
                 }
+            }
         }
         Ok(out)
     }
@@ -279,12 +278,14 @@ impl MemoryStore {
         let mut out = Vec::with_capacity(limit);
         for id in ids {
             if let Some(e) = fetch_entity_by_id(&conn, id)?
-                && !e.superseded && e.entity_type == entity_type {
-                    out.push(e);
-                    if out.len() == limit {
-                        break;
-                    }
+                && !e.superseded
+                && e.entity_type == entity_type
+            {
+                out.push(e);
+                if out.len() == limit {
+                    break;
                 }
+            }
         }
         Ok(out)
     }
@@ -346,7 +347,9 @@ impl MemoryStore {
     pub fn get_neighbors(&self, entity_id: Uuid) -> Result<Vec<(Uuid, RelationType)>, MemoryError> {
         let conn = self.conn.lock().unwrap();
         let result = conn
-            .cypher_builder("MATCH (n {id: $id})-[r]-(m) RETURN DISTINCT m.id AS mid, type(r) AS rt")
+            .cypher_builder(
+                "MATCH (n {id: $id})-[r]-(m) RETURN DISTINCT m.id AS mid, type(r) AS rt",
+            )
             .param("id", entity_id.to_string())
             .run()
             .map_err(|e| MemoryError::Storage(format!("cypher get_neighbors: {e}")))?;
@@ -369,9 +372,8 @@ impl MemoryStore {
     ) -> Result<bool, MemoryError> {
         let conn = self.conn.lock().unwrap();
         let rt = relation_type_str(relation_type);
-        let exists_query = format!(
-            "MATCH (a {{id: $src}})-[r:{rt}]->(b {{id: $tgt}}) RETURN count(r) AS cnt"
-        );
+        let exists_query =
+            format!("MATCH (a {{id: $src}})-[r:{rt}]->(b {{id: $tgt}}) RETURN count(r) AS cnt");
         let exists = conn
             .cypher_builder(&exists_query)
             .param("src", source_id.to_string())
@@ -387,9 +389,7 @@ impl MemoryStore {
             return Ok(false);
         }
 
-        let delete_query = format!(
-            "MATCH (a {{id: $src}})-[r:{rt}]->(b {{id: $tgt}}) DELETE r"
-        );
+        let delete_query = format!("MATCH (a {{id: $src}})-[r:{rt}]->(b {{id: $tgt}}) DELETE r");
         conn.cypher_builder(&delete_query)
             .param("src", source_id.to_string())
             .param("tgt", target_id.to_string())
@@ -520,7 +520,12 @@ impl MemoryStore {
         limit: usize,
     ) -> Result<Vec<vector::SimilarityResult>, MemoryError> {
         let conn = self.conn.lock().unwrap();
-        vector::search_similar_filtered(conn.sqlite_connection(), query_embedding, entity_ids, limit)
+        vector::search_similar_filtered(
+            conn.sqlite_connection(),
+            query_embedding,
+            entity_ids,
+            limit,
+        )
     }
 
     /// Check if an entity has a stored embedding.
@@ -616,17 +621,13 @@ fn fetch_entity_by_id(conn: &GraphConnection, id: Uuid) -> Result<Option<Entity>
 /// MERGE-style upsert: create node-with-label if absent, otherwise SET every
 /// scalar from `entity_to_props`. We emulate `MERGE` explicitly because
 /// `MERGE … SET n += $props` is not part of graphqlite's Cypher dialect.
-fn cypher_upsert_entity(
-    conn: &GraphConnection,
-    entity: &Entity,
-) -> Result<(), MemoryError> {
+fn cypher_upsert_entity(conn: &GraphConnection, entity: &Entity) -> Result<(), MemoryError> {
     let label = entity_label(entity.entity_type);
     let id = entity.id.to_string();
     let props = entity_to_props(entity);
 
     if cypher_entity_exists(conn, &id)? {
-        let query =
-            "MATCH (n {id: $id}) \
+        let query = "MATCH (n {id: $id}) \
              SET n.title = $title, n.content = $content, \
                  n.confidence_source = $confidence_source, \
                  n.reinforcement_count = $reinforcement_count, \
@@ -668,9 +669,8 @@ fn cypher_upsert_relation(
     created_at: &str,
 ) -> Result<(), MemoryError> {
     let rt = relation_type_str(relation_type);
-    let exists_query = format!(
-        "MATCH (a {{id: $src}})-[r:{rt}]->(b {{id: $tgt}}) RETURN count(r) AS cnt"
-    );
+    let exists_query =
+        format!("MATCH (a {{id: $src}})-[r:{rt}]->(b {{id: $tgt}}) RETURN count(r) AS cnt");
     let exists = conn
         .cypher_builder(&exists_query)
         .param("src", source_id.to_string())
@@ -839,9 +839,15 @@ mod tests {
     #[test]
     fn list_by_type() {
         let store = test_store();
-        store.insert_entity(&Entity::new(EntityType::Fact, "fact 1")).unwrap();
-        store.insert_entity(&Entity::new(EntityType::Fact, "fact 2")).unwrap();
-        store.insert_entity(&Entity::new(EntityType::Decision, "decision 1")).unwrap();
+        store
+            .insert_entity(&Entity::new(EntityType::Fact, "fact 1"))
+            .unwrap();
+        store
+            .insert_entity(&Entity::new(EntityType::Fact, "fact 2"))
+            .unwrap();
+        store
+            .insert_entity(&Entity::new(EntityType::Decision, "decision 1"))
+            .unwrap();
 
         let facts = store.list_by_type(EntityType::Fact, 10).unwrap();
         assert_eq!(facts.len(), 2);
@@ -853,9 +859,15 @@ mod tests {
     #[test]
     fn count_by_type() {
         let store = test_store();
-        store.insert_entity(&Entity::new(EntityType::Fact, "f1")).unwrap();
-        store.insert_entity(&Entity::new(EntityType::Fact, "f2")).unwrap();
-        store.insert_entity(&Entity::new(EntityType::Note, "n1")).unwrap();
+        store
+            .insert_entity(&Entity::new(EntityType::Fact, "f1"))
+            .unwrap();
+        store
+            .insert_entity(&Entity::new(EntityType::Fact, "f2"))
+            .unwrap();
+        store
+            .insert_entity(&Entity::new(EntityType::Note, "n1"))
+            .unwrap();
 
         assert_eq!(store.count_by_type(EntityType::Fact).unwrap(), 2);
         assert_eq!(store.count_by_type(EntityType::Note).unwrap(), 1);
@@ -865,8 +877,12 @@ mod tests {
     #[test]
     fn fts5_search() {
         let store = test_store();
-        store.insert_entity(&Entity::new(EntityType::Fact, "Rust ownership model")).unwrap();
-        store.insert_entity(&Entity::new(EntityType::Fact, "Python GIL limitations")).unwrap();
+        store
+            .insert_entity(&Entity::new(EntityType::Fact, "Rust ownership model"))
+            .unwrap();
+        store
+            .insert_entity(&Entity::new(EntityType::Fact, "Python GIL limitations"))
+            .unwrap();
         store
             .insert_entity(&Entity::new(EntityType::Decision, "Use Rust for backend"))
             .unwrap();
@@ -881,7 +897,9 @@ mod tests {
     #[test]
     fn fts5_search_by_type() {
         let store = test_store();
-        store.insert_entity(&Entity::new(EntityType::Fact, "Rust is fast")).unwrap();
+        store
+            .insert_entity(&Entity::new(EntityType::Fact, "Rust is fast"))
+            .unwrap();
         store
             .insert_entity(&Entity::new(EntityType::Decision, "Use Rust"))
             .unwrap();
@@ -899,7 +917,9 @@ mod tests {
         store.insert_entity(&e1).unwrap();
         store.insert_entity(&e2).unwrap();
 
-        store.add_relation(e1.id, RelationType::Supports, e2.id).unwrap();
+        store
+            .add_relation(e1.id, RelationType::Supports, e2.id)
+            .unwrap();
 
         let rels = store.get_relations(e1.id).unwrap();
         assert_eq!(rels.len(), 1);
@@ -909,7 +929,9 @@ mod tests {
         assert_eq!(neighbors.len(), 1);
         assert_eq!(neighbors[0].0, e2.id);
 
-        store.delete_relation(e1.id, RelationType::Supports, e2.id).unwrap();
+        store
+            .delete_relation(e1.id, RelationType::Supports, e2.id)
+            .unwrap();
         assert!(store.get_relations(e1.id).unwrap().is_empty());
     }
 
@@ -932,7 +954,10 @@ mod tests {
 
         let e2 = Entity::new(EntityType::Fact, "User prefers Rust");
         match store.store_fact(&e2).unwrap() {
-            StoreFactResult::Reinforced { entity_id, new_count } => {
+            StoreFactResult::Reinforced {
+                entity_id,
+                new_count,
+            } => {
                 assert_eq!(entity_id, e1.id);
                 assert_eq!(new_count, 1);
             }
@@ -965,7 +990,10 @@ mod tests {
         let result = store.supersede_entity(old.id, &new).unwrap();
 
         match result {
-            StoreFactResult::Superseded { old_entity_id, new_entity_id } => {
+            StoreFactResult::Superseded {
+                old_entity_id,
+                new_entity_id,
+            } => {
                 assert_eq!(old_entity_id, old.id);
                 assert_eq!(new_entity_id, new.id);
             }
@@ -976,7 +1004,10 @@ mod tests {
         assert!(old_entity.superseded);
 
         let rels = store.get_relations(new.id).unwrap();
-        assert!(rels.iter().any(|r| r.relation_type == RelationType::Supersedes));
+        assert!(
+            rels.iter()
+                .any(|r| r.relation_type == RelationType::Supersedes)
+        );
     }
 
     #[test]

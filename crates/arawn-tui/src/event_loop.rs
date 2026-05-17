@@ -4,7 +4,6 @@ use std::time::{Duration, Instant};
 use crossterm::event::{
     DisableMouseCapture, EnableMouseCapture, Event as CEvent, EventStream, MouseEventKind,
 };
-use ratatui::layout::Rect;
 use crossterm::execute;
 use crossterm::terminal::{
     EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode,
@@ -12,6 +11,7 @@ use crossterm::terminal::{
 use futures_util::StreamExt;
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
+use ratatui::layout::Rect;
 use tracing::{debug, error, info, warn};
 
 use crate::app::{App, ChatMessage, ChatRole};
@@ -96,22 +96,32 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
     app.model_name = model_name.to_string();
 
     // Fetch available commands from server for autocomplete (skills, etc.)
-    if let Ok(resp) = client.request_response("list_commands", serde_json::json!({})).await
-        && let Some(commands) = resp.get("result").and_then(|r| r.as_array()) {
-                let skills: Vec<(String, String)> = commands
-                    .iter()
-                    .filter(|c| c.get("kind").and_then(|k| k.as_str()) == Some("skill"))
-                    .filter_map(|c| {
-                        let name = c.get("name").and_then(|n| n.as_str())?.to_string();
-                        let desc = c.get("description").and_then(|d| d.as_str()).unwrap_or("").to_string();
-                        Some((name, desc))
-                    })
-                    .collect();
-                if !skills.is_empty() {
-                    info!(count = skills.len(), "cached skill commands for autocomplete");
-                    app.command_registry.register_skills(skills);
-                }
-            }
+    if let Ok(resp) = client
+        .request_response("list_commands", serde_json::json!({}))
+        .await
+        && let Some(commands) = resp.get("result").and_then(|r| r.as_array())
+    {
+        let skills: Vec<(String, String)> = commands
+            .iter()
+            .filter(|c| c.get("kind").and_then(|k| k.as_str()) == Some("skill"))
+            .filter_map(|c| {
+                let name = c.get("name").and_then(|n| n.as_str())?.to_string();
+                let desc = c
+                    .get("description")
+                    .and_then(|d| d.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                Some((name, desc))
+            })
+            .collect();
+        if !skills.is_empty() {
+            info!(
+                count = skills.len(),
+                "cached skill commands for autocomplete"
+            );
+            app.command_registry.register_skills(skills);
+        }
+    }
 
     // Fetch server capabilities and surface degraded-feature warnings.
     // Failure to retrieve capabilities is non-fatal — older servers won't have
@@ -1201,11 +1211,16 @@ fn format_integrations_list(items: &[serde_json::Value]) -> String {
     let mut out = String::from("**Integrations**\n\n| Service | Connected |\n|---|---|\n");
     for item in items {
         let name = item.get("name").and_then(|v| v.as_str()).unwrap_or("?");
-        let connected = item.get("connected").and_then(|v| v.as_bool()).unwrap_or(false);
+        let connected = item
+            .get("connected")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
         let mark = if connected { "✓" } else { "—" };
         let _ = writeln!(out, "| {name} | {mark} |");
     }
-    out.push_str("\nRun `/connect <service>` to authorize, `/disconnect <service>` to drop credentials.");
+    out.push_str(
+        "\nRun `/connect <service>` to authorize, `/disconnect <service>` to drop credentials.",
+    );
     out
 }
 
@@ -1231,7 +1246,9 @@ fn try_open_url(url: &str) -> OpenAttempt {
     } else {
         None
     };
-    let Some(cmd) = opener else { return OpenAttempt::NoOpener };
+    let Some(cmd) = opener else {
+        return OpenAttempt::NoOpener;
+    };
 
     let result = if cmd == "cmd" {
         std::process::Command::new("cmd")
@@ -1265,10 +1282,16 @@ fn apply_system_notice(notice: &arawn_service::ServerNotice, app: &mut crate::ap
         return;
     }
 
-    let marker = if notice.level == "error" { "✗" } else { "ℹ" };
+    let marker = if notice.level == "error" {
+        "✗"
+    } else {
+        "ℹ"
+    };
     let body = format!("{marker} [{}] {}", notice.category, notice.message);
-    app.messages
-        .push(crate::app::ChatMessage::new(crate::app::ChatRole::System, body));
+    app.messages.push(crate::app::ChatMessage::new(
+        crate::app::ChatRole::System,
+        body,
+    ));
 
     // An integration notice (success or error) ends an in-flight OAuth
     // dance; clear the heartbeat so the user sees the resolution.
@@ -1335,9 +1358,18 @@ fn format_permissions_status(status: &serde_json::Value) -> String {
             // Newest at the top — the audit buffer is push_back so the last
             // entry is most recent.
             for entry in decisions.iter().rev().take(20) {
-                let ts = entry.get("timestamp").and_then(|v| v.as_str()).unwrap_or("?");
-                let tool = entry.get("tool_name").and_then(|v| v.as_str()).unwrap_or("?");
-                let dec = entry.get("decision").and_then(|v| v.as_str()).unwrap_or("?");
+                let ts = entry
+                    .get("timestamp")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("?");
+                let tool = entry
+                    .get("tool_name")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("?");
+                let dec = entry
+                    .get("decision")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("?");
                 let reason = entry.get("reason").and_then(|v| v.as_str()).unwrap_or("?");
                 let _ = writeln!(out, "  {ts}  {tool:<24}  {dec:<8}  {reason}");
             }
@@ -1377,10 +1409,7 @@ fn format_feed_list(list: &[serde_json::Value]) -> String {
             .get("last_run_at")
             .and_then(|v| v.as_str())
             .unwrap_or("(never)");
-        let last_status = f
-            .get("last_status")
-            .and_then(|v| v.as_str())
-            .unwrap_or("-");
+        let last_status = f.get("last_status").and_then(|v| v.as_str()).unwrap_or("-");
         let size = f
             .get("data_size_bytes")
             .and_then(|v| v.as_u64())
@@ -1413,10 +1442,7 @@ fn human_size(bytes: u64) -> String {
 /// `picker_supported=false` means the template's params are
 /// free-form — nudge the user toward `/watch <tpl> <id> k=v` instead.
 fn format_feed_discover(dto: &serde_json::Value) -> String {
-    let template = dto
-        .get("template")
-        .and_then(|v| v.as_str())
-        .unwrap_or("?");
+    let template = dto.get("template").and_then(|v| v.as_str()).unwrap_or("?");
     let supported = dto
         .get("picker_supported")
         .and_then(|v| v.as_bool())
@@ -1499,12 +1525,12 @@ fn current_iso_week() -> String {
 
 /// Fetch the daily tablet for `today`, then list its items, then
 /// render. Single string is the system-message body.
-async fn render_ceremony_today(
-    client: &mut crate::ws_client::WsClient,
-    today: &str,
-) -> String {
+async fn render_ceremony_today(client: &mut crate::ws_client::WsClient, today: &str) -> String {
     let params = serde_json::json!({"kind": "daily", "period_key": today});
-    let resp = match client.request_response("ceremonies.get_by_period", params).await {
+    let resp = match client
+        .request_response("ceremonies.get_by_period", params)
+        .await
+    {
         Ok(v) => v,
         Err(e) => return format!("/today failed: {e}"),
     };
@@ -1535,12 +1561,12 @@ async fn render_ceremony_today(
 
 /// Fetch the weekly tablet for the current ISO week, then items, then
 /// priorities, then render.
-async fn render_ceremony_week(
-    client: &mut crate::ws_client::WsClient,
-    iso_week: &str,
-) -> String {
+async fn render_ceremony_week(client: &mut crate::ws_client::WsClient, iso_week: &str) -> String {
     let params = serde_json::json!({"kind": "weekly", "period_key": iso_week});
-    let resp = match client.request_response("ceremonies.get_by_period", params).await {
+    let resp = match client
+        .request_response("ceremonies.get_by_period", params)
+        .await
+    {
         Ok(v) => v,
         Err(e) => return format!("/week failed: {e}"),
     };
@@ -1577,12 +1603,12 @@ async fn render_ceremony_week(
 /// Fetch the retro tablet for the current ISO week, then items, then
 /// render. Diary fetch is a future RPC (T-0290 notes this) — pass
 /// `None` for now so the renderer prints the placeholder.
-async fn render_ceremony_retro(
-    client: &mut crate::ws_client::WsClient,
-    iso_week: &str,
-) -> String {
+async fn render_ceremony_retro(client: &mut crate::ws_client::WsClient, iso_week: &str) -> String {
     let params = serde_json::json!({"kind": "retro", "period_key": iso_week});
-    let resp = match client.request_response("ceremonies.get_by_period", params).await {
+    let resp = match client
+        .request_response("ceremonies.get_by_period", params)
+        .await
+    {
         Ok(v) => v,
         Err(e) => return format!("/retro failed: {e}"),
     };
@@ -1639,10 +1665,7 @@ async fn fetch_tablet_id_and_status(
 /// Pull any existing diary body from the retro tablet by listing its
 /// Fetch the diary body for a retro tablet via the dedicated
 /// `ceremonies.get_diary` RPC. Returns "" when no diary row exists.
-async fn fetch_diary_body(
-    client: &mut crate::ws_client::WsClient,
-    tablet_id: &str,
-) -> String {
+async fn fetch_diary_body(client: &mut crate::ws_client::WsClient, tablet_id: &str) -> String {
     let resp = match client
         .request_response(
             "ceremonies.get_diary",
@@ -1785,10 +1808,7 @@ async fn apply_priority_rpc_result(
 /// it picks up server-side mutations (agent runs, other clients,
 /// background sweeps). Called from the event loop after a
 /// `ceremony_event` notice flags `pending_ceremony_refresh`.
-async fn refresh_active_ceremony_overlay(
-    client: &mut crate::ws_client::WsClient,
-    app: &mut App,
-) {
+async fn refresh_active_ceremony_overlay(client: &mut crate::ws_client::WsClient, app: &mut App) {
     use crate::ceremony_modal::CeremonyOverlay;
     match app.ceremony_overlay.as_ref() {
         Some(CeremonyOverlay::Priority(p)) => {

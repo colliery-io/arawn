@@ -2,8 +2,8 @@
 
 use std::path::{Path, PathBuf};
 
-use cloacina::prelude::*;
 use cloacina::WorkflowExecutor;
+use cloacina::prelude::*;
 use tracing::{debug, info};
 
 /// Configuration for the workflow runner.

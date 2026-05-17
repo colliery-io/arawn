@@ -120,10 +120,7 @@ pub fn from_calendar_event(feed_id: &str, v: &Value) -> Option<CalendarEventProj
         .and_then(|x| x.as_str())
         .unwrap_or_default()
         .to_string();
-    let location = v
-        .get("location")
-        .and_then(|x| x.as_str())
-        .map(String::from);
+    let location = v.get("location").and_then(|x| x.as_str()).map(String::from);
     let (start_ts_opt, all_day_start) = parse_event_time(v.get("start"));
     let (end_ts_opt, _) = parse_event_time(v.get("end"));
     let start_ts = match start_ts_opt {
@@ -258,15 +255,19 @@ mod tests {
             json!({
                 "id":"e1","summary":"a",
                 "start": { "dateTime": "2026-05-11T10:00:00Z" }
-            }).to_string()
-        ).unwrap();
+            })
+            .to_string(),
+        )
+        .unwrap();
         std::fs::write(
             events.join("e2.json"),
             json!({
                 "id":"e2","summary":"b",
                 "start": { "dateTime": "2026-05-11T11:00:00Z" }
-            }).to_string()
-        ).unwrap();
+            })
+            .to_string(),
+        )
+        .unwrap();
 
         let out = walk_feed_dir("cal-feed", tmp.path()).unwrap();
         assert_eq!(out.len(), 2);

@@ -3,9 +3,8 @@
 use std::path::{Path, PathBuf};
 
 use arawn_engine::plugins::{
-    InstallScope, InstalledPluginsRegistry, MarketplaceSource,
-    PluginIdentifier, add_marketplace, discover_plugins, install_plugin, list_marketplaces,
-    uninstall_plugin,
+    InstallScope, InstalledPluginsRegistry, MarketplaceSource, PluginIdentifier, add_marketplace,
+    discover_plugins, install_plugin, list_marketplaces, uninstall_plugin,
 };
 
 /// Handle the `arawn plugin` subcommand.
@@ -22,7 +21,9 @@ pub fn run_plugin_command(args: &[String], plugins_root: &Path) -> Result<(), St
         "list" | "ls" => cmd_list(plugins_root),
         "marketplace" => cmd_marketplace(&args[1..], plugins_root),
         "--help" | "-h" | "help" => print_plugin_help(),
-        other => Err(format!("unknown plugin subcommand: '{other}'. Run `arawn plugin --help` for usage.")),
+        other => Err(format!(
+            "unknown plugin subcommand: '{other}'. Run `arawn plugin --help` for usage."
+        )),
     }
 }
 
@@ -49,9 +50,8 @@ fn cmd_uninstall(args: &[String], plugins_root: &Path) -> Result<(), String> {
         .first()
         .ok_or("usage: arawn plugin uninstall <name@marketplace>")?;
 
-    let identifier = PluginIdentifier::parse(identifier_str).ok_or_else(|| {
-        format!("invalid plugin identifier: '{}'", identifier_str)
-    })?;
+    let identifier = PluginIdentifier::parse(identifier_str)
+        .ok_or_else(|| format!("invalid plugin identifier: '{}'", identifier_str))?;
 
     let scope = parse_scope(args)?;
     uninstall_plugin(&identifier, scope, plugins_root, true)?;
@@ -95,9 +95,16 @@ fn cmd_list(plugins_root: &Path) -> Result<(), String> {
 
     for plugin in &plugins {
         let version = plugin.manifest.version.as_deref().unwrap_or("-");
-        let status = if plugin.enabled { "enabled" } else { "disabled" };
+        let status = if plugin.enabled {
+            "enabled"
+        } else {
+            "disabled"
+        };
         let source = format!("{:?}", plugin.source);
-        println!("{:<40} {:<10} {:<10} {}", plugin.id, version, status, source);
+        println!(
+            "{:<40} {:<10} {:<10} {}",
+            plugin.id, version, status, source
+        );
     }
 
     Ok(())
@@ -303,7 +310,9 @@ mod tests {
     fn parse_github_source() {
         let (name, source) = parse_marketplace_source("colliery-io/metis").unwrap();
         assert_eq!(name, "colliery-io-metis");
-        assert!(matches!(source, MarketplaceSource::GitHub { repo, .. } if repo == "colliery-io/metis"));
+        assert!(
+            matches!(source, MarketplaceSource::GitHub { repo, .. } if repo == "colliery-io/metis")
+        );
     }
 
     #[test]

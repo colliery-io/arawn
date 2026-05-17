@@ -30,7 +30,6 @@ pub struct ShellTool {
 
 const DEFAULT_TIMEOUT_MS: u64 = 30_000;
 
-
 impl ShellTool {
     /// Create a ShellTool with the given list of network-allowed tool binaries.
     pub fn with_network_tools(network_tools: Vec<String>) -> Self {
@@ -63,7 +62,11 @@ impl ShellTool {
             )
         })?;
 
-        info!(command, ?working_dir, "spawning sandboxed background shell command");
+        info!(
+            command,
+            ?working_dir,
+            "spawning sandboxed background shell command"
+        );
 
         // Initialize a sandbox manager for this background command. The manager
         // owns the proxy lifecycle — it must outlive the child process, so we
@@ -225,9 +228,9 @@ async fn init_sandbox_for_background(
     let manager = Arc::new(SandboxManager::new());
     let config = build_sandbox_config(command, working_dir, network_tools);
 
-    manager
-        .check_dependencies(Some(&config))
-        .map_err(|e| format!("Refusing to spawn background command: sandbox dependencies missing: {e}"))?;
+    manager.check_dependencies(Some(&config)).map_err(|e| {
+        format!("Refusing to spawn background command: sandbox dependencies missing: {e}")
+    })?;
 
     manager
         .initialize(config.clone())
@@ -246,7 +249,6 @@ async fn init_sandbox_for_background(
 
     Ok((manager, wrapped))
 }
-
 
 /// Check if a command invokes any tool that needs network access.
 fn command_needs_network(command: &str, network_tools: &[String]) -> bool {
@@ -287,7 +289,7 @@ fn build_sandbox_config(
     // Allow writes to the working directory plus system temp directories
     // and build tool caches that cargo, rustc, npm, pip, etc. need.
     let mut allow_write = vec![write_dir];
-    allow_write.push("/dev/null".to_string());       // many tools redirect stderr here
+    allow_write.push("/dev/null".to_string()); // many tools redirect stderr here
     allow_write.push("/tmp".to_string());
     allow_write.push("/private/tmp".to_string()); // macOS /tmp → /private/tmp
     allow_write.push("/var/folders".to_string()); // macOS per-user temp
@@ -370,7 +372,11 @@ impl Tool for ShellTool {
         })
     }
 
-    async fn execute(&self, ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
+    async fn execute(
+        &self,
+        ctx: &dyn arawn_tool::ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
         let command = params
             .get("command")
             .and_then(|v| v.as_str())
@@ -400,7 +406,8 @@ impl Tool for ShellTool {
             Ok(output) => Ok(output),
             Err(SandboxExecError::Unavailable(msg)) => {
                 warn!("sandbox unavailable: {msg} — running unsandboxed");
-                let mut output = execute_unsandboxed(command, ctx.working_dir(), timeout_ms).await?;
+                let mut output =
+                    execute_unsandboxed(command, ctx.working_dir(), timeout_ms).await?;
                 // Prepend warning so the LLM (and user via tool result) sees the sandbox was bypassed
                 output.content = format!(
                     "[WARNING: Command ran without sandbox protection ({msg})]\n{}",
@@ -652,7 +659,11 @@ mod tests {
             std::env::remove_var("ARAWN_TEST_LEAK_KEY");
         }
 
-        assert!(!result.is_error, "env command should succeed: {}", result.content);
+        assert!(
+            !result.is_error,
+            "env command should succeed: {}",
+            result.content
+        );
         assert!(
             !result.content.contains("ARAWN_TEST_LEAK_KEY"),
             "child env leaked parent secret: {}",
@@ -687,7 +698,11 @@ mod tests {
             .await
             .unwrap();
 
-        assert!(!result.is_error, "background spawn failed: {}", result.content);
+        assert!(
+            !result.is_error,
+            "background spawn failed: {}",
+            result.content
+        );
         assert!(result.content.contains("sandboxed"));
 
         // Wait briefly for the background task to finish
@@ -742,8 +757,7 @@ mod tests {
             }
         }
 
-        let listing = std::fs::read_to_string(tmp.path().join("listing.txt"))
-            .unwrap_or_default();
+        let listing = std::fs::read_to_string(tmp.path().join("listing.txt")).unwrap_or_default();
         // Either the sandbox produced an error or the script's "blocked" fallback
         // ran — either way the listing must NOT contain real ssh key filenames.
         assert!(

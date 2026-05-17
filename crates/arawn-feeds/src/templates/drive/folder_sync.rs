@@ -114,9 +114,10 @@ impl FeedTemplate for FolderSyncTemplate {
         cursor: &Value,
     ) -> Result<RunOutcome, FeedError> {
         let started = Instant::now();
-        let drive = ctx.clients().drive().ok_or_else(|| {
-            FeedError::Auth("google drive integration not connected".into())
-        })?;
+        let drive = ctx
+            .clients()
+            .drive()
+            .ok_or_else(|| FeedError::Auth("google drive integration not connected".into()))?;
 
         let folder_spec = params
             .0
@@ -184,10 +185,7 @@ impl FeedTemplate for FolderSyncTemplate {
 
                 if let Some(parent) = target_abs.parent() {
                     std::fs::create_dir_all(parent).map_err(|e| {
-                        FeedError::Storage(format!(
-                            "create {}: {e}",
-                            parent.display()
-                        ))
+                        FeedError::Storage(format!("create {}: {e}", parent.display()))
                     })?;
                 }
 
@@ -288,9 +286,7 @@ fn walk<'a>(
     depth: usize,
     out: &'a mut BTreeMap<String, RemoteFile>,
     visited: &'a mut HashSet<String>,
-) -> std::pin::Pin<
-    Box<dyn std::future::Future<Output = Result<(), FeedError>> + Send + 'a>,
-> {
+) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), FeedError>> + Send + 'a>> {
     let folder_id = folder_id.to_string();
     Box::pin(async move {
         if depth >= MAX_DEPTH {
@@ -352,9 +348,8 @@ fn safe_remove_file(feed_dir: &Path, path: &Path) -> Result<(), FeedError> {
         )));
     }
     if path.exists() {
-        std::fs::remove_file(path).map_err(|e| {
-            FeedError::Storage(format!("remove {}: {e}", path.display()))
-        })?;
+        std::fs::remove_file(path)
+            .map_err(|e| FeedError::Storage(format!("remove {}: {e}", path.display())))?;
     }
     Ok(())
 }
@@ -384,9 +379,11 @@ mod tests {
 
     #[test]
     fn validate_requires_folder() {
-        assert!(FolderSyncTemplate
-            .validate(&TemplateParams::default())
-            .is_err());
+        assert!(
+            FolderSyncTemplate
+                .validate(&TemplateParams::default())
+                .is_err()
+        );
         let p = TemplateParams(json!({ "folder": "" }));
         assert!(FolderSyncTemplate.validate(&p).is_err());
         let p = TemplateParams(json!({ "folder": "root" }));

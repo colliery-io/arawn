@@ -16,6 +16,4 @@ pub use client::{CalendarHub, client_from_token_store};
 pub use integration::{
     CALENDAR_OAUTH_SCOPE, GoogleCalendarIntegration, GoogleCalendarProviderConfig,
 };
-pub use tools::{
-    CalendarCreateEventTool, CalendarFindConflictsTool, CalendarUpcomingTool,
-};
+pub use tools::{CalendarCreateEventTool, CalendarFindConflictsTool, CalendarUpcomingTool};

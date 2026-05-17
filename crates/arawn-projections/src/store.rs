@@ -83,8 +83,7 @@ impl ProjectionStore {
         let mut conn = self.conn.lock().unwrap();
         // Materialize the type table set so we ensure schema once per
         // batch even if all rows share a type.
-        let feed_types: HashSet<&'static str> =
-            projections.iter().map(|p| p.feed_type()).collect();
+        let feed_types: HashSet<&'static str> = projections.iter().map(|p| p.feed_type()).collect();
         for ft in &feed_types {
             schema::ensure_feed_type_tables(&conn, ft)?;
         }
@@ -137,7 +136,8 @@ impl ProjectionStore {
         let mut stmt = conn
             .prepare(&sql)
             .map_err(|e| ProjectionError::Storage(format!("prepare missing: {e}")))?;
-        let mut params_vec: Vec<&dyn rusqlite::types::ToSql> = Vec::with_capacity(1 + candidate_source_ids.len());
+        let mut params_vec: Vec<&dyn rusqlite::types::ToSql> =
+            Vec::with_capacity(1 + candidate_source_ids.len());
         params_vec.push(&feed_id);
         for s in candidate_source_ids {
             params_vec.push(s);
@@ -146,7 +146,10 @@ impl ProjectionStore {
             .query(params_vec.as_slice())
             .map_err(|e| ProjectionError::Storage(format!("query missing: {e}")))?;
         let mut present = HashSet::new();
-        while let Some(row) = rows.next().map_err(|e| ProjectionError::Storage(e.to_string()))? {
+        while let Some(row) = rows
+            .next()
+            .map_err(|e| ProjectionError::Storage(e.to_string()))?
+        {
             let s: String = row.get(0)?;
             present.insert(s);
         }
@@ -162,7 +165,9 @@ impl ProjectionStore {
         let conn = self.conn.lock().unwrap();
         schema::ensure_feed_type_tables(&conn, feed_type)?;
         let cnt: i64 = conn
-            .query_row(&format!("SELECT COUNT(*) FROM {feed_type}"), [], |r| r.get(0))
+            .query_row(&format!("SELECT COUNT(*) FROM {feed_type}"), [], |r| {
+                r.get(0)
+            })
             .map_err(|e| ProjectionError::Storage(format!("count: {e}")))?;
         Ok(cnt as usize)
     }
@@ -193,10 +198,9 @@ impl ProjectionStore {
             .prepare(&sql)
             .map_err(|e| ProjectionError::Storage(format!("prepare vec: {e}")))?;
         let rows = stmt
-            .query_map(
-                params![query_vec.as_bytes(), limit as i64],
-                |r| r.get::<_, String>(0),
-            )
+            .query_map(params![query_vec.as_bytes(), limit as i64], |r| {
+                r.get::<_, String>(0)
+            })
             .map_err(|e| ProjectionError::Storage(format!("vec: {e}")))?;
         let mut out = Vec::new();
         for r in rows {
@@ -310,9 +314,8 @@ fn write_row(
 
     // Look up existing row by (feed_id, source_id) and decide
     // insert / update-with-fresh-text / unchanged.
-    let lookup_sql = format!(
-        "SELECT id, body_hash FROM {feed_type} WHERE feed_id = ?1 AND source_id = ?2"
-    );
+    let lookup_sql =
+        format!("SELECT id, body_hash FROM {feed_type} WHERE feed_id = ?1 AND source_id = ?2");
     let mut stmt = tx
         .prepare(&lookup_sql)
         .map_err(|e| ProjectionError::Storage(format!("prepare lookup: {e}")))?;
@@ -320,8 +323,9 @@ fn write_row(
         .query(params![&row.feed_id, &row.source_id])
         .map_err(|e| ProjectionError::Storage(format!("lookup: {e}")))?;
 
-    if let Some(existing) =
-        rows.next().map_err(|e| ProjectionError::Storage(e.to_string()))?
+    if let Some(existing) = rows
+        .next()
+        .map_err(|e| ProjectionError::Storage(e.to_string()))?
     {
         let existing_id: String = existing.get(0)?;
         let existing_hash: String = existing.get(1)?;
@@ -401,9 +405,7 @@ fn fts_upsert(
     title: &str,
     body_text: &str,
 ) -> Result<(), ProjectionError> {
-    let delete_sql = format!(
-        "DELETE FROM {feed_type}_fts WHERE projection_id = ?1"
-    );
+    let delete_sql = format!("DELETE FROM {feed_type}_fts WHERE projection_id = ?1");
     tx.execute(&delete_sql, params![projection_id])
         .map_err(|e| ProjectionError::Storage(format!("fts delete: {e}")))?;
     let insert_sql = format!(
@@ -433,9 +435,7 @@ fn embedding_invalidate(
         .map_err(|e| ProjectionError::Storage(format!("embed meta: {e}")))?;
     // Drop any stale vector — the body changed, so the old vector is
     // no longer valid for this row.
-    let vec_sql = format!(
-        "DELETE FROM {feed_type}_vec WHERE projection_id = ?1"
-    );
+    let vec_sql = format!("DELETE FROM {feed_type}_vec WHERE projection_id = ?1");
     tx.execute(&vec_sql, params![projection_id])
         .map_err(|e| ProjectionError::Storage(format!("embed vec drop: {e}")))?;
     Ok(())

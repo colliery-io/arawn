@@ -234,7 +234,9 @@ mod tests {
         let mock = if ok {
             MockLlmClient::new(vec![MockResponse::text(format!("from {label}"))])
         } else {
-            MockLlmClient::new(vec![MockResponse::error(LlmError::Api(format!("{label} failed")))])
+            MockLlmClient::new(vec![MockResponse::error(LlmError::Api(format!(
+                "{label} failed"
+            )))])
         };
         ProviderHandle {
             client: Arc::new(mock),

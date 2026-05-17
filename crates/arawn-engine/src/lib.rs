@@ -45,6 +45,7 @@ pub use permissions::{
 // The top-level ToolCategory re-export below is tool::ToolCategory
 // (Core/Task/Agent/Web/etc.) for context filtering. Permission-risk classes
 // now live on the Tool trait itself as arawn_tool::PermissionCategory.
+pub use ceremony_sources::{ProjectionsAttentionSource, ProjectionsCalendarSource};
 pub use plan::{PlanModeSnapshot, PlanModeState, generate_slug};
 pub use query_engine::{
     IntegrationCapabilitiesFn, ProgressEvent, PromptContext, QueryEngine, QueryEngineConfig,
@@ -71,5 +72,4 @@ pub use tools::{
     WeeklyAddPriorityTool, WeeklyConfirmPriorityTool, WeeklyCurrentTool, WeeklyListItemsTool,
     WeeklyListPrioritiesTool, WeeklyRejectPriorityTool, WeeklyRunTool,
 };
-pub use ceremony_sources::{ProjectionsAttentionSource, ProjectionsCalendarSource};
 pub use workstream_router::{MemoryHandle, WorkstreamMemoryRouter};

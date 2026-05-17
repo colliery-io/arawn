@@ -35,7 +35,10 @@ pub fn load_memories_for_injection(
             Ok(entities) if !entities.is_empty() => {
                 // Filter to high-confidence for Facts
                 let filtered: Vec<_> = if *et == EntityType::Fact {
-                    entities.into_iter().filter(|e| e.confidence_score() > 0.7).collect()
+                    entities
+                        .into_iter()
+                        .filter(|e| e.confidence_score() > 0.7)
+                        .collect()
                 } else {
                     entities
                 };

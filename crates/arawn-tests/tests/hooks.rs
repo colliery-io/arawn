@@ -16,7 +16,10 @@ fn assert_tool_result_is_error(msgs: &[Message], index: usize, substring: &str) 
         Message::ToolResult {
             is_error, content, ..
         } => {
-            assert!(is_error, "expected error ToolResult, got success: {content}");
+            assert!(
+                is_error,
+                "expected error ToolResult, got success: {content}"
+            );
             assert!(
                 content.contains(substring),
                 "expected '{substring}' in error, got: {content}"

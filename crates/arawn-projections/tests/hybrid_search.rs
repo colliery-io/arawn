@@ -5,7 +5,7 @@
 use std::future::Future;
 use std::pin::Pin;
 
-use arawn_projections::{embed::PendingEmbedRow, gmail, run_embed_pass, Embedder, ProjectionStore};
+use arawn_projections::{Embedder, ProjectionStore, embed::PendingEmbedRow, gmail, run_embed_pass};
 
 /// Embedder that maps text → unit vector along a content-derived
 /// dimension, so two texts mentioning the same token cluster in the
@@ -80,7 +80,9 @@ async fn vector_search_ranks_by_cosine_similarity() {
         fixture("m3", "Gamma channel discussion of release timing"),
     ];
     store.write_batch(&rows).unwrap();
-    run_embed_pass(&store, &KeywordEmbedder, 32, 100).await.unwrap();
+    run_embed_pass(&store, &KeywordEmbedder, 32, 100)
+        .await
+        .unwrap();
 
     // Query close to "alpha" should rank m1 first.
     let q = KeywordEmbedder::vec_for("alpha");
@@ -97,7 +99,9 @@ async fn vector_search_ignores_sentinel_and_null_rows() {
     let m1 = fixture("m1", "alpha alpha alpha — long enough body");
     let m2 = fixture("m2", "ok"); // < MIN_BODY_CHARS
     store.write_batch(&[m1.clone(), m2]).unwrap();
-    run_embed_pass(&store, &KeywordEmbedder, 32, 100).await.unwrap();
+    run_embed_pass(&store, &KeywordEmbedder, 32, 100)
+        .await
+        .unwrap();
 
     let m3 = fixture("m3", "alpha later — appears after the embed pass");
     store.write_batch(&[m3]).unwrap();
@@ -119,9 +123,7 @@ async fn pending_rows_round_trip() {
     store
         .write_batch(&[fixture("m1", "a body long enough to qualify")])
         .unwrap();
-    let pending: Vec<PendingEmbedRow> = store
-        .pending_embedding_rows(gmail::FEED_TYPE, 10)
-        .unwrap();
+    let pending: Vec<PendingEmbedRow> = store.pending_embedding_rows(gmail::FEED_TYPE, 10).unwrap();
     assert_eq!(pending.len(), 1);
     assert!(pending[0].body_text.contains("body long enough"));
 }
@@ -129,7 +131,9 @@ async fn pending_rows_round_trip() {
 #[tokio::test]
 async fn empty_query_vec_returns_empty() {
     let store = ProjectionStore::in_memory().unwrap();
-    store.write_batch(&[fixture("m1", "doesn't matter")]).unwrap();
+    store
+        .write_batch(&[fixture("m1", "doesn't matter")])
+        .unwrap();
     let ids = store.vector_search(gmail::FEED_TYPE, &[], 5).unwrap();
     assert!(ids.is_empty());
 }

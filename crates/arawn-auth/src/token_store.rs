@@ -99,9 +99,7 @@ impl TokenStore {
             Ok(b) => b,
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(None),
             Err(e) => {
-                return Err(AuthError::InvalidConfig(format!(
-                    "read token file: {e}"
-                )));
+                return Err(AuthError::InvalidConfig(format!("read token file: {e}")));
             }
         };
 
@@ -128,9 +126,7 @@ impl TokenStore {
         match std::fs::remove_file(&path) {
             Ok(()) => Ok(()),
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
-            Err(e) => Err(AuthError::InvalidConfig(format!(
-                "delete token file: {e}"
-            ))),
+            Err(e) => Err(AuthError::InvalidConfig(format!("delete token file: {e}"))),
         }
     }
 

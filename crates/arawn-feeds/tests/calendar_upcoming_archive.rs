@@ -14,11 +14,12 @@ use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde_json::{Value, json};
 
-use arawn_feeds::{
-    AtlassianFeedClient, CalendarFeedClient, DataLayout, DriveFeedClient, FeedClients, FeedError, FeedMeta,
-    FeedTemplate, GmailFeedClient, MetaStore, SlackFeedClient, TemplateCtx, TemplateParams,
-};
 use arawn_feeds::templates::calendar::UpcomingArchiveTemplate;
+use arawn_feeds::{
+    AtlassianFeedClient, CalendarFeedClient, DataLayout, DriveFeedClient, FeedClients, FeedError,
+    FeedMeta, FeedTemplate, GmailFeedClient, MetaStore, SlackFeedClient, TemplateCtx,
+    TemplateParams,
+};
 
 #[derive(Default)]
 struct MockCalendarClient {
@@ -137,7 +138,9 @@ async fn first_run_writes_one_file_per_event() {
         event("evt-003", "Planning", "2026-05-11T13:00:00Z"),
     ]);
 
-    let clients = Arc::new(MockClients { calendar: mock.clone() });
+    let clients = Arc::new(MockClients {
+        calendar: mock.clone(),
+    });
     let ctx = TemplateCtx::new(clients);
     let outcome = run_once(
         &UpcomingArchiveTemplate,
@@ -255,7 +258,9 @@ async fn params_reach_the_client() {
 
     let mock = Arc::new(MockCalendarClient::default());
     mock.queue(vec![]);
-    let clients = Arc::new(MockClients { calendar: mock.clone() });
+    let clients = Arc::new(MockClients {
+        calendar: mock.clone(),
+    });
     let ctx = TemplateCtx::new(clients);
 
     let params = TemplateParams(json!({
@@ -360,7 +365,10 @@ async fn malformed_event_without_id_is_skipped() {
         &feed_dir,
     )
     .await;
-    assert_eq!(outcome.summary.items_written, 2, "good events still written");
+    assert_eq!(
+        outcome.summary.items_written, 2,
+        "good events still written"
+    );
     assert!(read_event_file(&feed_dir, "good1").is_some());
     assert!(read_event_file(&feed_dir, "good2").is_some());
 }

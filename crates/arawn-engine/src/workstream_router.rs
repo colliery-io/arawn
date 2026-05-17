@@ -116,11 +116,17 @@ mod tests {
 
         let m1 = router.current().unwrap();
         let m2 = router.current().unwrap();
-        assert!(Arc::ptr_eq(&m1, &m2), "cache should return the same manager");
+        assert!(
+            Arc::ptr_eq(&m1, &m2),
+            "cache should return the same manager"
+        );
 
         session.set("other");
         let m3 = router.current().unwrap();
-        assert!(!Arc::ptr_eq(&m1, &m3), "different workstream should get a different manager");
+        assert!(
+            !Arc::ptr_eq(&m1, &m3),
+            "different workstream should get a different manager"
+        );
     }
 
     #[test]

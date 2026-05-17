@@ -62,14 +62,10 @@ struct PromoteTagOutputs {
     tag: String,
 }
 
-fn tag_promoter_inverse(
-    row: &JournalRow,
-    ctx: &RollbackCtx<'_>,
-) -> Result<(), StewardError> {
+fn tag_promoter_inverse(row: &JournalRow, ctx: &RollbackCtx<'_>) -> Result<(), StewardError> {
     let payload: PromoteTagOutputs = serde_json::from_str(&row.outputs_json)
         .map_err(|e| StewardError::Parse(format!("tag-promoter/promote_tag payload: {e}")))?;
-    let ontology = TagOntologyStore::open_at(ctx.workstream_root)
-        .map_err(StewardError::from)?;
+    let ontology = TagOntologyStore::open_at(ctx.workstream_root).map_err(StewardError::from)?;
     let removed = ontology.remove(&payload.tag)?;
     debug!(tag = %payload.tag, removed, "rollback: tag promotion reverted");
     Ok(())
@@ -91,8 +87,11 @@ fn reshelve_merge_inverse(row: &JournalRow, kb: &Arc<MemoryManager>) -> Result<(
     // 2. Restore deprecated's pre-merge state (clears superseded).
     kb.workstream.update_entity(&payload.pre_deprecated)?;
     // 3. Remove the SUPERSEDES edge we added.
-    kb.workstream
-        .delete_relation(payload.survivor_id, RelationType::Supersedes, payload.deprecated_id)?;
+    kb.workstream.delete_relation(
+        payload.survivor_id,
+        RelationType::Supersedes,
+        payload.deprecated_id,
+    )?;
     debug!(
         survivor = %payload.survivor_id,
         deprecated = %payload.deprecated_id,
@@ -165,14 +164,20 @@ mod tests {
             reverted_at: None,
         };
         let root = ws_root(&tmp);
-        apply_inverse(&row, &RollbackCtx { kb: &kb, workstream_root: &root }).unwrap();
+        apply_inverse(
+            &row,
+            &RollbackCtx {
+                kb: &kb,
+                workstream_root: &root,
+            },
+        )
+        .unwrap();
     }
 
     #[test]
     fn reshelve_delete_inverse_reinserts_entity() {
         let (tmp, kb) = setup_kb();
-        let e = Entity::new(EntityType::Fact, "restore me")
-            .with_content("important content");
+        let e = Entity::new(EntityType::Fact, "restore me").with_content("important content");
         let payload = serde_json::json!({"entity": e}).to_string();
         let row = JournalRow {
             id: 1,
@@ -187,7 +192,14 @@ mod tests {
             reverted_at: None,
         };
         let root = ws_root(&tmp);
-        apply_inverse(&row, &RollbackCtx { kb: &kb, workstream_root: &root }).unwrap();
+        apply_inverse(
+            &row,
+            &RollbackCtx {
+                kb: &kb,
+                workstream_root: &root,
+            },
+        )
+        .unwrap();
         let fetched = kb.workstream.get_entity(e.id).unwrap().unwrap();
         assert_eq!(fetched.title, "restore me");
     }
@@ -219,7 +231,14 @@ mod tests {
             reverted_at: None,
         };
         let root = ws_root(&tmp);
-        apply_inverse(&row, &RollbackCtx { kb: &kb, workstream_root: &root }).unwrap();
+        apply_inverse(
+            &row,
+            &RollbackCtx {
+                kb: &kb,
+                workstream_root: &root,
+            },
+        )
+        .unwrap();
         assert!(kb.workstream.get_entity(summary.id).unwrap().is_none());
     }
 
@@ -246,7 +265,14 @@ mod tests {
             applied: true,
             reverted_at: None,
         };
-        apply_inverse(&row, &RollbackCtx { kb: &kb, workstream_root: &root }).unwrap();
+        apply_inverse(
+            &row,
+            &RollbackCtx {
+                kb: &kb,
+                workstream_root: &root,
+            },
+        )
+        .unwrap();
         let ontology = TagOntologyStore::open_at(&root).unwrap();
         assert!(!ontology.contains("calidor").unwrap());
     }
@@ -267,8 +293,14 @@ mod tests {
             reverted_at: None,
         };
         let root = ws_root(&tmp);
-        let err = apply_inverse(&row, &RollbackCtx { kb: &kb, workstream_root: &root })
-            .unwrap_err();
+        let err = apply_inverse(
+            &row,
+            &RollbackCtx {
+                kb: &kb,
+                workstream_root: &root,
+            },
+        )
+        .unwrap_err();
         assert!(matches!(err, StewardError::Subroutine { .. }));
     }
 }

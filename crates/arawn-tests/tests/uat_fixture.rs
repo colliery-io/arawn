@@ -132,9 +132,8 @@ pub fn apply(fixture: &Fixture, data_dir: &Path) -> Result<Applied, String> {
         .ensure_scratch_workstream()
         .map_err(|e| format!("ensure scratch: {e}"))?;
 
-    let projections =
-        ProjectionStore::open(&data_dir.join("projections.db"))
-            .map_err(|e| format!("open projections: {e}"))?;
+    let projections = ProjectionStore::open(&data_dir.join("projections.db"))
+        .map_err(|e| format!("open projections: {e}"))?;
 
     let mut applied = Vec::with_capacity(fixture.workstreams.len());
 
@@ -169,8 +168,12 @@ pub fn apply(fixture: &Fixture, data_dir: &Path) -> Result<Applied, String> {
         let mut slack_rows: Vec<SlackMessageProjection> = Vec::new();
         for row in &ws_def.rows {
             match row {
-                FixtureRow::GmailMessages(g) => gmail_rows.push(gmail_to_projection(&ws_def.name, g)),
-                FixtureRow::SlackMessages(s) => slack_rows.push(slack_to_projection(&ws_def.name, s)),
+                FixtureRow::GmailMessages(g) => {
+                    gmail_rows.push(gmail_to_projection(&ws_def.name, g))
+                }
+                FixtureRow::SlackMessages(s) => {
+                    slack_rows.push(slack_to_projection(&ws_def.name, s))
+                }
             }
         }
         if !gmail_rows.is_empty() {
@@ -212,7 +215,9 @@ pub fn apply(fixture: &Fixture, data_dir: &Path) -> Result<Applied, String> {
 }
 
 fn synthetic_feed_id(workstream: &str, override_: &Option<String>) -> String {
-    override_.clone().unwrap_or_else(|| format!("fixture-{workstream}-gmail"))
+    override_
+        .clone()
+        .unwrap_or_else(|| format!("fixture-{workstream}-gmail"))
 }
 
 fn gmail_to_projection(workstream: &str, row: &GmailFixtureRow) -> GmailMessageProjection {
@@ -326,13 +331,10 @@ pub async fn drive_extraction(
 /// Returns the total number of promotion proposals written across all
 /// workstreams. Cap per workstream is generous (50) since this is for
 /// UAT scenarios — production caps live in `arawn.toml`.
-pub async fn drive_tag_promoter(
-    applied: &Applied,
-    data_dir: &Path,
-) -> Result<usize, String> {
+pub async fn drive_tag_promoter(applied: &Applied, data_dir: &Path) -> Result<usize, String> {
     use arawn_steward::{
-        Journal, JournalGate, StewardSubroutine, SubroutineCtx,
-        TagPromoterConfig, TagPromoterSubroutine,
+        Journal, JournalGate, StewardSubroutine, SubroutineCtx, TagPromoterConfig,
+        TagPromoterSubroutine,
     };
     // Lower `min_count` to 2 for UAT — production default is 3, but
     // LLM-nondeterminism in seed extraction means recurring discovered
@@ -428,22 +430,29 @@ mod tests {
         assert_eq!(applied.per_workstream.len(), 1);
         assert_eq!(applied.per_workstream[0].workstream.name, "work");
         // Both gmail + slack should be recorded.
-        assert!(applied.per_workstream[0]
-            .feed_types
-            .iter()
-            .any(|s| s == "gmail_messages"));
-        assert!(applied.per_workstream[0]
-            .feed_types
-            .iter()
-            .any(|s| s == "slack_messages"));
+        assert!(
+            applied.per_workstream[0]
+                .feed_types
+                .iter()
+                .any(|s| s == "gmail_messages")
+        );
+        assert!(
+            applied.per_workstream[0]
+                .feed_types
+                .iter()
+                .any(|s| s == "slack_messages")
+        );
     }
 
     #[test]
     fn load_from_disk_round_trip() {
         let tmp = tempfile::tempdir().unwrap();
         let path = tmp.path().join("fixture.json");
-        std::fs::write(&path, serde_json::to_string_pretty(&sample_fixture()).unwrap())
-            .unwrap();
+        std::fs::write(
+            &path,
+            serde_json::to_string_pretty(&sample_fixture()).unwrap(),
+        )
+        .unwrap();
         let f = load(&path).unwrap();
         assert_eq!(f.workstreams.len(), 1);
     }

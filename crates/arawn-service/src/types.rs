@@ -71,7 +71,10 @@ pub enum EngineEvent {
     CompactionOccurred { messages_summarized: usize },
 
     /// Token usage update from the API response.
-    Usage { input_tokens: u64, output_tokens: u64 },
+    Usage {
+        input_tokens: u64,
+        output_tokens: u64,
+    },
 
     /// Tool needs user input. Client should render a modal/dialog,
     /// capture the user's selection, and send back a `user_input_response`

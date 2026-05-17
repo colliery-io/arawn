@@ -48,8 +48,9 @@ impl MarketplaceSource {
     /// Get the git ref (branch/tag) to checkout.
     pub fn git_ref(&self) -> Option<&str> {
         match self {
-            MarketplaceSource::GitHub { git_ref, .. }
-            | MarketplaceSource::Git { git_ref, .. } => git_ref.as_deref(),
+            MarketplaceSource::GitHub { git_ref, .. } | MarketplaceSource::Git { git_ref, .. } => {
+                git_ref.as_deref()
+            }
             MarketplaceSource::Directory { .. } => None,
         }
     }
@@ -263,18 +264,17 @@ pub fn add_marketplace(
         name.to_string(),
         MarketplaceEntry {
             source,
-            install_location: Some(
-                marketplaces_dir
-                    .join(name)
-                    .to_string_lossy()
-                    .to_string(),
-            ),
+            install_location: Some(marketplaces_dir.join(name).to_string_lossy().to_string()),
             last_updated: Some(chrono::Utc::now().to_rfc3339()),
         },
     );
     known.save(&known_path)?;
 
-    info!(marketplace = name, plugins = manifest.plugins.len(), "added marketplace");
+    info!(
+        marketplace = name,
+        plugins = manifest.plugins.len(),
+        "added marketplace"
+    );
     Ok(manifest)
 }
 
@@ -409,8 +409,7 @@ mod tests {
 
     #[test]
     fn parse_marketplace_manifest() {
-        let manifest: MarketplaceManifest =
-            serde_json::from_str(sample_manifest_json()).unwrap();
+        let manifest: MarketplaceManifest = serde_json::from_str(sample_manifest_json()).unwrap();
         assert_eq!(manifest.name, "test-market");
         assert_eq!(manifest.plugins.len(), 2);
         assert_eq!(manifest.plugins[0].name, "plugin-a");
@@ -446,8 +445,7 @@ mod tests {
 
     #[test]
     fn resolve_plugin_found() {
-        let manifest: MarketplaceManifest =
-            serde_json::from_str(sample_manifest_json()).unwrap();
+        let manifest: MarketplaceManifest = serde_json::from_str(sample_manifest_json()).unwrap();
         let plugin = resolve_plugin(&manifest, "plugin-b").unwrap();
         assert_eq!(plugin.name, "plugin-b");
         assert_eq!(plugin.version.as_deref(), Some("2.0.0"));
@@ -455,8 +453,7 @@ mod tests {
 
     #[test]
     fn resolve_plugin_not_found() {
-        let manifest: MarketplaceManifest =
-            serde_json::from_str(sample_manifest_json()).unwrap();
+        let manifest: MarketplaceManifest = serde_json::from_str(sample_manifest_json()).unwrap();
         assert!(resolve_plugin(&manifest, "nonexistent").is_none());
     }
 
@@ -541,7 +538,12 @@ mod tests {
         }"#;
         let src: PluginSourceRef = serde_json::from_str(json).unwrap();
         match src {
-            PluginSourceRef::GitHub { repo, git_ref, path, .. } => {
+            PluginSourceRef::GitHub {
+                repo,
+                git_ref,
+                path,
+                ..
+            } => {
                 assert_eq!(repo, "org/plugin");
                 assert_eq!(git_ref.as_deref(), Some("main"));
                 assert_eq!(path.as_deref(), Some("plugins/my-plugin"));

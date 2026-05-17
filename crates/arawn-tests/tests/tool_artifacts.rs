@@ -40,7 +40,11 @@ async fn file_write_read_roundtrip() {
         )
         .await
         .unwrap();
-    assert!(!result.is_error, "file_write should succeed: {}", result.content);
+    assert!(
+        !result.is_error,
+        "file_write should succeed: {}",
+        result.content
+    );
 
     // Read it back
     let result = read_tool
@@ -52,7 +56,11 @@ async fn file_write_read_roundtrip() {
         )
         .await
         .unwrap();
-    assert!(!result.is_error, "file_read should succeed: {}", result.content);
+    assert!(
+        !result.is_error,
+        "file_read should succeed: {}",
+        result.content
+    );
     assert!(
         result.content.contains("Hello, World!"),
         "read should return written content, got: {}",
@@ -107,7 +115,11 @@ async fn file_edit_applies_correctly() {
         )
         .await
         .unwrap();
-    assert!(!result.is_error, "file_edit should succeed: {}", result.content);
+    assert!(
+        !result.is_error,
+        "file_edit should succeed: {}",
+        result.content
+    );
 
     // Read back and verify
     let result = read_tool
@@ -206,7 +218,9 @@ async fn workflow_create_minimal_compiles() {
         result.content
     );
     assert!(
-        result.content.contains("installed") || result.content.contains("success") || result.content.contains("test-hello"),
+        result.content.contains("installed")
+            || result.content.contains("success")
+            || result.content.contains("test-hello"),
         "should confirm installation, got: {}",
         result.content
     );
@@ -299,7 +313,11 @@ async fn workflow_delete_removes_installed() {
     // Create a fake installed workflow
     let pkg_dir = workflows_dir.join("deleteme");
     std::fs::create_dir_all(&pkg_dir).unwrap();
-    std::fs::write(pkg_dir.join("package.toml"), "[package]\nname = \"deleteme\"\n").unwrap();
+    std::fs::write(
+        pkg_dir.join("package.toml"),
+        "[package]\nname = \"deleteme\"\n",
+    )
+    .unwrap();
 
     let tool = arawn_workflow::WorkflowDeleteTool::new(workflows_dir.clone());
     let result = tool
@@ -307,7 +325,11 @@ async fn workflow_delete_removes_installed() {
         .await
         .unwrap();
 
-    assert!(!result.is_error, "delete should succeed: {}", result.content);
+    assert!(
+        !result.is_error,
+        "delete should succeed: {}",
+        result.content
+    );
     assert!(
         !workflows_dir.join("deleteme").exists(),
         "workflow dir should be removed"

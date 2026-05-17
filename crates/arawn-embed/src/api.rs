@@ -4,9 +4,9 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use tracing::debug;
 
+use crate::Embedder;
 use crate::config::EmbeddingConfig;
 use crate::error::EmbedError;
-use crate::Embedder;
 
 const DEFAULT_API_BASE: &str = "https://api.openai.com/v1";
 
@@ -21,10 +21,7 @@ pub struct ApiEmbedder {
 
 impl ApiEmbedder {
     pub fn new(config: &EmbeddingConfig) -> Result<Self, EmbedError> {
-        let api_key_env = config
-            .api_key_env
-            .as_deref()
-            .unwrap_or("OPENAI_API_KEY");
+        let api_key_env = config.api_key_env.as_deref().unwrap_or("OPENAI_API_KEY");
 
         let api_key = std::env::var(api_key_env).map_err(|_| {
             EmbedError::Config(format!(
@@ -105,9 +102,7 @@ impl Embedder for ApiEmbedder {
                 .text()
                 .await
                 .unwrap_or_else(|_| "unable to read body".into());
-            return Err(EmbedError::Api(format!(
-                "API returned {status}: {body}"
-            )));
+            return Err(EmbedError::Api(format!("API returned {status}: {body}")));
         }
 
         let result: EmbeddingResponse = response

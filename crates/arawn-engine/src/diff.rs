@@ -116,7 +116,10 @@ mod tests {
 
         // Should have two hunks (separated by @@)
         let hunk_count = diff.matches("@@").count();
-        assert!(hunk_count >= 4, "expected 2+ hunks (4+ @@ markers), got {hunk_count}");
+        assert!(
+            hunk_count >= 4,
+            "expected 2+ hunks (4+ @@ markers), got {hunk_count}"
+        );
 
         // Should NOT contain all 50 lines — collapsed
         assert!(

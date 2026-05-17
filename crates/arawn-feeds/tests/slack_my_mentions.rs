@@ -13,12 +13,12 @@ use std::sync::{Arc, Mutex};
 use async_trait::async_trait;
 use serde_json::{Value, json};
 
-use arawn_feeds::{
-    AtlassianFeedClient, CalendarFeedClient, DataLayout, DriveFeedClient, FeedClients, FeedError, FeedMeta,
-    FeedTemplate, GmailFeedClient, MetaStore, SlackAuthInfo, SlackFeedClient, SlackHistoryPage,
-    TemplateCtx, TemplateParams,
-};
 use arawn_feeds::templates::slack::MyMentionsTemplate;
+use arawn_feeds::{
+    AtlassianFeedClient, CalendarFeedClient, DataLayout, DriveFeedClient, FeedClients, FeedError,
+    FeedMeta, FeedTemplate, GmailFeedClient, MetaStore, SlackAuthInfo, SlackFeedClient,
+    SlackHistoryPage, TemplateCtx, TemplateParams,
+};
 
 #[derive(Default)]
 struct MockSlackClient {
@@ -180,9 +180,7 @@ async fn run_once(
 async fn first_run_resolves_user_id_and_writes_mentions() {
     let tmp = tempfile::tempdir().unwrap();
     let layout = DataLayout::new(tmp.path());
-    let feed_dir = layout
-        .ensure_feed_dir("slack/my-mentions", "me")
-        .unwrap();
+    let feed_dir = layout.ensure_feed_dir("slack/my-mentions", "me").unwrap();
 
     let mock = Arc::new(MockSlackClient::new());
     use chrono::TimeZone;
@@ -198,7 +196,9 @@ async fn first_run_resolves_user_id_and_writes_mentions() {
         next_cursor_ts: Some(format!("{}.0002", day0 + 60)),
     });
 
-    let clients = Arc::new(MockClients { slack: mock.clone() });
+    let clients = Arc::new(MockClients {
+        slack: mock.clone(),
+    });
     let ctx = TemplateCtx::new(clients);
     let template = MyMentionsTemplate;
     let outcome = run_once(&template, &ctx, &TemplateParams::default(), &feed_dir).await;
@@ -228,9 +228,7 @@ async fn first_run_resolves_user_id_and_writes_mentions() {
 async fn second_run_uses_cached_user_id_and_dedupes_overlap() {
     let tmp = tempfile::tempdir().unwrap();
     let layout = DataLayout::new(tmp.path());
-    let feed_dir = layout
-        .ensure_feed_dir("slack/my-mentions", "me")
-        .unwrap();
+    let feed_dir = layout.ensure_feed_dir("slack/my-mentions", "me").unwrap();
 
     let mock = Arc::new(MockSlackClient::new());
     use chrono::TimeZone;
@@ -255,14 +253,16 @@ async fn second_run_uses_cached_user_id_and_dedupes_overlap() {
     // new one.
     mock.queue_search(SlackHistoryPage {
         messages: vec![
-            mention_msg(&early_ts, "CX", "first"),  // duplicate
-            mention_msg(&mid_ts, "CX", "second"),    // duplicate
-            mention_msg(&late_ts, "CX", "third"),    // new
+            mention_msg(&early_ts, "CX", "first"), // duplicate
+            mention_msg(&mid_ts, "CX", "second"),  // duplicate
+            mention_msg(&late_ts, "CX", "third"),  // new
         ],
         next_cursor_ts: Some(late_ts.clone()),
     });
 
-    let clients = Arc::new(MockClients { slack: mock.clone() });
+    let clients = Arc::new(MockClients {
+        slack: mock.clone(),
+    });
     let ctx = TemplateCtx::new(clients);
     let template = MyMentionsTemplate;
 
@@ -288,9 +288,7 @@ async fn second_run_uses_cached_user_id_and_dedupes_overlap() {
 async fn empty_run_is_a_no_op() {
     let tmp = tempfile::tempdir().unwrap();
     let layout = DataLayout::new(tmp.path());
-    let feed_dir = layout
-        .ensure_feed_dir("slack/my-mentions", "me")
-        .unwrap();
+    let feed_dir = layout.ensure_feed_dir("slack/my-mentions", "me").unwrap();
 
     let mock = Arc::new(MockSlackClient::new());
     // No search queued → empty response
@@ -340,9 +338,7 @@ async fn returns_auth_when_slack_not_connected() {
 
     let tmp = tempfile::tempdir().unwrap();
     let layout = DataLayout::new(tmp.path());
-    let feed_dir = layout
-        .ensure_feed_dir("slack/my-mentions", "me")
-        .unwrap();
+    let feed_dir = layout.ensure_feed_dir("slack/my-mentions", "me").unwrap();
 
     let ctx = TemplateCtx::new(Arc::new(NoSlack));
     let template = MyMentionsTemplate;

@@ -67,11 +67,7 @@ impl OpenAICompatibleClient {
 
     /// Create a client for OpenAI.
     pub fn openai(api_key: impl Into<String>) -> Self {
-        Self::new(
-            "https://api.openai.com/v1",
-            Some(api_key.into()),
-            "openai",
-        )
+        Self::new("https://api.openai.com/v1", Some(api_key.into()), "openai")
     }
 
     /// Create a client for OpenAI from the OPENAI_API_KEY env var.
@@ -472,7 +468,10 @@ mod tests {
     #[test]
     fn groq_convenience_constructor() {
         let client = OpenAICompatibleClient::groq("test-key");
-        assert_eq!(client.completions_url(), "https://api.groq.com/openai/v1/chat/completions");
+        assert_eq!(
+            client.completions_url(),
+            "https://api.groq.com/openai/v1/chat/completions"
+        );
         assert_eq!(client.provider_name, "groq");
         assert_eq!(client.api_key, Some("test-key".into()));
     }
@@ -480,7 +479,10 @@ mod tests {
     #[test]
     fn ollama_convenience_constructor() {
         let client = OpenAICompatibleClient::ollama();
-        assert_eq!(client.completions_url(), "http://localhost:11434/v1/chat/completions");
+        assert_eq!(
+            client.completions_url(),
+            "http://localhost:11434/v1/chat/completions"
+        );
         assert_eq!(client.provider_name, "ollama");
         assert!(client.api_key.is_none());
     }
@@ -488,7 +490,10 @@ mod tests {
     #[test]
     fn openai_convenience_constructor() {
         let client = OpenAICompatibleClient::openai("sk-test");
-        assert_eq!(client.completions_url(), "https://api.openai.com/v1/chat/completions");
+        assert_eq!(
+            client.completions_url(),
+            "https://api.openai.com/v1/chat/completions"
+        );
         assert_eq!(client.provider_name, "openai");
     }
 
@@ -499,13 +504,19 @@ mod tests {
             Some("my-key".into()),
             "vllm",
         );
-        assert_eq!(client.completions_url(), "http://my-vllm-server:8000/v1/chat/completions");
+        assert_eq!(
+            client.completions_url(),
+            "http://my-vllm-server:8000/v1/chat/completions"
+        );
     }
 
     #[test]
     fn from_config_known_providers() {
         let client = OpenAICompatibleClient::from_config("ollama", None, None).unwrap();
-        assert_eq!(client.completions_url(), "http://localhost:11434/v1/chat/completions");
+        assert_eq!(
+            client.completions_url(),
+            "http://localhost:11434/v1/chat/completions"
+        );
         assert!(client.api_key.is_none());
     }
 
@@ -515,8 +526,12 @@ mod tests {
             "groq",
             Some("https://custom-groq-proxy.example.com/v1"),
             None,
-        ).unwrap();
-        assert_eq!(client.completions_url(), "https://custom-groq-proxy.example.com/v1/chat/completions");
+        )
+        .unwrap();
+        assert_eq!(
+            client.completions_url(),
+            "https://custom-groq-proxy.example.com/v1/chat/completions"
+        );
     }
 
     #[test]

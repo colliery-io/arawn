@@ -55,11 +55,7 @@ impl McpManager {
     }
 
     /// Connect to all enabled servers and discover their tools.
-    pub async fn connect_all(
-        &mut self,
-        configs: &[McpServerConfig],
-        registry: &Arc<ToolRegistry>,
-    ) {
+    pub async fn connect_all(&mut self, configs: &[McpServerConfig], registry: &Arc<ToolRegistry>) {
         for config in configs {
             if !config.enabled {
                 info!(name = %config.name, "MCP server disabled, skipping");
@@ -70,11 +66,7 @@ impl McpManager {
     }
 
     /// Connect to a single MCP server. Public for hot-reload.
-    pub async fn connect_server(
-        &mut self,
-        config: &McpServerConfig,
-        registry: &Arc<ToolRegistry>,
-    ) {
+    pub async fn connect_server(&mut self, config: &McpServerConfig, registry: &Arc<ToolRegistry>) {
         info!(name = %config.name, command = %config.command, "connecting to MCP server");
 
         match spawn_and_connect(config).await {
@@ -130,8 +122,11 @@ impl McpManager {
         configs: &[McpServerConfig],
         registry: &Arc<ToolRegistry>,
     ) {
-        let new_names: std::collections::HashSet<String> =
-            configs.iter().filter(|c| c.enabled).map(|c| c.name.clone()).collect();
+        let new_names: std::collections::HashSet<String> = configs
+            .iter()
+            .filter(|c| c.enabled)
+            .map(|c| c.name.clone())
+            .collect();
         let current_names: std::collections::HashSet<String> =
             self.servers.keys().cloned().collect();
 
@@ -152,11 +147,7 @@ impl McpManager {
     }
 
     /// Attempt to reconnect a failed server with exponential backoff.
-    pub async fn reconnect(
-        &mut self,
-        server_name: &str,
-        registry: &Arc<ToolRegistry>,
-    ) -> bool {
+    pub async fn reconnect(&mut self, server_name: &str, registry: &Arc<ToolRegistry>) -> bool {
         let config = match self.servers.get(server_name) {
             Some(s) => s.config.clone(),
             None => return false,
@@ -176,18 +167,22 @@ impl McpManager {
                     let peer = Arc::new(service.peer().clone());
 
                     for mcp_tool in &tools {
-                        let adapter = McpToolAdapter::new(&config.name, mcp_tool.clone(), peer.clone());
+                        let adapter =
+                            McpToolAdapter::new(&config.name, mcp_tool.clone(), peer.clone());
                         registry.register(Box::new(adapter));
                     }
 
                     info!(name = %config.name, attempt, tools = tools.len(), "MCP server reconnected");
 
-                    self.servers.insert(config.name.clone(), ConnectedServer {
-                        config: config.clone(),
-                        _service: service,
-                        tools,
-                        instructions,
-                    });
+                    self.servers.insert(
+                        config.name.clone(),
+                        ConnectedServer {
+                            config: config.clone(),
+                            _service: service,
+                            tools,
+                            instructions,
+                        },
+                    );
                     return true;
                 }
                 Err(e) => {
@@ -217,7 +212,9 @@ impl McpManager {
             return String::new();
         }
 
-        let mut prompt = String::from("# MCP Server Instructions\n\nThe following MCP servers have provided instructions for how to use their tools and resources:\n\n");
+        let mut prompt = String::from(
+            "# MCP Server Instructions\n\nThe following MCP servers have provided instructions for how to use their tools and resources:\n\n",
+        );
 
         for (name, server) in &self.servers {
             prompt.push_str(&format!("## {name}\n\n"));
@@ -256,7 +253,13 @@ impl McpManager {
 
 fn normalize_name(name: &str) -> String {
     name.chars()
-        .map(|c| if c.is_alphanumeric() || c == '_' || c == '-' { c } else { '_' })
+        .map(|c| {
+            if c.is_alphanumeric() || c == '_' || c == '-' {
+                c
+            } else {
+                '_'
+            }
+        })
         .collect()
 }
 

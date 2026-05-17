@@ -102,7 +102,11 @@ impl Tool for GrepTool {
         })
     }
 
-    async fn execute(&self, ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
+    async fn execute(
+        &self,
+        ctx: &dyn arawn_tool::ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
         let pattern = params
             .get("pattern")
             .and_then(|v| v.as_str())
@@ -545,7 +549,10 @@ mod tests {
             .await
             .unwrap();
 
-        assert!(result.is_error, "absolute path outside root should be rejected");
+        assert!(
+            result.is_error,
+            "absolute path outside root should be rejected"
+        );
         assert!(result.content.contains("escapes workstream root"));
     }
 
@@ -564,7 +571,10 @@ mod tests {
             .await
             .unwrap();
 
-        assert!(!result.is_error, "relative path within root should be allowed");
+        assert!(
+            !result.is_error,
+            "relative path within root should be allowed"
+        );
         assert!(result.content.contains("file.txt"));
     }
 }

@@ -118,7 +118,11 @@ impl Default for SlackProviderConfig {
 }
 
 impl SlackProviderConfig {
-    pub fn into_oauth_provider(self, client_id: String, client_secret: String) -> OAuthProviderConfig {
+    pub fn into_oauth_provider(
+        self,
+        client_id: String,
+        client_secret: String,
+    ) -> OAuthProviderConfig {
         // Slack's OAuth v2 takes user-level scopes via a separate
         // `user_scope` query param (alongside the regular `scope` for
         // bot scopes). Pass our user-scope set there so the OAuth
@@ -245,7 +249,8 @@ impl SlackIntegration {
     }
 
     fn oauth_config(&self) -> OAuthProviderConfig {
-        self.provider().into_oauth_provider(self.client_id.clone(), self.client_secret.clone())
+        self.provider()
+            .into_oauth_provider(self.client_id.clone(), self.client_secret.clone())
     }
 
     fn provider(&self) -> SlackProviderConfig {
@@ -359,11 +364,17 @@ mod tests {
 
     #[test]
     fn provider_lifts_into_oauth_config() {
-        let cfg = SlackProviderConfig::default()
-            .into_oauth_provider("cid".into(), "csecret".into());
+        let cfg =
+            SlackProviderConfig::default().into_oauth_provider("cid".into(), "csecret".into());
         assert_eq!(cfg.client_id, "cid");
         assert_eq!(cfg.client_secret, "csecret");
-        assert_eq!(cfg.auth_url.as_str(), "https://slack.com/oauth/v2/authorize");
-        assert_eq!(cfg.token_url.as_str(), "https://slack.com/api/oauth.v2.access");
+        assert_eq!(
+            cfg.auth_url.as_str(),
+            "https://slack.com/oauth/v2/authorize"
+        );
+        assert_eq!(
+            cfg.token_url.as_str(),
+            "https://slack.com/api/oauth.v2.access"
+        );
     }
 }

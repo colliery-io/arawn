@@ -12,10 +12,10 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use anyhow::{Context, Result, anyhow};
-use arawn_llm::{LlmClient, ModelHint};
 use arawn_llm::routing::{
     IntelligentRoutingProvider, LocalHealthChecker, ProviderHandle, RoutingHints, SharedHealth,
 };
+use arawn_llm::{LlmClient, ModelHint};
 use arawn_tool::{LlmPreference, LlmResolution, MatchQuality};
 
 use crate::config::{ArawnConfig, HintRoutingConfig, LlmConfig, ProvidersRoutingConfig};
@@ -64,22 +64,22 @@ impl LlmClientPool {
         let mut configs = HashMap::with_capacity(config.llm.len());
 
         for (name, llm_config) in &config.llm {
-            let raw = build(llm_config).with_context(|| {
-                format!("failed to build LLM client for [llm.{name}]")
-            })?;
+            let raw = build(llm_config)
+                .with_context(|| format!("failed to build LLM client for [llm.{name}]"))?;
             // Layering: raw provider
             //   → RetryClient        (retries on transient errors)
             //   → UsageTrackingClient (records token usage to the
             //     process-wide tracker — T-0277)
             //   → WarmingClient      (TTL-cached warmup + cold-restart retry)
-            let with_retry: Arc<dyn LlmClient> =
-                Arc::new(arawn_llm::RetryClient::new(raw));
-            let tracked: Arc<dyn LlmClient> = Arc::new(
-                arawn_llm::usage::UsageTrackingClient::new(with_retry, llm_config.provider.clone()),
-            );
-            let warmed: Arc<dyn LlmClient> = Arc::new(
-                arawn_llm::WarmingClient::new(tracked, llm_config.provider.clone()),
-            );
+            let with_retry: Arc<dyn LlmClient> = Arc::new(arawn_llm::RetryClient::new(raw));
+            let tracked: Arc<dyn LlmClient> = Arc::new(arawn_llm::usage::UsageTrackingClient::new(
+                with_retry,
+                llm_config.provider.clone(),
+            ));
+            let warmed: Arc<dyn LlmClient> = Arc::new(arawn_llm::WarmingClient::new(
+                tracked,
+                llm_config.provider.clone(),
+            ));
             clients.insert(name.clone(), warmed);
             configs.insert(name.clone(), llm_config.clone());
         }
@@ -139,7 +139,10 @@ impl LlmClientPool {
     pub fn single(client: Arc<dyn LlmClient>, model: impl Into<String>) -> Self {
         let mut clients = HashMap::new();
         let mut configs = HashMap::new();
-        let cfg = LlmConfig { model: model.into(), ..LlmConfig::default() };
+        let cfg = LlmConfig {
+            model: model.into(),
+            ..LlmConfig::default()
+        };
         clients.insert("default".to_string(), client);
         configs.insert("default".to_string(), cfg);
         Self {
@@ -166,11 +169,17 @@ impl LlmClientPool {
 
     /// Engine LLM — never fails; falls back to whatever `engine_llm()` resolved.
     pub fn engine(&self) -> Arc<dyn LlmClient> {
-        Arc::clone(self.clients.get(&self.engine_name).expect("engine LLM resolved at construction"))
+        Arc::clone(
+            self.clients
+                .get(&self.engine_name)
+                .expect("engine LLM resolved at construction"),
+        )
     }
 
     pub fn engine_config(&self) -> &LlmConfig {
-        self.configs.get(&self.engine_name).expect("engine config resolved at construction")
+        self.configs
+            .get(&self.engine_name)
+            .expect("engine config resolved at construction")
     }
 
     pub fn engine_name(&self) -> &str {
@@ -180,11 +189,17 @@ impl LlmClientPool {
     /// Compactor LLM — never fails; falls back to engine LLM if `[compactor]`
     /// names a missing entry or is absent.
     pub fn compactor(&self) -> Arc<dyn LlmClient> {
-        Arc::clone(self.clients.get(&self.compactor_name).expect("compactor LLM resolved at construction"))
+        Arc::clone(
+            self.clients
+                .get(&self.compactor_name)
+                .expect("compactor LLM resolved at construction"),
+        )
     }
 
     pub fn compactor_config(&self) -> &LlmConfig {
-        self.configs.get(&self.compactor_name).expect("compactor config resolved at construction")
+        self.configs
+            .get(&self.compactor_name)
+            .expect("compactor config resolved at construction")
     }
 
     pub fn compactor_name(&self) -> &str {
@@ -200,10 +215,7 @@ impl LlmClientPool {
     /// The returned provider is a cheap struct — fine to construct
     /// per-call when hints vary. The underlying clients and health
     /// checker are shared.
-    pub fn routing_provider(
-        &self,
-        hints: RoutingHints,
-    ) -> Option<IntelligentRoutingProvider> {
+    pub fn routing_provider(&self, hints: RoutingHints) -> Option<IntelligentRoutingProvider> {
         // Routing exists to choose Local-vs-Remote. Without a Local
         // profile the call collapses to "always Remote" — which is
         // identical to passthrough through the engine client. Tell
@@ -214,14 +226,11 @@ impl LlmClientPool {
             client: Arc::clone(self.clients.get(remote_name)?),
             model: self.configs.get(remote_name)?.model.clone(),
         };
-        let local = self
-            .local_provider_name
-            .as_ref()
-            .and_then(|n| {
-                let client = Arc::clone(self.clients.get(n)?);
-                let model = self.configs.get(n)?.model.clone();
-                Some(ProviderHandle { client, model })
-            });
+        let local = self.local_provider_name.as_ref().and_then(|n| {
+            let client = Arc::clone(self.clients.get(n)?);
+            let model = self.configs.get(n)?.model.clone();
+            Some(ProviderHandle { client, model })
+        });
         Some(IntelligentRoutingProvider::new(
             local,
             remote,
@@ -283,9 +292,7 @@ impl LlmClientPool {
     /// Warm up every entry concurrently. Returns a vector of `(name, result)`
     /// so callers can log per-entry outcomes. Never fails as a whole — a bad
     /// model surfaces as `Err` for that entry while others may still succeed.
-    pub async fn warmup_all(
-        &self,
-    ) -> Vec<(String, Result<(), arawn_llm::LlmError>)> {
+    pub async fn warmup_all(&self) -> Vec<(String, Result<(), arawn_llm::LlmError>)> {
         use futures::future::join_all;
 
         let probes = self.clients.iter().map(|(name, client)| {
@@ -340,9 +347,8 @@ impl LlmClientPool {
         // 3. Capability match (also catches provider-only or model-only requests)
         let want_provider = preference.provider.as_deref();
         let want_model = preference.model.as_deref();
-        let need_caps = !preference.capabilities.is_empty()
-            || want_provider.is_some()
-            || want_model.is_some();
+        let need_caps =
+            !preference.capabilities.is_empty() || want_provider.is_some() || want_model.is_some();
         if need_caps {
             for (name, cfg) in &self.configs {
                 let info = cfg.to_resolved_info();
@@ -727,7 +733,10 @@ model = "x"
         });
         assert!(result.is_err());
         let msg = format!("{}", result.unwrap_err());
-        assert!(msg.contains("[llm.broken]"), "error should name the bad entry: {msg}");
+        assert!(
+            msg.contains("[llm.broken]"),
+            "error should name the bad entry: {msg}"
+        );
     }
 
     fn build_two_profile_pool() -> LlmClientPool {

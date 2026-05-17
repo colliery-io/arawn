@@ -15,10 +15,7 @@ fn integ_err(e: crate::IntegrationError) -> ToolError {
     ToolError::ExecutionFailed(e.user_message())
 }
 
-fn check_scopes(
-    integration: &AtlassianIntegration,
-    required: &[&str],
-) -> Result<(), ToolError> {
+fn check_scopes(integration: &AtlassianIntegration, required: &[&str]) -> Result<(), ToolError> {
     let granted: HashSet<String> = integration.granted_scopes().map_err(integ_err)?;
     let missing: Vec<&str> = required
         .iter()
@@ -172,10 +169,7 @@ fn apply_inline(s: &str) -> String {
     out
 }
 
-fn take_until(
-    chars: &mut std::iter::Peekable<std::str::Chars>,
-    delim: &str,
-) -> (String, bool) {
+fn take_until(chars: &mut std::iter::Peekable<std::str::Chars>, delim: &str) -> (String, bool) {
     let mut buf = String::new();
     let bytes: Vec<char> = delim.chars().collect();
     let n = bytes.len();
@@ -412,7 +406,11 @@ impl Tool for ConfluenceSearchTool {
             "required": ["cql"]
         })
     }
-    async fn execute(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
+    async fn execute(
+        &self,
+        _ctx: &dyn ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
         check_scopes(&self.integration, CQL_SEARCH_SCOPES)?;
         let cql = params
             .get("cql")
@@ -512,7 +510,11 @@ impl Tool for ConfluenceGetPageTool {
             "required": ["page_id"]
         })
     }
-    async fn execute(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
+    async fn execute(
+        &self,
+        _ctx: &dyn ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
         check_scopes(&self.integration, CONFLUENCE_GET_PAGE_SCOPES)?;
         let page_id = params
             .get("page_id")
@@ -547,7 +549,8 @@ impl Tool for ConfluenceGetPageTool {
                 .confluence_get::<SpacesResp>("/spaces", site, &[])
                 .await
                 .ok()
-                .and_then(|r| r.results.into_iter().find(|s| &s.id == sid)).map(|s| s.key)
+                .and_then(|r| r.results.into_iter().find(|s| &s.id == sid))
+                .map(|s| s.key)
         } else {
             None
         };
@@ -568,7 +571,9 @@ impl Tool for ConfluenceGetPageTool {
                 .map(String::from),
         };
 
-        Ok(ToolOutput::success(serde_json::to_string(&summary).unwrap()))
+        Ok(ToolOutput::success(
+            serde_json::to_string(&summary).unwrap(),
+        ))
     }
 }
 
@@ -624,7 +629,11 @@ impl Tool for ConfluenceCreatePageTool {
             "required": ["space_key", "title", "body_markdown"]
         })
     }
-    async fn execute(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
+    async fn execute(
+        &self,
+        _ctx: &dyn ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
         check_scopes(&self.integration, CONFLUENCE_CREATE_PAGE_SCOPES)?;
         let space_key = params
             .get("space_key")
@@ -734,7 +743,11 @@ impl Tool for ConfluenceUpdatePageTool {
             "required": ["page_id", "title", "body_markdown"]
         })
     }
-    async fn execute(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
+    async fn execute(
+        &self,
+        _ctx: &dyn ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
         check_scopes(&self.integration, CONFLUENCE_UPDATE_PAGE_SCOPES)?;
         let page_id = params
             .get("page_id")
@@ -833,7 +846,11 @@ impl Tool for ConfluenceListSpacesTool {
             }
         })
     }
-    async fn execute(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
+    async fn execute(
+        &self,
+        _ctx: &dyn ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
         check_scopes(&self.integration, CONFLUENCE_LIST_SPACES_SCOPES)?;
         let site = site_param(&params);
         let client = AtlassianClient::new(Arc::clone(&self.integration));

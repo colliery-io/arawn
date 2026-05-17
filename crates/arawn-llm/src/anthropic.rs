@@ -28,8 +28,9 @@ impl AnthropicClient {
     }
 
     pub fn from_env() -> Result<Self, LlmError> {
-        let api_key = std::env::var("ANTHROPIC_API_KEY")
-            .map_err(|_| LlmError::Config("ANTHROPIC_API_KEY environment variable not set".into()))?;
+        let api_key = std::env::var("ANTHROPIC_API_KEY").map_err(|_| {
+            LlmError::Config("ANTHROPIC_API_KEY environment variable not set".into())
+        })?;
         Ok(Self::new(api_key))
     }
 
@@ -371,10 +372,7 @@ mod tests {
 
     #[test]
     fn simple_conversation() {
-        let messages = vec![
-            user_msg("hello"),
-            assistant_text("hi there"),
-        ];
+        let messages = vec![user_msg("hello"), assistant_text("hi there")];
         let result = build_messages(&messages);
         assert_eq!(result.len(), 2);
         assert_eq!(result[0]["role"], "user");
@@ -398,8 +396,14 @@ mod tests {
 
         // Assistant should have text + tool_use content blocks
         let assistant_content = result[1]["content"].as_array().unwrap();
-        assert!(assistant_content.iter().any(|b| b["type"] == "text"), "should have text block");
-        assert!(assistant_content.iter().any(|b| b["type"] == "tool_use"), "should have tool_use block");
+        assert!(
+            assistant_content.iter().any(|b| b["type"] == "text"),
+            "should have text block"
+        );
+        assert!(
+            assistant_content.iter().any(|b| b["type"] == "tool_use"),
+            "should have tool_use block"
+        );
 
         // Tool result should be a user message with tool_result content block
         let user_content = result[2]["content"].as_array().unwrap();
@@ -412,13 +416,22 @@ mod tests {
         // Simulates the second API call: user, assistant+tool, tool_result, then LLM responds
         let messages = vec![
             user_msg("review this repo"),
-            assistant_with_tool("I'll clone it first.", "t1", "shell", json!({"command": "git clone ..."})),
+            assistant_with_tool(
+                "I'll clone it first.",
+                "t1",
+                "shell",
+                json!({"command": "git clone ..."}),
+            ),
             tool_result("t1", "Cloning into..."),
             // After tool result, the engine calls LLM again with these 3 messages
         ];
         let result = build_messages(&messages);
 
-        assert_eq!(result.len(), 3, "user, assistant, user(tool_result): {result:#?}");
+        assert_eq!(
+            result.len(),
+            3,
+            "user, assistant, user(tool_result): {result:#?}"
+        );
         assert_eq!(result[0]["role"], "user");
         assert_eq!(result[1]["role"], "assistant");
         assert_eq!(result[2]["role"], "user");
@@ -426,9 +439,11 @@ mod tests {
         // Verify alternation: no two consecutive same-role messages
         for i in 1..result.len() {
             assert_ne!(
-                result[i]["role"], result[i-1]["role"],
+                result[i]["role"],
+                result[i - 1]["role"],
                 "messages {} and {i} have same role: {}",
-                i - 1, result[i]["role"]
+                i - 1,
+                result[i]["role"]
             );
         }
     }
@@ -449,9 +464,11 @@ mod tests {
         // Should alternate: user, assistant, user(tool_result), assistant, user(tool_result)
         for i in 1..result.len() {
             assert_ne!(
-                result[i]["role"], result[i-1]["role"],
+                result[i]["role"],
+                result[i - 1]["role"],
                 "messages {} and {i} have same role: {:?}",
-                i - 1, result
+                i - 1,
+                result
             );
         }
     }

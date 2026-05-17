@@ -268,7 +268,10 @@ impl AdfBuilder {
     // ── Inline routing ───────────────────────────────────────────────
 
     fn push_text(&mut self, text: &str) {
-        if let BlockKind::CodeBlock { text: ref mut buf, .. } = self.current_block {
+        if let BlockKind::CodeBlock {
+            text: ref mut buf, ..
+        } = self.current_block
+        {
             buf.push_str(text);
             return;
         }

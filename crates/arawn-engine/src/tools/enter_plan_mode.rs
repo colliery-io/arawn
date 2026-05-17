@@ -58,7 +58,11 @@ impl Tool for EnterPlanModeTool {
         })
     }
 
-    async fn execute(&self, ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
+    async fn execute(
+        &self,
+        ctx: &dyn arawn_tool::ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
         if self.plan_state.is_active() {
             return Ok(ToolOutput::error(
                 "Already in plan mode. Use ExitPlanMode to present your plan, or continue planning.",
@@ -77,7 +81,11 @@ impl Tool for EnterPlanModeTool {
         // and blocks non-read-only tools automatically.
         let plan_file = self
             .plan_state
-            .enter(crate::permissions::PermissionMode::Default, &slug, ctx.working_dir())
+            .enter(
+                crate::permissions::PermissionMode::Default,
+                &slug,
+                ctx.working_dir(),
+            )
             .map_err(|e| ToolError::ExecutionFailed(format!("Failed to create plan file: {e}")))?;
 
         Ok(ToolOutput::success(format!(
@@ -111,7 +119,10 @@ mod tests {
         let tool = EnterPlanModeTool::new(plan_state.clone());
 
         let result = tool
-            .execute(&test_ctx(tmp.path()), json!({"description": "refactor auth"}))
+            .execute(
+                &test_ctx(tmp.path()),
+                json!({"description": "refactor auth"}),
+            )
             .await
             .unwrap();
 

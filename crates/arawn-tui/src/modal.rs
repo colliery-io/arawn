@@ -8,9 +8,9 @@ use ratatui::layout::Rect;
 use ratatui::style::{Color, Modifier, Style};
 
 use crate::theme;
+use ratatui::Frame;
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Clear, Paragraph, Wrap};
-use ratatui::Frame;
 
 /// A single option in the modal.
 #[derive(Debug, Clone)]
@@ -106,7 +106,9 @@ pub fn render_modal(modal: &ModalState, frame: &mut Frame) {
         + modal.options.len() * 2 // each option + spacing
         + 2; // footer hints + border padding
     let modal_height = (content_lines as u16 + 2).min(area.height.saturating_sub(4)); // +2 for borders
-    let modal_width = (area.width * 60 / 100).max(30).min(area.width.saturating_sub(4));
+    let modal_width = (area.width * 60 / 100)
+        .max(30)
+        .min(area.width.saturating_sub(4));
     let modal_rect = centered_rect(modal_width, modal_height, area);
 
     // Clear the area behind the modal
@@ -252,12 +254,7 @@ mod tests {
     #[test]
     fn cancel_sends_none() {
         let (tx, rx) = tokio::sync::oneshot::channel();
-        let mut modal = ModalState::new(
-            "Test",
-            vec![ModalOption::new("A")],
-            Color::Yellow,
-            tx,
-        );
+        let mut modal = ModalState::new("Test", vec![ModalOption::new("A")], Color::Yellow, tx);
         modal.cancel();
 
         assert_eq!(rx.blocking_recv().unwrap(), None);
@@ -266,12 +263,7 @@ mod tests {
     #[test]
     fn confirm_only_sends_once() {
         let (tx, rx) = tokio::sync::oneshot::channel();
-        let mut modal = ModalState::new(
-            "Test",
-            vec![ModalOption::new("A")],
-            Color::Yellow,
-            tx,
-        );
+        let mut modal = ModalState::new("Test", vec![ModalOption::new("A")], Color::Yellow, tx);
         modal.confirm();
         modal.confirm(); // second call is a no-op
 

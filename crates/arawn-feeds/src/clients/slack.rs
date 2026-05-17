@@ -178,9 +178,10 @@ fn find_slack_retry_after(
     let mut cur: Option<&(dyn std::error::Error + 'static)> = Some(e);
     while let Some(err) = cur {
         if let Some(c) = err.downcast_ref::<SlackClientError>()
-            && let SlackClientError::RateLimitError(r) = c {
-                return Some(r.retry_after);
-            }
+            && let SlackClientError::RateLimitError(r) = c
+        {
+            return Some(r.retry_after);
+        }
         if let Some(r) = err.downcast_ref::<SlackRateLimitError>() {
             return Some(r.retry_after);
         }
@@ -383,9 +384,10 @@ impl SlackFeedClient for RealSlackClient {
         // the precise ts cursor.
         let mut full_query = query.to_string();
         if let Some(ts) = oldest_ts
-            && let Some(date) = ts_to_yyyy_mm_dd(ts) {
-                full_query.push_str(&format!(" after:{date}"));
-            }
+            && let Some(date) = ts_to_yyyy_mm_dd(ts)
+        {
+            full_query.push_str(&format!(" after:{date}"));
+        }
 
         let client = reqwest::Client::new();
         let resp = client
@@ -474,8 +476,7 @@ impl SlackFeedClient for RealSlackClient {
                     id,
                     name,
                     is_private: ch.flags.is_private.unwrap_or(false),
-                    is_dm: ch.flags.is_im.unwrap_or(false)
-                        || ch.flags.is_mpim.unwrap_or(false),
+                    is_dm: ch.flags.is_im.unwrap_or(false) || ch.flags.is_mpim.unwrap_or(false),
                 }
             })
             .collect();
@@ -527,9 +528,7 @@ impl RealSlackClient {
 
 fn looks_like_user_id(s: &str) -> bool {
     let bytes = s.as_bytes();
-    bytes.len() >= 2
-        && bytes[0] == b'U'
-        && bytes[1..].iter().all(|b| b.is_ascii_alphanumeric())
+    bytes.len() >= 2 && bytes[0] == b'U' && bytes[1..].iter().all(|b| b.is_ascii_alphanumeric())
 }
 
 fn looks_like_channel_id(s: &str) -> bool {
@@ -630,7 +629,10 @@ mod tests {
     fn classify_returns_kind_for_each_prefix() {
         assert_eq!(classify_channel_id("CABC"), Some(ChannelKind::Public));
         assert_eq!(classify_channel_id("GABC"), Some(ChannelKind::Private));
-        assert_eq!(classify_channel_id("DABC"), Some(ChannelKind::DirectMessage));
+        assert_eq!(
+            classify_channel_id("DABC"),
+            Some(ChannelKind::DirectMessage)
+        );
         assert_eq!(classify_channel_id("MABC"), Some(ChannelKind::GroupDm));
         assert_eq!(classify_channel_id("ZABC"), None);
         assert_eq!(classify_channel_id("design"), None);

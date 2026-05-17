@@ -49,7 +49,10 @@ impl FeedTemplate for EchoTemplate {
         cursor: &Value,
     ) -> Result<RunOutcome, FeedError> {
         let started = Instant::now();
-        let prev_run = cursor.get("run_count").and_then(|v| v.as_u64()).unwrap_or(0);
+        let prev_run = cursor
+            .get("run_count")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(0);
         let next_run = prev_run + 1;
 
         let message = params.get_str("message").unwrap_or("");

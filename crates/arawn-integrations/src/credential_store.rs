@@ -119,12 +119,9 @@ impl<T: Serialize + DeserializeOwned> CredentialStore<T> {
         }
         let (nonce_bytes, ciphertext) = blob.split_at(NONCE_LEN);
         let nonce = Nonce::from_slice(nonce_bytes);
-        let plaintext = self
-            .cipher
-            .decrypt(nonce, ciphertext)
-            .map_err(|_| IntegrationError::Format(format!(
-                "credential '{entry}' decrypt failed (tampered?)"
-            )))?;
+        let plaintext = self.cipher.decrypt(nonce, ciphertext).map_err(|_| {
+            IntegrationError::Format(format!("credential '{entry}' decrypt failed (tampered?)"))
+        })?;
 
         let value: T = serde_json::from_slice(&plaintext)
             .map_err(|e| IntegrationError::Format(format!("parse {entry}: {e}")))?;
@@ -157,7 +154,8 @@ impl<T: Serialize + DeserializeOwned> CredentialStore<T> {
     }
 
     fn path_for(&self, entry: &str) -> PathBuf {
-        self.integrations_dir.join(format!("{}.bin", safe_segment(entry)))
+        self.integrations_dir
+            .join(format!("{}.bin", safe_segment(entry)))
     }
 }
 
@@ -274,12 +272,17 @@ mod tests {
         {
             let s: CredentialStore<WebhookCred> =
                 CredentialStore::open(dir.path(), "slack").unwrap();
-            s.save("default", &WebhookCred { url: "u".into(), signing_secret: None })
-                .unwrap();
+            s.save(
+                "default",
+                &WebhookCred {
+                    url: "u".into(),
+                    signing_secret: None,
+                },
+            )
+            .unwrap();
         }
         // Re-open with a separate handle — must still decrypt.
-        let s2: CredentialStore<WebhookCred> =
-            CredentialStore::open(dir.path(), "slack").unwrap();
+        let s2: CredentialStore<WebhookCred> = CredentialStore::open(dir.path(), "slack").unwrap();
         let loaded = s2.load("default").unwrap().expect("present");
         assert_eq!(loaded.url, "u");
     }

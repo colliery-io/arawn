@@ -79,14 +79,8 @@ pub async fn run_embed_pass(
             if rows.is_empty() {
                 break;
             }
-            let processed_in_batch = embed_batch(
-                store,
-                feed_type,
-                &rows,
-                embedder,
-                &mut outcome,
-            )
-            .await?;
+            let processed_in_batch =
+                embed_batch(store, feed_type, &rows, embedder, &mut outcome).await?;
             remaining = remaining.saturating_sub(processed_in_batch);
             debug!(
                 feed_type = feed_type,
@@ -255,14 +249,11 @@ impl ProjectionStore {
         }
 
         // vec0 doesn't support INSERT OR REPLACE — delete first.
-        let del_sql = format!(
-            "DELETE FROM {feed_type}_vec WHERE projection_id = ?1"
-        );
+        let del_sql = format!("DELETE FROM {feed_type}_vec WHERE projection_id = ?1");
         conn.execute(&del_sql, params![projection_id])
             .map_err(|e| ProjectionError::Storage(format!("vec delete: {e}")))?;
-        let ins_sql = format!(
-            "INSERT INTO {feed_type}_vec (projection_id, embedding) VALUES (?1, ?2)"
-        );
+        let ins_sql =
+            format!("INSERT INTO {feed_type}_vec (projection_id, embedding) VALUES (?1, ?2)");
         conn.execute(&ins_sql, params![projection_id, vector.as_bytes()])
             .map_err(|e| ProjectionError::Storage(format!("vec insert: {e}")))?;
 

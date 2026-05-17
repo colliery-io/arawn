@@ -12,7 +12,6 @@ pub mod retro_detectors;
 pub mod weekly;
 
 pub use daily::DailyCeremony;
-pub use weekly::WeeklyCeremony;
 pub use gather_sources::{
     AttentionSource, CalEvent, CalendarSource, NoopCalendarSource, SignalRow,
     StaticAttentionSource, StaticCalendarSource,
@@ -22,3 +21,4 @@ pub use retro_detectors::{
     PriorityCompletionDetector, RolloverHeatDetector, WorkstreamNeglectDetector,
     v1_catalog as retro_v1_catalog,
 };
+pub use weekly::WeeklyCeremony;

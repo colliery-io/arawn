@@ -87,8 +87,8 @@ impl RoutingRecord {
 
 #[cfg(test)]
 mod tests {
+    use super::super::policy::{LatencyBudget, LocalHealth, RoutingHints, UsagePressure, decide};
     use super::*;
-    use super::super::policy::{LatencyBudget, RoutingHints, UsagePressure, decide, LocalHealth};
     use crate::hints::ModelHint;
 
     #[test]

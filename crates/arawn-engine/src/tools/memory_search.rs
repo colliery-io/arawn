@@ -83,7 +83,11 @@ impl Tool for MemorySearchTool {
         })
     }
 
-    async fn execute(&self, _ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
+    async fn execute(
+        &self,
+        _ctx: &dyn arawn_tool::ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
         let query = params
             .get("query")
             .and_then(|v| v.as_str())
@@ -94,20 +98,18 @@ impl Tool for MemorySearchTool {
             .and_then(|v| v.as_str())
             .and_then(EntityType::from_str);
 
-        let tags: Option<Vec<String>> = params
-            .get("tags")
-            .and_then(|v| v.as_array())
-            .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect());
+        let tags: Option<Vec<String>> = params.get("tags").and_then(|v| v.as_array()).map(|arr| {
+            arr.iter()
+                .filter_map(|v| v.as_str().map(String::from))
+                .collect()
+        });
 
         let scope = params
             .get("scope")
             .and_then(|v| v.as_str())
             .unwrap_or("both");
 
-        let limit = params
-            .get("limit")
-            .and_then(|v| v.as_u64())
-            .unwrap_or(10) as usize;
+        let limit = params.get("limit").and_then(|v| v.as_u64()).unwrap_or(10) as usize;
 
         let include_related = params
             .get("include_related")
@@ -159,7 +161,9 @@ impl Tool for MemorySearchTool {
                     Ok(query_embedding) => {
                         let sim_results = store
                             .search_similar(&query_embedding, limit * 2)
-                            .map_err(|e| ToolError::ExecutionFailed(format!("vector search error: {e}")))?;
+                            .map_err(|e| {
+                                ToolError::ExecutionFailed(format!("vector search error: {e}"))
+                            })?;
 
                         for result in &sim_results {
                             let semantic_score = 1.0 / (1.0 + result.distance);
@@ -168,13 +172,13 @@ impl Tool for MemorySearchTool {
                                     continue;
                                 }
                                 if let Some(et) = entity_type
-                                    && entity.entity_type != et {
-                                        continue;
-                                    }
+                                    && entity.entity_type != et
+                                {
+                                    continue;
+                                }
                                 let confidence = entity.confidence_score();
-                                let entry = scored
-                                    .entry(entity.id)
-                                    .or_insert_with(|| ScoredEntity {
+                                let entry =
+                                    scored.entry(entity.id).or_insert_with(|| ScoredEntity {
                                         entity: entity.clone(),
                                         fts_score: 0.0,
                                         semantic_score: 0.0,
@@ -206,7 +210,11 @@ impl Tool for MemorySearchTool {
 
         // Compute composite score and sort
         let mut results: Vec<ScoredEntity> = scored.into_values().collect();
-        results.sort_by(|a, b| b.composite().partial_cmp(&a.composite()).unwrap_or(std::cmp::Ordering::Equal));
+        results.sort_by(|a, b| {
+            b.composite()
+                .partial_cmp(&a.composite())
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
         results.truncate(limit);
 
         // Graph expansion
@@ -221,7 +229,9 @@ impl Tool for MemorySearchTool {
                                 rel.source_id
                             };
                             if let Ok(Some(neighbor)) = store.get_entity(neighbor_id) {
-                                result.related.push((rel.relation_type, neighbor.title.clone()));
+                                result
+                                    .related
+                                    .push((rel.relation_type, neighbor.title.clone()));
                             }
                         }
                     }
@@ -293,7 +303,11 @@ mod tests {
     use tempfile::TempDir;
     use uuid::Uuid;
 
-    fn setup() -> (TempDir, Arc<MemoryManager>, crate::context::EngineToolContext) {
+    fn setup() -> (
+        TempDir,
+        Arc<MemoryManager>,
+        crate::context::EngineToolContext,
+    ) {
         let tmp = TempDir::new().unwrap();
         std::fs::create_dir_all(tmp.path().join("workstreams/test-ws")).unwrap();
         let mgr = Arc::new(MemoryManager::open(tmp.path(), "test-ws", None).unwrap());
@@ -332,10 +346,7 @@ mod tests {
         populate(&mgr);
         let tool = MemorySearchTool::new(mgr, None);
 
-        let result = tool
-            .execute(&ctx, json!({"query": "Rust"}))
-            .await
-            .unwrap();
+        let result = tool.execute(&ctx, json!({"query": "Rust"})).await.unwrap();
 
         assert!(!result.is_error);
         assert!(result.content.contains("Rust ownership"));

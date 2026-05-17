@@ -156,10 +156,7 @@ impl StewardSubroutine for ReshelveSubroutine {
                 );
                 break;
             }
-            if let Err(e) = self
-                .process_focus(focus, ctx, &mut outcome)
-                .await
-            {
+            if let Err(e) = self.process_focus(focus, ctx, &mut outcome).await {
                 warn!(
                     workstream = %ctx.workstream.name,
                     focus_id = %focus.id,
@@ -194,7 +191,10 @@ impl ReshelveSubroutine {
         let raw = ctx
             .memory
             .workstream
-            .search(&fts_quote(&focus.title), self.config.candidates_per_focus * 2)
+            .search(
+                &fts_quote(&focus.title),
+                self.config.candidates_per_focus * 2,
+            )
             .map_err(StewardError::from)?;
         let candidates: Vec<Entity> = raw
             .into_iter()
@@ -282,10 +282,11 @@ impl ReshelveSubroutine {
             btags = cand.tags.join(", "),
         );
         let raw = complete_text(&self.client, &self.model, system, &user).await?;
-        let json = extract_json_block(&raw).ok_or_else(|| StewardError::Parse(format!(
-            "reshelve: no JSON in LLM response: {raw}"
-        )))?;
-        serde_json::from_str(json).map_err(|e| StewardError::Parse(format!("reshelve verdict: {e}")))
+        let json = extract_json_block(&raw).ok_or_else(|| {
+            StewardError::Parse(format!("reshelve: no JSON in LLM response: {raw}"))
+        })?;
+        serde_json::from_str(json)
+            .map_err(|e| StewardError::Parse(format!("reshelve verdict: {e}")))
     }
 
     fn apply_merge(
@@ -297,12 +298,13 @@ impl ReshelveSubroutine {
         outcome: &mut SubroutineOutcome,
     ) -> Result<(), StewardError> {
         // Most-reinforced survives; ties → newer created_at.
-        let (survivor, deprecated) =
-            if (cand.reinforcement_count, cand.created_at) >= (focus.reinforcement_count, focus.created_at) {
-                (cand, focus)
-            } else {
-                (focus, cand)
-            };
+        let (survivor, deprecated) = if (cand.reinforcement_count, cand.created_at)
+            >= (focus.reinforcement_count, focus.created_at)
+        {
+            (cand, focus)
+        } else {
+            (focus, cand)
+        };
 
         // Build the post-merge survivor entity:
         //  - tag union
@@ -353,10 +355,7 @@ impl ReshelveSubroutine {
             .to_string(),
             outputs_json: payload.to_string(),
             model: self.model.clone(),
-            prompt_hash: Journal::prompt_hash(format!(
-                "reshelve/{}/{}",
-                focus.id, cand.id
-            )),
+            prompt_hash: Journal::prompt_hash(format!("reshelve/{}/{}", focus.id, cand.id)),
             applied: true,
         };
         ctx.journal.write_ahead(&record)?;
@@ -487,20 +486,16 @@ mod tests {
         tmp: tempfile::TempDir,
         memory: Arc<MemoryManager>,
         journal: Arc<Journal>,
-        cursor_factory: Arc<
-            dyn Fn(&str) -> Result<CursorStore, StewardError> + Send + Sync,
-        >,
+        cursor_factory: Arc<dyn Fn(&str) -> Result<CursorStore, StewardError> + Send + Sync>,
     }
 
     fn setup() -> Fixture {
         let tmp = tempfile::tempdir().unwrap();
-        let mem =
-            Arc::new(MemoryManager::open(tmp.path(), "ws-pat", None).unwrap());
+        let mem = Arc::new(MemoryManager::open(tmp.path(), "ws-pat", None).unwrap());
         let j = Arc::new(Journal::open(tmp.path(), "ws-pat").unwrap());
         let dir = tmp.path().to_path_buf();
-        let cursor_factory: Arc<
-            dyn Fn(&str) -> Result<CursorStore, StewardError> + Send + Sync,
-        > = Arc::new(move |name: &str| CursorStore::open(&dir, name));
+        let cursor_factory: Arc<dyn Fn(&str) -> Result<CursorStore, StewardError> + Send + Sync> =
+            Arc::new(move |name: &str| CursorStore::open(&dir, name));
         Fixture {
             tmp,
             memory: mem,
@@ -603,7 +598,13 @@ mod tests {
         // bogus must be gone
         assert!(fx.memory.workstream.get_entity(bogus.id).unwrap().is_none());
         // trustworthy still there
-        assert!(fx.memory.workstream.get_entity(trustworthy.id).unwrap().is_some());
+        assert!(
+            fx.memory
+                .workstream
+                .get_entity(trustworthy.id)
+                .unwrap()
+                .is_some()
+        );
     }
 
     #[tokio::test]
@@ -665,8 +666,7 @@ mod tests {
         for i in 0..6 {
             let mut e = fact("identical title", &format!("c{i}"), 0);
             // stagger created_at so most-reinforced tie-break is stable
-            e.created_at = chrono::Utc::now()
-                - chrono::Duration::seconds(60 - i as i64);
+            e.created_at = chrono::Utc::now() - chrono::Duration::seconds(60 - i as i64);
             e.updated_at = e.created_at;
             fx.memory.workstream.insert_entity(&e).unwrap();
         }

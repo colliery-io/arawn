@@ -85,9 +85,10 @@ impl FeedTemplate for RecentTemplate {
         cursor: &Value,
     ) -> Result<RunOutcome, FeedError> {
         let started = Instant::now();
-        let drive = ctx.clients().drive().ok_or_else(|| {
-            FeedError::Auth("google drive integration not connected".into())
-        })?;
+        let drive = ctx
+            .clients()
+            .drive()
+            .ok_or_else(|| FeedError::Auth("google drive integration not connected".into()))?;
 
         let days_back = params
             .0
@@ -151,9 +152,8 @@ impl FeedTemplate for RecentTemplate {
             if path.exists() {
                 continue;
             }
-            std::fs::create_dir_all(&day_dir).map_err(|e| {
-                FeedError::Storage(format!("create {}: {e}", day_dir.display()))
-            })?;
+            std::fs::create_dir_all(&day_dir)
+                .map_err(|e| FeedError::Storage(format!("create {}: {e}", day_dir.display())))?;
             let bytes = write_file_metadata(&path, file)?;
             total_items += 1;
             total_bytes += bytes;

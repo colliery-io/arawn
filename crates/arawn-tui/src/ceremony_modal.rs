@@ -7,11 +7,11 @@
 //! The event loop pulls outcomes off them and routes RPCs.
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use ratatui::Frame;
 use ratatui::layout::Rect;
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Clear, Paragraph, Wrap};
-use ratatui::Frame;
 
 use crate::theme;
 
@@ -86,7 +86,9 @@ impl PriorityModalState {
     }
 
     fn focused_item_id(&self) -> Option<String> {
-        self.priorities.get(self.focused_index).map(|p| p.id.clone())
+        self.priorities
+            .get(self.focused_index)
+            .map(|p| p.id.clone())
     }
 
     /// Drive the state machine from a key event. Returns the outcome
@@ -198,13 +200,13 @@ impl DiaryEditorState {
         } else {
             // Edit mode: ctrl-s saves; esc cancels edit (drop changes is too
             // surprising — preserve the buffer but flip back to read-only).
-            if key.modifiers.contains(KeyModifiers::CONTROL) {
-                if let KeyCode::Char('s') = key.code {
-                    return DiaryOutcome::Save {
-                        tablet_id: self.tablet_id.clone(),
-                        body: self.body.clone(),
-                    };
-                }
+            if key.modifiers.contains(KeyModifiers::CONTROL)
+                && let KeyCode::Char('s') = key.code
+            {
+                return DiaryOutcome::Save {
+                    tablet_id: self.tablet_id.clone(),
+                    body: self.body.clone(),
+                };
             }
             match key.code {
                 KeyCode::Esc => {
@@ -279,7 +281,9 @@ pub fn render_overlay(overlay: &CeremonyOverlay, frame: &mut Frame) {
 
 fn render_priority_modal(state: &PriorityModalState, frame: &mut Frame) {
     let area = frame.area();
-    let modal_width = (area.width * 70 / 100).max(40).min(area.width.saturating_sub(4));
+    let modal_width = (area.width * 70 / 100)
+        .max(40)
+        .min(area.width.saturating_sub(4));
     let modal_height = area.height.saturating_sub(4).min(24).max(10);
     let rect = centered_rect(modal_width, modal_height, area);
 
@@ -289,7 +293,9 @@ fn render_priority_modal(state: &PriorityModalState, frame: &mut Frame) {
         .border_style(Style::default().fg(Color::Magenta))
         .title(Span::styled(
             " Weekly priorities ",
-            Style::default().fg(Color::Magenta).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(Color::Magenta)
+                .add_modifier(Modifier::BOLD),
         ));
     let inner = block.inner(rect);
     frame.render_widget(block, rect);
@@ -302,7 +308,11 @@ fn render_priority_modal(state: &PriorityModalState, frame: &mut Frame) {
         )));
     } else {
         for (i, p) in state.priorities.iter().enumerate() {
-            let glyph = if p.confirmed_at.is_some() { "[x]" } else { "[ ]" };
+            let glyph = if p.confirmed_at.is_some() {
+                "[x]"
+            } else {
+                "[ ]"
+            };
             let is_focused = i == state.focused_index;
             let body = p
                 .body
@@ -335,7 +345,9 @@ fn render_priority_modal(state: &PriorityModalState, frame: &mut Frame) {
     if let Some(ref buf) = state.add_input {
         lines.push(Line::from(Span::styled(
             "Add priority — type body, Enter to submit, Esc to cancel:",
-            Style::default().fg(theme::TEXT).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(theme::TEXT)
+                .add_modifier(Modifier::BOLD),
         )));
         lines.push(Line::from(Span::styled(
             format!("> {buf}_"),
@@ -344,7 +356,9 @@ fn render_priority_modal(state: &PriorityModalState, frame: &mut Frame) {
     } else {
         lines.push(Line::from(Span::styled(
             " space=confirm  d=reject  a=add  q=quit",
-            Style::default().fg(theme::OVERLAY1).add_modifier(Modifier::ITALIC),
+            Style::default()
+                .fg(theme::OVERLAY1)
+                .add_modifier(Modifier::ITALIC),
         )));
     }
     if let Some(ref err) = state.last_error {
@@ -360,18 +374,26 @@ fn render_priority_modal(state: &PriorityModalState, frame: &mut Frame) {
 
 fn render_diary_editor(state: &DiaryEditorState, frame: &mut Frame) {
     let area = frame.area();
-    let modal_width = (area.width * 80 / 100).max(50).min(area.width.saturating_sub(4));
+    let modal_width = (area.width * 80 / 100)
+        .max(50)
+        .min(area.width.saturating_sub(4));
     let modal_height = area.height.saturating_sub(4).min(24).max(10);
     let rect = centered_rect(modal_width, modal_height, area);
 
     frame.render_widget(Clear, rect);
-    let title = if state.editing { " Diary (editing) " } else { " Diary " };
+    let title = if state.editing {
+        " Diary (editing) "
+    } else {
+        " Diary "
+    };
     let block = Block::default()
         .borders(Borders::ALL)
         .border_style(Style::default().fg(Color::Cyan))
         .title(Span::styled(
             title,
-            Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::BOLD),
         ));
     let inner = block.inner(rect);
     frame.render_widget(block, rect);
@@ -391,7 +413,9 @@ fn render_diary_editor(state: &DiaryEditorState, frame: &mut Frame) {
             // computing actual screen position).
             lines.push(Line::from(Span::styled(
                 "_",
-                Style::default().fg(theme::TEXT).add_modifier(Modifier::SLOW_BLINK),
+                Style::default()
+                    .fg(theme::TEXT)
+                    .add_modifier(Modifier::SLOW_BLINK),
             )));
         }
     }
@@ -404,7 +428,9 @@ fn render_diary_editor(state: &DiaryEditorState, frame: &mut Frame) {
     };
     lines.push(Line::from(Span::styled(
         footer,
-        Style::default().fg(theme::OVERLAY1).add_modifier(Modifier::ITALIC),
+        Style::default()
+            .fg(theme::OVERLAY1)
+            .add_modifier(Modifier::ITALIC),
     )));
     if let Some(ref err) = state.last_error {
         lines.push(Line::from(Span::styled(
@@ -442,15 +468,25 @@ mod tests {
             body: serde_json::Value::String(body.into()),
             rationale: "because reasons".into(),
             citation_id: None,
-            confirmed_at: if confirmed { Some("2026-01-01T00:00:00Z".into()) } else { None },
+            confirmed_at: if confirmed {
+                Some("2026-01-01T00:00:00Z".into())
+            } else {
+                None
+            },
             done_at: None,
             ordinal: 0,
-            source: if confirmed { "confirmed".into() } else { "candidate".into() },
+            source: if confirmed {
+                "confirmed".into()
+            } else {
+                "candidate".into()
+            },
         }
     }
 
     fn make_state(n: usize) -> PriorityModalState {
-        let ps = (0..n).map(|i| make_priority(&format!("i{i}"), "body", false)).collect();
+        let ps = (0..n)
+            .map(|i| make_priority(&format!("i{i}"), "body", false))
+            .collect();
         PriorityModalState::new("t1".into(), ps)
     }
 
@@ -475,14 +511,24 @@ mod tests {
         let mut s = make_state(2);
         s.focus_next();
         let out = s.handle_key(key(KeyCode::Char(' ')));
-        assert_eq!(out, PriorityOutcome::Confirm { item_id: "i1".into() });
+        assert_eq!(
+            out,
+            PriorityOutcome::Confirm {
+                item_id: "i1".into()
+            }
+        );
     }
 
     #[test]
     fn priority_d_rejects_focused_item() {
         let mut s = make_state(2);
         let out = s.handle_key(key(KeyCode::Char('d')));
-        assert_eq!(out, PriorityOutcome::Reject { item_id: "i0".into() });
+        assert_eq!(
+            out,
+            PriorityOutcome::Reject {
+                item_id: "i0".into()
+            }
+        );
     }
 
     #[test]
@@ -493,10 +539,13 @@ mod tests {
         s.handle_key(key(KeyCode::Char('h')));
         s.handle_key(key(KeyCode::Char('i')));
         let out = s.handle_key(key(KeyCode::Enter));
-        assert_eq!(out, PriorityOutcome::Add {
-            tablet_id: "t1".into(),
-            body: "hi".into(),
-        });
+        assert_eq!(
+            out,
+            PriorityOutcome::Add {
+                tablet_id: "t1".into(),
+                body: "hi".into(),
+            }
+        );
         assert!(s.add_input.is_none());
     }
 
@@ -521,7 +570,10 @@ mod tests {
     #[test]
     fn priority_q_and_esc_close_overlay() {
         let mut s = make_state(1);
-        assert_eq!(s.handle_key(key(KeyCode::Char('q'))), PriorityOutcome::Close);
+        assert_eq!(
+            s.handle_key(key(KeyCode::Char('q'))),
+            PriorityOutcome::Close
+        );
         let mut s2 = make_state(1);
         assert_eq!(s2.handle_key(key(KeyCode::Esc)), PriorityOutcome::Close);
     }
@@ -542,8 +594,8 @@ mod tests {
         assert!(!d.editing);
         d.handle_key(key(KeyCode::Char('e')));
         assert!(d.editing);
-        let d2_out = DiaryEditorState::new("t1".into(), String::new())
-            .handle_key(key(KeyCode::Char('q')));
+        let d2_out =
+            DiaryEditorState::new("t1".into(), String::new()).handle_key(key(KeyCode::Char('q')));
         assert_eq!(d2_out, DiaryOutcome::Close);
     }
 
@@ -567,10 +619,13 @@ mod tests {
         let mut d = DiaryEditorState::new("t1".into(), "draft".into());
         d.editing = true;
         let out = d.handle_key(ctrl('s'));
-        assert_eq!(out, DiaryOutcome::Save {
-            tablet_id: "t1".into(),
-            body: "draft".into(),
-        });
+        assert_eq!(
+            out,
+            DiaryOutcome::Save {
+                tablet_id: "t1".into(),
+                body: "draft".into(),
+            }
+        );
     }
 
     #[test]

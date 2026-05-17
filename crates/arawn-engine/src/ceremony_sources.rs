@@ -21,10 +21,8 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-use arawn_ceremonies::plugins::{
-    AttentionSource, CalEvent, CalendarSource, SignalRow,
-};
 use arawn_ceremonies::CeremonyError;
+use arawn_ceremonies::plugins::{AttentionSource, CalEvent, CalendarSource, SignalRow};
 use arawn_projections::ProjectionStore;
 use arawn_storage::Store;
 use async_trait::async_trait;
@@ -214,10 +212,7 @@ impl ProjectionsAttentionSource {
     /// `Store::find_workstream_for_feed` and memoise both `Some` and
     /// `None` results. Storage errors surface to the caller; the
     /// attention adapter then maps them into a `CeremonyError`.
-    fn workstream_for_feed(
-        &self,
-        feed_id: &str,
-    ) -> Result<Option<String>, CeremonyError> {
+    fn workstream_for_feed(&self, feed_id: &str) -> Result<Option<String>, CeremonyError> {
         {
             let cache = self
                 .feed_workstream_cache
@@ -479,7 +474,9 @@ mod tests {
         let g1 = gmail_signal("g-old", yesterday);
         let g2 = gmail_signal("g-mid", an_hour_ago);
         let g3 = gmail_signal("g-new", two_min_ago);
-        projections.write_batch(&[g1, g2.clone(), g3.clone()]).unwrap();
+        projections
+            .write_batch(&[g1, g2.clone(), g3.clone()])
+            .unwrap();
 
         // 2 slack rows.
         let s1 = slack_signal("s-old", yesterday);

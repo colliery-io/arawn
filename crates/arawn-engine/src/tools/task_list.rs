@@ -180,7 +180,11 @@ impl Tool for TaskCreateTool {
         })
     }
 
-    async fn execute(&self, _ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
+    async fn execute(
+        &self,
+        _ctx: &dyn arawn_tool::ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
         let subject = params
             .get("subject")
             .and_then(|v| v.as_str())
@@ -270,7 +274,11 @@ impl Tool for TaskUpdateTool {
         })
     }
 
-    async fn execute(&self, _ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
+    async fn execute(
+        &self,
+        _ctx: &dyn arawn_tool::ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
         let task_id = params
             .get("task_id")
             .and_then(|v| v.as_str())
@@ -382,7 +390,11 @@ impl Tool for TaskListTool {
         })
     }
 
-    async fn execute(&self, _ctx: &dyn arawn_tool::ToolContext, _params: Value) -> Result<ToolOutput, ToolError> {
+    async fn execute(
+        &self,
+        _ctx: &dyn arawn_tool::ToolContext,
+        _params: Value,
+    ) -> Result<ToolOutput, ToolError> {
         let tasks = self.store.list();
 
         if tasks.is_empty() {
@@ -453,7 +465,11 @@ impl Tool for TaskGetTool {
         })
     }
 
-    async fn execute(&self, _ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
+    async fn execute(
+        &self,
+        _ctx: &dyn arawn_tool::ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
         let task_id = params
             .get("task_id")
             .and_then(|v| v.as_str())

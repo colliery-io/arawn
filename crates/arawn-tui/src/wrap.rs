@@ -220,7 +220,12 @@ mod tests {
         // No line exceeds width
         for line in &wrapped {
             let w: usize = line.spans.iter().map(|s| s.content.chars().count()).sum();
-            assert!(w <= 12, "line over width: {:?} ({} chars)", line_text(line), w);
+            assert!(
+                w <= 12,
+                "line over width: {:?} ({} chars)",
+                line_text(line),
+                w
+            );
         }
         // Concatenation preserves words (whitespace may differ at boundaries)
         let joined = texts.join(" ").replace("  ", " ");
@@ -233,7 +238,11 @@ mod tests {
     fn hard_breaks_oversize_word() {
         let lines = vec![plain("aaaaaaaaaaaa")]; // 12 chars
         let wrapped = wrap_lines(lines, 5);
-        assert!(wrapped.len() >= 3, "expected 3+ lines, got {}", wrapped.len());
+        assert!(
+            wrapped.len() >= 3,
+            "expected 3+ lines, got {}",
+            wrapped.len()
+        );
         for line in &wrapped {
             let w: usize = line.spans.iter().map(|s| s.content.chars().count()).sum();
             assert!(w <= 5);
@@ -253,13 +262,12 @@ mod tests {
     #[test]
     fn preserves_span_styles_through_wrap() {
         let line = Line::from(vec![
-            Span::styled(
-                "hello ".to_string(),
-                Style::default().fg(Color::Red),
-            ),
+            Span::styled("hello ".to_string(), Style::default().fg(Color::Red)),
             Span::styled(
                 "world example".to_string(),
-                Style::default().fg(Color::Green).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(Color::Green)
+                    .add_modifier(Modifier::BOLD),
             ),
         ]);
         let wrapped = wrap_lines(vec![line], 8);

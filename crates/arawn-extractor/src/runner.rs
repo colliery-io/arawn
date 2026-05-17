@@ -39,11 +39,8 @@ pub const DEFAULT_BATCH_SIZE: usize = 50;
 /// Function that materializes the `MemoryManager` for a workstream
 /// name. In production this is the same router T-0250 wired into the
 /// memory tools; tests pass an in-memory fixture.
-pub type MemoryResolver = Arc<
-    dyn Fn(&str) -> Result<Arc<arawn_memory::MemoryManager>, ExtractionError>
-        + Send
-        + Sync,
->;
+pub type MemoryResolver =
+    Arc<dyn Fn(&str) -> Result<Arc<arawn_memory::MemoryManager>, ExtractionError> + Send + Sync>;
 
 /// The runner owns the bits that survive across calls — store handles,
 /// the chain, the memory resolver. Per-call args are the workstream +
@@ -98,12 +95,7 @@ impl ExtractorRunner {
                 .and_then(|c| c.last_source_ts)
         };
 
-        let rows = fetch_projection_rows(
-            &self.projections,
-            feed_type,
-            cursor_ts,
-            self.batch_size,
-        )?;
+        let rows = fetch_projection_rows(&self.projections, feed_type, cursor_ts, self.batch_size)?;
         if rows.is_empty() {
             return Ok(RunStats::default());
         }
@@ -123,7 +115,10 @@ impl ExtractorRunner {
                         stats.entities_written += outcome.entities_written.len();
                         stats.relations_written += outcome.relations_written;
                     }
-                    if latest_processed_ts.map(|p| row.source_ts > p).unwrap_or(true) {
+                    if latest_processed_ts
+                        .map(|p| row.source_ts > p)
+                        .unwrap_or(true)
+                    {
                         latest_processed_ts = Some(row.source_ts);
                     }
                 }
@@ -296,10 +291,13 @@ impl ExtractorRunner {
                         error = %e,
                         "workstream extractor failed; continuing with next workstream"
                     );
-                    out.push((ws.name, RunStats {
-                        errors: 1,
-                        ..Default::default()
-                    }));
+                    out.push((
+                        ws.name,
+                        RunStats {
+                            errors: 1,
+                            ..Default::default()
+                        },
+                    ));
                 }
             }
         }
@@ -450,12 +448,7 @@ mod tests {
         let p3 = fixture_proj("m3", "gamma body", 20);
         proj.write_batch(&[p1, p2, p3.clone()]).unwrap();
 
-        let runner = ExtractorRunner::new(
-            Arc::clone(&store),
-            proj,
-            resolver,
-            Arc::new(StubChain),
-        );
+        let runner = ExtractorRunner::new(Arc::clone(&store), proj, resolver, Arc::new(StubChain));
         let stats = runner
             .run_for_workstream(&ws("pat"), "gmail_messages")
             .await
@@ -496,8 +489,8 @@ mod tests {
             .collect();
         proj.write_batch(&rows).unwrap();
 
-        let runner = ExtractorRunner::new(store, proj, resolver, Arc::new(StubChain))
-            .with_batch_size(3);
+        let runner =
+            ExtractorRunner::new(store, proj, resolver, Arc::new(StubChain)).with_batch_size(3);
         let stats = runner
             .run_for_workstream_until_exhausted(
                 &ws("pat"),
@@ -533,8 +526,7 @@ mod tests {
             .unwrap();
         // spawn_backfill returns immediately; the second call is the
         // one we're asserting is dropped.
-        Arc::clone(&runner)
-            .spawn_backfill("pat".into(), vec!["gmail_messages".into()]);
+        Arc::clone(&runner).spawn_backfill("pat".into(), vec!["gmail_messages".into()]);
         // Cursor should NOT have advanced because the second spawn was
         // a no-op.
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
@@ -558,10 +550,16 @@ mod tests {
             s.soft_delete_workstream("old").unwrap();
         }
         let runner = ExtractorRunner::new(store, proj, resolver, Arc::new(StubChain));
-        let results = runner.run_for_all_workstreams("gmail_messages").await.unwrap();
+        let results = runner
+            .run_for_all_workstreams("gmail_messages")
+            .await
+            .unwrap();
         let names: Vec<&str> = results.iter().map(|(n, _)| n.as_str()).collect();
         assert!(names.contains(&"scratch"));
         assert!(names.contains(&"pat"));
-        assert!(!names.contains(&"old"), "archived workstream should be excluded");
+        assert!(
+            !names.contains(&"old"),
+            "archived workstream should be excluded"
+        );
     }
 }

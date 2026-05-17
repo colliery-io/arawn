@@ -97,9 +97,8 @@ pub fn append_jsonl(path: &Path, line: &Value) -> Result<u64, FeedError> {
     let bytes = formatted.as_bytes();
     let len = bytes.len() as u64;
     if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent).map_err(|e| {
-            FeedError::Storage(format!("create {}: {e}", parent.display()))
-        })?;
+        std::fs::create_dir_all(parent)
+            .map_err(|e| FeedError::Storage(format!("create {}: {e}", parent.display())))?;
     }
     let mut f = std::fs::OpenOptions::new()
         .create(true)
@@ -120,13 +119,9 @@ pub struct IssueWriteOutcome {
 }
 
 /// Write `<issue_dir>/issue.json` (overwrite).
-pub fn write_issue_snapshot(
-    issue_dir: &Path,
-    detail: &JiraIssueDetail,
-) -> Result<u64, FeedError> {
-    std::fs::create_dir_all(issue_dir).map_err(|e| {
-        FeedError::Storage(format!("create {}: {e}", issue_dir.display()))
-    })?;
+pub fn write_issue_snapshot(issue_dir: &Path, detail: &JiraIssueDetail) -> Result<u64, FeedError> {
+    std::fs::create_dir_all(issue_dir)
+        .map_err(|e| FeedError::Storage(format!("create {}: {e}", issue_dir.display())))?;
     let path = issue_dir.join("issue.json");
     let snapshot = serde_json::json!({
         "key": detail.meta.key,
@@ -198,7 +193,10 @@ pub fn append_logs(
         }
     }
 
-    Ok(IssueWriteOutcome { bytes_written, cursor })
+    Ok(IssueWriteOutcome {
+        bytes_written,
+        cursor,
+    })
 }
 
 fn parse_id(s: Option<&str>) -> Option<u64> {

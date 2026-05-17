@@ -293,10 +293,7 @@ pub enum StoreFactResult {
     /// New entity created.
     Inserted { entity_id: Uuid },
     /// Existing entity reinforced (same fact seen again).
-    Reinforced {
-        entity_id: Uuid,
-        new_count: u32,
-    },
+    Reinforced { entity_id: Uuid, new_count: u32 },
     /// Old entity superseded by new one.
     Superseded {
         old_entity_id: Uuid,

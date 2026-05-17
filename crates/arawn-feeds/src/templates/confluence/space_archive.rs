@@ -63,9 +63,7 @@ impl FeedTemplate for SpaceArchiveTemplate {
             .0
             .get("space_key")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| {
-                FeedError::InvalidParams("missing required param: space_key".into())
-            })?;
+            .ok_or_else(|| FeedError::InvalidParams("missing required param: space_key".into()))?;
         if key.trim().is_empty() {
             return Err(FeedError::InvalidParams(
                 "space_key must not be empty".into(),
@@ -89,9 +87,10 @@ impl FeedTemplate for SpaceArchiveTemplate {
         cursor: &Value,
     ) -> Result<RunOutcome, FeedError> {
         let started = Instant::now();
-        let atlassian = ctx.clients().atlassian().ok_or_else(|| {
-            FeedError::Auth("atlassian integration not connected".into())
-        })?;
+        let atlassian = ctx
+            .clients()
+            .atlassian()
+            .ok_or_else(|| FeedError::Auth("atlassian integration not connected".into()))?;
 
         let space_key = params
             .0
@@ -137,18 +136,18 @@ impl FeedTemplate for SpaceArchiveTemplate {
             };
 
             let page_dir = feed_dir.join(&page.id);
-            std::fs::create_dir_all(&page_dir).map_err(|e| {
-                FeedError::Storage(format!("create {}: {e}", page_dir.display()))
-            })?;
+            std::fs::create_dir_all(&page_dir)
+                .map_err(|e| FeedError::Storage(format!("create {}: {e}", page_dir.display())))?;
             let meta_bytes = write_meta(&page_dir, page)?;
             let body_bytes = write_body(&page_dir, body.storage_xml.as_deref())?;
             total_items += 1;
             total_bytes += meta_bytes + body_bytes;
 
             if let Some(modified) = page.modified_time.as_deref()
-                && new_latest.as_deref().map(|n| modified > n).unwrap_or(true) {
-                    new_latest = Some(modified.to_string());
-                }
+                && new_latest.as_deref().map(|n| modified > n).unwrap_or(true)
+            {
+                new_latest = Some(modified.to_string());
+            }
         }
 
         let new_cursor = json!({
@@ -171,10 +170,7 @@ impl FeedTemplate for SpaceArchiveTemplate {
         })
     }
 
-    async fn discover(
-        &self,
-        ctx: &TemplateCtx,
-    ) -> Result<Option<Vec<DiscoveryRow>>, FeedError> {
+    async fn discover(&self, ctx: &TemplateCtx) -> Result<Option<Vec<DiscoveryRow>>, FeedError> {
         let atlassian = match ctx.clients().atlassian() {
             Some(c) => c,
             None => return Ok(None),
@@ -228,9 +224,11 @@ mod tests {
 
     #[test]
     fn validate_requires_space_key() {
-        assert!(SpaceArchiveTemplate
-            .validate(&TemplateParams::default())
-            .is_err());
+        assert!(
+            SpaceArchiveTemplate
+                .validate(&TemplateParams::default())
+                .is_err()
+        );
         let p = TemplateParams(json!({ "space_key": "" }));
         assert!(SpaceArchiveTemplate.validate(&p).is_err());
         let p = TemplateParams(json!({ "space_key": "ENG" }));

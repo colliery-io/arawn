@@ -75,9 +75,10 @@ impl FeedTemplate for MyMentionsTemplate {
         cursor: &Value,
     ) -> Result<RunOutcome, FeedError> {
         let started = Instant::now();
-        let slack = ctx.clients().slack().ok_or_else(|| {
-            FeedError::Auth("slack integration not connected".into())
-        })?;
+        let slack = ctx
+            .clients()
+            .slack()
+            .ok_or_else(|| FeedError::Auth("slack integration not connected".into()))?;
 
         // ── 1. Resolve our user_id (cache-or-call) ───────────────────
         let my_user_id = match cursor.get("my_user_id").and_then(|v| v.as_str()) {
@@ -109,9 +110,10 @@ impl FeedTemplate for MyMentionsTemplate {
                 None => continue, // search results occasionally lack ts; skip
             };
             if let Some(prev) = prior_latest.as_deref()
-                && ts <= prev {
-                    continue;
-                }
+                && ts <= prev
+            {
+                continue;
+            }
             let bytes = append_message_to_day(feed_dir, msg, ts)?;
             total_items += 1;
             total_bytes += bytes;

@@ -12,9 +12,9 @@ use ort::session::builder::GraphOptimizationLevel;
 use ort::value::Tensor;
 use tracing::info;
 
+use crate::Embedder;
 use crate::config::EmbeddingConfig;
 use crate::error::EmbedError;
-use crate::Embedder;
 
 const MAX_TOKENS: usize = 512;
 
@@ -233,13 +233,16 @@ fn download_model_files(model_dir: &Path, model_name: &str) -> Result<(), EmbedE
                 .map_err(|e| EmbedError::ModelLoad(format!("download {url}: {e}")))?;
             if !response.status().is_success() {
                 return Err(EmbedError::ModelLoad(format!(
-                    "download {url}: HTTP {}", response.status()
+                    "download {url}: HTTP {}",
+                    response.status()
                 )));
             }
-            let bytes = response.bytes()
+            let bytes = response
+                .bytes()
                 .map_err(|e| EmbedError::ModelLoad(format!("read response: {e}")))?;
-            std::fs::write(&local_path, &bytes)
-                .map_err(|e| EmbedError::ModelLoad(format!("write {}: {e}", local_path.display())))?;
+            std::fs::write(&local_path, &bytes).map_err(|e| {
+                EmbedError::ModelLoad(format!("write {}: {e}", local_path.display()))
+            })?;
             info!(path = ?local_path, bytes = bytes.len(), "downloaded");
         }
     }

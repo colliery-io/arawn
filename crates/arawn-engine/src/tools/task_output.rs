@@ -59,7 +59,11 @@ impl Tool for TaskOutputTool {
         })
     }
 
-    async fn execute(&self, _ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
+    async fn execute(
+        &self,
+        _ctx: &dyn arawn_tool::ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
         let task_id = params
             .get("task_id")
             .and_then(|v| v.as_str())
@@ -83,14 +87,15 @@ impl Tool for TaskOutputTool {
 
         // If blocking and task is still running, poll until done or timeout
         if block {
-            let deadline = tokio::time::Instant::now()
-                + tokio::time::Duration::from_millis(timeout_ms);
+            let deadline =
+                tokio::time::Instant::now() + tokio::time::Duration::from_millis(timeout_ms);
 
             loop {
                 if let Some(status) = self.bg_manager.status(task_id)
-                    && status.is_terminal() {
-                        break;
-                    }
+                    && status.is_terminal()
+                {
+                    break;
+                }
                 if tokio::time::Instant::now() >= deadline {
                     let output = self.bg_manager.read_output(task_id).unwrap_or_default();
                     return Ok(ToolOutput::success(format!(
@@ -109,7 +114,9 @@ impl Tool for TaskOutputTool {
         let status_line = match &status {
             BackgroundTaskStatus::Running => format!("Task {task_id}: running"),
             BackgroundTaskStatus::Completed { exit_code } => {
-                let code = exit_code.map(|c| format!(" (exit code {c})")).unwrap_or_default();
+                let code = exit_code
+                    .map(|c| format!(" (exit code {c})"))
+                    .unwrap_or_default();
                 format!("Task {task_id}: completed{code}")
             }
             BackgroundTaskStatus::Failed { error } => {
@@ -127,9 +134,13 @@ impl Tool for TaskOutputTool {
                 Ok(ToolOutput::success(status_line))
             }
         } else if is_error {
-            Ok(ToolOutput::error(format!("{status_line}\n\nOutput:\n{output}")))
+            Ok(ToolOutput::error(format!(
+                "{status_line}\n\nOutput:\n{output}"
+            )))
         } else {
-            Ok(ToolOutput::success(format!("{status_line}\n\nOutput:\n{output}")))
+            Ok(ToolOutput::success(format!(
+                "{status_line}\n\nOutput:\n{output}"
+            )))
         }
     }
 }
@@ -152,7 +163,10 @@ mod tests {
         let mgr = Arc::new(BackgroundTaskManager::new());
         let tool = TaskOutputTool::new(mgr);
         let result = tool
-            .execute(&test_ctx(), json!({"task_id": "bg_nonexistent", "block": false}))
+            .execute(
+                &test_ctx(),
+                json!({"task_id": "bg_nonexistent", "block": false}),
+            )
             .await
             .unwrap();
         assert!(result.is_error);
@@ -166,7 +180,9 @@ mod tests {
         let handle = tokio::spawn(async {});
 
         let (id, output_buf) = mgr.register(
-            BackgroundTaskKind::Shell { command: "echo hi".into() },
+            BackgroundTaskKind::Shell {
+                command: "echo hi".into(),
+            },
             "echo hi".into(),
             handle,
             token,
@@ -195,7 +211,9 @@ mod tests {
         let handle = tokio::spawn(async move { token_clone.cancelled().await });
 
         let (id, _) = mgr.register(
-            BackgroundTaskKind::Shell { command: "sleep 999".into() },
+            BackgroundTaskKind::Shell {
+                command: "sleep 999".into(),
+            },
             "sleep".into(),
             handle,
             token,

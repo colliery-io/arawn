@@ -46,8 +46,14 @@ mod tests {
 
     #[test]
     fn delta_seconds() {
-        assert_eq!(parse_retry_after(Some("120")), Some(Duration::from_secs(120)));
-        assert_eq!(parse_retry_after(Some("  30 ")), Some(Duration::from_secs(30)));
+        assert_eq!(
+            parse_retry_after(Some("120")),
+            Some(Duration::from_secs(120))
+        );
+        assert_eq!(
+            parse_retry_after(Some("  30 ")),
+            Some(Duration::from_secs(30))
+        );
         assert_eq!(parse_retry_after(Some("0")), Some(Duration::ZERO));
     }
 
@@ -55,7 +61,10 @@ mod tests {
     fn http_date_future() {
         let now = at("2026-05-11T12:00:00Z");
         let raw = Some("Mon, 11 May 2026 12:01:00 GMT");
-        assert_eq!(parse_retry_after_at(raw, now), Some(Duration::from_secs(60)));
+        assert_eq!(
+            parse_retry_after_at(raw, now),
+            Some(Duration::from_secs(60))
+        );
     }
 
     #[test]

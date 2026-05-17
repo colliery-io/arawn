@@ -16,8 +16,8 @@ use arawn_auth::{OAuthClient, Token};
 use chrono::Utc;
 use jira_v3_openapi::apis::configuration::Configuration as JiraConfig;
 use reqwest::{Client, Method, Response};
-use serde::de::DeserializeOwned;
 use serde::Serialize;
+use serde::de::DeserializeOwned;
 
 use crate::error::IntegrationError;
 
@@ -71,7 +71,9 @@ impl AtlassianClient {
         }
         // Need refresh.
         let Some(refresh) = token.refresh.clone() else {
-            return Err(IntegrationError::NotConnected("atlassian (token expired and no refresh token; reconnect)".to_string()));
+            return Err(IntegrationError::NotConnected(
+                "atlassian (token expired and no refresh token; reconnect)".to_string(),
+            ));
         };
         let oauth = OAuthClient::new(self.integration.oauth_config());
         let mut new_token = oauth.refresh(&refresh).await?;
@@ -174,9 +176,7 @@ impl AtlassianClient {
             .await
             .map_err(|e| IntegrationError::Provider(format!("read body: {e}")))?;
         if !status.is_success() {
-            return Err(IntegrationError::Provider(format!(
-                "HTTP {status}: {text}"
-            )));
+            return Err(IntegrationError::Provider(format!("HTTP {status}: {text}")));
         }
         serde_json::from_str(&text)
             .map_err(|e| IntegrationError::Provider(format!("decode body: {e} (raw: {text})")))

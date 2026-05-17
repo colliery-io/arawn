@@ -115,8 +115,8 @@ impl StewardSubroutine for TagPromoterSubroutine {
 
         // Filter out tags that are already in the ontology — promoting
         // again is meaningless.
-        let ontology = TagOntologyStore::open_at(&ctx.workstream.root_dir)
-            .map_err(StewardError::from)?;
+        let ontology =
+            TagOntologyStore::open_at(&ctx.workstream.root_dir).map_err(StewardError::from)?;
         tally.retain(|tag, _| !ontology.contains(tag).unwrap_or(false));
 
         // Filter out tags with a pending tag-promoter proposal still
@@ -128,11 +128,13 @@ impl StewardSubroutine for TagPromoterSubroutine {
             .pending_proposals(500)
             .unwrap_or_default();
         for row in &pending {
-            if row.subroutine == SUBROUTINE_NAME && row.action == ACTION_NAME
+            if row.subroutine == SUBROUTINE_NAME
+                && row.action == ACTION_NAME
                 && let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&row.outputs_json)
-                    && let Some(t) = parsed.get("tag").and_then(|v| v.as_str()) {
-                        tally.remove(t);
-                    }
+                && let Some(t) = parsed.get("tag").and_then(|v| v.as_str())
+            {
+                tally.remove(t);
+            }
         }
 
         // Threshold + cap. Sort by (count desc, tag alpha) so the
@@ -141,9 +143,7 @@ impl StewardSubroutine for TagPromoterSubroutine {
             .into_iter()
             .filter(|(_, s)| s.count >= self.config.min_count)
             .collect();
-        candidates.sort_by(|(ta, sa), (tb, sb)| {
-            sb.count.cmp(&sa.count).then(ta.cmp(tb))
-        });
+        candidates.sort_by(|(ta, sa), (tb, sb)| sb.count.cmp(&sa.count).then(ta.cmp(tb)));
 
         let mut outcome = SubroutineOutcome::default();
         for (tag, stats) in candidates {
@@ -222,8 +222,7 @@ mod tests {
     }
 
     fn entity_with_discovered(title: &str, tags: &[&str]) -> Entity {
-        Entity::new(EntityType::Fact, title)
-            .with_tags(tags.iter().map(|s| s.to_string()).collect())
+        Entity::new(EntityType::Fact, title).with_tags(tags.iter().map(|s| s.to_string()).collect())
     }
 
     fn ctx(
@@ -245,10 +244,7 @@ mod tests {
         let (_tmp, mem, gate, ws) = setup();
         for i in 0..3 {
             mem.workstream
-                .insert_entity(&entity_with_discovered(
-                    &format!("e{i}"),
-                    &["calidor"],
-                ))
+                .insert_entity(&entity_with_discovered(&format!("e{i}"), &["calidor"]))
                 .unwrap();
         }
         let sub = TagPromoterSubroutine::default();
@@ -257,7 +253,10 @@ mod tests {
 
         let inner = gate.inner_journal();
         let recent = inner.recent(10).unwrap();
-        let row = recent.iter().find(|r| r.subroutine == "tag-promoter").unwrap();
+        let row = recent
+            .iter()
+            .find(|r| r.subroutine == "tag-promoter")
+            .unwrap();
         assert_eq!(row.action, "promote_tag");
         assert!(!row.applied);
         assert!(row.outputs_json.contains("calidor"));
@@ -268,10 +267,7 @@ mod tests {
         let (_tmp, mem, gate, ws) = setup();
         for i in 0..2 {
             mem.workstream
-                .insert_entity(&entity_with_discovered(
-                    &format!("e{i}"),
-                    &["barely"],
-                ))
+                .insert_entity(&entity_with_discovered(&format!("e{i}"), &["barely"]))
                 .unwrap();
         }
         let sub = TagPromoterSubroutine::default();
@@ -284,10 +280,7 @@ mod tests {
         let (_tmp, mem, gate, ws) = setup();
         for i in 0..5 {
             mem.workstream
-                .insert_entity(&entity_with_discovered(
-                    &format!("e{i}"),
-                    &["preseeded"],
-                ))
+                .insert_entity(&entity_with_discovered(&format!("e{i}"), &["preseeded"]))
                 .unwrap();
         }
         let sub = TagPromoterSubroutine::default();
@@ -300,10 +293,7 @@ mod tests {
         let (_tmp, mem, gate, ws) = setup();
         for i in 0..5 {
             mem.workstream
-                .insert_entity(&entity_with_discovered(
-                    &format!("e{i}"),
-                    &["steward:dust"],
-                ))
+                .insert_entity(&entity_with_discovered(&format!("e{i}"), &["steward:dust"]))
                 .unwrap();
         }
         let sub = TagPromoterSubroutine::default();
@@ -316,10 +306,7 @@ mod tests {
         let (_tmp, mem, gate, ws) = setup();
         for i in 0..3 {
             mem.workstream
-                .insert_entity(&entity_with_discovered(
-                    &format!("e{i}"),
-                    &["recur"],
-                ))
+                .insert_entity(&entity_with_discovered(&format!("e{i}"), &["recur"]))
                 .unwrap();
         }
         let sub = TagPromoterSubroutine::default();
@@ -338,10 +325,7 @@ mod tests {
         for tag in ["alpha", "beta", "gamma"] {
             for i in 0..3 {
                 mem.workstream
-                    .insert_entity(&entity_with_discovered(
-                        &format!("{tag}-{i}"),
-                        &[tag],
-                    ))
+                    .insert_entity(&entity_with_discovered(&format!("{tag}-{i}"), &[tag]))
                     .unwrap();
             }
         }
@@ -371,7 +355,10 @@ mod tests {
         assert_eq!(out.proposals_recorded, 1);
         let inner = gate.inner_journal();
         let recent = inner.recent(5).unwrap();
-        let row = recent.iter().find(|r| r.subroutine == "tag-promoter").unwrap();
+        let row = recent
+            .iter()
+            .find(|r| r.subroutine == "tag-promoter")
+            .unwrap();
         // Normalized form is what gets stored.
         assert!(row.outputs_json.contains("\"falcon\""));
     }

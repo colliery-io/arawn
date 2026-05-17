@@ -16,8 +16,8 @@ use serde_json::{Value, json};
 use slack_morphism::prelude::{
     SlackApiChatPostMessageRequest, SlackApiConversationsHistoryRequest,
     SlackApiConversationsListRequest, SlackApiConversationsOpenRequest,
-    SlackApiReactionsAddRequest, SlackApiUsersListRequest, SlackChannelId,
-    SlackConversationType, SlackMessageContent, SlackReactionName, SlackTs, SlackUserId,
+    SlackApiReactionsAddRequest, SlackApiUsersListRequest, SlackChannelId, SlackConversationType,
+    SlackMessageContent, SlackReactionName, SlackTs, SlackUserId,
 };
 // `value()` lives on the rvstruct::ValueStruct trait; pull it into scope so
 // SlackChannelId::value() / SlackTs::value() / etc. are callable on the
@@ -54,10 +54,7 @@ fn check_scopes(integration: &SlackIntegration, required: &[&str]) -> Result<(),
 }
 
 /// Verify the persisted **user** token covers `required`.
-fn check_user_scopes(
-    integration: &SlackIntegration,
-    required: &[&str],
-) -> Result<(), ToolError> {
+fn check_user_scopes(integration: &SlackIntegration, required: &[&str]) -> Result<(), ToolError> {
     check_in_set(
         &granted_user_scopes(integration)?,
         required,
@@ -106,9 +103,7 @@ fn read_ctx_for_listing(
         required.push("mpim:read");
     }
     // Try user side first.
-    if integration.user_context().is_ok()
-        && check_user_scopes(integration, &required).is_ok()
-    {
+    if integration.user_context().is_ok() && check_user_scopes(integration, &required).is_ok() {
         return integration.user_context().map_err(integ_err);
     }
     // Bot fallback. Bot scopes have a slightly different shape:
@@ -224,7 +219,11 @@ impl SlackListChannelsTool {
     pub fn new(integration: Arc<SlackIntegration>) -> Self {
         Self {
             integration,
-            description: format!("{}{}", SLACK_LIST_CHANNELS_BASE, scope_footer(SLACK_LIST_CHANNELS_SCOPES)),
+            description: format!(
+                "{}{}",
+                SLACK_LIST_CHANNELS_BASE,
+                scope_footer(SLACK_LIST_CHANNELS_SCOPES)
+            ),
         }
     }
 }
@@ -264,10 +263,24 @@ impl Tool for SlackListChannelsTool {
             }
         })
     }
-    async fn execute(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
-        let include_dms = params.get("include_dms").and_then(|v| v.as_bool()).unwrap_or(false);
-        let include_private = params.get("include_private").and_then(|v| v.as_bool()).unwrap_or(true);
-        let limit = params.get("limit").and_then(|v| v.as_u64()).unwrap_or(100).min(1000) as u16;
+    async fn execute(
+        &self,
+        _ctx: &dyn ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
+        let include_dms = params
+            .get("include_dms")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
+        let include_private = params
+            .get("include_private")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(true);
+        let limit = params
+            .get("limit")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(100)
+            .min(1000) as u16;
         // Scope checks happen inside read_ctx_for_listing — it picks
         // user vs bot context based on which side has the needed scopes.
 
@@ -295,7 +308,9 @@ impl Tool for SlackListChannelsTool {
             .await
             .map_err(|e| slack_err("conversations.list", e))?;
         let channels: Vec<ChannelSummary> = resp.channels.iter().map(summarize_channel).collect();
-        Ok(ToolOutput::success(serde_json::to_string(&channels).unwrap()))
+        Ok(ToolOutput::success(
+            serde_json::to_string(&channels).unwrap(),
+        ))
     }
 }
 
@@ -318,7 +333,13 @@ impl SlackHistoryTool {
     pub fn new(integration: Arc<SlackIntegration>) -> Self {
         Self {
             integration,
-            description: format!("{}{}", SLACK_HISTORY_BASE, scope_footer(&["channels:history (or groups:history / im:history / mpim:history depending on channel)"])),
+            description: format!(
+                "{}{}",
+                SLACK_HISTORY_BASE,
+                scope_footer(&[
+                    "channels:history (or groups:history / im:history / mpim:history depending on channel)"
+                ])
+            ),
         }
     }
 }
@@ -363,7 +384,11 @@ impl Tool for SlackHistoryTool {
             "required": ["channel"]
         })
     }
-    async fn execute(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
+    async fn execute(
+        &self,
+        _ctx: &dyn ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
         let channel = params
             .get("channel")
             .and_then(|v| v.as_str())
@@ -376,9 +401,19 @@ impl Tool for SlackHistoryTool {
             Some('M') => &["mpim:history"][..],
             _ => SLACK_HISTORY_SCOPES, // Default to channels:history (covers C-prefixed and unknown).
         };
-        let limit = params.get("limit").and_then(|v| v.as_u64()).unwrap_or(20).min(200) as u16;
-        let oldest = params.get("oldest").and_then(|v| v.as_str()).map(|s| SlackTs::new(s.to_string()));
-        let latest = params.get("latest").and_then(|v| v.as_str()).map(|s| SlackTs::new(s.to_string()));
+        let limit = params
+            .get("limit")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(20)
+            .min(200) as u16;
+        let oldest = params
+            .get("oldest")
+            .and_then(|v| v.as_str())
+            .map(|s| SlackTs::new(s.to_string()));
+        let latest = params
+            .get("latest")
+            .and_then(|v| v.as_str())
+            .map(|s| SlackTs::new(s.to_string()));
 
         let mut req = SlackApiConversationsHistoryRequest::new()
             .with_channel(SlackChannelId::new(channel))
@@ -405,7 +440,9 @@ impl Tool for SlackHistoryTool {
             .await
             .map_err(|e| slack_err("conversations.history", e))?;
         let messages: Vec<MessageSummary> = resp.messages.iter().map(summarize_message).collect();
-        Ok(ToolOutput::success(serde_json::to_string(&messages).unwrap()))
+        Ok(ToolOutput::success(
+            serde_json::to_string(&messages).unwrap(),
+        ))
     }
 }
 
@@ -465,7 +502,11 @@ impl Tool for SlackPostTool {
             "required": ["channel", "text"]
         })
     }
-    async fn execute(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
+    async fn execute(
+        &self,
+        _ctx: &dyn ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
         check_scopes(&self.integration, SLACK_POST_SCOPES)?;
         let channel = params
             .get("channel")
@@ -548,7 +589,11 @@ impl Tool for SlackReactTool {
             "required": ["channel", "ts", "name"]
         })
     }
-    async fn execute(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
+    async fn execute(
+        &self,
+        _ctx: &dyn ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
         check_scopes(&self.integration, SLACK_REACT_SCOPES)?;
         let channel = params
             .get("channel")
@@ -579,7 +624,9 @@ impl Tool for SlackReactTool {
             .reactions_add(&req)
             .await
             .map_err(|e| slack_err("reactions.add", e))?;
-        Ok(ToolOutput::success(json!({"ok": true, "name": name, "ts": ts}).to_string()))
+        Ok(ToolOutput::success(
+            json!({"ok": true, "name": name, "ts": ts}).to_string(),
+        ))
     }
 }
 
@@ -632,7 +679,11 @@ impl SlackUsersListTool {
     pub fn new(integration: Arc<SlackIntegration>) -> Self {
         Self {
             integration,
-            description: format!("{}{}", SLACK_USERS_LIST_BASE, scope_footer(SLACK_USERS_LIST_SCOPES)),
+            description: format!(
+                "{}{}",
+                SLACK_USERS_LIST_BASE,
+                scope_footer(SLACK_USERS_LIST_SCOPES)
+            ),
         }
     }
 }
@@ -672,11 +723,25 @@ impl Tool for SlackUsersListTool {
             }
         })
     }
-    async fn execute(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
+    async fn execute(
+        &self,
+        _ctx: &dyn ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
         check_scopes(&self.integration, SLACK_USERS_LIST_SCOPES)?;
-        let limit = params.get("limit").and_then(|v| v.as_u64()).unwrap_or(200).min(1000) as u16;
-        let include_deleted = params.get("include_deleted").and_then(|v| v.as_bool()).unwrap_or(false);
-        let include_bots = params.get("include_bots").and_then(|v| v.as_bool()).unwrap_or(false);
+        let limit = params
+            .get("limit")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(200)
+            .min(1000) as u16;
+        let include_deleted = params
+            .get("include_deleted")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
+        let include_bots = params
+            .get("include_bots")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
 
         let req = SlackApiUsersListRequest::new().with_limit(limit);
         let ctx = self.integration.context().map_err(integ_err)?;
@@ -756,7 +821,11 @@ impl Tool for SlackOpenDmTool {
             "required": ["user_ids"]
         })
     }
-    async fn execute(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
+    async fn execute(
+        &self,
+        _ctx: &dyn ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
         let user_ids: Vec<SlackUserId> = params
             .get("user_ids")
             .and_then(|v| v.as_array())
@@ -766,7 +835,9 @@ impl Tool for SlackOpenDmTool {
             .map(|s| SlackUserId::new(s.to_string()))
             .collect();
         if user_ids.is_empty() {
-            return Err(ToolError::ExecutionFailed("'user_ids' must be non-empty".into()));
+            return Err(ToolError::ExecutionFailed(
+                "'user_ids' must be non-empty".into(),
+            ));
         }
 
         // Pick the right scope based on call shape. Slack's
@@ -879,9 +950,7 @@ mod tests {
 
     #[test]
     fn summarize_user_extracts_handle_and_profile_fields() {
-        use slack_morphism::prelude::{
-            EmailAddress, SlackUser, SlackUserFlags, SlackUserProfile,
-        };
+        use slack_morphism::prelude::{EmailAddress, SlackUser, SlackUserFlags, SlackUserProfile};
         let mut profile = SlackUserProfile::new();
         profile.display_name = Some("alice.a".into());
         profile.email = Some(EmailAddress("alice@example.com".into()));

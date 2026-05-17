@@ -89,7 +89,11 @@ impl Tool for WebFetchTool {
         })
     }
 
-    async fn execute(&self, ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
+    async fn execute(
+        &self,
+        ctx: &dyn arawn_tool::ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
         let url = params
             .get("url")
             .and_then(|v| v.as_str())
@@ -244,7 +248,11 @@ async fn finish(
             sanitized.clone()
         }
         crate::prompt_injection::Verdict::Block { reasons } => {
-            tracing::warn!(url, ?reasons, "web_fetch payload blocked by prompt-injection guard");
+            tracing::warn!(
+                url,
+                ?reasons,
+                "web_fetch payload blocked by prompt-injection guard"
+            );
             return Ok(ToolOutput::error(format!(
                 "Content from {url} was blocked by the prompt-injection guard. \
                  Reasons: {}",
@@ -254,9 +262,10 @@ async fn finish(
     };
 
     if !prompt.is_empty()
-        && let (Some(llm), Some(model)) = (ctx.llm(), ctx.model()) {
-            return summarize_with_llm(llm, model, prompt, url, &safe_text).await;
-        }
+        && let (Some(llm), Some(model)) = (ctx.llm(), ctx.model())
+    {
+        return summarize_with_llm(llm, model, prompt, url, &safe_text).await;
+    }
     Ok(ToolOutput::success(safe_text))
 }
 
@@ -287,9 +296,9 @@ async fn summarize_with_llm(
         max_tokens: Some(4096),
     };
 
-    let _gate = arawn_llm::gate::acquire_local().await.map_err(|e| {
-        ToolError::ExecutionFailed(format!("llm gate refused acquire: {e:?}"))
-    })?;
+    let _gate = arawn_llm::gate::acquire_local()
+        .await
+        .map_err(|e| ToolError::ExecutionFailed(format!("llm gate refused acquire: {e:?}")))?;
     let mut stream = llm
         .stream(request)
         .await
@@ -328,8 +337,8 @@ mod tests {
     fn test_ctx_with_mock(responses: Vec<MockResponse>) -> (EngineToolContext, Arc<MockLlmClient>) {
         let mock = Arc::new(MockLlmClient::new(responses));
         let ws = Workstream::scratch("/tmp/test");
-        let ctx =
-            EngineToolContext::new(&ws, Uuid::new_v4()).with_llm(mock.clone(), "test-model".to_string());
+        let ctx = EngineToolContext::new(&ws, Uuid::new_v4())
+            .with_llm(mock.clone(), "test-model".to_string());
         (ctx, mock)
     }
 
@@ -445,7 +454,10 @@ mod tests {
         assert!(schema["properties"]["prompt"].is_object());
         let required = schema["required"].as_array().unwrap();
         assert!(required.contains(&json!("url")));
-        assert!(!required.contains(&json!("prompt")), "prompt should be optional");
+        assert!(
+            !required.contains(&json!("prompt")),
+            "prompt should be optional"
+        );
     }
 
     #[test]

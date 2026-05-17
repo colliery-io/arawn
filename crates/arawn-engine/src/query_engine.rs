@@ -24,9 +24,7 @@ const MAX_COMPACT_FAILURES: u32 = 3;
 #[derive(Debug, Clone)]
 pub enum ProgressEvent {
     /// Assistant produced text (narration) alongside tool calls.
-    AssistantText {
-        content: String,
-    },
+    AssistantText { content: String },
     /// A tool call is about to execute.
     ToolCallStart {
         id: String,
@@ -300,57 +298,59 @@ impl QueryEngine {
                         "compaction circuit breaker open — skipping"
                     );
                 } else {
-                let tool_tokens = TokenEstimator::estimate_tools(&self.registry.tool_definitions());
-                let system_tokens =
-                    TokenEstimator::estimate_system_prompt(&self.config.system_prompt);
+                    let tool_tokens =
+                        TokenEstimator::estimate_tools(&self.registry.tool_definitions());
+                    let system_tokens =
+                        TokenEstimator::estimate_system_prompt(&self.config.system_prompt);
 
-                if compactor.should_compact(
-                    session,
-                    &self.config.model_limits,
-                    tool_tokens,
-                    system_tokens,
-                ) {
-                    info!("compacting session (token threshold exceeded)");
+                    if compactor.should_compact(
+                        session,
+                        &self.config.model_limits,
+                        tool_tokens,
+                        system_tokens,
+                    ) {
+                        info!("compacting session (token threshold exceeded)");
 
-                    // PreCompact hook
-                    if let Some(ref runner) = self.hook_runner {
-                        let hook_input = HookInput::PreCompact {
-                            reason: "token_threshold".into(),
-                            message_count: session.messages().len(),
-                        };
-                        let _ = runner.run(&hook_input).await;
-                    }
-
-                    let messages_before = session.messages().len();
-                    if let Err(e) = compactor.compact(session, &self.config.model_limits).await {
-                        self.compact_failures += 1;
-                        warn!(
-                            error = %e,
-                            failures = self.compact_failures,
-                            max = MAX_COMPACT_FAILURES,
-                            "compaction failed, continuing with full history"
-                        );
-                    } else {
-                        // Success — reset circuit breaker
-                        if self.compact_failures > 0 {
-                            info!(
-                                previous_failures = self.compact_failures,
-                                "compaction succeeded, resetting circuit breaker"
-                            );
-                            self.compact_failures = 0;
-                        }
-                        // PostCompact hook
+                        // PreCompact hook
                         if let Some(ref runner) = self.hook_runner {
-                            let hook_input = HookInput::PostCompact {
-                                messages_before,
-                                messages_after: session.messages().len(),
-                                tokens_before: 0, // estimation not easily available here
-                                tokens_after: 0,
+                            let hook_input = HookInput::PreCompact {
+                                reason: "token_threshold".into(),
+                                message_count: session.messages().len(),
                             };
                             let _ = runner.run(&hook_input).await;
                         }
+
+                        let messages_before = session.messages().len();
+                        if let Err(e) = compactor.compact(session, &self.config.model_limits).await
+                        {
+                            self.compact_failures += 1;
+                            warn!(
+                                error = %e,
+                                failures = self.compact_failures,
+                                max = MAX_COMPACT_FAILURES,
+                                "compaction failed, continuing with full history"
+                            );
+                        } else {
+                            // Success — reset circuit breaker
+                            if self.compact_failures > 0 {
+                                info!(
+                                    previous_failures = self.compact_failures,
+                                    "compaction succeeded, resetting circuit breaker"
+                                );
+                                self.compact_failures = 0;
+                            }
+                            // PostCompact hook
+                            if let Some(ref runner) = self.hook_runner {
+                                let hook_input = HookInput::PostCompact {
+                                    messages_before,
+                                    messages_after: session.messages().len(),
+                                    tokens_before: 0, // estimation not easily available here
+                                    tokens_after: 0,
+                                };
+                                let _ = runner.run(&hook_input).await;
+                            }
+                        }
                     }
-                }
                 } // close circuit breaker else
             }
 
@@ -395,34 +395,41 @@ impl QueryEngine {
                 // Check tool name is registered
                 if self.registry.get(&tc.name).is_none() {
                     warn!(name = %tc.name, "LLM requested unregistered tool — rejecting");
-                    invalid_results.push((i, ToolResult {
-                        content: format!(
-                            "Tool '{}' is not available. Use one of the registered tools.",
-                            tc.name
-                        ),
-                        is_error: true,
-                    }));
+                    invalid_results.push((
+                        i,
+                        ToolResult {
+                            content: format!(
+                                "Tool '{}' is not available. Use one of the registered tools.",
+                                tc.name
+                            ),
+                            is_error: true,
+                        },
+                    ));
                     continue;
                 }
                 // Check arguments are a valid JSON object
                 if !tc.arguments.is_object() {
                     warn!(name = %tc.name, args = %tc.arguments, "tool call arguments are not a JSON object");
-                    invalid_results.push((i, ToolResult {
-                        content: format!(
-                            "Invalid arguments for tool '{}': expected a JSON object, got {}",
-                            tc.name, tc.arguments
-                        ),
-                        is_error: true,
-                    }));
+                    invalid_results.push((
+                        i,
+                        ToolResult {
+                            content: format!(
+                                "Invalid arguments for tool '{}': expected a JSON object, got {}",
+                                tc.name, tc.arguments
+                            ),
+                            is_error: true,
+                        },
+                    ));
                     continue;
                 }
                 // Check for repeated failing calls with identical arguments.
                 // We use a compact key of tool name + sorted args to detect duplicates.
                 let call_key = format!("{}:{}", tc.name, tc.arguments);
                 if let Some(&count) = self.failed_call_counts.get(&call_key)
-                    && count >= 2 {
-                        warn!(name = %tc.name, failures = count, "blocking repeated failing tool call");
-                        invalid_results.push((i, ToolResult {
+                    && count >= 2
+                {
+                    warn!(name = %tc.name, failures = count, "blocking repeated failing tool call");
+                    invalid_results.push((i, ToolResult {
                             content: format!(
                                 "This exact call to '{}' has already failed {} times with the same arguments. \
                                  Try a different approach, different arguments, or tell the user what went wrong.",
@@ -430,8 +437,8 @@ impl QueryEngine {
                             ),
                             is_error: true,
                         }));
-                        continue;
-                    }
+                    continue;
+                }
                 valid_tool_calls.push(i);
             }
 
@@ -736,9 +743,9 @@ impl QueryEngine {
         // T-0278 will switch the agent loop to RemotePermit when the
         // routing policy picks Remote; until then everything goes
         // through the 1-slot local gate for laptop-RAM safety.
-        let _gate = arawn_llm::gate::acquire_local().await.map_err(|e| {
-            EngineError::Other(anyhow::anyhow!("llm gate refused acquire: {e:?}"))
-        })?;
+        let _gate = arawn_llm::gate::acquire_local()
+            .await
+            .map_err(|e| EngineError::Other(anyhow::anyhow!("llm gate refused acquire: {e:?}")))?;
         let mut stream = self.llm.stream(request).await?;
         let mut response = AssembledResponse::default();
         let mut current_tool_id = String::new();
@@ -808,27 +815,25 @@ impl QueryEngine {
 
         // Plan mode enforcement — check before permission rules
         if let Some(ref plan_state) = self.plan_state
-            && plan_state.is_active() {
-                // Allow plan mode meta-tools and side-effect-free tools
-                let tool_is_allowed = name == "enter_plan_mode"
-                    || name == "exit_plan_mode"
-                    || self
-                        .registry
-                        .get(name)
-                        .is_some_and(|t| t.is_read_only());
+            && plan_state.is_active()
+        {
+            // Allow plan mode meta-tools and side-effect-free tools
+            let tool_is_allowed = name == "enter_plan_mode"
+                || name == "exit_plan_mode"
+                || self.registry.get(name).is_some_and(|t| t.is_read_only());
 
-                if !tool_is_allowed {
-                    warn!(name, "tool blocked by plan mode");
-                    return ToolResult {
-                        content: format!(
-                            "Plan mode is active — only observation tools are allowed. \
+            if !tool_is_allowed {
+                warn!(name, "tool blocked by plan mode");
+                return ToolResult {
+                    content: format!(
+                        "Plan mode is active — only observation tools are allowed. \
                              Tool '{name}' has side effects and cannot be used until the plan \
                              is approved. Call ExitPlanMode to present your plan for review."
-                        ),
-                        is_error: true,
-                    };
-                }
+                    ),
+                    is_error: true,
+                };
             }
+        }
 
         // Permission check — if a checker is configured, verify the tool call is allowed.
         // The permission category comes from the tool itself via the Tool trait
@@ -840,7 +845,9 @@ impl QueryEngine {
                 .get(name)
                 .map(|t| t.permission_category())
                 .unwrap_or(arawn_tool::PermissionCategory::Other);
-            let (decision, reason) = checker.check_explained(name, &input_summary, category).await;
+            let (decision, reason) = checker
+                .check_explained(name, &input_summary, category)
+                .await;
             if decision == PermissionDecision::Denied {
                 let reason_str = reason.display();
                 warn!(name, reason = %reason_str, "tool blocked by permission system");
@@ -899,8 +906,7 @@ impl QueryEngine {
                 };
             }
         };
-        let (budget, source) =
-            tool_timeout::resolve(call_override, self.config.tool_timeout_secs);
+        let (budget, source) = tool_timeout::resolve(call_override, self.config.tool_timeout_secs);
 
         let exec = tool.execute(ctx, tool_args);
         let result = match tokio::time::timeout(budget, exec).await {
@@ -910,10 +916,14 @@ impl QueryEngine {
                     "override" => format!("override of {}s", budget.as_secs()),
                     _ => format!("default of {}s", budget.as_secs()),
                 };
-                let msg = format!(
-                    "Tool '{name}' exceeded its {detail} budget; the call was cancelled."
+                let msg =
+                    format!("Tool '{name}' exceeded its {detail} budget; the call was cancelled.");
+                warn!(
+                    name,
+                    budget_secs = budget.as_secs(),
+                    source,
+                    "tool timed out"
                 );
-                warn!(name, budget_secs = budget.as_secs(), source, "tool timed out");
                 if let Some(ref runner) = self.hook_runner {
                     let hook_input = HookInput::PostToolUseFailure {
                         tool_name: name.to_string(),
@@ -1355,7 +1365,9 @@ mod tests {
     #[tokio::test]
     async fn tool_completes_when_default_budget_is_large() {
         let (_ws, mut session, ctx) = setup();
-        session.add_message(Message::User { content: "do it".into() });
+        session.add_message(Message::User {
+            content: "do it".into(),
+        });
 
         let llm = Arc::new(MockLlm::new(vec![
             MockLlm::tool_call("call_1", "slow", "{}"),
@@ -1377,7 +1389,9 @@ mod tests {
     #[tokio::test]
     async fn slow_tool_times_out_under_short_default() {
         let (_ws, mut session, ctx) = setup();
-        session.add_message(Message::User { content: "do it".into() });
+        session.add_message(Message::User {
+            content: "do it".into(),
+        });
 
         let llm = Arc::new(MockLlm::new(vec![
             MockLlm::tool_call("call_1", "slow", "{}"),
@@ -1412,7 +1426,9 @@ mod tests {
     #[tokio::test]
     async fn agent_override_fires_before_default_would() {
         let (_ws, mut session, ctx) = setup();
-        session.add_message(Message::User { content: "be impatient".into() });
+        session.add_message(Message::User {
+            content: "be impatient".into(),
+        });
 
         let llm = Arc::new(MockLlm::new(vec![
             MockLlm::tool_call("call_1", "slow", r#"{"timeout_secs":1}"#),
@@ -1451,7 +1467,9 @@ mod tests {
     #[tokio::test]
     async fn invalid_override_surfaces_as_tool_error() {
         let (_ws, mut session, ctx) = setup();
-        session.add_message(Message::User { content: "bad arg".into() });
+        session.add_message(Message::User {
+            content: "bad arg".into(),
+        });
 
         let llm = Arc::new(MockLlm::new(vec![
             MockLlm::tool_call("call_1", "slow", r#"{"timeout_secs":0}"#),

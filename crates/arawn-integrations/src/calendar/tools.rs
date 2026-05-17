@@ -115,7 +115,11 @@ impl Tool for CalendarUpcomingTool {
             }
         })
     }
-    async fn execute(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
+    async fn execute(
+        &self,
+        _ctx: &dyn ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
         let lookahead = params
             .get("lookahead_hours")
             .and_then(|v| v.as_u64())
@@ -148,7 +152,9 @@ impl Tool for CalendarUpcomingTool {
             .iter()
             .map(summary_from_event)
             .collect();
-        Ok(ToolOutput::success(serde_json::to_string(&summaries).unwrap()))
+        Ok(ToolOutput::success(
+            serde_json::to_string(&summaries).unwrap(),
+        ))
     }
 }
 
@@ -203,7 +209,11 @@ impl Tool for CalendarCreateEventTool {
             "required": ["title", "start", "end"]
         })
     }
-    async fn execute(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
+    async fn execute(
+        &self,
+        _ctx: &dyn ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
         let title = params
             .get("title")
             .and_then(|v| v.as_str())
@@ -219,8 +229,14 @@ impl Tool for CalendarCreateEventTool {
             .ok_or_else(|| ToolError::ExecutionFailed("missing 'end'".into()))?;
         let start_dt = parse_rfc3339(start_str, "start")?;
         let end_dt = parse_rfc3339(end_str, "end")?;
-        let description = params.get("description").and_then(|v| v.as_str()).map(String::from);
-        let location = params.get("location").and_then(|v| v.as_str()).map(String::from);
+        let description = params
+            .get("description")
+            .and_then(|v| v.as_str())
+            .map(String::from);
+        let location = params
+            .get("location")
+            .and_then(|v| v.as_str())
+            .map(String::from);
         let calendar_id = params
             .get("calendar_id")
             .and_then(|v| v.as_str())
@@ -320,7 +336,11 @@ impl Tool for CalendarFindConflictsTool {
             "required": ["start", "end"]
         })
     }
-    async fn execute(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
+    async fn execute(
+        &self,
+        _ctx: &dyn ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
         let start_str = params
             .get("start")
             .and_then(|v| v.as_str())
@@ -415,16 +435,28 @@ mod tests {
             id: Some("evt-1".into()),
             summary: Some("standup".into()),
             attendees: Some(vec![
-                EventAttendee { email: Some("a@b.com".into()), ..Default::default() },
-                EventAttendee { email: Some("c@d.com".into()), ..Default::default() },
-                EventAttendee { email: None, ..Default::default() }, // skipped
+                EventAttendee {
+                    email: Some("a@b.com".into()),
+                    ..Default::default()
+                },
+                EventAttendee {
+                    email: Some("c@d.com".into()),
+                    ..Default::default()
+                },
+                EventAttendee {
+                    email: None,
+                    ..Default::default()
+                }, // skipped
             ]),
             ..Default::default()
         };
         let s = summary_from_event(&e);
         assert_eq!(s.id.as_deref(), Some("evt-1"));
         assert_eq!(s.summary.as_deref(), Some("standup"));
-        assert_eq!(s.attendees, vec!["a@b.com".to_string(), "c@d.com".to_string()]);
+        assert_eq!(
+            s.attendees,
+            vec!["a@b.com".to_string(), "c@d.com".to_string()]
+        );
     }
 
     #[test]

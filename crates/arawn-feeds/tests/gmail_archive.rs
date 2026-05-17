@@ -8,12 +8,13 @@ use std::sync::{Arc, Mutex};
 use async_trait::async_trait;
 use serde_json::{Value, json};
 
-use arawn_feeds::{
-    AtlassianFeedClient, CalendarFeedClient, DataLayout, DriveFeedClient, FeedClients, FeedError, FeedMeta,
-    FeedTemplate, GmailFeedClient, MetaStore, SlackFeedClient, TemplateCtx, TemplateParams,
-};
 use arawn_feeds::templates::gmail::{
     InboxArchiveTemplate, LabelArchiveTemplate, SenderFilterTemplate,
+};
+use arawn_feeds::{
+    AtlassianFeedClient, CalendarFeedClient, DataLayout, DriveFeedClient, FeedClients, FeedError,
+    FeedMeta, FeedTemplate, GmailFeedClient, MetaStore, SlackFeedClient, TemplateCtx,
+    TemplateParams,
 };
 
 /// Minimal Gmail message JSON for tests. Only the fields the template
@@ -76,11 +77,7 @@ impl GmailFeedClient for MockGmailClient {
             .unwrap()
             .push((query.into(), max_results));
         let mut q = self.pages.lock().unwrap();
-        Ok(if q.is_empty() {
-            vec![]
-        } else {
-            q[0].0.clone()
-        })
+        Ok(if q.is_empty() { vec![] } else { q[0].0.clone() })
     }
 
     async fn get_message(&self, id: &str) -> Result<Value, FeedError> {
@@ -163,9 +160,7 @@ fn read_msg(feed_dir: &PathBuf, day: &str, id: &str) -> Option<Value> {
 async fn inbox_archive_writes_per_message_partitioned_by_internal_date() {
     let tmp = tempfile::tempdir().unwrap();
     let layout = DataLayout::new(tmp.path());
-    let feed_dir = layout
-        .ensure_feed_dir("gmail/inbox-archive", "me")
-        .unwrap();
+    let feed_dir = layout.ensure_feed_dir("gmail/inbox-archive", "me").unwrap();
 
     let mock = Arc::new(MockGmailClient::default());
     mock.queue_messages(vec![
@@ -174,7 +169,9 @@ async fn inbox_archive_writes_per_message_partitioned_by_internal_date() {
         message("m3", ymd_ms(2026, 5, 7), "Older but same day"),
     ]);
 
-    let ctx = TemplateCtx::new(Arc::new(MockClients { gmail: mock.clone() }));
+    let ctx = TemplateCtx::new(Arc::new(MockClients {
+        gmail: mock.clone(),
+    }));
     let outcome = run_once(
         &InboxArchiveTemplate,
         &ctx,
@@ -206,13 +203,13 @@ async fn inbox_archive_writes_per_message_partitioned_by_internal_date() {
 async fn second_run_skips_already_archived_ids() {
     let tmp = tempfile::tempdir().unwrap();
     let layout = DataLayout::new(tmp.path());
-    let feed_dir = layout
-        .ensure_feed_dir("gmail/inbox-archive", "me")
-        .unwrap();
+    let feed_dir = layout.ensure_feed_dir("gmail/inbox-archive", "me").unwrap();
 
     let mock = Arc::new(MockGmailClient::default());
     mock.queue_messages(vec![message("m1", ymd_ms(2026, 5, 8), "First")]);
-    let ctx = TemplateCtx::new(Arc::new(MockClients { gmail: mock.clone() }));
+    let ctx = TemplateCtx::new(Arc::new(MockClients {
+        gmail: mock.clone(),
+    }));
 
     run_once(
         &InboxArchiveTemplate,
@@ -253,7 +250,9 @@ async fn sender_filter_query_uses_from_operator() {
 
     let mock = Arc::new(MockGmailClient::default());
     mock.queue_messages(vec![message("a1", ymd_ms(2026, 5, 8), "PagerDuty")]);
-    let ctx = TemplateCtx::new(Arc::new(MockClients { gmail: mock.clone() }));
+    let ctx = TemplateCtx::new(Arc::new(MockClients {
+        gmail: mock.clone(),
+    }));
 
     let params = TemplateParams(json!({
         "sender_pattern": "alerts@pagerduty.com",
@@ -263,10 +262,7 @@ async fn sender_filter_query_uses_from_operator() {
 
     let calls = mock.list_calls();
     assert_eq!(calls.len(), 1);
-    assert_eq!(
-        calls[0].0,
-        "from:\"alerts@pagerduty.com\" newer_than:3d"
-    );
+    assert_eq!(calls[0].0, "from:\"alerts@pagerduty.com\" newer_than:3d");
 }
 
 #[tokio::test]
@@ -279,17 +275,16 @@ async fn label_archive_query_uses_label_operator() {
 
     let mock = Arc::new(MockGmailClient::default());
     mock.queue_messages(vec![]);
-    let ctx = TemplateCtx::new(Arc::new(MockClients { gmail: mock.clone() }));
+    let ctx = TemplateCtx::new(Arc::new(MockClients {
+        gmail: mock.clone(),
+    }));
 
     let params = TemplateParams(json!({ "label": "Projects/Arawn" }));
     let outcome = run_once(&LabelArchiveTemplate, &ctx, &params, &feed_dir).await;
     assert_eq!(outcome.status, "no-new-items");
 
     let calls = mock.list_calls();
-    assert_eq!(
-        calls[0].0,
-        "label:\"Projects/Arawn\" newer_than:30d"
-    );
+    assert_eq!(calls[0].0, "label:\"Projects/Arawn\" newer_than:30d");
 }
 
 #[tokio::test]
@@ -315,9 +310,7 @@ async fn returns_auth_when_gmail_not_connected() {
 
     let tmp = tempfile::tempdir().unwrap();
     let layout = DataLayout::new(tmp.path());
-    let feed_dir = layout
-        .ensure_feed_dir("gmail/inbox-archive", "me")
-        .unwrap();
+    let feed_dir = layout.ensure_feed_dir("gmail/inbox-archive", "me").unwrap();
 
     let ctx = TemplateCtx::new(Arc::new(NoGmail));
     let err = InboxArchiveTemplate
@@ -335,9 +328,7 @@ async fn malformed_message_skipped_without_aborting_batch() {
     // the whole run.
     let tmp = tempfile::tempdir().unwrap();
     let layout = DataLayout::new(tmp.path());
-    let feed_dir = layout
-        .ensure_feed_dir("gmail/inbox-archive", "me")
-        .unwrap();
+    let feed_dir = layout.ensure_feed_dir("gmail/inbox-archive", "me").unwrap();
 
     let mock = Arc::new(MockGmailClient::default());
     mock.queue_messages(vec![
@@ -366,6 +357,9 @@ async fn malformed_message_skipped_without_aborting_batch() {
         .run(&ctx, &TemplateParams::default(), &feed_dir, &Value::Null)
         .await
         .expect("malformed item should skip, not fail");
-    assert_eq!(outcome.summary.items_written, 2, "good messages still written");
+    assert_eq!(
+        outcome.summary.items_written, 2,
+        "good messages still written"
+    );
     assert_eq!(outcome.status, "ok");
 }

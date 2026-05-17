@@ -43,10 +43,7 @@ impl Detector for PriorityCompletionDetector {
         0
     }
 
-    async fn detect(
-        &self,
-        ctx: &DetectorCtx<'_>,
-    ) -> Result<Vec<DetectedPattern>, CeremonyError> {
+    async fn detect(&self, ctx: &DetectorCtx<'_>) -> Result<Vec<DetectedPattern>, CeremonyError> {
         let conn = ctx
             .conn
             .0
@@ -64,7 +61,12 @@ impl Detector for PriorityCompletionDetector {
                  JOIN ceremony_tablets t ON p.tablet_id = t.id \
                  WHERE t.kind = 'weekly' AND t.period_key = ?1",
                 params![&ctx.current_iso_week],
-                |row| Ok((row.get::<_, Option<i64>>(0)?.unwrap_or(0), row.get::<_, Option<i64>>(1)?.unwrap_or(0))),
+                |row| {
+                    Ok((
+                        row.get::<_, Option<i64>>(0)?.unwrap_or(0),
+                        row.get::<_, Option<i64>>(1)?.unwrap_or(0),
+                    ))
+                },
             )
             .ok();
         let (confirmed, done) = row.unwrap_or((0, 0));
@@ -106,16 +108,10 @@ impl Detector for RolloverHeatDetector {
         0
     }
 
-    async fn detect(
-        &self,
-        ctx: &DetectorCtx<'_>,
-    ) -> Result<Vec<DetectedPattern>, CeremonyError> {
-        let (monday, sunday) = monday_sunday_for_iso_week(&ctx.current_iso_week)
-            .ok_or_else(|| {
-                CeremonyError::Other(format!(
-                    "invalid iso_week '{}'",
-                    ctx.current_iso_week
-                ))
+    async fn detect(&self, ctx: &DetectorCtx<'_>) -> Result<Vec<DetectedPattern>, CeremonyError> {
+        let (monday, sunday) =
+            monday_sunday_for_iso_week(&ctx.current_iso_week).ok_or_else(|| {
+                CeremonyError::Other(format!("invalid iso_week '{}'", ctx.current_iso_week))
             })?;
         let conn = ctx
             .conn
@@ -188,10 +184,7 @@ impl Detector for WorkstreamNeglectDetector {
         3
     }
 
-    async fn detect(
-        &self,
-        ctx: &DetectorCtx<'_>,
-    ) -> Result<Vec<DetectedPattern>, CeremonyError> {
+    async fn detect(&self, ctx: &DetectorCtx<'_>) -> Result<Vec<DetectedPattern>, CeremonyError> {
         let conn = ctx
             .conn
             .0
@@ -212,7 +205,7 @@ impl Detector for WorkstreamNeglectDetector {
             .map_err(|e| CeremonyError::Storage(format!("neglect prior prepare: {e}")))?;
         let active_rows = stmt
             .query_map(params![&ctx.current_iso_week], |row| {
-                Ok(row.get::<_, String>(0)?)
+                row.get::<_, String>(0)
             })
             .map_err(|e| CeremonyError::Storage(format!("neglect prior query: {e}")))?;
         let mut active_prior: Vec<String> = Vec::new();
@@ -223,7 +216,8 @@ impl Detector for WorkstreamNeglectDetector {
 
         // for each active_prior workstream, check if any current-week
         // row exists with non-zero value.
-        let mut current_active: std::collections::HashSet<String> = std::collections::HashSet::new();
+        let mut current_active: std::collections::HashSet<String> =
+            std::collections::HashSet::new();
         {
             let mut stmt2 = conn
                 .prepare(
@@ -233,7 +227,7 @@ impl Detector for WorkstreamNeglectDetector {
                 .map_err(|e| CeremonyError::Storage(format!("neglect current prepare: {e}")))?;
             let cur_rows = stmt2
                 .query_map(params![&ctx.current_iso_week], |row| {
-                    Ok(row.get::<_, String>(0)?)
+                    row.get::<_, String>(0)
                 })
                 .map_err(|e| CeremonyError::Storage(format!("neglect current query: {e}")))?;
             for r in cur_rows {
@@ -305,13 +299,7 @@ mod tests {
         .unwrap();
     }
 
-    fn insert_priority(
-        conn: &ConnHandle,
-        id: &str,
-        tablet_id: &str,
-        confirmed: bool,
-        done: bool,
-    ) {
+    fn insert_priority(conn: &ConnHandle, id: &str, tablet_id: &str, confirmed: bool, done: bool) {
         let c = conn.0.lock().unwrap();
         c.execute(
             "INSERT INTO ceremony_priorities (id, tablet_id, body, rationale, citation_id, \
@@ -321,8 +309,16 @@ mod tests {
                 tablet_id,
                 "x",
                 "y",
-                if confirmed { Some("2026-05-11T08:00:00Z") } else { None },
-                if done { Some("2026-05-15T17:00:00Z") } else { None },
+                if confirmed {
+                    Some("2026-05-11T08:00:00Z")
+                } else {
+                    None
+                },
+                if done {
+                    Some("2026-05-15T17:00:00Z")
+                } else {
+                    None
+                },
             ],
         )
         .unwrap();
@@ -333,7 +329,13 @@ mod tests {
     #[tokio::test]
     async fn priority_completion_fires_below_threshold() {
         let (_tmp, conn) = open_test_db();
-        insert_tablet(&conn, "weekly-W20", "weekly", "2026-W20", "2026-05-11T07:00:00Z");
+        insert_tablet(
+            &conn,
+            "weekly-W20",
+            "weekly",
+            "2026-W20",
+            "2026-05-11T07:00:00Z",
+        );
         insert_priority(&conn, "p1", "weekly-W20", true, false);
         insert_priority(&conn, "p2", "weekly-W20", true, false);
         insert_priority(&conn, "p3", "weekly-W20", true, true);
@@ -349,7 +351,13 @@ mod tests {
     #[tokio::test]
     async fn priority_completion_quiet_above_threshold() {
         let (_tmp, conn) = open_test_db();
-        insert_tablet(&conn, "weekly-W20", "weekly", "2026-W20", "2026-05-11T07:00:00Z");
+        insert_tablet(
+            &conn,
+            "weekly-W20",
+            "weekly",
+            "2026-W20",
+            "2026-05-11T07:00:00Z",
+        );
         insert_priority(&conn, "p1", "weekly-W20", true, true);
         insert_priority(&conn, "p2", "weekly-W20", true, true);
         insert_priority(&conn, "p3", "weekly-W20", true, false);
@@ -385,7 +393,11 @@ mod tests {
                 "x",
                 last_seen_tablet, // origin doesn't matter for this test
                 created_at,
-                if done { Some("2026-05-15T17:00:00Z") } else { None },
+                if done {
+                    Some("2026-05-15T17:00:00Z")
+                } else {
+                    None
+                },
                 last_seen_tablet,
             ],
         )
@@ -396,7 +408,13 @@ mod tests {
     async fn rollover_heat_fires_at_threshold() {
         let (_tmp, conn) = open_test_db();
         // A daily tablet inside the week.
-        insert_tablet(&conn, "daily-d1", "daily", "2026-05-13", "2026-05-13T07:00:00Z");
+        insert_tablet(
+            &conn,
+            "daily-d1",
+            "daily",
+            "2026-05-13",
+            "2026-05-13T07:00:00Z",
+        );
         // Three todos created before Monday, all un-done, last_seen
         // this week's daily.
         insert_rolling_todo(&conn, "t1", "2026-05-05T00:00:00Z", "daily-d1", false);
@@ -411,7 +429,13 @@ mod tests {
     #[tokio::test]
     async fn rollover_heat_quiet_below_threshold() {
         let (_tmp, conn) = open_test_db();
-        insert_tablet(&conn, "daily-d1", "daily", "2026-05-13", "2026-05-13T07:00:00Z");
+        insert_tablet(
+            &conn,
+            "daily-d1",
+            "daily",
+            "2026-05-13",
+            "2026-05-13T07:00:00Z",
+        );
         insert_rolling_todo(&conn, "t1", "2026-05-05T00:00:00Z", "daily-d1", false);
         insert_rolling_todo(&conn, "t2", "2026-05-05T00:00:00Z", "daily-d1", false);
         let dctx = DetectorCtx::new("2026-W20".into(), &conn);
@@ -422,7 +446,13 @@ mod tests {
     #[tokio::test]
     async fn rollover_heat_ignores_done_and_in_week_creations() {
         let (_tmp, conn) = open_test_db();
-        insert_tablet(&conn, "daily-d1", "daily", "2026-05-13", "2026-05-13T07:00:00Z");
+        insert_tablet(
+            &conn,
+            "daily-d1",
+            "daily",
+            "2026-05-13",
+            "2026-05-13T07:00:00Z",
+        );
         // Created inside the week → not a rollover.
         insert_rolling_todo(&conn, "in-week", "2026-05-13T08:00:00Z", "daily-d1", false);
         // Done → exclude.
@@ -469,7 +499,10 @@ mod tests {
         assert_eq!(rows.len(), 1);
         assert_eq!(rows[0].pattern_key, "workstream_neglect");
         let payload = rows[0].payload.clone();
-        assert_eq!(payload.get("workstream").unwrap().as_str().unwrap(), "proj-b");
+        assert_eq!(
+            payload.get("workstream").unwrap().as_str().unwrap(),
+            "proj-b"
+        );
     }
 
     #[tokio::test]

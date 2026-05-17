@@ -11,12 +11,12 @@ use std::sync::{Arc, Mutex};
 use async_trait::async_trait;
 use serde_json::{Value, json};
 
-use arawn_feeds::{
-    AtlassianFeedClient, CalendarFeedClient, DataLayout, DriveFeedClient, FeedClients, FeedError, FeedMeta,
-    FeedTemplate, GmailFeedClient, MetaStore, SlackAuthInfo, SlackFeedClient, SlackHistoryPage,
-    TemplateCtx, TemplateParams,
-};
 use arawn_feeds::templates::slack::DmArchiveTemplate;
+use arawn_feeds::{
+    AtlassianFeedClient, CalendarFeedClient, DataLayout, DriveFeedClient, FeedClients, FeedError,
+    FeedMeta, FeedTemplate, GmailFeedClient, MetaStore, SlackAuthInfo, SlackFeedClient,
+    SlackHistoryPage, TemplateCtx, TemplateParams,
+};
 
 #[derive(Default)]
 struct MockSlackClient {
@@ -183,9 +183,7 @@ async fn run_once(
 async fn dm_archive_opens_dm_then_writes_messages() {
     let tmp = tempfile::tempdir().unwrap();
     let layout = DataLayout::new(tmp.path());
-    let feed_dir = layout
-        .ensure_feed_dir("slack/dm-archive", "alice")
-        .unwrap();
+    let feed_dir = layout.ensure_feed_dir("slack/dm-archive", "alice").unwrap();
 
     let mock = Arc::new(MockSlackClient::new());
     use chrono::TimeZone;
@@ -201,7 +199,9 @@ async fn dm_archive_opens_dm_then_writes_messages() {
         next_cursor_ts: Some(format!("{}.0002", day0 + 60)),
     });
 
-    let clients = Arc::new(MockClients { slack: mock.clone() });
+    let clients = Arc::new(MockClients {
+        slack: mock.clone(),
+    });
     let ctx = TemplateCtx::new(clients);
     let template = DmArchiveTemplate;
     let params = TemplateParams::new(json!({ "user": "@alice" }));
@@ -251,9 +251,7 @@ async fn dm_archive_returns_auth_when_slack_not_connected() {
 
     let tmp = tempfile::tempdir().unwrap();
     let layout = DataLayout::new(tmp.path());
-    let feed_dir = layout
-        .ensure_feed_dir("slack/dm-archive", "alice")
-        .unwrap();
+    let feed_dir = layout.ensure_feed_dir("slack/dm-archive", "alice").unwrap();
 
     let ctx = TemplateCtx::new(Arc::new(NoSlack));
     let template = DmArchiveTemplate;

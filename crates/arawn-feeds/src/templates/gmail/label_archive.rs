@@ -77,9 +77,10 @@ impl FeedTemplate for LabelArchiveTemplate {
         feed_dir: &Path,
         cursor: &Value,
     ) -> Result<RunOutcome, FeedError> {
-        let gmail = ctx.clients().gmail().ok_or_else(|| {
-            FeedError::Auth("gmail integration not connected".into())
-        })?;
+        let gmail = ctx
+            .clients()
+            .gmail()
+            .ok_or_else(|| FeedError::Auth("gmail integration not connected".into()))?;
         let label = params
             .0
             .get("label")
@@ -106,9 +107,11 @@ mod tests {
 
     #[test]
     fn validate_requires_label() {
-        assert!(LabelArchiveTemplate
-            .validate(&TemplateParams::default())
-            .is_err());
+        assert!(
+            LabelArchiveTemplate
+                .validate(&TemplateParams::default())
+                .is_err()
+        );
         let p = TemplateParams(json!({ "label": "" }));
         assert!(LabelArchiveTemplate.validate(&p).is_err());
         let p = TemplateParams(json!({ "label": "Projects/Arawn" }));

@@ -13,26 +13,23 @@ mod marketplace;
 mod runtime;
 mod settings;
 
-pub use builtin::{
-    BuiltinComponents, BuiltinPluginDef, builtin_plugins, register_builtin_plugins,
+pub use builtin::{BuiltinComponents, BuiltinPluginDef, builtin_plugins, register_builtin_plugins};
+pub use components::{
+    PluginComponents, load_plugin_components, merge_plugin_hooks, register_plugin_skills,
 };
 pub use installer::{
     InstallRecord, InstallScope, InstalledPluginsRegistry, install_plugin, uninstall_plugin,
 };
-pub use components::{
-    PluginComponents, load_plugin_components, merge_plugin_hooks, register_plugin_skills,
-};
 pub use loader::{
-    LoadedPlugin, PluginIdentifier, PluginRegistry, PluginSource, ResolvedPaths,
-    discover_plugins, load_plugin_dir,
-};
-pub use marketplace::{
-    KnownMarketplaces, MarketplaceEntry, MarketplaceManifest, MarketplacePlugin,
-    MarketplaceSource, PluginSourceRef, add_marketplace, fetch_marketplace, list_marketplaces,
-    resolve_plugin,
+    LoadedPlugin, PluginIdentifier, PluginRegistry, PluginSource, ResolvedPaths, discover_plugins,
+    load_plugin_dir,
 };
 pub use manifest::{
     HooksField, McpServerDef, PluginAuthor, PluginError, PluginManifest, UserConfigField,
+};
+pub use marketplace::{
+    KnownMarketplaces, MarketplaceEntry, MarketplaceManifest, MarketplacePlugin, MarketplaceSource,
+    PluginSourceRef, add_marketplace, fetch_marketplace, list_marketplaces, resolve_plugin,
 };
 pub use runtime::{PluginLoadResult, PluginMcpServer, PluginRuntime};
 pub use settings::{

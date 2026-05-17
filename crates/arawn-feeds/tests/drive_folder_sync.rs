@@ -8,11 +8,12 @@ use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde_json::json;
 
-use arawn_feeds::{
-    AtlassianFeedClient, CalendarFeedClient, DataLayout, DriveFeedClient, DriveFile, FeedClients, FeedError, FeedMeta,
-    FeedTemplate, GmailFeedClient, MetaStore, SlackFeedClient, TemplateCtx, TemplateParams,
-};
 use arawn_feeds::templates::drive::FolderSyncTemplate;
+use arawn_feeds::{
+    AtlassianFeedClient, CalendarFeedClient, DataLayout, DriveFeedClient, DriveFile, FeedClients,
+    FeedError, FeedMeta, FeedTemplate, GmailFeedClient, MetaStore, SlackFeedClient, TemplateCtx,
+    TemplateParams,
+};
 
 /// In-memory Drive emulator. Tests build a tree (folder_id ->
 /// children, file_id -> bytes/export-bytes) and the mock serves it.
@@ -201,12 +202,17 @@ async fn mirrors_native_files_and_exports_google_natives() {
             google_doc("doc1", "plan", "2026-05-08T10:00:00Z"),
         ],
     );
-    mock.add_folder("sub1", vec![raw_file("nested", "deep.txt", "text/plain", "md2")]);
+    mock.add_folder(
+        "sub1",
+        vec![raw_file("nested", "deep.txt", "text/plain", "md2")],
+    );
     mock.add_raw("readme1", b"# Readme body");
     mock.add_raw("nested", b"deep content");
     mock.add_export("doc1", "text/markdown", b"# Plan body");
 
-    let ctx = TemplateCtx::new(Arc::new(MockClients { drive: mock.clone() }));
+    let ctx = TemplateCtx::new(Arc::new(MockClients {
+        drive: mock.clone(),
+    }));
     let params = TemplateParams(json!({ "folder": "folder123" }));
     let outcome = run_once(&FolderSyncTemplate, &ctx, &params, &feed_dir).await;
     assert_eq!(outcome.summary.items_written, 3);
@@ -247,7 +253,9 @@ async fn skips_unchanged_via_change_token_cursor() {
         vec![raw_file("a", "a.txt", "text/plain", "checksum-v1")],
     );
     mock.add_raw("a", b"hello");
-    let ctx = TemplateCtx::new(Arc::new(MockClients { drive: mock.clone() }));
+    let ctx = TemplateCtx::new(Arc::new(MockClients {
+        drive: mock.clone(),
+    }));
     let params = TemplateParams(json!({ "folder": "f" }));
 
     run_once(&FolderSyncTemplate, &ctx, &params, &feed_dir).await;
@@ -278,7 +286,9 @@ async fn deletes_local_when_remote_deleted() {
     );
     mock.add_raw("a", b"a");
     mock.add_raw("b", b"b");
-    let ctx = TemplateCtx::new(Arc::new(MockClients { drive: mock.clone() }));
+    let ctx = TemplateCtx::new(Arc::new(MockClients {
+        drive: mock.clone(),
+    }));
     let params = TemplateParams(json!({ "folder": "f" }));
     run_once(&FolderSyncTemplate, &ctx, &params, &feed_dir).await;
     assert!(feed_dir.join("a.txt").exists());
@@ -310,23 +320,19 @@ async fn moved_file_cleans_up_old_path() {
     );
     mock.add_folder("sub1", vec![]);
     mock.add_raw("a", b"a");
-    let ctx = TemplateCtx::new(Arc::new(MockClients { drive: mock.clone() }));
+    let ctx = TemplateCtx::new(Arc::new(MockClients {
+        drive: mock.clone(),
+    }));
     let params = TemplateParams(json!({ "folder": "f" }));
     run_once(&FolderSyncTemplate, &ctx, &params, &feed_dir).await;
     assert!(feed_dir.join("a.txt").exists());
 
     // Move `a` into `sub/`.
     mock.add_folder("f", vec![folder("sub1", "sub")]);
-    mock.add_folder(
-        "sub1",
-        vec![raw_file("a", "a.txt", "text/plain", "v1")],
-    );
+    mock.add_folder("sub1", vec![raw_file("a", "a.txt", "text/plain", "v1")]);
 
     run_once(&FolderSyncTemplate, &ctx, &params, &feed_dir).await;
-    assert!(
-        !feed_dir.join("a.txt").exists(),
-        "old path is cleaned up"
-    );
+    assert!(!feed_dir.join("a.txt").exists(), "old path is cleaned up");
     assert!(feed_dir.join("sub").join("a.txt").exists());
 }
 
@@ -352,7 +358,9 @@ async fn unsupported_google_native_is_skipped() {
             is_folder: false,
         }],
     );
-    let ctx = TemplateCtx::new(Arc::new(MockClients { drive: mock.clone() }));
+    let ctx = TemplateCtx::new(Arc::new(MockClients {
+        drive: mock.clone(),
+    }));
     let params = TemplateParams(json!({ "folder": "f" }));
     let outcome = run_once(&FolderSyncTemplate, &ctx, &params, &feed_dir).await;
     assert_eq!(
@@ -399,9 +407,11 @@ async fn returns_auth_when_drive_not_connected() {
 
 #[tokio::test]
 async fn validate_rejects_missing_folder() {
-    assert!(FolderSyncTemplate
-        .validate(&TemplateParams::default())
-        .is_err());
+    assert!(
+        FolderSyncTemplate
+            .validate(&TemplateParams::default())
+            .is_err()
+    );
     let p = TemplateParams(json!({ "folder": "" }));
     assert!(FolderSyncTemplate.validate(&p).is_err());
     let p = TemplateParams(json!({ "folder": "abc" }));
@@ -423,7 +433,7 @@ async fn skips_file_with_provider_error_and_continues_batch() {
         "folder123",
         vec![
             raw_file("good1", "a.txt", "text/plain", "md1"),
-            raw_file("bad",   "b.txt", "text/plain", "md2"),
+            raw_file("bad", "b.txt", "text/plain", "md2"),
             raw_file("good2", "c.txt", "text/plain", "md3"),
         ],
     );
@@ -432,12 +442,17 @@ async fn skips_file_with_provider_error_and_continues_batch() {
     mock.add_raw("good1", b"alpha");
     mock.add_raw("good2", b"gamma");
 
-    let ctx = TemplateCtx::new(Arc::new(MockClients { drive: mock.clone() }));
+    let ctx = TemplateCtx::new(Arc::new(MockClients {
+        drive: mock.clone(),
+    }));
     let params = TemplateParams(json!({ "folder": "folder123" }));
     let outcome = run_once(&FolderSyncTemplate, &ctx, &params, &feed_dir).await;
     assert_eq!(outcome.summary.items_written, 2, "good files still written");
     assert_eq!(outcome.status, "ok");
     assert!(feed_dir.join("a.txt").exists());
     assert!(feed_dir.join("c.txt").exists());
-    assert!(!feed_dir.join("b.txt").exists(), "skipped file isn't materialized");
+    assert!(
+        !feed_dir.join("b.txt").exists(),
+        "skipped file isn't materialized"
+    );
 }

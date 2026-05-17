@@ -133,9 +133,7 @@ pub fn resolve_user_config(
 /// Convert resolved user config values to environment variables.
 ///
 /// Keys are uppercased with a prefix: `PLUGIN_<KEY>`.
-pub fn config_to_env_vars(
-    config: &HashMap<String, serde_json::Value>,
-) -> HashMap<String, String> {
+pub fn config_to_env_vars(config: &HashMap<String, serde_json::Value>) -> HashMap<String, String> {
     let mut env = HashMap::new();
 
     for (key, value) in config {
@@ -151,7 +149,10 @@ pub fn config_to_env_vars(
 }
 
 /// Substitute `${user_config.KEY}` placeholders in a string with resolved values.
-pub fn substitute_user_config(template: &str, config: &HashMap<String, serde_json::Value>) -> String {
+pub fn substitute_user_config(
+    template: &str,
+    config: &HashMap<String, serde_json::Value>,
+) -> String {
     let mut result = template.to_string();
     for (key, value) in config {
         let placeholder = format!("${{user_config.{}}}", key);
@@ -350,7 +351,8 @@ mod tests {
         config.insert("API_KEY".into(), serde_json::json!("secret123"));
         config.insert("PORT".into(), serde_json::json!(8080));
 
-        let template = "curl -H 'Auth: ${user_config.API_KEY}' http://localhost:${user_config.PORT}";
+        let template =
+            "curl -H 'Auth: ${user_config.API_KEY}' http://localhost:${user_config.PORT}";
         let result = substitute_user_config(template, &config);
         assert_eq!(result, "curl -H 'Auth: secret123' http://localhost:8080");
     }
@@ -384,8 +386,14 @@ mod tests {
         .unwrap();
 
         let settings = load_plugin_settings(&path);
-        assert_eq!(settings.enabled_plugins.get("metis@colliery-io-metis"), Some(&true));
-        assert_eq!(settings.enabled_plugins.get("unwanted@market"), Some(&false));
+        assert_eq!(
+            settings.enabled_plugins.get("metis@colliery-io-metis"),
+            Some(&true)
+        );
+        assert_eq!(
+            settings.enabled_plugins.get("unwanted@market"),
+            Some(&false)
+        );
 
         let config = settings.plugin_configs.get("my-plugin").unwrap();
         assert_eq!(

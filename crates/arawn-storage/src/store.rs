@@ -108,11 +108,7 @@ impl Store {
         WorkstreamStore::new(&self.db).add_binding(name, feed_id)
     }
 
-    pub fn remove_workstream_binding(
-        &self,
-        name: &str,
-        feed_id: &str,
-    ) -> Result<(), StorageError> {
+    pub fn remove_workstream_binding(&self, name: &str, feed_id: &str) -> Result<(), StorageError> {
         WorkstreamStore::new(&self.db).remove_binding(name, feed_id)
     }
 
@@ -126,10 +122,7 @@ impl Store {
     ///
     /// Cache the result at the call site — workstreams change rarely
     /// at runtime and per-row lookups would be wasteful.
-    pub fn find_workstream_for_feed(
-        &self,
-        feed_id: &str,
-    ) -> Result<Option<String>, StorageError> {
+    pub fn find_workstream_for_feed(&self, feed_id: &str) -> Result<Option<String>, StorageError> {
         let workstreams = WorkstreamStore::new(&self.db).list()?;
         for ws in workstreams {
             if ws.bindings.iter().any(|b| b == feed_id) {

@@ -14,7 +14,7 @@
 
 use chrono::{DateTime, Utc};
 use graphqlite::Value;
-use serde_json::{json, Value as JsonValue};
+use serde_json::{Value as JsonValue, json};
 use uuid::Uuid;
 
 use crate::error::MemoryError;
@@ -130,10 +130,9 @@ pub fn node_to_entity(node: &Value) -> Result<Entity, MemoryError> {
         })
     };
 
-    let id_str = get_str("id")
-        .ok_or_else(|| MemoryError::Storage("node missing 'id' property".into()))?;
-    let id = Uuid::parse_str(id_str)
-        .map_err(|e| MemoryError::Storage(format!("parse id: {e}")))?;
+    let id_str =
+        get_str("id").ok_or_else(|| MemoryError::Storage("node missing 'id' property".into()))?;
+    let id = Uuid::parse_str(id_str).map_err(|e| MemoryError::Storage(format!("parse id: {e}")))?;
 
     let title = get_str("title")
         .ok_or_else(|| MemoryError::Storage("node missing 'title' property".into()))?

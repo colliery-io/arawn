@@ -54,17 +54,18 @@ impl Tool for ExitPlanModeTool {
         })
     }
 
-    async fn execute(&self, _ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
+    async fn execute(
+        &self,
+        _ctx: &dyn arawn_tool::ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
         if !self.plan_state.is_active() {
             return Ok(ToolOutput::error(
                 "Not in plan mode. Use EnterPlanMode first.",
             ));
         }
 
-        let plan_content = params
-            .get("plan")
-            .and_then(|v| v.as_str())
-            .unwrap_or("");
+        let plan_content = params.get("plan").and_then(|v| v.as_str()).unwrap_or("");
 
         if plan_content.is_empty() {
             return Ok(ToolOutput::error(
@@ -132,9 +133,14 @@ mod tests {
     #[tokio::test]
     async fn exit_with_empty_plan() {
         let (plan_state, tool, tmp_path) = setup();
-        plan_state.enter(PermissionMode::Default, "test", &tmp_path).unwrap();
+        plan_state
+            .enter(PermissionMode::Default, "test", &tmp_path)
+            .unwrap();
 
-        let result = tool.execute(&test_ctx(), json!({"plan": ""})).await.unwrap();
+        let result = tool
+            .execute(&test_ctx(), json!({"plan": ""}))
+            .await
+            .unwrap();
         assert!(result.is_error);
         assert!(result.content.contains("empty"));
     }
@@ -142,7 +148,9 @@ mod tests {
     #[tokio::test]
     async fn exit_deactivates_plan_mode() {
         let (plan_state, tool, tmp_path) = setup();
-        plan_state.enter(PermissionMode::Default, "exit-test", &tmp_path).unwrap();
+        plan_state
+            .enter(PermissionMode::Default, "exit-test", &tmp_path)
+            .unwrap();
         assert!(plan_state.is_active());
 
         let result = tool
@@ -158,7 +166,9 @@ mod tests {
     #[tokio::test]
     async fn plan_written_to_disk() {
         let (plan_state, tool, tmp_path) = setup();
-        plan_state.enter(PermissionMode::Default, "disk-test", &tmp_path).unwrap();
+        plan_state
+            .enter(PermissionMode::Default, "disk-test", &tmp_path)
+            .unwrap();
 
         tool.execute(&test_ctx(), json!({"plan": "# My Plan\n\nStep 1: Go."}))
             .await

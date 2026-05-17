@@ -5,7 +5,7 @@ use tracing::{info, warn};
 
 use crate::agent_defs::{AgentDefinition, AgentSource, load_agents_dir};
 use crate::hooks::{HookConfig, load_hooks_from_file};
-use crate::skills::{SkillDefinition, SkillSource, SkillRegistry, load_skills_dir};
+use crate::skills::{SkillDefinition, SkillRegistry, SkillSource, load_skills_dir};
 
 use super::loader::LoadedPlugin;
 use super::manifest::HooksField;
@@ -42,7 +42,11 @@ pub fn load_plugin_components(plugin: &LoadedPlugin) -> PluginComponents {
                 agent.name = format!("{}:{}", plugin_name, agent.name);
                 agent.source = AgentSource::User; // Plugin agents treated as user-defined
             }
-            info!(plugin = plugin_name, count = agents.len(), "loaded plugin agents");
+            info!(
+                plugin = plugin_name,
+                count = agents.len(),
+                "loaded plugin agents"
+            );
             result.agents = agents;
         } else {
             result.errors.push(format!(
@@ -60,7 +64,11 @@ pub fn load_plugin_components(plugin: &LoadedPlugin) -> PluginComponents {
             for skill in &mut skills {
                 skill.name = format!("{}:{}", plugin_name, skill.name);
             }
-            info!(plugin = plugin_name, count = skills.len(), "loaded plugin skills");
+            info!(
+                plugin = plugin_name,
+                count = skills.len(),
+                "loaded plugin skills"
+            );
             result.skills = skills;
         } else {
             result.errors.push(format!(
@@ -116,7 +124,10 @@ pub fn load_plugin_components(plugin: &LoadedPlugin) -> PluginComponents {
 
     // Log any errors
     for error in &result.errors {
-        warn!(plugin = plugin_name, error, "plugin component loading error");
+        warn!(
+            plugin = plugin_name,
+            error, "plugin component loading error"
+        );
     }
 
     result

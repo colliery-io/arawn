@@ -86,10 +86,7 @@ pub struct SignalSearchTool {
 }
 
 impl SignalSearchTool {
-    pub fn new(
-        memory: impl Into<MemoryHandle>,
-        embedder: Option<Arc<dyn Embedder>>,
-    ) -> Self {
+    pub fn new(memory: impl Into<MemoryHandle>, embedder: Option<Arc<dyn Embedder>>) -> Self {
         let memory = memory.into();
         let router = match &memory {
             MemoryHandle::Routed(r) => Some(Arc::clone(r)),
@@ -234,10 +231,7 @@ struct FusedHit {
 
 impl FusedHit {
     fn new(entity: Entity) -> Self {
-        Self {
-            entity,
-            score: 0.0,
-        }
+        Self { entity, score: 0.0 }
     }
 }
 
@@ -525,7 +519,11 @@ mod tests {
     use arawn_memory::{ConfidenceSource, Entity, EntityType, MemoryManager};
     use tempfile::TempDir;
 
-    fn setup() -> (TempDir, Arc<MemoryManager>, crate::context::EngineToolContext) {
+    fn setup() -> (
+        TempDir,
+        Arc<MemoryManager>,
+        crate::context::EngineToolContext,
+    ) {
         let tmp = TempDir::new().unwrap();
         std::fs::create_dir_all(tmp.path().join("workstreams/test-ws")).unwrap();
         let mgr = Arc::new(MemoryManager::open(tmp.path(), "test-ws", None).unwrap());
@@ -572,10 +570,9 @@ mod tests {
         let v: Value = serde_json::from_str(&r.content).unwrap();
         let results = v["results"].as_array().unwrap();
         assert!(
-            results.iter().any(|e| e["title"]
-                .as_str()
-                .unwrap()
-                .contains("postgres")),
+            results
+                .iter()
+                .any(|e| e["title"].as_str().unwrap().contains("postgres")),
             "expected postgres entity in results: {v}"
         );
     }
@@ -617,17 +614,11 @@ mod tests {
         let (_tmp, mgr, ctx) = setup();
         seed(&mgr);
         let tool = SignalQueryTool::new(mgr);
-        let r = tool
-            .execute(&ctx, json!({"tags": ["team"]}))
-            .await
-            .unwrap();
+        let r = tool.execute(&ctx, json!({"tags": ["team"]})).await.unwrap();
         let v: Value = serde_json::from_str(&r.content).unwrap();
         let results = v["results"].as_array().unwrap();
         assert_eq!(results.len(), 1);
-        assert!(results[0]["title"]
-            .as_str()
-            .unwrap()
-            .contains("alice"));
+        assert!(results[0]["title"].as_str().unwrap().contains("alice"));
     }
 
     #[tokio::test]
@@ -647,10 +638,7 @@ mod tests {
         let tool = SignalQueryTool::new(mgr);
         // Future window — nothing should match
         let r = tool
-            .execute(
-                &ctx,
-                json!({"since": "2099-01-01T00:00:00Z"}),
-            )
+            .execute(&ctx, json!({"since": "2099-01-01T00:00:00Z"}))
             .await
             .unwrap();
         let v: Value = serde_json::from_str(&r.content).unwrap();
@@ -667,10 +655,7 @@ mod tests {
         let events = v["events"].as_array().unwrap();
         assert_eq!(events.len(), 3);
         // created_at descending: ts[0] >= ts[1] >= ts[2]
-        let ts: Vec<&str> = events
-            .iter()
-            .map(|e| e["ts"].as_str().unwrap())
-            .collect();
+        let ts: Vec<&str> = events.iter().map(|e| e["ts"].as_str().unwrap()).collect();
         assert!(ts[0] >= ts[1]);
         assert!(ts[1] >= ts[2]);
     }

@@ -14,9 +14,7 @@ mod integration;
 mod tools;
 
 pub use client::{DriveHub, client_from_token_store};
-pub use integration::{
-    DRIVE_OAUTH_SCOPE, GoogleDriveIntegration, GoogleDriveProviderConfig,
-};
+pub use integration::{DRIVE_OAUTH_SCOPE, GoogleDriveIntegration, GoogleDriveProviderConfig};
 pub use tools::{
     DriveDeleteTool, DriveGetMetadataTool, DriveListTool, DriveReadTool, DriveSearchTool,
     DriveUpdateTool, DriveUploadTool,

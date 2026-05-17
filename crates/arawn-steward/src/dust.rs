@@ -127,7 +127,9 @@ impl DustEngine {
                 outcome.limit_hit = true;
                 break;
             }
-            let (proposal_id, _) = match self.summarize_cluster(&key, &members, kb, journal, opts).await
+            let (proposal_id, _) = match self
+                .summarize_cluster(&key, &members, kb, journal, opts)
+                .await
             {
                 Ok(v) => v,
                 Err(e) => {
@@ -270,10 +272,7 @@ fn cluster_by_tag(active: &[Entity], opts: &DustOpts) -> Vec<(String, Vec<Entity
             {
                 continue;
             }
-            by_tag
-                .entry(t.clone())
-                .or_default()
-                .push(e.clone());
+            by_tag.entry(t.clone()).or_default().push(e.clone());
         }
     }
     by_tag.into_iter().collect()
@@ -346,9 +345,16 @@ mod tests {
             Pin<Box<dyn futures::Stream<Item = Result<ChatChunk, LlmError>> + Send>>,
             LlmError,
         > {
-            let v = self.responses.lock().unwrap().pop_front().expect("no responses");
+            let v = self
+                .responses
+                .lock()
+                .unwrap()
+                .pop_front()
+                .expect("no responses");
             Ok(Box::pin(stream::iter(vec![
-                Ok(ChatChunk::TextDelta { text: v.to_string() }),
+                Ok(ChatChunk::TextDelta {
+                    text: v.to_string(),
+                }),
                 Ok(ChatChunk::Done { usage: None }),
             ])))
         }
@@ -356,8 +362,7 @@ mod tests {
 
     fn make_stale_entity(title: &str, tag: &str, days_old: i64) -> Entity {
         // Dust clusters on tags_ontology — populate that field directly.
-        let mut e = Entity::new(EntityType::Fact, title)
-            .with_tags_ontology(vec![tag.into()]);
+        let mut e = Entity::new(EntityType::Fact, title).with_tags_ontology(vec![tag.into()]);
         e.created_at = Utc::now() - Duration::days(days_old);
         e.updated_at = e.created_at;
         e
@@ -395,9 +400,15 @@ mod tests {
     async fn cluster_with_one_fresh_member_is_skipped() {
         let (_tmp, mgr, j) = setup();
         // 2 stale + 1 fresh — cluster size 3, but not all idle.
-        mgr.workstream.insert_entity(&make_stale_entity("a", "p", 60)).unwrap();
-        mgr.workstream.insert_entity(&make_stale_entity("b", "p", 60)).unwrap();
-        mgr.workstream.insert_entity(&make_stale_entity("c", "p", 1)).unwrap();
+        mgr.workstream
+            .insert_entity(&make_stale_entity("a", "p", 60))
+            .unwrap();
+        mgr.workstream
+            .insert_entity(&make_stale_entity("b", "p", 60))
+            .unwrap();
+        mgr.workstream
+            .insert_entity(&make_stale_entity("c", "p", 1))
+            .unwrap();
         let mock = Arc::new(ScriptedMock::new(vec![]));
         let eng = DustEngine::new(mock as Arc<dyn LlmClient>, "mock");
         let out = eng.run(&mgr, &j, &DustOpts::default()).await.unwrap();
@@ -407,8 +418,12 @@ mod tests {
     #[tokio::test]
     async fn min_cluster_size_filters_out_small_clusters() {
         let (_tmp, mgr, j) = setup();
-        mgr.workstream.insert_entity(&make_stale_entity("a", "tiny", 60)).unwrap();
-        mgr.workstream.insert_entity(&make_stale_entity("b", "tiny", 60)).unwrap();
+        mgr.workstream
+            .insert_entity(&make_stale_entity("a", "tiny", 60))
+            .unwrap();
+        mgr.workstream
+            .insert_entity(&make_stale_entity("b", "tiny", 60))
+            .unwrap();
         let mock = Arc::new(ScriptedMock::new(vec![]));
         let eng = DustEngine::new(mock as Arc<dyn LlmClient>, "mock");
         let opts = DustOpts {
@@ -448,7 +463,9 @@ mod tests {
         let (_tmp, mgr, j) = setup();
         // Three real entities — stale.
         for i in 0..3 {
-            mgr.workstream.insert_entity(&make_stale_entity(&format!("e{i}"), "p", 60)).unwrap();
+            mgr.workstream
+                .insert_entity(&make_stale_entity(&format!("e{i}"), "p", 60))
+                .unwrap();
         }
         // A prior dust summary with the same ontology tag — should
         // be skipped via the steward:dust marker on the discovered set

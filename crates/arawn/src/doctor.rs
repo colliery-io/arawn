@@ -92,8 +92,11 @@ impl DoctorReport {
 
     pub fn render_human(&self) -> String {
         let mut out = String::new();
-        out.push_str(&format!("arawn doctor — data_dir: {}\n", self.data_dir.display()));
-        out.push_str("\n");
+        out.push_str(&format!(
+            "arawn doctor — data_dir: {}\n",
+            self.data_dir.display()
+        ));
+        out.push('\n');
         let name_width = self.checks.iter().map(|c| c.name.len()).max().unwrap_or(0);
         for c in &self.checks {
             let label = c.outcome.label();
@@ -114,11 +117,7 @@ impl DoctorReport {
             .iter()
             .filter(|c| matches!(c.outcome, CheckOutcome::Pass))
             .count();
-        let fail = self
-            .checks
-            .iter()
-            .filter(|c| c.outcome.is_fail())
-            .count();
+        let fail = self.checks.iter().filter(|c| c.outcome.is_fail()).count();
         let skip = self
             .checks
             .iter()
@@ -276,11 +275,8 @@ async fn check_llm_reachable(config: &crate::ArawnConfig) -> Vec<CheckResult> {
             let model = cfg.model.clone();
             let client = pool.get(&name).expect("pool entry exists");
             async move {
-                let probe = tokio::time::timeout(
-                    Duration::from_secs(20),
-                    client.warmup(&model),
-                )
-                .await;
+                let probe =
+                    tokio::time::timeout(Duration::from_secs(20), client.warmup(&model)).await;
                 let result = match probe {
                     Ok(Ok(())) => CheckOutcome::Pass,
                     Ok(Err(e)) => CheckOutcome::Fail {
@@ -306,10 +302,7 @@ fn check_integrations(data_dir: &Path, config: &crate::ArawnConfig) -> CheckResu
     // OAuth token store. If no integrations are configured we skip.
     let any_configured = !configured_services(config).is_empty();
     if !any_configured {
-        return CheckResult::skip(
-            "integrations",
-            "no [integrations.*] configured",
-        );
+        return CheckResult::skip("integrations", "no [integrations.*] configured");
     }
     match arawn_auth::TokenStore::open(data_dir) {
         Ok(store) => {
@@ -513,10 +506,7 @@ mod tests {
     fn exit_code_zero_when_no_fails() {
         let report = DoctorReport {
             data_dir: PathBuf::from("/tmp"),
-            checks: vec![
-                CheckResult::pass("a"),
-                CheckResult::skip("b", "n/a"),
-            ],
+            checks: vec![CheckResult::pass("a"), CheckResult::skip("b", "n/a")],
         };
         assert_eq!(report.exit_code(), 0);
     }
@@ -525,10 +515,7 @@ mod tests {
     fn exit_code_one_when_any_fail() {
         let report = DoctorReport {
             data_dir: PathBuf::from("/tmp"),
-            checks: vec![
-                CheckResult::pass("a"),
-                CheckResult::fail("b", "broken"),
-            ],
+            checks: vec![CheckResult::pass("a"), CheckResult::fail("b", "broken")],
         };
         assert_eq!(report.exit_code(), 1);
     }

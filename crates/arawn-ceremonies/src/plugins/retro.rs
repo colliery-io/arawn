@@ -32,8 +32,7 @@ use serde::Serialize;
 use crate::CeremonyError;
 use crate::patterns::DetectorRegistry;
 use crate::plugin::{
-    Ceremony, CeremonyCtx, ComposedItem, CronSchedule, InteractiveAction, NewItem,
-    PatternDetector,
+    Ceremony, CeremonyCtx, ComposedItem, CronSchedule, InteractiveAction, NewItem, PatternDetector,
 };
 use crate::types::{GatheredFacts, ItemKind};
 
@@ -185,8 +184,7 @@ impl Ceremony for RetroCeremony {
             .map_err(|e| CeremonyError::Storage(format!("daily query: {e}")))?;
         let mut daily_tablets = Vec::new();
         for r in daily_rows {
-            daily_tablets
-                .push(r.map_err(|e| CeremonyError::Storage(format!("daily row: {e}")))?);
+            daily_tablets.push(r.map_err(|e| CeremonyError::Storage(format!("daily row: {e}")))?);
         }
 
         // 2. confirmed weekly priorities. The weekly tablet shares
@@ -234,8 +232,7 @@ impl Ceremony for RetroCeremony {
             .map_err(|e| CeremonyError::Storage(format!("rollup query: {e}")))?;
         let mut weekly_rollup = Vec::new();
         for r in rollup_rows {
-            weekly_rollup
-                .push(r.map_err(|e| CeremonyError::Storage(format!("rollup row: {e}")))?);
+            weekly_rollup.push(r.map_err(|e| CeremonyError::Storage(format!("rollup row: {e}")))?);
         }
 
         // 4. prior retro diaries — last 3, strictly before this week.
@@ -269,9 +266,8 @@ impl Ceremony for RetroCeremony {
             weekly_rollup,
             prior_retro_diaries,
         };
-        let json = serde_json::to_value(&payload).map_err(|e| {
-            CeremonyError::Other(format!("gather payload serialise: {e}"))
-        })?;
+        let json = serde_json::to_value(&payload)
+            .map_err(|e| CeremonyError::Other(format!("gather payload serialise: {e}")))?;
         Ok(GatheredFacts::new(json))
     }
 
@@ -355,7 +351,11 @@ isn't already in the payload. Be concise and grounded.";
 fn build_compose_prompt(facts: &GatheredFacts) -> String {
     format!(
         "Compose the retro for ISO week {}. Payload:\n{}",
-        facts.payload.get("iso_week").and_then(|v| v.as_str()).unwrap_or(""),
+        facts
+            .payload
+            .get("iso_week")
+            .and_then(|v| v.as_str())
+            .unwrap_or(""),
         serde_json::to_string_pretty(&facts.payload).unwrap_or_default()
     )
 }
@@ -416,7 +416,10 @@ fn monday_sunday_for_iso_week(iso_week: &str) -> Option<(String, String)> {
     let week: u32 = parts[1].parse().ok()?;
     let monday = NaiveDate::from_isoywd_opt(year, week, Weekday::Mon)?;
     let sunday = NaiveDate::from_isoywd_opt(year, week, Weekday::Sun)?;
-    Some((monday.format("%Y-%m-%d").to_string(), sunday.format("%Y-%m-%d").to_string()))
+    Some((
+        monday.format("%Y-%m-%d").to_string(),
+        sunday.format("%Y-%m-%d").to_string(),
+    ))
 }
 
 #[cfg(test)]
@@ -490,7 +493,9 @@ mod tests {
     #[tokio::test]
     async fn iso_week_format_is_yyyy_w_ww() {
         // 2026-05-15 is a Friday in ISO week 20.
-        let dt = DateTime::parse_from_rfc3339("2026-05-15T16:00:00Z").unwrap().with_timezone(&Utc);
+        let dt = DateTime::parse_from_rfc3339("2026-05-15T16:00:00Z")
+            .unwrap()
+            .with_timezone(&Utc);
         assert_eq!(RetroCeremony::iso_week(dt), "2026-W20");
     }
 
@@ -509,14 +514,25 @@ mod tests {
         let ctx = EngineCtx::new(conn.clone(), "retro-2026-W20".into(), "2026-W20".into());
         let facts = plugin.gather(&ctx).await.unwrap();
         let payload = facts.payload;
-        assert_eq!(payload.get("iso_week").unwrap().as_str().unwrap(), "2026-W20");
+        assert_eq!(
+            payload.get("iso_week").unwrap().as_str().unwrap(),
+            "2026-W20"
+        );
         let daily = payload.get("daily_tablets").unwrap().as_array().unwrap();
         assert_eq!(daily.len(), 1);
-        let prios = payload.get("confirmed_priorities").unwrap().as_array().unwrap();
+        let prios = payload
+            .get("confirmed_priorities")
+            .unwrap()
+            .as_array()
+            .unwrap();
         assert_eq!(prios.len(), 1);
         let rollup = payload.get("weekly_rollup").unwrap().as_array().unwrap();
         assert_eq!(rollup.len(), 1);
-        let prior = payload.get("prior_retro_diaries").unwrap().as_array().unwrap();
+        let prior = payload
+            .get("prior_retro_diaries")
+            .unwrap()
+            .as_array()
+            .unwrap();
         assert_eq!(prior.len(), 0);
     }
 

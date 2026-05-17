@@ -74,8 +74,10 @@ fn summarize_file(f: &DriveFile, include_parents: bool) -> FileSummary {
 
 /// Standard projection passed to `fields` so we get the same shape across
 /// search/list/get. Trailing parens scope each FileList vs File response.
-const FILE_FIELDS_LIST: &str = "nextPageToken,files(id,name,mimeType,size,modifiedTime,webViewLink,owners,trashed)";
-const FILE_FIELDS_ONE: &str = "id,name,mimeType,size,modifiedTime,webViewLink,owners,trashed,parents";
+const FILE_FIELDS_LIST: &str =
+    "nextPageToken,files(id,name,mimeType,size,modifiedTime,webViewLink,owners,trashed)";
+const FILE_FIELDS_ONE: &str =
+    "id,name,mimeType,size,modifiedTime,webViewLink,owners,trashed,parents";
 
 /// Cap returned content for `drive_read` so a 50MB binary doesn't fill the
 /// LLM's tool result. Configurable per-call up to this ceiling.
@@ -140,7 +142,11 @@ impl Tool for DriveSearchTool {
             "required": ["query"]
         })
     }
-    async fn execute(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
+    async fn execute(
+        &self,
+        _ctx: &dyn ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
         let user_query = params
             .get("query")
             .and_then(|v| v.as_str())
@@ -237,7 +243,11 @@ impl Tool for DriveListTool {
             }
         })
     }
-    async fn execute(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
+    async fn execute(
+        &self,
+        _ctx: &dyn ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
         let folder_id = params
             .get("folder_id")
             .and_then(|v| v.as_str())
@@ -313,7 +323,11 @@ impl Tool for DriveGetMetadataTool {
             "required": ["file_id"]
         })
     }
-    async fn execute(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
+    async fn execute(
+        &self,
+        _ctx: &dyn ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
         let file_id = params
             .get("file_id")
             .and_then(|v| v.as_str())
@@ -328,7 +342,9 @@ impl Tool for DriveGetMetadataTool {
             .await
             .map_err(|e| google_err("files.get", e))?;
         let summary = summarize_file(&file, true);
-        Ok(ToolOutput::success(serde_json::to_string(&summary).unwrap()))
+        Ok(ToolOutput::success(
+            serde_json::to_string(&summary).unwrap(),
+        ))
     }
 }
 
@@ -391,7 +407,11 @@ impl Tool for DriveReadTool {
             "required": ["file_id"]
         })
     }
-    async fn execute(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
+    async fn execute(
+        &self,
+        _ctx: &dyn ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
         let file_id = params
             .get("file_id")
             .and_then(|v| v.as_str())
@@ -427,9 +447,7 @@ impl Tool for DriveReadTool {
                 .map_err(|e| google_err("files.export", e))?;
             let body = http_body_util::BodyExt::collect(resp.into_body())
                 .await
-                .map_err(|e| {
-                    ToolError::ExecutionFailed(format!("Drive export body read: {e}"))
-                })?
+                .map_err(|e| ToolError::ExecutionFailed(format!("Drive export body read: {e}")))?
                 .to_bytes();
             (body.to_vec(), export_mime.to_string())
         } else if mime.starts_with("application/vnd.google-apps.") {
@@ -448,9 +466,7 @@ impl Tool for DriveReadTool {
                 .map_err(|e| google_err("files.get media", e))?;
             let body = http_body_util::BodyExt::collect(resp.into_body())
                 .await
-                .map_err(|e| {
-                    ToolError::ExecutionFailed(format!("Drive download body read: {e}"))
-                })?
+                .map_err(|e| ToolError::ExecutionFailed(format!("Drive download body read: {e}")))?
                 .to_bytes();
             (body.to_vec(), mime.clone())
         };
@@ -466,9 +482,7 @@ impl Tool for DriveReadTool {
         let is_texty = response_mime.starts_with("text/")
             || response_mime == "application/json"
             || response_mime == "application/xml";
-        let payload = if is_texty
-            && let Ok(s) = String::from_utf8(trimmed.clone())
-        {
+        let payload = if is_texty && let Ok(s) = String::from_utf8(trimmed.clone()) {
             json!({
                 "file_id": file_id,
                 "name": file.name,
@@ -544,7 +558,11 @@ impl Tool for DriveUploadTool {
             "required": ["name", "content"]
         })
     }
-    async fn execute(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
+    async fn execute(
+        &self,
+        _ctx: &dyn ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
         let name = params
             .get("name")
             .and_then(|v| v.as_str())
@@ -594,7 +612,9 @@ impl Tool for DriveUploadTool {
             .map_err(|e| google_err("files.create", e))?;
 
         let summary = summarize_file(&file, true);
-        Ok(ToolOutput::success(serde_json::to_string(&summary).unwrap()))
+        Ok(ToolOutput::success(
+            serde_json::to_string(&summary).unwrap(),
+        ))
     }
 }
 
@@ -646,7 +666,11 @@ impl Tool for DriveUpdateTool {
             "required": ["file_id", "content"]
         })
     }
-    async fn execute(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
+    async fn execute(
+        &self,
+        _ctx: &dyn ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
         let file_id = params
             .get("file_id")
             .and_then(|v| v.as_str())
@@ -686,7 +710,9 @@ impl Tool for DriveUpdateTool {
             .map_err(|e| google_err("files.update", e))?;
 
         let summary = summarize_file(&file, true);
-        Ok(ToolOutput::success(serde_json::to_string(&summary).unwrap()))
+        Ok(ToolOutput::success(
+            serde_json::to_string(&summary).unwrap(),
+        ))
     }
 }
 
@@ -729,7 +755,11 @@ impl Tool for DriveDeleteTool {
             "required": ["file_id"]
         })
     }
-    async fn execute(&self, _ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
+    async fn execute(
+        &self,
+        _ctx: &dyn ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
         let file_id = params
             .get("file_id")
             .and_then(|v| v.as_str())

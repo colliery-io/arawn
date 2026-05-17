@@ -108,7 +108,8 @@ impl ExtractionChain for CotChain {
         let link_proposals = self.link_by_name(workstream, &candidates).await?;
 
         // ── Stage 4: write ──────────────────────────────────────────────
-        self.write(row, &candidates, &link_proposals, kb, &ontology).await
+        self.write(row, &candidates, &link_proposals, kb, &ontology)
+            .await
     }
 }
 
@@ -190,7 +191,8 @@ impl CotChain {
         ontology: &[String],
     ) -> Result<Vec<ExtractedCandidate>, ExtractionError> {
         let ontology_block = if ontology.is_empty() {
-            "(empty — workstream has no ontology yet; emit only `tags_discovered` for now)".to_string()
+            "(empty — workstream has no ontology yet; emit only `tags_discovered` for now)"
+                .to_string()
         } else {
             ontology.join(", ")
         };
@@ -415,7 +417,9 @@ impl CotChain {
             // Route by entity's scope; we keep it on whichever tier the
             // entity lives in. Approximate via global (provenance is a
             // soft annotation; both tiers reach the entity anyway).
-            let _ = kb.workstream.add_relation(eid, RelationType::ExtractedFrom, provenance_id);
+            let _ = kb
+                .workstream
+                .add_relation(eid, RelationType::ExtractedFrom, provenance_id);
         }
 
         Ok(ChainOutcome {
@@ -428,11 +432,7 @@ impl CotChain {
 
 /// FTS-resolve a name against both KB tiers. Falls back to global tier
 /// if the workstream-tier search misses.
-fn resolve_by_fts(
-    kb: &MemoryManager,
-    name: &str,
-    _floor: f32,
-) -> Option<(Uuid, Scope)> {
+fn resolve_by_fts(kb: &MemoryManager, name: &str, _floor: f32) -> Option<(Uuid, Scope)> {
     // FTS5 quoting: wrap in double-quotes so special chars don't break parsing.
     let q = format!("\"{}\"", name.replace('"', "\"\""));
     if let Some(hit) = first_fts_hit(&kb.workstream, &q) {
@@ -764,17 +764,17 @@ mod integration {
         fn cursor(&self, ws_name: &str, feed_type: &str) -> Option<chrono::DateTime<chrono::Utc>> {
             let s = self.store.lock().unwrap();
             let cs = ExtractorCursorStore::new(s.database());
-            cs.get(ws_name, feed_type).unwrap().and_then(|c| c.last_source_ts)
+            cs.get(ws_name, feed_type)
+                .unwrap()
+                .and_then(|c| c.last_source_ts)
         }
     }
 
-    fn runner_with(
-        fx: &Fixture,
-        mock: Arc<KeyedMockLlm>,
-        batch_size: usize,
-    ) -> ExtractorRunner {
-        let chain: Arc<dyn ExtractionChain> =
-            Arc::new(CotChain::new(mock as Arc<dyn arawn_llm::LlmClient>, "mock-model"));
+    fn runner_with(fx: &Fixture, mock: Arc<KeyedMockLlm>, batch_size: usize) -> ExtractorRunner {
+        let chain: Arc<dyn ExtractionChain> = Arc::new(CotChain::new(
+            mock as Arc<dyn arawn_llm::LlmClient>,
+            "mock-model",
+        ));
         ExtractorRunner::new(
             Arc::clone(&fx.store),
             Arc::clone(&fx.proj),
@@ -856,7 +856,11 @@ mod integration {
             kb.workstream.store_fact(&prior).unwrap();
         }
         fx.proj
-            .write_batch(&[fixture_proj("m1", "we chose oauth2-rs to close out auth", 0)])
+            .write_batch(&[fixture_proj(
+                "m1",
+                "we chose oauth2-rs to close out auth",
+                0,
+            )])
             .unwrap();
 
         let mock = Arc::new(
@@ -886,7 +890,9 @@ mod integration {
     #[tokio::test]
     async fn link_to_missing_target_is_dropped_without_panic() {
         let fx = setup();
-        fx.proj.write_batch(&[fixture_proj("m1", "body", 0)]).unwrap();
+        fx.proj
+            .write_batch(&[fixture_proj("m1", "body", 0)])
+            .unwrap();
         let mock = Arc::new(
             KeyedMockLlm::new()
                 .default_classify(serde_json::json!({"in_scope": true, "reason": "ok"}))
@@ -941,7 +947,9 @@ mod integration {
     #[tokio::test]
     async fn rerun_is_idempotent_via_cursor() {
         let fx = setup();
-        fx.proj.write_batch(&[fixture_proj("m1", "body", 0)]).unwrap();
+        fx.proj
+            .write_batch(&[fixture_proj("m1", "body", 0)])
+            .unwrap();
         let mock = Arc::new(
             KeyedMockLlm::new()
                 .default_classify(serde_json::json!({"in_scope": true, "reason": "ok"}))
@@ -1003,7 +1011,10 @@ mod integration {
             .search("shared", 5)
             .unwrap();
         assert!(!pat_hits.is_empty(), "pat KB should contain the fact");
-        assert!(!auth_hits.is_empty(), "auth-migration KB should contain the fact");
+        assert!(
+            !auth_hits.is_empty(),
+            "auth-migration KB should contain the fact"
+        );
     }
 
     #[tokio::test]

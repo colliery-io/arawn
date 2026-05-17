@@ -50,10 +50,7 @@ impl Tool for McpToolAdapter {
     }
 
     fn description(&self) -> &str {
-        self.mcp_tool
-            .description
-            .as_deref()
-            .unwrap_or("MCP tool")
+        self.mcp_tool.description.as_deref().unwrap_or("MCP tool")
     }
 
     fn parameters_schema(&self) -> Value {
@@ -73,14 +70,19 @@ impl Tool for McpToolAdapter {
             .unwrap_or(false)
     }
 
-    async fn execute(&self, _ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
+    async fn execute(
+        &self,
+        _ctx: &dyn arawn_tool::ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
         debug!(tool = %self.arawn_name, mcp_name = %self.mcp_name, "calling MCP tool");
 
         let mut request = CallToolRequestParams::new(self.mcp_name.clone());
         if let Some(obj) = params.as_object()
-            && !obj.is_empty() {
-                request = request.with_arguments(obj.clone());
-            }
+            && !obj.is_empty()
+        {
+            request = request.with_arguments(obj.clone());
+        }
 
         match self.peer.call_tool(request).await {
             Ok(result) => {

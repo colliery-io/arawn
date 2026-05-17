@@ -24,7 +24,10 @@ impl CliModalPrompt {
 impl ModalPrompt for CliModalPrompt {
     async fn prompt(&self, request: ModalRequest) -> Option<usize> {
         if !io::stdin().is_terminal() {
-            eprintln!("[modal] {} — auto-cancelled (non-interactive)", request.title);
+            eprintln!(
+                "[modal] {} — auto-cancelled (non-interactive)",
+                request.title
+            );
             return None;
         }
 
@@ -128,10 +131,7 @@ mod tests {
 
     #[tokio::test]
     async fn mock_queued_responses() {
-        let mock = MockModalPrompt::with_responses(
-            vec![Some(0), Some(2), None],
-            Some(1),
-        );
+        let mock = MockModalPrompt::with_responses(vec![Some(0), Some(2), None], Some(1));
         assert_eq!(mock.prompt(test_request()).await, Some(0));
         assert_eq!(mock.prompt(test_request()).await, Some(2));
         assert_eq!(mock.prompt(test_request()).await, None);

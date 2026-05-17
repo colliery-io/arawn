@@ -30,7 +30,10 @@ impl SkillRegistry {
     fn register_builtins(&self) {
         let builtins: &[(&str, &str)] = &[
             ("workflows", include_str!("builtin/workflows.md")),
-            ("workstream-create", include_str!("builtin/workstream-create.md")),
+            (
+                "workstream-create",
+                include_str!("builtin/workstream-create.md"),
+            ),
         ];
 
         for (default_name, content) in builtins {
@@ -117,7 +120,9 @@ pub fn load_skills_dir(dir: &Path, source: SkillSource) -> Vec<SkillDefinition> 
                 .unwrap_or("unknown")
                 .to_string();
 
-            if let Some(skill) = load_skill_file(&path, &name, source.clone()) { skills.push(skill) }
+            if let Some(skill) = load_skill_file(&path, &name, source.clone()) {
+                skills.push(skill)
+            }
         } else if path.is_dir() {
             // Subdirectory: deploy/skill.md → "deploy"
             let skill_file = path.join("skill.md");
@@ -128,7 +133,9 @@ pub fn load_skills_dir(dir: &Path, source: SkillSource) -> Vec<SkillDefinition> 
                     .unwrap_or("unknown")
                     .to_string();
 
-                if let Some(skill) = load_skill_file(&skill_file, &name, source.clone()) { skills.push(skill) }
+                if let Some(skill) = load_skill_file(&skill_file, &name, source.clone()) {
+                    skills.push(skill)
+                }
             }
         }
     }
@@ -136,7 +143,11 @@ pub fn load_skills_dir(dir: &Path, source: SkillSource) -> Vec<SkillDefinition> 
     skills
 }
 
-fn load_skill_file(path: &Path, default_name: &str, source: SkillSource) -> Option<SkillDefinition> {
+fn load_skill_file(
+    path: &Path,
+    default_name: &str,
+    source: SkillSource,
+) -> Option<SkillDefinition> {
     let content = match std::fs::read_to_string(path) {
         Ok(c) => c,
         Err(e) => {
@@ -161,10 +172,7 @@ fn load_skill_file(path: &Path, default_name: &str, source: SkillSource) -> Opti
 /// Load and merge skills from project and user directories.
 ///
 /// Project skills take priority over user skills with the same name.
-pub fn load_merged_skills(
-    project_dir: Option<&Path>,
-    user_dir: Option<&Path>,
-) -> SkillRegistry {
+pub fn load_merged_skills(project_dir: Option<&Path>, user_dir: Option<&Path>) -> SkillRegistry {
     let registry = SkillRegistry::new();
 
     // Load user skills first (lower priority)
@@ -188,7 +196,11 @@ pub fn load_merged_skills(
 ///
 /// Each skill is listed as `- name: description` with descriptions truncated
 /// to `max_desc_chars` if needed. Total output is capped at `budget_chars`.
-pub fn format_skill_listing(skills: &[SkillDefinition], budget_chars: usize, max_desc_chars: usize) -> String {
+pub fn format_skill_listing(
+    skills: &[SkillDefinition],
+    budget_chars: usize,
+    max_desc_chars: usize,
+) -> String {
     if skills.is_empty() {
         return String::new();
     }
@@ -447,7 +459,11 @@ Project version.
             source: SkillSource::Project,
         });
 
-        let num_builtins = registry.all().iter().filter(|s| s.source == SkillSource::BuiltIn).count();
+        let num_builtins = registry
+            .all()
+            .iter()
+            .filter(|s| s.source == SkillSource::BuiltIn)
+            .count();
         assert_eq!(registry.all().len(), 2 + num_builtins);
         let user_invocable = registry.user_invocable();
         assert!(user_invocable.iter().any(|s| s.name == "visible"));

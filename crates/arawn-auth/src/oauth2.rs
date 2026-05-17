@@ -198,11 +198,14 @@ impl OAuthClient {
             .map_err(|e| AuthError::Network(e.to_string()))?;
 
         if !status.is_success() {
-            return Err(AuthError::ApiError { status: status.as_u16(), body: text });
+            return Err(AuthError::ApiError {
+                status: status.as_u16(),
+                body: text,
+            });
         }
 
-        let raw: TokenResponse = serde_json::from_str(&text)
-            .map_err(|e| AuthError::Decode(format!("{e}: {text}")))?;
+        let raw: TokenResponse =
+            serde_json::from_str(&text).map_err(|e| AuthError::Decode(format!("{e}: {text}")))?;
 
         let expires_at = raw
             .expires_in
@@ -332,16 +335,18 @@ mod tests {
             let mut filled = 0;
             loop {
                 let n = stream.read(&mut buf[filled..]).await.unwrap();
-                if n == 0 { break; }
+                if n == 0 {
+                    break;
+                }
                 filled += n;
-                if buf[..filled].windows(4).any(|w| w == b"\r\n\r\n") { break; }
+                if buf[..filled].windows(4).any(|w| w == b"\r\n\r\n") {
+                    break;
+                }
             }
             let mut more = vec![0u8; 4096];
-            let _ = tokio::time::timeout(
-                std::time::Duration::from_millis(50),
-                stream.read(&mut more),
-            )
-            .await;
+            let _ =
+                tokio::time::timeout(std::time::Duration::from_millis(50), stream.read(&mut more))
+                    .await;
 
             let status_text = match status {
                 200 => "200 OK",
@@ -379,7 +384,10 @@ mod tests {
         let client = client_with_token_url(url);
         let redirect: Url = "http://127.0.0.1:1/cb".parse().unwrap();
 
-        let token = client.exchange_code("the-code", &redirect, "verifier").await.unwrap();
+        let token = client
+            .exchange_code("the-code", &redirect, "verifier")
+            .await
+            .unwrap();
         assert_eq!(token.access, "AT");
         assert_eq!(token.refresh.as_deref(), Some("RT"));
         assert!(token.expires_at.is_some() && !token.is_expired());

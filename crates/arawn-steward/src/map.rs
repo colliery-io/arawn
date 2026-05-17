@@ -142,10 +142,7 @@ impl StewardSubroutine for MapSubroutine {
                 continue;
             }
 
-            let proposals = match self
-                .propose_for(focus, &neighbors, ctx)
-                .await
-            {
+            let proposals = match self.propose_for(focus, &neighbors, ctx).await {
                 Ok(p) => p,
                 Err(e) => {
                     warn!(
@@ -202,12 +199,8 @@ impl MapSubroutine {
                       \"to_id\": uuid, \"reason\": short string}. Be conservative — empty \
                       array is fine. Do not propose `supersedes` or `extracted_from`.";
         let mut roster = serde_json::Map::new();
-        roster.insert(
-            "focus".to_string(),
-            serde_json::to_value(brief(focus))?,
-        );
-        let neighbor_briefs: Vec<serde_json::Value> =
-            neighbors.iter().map(|e| brief(e)).collect();
+        roster.insert("focus".to_string(), serde_json::to_value(brief(focus))?);
+        let neighbor_briefs: Vec<serde_json::Value> = neighbors.iter().map(|e| brief(e)).collect();
         roster.insert(
             "neighbors".to_string(),
             serde_json::Value::Array(neighbor_briefs),
@@ -243,7 +236,9 @@ impl MapSubroutine {
             return Err(StewardError::Parse("self-loop".into()));
         }
         if from != focus.id && to != focus.id {
-            return Err(StewardError::Parse("proposal does not involve focus".into()));
+            return Err(StewardError::Parse(
+                "proposal does not involve focus".into(),
+            ));
         }
 
         let record = JournalRecord {
@@ -261,10 +256,7 @@ impl MapSubroutine {
             })
             .to_string(),
             model: self.model.clone(),
-            prompt_hash: Journal::prompt_hash(format!(
-                "map/{}/{}/{}",
-                from, rel.as_str(), to
-            )),
+            prompt_hash: Journal::prompt_hash(format!("map/{}/{}/{}", from, rel.as_str(), to)),
             applied: false,
         };
         ctx.journal.write_ahead(&record)?;
@@ -323,7 +315,12 @@ mod tests {
             Pin<Box<dyn futures::Stream<Item = Result<ChatChunk, LlmError>> + Send>>,
             LlmError,
         > {
-            let v = self.responses.lock().unwrap().pop_front().expect("no responses");
+            let v = self
+                .responses
+                .lock()
+                .unwrap()
+                .pop_front()
+                .expect("no responses");
             let text = v.to_string();
             Ok(Box::pin(stream::iter(vec![
                 Ok(ChatChunk::TextDelta { text }),
@@ -332,16 +329,18 @@ mod tests {
         }
     }
 
-    fn setup() -> (tempfile::TempDir, Arc<MemoryManager>, Arc<Journal>, Arc<
-        dyn Fn(&str) -> Result<CursorStore, StewardError> + Send + Sync,
-    >) {
+    fn setup() -> (
+        tempfile::TempDir,
+        Arc<MemoryManager>,
+        Arc<Journal>,
+        Arc<dyn Fn(&str) -> Result<CursorStore, StewardError> + Send + Sync>,
+    ) {
         let tmp = tempfile::tempdir().unwrap();
         let mem = Arc::new(MemoryManager::open(tmp.path(), "ws", None).unwrap());
         let j = Arc::new(Journal::open(tmp.path(), "ws").unwrap());
         let dir = tmp.path().to_path_buf();
-        let f: Arc<
-            dyn Fn(&str) -> Result<CursorStore, StewardError> + Send + Sync,
-        > = Arc::new(move |n: &str| CursorStore::open(&dir, n));
+        let f: Arc<dyn Fn(&str) -> Result<CursorStore, StewardError> + Send + Sync> =
+            Arc::new(move |n: &str| CursorStore::open(&dir, n));
         (tmp, mem, j, f)
     }
 
@@ -380,11 +379,7 @@ mod tests {
         ]);
         // Three focus entities → three LLM calls; script empty arrays
         // for the other two.
-        let mock = Arc::new(ScriptedMock::new(vec![
-            payload,
-            json!([]),
-            json!([]),
-        ]));
+        let mock = Arc::new(ScriptedMock::new(vec![payload, json!([]), json!([])]));
         let sub = MapSubroutine::new(mock as Arc<dyn LlmClient>, "mock", Arc::clone(&fac));
         let out = sub.run(&ctx(&tmp, &mem, &j, 10)).await.unwrap();
         // Only the first proposal is valid.

@@ -32,7 +32,9 @@ pub struct GoogleDriveProviderConfig {
 impl Default for GoogleDriveProviderConfig {
     fn default() -> Self {
         Self {
-            auth_url: "https://accounts.google.com/o/oauth2/v2/auth".parse().unwrap(),
+            auth_url: "https://accounts.google.com/o/oauth2/v2/auth"
+                .parse()
+                .unwrap(),
             token_url: "https://oauth2.googleapis.com/token".parse().unwrap(),
             scopes: vec![DRIVE_OAUTH_SCOPE.to_string()],
         }
@@ -40,7 +42,11 @@ impl Default for GoogleDriveProviderConfig {
 }
 
 impl GoogleDriveProviderConfig {
-    pub fn into_oauth_provider(self, client_id: String, client_secret: String) -> OAuthProviderConfig {
+    pub fn into_oauth_provider(
+        self,
+        client_id: String,
+        client_secret: String,
+    ) -> OAuthProviderConfig {
         OAuthProviderConfig {
             auth_url: self.auth_url,
             token_url: self.token_url,
@@ -115,7 +121,15 @@ impl Integration for GoogleDriveIntegration {
     async fn connect(&self, ctx: &dyn ConnectContext) -> Result<(), IntegrationError> {
         let store = self.token_store()?;
         let oauth_config = self.oauth_config();
-        run_oauth_flow(oauth_config, &store, SERVICE_NAME, "/oauth/callback", None, ctx).await?;
+        run_oauth_flow(
+            oauth_config,
+            &store,
+            SERVICE_NAME,
+            "/oauth/callback",
+            None,
+            ctx,
+        )
+        .await?;
         Ok(())
     }
 

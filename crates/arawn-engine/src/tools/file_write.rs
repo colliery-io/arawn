@@ -46,7 +46,11 @@ impl Tool for FileWriteTool {
         })
     }
 
-    async fn execute(&self, ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
+    async fn execute(
+        &self,
+        ctx: &dyn arawn_tool::ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
         let path_str = params
             .get("path")
             .and_then(|v| v.as_str())

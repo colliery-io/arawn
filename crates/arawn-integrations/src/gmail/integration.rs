@@ -8,7 +8,7 @@ use crate::error::IntegrationError;
 use crate::integration::{ConnectContext, Integration};
 use crate::oauth_flow::run_oauth_flow;
 
-use super::client::{client_from_token_store, GmailHub};
+use super::client::{GmailHub, client_from_token_store};
 
 /// Stable service name. Used as the [`TokenStore`] key, the integration
 /// registry key, the per-service credential subdirectory, and the
@@ -26,7 +26,9 @@ pub struct GmailProviderConfig {
 impl Default for GmailProviderConfig {
     fn default() -> Self {
         Self {
-            auth_url: "https://accounts.google.com/o/oauth2/v2/auth".parse().unwrap(),
+            auth_url: "https://accounts.google.com/o/oauth2/v2/auth"
+                .parse()
+                .unwrap(),
             token_url: "https://oauth2.googleapis.com/token".parse().unwrap(),
             scopes: vec![
                 "https://www.googleapis.com/auth/gmail.readonly".to_string(),
@@ -41,7 +43,11 @@ impl GmailProviderConfig {
     /// Build the underlying [`OAuthProviderConfig`] given a client_id /
     /// client_secret pair (typically read from `ARAWN_GMAIL_CLIENT_ID` /
     /// `ARAWN_GMAIL_CLIENT_SECRET` env vars at server startup).
-    pub fn into_oauth_provider(self, client_id: String, client_secret: String) -> OAuthProviderConfig {
+    pub fn into_oauth_provider(
+        self,
+        client_id: String,
+        client_secret: String,
+    ) -> OAuthProviderConfig {
         OAuthProviderConfig {
             auth_url: self.auth_url,
             token_url: self.token_url,
@@ -128,7 +134,15 @@ impl Integration for GmailIntegration {
     async fn connect(&self, ctx: &dyn ConnectContext) -> Result<(), IntegrationError> {
         let store = self.token_store()?;
         let oauth_config = self.oauth_config();
-        run_oauth_flow(oauth_config, &store, SERVICE_NAME, "/oauth/callback", None, ctx).await?;
+        run_oauth_flow(
+            oauth_config,
+            &store,
+            SERVICE_NAME,
+            "/oauth/callback",
+            None,
+            ctx,
+        )
+        .await?;
         Ok(())
     }
 
@@ -147,18 +161,26 @@ mod tests {
     fn default_provider_has_three_gmail_scopes() {
         let provider = GmailProviderConfig::default();
         assert_eq!(provider.scopes.len(), 3);
-        assert!(provider.scopes.iter().any(|s| s.ends_with("/gmail.readonly")));
+        assert!(
+            provider
+                .scopes
+                .iter()
+                .any(|s| s.ends_with("/gmail.readonly"))
+        );
         assert!(provider.scopes.iter().any(|s| s.ends_with("/gmail.send")));
         assert!(provider.scopes.iter().any(|s| s.ends_with("/gmail.modify")));
     }
 
     #[test]
     fn provider_lifts_into_oauth_config() {
-        let cfg = GmailProviderConfig::default()
-            .into_oauth_provider("cid".into(), "csecret".into());
+        let cfg =
+            GmailProviderConfig::default().into_oauth_provider("cid".into(), "csecret".into());
         assert_eq!(cfg.client_id, "cid");
         assert_eq!(cfg.client_secret, "csecret");
         assert_eq!(cfg.scopes.len(), 3);
-        assert_eq!(cfg.token_url.as_str(), "https://oauth2.googleapis.com/token");
+        assert_eq!(
+            cfg.token_url.as_str(),
+            "https://oauth2.googleapis.com/token"
+        );
     }
 }

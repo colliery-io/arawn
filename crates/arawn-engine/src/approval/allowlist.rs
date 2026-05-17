@@ -161,14 +161,8 @@ mod tests {
 
     #[test]
     fn file_shape_collapses_files_in_same_dir() {
-        let a = ArgShape::for_tool(
-            "file_write",
-            r#"{"path":"/tmp/proj/foo.rs","content":"x"}"#,
-        );
-        let b = ArgShape::for_tool(
-            "file_write",
-            r#"{"path":"/tmp/proj/bar.rs","content":"y"}"#,
-        );
+        let a = ArgShape::for_tool("file_write", r#"{"path":"/tmp/proj/foo.rs","content":"x"}"#);
+        let b = ArgShape::for_tool("file_write", r#"{"path":"/tmp/proj/bar.rs","content":"y"}"#);
         assert_eq!(a, b);
     }
 

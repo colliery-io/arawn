@@ -62,10 +62,7 @@ pub struct AuditRecord {
 /// is unconditional in `approval/mod.rs`, so the Disabled flavour
 /// keeps callers branch-free.
 pub enum ApprovalAudit {
-    Enabled {
-        path: PathBuf,
-        lock: Mutex<()>,
-    },
+    Enabled { path: PathBuf, lock: Mutex<()> },
     Disabled,
 }
 
@@ -123,9 +120,8 @@ impl ApprovalAudit {
 }
 
 fn append_record(path: &Path, record: &AuditRecord) -> std::io::Result<()> {
-    let line = serde_json::to_string(record).map_err(|e| {
-        std::io::Error::new(std::io::ErrorKind::InvalidData, e.to_string())
-    })?;
+    let line = serde_json::to_string(record)
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e.to_string()))?;
     let mut file = std::fs::OpenOptions::new()
         .create(true)
         .append(true)

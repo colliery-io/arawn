@@ -98,9 +98,7 @@ pub async fn archive_query(
 ) -> Result<RunOutcome, FeedError> {
     let started = Instant::now();
 
-    let prior_latest: Option<i64> = cursor
-        .get("latest_internal_date")
-        .and_then(|v| v.as_i64());
+    let prior_latest: Option<i64> = cursor.get("latest_internal_date").and_then(|v| v.as_i64());
 
     let ids = gmail.list_message_ids(query, max_results).await?;
 
@@ -153,9 +151,8 @@ pub async fn archive_query(
 
         let day = ms_to_yyyy_mm_dd(internal_date)?;
         let day_dir = feed_dir.join(&day);
-        std::fs::create_dir_all(&day_dir).map_err(|e| {
-            FeedError::Storage(format!("create {}: {e}", day_dir.display()))
-        })?;
+        std::fs::create_dir_all(&day_dir)
+            .map_err(|e| FeedError::Storage(format!("create {}: {e}", day_dir.display())))?;
         let path = day_dir.join(format!("{id}.json"));
         let bytes = write_message_file(&path, &msg)?;
         total_items += 1;

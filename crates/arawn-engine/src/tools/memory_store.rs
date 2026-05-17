@@ -5,9 +5,7 @@ use serde_json::{Value, json};
 use tracing::{debug, info};
 
 use arawn_embed::Embedder;
-use arawn_memory::{
-    ConfidenceSource, Entity, EntityType, RelationType, Scope, StoreFactResult,
-};
+use arawn_memory::{ConfidenceSource, Entity, EntityType, RelationType, Scope, StoreFactResult};
 
 use crate::tool::{Tool, ToolCategory, ToolError, ToolOutput};
 use crate::workstream_router::MemoryHandle;
@@ -82,7 +80,11 @@ impl Tool for MemoryStoreTool {
         })
     }
 
-    async fn execute(&self, ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
+    async fn execute(
+        &self,
+        ctx: &dyn arawn_tool::ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
         let title = params
             .get("title")
             .and_then(|v| v.as_str())
@@ -93,8 +95,9 @@ impl Tool for MemoryStoreTool {
             .and_then(|v| v.as_str())
             .ok_or_else(|| ToolError::ExecutionFailed("missing 'entity_type' parameter".into()))?;
 
-        let entity_type = EntityType::from_str(type_str)
-            .ok_or_else(|| ToolError::ExecutionFailed(format!("unknown entity_type: '{type_str}'")))?;
+        let entity_type = EntityType::from_str(type_str).ok_or_else(|| {
+            ToolError::ExecutionFailed(format!("unknown entity_type: '{type_str}'"))
+        })?;
 
         let content = params.get("content").and_then(|v| v.as_str());
 
@@ -170,11 +173,7 @@ impl Tool for MemoryStoreTool {
         // Create a session-reference entity ID from the session UUID
         // (We use the session ID directly as a relation target — it doesn't need
         // to be a stored entity, just a UUID for provenance tracking)
-        let _ = store.add_relation(
-            entity_id,
-            RelationType::ExtractedFrom,
-            ctx.session_id(),
-        );
+        let _ = store.add_relation(entity_id, RelationType::ExtractedFrom, ctx.session_id());
 
         // Format output
         let scope_label = match scope {
@@ -219,12 +218,14 @@ mod tests {
     use tempfile::TempDir;
     use uuid::Uuid;
 
-    fn setup() -> (TempDir, Arc<MemoryManager>, crate::context::EngineToolContext) {
+    fn setup() -> (
+        TempDir,
+        Arc<MemoryManager>,
+        crate::context::EngineToolContext,
+    ) {
         let tmp = TempDir::new().unwrap();
         std::fs::create_dir_all(tmp.path().join("workstreams/test-ws")).unwrap();
-        let mgr = Arc::new(
-            MemoryManager::open(tmp.path(), "test-ws", None).unwrap(),
-        );
+        let mgr = Arc::new(MemoryManager::open(tmp.path(), "test-ws", None).unwrap());
         let ws = Workstream::scratch(tmp.path());
         let ctx = crate::context::EngineToolContext::new(&ws, Uuid::new_v4());
         (tmp, mgr, ctx)
@@ -236,7 +237,10 @@ mod tests {
         let tool = MemoryStoreTool::new(mgr.clone(), None);
 
         let result = tool
-            .execute(&ctx, json!({"title": "Rust is fast", "entity_type": "fact"}))
+            .execute(
+                &ctx,
+                json!({"title": "Rust is fast", "entity_type": "fact"}),
+            )
             .await
             .unwrap();
 
@@ -250,9 +254,12 @@ mod tests {
         let (_tmp, mgr, ctx) = setup();
         let tool = MemoryStoreTool::new(mgr.clone(), None);
 
-        tool.execute(&ctx, json!({"title": "Prefers terse output", "entity_type": "preference"}))
-            .await
-            .unwrap();
+        tool.execute(
+            &ctx,
+            json!({"title": "Prefers terse output", "entity_type": "preference"}),
+        )
+        .await
+        .unwrap();
 
         assert_eq!(mgr.global.count_all().unwrap(), 1);
         assert_eq!(mgr.workstream.count_all().unwrap(), 0);
@@ -263,9 +270,12 @@ mod tests {
         let (_tmp, mgr, ctx) = setup();
         let tool = MemoryStoreTool::new(mgr.clone(), None);
 
-        tool.execute(&ctx, json!({"title": "Use microservices", "entity_type": "decision"}))
-            .await
-            .unwrap();
+        tool.execute(
+            &ctx,
+            json!({"title": "Use microservices", "entity_type": "decision"}),
+        )
+        .await
+        .unwrap();
 
         assert_eq!(mgr.global.count_all().unwrap(), 0);
         assert_eq!(mgr.workstream.count_all().unwrap(), 1);
@@ -276,12 +286,18 @@ mod tests {
         let (_tmp, mgr, ctx) = setup();
         let tool = MemoryStoreTool::new(mgr.clone(), None);
 
-        tool.execute(&ctx, json!({"title": "Rust is fast", "entity_type": "fact"}))
-            .await
-            .unwrap();
+        tool.execute(
+            &ctx,
+            json!({"title": "Rust is fast", "entity_type": "fact"}),
+        )
+        .await
+        .unwrap();
 
         let result = tool
-            .execute(&ctx, json!({"title": "Rust is fast", "entity_type": "fact"}))
+            .execute(
+                &ctx,
+                json!({"title": "Rust is fast", "entity_type": "fact"}),
+            )
             .await
             .unwrap();
 

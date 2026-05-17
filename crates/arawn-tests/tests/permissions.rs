@@ -17,7 +17,10 @@ fn assert_tool_result_is_error(msgs: &[Message], index: usize, substring: &str) 
         Message::ToolResult {
             is_error, content, ..
         } => {
-            assert!(is_error, "expected error ToolResult, got success: {content}");
+            assert!(
+                is_error,
+                "expected error ToolResult, got success: {content}"
+            );
             assert!(
                 content.contains(substring),
                 "expected '{substring}' in error, got: {content}"
@@ -88,9 +91,8 @@ async fn allow_rule_permits_tool_call() {
 #[tokio::test]
 async fn bypass_mode_allows_all_tools() {
     // No explicit rules — BypassPermissions mode should auto-allow everything
-    let checker = Arc::new(
-        PermissionChecker::new(vec![]).with_mode(PermissionMode::BypassPermissions),
-    );
+    let checker =
+        Arc::new(PermissionChecker::new(vec![]).with_mode(PermissionMode::BypassPermissions));
 
     let harness = TestHarness::builder()
         .with_tool(Box::new(ShellTool::default()))
@@ -192,11 +194,12 @@ async fn session_grants_persist_across_turns() {
     // Ask rule, mock prompter returns "Allow Always" (index 1) on first call,
     // then returns Deny on subsequent calls. Session grant should bypass the prompt.
     let checker = Arc::new(
-        PermissionChecker::new(vec![PermissionRule::new(RuleKind::Ask, "think")])
-            .with_prompter(Box::new(MockModalPrompt::with_responses(
+        PermissionChecker::new(vec![PermissionRule::new(RuleKind::Ask, "think")]).with_prompter(
+            Box::new(MockModalPrompt::with_responses(
                 vec![Some(1)], // First prompt: Allow Always
                 None,          // Subsequent prompts: Deny (but should never be reached)
-            ))),
+            )),
+        ),
     );
 
     // First call: Ask → Allow Always → grants session permission

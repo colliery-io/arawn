@@ -8,15 +8,15 @@ use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde_json::Value;
 
+use arawn_feeds::templates::confluence::SpaceArchiveTemplate;
+use arawn_feeds::templates::jira::ProjectTrackerTemplate;
+use arawn_feeds::templates::slack::ChannelArchiveTemplate;
 use arawn_feeds::{
     AtlassianFeedClient, CalendarFeedClient, ConfluencePageBody, ConfluencePageMeta,
     ConfluenceSpaceMeta, DriveFeedClient, FeedClients, FeedError, FeedTemplate, GmailFeedClient,
     JiraIssueDetail, JiraIssueMeta, JiraProjectMeta, SlackAuthInfo, SlackChannel, SlackFeedClient,
     SlackHistoryPage, TemplateCtx,
 };
-use arawn_feeds::templates::confluence::SpaceArchiveTemplate;
-use arawn_feeds::templates::jira::ProjectTrackerTemplate;
-use arawn_feeds::templates::slack::ChannelArchiveTemplate;
 
 #[derive(Default)]
 struct StubClients {
@@ -85,12 +85,7 @@ impl AtlassianFeedClient for StubAtlassian {
     async fn jql_search(&self, _: &str, _: u32) -> Result<Vec<JiraIssueMeta>, FeedError> {
         unreachable!()
     }
-    async fn issue_full(
-        &self,
-        _: &str,
-        _: bool,
-        _: bool,
-    ) -> Result<JiraIssueDetail, FeedError> {
+    async fn issue_full(&self, _: &str, _: bool, _: bool) -> Result<JiraIssueDetail, FeedError> {
         unreachable!()
     }
     async fn resolve_project(&self, _: &str) -> Result<String, FeedError> {
@@ -99,9 +94,7 @@ impl AtlassianFeedClient for StubAtlassian {
     async fn list_jira_projects(&self) -> Result<Vec<JiraProjectMeta>, FeedError> {
         Ok(self.projects.clone())
     }
-    async fn list_confluence_spaces(
-        &self,
-    ) -> Result<Vec<ConfluenceSpaceMeta>, FeedError> {
+    async fn list_confluence_spaces(&self) -> Result<Vec<ConfluenceSpaceMeta>, FeedError> {
         Ok(self.spaces.clone())
     }
 }
@@ -240,8 +233,20 @@ async fn discover_returns_none_when_provider_missing() {
     // instead of an empty modal.
     let clients = Arc::new(StubClients::default());
     let ctx = TemplateCtx::new(clients);
-    assert!(ChannelArchiveTemplate.discover(&ctx).await.unwrap().is_none());
-    assert!(ProjectTrackerTemplate.discover(&ctx).await.unwrap().is_none());
+    assert!(
+        ChannelArchiveTemplate
+            .discover(&ctx)
+            .await
+            .unwrap()
+            .is_none()
+    );
+    assert!(
+        ProjectTrackerTemplate
+            .discover(&ctx)
+            .await
+            .unwrap()
+            .is_none()
+    );
     assert!(SpaceArchiveTemplate.discover(&ctx).await.unwrap().is_none());
 }
 

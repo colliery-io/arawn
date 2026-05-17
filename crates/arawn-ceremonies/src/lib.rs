@@ -25,27 +25,29 @@ pub mod runner;
 pub mod service;
 pub mod types;
 
-pub use error::CeremonyError;
-pub use plugin::{
-    Ceremony, CeremonyCtx, ComposedItem, CronSchedule, InteractiveAction, NewItem,
-    PatternDetector, UserItem,
-};
 pub use engine::{ConnHandle, EngineCtx, EngineDispatcher};
-pub use events::{CeremonyEvent, CeremonyEventReceiver, CeremonyEventSender, channel as event_channel};
-pub use patterns::{Detector, DetectorCtx, DetectorRegistry};
+pub use error::CeremonyError;
+pub use events::{
+    CeremonyEvent, CeremonyEventReceiver, CeremonyEventSender, channel as event_channel,
+};
 pub use nightly::sweep_unreviewed_retros;
-pub use render::{DailyView, RetroView, WeeklyView, render_daily, render_retro, render_weekly};
+pub use patterns::{Detector, DetectorCtx, DetectorRegistry};
+pub use plugin::{
+    Ceremony, CeremonyCtx, ComposedItem, CronSchedule, InteractiveAction, NewItem, PatternDetector,
+    UserItem,
+};
 pub use plugins::{
     AttentionSource, CalEvent, CalendarSource, DailyCeremony, NoopCalendarSource,
     PriorityCompletionDetector, RetroCeremony, RolloverHeatDetector, SignalRow,
-    StaticAttentionSource, StaticCalendarSource, WeeklyCeremony,
-    WorkstreamNeglectDetector, retro_v1_catalog,
+    StaticAttentionSource, StaticCalendarSource, WeeklyCeremony, WorkstreamNeglectDetector,
+    retro_v1_catalog,
 };
 pub use registry::PluginRegistry;
-pub use rollup::{CentralDbWorkstreams, RollupSource, WorkstreamList, compute_for_week, read_rollup_value};
-pub use runner::{
-    CeremonyDispatcher, CeremonyDispatchTask, CeremonyRunner, DispatchOutcome,
+pub use render::{DailyView, RetroView, WeeklyView, render_daily, render_retro, render_weekly};
+pub use rollup::{
+    CentralDbWorkstreams, RollupSource, WorkstreamList, compute_for_week, read_rollup_value,
 };
+pub use runner::{CeremonyDispatchTask, CeremonyDispatcher, CeremonyRunner, DispatchOutcome};
 pub use service::{
     AddItemRequest, AddPriorityRequest, CeremonyService, ItemDto, ItemPatch, NotificationDto,
     PriorityDto, TabletDto,

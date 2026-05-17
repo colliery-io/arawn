@@ -147,7 +147,10 @@ impl std::fmt::Display for PluginError {
         match self {
             PluginError::MissingField(field) => write!(f, "missing required field: {field}"),
             PluginError::InvalidPath { field, path } => {
-                write!(f, "invalid path for '{field}': '{path}' (must start with \"./\")")
+                write!(
+                    f,
+                    "invalid path for '{field}': '{path}' (must start with \"./\")"
+                )
             }
             PluginError::ParseError(msg) => write!(f, "parse error: {msg}"),
         }
@@ -206,12 +209,13 @@ impl PluginManifest {
 
         // Validate hooks path if it's a string
         if let Some(HooksField::Path(ref p)) = self.hooks
-            && !p.starts_with("./") {
-                errors.push(PluginError::InvalidPath {
-                    field: "hooks".into(),
-                    path: p.clone(),
-                });
-            }
+            && !p.starts_with("./")
+        {
+            errors.push(PluginError::InvalidPath {
+                field: "hooks".into(),
+                path: p.clone(),
+            });
+        }
 
         errors
     }
@@ -331,14 +335,18 @@ mod tests {
             ..Default::default()
         };
         let errors = manifest.validate();
-        assert!(errors.iter().any(|e| matches!(e, PluginError::MissingField(f) if f == "name")));
+        assert!(
+            errors
+                .iter()
+                .any(|e| matches!(e, PluginError::MissingField(f) if f == "name"))
+        );
     }
 
     #[test]
     fn validate_invalid_paths() {
         let manifest = PluginManifest {
             name: "test".into(),
-            agents: Some("agents".into()), // missing "./"
+            agents: Some("agents".into()),   // missing "./"
             skills: Some("./skills".into()), // ok
             ..Default::default()
         };

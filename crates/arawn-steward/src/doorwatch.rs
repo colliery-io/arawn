@@ -343,9 +343,16 @@ mod tests {
             Pin<Box<dyn futures::Stream<Item = Result<ChatChunk, LlmError>> + Send>>,
             LlmError,
         > {
-            let v = self.responses.lock().unwrap().pop_front().expect("no responses");
+            let v = self
+                .responses
+                .lock()
+                .unwrap()
+                .pop_front()
+                .expect("no responses");
             Ok(Box::pin(stream::iter(vec![
-                Ok(ChatChunk::TextDelta { text: v.to_string() }),
+                Ok(ChatChunk::TextDelta {
+                    text: v.to_string(),
+                }),
                 Ok(ChatChunk::Done { usage: None }),
             ])))
         }

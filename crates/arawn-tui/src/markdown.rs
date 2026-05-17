@@ -286,8 +286,10 @@ impl MdRenderer {
             } else {
                 format!("{indent}• ")
             };
-            self.current_spans
-                .push(Span::styled(bullet, Style::default().fg(theme::LIST_BULLET)));
+            self.current_spans.push(Span::styled(
+                bullet,
+                Style::default().fg(theme::LIST_BULLET),
+            ));
         }
 
         self.current_spans
@@ -440,14 +442,16 @@ impl MdRenderer {
         );
 
         // Header / data separator
-        self.lines.push(Line::from(Span::styled(mid.clone(), chrome)));
+        self.lines
+            .push(Line::from(Span::styled(mid.clone(), chrome)));
 
         // Data rows with horizontal separators between them
         let rows = self.table_rows.clone();
         for (i, row) in rows.iter().enumerate() {
             self.emit_padded_row(row, &col_widths, Style::default(), chrome);
             if i < rows.len() - 1 {
-                self.lines.push(Line::from(Span::styled(mid.clone(), chrome)));
+                self.lines
+                    .push(Line::from(Span::styled(mid.clone(), chrome)));
             }
         }
 

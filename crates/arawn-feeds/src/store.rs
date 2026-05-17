@@ -232,12 +232,7 @@ mod tests {
                 "*/15 * * * *",
             ))
             .unwrap();
-        let mut b = new_record(
-            "b",
-            "stub/echo",
-            TemplateParams::default(),
-            "*/15 * * * *",
-        );
+        let mut b = new_record("b", "stub/echo", TemplateParams::default(), "*/15 * * * *");
         b.enabled = false;
         store.insert(&b).unwrap();
 

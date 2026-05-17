@@ -115,10 +115,9 @@ impl CeremonyRunner {
         kind: &str,
         schedule_override: Option<crate::plugin::CronSchedule>,
     ) -> Result<(), CeremonyError> {
-        let plugin = self
-            .registry
-            .get(kind)
-            .ok_or_else(|| CeremonyError::Other(format!("no plugin registered for kind '{kind}'")))?;
+        let plugin = self.registry.get(kind).ok_or_else(|| {
+            CeremonyError::Other(format!("no plugin registered for kind '{kind}'"))
+        })?;
 
         let schedule = schedule_override.unwrap_or_else(|| plugin.default_schedule());
         let workflow_name = workflow_name(kind);
@@ -323,7 +322,12 @@ mod tests {
             self.calls.lock().unwrap().len()
         }
         fn called(&self, kind: &str) -> usize {
-            self.calls.lock().unwrap().iter().filter(|k| *k == kind).count()
+            self.calls
+                .lock()
+                .unwrap()
+                .iter()
+                .filter(|k| *k == kind)
+                .count()
         }
     }
     #[async_trait]
@@ -376,7 +380,10 @@ mod tests {
     }
     impl TestRunner {
         fn new(registry: PluginRegistry, dispatcher: Arc<dyn CeremonyDispatcher>) -> Self {
-            Self { registry, dispatcher }
+            Self {
+                registry,
+                dispatcher,
+            }
         }
         async fn run_once(&self, kind: &str) -> Result<DispatchOutcome, CeremonyError> {
             if self.registry.get(kind).is_none() {

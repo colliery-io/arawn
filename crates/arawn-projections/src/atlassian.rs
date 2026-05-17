@@ -367,10 +367,7 @@ fn read_jira_issue(
         .and_then(|v| v.as_str())
         .unwrap_or_default()
         .to_string();
-    let updated_str = fields
-        .get("updated")
-        .and_then(|v| v.as_str())
-        .unwrap_or("");
+    let updated_str = fields.get("updated").and_then(|v| v.as_str()).unwrap_or("");
     let source_ts = if updated_str.is_empty() {
         Utc::now()
     } else {
@@ -563,9 +560,7 @@ pub fn walk_confluence_feed_dir(
             .or_else(|| v.pointer("/parent/id"))
             .and_then(|x| x.as_str())
             .map(String::from);
-        let version = v
-            .pointer("/version/number")
-            .and_then(|x| x.as_i64());
+        let version = v.pointer("/version/number").and_then(|x| x.as_i64());
         let author = v
             .pointer("/version/by/displayName")
             .or_else(|| v.pointer("/version/by/name"))

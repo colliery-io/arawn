@@ -11,11 +11,10 @@ use uuid::Uuid;
 pub use error::ServiceError;
 pub use types::{
     CommandInfo, EngineEvent, FeedDiscoverDto, FeedDiscoverRow, FeedRegisterSpec, FeedRemoveDto,
-    FeedSummaryDto, ForgetCandidate, ForgetResult,
-    IntegrationStatus, InventoryItem, MemoryStoreResult, MemoryStoreSummary, MemorySummary,
-    MemoryTypeCount, ModalPromptOption, OAuthFlowStarted, PermissionAuditEntry,
-    PermissionModeInfo, PermissionsStatus, PromotionResult, ServerCapabilities, ServerNotice,
-    SessionDetail, SessionInfo, WorkflowInfo, WorkstreamInfo,
+    FeedSummaryDto, ForgetCandidate, ForgetResult, IntegrationStatus, InventoryItem,
+    MemoryStoreResult, MemoryStoreSummary, MemorySummary, MemoryTypeCount, ModalPromptOption,
+    OAuthFlowStarted, PermissionAuditEntry, PermissionModeInfo, PermissionsStatus, PromotionResult,
+    ServerCapabilities, ServerNotice, SessionDetail, SessionInfo, WorkflowInfo, WorkstreamInfo,
 };
 
 /// The service contract between any UI client and the Arawn backend.
@@ -161,10 +160,7 @@ pub trait ArawnService: Send + Sync {
 
     /// Register a new feed at runtime. Backs the `/watch` slash
     /// command. Returns the freshly-created feed summary.
-    async fn feed_register(
-        &self,
-        spec: FeedRegisterSpec,
-    ) -> Result<FeedSummaryDto, ServiceError>;
+    async fn feed_register(&self, spec: FeedRegisterSpec) -> Result<FeedSummaryDto, ServiceError>;
 
     /// List every configured feed (enabled + paused) with last-run
     /// status and on-disk size. Backs `/feeds`.
@@ -192,8 +188,5 @@ pub trait ArawnService: Send + Sync {
     /// the `/watch <template> <feed_id>` picker. Returns `None`
     /// (rendered as an empty list with a `picker_supported=false`
     /// flag) when the template doesn't support discovery.
-    async fn feed_discover(
-        &self,
-        template: &str,
-    ) -> Result<FeedDiscoverDto, ServiceError>;
+    async fn feed_discover(&self, template: &str) -> Result<FeedDiscoverDto, ServiceError>;
 }

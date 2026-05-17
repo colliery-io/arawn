@@ -5,9 +5,7 @@ use std::sync::Arc;
 
 use arawn_core::Message;
 use arawn_engine::hooks::{HookConfig, HookRunner};
-use arawn_engine::permissions::{
-    MockModalPrompt, PermissionChecker, PermissionRule, RuleKind,
-};
+use arawn_engine::permissions::{MockModalPrompt, PermissionChecker, PermissionRule, RuleKind};
 use arawn_engine::skills::{SkillDefinition, SkillRegistry, SkillSource};
 use arawn_engine::testing::TestHarness;
 use arawn_engine::tools::{FileReadTool, ShellTool, ThinkTool};
@@ -26,8 +24,7 @@ async fn full_pipeline_all_subsystems_wired() {
         PermissionRule::new(RuleKind::Ask, "file_read"),
     ];
     let checker = Arc::new(
-        PermissionChecker::new(rules)
-            .with_prompter(Box::new(MockModalPrompt::always(Some(0)))), // Allow Once
+        PermissionChecker::new(rules).with_prompter(Box::new(MockModalPrompt::always(Some(0)))), // Allow Once
     );
 
     // --- Hooks ---

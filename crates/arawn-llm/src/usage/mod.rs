@@ -185,14 +185,21 @@ impl UsageTracker {
             }
             match serde_json::from_str::<TokenUsageRecord>(raw) {
                 Ok(rec) => out.push(rec),
-                Err(e) => tracing::warn!(line = lineno + 1, error = %e, "skipped malformed usage record"),
+                Err(e) => {
+                    tracing::warn!(line = lineno + 1, error = %e, "skipped malformed usage record")
+                }
             }
         }
         out
     }
 
     /// Compute a [`UsageSummary`] over the log.
-    pub fn summary(&self, period: UsagePeriod, model_filter: Option<&str>, by_site: bool) -> UsageSummary {
+    pub fn summary(
+        &self,
+        period: UsagePeriod,
+        model_filter: Option<&str>,
+        by_site: bool,
+    ) -> UsageSummary {
         let now = now_secs();
         let since = period.since(now);
         let mut records: Vec<TokenUsageRecord> = self
@@ -229,14 +236,12 @@ impl UsageTracker {
 
             if by_site {
                 let key = r.call_site.clone().unwrap_or_else(|| "<unknown>".into());
-                let site = sites
-                    .entry(key.clone())
-                    .or_insert_with(|| CallSiteStats {
-                        call_site: key,
-                        total_prompt_tokens: 0,
-                        total_completion_tokens: 0,
-                        call_count: 0,
-                    });
+                let site = sites.entry(key.clone()).or_insert_with(|| CallSiteStats {
+                    call_site: key,
+                    total_prompt_tokens: 0,
+                    total_completion_tokens: 0,
+                    call_count: 0,
+                });
                 site.total_prompt_tokens += r.prompt_tokens as u64;
                 site.total_completion_tokens += r.completion_tokens as u64;
                 site.call_count += 1;
@@ -391,7 +396,10 @@ mod tests {
         let s = t.summary(UsagePeriod::All, None, true);
         assert_eq!(s.by_site.len(), 3);
         let by_site = s.by_site;
-        let agent = by_site.iter().find(|r| r.call_site == "agent.loop").unwrap();
+        let agent = by_site
+            .iter()
+            .find(|r| r.call_site == "agent.loop")
+            .unwrap();
         assert_eq!(agent.call_count, 2);
         assert_eq!(agent.total_prompt_tokens, 30);
         let unknown = by_site.iter().find(|r| r.call_site == "<unknown>").unwrap();

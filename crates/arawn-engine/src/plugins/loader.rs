@@ -153,9 +153,10 @@ pub fn discover_plugins(plugins_root: &Path) -> Vec<LoadedPlugin> {
                     &plugin_name,
                     &marketplace_name,
                     PluginSource::Cache,
-                ) {
-                    plugins.insert(plugin.id.to_string(), plugin);
-                }
+                )
+            {
+                plugins.insert(plugin.id.to_string(), plugin);
+            }
         }
     }
 
@@ -231,11 +232,7 @@ fn resolve_paths(manifest: &PluginManifest, plugin_dir: &Path) -> ResolvedPaths 
         }
         // Auto-discover by convention
         let path = plugin_dir.join(convention);
-        if path.is_dir() {
-            Some(path)
-        } else {
-            None
-        }
+        if path.is_dir() { Some(path) } else { None }
     };
 
     let hooks_file = match &manifest.hooks {
@@ -246,11 +243,7 @@ fn resolve_paths(manifest: &PluginManifest, plugin_dir: &Path) -> ResolvedPaths 
         _ => {
             // Auto-discover hooks/hooks.json
             let path = plugin_dir.join("hooks").join("hooks.json");
-            if path.is_file() {
-                Some(path)
-            } else {
-                None
-            }
+            if path.is_file() { Some(path) } else { None }
         }
     };
 
@@ -345,7 +338,11 @@ mod tests {
 
     /// Create a cache-structured plugin: cache/{marketplace}/{plugin}/{version}/plugin.json
     fn write_cached_plugin(root: &Path, marketplace: &str, name: &str, version: &str, extra: &str) {
-        let dir = root.join("cache").join(marketplace).join(name).join(version);
+        let dir = root
+            .join("cache")
+            .join(marketplace)
+            .join(name)
+            .join(version);
         std::fs::create_dir_all(&dir).unwrap();
         let manifest = format!(r#"{{ "name": "{name}", "version": "{version}" {extra} }}"#);
         std::fs::write(dir.join("plugin.json"), manifest).unwrap();
@@ -353,7 +350,11 @@ mod tests {
 
     /// Create a .claude-plugin/plugin.json style plugin.
     fn write_claude_plugin(root: &Path, marketplace: &str, name: &str, version: &str) {
-        let dir = root.join("cache").join(marketplace).join(name).join(version);
+        let dir = root
+            .join("cache")
+            .join(marketplace)
+            .join(name)
+            .join(version);
         let claude_dir = dir.join(".claude-plugin");
         std::fs::create_dir_all(&claude_dir).unwrap();
         let manifest = format!(r#"{{ "name": "{name}", "version": "{version}" }}"#);
@@ -434,7 +435,10 @@ mod tests {
 
         let plugin = LoadedPlugin {
             id: PluginIdentifier::new("test", "market"),
-            manifest: PluginManifest { name: "test".into(), ..Default::default() },
+            manifest: PluginManifest {
+                name: "test".into(),
+                ..Default::default()
+            },
             plugin_dir: PathBuf::from("/tmp/test"),
             source: PluginSource::Cache,
             enabled: true,
@@ -452,7 +456,10 @@ mod tests {
         let registry = PluginRegistry::new();
         registry.register(LoadedPlugin {
             id: PluginIdentifier::new("test", "market"),
-            manifest: PluginManifest { name: "test".into(), ..Default::default() },
+            manifest: PluginManifest {
+                name: "test".into(),
+                ..Default::default()
+            },
             plugin_dir: PathBuf::from("/tmp/test"),
             source: PluginSource::Cache,
             enabled: true,

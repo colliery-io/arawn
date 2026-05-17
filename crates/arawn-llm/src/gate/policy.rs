@@ -70,9 +70,7 @@ pub fn decide(policy: &Policy, signals: &Signals) -> Capacity {
         && let Some(free) = signals.free_ram_bytes
         && free < threshold
     {
-        return Capacity::Pause(format!(
-            "free RAM {free} below pause threshold {threshold}"
-        ));
+        return Capacity::Pause(format!("free RAM {free} below pause threshold {threshold}"));
     }
     if let (Some(extra), Some(free), Some(true)) = (
         policy.on_battery_extra_pause_bytes,

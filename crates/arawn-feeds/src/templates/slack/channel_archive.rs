@@ -79,9 +79,10 @@ impl FeedTemplate for ChannelArchiveTemplate {
         feed_dir: &Path,
         cursor: &Value,
     ) -> Result<RunOutcome, FeedError> {
-        let slack = ctx.clients().slack().ok_or_else(|| {
-            FeedError::Auth("slack integration not connected".into())
-        })?;
+        let slack = ctx
+            .clients()
+            .slack()
+            .ok_or_else(|| FeedError::Auth("slack integration not connected".into()))?;
 
         let raw_channel = params
             .get_str("channel")
@@ -96,19 +97,10 @@ impl FeedTemplate for ChannelArchiveTemplate {
         // ignored. See ARAWN-T-0227.
         let effective_cursor = synth_since_cursor(cursor, params)?;
 
-        archive_channel_with_threads(
-            slack.as_ref(),
-            &channel_id,
-            feed_dir,
-            &effective_cursor,
-        )
-        .await
+        archive_channel_with_threads(slack.as_ref(), &channel_id, feed_dir, &effective_cursor).await
     }
 
-    async fn discover(
-        &self,
-        ctx: &TemplateCtx,
-    ) -> Result<Option<Vec<DiscoveryRow>>, FeedError> {
+    async fn discover(&self, ctx: &TemplateCtx) -> Result<Option<Vec<DiscoveryRow>>, FeedError> {
         let slack = match ctx.clients().slack() {
             Some(c) => c,
             None => return Ok(None),
@@ -172,4 +164,3 @@ mod tests {
             .unwrap();
     }
 }
-

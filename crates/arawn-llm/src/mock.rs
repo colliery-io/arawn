@@ -250,9 +250,9 @@ mod tests {
 
     #[tokio::test]
     async fn mock_error_returns_err_immediately() {
-        let mock = MockLlmClient::new(vec![MockResponse::error(
-            crate::error::LlmError::Auth("invalid key".into()),
-        )]);
+        let mock = MockLlmClient::new(vec![MockResponse::error(crate::error::LlmError::Auth(
+            "invalid key".into(),
+        ))]);
         let request = ChatRequest {
             model: "test".into(),
             system_prompt: None,

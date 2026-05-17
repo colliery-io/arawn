@@ -36,13 +36,8 @@ async fn start_test_server(mock_responses: Vec<MockResponse>) -> (String, TempDi
     };
 
     let pool = Arc::new(arawn_bin::LlmClientPool::single(llm, config.model.clone()));
-    let service = arawn_bin::LocalService::new(
-        store,
-        tmp.path().to_path_buf(),
-        pool,
-        registry,
-        config,
-    );
+    let service =
+        arawn_bin::LocalService::new(store, tmp.path().to_path_buf(), pool, registry, config);
 
     // Bind to random port
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
@@ -347,10 +342,7 @@ async fn list_sessions_via_ws() {
         sessions.len()
     );
 
-    let ids: Vec<&str> = sessions
-        .iter()
-        .filter_map(|s| s["id"].as_str())
-        .collect();
+    let ids: Vec<&str> = sessions.iter().filter_map(|s| s["id"].as_str()).collect();
     assert!(ids.contains(&id1), "should contain first session");
     assert!(ids.contains(&id2), "should contain second session");
 }
@@ -543,12 +535,10 @@ async fn multi_turn_conversation_over_ws() {
         final_text
     }
 
-    let text1 =
-        send_and_wait_complete(&mut write, &mut read, 2, &session_id, "Turn 1").await;
+    let text1 = send_and_wait_complete(&mut write, &mut read, 2, &session_id, "Turn 1").await;
     assert_eq!(text1, "First reply over WS");
 
-    let text2 =
-        send_and_wait_complete(&mut write, &mut read, 3, &session_id, "Turn 2").await;
+    let text2 = send_and_wait_complete(&mut write, &mut read, 3, &session_id, "Turn 2").await;
     assert_eq!(text2, "Second reply over WS");
 }
 
@@ -582,12 +572,17 @@ async fn rapid_fire_requests_same_connection() {
             }
         }
     });
-    timeout.await.expect("timed out waiting for rapid-fire responses");
+    timeout
+        .await
+        .expect("timed out waiting for rapid-fire responses");
 
     assert_eq!(responses.len(), 3);
     // All should have results (not errors)
     for resp in &responses {
-        assert!(resp["result"].is_array(), "expected result array, got: {resp}");
+        assert!(
+            resp["result"].is_array(),
+            "expected result array, got: {resp}"
+        );
     }
 }
 
@@ -633,6 +628,8 @@ async fn send_message_nonexistent_session_returns_error() {
             }
         }
     });
-    timeout.await.expect("timed out — server may have hung on nonexistent session");
+    timeout
+        .await
+        .expect("timed out — server may have hung on nonexistent session");
     assert!(got_response, "should have received at least one response");
 }

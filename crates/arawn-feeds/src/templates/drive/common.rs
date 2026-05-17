@@ -68,9 +68,7 @@ pub fn change_token(md5: Option<&str>, modified_time: Option<&str>) -> String {
 /// Read a `modifiedTime` ISO string into an `i64` ms-since-epoch for
 /// day partitioning by send time.
 pub fn modified_to_yyyy_mm_dd(modified_time: Option<&str>) -> Result<String, FeedError> {
-    let s = modified_time.ok_or_else(|| {
-        FeedError::Schema("file missing modifiedTime".into())
-    })?;
+    let s = modified_time.ok_or_else(|| FeedError::Schema("file missing modifiedTime".into()))?;
     let dt = chrono::DateTime::parse_from_rfc3339(s)
         .map_err(|e| FeedError::Schema(format!("bad modifiedTime '{s}': {e}")))?;
     Ok(dt
@@ -99,7 +97,10 @@ mod tests {
         assert_eq!(change_token(Some("abc"), Some("2026-01-01")), "md5:abc");
         assert_eq!(change_token(None, Some("2026-01-01")), "mtime:2026-01-01");
         assert_eq!(change_token(None, None), "unknown");
-        assert_eq!(change_token(Some(""), Some("2026-01-01")), "mtime:2026-01-01");
+        assert_eq!(
+            change_token(Some(""), Some("2026-01-01")),
+            "mtime:2026-01-01"
+        );
     }
 
     #[test]

@@ -31,7 +31,11 @@ impl MemoryManager {
     /// Open both KB tiers. Creates databases if they don't exist.
     /// `data_dir` is typically `~/.arawn/`.
     /// `ws_dir` is the workstream subdirectory name (e.g., "my-project-{uuid}").
-    pub fn open(data_dir: &Path, ws_dir: &str, embedding_dims: Option<usize>) -> Result<Self, MemoryError> {
+    pub fn open(
+        data_dir: &Path,
+        ws_dir: &str,
+        embedding_dims: Option<usize>,
+    ) -> Result<Self, MemoryError> {
         // Initialize sqlite-vec globally (idempotent)
         if embedding_dims.is_some() {
             vector::init_vector_extension();
@@ -176,11 +180,20 @@ impl MemoryManager {
         let mut results = Vec::new();
         let mut tokens_used = 0;
 
-        let budget_check = |entity: &Entity, seen: &std::collections::HashSet<uuid::Uuid>, tokens_used: &usize| -> Option<usize> {
+        let budget_check = |entity: &Entity,
+                            seen: &std::collections::HashSet<uuid::Uuid>,
+                            tokens_used: &usize|
+         -> Option<usize> {
             if entity.superseded || seen.contains(&entity.id) {
                 return None;
             }
-            let cost = (entity.title.len() + entity.content.as_ref().map(|c| c.len().min(80)).unwrap_or(0)) / 4;
+            let cost = (entity.title.len()
+                + entity
+                    .content
+                    .as_ref()
+                    .map(|c| c.len().min(80))
+                    .unwrap_or(0))
+                / 4;
             if *tokens_used + cost > budget_tokens {
                 return None;
             }
@@ -241,11 +254,12 @@ impl MemoryManager {
                     if let Ok(sim_results) = store.search_similar(&query_emb, 10) {
                         for result in &sim_results {
                             if let Ok(Some(entity)) = store.get_entity(result.entity_id)
-                                && let Some(cost) = budget_check(&entity, &seen, &tokens_used) {
-                                    seen.insert(entity.id);
-                                    tokens_used += cost;
-                                    results.push(entity);
-                                }
+                                && let Some(cost) = budget_check(&entity, &seen, &tokens_used)
+                            {
+                                seen.insert(entity.id);
+                                tokens_used += cost;
+                                results.push(entity);
+                            }
                         }
                     }
                 }
@@ -377,6 +391,11 @@ mod tests {
         assert!(mgr.global.get_entity(global_entity.id).unwrap().is_some());
         assert!(mgr.global.get_entity(ws_entity.id).unwrap().is_none());
         assert!(mgr.workstream.get_entity(ws_entity.id).unwrap().is_some());
-        assert!(mgr.workstream.get_entity(global_entity.id).unwrap().is_none());
+        assert!(
+            mgr.workstream
+                .get_entity(global_entity.id)
+                .unwrap()
+                .is_none()
+        );
     }
 }

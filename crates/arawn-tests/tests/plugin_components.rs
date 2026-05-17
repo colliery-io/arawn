@@ -26,7 +26,11 @@ fn write_plugin_json(dir: &std::path::Path, name: &str) {
 }
 
 /// Create a plugin cache directory: cache/{marketplace}/{plugin}/{version}/
-fn create_cache_plugin(root: &std::path::Path, marketplace: &str, name: &str) -> std::path::PathBuf {
+fn create_cache_plugin(
+    root: &std::path::Path,
+    marketplace: &str,
+    name: &str,
+) -> std::path::PathBuf {
     let version_dir = root
         .join("cache")
         .join(marketplace)
@@ -42,9 +46,7 @@ fn write_skill(dir: &std::path::Path, filename: &str, description: &str, prompt:
     std::fs::create_dir_all(dir).unwrap();
     std::fs::write(
         dir.join(filename),
-        format!(
-            "---\ndescription: \"{description}\"\nuser_invocable: true\n---\n\n{prompt}\n"
-        ),
+        format!("---\ndescription: \"{description}\"\nuser_invocable: true\n---\n\n{prompt}\n"),
     )
     .unwrap();
 }
@@ -203,10 +205,7 @@ fn load_plugin_components_loads_hooks() {
         components.errors
     );
     let hooks = components.hooks.unwrap();
-    assert!(
-        !hooks.is_empty(),
-        "hooks config should not be empty"
-    );
+    assert!(!hooks.is_empty(), "hooks config should not be empty");
 }
 
 #[test]
@@ -228,7 +227,9 @@ fn register_plugin_skills_namespaces_into_registry() {
     register_plugin_skills(&registry, components.skills);
 
     // Should be accessible by namespaced name (registry also has built-in skills)
-    let skill = registry.get("my-plugin:deploy").expect("should find namespaced skill");
+    let skill = registry
+        .get("my-plugin:deploy")
+        .expect("should find namespaced skill");
     assert!(skill.prompt.contains("Deploy the application"));
 }
 
@@ -283,10 +284,7 @@ fn plugin_with_mixed_valid_invalid_components() {
         "at least 1 valid skill should load"
     );
     // The valid one should have the right name
-    assert!(components
-        .skills
-        .iter()
-        .any(|s| s.name.contains("valid")));
+    assert!(components.skills.iter().any(|s| s.name.contains("valid")));
 }
 
 #[test]

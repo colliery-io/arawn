@@ -34,8 +34,7 @@ pub struct WorkflowDef {
 /// Creates: Cargo.toml, build.rs, package.toml, src/lib.rs
 pub fn generate(dir: &Path, def: &WorkflowDef) -> Result<(), ScaffoldError> {
     let src_dir = dir.join("src");
-    std::fs::create_dir_all(&src_dir)
-        .map_err(|e| ScaffoldError(format!("create src dir: {e}")))?;
+    std::fs::create_dir_all(&src_dir).map_err(|e| ScaffoldError(format!("create src dir: {e}")))?;
 
     let crate_name = def.name.replace('-', "_");
 
@@ -45,8 +44,11 @@ pub fn generate(dir: &Path, def: &WorkflowDef) -> Result<(), ScaffoldError> {
     std::fs::write(dir.join("build.rs"), BUILD_RS)
         .map_err(|e| ScaffoldError(format!("write build.rs: {e}")))?;
 
-    std::fs::write(dir.join("package.toml"), package_toml(&def.name, &crate_name, &def.description))
-        .map_err(|e| ScaffoldError(format!("write package.toml: {e}")))?;
+    std::fs::write(
+        dir.join("package.toml"),
+        package_toml(&def.name, &crate_name, &def.description),
+    )
+    .map_err(|e| ScaffoldError(format!("write package.toml: {e}")))?;
 
     std::fs::write(src_dir.join("lib.rs"), lib_rs(def, &crate_name))
         .map_err(|e| ScaffoldError(format!("write src/lib.rs: {e}")))?;
@@ -183,7 +185,8 @@ mod tests {
                 TaskDef {
                     id: "fetch".into(),
                     dependencies: vec![],
-                    body: "context.insert(\"data\", serde_json::json!({\"ok\": true}))?;\nOk(())".into(),
+                    body: "context.insert(\"data\", serde_json::json!({\"ok\": true}))?;\nOk(())"
+                        .into(),
                     retry_attempts: Some(3),
                 },
                 TaskDef {

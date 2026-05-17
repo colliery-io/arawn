@@ -90,10 +90,7 @@ impl ConfigWatcher {
                 None => break,
             };
 
-            if !matches!(
-                event.kind,
-                EventKind::Create(_) | EventKind::Modify(_)
-            ) {
+            if !matches!(event.kind, EventKind::Create(_) | EventKind::Modify(_)) {
                 continue;
             }
 
@@ -128,10 +125,8 @@ impl ConfigWatcher {
         let config = ArawnConfig::load(&self.data_dir);
 
         // Reload permissions
-        let new_rules = arawn_engine::permissions::load_permissions_from_file(
-            &self.config_path,
-        )
-        .into_rules();
+        let new_rules =
+            arawn_engine::permissions::load_permissions_from_file(&self.config_path).into_rules();
         {
             let mut rules = self.permission_rules.write().unwrap();
             *rules = new_rules;
@@ -139,8 +134,7 @@ impl ConfigWatcher {
         info!("permission rules reloaded");
 
         // Reload MCP servers
-        let mcp_config =
-            arawn_mcp::load_mcp_config(&self.config_path);
+        let mcp_config = arawn_mcp::load_mcp_config(&self.config_path);
         {
             let mut manager = self.mcp_manager.lock().await;
             manager

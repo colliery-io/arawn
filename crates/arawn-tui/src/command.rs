@@ -164,7 +164,8 @@ impl CommandRegistry {
         // Continual data feeds (I-0039)
         self.commands.push(CommandInfo {
             name: "watch".into(),
-            description: "Register a continual data feed. /watch list <template> picks values.".into(),
+            description: "Register a continual data feed. /watch list <template> picks values."
+                .into(),
             kind: CommandKind::BuiltIn,
         });
         self.commands.push(CommandInfo {
@@ -236,7 +237,9 @@ impl CommandRegistry {
     /// Look up a command by exact name.
     pub fn find(&self, name: &str) -> Option<&CommandInfo> {
         let lower = name.to_lowercase();
-        self.commands.iter().find(|c| c.name.to_lowercase() == lower)
+        self.commands
+            .iter()
+            .find(|c| c.name.to_lowercase() == lower)
     }
 }
 
@@ -389,8 +392,7 @@ pub struct WatchSpec {
 /// Quoting: a `key="value with spaces"` token is honored. Inner
 /// double-quotes can be escaped with `\"`.
 pub fn parse_watch_args(args: &str) -> Result<WatchSpec, String> {
-    let tokens = tokenize_kv(args.trim())
-        .map_err(|e| format!("/watch: {e}"))?;
+    let tokens = tokenize_kv(args.trim()).map_err(|e| format!("/watch: {e}"))?;
     if tokens.len() < 2 {
         return Err(
             "Usage: /watch <provider/template> <feed_id> [key=value ...]\n\
@@ -426,8 +428,7 @@ pub fn parse_watch_args(args: &str) -> Result<WatchSpec, String> {
             //   - RFC3339 datetime: 2026-01-01T12:00:00Z
             //   - ISO date (treated as midnight UTC): 2026-01-01
             //   - Relative duration: 7d / 12h / 6w / 6mo
-            let iso = parse_since(v)
-                .map_err(|e| format!("/watch: bad since value '{v}': {e}"))?;
+            let iso = parse_since(v).map_err(|e| format!("/watch: bad since value '{v}': {e}"))?;
             params.insert("since".into(), serde_json::Value::String(iso));
             continue;
         }
@@ -574,9 +575,7 @@ pub fn parse_feeds_args(args: &str) -> CommandResult {
                     confirmed,
                 }
             }
-            None => {
-                CommandResult::SystemMessage("Usage: /feeds rm <id> [--yes]".into())
-            }
+            None => CommandResult::SystemMessage("Usage: /feeds rm <id> [--yes]".into()),
         },
         "run" => match tokens.next() {
             Some(id) => CommandResult::FeedRun(id.into()),
@@ -812,10 +811,8 @@ mod tests {
 
     #[test]
     fn watch_parses_since_iso_date() {
-        let spec = parse_watch_args(
-            "slack/channel-archive design channel=C123 since=2026-01-01",
-        )
-        .expect("valid watch args");
+        let spec = parse_watch_args("slack/channel-archive design channel=C123 since=2026-01-01")
+            .expect("valid watch args");
         assert_eq!(
             spec.params["since"].as_str().unwrap(),
             "2026-01-01T00:00:00+00:00"
@@ -835,14 +832,12 @@ mod tests {
 
     #[test]
     fn watch_rejects_garbage_since() {
-        assert!(parse_watch_args(
-            "slack/channel-archive design channel=C123 since=tomorrow"
-        )
-        .is_err());
-        assert!(parse_watch_args(
-            "slack/channel-archive design channel=C123 since=180banana"
-        )
-        .is_err());
+        assert!(
+            parse_watch_args("slack/channel-archive design channel=C123 since=tomorrow").is_err()
+        );
+        assert!(
+            parse_watch_args("slack/channel-archive design channel=C123 since=180banana").is_err()
+        );
     }
 
     #[test]
@@ -1047,9 +1042,21 @@ mod tests {
     #[test]
     fn autocomplete_navigation() {
         let suggestions = vec![
-            CommandInfo { name: "help".into(), description: "".into(), kind: CommandKind::BuiltIn },
-            CommandInfo { name: "clear".into(), description: "".into(), kind: CommandKind::BuiltIn },
-            CommandInfo { name: "plan".into(), description: "".into(), kind: CommandKind::BuiltIn },
+            CommandInfo {
+                name: "help".into(),
+                description: "".into(),
+                kind: CommandKind::BuiltIn,
+            },
+            CommandInfo {
+                name: "clear".into(),
+                description: "".into(),
+                kind: CommandKind::BuiltIn,
+            },
+            CommandInfo {
+                name: "plan".into(),
+                description: "".into(),
+                kind: CommandKind::BuiltIn,
+            },
         ];
         let mut ac = AutocompleteState::new(suggestions);
         assert_eq!(ac.selected, 0);
@@ -1079,7 +1086,10 @@ mod tests {
     fn execute_clear() {
         let reg = CommandRegistry::new();
         let cmd = parse_command("/clear").unwrap();
-        assert!(matches!(execute_command(&cmd, &reg), CommandResult::ClearChat));
+        assert!(matches!(
+            execute_command(&cmd, &reg),
+            CommandResult::ClearChat
+        ));
     }
 
     #[test]
@@ -1139,7 +1149,10 @@ mod tests {
         match execute_command(&cmd, &reg) {
             CommandResult::SystemMessage(msg) => {
                 assert!(msg.contains("Usage:"), "expected usage message, got: {msg}");
-                assert!(msg.contains("/remember"), "usage should mention command name");
+                assert!(
+                    msg.contains("/remember"),
+                    "usage should mention command name"
+                );
             }
             other => panic!("expected SystemMessage, got {other:?}"),
         }
@@ -1206,7 +1219,10 @@ mod tests {
             .filter(|c| c.kind == CommandKind::BuiltIn)
             .map(|c| c.name.clone())
             .collect();
-        assert!(!builtins.is_empty(), "registry should have built-in commands");
+        assert!(
+            !builtins.is_empty(),
+            "registry should have built-in commands"
+        );
 
         for name in builtins {
             let input = format!("/{name}");
@@ -1286,9 +1302,7 @@ mod tests {
         // warning AND this assertion.
         const PINNED: &str = "docs/src/memory.md";
         assert!(
-            std::path::Path::new("../..")
-                .join(PINNED)
-                .exists()
+            std::path::Path::new("../..").join(PINNED).exists()
                 || std::path::Path::new("../..").join("docs").exists(),
             "memory docs not at expected path; update banner copy in event_loop.rs"
         );

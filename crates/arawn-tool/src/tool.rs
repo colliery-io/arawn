@@ -78,11 +78,7 @@ pub trait Tool: Send + Sync {
     fn name(&self) -> &str;
     fn description(&self) -> &str;
     fn parameters_schema(&self) -> Value;
-    async fn execute(
-        &self,
-        ctx: &dyn ToolContext,
-        params: Value,
-    ) -> Result<ToolOutput, ToolError>;
+    async fn execute(&self, ctx: &dyn ToolContext, params: Value) -> Result<ToolOutput, ToolError>;
 
     /// Whether this tool is side-effect-free (observation only).
     fn is_read_only(&self) -> bool {

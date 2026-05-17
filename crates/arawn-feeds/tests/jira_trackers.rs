@@ -8,12 +8,12 @@ use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde_json::{Value, json};
 
+use arawn_feeds::templates::jira::{AssigneeTrackerTemplate, ProjectTrackerTemplate};
 use arawn_feeds::{
     AtlassianFeedClient, CalendarFeedClient, ConfluencePageBody, ConfluencePageMeta, DataLayout,
     DriveFeedClient, FeedClients, FeedError, FeedMeta, FeedTemplate, GmailFeedClient,
     JiraIssueDetail, JiraIssueMeta, MetaStore, SlackFeedClient, TemplateCtx, TemplateParams,
 };
-use arawn_feeds::templates::jira::{AssigneeTrackerTemplate, ProjectTrackerTemplate};
 
 /// In-memory atlassian emulator.
 #[derive(Default)]
@@ -90,7 +90,9 @@ impl AtlassianFeedClient for MockAtlassian {
             .unwrap()
             .push((key.into(), want_changelog, want_comments));
         if self.fail_full.lock().unwrap().contains(key) {
-            return Err(FeedError::Provider(format!("simulated full fail for {key}")));
+            return Err(FeedError::Provider(format!(
+                "simulated full fail for {key}"
+            )));
         }
         let mut all = self.issue_details.lock().unwrap();
         let queue = all
@@ -107,9 +109,7 @@ impl AtlassianFeedClient for MockAtlassian {
         Ok(format!("id-{key_or_id}"))
     }
 
-    async fn list_jira_projects(
-        &self,
-    ) -> Result<Vec<arawn_feeds::JiraProjectMeta>, FeedError> {
+    async fn list_jira_projects(&self) -> Result<Vec<arawn_feeds::JiraProjectMeta>, FeedError> {
         unreachable!("jira tests don't use list_jira_projects");
     }
 
@@ -261,7 +261,9 @@ async fn project_tracker_appends_new_comments_overwrites_issue_snapshot() {
         ),
     );
 
-    let ctx = TemplateCtx::new(Arc::new(MockClients { atlassian: mock.clone() }));
+    let ctx = TemplateCtx::new(Arc::new(MockClients {
+        atlassian: mock.clone(),
+    }));
     let params = TemplateParams(json!({ "project": "ENG" }));
     run_once(&ProjectTrackerTemplate, &ctx, &params, &feed_dir).await;
     run_once(&ProjectTrackerTemplate, &ctx, &params, &feed_dir).await;
@@ -365,9 +367,11 @@ async fn project_tracker_partial_failure_doesnt_block_other_issues() {
 
 #[tokio::test]
 async fn project_tracker_validates_project() {
-    assert!(ProjectTrackerTemplate
-        .validate(&TemplateParams::default())
-        .is_err());
+    assert!(
+        ProjectTrackerTemplate
+            .validate(&TemplateParams::default())
+            .is_err()
+    );
     let p = TemplateParams(json!({ "project": "" }));
     assert!(ProjectTrackerTemplate.validate(&p).is_err());
     let p = TemplateParams(json!({ "project": "ENG" }));
@@ -390,7 +394,9 @@ async fn assignee_tracker_writes_only_issue_json_no_logs() {
         "ENG-3",
         issue_detail("ENG-3", "2026-05-08T09:00:00.000+0000", None, None),
     );
-    let ctx = TemplateCtx::new(Arc::new(MockClients { atlassian: mock.clone() }));
+    let ctx = TemplateCtx::new(Arc::new(MockClients {
+        atlassian: mock.clone(),
+    }));
 
     let outcome = run_once(
         &AssigneeTrackerTemplate,
@@ -428,10 +434,15 @@ async fn assignee_tracker_uses_currentUser_jql_and_advances_cursor() {
 
     let mock = Arc::new(MockAtlassian::default());
     mock.queue_search(vec![issue_meta("X-1", "2026-05-08T09:00:00.000+0000")]);
-    mock.queue_detail("X-1", issue_detail("X-1", "2026-05-08T09:00:00.000+0000", None, None));
+    mock.queue_detail(
+        "X-1",
+        issue_detail("X-1", "2026-05-08T09:00:00.000+0000", None, None),
+    );
     mock.queue_search(vec![]); // run 2 returns nothing
 
-    let ctx = TemplateCtx::new(Arc::new(MockClients { atlassian: mock.clone() }));
+    let ctx = TemplateCtx::new(Arc::new(MockClients {
+        atlassian: mock.clone(),
+    }));
     run_once(
         &AssigneeTrackerTemplate,
         &ctx,

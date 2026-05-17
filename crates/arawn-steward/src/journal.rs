@@ -89,9 +89,8 @@ impl JournalGate {
         if record.applied && !self.mutating_allowed {
             return Err(StewardError::Subroutine {
                 name: record.subroutine.clone(),
-                message:
-                    "non-mutating subroutine attempted an `applied=true` write; rejected"
-                        .into(),
+                message: "non-mutating subroutine attempted an `applied=true` write; rejected"
+                    .into(),
             });
         }
         self.journal.write_ahead(record)
@@ -130,9 +129,8 @@ impl Journal {
     /// `MemoryManager::for_workstream` already does.
     pub fn open(data_dir: &Path, workstream_name: &str) -> Result<Self, StewardError> {
         let ws_dir = data_dir.join("workstreams").join(workstream_name);
-        std::fs::create_dir_all(&ws_dir).map_err(|e| {
-            StewardError::Storage(format!("create workstream dir {ws_dir:?}: {e}"))
-        })?;
+        std::fs::create_dir_all(&ws_dir)
+            .map_err(|e| StewardError::Storage(format!("create workstream dir {ws_dir:?}: {e}")))?;
         let path = ws_dir.join("memory.db");
         let conn = Connection::open(&path)?;
         ensure_schema(&conn)?;

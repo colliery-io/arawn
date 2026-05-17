@@ -24,8 +24,7 @@ use rusqlite::{Connection, params};
 /// already exist (uses `INSERT OR IGNORE`).
 pub fn apply(data_dir: &Path) -> Result<SeedSummary, String> {
     let db_path = data_dir.join("arawn.db");
-    let conn = Connection::open(&db_path)
-        .map_err(|e| format!("open {db_path:?}: {e}"))?;
+    let conn = Connection::open(&db_path).map_err(|e| format!("open {db_path:?}: {e}"))?;
 
     let now = Utc::now();
     let cur_iso = iso_week_str(now);
@@ -71,10 +70,7 @@ fn seed_workstream_rollup(
     for dt in prior_weeks {
         let iso = iso_week_str(*dt);
         for ws in ["proj-a", "proj-b", "proj-c"] {
-            for (metric, value) in [
-                ("emails_sent", 8.0),
-                ("slack_threads_participated", 6.0),
-            ] {
+            for (metric, value) in [("emails_sent", 8.0), ("slack_threads_participated", 6.0)] {
                 conn.execute(
                     "INSERT OR IGNORE INTO ceremony_activity_rollup \
                      (iso_week, workstream, metric_key, value) VALUES (?1, ?2, ?3, ?4)",
@@ -123,9 +119,21 @@ fn seed_weekly_tablet_with_priorities(
     .map_err(|e| format!("weekly tablet insert: {e}"))?;
 
     let priorities = [
-        ("prio-001", "Ship the proj-a postgres migration", "Carried over from last week."),
-        ("prio-002", "Close the proj-b on-call rotation cleanup", "Six rollover todos in this area."),
-        ("prio-003", "Pair with the proj-c team on the shared schema", "Calendar said Tuesday."),
+        (
+            "prio-001",
+            "Ship the proj-a postgres migration",
+            "Carried over from last week.",
+        ),
+        (
+            "prio-002",
+            "Close the proj-b on-call rotation cleanup",
+            "Six rollover todos in this area.",
+        ),
+        (
+            "prio-003",
+            "Pair with the proj-c team on the shared schema",
+            "Calendar said Tuesday.",
+        ),
     ];
     for (idx, (id, body, rationale)) in priorities.iter().enumerate() {
         conn.execute(
@@ -187,7 +195,10 @@ fn seed_daily_tablets_and_todos(
     let todos = [
         ("todo-001", "Reply to proj-b on-call escalation thread"),
         ("todo-002", "Draft the proj-a migration runbook"),
-        ("todo-003", "Re-share the proj-c schema RFC with the SRE team"),
+        (
+            "todo-003",
+            "Re-share the proj-c schema RFC with the SRE team",
+        ),
         ("todo-004", "Schedule the proj-b retro post-mortem"),
     ];
     for (id, body) in todos {

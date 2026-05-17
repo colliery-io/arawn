@@ -108,10 +108,7 @@ pub trait FeedTemplate: Send + Sync {
     /// a Drive folder path, an arbitrary cadence override) leave the
     /// default `Ok(None)` — the TUI then prints a usage message
     /// instead of opening an empty picker.
-    async fn discover(
-        &self,
-        _ctx: &TemplateCtx,
-    ) -> Result<Option<Vec<DiscoveryRow>>, FeedError> {
+    async fn discover(&self, _ctx: &TemplateCtx) -> Result<Option<Vec<DiscoveryRow>>, FeedError> {
         Ok(None)
     }
 }

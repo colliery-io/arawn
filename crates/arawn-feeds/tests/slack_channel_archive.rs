@@ -15,12 +15,12 @@ use std::sync::{Arc, Mutex};
 use async_trait::async_trait;
 use serde_json::{Value, json};
 
-use arawn_feeds::{
-    AtlassianFeedClient, CalendarFeedClient, DataLayout, DriveFeedClient, FeedClients, FeedError, FeedMeta,
-    FeedTemplate, GmailFeedClient, MetaStore, SlackAuthInfo, SlackFeedClient, SlackHistoryPage,
-    TemplateCtx, TemplateParams,
-};
 use arawn_feeds::templates::slack::ChannelArchiveTemplate;
+use arawn_feeds::{
+    AtlassianFeedClient, CalendarFeedClient, DataLayout, DriveFeedClient, FeedClients, FeedError,
+    FeedMeta, FeedTemplate, GmailFeedClient, MetaStore, SlackAuthInfo, SlackFeedClient,
+    SlackHistoryPage, TemplateCtx, TemplateParams,
+};
 
 #[derive(Default)]
 struct MockSlackClient {
@@ -141,9 +141,13 @@ impl SlackFeedClient for MockSlackClient {
             }
         }
         let mut responses = self.thread_responses.lock().unwrap();
-        let page = responses
-            .get_mut(parent_ts)
-            .and_then(|q| if q.is_empty() { None } else { Some(q.remove(0)) });
+        let page = responses.get_mut(parent_ts).and_then(|q| {
+            if q.is_empty() {
+                None
+            } else {
+                Some(q.remove(0))
+            }
+        });
         Ok(page.unwrap_or_else(|| SlackHistoryPage {
             messages: vec![],
             next_cursor_ts: oldest_ts.map(str::to_string),
@@ -248,7 +252,9 @@ async fn first_run_writes_messages_and_advances_cursor() {
         next_cursor_ts: Some(format!("{}.000002", day0 + 60)),
     });
 
-    let clients = Arc::new(MockClients { slack: mock.clone() });
+    let clients = Arc::new(MockClients {
+        slack: mock.clone(),
+    });
     let ctx = TemplateCtx::new(clients);
     let template = ChannelArchiveTemplate;
     let params = TemplateParams::new(json!({ "channel": "#design" }));
@@ -302,7 +308,9 @@ async fn second_run_passes_cursor_and_only_writes_new() {
         next_cursor_ts: Some(format!("{}.0001", day0 + 600)),
     });
 
-    let clients = Arc::new(MockClients { slack: mock.clone() });
+    let clients = Arc::new(MockClients {
+        slack: mock.clone(),
+    });
     let ctx = TemplateCtx::new(clients);
     let template = ChannelArchiveTemplate;
     let params = TemplateParams::new(json!({ "channel": "#design" }));
@@ -335,7 +343,9 @@ async fn empty_run_is_a_no_op_with_status() {
     let mock = Arc::new(MockSlackClient::new());
     // No queue -> default empty page
 
-    let clients = Arc::new(MockClients { slack: mock.clone() });
+    let clients = Arc::new(MockClients {
+        slack: mock.clone(),
+    });
     let ctx = TemplateCtx::new(clients);
     let template = ChannelArchiveTemplate;
     let params = TemplateParams::new(json!({ "channel": "#design" }));
@@ -487,7 +497,9 @@ async fn parent_with_replies_seeds_thread_file_and_advances_thread_cursor() {
         },
     );
 
-    let clients = Arc::new(MockClients { slack: mock.clone() });
+    let clients = Arc::new(MockClients {
+        slack: mock.clone(),
+    });
     let ctx = TemplateCtx::new(clients);
     let template = ChannelArchiveTemplate;
     let params = TemplateParams::new(json!({ "channel": "#design" }));
@@ -565,7 +577,9 @@ async fn second_run_advances_thread_cursor_independently() {
         },
     );
 
-    let clients = Arc::new(MockClients { slack: mock.clone() });
+    let clients = Arc::new(MockClients {
+        slack: mock.clone(),
+    });
     let ctx = TemplateCtx::new(clients);
     let template = ChannelArchiveTemplate;
     let params = TemplateParams::new(json!({ "channel": "#design" }));
@@ -616,7 +630,9 @@ async fn channel_archive_works_for_dm_id_passthrough() {
         next_cursor_ts: Some(format!("{day0}.0001")),
     });
 
-    let clients = Arc::new(MockClients { slack: mock.clone() });
+    let clients = Arc::new(MockClients {
+        slack: mock.clone(),
+    });
     let ctx = TemplateCtx::new(clients);
     let template = ChannelArchiveTemplate;
     let params = TemplateParams::new(json!({ "channel": "D123ABC" }));
@@ -663,10 +679,7 @@ async fn channel_archive_works_for_mpim_id_passthrough() {
 fn classify_helper_resolves_kinds_for_picker_use() {
     use arawn_feeds::{ChannelKind, classify_channel_id};
     assert_eq!(classify_channel_id("CABCDEF"), Some(ChannelKind::Public));
-    assert_eq!(
-        classify_channel_id("GABCDEF"),
-        Some(ChannelKind::Private)
-    );
+    assert_eq!(classify_channel_id("GABCDEF"), Some(ChannelKind::Private));
     assert_eq!(
         classify_channel_id("DABCDEF"),
         Some(ChannelKind::DirectMessage)
@@ -701,10 +714,7 @@ async fn thread_failure_does_not_block_channel_or_other_threads() {
         ],
         next_cursor_ts: Some(good_parent.clone()),
     });
-    mock.queue_thread_error(
-        &bad_parent,
-        FeedError::RateLimited { retry_after: None },
-    );
+    mock.queue_thread_error(&bad_parent, FeedError::RateLimited { retry_after: None });
     mock.queue_thread(
         &good_parent,
         SlackHistoryPage {
@@ -716,7 +726,9 @@ async fn thread_failure_does_not_block_channel_or_other_threads() {
         },
     );
 
-    let clients = Arc::new(MockClients { slack: mock.clone() });
+    let clients = Arc::new(MockClients {
+        slack: mock.clone(),
+    });
     let ctx = TemplateCtx::new(clients);
     let template = ChannelArchiveTemplate;
     let params = TemplateParams::new(json!({ "channel": "#design" }));
@@ -735,9 +747,7 @@ async fn thread_failure_does_not_block_channel_or_other_threads() {
 
     // Bad thread file has only the parent (seeded from history); no
     // replies because the call errored.
-    let bad_path = feed_dir
-        .join("threads")
-        .join(format!("{bad_parent}.jsonl"));
+    let bad_path = feed_dir.join("threads").join(format!("{bad_parent}.jsonl"));
     let bad_lines = std::fs::read_to_string(&bad_path).unwrap();
     let bad_count = bad_lines.lines().filter(|l| !l.is_empty()).count();
     assert_eq!(bad_count, 1, "only the parent — replies failed to fetch");

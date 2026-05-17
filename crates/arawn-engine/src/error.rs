@@ -13,10 +13,7 @@ pub enum EngineError {
     Llm(#[from] arawn_llm::LlmError),
 
     #[error("max iterations ({iterations}) exceeded for session {session_id}")]
-    MaxIterations {
-        iterations: usize,
-        session_id: Uuid,
-    },
+    MaxIterations { iterations: usize, session_id: Uuid },
 
     #[error("{0}")]
     Other(#[from] anyhow::Error),
@@ -47,7 +44,10 @@ impl EngineError {
             EngineError::Tool(msg) => {
                 format!("A tool encountered an error: {msg}")
             }
-            EngineError::MaxIterations { iterations, session_id } => {
+            EngineError::MaxIterations {
+                iterations,
+                session_id,
+            } => {
                 format!(
                     "Reached the maximum iteration limit ({iterations} turns). \
                      Session {session_id} has been saved — resume with --session {session_id}"

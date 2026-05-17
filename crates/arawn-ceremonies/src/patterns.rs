@@ -45,10 +45,7 @@ pub trait Detector: Send + Sync {
 
     /// Run the rule for `current_iso_week`. The ctx exposes the
     /// rollup + tablet history queries.
-    async fn detect(
-        &self,
-        ctx: &DetectorCtx<'_>,
-    ) -> Result<Vec<DetectedPattern>, CeremonyError>;
+    async fn detect(&self, ctx: &DetectorCtx<'_>) -> Result<Vec<DetectedPattern>, CeremonyError>;
 }
 
 /// Read-only surface a [`Detector`] uses to query historical data.
@@ -112,8 +109,13 @@ impl<'a> DetectorCtx<'a> {
             .map_err(|e| CeremonyError::Storage(format!("metric_sum prepare: {e}")))?;
         let rows = stmt
             .query_map(
-                params![workstream, metric_key, &self.current_iso_week, lookback_weeks],
-                |row| Ok(row.get::<_, f64>(1)?),
+                params![
+                    workstream,
+                    metric_key,
+                    &self.current_iso_week,
+                    lookback_weeks
+                ],
+                |row| row.get::<_, f64>(1),
             )
             .map_err(|e| CeremonyError::Storage(format!("metric_sum query: {e}")))?;
         let mut total = 0.0;
@@ -140,16 +142,9 @@ impl<'a> DetectorCtx<'a> {
 /// Aggregates a set of [`Detector`]s and implements
 /// [`PatternDetector`]. Plugins return this from
 /// `Ceremony::patterns()` and the engine fans out.
+#[derive(Default)]
 pub struct DetectorRegistry {
     detectors: Vec<Arc<dyn Detector>>,
-}
-
-impl Default for DetectorRegistry {
-    fn default() -> Self {
-        Self {
-            detectors: Vec::new(),
-        }
-    }
 }
 
 impl DetectorRegistry {
@@ -177,10 +172,7 @@ impl DetectorRegistry {
 /// run without history.
 #[async_trait]
 impl PatternDetector for DetectorRegistry {
-    async fn detect(
-        &self,
-        ctx: &dyn CeremonyCtx,
-    ) -> Result<Vec<DetectedPattern>, CeremonyError> {
+    async fn detect(&self, ctx: &dyn CeremonyCtx) -> Result<Vec<DetectedPattern>, CeremonyError> {
         let conn = ctx.conn_handle().ok_or_else(|| {
             CeremonyError::Other(
                 "DetectorRegistry requires a ctx with conn_handle (production EngineCtx)".into(),
@@ -288,10 +280,7 @@ mod tests {
         let (_tmp, conn) = open_test_db();
         seed_rollup(&conn, &[("2026-W20", "proj-a", "x", 0.0)]);
         let dctx = DetectorCtx::new("2026-W20".into(), &conn);
-        assert_eq!(
-            dctx.current_metric_value("proj-a", "x").unwrap(),
-            Some(0.0)
-        );
+        assert_eq!(dctx.current_metric_value("proj-a", "x").unwrap(), Some(0.0));
     }
 
     #[tokio::test]
@@ -333,8 +322,14 @@ mod tests {
         let (_tmp, conn) = open_test_db();
         let ctx = EngineCtx::new(conn.clone(), "retro-2026-W20".into(), "2026-W20".into());
         let reg = DetectorRegistry::new()
-            .with(Arc::new(AlwaysFiresDetector { key: "a", history: 0 }))
-            .with(Arc::new(AlwaysFiresDetector { key: "b", history: 0 }));
+            .with(Arc::new(AlwaysFiresDetector {
+                key: "a",
+                history: 0,
+            }))
+            .with(Arc::new(AlwaysFiresDetector {
+                key: "b",
+                history: 0,
+            }));
         let rows = PatternDetector::detect(&reg, &ctx).await.unwrap();
         assert_eq!(rows.len(), 2);
         let keys: Vec<_> = rows.iter().map(|p| p.pattern_key.as_str()).collect();
@@ -403,8 +398,10 @@ mod tests {
                 Ok("x".into())
             }
         }
-        let reg = DetectorRegistry::new()
-            .with(Arc::new(AlwaysFiresDetector { key: "a", history: 0 }));
+        let reg = DetectorRegistry::new().with(Arc::new(AlwaysFiresDetector {
+            key: "a",
+            history: 0,
+        }));
         let err = PatternDetector::detect(&reg, &DummyCtx).await.unwrap_err();
         assert!(matches!(err, CeremonyError::Other(_)));
     }

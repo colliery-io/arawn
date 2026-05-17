@@ -63,9 +63,9 @@ impl FeedTemplate for UpcomingArchiveTemplate {
         // Both params are optional. If `window_days` is set it must be
         // a positive integer ≤ 60 (we don't want runaway-window feeds).
         if let Some(v) = params.0.get("window_days") {
-            let n = v.as_i64().ok_or_else(|| {
-                FeedError::InvalidParams("window_days must be an integer".into())
-            })?;
+            let n = v
+                .as_i64()
+                .ok_or_else(|| FeedError::InvalidParams("window_days must be an integer".into()))?;
             if !(1..=60).contains(&n) {
                 return Err(FeedError::InvalidParams(
                     "window_days must be between 1 and 60".into(),
@@ -100,9 +100,10 @@ impl FeedTemplate for UpcomingArchiveTemplate {
         _cursor: &Value,
     ) -> Result<RunOutcome, FeedError> {
         let started = Instant::now();
-        let calendar = ctx.clients().calendar().ok_or_else(|| {
-            FeedError::Auth("google calendar integration not connected".into())
-        })?;
+        let calendar = ctx
+            .clients()
+            .calendar()
+            .ok_or_else(|| FeedError::Auth("google calendar integration not connected".into()))?;
 
         let calendar_id = params
             .0
@@ -122,9 +123,8 @@ impl FeedTemplate for UpcomingArchiveTemplate {
         let events = calendar.list_events(&calendar_id, now, end).await?;
 
         let events_dir = feed_dir.join("events");
-        std::fs::create_dir_all(&events_dir).map_err(|e| {
-            FeedError::Storage(format!("create events dir: {e}"))
-        })?;
+        std::fs::create_dir_all(&events_dir)
+            .map_err(|e| FeedError::Storage(format!("create events dir: {e}")))?;
 
         let mut total_items: u64 = 0;
         let mut total_bytes: u64 = 0;
@@ -216,9 +216,6 @@ mod tests {
     fn sanitize_keeps_safe_chars() {
         assert_eq!(sanitize_event_id("abc123"), "abc123");
         assert_eq!(sanitize_event_id("a-b_c"), "a-b_c");
-        assert_eq!(
-            sanitize_event_id("foo@google.com"),
-            "foo_google_com"
-        );
+        assert_eq!(sanitize_event_id("foo@google.com"), "foo_google_com");
     }
 }

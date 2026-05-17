@@ -50,7 +50,11 @@ impl Tool for FileReadTool {
         })
     }
 
-    async fn execute(&self, ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
+    async fn execute(
+        &self,
+        ctx: &dyn arawn_tool::ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
         let path_str = params
             .get("path")
             .and_then(|v| v.as_str())
@@ -72,7 +76,9 @@ impl Tool for FileReadTool {
                 } else {
                     ""
                 };
-                return Ok(ToolOutput::error(format!("cannot read '{path_str}': {e}.{hint}")));
+                return Ok(ToolOutput::error(format!(
+                    "cannot read '{path_str}': {e}.{hint}"
+                )));
             }
         };
 
@@ -133,7 +139,6 @@ impl Tool for FileReadTool {
         Ok(ToolOutput::success(result))
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -249,8 +254,8 @@ mod tests {
 
         let tool = FileReadTool;
         let ws = Workstream::new("test", dir.path());
-        let ctx = EngineToolContext::new(&ws, Uuid::new_v4())
-            .with_data_dir(dir.path().to_path_buf());
+        let ctx =
+            EngineToolContext::new(&ws, Uuid::new_v4()).with_data_dir(dir.path().to_path_buf());
 
         let result = tool
             .execute(&ctx, json!({"path": "tokens/google.json.enc"}))
@@ -258,7 +263,11 @@ mod tests {
             .unwrap();
 
         assert!(result.is_error);
-        assert!(result.content.contains("OAuth token directory"), "got: {}", result.content);
+        assert!(
+            result.content.contains("OAuth token directory"),
+            "got: {}",
+            result.content
+        );
     }
 
     #[tokio::test]
@@ -281,12 +290,8 @@ mod tests {
 
         let tool = FileReadTool;
         let ctx = test_ctx_with_dir(dir.path());
-        let result = tool
-            .execute(&ctx, json!({"path": "env.rs"}))
-            .await
-            .unwrap();
+        let result = tool.execute(&ctx, json!({"path": "env.rs"})).await.unwrap();
 
         assert!(!result.is_error, "env.rs is a Rust file, not a secret");
     }
-
 }

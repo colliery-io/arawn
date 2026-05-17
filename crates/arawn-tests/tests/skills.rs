@@ -40,7 +40,12 @@ fn assert_tool_result_is_error(msgs: &[Message], index: usize, substring: &str) 
     }
 }
 
-fn make_skill(name: &str, prompt: &str, user_invocable: bool, source: SkillSource) -> SkillDefinition {
+fn make_skill(
+    name: &str,
+    prompt: &str,
+    user_invocable: bool,
+    source: SkillSource,
+) -> SkillDefinition {
     SkillDefinition {
         name: name.into(),
         description: format!("Test skill: {name}"),
@@ -121,7 +126,12 @@ Check the current branch, run tests, and deploy.
 #[tokio::test]
 async fn skill_not_found_returns_error() {
     let skill_registry = Arc::new(SkillRegistry::new());
-    skill_registry.register(make_skill("commit", "Commit changes", true, SkillSource::Project));
+    skill_registry.register(make_skill(
+        "commit",
+        "Commit changes",
+        true,
+        SkillSource::Project,
+    ));
 
     let harness = TestHarness::builder()
         .with_skill_registry(skill_registry)
@@ -138,7 +148,10 @@ async fn skill_not_found_returns_error() {
     // Should list available skills
     match &msgs[2] {
         Message::ToolResult { content, .. } => {
-            assert!(content.contains("commit"), "should list available skills, got: {content}");
+            assert!(
+                content.contains("commit"),
+                "should list available skills, got: {content}"
+            );
         }
         _ => unreachable!(),
     }
@@ -147,8 +160,18 @@ async fn skill_not_found_returns_error() {
 #[tokio::test]
 async fn user_invocable_filtering() {
     let registry = SkillRegistry::new();
-    registry.register(make_skill("visible", "Public skill", true, SkillSource::Project));
-    registry.register(make_skill("hidden", "Internal skill", false, SkillSource::BuiltIn));
+    registry.register(make_skill(
+        "visible",
+        "Public skill",
+        true,
+        SkillSource::Project,
+    ));
+    registry.register(make_skill(
+        "hidden",
+        "Internal skill",
+        false,
+        SkillSource::BuiltIn,
+    ));
 
     // Registry has built-in skills plus the two we added
     let invocable = registry.user_invocable();
@@ -176,7 +199,11 @@ async fn plugin_namespaced_skill_accessible() {
 
     let result = harness.run("format code").await;
     assert_eq!(result.final_text(), "Formatted");
-    assert_tool_result_ok_contains(result.session_messages(), 2, "Format code with the plugin formatter");
+    assert_tool_result_ok_contains(
+        result.session_messages(),
+        2,
+        "Format code with the plugin formatter",
+    );
 }
 
 // ── Built-in skill loading ──────────────────────────────────────────────────
@@ -194,7 +221,10 @@ async fn builtin_workflows_skill_loads_on_registry_creation() {
     );
 
     let ws = workflows.unwrap();
-    assert!(ws.user_invocable, "workflows skill should be user-invocable");
+    assert!(
+        ws.user_invocable,
+        "workflows skill should be user-invocable"
+    );
     assert!(
         ws.description.contains("scheduled workflow"),
         "workflows description should mention scheduled workflows, got: {}",
@@ -281,12 +311,22 @@ async fn skill_descriptions_distinguish_different_use_cases() {
         source: SkillSource::Project,
     });
 
-    let listing = arawn_engine::skills::format_skill_listing(&registry.user_invocable(), 10000, 250);
+    let listing =
+        arawn_engine::skills::format_skill_listing(&registry.user_invocable(), 10000, 250);
 
     // Each skill's description should contain unique differentiating keywords
-    assert!(listing.contains("commit changes"), "commit skill should mention committing, got:\n{listing}");
-    assert!(listing.contains("review a pull request"), "review-pr skill should mention PR review");
-    assert!(listing.contains("scheduled workflow"), "workflows skill should mention scheduling");
+    assert!(
+        listing.contains("commit changes"),
+        "commit skill should mention committing, got:\n{listing}"
+    );
+    assert!(
+        listing.contains("review a pull request"),
+        "review-pr skill should mention PR review"
+    );
+    assert!(
+        listing.contains("scheduled workflow"),
+        "workflows skill should mention scheduling"
+    );
 
     // A model reading this listing should be able to match:
     // "create a daily pipeline" → workflows (scheduled)
@@ -318,12 +358,17 @@ async fn skill_invocation_chains_into_domain_tool() {
 
     let harness = TestHarness::builder()
         .with_skill_registry(skill_registry)
-        .with_tool(Box::new(arawn_workflow::WorkflowCreateTool::new(workflows_dir.clone())))
+        .with_tool(Box::new(arawn_workflow::WorkflowCreateTool::new(
+            workflows_dir.clone(),
+        )))
         .with_script(vec![
             // Step 1: Model invokes the workflows skill to learn how to create workflows
             MockResponse::tool_call("c1", "skill", r#"{"skill": "workflows"}"#),
             // Step 2: Model uses workflow_create with a valid spec (informed by the skill guide)
-            MockResponse::tool_call("c2", "workflow_create", r#"{
+            MockResponse::tool_call(
+                "c2",
+                "workflow_create",
+                r#"{
                 "name": "daily-monitor",
                 "description": "Daily GitHub monitoring",
                 "tasks": [
@@ -333,13 +378,18 @@ async fn skill_invocation_chains_into_domain_tool() {
                     }
                 ],
                 "cron": "0 8 * * 1-5"
-            }"#),
+            }"#,
+            ),
             // Step 3: Model reports success
-            MockResponse::text("I've created the daily-monitor workflow. It will run at 8 AM UTC on weekdays."),
+            MockResponse::text(
+                "I've created the daily-monitor workflow. It will run at 8 AM UTC on weekdays.",
+            ),
         ])
         .build();
 
-    let result = harness.run("Create a daily monitoring workflow that runs every weekday morning").await;
+    let result = harness
+        .run("Create a daily monitoring workflow that runs every weekday morning")
+        .await;
 
     // Verify the chain: skill → workflow_create → success
     let calls = result.tool_calls();
@@ -349,7 +399,10 @@ async fn skill_invocation_chains_into_domain_tool() {
         calls.len()
     );
     assert_eq!(calls[0].0, "skill", "first call should be the skill tool");
-    assert_eq!(calls[1].0, "workflow_create", "second call should be workflow_create");
+    assert_eq!(
+        calls[1].0, "workflow_create",
+        "second call should be workflow_create"
+    );
 
     // The skill result should contain the workflow authoring guide
     assert_tool_result_ok_contains(

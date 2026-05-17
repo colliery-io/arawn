@@ -87,10 +87,7 @@ impl Task for FeedDispatchTask {
         &self.deps
     }
 
-    async fn execute(
-        &self,
-        context: Context<Value>,
-    ) -> Result<Context<Value>, TaskError> {
+    async fn execute(&self, context: Context<Value>) -> Result<Context<Value>, TaskError> {
         run_feed(&self.feed_id, &self.runtime)
             .await
             .map_err(|e| TaskError::ExecutionFailed {
@@ -155,7 +152,9 @@ async fn run_feed_inner(
     let template = runtime.registry.require(&record.template)?;
 
     // 3. Build TemplateCtx + ensure feed dir.
-    let feed_dir: PathBuf = runtime.layout.ensure_feed_dir(&record.template, &record.id)?;
+    let feed_dir: PathBuf = runtime
+        .layout
+        .ensure_feed_dir(&record.template, &record.id)?;
     let ctx = TemplateCtx::new(runtime.clients.clone());
 
     // 4. Read prior cursor (or default to JSON null on first run).
@@ -166,10 +165,7 @@ async fn run_feed_inner(
         .unwrap_or(Value::Null);
 
     // 5. Run the template.
-    let outcome = match template
-        .run(&ctx, &record.params, &feed_dir, &cursor)
-        .await
-    {
+    let outcome = match template.run(&ctx, &record.params, &feed_dir, &cursor).await {
         Ok(o) => o,
         Err(e) => {
             // Update meta to surface the failure status without
@@ -187,7 +183,11 @@ async fn run_feed_inner(
 
     // 6. Atomically persist the new cursor + last_run.
     let mut meta = prior_meta.unwrap_or_else(|| {
-        FeedMeta::new(record.template.clone(), record.params.clone(), cursor.clone())
+        FeedMeta::new(
+            record.template.clone(),
+            record.params.clone(),
+            cursor.clone(),
+        )
     });
     meta.template = record.template.clone();
     meta.params = record.params.clone();
@@ -302,9 +302,7 @@ fn persist_meta_failure(
     err: &FeedError,
 ) -> Result<(), FeedError> {
     let prior = MetaStore::read(feed_dir)?;
-    let mut meta = prior.unwrap_or_else(|| {
-        FeedMeta::new(template, params.clone(), cursor.clone())
-    });
+    let mut meta = prior.unwrap_or_else(|| FeedMeta::new(template, params.clone(), cursor.clone()));
     meta.last_run_at = Some(Utc::now().to_rfc3339());
     meta.last_status = Some(format!("error: {err}"));
     meta.run_count += 1;
@@ -370,10 +368,7 @@ mod tests {
         assert_eq!(outcome.status, "ok");
         assert_eq!(outcome.summary.items_written, 1);
 
-        let feed_dir = runtime
-            .layout
-            .feed_dir("stub/echo", "test-stub")
-            .unwrap();
+        let feed_dir = runtime.layout.feed_dir("stub/echo", "test-stub").unwrap();
         let meta = MetaStore::read(&feed_dir).unwrap().unwrap();
         assert_eq!(meta.run_count, 1);
         assert_eq!(meta.last_status.as_deref(), Some("ok"));

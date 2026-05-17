@@ -2,8 +2,7 @@
 //! shortcode compression, L2 topical injection, and deduplication.
 
 use arawn_memory::{
-    ConfidenceSource, Entity, EntityType, MemoryManager, MemoryStack,
-    shortcodes::apply_shortcodes,
+    ConfidenceSource, Entity, EntityType, MemoryManager, MemoryStack, shortcodes::apply_shortcodes,
 };
 use tempfile::TempDir;
 
@@ -49,10 +48,7 @@ fn wake_up_under_budget_with_many_entities() {
     let output = stack.wake_up(900);
     let tokens = estimate_tokens(&output);
 
-    assert!(
-        tokens <= 900,
-        "output {tokens} tokens exceeds 900 budget"
-    );
+    assert!(tokens <= 900, "output {tokens} tokens exceeds 900 budget");
     assert!(output.contains("[L0"));
     assert!(output.contains("[L1"));
 }
@@ -224,9 +220,12 @@ fn retrieve_topical_respects_budget() {
     for i in 0..20 {
         mgr.workstream
             .insert_entity(
-                &Entity::new(EntityType::Fact, &format!("Tagged fact {i} with extra text"))
-                    .with_content(&format!("Content for tagged fact {i} adding more tokens"))
-                    .with_tags(vec!["performance".into()]),
+                &Entity::new(
+                    EntityType::Fact,
+                    &format!("Tagged fact {i} with extra text"),
+                )
+                .with_content(&format!("Content for tagged fact {i} adding more tokens"))
+                .with_tags(vec!["performance".into()]),
             )
             .unwrap();
     }

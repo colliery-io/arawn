@@ -370,8 +370,7 @@ fn _add_item_unused(_: AddItemRequest) {}
 mod tests {
     use super::*;
     use arawn_ceremonies::{
-        AddItemRequest, CeremonyDispatcher, CeremonyError, ConnHandle, DispatchOutcome,
-        ItemKind,
+        AddItemRequest, CeremonyDispatcher, CeremonyError, ConnHandle, DispatchOutcome, ItemKind,
     };
     use async_trait::async_trait;
     use rusqlite::{Connection, params};
@@ -503,7 +502,12 @@ mod tests {
         ];
         for t in tools {
             let schema = t.parameters_schema();
-            assert_eq!(schema["type"], "object", "{} schema missing object type", t.name());
+            assert_eq!(
+                schema["type"],
+                "object",
+                "{} schema missing object type",
+                t.name()
+            );
         }
         let _ = seed_retro_tablet;
     }

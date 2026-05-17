@@ -117,10 +117,7 @@ pub struct FeedRuntime {
 impl FeedRuntime {
     /// Register an additional feed without a server restart. Inserts
     /// the row and registers the workflow + cron schedule.
-    pub async fn register_feed_runtime(
-        &self,
-        record: &FeedRecord,
-    ) -> Result<(), FeedError> {
+    pub async fn register_feed_runtime(&self, record: &FeedRecord) -> Result<(), FeedError> {
         register_one(&self.runner, &self.runtime_ctx, record).await
     }
 
@@ -182,10 +179,7 @@ impl FeedRuntime {
         // Step 4 — initial meta.json. In backfill mode we tag
         // `last_status="backfilling"` so a server restart mid-loop
         // can resume from the persisted cursor.
-        let feed_dir = self
-            .runtime_ctx
-            .layout
-            .ensure_feed_dir(template, feed_id)?;
+        let feed_dir = self.runtime_ctx.layout.ensure_feed_dir(template, feed_id)?;
         let mut meta = FeedMeta::new(template, params, defaults.initial_cursor);
         if has_since {
             meta.last_status = Some("backfilling".into());
@@ -260,7 +254,10 @@ impl FeedRuntime {
             FeedStore::new(&c).set_enabled(feed_id, false)?;
         }
         info!(%feed_id, "feed paused");
-        Ok(FeedRecord { enabled: false, ..record })
+        Ok(FeedRecord {
+            enabled: false,
+            ..record
+        })
     }
 
     /// Resume a previously-paused feed: re-register the cloacina
@@ -293,10 +290,7 @@ impl FeedRuntime {
     /// haven't lost any data, and if fs deletion fails the row stays
     /// so the user can retry. Returns the now-deleted record + the
     /// number of bytes wiped from disk.
-    pub async fn remove_feed(
-        &self,
-        feed_id: &str,
-    ) -> Result<RemoveOutcome, FeedError> {
+    pub async fn remove_feed(&self, feed_id: &str) -> Result<RemoveOutcome, FeedError> {
         let record = {
             let c = self.runtime_ctx.conn.lock().await;
             FeedStore::new(&c)
@@ -311,9 +305,8 @@ impl FeedRuntime {
             .feed_dir(&record.template, feed_id)?;
         let bytes_wiped = dir_size_bytes(&feed_dir);
         if feed_dir.exists() {
-            std::fs::remove_dir_all(&feed_dir).map_err(|e| {
-                FeedError::Storage(format!("rm -rf {}: {e}", feed_dir.display()))
-            })?;
+            std::fs::remove_dir_all(&feed_dir)
+                .map_err(|e| FeedError::Storage(format!("rm -rf {}: {e}", feed_dir.display())))?;
         }
 
         {
@@ -321,7 +314,10 @@ impl FeedRuntime {
             FeedStore::new(&c).delete(feed_id)?;
         }
         info!(%feed_id, bytes_wiped, "feed decommissioned");
-        Ok(RemoveOutcome { record, bytes_wiped })
+        Ok(RemoveOutcome {
+            record,
+            bytes_wiped,
+        })
     }
 
     /// Run the template's discovery hook. Returns:
@@ -441,7 +437,8 @@ fn spawn_backfill_task(
                     items = stats.items,
                     "backfill complete"
                 );
-                if let Err(e) = finalize_backfill_success(&runner, &runtime_ctx, &feed_id, None).await
+                if let Err(e) =
+                    finalize_backfill_success(&runner, &runtime_ctx, &feed_id, None).await
                 {
                     warn!(
                         feed_id = %feed_id,
@@ -597,9 +594,7 @@ async fn finalize_backfill_success(
     // soft-defer (e.g. rate-limit cap). Cron will overwrite this on the
     // next successful run.
     if let Some(status) = meta_status {
-        let feed_dir = runtime_ctx
-            .layout
-            .feed_dir(&record.template, &record.id)?;
+        let feed_dir = runtime_ctx.layout.feed_dir(&record.template, &record.id)?;
         if let Some(mut meta) = MetaStore::read(&feed_dir)? {
             meta.last_status = Some(status.to_string());
             MetaStore::write(&feed_dir, &meta)?;
@@ -621,9 +616,7 @@ async fn mark_backfill_failed(
         // Feed got removed mid-backfill; nothing to update.
         return Ok(());
     };
-    let feed_dir = runtime_ctx
-        .layout
-        .feed_dir(&record.template, &record.id)?;
+    let feed_dir = runtime_ctx.layout.feed_dir(&record.template, &record.id)?;
     if let Some(mut meta) = MetaStore::read(&feed_dir)? {
         meta.last_status = Some(format!("backfill-failed: {err}"));
         MetaStore::write(&feed_dir, &meta)?;
@@ -654,11 +647,7 @@ pub fn resume_pending_backfills(
             .and_then(|m| m.last_status);
         if last_status.as_deref() == Some("backfilling") {
             info!(feed_id = %record.id, "resuming backfill from persisted cursor");
-            spawn_backfill_task(
-                Arc::clone(&runner),
-                runtime_ctx.clone(),
-                record.id.clone(),
-            );
+            spawn_backfill_task(Arc::clone(&runner), runtime_ctx.clone(), record.id.clone());
             resumed += 1;
         }
     }
@@ -710,9 +699,10 @@ fn dir_size_bytes(path: &std::path::Path) -> u64 {
             if ft.is_dir() {
                 walk(&path, acc);
             } else if ft.is_file()
-                && let Ok(md) = path.metadata() {
-                    *acc += md.len();
-                }
+                && let Ok(md) = path.metadata()
+            {
+                *acc += md.len();
+            }
         }
     }
     let mut total = 0u64;
@@ -764,12 +754,7 @@ async fn register_one(
     // when looking up runnable tasks at fire time. `Workflow::add_task`
     // constructs the namespace as ("public", "embedded", workflow_name,
     // task.id()); we mirror that here.
-    let task_namespace = TaskNamespace::new(
-        "public",
-        "embedded",
-        &workflow_name,
-        &feed_id,
-    );
+    let task_namespace = TaskNamespace::new("public", "embedded", &workflow_name, &feed_id);
     let task_runtime_ctx = runtime_ctx.clone();
     let task_feed_id = feed_id.clone();
     runtime.register_task(task_namespace, move || -> Arc<dyn cloacina::Task> {
@@ -828,4 +813,3 @@ mod tests {
         assert!(big <= Duration::from_secs(2 * 64));
     }
 }
-

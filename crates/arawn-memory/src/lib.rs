@@ -21,9 +21,7 @@ pub use ontology::{AddedVia, OntologyEntry, TagOntologyStore, normalize_tag};
 pub use stack::MemoryStack;
 pub use store::MemoryStore;
 pub use types::*;
-pub use vector::{
-    SimilarityResult, init_vector_extension, check_vector_extension,
-};
+pub use vector::{SimilarityResult, check_vector_extension, init_vector_extension};
 
 #[cfg(test)]
 mod graphqlite_smoke {

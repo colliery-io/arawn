@@ -89,7 +89,11 @@ struct ArawnGetTokenInner {
 }
 
 impl ArawnGetToken {
-    pub fn new(token: Token, oauth_config: OAuthProviderConfig, token_store: TokenStoreHandle) -> Self {
+    pub fn new(
+        token: Token,
+        oauth_config: OAuthProviderConfig,
+        token_store: TokenStoreHandle,
+    ) -> Self {
         Self {
             inner: Arc::new(ArawnGetTokenInner {
                 token: AsyncMutex::new(token),
@@ -126,11 +130,10 @@ impl GetToken for ArawnGetToken {
                     service = %inner.token_store.service_name,
                     "refreshing access token"
                 );
-                let new_token = inner
-                    .oauth
-                    .refresh(&refresh)
-                    .await
-                    .map_err(|e| Box::<dyn std::error::Error + Send + Sync>::from(e.to_string()))?;
+                let new_token =
+                    inner.oauth.refresh(&refresh).await.map_err(|e| {
+                        Box::<dyn std::error::Error + Send + Sync>::from(e.to_string())
+                    })?;
                 if let Err(e) = inner.token_store.save_token(&new_token) {
                     warn!(
                         service = %inner.token_store.service_name,

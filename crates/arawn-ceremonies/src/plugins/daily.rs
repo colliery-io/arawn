@@ -30,12 +30,9 @@ use serde::Serialize;
 
 use crate::CeremonyError;
 use crate::plugin::{
-    Ceremony, CeremonyCtx, ComposedItem, CronSchedule, InteractiveAction, NewItem,
-    PatternDetector,
+    Ceremony, CeremonyCtx, ComposedItem, CronSchedule, InteractiveAction, NewItem, PatternDetector,
 };
-use crate::plugins::gather_sources::{
-    AttentionSource, CalEvent, CalendarSource, SignalRow,
-};
+use crate::plugins::gather_sources::{AttentionSource, CalEvent, CalendarSource, SignalRow};
 use crate::types::{GatheredFacts, ItemKind};
 
 const CAP_CALENDAR: usize = 12;
@@ -545,10 +542,27 @@ mod tests {
         let p = &facts.payload;
         assert_eq!(p.get("date").unwrap().as_str().unwrap(), "2026-05-15");
         assert_eq!(p.get("iso_week").unwrap().as_str().unwrap(), "2026-W20");
-        assert_eq!(p.get("calendar_events").unwrap().as_array().unwrap().len(), 2);
+        assert_eq!(
+            p.get("calendar_events").unwrap().as_array().unwrap().len(),
+            2
+        );
         assert_eq!(p.get("rolling_todos").unwrap().as_array().unwrap().len(), 2);
-        assert_eq!(p.get("attention_signals").unwrap().as_array().unwrap().len(), 1);
-        assert_eq!(p.get("weekly_priorities").unwrap().as_array().unwrap().len(), 1);
+        assert_eq!(
+            p.get("attention_signals")
+                .unwrap()
+                .as_array()
+                .unwrap()
+                .len(),
+            1
+        );
+        assert_eq!(
+            p.get("weekly_priorities")
+                .unwrap()
+                .as_array()
+                .unwrap()
+                .len(),
+            1
+        );
     }
 
     #[tokio::test]

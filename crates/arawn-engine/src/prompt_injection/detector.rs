@@ -8,11 +8,11 @@
 //!   offending characters removed.
 //! - No findings → [`Verdict::Allow`].
 
+use super::Verdict;
 use super::heuristics::{
     self, Finding, Severity, control_chars, instruction_override, invisible_unicode,
     jailbreak_markers, role_tag_spoofing, strip_invisible,
 };
-use super::Verdict;
 
 /// Run every heuristic against `text` and fold the result into a
 /// single verdict. `context` is the inbound source tag (e.g.
@@ -27,7 +27,10 @@ pub fn enforce(text: &str, context: &str) -> Verdict {
     findings.extend(invisible_unicode(text));
     findings.extend(jailbreak_markers(text));
 
-    let max = findings.iter().map(|f| f.severity).max_by_key(severity_rank);
+    let max = findings
+        .iter()
+        .map(|f| f.severity)
+        .max_by_key(severity_rank);
     match max {
         None => Verdict::Allow,
         Some(Severity::Block) => Verdict::Block {

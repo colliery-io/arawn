@@ -200,18 +200,18 @@ impl CeremonyService {
 
     /// `ceremonies.patch_item` — toggle done, edit body. Returns
     /// the updated row.
-    pub fn patch_item(
-        &self,
-        item_id: &str,
-        patch: ItemPatch,
-    ) -> Result<ItemDto, CeremonyError> {
+    pub fn patch_item(&self, item_id: &str, patch: ItemPatch) -> Result<ItemDto, CeremonyError> {
         let conn = self
             .conn
             .0
             .lock()
             .map_err(|_| CeremonyError::Storage("connection mutex poisoned".into()))?;
         if let Some(done) = patch.done {
-            let done_at = if done { Some(Utc::now().to_rfc3339()) } else { None };
+            let done_at = if done {
+                Some(Utc::now().to_rfc3339())
+            } else {
+                None
+            };
             conn.execute(
                 "UPDATE ceremony_items SET done_at = ?1 WHERE id = ?2",
                 params![done_at, item_id],
@@ -369,9 +369,7 @@ impl CeremonyService {
             .map_err(|e| CeremonyError::Storage(format!("confirm_priority lookup: {e}")))?;
         let (tablet_id, section_key, kind, citation_id_opt, ordinal, body_str) =
             row.ok_or_else(|| {
-                CeremonyError::invalid_tablet_state(format!(
-                    "no item with id '{item_id}'"
-                ))
+                CeremonyError::invalid_tablet_state(format!("no item with id '{item_id}'"))
             })?;
         // Kind is intentionally not constrained — the weekly plugin
         // emits priority candidates with kind="pattern" (matching the
@@ -386,8 +384,8 @@ impl CeremonyService {
         }
 
         // Idempotency: if a priority row already cites this item, return it.
-        let existing: Option<(String, String, Option<String>, Option<String>, i32, String)> =
-            conn.query_row(
+        let existing: Option<(String, String, Option<String>, Option<String>, i32, String)> = conn
+            .query_row(
                 "SELECT id, rationale, confirmed_at, done_at, ordinal, body \
                  FROM ceremony_priorities WHERE citation_id = ?1",
                 params![item_id],
@@ -405,8 +403,7 @@ impl CeremonyService {
             .optional()
             .map_err(|e| CeremonyError::Storage(format!("confirm_priority idempotency: {e}")))?;
         if let Some((id, rationale, confirmed_at, done_at, ord, body_s)) = existing {
-            let body =
-                serde_json::from_str(&body_s).unwrap_or(serde_json::Value::Null);
+            let body = serde_json::from_str(&body_s).unwrap_or(serde_json::Value::Null);
             return Ok(PriorityDto {
                 id,
                 tablet_id,
@@ -480,21 +477,15 @@ impl CeremonyService {
             params![item_id],
         )
         .map_err(|e| CeremonyError::Storage(format!("reject_priority priority delete: {e}")))?;
-        conn.execute(
-            "DELETE FROM ceremony_items WHERE id = ?1",
-            params![item_id],
-        )
-        .map_err(|e| CeremonyError::Storage(format!("reject_priority item delete: {e}")))?;
+        conn.execute("DELETE FROM ceremony_items WHERE id = ?1", params![item_id])
+            .map_err(|e| CeremonyError::Storage(format!("reject_priority item delete: {e}")))?;
         Ok(())
     }
 
     /// `ceremonies.add_priority` — user-write path. Inserts directly
     /// into `ceremony_priorities` with `citation_id = NULL`. Ordinal
     /// is the next free slot for the tablet.
-    pub fn add_priority(
-        &self,
-        req: AddPriorityRequest,
-    ) -> Result<PriorityDto, CeremonyError> {
+    pub fn add_priority(&self, req: AddPriorityRequest) -> Result<PriorityDto, CeremonyError> {
         let conn = self
             .conn
             .0
@@ -541,10 +532,7 @@ impl CeremonyService {
     /// `ceremonies.list_priorities` — union of confirmed priorities
     /// and yet-unconfirmed candidate items for a tablet. Confirmed
     /// rows come first (sorted by ordinal); candidates follow.
-    pub fn list_priorities(
-        &self,
-        tablet_id: &str,
-    ) -> Result<Vec<PriorityDto>, CeremonyError> {
+    pub fn list_priorities(&self, tablet_id: &str) -> Result<Vec<PriorityDto>, CeremonyError> {
         let conn = self
             .conn
             .0
@@ -562,8 +550,7 @@ impl CeremonyService {
             let rows = stmt
                 .query_map(params![tablet_id], |row| {
                     let body_str: String = row.get(2)?;
-                    let body =
-                        serde_json::from_str(&body_str).unwrap_or(serde_json::Value::Null);
+                    let body = serde_json::from_str(&body_str).unwrap_or(serde_json::Value::Null);
                     Ok(PriorityDto {
                         id: row.get(0)?,
                         tablet_id: row.get(1)?,
@@ -611,8 +598,7 @@ impl CeremonyService {
             let rows = stmt
                 .query_map(params![tablet_id], |row| {
                     let body_str: String = row.get(2)?;
-                    let body =
-                        serde_json::from_str(&body_str).unwrap_or(serde_json::Value::Null);
+                    let body = serde_json::from_str(&body_str).unwrap_or(serde_json::Value::Null);
                     Ok(PriorityDto {
                         id: row.get(0)?,
                         tablet_id: row.get(1)?,
@@ -670,11 +656,7 @@ impl CeremonyService {
         .map_err(|e| CeremonyError::Storage(format!("get_diary: {e}")))
     }
 
-    pub fn upsert_diary(
-        &self,
-        tablet_id: &str,
-        body: &str,
-    ) -> Result<(), CeremonyError> {
+    pub fn upsert_diary(&self, tablet_id: &str, body: &str) -> Result<(), CeremonyError> {
         let word_count = body.split_whitespace().count() as i64;
         let written_at = Utc::now().to_rfc3339();
         let conn = self
@@ -694,9 +676,7 @@ impl CeremonyService {
             .optional()
             .map_err(|e| CeremonyError::Storage(format!("upsert_diary lookup: {e}")))?;
         let kind = tablet_kind.ok_or_else(|| {
-            CeremonyError::invalid_tablet_state(format!(
-                "no tablet with id '{tablet_id}'"
-            ))
+            CeremonyError::invalid_tablet_state(format!("no tablet with id '{tablet_id}'"))
         })?;
         if kind != "retro" {
             return Err(CeremonyError::invalid_tablet_state(format!(
@@ -913,8 +893,7 @@ mod tests {
 
     #[tokio::test]
     async fn run_generates_and_get_by_period_reads_back() {
-        let (_tmp, service, tablet_id) =
-            build_service_with_items("retro", "2026-W20", "retro");
+        let (_tmp, service, tablet_id) = build_service_with_items("retro", "2026-W20", "retro");
         let outcome = service.run("retro").await.unwrap();
         assert!(matches!(outcome, DispatchOutcome::Generated { .. }));
         let dto = service.get_by_period("retro", "2026-W20").unwrap().unwrap();
@@ -924,8 +903,7 @@ mod tests {
 
     #[tokio::test]
     async fn list_items_filters_by_section() {
-        let (_tmp, service, tablet_id) =
-            build_service_with_items("retro", "2026-W20", "retro");
+        let (_tmp, service, tablet_id) = build_service_with_items("retro", "2026-W20", "retro");
         service.run("retro").await.unwrap();
         let all = service.list_items(&tablet_id, None).unwrap();
         assert_eq!(all.len(), 2);
@@ -937,10 +915,11 @@ mod tests {
 
     #[tokio::test]
     async fn patch_item_toggles_done() {
-        let (_tmp, service, tablet_id) =
-            build_service_with_items("retro", "2026-W20", "retro");
+        let (_tmp, service, tablet_id) = build_service_with_items("retro", "2026-W20", "retro");
         service.run("retro").await.unwrap();
-        let items = service.list_items(&tablet_id, Some("what_happened")).unwrap();
+        let items = service
+            .list_items(&tablet_id, Some("what_happened"))
+            .unwrap();
         let id = &items[0].id;
         // Mark done.
         let patched = service
@@ -968,8 +947,7 @@ mod tests {
 
     #[tokio::test]
     async fn add_item_inserts_user_row_with_null_citation_and_next_ordinal() {
-        let (_tmp, service, tablet_id) =
-            build_service_with_items("retro", "2026-W20", "retro");
+        let (_tmp, service, tablet_id) = build_service_with_items("retro", "2026-W20", "retro");
         service.run("retro").await.unwrap();
         // The retro tablet has one "diary" item at ordinal 0. Adding
         // another should land at ordinal 1.
@@ -989,8 +967,7 @@ mod tests {
 
     #[tokio::test]
     async fn list_notifications_surfaces_open_tablets() {
-        let (_tmp, service, _tablet_id) =
-            build_service_with_items("retro", "2026-W20", "retro");
+        let (_tmp, service, _tablet_id) = build_service_with_items("retro", "2026-W20", "retro");
         service.run("retro").await.unwrap();
         let notes = service.list_notifications().unwrap();
         assert_eq!(notes.len(), 1);
@@ -1026,8 +1003,7 @@ mod tests {
             period: "2026-W20".into(),
         }))
         .unwrap();
-        let dispatcher =
-            Arc::new(EngineDispatcher::new(conn.clone(), reg).with_events(tx.clone()));
+        let dispatcher = Arc::new(EngineDispatcher::new(conn.clone(), reg).with_events(tx.clone()));
         let service = CeremonyService::new(conn, dispatcher.clone()).with_events(tx);
         service.run("retro").await.unwrap();
         let event = rx.recv().await.unwrap();
@@ -1047,10 +1023,11 @@ mod tests {
 
     #[tokio::test]
     async fn upsert_diary_writes_row_and_flips_status() {
-        let (_tmp, service, tablet_id) =
-            build_service_with_items("retro", "2026-W20", "retro");
+        let (_tmp, service, tablet_id) = build_service_with_items("retro", "2026-W20", "retro");
         service.run("retro").await.unwrap();
-        service.upsert_diary(&tablet_id, "Felt productive.").unwrap();
+        service
+            .upsert_diary(&tablet_id, "Felt productive.")
+            .unwrap();
         // Diary row + tablet status = reviewed.
         let dto = service.get_by_period("retro", "2026-W20").unwrap().unwrap();
         assert_eq!(dto.status, "reviewed");
@@ -1077,8 +1054,7 @@ mod tests {
 
     #[tokio::test]
     async fn upsert_diary_is_idempotent_and_replaces_body() {
-        let (_tmp, service, tablet_id) =
-            build_service_with_items("retro", "2026-W20", "retro");
+        let (_tmp, service, tablet_id) = build_service_with_items("retro", "2026-W20", "retro");
         service.run("retro").await.unwrap();
         service.upsert_diary(&tablet_id, "first version").unwrap();
         service.upsert_diary(&tablet_id, "rewritten").unwrap();
@@ -1114,7 +1090,9 @@ mod tests {
         drop(c);
         let dispatcher = Arc::new(EngineDispatcher::new(conn.clone(), PluginRegistry::new()));
         let service = CeremonyService::new(conn, dispatcher);
-        let err = service.upsert_diary("daily-1", "shouldn't work").unwrap_err();
+        let err = service
+            .upsert_diary("daily-1", "shouldn't work")
+            .unwrap_err();
         assert!(matches!(err, CeremonyError::InvalidTabletState(_)));
     }
 
@@ -1131,8 +1109,7 @@ mod tests {
     async fn upsert_diary_emits_diary_updated_event() {
         use crate::CeremonyEvent;
         let (tx, mut rx) = crate::event_channel();
-        let (_tmp, service, tablet_id) =
-            build_service_with_items("retro", "2026-W20", "retro");
+        let (_tmp, service, tablet_id) = build_service_with_items("retro", "2026-W20", "retro");
         let service = service.with_events(tx);
         service.run("retro").await.unwrap();
         service.upsert_diary(&tablet_id, "thoughts").unwrap();
@@ -1150,9 +1127,7 @@ mod tests {
     /// can read raw rows without going through more service
     /// methods. The service exposes the conn it was constructed
     /// with; we reach in for tests only.
-    fn service_internals(
-        service: &CeremonyService,
-    ) -> (ConnHandle, (), ()) {
+    fn service_internals(service: &CeremonyService) -> (ConnHandle, (), ()) {
         // service.conn is private — clone it via a friend
         // accessor. Since this lives in the same module the
         // private field is reachable.
@@ -1204,8 +1179,7 @@ mod tests {
 
     #[tokio::test]
     async fn confirm_priority_happy_path_inserts_row_and_copies_citation() {
-        let (_tmp, service, tablet_id, item_ids) =
-            build_weekly_with_priority_candidates(1);
+        let (_tmp, service, tablet_id, item_ids) = build_weekly_with_priority_candidates(1);
         let dto = service.confirm_priority(&item_ids[0]).unwrap();
         assert_eq!(dto.tablet_id, tablet_id);
         assert_eq!(dto.source, "confirmed");
@@ -1226,8 +1200,7 @@ mod tests {
 
     #[tokio::test]
     async fn confirm_priority_is_idempotent() {
-        let (_tmp, service, _tablet_id, item_ids) =
-            build_weekly_with_priority_candidates(1);
+        let (_tmp, service, _tablet_id, item_ids) = build_weekly_with_priority_candidates(1);
         let a = service.confirm_priority(&item_ids[0]).unwrap();
         let b = service.confirm_priority(&item_ids[0]).unwrap();
         assert_eq!(a.id, b.id);
@@ -1275,8 +1248,7 @@ mod tests {
 
     #[tokio::test]
     async fn reject_priority_deletes_item_and_priority_row() {
-        let (_tmp, service, _tablet_id, item_ids) =
-            build_weekly_with_priority_candidates(1);
+        let (_tmp, service, _tablet_id, item_ids) = build_weekly_with_priority_candidates(1);
         service.confirm_priority(&item_ids[0]).unwrap();
         service.reject_priority(&item_ids[0]).unwrap();
         let (conn, _, _) = service_internals(&service);
@@ -1301,8 +1273,7 @@ mod tests {
 
     #[tokio::test]
     async fn add_priority_inserts_with_null_citation() {
-        let (_tmp, service, tablet_id, _) =
-            build_weekly_with_priority_candidates(0);
+        let (_tmp, service, tablet_id, _) = build_weekly_with_priority_candidates(0);
         let dto = service
             .add_priority(AddPriorityRequest {
                 tablet_id: tablet_id.clone(),
@@ -1328,8 +1299,7 @@ mod tests {
 
     #[tokio::test]
     async fn list_priorities_unions_confirmed_and_candidates_deduped() {
-        let (_tmp, service, tablet_id, item_ids) =
-            build_weekly_with_priority_candidates(3);
+        let (_tmp, service, tablet_id, item_ids) = build_weekly_with_priority_candidates(3);
         // Confirm the first one. Remaining two stay as candidates.
         service.confirm_priority(&item_ids[0]).unwrap();
         // Also add a no-citation user priority.
@@ -1363,8 +1333,7 @@ mod tests {
     async fn confirm_priority_emits_priority_confirmed_event() {
         use crate::CeremonyEvent;
         let (tx, mut rx) = crate::event_channel();
-        let (_tmp, service, tablet_id, item_ids) =
-            build_weekly_with_priority_candidates(1);
+        let (_tmp, service, tablet_id, item_ids) = build_weekly_with_priority_candidates(1);
         let service = service.with_events(tx);
         let dto = service.confirm_priority(&item_ids[0]).unwrap();
         let event = rx.recv().await.unwrap();
@@ -1384,12 +1353,13 @@ mod tests {
     async fn patch_item_emits_item_updated_event() {
         use crate::CeremonyEvent;
         let (tx, mut rx) = crate::event_channel();
-        let (_tmp, service, tablet_id) =
-            build_service_with_items("retro", "2026-W20", "retro");
+        let (_tmp, service, tablet_id) = build_service_with_items("retro", "2026-W20", "retro");
         // Replace service with one that has events wired.
         let service = service.with_events(tx);
         service.run("retro").await.unwrap();
-        let items = service.list_items(&tablet_id, Some("what_happened")).unwrap();
+        let items = service
+            .list_items(&tablet_id, Some("what_happened"))
+            .unwrap();
         let id = &items[0].id;
         service
             .patch_item(

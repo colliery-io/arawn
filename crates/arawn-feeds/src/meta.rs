@@ -25,10 +25,7 @@ impl MetaStore {
                 .map(Some)
                 .map_err(|e| FeedError::Storage(format!("parse {}: {e}", path.display()))),
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
-            Err(e) => Err(FeedError::Storage(format!(
-                "read {}: {e}",
-                path.display()
-            ))),
+            Err(e) => Err(FeedError::Storage(format!("read {}: {e}", path.display()))),
         }
     }
 
@@ -36,9 +33,8 @@ impl MetaStore {
     /// doesn't exist. Uses a sibling temp file + rename so a process
     /// kill mid-write leaves the prior version intact.
     pub fn write(feed_dir: &Path, meta: &FeedMeta) -> Result<(), FeedError> {
-        std::fs::create_dir_all(feed_dir).map_err(|e| {
-            FeedError::Storage(format!("create dir {}: {e}", feed_dir.display()))
-        })?;
+        std::fs::create_dir_all(feed_dir)
+            .map_err(|e| FeedError::Storage(format!("create dir {}: {e}", feed_dir.display())))?;
 
         let path = feed_dir.join(META_FILENAME);
         let tmp = feed_dir.join(format!("{META_FILENAME}.tmp"));

@@ -89,7 +89,11 @@ impl Tool for WorkflowCreateTool {
         })
     }
 
-    async fn execute(&self, _ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
+    async fn execute(
+        &self,
+        _ctx: &dyn arawn_tool::ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
         let name = params["name"].as_str().unwrap_or("").to_string();
         if name.is_empty() {
             return Ok(ToolOutput::error("name is required"));
@@ -105,7 +109,11 @@ impl Tool for WorkflowCreateTool {
                 id: t["id"].as_str().unwrap_or("task").to_string(),
                 dependencies: t["dependencies"]
                     .as_array()
-                    .map(|a| a.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+                    .map(|a| {
+                        a.iter()
+                            .filter_map(|v| v.as_str().map(String::from))
+                            .collect()
+                    })
                     .unwrap_or_default(),
                 body: t["body"].as_str().unwrap_or("Ok(())").to_string(),
                 retry_attempts: t["retry_attempts"].as_i64().map(|v| v as i32),
@@ -173,11 +181,14 @@ impl Tool for WorkflowCreateTool {
         std::fs::copy(&lib_path, pkg_dir.join(&lib_name))
             .map_err(|e| ToolError::ExecutionFailed(format!("copy library: {e}")))?;
 
-        Ok(ToolOutput::success(json!({
-            "name": name,
-            "installed_at": pkg_dir.display().to_string(),
-            "status": "installed"
-        }).to_string()))
+        Ok(ToolOutput::success(
+            json!({
+                "name": name,
+                "installed_at": pkg_dir.display().to_string(),
+                "status": "installed"
+            })
+            .to_string(),
+        ))
     }
 }
 
@@ -214,7 +225,11 @@ impl Tool for WorkflowListTool {
         })
     }
 
-    async fn execute(&self, _ctx: &dyn arawn_tool::ToolContext, _params: Value) -> Result<ToolOutput, ToolError> {
+    async fn execute(
+        &self,
+        _ctx: &dyn arawn_tool::ToolContext,
+        _params: Value,
+    ) -> Result<ToolOutput, ToolError> {
         let mut workflows = Vec::new();
 
         if self.packages_dir.exists() {
@@ -222,31 +237,30 @@ impl Tool for WorkflowListTool {
                 .map_err(|e| ToolError::ExecutionFailed(format!("read workflows dir: {e}")))?
             {
                 if let Ok(entry) = entry
-                    && entry.path().is_dir() {
-                        let name = entry.file_name().to_string_lossy().to_string();
-                        let pkg_toml = entry.path().join("package.toml");
-                        let cron = if pkg_toml.exists() {
-                            std::fs::read_to_string(&pkg_toml).ok().and_then(|s| {
-                                s.lines()
-                                    .find(|l| l.contains("cron"))
-                                    .map(|l| {
-                                        l.split('=')
-                                            .nth(1)
-                                            .unwrap_or("")
-                                            .trim()
-                                            .trim_matches('"')
-                                            .to_string()
-                                    })
+                    && entry.path().is_dir()
+                {
+                    let name = entry.file_name().to_string_lossy().to_string();
+                    let pkg_toml = entry.path().join("package.toml");
+                    let cron = if pkg_toml.exists() {
+                        std::fs::read_to_string(&pkg_toml).ok().and_then(|s| {
+                            s.lines().find(|l| l.contains("cron")).map(|l| {
+                                l.split('=')
+                                    .nth(1)
+                                    .unwrap_or("")
+                                    .trim()
+                                    .trim_matches('"')
+                                    .to_string()
                             })
-                        } else {
-                            None
-                        };
+                        })
+                    } else {
+                        None
+                    };
 
-                        workflows.push(json!({
-                            "name": name,
-                            "cron": cron,
-                        }));
-                    }
+                    workflows.push(json!({
+                        "name": name,
+                        "cron": cron,
+                    }));
+                }
             }
         }
 
@@ -288,7 +302,11 @@ impl Tool for WorkflowDeleteTool {
         })
     }
 
-    async fn execute(&self, _ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
+    async fn execute(
+        &self,
+        _ctx: &dyn arawn_tool::ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
         let name = params["name"].as_str().unwrap_or("").to_string();
         if name.is_empty() {
             return Ok(ToolOutput::error("name is required"));
@@ -302,10 +320,13 @@ impl Tool for WorkflowDeleteTool {
         std::fs::remove_dir_all(&pkg_dir)
             .map_err(|e| ToolError::ExecutionFailed(format!("delete workflow: {e}")))?;
 
-        Ok(ToolOutput::success(json!({
-            "name": name,
-            "status": "deleted"
-        }).to_string()))
+        Ok(ToolOutput::success(
+            json!({
+                "name": name,
+                "status": "deleted"
+            })
+            .to_string(),
+        ))
     }
 }
 
@@ -347,7 +368,11 @@ impl Tool for WorkflowStatusTool {
         })
     }
 
-    async fn execute(&self, _ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
+    async fn execute(
+        &self,
+        _ctx: &dyn arawn_tool::ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
         let runner_guard = self.runner.read().await;
         let runner = match runner_guard.as_ref() {
             Some(r) => r,

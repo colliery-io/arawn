@@ -64,7 +64,10 @@ impl CallbackServer {
         let redirect_uri = format!("http://localhost:{bound_port}/{path}")
             .parse::<Url>()
             .map_err(|e| AuthError::InvalidConfig(format!("redirect URL: {e}")))?;
-        Ok(Self { listener, redirect_uri })
+        Ok(Self {
+            listener,
+            redirect_uri,
+        })
     }
 
     pub fn redirect_uri(&self) -> &Url {
@@ -77,10 +80,7 @@ impl CallbackServer {
         self.listen_with_timeout(DEFAULT_TIMEOUT).await
     }
 
-    pub async fn listen_with_timeout(
-        self,
-        timeout: Duration,
-    ) -> Result<CallbackResult, AuthError> {
+    pub async fn listen_with_timeout(self, timeout: Duration) -> Result<CallbackResult, AuthError> {
         let accept = async {
             let (mut stream, addr) = self
                 .listener
@@ -115,9 +115,7 @@ impl CallbackServer {
             let request_line = std::str::from_utf8(&buf[..filled])
                 .ok()
                 .and_then(|s| s.lines().next())
-                .ok_or_else(|| {
-                    AuthError::InvalidConfig("malformed callback request".into())
-                })?;
+                .ok_or_else(|| AuthError::InvalidConfig("malformed callback request".into()))?;
 
             // Format: METHOD <path-and-query> HTTP/...
             let target = request_line
@@ -187,9 +185,7 @@ mod tests {
         let port = server_url.port().unwrap();
         let mut stream = TcpStream::connect((host, port)).await.unwrap();
         let path = format!("{}?{}", server_url.path(), query);
-        let req = format!(
-            "GET {path} HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n"
-        );
+        let req = format!("GET {path} HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n");
         stream.write_all(req.as_bytes()).await.unwrap();
         // Drain the response so the server can shutdown cleanly.
         let mut sink = Vec::new();

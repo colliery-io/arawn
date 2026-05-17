@@ -63,8 +63,8 @@ fn setup_memory_manager() -> (Arc<MemoryManager>, Option<Arc<dyn Embedder>>) {
     let workstream = Arc::new(arawn_memory::MemoryStore::in_memory().unwrap());
     workstream.init_vectors(64).unwrap();
     let embedder: Arc<dyn Embedder> = Arc::new(MockEmbedder::new(64));
-    let mgr = MemoryManager::open_with_stores(global, workstream)
-        .with_embedder(Arc::clone(&embedder));
+    let mgr =
+        MemoryManager::open_with_stores(global, workstream).with_embedder(Arc::clone(&embedder));
     (Arc::new(mgr), Some(embedder))
 }
 
@@ -84,7 +84,9 @@ async fn memory_store_inserts_entity() {
         ])
         .build();
 
-    let result = harness.run("Remember that our project uses PostgreSQL 15").await;
+    let result = harness
+        .run("Remember that our project uses PostgreSQL 15")
+        .await;
 
     // Tool should have been called
     let calls = result.tool_calls();
@@ -109,7 +111,10 @@ async fn memory_store_preference_goes_to_global() {
     let (mgr, embedder) = setup_memory_manager();
 
     let harness = TestHarness::builder()
-        .with_tool(Box::new(MemoryStoreTool::new(Arc::clone(&mgr), embedder.clone())))
+        .with_tool(Box::new(MemoryStoreTool::new(
+            Arc::clone(&mgr),
+            embedder.clone(),
+        )))
         .with_script(vec![
             MockResponse::tool_call(
                 "c1",
@@ -162,7 +167,10 @@ async fn memory_store_deduplicates_on_reinsertion() {
     let (mgr, embedder) = setup_memory_manager();
 
     let harness = TestHarness::builder()
-        .with_tool(Box::new(MemoryStoreTool::new(Arc::clone(&mgr), embedder.clone())))
+        .with_tool(Box::new(MemoryStoreTool::new(
+            Arc::clone(&mgr),
+            embedder.clone(),
+        )))
         .with_script(vec![
             MockResponse::tool_call(
                 "c1",
@@ -184,12 +192,20 @@ async fn memory_store_deduplicates_on_reinsertion() {
     // Should reinforce, not insert
     match result {
         arawn_memory::StoreFactResult::Reinforced { new_count, .. } => {
-            assert!(new_count >= 1, "should have been reinforced: count={new_count}");
+            assert!(
+                new_count >= 1,
+                "should have been reinforced: count={new_count}"
+            );
         }
         arawn_memory::StoreFactResult::Inserted { .. } => {
             // Check if we at least have only 1 entity
             let entities = mgr.workstream.search("\"Axum\"", 5).unwrap();
-            assert_eq!(entities.len(), 1, "dedup should prevent duplicates (found {} entities)", entities.len());
+            assert_eq!(
+                entities.len(),
+                1,
+                "dedup should prevent duplicates (found {} entities)",
+                entities.len()
+            );
         }
         _ => {}
     }
@@ -200,19 +216,21 @@ async fn memory_search_finds_stored_entity() {
     let (mgr, embedder) = setup_memory_manager();
 
     // Pre-populate the KB
-    let entity = arawn_memory::Entity::new(arawn_memory::EntityType::Fact, "Redis cache TTL is 5 minutes")
-        .with_confidence(arawn_memory::ConfidenceSource::Stated)
-        .with_content("All cache keys expire after 5 minutes. Session data uses 24 hour TTL.");
+    let entity = arawn_memory::Entity::new(
+        arawn_memory::EntityType::Fact,
+        "Redis cache TTL is 5 minutes",
+    )
+    .with_confidence(arawn_memory::ConfidenceSource::Stated)
+    .with_content("All cache keys expire after 5 minutes. Session data uses 24 hour TTL.");
     mgr.workstream.insert_entity(&entity).unwrap();
 
     let harness = TestHarness::builder()
-        .with_tool(Box::new(MemorySearchTool::new(Arc::clone(&mgr), embedder.clone())))
+        .with_tool(Box::new(MemorySearchTool::new(
+            Arc::clone(&mgr),
+            embedder.clone(),
+        )))
         .with_script(vec![
-            MockResponse::tool_call(
-                "c1",
-                "memory_search",
-                r#"{"query": "cache TTL"}"#,
-            ),
+            MockResponse::tool_call("c1", "memory_search", r#"{"query": "cache TTL"}"#),
             MockResponse::text("The Redis cache TTL is 5 minutes."),
         ])
         .build();
@@ -258,7 +276,10 @@ async fn memory_search_filters_by_type() {
         .unwrap();
 
     let harness = TestHarness::builder()
-        .with_tool(Box::new(MemorySearchTool::new(Arc::clone(&mgr), embedder.clone())))
+        .with_tool(Box::new(MemorySearchTool::new(
+            Arc::clone(&mgr),
+            embedder.clone(),
+        )))
         .with_script(vec![
             MockResponse::tool_call(
                 "c1",
@@ -305,18 +326,19 @@ async fn memory_store_then_search_roundtrip() {
         ])
         .build();
 
-    let store_result = store_harness.run("Remember: we deploy weekly on Tuesdays").await;
+    let store_result = store_harness
+        .run("Remember: we deploy weekly on Tuesdays")
+        .await;
     assert_eq!(store_result.tool_calls().len(), 1);
 
     // Step 2: Search for it in a separate engine turn (same KB)
     let search_harness = TestHarness::builder()
-        .with_tool(Box::new(MemorySearchTool::new(Arc::clone(&mgr), embedder.clone())))
+        .with_tool(Box::new(MemorySearchTool::new(
+            Arc::clone(&mgr),
+            embedder.clone(),
+        )))
         .with_script(vec![
-            MockResponse::tool_call(
-                "c1",
-                "memory_search",
-                r#"{"query": "deploy schedule"}"#,
-            ),
+            MockResponse::tool_call("c1", "memory_search", r#"{"query": "deploy schedule"}"#),
             MockResponse::text("Deploys are weekly on Tuesdays at 2pm UTC."),
         ])
         .build();
@@ -350,18 +372,19 @@ async fn memory_search_empty_kb_returns_no_results() {
     let (mgr, embedder) = setup_memory_manager();
 
     let harness = TestHarness::builder()
-        .with_tool(Box::new(MemorySearchTool::new(Arc::clone(&mgr), embedder.clone())))
+        .with_tool(Box::new(MemorySearchTool::new(
+            Arc::clone(&mgr),
+            embedder.clone(),
+        )))
         .with_script(vec![
-            MockResponse::tool_call(
-                "c1",
-                "memory_search",
-                r#"{"query": "nonexistent topic"}"#,
-            ),
+            MockResponse::tool_call("c1", "memory_search", r#"{"query": "nonexistent topic"}"#),
             MockResponse::text("I don't have any stored knowledge about that."),
         ])
         .build();
 
-    let result = harness.run("What do we know about quantum computing?").await;
+    let result = harness
+        .run("What do we know about quantum computing?")
+        .await;
 
     let calls = result.tool_calls();
     assert_eq!(calls.len(), 1);
@@ -388,7 +411,9 @@ async fn memory_store_with_tags() {
         ])
         .build();
 
-    let _result = harness.run("Convention: always run clippy before merging").await;
+    let _result = harness
+        .run("Convention: always run clippy before merging")
+        .await;
 
     let entities = mgr.workstream.search("clippy", 5).unwrap();
     assert!(!entities.is_empty());
@@ -401,7 +426,10 @@ async fn memory_store_explicit_scope_override() {
 
     // Facts default to workstream scope, but explicitly set to global
     let harness = TestHarness::builder()
-        .with_tool(Box::new(MemoryStoreTool::new(Arc::clone(&mgr), embedder.clone())))
+        .with_tool(Box::new(MemoryStoreTool::new(
+            Arc::clone(&mgr),
+            embedder.clone(),
+        )))
         .with_script(vec![
             MockResponse::tool_call(
                 "c1",
@@ -420,5 +448,8 @@ async fn memory_store_explicit_scope_override() {
         "explicit global scope should override default"
     );
     let ws = mgr.workstream.search("founded", 5).unwrap();
-    assert!(ws.is_empty(), "should not be in workstream when global specified");
+    assert!(
+        ws.is_empty(),
+        "should not be in workstream when global specified"
+    );
 }

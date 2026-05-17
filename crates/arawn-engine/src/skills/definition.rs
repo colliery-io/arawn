@@ -203,7 +203,10 @@ Review staged changes and create a commit with a conventional message.
 "#;
         let skill = parse_skill_markdown(content, "fallback").unwrap();
         assert_eq!(skill.name, "commit");
-        assert_eq!(skill.description, "Create a git commit with a conventional message");
+        assert_eq!(
+            skill.description,
+            "Create a git commit with a conventional message"
+        );
         assert_eq!(skill.argument_hint, Some("[-m message]".into()));
         assert_eq!(skill.model, Some("sonnet".into()));
         assert_eq!(
@@ -223,10 +226,7 @@ allowed-tools: ["Bash", "Read"]
 Body.
 "#;
         let skill = parse_skill_markdown(content, "test").unwrap();
-        assert_eq!(
-            skill.allowed_tools.as_ref().unwrap(),
-            &["Bash", "Read"]
-        );
+        assert_eq!(skill.allowed_tools.as_ref().unwrap(), &["Bash", "Read"]);
     }
 
     #[test]

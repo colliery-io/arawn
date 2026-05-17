@@ -157,7 +157,9 @@ fn parse_jsonl(path: &Path) -> Result<Vec<Value>, ProjectionError> {
         }
         match serde_json::from_str(&line) {
             Ok(v) => out.push(v),
-            Err(e) => warn!(path = %path.display(), error = %e, "skip unparseable slack jsonl line"),
+            Err(e) => {
+                warn!(path = %path.display(), error = %e, "skip unparseable slack jsonl line")
+            }
         }
     }
     Ok(out)

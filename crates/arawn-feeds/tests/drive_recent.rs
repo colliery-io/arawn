@@ -7,11 +7,12 @@ use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde_json::{Value, json};
 
-use arawn_feeds::{
-    AtlassianFeedClient, CalendarFeedClient, DataLayout, DriveFeedClient, DriveFile, FeedClients, FeedError, FeedMeta,
-    FeedTemplate, GmailFeedClient, MetaStore, SlackFeedClient, TemplateCtx, TemplateParams,
-};
 use arawn_feeds::templates::drive::RecentTemplate;
+use arawn_feeds::{
+    AtlassianFeedClient, CalendarFeedClient, DataLayout, DriveFeedClient, DriveFile, FeedClients,
+    FeedError, FeedMeta, FeedTemplate, GmailFeedClient, MetaStore, SlackFeedClient, TemplateCtx,
+    TemplateParams,
+};
 
 #[derive(Default)]
 struct MockDriveClient {
@@ -119,19 +120,19 @@ async fn writes_per_file_metadata_partitioned_by_modified_date() {
 
     let mock = Arc::new(MockDriveClient::default());
     mock.queue(vec![
-        file("f1", "Q3 Plan.gdoc", "application/vnd.google-apps.document",
-             "2026-05-08T10:00:00Z"),
+        file(
+            "f1",
+            "Q3 Plan.gdoc",
+            "application/vnd.google-apps.document",
+            "2026-05-08T10:00:00Z",
+        ),
         file("f2", "notes.md", "text/markdown", "2026-05-07T22:30:00Z"),
     ]);
 
-    let ctx = TemplateCtx::new(Arc::new(MockClients { drive: mock.clone() }));
-    let outcome = run_once(
-        &RecentTemplate,
-        &ctx,
-        &TemplateParams::default(),
-        &feed_dir,
-    )
-    .await;
+    let ctx = TemplateCtx::new(Arc::new(MockClients {
+        drive: mock.clone(),
+    }));
+    let outcome = run_once(&RecentTemplate, &ctx, &TemplateParams::default(), &feed_dir).await;
     assert_eq!(outcome.summary.items_written, 2);
     assert_eq!(outcome.status, "ok");
 
@@ -139,9 +140,7 @@ async fn writes_per_file_metadata_partitioned_by_modified_date() {
     assert!(feed_dir.join("2026-05-07").join("f2.json").exists());
 
     let meta = MetaStore::read(&feed_dir).unwrap().unwrap();
-    assert_eq!(
-        meta.cursor["latest_modified_iso"], "2026-05-08T10:00:00Z"
-    );
+    assert_eq!(meta.cursor["latest_modified_iso"], "2026-05-08T10:00:00Z");
 }
 
 #[tokio::test]
@@ -151,9 +150,16 @@ async fn second_run_uses_cursor_as_since() {
     let feed_dir = layout.ensure_feed_dir("drive/recent", "me").unwrap();
 
     let mock = Arc::new(MockDriveClient::default());
-    mock.queue(vec![file("a", "a.txt", "text/plain", "2026-05-08T10:00:00Z")]);
+    mock.queue(vec![file(
+        "a",
+        "a.txt",
+        "text/plain",
+        "2026-05-08T10:00:00Z",
+    )]);
     mock.queue(vec![]); // run 2 returns nothing
-    let ctx = TemplateCtx::new(Arc::new(MockClients { drive: mock.clone() }));
+    let ctx = TemplateCtx::new(Arc::new(MockClients {
+        drive: mock.clone(),
+    }));
 
     run_once(&RecentTemplate, &ctx, &TemplateParams::default(), &feed_dir).await;
     run_once(&RecentTemplate, &ctx, &TemplateParams::default(), &feed_dir).await;
@@ -170,13 +176,7 @@ async fn empty_run_is_no_op_with_status() {
     let feed_dir = layout.ensure_feed_dir("drive/recent", "me").unwrap();
     let mock = Arc::new(MockDriveClient::default());
     let ctx = TemplateCtx::new(Arc::new(MockClients { drive: mock }));
-    let outcome = run_once(
-        &RecentTemplate,
-        &ctx,
-        &TemplateParams::default(),
-        &feed_dir,
-    )
-    .await;
+    let outcome = run_once(&RecentTemplate, &ctx, &TemplateParams::default(), &feed_dir).await;
     assert_eq!(outcome.status, "no-new-items");
     assert_eq!(outcome.summary.items_written, 0);
 }
@@ -224,16 +224,31 @@ async fn second_run_skips_already_archived_boundary_file() {
     let feed_dir = layout.ensure_feed_dir("drive/recent", "me").unwrap();
 
     let mock = Arc::new(MockDriveClient::default());
-    mock.queue(vec![file("f1", "x.txt", "text/plain", "2026-05-08T10:00:00Z")]);
+    mock.queue(vec![file(
+        "f1",
+        "x.txt",
+        "text/plain",
+        "2026-05-08T10:00:00Z",
+    )]);
     // Iter 2: Drive returns the same file again (boundary precision).
-    mock.queue(vec![file("f1", "x.txt", "text/plain", "2026-05-08T10:00:00Z")]);
-    let ctx = TemplateCtx::new(Arc::new(MockClients { drive: mock.clone() }));
+    mock.queue(vec![file(
+        "f1",
+        "x.txt",
+        "text/plain",
+        "2026-05-08T10:00:00Z",
+    )]);
+    let ctx = TemplateCtx::new(Arc::new(MockClients {
+        drive: mock.clone(),
+    }));
 
     let first = run_once(&RecentTemplate, &ctx, &TemplateParams::default(), &feed_dir).await;
     assert_eq!(first.summary.items_written, 1);
 
     let second = run_once(&RecentTemplate, &ctx, &TemplateParams::default(), &feed_dir).await;
-    assert_eq!(second.summary.items_written, 0, "re-seen boundary file must not double-count");
+    assert_eq!(
+        second.summary.items_written, 0,
+        "re-seen boundary file must not double-count"
+    );
     assert_eq!(second.status, "no-new-items");
     // Cursor stays at the same value — that's fine; items_written == 0
     // means the spawn-loop converges, not stalls.

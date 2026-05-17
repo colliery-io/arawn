@@ -13,8 +13,8 @@ use crate::background::{
 };
 use crate::compactor::Compactor;
 use crate::error::EngineError;
-use crate::tool::ToolError;
 use crate::query_engine::{QueryEngine, QueryEngineConfig};
+use crate::tool::ToolError;
 use crate::tool::{Tool, ToolCategory, ToolOutput, ToolRegistry};
 
 const DEFAULT_MAX_TURNS: usize = 20;
@@ -107,7 +107,11 @@ impl Tool for AgentTool {
         })
     }
 
-    async fn execute(&self, ctx: &dyn arawn_tool::ToolContext, params: Value) -> Result<ToolOutput, ToolError> {
+    async fn execute(
+        &self,
+        ctx: &dyn arawn_tool::ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
         let prompt = params
             .get("prompt")
             .and_then(|v| v.as_str())
@@ -217,7 +221,9 @@ impl Tool for AgentTool {
         // Background execution: spawn and return immediately
         if run_in_background {
             let mgr = self.bg_manager.as_ref().ok_or_else(|| {
-                ToolError::ExecutionFailed("Background execution not available (no task manager configured)".into())
+                ToolError::ExecutionFailed(
+                    "Background execution not available (no task manager configured)".into(),
+                )
             })?;
 
             let cancel_token = CancellationToken::new();
@@ -259,7 +265,9 @@ impl Tool for AgentTool {
                         append_output(&output_buf, &format!("Error: {e}"));
                         mgr_clone.complete(
                             &task_id_clone,
-                            BackgroundTaskStatus::Failed { error: e.to_string() },
+                            BackgroundTaskStatus::Failed {
+                                error: e.to_string(),
+                            },
                         );
                     }
                 }
@@ -319,8 +327,8 @@ mod tests {
         let mock = Arc::new(MockLlmClient::new(responses));
         let registry = Arc::new(ToolRegistry::new());
         let ws = Workstream::scratch("/tmp/test");
-        let ctx =
-            EngineToolContext::new(&ws, Uuid::new_v4()).with_llm(mock.clone(), "test-model".to_string());
+        let ctx = EngineToolContext::new(&ws, Uuid::new_v4())
+            .with_llm(mock.clone(), "test-model".to_string());
         (ctx, mock, registry)
     }
 
@@ -365,12 +373,11 @@ mod tests {
         named_key: String,
     ) -> Arc<arawn_tool::LlmResolverFn> {
         Arc::new(move |pref: &arawn_tool::LlmPreference| {
-            let match_quality =
-                if pref.named.as_deref() == Some(named_key.as_str()) {
-                    arawn_tool::MatchQuality::Exact
-                } else {
-                    arawn_tool::MatchQuality::Fallback
-                };
+            let match_quality = if pref.named.as_deref() == Some(named_key.as_str()) {
+                arawn_tool::MatchQuality::Exact
+            } else {
+                arawn_tool::MatchQuality::Fallback
+            };
             arawn_tool::LlmResolution {
                 client: Arc::clone(&named_client),
                 info: arawn_tool::ResolvedLlmInfo {
@@ -390,8 +397,12 @@ mod tests {
         // Parent context has a "parent" mock client. Resolver maps "cheap" to a
         // separate "cheap" mock. When the agent tool gets `llm: "cheap"`, the
         // sub-agent must run on the cheap client.
-        let parent = Arc::new(MockLlmClient::new(vec![MockResponse::text("parent unused")]));
-        let cheap = Arc::new(MockLlmClient::new(vec![MockResponse::text("cheap response")]));
+        let parent = Arc::new(MockLlmClient::new(vec![MockResponse::text(
+            "parent unused",
+        )]));
+        let cheap = Arc::new(MockLlmClient::new(vec![MockResponse::text(
+            "cheap response",
+        )]));
         let cheap_dyn: Arc<dyn arawn_llm::LlmClient> = cheap.clone();
 
         let resolver = test_resolver(cheap_dyn, "cheap-model".into(), "cheap".into());
@@ -404,10 +415,7 @@ mod tests {
 
         let tool = AgentTool::new(registry, built_in_agents());
         let result = tool
-            .execute(
-                &ctx,
-                json!({"prompt": "Anything", "llm": "cheap"}),
-            )
+            .execute(&ctx, json!({"prompt": "Anything", "llm": "cheap"}))
             .await
             .unwrap();
 

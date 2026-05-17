@@ -120,8 +120,7 @@ impl std::fmt::Debug for LlmResolution {
 /// [`crate::ToolContext::resolve_llm`]. Kept as a closure (not a trait
 /// object of a one-impl trait) so no new abstraction layer is introduced
 /// just to wire the pool through.
-pub type LlmResolverFn =
-    dyn Fn(&LlmPreference) -> LlmResolution + Send + Sync;
+pub type LlmResolverFn = dyn Fn(&LlmPreference) -> LlmResolution + Send + Sync;
 
 /// How closely the resolved client matched the requested preference.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

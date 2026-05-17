@@ -69,7 +69,10 @@ impl ChatMessage {
             self.rendered_cache = None;
         }
         if self.rendered_cache.is_none() {
-            self.rendered_cache = Some(crate::markdown::markdown_to_lines_with_width(&self.content, width));
+            self.rendered_cache = Some(crate::markdown::markdown_to_lines_with_width(
+                &self.content,
+                width,
+            ));
             self.cached_width = width;
         }
         self.rendered_cache.as_ref().unwrap()
@@ -338,8 +341,11 @@ impl App {
                             }
                             CommandResult::EnterPlan => {
                                 // Send as a regular message — the LLM will call EnterPlanMode
-                                let content = "Enter plan mode. Use EnterPlanMode to begin planning.".to_string();
-                                self.messages.push(ChatMessage::new(ChatRole::User, content.clone()));
+                                let content =
+                                    "Enter plan mode. Use EnterPlanMode to begin planning."
+                                        .to_string();
+                                self.messages
+                                    .push(ChatMessage::new(ChatRole::User, content.clone()));
                                 self.is_generating = true;
                                 self.generation_started = Some(std::time::Instant::now());
                                 self.pending_submit = Some(content);
@@ -570,7 +576,9 @@ impl App {
                 } else {
                     for (i, msg) in self.messages.iter().enumerate() {
                         match &msg.role {
-                            ChatRole::ToolResult { is_error: false, .. }
+                            ChatRole::ToolResult {
+                                is_error: false, ..
+                            }
                             | ChatRole::ToolCall { .. } => {
                                 self.expanded_tool_results.insert(i);
                             }
@@ -670,9 +678,7 @@ impl App {
     /// starts fresh from the newest entry. `is_chat = false` flags
     /// slash-command entries so the branch modal can skip them.
     fn record_input_history(&mut self, text: &str, is_chat: bool) {
-        if !text.is_empty()
-            && self.history.last().map(|e| e.text.as_str()) != Some(text)
-        {
+        if !text.is_empty() && self.history.last().map(|e| e.text.as_str()) != Some(text) {
             self.history.push(HistoryEntry {
                 text: text.to_string(),
                 is_chat,
@@ -704,7 +710,9 @@ impl App {
     /// Move forward in input history. Past the newest entry, restores
     /// the saved draft and exits history mode.
     fn history_recall_next(&mut self) {
-        let Some(idx) = self.history_cursor else { return };
+        let Some(idx) = self.history_cursor else {
+            return;
+        };
         if idx + 1 < self.history.len() {
             let next = idx + 1;
             self.history_cursor = Some(next);
@@ -785,10 +793,7 @@ impl App {
         if trimmed.starts_with('/') && trimmed.len() > 1 {
             // Extract the command prefix (after /)
             let after_slash = &trimmed[1..];
-            let prefix = after_slash
-                .split_whitespace()
-                .next()
-                .unwrap_or(after_slash);
+            let prefix = after_slash.split_whitespace().next().unwrap_or(after_slash);
 
             let matches: Vec<_> = self
                 .command_registry
@@ -814,10 +819,11 @@ impl App {
     /// Accept the currently selected autocomplete suggestion.
     fn accept_autocomplete(&mut self) {
         if let Some(ref ac) = self.autocomplete
-            && let Some(cmd) = ac.selected_command() {
-                self.input_buffer = format!("/{}", cmd.name);
-                self.cursor_pos = self.input_buffer.len();
-            }
+            && let Some(cmd) = ac.selected_command()
+        {
+            self.input_buffer = format!("/{}", cmd.name);
+            self.cursor_pos = self.input_buffer.len();
+        }
         self.autocomplete = None;
     }
 
@@ -889,7 +895,10 @@ impl App {
                     format!("Context compacted ({count} messages summarized)"),
                 ));
             }
-            crate::ws_client::EventUpdate::Usage { input_tokens, output_tokens } => {
+            crate::ws_client::EventUpdate::Usage {
+                input_tokens,
+                output_tokens,
+            } => {
                 self.token_usage = (input_tokens, output_tokens);
             }
             crate::ws_client::EventUpdate::UserInputRequest { .. } => {
@@ -909,24 +918,45 @@ impl App {
         if let Some(msgs) = detail.get("messages").and_then(|m| m.as_array()) {
             for msg in msgs {
                 if let Some(role) = msg.get("role").and_then(|r| r.as_str()) {
-                    let content = msg.get("content").and_then(|c| c.as_str()).unwrap_or("").to_string();
+                    let content = msg
+                        .get("content")
+                        .and_then(|c| c.as_str())
+                        .unwrap_or("")
+                        .to_string();
                     let chat_msg = match role {
                         "user" => ChatMessage::new(ChatRole::User, content),
                         "assistant" => {
-                            if let Some(tool_uses) = msg.get("tool_uses").and_then(|t| t.as_array()) {
+                            if let Some(tool_uses) = msg.get("tool_uses").and_then(|t| t.as_array())
+                            {
                                 for tu in tool_uses {
-                                    let name = tu.get("name").and_then(|n| n.as_str()).unwrap_or("tool").to_string();
-                                    let input = tu.get("input").cloned().unwrap_or(serde_json::Value::Null);
+                                    let name = tu
+                                        .get("name")
+                                        .and_then(|n| n.as_str())
+                                        .unwrap_or("tool")
+                                        .to_string();
+                                    let input =
+                                        tu.get("input").cloned().unwrap_or(serde_json::Value::Null);
                                     let summary = format_tool_input(&name, &input);
-                                    self.messages.push(ChatMessage::new(ChatRole::ToolCall { name }, summary));
+                                    self.messages.push(ChatMessage::new(
+                                        ChatRole::ToolCall { name },
+                                        summary,
+                                    ));
                                 }
                             }
-                            if content.is_empty() { continue; }
+                            if content.is_empty() {
+                                continue;
+                            }
                             ChatMessage::new(ChatRole::Assistant, content)
                         }
                         "tool_result" => {
-                            let is_error = msg.get("is_error").and_then(|e| e.as_bool()).unwrap_or(false);
-                            let name = self.messages.iter().rev()
+                            let is_error = msg
+                                .get("is_error")
+                                .and_then(|e| e.as_bool())
+                                .unwrap_or(false);
+                            let name = self
+                                .messages
+                                .iter()
+                                .rev()
                                 .find_map(|m| match &m.role {
                                     ChatRole::ToolCall { name } => Some(name.clone()),
                                     _ => None,
@@ -934,7 +964,9 @@ impl App {
                                 .unwrap_or_else(|| "tool".to_string());
                             ChatMessage::new(ChatRole::ToolResult { name, is_error }, content)
                         }
-                        "summary" => ChatMessage::new(ChatRole::System, format!("[Summary] {content}")),
+                        "summary" => {
+                            ChatMessage::new(ChatRole::System, format!("[Summary] {content}"))
+                        }
                         _ => continue,
                     };
                     self.messages.push(chat_msg);

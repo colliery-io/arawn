@@ -39,10 +39,7 @@ pub fn init_vector_extension() {
 }
 
 /// Idempotently create all schema for a given feed type.
-pub fn ensure_feed_type_tables(
-    conn: &Connection,
-    feed_type: &str,
-) -> Result<(), ProjectionError> {
+pub fn ensure_feed_type_tables(conn: &Connection, feed_type: &str) -> Result<(), ProjectionError> {
     let table_sql = format!(
         "CREATE TABLE IF NOT EXISTS {feed_type} (
             id TEXT PRIMARY KEY,

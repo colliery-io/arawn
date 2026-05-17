@@ -22,6 +22,14 @@ fn signal_extraction_e2e_fixture_parses() {
         .iter()
         .find(|w| w.name == "dnd")
         .expect("dnd workstream");
-    assert!(work.rows.len() >= 10, "work has {} rows (want >=10)", work.rows.len());
-    assert!(dnd.rows.len() >= 8, "dnd has {} rows (want >=8)", dnd.rows.len());
+    assert!(
+        work.rows.len() >= 10,
+        "work has {} rows (want >=10)",
+        work.rows.len()
+    );
+    assert!(
+        dnd.rows.len() >= 8,
+        "dnd has {} rows (want >=8)",
+        dnd.rows.len()
+    );
 }

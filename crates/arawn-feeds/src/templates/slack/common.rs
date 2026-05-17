@@ -109,10 +109,7 @@ pub async fn archive_channel_with_threads(
         {
             Ok(page) => {
                 for msg in &page.messages {
-                    let ts = msg
-                        .get("ts")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or_default();
+                    let ts = msg.get("ts").and_then(|v| v.as_str()).unwrap_or_default();
                     // The parent is always returned by
                     // conversations.replies. We seed it into the
                     // thread file once during pass-1 and never want
@@ -145,8 +142,7 @@ pub async fn archive_channel_with_threads(
                         None => true,
                     };
                     if should_advance {
-                        threads_cursor
-                            .insert(parent_ts.clone(), Value::String(new_cursor));
+                        threads_cursor.insert(parent_ts.clone(), Value::String(new_cursor));
                     }
                 }
             }
@@ -208,9 +204,7 @@ pub fn synth_since_cursor(
         _ => return Ok(cursor.clone()),
     };
     let dt = chrono::DateTime::parse_from_rfc3339(since_iso).map_err(|e| {
-        FeedError::InvalidParams(format!(
-            "since value '{since_iso}' is not RFC3339: {e}"
-        ))
+        FeedError::InvalidParams(format!("since value '{since_iso}' is not RFC3339: {e}"))
     })?;
     let secs = dt.timestamp();
     let slack_ts = format!("{secs}.000000");

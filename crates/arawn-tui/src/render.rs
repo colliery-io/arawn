@@ -17,19 +17,20 @@ pub fn render(app: &mut App, frame: &mut Frame) {
     // server-side 5-minute timeout — if no `[integration]` notice ever
     // arrived (network drop, cancelled in browser), the line should fade.
     if let Some((_, started)) = &app.oauth_in_flight
-        && started.elapsed() >= std::time::Duration::from_secs(300) {
-            app.oauth_in_flight = None;
-        }
+        && started.elapsed() >= std::time::Duration::from_secs(300)
+    {
+        app.oauth_in_flight = None;
+    }
 
     let oauth_row = if app.oauth_in_flight.is_some() { 1 } else { 0 };
     let vertical = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Min(3),             // chat area
-            Constraint::Length(1),          // thin separator
-            Constraint::Length(1),          // input (single line, borderless)
-            Constraint::Length(oauth_row),  // OAuth heartbeat (0 or 1 row)
-            Constraint::Length(1),          // status bar (bottom)
+            Constraint::Min(3),            // chat area
+            Constraint::Length(1),         // thin separator
+            Constraint::Length(1),         // input (single line, borderless)
+            Constraint::Length(oauth_row), // OAuth heartbeat (0 or 1 row)
+            Constraint::Length(1),         // status bar (bottom)
         ])
         .split(area);
 
@@ -125,8 +126,12 @@ fn render_sidebar_tab(frame: &mut Frame, area: ratatui::layout::Rect) {
 }
 
 fn render_status_bar(app: &App, frame: &mut Frame, area: ratatui::layout::Rect) {
-    let bar_style = Style::default().fg(theme::STATUS_BAR_FG).bg(theme::STATUS_BAR_BG);
-    let dim = Style::default().fg(theme::OVERLAY0).bg(theme::STATUS_BAR_BG);
+    let bar_style = Style::default()
+        .fg(theme::STATUS_BAR_FG)
+        .bg(theme::STATUS_BAR_BG);
+    let dim = Style::default()
+        .fg(theme::OVERLAY0)
+        .bg(theme::STATUS_BAR_BG);
     let mut spans = Vec::new();
 
     // Model name
@@ -166,7 +171,10 @@ fn render_status_bar(app: &App, frame: &mut Frame, area: ratatui::layout::Rect) 
         };
         spans.push(Span::styled(
             label.to_string(),
-            Style::default().fg(color).bg(crate::theme::STATUS_BAR_BG).add_modifier(ratatui::style::Modifier::BOLD),
+            Style::default()
+                .fg(color)
+                .bg(crate::theme::STATUS_BAR_BG)
+                .add_modifier(ratatui::style::Modifier::BOLD),
         ));
     }
 
@@ -187,7 +195,9 @@ fn render_status_bar(app: &App, frame: &mut Frame, area: ratatui::layout::Rect) 
         };
         spans.push(Span::styled(
             state_text,
-            Style::default().fg(theme::GENERATING).bg(theme::STATUS_BAR_BG),
+            Style::default()
+                .fg(theme::GENERATING)
+                .bg(theme::STATUS_BAR_BG),
         ));
         // Elapsed time
         if let Some(started) = app.generation_started {
@@ -195,7 +205,9 @@ fn render_status_bar(app: &App, frame: &mut Frame, area: ratatui::layout::Rect) 
             if elapsed >= 2 {
                 spans.push(Span::styled(
                     format!(" {elapsed}s"),
-                    Style::default().fg(theme::OVERLAY0).bg(theme::STATUS_BAR_BG),
+                    Style::default()
+                        .fg(theme::OVERLAY0)
+                        .bg(theme::STATUS_BAR_BG),
                 ));
             }
         }
@@ -206,8 +218,8 @@ fn render_status_bar(app: &App, frame: &mut Frame, area: ratatui::layout::Rect) 
         ));
     }
 
-    let status = Paragraph::new(Line::from(spans))
-        .style(Style::default().bg(crate::theme::STATUS_BAR_BG));
+    let status =
+        Paragraph::new(Line::from(spans)).style(Style::default().bg(crate::theme::STATUS_BAR_BG));
     frame.render_widget(status, area);
 }
 
@@ -317,7 +329,10 @@ fn render_chat(app: &mut App, frame: &mut Frame, area: ratatui::layout::Rect) {
             let next_is_result = i + 1 < num_messages
                 && matches!(app.messages[i + 1].role, ChatRole::ToolResult { .. });
             let next_is_error = i + 1 < num_messages
-                && matches!(app.messages[i + 1].role, ChatRole::ToolResult { is_error: true, .. });
+                && matches!(
+                    app.messages[i + 1].role,
+                    ChatRole::ToolResult { is_error: true, .. }
+                );
             (next_is_result, next_is_error)
         })
         .collect();
@@ -374,8 +389,7 @@ fn render_chat(app: &mut App, frame: &mut Frame, area: ratatui::layout::Rect) {
                 // either this call or its paired result, or when the
                 // paired result is an error (errors always show body).
                 let pair_toggled = app.expanded_tool_results.contains(&msg_idx)
-                    || (next_is_result
-                        && app.expanded_tool_results.contains(&(msg_idx + 1)));
+                    || (next_is_result && app.expanded_tool_results.contains(&(msg_idx + 1)));
                 let expand_card = next_is_error || pair_toggled;
 
                 let summary_raw = compact_tool_summary(&msg.content);
@@ -484,8 +498,7 @@ fn render_chat(app: &mut App, frame: &mut Frame, area: ratatui::layout::Rect) {
             ChatRole::ToolResult { name, is_error } => {
                 let chrome = Style::default().fg(theme::CHROME);
                 let is_expanded = app.expanded_tool_results.contains(&msg_idx)
-                    || (msg_idx > 0
-                        && app.expanded_tool_results.contains(&(msg_idx - 1)));
+                    || (msg_idx > 0 && app.expanded_tool_results.contains(&(msg_idx - 1)));
 
                 if *is_error {
                     lines.push(Line::from(vec![
@@ -493,7 +506,9 @@ fn render_chat(app: &mut App, frame: &mut Frame, area: ratatui::layout::Rect) {
                         Span::styled("✗ ", Style::default().fg(theme::ERROR)),
                         Span::styled(
                             format!("{name} error"),
-                            Style::default().fg(theme::ERROR).add_modifier(Modifier::BOLD),
+                            Style::default()
+                                .fg(theme::ERROR)
+                                .add_modifier(Modifier::BOLD),
                         ),
                     ]));
                     for err_line in msg.content.lines().take(10) {
@@ -514,7 +529,9 @@ fn render_chat(app: &mut App, frame: &mut Frame, area: ratatui::layout::Rect) {
                 } else if is_expanded {
                     let toggle_hint = Span::styled(
                         " (Ctrl+E to collapse)",
-                        Style::default().fg(theme::CHROME).add_modifier(Modifier::ITALIC),
+                        Style::default()
+                            .fg(theme::CHROME)
+                            .add_modifier(Modifier::ITALIC),
                     );
                     let result_text = Style::default().fg(theme::RESULT_TEXT);
                     let label_style = Style::default().fg(theme::RESULT_LABEL);
@@ -630,17 +647,17 @@ fn render_chat(app: &mut App, frame: &mut Frame, area: ratatui::layout::Rect) {
     } else if app.is_generating {
         // Waiting for first token — show thinking indicator with elapsed time
         let frame_char = SPINNER_FRAMES[app.spinner_frame as usize % SPINNER_FRAMES.len()];
-        let elapsed = app.generation_started
+        let elapsed = app
+            .generation_started
             .map(|t| format!(" {:.1}s", t.elapsed().as_secs_f64()))
             .unwrap_or_default();
         lines.push(Line::from(vec![
-            Span::styled(
-                format!("{frame_char} "),
-                Style::default().fg(theme::BLUE),
-            ),
+            Span::styled(format!("{frame_char} "), Style::default().fg(theme::BLUE)),
             Span::styled(
                 format!("thinking...{elapsed}"),
-                Style::default().fg(theme::OVERLAY0).add_modifier(Modifier::ITALIC),
+                Style::default()
+                    .fg(theme::OVERLAY0)
+                    .add_modifier(Modifier::ITALIC),
             ),
         ]));
     } else if last_is_completed_turn {
@@ -705,7 +722,10 @@ fn render_input(app: &App, frame: &mut Frame, area: ratatui::layout::Rect) {
     } else if app.input_buffer.is_empty() {
         let line = Line::from(vec![
             Span::styled(prompt, prompt_style),
-            Span::styled("Type your message...", Style::default().fg(theme::PLACEHOLDER)),
+            Span::styled(
+                "Type your message...",
+                Style::default().fg(theme::PLACEHOLDER),
+            ),
         ]);
         frame.render_widget(Paragraph::new(line), area);
     } else {
@@ -739,8 +759,7 @@ fn render_input(app: &App, frame: &mut Frame, area: ratatui::layout::Rect) {
         frame.render_widget(Paragraph::new(line), area);
 
         if app.focus == Focus::Main {
-            let cursor_x =
-                area.x + prompt_len as u16 + (cursor_cells - scroll_cells) as u16;
+            let cursor_x = area.x + prompt_len as u16 + (cursor_cells - scroll_cells) as u16;
             frame.set_cursor_position((cursor_x, area.y));
         }
         return;
@@ -859,10 +878,7 @@ fn render_idle_hero(frame: &mut Frame, area: ratatui::layout::Rect) {
             "Type / for commands · Tab to toggle sidebar",
             hint,
         )),
-        Line::from(Span::styled(
-            "/connect <service> · ↑ recall",
-            hint,
-        )),
+        Line::from(Span::styled("/connect <service> · ↑ recall", hint)),
     ];
 
     let hero_height = hero_lines.len() as u16;
@@ -1138,12 +1154,17 @@ mod tests {
     fn chat_renders_tool_call_with_icon() {
         let mut app = App::new();
         app.messages.push(ChatMessage::new(
-            ChatRole::ToolCall { name: "shell".into() },
+            ChatRole::ToolCall {
+                name: "shell".into(),
+            },
             "ls -la",
         ));
         // Add a result so the tool call shows ✓ (completed)
         app.messages.push(ChatMessage::new(
-            ChatRole::ToolResult { name: "shell".into(), is_error: false },
+            ChatRole::ToolResult {
+                name: "shell".into(),
+                is_error: false,
+            },
             "file1.rs",
         ));
 
@@ -1592,13 +1613,13 @@ mod tests {
         for i in 0..10 {
             app.messages
                 .push(ChatMessage::new(ChatRole::User, format!("q_{i}")));
-            app.messages.push(ChatMessage::new(
-                ChatRole::Assistant,
-                format!("a_{i}"),
-            ));
+            app.messages
+                .push(ChatMessage::new(ChatRole::Assistant, format!("a_{i}")));
         }
         app.messages.push(ChatMessage::new(
-            ChatRole::ToolCall { name: "shell".into() },
+            ChatRole::ToolCall {
+                name: "shell".into(),
+            },
             "cargo test",
         ));
         app.messages.push(ChatMessage::new(
@@ -1608,10 +1629,8 @@ mod tests {
             },
             "TOOL_OUTPUT_VISIBLE",
         ));
-        app.messages.push(ChatMessage::new(
-            ChatRole::Assistant,
-            "AFTER_TOOL_VISIBLE",
-        ));
+        app.messages
+            .push(ChatMessage::new(ChatRole::Assistant, "AFTER_TOOL_VISIBLE"));
 
         let backend = TestBackend::new(80, 30);
         let mut terminal = Terminal::new(backend).unwrap();
@@ -1630,7 +1649,10 @@ mod tests {
                     .map(|x| buf.cell((x, row)).unwrap().symbol().to_string())
                     .collect();
                 // The separator is a full line of ─ with no other box chars (│┌└┐┘)
-                row_text.contains("───") && !row_text.contains('│') && !row_text.contains('┌') && !row_text.contains('└')
+                row_text.contains("───")
+                    && !row_text.contains('│')
+                    && !row_text.contains('┌')
+                    && !row_text.contains('└')
             })
             .expect("should have separator row");
 

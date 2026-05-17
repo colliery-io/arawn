@@ -52,9 +52,9 @@ pub const ATLASSIAN_OAUTH_SCOPES: &[&str] = &[
 /// tools can route to the right `cloud_id` without re-fetching.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AtlassianSite {
-    pub id: String,    // The cloud_id used in API URLs.
-    pub url: String,   // e.g. "https://acme.atlassian.net"
-    pub name: String,  // Human-readable instance name.
+    pub id: String,   // The cloud_id used in API URLs.
+    pub url: String,  // e.g. "https://acme.atlassian.net"
+    pub name: String, // Human-readable instance name.
     #[serde(default)]
     pub scopes: Vec<String>,
 }
@@ -72,7 +72,10 @@ impl Default for AtlassianProviderConfig {
         Self {
             auth_url: "https://auth.atlassian.com/authorize".parse().unwrap(),
             token_url: "https://auth.atlassian.com/oauth/token".parse().unwrap(),
-            scopes: ATLASSIAN_OAUTH_SCOPES.iter().map(|s| s.to_string()).collect(),
+            scopes: ATLASSIAN_OAUTH_SCOPES
+                .iter()
+                .map(|s| s.to_string())
+                .collect(),
             redirect_port: DEFAULT_ATLASSIAN_REDIRECT_PORT,
         }
     }
@@ -145,17 +148,13 @@ impl AtlassianIntegration {
         let Some(value) = raw else {
             return Ok(Vec::new());
         };
-        serde_json::from_value::<Vec<AtlassianSite>>(value).map_err(|e| {
-            IntegrationError::Format(format!("decode atlassian sites: {e}"))
-        })
+        serde_json::from_value::<Vec<AtlassianSite>>(value)
+            .map_err(|e| IntegrationError::Format(format!("decode atlassian sites: {e}")))
     }
 
     /// Resolve a site by URL or name (e.g. `"acme.atlassian.net"`). When
     /// `which` is `None`, returns the first site (default).
-    pub fn select_site(
-        &self,
-        which: Option<&str>,
-    ) -> Result<AtlassianSite, IntegrationError> {
+    pub fn select_site(&self, which: Option<&str>) -> Result<AtlassianSite, IntegrationError> {
         let sites = self.sites()?;
         if sites.is_empty() {
             return Err(IntegrationError::NotConnected(format!(
@@ -169,10 +168,7 @@ impl AtlassianIntegration {
                 sites
                     .into_iter()
                     .find(|s| {
-                        let url_norm = s
-                            .url
-                            .trim_start_matches("https://")
-                            .trim_end_matches('/');
+                        let url_norm = s.url.trim_start_matches("https://").trim_end_matches('/');
                         url_norm == needle || s.name == needle || s.id == needle
                     })
                     .ok_or_else(|| {
@@ -186,9 +182,7 @@ impl AtlassianIntegration {
     }
 
     /// Read the granted scope set from the persisted token.
-    pub fn granted_scopes(
-        &self,
-    ) -> Result<std::collections::HashSet<String>, IntegrationError> {
+    pub fn granted_scopes(&self) -> Result<std::collections::HashSet<String>, IntegrationError> {
         let token = self.load_token()?;
         let raw = token.scope.unwrap_or_default();
         Ok(raw
@@ -224,10 +218,8 @@ impl AtlassianIntegration {
     }
 
     pub fn oauth_config(&self) -> OAuthProviderConfig {
-        self.provider().into_oauth_provider(
-            self.client_id.clone(),
-            self.client_secret.clone(),
-        )
+        self.provider()
+            .into_oauth_provider(self.client_id.clone(), self.client_secret.clone())
     }
 
     fn provider(&self) -> AtlassianProviderConfig {
@@ -479,8 +471,8 @@ mod tests {
 
     #[test]
     fn provider_lifts_into_oauth_config_with_audience() {
-        let cfg = AtlassianProviderConfig::default()
-            .into_oauth_provider("cid".into(), "csecret".into());
+        let cfg =
+            AtlassianProviderConfig::default().into_oauth_provider("cid".into(), "csecret".into());
         assert_eq!(cfg.client_id, "cid");
         assert!(
             cfg.extra_auth_params

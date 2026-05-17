@@ -31,8 +31,7 @@ use arawn_projections::calendar::{CalendarEventProjection, FEED_TYPE as CAL_FEED
 /// Seed weekly ceremony state under `data_dir`. Idempotent.
 pub fn apply(data_dir: &Path) -> Result<WeeklySeedSummary, String> {
     let db_path = data_dir.join("arawn.db");
-    let conn = Connection::open(&db_path)
-        .map_err(|e| format!("open {db_path:?}: {e}"))?;
+    let conn = Connection::open(&db_path).map_err(|e| format!("open {db_path:?}: {e}"))?;
 
     let now = Utc::now();
     let cur_iso = iso_week_str(now);
@@ -55,7 +54,10 @@ pub fn apply(data_dir: &Path) -> Result<WeeklySeedSummary, String> {
     summary.prior_weekly_tablets += 1;
 
     let inbound_items = [
-        ("inbound-001", "Follow up with vendor on proj-a contract renewal"),
+        (
+            "inbound-001",
+            "Follow up with vendor on proj-a contract renewal",
+        ),
         ("inbound-002", "Circle back on proj-b retro action items"),
     ];
     for (idx, (id, body)) in inbound_items.iter().enumerate() {
@@ -87,7 +89,8 @@ pub fn apply(data_dir: &Path) -> Result<WeeklySeedSummary, String> {
     .map_err(|e| format!("prior retro tablet: {e}"))?;
     summary.prior_retros += 1;
 
-    let diary_body = "Felt scattered; proj-c kept getting pushed even though we called it a priority.";
+    let diary_body =
+        "Felt scattered; proj-c kept getting pushed even though we called it a priority.";
     let diary_written = (now - Duration::days(12)).to_rfc3339();
     let word_count: i64 = diary_body.split_whitespace().count() as i64;
     conn.execute(
@@ -118,10 +121,19 @@ pub fn apply(data_dir: &Path) -> Result<WeeklySeedSummary, String> {
     //    on `created_at < now - 7d`.
     let created_old = (now - Duration::days(10)).to_rfc3339();
     let todos = [
-        ("weekly-todo-001", "Wire the OAuth refresh job into the cron"),
+        (
+            "weekly-todo-001",
+            "Wire the OAuth refresh job into the cron",
+        ),
         ("weekly-todo-002", "Land the proj-a runbook approval"),
-        ("weekly-todo-003", "Re-share the proj-c RFC with the SRE team"),
-        ("weekly-todo-004", "Confirm Saturday on-call coverage backfill"),
+        (
+            "weekly-todo-003",
+            "Re-share the proj-c RFC with the SRE team",
+        ),
+        (
+            "weekly-todo-004",
+            "Confirm Saturday on-call coverage backfill",
+        ),
     ];
     for (id, body) in todos {
         conn.execute(
@@ -207,7 +219,11 @@ pub fn apply(data_dir: &Path) -> Result<WeeklySeedSummary, String> {
         if date > sunday {
             continue;
         }
-        let id = format!("weekly-evt-{}-{}", title.replace(' ', "-").to_lowercase(), date);
+        let id = format!(
+            "weekly-evt-{}-{}",
+            title.replace(' ', "-").to_lowercase(),
+            date
+        );
         events.push(build_event(
             &id,
             feed_id,

@@ -35,10 +35,7 @@ pub enum CeremonyEvent {
     },
     /// An item row was inserted or modified (toggle done, edit body,
     /// add user item).
-    ItemUpdated {
-        item_id: String,
-        tablet_id: String,
-    },
+    ItemUpdated { item_id: String, tablet_id: String },
     /// User wrote or replaced the diary body on a retro tablet
     /// (fired by `ceremonies.upsert_diary` — T-0289).
     DiaryUpdated { tablet_id: String },

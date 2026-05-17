@@ -69,9 +69,10 @@ impl FeedTemplate for DmArchiveTemplate {
         feed_dir: &Path,
         cursor: &Value,
     ) -> Result<RunOutcome, FeedError> {
-        let slack = ctx.clients().slack().ok_or_else(|| {
-            FeedError::Auth("slack integration not connected".into())
-        })?;
+        let slack = ctx
+            .clients()
+            .slack()
+            .ok_or_else(|| FeedError::Auth("slack integration not connected".into()))?;
 
         let user = params
             .get_str("user")
@@ -79,13 +80,8 @@ impl FeedTemplate for DmArchiveTemplate {
         let dm_channel_id = slack.open_dm(user).await?;
 
         let effective_cursor = synth_since_cursor(cursor, params)?;
-        archive_channel_with_threads(
-            slack.as_ref(),
-            &dm_channel_id,
-            feed_dir,
-            &effective_cursor,
-        )
-        .await
+        archive_channel_with_threads(slack.as_ref(), &dm_channel_id, feed_dir, &effective_cursor)
+            .await
     }
 }
 

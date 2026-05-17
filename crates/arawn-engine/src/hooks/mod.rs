@@ -13,9 +13,7 @@ mod loader;
 mod matcher;
 mod runner;
 
-pub use config::{
-    AggregatedHookResult, CommandHookDef, HookConfig, HookGroup, HookResult,
-};
+pub use config::{AggregatedHookResult, CommandHookDef, HookConfig, HookGroup, HookResult};
 pub use events::{HookEvent, HookInput};
 pub use executor::CommandHookExecutor;
 pub use file_watcher::HookFileWatcher;

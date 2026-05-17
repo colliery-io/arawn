@@ -148,11 +148,7 @@ async fn workflow_delete_removes_package() {
     let harness = TestHarness::builder()
         .with_tool(Box::new(tool))
         .with_script(vec![
-            MockResponse::tool_call(
-                "c1",
-                "workflow_delete",
-                r#"{"name":"old-workflow"}"#,
-            ),
+            MockResponse::tool_call("c1", "workflow_delete", r#"{"name":"old-workflow"}"#),
             MockResponse::text("Deleted."),
         ])
         .build();
@@ -170,11 +166,7 @@ async fn workflow_delete_nonexistent_errors() {
     let harness = TestHarness::builder()
         .with_tool(Box::new(tool))
         .with_script(vec![
-            MockResponse::tool_call(
-                "c1",
-                "workflow_delete",
-                r#"{"name":"ghost"}"#,
-            ),
+            MockResponse::tool_call("c1", "workflow_delete", r#"{"name":"ghost"}"#),
             MockResponse::text("Not found."),
         ])
         .build();

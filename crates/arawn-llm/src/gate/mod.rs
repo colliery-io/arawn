@@ -133,10 +133,7 @@ pub async fn acquire_local() -> Result<LocalPermit, AcquireError> {
             // The semaphore got replaced under us (set_policy). Retry
             // once with the new semaphore.
             let sem2 = s.semaphore.read().unwrap().clone();
-            let permit = sem2
-                .acquire_owned()
-                .await
-                .map_err(|_| AcquireError::Busy)?;
+            let permit = sem2.acquire_owned().await.map_err(|_| AcquireError::Busy)?;
             Ok(LocalPermit { _inner: permit })
         }
     }

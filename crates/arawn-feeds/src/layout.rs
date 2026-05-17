@@ -69,7 +69,10 @@ mod tests {
     fn feed_dir_splits_on_slash() {
         let layout = DataLayout::new("/tmp/arawn");
         let p = layout.feed_dir("slack/channel-archive", "design").unwrap();
-        assert_eq!(p, PathBuf::from("/tmp/arawn/data/slack/channel-archive/design"));
+        assert_eq!(
+            p,
+            PathBuf::from("/tmp/arawn/data/slack/channel-archive/design")
+        );
     }
 
     #[test]
@@ -83,9 +86,7 @@ mod tests {
     fn ensure_feed_dir_creates_path() {
         let tmp = tempfile::tempdir().unwrap();
         let layout = DataLayout::new(tmp.path());
-        let dir = layout
-            .ensure_feed_dir("stub/echo", "feed-1")
-            .unwrap();
+        let dir = layout.ensure_feed_dir("stub/echo", "feed-1").unwrap();
         assert!(dir.exists());
     }
 }

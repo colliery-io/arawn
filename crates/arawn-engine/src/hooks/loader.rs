@@ -180,8 +180,7 @@ mod tests {
 }"#,
         );
 
-        let config =
-            load_merged_hooks(Some(user_tmp.path()), Some(project_tmp.path()));
+        let config = load_merged_hooks(Some(user_tmp.path()), Some(project_tmp.path()));
 
         // PreToolUse should have 2 groups (1 user + 1 project)
         assert_eq!(config.groups_for(HookEvent::PreToolUse).len(), 2);
@@ -240,8 +239,7 @@ mod tests {
         write_json(user_tmp.as_file(), content);
         write_json(project_tmp.as_file(), content);
 
-        let config =
-            load_merged_hooks(Some(user_tmp.path()), Some(project_tmp.path()));
+        let config = load_merged_hooks(Some(user_tmp.path()), Some(project_tmp.path()));
 
         // Currently 2 groups — dedup would reduce to 1
         assert_eq!(config.groups_for(HookEvent::PreToolUse).len(), 2);

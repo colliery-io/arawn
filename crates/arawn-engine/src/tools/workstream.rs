@@ -134,7 +134,10 @@ impl Tool for WorkstreamCreateTool {
         // Ontology is required and non-empty. Normalize + dedupe so a
         // caller that sends `["Falcon", "falcon ", "FALCON"]` lands a
         // single `falcon` tag.
-        let tags_ontology: Vec<String> = match params.get("tags_ontology").and_then(|v| v.as_array()) {
+        let tags_ontology: Vec<String> = match params
+            .get("tags_ontology")
+            .and_then(|v| v.as_array())
+        {
             Some(arr) if !arr.is_empty() => {
                 let mut seen = std::collections::HashSet::new();
                 let mut out = Vec::new();
@@ -181,7 +184,9 @@ impl Tool for WorkstreamCreateTool {
         {
             let store = self.store.lock().unwrap();
             if let Err(e) = store.create_workstream(&ws) {
-                return Ok(ToolOutput::error(format!("failed to create workstream: {e}")));
+                return Ok(ToolOutput::error(format!(
+                    "failed to create workstream: {e}"
+                )));
             }
         }
 
@@ -194,9 +199,10 @@ impl Tool for WorkstreamCreateTool {
                 )));
             }
         };
-        if let Err(e) =
-            ontology.add_many(tags_ontology.iter().cloned(), arawn_memory::AddedVia::Manual)
-        {
+        if let Err(e) = ontology.add_many(
+            tags_ontology.iter().cloned(),
+            arawn_memory::AddedVia::Manual,
+        ) {
             return Ok(ToolOutput::error(format!(
                 "workstream record created but ontology seed failed: {e}"
             )));
@@ -270,10 +276,7 @@ impl Tool for WorkstreamListTool {
         _ctx: &dyn arawn_tool::ToolContext,
         params: Value,
     ) -> Result<ToolOutput, ToolError> {
-        let include_archived = params
-            .get("all")
-            .and_then(|v| v.as_bool())
-            .unwrap_or(false);
+        let include_archived = params.get("all").and_then(|v| v.as_bool()).unwrap_or(false);
         let active = self.active.current();
         let store = self.store.lock().unwrap();
         let workstreams = if include_archived {
@@ -356,9 +359,7 @@ impl Tool for WorkstreamSwitchTool {
             .find_workstream_by_name(&name)
             .map_err(|e| ToolError::ExecutionFailed(e.to_string()))?;
         let Some(ws) = ws else {
-            return Ok(ToolOutput::error(format!(
-                "workstream '{name}' not found"
-            )));
+            return Ok(ToolOutput::error(format!("workstream '{name}' not found")));
         };
         if ws.archived {
             return Ok(ToolOutput::error(format!(
@@ -463,9 +464,7 @@ impl Tool for WorkstreamShowTool {
             .find_workstream_by_name(&name)
             .map_err(|e| ToolError::ExecutionFailed(e.to_string()))?;
         let Some(ws) = ws else {
-            return Ok(ToolOutput::error(format!(
-                "workstream '{name}' not found"
-            )));
+            return Ok(ToolOutput::error(format!("workstream '{name}' not found")));
         };
         drop(store);
 
@@ -630,7 +629,9 @@ impl Tool for WorkstreamBindTool {
             .unwrap_or_default()
             .to_string();
         if name.is_empty() || feed_id.is_empty() {
-            return Ok(ToolOutput::error("name and feed_id are required".to_string()));
+            return Ok(ToolOutput::error(
+                "name and feed_id are required".to_string(),
+            ));
         }
         let result = {
             let store = self.store.lock().unwrap();
@@ -704,7 +705,9 @@ impl Tool for WorkstreamUnbindTool {
             .unwrap_or_default()
             .to_string();
         if name.is_empty() || feed_id.is_empty() {
-            return Ok(ToolOutput::error("name and feed_id are required".to_string()));
+            return Ok(ToolOutput::error(
+                "name and feed_id are required".to_string(),
+            ));
         }
         let store = self.store.lock().unwrap();
         match store.remove_workstream_binding(&name, &feed_id) {
@@ -792,7 +795,11 @@ impl Tool for WorkstreamPromoteTool {
         }
         let entity_id = match uuid::Uuid::parse_str(entity_id_str) {
             Ok(id) => id,
-            Err(_) => return Ok(ToolOutput::error("entity_id is not a valid UUID".to_string())),
+            Err(_) => {
+                return Ok(ToolOutput::error(
+                    "entity_id is not a valid UUID".to_string(),
+                ));
+            }
         };
 
         // Verify target workstream exists.
@@ -1009,9 +1016,7 @@ impl Tool for WorkstreamProposeOntologyTool {
         let description = match params.get("description").and_then(|v| v.as_str()) {
             Some(s) if !s.trim().is_empty() => s.trim().to_string(),
             _ => {
-                return Ok(ToolOutput::error(
-                    "description is required".to_string(),
-                ));
+                return Ok(ToolOutput::error("description is required".to_string()));
             }
         };
 
@@ -1157,7 +1162,11 @@ mod tests {
         let tmp = tempfile::TempDir::new().unwrap();
         let store = Store::open(tmp.path()).unwrap();
         store.ensure_scratch_workstream().unwrap();
-        (tmp, Arc::new(Mutex::new(store)), SessionWorkstream::scratch())
+        (
+            tmp,
+            Arc::new(Mutex::new(store)),
+            SessionWorkstream::scratch(),
+        )
     }
 
     fn test_ctx(tmp: &tempfile::TempDir) -> crate::context::EngineToolContext {
@@ -1451,7 +1460,13 @@ mod tests {
         let pat_mgr = router.for_workstream("pat").unwrap();
         assert!(pat_mgr.workstream.get_entity(entity.id).unwrap().is_some());
         // Scratch no longer.
-        assert!(scratch_mgr.workstream.get_entity(entity.id).unwrap().is_none());
+        assert!(
+            scratch_mgr
+                .workstream
+                .get_entity(entity.id)
+                .unwrap()
+                .is_none()
+        );
     }
 
     #[tokio::test]

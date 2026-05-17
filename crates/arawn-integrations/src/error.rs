@@ -41,7 +41,9 @@ impl IntegrationError {
     pub fn user_message(&self) -> String {
         match self {
             IntegrationError::UnknownService(s) => {
-                format!("No integration named '{s}' is registered. Run /integrations to see what's available.")
+                format!(
+                    "No integration named '{s}' is registered. Run /integrations to see what's available."
+                )
             }
             IntegrationError::NotConnected(s) => {
                 format!("Integration '{s}' is not connected. Run /connect {s} to set it up.")

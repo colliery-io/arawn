@@ -49,7 +49,10 @@ impl std::fmt::Display for WorkstreamNameError {
             Self::Empty => write!(f, "workstream name cannot be empty"),
             Self::TooLong => write!(f, "workstream name exceeds 64 characters"),
             Self::BadLeading => {
-                write!(f, "workstream name must start with a lowercase letter or digit")
+                write!(
+                    f,
+                    "workstream name must start with a lowercase letter or digit"
+                )
             }
             Self::BadChar(c) => write!(
                 f,
@@ -154,10 +157,22 @@ mod tests {
     #[test]
     fn name_validation_rejects_invalid_slugs() {
         assert_eq!(validate_name(""), Err(WorkstreamNameError::Empty));
-        assert_eq!(validate_name("-leading"), Err(WorkstreamNameError::BadLeading));
-        assert_eq!(validate_name("UpperCase"), Err(WorkstreamNameError::BadLeading));
-        assert_eq!(validate_name("with space"), Err(WorkstreamNameError::BadChar(' ')));
-        assert_eq!(validate_name("with.dot"), Err(WorkstreamNameError::BadChar('.')));
+        assert_eq!(
+            validate_name("-leading"),
+            Err(WorkstreamNameError::BadLeading)
+        );
+        assert_eq!(
+            validate_name("UpperCase"),
+            Err(WorkstreamNameError::BadLeading)
+        );
+        assert_eq!(
+            validate_name("with space"),
+            Err(WorkstreamNameError::BadChar(' '))
+        );
+        assert_eq!(
+            validate_name("with.dot"),
+            Err(WorkstreamNameError::BadChar('.'))
+        );
         let too_long: String = "a".repeat(65);
         assert_eq!(validate_name(&too_long), Err(WorkstreamNameError::TooLong));
     }
