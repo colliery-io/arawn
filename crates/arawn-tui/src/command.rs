@@ -205,6 +205,12 @@ impl CommandRegistry {
             description: "Show this week's retro ceremony tablet".into(),
             kind: CommandKind::BuiltIn,
         });
+        // Generic todo surface (I-0049 T-0314)
+        self.commands.push(CommandInfo {
+            name: "todo".into(),
+            description: "Open the todo list (create, mark done, archive)".into(),
+            kind: CommandKind::BuiltIn,
+        });
     }
 
     /// Add skill commands from the server's cached skill list.
@@ -361,6 +367,8 @@ pub enum CommandResult {
     /// Fetch + render this week's retro ceremony tablet as a system
     /// message (T-0307 phase 1, read-only).
     CeremonyShowRetro,
+    /// Open the `/todo` modal — generic todos surface (I-0049 T-0314).
+    TodoShow,
 }
 
 /// Parsed args for the non-interactive form of `/watch`.
@@ -747,6 +755,7 @@ pub fn execute_command(cmd: &ParsedCommand, registry: &CommandRegistry) -> Comma
                 "today" => CommandResult::CeremonyShowToday,
                 "week" => CommandResult::CeremonyShowWeek,
                 "retro" => CommandResult::CeremonyShowRetro,
+                "todo" => CommandResult::TodoShow,
 
                 _ => CommandResult::SystemMessage(format!("Unknown built-in: /{}", cmd.name)),
             },

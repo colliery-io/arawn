@@ -180,6 +180,12 @@ pub struct App {
     /// active overlay's tablet. The event loop drains this after each
     /// WS event batch and runs a refresh RPC. None = no refresh pending.
     pub pending_ceremony_refresh: bool,
+    /// `/todo` modal (I-0049 T-0314). Independent of ceremony_overlay
+    /// — the user can have only one open at a time.
+    pub todo_overlay: Option<crate::todo_modal::TodoModalState>,
+    /// Set when a `todo_event` ServerNotice arrives. Triggers a
+    /// re-fetch of the open todo list and re-render.
+    pub pending_todo_refresh: bool,
 }
 
 /// Window for double-Esc detection. Two Esc presses inside this opens
@@ -241,6 +247,8 @@ impl App {
             last_esc_at: None,
             ceremony_overlay: None,
             pending_ceremony_refresh: false,
+            todo_overlay: None,
+            pending_todo_refresh: false,
         }
     }
 
@@ -377,7 +385,8 @@ impl App {
                             | CommandResult::FeedRun(_)
                             | CommandResult::CeremonyShowToday
                             | CommandResult::CeremonyShowWeek
-                            | CommandResult::CeremonyShowRetro => {
+                            | CommandResult::CeremonyShowRetro
+                            | CommandResult::TodoShow => {
                                 // These need WS interaction — store for event loop to handle
                                 self.pending_command = Some(result);
                             }

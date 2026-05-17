@@ -32,8 +32,6 @@ rationale that accompanied each candidate priority. With
 
 ## Acceptance Criteria
 
-## Acceptance Criteria
-
 - [x] `confirm_priority` extracts `body.rationale` (JSON-embedded
       on the candidate ceremony_items row) and writes it to
       `todos.rationale`. Empty / whitespace / missing rationale

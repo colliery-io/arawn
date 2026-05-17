@@ -97,6 +97,9 @@ pub fn render(app: &mut App, frame: &mut Frame) {
     if let Some(ref overlay) = app.ceremony_overlay {
         crate::ceremony_modal::render_overlay(overlay, frame);
     }
+    if let Some(ref overlay) = app.todo_overlay {
+        crate::todo_modal::render_todo_modal(overlay, frame);
+    }
 }
 
 fn render_sidebar_tab(frame: &mut Frame, area: ratatui::layout::Rect) {

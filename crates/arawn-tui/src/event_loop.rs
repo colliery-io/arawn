@@ -203,6 +203,15 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                     continue;
                 }
                 if let CEvent::Key(key) = event
+                    && app.todo_overlay.is_some()
+                {
+                    handle_todo_overlay_key(&mut client, &mut app, key).await;
+                    if app.dirty {
+                        force_draw(&mut terminal, &mut app)?;
+                    }
+                    continue;
+                }
+                if let CEvent::Key(key) = event
                     && let Some(action) = map_key_event(key, app.focus, app.is_generating, app.active_modal.is_some(), app.autocomplete.is_some())
                 {
                     debug!(?action, focus = ?app.focus, generating = app.is_generating, "handling action");
@@ -834,6 +843,13 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                                 }
                                 app.dirty = true;
                             }
+                            crate::command::CommandResult::TodoShow => {
+                                let todos = fetch_open_todos(&mut client).await;
+                                app.todo_overlay = Some(
+                                    crate::todo_modal::TodoModalState::new(todos),
+                                );
+                                app.dirty = true;
+                            }
                             _ => {} // Other command results handled in app.handle_action
                         }
                     }
@@ -1174,6 +1190,13 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                 // (T-0308 slice 3). Runs RPCs after the event drain so
                 // we don't hold the borrow-checker over an await inside
                 // the closure-based event handler.
+                if app.pending_todo_refresh {
+                    app.pending_todo_refresh = false;
+                    let fresh = fetch_open_todos(&mut client).await;
+                    if let Some(s) = app.todo_overlay.as_mut() {
+                        s.set_todos(fresh);
+                    }
+                }
                 if app.pending_ceremony_refresh {
                     app.pending_ceremony_refresh = false;
                     refresh_active_ceremony_overlay(&mut client, &mut app).await;
@@ -1278,6 +1301,16 @@ fn apply_system_notice(notice: &arawn_service::ServerNotice, app: &mut crate::ap
     // the user with `ItemUpdated` rows on every keypress.
     if notice.category == "ceremony_event" {
         ceremony_event_should_refresh(notice, app);
+        app.dirty = true;
+        return;
+    }
+    // Todo events (I-0049 T-0314) are silent like ceremony events —
+    // they trigger a re-fetch of the open todo list when the modal
+    // is up, no chat noise.
+    if notice.category == "todo_event" {
+        if app.todo_overlay.is_some() {
+            app.pending_todo_refresh = true;
+        }
         app.dirty = true;
         return;
     }
@@ -1832,6 +1865,127 @@ async fn refresh_active_ceremony_overlay(client: &mut crate::ws_client::WsClient
             }
         }
         None => {}
+    }
+}
+
+// -----------------------------------------------------------------------------
+// /todo overlay (I-0049 T-0314)
+// -----------------------------------------------------------------------------
+
+/// Fetch all open todos for the overlay. Filters out done + archived,
+/// which is the default behaviour of `todos.list` with no filter.
+async fn fetch_open_todos(client: &mut crate::ws_client::WsClient) -> Vec<crate::todo_modal::TodoRow> {
+    let params = serde_json::json!({"open_only": true});
+    let payload = match client.request_response("todos.list", params).await {
+        Ok(v) => v,
+        Err(_) => return Vec::new(),
+    };
+    let arr = match payload.get("result").and_then(|r| r.as_array()) {
+        Some(a) => a,
+        None => return Vec::new(),
+    };
+    arr.iter()
+        .filter_map(|row| {
+            Some(crate::todo_modal::TodoRow {
+                id: row.get("id")?.as_str()?.to_string(),
+                body: row.get("body")?.as_str()?.to_string(),
+                kind: row.get("kind")?.as_str()?.to_string(),
+                workstream: row
+                    .get("workstream")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string()),
+                done_at: row
+                    .get("done_at")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string()),
+                due_at: row
+                    .get("due_at")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string()),
+            })
+        })
+        .collect()
+}
+
+async fn handle_todo_overlay_key(
+    client: &mut crate::ws_client::WsClient,
+    app: &mut App,
+    key: crossterm::event::KeyEvent,
+) {
+    use crate::todo_modal::TodoOutcome;
+    let Some(state) = app.todo_overlay.as_mut() else {
+        return;
+    };
+    let outcome = state.handle_key(key);
+    match outcome {
+        TodoOutcome::None => {
+            app.dirty = true;
+        }
+        TodoOutcome::Toggle { id, mark_done } => {
+            let method = if mark_done { "todos.done" } else { "todos.undo" };
+            let err = match client
+                .request_response(method, serde_json::json!({"id": id}))
+                .await
+            {
+                Ok(resp) => resp
+                    .get("error")
+                    .and_then(|e| e.get("message"))
+                    .and_then(|m| m.as_str())
+                    .map(|s| s.to_string()),
+                Err(e) => Some(e.to_string()),
+            };
+            let fresh = fetch_open_todos(client).await;
+            if let Some(s) = app.todo_overlay.as_mut() {
+                s.set_todos(fresh);
+                s.last_error = err;
+            }
+            app.dirty = true;
+        }
+        TodoOutcome::Archive { id } => {
+            let err = match client
+                .request_response("todos.archive", serde_json::json!({"id": id}))
+                .await
+            {
+                Ok(resp) => resp
+                    .get("error")
+                    .and_then(|e| e.get("message"))
+                    .and_then(|m| m.as_str())
+                    .map(|s| s.to_string()),
+                Err(e) => Some(e.to_string()),
+            };
+            let fresh = fetch_open_todos(client).await;
+            if let Some(s) = app.todo_overlay.as_mut() {
+                s.set_todos(fresh);
+                s.last_error = err;
+            }
+            app.dirty = true;
+        }
+        TodoOutcome::Add { body } => {
+            let err = match client
+                .request_response(
+                    "todos.create",
+                    serde_json::json!({"body": body, "kind": "user"}),
+                )
+                .await
+            {
+                Ok(resp) => resp
+                    .get("error")
+                    .and_then(|e| e.get("message"))
+                    .and_then(|m| m.as_str())
+                    .map(|s| s.to_string()),
+                Err(e) => Some(e.to_string()),
+            };
+            let fresh = fetch_open_todos(client).await;
+            if let Some(s) = app.todo_overlay.as_mut() {
+                s.set_todos(fresh);
+                s.last_error = err;
+            }
+            app.dirty = true;
+        }
+        TodoOutcome::Close => {
+            app.todo_overlay = None;
+            app.dirty = true;
+        }
     }
 }
 
