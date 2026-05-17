@@ -949,6 +949,46 @@ fn weekly_ceremony_scenario() -> Scenario {
     }
 }
 
+/// I-0049 T-0316 — closes the priority-completion feedback loop
+/// end-to-end. Reuses the retro-ceremony seed (3 confirmed open
+/// priorities on the current weekly tablet, no done_at) and drives
+/// the agent through: list the priority todos via todo_list, mark
+/// exactly one done via todo_done (ratio 1/3 = 0.33 — below the
+/// 0.5 detector threshold), then run a retro and verify that
+/// `priority_completion_ratio` shows up in the surfaced patterns
+/// reflecting the genuine M/N state.
+fn priority_completion_feedback_scenario() -> Scenario {
+    Scenario {
+        name: "priority-completion-feedback".to_string(),
+        objective: "Prove the I-0049 todos refactor closes the retro feedback loop. The retro seed places 3 confirmed open priorities on this week's weekly tablet (seeded as `kind='weekly_priority'` rows in `todos`). The agent lists them via `todo_list`, marks exactly one done via `todo_done`, then runs a retro. The `priority_completion_ratio` detector (which fires when ratio < 0.5) should surface in the retro's patterns section with ratio 1/3 — proving the LLM-driven todo_done writes propagate into the retro's view of completion state.".to_string(),
+        turns: vec![
+            ScenarioTurn {
+                user_message: "List all open weekly-priority todos using todo_list (filter kind=`weekly_priority`, open_only=true). For each, quote the `id` verbatim in backticks and the `body` verbatim.".to_string(),
+                judge_expectation: "Agent calls todo_list with kind=`weekly_priority` and open_only=true exactly once. Reports 3 todo rows, each with its `id` quoted in backticks (or otherwise clearly delimited) and the body verbatim. No paraphrasing of ids.".to_string(),
+            },
+            ScenarioTurn {
+                user_message: "Pick the **first** open weekly-priority todo from the previous turn and mark it done by calling `todo_done` with its `id`. Report the response — specifically the `done_at` field — verbatim.".to_string(),
+                judge_expectation: "Agent calls `todo_done` exactly once with the id from turn 1. The reply quotes the response's `done_at` field as a real RFC3339 timestamp (not null, not a placeholder).".to_string(),
+            },
+            ScenarioTurn {
+                user_message: "Now run this week's retro via retro_run and capture the tablet_id. Then call retro_list_items with `section_key=patterns`. Identify whether `priority_completion_ratio` appears in the response and quote its `body` JSON verbatim.".to_string(),
+                judge_expectation: "Agent calls `retro_run` and reports a tablet_id; then calls `retro_list_items` with `section_key=patterns`. The response includes an item whose body cites `priority_completion_ratio` (either as the body's kind/pattern_key field or in the body text). Ratio is 1/3 (approx 0.33). If the detector skipped or surfaced ratio 0/3, that's a failure — the todo_done propagation didn't reach the detector.".to_string(),
+            },
+        ],
+        mechanical: MechanicalThresholds {
+            min_files_created: 0,
+            min_workflows_created: 0,
+            min_memory_entities: 0,
+            max_tool_errors: 1,
+        },
+        seed_fixture: Some("tests/fixtures/uat/retro-ceremony.json".to_string()),
+        seed_tag_promoter: false,
+        seed_retro_ceremony: true,
+        seed_daily_ceremony: false,
+        seed_weekly_ceremony: false,
+    }
+}
+
 fn all_scenarios() -> Vec<Scenario> {
     vec![
         github_monitor_scenario(),
@@ -958,6 +998,7 @@ fn all_scenarios() -> Vec<Scenario> {
         retro_ceremony_scenario(),
         daily_ceremony_scenario(),
         weekly_ceremony_scenario(),
+        priority_completion_feedback_scenario(),
     ]
 }
 
