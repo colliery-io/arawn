@@ -23,6 +23,7 @@ pub mod task_list;
 pub mod task_output;
 pub mod task_stop;
 pub mod think;
+pub mod todo;
 pub mod web_fetch;
 pub mod web_search;
 pub mod weekly;
@@ -58,6 +59,10 @@ pub use task_list::{SessionTaskStore, TaskCreateTool, TaskGetTool, TaskListTool,
 pub use task_output::TaskOutputTool;
 pub use task_stop::TaskStopTool;
 pub use think::ThinkTool;
+pub use todo::{
+    TodoArchiveTool, TodoCreateTool, TodoDoneTool, TodoGetTool, TodoListTool, TodoPatchTool,
+    TodoSearchTool, TodoUndoTool,
+};
 pub use web_fetch::WebFetchTool;
 pub use web_search::WebSearchTool;
 pub use weekly::{

@@ -1101,7 +1101,10 @@ fn filter_tools_for_context(
         active_categories.insert(ToolCategory::Workstream);
     }
 
-    // Ceremony: retro/ceremony/standup/diary mentions
+    // Ceremony: retro/ceremony/standup/diary mentions, plus the
+    // generic todo surface (I-0049) which lives under the same
+    // category. `todo` / `reminder` / `remind me` route the agent
+    // to the todo_* tool family.
     if last_user_msg.contains("retro")
         || last_user_msg.contains("ceremony")
         || last_user_msg.contains("standup")
@@ -1113,6 +1116,9 @@ fn filter_tools_for_context(
         || last_user_msg.contains("week")
         || last_user_msg.contains("priorities")
         || last_user_msg.contains("priority")
+        || last_user_msg.contains("todo")
+        || last_user_msg.contains("reminder")
+        || last_user_msg.contains("remind me")
     {
         active_categories.insert(ToolCategory::Ceremony);
     }

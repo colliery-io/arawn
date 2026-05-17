@@ -761,6 +761,45 @@ async fn main() -> Result<()> {
         registry.register(Box::new(arawn_engine::WorkstreamDescribeTool::new(
             service.shared_store(),
         )));
+
+        // Generic todo tools (I-0049 T-0313) — always available,
+        // not ceremony-gated. The agent uses these for chat-driven
+        // todos ("remind me to ...") and the TUI `/todo` command
+        // also routes through them.
+        {
+            let s = service.shared_store();
+            let ev = Some(service.todo_event_sender());
+            registry.register(Box::new(arawn_engine::TodoCreateTool::new(
+                s.clone(),
+                ev.clone(),
+            )));
+            registry.register(Box::new(arawn_engine::TodoListTool::new(
+                s.clone(),
+                ev.clone(),
+            )));
+            registry.register(Box::new(arawn_engine::TodoGetTool::new(
+                s.clone(),
+                ev.clone(),
+            )));
+            registry.register(Box::new(arawn_engine::TodoDoneTool::new(
+                s.clone(),
+                ev.clone(),
+            )));
+            registry.register(Box::new(arawn_engine::TodoUndoTool::new(
+                s.clone(),
+                ev.clone(),
+            )));
+            registry.register(Box::new(arawn_engine::TodoPatchTool::new(
+                s.clone(),
+                ev.clone(),
+            )));
+            registry.register(Box::new(arawn_engine::TodoArchiveTool::new(
+                s.clone(),
+                ev.clone(),
+            )));
+            registry.register(Box::new(arawn_engine::TodoSearchTool::new(s, ev)));
+        }
+
         // T-0264: LLM-backed initial-ontology proposer for `/workstream-create`.
         registry.register(Box::new(arawn_engine::WorkstreamProposeOntologyTool::new(
             llm_pool.engine(),
