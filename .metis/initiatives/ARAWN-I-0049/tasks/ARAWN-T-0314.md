@@ -32,8 +32,6 @@ of open todos with done-toggle.
 
 ## Acceptance Criteria
 
-## Acceptance Criteria
-
 - [x] `/todo` slash command opens a modal listing open todos
       (`open_only=true` via `todos.list`, sorted by due_at NULLS
       LAST then created_at desc).
