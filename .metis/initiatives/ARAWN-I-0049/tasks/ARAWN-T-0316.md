@@ -33,8 +33,6 @@ judge sees `priority_completion_ratio` reflect real state.
 
 ## Acceptance Criteria
 
-## Acceptance Criteria
-
 - [x] New scenario `priority_completion_feedback_scenario` in
       `crates/arawn-tests/tests/uat.rs`. Three turns + judge
       expectations spelled out.
