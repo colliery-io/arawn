@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-17T21:40:55Z | 353 files | Python, Rust
+> Generated: 2026-05-18T12:47:18Z | 359 files | Python, Rust
 
 ## Project Structure
 
@@ -248,6 +248,11 @@
 │   │       │   ├── mod.rs
 │   │       │   └── tools.rs
 │   │       ├── error.rs
+│   │       ├── github/
+│   │       │   ├── client.rs
+│   │       │   ├── install_flow.rs
+│   │       │   ├── integration.rs
+│   │       │   └── mod.rs
 │   │       ├── gmail/
 │   │       │   ├── client.rs
 │   │       │   ├── integration.rs
@@ -319,6 +324,7 @@
 │   │   │   ├── drive.rs
 │   │   │   ├── embed.rs
 │   │   │   ├── error.rs
+│   │   │   ├── github.rs
 │   │   │   ├── gmail.rs
 │   │   │   ├── lib.rs
 │   │   │   ├── schema.rs
@@ -327,6 +333,7 @@
 │   │   │   └── types.rs
 │   │   └── tests/
 │   │       ├── embed_pass.rs
+│   │       ├── github_projections.rs
 │   │       ├── gmail_e2e.rs
 │   │       └── hybrid_search.rs
 │   ├── arawn-service/
@@ -499,22 +506,23 @@
 - pub `PromptsConfig` struct L200-203 — `{ token_budget: u32 }`
 - pub `SandboxConfig` struct L219-225 — `{ network_tools: Vec<String> }` — Sandbox configuration for shell command execution.
 - pub `IntegrationCredentials` struct L277-282 — `{ client_id: String, client_secret: String }` — OAuth client credentials for one integration.
-- pub `IntegrationsConfig` struct L289-312 — `{ slack: IntegrationCredentials, google: IntegrationCredentials, gmail: Integrat...` — Per-integration credential blocks.
-- pub `ArawnConfig` struct L316-342 — `{ llm: HashMap<String, LlmConfig>, engine: EngineConfig, compactor: CompactorCon...` — Top-level configuration.
-- pub `CeremonyConfig` struct L348-368 — `{ enabled: Option<bool>, schedule: Option<String>, timezone: Option<String>, mod...` — One ceremony's runtime overrides.
-- pub `is_enabled` function L372-374 — `(&self) -> bool` — `enabled` field defaulting to `true`.
-- pub `RoutingConfig` struct L381-386 — `{ hints: HintRoutingConfig, providers: ProvidersRoutingConfig }` — Routing configuration.
-- pub `ProvidersRoutingConfig` struct L393-402 — `{ local: Option<String>, remote: Option<String> }` — Names of the `[llm.NAME]` profiles that play the Local and Remote
-- pub `HintRoutingConfig` struct L408-418 — `{ lightweight: Option<String>, medium: Option<String>, heavy: Option<String> }` — Maps each `ModelHint` tier to a named `[llm.NAME]` profile.
-- pub `load` function L446-479 — `(data_dir: &Path) -> Self` — Load config from `data_dir/arawn.toml`, merging with env var overrides and defaults.
-- pub `engine_llm` function L502-507 — `(&self) -> &LlmConfig` — Resolve the LLM config for the engine.
-- pub `compactor_llm` function L510-517 — `(&self) -> &LlmConfig` — Resolve the LLM config for the compactor.
-- pub `extraction_llm` function L522-529 — `(&self) -> &LlmConfig` — Resolve the LLM config for the per-workstream extractor.
-- pub `extraction_llm_name` function L534-539 — `(&self) -> &str` — The configured name of the extraction LLM (or the engine's
-- pub `data_dir` function L542-544 — `(&self) -> PathBuf` — Resolve the data directory with ~ expansion.
-- pub `prompts_dir` function L547-549 — `(&self) -> PathBuf` — Resolve the prompts directory.
-- pub `resolve_api_key` function L553-560 — `(llm: &LlmConfig) -> Option<String>` — Resolve API key for an LLM config.
-- pub `generate_default_toml` function L563-673 — `() -> String` — Generate a default config file string with comments.
+- pub `GithubAppCredentials` struct L290-299 — `{ app_id: String, app_slug: String, private_key_path: String }` — GitHub App credentials.
+- pub `IntegrationsConfig` struct L306-333 — `{ slack: IntegrationCredentials, google: IntegrationCredentials, gmail: Integrat...` — Per-integration credential blocks.
+- pub `ArawnConfig` struct L337-363 — `{ llm: HashMap<String, LlmConfig>, engine: EngineConfig, compactor: CompactorCon...` — Top-level configuration.
+- pub `CeremonyConfig` struct L369-389 — `{ enabled: Option<bool>, schedule: Option<String>, timezone: Option<String>, mod...` — One ceremony's runtime overrides.
+- pub `is_enabled` function L393-395 — `(&self) -> bool` — `enabled` field defaulting to `true`.
+- pub `RoutingConfig` struct L402-407 — `{ hints: HintRoutingConfig, providers: ProvidersRoutingConfig }` — Routing configuration.
+- pub `ProvidersRoutingConfig` struct L414-423 — `{ local: Option<String>, remote: Option<String> }` — Names of the `[llm.NAME]` profiles that play the Local and Remote
+- pub `HintRoutingConfig` struct L429-439 — `{ lightweight: Option<String>, medium: Option<String>, heavy: Option<String> }` — Maps each `ModelHint` tier to a named `[llm.NAME]` profile.
+- pub `load` function L467-500 — `(data_dir: &Path) -> Self` — Load config from `data_dir/arawn.toml`, merging with env var overrides and defaults.
+- pub `engine_llm` function L523-528 — `(&self) -> &LlmConfig` — Resolve the LLM config for the engine.
+- pub `compactor_llm` function L531-538 — `(&self) -> &LlmConfig` — Resolve the LLM config for the compactor.
+- pub `extraction_llm` function L543-550 — `(&self) -> &LlmConfig` — Resolve the LLM config for the per-workstream extractor.
+- pub `extraction_llm_name` function L555-560 — `(&self) -> &str` — The configured name of the extraction LLM (or the engine's
+- pub `data_dir` function L563-565 — `(&self) -> PathBuf` — Resolve the data directory with ~ expansion.
+- pub `prompts_dir` function L568-570 — `(&self) -> PathBuf` — Resolve the prompts directory.
+- pub `resolve_api_key` function L574-581 — `(llm: &LlmConfig) -> Option<String>` — Resolve API key for an LLM config.
+- pub `generate_default_toml` function L584-694 — `() -> String` — Generate a default config file string with comments.
 -  `default_api_key_env` function L36-38 — `() -> String`
 -  `default_context_window` function L39-41 — `() -> u32`
 -  `default_max_tokens` function L42-44 — `() -> u32`
@@ -544,27 +552,27 @@
 -  `default_network_tools` function L227-263 — `() -> Vec<String>`
 -  `SandboxConfig` type L265-271 — `impl Default for SandboxConfig`
 -  `default` function L266-270 — `() -> Self`
--  `CeremonyConfig` type L370-375 — `= CeremonyConfig`
--  `default_llm_configs` function L420-424 — `() -> HashMap<String, LlmConfig>`
--  `ArawnConfig` type L426-442 — `impl Default for ArawnConfig`
--  `default` function L427-441 — `() -> Self`
--  `ArawnConfig` type L444-674 — `= ArawnConfig`
--  `apply_env_overrides` function L481-499 — `(&mut self)`
--  `expand_tilde` function L676-683 — `(path: &str) -> PathBuf`
--  `tests` module L686-869 — `-`
--  `default_config_has_working_values` function L690-699 — `()`
--  `load_from_toml_string` function L702-722 — `()`
--  `compactor_falls_back_to_engine_llm` function L725-730 — `()`
--  `compactor_uses_own_llm_when_specified` function L733-752 — `()`
--  `missing_llm_name_falls_back_to_default_via_load` function L755-771 — `()`
--  `load_missing_file_uses_defaults` function L774-778 — `()`
--  `load_from_tempdir` function L781-799 — `()`
--  `generate_default_toml_is_parseable` function L802-806 — `()`
--  `tilde_expansion` function L809-812 — `()`
--  `empty_config_has_no_ceremony_overrides` function L815-821 — `()`
--  `ceremonies_table_parses_full_block` function L824-839 — `()`
--  `ceremonies_disabled_observed` function L842-854 — `()`
--  `ceremonies_partial_block_keeps_other_fields_none` function L857-868 — `()`
+-  `CeremonyConfig` type L391-396 — `= CeremonyConfig`
+-  `default_llm_configs` function L441-445 — `() -> HashMap<String, LlmConfig>`
+-  `ArawnConfig` type L447-463 — `impl Default for ArawnConfig`
+-  `default` function L448-462 — `() -> Self`
+-  `ArawnConfig` type L465-695 — `= ArawnConfig`
+-  `apply_env_overrides` function L502-520 — `(&mut self)`
+-  `expand_tilde` function L697-704 — `(path: &str) -> PathBuf`
+-  `tests` module L707-890 — `-`
+-  `default_config_has_working_values` function L711-720 — `()`
+-  `load_from_toml_string` function L723-743 — `()`
+-  `compactor_falls_back_to_engine_llm` function L746-751 — `()`
+-  `compactor_uses_own_llm_when_specified` function L754-773 — `()`
+-  `missing_llm_name_falls_back_to_default_via_load` function L776-792 — `()`
+-  `load_missing_file_uses_defaults` function L795-799 — `()`
+-  `load_from_tempdir` function L802-820 — `()`
+-  `generate_default_toml_is_parseable` function L823-827 — `()`
+-  `tilde_expansion` function L830-833 — `()`
+-  `empty_config_has_no_ceremony_overrides` function L836-842 — `()`
+-  `ceremonies_table_parses_full_block` function L845-860 — `()`
+-  `ceremonies_disabled_observed` function L863-875 — `()`
+-  `ceremonies_partial_block_keeps_other_fields_none` function L878-889 — `()`
 
 #### crates/arawn/src/config_watcher.rs
 
@@ -770,21 +778,21 @@
 -  `embed_batch` function L16-25 — `( &'a self, texts: &'a [&'a str], ) -> std::pin::Pin< Box<dyn std::future::Futur...`
 -  `DEFAULT_MODEL` variable L33 — `: &str`
 -  `FILE_LOG_FILTER` variable L36 — `: &str` — Default file log filter: debug for arawn crates, warn for third-party.
--  `main` function L39-1791 — `() -> Result<()>`
+-  `main` function L39-1854 — `() -> Result<()>`
 -  `Cli` struct L45-64 — `{ command: Option<Command>, data_dir: Option<String>, session: Option<Uuid>, lis...`
 -  `Command` enum L67-107 — `Serve | Tui | Plugin | Doctor | Usage`
 -  `ExtractorBindHook` struct L817-820 — `{ runner: Arc<arawn_extractor::ExtractorRunner>, store: Arc<std::sync::Mutex<ara...`
 -  `ExtractorBindHook` type L821-850 — `= ExtractorBindHook`
 -  `on_bind` function L822-849 — `(&self, workstream_name: &str, feed_id: &str)`
--  `resolve_ceremony_tz` function L1359-1383 — `(kind: &str, raw: Option<&str>) -> chrono_tz::Tz`
--  `run_cli_via_server` function L1794-1896 — `(url: &str, prompt: &str, session_id: Option<Uuid>) -> Result<()>` — Run a CLI prompt by connecting to the running server via WebSocket.
--  `build_llm_client` function L1899-1920 — `(config: &arawn_bin::LlmConfig) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
--  `register_default_tools` function L1923-1969 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &arawn_bin::ArawnConfig, d...` — Register all default tools into the registry.
--  `connect_mcp_servers` function L1972-2016 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
--  `register_workflow_tools` function L2019-2036 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
--  `build_engine_config` function L2038-2077 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
--  `render_usage_human` function L2080-2116 — `(s: &arawn_llm::usage::UsageSummary) -> String` — Human-readable renderer for the `arawn usage` command.
--  `dirs_path` function L2118-2127 — `() -> Option<String>`
+-  `resolve_ceremony_tz` function L1422-1446 — `(kind: &str, raw: Option<&str>) -> chrono_tz::Tz`
+-  `run_cli_via_server` function L1857-1959 — `(url: &str, prompt: &str, session_id: Option<Uuid>) -> Result<()>` — Run a CLI prompt by connecting to the running server via WebSocket.
+-  `build_llm_client` function L1962-1983 — `(config: &arawn_bin::LlmConfig) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
+-  `register_default_tools` function L1986-2032 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &arawn_bin::ArawnConfig, d...` — Register all default tools into the registry.
+-  `connect_mcp_servers` function L2035-2079 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
+-  `register_workflow_tools` function L2082-2099 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
+-  `build_engine_config` function L2101-2140 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
+-  `render_usage_human` function L2143-2179 — `(s: &arawn_llm::usage::UsageSummary) -> String` — Human-readable renderer for the `arawn usage` command.
+-  `dirs_path` function L2181-2190 — `() -> Option<String>`
 
 #### crates/arawn/src/plugin_cmd.rs
 
@@ -900,23 +908,26 @@
 #### crates/arawn-auth/src/server.rs
 
 - pub `CallbackResult` struct L26-29 — `{ code: String, state: String }` — What the callback yielded.
-- pub `CallbackServer` struct L31-34 — `{ listener: TcpListener, redirect_uri: Url }` — responds with a small HTML success page, then shuts down.
-- pub `bind` function L39-41 — `(path: &str) -> Result<Self, AuthError>` — Bind to an OS-assigned port on `127.0.0.1`.
-- pub `bind_with_port` function L46-48 — `(path: &str, port: u16) -> Result<Self, AuthError>` — Bind to a specific port on `127.0.0.1`.
-- pub `redirect_uri` function L73-75 — `(&self) -> &Url` — responds with a small HTML success page, then shuts down.
-- pub `listen` function L79-81 — `(self) -> Result<CallbackResult, AuthError>` — Wait up to [`DEFAULT_TIMEOUT`] for a single redirect, parse it, and
-- pub `listen_with_timeout` function L83-174 — `(self, timeout: Duration) -> Result<CallbackResult, AuthError>` — responds with a small HTML success page, then shuts down.
+- pub `RawCallback` struct L37-39 — `{ params: std::collections::HashMap<String, String> }` — Raw query-param map yielded by [`CallbackServer::listen_raw`].
+- pub `CallbackServer` struct L41-44 — `{ listener: TcpListener, redirect_uri: Url }` — responds with a small HTML success page, then shuts down.
+- pub `bind` function L49-51 — `(path: &str) -> Result<Self, AuthError>` — Bind to an OS-assigned port on `127.0.0.1`.
+- pub `bind_with_port` function L56-58 — `(path: &str, port: u16) -> Result<Self, AuthError>` — Bind to a specific port on `127.0.0.1`.
+- pub `redirect_uri` function L83-85 — `(&self) -> &Url` — responds with a small HTML success page, then shuts down.
+- pub `listen` function L89-91 — `(self) -> Result<CallbackResult, AuthError>` — Wait up to [`DEFAULT_TIMEOUT`] for a single redirect, parse it, and
+- pub `listen_raw` function L98-100 — `(self) -> Result<RawCallback, AuthError>` — Wait for a single callback and return the raw query-parameter
+- pub `listen_raw_with_timeout` function L102-168 — `( self, timeout: Duration, ) -> Result<RawCallback, AuthError>` — responds with a small HTML success page, then shuts down.
+- pub `listen_with_timeout` function L170-261 — `(self, timeout: Duration) -> Result<CallbackResult, AuthError>` — responds with a small HTML success page, then shuts down.
 -  `DEFAULT_TIMEOUT` variable L20 — `: Duration` — responds with a small HTML success page, then shuts down.
 -  `SUCCESS_PAGE` variable L22 — `: &str` — responds with a small HTML success page, then shuts down.
--  `CallbackServer` type L36-175 — `= CallbackServer` — responds with a small HTML success page, then shuts down.
--  `bind_inner` function L50-71 — `(path: &str, port: u16) -> Result<Self, AuthError>` — responds with a small HTML success page, then shuts down.
--  `tests` module L178-245 — `-` — responds with a small HTML success page, then shuts down.
--  `simulate_browser` function L183-193 — `(server_url: &Url, query: &str)` — responds with a small HTML success page, then shuts down.
--  `happy_path_returns_code_and_state` function L196-204 — `()` — responds with a small HTML success page, then shuts down.
--  `missing_code_yields_invalid_config_error` function L207-217 — `()` — responds with a small HTML success page, then shuts down.
--  `provider_error_propagates` function L220-230 — `()` — responds with a small HTML success page, then shuts down.
--  `timeout_returns_error` function L233-237 — `()` — responds with a small HTML success page, then shuts down.
--  `redirect_uri_normalizes_path_with_or_without_slash` function L240-244 — `()` — responds with a small HTML success page, then shuts down.
+-  `CallbackServer` type L46-262 — `= CallbackServer` — responds with a small HTML success page, then shuts down.
+-  `bind_inner` function L60-81 — `(path: &str, port: u16) -> Result<Self, AuthError>` — responds with a small HTML success page, then shuts down.
+-  `tests` module L265-332 — `-` — responds with a small HTML success page, then shuts down.
+-  `simulate_browser` function L270-280 — `(server_url: &Url, query: &str)` — responds with a small HTML success page, then shuts down.
+-  `happy_path_returns_code_and_state` function L283-291 — `()` — responds with a small HTML success page, then shuts down.
+-  `missing_code_yields_invalid_config_error` function L294-304 — `()` — responds with a small HTML success page, then shuts down.
+-  `provider_error_propagates` function L307-317 — `()` — responds with a small HTML success page, then shuts down.
+-  `timeout_returns_error` function L320-324 — `()` — responds with a small HTML success page, then shuts down.
+-  `redirect_uri_normalizes_path_with_or_without_slash` function L327-331 — `()` — responds with a small HTML success page, then shuts down.
 
 #### crates/arawn-auth/src/token_store.rs
 
@@ -5987,13 +5998,14 @@
 - pub `credential_store` module L25 — `-` — ChaCha20Poly1305 + per-data-dir master key that `TokenStore` uses.
 - pub `drive` module L26 — `-` — ChaCha20Poly1305 + per-data-dir master key that `TokenStore` uses.
 - pub `error` module L27 — `-` — ChaCha20Poly1305 + per-data-dir master key that `TokenStore` uses.
-- pub `gmail` module L28 — `-` — ChaCha20Poly1305 + per-data-dir master key that `TokenStore` uses.
-- pub `google_common` module L29 — `-` — ChaCha20Poly1305 + per-data-dir master key that `TokenStore` uses.
-- pub `integration` module L30 — `-` — ChaCha20Poly1305 + per-data-dir master key that `TokenStore` uses.
-- pub `oauth_flow` module L31 — `-` — ChaCha20Poly1305 + per-data-dir master key that `TokenStore` uses.
-- pub `retry_after` module L32 — `-` — ChaCha20Poly1305 + per-data-dir master key that `TokenStore` uses.
-- pub `slack` module L33 — `-` — ChaCha20Poly1305 + per-data-dir master key that `TokenStore` uses.
-- pub `install_default_crypto_provider` function L48-50 — `()` — Install rustls' `ring` crypto provider as the process default.
+- pub `github` module L28 — `-` — ChaCha20Poly1305 + per-data-dir master key that `TokenStore` uses.
+- pub `gmail` module L29 — `-` — ChaCha20Poly1305 + per-data-dir master key that `TokenStore` uses.
+- pub `google_common` module L30 — `-` — ChaCha20Poly1305 + per-data-dir master key that `TokenStore` uses.
+- pub `integration` module L31 — `-` — ChaCha20Poly1305 + per-data-dir master key that `TokenStore` uses.
+- pub `oauth_flow` module L32 — `-` — ChaCha20Poly1305 + per-data-dir master key that `TokenStore` uses.
+- pub `retry_after` module L33 — `-` — ChaCha20Poly1305 + per-data-dir master key that `TokenStore` uses.
+- pub `slack` module L34 — `-` — ChaCha20Poly1305 + per-data-dir master key that `TokenStore` uses.
+- pub `install_default_crypto_provider` function L49-51 — `()` — Install rustls' `ring` crypto provider as the process default.
 
 #### crates/arawn-integrations/src/oauth_flow.rs
 
@@ -6144,6 +6156,75 @@
 -  `export_mime_dispatch_covers_known_google_types` function L796-812 — `()` — - `drive_delete` — trash (recoverable) — does not permadelete
 -  `summarize_file_extracts_owner_emails` function L815-829 — `()` — - `drive_delete` — trash (recoverable) — does not permadelete
 -  `summarize_file_includes_parents_when_requested` function L832-837 — `()` — - `drive_delete` — trash (recoverable) — does not permadelete
+
+### crates/arawn-integrations/src/github
+
+> *Semantic summary to be generated by AI agent.*
+
+#### crates/arawn-integrations/src/github/client.rs
+
+- pub `GITHUB_API_BASE` variable L33 — `: &str` — GitHub REST API base.
+- pub `InstallationAccessToken` struct L37-40 — `{ token: String, expires_at: DateTime<Utc> }` — Cached installation-access-token + its expiry.
+- pub `is_fresh` function L43-45 — `(&self) -> bool` — itself is the v3 REST API base — `https://api.github.com`.
+- pub `GithubClient` struct L64-69 — `{ app: GithubAppConfig, installation_id: u64, cached: Arc<Mutex<Option<Installat...` — Auto-refreshing GitHub App API client.
+- pub `new` function L72-83 — `(app: GithubAppConfig, installation_id: u64) -> Result<Self, IntegrationError>` — itself is the v3 REST API base — `https://api.github.com`.
+- pub `cached_token` function L88-90 — `(&self) -> Option<InstallationAccessToken>` — Read-only accessor used by tests + diagnostics.
+- pub `access_token` function L93-105 — `(&self) -> Result<InstallationAccessToken, IntegrationError>` — Get a current (or freshly-minted) installation-access-token.
+- pub `get` function L109-120 — `(&self, path: &str) -> Result<reqwest::Response, IntegrationError>` — Authenticated GET helper.
+- pub `health_check` function L125-134 — `(&self) -> Result<(), IntegrationError>` — Cheap health probe — does the installation list any repos?
+- pub `sign_app_jwt` function L172-186 — `(app: &GithubAppConfig) -> Result<String, IntegrationError>` — Sign an RS256 JWT proving "I am app <app_id>".
+-  `IAT_REFRESH_LEAD` variable L29 — `: Duration` — Mint a new IAT when the current one has fewer than this long left.
+-  `JWT_LIFETIME` variable L31 — `: Duration` — JWT lifetime.
+-  `InstallationAccessToken` type L42-46 — `= InstallationAccessToken` — itself is the v3 REST API base — `https://api.github.com`.
+-  `GithubTokenResponse` struct L49-52 — `{ token: String, expires_at: DateTime<Utc> }` — itself is the v3 REST API base — `https://api.github.com`.
+-  `JwtClaims` struct L55-59 — `{ iat: i64, exp: i64, iss: String }` — itself is the v3 REST API base — `https://api.github.com`.
+-  `GithubClient` type L71-168 — `= GithubClient` — itself is the v3 REST API base — `https://api.github.com`.
+-  `mint_installation_token` function L137-167 — `(&self) -> Result<InstallationAccessToken, IntegrationError>` — Mint a fresh installation-access-token.
+-  `tests` module L189-250 — `-` — itself is the v3 REST API base — `https://api.github.com`.
+-  `TEST_KEY` variable L194-201 — `: &str` — itself is the v3 REST API base — `https://api.github.com`.
+-  `cached_token_starts_empty` function L204-216 — `()` — itself is the v3 REST API base — `https://api.github.com`.
+-  `fresh_token_window_respects_lead_time` function L219-233 — `()` — itself is the v3 REST API base — `https://api.github.com`.
+-  `jwt_sign_rejects_garbage_key` function L236-249 — `()` — itself is the v3 REST API base — `https://api.github.com`.
+
+#### crates/arawn-integrations/src/github/install_flow.rs
+
+- pub `GithubInstallOutcome` struct L24-27 — `{ installation_id: u64, setup_action: String }` — Successful install: we now know which installation_id to use when
+- pub `run_install_flow` function L34-89 — `( app_install_url: Url, callback_path: &str, ctx: &dyn ConnectContext, ) -> Resu...` — Drive the GitHub App install flow end-to-end.
+-  `random_csrf` function L91-95 — `() -> String` — and turns the raw callback into a typed [`GithubInstallOutcome`].
+-  `tests` module L98-114 — `-` — and turns the raw callback into a typed [`GithubInstallOutcome`].
+-  `csrf_tokens_are_unique_and_url_safe` function L102-113 — `()` — and turns the raw callback into a typed [`GithubInstallOutcome`].
+
+#### crates/arawn-integrations/src/github/integration.rs
+
+- pub `SERVICE_NAME` variable L33 — `: &str` — Stable service name.
+- pub `GithubAppConfig` struct L40-48 — `{ app_id: String, private_key_pem: String, app_slug: String }` — Operator-supplied GitHub App credentials.
+- pub `GithubCredentials` struct L54-60 — `{ installation_id: u64, setup_action: String }` — Per-user install state, persisted encrypted at rest via
+- pub `GithubIntegration` struct L64-67 — `{ data_dir: PathBuf, app: GithubAppConfig }` — GitHub App integration handle.
+- pub `new` function L70-72 — `(data_dir: PathBuf, app: GithubAppConfig) -> Self` — deletes the row.
+- pub `install_url` function L76-82 — `(&self) -> Result<Url, IntegrationError>` — Public install URL for this app:
+- pub `load_credentials` function L85-88 — `(&self) -> Result<Option<GithubCredentials>, IntegrationError>` — Load the persisted install row, if any.
+- pub `client` function L93-103 — `(&self) -> Result<Arc<GithubClient>, IntegrationError>` — Build an authenticated client for tools and feed templates.
+-  `GithubIntegration` type L69-108 — `= GithubIntegration` — deletes the row.
+-  `credential_store` function L105-107 — `(&self) -> Result<CredentialStore<GithubCredentials>, IntegrationError>` — deletes the row.
+-  `GithubIntegration` type L111-154 — `impl Integration for GithubIntegration` — deletes the row.
+-  `name` function L112-114 — `(&self) -> &str` — deletes the row.
+-  `is_connected` function L116-122 — `(&self) -> bool` — deletes the row.
+-  `connect` function L124-136 — `(&self, ctx: &dyn ConnectContext) -> Result<(), IntegrationError>` — deletes the row.
+-  `disconnect` function L138-142 — `(&self) -> Result<(), IntegrationError>` — deletes the row.
+-  `capabilities_summary` function L144-153 — `(&self) -> Option<String>` — deletes the row.
+-  `tests` module L157-244 — `-` — deletes the row.
+-  `make_app` function L161-167 — `() -> GithubAppConfig` — deletes the row.
+-  `install_url_is_public_app_page` function L170-178 — `()` — deletes the row.
+-  `is_connected_starts_false` function L181-185 — `()` — deletes the row.
+-  `save_then_load_round_trips` function L188-205 — `()` — deletes the row.
+-  `disconnect_clears_credentials` function L208-223 — `()` — deletes the row.
+-  `capabilities_summary_only_when_connected` function L226-243 — `()` — deletes the row.
+
+#### crates/arawn-integrations/src/github/mod.rs
+
+-  `client` module L21 — `-` — Unlike the OAuth-app-style integrations in this crate (Gmail,
+-  `install_flow` module L22 — `-` — `docs/src/integrations/github.md` (created at T-0317 land time).
+-  `integration` module L23 — `-` — `docs/src/integrations/github.md` (created at T-0317 land time).
 
 ### crates/arawn-integrations/src/gmail
 
@@ -7362,16 +7443,16 @@
 
 #### crates/arawn-projections/src/embed.rs
 
-- pub `EMBEDDABLE_FEED_TYPES` variable L24-33 — `: &[&str]` — Feed types whose body_text is worth embedding.
-- pub `EmbedPassOutcome` struct L41-45 — `{ embedded: usize, skipped_empty: usize, errors: usize }` — `crates/arawn/src/main.rs`.
-- pub `Embedder` interface L51-56 — `{ fn embed_batch() }` — Lightweight embedding interface this crate consumes.
-- pub `run_embed_pass` function L60-98 — `( store: &ProjectionStore, embedder: &dyn Embedder, batch_size: usize, max_per_p...` — Run a single embed pass over every embeddable feed type, capped at
-- pub `PendingEmbedRow` struct L172-175 — `{ projection_id: String, body_text: String }` — A row pending embedding: the `<feed_type>` row's projection id +
-- pub `pending_embedding_rows` function L180-213 — `( &self, feed_type: &str, limit: usize, ) -> Result<Vec<PendingEmbedRow>, Projec...` — Find rows in `<feed_type>` whose embed status is `pending`,
-- pub `write_embedding` function L219-271 — `( &self, feed_type: &str, projection_id: &str, vector: &[f32], ) -> Result<(), P...` — Write a freshly computed embedding for a projection row.
--  `MIN_BODY_CHARS` variable L38 — `: usize` — Minimum body length worth embedding.
--  `embed_batch` function L100-167 — `( store: &ProjectionStore, feed_type: &str, rows: &[PendingEmbedRow], embedder: ...` — `crates/arawn/src/main.rs`.
--  `ProjectionStore` type L177-272 — `= ProjectionStore` — `crates/arawn/src/main.rs`.
+- pub `EMBEDDABLE_FEED_TYPES` variable L24-39 — `: &[&str]` — Feed types whose body_text is worth embedding.
+- pub `EmbedPassOutcome` struct L47-51 — `{ embedded: usize, skipped_empty: usize, errors: usize }` — `crates/arawn/src/main.rs`.
+- pub `Embedder` interface L57-62 — `{ fn embed_batch() }` — Lightweight embedding interface this crate consumes.
+- pub `run_embed_pass` function L66-104 — `( store: &ProjectionStore, embedder: &dyn Embedder, batch_size: usize, max_per_p...` — Run a single embed pass over every embeddable feed type, capped at
+- pub `PendingEmbedRow` struct L178-181 — `{ projection_id: String, body_text: String }` — A row pending embedding: the `<feed_type>` row's projection id +
+- pub `pending_embedding_rows` function L186-219 — `( &self, feed_type: &str, limit: usize, ) -> Result<Vec<PendingEmbedRow>, Projec...` — Find rows in `<feed_type>` whose embed status is `pending`,
+- pub `write_embedding` function L225-277 — `( &self, feed_type: &str, projection_id: &str, vector: &[f32], ) -> Result<(), P...` — Write a freshly computed embedding for a projection row.
+-  `MIN_BODY_CHARS` variable L44 — `: usize` — Minimum body length worth embedding.
+-  `embed_batch` function L106-173 — `( store: &ProjectionStore, feed_type: &str, rows: &[PendingEmbedRow], embedder: ...` — `crates/arawn/src/main.rs`.
+-  `ProjectionStore` type L183-278 — `= ProjectionStore` — `crates/arawn/src/main.rs`.
 
 #### crates/arawn-projections/src/error.rs
 
@@ -7382,6 +7463,41 @@
 -  `from` function L22-24 — `(value: std::io::Error) -> Self`
 -  `ProjectionError` type L27-31 — `= ProjectionError`
 -  `from` function L28-30 — `(value: serde_json::Error) -> Self`
+
+#### crates/arawn-projections/src/github.rs
+
+- pub `NOTIFICATIONS_FEED_TYPE` variable L25 — `: &str` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+- pub `ISSUES_AND_PRS_FEED_TYPE` variable L26 — `: &str` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+- pub `REVIEW_QUEUE_FEED_TYPE` variable L27 — `: &str` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+- pub `BODY_EXCERPT_MAX` variable L31 — `: usize` — Cap on body excerpts.
+- pub `GithubNotificationProjection` struct L38-59 — `{ id: String, feed_id: String, source_id: String, source_ts: DateTime<Utc>, owne...` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+- pub `from_notification_json` function L98-147 — `(feed_id: &str, v: &Value) -> Option<GithubNotificationProjection>` — Parse a GitHub `/notifications` API response item.
+- pub `GithubIssueOrPrProjection` struct L154-177 — `{ id: String, feed_id: String, source_id: String, source_ts: DateTime<Utc>, owne...` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+- pub `from_issue_or_pr_json` function L221-296 — `(feed_id: &str, v: &Value) -> Option<GithubIssueOrPrProjection>` — Parse one row from `/search/issues` (issues or PRs — the search
+- pub `GithubReviewRequestProjection` struct L303-316 — `{ id: String, feed_id: String, source_id: String, source_ts: DateTime<Utc>, owne...` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+- pub `from_review_request_json` function L351-378 — `(feed_id: &str, v: &Value) -> Option<GithubReviewRequestProjection>` — Parse one row from `/search/issues?q=is:pr is:open
+-  `GithubNotificationProjection` type L61-93 — `impl Projection for GithubNotificationProjection` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+-  `feed_type` function L62-64 — `(&self) -> &'static str` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+-  `row` function L66-92 — `(&self) -> ProjectionRow` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+-  `GithubIssueOrPrProjection` type L179-216 — `impl Projection for GithubIssueOrPrProjection` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+-  `feed_type` function L180-182 — `(&self) -> &'static str` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+-  `row` function L184-215 — `(&self) -> ProjectionRow` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+-  `GithubReviewRequestProjection` type L318-344 — `impl Projection for GithubReviewRequestProjection` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+-  `feed_type` function L319-321 — `(&self) -> &'static str` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+-  `row` function L323-343 — `(&self) -> ProjectionRow` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+-  `parse_dt` function L384-388 — `(v: Option<&Value>) -> Option<DateTime<Utc>>` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+-  `parse_dt_opt` function L390-396 — `(v: Option<&Value>) -> Option<DateTime<Utc>>` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+-  `truncate_chars` function L398-410 — `(s: &str, max: usize) -> String` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+-  `parse_html_url_owner_repo_number` function L414-424 — `(url: &str) -> Option<(String, String, i64)>` — Extract `(owner, repo, number)` from a GitHub web URL like
+-  `tests` module L427-574 — `-` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+-  `assert_round_trips` function L431-437 — `(p: &P)` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+-  `notification_round_trip` function L440-472 — `()` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+-  `issue_round_trip` function L475-499 — `()` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+-  `pr_with_merged_at_reports_state_merged` function L502-517 — `()` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+-  `body_excerpt_truncated_to_max` function L520-533 — `()` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+-  `review_request_round_trip` function L536-550 — `()` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+-  `missing_required_fields_returns_none` function L553-560 — `()` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+-  `url_parser_handles_issues_and_prs` function L563-573 — `()` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
 
 #### crates/arawn-projections/src/gmail.rs
 
@@ -7414,11 +7530,12 @@
 - pub `drive` module L18 — `-` — - Decouples feed-side fidelity (raw mirror) from query-side shape.
 - pub `embed` module L19 — `-` — - Decouples feed-side fidelity (raw mirror) from query-side shape.
 - pub `error` module L20 — `-` — - Decouples feed-side fidelity (raw mirror) from query-side shape.
-- pub `gmail` module L21 — `-` — - Decouples feed-side fidelity (raw mirror) from query-side shape.
-- pub `schema` module L22 — `-` — - Decouples feed-side fidelity (raw mirror) from query-side shape.
-- pub `slack` module L23 — `-` — - Decouples feed-side fidelity (raw mirror) from query-side shape.
-- pub `store` module L24 — `-` — - Decouples feed-side fidelity (raw mirror) from query-side shape.
-- pub `types` module L25 — `-` — - Decouples feed-side fidelity (raw mirror) from query-side shape.
+- pub `github` module L21 — `-` — - Decouples feed-side fidelity (raw mirror) from query-side shape.
+- pub `gmail` module L22 — `-` — - Decouples feed-side fidelity (raw mirror) from query-side shape.
+- pub `schema` module L23 — `-` — - Decouples feed-side fidelity (raw mirror) from query-side shape.
+- pub `slack` module L24 — `-` — - Decouples feed-side fidelity (raw mirror) from query-side shape.
+- pub `store` module L25 — `-` — - Decouples feed-side fidelity (raw mirror) from query-side shape.
+- pub `types` module L26 — `-` — - Decouples feed-side fidelity (raw mirror) from query-side shape.
 
 #### crates/arawn-projections/src/schema.rs
 
@@ -7490,7 +7607,17 @@
 -  `embeds_rows_with_null_embedding` function L63-81 — `()` — embedder, writes vectors back, skips short bodies.
 -  `skips_short_bodies_but_marks_them` function L84-102 — `()` — embedder, writes vectors back, skips short bodies.
 -  `max_per_pass_caps_work` function L105-124 — `()` — embedder, writes vectors back, skips short bodies.
--  `known_feed_types_are_a_strict_subset_of_routed_types` function L127-143 — `()` — embedder, writes vectors back, skips short bodies.
+-  `known_feed_types_are_a_strict_subset_of_routed_types` function L127-147 — `()` — embedder, writes vectors back, skips short bodies.
+
+#### crates/arawn-projections/tests/github_projections.rs
+
+-  `notif` function L14-33 — `(id: &str, title: &str) -> GithubNotificationProjection` — rows write, FTS picks up the title/body, count + get_row work.
+-  `issue` function L35-57 — `(number: i64, title: &str, body: &str) -> GithubIssueOrPrProjection` — rows write, FTS picks up the title/body, count + get_row work.
+-  `review` function L59-74 — `(pr_number: i64, title: &str) -> GithubReviewRequestProjection` — rows write, FTS picks up the title/body, count + get_row work.
+-  `notifications_write_count_get` function L77-89 — `()` — rows write, FTS picks up the title/body, count + get_row work.
+-  `issues_write_fts_and_metadata_round_trip` function L92-122 — `()` — rows write, FTS picks up the title/body, count + get_row work.
+-  `review_queue_write_and_get` function L125-136 — `()` — rows write, FTS picks up the title/body, count + get_row work.
+-  `re_writing_same_source_id_updates_in_place` function L139-152 — `()` — rows write, FTS picks up the title/body, count + get_row work.
 
 #### crates/arawn-projections/tests/gmail_e2e.rs
 

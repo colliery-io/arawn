@@ -33,8 +33,6 @@ over org bindings on conflict.
 
 ## Acceptance Criteria
 
-## Acceptance Criteria
-
 - [x] `WorkstreamBindTool` description advertises the two new
       schemes (`github:repo:owner/name`, `github:org:owner`)
       alongside the existing feed-id form. Validation rejects
