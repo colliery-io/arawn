@@ -18,6 +18,7 @@ pub mod dispatch;
 pub mod drive;
 pub mod embed;
 pub mod error;
+pub mod github;
 pub mod gmail;
 pub mod schema;
 pub mod slack;

@@ -30,6 +30,12 @@ pub const EMBEDDABLE_FEED_TYPES: &[&str] = &[
     "jira_comments",
     "confluence_pages",
     "calendar_events",
+    // GitHub (I-0045 T-0318). Notifications + review_queue carry only
+    // titles/subjects in their body, but issues/PRs have real bodies
+    // worth embedding for semantic recall.
+    "github_issues_and_prs",
+    "github_review_queue",
+    "github_notifications",
 ];
 
 /// Minimum body length worth embedding. Anything shorter is mostly
