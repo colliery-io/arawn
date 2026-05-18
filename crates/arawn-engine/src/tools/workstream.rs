@@ -595,7 +595,18 @@ impl Tool for WorkstreamBindTool {
 
     fn description(&self) -> &str {
         "Bind a feed to a workstream. Bindings hint to the Phase 4 extractor \
-         which feed items should land in this workstream's KB. Idempotent."
+         which feed items should land in this workstream's KB. Idempotent. \
+         \n\n\
+         `feed_id` accepts either a real feed id (e.g. `gh-notifs-pat`) \
+         OR a GitHub scope scheme (I-0045 T-0322):\n\
+         - `github:repo:owner/name` — bind a specific repo (e.g. \
+           `github:repo:openai/codex`). Repo-bindings take priority over \
+           org-bindings on conflict.\n\
+         - `github:org:owner` — bind every repo under an org (e.g. \
+           `github:org:openai`).\n\
+         \n\
+         Scope bindings let one feed (e.g. `gh-notifs-personal`) fan out \
+         to multiple workstreams based on which repo/org each row touches."
     }
 
     fn category(&self) -> ToolCategory {
@@ -632,6 +643,12 @@ impl Tool for WorkstreamBindTool {
             return Ok(ToolOutput::error(
                 "name and feed_id are required".to_string(),
             ));
+        }
+        // I-0045 T-0322 — validate github scope-binding schemes
+        // before they hit the store. Catches common typos at the
+        // tool boundary (the store accepts any string).
+        if let Err(msg) = validate_github_scope_scheme(&feed_id) {
+            return Ok(ToolOutput::error(msg));
         }
         let result = {
             let store = self.store.lock().unwrap();
@@ -1127,6 +1144,40 @@ async fn propose_llm_call(
 }
 
 /// Same balanced-bracket scan as `arawn-extractor::llm_text::extract_json_block`.
+/// I-0045 T-0322 — validate github scope-binding schemes. Only
+/// kicks in for `feed_id`s that look like they're targeting GitHub
+/// scopes; everything else (real feed_ids) passes through silently.
+pub fn validate_github_scope_scheme(feed_id: &str) -> Result<(), String> {
+    if let Some(rest) = feed_id.strip_prefix("github:repo:") {
+        let parts: Vec<&str> = rest.split('/').collect();
+        if parts.len() != 2 || parts[0].is_empty() || parts[1].is_empty() {
+            return Err(format!(
+                "invalid github:repo binding `{feed_id}` — expected \
+                 `github:repo:<owner>/<name>` (e.g. `github:repo:openai/codex`)"
+            ));
+        }
+        return Ok(());
+    }
+    if let Some(rest) = feed_id.strip_prefix("github:org:") {
+        if rest.is_empty() || rest.contains('/') {
+            return Err(format!(
+                "invalid github:org binding `{feed_id}` — expected \
+                 `github:org:<owner>` (e.g. `github:org:openai`)"
+            ));
+        }
+        return Ok(());
+    }
+    Ok(())
+}
+
+/// Returns true if `feed_id` is a github scope-binding (either
+/// `github:repo:*` or `github:org:*`), false otherwise. Used by the
+/// bind-backfill hook to short-circuit feed-store lookup for these
+/// synthetic ids.
+pub fn is_github_scope_binding(feed_id: &str) -> bool {
+    feed_id.starts_with("github:repo:") || feed_id.starts_with("github:org:")
+}
+
 fn extract_json_block(raw: &str) -> Option<&str> {
     let bytes = raw.as_bytes();
     let mut depth = 0i32;
@@ -1335,6 +1386,98 @@ mod tests {
             .unwrap()
             .unwrap();
         assert_eq!(fetched.description, "skip-level for pat");
+    }
+
+    // I-0045 T-0322 — github scope-binding validation.
+
+    #[test]
+    fn github_repo_scheme_accepts_owner_slash_name() {
+        validate_github_scope_scheme("github:repo:openai/codex").unwrap();
+    }
+
+    #[test]
+    fn github_repo_scheme_rejects_missing_slash() {
+        let err = validate_github_scope_scheme("github:repo:openai").unwrap_err();
+        assert!(err.contains("github:repo"), "msg: {err}");
+    }
+
+    #[test]
+    fn github_repo_scheme_rejects_empty_owner_or_name() {
+        assert!(validate_github_scope_scheme("github:repo:/codex").is_err());
+        assert!(validate_github_scope_scheme("github:repo:openai/").is_err());
+    }
+
+    #[test]
+    fn github_org_scheme_accepts_owner() {
+        validate_github_scope_scheme("github:org:openai").unwrap();
+    }
+
+    #[test]
+    fn github_org_scheme_rejects_empty_or_with_slash() {
+        assert!(validate_github_scope_scheme("github:org:").is_err());
+        assert!(validate_github_scope_scheme("github:org:openai/codex").is_err());
+    }
+
+    #[test]
+    fn non_github_feed_ids_pass_through_unchanged() {
+        // Regular feed_ids must NOT trip the github validator.
+        validate_github_scope_scheme("gh-notifs-personal").unwrap();
+        validate_github_scope_scheme("slack-design").unwrap();
+        validate_github_scope_scheme("").unwrap();
+    }
+
+    #[test]
+    fn is_github_scope_binding_recognises_both_schemes() {
+        assert!(is_github_scope_binding("github:repo:openai/codex"));
+        assert!(is_github_scope_binding("github:org:openai"));
+        assert!(!is_github_scope_binding("gh-notifs-personal"));
+        assert!(!is_github_scope_binding("github_notifications"));
+    }
+
+    #[tokio::test]
+    async fn bind_accepts_github_repo_scheme_and_stores_it() {
+        let (tmp, store, _) = setup();
+        store
+            .lock()
+            .unwrap()
+            .create_workstream(&Workstream::new("pat", tmp.path().join("ws/pat")))
+            .unwrap();
+        let bind = WorkstreamBindTool::new(store.clone());
+        let out = bind
+            .execute(
+                &test_ctx(&tmp),
+                json!({"name": "pat", "feed_id": "github:repo:openai/codex"}),
+            )
+            .await
+            .unwrap();
+        assert!(!out.is_error, "got error: {}", out.content);
+        let fetched = store
+            .lock()
+            .unwrap()
+            .find_workstream_by_name("pat")
+            .unwrap()
+            .unwrap();
+        assert_eq!(fetched.bindings, vec!["github:repo:openai/codex"]);
+    }
+
+    #[tokio::test]
+    async fn bind_rejects_malformed_github_repo_scheme() {
+        let (tmp, store, _) = setup();
+        store
+            .lock()
+            .unwrap()
+            .create_workstream(&Workstream::new("pat", tmp.path().join("ws/pat")))
+            .unwrap();
+        let bind = WorkstreamBindTool::new(store.clone());
+        let out = bind
+            .execute(
+                &test_ctx(&tmp),
+                json!({"name": "pat", "feed_id": "github:repo:openai"}),
+            )
+            .await
+            .unwrap();
+        assert!(out.is_error);
+        assert!(out.content.contains("github:repo"));
     }
 
     #[tokio::test]

@@ -4,14 +4,14 @@ level: initiative
 title: "GitHub integration — repos, notifications, issues, PRs as a first-class personal signal"
 short_code: "ARAWN-I-0045"
 created_at: 2026-05-15T15:09:09.839794+00:00
-updated_at: 2026-05-18T12:18:45.076691+00:00
+updated_at: 2026-05-18T13:26:25.914974+00:00
 parent: ARAWN-V-0001
 blocked_by: []
 archived: false
 
 tags:
   - "#initiative"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false

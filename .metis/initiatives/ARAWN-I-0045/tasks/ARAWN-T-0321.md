@@ -32,8 +32,6 @@ GitHub signal (someone is blocked on you).
 
 ## Acceptance Criteria
 
-## Acceptance Criteria
-
 - [x] New template
       `crates/arawn-feeds/src/templates/github/review_queue.rs`,
       registered in `default_registry`.

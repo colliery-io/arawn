@@ -820,6 +820,21 @@ async fn main() -> Result<()> {
                 }
                 impl arawn_engine::BindBackfillHook for ExtractorBindHook {
                     fn on_bind(&self, workstream_name: &str, feed_id: &str) {
+                        // I-0045 T-0322 — github scope-bindings
+                        // (github:repo:* / github:org:*) are synthetic
+                        // ids; short-circuit to the three github feed
+                        // types so existing projection rows get walked
+                        // through the chain.
+                        if arawn_engine::tools::workstream::is_github_scope_binding(feed_id) {
+                            let feed_types = vec![
+                                "github_notifications".to_string(),
+                                "github_issues_and_prs".to_string(),
+                                "github_review_queue".to_string(),
+                            ];
+                            Arc::clone(&self.runner)
+                                .spawn_backfill(workstream_name.to_string(), feed_types);
+                            return;
+                        }
                         // Reach into the feeds table via the shared
                         // storage Database to resolve template → feed_types.
                         let template = {
