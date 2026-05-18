@@ -650,21 +650,78 @@ impl Tool for WorkstreamBindTool {
         if let Err(msg) = validate_github_scope_scheme(&feed_id) {
             return Ok(ToolOutput::error(msg));
         }
+        // I-0050 T-0326 — enforce org-supersedes-repo semantics and
+        // register/unregister `github-repo:` feeds for scope bindings.
+        let mut superseded: Vec<String> = Vec::new();
+        if let Some(scope) = parse_github_scope(&feed_id) {
+            let store = self.store.lock().unwrap();
+            match &scope {
+                GithubScope::Repo { owner, .. } => {
+                    let org_key = format!("github:org:{owner}");
+                    let already = find_workstreams_binding(&store, |b| b == &org_key);
+                    if let Some((other_ws, _)) = already.first() {
+                        return Ok(ToolOutput::error(format!(
+                            "binding rejected: covered by `{org_key}` already bound to workstream `{other_ws}`"
+                        )));
+                    }
+                }
+                GithubScope::Org { owner } => {
+                    let prefix = format!("github:repo:{owner}/");
+                    let to_drop: Vec<(String, String)> =
+                        find_workstreams_binding(&store, |b| b.starts_with(&prefix));
+                    for (ws, binding) in &to_drop {
+                        let _ = store.remove_workstream_binding(ws, binding);
+                        if let Some(GithubScope::Repo { owner, name }) =
+                            parse_github_scope(binding)
+                        {
+                            let feed_id = format!("github-repo:{owner}/{name}");
+                            let _ = delete_feed(&store, &feed_id);
+                        }
+                    }
+                    superseded.extend(to_drop.into_iter().map(|(ws, b)| format!("{b} (ws={ws})")));
+                }
+            }
+        }
         let result = {
             let store = self.store.lock().unwrap();
             store.add_workstream_binding(&name, &feed_id)
         };
         match result {
             Ok(()) => {
+                // I-0050 T-0326 — register the `github-repo:owner/name`
+                // feed for repo binds. Org binds are handled in T-0327
+                // (list_org_repos fan-out happens via the bind hook).
+                if let Some(GithubScope::Repo { owner, name: repo }) =
+                    parse_github_scope(&feed_id)
+                {
+                    let feed_id_full = format!("github-repo:{owner}/{repo}");
+                    let store = self.store.lock().unwrap();
+                    if let Err(e) = upsert_repo_mirror_feed(&store, &feed_id_full, &owner, &repo)
+                    {
+                        // Persistence of the binding succeeded; feed
+                        // registration is best-effort here. Log via
+                        // tool output rather than failing the bind.
+                        return Ok(ToolOutput::success(
+                            json!({
+                                "name": name,
+                                "feed_id": feed_id,
+                                "warning": format!("binding stored, feed registration failed: {e}")
+                            })
+                            .to_string(),
+                        ));
+                    }
+                }
                 // Fire backfill hook if wired. Drop store lock first
                 // — the hook spawns its own task and shouldn't hold
                 // our lock.
                 if let Some(hook) = self.hook.as_ref() {
                     hook.on_bind(&name, &feed_id);
                 }
-                Ok(ToolOutput::success(
-                    json!({"name": name, "feed_id": feed_id}).to_string(),
-                ))
+                let mut body = json!({"name": name, "feed_id": feed_id});
+                if !superseded.is_empty() {
+                    body["superseded"] = json!(superseded);
+                }
+                Ok(ToolOutput::success(body.to_string()))
             }
             Err(e) => Ok(ToolOutput::error(format!("failed: {e}"))),
         }
@@ -728,9 +785,20 @@ impl Tool for WorkstreamUnbindTool {
         }
         let store = self.store.lock().unwrap();
         match store.remove_workstream_binding(&name, &feed_id) {
-            Ok(()) => Ok(ToolOutput::success(
-                json!({"name": name, "feed_id": feed_id}).to_string(),
-            )),
+            Ok(()) => {
+                // I-0050 T-0326 — when a `github:repo:owner/name`
+                // binding is removed, also drop its corresponding
+                // `github-repo:owner/name` feed so polling stops.
+                if let Some(GithubScope::Repo { owner, name: repo }) =
+                    parse_github_scope(&feed_id)
+                {
+                    let feed_id_full = format!("github-repo:{owner}/{repo}");
+                    let _ = delete_feed(&store, &feed_id_full);
+                }
+                Ok(ToolOutput::success(
+                    json!({"name": name, "feed_id": feed_id}).to_string(),
+                ))
+            }
             Err(e) => Ok(ToolOutput::error(format!("failed: {e}"))),
         }
     }
@@ -1178,6 +1246,114 @@ pub fn is_github_scope_binding(feed_id: &str) -> bool {
     feed_id.starts_with("github:repo:") || feed_id.starts_with("github:org:")
 }
 
+/// Parsed github scope binding. `None` for non-github bindings.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum GithubScope {
+    Repo { owner: String, name: String },
+    Org { owner: String },
+}
+
+pub fn parse_github_scope(feed_id: &str) -> Option<GithubScope> {
+    if let Some(rest) = feed_id.strip_prefix("github:repo:") {
+        let mut parts = rest.splitn(2, '/');
+        let owner = parts.next()?.to_string();
+        let name = parts.next()?.to_string();
+        if owner.is_empty() || name.is_empty() {
+            return None;
+        }
+        return Some(GithubScope::Repo { owner, name });
+    }
+    if let Some(rest) = feed_id.strip_prefix("github:org:") {
+        if rest.is_empty() || rest.contains('/') {
+            return None;
+        }
+        return Some(GithubScope::Org {
+            owner: rest.to_string(),
+        });
+    }
+    None
+}
+
+/// Walk active workstreams, return `(workstream_name, binding)` for
+/// every binding matching the predicate.
+fn find_workstreams_binding(
+    store: &Store,
+    matcher: impl Fn(&str) -> bool,
+) -> Vec<(String, String)> {
+    let workstreams = store.list_workstreams().unwrap_or_default();
+    let mut out = Vec::new();
+    for ws in workstreams {
+        for binding in &ws.bindings {
+            if matcher(binding) {
+                out.push((ws.name.clone(), binding.clone()));
+            }
+        }
+    }
+    out
+}
+
+/// Insert (or refresh) a `github/repo-mirror` feed record by writing
+/// to the `feeds` table via raw SQL. Idempotent — if a record with
+/// the same id already exists, returns Ok without modifying it.
+///
+/// Direct SQL (instead of `arawn_feeds::FeedStore`) avoids an
+/// arawn-engine → arawn-feeds dependency cycle: arawn-feeds already
+/// depends on arawn-engine via arawn-integrations → arawn-service.
+fn upsert_repo_mirror_feed(
+    store: &Store,
+    feed_id: &str,
+    owner: &str,
+    repo: &str,
+) -> Result<(), arawn_storage::StorageError> {
+    use arawn_storage::StorageError;
+    use rusqlite::OptionalExtension;
+    let db = store.database();
+    let conn = db.conn();
+    let exists: bool = conn
+        .query_row(
+            "SELECT 1 FROM feeds WHERE id = ?1",
+            rusqlite::params![feed_id],
+            |_| Ok(true),
+        )
+        .optional()
+        .map_err(|e| StorageError::InvalidOperation(format!("feeds lookup: {e}")))?
+        .unwrap_or(false);
+    if exists {
+        return Ok(());
+    }
+    let params_json = serde_json::to_string(&serde_json::json!({
+        "owner": owner,
+        "name": repo,
+    }))
+    .map_err(|e| StorageError::InvalidOperation(format!("serialize params: {e}")))?;
+    let now = chrono::Utc::now().to_rfc3339();
+    conn.execute(
+        "INSERT INTO feeds (id, template, params, cadence, enabled, created_at, updated_at) \
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+        rusqlite::params![
+            feed_id,
+            "github/repo-mirror",
+            params_json,
+            "*/30 * * * *",
+            1,
+            &now,
+            &now,
+        ],
+    )
+    .map_err(|e| StorageError::InvalidOperation(format!("insert feed: {e}")))?;
+    Ok(())
+}
+
+/// Drop a feed record by raw SQL. Idempotent.
+fn delete_feed(store: &Store, feed_id: &str) -> Result<(), arawn_storage::StorageError> {
+    use arawn_storage::StorageError;
+    let db = store.database();
+    db.conn()
+        .execute("DELETE FROM feeds WHERE id = ?1", rusqlite::params![feed_id])
+        .map_err(|e| StorageError::InvalidOperation(format!("delete feed: {e}")))?;
+    Ok(())
+}
+
 fn extract_json_block(raw: &str) -> Option<&str> {
     let bytes = raw.as_bytes();
     let mut depth = 0i32;
@@ -1458,6 +1634,231 @@ mod tests {
             .unwrap()
             .unwrap();
         assert_eq!(fetched.bindings, vec!["github:repo:openai/codex"]);
+    }
+
+    // I-0050 T-0326 — feed registration + org-supersedes-repo.
+
+    #[test]
+    fn parse_github_scope_handles_both_schemes() {
+        assert_eq!(
+            parse_github_scope("github:repo:openai/codex"),
+            Some(GithubScope::Repo {
+                owner: "openai".into(),
+                name: "codex".into()
+            })
+        );
+        assert_eq!(
+            parse_github_scope("github:org:openai"),
+            Some(GithubScope::Org {
+                owner: "openai".into()
+            })
+        );
+        assert_eq!(parse_github_scope("github:repo:openai"), None);
+        assert_eq!(parse_github_scope("github:org:openai/codex"), None);
+        assert_eq!(parse_github_scope("github:repo:openai/"), None);
+        assert_eq!(parse_github_scope("gh-feed"), None);
+    }
+
+    fn count_feeds(store: &Arc<Mutex<Store>>, feed_id: &str) -> i64 {
+        let s = store.lock().unwrap();
+        let conn = s.database().conn();
+        conn.query_row(
+            "SELECT COUNT(*) FROM feeds WHERE id = ?1",
+            rusqlite::params![feed_id],
+            |r| r.get::<_, i64>(0),
+        )
+        .unwrap()
+    }
+
+    #[tokio::test]
+    async fn repo_bind_registers_feed_record() {
+        let (tmp, store, _) = setup();
+        store
+            .lock()
+            .unwrap()
+            .create_workstream(&Workstream::new("pat", tmp.path().join("ws/pat")))
+            .unwrap();
+        let bind = WorkstreamBindTool::new(store.clone());
+        let out = bind
+            .execute(
+                &test_ctx(&tmp),
+                json!({"name": "pat", "feed_id": "github:repo:openai/codex"}),
+            )
+            .await
+            .unwrap();
+        assert!(!out.is_error, "got error: {}", out.content);
+        // Feed record exists with the expected id + template + params.
+        assert_eq!(count_feeds(&store, "github-repo:openai/codex"), 1);
+        let s = store.lock().unwrap();
+        let conn = s.database().conn();
+        let (template, params, cadence): (String, String, String) = conn
+            .query_row(
+                "SELECT template, params, cadence FROM feeds WHERE id = 'github-repo:openai/codex'",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+            )
+            .unwrap();
+        assert_eq!(template, "github/repo-mirror");
+        assert!(params.contains("\"openai\""));
+        assert!(params.contains("\"codex\""));
+        assert_eq!(cadence, "*/30 * * * *");
+    }
+
+    #[tokio::test]
+    async fn repo_bind_is_idempotent_no_duplicate_feed() {
+        let (tmp, store, _) = setup();
+        store
+            .lock()
+            .unwrap()
+            .create_workstream(&Workstream::new("pat", tmp.path().join("ws/pat")))
+            .unwrap();
+        let bind = WorkstreamBindTool::new(store.clone());
+        let _ = bind
+            .execute(
+                &test_ctx(&tmp),
+                json!({"name": "pat", "feed_id": "github:repo:openai/codex"}),
+            )
+            .await
+            .unwrap();
+        let _ = bind
+            .execute(
+                &test_ctx(&tmp),
+                json!({"name": "pat", "feed_id": "github:repo:openai/codex"}),
+            )
+            .await
+            .unwrap();
+        assert_eq!(count_feeds(&store, "github-repo:openai/codex"), 1);
+    }
+
+    #[tokio::test]
+    async fn repo_bind_rejected_when_org_already_bound() {
+        let (tmp, store, _) = setup();
+        store
+            .lock()
+            .unwrap()
+            .create_workstream(&Workstream::new("ws-a", tmp.path().join("ws/a")))
+            .unwrap();
+        store
+            .lock()
+            .unwrap()
+            .create_workstream(&Workstream::new("ws-b", tmp.path().join("ws/b")))
+            .unwrap();
+        let bind = WorkstreamBindTool::new(store.clone());
+        // ws-a binds the org.
+        bind.execute(
+            &test_ctx(&tmp),
+            json!({"name": "ws-a", "feed_id": "github:org:openai"}),
+        )
+        .await
+        .unwrap();
+        // ws-b tries to bind a repo under openai.
+        let out = bind
+            .execute(
+                &test_ctx(&tmp),
+                json!({"name": "ws-b", "feed_id": "github:repo:openai/codex"}),
+            )
+            .await
+            .unwrap();
+        assert!(out.is_error, "should reject");
+        assert!(out.content.contains("github:org:openai"));
+        assert!(out.content.contains("ws-a"));
+        // ws-b has no binding stored.
+        let ws_b = store
+            .lock()
+            .unwrap()
+            .find_workstream_by_name("ws-b")
+            .unwrap()
+            .unwrap();
+        assert!(ws_b.bindings.is_empty());
+        // And no repo feed was registered.
+        assert_eq!(count_feeds(&store, "github-repo:openai/codex"), 0);
+    }
+
+    #[tokio::test]
+    async fn org_bind_supersedes_existing_repo_binds() {
+        let (tmp, store, _) = setup();
+        store
+            .lock()
+            .unwrap()
+            .create_workstream(&Workstream::new("ws-a", tmp.path().join("ws/a")))
+            .unwrap();
+        store
+            .lock()
+            .unwrap()
+            .create_workstream(&Workstream::new("ws-b", tmp.path().join("ws/b")))
+            .unwrap();
+        let bind = WorkstreamBindTool::new(store.clone());
+        // ws-a binds two repos under openai.
+        bind.execute(
+            &test_ctx(&tmp),
+            json!({"name": "ws-a", "feed_id": "github:repo:openai/codex"}),
+        )
+        .await
+        .unwrap();
+        bind.execute(
+            &test_ctx(&tmp),
+            json!({"name": "ws-a", "feed_id": "github:repo:openai/tinker"}),
+        )
+        .await
+        .unwrap();
+        assert_eq!(count_feeds(&store, "github-repo:openai/codex"), 1);
+        assert_eq!(count_feeds(&store, "github-repo:openai/tinker"), 1);
+        // ws-b binds the org → both repo schedules dropped.
+        let out = bind
+            .execute(
+                &test_ctx(&tmp),
+                json!({"name": "ws-b", "feed_id": "github:org:openai"}),
+            )
+            .await
+            .unwrap();
+        assert!(!out.is_error, "got error: {}", out.content);
+        // The two repo feeds are gone.
+        assert_eq!(count_feeds(&store, "github-repo:openai/codex"), 0);
+        assert_eq!(count_feeds(&store, "github-repo:openai/tinker"), 0);
+        // ws-a's repo bindings are removed too.
+        let ws_a = store
+            .lock()
+            .unwrap()
+            .find_workstream_by_name("ws-a")
+            .unwrap()
+            .unwrap();
+        assert!(
+            ws_a.bindings.is_empty(),
+            "ws-a should have no bindings, got {:?}",
+            ws_a.bindings
+        );
+        // Output mentions the supersession.
+        let body: serde_json::Value = serde_json::from_str(&out.content).unwrap();
+        let sup = body["superseded"].as_array().unwrap();
+        assert_eq!(sup.len(), 2);
+    }
+
+    #[tokio::test]
+    async fn unbind_repo_scope_drops_feed() {
+        let (tmp, store, _) = setup();
+        store
+            .lock()
+            .unwrap()
+            .create_workstream(&Workstream::new("pat", tmp.path().join("ws/pat")))
+            .unwrap();
+        let bind = WorkstreamBindTool::new(store.clone());
+        bind.execute(
+            &test_ctx(&tmp),
+            json!({"name": "pat", "feed_id": "github:repo:openai/codex"}),
+        )
+        .await
+        .unwrap();
+        assert_eq!(count_feeds(&store, "github-repo:openai/codex"), 1);
+        let unbind = WorkstreamUnbindTool::new(store.clone());
+        let out = unbind
+            .execute(
+                &test_ctx(&tmp),
+                json!({"name": "pat", "feed_id": "github:repo:openai/codex"}),
+            )
+            .await
+            .unwrap();
+        assert!(!out.is_error);
+        assert_eq!(count_feeds(&store, "github-repo:openai/codex"), 0);
     }
 
     #[tokio::test]

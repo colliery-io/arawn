@@ -826,10 +826,18 @@ async fn main() -> Result<()> {
                         // types so existing projection rows get walked
                         // through the chain.
                         if arawn_engine::tools::workstream::is_github_scope_binding(feed_id) {
+                            // I-0050 — backfill walks the user-scoped
+                            // feeds (morning-brief signal) AND the
+                            // four repo-mirror tables (commits/issues/
+                            // prs/comments) the new template writes.
                             let feed_types = vec![
                                 "github_notifications".to_string(),
                                 "github_issues_and_prs".to_string(),
                                 "github_review_queue".to_string(),
+                                "github_repo_commits".to_string(),
+                                "github_repo_issues".to_string(),
+                                "github_repo_prs".to_string(),
+                                "github_issue_or_pr_comments".to_string(),
                             ];
                             Arc::clone(&self.runner)
                                 .spawn_backfill(workstream_name.to_string(), feed_types);

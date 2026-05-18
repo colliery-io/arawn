@@ -33,8 +33,6 @@ instances in one shot.
 
 ## Acceptance Criteria
 
-## Acceptance Criteria
-
 - [x] New template `crates/arawn-feeds/src/templates/github/repo_mirror.rs`,
       registered in `default_registry`.
 - [x] Required params `owner` + `name`; 30-min default cadence.

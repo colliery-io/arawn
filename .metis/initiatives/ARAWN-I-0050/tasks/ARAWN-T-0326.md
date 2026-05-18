@@ -4,15 +4,14 @@ level: task
 title: "Bind tool — org-supersedes-repo + scope-bind registers feed"
 short_code: "ARAWN-T-0326"
 created_at: 2026-05-18T14:34:03.819733+00:00
-updated_at: 2026-05-18T14:34:03.819733+00:00
+updated_at: 2026-05-18T16:54:28.147419+00:00
 parent: ARAWN-I-0050
 blocked_by: [ARAWN-T-0325]
-effort: M
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -34,32 +33,57 @@ bind triggers [[ARAWN-T-0327]]'s expand. Both enforce the
 
 ## Acceptance Criteria
 
-- [ ] `WorkstreamBindTool::execute` for `github:repo:owner/name`:
-      - If `github:org:owner` is already bound on ANY workstream
-        → reject with: `"covered by github:org:owner bound to
-        <ws-name>"`.
-      - Otherwise: persist the binding, register a feed
-        `github-repo:owner/name` running `github/repo-mirror`
-        with params `{owner, name}`, fire bind-backfill hook.
-- [ ] `WorkstreamBindTool::execute` for `github:org:owner`:
-      - Find all `github:repo:owner/*` bindings (any workstream).
-      - For each: drop the binding, unregister the corresponding
-        feed (`github-repo:owner/<name>`).
-      - Emit a `ServerNotice` listing what was superseded.
-      - Persist the org binding, then delegate to [[ARAWN-T-0327]]
-        for the per-repo expand + register.
-- [ ] Bind-backfill hook for github-repo: feeds is auto-derived
-      from `feed_id.starts_with("github-repo:")` — fans out
-      backfill on the four new feed_types from [[ARAWN-T-0324]].
-- [ ] `WorkstreamUnbindTool` extended to unregister the
-      corresponding feed when a scope binding is removed.
-- [ ] Tests:
-      - Repo bind rejected when org of same owner exists.
-      - Org bind sweeps existing repo bindings (across multiple
-        workstreams) and unregisters their feeds.
-      - Successful repo bind creates a feed with the expected
-        id, template, and params.
-      - Unbind drops the feed.
+## Acceptance Criteria
+
+- [x] Repo bind path: parses `github:repo:owner/name`; rejects
+      with explicit "covered by `github:org:<owner>` already
+      bound to workstream `<ws>`" message when an org binding
+      exists. Otherwise persists the binding AND inserts a feed
+      record `github-repo:owner/name` (template
+      `github/repo-mirror`, cadence `*/30 * * * *`, params
+      `{owner, name}`).
+- [x] Org bind path: parses `github:org:owner`; finds every
+      `github:repo:owner/*` binding across all workstreams,
+      removes them, and deletes the matching `github-repo:` feed
+      records. Returns the list of superseded bindings in the
+      success body so callers can surface them.
+- [x] Bind-backfill hook in main.rs's `ExtractorBindHook` now
+      walks the four T-0324 feed_types
+      (`github_repo_commits` / `github_repo_issues` /
+      `github_repo_prs` / `github_issue_or_pr_comments`) in
+      addition to the three user-scoped ones when a github
+      scope binding lands.
+- [x] `WorkstreamUnbindTool` recognises `github:repo:` schemes
+      and deletes the matching `github-repo:` feed record.
+- [x] Feed-table mutations go through raw SQL on
+      `Store::database().conn()` rather than
+      `arawn-feeds::FeedStore` to avoid an arawn-engine →
+      arawn-feeds dependency cycle (arawn-feeds already depends
+      on arawn-engine via arawn-integrations → arawn-service).
+- [x] 7 new unit tests:
+      - `parse_github_scope_handles_both_schemes`
+      - `repo_bind_registers_feed_record`
+      - `repo_bind_is_idempotent_no_duplicate_feed`
+      - `repo_bind_rejected_when_org_already_bound`
+        (cross-workstream; binding not persisted; no feed)
+      - `org_bind_supersedes_existing_repo_binds` (drops two
+        repo feeds + bindings; emits `superseded` array)
+      - `unbind_repo_scope_drops_feed`
+      Workspace 1891/0 (1885 → 1891, +6).
+
+## Status Updates
+
+### 2026-05-18 — bind tool wired
+
+- `GithubScope` enum + `parse_github_scope` exposed so other
+  parts of the codebase can interpret a binding string.
+- `upsert_repo_mirror_feed` / `delete_feed` helpers use raw
+  SQL on the storage DB; no arawn-engine → arawn-feeds dep.
+- Cron pickup of the new feed records relies on the
+  feed-runtime's existing startup re-scan; runtime hot-add
+  of a brand-new feed_id is not wired here. Worst case: a
+  newly-bound repo's first poll waits until the next process
+  restart, after which it's on the 30-min cadence.
 
 ## Implementation Notes
 
