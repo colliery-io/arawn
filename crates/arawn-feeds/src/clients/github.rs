@@ -6,12 +6,15 @@
 //! `GithubIntegration` and mints installation-access-tokens on demand
 //! (see `arawn_integrations::github::GithubClient`).
 //!
-//! Surface stays small — just the GitHub REST calls the three I-0045
-//! feed templates need:
+//! Surface:
 //!
 //! - `list_notifications` for `github/notifications` (T-0319).
-//! - `search_issues_and_prs` for `github/issues-and-prs` (T-0320).
-//! - `search_review_requests` for `github/review-queue` (T-0321).
+//! - `search_issues` for `github/issues-and-prs` (T-0320) and
+//!   `github/review-queue` (T-0321).
+//! - Six repo/org-scoped calls for `github/repo-mirror` (T-0323+):
+//!   `list_repo_commits`, `list_repo_issues`, `list_repo_prs`,
+//!   `list_issue_comments`, `list_pr_review_comments`,
+//!   `list_org_repos`.
 
 use std::sync::Arc;
 
@@ -46,6 +49,69 @@ pub trait GithubFeedClient: Send + Sync {
         &self,
         query: &str,
         per_page: u32,
+        max_pages: u32,
+    ) -> Result<Vec<Value>, FeedError>;
+
+    /// Repo commits, newest-first. `since` filters by commit
+    /// committer-date (RFC3339); None = no time-floor (capped via
+    /// `max_pages`).
+    async fn list_repo_commits(
+        &self,
+        owner: &str,
+        repo: &str,
+        since: Option<DateTime<Utc>>,
+        max_pages: u32,
+    ) -> Result<Vec<Value>, FeedError>;
+
+    /// Repo issues. GitHub's `/issues` endpoint returns PRs too; this
+    /// method filters them out client-side via `pull_request` field
+    /// absence so the caller doesn't have to think about it.
+    /// `state` ∈ {open, closed, all}.
+    async fn list_repo_issues(
+        &self,
+        owner: &str,
+        repo: &str,
+        state: &str,
+        since: Option<DateTime<Utc>>,
+        max_pages: u32,
+    ) -> Result<Vec<Value>, FeedError>;
+
+    /// Repo pull requests. `state` ∈ {open, closed, all}.
+    async fn list_repo_prs(
+        &self,
+        owner: &str,
+        repo: &str,
+        state: &str,
+        since: Option<DateTime<Utc>>,
+        max_pages: u32,
+    ) -> Result<Vec<Value>, FeedError>;
+
+    /// All issue comments on a repo (issues + PRs share this endpoint),
+    /// updated at or after `since`.
+    async fn list_issue_comments(
+        &self,
+        owner: &str,
+        repo: &str,
+        since: Option<DateTime<Utc>>,
+        max_pages: u32,
+    ) -> Result<Vec<Value>, FeedError>;
+
+    /// PR review comments (the inline-code variety), updated at or
+    /// after `since`.
+    async fn list_pr_review_comments(
+        &self,
+        owner: &str,
+        repo: &str,
+        since: Option<DateTime<Utc>>,
+        max_pages: u32,
+    ) -> Result<Vec<Value>, FeedError>;
+
+    /// List all repositories in an organisation. Used by the org-
+    /// expand-at-register step (T-0327) to fan a single `github:
+    /// org:owner` binding into N per-repo feeds.
+    async fn list_org_repos(
+        &self,
+        owner: &str,
         max_pages: u32,
     ) -> Result<Vec<Value>, FeedError>;
 }
@@ -174,6 +240,185 @@ impl GithubFeedClient for RealGithubClient {
         }
         Ok(out)
     }
+
+    async fn list_repo_commits(
+        &self,
+        owner: &str,
+        repo: &str,
+        since: Option<DateTime<Utc>>,
+        max_pages: u32,
+    ) -> Result<Vec<Value>, FeedError> {
+        let mut path = format!("/repos/{owner}/{repo}/commits?per_page=100");
+        if let Some(s) = since {
+            path.push_str(&format!("&since={}", s.to_rfc3339()));
+        }
+        self.paginate_array(&path, max_pages, "list_repo_commits")
+            .await
+    }
+
+    async fn list_repo_issues(
+        &self,
+        owner: &str,
+        repo: &str,
+        state: &str,
+        since: Option<DateTime<Utc>>,
+        max_pages: u32,
+    ) -> Result<Vec<Value>, FeedError> {
+        let state_enc = urlencoding::encode(state);
+        let mut path = format!(
+            "/repos/{owner}/{repo}/issues?state={state_enc}&per_page=100&sort=updated&direction=desc",
+        );
+        if let Some(s) = since {
+            path.push_str(&format!("&since={}", s.to_rfc3339()));
+        }
+        let mixed = self
+            .paginate_array(&path, max_pages, "list_repo_issues")
+            .await?;
+        Ok(strip_pr_rows(mixed))
+    }
+
+    async fn list_repo_prs(
+        &self,
+        owner: &str,
+        repo: &str,
+        state: &str,
+        since: Option<DateTime<Utc>>,
+        max_pages: u32,
+    ) -> Result<Vec<Value>, FeedError> {
+        let state_enc = urlencoding::encode(state);
+        let path = format!(
+            "/repos/{owner}/{repo}/pulls?state={state_enc}&per_page=100&sort=updated&direction=desc",
+        );
+        // GitHub's `/pulls` endpoint doesn't accept `since=` — it
+        // sorts by updated desc instead. Filter client-side after
+        // fetching, capped by `max_pages` to bound the worst case.
+        let all = self
+            .paginate_array(&path, max_pages, "list_repo_prs")
+            .await?;
+        Ok(filter_by_updated_at(all, since))
+    }
+
+    async fn list_issue_comments(
+        &self,
+        owner: &str,
+        repo: &str,
+        since: Option<DateTime<Utc>>,
+        max_pages: u32,
+    ) -> Result<Vec<Value>, FeedError> {
+        let mut path = format!(
+            "/repos/{owner}/{repo}/issues/comments?per_page=100&sort=updated&direction=desc",
+        );
+        if let Some(s) = since {
+            path.push_str(&format!("&since={}", s.to_rfc3339()));
+        }
+        self.paginate_array(&path, max_pages, "list_issue_comments")
+            .await
+    }
+
+    async fn list_pr_review_comments(
+        &self,
+        owner: &str,
+        repo: &str,
+        since: Option<DateTime<Utc>>,
+        max_pages: u32,
+    ) -> Result<Vec<Value>, FeedError> {
+        let mut path = format!(
+            "/repos/{owner}/{repo}/pulls/comments?per_page=100&sort=updated&direction=desc",
+        );
+        if let Some(s) = since {
+            path.push_str(&format!("&since={}", s.to_rfc3339()));
+        }
+        self.paginate_array(&path, max_pages, "list_pr_review_comments")
+            .await
+    }
+
+    async fn list_org_repos(
+        &self,
+        owner: &str,
+        max_pages: u32,
+    ) -> Result<Vec<Value>, FeedError> {
+        let path = format!("/orgs/{owner}/repos?per_page=100&type=all&sort=updated");
+        self.paginate_array(&path, max_pages, "list_org_repos")
+            .await
+    }
+}
+
+impl RealGithubClient {
+    /// Shared paginator for endpoints that return a top-level JSON
+    /// array. Follows `Link: rel="next"` up to `max_pages`. Surfaces
+    /// non-2xx with response body for visibility.
+    async fn paginate_array(
+        &self,
+        initial_path: &str,
+        max_pages: u32,
+        op_name: &str,
+    ) -> Result<Vec<Value>, FeedError> {
+        let client = self
+            .integration
+            .client()
+            .map_err(|e| FeedError::Auth(format!("github: {e}")))?;
+        let mut out: Vec<Value> = Vec::new();
+        let mut next_path: Option<String> = Some(initial_path.to_string());
+        let mut pages_fetched: u32 = 0;
+        while let Some(p) = next_path.take() {
+            if pages_fetched >= max_pages {
+                break;
+            }
+            let resp = client
+                .get(&p)
+                .await
+                .map_err(|e| FeedError::Provider(format!("github {op_name}: {e}")))?;
+            let status = resp.status();
+            let link_header = resp
+                .headers()
+                .get(reqwest::header::LINK)
+                .and_then(|h| h.to_str().ok())
+                .map(|s| s.to_string());
+            if !status.is_success() {
+                let body = resp.text().await.unwrap_or_default();
+                return Err(FeedError::Provider(format!(
+                    "github {op_name}: {status} body={body}"
+                )));
+            }
+            let page: Vec<Value> = resp
+                .json()
+                .await
+                .map_err(|e| FeedError::Provider(format!("github {op_name} parse: {e}")))?;
+            out.extend(page);
+            pages_fetched += 1;
+            if let Some(link) = link_header {
+                next_path = parse_link_next_path(&link);
+            }
+        }
+        Ok(out)
+    }
+}
+
+/// Drop PR rows from a mixed-issues array. GitHub's
+/// `/repos/{owner}/{repo}/issues` endpoint returns both issues and
+/// PRs; PRs are identified by the presence of a `pull_request` field.
+pub fn strip_pr_rows(rows: Vec<Value>) -> Vec<Value> {
+    rows.into_iter()
+        .filter(|v| v.get("pull_request").is_none())
+        .collect()
+}
+
+/// Filter rows whose `updated_at` is earlier than `floor`. Rows with
+/// a missing/malformed `updated_at` are kept (defensive — better to
+/// over-report than silently drop).
+pub fn filter_by_updated_at(rows: Vec<Value>, floor: Option<DateTime<Utc>>) -> Vec<Value> {
+    let Some(floor) = floor else {
+        return rows;
+    };
+    rows.into_iter()
+        .filter(|v| {
+            v.get("updated_at")
+                .and_then(|t| t.as_str())
+                .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
+                .map(|d| d.with_timezone(&Utc) >= floor)
+                .unwrap_or(true)
+        })
+        .collect()
 }
 
 /// Parse a GitHub `Link` header for the `rel="next"` target and
@@ -220,5 +465,64 @@ mod tests {
     #[test]
     fn link_header_empty_returns_none() {
         assert!(parse_link_next_path("").is_none());
+    }
+
+    #[test]
+    fn strip_pr_rows_drops_rows_with_pull_request_field() {
+        let rows = vec![
+            serde_json::json!({"number": 1, "title": "issue one"}),
+            serde_json::json!({"number": 2, "title": "pr one", "pull_request": {"url": "x"}}),
+            serde_json::json!({"number": 3, "title": "issue two"}),
+        ];
+        let filtered = strip_pr_rows(rows);
+        assert_eq!(filtered.len(), 2);
+        assert_eq!(filtered[0]["number"], 1);
+        assert_eq!(filtered[1]["number"], 3);
+    }
+
+    #[test]
+    fn strip_pr_rows_keeps_everything_when_no_prs() {
+        let rows = vec![
+            serde_json::json!({"number": 1}),
+            serde_json::json!({"number": 2}),
+        ];
+        assert_eq!(strip_pr_rows(rows).len(), 2);
+    }
+
+    #[test]
+    fn filter_by_updated_at_keeps_rows_at_or_after_floor() {
+        let rows = vec![
+            serde_json::json!({"updated_at": "2026-05-10T00:00:00Z", "number": 1}),
+            serde_json::json!({"updated_at": "2026-05-18T00:00:00Z", "number": 2}),
+            serde_json::json!({"updated_at": "2026-05-15T00:00:00Z", "number": 3}),
+        ];
+        let floor: DateTime<Utc> = "2026-05-15T00:00:00Z".parse().unwrap();
+        let filtered = filter_by_updated_at(rows, Some(floor));
+        assert_eq!(filtered.len(), 2);
+        assert_eq!(filtered[0]["number"], 2);
+        assert_eq!(filtered[1]["number"], 3);
+    }
+
+    #[test]
+    fn filter_by_updated_at_with_none_floor_keeps_all() {
+        let rows = vec![
+            serde_json::json!({"updated_at": "2026-05-10T00:00:00Z"}),
+            serde_json::json!({"updated_at": "2026-05-18T00:00:00Z"}),
+        ];
+        assert_eq!(filter_by_updated_at(rows, None).len(), 2);
+    }
+
+    #[test]
+    fn filter_by_updated_at_keeps_rows_missing_updated_at() {
+        // Defensive — better to over-report than silently drop a row
+        // GitHub mangled.
+        let rows = vec![
+            serde_json::json!({"number": 1}),
+            serde_json::json!({"updated_at": "garbage", "number": 2}),
+            serde_json::json!({"updated_at": "2026-05-18T00:00:00Z", "number": 3}),
+        ];
+        let floor: DateTime<Utc> = "2026-05-15T00:00:00Z".parse().unwrap();
+        let filtered = filter_by_updated_at(rows, Some(floor));
+        assert_eq!(filtered.len(), 3);
     }
 }

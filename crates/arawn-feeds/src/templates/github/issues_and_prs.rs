@@ -232,6 +232,61 @@ mod tests {
             }
             Ok(q.remove(0))
         }
+
+        async fn list_repo_commits(
+            &self,
+            _owner: &str,
+            _repo: &str,
+            _since: Option<chrono::DateTime<chrono::Utc>>,
+            _max_pages: u32,
+        ) -> Result<Vec<Value>, FeedError> {
+            Ok(Vec::new())
+        }
+        async fn list_repo_issues(
+            &self,
+            _owner: &str,
+            _repo: &str,
+            _state: &str,
+            _since: Option<chrono::DateTime<chrono::Utc>>,
+            _max_pages: u32,
+        ) -> Result<Vec<Value>, FeedError> {
+            Ok(Vec::new())
+        }
+        async fn list_repo_prs(
+            &self,
+            _owner: &str,
+            _repo: &str,
+            _state: &str,
+            _since: Option<chrono::DateTime<chrono::Utc>>,
+            _max_pages: u32,
+        ) -> Result<Vec<Value>, FeedError> {
+            Ok(Vec::new())
+        }
+        async fn list_issue_comments(
+            &self,
+            _owner: &str,
+            _repo: &str,
+            _since: Option<chrono::DateTime<chrono::Utc>>,
+            _max_pages: u32,
+        ) -> Result<Vec<Value>, FeedError> {
+            Ok(Vec::new())
+        }
+        async fn list_pr_review_comments(
+            &self,
+            _owner: &str,
+            _repo: &str,
+            _since: Option<chrono::DateTime<chrono::Utc>>,
+            _max_pages: u32,
+        ) -> Result<Vec<Value>, FeedError> {
+            Ok(Vec::new())
+        }
+        async fn list_org_repos(
+            &self,
+            _owner: &str,
+            _max_pages: u32,
+        ) -> Result<Vec<Value>, FeedError> {
+            Ok(Vec::new())
+        }
     }
 
     struct WithFakeGithub {
