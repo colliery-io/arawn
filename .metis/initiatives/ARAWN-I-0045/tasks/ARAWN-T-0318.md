@@ -32,8 +32,6 @@ Add the three GitHub projection tables and their Rust DTOs to
 
 ## Acceptance Criteria
 
-## Acceptance Criteria
-
 - [x] Three new feed_type constants in `arawn-projections::github`:
       `NOTIFICATIONS_FEED_TYPE = "github_notifications"`,
       `ISSUES_AND_PRS_FEED_TYPE = "github_issues_and_prs"`,

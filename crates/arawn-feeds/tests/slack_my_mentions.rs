@@ -15,7 +15,7 @@ use serde_json::{Value, json};
 
 use arawn_feeds::templates::slack::MyMentionsTemplate;
 use arawn_feeds::{
-    AtlassianFeedClient, CalendarFeedClient, DataLayout, DriveFeedClient, FeedClients, FeedError,
+    AtlassianFeedClient, GithubFeedClient, CalendarFeedClient, DataLayout, DriveFeedClient, FeedClients, FeedError,
     FeedMeta, FeedTemplate, GmailFeedClient, MetaStore, SlackAuthInfo, SlackFeedClient,
     SlackHistoryPage, TemplateCtx, TemplateParams,
 };
@@ -121,6 +121,9 @@ impl FeedClients for MockClients {
         None
     }
     fn atlassian(&self) -> Option<Arc<dyn AtlassianFeedClient>> {
+        None
+    }
+    fn github(&self) -> Option<Arc<dyn GithubFeedClient>> {
         None
     }
 }
@@ -332,6 +335,9 @@ async fn returns_auth_when_slack_not_connected() {
             None
         }
         fn atlassian(&self) -> Option<Arc<dyn AtlassianFeedClient>> {
+            None
+        }
+        fn github(&self) -> Option<Arc<dyn GithubFeedClient>> {
             None
         }
     }

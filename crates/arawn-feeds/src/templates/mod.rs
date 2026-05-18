@@ -3,6 +3,7 @@
 pub mod calendar;
 pub mod confluence;
 pub mod drive;
+pub mod github;
 pub mod gmail;
 pub mod jira;
 pub mod slack;
@@ -30,5 +31,6 @@ pub fn default_registry() -> FeedTemplateRegistry {
     r.register(Arc::new(confluence::SpaceArchiveTemplate));
     r.register(Arc::new(jira::ProjectTrackerTemplate));
     r.register(Arc::new(jira::AssigneeTrackerTemplate));
+    r.register(Arc::new(github::NotificationsTemplate));
     r
 }

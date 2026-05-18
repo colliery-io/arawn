@@ -9,7 +9,7 @@ use serde_json::{Value, json};
 
 use arawn_feeds::templates::confluence::SpaceArchiveTemplate;
 use arawn_feeds::{
-    AtlassianFeedClient, CalendarFeedClient, ConfluencePageBody, ConfluencePageMeta, DataLayout,
+    AtlassianFeedClient, GithubFeedClient, CalendarFeedClient, ConfluencePageBody, ConfluencePageMeta, DataLayout,
     DriveFeedClient, FeedClients, FeedError, FeedMeta, FeedTemplate, GmailFeedClient,
     JiraIssueDetail, JiraIssueMeta, MetaStore, SlackFeedClient, TemplateCtx, TemplateParams,
 };
@@ -118,6 +118,9 @@ impl FeedClients for MockClients {
     }
     fn atlassian(&self) -> Option<Arc<dyn AtlassianFeedClient>> {
         Some(self.atlassian.clone())
+    }
+    fn github(&self) -> Option<Arc<dyn GithubFeedClient>> {
+        None
     }
 }
 
@@ -342,6 +345,9 @@ async fn returns_auth_when_atlassian_not_connected() {
             None
         }
         fn atlassian(&self) -> Option<Arc<dyn AtlassianFeedClient>> {
+            None
+        }
+        fn github(&self) -> Option<Arc<dyn GithubFeedClient>> {
             None
         }
     }

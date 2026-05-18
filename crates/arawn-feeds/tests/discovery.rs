@@ -12,7 +12,7 @@ use arawn_feeds::templates::confluence::SpaceArchiveTemplate;
 use arawn_feeds::templates::jira::ProjectTrackerTemplate;
 use arawn_feeds::templates::slack::ChannelArchiveTemplate;
 use arawn_feeds::{
-    AtlassianFeedClient, CalendarFeedClient, ConfluencePageBody, ConfluencePageMeta,
+    AtlassianFeedClient, GithubFeedClient, CalendarFeedClient, ConfluencePageBody, ConfluencePageMeta,
     ConfluenceSpaceMeta, DriveFeedClient, FeedClients, FeedError, FeedTemplate, GmailFeedClient,
     JiraIssueDetail, JiraIssueMeta, JiraProjectMeta, SlackAuthInfo, SlackChannel, SlackFeedClient,
     SlackHistoryPage, TemplateCtx,
@@ -125,6 +125,9 @@ impl FeedClients for StubClients {
                 spaces: self.confluence_spaces.clone(),
             }))
         }
+    }
+    fn github(&self) -> Option<Arc<dyn GithubFeedClient>> {
+        None
     }
 }
 

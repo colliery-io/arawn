@@ -1229,9 +1229,6 @@ async fn main() -> Result<()> {
                  docs/src/integrations/github.md."
             );
         }
-        // Currently unused — feeds wire-up lands in T-0319.
-        let _ = github_integration_for_feeds;
-
         // Register Slack. No sharing with Google — different OAuth ecosystem.
         let slack_integration_for_feeds: Option<Arc<arawn_integrations::slack::SlackIntegration>>;
         if let Some((client_id, client_secret)) = resolve(
@@ -1330,6 +1327,9 @@ async fn main() -> Result<()> {
                     }
                     if let Some(at) = atlassian_integration_for_feeds.as_ref() {
                         clients = clients.with_atlassian(Arc::clone(at));
+                    }
+                    if let Some(gh) = github_integration_for_feeds.as_ref() {
+                        clients = clients.with_github(Arc::clone(gh));
                     }
                     let clients: Arc<dyn arawn_feeds::FeedClients> = Arc::new(clients);
 

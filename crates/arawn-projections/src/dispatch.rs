@@ -14,6 +14,7 @@ use crate::atlassian;
 use crate::calendar;
 use crate::drive;
 use crate::error::ProjectionError;
+use crate::github;
 use crate::gmail;
 use crate::slack;
 use crate::store::{ProjectionStore, WriteOutcome};
@@ -109,6 +110,18 @@ pub fn project_feed_dir(
             combined.updated += o.updated;
             combined.unchanged += o.unchanged;
             combined
+        }
+        "github" => {
+            // T-0319 wires notifications; T-0320 / T-0321 add the
+            // other two subdirs to this branch.
+            let parsed = github::walk_notifications_dir(feed_id, feed_dir)?;
+            dedup_and_write_single_type(
+                store,
+                github::NOTIFICATIONS_FEED_TYPE,
+                feed_id,
+                parsed,
+                |p| p.source_id.clone(),
+            )?
         }
         other => {
             warn!(

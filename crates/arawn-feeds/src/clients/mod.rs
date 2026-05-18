@@ -20,6 +20,7 @@ use std::sync::Arc;
 pub mod atlassian;
 pub mod calendar;
 pub mod drive;
+pub mod github;
 pub mod gmail;
 pub mod slack;
 
@@ -31,6 +32,7 @@ pub use calendar::{CalendarFeedClient, RealCalendarClient};
 pub use drive::{
     DriveFeedClient, DriveFile, RealDriveClient, export_for, is_unsupported_google_native,
 };
+pub use github::{GithubFeedClient, RealGithubClient};
 pub use gmail::{GmailFeedClient, RealGmailClient};
 pub use slack::{
     ChannelKind, RealSlackClient, SlackAuthInfo, SlackChannel, SlackFeedClient, SlackHistoryPage,
@@ -46,6 +48,7 @@ pub trait FeedClients: Send + Sync {
     fn gmail(&self) -> Option<Arc<dyn GmailFeedClient>>;
     fn drive(&self) -> Option<Arc<dyn DriveFeedClient>>;
     fn atlassian(&self) -> Option<Arc<dyn AtlassianFeedClient>>;
+    fn github(&self) -> Option<Arc<dyn GithubFeedClient>>;
 }
 
 /// No-op `FeedClients`: every provider returns `None`. Useful for
@@ -69,6 +72,9 @@ impl FeedClients for NoopClients {
     fn atlassian(&self) -> Option<Arc<dyn AtlassianFeedClient>> {
         None
     }
+    fn github(&self) -> Option<Arc<dyn GithubFeedClient>> {
+        None
+    }
 }
 
 /// Production bundle. Built at server boot from the integrations the
@@ -81,6 +87,7 @@ pub struct RealClients {
     gmail: Option<Arc<dyn GmailFeedClient>>,
     drive: Option<Arc<dyn DriveFeedClient>>,
     atlassian: Option<Arc<dyn AtlassianFeedClient>>,
+    github: Option<Arc<dyn GithubFeedClient>>,
 }
 
 impl RealClients {
@@ -127,6 +134,14 @@ impl RealClients {
         self.atlassian = Some(Arc::new(RealAtlassianClient::new(integration)));
         self
     }
+
+    pub fn with_github(
+        mut self,
+        integration: Arc<arawn_integrations::github::GithubIntegration>,
+    ) -> Self {
+        self.github = Some(Arc::new(RealGithubClient::new(integration)));
+        self
+    }
 }
 
 impl FeedClients for RealClients {
@@ -144,5 +159,8 @@ impl FeedClients for RealClients {
     }
     fn atlassian(&self) -> Option<Arc<dyn AtlassianFeedClient>> {
         self.atlassian.clone()
+    }
+    fn github(&self) -> Option<Arc<dyn GithubFeedClient>> {
+        self.github.clone()
     }
 }

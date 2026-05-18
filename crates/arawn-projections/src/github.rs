@@ -409,6 +409,39 @@ fn truncate_chars(s: &str, max: usize) -> String {
     out
 }
 
+/// Walk a `github/notifications` feed dir. Each `.json` under
+/// `<feed_dir>/notifications/` is one raw notification payload.
+pub fn walk_notifications_dir(
+    feed_id: &str,
+    feed_dir: &std::path::Path,
+) -> Result<Vec<GithubNotificationProjection>, crate::error::ProjectionError> {
+    let dir = feed_dir.join("notifications");
+    if !dir.exists() {
+        return Ok(Vec::new());
+    }
+    let mut out = Vec::new();
+    let entries = std::fs::read_dir(&dir).map_err(|e| {
+        crate::error::ProjectionError::Storage(format!("read_dir {}: {e}", dir.display()))
+    })?;
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.extension().and_then(|e| e.to_str()) != Some("json") {
+            continue;
+        }
+        let body = std::fs::read_to_string(&path).map_err(|e| {
+            crate::error::ProjectionError::Storage(format!("read {}: {e}", path.display()))
+        })?;
+        let v: Value = match serde_json::from_str(&body) {
+            Ok(v) => v,
+            Err(_) => continue, // partial/corrupt file — skip silently
+        };
+        if let Some(p) = from_notification_json(feed_id, &v) {
+            out.push(p);
+        }
+    }
+    Ok(out)
+}
+
 /// Extract `(owner, repo, number)` from a GitHub web URL like
 /// `https://github.com/openai/codex/issues/123`.
 fn parse_html_url_owner_repo_number(url: &str) -> Option<(String, String, i64)> {
@@ -557,6 +590,38 @@ mod tests {
         // No html_url → not an issue/PR.
         let v = json!({"title":"x"});
         assert!(from_issue_or_pr_json("f", &v).is_none());
+    }
+
+    #[test]
+    fn walks_notifications_dir_skipping_garbage() {
+        let tmp = tempfile::tempdir().unwrap();
+        let notif_dir = tmp.path().join("notifications");
+        std::fs::create_dir(&notif_dir).unwrap();
+        std::fs::write(
+            notif_dir.join("1.json"),
+            json!({
+                "id":"1","unread":true,"reason":"review_requested",
+                "updated_at":"2026-05-18T10:00:00Z","last_read_at":null,
+                "subject":{"title":"a","url":"u","type":"Issue"},
+                "repository":{"name":"r","owner":{"login":"o"}}
+            })
+            .to_string(),
+        )
+        .unwrap();
+        // Garbage file — should be silently skipped.
+        std::fs::write(notif_dir.join("bad.json"), "not json").unwrap();
+        // Wrong extension — ignored.
+        std::fs::write(notif_dir.join("ignored.txt"), "irrelevant").unwrap();
+        let parsed = walk_notifications_dir("feed-1", tmp.path()).unwrap();
+        assert_eq!(parsed.len(), 1);
+        assert_eq!(parsed[0].source_id, "1");
+    }
+
+    #[test]
+    fn walks_returns_empty_when_dir_missing() {
+        let tmp = tempfile::tempdir().unwrap();
+        let parsed = walk_notifications_dir("feed-1", tmp.path()).unwrap();
+        assert!(parsed.is_empty());
     }
 
     #[test]

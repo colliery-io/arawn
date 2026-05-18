@@ -9,7 +9,7 @@ use serde_json::{Value, json};
 
 use arawn_feeds::templates::drive::RecentTemplate;
 use arawn_feeds::{
-    AtlassianFeedClient, CalendarFeedClient, DataLayout, DriveFeedClient, DriveFile, FeedClients,
+    AtlassianFeedClient, GithubFeedClient, CalendarFeedClient, DataLayout, DriveFeedClient, DriveFile, FeedClients,
     FeedError, FeedMeta, FeedTemplate, GmailFeedClient, MetaStore, SlackFeedClient, TemplateCtx,
     TemplateParams,
 };
@@ -70,6 +70,9 @@ impl FeedClients for MockClients {
         Some(self.drive.clone())
     }
     fn atlassian(&self) -> Option<Arc<dyn AtlassianFeedClient>> {
+        None
+    }
+    fn github(&self) -> Option<Arc<dyn GithubFeedClient>> {
         None
     }
 }
@@ -198,6 +201,9 @@ async fn returns_auth_when_drive_not_connected() {
             None
         }
         fn atlassian(&self) -> Option<Arc<dyn AtlassianFeedClient>> {
+            None
+        }
+        fn github(&self) -> Option<Arc<dyn GithubFeedClient>> {
             None
         }
     }
