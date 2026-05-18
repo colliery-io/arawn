@@ -728,13 +728,30 @@ impl Tool for WorkstreamBindTool {
     }
 }
 
+/// Optional teardown hook for `WorkstreamUnbindTool`. Receives the
+/// list of feed_ids that just left the `feeds` table so the caller
+/// can drop their live cron registrations.
+///
+/// I-0050 / T-0329 wiring: the binary implements this against
+/// `FeedRuntime::unregister_cron` so unbound github scope feeds stop
+/// firing without waiting for a process restart.
+pub trait UnbindHook: Send + Sync {
+    fn on_unbind(&self, removed_feed_ids: &[String]);
+}
+
 pub struct WorkstreamUnbindTool {
     store: Arc<Mutex<Store>>,
+    hook: Option<Arc<dyn UnbindHook>>,
 }
 
 impl WorkstreamUnbindTool {
     pub fn new(store: Arc<Mutex<Store>>) -> Self {
-        Self { store }
+        Self { store, hook: None }
+    }
+
+    pub fn with_unbind_hook(mut self, hook: Arc<dyn UnbindHook>) -> Self {
+        self.hook = Some(hook);
+        self
     }
 }
 
@@ -783,35 +800,70 @@ impl Tool for WorkstreamUnbindTool {
                 "name and feed_id are required".to_string(),
             ));
         }
-        let store = self.store.lock().unwrap();
-        match store.remove_workstream_binding(&name, &feed_id) {
-            Ok(()) => {
-                // I-0050 T-0326/0327 — sweep child feeds for github
-                // scope unbinds. Repo unbind drops a single feed; org
-                // unbind drops every `github-repo:owner/*` feed
-                // registered via the org expand.
-                match parse_github_scope(&feed_id) {
-                    Some(GithubScope::Repo { owner, name: repo }) => {
-                        let feed_id_full = format!("github-repo:{owner}/{repo}");
-                        let _ = delete_feed(&store, &feed_id_full);
+        let removed_feed_ids = {
+            let store = self.store.lock().unwrap();
+            match store.remove_workstream_binding(&name, &feed_id) {
+                Ok(()) => {
+                    // I-0050 T-0326/0327 — sweep child feeds for github
+                    // scope unbinds. Repo unbind drops a single feed;
+                    // org unbind drops every `github-repo:owner/*`
+                    // feed registered via the org expand. T-0329 fires
+                    // the hook so live cron schedules go too.
+                    match parse_github_scope(&feed_id) {
+                        Some(GithubScope::Repo { owner, name: repo }) => {
+                            let feed_id_full = format!("github-repo:{owner}/{repo}");
+                            let _ = delete_feed(&store, &feed_id_full);
+                            vec![feed_id_full]
+                        }
+                        Some(GithubScope::Org { owner }) => {
+                            // Discover the child feed_ids before
+                            // deleting them so the hook can unregister
+                            // each cron.
+                            let pattern = format!("github-repo:{owner}/%");
+                            let conn = store.database().conn();
+                            let removed = collect_child_feed_ids(conn, &pattern);
+                            let _ = conn.execute(
+                                "DELETE FROM feeds WHERE id LIKE ?1",
+                                rusqlite::params![&pattern],
+                            );
+                            removed
+                        }
+                        None => Vec::new(),
                     }
-                    Some(GithubScope::Org { owner }) => {
-                        // LIKE-prefix delete on the feeds table.
-                        let pattern = format!("github-repo:{owner}/%");
-                        let _ = store.database().conn().execute(
-                            "DELETE FROM feeds WHERE id LIKE ?1",
-                            rusqlite::params![pattern],
-                        );
-                    }
-                    None => {}
                 }
-                Ok(ToolOutput::success(
-                    json!({"name": name, "feed_id": feed_id}).to_string(),
-                ))
+                Err(e) => {
+                    return Ok(ToolOutput::error(format!("failed: {e}")));
+                }
             }
-            Err(e) => Ok(ToolOutput::error(format!("failed: {e}"))),
+        };
+        // Fire the hook outside the store lock — it spawns its own
+        // async work and shouldn't hold our mutex.
+        if !removed_feed_ids.is_empty()
+            && let Some(hook) = self.hook.as_ref()
+        {
+            hook.on_unbind(&removed_feed_ids);
         }
+        Ok(ToolOutput::success(
+            json!({
+                "name": name,
+                "feed_id": feed_id,
+                "removed_feed_ids": removed_feed_ids,
+            })
+            .to_string(),
+        ))
     }
+}
+
+fn collect_child_feed_ids(conn: &rusqlite::Connection, pattern: &str) -> Vec<String> {
+    let mut stmt = match conn.prepare("SELECT id FROM feeds WHERE id LIKE ?1") {
+        Ok(s) => s,
+        Err(_) => return Vec::new(),
+    };
+    let rows = match stmt.query_map(rusqlite::params![pattern], |r| r.get::<_, String>(0)) {
+        Ok(r) => r,
+        Err(_) => return Vec::new(),
+    };
+    rows.flatten().collect()
 }
 
 // ============================================================================
@@ -1841,6 +1893,133 @@ mod tests {
         let body: serde_json::Value = serde_json::from_str(&out.content).unwrap();
         let sup = body["superseded"].as_array().unwrap();
         assert_eq!(sup.len(), 2);
+    }
+
+    // T-0329 — unbind hook fires with the right list of feed_ids.
+
+    struct CapturingUnbindHook {
+        captured: Mutex<Vec<Vec<String>>>,
+    }
+    impl UnbindHook for CapturingUnbindHook {
+        fn on_unbind(&self, removed_feed_ids: &[String]) {
+            self.captured.lock().unwrap().push(removed_feed_ids.to_vec());
+        }
+    }
+
+    #[tokio::test]
+    async fn unbind_hook_fires_with_repo_feed_id() {
+        let (tmp, store, _) = setup();
+        store
+            .lock()
+            .unwrap()
+            .create_workstream(&Workstream::new("pat", tmp.path().join("ws/pat")))
+            .unwrap();
+        // Hand-seed: binding + feed row.
+        {
+            let s = store.lock().unwrap();
+            s.add_workstream_binding("pat", "github:repo:openai/codex").unwrap();
+            s.database()
+                .conn()
+                .execute(
+                    "INSERT INTO feeds (id, template, params, cadence, enabled, created_at, updated_at) \
+                     VALUES ('github-repo:openai/codex', 'github/repo-mirror', '{}', '*/30 * * * *', 1, ?1, ?1)",
+                    rusqlite::params!["2026-05-18T00:00:00Z"],
+                )
+                .unwrap();
+        }
+        let hook = Arc::new(CapturingUnbindHook {
+            captured: Mutex::new(Vec::new()),
+        });
+        let unbind = WorkstreamUnbindTool::new(store.clone())
+            .with_unbind_hook(hook.clone() as Arc<dyn UnbindHook>);
+        let _ = unbind
+            .execute(
+                &test_ctx(&tmp),
+                json!({"name": "pat", "feed_id": "github:repo:openai/codex"}),
+            )
+            .await
+            .unwrap();
+        let captured = hook.captured.lock().unwrap();
+        assert_eq!(captured.len(), 1);
+        assert_eq!(captured[0], vec!["github-repo:openai/codex".to_string()]);
+    }
+
+    #[tokio::test]
+    async fn unbind_hook_fires_with_all_org_child_ids() {
+        let (tmp, store, _) = setup();
+        store
+            .lock()
+            .unwrap()
+            .create_workstream(&Workstream::new("ws-org", tmp.path().join("ws/o")))
+            .unwrap();
+        {
+            let s = store.lock().unwrap();
+            s.add_workstream_binding("ws-org", "github:org:openai").unwrap();
+            let now = "2026-05-18T00:00:00Z";
+            for feed_id in ["github-repo:openai/codex", "github-repo:openai/tinker"] {
+                s.database()
+                    .conn()
+                    .execute(
+                        "INSERT INTO feeds (id, template, params, cadence, enabled, created_at, updated_at) \
+                         VALUES (?1, 'github/repo-mirror', '{}', '*/30 * * * *', 1, ?2, ?2)",
+                        rusqlite::params![feed_id, now],
+                    )
+                    .unwrap();
+            }
+        }
+        let hook = Arc::new(CapturingUnbindHook {
+            captured: Mutex::new(Vec::new()),
+        });
+        let unbind = WorkstreamUnbindTool::new(store.clone())
+            .with_unbind_hook(hook.clone() as Arc<dyn UnbindHook>);
+        let _ = unbind
+            .execute(
+                &test_ctx(&tmp),
+                json!({"name": "ws-org", "feed_id": "github:org:openai"}),
+            )
+            .await
+            .unwrap();
+        let captured = hook.captured.lock().unwrap();
+        assert_eq!(captured.len(), 1);
+        let mut got = captured[0].clone();
+        got.sort();
+        assert_eq!(
+            got,
+            vec![
+                "github-repo:openai/codex".to_string(),
+                "github-repo:openai/tinker".to_string()
+            ]
+        );
+    }
+
+    #[tokio::test]
+    async fn unbind_hook_not_fired_for_plain_feed_id() {
+        // Non-github bindings shouldn't trigger the hook with random
+        // ids — `removed_feed_ids` is empty and the hook is skipped.
+        let (tmp, store, _) = setup();
+        store
+            .lock()
+            .unwrap()
+            .create_workstream(&Workstream::new("pat", tmp.path().join("ws/pat")))
+            .unwrap();
+        store
+            .lock()
+            .unwrap()
+            .add_workstream_binding("pat", "gh-notifs-personal")
+            .unwrap();
+        let hook = Arc::new(CapturingUnbindHook {
+            captured: Mutex::new(Vec::new()),
+        });
+        let unbind = WorkstreamUnbindTool::new(store.clone())
+            .with_unbind_hook(hook.clone() as Arc<dyn UnbindHook>);
+        let _ = unbind
+            .execute(
+                &test_ctx(&tmp),
+                json!({"name": "pat", "feed_id": "gh-notifs-personal"}),
+            )
+            .await
+            .unwrap();
+        assert!(hook.captured.lock().unwrap().is_empty());
     }
 
     #[tokio::test]

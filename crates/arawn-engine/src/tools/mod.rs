@@ -70,7 +70,7 @@ pub use weekly::{
     WeeklyListPrioritiesTool, WeeklyRejectPriorityTool, WeeklyRunTool,
 };
 pub use workstream::{
-    BindBackfillHook, SessionWorkstream, WorkstreamBindTool, WorkstreamCreateTool,
+    BindBackfillHook, SessionWorkstream, UnbindHook, WorkstreamBindTool, WorkstreamCreateTool,
     WorkstreamDeleteTool, WorkstreamDescribeTool, WorkstreamListTool, WorkstreamPromoteTool,
     WorkstreamProposeOntologyTool, WorkstreamShowTool, WorkstreamSwitchTool, WorkstreamUnbindTool,
 };

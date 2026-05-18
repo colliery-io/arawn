@@ -813,6 +813,14 @@ async fn main() -> Result<()> {
             std::sync::RwLock<Option<Arc<arawn_integrations::github::GithubIntegration>>>,
         > = Arc::new(std::sync::RwLock::new(None));
 
+        // T-0329 — late-bound FeedRuntime cell so bind / unbind hooks
+        // can register / unregister cron schedules without waiting for
+        // a process restart. Populated after `arawn_feeds::start`
+        // returns. None means hot register/unregister is a no-op.
+        let feed_runtime_for_hooks: Arc<
+            std::sync::RwLock<Option<Arc<arawn_feeds::FeedRuntime>>>,
+        > = Arc::new(std::sync::RwLock::new(None));
+
         {
             let mut bind_tool = arawn_engine::WorkstreamBindTool::new(service.shared_store());
             if let Some(ref runner) = extractor_runner {
@@ -829,6 +837,9 @@ async fn main() -> Result<()> {
                         std::sync::RwLock<
                             Option<Arc<arawn_integrations::github::GithubIntegration>>,
                         >,
+                    >,
+                    feed_runtime: Arc<
+                        std::sync::RwLock<Option<Arc<arawn_feeds::FeedRuntime>>>,
                     >,
                 }
                 impl arawn_engine::BindBackfillHook for ExtractorBindHook {
@@ -857,24 +868,45 @@ async fn main() -> Result<()> {
                             // I-0050 T-0327 — for org binds, kick off
                             // a list_org_repos expansion that registers
                             // one github-repo:owner/name feed per repo.
-                            if let Some(
-                                arawn_engine::tools::workstream::GithubScope::Org { owner },
-                            ) = arawn_engine::tools::workstream::parse_github_scope(feed_id)
-                            {
-                                let gh = self.github.read().unwrap().clone();
-                                if let Some(gh) = gh {
-                                    let store = Arc::clone(&self.store);
-                                    let ws = workstream_name.to_string();
-                                    tokio::spawn(async move {
-                                        expand_github_org(gh, store, ws, owner).await;
-                                    });
-                                } else {
-                                    debug!(
-                                        owner = %owner,
-                                        "bind hook: github integration not wired; \
-                                         skipping org expand. Re-bind after restart."
-                                    );
+                            match arawn_engine::tools::workstream::parse_github_scope(feed_id) {
+                                Some(arawn_engine::tools::workstream::GithubScope::Org {
+                                    owner,
+                                }) => {
+                                    let gh = self.github.read().unwrap().clone();
+                                    if let Some(gh) = gh {
+                                        let store = Arc::clone(&self.store);
+                                        let frt = self.feed_runtime.read().unwrap().clone();
+                                        let ws = workstream_name.to_string();
+                                        tokio::spawn(async move {
+                                            expand_github_org(gh, store, frt, ws, owner).await;
+                                        });
+                                    } else {
+                                        debug!(
+                                            owner = %owner,
+                                            "bind hook: github integration not wired; \
+                                             skipping org expand. Re-bind after restart."
+                                        );
+                                    }
                                 }
+                                Some(arawn_engine::tools::workstream::GithubScope::Repo {
+                                    owner,
+                                    name,
+                                }) => {
+                                    // T-0329 — hot-register the cron
+                                    // schedule for the newly-inserted
+                                    // github-repo:owner/name feed so it
+                                    // starts polling without a restart.
+                                    let frt = self.feed_runtime.read().unwrap().clone();
+                                    if let Some(frt) = frt {
+                                        let store = Arc::clone(&self.store);
+                                        let feed_id_full =
+                                            format!("github-repo:{owner}/{name}");
+                                        tokio::spawn(async move {
+                                            register_one_feed(frt, store, &feed_id_full).await;
+                                        });
+                                    }
+                                }
+                                None => {}
                             }
                             return;
                         }
@@ -910,14 +942,44 @@ async fn main() -> Result<()> {
                     runner: Arc::clone(runner),
                     store: service.shared_store(),
                     github: Arc::clone(&github_for_bind_hook),
+                    feed_runtime: Arc::clone(&feed_runtime_for_hooks),
                 });
                 bind_tool = bind_tool.with_backfill_hook(hook);
             }
             registry.register(Box::new(bind_tool));
         }
-        registry.register(Box::new(arawn_engine::WorkstreamUnbindTool::new(
-            service.shared_store(),
-        )));
+        {
+            let mut unbind_tool =
+                arawn_engine::WorkstreamUnbindTool::new(service.shared_store());
+            // T-0329 — drop the live cron schedule for each feed_id
+            // the unbind removed from the feeds table.
+            struct FeedRuntimeUnbindHook {
+                feed_runtime:
+                    Arc<std::sync::RwLock<Option<Arc<arawn_feeds::FeedRuntime>>>>,
+            }
+            impl arawn_engine::UnbindHook for FeedRuntimeUnbindHook {
+                fn on_unbind(&self, removed_feed_ids: &[String]) {
+                    let Some(frt) = self.feed_runtime.read().unwrap().clone() else {
+                        return;
+                    };
+                    for id in removed_feed_ids.iter().cloned() {
+                        let frt = Arc::clone(&frt);
+                        tokio::spawn(async move {
+                            if let Err(e) = frt.unregister_cron(&id).await {
+                                warn!(feed_id = %id, error = %e,
+                                      "unregister_cron failed");
+                            }
+                        });
+                    }
+                }
+            }
+            let hook: Arc<dyn arawn_engine::UnbindHook> =
+                Arc::new(FeedRuntimeUnbindHook {
+                    feed_runtime: Arc::clone(&feed_runtime_for_hooks),
+                });
+            unbind_tool = unbind_tool.with_unbind_hook(hook);
+            registry.register(Box::new(unbind_tool));
+        }
         registry.register(Box::new(arawn_engine::WorkstreamDeleteTool::new(
             service.shared_store(),
             active_workstream.clone(),
@@ -1416,7 +1478,13 @@ async fn main() -> Result<()> {
                         Ok(runtime) => {
                             // Hand the live runtime to the service so
                             // `/watch` and `/feeds` route through it.
-                            service.set_feed_runtime(Arc::new(runtime));
+                            let runtime = Arc::new(runtime);
+                            service.set_feed_runtime(Arc::clone(&runtime));
+                            // T-0329 — also expose the runtime to the
+                            // bind/unbind hooks so they can hot-add or
+                            // hot-remove cron schedules.
+                            *feed_runtime_for_hooks.write().unwrap() =
+                                Some(Arc::clone(&runtime));
                             info!("feed runtime started");
                         }
                         Err(e) => warn!(error = %e, "feed runtime failed to start"),
@@ -2248,6 +2316,7 @@ fn render_usage_human(s: &arawn_llm::usage::UsageSummary) -> String {
 async fn expand_github_org(
     github: Arc<arawn_integrations::github::GithubIntegration>,
     store: Arc<std::sync::Mutex<arawn_storage::Store>>,
+    feed_runtime: Option<Arc<arawn_feeds::FeedRuntime>>,
     workstream: String,
     owner: String,
 ) {
@@ -2263,34 +2332,88 @@ async fn expand_github_org(
     info!(owner = %owner, count = repos.len(), workstream = %workstream,
           "org-expand: registering per-repo feeds");
     let now = chrono::Utc::now().to_rfc3339();
-    let store_guard = match store.lock() {
-        Ok(g) => g,
-        Err(_) => {
-            warn!("org-expand: store mutex poisoned");
-            return;
+    let mut new_feed_ids: Vec<String> = Vec::new();
+    {
+        let store_guard = match store.lock() {
+            Ok(g) => g,
+            Err(_) => {
+                warn!("org-expand: store mutex poisoned");
+                return;
+            }
+        };
+        let conn = store_guard.database().conn();
+        for repo in repos {
+            let name = repo
+                .get("name")
+                .and_then(|n| n.as_str())
+                .unwrap_or("")
+                .to_string();
+            if name.is_empty() {
+                continue;
+            }
+            let feed_id = format!("github-repo:{owner}/{name}");
+            let params_json =
+                serde_json::json!({"owner": &owner, "name": &name}).to_string();
+            // Idempotent insert — skip if already exists.
+            match conn.execute(
+                "INSERT OR IGNORE INTO feeds \
+                 (id, template, params, cadence, enabled, created_at, updated_at) \
+                 VALUES (?1, 'github/repo-mirror', ?2, '*/30 * * * *', 1, ?3, ?3)",
+                rusqlite::params![&feed_id, &params_json, &now],
+            ) {
+                Ok(rows) if rows > 0 => new_feed_ids.push(feed_id),
+                Ok(_) => {} // already existed → no cron register
+                Err(e) => warn!(feed_id = %feed_id, error = %e,
+                                "org-expand: insert failed"),
+            }
         }
-    };
-    let conn = store_guard.database().conn();
-    for repo in repos {
-        let name = repo
-            .get("name")
-            .and_then(|n| n.as_str())
-            .unwrap_or("")
-            .to_string();
-        if name.is_empty() {
-            continue;
+    }
+    // T-0329 — hot-register cron for each newly-inserted feed so the
+    // org expand becomes live without a restart.
+    if let Some(frt) = feed_runtime {
+        for id in new_feed_ids {
+            register_one_feed(Arc::clone(&frt), Arc::clone(&store), &id).await;
         }
-        let feed_id = format!("github-repo:{owner}/{name}");
-        let params_json = serde_json::json!({"owner": &owner, "name": &name}).to_string();
-        // Idempotent insert — skip if already exists.
-        let _ = conn.execute(
-            "INSERT OR IGNORE INTO feeds \
-             (id, template, params, cadence, enabled, created_at, updated_at) \
-             VALUES (?1, 'github/repo-mirror', ?2, '*/30 * * * *', 1, ?3, ?3)",
-            rusqlite::params![&feed_id, &params_json, &now],
-        );
     }
     let _ = workstream; // future: persist which workstream owns these
+}
+
+/// T-0329 — fetch a feed record by id and register its cron schedule
+/// with the live runtime. Idempotent: cloacina's `register_one`
+/// deletes any pre-existing schedule for the same workflow_name
+/// before inserting a new one.
+async fn register_one_feed(
+    feed_runtime: Arc<arawn_feeds::FeedRuntime>,
+    store: Arc<std::sync::Mutex<arawn_storage::Store>>,
+    feed_id: &str,
+) {
+    let record = {
+        let s = match store.lock() {
+            Ok(g) => g,
+            Err(_) => {
+                warn!(feed_id = %feed_id, "register_one_feed: store mutex poisoned");
+                return;
+            }
+        };
+        let feed_store = arawn_feeds::FeedStore::new(s.database().conn());
+        match feed_store.get(feed_id) {
+            Ok(Some(r)) => r,
+            Ok(None) => {
+                debug!(feed_id = %feed_id,
+                       "register_one_feed: row not found; skipping");
+                return;
+            }
+            Err(e) => {
+                warn!(feed_id = %feed_id, error = %e,
+                      "register_one_feed: lookup failed");
+                return;
+            }
+        }
+    };
+    if let Err(e) = feed_runtime.register_feed_runtime(&record).await {
+        warn!(feed_id = %feed_id, error = %e,
+              "register_one_feed: cron registration failed");
+    }
 }
 
 fn dirs_path() -> Option<String> {

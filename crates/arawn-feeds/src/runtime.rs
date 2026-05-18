@@ -121,6 +121,18 @@ impl FeedRuntime {
         register_one(&self.runner, &self.runtime_ctx, record).await
     }
 
+    /// Unregister the cloacina cron schedule for `feed_id`. Used by
+    /// the bind-driven teardown path so an unbound feed stops firing
+    /// without waiting for a process restart.
+    ///
+    /// Does NOT delete the feed row or the on-disk feed_dir — the
+    /// caller is responsible for that (typically already done by
+    /// `WorkstreamUnbindTool`'s raw-SQL row delete). Idempotent: if
+    /// no cron schedule matches, returns Ok.
+    pub async fn unregister_cron(&self, feed_id: &str) -> Result<(), FeedError> {
+        delete_schedule_for(&self.runner, &feed_workflow_name(feed_id)).await
+    }
+
     pub fn runtime_ctx(&self) -> &FeedRuntimeContext {
         &self.runtime_ctx
     }
