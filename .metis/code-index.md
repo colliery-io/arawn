@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-18T12:47:18Z | 359 files | Python, Rust
+> Generated: 2026-05-18T18:28:00Z | 366 files | Python, Rust
 
 ## Project Structure
 
@@ -170,6 +170,7 @@
 │   │   │   │   ├── atlassian.rs
 │   │   │   │   ├── calendar.rs
 │   │   │   │   ├── drive.rs
+│   │   │   │   ├── github.rs
 │   │   │   │   ├── gmail.rs
 │   │   │   │   ├── mod.rs
 │   │   │   │   └── slack.rs
@@ -194,6 +195,12 @@
 │   │   │   │   │   ├── folder_sync.rs
 │   │   │   │   │   ├── mod.rs
 │   │   │   │   │   └── recent.rs
+│   │   │   │   ├── github/
+│   │   │   │   │   ├── issues_and_prs.rs
+│   │   │   │   │   ├── mod.rs
+│   │   │   │   │   ├── notifications.rs
+│   │   │   │   │   ├── repo_mirror.rs
+│   │   │   │   │   └── review_queue.rs
 │   │   │   │   ├── gmail/
 │   │   │   │   │   ├── common.rs
 │   │   │   │   │   ├── inbox_archive.rs
@@ -222,6 +229,7 @@
 │   │       ├── drive_folder_sync.rs
 │   │       ├── drive_recent.rs
 │   │       ├── dynamic_register.rs
+│   │       ├── github_repo_mirror_smoke.rs
 │   │       ├── gmail_archive.rs
 │   │       ├── jira_trackers.rs
 │   │       ├── slack_channel_archive.rs
@@ -778,21 +786,22 @@
 -  `embed_batch` function L16-25 — `( &'a self, texts: &'a [&'a str], ) -> std::pin::Pin< Box<dyn std::future::Futur...`
 -  `DEFAULT_MODEL` variable L33 — `: &str`
 -  `FILE_LOG_FILTER` variable L36 — `: &str` — Default file log filter: debug for arawn crates, warn for third-party.
--  `main` function L39-1854 — `() -> Result<()>`
+-  `main` function L39-1917 — `() -> Result<()>`
 -  `Cli` struct L45-64 — `{ command: Option<Command>, data_dir: Option<String>, session: Option<Uuid>, lis...`
 -  `Command` enum L67-107 — `Serve | Tui | Plugin | Doctor | Usage`
--  `ExtractorBindHook` struct L817-820 — `{ runner: Arc<arawn_extractor::ExtractorRunner>, store: Arc<std::sync::Mutex<ara...`
--  `ExtractorBindHook` type L821-850 — `= ExtractorBindHook`
--  `on_bind` function L822-849 — `(&self, workstream_name: &str, feed_id: &str)`
--  `resolve_ceremony_tz` function L1422-1446 — `(kind: &str, raw: Option<&str>) -> chrono_tz::Tz`
--  `run_cli_via_server` function L1857-1959 — `(url: &str, prompt: &str, session_id: Option<Uuid>) -> Result<()>` — Run a CLI prompt by connecting to the running server via WebSocket.
--  `build_llm_client` function L1962-1983 — `(config: &arawn_bin::LlmConfig) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
--  `register_default_tools` function L1986-2032 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &arawn_bin::ArawnConfig, d...` — Register all default tools into the registry.
--  `connect_mcp_servers` function L2035-2079 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
--  `register_workflow_tools` function L2082-2099 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
--  `build_engine_config` function L2101-2140 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
--  `render_usage_human` function L2143-2179 — `(s: &arawn_llm::usage::UsageSummary) -> String` — Human-readable renderer for the `arawn usage` command.
--  `dirs_path` function L2181-2190 — `() -> Option<String>`
+-  `ExtractorBindHook` struct L825-833 — `{ runner: Arc<arawn_extractor::ExtractorRunner>, store: Arc<std::sync::Mutex<ara...`
+-  `ExtractorBindHook` type L834-908 — `= ExtractorBindHook`
+-  `on_bind` function L835-907 — `(&self, workstream_name: &str, feed_id: &str)`
+-  `resolve_ceremony_tz` function L1485-1509 — `(kind: &str, raw: Option<&str>) -> chrono_tz::Tz`
+-  `run_cli_via_server` function L1920-2022 — `(url: &str, prompt: &str, session_id: Option<Uuid>) -> Result<()>` — Run a CLI prompt by connecting to the running server via WebSocket.
+-  `build_llm_client` function L2025-2046 — `(config: &arawn_bin::LlmConfig) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
+-  `register_default_tools` function L2049-2095 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &arawn_bin::ArawnConfig, d...` — Register all default tools into the registry.
+-  `connect_mcp_servers` function L2098-2142 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
+-  `register_workflow_tools` function L2145-2162 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
+-  `build_engine_config` function L2164-2203 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
+-  `render_usage_human` function L2206-2242 — `(s: &arawn_llm::usage::UsageSummary) -> String` — Human-readable renderer for the `arawn usage` command.
+-  `expand_github_org` function L2248-2294 — `( github: Arc<arawn_integrations::github::GithubIntegration>, store: Arc<std::sy...` — I-0050 T-0327 — list every repo under `owner` (via the github
+-  `dirs_path` function L2296-2305 — `() -> Option<String>`
 
 #### crates/arawn/src/plugin_cmd.rs
 
@@ -4212,14 +4221,18 @@
 - pub `WorkstreamBindTool` struct L574-577 — `{ store: Arc<Mutex<Store>>, hook: Option<Arc<dyn BindBackfillHook>> }` — the shim is enough to make `switch` / `show` work.
 - pub `new` function L580-582 — `(store: Arc<Mutex<Store>>) -> Self` — the shim is enough to make `switch` / `show` work.
 - pub `with_backfill_hook` function L584-587 — `(mut self, hook: Arc<dyn BindBackfillHook>) -> Self` — the shim is enough to make `switch` / `show` work.
-- pub `WorkstreamUnbindTool` struct L657-659 — `{ store: Arc<Mutex<Store>> }` — the shim is enough to make `switch` / `show` work.
-- pub `new` function L662-664 — `(store: Arc<Mutex<Store>>) -> Self` — the shim is enough to make `switch` / `show` work.
-- pub `WorkstreamPromoteTool` struct L730-733 — `{ store: Arc<Mutex<Store>>, router: Arc<crate::workstream_router::WorkstreamMemo...` — Move one entity from the `scratch` workstream into a named target.
-- pub `new` function L736-741 — `( store: Arc<Mutex<Store>>, router: Arc<crate::workstream_router::WorkstreamMemo...` — the shim is enough to make `switch` / `show` work.
-- pub `WorkstreamDeleteTool` struct L888-891 — `{ store: Arc<Mutex<Store>>, active: SessionWorkstream }` — the shim is enough to make `switch` / `show` work.
-- pub `new` function L894-896 — `(store: Arc<Mutex<Store>>, active: SessionWorkstream) -> Self` — the shim is enough to make `switch` / `show` work.
-- pub `WorkstreamProposeOntologyTool` struct L958-961 — `{ client: Arc<dyn arawn_llm::LlmClient>, model: String }` — LLM-backed tool: take a workstream description, return a proposed
-- pub `new` function L964-969 — `(client: Arc<dyn arawn_llm::LlmClient>, model: impl Into<String>) -> Self` — the shim is enough to make `switch` / `show` work.
+- pub `WorkstreamUnbindTool` struct L731-733 — `{ store: Arc<Mutex<Store>> }` — the shim is enough to make `switch` / `show` work.
+- pub `new` function L736-738 — `(store: Arc<Mutex<Store>>) -> Self` — the shim is enough to make `switch` / `show` work.
+- pub `WorkstreamPromoteTool` struct L825-828 — `{ store: Arc<Mutex<Store>>, router: Arc<crate::workstream_router::WorkstreamMemo...` — Move one entity from the `scratch` workstream into a named target.
+- pub `new` function L831-836 — `( store: Arc<Mutex<Store>>, router: Arc<crate::workstream_router::WorkstreamMemo...` — the shim is enough to make `switch` / `show` work.
+- pub `WorkstreamDeleteTool` struct L983-986 — `{ store: Arc<Mutex<Store>>, active: SessionWorkstream }` — the shim is enough to make `switch` / `show` work.
+- pub `new` function L989-991 — `(store: Arc<Mutex<Store>>, active: SessionWorkstream) -> Self` — the shim is enough to make `switch` / `show` work.
+- pub `WorkstreamProposeOntologyTool` struct L1053-1056 — `{ client: Arc<dyn arawn_llm::LlmClient>, model: String }` — LLM-backed tool: take a workstream description, return a proposed
+- pub `new` function L1059-1064 — `(client: Arc<dyn arawn_llm::LlmClient>, model: impl Into<String>) -> Self` — the shim is enough to make `switch` / `show` work.
+- pub `validate_github_scope_scheme` function L1228-1249 — `(feed_id: &str) -> Result<(), String>` — Same balanced-bracket scan as `arawn-extractor::llm_text::extract_json_block`.
+- pub `is_github_scope_binding` function L1255-1257 — `(feed_id: &str) -> bool` — Returns true if `feed_id` is a github scope-binding (either
+- pub `GithubScope` enum L1261-1264 — `Repo | Org` — Parsed github scope binding.
+- pub `parse_github_scope` function L1266-1285 — `(feed_id: &str) -> Option<GithubScope>` — the shim is enough to make `switch` / `show` work.
 -  `SessionWorkstream` type L30-48 — `= SessionWorkstream` — the shim is enough to make `switch` / `show` work.
 -  `SessionWorkstream` type L50-54 — `impl Default for SessionWorkstream` — the shim is enough to make `switch` / `show` work.
 -  `default` function L51-53 — `() -> Self` — the shim is enough to make `switch` / `show` work.
@@ -4261,64 +4274,84 @@
 -  `parameters_schema` function L528-537 — `(&self) -> Value` — the shim is enough to make `switch` / `show` work.
 -  `execute` function L539-560 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — the shim is enough to make `switch` / `show` work.
 -  `WorkstreamBindTool` type L579-588 — `= WorkstreamBindTool` — the shim is enough to make `switch` / `show` work.
--  `WorkstreamBindTool` type L591-655 — `impl Tool for WorkstreamBindTool` — the shim is enough to make `switch` / `show` work.
+-  `WorkstreamBindTool` type L591-729 — `impl Tool for WorkstreamBindTool` — the shim is enough to make `switch` / `show` work.
 -  `name` function L592-594 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
--  `description` function L596-599 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
--  `category` function L601-603 — `(&self) -> ToolCategory` — the shim is enough to make `switch` / `show` work.
--  `parameters_schema` function L605-614 — `(&self) -> Value` — the shim is enough to make `switch` / `show` work.
--  `execute` function L616-654 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — the shim is enough to make `switch` / `show` work.
--  `WorkstreamUnbindTool` type L661-665 — `= WorkstreamUnbindTool` — the shim is enough to make `switch` / `show` work.
--  `WorkstreamUnbindTool` type L668-720 — `impl Tool for WorkstreamUnbindTool` — the shim is enough to make `switch` / `show` work.
--  `name` function L669-671 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
--  `description` function L673-675 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
--  `category` function L677-679 — `(&self) -> ToolCategory` — the shim is enough to make `switch` / `show` work.
--  `parameters_schema` function L681-690 — `(&self) -> Value` — the shim is enough to make `switch` / `show` work.
--  `execute` function L692-719 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — the shim is enough to make `switch` / `show` work.
--  `WorkstreamPromoteTool` type L735-742 — `= WorkstreamPromoteTool` — the shim is enough to make `switch` / `show` work.
--  `WorkstreamPromoteTool` type L745-882 — `impl Tool for WorkstreamPromoteTool` — the shim is enough to make `switch` / `show` work.
--  `name` function L746-748 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
--  `description` function L750-755 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
--  `category` function L757-759 — `(&self) -> ToolCategory` — the shim is enough to make `switch` / `show` work.
--  `parameters_schema` function L761-770 — `(&self) -> Value` — the shim is enough to make `switch` / `show` work.
--  `execute` function L772-881 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — the shim is enough to make `switch` / `show` work.
--  `WorkstreamDeleteTool` type L893-897 — `= WorkstreamDeleteTool` — the shim is enough to make `switch` / `show` work.
--  `WorkstreamDeleteTool` type L900-948 — `impl Tool for WorkstreamDeleteTool` — the shim is enough to make `switch` / `show` work.
--  `name` function L901-903 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
--  `description` function L905-908 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
--  `category` function L910-912 — `(&self) -> ToolCategory` — the shim is enough to make `switch` / `show` work.
--  `parameters_schema` function L914-920 — `(&self) -> Value` — the shim is enough to make `switch` / `show` work.
--  `execute` function L922-947 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — the shim is enough to make `switch` / `show` work.
--  `WorkstreamProposeOntologyTool` type L963-970 — `= WorkstreamProposeOntologyTool` — the shim is enough to make `switch` / `show` work.
--  `WorkstreamProposeOntologyTool` type L973-1091 — `impl Tool for WorkstreamProposeOntologyTool` — the shim is enough to make `switch` / `show` work.
--  `name` function L974-976 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
--  `description` function L978-988 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
--  `is_read_only` function L990-992 — `(&self) -> bool` — the shim is enough to make `switch` / `show` work.
--  `category` function L994-996 — `(&self) -> ToolCategory` — the shim is enough to make `switch` / `show` work.
--  `parameters_schema` function L998-1009 — `(&self) -> Value` — the shim is enough to make `switch` / `show` work.
--  `execute` function L1011-1090 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — the shim is enough to make `switch` / `show` work.
--  `Proposal` struct L1061-1065 — `{ tags: Vec<String>, rationale: String }` — the shim is enough to make `switch` / `show` work.
--  `propose_llm_call` function L1096-1127 — `( client: &Arc<dyn arawn_llm::LlmClient>, model: &str, system: &str, user: &str,...` — Tiny streaming-drain helper.
--  `extract_json_block` function L1130-1154 — `(raw: &str) -> Option<&str>` — Same balanced-bracket scan as `arawn-extractor::llm_text::extract_json_block`.
--  `tests` module L1157-1537 — `-` — the shim is enough to make `switch` / `show` work.
--  `setup` function L1161-1170 — `() -> (tempfile::TempDir, Arc<Mutex<Store>>, SessionWorkstream)` — the shim is enough to make `switch` / `show` work.
--  `test_ctx` function L1172-1176 — `(tmp: &tempfile::TempDir) -> crate::context::EngineToolContext` — the shim is enough to make `switch` / `show` work.
--  `create_succeeds_with_valid_slug_description_and_ontology` function L1179-1200 — `()` — the shim is enough to make `switch` / `show` work.
--  `create_refuses_scratch` function L1203-1218 — `()` — the shim is enough to make `switch` / `show` work.
--  `create_refuses_missing_description` function L1221-1233 — `()` — the shim is enough to make `switch` / `show` work.
--  `create_refuses_empty_ontology` function L1236-1252 — `()` — the shim is enough to make `switch` / `show` work.
--  `create_dedupes_and_normalizes_ontology` function L1255-1274 — `()` — the shim is enough to make `switch` / `show` work.
--  `switch_updates_active` function L1277-1291 — `()` — the shim is enough to make `switch` / `show` work.
--  `switch_unknown_errors` function L1294-1303 — `()` — the shim is enough to make `switch` / `show` work.
--  `show_defaults_to_active` function L1306-1312 — `()` — the shim is enough to make `switch` / `show` work.
--  `describe_updates_description` function L1315-1338 — `()` — the shim is enough to make `switch` / `show` work.
--  `bind_and_unbind_round_trip` function L1341-1371 — `()` — the shim is enough to make `switch` / `show` work.
--  `delete_refuses_scratch` function L1374-1383 — `()` — the shim is enough to make `switch` / `show` work.
--  `delete_refuses_currently_active` function L1386-1401 — `()` — the shim is enough to make `switch` / `show` work.
--  `delete_soft_marks_archived` function L1404-1421 — `()` — the shim is enough to make `switch` / `show` work.
--  `promote_moves_entity_from_scratch_to_target` function L1424-1470 — `()` — the shim is enough to make `switch` / `show` work.
--  `promote_refuses_unknown_target` function L1473-1492 — `()` — the shim is enough to make `switch` / `show` work.
--  `show_includes_ontology` function L1495-1520 — `()` — the shim is enough to make `switch` / `show` work.
--  `list_marks_active` function L1523-1536 — `()` — the shim is enough to make `switch` / `show` work.
+-  `description` function L596-610 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
+-  `category` function L612-614 — `(&self) -> ToolCategory` — the shim is enough to make `switch` / `show` work.
+-  `parameters_schema` function L616-625 — `(&self) -> Value` — the shim is enough to make `switch` / `show` work.
+-  `execute` function L627-728 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — the shim is enough to make `switch` / `show` work.
+-  `WorkstreamUnbindTool` type L735-739 — `= WorkstreamUnbindTool` — the shim is enough to make `switch` / `show` work.
+-  `WorkstreamUnbindTool` type L742-815 — `impl Tool for WorkstreamUnbindTool` — the shim is enough to make `switch` / `show` work.
+-  `name` function L743-745 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
+-  `description` function L747-749 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
+-  `category` function L751-753 — `(&self) -> ToolCategory` — the shim is enough to make `switch` / `show` work.
+-  `parameters_schema` function L755-764 — `(&self) -> Value` — the shim is enough to make `switch` / `show` work.
+-  `execute` function L766-814 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — the shim is enough to make `switch` / `show` work.
+-  `WorkstreamPromoteTool` type L830-837 — `= WorkstreamPromoteTool` — the shim is enough to make `switch` / `show` work.
+-  `WorkstreamPromoteTool` type L840-977 — `impl Tool for WorkstreamPromoteTool` — the shim is enough to make `switch` / `show` work.
+-  `name` function L841-843 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
+-  `description` function L845-850 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
+-  `category` function L852-854 — `(&self) -> ToolCategory` — the shim is enough to make `switch` / `show` work.
+-  `parameters_schema` function L856-865 — `(&self) -> Value` — the shim is enough to make `switch` / `show` work.
+-  `execute` function L867-976 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — the shim is enough to make `switch` / `show` work.
+-  `WorkstreamDeleteTool` type L988-992 — `= WorkstreamDeleteTool` — the shim is enough to make `switch` / `show` work.
+-  `WorkstreamDeleteTool` type L995-1043 — `impl Tool for WorkstreamDeleteTool` — the shim is enough to make `switch` / `show` work.
+-  `name` function L996-998 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
+-  `description` function L1000-1003 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
+-  `category` function L1005-1007 — `(&self) -> ToolCategory` — the shim is enough to make `switch` / `show` work.
+-  `parameters_schema` function L1009-1015 — `(&self) -> Value` — the shim is enough to make `switch` / `show` work.
+-  `execute` function L1017-1042 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — the shim is enough to make `switch` / `show` work.
+-  `WorkstreamProposeOntologyTool` type L1058-1065 — `= WorkstreamProposeOntologyTool` — the shim is enough to make `switch` / `show` work.
+-  `WorkstreamProposeOntologyTool` type L1068-1186 — `impl Tool for WorkstreamProposeOntologyTool` — the shim is enough to make `switch` / `show` work.
+-  `name` function L1069-1071 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
+-  `description` function L1073-1083 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
+-  `is_read_only` function L1085-1087 — `(&self) -> bool` — the shim is enough to make `switch` / `show` work.
+-  `category` function L1089-1091 — `(&self) -> ToolCategory` — the shim is enough to make `switch` / `show` work.
+-  `parameters_schema` function L1093-1104 — `(&self) -> Value` — the shim is enough to make `switch` / `show` work.
+-  `execute` function L1106-1185 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — the shim is enough to make `switch` / `show` work.
+-  `Proposal` struct L1156-1160 — `{ tags: Vec<String>, rationale: String }` — the shim is enough to make `switch` / `show` work.
+-  `propose_llm_call` function L1191-1222 — `( client: &Arc<dyn arawn_llm::LlmClient>, model: &str, system: &str, user: &str,...` — Tiny streaming-drain helper.
+-  `find_workstreams_binding` function L1289-1303 — `( store: &Store, matcher: impl Fn(&str) -> bool, ) -> Vec<(String, String)>` — Walk active workstreams, return `(workstream_name, binding)` for
+-  `upsert_repo_mirror_feed` function L1312-1355 — `( store: &Store, feed_id: &str, owner: &str, repo: &str, ) -> Result<(), arawn_s...` — Insert (or refresh) a `github/repo-mirror` feed record by writing
+-  `delete_feed` function L1358-1365 — `(store: &Store, feed_id: &str) -> Result<(), arawn_storage::StorageError>` — Drop a feed record by raw SQL.
+-  `extract_json_block` function L1367-1391 — `(raw: &str) -> Option<&str>` — the shim is enough to make `switch` / `show` work.
+-  `tests` module L1394-2137 — `-` — the shim is enough to make `switch` / `show` work.
+-  `setup` function L1398-1407 — `() -> (tempfile::TempDir, Arc<Mutex<Store>>, SessionWorkstream)` — the shim is enough to make `switch` / `show` work.
+-  `test_ctx` function L1409-1413 — `(tmp: &tempfile::TempDir) -> crate::context::EngineToolContext` — the shim is enough to make `switch` / `show` work.
+-  `create_succeeds_with_valid_slug_description_and_ontology` function L1416-1437 — `()` — the shim is enough to make `switch` / `show` work.
+-  `create_refuses_scratch` function L1440-1455 — `()` — the shim is enough to make `switch` / `show` work.
+-  `create_refuses_missing_description` function L1458-1470 — `()` — the shim is enough to make `switch` / `show` work.
+-  `create_refuses_empty_ontology` function L1473-1489 — `()` — the shim is enough to make `switch` / `show` work.
+-  `create_dedupes_and_normalizes_ontology` function L1492-1511 — `()` — the shim is enough to make `switch` / `show` work.
+-  `switch_updates_active` function L1514-1528 — `()` — the shim is enough to make `switch` / `show` work.
+-  `switch_unknown_errors` function L1531-1540 — `()` — the shim is enough to make `switch` / `show` work.
+-  `show_defaults_to_active` function L1543-1549 — `()` — the shim is enough to make `switch` / `show` work.
+-  `describe_updates_description` function L1552-1575 — `()` — the shim is enough to make `switch` / `show` work.
+-  `github_repo_scheme_accepts_owner_slash_name` function L1580-1582 — `()` — the shim is enough to make `switch` / `show` work.
+-  `github_repo_scheme_rejects_missing_slash` function L1585-1588 — `()` — the shim is enough to make `switch` / `show` work.
+-  `github_repo_scheme_rejects_empty_owner_or_name` function L1591-1594 — `()` — the shim is enough to make `switch` / `show` work.
+-  `github_org_scheme_accepts_owner` function L1597-1599 — `()` — the shim is enough to make `switch` / `show` work.
+-  `github_org_scheme_rejects_empty_or_with_slash` function L1602-1605 — `()` — the shim is enough to make `switch` / `show` work.
+-  `non_github_feed_ids_pass_through_unchanged` function L1608-1613 — `()` — the shim is enough to make `switch` / `show` work.
+-  `is_github_scope_binding_recognises_both_schemes` function L1616-1621 — `()` — the shim is enough to make `switch` / `show` work.
+-  `bind_accepts_github_repo_scheme_and_stores_it` function L1624-1647 — `()` — the shim is enough to make `switch` / `show` work.
+-  `parse_github_scope_handles_both_schemes` function L1652-1670 — `()` — the shim is enough to make `switch` / `show` work.
+-  `count_feeds` function L1672-1681 — `(store: &Arc<Mutex<Store>>, feed_id: &str) -> i64` — the shim is enough to make `switch` / `show` work.
+-  `repo_bind_registers_feed_record` function L1684-1715 — `()` — the shim is enough to make `switch` / `show` work.
+-  `repo_bind_is_idempotent_no_duplicate_feed` function L1718-1741 — `()` — the shim is enough to make `switch` / `show` work.
+-  `repo_bind_rejected_when_org_already_bound` function L1744-1785 — `()` — the shim is enough to make `switch` / `show` work.
+-  `org_bind_supersedes_existing_repo_binds` function L1788-1844 — `()` — the shim is enough to make `switch` / `show` work.
+-  `unbind_org_scope_sweeps_all_child_feeds` function L1847-1890 — `()` — the shim is enough to make `switch` / `show` work.
+-  `unbind_repo_scope_drops_feed` function L1893-1918 — `()` — the shim is enough to make `switch` / `show` work.
+-  `bind_rejects_malformed_github_repo_scheme` function L1921-1938 — `()` — the shim is enough to make `switch` / `show` work.
+-  `bind_and_unbind_round_trip` function L1941-1971 — `()` — the shim is enough to make `switch` / `show` work.
+-  `delete_refuses_scratch` function L1974-1983 — `()` — the shim is enough to make `switch` / `show` work.
+-  `delete_refuses_currently_active` function L1986-2001 — `()` — the shim is enough to make `switch` / `show` work.
+-  `delete_soft_marks_archived` function L2004-2021 — `()` — the shim is enough to make `switch` / `show` work.
+-  `promote_moves_entity_from_scratch_to_target` function L2024-2070 — `()` — the shim is enough to make `switch` / `show` work.
+-  `promote_refuses_unknown_target` function L2073-2092 — `()` — the shim is enough to make `switch` / `show` work.
+-  `show_includes_ontology` function L2095-2120 — `()` — the shim is enough to make `switch` / `show` work.
+-  `list_marks_active` function L2123-2136 — `()` — the shim is enough to make `switch` / `show` work.
 
 ### crates/arawn-extractor/src
 
@@ -4724,6 +4757,36 @@
 -  `is_not_found_recognizes_drive_404_shapes` function L397-408 — `()` — Drive tools use.
 -  `unsupported_native_excludes_folders_and_known_exports` function L411-420 — `()` — Drive tools use.
 
+#### crates/arawn-feeds/src/clients/github.rs
+
+- pub `GithubFeedClient` interface L30-117 — `{ fn list_notifications(), fn search_issues(), fn list_repo_commits(), fn list_r...` — Authenticated GitHub REST calls templates rely on.
+- pub `RealGithubClient` struct L121-123 — `{ integration: Arc<GithubIntegration> }` — `list_org_repos`.
+- pub `new` function L126-128 — `(integration: Arc<GithubIntegration>) -> Self` — `list_org_repos`.
+- pub `strip_pr_rows` function L400-404 — `(rows: Vec<Value>) -> Vec<Value>` — Drop PR rows from a mixed-issues array.
+- pub `filter_by_updated_at` function L409-422 — `(rows: Vec<Value>, floor: Option<DateTime<Utc>>) -> Vec<Value>` — Filter rows whose `updated_at` is earlier than `floor`.
+- pub `parse_link_next_path` function L427-444 — `(header: &str) -> Option<String>` — Parse a GitHub `Link` header for the `rel="next"` target and
+-  `RealGithubClient` type L125-129 — `= RealGithubClient` — `list_org_repos`.
+-  `RealGithubClient` type L132-344 — `impl GithubFeedClient for RealGithubClient` — `list_org_repos`.
+-  `list_notifications` function L133-190 — `( &self, since: Option<DateTime<Utc>>, per_page: u32, all: bool, ) -> Result<Vec...` — `list_org_repos`.
+-  `search_issues` function L192-242 — `( &self, query: &str, per_page: u32, max_pages: u32, ) -> Result<Vec<Value>, Fee...` — `list_org_repos`.
+-  `list_repo_commits` function L244-257 — `( &self, owner: &str, repo: &str, since: Option<DateTime<Utc>>, max_pages: u32, ...` — `list_org_repos`.
+-  `list_repo_issues` function L259-278 — `( &self, owner: &str, repo: &str, state: &str, since: Option<DateTime<Utc>>, max...` — `list_org_repos`.
+-  `list_repo_prs` function L280-299 — `( &self, owner: &str, repo: &str, state: &str, since: Option<DateTime<Utc>>, max...` — `list_org_repos`.
+-  `list_issue_comments` function L301-316 — `( &self, owner: &str, repo: &str, since: Option<DateTime<Utc>>, max_pages: u32, ...` — `list_org_repos`.
+-  `list_pr_review_comments` function L318-333 — `( &self, owner: &str, repo: &str, since: Option<DateTime<Utc>>, max_pages: u32, ...` — `list_org_repos`.
+-  `list_org_repos` function L335-343 — `( &self, owner: &str, max_pages: u32, ) -> Result<Vec<Value>, FeedError>` — `list_org_repos`.
+-  `RealGithubClient` type L346-395 — `= RealGithubClient` — `list_org_repos`.
+-  `paginate_array` function L350-394 — `( &self, initial_path: &str, max_pages: u32, op_name: &str, ) -> Result<Vec<Valu...` — Shared paginator for endpoints that return a top-level JSON
+-  `tests` module L447-528 — `-` — `list_org_repos`.
+-  `link_header_extracts_next_path` function L451-457 — `()` — `list_org_repos`.
+-  `link_header_with_only_last_returns_none` function L460-463 — `()` — `list_org_repos`.
+-  `link_header_empty_returns_none` function L466-468 — `()` — `list_org_repos`.
+-  `strip_pr_rows_drops_rows_with_pull_request_field` function L471-481 — `()` — `list_org_repos`.
+-  `strip_pr_rows_keeps_everything_when_no_prs` function L484-490 — `()` — `list_org_repos`.
+-  `filter_by_updated_at_keeps_rows_at_or_after_floor` function L493-504 — `()` — `list_org_repos`.
+-  `filter_by_updated_at_with_none_floor_keeps_all` function L507-513 — `()` — `list_org_repos`.
+-  `filter_by_updated_at_keeps_rows_missing_updated_at` function L516-527 — `()` — `list_org_repos`.
+
 #### crates/arawn-feeds/src/clients/gmail.rs
 
 - pub `GmailFeedClient` interface L24-37 — `{ fn list_message_ids(), fn get_message() }` — What feeds need from Gmail.
@@ -4742,30 +4805,34 @@
 - pub `atlassian` module L20 — `-` — `slack-morphism` directly — keeps templates mock-testable.
 - pub `calendar` module L21 — `-` — `slack-morphism` directly — keeps templates mock-testable.
 - pub `drive` module L22 — `-` — `slack-morphism` directly — keeps templates mock-testable.
-- pub `gmail` module L23 — `-` — `slack-morphism` directly — keeps templates mock-testable.
-- pub `slack` module L24 — `-` — `slack-morphism` directly — keeps templates mock-testable.
-- pub `FeedClients` interface L43-49 — `{ fn slack(), fn calendar(), fn gmail(), fn drive(), fn atlassian() }` — Bundle of every provider client a template might want to use.
-- pub `NoopClients` struct L54 — `-` — No-op `FeedClients`: every provider returns `None`.
-- pub `RealClients` struct L78-84 — `{ slack: Option<Arc<dyn SlackFeedClient>>, calendar: Option<Arc<dyn CalendarFeed...` — Production bundle.
-- pub `new` function L87-89 — `() -> Self` — `slack-morphism` directly — keeps templates mock-testable.
-- pub `with_slack` function L91-97 — `( mut self, integration: Arc<arawn_integrations::slack::SlackIntegration>, ) -> ...` — `slack-morphism` directly — keeps templates mock-testable.
-- pub `with_calendar` function L99-105 — `( mut self, integration: Arc<arawn_integrations::calendar::GoogleCalendarIntegra...` — `slack-morphism` directly — keeps templates mock-testable.
-- pub `with_gmail` function L107-113 — `( mut self, integration: Arc<arawn_integrations::gmail::GmailIntegration>, ) -> ...` — `slack-morphism` directly — keeps templates mock-testable.
-- pub `with_drive` function L115-121 — `( mut self, integration: Arc<arawn_integrations::drive::GoogleDriveIntegration>,...` — `slack-morphism` directly — keeps templates mock-testable.
-- pub `with_atlassian` function L123-129 — `( mut self, integration: Arc<arawn_integrations::atlassian::AtlassianIntegration...` — `slack-morphism` directly — keeps templates mock-testable.
--  `NoopClients` type L56-72 — `impl FeedClients for NoopClients` — `slack-morphism` directly — keeps templates mock-testable.
--  `slack` function L57-59 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
--  `calendar` function L60-62 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
--  `gmail` function L63-65 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
--  `drive` function L66-68 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
--  `atlassian` function L69-71 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
--  `RealClients` type L86-130 — `= RealClients` — `slack-morphism` directly — keeps templates mock-testable.
--  `RealClients` type L132-148 — `impl FeedClients for RealClients` — `slack-morphism` directly — keeps templates mock-testable.
--  `slack` function L133-135 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
--  `calendar` function L136-138 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
--  `gmail` function L139-141 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
--  `drive` function L142-144 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
--  `atlassian` function L145-147 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
+- pub `github` module L23 — `-` — `slack-morphism` directly — keeps templates mock-testable.
+- pub `gmail` module L24 — `-` — `slack-morphism` directly — keeps templates mock-testable.
+- pub `slack` module L25 — `-` — `slack-morphism` directly — keeps templates mock-testable.
+- pub `FeedClients` interface L45-52 — `{ fn slack(), fn calendar(), fn gmail(), fn drive(), fn atlassian(), fn github()...` — Bundle of every provider client a template might want to use.
+- pub `NoopClients` struct L57 — `-` — No-op `FeedClients`: every provider returns `None`.
+- pub `RealClients` struct L84-91 — `{ slack: Option<Arc<dyn SlackFeedClient>>, calendar: Option<Arc<dyn CalendarFeed...` — Production bundle.
+- pub `new` function L94-96 — `() -> Self` — `slack-morphism` directly — keeps templates mock-testable.
+- pub `with_slack` function L98-104 — `( mut self, integration: Arc<arawn_integrations::slack::SlackIntegration>, ) -> ...` — `slack-morphism` directly — keeps templates mock-testable.
+- pub `with_calendar` function L106-112 — `( mut self, integration: Arc<arawn_integrations::calendar::GoogleCalendarIntegra...` — `slack-morphism` directly — keeps templates mock-testable.
+- pub `with_gmail` function L114-120 — `( mut self, integration: Arc<arawn_integrations::gmail::GmailIntegration>, ) -> ...` — `slack-morphism` directly — keeps templates mock-testable.
+- pub `with_drive` function L122-128 — `( mut self, integration: Arc<arawn_integrations::drive::GoogleDriveIntegration>,...` — `slack-morphism` directly — keeps templates mock-testable.
+- pub `with_atlassian` function L130-136 — `( mut self, integration: Arc<arawn_integrations::atlassian::AtlassianIntegration...` — `slack-morphism` directly — keeps templates mock-testable.
+- pub `with_github` function L138-144 — `( mut self, integration: Arc<arawn_integrations::github::GithubIntegration>, ) -...` — `slack-morphism` directly — keeps templates mock-testable.
+-  `NoopClients` type L59-78 — `impl FeedClients for NoopClients` — `slack-morphism` directly — keeps templates mock-testable.
+-  `slack` function L60-62 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
+-  `calendar` function L63-65 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
+-  `gmail` function L66-68 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
+-  `drive` function L69-71 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
+-  `atlassian` function L72-74 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
+-  `github` function L75-77 — `(&self) -> Option<Arc<dyn GithubFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
+-  `RealClients` type L93-145 — `= RealClients` — `slack-morphism` directly — keeps templates mock-testable.
+-  `RealClients` type L147-166 — `impl FeedClients for RealClients` — `slack-morphism` directly — keeps templates mock-testable.
+-  `slack` function L148-150 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
+-  `calendar` function L151-153 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
+-  `gmail` function L154-156 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
+-  `drive` function L157-159 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
+-  `atlassian` function L160-162 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
+-  `github` function L163-165 — `(&self) -> Option<Arc<dyn GithubFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
 
 #### crates/arawn-feeds/src/clients/slack.rs
 
@@ -4916,6 +4983,198 @@
 -  `validate_rejects_bad_days_back` function L213-218 — `()` — the first run, when the cursor is null.
 -  `defaults_use_30min_cadence` function L221-224 — `()` — the first run, when the cursor is null.
 
+### crates/arawn-feeds/src/templates/github
+
+> *Semantic summary to be generated by AI agent.*
+
+#### crates/arawn-feeds/src/templates/github/issues_and_prs.rs
+
+- pub `IssuesAndPrsTemplate` struct L35 — `-` — body-hash comparison.
+-  `NAME` variable L37 — `: &str` — body-hash comparison.
+-  `DEFAULT_PER_PAGE` variable L38 — `: u32` — body-hash comparison.
+-  `MAX_PAGES_PER_QUERY` variable L39 — `: u32` — body-hash comparison.
+-  `CLOSED_WINDOW_DAYS` variable L40 — `: i64` — body-hash comparison.
+-  `IssuesAndPrsTemplate` type L43-157 — `impl FeedTemplate for IssuesAndPrsTemplate` — body-hash comparison.
+-  `name` function L44-46 — `(&self) -> &'static str` — body-hash comparison.
+-  `validate` function L48-50 — `(&self, _params: &TemplateParams) -> Result<(), FeedError>` — body-hash comparison.
+-  `defaults` function L52-57 — `(&self, _params: &TemplateParams) -> FeedDefaults` — body-hash comparison.
+-  `run` function L59-152 — `( &self, ctx: &TemplateCtx, _params: &TemplateParams, feed_dir: &Path, _cursor: ...` — body-hash comparison.
+-  `discover` function L154-156 — `(&self, _ctx: &TemplateCtx) -> Result<Option<Vec<DiscoveryRow>>, FeedError>` — body-hash comparison.
+-  `path_for_item` function L162-178 — `(item: &Value, dir: &Path) -> Option<PathBuf>` — Build the on-disk filename for a `/search/issues` row.
+-  `sanitize` function L180-184 — `(s: &str) -> String` — body-hash comparison.
+-  `write_json` function L186-196 — `(path: &PathBuf, v: &Value) -> Result<u64, FeedError>` — body-hash comparison.
+-  `tests` module L199-409 — `-` — body-hash comparison.
+-  `FakeGithub` struct L207-210 — `{ queries: Mutex<Vec<String>>, responses: Mutex<Vec<Vec<Value>>> }` — Fake that records each search query and returns canned items.
+-  `FakeGithub` type L213-290 — `impl GithubFeedClient for FakeGithub` — body-hash comparison.
+-  `list_notifications` function L214-221 — `( &self, _since: Option<chrono::DateTime<chrono::Utc>>, _per_page: u32, _all: bo...` — body-hash comparison.
+-  `search_issues` function L222-234 — `( &self, query: &str, _per_page: u32, _max_pages: u32, ) -> Result<Vec<Value>, F...` — body-hash comparison.
+-  `list_repo_commits` function L236-244 — `( &self, _owner: &str, _repo: &str, _since: Option<chrono::DateTime<chrono::Utc>...` — body-hash comparison.
+-  `list_repo_issues` function L245-254 — `( &self, _owner: &str, _repo: &str, _state: &str, _since: Option<chrono::DateTim...` — body-hash comparison.
+-  `list_repo_prs` function L255-264 — `( &self, _owner: &str, _repo: &str, _state: &str, _since: Option<chrono::DateTim...` — body-hash comparison.
+-  `list_issue_comments` function L265-273 — `( &self, _owner: &str, _repo: &str, _since: Option<chrono::DateTime<chrono::Utc>...` — body-hash comparison.
+-  `list_pr_review_comments` function L274-282 — `( &self, _owner: &str, _repo: &str, _since: Option<chrono::DateTime<chrono::Utc>...` — body-hash comparison.
+-  `list_org_repos` function L283-289 — `( &self, _owner: &str, _max_pages: u32, ) -> Result<Vec<Value>, FeedError>` — body-hash comparison.
+-  `WithFakeGithub` struct L292-294 — `{ gh: Arc<dyn GithubFeedClient> }` — body-hash comparison.
+-  `WithFakeGithub` type L295-314 — `impl FeedClients for WithFakeGithub` — body-hash comparison.
+-  `slack` function L296-298 — `(&self) -> Option<Arc<dyn crate::clients::SlackFeedClient>>` — body-hash comparison.
+-  `calendar` function L299-301 — `(&self) -> Option<Arc<dyn crate::clients::CalendarFeedClient>>` — body-hash comparison.
+-  `gmail` function L302-304 — `(&self) -> Option<Arc<dyn crate::clients::GmailFeedClient>>` — body-hash comparison.
+-  `drive` function L305-307 — `(&self) -> Option<Arc<dyn crate::clients::DriveFeedClient>>` — body-hash comparison.
+-  `atlassian` function L308-310 — `(&self) -> Option<Arc<dyn crate::clients::AtlassianFeedClient>>` — body-hash comparison.
+-  `github` function L311-313 — `(&self) -> Option<Arc<dyn GithubFeedClient>>` — body-hash comparison.
+-  `issue` function L316-326 — `(number: u64) -> Value` — body-hash comparison.
+-  `runs_all_three_queries_and_dedupes_by_path` function L329-365 — `()` — body-hash comparison.
+-  `empty_results_yield_no_new_items_status` function L368-383 — `()` — body-hash comparison.
+-  `defaults_have_30min_cadence` function L386-391 — `()` — body-hash comparison.
+-  `path_parser_handles_issues_and_prs_paths` function L394-408 — `()` — body-hash comparison.
+
+#### crates/arawn-feeds/src/templates/github/mod.rs
+
+- pub `issues_and_prs` module L14 — `-` — All three templates share the disk layout:
+- pub `notifications` module L15 — `-` — the next tick uses `since=<iso>` rather than a full table scan.
+- pub `repo_mirror` module L16 — `-` — the next tick uses `since=<iso>` rather than a full table scan.
+- pub `review_queue` module L17 — `-` — the next tick uses `since=<iso>` rather than a full table scan.
+
+#### crates/arawn-feeds/src/templates/github/notifications.rs
+
+- pub `NotificationsTemplate` struct L30 — `-` — `updated_at` we wrote.
+-  `NAME` variable L32 — `: &str` — `updated_at` we wrote.
+-  `DEFAULT_PER_PAGE` variable L33 — `: u32` — `updated_at` we wrote.
+-  `CursorState` struct L36-39 — `{ latest_updated_iso: Option<String> }` — `updated_at` we wrote.
+-  `CursorState` type L41-51 — `= CursorState` — `updated_at` we wrote.
+-  `from_value` function L42-46 — `(v: &Value) -> Self` — `updated_at` we wrote.
+-  `into_value` function L48-50 — `(self) -> Value` — `updated_at` we wrote.
+-  `NotificationsTemplate` type L54-177 — `impl FeedTemplate for NotificationsTemplate` — `updated_at` we wrote.
+-  `name` function L55-57 — `(&self) -> &'static str` — `updated_at` we wrote.
+-  `validate` function L59-61 — `(&self, _params: &TemplateParams) -> Result<(), FeedError>` — `updated_at` we wrote.
+-  `defaults` function L63-70 — `(&self, _params: &TemplateParams) -> FeedDefaults` — `updated_at` we wrote.
+-  `run` function L72-170 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &V...` — `updated_at` we wrote.
+-  `discover` function L172-176 — `(&self, _ctx: &TemplateCtx) -> Result<Option<Vec<DiscoveryRow>>, FeedError>` — `updated_at` we wrote.
+-  `sanitize_for_path` function L179-183 — `(s: &str) -> String` — `updated_at` we wrote.
+-  `write_json` function L185-195 — `(path: &PathBuf, v: &Value) -> Result<u64, FeedError>` — `updated_at` we wrote.
+-  `tests` module L198-410 — `-` — `updated_at` we wrote.
+-  `FakeGithub` struct L205-207 — `{ pages: Vec<Vec<Value>> }` — `updated_at` we wrote.
+-  `FakeGithub` type L210-282 — `impl GithubFeedClient for FakeGithub` — `updated_at` we wrote.
+-  `list_notifications` function L211-218 — `( &self, _since: Option<chrono::DateTime<chrono::Utc>>, _per_page: u32, _all: bo...` — `updated_at` we wrote.
+-  `search_issues` function L219-226 — `( &self, _query: &str, _per_page: u32, _max_pages: u32, ) -> Result<Vec<Value>, ...` — `updated_at` we wrote.
+-  `list_repo_commits` function L228-236 — `( &self, _owner: &str, _repo: &str, _since: Option<chrono::DateTime<chrono::Utc>...` — `updated_at` we wrote.
+-  `list_repo_issues` function L237-246 — `( &self, _owner: &str, _repo: &str, _state: &str, _since: Option<chrono::DateTim...` — `updated_at` we wrote.
+-  `list_repo_prs` function L247-256 — `( &self, _owner: &str, _repo: &str, _state: &str, _since: Option<chrono::DateTim...` — `updated_at` we wrote.
+-  `list_issue_comments` function L257-265 — `( &self, _owner: &str, _repo: &str, _since: Option<chrono::DateTime<chrono::Utc>...` — `updated_at` we wrote.
+-  `list_pr_review_comments` function L266-274 — `( &self, _owner: &str, _repo: &str, _since: Option<chrono::DateTime<chrono::Utc>...` — `updated_at` we wrote.
+-  `list_org_repos` function L275-281 — `( &self, _owner: &str, _max_pages: u32, ) -> Result<Vec<Value>, FeedError>` — `updated_at` we wrote.
+-  `WithFakeGithub` struct L284-286 — `{ gh: Arc<dyn GithubFeedClient> }` — `updated_at` we wrote.
+-  `WithFakeGithub` type L287-306 — `impl FeedClients for WithFakeGithub` — `updated_at` we wrote.
+-  `slack` function L288-290 — `(&self) -> Option<Arc<dyn crate::clients::SlackFeedClient>>` — `updated_at` we wrote.
+-  `calendar` function L291-293 — `(&self) -> Option<Arc<dyn crate::clients::CalendarFeedClient>>` — `updated_at` we wrote.
+-  `gmail` function L294-296 — `(&self) -> Option<Arc<dyn crate::clients::GmailFeedClient>>` — `updated_at` we wrote.
+-  `drive` function L297-299 — `(&self) -> Option<Arc<dyn crate::clients::DriveFeedClient>>` — `updated_at` we wrote.
+-  `atlassian` function L300-302 — `(&self) -> Option<Arc<dyn crate::clients::AtlassianFeedClient>>` — `updated_at` we wrote.
+-  `github` function L303-305 — `(&self) -> Option<Arc<dyn GithubFeedClient>>` — `updated_at` we wrote.
+-  `notif_json` function L308-322 — `(id: &str, updated: &str) -> Value` — `updated_at` we wrote.
+-  `runs_with_no_clients_returns_auth_error` function L325-338 — `()` — `updated_at` we wrote.
+-  `writes_notification_files_and_advances_cursor` function L341-370 — `()` — `updated_at` we wrote.
+-  `empty_batch_returns_no_new_items_and_preserves_cursor` function L373-390 — `()` — `updated_at` we wrote.
+-  `defaults_have_30min_cadence` function L393-396 — `()` — `updated_at` we wrote.
+-  `validate_accepts_empty_params` function L399-403 — `()` — `updated_at` we wrote.
+-  `sanitize_replaces_unsafe_chars` function L406-409 — `()` — `updated_at` we wrote.
+
+#### crates/arawn-feeds/src/templates/github/repo_mirror.rs
+
+- pub `RepoMirrorTemplate` struct L30 — `-` — other kinds still write and advance.
+-  `NAME` variable L32 — `: &str` — other kinds still write and advance.
+-  `MAX_PAGES_PER_KIND` variable L37 — `: u32` — Conservative pagination cap per kind per tick.
+-  `CursorState` struct L40-49 — `{ commits_since: Option<String>, issues_since: Option<String>, prs_since: Option...` — other kinds still write and advance.
+-  `CursorState` type L51-64 — `= CursorState` — other kinds still write and advance.
+-  `from_value` function L52-54 — `(v: &Value) -> Self` — other kinds still write and advance.
+-  `into_value` function L56-63 — `(self) -> Value` — other kinds still write and advance.
+-  `RepoMirrorTemplate` type L67-288 — `impl FeedTemplate for RepoMirrorTemplate` — other kinds still write and advance.
+-  `name` function L68-70 — `(&self) -> &'static str` — other kinds still write and advance.
+-  `validate` function L72-89 — `(&self, params: &TemplateParams) -> Result<(), FeedError>` — other kinds still write and advance.
+-  `defaults` function L91-96 — `(&self, _params: &TemplateParams) -> FeedDefaults` — other kinds still write and advance.
+-  `run` function L98-283 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &V...` — other kinds still write and advance.
+-  `discover` function L285-287 — `(&self, _ctx: &TemplateCtx) -> Result<Option<Vec<DiscoveryRow>>, FeedError>` — other kinds still write and advance.
+-  `write_batch` function L292-331 — `( kind_dir: &Path, batch: &[Value], id_of: impl Fn(&Value) -> Option<String>, ts...` — Write each row of `batch` to `<kind_dir>/<id_extractor(row)>.json`
+-  `parse_iso` function L333-337 — `(s: &str) -> Option<chrono::DateTime<chrono::Utc>>` — other kinds still write and advance.
+-  `advance` function L341-354 — `(prev: Option<String>, latest: Option<String>) -> Option<String>` — Pick the later of the previous cursor and the latest seen this
+-  `sanitize` function L356-360 — `(s: &str) -> String` — other kinds still write and advance.
+-  `write_json` function L362-372 — `(path: &PathBuf, v: &Value) -> Result<u64, FeedError>` — other kinds still write and advance.
+-  `_force_use_traits` function L375-379 — `()` — other kinds still write and advance.
+-  `tests` module L382-729 — `-` — other kinds still write and advance.
+-  `FakeGithub` struct L391-405 — `{ commits: Mutex<Vec<Value>>, issues: Mutex<Vec<Value>>, prs: Mutex<Vec<Value>>,...` — Fake that returns canned responses per kind.
+-  `FakeGithub` type L407-422 — `impl Default for FakeGithub` — other kinds still write and advance.
+-  `default` function L408-421 — `() -> Self` — other kinds still write and advance.
+-  `FakeGithub` type L425-503 — `impl Gh for FakeGithub` — other kinds still write and advance.
+-  `list_notifications` function L426-433 — `( &self, _since: Option<chrono::DateTime<chrono::Utc>>, _per_page: u32, _all: bo...` — other kinds still write and advance.
+-  `search_issues` function L434-441 — `( &self, _query: &str, _per_page: u32, _max_pages: u32, ) -> Result<Vec<Value>, ...` — other kinds still write and advance.
+-  `list_repo_commits` function L442-451 — `( &self, _owner: &str, _repo: &str, since: Option<chrono::DateTime<chrono::Utc>>...` — other kinds still write and advance.
+-  `list_repo_issues` function L452-465 — `( &self, _owner: &str, _repo: &str, _state: &str, since: Option<chrono::DateTime...` — other kinds still write and advance.
+-  `list_repo_prs` function L466-476 — `( &self, _owner: &str, _repo: &str, _state: &str, since: Option<chrono::DateTime...` — other kinds still write and advance.
+-  `list_issue_comments` function L477-486 — `( &self, _owner: &str, _repo: &str, since: Option<chrono::DateTime<chrono::Utc>>...` — other kinds still write and advance.
+-  `list_pr_review_comments` function L487-495 — `( &self, _owner: &str, _repo: &str, _since: Option<chrono::DateTime<chrono::Utc>...` — other kinds still write and advance.
+-  `list_org_repos` function L496-502 — `( &self, _owner: &str, _max_pages: u32, ) -> Result<Vec<Value>, FeedError>` — other kinds still write and advance.
+-  `WithFakeGithub` struct L505-507 — `{ gh: Arc<dyn Gh> }` — other kinds still write and advance.
+-  `WithFakeGithub` type L508-527 — `impl FeedClients for WithFakeGithub` — other kinds still write and advance.
+-  `slack` function L509-511 — `(&self) -> Option<Arc<dyn crate::clients::SlackFeedClient>>` — other kinds still write and advance.
+-  `calendar` function L512-514 — `(&self) -> Option<Arc<dyn crate::clients::CalendarFeedClient>>` — other kinds still write and advance.
+-  `gmail` function L515-517 — `(&self) -> Option<Arc<dyn crate::clients::GmailFeedClient>>` — other kinds still write and advance.
+-  `drive` function L518-520 — `(&self) -> Option<Arc<dyn crate::clients::DriveFeedClient>>` — other kinds still write and advance.
+-  `atlassian` function L521-523 — `(&self) -> Option<Arc<dyn crate::clients::AtlassianFeedClient>>` — other kinds still write and advance.
+-  `github` function L524-526 — `(&self) -> Option<Arc<dyn Gh>>` — other kinds still write and advance.
+-  `params` function L529-531 — `() -> TemplateParams` — other kinds still write and advance.
+-  `commit` function L533-543 — `(sha: &str, date: &str) -> Value` — other kinds still write and advance.
+-  `issue` function L545-556 — `(number: i64, updated: &str) -> Value` — other kinds still write and advance.
+-  `pr` function L558-571 — `(number: i64, updated: &str) -> Value` — other kinds still write and advance.
+-  `comment` function L573-583 — `(id: i64, updated: &str, parent_url: &str) -> Value` — other kinds still write and advance.
+-  `validate_requires_owner_and_name` function L586-594 — `()` — other kinds still write and advance.
+-  `defaults_use_30min_cadence` function L597-599 — `()` — other kinds still write and advance.
+-  `writes_each_kind_under_owner_repo_layout` function L602-636 — `()` — other kinds still write and advance.
+-  `one_kind_4xx_doesnt_block_others` function L639-659 — `()` — other kinds still write and advance.
+-  `empty_response_yields_no_new_items_and_preserves_cursor` function L662-682 — `()` — other kinds still write and advance.
+-  `passes_since_floors_from_cursor_to_client` function L685-700 — `()` — other kinds still write and advance.
+-  `missing_clients_returns_auth_error` function L703-713 — `()` — other kinds still write and advance.
+-  `advance_picks_newer_string` function L716-728 — `()` — other kinds still write and advance.
+
+#### crates/arawn-feeds/src/templates/github/review_queue.rs
+
+- pub `ReviewQueueTemplate` struct L24 — `-` — ```
+-  `NAME` variable L26 — `: &str` — ```
+-  `DEFAULT_PER_PAGE` variable L27 — `: u32` — ```
+-  `MAX_PAGES` variable L28 — `: u32` — ```
+-  `QUERY` variable L29 — `: &str` — ```
+-  `ReviewQueueTemplate` type L32-117 — `impl FeedTemplate for ReviewQueueTemplate` — ```
+-  `name` function L33-35 — `(&self) -> &'static str` — ```
+-  `validate` function L37-39 — `(&self, _params: &TemplateParams) -> Result<(), FeedError>` — ```
+-  `defaults` function L41-46 — `(&self, _params: &TemplateParams) -> FeedDefaults` — ```
+-  `run` function L48-112 — `( &self, ctx: &TemplateCtx, _params: &TemplateParams, feed_dir: &Path, _cursor: ...` — ```
+-  `discover` function L114-116 — `(&self, _ctx: &TemplateCtx) -> Result<Option<Vec<DiscoveryRow>>, FeedError>` — ```
+-  `path_for_item` function L119-135 — `(item: &Value, dir: &Path) -> Option<PathBuf>` — ```
+-  `sanitize` function L137-141 — `(s: &str) -> String` — ```
+-  `write_json` function L143-153 — `(path: &PathBuf, v: &Value) -> Result<u64, FeedError>` — ```
+-  `tests` module L156-326 — `-` — ```
+-  `FakeGithub` struct L163-166 — `{ queries: Mutex<Vec<String>>, response: Mutex<Vec<Value>> }` — ```
+-  `FakeGithub` type L169-242 — `impl GithubFeedClient for FakeGithub` — ```
+-  `list_notifications` function L170-177 — `( &self, _since: Option<chrono::DateTime<chrono::Utc>>, _per_page: u32, _all: bo...` — ```
+-  `search_issues` function L178-186 — `( &self, query: &str, _per_page: u32, _max_pages: u32, ) -> Result<Vec<Value>, F...` — ```
+-  `list_repo_commits` function L188-196 — `( &self, _owner: &str, _repo: &str, _since: Option<chrono::DateTime<chrono::Utc>...` — ```
+-  `list_repo_issues` function L197-206 — `( &self, _owner: &str, _repo: &str, _state: &str, _since: Option<chrono::DateTim...` — ```
+-  `list_repo_prs` function L207-216 — `( &self, _owner: &str, _repo: &str, _state: &str, _since: Option<chrono::DateTim...` — ```
+-  `list_issue_comments` function L217-225 — `( &self, _owner: &str, _repo: &str, _since: Option<chrono::DateTime<chrono::Utc>...` — ```
+-  `list_pr_review_comments` function L226-234 — `( &self, _owner: &str, _repo: &str, _since: Option<chrono::DateTime<chrono::Utc>...` — ```
+-  `list_org_repos` function L235-241 — `( &self, _owner: &str, _max_pages: u32, ) -> Result<Vec<Value>, FeedError>` — ```
+-  `WithFakeGithub` struct L244-246 — `{ gh: Arc<dyn GithubFeedClient> }` — ```
+-  `WithFakeGithub` type L247-266 — `impl FeedClients for WithFakeGithub` — ```
+-  `slack` function L248-250 — `(&self) -> Option<Arc<dyn crate::clients::SlackFeedClient>>` — ```
+-  `calendar` function L251-253 — `(&self) -> Option<Arc<dyn crate::clients::CalendarFeedClient>>` — ```
+-  `gmail` function L254-256 — `(&self) -> Option<Arc<dyn crate::clients::GmailFeedClient>>` — ```
+-  `drive` function L257-259 — `(&self) -> Option<Arc<dyn crate::clients::DriveFeedClient>>` — ```
+-  `atlassian` function L260-262 — `(&self) -> Option<Arc<dyn crate::clients::AtlassianFeedClient>>` — ```
+-  `github` function L263-265 — `(&self) -> Option<Arc<dyn GithubFeedClient>>` — ```
+-  `pr` function L268-276 — `(number: u64, draft: bool) -> Value` — ```
+-  `writes_review_queue_files` function L279-299 — `()` — ```
+-  `empty_response_is_no_new_items` function L302-317 — `()` — ```
+-  `defaults_have_30min_cadence` function L320-325 — `()` — ```
+
 ### crates/arawn-feeds/src/templates/gmail
 
 > *Semantic summary to be generated by AI agent.*
@@ -5056,11 +5315,12 @@
 - pub `calendar` module L3 — `-` — Concrete `FeedTemplate` impls organized per provider.
 - pub `confluence` module L4 — `-` — Concrete `FeedTemplate` impls organized per provider.
 - pub `drive` module L5 — `-` — Concrete `FeedTemplate` impls organized per provider.
-- pub `gmail` module L6 — `-` — Concrete `FeedTemplate` impls organized per provider.
-- pub `jira` module L7 — `-` — Concrete `FeedTemplate` impls organized per provider.
-- pub `slack` module L8 — `-` — Concrete `FeedTemplate` impls organized per provider.
-- pub `stub` module L9 — `-` — Concrete `FeedTemplate` impls organized per provider.
-- pub `default_registry` function L18-34 — `() -> FeedTemplateRegistry` — Build the registry of every template the binary supports.
+- pub `github` module L6 — `-` — Concrete `FeedTemplate` impls organized per provider.
+- pub `gmail` module L7 — `-` — Concrete `FeedTemplate` impls organized per provider.
+- pub `jira` module L8 — `-` — Concrete `FeedTemplate` impls organized per provider.
+- pub `slack` module L9 — `-` — Concrete `FeedTemplate` impls organized per provider.
+- pub `stub` module L10 — `-` — Concrete `FeedTemplate` impls organized per provider.
+- pub `default_registry` function L19-39 — `() -> FeedTemplateRegistry` — Build the registry of every template the binary supports.
 
 #### crates/arawn-feeds/src/templates/stub.rs
 
@@ -5154,29 +5414,31 @@
 -  `MockCalendarClient` type L42-56 — `impl CalendarFeedClient for MockCalendarClient` — - Auth error when calendar integration not connected.
 -  `list_events` function L43-55 — `( &self, calendar_id: &str, time_min: DateTime<Utc>, time_max: DateTime<Utc>, ) ...` — - Auth error when calendar integration not connected.
 -  `MockClients` struct L58-60 — `{ calendar: Arc<MockCalendarClient> }` — - Auth error when calendar integration not connected.
--  `MockClients` type L62-78 — `impl FeedClients for MockClients` — - Auth error when calendar integration not connected.
+-  `MockClients` type L62-81 — `impl FeedClients for MockClients` — - Auth error when calendar integration not connected.
 -  `slack` function L63-65 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — - Auth error when calendar integration not connected.
 -  `calendar` function L66-68 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — - Auth error when calendar integration not connected.
 -  `gmail` function L69-71 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — - Auth error when calendar integration not connected.
 -  `drive` function L72-74 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — - Auth error when calendar integration not connected.
 -  `atlassian` function L75-77 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — - Auth error when calendar integration not connected.
--  `event` function L80-88 — `(id: &str, summary: &str, start: &str) -> Value` — - Auth error when calendar integration not connected.
--  `read_event_file` function L90-97 — `(feed_dir: &PathBuf, safe_id: &str) -> Option<Value>` — - Auth error when calendar integration not connected.
--  `run_once` function L99-124 — `( template: &dyn FeedTemplate, ctx: &TemplateCtx, params: &TemplateParams, feed_...` — - Auth error when calendar integration not connected.
--  `first_run_writes_one_file_per_event` function L127-172 — `()` — - Auth error when calendar integration not connected.
--  `second_run_overwrites_changed_events` function L175-218 — `()` — - Auth error when calendar integration not connected.
--  `cancelled_events_are_preserved` function L221-249 — `()` — - Auth error when calendar integration not connected.
--  `params_reach_the_client` function L252-276 — `()` — - Auth error when calendar integration not connected.
--  `returns_auth_when_calendar_not_connected` function L279-311 — `()` — - Auth error when calendar integration not connected.
--  `NoCal` struct L280 — `-` — - Auth error when calendar integration not connected.
--  `NoCal` type L281-297 — `impl FeedClients for NoCal` — - Auth error when calendar integration not connected.
--  `slack` function L282-284 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — - Auth error when calendar integration not connected.
--  `calendar` function L285-287 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — - Auth error when calendar integration not connected.
--  `gmail` function L288-290 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — - Auth error when calendar integration not connected.
--  `drive` function L291-293 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — - Auth error when calendar integration not connected.
--  `atlassian` function L294-296 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — - Auth error when calendar integration not connected.
--  `empty_window_writes_nothing_and_status_no_new_items` function L314-333 — `()` — - Auth error when calendar integration not connected.
--  `malformed_event_without_id_is_skipped` function L336-374 — `()` — - Auth error when calendar integration not connected.
+-  `github` function L78-80 — `(&self) -> Option<Arc<dyn GithubFeedClient>>` — - Auth error when calendar integration not connected.
+-  `event` function L83-91 — `(id: &str, summary: &str, start: &str) -> Value` — - Auth error when calendar integration not connected.
+-  `read_event_file` function L93-100 — `(feed_dir: &PathBuf, safe_id: &str) -> Option<Value>` — - Auth error when calendar integration not connected.
+-  `run_once` function L102-127 — `( template: &dyn FeedTemplate, ctx: &TemplateCtx, params: &TemplateParams, feed_...` — - Auth error when calendar integration not connected.
+-  `first_run_writes_one_file_per_event` function L130-175 — `()` — - Auth error when calendar integration not connected.
+-  `second_run_overwrites_changed_events` function L178-221 — `()` — - Auth error when calendar integration not connected.
+-  `cancelled_events_are_preserved` function L224-252 — `()` — - Auth error when calendar integration not connected.
+-  `params_reach_the_client` function L255-279 — `()` — - Auth error when calendar integration not connected.
+-  `returns_auth_when_calendar_not_connected` function L282-317 — `()` — - Auth error when calendar integration not connected.
+-  `NoCal` struct L283 — `-` — - Auth error when calendar integration not connected.
+-  `NoCal` type L284-303 — `impl FeedClients for NoCal` — - Auth error when calendar integration not connected.
+-  `slack` function L285-287 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — - Auth error when calendar integration not connected.
+-  `calendar` function L288-290 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — - Auth error when calendar integration not connected.
+-  `gmail` function L291-293 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — - Auth error when calendar integration not connected.
+-  `drive` function L294-296 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — - Auth error when calendar integration not connected.
+-  `atlassian` function L297-299 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — - Auth error when calendar integration not connected.
+-  `github` function L300-302 — `(&self) -> Option<Arc<dyn GithubFeedClient>>` — - Auth error when calendar integration not connected.
+-  `empty_window_writes_nothing_and_status_no_new_items` function L320-339 — `()` — - Auth error when calendar integration not connected.
+-  `malformed_event_without_id_is_skipped` function L342-380 — `()` — - Auth error when calendar integration not connected.
 
 #### crates/arawn-feeds/tests/cloacina_fire.rs
 
@@ -5204,29 +5466,31 @@
 -  `list_confluence_spaces` function L80-84 — `( &self, ) -> Result<Vec<arawn_feeds::ConfluenceSpaceMeta>, FeedError>` — Integration tests for `confluence/space-archive`.
 -  `page_body_storage` function L86-99 — `(&self, page_id: &str) -> Result<ConfluencePageBody, FeedError>` — Integration tests for `confluence/space-archive`.
 -  `MockClients` struct L102-104 — `{ atlassian: Arc<MockAtlassianClient> }` — Integration tests for `confluence/space-archive`.
--  `MockClients` type L106-122 — `impl FeedClients for MockClients` — Integration tests for `confluence/space-archive`.
+-  `MockClients` type L106-125 — `impl FeedClients for MockClients` — Integration tests for `confluence/space-archive`.
 -  `slack` function L107-109 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — Integration tests for `confluence/space-archive`.
 -  `calendar` function L110-112 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — Integration tests for `confluence/space-archive`.
 -  `gmail` function L113-115 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — Integration tests for `confluence/space-archive`.
 -  `drive` function L116-118 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — Integration tests for `confluence/space-archive`.
 -  `atlassian` function L119-121 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — Integration tests for `confluence/space-archive`.
--  `page` function L124-133 — `(id: &str, title: &str, modified: &str, version: i64) -> ConfluencePageMeta` — Integration tests for `confluence/space-archive`.
--  `run_once` function L135-158 — `( template: &dyn FeedTemplate, ctx: &TemplateCtx, params: &TemplateParams, feed_...` — Integration tests for `confluence/space-archive`.
--  `writes_per_page_metadata_and_body` function L161-198 — `()` — Integration tests for `confluence/space-archive`.
--  `second_run_passes_cursor_as_since` function L201-229 — `()` — Integration tests for `confluence/space-archive`.
--  `body_fetch_failure_skips_page_without_aborting_run` function L232-260 — `()` — Integration tests for `confluence/space-archive`.
--  `body_overwritten_on_re_fetch` function L263-289 — `()` — Integration tests for `confluence/space-archive`.
--  `page_with_no_body_writes_empty_xml` function L292-310 — `()` — Integration tests for `confluence/space-archive`.
--  `empty_run_is_no_op_with_status` function L313-326 — `()` — Integration tests for `confluence/space-archive`.
--  `returns_auth_when_atlassian_not_connected` function L329-361 — `()` — Integration tests for `confluence/space-archive`.
--  `NoAtlassian` struct L330 — `-` — Integration tests for `confluence/space-archive`.
--  `NoAtlassian` type L331-347 — `impl FeedClients for NoAtlassian` — Integration tests for `confluence/space-archive`.
--  `slack` function L332-334 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — Integration tests for `confluence/space-archive`.
--  `calendar` function L335-337 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — Integration tests for `confluence/space-archive`.
--  `gmail` function L338-340 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — Integration tests for `confluence/space-archive`.
--  `drive` function L341-343 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — Integration tests for `confluence/space-archive`.
--  `atlassian` function L344-346 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — Integration tests for `confluence/space-archive`.
--  `validate_rejects_missing_space_key` function L364-374 — `()` — Integration tests for `confluence/space-archive`.
+-  `github` function L122-124 — `(&self) -> Option<Arc<dyn GithubFeedClient>>` — Integration tests for `confluence/space-archive`.
+-  `page` function L127-136 — `(id: &str, title: &str, modified: &str, version: i64) -> ConfluencePageMeta` — Integration tests for `confluence/space-archive`.
+-  `run_once` function L138-161 — `( template: &dyn FeedTemplate, ctx: &TemplateCtx, params: &TemplateParams, feed_...` — Integration tests for `confluence/space-archive`.
+-  `writes_per_page_metadata_and_body` function L164-201 — `()` — Integration tests for `confluence/space-archive`.
+-  `second_run_passes_cursor_as_since` function L204-232 — `()` — Integration tests for `confluence/space-archive`.
+-  `body_fetch_failure_skips_page_without_aborting_run` function L235-263 — `()` — Integration tests for `confluence/space-archive`.
+-  `body_overwritten_on_re_fetch` function L266-292 — `()` — Integration tests for `confluence/space-archive`.
+-  `page_with_no_body_writes_empty_xml` function L295-313 — `()` — Integration tests for `confluence/space-archive`.
+-  `empty_run_is_no_op_with_status` function L316-329 — `()` — Integration tests for `confluence/space-archive`.
+-  `returns_auth_when_atlassian_not_connected` function L332-367 — `()` — Integration tests for `confluence/space-archive`.
+-  `NoAtlassian` struct L333 — `-` — Integration tests for `confluence/space-archive`.
+-  `NoAtlassian` type L334-353 — `impl FeedClients for NoAtlassian` — Integration tests for `confluence/space-archive`.
+-  `slack` function L335-337 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — Integration tests for `confluence/space-archive`.
+-  `calendar` function L338-340 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — Integration tests for `confluence/space-archive`.
+-  `gmail` function L341-343 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — Integration tests for `confluence/space-archive`.
+-  `drive` function L344-346 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — Integration tests for `confluence/space-archive`.
+-  `atlassian` function L347-349 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — Integration tests for `confluence/space-archive`.
+-  `github` function L350-352 — `(&self) -> Option<Arc<dyn GithubFeedClient>>` — Integration tests for `confluence/space-archive`.
+-  `validate_rejects_missing_space_key` function L370-380 — `()` — Integration tests for `confluence/space-archive`.
 
 #### crates/arawn-feeds/tests/discovery.rs
 
@@ -5249,17 +5513,18 @@
 -  `resolve_project` function L91-93 — `(&self, _: &str) -> Result<String, FeedError>` — return `None`.
 -  `list_jira_projects` function L94-96 — `(&self) -> Result<Vec<JiraProjectMeta>, FeedError>` — return `None`.
 -  `list_confluence_spaces` function L97-99 — `(&self) -> Result<Vec<ConfluenceSpaceMeta>, FeedError>` — return `None`.
--  `StubClients` type L102-129 — `impl FeedClients for StubClients` — return `None`.
+-  `StubClients` type L102-132 — `impl FeedClients for StubClients` — return `None`.
 -  `slack` function L103-109 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — return `None`.
 -  `calendar` function L110-112 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — return `None`.
 -  `gmail` function L113-115 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — return `None`.
 -  `drive` function L116-118 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — return `None`.
 -  `atlassian` function L119-128 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — return `None`.
--  `slack_channel_archive_discovers_channels` function L132-169 — `()` — return `None`.
--  `jira_project_tracker_discovers_projects` function L172-198 — `()` — return `None`.
--  `confluence_space_archive_discovers_spaces` function L201-226 — `()` — return `None`.
--  `discover_returns_none_when_provider_missing` function L229-251 — `()` — return `None`.
--  `non_pickable_template_returns_none` function L254-265 — `()` — return `None`.
+-  `github` function L129-131 — `(&self) -> Option<Arc<dyn GithubFeedClient>>` — return `None`.
+-  `slack_channel_archive_discovers_channels` function L135-172 — `()` — return `None`.
+-  `jira_project_tracker_discovers_projects` function L175-201 — `()` — return `None`.
+-  `confluence_space_archive_discovers_spaces` function L204-229 — `()` — return `None`.
+-  `discover_returns_none_when_provider_missing` function L232-254 — `()` — return `None`.
+-  `non_pickable_template_returns_none` function L257-268 — `()` — return `None`.
 
 #### crates/arawn-feeds/tests/drive_folder_sync.rs
 
@@ -5275,31 +5540,33 @@
 -  `list_modified_since` function L67-73 — `( &self, _since: DateTime<Utc>, _max_results: u32, ) -> Result<Vec<DriveFile>, F...` — Integration tests for `drive/folder-sync`.
 -  `download` function L74-98 — `( &self, file_id: &str, export_mime: Option<&str>, ) -> Result<Vec<u8>, FeedErro...` — Integration tests for `drive/folder-sync`.
 -  `MockClients` struct L101-103 — `{ drive: Arc<MockDriveClient> }` — Integration tests for `drive/folder-sync`.
--  `MockClients` type L105-121 — `impl FeedClients for MockClients` — Integration tests for `drive/folder-sync`.
+-  `MockClients` type L105-124 — `impl FeedClients for MockClients` — Integration tests for `drive/folder-sync`.
 -  `slack` function L106-108 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — Integration tests for `drive/folder-sync`.
 -  `calendar` function L109-111 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — Integration tests for `drive/folder-sync`.
 -  `gmail` function L112-114 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — Integration tests for `drive/folder-sync`.
 -  `drive` function L115-117 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — Integration tests for `drive/folder-sync`.
 -  `atlassian` function L118-120 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — Integration tests for `drive/folder-sync`.
--  `raw_file` function L123-134 — `(id: &str, name: &str, mime: &str, md5: &str) -> DriveFile` — Integration tests for `drive/folder-sync`.
--  `folder` function L136-147 — `(id: &str, name: &str) -> DriveFile` — Integration tests for `drive/folder-sync`.
--  `google_doc` function L149-160 — `(id: &str, name: &str, modified: &str) -> DriveFile` — Integration tests for `drive/folder-sync`.
--  `run_once` function L162-185 — `( template: &dyn FeedTemplate, ctx: &TemplateCtx, params: &TemplateParams, feed_...` — Integration tests for `drive/folder-sync`.
--  `mirrors_native_files_and_exports_google_natives` function L188-240 — `()` — Integration tests for `drive/folder-sync`.
--  `skips_unchanged_via_change_token_cursor` function L243-269 — `()` — Integration tests for `drive/folder-sync`.
--  `deletes_local_when_remote_deleted` function L272-303 — `()` — Integration tests for `drive/folder-sync`.
--  `moved_file_cleans_up_old_path` function L306-337 — `()` — Integration tests for `drive/folder-sync`.
--  `unsupported_google_native_is_skipped` function L340-371 — `()` — Integration tests for `drive/folder-sync`.
--  `returns_auth_when_drive_not_connected` function L374-406 — `()` — Integration tests for `drive/folder-sync`.
--  `NoDrive` struct L375 — `-` — Integration tests for `drive/folder-sync`.
--  `NoDrive` type L376-392 — `impl FeedClients for NoDrive` — Integration tests for `drive/folder-sync`.
--  `slack` function L377-379 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — Integration tests for `drive/folder-sync`.
--  `calendar` function L380-382 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — Integration tests for `drive/folder-sync`.
--  `gmail` function L383-385 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — Integration tests for `drive/folder-sync`.
--  `drive` function L386-388 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — Integration tests for `drive/folder-sync`.
--  `atlassian` function L389-391 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — Integration tests for `drive/folder-sync`.
--  `validate_rejects_missing_folder` function L409-419 — `()` — Integration tests for `drive/folder-sync`.
--  `skips_file_with_provider_error_and_continues_batch` function L422-458 — `()` — Integration tests for `drive/folder-sync`.
+-  `github` function L121-123 — `(&self) -> Option<Arc<dyn GithubFeedClient>>` — Integration tests for `drive/folder-sync`.
+-  `raw_file` function L126-137 — `(id: &str, name: &str, mime: &str, md5: &str) -> DriveFile` — Integration tests for `drive/folder-sync`.
+-  `folder` function L139-150 — `(id: &str, name: &str) -> DriveFile` — Integration tests for `drive/folder-sync`.
+-  `google_doc` function L152-163 — `(id: &str, name: &str, modified: &str) -> DriveFile` — Integration tests for `drive/folder-sync`.
+-  `run_once` function L165-188 — `( template: &dyn FeedTemplate, ctx: &TemplateCtx, params: &TemplateParams, feed_...` — Integration tests for `drive/folder-sync`.
+-  `mirrors_native_files_and_exports_google_natives` function L191-243 — `()` — Integration tests for `drive/folder-sync`.
+-  `skips_unchanged_via_change_token_cursor` function L246-272 — `()` — Integration tests for `drive/folder-sync`.
+-  `deletes_local_when_remote_deleted` function L275-306 — `()` — Integration tests for `drive/folder-sync`.
+-  `moved_file_cleans_up_old_path` function L309-340 — `()` — Integration tests for `drive/folder-sync`.
+-  `unsupported_google_native_is_skipped` function L343-374 — `()` — Integration tests for `drive/folder-sync`.
+-  `returns_auth_when_drive_not_connected` function L377-412 — `()` — Integration tests for `drive/folder-sync`.
+-  `NoDrive` struct L378 — `-` — Integration tests for `drive/folder-sync`.
+-  `NoDrive` type L379-398 — `impl FeedClients for NoDrive` — Integration tests for `drive/folder-sync`.
+-  `slack` function L380-382 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — Integration tests for `drive/folder-sync`.
+-  `calendar` function L383-385 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — Integration tests for `drive/folder-sync`.
+-  `gmail` function L386-388 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — Integration tests for `drive/folder-sync`.
+-  `drive` function L389-391 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — Integration tests for `drive/folder-sync`.
+-  `atlassian` function L392-394 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — Integration tests for `drive/folder-sync`.
+-  `github` function L395-397 — `(&self) -> Option<Arc<dyn GithubFeedClient>>` — Integration tests for `drive/folder-sync`.
+-  `validate_rejects_missing_folder` function L415-425 — `()` — Integration tests for `drive/folder-sync`.
+-  `skips_file_with_provider_error_and_continues_batch` function L428-464 — `()` — Integration tests for `drive/folder-sync`.
 
 #### crates/arawn-feeds/tests/drive_recent.rs
 
@@ -5313,27 +5580,29 @@
 -  `list_modified_since` function L41-49 — `( &self, since: DateTime<Utc>, _max_results: u32, ) -> Result<Vec<DriveFile>, Fe...` — Integration tests for `drive/recent`.
 -  `download` function L50-52 — `(&self, _: &str, _: Option<&str>) -> Result<Vec<u8>, FeedError>` — Integration tests for `drive/recent`.
 -  `MockClients` struct L55-57 — `{ drive: Arc<MockDriveClient> }` — Integration tests for `drive/recent`.
--  `MockClients` type L59-75 — `impl FeedClients for MockClients` — Integration tests for `drive/recent`.
+-  `MockClients` type L59-78 — `impl FeedClients for MockClients` — Integration tests for `drive/recent`.
 -  `slack` function L60-62 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — Integration tests for `drive/recent`.
 -  `calendar` function L63-65 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — Integration tests for `drive/recent`.
 -  `gmail` function L66-68 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — Integration tests for `drive/recent`.
 -  `drive` function L69-71 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — Integration tests for `drive/recent`.
 -  `atlassian` function L72-74 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — Integration tests for `drive/recent`.
--  `file` function L77-88 — `(id: &str, name: &str, mime: &str, modified: &str) -> DriveFile` — Integration tests for `drive/recent`.
--  `run_once` function L90-113 — `( template: &dyn FeedTemplate, ctx: &TemplateCtx, params: &TemplateParams, feed_...` — Integration tests for `drive/recent`.
--  `writes_per_file_metadata_partitioned_by_modified_date` function L116-144 — `()` — Integration tests for `drive/recent`.
--  `second_run_uses_cursor_as_since` function L147-170 — `()` — Integration tests for `drive/recent`.
--  `empty_run_is_no_op_with_status` function L173-182 — `()` — Integration tests for `drive/recent`.
--  `returns_auth_when_drive_not_connected` function L185-214 — `()` — Integration tests for `drive/recent`.
--  `NoDrive` struct L186 — `-` — Integration tests for `drive/recent`.
--  `NoDrive` type L187-203 — `impl FeedClients for NoDrive` — Integration tests for `drive/recent`.
--  `slack` function L188-190 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — Integration tests for `drive/recent`.
--  `calendar` function L191-193 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — Integration tests for `drive/recent`.
--  `gmail` function L194-196 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — Integration tests for `drive/recent`.
--  `drive` function L197-199 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — Integration tests for `drive/recent`.
--  `atlassian` function L200-202 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — Integration tests for `drive/recent`.
--  `second_run_skips_already_archived_boundary_file` function L217-257 — `()` — Integration tests for `drive/recent`.
--  `validate_rejects_bad_days_back` function L260-265 — `()` — Integration tests for `drive/recent`.
+-  `github` function L75-77 — `(&self) -> Option<Arc<dyn GithubFeedClient>>` — Integration tests for `drive/recent`.
+-  `file` function L80-91 — `(id: &str, name: &str, mime: &str, modified: &str) -> DriveFile` — Integration tests for `drive/recent`.
+-  `run_once` function L93-116 — `( template: &dyn FeedTemplate, ctx: &TemplateCtx, params: &TemplateParams, feed_...` — Integration tests for `drive/recent`.
+-  `writes_per_file_metadata_partitioned_by_modified_date` function L119-147 — `()` — Integration tests for `drive/recent`.
+-  `second_run_uses_cursor_as_since` function L150-173 — `()` — Integration tests for `drive/recent`.
+-  `empty_run_is_no_op_with_status` function L176-185 — `()` — Integration tests for `drive/recent`.
+-  `returns_auth_when_drive_not_connected` function L188-220 — `()` — Integration tests for `drive/recent`.
+-  `NoDrive` struct L189 — `-` — Integration tests for `drive/recent`.
+-  `NoDrive` type L190-209 — `impl FeedClients for NoDrive` — Integration tests for `drive/recent`.
+-  `slack` function L191-193 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — Integration tests for `drive/recent`.
+-  `calendar` function L194-196 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — Integration tests for `drive/recent`.
+-  `gmail` function L197-199 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — Integration tests for `drive/recent`.
+-  `drive` function L200-202 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — Integration tests for `drive/recent`.
+-  `atlassian` function L203-205 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — Integration tests for `drive/recent`.
+-  `github` function L206-208 — `(&self) -> Option<Arc<dyn GithubFeedClient>>` — Integration tests for `drive/recent`.
+-  `second_run_skips_already_archived_boundary_file` function L223-263 — `()` — Integration tests for `drive/recent`.
+-  `validate_rejects_bad_days_back` function L266-271 — `()` — Integration tests for `drive/recent`.
 
 #### crates/arawn-feeds/tests/dynamic_register.rs
 
@@ -5347,6 +5616,34 @@
 -  `no_since_uses_existing_immediate_cron_path` function L415-468 — `()` — firings happen (so the run_count is 0 and last_run_at is None).
 -  `dynamic_register_rolls_back_on_unknown_template` function L471-505 — `()` — firings happen (so the run_count is 0 and last_run_at is None).
 
+#### crates/arawn-feeds/tests/github_repo_mirror_smoke.rs
+
+-  `FakeGithub` struct L35-41 — `{ commits: Mutex<Vec<Value>>, issues: Mutex<Vec<Value>>, prs: Mutex<Vec<Value>>,...` — - Cursor advances across the tick.
+-  `FakeGithub` type L44-115 — `impl GithubFeedClient for FakeGithub` — - Cursor advances across the tick.
+-  `list_notifications` function L45-52 — `( &self, _since: Option<chrono::DateTime<chrono::Utc>>, _per_page: u32, _all: bo...` — - Cursor advances across the tick.
+-  `search_issues` function L53-60 — `( &self, _query: &str, _per_page: u32, _max_pages: u32, ) -> Result<Vec<Value>, ...` — - Cursor advances across the tick.
+-  `list_repo_commits` function L61-69 — `( &self, _owner: &str, _repo: &str, _since: Option<chrono::DateTime<chrono::Utc>...` — - Cursor advances across the tick.
+-  `list_repo_issues` function L70-79 — `( &self, _owner: &str, _repo: &str, _state: &str, _since: Option<chrono::DateTim...` — - Cursor advances across the tick.
+-  `list_repo_prs` function L80-89 — `( &self, _owner: &str, _repo: &str, _state: &str, _since: Option<chrono::DateTim...` — - Cursor advances across the tick.
+-  `list_issue_comments` function L90-98 — `( &self, _owner: &str, _repo: &str, _since: Option<chrono::DateTime<chrono::Utc>...` — - Cursor advances across the tick.
+-  `list_pr_review_comments` function L99-107 — `( &self, _owner: &str, _repo: &str, _since: Option<chrono::DateTime<chrono::Utc>...` — - Cursor advances across the tick.
+-  `list_org_repos` function L108-114 — `( &self, _owner: &str, _max_pages: u32, ) -> Result<Vec<Value>, arawn_feeds::Fee...` — - Cursor advances across the tick.
+-  `WithFakeGithub` struct L117-119 — `{ gh: Arc<dyn GithubFeedClient> }` — - Cursor advances across the tick.
+-  `WithFakeGithub` type L120-139 — `impl FeedClients for WithFakeGithub` — - Cursor advances across the tick.
+-  `slack` function L121-123 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — - Cursor advances across the tick.
+-  `calendar` function L124-126 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — - Cursor advances across the tick.
+-  `gmail` function L127-129 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — - Cursor advances across the tick.
+-  `drive` function L130-132 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — - Cursor advances across the tick.
+-  `atlassian` function L133-135 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — - Cursor advances across the tick.
+-  `github` function L136-138 — `(&self) -> Option<Arc<dyn GithubFeedClient>>` — - Cursor advances across the tick.
+-  `commit` function L141-151 — `(sha: &str, date: &str) -> Value` — - Cursor advances across the tick.
+-  `issue` function L153-164 — `(number: i64) -> Value` — - Cursor advances across the tick.
+-  `pr` function L166-179 — `(number: i64) -> Value` — - Cursor advances across the tick.
+-  `issue_comment` function L181-191 — `(id: i64, parent: i64) -> Value` — - Cursor advances across the tick.
+-  `full_repo_mirror_round_trips_through_projection_store` function L194-283 — `()` — - Cursor advances across the tick.
+-  `second_tick_with_no_new_data_yields_no_new_items` function L286-315 — `()` — - Cursor advances across the tick.
+-  `dispatch_with_empty_feed_dir_is_a_noop` function L321-338 — `()` — Sanity: dispatch with an empty feed_dir is a clean no-op, not an
+
 #### crates/arawn-feeds/tests/gmail_archive.rs
 
 -  `message` function L22-35 — `(id: &str, internal_date_ms: i64, subject: &str) -> Value` — Minimal Gmail message JSON for tests.
@@ -5359,28 +5656,30 @@
 -  `list_message_ids` function L70-81 — `( &self, query: &str, max_results: u32, ) -> Result<Vec<String>, FeedError>` — per-template query construction.
 -  `get_message` function L83-93 — `(&self, id: &str) -> Result<Value, FeedError>` — per-template query construction.
 -  `MockClients` struct L96-98 — `{ gmail: Arc<MockGmailClient> }` — per-template query construction.
--  `MockClients` type L100-116 — `impl FeedClients for MockClients` — per-template query construction.
+-  `MockClients` type L100-119 — `impl FeedClients for MockClients` — per-template query construction.
 -  `slack` function L101-103 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — per-template query construction.
 -  `calendar` function L104-106 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — per-template query construction.
 -  `gmail` function L107-109 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — per-template query construction.
 -  `drive` function L110-112 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — per-template query construction.
 -  `atlassian` function L113-115 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — per-template query construction.
--  `run_once` function L118-141 — `( template: &dyn FeedTemplate, ctx: &TemplateCtx, params: &TemplateParams, feed_...` — per-template query construction.
--  `ymd_ms` function L143-149 — `(y: i32, m: u32, d: u32) -> i64` — per-template query construction.
--  `read_msg` function L151-157 — `(feed_dir: &PathBuf, day: &str, id: &str) -> Option<Value>` — per-template query construction.
--  `inbox_archive_writes_per_message_partitioned_by_internal_date` function L160-200 — `()` — per-template query construction.
--  `second_run_skips_already_archived_ids` function L203-241 — `()` — per-template query construction.
--  `sender_filter_query_uses_from_operator` function L244-266 — `()` — per-template query construction.
--  `label_archive_query_uses_label_operator` function L269-288 — `()` — per-template query construction.
--  `returns_auth_when_gmail_not_connected` function L291-321 — `()` — per-template query construction.
--  `NoGmail` struct L292 — `-` — per-template query construction.
--  `NoGmail` type L293-309 — `impl FeedClients for NoGmail` — per-template query construction.
--  `slack` function L294-296 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — per-template query construction.
--  `calendar` function L297-299 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — per-template query construction.
--  `gmail` function L300-302 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — per-template query construction.
--  `drive` function L303-305 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — per-template query construction.
--  `atlassian` function L306-308 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — per-template query construction.
--  `malformed_message_skipped_without_aborting_batch` function L324-365 — `()` — per-template query construction.
+-  `github` function L116-118 — `(&self) -> Option<Arc<dyn GithubFeedClient>>` — per-template query construction.
+-  `run_once` function L121-144 — `( template: &dyn FeedTemplate, ctx: &TemplateCtx, params: &TemplateParams, feed_...` — per-template query construction.
+-  `ymd_ms` function L146-152 — `(y: i32, m: u32, d: u32) -> i64` — per-template query construction.
+-  `read_msg` function L154-160 — `(feed_dir: &PathBuf, day: &str, id: &str) -> Option<Value>` — per-template query construction.
+-  `inbox_archive_writes_per_message_partitioned_by_internal_date` function L163-203 — `()` — per-template query construction.
+-  `second_run_skips_already_archived_ids` function L206-244 — `()` — per-template query construction.
+-  `sender_filter_query_uses_from_operator` function L247-269 — `()` — per-template query construction.
+-  `label_archive_query_uses_label_operator` function L272-291 — `()` — per-template query construction.
+-  `returns_auth_when_gmail_not_connected` function L294-327 — `()` — per-template query construction.
+-  `NoGmail` struct L295 — `-` — per-template query construction.
+-  `NoGmail` type L296-315 — `impl FeedClients for NoGmail` — per-template query construction.
+-  `slack` function L297-299 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — per-template query construction.
+-  `calendar` function L300-302 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — per-template query construction.
+-  `gmail` function L303-305 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — per-template query construction.
+-  `drive` function L306-308 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — per-template query construction.
+-  `atlassian` function L309-311 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — per-template query construction.
+-  `github` function L312-314 — `(&self) -> Option<Arc<dyn GithubFeedClient>>` — per-template query construction.
+-  `malformed_message_skipped_without_aborting_batch` function L330-371 — `()` — per-template query construction.
 
 #### crates/arawn-feeds/tests/jira_trackers.rs
 
@@ -5400,33 +5699,35 @@
 -  `list_jira_projects` function L112-114 — `(&self) -> Result<Vec<arawn_feeds::JiraProjectMeta>, FeedError>` — Integration tests for the two Jira templates.
 -  `list_confluence_spaces` function L116-120 — `( &self, ) -> Result<Vec<arawn_feeds::ConfluenceSpaceMeta>, FeedError>` — Integration tests for the two Jira templates.
 -  `MockClients` struct L123-125 — `{ atlassian: Arc<MockAtlassian> }` — Integration tests for the two Jira templates.
--  `MockClients` type L127-143 — `impl FeedClients for MockClients` — Integration tests for the two Jira templates.
+-  `MockClients` type L127-146 — `impl FeedClients for MockClients` — Integration tests for the two Jira templates.
 -  `slack` function L128-130 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — Integration tests for the two Jira templates.
 -  `calendar` function L131-133 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — Integration tests for the two Jira templates.
 -  `gmail` function L134-136 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — Integration tests for the two Jira templates.
 -  `drive` function L137-139 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — Integration tests for the two Jira templates.
 -  `atlassian` function L140-142 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — Integration tests for the two Jira templates.
--  `issue_meta` function L145-152 — `(key: &str, updated: &str) -> JiraIssueMeta` — Integration tests for the two Jira templates.
--  `issue_detail` function L154-170 — `( key: &str, updated: &str, comments: Option<Vec<Value>>, changelog: Option<Vec<...` — Integration tests for the two Jira templates.
--  `comment` function L172-179 — `(id: &str, body: &str) -> Value` — Integration tests for the two Jira templates.
--  `history` function L181-187 — `(id: &str, field: &str, to: &str) -> Value` — Integration tests for the two Jira templates.
--  `run_once` function L189-212 — `( template: &dyn FeedTemplate, ctx: &TemplateCtx, params: &TemplateParams, feed_...` — Integration tests for the two Jira templates.
--  `read_jsonl` function L214-224 — `(path: &PathBuf) -> Vec<Value>` — Integration tests for the two Jira templates.
--  `project_tracker_appends_new_comments_overwrites_issue_snapshot` function L229-288 — `()` — Integration tests for the two Jira templates.
--  `project_tracker_history_advances_independently_of_comments` function L291-333 — `()` — Integration tests for the two Jira templates.
--  `project_tracker_partial_failure_doesnt_block_other_issues` function L336-366 — `()` — Integration tests for the two Jira templates.
--  `project_tracker_validates_project` function L369-379 — `()` — Integration tests for the two Jira templates.
--  `assignee_tracker_writes_only_issue_json_no_logs` function L384-425 — `()` — Integration tests for the two Jira templates.
--  `assignee_tracker_uses_currentUser_jql_and_advances_cursor` function L428-468 — `()` — Integration tests for the two Jira templates.
--  `returns_auth_when_atlassian_not_connected` function L471-503 — `()` — Integration tests for the two Jira templates.
--  `NoAtlassian` struct L472 — `-` — Integration tests for the two Jira templates.
--  `NoAtlassian` type L473-489 — `impl FeedClients for NoAtlassian` — Integration tests for the two Jira templates.
--  `slack` function L474-476 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — Integration tests for the two Jira templates.
--  `calendar` function L477-479 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — Integration tests for the two Jira templates.
--  `gmail` function L480-482 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — Integration tests for the two Jira templates.
--  `drive` function L483-485 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — Integration tests for the two Jira templates.
--  `atlassian` function L486-488 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — Integration tests for the two Jira templates.
--  `assignee_tracker_partial_failure_doesnt_block_other_issues` function L506-537 — `()` — Integration tests for the two Jira templates.
+-  `github` function L143-145 — `(&self) -> Option<Arc<dyn GithubFeedClient>>` — Integration tests for the two Jira templates.
+-  `issue_meta` function L148-155 — `(key: &str, updated: &str) -> JiraIssueMeta` — Integration tests for the two Jira templates.
+-  `issue_detail` function L157-173 — `( key: &str, updated: &str, comments: Option<Vec<Value>>, changelog: Option<Vec<...` — Integration tests for the two Jira templates.
+-  `comment` function L175-182 — `(id: &str, body: &str) -> Value` — Integration tests for the two Jira templates.
+-  `history` function L184-190 — `(id: &str, field: &str, to: &str) -> Value` — Integration tests for the two Jira templates.
+-  `run_once` function L192-215 — `( template: &dyn FeedTemplate, ctx: &TemplateCtx, params: &TemplateParams, feed_...` — Integration tests for the two Jira templates.
+-  `read_jsonl` function L217-227 — `(path: &PathBuf) -> Vec<Value>` — Integration tests for the two Jira templates.
+-  `project_tracker_appends_new_comments_overwrites_issue_snapshot` function L232-291 — `()` — Integration tests for the two Jira templates.
+-  `project_tracker_history_advances_independently_of_comments` function L294-336 — `()` — Integration tests for the two Jira templates.
+-  `project_tracker_partial_failure_doesnt_block_other_issues` function L339-369 — `()` — Integration tests for the two Jira templates.
+-  `project_tracker_validates_project` function L372-382 — `()` — Integration tests for the two Jira templates.
+-  `assignee_tracker_writes_only_issue_json_no_logs` function L387-428 — `()` — Integration tests for the two Jira templates.
+-  `assignee_tracker_uses_currentUser_jql_and_advances_cursor` function L431-471 — `()` — Integration tests for the two Jira templates.
+-  `returns_auth_when_atlassian_not_connected` function L474-509 — `()` — Integration tests for the two Jira templates.
+-  `NoAtlassian` struct L475 — `-` — Integration tests for the two Jira templates.
+-  `NoAtlassian` type L476-495 — `impl FeedClients for NoAtlassian` — Integration tests for the two Jira templates.
+-  `slack` function L477-479 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — Integration tests for the two Jira templates.
+-  `calendar` function L480-482 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — Integration tests for the two Jira templates.
+-  `gmail` function L483-485 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — Integration tests for the two Jira templates.
+-  `drive` function L486-488 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — Integration tests for the two Jira templates.
+-  `atlassian` function L489-491 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — Integration tests for the two Jira templates.
+-  `github` function L492-494 — `(&self) -> Option<Arc<dyn GithubFeedClient>>` — Integration tests for the two Jira templates.
+-  `assignee_tracker_partial_failure_doesnt_block_other_issues` function L512-543 — `()` — Integration tests for the two Jira templates.
 
 #### crates/arawn-feeds/tests/slack_channel_archive.rs
 
@@ -5447,34 +5748,36 @@
 -  `list_channels` function L120-122 — `(&self) -> Result<Vec<arawn_feeds::SlackChannel>, FeedError>` — every Slack-touching template test will reuse.
 -  `thread_replies` function L124-155 — `( &self, channel_id: &str, parent_ts: &str, oldest_ts: Option<&str>, ) -> Result...` — every Slack-touching template test will reuse.
 -  `MockClients` struct L158-160 — `{ slack: Arc<MockSlackClient> }` — every Slack-touching template test will reuse.
--  `MockClients` type L162-178 — `impl FeedClients for MockClients` — every Slack-touching template test will reuse.
+-  `MockClients` type L162-181 — `impl FeedClients for MockClients` — every Slack-touching template test will reuse.
 -  `slack` function L163-165 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — every Slack-touching template test will reuse.
 -  `calendar` function L166-168 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — every Slack-touching template test will reuse.
 -  `gmail` function L169-171 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — every Slack-touching template test will reuse.
 -  `drive` function L172-174 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — every Slack-touching template test will reuse.
 -  `atlassian` function L175-177 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — every Slack-touching template test will reuse.
--  `slack_msg` function L180-187 — `(ts: &str, text: &str) -> Value` — every Slack-touching template test will reuse.
--  `read_jsonl` function L191-201 — `(feed_dir: &PathBuf, day: &str) -> Vec<Value>` — Walk a YYYY-MM-DD.jsonl file in `feed_dir` and return all parsed
--  `run_once` function L203-229 — `( template: &dyn FeedTemplate, ctx: &TemplateCtx, params: &TemplateParams, feed_...` — every Slack-touching template test will reuse.
--  `first_run_writes_messages_and_advances_cursor` function L232-282 — `()` — every Slack-touching template test will reuse.
--  `second_run_passes_cursor_and_only_writes_new` function L285-333 — `()` — every Slack-touching template test will reuse.
--  `empty_run_is_a_no_op_with_status` function L336-371 — `()` — every Slack-touching template test will reuse.
--  `messages_partition_across_days` function L374-412 — `()` — every Slack-touching template test will reuse.
--  `run_returns_auth_when_slack_not_connected` function L415-450 — `()` — every Slack-touching template test will reuse.
--  `NoSlack` struct L416 — `-` — every Slack-touching template test will reuse.
--  `NoSlack` type L417-433 — `impl FeedClients for NoSlack` — every Slack-touching template test will reuse.
--  `slack` function L418-420 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — every Slack-touching template test will reuse.
--  `calendar` function L421-423 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — every Slack-touching template test will reuse.
--  `gmail` function L424-426 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — every Slack-touching template test will reuse.
--  `drive` function L427-429 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — every Slack-touching template test will reuse.
--  `atlassian` function L430-432 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — every Slack-touching template test will reuse.
--  `slack_msg_with_replies` function L454-462 — `(ts: &str, text: &str, reply_count: u64) -> Value` — every Slack-touching template test will reuse.
--  `parent_with_replies_seeds_thread_file_and_advances_thread_cursor` function L465-539 — `()` — every Slack-touching template test will reuse.
--  `second_run_advances_thread_cursor_independently` function L542-609 — `()` — every Slack-touching template test will reuse.
--  `channel_archive_works_for_dm_id_passthrough` function L612-646 — `()` — every Slack-touching template test will reuse.
--  `channel_archive_works_for_mpim_id_passthrough` function L649-676 — `()` — every Slack-touching template test will reuse.
--  `classify_helper_resolves_kinds_for_picker_use` function L679-690 — `()` — every Slack-touching template test will reuse.
--  `thread_failure_does_not_block_channel_or_other_threads` function L693-754 — `()` — every Slack-touching template test will reuse.
+-  `github` function L178-180 — `(&self) -> Option<Arc<dyn GithubFeedClient>>` — every Slack-touching template test will reuse.
+-  `slack_msg` function L183-190 — `(ts: &str, text: &str) -> Value` — every Slack-touching template test will reuse.
+-  `read_jsonl` function L194-204 — `(feed_dir: &PathBuf, day: &str) -> Vec<Value>` — Walk a YYYY-MM-DD.jsonl file in `feed_dir` and return all parsed
+-  `run_once` function L206-232 — `( template: &dyn FeedTemplate, ctx: &TemplateCtx, params: &TemplateParams, feed_...` — every Slack-touching template test will reuse.
+-  `first_run_writes_messages_and_advances_cursor` function L235-285 — `()` — every Slack-touching template test will reuse.
+-  `second_run_passes_cursor_and_only_writes_new` function L288-336 — `()` — every Slack-touching template test will reuse.
+-  `empty_run_is_a_no_op_with_status` function L339-374 — `()` — every Slack-touching template test will reuse.
+-  `messages_partition_across_days` function L377-415 — `()` — every Slack-touching template test will reuse.
+-  `run_returns_auth_when_slack_not_connected` function L418-456 — `()` — every Slack-touching template test will reuse.
+-  `NoSlack` struct L419 — `-` — every Slack-touching template test will reuse.
+-  `NoSlack` type L420-439 — `impl FeedClients for NoSlack` — every Slack-touching template test will reuse.
+-  `slack` function L421-423 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — every Slack-touching template test will reuse.
+-  `calendar` function L424-426 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — every Slack-touching template test will reuse.
+-  `gmail` function L427-429 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — every Slack-touching template test will reuse.
+-  `drive` function L430-432 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — every Slack-touching template test will reuse.
+-  `atlassian` function L433-435 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — every Slack-touching template test will reuse.
+-  `github` function L436-438 — `(&self) -> Option<Arc<dyn GithubFeedClient>>` — every Slack-touching template test will reuse.
+-  `slack_msg_with_replies` function L460-468 — `(ts: &str, text: &str, reply_count: u64) -> Value` — every Slack-touching template test will reuse.
+-  `parent_with_replies_seeds_thread_file_and_advances_thread_cursor` function L471-545 — `()` — every Slack-touching template test will reuse.
+-  `second_run_advances_thread_cursor_independently` function L548-615 — `()` — every Slack-touching template test will reuse.
+-  `channel_archive_works_for_dm_id_passthrough` function L618-652 — `()` — every Slack-touching template test will reuse.
+-  `channel_archive_works_for_mpim_id_passthrough` function L655-682 — `()` — every Slack-touching template test will reuse.
+-  `classify_helper_resolves_kinds_for_picker_use` function L685-696 — `()` — every Slack-touching template test will reuse.
+-  `thread_failure_does_not_block_channel_or_other_threads` function L699-760 — `()` — every Slack-touching template test will reuse.
 
 #### crates/arawn-feeds/tests/slack_dm_archive.rs
 
@@ -5493,24 +5796,26 @@
 -  `search_messages` function L99-105 — `( &self, _query: &str, _oldest_ts: Option<&str>, ) -> Result<SlackHistoryPage, F...` — channel-archive already exercises.
 -  `list_channels` function L107-109 — `(&self) -> Result<Vec<arawn_feeds::SlackChannel>, FeedError>` — channel-archive already exercises.
 -  `MockClients` struct L112-114 — `{ slack: Arc<MockSlackClient> }` — channel-archive already exercises.
--  `MockClients` type L116-132 — `impl FeedClients for MockClients` — channel-archive already exercises.
+-  `MockClients` type L116-135 — `impl FeedClients for MockClients` — channel-archive already exercises.
 -  `slack` function L117-119 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — channel-archive already exercises.
 -  `calendar` function L120-122 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — channel-archive already exercises.
 -  `gmail` function L123-125 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — channel-archive already exercises.
 -  `drive` function L126-128 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — channel-archive already exercises.
 -  `atlassian` function L129-131 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — channel-archive already exercises.
--  `dm_msg` function L134-141 — `(ts: &str, text: &str) -> Value` — channel-archive already exercises.
--  `read_jsonl` function L143-153 — `(feed_dir: &PathBuf, day: &str) -> Vec<Value>` — channel-archive already exercises.
--  `run_once` function L155-180 — `( template: &dyn FeedTemplate, ctx: &TemplateCtx, params: &TemplateParams, feed_...` — channel-archive already exercises.
--  `dm_archive_opens_dm_then_writes_messages` function L183-229 — `()` — channel-archive already exercises.
--  `dm_archive_returns_auth_when_slack_not_connected` function L232-265 — `()` — channel-archive already exercises.
--  `NoSlack` struct L233 — `-` — channel-archive already exercises.
--  `NoSlack` type L234-250 — `impl FeedClients for NoSlack` — channel-archive already exercises.
--  `slack` function L235-237 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — channel-archive already exercises.
--  `calendar` function L238-240 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — channel-archive already exercises.
--  `gmail` function L241-243 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — channel-archive already exercises.
--  `drive` function L244-246 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — channel-archive already exercises.
--  `atlassian` function L247-249 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — channel-archive already exercises.
+-  `github` function L132-134 — `(&self) -> Option<Arc<dyn GithubFeedClient>>` — channel-archive already exercises.
+-  `dm_msg` function L137-144 — `(ts: &str, text: &str) -> Value` — channel-archive already exercises.
+-  `read_jsonl` function L146-156 — `(feed_dir: &PathBuf, day: &str) -> Vec<Value>` — channel-archive already exercises.
+-  `run_once` function L158-183 — `( template: &dyn FeedTemplate, ctx: &TemplateCtx, params: &TemplateParams, feed_...` — channel-archive already exercises.
+-  `dm_archive_opens_dm_then_writes_messages` function L186-232 — `()` — channel-archive already exercises.
+-  `dm_archive_returns_auth_when_slack_not_connected` function L235-271 — `()` — channel-archive already exercises.
+-  `NoSlack` struct L236 — `-` — channel-archive already exercises.
+-  `NoSlack` type L237-256 — `impl FeedClients for NoSlack` — channel-archive already exercises.
+-  `slack` function L238-240 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — channel-archive already exercises.
+-  `calendar` function L241-243 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — channel-archive already exercises.
+-  `gmail` function L244-246 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — channel-archive already exercises.
+-  `drive` function L247-249 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — channel-archive already exercises.
+-  `atlassian` function L250-252 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — channel-archive already exercises.
+-  `github` function L253-255 — `(&self) -> Option<Arc<dyn GithubFeedClient>>` — channel-archive already exercises.
 
 #### crates/arawn-feeds/tests/slack_my_mentions.rs
 
@@ -5529,26 +5834,28 @@
 -  `search_messages` function L81-99 — `( &self, query: &str, oldest_ts: Option<&str>, ) -> Result<SlackHistoryPage, Fee...` — - Empty result writes nothing and reports `no-new-items`.
 -  `list_channels` function L101-103 — `(&self) -> Result<Vec<arawn_feeds::SlackChannel>, FeedError>` — - Empty result writes nothing and reports `no-new-items`.
 -  `MockClients` struct L106-108 — `{ slack: Arc<MockSlackClient> }` — - Empty result writes nothing and reports `no-new-items`.
--  `MockClients` type L110-126 — `impl FeedClients for MockClients` — - Empty result writes nothing and reports `no-new-items`.
+-  `MockClients` type L110-129 — `impl FeedClients for MockClients` — - Empty result writes nothing and reports `no-new-items`.
 -  `slack` function L111-113 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — - Empty result writes nothing and reports `no-new-items`.
 -  `calendar` function L114-116 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — - Empty result writes nothing and reports `no-new-items`.
 -  `gmail` function L117-119 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — - Empty result writes nothing and reports `no-new-items`.
 -  `drive` function L120-122 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — - Empty result writes nothing and reports `no-new-items`.
 -  `atlassian` function L123-125 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — - Empty result writes nothing and reports `no-new-items`.
--  `mention_msg` function L128-137 — `(ts: &str, channel: &str, text: &str) -> Value` — - Empty result writes nothing and reports `no-new-items`.
--  `read_jsonl` function L139-150 — `(feed_dir: &PathBuf, day: &str) -> Vec<Value>` — - Empty result writes nothing and reports `no-new-items`.
--  `run_once` function L152-177 — `( template: &dyn FeedTemplate, ctx: &TemplateCtx, params: &TemplateParams, feed_...` — - Empty result writes nothing and reports `no-new-items`.
--  `first_run_resolves_user_id_and_writes_mentions` function L180-225 — `()` — - Empty result writes nothing and reports `no-new-items`.
--  `second_run_uses_cached_user_id_and_dedupes_overlap` function L228-285 — `()` — - Empty result writes nothing and reports `no-new-items`.
--  `empty_run_is_a_no_op` function L288-316 — `()` — - Empty result writes nothing and reports `no-new-items`.
--  `returns_auth_when_slack_not_connected` function L319-350 — `()` — - Empty result writes nothing and reports `no-new-items`.
--  `NoSlack` struct L320 — `-` — - Empty result writes nothing and reports `no-new-items`.
--  `NoSlack` type L321-337 — `impl FeedClients for NoSlack` — - Empty result writes nothing and reports `no-new-items`.
--  `slack` function L322-324 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — - Empty result writes nothing and reports `no-new-items`.
--  `calendar` function L325-327 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — - Empty result writes nothing and reports `no-new-items`.
--  `gmail` function L328-330 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — - Empty result writes nothing and reports `no-new-items`.
--  `drive` function L331-333 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — - Empty result writes nothing and reports `no-new-items`.
--  `atlassian` function L334-336 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — - Empty result writes nothing and reports `no-new-items`.
+-  `github` function L126-128 — `(&self) -> Option<Arc<dyn GithubFeedClient>>` — - Empty result writes nothing and reports `no-new-items`.
+-  `mention_msg` function L131-140 — `(ts: &str, channel: &str, text: &str) -> Value` — - Empty result writes nothing and reports `no-new-items`.
+-  `read_jsonl` function L142-153 — `(feed_dir: &PathBuf, day: &str) -> Vec<Value>` — - Empty result writes nothing and reports `no-new-items`.
+-  `run_once` function L155-180 — `( template: &dyn FeedTemplate, ctx: &TemplateCtx, params: &TemplateParams, feed_...` — - Empty result writes nothing and reports `no-new-items`.
+-  `first_run_resolves_user_id_and_writes_mentions` function L183-228 — `()` — - Empty result writes nothing and reports `no-new-items`.
+-  `second_run_uses_cached_user_id_and_dedupes_overlap` function L231-288 — `()` — - Empty result writes nothing and reports `no-new-items`.
+-  `empty_run_is_a_no_op` function L291-319 — `()` — - Empty result writes nothing and reports `no-new-items`.
+-  `returns_auth_when_slack_not_connected` function L322-356 — `()` — - Empty result writes nothing and reports `no-new-items`.
+-  `NoSlack` struct L323 — `-` — - Empty result writes nothing and reports `no-new-items`.
+-  `NoSlack` type L324-343 — `impl FeedClients for NoSlack` — - Empty result writes nothing and reports `no-new-items`.
+-  `slack` function L325-327 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — - Empty result writes nothing and reports `no-new-items`.
+-  `calendar` function L328-330 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — - Empty result writes nothing and reports `no-new-items`.
+-  `gmail` function L331-333 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — - Empty result writes nothing and reports `no-new-items`.
+-  `drive` function L334-336 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — - Empty result writes nothing and reports `no-new-items`.
+-  `atlassian` function L337-339 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — - Empty result writes nothing and reports `no-new-items`.
+-  `github` function L340-342 — `(&self) -> Option<Arc<dyn GithubFeedClient>>` — - Empty result writes nothing and reports `no-new-items`.
 
 ### crates/arawn-integrations/src/atlassian
 
@@ -7416,11 +7723,11 @@
 
 #### crates/arawn-projections/src/dispatch.rs
 
-- pub `project_feed_dir` function L27-132 — `( store: &ProjectionStore, template_name: &str, feed_id: &str, feed_dir: &Path, ...` — Project every item under the on-disk mirror for `feed_id`, walking
--  `SubBatch` enum L134-138 — `Issues | Comments | History` — and after backfill.
--  `SubKind` enum L140-144 — `IssueKey | CommentId | HistoryId` — and after backfill.
--  `atlassian_write_subbatch` function L146-164 — `( store: &ProjectionStore, feed_type: &str, feed_id: &str, sub: SubBatch, _kind:...` — and after backfill.
--  `dedup_and_write_single_type` function L166-190 — `( store: &ProjectionStore, feed_type: &str, feed_id: &str, parsed: Vec<P>, sourc...` — and after backfill.
+- pub `project_feed_dir` function L28-219 — `( store: &ProjectionStore, template_name: &str, feed_id: &str, feed_dir: &Path, ...` — Project every item under the on-disk mirror for `feed_id`, walking
+-  `SubBatch` enum L221-225 — `Issues | Comments | History` — and after backfill.
+-  `SubKind` enum L227-231 — `IssueKey | CommentId | HistoryId` — and after backfill.
+-  `atlassian_write_subbatch` function L233-251 — `( store: &ProjectionStore, feed_type: &str, feed_id: &str, sub: SubBatch, _kind:...` — and after backfill.
+-  `dedup_and_write_single_type` function L253-277 — `( store: &ProjectionStore, feed_type: &str, feed_id: &str, parsed: Vec<P>, sourc...` — and after backfill.
 
 #### crates/arawn-projections/src/drive.rs
 
@@ -7443,16 +7750,16 @@
 
 #### crates/arawn-projections/src/embed.rs
 
-- pub `EMBEDDABLE_FEED_TYPES` variable L24-39 — `: &[&str]` — Feed types whose body_text is worth embedding.
-- pub `EmbedPassOutcome` struct L47-51 — `{ embedded: usize, skipped_empty: usize, errors: usize }` — `crates/arawn/src/main.rs`.
-- pub `Embedder` interface L57-62 — `{ fn embed_batch() }` — Lightweight embedding interface this crate consumes.
-- pub `run_embed_pass` function L66-104 — `( store: &ProjectionStore, embedder: &dyn Embedder, batch_size: usize, max_per_p...` — Run a single embed pass over every embeddable feed type, capped at
-- pub `PendingEmbedRow` struct L178-181 — `{ projection_id: String, body_text: String }` — A row pending embedding: the `<feed_type>` row's projection id +
-- pub `pending_embedding_rows` function L186-219 — `( &self, feed_type: &str, limit: usize, ) -> Result<Vec<PendingEmbedRow>, Projec...` — Find rows in `<feed_type>` whose embed status is `pending`,
-- pub `write_embedding` function L225-277 — `( &self, feed_type: &str, projection_id: &str, vector: &[f32], ) -> Result<(), P...` — Write a freshly computed embedding for a projection row.
--  `MIN_BODY_CHARS` variable L44 — `: usize` — Minimum body length worth embedding.
--  `embed_batch` function L106-173 — `( store: &ProjectionStore, feed_type: &str, rows: &[PendingEmbedRow], embedder: ...` — `crates/arawn/src/main.rs`.
--  `ProjectionStore` type L183-278 — `= ProjectionStore` — `crates/arawn/src/main.rs`.
+- pub `EMBEDDABLE_FEED_TYPES` variable L24-46 — `: &[&str]` — Feed types whose body_text is worth embedding.
+- pub `EmbedPassOutcome` struct L54-58 — `{ embedded: usize, skipped_empty: usize, errors: usize }` — `crates/arawn/src/main.rs`.
+- pub `Embedder` interface L64-69 — `{ fn embed_batch() }` — Lightweight embedding interface this crate consumes.
+- pub `run_embed_pass` function L73-111 — `( store: &ProjectionStore, embedder: &dyn Embedder, batch_size: usize, max_per_p...` — Run a single embed pass over every embeddable feed type, capped at
+- pub `PendingEmbedRow` struct L185-188 — `{ projection_id: String, body_text: String }` — A row pending embedding: the `<feed_type>` row's projection id +
+- pub `pending_embedding_rows` function L193-226 — `( &self, feed_type: &str, limit: usize, ) -> Result<Vec<PendingEmbedRow>, Projec...` — Find rows in `<feed_type>` whose embed status is `pending`,
+- pub `write_embedding` function L232-284 — `( &self, feed_type: &str, projection_id: &str, vector: &[f32], ) -> Result<(), P...` — Write a freshly computed embedding for a projection row.
+-  `MIN_BODY_CHARS` variable L51 — `: usize` — Minimum body length worth embedding.
+-  `embed_batch` function L113-180 — `( store: &ProjectionStore, feed_type: &str, rows: &[PendingEmbedRow], embedder: ...` — `crates/arawn/src/main.rs`.
+-  `ProjectionStore` type L190-285 — `= ProjectionStore` — `crates/arawn/src/main.rs`.
 
 #### crates/arawn-projections/src/error.rs
 
@@ -7469,35 +7776,77 @@
 - pub `NOTIFICATIONS_FEED_TYPE` variable L25 — `: &str` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
 - pub `ISSUES_AND_PRS_FEED_TYPE` variable L26 — `: &str` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
 - pub `REVIEW_QUEUE_FEED_TYPE` variable L27 — `: &str` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
-- pub `BODY_EXCERPT_MAX` variable L31 — `: usize` — Cap on body excerpts.
-- pub `GithubNotificationProjection` struct L38-59 — `{ id: String, feed_id: String, source_id: String, source_ts: DateTime<Utc>, owne...` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
-- pub `from_notification_json` function L98-147 — `(feed_id: &str, v: &Value) -> Option<GithubNotificationProjection>` — Parse a GitHub `/notifications` API response item.
-- pub `GithubIssueOrPrProjection` struct L154-177 — `{ id: String, feed_id: String, source_id: String, source_ts: DateTime<Utc>, owne...` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
-- pub `from_issue_or_pr_json` function L221-296 — `(feed_id: &str, v: &Value) -> Option<GithubIssueOrPrProjection>` — Parse one row from `/search/issues` (issues or PRs — the search
-- pub `GithubReviewRequestProjection` struct L303-316 — `{ id: String, feed_id: String, source_id: String, source_ts: DateTime<Utc>, owne...` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
-- pub `from_review_request_json` function L351-378 — `(feed_id: &str, v: &Value) -> Option<GithubReviewRequestProjection>` — Parse one row from `/search/issues?q=is:pr is:open
--  `GithubNotificationProjection` type L61-93 — `impl Projection for GithubNotificationProjection` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
--  `feed_type` function L62-64 — `(&self) -> &'static str` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
--  `row` function L66-92 — `(&self) -> ProjectionRow` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
--  `GithubIssueOrPrProjection` type L179-216 — `impl Projection for GithubIssueOrPrProjection` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
--  `feed_type` function L180-182 — `(&self) -> &'static str` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
--  `row` function L184-215 — `(&self) -> ProjectionRow` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
--  `GithubReviewRequestProjection` type L318-344 — `impl Projection for GithubReviewRequestProjection` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
--  `feed_type` function L319-321 — `(&self) -> &'static str` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
--  `row` function L323-343 — `(&self) -> ProjectionRow` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
--  `parse_dt` function L384-388 — `(v: Option<&Value>) -> Option<DateTime<Utc>>` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
--  `parse_dt_opt` function L390-396 — `(v: Option<&Value>) -> Option<DateTime<Utc>>` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
--  `truncate_chars` function L398-410 — `(s: &str, max: usize) -> String` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
--  `parse_html_url_owner_repo_number` function L414-424 — `(url: &str) -> Option<(String, String, i64)>` — Extract `(owner, repo, number)` from a GitHub web URL like
--  `tests` module L427-574 — `-` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
--  `assert_round_trips` function L431-437 — `(p: &P)` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
--  `notification_round_trip` function L440-472 — `()` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
--  `issue_round_trip` function L475-499 — `()` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
--  `pr_with_merged_at_reports_state_merged` function L502-517 — `()` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
--  `body_excerpt_truncated_to_max` function L520-533 — `()` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
--  `review_request_round_trip` function L536-550 — `()` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
--  `missing_required_fields_returns_none` function L553-560 — `()` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
--  `url_parser_handles_issues_and_prs` function L563-573 — `()` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+- pub `REPO_COMMITS_FEED_TYPE` variable L31 — `: &str` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+- pub `REPO_ISSUES_FEED_TYPE` variable L32 — `: &str` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+- pub `REPO_PRS_FEED_TYPE` variable L33 — `: &str` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+- pub `ISSUE_OR_PR_COMMENTS_FEED_TYPE` variable L34 — `: &str` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+- pub `BODY_EXCERPT_MAX` variable L38 — `: usize` — Cap on body excerpts.
+- pub `GithubNotificationProjection` struct L45-66 — `{ id: String, feed_id: String, source_id: String, source_ts: DateTime<Utc>, owne...` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+- pub `from_notification_json` function L105-154 — `(feed_id: &str, v: &Value) -> Option<GithubNotificationProjection>` — Parse a GitHub `/notifications` API response item.
+- pub `GithubIssueOrPrProjection` struct L161-184 — `{ id: String, feed_id: String, source_id: String, source_ts: DateTime<Utc>, owne...` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+- pub `from_issue_or_pr_json` function L228-303 — `(feed_id: &str, v: &Value) -> Option<GithubIssueOrPrProjection>` — Parse one row from `/search/issues` (issues or PRs — the search
+- pub `GithubReviewRequestProjection` struct L310-323 — `{ id: String, feed_id: String, source_id: String, source_ts: DateTime<Utc>, owne...` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+- pub `from_review_request_json` function L358-385 — `(feed_id: &str, v: &Value) -> Option<GithubReviewRequestProjection>` — Parse one row from `/search/issues?q=is:pr is:open
+- pub `walk_notifications_dir` function L421-450 — `( feed_id: &str, feed_dir: &std::path::Path, ) -> Result<Vec<GithubNotificationP...` — Walk a `github/notifications` feed dir.
+- pub `walk_issues_and_prs_dir` function L454-461 — `( feed_id: &str, feed_dir: &std::path::Path, ) -> Result<Vec<GithubIssueOrPrProj...` — Walk a `github/issues-and-prs` feed dir.
+- pub `walk_review_queue_dir` function L464-471 — `( feed_id: &str, feed_dir: &std::path::Path, ) -> Result<Vec<GithubReviewRequest...` — Walk a `github/review-queue` feed dir.
+- pub `GithubRepoCommitProjection` struct L524-536 — `{ id: String, feed_id: String, source_id: String, source_ts: DateTime<Utc>, owne...` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+- pub `from_commit_json` function L573-622 — `( feed_id: &str, owner: &str, repo: &str, v: &Value, ) -> Option<GithubRepoCommi...` — Parse one row from `/repos/{owner}/{repo}/commits`.
+- pub `GithubRepoIssueProjection` struct L629-647 — `{ id: String, feed_id: String, source_id: String, source_ts: DateTime<Utc>, owne...` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+- pub `from_repo_issue_json` function L686-755 — `( feed_id: &str, owner: &str, repo: &str, v: &Value, ) -> Option<GithubRepoIssue...` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+- pub `GithubRepoPrProjection` struct L762-785 — `{ id: String, feed_id: String, source_id: String, source_ts: DateTime<Utc>, owne...` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+- pub `from_repo_pr_json` function L828-920 — `( feed_id: &str, owner: &str, repo: &str, v: &Value, ) -> Option<GithubRepoPrPro...` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+- pub `GithubIssueOrPrCommentProjection` struct L927-942 — `{ id: String, feed_id: String, source_id: String, source_ts: DateTime<Utc>, owne...` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+- pub `from_comment_json` function L981-1033 — `( feed_id: &str, owner: &str, repo: &str, kind: &str, v: &Value, ) -> Option<Git...` — Parse one comment from `/repos/{owner}/{repo}/issues/comments` or
+- pub `walk_repo_commits_dir` function L1039-1046 — `( feed_id: &str, feed_dir: &std::path::Path, ) -> Result<Vec<GithubRepoCommitPro...` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+- pub `walk_repo_issues_dir` function L1048-1055 — `( feed_id: &str, feed_dir: &std::path::Path, ) -> Result<Vec<GithubRepoIssueProj...` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+- pub `walk_repo_prs_dir` function L1057-1064 — `( feed_id: &str, feed_dir: &std::path::Path, ) -> Result<Vec<GithubRepoPrProject...` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+- pub `walk_issue_or_pr_comments_dir` function L1066-1080 — `( feed_id: &str, feed_dir: &std::path::Path, ) -> Result<Vec<GithubIssueOrPrComm...` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+-  `GithubNotificationProjection` type L68-100 — `impl Projection for GithubNotificationProjection` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+-  `feed_type` function L69-71 — `(&self) -> &'static str` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+-  `row` function L73-99 — `(&self) -> ProjectionRow` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+-  `GithubIssueOrPrProjection` type L186-223 — `impl Projection for GithubIssueOrPrProjection` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+-  `feed_type` function L187-189 — `(&self) -> &'static str` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+-  `row` function L191-222 — `(&self) -> ProjectionRow` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+-  `GithubReviewRequestProjection` type L325-351 — `impl Projection for GithubReviewRequestProjection` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+-  `feed_type` function L326-328 — `(&self) -> &'static str` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+-  `row` function L330-350 — `(&self) -> ProjectionRow` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+-  `parse_dt` function L391-395 — `(v: Option<&Value>) -> Option<DateTime<Utc>>` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+-  `parse_dt_opt` function L397-403 — `(v: Option<&Value>) -> Option<DateTime<Utc>>` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+-  `truncate_chars` function L405-417 — `(s: &str, max: usize) -> String` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+-  `walk_simple_dir` function L473-503 — `( subdir: &str, feed_dir: &std::path::Path, parse: impl Fn(&Value) -> Option<T>,...` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+-  `parse_html_url_owner_repo_number` function L507-517 — `(url: &str) -> Option<(String, String, i64)>` — Extract `(owner, repo, number)` from a GitHub web URL like
+-  `GithubRepoCommitProjection` type L538-569 — `impl Projection for GithubRepoCommitProjection` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+-  `feed_type` function L539-541 — `(&self) -> &'static str` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+-  `row` function L543-568 — `(&self) -> ProjectionRow` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+-  `GithubRepoIssueProjection` type L649-684 — `impl Projection for GithubRepoIssueProjection` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+-  `feed_type` function L650-652 — `(&self) -> &'static str` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+-  `row` function L654-683 — `(&self) -> ProjectionRow` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+-  `GithubRepoPrProjection` type L787-826 — `impl Projection for GithubRepoPrProjection` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+-  `feed_type` function L788-790 — `(&self) -> &'static str` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+-  `row` function L792-825 — `(&self) -> ProjectionRow` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+-  `GithubIssueOrPrCommentProjection` type L944-975 — `impl Projection for GithubIssueOrPrCommentProjection` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+-  `feed_type` function L945-947 — `(&self) -> &'static str` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+-  `row` function L949-974 — `(&self) -> ProjectionRow` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+-  `walk_repo_kind_dir` function L1085-1152 — `( feed_dir: &std::path::Path, kind: &str, parse: impl Fn(&str, &str, &Value) -> ...` — Walk `<feed_dir>/<owner>/<repo>/<kind>/*.json`.
+-  `tests` module L1155-1487 — `-` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+-  `assert_round_trips` function L1159-1165 — `(p: &P)` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+-  `notification_round_trip` function L1168-1200 — `()` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+-  `issue_round_trip` function L1203-1227 — `()` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+-  `pr_with_merged_at_reports_state_merged` function L1230-1245 — `()` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+-  `body_excerpt_truncated_to_max` function L1248-1261 — `()` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+-  `review_request_round_trip` function L1264-1278 — `()` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+-  `missing_required_fields_returns_none` function L1281-1288 — `()` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+-  `walks_notifications_dir_skipping_garbage` function L1291-1313 — `()` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+-  `walks_returns_empty_when_dir_missing` function L1316-1320 — `()` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+-  `url_parser_handles_issues_and_prs` function L1323-1333 — `()` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+-  `commit_parser_round_trips` function L1338-1361 — `()` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+-  `repo_issue_parser_extracts_labels_and_assignees` function L1364-1384 — `()` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+-  `repo_pr_parser_reports_merged_state` function L1387-1411 — `()` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+-  `issue_comment_parser_derives_kind_from_url` function L1414-1429 — `()` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+-  `pr_review_comment_parser_uses_pull_request_url` function L1432-1446 — `()` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+-  `repo_kind_walk_finds_files_under_nested_path` function L1449-1473 — `()` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
+-  `repo_kind_walk_skips_legacy_user_scoped_subdirs` function L1476-1486 — `()` — the feed templates in T-0319 / T-0320 / T-0321 are thin wrappers.
 
 #### crates/arawn-projections/src/gmail.rs
 
@@ -7607,17 +7956,26 @@
 -  `embeds_rows_with_null_embedding` function L63-81 — `()` — embedder, writes vectors back, skips short bodies.
 -  `skips_short_bodies_but_marks_them` function L84-102 — `()` — embedder, writes vectors back, skips short bodies.
 -  `max_per_pass_caps_work` function L105-124 — `()` — embedder, writes vectors back, skips short bodies.
--  `known_feed_types_are_a_strict_subset_of_routed_types` function L127-147 — `()` — embedder, writes vectors back, skips short bodies.
+-  `known_feed_types_are_a_strict_subset_of_routed_types` function L127-152 — `()` — embedder, writes vectors back, skips short bodies.
 
 #### crates/arawn-projections/tests/github_projections.rs
 
--  `notif` function L14-33 — `(id: &str, title: &str) -> GithubNotificationProjection` — rows write, FTS picks up the title/body, count + get_row work.
--  `issue` function L35-57 — `(number: i64, title: &str, body: &str) -> GithubIssueOrPrProjection` — rows write, FTS picks up the title/body, count + get_row work.
--  `review` function L59-74 — `(pr_number: i64, title: &str) -> GithubReviewRequestProjection` — rows write, FTS picks up the title/body, count + get_row work.
--  `notifications_write_count_get` function L77-89 — `()` — rows write, FTS picks up the title/body, count + get_row work.
--  `issues_write_fts_and_metadata_round_trip` function L92-122 — `()` — rows write, FTS picks up the title/body, count + get_row work.
--  `review_queue_write_and_get` function L125-136 — `()` — rows write, FTS picks up the title/body, count + get_row work.
--  `re_writing_same_source_id_updates_in_place` function L139-152 — `()` — rows write, FTS picks up the title/body, count + get_row work.
+-  `notif` function L17-36 — `(id: &str, title: &str) -> GithubNotificationProjection` — rows write, FTS picks up the title/body, count + get_row work.
+-  `issue` function L38-60 — `(number: i64, title: &str, body: &str) -> GithubIssueOrPrProjection` — rows write, FTS picks up the title/body, count + get_row work.
+-  `review` function L62-77 — `(pr_number: i64, title: &str) -> GithubReviewRequestProjection` — rows write, FTS picks up the title/body, count + get_row work.
+-  `notifications_write_count_get` function L80-92 — `()` — rows write, FTS picks up the title/body, count + get_row work.
+-  `issues_write_fts_and_metadata_round_trip` function L95-125 — `()` — rows write, FTS picks up the title/body, count + get_row work.
+-  `review_queue_write_and_get` function L128-139 — `()` — rows write, FTS picks up the title/body, count + get_row work.
+-  `re_writing_same_source_id_updates_in_place` function L142-155 — `()` — rows write, FTS picks up the title/body, count + get_row work.
+-  `ts` function L159-161 — `() -> chrono::DateTime<Utc>` — rows write, FTS picks up the title/body, count + get_row work.
+-  `commit` function L163-177 — `(sha: &str) -> GithubRepoCommitProjection` — rows write, FTS picks up the title/body, count + get_row work.
+-  `repo_issue` function L179-199 — `(n: i64) -> GithubRepoIssueProjection` — rows write, FTS picks up the title/body, count + get_row work.
+-  `repo_pr` function L201-225 — `(n: i64) -> GithubRepoPrProjection` — rows write, FTS picks up the title/body, count + get_row work.
+-  `comment` function L227-245 — `(id_n: i64, parent: i64, kind: &str) -> GithubIssueOrPrCommentProjection` — rows write, FTS picks up the title/body, count + get_row work.
+-  `repo_commits_round_trip` function L248-260 — `()` — rows write, FTS picks up the title/body, count + get_row work.
+-  `repo_issues_round_trip_with_fts_hit` function L263-270 — `()` — rows write, FTS picks up the title/body, count + get_row work.
+-  `repo_prs_round_trip_preserves_head_base` function L273-283 — `()` — rows write, FTS picks up the title/body, count + get_row work.
+-  `comments_round_trip_with_kind_discriminator` function L286-308 — `()` — rows write, FTS picks up the title/body, count + get_row work.
 
 #### crates/arawn-projections/tests/gmail_e2e.rs
 

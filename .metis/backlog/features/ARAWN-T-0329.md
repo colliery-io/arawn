@@ -38,8 +38,6 @@ I-0050 left this as a known follow-up:
 
 ## Acceptance Criteria
 
-## Acceptance Criteria
-
 - [x] `FeedRuntime::unregister_cron(feed_id)` — wraps the
       existing private `delete_schedule_for` helper. Surgical
       cron-only teardown (no DB row delete, no feed_dir wipe).
