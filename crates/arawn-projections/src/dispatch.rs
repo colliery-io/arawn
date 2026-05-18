@@ -138,6 +138,17 @@ pub fn project_feed_dir(
             combined.inserted += o.inserted;
             combined.updated += o.updated;
             combined.unchanged += o.unchanged;
+            let reviews = github::walk_review_queue_dir(feed_id, feed_dir)?;
+            let o = dedup_and_write_single_type(
+                store,
+                github::REVIEW_QUEUE_FEED_TYPE,
+                feed_id,
+                reviews,
+                |p| p.source_id.clone(),
+            )?;
+            combined.inserted += o.inserted;
+            combined.updated += o.updated;
+            combined.unchanged += o.unchanged;
             combined
         }
         other => {

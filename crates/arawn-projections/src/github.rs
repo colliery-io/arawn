@@ -453,6 +453,16 @@ pub fn walk_issues_and_prs_dir(
     })
 }
 
+/// Walk a `github/review-queue` feed dir.
+pub fn walk_review_queue_dir(
+    feed_id: &str,
+    feed_dir: &std::path::Path,
+) -> Result<Vec<GithubReviewRequestProjection>, crate::error::ProjectionError> {
+    walk_simple_dir("review_queue", feed_dir, |v| {
+        from_review_request_json(feed_id, v)
+    })
+}
+
 fn walk_simple_dir<T>(
     subdir: &str,
     feed_dir: &std::path::Path,

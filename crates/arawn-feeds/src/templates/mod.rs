@@ -33,5 +33,6 @@ pub fn default_registry() -> FeedTemplateRegistry {
     r.register(Arc::new(jira::AssigneeTrackerTemplate));
     r.register(Arc::new(github::NotificationsTemplate));
     r.register(Arc::new(github::IssuesAndPrsTemplate));
+    r.register(Arc::new(github::ReviewQueueTemplate));
     r
 }

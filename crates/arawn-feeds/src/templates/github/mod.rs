@@ -13,6 +13,8 @@
 
 pub mod issues_and_prs;
 pub mod notifications;
+pub mod review_queue;
 
 pub use issues_and_prs::IssuesAndPrsTemplate;
 pub use notifications::NotificationsTemplate;
+pub use review_queue::ReviewQueueTemplate;

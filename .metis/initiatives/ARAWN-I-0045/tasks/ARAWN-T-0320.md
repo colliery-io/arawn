@@ -32,8 +32,6 @@ the morning brief and weekly priorities.
 
 ## Acceptance Criteria
 
-## Acceptance Criteria
-
 - [x] New template
       `crates/arawn-feeds/src/templates/github/issues_and_prs.rs`,
       registered in `default_registry`.
