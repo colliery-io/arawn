@@ -4,14 +4,14 @@ level: initiative
 title: "GitHub workstream-scoped scraper — per-repo + per-org polling"
 short_code: "ARAWN-I-0050"
 created_at: 2026-05-18T14:25:46.761720+00:00
-updated_at: 2026-05-18T14:38:46.356259+00:00
+updated_at: 2026-05-18T18:27:18.037337+00:00
 parent: ARAWN-V-0001
 blocked_by: []
 archived: false
 
 tags:
   - "#initiative"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false

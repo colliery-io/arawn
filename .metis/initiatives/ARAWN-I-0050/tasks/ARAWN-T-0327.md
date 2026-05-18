@@ -32,8 +32,6 @@ cron is stable and rate-limit-aware.
 
 ## Acceptance Criteria
 
-## Acceptance Criteria
-
 - [x] Org bind triggers expand inside main.rs's
       `ExtractorBindHook` — when `parse_github_scope(feed_id)`
       returns `Org { owner }`, the hook spawns an async task
