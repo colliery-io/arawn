@@ -13,8 +13,10 @@
 
 pub mod issues_and_prs;
 pub mod notifications;
+pub mod repo_mirror;
 pub mod review_queue;
 
 pub use issues_and_prs::IssuesAndPrsTemplate;
 pub use notifications::NotificationsTemplate;
+pub use repo_mirror::RepoMirrorTemplate;
 pub use review_queue::ReviewQueueTemplate;

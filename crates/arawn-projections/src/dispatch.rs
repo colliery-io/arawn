@@ -149,6 +149,52 @@ pub fn project_feed_dir(
             combined.inserted += o.inserted;
             combined.updated += o.updated;
             combined.unchanged += o.unchanged;
+            // Repo-mirror feeds (I-0050 T-0325) — four kinds nested
+            // under <feed_dir>/<owner>/<repo>/<kind>/.
+            let commits = github::walk_repo_commits_dir(feed_id, feed_dir)?;
+            let o = dedup_and_write_single_type(
+                store,
+                github::REPO_COMMITS_FEED_TYPE,
+                feed_id,
+                commits,
+                |p| p.source_id.clone(),
+            )?;
+            combined.inserted += o.inserted;
+            combined.updated += o.updated;
+            combined.unchanged += o.unchanged;
+            let repo_issues = github::walk_repo_issues_dir(feed_id, feed_dir)?;
+            let o = dedup_and_write_single_type(
+                store,
+                github::REPO_ISSUES_FEED_TYPE,
+                feed_id,
+                repo_issues,
+                |p| p.source_id.clone(),
+            )?;
+            combined.inserted += o.inserted;
+            combined.updated += o.updated;
+            combined.unchanged += o.unchanged;
+            let repo_prs = github::walk_repo_prs_dir(feed_id, feed_dir)?;
+            let o = dedup_and_write_single_type(
+                store,
+                github::REPO_PRS_FEED_TYPE,
+                feed_id,
+                repo_prs,
+                |p| p.source_id.clone(),
+            )?;
+            combined.inserted += o.inserted;
+            combined.updated += o.updated;
+            combined.unchanged += o.unchanged;
+            let comments = github::walk_issue_or_pr_comments_dir(feed_id, feed_dir)?;
+            let o = dedup_and_write_single_type(
+                store,
+                github::ISSUE_OR_PR_COMMENTS_FEED_TYPE,
+                feed_id,
+                comments,
+                |p| p.source_id.clone(),
+            )?;
+            combined.inserted += o.inserted;
+            combined.updated += o.updated;
+            combined.unchanged += o.unchanged;
             combined
         }
         other => {

@@ -34,5 +34,6 @@ pub fn default_registry() -> FeedTemplateRegistry {
     r.register(Arc::new(github::NotificationsTemplate));
     r.register(Arc::new(github::IssuesAndPrsTemplate));
     r.register(Arc::new(github::ReviewQueueTemplate));
+    r.register(Arc::new(github::RepoMirrorTemplate));
     r
 }
