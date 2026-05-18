@@ -442,6 +442,49 @@ pub fn walk_notifications_dir(
     Ok(out)
 }
 
+/// Walk a `github/issues-and-prs` feed dir. Each `.json` under
+/// `<feed_dir>/issues_and_prs/` is one raw search-result row.
+pub fn walk_issues_and_prs_dir(
+    feed_id: &str,
+    feed_dir: &std::path::Path,
+) -> Result<Vec<GithubIssueOrPrProjection>, crate::error::ProjectionError> {
+    walk_simple_dir("issues_and_prs", feed_dir, |v| {
+        from_issue_or_pr_json(feed_id, v)
+    })
+}
+
+fn walk_simple_dir<T>(
+    subdir: &str,
+    feed_dir: &std::path::Path,
+    parse: impl Fn(&Value) -> Option<T>,
+) -> Result<Vec<T>, crate::error::ProjectionError> {
+    let dir = feed_dir.join(subdir);
+    if !dir.exists() {
+        return Ok(Vec::new());
+    }
+    let mut out = Vec::new();
+    let entries = std::fs::read_dir(&dir).map_err(|e| {
+        crate::error::ProjectionError::Storage(format!("read_dir {}: {e}", dir.display()))
+    })?;
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.extension().and_then(|e| e.to_str()) != Some("json") {
+            continue;
+        }
+        let body = std::fs::read_to_string(&path).map_err(|e| {
+            crate::error::ProjectionError::Storage(format!("read {}: {e}", path.display()))
+        })?;
+        let v: Value = match serde_json::from_str(&body) {
+            Ok(v) => v,
+            Err(_) => continue,
+        };
+        if let Some(p) = parse(&v) {
+            out.push(p);
+        }
+    }
+    Ok(out)
+}
+
 /// Extract `(owner, repo, number)` from a GitHub web URL like
 /// `https://github.com/openai/codex/issues/123`.
 fn parse_html_url_owner_repo_number(url: &str) -> Option<(String, String, i64)> {

@@ -112,16 +112,33 @@ pub fn project_feed_dir(
             combined
         }
         "github" => {
-            // T-0319 wires notifications; T-0320 / T-0321 add the
-            // other two subdirs to this branch.
-            let parsed = github::walk_notifications_dir(feed_id, feed_dir)?;
-            dedup_and_write_single_type(
+            // T-0319 added notifications; T-0320 adds issues_and_prs.
+            // T-0321 will extend with review_queue. Each subdir
+            // contributes a sub-batch combined into one WriteOutcome.
+            let mut combined = WriteOutcome::default();
+            let notifs = github::walk_notifications_dir(feed_id, feed_dir)?;
+            let o = dedup_and_write_single_type(
                 store,
                 github::NOTIFICATIONS_FEED_TYPE,
                 feed_id,
-                parsed,
+                notifs,
                 |p| p.source_id.clone(),
-            )?
+            )?;
+            combined.inserted += o.inserted;
+            combined.updated += o.updated;
+            combined.unchanged += o.unchanged;
+            let issues = github::walk_issues_and_prs_dir(feed_id, feed_dir)?;
+            let o = dedup_and_write_single_type(
+                store,
+                github::ISSUES_AND_PRS_FEED_TYPE,
+                feed_id,
+                issues,
+                |p| p.source_id.clone(),
+            )?;
+            combined.inserted += o.inserted;
+            combined.updated += o.updated;
+            combined.unchanged += o.unchanged;
+            combined
         }
         other => {
             warn!(

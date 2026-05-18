@@ -36,6 +36,18 @@ pub trait GithubFeedClient: Send + Sync {
         per_page: u32,
         all: bool,
     ) -> Result<Vec<Value>, FeedError>;
+
+    /// Hit `/search/issues` with the given query string. Returns
+    /// the `items` array from each page concatenated. `per_page`
+    /// capped by GitHub at 100; pagination via `Link: rel="next"`.
+    /// Hard-capped at `max_pages` to keep a single tick under the
+    /// secondary rate limit (30 search calls / minute).
+    async fn search_issues(
+        &self,
+        query: &str,
+        per_page: u32,
+        max_pages: u32,
+    ) -> Result<Vec<Value>, FeedError>;
 }
 
 // ─── Production adapter ──────────────────────────────────────────────
@@ -104,6 +116,58 @@ impl GithubFeedClient for RealGithubClient {
                 break;
             }
             // Follow Link: <url>; rel="next".
+            if let Some(link) = link_header {
+                next_path = parse_link_next_path(&link);
+            }
+        }
+        Ok(out)
+    }
+
+    async fn search_issues(
+        &self,
+        query: &str,
+        per_page: u32,
+        max_pages: u32,
+    ) -> Result<Vec<Value>, FeedError> {
+        let client = self
+            .integration
+            .client()
+            .map_err(|e| FeedError::Auth(format!("github: {e}")))?;
+        let encoded = urlencoding::encode(query);
+        let path = format!(
+            "/search/issues?q={encoded}&per_page={per_page}&sort=updated&order=desc",
+        );
+        let mut out: Vec<Value> = Vec::new();
+        let mut next_path: Option<String> = Some(path);
+        let mut pages_fetched: u32 = 0;
+        while let Some(p) = next_path.take() {
+            if pages_fetched >= max_pages {
+                break;
+            }
+            let resp = client
+                .get(&p)
+                .await
+                .map_err(|e| FeedError::Provider(format!("github search: {e}")))?;
+            let status = resp.status();
+            let link_header = resp
+                .headers()
+                .get(reqwest::header::LINK)
+                .and_then(|h| h.to_str().ok())
+                .map(|s| s.to_string());
+            if !status.is_success() {
+                let body = resp.text().await.unwrap_or_default();
+                return Err(FeedError::Provider(format!(
+                    "github search_issues: {status} body={body}"
+                )));
+            }
+            let page: Value = resp
+                .json()
+                .await
+                .map_err(|e| FeedError::Provider(format!("github search parse: {e}")))?;
+            if let Some(items) = page.get("items").and_then(|i| i.as_array()) {
+                out.extend(items.iter().cloned());
+            }
+            pages_fetched += 1;
             if let Some(link) = link_header {
                 next_path = parse_link_next_path(&link);
             }

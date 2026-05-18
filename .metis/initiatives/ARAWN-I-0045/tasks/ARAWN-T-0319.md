@@ -33,8 +33,6 @@ the existing feed runtime.
 
 ## Acceptance Criteria
 
-## Acceptance Criteria
-
 - [x] New template
       `crates/arawn-feeds/src/templates/github/notifications.rs`
       registered in `default_registry`.

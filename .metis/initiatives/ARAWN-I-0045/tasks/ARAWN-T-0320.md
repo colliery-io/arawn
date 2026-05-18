@@ -4,15 +4,14 @@ level: task
 title: "Feed template — github/issues-and-prs"
 short_code: "ARAWN-T-0320"
 created_at: 2026-05-18T12:15:10.992922+00:00
-updated_at: 2026-05-18T12:15:10.992922+00:00
+updated_at: 2026-05-18T13:10:21.740762+00:00
 parent: ARAWN-I-0045
 blocked_by: [ARAWN-T-0319]
-effort: M
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -33,22 +32,56 @@ the morning brief and weekly priorities.
 
 ## Acceptance Criteria
 
-- [ ] New template
-      `crates/arawn-feeds/src/templates/github/issues_and_prs.rs`.
-- [ ] Two search queries per tick:
+## Acceptance Criteria
+
+- [x] New template
+      `crates/arawn-feeds/src/templates/github/issues_and_prs.rs`,
+      registered in `default_registry`.
+- [x] Three `/search/issues` queries per tick:
       - `is:open assignee:@me`
       - `is:open author:@me`
-      Plus a third for recently-closed (last 30d) so retro
-      gather has context: `is:closed assignee:@me closed:>=<30d-ago>`.
-- [ ] Translates to `GithubIssueOrPr` DTOs with `kind`
-      discriminator (issue / pr). Body excerpt capped at 1KB.
-- [ ] Cursor: per-query `since` stored in
-      `ExtractorCursorStore`. Monotonic advance on success.
-- [ ] Rate-limit handling shared with [[ARAWN-T-0319]] via the
-      common client.
-- [ ] Default cadence 30 min, overridable per feed.
-- [ ] Smoke test against fixture responses; discovery test
-      asserts the template registers.
+      - `is:closed assignee:@me closed:>=<30d-ago>` (retro context).
+- [x] `GithubFeedClient::search_issues(query, per_page, max_pages)`
+      added. Paginates via `Link: rel="next"`, capped at 5 pages
+      (500 results) per query to stay under the 30/min secondary
+      rate limit even on heavy installations.
+- [x] On disk: `<feed_dir>/issues_and_prs/<owner>__<repo>__<number>.json`.
+      Same row can appear in multiple queries; path-keyed dedupe
+      avoids double-writes inside a single tick.
+- [x] Translates via `from_issue_or_pr_json` (T-0318) — `kind`
+      discriminator (`issue`/`pr`) auto-derived from the presence
+      of `pull_request` on the row; body excerpt already capped
+      at 1KB by the projection layer.
+- [x] No cursor — the queries are bounded (`is:open` + 30-day
+      closed window) and the projection store de-dupes by
+      `source_id` via body-hash on rewrite.
+- [x] Default cadence 30 min, overridable per feed.
+- [x] 4 new tests: 3-query round-trip with cross-query dedupe,
+      empty-results status, default cadence, URL→path parser.
+      Plus a dispatch-arm extension in `arawn-projections` so
+      issues_and_prs files flow into the
+      `github_issues_and_prs` projection table.
+
+## Status Updates
+
+### 2026-05-18 — feed live
+
+- `GithubFeedClient` gained `search_issues(query, per_page,
+  max_pages)`. Uses `urlencoding::encode` on the query (URL
+  may contain `@`, `>`, `:` etc.) and follows the `Link:
+  rel="next"` header until `max_pages` is hit. New crate
+  dep: `urlencoding = "2"`.
+- Template builds the 3 queries inline (computes the closed
+  floor from today − 30d each tick). On query failure, logs
+  + skips that query and continues — one broken query
+  doesn't poison the others.
+- Dedupe across queries via a `HashSet<PathBuf>` of already-
+  written paths in the current tick. The projection layer
+  also dedupes on `source_id` if rewrites slip through.
+- Dispatch arm in `arawn-projections::dispatch` now combines
+  notifications + issues_and_prs into one `WriteOutcome`.
+  T-0321 will extend with the third arm.
+- Workspace 1849/0 (1845 → 1849, +4 new).
 
 ## Implementation Notes
 

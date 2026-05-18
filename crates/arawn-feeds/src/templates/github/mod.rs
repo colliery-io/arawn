@@ -11,6 +11,8 @@
 //! Each template advances a per-feed `latest_updated_iso` cursor so
 //! the next tick uses `since=<iso>` rather than a full table scan.
 
+pub mod issues_and_prs;
 pub mod notifications;
 
+pub use issues_and_prs::IssuesAndPrsTemplate;
 pub use notifications::NotificationsTemplate;

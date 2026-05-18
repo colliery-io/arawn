@@ -216,6 +216,14 @@ mod tests {
         ) -> Result<Vec<Value>, FeedError> {
             Ok(self.pages.iter().flatten().cloned().collect())
         }
+        async fn search_issues(
+            &self,
+            _query: &str,
+            _per_page: u32,
+            _max_pages: u32,
+        ) -> Result<Vec<Value>, FeedError> {
+            Ok(Vec::new())
+        }
     }
 
     struct WithFakeGithub {
