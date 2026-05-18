@@ -16,5 +16,5 @@ pub mod token_store;
 
 pub use error::AuthError;
 pub use oauth2::{AuthRequest, OAuthClient, OAuthProviderConfig, Token};
-pub use server::{CallbackResult, CallbackServer};
+pub use server::{CallbackResult, CallbackServer, RawCallback};
 pub use token_store::TokenStore;

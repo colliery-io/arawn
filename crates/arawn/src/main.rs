@@ -1169,6 +1169,69 @@ async fn main() -> Result<()> {
             );
         }
 
+        // Register GitHub (I-0045). Read-only v1 — the connect flow
+        // captures an installation_id; tools/feed templates downstream
+        // mint short-lived access tokens via the cached App config.
+        let github_integration_for_feeds: Option<
+            Arc<arawn_integrations::github::GithubIntegration>,
+        >;
+        let resolve_github = || -> Option<arawn_integrations::github::GithubAppConfig> {
+            let cfg = &config.integrations.github;
+            let app_id = std::env::var("ARAWN_GITHUB_APP_ID")
+                .ok()
+                .filter(|s| !s.is_empty())
+                .or_else(|| Some(cfg.app_id.clone()).filter(|s| !s.is_empty()))?;
+            let app_slug = std::env::var("ARAWN_GITHUB_APP_SLUG")
+                .ok()
+                .filter(|s| !s.is_empty())
+                .or_else(|| Some(cfg.app_slug.clone()).filter(|s| !s.is_empty()))?;
+            let private_key_pem = std::env::var("ARAWN_GITHUB_PRIVATE_KEY_PEM")
+                .ok()
+                .filter(|s| !s.is_empty())
+                .or_else(|| {
+                    let path = std::env::var("ARAWN_GITHUB_PRIVATE_KEY_PATH")
+                        .ok()
+                        .filter(|s| !s.is_empty())
+                        .or_else(|| {
+                            Some(cfg.private_key_path.clone()).filter(|s| !s.is_empty())
+                        })?;
+                    match std::fs::read_to_string(&path) {
+                        Ok(pem) => Some(pem),
+                        Err(e) => {
+                            warn!(path = %path, error = %e,
+                                "GitHub App private key path unreadable; skipping integration");
+                            None
+                        }
+                    }
+                })?;
+            Some(arawn_integrations::github::GithubAppConfig {
+                app_id,
+                app_slug,
+                private_key_pem,
+            })
+        };
+        if let Some(app_cfg) = resolve_github() {
+            let github = Arc::new(arawn_integrations::github::GithubIntegration::new(
+                std::path::PathBuf::from(&data_dir),
+                app_cfg,
+            ));
+            service.register_integration(
+                Arc::clone(&github) as Arc<dyn arawn_integrations::Integration>,
+            );
+            info!("GitHub integration registered (read-only — no tools yet, feeds land in T-0319+)");
+            github_integration_for_feeds = Some(github);
+        } else {
+            github_integration_for_feeds = None;
+            debug!(
+                "GitHub integration skipped — set ARAWN_GITHUB_APP_ID + \
+                 ARAWN_GITHUB_APP_SLUG + ARAWN_GITHUB_PRIVATE_KEY_PATH (env) or \
+                 [integrations.github] (config) to enable. See \
+                 docs/src/integrations/github.md."
+            );
+        }
+        // Currently unused — feeds wire-up lands in T-0319.
+        let _ = github_integration_for_feeds;
+
         // Register Slack. No sharing with Google — different OAuth ecosystem.
         let slack_integration_for_feeds: Option<Arc<arawn_integrations::slack::SlackIntegration>>;
         if let Some((client_id, client_secret)) = resolve(

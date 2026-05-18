@@ -281,6 +281,23 @@ pub struct IntegrationCredentials {
     pub client_secret: String,
 }
 
+/// GitHub App credentials. Unlike OAuth-app integrations, GitHub uses
+/// the App model: numeric app_id + RSA private key (PEM) + URL-slug.
+/// Env overrides: `ARAWN_GITHUB_APP_ID`, `ARAWN_GITHUB_APP_SLUG`,
+/// `ARAWN_GITHUB_PRIVATE_KEY_PATH` (preferred) or
+/// `ARAWN_GITHUB_PRIVATE_KEY_PEM` (inline).
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct GithubAppCredentials {
+    #[serde(default)]
+    pub app_id: String,
+    #[serde(default)]
+    pub app_slug: String,
+    /// Path to the App's RSA private key in PEM format. Read lazily
+    /// at startup; the key body never lands in arawn.toml verbatim.
+    #[serde(default)]
+    pub private_key_path: String,
+}
+
 /// Per-integration credential blocks. Each is optional — leaving any of
 /// them out (or omitting the whole `[integrations]` section) just means
 /// that integration is configured via env vars, or skipped if neither
@@ -309,6 +326,10 @@ pub struct IntegrationsConfig {
     /// app covers both products.
     #[serde(default)]
     pub atlassian: IntegrationCredentials,
+    /// GitHub App credentials (I-0045). Different shape from OAuth-app
+    /// integrations — see [`GithubAppCredentials`].
+    #[serde(default)]
+    pub github: GithubAppCredentials,
 }
 
 /// Top-level configuration.

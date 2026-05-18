@@ -28,6 +28,16 @@ pub struct CallbackResult {
     pub state: String,
 }
 
+/// Raw query-param map yielded by [`CallbackServer::listen_raw`]. For
+/// providers whose callback shape doesn't match the OAuth-default
+/// `code` + `state` pair — e.g. GitHub App installation callbacks
+/// (`installation_id`, `setup_action`) — consume `params` directly
+/// instead of going through [`CallbackResult`].
+#[derive(Debug, Clone)]
+pub struct RawCallback {
+    pub params: std::collections::HashMap<String, String>,
+}
+
 pub struct CallbackServer {
     listener: TcpListener,
     redirect_uri: Url,
@@ -78,6 +88,83 @@ impl CallbackServer {
     /// return the `(code, state)` pair.
     pub async fn listen(self) -> Result<CallbackResult, AuthError> {
         self.listen_with_timeout(DEFAULT_TIMEOUT).await
+    }
+
+    /// Wait for a single callback and return the raw query-parameter
+    /// map. For providers whose callback shape isn't the OAuth-default
+    /// `code` + `state` (e.g. GitHub App install callbacks deliver
+    /// `installation_id` + `setup_action` + `state`), use this in
+    /// place of [`Self::listen`].
+    pub async fn listen_raw(self) -> Result<RawCallback, AuthError> {
+        self.listen_raw_with_timeout(DEFAULT_TIMEOUT).await
+    }
+
+    pub async fn listen_raw_with_timeout(
+        self,
+        timeout: Duration,
+    ) -> Result<RawCallback, AuthError> {
+        let accept = async {
+            let (mut stream, addr) = self
+                .listener
+                .accept()
+                .await
+                .map_err(|e| AuthError::Network(format!("accept: {e}")))?;
+            debug!(?addr, "callback connection accepted");
+            let mut buf = vec![0u8; 8192];
+            let mut filled = 0;
+            loop {
+                if filled >= buf.len() {
+                    return Err(AuthError::InvalidConfig(
+                        "callback request too large".into(),
+                    ));
+                }
+                let n = stream
+                    .read(&mut buf[filled..])
+                    .await
+                    .map_err(|e| AuthError::Network(format!("read: {e}")))?;
+                if n == 0 {
+                    break;
+                }
+                filled += n;
+                if buf[..filled].windows(4).any(|w| w == b"\r\n\r\n") {
+                    break;
+                }
+            }
+            let request_line = std::str::from_utf8(&buf[..filled])
+                .ok()
+                .and_then(|s| s.lines().next())
+                .ok_or_else(|| AuthError::InvalidConfig("malformed callback request".into()))?;
+            let target = request_line
+                .split_whitespace()
+                .nth(1)
+                .ok_or_else(|| AuthError::InvalidConfig("missing request target".into()))?;
+            let parsed = Url::parse(&format!("http://127.0.0.1{target}"))
+                .map_err(|e| AuthError::InvalidConfig(format!("bad target: {e}")))?;
+            let mut params = std::collections::HashMap::new();
+            for (k, v) in parsed.query_pairs() {
+                params.insert(k.into_owned(), v.into_owned());
+            }
+            let response = format!(
+                "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                SUCCESS_PAGE.len(),
+                SUCCESS_PAGE
+            );
+            let _ = stream.write_all(response.as_bytes()).await;
+            let _ = stream.shutdown().await;
+            if let Some(err) = params.get("error") {
+                return Err(AuthError::InvalidConfig(format!(
+                    "provider returned error: {err}"
+                )));
+            }
+            Ok(RawCallback { params })
+        };
+        match tokio::time::timeout(timeout, accept).await {
+            Ok(res) => res,
+            Err(_) => Err(AuthError::InvalidConfig(format!(
+                "callback timed out after {} s",
+                timeout.as_secs()
+            ))),
+        }
     }
 
     pub async fn listen_with_timeout(self, timeout: Duration) -> Result<CallbackResult, AuthError> {
