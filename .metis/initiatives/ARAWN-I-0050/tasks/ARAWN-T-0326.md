@@ -33,8 +33,6 @@ bind triggers [[ARAWN-T-0327]]'s expand. Both enforce the
 
 ## Acceptance Criteria
 
-## Acceptance Criteria
-
 - [x] Repo bind path: parses `github:repo:owner/name`; rejects
       with explicit "covered by `github:org:<owner>` already
       bound to workstream `<ws>`" message when an org binding

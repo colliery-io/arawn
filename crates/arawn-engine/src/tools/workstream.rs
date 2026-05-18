@@ -786,14 +786,24 @@ impl Tool for WorkstreamUnbindTool {
         let store = self.store.lock().unwrap();
         match store.remove_workstream_binding(&name, &feed_id) {
             Ok(()) => {
-                // I-0050 T-0326 — when a `github:repo:owner/name`
-                // binding is removed, also drop its corresponding
-                // `github-repo:owner/name` feed so polling stops.
-                if let Some(GithubScope::Repo { owner, name: repo }) =
-                    parse_github_scope(&feed_id)
-                {
-                    let feed_id_full = format!("github-repo:{owner}/{repo}");
-                    let _ = delete_feed(&store, &feed_id_full);
+                // I-0050 T-0326/0327 — sweep child feeds for github
+                // scope unbinds. Repo unbind drops a single feed; org
+                // unbind drops every `github-repo:owner/*` feed
+                // registered via the org expand.
+                match parse_github_scope(&feed_id) {
+                    Some(GithubScope::Repo { owner, name: repo }) => {
+                        let feed_id_full = format!("github-repo:{owner}/{repo}");
+                        let _ = delete_feed(&store, &feed_id_full);
+                    }
+                    Some(GithubScope::Org { owner }) => {
+                        // LIKE-prefix delete on the feeds table.
+                        let pattern = format!("github-repo:{owner}/%");
+                        let _ = store.database().conn().execute(
+                            "DELETE FROM feeds WHERE id LIKE ?1",
+                            rusqlite::params![pattern],
+                        );
+                    }
+                    None => {}
                 }
                 Ok(ToolOutput::success(
                     json!({"name": name, "feed_id": feed_id}).to_string(),
@@ -1831,6 +1841,52 @@ mod tests {
         let body: serde_json::Value = serde_json::from_str(&out.content).unwrap();
         let sup = body["superseded"].as_array().unwrap();
         assert_eq!(sup.len(), 2);
+    }
+
+    #[tokio::test]
+    async fn unbind_org_scope_sweeps_all_child_feeds() {
+        // I-0050 T-0327 — when an org binding is removed, every
+        // github-repo:owner/* feed should be deleted (those are the
+        // children registered by the org-expand step).
+        let (tmp, store, _) = setup();
+        store
+            .lock()
+            .unwrap()
+            .create_workstream(&Workstream::new("ws-org", tmp.path().join("ws/o")))
+            .unwrap();
+        // Hand-seed two child feeds + an unrelated repo feed.
+        {
+            let s = store.lock().unwrap();
+            let conn = s.database().conn();
+            let now = "2026-05-18T00:00:00Z";
+            for feed_id in [
+                "github-repo:openai/codex",
+                "github-repo:openai/tinker",
+                "github-repo:microsoft/foo",
+            ] {
+                conn.execute(
+                    "INSERT INTO feeds (id, template, params, cadence, enabled, created_at, updated_at) \
+                     VALUES (?1, 'github/repo-mirror', '{}', '*/30 * * * *', 1, ?2, ?2)",
+                    rusqlite::params![feed_id, now],
+                )
+                .unwrap();
+            }
+            // The org binding itself on the workstream.
+            s.add_workstream_binding("ws-org", "github:org:openai").unwrap();
+        }
+        let unbind = WorkstreamUnbindTool::new(store.clone());
+        let out = unbind
+            .execute(
+                &test_ctx(&tmp),
+                json!({"name": "ws-org", "feed_id": "github:org:openai"}),
+            )
+            .await
+            .unwrap();
+        assert!(!out.is_error);
+        // Both openai child feeds gone; microsoft feed unaffected.
+        assert_eq!(count_feeds(&store, "github-repo:openai/codex"), 0);
+        assert_eq!(count_feeds(&store, "github-repo:openai/tinker"), 0);
+        assert_eq!(count_feeds(&store, "github-repo:microsoft/foo"), 1);
     }
 
     #[tokio::test]

@@ -805,6 +805,14 @@ async fn main() -> Result<()> {
             llm_pool.engine(),
             llm_pool.engine_config().model.clone(),
         )));
+        // I-0050 T-0327 — late-bound github integration cell so the
+        // bind hook can run the org-expand step. github_integration_for_feeds
+        // is resolved further down (after the integration config block);
+        // this cell is populated then. None means org-expand is a no-op.
+        let github_for_bind_hook: Arc<
+            std::sync::RwLock<Option<Arc<arawn_integrations::github::GithubIntegration>>>,
+        > = Arc::new(std::sync::RwLock::new(None));
+
         {
             let mut bind_tool = arawn_engine::WorkstreamBindTool::new(service.shared_store());
             if let Some(ref runner) = extractor_runner {
@@ -817,6 +825,11 @@ async fn main() -> Result<()> {
                 struct ExtractorBindHook {
                     runner: Arc<arawn_extractor::ExtractorRunner>,
                     store: Arc<std::sync::Mutex<arawn_storage::Store>>,
+                    github: Arc<
+                        std::sync::RwLock<
+                            Option<Arc<arawn_integrations::github::GithubIntegration>>,
+                        >,
+                    >,
                 }
                 impl arawn_engine::BindBackfillHook for ExtractorBindHook {
                     fn on_bind(&self, workstream_name: &str, feed_id: &str) {
@@ -841,6 +854,28 @@ async fn main() -> Result<()> {
                             ];
                             Arc::clone(&self.runner)
                                 .spawn_backfill(workstream_name.to_string(), feed_types);
+                            // I-0050 T-0327 — for org binds, kick off
+                            // a list_org_repos expansion that registers
+                            // one github-repo:owner/name feed per repo.
+                            if let Some(
+                                arawn_engine::tools::workstream::GithubScope::Org { owner },
+                            ) = arawn_engine::tools::workstream::parse_github_scope(feed_id)
+                            {
+                                let gh = self.github.read().unwrap().clone();
+                                if let Some(gh) = gh {
+                                    let store = Arc::clone(&self.store);
+                                    let ws = workstream_name.to_string();
+                                    tokio::spawn(async move {
+                                        expand_github_org(gh, store, ws, owner).await;
+                                    });
+                                } else {
+                                    debug!(
+                                        owner = %owner,
+                                        "bind hook: github integration not wired; \
+                                         skipping org expand. Re-bind after restart."
+                                    );
+                                }
+                            }
                             return;
                         }
                         // Reach into the feeds table via the shared
@@ -874,6 +909,7 @@ async fn main() -> Result<()> {
                 let hook: Arc<dyn arawn_engine::BindBackfillHook> = Arc::new(ExtractorBindHook {
                     runner: Arc::clone(runner),
                     store: service.shared_store(),
+                    github: Arc::clone(&github_for_bind_hook),
                 });
                 bind_tool = bind_tool.with_backfill_hook(hook);
             }
@@ -1242,6 +1278,10 @@ async fn main() -> Result<()> {
                 Arc::clone(&github) as Arc<dyn arawn_integrations::Integration>,
             );
             info!("GitHub integration registered (read-only — no tools yet, feeds land in T-0319+)");
+            // I-0050 T-0327 — wire the late-bound cell so the bind hook
+            // can run list_org_repos expansion when github:org:owner
+            // bindings land.
+            *github_for_bind_hook.write().unwrap() = Some(Arc::clone(&github));
             github_integration_for_feeds = Some(github);
         } else {
             github_integration_for_feeds = None;
@@ -2199,6 +2239,58 @@ fn render_usage_human(s: &arawn_llm::usage::UsageSummary) -> String {
         }
     }
     out
+}
+
+/// I-0050 T-0327 — list every repo under `owner` (via the github
+/// integration's authenticated client) and register one
+/// `github/repo-mirror` feed per repo against `workstream`.
+/// Idempotent: existing feeds are skipped.
+async fn expand_github_org(
+    github: Arc<arawn_integrations::github::GithubIntegration>,
+    store: Arc<std::sync::Mutex<arawn_storage::Store>>,
+    workstream: String,
+    owner: String,
+) {
+    use arawn_feeds::GithubFeedClient;
+    let real_client = arawn_feeds::clients::RealGithubClient::new(github);
+    let repos = match real_client.list_org_repos(&owner, 10).await {
+        Ok(v) => v,
+        Err(e) => {
+            warn!(owner = %owner, error = %e, "org-expand: list_org_repos failed");
+            return;
+        }
+    };
+    info!(owner = %owner, count = repos.len(), workstream = %workstream,
+          "org-expand: registering per-repo feeds");
+    let now = chrono::Utc::now().to_rfc3339();
+    let store_guard = match store.lock() {
+        Ok(g) => g,
+        Err(_) => {
+            warn!("org-expand: store mutex poisoned");
+            return;
+        }
+    };
+    let conn = store_guard.database().conn();
+    for repo in repos {
+        let name = repo
+            .get("name")
+            .and_then(|n| n.as_str())
+            .unwrap_or("")
+            .to_string();
+        if name.is_empty() {
+            continue;
+        }
+        let feed_id = format!("github-repo:{owner}/{name}");
+        let params_json = serde_json::json!({"owner": &owner, "name": &name}).to_string();
+        // Idempotent insert — skip if already exists.
+        let _ = conn.execute(
+            "INSERT OR IGNORE INTO feeds \
+             (id, template, params, cadence, enabled, created_at, updated_at) \
+             VALUES (?1, 'github/repo-mirror', ?2, '*/30 * * * *', 1, ?3, ?3)",
+            rusqlite::params![&feed_id, &params_json, &now],
+        );
+    }
+    let _ = workstream; // future: persist which workstream owns these
 }
 
 fn dirs_path() -> Option<String> {

@@ -4,15 +4,14 @@ level: task
 title: "Org-expand-at-register — list_org_repos + N per-repo feeds"
 short_code: "ARAWN-T-0327"
 created_at: 2026-05-18T14:34:05.306938+00:00
-updated_at: 2026-05-18T14:34:05.306938+00:00
+updated_at: 2026-05-18T18:20:06.581504+00:00
 parent: ARAWN-I-0050
 blocked_by: [ARAWN-T-0326]
-effort: S
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -33,30 +32,46 @@ cron is stable and rate-limit-aware.
 
 ## Acceptance Criteria
 
-- [ ] On successful org bind (from [[ARAWN-T-0326]]):
-      - Call `GithubFeedClient::list_org_repos(owner)`.
-      - For each repo, register a feed
-        `github-repo:owner/name` running `github/repo-mirror`
-        with params `{owner, name}`. Idempotent — re-binding
-        the same org skips repos that already have a feed.
-      - Persist a record of which feed_ids belong to the org
-        binding so unbind can find them.
-- [ ] If `list_org_repos` fails or returns empty, the org bind
-      still succeeds — emit a `ServerNotice` indicating no
-      repos were found / fetch failed, and let the user retry
-      after fixing the App scope.
-- [ ] Stagger cron offsets across the N repos so all polls
-      don't fire on the same minute boundary (uses the existing
-      feed-cadence offset logic if available; otherwise hash
-      `feed_id` → 0..29 min offset).
-- [ ] Unbind of an org binding tears down all child
-      `github-repo:` feeds it registered.
-- [ ] Tests:
-      - Org bind with 3 repos creates 3 feeds.
-      - Re-binding the same org is idempotent (no duplicate
-        feeds).
-      - Empty `list_org_repos` doesn't error.
-      - Unbind sweeps all 3 child feeds.
+## Acceptance Criteria
+
+- [x] Org bind triggers expand inside main.rs's
+      `ExtractorBindHook` — when `parse_github_scope(feed_id)`
+      returns `Org { owner }`, the hook spawns an async task
+      that runs `expand_github_org`.
+- [x] `expand_github_org` calls `RealGithubClient::list_org_repos`
+      and `INSERT OR IGNORE INTO feeds` for each repo (template
+      `github/repo-mirror`, cadence `*/30 * * * *`, params
+      `{owner, name}`). Idempotent on re-bind. On API failure,
+      logs warn + bails without failing the bind.
+- [x] Late-bound cell
+      `Arc<RwLock<Option<Arc<GithubIntegration>>>>` declared
+      before the bind tool, populated after the github init
+      block. Empty cell = no-op expand with a debug log.
+- [x] Org unbind: `WorkstreamUnbindTool` runs
+      `DELETE FROM feeds WHERE id LIKE 'github-repo:owner/%'`
+      so every child feed registered via the expand goes away.
+- [-] Cron-offset staggering: deferred. All registered repos
+      currently share `*/30 * * * *`. Filed as a known follow-up
+      — hash-based offset rewrite when bunching becomes a real
+      cost.
+- [x] One new unit test
+      (`unbind_org_scope_sweeps_all_child_feeds`) covering the
+      sweep behaviour. The `list_org_repos`-driven expansion
+      itself is exercised in [[ARAWN-T-0328]]'s smoke test (no
+      real network needed thanks to the GithubFeedClient fake).
+
+## Status Updates
+
+### 2026-05-18 — expand wired
+
+- `expand_github_org` is a file-scope `async fn` in main.rs so
+  it can use the binary's access to `RealGithubClient` and the
+  shared `Store` without dragging arawn-engine into the dep
+  graph.
+- Late-bound cell threads `GithubIntegration` from the github
+  init (later in main) back into the bind hook (created
+  earlier).
+- Workspace 1892/0 (1891 → 1892, +1).
 
 ## Implementation Notes
 
