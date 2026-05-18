@@ -36,6 +36,13 @@ pub const EMBEDDABLE_FEED_TYPES: &[&str] = &[
     "github_issues_and_prs",
     "github_review_queue",
     "github_notifications",
+    // Repo-scoped feeds (I-0050 T-0324). Each kind has substantive
+    // text (commit messages, issue/PR body, comment bodies) worth
+    // embedding for semantic recall in workstream KBs.
+    "github_repo_commits",
+    "github_repo_issues",
+    "github_repo_prs",
+    "github_issue_or_pr_comments",
 ];
 
 /// Minimum body length worth embedding. Anything shorter is mostly

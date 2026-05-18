@@ -32,8 +32,6 @@ no feed template yet.
 
 ## Acceptance Criteria
 
-## Acceptance Criteria
-
 - [x] Six new `GithubFeedClient` methods, each paginating via
       the new `RealGithubClient::paginate_array` helper which
       follows `Link: rel="next"` up to `max_pages`:

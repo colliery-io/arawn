@@ -5,8 +5,11 @@
 //! rows write, FTS picks up the title/body, count + get_row work.
 
 use arawn_projections::github::{
-    GithubIssueOrPrProjection, GithubNotificationProjection, GithubReviewRequestProjection,
-    ISSUES_AND_PRS_FEED_TYPE, NOTIFICATIONS_FEED_TYPE, REVIEW_QUEUE_FEED_TYPE,
+    GithubIssueOrPrCommentProjection, GithubIssueOrPrProjection, GithubNotificationProjection,
+    GithubRepoCommitProjection, GithubRepoIssueProjection, GithubRepoPrProjection,
+    GithubReviewRequestProjection, ISSUES_AND_PRS_FEED_TYPE, ISSUE_OR_PR_COMMENTS_FEED_TYPE,
+    NOTIFICATIONS_FEED_TYPE, REPO_COMMITS_FEED_TYPE, REPO_ISSUES_FEED_TYPE, REPO_PRS_FEED_TYPE,
+    REVIEW_QUEUE_FEED_TYPE,
 };
 use arawn_projections::ProjectionStore;
 use chrono::{TimeZone, Utc};
@@ -149,4 +152,157 @@ fn re_writing_same_source_id_updates_in_place() {
         .unwrap();
     assert_eq!(row.title, "v2");
     assert_eq!(row.metadata["state"], "closed");
+}
+
+// ────── I-0050 T-0324 — repo-mirror projection round-trips ──────
+
+fn ts() -> chrono::DateTime<Utc> {
+    Utc.with_ymd_and_hms(2026, 5, 18, 10, 0, 0).unwrap()
+}
+
+fn commit(sha: &str) -> GithubRepoCommitProjection {
+    GithubRepoCommitProjection {
+        id: format!("feed-1:openai/codex@{sha}"),
+        feed_id: "feed-1".into(),
+        source_id: format!("openai/codex@{sha}"),
+        source_ts: ts(),
+        owner: "openai".into(),
+        repo: "codex".into(),
+        sha: sha.into(),
+        message: format!("commit {sha}: do the thing"),
+        author: "alice".into(),
+        parents: vec!["parent".into()],
+        html_url: format!("https://github.com/openai/codex/commit/{sha}"),
+    }
+}
+
+fn repo_issue(n: i64) -> GithubRepoIssueProjection {
+    GithubRepoIssueProjection {
+        id: format!("feed-1:openai/codex#{n}"),
+        feed_id: "feed-1".into(),
+        source_id: format!("openai/codex#{n}"),
+        source_ts: ts(),
+        owner: "openai".into(),
+        repo: "codex".into(),
+        number: n,
+        title: format!("issue {n}"),
+        state: "open".into(),
+        labels: vec!["bug".into()],
+        body_excerpt: "details".into(),
+        author: "alice".into(),
+        assignees: vec!["bob".into()],
+        url: format!("https://github.com/openai/codex/issues/{n}"),
+        created_at: ts(),
+        updated_at: ts(),
+        closed_at: None,
+    }
+}
+
+fn repo_pr(n: i64) -> GithubRepoPrProjection {
+    GithubRepoPrProjection {
+        id: format!("feed-1:openai/codex#{n}"),
+        feed_id: "feed-1".into(),
+        source_id: format!("openai/codex#{n}"),
+        source_ts: ts(),
+        owner: "openai".into(),
+        repo: "codex".into(),
+        number: n,
+        title: format!("PR {n}"),
+        state: "open".into(),
+        labels: vec![],
+        body_excerpt: "PR body".into(),
+        author: "alice".into(),
+        head_ref: "feature".into(),
+        base_ref: "main".into(),
+        requested_reviewers: vec!["reviewer".into()],
+        draft: false,
+        url: format!("https://github.com/openai/codex/pull/{n}"),
+        created_at: ts(),
+        updated_at: ts(),
+        closed_at: None,
+        merged_at: None,
+    }
+}
+
+fn comment(id_n: i64, parent: i64, kind: &str) -> GithubIssueOrPrCommentProjection {
+    GithubIssueOrPrCommentProjection {
+        id: format!("feed-1:openai/codex@{kind}/{id_n}"),
+        feed_id: "feed-1".into(),
+        source_id: format!("openai/codex@{kind}/{id_n}"),
+        source_ts: ts(),
+        owner: "openai".into(),
+        repo: "codex".into(),
+        parent_number: parent,
+        body_excerpt: format!("comment {id_n} body"),
+        author: "alice".into(),
+        url: format!(
+            "https://github.com/openai/codex/issues/{parent}#issuecomment-{id_n}"
+        ),
+        kind: kind.into(),
+        created_at: ts(),
+        updated_at: ts(),
+    }
+}
+
+#[test]
+fn repo_commits_round_trip() {
+    let store = ProjectionStore::in_memory().unwrap();
+    store.write(&commit("aaa")).unwrap();
+    store.write(&commit("bbb")).unwrap();
+    assert_eq!(store.count(REPO_COMMITS_FEED_TYPE).unwrap(), 2);
+    let row = store
+        .get_row(REPO_COMMITS_FEED_TYPE, "feed-1:openai/codex@aaa")
+        .unwrap()
+        .unwrap();
+    assert_eq!(row.title, "commit aaa: do the thing");
+    assert_eq!(row.metadata["owner"], "openai");
+    assert_eq!(row.metadata["parents"][0], "parent");
+}
+
+#[test]
+fn repo_issues_round_trip_with_fts_hit() {
+    let store = ProjectionStore::in_memory().unwrap();
+    store.write(&repo_issue(1)).unwrap();
+    store.write(&repo_issue(2)).unwrap();
+    assert_eq!(store.count(REPO_ISSUES_FEED_TYPE).unwrap(), 2);
+    let hits = store.fts_search(REPO_ISSUES_FEED_TYPE, "details", 5).unwrap();
+    assert_eq!(hits.len(), 2);
+}
+
+#[test]
+fn repo_prs_round_trip_preserves_head_base() {
+    let store = ProjectionStore::in_memory().unwrap();
+    store.write(&repo_pr(7)).unwrap();
+    let row = store
+        .get_row(REPO_PRS_FEED_TYPE, "feed-1:openai/codex#7")
+        .unwrap()
+        .unwrap();
+    assert_eq!(row.metadata["head_ref"], "feature");
+    assert_eq!(row.metadata["base_ref"], "main");
+    assert_eq!(row.metadata["requested_reviewers"][0], "reviewer");
+}
+
+#[test]
+fn comments_round_trip_with_kind_discriminator() {
+    let store = ProjectionStore::in_memory().unwrap();
+    store.write(&comment(101, 1, "issue_comment")).unwrap();
+    store.write(&comment(202, 7, "pr_review_comment")).unwrap();
+    assert_eq!(store.count(ISSUE_OR_PR_COMMENTS_FEED_TYPE).unwrap(), 2);
+    let row = store
+        .get_row(
+            ISSUE_OR_PR_COMMENTS_FEED_TYPE,
+            "feed-1:openai/codex@issue_comment/101",
+        )
+        .unwrap()
+        .unwrap();
+    assert_eq!(row.metadata["kind"], "issue_comment");
+    assert_eq!(row.metadata["parent_number"], 1);
+    let row = store
+        .get_row(
+            ISSUE_OR_PR_COMMENTS_FEED_TYPE,
+            "feed-1:openai/codex@pr_review_comment/202",
+        )
+        .unwrap()
+        .unwrap();
+    assert_eq!(row.metadata["kind"], "pr_review_comment");
 }

@@ -137,10 +137,15 @@ async fn known_feed_types_are_a_strict_subset_of_routed_types() {
         "jira_comments",
         "confluence_pages",
         "calendar_events",
-        // GitHub (I-0045 T-0318) — three feeds, all embeddable.
+        // GitHub (I-0045 T-0318) — three user-scoped feeds.
         "github_issues_and_prs",
         "github_review_queue",
         "github_notifications",
+        // GitHub repo-mirror (I-0050 T-0324) — four repo-scoped feeds.
+        "github_repo_commits",
+        "github_repo_issues",
+        "github_repo_prs",
+        "github_issue_or_pr_comments",
     ];
     let actual: Vec<&str> = EMBEDDABLE_FEED_TYPES.to_vec();
     assert_eq!(actual, expected);
