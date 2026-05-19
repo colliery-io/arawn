@@ -1,10 +1,10 @@
 ---
-id: current-time-header
+id: inject-current-local-time-into
 level: task
 title: "Inject current local time into every agent turn's system prompt"
 short_code: "ARAWN-T-0368"
 created_at: 2026-05-19T18:55:47.326211+00:00
-updated_at: 2026-05-19T18:55:47.326211+00:00
+updated_at: 2026-05-19T22:23:07.579567+00:00
 parent: ARAWN-I-0052
 blocked_by: []
 archived: false
@@ -13,7 +13,7 @@ tags:
   - "#task"
   - "#feature"
   - "#agent-loop"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -49,15 +49,41 @@ can land in parallel with [[ARAWN-T-0364]] and friends.
 
 ## Acceptance criteria
 
-- [ ] Every agent turn's outbound system prompt starts with a
-  `Current time: ...` line in the documented format.
-- [ ] Local timezone honored; UTC is used only as a fallback
-  when timezone lookup fails (rare).
-- [ ] Unit test on the prompt assembler: given a fixed clock
-  injection, the output starts with the expected line.
-- [ ] Snapshot tests for the system prompt — if any exist —
-  are updated.
-- [ ] `angreal test unit` green. `angreal check workspace` green.
+- [x] Every agent turn's outbound system prompt starts with a
+  `Current time: ...` line. Wiring: `query_engine.rs` calls
+  `.current_time(chrono::Local::now())` on every turn's
+  builder.
+- [x] Local timezone honoured via `chrono::Local::now()` —
+  no fallback needed since chrono pulls the system zone
+  directly. Format generic over `Tz: chrono::TimeZone` so
+  tests pin a specific zone.
+- [x] Unit tests verify the line starts the prompt and that
+  the provided zone is formatted correctly.
+- [x] Snapshot test still passes (didn't reference the old
+  `- Date:` line).
+- [x] `angreal test unit` green. `angreal check workspace` green.
+
+## Status Updates — 2026-05-19
+
+Landed.
+
+- `SystemPromptBuilder::current_time(now)` builder method
+  takes any `DateTime<Tz>` and emits
+  `Current time: YYYY-MM-DD HH:MM ZZZ (Day)` at priority 0
+  (lands first in the sorted output).
+- `query_engine.rs` wires `chrono::Local::now()` per turn.
+- Environment section no longer emits `- Date:` — that info
+  is now in the current_time header, in local zone instead of
+  UTC. Regression-fenced by
+  `environment_no_longer_emits_date_line`.
+
+Tests added (3): `current_time_appears_at_the_top`,
+`current_time_uses_provided_timezone`,
+`environment_no_longer_emits_date_line`.
+
+25 system_prompt tests pass (+3). Workspace + check green.
+
+Ready for review.
 
 ## Implementation notes
 

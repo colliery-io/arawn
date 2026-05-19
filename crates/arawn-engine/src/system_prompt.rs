@@ -232,6 +232,31 @@ impl SystemPromptBuilder {
         self
     }
 
+    /// Pin the current local time at the top of the prompt so the
+    /// agent has a reliable "what is today" reference across turns
+    /// (ARAWN-T-0368). Format: `Current time: YYYY-MM-DD HH:MM ZZZ (Day)`
+    /// in whatever timezone the `DateTime` carries.
+    ///
+    /// Production callers pass `chrono::Local::now()`; tests can
+    /// pass a fixed `DateTime<chrono_tz::Tz>` to assert the exact
+    /// line.
+    pub fn current_time<Tz>(mut self, now: chrono::DateTime<Tz>) -> Self
+    where
+        Tz: chrono::TimeZone,
+        Tz::Offset: std::fmt::Display,
+    {
+        let formatted = now.format("%Y-%m-%d %H:%M %Z (%a)").to_string();
+        self.sections.push(PromptSection {
+            name: "current_time".into(),
+            content: format!("Current time: {formatted}"),
+            // Priority 0 so this lands above every other section
+            // in the sorted output. Cheap and the first thing the
+            // model sees on every turn.
+            priority: 0,
+        });
+        self
+    }
+
     /// Select which persona's identity / doing_tasks / work_protocol
     /// constants are emitted by [`Self::load_static_sections`]. Defaults
     /// to [`IdentityProfile::Assistant`].
@@ -266,12 +291,14 @@ impl SystemPromptBuilder {
     }
 
     /// Add the environment section.
+    ///
+    /// The `Date:` line was removed in T-0368 — `current_time`
+    /// carries it now (in the user's local zone instead of UTC).
     pub fn environment(mut self, os: &str, shell: &str, cwd: &Path, model: &str) -> Self {
-        let now = chrono::Utc::now().format("%Y-%m-%d %H:%M UTC");
         self.sections.push(PromptSection {
             name: "environment".into(),
             content: format!(
-                "# Environment\n- Platform: {os}\n- Shell: {shell}\n- Working directory: {}\n- Date: {now}\n- Model: {model}",
+                "# Environment\n- Platform: {os}\n- Shell: {shell}\n- Working directory: {}\n- Model: {model}",
                 cwd.display()
             ),
             priority: 1,
@@ -879,6 +906,53 @@ mod tests {
         assert!(prompt.contains("bash"));
         assert!(prompt.contains("/home/user"));
         assert!(prompt.contains("llama-3.3"));
+    }
+
+    // --- T-0368: current_time header ---
+
+    #[test]
+    fn current_time_appears_at_the_top() {
+        use chrono::TimeZone;
+        // Pin a specific instant in a specific zone so the line is
+        // exactly predictable.
+        let when = chrono_tz::America::Los_Angeles
+            .with_ymd_and_hms(2026, 5, 19, 14, 32, 0)
+            .single()
+            .unwrap();
+        let prompt = SystemPromptBuilder::new()
+            .current_time(when)
+            // Add some other sections to prove "first" is real.
+            .environment("macOS", "zsh", Path::new("/tmp"), "test-model")
+            .workstream("ws", Path::new("/tmp/ws"))
+            .build();
+        assert!(prompt.starts_with("Current time: 2026-05-19 14:32"));
+        assert!(prompt.contains("(Tue)"));
+        // Environment must come *after* the current_time line.
+        let ct_pos = prompt.find("Current time:").unwrap();
+        let env_pos = prompt.find("# Environment").unwrap();
+        assert!(ct_pos < env_pos);
+    }
+
+    #[test]
+    fn current_time_uses_provided_timezone() {
+        use chrono::TimeZone;
+        let when = chrono_tz::UTC
+            .with_ymd_and_hms(2026, 5, 19, 21, 32, 0)
+            .single()
+            .unwrap();
+        let prompt = SystemPromptBuilder::new().current_time(when).build();
+        assert!(prompt.contains("2026-05-19 21:32"));
+        assert!(prompt.contains("UTC"));
+    }
+
+    #[test]
+    fn environment_no_longer_emits_date_line() {
+        // T-0368 moved the date out of Environment; verify the
+        // legacy "- Date:" line is gone so we don't drift back.
+        let prompt = SystemPromptBuilder::new()
+            .environment("Linux", "bash", Path::new("/tmp"), "model")
+            .build();
+        assert!(!prompt.contains("- Date:"));
     }
 
     // --- TC-18: Workstream section ---

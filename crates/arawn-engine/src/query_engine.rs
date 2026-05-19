@@ -659,6 +659,7 @@ impl QueryEngine {
 
             crate::system_prompt::SystemPromptBuilder::new()
                 .with_identity_profile(prompt_ctx.identity_profile)
+                .current_time(chrono::Local::now())
                 .load_static_sections(prompt_ctx.prompts_dir.as_deref())
                 .environment(
                     &prompt_ctx.os,
