@@ -55,7 +55,7 @@ pub use steward::{
     WorkstreamApplyTool, WorkstreamDustTool, WorkstreamJournalTool, WorkstreamRefineTool,
     WorkstreamRollbackTool, WorkstreamTagTool,
 };
-pub use task_list::{SessionTaskStore, TaskCreateTool, TaskGetTool, TaskListTool, TaskUpdateTool};
+pub use task_list::{TaskGetTool, TaskListTool};
 pub use task_output::TaskOutputTool;
 pub use task_stop::TaskStopTool;
 pub use think::ThinkTool;

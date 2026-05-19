@@ -54,16 +54,10 @@ See [permissions reference](./permissions.md) for evaluation order.
 | Tool | Source | Description |
 |---|---|---|
 | `agent` | `agent.rs` | Launch a sub-agent (by `subagent_type`) with an isolated context. Built-in types: `general-purpose`, `Explore`, `Plan`. Custom types load from `<data_dir>/agents/`. 3-level nesting cap. |
-| `task_output` | `task_output.rs` | Read incremental output from a background sub-agent task (started via `agent { run_in_background: true }`). |
+| `task_list` | `task_list.rs` | Enumerate background sub-agent tasks in the current session — id, description, status, elapsed seconds. |
+| `task_get` | `task_list.rs` | Point-in-time snapshot of a single background task by id (status + buffered output, never blocks). |
+| `task_output` | `task_output.rs` | Read output from a background sub-agent task; blocks/polls until completion by default. |
 | `task_stop` | `task_stop.rs` | Cancel a background sub-agent task. |
-
-## Session todos
-
-`task_list.rs` exposes a separate **per-session todo list** the agent can use for its own task-tracking inside a turn (independent of background sub-agents).
-
-| Tool | Source | Description |
-|---|---|---|
-| `task_create` / `task_update` / `task_list` / `task_get` | `task_list.rs` | CRUD on per-session todo items. Not connected to background tasks. |
 
 See [sub-agents reference](./sub-agents.md).
 

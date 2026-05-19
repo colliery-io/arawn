@@ -6,6 +6,8 @@ A **sub-agent** is a focused agent loop with its own system prompt, its own tool
 
 Source: `crates/arawn-engine/src/{agent_defs.rs, tools/agent.rs, background.rs, tools/{task_list,task_output,task_stop}.rs}`.
 
+The `task_*` tool family operates exclusively on background sub-agent tasks (ids `bg_xxxx`) — there is no separate session-scratchpad family. Use Metis for persistent planning and `think` for short notes.
+
 ## The `agent` tool
 
 ```json
@@ -85,16 +87,16 @@ Plugins can also ship agent definitions — see [plugins reference](./plugins.md
 
 ## Background tasks
 
-When `run_in_background: true`, the `agent` tool returns immediately with a task id. The agent loop continues; the background sub-agent runs in parallel. Two tools operate on background tasks once you know the id:
+When `run_in_background: true`, the `agent` tool returns immediately with a task id. The agent loop continues; the background sub-agent runs in parallel. Four tools operate on background tasks:
 
 | Tool | Description |
 |---|---|
-| `task_output <id>` | Read incremental output from a running task (does not block). |
+| `task_list` | Enumerate every background task in the session — id, description, status, elapsed seconds. |
+| `task_get <id>` | Point-in-time snapshot of one task (status + buffered output). Never blocks. |
+| `task_output <id>` | Read output from one task; blocks/polls until completion by default (`block=false` for non-blocking). |
 | `task_stop <id>` | Cancel a running task. |
 
-Source: `crates/arawn-engine/src/background.rs`, `tools/{task_output,task_stop}.rs`.
-
-> **Note:** `task_create` / `task_update` / `task_list` / `task_get` are **session-todo** tools (a separate per-session todo list — `crates/arawn-engine/src/tools/task_list.rs`), not background-task management. The engine currently has no enumerator that returns "all running background sub-agents in this session"; the caller is expected to track ids returned by `agent`.
+Source: `crates/arawn-engine/src/background.rs`, `tools/{task_list,task_output,task_stop}.rs`.
 
 ### Task lifecycle states
 

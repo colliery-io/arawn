@@ -4,15 +4,15 @@ level: task
 title: "Background sub-agent task enumerator (or rename session-todo task_*)"
 short_code: "ARAWN-T-0350"
 created_at: 2026-05-19T12:07:47.659218+00:00
-updated_at: 2026-05-19T12:07:47.659218+00:00
+updated_at: 2026-05-19T17:51:57.405578+00:00
 parent: 
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/backlog"
   - "#feature"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -97,6 +97,12 @@ Surfaced during ARAWN-I-0051 doc triple-check.
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria **[REQUIRED]**
 

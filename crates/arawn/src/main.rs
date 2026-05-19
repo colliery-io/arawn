@@ -2159,9 +2159,8 @@ fn register_default_tools(
 ) {
     use arawn_engine::{
         AgentTool, AskUserTool, EnterPlanModeTool, ExitPlanModeTool, FileEditTool, FileReadTool,
-        FileWriteTool, GlobTool, GrepTool, SessionTaskStore, ShellTool, SleepTool, TaskCreateTool,
-        TaskGetTool, TaskListTool, TaskOutputTool, TaskStopTool, TaskUpdateTool, ThinkTool,
-        WebFetchTool, WebSearchTool,
+        FileWriteTool, GlobTool, GrepTool, ShellTool, SleepTool, TaskGetTool, TaskListTool,
+        TaskOutputTool, TaskStopTool, ThinkTool, WebFetchTool, WebSearchTool,
     };
 
     registry.register(Box::new(ThinkTool));
@@ -2185,12 +2184,9 @@ fn register_default_tools(
             .with_background_manager(Arc::clone(&bg_manager)),
     ));
 
-    let task_store = SessionTaskStore::new();
     registry.register(Box::new(SleepTool));
-    registry.register(Box::new(TaskCreateTool::new(task_store.clone())));
-    registry.register(Box::new(TaskUpdateTool::new(task_store.clone())));
-    registry.register(Box::new(TaskGetTool::new(task_store.clone())));
-    registry.register(Box::new(TaskListTool::new(task_store)));
+    registry.register(Box::new(TaskListTool::new(Arc::clone(&bg_manager))));
+    registry.register(Box::new(TaskGetTool::new(Arc::clone(&bg_manager))));
     registry.register(Box::new(TaskOutputTool::new(Arc::clone(&bg_manager))));
     registry.register(Box::new(TaskStopTool::new(Arc::clone(&bg_manager))));
 

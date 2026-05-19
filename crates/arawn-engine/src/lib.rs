@@ -57,9 +57,9 @@ pub use tool::{Tool, ToolCategory, ToolError, ToolOutput, ToolRegistry};
 pub use tools::{
     AgentTool, AskUserTool, BindBackfillHook, EnterPlanModeTool, ExitPlanModeTool, FeedSearchTool,
     FileEditTool, FileReadTool, FileWriteTool, GlobTool, GrepTool, MemorySearchTool,
-    MemoryStoreTool, SessionTaskStore, SessionWorkstream, ShellTool, SignalQueryTool,
-    SignalSearchTool, SignalTimelineTool, SkillTool, SleepTool, TaskCreateTool, TaskGetTool,
-    TaskListTool, TaskOutputTool, TaskStopTool, TaskUpdateTool, ThinkTool, UnbindHook,
+    MemoryStoreTool, SessionWorkstream, ShellTool, SignalQueryTool,
+    SignalSearchTool, SignalTimelineTool, SkillTool, SleepTool, TaskGetTool,
+    TaskListTool, TaskOutputTool, TaskStopTool, ThinkTool, UnbindHook,
     WebFetchTool, WebSearchTool, WorkstreamApplyTool, WorkstreamBindTool, WorkstreamCreateTool,
     WorkstreamDeleteTool, WorkstreamDescribeTool, WorkstreamDustTool, WorkstreamJournalTool,
     WorkstreamListTool, WorkstreamPromoteTool, WorkstreamProposeOntologyTool, WorkstreamRefineTool,
