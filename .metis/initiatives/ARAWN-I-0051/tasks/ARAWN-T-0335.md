@@ -4,14 +4,14 @@ level: task
 title: "Phase C-3: How-tos — provider connections (Google, Slack, Atlassian, GitHub)"
 short_code: "ARAWN-T-0335"
 created_at: 2026-05-19T01:39:37.273511+00:00
-updated_at: 2026-05-19T01:39:37.273511+00:00
+updated_at: 2026-05-19T02:24:43.591089+00:00
 parent: ARAWN-I-0051
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -62,73 +62,23 @@ Extract the OAuth setup recipes from `getting-started.md` §6 and `integrations/
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
 
-## Acceptance Criteria **[REQUIRED]**
+## Acceptance Criteria
 
-- [ ] {Specific, testable requirement 1}
-- [ ] {Specific, testable requirement 2}
-- [ ] {Specific, testable requirement 3}
+- [x] `how-to/connect-google.md` written — shared Google Cloud project covers Gmail/Calendar/Drive; explicit scope list; test-user gotcha; `[integrations.google]` block + per-service fallback. ~120 lines.
+- [x] `how-to/connect-slack.md` written — bot+user dual-token model, exhaustive scope list, `localhost` (not `127.0.0.1`) port-8080 redirect URI quirk, re-install requirement on scope change. ~110 lines.
+- [x] `how-to/connect-atlassian.md` written — 3LO with classic scopes, fixed-port-8080 callback, cloud-id auto-discovery. ~85 lines.
+- [x] `how-to/connect-github.md` written — GitHub App (not OAuth) two-step register-then-install flow, App ID + slug + private key, `installation_id` lifecycle, encrypted storage location. ~125 lines.
+- [x] `docs/src/integrations/github.md` deleted (`git rm`). Content fully migrated.
+- [x] `SUMMARY.md` updated — How-to section lists the four new connect-* pages; Integrations section no longer references github.md.
+- [x] `angreal docs build` clean.
+- [ ] Other integration stubs (`gmail.md`, `calendar.md`, `drive.md`, `slack.md`, `atlassian.md`) deferred to C-6 consolidation into `reference/integrations.md` (still listed under Integrations interim group).
 
-## Test Cases **[CONDITIONAL: Testing Task]**
+## Status Updates
 
-{Delete unless this is a testing task}
+### 2026-05-18 — Completed (uncommitted)
 
-### Test Case 1: {Test Case Name}
-- **Test ID**: TC-001
-- **Preconditions**: {What must be true before testing}
-- **Steps**: 
-  1. {Step 1}
-  2. {Step 2}
-  3. {Step 3}
-- **Expected Results**: {What should happen}
-- **Actual Results**: {To be filled during execution}
-- **Status**: {Pass/Fail/Blocked}
+Source content pulled from `HEAD~1:docs/src/getting-started.md` §6 and from the deleted `docs/src/integrations/github.md`. All four pages now stand alone — prerequisites, steps, verification, troubleshooting pointer, "what's next" cross-links. No emojis in the text per house style.
 
-### Test Case 2: {Test Case Name}
-- **Test ID**: TC-002
-- **Preconditions**: {What must be true before testing}
-- **Steps**: 
-  1. {Step 1}
-  2. {Step 2}
-- **Expected Results**: {What should happen}
-- **Actual Results**: {To be filled during execution}
-- **Status**: {Pass/Fail/Blocked}
+Forward references to pages not yet written (`debug-oauth-failures.md`, `bind-a-workstream-to-a-feed.md`, `create-a-feed.md`, `reference/integrations.md`) are intentional — they're inline markdown links that mdbook tolerates; they'll resolve as C-4 and C-6 land.
 
-## Documentation Sections **[CONDITIONAL: Documentation Task]**
-
-{Delete unless this is a documentation task}
-
-### User Guide Content
-- **Feature Description**: {What this feature does and why it's useful}
-- **Prerequisites**: {What users need before using this feature}
-- **Step-by-Step Instructions**:
-  1. {Step 1 with screenshots/examples}
-  2. {Step 2 with screenshots/examples}
-  3. {Step 3 with screenshots/examples}
-
-### Troubleshooting Guide
-- **Common Issue 1**: {Problem description and solution}
-- **Common Issue 2**: {Problem description and solution}
-- **Error Messages**: {List of error messages and what they mean}
-
-### API Documentation **[CONDITIONAL: API Documentation]**
-- **Endpoint**: {API endpoint description}
-- **Parameters**: {Required and optional parameters}
-- **Example Request**: {Code example}
-- **Example Response**: {Expected response format}
-
-## Implementation Notes **[CONDITIONAL: Technical Task]**
-
-{Keep for technical tasks, delete for non-technical. Technical details, approach, or important considerations}
-
-### Technical Approach
-{How this will be implemented}
-
-### Dependencies
-{Other tasks or systems this depends on}
-
-### Risk Considerations
-{Technical risks and mitigation strategies}
-
-## Status Updates **[REQUIRED]**
-
-*To be added during implementation*
+The other 5 `integrations/*.md` stubs (gmail/calendar/drive/slack/atlassian) were intentionally NOT deleted — they have small amounts of reference content (especially `drive.md` with its scope rationale and tool list) that consolidates into `reference/integrations.md` in C-6.

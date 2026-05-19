@@ -11,6 +11,10 @@
 # How-to guides
 
 - [Overview](./how-to/index.md)
+- [Connect Google (Gmail, Calendar, Drive)](./how-to/connect-google.md)
+- [Connect Slack](./how-to/connect-slack.md)
+- [Connect Atlassian (Jira + Confluence)](./how-to/connect-atlassian.md)
+- [Connect GitHub](./how-to/connect-github.md)
 - [Read feeds with the agent](./how-to/read-feeds-with-the-agent.md)
 
 # Reference
@@ -35,7 +39,6 @@
 - [Google Drive](./integrations/drive.md)
 - [Slack](./integrations/slack.md)
 - [Atlassian](./integrations/atlassian.md)
-- [GitHub](./integrations/github.md)
 
 # Explanation
 
