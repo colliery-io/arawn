@@ -1763,6 +1763,29 @@ async fn main() -> Result<()> {
                         )
                         .with_events(event_tx.clone()),
                     );
+                    // Back-fill missed daily/weekly ceremonies (T-0366).
+                    // Runs once on boot, *before* the cron loop attaches
+                    // — prevents races with a cron tick that fires
+                    // milliseconds later. retro is excluded by design;
+                    // see ARAWN-I-0052.
+                    let backfill_lookback = config.backfill.ceremony_lookback_days;
+                    let backfill_registry = plugin_reg.clone();
+                    let backfill_dispatcher: Arc<dyn arawn_ceremonies::CeremonyDispatcher> =
+                        Arc::clone(&dispatcher)
+                            as Arc<dyn arawn_ceremonies::CeremonyDispatcher>;
+                    match arawn_ceremonies::backfill::run(
+                        &backfill_registry,
+                        backfill_dispatcher.as_ref(),
+                        backfill_lookback,
+                    )
+                    .await
+                    {
+                        Ok(_report) => {}
+                        Err(e) => {
+                            warn!(error = %e, "ceremony back-fill failed — cron still attached");
+                        }
+                    }
+
                     let runner = arawn_ceremonies::CeremonyRunner::new(
                         plugin_reg,
                         workflow_runner.cloacina_runner(),

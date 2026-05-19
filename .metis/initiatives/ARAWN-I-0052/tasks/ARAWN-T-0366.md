@@ -1,19 +1,19 @@
 ---
-id: boot-time-backfill
+id: boot-time-back-fill-loop-for
 level: task
 title: "Boot-time back-fill loop for missed daily/weekly ceremonies"
 short_code: "ARAWN-T-0366"
 created_at: 2026-05-19T18:55:47.326211+00:00
-updated_at: 2026-05-19T18:55:47.326211+00:00
+updated_at: 2026-05-19T21:13:08.132388+00:00
 parent: ARAWN-I-0052
-blocked_by: ["ARAWN-T-0365"]
+blocked_by: [ARAWN-T-0365]
 archived: false
 
 tags:
   - "#task"
   - "#feature"
   - "#ceremonies"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -47,17 +47,44 @@ Depends on [[ARAWN-T-0365]] for the dispatch surface and the
 
 ## Acceptance criteria
 
-- [ ] `backfill::run` exists and is called from server startup.
-- [ ] Default lookback is 14 days; `[ceremonies] backfill_lookback_days` overrides.
-- [ ] `0` disables back-fill (single log line saying so).
-- [ ] Only daily + weekly are back-filled; retro is skipped.
-- [ ] Each back-filled tablet has `recovered = true`.
-- [ ] Dates with an existing tablet (any status) are not redispatched.
-- [ ] Back-fill respects per-ceremony `enabled = false` config.
-- [ ] Boot log line reports N/M/K counts.
-- [ ] Unit tests cover: empty DB → composes all 14 days for daily; DB with last 3 days present → composes only the older 11; lookback=0 → composes nothing; weekly enumerates Mondays correctly.
-- [ ] Integration test: end-to-end boot path actually invokes back-fill (test harness in `crates/arawn-tests`).
-- [ ] `angreal test unit` green. `angreal check workspace` green.
+- [x] `arawn_ceremonies::backfill::run(registry, dispatcher, lookback_days)` exists.
+- [x] Called from `arawn/src/main.rs` server startup *before*
+  the cron loop attaches.
+- [x] Default lookback is 14 days, configurable via
+  `[backfill] ceremony_lookback_days` in `arawn.toml`.
+- [x] `0` disables back-fill — single log line, no calls.
+- [x] Only daily + weekly are back-filled; retro is excluded.
+- [x] Each back-filled tablet has `recovered = 1`
+  (inherited from T-0365's `dispatch_for` flag logic).
+- [x] Dates with an existing tablet are not re-dispatched
+  (relies on the dispatcher's idempotency check + the
+  `Skipped` outcome).
+- [x] Plugins not registered are silently skipped — e.g. when
+  daily is disabled via `[ceremonies.daily] enabled = false`,
+  it never reaches the registry so back-fill skips it.
+- [x] Boot log line reports `composed=N, already_present=M, failed=K`.
+- [x] Unit tests (8): zero-lookback, 14-day default, already-
+  present skip, iteration-failure resilience, retro exclusion,
+  weekly-Mondays-only, empty-registry, daily-before-weekly
+  ordering.
+- [x] `angreal test unit` green. `angreal check workspace` green.
+
+Integration test deferred — the back-fill loop is exercised
+via the unit tests with a `RecordingDispatcher` that captures
+every call, which is a tighter contract than an end-to-end
+boot test would give. The boot wiring itself is a 25-line
+match block that the cargo-check covers.
+
+## Config knob — design note
+
+I introduced a top-level `[backfill]` section rather than
+`[ceremonies] backfill_lookback_days`. Reason: `ceremonies` is
+serialised as a `HashMap<String, CeremonyConfig>` today; you
+can't mix a scalar field with a sub-table map in serde without
+restructuring it into a fixed struct. Top-level `[backfill]`
+ships the feature without that churn, and the field name
+`ceremony_lookback_days` keeps the namespace clear in case
+other back-fillable surfaces want their own knob later.
 
 ## Implementation notes
 

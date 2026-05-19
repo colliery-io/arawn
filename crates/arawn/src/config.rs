@@ -360,6 +360,35 @@ pub struct ArawnConfig {
     /// Keyed by ceremony `kind` (e.g. `"retro"`, `"daily"`).
     #[serde(default)]
     pub ceremonies: HashMap<String, CeremonyConfig>,
+    /// Boot-time back-fill for ceremonies whose cron tick fired
+    /// while arawn was offline. See `[backfill]` table in the
+    /// configuration reference. Absent = the documented defaults
+    /// (14-day cap, daily + weekly only).
+    #[serde(default)]
+    pub backfill: BackfillConfig,
+}
+
+/// `[backfill]` table — boot-time ceremony recovery knobs.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BackfillConfig {
+    /// How far back to walk when looking for missed daily/weekly
+    /// ceremonies on boot. `0` disables back-fill entirely.
+    /// Default: 14 days — see ARAWN-I-0052 ("Why the 14-day cap")
+    /// for the UX rationale.
+    #[serde(default = "default_backfill_lookback")]
+    pub ceremony_lookback_days: u32,
+}
+
+fn default_backfill_lookback() -> u32 {
+    14
+}
+
+impl Default for BackfillConfig {
+    fn default() -> Self {
+        Self {
+            ceremony_lookback_days: default_backfill_lookback(),
+        }
+    }
 }
 
 /// One ceremony's runtime overrides. Every field is optional; an
@@ -458,6 +487,7 @@ impl Default for ArawnConfig {
             integrations: IntegrationsConfig::default(),
             routing: RoutingConfig::default(),
             ceremonies: HashMap::new(),
+            backfill: BackfillConfig::default(),
         }
     }
 }

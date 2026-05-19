@@ -11,6 +11,7 @@
 //! future is "implement [`Ceremony`], register it" — no schema
 //! changes, no RPC plumbing.
 
+pub mod backfill;
 pub mod engine;
 pub mod error;
 pub mod events;

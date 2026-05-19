@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-19T19:59:43Z | 369 files | Python, Rust
+> Generated: 2026-05-19T21:05:25Z | 370 files | Python, Rust
 
 ## Project Structure
 
@@ -28,6 +28,7 @@
 │   │       └── token_store.rs
 │   ├── arawn-ceremonies/
 │   │   ├── src/
+│   │   │   ├── backfill.rs
 │   │   │   ├── engine.rs
 │   │   │   ├── error.rs
 │   │   │   ├── events.rs
@@ -519,21 +520,22 @@
 - pub `IntegrationCredentials` struct L277-282 — `{ client_id: String, client_secret: String }` — OAuth client credentials for one integration.
 - pub `GithubAppCredentials` struct L290-299 — `{ app_id: String, app_slug: String, private_key_path: String }` — GitHub App credentials.
 - pub `IntegrationsConfig` struct L306-333 — `{ slack: IntegrationCredentials, google: IntegrationCredentials, gmail: Integrat...` — Per-integration credential blocks.
-- pub `ArawnConfig` struct L337-363 — `{ llm: HashMap<String, LlmConfig>, engine: EngineConfig, compactor: CompactorCon...` — Top-level configuration.
-- pub `CeremonyConfig` struct L369-389 — `{ enabled: Option<bool>, schedule: Option<String>, timezone: Option<String>, mod...` — One ceremony's runtime overrides.
-- pub `is_enabled` function L393-395 — `(&self) -> bool` — `enabled` field defaulting to `true`.
-- pub `RoutingConfig` struct L402-407 — `{ hints: HintRoutingConfig, providers: ProvidersRoutingConfig }` — Routing configuration.
-- pub `ProvidersRoutingConfig` struct L414-423 — `{ local: Option<String>, remote: Option<String> }` — Names of the `[llm.NAME]` profiles that play the Local and Remote
-- pub `HintRoutingConfig` struct L429-439 — `{ lightweight: Option<String>, medium: Option<String>, heavy: Option<String> }` — Maps each `ModelHint` tier to a named `[llm.NAME]` profile.
-- pub `load` function L467-500 — `(data_dir: &Path) -> Self` — Load config from `data_dir/arawn.toml`, merging with env var overrides and defaults.
-- pub `engine_llm` function L523-528 — `(&self) -> &LlmConfig` — Resolve the LLM config for the engine.
-- pub `compactor_llm` function L531-538 — `(&self) -> &LlmConfig` — Resolve the LLM config for the compactor.
-- pub `extraction_llm` function L543-550 — `(&self) -> &LlmConfig` — Resolve the LLM config for the per-workstream extractor.
-- pub `extraction_llm_name` function L555-560 — `(&self) -> &str` — The configured name of the extraction LLM (or the engine's
-- pub `data_dir` function L563-565 — `(&self) -> PathBuf` — Resolve the data directory with ~ expansion.
-- pub `prompts_dir` function L568-570 — `(&self) -> PathBuf` — Resolve the prompts directory.
-- pub `resolve_api_key` function L574-581 — `(llm: &LlmConfig) -> Option<String>` — Resolve API key for an LLM config.
-- pub `generate_default_toml` function L584-694 — `() -> String` — Generate a default config file string with comments.
+- pub `ArawnConfig` struct L337-369 — `{ llm: HashMap<String, LlmConfig>, engine: EngineConfig, compactor: CompactorCon...` — Top-level configuration.
+- pub `BackfillConfig` struct L373-380 — `{ ceremony_lookback_days: u32 }` — `[backfill]` table — boot-time ceremony recovery knobs.
+- pub `CeremonyConfig` struct L398-418 — `{ enabled: Option<bool>, schedule: Option<String>, timezone: Option<String>, mod...` — One ceremony's runtime overrides.
+- pub `is_enabled` function L422-424 — `(&self) -> bool` — `enabled` field defaulting to `true`.
+- pub `RoutingConfig` struct L431-436 — `{ hints: HintRoutingConfig, providers: ProvidersRoutingConfig }` — Routing configuration.
+- pub `ProvidersRoutingConfig` struct L443-452 — `{ local: Option<String>, remote: Option<String> }` — Names of the `[llm.NAME]` profiles that play the Local and Remote
+- pub `HintRoutingConfig` struct L458-468 — `{ lightweight: Option<String>, medium: Option<String>, heavy: Option<String> }` — Maps each `ModelHint` tier to a named `[llm.NAME]` profile.
+- pub `load` function L497-530 — `(data_dir: &Path) -> Self` — Load config from `data_dir/arawn.toml`, merging with env var overrides and defaults.
+- pub `engine_llm` function L553-558 — `(&self) -> &LlmConfig` — Resolve the LLM config for the engine.
+- pub `compactor_llm` function L561-568 — `(&self) -> &LlmConfig` — Resolve the LLM config for the compactor.
+- pub `extraction_llm` function L573-580 — `(&self) -> &LlmConfig` — Resolve the LLM config for the per-workstream extractor.
+- pub `extraction_llm_name` function L585-590 — `(&self) -> &str` — The configured name of the extraction LLM (or the engine's
+- pub `data_dir` function L593-595 — `(&self) -> PathBuf` — Resolve the data directory with ~ expansion.
+- pub `prompts_dir` function L598-600 — `(&self) -> PathBuf` — Resolve the prompts directory.
+- pub `resolve_api_key` function L604-611 — `(llm: &LlmConfig) -> Option<String>` — Resolve API key for an LLM config.
+- pub `generate_default_toml` function L614-724 — `() -> String` — Generate a default config file string with comments.
 -  `default_api_key_env` function L36-38 — `() -> String`
 -  `default_context_window` function L39-41 — `() -> u32`
 -  `default_max_tokens` function L42-44 — `() -> u32`
@@ -563,27 +565,30 @@
 -  `default_network_tools` function L227-263 — `() -> Vec<String>`
 -  `SandboxConfig` type L265-271 — `impl Default for SandboxConfig`
 -  `default` function L266-270 — `() -> Self`
--  `CeremonyConfig` type L391-396 — `= CeremonyConfig`
--  `default_llm_configs` function L441-445 — `() -> HashMap<String, LlmConfig>`
--  `ArawnConfig` type L447-463 — `impl Default for ArawnConfig`
--  `default` function L448-462 — `() -> Self`
--  `ArawnConfig` type L465-695 — `= ArawnConfig`
--  `apply_env_overrides` function L502-520 — `(&mut self)`
--  `expand_tilde` function L697-704 — `(path: &str) -> PathBuf`
--  `tests` module L707-890 — `-`
--  `default_config_has_working_values` function L711-720 — `()`
--  `load_from_toml_string` function L723-743 — `()`
--  `compactor_falls_back_to_engine_llm` function L746-751 — `()`
--  `compactor_uses_own_llm_when_specified` function L754-773 — `()`
--  `missing_llm_name_falls_back_to_default_via_load` function L776-792 — `()`
--  `load_missing_file_uses_defaults` function L795-799 — `()`
--  `load_from_tempdir` function L802-820 — `()`
--  `generate_default_toml_is_parseable` function L823-827 — `()`
--  `tilde_expansion` function L830-833 — `()`
--  `empty_config_has_no_ceremony_overrides` function L836-842 — `()`
--  `ceremonies_table_parses_full_block` function L845-860 — `()`
--  `ceremonies_disabled_observed` function L863-875 — `()`
--  `ceremonies_partial_block_keeps_other_fields_none` function L878-889 — `()`
+-  `default_backfill_lookback` function L382-384 — `() -> u32`
+-  `BackfillConfig` type L386-392 — `impl Default for BackfillConfig`
+-  `default` function L387-391 — `() -> Self`
+-  `CeremonyConfig` type L420-425 — `= CeremonyConfig`
+-  `default_llm_configs` function L470-474 — `() -> HashMap<String, LlmConfig>`
+-  `ArawnConfig` type L476-493 — `impl Default for ArawnConfig`
+-  `default` function L477-492 — `() -> Self`
+-  `ArawnConfig` type L495-725 — `= ArawnConfig`
+-  `apply_env_overrides` function L532-550 — `(&mut self)`
+-  `expand_tilde` function L727-734 — `(path: &str) -> PathBuf`
+-  `tests` module L737-920 — `-`
+-  `default_config_has_working_values` function L741-750 — `()`
+-  `load_from_toml_string` function L753-773 — `()`
+-  `compactor_falls_back_to_engine_llm` function L776-781 — `()`
+-  `compactor_uses_own_llm_when_specified` function L784-803 — `()`
+-  `missing_llm_name_falls_back_to_default_via_load` function L806-822 — `()`
+-  `load_missing_file_uses_defaults` function L825-829 — `()`
+-  `load_from_tempdir` function L832-850 — `()`
+-  `generate_default_toml_is_parseable` function L853-857 — `()`
+-  `tilde_expansion` function L860-863 — `()`
+-  `empty_config_has_no_ceremony_overrides` function L866-872 — `()`
+-  `ceremonies_table_parses_full_block` function L875-890 — `()`
+-  `ceremonies_disabled_observed` function L893-905 — `()`
+-  `ceremonies_partial_block_keeps_other_fields_none` function L908-919 — `()`
 
 #### crates/arawn/src/config_watcher.rs
 
@@ -790,7 +795,7 @@
 -  `embed_batch` function L16-25 — `( &'a self, texts: &'a [&'a str], ) -> std::pin::Pin< Box<dyn std::future::Futur...`
 -  `DEFAULT_MODEL` variable L33 — `: &str`
 -  `FILE_LOG_FILTER` variable L36 — `: &str` — Default file log filter: debug for arawn crates, warn for third-party.
--  `main` function L39-2041 — `() -> Result<()>`
+-  `main` function L39-2064 — `() -> Result<()>`
 -  `Cli` struct L49-68 — `{ command: Option<Command>, data_dir: Option<String>, session: Option<Uuid>, lis...`
 -  `Command` enum L71-111 — `Serve | Tui | Plugin | Doctor | Usage`
 -  `ExtractorBindHook` struct L842-853 — `{ runner: Arc<arawn_extractor::ExtractorRunner>, store: Arc<std::sync::Mutex<ara...`
@@ -800,15 +805,15 @@
 -  `FeedRuntimeUnbindHook` type L969-984 — `= FeedRuntimeUnbindHook`
 -  `on_unbind` function L970-983 — `(&self, removed_feed_ids: &[String])`
 -  `resolve_ceremony_tz` function L1580-1604 — `(kind: &str, raw: Option<&str>) -> chrono_tz::Tz`
--  `run_cli_via_server` function L2044-2146 — `(url: &str, prompt: &str, session_id: Option<Uuid>) -> Result<()>` — Run a CLI prompt by connecting to the running server via WebSocket.
--  `build_llm_client` function L2149-2170 — `(config: &arawn_bin::LlmConfig) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
--  `register_default_tools` function L2173-2215 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &arawn_bin::ArawnConfig, d...` — Register all default tools into the registry.
--  `connect_mcp_servers` function L2218-2262 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
--  `register_workflow_tools` function L2265-2282 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
--  `build_engine_config` function L2284-2327 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
--  `expand_github_org` function L2337-2400 — `( github: Arc<arawn_integrations::github::GithubIntegration>, store: Arc<std::sy...` — I-0050 T-0327 — list every repo under `owner` (via the github
--  `register_one_feed` function L2406-2438 — `( feed_runtime: Arc<arawn_feeds::FeedRuntime>, store: Arc<std::sync::Mutex<arawn...` — T-0329 — fetch a feed record by id and register its cron schedule
--  `dirs_path` function L2440-2449 — `() -> Option<String>`
+-  `run_cli_via_server` function L2067-2169 — `(url: &str, prompt: &str, session_id: Option<Uuid>) -> Result<()>` — Run a CLI prompt by connecting to the running server via WebSocket.
+-  `build_llm_client` function L2172-2193 — `(config: &arawn_bin::LlmConfig) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
+-  `register_default_tools` function L2196-2238 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &arawn_bin::ArawnConfig, d...` — Register all default tools into the registry.
+-  `connect_mcp_servers` function L2241-2285 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
+-  `register_workflow_tools` function L2288-2305 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
+-  `build_engine_config` function L2307-2350 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
+-  `expand_github_org` function L2360-2423 — `( github: Arc<arawn_integrations::github::GithubIntegration>, store: Arc<std::sy...` — I-0050 T-0327 — list every repo under `owner` (via the github
+-  `register_one_feed` function L2429-2461 — `( feed_runtime: Arc<arawn_feeds::FeedRuntime>, store: Arc<std::sync::Mutex<arawn...` — T-0329 — fetch a feed record by id and register its cron schedule
+-  `dirs_path` function L2463-2472 — `() -> Option<String>`
 
 #### crates/arawn/src/plugin_cmd.rs
 
@@ -982,6 +987,41 @@
 
 > *Semantic summary to be generated by AI agent.*
 
+#### crates/arawn-ceremonies/src/backfill.rs
+
+- pub `BackfillReport` struct L24-32 — `{ composed: usize, already_present: usize, failed: usize }` — Outcome counters for one back-fill pass — surfaced in the boot
+- pub `run` function L44-99 — `( registry: &PluginRegistry, dispatcher: &dyn CeremonyDispatcher, lookback_days:...` — Walk the `lookback_days` window for each registered daily/weekly
+-  `weekly_mondays_in_window` function L106-134 — `(today: NaiveDate, lookback_days: i64) -> Vec<NaiveDate>` — Enumerate the Mondays that fall in `[today - lookback, today - 1d]`.
+-  `tests` module L137-365 — `-` — day's failure doesn't poison the rest.
+-  `RecordingDispatcher` struct L152-156 — `{ calls: Mutex<Vec<(String, NaiveDate)>>, already_present: Vec<(String, NaiveDat...` — Recording dispatcher that captures every (kind, target) pair
+-  `RecordingDispatcher` type L158-177 — `= RecordingDispatcher` — day's failure doesn't poison the rest.
+-  `new` function L159-165 — `() -> Self` — day's failure doesn't poison the rest.
+-  `with_already_present` function L166-169 — `(mut self, kind: &str, date: NaiveDate) -> Self` — day's failure doesn't poison the rest.
+-  `with_failure` function L170-173 — `(mut self, kind: &str, date: NaiveDate) -> Self` — day's failure doesn't poison the rest.
+-  `calls` function L174-176 — `(&self) -> Vec<(String, NaiveDate)>` — day's failure doesn't poison the rest.
+-  `RecordingDispatcher` type L180-209 — `impl CeremonyDispatcher for RecordingDispatcher` — day's failure doesn't poison the rest.
+-  `dispatch` function L181-183 — `(&self, _kind: &str) -> Result<DispatchOutcome, CeremonyError>` — day's failure doesn't poison the rest.
+-  `dispatch_for` function L184-208 — `( &self, kind: &str, target: NaiveDate, ) -> Result<DispatchOutcome, CeremonyErr...` — day's failure doesn't poison the rest.
+-  `PluginStub` struct L213 — `-` — Minimal plugin stub used purely to register kinds with the
+-  `PluginStub` type L215-248 — `impl Ceremony for PluginStub` — day's failure doesn't poison the rest.
+-  `kind` function L216-218 — `(&self) -> &'static str` — day's failure doesn't poison the rest.
+-  `period_key` function L219-221 — `(&self, _now: DateTime<Utc>) -> String` — day's failure doesn't poison the rest.
+-  `period_window` function L222-228 — `( &self, _period_key: &str, ) -> Result<(DateTime<Utc>, DateTime<Utc>), Ceremony...` — day's failure doesn't poison the rest.
+-  `default_schedule` function L229-231 — `(&self) -> CronSchedule` — day's failure doesn't poison the rest.
+-  `interactive_actions` function L232-234 — `(&self) -> Vec<InteractiveAction>` — day's failure doesn't poison the rest.
+-  `patterns` function L235-237 — `(&self) -> Option<&dyn PatternDetector>` — day's failure doesn't poison the rest.
+-  `gather` function L238-240 — `(&self, _ctx: &dyn CeremonyCtx) -> Result<GatheredFacts, CeremonyError>` — day's failure doesn't poison the rest.
+-  `compose` function L241-247 — `( &self, _ctx: &dyn CeremonyCtx, _facts: GatheredFacts, ) -> Result<Vec<NewItem>...` — day's failure doesn't poison the rest.
+-  `registry_with` function L250-256 — `(kinds: &[&'static str]) -> PluginRegistry` — day's failure doesn't poison the rest.
+-  `zero_lookback_disables` function L259-265 — `()` — day's failure doesn't poison the rest.
+-  `fourteen_day_default_composes_daily` function L268-280 — `()` — day's failure doesn't poison the rest.
+-  `already_present_dates_dont_get_redispatched` function L283-296 — `()` — day's failure doesn't poison the rest.
+-  `iteration_failure_does_not_abort_loop` function L299-308 — `()` — day's failure doesn't poison the rest.
+-  `retro_is_skipped` function L311-317 — `()` — day's failure doesn't poison the rest.
+-  `weekly_enumerates_mondays_only` function L320-332 — `()` — day's failure doesn't poison the rest.
+-  `no_kind_registered_skips_silently` function L335-342 — `()` — day's failure doesn't poison the rest.
+-  `daily_runs_before_weekly` function L345-364 — `()` — day's failure doesn't poison the rest.
+
 #### crates/arawn-ceremonies/src/engine.rs
 
 - pub `ConnHandle` struct L51 — `-` — Wraps a shared SQLite connection.
@@ -1074,20 +1114,21 @@
 
 #### crates/arawn-ceremonies/src/lib.rs
 
-- pub `engine` module L14 — `-` — Each ceremony (daily prep, weekly prep, retro, future user-defined
-- pub `error` module L15 — `-` — changes, no RPC plumbing.
-- pub `events` module L16 — `-` — changes, no RPC plumbing.
-- pub `local_window` module L17 — `-` — changes, no RPC plumbing.
-- pub `nightly` module L18 — `-` — changes, no RPC plumbing.
-- pub `patterns` module L19 — `-` — changes, no RPC plumbing.
-- pub `plugin` module L20 — `-` — changes, no RPC plumbing.
-- pub `plugins` module L21 — `-` — changes, no RPC plumbing.
-- pub `registry` module L22 — `-` — changes, no RPC plumbing.
-- pub `render` module L23 — `-` — changes, no RPC plumbing.
-- pub `rollup` module L24 — `-` — changes, no RPC plumbing.
-- pub `runner` module L25 — `-` — changes, no RPC plumbing.
-- pub `service` module L26 — `-` — changes, no RPC plumbing.
-- pub `types` module L27 — `-` — changes, no RPC plumbing.
+- pub `backfill` module L14 — `-` — Each ceremony (daily prep, weekly prep, retro, future user-defined
+- pub `engine` module L15 — `-` — changes, no RPC plumbing.
+- pub `error` module L16 — `-` — changes, no RPC plumbing.
+- pub `events` module L17 — `-` — changes, no RPC plumbing.
+- pub `local_window` module L18 — `-` — changes, no RPC plumbing.
+- pub `nightly` module L19 — `-` — changes, no RPC plumbing.
+- pub `patterns` module L20 — `-` — changes, no RPC plumbing.
+- pub `plugin` module L21 — `-` — changes, no RPC plumbing.
+- pub `plugins` module L22 — `-` — changes, no RPC plumbing.
+- pub `registry` module L23 — `-` — changes, no RPC plumbing.
+- pub `render` module L24 — `-` — changes, no RPC plumbing.
+- pub `rollup` module L25 — `-` — changes, no RPC plumbing.
+- pub `runner` module L26 — `-` — changes, no RPC plumbing.
+- pub `service` module L27 — `-` — changes, no RPC plumbing.
+- pub `types` module L28 — `-` — changes, no RPC plumbing.
 
 #### crates/arawn-ceremonies/src/local_window.rs
 
