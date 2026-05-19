@@ -38,19 +38,19 @@ Ask sits between allow and deny: the rule (or mode) says "let me decide each tim
 
 ## Why four modes, not a flat scale
 
-The four modes — `default`, `accept_edits`, `bypass`, `plan` — correspond to four distinct postures:
+The four modes — `ask`, `edits`, `full`, `plan` — correspond to four distinct postures:
 
 | Mode | ReadOnly | FileWrite | Shell | Other |
 |---|---|---|---|---|
-| `default` | allow | ask | ask | ask |
-| `accept_edits` | allow | allow | ask | ask |
-| `bypass` | allow | allow | allow | allow |
+| `ask` | allow | ask | ask | ask |
+| `edits` | allow | allow | ask | ask |
+| `full` | allow | allow | allow | allow |
 | `plan` | allow | deny | deny | deny |
 
-- **`default`** — you're at the keyboard; you're OK with the agent reading but you want to gate writes. Safe starting point.
-- **`accept_edits`** — you've decided "this whole session, the agent should be able to edit." Useful for "let's refactor the whole crate" sessions where every prompt would be a write.
-- **`bypass`** — unattended runs. CI. A sandboxed VM. You've decided you trust the rules and don't want any prompts.
-- **`plan`** — investigation only. Every side-effect tool is **denied** (not asked). The agent reads, thinks, plans — doesn't act. Toggle in via `/plan`; the agent uses `enter_plan_mode` / `exit_plan_mode` to toggle out.
+- **`ask`** — you're at the keyboard; you're OK with the agent reading but you want to gate writes. Safe starting point.
+- **`edits`** — you've decided "this whole session, the agent should be able to edit." Useful for "let's refactor the whole crate" sessions where every prompt would be a write.
+- **`full`** — unattended runs. CI. A sandboxed VM. You've decided you trust the rules and don't want any prompts.
+- **`plan`** — investigation only. Every side-effect tool is **denied** (not asked). The agent reads, thinks, plans — doesn't act. Toggle in via `/autonomy plan`; the agent uses `enter_plan_mode` / `exit_plan_mode` to toggle out.
 
 The four modes are coarse because finer-grained modes don't add much. A "writes but ask for delete" mode would mean designing a third write-category — fiddly without much win. Use rules for that level of nuance.
 
@@ -125,7 +125,7 @@ Why audit?
 
 - **Network rate limits.** The sandbox's network-tool allowlist gates which binaries can touch the network; there's no per-call rate limiter. Rate limiting is the provider's job.
 - **Per-user permissions.** arawn is single-user. There's no "Alice can do X but Bob can't."
-- **Time-based rules.** No "deny shell at night." Use modes (`/plan` before bed) instead.
+- **Time-based rules.** No "deny shell at night." Use modes (`/autonomy plan` before bed) instead.
 - **Approval delegation.** Permission prompts go to the running TUI session. There's no "send the approval request to my phone" path.
 
 These constraints are intentional. The model is small enough to reason about. Adding more dimensions would make rule-debugging painful.

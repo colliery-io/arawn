@@ -49,7 +49,7 @@ Investigation-flavored sub-agent. Implemented as a **disallow list**: inherits t
 
 Planning-flavored sub-agent. Same disallow-list approach as `Explore` (subtracts `agent`, `file_edit`, `file_write` from parent's tools) plus a system prompt oriented toward emitting a plan rather than acting. Use for: "draft a plan for implementing X", "what's the right order to migrate Y?"
 
-> **Note:** the disallow-list semantics means the system prompt is doing most of the read-only enforcement. If you need hard guarantees, set `permission_mode = "plan"` for the session (see [permission model](./permissions.md)).
+> **Note:** the disallow-list semantics means the system prompt is doing most of the read-only enforcement. If you need hard guarantees, run `/autonomy plan` (or set `[permissions] autonomy = "plan"`) — see [permission model](./permissions.md).
 
 ## User-defined agent types
 

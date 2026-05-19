@@ -560,10 +560,10 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                                     Ok(confirmed) => {
                                         app.permission_mode = confirmed.clone();
                                         let label = match confirmed.as_str() {
-                                            "bypass" => "BYPASS (full autonomy)",
-                                            "accept_edits" => "ACCEPT EDITS",
+                                            "full" => "FULL (full autonomy)",
+                                            "edits" => "EDITS (auto-allow edits, ask for shell)",
                                             "plan" => "PLAN (read-only)",
-                                            _ => "DEFAULT",
+                                            _ => "ASK (default)",
                                         };
                                         app.messages.push(ChatMessage::new(
                                             ChatRole::System,

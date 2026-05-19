@@ -58,7 +58,7 @@ See [debug OAuth failures](../how-to/debug-oauth-failures.md) for the full table
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| Agent gets denied on every shell call | `permission_mode = "plan"` is active | `/accept on` (or `/accept off` for default mode). |
+| Agent gets denied on every shell call | `autonomy = "plan"` is active | `/autonomy full` (or `/autonomy ask` for default mode). |
 | Tool keeps prompting even though you said "always allow" | Session grants don't persist across server restarts | Add an explicit `allow` rule in `[permissions]` to make it permanent. |
 | `shell(...)` returns "tool denied (by rule)" | A `deny` rule matched | Inspect with `/permissions` slash. |
 

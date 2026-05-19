@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use tracing::warn;
 
+use super::checker::PermissionMode;
 use super::rules::{PermissionRule, RuleKind};
 
 /// Permission configuration — holds allow/deny/ask rule lists.
@@ -17,6 +18,12 @@ pub struct PermissionConfig {
     /// Rules that require user confirmation before tool execution.
     #[serde(default)]
     pub ask: Vec<String>,
+    /// T-0347: starting permission posture. Mirrors `/autonomy` slash
+    /// command. Values: `ask` | `edits` | `full` | `plan`. Absent →
+    /// `Ask` (default-safe). Invalid TOML values surface as parse
+    /// errors from serde — callers should warn-and-fall-back.
+    #[serde(default)]
+    pub autonomy: Option<PermissionMode>,
 }
 
 impl PermissionConfig {
@@ -48,6 +55,8 @@ impl PermissionConfig {
             allow: [self.allow, other.allow].concat(),
             deny: [self.deny, other.deny].concat(),
             ask: [self.ask, other.ask].concat(),
+            // Autonomy is a single value — higher-priority (self) wins.
+            autonomy: self.autonomy.or(other.autonomy),
         }
     }
 }
@@ -118,6 +127,7 @@ mod tests {
             allow: vec!["Read".into(), "Glob".into()],
             deny: vec!["Bash(rm -rf *)".into()],
             ask: vec!["Bash".into()],
+            autonomy: None,
         };
         let rules = config.into_rules();
         assert_eq!(rules.len(), 4);
@@ -140,11 +150,13 @@ mod tests {
             allow: vec![],
             deny: vec!["Bash(rm *)".into()],
             ask: vec![],
+            autonomy: None,
         };
         let project = PermissionConfig {
             allow: vec!["Bash".into()],
             deny: vec![],
             ask: vec![],
+            autonomy: None,
         };
 
         let merged = user.merge(project);
@@ -180,6 +192,55 @@ ask = ["Bash", "Edit"]
         assert_eq!(config.allow.len(), 3);
         assert_eq!(config.deny.len(), 1);
         assert_eq!(config.ask.len(), 2);
+    }
+
+    // T-0347 — [permissions] autonomy round-trip.
+    #[test]
+    fn load_autonomy_from_toml() {
+        for (val, expected) in [
+            ("ask", PermissionMode::Ask),
+            ("edits", PermissionMode::Edits),
+            ("full", PermissionMode::Full),
+            ("plan", PermissionMode::Plan),
+        ] {
+            let tmp = tempfile::NamedTempFile::new().unwrap();
+            write!(
+                tmp.as_file(),
+                "[permissions]\nautonomy = \"{val}\"\n"
+            )
+            .unwrap();
+            let cfg = load_permissions_from_file(tmp.path());
+            assert_eq!(cfg.autonomy, Some(expected), "autonomy = {val}");
+        }
+    }
+
+    #[test]
+    fn load_autonomy_absent_is_none() {
+        let tmp = tempfile::NamedTempFile::new().unwrap();
+        write!(
+            tmp.as_file(),
+            "[permissions]\nallow = [\"Read\"]\n"
+        )
+        .unwrap();
+        let cfg = load_permissions_from_file(tmp.path());
+        assert_eq!(cfg.autonomy, None);
+    }
+
+    #[test]
+    fn load_autonomy_invalid_value_falls_back_to_default() {
+        // Bad value invalidates the whole [permissions] block via
+        // serde — the loader warn+falls-back to PermissionConfig::default,
+        // which means autonomy: None, no rules. Verifies the warn-and-
+        // fall-back contract from the acceptance criteria.
+        let tmp = tempfile::NamedTempFile::new().unwrap();
+        write!(
+            tmp.as_file(),
+            "[permissions]\nautonomy = \"bogus\"\nallow = [\"Read\"]\n"
+        )
+        .unwrap();
+        let cfg = load_permissions_from_file(tmp.path());
+        assert_eq!(cfg.autonomy, None);
+        assert!(cfg.allow.is_empty());
     }
 
     #[test]

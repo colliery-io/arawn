@@ -85,7 +85,7 @@ async fn update_mode_changes_behavior() {
     // Default mode asks for shell, and mock prompter denies.
     let checker = Arc::new(
         PermissionChecker::new(vec![])
-            .with_mode(PermissionMode::Default)
+            .with_mode(PermissionMode::Ask)
             .with_prompter(Box::new(MockModalPrompt::always(None))), // deny on ask
     );
 
@@ -104,7 +104,7 @@ async fn update_mode_changes_behavior() {
     assert_tool_result_is_error(result1.session_messages(), 2, "Permission denied");
 
     // Hot-reload: switch to BypassPermissions
-    checker.update_mode(PermissionMode::BypassPermissions);
+    checker.update_mode(PermissionMode::Full);
 
     // Turn 2: shell allowed (BypassPermissions auto-allows everything)
     let harness2 = TestHarness::builder()

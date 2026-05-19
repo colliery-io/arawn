@@ -152,15 +152,14 @@ Per-ceremony overrides. `<kind>` is `daily`, `weekly`, or `retro`. Absent table 
 
 Permission rules. See [permissions reference](./permissions.md) for full semantics.
 
-| Key | Type | Description |
-|---|---|---|
-| `allow` | list&lt;string&gt; | Tool patterns to allow without prompt. |
-| `deny` | list&lt;string&gt; | Tool patterns to always deny. |
-| `ask` | list&lt;string&gt; | Tool patterns to always prompt for. |
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `allow` | list&lt;string&gt; | `[]` | Tool patterns to allow without prompt. |
+| `deny` | list&lt;string&gt; | `[]` | Tool patterns to always deny. |
+| `ask` | list&lt;string&gt; | `[]` | Tool patterns to always prompt for. |
+| `autonomy` | string | `"ask"` | Starting permission posture. One of `ask` (default-safe), `edits` (auto-allow file writes; ask for shell), `full` (no prompts), `plan` (side-effects denied). Mirrors the `/autonomy` slash command. Invalid values warn and fall back to defaults. |
 
 Pattern syntax: `tool_name` (exact), `tool_*` (glob), `tool_name(content-glob)` (tool name + content match).
-
-> **Note:** the active **permission mode** (`default` / `accept_edits` / `bypass` / `plan`) is runtime state, not a TOML key. Set it at runtime with the `/accept on|off|edits` and `/plan` slash commands. There is no `permission_mode` key in `[permissions]`.
 
 ## `[[mcp.servers]]`
 

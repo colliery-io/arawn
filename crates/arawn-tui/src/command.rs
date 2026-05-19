@@ -80,15 +80,12 @@ impl CommandRegistry {
             description: "Clear the chat history".into(),
             kind: CommandKind::BuiltIn,
         });
+        // T-0347: permission mode UX unified under `/autonomy`.
+        // Drop the legacy `/accept` and `/plan` slash commands — plan
+        // mode is now reachable as `/autonomy plan`.
         self.commands.push(CommandInfo {
-            name: "plan".into(),
-            description: "Enter plan mode (observation only)".into(),
-            kind: CommandKind::BuiltIn,
-        });
-        // Permission mode
-        self.commands.push(CommandInfo {
-            name: "accept".into(),
-            description: "Set permission mode (on/off/edits)".into(),
+            name: "autonomy".into(),
+            description: "Set permission posture (ask|edits|full|plan)".into(),
             kind: CommandKind::BuiltIn,
         });
         // Workstream/session management
@@ -345,7 +342,8 @@ pub enum CommandResult {
     SessionList,
     /// Promote current scratch session to a workstream.
     PromoteSession(String),
-    /// Set permission mode (mode string: "bypass", "default", "accept_edits", "plan").
+    /// Set permission mode. Mode string: "ask" | "edits" | "full" | "plan"
+    /// (matches the `PermissionMode` enum's serde representation).
     SetPermissionMode(String),
     /// List installed workflows.
     WorkflowList,
@@ -693,15 +691,17 @@ pub fn execute_command(cmd: &ParsedCommand, registry: &CommandRegistry) -> Comma
                         CommandResult::PromoteSession(cmd.args.clone())
                     }
                 }
-                "plan" => CommandResult::SetPermissionMode("plan".into()),
-                "accept" => {
+                // T-0347: unified permission posture. `ask` is the
+                // default-safe posture; `full` is the old "bypass";
+                // `plan` no longer needs its own top-level command.
+                "autonomy" => {
                     let sub = cmd.args.split_whitespace().next().unwrap_or("");
                     match sub {
-                        "on" => CommandResult::SetPermissionMode("bypass".into()),
-                        "off" => CommandResult::SetPermissionMode("default".into()),
-                        "edits" => CommandResult::SetPermissionMode("accept_edits".into()),
+                        "ask" | "edits" | "full" | "plan" => {
+                            CommandResult::SetPermissionMode(sub.into())
+                        }
                         _ => CommandResult::SystemMessage(
-                            "Usage: /accept <on|off|edits>\n\n  on      Full autonomy (bypass all permissions)\n  off     Restore default permission prompts\n  edits   Auto-allow file writes, prompt for shell".into()
+                            "Usage: /autonomy <ask|edits|full|plan>\n\n  ask     Ask before mutating actions (default)\n  edits   Auto-allow file writes; ask for shell\n  full    Full autonomy — agent never asks\n  plan    Read-only plan mode — side-effects denied".into()
                         ),
                     }
                 }
@@ -1071,7 +1071,9 @@ mod tests {
         let reg = CommandRegistry::new();
         assert!(reg.find("help").is_some());
         assert!(reg.find("clear").is_some());
-        assert!(reg.find("plan").is_some());
+        // T-0347: /plan removed; plan mode is reachable as
+        // `/autonomy plan` instead.
+        assert!(reg.find("autonomy").is_some());
         assert!(reg.find("tools").is_some());
         assert!(reg.find("skills").is_some());
     }
@@ -1079,9 +1081,9 @@ mod tests {
     #[test]
     fn registry_matching_prefix() {
         let reg = CommandRegistry::new();
+        // T-0347: /plan removed. `pl` now only matches plugins.
         let matches = reg.matching("pl");
-        assert_eq!(matches.len(), 2); // plan, plugins
-        assert!(matches.iter().any(|c| c.name == "plan"));
+        assert_eq!(matches.len(), 1);
         assert!(matches.iter().any(|c| c.name == "plugins"));
     }
 
@@ -1346,6 +1348,66 @@ mod tests {
         match execute_command(&cmd, &reg) {
             CommandResult::IntegrationDisconnect(svc) => assert_eq!(svc, "slack"),
             other => panic!("expected IntegrationDisconnect, got {other:?}"),
+        }
+    }
+
+    // T-0347 — `/autonomy` slash command parses the 4 valid values.
+    #[test]
+    fn execute_autonomy_each_valid_mode() {
+        let reg = CommandRegistry::new();
+        for mode in ["ask", "edits", "full", "plan"] {
+            let cmd = parse_command(&format!("/autonomy {mode}")).unwrap();
+            match execute_command(&cmd, &reg) {
+                CommandResult::SetPermissionMode(got) => assert_eq!(got, mode),
+                other => panic!("expected SetPermissionMode for {mode}, got {other:?}"),
+            }
+        }
+    }
+
+    #[test]
+    fn execute_autonomy_invalid_value_returns_usage_message() {
+        let reg = CommandRegistry::new();
+        let cmd = parse_command("/autonomy bogus").unwrap();
+        match execute_command(&cmd, &reg) {
+            CommandResult::SystemMessage(msg) => {
+                assert!(msg.contains("Usage: /autonomy"));
+                assert!(msg.contains("ask"));
+                assert!(msg.contains("full"));
+            }
+            other => panic!("expected SystemMessage, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn execute_autonomy_no_arg_returns_usage_message() {
+        let reg = CommandRegistry::new();
+        let cmd = parse_command("/autonomy").unwrap();
+        match execute_command(&cmd, &reg) {
+            CommandResult::SystemMessage(msg) => assert!(msg.contains("Usage: /autonomy")),
+            other => panic!("expected SystemMessage, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn legacy_slash_commands_no_longer_resolve() {
+        // T-0347: /accept and /plan removed. parse_command still
+        // returns a ParsedCommand (just splits on whitespace) but
+        // execute_command should treat them as unknown and surface
+        // the catchall "Unknown built-in" message.
+        let reg = CommandRegistry::new();
+        for legacy in ["/accept on", "/plan"] {
+            let cmd = parse_command(legacy).unwrap();
+            match execute_command(&cmd, &reg) {
+                CommandResult::SystemMessage(msg) => {
+                    assert!(
+                        msg.contains("Unknown")
+                            || msg.contains("No such command")
+                            || msg.contains("Usage:"),
+                        "expected unknown-command message for {legacy}, got: {msg}"
+                    );
+                }
+                other => panic!("expected SystemMessage for {legacy}, got {other:?}"),
+            }
         }
     }
 

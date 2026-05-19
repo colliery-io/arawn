@@ -231,7 +231,7 @@ mod tests {
 
         // Enter plan mode — plan file in session working dir
         let plan_file = state
-            .enter(PermissionMode::Default, "test-plan", tmp.path())
+            .enter(PermissionMode::Ask, "test-plan", tmp.path())
             .unwrap();
         assert!(state.is_active());
         assert!(plan_file.exists());
@@ -248,7 +248,7 @@ mod tests {
 
         // Exit plan mode
         let pre_mode = state.exit();
-        assert_eq!(pre_mode, Some(PermissionMode::Default));
+        assert_eq!(pre_mode, Some(PermissionMode::Ask));
         assert!(!state.is_active());
     }
 
@@ -268,7 +268,7 @@ mod tests {
         assert!(snap.plan_file.is_none());
 
         state
-            .enter(PermissionMode::AcceptEdits, "snap-test", tmp.path())
+            .enter(PermissionMode::Edits, "snap-test", tmp.path())
             .unwrap();
         let snap = state.snapshot();
         assert!(snap.active);

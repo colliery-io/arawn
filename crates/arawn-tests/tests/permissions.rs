@@ -92,7 +92,7 @@ async fn allow_rule_permits_tool_call() {
 async fn bypass_mode_allows_all_tools() {
     // No explicit rules — BypassPermissions mode should auto-allow everything
     let checker =
-        Arc::new(PermissionChecker::new(vec![]).with_mode(PermissionMode::BypassPermissions));
+        Arc::new(PermissionChecker::new(vec![]).with_mode(PermissionMode::Full));
 
     let harness = TestHarness::builder()
         .with_tool(Box::new(ShellTool::default()))
@@ -114,7 +114,7 @@ async fn accept_edits_mode_allows_file_write_but_asks_shell() {
     // MockModalPrompt denies → shell should be denied.
     let checker = Arc::new(
         PermissionChecker::new(vec![])
-            .with_mode(PermissionMode::AcceptEdits)
+            .with_mode(PermissionMode::Edits)
             .with_prompter(Box::new(MockModalPrompt::always(None))), // deny on ask
     );
 

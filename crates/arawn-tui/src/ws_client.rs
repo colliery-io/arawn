@@ -329,7 +329,7 @@ impl WsClient {
             .request_response("get_permission_mode", json!({}))
             .await?;
         let result = resp.get("result").ok_or("no result")?;
-        Ok(result["mode"].as_str().unwrap_or("default").to_string())
+        Ok(result["mode"].as_str().unwrap_or("ask").to_string())
     }
 
     pub async fn set_permission_mode(

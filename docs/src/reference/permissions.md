@@ -61,23 +61,25 @@ The mode controls what happens when no explicit rule matches. Each tool's *categ
 
 | Mode | ReadOnly | FileWrite | Shell | Other |
 |---|---|---|---|---|
-| `default` | allow | ask | ask | ask |
-| `accept_edits` | allow | allow | ask | ask |
-| `bypass` | allow | allow | allow | allow |
+| `ask` | allow | ask | ask | ask |
+| `edits` | allow | allow | ask | ask |
+| `full` | allow | allow | allow | allow |
 | `plan` | allow | deny | deny | deny |
 
 `plan` mode is special: any side-effect tool is **denied outright** (not asked). The agent can think, read, and search, but it can't act. `enter_plan_mode` and `exit_plan_mode` are exempt — they're how the agent toggles modes.
 
-The default mode is `default`. There is no TOML key for this — set it at runtime with `/accept` and `/plan` slash commands:
+The starting mode comes from `[permissions] autonomy` in `arawn.toml`
+(defaults to `ask`). Toggle at runtime with the `/autonomy` slash
+command:
 
 ```text
-/accept on        # bypass mode
-/accept edits     # accept_edits mode
-/accept off       # default mode
-/plan             # plan mode
+/autonomy full    # full autonomy
+/autonomy edits   # auto-allow file writes; ask for shell
+/autonomy ask     # default-safe
+/autonomy plan    # plan mode
 ```
 
-See [`/accept` and `/plan` in the slash-commands reference](./slash-commands.md).
+See [`/autonomy` in the slash-commands reference](./slash-commands.md).
 
 ## Per-decision responses
 

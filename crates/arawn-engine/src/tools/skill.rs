@@ -84,12 +84,14 @@ impl Tool for SkillTool {
             }
         };
 
-        // Build the skill prompt with args if provided
-        let prompt = if args.is_empty() {
-            skill.prompt.clone()
-        } else {
-            format!("{}\n\nArguments: {}", skill.prompt, args)
-        };
+        let mut prompt = skill.prompt.clone();
+        if !args.is_empty() {
+            prompt.push_str(&format!("\n\nArguments: {}", args));
+        }
+        if let Some(constraints) = render_constraints(&skill) {
+            prompt.push_str("\n\n");
+            prompt.push_str(&constraints);
+        }
 
         Ok(ToolOutput::success(prompt))
     }
@@ -98,6 +100,21 @@ impl Tool for SkillTool {
         // Skills may trigger write operations
         false
     }
+}
+
+fn render_constraints(skill: &crate::skills::SkillDefinition) -> Option<String> {
+    if skill.allowed_tools.is_none() && skill.model.is_none() {
+        return None;
+    }
+    let mut out =
+        String::from("---\nSkill constraints (advisory — the agent should self-comply):");
+    if let Some(tools) = &skill.allowed_tools {
+        out.push_str(&format!("\n- allowed-tools: {}", tools.join(", ")));
+    }
+    if let Some(model) = &skill.model {
+        out.push_str(&format!("\n- recommended model: {}", model));
+    }
+    Some(out)
 }
 
 #[cfg(test)]
@@ -157,6 +174,9 @@ mod tests {
             .unwrap();
         assert!(!result.is_error);
         assert!(result.content.contains("staged changes"));
+        // commit skill has allowed_tools, so constraints footer must appear
+        assert!(result.content.contains("Skill constraints"));
+        assert!(result.content.contains("allowed-tools: Bash(git *), Read"));
     }
 
     #[tokio::test]
@@ -172,6 +192,67 @@ mod tests {
         assert!(!result.is_error);
         assert!(result.content.contains("staged changes"));
         assert!(result.content.contains("-m 'fix bug'"));
+        // constraints footer appears AFTER args
+        let args_pos = result.content.find("Arguments:").unwrap();
+        let footer_pos = result.content.find("Skill constraints").unwrap();
+        assert!(footer_pos > args_pos);
+    }
+
+    #[tokio::test]
+    async fn execute_no_constraints_footer_when_neither_field_set() {
+        let tool = SkillTool::new(make_registry());
+        let result = tool
+            .execute(&ctx(), serde_json::json!({"skill": "review"}))
+            .await
+            .unwrap();
+        assert!(!result.is_error);
+        assert!(!result.content.contains("Skill constraints"));
+        assert_eq!(result.content, "Review the code for bugs, performance, and style.");
+    }
+
+    #[tokio::test]
+    async fn execute_renders_model_only() {
+        let registry = Arc::new(SkillRegistry::new());
+        registry.register(SkillDefinition {
+            name: "fast".into(),
+            description: "fast".into(),
+            prompt: "Do the thing.".into(),
+            argument_hint: None,
+            allowed_tools: None,
+            model: Some("claude-haiku-4".into()),
+            user_invocable: true,
+            source: SkillSource::Project,
+        });
+        let tool = SkillTool::new(registry);
+        let result = tool
+            .execute(&ctx(), serde_json::json!({"skill": "fast"}))
+            .await
+            .unwrap();
+        assert!(result.content.contains("Skill constraints"));
+        assert!(result.content.contains("recommended model: claude-haiku-4"));
+        assert!(!result.content.contains("allowed-tools"));
+    }
+
+    #[tokio::test]
+    async fn execute_renders_both_fields() {
+        let registry = Arc::new(SkillRegistry::new());
+        registry.register(SkillDefinition {
+            name: "both".into(),
+            description: "both".into(),
+            prompt: "Body.".into(),
+            argument_hint: None,
+            allowed_tools: Some(vec!["Read".into()]),
+            model: Some("claude-sonnet-4-6".into()),
+            user_invocable: true,
+            source: SkillSource::Project,
+        });
+        let tool = SkillTool::new(registry);
+        let result = tool
+            .execute(&ctx(), serde_json::json!({"skill": "both"}))
+            .await
+            .unwrap();
+        assert!(result.content.contains("allowed-tools: Read"));
+        assert!(result.content.contains("recommended model: claude-sonnet-4-6"));
     }
 
     #[tokio::test]

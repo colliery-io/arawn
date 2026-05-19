@@ -112,7 +112,7 @@ impl LocalService {
             config,
             permission_rules: Arc::new(std::sync::RwLock::new(Vec::new())),
             permission_mode: Arc::new(std::sync::RwLock::new(
-                arawn_engine::permissions::PermissionMode::Default,
+                arawn_engine::permissions::PermissionMode::Ask,
             )),
             skill_registry: None,
             plugin_registry: None,
@@ -213,6 +213,17 @@ impl LocalService {
 
     pub fn with_permission_rules(self, rules: Vec<PermissionRule>) -> Self {
         *self.permission_rules.write().unwrap() = rules;
+        self
+    }
+
+    /// T-0347: override the starting permission mode (declared in
+    /// `[permissions] autonomy` in arawn.toml). Defaults to
+    /// `PermissionMode::Ask`.
+    pub fn with_permission_mode(
+        self,
+        mode: arawn_engine::permissions::PermissionMode,
+    ) -> Self {
+        *self.permission_mode.write().unwrap() = mode;
         self
     }
 
@@ -1239,7 +1250,7 @@ impl ArawnService for LocalService {
         let mode: arawn_engine::permissions::PermissionMode =
             serde_json::from_value(serde_json::json!(mode_str)).map_err(|_| {
                 ServiceError::InvalidOperation(format!(
-                    "unknown mode '{mode_str}'. Valid: default, accept_edits, bypass, plan"
+                    "unknown mode '{mode_str}'. Valid: ask, edits, full, plan"
                 ))
             })?;
         *self.permission_mode.write().unwrap() = mode;

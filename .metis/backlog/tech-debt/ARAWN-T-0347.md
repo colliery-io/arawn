@@ -4,58 +4,91 @@ level: task
 title: "/accept on UX + add [permissions].permission_mode TOML key"
 short_code: "ARAWN-T-0347"
 created_at: 2026-05-19T12:07:44.653236+00:00
-updated_at: 2026-05-19T12:07:44.653236+00:00
+updated_at: 2026-05-19T16:51:07.909732+00:00
 parent: 
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/backlog"
   - "#tech-debt"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
 initiative_id: NULL
 ---
 
-# /accept on UX + add [permissions].permission_mode TOML key
+# /autonomy command + [permissions] autonomy TOML key
 
 ## Objective
 
-Two related changes to make permission-mode UX less surprising:
+Replace the confusing `/accept on|off|edits` slash command with
+`/autonomy ask|edits|full|plan`, rename the underlying
+`PermissionMode` enum to match, and add a `[permissions] autonomy`
+TOML key so users can pin a starting mode in `arawn.toml`.
 
-1. **Rename `/accept on`** (currently maps to `bypass` mode — full autonomy) to something less ambiguous, e.g. `/accept all` or `/accept full`. The current naming reads as "turn on permission asking" but actually means the opposite.
-2. **Add a `[permissions].permission_mode` TOML key** so users can pin a starting mode in `arawn.toml`. Today the mode is purely runtime state — every server restart drops to `default`.
+Locked design decisions (from the T-0347 UX discussion, 2026-05-19):
+
+- **One verb everywhere.** Slash, TOML, enum, audit log, and
+  serde-JSON all use the same four words: `ask | edits | full
+  | plan`.
+- **No backward compatibility.** Breaking change: drop `/accept`
+  entirely, drop the `/plan` top-level alias. Drop the
+  `Default | AcceptEdits | Bypass` enum variant names.
+- **Internal enum renames too.** `PermissionMode::Ask | Edits |
+  Full | Plan`. Audit log strings, serde keys, and every match
+  arm update with it.
+
+## Surface mapping
+
+| Concept | Slash | TOML | Enum |
+|---|---|---|---|
+| Ask before mutating | `/autonomy ask` | `autonomy = "ask"` | `PermissionMode::Ask` |
+| Auto-accept edits | `/autonomy edits` | `autonomy = "edits"` | `PermissionMode::Edits` |
+| Full autonomy | `/autonomy full` | `autonomy = "full"` | `PermissionMode::Full` |
+| Plan mode | `/autonomy plan` | `autonomy = "plan"` | `PermissionMode::Plan` |
 
 ## Impact
 
 - **Severity:** P2 — UX confusion + missing config knob.
-- **(1) /accept on:** a user who types `/accept on` expecting "turn on permission prompts" actually disables all prompts. The dispatcher comment at `command.rs:667` says `"on Full autonomy (bypass all permissions)"`, so the intent is documented, but the slash word is misleading.
-- **(2) permission_mode TOML key:** users running arawn unattended (CI, scheduled workflows) want `permission_mode = "bypass"` declared in TOML, not typed every session.
-
-## Implementation notes
-
-### (1) `/accept` UX
-
-- Dispatch in `crates/arawn-tui/src/command.rs:660-669` maps `on → bypass`, `edits → accept_edits`, `off → default`.
-- Proposed: keep `off` as-is, rename `on → full`, keep `edits`. Print a deprecation message for the old `on` for one release.
-- Update help text in `command.rs:667` and `docs/src/reference/slash-commands.md` § `/accept`, `docs/src/how-to/lock-down-permissions.md` § "Switching modes at runtime", `docs/src/reference/permissions.md`.
-
-### (2) `permission_mode` TOML key
-
-- Add `permission_mode: Option<PermissionMode>` to `crates/arawn-engine/src/permissions/config.rs::PermissionConfig` (or top-level if cleaner).
-- Read it at startup in `LocalService::new` (or wherever `PermissionMode::Default` is currently chosen).
-- Update `docs/src/reference/config-schema.md` to add the key back (it was removed during the triple-check pass since it didn't exist).
+- **Breaking change.** Anyone with `/accept` in muscle memory or
+  `permission_mode = "default"` in their `arawn.toml` will need
+  to migrate. Acceptable per the user's "full send" direction.
 
 ## Acceptance criteria
 
-- [ ] `/accept full` works as today's `/accept on`; `/accept on` either removed or aliased with a deprecation warning.
-- [ ] `[permissions].permission_mode = "bypass"` in `arawn.toml` sets the starting mode at server boot.
-- [ ] Invalid values log a warn and fall back to `default`.
-- [ ] Docs updated.
+- [ ] `PermissionMode` enum renamed:
+  `Default` → `Ask`, `AcceptEdits` → `Edits`, `Bypass` → `Full`,
+  `Plan` unchanged. All match arms, Display, FromStr, serde
+  attributes, and audit-log string literals updated.
+- [ ] Slash command `/accept` removed. New `/autonomy` slash
+  command registered with usage
+  `/autonomy <ask|edits|full|plan>`.
+- [ ] Slash command `/plan` removed. Plan mode is reachable via
+  `/autonomy plan`.
+- [ ] `[permissions] autonomy = "..."` TOML key added. Read at
+  server boot (`LocalService::new` or wherever the starting
+  `PermissionMode` is chosen). Invalid values log a warn and
+  fall back to `Ask`. Absent → `Ask` (today's behavior).
+- [ ] Help text + descriptions updated in `command.rs`.
+- [ ] Docs updated:
+  - `docs/src/reference/slash-commands.md` § `/accept` →
+    `/autonomy`; remove `/plan`.
+  - `docs/src/how-to/lock-down-permissions.md` § "Switching
+    modes at runtime" + recipe examples.
+  - `docs/src/reference/permissions.md` mode glossary.
+  - `docs/src/reference/config-schema.md` `[permissions]` adds
+    the `autonomy` row.
+- [ ] Unit tests:
+  - Slash command parsing for each of the 4 args.
+  - Invalid arg returns a usage message.
+  - TOML parse round-trip for each enum variant.
+  - Invalid TOML value falls back to `Ask` with a warn.
+- [ ] `angreal test unit` green. `angreal check workspace` green.
 
-Surfaced during ARAWN-I-0051 doc triple-check.
+Surfaced during ARAWN-I-0051 doc triple-check; redesigned in the
+T-0347 UX discussion 2026-05-19.
 
 ## Backlog Item Details **[CONDITIONAL: Backlog Item]**
 
@@ -90,6 +123,12 @@ Surfaced during ARAWN-I-0051 doc triple-check.
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria **[REQUIRED]**
 
@@ -158,6 +197,52 @@ Surfaced during ARAWN-I-0051 doc triple-check.
 ### Risk Considerations
 {Technical risks and mitigation strategies}
 
-## Status Updates **[REQUIRED]**
+## Status Updates
 
-*To be added during implementation*
+### 2026-05-19 — /autonomy shipped (breaking change)
+
+- **Enum rename.** `PermissionMode::Default | AcceptEdits |
+  BypassPermissions | Plan` →
+  `PermissionMode::Ask | Edits | Full | Plan`. Dropped the two
+  explicit `#[serde(rename = ...)]` attributes — the
+  `rename_all = "lowercase"` derive now produces
+  `"ask" | "edits" | "full" | "plan"`. 38 call sites
+  bulk-renamed via sed.
+- **Slash command.** `/accept` removed; `/plan` removed. New
+  `/autonomy <ask|edits|full|plan>` registered, with a usage
+  message that documents each posture.
+- **TOML key.** New `[permissions] autonomy = "ask"` row in
+  `PermissionConfig` (`Option<PermissionMode>`). Read at
+  server boot in `arawn-bin::main` and threaded into
+  `LocalService::with_permission_mode`. Absent → `Ask`.
+  Invalid → whole `[permissions]` section warn-and-falls-back
+  via the existing loader contract.
+- **TUI surfaces** updated: status-bar label table and
+  event-loop "permission mode set to ..." text use the new
+  vocabulary (`FULL`, `EDITS`, `PLAN`, default `ASK`).
+- **Service error message** updated to list
+  `ask, edits, full, plan`.
+- **Tests:**
+  - `permission_mode_serde` round-trip on all four new
+    strings.
+  - `permission_mode_legacy_strings_fail` — `"default"`,
+    `"accept_edits"`, `"bypass"` no longer deserialize.
+  - `load_autonomy_from_toml` round-trip for all four values.
+  - `load_autonomy_absent_is_none`.
+  - `load_autonomy_invalid_value_falls_back_to_default`.
+  - `execute_autonomy_each_valid_mode` slash parser.
+  - `execute_autonomy_invalid_value_returns_usage_message`.
+  - `execute_autonomy_no_arg_returns_usage_message`.
+  - `legacy_slash_commands_no_longer_resolve`.
+  - `registry_has_builtins` / `registry_matching_prefix`
+    updated for the new registry shape.
+- **Docs updated** in 7 files: `slash-commands.md` (replace
+  /accept entry, drop /plan entry, refresh command index),
+  `permissions.md` (mode table + glossary), `permission-model.md`
+  (four-modes table + bullet explanations + plan-mode tip),
+  `lock-down-permissions.md` (recipes rewritten), `config-schema.md`
+  (new `autonomy` row, drop "no TOML key" note),
+  `troubleshooting.md` (denied-shell row), `sub-agents.md`
+  (plan-mode reference), `agent-tools.md` (category table).
+- `cargo test --workspace --lib` 1706/0.
+  `angreal check workspace` green.

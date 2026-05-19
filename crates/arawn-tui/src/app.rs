@@ -258,7 +258,7 @@ impl App {
             cancelled_session: None,
             expanded_tool_results: std::collections::HashSet::new(),
             model_name: String::new(),
-            permission_mode: "default".into(),
+            permission_mode: "ask".into(),
             token_usage: (0, 0),
             active_modal: None,
             pending_modal_response: None,

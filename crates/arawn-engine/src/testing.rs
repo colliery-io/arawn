@@ -189,7 +189,7 @@ impl TestHarnessBuilder {
         let plan_state = if self.plan_active {
             let ps = Arc::new(PlanModeState::new());
             ps.enter(
-                crate::permissions::PermissionMode::Default,
+                crate::permissions::PermissionMode::Ask,
                 "test-plan",
                 self.temp_dir.path(),
             )

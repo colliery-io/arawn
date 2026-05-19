@@ -587,10 +587,14 @@ async fn main() -> Result<()> {
             ctx.plugin_prompts.push(mcp_prompt);
         }
 
-        // Load permission rules from config
+        // Load permission rules + starting autonomy (T-0347) from config.
         let config_path = std::path::PathBuf::from(&data_dir).join("arawn.toml");
-        let permission_rules =
-            arawn_engine::permissions::load_permissions_from_file(&config_path).into_rules();
+        let permissions_cfg =
+            arawn_engine::permissions::load_permissions_from_file(&config_path);
+        let permission_starting_mode = permissions_cfg
+            .autonomy
+            .unwrap_or(arawn_engine::permissions::PermissionMode::Ask);
+        let permission_rules = permissions_cfg.into_rules();
 
         // Wrap MCP manager for sharing with config watcher
         let mcp_manager = Arc::new(tokio::sync::Mutex::new(mcp_manager));
@@ -603,6 +607,7 @@ async fn main() -> Result<()> {
             engine_config,
         )
         .with_permission_rules(permission_rules)
+        .with_permission_mode(permission_starting_mode)
         .with_skill_registry(Arc::clone(&skill_registry))
         .with_plugin_registry(Arc::clone(&plugin_runtime.registry))
         .with_plan_state(plan_state)

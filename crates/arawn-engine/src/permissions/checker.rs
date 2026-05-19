@@ -6,23 +6,24 @@ use tracing::{debug, info, warn};
 use super::rules::{PermissionDecision, PermissionRule, RuleMatcher};
 
 /// Permission mode — controls fallback behavior when no explicit rule matches.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+///
+/// Variant strings (slash command, TOML, audit log, serde JSON):
+/// `ask | edits | full | plan`. T-0347 unified the vocabulary across
+/// every surface; old strings (`default`, `accept_edits`, `bypass`)
+/// are not accepted.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
-#[derive(Default)]
 pub enum PermissionMode {
     /// Read-only tools auto-allowed, write/shell tools trigger Ask.
     #[default]
-    Default,
+    Ask,
     /// File tools (read + write) auto-allowed, shell still triggers Ask.
-    #[serde(rename = "accept_edits")]
-    AcceptEdits,
+    Edits,
     /// Everything auto-allowed — power user / CI mode.
-    #[serde(rename = "bypass")]
-    BypassPermissions,
+    Full,
     /// Plan mode — only side-effect-free tools allowed. All tools with side
     /// effects are denied (not asked — denied outright). The agent can observe
     /// the world but cannot take action until the plan is approved.
-    #[serde(rename = "plan")]
     Plan,
 }
 
@@ -34,17 +35,17 @@ impl PermissionMode {
     /// category.
     pub fn fallback(&self, category: PermissionCategory, tool_name: &str) -> PermissionDecision {
         match self {
-            PermissionMode::Default => match category {
+            PermissionMode::Ask => match category {
                 PermissionCategory::ReadOnly => PermissionDecision::Allowed,
                 _ => PermissionDecision::Ask,
             },
-            PermissionMode::AcceptEdits => match category {
+            PermissionMode::Edits => match category {
                 PermissionCategory::ReadOnly | PermissionCategory::FileWrite => {
                     PermissionDecision::Allowed
                 }
                 PermissionCategory::Shell | PermissionCategory::Other => PermissionDecision::Ask,
             },
-            PermissionMode::BypassPermissions => PermissionDecision::Allowed,
+            PermissionMode::Full => PermissionDecision::Allowed,
             PermissionMode::Plan => match category {
                 PermissionCategory::ReadOnly => PermissionDecision::Allowed,
                 _ => {
@@ -266,7 +267,7 @@ impl PermissionChecker {
     pub fn new(rules: Vec<PermissionRule>) -> Self {
         Self {
             rules: std::sync::RwLock::new(rules),
-            mode: std::sync::RwLock::new(PermissionMode::Default),
+            mode: std::sync::RwLock::new(PermissionMode::Ask),
             grants: std::sync::Mutex::new(SessionGrants::new()),
             prompter: None,
             audit: new_shared_audit(),
@@ -347,7 +348,7 @@ impl PermissionChecker {
 
     /// Set the permission mode (Default, AcceptEdits, BypassPermissions).
     pub fn with_mode(self, mode: PermissionMode) -> Self {
-        if mode == PermissionMode::BypassPermissions {
+        if mode == PermissionMode::Full {
             info!("permission mode: bypass — all tools auto-allowed");
         }
         *self.mode.write().unwrap() = mode;
@@ -745,7 +746,7 @@ mod tests {
 
     #[tokio::test]
     async fn accept_edits_mode_allows_file_ops() {
-        let checker = PermissionChecker::new(vec![]).with_mode(PermissionMode::AcceptEdits);
+        let checker = PermissionChecker::new(vec![]).with_mode(PermissionMode::Edits);
         // File ops allowed
         assert_eq!(
             checker
@@ -774,7 +775,7 @@ mod tests {
 
     #[tokio::test]
     async fn bypass_mode_allows_everything() {
-        let checker = PermissionChecker::new(vec![]).with_mode(PermissionMode::BypassPermissions);
+        let checker = PermissionChecker::new(vec![]).with_mode(PermissionMode::Full);
         assert_eq!(
             checker
                 .check("Read", "/foo", PermissionCategory::ReadOnly)
@@ -957,30 +958,47 @@ mod tests {
         );
 
         // Hot-reload to bypass mode
-        checker.update_mode(PermissionMode::BypassPermissions);
+        checker.update_mode(PermissionMode::Full);
         assert_eq!(
             checker.check("Bash", "ls", PermissionCategory::Shell).await,
             PermissionDecision::Allowed
         );
 
         // Hot-reload back to default
-        checker.update_mode(PermissionMode::Default);
+        checker.update_mode(PermissionMode::Ask);
         assert_eq!(
             checker.check("Bash", "ls", PermissionCategory::Shell).await,
             PermissionDecision::Denied
         );
     }
 
+    // T-0347: enum serde strings are now `ask | edits | full | plan`
+    // (was `default | accept_edits | bypass | plan`). No backward
+    // compat — old strings should fail to deserialize.
     #[test]
     fn permission_mode_serde() {
-        let json = serde_json::to_string(&PermissionMode::AcceptEdits).unwrap();
-        assert_eq!(json, "\"accept_edits\"");
-        let mode: PermissionMode = serde_json::from_str("\"bypass\"").unwrap();
-        assert_eq!(mode, PermissionMode::BypassPermissions);
-        let mode: PermissionMode = serde_json::from_str("\"default\"").unwrap();
-        assert_eq!(mode, PermissionMode::Default);
-        let mode: PermissionMode = serde_json::from_str("\"plan\"").unwrap();
-        assert_eq!(mode, PermissionMode::Plan);
+        for (variant, want) in [
+            (PermissionMode::Ask, "\"ask\""),
+            (PermissionMode::Edits, "\"edits\""),
+            (PermissionMode::Full, "\"full\""),
+            (PermissionMode::Plan, "\"plan\""),
+        ] {
+            let json = serde_json::to_string(&variant).unwrap();
+            assert_eq!(json, want);
+            let round: PermissionMode = serde_json::from_str(want).unwrap();
+            assert_eq!(round, variant);
+        }
+    }
+
+    #[test]
+    fn permission_mode_legacy_strings_fail() {
+        // Pre-T-0347 strings are not accepted — breaking change.
+        for legacy in ["\"default\"", "\"accept_edits\"", "\"bypass\""] {
+            assert!(
+                serde_json::from_str::<PermissionMode>(legacy).is_err(),
+                "{legacy} should not deserialize"
+            );
+        }
     }
 
     #[tokio::test]

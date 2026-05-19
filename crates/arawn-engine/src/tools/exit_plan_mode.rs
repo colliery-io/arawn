@@ -134,7 +134,7 @@ mod tests {
     async fn exit_with_empty_plan() {
         let (plan_state, tool, tmp_path) = setup();
         plan_state
-            .enter(PermissionMode::Default, "test", &tmp_path)
+            .enter(PermissionMode::Ask, "test", &tmp_path)
             .unwrap();
 
         let result = tool
@@ -149,7 +149,7 @@ mod tests {
     async fn exit_deactivates_plan_mode() {
         let (plan_state, tool, tmp_path) = setup();
         plan_state
-            .enter(PermissionMode::Default, "exit-test", &tmp_path)
+            .enter(PermissionMode::Ask, "exit-test", &tmp_path)
             .unwrap();
         assert!(plan_state.is_active());
 
@@ -167,7 +167,7 @@ mod tests {
     async fn plan_written_to_disk() {
         let (plan_state, tool, tmp_path) = setup();
         plan_state
-            .enter(PermissionMode::Default, "disk-test", &tmp_path)
+            .enter(PermissionMode::Ask, "disk-test", &tmp_path)
             .unwrap();
 
         tool.execute(&test_ctx(), json!({"plan": "# My Plan\n\nStep 1: Go."}))

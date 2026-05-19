@@ -212,14 +212,15 @@ fn render_status_bar(app: &App, frame: &mut Frame, area: ratatui::layout::Rect) 
         .unwrap_or("no workstream");
     spans.push(Span::styled(ws_name.to_string(), bar_style));
 
-    // Permission mode
-    if app.permission_mode != "default" {
+    // Permission mode (T-0347: renamed to /autonomy vocabulary —
+    // ask | edits | full | plan).
+    if app.permission_mode != "ask" {
         spans.push(Span::styled(" │ ", dim));
         let (label, color) = match app.permission_mode.as_str() {
-            "bypass" => ("BYPASS", theme::ERROR),
-            "accept_edits" => ("ACCEPT EDITS", theme::YELLOW),
+            "full" => ("FULL", theme::ERROR),
+            "edits" => ("EDITS", theme::YELLOW),
             "plan" => ("PLAN", theme::SAPPHIRE),
-            _ => ("DEFAULT", theme::TEXT),
+            _ => ("ASK", theme::TEXT),
         };
         spans.push(Span::styled(
             label.to_string(),

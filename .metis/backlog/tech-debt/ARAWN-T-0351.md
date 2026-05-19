@@ -4,58 +4,100 @@ level: task
 title: "Decide skill tool semantics — implement sub-conversation or drop unused frontmatter fields"
 short_code: "ARAWN-T-0351"
 created_at: 2026-05-19T12:07:49.161718+00:00
-updated_at: 2026-05-19T12:07:49.161718+00:00
+updated_at: 2026-05-19T17:35:29.982845+00:00
 parent: 
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/backlog"
   - "#tech-debt"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
 initiative_id: NULL
 ---
 
-# Decide skill tool semantics — implement sub-conversation or drop unused frontmatter fields
+# Skill tool: render frontmatter into the skill body
 
 ## Objective
 
-Decide what the `skill` tool actually does and align code + docs. Today the tool reads in a skill's `allowed-tools` and `model` frontmatter fields but **doesn't enforce them** — it just returns the rendered prompt body as the tool result and the parent agent continues with its own permission / LLM settings.
+Make the `skill` tool's `allowed-tools` and `model` frontmatter
+match how Anthropic's skill system actually works: render the
+metadata into the tool output as advisory guidance the model
+self-complies with. Today the fields are parsed but never reach
+the model — they look enforceable, but in practice they're dead
+state.
 
-## Impact
+Locked design decisions (from the T-0351 discussion, 2026-05-19):
 
-- **Severity:** P2 — feature drift. Frontmatter fields look enforceable but aren't. Users authoring a skill with `allowed-tools: ["file_read"]` think they're scoping the skill's execution, but the parent agent has its full toolset available.
-- Either implement the enforcement (the documented semantics) or drop the fields (current code reality).
+- **Don't build a sub-conversation runtime.** Anthropic's skill
+  system uses prompt engineering, not runtime gating. The `agent`
+  tool with `subagent_type` already provides real isolation when
+  it's needed.
+- **Don't drop the fields either.** Skills authored for the
+  Claude Code ecosystem use `allowed-tools` and `model`; arawn
+  silently dropping them creates a divergence with the upstream
+  format.
+- **Render the metadata into the skill body.** When the skill
+  tool fires, if the definition declares `allowed-tools` or
+  `model`, append a short "Skill constraints" block to the
+  tool output. The model reads it and self-complies. This is
+  the actual contract Anthropic's system offers.
 
-## Proposed options
+## Surface
 
-### Option A — implement sub-conversation semantics
+The rendered output goes from this (today):
 
-The `skill` tool spawns a focused agent loop (similar to the `agent` tool's `subagent_type` path) with the skill's `allowed-tools` and `model` enforced. Returns the sub-agent's final response. Cost: real implementation work; needs care around context budget (sub-conversations can balloon).
+```
+[Skill body markdown...]
 
-### Option B — drop the unused fields
+Arguments: <args>          # (if args were passed)
+```
 
-Remove `allowed-tools`, `model`, `argument-hint` from `SkillDefinition` (or keep `argument-hint` since it's user-visible in autocomplete). Document `skill` as a pure prompt-injector and refer users to the `agent` tool (with `subagent_type`) when isolation is needed.
+…to this (after T-0351):
 
-Recommend **Option A** for the long term — skills are most useful when scoped. Option B is the cheap path if A is too big right now.
+```
+[Skill body markdown...]
 
-## Implementation notes
+Arguments: <args>          # (if args were passed)
 
-- `crates/arawn-engine/src/tools/skill.rs:54-95` — `SkillTool::execute` just renders + returns the body.
-- `crates/arawn-engine/src/skills/definition.rs` — `SkillDefinition` struct fields.
-- Option A could reuse the `AgentTool` machinery — a skill is essentially an agent definition with a fixed system prompt.
-- Whichever option ships, update `docs/src/reference/skills.md` to match.
+---
+Skill constraints (advisory — the agent should self-comply):
+- allowed-tools: Bash(git *), Read
+- recommended model: claude-haiku-4
+```
+
+The constraints block is omitted entirely when both
+`allowed_tools` and `model` are `None`.
 
 ## Acceptance criteria
 
-- [ ] Decision recorded (A or B).
-- [ ] Code + docs align — either the tool enforces frontmatter, or the frontmatter fields are removed/clarified.
-- [ ] Built-in skills (`workflows.md`, `workstream-create.md`) verified to behave the same after the change.
+- [x] `SkillTool::execute` appends a "Skill constraints" footer
+  when the definition declares `allowed_tools` or `model`;
+  omitted otherwise.
+- [x] One line per field with a stable prefix.
+- [x] Unit tests cover all four rendering paths (none / tools
+  only / model only / both) plus footer ordering after args.
+- [x] `docs/src/reference/skills.md` updated to describe the
+  advisory semantics and point at the `agent` tool for real
+  isolation.
+- [x] No changes to `SkillDefinition` or `parse_skill_markdown`.
+- [x] `angreal test unit` green. `angreal check workspace` green.
 
-Also tied to the `skill` tool's input field naming — code uses `skill` and `args`; docs were previously wrong (said `name` / `arguments`). The triple-check (commit 7037763) corrected the docs; this task tracks the larger semantics decision.
+## Implementation notes
+
+- All changes in `crates/arawn-engine/src/tools/skill.rs`. Body
+  rendering switches from a single `if args.is_empty()` branch
+  to a small builder that appends args + constraints in order.
+- Built-in skills (`workflows`, `workstream-create`, etc.)
+  don't currently set `allowed_tools` or `model`, so their
+  output is unaffected.
+
+Surfaced during ARAWN-I-0051 doc triple-check; redesigned in
+the T-0351 discussion 2026-05-19 once the Anthropic-skill
+compatibility framing surfaced.
 
 ## Backlog Item Details **[CONDITIONAL: Backlog Item]**
 
@@ -90,6 +132,12 @@ Also tied to the `skill` tool's input field naming — code uses `skill` and `ar
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria **[REQUIRED]**
 

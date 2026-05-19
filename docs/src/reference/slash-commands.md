@@ -6,15 +6,25 @@ Source: `crates/arawn-tui/src/command.rs::register_builtins` (~line 72).
 
 ## Quick alphabetical index
 
-`/accept` · `/agents` · `/clear` · `/connect` · `/disconnect` · `/feeds` · `/forget` · `/help` · `/integrations` · `/mcp` · `/memory` · `/permissions` · `/plan` · `/plugins` · `/promote` · `/remember` · `/retro` · `/session` · `/skills` · `/today` · `/todo` · `/tools` · `/watch` · `/week` · `/workflows` · `/workstream`
+`/agents` · `/autonomy` · `/brief` · `/clear` · `/connect` · `/copy` · `/disconnect` · `/export` · `/feeds` · `/forget` · `/help` · `/integrations` · `/mcp` · `/memory` · `/permissions` · `/plugins` · `/promote` · `/remember` · `/retro` · `/session` · `/skills` · `/today` · `/todo` · `/tools` · `/usage` · `/watch` · `/week` · `/workflows` · `/workstream`
 
 Plus any `/skill-name` registered by user-invocable skills (see [skills reference](./skills.md)).
 
 ## Reference
 
-### `/accept on|off|edits`
+### `/autonomy ask|edits|full|plan`
 
-Set the permission mode at runtime. `on` (or `edits`) = `accept_edits` — file writes auto, shell asks. `off` = `default` — read-only auto, writes and shell ask. See [permissions reference](./permissions.md) and [lock down permissions how-to](../how-to/lock-down-permissions.md).
+Set the permission posture at runtime. The four values map 1:1 to
+`PermissionMode`:
+
+- `ask` — ask before mutating actions (default).
+- `edits` — auto-allow file writes; ask for shell.
+- `full` — full autonomy; agent never asks.
+- `plan` — read-only plan mode; side-effects are denied.
+
+To pin a starting posture across restarts, set `[permissions]
+autonomy` in `arawn.toml`. See [permissions reference](./permissions.md)
+and [lock down permissions how-to](../how-to/lock-down-permissions.md).
 
 ### `/agents`
 
@@ -69,10 +79,6 @@ Show a summary of the knowledge base for the current scope (global + active work
 ### `/permissions`
 
 Show the active permission rules and recent allow/deny/ask decisions for the session. See [permissions reference](./permissions.md).
-
-### `/plan`
-
-Enter plan mode. The agent can read and think but every side-effect tool is denied (not asked) until you `/accept` out. See [permission model explanation](../explanation/permission-model.md).
 
 ### `/plugins`
 

@@ -36,14 +36,13 @@ allow = [
 
 Use this when you want explicit allow-listed commands to run without prompt, but anything not on the allow list still asks, and dangerous shell patterns can never run no matter what.
 
-## Hands-off CI: bypass mode with a thin deny list
+## Hands-off CI: full autonomy with a thin deny list
 
-Bypass mode skips all permission prompts. Use it only when there's no human at the keyboard and you're confident in the deny list:
+Full autonomy skips all permission prompts. Use it only when there's no human at the keyboard and you're confident in the deny list:
 
 ```toml
-permission_mode = "bypass"
-
 [permissions]
+autonomy = "full"
 deny = [
     "shell(rm -rf /*)",
     "shell(sudo *)",
@@ -51,16 +50,15 @@ deny = [
 ]
 ```
 
-> **Warning:** bypass mode means file writes and shell calls run without asking. Don't use this on a development machine; it's for unattended runs (CI, scheduled workflows on a sandboxed host) where you've reviewed what the agent might do.
+> **Warning:** `autonomy = "full"` means file writes and shell calls run without asking. Don't use this on a development machine; it's for unattended runs (CI, scheduled workflows on a sandboxed host) where you've reviewed what the agent might do.
 
 ## Strict review: ask before every side effect
 
 The other direction — even reads ask. Useful when you're tinkering with permissions and want to see exactly what the agent reaches for:
 
 ```toml
-permission_mode = "default"
-
 [permissions]
+autonomy = "ask"
 allow = [
     "Read", "Glob", "Grep",
 ]
@@ -71,15 +69,14 @@ The agent will prompt before any `file_write`, `file_edit`, `shell`, or `web_fet
 
 ## Switching modes at runtime
 
-The TUI's `/accept` slash command toggles the mode without editing TOML:
+The TUI's `/autonomy` slash command toggles the posture without editing TOML:
 
 ```
-/accept on        # bypass mode (everything auto-allowed)
-/accept edits     # accept_edits mode (writes auto, shell asks)
-/accept off       # back to default mode (read-only auto, write/shell ask)
+/autonomy full    # full autonomy (everything auto-allowed)
+/autonomy edits   # auto-allow file writes; ask for shell
+/autonomy ask     # default-safe (read-only auto, write/shell ask)
+/autonomy plan    # plan mode: side-effects denied (not asked)
 ```
-
-`/plan` switches to plan mode — every side effect is denied (not asked), useful when you want the agent to plan without acting.
 
 > Content patterns match against the tool's primary argument
 > (`shell` → `command`, `file_*` → `path`, `web_fetch` → `url`,

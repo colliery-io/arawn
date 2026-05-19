@@ -33,8 +33,8 @@ Frontmatter fields (parsed by `crates/arawn-engine/src/skills/definition.rs::par
 | `name` | string | filename | Unique skill name. Lowercase + dashes recommended. |
 | `description` | string | required | One-line summary shown in autocomplete and tool-list. |
 | `argument-hint` | string | none | Hint shown in autocomplete (e.g., `"<filename>"`). |
-| `allowed-tools` | list&lt;string&gt; | none | Restrict the agent's tool set while running this skill. None = inherit full toolset. |
-| `model` | string | none | Override the LLM profile or hint shortcut (`hint:lightweight`, `hint:medium`, `hint:heavy`). |
+| `allowed-tools` | list&lt;string&gt; | none | Advisory tool allowlist surfaced to the model as a constraints footer. Not a runtime gate — see [Permission model](#permission-model). |
+| `model` | string | none | Advisory model hint (`hint:lightweight`, `hint:medium`, `hint:heavy`, or a named profile). Surfaced in the constraints footer; does not switch the live LLM. |
 | `user-invocable` | bool | `true` | When `true` (default), exposed as `/<name>` slash command in the TUI. Set to `false` to keep a skill agent-only. |
 
 ## Invocation paths
@@ -52,7 +52,16 @@ The `skill` tool (source: `crates/arawn-engine/src/tools/skill.rs`) lets the age
 
 The tool returns the skill's rendered prompt body (with `$ARGUMENTS` substituted) as the tool result. The parent agent then reads that text inline in the same loop and proceeds.
 
-> **Note:** the `skill` tool does **not** spawn a sub-conversation today. The `allowed-tools` and `model` frontmatter fields are parsed into the `SkillDefinition` struct but are not enforced by the tool — the parent agent runs with its own permission rules and LLM. Treat `allowed-tools` as documentation-of-intent, not as a hard gate. If you need a real isolated context, use the `agent` tool (see [sub-agents reference](./sub-agents.md)).
+If the skill declares `allowed-tools` or `model`, the tool appends a short **constraints footer** to the returned body:
+
+```
+---
+Skill constraints (advisory — the agent should self-comply):
+- allowed-tools: Bash(git *), Read
+- recommended model: claude-haiku-4
+```
+
+This matches Anthropic's skill contract: the metadata is guidance the model reads and self-complies with — it is **not** a runtime gate. The parent agent's actual tool access is still governed by the active permission mode and rule set. If you need real isolation (enforced tool allowlist, fresh context), use the `agent` tool with `subagent_type` — see [sub-agents reference](./sub-agents.md).
 
 ### User path — `/skill-name` slash command
 
@@ -84,7 +93,9 @@ Inside the skill body, `$ARGUMENTS` expands to whatever the user (or agent) pass
 
 ## Permission model
 
-The `skill` tool itself is gated by the active permission mode like any other tool. The parent agent's actions *after reading the rendered skill body* are gated by its normal per-tool permission rules — `allowed-tools` in the skill frontmatter is documentation-of-intent, not enforcement.
+The `skill` tool itself is gated by the active permission mode like any other tool. The parent agent's actions *after reading the rendered skill body* are gated by its normal per-tool permission rules.
+
+`allowed-tools` and `model` in the skill frontmatter are **advisory** — they get rendered into the tool output as a constraints footer that the model reads and self-complies with. This mirrors how Anthropic's skill system works (prompt engineering, not runtime gating). If you need enforced isolation, route through the `agent` tool with a `subagent_type` whose definition declares the same allowlist — see [sub-agents reference](./sub-agents.md).
 
 ## Examples
 

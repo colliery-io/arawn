@@ -13,8 +13,8 @@ Every tool is classified into one of four categories that the permission model u
 | Category | Default behaviour | Examples |
 |---|---|---|
 | `ReadOnly` | auto-allow in every mode except `plan` | `Read`, `Glob`, `Grep`, `memory_search`, `signal_search` |
-| `FileWrite` | ask in `default`, auto in `accept_edits`/`bypass`, deny in `plan` | `file_write`, `file_edit` |
-| `Shell` | ask in `default`/`accept_edits`, auto in `bypass`, deny in `plan` | `shell` |
+| `FileWrite` | ask in `ask`, auto in `edits`/`full`, deny in `plan` | `file_write`, `file_edit` |
+| `Shell` | ask in `ask`/`edits`, auto in `full`, deny in `plan` | `shell` |
 | `Other` | falls through to mode default | `web_fetch`, `web_search`, integration writes |
 
 See [permissions reference](./permissions.md) for evaluation order.

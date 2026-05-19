@@ -82,7 +82,7 @@ impl Tool for EnterPlanModeTool {
         let plan_file = self
             .plan_state
             .enter(
-                crate::permissions::PermissionMode::Default,
+                crate::permissions::PermissionMode::Ask,
                 &slug,
                 ctx.working_dir(),
             )
