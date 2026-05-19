@@ -23,24 +23,20 @@ A plugin is a directory or git-fetchable archive containing a `plugin.json` mani
   "tools": "./tools",               // directory containing tool dylib + manifest
   "agents": "./agents",             // directory containing agent definition .md files
   "skills": "./skills",             // directory containing skill .md files
-  "mcp_servers": [                  // array of MCP server defs (same shape as [[mcp.servers]])
+  "mcpServers": [                   // array of MCP server defs (same shape as [[mcp.servers]])
     { "name": "...", "command": "...", "args": [...], "env": {...}, "enabled": true }
-  ]
+  ],
+  "userConfig": { /* optional plugin-specific user config schema */ }
 }
 ```
+
+> **Note:** the manifest deserializer is `#[serde(rename_all = "camelCase")]` (see `arawn-engine/src/plugins/manifest.rs`). Use `mcpServers` and `userConfig` — snake_case keys won't parse.
 
 Every component path is optional — a plugin can declare only the surfaces it cares about.
 
 ## Install scopes
 
-Two scopes:
-
-| Scope | Path | Purpose |
-|---|---|---|
-| `user` (default) | `<data_dir>/plugins/` | Available across all projects. |
-| `project` | `<project_root>/.arawn/plugins/` | Per-project install (useful when running arawn against a specific repo). |
-
-Pass `--scope user|project` to `arawn plugin install`.
+Pass `--scope user|project` to `arawn plugin install` and `arawn plugin uninstall`. Scope is an enablement / registry attribute — it controls which installs are *visible* to the running server, not the on-disk cache path. All plugins land under `<data_dir>/plugins/cache/<marketplace>/<plugin>/<version>/` regardless of scope; the install record (in `installed_plugins.json`) records whether it's a `user`- or `project`-scoped install, and `project` installs may carry an optional `project_path` constraint.
 
 ## Marketplaces
 

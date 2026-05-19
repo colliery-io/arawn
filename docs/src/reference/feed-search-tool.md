@@ -39,6 +39,8 @@ feed_search(
 
 ## Known feed types
 
+The tool's default scan covers 9 projection types listed below. The 7 GitHub projection tables (`github_notifications`, `github_issues_and_prs`, `github_review_queue`, `github_repo_commits`, `github_repo_issues`, `github_repo_prs`, `github_issue_or_pr_comments`) are **not** in `KNOWN_FEED_TYPES` and are only searched when the caller passes them explicitly via the `feed_types` parameter.
+
 | `feed_type`              | Source                              | `metadata` keys |
 |--------------------------|-------------------------------------|-----------------|
 | `gmail_messages`         | gmail/inbox-archive et al.          | sender, recipients, subject, thread_id, labels |

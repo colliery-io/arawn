@@ -9,24 +9,26 @@ A workstream by itself is just a label. A feed by itself is just a local mirror.
 - A workstream exists (`/workstream create work`).
 - A feed exists (auto-created via `/connect` or explicit `/watch` — see [create a feed](./create-a-feed.md)). Or, for GitHub, the GitHub App is installed (see [connect GitHub](./connect-github.md)).
 
+## How to bind: ask the agent
+
+Workstream binding is an agent-tool operation (`workstream_bind`), not a slash subcommand. The TUI dispatcher only accepts `/workstream {create | list | switch}`; everything else goes through the agent.
+
+Just ask, e.g.:
+
+```
+bind the work workstream to gmail-inbox-me
+```
+
+The agent calls `workstream_bind { workstream: "work", uri: "gmail-inbox-me" }`. Extraction starts on the next feed run; to force it now, ask the agent to run the feed (or use `/feeds run <feed_id>` directly).
+
 ## Direct bind by feed_id
 
-```
-/workstream bind <ws> <feed_id>
-```
+Three example tool calls (these are what the agent runs under the hood — useful for scripting via WS-RPC):
 
-Examples:
-
-```
-/workstream bind work gmail-inbox-me
-/workstream bind work slack-design
-/workstream bind work jira-ENG
-```
-
-Extraction starts on the next feed run. To force it now:
-
-```
-/feeds run <feed_id>
+```jsonc
+workstream_bind { "workstream": "work", "uri": "gmail-inbox-me" }
+workstream_bind { "workstream": "work", "uri": "slack-design" }
+workstream_bind { "workstream": "work", "uri": "jira-ENG" }
 ```
 
 ## GitHub URI binds
@@ -37,41 +39,45 @@ GitHub has two extra URI schemes that handle the feed registration for you.
 
 Binds a single repository. arawn registers a `github/repo-mirror` feed for that repo and ties it to the workstream:
 
-```
-/workstream bind work github:repo:acme/platform-api
+```jsonc
+workstream_bind { "workstream": "work", "uri": "github:repo:acme/platform-api" }
 ```
 
 ### `github:org:owner`
 
 Binds a whole organization. arawn calls `list_org_repos`, registers one `github/repo-mirror` feed per repo, and ties them all to the workstream. Org binds **supersede** any per-repo binds in the same workstream — if you already had `github:repo:acme/platform-api` bound and then add `github:org:acme`, the per-repo bind is dropped in favor of the org-wide one.
 
+```jsonc
+workstream_bind { "workstream": "work", "uri": "github:org:acme" }
 ```
-/workstream bind work github:org:acme
-```
+
+Or, in chat: *"bind work to the acme org on GitHub."*
 
 > **Note:** all four GitHub templates (`github/notifications`, `github/issues-and-prs`, `github/review-queue`, `github/repo-mirror`) are read-only. v1 of the GitHub integration doesn't write back.
 
 ## Hot-register
 
-Bind operations are live — the feed registration happens immediately (no server restart needed). The new feeds appear in `/feeds` right away and start their cron schedule on the next tick. For an immediate first run, `/feeds run <feed_id>`.
+Bind operations are live — the feed registration happens immediately (no server restart needed). The new feeds appear in `/feeds` right away and start their cron schedule on the next tick. For an immediate first run, ask the agent (or call `/feeds run <feed_id>` directly).
 
 ## Unbinding
 
-```
-/workstream unbind <ws> <feed_id_or_uri>
+Ask the agent (*"unbind the github:org:acme binding from work"*), which calls:
+
+```jsonc
+workstream_unbind { "workstream": "work", "uri": "github:org:acme" }
 ```
 
-Removes the binding. The feed itself keeps running (you can still query it directly); the workstream just stops absorbing its rows.
-
-For `github:org:` binds, unbinding removes all per-repo feeds the org-expansion created.
+Removes the binding. The feed itself keeps running (you can still query it directly); the workstream just stops absorbing its rows. For `github:org:` binds, unbinding removes all per-repo feeds the org-expansion created.
 
 ## Verifying
 
-```
-/workstream show <ws>
+Ask the agent to show the workstream, or call the tool directly:
+
+```jsonc
+workstream_show { "name": "work" }
 ```
 
-Lists the bindings on a workstream. After a successful bind you should see your feed_id or the GitHub URI listed.
+Lists the bindings on the workstream. After a successful bind you should see your feed_id or the GitHub URI listed.
 
 After extraction has run at least once, the palace will have entities:
 

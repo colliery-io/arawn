@@ -60,13 +60,13 @@ Source: `crates/arawn-engine/src/tools/ceremony.rs`. Plugin: `crates/arawn-cerem
 
 ### Retro detectors
 
-The retro's gather phase runs a set of detectors that look back over the week's data:
+The retro's gather phase runs a set of detectors that look back over the week's data. Source: `crates/arawn-ceremonies/src/plugins/retro_detectors.rs`.
 
-| Detector | What it surfaces |
+| Detector key | What it surfaces |
 |---|---|
-| `priority-completion` | Which of last week's priorities actually progressed; which stalled. |
-| `rollover-heat` | Items that have rolled over multiple weeks (potentially stalled or wrongly-scoped). |
-| `workstream-neglect` | Workstreams that haven't been touched all week. |
+| `priority_completion_ratio` | Which of last week's priorities actually progressed; which stalled. |
+| `rollover_heat` | Items that have rolled over multiple weeks (potentially stalled or wrongly-scoped). |
+| `workstream_neglect` | Workstreams that haven't been touched all week. |
 
 Detector output lands as retro items; you confirm / reject / patch in the modal.
 
@@ -92,7 +92,7 @@ When `enabled = false`, the plugin isn't registered — no cron, no RPC routes, 
 
 Source: `crates/arawn-ceremonies/src/nightly.rs`.
 
-A nightly recovery loop runs at 02:00 local. For any workstream where the cron tick missed (laptop closed, server down, etc.) it gathers + composes a back-dated ceremony tablet. This is why opening arawn after a long gap still shows the days you missed.
+An hourly tokio task (`sweep_unreviewed_retros`) transitions stale `open` retro tablets to `unreviewed`. It does **not** back-fill missed daily/weekly tablets — if the cron tick missed (laptop closed, server down), the daily/weekly ceremony for that day is simply absent. Retroactive back-fill is on the roadmap; today, the agent can compose a missing tablet on demand via `daily_run` / `weekly_run` / `retro_run` if you ask.
 
 ## Storage
 

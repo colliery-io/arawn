@@ -20,11 +20,26 @@ Every projection table has:
 | `source_ts` | RFC3339 | The item's authored timestamp. |
 | `title` | string | One-line summary used by FTS. |
 | `body_text` | string | Searchable body content. |
-| `feed_type` | string | Same as the table name. |
+| `body_hash` | string | Hash of `body_text` used to detect updates between runs. |
 | `metadata` | JSON | Per-type fields (see below). |
-| `embedding` | BLOB | Sentence embedding (filled by the background pass; NULL initially). |
+
+The `feed_type` shown on the `ProjectionRow` struct below is **populated at hydration time** from the originating table name — it is not a column on the data tables themselves (each `<feed_type>` table's identity is its name).
+
+### Sibling tables per feed type
+
+For each `<feed_type>` data table, two siblings exist:
+
+| Table | Purpose |
+|---|---|
+| `<feed_type>_fts` | FTS5 virtual index over `title + body_text`. |
+| `<feed_type>_embeddings` | Bookkeeping rows with a `status` enum (`pending` / `embedded` / `skipped`) tracking the embedding pass. |
+| `<feed_type>_vec` | sqlite-vec `vec0` virtual table holding the embedding vectors. |
+
+Embeddings live in `<feed_type>_vec`, **not** as a column on the data table. The 5-minute embed-pass walks `<feed_type>_embeddings WHERE status = 'pending'` and writes vectors into `<feed_type>_vec`.
 
 ## Per-table metadata
+
+The 16 projection tables (source: `crates/arawn-projections/src/`):
 
 | Feed type | Source | Per-type metadata |
 |---|---|---|
@@ -38,9 +53,12 @@ Every projection table has:
 | `confluence_pages` | Confluence `space-archive` | space_key, page_id, version, author |
 | `calendar_events` | Calendar `upcoming-archive` | event_id, start, end, attendees, location |
 | `github_notifications` | github/notifications | id, reason, repository, subject, updated_at |
-| `github_issues` | github/issues-and-prs, github/repo-mirror | repo, number, state, labels, assignees, author |
-| `github_prs` | github/issues-and-prs, github/repo-mirror | repo, number, state, labels, requested_reviewers, author |
-| `github_reviews` | github/repo-mirror | repo, pr_number, reviewer, state |
+| `github_issues_and_prs` | github/issues-and-prs | repo, number, kind (issue/pr), state, labels, author |
+| `github_review_queue` | github/review-queue | repo, pr_number, reviewer, requested_at |
+| `github_repo_commits` | github/repo-mirror | repo, sha, author, committed_at |
+| `github_repo_issues` | github/repo-mirror | repo, number, state, labels, assignees, author |
+| `github_repo_prs` | github/repo-mirror | repo, number, state, labels, requested_reviewers, author |
+| `github_issue_or_pr_comments` | github/repo-mirror | repo, issue_or_pr_number, author |
 
 ## `ProjectionRow` (type-erased view)
 
@@ -52,7 +70,7 @@ pub struct ProjectionRow {
     pub source_ts: DateTime<Utc>,
     pub title: String,
     pub body_text: String,
-    pub feed_type: String,
+    pub feed_type: String,      // populated at hydration from the originating table name
     pub metadata: serde_json::Value,
 }
 ```

@@ -72,8 +72,9 @@ The per-workstream extractor that builds palaces.
 
 | Key | Type | Default | Description |
 |---|---|---|---|
-| `host` | string | `127.0.0.1` | Interface to bind. |
 | `port` | u16 | `3100` | TCP port. |
+
+> **Note:** the bind host is currently hardcoded to `127.0.0.1` in `crates/arawn/src/ws_server.rs`. A `host` key exists in the `ServerConfig` struct but is not read at bind time.
 
 ## `[storage]`
 
@@ -154,12 +155,13 @@ Permission rules. See [permissions reference](./permissions.md) for full semanti
 
 | Key | Type | Description |
 |---|---|---|
-| `permission_mode` | enum | `default` (read-only auto, write/shell ask), `accept_edits`, `bypass`, or `plan`. |
 | `allow` | list&lt;string&gt; | Tool patterns to allow without prompt. |
 | `deny` | list&lt;string&gt; | Tool patterns to always deny. |
 | `ask` | list&lt;string&gt; | Tool patterns to always prompt for. |
 
-Pattern syntax: `Tool` (exact), `tool_*` (glob), `shell(content-glob)` (tool name + content match).
+Pattern syntax: `tool_name` (exact), `tool_*` (glob), `tool_name(content-glob)` (tool name + content match).
+
+> **Note:** the active **permission mode** (`default` / `accept_edits` / `bypass` / `plan`) is runtime state, not a TOML key. Set it at runtime with the `/accept on|off|edits` and `/plan` slash commands. There is no `permission_mode` key in `[permissions]`.
 
 ## `[[mcp.servers]]`
 

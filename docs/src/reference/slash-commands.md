@@ -56,6 +56,8 @@ Show the list of registered slash commands plus a short description for each.
 
 List registered integrations and their connection state. Shows tool count per connected integration. Takes no subcommands — use `/connect <svc>` and `/disconnect <svc>` for state changes.
 
+> **Note:** all extended workstream lifecycle operations (bind, unbind, show, describe, delete) are agent tools, not slash subcommands — ask the agent to perform them.
+
 ### `/mcp`
 
 List connected MCP servers. See [MCP reference](./mcp.md).
@@ -128,15 +130,12 @@ Show this week's weekly ceremony tablet. See [ceremonies tools reference](./cere
 
 Show installed workflows and their execution status. Detailed inspection via the `workflow_status` agent tool. See [workflow tools reference](./workflow-tools.md).
 
-### `/workstream create <name> | list | switch <name> | bind <name> <uri> | unbind <name> <uri> | show <name>`
+### `/workstream create <name> | list | switch <name>`
 
-Manage workstreams.
+Manage workstreams. The TUI dispatcher accepts three subcommands:
 
 - `/workstream create <name>` — create a workstream; agent walks through ontology proposal.
 - `/workstream list` — list active workstreams.
 - `/workstream switch <name>` — set the active workstream.
-- `/workstream bind <name> <uri>` — bind a feed (by `feed_id`) or a GitHub URI (`github:repo:owner/name`, `github:org:owner`).
-- `/workstream unbind <name> <uri>` — remove a binding.
-- `/workstream show <name>` — show workstream metadata + bindings.
 
-See [workstream CLI reference](./workstream-cli.md).
+Other lifecycle operations (bind, unbind, show, describe, delete) are exposed as agent tools — ask the agent in chat (e.g. *"bind the `work` workstream to feed `gmail-inbox-me`"*) and it calls `workstream_bind`, `workstream_unbind`, etc. See [workstream tools reference](./workstream-tools.md) and [workstream CLI reference](./workstream-cli.md).

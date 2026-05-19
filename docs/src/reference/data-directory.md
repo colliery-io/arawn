@@ -9,10 +9,8 @@ Source: `crates/arawn-storage/src/layout.rs::DataLayout::v1` plus `.join(` greps
 ```
 <data_dir>/
 ├── arawn.toml                 # configuration
-├── arawn.db                   # core SQLite — sessions, workstreams, feeds registry, todos, ceremony state
-├── feeds.db                   # feed registry + run state
-├── memory.db                  # global knowledge-base entities + FTS
-├── memory.graph.db            # global knowledge-base graph relations
+├── arawn.db                   # core SQLite — sessions, workstreams, feeds registry + run state, todos, ceremony state
+├── memory.db                  # global knowledge-base entities, relations, FTS, vectors (all colocated)
 ├── projections.db             # palace projections (SQLite + sqlite-vec)
 ├── workflows.db               # cloacina state — workflow runs, schedules, attempts
 ├── settings.json              # plugin enable/disable + per-plugin user_config
@@ -66,9 +64,8 @@ The `DataLayout::v1` reconciler eagerly creates `workstreams/`, `plugins/tools/`
 | Path | Safe to delete? | Effect |
 |---|---|---|
 | `arawn.toml` | yes (regenerates with defaults) | Loses your config — provider keys, integrations, permission rules. |
-| `arawn.db` | NO while server is running | Loses all sessions, workstream metadata, feed registry, todos. Server must be stopped first. |
-| `feeds.db` | NO | Loses feed registry; integrations need to be re-bound. |
-| `memory.db` / `memory.graph.db` | yes | Wipes global knowledge base. |
+| `arawn.db` | NO while server is running | Loses all sessions, workstream metadata, feed registry + run state, todos. Server must be stopped first. |
+| `memory.db` | yes | Wipes global knowledge base (entities + graph + FTS + vectors are all in this one file). |
 | `projections.db` | yes (will rebuild from feed data on next extraction run) | Wipes palace state. |
 | `workflows.db` | NO while server is running | Loses workflow schedule state. |
 | `data/<provider>/...` | yes (will re-mirror) | Cron-driven re-fetch from `since=` cursor in `meta.json` if present. |

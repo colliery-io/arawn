@@ -18,7 +18,7 @@ Source: `crates/arawn-steward/src/`. ADRs: ADR-0003 (blast radius), ADR-0004 (on
 | `tag-promoter` | Proposal-only | Promote a recurring `tags_discovered` value into the ontology | Up to K proposals per pass |
 | `dust` | Manual trigger only | Summarize stale clusters of entities into a single Note | User-invoked via `workstream_dust` |
 
-All four obey the bounded blast-radius contract (ADR-0003). Every action is journaled write-ahead with enough payload to undo.
+All five obey the bounded blast-radius contract (ADR-0003). Every action is journaled write-ahead with enough payload to undo.
 
 ## The journal
 

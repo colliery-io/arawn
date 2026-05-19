@@ -23,19 +23,21 @@ See [permissions reference](./permissions.md) for evaluation order.
 
 | Tool | Category | Source | Description |
 |---|---|---|---|
-| `Read` (alias `file_read`) | ReadOnly | `file_read.rs` | Read a file. |
+| `file_read` | ReadOnly | `file_read.rs` | Read a file. |
 | `file_write` | FileWrite | `file_write.rs` | Write or overwrite a file. |
 | `file_edit` | FileWrite | `file_edit.rs` | Exact-string search-and-replace in a file. |
-| `Glob` (alias `glob`) | ReadOnly | `glob.rs` | Filename glob match. |
-| `Grep` (alias `grep`) | ReadOnly | `grep.rs` | Content search via `rg`. |
+| `glob` | ReadOnly | `glob.rs` | Filename glob match. |
+| `grep` | ReadOnly | `grep.rs` | Content search via `rg`. |
 | `shell` | Shell | `shell.rs` | Run a command in the OS sandbox. |
+
+> **Note:** the tool names are lowercase (`file_read`, `glob`, `grep`). Capitalized names like `Read` / `Glob` / `Grep` appear in some legacy permission-rule examples but are not registered tool names and will not resolve at runtime.
 
 ## Web
 
 | Tool | Category | Source | Description |
 |---|---|---|---|
 | `web_fetch` | Other | `web_fetch.rs` | Fetch a URL and return its content (HTML stripped to markdown). |
-| `web_search` | Other | `web_search.rs` | Search the web. |
+| `web_search` | ReadOnly | `web_search.rs` | Search the web. |
 
 ## Agent loop helpers
 
@@ -47,14 +49,21 @@ See [permissions reference](./permissions.md) for evaluation order.
 | `enter_plan_mode` | Other | `enter_plan_mode.rs` | Enter plan mode (every side-effect tool denied). |
 | `exit_plan_mode` | Other | `exit_plan_mode.rs` | Leave plan mode. |
 
-## Sub-agents and background tasks
+## Sub-agents
 
 | Tool | Source | Description |
 |---|---|---|
 | `agent` | `agent.rs` | Launch a sub-agent (by `subagent_type`) with an isolated context. Built-in types: `general-purpose`, `Explore`, `Plan`. Custom types load from `<data_dir>/agents/`. 3-level nesting cap. |
-| `task_create` / `task_update` / `task_list` / `task_get` | `task_list.rs` | Manage long-running background tasks the agent can hand off. |
-| `task_output` | `task_output.rs` | Read incremental output from a background task. |
-| `task_stop` | `task_stop.rs` | Stop a running background task. |
+| `task_output` | `task_output.rs` | Read incremental output from a background sub-agent task (started via `agent { run_in_background: true }`). |
+| `task_stop` | `task_stop.rs` | Cancel a background sub-agent task. |
+
+## Session todos
+
+`task_list.rs` exposes a separate **per-session todo list** the agent can use for its own task-tracking inside a turn (independent of background sub-agents).
+
+| Tool | Source | Description |
+|---|---|---|
+| `task_create` / `task_update` / `task_list` / `task_get` | `task_list.rs` | CRUD on per-session todo items. Not connected to background tasks. |
 
 See [sub-agents reference](./sub-agents.md).
 

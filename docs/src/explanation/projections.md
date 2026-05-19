@@ -34,7 +34,7 @@ If the embedder model isn't installed, embeddings stay NULL. `feed_search` degra
 
 ## Why one table per feed type
 
-`gmail_messages`, `slack_messages`, `jira_issues`, `confluence_pages`, `drive_files`, `calendar_events`, `github_notifications`, `github_issues`, `github_prs`, `github_reviews`, etc. Why not a single big table with a `kind` column?
+`gmail_messages`, `slack_messages`, `jira_issues`, `confluence_pages`, `drive_files`, `calendar_events`, `github_notifications`, `github_issues_and_prs`, `github_review_queue`, `github_repo_{commits,issues,prs}`, `github_issue_or_pr_comments`, etc. (16 tables total — see [projection tables reference](../reference/projection-tables.md)). Why not a single big table with a `kind` column?
 
 - **Per-type metadata.** A Gmail message has `sender, recipients, subject, thread_id, labels`. A Jira issue has `key, status, assignee, components, labels`. No useful single schema covers both. Per-table = honest schema per type.
 - **FTS index granularity.** SQLite FTS5 wants per-table tokenization. A "search Slack only" query benefits from indexing just `slack_messages.body_text`, not stripping out 95% of rows by `kind`.

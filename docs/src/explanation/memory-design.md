@@ -64,7 +64,7 @@ If a fact really is global ("the timezone of the office is UTC-7"), you can writ
 - **FTS5 keyword search** over entity titles and bodies. Always available. Returns ranked hits by `bm25` score.
 - **Vector similarity** over entity content embeddings. Available only if the embedder model is installed at `<data_dir>/models/all-MiniLM-L6-v2/model.onnx`. Returns ranked hits by cosine similarity.
 
-When both are available, results are merged via RRF (reciprocal rank fusion) and re-ranked. Why both?
+When both are available, each side scores hits separately (FTS uses `1/(1+bm25_rank)`, vector uses `1/(1+cosine_distance)`) and they're combined via a weighted linear sum: `composite = 0.4 × semantic + 0.3 × fts + 0.3 × confidence`. Why both?
 
 - **FTS catches exact-term recall.** Searching for "Postgres" returns every entity that contains the word "Postgres." Cheap, deterministic, no model dependency.
 - **Vectors catch semantic recall.** Searching for "the database we picked" returns the "Postgres 16" decision even if the entity text doesn't contain the word "database." This is what makes follow-up questions natural ("the framework I mentioned" → cloacina).

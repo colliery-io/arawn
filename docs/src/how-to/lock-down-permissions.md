@@ -74,12 +74,14 @@ The agent will prompt before any `file_write`, `file_edit`, `shell`, or `web_fet
 The TUI's `/accept` slash command toggles the mode without editing TOML:
 
 ```
-/accept on        # accept_edits mode (writes auto, shell asks)
-/accept off       # back to default
-/accept edits     # same as `on`
+/accept on        # bypass mode (everything auto-allowed)
+/accept edits     # accept_edits mode (writes auto, shell asks)
+/accept off       # back to default mode (read-only auto, write/shell ask)
 ```
 
 `/plan` switches to plan mode — every side effect is denied (not asked), useful when you want the agent to plan without acting.
+
+> **Heads up on rule examples below:** content patterns in `allow` / `deny` / `ask` are matched against the *serialized JSON arguments* of a tool call, not against a single field. So `shell(git status*)` doesn't match `{"command":"git status"}` — you need `shell(*git status*)` or `shell(*"command":"git status*)`. The recipes below are written in the natural-feeling form, but you may need to widen the patterns to actually fire. See [permissions reference](../reference/permissions.md) for the full story.
 
 ## What's next
 

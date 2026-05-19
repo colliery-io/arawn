@@ -87,8 +87,10 @@ Use [crontab.guru](https://crontab.guru) when in doubt. Timezone defaults to UTC
 └── workflows/
     └── <workflow-name>/
         ├── package.toml                      # workflow metadata
-        └── lib<workflow_name>.{dylib,so}     # compiled task code
+        └── lib<crate_name>.{dylib,so}        # compiled task code (crate_name = workflow-name with '-' → '_')
 ```
+
+For a workflow named `daily-pr-briefing`, the dylib lands at `<data_dir>/workflows/daily-pr-briefing/libdaily_pr_briefing.{dylib,so}`. Hyphens become underscores in the library filename per Cargo conventions.
 
 `workflows.db` carries cloacina's bookkeeping (pipeline executions, task attempts, schedule state). Don't delete it while arawn is running.
 

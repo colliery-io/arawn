@@ -54,11 +54,11 @@ The daily and retro tablets are softer — items there are surfaced for awarenes
 
 The retro's gather phase runs a small set of **detectors** — Rust code that looks back over the week's data and surfaces specific patterns:
 
-| Detector | What it surfaces |
+| Detector key | What it surfaces |
 |---|---|
-| `priority-completion` | Which of last week's priorities actually progressed; which stalled. |
-| `rollover-heat` | Items that have rolled over multiple weeks (potentially stalled or wrongly-scoped). |
-| `workstream-neglect` | Workstreams that haven't been touched all week. |
+| `priority_completion_ratio` | Which of last week's priorities actually progressed; which stalled. |
+| `rollover_heat` | Items that have rolled over multiple weeks (potentially stalled or wrongly-scoped). |
+| `workstream_neglect` | Workstreams that haven't been touched all week. |
 
 Why detectors instead of asking the LLM "look at this week and tell me what you notice"?
 
@@ -68,17 +68,17 @@ Why detectors instead of asking the LLM "look at this week and tell me what you 
 
 The LLM still runs during retro — it composes the tablet's prose, judges which detector outputs are worth surfacing, and frames the diary prompt. But the detectors are the *structured* input.
 
-## Why a nightly recovery loop
+## What the recovery loop actually does today
 
-`crates/arawn-ceremonies/src/nightly.rs` runs at 02:00 local and back-fills missed ceremony tablets. If your laptop was closed on Tuesday and Wednesday morning, the daily cron didn't fire — the nightly loop runs the daily ceremony for those dates retroactively the next time arawn is up.
+`crates/arawn-ceremonies/src/nightly.rs` runs an hourly tokio sweep — `sweep_unreviewed_retros` — that transitions stale `open` retro tablets to `unreviewed`. It does NOT back-fill missed daily/weekly ceremonies. If your laptop was closed Tuesday morning, the daily cron didn't fire and there is no Tuesday tablet.
 
-Why bother?
+The roadmap (ARAWN-I-0035 follow-up): a retroactive back-fill so missed-day continuity is preserved automatically. Until that lands, the agent can compose a missing tablet on demand via `daily_run` / `weekly_run` / `retro_run` if you ask explicitly.
 
-- **Continuity.** Skipping days breaks the "what changed since yesterday?" loop. The retroactive daily lets you catch up cleanly.
-- **Detector inputs.** retro's `priority-completion` detector needs a complete history. Gaps would skew the output.
-- **No surprise.** A user shouldn't have to know "oh, I missed Tuesday's daily, so today's daily won't have Tuesday's context." The nightly loop hides that.
+Why it matters when it ships:
 
-The trade-off: a long absence (a week-long vacation) produces a flurry of back-dated tablets on first run. They're not actionable (you weren't there), but they preserve the audit trail.
+- **Continuity.** Skipping days breaks the "what changed since yesterday?" loop.
+- **Detector inputs.** retro's `priority_completion_ratio` detector needs a complete priority history. Gaps skew the output.
+- **No surprise.** A user shouldn't have to know which days the daily cron missed.
 
 ## Why ceremonies aren't optional in the engine sense
 

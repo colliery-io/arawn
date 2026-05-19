@@ -43,13 +43,13 @@ List your feeds:
 /feeds
 ```
 
-You should see at least one Gmail feed (the auto-created `gmail/inbox-archive` from `/connect gmail`). Note its `feed_id`. Then bind it:
+You should see at least one Gmail feed (the auto-created `gmail/inbox-archive` from `/connect gmail`). Note its `feed_id`. Then ask the agent to bind it:
 
 ```
-/workstream bind work <feed_id>
+bind the work workstream to <feed_id>
 ```
 
-(Other URI schemes work too — e.g. `/workstream bind work github:repo:owner/name` if you have GitHub connected — see [bind a workstream to a feed](../how-to/bind-a-workstream-to-a-feed.md).)
+The agent calls `workstream_bind { workstream: "work", uri: "<feed_id>" }`. (Binding is an agent tool, not a slash subcommand — see [bind a workstream to a feed](../how-to/bind-a-workstream-to-a-feed.md).) Other URI schemes work too — for example, `github:repo:owner/name` if you have GitHub connected.
 
 After bind, extraction starts on the next feed run (or immediately for already-mirrored rows via the backfill loop).
 

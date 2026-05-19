@@ -25,7 +25,7 @@ args = ["mcp-server-sqlite", "--db", "test.db"]
 name = "github"
 command = "npx"
 args = ["-y", "@modelcontextprotocol/server-github"]
-env = { GITHUB_TOKEN = "${GITHUB_TOKEN}" }
+env = { GITHUB_TOKEN = "ghp_..." }   # values are passed literally; no ${VAR} expansion
 enabled = false
 ```
 
@@ -36,7 +36,7 @@ Fields:
 | `name` | string | required | Unique server name. Used in tool naming: `mcp__<name>__<tool>`. |
 | `command` | string | required | Command to spawn the server process. |
 | `args` | list&lt;string&gt; | `[]` | Arguments for the command. |
-| `env` | map | `{}` | Environment variables for the spawned process. Values can reference `${VAR}` for env-var substitution. |
+| `env` | map | `{}` | Environment variables for the spawned process. Values are passed literally to the child — there is no `${VAR}` substitution layer today. |
 | `enabled` | bool | `true` | When `false`, the entry is parsed but the server isn't started. |
 
 ## How it works

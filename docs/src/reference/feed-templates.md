@@ -127,7 +127,7 @@ Rolling snapshot of every event between now and `window_days` ahead.
 
 | Field | Value |
 |---|---|
-| Optional | `calendar: string` (default `primary`), `window_days: u32` (default 7) |
+| Optional | `calendar_id: string` (default `primary`), `window_days: u32` (default 7) |
 | Default cadence | `*/30 * * * *` |
 | Auto-create | Yes — singleton, on `/connect google_calendar` |
 
@@ -314,23 +314,28 @@ github/review-queue/<feed_id>/
 
 ### `github/repo-mirror`
 
-Full snapshot of a repo's open issues + PRs. Used by the `github:repo:owner/name` and `github:org:owner` workstream binding schemes — bind expands org URIs to one `repo-mirror` per repo.
+Full snapshot of a repo's commits, open issues, PRs, and issue/PR comments. Used by the `github:repo:owner/name` and `github:org:owner` workstream binding schemes — bind expands org URIs to one `repo-mirror` per repo.
 
 | Field | Value |
 |---|---|
-| Required | `repo: string` (in `"owner/name"` form) |
+| Required | `owner: string`, `name: string` (two separate params, NOT a combined `owner/name` string) |
 | Default cadence | `*/30 * * * *` |
-| Auto-create | No (registered by `/workstream bind` with a GitHub URI) |
+| Auto-create | No (registered by `workstream_bind` with a GitHub URI) |
 
 ```text
-github/repo-mirror/<feed_id>/
+github/repo-mirror/<feed_id>/<owner>/<name>/
   ├── meta.json
-  ├── issues.jsonl           # open + recently-closed, append-only, deduped
-  ├── prs.jsonl
-  └── reviews.jsonl
+  ├── commits/
+  │   └── <sha>.json
+  ├── issues/
+  │   └── <number>.json
+  ├── prs/
+  │   └── <number>.json
+  └── comments/
+      └── <comment_id>.json
 ```
 
-The on-disk layout is shared by single-repo and org-expanded variants — the org URI just creates N feeds, each with one repo's worth of state.
+Per-row JSON files in nested kind directories — not flat JSONL. The on-disk layout is shared by single-repo and org-expanded variants; the org URI just creates N feeds, each with one repo's worth of state.
 
 ## Quick reference: cadence + auto-create
 

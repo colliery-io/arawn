@@ -11,8 +11,10 @@ The shell tool spawns each command in an OS sandbox:
 | Platform | Backend | Notes |
 |---|---|---|
 | macOS | `sandbox-exec` | Apple has deprecated this; migration to a different backend is on the roadmap. |
-| Linux | `bubblewrap` (`bwrap`) | Must be installed separately (`apt install bubblewrap` / `pacman -S bubblewrap`). Shell tool fails closed when missing. |
-| Windows | (unsupported) | Shell tool fails closed. |
+| Linux | `bubblewrap` (`bwrap`) | Must be installed separately (`apt install bubblewrap` / `pacman -S bubblewrap`). Foreground shell calls fall back to **unsandboxed** with a `[WARNING: Command ran without sandbox protection ...]` prefix when `bwrap` is missing; only background-task shell calls fail closed. |
+| Windows | (unsupported backend) | Same fallback as missing `bwrap` — foreground shell calls run **unsandboxed with a warning**; background-task shell calls fail closed. |
+
+> **Security note:** the foreground unsandboxed-fallback behavior is a sharp edge — a misconfigured Linux host (no `bwrap`) or a Windows host will execute commands without the deny-list / network-block protections described below. If you need hard guarantees, run on macOS or a Linux host with `bwrap` installed.
 
 ## What the sandbox enforces by default
 
@@ -58,12 +60,12 @@ Override by setting `[sandbox].network_tools = [...]` in `arawn.toml`.
 
 ### Environment scrubbing
 
-Spawned processes get a **sanitized environment**, not the parent's full env. The allowlist (source: `crates/arawn-engine/src/tools/safe_env.rs`) covers what programs commonly need:
+Spawned processes get a **sanitized environment**, not the parent's full env. The allowlist (source: `crates/arawn-engine/src/tools/safe_env.rs`) is small and explicit:
 
-- Standard POSIX: `PATH`, `HOME`, `USER`, `SHELL`, `TMPDIR`, `PWD`, `LANG`, `LC_*`, `TERM`
-- Build tool homes: `CARGO_HOME`, `RUSTUP_HOME`, `GOPATH`, `GOMODCACHE`, `NPM_CONFIG_*`, `PIP_*`, `JAVA_HOME`, `GRADLE_*`, etc.
-- Editor / pager: `EDITOR`, `VISUAL`, `PAGER`
-- Display (for sandbox-aware GUI tools): `DISPLAY`, `WAYLAND_DISPLAY`, `XDG_*`
+- Exact-match: `PATH`, `HOME`, `USER`, `LOGNAME`, `SHELL`, `TERM`, `LANG`, `LC_ALL`, `TMPDIR`, `TMP`, `TEMP`, `PWD`, `OLDPWD`, `CARGO_HOME`, `RUSTUP_HOME`, `GOPATH`, `GOROOT`, `NPM_CONFIG_PREFIX`, `PIP_CACHE_DIR`.
+- Prefix-match: `LC_*` (locale categories), `XDG_*` (XDG Base Directory).
+
+Anything not in that set is dropped. So `JAVA_HOME`, `GRADLE_*`, `GOMODCACHE`, `EDITOR`, `VISUAL`, `PAGER`, `DISPLAY`, `WAYLAND_DISPLAY`, and the rest are **not** forwarded — commands that need them will see them empty.
 
 **Not inherited:** API keys held by the arawn process — `OPENAI_API_KEY`, `GROQ_API_KEY`, `ANTHROPIC_API_KEY`, etc. So if the agent calls `shell("echo $OPENAI_API_KEY")`, it sees an empty string. This is intentional: the agent has the keys via the LLM provider abstraction; shell children don't need them.
 

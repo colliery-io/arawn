@@ -35,7 +35,7 @@ Frontmatter fields (parsed by `crates/arawn-engine/src/skills/definition.rs::par
 | `argument-hint` | string | none | Hint shown in autocomplete (e.g., `"<filename>"`). |
 | `allowed-tools` | list&lt;string&gt; | none | Restrict the agent's tool set while running this skill. None = inherit full toolset. |
 | `model` | string | none | Override the LLM profile or hint shortcut (`hint:lightweight`, `hint:medium`, `hint:heavy`). |
-| `user-invocable` | bool | `false` | When `true`, exposed as `/<name>` slash command in the TUI. When `false`, only callable by the agent via the `skill` tool. |
+| `user-invocable` | bool | `true` | When `true` (default), exposed as `/<name>` slash command in the TUI. Set to `false` to keep a skill agent-only. |
 
 ## Invocation paths
 
@@ -46,11 +46,13 @@ The `skill` tool (source: `crates/arawn-engine/src/tools/skill.rs`) lets the age
 ```json
 {
   "tool": "skill",
-  "arguments": { "name": "workstream-create", "arguments": "work --description 'platform team'" }
+  "arguments": { "skill": "workstream-create", "args": "work --description 'platform team'" }
 }
 ```
 
-The skill runs as a focused sub-conversation with the configured `allowed-tools` and `model`. The result feeds back into the calling agent's context as a tool result.
+The tool returns the skill's rendered prompt body (with `$ARGUMENTS` substituted) as the tool result. The parent agent then reads that text inline in the same loop and proceeds.
+
+> **Note:** the `skill` tool does **not** spawn a sub-conversation today. The `allowed-tools` and `model` frontmatter fields are parsed into the `SkillDefinition` struct but are not enforced by the tool — the parent agent runs with its own permission rules and LLM. Treat `allowed-tools` as documentation-of-intent, not as a hard gate. If you need a real isolated context, use the `agent` tool (see [sub-agents reference](./sub-agents.md)).
 
 ### User path — `/skill-name` slash command
 
@@ -82,7 +84,7 @@ Inside the skill body, `$ARGUMENTS` expands to whatever the user (or agent) pass
 
 ## Permission model
 
-The `skill` tool itself is `Other` category — gated by the active permission mode. The agent's actions *while running the skill* are gated by the normal per-tool rules; setting `allowed-tools` in the skill's frontmatter is the recommended way to scope it.
+The `skill` tool itself is gated by the active permission mode like any other tool. The parent agent's actions *after reading the rendered skill body* are gated by its normal per-tool permission rules — `allowed-tools` in the skill frontmatter is documentation-of-intent, not enforcement.
 
 ## Examples
 

@@ -47,7 +47,7 @@ The cursor shape is template-specific — see [feed templates reference](./feed-
 | `no-new-items` | Ran clean; nothing new to fetch. |
 | `backfill-rate-limited` | Backfill hit the 5-minute rate-limit cap. Cron will resume from the persisted cursor. |
 | `backfill-failed: <reason>` | Backfill couldn't recover. Manual inspection needed. |
-| `auth failed: ...` | Provider token revoked or scope removed. Run `/disconnect <svc>` then `/connect <svc>`. |
+| `error: auth failed: ...` | Provider token revoked or scope removed. Run `/disconnect <svc>` then `/connect <svc>`. (The `error: ` prefix is added by the dispatch layer; any template error round-trips as `error: <kind>: <message>`.) |
 
 The runtime is conservative: provider errors don't crash arawn — they get logged, and the next cron tick tries again. A single bad item (malformed Gmail message, Drive file with no body) is skipped, not fatal.
 

@@ -43,7 +43,7 @@ Two paths:
 1. **FTS keyword search** — SQLite full-text index on entity titles and bodies. Always available.
 2. **Vector similarity** — sentence embeddings of entity content. Available only if the embedder model is loaded.
 
-The `memory_search` agent tool uses both when both are available, then merges and re-ranks (RRF). If the embedder isn't loaded, search silently degrades to FTS-only — semantic matches ("the framework I mentioned yesterday" → "cloacina") stop working, but exact-term recall still does.
+The `memory_search` agent tool scores each side and combines via a weighted linear sum — `composite = 0.4 × semantic + 0.3 × fts + 0.3 × confidence` (see `crates/arawn-engine/src/tools/memory_search.rs`). If the embedder isn't loaded, search silently degrades to FTS-only — semantic matches ("the framework I mentioned yesterday" → "cloacina") stop working, but exact-term recall still does.
 
 ### Embedding model
 

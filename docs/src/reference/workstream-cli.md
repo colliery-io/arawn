@@ -59,22 +59,19 @@ Calls `workstream_list`. Returns active workstreams. To include archived: use `w
 
 Sets the active workstream. Subsequent sessions, feeds bound to the workstream, and signal queries all scope to this workstream until you switch again.
 
-### Show
+### Show / bind / unbind / describe / delete (agent tools, not slash subcommands)
 
-```
-/workstream show <slug>
-```
+The TUI dispatcher accepts only `/workstream create | list | switch`. The remaining lifecycle operations are agent tools — ask the agent in chat ("bind the `work` workstream to feed `gmail-inbox-me`") and it calls the matching `workstream_*` tool. The tools and their JSON shapes:
 
-Calls `workstream_show`. Returns metadata: description, bindings, tag ontology, identity profile, root_dir, archived state.
+| Tool | What it does |
+|---|---|
+| `workstream_show { name }` | Returns metadata: description, bindings, tag ontology, identity profile, root_dir, archived state. |
+| `workstream_bind { workstream, uri }` | Bind a feed or GitHub URI (see schemes below). |
+| `workstream_unbind { workstream, uri }` | Remove a binding. |
+| `workstream_describe { workstream, ... }` | Update `description`, `display_name`, or `identity_profile`. |
+| `workstream_delete { workstream }` | Soft-delete (sets `archived = true`). The data on disk is untouched. |
 
-### Bind / unbind
-
-```
-/workstream bind <slug> <feed_id_or_uri>
-/workstream unbind <slug> <feed_id_or_uri>
-```
-
-URI schemes:
+URI schemes accepted by `workstream_bind`:
 
 | Scheme | Meaning |
 |---|---|
@@ -92,14 +89,6 @@ See [bind a workstream to a feed](../how-to/bind-a-workstream-to-a-feed.md).
 
 Calls `workstream_promote`. Takes the current scratch session and moves it under the named workstream. Session history, memory entries created in this session, and the session's feed bindings all rebase. Useful when an ad-hoc session turns into ongoing work.
 
-### Delete
-
-```
-/workstream delete <slug>
-```
-
-Calls `workstream_delete`. Soft-delete — sets `archived = true`. The data on disk is untouched. To re-activate, set `archived = false` (not currently exposed as a slash command; via direct tool call or DB edit).
-
 ## Metadata fields
 
 The `Workstream` struct (source: `crates/arawn-core/src/workstream.rs:113`):
@@ -114,8 +103,9 @@ The `Workstream` struct (source: `crates/arawn-core/src/workstream.rs:113`):
 | `bindings` | list&lt;string&gt; | Feed ids and/or URI schemes bound to this workstream. |
 | `archived` | bool | Soft-delete flag. |
 | `identity_profile` | enum | `assistant` (default) or `coding`. Selects the system-prompt persona. |
-| `tags_ontology` | list&lt;string&gt; | Closed list of tags the extractor may apply. |
 | `created_at` / `updated_at` | RFC3339 | Timestamps. |
+
+The **tag ontology** is NOT a struct field. It lives in a sibling per-workstream table (`TagOntologyStore` in `crates/arawn-memory/src/ontology.rs`) opened from the workstream's `memory.db`. Manage it via `workstream_propose_ontology` (used by `workstream_new`), `workstream_tag { op: "add" | "remove" | "list" }`, or accept tag-promoter proposals via `workstream_apply`. Tools that read it (`signal_query`, `workstream_show`, the extractor) load the ontology from that table at query time.
 
 ## `identity_profile`
 
