@@ -4,14 +4,14 @@ level: initiative
 title: "Documentation accuracy + Diataxis gap-fill"
 short_code: "ARAWN-I-0051"
 created_at: 2026-05-19T00:49:27.843030+00:00
-updated_at: 2026-05-19T02:09:13.784059+00:00
+updated_at: 2026-05-19T10:52:44.947394+00:00
 parent: ARAWN-V-0001
 blocked_by: []
 archived: false
 
 tags:
   - "#initiative"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -258,3 +258,20 @@ Initiative filed in response to operator request to audit docs against recent ed
 - **Accuracy agent:** stalled (watchdog after 600 s, no progress). Most claim-level drift surfaced by the other two audits (tool name drift in Slack/Jira, stale feed-template count "12 vs 17", `/unwatch` vs `/feeds rm` naming, `/remember`+`/memory`+`/forget` marked WIP in docs but wired in code, github.md says feeds are "follow-up tasks" when they shipped). Remaining accuracy issues will be caught inline during Phase C rewrites; Phase D verification re-runs both audits.
 
 Phase A synthesis written to `audits/synthesis.md`. Phase B (restructure proposal) blocked on operator sign-off on the proposed tree.
+
+### 2026-05-19 — Phase B + Phase C complete, Phase D cleared
+
+Phases B / C / D landed across one session:
+
+- **Phase B:** operator approved the proposed 4-quadrant SUMMARY.md tree as-is.
+- **Phase C:** 10 tasks T-0333 → T-0342, one commit per task, all on `main`. Doc tree went from 21 files to 60. Drift fixes applied inline (tool-name mismatches, stale counts, /unwatch → /feeds rm, dropped WIP labels on /remember etc., reference to ARAWN-I-0035 identity profile, GitHub feed templates).
+- **Phase D:** completeness + diataxis re-audits run on the new tree. Headline: 185 → 0 missing items; 0 of 60 critical/major Diataxis misclassifications (was 20 of 21). Six trivial nit fixes applied (dead links, empty ADR anchors, removed reference to unwritten how-to). Synthesis at `audits/phase-d-verification.md`.
+
+REQ-006 ("zero critical, zero major findings on re-audit") met. Initiative ready to close.
+
+Deferred to future work (none critical):
+1. Third tutorial — "Build a morning brief workflow" (the flagship vision use-case).
+2. `how-to/set-up-daily-ceremony.md`.
+3. `how-to/switch-llm-provider.md`, `how-to/backup-restore-data-dir.md`, `how-to/use-arawn-doctor.md`.
+4. Explanation pages for `plugins` and `mcp` (reference pages exist; "why" companions would be polish).
+5. Six borderline tables in explanation pages duplicate canonical reference content. Defensible per the Diataxis audit; kept as-is.

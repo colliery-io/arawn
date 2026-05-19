@@ -110,4 +110,3 @@ Tablets and items live in `arawn.db`:
 - [Todos tools reference](./todos-tools.md).
 - [Ceremonies explanation](../explanation/ceremonies.md) — the morning brief / weekly / retro philosophy.
 - [Slash commands reference](./slash-commands.md) — `/today`, `/week`, `/retro`, `/todo`.
-- [Set up daily ceremony how-to](../how-to/set-up-daily-ceremony.md) (planned; not yet written).

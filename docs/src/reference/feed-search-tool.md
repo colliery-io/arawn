@@ -83,7 +83,7 @@ feed_search({
 Searches both top-level messages and thread replies. The agent picks
 threads via the `thread_ts` in `metadata` and can pull the full
 thread context from the on-disk mirror if needed (see
-[Agent Read Patterns](./agent-read-patterns.md)).
+[read feeds with the agent](../how-to/read-feeds-with-the-agent.md)).
 
 ### "any open jira issues mentioning the auth refactor?"
 
@@ -160,12 +160,15 @@ greppable.
 ## What `feed_search` is **not** for
 
 - **Workstream-scoped knowledge.** Use `memory_search` for facts /
-  decisions / preferences the agent has explicitly stored, or wait
-  for the upcoming `signal_search` (Phase 6 of [I-0040](../../../.metis/initiatives/ARAWN-I-0040/initiative.md)).
+  decisions / preferences the agent has explicitly stored, or
+  `signal_search` for entities the extractor has built inside a
+  workstream palace (see [workstream tools](./workstream-tools.md)).
 - **Cross-projection JOINs.** "Which jira issue does this slack
-  message reference?" needs the extractor that lands in Phase 4. Today
-  the agent has to do that linking manually by reading the slack
-  message and checking the result text for issue keys.
+  message reference?" needs the per-workstream extractor (see
+  [extraction explanation](../explanation/extraction.md)). Without a
+  bound workstream, the agent has to do that linking manually by
+  reading the slack message and checking the result text for issue
+  keys.
 - **Bulk listing.** For "all gmail from alice" without a content
   filter, walk the on-disk mirror directly — FTS is built for
   relevance ranking, not for set iteration.

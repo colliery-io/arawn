@@ -64,75 +64,17 @@ Reference catalogs for the runtime agent surface: every agent tool (74), the per
 
 ## Acceptance Criteria
 
-## Acceptance Criteria
+- [x] `reference/agent-tools.md` — catalog organized by category. Resolves "38 of 74 tools undocumented" finding. ~190 lines.
+- [x] `reference/permissions.md` — rule syntax + 4 modes + responses + audit. ~90 lines.
+- [x] `reference/shell-sandbox.md` — 3 platforms + enforcement layers + caveats. ~110 lines.
+- [x] `reference/integrations.md` — per-provider matrix. ~210 lines.
+- [x] Slack/Jira tool-name drift resolved against code. `slack_search` and `atlassian_list_resources` dropped (not implemented).
+- [x] `docs/src/security.md` + 5 integration stubs deleted. `integrations/` directory removed.
+- [x] `SUMMARY.md` updated; Integrations top-level group gone.
+- [x] `angreal docs build` clean.
 
-## Acceptance Criteria **[REQUIRED]**
+## Status Updates
 
-- [ ] {Specific, testable requirement 1}
-- [ ] {Specific, testable requirement 2}
-- [ ] {Specific, testable requirement 3}
+### 2026-05-18 — Completed (committed c2f8be9)
 
-## Test Cases **[CONDITIONAL: Testing Task]**
-
-{Delete unless this is a testing task}
-
-### Test Case 1: {Test Case Name}
-- **Test ID**: TC-001
-- **Preconditions**: {What must be true before testing}
-- **Steps**: 
-  1. {Step 1}
-  2. {Step 2}
-  3. {Step 3}
-- **Expected Results**: {What should happen}
-- **Actual Results**: {To be filled during execution}
-- **Status**: {Pass/Fail/Blocked}
-
-### Test Case 2: {Test Case Name}
-- **Test ID**: TC-002
-- **Preconditions**: {What must be true before testing}
-- **Steps**: 
-  1. {Step 1}
-  2. {Step 2}
-- **Expected Results**: {What should happen}
-- **Actual Results**: {To be filled during execution}
-- **Status**: {Pass/Fail/Blocked}
-
-## Documentation Sections **[CONDITIONAL: Documentation Task]**
-
-{Delete unless this is a documentation task}
-
-### User Guide Content
-- **Feature Description**: {What this feature does and why it's useful}
-- **Prerequisites**: {What users need before using this feature}
-- **Step-by-Step Instructions**:
-  1. {Step 1 with screenshots/examples}
-  2. {Step 2 with screenshots/examples}
-  3. {Step 3 with screenshots/examples}
-
-### Troubleshooting Guide
-- **Common Issue 1**: {Problem description and solution}
-- **Common Issue 2**: {Problem description and solution}
-- **Error Messages**: {List of error messages and what they mean}
-
-### API Documentation **[CONDITIONAL: API Documentation]**
-- **Endpoint**: {API endpoint description}
-- **Parameters**: {Required and optional parameters}
-- **Example Request**: {Code example}
-- **Example Response**: {Expected response format}
-
-## Implementation Notes **[CONDITIONAL: Technical Task]**
-
-{Keep for technical tasks, delete for non-technical. Technical details, approach, or important considerations}
-
-### Technical Approach
-{How this will be implemented}
-
-### Dependencies
-{Other tasks or systems this depends on}
-
-### Risk Considerations
-{Technical risks and mitigation strategies}
-
-## Status Updates **[REQUIRED]**
-
-*To be added during implementation*
+Task body fixed post-commit (Edit raced with completion-transition linter). Work itself shipped clean in commit c2f8be9.

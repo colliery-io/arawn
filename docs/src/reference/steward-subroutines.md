@@ -6,7 +6,7 @@ The steward is the continuous-curation subsystem for [workstream palaces](../exp
 
 For curation workflow, see [curate a workstream](../how-to/curate-a-workstream.md). For the design rationale, see [steward explanation](../explanation/steward.md).
 
-Source: `crates/arawn-steward/src/`. ADRs: [ADR-0003](#) (blast radius), [ADR-0004](#) (ontology cycle).
+Source: `crates/arawn-steward/src/`. ADRs: ADR-0003 (blast radius), ADR-0004 (ontology cycle) — under `.metis/adrs/`.
 
 ## Subroutines
 
@@ -18,7 +18,7 @@ Source: `crates/arawn-steward/src/`. ADRs: [ADR-0003](#) (blast radius), [ADR-00
 | `tag-promoter` | Proposal-only | Promote a recurring `tags_discovered` value into the ontology | Up to K proposals per pass |
 | `dust` | Manual trigger only | Summarize stale clusters of entities into a single Note | User-invoked via `workstream_dust` |
 
-All four obey ADR-0003's bounded blast-radius contract. Every action is journaled write-ahead with enough payload to undo.
+All four obey the bounded blast-radius contract (ADR-0003). Every action is journaled write-ahead with enough payload to undo.
 
 ## The journal
 

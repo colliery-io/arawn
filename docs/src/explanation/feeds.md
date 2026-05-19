@@ -25,7 +25,7 @@ Three consequences:
 | You want grep / glob over the data | A direct tool call is faster |
 | Multiple agent runs benefit from the same fetch | The data changes faster than the cadence |
 
-Feeds aren't a replacement for tools like `gmail_search` or `slack_search_messages`. Those answer "fetch this *now*"; feeds answer "I already have a local snapshot, let me grep it."
+Feeds aren't a replacement for tools like `gmail_search` or `jira_search`. Those answer "fetch this *now*"; feeds answer "I already have a local snapshot, let me grep it."
 
 ## What lands where
 
