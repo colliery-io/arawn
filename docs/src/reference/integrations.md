@@ -107,15 +107,16 @@ Full read+write (not `.readonly`), so write tools work. If you only want read ac
 ```
 channels:history, channels:read, chat:write, chat:write.public,
 files:read, groups:history, groups:read, im:history, im:read,
-im:write, mpim:history, mpim:read, mpim:write, users:read,
-users:read.email
+im:write, mpim:history, mpim:read, mpim:write, reactions:write,
+users:read, users:read.email
 ```
 
 **Scopes (user):**
 
 ```
 channels:history, channels:read, groups:history, groups:read,
-im:history, im:read, mpim:history, mpim:read, search:read
+im:history, im:read, mpim:history, mpim:read, users:read,
+search:read
 ```
 
 **Tools:**
@@ -140,7 +141,7 @@ im:history, im:read, mpim:history, mpim:read, search:read
 **Auth:** OAuth 2.0 3LO. Setup: [connect Atlassian](../how-to/connect-atlassian.md).
 
 **Scopes (Jira):** `read:jira-user`, `read:jira-work`, `write:jira-work`.
-**Scopes (Confluence):** `read:confluence-content.all`, `write:confluence-content`, `read:confluence-space.summary`.
+**Scopes (Confluence):** `read:confluence-content.all`, `read:confluence-content.summary`, `write:confluence-content`, `read:confluence-space.summary`.
 
 arawn uses the **classic scope set** (not granular). If a scope above doesn't appear in the developer console picker, look under "Classic scopes".
 
@@ -173,7 +174,7 @@ arawn uses the **classic scope set** (not granular). If a scope above doesn't ap
 
 ## GitHub
 
-**Auth:** GitHub App, not OAuth. The App is registered once (operator step), then each user installs it via `/integrations connect github`. Installation tokens are minted on demand from the App private key and expire in 1 hour (auto-refreshed within 5 min of expiry). Setup: [connect GitHub](../how-to/connect-github.md).
+**Auth:** GitHub App, not OAuth. The App is registered once (operator step), then each user installs it via `/connect github`. Installation tokens are minted on demand from the App private key and expire in 1 hour (auto-refreshed within 5 min of expiry). Setup: [connect GitHub](../how-to/connect-github.md).
 
 **Permissions (App-level, read-only):**
 

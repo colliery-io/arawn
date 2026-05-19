@@ -54,7 +54,7 @@ Show the list of registered slash commands plus a short description for each.
 
 ### `/integrations`
 
-List registered integrations and their connection state. Shows tool count per connected integration. Also supports `/integrations connect <svc>` and `/integrations disconnect <svc>` as aliases of `/connect` / `/disconnect`.
+List registered integrations and their connection state. Shows tool count per connected integration. Takes no subcommands — use `/connect <svc>` and `/disconnect <svc>` for state changes.
 
 ### `/mcp`
 

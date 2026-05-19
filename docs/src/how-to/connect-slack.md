@@ -2,7 +2,7 @@
 
 *How-to. ~10 minutes. Slack's OAuth model needs both bot and user tokens.*
 
-By the end of this guide arawn will have OAuth tokens for one Slack workspace, and the agent will be able to list channels, read history, post messages, and search.
+By the end of this guide arawn will have OAuth tokens for one Slack workspace, and the agent will be able to list channels, read history, post messages, react with emoji, list users, and open DMs.
 
 ## Prerequisites
 
@@ -40,6 +40,7 @@ im:write
 mpim:history
 mpim:read
 mpim:write
+reactions:write
 users:read
 users:read.email
 ```
@@ -55,6 +56,7 @@ im:history
 im:read
 mpim:history
 mpim:read
+users:read
 search:read
 ```
 

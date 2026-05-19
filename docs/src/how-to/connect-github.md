@@ -67,7 +67,7 @@ Restart `arawn serve`. You should see `GitHub integration registered (read-only�
 In the TUI:
 
 ```
-/integrations connect github
+/connect github
 ```
 
 arawn publishes the public install URL (`https://github.com/apps/<slug>/installations/new`); your browser opens, you pick which org/repos the App can see, and GitHub redirects to arawn's local callback. arawn captures the `installation_id`, encrypts it on disk under `<data_dir>/integrations/github/`, and reports success.
@@ -90,7 +90,7 @@ GitHub should appear as `connected`. Then bind it to a workstream and the agent 
 
 | Location | Encrypted? | Lifetime |
 |---|---|---|
-| `<data_dir>/integrations/github/github.bin` | Yes (ChaCha20Poly1305) | Until `/integrations disconnect github`. |
+| `<data_dir>/integrations/github/github.bin` | Yes (ChaCha20Poly1305) | Until `/disconnect github`. |
 | In-memory installation access token | N/A (memory only) | 1 hour; auto-refreshed within 5 min of expiry. |
 
 The App private key never moves — arawn reads it from disk at startup, signs JWTs in memory, and forwards those to GitHub to mint short-lived installation-access-tokens.
@@ -98,7 +98,7 @@ The App private key never moves — arawn reads it from disk at startup, signs J
 ## Disconnect
 
 ```
-/integrations disconnect github
+/disconnect github
 ```
 
 Removes the `installation_id` from disk. The App still appears in your GitHub installations list — uninstall it there to revoke arawn's access on GitHub's side as well.

@@ -32,6 +32,7 @@ write:jira-work
 
 ```
 read:confluence-content.all
+read:confluence-content.summary
 write:confluence-content
 read:confluence-space.summary
 ```
