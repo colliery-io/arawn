@@ -366,6 +366,79 @@ impl Tool for RetroPatchItemTool {
 #[allow(dead_code)]
 fn _add_item_unused(_: AddItemRequest) {}
 
+// ============================================================================
+// retro_set_cadence
+// ============================================================================
+
+/// Persist a new retro cadence (`weekly` / `biweekly` / `monthly`).
+/// Applies on next restart — the live plugin instance still has the
+/// old cadence until then. See ARAWN-T-0367.
+pub struct RetroSetCadenceTool {
+    svc: Arc<CeremonyService>,
+}
+
+impl RetroSetCadenceTool {
+    pub fn new(svc: Arc<CeremonyService>) -> Self {
+        Self { svc }
+    }
+}
+
+#[async_trait]
+impl Tool for RetroSetCadenceTool {
+    fn name(&self) -> &str {
+        "retro_set_cadence"
+    }
+
+    fn description(&self) -> &str {
+        "Persist the retro cadence: `weekly` (default), `biweekly`, \
+         or `monthly`. Stored in the ceremony_config table; applies \
+         on next arawn serve restart. Returns the parsed cadence \
+         and whether an anchor was set. For biweekly the anchor is \
+         today's Monday by default."
+    }
+
+    fn category(&self) -> ToolCategory {
+        ToolCategory::Ceremony
+    }
+
+    fn parameters_schema(&self) -> Value {
+        json!({
+            "type": "object",
+            "properties": {
+                "cadence": {
+                    "type": "string",
+                    "enum": ["weekly", "biweekly", "monthly"],
+                    "description": "How often retro should fire."
+                }
+            },
+            "required": ["cadence"],
+            "additionalProperties": false
+        })
+    }
+
+    async fn execute(
+        &self,
+        _ctx: &dyn arawn_tool::ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
+        let cadence_str = match params.get("cadence").and_then(|v| v.as_str()) {
+            Some(s) if !s.is_empty() => s,
+            _ => return Ok(ToolOutput::error("cadence is required")),
+        };
+        match self.svc.set_retro_cadence(cadence_str, None) {
+            Ok(cadence) => Ok(ToolOutput::success(
+                json!({
+                    "status": "saved",
+                    "cadence": cadence.as_str(),
+                    "note": "applies on next arawn serve restart",
+                })
+                .to_string(),
+            )),
+            Err(e) => Ok(map_err(e)),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

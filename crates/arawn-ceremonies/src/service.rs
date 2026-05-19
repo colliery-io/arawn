@@ -144,6 +144,38 @@ impl CeremonyService {
         self
     }
 
+    /// `ceremonies.set_retro_cadence` — persist a new retro cadence
+    /// + anchor to `ceremony_config`. Applied to the live plugin on
+    /// next restart. (Hot-applying would need interior mutability on
+    /// the plugin Arc; deferred until that's actually painful.)
+    ///
+    /// `cadence_str` accepts `"weekly"` / `"biweekly"` / `"monthly"`
+    /// (case-insensitive). For biweekly the anchor is set to "today's
+    /// Monday" if `anchor` is `None`; for weekly/monthly the anchor
+    /// is cleared.
+    pub fn set_retro_cadence(
+        &self,
+        cadence_str: &str,
+        anchor: Option<chrono::NaiveDate>,
+    ) -> Result<crate::plugins::RetroCadence, CeremonyError> {
+        let cadence = crate::plugins::RetroCadence::parse(cadence_str).ok_or_else(|| {
+            CeremonyError::Other(format!(
+                "unknown retro cadence '{cadence_str}' (want weekly/biweekly/monthly)"
+            ))
+        })?;
+        let resolved_anchor = match cadence {
+            crate::plugins::RetroCadence::Biweekly => Some(anchor.unwrap_or_else(|| {
+                use chrono::Datelike;
+                let today = Utc::now().date_naive();
+                let offset = today.weekday().num_days_from_monday() as i64;
+                today - chrono::Duration::days(offset)
+            })),
+            _ => None,
+        };
+        crate::plugins::RetroCeremony::save_cadence(&self.conn, cadence, resolved_anchor)?;
+        Ok(cadence)
+    }
+
     /// `ceremonies.get_today` — today's daily tablet, if any.
     /// Today is the UTC date — production may want to substitute
     /// a local-zone date once a user-zone config exists.

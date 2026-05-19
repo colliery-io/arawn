@@ -16,7 +16,7 @@ pub use gather_sources::{
     AttentionSource, CalEvent, CalendarSource, NoopCalendarSource, SignalRow,
     StaticAttentionSource, StaticCalendarSource,
 };
-pub use retro::RetroCeremony;
+pub use retro::{RetroCadence, RetroCeremony};
 pub use retro_detectors::{
     PriorityCompletionDetector, RolloverHeatDetector, WorkstreamNeglectDetector,
     v1_catalog as retro_v1_catalog,

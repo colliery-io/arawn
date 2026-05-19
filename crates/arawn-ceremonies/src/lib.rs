@@ -40,7 +40,7 @@ pub use plugin::{
 };
 pub use plugins::{
     AttentionSource, CalEvent, CalendarSource, DailyCeremony, NoopCalendarSource,
-    PriorityCompletionDetector, RetroCeremony, RolloverHeatDetector, SignalRow,
+    PriorityCompletionDetector, RetroCadence, RetroCeremony, RolloverHeatDetector, SignalRow,
     StaticAttentionSource, StaticCalendarSource, WeeklyCeremony, WorkstreamNeglectDetector,
     retro_v1_catalog,
 };

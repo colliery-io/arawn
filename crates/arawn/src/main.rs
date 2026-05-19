@@ -1552,9 +1552,41 @@ async fn main() -> Result<()> {
                                 }
                             }
                         };
+                        // Cadence resolution (T-0367):
+                        //   1. DB row in ceremony_config (live tool writes)
+                        //   2. [ceremonies.retro] cadence in arawn.toml
+                        //   3. Weekly default.
+                        let toml_cadence = retro_cfg
+                            .and_then(|c| c.cadence.as_deref())
+                            .and_then(arawn_ceremonies::RetroCadence::parse);
+                        let (cadence, mut anchor) =
+                            arawn_ceremonies::RetroCeremony::load_persisted_cadence(
+                                &conn_handle,
+                                toml_cadence,
+                            );
+                        // Biweekly needs an anchor. If absent (first
+                        // boot on this cadence), initialise to "this
+                        // Monday" and persist so the cycle is stable.
+                        if cadence == arawn_ceremonies::RetroCadence::Biweekly && anchor.is_none() {
+                            use chrono::Datelike;
+                            let today = chrono::Utc::now().date_naive();
+                            let weekday_offset =
+                                today.weekday().num_days_from_monday() as i64;
+                            let this_monday =
+                                today - chrono::Duration::days(weekday_offset);
+                            anchor = Some(this_monday);
+                            if let Err(e) = arawn_ceremonies::RetroCeremony::save_cadence(
+                                &conn_handle,
+                                cadence,
+                                anchor,
+                            ) {
+                                warn!(error = %e, "failed to persist initial retro cadence anchor");
+                            }
+                        }
                         let retro = arawn_ceremonies::RetroCeremony::new(retro_client, retro_model)
                             .with_detectors(arawn_ceremonies::retro_v1_catalog())
-                            .with_timezone(retro_tz);
+                            .with_timezone(retro_tz)
+                            .with_cadence(cadence, anchor);
                         if let Err(e) = plugin_reg.register(Arc::new(retro)) {
                             warn!(error = %e, "ceremony retro plugin registration failed");
                         }
@@ -1880,6 +1912,9 @@ async fn main() -> Result<()> {
                             Arc::clone(&cer_service),
                         )));
                         registry.register(Box::new(arawn_engine::RetroPatchItemTool::new(
+                            Arc::clone(&cer_service),
+                        )));
+                        registry.register(Box::new(arawn_engine::RetroSetCadenceTool::new(
                             Arc::clone(&cer_service),
                         )));
                     }

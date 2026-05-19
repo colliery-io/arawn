@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-19T21:05:25Z | 370 files | Python, Rust
+> Generated: 2026-05-19T22:06:55Z | 370 files | Python, Rust
 
 ## Project Structure
 
@@ -522,20 +522,20 @@
 - pub `IntegrationsConfig` struct L306-333 — `{ slack: IntegrationCredentials, google: IntegrationCredentials, gmail: Integrat...` — Per-integration credential blocks.
 - pub `ArawnConfig` struct L337-369 — `{ llm: HashMap<String, LlmConfig>, engine: EngineConfig, compactor: CompactorCon...` — Top-level configuration.
 - pub `BackfillConfig` struct L373-380 — `{ ceremony_lookback_days: u32 }` — `[backfill]` table — boot-time ceremony recovery knobs.
-- pub `CeremonyConfig` struct L398-418 — `{ enabled: Option<bool>, schedule: Option<String>, timezone: Option<String>, mod...` — One ceremony's runtime overrides.
-- pub `is_enabled` function L422-424 — `(&self) -> bool` — `enabled` field defaulting to `true`.
-- pub `RoutingConfig` struct L431-436 — `{ hints: HintRoutingConfig, providers: ProvidersRoutingConfig }` — Routing configuration.
-- pub `ProvidersRoutingConfig` struct L443-452 — `{ local: Option<String>, remote: Option<String> }` — Names of the `[llm.NAME]` profiles that play the Local and Remote
-- pub `HintRoutingConfig` struct L458-468 — `{ lightweight: Option<String>, medium: Option<String>, heavy: Option<String> }` — Maps each `ModelHint` tier to a named `[llm.NAME]` profile.
-- pub `load` function L497-530 — `(data_dir: &Path) -> Self` — Load config from `data_dir/arawn.toml`, merging with env var overrides and defaults.
-- pub `engine_llm` function L553-558 — `(&self) -> &LlmConfig` — Resolve the LLM config for the engine.
-- pub `compactor_llm` function L561-568 — `(&self) -> &LlmConfig` — Resolve the LLM config for the compactor.
-- pub `extraction_llm` function L573-580 — `(&self) -> &LlmConfig` — Resolve the LLM config for the per-workstream extractor.
-- pub `extraction_llm_name` function L585-590 — `(&self) -> &str` — The configured name of the extraction LLM (or the engine's
-- pub `data_dir` function L593-595 — `(&self) -> PathBuf` — Resolve the data directory with ~ expansion.
-- pub `prompts_dir` function L598-600 — `(&self) -> PathBuf` — Resolve the prompts directory.
-- pub `resolve_api_key` function L604-611 — `(llm: &LlmConfig) -> Option<String>` — Resolve API key for an LLM config.
-- pub `generate_default_toml` function L614-724 — `() -> String` — Generate a default config file string with comments.
+- pub `CeremonyConfig` struct L398-424 — `{ enabled: Option<bool>, schedule: Option<String>, timezone: Option<String>, mod...` — One ceremony's runtime overrides.
+- pub `is_enabled` function L428-430 — `(&self) -> bool` — `enabled` field defaulting to `true`.
+- pub `RoutingConfig` struct L437-442 — `{ hints: HintRoutingConfig, providers: ProvidersRoutingConfig }` — Routing configuration.
+- pub `ProvidersRoutingConfig` struct L449-458 — `{ local: Option<String>, remote: Option<String> }` — Names of the `[llm.NAME]` profiles that play the Local and Remote
+- pub `HintRoutingConfig` struct L464-474 — `{ lightweight: Option<String>, medium: Option<String>, heavy: Option<String> }` — Maps each `ModelHint` tier to a named `[llm.NAME]` profile.
+- pub `load` function L503-536 — `(data_dir: &Path) -> Self` — Load config from `data_dir/arawn.toml`, merging with env var overrides and defaults.
+- pub `engine_llm` function L559-564 — `(&self) -> &LlmConfig` — Resolve the LLM config for the engine.
+- pub `compactor_llm` function L567-574 — `(&self) -> &LlmConfig` — Resolve the LLM config for the compactor.
+- pub `extraction_llm` function L579-586 — `(&self) -> &LlmConfig` — Resolve the LLM config for the per-workstream extractor.
+- pub `extraction_llm_name` function L591-596 — `(&self) -> &str` — The configured name of the extraction LLM (or the engine's
+- pub `data_dir` function L599-601 — `(&self) -> PathBuf` — Resolve the data directory with ~ expansion.
+- pub `prompts_dir` function L604-606 — `(&self) -> PathBuf` — Resolve the prompts directory.
+- pub `resolve_api_key` function L610-617 — `(llm: &LlmConfig) -> Option<String>` — Resolve API key for an LLM config.
+- pub `generate_default_toml` function L620-730 — `() -> String` — Generate a default config file string with comments.
 -  `default_api_key_env` function L36-38 — `() -> String`
 -  `default_context_window` function L39-41 — `() -> u32`
 -  `default_max_tokens` function L42-44 — `() -> u32`
@@ -568,27 +568,27 @@
 -  `default_backfill_lookback` function L382-384 — `() -> u32`
 -  `BackfillConfig` type L386-392 — `impl Default for BackfillConfig`
 -  `default` function L387-391 — `() -> Self`
--  `CeremonyConfig` type L420-425 — `= CeremonyConfig`
--  `default_llm_configs` function L470-474 — `() -> HashMap<String, LlmConfig>`
--  `ArawnConfig` type L476-493 — `impl Default for ArawnConfig`
--  `default` function L477-492 — `() -> Self`
--  `ArawnConfig` type L495-725 — `= ArawnConfig`
--  `apply_env_overrides` function L532-550 — `(&mut self)`
--  `expand_tilde` function L727-734 — `(path: &str) -> PathBuf`
--  `tests` module L737-920 — `-`
--  `default_config_has_working_values` function L741-750 — `()`
--  `load_from_toml_string` function L753-773 — `()`
--  `compactor_falls_back_to_engine_llm` function L776-781 — `()`
--  `compactor_uses_own_llm_when_specified` function L784-803 — `()`
--  `missing_llm_name_falls_back_to_default_via_load` function L806-822 — `()`
--  `load_missing_file_uses_defaults` function L825-829 — `()`
--  `load_from_tempdir` function L832-850 — `()`
--  `generate_default_toml_is_parseable` function L853-857 — `()`
--  `tilde_expansion` function L860-863 — `()`
--  `empty_config_has_no_ceremony_overrides` function L866-872 — `()`
--  `ceremonies_table_parses_full_block` function L875-890 — `()`
--  `ceremonies_disabled_observed` function L893-905 — `()`
--  `ceremonies_partial_block_keeps_other_fields_none` function L908-919 — `()`
+-  `CeremonyConfig` type L426-431 — `= CeremonyConfig`
+-  `default_llm_configs` function L476-480 — `() -> HashMap<String, LlmConfig>`
+-  `ArawnConfig` type L482-499 — `impl Default for ArawnConfig`
+-  `default` function L483-498 — `() -> Self`
+-  `ArawnConfig` type L501-731 — `= ArawnConfig`
+-  `apply_env_overrides` function L538-556 — `(&mut self)`
+-  `expand_tilde` function L733-740 — `(path: &str) -> PathBuf`
+-  `tests` module L743-926 — `-`
+-  `default_config_has_working_values` function L747-756 — `()`
+-  `load_from_toml_string` function L759-779 — `()`
+-  `compactor_falls_back_to_engine_llm` function L782-787 — `()`
+-  `compactor_uses_own_llm_when_specified` function L790-809 — `()`
+-  `missing_llm_name_falls_back_to_default_via_load` function L812-828 — `()`
+-  `load_missing_file_uses_defaults` function L831-835 — `()`
+-  `load_from_tempdir` function L838-856 — `()`
+-  `generate_default_toml_is_parseable` function L859-863 — `()`
+-  `tilde_expansion` function L866-869 — `()`
+-  `empty_config_has_no_ceremony_overrides` function L872-878 — `()`
+-  `ceremonies_table_parses_full_block` function L881-896 — `()`
+-  `ceremonies_disabled_observed` function L899-911 — `()`
+-  `ceremonies_partial_block_keeps_other_fields_none` function L914-925 — `()`
 
 #### crates/arawn/src/config_watcher.rs
 
@@ -795,7 +795,7 @@
 -  `embed_batch` function L16-25 — `( &'a self, texts: &'a [&'a str], ) -> std::pin::Pin< Box<dyn std::future::Futur...`
 -  `DEFAULT_MODEL` variable L33 — `: &str`
 -  `FILE_LOG_FILTER` variable L36 — `: &str` — Default file log filter: debug for arawn crates, warn for third-party.
--  `main` function L39-2064 — `() -> Result<()>`
+-  `main` function L39-2099 — `() -> Result<()>`
 -  `Cli` struct L49-68 — `{ command: Option<Command>, data_dir: Option<String>, session: Option<Uuid>, lis...`
 -  `Command` enum L71-111 — `Serve | Tui | Plugin | Doctor | Usage`
 -  `ExtractorBindHook` struct L842-853 — `{ runner: Arc<arawn_extractor::ExtractorRunner>, store: Arc<std::sync::Mutex<ara...`
@@ -804,16 +804,16 @@
 -  `FeedRuntimeUnbindHook` struct L965-968 — `{ feed_runtime: Arc<std::sync::RwLock<Option<Arc<arawn_feeds::FeedRuntime>>>> }`
 -  `FeedRuntimeUnbindHook` type L969-984 — `= FeedRuntimeUnbindHook`
 -  `on_unbind` function L970-983 — `(&self, removed_feed_ids: &[String])`
--  `resolve_ceremony_tz` function L1580-1604 — `(kind: &str, raw: Option<&str>) -> chrono_tz::Tz`
--  `run_cli_via_server` function L2067-2169 — `(url: &str, prompt: &str, session_id: Option<Uuid>) -> Result<()>` — Run a CLI prompt by connecting to the running server via WebSocket.
--  `build_llm_client` function L2172-2193 — `(config: &arawn_bin::LlmConfig) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
--  `register_default_tools` function L2196-2238 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &arawn_bin::ArawnConfig, d...` — Register all default tools into the registry.
--  `connect_mcp_servers` function L2241-2285 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
--  `register_workflow_tools` function L2288-2305 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
--  `build_engine_config` function L2307-2350 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
--  `expand_github_org` function L2360-2423 — `( github: Arc<arawn_integrations::github::GithubIntegration>, store: Arc<std::sy...` — I-0050 T-0327 — list every repo under `owner` (via the github
--  `register_one_feed` function L2429-2461 — `( feed_runtime: Arc<arawn_feeds::FeedRuntime>, store: Arc<std::sync::Mutex<arawn...` — T-0329 — fetch a feed record by id and register its cron schedule
--  `dirs_path` function L2463-2472 — `() -> Option<String>`
+-  `resolve_ceremony_tz` function L1612-1636 — `(kind: &str, raw: Option<&str>) -> chrono_tz::Tz`
+-  `run_cli_via_server` function L2102-2204 — `(url: &str, prompt: &str, session_id: Option<Uuid>) -> Result<()>` — Run a CLI prompt by connecting to the running server via WebSocket.
+-  `build_llm_client` function L2207-2228 — `(config: &arawn_bin::LlmConfig) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
+-  `register_default_tools` function L2231-2273 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &arawn_bin::ArawnConfig, d...` — Register all default tools into the registry.
+-  `connect_mcp_servers` function L2276-2320 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
+-  `register_workflow_tools` function L2323-2340 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
+-  `build_engine_config` function L2342-2385 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
+-  `expand_github_org` function L2395-2458 — `( github: Arc<arawn_integrations::github::GithubIntegration>, store: Arc<std::sy...` — I-0050 T-0327 — list every repo under `owner` (via the github
+-  `register_one_feed` function L2464-2496 — `( feed_runtime: Arc<arawn_feeds::FeedRuntime>, store: Arc<std::sync::Mutex<arawn...` — T-0329 — fetch a feed record by id and register its cron schedule
+-  `dirs_path` function L2498-2507 — `() -> Option<String>`
 
 #### crates/arawn/src/plugin_cmd.rs
 
@@ -1381,60 +1381,61 @@
 - pub `CeremonyService` struct L124-128 — `{ conn: ConnHandle, dispatcher: Arc<dyn CeremonyDispatcher>, events: Option<Cere...` — The methods correspond 1:1 to the `ceremonies.*` WS-RPC method
 - pub `new` function L131-137 — `(conn: ConnHandle, dispatcher: Arc<dyn CeremonyDispatcher>) -> Self` — Filed as a follow-up.
 - pub `with_events` function L142-145 — `(mut self, sender: CeremonyEventSender) -> Self` — Attach the event sender.
-- pub `get_today` function L150-153 — `(&self) -> Result<Option<TabletDto>, CeremonyError>` — `ceremonies.get_today` — today's daily tablet, if any.
-- pub `get_by_period` function L156-174 — `( &self, kind: &str, period_key: &str, ) -> Result<Option<TabletDto>, CeremonyEr...` — `ceremonies.get_by_period` — specific tablet.
-- pub `list_items` function L178-204 — `( &self, tablet_id: &str, section_key: Option<&str>, ) -> Result<Vec<ItemDto>, C...` — `ceremonies.list_items` — items in a tablet, optionally
-- pub `patch_item` function L208-252 — `(&self, item_id: &str, patch: ItemPatch) -> Result<ItemDto, CeremonyError>` — `ceremonies.patch_item` — toggle done, edit body.
-- pub `add_item` function L257-309 — `(&self, req: AddItemRequest) -> Result<ItemDto, CeremonyError>` — `ceremonies.add_item` — user-write path.
-- pub `run` function L312-314 — `(&self, kind: &str) -> Result<DispatchOutcome, CeremonyError>` — `ceremonies.run` — manual trigger; idempotent per period_key.
-- pub `add_rolling_todo` function L324-352 — `( &self, body: &str, origin_tablet_id: &str, ) -> Result<String, CeremonyError>` — User-write helper used by `daily_add_todo`: insert a row into
-- pub `confirm_priority` function L358-499 — `(&self, item_id: &str) -> Result<PriorityDto, CeremonyError>` — `ceremonies.confirm_priority` — promote a priority candidate
-- pub `reject_priority` function L504-541 — `(&self, item_id: &str) -> Result<(), CeremonyError>` — `ceremonies.reject_priority` — delete a priority candidate item.
-- pub `add_priority` function L546-597 — `(&self, req: AddPriorityRequest) -> Result<PriorityDto, CeremonyError>` — `ceremonies.add_priority` — user-write path.
-- pub `list_priorities` function L602-702 — `(&self, tablet_id: &str) -> Result<Vec<PriorityDto>, CeremonyError>` — `ceremonies.list_priorities` — union of confirmed priorities
-- pub `get_diary` function L718-731 — `(&self, tablet_id: &str) -> Result<Option<String>, CeremonyError>` — `ceremonies.upsert_diary` — writes (or replaces) the user's
-- pub `upsert_diary` function L733-789 — `(&self, tablet_id: &str, body: &str) -> Result<(), CeremonyError>` — Filed as a follow-up.
-- pub `list_notifications` function L795-825 — `(&self) -> Result<Vec<NotificationDto>, CeremonyError>` — `ceremonies.list_notifications` — tablets the user has not
--  `CeremonyService` type L130-826 — `= CeremonyService` — Filed as a follow-up.
--  `row_to_tablet` function L830-845 — `(row: &rusqlite::Row<'_>) -> rusqlite::Result<TabletDto>` — Filed as a follow-up.
--  `row_to_item` function L847-861 — `(row: &rusqlite::Row<'_>) -> rusqlite::Result<ItemDto>` — Filed as a follow-up.
--  `kind_str` function L863-873 — `(k: &ItemKind) -> &'static str` — Filed as a follow-up.
--  `status_str` function L879-881 — `(s: TabletStatus) -> &'static str` — Tiny use-once helper so callers that only need to render a
--  `tests` module L884-1535 — `-` — Filed as a follow-up.
--  `open_test_db` function L895-902 — `() -> (TempDir, ConnHandle)` — Filed as a follow-up.
--  `ScriptedPlugin` struct L904-908 — `{ kind: &'static str, items: std::sync::Mutex<Vec<NewItem>>, period: String }` — Filed as a follow-up.
--  `ScriptedPlugin` type L910-937 — `impl Ceremony for ScriptedPlugin` — Filed as a follow-up.
--  `kind` function L911-913 — `(&self) -> &'static str` — Filed as a follow-up.
--  `period_key` function L914-916 — `(&self, _now: chrono::DateTime<Utc>) -> String` — Filed as a follow-up.
--  `period_window` function L917-923 — `( &self, _period_key: &str, ) -> Result<(chrono::DateTime<Utc>, chrono::DateTime...` — Filed as a follow-up.
--  `default_schedule` function L924-926 — `(&self) -> CronSchedule` — Filed as a follow-up.
--  `gather` function L927-929 — `(&self, _ctx: &dyn CeremonyCtx) -> Result<GatheredFacts, CeremonyError>` — Filed as a follow-up.
--  `compose` function L930-936 — `( &self, _ctx: &dyn CeremonyCtx, _facts: GatheredFacts, ) -> Result<Vec<NewItem>...` — Filed as a follow-up.
--  `build_service_with_items` function L939-975 — `( kind: &'static str, period: &str, tablet_id_prefix: &str, ) -> (TempDir, Cerem...` — Filed as a follow-up.
--  `run_generates_and_get_by_period_reads_back` function L978-985 — `()` — Filed as a follow-up.
--  `list_items_filters_by_section` function L988-997 — `()` — Filed as a follow-up.
--  `patch_item_toggles_done` function L1000-1029 — `()` — Filed as a follow-up.
--  `add_item_inserts_user_row_with_null_citation_and_next_ordinal` function L1032-1049 — `()` — Filed as a follow-up.
--  `list_notifications_surfaces_open_tablets` function L1052-1059 — `()` — Filed as a follow-up.
--  `get_today_returns_none_when_no_daily_tablet` function L1062-1068 — `()` — Filed as a follow-up.
--  `dispatch_emits_tablet_generated_event` function L1071-1105 — `()` — Filed as a follow-up.
--  `upsert_diary_writes_row_and_flips_status` function L1108-1136 — `()` — Filed as a follow-up.
--  `upsert_diary_is_idempotent_and_replaces_body` function L1139-1160 — `()` — Filed as a follow-up.
--  `upsert_diary_rejects_non_retro_tablet` function L1163-1180 — `()` — Filed as a follow-up.
--  `upsert_diary_rejects_unknown_tablet` function L1183-1189 — `()` — Filed as a follow-up.
--  `upsert_diary_emits_diary_updated_event` function L1192-1207 — `()` — Filed as a follow-up.
--  `service_internals` function L1213-1218 — `(service: &CeremonyService) -> (ConnHandle, (), ())` — Tiny accessor for the in-test connection so the diary tests
--  `build_weekly_with_priority_candidates` function L1224-1261 — `( n: usize, ) -> (TempDir, CeremonyService, String, Vec<String>)` — Build a weekly tablet with N priority candidate items via raw
--  `confirm_priority_happy_path_inserts_row_and_copies_citation` function L1264-1282 — `()` — Filed as a follow-up.
--  `confirm_priority_preserves_rationale_from_body` function L1285-1330 — `()` — Filed as a follow-up.
--  `confirm_priority_leaves_rationale_null_when_body_has_none` function L1333-1351 — `()` — Filed as a follow-up.
--  `confirm_priority_is_idempotent` function L1354-1369 — `()` — Filed as a follow-up.
--  `confirm_priority_rejects_non_priority_item` function L1372-1399 — `()` — Filed as a follow-up.
--  `reject_priority_deletes_item_and_priority_row` function L1402-1424 — `()` — Filed as a follow-up.
--  `add_priority_inserts_with_null_citation` function L1427-1450 — `()` — Filed as a follow-up.
--  `list_priorities_unions_confirmed_and_candidates_deduped` function L1453-1482 — `()` — Filed as a follow-up.
--  `confirm_priority_emits_priority_confirmed_event` function L1485-1502 — `()` — Filed as a follow-up.
--  `patch_item_emits_item_updated_event` function L1505-1534 — `()` — Filed as a follow-up.
+- pub `set_retro_cadence` function L156-177 — `( &self, cadence_str: &str, anchor: Option<chrono::NaiveDate>, ) -> Result<crate...` — `ceremonies.set_retro_cadence` — persist a new retro cadence
+- pub `get_today` function L182-185 — `(&self) -> Result<Option<TabletDto>, CeremonyError>` — `ceremonies.get_today` — today's daily tablet, if any.
+- pub `get_by_period` function L188-206 — `( &self, kind: &str, period_key: &str, ) -> Result<Option<TabletDto>, CeremonyEr...` — `ceremonies.get_by_period` — specific tablet.
+- pub `list_items` function L210-236 — `( &self, tablet_id: &str, section_key: Option<&str>, ) -> Result<Vec<ItemDto>, C...` — `ceremonies.list_items` — items in a tablet, optionally
+- pub `patch_item` function L240-284 — `(&self, item_id: &str, patch: ItemPatch) -> Result<ItemDto, CeremonyError>` — `ceremonies.patch_item` — toggle done, edit body.
+- pub `add_item` function L289-341 — `(&self, req: AddItemRequest) -> Result<ItemDto, CeremonyError>` — `ceremonies.add_item` — user-write path.
+- pub `run` function L344-346 — `(&self, kind: &str) -> Result<DispatchOutcome, CeremonyError>` — `ceremonies.run` — manual trigger; idempotent per period_key.
+- pub `add_rolling_todo` function L356-384 — `( &self, body: &str, origin_tablet_id: &str, ) -> Result<String, CeremonyError>` — User-write helper used by `daily_add_todo`: insert a row into
+- pub `confirm_priority` function L390-531 — `(&self, item_id: &str) -> Result<PriorityDto, CeremonyError>` — `ceremonies.confirm_priority` — promote a priority candidate
+- pub `reject_priority` function L536-573 — `(&self, item_id: &str) -> Result<(), CeremonyError>` — `ceremonies.reject_priority` — delete a priority candidate item.
+- pub `add_priority` function L578-629 — `(&self, req: AddPriorityRequest) -> Result<PriorityDto, CeremonyError>` — `ceremonies.add_priority` — user-write path.
+- pub `list_priorities` function L634-734 — `(&self, tablet_id: &str) -> Result<Vec<PriorityDto>, CeremonyError>` — `ceremonies.list_priorities` — union of confirmed priorities
+- pub `get_diary` function L750-763 — `(&self, tablet_id: &str) -> Result<Option<String>, CeremonyError>` — `ceremonies.upsert_diary` — writes (or replaces) the user's
+- pub `upsert_diary` function L765-821 — `(&self, tablet_id: &str, body: &str) -> Result<(), CeremonyError>` — Filed as a follow-up.
+- pub `list_notifications` function L827-857 — `(&self) -> Result<Vec<NotificationDto>, CeremonyError>` — `ceremonies.list_notifications` — tablets the user has not
+-  `CeremonyService` type L130-858 — `= CeremonyService` — Filed as a follow-up.
+-  `row_to_tablet` function L862-877 — `(row: &rusqlite::Row<'_>) -> rusqlite::Result<TabletDto>` — Filed as a follow-up.
+-  `row_to_item` function L879-893 — `(row: &rusqlite::Row<'_>) -> rusqlite::Result<ItemDto>` — Filed as a follow-up.
+-  `kind_str` function L895-905 — `(k: &ItemKind) -> &'static str` — Filed as a follow-up.
+-  `status_str` function L911-913 — `(s: TabletStatus) -> &'static str` — Tiny use-once helper so callers that only need to render a
+-  `tests` module L916-1567 — `-` — Filed as a follow-up.
+-  `open_test_db` function L927-934 — `() -> (TempDir, ConnHandle)` — Filed as a follow-up.
+-  `ScriptedPlugin` struct L936-940 — `{ kind: &'static str, items: std::sync::Mutex<Vec<NewItem>>, period: String }` — Filed as a follow-up.
+-  `ScriptedPlugin` type L942-969 — `impl Ceremony for ScriptedPlugin` — Filed as a follow-up.
+-  `kind` function L943-945 — `(&self) -> &'static str` — Filed as a follow-up.
+-  `period_key` function L946-948 — `(&self, _now: chrono::DateTime<Utc>) -> String` — Filed as a follow-up.
+-  `period_window` function L949-955 — `( &self, _period_key: &str, ) -> Result<(chrono::DateTime<Utc>, chrono::DateTime...` — Filed as a follow-up.
+-  `default_schedule` function L956-958 — `(&self) -> CronSchedule` — Filed as a follow-up.
+-  `gather` function L959-961 — `(&self, _ctx: &dyn CeremonyCtx) -> Result<GatheredFacts, CeremonyError>` — Filed as a follow-up.
+-  `compose` function L962-968 — `( &self, _ctx: &dyn CeremonyCtx, _facts: GatheredFacts, ) -> Result<Vec<NewItem>...` — Filed as a follow-up.
+-  `build_service_with_items` function L971-1007 — `( kind: &'static str, period: &str, tablet_id_prefix: &str, ) -> (TempDir, Cerem...` — Filed as a follow-up.
+-  `run_generates_and_get_by_period_reads_back` function L1010-1017 — `()` — Filed as a follow-up.
+-  `list_items_filters_by_section` function L1020-1029 — `()` — Filed as a follow-up.
+-  `patch_item_toggles_done` function L1032-1061 — `()` — Filed as a follow-up.
+-  `add_item_inserts_user_row_with_null_citation_and_next_ordinal` function L1064-1081 — `()` — Filed as a follow-up.
+-  `list_notifications_surfaces_open_tablets` function L1084-1091 — `()` — Filed as a follow-up.
+-  `get_today_returns_none_when_no_daily_tablet` function L1094-1100 — `()` — Filed as a follow-up.
+-  `dispatch_emits_tablet_generated_event` function L1103-1137 — `()` — Filed as a follow-up.
+-  `upsert_diary_writes_row_and_flips_status` function L1140-1168 — `()` — Filed as a follow-up.
+-  `upsert_diary_is_idempotent_and_replaces_body` function L1171-1192 — `()` — Filed as a follow-up.
+-  `upsert_diary_rejects_non_retro_tablet` function L1195-1212 — `()` — Filed as a follow-up.
+-  `upsert_diary_rejects_unknown_tablet` function L1215-1221 — `()` — Filed as a follow-up.
+-  `upsert_diary_emits_diary_updated_event` function L1224-1239 — `()` — Filed as a follow-up.
+-  `service_internals` function L1245-1250 — `(service: &CeremonyService) -> (ConnHandle, (), ())` — Tiny accessor for the in-test connection so the diary tests
+-  `build_weekly_with_priority_candidates` function L1256-1293 — `( n: usize, ) -> (TempDir, CeremonyService, String, Vec<String>)` — Build a weekly tablet with N priority candidate items via raw
+-  `confirm_priority_happy_path_inserts_row_and_copies_citation` function L1296-1314 — `()` — Filed as a follow-up.
+-  `confirm_priority_preserves_rationale_from_body` function L1317-1362 — `()` — Filed as a follow-up.
+-  `confirm_priority_leaves_rationale_null_when_body_has_none` function L1365-1383 — `()` — Filed as a follow-up.
+-  `confirm_priority_is_idempotent` function L1386-1401 — `()` — Filed as a follow-up.
+-  `confirm_priority_rejects_non_priority_item` function L1404-1431 — `()` — Filed as a follow-up.
+-  `reject_priority_deletes_item_and_priority_row` function L1434-1456 — `()` — Filed as a follow-up.
+-  `add_priority_inserts_with_null_citation` function L1459-1482 — `()` — Filed as a follow-up.
+-  `list_priorities_unions_confirmed_and_candidates_deduped` function L1485-1514 — `()` — Filed as a follow-up.
+-  `confirm_priority_emits_priority_confirmed_event` function L1517-1534 — `()` — Filed as a follow-up.
+-  `patch_item_emits_item_updated_event` function L1537-1566 — `()` — Filed as a follow-up.
 
 #### crates/arawn-ceremonies/src/types.rs
 
@@ -1523,46 +1524,68 @@
 
 #### crates/arawn-ceremonies/src/plugins/retro.rs
 
-- pub `RetroCeremony` struct L40-54 — `{ llm: Arc<dyn arawn_llm::LlmClient>, model: String, detectors: DetectorRegistry...` — The retro plugin.
-- pub `new` function L57-64 — `(llm: Arc<dyn arawn_llm::LlmClient>, model: impl Into<String>) -> Self` — does not gate again.
-- pub `with_detectors` function L68-71 — `(mut self, detectors: DetectorRegistry) -> Self` — Attach the detector registry (typically the v1 catalog
-- pub `with_timezone` function L74-77 — `(mut self, tz: chrono_tz::Tz) -> Self` — Override the timezone used for `period_window` boundary math.
-- pub `iso_week` function L82-85 — `(now: DateTime<Utc>) -> String` — Compute the ISO-week string (`YYYY-Www`) for a given moment.
--  `RetroCeremony` type L56-86 — `= RetroCeremony` — does not gate again.
--  `GatherPayload` struct L91-97 — `{ iso_week: String, daily_tablets: Vec<DailyTabletSummary>, confirmed_priorities...` — does not gate again.
--  `DailyTabletSummary` struct L100-104 — `{ tablet_id: String, period_key: String, item_count: i64 }` — does not gate again.
--  `PrioritySummary` struct L107-111 — `{ id: String, body: String, done: bool }` — does not gate again.
--  `RollupRow` struct L114-118 — `{ workstream: String, metric_key: String, value: f64 }` — does not gate again.
--  `PriorRetro` struct L121-124 — `{ iso_week: String, diary_excerpt: Option<String> }` — does not gate again.
--  `RetroCeremony` type L127-380 — `impl Ceremony for RetroCeremony` — does not gate again.
--  `kind` function L128-130 — `(&self) -> &'static str` — does not gate again.
--  `period_window` function L132-156 — `( &self, period_key: &str, ) -> Result<(DateTime<Utc>, DateTime<Utc>), CeremonyE...` — does not gate again.
--  `period_key` function L158-160 — `(&self, now: DateTime<Utc>) -> String` — does not gate again.
--  `default_schedule` function L162-166 — `(&self) -> CronSchedule` — does not gate again.
--  `interactive_actions` function L168-173 — `(&self) -> Vec<InteractiveAction>` — does not gate again.
--  `patterns` function L175-177 — `(&self) -> Option<&dyn PatternDetector>` — does not gate again.
--  `gather` function L179-310 — `(&self, ctx: &dyn CeremonyCtx) -> Result<GatheredFacts, CeremonyError>` — does not gate again.
--  `compose` function L312-379 — `( &self, ctx: &dyn CeremonyCtx, facts: GatheredFacts, ) -> Result<Vec<NewItem>, ...` — does not gate again.
--  `SYSTEM_PROMPT` variable L382-390 — `: &str` — does not gate again.
--  `build_compose_prompt` function L392-402 — `(facts: &GatheredFacts) -> String` — does not gate again.
--  `ComposedItemSpec` struct L405-409 — `{ section: String, citation_id: String, body: serde_json::Value }` — does not gate again.
--  `parse_llm_items` function L414-437 — `(text: &str) -> Option<Vec<ComposedItemSpec>>` — Pull the first balanced JSON array out of the LLM's response.
--  `monday_sunday_for_iso_week_public` function L443-445 — `(iso_week: &str) -> Option<(String, String)>` — Re-export the iso-week date helper so the catalog (T-0288) can
--  `monday_sunday_for_iso_week` function L450-464 — `(iso_week: &str) -> Option<(String, String)>` — Compute Monday and Sunday `YYYY-MM-DD` strings that bracket an
--  `tests` module L467-711 — `-` — does not gate again.
--  `open_test_db` function L475-482 — `() -> (TempDir, ConnHandle)` — does not gate again.
--  `make_llm_with_response` function L484-488 — `(text: &str) -> Arc<dyn arawn_llm::LlmClient>` — does not gate again.
--  `seed_minimal_history` function L490-542 — `(conn: &ConnHandle, iso_week: &str)` — does not gate again.
--  `iso_week_format_is_yyyy_w_ww` function L545-551 — `()` — does not gate again.
--  `monday_sunday_brackets_iso_week_20` function L554-558 — `()` — does not gate again.
--  `gather_collects_week_payload` function L561-588 — `()` — does not gate again.
--  `compose_parses_llm_array_into_composed_items` function L591-612 — `()` — does not gate again.
--  `compose_rejects_empty_citation_with_missing_citation_error` function L615-627 — `()` — does not gate again.
--  `compose_parses_array_with_surrounding_prose` function L630-646 — `()` — does not gate again.
--  `end_to_end_dispatch_against_real_engine` function L649-686 — `()` — does not gate again.
--  `period_window_utc_iso_week` function L689-694 — `()` — does not gate again.
--  `period_window_pacific_iso_week` function L697-703 — `()` — does not gate again.
--  `period_window_rejects_non_iso_week` function L706-710 — `()` — does not gate again.
+- pub `RetroCadence` enum L50-54 — `Weekly | Biweekly | Monthly` — How often retro should run.
+- pub `parse` function L60-67 — `(s: &str) -> Option<Self>` — Parse a config string.
+- pub `as_str` function L69-75 — `(&self) -> &'static str` — does not gate again.
+- pub `RetroCeremony` struct L79-99 — `{ llm: Arc<dyn arawn_llm::LlmClient>, model: String, detectors: DetectorRegistry...` — The retro plugin.
+- pub `new` function L102-111 — `(llm: Arc<dyn arawn_llm::LlmClient>, model: impl Into<String>) -> Self` — does not gate again.
+- pub `with_detectors` function L115-118 — `(mut self, detectors: DetectorRegistry) -> Self` — Attach the detector registry (typically the v1 catalog
+- pub `with_timezone` function L121-124 — `(mut self, tz: chrono_tz::Tz) -> Self` — Override the timezone used for `period_window` boundary math.
+- pub `with_cadence` function L129-133 — `(mut self, cadence: RetroCadence, anchor: Option<NaiveDate>) -> Self` — Override the cadence + anchor.
+- pub `load_persisted_cadence` function L142-180 — `( conn: &ConnHandle, config_default: Option<RetroCadence>, ) -> (RetroCadence, O...` — Read the persisted cadence + anchor from `ceremony_config`,
+- pub `save_cadence` function L185-216 — `( conn: &ConnHandle, cadence: RetroCadence, anchor: Option<NaiveDate>, ) -> Resu...` — Persist cadence + anchor to `ceremony_config`.
+- pub `iso_week` function L221-224 — `(now: DateTime<Utc>) -> String` — Compute the ISO-week string (`YYYY-Www`) for a given moment.
+-  `RetroCadence` type L56-76 — `= RetroCadence` — does not gate again.
+-  `RetroCeremony` type L101-225 — `= RetroCeremony` — does not gate again.
+-  `weekly_window` function L230-250 — `( period_key: &str, tz: chrono_tz::Tz, ) -> Result<(DateTime<Utc>, DateTime<Utc>...` — Weekly window: `[Monday 00:00 local, next Monday 00:00 local)`.
+-  `biweekly_key` function L259-271 — `(date: NaiveDate, anchor: Option<NaiveDate>) -> String` — Biweekly period_key: `"B{N}"` where N is the count of complete
+-  `biweekly_window` function L275-292 — `( period_key: &str, anchor: NaiveDate, tz: chrono_tz::Tz, ) -> Result<(DateTime<...` — Biweekly window: `[anchor + 14N days, anchor + 14(N+1) days)`
+-  `monthly_key` function L295-297 — `(date: NaiveDate) -> String` — Monthly period_key: `"YYYY-MM"`.
+-  `monthly_window` function L301-329 — `( period_key: &str, tz: chrono_tz::Tz, ) -> Result<(DateTime<Utc>, DateTime<Utc>...` — Monthly window: `[first-of-month 00:00 local, first-of-next-month
+-  `GatherPayload` struct L334-340 — `{ iso_week: String, daily_tablets: Vec<DailyTabletSummary>, confirmed_priorities...` — does not gate again.
+-  `DailyTabletSummary` struct L343-347 — `{ tablet_id: String, period_key: String, item_count: i64 }` — does not gate again.
+-  `PrioritySummary` struct L350-354 — `{ id: String, body: String, done: bool }` — does not gate again.
+-  `RollupRow` struct L357-361 — `{ workstream: String, metric_key: String, value: f64 }` — does not gate again.
+-  `PriorRetro` struct L364-367 — `{ iso_week: String, diary_excerpt: Option<String> }` — does not gate again.
+-  `RetroCeremony` type L370-628 — `impl Ceremony for RetroCeremony` — does not gate again.
+-  `kind` function L371-373 — `(&self) -> &'static str` — does not gate again.
+-  `period_window` function L375-389 — `( &self, period_key: &str, ) -> Result<(DateTime<Utc>, DateTime<Utc>), CeremonyE...` — does not gate again.
+-  `period_key` function L391-397 — `(&self, now: DateTime<Utc>) -> String` — does not gate again.
+-  `period_key_for_date` function L399-408 — `(&self, date: NaiveDate) -> String` — does not gate again.
+-  `default_schedule` function L410-414 — `(&self) -> CronSchedule` — does not gate again.
+-  `interactive_actions` function L416-421 — `(&self) -> Vec<InteractiveAction>` — does not gate again.
+-  `patterns` function L423-425 — `(&self) -> Option<&dyn PatternDetector>` — does not gate again.
+-  `gather` function L427-558 — `(&self, ctx: &dyn CeremonyCtx) -> Result<GatheredFacts, CeremonyError>` — does not gate again.
+-  `compose` function L560-627 — `( &self, ctx: &dyn CeremonyCtx, facts: GatheredFacts, ) -> Result<Vec<NewItem>, ...` — does not gate again.
+-  `SYSTEM_PROMPT` variable L630-638 — `: &str` — does not gate again.
+-  `build_compose_prompt` function L640-650 — `(facts: &GatheredFacts) -> String` — does not gate again.
+-  `ComposedItemSpec` struct L653-657 — `{ section: String, citation_id: String, body: serde_json::Value }` — does not gate again.
+-  `parse_llm_items` function L662-685 — `(text: &str) -> Option<Vec<ComposedItemSpec>>` — Pull the first balanced JSON array out of the LLM's response.
+-  `monday_sunday_for_iso_week_public` function L691-693 — `(iso_week: &str) -> Option<(String, String)>` — Re-export the iso-week date helper so the catalog (T-0288) can
+-  `monday_sunday_for_iso_week` function L698-712 — `(iso_week: &str) -> Option<(String, String)>` — Compute Monday and Sunday `YYYY-MM-DD` strings that bracket an
+-  `tests` module L715-1110 — `-` — does not gate again.
+-  `open_test_db` function L723-730 — `() -> (TempDir, ConnHandle)` — does not gate again.
+-  `make_llm_with_response` function L732-736 — `(text: &str) -> Arc<dyn arawn_llm::LlmClient>` — does not gate again.
+-  `seed_minimal_history` function L738-790 — `(conn: &ConnHandle, iso_week: &str)` — does not gate again.
+-  `iso_week_format_is_yyyy_w_ww` function L793-799 — `()` — does not gate again.
+-  `monday_sunday_brackets_iso_week_20` function L802-806 — `()` — does not gate again.
+-  `gather_collects_week_payload` function L809-836 — `()` — does not gate again.
+-  `compose_parses_llm_array_into_composed_items` function L839-860 — `()` — does not gate again.
+-  `compose_rejects_empty_citation_with_missing_citation_error` function L863-875 — `()` — does not gate again.
+-  `compose_parses_array_with_surrounding_prose` function L878-894 — `()` — does not gate again.
+-  `end_to_end_dispatch_against_real_engine` function L897-934 — `()` — does not gate again.
+-  `period_window_utc_iso_week` function L937-942 — `()` — does not gate again.
+-  `period_window_pacific_iso_week` function L945-951 — `()` — does not gate again.
+-  `period_window_rejects_non_iso_week` function L954-958 — `()` — does not gate again.
+-  `cadence_parse_accepts_aliases` function L961-970 — `()` — does not gate again.
+-  `biweekly_period_key_counts_from_anchor` function L973-1000 — `()` — does not gate again.
+-  `biweekly_period_window_covers_two_weeks` function L1003-1013 — `()` — does not gate again.
+-  `biweekly_period_window_errors_without_anchor` function L1016-1020 — `()` — does not gate again.
+-  `biweekly_idempotency_skips_within_window` function L1023-1038 — `()` — does not gate again.
+-  `monthly_period_key_and_window` function L1041-1053 — `()` — does not gate again.
+-  `monthly_idempotency_skips_within_month` function L1056-1065 — `()` — does not gate again.
+-  `save_and_load_cadence_round_trips` function L1068-1090 — `()` — does not gate again.
+-  `load_falls_back_to_config_default_then_weekly` function L1093-1109 — `()` — does not gate again.
 
 #### crates/arawn-ceremonies/src/plugins/retro_detectors.rs
 
@@ -3367,6 +3390,8 @@
 - pub `new` function L227-229 — `(svc: Arc<CeremonyService>) -> Self` — that the agent surfaces those ids when summarising what happened.
 - pub `RetroPatchItemTool` struct L289-291 — `{ svc: Arc<CeremonyService> }` — that the agent surfaces those ids when summarising what happened.
 - pub `new` function L294-296 — `(svc: Arc<CeremonyService>) -> Self` — that the agent surfaces those ids when summarising what happened.
+- pub `RetroSetCadenceTool` struct L376-378 — `{ svc: Arc<CeremonyService> }` — Persist a new retro cadence (`weekly` / `biweekly` / `monthly`).
+- pub `new` function L381-383 — `(svc: Arc<CeremonyService>) -> Self` — that the agent surfaces those ids when summarising what happened.
 -  `map_err` function L21-23 — `(e: arawn_ceremonies::CeremonyError) -> ToolOutput` — that the agent surfaces those ids when summarising what happened.
 -  `RetroRunTool` type L33-37 — `= RetroRunTool` — that the agent surfaces those ids when summarising what happened.
 -  `RetroRunTool` type L40-83 — `impl Tool for RetroRunTool` — that the agent surfaces those ids when summarising what happened.
@@ -3406,21 +3431,28 @@
 -  `parameters_schema` function L317-334 — `(&self) -> Value` — that the agent surfaces those ids when summarising what happened.
 -  `execute` function L336-359 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — that the agent surfaces those ids when summarising what happened.
 -  `_add_item_unused` function L367 — `(_: AddItemRequest)` — that the agent surfaces those ids when summarising what happened.
--  `tests` module L370-526 — `-` — that the agent surfaces those ids when summarising what happened.
--  `StubDispatcher` struct L381 — `-` — that the agent surfaces those ids when summarising what happened.
--  `StubDispatcher` type L384-390 — `impl CeremonyDispatcher for StubDispatcher` — that the agent surfaces those ids when summarising what happened.
--  `dispatch` function L385-389 — `(&self, _kind: &str) -> Result<DispatchOutcome, CeremonyError>` — that the agent surfaces those ids when summarising what happened.
--  `open_svc` function L392-403 — `() -> (TempDir, Arc<CeremonyService>)` — that the agent surfaces those ids when summarising what happened.
--  `seed_retro_tablet` function L405-415 — `(svc: &CeremonyService, id: &str, week: &str)` — that the agent surfaces those ids when summarising what happened.
--  `ctx` function L420-423 — `() -> crate::context::EngineToolContext` — that the agent surfaces those ids when summarising what happened.
--  `retro_run_returns_generated_payload` function L426-433 — `()` — that the agent surfaces those ids when summarising what happened.
--  `retro_current_returns_null_when_no_tablet` function L436-442 — `()` — that the agent surfaces those ids when summarising what happened.
--  `retro_list_items_rejects_missing_tablet_id` function L445-451 — `()` — that the agent surfaces those ids when summarising what happened.
--  `retro_save_diary_rejects_missing_tablet_id` function L454-460 — `()` — that the agent surfaces those ids when summarising what happened.
--  `retro_save_diary_rejects_non_retro_tablet` function L463-482 — `()` — that the agent surfaces those ids when summarising what happened.
--  `retro_patch_item_validates_input` function L485-491 — `()` — that the agent surfaces those ids when summarising what happened.
--  `schemas_have_required_field_arrays` function L494-513 — `()` — that the agent surfaces those ids when summarising what happened.
--  `add_item_request_compiles` function L518-525 — `()` — that the agent surfaces those ids when summarising what happened.
+-  `RetroSetCadenceTool` type L380-384 — `= RetroSetCadenceTool` — that the agent surfaces those ids when summarising what happened.
+-  `RetroSetCadenceTool` type L387-440 — `impl Tool for RetroSetCadenceTool` — that the agent surfaces those ids when summarising what happened.
+-  `name` function L388-390 — `(&self) -> &str` — that the agent surfaces those ids when summarising what happened.
+-  `description` function L392-398 — `(&self) -> &str` — that the agent surfaces those ids when summarising what happened.
+-  `category` function L400-402 — `(&self) -> ToolCategory` — that the agent surfaces those ids when summarising what happened.
+-  `parameters_schema` function L404-417 — `(&self) -> Value` — that the agent surfaces those ids when summarising what happened.
+-  `execute` function L419-439 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — that the agent surfaces those ids when summarising what happened.
+-  `tests` module L443-599 — `-` — that the agent surfaces those ids when summarising what happened.
+-  `StubDispatcher` struct L454 — `-` — that the agent surfaces those ids when summarising what happened.
+-  `StubDispatcher` type L457-463 — `impl CeremonyDispatcher for StubDispatcher` — that the agent surfaces those ids when summarising what happened.
+-  `dispatch` function L458-462 — `(&self, _kind: &str) -> Result<DispatchOutcome, CeremonyError>` — that the agent surfaces those ids when summarising what happened.
+-  `open_svc` function L465-476 — `() -> (TempDir, Arc<CeremonyService>)` — that the agent surfaces those ids when summarising what happened.
+-  `seed_retro_tablet` function L478-488 — `(svc: &CeremonyService, id: &str, week: &str)` — that the agent surfaces those ids when summarising what happened.
+-  `ctx` function L493-496 — `() -> crate::context::EngineToolContext` — that the agent surfaces those ids when summarising what happened.
+-  `retro_run_returns_generated_payload` function L499-506 — `()` — that the agent surfaces those ids when summarising what happened.
+-  `retro_current_returns_null_when_no_tablet` function L509-515 — `()` — that the agent surfaces those ids when summarising what happened.
+-  `retro_list_items_rejects_missing_tablet_id` function L518-524 — `()` — that the agent surfaces those ids when summarising what happened.
+-  `retro_save_diary_rejects_missing_tablet_id` function L527-533 — `()` — that the agent surfaces those ids when summarising what happened.
+-  `retro_save_diary_rejects_non_retro_tablet` function L536-555 — `()` — that the agent surfaces those ids when summarising what happened.
+-  `retro_patch_item_validates_input` function L558-564 — `()` — that the agent surfaces those ids when summarising what happened.
+-  `schemas_have_required_field_arrays` function L567-586 — `()` — that the agent surfaces those ids when summarising what happened.
+-  `add_item_request_compiles` function L591-598 — `()` — that the agent surfaces those ids when summarising what happened.
 
 #### crates/arawn-engine/src/tools/daily.rs
 

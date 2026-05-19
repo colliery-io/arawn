@@ -69,6 +69,7 @@ pub use tools::{
 pub use tools::{
     DailyAddTodoTool, DailyCurrentTool, DailyListItemsTool, DailyPatchItemTool, DailyRunTool,
     RetroCurrentTool, RetroListItemsTool, RetroPatchItemTool, RetroRunTool, RetroSaveDiaryTool,
+    RetroSetCadenceTool,
     TodoArchiveTool, TodoCreateTool, TodoDoneTool, TodoGetTool, TodoListTool, TodoPatchTool,
     TodoSearchTool, TodoUndoTool, WeeklyAddPriorityTool, WeeklyConfirmPriorityTool,
     WeeklyCurrentTool, WeeklyListItemsTool, WeeklyListPrioritiesTool, WeeklyRejectPriorityTool,

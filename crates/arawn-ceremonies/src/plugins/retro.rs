@@ -24,17 +24,56 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use chrono::{DateTime, Datelike, Utc};
+use chrono::{DateTime, Datelike, Duration, NaiveDate, Utc};
 use futures::StreamExt;
 use rusqlite::params;
 use serde::Serialize;
 
 use crate::CeremonyError;
+use crate::engine::ConnHandle;
 use crate::patterns::DetectorRegistry;
 use crate::plugin::{
     Ceremony, CeremonyCtx, ComposedItem, CronSchedule, InteractiveAction, NewItem, PatternDetector,
 };
 use crate::types::{GatheredFacts, ItemKind};
+
+/// How often retro should run. Defaults to weekly; the binary
+/// overrides via [`RetroCeremony::with_cadence`] from
+/// `[ceremonies.retro] cadence` or from a runtime override stored
+/// in the `ceremony_config` table by the `retro_set_cadence` agent
+/// tool.
+///
+/// Biweekly and monthly cadences anchor on the first time retro
+/// runs after enablement — the anchor date is persisted in
+/// `ceremony_config` so the cycle is stable across restarts.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RetroCadence {
+    Weekly,
+    Biweekly,
+    Monthly,
+}
+
+impl RetroCadence {
+    /// Parse a config string. Case-insensitive. Returns `None` for
+    /// unrecognised values so callers can warn-and-fall-back rather
+    /// than abort startup.
+    pub fn parse(s: &str) -> Option<Self> {
+        match s.trim().to_ascii_lowercase().as_str() {
+            "weekly" => Some(Self::Weekly),
+            "biweekly" | "bi-weekly" | "fortnightly" => Some(Self::Biweekly),
+            "monthly" => Some(Self::Monthly),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Weekly => "weekly",
+            Self::Biweekly => "biweekly",
+            Self::Monthly => "monthly",
+        }
+    }
+}
 
 /// The retro plugin.
 pub struct RetroCeremony {
@@ -48,9 +87,15 @@ pub struct RetroCeremony {
     /// to empty in this task; T-0288's catalog populates it.
     detectors: DetectorRegistry,
     /// Timezone used to interpret `period_key` weeks when computing
-    /// pinned windows. Defaults to UTC; T-0367 will broaden this
-    /// surface for biweekly/monthly cadences.
+    /// pinned windows. Defaults to UTC.
     tz: chrono_tz::Tz,
+    /// Cadence: weekly (default) / biweekly / monthly. Biweekly +
+    /// monthly require `anchor` to be set.
+    cadence: RetroCadence,
+    /// Anchor date for biweekly cadence (the first Monday a retro
+    /// runs under the new cadence). `None` for weekly. Monthly
+    /// doesn't need an anchor — months are absolute.
+    anchor: Option<NaiveDate>,
 }
 
 impl RetroCeremony {
@@ -60,6 +105,8 @@ impl RetroCeremony {
             model: model.into(),
             detectors: DetectorRegistry::new(),
             tz: chrono_tz::UTC,
+            cadence: RetroCadence::Weekly,
+            anchor: None,
         }
     }
 
@@ -76,6 +123,98 @@ impl RetroCeremony {
         self
     }
 
+    /// Override the cadence + anchor. For biweekly the anchor must
+    /// be `Some(monday)`; for monthly + weekly the anchor is
+    /// ignored.
+    pub fn with_cadence(mut self, cadence: RetroCadence, anchor: Option<NaiveDate>) -> Self {
+        self.cadence = cadence;
+        self.anchor = anchor;
+        self
+    }
+
+    /// Read the persisted cadence + anchor from `ceremony_config`,
+    /// initialising defaults if the rows are absent. Returns
+    /// `(cadence, anchor)` ready to feed [`Self::with_cadence`].
+    ///
+    /// The binary calls this at registration time so the live
+    /// plugin reflects whatever the user (or the
+    /// `retro_set_cadence` agent tool) last wrote.
+    pub fn load_persisted_cadence(
+        conn: &ConnHandle,
+        config_default: Option<RetroCadence>,
+    ) -> (RetroCadence, Option<NaiveDate>) {
+        let conn = match conn.0.lock() {
+            Ok(g) => g,
+            Err(_) => {
+                tracing::warn!("retro cadence: conn mutex poisoned, falling back to weekly");
+                return (RetroCadence::Weekly, None);
+            }
+        };
+        // 1. Cadence: DB > config_default > Weekly.
+        let db_cadence: Option<String> = conn
+            .query_row(
+                "SELECT value FROM ceremony_config WHERE kind='retro' AND key='cadence'",
+                [],
+                |row| row.get(0),
+            )
+            .ok();
+        let cadence = db_cadence
+            .as_deref()
+            .and_then(RetroCadence::parse)
+            .or(config_default)
+            .unwrap_or(RetroCadence::Weekly);
+        // 2. Anchor: only meaningful for biweekly. If absent for a
+        //    biweekly cadence we'll initialise to "today's Monday"
+        //    the first time a dispatch happens; storing the anchor
+        //    eagerly here is the binary's responsibility once the
+        //    cadence has been confirmed.
+        let anchor: Option<NaiveDate> = conn
+            .query_row(
+                "SELECT value FROM ceremony_config WHERE kind='retro' AND key='cadence_anchor'",
+                [],
+                |row| row.get::<_, String>(0),
+            )
+            .ok()
+            .and_then(|s| NaiveDate::parse_from_str(&s, "%Y-%m-%d").ok());
+        (cadence, anchor)
+    }
+
+    /// Persist cadence + anchor to `ceremony_config`. Used by the
+    /// `retro_set_cadence` agent tool. Idempotent — UPSERTs each
+    /// row.
+    pub fn save_cadence(
+        conn: &ConnHandle,
+        cadence: RetroCadence,
+        anchor: Option<NaiveDate>,
+    ) -> Result<(), CeremonyError> {
+        let conn = conn
+            .0
+            .lock()
+            .map_err(|_| CeremonyError::Storage("connection mutex poisoned".into()))?;
+        conn.execute(
+            "INSERT INTO ceremony_config (kind, key, value) VALUES ('retro', 'cadence', ?1) \
+             ON CONFLICT(kind, key) DO UPDATE SET value = excluded.value",
+            params![cadence.as_str()],
+        )
+        .map_err(|e| CeremonyError::Storage(format!("save retro cadence: {e}")))?;
+        if let Some(d) = anchor {
+            conn.execute(
+                "INSERT INTO ceremony_config (kind, key, value) \
+                 VALUES ('retro', 'cadence_anchor', ?1) \
+                 ON CONFLICT(kind, key) DO UPDATE SET value = excluded.value",
+                params![d.format("%Y-%m-%d").to_string()],
+            )
+            .map_err(|e| CeremonyError::Storage(format!("save retro anchor: {e}")))?;
+        } else {
+            conn.execute(
+                "DELETE FROM ceremony_config WHERE kind='retro' AND key='cadence_anchor'",
+                [],
+            )
+            .map_err(|e| CeremonyError::Storage(format!("clear retro anchor: {e}")))?;
+        }
+        Ok(())
+    }
+
     /// Compute the ISO-week string (`YYYY-Www`) for a given moment.
     /// Exposed so callers + tests can predict the tablet id without
     /// running the plugin.
@@ -83,6 +222,110 @@ impl RetroCeremony {
         let iso = now.iso_week();
         format!("{:04}-W{:02}", iso.year(), iso.week())
     }
+}
+
+// --- Cadence helpers ---
+
+/// Weekly window: `[Monday 00:00 local, next Monday 00:00 local)`.
+fn weekly_window(
+    period_key: &str,
+    tz: chrono_tz::Tz,
+) -> Result<(DateTime<Utc>, DateTime<Utc>), CeremonyError> {
+    let parts: Vec<&str> = period_key.split("-W").collect();
+    if parts.len() != 2 {
+        return Err(CeremonyError::Other(format!(
+            "weekly period_key '{period_key}' not 'YYYY-Www'"
+        )));
+    }
+    let year: i32 = parts[0]
+        .parse()
+        .map_err(|e| CeremonyError::Other(format!("weekly period_key year: {e}")))?;
+    let week: u32 = parts[1]
+        .parse()
+        .map_err(|e| CeremonyError::Other(format!("weekly period_key week: {e}")))?;
+    let monday = NaiveDate::from_isoywd_opt(year, week, chrono::Weekday::Mon).ok_or_else(|| {
+        CeremonyError::Other(format!("weekly period_key '{period_key}' invalid iso week"))
+    })?;
+    crate::local_window::iso_week_window_utc(monday, tz)
+}
+
+/// Biweekly period_key: `"B{N}"` where N is the count of complete
+/// 14-day periods between the anchor and `date`. The anchor itself
+/// is biweek 0.
+///
+/// We deliberately don't use a year-prefixed key — biweekly cycles
+/// can straddle year boundaries, and a flat counter sidesteps the
+/// "which year owns this biweek?" question.
+fn biweekly_key(date: NaiveDate, anchor: Option<NaiveDate>) -> String {
+    let anchor = match anchor {
+        Some(a) => a,
+        // No anchor → fall back to "B0" so the period_key is at
+        // least stable; callers should ensure an anchor exists.
+        None => return "B0".to_string(),
+    };
+    let delta = (date - anchor).num_days();
+    // Floor division so dates before the anchor get negative
+    // biweeks (rare but well-defined).
+    let biweek = delta.div_euclid(14);
+    format!("B{biweek}")
+}
+
+/// Biweekly window: `[anchor + 14N days, anchor + 14(N+1) days)`
+/// in local tz.
+fn biweekly_window(
+    period_key: &str,
+    anchor: NaiveDate,
+    tz: chrono_tz::Tz,
+) -> Result<(DateTime<Utc>, DateTime<Utc>), CeremonyError> {
+    let n: i64 = period_key
+        .strip_prefix('B')
+        .ok_or_else(|| {
+            CeremonyError::Other(format!("biweekly period_key '{period_key}' missing 'B' prefix"))
+        })?
+        .parse()
+        .map_err(|e| CeremonyError::Other(format!("biweekly period_key index: {e}")))?;
+    let start_date = anchor + Duration::days(14 * n);
+    let end_date = anchor + Duration::days(14 * (n + 1));
+    let start = crate::local_window::local_midnight_utc(start_date, tz)?;
+    let end = crate::local_window::local_midnight_utc(end_date, tz)?;
+    Ok((start, end))
+}
+
+/// Monthly period_key: `"YYYY-MM"`.
+fn monthly_key(date: NaiveDate) -> String {
+    format!("{:04}-{:02}", date.year(), date.month())
+}
+
+/// Monthly window: `[first-of-month 00:00 local, first-of-next-month
+/// 00:00 local)`.
+fn monthly_window(
+    period_key: &str,
+    tz: chrono_tz::Tz,
+) -> Result<(DateTime<Utc>, DateTime<Utc>), CeremonyError> {
+    let parts: Vec<&str> = period_key.split('-').collect();
+    if parts.len() != 2 {
+        return Err(CeremonyError::Other(format!(
+            "monthly period_key '{period_key}' not 'YYYY-MM'"
+        )));
+    }
+    let year: i32 = parts[0]
+        .parse()
+        .map_err(|e| CeremonyError::Other(format!("monthly period_key year: {e}")))?;
+    let month: u32 = parts[1]
+        .parse()
+        .map_err(|e| CeremonyError::Other(format!("monthly period_key month: {e}")))?;
+    let first = NaiveDate::from_ymd_opt(year, month, 1).ok_or_else(|| {
+        CeremonyError::Other(format!("monthly period_key '{period_key}' invalid month"))
+    })?;
+    let next = if month == 12 {
+        NaiveDate::from_ymd_opt(year + 1, 1, 1)
+    } else {
+        NaiveDate::from_ymd_opt(year, month + 1, 1)
+    }
+    .ok_or_else(|| CeremonyError::Other("monthly next-month overflow".into()))?;
+    let start = crate::local_window::local_midnight_utc(first, tz)?;
+    let end = crate::local_window::local_midnight_utc(next, tz)?;
+    Ok((start, end))
 }
 
 // --- Gather payload shapes ---
@@ -133,30 +376,35 @@ impl Ceremony for RetroCeremony {
         &self,
         period_key: &str,
     ) -> Result<(DateTime<Utc>, DateTime<Utc>), CeremonyError> {
-        // Retro's period_key is an ISO week ("YYYY-Www"); window is
-        // the same Mon→next-Mon range as weekly. T-0367 will extend
-        // this for biweekly/monthly cadences.
-        let parts: Vec<&str> = period_key.split("-W").collect();
-        if parts.len() != 2 {
-            return Err(CeremonyError::Other(format!(
-                "retro period_key '{period_key}' not 'YYYY-Www'"
-            )));
+        match self.cadence {
+            RetroCadence::Weekly => weekly_window(period_key, self.tz),
+            RetroCadence::Biweekly => {
+                let anchor = self.anchor.ok_or_else(|| {
+                    CeremonyError::Other("biweekly retro requires an anchor date".into())
+                })?;
+                biweekly_window(period_key, anchor, self.tz)
+            }
+            RetroCadence::Monthly => monthly_window(period_key, self.tz),
         }
-        let year: i32 = parts[0]
-            .parse()
-            .map_err(|e| CeremonyError::Other(format!("retro period_key year: {e}")))?;
-        let week: u32 = parts[1]
-            .parse()
-            .map_err(|e| CeremonyError::Other(format!("retro period_key week: {e}")))?;
-        let monday = chrono::NaiveDate::from_isoywd_opt(year, week, chrono::Weekday::Mon)
-            .ok_or_else(|| {
-                CeremonyError::Other(format!("retro period_key '{period_key}' invalid iso week"))
-            })?;
-        crate::local_window::iso_week_window_utc(monday, self.tz)
     }
 
     fn period_key(&self, now: DateTime<Utc>) -> String {
-        Self::iso_week(now)
+        match self.cadence {
+            RetroCadence::Weekly => Self::iso_week(now),
+            RetroCadence::Biweekly => biweekly_key(now.date_naive(), self.anchor),
+            RetroCadence::Monthly => monthly_key(now.date_naive()),
+        }
+    }
+
+    fn period_key_for_date(&self, date: NaiveDate) -> String {
+        match self.cadence {
+            RetroCadence::Weekly => {
+                let iso = date.iso_week();
+                format!("{:04}-W{:02}", iso.year(), iso.week())
+            }
+            RetroCadence::Biweekly => biweekly_key(date, self.anchor),
+            RetroCadence::Monthly => monthly_key(date),
+        }
     }
 
     fn default_schedule(&self) -> CronSchedule {
@@ -707,5 +955,156 @@ Hope that helps."#;
         let retro = RetroCeremony::new(make_llm_with_response("{}"), "stub-model");
         assert!(retro.period_window("not-a-week").is_err());
         assert!(retro.period_window("2026-05-19").is_err());
+    }
+
+    #[test]
+    fn cadence_parse_accepts_aliases() {
+        assert_eq!(RetroCadence::parse("weekly"), Some(RetroCadence::Weekly));
+        assert_eq!(RetroCadence::parse("BIWEEKLY"), Some(RetroCadence::Biweekly));
+        assert_eq!(
+            RetroCadence::parse("fortnightly"),
+            Some(RetroCadence::Biweekly)
+        );
+        assert_eq!(RetroCadence::parse("Monthly"), Some(RetroCadence::Monthly));
+        assert_eq!(RetroCadence::parse("hourly"), None);
+    }
+
+    #[test]
+    fn biweekly_period_key_counts_from_anchor() {
+        let anchor = NaiveDate::from_ymd_opt(2026, 5, 18).unwrap(); // Mon W21
+        // Anchor day → B0
+        assert_eq!(biweekly_key(anchor, Some(anchor)), "B0");
+        // 13 days in → still B0 (window is [anchor, anchor+14d))
+        assert_eq!(
+            biweekly_key(anchor + Duration::days(13), Some(anchor)),
+            "B0"
+        );
+        // 14 days in → B1
+        assert_eq!(
+            biweekly_key(anchor + Duration::days(14), Some(anchor)),
+            "B1"
+        );
+        assert_eq!(
+            biweekly_key(anchor + Duration::days(27), Some(anchor)),
+            "B1"
+        );
+        assert_eq!(
+            biweekly_key(anchor + Duration::days(28), Some(anchor)),
+            "B2"
+        );
+        // Before the anchor → negative biweek (well-defined; floor div).
+        assert_eq!(
+            biweekly_key(anchor - Duration::days(1), Some(anchor)),
+            "B-1"
+        );
+    }
+
+    #[test]
+    fn biweekly_period_window_covers_two_weeks() {
+        let anchor = NaiveDate::from_ymd_opt(2026, 5, 18).unwrap();
+        let retro = RetroCeremony::new(make_llm_with_response("{}"), "stub-model")
+            .with_cadence(RetroCadence::Biweekly, Some(anchor));
+        let (start, end) = retro.period_window("B0").unwrap();
+        assert_eq!(start.to_rfc3339(), "2026-05-18T00:00:00+00:00");
+        assert_eq!(end.to_rfc3339(), "2026-06-01T00:00:00+00:00");
+        let (start1, end1) = retro.period_window("B1").unwrap();
+        assert_eq!(start1.to_rfc3339(), "2026-06-01T00:00:00+00:00");
+        assert_eq!(end1.to_rfc3339(), "2026-06-15T00:00:00+00:00");
+    }
+
+    #[test]
+    fn biweekly_period_window_errors_without_anchor() {
+        let retro = RetroCeremony::new(make_llm_with_response("{}"), "stub-model")
+            .with_cadence(RetroCadence::Biweekly, None);
+        assert!(retro.period_window("B0").is_err());
+    }
+
+    #[test]
+    fn biweekly_idempotency_skips_within_window() {
+        // Within the same biweek window, period_key_for_date is
+        // identical → dispatch_for would find an existing tablet
+        // and return Skipped. (Validated here at the key layer.)
+        let anchor = NaiveDate::from_ymd_opt(2026, 5, 18).unwrap();
+        let retro = RetroCeremony::new(make_llm_with_response("{}"), "stub-model")
+            .with_cadence(RetroCadence::Biweekly, Some(anchor));
+        let key_mon = retro.period_key_for_date(anchor);
+        let key_fri = retro.period_key_for_date(anchor + Duration::days(4));
+        let key_next_thu = retro.period_key_for_date(anchor + Duration::days(10));
+        assert_eq!(key_mon, "B0");
+        assert_eq!(key_fri, "B0");
+        assert_eq!(key_next_thu, "B0");
+        let key_off_week = retro.period_key_for_date(anchor + Duration::days(14));
+        assert_eq!(key_off_week, "B1");
+    }
+
+    #[test]
+    fn monthly_period_key_and_window() {
+        let retro = RetroCeremony::new(make_llm_with_response("{}"), "stub-model")
+            .with_cadence(RetroCadence::Monthly, None);
+        let d = NaiveDate::from_ymd_opt(2026, 5, 19).unwrap();
+        assert_eq!(retro.period_key_for_date(d), "2026-05");
+        let (start, end) = retro.period_window("2026-05").unwrap();
+        assert_eq!(start.to_rfc3339(), "2026-05-01T00:00:00+00:00");
+        assert_eq!(end.to_rfc3339(), "2026-06-01T00:00:00+00:00");
+        // December rolls into next year.
+        let (start12, end12) = retro.period_window("2026-12").unwrap();
+        assert_eq!(start12.to_rfc3339(), "2026-12-01T00:00:00+00:00");
+        assert_eq!(end12.to_rfc3339(), "2027-01-01T00:00:00+00:00");
+    }
+
+    #[test]
+    fn monthly_idempotency_skips_within_month() {
+        let retro = RetroCeremony::new(make_llm_with_response("{}"), "stub-model")
+            .with_cadence(RetroCadence::Monthly, None);
+        let early = NaiveDate::from_ymd_opt(2026, 5, 1).unwrap();
+        let late = NaiveDate::from_ymd_opt(2026, 5, 31).unwrap();
+        assert_eq!(retro.period_key_for_date(early), "2026-05");
+        assert_eq!(retro.period_key_for_date(late), "2026-05");
+        let next = NaiveDate::from_ymd_opt(2026, 6, 1).unwrap();
+        assert_eq!(retro.period_key_for_date(next), "2026-06");
+    }
+
+    #[test]
+    fn save_and_load_cadence_round_trips() {
+        // In-memory DB via storage::Database.
+        let tmp = tempfile::TempDir::new().unwrap();
+        let db_path = tmp.path().join("test.db");
+        let _db = arawn_storage::Database::open(&db_path).expect("migrations");
+        drop(_db);
+        let conn = rusqlite::Connection::open(&db_path).expect("open conn");
+        let handle = ConnHandle::new(conn);
+
+        let anchor = NaiveDate::from_ymd_opt(2026, 5, 18).unwrap();
+        RetroCeremony::save_cadence(&handle, RetroCadence::Biweekly, Some(anchor)).unwrap();
+        let (loaded_cadence, loaded_anchor) =
+            RetroCeremony::load_persisted_cadence(&handle, None);
+        assert_eq!(loaded_cadence, RetroCadence::Biweekly);
+        assert_eq!(loaded_anchor, Some(anchor));
+
+        // Switch to monthly → anchor should be cleared.
+        RetroCeremony::save_cadence(&handle, RetroCadence::Monthly, None).unwrap();
+        let (loaded_cadence2, loaded_anchor2) =
+            RetroCeremony::load_persisted_cadence(&handle, None);
+        assert_eq!(loaded_cadence2, RetroCadence::Monthly);
+        assert_eq!(loaded_anchor2, None);
+    }
+
+    #[test]
+    fn load_falls_back_to_config_default_then_weekly() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let db_path = tmp.path().join("test.db");
+        let _db = arawn_storage::Database::open(&db_path).expect("migrations");
+        drop(_db);
+        let conn = rusqlite::Connection::open(&db_path).expect("open conn");
+        let handle = ConnHandle::new(conn);
+
+        // Empty DB + no config default → Weekly.
+        let (c1, _) = RetroCeremony::load_persisted_cadence(&handle, None);
+        assert_eq!(c1, RetroCadence::Weekly);
+
+        // Empty DB + config default → use the default.
+        let (c2, _) =
+            RetroCeremony::load_persisted_cadence(&handle, Some(RetroCadence::Monthly));
+        assert_eq!(c2, RetroCadence::Monthly);
     }
 }

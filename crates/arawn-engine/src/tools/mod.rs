@@ -33,6 +33,7 @@ pub use agent::AgentTool;
 pub use ask_user::AskUserTool;
 pub use ceremony::{
     RetroCurrentTool, RetroListItemsTool, RetroPatchItemTool, RetroRunTool, RetroSaveDiaryTool,
+    RetroSetCadenceTool,
 };
 pub use daily::{
     DailyAddTodoTool, DailyCurrentTool, DailyListItemsTool, DailyPatchItemTool, DailyRunTool,

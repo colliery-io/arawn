@@ -415,6 +415,12 @@ pub struct CeremonyConfig {
     /// through `LlmClientPool::resolve_hint`.
     #[serde(default)]
     pub model: Option<String>,
+    /// Cadence hint for retro: `"weekly"` (default), `"biweekly"`,
+    /// or `"monthly"`. Only consulted by the retro plugin. Runtime
+    /// overrides written by the `retro_set_cadence` agent tool win
+    /// over this default.
+    #[serde(default)]
+    pub cadence: Option<String>,
 }
 
 impl CeremonyConfig {
