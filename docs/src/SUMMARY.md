@@ -27,6 +27,12 @@
 # Reference
 
 - [Overview](./reference/index.md)
+- [CLI flags and subcommands](./reference/cli.md)
+- [Slash commands](./reference/slash-commands.md)
+- [Configuration schema](./reference/config-schema.md)
+- [Environment variables](./reference/env-vars.md)
+- [Data directory layout](./reference/data-directory.md)
+- [Troubleshooting](./reference/troubleshooting.md)
 - [Feed templates](./reference/feed-templates.md)
 - [feed_search tool](./reference/feed-search-tool.md)
 - [Security & Permissions](./security.md)

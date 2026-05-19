@@ -4,14 +4,14 @@ level: task
 title: "Phase C-5: Reference — cross-cutting catalogs (CLI, slash-commands, config, env-vars, data-dir, troubleshooting)"
 short_code: "ARAWN-T-0337"
 created_at: 2026-05-19T01:39:40.292598+00:00
-updated_at: 2026-05-19T01:39:40.292598+00:00
+updated_at: 2026-05-19T02:33:09.675043+00:00
 parent: ARAWN-I-0051
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -62,73 +62,34 @@ Write six top-level reference catalogs: every CLI flag/subcommand, every slash c
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
 
-## Acceptance Criteria **[REQUIRED]**
+## Acceptance Criteria
 
-- [ ] {Specific, testable requirement 1}
-- [ ] {Specific, testable requirement 2}
-- [ ] {Specific, testable requirement 3}
+## Acceptance Criteria
 
-## Test Cases **[CONDITIONAL: Testing Task]**
+- [x] `reference/cli.md` — all 5 subcommands (`serve`, `tui`, `plugin {…}`, `doctor`, `usage`) + global flags + `arawn plugin` subtree. ~110 lines.
+- [x] `reference/slash-commands.md` — 26 commands alphabetized; subcommand syntax called out where relevant. ~130 lines.
+- [x] `reference/config-schema.md` — every `[section]` + key: `[llm.<name>]`, `[engine]`, `[compactor]`, `[extraction]`, `[server]`, `[storage]`, `[prompts]`, `[sandbox]`, `[integrations.*]`, `[routing.*]`, `[ceremonies.<kind>]`, `[permissions]`, `[[mcp.servers]]`. ~140 lines.
+- [x] `reference/env-vars.md` — runtime + LLM API keys + 11 integration OAuth env vars + GitHub App env vars + resolution order. ~70 lines.
+- [x] `reference/data-directory.md` — full `~/.arawn/` tree as ASCII layout + "safe to delete" table + workstream isolation + encrypted-blob locations. ~95 lines.
+- [x] `reference/troubleshooting.md` — server startup / TUI / OAuth / feeds / workflows / permissions tables + escape hatches. ~85 lines.
+- [x] `SUMMARY.md` updated with the six new pages.
+- [x] `angreal docs build` clean.
 
-{Delete unless this is a testing task}
+## Status Updates
 
-### Test Case 1: {Test Case Name}
-- **Test ID**: TC-001
-- **Preconditions**: {What must be true before testing}
-- **Steps**: 
-  1. {Step 1}
-  2. {Step 2}
-  3. {Step 3}
-- **Expected Results**: {What should happen}
-- **Actual Results**: {To be filled during execution}
-- **Status**: {Pass/Fail/Blocked}
+### 2026-05-18 — Completed (uncommitted)
 
-### Test Case 2: {Test Case Name}
-- **Test ID**: TC-002
-- **Preconditions**: {What must be true before testing}
-- **Steps**: 
-  1. {Step 1}
-  2. {Step 2}
-- **Expected Results**: {What should happen}
-- **Actual Results**: {To be filled during execution}
-- **Status**: {Pass/Fail/Blocked}
+The biggest reference batch in the initiative. Source data pulled from:
 
-## Documentation Sections **[CONDITIONAL: Documentation Task]**
+- `crates/arawn/src/main.rs` (CLI clap defs at lines 43-111).
+- `crates/arawn/src/plugin_cmd.rs` (plugin subtree).
+- `crates/arawn-tui/src/command.rs::register_builtins` (lines 72-214; 26 commands).
+- `crates/arawn/src/config.rs` (lines 1-440; full TOML schema with default values).
+- `crates/arawn-mcp/src/config.rs` ([[mcp.servers]] schema).
+- `crates/arawn-storage/src/layout.rs::DataLayout::v1` (eagerly-created dirs).
 
-{Delete unless this is a documentation task}
+Drift fixes incorporated: feeds rm not /unwatch in slash-commands.md; /remember and /memory and /forget listed without WIP labels; full 25+ command list (vs the 6-8 documented before); 17-template note for feed-templates (will be reflected in feed-templates.md content in C-8); permissions modes documented from code.
 
-### User Guide Content
-- **Feature Description**: {What this feature does and why it's useful}
-- **Prerequisites**: {What users need before using this feature}
-- **Step-by-Step Instructions**:
-  1. {Step 1 with screenshots/examples}
-  2. {Step 2 with screenshots/examples}
-  3. {Step 3 with screenshots/examples}
+These are the highest lookup-volume pages in the new doc set. They're austere by design — tables and code blocks, no narrative. Concept work happens in C-10 explanation pages.
 
-### Troubleshooting Guide
-- **Common Issue 1**: {Problem description and solution}
-- **Common Issue 2**: {Problem description and solution}
-- **Error Messages**: {List of error messages and what they mean}
-
-### API Documentation **[CONDITIONAL: API Documentation]**
-- **Endpoint**: {API endpoint description}
-- **Parameters**: {Required and optional parameters}
-- **Example Request**: {Code example}
-- **Example Response**: {Expected response format}
-
-## Implementation Notes **[CONDITIONAL: Technical Task]**
-
-{Keep for technical tasks, delete for non-technical. Technical details, approach, or important considerations}
-
-### Technical Approach
-{How this will be implemented}
-
-### Dependencies
-{Other tasks or systems this depends on}
-
-### Risk Considerations
-{Technical risks and mitigation strategies}
-
-## Status Updates **[REQUIRED]**
-
-*To be added during implementation*
+Forward references to pages not yet written (`./permissions.md`, `./agent-tools.md`, `./feeds-overview.md`, `./ceremonies-tools.md`, `./todos-tools.md`, `./skills.md`, etc.) are intentional — they're inline markdown links, not `SUMMARY.md` entries. They resolve as C-6, C-7, C-8, C-9 land.
