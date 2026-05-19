@@ -42,14 +42,13 @@
 - [Steward subroutines](./reference/steward-subroutines.md)
 - [Ceremonies tools](./reference/ceremonies-tools.md)
 - [Todos tools](./reference/todos-tools.md)
+- [Feeds overview](./reference/feeds-overview.md)
 - [Feed templates](./reference/feed-templates.md)
 - [feed_search tool](./reference/feed-search-tool.md)
-- [Memory](./memory.md)
-- [Workflows](./workflows.md)
-- [Continual data feeds](./feeds/index.md)
-- [Workstream palaces](./palaces/index.md)
-  - [Projections](./palaces/projections.md)
-  - [Extraction](./palaces/extraction.md)
+- [Projection tables](./reference/projection-tables.md)
+- [Palace types](./reference/palace-types.md)
+- [Memory model](./reference/memory-model.md)
+- [Workflow tools](./reference/workflow-tools.md)
 
 # Explanation
 

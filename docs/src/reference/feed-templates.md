@@ -1,8 +1,10 @@
-# Template Catalog
+# Feed templates
 
-Twelve templates ship today, across six providers. This page is the
-contract the agent reads — what params each takes, what cadence it
-runs on, and what lands on disk.
+*Reference. Every shipped feed template with parameters, cadence, and on-disk layout.*
+
+Sixteen templates ship today across seven providers. This page is the contract the agent reads — what params each takes, what cadence it runs on, and what lands on disk.
+
+(A 17th "stub/echo" template is registered as a test fixture and isn't user-facing.)
 
 > Paths below are shown relative to `~/.arawn/data/`. So
 > `slack/channel-archive/design/...` means
@@ -257,6 +259,79 @@ Bodies are written verbatim as Confluence storage format (XML). No
 ADF or markdown conversion at archive time — agents prefer
 source-of-truth markup.
 
+## GitHub
+
+GitHub feeds use the [GitHub App](../how-to/connect-github.md) integration (not OAuth). All four templates default to `*/30 * * * *`. v1 is read-only.
+
+### `github/notifications`
+
+Your `/notifications` inbox.
+
+| Field | Value |
+|---|---|
+| Param | (none) |
+| Default cadence | `*/30 * * * *` |
+| Auto-create | No (today; tied to per-user install) |
+
+```text
+github/notifications/<feed_id>/
+  ├── meta.json
+  └── notifications.jsonl     # appended, deduped by id
+```
+
+### `github/issues-and-prs`
+
+Open + recently-closed issues and PRs you authored or are assigned to.
+
+| Field | Value |
+|---|---|
+| Param | (none — uses your authenticated user) |
+| Default cadence | `*/30 * * * *` |
+| Auto-create | No |
+
+```text
+github/issues-and-prs/<feed_id>/
+  ├── meta.json
+  ├── issues.jsonl            # append-only, deduped by id
+  └── prs.jsonl
+```
+
+### `github/review-queue`
+
+PRs where you're a requested reviewer.
+
+| Field | Value |
+|---|---|
+| Param | (none) |
+| Default cadence | `*/30 * * * *` |
+| Auto-create | No |
+
+```text
+github/review-queue/<feed_id>/
+  ├── meta.json
+  └── review_requests.jsonl
+```
+
+### `github/repo-mirror`
+
+Full snapshot of a repo's open issues + PRs. Used by the `github:repo:owner/name` and `github:org:owner` workstream binding schemes — bind expands org URIs to one `repo-mirror` per repo.
+
+| Field | Value |
+|---|---|
+| Required | `repo: string` (in `"owner/name"` form) |
+| Default cadence | `*/30 * * * *` |
+| Auto-create | No (registered by `/workstream bind` with a GitHub URI) |
+
+```text
+github/repo-mirror/<feed_id>/
+  ├── meta.json
+  ├── issues.jsonl           # open + recently-closed, append-only, deduped
+  ├── prs.jsonl
+  └── reviews.jsonl
+```
+
+The on-disk layout is shared by single-repo and org-expanded variants — the org URI just creates N feeds, each with one repo's worth of state.
+
 ## Quick reference: cadence + auto-create
 
 | Template | Cadence | Auto-create |
@@ -273,3 +348,14 @@ source-of-truth markup.
 | `jira/project-tracker` | every 30 min | No |
 | `jira/assignee-tracker` | every 30 min | Yes (singleton) |
 | `confluence/space-archive` | every 30 min | No |
+| `github/notifications` | every 30 min | No |
+| `github/issues-and-prs` | every 30 min | No |
+| `github/review-queue` | every 30 min | No |
+| `github/repo-mirror` | every 30 min | No (registered by workstream bind) |
+
+## Related
+
+- [Feeds overview reference](./feeds-overview.md) — on-disk layout, status states, backfill.
+- [`feed_search` tool reference](./feed-search-tool.md).
+- [Create a feed how-to](../how-to/create-a-feed.md).
+- [Bind a workstream to a feed how-to](../how-to/bind-a-workstream-to-a-feed.md).

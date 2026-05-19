@@ -4,14 +4,14 @@ level: task
 title: "Phase C-8: Reference — data model (feeds-overview, templates, projections, palaces, memory, workflows)"
 short_code: "ARAWN-T-0340"
 created_at: 2026-05-19T01:39:44.912894+00:00
-updated_at: 2026-05-19T01:39:44.912894+00:00
+updated_at: 2026-05-19T02:45:52.172342+00:00
 parent: ARAWN-I-0051
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -62,73 +62,31 @@ Reference pages for the data model: feed mechanics + on-disk layout, the (now 17
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
 
-## Acceptance Criteria **[REQUIRED]**
+## Acceptance Criteria
 
-- [ ] {Specific, testable requirement 1}
-- [ ] {Specific, testable requirement 2}
-- [ ] {Specific, testable requirement 3}
+## Acceptance Criteria
 
-## Test Cases **[CONDITIONAL: Testing Task]**
+- [x] `reference/feeds-overview.md` — on-disk layout, `meta.json`, 5 status states, cadence table, backfill mechanics, `/feeds` subcommands, disk-usage estimates. ~95 lines.
+- [x] `reference/feed-templates.md` — UPDATED to "Sixteen templates ship today" (was "Twelve"). Added GitHub section: notifications, issues-and-prs, review-queue, repo-mirror — each with params, cadence, on-disk shape. ~290 lines now (was 275).
+- [x] `reference/projection-tables.md` — shared columns + per-table metadata (9 existing tables + 4 GitHub tables: notifications/issues/prs/reviews) + ProjectionRow struct + embedding pass mechanics + when-to-read-which-layer table. ~110 lines.
+- [x] `reference/palace-types.md` — 6 entity types (3 scope-locked global vs 3 workstream) + 8 relation types (incl. special `extracted_from` / `summarizes`) + tag ontology + entity fields + confidence levels. ~85 lines.
+- [x] `reference/memory-model.md` — two-store split, scope-locking, FTS-vs-vector retrieval, embedder install location, agent surface (`memory_store`/`memory_search`), slash commands. ~75 lines.
+- [x] `reference/workflow-tools.md` — 4 `workflow_*` tools + JSON spec + 3 task types + cron syntax + storage layout + caveats (task bodies run unsandboxed). ~115 lines.
+- [x] `docs/src/memory.md` deleted (content → memory-model.md + explanation/memory-design.md in C-10).
+- [x] `docs/src/workflows.md` deleted (content → workflow-tools.md + explanation/workflows.md in C-10 + how-to/author-a-workflow-by-hand.md in C-4).
+- [x] `docs/src/feeds/index.md` deleted (content → feeds-overview.md + explanation/feeds.md in C-10). `feeds/` directory removed.
+- [x] `docs/src/palaces/index.md` deleted (content → palace-types.md + explanation/palaces.md in C-10).
+- [x] `docs/src/palaces/projections.md` deleted (content → projection-tables.md + explanation/projections.md in C-10).
+- [x] `SUMMARY.md` updated — references the new flat reference pages, no longer points at any of the deleted source files.
+- [x] `angreal docs build` clean.
 
-{Delete unless this is a testing task}
+## Status Updates
 
-### Test Case 1: {Test Case Name}
-- **Test ID**: TC-001
-- **Preconditions**: {What must be true before testing}
-- **Steps**: 
-  1. {Step 1}
-  2. {Step 2}
-  3. {Step 3}
-- **Expected Results**: {What should happen}
-- **Actual Results**: {To be filled during execution}
-- **Status**: {Pass/Fail/Blocked}
+### 2026-05-18 — Completed (uncommitted)
 
-### Test Case 2: {Test Case Name}
-- **Test ID**: TC-002
-- **Preconditions**: {What must be true before testing}
-- **Steps**: 
-  1. {Step 1}
-  2. {Step 2}
-- **Expected Results**: {What should happen}
-- **Actual Results**: {To be filled during execution}
-- **Status**: {Pass/Fail/Blocked}
+`palaces/extraction.md` intentionally left in place — its content is overwhelmingly explanation (4-stage CoT, two-tag rationale, UAT war story). C-10 picks it up and moves to `explanation/extraction.md`. It's currently orphaned from SUMMARY (mdbook doesn't include unlinked files in the rendered book), which is acceptable mid-flight.
 
-## Documentation Sections **[CONDITIONAL: Documentation Task]**
-
-{Delete unless this is a documentation task}
-
-### User Guide Content
-- **Feature Description**: {What this feature does and why it's useful}
-- **Prerequisites**: {What users need before using this feature}
-- **Step-by-Step Instructions**:
-  1. {Step 1 with screenshots/examples}
-  2. {Step 2 with screenshots/examples}
-  3. {Step 3 with screenshots/examples}
-
-### Troubleshooting Guide
-- **Common Issue 1**: {Problem description and solution}
-- **Common Issue 2**: {Problem description and solution}
-- **Error Messages**: {List of error messages and what they mean}
-
-### API Documentation **[CONDITIONAL: API Documentation]**
-- **Endpoint**: {API endpoint description}
-- **Parameters**: {Required and optional parameters}
-- **Example Request**: {Code example}
-- **Example Response**: {Expected response format}
-
-## Implementation Notes **[CONDITIONAL: Technical Task]**
-
-{Keep for technical tasks, delete for non-technical. Technical details, approach, or important considerations}
-
-### Technical Approach
-{How this will be implemented}
-
-### Dependencies
-{Other tasks or systems this depends on}
-
-### Risk Considerations
-{Technical risks and mitigation strategies}
-
-## Status Updates **[REQUIRED]**
-
-*To be added during implementation*
+Headline drift fixes:
+- "Twelve templates ship today" → "Sixteen templates ship today" with the 4 GitHub entries (notifications, issues-and-prs, review-queue, repo-mirror) and 4 new projection table types.
+- The `memory.md` "Direct access (work-in-progress)" disclaimer is gone — `/remember`, `/memory`, `/forget` listed as live in `memory-model.md`.
+- The `extracted_from` and `summarizes` relations called out as "never removed" / "DETACH DELETE on rollback" — both were buried prose in palaces/index.md / palaces/steward.md.
