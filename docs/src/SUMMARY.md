@@ -2,24 +2,30 @@
 
 [Introduction](./intro.md)
 
-# Getting Started
+# Tutorials
 
+- [Overview](./tutorials/index.md)
 - [Getting Started](./getting-started.md)
+
+# How-to guides
+
+- [Overview](./how-to/index.md)
+- [Read feeds with the agent](./how-to/read-feeds-with-the-agent.md)
 
 # Reference
 
+- [Overview](./reference/index.md)
+- [Feed templates](./reference/feed-templates.md)
+- [feed_search tool](./reference/feed-search-tool.md)
 - [Security & Permissions](./security.md)
 - [Memory](./memory.md)
 - [Workflows](./workflows.md)
-- [Continual Data Feeds](./feeds/index.md)
-  - [Template Catalog](./feeds/template-catalog.md)
-  - [Agent Read Patterns](./feeds/agent-read-patterns.md)
-  - [feed_search Tool](./feeds/feed-search.md)
-- [Workstream Palaces](./palaces/index.md)
+- [Continual data feeds](./feeds/index.md)
+- [Workstream palaces](./palaces/index.md)
   - [Projections](./palaces/projections.md)
   - [Extraction](./palaces/extraction.md)
   - [The Steward](./palaces/steward.md)
-  - [Agent Read Patterns](./palaces/agent-read-patterns.md)
+  - [Agent read patterns](./palaces/agent-read-patterns.md)
 
 # Integrations
 
@@ -27,4 +33,9 @@
 - [Google Calendar](./integrations/calendar.md)
 - [Google Drive](./integrations/drive.md)
 - [Slack](./integrations/slack.md)
-- [Atlassian (Jira + Confluence)](./integrations/atlassian.md)
+- [Atlassian](./integrations/atlassian.md)
+- [GitHub](./integrations/github.md)
+
+# Explanation
+
+- [Overview](./explanation/index.md)
