@@ -1796,27 +1796,33 @@ async fn main() -> Result<()> {
                         .with_events(event_tx.clone()),
                     );
                     // Back-fill missed daily/weekly ceremonies (T-0366).
-                    // Runs once on boot, *before* the cron loop attaches
-                    // — prevents races with a cron tick that fires
-                    // milliseconds later. retro is excluded by design;
-                    // see ARAWN-I-0052.
+                    // Spawned as a background task so server-ready is
+                    // not gated on potentially-many LLM compose calls
+                    // (UAT regression: 14 days × 2 ceremonies blew
+                    // through the 60s ready timeout). The cron loop
+                    // attaches immediately below; if a freshly-fired
+                    // cron tick collides with a still-running back-fill
+                    // on the same period_key, dispatcher idempotency
+                    // makes whichever loses return Skipped.
                     let backfill_lookback = config.backfill.ceremony_lookback_days;
                     let backfill_registry = plugin_reg.clone();
                     let backfill_dispatcher: Arc<dyn arawn_ceremonies::CeremonyDispatcher> =
                         Arc::clone(&dispatcher)
                             as Arc<dyn arawn_ceremonies::CeremonyDispatcher>;
-                    match arawn_ceremonies::backfill::run(
-                        &backfill_registry,
-                        backfill_dispatcher.as_ref(),
-                        backfill_lookback,
-                    )
-                    .await
-                    {
-                        Ok(_report) => {}
-                        Err(e) => {
-                            warn!(error = %e, "ceremony back-fill failed — cron still attached");
+                    tokio::spawn(async move {
+                        match arawn_ceremonies::backfill::run(
+                            &backfill_registry,
+                            backfill_dispatcher.as_ref(),
+                            backfill_lookback,
+                        )
+                        .await
+                        {
+                            Ok(_report) => {}
+                            Err(e) => {
+                                warn!(error = %e, "ceremony back-fill failed");
+                            }
                         }
-                    }
+                    });
 
                     let runner = arawn_ceremonies::CeremonyRunner::new(
                         plugin_reg,
