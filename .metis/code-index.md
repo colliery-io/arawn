@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-19T17:52:08Z | 368 files | Python, Rust
+> Generated: 2026-05-19T17:59:15Z | 368 files | Python, Rust
 
 ## Project Structure
 
@@ -7338,16 +7338,23 @@
 
 - pub `McpConfig` struct L9-12 — `{ servers: Vec<McpServerConfig> }` — Top-level MCP configuration section from arawn.toml.
 - pub `McpServerConfig` struct L16-30 — `{ name: String, command: String, args: Vec<String>, env: HashMap<String, String>...` — Configuration for a single MCP server.
-- pub `load_mcp_config` function L37-61 — `(path: &std::path::Path) -> McpConfig` — Load MCP config from an arawn.toml file.
+- pub `substitute_env_vars` function L47-81 — `(input: &str) -> Result<String, String>` — Substitute `${VAR}` references in a string with values from the parent
+- pub `load_mcp_config` function L84-108 — `(path: &std::path::Path) -> McpConfig` — Load MCP config from an arawn.toml file.
 -  `default_true` function L32-34 — `() -> bool` — MCP server configuration — parsed from arawn.toml [[mcp.servers]] entries.
--  `TomlWrapper` struct L43-46 — `{ mcp: McpConfig }` — MCP server configuration — parsed from arawn.toml [[mcp.servers]] entries.
--  `tests` module L64-131 — `-` — MCP server configuration — parsed from arawn.toml [[mcp.servers]] entries.
--  `parse_mcp_config` function L68-94 — `()` — MCP server configuration — parsed from arawn.toml [[mcp.servers]] entries.
--  `W` struct L83-86 — `{ mcp: McpConfig }` — MCP server configuration — parsed from arawn.toml [[mcp.servers]] entries.
--  `empty_config` function L97-109 — `()` — MCP server configuration — parsed from arawn.toml [[mcp.servers]] entries.
--  `W` struct L103-106 — `{ mcp: McpConfig }` — MCP server configuration — parsed from arawn.toml [[mcp.servers]] entries.
--  `config_with_env` function L112-130 — `()` — MCP server configuration — parsed from arawn.toml [[mcp.servers]] entries.
--  `W` struct L121-124 — `{ mcp: McpConfig }` — MCP server configuration — parsed from arawn.toml [[mcp.servers]] entries.
+-  `TomlWrapper` struct L90-93 — `{ mcp: McpConfig }` — MCP server configuration — parsed from arawn.toml [[mcp.servers]] entries.
+-  `tests` module L111-230 — `-` — MCP server configuration — parsed from arawn.toml [[mcp.servers]] entries.
+-  `parse_mcp_config` function L115-141 — `()` — MCP server configuration — parsed from arawn.toml [[mcp.servers]] entries.
+-  `W` struct L130-133 — `{ mcp: McpConfig }` — MCP server configuration — parsed from arawn.toml [[mcp.servers]] entries.
+-  `empty_config` function L144-156 — `()` — MCP server configuration — parsed from arawn.toml [[mcp.servers]] entries.
+-  `W` struct L150-153 — `{ mcp: McpConfig }` — MCP server configuration — parsed from arawn.toml [[mcp.servers]] entries.
+-  `substitute_passthrough` function L159-162 — `()` — MCP server configuration — parsed from arawn.toml [[mcp.servers]] entries.
+-  `substitute_resolves_var` function L165-181 — `()` — MCP server configuration — parsed from arawn.toml [[mcp.servers]] entries.
+-  `substitute_missing_var_errors` function L184-191 — `()` — MCP server configuration — parsed from arawn.toml [[mcp.servers]] entries.
+-  `substitute_escape_passes_literal` function L194-196 — `()` — MCP server configuration — parsed from arawn.toml [[mcp.servers]] entries.
+-  `substitute_unterminated_errors` function L199-202 — `()` — MCP server configuration — parsed from arawn.toml [[mcp.servers]] entries.
+-  `substitute_empty_var_errors` function L205-208 — `()` — MCP server configuration — parsed from arawn.toml [[mcp.servers]] entries.
+-  `config_with_env` function L211-229 — `()` — MCP server configuration — parsed from arawn.toml [[mcp.servers]] entries.
+-  `W` struct L220-223 — `{ mcp: McpConfig }` — MCP server configuration — parsed from arawn.toml [[mcp.servers]] entries.
 
 #### crates/arawn-mcp/src/lib.rs
 
@@ -7376,7 +7383,7 @@
 -  `McpManager` type L50-252 — `= McpManager` — registers them in the ToolRegistry, and handles reconnection.
 -  `MAX_ATTEMPTS` variable L158 — `: u32` — registers them in the ToolRegistry, and handles reconnection.
 -  `normalize_name` function L254-264 — `(name: &str) -> String` — registers them in the ToolRegistry, and handles reconnection.
--  `spawn_and_connect` function L267-295 — `( config: &McpServerConfig, ) -> Result< ( RunningService<RoleClient, ArawnClien...` — Spawn an MCP server process, connect via stdio, initialize, and discover tools.
+-  `spawn_and_connect` function L267-300 — `( config: &McpServerConfig, ) -> Result< ( RunningService<RoleClient, ArawnClien...` — Spawn an MCP server process, connect via stdio, initialize, and discover tools.
 
 ### crates/arawn-memory/src
 

@@ -7,7 +7,7 @@ created_at: 2026-05-19T12:07:51.424200+00:00
 updated_at: 2026-05-19T12:07:51.424200+00:00
 parent: 
 blocked_by: []
-archived: false
+archived: true
 
 tags:
   - "#task"
@@ -61,7 +61,13 @@ A nightly back-fill loop (or a startup back-fill on `arawn serve` boot — pick 
 - [ ] Retro detectors (`priority_completion_ratio`, etc.) operate correctly on back-filled history.
 - [ ] `docs/src/reference/ceremonies-tools.md` and `docs/src/explanation/ceremonies.md` rewritten to describe the back-fill (currently they explicitly say back-fill is not implemented).
 
-Surfaced during ARAWN-I-0051 doc triple-check. The doc previously claimed back-fill existed (`nightly.rs` plugin-header comment) but the code did not; the doc was rewritten to reflect reality. This task implements the missing functionality.
+Surfaced during ARAWN-I-0051 doc triple-check. The doc previously claimed back-fill existed (`nightly.rs` plugin-header comment) but the code did not; the doc was rewritten to reflect reality.
+
+**Superseded by [[ARAWN-I-0052]]** (2026-05-19). The discussion
+upgraded this from a "stub back-fill" task to a full initiative
+covering pinned date windows, historical dispatch, the 14-day
+back-fill cap, configurable retro cadence, and a current-time
+prompt header. See I-0052 tasks T-0364–T-0369.
 
 ## Backlog Item Details **[CONDITIONAL: Backlog Item]**
 
@@ -96,6 +102,8 @@ Surfaced during ARAWN-I-0051 doc triple-check. The doc previously claimed back-f
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
 
 ## Acceptance Criteria **[REQUIRED]**
 
