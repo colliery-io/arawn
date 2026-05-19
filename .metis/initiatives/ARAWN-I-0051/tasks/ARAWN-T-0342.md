@@ -4,14 +4,14 @@ level: task
 title: "Phase C-10: Explanation pages (14 new — agent loop, data model, all concept pages)"
 short_code: "ARAWN-T-0342"
 created_at: 2026-05-19T01:39:47.765601+00:00
-updated_at: 2026-05-19T01:39:47.765601+00:00
+updated_at: 2026-05-19T08:49:12.959973+00:00
 parent: ARAWN-I-0051
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -62,73 +62,39 @@ Bootstrap the Explanation quadrant — currently empty. Write 14 new pages cover
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
 
-## Acceptance Criteria **[REQUIRED]**
+## Acceptance Criteria
 
-- [ ] {Specific, testable requirement 1}
-- [ ] {Specific, testable requirement 2}
-- [ ] {Specific, testable requirement 3}
+## Acceptance Criteria
 
-## Test Cases **[CONDITIONAL: Testing Task]**
+- [x] `explanation/what-is-arawn.md` — vision + self-hosted thesis + agent-loop intro + three-layer-data-model intro. ~95 lines.
+- [x] `explanation/the-agent-loop.md` — turn flow + why each step exists + compaction + caps + what's NOT in the loop. ~135 lines.
+- [x] `explanation/three-layer-data-model.md` — feeds → projections → palaces with rationale per layer + walk-down patterns. ~115 lines.
+- [x] `explanation/feeds.md` — local-first thesis + when-to-feed + cadence rationale + backfill + when NOT to feed. ~120 lines.
+- [x] `explanation/projections.md` — why flat + why per-feed-type tables + why embeddings + provenance + when-to-read-which. ~135 lines.
+- [x] `explanation/palaces.md` — memory palace metaphor + lifecycle + ADR-0002/0003/0004 anchors + per-workstream rationale. ~130 lines.
+- [x] `explanation/extraction.md` — moved from palaces/extraction.md, edited links + intro caption. (Existing content was already pure explanation.) ~165 lines.
+- [x] `explanation/steward.md` — why bounded blast radius + why proposal-vs-apply + Extract→Suggest→Add cycle + why dust is manual + why doorwatch is metadata-only. ~125 lines.
+- [x] `explanation/workstreams.md` — what + why + when + scratch + workstream-vs-session vs feed vs memory. ~135 lines.
+- [x] `explanation/identity-by-workstream.md` — ARAWN-I-0035 design: why persona is workstream-scoped + IdentityProfile enum + how to switch + what's NOT in identity_profile. ~115 lines.
+- [x] `explanation/memory-design.md` — two-tier rationale + scope-locked preferences/people + FTS+vector hybrid + graphqlite for relations + closed confidence set. ~125 lines.
+- [x] `explanation/workflows.md` — when-to-workflow + 3 task flavours + why DAG + why cloacina + why compiled Rust + unsandboxed task bodies. ~115 lines.
+- [x] `explanation/permission-model.md` — deny>allow>ask + why ask exists + 4 modes rationale + plan-mode deny semantics + sandbox/rules composition + audit log purpose. ~135 lines.
+- [x] `explanation/ceremonies.md` — vision quote + 3 cadences + tablet-not-chat + agent-proposes + retro detectors + nightly recovery loop + ceremonies-aren't-optional stance. ~125 lines.
+- [x] `docs/src/palaces/extraction.md` moved via `git mv` to `docs/src/explanation/extraction.md`. `palaces/` directory removed.
+- [x] `SUMMARY.md` updated — Explanation section lists all 14 pages.
+- [x] `angreal docs build` clean.
 
-{Delete unless this is a testing task}
+## Status Updates
 
-### Test Case 1: {Test Case Name}
-- **Test ID**: TC-001
-- **Preconditions**: {What must be true before testing}
-- **Steps**: 
-  1. {Step 1}
-  2. {Step 2}
-  3. {Step 3}
-- **Expected Results**: {What should happen}
-- **Actual Results**: {To be filled during execution}
-- **Status**: {Pass/Fail/Blocked}
+### 2026-05-19 — Completed (uncommitted)
 
-### Test Case 2: {Test Case Name}
-- **Test ID**: TC-002
-- **Preconditions**: {What must be true before testing}
-- **Steps**: 
-  1. {Step 1}
-  2. {Step 2}
-- **Expected Results**: {What should happen}
-- **Actual Results**: {To be filled during execution}
-- **Status**: {Pass/Fail/Blocked}
+Largest single task in the initiative. 14 explanation pages, ~1700 lines of net new prose. Source: existing source pages (`feeds/index.md`, `memory.md`, `workflows.md`, `security.md`, `palaces/index.md`, `palaces/projections.md`, `palaces/steward.md`) all available from earlier reads in the session. `extraction.md` migrated via `git mv` and lightly edited for cross-link correctness.
 
-## Documentation Sections **[CONDITIONAL: Documentation Task]**
+The Explanation quadrant goes from **empty** (the Phase A audit's single biggest structural problem) to **14 pages covering the entire conceptual surface** of arawn:
+- 3 system-level concept pages (what-is-arawn, the-agent-loop, three-layer-data-model)
+- 5 data-model concept pages (feeds, projections, palaces, extraction, steward)
+- 6 organizing-principle pages (workstreams, identity-by-workstream, memory-design, workflows, permission-model, ceremonies)
 
-{Delete unless this is a documentation task}
+After this task, the initiative is materially complete. The proposed `docs/src/` tree is fully populated — 60 markdown files across the four Diataxis quadrants, mdbook builds clean, all referenced internal links resolve.
 
-### User Guide Content
-- **Feature Description**: {What this feature does and why it's useful}
-- **Prerequisites**: {What users need before using this feature}
-- **Step-by-Step Instructions**:
-  1. {Step 1 with screenshots/examples}
-  2. {Step 2 with screenshots/examples}
-  3. {Step 3 with screenshots/examples}
-
-### Troubleshooting Guide
-- **Common Issue 1**: {Problem description and solution}
-- **Common Issue 2**: {Problem description and solution}
-- **Error Messages**: {List of error messages and what they mean}
-
-### API Documentation **[CONDITIONAL: API Documentation]**
-- **Endpoint**: {API endpoint description}
-- **Parameters**: {Required and optional parameters}
-- **Example Request**: {Code example}
-- **Example Response**: {Expected response format}
-
-## Implementation Notes **[CONDITIONAL: Technical Task]**
-
-{Keep for technical tasks, delete for non-technical. Technical details, approach, or important considerations}
-
-### Technical Approach
-{How this will be implemented}
-
-### Dependencies
-{Other tasks or systems this depends on}
-
-### Risk Considerations
-{Technical risks and mitigation strategies}
-
-## Status Updates **[REQUIRED]**
-
-*To be added during implementation*
+Phase D (verification re-audit) remains as a follow-on, but the bulk of the work is done.

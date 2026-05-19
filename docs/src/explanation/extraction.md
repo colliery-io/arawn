@@ -1,9 +1,8 @@
 # Extraction
 
-The extractor turns [projection rows](./projections.md) into typed
-entities in a [workstream palace](./index.md). It's a 4-stage
-chain-of-thought process that runs whenever new projection rows arrive
-for a workstream that has bound the producing feed.
+*Explanation. The 4-stage CoT chain, the two-tag rationale, and what failed in UAT before the design settled.*
+
+The extractor turns [projection rows](./projections.md) into typed entities in a [workstream palace](./palaces.md). It's a 4-stage chain-of-thought process that runs whenever new projection rows arrive for a workstream that has bound the producing feed.
 
 ## The 4 stages
 
@@ -37,10 +36,7 @@ Every entity carries two tag fields:
   current ontology and the LLM is told to use the exact strings.
   Rust-side filtering drops anything the LLM emits that isn't in the
   list. This is the substrate dust and `signal_query` cluster on.
-- **`tags_discovered`** — free-form, LLM-emitted. Carries content the
-  ontology hasn't absorbed yet. Searchable via `signal_search` for
-  recall. Raw material for the [`tag-promoter`](./steward.md)
-  steward subroutine.
+- **`tags_discovered`** — free-form, LLM-emitted. Carries content the ontology hasn't absorbed yet. Searchable via `signal_search` for recall. Raw material for the [`tag-promoter`](../reference/steward-subroutines.md) steward subroutine.
 
 ### Why two fields
 
@@ -53,10 +49,7 @@ We tried free-form-only first. UAT showed it failed two ways:
   generic tags (`infrastructure`, `eng-org`) absorbed everything
   specific. Half of the dnd workstream had empty tags.
 
-The hybrid is the recovery. The closed ontology gives clustering a
-deterministic substrate. The free-form set keeps the LLM's recall
-intact and provides growth signal for the
-[Extract→Suggest→Add cycle](./steward.md#extract-suggest-add).
+The hybrid is the recovery. The closed ontology gives clustering a deterministic substrate. The free-form set keeps the LLM's recall intact and provides growth signal for the [Extract→Suggest→Add cycle](../reference/steward-subroutines.md#extract--suggest--add-the-canonical-example).
 
 ADR-0004 has the full rationale.
 
@@ -151,12 +144,10 @@ llm = "haiku"   # name of an entry in [llm.<name>]
 
 If unset, falls back to the engine LLM.
 
-## See also
+## Related
 
-- [Steward](./steward.md) — the four subroutines that curate what the
-  extractor produces.
+- [Steward](./steward.md) — the curation subroutines that maintain what the extractor produces.
 - [Projections](./projections.md) — what the extractor reads.
-- [Agent read patterns](./agent-read-patterns.md) — how the agent
-  queries the resulting palace.
-- [Memory](../memory.md) — the two-tier scope (global vs workstream)
-  the entities land in.
+- [Workstream tools reference](../reference/workstream-tools.md) — how the agent queries the resulting palace.
+- [Memory design](./memory-design.md) — the two-tier scope (global vs workstream) the entities land in.
+- [Palaces](./palaces.md) — the layer above.

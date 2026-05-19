@@ -57,3 +57,17 @@
 # Explanation
 
 - [Overview](./explanation/index.md)
+- [What is arawn?](./explanation/what-is-arawn.md)
+- [The agent loop](./explanation/the-agent-loop.md)
+- [The three-layer data model](./explanation/three-layer-data-model.md)
+- [Feeds](./explanation/feeds.md)
+- [Projections](./explanation/projections.md)
+- [Palaces](./explanation/palaces.md)
+- [Extraction](./explanation/extraction.md)
+- [The Steward](./explanation/steward.md)
+- [Workstreams](./explanation/workstreams.md)
+- [Identity by workstream](./explanation/identity-by-workstream.md)
+- [Memory design](./explanation/memory-design.md)
+- [Workflows](./explanation/workflows.md)
+- [Permission model](./explanation/permission-model.md)
+- [Ceremonies](./explanation/ceremonies.md)
