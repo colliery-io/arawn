@@ -68,17 +68,69 @@ Why detectors instead of asking the LLM "look at this week and tell me what you 
 
 The LLM still runs during retro — it composes the tablet's prose, judges which detector outputs are worth surfacing, and frames the diary prompt. But the detectors are the *structured* input.
 
-## What the recovery loop actually does today
+## Pinned date windows
 
-`crates/arawn-ceremonies/src/nightly.rs` runs an hourly tokio sweep — `sweep_unreviewed_retros` — that transitions stale `open` retro tablets to `unreviewed`. It does NOT back-fill missed daily/weekly ceremonies. If your laptop was closed Tuesday morning, the daily cron didn't fire and there is no Tuesday tablet.
+Daily and weekly gather queries don't read from "the last 24 hours" or "the last 7 days" relative to the wall clock — they read from a **pinned window** derived from the tablet's `period_key`:
 
-The roadmap (ARAWN-I-0035 follow-up): a retroactive back-fill so missed-day continuity is preserved automatically. Until that lands, the agent can compose a missing tablet on demand via `daily_run` / `weekly_run` / `retro_run` if you ask explicitly.
+- **Daily** for `2026-05-19` reads from `[2026-05-19 00:00 local, 2026-05-20 00:00 local)`.
+- **Weekly** for `2026-W21` reads from `[Mon 2026-05-18 00:00 local, Mon 2026-05-25 00:00 local)`.
 
-Why it matters when it ships:
+That has two consequences:
 
-- **Continuity.** Skipping days breaks the "what changed since yesterday?" loop.
-- **Detector inputs.** retro's `priority_completion_ratio` detector needs a complete priority history. Gaps skew the output.
-- **No surprise.** A user shouldn't have to know which days the daily cron missed.
+1. **Cron-jitter immunity.** Whether the 07:00 cron actually fires at 07:00:01 or 07:05:00, the window is identical.
+2. **Back-filling is meaningful.** Composing a tablet for a historical date pulls signals from *that day's* window, not "the last day from now." A Monday-morning back-fill of Friday's daily gathers signals that landed Friday, not the noise that arrived over the weekend.
+
+Source: `crates/arawn-ceremonies/src/local_window.rs` + each plugin's `period_window` impl.
+
+## Boot-time back-fill
+
+If arawn was offline when a daily/weekly cron tick should have fired (laptop closed, server stopped), the missed tablets get composed on the next `arawn serve` boot. The loop walks `[today - 14d, today - 1d]` and dispatches for any date whose tablet is missing.
+
+- Configurable cap via `[backfill] ceremony_lookback_days` (default 14, `0` disables).
+- **Daily + weekly only.** Retro is excluded — its detectors depend on aggregated weekly history and recovering a missed retro after the fact doesn't give the user anything actionable.
+- Each back-filled tablet carries a `recovered = true` flag so the UI / API can mark them and downstream consumers can distinguish recovered context from live.
+- Idempotent: dates with an existing tablet (any status) are skipped, so running back-fill twice is a no-op.
+
+### Why 14 days?
+
+The cap isn't a performance bound — back-fill is cheap. It's UX honesty:
+
+- **Weekend gap (≤ 3 days):** ~always useful. You actually want Friday's daily on Monday morning.
+- **Week-long absence (4–10 days):** marginally useful. You'll skim it, not act on it.
+- **Two weeks+:** ceremonial noise. You're not going to "catch up." You just open arawn and want today's stuff.
+
+Beyond 14 days we skip silently with a single boot log line.
+
+## What the nightly maintenance loop still does
+
+`crates/arawn-ceremonies/src/nightly.rs` runs an hourly tokio sweep — `sweep_unreviewed_retros` — that transitions stale `open` retro tablets to `unreviewed` so detectors can spot "diary skipped 3 weeks running" patterns. Distinct from back-fill, which is a one-shot boot pass.
+
+## Retro cadence
+
+By default retro fires Friday at 16:00 local. Users who want a longer rhythm can switch to **biweekly** (every other Friday) or **monthly** (first Friday of each month) via:
+
+- `[ceremonies.retro] cadence = "biweekly"` in `arawn.toml`, or
+- the `retro_set_cadence` agent tool, which writes the same knob to the `ceremony_config` table.
+
+The cron schedule itself stays `"0 16 * * FRI"` in all three cases — the off-week / off-month Fridays still fire, but the existing tablet's `period_key` matches and the dispatcher returns `Skipped`. Net behaviour:
+
+- **Weekly:** every Friday composes.
+- **Biweekly:** every other Friday composes; off-week Fridays return Skipped. Anchored on the first Friday after enablement; anchor is persisted in `ceremony_config` so the cycle is stable across restarts.
+- **Monthly:** first Friday of each month composes; later Fridays return Skipped. The `period_key` becomes `YYYY-MM`, so Friday-2 of May matches the existing `2026-05` tablet and skips cleanly.
+
+Biweekly's `period_key` is `B{N}` — a flat counter from the anchor rather than a year-prefixed key, because biweekly cycles cleanly straddle year boundaries. Negative biweeks (pre-anchor dates) are well-defined via floor division for back-fill scenarios.
+
+The agent-facing tool only persists the knob; the live plugin still has the old cadence until the next `arawn serve` restart. Hot-applying isn't supported in v1 — it'd require interior mutability on the plugin Arc that hasn't earned its complexity yet.
+
+## Current-time header
+
+Every agent turn's system prompt starts with a line like:
+
+```
+Current time: 2026-05-19 14:32 PDT (Tue)
+```
+
+In the system local timezone. Eliminates the recurring failure mode where date-sensitive tool calls (ceremony lookups, todo windows, scheduling) drifted across turns because the agent had no reliable now-reference. The header is cheap (a single chrono format call per turn) and lands at priority 0 in the assembled prompt so it's the first thing the model sees.
 
 ## Why ceremonies aren't optional in the engine sense
 

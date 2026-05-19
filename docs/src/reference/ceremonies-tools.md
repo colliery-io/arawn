@@ -57,6 +57,7 @@ Source: `crates/arawn-engine/src/tools/ceremony.rs`. Plugin: `crates/arawn-cerem
 | `retro_list_items` | List items the retro composed. |
 | `retro_save_diary` | Save your free-form diary entry. |
 | `retro_patch_item` | Edit / mark / dismiss an item. |
+| `retro_set_cadence` | Switch retro to `weekly` / `biweekly` / `monthly`. Persists to `ceremony_config`; takes effect on next `arawn serve` restart. |
 
 ### Retro detectors
 
@@ -84,15 +85,51 @@ enabled = false                  # skip weekly entirely
 
 [ceremonies.retro]
 schedule = "0 17 * * FRI"
+cadence = "biweekly"             # weekly (default) | biweekly | monthly
 ```
 
-When `enabled = false`, the plugin isn't registered — no cron, no RPC routes, no tools. Invalid cron expressions log a warn and fall back to the default. Defaults: enabled, `local` timezone, `hint:medium` model.
+When `enabled = false`, the plugin isn't registered — no cron, no RPC routes, no tools. Invalid cron expressions log a warn and fall back to the default. Defaults: enabled, `local` timezone, `hint:medium` model, `weekly` cadence.
 
-## Recovery
+### Retro cadence
+
+`[ceremonies.retro] cadence` accepts `"weekly"` (default), `"biweekly"`, or `"monthly"` (case-insensitive; `bi-weekly` and `fortnightly` are accepted aliases). The cron stays `"0 16 * * FRI"` in all three cases — biweekly/monthly off-Fridays still fire but the dispatcher's idempotency check returns `Skipped` because the existing tablet's `period_key` matches.
+
+`period_key` formats:
+
+- Weekly: `YYYY-Www` (ISO week).
+- Biweekly: `B{N}` — flat counter from the anchor, where N=0 is the anchor's biweek. Year-prefixed keys aren't used because biweekly cycles cleanly straddle year boundaries.
+- Monthly: `YYYY-MM`.
+
+For biweekly, the anchor (the first Monday under the new cadence) is auto-initialised to "today's Monday" on first boot and persisted in `ceremony_config` so the cycle is stable across restarts. Runtime updates via the `retro_set_cadence` agent tool write to the same table; they apply on the next `arawn serve` restart (the live plugin instance still has the old cadence until then).
+
+## Back-fill
+
+When `arawn serve` boots, it walks the last 14 days (configurable) and composes a tablet for each missed daily/weekly period. Retro is excluded — its detectors depend on aggregated weekly history and a recovered retro doesn't give the user anything actionable.
+
+```toml
+[backfill]
+ceremony_lookback_days = 14      # default 14, 0 disables
+```
+
+Each back-filled tablet carries a `recovered: true` flag in its DTO and underlying row so the UI / API can mark them.
+
+The boot log line summarises:
+
+```
+INFO ceremony back-fill complete composed=2 already_present=12 failed=0 lookback_days=14
+```
+
+Source: `crates/arawn-ceremonies/src/backfill.rs`.
+
+## Pinned date windows
+
+Daily and weekly gather queries read from a window pinned to the tablet's `period_key` (e.g. daily 2026-05-19 → `[2026-05-19 00:00 local, 2026-05-20 00:00 local)`), not from `now - 24h`. That makes back-fill produce truthful tablets and removes a latent cron-jitter bug on the live path. See [ceremonies explanation](../explanation/ceremonies.md#pinned-date-windows) for the rationale.
+
+## Nightly maintenance
 
 Source: `crates/arawn-ceremonies/src/nightly.rs`.
 
-An hourly tokio task (`sweep_unreviewed_retros`) transitions stale `open` retro tablets to `unreviewed`. It does **not** back-fill missed daily/weekly tablets — if the cron tick missed (laptop closed, server down), the daily/weekly ceremony for that day is simply absent. Retroactive back-fill is on the roadmap; today, the agent can compose a missing tablet on demand via `daily_run` / `weekly_run` / `retro_run` if you ask.
+An hourly tokio task (`sweep_unreviewed_retros`) transitions stale `open` retro tablets to `unreviewed`. Distinct from back-fill — this is a steady-state sweep, not a missed-cron recovery.
 
 ## Storage
 

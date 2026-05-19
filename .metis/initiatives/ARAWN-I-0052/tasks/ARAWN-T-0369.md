@@ -1,19 +1,19 @@
 ---
-id: ceremonies-docs-rewrite
+id: docs-rewrite-ceremonies-md
 level: task
 title: "Docs rewrite — ceremonies.md + ceremonies-tools.md cover back-fill, cadence, recovered flag"
 short_code: "ARAWN-T-0369"
 created_at: 2026-05-19T18:55:47.326211+00:00
-updated_at: 2026-05-19T18:55:47.326211+00:00
+updated_at: 2026-05-19T22:49:16.938191+00:00
 parent: ARAWN-I-0052
-blocked_by: ["ARAWN-T-0366", "ARAWN-T-0367", "ARAWN-T-0368"]
+blocked_by: [ARAWN-T-0366, ARAWN-T-0367, ARAWN-T-0368]
 archived: false
 
 tags:
   - "#task"
   - "#docs"
   - "#ceremonies"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -52,15 +52,42 @@ Files to rewrite or extend:
 
 ## Acceptance criteria
 
-- [ ] `ceremonies.md` explains pinned date windows, back-fill
-  (incl. the 14-day rationale), and retro cadence in plain
-  prose.
-- [ ] `ceremonies-tools.md` documents every new knob and tool
-  introduced by T-0366 / T-0367 / T-0368.
-- [ ] No "not implemented" caveats remain for behaviour that
-  this initiative ships.
-- [ ] Cross-references to `ARAWN-I-0052` in the docs commit
-  message; no Metis links in the docs body.
-- [ ] `mdbook build` (via `angreal docs build`) succeeds.
+- [x] `ceremonies.md` rewritten: replaced the old "back-fill
+  not implemented" section with three new sections — Pinned
+  date windows, Boot-time back-fill (incl. the 14-day
+  rationale), and Retro cadence — plus a current-time header
+  section.
+- [x] `ceremonies-tools.md` documents `retro_set_cadence`, the
+  `[ceremonies.retro] cadence` knob, the new `[backfill]
+  ceremony_lookback_days` knob, the `recovered` flag, pinned
+  windows, and the back-fill loop.
+- [x] `config-schema.md` adds the `cadence` field to the
+  ceremonies table and a new `[backfill]` section.
+- [x] No "not implemented" / "on the roadmap" caveats remain
+  for behaviour this initiative ships.
+- [x] `angreal docs build` succeeds.
+
+## Status Updates — 2026-05-19
+
+Landed.
+
+- `docs/src/explanation/ceremonies.md`: deleted the
+  "What the recovery loop actually does today" paragraph
+  with its roadmap caveat. Added new sections — *Pinned date
+  windows*, *Boot-time back-fill* (with the why-14-days
+  rationale), *What the nightly maintenance loop still does*,
+  *Retro cadence*, *Current-time header*.
+- `docs/src/reference/ceremonies-tools.md`: added
+  `retro_set_cadence` row to the retro tools table; replaced
+  the "Recovery" section with three sections — *Retro
+  cadence*, *Back-fill* (incl. boot log line example), and
+  *Pinned date windows*; the *Nightly maintenance* section
+  now disambiguates against back-fill.
+- `docs/src/reference/config-schema.md`: added `cadence` row
+  to the ceremonies table and a new `[backfill]` section.
+- `angreal docs build` → clean, no warnings.
+
+Ready for review. Once accepted, I-0052 itself can transition
+to completed (all 6 child tasks done).
 
 Parent: [[ARAWN-I-0052]].

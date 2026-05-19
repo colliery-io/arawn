@@ -147,6 +147,15 @@ Per-ceremony overrides. `<kind>` is `daily`, `weekly`, or `retro`. Absent table 
 | `schedule` | string | Cron expression overriding the plugin's default. Invalid expressions log a warning and fall back. |
 | `timezone` | string | `local` (default) or an IANA zone. |
 | `model` | string | LLM profile or hint shortcut (`hint:medium`) for the compose call. |
+| `cadence` | string | **Retro only.** `"weekly"` (default), `"biweekly"`, or `"monthly"`. Runtime updates via the `retro_set_cadence` agent tool override this default; both end up in the same `ceremony_config` table. See [ceremonies tools reference](./ceremonies-tools.md#retro-cadence). |
+
+## `[backfill]`
+
+Boot-time ceremony recovery knobs.
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `ceremony_lookback_days` | int | `14` | How far back to walk on `arawn serve` boot when looking for missed daily/weekly tablets. `0` disables back-fill entirely. Retro is always excluded. See [ceremonies tools reference](./ceremonies-tools.md#back-fill). |
 
 ## `[permissions]`
 

@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-19T22:06:55Z | 370 files | Python, Rust
+> Generated: 2026-05-19T22:25:34Z | 370 files | Python, Rust
 
 ## Project Structure
 
@@ -2216,64 +2216,65 @@
 -  `DEFAULT_SYSTEM_PROMPT` variable L41 — `: &str`
 -  `QueryEngineConfig` type L98-111 — `impl Default for QueryEngineConfig`
 -  `default` function L99-110 — `() -> Self`
--  `QueryEngine` type L137-987 — `= QueryEngine`
+-  `QueryEngine` type L137-988 — `= QueryEngine`
 -  `is_cancelled` function L233-235 — `(&self) -> bool` — Check if cancellation has been requested.
 -  `emit_progress` function L238-242 — `(&self, event: ProgressEvent)` — Emit a progress event if a sender is configured.
--  `build_request` function L588-688 — `(&self, session: &Session) -> ChatRequest`
--  `stream_response_with_retry` function L708-742 — `( &self, session: &Session, _ctx: &dyn arawn_tool::ToolContext, ) -> Result<Asse...` — Retry the request-build-and-stream cycle when the stream fails mid-flight.
--  `MAX_RETRIES` variable L713 — `: u32`
--  `BASE_DELAY_MS` variable L714 — `: u64`
--  `stream_response` function L744-811 — `( &self, request: ChatRequest, ) -> Result<AssembledResponse, EngineError>`
--  `execute_tool` function L813-986 — `( &self, ctx: &dyn arawn_tool::ToolContext, tool_use_id: &str, name: &str, argum...`
--  `parse_arguments` function L989-998 — `(raw: &str) -> serde_json::Value`
--  `AssembledResponse` struct L1001-1005 — `{ text: String, tool_calls: Vec<AssembledToolCall>, usage: Option<arawn_llm::Usa...`
--  `AssembledToolCall` struct L1007-1011 — `{ id: String, name: String, arguments: serde_json::Value }`
--  `ToolResult` struct L1013-1016 — `{ content: String, is_error: bool }`
--  `filter_tools_for_context` function L1021-1155 — `( all_tools: &[arawn_llm::ToolDefinition], session: &Session, registry: &ToolReg...` — Filter tool definitions to only contextually relevant ones for this turn.
--  `tests` module L1158-1512 — `-`
--  `MockLlm` struct L1171-1173 — `{ responses: Mutex<Vec<Vec<ChatChunk>>> }` — Mock LLM that returns pre-scripted responses.
--  `MockLlm` type L1175-1205 — `= MockLlm`
--  `new` function L1176-1180 — `(responses: Vec<Vec<ChatChunk>>) -> Self`
--  `text` function L1183-1190 — `(text: &str) -> Vec<ChatChunk>` — Convenience: text-only response
--  `tool_call` function L1193-1204 — `(id: &str, name: &str, args: &str) -> Vec<ChatChunk>` — Convenience: tool call then done
--  `MockLlm` type L1208-1224 — `impl LlmClient for MockLlm`
--  `stream` function L1209-1223 — `( &self, _request: ChatRequest, ) -> Result< Pin<Box<dyn futures::Stream<Item = ...`
--  `setup` function L1226-1231 — `() -> (Workstream, Session, EngineToolContext)`
--  `text_only_response` function L1234-1247 — `()`
--  `single_tool_call` function L1250-1268 — `()`
--  `tool_not_found` function L1271-1293 — `()`
--  `max_iterations_exceeded` function L1296-1323 — `()`
--  `multi_turn_tool_chain` function L1326-1345 — `()`
--  `SlowTool` struct L1349-1351 — `{ sleep_ms: u64 }` — Tool that intentionally sleeps for a duration so timeout tests can
--  `SlowTool` type L1354-1375 — `impl Tool for SlowTool`
--  `name` function L1355-1357 — `(&self) -> &str`
--  `description` function L1358-1360 — `(&self) -> &str`
--  `parameters_schema` function L1361-1363 — `(&self) -> serde_json::Value`
--  `execute` function L1364-1371 — `( &self, _ctx: &dyn arawn_tool::ToolContext, _params: serde_json::Value, ) -> Re...`
--  `is_read_only` function L1372-1374 — `(&self) -> bool`
--  `tool_completes_when_default_budget_is_large` function L1378-1399 — `()`
--  `slow_tool_times_out_under_short_default` function L1402-1436 — `()`
--  `agent_override_fires_before_default_would` function L1439-1477 — `()`
--  `invalid_override_surfaces_as_tool_error` function L1480-1511 — `()`
+-  `build_request` function L588-689 — `(&self, session: &Session) -> ChatRequest`
+-  `stream_response_with_retry` function L709-743 — `( &self, session: &Session, _ctx: &dyn arawn_tool::ToolContext, ) -> Result<Asse...` — Retry the request-build-and-stream cycle when the stream fails mid-flight.
+-  `MAX_RETRIES` variable L714 — `: u32`
+-  `BASE_DELAY_MS` variable L715 — `: u64`
+-  `stream_response` function L745-812 — `( &self, request: ChatRequest, ) -> Result<AssembledResponse, EngineError>`
+-  `execute_tool` function L814-987 — `( &self, ctx: &dyn arawn_tool::ToolContext, tool_use_id: &str, name: &str, argum...`
+-  `parse_arguments` function L990-999 — `(raw: &str) -> serde_json::Value`
+-  `AssembledResponse` struct L1002-1006 — `{ text: String, tool_calls: Vec<AssembledToolCall>, usage: Option<arawn_llm::Usa...`
+-  `AssembledToolCall` struct L1008-1012 — `{ id: String, name: String, arguments: serde_json::Value }`
+-  `ToolResult` struct L1014-1017 — `{ content: String, is_error: bool }`
+-  `filter_tools_for_context` function L1022-1156 — `( all_tools: &[arawn_llm::ToolDefinition], session: &Session, registry: &ToolReg...` — Filter tool definitions to only contextually relevant ones for this turn.
+-  `tests` module L1159-1513 — `-`
+-  `MockLlm` struct L1172-1174 — `{ responses: Mutex<Vec<Vec<ChatChunk>>> }` — Mock LLM that returns pre-scripted responses.
+-  `MockLlm` type L1176-1206 — `= MockLlm`
+-  `new` function L1177-1181 — `(responses: Vec<Vec<ChatChunk>>) -> Self`
+-  `text` function L1184-1191 — `(text: &str) -> Vec<ChatChunk>` — Convenience: text-only response
+-  `tool_call` function L1194-1205 — `(id: &str, name: &str, args: &str) -> Vec<ChatChunk>` — Convenience: tool call then done
+-  `MockLlm` type L1209-1225 — `impl LlmClient for MockLlm`
+-  `stream` function L1210-1224 — `( &self, _request: ChatRequest, ) -> Result< Pin<Box<dyn futures::Stream<Item = ...`
+-  `setup` function L1227-1232 — `() -> (Workstream, Session, EngineToolContext)`
+-  `text_only_response` function L1235-1248 — `()`
+-  `single_tool_call` function L1251-1269 — `()`
+-  `tool_not_found` function L1272-1294 — `()`
+-  `max_iterations_exceeded` function L1297-1324 — `()`
+-  `multi_turn_tool_chain` function L1327-1346 — `()`
+-  `SlowTool` struct L1350-1352 — `{ sleep_ms: u64 }` — Tool that intentionally sleeps for a duration so timeout tests can
+-  `SlowTool` type L1355-1376 — `impl Tool for SlowTool`
+-  `name` function L1356-1358 — `(&self) -> &str`
+-  `description` function L1359-1361 — `(&self) -> &str`
+-  `parameters_schema` function L1362-1364 — `(&self) -> serde_json::Value`
+-  `execute` function L1365-1372 — `( &self, _ctx: &dyn arawn_tool::ToolContext, _params: serde_json::Value, ) -> Re...`
+-  `is_read_only` function L1373-1375 — `(&self) -> bool`
+-  `tool_completes_when_default_budget_is_large` function L1379-1400 — `()`
+-  `slow_tool_times_out_under_short_default` function L1403-1437 — `()`
+-  `agent_override_fires_before_default_would` function L1440-1478 — `()`
+-  `invalid_override_surfaces_as_tool_error` function L1481-1512 — `()`
 
 #### crates/arawn-engine/src/system_prompt.rs
 
 - pub `SystemPromptBuilder` struct L214-218 — `{ sections: Vec<PromptSection>, token_budget: u32, identity_profile: IdentityPro...` — Builds a system prompt from static defaults (overridable) + dynamic context.
 - pub `new` function L221-227 — `() -> Self`
 - pub `with_token_budget` function L230-233 — `(mut self, budget: u32) -> Self` — Set a custom token budget.
-- pub `with_identity_profile` function L238-241 — `(mut self, profile: IdentityProfile) -> Self` — Select which persona's identity / doing_tasks / work_protocol
-- pub `load_static_sections` function L248-266 — `(mut self, prompts_dir: Option<&Path>) -> Self` — Load all 7 static sections, checking for user overrides in `prompts_dir`.
-- pub `environment` function L269-280 — `(mut self, os: &str, shell: &str, cwd: &Path, model: &str) -> Self` — Add the environment section.
-- pub `workstream` function L283-293 — `(mut self, name: &str, root_dir: &Path) -> Self` — Add the workstream section.
-- pub `tools` function L303-318 — `(mut self, tool_defs: &[ToolDefinition]) -> Self` — Acknowledge tool availability in the system prompt.
-- pub `context_files` function L321-344 — `(mut self, files: &[ContextFile]) -> Self` — Add context files (arawn.md at workstream and global levels).
-- pub `memories` function L347-362 — `(mut self, memories: &[String]) -> Self` — Add relevant memories (future — currently a no-op if empty).
-- pub `session_context` function L365-376 — `(mut self, summary: &str) -> Self` — Add session context (for resumed sessions).
-- pub `integrations` function L384-403 — `(mut self, summaries: &[String]) -> Self` — Add a section listing connected integrations and their granted
-- pub `plugin_prompts` function L406-422 — `(mut self, prompts: &[String]) -> Self` — Add plugin-contributed prompt fragments.
-- pub `build` function L425-447 — `(mut self) -> String` — Build the final system prompt string, enforcing token budget.
-- pub `ContextFile` struct L460-464 — `{ path: std::path::PathBuf, content: String, truncated: bool }` — A context file loaded from disk.
-- pub `find_context_files` function L467-483 — `(workstream_root: &Path, global_dir: &Path) -> Vec<ContextFile>` — Load context files from workstream root and global config dir.
+- pub `current_time` function L243-258 — `(mut self, now: chrono::DateTime<Tz>) -> Self` — Pin the current local time at the top of the prompt so the
+- pub `with_identity_profile` function L263-266 — `(mut self, profile: IdentityProfile) -> Self` — Select which persona's identity / doing_tasks / work_protocol
+- pub `load_static_sections` function L273-291 — `(mut self, prompts_dir: Option<&Path>) -> Self` — Load all 7 static sections, checking for user overrides in `prompts_dir`.
+- pub `environment` function L297-307 — `(mut self, os: &str, shell: &str, cwd: &Path, model: &str) -> Self` — Add the environment section.
+- pub `workstream` function L310-320 — `(mut self, name: &str, root_dir: &Path) -> Self` — Add the workstream section.
+- pub `tools` function L330-345 — `(mut self, tool_defs: &[ToolDefinition]) -> Self` — Acknowledge tool availability in the system prompt.
+- pub `context_files` function L348-371 — `(mut self, files: &[ContextFile]) -> Self` — Add context files (arawn.md at workstream and global levels).
+- pub `memories` function L374-389 — `(mut self, memories: &[String]) -> Self` — Add relevant memories (future — currently a no-op if empty).
+- pub `session_context` function L392-403 — `(mut self, summary: &str) -> Self` — Add session context (for resumed sessions).
+- pub `integrations` function L411-430 — `(mut self, summaries: &[String]) -> Self` — Add a section listing connected integrations and their granted
+- pub `plugin_prompts` function L433-449 — `(mut self, prompts: &[String]) -> Self` — Add plugin-contributed prompt fragments.
+- pub `build` function L452-474 — `(mut self) -> String` — Build the final system prompt string, enforcing token budget.
+- pub `ContextFile` struct L487-491 — `{ path: std::path::PathBuf, content: String, truncated: bool }` — A context file loaded from disk.
+- pub `find_context_files` function L494-510 — `(workstream_root: &Path, global_dir: &Path) -> Vec<ContextFile>` — Load context files from workstream root and global config dir.
 -  `DEFAULT_TOKEN_BUDGET` variable L7 — `: u32` — Default token budget for the system prompt (~24k chars).
 -  `MAX_CONTEXT_FILE_CHARS` variable L10 — `: usize` — Max chars for a context file before truncation.
 -  `ASSISTANT_IDENTITY` variable L20 — `: &str`
@@ -2292,35 +2293,38 @@
 -  `persona_default_for` function L181-191 — `(name: &str, profile: IdentityProfile) -> &'static str` — Resolve the compiled-in default for `name` under `profile`.
 -  `STATIC_SECTION_PRIORITIES` variable L194-203 — `: &[u8]` — Priority levels for sections.
 -  `PromptSection` struct L207-211 — `{ name: String, content: String, priority: u8 }` — A section in the assembled prompt.
--  `SystemPromptBuilder` type L220-448 — `= SystemPromptBuilder`
--  `SystemPromptBuilder` type L450-454 — `impl Default for SystemPromptBuilder`
--  `default` function L451-453 — `() -> Self`
--  `load_context_file` function L485-504 — `(path: &Path, max_chars: usize) -> Option<ContextFile>`
--  `truncate_70_20` function L507-530 — `(content: &str, max_chars: usize) -> String` — Truncate keeping 70% from the head and 20% from the tail, with a marker in between.
--  `load_section` function L534-542 — `(name: &str, default: &str, prompts_dir: Option<&Path>) -> String`
--  `tests` module L545-929 — `-`
--  `assistant_profile_emits_assistant_constants` function L552-580 — `()`
--  `coding_profile_emits_coding_constants` function L583-606 — `()`
--  `default_profile_is_assistant` function L609-614 — `()`
--  `default_assembly_includes_all_static_sections` function L618-634 — `()`
--  `sections_have_headers` function L638-649 — `()`
--  `empty_optional_sections_omitted` function L653-664 — `()`
--  `single_section_override` function L668-679 — `()`
--  `partial_overrides_other_sections_use_defaults` function L683-695 — `()`
--  `missing_override_dir_uses_defaults` function L699-705 — `()`
--  `empty_override_file_produces_empty_section` function L709-719 — `()`
--  `under_budget_all_sections_included` function L723-734 — `()`
--  `over_budget_drops_low_priority_sections` function L738-748 — `()`
--  `identity_survives_budget_cuts` function L752-761 — `()`
--  `truncation_produces_clean_sections` function L765-777 — `()`
--  `context_file_injected` function L781-792 — `()`
--  `context_file_missing_section_omitted` function L796-803 — `()`
--  `large_context_file_truncated` function L807-818 — `()`
--  `tools_section_reflects_tool_list` function L822-841 — `()`
--  `per_turn_freshness_different_tools` function L845-869 — `()`
--  `environment_section_contains_info` function L873-882 — `()`
--  `workstream_section_contains_info` function L886-893 — `()`
--  `snapshot_full_build` function L897-928 — `()`
+-  `SystemPromptBuilder` type L220-475 — `= SystemPromptBuilder`
+-  `SystemPromptBuilder` type L477-481 — `impl Default for SystemPromptBuilder`
+-  `default` function L478-480 — `() -> Self`
+-  `load_context_file` function L512-531 — `(path: &Path, max_chars: usize) -> Option<ContextFile>`
+-  `truncate_70_20` function L534-557 — `(content: &str, max_chars: usize) -> String` — Truncate keeping 70% from the head and 20% from the tail, with a marker in between.
+-  `load_section` function L561-569 — `(name: &str, default: &str, prompts_dir: Option<&Path>) -> String`
+-  `tests` module L572-1003 — `-`
+-  `assistant_profile_emits_assistant_constants` function L579-607 — `()`
+-  `coding_profile_emits_coding_constants` function L610-633 — `()`
+-  `default_profile_is_assistant` function L636-641 — `()`
+-  `default_assembly_includes_all_static_sections` function L645-661 — `()`
+-  `sections_have_headers` function L665-676 — `()`
+-  `empty_optional_sections_omitted` function L680-691 — `()`
+-  `single_section_override` function L695-706 — `()`
+-  `partial_overrides_other_sections_use_defaults` function L710-722 — `()`
+-  `missing_override_dir_uses_defaults` function L726-732 — `()`
+-  `empty_override_file_produces_empty_section` function L736-746 — `()`
+-  `under_budget_all_sections_included` function L750-761 — `()`
+-  `over_budget_drops_low_priority_sections` function L765-775 — `()`
+-  `identity_survives_budget_cuts` function L779-788 — `()`
+-  `truncation_produces_clean_sections` function L792-804 — `()`
+-  `context_file_injected` function L808-819 — `()`
+-  `context_file_missing_section_omitted` function L823-830 — `()`
+-  `large_context_file_truncated` function L834-845 — `()`
+-  `tools_section_reflects_tool_list` function L849-868 — `()`
+-  `per_turn_freshness_different_tools` function L872-896 — `()`
+-  `environment_section_contains_info` function L900-909 — `()`
+-  `current_time_appears_at_the_top` function L914-934 — `()`
+-  `current_time_uses_provided_timezone` function L937-946 — `()`
+-  `environment_no_longer_emits_date_line` function L949-956 — `()`
+-  `workstream_section_contains_info` function L960-967 — `()`
+-  `snapshot_full_build` function L971-1002 — `()`
 
 #### crates/arawn-engine/src/testing.rs
 
