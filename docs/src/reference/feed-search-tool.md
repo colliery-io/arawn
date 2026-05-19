@@ -1,7 +1,8 @@
 # `feed_search` — cross-feed semantic search
 
 `feed_search` is the agent-facing read surface over the projection
-layer (see [Continual Data Feeds](./index.md) for context). It's the
+layer (see [feeds overview](./feeds-overview.md) and [feeds
+explanation](../explanation/feeds.md) for context). It's the
 no-workstream fallback: when an agent needs to look up something
 across all configured feeds without first declaring a workstream
 scope, this is the tool to reach for.

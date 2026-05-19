@@ -37,6 +37,11 @@
 - [Permission model](./reference/permissions.md)
 - [Shell sandbox](./reference/shell-sandbox.md)
 - [Integrations](./reference/integrations.md)
+- [Workstream CLI](./reference/workstream-cli.md)
+- [Workstream tools](./reference/workstream-tools.md)
+- [Steward subroutines](./reference/steward-subroutines.md)
+- [Ceremonies tools](./reference/ceremonies-tools.md)
+- [Todos tools](./reference/todos-tools.md)
 - [Feed templates](./reference/feed-templates.md)
 - [feed_search tool](./reference/feed-search-tool.md)
 - [Memory](./memory.md)
@@ -45,8 +50,6 @@
 - [Workstream palaces](./palaces/index.md)
   - [Projections](./palaces/projections.md)
   - [Extraction](./palaces/extraction.md)
-  - [The Steward](./palaces/steward.md)
-  - [Agent read patterns](./palaces/agent-read-patterns.md)
 
 # Explanation
 
