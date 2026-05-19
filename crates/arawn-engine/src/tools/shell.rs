@@ -401,19 +401,18 @@ impl Tool for ShellTool {
 
         debug!(command, timeout_ms, cwd = ?ctx.working_dir(), "executing sandboxed shell command");
 
-        // Try sandboxed execution, fall back to unsandboxed with warning
+        // T-0346: fail closed when the sandbox isn't available. Mirrors
+        // the background path's behavior (`init_sandbox_for_background`)
+        // — pre-fix the foreground path silently dispatched to
+        // `execute_unsandboxed` with a one-line warning prefix, which
+        // contradicted the documented sandbox guarantees and let arawn
+        // run uninstrumented commands on Linux hosts without bwrap and
+        // on Windows entirely.
         match execute_sandboxed(command, ctx.working_dir(), timeout_ms, &self.network_tools).await {
             Ok(output) => Ok(output),
             Err(SandboxExecError::Unavailable(msg)) => {
-                warn!("sandbox unavailable: {msg} — running unsandboxed");
-                let mut output =
-                    execute_unsandboxed(command, ctx.working_dir(), timeout_ms).await?;
-                // Prepend warning so the LLM (and user via tool result) sees the sandbox was bypassed
-                output.content = format!(
-                    "[WARNING: Command ran without sandbox protection ({msg})]\n{}",
-                    output.content
-                );
-                Ok(output)
+                warn!("sandbox unavailable: {msg} — refusing to run unsandboxed");
+                Ok(ToolOutput::error(sandbox_unavailable_message(&msg)))
             }
             Err(SandboxExecError::Tool(output)) => Ok(output),
         }
@@ -529,52 +528,24 @@ async fn execute_sandboxed(
     Err(SandboxExecError::Tool(output))
 }
 
-async fn execute_unsandboxed(
-    command: &str,
-    working_dir: &std::path::Path,
-    timeout_ms: u64,
-) -> Result<ToolOutput, ToolError> {
-    let result = tokio::time::timeout(
-        std::time::Duration::from_millis(timeout_ms),
-        Command::new("sh")
-            .arg("-c")
-            .arg(command)
-            .current_dir(working_dir)
-            .env_clear()
-            .envs(safe_env())
-            .output(),
-    )
-    .await;
+// T-0346: `execute_unsandboxed` (and its `safe_env` companion path)
+// was removed. The foreground shell now fails closed when the
+// sandbox is unavailable; the unsandboxed fallback contradicted the
+// documented sandbox guarantees and is no longer reachable.
 
-    match result {
-        Ok(Ok(output)) => {
-            let stdout = String::from_utf8_lossy(&output.stdout);
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            let mut content = String::new();
-            if !stdout.is_empty() {
-                content.push_str(&stdout);
-            }
-            if !stderr.is_empty() {
-                if !content.is_empty() {
-                    content.push('\n');
-                }
-                content.push_str("STDERR:\n");
-                content.push_str(&stderr);
-            }
-            if output.status.success() {
-                Ok(ToolOutput::success(content))
-            } else {
-                Ok(ToolOutput::error(format!(
-                    "exit code {}\n{content}",
-                    output.status.code().unwrap_or(-1)
-                )))
-            }
-        }
-        Ok(Err(e)) => Ok(ToolOutput::error(format!("failed to execute: {e}"))),
-        Err(_) => Ok(ToolOutput::error(format!(
-            "command timed out after {timeout_ms}ms"
-        ))),
-    }
+/// T-0346: error message returned when the OS sandbox is
+/// unavailable. Lifted to a free function so unit tests can assert
+/// the content + format without needing to actually trigger the
+/// platform-unavailable code path.
+fn sandbox_unavailable_message(detail: &str) -> String {
+    format!(
+        "Refusing to run shell command: OS sandbox unavailable ({detail}). \
+         Install a supported sandbox backend (Linux: \
+         `apt install bubblewrap` / `pacman -S bubblewrap`; \
+         macOS: built-in `sandbox-exec`; Windows: not supported), \
+         or run arawn on a host that ships one. See \
+         docs/src/reference/shell-sandbox.md for details."
+    )
 }
 
 #[cfg(test)]
@@ -594,6 +565,22 @@ mod tests {
     fn test_ctx_in(dir: &std::path::Path) -> EngineToolContext {
         let ws = Workstream::scratch(dir);
         EngineToolContext::new(&ws, Uuid::new_v4())
+    }
+
+    // T-0346 regression: the fail-closed message must
+    // (a) tell the user the sandbox is unavailable,
+    // (b) hint at installation steps, and
+    // (c) NOT mention "ran unsandboxed" / "without sandbox protection"
+    //     (the pre-fix wording — guards against accidental revert).
+    #[test]
+    fn sandbox_unavailable_message_is_fail_closed() {
+        let msg = sandbox_unavailable_message("bwrap not found on PATH");
+        assert!(msg.contains("Refusing"));
+        assert!(msg.contains("sandbox unavailable"));
+        assert!(msg.contains("bubblewrap"));
+        assert!(msg.contains("sandbox-exec"));
+        assert!(!msg.contains("ran unsandboxed"));
+        assert!(!msg.contains("without sandbox protection"));
     }
 
     #[tokio::test]

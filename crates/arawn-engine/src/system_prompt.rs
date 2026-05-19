@@ -1,5 +1,6 @@
 use std::path::Path;
 
+use arawn_core::IdentityProfile;
 use arawn_llm::ToolDefinition;
 
 /// Default token budget for the system prompt (~24k chars).
@@ -9,8 +10,16 @@ const DEFAULT_TOKEN_BUDGET: u32 = 6_000;
 const MAX_CONTEXT_FILE_CHARS: usize = 10_000;
 
 // --- Compiled-in default prompt sections ---
+//
+// Each persona-scoped section (identity / doing_tasks / work_protocol)
+// has both an `ASSISTANT_*` and a `CODING_*` variant. The
+// `IdentityProfile` carried by `SystemPromptBuilder` selects which set
+// `load_static_sections` emits. The remaining sections (system, actions,
+// using_tools, tone, output_efficiency) are persona-neutral and shared.
 
-const DEFAULT_IDENTITY: &str = r#"You are Arawn, a personal agentic assistant that helps you stay organized and on top of life. You watch, check, summarize, and nudge — so you don't have to keep everything in your head. Use the tools available to you to assist the user with software engineering tasks, research, file management, and general questions."#;
+const ASSISTANT_IDENTITY: &str = r#"You are Arawn, a personal agentic assistant. You help the user stay organized and on top of life — across calendars, messages, tickets, tasks, and the small details that don't fit anywhere else. You watch, check, summarize, and nudge so the user doesn't have to hold everything in their head. You are not a coding REPL. When a question is about software, you can reach for code tools — but your default mode is helping a human navigate their day."#;
+
+const CODING_IDENTITY: &str = r#"You are Arawn, a personal agentic assistant that helps you stay organized and on top of life. You watch, check, summarize, and nudge — so you don't have to keep everything in your head. Use the tools available to you to assist the user with software engineering tasks, research, file management, and general questions."#;
 
 const DEFAULT_SYSTEM: &str = r#"# System
 - All text you output outside of tool use is displayed to the user. The user CANNOT see tool calls or their results directly — they only see your text output. This means you must narrate what you're doing; silent tool-call-only turns give the user no feedback.
@@ -19,7 +28,33 @@ const DEFAULT_SYSTEM: &str = r#"# System
 - When working with tool results, note important information in your response as tool results may be cleared later.
 - The system will automatically compress prior messages as the conversation approaches context limits."#;
 
-const DEFAULT_DOING_TASKS: &str = r#"# Doing tasks
+const ASSISTANT_DOING_TASKS: &str = r#"# Doing tasks
+- The user will primarily ask you to summarize, check, surface, schedule, draft, and follow up on things across their connected tools.
+- You are highly capable and can help users complete ambitious tasks that would otherwise be too complex or take too long.
+- Read before you act: when something already exists (a thread, a ticket, a calendar invite, a document), look at it before you suggest changes.
+- Don't fabricate. If a tool returns no results, retry with broader terms before reporting empty. If still empty, say so plainly. Never fall back to training-data knowledge to fill a gap — what's in the user's tools is the only truth about their workstream.
+- Be careful with actions that send messages, schedule events, or modify external state — these are visible to other people. Confirm before doing them unless the user has clearly authorized you for this turn.
+- Don't add scope. A "summarize my inbox" request doesn't need follow-ups drafted unless asked. A "what's on my calendar" request doesn't need rescheduling proposed.
+
+# Error recovery
+Tool-loop recovery is internal and free. When a tool returns an error, an empty result, or a hint pointing at a corrected argument, fix it and re-call in the same turn. Do NOT announce a retry to the user and then stop — either perform the retry, or report the failure honestly. The "confirm before acting" rule applies to external side-effects (sending messages, scheduling events), not to fixing your own tool arguments.
+
+If an approach fails, diagnose why before switching tactics — read the error, check your assumptions, try a focused fix. Don't retry the identical action blindly, but don't abandon a viable approach after a single failure either. Escalate to the user only when you're genuinely stuck after investigation, not as a first response to friction.
+
+- If a tool call returns the same error twice in a row with identical arguments, do not retry a third time — try a different approach or report the failure.
+- When an external resource (URL, API, user/org) returns 404 or "not found", accept it. Do not keep trying different URL patterns for the same non-existent resource.
+- If you cannot find what the user asked for, say so clearly and ask for clarification.
+
+# Behavioral context (arawn.md)
+You can read and write to `arawn.md` files to persist behavioral directives across sessions:
+- The workstream-level `arawn.md` is in the workstream root. It applies to all sessions in this workstream.
+- The global `arawn.md` is at the top of the data directory. It applies everywhere.
+- Both files are injected into your system prompt at the start of each turn.
+- Use arawn.md for consistent behavioral changes: tone preferences, recurring instructions, response style.
+- If the user corrects your approach or tells you to change how you work, update the appropriate arawn.md so the change persists.
+- Do NOT use arawn.md for facts, associations, or things the user asks you to "remember" — that belongs in the memory system."#;
+
+const CODING_DOING_TASKS: &str = r#"# Doing tasks
 - The user will primarily request software engineering tasks — solving bugs, adding features, refactoring, explaining code, and more.
 - You are highly capable and can help users complete ambitious tasks that would otherwise be too complex or take too long.
 - In general, do not propose changes to code you haven't read. Read existing code before suggesting modifications.
@@ -45,7 +80,19 @@ You can read and write to `arawn.md` files to persist behavioral directives acro
 - If the user corrects your approach or tells you to change how you work, update the appropriate arawn.md so the change persists.
 - Do NOT use arawn.md for facts, associations, or things the user asks you to "remember" — that belongs in the memory system."#;
 
-const DEFAULT_WORK_PROTOCOL: &str = r#"# Work protocol
+const ASSISTANT_WORK_PROTOCOL: &str = r#"# Work protocol
+You are an assistant who watches, checks, summarizes, and nudges. Default to surfacing information and confirming intent before taking actions that other people will see.
+
+1. **Check for skills first**: Review the available skills listed in the system prompt. If one matches the task (e.g., "workflows" for scheduled pipelines, "commit" for git), invoke it with the skill tool BEFORE doing anything else. Skills load domain-specific guidance.
+2. **Read before acting**: Use read-only tools (inbox/search/get/list) to see the state of the world before suggesting or proposing changes. Never propose an edit to a thread, ticket, or event you haven't read.
+3. **Use native tools over generic files**: If the system has a specialized tool for the task (memory_store for facts, todo_create for action items, ceremony tools for daily/weekly review), use it instead of writing a one-off file.
+4. **Confirm before external side-effects**: For anything visible outside this session — sending a message, creating a ticket, scheduling an event, replying on someone's behalf — show the user the draft and the target, then ask before sending. The cost of confirming is small; the cost of an unwanted send is large.
+5. **Iterate**: After taking an action, verify it landed (re-read the thread, re-fetch the ticket) and report what changed.
+6. **Report**: After working, briefly summarize what you found, what you did, and what's left.
+
+For open-ended planning or design questions, use the think tool to reason through the approach, then present your recommendation clearly."#;
+
+const CODING_WORK_PROTOCOL: &str = r#"# Work protocol
 You are an agent that BUILDS things, not an assistant that DESCRIBES things. When the user asks you to create, implement, or write something:
 
 1. **Check for skills first**: Review the available skills listed in the system prompt. If one matches the task (e.g., "workflows" for scheduled pipelines, "commit" for git), invoke it with the skill tool BEFORE doing anything else. Skills load domain-specific guidance that tells you the right way to build things in this system.
@@ -116,17 +163,32 @@ const STATIC_SECTION_NAMES: &[&str] = &[
     "output_efficiency",
 ];
 
-/// Compiled-in defaults for each static section.
-const STATIC_SECTION_DEFAULTS: &[&str] = &[
-    DEFAULT_IDENTITY,
+/// Compiled-in defaults for the persona-neutral sections. The
+/// persona-scoped sections (identity / doing_tasks / work_protocol)
+/// are picked by `persona_defaults` based on `IdentityProfile`.
+const STATIC_SECTION_DEFAULTS_NEUTRAL: &[&str] = &[
+    "", // identity — overridden per persona
     DEFAULT_SYSTEM,
-    DEFAULT_DOING_TASKS,
-    DEFAULT_WORK_PROTOCOL,
+    "", // doing_tasks — overridden per persona
+    "", // work_protocol — overridden per persona
     DEFAULT_ACTIONS,
     DEFAULT_USING_TOOLS,
     DEFAULT_TONE,
     DEFAULT_OUTPUT_EFFICIENCY,
 ];
+
+/// Resolve the compiled-in default for `name` under `profile`.
+fn persona_default_for(name: &str, profile: IdentityProfile) -> &'static str {
+    match (name, profile) {
+        ("identity", IdentityProfile::Assistant) => ASSISTANT_IDENTITY,
+        ("identity", IdentityProfile::Coding) => CODING_IDENTITY,
+        ("doing_tasks", IdentityProfile::Assistant) => ASSISTANT_DOING_TASKS,
+        ("doing_tasks", IdentityProfile::Coding) => CODING_DOING_TASKS,
+        ("work_protocol", IdentityProfile::Assistant) => ASSISTANT_WORK_PROTOCOL,
+        ("work_protocol", IdentityProfile::Coding) => CODING_WORK_PROTOCOL,
+        _ => "",
+    }
+}
 
 /// Priority levels for sections. Lower = higher priority (survives budget cuts).
 const STATIC_SECTION_PRIORITIES: &[u8] = &[
@@ -152,6 +214,7 @@ struct PromptSection {
 pub struct SystemPromptBuilder {
     sections: Vec<PromptSection>,
     token_budget: u32,
+    identity_profile: IdentityProfile,
 }
 
 impl SystemPromptBuilder {
@@ -159,6 +222,7 @@ impl SystemPromptBuilder {
         Self {
             sections: Vec::new(),
             token_budget: DEFAULT_TOKEN_BUDGET,
+            identity_profile: IdentityProfile::default(),
         }
     }
 
@@ -168,11 +232,28 @@ impl SystemPromptBuilder {
         self
     }
 
+    /// Select which persona's identity / doing_tasks / work_protocol
+    /// constants are emitted by [`Self::load_static_sections`]. Defaults
+    /// to [`IdentityProfile::Assistant`].
+    pub fn with_identity_profile(mut self, profile: IdentityProfile) -> Self {
+        self.identity_profile = profile;
+        self
+    }
+
     /// Load all 7 static sections, checking for user overrides in `prompts_dir`.
     /// If `prompts_dir` is None or doesn't exist, uses compiled-in defaults.
+    /// The three persona-scoped sections (identity / doing_tasks /
+    /// work_protocol) are pulled from the `ASSISTANT_*` or `CODING_*`
+    /// constants according to the builder's `identity_profile`.
     pub fn load_static_sections(mut self, prompts_dir: Option<&Path>) -> Self {
         for (i, name) in STATIC_SECTION_NAMES.iter().enumerate() {
-            let content = load_section(name, STATIC_SECTION_DEFAULTS[i], prompts_dir);
+            let neutral = STATIC_SECTION_DEFAULTS_NEUTRAL[i];
+            let default = if neutral.is_empty() {
+                persona_default_for(name, self.identity_profile)
+            } else {
+                neutral
+            };
+            let content = load_section(name, default, prompts_dir);
             if !content.is_empty() {
                 self.sections.push(PromptSection {
                     name: name.to_string(),
@@ -466,6 +547,72 @@ mod tests {
     use std::path::PathBuf;
     use tempfile::TempDir;
 
+    // --- I-0035: persona-scoped sections ---
+    #[test]
+    fn assistant_profile_emits_assistant_constants() {
+        let prompt = SystemPromptBuilder::new()
+            .with_identity_profile(IdentityProfile::Assistant)
+            .load_static_sections(None)
+            .build();
+
+        assert!(
+            prompt.contains("a personal agentic assistant"),
+            "assistant identity should appear: {prompt}"
+        );
+        assert!(
+            !prompt.contains("you don't have to keep everything in your head. Use the tools available to you to assist the user with software engineering tasks"),
+            "coding-identity prose leaked into assistant prompt"
+        );
+        assert!(
+            prompt
+                .contains("summarize, check, surface, schedule, draft, and follow up on things"),
+            "assistant doing_tasks section missing"
+        );
+        assert!(
+            prompt.contains("watches, checks, summarizes, and nudges"),
+            "assistant work_protocol section missing"
+        );
+        // Coding-protocol BUILDS-not-DESCRIBES line must not leak in.
+        assert!(
+            !prompt.contains("agent that BUILDS things, not an assistant that DESCRIBES things"),
+            "coding work_protocol leaked into assistant prompt"
+        );
+    }
+
+    #[test]
+    fn coding_profile_emits_coding_constants() {
+        let prompt = SystemPromptBuilder::new()
+            .with_identity_profile(IdentityProfile::Coding)
+            .load_static_sections(None)
+            .build();
+
+        assert!(
+            prompt.contains("software engineering tasks, research, file management"),
+            "coding identity tail missing"
+        );
+        assert!(
+            prompt.contains("primarily request software engineering tasks"),
+            "coding doing_tasks missing"
+        );
+        assert!(
+            prompt.contains("agent that BUILDS things, not an assistant that DESCRIBES things"),
+            "coding work_protocol missing"
+        );
+        // Assistant-identity prose must not leak in.
+        assert!(
+            !prompt.contains("You are not a coding REPL"),
+            "assistant identity leaked into coding prompt"
+        );
+    }
+
+    #[test]
+    fn default_profile_is_assistant() {
+        let prompt = SystemPromptBuilder::new().load_static_sections(None).build();
+        // No `.with_identity_profile` call — default must be Assistant.
+        assert!(prompt.contains("a personal agentic assistant"));
+        assert!(!prompt.contains("agent that BUILDS things"));
+    }
+
     // --- TC-01: Default assembly ---
     #[test]
     fn default_assembly_includes_all_static_sections() {
@@ -604,7 +751,7 @@ mod tests {
     #[test]
     fn identity_survives_budget_cuts() {
         let prompt = SystemPromptBuilder::new()
-            .with_token_budget(100) // very tight
+            .with_token_budget(200) // tight: identity fits, low-priority sections dropped
             .load_static_sections(None)
             .plugin_prompts(&["plugin stuff".to_string()])
             .build();
@@ -748,8 +895,11 @@ mod tests {
     // --- TC-19: Snapshot test ---
     #[test]
     fn snapshot_full_build() {
-        // Use a fixed date by building manually
+        // Pinned to the Coding persona so the existing snapshot remains
+        // byte-identical after the I-0035 identity split. A separate
+        // snapshot for the Assistant persona would be useful future work.
         let mut builder = SystemPromptBuilder::new()
+            .with_identity_profile(IdentityProfile::Coding)
             .load_static_sections(None)
             .workstream("scratch", Path::new("/tmp/arawn"));
 

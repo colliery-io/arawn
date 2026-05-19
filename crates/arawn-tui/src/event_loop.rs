@@ -123,6 +123,17 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
         }
     }
 
+    // I-0035 Phase 2 (T-0354) + Phase 3 T-B (T-0357) + Phase 4 T-B
+    // (T-0360): pre-fetch today's brief so the empty-chat surface
+    // and the dashboard right pane can both render without a
+    // round-trip on first paint. Read-only against the ceremony
+    // service; no LLM tokens spent. Falls back to None when no
+    // tablets exist yet — that's the pre-onboarding state where
+    // the T-0331 welcome wins. The helper is also called from the
+    // briefing_ready handler so cron-fired refreshes use the same
+    // path.
+    refresh_brief_cache(&mut client, &mut app).await;
+
     // Fetch server capabilities and surface degraded-feature warnings.
     // Failure to retrieve capabilities is non-fatal — older servers won't have
     // this RPC; we just don't show the banner.
@@ -183,7 +194,9 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                     // Always draw on tick while generating so the spinner
                     // animates and any throttled streaming updates flush.
                     force_draw(&mut terminal, &mut app)?;
-                } else if app.dirty {
+                } else if app.dirty || !app.toast_queue.is_empty() {
+                    // Repaint when a toast is queued so it can age out
+                    // at TTL even if nothing else is changing.
                     force_draw(&mut terminal, &mut app)?;
                 }
             }
@@ -843,6 +856,16 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                                 }
                                 app.dirty = true;
                             }
+                            crate::command::CommandResult::BriefShow => {
+                                let body = render_brief_combined(&mut client).await;
+                                app.messages.push(ChatMessage::new(ChatRole::System, body));
+                                app.dirty = true;
+                            }
+                            crate::command::CommandResult::UsageShow { period } => {
+                                let body = render_usage(&mut client, &period).await;
+                                app.messages.push(ChatMessage::new(ChatRole::System, body));
+                                app.dirty = true;
+                            }
                             crate::command::CommandResult::TodoShow => {
                                 let todos = fetch_open_todos(&mut client).await;
                                 app.todo_overlay = Some(
@@ -854,50 +877,38 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                         }
                     }
 
-                    // Handle sidebar select — load workstream sessions or switch session
-                    if action == crate::action::Action::SidebarSelect {
-                        match app.sidebar_section {
-                            crate::app::SidebarSection::Workstreams => {
-                                if let Some(ws) = app.workstreams.get(app.sidebar_ws_index).cloned() {
-                                    app.current_workstream = Some(ws.clone());
-                                    if let Ok(sessions) = client.list_sessions(Some(ws.id)).await {
-                                        app.sessions = sessions;
-                                        app.sidebar_session_index = 0;
-                                    }
+                    // Handle sidebar select — load workstream sessions and
+                    // resume / create one. I-0035 Phase 3 T-A removed the
+                    // Sessions sub-section; sessions are managed via
+                    // `/session list` and `/session new` slash commands.
+                    if action == crate::action::Action::SidebarSelect
+                        && let Some(ws) = app.workstreams.get(app.sidebar_ws_index).cloned()
+                    {
+                        app.current_workstream = Some(ws.clone());
+                        if let Ok(sessions) = client.list_sessions(Some(ws.id)).await {
+                            app.sessions = sessions;
+                            app.sidebar_session_index = 0;
+                        }
 
-                                    // Auto-create a session if the workstream has none,
-                                    // or resume the most recent one.
-                                    if app.sessions.is_empty() {
-                                        if let Ok(session) = client.create_session(Some(ws.id)).await {
-                                            app.current_session = Some(session.clone());
-                                            app.sessions.push(session);
-                                            app.messages.clear();
-                                            app.streaming_text.clear();
-                                        }
-                                    } else {
-                                        // Resume the first (most recent) session
-                                        let session = app.sessions[0].clone();
-                                        app.current_session = Some(session.clone());
-                                        if let Ok(detail) = client.load_session(session.id).await {
-                                            app.load_session_messages(&detail);
-                                        }
-                                    }
-
-                                    app.sidebar_section = crate::app::SidebarSection::Sessions;
-                                    app.dirty = true;
-                                }
+                        // Auto-create a session if the workstream has none,
+                        // or resume the most recent one.
+                        if app.sessions.is_empty() {
+                            if let Ok(session) = client.create_session(Some(ws.id)).await {
+                                app.current_session = Some(session.clone());
+                                app.sessions.push(session);
+                                app.messages.clear();
+                                app.streaming_text.clear();
                             }
-                            crate::app::SidebarSection::Sessions => {
-                                if let Some(session) = app.sessions.get(app.sidebar_session_index).cloned() {
-                                    app.current_session = Some(session.clone());
-                                    if let Ok(detail) = client.load_session(session.id).await {
-                                        app.load_session_messages(&detail);
-                                    }
-                                    app.focus = crate::app::Focus::Main;
-                                    app.dirty = true;
-                                }
+                        } else {
+                            // Resume the first (most recent) session
+                            let session = app.sessions[0].clone();
+                            app.current_session = Some(session.clone());
+                            if let Ok(detail) = client.load_session(session.id).await {
+                                app.load_session_messages(&detail);
                             }
                         }
+                        app.focus = crate::app::Focus::Main;
+                        app.dirty = true;
                     }
 
                     // Handle new session
@@ -944,28 +955,24 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                                     app.dirty = true;
                                 }
 
-                            // Sidebar panel
+                            // Sidebar panel (workstreams only post-T-0356).
                             if let Some(sidebar_rect) = app.layout.sidebar
-                                && rect_contains(sidebar_rect, col, row) {
-                                    app.focus = crate::app::Focus::Sidebar;
-                                    if let Some(ws_rect) = app.layout.sidebar_ws
-                                        && rect_contains(ws_rect, col, row) {
-                                            app.sidebar_section = crate::app::SidebarSection::Workstreams;
-                                            let item_row = row.saturating_sub(ws_rect.y + 1) as usize;
-                                            if item_row < app.workstreams.len() {
-                                                app.sidebar_ws_index = item_row;
-                                            }
-                                        }
-                                    if let Some(sess_rect) = app.layout.sidebar_sessions
-                                        && rect_contains(sess_rect, col, row) {
-                                            app.sidebar_section = crate::app::SidebarSection::Sessions;
-                                            let item_row = row.saturating_sub(sess_rect.y + 1) as usize;
-                                            if item_row < app.sessions.len() {
-                                                app.sidebar_session_index = item_row;
-                                            }
-                                        }
-                                    app.dirty = true;
+                                && rect_contains(sidebar_rect, col, row)
+                            {
+                                app.focus = crate::app::Focus::Sidebar;
+                                if let Some(ws_rect) = app.layout.sidebar_ws
+                                    && rect_contains(ws_rect, col, row)
+                                {
+                                    app.sidebar_section =
+                                        crate::app::SidebarSection::Workstreams;
+                                    let item_row =
+                                        row.saturating_sub(ws_rect.y + 1) as usize;
+                                    if item_row < app.workstreams.len() {
+                                        app.sidebar_ws_index = item_row;
+                                    }
                                 }
+                                app.dirty = true;
+                            }
 
                             // Input area — click to focus and place cursor
                             if rect_contains(app.layout.input, col, row) {
@@ -1202,6 +1209,14 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                     refresh_active_ceremony_overlay(&mut client, &mut app).await;
                     force_render = true;
                 }
+                // I-0035 Phase 4 T-B: a briefing_ready notice arrived
+                // — re-fetch the cached daily/weekly view + rebuild
+                // the empty-chat brief markdown.
+                if app.pending_brief_refresh {
+                    app.pending_brief_refresh = false;
+                    refresh_brief_cache(&mut client, &mut app).await;
+                    force_render = true;
+                }
 
                 if force_render {
                     force_draw(&mut terminal, &mut app)?;
@@ -1311,6 +1326,15 @@ fn apply_system_notice(notice: &arawn_service::ServerNotice, app: &mut crate::ap
         if app.todo_overlay.is_some() {
             app.pending_todo_refresh = true;
         }
+        app.dirty = true;
+        return;
+    }
+    // I-0035 Phase 4 T-B: briefing_ready notices trigger a brief
+    // cache refresh + a toast — no chat message, the toast is the
+    // user-visible affordance.
+    if notice.category == "briefing_ready" {
+        app.pending_brief_refresh = true;
+        app.post_toast(notice.message.clone(), crate::toast::ToastLevel::Info);
         app.dirty = true;
         return;
     }
@@ -1672,6 +1696,126 @@ async fn render_ceremony_retro(client: &mut crate::ws_client::WsClient, iso_week
         diary: None,
     };
     arawn_ceremonies::render_retro(&view)
+}
+
+/// Fetch the daily tablet + items for `today` and return a
+/// `DailyView`. None when no daily tablet exists for that date.
+/// Used by `/brief` and the empty-chat brief pre-fetch; shares the
+/// same `ceremonies.get_by_period` path the `/today` renderer uses.
+async fn fetch_daily_view(
+    client: &mut crate::ws_client::WsClient,
+    today: &str,
+) -> Option<arawn_ceremonies::DailyView> {
+    let params = serde_json::json!({"kind": "daily", "period_key": today});
+    let resp = client
+        .request_response("ceremonies.get_by_period", params)
+        .await
+        .ok()?;
+    let result = resp.get("result")?;
+    if result.is_null() {
+        return None;
+    }
+    let tablet: arawn_ceremonies::TabletDto = serde_json::from_value(result.clone()).ok()?;
+    let items = fetch_items(client, &tablet.id).await;
+    Some(arawn_ceremonies::DailyView { tablet, items })
+}
+
+/// Fetch the weekly tablet + items + priorities for `iso_week`.
+/// Companion to `fetch_daily_view`.
+async fn fetch_weekly_view(
+    client: &mut crate::ws_client::WsClient,
+    iso_week: &str,
+) -> Option<arawn_ceremonies::WeeklyView> {
+    let params = serde_json::json!({"kind": "weekly", "period_key": iso_week});
+    let resp = client
+        .request_response("ceremonies.get_by_period", params)
+        .await
+        .ok()?;
+    let result = resp.get("result")?;
+    if result.is_null() {
+        return None;
+    }
+    let tablet: arawn_ceremonies::TabletDto = serde_json::from_value(result.clone()).ok()?;
+    let items = fetch_items(client, &tablet.id).await;
+    let priorities = fetch_priorities(client, &tablet.id).await;
+    Some(arawn_ceremonies::WeeklyView {
+        tablet,
+        items,
+        priorities,
+    })
+}
+
+/// T-0362: TUI `/usage` slash command — call the server-side
+/// `usage.summary` RPC and pretty-print via the shared renderer
+/// in `arawn_llm::usage::render_usage_human`. Server-side
+/// parameter validation is authoritative — bad `period` values
+/// surface as an `error.message` string here.
+async fn render_usage(client: &mut crate::ws_client::WsClient, period: &str) -> String {
+    let resp = match client
+        .request_response(
+            "usage.summary",
+            serde_json::json!({"period": period, "by_site": true}),
+        )
+        .await
+    {
+        Ok(v) => v,
+        Err(e) => return format!("/usage failed: {e}"),
+    };
+    let Some(result) = resp.get("result") else {
+        let err = resp
+            .get("error")
+            .and_then(|e| e.get("message"))
+            .and_then(|m| m.as_str())
+            .unwrap_or("unknown error");
+        return format!("/usage failed: {err}");
+    };
+    let summary: arawn_llm::usage::UsageSummary = match serde_json::from_value(result.clone()) {
+        Ok(s) => s,
+        Err(e) => return format!("/usage: malformed response: {e}"),
+    };
+    let body = arawn_llm::usage::render_usage_human(&summary);
+    format!("```\n{body}```")
+}
+
+/// I-0035 Phase 2 / 3 / 4: refresh the cached brief markdown +
+/// parsed daily view on `App`. Used by the session-start preload
+/// and by the briefing_ready ServerNotice handler. Idempotent;
+/// when no tablets exist, leaves the caches as-is so the
+/// pre-onboarding welcome continues to win.
+async fn refresh_brief_cache(client: &mut crate::ws_client::WsClient, app: &mut App) {
+    let today = chrono::Utc::now()
+        .date_naive()
+        .format("%Y-%m-%d")
+        .to_string();
+    let iso_week = current_iso_week();
+    let daily = fetch_daily_view(client, &today).await;
+    let weekly = fetch_weekly_view(client, &iso_week).await;
+    if daily.is_none() && weekly.is_none() {
+        return;
+    }
+    let view = arawn_ceremonies::BriefView {
+        daily: daily.clone(),
+        weekly,
+    };
+    app.brief_markdown =
+        Some(arawn_ceremonies::render_brief(&view, chrono::Utc::now()));
+    app.daily_view = daily;
+}
+
+/// I-0035 Phase 2 (T-0354): fetch today's daily tablet + this week's
+/// weekly tablet and compose them into a single brief markdown
+/// document. Returns the rendered string ready to push into a chat
+/// message (or to cache for the empty-chat surface).
+async fn render_brief_combined(client: &mut crate::ws_client::WsClient) -> String {
+    let today = chrono::Utc::now()
+        .date_naive()
+        .format("%Y-%m-%d")
+        .to_string();
+    let iso_week = current_iso_week();
+    let daily = fetch_daily_view(client, &today).await;
+    let weekly = fetch_weekly_view(client, &iso_week).await;
+    let view = arawn_ceremonies::BriefView { daily, weekly };
+    arawn_ceremonies::render_brief(&view, chrono::Utc::now())
 }
 
 /// Re-fetch the tablet for `(kind, period_key)` and return its id +
@@ -2054,6 +2198,46 @@ mod ceremony_refresh_tests {
         apply_system_notice(&n, &mut app);
         assert_eq!(app.messages.len(), 1);
         assert!(!app.pending_ceremony_refresh);
+    }
+
+    // I-0035 Phase 4 T-B (T-0360) — briefing_ready handler.
+
+    fn briefing_ready_notice() -> arawn_service::ServerNotice {
+        arawn_service::ServerNotice {
+            level: "info".into(),
+            category: "briefing_ready".into(),
+            message: "Brief updated — daily tablet for 2026-05-19".into(),
+            timestamp: "2026-05-19T07:00:00Z".into(),
+        }
+    }
+
+    #[test]
+    fn briefing_ready_flags_refresh_and_posts_toast() {
+        let mut app = App::new();
+        apply_system_notice(&briefing_ready_notice(), &mut app);
+        assert!(
+            app.pending_brief_refresh,
+            "briefing_ready must flag a brief-cache refresh"
+        );
+        assert_eq!(
+            app.toast_queue.len(),
+            1,
+            "briefing_ready must enqueue a toast"
+        );
+        let toast = app.toast_queue.front().unwrap();
+        assert!(toast.message.contains("Brief updated"));
+        // Silent category — no chat noise.
+        assert!(app.messages.is_empty());
+    }
+
+    #[test]
+    fn briefing_ready_does_not_affect_ceremony_refresh() {
+        let mut app = App::new();
+        apply_system_notice(&briefing_ready_notice(), &mut app);
+        // briefing_ready is a separate path from the legacy
+        // ceremony_event channel — they don't interfere.
+        assert!(!app.pending_ceremony_refresh);
+        assert!(!app.pending_todo_refresh);
     }
 }
 

@@ -64,6 +64,50 @@ impl std::fmt::Display for WorkstreamNameError {
 
 impl std::error::Error for WorkstreamNameError {}
 
+/// Which prompt persona this workstream loads into the engine.
+///
+/// `Assistant` is the default for every workstream and matches the
+/// vision: arawn watches, checks, summarizes, and nudges across a
+/// user's life. `Coding` opt-in restores the engineering-tool persona
+/// for workstreams that are explicitly software-development scoped.
+///
+/// The string form is what we persist in SQLite (`workstreams.identity_profile`)
+/// and what crosses the WS-RPC boundary. Anything else round-trips to
+/// `Assistant` (default-safe).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum IdentityProfile {
+    #[default]
+    Assistant,
+    Coding,
+}
+
+impl IdentityProfile {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Assistant => "assistant",
+            Self::Coding => "coding",
+        }
+    }
+}
+
+impl std::str::FromStr for IdentityProfile {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "assistant" => Ok(Self::Assistant),
+            "coding" => Ok(Self::Coding),
+            _ => Err(()),
+        }
+    }
+}
+
+impl std::fmt::Display for IdentityProfile {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
 /// A workstream — the primary organizational unit.
 #[derive(Debug, Clone)]
 pub struct Workstream {
@@ -88,6 +132,9 @@ pub struct Workstream {
     pub bindings: Vec<String>,
     /// Soft-delete flag.
     pub archived: bool,
+    /// Which prompt persona to load when a session is bound to this
+    /// workstream. Defaults to [`IdentityProfile::Assistant`].
+    pub identity_profile: IdentityProfile,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -104,6 +151,7 @@ impl Workstream {
             root_dir: root_dir.into(),
             bindings: Vec::new(),
             archived: false,
+            identity_profile: IdentityProfile::default(),
             created_at: now,
             updated_at: now,
         }

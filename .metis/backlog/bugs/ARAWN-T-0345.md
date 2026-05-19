@@ -4,15 +4,15 @@ level: task
 title: "feed_search KNOWN_FEED_TYPES excludes 7 GitHub projection tables"
 short_code: "ARAWN-T-0345"
 created_at: 2026-05-19T12:07:41.697768+00:00
-updated_at: 2026-05-19T12:07:41.697768+00:00
+updated_at: 2026-05-19T14:57:01.774214+00:00
 parent: 
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/backlog"
   - "#bug"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -81,6 +81,12 @@ Surfaced during ARAWN-I-0051 doc triple-check.
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
 
+## Acceptance Criteria
+
+## Acceptance Criteria
+
+## Acceptance Criteria
+
 ## Acceptance Criteria **[REQUIRED]**
 
 - [ ] {Specific, testable requirement 1}
@@ -148,6 +154,26 @@ Surfaced during ARAWN-I-0051 doc triple-check.
 ### Risk Considerations
 {Technical risks and mitigation strategies}
 
-## Status Updates **[REQUIRED]**
+## Status Updates
 
-*To be added during implementation*
+### 2026-05-19 — GitHub feed types added to default scan
+
+- Added all 7 GitHub projection table names to
+  `KNOWN_FEED_TYPES` in
+  `crates/arawn-engine/src/tools/feed_search.rs`:
+  notifications, issues_and_prs, review_queue, repo_commits,
+  repo_issues, repo_prs, issue_or_pr_comments.
+- 2 new unit tests:
+  - `known_feed_types_contains_all_github_tables` — guard
+    that every github table name is present.
+  - `known_feed_types_match_projection_constants` — asserts
+    the hardcoded names match the canonical constants in
+    `arawn-projections::github`. Catches future renames at
+    test time.
+- **Doc fixes:** stripped the "GitHub tables are NOT in
+  KNOWN_FEED_TYPES" callout in
+  `docs/src/reference/feed-search-tool.md`. Added the 7
+  GitHub rows to the metadata table so the feed-types
+  reference is complete.
+- `cargo test -p arawn-engine --lib tools::feed_search` 2/0.
+  `angreal check workspace` green.

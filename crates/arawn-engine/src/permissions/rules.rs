@@ -59,13 +59,75 @@ impl PermissionRule {
     }
 
     /// Check if this rule matches a given tool name and input.
+    ///
+    /// `tool_input` is the JSON-serialised arguments string the
+    /// permission system passes around (`arguments.to_string()` from
+    /// the query engine). When a content pattern is set, this method
+    /// extracts the tool's primary argument (shell command, file path,
+    /// fetched URL, etc.) and matches the pattern against THAT — not
+    /// against the raw JSON. Fixes T-0344: pre-fix, every content
+    /// pattern in user `arawn.toml` was being matched against
+    /// `{"command":"..."}` which silently no-op'd.
     pub fn matches(&self, tool_name: &str, tool_input: &str) -> bool {
         if !glob_match(&self.tool_pattern, tool_name) {
             return false;
         }
         match &self.content_pattern {
-            Some(pattern) => glob_match(pattern, tool_input),
+            Some(pattern) => {
+                let content = extract_content_for_match(tool_name, tool_input);
+                glob_match(pattern, &content)
+            }
             None => true,
+        }
+    }
+}
+
+/// Pull the "primary argument" out of `tool_input` (JSON) for the
+/// given tool. Returns the extracted string when a known field
+/// exists; falls back to the raw input otherwise so unknown tools
+/// keep the previous (no-op-on-JSON) behavior rather than crashing.
+///
+/// Tool → field mapping:
+/// - shell / Bash → `command`
+/// - file_read / file_write / file_edit / FileRead / FileWrite /
+///   FileEdit → `path` (falls back to `file_path`)
+/// - glob → `pattern`
+/// - grep → `pattern`
+/// - web_fetch / WebFetch → `url`
+/// - safe_env → `name`
+/// - Other tools fall through to the raw input — log at debug so a
+///   future content pattern on a new tool surfaces as "matches
+///   nothing useful" rather than crashing.
+fn extract_content_for_match(tool_name: &str, raw_input: &str) -> String {
+    let Ok(value) = serde_json::from_str::<serde_json::Value>(raw_input) else {
+        return raw_input.to_string();
+    };
+    let pick = |keys: &[&str]| -> Option<String> {
+        for k in keys {
+            if let Some(s) = value.get(*k).and_then(|v| v.as_str()) {
+                return Some(s.to_string());
+            }
+        }
+        None
+    };
+    let extracted = match tool_name {
+        "shell" | "Bash" => pick(&["command"]),
+        "file_read" | "file_write" | "file_edit" | "FileRead" | "FileWrite" | "FileEdit" => {
+            pick(&["path", "file_path"])
+        }
+        "glob" | "grep" => pick(&["pattern"]),
+        "web_fetch" | "WebFetch" => pick(&["url"]),
+        "safe_env" => pick(&["name"]),
+        _ => None,
+    };
+    match extracted {
+        Some(s) => s,
+        None => {
+            tracing::debug!(
+                tool_name,
+                "permission rule content-match: no known field extractor, using raw input"
+            );
+            raw_input.to_string()
         }
     }
 }
@@ -243,11 +305,41 @@ mod tests {
     }
 
     #[test]
-    fn rule_with_content_pattern() {
-        let rule = PermissionRule::new(RuleKind::Allow, "Bash").with_content("git *");
-        assert!(rule.matches("Bash", "git push origin main"));
-        assert!(!rule.matches("Bash", "rm -rf /"));
-        assert!(!rule.matches("Read", "git push"));
+    fn rule_with_content_pattern_matches_extracted_command() {
+        // T-0344: production passes JSON-shaped arguments. The content
+        // pattern must match the extracted `command` field, NOT the
+        // raw JSON.
+        let rule = PermissionRule::new(RuleKind::Allow, "shell").with_content("git *");
+        assert!(rule.matches("shell", r#"{"command":"git push origin main"}"#));
+        assert!(!rule.matches("shell", r#"{"command":"rm -rf /"}"#));
+        assert!(!rule.matches("file_read", r#"{"path":"/tmp/x"}"#));
+    }
+
+    #[test]
+    fn rule_extracts_file_path() {
+        let rule = PermissionRule::new(RuleKind::Deny, "file_write").with_content("/etc/*");
+        assert!(rule.matches("file_write", r#"{"path":"/etc/passwd"}"#));
+        assert!(rule.matches("file_write", r#"{"file_path":"/etc/passwd"}"#));
+        assert!(!rule.matches("file_write", r#"{"path":"/tmp/x"}"#));
+    }
+
+    #[test]
+    fn rule_extracts_web_fetch_url() {
+        let rule = PermissionRule::new(RuleKind::Allow, "web_fetch")
+            .with_content("https://example.com/*");
+        assert!(rule.matches("web_fetch", r#"{"url":"https://example.com/foo"}"#));
+        assert!(!rule.matches("web_fetch", r#"{"url":"https://evil.example/x"}"#));
+    }
+
+    #[test]
+    fn rule_unknown_tool_falls_back_to_raw_input() {
+        // For unknown tools the content pattern is matched against
+        // the raw JSON — preserves previous behavior so nothing
+        // crashes; pattern authors get a debug log telling them
+        // their pattern is matching against JSON.
+        let rule =
+            PermissionRule::new(RuleKind::Allow, "custom_tool").with_content("*hello*");
+        assert!(rule.matches("custom_tool", r#"{"thing":"hello world"}"#));
     }
 
     #[test]

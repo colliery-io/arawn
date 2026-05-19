@@ -72,9 +72,8 @@ The per-workstream extractor that builds palaces.
 
 | Key | Type | Default | Description |
 |---|---|---|---|
+| `host` | string | `127.0.0.1` | Bind host. Anything other than a loopback address (127.0.0.0/8, ::1, `localhost`) prints a startup warning — arawn has no auth layer today, so non-loopback binds require a trusted network. |
 | `port` | u16 | `3100` | TCP port. |
-
-> **Note:** the bind host is currently hardcoded to `127.0.0.1` in `crates/arawn/src/ws_server.rs`. A `host` key exists in the `ServerConfig` struct but is not read at bind time.
 
 ## `[storage]`
 

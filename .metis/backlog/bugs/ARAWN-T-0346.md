@@ -4,15 +4,15 @@ level: task
 title: "Foreground shell falls back unsandboxed on missing bwrap / Windows"
 short_code: "ARAWN-T-0346"
 created_at: 2026-05-19T12:07:43.157093+00:00
-updated_at: 2026-05-19T12:07:43.157093+00:00
+updated_at: 2026-05-19T15:01:35.754299+00:00
 parent: 
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/backlog"
   - "#bug"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -79,6 +79,12 @@ Surfaced during ARAWN-I-0051 doc triple-check.
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria **[REQUIRED]**
 
@@ -147,6 +153,33 @@ Surfaced during ARAWN-I-0051 doc triple-check.
 ### Risk Considerations
 {Technical risks and mitigation strategies}
 
-## Status Updates **[REQUIRED]**
+## Status Updates
 
-*To be added during implementation*
+### 2026-05-19 — Foreground shell fail-closed
+
+- `ShellTool::execute` in
+  `crates/arawn-engine/src/tools/shell.rs` no longer dispatches
+  to `execute_unsandboxed` on `SandboxExecError::Unavailable`.
+  Returns `ToolOutput::error(sandbox_unavailable_message(detail))`
+  — foreground now mirrors the background path's fail-closed
+  behavior.
+- Error message is actionable: explains the sandbox is
+  unavailable, lists install commands per platform
+  (`apt install bubblewrap` / `pacman -S bubblewrap` on Linux,
+  `sandbox-exec` built-in on macOS, unsupported on Windows),
+  and points at the sandbox doc.
+- `execute_unsandboxed` removed — no longer reachable.
+  `safe_env` is still used by the sandboxed-execution env scrub,
+  so it stays.
+- **Regression test** `sandbox_unavailable_message_is_fail_closed`
+  asserts the message format, mentions install commands, and
+  explicitly rejects the pre-fix wording ("ran unsandboxed",
+  "without sandbox protection") so a future accidental revert
+  is caught.
+- **Doc fix** in `docs/src/reference/shell-sandbox.md`:
+  stripped the per-platform fallback notes from the support
+  table, removed the "sharp edge" security callout, replaced
+  both with a "fail-closed" guarantee callout.
+- `cargo test -p arawn-engine --lib shell::tests` 8/0 (plus
+  the new sandbox_unavailable test). `angreal check workspace`
+  green.

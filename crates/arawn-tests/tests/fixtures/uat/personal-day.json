@@ -1,0 +1,284 @@
+{
+  "$comment": "I-0035 / T-0332 synthetic life-assistant fixture. Single workstream (`personal`) seeded with one day in synthetic user pat's life across Gmail / Calendar / Slack / Jira. Date placeholders ({{today}}, {{today-10d}}) are substituted at fixture-load time by `resolve_time_placeholders`, so the fixture remains \"today\" regardless of when the harness runs. Deliberate inclusions: marketing noise (inbox-summary should omit), a thread that needs a reply (draft-with-confirmation), two @mentions in Slack (mention-scan), one Jira assigned to pat untouched 10 days (stale-ticket-surface), one overlapping calendar pair (conflict-call-out), zero rows mentioning a deadline from Bob (no-fabrication).",
+  "workstreams": [
+    {
+      "name": "personal",
+      "description": "Pat's personal-life workstream — calendar, inbox, mentions, and tickets across pat's tools. Default persona for arawn (assistant).",
+      "identity_profile": "assistant",
+      "tags_ontology": [
+        "rfc",
+        "1on1",
+        "standup",
+        "scheduling",
+        "review",
+        "deadline",
+        "marketing",
+        "personal"
+      ],
+      "rows": [
+        {
+          "feed_type": "gmail_messages",
+          "source_id": "g-001",
+          "source_ts": "{{today}}T07:55:00Z",
+          "sender": "alice.chen@acme.com",
+          "recipients": ["pat@acme.com"],
+          "subject": "RFC-0042 — your thoughts before we lock in?",
+          "body_text": "Hi Pat — we're trying to wrap RFC-0042 (Postgres for the ledger service) by Friday's architecture review. I wanted to make sure you're aligned before I sign it off. The two open questions are (1) replication topology (we're leaning multi-AZ async) and (2) backup cadence (4h PITR). Could you reply with whether you agree, disagree, or want to discuss live? Thanks — Alice",
+          "thread_id": "t-rfc-0042",
+          "labels": ["inbox", "important"]
+        },
+        {
+          "feed_type": "gmail_messages",
+          "source_id": "g-002",
+          "source_ts": "{{today}}T08:10:00Z",
+          "sender": "calendar-noreply@google.com",
+          "recipients": ["pat@acme.com"],
+          "subject": "Invitation: Coffee with Mei — Thu Apr 16, 10:00 AM",
+          "body_text": "Mei Tanaka (mei.tanaka@acme.com) has invited you to: Coffee with Mei. Thursday, April 16, 10:00–10:30 AM PT. Mountain View HQ — cafe. Please respond: Yes / No / Maybe. This invitation has not yet been responded to.",
+          "thread_id": "t-cal-mei-coffee",
+          "labels": ["inbox", "invitation"]
+        },
+        {
+          "feed_type": "gmail_messages",
+          "source_id": "g-003",
+          "source_ts": "{{today}}T09:02:00Z",
+          "sender": "no-reply@meal-kit.com",
+          "recipients": ["pat@acme.com"],
+          "subject": "🍅 This week's recipes are in — order by Friday!",
+          "body_text": "Hey Pat! This week we're featuring spring vegetable risotto, miso-glazed salmon, and a vegan chickpea curry. Skip or order by Friday 11:59 PM. SAVE10 for 10% off your next four boxes. Unsubscribe.",
+          "thread_id": "t-meal-kit-promo-15",
+          "labels": ["inbox", "promotions"]
+        },
+        {
+          "feed_type": "gmail_messages",
+          "source_id": "g-004",
+          "source_ts": "{{today}}T09:30:00Z",
+          "sender": "jamie.lewis@acme.com",
+          "recipients": ["pat@acme.com", "platform-eng@acme.com"],
+          "subject": "Standup notes — Wed Apr 15",
+          "body_text": "Quick recap from standup: 1) the on-call rotation change ships Monday. 2) Pat is unblocking the ledger migration this week. 3) Mei picked up the dashboards work. No blockers raised. Next standup Thursday 09:00 PT.",
+          "thread_id": "t-standup-04-15",
+          "labels": ["inbox"]
+        },
+        {
+          "feed_type": "gmail_messages",
+          "source_id": "g-005",
+          "source_ts": "{{today}}T10:45:00Z",
+          "sender": "mom@example.com",
+          "recipients": ["pat@example.com"],
+          "subject": "Sunday dinner?",
+          "body_text": "Are you free Sunday around 5? We were thinking of grilling. Dad says hi. No need to bring anything but yourself. Love, Mom.",
+          "thread_id": "t-mom-sunday",
+          "labels": ["inbox", "personal"]
+        },
+        {
+          "feed_type": "gmail_messages",
+          "source_id": "g-006",
+          "source_ts": "{{today}}T11:20:00Z",
+          "sender": "noreply@github.com",
+          "recipients": ["pat@acme.com"],
+          "subject": "[colliery-io/arawn] PR #482 ready for your review",
+          "body_text": "@patdev requested your review on PR #482: 'Add hint-style model routing taxonomy'. 12 files changed, +540 −38. Branch: T-0272.",
+          "thread_id": "t-pr-482",
+          "labels": ["inbox", "github"]
+        },
+        {
+          "feed_type": "gmail_messages",
+          "source_id": "g-007",
+          "source_ts": "{{today}}T13:05:00Z",
+          "sender": "people-ops@acme.com",
+          "recipients": ["all-staff@acme.com"],
+          "subject": "Reminder: Q2 benefits enrollment closes April 30",
+          "body_text": "Reminder for all employees: Q2 benefits enrollment closes Thursday, April 30. Log in to the people-ops portal to review your elections. Questions to peopleops-help@acme.com.",
+          "thread_id": "t-benefits-q2",
+          "labels": ["inbox"]
+        },
+        {
+          "feed_type": "gmail_messages",
+          "source_id": "g-008",
+          "source_ts": "{{today}}T14:40:00Z",
+          "sender": "bob.alvarez@acme.com",
+          "recipients": ["pat@acme.com"],
+          "subject": "Re: catching up",
+          "body_text": "Hey Pat — yes let's grab 30 next week. I'm open Tue/Wed mornings or Thu after 2. Whatever works. Cheers, Bob.",
+          "thread_id": "t-bob-catchup",
+          "labels": ["inbox"]
+        },
+        {
+          "feed_type": "gmail_messages",
+          "source_id": "g-009",
+          "source_ts": "{{today}}T15:30:00Z",
+          "sender": "billing@cloud-provider.com",
+          "recipients": ["pat@acme.com"],
+          "subject": "Your April invoice is available",
+          "body_text": "Your April invoice (#INV-2026-04-9182) for $1,247.50 is available. Payment will be charged on the 25th. View invoice or download as PDF.",
+          "thread_id": "t-cloud-bill-04",
+          "labels": ["inbox", "billing"]
+        },
+        {
+          "feed_type": "calendar_events",
+          "source_id": "evt-standup-04-15",
+          "source_ts": "{{today}}T16:00:00Z",
+          "calendar_id": "pat@acme.com",
+          "summary": "Daily standup — Platform team",
+          "description": "Daily 15-min standup. Sync via meet.acme.com/platform-standup",
+          "start_ts": "{{today}}T16:00:00Z",
+          "end_ts": "{{today}}T16:15:00Z",
+          "organizer": "jamie.lewis@acme.com",
+          "attendees": [
+            "pat@acme.com",
+            "jamie.lewis@acme.com",
+            "mei.tanaka@acme.com"
+          ],
+          "status": "confirmed"
+        },
+        {
+          "feed_type": "calendar_events",
+          "source_id": "evt-1on1-jamie",
+          "source_ts": "{{today}}T20:00:00Z",
+          "calendar_id": "pat@acme.com",
+          "summary": "1:1 — Pat / Jamie",
+          "description": "Weekly 1:1 with your manager. Bring blockers + careers topic.",
+          "start_ts": "{{today}}T20:00:00Z",
+          "end_ts": "{{today}}T20:30:00Z",
+          "organizer": "jamie.lewis@acme.com",
+          "attendees": ["pat@acme.com", "jamie.lewis@acme.com"],
+          "status": "confirmed"
+        },
+        {
+          "feed_type": "calendar_events",
+          "source_id": "evt-arch-review",
+          "source_ts": "{{today}}T20:00:00Z",
+          "calendar_id": "pat@acme.com",
+          "summary": "Architecture review — RFC-0042 walkthrough",
+          "description": "Walkthrough of RFC-0042 (Postgres for ledger service). Alice presenting.",
+          "start_ts": "{{today}}T20:00:00Z",
+          "end_ts": "{{today}}T21:00:00Z",
+          "organizer": "alice.chen@acme.com",
+          "attendees": [
+            "pat@acme.com",
+            "alice.chen@acme.com",
+            "platform-eng@acme.com"
+          ],
+          "status": "confirmed"
+        },
+        {
+          "feed_type": "calendar_events",
+          "source_id": "evt-optional-brownbag",
+          "source_ts": "{{today}}T18:30:00Z",
+          "calendar_id": "pat@acme.com",
+          "summary": "[Optional] Lunch brown-bag: machine-learning ops",
+          "description": "Optional ML-ops brown-bag from infra-research. Recording will be shared.",
+          "start_ts": "{{today}}T18:30:00Z",
+          "end_ts": "{{today}}T19:30:00Z",
+          "organizer": "infra-research@acme.com",
+          "attendees": ["pat@acme.com", "all-eng@acme.com"],
+          "status": "tentative"
+        },
+        {
+          "feed_type": "slack_messages",
+          "source_id": "sl-001",
+          "source_ts": "{{today}}T15:45:00Z",
+          "channel_id": "C-platform",
+          "sender_id": "U-jamie",
+          "text": "@pat — could you take a look at the ledger migration dashboard before standup? Numbers look off for the last 6h."
+        },
+        {
+          "feed_type": "slack_messages",
+          "source_id": "sl-002",
+          "source_ts": "{{today}}T15:50:00Z",
+          "channel_id": "C-platform",
+          "sender_id": "U-mei",
+          "text": "fwiw I saw the same spike around 11:30. Could be the new batcher."
+        },
+        {
+          "feed_type": "slack_messages",
+          "source_id": "sl-003",
+          "source_ts": "{{today}}T16:30:00Z",
+          "channel_id": "C-eng-design",
+          "sender_id": "U-alice",
+          "text": "RFC-0042 thread — @pat we'd love your sign-off here before Friday's review. Replication topology is the remaining question."
+        },
+        {
+          "feed_type": "slack_messages",
+          "source_id": "sl-004",
+          "source_ts": "{{today}}T16:35:00Z",
+          "channel_id": "C-eng-design",
+          "sender_id": "U-david",
+          "text": "I'm +1 on multi-AZ async. Pat?"
+        },
+        {
+          "feed_type": "slack_messages",
+          "source_id": "sl-005",
+          "source_ts": "{{today}}T17:10:00Z",
+          "channel_id": "C-random",
+          "sender_id": "U-jamie",
+          "text": "the cafeteria pizza today is unironically good"
+        },
+        {
+          "feed_type": "slack_messages",
+          "source_id": "sl-006",
+          "source_ts": "{{today}}T17:15:00Z",
+          "channel_id": "C-random",
+          "sender_id": "U-mei",
+          "text": "agreed. someone tell the lunch team."
+        },
+        {
+          "feed_type": "slack_messages",
+          "source_id": "sl-007",
+          "source_ts": "{{today}}T18:00:00Z",
+          "channel_id": "C-platform",
+          "sender_id": "U-jamie",
+          "text": "Quick async question for the team: who's on-call this weekend? Calendar's empty."
+        },
+        {
+          "feed_type": "jira_issues",
+          "source_id": "ENG-741",
+          "source_ts": "{{today}}T07:00:00Z",
+          "project_key": "ENG",
+          "summary": "Ledger migration: batcher emits duplicate rows under load",
+          "status": "In Progress",
+          "assignee": "pat@acme.com",
+          "reporter": "mei.tanaka@acme.com",
+          "priority": "High",
+          "labels": ["ledger", "bug", "migration"],
+          "body_text": "Under sustained load the new batcher (introduced 2026-03-29) intermittently emits duplicate rows to the ledger sink. Reproduces ~1 in 50 runs at >2k events/s. Suspect a missing dedup key on the sink-side upsert. Logs attached on the linked thread."
+        },
+        {
+          "feed_type": "jira_issues",
+          "source_id": "ENG-712",
+          "source_ts": "{{today-10d}}T11:30:00Z",
+          "project_key": "ENG",
+          "summary": "Add CI gate for golden-file drift",
+          "status": "In Progress",
+          "assignee": "pat@acme.com",
+          "reporter": "pat@acme.com",
+          "priority": "Medium",
+          "labels": ["ci", "tech-debt"],
+          "body_text": "We've had three accidental snapshot-file overwrites land in the last month. Add a CI gate that fails the build when *.snap files change without an accompanying review marker. Self-assigned 2026-04-05; no movement since."
+        },
+        {
+          "feed_type": "jira_issues",
+          "source_id": "ENG-803",
+          "source_ts": "{{today}}T16:00:00Z",
+          "project_key": "ENG",
+          "summary": "Hot-reload broken when plugin manifest has trailing commas",
+          "status": "Open",
+          "assignee": "mei.tanaka@acme.com",
+          "reporter": "david.kim@acme.com",
+          "priority": "Low",
+          "labels": ["plugins", "tooling"],
+          "body_text": "Trailing comma in plugin.json causes hot-reload to silently skip the manifest instead of reporting a parse error. Want a parse-error path that surfaces to the TUI."
+        },
+        {
+          "feed_type": "jira_comments",
+          "source_id": "c-eng-741-1",
+          "source_ts": "{{today}}T12:00:00Z",
+          "issue_key": "ENG-741",
+          "author": "mei.tanaka@acme.com",
+          "body_text": "Pat — when you have a sec, can you confirm the dedup-key approach (event_id + sink_partition vs. just event_id)? I'd like to land this today if possible."
+        }
+      ]
+    }
+  ]
+}

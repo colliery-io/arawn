@@ -2,33 +2,33 @@
 source: crates/arawn-tui/src/snapshot_tests.rs
 expression: snap
 ---
-  │❯ What files are in the project?
-  │  ⏵ shell · Calling shell... · 0.0s
-  │  ▸ shell result
-  │    Cargo.toml
-  │    crates/
-  │    plugins/
-  │
-  ││ The project has a Cargo.toml, crates/ and plugins/ directories.
-  │
-  │  ───────────────────────────────────────────────────────────────────────────────────────────────
-  │
-  │
-  │
- ▸│
-  │
-  │
-  │
-  │
-  │
-  │
-  │
-  │
-  │
-  │
-  │
-  │
-  │
+  │❯ What files are in the project?                                     ┌ Today ───────────────────┐
+  │  ⏵ shell · Calling shell... · 0.0s                                  │Brief                     │
+  │  ▸ shell result                                                     │(no brief yet — run /day t│
+  │    Cargo.toml                                                       │                          │
+  │    crates/                                                          │                          │
+  │    plugins/                                                         │                          │
+  │                                                                     │                          │
+  ││ The project has a Cargo.toml, crates/ and plugins/ directories.    │                          │
+  │                                                                     │                          │
+  │  ───────────────────────────────────────────────────────────────────│                          │
+  │                                                                     │                          │
+  │                                                                     │                          │
+  │                                                                     │                          │
+ ▸│                                                                     │Action items              │
+  │                                                                     │(no action items)         │
+  │                                                                     │                          │
+  │                                                                     │                          │
+  │                                                                     │                          │
+  │                                                                     │                          │
+  │                                                                     │                          │
+  │                                                                     │                          │
+  │                                                                     │                          │
+  │                                                                     │                          │
+  │                                                                     │                          │
+  │                                                                     │                          │
+  │                                                                     │                          │
+  │                                                                     └──────────────────────────┘
 ────────────────────────────────────────────────────────────────────────────────────────────────────
 > Type your message...
  no model │ no workstream Ready

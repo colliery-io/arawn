@@ -29,11 +29,13 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use arawn_core::Workstream;
+use arawn_core::{IdentityProfile, Workstream};
 use arawn_extractor::{CotChain, ExtractionChain, ExtractorRunner};
 use arawn_llm::LlmClient;
 use arawn_memory::{AddedVia, MemoryManager, TagOntologyStore};
 use arawn_projections::ProjectionStore;
+use arawn_projections::atlassian::{JiraCommentProjection, JiraIssueProjection};
+use arawn_projections::calendar::CalendarEventProjection;
 use arawn_projections::gmail::GmailMessageProjection;
 use arawn_projections::slack::SlackMessageProjection;
 use arawn_storage::Store;
@@ -55,6 +57,12 @@ pub struct WorkstreamFixture {
     /// discovered-only tags.
     #[serde(default)]
     pub tags_ontology: Vec<String>,
+    /// I-0035 / T-0332: which engine prompt persona this workstream
+    /// loads. Optional — defaults to `IdentityProfile::Assistant`
+    /// (which is also the storage-side default). Set to "coding" for
+    /// fixtures that exercise the engineering persona.
+    #[serde(default)]
+    pub identity_profile: Option<String>,
     pub rows: Vec<FixtureRow>,
 }
 
@@ -66,6 +74,9 @@ pub struct WorkstreamFixture {
 pub enum FixtureRow {
     GmailMessages(GmailFixtureRow),
     SlackMessages(SlackFixtureRow),
+    CalendarEvents(CalendarFixtureRow),
+    JiraIssues(JiraIssueFixtureRow),
+    JiraComments(JiraCommentFixtureRow),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -88,6 +99,67 @@ pub struct GmailFixtureRow {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CalendarFixtureRow {
+    pub source_id: String,
+    pub source_ts: DateTime<Utc>,
+    #[serde(default)]
+    pub calendar_id: Option<String>,
+    pub summary: String,
+    #[serde(default)]
+    pub description: String,
+    #[serde(default)]
+    pub location: Option<String>,
+    pub start_ts: DateTime<Utc>,
+    #[serde(default)]
+    pub end_ts: Option<DateTime<Utc>>,
+    #[serde(default)]
+    pub all_day: bool,
+    #[serde(default)]
+    pub organizer: Option<String>,
+    #[serde(default)]
+    pub attendees: Vec<String>,
+    #[serde(default)]
+    pub status: Option<String>,
+    #[serde(default)]
+    pub feed_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct JiraIssueFixtureRow {
+    pub source_id: String, // issue key — "ENG-123"
+    pub source_ts: DateTime<Utc>,
+    #[serde(default)]
+    pub project_key: Option<String>,
+    pub summary: String,
+    #[serde(default)]
+    pub status: Option<String>,
+    #[serde(default)]
+    pub assignee: Option<String>,
+    #[serde(default)]
+    pub reporter: Option<String>,
+    #[serde(default)]
+    pub priority: Option<String>,
+    #[serde(default)]
+    pub labels: Vec<String>,
+    #[serde(default)]
+    pub body_text: String,
+    #[serde(default)]
+    pub feed_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct JiraCommentFixtureRow {
+    pub source_id: String,
+    pub source_ts: DateTime<Utc>,
+    pub issue_key: String,
+    #[serde(default)]
+    pub author: Option<String>,
+    pub body_text: String,
+    #[serde(default)]
+    pub feed_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SlackFixtureRow {
     pub source_id: String,
     pub source_ts: DateTime<Utc>,
@@ -104,11 +176,47 @@ pub struct SlackFixtureRow {
     pub feed_id: Option<String>,
 }
 
-/// Read a fixture from disk.
+/// Read a fixture from disk, substituting time placeholders so the
+/// fixture stays "today" regardless of when the harness runs.
+///
+/// Supported placeholders (substituted as raw text before JSON parse):
+/// - `{{today}}` → current UTC date in `YYYY-MM-DD` form.
+/// - `{{today-Nd}}` → N days before today, same form. e.g. `{{today-7d}}`.
+///
+/// Author fixtures using these so the "today" framing in scenarios
+/// (`signal_timeline since=today`, "what's on my calendar today")
+/// keeps returning content as the wall-clock moves forward. Without
+/// substitution a fixture goes stale the day after authoring — see
+/// T-0332 baseline for the symptom (inbox-summary empty result).
 pub fn load(path: impl AsRef<Path>) -> Result<Fixture, String> {
     let path = path.as_ref();
     let raw = std::fs::read_to_string(path).map_err(|e| format!("read {path:?}: {e}"))?;
-    serde_json::from_str(&raw).map_err(|e| format!("parse {path:?}: {e}"))
+    let resolved = resolve_time_placeholders(&raw, Utc::now());
+    serde_json::from_str(&resolved).map_err(|e| format!("parse {path:?}: {e}"))
+}
+
+/// Pure substitution helper — exposed for testability.
+pub fn resolve_time_placeholders(raw: &str, now: DateTime<Utc>) -> String {
+    let mut out = raw.replace("{{today}}", &now.format("%Y-%m-%d").to_string());
+    // `{{today-Nd}}` — N days before today. Bounded loop: most fixtures
+    // use single-digit N, and a malformed marker just falls through to
+    // the JSON parser which will error cleanly.
+    while let Some(start) = out.find("{{today-") {
+        let after = &out[start + "{{today-".len()..];
+        let Some(end_rel) = after.find("d}}") else {
+            break;
+        };
+        let n_str = &after[..end_rel];
+        let Ok(n) = n_str.parse::<i64>() else {
+            break;
+        };
+        let date = (now - chrono::Duration::days(n))
+            .format("%Y-%m-%d")
+            .to_string();
+        let full = format!("{{{{today-{n}d}}}}");
+        out = out.replace(&full, &date);
+    }
+    out
 }
 
 /// Apply a fixture against `data_dir`. Materializes workstreams + writes
@@ -141,6 +249,11 @@ pub fn apply(fixture: &Fixture, data_dir: &Path) -> Result<Applied, String> {
         let ws_dir = data_dir.join("workstreams").join(&ws_def.name);
         let mut ws = Workstream::new(&ws_def.name, ws_dir);
         ws.description = ws_def.description.clone();
+        ws.identity_profile = ws_def
+            .identity_profile
+            .as_deref()
+            .and_then(|s| s.parse::<IdentityProfile>().ok())
+            .unwrap_or_default();
         // ensure_scratch already created "scratch"; create_workstream
         // is idempotent in the sense that the test-side store is fresh.
         let _ = store.create_workstream(&ws);
@@ -166,6 +279,9 @@ pub fn apply(fixture: &Fixture, data_dir: &Path) -> Result<Applied, String> {
         // Group rows by Projection trait variant, write each batch.
         let mut gmail_rows: Vec<GmailMessageProjection> = Vec::new();
         let mut slack_rows: Vec<SlackMessageProjection> = Vec::new();
+        let mut calendar_rows: Vec<CalendarEventProjection> = Vec::new();
+        let mut jira_issue_rows: Vec<JiraIssueProjection> = Vec::new();
+        let mut jira_comment_rows: Vec<JiraCommentProjection> = Vec::new();
         for row in &ws_def.rows {
             match row {
                 FixtureRow::GmailMessages(g) => {
@@ -173,6 +289,15 @@ pub fn apply(fixture: &Fixture, data_dir: &Path) -> Result<Applied, String> {
                 }
                 FixtureRow::SlackMessages(s) => {
                     slack_rows.push(slack_to_projection(&ws_def.name, s))
+                }
+                FixtureRow::CalendarEvents(c) => {
+                    calendar_rows.push(calendar_to_projection(&ws_def.name, c))
+                }
+                FixtureRow::JiraIssues(j) => {
+                    jira_issue_rows.push(jira_issue_to_projection(&ws_def.name, j))
+                }
+                FixtureRow::JiraComments(j) => {
+                    jira_comment_rows.push(jira_comment_to_projection(&ws_def.name, j))
                 }
             }
         }
@@ -185,6 +310,21 @@ pub fn apply(fixture: &Fixture, data_dir: &Path) -> Result<Applied, String> {
             projections
                 .write_batch(&slack_rows)
                 .map_err(|e| format!("write slack batch: {e}"))?;
+        }
+        if !calendar_rows.is_empty() {
+            projections
+                .write_batch(&calendar_rows)
+                .map_err(|e| format!("write calendar batch: {e}"))?;
+        }
+        if !jira_issue_rows.is_empty() {
+            projections
+                .write_batch(&jira_issue_rows)
+                .map_err(|e| format!("write jira issues batch: {e}"))?;
+        }
+        if !jira_comment_rows.is_empty() {
+            projections
+                .write_batch(&jira_comment_rows)
+                .map_err(|e| format!("write jira comments batch: {e}"))?;
         }
 
         let mut feed_types = Vec::new();
@@ -199,6 +339,15 @@ pub fn apply(fixture: &Fixture, data_dir: &Path) -> Result<Applied, String> {
             if slack_rows.iter().any(|r| r.is_thread_reply) {
                 feed_types.push("slack_thread_messages".to_string());
             }
+        }
+        if !calendar_rows.is_empty() {
+            feed_types.push("calendar_events".to_string());
+        }
+        if !jira_issue_rows.is_empty() {
+            feed_types.push("jira_issues".to_string());
+        }
+        if !jira_comment_rows.is_empty() {
+            feed_types.push("jira_comments".to_string());
         }
 
         applied.push(AppliedWorkstream {
@@ -233,6 +382,70 @@ fn gmail_to_projection(workstream: &str, row: &GmailFixtureRow) -> GmailMessageP
         body_text: row.body_text.clone(),
         thread_id: row.thread_id.clone(),
         labels: row.labels.clone(),
+    }
+}
+
+fn calendar_to_projection(workstream: &str, row: &CalendarFixtureRow) -> CalendarEventProjection {
+    let feed_id = row
+        .feed_id
+        .clone()
+        .unwrap_or_else(|| format!("fixture-{workstream}-calendar"));
+    CalendarEventProjection {
+        id: arawn_projections::calendar::projection_id(&feed_id, &row.source_id),
+        feed_id,
+        source_id: row.source_id.clone(),
+        source_ts: row.source_ts,
+        calendar_id: row.calendar_id.clone(),
+        summary: row.summary.clone(),
+        description: row.description.clone(),
+        location: row.location.clone(),
+        start_ts: row.start_ts,
+        end_ts: row.end_ts,
+        all_day: row.all_day,
+        organizer: row.organizer.clone(),
+        attendees: row.attendees.clone(),
+        status: row.status.clone(),
+        recurring_event_id: None,
+    }
+}
+
+fn jira_issue_to_projection(workstream: &str, row: &JiraIssueFixtureRow) -> JiraIssueProjection {
+    let feed_id = row
+        .feed_id
+        .clone()
+        .unwrap_or_else(|| format!("fixture-{workstream}-jira"));
+    JiraIssueProjection {
+        id: format!("{feed_id}::{}", row.source_id),
+        feed_id,
+        source_id: row.source_id.clone(),
+        source_ts: row.source_ts,
+        project_key: row.project_key.clone(),
+        summary: row.summary.clone(),
+        status: row.status.clone(),
+        assignee: row.assignee.clone(),
+        reporter: row.reporter.clone(),
+        priority: row.priority.clone(),
+        labels: row.labels.clone(),
+        body_text: row.body_text.clone(),
+    }
+}
+
+fn jira_comment_to_projection(
+    workstream: &str,
+    row: &JiraCommentFixtureRow,
+) -> JiraCommentProjection {
+    let feed_id = row
+        .feed_id
+        .clone()
+        .unwrap_or_else(|| format!("fixture-{workstream}-jira"));
+    JiraCommentProjection {
+        id: format!("{feed_id}::{}", row.source_id),
+        feed_id,
+        source_id: row.source_id.clone(),
+        source_ts: row.source_ts,
+        issue_key: row.issue_key.clone(),
+        author: row.author.clone(),
+        body_text: row.body_text.clone(),
     }
 }
 
@@ -386,6 +599,7 @@ mod tests {
                 name: "work".into(),
                 description: "Pat's day job".into(),
                 tags_ontology: vec!["postgres".into(), "ledger".into()],
+                identity_profile: None,
                 rows: vec![
                     FixtureRow::GmailMessages(GmailFixtureRow {
                         source_id: "m1".into(),
@@ -412,6 +626,18 @@ mod tests {
                 ],
             }],
         }
+    }
+
+    #[test]
+    fn time_placeholders_substituted() {
+        let now = DateTime::parse_from_rfc3339("2026-05-19T10:00:00Z")
+            .unwrap()
+            .with_timezone(&Utc);
+        let raw = r#"{"a":"{{today}}T10:00:00Z","b":"{{today-7d}}T00:00:00Z","c":"{{today-30d}}"}"#;
+        let out = resolve_time_placeholders(raw, now);
+        assert!(out.contains("\"a\":\"2026-05-19T10:00:00Z\""), "{out}");
+        assert!(out.contains("\"b\":\"2026-05-12T00:00:00Z\""), "{out}");
+        assert!(out.contains("\"c\":\"2026-04-19\""), "{out}");
     }
 
     #[test]

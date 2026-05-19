@@ -39,7 +39,7 @@ feed_search(
 
 ## Known feed types
 
-The tool's default scan covers 9 projection types listed below. The 7 GitHub projection tables (`github_notifications`, `github_issues_and_prs`, `github_review_queue`, `github_repo_commits`, `github_repo_issues`, `github_repo_prs`, `github_issue_or_pr_comments`) are **not** in `KNOWN_FEED_TYPES` and are only searched when the caller passes them explicitly via the `feed_types` parameter.
+The tool's default scan covers every projection type listed below — gmail / slack / drive / jira / confluence / calendar / GitHub. Callers can narrow the scan by passing `feed_types` explicitly.
 
 | `feed_type`              | Source                              | `metadata` keys |
 |--------------------------|-------------------------------------|-----------------|
@@ -52,6 +52,13 @@ The tool's default scan covers 9 projection types listed below. The 7 GitHub pro
 | `jira_history`           | jira/project-tracker (changelog)    | issue_key, field, from, to, author |
 | `confluence_pages`       | confluence/space-archive            | space_key, parent_id, version, author |
 | `calendar_events`        | calendar/upcoming-archive           | calendar_id, summary, location, start_ts, end_ts, all_day, organizer, attendees, status, recurring_event_id |
+| `github_notifications`   | github/notifications                | reason, repository, type, unread, updated_at |
+| `github_issues_and_prs`  | github/issues-and-prs               | repository, number, state, author, labels |
+| `github_review_queue`    | github/review-queue                 | repository, number, requested_at, draft |
+| `github_repo_commits`    | github/repo-mirror                  | repository, sha, author, committed_at |
+| `github_repo_issues`     | github/repo-mirror                  | repository, number, state, author, labels |
+| `github_repo_prs`        | github/repo-mirror                  | repository, number, state, author, mergeable_state |
+| `github_issue_or_pr_comments` | github/repo-mirror             | repository, number, author, parent_kind |
 
 ## Worked prompts
 

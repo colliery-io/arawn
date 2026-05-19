@@ -65,6 +65,11 @@ pub struct PromptContext {
     pub memories: Vec<String>,
     pub session_context: String,
     pub plugin_prompts: Vec<String>,
+    /// Persona to load into the static sections (identity / doing_tasks /
+    /// work_protocol). Sourced from the active workstream's
+    /// `identity_profile` at session-build time. Defaults to
+    /// [`IdentityProfile::Assistant`].
+    pub identity_profile: arawn_core::IdentityProfile,
     /// Optional callback queried each turn for connected-integration
     /// summaries. Lets `/connect <service>` reflect into the next LLM
     /// call with no restart.
@@ -653,6 +658,7 @@ impl QueryEngine {
                 .unwrap_or_default();
 
             crate::system_prompt::SystemPromptBuilder::new()
+                .with_identity_profile(prompt_ctx.identity_profile)
                 .load_static_sections(prompt_ctx.prompts_dir.as_deref())
                 .environment(
                     &prompt_ctx.os,

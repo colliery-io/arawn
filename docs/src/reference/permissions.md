@@ -30,7 +30,22 @@ ask = [
 ```
 
 - The **tool name** is matched first (exact or glob with `*`). Tool names are lowercase (`shell`, `file_read`, `web_fetch`).
-- If the rule has a `(content pattern)`, it is matched against the tool's serialized JSON arguments **as a string** — not against an extracted field. So `shell(git *)` is matched against the text `{"command":"git status"}` and won't fire (because the string starts with `{`). Patterns currently need to allow for the surrounding JSON, e.g. `shell(*git *)` or `shell(*"command":"git*)`. This is a known sharp edge — see `crates/arawn-engine/src/permissions/rules.rs::glob_match` and `crates/arawn-engine/src/query_engine.rs` (the dispatcher passes the full `arguments.to_string()`).
+- If the rule has a `(content pattern)`, it is matched against the
+  tool's **primary argument**, not the raw JSON. The extraction is
+  per-tool:
+
+  | Tool | Field |
+  |---|---|
+  | `shell` (and `Bash` alias) | `command` |
+  | `file_read`, `file_write`, `file_edit` | `path` (falls back to `file_path`) |
+  | `glob`, `grep` | `pattern` |
+  | `web_fetch` | `url` |
+  | `safe_env` | `name` |
+  | other tools | raw JSON (debug-logged as "no extractor"; widen the pattern) |
+
+  So `shell(git *)` matches `{"command":"git status"}` exactly as
+  written. See `crates/arawn-engine/src/permissions/rules.rs::extract_content_for_match`
+  for the source of truth.
 
 ## Evaluation order
 

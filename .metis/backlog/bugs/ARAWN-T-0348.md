@@ -4,15 +4,15 @@ level: task
 title: "Wire [server].host from config or drop the unused field"
 short_code: "ARAWN-T-0348"
 created_at: 2026-05-19T12:07:46.161045+00:00
-updated_at: 2026-05-19T12:07:46.161045+00:00
+updated_at: 2026-05-19T15:05:55.321756+00:00
 parent: 
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/backlog"
   - "#bug"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -79,6 +79,12 @@ Surfaced during ARAWN-I-0051 doc triple-check.
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria **[REQUIRED]**
 
@@ -147,6 +153,31 @@ Surfaced during ARAWN-I-0051 doc triple-check.
 ### Risk Considerations
 {Technical risks and mitigation strategies}
 
-## Status Updates **[REQUIRED]**
+## Status Updates
 
-*To be added during implementation*
+### 2026-05-19 — `[server].host` wired with non-loopback warning
+
+- `run_server` in `crates/arawn/src/ws_server.rs` takes a new
+  `host: &str` parameter; the bind addr is
+  `format!("{host}:{port}")` instead of the previous hardcoded
+  `127.0.0.1:{port}`.
+- Call site in `crates/arawn/src/main.rs` passes
+  `&config.server.host` so the existing `[server].host` TOML
+  key takes effect.
+- `is_loopback_host(host)` helper recognises `127.0.0.0/8`,
+  `::1`, and the symbolic `localhost`. Anything else triggers
+  a `tracing::warn!` + an `eprintln!` on startup noting arawn
+  has no auth layer and a non-loopback bind requires a
+  trusted network. The bind itself still happens — this is a
+  foot-gun for trusted homelab use, not a hard refusal.
+- **Tests** (in `ws_server::tests`):
+  - `loopback_hosts_are_recognized` — 127.0.0.1, 127.0.0.2,
+    ::1, localhost all true.
+  - `non_loopback_hosts_flagged` — 0.0.0.0, ::, 192.168.1.5,
+    homelab.local, garbage all false.
+- **Doc fix** in `docs/src/reference/config-schema.md`:
+  stripped the "host key exists but is not read" note; added
+  the new `host` row to the `[server]` table with the
+  non-loopback warning behavior documented.
+- `cargo test -p arawn --lib ws_server` 5/0 (3 prior + 2 new).
+  `angreal check workspace` green.

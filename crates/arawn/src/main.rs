@@ -41,7 +41,11 @@ async fn main() -> Result<()> {
     use clap::{Parser, Subcommand};
 
     #[derive(Parser)]
-    #[command(name = "arawn", about = "LLM-powered coding assistant", version)]
+    #[command(
+        name = "arawn",
+        about = "Personal agentic assistant — watch, check, summarize, and nudge across your tools.",
+        version
+    )]
     struct Cli {
         #[command(subcommand)]
         command: Option<Command>,
@@ -178,7 +182,7 @@ async fn main() -> Result<()> {
         if *json {
             println!("{}", serde_json::to_string_pretty(&summary).unwrap());
         } else {
-            print!("{}", render_usage_human(&summary));
+            print!("{}", arawn_llm::usage::render_usage_human(&summary));
         }
         std::process::exit(0);
     }
@@ -1682,15 +1686,42 @@ async fn main() -> Result<()> {
                             loop {
                                 match event_rx.recv().await {
                                     Ok(ev) => {
+                                        // Side-by-side notices: the legacy
+                                        // `ceremony_event` category carries the
+                                        // raw JSON for existing TUI handlers
+                                        // (priority modal refresh, etc.); the
+                                        // I-0035 Phase 4 `briefing_ready`
+                                        // category fires only on
+                                        // `TabletGenerated` and triggers the
+                                        // brief-cache refresh in the TUI.
                                         let message = serde_json::to_string(&ev)
                                             .unwrap_or_else(|_| "{}".to_string());
-                                        let notice = arawn_service::ServerNotice {
-                                            level: "info".into(),
-                                            category: "ceremony_event".into(),
-                                            message,
-                                            timestamp: chrono::Utc::now().to_rfc3339(),
-                                        };
-                                        let _ = notice_tx_cer.send(notice);
+                                        let now = chrono::Utc::now().to_rfc3339();
+                                        let _ = notice_tx_cer.send(
+                                            arawn_service::ServerNotice {
+                                                level: "info".into(),
+                                                category: "ceremony_event".into(),
+                                                message: message.clone(),
+                                                timestamp: now.clone(),
+                                            },
+                                        );
+                                        if let arawn_ceremonies::CeremonyEvent::TabletGenerated {
+                                            kind,
+                                            period_key,
+                                            ..
+                                        } = &ev
+                                        {
+                                            let _ = notice_tx_cer.send(
+                                                arawn_service::ServerNotice {
+                                                    level: "info".into(),
+                                                    category: "briefing_ready".into(),
+                                                    message: format!(
+                                                        "Brief updated — {kind} tablet for {period_key}"
+                                                    ),
+                                                    timestamp: now,
+                                                },
+                                            );
+                                        }
                                     }
                                     Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => {
                                         continue;
@@ -1935,7 +1966,7 @@ async fn main() -> Result<()> {
         }))
         .spawn();
 
-        arawn_bin::ws_server::run_server(service, serve_port).await?;
+        arawn_bin::ws_server::run_server(service, &config.server.host, serve_port).await?;
 
         // Graceful shutdown of workflow runner
         if let Some(ref runner) = *shared_runner.read().await {
@@ -2262,6 +2293,10 @@ fn build_engine_config(
             memories: vec![],
             session_context: String::new(),
             plugin_prompts: vec![],
+            // Overridden per-session in `LocalService` from the active
+            // workstream's column; the template carries the boot workstream's
+            // value so single-shot CLI flows pick the right persona too.
+            identity_profile: workstream.identity_profile,
             // Filled in by LocalService per-query (it has access to the
             // integration registry); the template stays None.
             integration_capabilities: None,
@@ -2270,44 +2305,9 @@ fn build_engine_config(
     }
 }
 
-/// Human-readable renderer for the `arawn usage` command.
-fn render_usage_human(s: &arawn_llm::usage::UsageSummary) -> String {
-    let mut out = String::new();
-    out.push_str(&format!(
-        "Token usage — period: {} ({} record(s), {} prompt, {} completion)\n",
-        s.period, s.total_calls, s.total_prompt_tokens, s.total_completion_tokens
-    ));
-    if s.models.is_empty() {
-        out.push_str("\n(no records in this window)\n");
-        return out;
-    }
-    out.push('\n');
-    out.push_str("By model:\n");
-    for m in &s.models {
-        out.push_str(&format!(
-            "  {provider:>10} {model:<32}  {calls:>6} call(s)  prompt {p:>10}  completion {c:>10}  total {t:>10}\n",
-            provider = m.provider,
-            model = m.model,
-            calls = m.call_count,
-            p = m.total_prompt_tokens,
-            c = m.total_completion_tokens,
-            t = m.total_tokens(),
-        ));
-    }
-    if !s.by_site.is_empty() {
-        out.push_str("\nBy call site:\n");
-        for site in &s.by_site {
-            out.push_str(&format!(
-                "  {site:<32}  {calls:>6} call(s)  prompt {p:>10}  completion {c:>10}\n",
-                site = site.call_site,
-                calls = site.call_count,
-                p = site.total_prompt_tokens,
-                c = site.total_completion_tokens,
-            ));
-        }
-    }
-    out
-}
+// T-0362: `render_usage_human` moved to
+// `arawn_llm::usage::render_usage_human` so the TUI `/usage`
+// slash command and the `arawn usage` CLI share a renderer.
 
 /// I-0050 T-0327 — list every repo under `owner` (via the github
 /// integration's authenticated client) and register one

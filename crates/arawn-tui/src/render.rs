@@ -9,6 +9,17 @@ use crate::theme;
 
 const SPINNER_FRAMES: &[char] = &['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
 
+/// I-0035 Phase 3 (T-0356) — fixed width for the right-pane
+/// dashboard.
+const DASHBOARD_WIDTH: u16 = 28;
+
+/// Minimum terminal width to render the three-pane layout. Below
+/// this we fall back to the existing two-pane layout (no dashboard).
+/// Chosen so the chat pane keeps ~40 cells of breathing room even
+/// after the sidebar (~24 cells at 20% of 120) + dashboard (28)
+/// consume their share.
+const MIN_FOR_THREE_PANE: u16 = 100;
+
 /// Render function. Draws to Frame and updates app.layout for mouse hit-testing.
 pub fn render(app: &mut App, frame: &mut Frame) {
     let area = frame.area();
@@ -23,65 +34,103 @@ pub fn render(app: &mut App, frame: &mut Frame) {
     }
 
     let oauth_row = if app.oauth_in_flight.is_some() { 1 } else { 0 };
+    // I-0035 Phase 4 T-A: drop expired toasts lazily before peeking
+    // the front. The toast row only renders when a non-expired toast
+    // exists at the head of the queue.
+    crate::toast::drop_expired(&mut app.toast_queue, std::time::Instant::now());
+    let toast_row = if app.toast_queue.front().is_some() {
+        1
+    } else {
+        0
+    };
     let vertical = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
             Constraint::Min(3),            // chat area
             Constraint::Length(1),         // thin separator
             Constraint::Length(1),         // input (single line, borderless)
+            Constraint::Length(toast_row), // toast (0 or 1 row)
             Constraint::Length(oauth_row), // OAuth heartbeat (0 or 1 row)
             Constraint::Length(1),         // status bar (bottom)
         ])
         .split(area);
 
+    // I-0035 Phase 3: dashboard pane renders to the right of chat
+    // when the terminal is wide enough. Width budget = sidebar
+    // (3 or ~20%) + chat (min ~40) + dashboard (28).
+    let show_dashboard = vertical[0].width >= MIN_FOR_THREE_PANE;
+    let dashboard_width = if show_dashboard {
+        DASHBOARD_WIDTH
+    } else {
+        0
+    };
+
     if app.focus == Focus::Sidebar {
+        let mut constraints = vec![Constraint::Percentage(20), Constraint::Min(1)];
+        if show_dashboard {
+            constraints.push(Constraint::Length(dashboard_width));
+        }
         let middle = Layout::default()
             .direction(Direction::Horizontal)
-            .constraints([Constraint::Percentage(20), Constraint::Percentage(80)])
+            .constraints(constraints)
             .split(vertical[0]);
 
         render_sidebar(app, frame, middle[0]);
         render_chat(app, frame, middle[1]);
-
-        let sidebar_split = Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([Constraint::Percentage(40), Constraint::Percentage(60)])
-            .split(middle[0]);
+        let dashboard_rect = if show_dashboard {
+            render_dashboard_pane(app, frame, middle[2]);
+            Some(middle[2])
+        } else {
+            None
+        };
 
         app.layout = LayoutRegions {
             sidebar: Some(middle[0]),
-            sidebar_ws: Some(sidebar_split[0]),
-            sidebar_sessions: Some(sidebar_split[1]),
+            sidebar_ws: Some(middle[0]),
             sidebar_tab: None,
             chat: middle[1],
             input: vertical[2],
+            dashboard: dashboard_rect,
         };
     } else {
+        let mut constraints = vec![Constraint::Length(3), Constraint::Min(1)];
+        if show_dashboard {
+            constraints.push(Constraint::Length(dashboard_width));
+        }
         let middle = Layout::default()
             .direction(Direction::Horizontal)
-            .constraints([Constraint::Length(3), Constraint::Min(1)])
+            .constraints(constraints)
             .split(vertical[0]);
 
         render_sidebar_tab(frame, middle[0]);
         render_chat(app, frame, middle[1]);
+        let dashboard_rect = if show_dashboard {
+            render_dashboard_pane(app, frame, middle[2]);
+            Some(middle[2])
+        } else {
+            None
+        };
 
         app.layout = LayoutRegions {
             sidebar: None,
             sidebar_ws: None,
-            sidebar_sessions: None,
             sidebar_tab: Some(middle[0]),
             chat: middle[1],
             input: vertical[2],
+            dashboard: dashboard_rect,
         };
     }
 
     render_separator(frame, vertical[1]);
 
     render_input(app, frame, vertical[2]);
-    if oauth_row == 1 {
-        render_oauth_heartbeat(app, frame, vertical[3]);
+    if toast_row == 1 {
+        render_toast_bar(app, frame, vertical[3]);
     }
-    render_status_bar(app, frame, vertical[4]);
+    if oauth_row == 1 {
+        render_oauth_heartbeat(app, frame, vertical[4]);
+    }
+    render_status_bar(app, frame, vertical[5]);
 
     // Autocomplete dropdown (renders above the input line)
     if let Some(ref ac) = app.autocomplete {
@@ -244,13 +293,9 @@ fn render_sidebar(app: &App, frame: &mut Frame, area: ratatui::layout::Rect) {
         theme::BORDER_INACTIVE
     };
 
-    // Split sidebar into workstreams (top) and sessions (bottom)
-    let sidebar_split = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Percentage(40), Constraint::Percentage(60)])
-        .split(area);
-
-    // Workstreams section
+    // I-0035 Phase 3 T-A: sidebar is Workstreams-only. The previous
+    // Sessions sub-section was removed; sessions are accessible via
+    // `/session list`.
     let ws_items: Vec<ListItem> = app
         .workstreams
         .iter()
@@ -278,47 +323,342 @@ fn render_sidebar(app: &App, frame: &mut Frame, area: ratatui::layout::Rect) {
         .borders(Borders::ALL)
         .border_style(Style::default().fg(border_color));
     let ws_list = List::new(ws_items).block(ws_block);
-    frame.render_widget(ws_list, sidebar_split[0]);
+    frame.render_widget(ws_list, area);
+}
 
-    // Sessions section
-    let session_items: Vec<ListItem> = app
-        .sessions
-        .iter()
-        .enumerate()
-        .map(|(i, s)| {
-            let prefix = if app.focus == Focus::Sidebar
-                && app.sidebar_section == SidebarSection::Sessions
-                && i == app.sidebar_session_index
-            {
-                "▸ "
-            } else {
-                "  "
-            };
-            let id_short = &s.id.to_string()[..8];
-            let date = s.created_at.format("%m/%d %H:%M");
-            let style = if Some(&s.id) == app.current_session.as_ref().map(|sess| &sess.id) {
-                Style::default().add_modifier(Modifier::BOLD)
-            } else {
-                Style::default()
-            };
-            ListItem::new(format!("{prefix}{id_short} {date}")).style(style)
-        })
-        .collect();
-
-    let session_block = Block::default()
-        .title(" Sessions ")
+/// I-0035 Phase 3 dashboard pane. Renders the bordered ` Today `
+/// container and splits the inner region into:
+/// - Top: compact brief summary (T-0357 — `render_dashboard_brief`).
+/// - Bottom: action items list (T-0358 — placeholder until that task
+///   lands; for now shows a one-line hint).
+fn render_dashboard_pane(app: &App, frame: &mut Frame, area: ratatui::layout::Rect) {
+    let border_color = theme::BORDER_INACTIVE;
+    let block = Block::default()
+        .title(" Today ")
         .borders(Borders::ALL)
         .border_style(Style::default().fg(border_color));
-    let session_list = List::new(session_items).block(session_block);
-    frame.render_widget(session_list, sidebar_split[1]);
+    let inner = block.inner(area);
+    frame.render_widget(block, area);
+
+    // Vertical split: brief section gets up to BRIEF_HEIGHT rows;
+    // action items section takes the rest. Falls back to a single
+    // section when the pane is too short to be useful.
+    const BRIEF_HEIGHT: u16 = 12;
+    if inner.height >= BRIEF_HEIGHT + 4 {
+        let split = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Length(BRIEF_HEIGHT), Constraint::Min(2)])
+            .split(inner);
+        render_dashboard_brief(app, frame, split[0]);
+        render_dashboard_actions(app, frame, split[1]);
+    } else {
+        render_dashboard_brief(app, frame, inner);
+    }
+}
+
+/// I-0035 Phase 3 T-B (T-0357) — compact brief summary in the
+/// top portion of the dashboard pane. Shows date header + up to
+/// `MAX_CAL` calendar bullets, with an inline `⚠ conflict` marker
+/// when two events overlap.
+fn render_dashboard_brief(app: &App, frame: &mut Frame, area: ratatui::layout::Rect) {
+    if area.width < 6 || area.height < 1 {
+        return;
+    }
+    let strong = Style::default().fg(theme::TEXT).add_modifier(Modifier::BOLD);
+    let muted = Style::default().fg(theme::SUBTEXT0);
+    let warn = Style::default().fg(theme::YELLOW);
+
+    let mut lines: Vec<Line<'static>> = Vec::new();
+    lines.push(Line::from(Span::styled("Brief".to_string(), strong)));
+
+    let Some(view) = app.daily_view.as_ref() else {
+        lines.push(Line::from(Span::styled(
+            "(no brief yet — run /day to generate)".to_string(),
+            muted,
+        )));
+        let para = Paragraph::new(lines);
+        frame.render_widget(para, area);
+        return;
+    };
+
+    // Date line: tablet's period_key (`YYYY-MM-DD`) + weekday from
+    // chrono if parseable, else just the period_key.
+    let date_line = format_brief_date_line(&view.tablet.period_key);
+    lines.push(Line::from(Span::styled(date_line, muted)));
+    lines.push(Line::from(""));
+
+    let calendar_items: Vec<&arawn_ceremonies::service::ItemDto> =
+        view.items.iter().filter(|i| i.section_key == "calendar").collect();
+    if calendar_items.is_empty() {
+        lines.push(Line::from(Span::styled(
+            "(no calendar events today)".to_string(),
+            muted,
+        )));
+    } else {
+        const MAX_CAL: usize = 4;
+        // Inner text budget = area.width - 2 (bullet "• ").
+        let text_budget = (area.width as usize).saturating_sub(2);
+        for item in calendar_items.iter().take(MAX_CAL) {
+            let row = format_calendar_row(item, text_budget);
+            lines.push(Line::from(vec![
+                Span::raw("• "),
+                Span::raw(row),
+            ]));
+        }
+        if calendar_items.len() > MAX_CAL {
+            lines.push(Line::from(Span::styled(
+                format!("… +{} more", calendar_items.len() - MAX_CAL),
+                muted,
+            )));
+        }
+        if let Some(conflict_line) = detect_conflict(&calendar_items) {
+            lines.push(Line::from(Span::styled(conflict_line, warn)));
+        }
+    }
+
+    let para = Paragraph::new(lines);
+    frame.render_widget(para, area);
+}
+
+/// I-0035 Phase 3 T-C (T-0358) — read-only action items list in
+/// the bottom portion of the dashboard pane. Renders the daily
+/// tablet's `attention` section as checkbox rows, with a
+/// `─ Carried over ─` separator + carried-over rolling todos
+/// below when both are present. Truncates with `…` to fit pane
+/// width; overflows with `… +K more` footer.
+fn render_dashboard_actions(app: &App, frame: &mut Frame, area: ratatui::layout::Rect) {
+    if area.width < 6 || area.height < 1 {
+        return;
+    }
+    let strong = Style::default().fg(theme::TEXT).add_modifier(Modifier::BOLD);
+    let muted = Style::default().fg(theme::SUBTEXT0);
+
+    let mut lines: Vec<Line<'static>> = Vec::new();
+    lines.push(Line::from(Span::styled("Action items".to_string(), strong)));
+
+    let Some(view) = app.daily_view.as_ref() else {
+        lines.push(Line::from(Span::styled("(no action items)".to_string(), muted)));
+        frame.render_widget(Paragraph::new(lines), area);
+        return;
+    };
+
+    let attention: Vec<&arawn_ceremonies::service::ItemDto> = view
+        .items
+        .iter()
+        .filter(|i| i.section_key == "attention")
+        .collect();
+    let carried: Vec<&arawn_ceremonies::service::ItemDto> = view
+        .items
+        .iter()
+        .filter(|i| i.section_key == "todos")
+        .collect();
+
+    if attention.is_empty() && carried.is_empty() {
+        lines.push(Line::from(Span::styled("(no action items)".to_string(), muted)));
+        frame.render_widget(Paragraph::new(lines), area);
+        return;
+    }
+
+    // Text budget: width - 2 (checkbox glyph + padding).
+    let text_budget = (area.width as usize).saturating_sub(2);
+    // Row budget: total area height - 1 (header). When we have
+    // attention items AND carried-over todos, reserve 1 row for
+    // the separator.
+    let used_so_far = 1usize; // header
+    let has_separator = !attention.is_empty() && !carried.is_empty();
+    let separator_cost = if has_separator { 1 } else { 0 };
+    let total_rows = area.height as usize;
+    let body_budget = total_rows
+        .saturating_sub(used_so_far)
+        .saturating_sub(separator_cost);
+
+    // Allocate budget across the two sections. Attention items get
+    // priority — they're the most actionable. Carried-over get
+    // whatever's left after attention's rows + overflow footer.
+    let attention_alloc = if carried.is_empty() {
+        body_budget
+    } else {
+        // Leave at least 2 rows for the carried section (1 item +
+        // optional overflow footer). Squeeze attention to fit.
+        body_budget.saturating_sub(2).max(1)
+    };
+
+    push_action_rows(&mut lines, &attention, attention_alloc, text_budget, muted);
+
+    if has_separator {
+        lines.push(Line::from(Span::styled(
+            "─ Carried over ─".to_string(),
+            muted,
+        )));
+        let carried_alloc = total_rows
+            .saturating_sub(lines.len())
+            .max(1);
+        push_action_rows(&mut lines, &carried, carried_alloc, text_budget, muted);
+    }
+
+    let para = Paragraph::new(lines);
+    frame.render_widget(para, area);
+}
+
+/// Push action rows (checkbox + truncated body) into `lines`,
+/// honoring a row budget. When `items.len() > budget`, render the
+/// first `budget - 1` items plus a `… +K more` footer line.
+fn push_action_rows(
+    lines: &mut Vec<Line<'static>>,
+    items: &[&arawn_ceremonies::service::ItemDto],
+    budget: usize,
+    text_budget: usize,
+    muted_style: Style,
+) {
+    if budget == 0 || items.is_empty() {
+        return;
+    }
+    if items.len() <= budget {
+        for item in items {
+            lines.push(Line::from(vec![
+                Span::raw("☐ "),
+                Span::raw(format_action_row(item, text_budget)),
+            ]));
+        }
+    } else {
+        let show = budget.saturating_sub(1).max(1);
+        let hidden = items.len() - show;
+        for item in items.iter().take(show) {
+            lines.push(Line::from(vec![
+                Span::raw("☐ "),
+                Span::raw(format_action_row(item, text_budget)),
+            ]));
+        }
+        lines.push(Line::from(Span::styled(
+            format!("… +{hidden} more"),
+            muted_style,
+        )));
+    }
+}
+
+fn format_action_row(item: &arawn_ceremonies::service::ItemDto, budget: usize) -> String {
+    let title = item
+        .body
+        .get("text")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string())
+        .or_else(|| {
+            item.body
+                .get("summary")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string())
+        })
+        .or_else(|| {
+            item.body
+                .get("subject")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string())
+        })
+        .unwrap_or_else(|| serde_json::to_string(&item.body).unwrap_or_default());
+    crate::width::truncate_display(&title, budget)
+}
+
+/// Format the brief's date line: `YYYY-MM-DD · Wed` when the
+/// period_key parses; otherwise the raw period_key.
+fn format_brief_date_line(period_key: &str) -> String {
+    use chrono::Datelike;
+    chrono::NaiveDate::parse_from_str(period_key, "%Y-%m-%d")
+        .map(|d| {
+            let wd = match d.weekday() {
+                chrono::Weekday::Mon => "Mon",
+                chrono::Weekday::Tue => "Tue",
+                chrono::Weekday::Wed => "Wed",
+                chrono::Weekday::Thu => "Thu",
+                chrono::Weekday::Fri => "Fri",
+                chrono::Weekday::Sat => "Sat",
+                chrono::Weekday::Sun => "Sun",
+            };
+            format!("{period_key} · {wd}")
+        })
+        .unwrap_or_else(|_| period_key.to_string())
+}
+
+/// Render one calendar row: `HH:MM <title>` when body has a
+/// `start_ts`, else `<title>` falling back to body.text.
+fn format_calendar_row(item: &arawn_ceremonies::service::ItemDto, budget: usize) -> String {
+    let title = item
+        .body
+        .get("text")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| {
+            item.body
+                .get("summary")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string()
+        });
+    let time = item
+        .body
+        .get("start_ts")
+        .and_then(|v| v.as_str())
+        .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
+        .map(|dt| dt.format("%H:%M").to_string());
+    let raw = match time {
+        Some(t) => format!("{t} {title}"),
+        None => title,
+    };
+    crate::width::truncate_display(&raw, budget)
+}
+
+/// Pure conflict detection over calendar items. Looks at consecutive
+/// items in tablet order; returns a one-line warning like
+/// "⚠ conflict 14:00–15:00" for the first overlap found. Returns
+/// None when no parseable timestamps overlap.
+fn detect_conflict(items: &[&arawn_ceremonies::service::ItemDto]) -> Option<String> {
+    let mut events: Vec<(chrono::DateTime<chrono::Utc>, chrono::DateTime<chrono::Utc>)> = items
+        .iter()
+        .filter_map(|i| {
+            let start = i
+                .body
+                .get("start_ts")
+                .and_then(|v| v.as_str())
+                .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())?
+                .with_timezone(&chrono::Utc);
+            let end = i
+                .body
+                .get("end_ts")
+                .and_then(|v| v.as_str())
+                .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
+                .map(|dt| dt.with_timezone(&chrono::Utc))
+                // No end_ts → assume a 30-min default so we can still
+                // detect overlap with a later event.
+                .unwrap_or_else(|| start + chrono::Duration::minutes(30));
+            Some((start, end))
+        })
+        .collect();
+    events.sort_by_key(|e| e.0);
+    for pair in events.windows(2) {
+        if pair[1].0 < pair[0].1 {
+            return Some(format!(
+                "⚠ conflict {}–{}",
+                pair[1].0.format("%H:%M"),
+                pair[0].1.format("%H:%M")
+            ));
+        }
+    }
+    None
 }
 
 fn render_chat(app: &mut App, frame: &mut Frame, area: ratatui::layout::Rect) {
-    // Idle hero: empty chat, no streaming, not generating. Render a
-    // centered subtle wordmark + key-binding hints so first-launch
-    // doesn't read as a blank terminal.
+    // Empty chat, no streaming, not generating. Two cases:
+    // - At least one ceremony tablet exists → render the cached brief
+    //   markdown top-aligned in the chat area (I-0035 Phase 2). The
+    //   brief shares the assistant-message render path so it inherits
+    //   the same Catppuccin Mocha styling as everything else.
+    // - No tablets yet → fall through to the T-0331 welcome hero
+    //   (centered wordmark + key-binding hints).
     if app.messages.is_empty() && !app.is_generating && app.streaming_text.is_empty() {
-        render_idle_hero(frame, area);
+        if app.should_show_brief_in_empty_chat() {
+            render_empty_chat_brief(app, frame, area);
+        } else {
+            render_idle_hero(frame, area);
+        }
         return;
     }
 
@@ -838,6 +1178,26 @@ fn render_autocomplete(
     frame.render_widget(paragraph, dropdown_area);
 }
 
+/// I-0035 Phase 4 T-A — render the toast at the head of the queue
+/// (already filtered by `drop_expired` in the entry point). Single
+/// styled line, truncated to fit the row width.
+fn render_toast_bar(app: &App, frame: &mut Frame, area: ratatui::layout::Rect) {
+    let Some(toast) = app.toast_queue.front() else {
+        return;
+    };
+    let fg = match toast.level {
+        crate::toast::ToastLevel::Info => theme::SUBTEXT0,
+        crate::toast::ToastLevel::Warn => theme::YELLOW,
+        crate::toast::ToastLevel::Error => theme::RED,
+    };
+    let style = Style::default().fg(fg).add_modifier(Modifier::BOLD);
+    let budget = (area.width as usize).saturating_sub(2);
+    let text = crate::width::truncate_display(&toast.message, budget);
+    let line = Line::from(vec![Span::raw(" "), Span::styled(text, style)]);
+    let para = Paragraph::new(vec![line]);
+    frame.render_widget(para, area);
+}
+
 fn render_oauth_heartbeat(app: &App, frame: &mut Frame, area: ratatui::layout::Rect) {
     let Some((svc, started)) = &app.oauth_in_flight else {
         return;
@@ -863,6 +1223,32 @@ fn render_oauth_heartbeat(app: &App, frame: &mut Frame, area: ratatui::layout::R
     frame.render_widget(Paragraph::new(line), area);
 }
 
+/// I-0035 Phase 2 (T-0354): render the cached brief markdown in the
+/// empty-chat area. Inherits the same `markdown_to_lines_with_width`
+/// pipeline as assistant messages so the brief reads visually
+/// identically whether shown via `/brief` or auto-rendered here.
+fn render_empty_chat_brief(app: &App, frame: &mut Frame, area: ratatui::layout::Rect) {
+    let Some(md) = app.brief_markdown.as_deref() else {
+        return;
+    };
+    // 2-cell left/right margin so the brief breathes inside the chat
+    // pane and lines wrap at the right column.
+    let content_width = area.width.saturating_sub(4) as usize;
+    if content_width < 10 {
+        return;
+    }
+    let lines = crate::markdown::markdown_to_lines_with_width(md, content_width);
+    let inner = ratatui::layout::Rect::new(
+        area.x + 2,
+        area.y,
+        area.width.saturating_sub(4),
+        area.height,
+    );
+    let para = ratatui::widgets::Paragraph::new(lines)
+        .alignment(ratatui::layout::Alignment::Left);
+    frame.render_widget(para, inner);
+}
+
 fn render_idle_hero(frame: &mut Frame, area: ratatui::layout::Rect) {
     let chrome = Style::default().fg(theme::CHROME);
     let dim = Style::default().fg(theme::SUBTEXT0);
@@ -878,6 +1264,15 @@ fn render_idle_hero(frame: &mut Frame, area: ratatui::layout::Rect) {
         Line::from(Span::styled("╰─────────────╯", chrome)),
         Line::from(""),
         Line::from(Span::styled(
+            "Welcome — your personal agentic assistant.",
+            dim,
+        )),
+        Line::from(Span::styled(
+            "I watch, check, summarize, and nudge across your tools.",
+            dim,
+        )),
+        Line::from(""),
+        Line::from(Span::styled(
             "Type / for commands · Tab to toggle sidebar",
             hint,
         )),
@@ -885,7 +1280,7 @@ fn render_idle_hero(frame: &mut Frame, area: ratatui::layout::Rect) {
     ];
 
     let hero_height = hero_lines.len() as u16;
-    let hero_width = 44u16;
+    let hero_width = 56u16;
     if area.width < hero_width || area.height < hero_height {
         return;
     }
@@ -938,6 +1333,357 @@ mod tests {
     #[test]
     fn truncate_for_display_passes_through_short_strings() {
         assert_eq!(truncate_for_display("hi", 10), "hi");
+    }
+
+    // ─── I-0035 Phase 3 T-B (T-0357) — dashboard brief ────────────────────
+
+    fn cal_item(text: &str, start: &str, end: &str) -> arawn_ceremonies::service::ItemDto {
+        arawn_ceremonies::service::ItemDto {
+            id: format!("item-{start}"),
+            tablet_id: "daily-2026-05-19".into(),
+            section_key: "calendar".into(),
+            ordinal: 0,
+            kind: "freeform".into(),
+            body: serde_json::json!({
+                "text": text,
+                "start_ts": start,
+                "end_ts": end,
+            }),
+            citation_id: None,
+            done_at: None,
+            created_at: start.into(),
+        }
+    }
+
+    fn daily_view_with_items(
+        items: Vec<arawn_ceremonies::service::ItemDto>,
+    ) -> arawn_ceremonies::DailyView {
+        arawn_ceremonies::DailyView {
+            tablet: arawn_ceremonies::service::TabletDto {
+                id: "daily-2026-05-19".into(),
+                kind: "daily".into(),
+                period_key: "2026-05-19".into(),
+                generated_at: "2026-05-19T07:00:00Z".into(),
+                status: "open".into(),
+                workstreams_scanned: serde_json::json!([]),
+                priorities_confirmed_at: None,
+            },
+            items,
+        }
+    }
+
+    #[test]
+    fn dashboard_brief_renders_today_with_calendar() {
+        let mut app = App::new();
+        app.daily_view = Some(daily_view_with_items(vec![
+            cal_item("09:00 standup", "2026-05-19T09:00:00Z", "2026-05-19T09:15:00Z"),
+            cal_item("13:00 1:1 Jamie", "2026-05-19T13:00:00Z", "2026-05-19T13:30:00Z"),
+        ]));
+        let mut terminal = Terminal::new(TestBackend::new(28, 12)).unwrap();
+        terminal
+            .draw(|frame| {
+                let area = frame.area();
+                render_dashboard_brief(&app, frame, area);
+            })
+            .unwrap();
+        let mut hit_09 = false;
+        let mut hit_13 = false;
+        let mut hit_brief = false;
+        for row in 0..terminal.backend().buffer().area.height {
+            let line = buffer_to_string(&terminal, row);
+            if line.contains("Brief") {
+                hit_brief = true;
+            }
+            if line.contains("09:00") {
+                hit_09 = true;
+            }
+            if line.contains("13:00") {
+                hit_13 = true;
+            }
+        }
+        assert!(hit_brief, "Brief header missing");
+        assert!(hit_09, "09:00 standup row missing");
+        assert!(hit_13, "13:00 1:1 row missing");
+    }
+
+    #[test]
+    fn dashboard_brief_flags_conflict() {
+        // Two events overlapping 14:00-15:00.
+        let items = vec![
+            cal_item("14:00 review", "2026-05-19T14:00:00Z", "2026-05-19T15:00:00Z"),
+            cal_item("14:30 design", "2026-05-19T14:30:00Z", "2026-05-19T15:30:00Z"),
+        ];
+        let refs: Vec<&_> = items.iter().collect();
+        let line = detect_conflict(&refs).expect("conflict detected");
+        assert!(line.contains("conflict"), "{line}");
+        assert!(line.contains("14:30"), "{line}");
+        assert!(line.contains("15:00"), "{line}");
+    }
+
+    #[test]
+    fn dashboard_brief_no_conflict_when_separated() {
+        let items = vec![
+            cal_item("09:00 standup", "2026-05-19T09:00:00Z", "2026-05-19T09:15:00Z"),
+            cal_item("13:00 1:1", "2026-05-19T13:00:00Z", "2026-05-19T13:30:00Z"),
+        ];
+        let refs: Vec<&_> = items.iter().collect();
+        assert!(detect_conflict(&refs).is_none());
+    }
+
+    #[test]
+    fn dashboard_brief_empty_state_no_tablet() {
+        let mut app = App::new();
+        app.daily_view = None;
+        let mut terminal = Terminal::new(TestBackend::new(28, 6)).unwrap();
+        terminal
+            .draw(|frame| {
+                let area = frame.area();
+                render_dashboard_brief(&app, frame, area);
+            })
+            .unwrap();
+        let mut hit_placeholder = false;
+        for row in 0..terminal.backend().buffer().area.height {
+            let line = buffer_to_string(&terminal, row);
+            if line.contains("no brief yet") {
+                hit_placeholder = true;
+            }
+        }
+        assert!(hit_placeholder, "expected the 'no brief yet' placeholder");
+    }
+
+    #[test]
+    fn dashboard_brief_empty_state_no_calendar_items() {
+        let mut app = App::new();
+        app.daily_view = Some(daily_view_with_items(vec![]));
+        let mut terminal = Terminal::new(TestBackend::new(28, 6)).unwrap();
+        terminal
+            .draw(|frame| {
+                let area = frame.area();
+                render_dashboard_brief(&app, frame, area);
+            })
+            .unwrap();
+        let mut hit_empty = false;
+        for row in 0..terminal.backend().buffer().area.height {
+            let line = buffer_to_string(&terminal, row);
+            if line.contains("no calendar events") {
+                hit_empty = true;
+            }
+        }
+        assert!(hit_empty, "expected the 'no calendar events' placeholder");
+    }
+
+    #[test]
+    fn format_brief_date_line_includes_weekday() {
+        // 2026-05-19 is a Tuesday.
+        assert_eq!(format_brief_date_line("2026-05-19"), "2026-05-19 · Tue");
+    }
+
+    #[test]
+    fn format_brief_date_line_fallback_on_garbage() {
+        assert_eq!(format_brief_date_line("not-a-date"), "not-a-date");
+    }
+
+    // ─── I-0035 Phase 3 T-C (T-0358) — dashboard actions ─────────────────
+
+    fn attn_item(
+        ordinal: i32,
+        text: &str,
+    ) -> arawn_ceremonies::service::ItemDto {
+        arawn_ceremonies::service::ItemDto {
+            id: format!("attn-{ordinal}"),
+            tablet_id: "daily-2026-05-19".into(),
+            section_key: "attention".into(),
+            ordinal,
+            kind: "freeform".into(),
+            body: serde_json::json!({"text": text}),
+            citation_id: None,
+            done_at: None,
+            created_at: "2026-05-19T07:00:00Z".into(),
+        }
+    }
+
+    fn todo_item(
+        ordinal: i32,
+        text: &str,
+    ) -> arawn_ceremonies::service::ItemDto {
+        arawn_ceremonies::service::ItemDto {
+            id: format!("todo-{ordinal}"),
+            tablet_id: "daily-2026-05-19".into(),
+            section_key: "todos".into(),
+            ordinal,
+            kind: "freeform".into(),
+            body: serde_json::json!({"text": text}),
+            citation_id: None,
+            done_at: None,
+            created_at: "2026-05-19T07:00:00Z".into(),
+        }
+    }
+
+    fn daily_view_for_actions(
+        items: Vec<arawn_ceremonies::service::ItemDto>,
+    ) -> arawn_ceremonies::DailyView {
+        arawn_ceremonies::DailyView {
+            tablet: arawn_ceremonies::service::TabletDto {
+                id: "daily-2026-05-19".into(),
+                kind: "daily".into(),
+                period_key: "2026-05-19".into(),
+                generated_at: "2026-05-19T07:00:00Z".into(),
+                status: "open".into(),
+                workstreams_scanned: serde_json::json!([]),
+                priorities_confirmed_at: None,
+            },
+            items,
+        }
+    }
+
+    fn draw_actions(app: &App, w: u16, h: u16) -> Terminal<TestBackend> {
+        let mut terminal = Terminal::new(TestBackend::new(w, h)).unwrap();
+        terminal
+            .draw(|frame| {
+                let area = frame.area();
+                render_dashboard_actions(app, frame, area);
+            })
+            .unwrap();
+        terminal
+    }
+
+    fn buffer_contains(terminal: &Terminal<TestBackend>, needle: &str) -> bool {
+        for row in 0..terminal.backend().buffer().area.height {
+            if buffer_to_string(terminal, row).contains(needle) {
+                return true;
+            }
+        }
+        false
+    }
+
+    #[test]
+    fn dashboard_actions_renders_attention_items() {
+        let mut app = App::new();
+        app.daily_view = Some(daily_view_for_actions(vec![
+            attn_item(0, "Reply Alice RFC-0042"),
+            attn_item(1, "Review PR #482"),
+            attn_item(2, "ENG-712 stale 10d"),
+        ]));
+        let terminal = draw_actions(&app, 28, 8);
+        assert!(buffer_contains(&terminal, "Action items"));
+        assert!(buffer_contains(&terminal, "Reply Alice"));
+        assert!(buffer_contains(&terminal, "Review PR #482"));
+        assert!(buffer_contains(&terminal, "ENG-712 stale 10d"));
+    }
+
+    #[test]
+    fn dashboard_actions_empty_state_no_tablet() {
+        let mut app = App::new();
+        app.daily_view = None;
+        let terminal = draw_actions(&app, 28, 4);
+        assert!(buffer_contains(&terminal, "Action items"));
+        assert!(buffer_contains(&terminal, "(no action items)"));
+    }
+
+    #[test]
+    fn dashboard_actions_empty_state_no_attention_items() {
+        let mut app = App::new();
+        app.daily_view = Some(daily_view_for_actions(vec![]));
+        let terminal = draw_actions(&app, 28, 4);
+        assert!(buffer_contains(&terminal, "(no action items)"));
+    }
+
+    #[test]
+    fn dashboard_actions_truncates_long_titles() {
+        let long = "This is a very long attention item that will definitely overflow the dashboard width";
+        let mut app = App::new();
+        app.daily_view = Some(daily_view_for_actions(vec![attn_item(0, long)]));
+        let terminal = draw_actions(&app, 28, 4);
+        // Truncation marker present somewhere on the row.
+        let mut hit_ellipsis = false;
+        for row in 0..terminal.backend().buffer().area.height {
+            let line = buffer_to_string(&terminal, row);
+            if line.contains('…') && line.contains("This is") {
+                hit_ellipsis = true;
+            }
+        }
+        assert!(hit_ellipsis, "expected truncation ellipsis on long title");
+    }
+
+    #[test]
+    fn dashboard_actions_overflow_footer() {
+        let mut items = vec![];
+        for i in 0..10 {
+            items.push(attn_item(i, &format!("item {i}")));
+        }
+        let mut app = App::new();
+        app.daily_view = Some(daily_view_for_actions(items));
+        // Only 4 visible rows: header + 2 items + overflow line (one row
+        // is reserved for the budget calculation).
+        let terminal = draw_actions(&app, 28, 4);
+        assert!(buffer_contains(&terminal, "+"));
+        assert!(buffer_contains(&terminal, "more"));
+    }
+
+    // ─── I-0035 Phase 4 T-A (T-0359) — toast renderer ────────────────────
+
+    #[test]
+    fn post_toast_enqueues_message() {
+        let mut app = App::new();
+        assert!(app.toast_queue.is_empty());
+        app.post_toast("hello", crate::toast::ToastLevel::Info);
+        assert_eq!(app.toast_queue.len(), 1);
+        assert_eq!(app.toast_queue.front().unwrap().message, "hello");
+        assert!(app.dirty, "post_toast should mark app dirty");
+    }
+
+    #[test]
+    fn expired_toast_is_dropped_on_render() {
+        use std::time::{Duration, Instant};
+        let mut app = App::new();
+        let mut t = crate::toast::Toast::new("old", crate::toast::ToastLevel::Info);
+        t.posted_at = Instant::now() - Duration::from_secs(10);
+        t.ttl = Duration::from_secs(5);
+        app.toast_queue.push_back(t);
+        let mut terminal = Terminal::new(TestBackend::new(40, 10)).unwrap();
+        terminal
+            .draw(|frame| {
+                super::render(&mut app, frame);
+            })
+            .unwrap();
+        assert!(
+            app.toast_queue.is_empty(),
+            "expired toast should be dropped during render"
+        );
+    }
+
+    #[test]
+    fn toast_truncates_long_message() {
+        let long = "This is a very long toast message that will overflow the toast row width";
+        let mut app = App::new();
+        app.post_toast(long, crate::toast::ToastLevel::Info);
+        let mut terminal = Terminal::new(TestBackend::new(40, 10)).unwrap();
+        terminal
+            .draw(|frame| {
+                super::render(&mut app, frame);
+            })
+            .unwrap();
+        let mut hit_ellipsis = false;
+        for row in 0..terminal.backend().buffer().area.height {
+            let line = buffer_to_string(&terminal, row);
+            if line.contains('…') && line.contains("This is") {
+                hit_ellipsis = true;
+            }
+        }
+        assert!(hit_ellipsis, "expected toast truncation ellipsis");
+    }
+
+    #[test]
+    fn dashboard_actions_carried_over_separator() {
+        let mut app = App::new();
+        app.daily_view = Some(daily_view_for_actions(vec![
+            attn_item(0, "Reply Alice"),
+            todo_item(0, "Carried todo"),
+        ]));
+        let terminal = draw_actions(&app, 28, 8);
+        assert!(buffer_contains(&terminal, "Reply Alice"));
+        assert!(buffer_contains(&terminal, "Carried over"));
+        assert!(buffer_contains(&terminal, "Carried todo"));
     }
 
     fn buffer_to_string(terminal: &Terminal<TestBackend>, row: u16) -> String {

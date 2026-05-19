@@ -4,15 +4,15 @@ level: task
 title: "Permission rule content-pattern matches JSON, not extracted argument"
 short_code: "ARAWN-T-0344"
 created_at: 2026-05-19T12:07:40.182802+00:00
-updated_at: 2026-05-19T12:07:40.182802+00:00
+updated_at: 2026-05-19T14:54:01.248842+00:00
 parent: 
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/backlog"
   - "#bug"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -86,6 +86,12 @@ Surfaced during ARAWN-I-0051 doc triple-check (commit 7037763).
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
 
+## Acceptance Criteria
+
+## Acceptance Criteria
+
+## Acceptance Criteria
+
 ## Acceptance Criteria **[REQUIRED]**
 
 - [ ] {Specific, testable requirement 1}
@@ -153,6 +159,32 @@ Surfaced during ARAWN-I-0051 doc triple-check (commit 7037763).
 ### Risk Considerations
 {Technical risks and mitigation strategies}
 
-## Status Updates **[REQUIRED]**
+## Status Updates
 
-*To be added during implementation*
+### 2026-05-19 — Content-pattern extraction shipped
+
+- New `extract_content_for_match(tool_name, raw_input)` in
+  `crates/arawn-engine/src/permissions/rules.rs` pulls the
+  tool's primary argument out of the JSON input:
+  - `shell` / `Bash` → `command`
+  - `file_read` / `file_write` / `file_edit` (+ camelCase) →
+    `path`, falling back to `file_path`
+  - `glob`, `grep` → `pattern`
+  - `web_fetch` / `WebFetch` → `url`
+  - `safe_env` → `name`
+  - Other tools fall back to the raw JSON with a debug log.
+- `PermissionRule::matches` now calls the extractor before
+  globbing the content pattern. Tool-name match path unchanged.
+- Backward compatibility: unknown tools fall through to raw
+  JSON matching — pre-existing pattern widening (e.g.
+  `shell(*git*)`) still works; the new clean form
+  (`shell(git *)`) also works.
+- **Unit tests:** added 4 cases covering shell command
+  extraction, file path extraction, web_fetch URL extraction,
+  and the unknown-tool raw-input fallback.
+- **Doc fixes:** stripped the "sharp edge" callout in both
+  `docs/src/how-to/lock-down-permissions.md` and
+  `docs/src/reference/permissions.md`. Replaced with a
+  per-tool field-mapping table pointing at the new helper.
+- `cargo test -p arawn-engine --lib permissions` 62/0.
+  `angreal check workspace` green.

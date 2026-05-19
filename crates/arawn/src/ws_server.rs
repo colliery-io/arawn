@@ -58,6 +58,8 @@ const RPC_METHODS: &[&str] = &[
     "feed_run",
     "ceremonies.get_retro_current",
     "ceremonies.get_by_period",
+    // T-0362: TUI `/usage` mirror of `arawn usage`.
+    "usage.summary",
     "ceremonies.list_items",
     "ceremonies.patch_item",
     "ceremonies.add_item",
@@ -202,6 +204,20 @@ struct AppState {
 }
 
 /// Generate a random auth token for WebSocket connections.
+/// T-0348: tell the user we're binding somewhere worth flagging.
+/// "Loopback" covers IPv4 127.0.0.0/8 + IPv6 ::1 + the symbolic
+/// `localhost`. Anything else (0.0.0.0, ::, a LAN address, a public
+/// IP) gets a startup warning since arawn has no auth layer.
+fn is_loopback_host(host: &str) -> bool {
+    if host == "localhost" {
+        return true;
+    }
+    if let Ok(ip) = host.parse::<std::net::IpAddr>() {
+        return ip.is_loopback();
+    }
+    false
+}
+
 fn generate_auth_token() -> String {
     // Use two UUIDs concatenated for sufficient entropy (256 bits)
     format!(
@@ -238,7 +254,11 @@ pub fn read_token_file() -> Option<String> {
 }
 
 /// Start the WebSocket server on the given port.
-pub async fn run_server(service: LocalService, port: u16) -> anyhow::Result<()> {
+pub async fn run_server(
+    service: LocalService,
+    host: &str,
+    port: u16,
+) -> anyhow::Result<()> {
     let data_dir = service.data_dir.clone();
 
     // Generate auth token and write to disk for clients
@@ -258,7 +278,24 @@ pub async fn run_server(service: LocalService, port: u16) -> anyhow::Result<()> 
         .route("/api/decision", post(decision_handler))
         .with_state(state);
 
-    let addr = format!("127.0.0.1:{port}");
+    // T-0348: honor `[server].host` from arawn.toml. Non-loopback
+    // binds get a startup warning since arawn has no auth layer
+    // today — exposing the WS endpoint over a real interface is a
+    // foot-gun, but a valid one for trusted homelab use.
+    let addr = format!("{host}:{port}");
+    if !is_loopback_host(host) {
+        tracing::warn!(
+            host,
+            "binding to non-loopback host — arawn has no auth layer; \
+             only do this on a trusted network"
+        );
+        eprintln!(
+            "WARNING: arawn is binding to {host} (non-loopback). \
+             There is no auth layer today; anyone who can reach this \
+             address can drive the agent. Only use this on a trusted \
+             network."
+        );
+    }
     let listener = TcpListener::bind(&addr).await?;
     info!(addr = %addr, "WebSocket server listening");
     eprintln!("Arawn server listening on ws://{addr}/ws");
@@ -990,6 +1027,64 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                     .await;
             }
 
+            // T-0362: TUI `/usage` slash command. Mirrors the
+            // `arawn usage` CLI by querying the process-wide
+            // `UsageTracker` and returning a `UsageSummary` JSON.
+            "usage.summary" => {
+                debug!(id, "usage.summary");
+                let period = request
+                    .params
+                    .get("period")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("day");
+                let parsed = match period.to_ascii_lowercase().as_str() {
+                    "day" => arawn_llm::usage::UsagePeriod::Day,
+                    "week" => arawn_llm::usage::UsagePeriod::Week,
+                    "month" => arawn_llm::usage::UsagePeriod::Month,
+                    "all" => arawn_llm::usage::UsagePeriod::All,
+                    other => {
+                        let resp = Response::error(
+                            id,
+                            "invalid_params",
+                            format!(
+                                "unknown period `{other}` — expected day|week|month|all"
+                            ),
+                        );
+                        let _ = sender
+                            .send(WsMessage::Text(
+                                serde_json::to_string(&resp).unwrap().into(),
+                            ))
+                            .await;
+                        continue;
+                    }
+                };
+                let by_site = request
+                    .params
+                    .get("by_site")
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or(false);
+                let model = request
+                    .params
+                    .get("model")
+                    .and_then(|v| v.as_str());
+                let resp = match arawn_llm::usage::global() {
+                    Some(tracker) => {
+                        let summary = tracker.summary(parsed, model, by_site);
+                        Response::success(id, serde_json::to_value(&summary).unwrap())
+                    }
+                    None => Response::error(
+                        id,
+                        "tracker_not_installed",
+                        "no usage tracker installed on this server".into(),
+                    ),
+                };
+                let _ = sender
+                    .send(WsMessage::Text(
+                        serde_json::to_string(&resp).unwrap().into(),
+                    ))
+                    .await;
+            }
+
             "list_workflows" => {
                 debug!(id, "list_workflows");
                 let resp = match service.list_workflows().await {
@@ -1708,6 +1803,24 @@ mod tests {
     /// Engine errors surface a `kind` that identifies the inner variant —
     /// tool_not_found here — so clients can dispatch without string-parsing
     /// the message.
+    // T-0348 — bind-host classification.
+    #[test]
+    fn loopback_hosts_are_recognized() {
+        assert!(super::is_loopback_host("127.0.0.1"));
+        assert!(super::is_loopback_host("127.0.0.2")); // anywhere in 127.0.0.0/8
+        assert!(super::is_loopback_host("::1"));
+        assert!(super::is_loopback_host("localhost"));
+    }
+
+    #[test]
+    fn non_loopback_hosts_flagged() {
+        assert!(!super::is_loopback_host("0.0.0.0"));
+        assert!(!super::is_loopback_host("::"));
+        assert!(!super::is_loopback_host("192.168.1.5"));
+        assert!(!super::is_loopback_host("homelab.local"));
+        assert!(!super::is_loopback_host("invalid"));
+    }
+
     #[test]
     fn from_service_error_preserves_engine_error_kind() {
         let engine_err = arawn_engine::EngineError::ToolNotFound("make_coffee".into());

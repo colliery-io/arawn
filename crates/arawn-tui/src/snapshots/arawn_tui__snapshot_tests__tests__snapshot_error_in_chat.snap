@@ -2,33 +2,33 @@
 source: crates/arawn-tui/src/snapshot_tests.rs
 expression: snap
 ---
-  │❯ do something
-  ││ system:
-  ││ Error: API rate limited
-  │
-  │
-  │
-  │
-  │
-  │
-  │
-  │
-  │
-  │
- ▸│
-  │
-  │
-  │
-  │
-  │
-  │
-  │
-  │
-  │
-  │
-  │
-  │
-  │
+  │❯ do something                                                       ┌ Today ───────────────────┐
+  ││ system:                                                            │Brief                     │
+  ││ Error: API rate limited                                            │(no brief yet — run /day t│
+  │                                                                     │                          │
+  │                                                                     │                          │
+  │                                                                     │                          │
+  │                                                                     │                          │
+  │                                                                     │                          │
+  │                                                                     │                          │
+  │                                                                     │                          │
+  │                                                                     │                          │
+  │                                                                     │                          │
+  │                                                                     │                          │
+ ▸│                                                                     │Action items              │
+  │                                                                     │(no action items)         │
+  │                                                                     │                          │
+  │                                                                     │                          │
+  │                                                                     │                          │
+  │                                                                     │                          │
+  │                                                                     │                          │
+  │                                                                     │                          │
+  │                                                                     │                          │
+  │                                                                     │                          │
+  │                                                                     │                          │
+  │                                                                     │                          │
+  │                                                                     │                          │
+  │                                                                     └──────────────────────────┘
 ────────────────────────────────────────────────────────────────────────────────────────────────────
 > Type your message...
  no model │ no workstream Ready

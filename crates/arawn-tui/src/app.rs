@@ -16,10 +16,13 @@ pub struct LayoutRegions {
     pub input: Rect,
     /// Sidebar workstreams section (for click-to-select).
     pub sidebar_ws: Option<Rect>,
-    /// Sidebar sessions section (for click-to-select).
-    pub sidebar_sessions: Option<Rect>,
     /// Thin sidebar tab strip (visible when sidebar is hidden).
     pub sidebar_tab: Option<Rect>,
+    /// I-0035 Phase 3 dashboard pane (brief + action items). `Some`
+    /// when the terminal is wide enough for the three-pane layout;
+    /// `None` on narrow terminals or when the layout otherwise
+    /// collapses to two panes.
+    pub dashboard: Option<Rect>,
 }
 
 /// Which panel has focus.
@@ -31,10 +34,16 @@ pub enum Focus {
 }
 
 /// Which sidebar section is active.
+///
+/// I-0035 Phase 3 (T-0356) removed the `Sessions` variant — the
+/// sidebar is now Workstreams-only. Sessions are accessible via the
+/// `/session list` slash command. The enum is retained as a
+/// single-variant placeholder so the focus/render code can still
+/// dispatch on it (and to give future sidebar sections an obvious
+/// place to hook in without re-introducing the variant).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum SidebarSection {
     Workstreams,
-    Sessions,
 }
 
 /// A message displayed in the chat area.
@@ -186,6 +195,26 @@ pub struct App {
     /// Set when a `todo_event` ServerNotice arrives. Triggers a
     /// re-fetch of the open todo list and re-render.
     pub pending_todo_refresh: bool,
+    /// I-0035 Phase 2 (T-0354): cached markdown for the empty-chat
+    /// brief surface. Populated by the event loop on session
+    /// start / switch via the same fetch path the `/brief` command
+    /// uses. `Some(_)` with non-empty content → render the brief in
+    /// the idle hero area; `None` (or empty) → fall through to the
+    /// T-0331 welcome.
+    pub brief_markdown: Option<String>,
+    /// I-0035 Phase 3 T-B (T-0357): cached parsed `DailyView` for
+    /// the dashboard's compact brief section. Populated alongside
+    /// `brief_markdown` at session start. `None` matches the
+    /// pre-onboarding / no-tablet state.
+    pub daily_view: Option<arawn_ceremonies::DailyView>,
+    /// I-0035 Phase 4 T-A (T-0359): queue of ephemeral 1-line
+    /// toasts. Rendered above the status bar when non-empty.
+    /// Each toast decays after its TTL; oldest is dropped first.
+    pub toast_queue: std::collections::VecDeque<crate::toast::Toast>,
+    /// I-0035 Phase 4 T-B (T-0360): set when a `briefing_ready`
+    /// ServerNotice arrives. The event loop drains this and re-runs
+    /// the brief fetch + cache the next tick.
+    pub pending_brief_refresh: bool,
 }
 
 /// Window for double-Esc detection. Two Esc presses inside this opens
@@ -249,7 +278,121 @@ impl App {
             pending_ceremony_refresh: false,
             todo_overlay: None,
             pending_todo_refresh: false,
+            brief_markdown: None,
+            daily_view: None,
+            toast_queue: std::collections::VecDeque::new(),
+            pending_brief_refresh: false,
         }
+    }
+
+    /// T-0363: handle `/export [path]` — write the current
+    /// conversation to a markdown file. With no path arg, picks a
+    /// default under `$HOME/.arawn/exports/`. Posts a toast with
+    /// the absolute path on success, an error-level toast on
+    /// failure.
+    fn handle_export_conversation(&mut self, path: Option<String>) {
+        if self.messages.is_empty() {
+            self.post_toast(
+                "Nothing to export — the conversation is empty.",
+                crate::toast::ToastLevel::Warn,
+            );
+            return;
+        }
+        let target = match path {
+            Some(p) => std::path::PathBuf::from(shellexpand_tilde(&p)),
+            None => default_export_path(self),
+        };
+        if let Some(parent) = target.parent()
+            && let Err(e) = std::fs::create_dir_all(parent)
+        {
+            self.post_toast(
+                format!("Export failed: create dir {}: {e}", parent.display()),
+                crate::toast::ToastLevel::Error,
+            );
+            return;
+        }
+        let body = render_conversation_markdown(self);
+        match std::fs::write(&target, body) {
+            Ok(()) => {
+                self.post_toast(
+                    format!("Exported to {}", target.display()),
+                    crate::toast::ToastLevel::Info,
+                );
+            }
+            Err(e) => {
+                self.post_toast(
+                    format!("Export failed: {e}"),
+                    crate::toast::ToastLevel::Error,
+                );
+            }
+        }
+    }
+
+    /// T-0361: handle `/copy` — walk `messages` backwards for the
+    /// most recent assistant turn, copy its content to the system
+    /// clipboard via OSC 52, post a confirmation toast.
+    ///
+    /// OSC 52 is the cross-platform, zero-dep clipboard path. Modern
+    /// terminals (iTerm2, kitty, Alacritty, wezterm, tmux ≥ 3.3,
+    /// recent xterm) honor it; older terminals will silently no-op
+    /// — that's acceptable because the toast still tells the user
+    /// what we attempted.
+    fn handle_copy_last_response(&mut self) {
+        let body = self
+            .messages
+            .iter()
+            .rev()
+            .find_map(|m| match &m.role {
+                ChatRole::Assistant => Some(m.content.clone()),
+                _ => None,
+            });
+        match body {
+            Some(text) if !text.trim().is_empty() => {
+                crate::toast::write_osc52_clipboard(&text);
+                let n = text.chars().count();
+                self.post_toast(
+                    format!("Copied last response ({n} chars) to clipboard."),
+                    crate::toast::ToastLevel::Info,
+                );
+            }
+            Some(_) => {
+                self.post_toast(
+                    "No assistant response yet to copy.",
+                    crate::toast::ToastLevel::Warn,
+                );
+            }
+            None => {
+                self.post_toast(
+                    "No assistant response yet to copy.",
+                    crate::toast::ToastLevel::Warn,
+                );
+            }
+        }
+    }
+
+    /// I-0035 Phase 4 (T-0359): enqueue a 1-line toast to surface
+    /// above the status bar. Renderer drops expired toasts lazily;
+    /// callers don't need to think about TTLs.
+    pub fn post_toast(
+        &mut self,
+        message: impl Into<String>,
+        level: crate::toast::ToastLevel,
+    ) {
+        crate::toast::enqueue(
+            &mut self.toast_queue,
+            crate::toast::Toast::new(message, level),
+        );
+        self.dirty = true;
+    }
+
+    /// True iff the empty-chat surface should render the cached brief
+    /// markdown instead of the T-0331 welcome hero. We only swap when
+    /// the agent has at least one tablet to surface — pre-onboarding
+    /// (`None` or empty markdown) falls through to the welcome.
+    pub fn should_show_brief_in_empty_chat(&self) -> bool {
+        self.brief_markdown
+            .as_deref()
+            .is_some_and(|s| !s.trim().is_empty())
     }
 
     /// Process an action and mutate state. Returns true if state changed.
@@ -347,6 +490,12 @@ impl App {
                             CommandResult::ClearChat => {
                                 self.messages.clear();
                             }
+                            CommandResult::CopyLastResponse => {
+                                self.handle_copy_last_response();
+                            }
+                            CommandResult::ExportConversation { path } => {
+                                self.handle_export_conversation(path);
+                            }
                             CommandResult::EnterPlan => {
                                 // Send as a regular message — the LLM will call EnterPlanMode
                                 let content =
@@ -386,6 +535,8 @@ impl App {
                             | CommandResult::CeremonyShowToday
                             | CommandResult::CeremonyShowWeek
                             | CommandResult::CeremonyShowRetro
+                            | CommandResult::BriefShow
+                            | CommandResult::UsageShow { .. }
                             | CommandResult::TodoShow => {
                                 // These need WS interaction — store for event loop to handle
                                 self.pending_command = Some(result);
@@ -457,31 +608,15 @@ impl App {
             }
             Action::SidebarUp => {
                 if self.focus == Focus::Sidebar {
-                    match self.sidebar_section {
-                        SidebarSection::Workstreams => {
-                            self.sidebar_ws_index = self.sidebar_ws_index.saturating_sub(1);
-                        }
-                        SidebarSection::Sessions => {
-                            self.sidebar_session_index =
-                                self.sidebar_session_index.saturating_sub(1);
-                        }
-                    }
+                    self.sidebar_ws_index = self.sidebar_ws_index.saturating_sub(1);
                 } else {
                     self.dirty = false;
                 }
             }
             Action::SidebarDown => {
                 if self.focus == Focus::Sidebar {
-                    match self.sidebar_section {
-                        SidebarSection::Workstreams => {
-                            let max = self.workstreams.len().saturating_sub(1);
-                            self.sidebar_ws_index = (self.sidebar_ws_index + 1).min(max);
-                        }
-                        SidebarSection::Sessions => {
-                            let max = self.sessions.len().saturating_sub(1);
-                            self.sidebar_session_index = (self.sidebar_session_index + 1).min(max);
-                        }
-                    }
+                    let max = self.workstreams.len().saturating_sub(1);
+                    self.sidebar_ws_index = (self.sidebar_ws_index + 1).min(max);
                 } else {
                     self.dirty = false;
                 }
@@ -503,17 +638,8 @@ impl App {
             }
             Action::ClickSidebarItem(index) => {
                 if self.focus == Focus::Sidebar {
-                    match self.sidebar_section {
-                        SidebarSection::Workstreams => {
-                            if index < self.workstreams.len() {
-                                self.sidebar_ws_index = index;
-                            }
-                        }
-                        SidebarSection::Sessions => {
-                            if index < self.sessions.len() {
-                                self.sidebar_session_index = index;
-                            }
-                        }
+                    if index < self.workstreams.len() {
+                        self.sidebar_ws_index = index;
                     }
                 } else {
                     self.dirty = false;
@@ -1060,6 +1186,88 @@ impl Default for App {
     }
 }
 
+/// T-0363 — pick the default `/export` path when the user invokes
+/// `/export` with no arg:
+/// `$HOME/.arawn/exports/<workstream>-<session-short>-<YYYYMMDD-HHMM>.md`.
+/// Falls back to the current directory when `$HOME` is unset.
+fn default_export_path(app: &App) -> std::path::PathBuf {
+    let home = std::env::var("HOME")
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|_| std::path::PathBuf::from("."));
+    let workstream = app
+        .current_workstream
+        .as_ref()
+        .map(|w| w.name.clone())
+        .unwrap_or_else(|| "scratch".to_string());
+    let session_short = app
+        .current_session
+        .as_ref()
+        .map(|s| s.id.to_string().chars().take(8).collect::<String>())
+        .unwrap_or_else(|| "session".to_string());
+    let stamp = chrono::Local::now().format("%Y%m%d-%H%M");
+    home.join(".arawn")
+        .join("exports")
+        .join(format!("{workstream}-{session_short}-{stamp}.md"))
+}
+
+/// T-0363 — expand a leading `~` in a path to `$HOME`. Doesn't
+/// touch other tilde forms (`~user/...`); the goal is just to
+/// accept `~/notes/foo.md` from the CLI naturally.
+fn shellexpand_tilde(input: &str) -> String {
+    if let Some(rest) = input.strip_prefix("~/")
+        && let Ok(home) = std::env::var("HOME")
+    {
+        return format!("{home}/{rest}");
+    }
+    if input == "~"
+        && let Ok(home) = std::env::var("HOME")
+    {
+        return home;
+    }
+    input.to_string()
+}
+
+/// T-0363 — render the full transcript as a markdown document.
+/// YAML frontmatter carries workstream, session id, timestamp, and
+/// the message count; the body emits one `## <role>\n\n<content>`
+/// block per message. Tool calls and tool results are skipped —
+/// they're transient bookkeeping the user doesn't want preserved
+/// in an export.
+fn render_conversation_markdown(app: &App) -> String {
+    let workstream = app
+        .current_workstream
+        .as_ref()
+        .map(|w| w.name.as_str())
+        .unwrap_or("scratch");
+    let session_id = app
+        .current_session
+        .as_ref()
+        .map(|s| s.id.to_string())
+        .unwrap_or_else(|| "unknown".to_string());
+    let generated_at = chrono::Utc::now().to_rfc3339();
+    let mut out = String::new();
+    out.push_str("---\n");
+    out.push_str(&format!("workstream: {workstream}\n"));
+    out.push_str(&format!("session_id: {session_id}\n"));
+    out.push_str(&format!("generated_at: {generated_at}\n"));
+    out.push_str(&format!("message_count: {}\n", app.messages.len()));
+    out.push_str("---\n\n");
+    out.push_str(&format!("# Conversation — {workstream}\n\n"));
+    for m in &app.messages {
+        let role = match &m.role {
+            ChatRole::User => "User",
+            ChatRole::Assistant => "Assistant",
+            ChatRole::System => "System",
+            // Tool calls / results are noise in an exported document.
+            ChatRole::ToolCall { .. } | ChatRole::ToolResult { .. } => continue,
+        };
+        out.push_str(&format!("## {role}\n\n"));
+        out.push_str(m.content.trim());
+        out.push_str("\n\n");
+    }
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1544,5 +1752,136 @@ mod tests {
             app.active_modal.is_some(),
             "out-of-range index must not close the modal"
         );
+    }
+
+    // T-0361 — `/copy` behavior tests.
+
+    #[test]
+    fn copy_last_response_posts_toast_with_assistant_text() {
+        let mut app = App::new();
+        app.messages
+            .push(ChatMessage::new(ChatRole::User, "what's the postgres rfc?"));
+        app.messages.push(ChatMessage::new(
+            ChatRole::Assistant,
+            "Alice wants multi-AZ async + 4h PITR.",
+        ));
+        app.handle_copy_last_response();
+        assert_eq!(app.toast_queue.len(), 1);
+        let toast = app.toast_queue.front().unwrap();
+        assert!(toast.message.contains("Copied last response"));
+        assert!(toast.message.contains("chars"));
+        assert_eq!(toast.level, crate::toast::ToastLevel::Info);
+    }
+
+    #[test]
+    fn copy_last_response_warns_when_no_assistant_messages() {
+        let mut app = App::new();
+        app.messages
+            .push(ChatMessage::new(ChatRole::User, "hi"));
+        app.handle_copy_last_response();
+        assert_eq!(app.toast_queue.len(), 1);
+        let toast = app.toast_queue.front().unwrap();
+        assert!(toast.message.contains("No assistant response"));
+        assert_eq!(toast.level, crate::toast::ToastLevel::Warn);
+    }
+
+    // T-0363 — `/export` behavior tests.
+
+    #[test]
+    fn export_warns_on_empty_transcript() {
+        let mut app = App::new();
+        app.handle_export_conversation(None);
+        assert_eq!(app.toast_queue.len(), 1);
+        let toast = app.toast_queue.front().unwrap();
+        assert!(toast.message.contains("Nothing to export"));
+        assert_eq!(toast.level, crate::toast::ToastLevel::Warn);
+    }
+
+    #[test]
+    fn export_writes_markdown_to_explicit_path() {
+        let tmp = tempfile::tempdir().unwrap();
+        let target = tmp.path().join("subdir").join("conv.md");
+        let mut app = App::new();
+        app.messages
+            .push(ChatMessage::new(ChatRole::User, "what's the postgres rfc?"));
+        app.messages.push(ChatMessage::new(
+            ChatRole::Assistant,
+            "Alice wants multi-AZ async + 4h PITR.",
+        ));
+        app.handle_export_conversation(Some(target.display().to_string()));
+        assert!(target.exists(), "export file should be created");
+        let body = std::fs::read_to_string(&target).unwrap();
+        assert!(body.starts_with("---\n"));
+        assert!(body.contains("message_count: 2"));
+        assert!(body.contains("## User"));
+        assert!(body.contains("## Assistant"));
+        assert!(body.contains("postgres rfc"));
+        assert!(body.contains("multi-AZ async"));
+
+        // Toast confirms with the absolute path.
+        let toast = app.toast_queue.front().unwrap();
+        assert!(toast.message.contains("Exported to"));
+        assert!(toast.message.contains("conv.md"));
+        assert_eq!(toast.level, crate::toast::ToastLevel::Info);
+    }
+
+    #[test]
+    fn export_skips_tool_call_and_tool_result_rows() {
+        let tmp = tempfile::tempdir().unwrap();
+        let target = tmp.path().join("conv.md");
+        let mut app = App::new();
+        app.messages
+            .push(ChatMessage::new(ChatRole::User, "list files"));
+        app.messages.push(ChatMessage::new(
+            ChatRole::ToolCall { name: "shell".into() },
+            "ls -la",
+        ));
+        app.messages.push(ChatMessage::new(
+            ChatRole::ToolResult {
+                name: "shell".into(),
+                is_error: false,
+            },
+            "Cargo.toml\nsrc",
+        ));
+        app.messages
+            .push(ChatMessage::new(ChatRole::Assistant, "two files."));
+        app.handle_export_conversation(Some(target.display().to_string()));
+        let body = std::fs::read_to_string(&target).unwrap();
+        assert!(!body.contains("## ToolCall"));
+        assert!(!body.contains("## ToolResult"));
+        assert!(!body.contains("ls -la"));
+        assert!(body.contains("## User"));
+        assert!(body.contains("## Assistant"));
+    }
+
+    #[test]
+    fn shellexpand_tilde_expands_home() {
+        // SAFETY: tests scope to this process; restore HOME after.
+        let orig_home = std::env::var("HOME").ok();
+        unsafe { std::env::set_var("HOME", "/h") };
+        assert_eq!(shellexpand_tilde("~/x/y"), "/h/x/y");
+        assert_eq!(shellexpand_tilde("~"), "/h");
+        assert_eq!(shellexpand_tilde("/abs/path"), "/abs/path");
+        assert_eq!(shellexpand_tilde("rel/path"), "rel/path");
+        if let Some(h) = orig_home {
+            unsafe { std::env::set_var("HOME", h) };
+        } else {
+            unsafe { std::env::remove_var("HOME") };
+        }
+    }
+
+    #[test]
+    fn copy_last_response_picks_most_recent_assistant_turn() {
+        let mut app = App::new();
+        app.messages
+            .push(ChatMessage::new(ChatRole::Assistant, "first"));
+        app.messages
+            .push(ChatMessage::new(ChatRole::User, "follow-up"));
+        app.messages
+            .push(ChatMessage::new(ChatRole::Assistant, "second"));
+        app.handle_copy_last_response();
+        // Char count: "second" = 6 chars. Message includes the count.
+        let toast = app.toast_queue.front().unwrap();
+        assert!(toast.message.contains("(6 chars)"));
     }
 }

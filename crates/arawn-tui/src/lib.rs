@@ -12,6 +12,7 @@ mod snapshot;
 #[cfg(test)]
 mod snapshot_tests;
 pub mod theme;
+pub mod toast;
 pub mod todo_modal;
 pub mod tui_prompt;
 pub mod width;

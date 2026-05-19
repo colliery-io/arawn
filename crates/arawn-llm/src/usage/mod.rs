@@ -304,6 +304,47 @@ pub fn record(record: TokenUsageRecord) {
     }
 }
 
+/// T-0362: human-readable renderer for a `UsageSummary`. Used by
+/// the `arawn usage` CLI command and by the TUI's `/usage` slash
+/// command — kept here so both surfaces stay in sync.
+pub fn render_usage_human(s: &UsageSummary) -> String {
+    let mut out = String::new();
+    out.push_str(&format!(
+        "Token usage — period: {} ({} record(s), {} prompt, {} completion)\n",
+        s.period, s.total_calls, s.total_prompt_tokens, s.total_completion_tokens
+    ));
+    if s.models.is_empty() {
+        out.push_str("\n(no records in this window)\n");
+        return out;
+    }
+    out.push('\n');
+    out.push_str("By model:\n");
+    for m in &s.models {
+        out.push_str(&format!(
+            "  {provider:>10} {model:<32}  {calls:>6} call(s)  prompt {p:>10}  completion {c:>10}  total {t:>10}\n",
+            provider = m.provider,
+            model = m.model,
+            calls = m.call_count,
+            p = m.total_prompt_tokens,
+            c = m.total_completion_tokens,
+            t = m.total_tokens(),
+        ));
+    }
+    if !s.by_site.is_empty() {
+        out.push_str("\nBy call site:\n");
+        for site in &s.by_site {
+            out.push_str(&format!(
+                "  {site:<32}  {calls:>6} call(s)  prompt {p:>10}  completion {c:>10}\n",
+                site = site.call_site,
+                calls = site.call_count,
+                p = site.total_prompt_tokens,
+                c = site.total_completion_tokens,
+            ));
+        }
+    }
+    out
+}
+
 fn now_secs() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)

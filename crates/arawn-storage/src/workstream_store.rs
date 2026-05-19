@@ -13,7 +13,7 @@ use chrono::{DateTime, Utc};
 use rusqlite::OptionalExtension;
 use uuid::Uuid;
 
-use arawn_core::{SCRATCH_NAME, Workstream, WorkstreamNameError, validate_name};
+use arawn_core::{IdentityProfile, SCRATCH_NAME, Workstream, WorkstreamNameError, validate_name};
 
 use crate::database::Database;
 use crate::error::StorageError;
@@ -68,8 +68,8 @@ impl<'a> WorkstreamStore<'a> {
         self.db.conn().execute(
             "INSERT INTO workstreams \
                 (id, name, root_dir, created_at, display_name, description, \
-                 bindings, archived, updated_at) \
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+                 bindings, archived, updated_at, identity_profile) \
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
             (
                 ws.id.to_string(),
                 &ws.name,
@@ -80,6 +80,7 @@ impl<'a> WorkstreamStore<'a> {
                 bindings_json,
                 ws.archived as i32,
                 ws.updated_at.to_rfc3339(),
+                ws.identity_profile.as_str(),
             ),
         )?;
         Ok(())
@@ -118,11 +119,11 @@ impl<'a> WorkstreamStore<'a> {
     fn list_with_archived(&self, include_archived: bool) -> Result<Vec<Workstream>, StorageError> {
         let mut stmt = self.db.conn().prepare(if include_archived {
             "SELECT id, name, root_dir, created_at, display_name, description, \
-             bindings, archived, updated_at \
+             bindings, archived, updated_at, identity_profile \
              FROM workstreams ORDER BY updated_at DESC"
         } else {
             "SELECT id, name, root_dir, created_at, display_name, description, \
-             bindings, archived, updated_at \
+             bindings, archived, updated_at, identity_profile \
              FROM workstreams WHERE archived = 0 ORDER BY updated_at DESC"
         })?;
         let rows = stmt.query_map([], |row| row_to_workstream(row).map_err(rusqlite_map_err))?;
@@ -131,6 +132,23 @@ impl<'a> WorkstreamStore<'a> {
             out.push(r?);
         }
         Ok(out)
+    }
+
+    pub fn update_identity_profile(
+        &self,
+        name: &str,
+        profile: IdentityProfile,
+    ) -> Result<(), StorageError> {
+        let updated = self.db.conn().execute(
+            "UPDATE workstreams SET identity_profile = ?1, updated_at = ?2 WHERE name = ?3",
+            (profile.as_str(), Utc::now().to_rfc3339(), name),
+        )?;
+        if updated == 0 {
+            return Err(StorageError::InvalidOperation(format!(
+                "workstream '{name}' not found"
+            )));
+        }
+        Ok(())
     }
 
     pub fn update_description(&self, name: &str, description: &str) -> Result<(), StorageError> {
@@ -213,11 +231,11 @@ impl<'a> WorkstreamStore<'a> {
 }
 
 const SELECT_COLS_WHERE_ID: &str = "SELECT id, name, root_dir, created_at, display_name, description, \
-     bindings, archived, updated_at \
+     bindings, archived, updated_at, identity_profile \
      FROM workstreams WHERE id = ?1";
 
 const SELECT_COLS_WHERE_NAME: &str = "SELECT id, name, root_dir, created_at, display_name, description, \
-     bindings, archived, updated_at \
+     bindings, archived, updated_at, identity_profile \
      FROM workstreams WHERE name = ?1";
 
 fn row_to_workstream(row: &rusqlite::Row<'_>) -> Result<Workstream, StorageError> {
@@ -230,6 +248,7 @@ fn row_to_workstream(row: &rusqlite::Row<'_>) -> Result<Workstream, StorageError
     let bindings_json: String = row.get(6)?;
     let archived: i32 = row.get(7)?;
     let updated_str: String = row.get(8)?;
+    let identity_profile_str: String = row.get(9)?;
 
     let id = Uuid::parse_str(&id_str)
         .map_err(|e| StorageError::InvalidOperation(format!("invalid UUID: {e}")))?;
@@ -241,6 +260,7 @@ fn row_to_workstream(row: &rusqlite::Row<'_>) -> Result<Workstream, StorageError
     };
     let bindings: Vec<String> = serde_json::from_str(&bindings_json)
         .map_err(|e| StorageError::InvalidOperation(format!("invalid bindings JSON: {e}")))?;
+    let identity_profile: IdentityProfile = identity_profile_str.parse().unwrap_or_default();
 
     Ok(Workstream {
         id,
@@ -254,6 +274,7 @@ fn row_to_workstream(row: &rusqlite::Row<'_>) -> Result<Workstream, StorageError
         root_dir: PathBuf::from(root_dir),
         bindings,
         archived: archived != 0,
+        identity_profile,
         created_at,
         updated_at,
     })
@@ -386,6 +407,33 @@ mod tests {
         store.ensure_scratch(Path::new("/tmp/scratch")).unwrap();
         let err = store.soft_delete(SCRATCH_NAME).unwrap_err();
         assert!(format!("{err}").contains("scratch"));
+    }
+
+    #[test]
+    fn new_workstream_defaults_to_assistant_profile() {
+        let db = setup();
+        let store = WorkstreamStore::new(&db);
+        store.create(&Workstream::new("life", "/tmp/life")).unwrap();
+        let loaded = store.find_by_name("life").unwrap().unwrap();
+        assert_eq!(loaded.identity_profile, IdentityProfile::Assistant);
+    }
+
+    #[test]
+    fn update_identity_profile_round_trips() {
+        let db = setup();
+        let store = WorkstreamStore::new(&db);
+        store.create(&Workstream::new("code", "/tmp/code")).unwrap();
+        store
+            .update_identity_profile("code", IdentityProfile::Coding)
+            .unwrap();
+        let loaded = store.find_by_name("code").unwrap().unwrap();
+        assert_eq!(loaded.identity_profile, IdentityProfile::Coding);
+
+        store
+            .update_identity_profile("code", IdentityProfile::Assistant)
+            .unwrap();
+        let loaded = store.find_by_name("code").unwrap().unwrap();
+        assert_eq!(loaded.identity_profile, IdentityProfile::Assistant);
     }
 
     #[test]

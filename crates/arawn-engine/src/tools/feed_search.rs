@@ -28,6 +28,14 @@ const KNOWN_FEED_TYPES: &[&str] = &[
     "jira_history",
     "confluence_pages",
     "calendar_events",
+    // I-0045 / I-0050 GitHub projection tables — T-0345.
+    "github_notifications",
+    "github_issues_and_prs",
+    "github_review_queue",
+    "github_repo_commits",
+    "github_repo_issues",
+    "github_repo_prs",
+    "github_issue_or_pr_comments",
 ];
 
 /// RRF constant (Cormack et al. 2009). Same value the memory bench
@@ -296,4 +304,74 @@ fn snippet(text: &str, cap: usize) -> String {
     }
     let truncated: String = text.chars().take(cap).collect();
     format!("{truncated}…")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// T-0345: cross-feed search must include every GitHub projection
+    /// table by default, otherwise `/feed_search "RFC postgres"` skips
+    /// every GitHub hit on a workstream that has GitHub feeds wired.
+    #[test]
+    fn known_feed_types_contains_all_github_tables() {
+        let github_tables = [
+            "github_notifications",
+            "github_issues_and_prs",
+            "github_review_queue",
+            "github_repo_commits",
+            "github_repo_issues",
+            "github_repo_prs",
+            "github_issue_or_pr_comments",
+        ];
+        for t in github_tables {
+            assert!(
+                KNOWN_FEED_TYPES.contains(&t),
+                "KNOWN_FEED_TYPES missing GitHub table: {t}"
+            );
+        }
+    }
+
+    /// Guard rail: the projection table names in `arawn-projections`
+    /// are the source of truth — assert ours match.
+    #[test]
+    fn known_feed_types_match_projection_constants() {
+        let pairs = [
+            (
+                arawn_projections::github::NOTIFICATIONS_FEED_TYPE,
+                "github_notifications",
+            ),
+            (
+                arawn_projections::github::ISSUES_AND_PRS_FEED_TYPE,
+                "github_issues_and_prs",
+            ),
+            (
+                arawn_projections::github::REVIEW_QUEUE_FEED_TYPE,
+                "github_review_queue",
+            ),
+            (
+                arawn_projections::github::REPO_COMMITS_FEED_TYPE,
+                "github_repo_commits",
+            ),
+            (
+                arawn_projections::github::REPO_ISSUES_FEED_TYPE,
+                "github_repo_issues",
+            ),
+            (
+                arawn_projections::github::REPO_PRS_FEED_TYPE,
+                "github_repo_prs",
+            ),
+            (
+                arawn_projections::github::ISSUE_OR_PR_COMMENTS_FEED_TYPE,
+                "github_issue_or_pr_comments",
+            ),
+        ];
+        for (proj_const, hardcoded) in pairs {
+            assert_eq!(
+                proj_const, hardcoded,
+                "table name drift between arawn-projections and feed_search KNOWN_FEED_TYPES"
+            );
+            assert!(KNOWN_FEED_TYPES.contains(&proj_const));
+        }
+    }
 }

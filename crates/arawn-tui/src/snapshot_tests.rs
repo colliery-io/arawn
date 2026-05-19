@@ -186,6 +186,209 @@ mod tests {
         app.messages.clear();
         app.is_generating = false;
         app.streaming_text.clear();
+        // Pre-onboarding state: no brief cached, fall through to
+        // the hero (T-0331 welcome).
+        app.brief_markdown = None;
+
+        let mut terminal = make_terminal(100, 24);
+        let snap = draw(&mut app, &mut terminal);
+        insta::assert_snapshot!(snap);
+    }
+
+    // I-0035 Phase 3 T-A: three-pane layout renders the dashboard
+    // skeleton on the right when the terminal is wide enough.
+    #[test]
+    fn snapshot_layout_three_pane() {
+        let mut app = App::new();
+        app.messages.clear();
+        app.is_generating = false;
+        app.streaming_text.clear();
+        app.brief_markdown = None;
+
+        // 120 cols is comfortably above MIN_FOR_THREE_PANE (100).
+        let mut terminal = make_terminal(120, 24);
+        let snap = draw(&mut app, &mut terminal);
+        insta::assert_snapshot!(snap);
+    }
+
+    // I-0035 Phase 3 T-B: dashboard brief section renders today's
+    // calendar items.
+    #[test]
+    fn snapshot_dashboard_brief_with_calendar() {
+        let mut app = App::new();
+        app.messages.clear();
+        app.is_generating = false;
+        app.streaming_text.clear();
+        app.daily_view = Some(arawn_ceremonies::DailyView {
+            tablet: arawn_ceremonies::service::TabletDto {
+                id: "daily-2026-05-19".into(),
+                kind: "daily".into(),
+                period_key: "2026-05-19".into(),
+                generated_at: "2026-05-19T07:00:00Z".into(),
+                status: "open".into(),
+                workstreams_scanned: serde_json::json!([]),
+                priorities_confirmed_at: None,
+            },
+            items: vec![
+                arawn_ceremonies::service::ItemDto {
+                    id: "item-1".into(),
+                    tablet_id: "daily-2026-05-19".into(),
+                    section_key: "calendar".into(),
+                    ordinal: 0,
+                    kind: "freeform".into(),
+                    body: serde_json::json!({
+                        "text": "standup — platform",
+                        "start_ts": "2026-05-19T09:00:00Z",
+                        "end_ts": "2026-05-19T09:15:00Z",
+                    }),
+                    citation_id: None,
+                    done_at: None,
+                    created_at: "2026-05-19T07:00:00Z".into(),
+                },
+                arawn_ceremonies::service::ItemDto {
+                    id: "item-2".into(),
+                    tablet_id: "daily-2026-05-19".into(),
+                    section_key: "calendar".into(),
+                    ordinal: 1,
+                    kind: "freeform".into(),
+                    body: serde_json::json!({
+                        "text": "1:1 with Jamie",
+                        "start_ts": "2026-05-19T13:00:00Z",
+                        "end_ts": "2026-05-19T13:30:00Z",
+                    }),
+                    citation_id: None,
+                    done_at: None,
+                    created_at: "2026-05-19T07:00:00Z".into(),
+                },
+            ],
+        });
+
+        let mut terminal = make_terminal(120, 24);
+        let snap = draw(&mut app, &mut terminal);
+        insta::assert_snapshot!(snap);
+    }
+
+    // I-0035 Phase 3 T-C: dashboard action items section with
+    // three attention items + one carried-over todo.
+    #[test]
+    fn snapshot_dashboard_actions_with_items() {
+        let mut app = App::new();
+        app.messages.clear();
+        app.is_generating = false;
+        app.streaming_text.clear();
+        let mk_item = |id: &str, section: &str, ordinal: i32, text: &str| {
+            arawn_ceremonies::service::ItemDto {
+                id: id.into(),
+                tablet_id: "daily-2026-05-19".into(),
+                section_key: section.into(),
+                ordinal,
+                kind: "freeform".into(),
+                body: serde_json::json!({"text": text}),
+                citation_id: None,
+                done_at: None,
+                created_at: "2026-05-19T07:00:00Z".into(),
+            }
+        };
+        app.daily_view = Some(arawn_ceremonies::DailyView {
+            tablet: arawn_ceremonies::service::TabletDto {
+                id: "daily-2026-05-19".into(),
+                kind: "daily".into(),
+                period_key: "2026-05-19".into(),
+                generated_at: "2026-05-19T07:00:00Z".into(),
+                status: "open".into(),
+                workstreams_scanned: serde_json::json!([]),
+                priorities_confirmed_at: None,
+            },
+            items: vec![
+                mk_item("attn-1", "attention", 0, "Reply Alice RFC-0042"),
+                mk_item("attn-2", "attention", 1, "Review PR #482"),
+                mk_item("attn-3", "attention", 2, "ENG-712 stale 10d"),
+                mk_item("todo-1", "todos", 0, "Carried: dust falcon"),
+            ],
+        });
+
+        let mut terminal = make_terminal(120, 24);
+        let snap = draw(&mut app, &mut terminal);
+        insta::assert_snapshot!(snap);
+    }
+
+    // I-0035 Phase 4 T-A: toast row appears above the status bar.
+    #[test]
+    fn snapshot_toast_visible() {
+        let mut app = App::new();
+        app.messages.clear();
+        app.is_generating = false;
+        app.streaming_text.clear();
+        app.post_toast(
+            "Brief updated — daily tablet for 2026-05-19",
+            crate::toast::ToastLevel::Info,
+        );
+
+        let mut terminal = make_terminal(100, 16);
+        let snap = draw(&mut app, &mut terminal);
+        insta::assert_snapshot!(snap);
+    }
+
+    // I-0035 Phase 3 T-A: below MIN_FOR_THREE_PANE the dashboard
+    // pane is dropped and the chat area reclaims the right column.
+    #[test]
+    fn snapshot_layout_narrow_fallback() {
+        let mut app = App::new();
+        app.messages.clear();
+        app.is_generating = false;
+        app.streaming_text.clear();
+        app.brief_markdown = None;
+
+        // 80 cols < MIN_FOR_THREE_PANE.
+        let mut terminal = make_terminal(80, 24);
+        let snap = draw(&mut app, &mut terminal);
+        insta::assert_snapshot!(snap);
+    }
+
+    // I-0035 Phase 2 (T-0354): with a cached brief, empty chat
+    // renders the brief markdown instead of the welcome hero.
+    #[test]
+    fn snapshot_idle_hero_with_brief() {
+        let mut app = App::new();
+        app.messages.clear();
+        app.is_generating = false;
+        app.streaming_text.clear();
+        app.brief_markdown = Some(
+            "# Brief — 2026-05-19\n\n\
+             ## Today\n\n\
+             ### Today's calendar\n\n\
+             - 09:00 standup\n\n\
+             ### Carried-over todos\n\n\
+             _(no todos rolled over from yesterday)_\n\n\
+             ## This week\n\n\
+             ### Priorities\n\n\
+             - [x] Ship I-0035 Phase 2\n"
+                .into(),
+        );
+
+        let mut terminal = make_terminal(100, 24);
+        let snap = draw(&mut app, &mut terminal);
+        insta::assert_snapshot!(snap);
+    }
+
+    // Empty markdown is treated as "no brief" → falls through to hero.
+    #[test]
+    fn snapshot_idle_hero_partial_brief_only_placeholders() {
+        let mut app = App::new();
+        app.messages.clear();
+        app.is_generating = false;
+        app.streaming_text.clear();
+        // A brief where both sections are placeholders should still
+        // render the brief (caller decided to cache it). Snapshot
+        // captures that the placeholders render correctly.
+        app.brief_markdown = Some(
+            "# Brief — 2026-05-19\n\n\
+             ## Today\n\n\
+             - 09:00 standup\n\n\
+             ## This week\n\n\
+             _(no weekly tablet — Monday's ceremony will produce one)_\n"
+                .into(),
+        );
 
         let mut terminal = make_terminal(100, 24);
         let snap = draw(&mut app, &mut terminal);

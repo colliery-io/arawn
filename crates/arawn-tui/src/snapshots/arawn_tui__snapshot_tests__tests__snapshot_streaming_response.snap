@@ -2,33 +2,33 @@
 source: crates/arawn-tui/src/snapshot_tests.rs
 expression: snap
 ---
-  │❯ List the crates
-  │
-  ││ Here are the crates in this▌
-  │
-  │
-  │
-  │
-  │
-  │
-  │
-  │
-  │
-  │
- ▸│
-  │
-  │
-  │
-  │
-  │
-  │
-  │
-  │
-  │
-  │
-  │
-  │
-  │
+  │❯ List the crates                                                    ┌ Today ───────────────────┐
+  │                                                                     │Brief                     │
+  ││ Here are the crates in this▌                                       │(no brief yet — run /day t│
+  │                                                                     │                          │
+  │                                                                     │                          │
+  │                                                                     │                          │
+  │                                                                     │                          │
+  │                                                                     │                          │
+  │                                                                     │                          │
+  │                                                                     │                          │
+  │                                                                     │                          │
+  │                                                                     │                          │
+  │                                                                     │                          │
+ ▸│                                                                     │Action items              │
+  │                                                                     │(no action items)         │
+  │                                                                     │                          │
+  │                                                                     │                          │
+  │                                                                     │                          │
+  │                                                                     │                          │
+  │                                                                     │                          │
+  │                                                                     │                          │
+  │                                                                     │                          │
+  │                                                                     │                          │
+  │                                                                     │                          │
+  │                                                                     │                          │
+  │                                                                     │                          │
+  │                                                                     └──────────────────────────┘
 ────────────────────────────────────────────────────────────────────────────────────────────────────
 > Generating...
  no model │ no workstream ⠋ Thinking...

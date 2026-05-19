@@ -205,6 +205,29 @@ impl CommandRegistry {
             description: "Show this week's retro ceremony tablet".into(),
             kind: CommandKind::BuiltIn,
         });
+        self.commands.push(CommandInfo {
+            name: "brief".into(),
+            description: "Show today's brief (daily + weekly tablet combined)".into(),
+            kind: CommandKind::BuiltIn,
+        });
+        // T-0361: clipboard copy of the last assistant response.
+        self.commands.push(CommandInfo {
+            name: "copy".into(),
+            description: "Copy the last assistant response to the clipboard".into(),
+            kind: CommandKind::BuiltIn,
+        });
+        // T-0362: token-usage rollup in the TUI.
+        self.commands.push(CommandInfo {
+            name: "usage".into(),
+            description: "Show token usage rollup ([day|week|month|all], default: day)".into(),
+            kind: CommandKind::BuiltIn,
+        });
+        // T-0363: save the current conversation to markdown.
+        self.commands.push(CommandInfo {
+            name: "export".into(),
+            description: "Export the current conversation to markdown ([path])".into(),
+            kind: CommandKind::BuiltIn,
+        });
         // Generic todo surface (I-0049 T-0314)
         self.commands.push(CommandInfo {
             name: "todo".into(),
@@ -367,6 +390,20 @@ pub enum CommandResult {
     /// Fetch + render this week's retro ceremony tablet as a system
     /// message (T-0307 phase 1, read-only).
     CeremonyShowRetro,
+    /// I-0035 Phase 2 (T-0354): fetch both daily and weekly tablets,
+    /// compose via `BriefView`, render via `render_brief`, append as a
+    /// system message. Read-only.
+    BriefShow,
+    /// T-0361: copy the last assistant message to the clipboard via
+    /// OSC 52. Posts a confirmation toast.
+    CopyLastResponse,
+    /// T-0362: show the token-usage rollup as a system message,
+    /// scoped to `period` (day|week|month|all; defaults to day).
+    UsageShow { period: String },
+    /// T-0363: write the current conversation to a markdown file.
+    /// `path` is None when the user invoked `/export` with no arg
+    /// — the handler picks a default under `~/.arawn/exports/`.
+    ExportConversation { path: Option<String> },
     /// Open the `/todo` modal — generic todos surface (I-0049 T-0314).
     TodoShow,
 }
@@ -755,6 +792,25 @@ pub fn execute_command(cmd: &ParsedCommand, registry: &CommandRegistry) -> Comma
                 "today" => CommandResult::CeremonyShowToday,
                 "week" => CommandResult::CeremonyShowWeek,
                 "retro" => CommandResult::CeremonyShowRetro,
+                "brief" => CommandResult::BriefShow,
+                "copy" => CommandResult::CopyLastResponse,
+                "usage" => {
+                    let period = if cmd.args.trim().is_empty() {
+                        "day".to_string()
+                    } else {
+                        cmd.args.trim().to_lowercase()
+                    };
+                    CommandResult::UsageShow { period }
+                }
+                "export" => {
+                    let trimmed = cmd.args.trim();
+                    let path = if trimmed.is_empty() {
+                        None
+                    } else {
+                        Some(trimmed.to_string())
+                    };
+                    CommandResult::ExportConversation { path }
+                }
                 "todo" => CommandResult::TodoShow,
 
                 _ => CommandResult::SystemMessage(format!("Unknown built-in: /{}", cmd.name)),
@@ -1290,6 +1346,37 @@ mod tests {
         match execute_command(&cmd, &reg) {
             CommandResult::IntegrationDisconnect(svc) => assert_eq!(svc, "slack"),
             other => panic!("expected IntegrationDisconnect, got {other:?}"),
+        }
+    }
+
+    // T-0362 — `/usage` slash command parses optional period arg.
+    #[test]
+    fn execute_usage_default_period_is_day() {
+        let reg = CommandRegistry::new();
+        let cmd = parse_command("/usage").unwrap();
+        match execute_command(&cmd, &reg) {
+            CommandResult::UsageShow { period } => assert_eq!(period, "day"),
+            other => panic!("expected UsageShow, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn execute_usage_with_week_arg() {
+        let reg = CommandRegistry::new();
+        let cmd = parse_command("/usage week").unwrap();
+        match execute_command(&cmd, &reg) {
+            CommandResult::UsageShow { period } => assert_eq!(period, "week"),
+            other => panic!("expected UsageShow, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn execute_usage_lowercases_args() {
+        let reg = CommandRegistry::new();
+        let cmd = parse_command("/usage MONTH").unwrap();
+        match execute_command(&cmd, &reg) {
+            CommandResult::UsageShow { period } => assert_eq!(period, "month"),
+            other => panic!("expected UsageShow, got {other:?}"),
         }
     }
 

@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-18T18:28:00Z | 366 files | Python, Rust
+> Generated: 2026-05-19T15:23:08Z | 368 files | Python, Rust
 
 ## Project Structure
 
@@ -49,6 +49,7 @@
 │   │   │   ├── service.rs
 │   │   │   └── types.rs
 │   │   └── tests/
+│   │       ├── brief_pipeline.rs
 │   │       └── retro_uat.rs
 │   ├── arawn-core/
 │   │   └── src/
@@ -425,6 +426,7 @@
 │   │       ├── snapshot.rs
 │   │       ├── snapshot_tests.rs
 │   │       ├── theme.rs
+│   │       ├── toast.rs
 │   │       ├── todo_modal.rs
 │   │       ├── tui_prompt.rs
 │   │       ├── width.rs
@@ -727,57 +729,57 @@
 - pub `with_plan_state` function L280-283 — `(mut self, state: Arc<PlanModeState>) -> Self`
 - pub `with_background_tasks` function L285-288 — `(mut self, manager: Arc<BackgroundTaskManager>) -> Self`
 - pub `with_memory_manager` function L290-293 — `(mut self, mgr: Arc<arawn_memory::MemoryManager>) -> Self`
--  `LocalService` type L99-502 — `= LocalService`
+-  `LocalService` type L99-503 — `= LocalService`
 -  `feed_runtime_or_err` function L173-177 — `(&self) -> Result<Arc<arawn_feeds::FeedRuntime>, ServiceError>`
 -  `load_session_state` function L297-335 — `( &self, session_id: Uuid, ) -> Result<(arawn_storage::SessionMeta, Workstream, ...` — Load session metadata, resolve workstream, and load message history.
--  `build_session_context` function L339-444 — `( &self, session_id: Uuid, workstream: &Workstream, ws_dir: &str, workspace_dir:...` — Build a ToolContext and per-session PromptContext for the engine.
--  `build_engine` function L448-501 — `( &self, prompt_context: Option<arawn_engine::PromptContext>, event_tx: &mpsc::S...` — Build a QueryEngine configured with compactor, skills, plugins, and plan state.
--  `infer_entity_type` function L505-526 — `(text: &str) -> (arawn_memory::EntityType, String)` — Infer entity type from text patterns.
--  `LocalService` type L531-1634 — `impl ArawnService for LocalService`
--  `list_workstreams` function L532-545 — `(&self) -> Result<Vec<WorkstreamInfo>, ServiceError>`
--  `create_workstream` function L547-562 — `( &self, name: String, root_dir: PathBuf, ) -> Result<WorkstreamInfo, ServiceErr...`
--  `list_sessions` function L564-582 — `( &self, workstream_id: Option<Uuid>, ) -> Result<Vec<SessionInfo>, ServiceError...`
--  `create_session` function L584-603 — `( &self, workstream_id: Option<Uuid>, ) -> Result<SessionInfo, ServiceError>`
--  `load_session` function L605-628 — `(&self, id: Uuid) -> Result<SessionDetail, ServiceError>`
--  `truncate_session_at_user_message` function L630-678 — `( &self, id: Uuid, user_message_index: usize, ) -> Result<SessionDetail, Service...`
--  `send_message` function L681-878 — `( &self, session_id: Uuid, content: String, ) -> Result<Pin<Box<dyn futures::Str...`
--  `cancel` function L880-893 — `(&self, session_id: Uuid) -> Result<(), ServiceError>`
--  `promote_session` function L895-945 — `( &self, session_id: Uuid, workstream_name: &str, ) -> Result<PromotionResult, S...`
--  `resolve_user_input` function L947-961 — `( &self, request_id: &str, selected_index: Option<usize>, ) -> Result<(), Servic...`
--  `query_inventory` function L963-1028 — `(&self, kind: &str) -> Result<Vec<InventoryItem>, ServiceError>`
--  `list_available_commands` function L1030-1042 — `(&self) -> Result<Vec<CommandInfo>, ServiceError>`
--  `list_workflows` function L1044-1074 — `(&self) -> Result<Vec<WorkflowInfo>, ServiceError>`
--  `remember_fact` function L1076-1118 — `(&self, text: &str) -> Result<MemoryStoreResult, ServiceError>`
--  `memory_summary` function L1120-1167 — `(&self) -> Result<MemorySummary, ServiceError>`
--  `forget_entity` function L1169-1222 — `(&self, query: &str) -> Result<ForgetResult, ServiceError>`
--  `get_permission_mode` function L1224-1232 — `(&self) -> Result<PermissionModeInfo, ServiceError>`
--  `set_permission_mode` function L1234-1249 — `( &self, mode_str: &str, ) -> Result<PermissionModeInfo, ServiceError>`
--  `get_capabilities` function L1251-1261 — `(&self) -> Result<arawn_service::ServerCapabilities, ServiceError>`
--  `get_permissions_status` function L1263-1314 — `( &self, ) -> Result<arawn_service::PermissionsStatus, ServiceError>`
--  `list_integrations` function L1316-1336 — `( &self, ) -> Result<Vec<arawn_service::IntegrationStatus>, ServiceError>`
--  `start_oauth_flow` function L1338-1465 — `( &self, service: &str, ) -> Result<arawn_service::OAuthFlowStarted, ServiceErro...`
--  `disconnect_integration` function L1467-1490 — `(&self, service: &str) -> Result<(), ServiceError>`
--  `feed_register` function L1492-1525 — `( &self, spec: arawn_service::FeedRegisterSpec, ) -> Result<arawn_service::FeedS...`
--  `feed_list` function L1527-1531 — `(&self) -> Result<Vec<arawn_service::FeedSummaryDto>, ServiceError>`
--  `feed_pause` function L1533-1547 — `( &self, feed_id: &str, ) -> Result<arawn_service::FeedSummaryDto, ServiceError>`
--  `feed_resume` function L1549-1563 — `( &self, feed_id: &str, ) -> Result<arawn_service::FeedSummaryDto, ServiceError>`
--  `feed_run` function L1565-1580 — `(&self, feed_id: &str) -> Result<arawn_service::FeedSummaryDto, ServiceError>`
--  `feed_discover` function L1582-1610 — `( &self, template: &str, ) -> Result<arawn_service::FeedDiscoverDto, ServiceErro...`
--  `feed_remove` function L1612-1633 — `( &self, feed_id: &str, ) -> Result<arawn_service::FeedRemoveDto, ServiceError>`
--  `default_feed_for_service` function L1641-1650 — `(service: &str) -> Option<(&'static str, &'static str)>` — Personal default feed registered automatically the first time
--  `current_summary` function L1652-1662 — `( runtime: &arawn_feeds::FeedRuntime, feed_id: &str, ) -> Result<arawn_service::...`
--  `feed_err` function L1664-1671 — `(e: arawn_feeds::FeedError) -> ServiceError`
--  `feed_summary_to_dto` function L1673-1687 — `(s: arawn_feeds::FeedSummary) -> arawn_service::FeedSummaryDto`
--  `OAuthFlowCtx` struct L1692-1696 — `{ service: String, url_tx: tokio::sync::Mutex<Option<tokio::sync::oneshot::Sende...` — Glue that lets `LocalService::start_oauth_flow` bridge the integration's
--  `OAuthFlowCtx` type L1699-1721 — `= OAuthFlowCtx`
--  `service` function L1700-1702 — `(&self) -> &str`
--  `publish_auth_url` function L1704-1711 — `(&self, url: &url::Url)`
--  `publish_progress` function L1713-1720 — `(&self, message: &str)`
--  `resolve_ws_dir_from_store` function L1724-1734 — `(store: &Store, ws_id: Option<Uuid>) -> Result<String, ServiceError>` — Resolve workstream directory name from store.
--  `first_sentence` function L1738-1749 — `(s: &str) -> String` — Extract the first sentence and sanitize for use in a markdown table cell.
--  `feed_default_tests` module L1752-1789 — `-`
--  `known_services_each_have_a_default_feed` function L1756-1782 — `()`
--  `unknown_service_has_no_default_feed` function L1785-1788 — `()`
+-  `build_session_context` function L339-445 — `( &self, session_id: Uuid, workstream: &Workstream, ws_dir: &str, workspace_dir:...` — Build a ToolContext and per-session PromptContext for the engine.
+-  `build_engine` function L449-502 — `( &self, prompt_context: Option<arawn_engine::PromptContext>, event_tx: &mpsc::S...` — Build a QueryEngine configured with compactor, skills, plugins, and plan state.
+-  `infer_entity_type` function L506-527 — `(text: &str) -> (arawn_memory::EntityType, String)` — Infer entity type from text patterns.
+-  `LocalService` type L532-1635 — `impl ArawnService for LocalService`
+-  `list_workstreams` function L533-546 — `(&self) -> Result<Vec<WorkstreamInfo>, ServiceError>`
+-  `create_workstream` function L548-563 — `( &self, name: String, root_dir: PathBuf, ) -> Result<WorkstreamInfo, ServiceErr...`
+-  `list_sessions` function L565-583 — `( &self, workstream_id: Option<Uuid>, ) -> Result<Vec<SessionInfo>, ServiceError...`
+-  `create_session` function L585-604 — `( &self, workstream_id: Option<Uuid>, ) -> Result<SessionInfo, ServiceError>`
+-  `load_session` function L606-629 — `(&self, id: Uuid) -> Result<SessionDetail, ServiceError>`
+-  `truncate_session_at_user_message` function L631-679 — `( &self, id: Uuid, user_message_index: usize, ) -> Result<SessionDetail, Service...`
+-  `send_message` function L682-879 — `( &self, session_id: Uuid, content: String, ) -> Result<Pin<Box<dyn futures::Str...`
+-  `cancel` function L881-894 — `(&self, session_id: Uuid) -> Result<(), ServiceError>`
+-  `promote_session` function L896-946 — `( &self, session_id: Uuid, workstream_name: &str, ) -> Result<PromotionResult, S...`
+-  `resolve_user_input` function L948-962 — `( &self, request_id: &str, selected_index: Option<usize>, ) -> Result<(), Servic...`
+-  `query_inventory` function L964-1029 — `(&self, kind: &str) -> Result<Vec<InventoryItem>, ServiceError>`
+-  `list_available_commands` function L1031-1043 — `(&self) -> Result<Vec<CommandInfo>, ServiceError>`
+-  `list_workflows` function L1045-1075 — `(&self) -> Result<Vec<WorkflowInfo>, ServiceError>`
+-  `remember_fact` function L1077-1119 — `(&self, text: &str) -> Result<MemoryStoreResult, ServiceError>`
+-  `memory_summary` function L1121-1168 — `(&self) -> Result<MemorySummary, ServiceError>`
+-  `forget_entity` function L1170-1223 — `(&self, query: &str) -> Result<ForgetResult, ServiceError>`
+-  `get_permission_mode` function L1225-1233 — `(&self) -> Result<PermissionModeInfo, ServiceError>`
+-  `set_permission_mode` function L1235-1250 — `( &self, mode_str: &str, ) -> Result<PermissionModeInfo, ServiceError>`
+-  `get_capabilities` function L1252-1262 — `(&self) -> Result<arawn_service::ServerCapabilities, ServiceError>`
+-  `get_permissions_status` function L1264-1315 — `( &self, ) -> Result<arawn_service::PermissionsStatus, ServiceError>`
+-  `list_integrations` function L1317-1337 — `( &self, ) -> Result<Vec<arawn_service::IntegrationStatus>, ServiceError>`
+-  `start_oauth_flow` function L1339-1466 — `( &self, service: &str, ) -> Result<arawn_service::OAuthFlowStarted, ServiceErro...`
+-  `disconnect_integration` function L1468-1491 — `(&self, service: &str) -> Result<(), ServiceError>`
+-  `feed_register` function L1493-1526 — `( &self, spec: arawn_service::FeedRegisterSpec, ) -> Result<arawn_service::FeedS...`
+-  `feed_list` function L1528-1532 — `(&self) -> Result<Vec<arawn_service::FeedSummaryDto>, ServiceError>`
+-  `feed_pause` function L1534-1548 — `( &self, feed_id: &str, ) -> Result<arawn_service::FeedSummaryDto, ServiceError>`
+-  `feed_resume` function L1550-1564 — `( &self, feed_id: &str, ) -> Result<arawn_service::FeedSummaryDto, ServiceError>`
+-  `feed_run` function L1566-1581 — `(&self, feed_id: &str) -> Result<arawn_service::FeedSummaryDto, ServiceError>`
+-  `feed_discover` function L1583-1611 — `( &self, template: &str, ) -> Result<arawn_service::FeedDiscoverDto, ServiceErro...`
+-  `feed_remove` function L1613-1634 — `( &self, feed_id: &str, ) -> Result<arawn_service::FeedRemoveDto, ServiceError>`
+-  `default_feed_for_service` function L1642-1651 — `(service: &str) -> Option<(&'static str, &'static str)>` — Personal default feed registered automatically the first time
+-  `current_summary` function L1653-1663 — `( runtime: &arawn_feeds::FeedRuntime, feed_id: &str, ) -> Result<arawn_service::...`
+-  `feed_err` function L1665-1672 — `(e: arawn_feeds::FeedError) -> ServiceError`
+-  `feed_summary_to_dto` function L1674-1688 — `(s: arawn_feeds::FeedSummary) -> arawn_service::FeedSummaryDto`
+-  `OAuthFlowCtx` struct L1693-1697 — `{ service: String, url_tx: tokio::sync::Mutex<Option<tokio::sync::oneshot::Sende...` — Glue that lets `LocalService::start_oauth_flow` bridge the integration's
+-  `OAuthFlowCtx` type L1700-1722 — `= OAuthFlowCtx`
+-  `service` function L1701-1703 — `(&self) -> &str`
+-  `publish_auth_url` function L1705-1712 — `(&self, url: &url::Url)`
+-  `publish_progress` function L1714-1721 — `(&self, message: &str)`
+-  `resolve_ws_dir_from_store` function L1725-1735 — `(store: &Store, ws_id: Option<Uuid>) -> Result<String, ServiceError>` — Resolve workstream directory name from store.
+-  `first_sentence` function L1739-1750 — `(s: &str) -> String` — Extract the first sentence and sanitize for use in a markdown table cell.
+-  `feed_default_tests` module L1753-1790 — `-`
+-  `known_services_each_have_a_default_feed` function L1757-1783 — `()`
+-  `unknown_service_has_no_default_feed` function L1786-1789 — `()`
 
 #### crates/arawn/src/main.rs
 
@@ -786,22 +788,25 @@
 -  `embed_batch` function L16-25 — `( &'a self, texts: &'a [&'a str], ) -> std::pin::Pin< Box<dyn std::future::Futur...`
 -  `DEFAULT_MODEL` variable L33 — `: &str`
 -  `FILE_LOG_FILTER` variable L36 — `: &str` — Default file log filter: debug for arawn crates, warn for third-party.
--  `main` function L39-1917 — `() -> Result<()>`
--  `Cli` struct L45-64 — `{ command: Option<Command>, data_dir: Option<String>, session: Option<Uuid>, lis...`
--  `Command` enum L67-107 — `Serve | Tui | Plugin | Doctor | Usage`
--  `ExtractorBindHook` struct L825-833 — `{ runner: Arc<arawn_extractor::ExtractorRunner>, store: Arc<std::sync::Mutex<ara...`
--  `ExtractorBindHook` type L834-908 — `= ExtractorBindHook`
--  `on_bind` function L835-907 — `(&self, workstream_name: &str, feed_id: &str)`
--  `resolve_ceremony_tz` function L1485-1509 — `(kind: &str, raw: Option<&str>) -> chrono_tz::Tz`
--  `run_cli_via_server` function L1920-2022 — `(url: &str, prompt: &str, session_id: Option<Uuid>) -> Result<()>` — Run a CLI prompt by connecting to the running server via WebSocket.
--  `build_llm_client` function L2025-2046 — `(config: &arawn_bin::LlmConfig) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
--  `register_default_tools` function L2049-2095 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &arawn_bin::ArawnConfig, d...` — Register all default tools into the registry.
--  `connect_mcp_servers` function L2098-2142 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
--  `register_workflow_tools` function L2145-2162 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
--  `build_engine_config` function L2164-2203 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
--  `render_usage_human` function L2206-2242 — `(s: &arawn_llm::usage::UsageSummary) -> String` — Human-readable renderer for the `arawn usage` command.
--  `expand_github_org` function L2248-2294 — `( github: Arc<arawn_integrations::github::GithubIntegration>, store: Arc<std::sy...` — I-0050 T-0327 — list every repo under `owner` (via the github
--  `dirs_path` function L2296-2305 — `() -> Option<String>`
+-  `main` function L39-2016 — `() -> Result<()>`
+-  `Cli` struct L49-68 — `{ command: Option<Command>, data_dir: Option<String>, session: Option<Uuid>, lis...`
+-  `Command` enum L71-111 — `Serve | Tui | Plugin | Doctor | Usage`
+-  `ExtractorBindHook` struct L837-848 — `{ runner: Arc<arawn_extractor::ExtractorRunner>, store: Arc<std::sync::Mutex<ara...`
+-  `ExtractorBindHook` type L849-944 — `= ExtractorBindHook`
+-  `on_bind` function L850-943 — `(&self, workstream_name: &str, feed_id: &str)`
+-  `FeedRuntimeUnbindHook` struct L960-963 — `{ feed_runtime: Arc<std::sync::RwLock<Option<Arc<arawn_feeds::FeedRuntime>>>> }`
+-  `FeedRuntimeUnbindHook` type L964-979 — `= FeedRuntimeUnbindHook`
+-  `on_unbind` function L965-978 — `(&self, removed_feed_ids: &[String])`
+-  `resolve_ceremony_tz` function L1557-1581 — `(kind: &str, raw: Option<&str>) -> chrono_tz::Tz`
+-  `run_cli_via_server` function L2019-2121 — `(url: &str, prompt: &str, session_id: Option<Uuid>) -> Result<()>` — Run a CLI prompt by connecting to the running server via WebSocket.
+-  `build_llm_client` function L2124-2145 — `(config: &arawn_bin::LlmConfig) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
+-  `register_default_tools` function L2148-2194 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &arawn_bin::ArawnConfig, d...` — Register all default tools into the registry.
+-  `connect_mcp_servers` function L2197-2241 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
+-  `register_workflow_tools` function L2244-2261 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
+-  `build_engine_config` function L2263-2306 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
+-  `expand_github_org` function L2316-2379 — `( github: Arc<arawn_integrations::github::GithubIntegration>, store: Arc<std::sy...` — I-0050 T-0327 — list every repo under `owner` (via the github
+-  `register_one_feed` function L2385-2417 — `( feed_runtime: Arc<arawn_feeds::FeedRuntime>, store: Arc<std::sync::Mutex<arawn...` — T-0329 — fetch a feed record by id and register its cron schedule
+-  `dirs_path` function L2419-2428 — `() -> Option<String>`
 
 #### crates/arawn/src/plugin_cmd.rs
 
@@ -829,33 +834,36 @@
 
 #### crates/arawn/src/ws_server.rs
 
-- pub `read_token_file` function L227-238 — `() -> Option<String>` — Read the auth token from {data_dir}/server.token.
-- pub `run_server` function L241-276 — `(service: LocalService, port: u16) -> anyhow::Result<()>` — Start the WebSocket server on the given port.
-- pub `handle_connection_public` function L366-368 — `(socket: WebSocket, service: Arc<LocalService>)` — Handle a single WebSocket connection.
+- pub `read_token_file` function L243-254 — `() -> Option<String>` — Read the auth token from {data_dir}/server.token.
+- pub `run_server` function L257-313 — `( service: LocalService, host: &str, port: u16, ) -> anyhow::Result<()>` — Start the WebSocket server on the given port.
+- pub `handle_connection_public` function L403-405 — `(socket: WebSocket, service: Arc<LocalService>)` — Handle a single WebSocket connection.
 -  `PROTOCOL_VERSION` variable L24 — `: &str` — Protocol version reported by the `hello` handshake.
--  `RPC_METHODS` variable L27-80 — `: &[&str]` — Canonical RPC method names (returned by `hello`).
--  `Request` struct L84-89 — `{ id: u64, method: String, params: Value }` — JSON-RPC style request from client.
--  `Response` struct L93-99 — `{ id: u64, result: Option<Value>, error: Option<ErrorBody> }` — JSON-RPC style response to client.
--  `ErrorBody` struct L102-107 — `{ code: String, message: String, details: Option<Value> }`
--  `Response` type L109-193 — `= Response`
--  `success` function L110-116 — `(id: u64, result: Value) -> Self`
--  `error` function L118-128 — `(id: u64, code: &str, message: String) -> Self`
--  `from_ceremony_error` function L134-153 — `(id: u64, e: &arawn_ceremonies::CeremonyError) -> Self` — Build an error response from a `CeremonyError`.
--  `from_todo_error` function L158-176 — `(id: u64, e: &arawn_storage::StorageError) -> Self` — Build an error response from a `StorageError` raised by
--  `from_service_error` function L182-192 — `(id: u64, e: &arawn_service::ServiceError) -> Self` — Build an error response from a [`ServiceError`].
--  `AppState` struct L197-202 — `{ service: Arc<LocalService>, auth_token: Option<String> }` — Shared app state for the WebSocket server.
--  `generate_auth_token` function L205-212 — `() -> String` — Generate a random auth token for WebSocket connections.
--  `write_token_file` function L215-223 — `( data_dir: &std::path::Path, token: &str, ) -> std::io::Result<std::path::PathB...` — Write the auth token to {data_dir}/server.token for clients to read.
--  `shutdown_signal` function L279-301 — `()` — Wait for a shutdown signal (Ctrl-C / SIGTERM).
--  `decision_handler` function L306-325 — `( State(AppState { service, .. }): State<AppState>, Json(req): Json<arawn_workfl...` — HTTP endpoint for workflow decision tasks.
--  `WsQueryParams` struct L329-331 — `{ token: Option<String> }` — Query parameters for WebSocket connection.
--  `ws_handler` function L333-363 — `( ws: WebSocketUpgrade, Query(params): Query<WsQueryParams>, State(state): State...`
--  `handle_connection` function L370-1541 — `(socket: WebSocket, service: Arc<LocalService>)`
--  `handle_todo_rpc` function L1547-1665 — `(id: u64, method: &str, params: &Value, service: &LocalService) -> Response` — Dispatch a `todos.*` RPC method.
--  `tests` module L1668-1722 — `-`
--  `from_service_error_preserves_structured_detail_for_typed_variants` function L1675-1689 — `()` — Typed Storage error should round-trip through the wire payload with
--  `from_service_error_omits_details_for_string_only_variants` function L1695-1706 — `()` — String-only variants (NotFound, InvalidOperation, Internal) keep
--  `from_service_error_preserves_engine_error_kind` function L1712-1721 — `()` — Engine errors surface a `kind` that identifies the inner variant —
+-  `RPC_METHODS` variable L27-82 — `: &[&str]` — Canonical RPC method names (returned by `hello`).
+-  `Request` struct L86-91 — `{ id: u64, method: String, params: Value }` — JSON-RPC style request from client.
+-  `Response` struct L95-101 — `{ id: u64, result: Option<Value>, error: Option<ErrorBody> }` — JSON-RPC style response to client.
+-  `ErrorBody` struct L104-109 — `{ code: String, message: String, details: Option<Value> }`
+-  `Response` type L111-195 — `= Response`
+-  `success` function L112-118 — `(id: u64, result: Value) -> Self`
+-  `error` function L120-130 — `(id: u64, code: &str, message: String) -> Self`
+-  `from_ceremony_error` function L136-155 — `(id: u64, e: &arawn_ceremonies::CeremonyError) -> Self` — Build an error response from a `CeremonyError`.
+-  `from_todo_error` function L160-178 — `(id: u64, e: &arawn_storage::StorageError) -> Self` — Build an error response from a `StorageError` raised by
+-  `from_service_error` function L184-194 — `(id: u64, e: &arawn_service::ServiceError) -> Self` — Build an error response from a [`ServiceError`].
+-  `AppState` struct L199-204 — `{ service: Arc<LocalService>, auth_token: Option<String> }` — Shared app state for the WebSocket server.
+-  `is_loopback_host` function L211-219 — `(host: &str) -> bool` — Generate a random auth token for WebSocket connections.
+-  `generate_auth_token` function L221-228 — `() -> String`
+-  `write_token_file` function L231-239 — `( data_dir: &std::path::Path, token: &str, ) -> std::io::Result<std::path::PathB...` — Write the auth token to {data_dir}/server.token for clients to read.
+-  `shutdown_signal` function L316-338 — `()` — Wait for a shutdown signal (Ctrl-C / SIGTERM).
+-  `decision_handler` function L343-362 — `( State(AppState { service, .. }): State<AppState>, Json(req): Json<arawn_workfl...` — HTTP endpoint for workflow decision tasks.
+-  `WsQueryParams` struct L366-368 — `{ token: Option<String> }` — Query parameters for WebSocket connection.
+-  `ws_handler` function L370-400 — `( ws: WebSocketUpgrade, Query(params): Query<WsQueryParams>, State(state): State...`
+-  `handle_connection` function L407-1636 — `(socket: WebSocket, service: Arc<LocalService>)`
+-  `handle_todo_rpc` function L1642-1760 — `(id: u64, method: &str, params: &Value, service: &LocalService) -> Response` — Dispatch a `todos.*` RPC method.
+-  `tests` module L1763-1835 — `-`
+-  `from_service_error_preserves_structured_detail_for_typed_variants` function L1770-1784 — `()` — Typed Storage error should round-trip through the wire payload with
+-  `from_service_error_omits_details_for_string_only_variants` function L1790-1801 — `()` — String-only variants (NotFound, InvalidOperation, Internal) keep
+-  `loopback_hosts_are_recognized` function L1808-1813 — `()`
+-  `non_loopback_hosts_flagged` function L1816-1822 — `()`
+-  `from_service_error_preserves_engine_error_kind` function L1825-1834 — `()`
 
 ### crates/arawn-auth/src
 
@@ -1173,32 +1181,43 @@
 - pub `render_daily` function L144-195 — `(view: &DailyView) -> String` — Render a daily tablet to markdown.
 - pub `WeeklyView` struct L201-205 — `{ tablet: TabletDto, items: Vec<ItemDto>, priorities: Vec<PriorityDto> }` — What the renderer needs to draw a weekly tablet.
 - pub `render_weekly` function L208-280 — `(view: &WeeklyView) -> String` — Render a weekly tablet to markdown.
+- pub `BriefView` struct L309-312 — `{ daily: Option<DailyView>, weekly: Option<WeeklyView> }` — I-0035 Phase 2: composite "brief" view over today's daily tablet
+- pub `render_brief` function L317-357 — `(view: &BriefView, now: chrono::DateTime<chrono::Utc>) -> String` — Render a composite brief.
 -  `items_in_section` function L124-131 — `(items: &'a [ItemDto], section_key: &str) -> Vec<&'a ItemDto>` — shipped here is the contract.
--  `render_priority_bullet` function L282-308 — `(out: &mut String, p: &PriorityDto)` — shipped here is the contract.
--  `render_footnotes` function L310-320 — `(out: &mut String, citations: I)` — shipped here is the contract.
--  `render_item_bullet` function L322-335 — `(out: &mut String, item: &ItemDto)` — shipped here is the contract.
--  `tests` module L338-702 — `-` — shipped here is the contract.
--  `tablet` function L342-352 — `(iso_week: &str, status: &str) -> TabletDto` — shipped here is the contract.
--  `item` function L354-366 — `(section: &str, ordinal: i32, text: &str, citation: Option<&str>) -> ItemDto` — shipped here is the contract.
--  `full_retro_renders_with_all_three_sections` function L369-400 — `()` — shipped here is the contract.
--  `empty_what_happened_renders_placeholder` function L403-411 — `()` — shipped here is the contract.
--  `empty_patterns_renders_bootstrap_message` function L414-424 — `()` — shipped here is the contract.
--  `missing_diary_renders_placeholder` function L427-435 — `()` — shipped here is the contract.
--  `blank_diary_renders_placeholder` function L438-446 — `()` — shipped here is the contract.
--  `items_are_sorted_by_ordinal` function L449-465 — `()` — shipped here is the contract.
--  `footnotes_deduplicate_repeated_citations` function L468-481 — `()` — shipped here is the contract.
--  `missing_citation_just_omits_marker` function L484-493 — `()` — shipped here is the contract.
--  `daily_tablet` function L495-505 — `(date: &str, status: &str) -> TabletDto` — shipped here is the contract.
--  `weekly_tablet` function L507-517 — `(iso_week: &str, status: &str, confirmed: Option<&str>) -> TabletDto` — shipped here is the contract.
--  `priority` function L519-541 — `( ordinal: i32, source: &str, text: &str, rationale: &str, citation: Option<&str...` — shipped here is the contract.
--  `daily_renders_all_four_sections_in_order` function L544-567 — `()` — shipped here is the contract.
--  `daily_empty_sections_render_placeholders` function L570-580 — `()` — shipped here is the contract.
--  `daily_footnotes_deduplicate` function L583-595 — `()` — shipped here is the contract.
--  `weekly_renders_priorities_and_five_sections` function L598-642 — `()` — shipped here is the contract.
--  `weekly_unconfirmed_status_shows_no` function L645-653 — `()` — shipped here is the contract.
--  `weekly_empty_sections_render_placeholders` function L656-668 — `()` — shipped here is the contract.
--  `weekly_footnotes_dedupe_across_items_and_priorities` function L671-680 — `()` — shipped here is the contract.
--  `body_falls_back_to_raw_json_when_text_missing` function L683-701 — `()` — shipped here is the contract.
+-  `demote_h2_to_h3` function L362-368 — `(s: &str) -> String` — Demote every `\n## ` heading to `\n### `, plus a leading `## `
+-  `render_priority_bullet` function L370-396 — `(out: &mut String, p: &PriorityDto)` — shipped here is the contract.
+-  `render_footnotes` function L398-408 — `(out: &mut String, citations: I)` — shipped here is the contract.
+-  `render_item_bullet` function L410-423 — `(out: &mut String, item: &ItemDto)` — shipped here is the contract.
+-  `tests` module L426-931 — `-` — shipped here is the contract.
+-  `tablet` function L430-440 — `(iso_week: &str, status: &str) -> TabletDto` — shipped here is the contract.
+-  `item` function L442-454 — `(section: &str, ordinal: i32, text: &str, citation: Option<&str>) -> ItemDto` — shipped here is the contract.
+-  `full_retro_renders_with_all_three_sections` function L457-488 — `()` — shipped here is the contract.
+-  `empty_what_happened_renders_placeholder` function L491-499 — `()` — shipped here is the contract.
+-  `empty_patterns_renders_bootstrap_message` function L502-512 — `()` — shipped here is the contract.
+-  `missing_diary_renders_placeholder` function L515-523 — `()` — shipped here is the contract.
+-  `blank_diary_renders_placeholder` function L526-534 — `()` — shipped here is the contract.
+-  `items_are_sorted_by_ordinal` function L537-553 — `()` — shipped here is the contract.
+-  `footnotes_deduplicate_repeated_citations` function L556-569 — `()` — shipped here is the contract.
+-  `missing_citation_just_omits_marker` function L572-581 — `()` — shipped here is the contract.
+-  `daily_tablet` function L583-593 — `(date: &str, status: &str) -> TabletDto` — shipped here is the contract.
+-  `weekly_tablet` function L595-605 — `(iso_week: &str, status: &str, confirmed: Option<&str>) -> TabletDto` — shipped here is the contract.
+-  `priority` function L607-629 — `( ordinal: i32, source: &str, text: &str, rationale: &str, citation: Option<&str...` — shipped here is the contract.
+-  `daily_renders_all_four_sections_in_order` function L632-655 — `()` — shipped here is the contract.
+-  `daily_empty_sections_render_placeholders` function L658-668 — `()` — shipped here is the contract.
+-  `daily_footnotes_deduplicate` function L671-683 — `()` — shipped here is the contract.
+-  `weekly_renders_priorities_and_five_sections` function L686-730 — `()` — shipped here is the contract.
+-  `weekly_unconfirmed_status_shows_no` function L733-741 — `()` — shipped here is the contract.
+-  `weekly_empty_sections_render_placeholders` function L744-756 — `()` — shipped here is the contract.
+-  `weekly_footnotes_dedupe_across_items_and_priorities` function L759-768 — `()` — shipped here is the contract.
+-  `body_falls_back_to_raw_json_when_text_missing` function L771-789 — `()` — shipped here is the contract.
+-  `daily_view_with_calendar_item` function L793-817 — `() -> DailyView` — shipped here is the contract.
+-  `weekly_view_with_priority` function L819-844 — `() -> WeeklyView` — shipped here is the contract.
+-  `brief_now` function L846-850 — `() -> chrono::DateTime<chrono::Utc>` — shipped here is the contract.
+-  `render_brief_with_both_tablets` function L853-864 — `()` — shipped here is the contract.
+-  `render_brief_missing_daily` function L867-878 — `()` — shipped here is the contract.
+-  `render_brief_missing_weekly` function L881-890 — `()` — shipped here is the contract.
+-  `render_brief_missing_both` function L893-903 — `()` — shipped here is the contract.
+-  `render_brief_demotes_inner_headings` function L906-930 — `()` — shipped here is the contract.
 
 #### crates/arawn-ceremonies/src/rollup.rs
 
@@ -1545,6 +1564,29 @@
 
 > *Semantic summary to be generated by AI agent.*
 
+#### crates/arawn-ceremonies/tests/brief_pipeline.rs
+
+-  `open_test_db` function L39-46 — `() -> (TempDir, ConnHandle)` — values, sidestepping `compose()`'s LLM dependency.
+-  `ScriptedPlugin` struct L52-56 — `{ kind: &'static str, period: String, items: Mutex<Vec<NewItem>> }` — Minimal Ceremony impl: `compose()` returns whatever pre-loaded
+-  `ScriptedPlugin` type L59-82 — `impl Ceremony for ScriptedPlugin` — values, sidestepping `compose()`'s LLM dependency.
+-  `kind` function L60-62 — `(&self) -> &'static str` — values, sidestepping `compose()`'s LLM dependency.
+-  `period_key` function L63-65 — `(&self, _now: DateTime<Utc>) -> String` — values, sidestepping `compose()`'s LLM dependency.
+-  `default_schedule` function L66-68 — `(&self) -> CronSchedule` — values, sidestepping `compose()`'s LLM dependency.
+-  `gather` function L69-74 — `( &self, _ctx: &dyn CeremonyCtx, ) -> Result<GatheredFacts, arawn_ceremonies::Ce...` — values, sidestepping `compose()`'s LLM dependency.
+-  `compose` function L75-81 — `( &self, _ctx: &dyn CeremonyCtx, _facts: GatheredFacts, ) -> Result<Vec<NewItem>...` — values, sidestepping `compose()`'s LLM dependency.
+-  `DAILY_PERIOD` variable L84 — `: &str` — values, sidestepping `compose()`'s LLM dependency.
+-  `WEEKLY_PERIOD` variable L85 — `: &str` — values, sidestepping `compose()`'s LLM dependency.
+-  `daily_tablet_id` function L87-89 — `() -> String` — values, sidestepping `compose()`'s LLM dependency.
+-  `weekly_tablet_id` function L91-93 — `() -> String` — values, sidestepping `compose()`'s LLM dependency.
+-  `composed` function L95-104 — `(tablet_id: &str, section: &str, ordinal: i32, text: &str, citation: &str) -> Ne...` — values, sidestepping `compose()`'s LLM dependency.
+-  `user_item` function L106-114 — `(tablet_id: &str, section: &str) -> NewItem` — values, sidestepping `compose()`'s LLM dependency.
+-  `daily_seed_items` function L116-126 — `() -> Vec<NewItem>` — values, sidestepping `compose()`'s LLM dependency.
+-  `weekly_seed_items` function L128-142 — `() -> Vec<NewItem>` — values, sidestepping `compose()`'s LLM dependency.
+-  `build_service` function L144-162 — `() -> (TempDir, CeremonyService)` — values, sidestepping `compose()`'s LLM dependency.
+-  `brief_now` function L164-168 — `() -> DateTime<Utc>` — values, sidestepping `compose()`'s LLM dependency.
+-  `brief_pipeline_renders_daily_and_weekly_content` function L171-266 — `()` — values, sidestepping `compose()`'s LLM dependency.
+-  `brief_pipeline_missing_weekly_renders_placeholder` function L269-304 — `()` — values, sidestepping `compose()`'s LLM dependency.
+
 #### crates/arawn-ceremonies/tests/retro_uat.rs
 
 -  `open_test_db` function L29-36 — `() -> (TempDir, ConnHandle)` — populates from the daily tablets seeded for the current week.
@@ -1651,20 +1693,28 @@
 - pub `SCRATCH_NAME` variable L14 — `: &str` — Reserved workstream slug — auto-created on first boot and undeletable.
 - pub `validate_name` function L18-36 — `(name: &str) -> Result<(), WorkstreamNameError>` — Validation for workstream slugs.
 - pub `WorkstreamNameError` enum L39-44 — `Empty | TooLong | BadLeading | BadChar` — feeds extractor prompts in Phase 4.
-- pub `Workstream` struct L69-93 — `{ id: Uuid, name: String, display_name: String, description: String, root_dir: P...` — A workstream — the primary organizational unit.
-- pub `new` function L96-110 — `(name: impl Into<String>, root_dir: impl Into<PathBuf>) -> Self` — feeds extractor prompts in Phase 4.
-- pub `scratch` function L113-115 — `(root_dir: impl Into<PathBuf>) -> Self` — Create the default scratch workstream for ad-hoc sessions.
-- pub `is_scratch` function L117-119 — `(&self) -> bool` — feeds extractor prompts in Phase 4.
+- pub `IdentityProfile` enum L78-82 — `Assistant | Coding` — Which prompt persona this workstream loads into the engine.
+- pub `as_str` function L85-90 — `(self) -> &'static str` — feeds extractor prompts in Phase 4.
+- pub `Workstream` struct L113-140 — `{ id: Uuid, name: String, display_name: String, description: String, root_dir: P...` — A workstream — the primary organizational unit.
+- pub `new` function L143-158 — `(name: impl Into<String>, root_dir: impl Into<PathBuf>) -> Self` — feeds extractor prompts in Phase 4.
+- pub `scratch` function L161-163 — `(root_dir: impl Into<PathBuf>) -> Self` — Create the default scratch workstream for ad-hoc sessions.
+- pub `is_scratch` function L165-167 — `(&self) -> bool` — feeds extractor prompts in Phase 4.
 -  `WorkstreamNameError` type L46-63 — `= WorkstreamNameError` — feeds extractor prompts in Phase 4.
 -  `fmt` function L47-62 — `(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result` — feeds extractor prompts in Phase 4.
 -  `WorkstreamNameError` type L65 — `= WorkstreamNameError` — feeds extractor prompts in Phase 4.
--  `Workstream` type L95-120 — `= Workstream` — feeds extractor prompts in Phase 4.
--  `tests` module L123-179 — `-` — feeds extractor prompts in Phase 4.
--  `workstream_creation_uses_name_as_display_by_default` function L127-134 — `()` — feeds extractor prompts in Phase 4.
--  `scratch_workstream` function L137-141 — `()` — feeds extractor prompts in Phase 4.
--  `workstream_ids_are_unique` function L144-148 — `()` — feeds extractor prompts in Phase 4.
--  `name_validation_accepts_valid_slugs` function L151-155 — `()` — feeds extractor prompts in Phase 4.
--  `name_validation_rejects_invalid_slugs` function L158-178 — `()` — feeds extractor prompts in Phase 4.
+-  `IdentityProfile` type L84-91 — `= IdentityProfile` — feeds extractor prompts in Phase 4.
+-  `IdentityProfile` type L93-103 — `= IdentityProfile` — feeds extractor prompts in Phase 4.
+-  `Err` type L94 — `= ()` — feeds extractor prompts in Phase 4.
+-  `from_str` function L96-102 — `(s: &str) -> Result<Self, Self::Err>` — feeds extractor prompts in Phase 4.
+-  `IdentityProfile` type L105-109 — `= IdentityProfile` — feeds extractor prompts in Phase 4.
+-  `fmt` function L106-108 — `(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result` — feeds extractor prompts in Phase 4.
+-  `Workstream` type L142-168 — `= Workstream` — feeds extractor prompts in Phase 4.
+-  `tests` module L171-227 — `-` — feeds extractor prompts in Phase 4.
+-  `workstream_creation_uses_name_as_display_by_default` function L175-182 — `()` — feeds extractor prompts in Phase 4.
+-  `scratch_workstream` function L185-189 — `()` — feeds extractor prompts in Phase 4.
+-  `workstream_ids_are_unique` function L192-196 — `()` — feeds extractor prompts in Phase 4.
+-  `name_validation_accepts_valid_slugs` function L199-203 — `()` — feeds extractor prompts in Phase 4.
+-  `name_validation_rejects_invalid_slugs` function L206-226 — `()` — feeds extractor prompts in Phase 4.
 
 ### crates/arawn-embed/src
 
@@ -2027,125 +2077,133 @@
 
 - pub `ProgressEvent` enum L25-40 — `AssistantText | ToolCallStart | ToolCallResult` — Live progress events emitted during the engine loop.
 - pub `IntegrationCapabilitiesFn` type L53 — `= std::sync::Arc<dyn Fn() -> Vec<String> + Send + Sync>` — Provider for dynamic integration capability summaries.
-- pub `PromptContext` struct L57-72 — `{ prompts_dir: Option<std::path::PathBuf>, os: String, shell: String, cwd: std::...` — Cached context for building system prompts per-turn.
-- pub `QueryEngineConfig` struct L76-91 — `{ model: String, max_iterations: usize, system_prompt: String, max_tokens: Optio...` — Configuration for the query engine.
-- pub `QueryEngine` struct L109-130 — `{ llm: Arc<dyn LlmClient>, registry: Arc<ToolRegistry>, config: QueryEngineConfi...` — The agentic loop: prompt → LLM → tool_use → execute → feed result → loop.
-- pub `new` function L133-150 — `(llm: Arc<dyn LlmClient>, registry: Arc<ToolRegistry>) -> Self`
-- pub `with_config` function L152-173 — `( llm: Arc<dyn LlmClient>, registry: Arc<ToolRegistry>, config: QueryEngineConfi...`
-- pub `with_compactor` function L175-178 — `(mut self, compactor: Compactor) -> Self`
-- pub `with_permission_checker` function L180-183 — `(mut self, checker: Arc<PermissionChecker>) -> Self`
-- pub `with_hook_runner` function L185-188 — `(mut self, runner: Arc<HookRunner>) -> Self`
-- pub `with_skill_registry` function L190-193 — `(mut self, registry: Arc<crate::skills::SkillRegistry>) -> Self`
-- pub `with_plugin_registry` function L195-198 — `(mut self, registry: Arc<crate::plugins::PluginRegistry>) -> Self`
-- pub `with_plan_state` function L200-203 — `(mut self, plan_state: Arc<PlanModeState>) -> Self`
-- pub `plan_state` function L206-208 — `(&self) -> Option<&Arc<PlanModeState>>` — Get the plan mode state (if configured).
-- pub `with_background_tasks` function L210-213 — `(mut self, manager: Arc<BackgroundTaskManager>) -> Self`
-- pub `with_progress_sender` function L216-219 — `(mut self, tx: tokio::sync::mpsc::Sender<ProgressEvent>) -> Self` — Set a channel for live progress events during the engine loop.
-- pub `with_cancel_token` function L222-225 — `(mut self, token: tokio_util::sync::CancellationToken) -> Self` — Set a cancellation token — checked at each loop iteration and before tool execution.
-- pub `fire_hook` function L244-250 — `(&self, input: &HookInput) -> Option<crate::hooks::AggregatedHookResult>` — Fire a hook event.
-- pub `run` function L253-581 — `( &mut self, session: &mut Session, ctx: &dyn arawn_tool::ToolContext, ) -> Resu...` — Run the agentic loop for a session.
+- pub `PromptContext` struct L57-77 — `{ prompts_dir: Option<std::path::PathBuf>, os: String, shell: String, cwd: std::...` — Cached context for building system prompts per-turn.
+- pub `QueryEngineConfig` struct L81-96 — `{ model: String, max_iterations: usize, system_prompt: String, max_tokens: Optio...` — Configuration for the query engine.
+- pub `QueryEngine` struct L114-135 — `{ llm: Arc<dyn LlmClient>, registry: Arc<ToolRegistry>, config: QueryEngineConfi...` — The agentic loop: prompt → LLM → tool_use → execute → feed result → loop.
+- pub `new` function L138-155 — `(llm: Arc<dyn LlmClient>, registry: Arc<ToolRegistry>) -> Self`
+- pub `with_config` function L157-178 — `( llm: Arc<dyn LlmClient>, registry: Arc<ToolRegistry>, config: QueryEngineConfi...`
+- pub `with_compactor` function L180-183 — `(mut self, compactor: Compactor) -> Self`
+- pub `with_permission_checker` function L185-188 — `(mut self, checker: Arc<PermissionChecker>) -> Self`
+- pub `with_hook_runner` function L190-193 — `(mut self, runner: Arc<HookRunner>) -> Self`
+- pub `with_skill_registry` function L195-198 — `(mut self, registry: Arc<crate::skills::SkillRegistry>) -> Self`
+- pub `with_plugin_registry` function L200-203 — `(mut self, registry: Arc<crate::plugins::PluginRegistry>) -> Self`
+- pub `with_plan_state` function L205-208 — `(mut self, plan_state: Arc<PlanModeState>) -> Self`
+- pub `plan_state` function L211-213 — `(&self) -> Option<&Arc<PlanModeState>>` — Get the plan mode state (if configured).
+- pub `with_background_tasks` function L215-218 — `(mut self, manager: Arc<BackgroundTaskManager>) -> Self`
+- pub `with_progress_sender` function L221-224 — `(mut self, tx: tokio::sync::mpsc::Sender<ProgressEvent>) -> Self` — Set a channel for live progress events during the engine loop.
+- pub `with_cancel_token` function L227-230 — `(mut self, token: tokio_util::sync::CancellationToken) -> Self` — Set a cancellation token — checked at each loop iteration and before tool execution.
+- pub `fire_hook` function L249-255 — `(&self, input: &HookInput) -> Option<crate::hooks::AggregatedHookResult>` — Fire a hook event.
+- pub `run` function L258-586 — `( &mut self, session: &mut Session, ctx: &dyn arawn_tool::ToolContext, ) -> Resu...` — Run the agentic loop for a session.
 -  `DEFAULT_MAX_ITERATIONS` variable L19 — `: usize`
 -  `MAX_COMPACT_FAILURES` variable L20 — `: u32`
 -  `DEFAULT_SYSTEM_PROMPT` variable L41 — `: &str`
--  `QueryEngineConfig` type L93-106 — `impl Default for QueryEngineConfig`
--  `default` function L94-105 — `() -> Self`
--  `QueryEngine` type L132-981 — `= QueryEngine`
--  `is_cancelled` function L228-230 — `(&self) -> bool` — Check if cancellation has been requested.
--  `emit_progress` function L233-237 — `(&self, event: ProgressEvent)` — Emit a progress event if a sender is configured.
--  `build_request` function L583-682 — `(&self, session: &Session) -> ChatRequest`
--  `stream_response_with_retry` function L702-736 — `( &self, session: &Session, _ctx: &dyn arawn_tool::ToolContext, ) -> Result<Asse...` — Retry the request-build-and-stream cycle when the stream fails mid-flight.
--  `MAX_RETRIES` variable L707 — `: u32`
--  `BASE_DELAY_MS` variable L708 — `: u64`
--  `stream_response` function L738-805 — `( &self, request: ChatRequest, ) -> Result<AssembledResponse, EngineError>`
--  `execute_tool` function L807-980 — `( &self, ctx: &dyn arawn_tool::ToolContext, tool_use_id: &str, name: &str, argum...`
--  `parse_arguments` function L983-992 — `(raw: &str) -> serde_json::Value`
--  `AssembledResponse` struct L995-999 — `{ text: String, tool_calls: Vec<AssembledToolCall>, usage: Option<arawn_llm::Usa...`
--  `AssembledToolCall` struct L1001-1005 — `{ id: String, name: String, arguments: serde_json::Value }`
--  `ToolResult` struct L1007-1010 — `{ content: String, is_error: bool }`
--  `filter_tools_for_context` function L1015-1149 — `( all_tools: &[arawn_llm::ToolDefinition], session: &Session, registry: &ToolReg...` — Filter tool definitions to only contextually relevant ones for this turn.
--  `tests` module L1152-1506 — `-`
--  `MockLlm` struct L1165-1167 — `{ responses: Mutex<Vec<Vec<ChatChunk>>> }` — Mock LLM that returns pre-scripted responses.
--  `MockLlm` type L1169-1199 — `= MockLlm`
--  `new` function L1170-1174 — `(responses: Vec<Vec<ChatChunk>>) -> Self`
--  `text` function L1177-1184 — `(text: &str) -> Vec<ChatChunk>` — Convenience: text-only response
--  `tool_call` function L1187-1198 — `(id: &str, name: &str, args: &str) -> Vec<ChatChunk>` — Convenience: tool call then done
--  `MockLlm` type L1202-1218 — `impl LlmClient for MockLlm`
--  `stream` function L1203-1217 — `( &self, _request: ChatRequest, ) -> Result< Pin<Box<dyn futures::Stream<Item = ...`
--  `setup` function L1220-1225 — `() -> (Workstream, Session, EngineToolContext)`
--  `text_only_response` function L1228-1241 — `()`
--  `single_tool_call` function L1244-1262 — `()`
--  `tool_not_found` function L1265-1287 — `()`
--  `max_iterations_exceeded` function L1290-1317 — `()`
--  `multi_turn_tool_chain` function L1320-1339 — `()`
--  `SlowTool` struct L1343-1345 — `{ sleep_ms: u64 }` — Tool that intentionally sleeps for a duration so timeout tests can
--  `SlowTool` type L1348-1369 — `impl Tool for SlowTool`
--  `name` function L1349-1351 — `(&self) -> &str`
--  `description` function L1352-1354 — `(&self) -> &str`
--  `parameters_schema` function L1355-1357 — `(&self) -> serde_json::Value`
--  `execute` function L1358-1365 — `( &self, _ctx: &dyn arawn_tool::ToolContext, _params: serde_json::Value, ) -> Re...`
--  `is_read_only` function L1366-1368 — `(&self) -> bool`
--  `tool_completes_when_default_budget_is_large` function L1372-1393 — `()`
--  `slow_tool_times_out_under_short_default` function L1396-1430 — `()`
--  `agent_override_fires_before_default_would` function L1433-1471 — `()`
--  `invalid_override_surfaces_as_tool_error` function L1474-1505 — `()`
+-  `QueryEngineConfig` type L98-111 — `impl Default for QueryEngineConfig`
+-  `default` function L99-110 — `() -> Self`
+-  `QueryEngine` type L137-987 — `= QueryEngine`
+-  `is_cancelled` function L233-235 — `(&self) -> bool` — Check if cancellation has been requested.
+-  `emit_progress` function L238-242 — `(&self, event: ProgressEvent)` — Emit a progress event if a sender is configured.
+-  `build_request` function L588-688 — `(&self, session: &Session) -> ChatRequest`
+-  `stream_response_with_retry` function L708-742 — `( &self, session: &Session, _ctx: &dyn arawn_tool::ToolContext, ) -> Result<Asse...` — Retry the request-build-and-stream cycle when the stream fails mid-flight.
+-  `MAX_RETRIES` variable L713 — `: u32`
+-  `BASE_DELAY_MS` variable L714 — `: u64`
+-  `stream_response` function L744-811 — `( &self, request: ChatRequest, ) -> Result<AssembledResponse, EngineError>`
+-  `execute_tool` function L813-986 — `( &self, ctx: &dyn arawn_tool::ToolContext, tool_use_id: &str, name: &str, argum...`
+-  `parse_arguments` function L989-998 — `(raw: &str) -> serde_json::Value`
+-  `AssembledResponse` struct L1001-1005 — `{ text: String, tool_calls: Vec<AssembledToolCall>, usage: Option<arawn_llm::Usa...`
+-  `AssembledToolCall` struct L1007-1011 — `{ id: String, name: String, arguments: serde_json::Value }`
+-  `ToolResult` struct L1013-1016 — `{ content: String, is_error: bool }`
+-  `filter_tools_for_context` function L1021-1155 — `( all_tools: &[arawn_llm::ToolDefinition], session: &Session, registry: &ToolReg...` — Filter tool definitions to only contextually relevant ones for this turn.
+-  `tests` module L1158-1512 — `-`
+-  `MockLlm` struct L1171-1173 — `{ responses: Mutex<Vec<Vec<ChatChunk>>> }` — Mock LLM that returns pre-scripted responses.
+-  `MockLlm` type L1175-1205 — `= MockLlm`
+-  `new` function L1176-1180 — `(responses: Vec<Vec<ChatChunk>>) -> Self`
+-  `text` function L1183-1190 — `(text: &str) -> Vec<ChatChunk>` — Convenience: text-only response
+-  `tool_call` function L1193-1204 — `(id: &str, name: &str, args: &str) -> Vec<ChatChunk>` — Convenience: tool call then done
+-  `MockLlm` type L1208-1224 — `impl LlmClient for MockLlm`
+-  `stream` function L1209-1223 — `( &self, _request: ChatRequest, ) -> Result< Pin<Box<dyn futures::Stream<Item = ...`
+-  `setup` function L1226-1231 — `() -> (Workstream, Session, EngineToolContext)`
+-  `text_only_response` function L1234-1247 — `()`
+-  `single_tool_call` function L1250-1268 — `()`
+-  `tool_not_found` function L1271-1293 — `()`
+-  `max_iterations_exceeded` function L1296-1323 — `()`
+-  `multi_turn_tool_chain` function L1326-1345 — `()`
+-  `SlowTool` struct L1349-1351 — `{ sleep_ms: u64 }` — Tool that intentionally sleeps for a duration so timeout tests can
+-  `SlowTool` type L1354-1375 — `impl Tool for SlowTool`
+-  `name` function L1355-1357 — `(&self) -> &str`
+-  `description` function L1358-1360 — `(&self) -> &str`
+-  `parameters_schema` function L1361-1363 — `(&self) -> serde_json::Value`
+-  `execute` function L1364-1371 — `( &self, _ctx: &dyn arawn_tool::ToolContext, _params: serde_json::Value, ) -> Re...`
+-  `is_read_only` function L1372-1374 — `(&self) -> bool`
+-  `tool_completes_when_default_budget_is_large` function L1378-1399 — `()`
+-  `slow_tool_times_out_under_short_default` function L1402-1436 — `()`
+-  `agent_override_fires_before_default_would` function L1439-1477 — `()`
+-  `invalid_override_surfaces_as_tool_error` function L1480-1511 — `()`
 
 #### crates/arawn-engine/src/system_prompt.rs
 
-- pub `SystemPromptBuilder` struct L152-155 — `{ sections: Vec<PromptSection>, token_budget: u32 }` — Builds a system prompt from static defaults (overridable) + dynamic context.
-- pub `new` function L158-163 — `() -> Self`
-- pub `with_token_budget` function L166-169 — `(mut self, budget: u32) -> Self` — Set a custom token budget.
-- pub `load_static_sections` function L173-185 — `(mut self, prompts_dir: Option<&Path>) -> Self` — Load all 7 static sections, checking for user overrides in `prompts_dir`.
-- pub `environment` function L188-199 — `(mut self, os: &str, shell: &str, cwd: &Path, model: &str) -> Self` — Add the environment section.
-- pub `workstream` function L202-212 — `(mut self, name: &str, root_dir: &Path) -> Self` — Add the workstream section.
-- pub `tools` function L222-237 — `(mut self, tool_defs: &[ToolDefinition]) -> Self` — Acknowledge tool availability in the system prompt.
-- pub `context_files` function L240-263 — `(mut self, files: &[ContextFile]) -> Self` — Add context files (arawn.md at workstream and global levels).
-- pub `memories` function L266-281 — `(mut self, memories: &[String]) -> Self` — Add relevant memories (future — currently a no-op if empty).
-- pub `session_context` function L284-295 — `(mut self, summary: &str) -> Self` — Add session context (for resumed sessions).
-- pub `integrations` function L303-322 — `(mut self, summaries: &[String]) -> Self` — Add a section listing connected integrations and their granted
-- pub `plugin_prompts` function L325-341 — `(mut self, prompts: &[String]) -> Self` — Add plugin-contributed prompt fragments.
-- pub `build` function L344-366 — `(mut self) -> String` — Build the final system prompt string, enforcing token budget.
-- pub `ContextFile` struct L379-383 — `{ path: std::path::PathBuf, content: String, truncated: bool }` — A context file loaded from disk.
-- pub `find_context_files` function L386-402 — `(workstream_root: &Path, global_dir: &Path) -> Vec<ContextFile>` — Load context files from workstream root and global config dir.
--  `DEFAULT_TOKEN_BUDGET` variable L6 — `: u32` — Default token budget for the system prompt (~24k chars).
--  `MAX_CONTEXT_FILE_CHARS` variable L9 — `: usize` — Max chars for a context file before truncation.
--  `DEFAULT_IDENTITY` variable L13 — `: &str`
--  `DEFAULT_SYSTEM` variable L15-20 — `: &str`
--  `DEFAULT_DOING_TASKS` variable L22-46 — `: &str`
--  `DEFAULT_WORK_PROTOCOL` variable L48-60 — `: &str`
--  `DEFAULT_ACTIONS` variable L62-70 — `: &str`
--  `DEFAULT_USING_TOOLS` variable L72-83 — `: &str`
--  `DEFAULT_TONE` variable L85-89 — `: &str`
--  `DEFAULT_OUTPUT_EFFICIENCY` variable L91-105 — `: &str`
--  `STATIC_SECTION_NAMES` variable L108-117 — `: &[&str]` — Names of the overridable static sections.
--  `STATIC_SECTION_DEFAULTS` variable L120-129 — `: &[&str]` — Compiled-in defaults for each static section.
--  `STATIC_SECTION_PRIORITIES` variable L132-141 — `: &[u8]` — Priority levels for sections.
--  `PromptSection` struct L145-149 — `{ name: String, content: String, priority: u8 }` — A section in the assembled prompt.
--  `SystemPromptBuilder` type L157-367 — `= SystemPromptBuilder`
--  `SystemPromptBuilder` type L369-373 — `impl Default for SystemPromptBuilder`
--  `default` function L370-372 — `() -> Self`
--  `load_context_file` function L404-423 — `(path: &Path, max_chars: usize) -> Option<ContextFile>`
--  `truncate_70_20` function L426-449 — `(content: &str, max_chars: usize) -> String` — Truncate keeping 70% from the head and 20% from the tail, with a marker in between.
--  `load_section` function L453-461 — `(name: &str, default: &str, prompts_dir: Option<&Path>) -> String`
--  `tests` module L464-779 — `-`
--  `default_assembly_includes_all_static_sections` function L471-487 — `()`
--  `sections_have_headers` function L491-502 — `()`
--  `empty_optional_sections_omitted` function L506-517 — `()`
--  `single_section_override` function L521-532 — `()`
--  `partial_overrides_other_sections_use_defaults` function L536-548 — `()`
--  `missing_override_dir_uses_defaults` function L552-558 — `()`
--  `empty_override_file_produces_empty_section` function L562-572 — `()`
--  `under_budget_all_sections_included` function L576-587 — `()`
--  `over_budget_drops_low_priority_sections` function L591-601 — `()`
--  `identity_survives_budget_cuts` function L605-614 — `()`
--  `truncation_produces_clean_sections` function L618-630 — `()`
--  `context_file_injected` function L634-645 — `()`
--  `context_file_missing_section_omitted` function L649-656 — `()`
--  `large_context_file_truncated` function L660-671 — `()`
--  `tools_section_reflects_tool_list` function L675-694 — `()`
--  `per_turn_freshness_different_tools` function L698-722 — `()`
--  `environment_section_contains_info` function L726-735 — `()`
--  `workstream_section_contains_info` function L739-746 — `()`
--  `snapshot_full_build` function L750-778 — `()`
+- pub `SystemPromptBuilder` struct L214-218 — `{ sections: Vec<PromptSection>, token_budget: u32, identity_profile: IdentityPro...` — Builds a system prompt from static defaults (overridable) + dynamic context.
+- pub `new` function L221-227 — `() -> Self`
+- pub `with_token_budget` function L230-233 — `(mut self, budget: u32) -> Self` — Set a custom token budget.
+- pub `with_identity_profile` function L238-241 — `(mut self, profile: IdentityProfile) -> Self` — Select which persona's identity / doing_tasks / work_protocol
+- pub `load_static_sections` function L248-266 — `(mut self, prompts_dir: Option<&Path>) -> Self` — Load all 7 static sections, checking for user overrides in `prompts_dir`.
+- pub `environment` function L269-280 — `(mut self, os: &str, shell: &str, cwd: &Path, model: &str) -> Self` — Add the environment section.
+- pub `workstream` function L283-293 — `(mut self, name: &str, root_dir: &Path) -> Self` — Add the workstream section.
+- pub `tools` function L303-318 — `(mut self, tool_defs: &[ToolDefinition]) -> Self` — Acknowledge tool availability in the system prompt.
+- pub `context_files` function L321-344 — `(mut self, files: &[ContextFile]) -> Self` — Add context files (arawn.md at workstream and global levels).
+- pub `memories` function L347-362 — `(mut self, memories: &[String]) -> Self` — Add relevant memories (future — currently a no-op if empty).
+- pub `session_context` function L365-376 — `(mut self, summary: &str) -> Self` — Add session context (for resumed sessions).
+- pub `integrations` function L384-403 — `(mut self, summaries: &[String]) -> Self` — Add a section listing connected integrations and their granted
+- pub `plugin_prompts` function L406-422 — `(mut self, prompts: &[String]) -> Self` — Add plugin-contributed prompt fragments.
+- pub `build` function L425-447 — `(mut self) -> String` — Build the final system prompt string, enforcing token budget.
+- pub `ContextFile` struct L460-464 — `{ path: std::path::PathBuf, content: String, truncated: bool }` — A context file loaded from disk.
+- pub `find_context_files` function L467-483 — `(workstream_root: &Path, global_dir: &Path) -> Vec<ContextFile>` — Load context files from workstream root and global config dir.
+-  `DEFAULT_TOKEN_BUDGET` variable L7 — `: u32` — Default token budget for the system prompt (~24k chars).
+-  `MAX_CONTEXT_FILE_CHARS` variable L10 — `: usize` — Max chars for a context file before truncation.
+-  `ASSISTANT_IDENTITY` variable L20 — `: &str`
+-  `CODING_IDENTITY` variable L22 — `: &str`
+-  `DEFAULT_SYSTEM` variable L24-29 — `: &str`
+-  `ASSISTANT_DOING_TASKS` variable L31-55 — `: &str`
+-  `CODING_DOING_TASKS` variable L57-81 — `: &str`
+-  `ASSISTANT_WORK_PROTOCOL` variable L83-93 — `: &str`
+-  `CODING_WORK_PROTOCOL` variable L95-107 — `: &str`
+-  `DEFAULT_ACTIONS` variable L109-117 — `: &str`
+-  `DEFAULT_USING_TOOLS` variable L119-130 — `: &str`
+-  `DEFAULT_TONE` variable L132-136 — `: &str`
+-  `DEFAULT_OUTPUT_EFFICIENCY` variable L138-152 — `: &str`
+-  `STATIC_SECTION_NAMES` variable L155-164 — `: &[&str]` — Names of the overridable static sections.
+-  `STATIC_SECTION_DEFAULTS_NEUTRAL` variable L169-178 — `: &[&str]` — Compiled-in defaults for the persona-neutral sections.
+-  `persona_default_for` function L181-191 — `(name: &str, profile: IdentityProfile) -> &'static str` — Resolve the compiled-in default for `name` under `profile`.
+-  `STATIC_SECTION_PRIORITIES` variable L194-203 — `: &[u8]` — Priority levels for sections.
+-  `PromptSection` struct L207-211 — `{ name: String, content: String, priority: u8 }` — A section in the assembled prompt.
+-  `SystemPromptBuilder` type L220-448 — `= SystemPromptBuilder`
+-  `SystemPromptBuilder` type L450-454 — `impl Default for SystemPromptBuilder`
+-  `default` function L451-453 — `() -> Self`
+-  `load_context_file` function L485-504 — `(path: &Path, max_chars: usize) -> Option<ContextFile>`
+-  `truncate_70_20` function L507-530 — `(content: &str, max_chars: usize) -> String` — Truncate keeping 70% from the head and 20% from the tail, with a marker in between.
+-  `load_section` function L534-542 — `(name: &str, default: &str, prompts_dir: Option<&Path>) -> String`
+-  `tests` module L545-929 — `-`
+-  `assistant_profile_emits_assistant_constants` function L552-580 — `()`
+-  `coding_profile_emits_coding_constants` function L583-606 — `()`
+-  `default_profile_is_assistant` function L609-614 — `()`
+-  `default_assembly_includes_all_static_sections` function L618-634 — `()`
+-  `sections_have_headers` function L638-649 — `()`
+-  `empty_optional_sections_omitted` function L653-664 — `()`
+-  `single_section_override` function L668-679 — `()`
+-  `partial_overrides_other_sections_use_defaults` function L683-695 — `()`
+-  `missing_override_dir_uses_defaults` function L699-705 — `()`
+-  `empty_override_file_produces_empty_section` function L709-719 — `()`
+-  `under_budget_all_sections_included` function L723-734 — `()`
+-  `over_budget_drops_low_priority_sections` function L738-748 — `()`
+-  `identity_survives_budget_cuts` function L752-761 — `()`
+-  `truncation_produces_clean_sections` function L765-777 — `()`
+-  `context_file_injected` function L781-792 — `()`
+-  `context_file_missing_section_omitted` function L796-803 — `()`
+-  `large_context_file_truncated` function L807-818 — `()`
+-  `tools_section_reflects_tool_list` function L822-841 — `()`
+-  `per_turn_freshness_different_tools` function L845-869 — `()`
+-  `environment_section_contains_info` function L873-882 — `()`
+-  `workstream_section_contains_info` function L886-893 — `()`
+-  `snapshot_full_build` function L897-928 — `()`
 
 #### crates/arawn-engine/src/testing.rs
 
@@ -2709,36 +2767,40 @@
 - pub `new` function L31-37 — `(kind: RuleKind, tool_pattern: impl Into<String>) -> Self`
 - pub `with_content` function L39-42 — `(mut self, pattern: impl Into<String>) -> Self`
 - pub `parse` function L45-59 — `(kind: RuleKind, spec: &str) -> Self` — Parse a rule from the compact string format: `"ToolName"` or `"ToolName(content pattern)"`.
-- pub `matches` function L62-70 — `(&self, tool_name: &str, tool_input: &str) -> bool` — Check if this rule matches a given tool name and input.
-- pub `PermissionDecision` enum L75-84 — `Allowed | Denied | Ask | NoMatch` — The result of evaluating permission rules against a tool call.
-- pub `RuleMatcher` struct L90 — `-` — Evaluates a list of permission rules against a tool call.
-- pub `evaluate` function L96-102 — `( rules: &[PermissionRule], tool_name: &str, tool_input: &str, ) -> PermissionDe...` — Evaluate rules against a tool call.
-- pub `evaluate_with_match` function L107-134 — `( rules: &[PermissionRule], tool_name: &str, tool_input: &str, ) -> (PermissionD...` — Evaluate rules and also return the rule that matched, when any did.
-- pub `display_spec` function L140-145 — `(&self) -> String` — Compact human-readable form: `"shell(rm -rf *)"` or `"file_write"`.
--  `PermissionRule` type L30-71 — `= PermissionRule`
--  `RuleMatcher` type L92-135 — `= RuleMatcher`
--  `PermissionRule` type L137-146 — `= PermissionRule`
--  `glob_match` function L150-154 — `(pattern: &str, text: &str) -> bool` — Simple glob matching supporting `*` (any chars) and `?` (single char).
--  `glob_match_inner` function L156-184 — `(pat: &[char], txt: &[char]) -> bool`
--  `tests` module L187-392 — `-`
--  `glob_exact_match` function L193-196 — `()`
--  `glob_star_match` function L199-204 — `()`
--  `glob_question_mark` function L207-210 — `()`
--  `glob_complex_patterns` function L213-218 — `()`
--  `glob_content_patterns` function L221-226 — `()`
--  `rule_exact_tool_match` function L231-235 — `()`
--  `rule_glob_tool_match` function L238-243 — `()`
--  `rule_with_content_pattern` function L246-251 — `()`
--  `rule_parse_simple` function L254-258 — `()`
--  `rule_parse_with_content` function L261-265 — `()`
--  `rule_parse_nested_parens` function L268-273 — `()`
--  `matcher_deny_takes_priority` function L278-287 — `()`
--  `matcher_allow_before_ask` function L290-299 — `()`
--  `matcher_ask_when_only_ask_rule` function L302-308 — `()`
--  `matcher_no_match_when_no_rules` function L311-316 — `()`
--  `matcher_no_match_when_rules_dont_apply` function L319-325 — `()`
--  `matcher_content_pattern_deny` function L328-343 — `()`
--  `matcher_mixed_rules_realistic` function L346-391 — `()`
+- pub `matches` function L71-82 — `(&self, tool_name: &str, tool_input: &str) -> bool` — Check if this rule matches a given tool name and input.
+- pub `PermissionDecision` enum L137-146 — `Allowed | Denied | Ask | NoMatch` — The result of evaluating permission rules against a tool call.
+- pub `RuleMatcher` struct L152 — `-` — Evaluates a list of permission rules against a tool call.
+- pub `evaluate` function L158-164 — `( rules: &[PermissionRule], tool_name: &str, tool_input: &str, ) -> PermissionDe...` — Evaluate rules against a tool call.
+- pub `evaluate_with_match` function L169-196 — `( rules: &[PermissionRule], tool_name: &str, tool_input: &str, ) -> (PermissionD...` — Evaluate rules and also return the rule that matched, when any did.
+- pub `display_spec` function L202-207 — `(&self) -> String` — Compact human-readable form: `"shell(rm -rf *)"` or `"file_write"`.
+-  `PermissionRule` type L30-83 — `= PermissionRule`
+-  `extract_content_for_match` function L101-133 — `(tool_name: &str, raw_input: &str) -> String` — Pull the "primary argument" out of `tool_input` (JSON) for the
+-  `RuleMatcher` type L154-197 — `= RuleMatcher`
+-  `PermissionRule` type L199-208 — `= PermissionRule`
+-  `glob_match` function L212-216 — `(pattern: &str, text: &str) -> bool` — Simple glob matching supporting `*` (any chars) and `?` (single char).
+-  `glob_match_inner` function L218-246 — `(pat: &[char], txt: &[char]) -> bool`
+-  `tests` module L249-484 — `-`
+-  `glob_exact_match` function L255-258 — `()`
+-  `glob_star_match` function L261-266 — `()`
+-  `glob_question_mark` function L269-272 — `()`
+-  `glob_complex_patterns` function L275-280 — `()`
+-  `glob_content_patterns` function L283-288 — `()`
+-  `rule_exact_tool_match` function L293-297 — `()`
+-  `rule_glob_tool_match` function L300-305 — `()`
+-  `rule_with_content_pattern_matches_extracted_command` function L308-316 — `()`
+-  `rule_extracts_file_path` function L319-324 — `()`
+-  `rule_extracts_web_fetch_url` function L327-332 — `()`
+-  `rule_unknown_tool_falls_back_to_raw_input` function L335-343 — `()`
+-  `rule_parse_simple` function L346-350 — `()`
+-  `rule_parse_with_content` function L353-357 — `()`
+-  `rule_parse_nested_parens` function L360-365 — `()`
+-  `matcher_deny_takes_priority` function L370-379 — `()`
+-  `matcher_allow_before_ask` function L382-391 — `()`
+-  `matcher_ask_when_only_ask_rule` function L394-400 — `()`
+-  `matcher_no_match_when_no_rules` function L403-408 — `()`
+-  `matcher_no_match_when_rules_dont_apply` function L411-417 — `()`
+-  `matcher_content_pattern_deny` function L420-435 — `()`
+-  `matcher_mixed_rules_realistic` function L438-483 — `()`
 
 ### crates/arawn-engine/src/plugins
 
@@ -3370,25 +3432,28 @@
 
 #### crates/arawn-engine/src/tools/feed_search.rs
 
-- pub `FeedSearchTool` struct L38-43 — `{ store: Arc<ProjectionStore>, embedder: Option<Arc<dyn Embedder>> }` — fusion, no API change.
-- pub `new` function L46-48 — `(store: Arc<ProjectionStore>, embedder: Option<Arc<dyn Embedder>>) -> Self` — fusion, no API change.
--  `KNOWN_FEED_TYPES` variable L21-31 — `: &[&str]` — fusion, no API change.
--  `RRF_K` variable L36 — `: f32` — RRF constant (Cormack et al.
--  `FeedSearchTool` type L45-49 — `= FeedSearchTool` — fusion, no API change.
--  `FeedSearchTool` type L52-260 — `impl Tool for FeedSearchTool` — fusion, no API change.
--  `name` function L53-55 — `(&self) -> &str` — fusion, no API change.
--  `description` function L57-62 — `(&self) -> &str` — fusion, no API change.
--  `is_read_only` function L64-66 — `(&self) -> bool` — fusion, no API change.
--  `category` function L68-70 — `(&self) -> ToolCategory` — fusion, no API change.
--  `parameters_schema` function L72-100 — `(&self) -> Value` — fusion, no API change.
--  `execute` function L102-259 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — fusion, no API change.
--  `Hit` struct L262-265 — `{ score: f32, row: arawn_projections::ProjectionRow }` — fusion, no API change.
--  `FusedHit` struct L268-272 — `{ feed_type: String, projection_id: String, score: f32 }` — Per-(feed_type, projection_id) accumulator for RRF scores.
--  `FusedHit` type L274-282 — `= FusedHit` — fusion, no API change.
--  `new` function L275-281 — `(feed_type: String, projection_id: String) -> Self` — fusion, no API change.
--  `key` function L284-286 — `(feed_type: &str, projection_id: &str) -> String` — fusion, no API change.
--  `rrf_score` function L289-291 — `(rank: usize) -> f32` — Reciprocal rank fusion contribution from a single ranked list.
--  `snippet` function L293-299 — `(text: &str, cap: usize) -> String` — fusion, no API change.
+- pub `FeedSearchTool` struct L46-51 — `{ store: Arc<ProjectionStore>, embedder: Option<Arc<dyn Embedder>> }` — fusion, no API change.
+- pub `new` function L54-56 — `(store: Arc<ProjectionStore>, embedder: Option<Arc<dyn Embedder>>) -> Self` — fusion, no API change.
+-  `KNOWN_FEED_TYPES` variable L21-39 — `: &[&str]` — fusion, no API change.
+-  `RRF_K` variable L44 — `: f32` — RRF constant (Cormack et al.
+-  `FeedSearchTool` type L53-57 — `= FeedSearchTool` — fusion, no API change.
+-  `FeedSearchTool` type L60-268 — `impl Tool for FeedSearchTool` — fusion, no API change.
+-  `name` function L61-63 — `(&self) -> &str` — fusion, no API change.
+-  `description` function L65-70 — `(&self) -> &str` — fusion, no API change.
+-  `is_read_only` function L72-74 — `(&self) -> bool` — fusion, no API change.
+-  `category` function L76-78 — `(&self) -> ToolCategory` — fusion, no API change.
+-  `parameters_schema` function L80-108 — `(&self) -> Value` — fusion, no API change.
+-  `execute` function L110-267 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — fusion, no API change.
+-  `Hit` struct L270-273 — `{ score: f32, row: arawn_projections::ProjectionRow }` — fusion, no API change.
+-  `FusedHit` struct L276-280 — `{ feed_type: String, projection_id: String, score: f32 }` — Per-(feed_type, projection_id) accumulator for RRF scores.
+-  `FusedHit` type L282-290 — `= FusedHit` — fusion, no API change.
+-  `new` function L283-289 — `(feed_type: String, projection_id: String) -> Self` — fusion, no API change.
+-  `key` function L292-294 — `(feed_type: &str, projection_id: &str) -> String` — fusion, no API change.
+-  `rrf_score` function L297-299 — `(rank: usize) -> f32` — Reciprocal rank fusion contribution from a single ranked list.
+-  `snippet` function L301-307 — `(text: &str, cap: usize) -> String` — fusion, no API change.
+-  `tests` module L310-377 — `-` — fusion, no API change.
+-  `known_feed_types_contains_all_github_tables` function L317-333 — `()` — T-0345: cross-feed search must include every GitHub projection
+-  `known_feed_types_match_projection_constants` function L338-376 — `()` — Guard rail: the projection table names in `arawn-projections`
 
 #### crates/arawn-engine/src/tools/file_edit.rs
 
@@ -3623,39 +3688,40 @@
 -  `init_sandbox_for_background` function L216-251 — `( command: &str, working_dir: &std::path::Path, network_tools: &[String], ) -> R...` — Initialize a sandbox manager for a background command and return it together
 -  `command_needs_network` function L254-273 — `(command: &str, network_tools: &[String]) -> bool` — Check if a command invokes any tool that needs network access.
 -  `build_sandbox_config` function L276-325 — `( command: &str, working_dir: &std::path::Path, network_tools: &[String], ) -> S...` — Build a sandbox config for executing a command in the given working directory.
--  `ShellTool` type L328-421 — `impl Tool for ShellTool`
+-  `ShellTool` type L328-420 — `impl Tool for ShellTool`
 -  `name` function L329-331 — `(&self) -> &str`
 -  `permission_category` function L333-335 — `(&self) -> arawn_tool::PermissionCategory`
 -  `description` function L337-352 — `(&self) -> &str`
 -  `parameters_schema` function L354-373 — `(&self) -> Value`
--  `execute` function L375-420 — `( &self, ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutpu...`
--  `SandboxExecError` enum L423-428 — `Unavailable | Tool`
--  `execute_sandboxed` function L430-530 — `( command: &str, working_dir: &std::path::Path, timeout_ms: u64, network_tools: ...`
--  `execute_unsandboxed` function L532-578 — `( command: &str, working_dir: &std::path::Path, timeout_ms: u64, ) -> Result<Too...`
--  `tests` module L581-1017 — `-`
--  `test_ctx` function L589-592 — `() -> EngineToolContext`
--  `test_ctx_in` function L594-597 — `(dir: &std::path::Path) -> EngineToolContext`
--  `shell_echo` function L601-609 — `()`
--  `shell_nonzero_exit` function L613-621 — `()`
--  `shell_timeout` function L625-636 — `()`
--  `shell_missing_command` function L640-644 — `()`
--  `shell_env_does_not_leak_secrets` function L648-677 — `()`
--  `background_command_runs_sandboxed` function L681-719 — `()`
--  `background_command_sandbox_blocks_sensitive_read` function L723-768 — `()`
--  `shell_env_preserves_path` function L772-780 — `()`
--  `shell_schema_is_valid` function L783-788 — `()`
--  `sensitive_paths_includes_ssh` function L791-794 — `()`
--  `sensitive_paths_includes_aws` function L797-800 — `()`
--  `sandbox_config_allows_working_dir_and_tmp` function L803-814 — `()`
--  `network_detection_recognizes_tools` function L817-824 — `()`
--  `network_detection_blocks_unknown` function L827-832 — `()`
--  `network_detection_empty_list_blocks_all` function L835-838 — `()`
--  `sandbox_write_inside_allowed` function L844-863 — `()`
--  `sandbox_mkdir_inside_allowed` function L867-888 — `()`
--  `sandbox_unlink_inside_allowed` function L892-917 — `()`
--  `sandbox_build_tool_workflow` function L921-943 — `()`
--  `sandbox_write_outside_blocked` function L947-984 — `()`
--  `sandbox_read_sensitive_path_blocked` function L988-1016 — `()`
+-  `execute` function L375-419 — `( &self, ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutpu...`
+-  `SandboxExecError` enum L422-427 — `Unavailable | Tool`
+-  `execute_sandboxed` function L429-529 — `( command: &str, working_dir: &std::path::Path, timeout_ms: u64, network_tools: ...`
+-  `sandbox_unavailable_message` function L540-549 — `(detail: &str) -> String` — T-0346: error message returned when the OS sandbox is
+-  `tests` module L552-1004 — `-`
+-  `test_ctx` function L560-563 — `() -> EngineToolContext`
+-  `test_ctx_in` function L565-568 — `(dir: &std::path::Path) -> EngineToolContext`
+-  `sandbox_unavailable_message_is_fail_closed` function L576-584 — `()`
+-  `shell_echo` function L588-596 — `()`
+-  `shell_nonzero_exit` function L600-608 — `()`
+-  `shell_timeout` function L612-623 — `()`
+-  `shell_missing_command` function L627-631 — `()`
+-  `shell_env_does_not_leak_secrets` function L635-664 — `()`
+-  `background_command_runs_sandboxed` function L668-706 — `()`
+-  `background_command_sandbox_blocks_sensitive_read` function L710-755 — `()`
+-  `shell_env_preserves_path` function L759-767 — `()`
+-  `shell_schema_is_valid` function L770-775 — `()`
+-  `sensitive_paths_includes_ssh` function L778-781 — `()`
+-  `sensitive_paths_includes_aws` function L784-787 — `()`
+-  `sandbox_config_allows_working_dir_and_tmp` function L790-801 — `()`
+-  `network_detection_recognizes_tools` function L804-811 — `()`
+-  `network_detection_blocks_unknown` function L814-819 — `()`
+-  `network_detection_empty_list_blocks_all` function L822-825 — `()`
+-  `sandbox_write_inside_allowed` function L831-850 — `()`
+-  `sandbox_mkdir_inside_allowed` function L854-875 — `()`
+-  `sandbox_unlink_inside_allowed` function L879-904 — `()`
+-  `sandbox_build_tool_workflow` function L908-930 — `()`
+-  `sandbox_write_outside_blocked` function L934-971 — `()`
+-  `sandbox_read_sensitive_path_blocked` function L975-1003 — `()`
 
 #### crates/arawn-engine/src/tools/signal.rs
 
@@ -4221,18 +4287,20 @@
 - pub `WorkstreamBindTool` struct L574-577 — `{ store: Arc<Mutex<Store>>, hook: Option<Arc<dyn BindBackfillHook>> }` — the shim is enough to make `switch` / `show` work.
 - pub `new` function L580-582 — `(store: Arc<Mutex<Store>>) -> Self` — the shim is enough to make `switch` / `show` work.
 - pub `with_backfill_hook` function L584-587 — `(mut self, hook: Arc<dyn BindBackfillHook>) -> Self` — the shim is enough to make `switch` / `show` work.
-- pub `WorkstreamUnbindTool` struct L731-733 — `{ store: Arc<Mutex<Store>> }` — the shim is enough to make `switch` / `show` work.
-- pub `new` function L736-738 — `(store: Arc<Mutex<Store>>) -> Self` — the shim is enough to make `switch` / `show` work.
-- pub `WorkstreamPromoteTool` struct L825-828 — `{ store: Arc<Mutex<Store>>, router: Arc<crate::workstream_router::WorkstreamMemo...` — Move one entity from the `scratch` workstream into a named target.
-- pub `new` function L831-836 — `( store: Arc<Mutex<Store>>, router: Arc<crate::workstream_router::WorkstreamMemo...` — the shim is enough to make `switch` / `show` work.
-- pub `WorkstreamDeleteTool` struct L983-986 — `{ store: Arc<Mutex<Store>>, active: SessionWorkstream }` — the shim is enough to make `switch` / `show` work.
-- pub `new` function L989-991 — `(store: Arc<Mutex<Store>>, active: SessionWorkstream) -> Self` — the shim is enough to make `switch` / `show` work.
-- pub `WorkstreamProposeOntologyTool` struct L1053-1056 — `{ client: Arc<dyn arawn_llm::LlmClient>, model: String }` — LLM-backed tool: take a workstream description, return a proposed
-- pub `new` function L1059-1064 — `(client: Arc<dyn arawn_llm::LlmClient>, model: impl Into<String>) -> Self` — the shim is enough to make `switch` / `show` work.
-- pub `validate_github_scope_scheme` function L1228-1249 — `(feed_id: &str) -> Result<(), String>` — Same balanced-bracket scan as `arawn-extractor::llm_text::extract_json_block`.
-- pub `is_github_scope_binding` function L1255-1257 — `(feed_id: &str) -> bool` — Returns true if `feed_id` is a github scope-binding (either
-- pub `GithubScope` enum L1261-1264 — `Repo | Org` — Parsed github scope binding.
-- pub `parse_github_scope` function L1266-1285 — `(feed_id: &str) -> Option<GithubScope>` — the shim is enough to make `switch` / `show` work.
+- pub `UnbindHook` interface L738-740 — `{ fn on_unbind() }` — Optional teardown hook for `WorkstreamUnbindTool`.
+- pub `WorkstreamUnbindTool` struct L742-745 — `{ store: Arc<Mutex<Store>>, hook: Option<Arc<dyn UnbindHook>> }` — the shim is enough to make `switch` / `show` work.
+- pub `new` function L748-750 — `(store: Arc<Mutex<Store>>) -> Self` — the shim is enough to make `switch` / `show` work.
+- pub `with_unbind_hook` function L752-755 — `(mut self, hook: Arc<dyn UnbindHook>) -> Self` — the shim is enough to make `switch` / `show` work.
+- pub `WorkstreamPromoteTool` struct L877-880 — `{ store: Arc<Mutex<Store>>, router: Arc<crate::workstream_router::WorkstreamMemo...` — Move one entity from the `scratch` workstream into a named target.
+- pub `new` function L883-888 — `( store: Arc<Mutex<Store>>, router: Arc<crate::workstream_router::WorkstreamMemo...` — the shim is enough to make `switch` / `show` work.
+- pub `WorkstreamDeleteTool` struct L1035-1038 — `{ store: Arc<Mutex<Store>>, active: SessionWorkstream }` — the shim is enough to make `switch` / `show` work.
+- pub `new` function L1041-1043 — `(store: Arc<Mutex<Store>>, active: SessionWorkstream) -> Self` — the shim is enough to make `switch` / `show` work.
+- pub `WorkstreamProposeOntologyTool` struct L1105-1108 — `{ client: Arc<dyn arawn_llm::LlmClient>, model: String }` — LLM-backed tool: take a workstream description, return a proposed
+- pub `new` function L1111-1116 — `(client: Arc<dyn arawn_llm::LlmClient>, model: impl Into<String>) -> Self` — the shim is enough to make `switch` / `show` work.
+- pub `validate_github_scope_scheme` function L1280-1301 — `(feed_id: &str) -> Result<(), String>` — Same balanced-bracket scan as `arawn-extractor::llm_text::extract_json_block`.
+- pub `is_github_scope_binding` function L1307-1309 — `(feed_id: &str) -> bool` — Returns true if `feed_id` is a github scope-binding (either
+- pub `GithubScope` enum L1313-1316 — `Repo | Org` — Parsed github scope binding.
+- pub `parse_github_scope` function L1318-1337 — `(feed_id: &str) -> Option<GithubScope>` — the shim is enough to make `switch` / `show` work.
 -  `SessionWorkstream` type L30-48 — `= SessionWorkstream` — the shim is enough to make `switch` / `show` work.
 -  `SessionWorkstream` type L50-54 — `impl Default for SessionWorkstream` — the shim is enough to make `switch` / `show` work.
 -  `default` function L51-53 — `() -> Self` — the shim is enough to make `switch` / `show` work.
@@ -4280,78 +4348,85 @@
 -  `category` function L612-614 — `(&self) -> ToolCategory` — the shim is enough to make `switch` / `show` work.
 -  `parameters_schema` function L616-625 — `(&self) -> Value` — the shim is enough to make `switch` / `show` work.
 -  `execute` function L627-728 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — the shim is enough to make `switch` / `show` work.
--  `WorkstreamUnbindTool` type L735-739 — `= WorkstreamUnbindTool` — the shim is enough to make `switch` / `show` work.
--  `WorkstreamUnbindTool` type L742-815 — `impl Tool for WorkstreamUnbindTool` — the shim is enough to make `switch` / `show` work.
--  `name` function L743-745 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
--  `description` function L747-749 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
--  `category` function L751-753 — `(&self) -> ToolCategory` — the shim is enough to make `switch` / `show` work.
--  `parameters_schema` function L755-764 — `(&self) -> Value` — the shim is enough to make `switch` / `show` work.
--  `execute` function L766-814 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — the shim is enough to make `switch` / `show` work.
--  `WorkstreamPromoteTool` type L830-837 — `= WorkstreamPromoteTool` — the shim is enough to make `switch` / `show` work.
--  `WorkstreamPromoteTool` type L840-977 — `impl Tool for WorkstreamPromoteTool` — the shim is enough to make `switch` / `show` work.
--  `name` function L841-843 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
--  `description` function L845-850 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
--  `category` function L852-854 — `(&self) -> ToolCategory` — the shim is enough to make `switch` / `show` work.
--  `parameters_schema` function L856-865 — `(&self) -> Value` — the shim is enough to make `switch` / `show` work.
--  `execute` function L867-976 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — the shim is enough to make `switch` / `show` work.
--  `WorkstreamDeleteTool` type L988-992 — `= WorkstreamDeleteTool` — the shim is enough to make `switch` / `show` work.
--  `WorkstreamDeleteTool` type L995-1043 — `impl Tool for WorkstreamDeleteTool` — the shim is enough to make `switch` / `show` work.
--  `name` function L996-998 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
--  `description` function L1000-1003 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
--  `category` function L1005-1007 — `(&self) -> ToolCategory` — the shim is enough to make `switch` / `show` work.
--  `parameters_schema` function L1009-1015 — `(&self) -> Value` — the shim is enough to make `switch` / `show` work.
--  `execute` function L1017-1042 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — the shim is enough to make `switch` / `show` work.
--  `WorkstreamProposeOntologyTool` type L1058-1065 — `= WorkstreamProposeOntologyTool` — the shim is enough to make `switch` / `show` work.
--  `WorkstreamProposeOntologyTool` type L1068-1186 — `impl Tool for WorkstreamProposeOntologyTool` — the shim is enough to make `switch` / `show` work.
--  `name` function L1069-1071 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
--  `description` function L1073-1083 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
--  `is_read_only` function L1085-1087 — `(&self) -> bool` — the shim is enough to make `switch` / `show` work.
--  `category` function L1089-1091 — `(&self) -> ToolCategory` — the shim is enough to make `switch` / `show` work.
--  `parameters_schema` function L1093-1104 — `(&self) -> Value` — the shim is enough to make `switch` / `show` work.
--  `execute` function L1106-1185 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — the shim is enough to make `switch` / `show` work.
--  `Proposal` struct L1156-1160 — `{ tags: Vec<String>, rationale: String }` — the shim is enough to make `switch` / `show` work.
--  `propose_llm_call` function L1191-1222 — `( client: &Arc<dyn arawn_llm::LlmClient>, model: &str, system: &str, user: &str,...` — Tiny streaming-drain helper.
--  `find_workstreams_binding` function L1289-1303 — `( store: &Store, matcher: impl Fn(&str) -> bool, ) -> Vec<(String, String)>` — Walk active workstreams, return `(workstream_name, binding)` for
--  `upsert_repo_mirror_feed` function L1312-1355 — `( store: &Store, feed_id: &str, owner: &str, repo: &str, ) -> Result<(), arawn_s...` — Insert (or refresh) a `github/repo-mirror` feed record by writing
--  `delete_feed` function L1358-1365 — `(store: &Store, feed_id: &str) -> Result<(), arawn_storage::StorageError>` — Drop a feed record by raw SQL.
--  `extract_json_block` function L1367-1391 — `(raw: &str) -> Option<&str>` — the shim is enough to make `switch` / `show` work.
--  `tests` module L1394-2137 — `-` — the shim is enough to make `switch` / `show` work.
--  `setup` function L1398-1407 — `() -> (tempfile::TempDir, Arc<Mutex<Store>>, SessionWorkstream)` — the shim is enough to make `switch` / `show` work.
--  `test_ctx` function L1409-1413 — `(tmp: &tempfile::TempDir) -> crate::context::EngineToolContext` — the shim is enough to make `switch` / `show` work.
--  `create_succeeds_with_valid_slug_description_and_ontology` function L1416-1437 — `()` — the shim is enough to make `switch` / `show` work.
--  `create_refuses_scratch` function L1440-1455 — `()` — the shim is enough to make `switch` / `show` work.
--  `create_refuses_missing_description` function L1458-1470 — `()` — the shim is enough to make `switch` / `show` work.
--  `create_refuses_empty_ontology` function L1473-1489 — `()` — the shim is enough to make `switch` / `show` work.
--  `create_dedupes_and_normalizes_ontology` function L1492-1511 — `()` — the shim is enough to make `switch` / `show` work.
--  `switch_updates_active` function L1514-1528 — `()` — the shim is enough to make `switch` / `show` work.
--  `switch_unknown_errors` function L1531-1540 — `()` — the shim is enough to make `switch` / `show` work.
--  `show_defaults_to_active` function L1543-1549 — `()` — the shim is enough to make `switch` / `show` work.
--  `describe_updates_description` function L1552-1575 — `()` — the shim is enough to make `switch` / `show` work.
--  `github_repo_scheme_accepts_owner_slash_name` function L1580-1582 — `()` — the shim is enough to make `switch` / `show` work.
--  `github_repo_scheme_rejects_missing_slash` function L1585-1588 — `()` — the shim is enough to make `switch` / `show` work.
--  `github_repo_scheme_rejects_empty_owner_or_name` function L1591-1594 — `()` — the shim is enough to make `switch` / `show` work.
--  `github_org_scheme_accepts_owner` function L1597-1599 — `()` — the shim is enough to make `switch` / `show` work.
--  `github_org_scheme_rejects_empty_or_with_slash` function L1602-1605 — `()` — the shim is enough to make `switch` / `show` work.
--  `non_github_feed_ids_pass_through_unchanged` function L1608-1613 — `()` — the shim is enough to make `switch` / `show` work.
--  `is_github_scope_binding_recognises_both_schemes` function L1616-1621 — `()` — the shim is enough to make `switch` / `show` work.
--  `bind_accepts_github_repo_scheme_and_stores_it` function L1624-1647 — `()` — the shim is enough to make `switch` / `show` work.
--  `parse_github_scope_handles_both_schemes` function L1652-1670 — `()` — the shim is enough to make `switch` / `show` work.
--  `count_feeds` function L1672-1681 — `(store: &Arc<Mutex<Store>>, feed_id: &str) -> i64` — the shim is enough to make `switch` / `show` work.
--  `repo_bind_registers_feed_record` function L1684-1715 — `()` — the shim is enough to make `switch` / `show` work.
--  `repo_bind_is_idempotent_no_duplicate_feed` function L1718-1741 — `()` — the shim is enough to make `switch` / `show` work.
--  `repo_bind_rejected_when_org_already_bound` function L1744-1785 — `()` — the shim is enough to make `switch` / `show` work.
--  `org_bind_supersedes_existing_repo_binds` function L1788-1844 — `()` — the shim is enough to make `switch` / `show` work.
--  `unbind_org_scope_sweeps_all_child_feeds` function L1847-1890 — `()` — the shim is enough to make `switch` / `show` work.
--  `unbind_repo_scope_drops_feed` function L1893-1918 — `()` — the shim is enough to make `switch` / `show` work.
--  `bind_rejects_malformed_github_repo_scheme` function L1921-1938 — `()` — the shim is enough to make `switch` / `show` work.
--  `bind_and_unbind_round_trip` function L1941-1971 — `()` — the shim is enough to make `switch` / `show` work.
--  `delete_refuses_scratch` function L1974-1983 — `()` — the shim is enough to make `switch` / `show` work.
--  `delete_refuses_currently_active` function L1986-2001 — `()` — the shim is enough to make `switch` / `show` work.
--  `delete_soft_marks_archived` function L2004-2021 — `()` — the shim is enough to make `switch` / `show` work.
--  `promote_moves_entity_from_scratch_to_target` function L2024-2070 — `()` — the shim is enough to make `switch` / `show` work.
--  `promote_refuses_unknown_target` function L2073-2092 — `()` — the shim is enough to make `switch` / `show` work.
--  `show_includes_ontology` function L2095-2120 — `()` — the shim is enough to make `switch` / `show` work.
--  `list_marks_active` function L2123-2136 — `()` — the shim is enough to make `switch` / `show` work.
+-  `WorkstreamUnbindTool` type L747-756 — `= WorkstreamUnbindTool` — the shim is enough to make `switch` / `show` work.
+-  `WorkstreamUnbindTool` type L759-855 — `impl Tool for WorkstreamUnbindTool` — the shim is enough to make `switch` / `show` work.
+-  `name` function L760-762 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
+-  `description` function L764-766 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
+-  `category` function L768-770 — `(&self) -> ToolCategory` — the shim is enough to make `switch` / `show` work.
+-  `parameters_schema` function L772-781 — `(&self) -> Value` — the shim is enough to make `switch` / `show` work.
+-  `execute` function L783-854 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — the shim is enough to make `switch` / `show` work.
+-  `collect_child_feed_ids` function L857-867 — `(conn: &rusqlite::Connection, pattern: &str) -> Vec<String>` — the shim is enough to make `switch` / `show` work.
+-  `WorkstreamPromoteTool` type L882-889 — `= WorkstreamPromoteTool` — the shim is enough to make `switch` / `show` work.
+-  `WorkstreamPromoteTool` type L892-1029 — `impl Tool for WorkstreamPromoteTool` — the shim is enough to make `switch` / `show` work.
+-  `name` function L893-895 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
+-  `description` function L897-902 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
+-  `category` function L904-906 — `(&self) -> ToolCategory` — the shim is enough to make `switch` / `show` work.
+-  `parameters_schema` function L908-917 — `(&self) -> Value` — the shim is enough to make `switch` / `show` work.
+-  `execute` function L919-1028 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — the shim is enough to make `switch` / `show` work.
+-  `WorkstreamDeleteTool` type L1040-1044 — `= WorkstreamDeleteTool` — the shim is enough to make `switch` / `show` work.
+-  `WorkstreamDeleteTool` type L1047-1095 — `impl Tool for WorkstreamDeleteTool` — the shim is enough to make `switch` / `show` work.
+-  `name` function L1048-1050 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
+-  `description` function L1052-1055 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
+-  `category` function L1057-1059 — `(&self) -> ToolCategory` — the shim is enough to make `switch` / `show` work.
+-  `parameters_schema` function L1061-1067 — `(&self) -> Value` — the shim is enough to make `switch` / `show` work.
+-  `execute` function L1069-1094 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — the shim is enough to make `switch` / `show` work.
+-  `WorkstreamProposeOntologyTool` type L1110-1117 — `= WorkstreamProposeOntologyTool` — the shim is enough to make `switch` / `show` work.
+-  `WorkstreamProposeOntologyTool` type L1120-1238 — `impl Tool for WorkstreamProposeOntologyTool` — the shim is enough to make `switch` / `show` work.
+-  `name` function L1121-1123 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
+-  `description` function L1125-1135 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
+-  `is_read_only` function L1137-1139 — `(&self) -> bool` — the shim is enough to make `switch` / `show` work.
+-  `category` function L1141-1143 — `(&self) -> ToolCategory` — the shim is enough to make `switch` / `show` work.
+-  `parameters_schema` function L1145-1156 — `(&self) -> Value` — the shim is enough to make `switch` / `show` work.
+-  `execute` function L1158-1237 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — the shim is enough to make `switch` / `show` work.
+-  `Proposal` struct L1208-1212 — `{ tags: Vec<String>, rationale: String }` — the shim is enough to make `switch` / `show` work.
+-  `propose_llm_call` function L1243-1274 — `( client: &Arc<dyn arawn_llm::LlmClient>, model: &str, system: &str, user: &str,...` — Tiny streaming-drain helper.
+-  `find_workstreams_binding` function L1341-1355 — `( store: &Store, matcher: impl Fn(&str) -> bool, ) -> Vec<(String, String)>` — Walk active workstreams, return `(workstream_name, binding)` for
+-  `upsert_repo_mirror_feed` function L1364-1407 — `( store: &Store, feed_id: &str, owner: &str, repo: &str, ) -> Result<(), arawn_s...` — Insert (or refresh) a `github/repo-mirror` feed record by writing
+-  `delete_feed` function L1410-1417 — `(store: &Store, feed_id: &str) -> Result<(), arawn_storage::StorageError>` — Drop a feed record by raw SQL.
+-  `extract_json_block` function L1419-1443 — `(raw: &str) -> Option<&str>` — the shim is enough to make `switch` / `show` work.
+-  `tests` module L1446-2316 — `-` — the shim is enough to make `switch` / `show` work.
+-  `setup` function L1450-1459 — `() -> (tempfile::TempDir, Arc<Mutex<Store>>, SessionWorkstream)` — the shim is enough to make `switch` / `show` work.
+-  `test_ctx` function L1461-1465 — `(tmp: &tempfile::TempDir) -> crate::context::EngineToolContext` — the shim is enough to make `switch` / `show` work.
+-  `create_succeeds_with_valid_slug_description_and_ontology` function L1468-1489 — `()` — the shim is enough to make `switch` / `show` work.
+-  `create_refuses_scratch` function L1492-1507 — `()` — the shim is enough to make `switch` / `show` work.
+-  `create_refuses_missing_description` function L1510-1522 — `()` — the shim is enough to make `switch` / `show` work.
+-  `create_refuses_empty_ontology` function L1525-1541 — `()` — the shim is enough to make `switch` / `show` work.
+-  `create_dedupes_and_normalizes_ontology` function L1544-1563 — `()` — the shim is enough to make `switch` / `show` work.
+-  `switch_updates_active` function L1566-1580 — `()` — the shim is enough to make `switch` / `show` work.
+-  `switch_unknown_errors` function L1583-1592 — `()` — the shim is enough to make `switch` / `show` work.
+-  `show_defaults_to_active` function L1595-1601 — `()` — the shim is enough to make `switch` / `show` work.
+-  `describe_updates_description` function L1604-1627 — `()` — the shim is enough to make `switch` / `show` work.
+-  `github_repo_scheme_accepts_owner_slash_name` function L1632-1634 — `()` — the shim is enough to make `switch` / `show` work.
+-  `github_repo_scheme_rejects_missing_slash` function L1637-1640 — `()` — the shim is enough to make `switch` / `show` work.
+-  `github_repo_scheme_rejects_empty_owner_or_name` function L1643-1646 — `()` — the shim is enough to make `switch` / `show` work.
+-  `github_org_scheme_accepts_owner` function L1649-1651 — `()` — the shim is enough to make `switch` / `show` work.
+-  `github_org_scheme_rejects_empty_or_with_slash` function L1654-1657 — `()` — the shim is enough to make `switch` / `show` work.
+-  `non_github_feed_ids_pass_through_unchanged` function L1660-1665 — `()` — the shim is enough to make `switch` / `show` work.
+-  `is_github_scope_binding_recognises_both_schemes` function L1668-1673 — `()` — the shim is enough to make `switch` / `show` work.
+-  `bind_accepts_github_repo_scheme_and_stores_it` function L1676-1699 — `()` — the shim is enough to make `switch` / `show` work.
+-  `parse_github_scope_handles_both_schemes` function L1704-1722 — `()` — the shim is enough to make `switch` / `show` work.
+-  `count_feeds` function L1724-1733 — `(store: &Arc<Mutex<Store>>, feed_id: &str) -> i64` — the shim is enough to make `switch` / `show` work.
+-  `repo_bind_registers_feed_record` function L1736-1767 — `()` — the shim is enough to make `switch` / `show` work.
+-  `repo_bind_is_idempotent_no_duplicate_feed` function L1770-1793 — `()` — the shim is enough to make `switch` / `show` work.
+-  `repo_bind_rejected_when_org_already_bound` function L1796-1837 — `()` — the shim is enough to make `switch` / `show` work.
+-  `org_bind_supersedes_existing_repo_binds` function L1840-1896 — `()` — the shim is enough to make `switch` / `show` work.
+-  `CapturingUnbindHook` struct L1900-1902 — `{ captured: Mutex<Vec<Vec<String>>> }` — the shim is enough to make `switch` / `show` work.
+-  `CapturingUnbindHook` type L1903-1907 — `impl UnbindHook for CapturingUnbindHook` — the shim is enough to make `switch` / `show` work.
+-  `on_unbind` function L1904-1906 — `(&self, removed_feed_ids: &[String])` — the shim is enough to make `switch` / `show` work.
+-  `unbind_hook_fires_with_repo_feed_id` function L1910-1945 — `()` — the shim is enough to make `switch` / `show` work.
+-  `unbind_hook_fires_with_all_org_child_ids` function L1948-1993 — `()` — the shim is enough to make `switch` / `show` work.
+-  `unbind_hook_not_fired_for_plain_feed_id` function L1996-2023 — `()` — the shim is enough to make `switch` / `show` work.
+-  `unbind_org_scope_sweeps_all_child_feeds` function L2026-2069 — `()` — the shim is enough to make `switch` / `show` work.
+-  `unbind_repo_scope_drops_feed` function L2072-2097 — `()` — the shim is enough to make `switch` / `show` work.
+-  `bind_rejects_malformed_github_repo_scheme` function L2100-2117 — `()` — the shim is enough to make `switch` / `show` work.
+-  `bind_and_unbind_round_trip` function L2120-2150 — `()` — the shim is enough to make `switch` / `show` work.
+-  `delete_refuses_scratch` function L2153-2162 — `()` — the shim is enough to make `switch` / `show` work.
+-  `delete_refuses_currently_active` function L2165-2180 — `()` — the shim is enough to make `switch` / `show` work.
+-  `delete_soft_marks_archived` function L2183-2200 — `()` — the shim is enough to make `switch` / `show` work.
+-  `promote_moves_entity_from_scratch_to_target` function L2203-2249 — `()` — the shim is enough to make `switch` / `show` work.
+-  `promote_refuses_unknown_target` function L2252-2271 — `()` — the shim is enough to make `switch` / `show` work.
+-  `show_includes_ontology` function L2274-2299 — `()` — the shim is enough to make `switch` / `show` work.
+-  `list_marks_active` function L2302-2315 — `()` — the shim is enough to make `switch` / `show` work.
 
 ### crates/arawn-extractor/src
 
@@ -4598,35 +4673,36 @@
 - pub `start` function L51-109 — `( runner: Arc<CloacinaRunner>, conn: Arc<Mutex<Connection>>, layout: Arc<DataLay...` — One-stop entry the server boot calls after the workflow runner is
 - pub `FeedRuntime` struct L112-115 — `{ runner: Arc<CloacinaRunner>, runtime_ctx: FeedRuntimeContext }` — Live handle for dynamic feed registration (Phase 6: `/watch`).
 - pub `register_feed_runtime` function L120-122 — `(&self, record: &FeedRecord) -> Result<(), FeedError>` — Register an additional feed without a server restart.
-- pub `runtime_ctx` function L124-126 — `(&self) -> &FeedRuntimeContext` — audit are all inherited from cloacina.
-- pub `register_feed_dynamic` function L140-217 — `( &self, template: &str, feed_id: &str, params: TemplateParams, cadence_override...` — Full dynamic-registration flow used by the `/watch` command.
-- pub `run_feed_once` function L228-233 — `( &self, feed_id: &str, ) -> Result<crate::template::RunOutcome, FeedError>` — Trigger a one-off run of an enabled feed, outside the cron
-- pub `pause_feed` function L241-261 — `(&self, feed_id: &str) -> Result<FeedRecord, FeedError>` — Pause a feed: drop its cloacina cron schedule and flip the row
-- pub `resume_feed` function L266-284 — `(&self, feed_id: &str) -> Result<FeedRecord, FeedError>` — Resume a previously-paused feed: re-register the cloacina
-- pub `remove_feed` function L293-321 — `(&self, feed_id: &str) -> Result<RemoveOutcome, FeedError>` — Decommission: drop the cloacina cron schedule, delete the DB
-- pub `discover_template` function L329-336 — `( &self, template_name: &str, ) -> Result<Option<Vec<DiscoveryRow>>, FeedError>` — Run the template's discovery hook.
-- pub `list_summaries` function L340-371 — `(&self) -> Result<Vec<FeedSummary>, FeedError>` — List every feed in the DB (enabled or paused) with on-disk
-- pub `resume_pending_backfills` function L630-655 — `( runner: Arc<CloacinaRunner>, runtime_ctx: FeedRuntimeContext, records: &[FeedR...` — On boot, find feeds whose `meta.json.last_status == "backfilling"`
-- pub `RemoveOutcome` struct L661-664 — `{ record: FeedRecord, bytes_wiped: u64 }` — Outcome of a successful `remove_feed` — the row that was deleted
--  `FeedRuntime` type L117-372 — `= FeedRuntime` — audit are all inherited from cloacina.
--  `BACKFILL_PAGE_CAP` variable L378 — `: u32` — Hard cap on backfill loop iterations.
--  `BASE_BACKOFF` variable L382 — `: std::time::Duration` — Base delay used when a provider rate-limits us without a Retry-After
--  `MAX_RATE_LIMIT_WAIT` variable L387 — `: std::time::Duration` — Wall-clock cap on cumulative rate-limit waits inside a single
--  `TRANSIENT_MAX_ATTEMPTS` variable L391 — `: u32` — How many consecutive transient errors (Provider/Storage) we'll
--  `transient_backoff` function L397-400 — `(attempt: u32) -> std::time::Duration` — Pure helper: backoff for the Nth consecutive transient retry
--  `BackfillExit` enum L405-411 — `Complete | RateLimitDeferred` — How a backfill ended.
--  `spawn_backfill_task` function L425-478 — `( runner: Arc<CloacinaRunner>, runtime_ctx: FeedRuntimeContext, feed_id: String,...` — Spawn the backfill loop as a detached tokio task.
--  `BackfillStats` struct L481-484 — `{ pages: u32, items: u64 }` — audit are all inherited from cloacina.
--  `run_backfill_loop` function L486-565 — `( _runner: &Arc<CloacinaRunner>, runtime_ctx: &FeedRuntimeContext, feed_id: &str...` — audit are all inherited from cloacina.
--  `finalize_backfill_success` function L567-604 — `( runner: &Arc<CloacinaRunner>, runtime_ctx: &FeedRuntimeContext, feed_id: &str,...` — audit are all inherited from cloacina.
--  `mark_backfill_failed` function L606-625 — `( runtime_ctx: &FeedRuntimeContext, feed_id: &str, err: &str, ) -> Result<(), Fe...` — audit are all inherited from cloacina.
--  `delete_schedule_for` function L668-688 — `( runner: &CloacinaRunner, workflow_name: &str, ) -> Result<(), FeedError>` — Look up cloacina's cron schedule by workflow name and delete it
--  `dir_size_bytes` function L690-711 — `(path: &std::path::Path) -> u64` — audit are all inherited from cloacina.
--  `walk` function L691-707 — `(p: &std::path::Path, acc: &mut u64)` — audit are all inherited from cloacina.
--  `register_one` function L713-794 — `( runner: &CloacinaRunner, ctx: &FeedRuntimeContext, record: &FeedRecord, ) -> R...` — audit are all inherited from cloacina.
--  `tests` module L797-815 — `-` — audit are all inherited from cloacina.
--  `transient_backoff_doubles_per_attempt` function L802-806 — `()` — audit are all inherited from cloacina.
--  `transient_backoff_clamps` function L809-814 — `()` — audit are all inherited from cloacina.
+- pub `unregister_cron` function L132-134 — `(&self, feed_id: &str) -> Result<(), FeedError>` — Unregister the cloacina cron schedule for `feed_id`.
+- pub `runtime_ctx` function L136-138 — `(&self) -> &FeedRuntimeContext` — audit are all inherited from cloacina.
+- pub `register_feed_dynamic` function L152-229 — `( &self, template: &str, feed_id: &str, params: TemplateParams, cadence_override...` — Full dynamic-registration flow used by the `/watch` command.
+- pub `run_feed_once` function L240-245 — `( &self, feed_id: &str, ) -> Result<crate::template::RunOutcome, FeedError>` — Trigger a one-off run of an enabled feed, outside the cron
+- pub `pause_feed` function L253-273 — `(&self, feed_id: &str) -> Result<FeedRecord, FeedError>` — Pause a feed: drop its cloacina cron schedule and flip the row
+- pub `resume_feed` function L278-296 — `(&self, feed_id: &str) -> Result<FeedRecord, FeedError>` — Resume a previously-paused feed: re-register the cloacina
+- pub `remove_feed` function L305-333 — `(&self, feed_id: &str) -> Result<RemoveOutcome, FeedError>` — Decommission: drop the cloacina cron schedule, delete the DB
+- pub `discover_template` function L341-348 — `( &self, template_name: &str, ) -> Result<Option<Vec<DiscoveryRow>>, FeedError>` — Run the template's discovery hook.
+- pub `list_summaries` function L352-383 — `(&self) -> Result<Vec<FeedSummary>, FeedError>` — List every feed in the DB (enabled or paused) with on-disk
+- pub `resume_pending_backfills` function L642-667 — `( runner: Arc<CloacinaRunner>, runtime_ctx: FeedRuntimeContext, records: &[FeedR...` — On boot, find feeds whose `meta.json.last_status == "backfilling"`
+- pub `RemoveOutcome` struct L673-676 — `{ record: FeedRecord, bytes_wiped: u64 }` — Outcome of a successful `remove_feed` — the row that was deleted
+-  `FeedRuntime` type L117-384 — `= FeedRuntime` — audit are all inherited from cloacina.
+-  `BACKFILL_PAGE_CAP` variable L390 — `: u32` — Hard cap on backfill loop iterations.
+-  `BASE_BACKOFF` variable L394 — `: std::time::Duration` — Base delay used when a provider rate-limits us without a Retry-After
+-  `MAX_RATE_LIMIT_WAIT` variable L399 — `: std::time::Duration` — Wall-clock cap on cumulative rate-limit waits inside a single
+-  `TRANSIENT_MAX_ATTEMPTS` variable L403 — `: u32` — How many consecutive transient errors (Provider/Storage) we'll
+-  `transient_backoff` function L409-412 — `(attempt: u32) -> std::time::Duration` — Pure helper: backoff for the Nth consecutive transient retry
+-  `BackfillExit` enum L417-423 — `Complete | RateLimitDeferred` — How a backfill ended.
+-  `spawn_backfill_task` function L437-490 — `( runner: Arc<CloacinaRunner>, runtime_ctx: FeedRuntimeContext, feed_id: String,...` — Spawn the backfill loop as a detached tokio task.
+-  `BackfillStats` struct L493-496 — `{ pages: u32, items: u64 }` — audit are all inherited from cloacina.
+-  `run_backfill_loop` function L498-577 — `( _runner: &Arc<CloacinaRunner>, runtime_ctx: &FeedRuntimeContext, feed_id: &str...` — audit are all inherited from cloacina.
+-  `finalize_backfill_success` function L579-616 — `( runner: &Arc<CloacinaRunner>, runtime_ctx: &FeedRuntimeContext, feed_id: &str,...` — audit are all inherited from cloacina.
+-  `mark_backfill_failed` function L618-637 — `( runtime_ctx: &FeedRuntimeContext, feed_id: &str, err: &str, ) -> Result<(), Fe...` — audit are all inherited from cloacina.
+-  `delete_schedule_for` function L680-700 — `( runner: &CloacinaRunner, workflow_name: &str, ) -> Result<(), FeedError>` — Look up cloacina's cron schedule by workflow name and delete it
+-  `dir_size_bytes` function L702-723 — `(path: &std::path::Path) -> u64` — audit are all inherited from cloacina.
+-  `walk` function L703-719 — `(p: &std::path::Path, acc: &mut u64)` — audit are all inherited from cloacina.
+-  `register_one` function L725-806 — `( runner: &CloacinaRunner, ctx: &FeedRuntimeContext, record: &FeedRecord, ) -> R...` — audit are all inherited from cloacina.
+-  `tests` module L809-827 — `-` — audit are all inherited from cloacina.
+-  `transient_backoff_doubles_per_attempt` function L814-818 — `()` — audit are all inherited from cloacina.
+-  `transient_backoff_clamps` function L821-826 — `()` — audit are all inherited from cloacina.
 
 #### crates/arawn-feeds/src/store.rs
 
@@ -7232,21 +7308,22 @@
 - pub `install` function L279-285 — `(tracker: Arc<UsageTracker>) -> Arc<UsageTracker>` — Install the process-wide tracker.
 - pub `global` function L288-290 — `() -> Option<Arc<UsageTracker>>` — Fetch the active tracker, if any has been installed.
 - pub `record` function L295-305 — `(record: TokenUsageRecord)` — Record a single event.
+- pub `render_usage_human` function L310-346 — `(s: &UsageSummary) -> String` — T-0362: human-readable renderer for a `UsageSummary`.
 -  `ModelUsageStats` type L71-75 — `= ModelUsageStats` — recent usage to drive the `UsagePressure` hint.
 -  `UsagePeriod` type L92-103 — `= UsagePeriod` — recent usage to drive the `UsagePressure` hint.
 -  `UsageTracker` type L136-270 — `= UsageTracker` — recent usage to drive the `UsagePressure` hint.
 -  `GLOBAL` variable L274 — `: OnceLock<Arc<UsageTracker>>` — recent usage to drive the `UsagePressure` hint.
--  `now_secs` function L307-312 — `() -> u64` — recent usage to drive the `UsagePressure` hint.
--  `tests` module L315-441 — `-` — recent usage to drive the `UsagePressure` hint.
--  `sample` function L319-328 — `(model: &str, p: u32, c: u32, ts: u64, site: Option<&str>) -> TokenUsageRecord` — recent usage to drive the `UsagePressure` hint.
--  `record_round_trips` function L331-340 — `()` — recent usage to drive the `UsagePressure` hint.
--  `summary_rolls_up_by_model` function L343-359 — `()` — recent usage to drive the `UsagePressure` hint.
--  `summary_filters_by_model` function L362-372 — `()` — recent usage to drive the `UsagePressure` hint.
--  `summary_respects_day_window` function L375-385 — `()` — recent usage to drive the `UsagePressure` hint.
--  `summary_by_site_groups_correctly` function L388-407 — `()` — recent usage to drive the `UsagePressure` hint.
--  `summary_empty_log_is_empty` function L410-416 — `()` — recent usage to drive the `UsagePressure` hint.
--  `read_all_skips_malformed_lines` function L419-433 — `()` — recent usage to drive the `UsagePressure` hint.
--  `record_global_without_install_does_not_panic` function L436-440 — `()` — recent usage to drive the `UsagePressure` hint.
+-  `now_secs` function L348-353 — `() -> u64` — recent usage to drive the `UsagePressure` hint.
+-  `tests` module L356-482 — `-` — recent usage to drive the `UsagePressure` hint.
+-  `sample` function L360-369 — `(model: &str, p: u32, c: u32, ts: u64, site: Option<&str>) -> TokenUsageRecord` — recent usage to drive the `UsagePressure` hint.
+-  `record_round_trips` function L372-381 — `()` — recent usage to drive the `UsagePressure` hint.
+-  `summary_rolls_up_by_model` function L384-400 — `()` — recent usage to drive the `UsagePressure` hint.
+-  `summary_filters_by_model` function L403-413 — `()` — recent usage to drive the `UsagePressure` hint.
+-  `summary_respects_day_window` function L416-426 — `()` — recent usage to drive the `UsagePressure` hint.
+-  `summary_by_site_groups_correctly` function L429-448 — `()` — recent usage to drive the `UsagePressure` hint.
+-  `summary_empty_log_is_empty` function L451-457 — `()` — recent usage to drive the `UsagePressure` hint.
+-  `read_all_skips_malformed_lines` function L460-474 — `()` — recent usage to drive the `UsagePressure` hint.
+-  `record_global_without_install_does_not_panic` function L477-481 — `()` — recent usage to drive the `UsagePressure` hint.
 
 #### crates/arawn-llm/src/usage/tracking_client.rs
 
@@ -8627,36 +8704,39 @@
 - pub `new` function L27-29 — `(db: &'a Database) -> Self` — for users.
 - pub `ensure_scratch` function L33-40 — `(&self, scratch_root: &Path) -> Result<Workstream, StorageError>` — Idempotently create the `scratch` workstream at the given root.
 - pub `create` function L44-58 — `(&self, ws: &Workstream) -> Result<(), StorageError>` — Create a new workstream.
-- pub `get` function L88-96 — `(&self, id: Uuid) -> Result<Option<Workstream>, StorageError>` — for users.
-- pub `find_by_name` function L98-106 — `(&self, name: &str) -> Result<Option<Workstream>, StorageError>` — for users.
-- pub `list` function L109-111 — `(&self) -> Result<Vec<Workstream>, StorageError>` — List active (non-archived) workstreams, newest update first.
-- pub `list_all` function L114-116 — `(&self) -> Result<Vec<Workstream>, StorageError>` — List all workstreams including soft-deleted (archived) ones.
-- pub `update_description` function L136-147 — `(&self, name: &str, description: &str) -> Result<(), StorageError>` — for users.
-- pub `set_bindings` function L149-162 — `(&self, name: &str, bindings: &[String]) -> Result<(), StorageError>` — for users.
-- pub `add_binding` function L164-173 — `(&self, name: &str, feed_id: &str) -> Result<(), StorageError>` — for users.
-- pub `remove_binding` function L175-181 — `(&self, name: &str, feed_id: &str) -> Result<(), StorageError>` — for users.
-- pub `soft_delete` function L186-202 — `(&self, name: &str) -> Result<(), StorageError>` — Soft-delete: sets `archived = 1`.
-- pub `delete` function L206-212 — `(&self, id: Uuid) -> Result<bool, StorageError>` — Hard-delete by id.
--  `insert_row` function L60-86 — `(&self, ws: &Workstream) -> Result<(), StorageError>` — for users.
--  `list_with_archived` function L118-134 — `(&self, include_archived: bool) -> Result<Vec<Workstream>, StorageError>` — for users.
--  `SELECT_COLS_WHERE_ID` variable L215-217 — `: &str` — for users.
--  `SELECT_COLS_WHERE_NAME` variable L219-221 — `: &str` — for users.
--  `row_to_workstream` function L223-260 — `(row: &rusqlite::Row<'_>) -> Result<Workstream, StorageError>` — for users.
--  `parse_dt` function L262-266 — `(s: &str) -> Result<DateTime<Utc>, StorageError>` — for users.
--  `rusqlite_map_err` function L268-270 — `(e: StorageError) -> rusqlite::Error` — for users.
--  `name_err` function L272-274 — `(e: WorkstreamNameError) -> StorageError` — for users.
--  `tests` module L277-402 — `-` — for users.
--  `setup` function L280-282 — `() -> Database` — for users.
--  `create_and_roundtrip` function L285-297 — `()` — for users.
--  `create_rejects_scratch` function L300-306 — `()` — for users.
--  `create_rejects_invalid_slug` function L309-320 — `()` — for users.
--  `create_rejects_duplicate` function L323-331 — `()` — for users.
--  `ensure_scratch_idempotent` function L334-341 — `()` — for users.
--  `update_description` function L344-351 — `()` — for users.
--  `bindings_add_and_remove` function L354-366 — `()` — for users.
--  `soft_delete_marks_archived` function L369-380 — `()` — for users.
--  `soft_delete_refuses_scratch` function L383-389 — `()` — for users.
--  `list_orders_by_updated_at_desc` function L392-401 — `()` — for users.
+- pub `get` function L89-97 — `(&self, id: Uuid) -> Result<Option<Workstream>, StorageError>` — for users.
+- pub `find_by_name` function L99-107 — `(&self, name: &str) -> Result<Option<Workstream>, StorageError>` — for users.
+- pub `list` function L110-112 — `(&self) -> Result<Vec<Workstream>, StorageError>` — List active (non-archived) workstreams, newest update first.
+- pub `list_all` function L115-117 — `(&self) -> Result<Vec<Workstream>, StorageError>` — List all workstreams including soft-deleted (archived) ones.
+- pub `update_identity_profile` function L137-152 — `( &self, name: &str, profile: IdentityProfile, ) -> Result<(), StorageError>` — for users.
+- pub `update_description` function L154-165 — `(&self, name: &str, description: &str) -> Result<(), StorageError>` — for users.
+- pub `set_bindings` function L167-180 — `(&self, name: &str, bindings: &[String]) -> Result<(), StorageError>` — for users.
+- pub `add_binding` function L182-191 — `(&self, name: &str, feed_id: &str) -> Result<(), StorageError>` — for users.
+- pub `remove_binding` function L193-199 — `(&self, name: &str, feed_id: &str) -> Result<(), StorageError>` — for users.
+- pub `soft_delete` function L204-220 — `(&self, name: &str) -> Result<(), StorageError>` — Soft-delete: sets `archived = 1`.
+- pub `delete` function L224-230 — `(&self, id: Uuid) -> Result<bool, StorageError>` — Hard-delete by id.
+-  `insert_row` function L60-87 — `(&self, ws: &Workstream) -> Result<(), StorageError>` — for users.
+-  `list_with_archived` function L119-135 — `(&self, include_archived: bool) -> Result<Vec<Workstream>, StorageError>` — for users.
+-  `SELECT_COLS_WHERE_ID` variable L233-235 — `: &str` — for users.
+-  `SELECT_COLS_WHERE_NAME` variable L237-239 — `: &str` — for users.
+-  `row_to_workstream` function L241-281 — `(row: &rusqlite::Row<'_>) -> Result<Workstream, StorageError>` — for users.
+-  `parse_dt` function L283-287 — `(s: &str) -> Result<DateTime<Utc>, StorageError>` — for users.
+-  `rusqlite_map_err` function L289-291 — `(e: StorageError) -> rusqlite::Error` — for users.
+-  `name_err` function L293-295 — `(e: WorkstreamNameError) -> StorageError` — for users.
+-  `tests` module L298-450 — `-` — for users.
+-  `setup` function L301-303 — `() -> Database` — for users.
+-  `create_and_roundtrip` function L306-318 — `()` — for users.
+-  `create_rejects_scratch` function L321-327 — `()` — for users.
+-  `create_rejects_invalid_slug` function L330-341 — `()` — for users.
+-  `create_rejects_duplicate` function L344-352 — `()` — for users.
+-  `ensure_scratch_idempotent` function L355-362 — `()` — for users.
+-  `update_description` function L365-372 — `()` — for users.
+-  `bindings_add_and_remove` function L375-387 — `()` — for users.
+-  `soft_delete_marks_archived` function L390-401 — `()` — for users.
+-  `soft_delete_refuses_scratch` function L404-410 — `()` — for users.
+-  `new_workstream_defaults_to_assistant_profile` function L413-419 — `()` — for users.
+-  `update_identity_profile_round_trips` function L422-437 — `()` — for users.
+-  `list_orders_by_updated_at_desc` function L440-449 — `()` — for users.
 
 ### crates/arawn-tests
 
@@ -8878,32 +8958,38 @@
 -  `UatHarness` type L607-611 — `impl Drop for UatHarness` — Or via angreal: angreal test uat --model gemma4
 -  `drop` function L608-610 — `(&mut self)` — Or via angreal: angreal test uat --model gemma4
 -  `walkdir` function L614-629 — `(dir: &Path) -> Result<Vec<PathBuf>, std::io::Error>` — Recursively list all files under a directory.
--  `github_monitor_scenario` function L635-669 — `() -> Scenario` — Or via angreal: angreal test uat --model gemma4
--  `work_signal_pipeline_scenario` function L671-709 — `() -> Scenario` — Or via angreal: angreal test uat --model gemma4
--  `uat_daily_seed` module L711 — `-` — Or via angreal: angreal test uat --model gemma4
--  `uat_fixture` module L713 — `-` — Or via angreal: angreal test uat --model gemma4
--  `uat_retro_seed` module L714 — `-` — Or via angreal: angreal test uat --model gemma4
--  `uat_weekly_seed` module L715 — `-` — Or via angreal: angreal test uat --model gemma4
--  `signal_extraction_e2e_scenario` function L722-777 — `() -> Scenario` — I-0040 end-to-end UAT: synthetic gmail + slack feed rows for two
--  `tag_promoter_cycle_scenario` function L789-825 — `() -> Scenario` — I-0040 T-0268: tag-promoter Extract→Suggest→Add cycle UAT.
--  `retro_ceremony_scenario` function L834-864 — `() -> Scenario` — I-0043 retro ceremony end-to-end: seed three workstreams + prior
--  `daily_ceremony_scenario` function L874-904 — `() -> Scenario` — I-0041 daily ceremony end-to-end: seed three workstreams +
--  `weekly_ceremony_scenario` function L916-950 — `() -> Scenario` — I-0042 weekly ceremony end-to-end: seed three workstreams + a
--  `priority_completion_feedback_scenario` function L960-990 — `() -> Scenario` — I-0049 T-0316 — closes the priority-completion feedback loop
--  `all_scenarios` function L992-1003 — `() -> Vec<Scenario>` — Or via angreal: angreal test uat --model gemma4
--  `uat_run` function L1011-1211 — `()` — Or via angreal: angreal test uat --model gemma4
--  `tests` module L1219-1369 — `-` — Or via angreal: angreal test uat --model gemma4
--  `count_workflows_returns_zero_for_missing_dir` function L1225-1228 — `()` — Or via angreal: angreal test uat --model gemma4
--  `count_workflows_returns_zero_for_empty_dir` function L1231-1234 — `()` — Or via angreal: angreal test uat --model gemma4
--  `count_workflows_counts_subdirs_only` function L1237-1245 — `()` — Or via angreal: angreal test uat --model gemma4
--  `apply_event_captures_error_message` function L1250-1266 — `()` — Or via angreal: angreal test uat --model gemma4
--  `apply_event_error_with_missing_message_field_keeps_none` function L1269-1275 — `()` — Or via angreal: angreal test uat --model gemma4
--  `apply_event_complete_sets_final_text` function L1278-1285 — `()` — Or via angreal: angreal test uat --model gemma4
--  `apply_event_streaming_text_appends` function L1288-1296 — `()` — Or via angreal: angreal test uat --model gemma4
--  `apply_event_ignores_rpc_ack` function L1299-1306 — `()` — Or via angreal: angreal test uat --model gemma4
--  `apply_event_records_tool_calls_and_results` function L1309-1329 — `()` — Or via angreal: angreal test uat --model gemma4
--  `turn_result_serializes_error_message_when_present` function L1334-1351 — `()` — Or via angreal: angreal test uat --model gemma4
--  `turn_result_omits_error_message_when_none` function L1354-1368 — `()` — Or via angreal: angreal test uat --model gemma4
+-  `work_signal_pipeline_scenario` function L641-679 — `() -> Scenario` — Or via angreal: angreal test uat --model gemma4
+-  `uat_daily_seed` module L681 — `-` — Or via angreal: angreal test uat --model gemma4
+-  `uat_fixture` module L683 — `-` — Or via angreal: angreal test uat --model gemma4
+-  `uat_retro_seed` module L684 — `-` — Or via angreal: angreal test uat --model gemma4
+-  `uat_weekly_seed` module L685 — `-` — Or via angreal: angreal test uat --model gemma4
+-  `signal_extraction_e2e_scenario` function L692-747 — `() -> Scenario` — I-0040 end-to-end UAT: synthetic gmail + slack feed rows for two
+-  `tag_promoter_cycle_scenario` function L759-795 — `() -> Scenario` — I-0040 T-0268: tag-promoter Extract→Suggest→Add cycle UAT.
+-  `retro_ceremony_scenario` function L804-834 — `() -> Scenario` — I-0043 retro ceremony end-to-end: seed three workstreams + prior
+-  `daily_ceremony_scenario` function L844-874 — `() -> Scenario` — I-0041 daily ceremony end-to-end: seed three workstreams +
+-  `weekly_ceremony_scenario` function L886-920 — `() -> Scenario` — I-0042 weekly ceremony end-to-end: seed three workstreams + a
+-  `priority_completion_feedback_scenario` function L930-960 — `() -> Scenario` — I-0049 T-0316 — closes the priority-completion feedback loop
+-  `ASSISTANT_FIXTURE` variable L977 — `: &str` — Or via angreal: angreal test uat --model gemma4
+-  `morning_briefing_scenario` function L979-1001 — `() -> Scenario` — Or via angreal: angreal test uat --model gemma4
+-  `inbox_summary_scenario` function L1003-1025 — `() -> Scenario` — Or via angreal: angreal test uat --model gemma4
+-  `draft_with_confirmation_scenario` function L1027-1049 — `() -> Scenario` — Or via angreal: angreal test uat --model gemma4
+-  `schedule_with_confirmation_scenario` function L1051-1073 — `() -> Scenario` — Or via angreal: angreal test uat --model gemma4
+-  `mention_scan_scenario` function L1075-1097 — `() -> Scenario` — Or via angreal: angreal test uat --model gemma4
+-  `no_fabrication_scenario` function L1099-1121 — `() -> Scenario` — Or via angreal: angreal test uat --model gemma4
+-  `all_scenarios` function L1123-1142 — `() -> Vec<Scenario>` — Or via angreal: angreal test uat --model gemma4
+-  `uat_run` function L1150-1350 — `()` — Or via angreal: angreal test uat --model gemma4
+-  `tests` module L1358-1508 — `-` — Or via angreal: angreal test uat --model gemma4
+-  `count_workflows_returns_zero_for_missing_dir` function L1364-1367 — `()` — Or via angreal: angreal test uat --model gemma4
+-  `count_workflows_returns_zero_for_empty_dir` function L1370-1373 — `()` — Or via angreal: angreal test uat --model gemma4
+-  `count_workflows_counts_subdirs_only` function L1376-1384 — `()` — Or via angreal: angreal test uat --model gemma4
+-  `apply_event_captures_error_message` function L1389-1405 — `()` — Or via angreal: angreal test uat --model gemma4
+-  `apply_event_error_with_missing_message_field_keeps_none` function L1408-1414 — `()` — Or via angreal: angreal test uat --model gemma4
+-  `apply_event_complete_sets_final_text` function L1417-1424 — `()` — Or via angreal: angreal test uat --model gemma4
+-  `apply_event_streaming_text_appends` function L1427-1435 — `()` — Or via angreal: angreal test uat --model gemma4
+-  `apply_event_ignores_rpc_ack` function L1438-1445 — `()` — Or via angreal: angreal test uat --model gemma4
+-  `apply_event_records_tool_calls_and_results` function L1448-1468 — `()` — Or via angreal: angreal test uat --model gemma4
+-  `turn_result_serializes_error_message_when_present` function L1473-1490 — `()` — Or via angreal: angreal test uat --model gemma4
+-  `turn_result_omits_error_message_when_none` function L1493-1507 — `()` — Or via angreal: angreal test uat --model gemma4
 
 #### crates/arawn-tests/tests/uat_daily_seed.rs
 
@@ -8916,31 +9002,40 @@
 
 #### crates/arawn-tests/tests/uat_fixture.rs
 
-- pub `Fixture` struct L43-45 — `{ workstreams: Vec<WorkstreamFixture> }` — Top-level fixture file.
-- pub `WorkstreamFixture` struct L48-59 — `{ name: String, description: String, tags_ontology: Vec<String>, rows: Vec<Fixtu...` — warm KB on the first turn.
-- pub `FixtureRow` enum L66-69 — `GmailMessages | SlackMessages` — Discriminated row variants by `feed_type`.
-- pub `GmailFixtureRow` struct L72-88 — `{ source_id: String, source_ts: DateTime<Utc>, sender: Option<String>, recipient...` — warm KB on the first turn.
-- pub `SlackFixtureRow` struct L91-105 — `{ source_id: String, source_ts: DateTime<Utc>, channel_id: Option<String>, sende...` — warm KB on the first turn.
-- pub `load` function L108-112 — `(path: impl AsRef<Path>) -> Result<Fixture, String>` — Read a fixture from disk.
-- pub `Applied` struct L117-121 — `{ store: Arc<std::sync::Mutex<Store>>, projections: Arc<ProjectionStore>, per_wo...` — Apply a fixture against `data_dir`.
-- pub `AppliedWorkstream` struct L123-127 — `{ workstream: Workstream, feed_types: Vec<String> }` — warm KB on the first turn.
-- pub `apply` function L129-215 — `(fixture: &Fixture, data_dir: &Path) -> Result<Applied, String>` — warm KB on the first turn.
-- pub `build_seed_llm_client` function L262-287 — `( provider: &str, model: &str, api_key_env: &str, ) -> Result<Arc<dyn LlmClient>...` — Build an `LlmClient` for the seed-time extractor using the same
-- pub `drive_extraction` function L292-324 — `( applied: &Applied, data_dir: &Path, client: Arc<dyn LlmClient>, model: String,...` — Drive `ExtractorRunner::run_for_workstream_until_exhausted` for each
-- pub `drive_tag_promoter` function L334-373 — `(applied: &Applied, data_dir: &Path) -> Result<usize, String>` — Drive the `tag-promoter` steward subroutine across every workstream
--  `synthetic_feed_id` function L217-221 — `(workstream: &str, override_: &Option<String>) -> String` — warm KB on the first turn.
--  `gmail_to_projection` function L223-237 — `(workstream: &str, row: &GmailFixtureRow) -> GmailMessageProjection` — warm KB on the first turn.
--  `slack_to_projection` function L239-256 — `(workstream: &str, row: &SlackFixtureRow) -> SlackMessageProjection` — warm KB on the first turn.
--  `tests` module L380-459 — `-` — warm KB on the first turn.
--  `sample_fixture` function L383-415 — `() -> Fixture` — warm KB on the first turn.
--  `fixture_roundtrips_through_json` function L418-424 — `()` — warm KB on the first turn.
--  `apply_creates_workstream_and_writes_rows` function L427-445 — `()` — warm KB on the first turn.
--  `load_from_disk_round_trip` function L448-458 — `()` — warm KB on the first turn.
+- pub `Fixture` struct L45-47 — `{ workstreams: Vec<WorkstreamFixture> }` — Top-level fixture file.
+- pub `WorkstreamFixture` struct L50-67 — `{ name: String, description: String, tags_ontology: Vec<String>, identity_profil...` — warm KB on the first turn.
+- pub `FixtureRow` enum L74-80 — `GmailMessages | SlackMessages | CalendarEvents | JiraIssues | JiraComments` — Discriminated row variants by `feed_type`.
+- pub `GmailFixtureRow` struct L83-99 — `{ source_id: String, source_ts: DateTime<Utc>, sender: Option<String>, recipient...` — warm KB on the first turn.
+- pub `CalendarFixtureRow` struct L102-125 — `{ source_id: String, source_ts: DateTime<Utc>, calendar_id: Option<String>, summ...` — warm KB on the first turn.
+- pub `JiraIssueFixtureRow` struct L128-148 — `{ source_id: String, source_ts: DateTime<Utc>, project_key: Option<String>, summ...` — warm KB on the first turn.
+- pub `JiraCommentFixtureRow` struct L151-160 — `{ source_id: String, source_ts: DateTime<Utc>, issue_key: String, author: Option...` — warm KB on the first turn.
+- pub `SlackFixtureRow` struct L163-177 — `{ source_id: String, source_ts: DateTime<Utc>, channel_id: Option<String>, sende...` — warm KB on the first turn.
+- pub `load` function L191-196 — `(path: impl AsRef<Path>) -> Result<Fixture, String>` — Read a fixture from disk, substituting time placeholders so the
+- pub `resolve_time_placeholders` function L199-220 — `(raw: &str, now: DateTime<Utc>) -> String` — Pure substitution helper — exposed for testability.
+- pub `Applied` struct L225-229 — `{ store: Arc<std::sync::Mutex<Store>>, projections: Arc<ProjectionStore>, per_wo...` — Apply a fixture against `data_dir`.
+- pub `AppliedWorkstream` struct L231-235 — `{ workstream: Workstream, feed_types: Vec<String> }` — warm KB on the first turn.
+- pub `apply` function L237-364 — `(fixture: &Fixture, data_dir: &Path) -> Result<Applied, String>` — warm KB on the first turn.
+- pub `build_seed_llm_client` function L475-500 — `( provider: &str, model: &str, api_key_env: &str, ) -> Result<Arc<dyn LlmClient>...` — Build an `LlmClient` for the seed-time extractor using the same
+- pub `drive_extraction` function L505-537 — `( applied: &Applied, data_dir: &Path, client: Arc<dyn LlmClient>, model: String,...` — Drive `ExtractorRunner::run_for_workstream_until_exhausted` for each
+- pub `drive_tag_promoter` function L547-586 — `(applied: &Applied, data_dir: &Path) -> Result<usize, String>` — Drive the `tag-promoter` steward subroutine across every workstream
+-  `synthetic_feed_id` function L366-370 — `(workstream: &str, override_: &Option<String>) -> String` — warm KB on the first turn.
+-  `gmail_to_projection` function L372-386 — `(workstream: &str, row: &GmailFixtureRow) -> GmailMessageProjection` — warm KB on the first turn.
+-  `calendar_to_projection` function L388-410 — `(workstream: &str, row: &CalendarFixtureRow) -> CalendarEventProjection` — warm KB on the first turn.
+-  `jira_issue_to_projection` function L412-431 — `(workstream: &str, row: &JiraIssueFixtureRow) -> JiraIssueProjection` — warm KB on the first turn.
+-  `jira_comment_to_projection` function L433-450 — `( workstream: &str, row: &JiraCommentFixtureRow, ) -> JiraCommentProjection` — warm KB on the first turn.
+-  `slack_to_projection` function L452-469 — `(workstream: &str, row: &SlackFixtureRow) -> SlackMessageProjection` — warm KB on the first turn.
+-  `tests` module L593-685 — `-` — warm KB on the first turn.
+-  `sample_fixture` function L596-629 — `() -> Fixture` — warm KB on the first turn.
+-  `time_placeholders_substituted` function L632-641 — `()` — warm KB on the first turn.
+-  `fixture_roundtrips_through_json` function L644-650 — `()` — warm KB on the first turn.
+-  `apply_creates_workstream_and_writes_rows` function L653-671 — `()` — warm KB on the first turn.
+-  `load_from_disk_round_trip` function L674-684 — `()` — warm KB on the first turn.
 
 #### crates/arawn-tests/tests/uat_fixture_smoke.rs
 
 -  `uat_fixture` module L4 — `-` — row counts match what the UAT scenario expects.
 -  `signal_extraction_e2e_fixture_parses` function L7-35 — `()` — row counts match what the UAT scenario expects.
+-  `personal_day_fixture_parses` function L41-75 — `()` — T-0332: the synthetic life-assistant fixture must parse, have a
 
 #### crates/arawn-tests/tests/uat_retro_seed.rs
 
@@ -9132,65 +9227,79 @@
 
 #### crates/arawn-tui/src/app.rs
 
-- pub `LayoutRegions` struct L13-23 — `{ sidebar: Option<Rect>, chat: Rect, input: Rect, sidebar_ws: Option<Rect>, side...` — Tracks the screen regions of each panel from the last render.
-- pub `Focus` enum L27-31 — `Main | Sidebar` — Which panel has focus.
-- pub `SidebarSection` enum L35-38 — `Workstreams | Sessions` — Which sidebar section is active.
-- pub `ChatMessage` struct L42-51 — `{ role: ChatRole, content: String, created_at: std::time::Instant, rendered_cach...` — A message displayed in the chat area.
-- pub `new` function L54-62 — `(role: ChatRole, content: impl Into<String>) -> Self`
-- pub `rendered_lines` function L66-79 — `(&mut self, width: usize) -> &[ratatui::text::Line<'static>]` — Get or compute the cached markdown rendering for assistant messages.
-- pub `ChatRole` enum L83-89 — `User | Assistant | ToolCall | ToolResult | System`
-- pub `App` struct L92-189 — `{ focus: Focus, input_buffer: String, cursor_pos: usize, messages: Vec<ChatMessa...` — All mutable TUI state.
-- pub `DOUBLE_ESC_WINDOW` variable L194 — `: std::time::Duration` — Window for double-Esc detection.
-- pub `HistoryEntry` struct L198-205 — `{ text: String, is_chat: bool }` — One entry in the per-session input history.
-- pub `new` function L208-253 — `() -> Self`
-- pub `handle_action` function L256-683 — `(&mut self, action: Action) -> bool` — Process an action and mutate state.
-- pub `apply_engine_event` function L840-920 — `(&mut self, event: crate::ws_client::EventUpdate)` — Apply a streaming engine event to the app state (testable without network).
-- pub `load_session_messages` function L924-987 — `(&mut self, detail: &serde_json::Value)` — Load messages from a session detail JSON response into the chat.
-- pub `format_tool_input` function L1007-1055 — `(tool_name: &str, input: &serde_json::Value) -> String` — Format tool input args into a compact display string.
--  `ChatMessage` type L53-80 — `= ChatMessage`
--  `App` type L207-1004 — `= App`
--  `record_input_history` function L689-698 — `(&mut self, text: &str, is_chat: bool)` — Append `text` to input history, skipping empty input and deduping
--  `history_recall_prev` function L702-717 — `(&mut self)` — Move backward in input history.
--  `history_recall_next` function L721-736 — `(&mut self)` — Move forward in input history.
--  `open_history_modal` function L743-797 — `(&mut self)` — Open a modal listing branchable history entries (chat prompts only,
--  `update_autocomplete` function L800-826 — `(&mut self)` — Update autocomplete suggestions based on current input buffer.
--  `accept_autocomplete` function L829-837 — `(&mut self)` — Accept the currently selected autocomplete suggestion.
--  `prev_char_boundary` function L989-995 — `(&self) -> usize`
--  `next_char_boundary` function L997-1003 — `(&self) -> usize`
--  `App` type L1057-1061 — `impl Default for App`
--  `default` function L1058-1060 — `() -> Self`
--  `tests` module L1064-1548 — `-`
--  `type_chars_updates_buffer` function L1068-1074 — `()`
--  `backspace_removes_char` function L1077-1084 — `()`
--  `submit_moves_to_messages` function L1087-1099 — `()`
--  `submit_blocked_when_empty` function L1102-1108 — `()`
--  `submit_blocked_while_generating` function L1111-1117 — `()`
--  `tab_toggles_focus` function L1120-1127 — `()`
--  `scroll_updates_offset` function L1130-1138 — `()`
--  `cancel_stops_generation` function L1141-1150 — `()`
--  `quit_sets_flag` function L1153-1157 — `()`
--  `cursor_movement` function L1160-1181 — `()`
--  `full_conversation_flow` function L1186-1216 — `()`
--  `tool_call_flow` function L1219-1250 — `()`
--  `error_event_clears_generating` function L1253-1267 — `()`
--  `sidebar_navigation` function L1270-1301 — `()`
--  `submit_via_input` function L1303-1310 — `(app: &mut App, text: &str)`
--  `history_text` function L1312-1314 — `(app: &App) -> Vec<&str>`
--  `history_records_submitted_prompts` function L1317-1323 — `()`
--  `history_records_slash_commands_with_is_chat_false` function L1326-1336 — `()`
--  `history_dedupes_consecutive_duplicates` function L1339-1346 — `()`
--  `branch_modal_filters_out_slash_commands` function L1349-1363 — `()`
--  `branch_modal_skipped_when_no_chat_history` function L1366-1374 — `()`
--  `up_arrow_recalls_most_recent_when_input_empty` function L1377-1392 — `()`
--  `down_arrow_restores_draft_past_newest` function L1395-1413 — `()`
--  `double_esc_within_window_opens_history_modal` function L1416-1428 — `()`
--  `double_esc_outside_window_does_not_open_modal` function L1431-1439 — `()`
--  `history_recall_at_loads_entry_into_input` function L1442-1450 — `()`
--  `empty_history_modal_is_a_no_op` function L1453-1459 — `()`
--  `modal_select_index_picks_option_directly` function L1462-1484 — `()`
--  `cancel_marks_session_for_stale_event_drop` function L1487-1514 — `()`
--  `next_submit_clears_cancelled_session_marker` function L1517-1531 — `()`
--  `modal_select_out_of_range_is_no_op` function L1534-1547 — `()`
+- pub `LayoutRegions` struct L13-26 — `{ sidebar: Option<Rect>, chat: Rect, input: Rect, sidebar_ws: Option<Rect>, side...` — Tracks the screen regions of each panel from the last render.
+- pub `Focus` enum L30-34 — `Main | Sidebar` — Which panel has focus.
+- pub `SidebarSection` enum L45-47 — `Workstreams` — Which sidebar section is active.
+- pub `ChatMessage` struct L51-60 — `{ role: ChatRole, content: String, created_at: std::time::Instant, rendered_cach...` — A message displayed in the chat area.
+- pub `new` function L63-71 — `(role: ChatRole, content: impl Into<String>) -> Self`
+- pub `rendered_lines` function L75-88 — `(&mut self, width: usize) -> &[ratatui::text::Line<'static>]` — Get or compute the cached markdown rendering for assistant messages.
+- pub `ChatRole` enum L92-98 — `User | Assistant | ToolCall | ToolResult | System`
+- pub `App` struct L101-218 — `{ focus: Focus, input_buffer: String, cursor_pos: usize, messages: Vec<ChatMessa...` — All mutable TUI state.
+- pub `DOUBLE_ESC_WINDOW` variable L223 — `: std::time::Duration` — Window for double-Esc detection.
+- pub `HistoryEntry` struct L227-234 — `{ text: String, is_chat: bool }` — One entry in the per-session input history.
+- pub `new` function L237-286 — `() -> Self`
+- pub `post_toast` function L376-386 — `( &mut self, message: impl Into<String>, level: crate::toast::ToastLevel, )` — I-0035 Phase 4 (T-0359): enqueue a 1-line toast to surface
+- pub `should_show_brief_in_empty_chat` function L392-396 — `(&self) -> bool` — True iff the empty-chat surface should render the cached brief
+- pub `handle_action` function L399-809 — `(&mut self, action: Action) -> bool` — Process an action and mutate state.
+- pub `apply_engine_event` function L966-1046 — `(&mut self, event: crate::ws_client::EventUpdate)` — Apply a streaming engine event to the app state (testable without network).
+- pub `load_session_messages` function L1050-1113 — `(&mut self, detail: &serde_json::Value)` — Load messages from a session detail JSON response into the chat.
+- pub `format_tool_input` function L1133-1181 — `(tool_name: &str, input: &serde_json::Value) -> String` — Format tool input args into a compact display string.
+-  `ChatMessage` type L62-89 — `= ChatMessage`
+-  `App` type L236-1130 — `= App`
+-  `handle_export_conversation` function L293-329 — `(&mut self, path: Option<String>)` — T-0363: handle `/export [path]` — write the current
+-  `handle_copy_last_response` function L340-371 — `(&mut self)` — T-0361: handle `/copy` — walk `messages` backwards for the
+-  `record_input_history` function L815-824 — `(&mut self, text: &str, is_chat: bool)` — Append `text` to input history, skipping empty input and deduping
+-  `history_recall_prev` function L828-843 — `(&mut self)` — Move backward in input history.
+-  `history_recall_next` function L847-862 — `(&mut self)` — Move forward in input history.
+-  `open_history_modal` function L869-923 — `(&mut self)` — Open a modal listing branchable history entries (chat prompts only,
+-  `update_autocomplete` function L926-952 — `(&mut self)` — Update autocomplete suggestions based on current input buffer.
+-  `accept_autocomplete` function L955-963 — `(&mut self)` — Accept the currently selected autocomplete suggestion.
+-  `prev_char_boundary` function L1115-1121 — `(&self) -> usize`
+-  `next_char_boundary` function L1123-1129 — `(&self) -> usize`
+-  `App` type L1183-1187 — `impl Default for App`
+-  `default` function L1184-1186 — `() -> Self`
+-  `default_export_path` function L1193-1211 — `(app: &App) -> std::path::PathBuf` — T-0363 — pick the default `/export` path when the user invokes
+-  `shellexpand_tilde` function L1216-1228 — `(input: &str) -> String` — T-0363 — expand a leading `~` in a path to `$HOME`.
+-  `render_conversation_markdown` function L1236-1269 — `(app: &App) -> String` — T-0363 — render the full transcript as a markdown document.
+-  `tests` module L1272-1887 — `-`
+-  `type_chars_updates_buffer` function L1276-1282 — `()`
+-  `backspace_removes_char` function L1285-1292 — `()`
+-  `submit_moves_to_messages` function L1295-1307 — `()`
+-  `submit_blocked_when_empty` function L1310-1316 — `()`
+-  `submit_blocked_while_generating` function L1319-1325 — `()`
+-  `tab_toggles_focus` function L1328-1335 — `()`
+-  `scroll_updates_offset` function L1338-1346 — `()`
+-  `cancel_stops_generation` function L1349-1358 — `()`
+-  `quit_sets_flag` function L1361-1365 — `()`
+-  `cursor_movement` function L1368-1389 — `()`
+-  `full_conversation_flow` function L1394-1424 — `()`
+-  `tool_call_flow` function L1427-1458 — `()`
+-  `error_event_clears_generating` function L1461-1475 — `()`
+-  `sidebar_navigation` function L1478-1509 — `()`
+-  `submit_via_input` function L1511-1518 — `(app: &mut App, text: &str)`
+-  `history_text` function L1520-1522 — `(app: &App) -> Vec<&str>`
+-  `history_records_submitted_prompts` function L1525-1531 — `()`
+-  `history_records_slash_commands_with_is_chat_false` function L1534-1544 — `()`
+-  `history_dedupes_consecutive_duplicates` function L1547-1554 — `()`
+-  `branch_modal_filters_out_slash_commands` function L1557-1571 — `()`
+-  `branch_modal_skipped_when_no_chat_history` function L1574-1582 — `()`
+-  `up_arrow_recalls_most_recent_when_input_empty` function L1585-1600 — `()`
+-  `down_arrow_restores_draft_past_newest` function L1603-1621 — `()`
+-  `double_esc_within_window_opens_history_modal` function L1624-1636 — `()`
+-  `double_esc_outside_window_does_not_open_modal` function L1639-1647 — `()`
+-  `history_recall_at_loads_entry_into_input` function L1650-1658 — `()`
+-  `empty_history_modal_is_a_no_op` function L1661-1667 — `()`
+-  `modal_select_index_picks_option_directly` function L1670-1692 — `()`
+-  `cancel_marks_session_for_stale_event_drop` function L1695-1722 — `()`
+-  `next_submit_clears_cancelled_session_marker` function L1725-1739 — `()`
+-  `modal_select_out_of_range_is_no_op` function L1742-1755 — `()`
+-  `copy_last_response_posts_toast_with_assistant_text` function L1760-1774 — `()`
+-  `copy_last_response_warns_when_no_assistant_messages` function L1777-1786 — `()`
+-  `export_warns_on_empty_transcript` function L1791-1798 — `()`
+-  `export_writes_markdown_to_explicit_path` function L1801-1826 — `()`
+-  `export_skips_tool_call_and_tool_result_rows` function L1829-1855 — `()`
+-  `shellexpand_tilde_expands_home` function L1858-1871 — `()`
+-  `copy_last_response_picks_most_recent_assistant_turn` function L1874-1886 — `()`
 
 #### crates/arawn-tui/src/ceremony_modal.rs
 
@@ -9242,73 +9351,76 @@
 - pub `parse_command` function L37-57 — `(input: &str) -> Option<ParsedCommand>` — Parse a slash command from the input buffer.
 - pub `CommandRegistry` struct L61-63 — `{ commands: Vec<CommandInfo> }` — The command registry — holds all available slash commands.
 - pub `new` function L66-70 — `() -> Self` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
-- pub `register_skills` function L217-227 — `(&mut self, skills: Vec<(String, String)>)` — Add skill commands from the server's cached skill list.
-- pub `all` function L230-232 — `(&self) -> &[CommandInfo]` — Get all commands.
-- pub `matching` function L235-241 — `(&self, prefix: &str) -> Vec<&CommandInfo>` — Find commands matching a prefix (for autocomplete).
-- pub `find` function L244-249 — `(&self, name: &str) -> Option<&CommandInfo>` — Look up a command by exact name.
-- pub `AutocompleteState` struct L254-259 — `{ suggestions: Vec<CommandInfo>, selected: usize }` — Autocomplete state for the slash command dropdown.
-- pub `new` function L262-267 — `(suggestions: Vec<CommandInfo>) -> Self` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
-- pub `next` function L269-273 — `(&mut self)` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
-- pub `prev` function L275-283 — `(&mut self)` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
-- pub `selected_command` function L285-287 — `(&self) -> Option<&CommandInfo>` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
-- pub `is_empty` function L289-291 — `(&self) -> bool` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
-- pub `CommandResult` enum L296-372 — `SystemMessage | ClearChat | EnterPlan | QueryInventory | InvokeSkill | RememberF...` — The result of executing a built-in command.
-- pub `WatchSpec` struct L385-390 — `{ template: String, feed_id: String, params: serde_json::Value, cadence: Option<...` — Parsed args for the non-interactive form of `/watch`.
-- pub `parse_watch_args` function L402-460 — `(args: &str) -> Result<WatchSpec, String>` — Parse the args body of `/watch`.
-- pub `parse_feeds_args` function L562-602 — `(args: &str) -> CommandResult` — Parse the args of `/feeds` into a CommandResult.
-- pub `execute_command` function L605-773 — `(cmd: &ParsedCommand, registry: &CommandRegistry) -> CommandResult` — Execute a parsed slash command against the registry.
--  `CommandRegistry` type L65-250 — `= CommandRegistry` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `register_builtins` function L72-214 — `(&mut self)` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `AutocompleteState` type L261-292 — `= AutocompleteState` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `parse_since` function L468-500 — `(s: &str) -> Result<String, String>` — Parse a `since=` value into a canonical RFC3339 UTC string.
--  `parse_relative_duration` function L504-516 — `(s: &str) -> Option<(i64, &str)>` — Pull `<digits><unit>` out of the input.
--  `tokenize_kv` function L521-552 — `(s: &str) -> Result<Vec<String>, String>` — Tokenizer that respects double-quoted runs so a param value can
--  `tests` module L776-1319 — `-` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `parse_simple_command` function L780-784 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `watch_parses_template_id_and_string_param` function L787-794 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `watch_parses_typed_and_quoted_params_and_cadence_override` function L797-808 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `watch_parses_since_relative_duration` function L811-819 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `watch_parses_since_iso_date` function L822-829 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `watch_parses_since_rfc3339` function L832-840 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `watch_rejects_garbage_since` function L843-850 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `watch_rejects_missing_args_and_bad_template` function L853-860 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `watch_command_dispatch_returns_feed_register` function L863-874 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `feeds_command_dispatch_returns_feed_list` function L877-884 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `feeds_pause_and_resume_dispatch` function L887-897 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `feeds_rm_requires_confirm_flag` function L900-913 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `feeds_pause_without_id_is_a_usage_message` function L916-922 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `watch_list_dispatches_to_feed_discover` function L925-943 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `watch_list_rejects_extra_args_with_hint` function L946-958 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `watch_list_doesnt_swallow_a_template_named_listed` function L961-977 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `feeds_unknown_subcommand_lists_usage` function L980-986 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `parse_command_with_args` function L989-993 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `parse_not_a_command` function L996-1000 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `parse_slash_only` function L1003-1005 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `parse_with_leading_whitespace` function L1008-1011 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `registry_has_builtins` function L1014-1021 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `registry_matching_prefix` function L1024-1030 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `registry_matching_empty_returns_all` function L1033-1037 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `registry_skills` function L1040-1049 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `autocomplete_navigation` function L1052-1082 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_help` function L1085-1092 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_clear` function L1095-1102 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_unknown` function L1105-1112 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_inventory` function L1115-1122 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_skill` function L1125-1136 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_remember_with_text_returns_remember_fact` function L1143-1152 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_remember_without_text_returns_usage_message` function L1155-1168 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_memory_returns_memory_summary` function L1171-1178 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_forget_with_query_returns_forget_entity` function L1181-1190 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_forget_without_query_returns_usage_message` function L1193-1202 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_workflows_list_returns_workflow_list` function L1205-1215 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `every_advertised_builtin_dispatches_or_explains` function L1223-1249 — `()` — Audit: every built-in command in /help must dispatch to a CommandResult
--  `execute_integrations_returns_list_variant` function L1254-1261 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_connect_with_service_returns_connect_variant` function L1264-1271 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_connect_without_service_returns_usage_message` function L1274-1284 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_disconnect_with_service_returns_disconnect_variant` function L1287-1294 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_disconnect_without_service_returns_usage_message` function L1297-1304 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `capabilities_banner_doc_path_pinned` function L1309-1318 — `()` — Capabilities banner copy in event_loop.rs points users at this docs
--  `PINNED` variable L1312 — `: &str` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+- pub `register_skills` function L240-250 — `(&mut self, skills: Vec<(String, String)>)` — Add skill commands from the server's cached skill list.
+- pub `all` function L253-255 — `(&self) -> &[CommandInfo]` — Get all commands.
+- pub `matching` function L258-264 — `(&self, prefix: &str) -> Vec<&CommandInfo>` — Find commands matching a prefix (for autocomplete).
+- pub `find` function L267-272 — `(&self, name: &str) -> Option<&CommandInfo>` — Look up a command by exact name.
+- pub `AutocompleteState` struct L277-282 — `{ suggestions: Vec<CommandInfo>, selected: usize }` — Autocomplete state for the slash command dropdown.
+- pub `new` function L285-290 — `(suggestions: Vec<CommandInfo>) -> Self` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+- pub `next` function L292-296 — `(&mut self)` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+- pub `prev` function L298-306 — `(&mut self)` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+- pub `selected_command` function L308-310 — `(&self) -> Option<&CommandInfo>` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+- pub `is_empty` function L312-314 — `(&self) -> bool` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+- pub `CommandResult` enum L319-409 — `SystemMessage | ClearChat | EnterPlan | QueryInventory | InvokeSkill | RememberF...` — The result of executing a built-in command.
+- pub `WatchSpec` struct L422-427 — `{ template: String, feed_id: String, params: serde_json::Value, cadence: Option<...` — Parsed args for the non-interactive form of `/watch`.
+- pub `parse_watch_args` function L439-497 — `(args: &str) -> Result<WatchSpec, String>` — Parse the args body of `/watch`.
+- pub `parse_feeds_args` function L599-639 — `(args: &str) -> CommandResult` — Parse the args of `/feeds` into a CommandResult.
+- pub `execute_command` function L642-829 — `(cmd: &ParsedCommand, registry: &CommandRegistry) -> CommandResult` — Execute a parsed slash command against the registry.
+-  `CommandRegistry` type L65-273 — `= CommandRegistry` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `register_builtins` function L72-237 — `(&mut self)` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `AutocompleteState` type L284-315 — `= AutocompleteState` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `parse_since` function L505-537 — `(s: &str) -> Result<String, String>` — Parse a `since=` value into a canonical RFC3339 UTC string.
+-  `parse_relative_duration` function L541-553 — `(s: &str) -> Option<(i64, &str)>` — Pull `<digits><unit>` out of the input.
+-  `tokenize_kv` function L558-589 — `(s: &str) -> Result<Vec<String>, String>` — Tokenizer that respects double-quoted runs so a param value can
+-  `tests` module L832-1406 — `-` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `parse_simple_command` function L836-840 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `watch_parses_template_id_and_string_param` function L843-850 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `watch_parses_typed_and_quoted_params_and_cadence_override` function L853-864 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `watch_parses_since_relative_duration` function L867-875 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `watch_parses_since_iso_date` function L878-885 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `watch_parses_since_rfc3339` function L888-896 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `watch_rejects_garbage_since` function L899-906 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `watch_rejects_missing_args_and_bad_template` function L909-916 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `watch_command_dispatch_returns_feed_register` function L919-930 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `feeds_command_dispatch_returns_feed_list` function L933-940 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `feeds_pause_and_resume_dispatch` function L943-953 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `feeds_rm_requires_confirm_flag` function L956-969 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `feeds_pause_without_id_is_a_usage_message` function L972-978 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `watch_list_dispatches_to_feed_discover` function L981-999 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `watch_list_rejects_extra_args_with_hint` function L1002-1014 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `watch_list_doesnt_swallow_a_template_named_listed` function L1017-1033 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `feeds_unknown_subcommand_lists_usage` function L1036-1042 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `parse_command_with_args` function L1045-1049 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `parse_not_a_command` function L1052-1056 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `parse_slash_only` function L1059-1061 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `parse_with_leading_whitespace` function L1064-1067 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `registry_has_builtins` function L1070-1077 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `registry_matching_prefix` function L1080-1086 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `registry_matching_empty_returns_all` function L1089-1093 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `registry_skills` function L1096-1105 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `autocomplete_navigation` function L1108-1138 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_help` function L1141-1148 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_clear` function L1151-1158 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_unknown` function L1161-1168 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_inventory` function L1171-1178 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_skill` function L1181-1192 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_remember_with_text_returns_remember_fact` function L1199-1208 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_remember_without_text_returns_usage_message` function L1211-1224 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_memory_returns_memory_summary` function L1227-1234 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_forget_with_query_returns_forget_entity` function L1237-1246 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_forget_without_query_returns_usage_message` function L1249-1258 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_workflows_list_returns_workflow_list` function L1261-1271 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `every_advertised_builtin_dispatches_or_explains` function L1279-1305 — `()` — Audit: every built-in command in /help must dispatch to a CommandResult
+-  `execute_integrations_returns_list_variant` function L1310-1317 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_connect_with_service_returns_connect_variant` function L1320-1327 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_connect_without_service_returns_usage_message` function L1330-1340 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_disconnect_with_service_returns_disconnect_variant` function L1343-1350 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_usage_default_period_is_day` function L1354-1361 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_usage_with_week_arg` function L1364-1371 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_usage_lowercases_args` function L1374-1381 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_disconnect_without_service_returns_usage_message` function L1384-1391 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `capabilities_banner_doc_path_pinned` function L1396-1405 — `()` — Capabilities banner copy in event_loop.rs points users at this docs
+-  `PINNED` variable L1399 — `: &str` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
 
 #### crates/arawn-tui/src/event.rs
 
@@ -9329,44 +9441,52 @@
 
 #### crates/arawn-tui/src/event_loop.rs
 
-- pub `run_tui` function L64-1225 — `(url: &str, model_name: &str) -> Result<(), Box<dyn std::error::Error>>` — Run the TUI connected to the given WebSocket server URL.
+- pub `run_tui` function L64-1240 — `(url: &str, model_name: &str) -> Result<(), Box<dyn std::error::Error>>` — Run the TUI connected to the given WebSocket server URL.
 -  `MIN_FRAME_INTERVAL` variable L29 — `: Duration` — Minimum interval between renders driven by streaming/event traffic.
 -  `maybe_draw` function L33-45 — `( terminal: &mut Terminal<B>, app: &mut App, ) -> io::Result<()>` — Render if enough time has elapsed since the last draw.
 -  `force_draw` function L49-57 — `( terminal: &mut Terminal<B>, app: &mut App, ) -> io::Result<()>` — Render now regardless of frame budget.
 -  `rect_contains` function L59-61 — `(rect: Rect, col: u16, row: u16) -> bool`
--  `format_integrations_list` function L1228-1248 — `(items: &[serde_json::Value]) -> String` — Render a `list_integrations` response as a markdown table the user can scan.
--  `OpenAttempt` enum L1252-1256 — `Opened | NoOpener | Failed` — What `try_open_url` did.
--  `try_open_url` function L1260-1293 — `(url: &str) -> OpenAttempt` — Best-effort browser open.
--  `apply_system_notice` function L1298-1336 — `(notice: &arawn_service::ServerNotice, app: &mut crate::app::App)` — Push a server-side notice (plugin/config hot-reload outcome) into the
--  `ceremony_event_should_refresh` function L1341-1360 — `(notice: &arawn_service::ServerNotice, app: &mut crate::app::App)` — If a ceremony_event notice targets the tablet the user is currently
--  `format_permissions_status` function L1363-1412 — `(status: &serde_json::Value) -> String` — Render `get_permissions_status` JSON as a human-readable system message.
--  `format_feed_registered` function L1415-1426 — `(dto: &serde_json::Value) -> String` — Render a freshly-registered feed into a chat-ready system message.
--  `format_feed_list` function L1431-1457 — `(list: &[serde_json::Value]) -> String` — Render the `/feeds` listing as a markdown table-ish block.
--  `human_size` function L1459-1472 — `(bytes: u64) -> String`
--  `KB` variable L1460 — `: u64`
--  `MB` variable L1461 — `: u64`
--  `GB` variable L1462 — `: u64`
--  `format_feed_discover` function L1477-1531 — `(dto: &serde_json::Value) -> String` — Render `feed_discover` results into a chat-pane block.
--  `format_known_templates` function L1535-1548 — `() -> String` — Static help for `/watch list` with no template — points the user
--  `current_iso_week` function L1553-1557 — `() -> String` — ISO-week period key in the canonical `YYYY-WNN` form used by the
--  `render_ceremony_today` function L1561-1593 — `(client: &mut crate::ws_client::WsClient, today: &str) -> String` — Fetch the daily tablet for `today`, then list its items, then
--  `render_ceremony_week` function L1597-1634 — `(client: &mut crate::ws_client::WsClient, iso_week: &str) -> String` — Fetch the weekly tablet for the current ISO week, then items, then
--  `render_ceremony_retro` function L1639-1675 — `(client: &mut crate::ws_client::WsClient, iso_week: &str) -> String` — Fetch the retro tablet for the current ISO week, then items, then
--  `fetch_tablet_id_and_status` function L1680-1696 — `( client: &mut crate::ws_client::WsClient, kind: &str, period_key: &str, ) -> Op...` — Re-fetch the tablet for `(kind, period_key)` and return its id +
--  `fetch_diary_body` function L1701-1717 — `(client: &mut crate::ws_client::WsClient, tablet_id: &str) -> String` — Pull any existing diary body from the retro tablet by listing its
--  `handle_ceremony_overlay_key` function L1722-1814 — `( client: &mut crate::ws_client::WsClient, app: &mut App, key: crossterm::event:...` — Drive the active ceremony overlay from a raw key event.
--  `apply_priority_rpc_result` function L1818-1838 — `( app: &mut App, tablet_id: &str, client: &mut crate::ws_client::WsClient, res: ...` — After a priority RPC, refresh the modal's priorities list (or stash
--  `refresh_active_ceremony_overlay` function L1844-1869 — `(client: &mut crate::ws_client::WsClient, app: &mut App)` — Re-pull underlying data for whichever ceremony overlay is active so
--  `fetch_open_todos` function L1877-1908 — `(client: &mut crate::ws_client::WsClient) -> Vec<crate::todo_modal::TodoRow>` — Fetch all open todos for the overlay.
--  `handle_todo_overlay_key` function L1910-1990 — `( client: &mut crate::ws_client::WsClient, app: &mut App, key: crossterm::event:...`
--  `ceremony_refresh_tests` module L1993-2058 — `-`
--  `notice_for` function L1998-2009 — `(tablet_id: &str) -> arawn_service::ServerNotice`
--  `ceremony_event_for_active_tablet_flags_refresh` function L2012-2023 — `()`
--  `ceremony_event_for_other_tablet_is_ignored` function L2026-2034 — `()`
--  `ceremony_event_with_no_overlay_is_ignored` function L2037-2043 — `()`
--  `non_ceremony_notices_still_render_into_chat` function L2046-2057 — `()`
--  `fetch_items` function L2060-2077 — `( client: &mut crate::ws_client::WsClient, tablet_id: &str, ) -> Vec<arawn_cerem...`
--  `fetch_priorities` function L2079-2096 — `( client: &mut crate::ws_client::WsClient, tablet_id: &str, ) -> Vec<arawn_cerem...`
+-  `format_integrations_list` function L1243-1263 — `(items: &[serde_json::Value]) -> String` — Render a `list_integrations` response as a markdown table the user can scan.
+-  `OpenAttempt` enum L1267-1271 — `Opened | NoOpener | Failed` — What `try_open_url` did.
+-  `try_open_url` function L1275-1308 — `(url: &str) -> OpenAttempt` — Best-effort browser open.
+-  `apply_system_notice` function L1313-1360 — `(notice: &arawn_service::ServerNotice, app: &mut crate::app::App)` — Push a server-side notice (plugin/config hot-reload outcome) into the
+-  `ceremony_event_should_refresh` function L1365-1384 — `(notice: &arawn_service::ServerNotice, app: &mut crate::app::App)` — If a ceremony_event notice targets the tablet the user is currently
+-  `format_permissions_status` function L1387-1436 — `(status: &serde_json::Value) -> String` — Render `get_permissions_status` JSON as a human-readable system message.
+-  `format_feed_registered` function L1439-1450 — `(dto: &serde_json::Value) -> String` — Render a freshly-registered feed into a chat-ready system message.
+-  `format_feed_list` function L1455-1481 — `(list: &[serde_json::Value]) -> String` — Render the `/feeds` listing as a markdown table-ish block.
+-  `human_size` function L1483-1496 — `(bytes: u64) -> String`
+-  `KB` variable L1484 — `: u64`
+-  `MB` variable L1485 — `: u64`
+-  `GB` variable L1486 — `: u64`
+-  `format_feed_discover` function L1501-1555 — `(dto: &serde_json::Value) -> String` — Render `feed_discover` results into a chat-pane block.
+-  `format_known_templates` function L1559-1572 — `() -> String` — Static help for `/watch list` with no template — points the user
+-  `current_iso_week` function L1577-1581 — `() -> String` — ISO-week period key in the canonical `YYYY-WNN` form used by the
+-  `render_ceremony_today` function L1585-1617 — `(client: &mut crate::ws_client::WsClient, today: &str) -> String` — Fetch the daily tablet for `today`, then list its items, then
+-  `render_ceremony_week` function L1621-1658 — `(client: &mut crate::ws_client::WsClient, iso_week: &str) -> String` — Fetch the weekly tablet for the current ISO week, then items, then
+-  `render_ceremony_retro` function L1663-1699 — `(client: &mut crate::ws_client::WsClient, iso_week: &str) -> String` — Fetch the retro tablet for the current ISO week, then items, then
+-  `fetch_daily_view` function L1705-1721 — `( client: &mut crate::ws_client::WsClient, today: &str, ) -> Option<arawn_ceremo...` — Fetch the daily tablet + items for `today` and return a
+-  `fetch_weekly_view` function L1725-1746 — `( client: &mut crate::ws_client::WsClient, iso_week: &str, ) -> Option<arawn_cer...` — Fetch the weekly tablet + items + priorities for `iso_week`.
+-  `render_usage` function L1753-1778 — `(client: &mut crate::ws_client::WsClient, period: &str) -> String` — T-0362: TUI `/usage` slash command — call the server-side
+-  `refresh_brief_cache` function L1785-1803 — `(client: &mut crate::ws_client::WsClient, app: &mut App)` — I-0035 Phase 2 / 3 / 4: refresh the cached brief markdown +
+-  `render_brief_combined` function L1809-1819 — `(client: &mut crate::ws_client::WsClient) -> String` — I-0035 Phase 2 (T-0354): fetch today's daily tablet + this week's
+-  `fetch_tablet_id_and_status` function L1824-1840 — `( client: &mut crate::ws_client::WsClient, kind: &str, period_key: &str, ) -> Op...` — Re-fetch the tablet for `(kind, period_key)` and return its id +
+-  `fetch_diary_body` function L1845-1861 — `(client: &mut crate::ws_client::WsClient, tablet_id: &str) -> String` — Pull any existing diary body from the retro tablet by listing its
+-  `handle_ceremony_overlay_key` function L1866-1958 — `( client: &mut crate::ws_client::WsClient, app: &mut App, key: crossterm::event:...` — Drive the active ceremony overlay from a raw key event.
+-  `apply_priority_rpc_result` function L1962-1982 — `( app: &mut App, tablet_id: &str, client: &mut crate::ws_client::WsClient, res: ...` — After a priority RPC, refresh the modal's priorities list (or stash
+-  `refresh_active_ceremony_overlay` function L1988-2013 — `(client: &mut crate::ws_client::WsClient, app: &mut App)` — Re-pull underlying data for whichever ceremony overlay is active so
+-  `fetch_open_todos` function L2021-2052 — `(client: &mut crate::ws_client::WsClient) -> Vec<crate::todo_modal::TodoRow>` — Fetch all open todos for the overlay.
+-  `handle_todo_overlay_key` function L2054-2134 — `( client: &mut crate::ws_client::WsClient, app: &mut App, key: crossterm::event:...`
+-  `ceremony_refresh_tests` module L2137-2242 — `-`
+-  `notice_for` function L2142-2153 — `(tablet_id: &str) -> arawn_service::ServerNotice`
+-  `ceremony_event_for_active_tablet_flags_refresh` function L2156-2167 — `()`
+-  `ceremony_event_for_other_tablet_is_ignored` function L2170-2178 — `()`
+-  `ceremony_event_with_no_overlay_is_ignored` function L2181-2187 — `()`
+-  `non_ceremony_notices_still_render_into_chat` function L2190-2201 — `()`
+-  `briefing_ready_notice` function L2205-2212 — `() -> arawn_service::ServerNotice`
+-  `briefing_ready_flags_refresh_and_posts_toast` function L2215-2231 — `()`
+-  `briefing_ready_does_not_affect_ceremony_refresh` function L2234-2241 — `()`
+-  `fetch_items` function L2244-2261 — `( client: &mut crate::ws_client::WsClient, tablet_id: &str, ) -> Vec<arawn_cerem...`
+-  `fetch_priorities` function L2263-2280 — `( client: &mut crate::ws_client::WsClient, tablet_id: &str, ) -> Vec<arawn_cerem...`
 
 #### crates/arawn-tui/src/lib.rs
 
@@ -9380,11 +9500,12 @@
 - pub `modal` module L8 — `-`
 - pub `render` module L9 — `-`
 - pub `theme` module L14 — `-`
-- pub `todo_modal` module L15 — `-`
-- pub `tui_prompt` module L16 — `-`
-- pub `width` module L17 — `-`
-- pub `wrap` module L18 — `-`
-- pub `ws_client` module L19 — `-`
+- pub `toast` module L15 — `-`
+- pub `todo_modal` module L16 — `-`
+- pub `tui_prompt` module L17 — `-`
+- pub `width` module L18 — `-`
+- pub `wrap` module L19 — `-`
+- pub `ws_client` module L20 — `-`
 -  `snapshot` module L11 — `-`
 -  `snapshot_tests` module L13 — `-`
 
@@ -9456,55 +9577,92 @@
 
 #### crates/arawn-tui/src/render.rs
 
-- pub `render` function L13-103 — `(app: &mut App, frame: &mut Frame)` — Render function.
+- pub `render` function L24-152 — `(app: &mut App, frame: &mut Frame)` — Render function.
 -  `SPINNER_FRAMES` variable L10 — `: &[char]`
--  `render_sidebar_tab` function L105-129 — `(frame: &mut Frame, area: ratatui::layout::Rect)`
--  `render_status_bar` function L131-227 — `(app: &App, frame: &mut Frame, area: ratatui::layout::Rect)`
--  `format_tokens` function L230-238 — `(n: u64) -> String` — Format a token count for display: 1234 → "1.2k", 12345 → "12.3k", 500 → "500"
--  `render_sidebar` function L240-314 — `(app: &App, frame: &mut Frame, area: ratatui::layout::Rect)`
--  `render_chat` function L316-705 — `(app: &mut App, frame: &mut Frame, area: ratatui::layout::Rect)`
--  `render_separator` function L707-711 — `(frame: &mut Frame, area: ratatui::layout::Rect)`
--  `render_input` function L713-778 — `(app: &App, frame: &mut Frame, area: ratatui::layout::Rect)`
--  `render_autocomplete` function L781-839 — `( ac: &crate::command::AutocompleteState, frame: &mut Frame, input_area: ratatui...` — Render the autocomplete dropdown above the input line.
--  `render_oauth_heartbeat` function L841-864 — `(app: &App, frame: &mut Frame, area: ratatui::layout::Rect)`
--  `render_idle_hero` function L866-897 — `(frame: &mut Frame, area: ratatui::layout::Rect)`
--  `truncate_to` function L900-902 — `(s: &str, max_cells: usize) -> String` — Truncate a string to fit within a display width, adding "…" if needed.
--  `compact_tool_summary` function L905-910 — `(content: &str) -> String` — Extract a compact summary from tool call content for inline display.
--  `truncate_for_display` function L912-916 — `(s: &str, max: usize) -> String`
--  `tests` module L919-1677 — `-`
--  `truncate_for_display_handles_utf8_at_boundary` function L926-936 — `()`
--  `truncate_for_display_passes_through_short_strings` function L939-941 — `()`
--  `buffer_to_string` function L943-958 — `(terminal: &Terminal<TestBackend>, row: u16) -> String`
--  `render_empty_app_has_status_bar` function L961-970 — `()`
--  `render_with_messages_shows_content` function L973-999 — `()`
--  `render_with_input_text` function L1002-1017 — `()`
--  `render_streaming_shows_cursor` function L1020-1043 — `()`
--  `render_small_terminal` function L1046-1051 — `()`
--  `render_large_terminal` function L1054-1059 — `()`
--  `region_text` function L1064-1076 — `(terminal: &Terminal<TestBackend>, x: u16, y: u16, w: u16, h: u16) -> String` — Extract text from a rectangular region of the buffer.
--  `chat_region_for` function L1080-1093 — `(terminal: &Terminal<TestBackend>, sidebar_visible: bool) -> String` — Extract the chat area text.
--  `chat_region` function L1096-1098 — `(terminal: &Terminal<TestBackend>) -> String` — Convenience: chat region for default app (sidebar hidden).
--  `sidebar_region` function L1102-1110 — `(terminal: &Terminal<TestBackend>) -> String` — Extract the sidebar text (left 20%, rows 1..height-3).
--  `input_region` function L1113-1118 — `(terminal: &Terminal<TestBackend>) -> String` — Extract the input bar text (second from bottom row).
--  `chat_renders_user_message_with_prefix` function L1123-1137 — `()`
--  `chat_renders_assistant_message_with_prefix` function L1140-1154 — `()`
--  `chat_renders_tool_call_with_icon` function L1157-1187 — `()`
--  `chat_renders_tool_result_collapsed` function L1190-1218 — `()`
--  `chat_renders_tool_error_result` function L1221-1244 — `()`
--  `chat_renders_tool_result_truncated` function L1247-1274 — `()`
--  `chat_streaming_text_appears_in_chat_area` function L1277-1295 — `()`
--  `sidebar_renders_workstream_names` function L1298-1334 — `()`
--  `sidebar_does_not_leak_into_chat` function L1337-1371 — `()`
--  `input_shows_placeholder_when_empty` function L1374-1385 — `()`
--  `input_shows_generating_when_active` function L1388-1401 — `()`
--  `status_bar_shows_generating_indicator` function L1404-1418 — `()`
--  `status_bar_shows_workstream_name` function L1421-1445 — `()`
--  `messages_do_not_appear_in_input_area` function L1448-1471 — `()`
--  `chat_auto_scrolls_to_bottom_with_many_messages` function L1476-1506 — `()`
--  `chat_scroll_up_reveals_older_messages` function L1509-1537 — `()`
--  `chat_few_messages_all_visible` function L1540-1554 — `()`
--  `last_message_visible_above_input` function L1557-1610 — `()`
--  `last_tool_result_visible_above_input` function L1613-1676 — `()`
+-  `DASHBOARD_WIDTH` variable L14 — `: u16` — I-0035 Phase 3 (T-0356) — fixed width for the right-pane
+-  `MIN_FOR_THREE_PANE` variable L21 — `: u16` — Minimum terminal width to render the three-pane layout.
+-  `render_sidebar_tab` function L154-178 — `(frame: &mut Frame, area: ratatui::layout::Rect)`
+-  `render_status_bar` function L180-276 — `(app: &App, frame: &mut Frame, area: ratatui::layout::Rect)`
+-  `format_tokens` function L279-287 — `(n: u64) -> String` — Format a token count for display: 1234 → "1.2k", 12345 → "12.3k", 500 → "500"
+-  `render_sidebar` function L289-327 — `(app: &App, frame: &mut Frame, area: ratatui::layout::Rect)`
+-  `render_dashboard_pane` function L334-357 — `(app: &App, frame: &mut Frame, area: ratatui::layout::Rect)` — I-0035 Phase 3 dashboard pane.
+-  `BRIEF_HEIGHT` variable L346 — `: u16`
+-  `render_dashboard_brief` function L363-421 — `(app: &App, frame: &mut Frame, area: ratatui::layout::Rect)` — I-0035 Phase 3 T-B (T-0357) — compact brief summary in the
+-  `MAX_CAL` variable L398 — `: usize`
+-  `render_dashboard_actions` function L429-501 — `(app: &App, frame: &mut Frame, area: ratatui::layout::Rect)` — I-0035 Phase 3 T-C (T-0358) — read-only action items list in
+-  `push_action_rows` function L506-537 — `( lines: &mut Vec<Line<'static>>, items: &[&arawn_ceremonies::service::ItemDto],...` — Push action rows (checkbox + truncated body) into `lines`,
+-  `format_action_row` function L539-559 — `(item: &arawn_ceremonies::service::ItemDto, budget: usize) -> String`
+-  `format_brief_date_line` function L563-579 — `(period_key: &str) -> String` — Format the brief's date line: `YYYY-MM-DD · Wed` when the
+-  `format_calendar_row` function L583-607 — `(item: &arawn_ceremonies::service::ItemDto, budget: usize) -> String` — Render one calendar row: `HH:MM <title>` when body has a
+-  `detect_conflict` function L613-646 — `(items: &[&arawn_ceremonies::service::ItemDto]) -> Option<String>` — Pure conflict detection over calendar items.
+-  `render_chat` function L648-1045 — `(app: &mut App, frame: &mut Frame, area: ratatui::layout::Rect)`
+-  `render_separator` function L1047-1051 — `(frame: &mut Frame, area: ratatui::layout::Rect)`
+-  `render_input` function L1053-1118 — `(app: &App, frame: &mut Frame, area: ratatui::layout::Rect)`
+-  `render_autocomplete` function L1121-1179 — `( ac: &crate::command::AutocompleteState, frame: &mut Frame, input_area: ratatui...` — Render the autocomplete dropdown above the input line.
+-  `render_toast_bar` function L1184-1199 — `(app: &App, frame: &mut Frame, area: ratatui::layout::Rect)` — I-0035 Phase 4 T-A — render the toast at the head of the queue
+-  `render_oauth_heartbeat` function L1201-1224 — `(app: &App, frame: &mut Frame, area: ratatui::layout::Rect)`
+-  `render_empty_chat_brief` function L1230-1250 — `(app: &App, frame: &mut Frame, area: ratatui::layout::Rect)` — I-0035 Phase 2 (T-0354): render the cached brief markdown in the
+-  `render_idle_hero` function L1252-1292 — `(frame: &mut Frame, area: ratatui::layout::Rect)`
+-  `truncate_to` function L1295-1297 — `(s: &str, max_cells: usize) -> String` — Truncate a string to fit within a display width, adding "…" if needed.
+-  `compact_tool_summary` function L1300-1305 — `(content: &str) -> String` — Extract a compact summary from tool call content for inline display.
+-  `truncate_for_display` function L1307-1311 — `(s: &str, max: usize) -> String`
+-  `tests` module L1314-2423 — `-`
+-  `truncate_for_display_handles_utf8_at_boundary` function L1321-1331 — `()`
+-  `truncate_for_display_passes_through_short_strings` function L1334-1336 — `()`
+-  `cal_item` function L1340-1356 — `(text: &str, start: &str, end: &str) -> arawn_ceremonies::service::ItemDto`
+-  `daily_view_with_items` function L1358-1373 — `( items: Vec<arawn_ceremonies::service::ItemDto>, ) -> arawn_ceremonies::DailyVi...`
+-  `dashboard_brief_renders_today_with_calendar` function L1376-1407 — `()`
+-  `dashboard_brief_flags_conflict` function L1410-1421 — `()`
+-  `dashboard_brief_no_conflict_when_separated` function L1424-1431 — `()`
+-  `dashboard_brief_empty_state_no_tablet` function L1434-1452 — `()`
+-  `dashboard_brief_empty_state_no_calendar_items` function L1455-1473 — `()`
+-  `format_brief_date_line_includes_weekday` function L1476-1479 — `()`
+-  `format_brief_date_line_fallback_on_garbage` function L1482-1484 — `()`
+-  `attn_item` function L1488-1503 — `( ordinal: i32, text: &str, ) -> arawn_ceremonies::service::ItemDto`
+-  `todo_item` function L1505-1520 — `( ordinal: i32, text: &str, ) -> arawn_ceremonies::service::ItemDto`
+-  `daily_view_for_actions` function L1522-1537 — `( items: Vec<arawn_ceremonies::service::ItemDto>, ) -> arawn_ceremonies::DailyVi...`
+-  `draw_actions` function L1539-1548 — `(app: &App, w: u16, h: u16) -> Terminal<TestBackend>`
+-  `buffer_contains` function L1550-1557 — `(terminal: &Terminal<TestBackend>, needle: &str) -> bool`
+-  `dashboard_actions_renders_attention_items` function L1560-1572 — `()`
+-  `dashboard_actions_empty_state_no_tablet` function L1575-1581 — `()`
+-  `dashboard_actions_empty_state_no_attention_items` function L1584-1589 — `()`
+-  `dashboard_actions_truncates_long_titles` function L1592-1606 — `()`
+-  `dashboard_actions_overflow_footer` function L1609-1621 — `()`
+-  `post_toast_enqueues_message` function L1626-1633 — `()`
+-  `expired_toast_is_dropped_on_render` function L1636-1653 — `()`
+-  `toast_truncates_long_message` function L1656-1674 — `()`
+-  `dashboard_actions_carried_over_separator` function L1677-1687 — `()`
+-  `buffer_to_string` function L1689-1704 — `(terminal: &Terminal<TestBackend>, row: u16) -> String`
+-  `render_empty_app_has_status_bar` function L1707-1716 — `()`
+-  `render_with_messages_shows_content` function L1719-1745 — `()`
+-  `render_with_input_text` function L1748-1763 — `()`
+-  `render_streaming_shows_cursor` function L1766-1789 — `()`
+-  `render_small_terminal` function L1792-1797 — `()`
+-  `render_large_terminal` function L1800-1805 — `()`
+-  `region_text` function L1810-1822 — `(terminal: &Terminal<TestBackend>, x: u16, y: u16, w: u16, h: u16) -> String` — Extract text from a rectangular region of the buffer.
+-  `chat_region_for` function L1826-1839 — `(terminal: &Terminal<TestBackend>, sidebar_visible: bool) -> String` — Extract the chat area text.
+-  `chat_region` function L1842-1844 — `(terminal: &Terminal<TestBackend>) -> String` — Convenience: chat region for default app (sidebar hidden).
+-  `sidebar_region` function L1848-1856 — `(terminal: &Terminal<TestBackend>) -> String` — Extract the sidebar text (left 20%, rows 1..height-3).
+-  `input_region` function L1859-1864 — `(terminal: &Terminal<TestBackend>) -> String` — Extract the input bar text (second from bottom row).
+-  `chat_renders_user_message_with_prefix` function L1869-1883 — `()`
+-  `chat_renders_assistant_message_with_prefix` function L1886-1900 — `()`
+-  `chat_renders_tool_call_with_icon` function L1903-1933 — `()`
+-  `chat_renders_tool_result_collapsed` function L1936-1964 — `()`
+-  `chat_renders_tool_error_result` function L1967-1990 — `()`
+-  `chat_renders_tool_result_truncated` function L1993-2020 — `()`
+-  `chat_streaming_text_appears_in_chat_area` function L2023-2041 — `()`
+-  `sidebar_renders_workstream_names` function L2044-2080 — `()`
+-  `sidebar_does_not_leak_into_chat` function L2083-2117 — `()`
+-  `input_shows_placeholder_when_empty` function L2120-2131 — `()`
+-  `input_shows_generating_when_active` function L2134-2147 — `()`
+-  `status_bar_shows_generating_indicator` function L2150-2164 — `()`
+-  `status_bar_shows_workstream_name` function L2167-2191 — `()`
+-  `messages_do_not_appear_in_input_area` function L2194-2217 — `()`
+-  `chat_auto_scrolls_to_bottom_with_many_messages` function L2222-2252 — `()`
+-  `chat_scroll_up_reveals_older_messages` function L2255-2283 — `()`
+-  `chat_few_messages_all_visible` function L2286-2300 — `()`
+-  `last_message_visible_above_input` function L2303-2356 — `()`
+-  `last_tool_result_visible_above_input` function L2359-2422 — `()`
 
 #### crates/arawn-tui/src/snapshot.rs
 
@@ -9514,7 +9672,7 @@
 
 #### crates/arawn-tui/src/snapshot_tests.rs
 
--  `tests` module L2-425 — `-`
+-  `tests` module L2-628 — `-`
 -  `make_terminal` function L16-18 — `(w: u16, h: u16) -> Terminal<TestBackend>`
 -  `draw` function L20-23 — `(app: &mut App, terminal: &mut Terminal<TestBackend>) -> String`
 -  `draw_styled` function L25-28 — `(app: &mut App, terminal: &mut Terminal<TestBackend>) -> String`
@@ -9527,17 +9685,24 @@
 -  `snapshot_focus_main_with_messages` function L149-157 — `()`
 -  `snapshot_input_placeholder` function L162-167 — `()`
 -  `snapshot_input_generating` function L170-177 — `()`
--  `snapshot_idle_hero` function L182-193 — `()`
--  `snapshot_unicode_chrome_alignment` function L196-221 — `()`
--  `snapshot_speaker_gutters` function L224-254 — `()`
--  `snapshot_ten_tool_calls_collapsed` function L257-282 — `()`
--  `snapshot_error_in_chat` function L285-295 — `()`
--  `styled_snapshot_conversation` function L300-323 — `()`
--  `styled_snapshot_focus_borders` function L326-335 — `()`
--  `styled_snapshot_sidebar_focused` function L338-346 — `()`
--  `snapshot_rich_markdown` function L349-381 — `()`
--  `styled_snapshot_rich_markdown` function L384-412 — `()`
--  `styled_snapshot_generating_state` function L415-424 — `()`
+-  `snapshot_idle_hero` function L182-196 — `()`
+-  `snapshot_layout_three_pane` function L201-212 — `()`
+-  `snapshot_dashboard_brief_with_calendar` function L217-269 — `()`
+-  `snapshot_dashboard_actions_with_items` function L274-313 — `()`
+-  `snapshot_toast_visible` function L317-330 — `()`
+-  `snapshot_layout_narrow_fallback` function L335-346 — `()`
+-  `snapshot_idle_hero_with_brief` function L351-372 — `()`
+-  `snapshot_idle_hero_partial_brief_only_placeholders` function L376-396 — `()`
+-  `snapshot_unicode_chrome_alignment` function L399-424 — `()`
+-  `snapshot_speaker_gutters` function L427-457 — `()`
+-  `snapshot_ten_tool_calls_collapsed` function L460-485 — `()`
+-  `snapshot_error_in_chat` function L488-498 — `()`
+-  `styled_snapshot_conversation` function L503-526 — `()`
+-  `styled_snapshot_focus_borders` function L529-538 — `()`
+-  `styled_snapshot_sidebar_focused` function L541-549 — `()`
+-  `snapshot_rich_markdown` function L552-584 — `()`
+-  `styled_snapshot_rich_markdown` function L587-615 — `()`
+-  `styled_snapshot_generating_state` function L618-627 — `()`
 
 #### crates/arawn-tui/src/theme.rs
 
@@ -9604,6 +9769,31 @@
 - pub `TABLE_CHROME` variable L176 — `: Color` — Table chrome (│ ├ ┼ ┤)
 - pub `bold` function L180-182 — `(color: Color) -> Style` — tool names, headings, links, etc.
 - pub `italic` function L184-186 — `(color: Color) -> Style` — tool names, headings, links, etc.
+
+#### crates/arawn-tui/src/toast.rs
+
+- pub `TOAST_TTL` variable L13 — `: Duration` — Default time-to-live for a toast (5 seconds — enough to read a
+- pub `TOAST_QUEUE_CAP` variable L17 — `: usize` — Maximum queue depth.
+- pub `ToastLevel` enum L21-25 — `Info | Warn | Error` — Severity used to route a toast to a theme color.
+- pub `Toast` struct L28-33 — `{ message: String, level: ToastLevel, posted_at: Instant, ttl: Duration }` — toasts lazily on each render pass.
+- pub `new` function L36-43 — `(message: impl Into<String>, level: ToastLevel) -> Self` — toasts lazily on each render pass.
+- pub `is_expired` function L45-47 — `(&self, now: Instant) -> bool` — toasts lazily on each render pass.
+- pub `drop_expired` function L54-62 — `(queue: &mut VecDeque<Toast>, now: Instant)` — Drop every toast at the front of the queue whose TTL has elapsed.
+- pub `enqueue` function L67-72 — `(queue: &mut VecDeque<Toast>, toast: Toast)` — Append a toast, capping at [`TOAST_QUEUE_CAP`].
+- pub `write_osc52_clipboard` function L82-91 — `(text: &str)` — T-0361 — write `text` to the system clipboard via the OSC 52
+-  `Toast` type L35-48 — `= Toast` — toasts lazily on each render pass.
+-  `base64_encode` function L96-125 — `(input: &[u8]) -> String` — Minimal RFC 4648 base64 encoder.
+-  `CHARS` variable L97-98 — `: &[u8; 64]` — toasts lazily on each render pass.
+-  `tests` module L128-197 — `-` — toasts lazily on each render pass.
+-  `is_expired_after_ttl` function L132-137 — `()` — toasts lazily on each render pass.
+-  `is_not_expired_within_ttl` function L140-143 — `()` — toasts lazily on each render pass.
+-  `drop_expired_pops_front_only` function L146-156 — `()` — toasts lazily on each render pass.
+-  `base64_encodes_empty` function L161-163 — `()` — toasts lazily on each render pass.
+-  `base64_encodes_single_byte` function L166-169 — `()` — toasts lazily on each render pass.
+-  `base64_encodes_two_bytes` function L172-174 — `()` — toasts lazily on each render pass.
+-  `base64_encodes_three_bytes` function L177-179 — `()` — toasts lazily on each render pass.
+-  `base64_encodes_eight_bytes` function L182-185 — `()` — toasts lazily on each render pass.
+-  `enqueue_caps_at_max` function L188-196 — `()` — toasts lazily on each render pass.
 
 #### crates/arawn-tui/src/todo_modal.rs
 

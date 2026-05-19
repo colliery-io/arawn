@@ -399,6 +399,7 @@ impl LocalService {
                     .unwrap_or_else(|| pc.memories.clone()),
                 session_context: pc.session_context.clone(),
                 plugin_prompts: pc.plugin_prompts.clone(),
+                identity_profile: workstream.identity_profile,
                 // Closure captures the registry Arc; queries it fresh each
                 // turn so /connect and /disconnect reflect immediately.
                 integration_capabilities: Some({

@@ -279,6 +279,94 @@ pub fn render_weekly(view: &WeeklyView) -> String {
     out
 }
 
+/// I-0035 Phase 2: composite "brief" view over today's daily tablet
+/// and this week's weekly tablet. Either field may be `None` —
+/// callers pass whatever the ceremony service hands them; the
+/// composer emits placeholders for missing tablets so callers can
+/// always render unconditionally.
+///
+/// Heading hierarchy after composition:
+///
+/// ```markdown
+/// # Brief — <date>
+///
+/// ## Today
+/// ### Today's calendar       (was `## Today's calendar` in render_daily)
+/// ...
+///
+/// ## This week
+/// ### Priorities             (was `## Priorities` in render_weekly)
+/// ...
+/// ```
+///
+/// Inner `## ` headings are demoted to `### ` by a string-replace
+/// over the wrapped output. The existing daily/weekly renderers
+/// don't emit code fences, so this is safe; if a future renderer
+/// adds fenced blocks containing literal `\n## `, the demotion
+/// would over-fire and that renderer should switch to a depth-aware
+/// API instead.
+#[derive(Debug, Clone)]
+pub struct BriefView {
+    pub daily: Option<DailyView>,
+    pub weekly: Option<WeeklyView>,
+}
+
+/// Render a composite brief. `now` is passed in for testability —
+/// when both tablets are absent, the date header falls back to
+/// `now.format("%Y-%m-%d")`.
+pub fn render_brief(view: &BriefView, now: chrono::DateTime<chrono::Utc>) -> String {
+    let date = view
+        .daily
+        .as_ref()
+        .map(|d| d.tablet.period_key.clone())
+        .or_else(|| view.weekly.as_ref().map(|w| w.tablet.period_key.clone()))
+        .unwrap_or_else(|| now.format("%Y-%m-%d").to_string());
+
+    let mut out = String::new();
+    out.push_str(&format!("# Brief — {date}\n\n"));
+
+    out.push_str("## Today\n\n");
+    match view.daily.as_ref() {
+        Some(daily) => {
+            let inner = demote_h2_to_h3(&render_daily(daily));
+            out.push_str(&inner);
+            if !out.ends_with("\n\n") {
+                out.push('\n');
+            }
+        }
+        None => {
+            out.push_str("_(no daily tablet — run /day to generate)_\n\n");
+        }
+    }
+
+    out.push_str("## This week\n\n");
+    match view.weekly.as_ref() {
+        Some(weekly) => {
+            let inner = demote_h2_to_h3(&render_weekly(weekly));
+            out.push_str(&inner);
+            if !out.ends_with("\n\n") {
+                out.push('\n');
+            }
+        }
+        None => {
+            out.push_str("_(no weekly tablet — Monday's ceremony will produce one)_\n\n");
+        }
+    }
+
+    out
+}
+
+/// Demote every `\n## ` heading to `\n### `, plus a leading `## `
+/// at the start of the string. Coarse but adequate for the daily /
+/// weekly renderers, which do not emit fenced code blocks.
+fn demote_h2_to_h3(s: &str) -> String {
+    let mut out = s.replace("\n## ", "\n### ");
+    if out.starts_with("## ") {
+        out = format!("### {}", &out[3..]);
+    }
+    out
+}
+
 fn render_priority_bullet(out: &mut String, p: &PriorityDto) {
     // `confirmed` priorities get a check-mark; candidates get a
     // question mark so the open Monday-morning flow is obvious.
@@ -698,5 +786,146 @@ mod tests {
         };
         let md = render_retro(&view);
         assert!(md.contains("{\"shape\":\"not text\"}"));
+    }
+
+    // I-0035 Phase 2 — composite brief tests.
+
+    fn daily_view_with_calendar_item() -> DailyView {
+        let tablet = TabletDto {
+            id: "daily-2026-05-19".into(),
+            kind: "daily".into(),
+            period_key: "2026-05-19".into(),
+            generated_at: "2026-05-19T07:00:00Z".into(),
+            status: "open".into(),
+            workstreams_scanned: json!([]),
+            priorities_confirmed_at: None,
+        };
+        DailyView {
+            tablet,
+            items: vec![ItemDto {
+                id: "daily-cal-1".into(),
+                tablet_id: "daily-2026-05-19".into(),
+                section_key: "calendar".into(),
+                ordinal: 0,
+                kind: "freeform".into(),
+                body: json!({"text": "09:00 standup"}),
+                citation_id: None,
+                done_at: None,
+                created_at: "2026-05-19T07:00:00Z".into(),
+            }],
+        }
+    }
+
+    fn weekly_view_with_priority() -> WeeklyView {
+        let tablet = TabletDto {
+            id: "weekly-2026-W21".into(),
+            kind: "weekly".into(),
+            period_key: "2026-W21".into(),
+            generated_at: "2026-05-18T07:00:00Z".into(),
+            status: "open".into(),
+            workstreams_scanned: json!([]),
+            priorities_confirmed_at: Some("2026-05-18T07:30:00Z".into()),
+        };
+        WeeklyView {
+            tablet,
+            items: vec![],
+            priorities: vec![PriorityDto {
+                id: "p-1".into(),
+                tablet_id: "weekly-2026-W21".into(),
+                ordinal: 0,
+                source: "confirmed".into(),
+                body: json!({"text": "Ship Phase 2"}),
+                rationale: "User-facing brief unlock".into(),
+                citation_id: None,
+                confirmed_at: Some("2026-05-18T07:30:00Z".into()),
+                done_at: None,
+            }],
+        }
+    }
+
+    fn brief_now() -> chrono::DateTime<chrono::Utc> {
+        chrono::DateTime::parse_from_rfc3339("2026-05-19T15:00:00Z")
+            .unwrap()
+            .with_timezone(&chrono::Utc)
+    }
+
+    #[test]
+    fn render_brief_with_both_tablets() {
+        let view = BriefView {
+            daily: Some(daily_view_with_calendar_item()),
+            weekly: Some(weekly_view_with_priority()),
+        };
+        let md = render_brief(&view, brief_now());
+        assert!(md.starts_with("# Brief — 2026-05-19\n\n"), "{md}");
+        assert!(md.contains("## Today\n\n"));
+        assert!(md.contains("## This week\n\n"));
+        assert!(md.contains("09:00 standup"));
+        assert!(md.contains("Ship Phase 2"));
+    }
+
+    #[test]
+    fn render_brief_missing_daily() {
+        let view = BriefView {
+            daily: None,
+            weekly: Some(weekly_view_with_priority()),
+        };
+        let md = render_brief(&view, brief_now());
+        // Daily date falls through to weekly tablet's period_key.
+        assert!(md.starts_with("# Brief — 2026-W21\n\n"), "{md}");
+        assert!(md.contains("_(no daily tablet"));
+        assert!(md.contains("Ship Phase 2"));
+        assert!(!md.contains("09:00 standup"));
+    }
+
+    #[test]
+    fn render_brief_missing_weekly() {
+        let view = BriefView {
+            daily: Some(daily_view_with_calendar_item()),
+            weekly: None,
+        };
+        let md = render_brief(&view, brief_now());
+        assert!(md.starts_with("# Brief — 2026-05-19\n\n"), "{md}");
+        assert!(md.contains("09:00 standup"));
+        assert!(md.contains("_(no weekly tablet"));
+    }
+
+    #[test]
+    fn render_brief_missing_both() {
+        let view = BriefView {
+            daily: None,
+            weekly: None,
+        };
+        let md = render_brief(&view, brief_now());
+        // Falls back to `now`.
+        assert!(md.starts_with("# Brief — 2026-05-19\n\n"), "{md}");
+        assert!(md.contains("_(no daily tablet"));
+        assert!(md.contains("_(no weekly tablet"));
+    }
+
+    #[test]
+    fn render_brief_demotes_inner_headings() {
+        let view = BriefView {
+            daily: Some(daily_view_with_calendar_item()),
+            weekly: Some(weekly_view_with_priority()),
+        };
+        let md = render_brief(&view, brief_now());
+        // Two top-level `## ` headers (Today, This week) and no
+        // others. Each top-level heading is preceded by a newline
+        // because the renderer always emits `\n\n` between blocks,
+        // so both show up in `\n## ` matches.
+        let h2_count = md.matches("\n## ").count();
+        assert_eq!(
+            h2_count, 2,
+            "expected exactly two \\n## (Today, This week). md:\n{md}"
+        );
+        assert!(md.starts_with("# Brief"));
+        assert!(md.contains("\n## Today\n"));
+        assert!(md.contains("\n## This week\n"));
+        // Inner sections should be ### now.
+        assert!(md.contains("### Today's calendar"));
+        assert!(md.contains("### Priorities"));
+        // None of the inner section headings should be at H2.
+        assert!(!md.contains("\n## Today's calendar"));
+        assert!(!md.contains("\n## Priorities"));
     }
 }

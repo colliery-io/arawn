@@ -5,10 +5,12 @@ edition = "2024"
 
 [dev-dependencies]
 insta = "1"
+tempfile = "3"
 
 [dependencies]
 arawn-ceremonies = { path = "../arawn-ceremonies" }
 arawn-engine = { workspace = true }
+arawn-llm = { workspace = true }
 arawn-service = { workspace = true }
 async-trait = { workspace = true }
 chrono = { workspace = true }

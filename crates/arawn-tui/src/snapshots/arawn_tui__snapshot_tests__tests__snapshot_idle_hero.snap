@@ -2,27 +2,27 @@
 source: crates/arawn-tui/src/snapshot_tests.rs
 expression: snap
 ---
-  │
-  │
-  │
-  │
-  │
-  │
-  │
-  │                                         ╭─────────────╮
-  │                                         │    arawn    │
-  │                                         ╰─────────────╯
- ▸│
-  │                           Type / for commands · Tab to toggle sidebar
-  │                                  /connect <service> · ↑ recall
-  │
-  │
-  │
-  │
-  │
-  │
-  │
-  │
+  │                                                                     ┌ Today ───────────────────┐
+  │                                                                     │Brief                     │
+  │                                                                     │(no brief yet — run /day t│
+  │                                                                     │                          │
+  │                                                                     │                          │
+  │                                                                     │                          │
+  │                           ╭─────────────╮                           │                          │
+  │                           │    arawn    │                           │                          │
+  │                           ╰─────────────╯                           │                          │
+  │                                                                     │                          │
+ ▸│             Welcome — your personal agentic assistant.              │                          │
+  │       I watch, check, summarize, and nudge across your tools.       │                          │
+  │                                                                     │                          │
+  │             Type / for commands · Tab to toggle sidebar             │Action items              │
+  │                    /connect <service> · ↑ recall                    │(no action items)         │
+  │                                                                     │                          │
+  │                                                                     │                          │
+  │                                                                     │                          │
+  │                                                                     │                          │
+  │                                                                     │                          │
+  │                                                                     └──────────────────────────┘
 ────────────────────────────────────────────────────────────────────────────────────────────────────
 > Type your message...
  no model │ no workstream Ready

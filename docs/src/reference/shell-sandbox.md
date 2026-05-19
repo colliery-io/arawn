@@ -11,10 +11,14 @@ The shell tool spawns each command in an OS sandbox:
 | Platform | Backend | Notes |
 |---|---|---|
 | macOS | `sandbox-exec` | Apple has deprecated this; migration to a different backend is on the roadmap. |
-| Linux | `bubblewrap` (`bwrap`) | Must be installed separately (`apt install bubblewrap` / `pacman -S bubblewrap`). Foreground shell calls fall back to **unsandboxed** with a `[WARNING: Command ran without sandbox protection ...]` prefix when `bwrap` is missing; only background-task shell calls fail closed. |
-| Windows | (unsupported backend) | Same fallback as missing `bwrap` — foreground shell calls run **unsandboxed with a warning**; background-task shell calls fail closed. |
+| Linux | `bubblewrap` (`bwrap`) | Must be installed separately (`apt install bubblewrap` / `pacman -S bubblewrap`). |
+| Windows | — | Not supported. |
 
-> **Security note:** the foreground unsandboxed-fallback behavior is a sharp edge — a misconfigured Linux host (no `bwrap`) or a Windows host will execute commands without the deny-list / network-block protections described below. If you need hard guarantees, run on macOS or a Linux host with `bwrap` installed.
+> **Fail-closed:** when the sandbox is unavailable (Linux host
+> without `bwrap`, Windows, or any future backend failure) the
+> shell tool returns an error — it never runs commands without
+> the protections described below. The error message points the
+> user at the right install command.
 
 ## What the sandbox enforces by default
 

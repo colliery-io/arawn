@@ -43,7 +43,10 @@ pub use plugins::{
     retro_v1_catalog,
 };
 pub use registry::PluginRegistry;
-pub use render::{DailyView, RetroView, WeeklyView, render_daily, render_retro, render_weekly};
+pub use render::{
+    BriefView, DailyView, RetroView, WeeklyView, render_brief, render_daily, render_retro,
+    render_weekly,
+};
 pub use rollup::{
     CentralDbWorkstreams, RollupSource, WorkstreamList, compute_for_week, read_rollup_value,
 };
