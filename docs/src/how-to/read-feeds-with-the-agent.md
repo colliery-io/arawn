@@ -1,12 +1,10 @@
-# Agent Read Patterns
+# Read feeds with the agent
 
-Feeds aren't worth much if the agent can't navigate them. The deal
-is: the agent uses the same `Read`, `Glob`, and `Grep` tools it uses
-on source code, and the feed layout is shaped so those tools are
-enough.
+*How-to. Prompt patterns that get useful answers out of feed-mirrored data.*
 
-This page is recipe-shaped: real prompts, the tool calls the agent
-makes, and why the layout lets it work.
+Feeds aren't worth much if the agent can't navigate them. The deal is: the agent uses the same `Read`, `Glob`, and `Grep` tools it uses on source code, and the feed layout is shaped so those tools are enough.
+
+This page is recipe-shaped: real prompts, the tool calls the agent makes, and why the layout lets it work.
 
 > All paths are relative to `~/.arawn/data/`.
 

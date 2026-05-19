@@ -4,14 +4,14 @@ level: task
 title: "Phase C-4: How-tos — usage recipes (8 pages)"
 short_code: "ARAWN-T-0336"
 created_at: 2026-05-19T01:39:38.295613+00:00
-updated_at: 2026-05-19T01:39:38.295613+00:00
+updated_at: 2026-05-19T02:29:04.703488+00:00
 parent: ARAWN-I-0051
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -62,73 +62,32 @@ Write 8 task-oriented how-to recipes covering the most common user goals: create
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
 
-## Acceptance Criteria **[REQUIRED]**
+## Acceptance Criteria
 
-- [ ] {Specific, testable requirement 1}
-- [ ] {Specific, testable requirement 2}
-- [ ] {Specific, testable requirement 3}
+## Acceptance Criteria
 
-## Test Cases **[CONDITIONAL: Testing Task]**
+- [x] `how-to/create-a-feed.md` — auto-create on `/connect` + `/watch` recipe + `since=` backfill + `/feeds` subcommands (rm, pause, resume, run). Drift fix: `/feeds rm` not `/unwatch`. ~85 lines.
+- [x] `how-to/bind-a-workstream-to-a-feed.md` — direct feed_id bind + `github:repo:` + `github:org:` URI schemes + org-supersedes-repo semantics + hot-register. ~80 lines.
+- [x] `how-to/curate-a-workstream.md` — refine → apply → rollback flow + the three common subroutines (tag-promoter, relation-suggester, dust-summarizer) + journal review. ~80 lines.
+- [x] `how-to/read-feeds-with-the-agent.md` — H1 + intro reworded from "Agent Read Patterns" reference framing to how-to framing. Body content (the 10 prompt-recipes) preserved from the C-1 move.
+- [x] `how-to/lock-down-permissions.md` — three preset setups (paranoid / hands-off CI / strict review) + `/accept` runtime mode switch. ~75 lines.
+- [x] `how-to/author-a-workflow-by-hand.md` — JSON spec walkthrough + task flavours + `workflow_create` lifecycle + caveats. ~85 lines.
+- [x] `how-to/debug-oauth-failures.md` — 7 common errors expanded (redirect_uri_mismatch, access_denied, insufficient_scope, invalid_grant, Connection error, scope mismatch, port 8080 conflict) + verbose-logging escape hatch. ~110 lines.
+- [x] `how-to/recover-from-llm-warmup-failure.md` — match-your-error-body table + "no API key set" + "embedding model unavailable" + TUI connection-refused. ~70 lines.
+- [x] `SUMMARY.md` updated — all 8 pages listed under How-to guides.
+- [x] `angreal docs build` clean.
 
-{Delete unless this is a testing task}
+## Status Updates
 
-### Test Case 1: {Test Case Name}
-- **Test ID**: TC-001
-- **Preconditions**: {What must be true before testing}
-- **Steps**: 
-  1. {Step 1}
-  2. {Step 2}
-  3. {Step 3}
-- **Expected Results**: {What should happen}
-- **Actual Results**: {To be filled during execution}
-- **Status**: {Pass/Fail/Blocked}
+### 2026-05-18 — Completed (uncommitted)
 
-### Test Case 2: {Test Case Name}
-- **Test ID**: TC-002
-- **Preconditions**: {What must be true before testing}
-- **Steps**: 
-  1. {Step 1}
-  2. {Step 2}
-- **Expected Results**: {What should happen}
-- **Actual Results**: {To be filled during execution}
-- **Status**: {Pass/Fail/Blocked}
+All 8 how-tos written. Source content pulled from:
+- `docs/src/security.md` (Limiting blast radius → lock-down-permissions.md)
+- `docs/src/workflows.md` (JSON walkthrough → author-a-workflow-by-hand.md)
+- `docs/src/feeds/index.md` (create + backfill mechanics → create-a-feed.md)
+- `HEAD~3:docs/src/getting-started.md` (Common integration errors → debug-oauth-failures.md; Troubleshooting LLM section → recover-from-llm-warmup-failure.md)
+- New prose for bind-a-workstream-to-a-feed.md and curate-a-workstream.md (built from the completeness audit's enumeration of workstream operations + steward subroutines)
 
-## Documentation Sections **[CONDITIONAL: Documentation Task]**
+Drift fixes applied: `/feeds rm` not `/unwatch`; `workstream_refine/apply/rollback` named correctly; the four GitHub templates and the org-supersedes-repo semantics from T-0322/T-0327 reflected in bind-a-workstream-to-a-feed.
 
-{Delete unless this is a documentation task}
-
-### User Guide Content
-- **Feature Description**: {What this feature does and why it's useful}
-- **Prerequisites**: {What users need before using this feature}
-- **Step-by-Step Instructions**:
-  1. {Step 1 with screenshots/examples}
-  2. {Step 2 with screenshots/examples}
-  3. {Step 3 with screenshots/examples}
-
-### Troubleshooting Guide
-- **Common Issue 1**: {Problem description and solution}
-- **Common Issue 2**: {Problem description and solution}
-- **Error Messages**: {List of error messages and what they mean}
-
-### API Documentation **[CONDITIONAL: API Documentation]**
-- **Endpoint**: {API endpoint description}
-- **Parameters**: {Required and optional parameters}
-- **Example Request**: {Code example}
-- **Example Response**: {Expected response format}
-
-## Implementation Notes **[CONDITIONAL: Technical Task]**
-
-{Keep for technical tasks, delete for non-technical. Technical details, approach, or important considerations}
-
-### Technical Approach
-{How this will be implemented}
-
-### Dependencies
-{Other tasks or systems this depends on}
-
-### Risk Considerations
-{Technical risks and mitigation strategies}
-
-## Status Updates **[REQUIRED]**
-
-*To be added during implementation*
+Source files (`security.md`, `workflows.md`, `feeds/index.md`) are NOT deleted by this task — they still contain reference content that C-5 (troubleshooting/permissions), C-7 (steward/feed-search), and C-8 (feeds-overview/workflow-tools) split out. Final deletion happens in those later tasks.

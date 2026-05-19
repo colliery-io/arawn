@@ -15,7 +15,14 @@
 - [Connect Slack](./how-to/connect-slack.md)
 - [Connect Atlassian (Jira + Confluence)](./how-to/connect-atlassian.md)
 - [Connect GitHub](./how-to/connect-github.md)
+- [Create a feed](./how-to/create-a-feed.md)
+- [Bind a workstream to a feed](./how-to/bind-a-workstream-to-a-feed.md)
+- [Curate a workstream](./how-to/curate-a-workstream.md)
 - [Read feeds with the agent](./how-to/read-feeds-with-the-agent.md)
+- [Lock down permissions](./how-to/lock-down-permissions.md)
+- [Author a workflow by hand](./how-to/author-a-workflow-by-hand.md)
+- [Debug OAuth failures](./how-to/debug-oauth-failures.md)
+- [Recover from LLM warmup failure](./how-to/recover-from-llm-warmup-failure.md)
 
 # Reference
 
