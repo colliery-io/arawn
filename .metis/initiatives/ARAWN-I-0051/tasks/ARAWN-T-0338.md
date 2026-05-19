@@ -4,14 +4,14 @@ level: task
 title: "Phase C-6: Reference — agent surface (agent-tools, permissions, sandbox, integrations)"
 short_code: "ARAWN-T-0338"
 created_at: 2026-05-19T01:39:41.847592+00:00
-updated_at: 2026-05-19T01:39:41.847592+00:00
+updated_at: 2026-05-19T02:37:44.195907+00:00
 parent: ARAWN-I-0051
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -61,6 +61,10 @@ Reference catalogs for the runtime agent surface: every agent tool (74), the per
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria **[REQUIRED]**
 

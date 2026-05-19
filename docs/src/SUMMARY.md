@@ -33,9 +33,12 @@
 - [Environment variables](./reference/env-vars.md)
 - [Data directory layout](./reference/data-directory.md)
 - [Troubleshooting](./reference/troubleshooting.md)
+- [Agent tools](./reference/agent-tools.md)
+- [Permission model](./reference/permissions.md)
+- [Shell sandbox](./reference/shell-sandbox.md)
+- [Integrations](./reference/integrations.md)
 - [Feed templates](./reference/feed-templates.md)
 - [feed_search tool](./reference/feed-search-tool.md)
-- [Security & Permissions](./security.md)
 - [Memory](./memory.md)
 - [Workflows](./workflows.md)
 - [Continual data feeds](./feeds/index.md)
@@ -44,14 +47,6 @@
   - [Extraction](./palaces/extraction.md)
   - [The Steward](./palaces/steward.md)
   - [Agent read patterns](./palaces/agent-read-patterns.md)
-
-# Integrations
-
-- [Gmail](./integrations/gmail.md)
-- [Google Calendar](./integrations/calendar.md)
-- [Google Drive](./integrations/drive.md)
-- [Slack](./integrations/slack.md)
-- [Atlassian](./integrations/atlassian.md)
 
 # Explanation
 
