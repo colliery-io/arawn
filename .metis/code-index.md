@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-19T17:35:50Z | 368 files | Python, Rust
+> Generated: 2026-05-19T17:52:08Z | 368 files | Python, Rust
 
 ## Project Structure
 
@@ -801,13 +801,13 @@
 -  `resolve_ceremony_tz` function L1562-1586 — `(kind: &str, raw: Option<&str>) -> chrono_tz::Tz`
 -  `run_cli_via_server` function L2024-2126 — `(url: &str, prompt: &str, session_id: Option<Uuid>) -> Result<()>` — Run a CLI prompt by connecting to the running server via WebSocket.
 -  `build_llm_client` function L2129-2150 — `(config: &arawn_bin::LlmConfig) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
--  `register_default_tools` function L2153-2199 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &arawn_bin::ArawnConfig, d...` — Register all default tools into the registry.
--  `connect_mcp_servers` function L2202-2246 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
--  `register_workflow_tools` function L2249-2266 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
--  `build_engine_config` function L2268-2311 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
--  `expand_github_org` function L2321-2384 — `( github: Arc<arawn_integrations::github::GithubIntegration>, store: Arc<std::sy...` — I-0050 T-0327 — list every repo under `owner` (via the github
--  `register_one_feed` function L2390-2422 — `( feed_runtime: Arc<arawn_feeds::FeedRuntime>, store: Arc<std::sync::Mutex<arawn...` — T-0329 — fetch a feed record by id and register its cron schedule
--  `dirs_path` function L2424-2433 — `() -> Option<String>`
+-  `register_default_tools` function L2153-2195 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &arawn_bin::ArawnConfig, d...` — Register all default tools into the registry.
+-  `connect_mcp_servers` function L2198-2242 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
+-  `register_workflow_tools` function L2245-2262 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
+-  `build_engine_config` function L2264-2307 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
+-  `expand_github_org` function L2317-2380 — `( github: Arc<arawn_integrations::github::GithubIntegration>, store: Arc<std::sy...` — I-0050 T-0327 — list every repo under `owner` (via the github
+-  `register_one_feed` function L2386-2418 — `( feed_runtime: Arc<arawn_feeds::FeedRuntime>, store: Arc<std::sync::Mutex<arawn...` — T-0329 — fetch a feed record by id and register its cron schedule
+-  `dirs_path` function L2420-2429 — `() -> Option<String>`
 
 #### crates/arawn/src/plugin_cmd.rs
 
@@ -3906,79 +3906,35 @@
 
 #### crates/arawn-engine/src/tools/task_list.rs
 
-- pub `TaskStatus` enum L14-18 — `Pending | InProgress | Completed` — Session-scoped task status.
-- pub `SessionTask` struct L32-40 — `{ id: String, subject: String, description: Option<String>, active_form: Option<...` — A single session-scoped task.
-- pub `SessionTaskStore` struct L45-48 — `{ tasks: Arc<RwLock<HashMap<String, SessionTask>>>, order: Arc<RwLock<Vec<String...` — Shared in-memory task store for a session.
-- pub `new` function L51-53 — `() -> Self`
-- pub `TaskCreateTool` struct L129-131 — `{ store: SessionTaskStore }` — Creates a new session-scoped task for tracking work within the current session.
-- pub `new` function L134-136 — `(store: SessionTaskStore) -> Self`
-- pub `TaskUpdateTool` struct L216-218 — `{ store: SessionTaskStore }` — Updates a session task's status or details.
-- pub `new` function L221-223 — `(store: SessionTaskStore) -> Self`
-- pub `TaskListTool` struct L352-354 — `{ store: SessionTaskStore }` — Lists all session tasks with their status.
-- pub `new` function L357-359 — `(store: SessionTaskStore) -> Self`
-- pub `TaskGetTool` struct L423-425 — `{ store: SessionTaskStore }` — Gets full details of a session task by ID.
-- pub `new` function L428-430 — `(store: SessionTaskStore) -> Self`
--  `TaskStatus` type L20-28 — `= TaskStatus`
--  `fmt` function L21-27 — `(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result`
--  `SessionTaskStore` type L50-115 — `= SessionTaskStore`
--  `create` function L55-72 — `( &self, subject: String, description: Option<String>, active_form: Option<Strin...`
--  `update` function L74-93 — `(&self, id: &str, updates: TaskUpdates) -> Option<SessionTask>`
--  `get` function L95-97 — `(&self, id: &str) -> Option<SessionTask>`
--  `delete` function L99-105 — `(&self, id: &str) -> bool`
--  `list` function L107-114 — `(&self) -> Vec<SessionTask>`
--  `TaskUpdates` struct L117-122 — `{ status: Option<TaskStatus>, subject: Option<String>, description: Option<Strin...`
--  `TaskCreateTool` type L133-137 — `= TaskCreateTool`
--  `TaskCreateTool` type L140-209 — `impl Tool for TaskCreateTool`
--  `name` function L141-143 — `(&self) -> &str`
--  `description` function L145-156 — `(&self) -> &str`
--  `category` function L158-160 — `(&self) -> ToolCategory`
--  `parameters_schema` function L162-181 — `(&self) -> Value`
--  `execute` function L183-208 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...`
--  `TaskUpdateTool` type L220-224 — `= TaskUpdateTool`
--  `TaskUpdateTool` type L227-345 — `impl Tool for TaskUpdateTool`
--  `name` function L228-230 — `(&self) -> &str`
--  `description` function L232-241 — `(&self) -> &str`
--  `category` function L243-245 — `(&self) -> ToolCategory`
--  `parameters_schema` function L247-275 — `(&self) -> Value`
--  `execute` function L277-344 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...`
--  `TaskListTool` type L356-360 — `= TaskListTool`
--  `TaskListTool` type L363-416 — `impl Tool for TaskListTool`
--  `name` function L364-366 — `(&self) -> &str`
--  `description` function L368-376 — `(&self) -> &str`
--  `is_read_only` function L378-380 — `(&self) -> bool`
--  `category` function L382-384 — `(&self) -> ToolCategory`
--  `parameters_schema` function L386-391 — `(&self) -> Value`
--  `execute` function L393-415 — `( &self, _ctx: &dyn arawn_tool::ToolContext, _params: Value, ) -> Result<ToolOut...`
--  `TaskGetTool` type L427-431 — `= TaskGetTool`
--  `TaskGetTool` type L434-485 — `impl Tool for TaskGetTool`
--  `name` function L435-437 — `(&self) -> &str`
--  `description` function L439-445 — `(&self) -> &str`
--  `is_read_only` function L447-449 — `(&self) -> bool`
--  `category` function L451-453 — `(&self) -> ToolCategory`
--  `parameters_schema` function L455-466 — `(&self) -> Value`
--  `execute` function L468-484 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...`
--  `tests` module L488-831 — `-`
--  `test_ctx` function L494-497 — `() -> crate::context::EngineToolContext`
--  `store_create_and_list` function L500-510 — `()`
--  `store_update_status` function L513-528 — `()`
--  `store_update_subject_and_description` function L531-548 — `()`
--  `store_delete` function L551-556 — `()`
--  `store_delete_nonexistent` function L559-562 — `()`
--  `store_update_nonexistent` function L565-580 — `()`
--  `store_preserves_order` function L583-591 — `()`
--  `task_create_tool` function L594-611 — `()`
--  `task_create_with_active_form` function L614-630 — `()`
--  `task_update_status` function L633-646 — `()`
--  `task_update_delete` function L649-663 — `()`
--  `task_update_invalid_status` function L666-677 — `()`
--  `task_update_no_fields_errors` function L680-689 — `()`
--  `task_update_not_found` function L692-704 — `()`
--  `task_list_empty` function L707-714 — `()`
--  `task_list_with_tasks` function L717-737 — `()`
--  `full_lifecycle` function L740-775 — `()`
--  `schemas_are_valid` function L778-797 — `()`
--  `task_get_found` function L800-815 — `()`
--  `task_get_not_found` function L818-830 — `()`
+- pub `TaskListTool` struct L17-19 — `{ bg_manager: Arc<BackgroundTaskManager> }` — List all background sub-agent tasks tracked in the current session.
+- pub `new` function L22-24 — `(bg_manager: Arc<BackgroundTaskManager>) -> Self` — `task_stop` (cancel).
+- pub `TaskGetTool` struct L89-91 — `{ bg_manager: Arc<BackgroundTaskManager> }` — Get a point-in-time snapshot of a single background sub-agent task.
+- pub `new` function L94-96 — `(bg_manager: Arc<BackgroundTaskManager>) -> Self` — `task_stop` (cancel).
+-  `TaskListTool` type L21-25 — `= TaskListTool` — `task_stop` (cancel).
+-  `TaskListTool` type L28-82 — `impl Tool for TaskListTool` — `task_stop` (cancel).
+-  `name` function L29-31 — `(&self) -> &str` — `task_stop` (cancel).
+-  `description` function L33-37 — `(&self) -> &str` — `task_stop` (cancel).
+-  `is_read_only` function L39-41 — `(&self) -> bool` — `task_stop` (cancel).
+-  `category` function L43-45 — `(&self) -> ToolCategory` — `task_stop` (cancel).
+-  `parameters_schema` function L47-52 — `(&self) -> Value` — `task_stop` (cancel).
+-  `execute` function L54-81 — `( &self, _ctx: &dyn arawn_tool::ToolContext, _params: Value, ) -> Result<ToolOut...` — `task_stop` (cancel).
+-  `TaskGetTool` type L93-97 — `= TaskGetTool` — `task_stop` (cancel).
+-  `TaskGetTool` type L100-173 — `impl Tool for TaskGetTool` — `task_stop` (cancel).
+-  `name` function L101-103 — `(&self) -> &str` — `task_stop` (cancel).
+-  `description` function L105-109 — `(&self) -> &str` — `task_stop` (cancel).
+-  `is_read_only` function L111-113 — `(&self) -> bool` — `task_stop` (cancel).
+-  `category` function L115-117 — `(&self) -> ToolCategory` — `task_stop` (cancel).
+-  `parameters_schema` function L119-130 — `(&self) -> Value` — `task_stop` (cancel).
+-  `execute` function L132-172 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — `task_stop` (cancel).
+-  `tests` module L176-280 — `-` — `task_stop` (cancel).
+-  `ctx` function L183-186 — `() -> crate::context::EngineToolContext` — `task_stop` (cancel).
+-  `spawn_task` function L188-201 — `(mgr: &BackgroundTaskManager, desc: &str) -> String` — `task_stop` (cancel).
+-  `list_empty` function L204-210 — `()` — `task_stop` (cancel).
+-  `list_mixed_states` function L213-235 — `()` — `task_stop` (cancel).
+-  `get_by_id_running` function L238-248 — `()` — `task_stop` (cancel).
+-  `get_unknown_id` function L251-260 — `()` — `task_stop` (cancel).
+-  `get_missing_param` function L263-268 — `()` — `task_stop` (cancel).
+-  `metadata` function L271-279 — `()` — `task_stop` (cancel).
 
 #### crates/arawn-engine/src/tools/task_output.rs
 

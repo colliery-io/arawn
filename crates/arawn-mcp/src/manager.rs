@@ -277,7 +277,12 @@ async fn spawn_and_connect(
     let mut cmd = Command::new(&config.command);
     cmd.args(&config.args);
     for (key, val) in &config.env {
-        cmd.env(key, val);
+        let resolved = crate::config::substitute_env_vars(val).map_err(|e| -> Box<
+            dyn std::error::Error + Send + Sync,
+        > {
+            format!("MCP server `{}` env `{key}`: {e}", config.name).into()
+        })?;
+        cmd.env(key, resolved);
     }
 
     let transport = rmcp::transport::child_process::TokioChildProcess::new(cmd)?;

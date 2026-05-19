@@ -4,15 +4,15 @@ level: task
 title: "MCP server config: ${VAR} env-var substitution"
 short_code: "ARAWN-T-0352"
 created_at: 2026-05-19T12:07:50.622305+00:00
-updated_at: 2026-05-19T12:07:50.622305+00:00
+updated_at: 2026-05-19T17:59:02.598552+00:00
 parent: 
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/backlog"
   - "#feature"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -83,6 +83,12 @@ Surfaced during ARAWN-I-0051 doc triple-check.
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria **[REQUIRED]**
 

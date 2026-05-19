@@ -33,6 +33,53 @@ fn default_true() -> bool {
     true
 }
 
+/// Substitute `${VAR}` references in a string with values from the parent
+/// process environment.
+///
+/// - `${NAME}` → `std::env::var("NAME")`. If unset, returns `Err` with an
+///   actionable message naming the missing variable.
+/// - `\${NAME}` → literal `${NAME}` (escape for the unusual case where you
+///   want to pass the placeholder through).
+/// - Returns `Err` if a `${` opens without a closing `}`.
+///
+/// Only one level of substitution is performed — values pulled from env are
+/// not re-scanned.
+pub fn substitute_env_vars(input: &str) -> Result<String, String> {
+    let mut out = String::with_capacity(input.len());
+    let mut chars = input.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c == '\\' && chars.peek() == Some(&'$') {
+            out.push(chars.next().unwrap()); // emit literal '$'
+            continue;
+        }
+        if c == '$' && chars.peek() == Some(&'{') {
+            chars.next(); // consume '{'
+            let mut name = String::new();
+            let mut closed = false;
+            for nc in chars.by_ref() {
+                if nc == '}' {
+                    closed = true;
+                    break;
+                }
+                name.push(nc);
+            }
+            if !closed {
+                return Err(format!("unterminated `${{` in env value (near `${{{name}`)"));
+            }
+            if name.is_empty() {
+                return Err("empty `${}` in env value".into());
+            }
+            let val = std::env::var(&name).map_err(|_| {
+                format!("environment variable `{name}` is not set (referenced via `${{{name}}}`)")
+            })?;
+            out.push_str(&val);
+            continue;
+        }
+        out.push(c);
+    }
+    Ok(out)
+}
+
 /// Load MCP config from an arawn.toml file.
 pub fn load_mcp_config(path: &std::path::Path) -> McpConfig {
     if !path.exists() {
@@ -106,6 +153,58 @@ max_iterations = 20
         }
         let w: W = toml::from_str(toml).unwrap();
         assert!(w.mcp.servers.is_empty());
+    }
+
+    #[test]
+    fn substitute_passthrough() {
+        assert_eq!(substitute_env_vars("plain string").unwrap(), "plain string");
+        assert_eq!(substitute_env_vars("").unwrap(), "");
+    }
+
+    #[test]
+    fn substitute_resolves_var() {
+        // SAFETY: test-only env mutation, single-threaded inside test.
+        unsafe {
+            std::env::set_var("ARAWN_MCP_TEST_VAR", "ghp_abc");
+        }
+        assert_eq!(
+            substitute_env_vars("token=${ARAWN_MCP_TEST_VAR}").unwrap(),
+            "token=ghp_abc"
+        );
+        assert_eq!(
+            substitute_env_vars("${ARAWN_MCP_TEST_VAR}-suffix").unwrap(),
+            "ghp_abc-suffix"
+        );
+        unsafe {
+            std::env::remove_var("ARAWN_MCP_TEST_VAR");
+        }
+    }
+
+    #[test]
+    fn substitute_missing_var_errors() {
+        unsafe {
+            std::env::remove_var("ARAWN_MCP_DEFINITELY_UNSET_XYZ");
+        }
+        let err = substitute_env_vars("v=${ARAWN_MCP_DEFINITELY_UNSET_XYZ}").unwrap_err();
+        assert!(err.contains("ARAWN_MCP_DEFINITELY_UNSET_XYZ"));
+        assert!(err.contains("not set"));
+    }
+
+    #[test]
+    fn substitute_escape_passes_literal() {
+        assert_eq!(substitute_env_vars(r"\${NOT_LOOKED_UP}").unwrap(), "${NOT_LOOKED_UP}");
+    }
+
+    #[test]
+    fn substitute_unterminated_errors() {
+        let err = substitute_env_vars("v=${UNCLOSED").unwrap_err();
+        assert!(err.contains("unterminated"));
+    }
+
+    #[test]
+    fn substitute_empty_var_errors() {
+        let err = substitute_env_vars("v=${}").unwrap_err();
+        assert!(err.contains("empty"));
     }
 
     #[test]

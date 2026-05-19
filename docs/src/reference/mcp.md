@@ -25,7 +25,7 @@ args = ["mcp-server-sqlite", "--db", "test.db"]
 name = "github"
 command = "npx"
 args = ["-y", "@modelcontextprotocol/server-github"]
-env = { GITHUB_TOKEN = "ghp_..." }   # values are passed literally; no ${VAR} expansion
+env = { GITHUB_TOKEN = "${GITHUB_TOKEN}" }   # ${VAR} resolves from arawn's parent env at spawn time
 enabled = false
 ```
 
@@ -36,7 +36,7 @@ Fields:
 | `name` | string | required | Unique server name. Used in tool naming: `mcp__<name>__<tool>`. |
 | `command` | string | required | Command to spawn the server process. |
 | `args` | list&lt;string&gt; | `[]` | Arguments for the command. |
-| `env` | map | `{}` | Environment variables for the spawned process. Values are passed literally to the child — there is no `${VAR}` substitution layer today. |
+| `env` | map | `{}` | Environment variables for the spawned process. `${VAR}` references are resolved from arawn's own environment at spawn time (see [Env-var substitution](#env-var-substitution)). |
 | `enabled` | bool | `true` | When `false`, the entry is parsed but the server isn't started. |
 
 ## How it works
@@ -48,6 +48,18 @@ When arawn starts:
 3. For each server, `crates/arawn-mcp/src/adapter.rs` performs the MCP handshake and discovers the server's tools.
 4. Each discovered tool is registered with the engine's `ToolRegistry` under `mcp__<server-name>__<tool>`.
 5. The agent sees the tools alongside built-ins.
+
+## Env-var substitution
+
+Within `[[mcp.servers]].env` values (and the equivalent `env` map on plugin-declared servers), `${VAR}` is replaced with the value of `VAR` from arawn's parent environment at server-spawn time. Same rule applies to both `arawn.toml` and `plugin.json`.
+
+- `GITHUB_TOKEN = "${GITHUB_TOKEN}"` — pulls the value from the shell that started arawn.
+- `URL = "${PREFIX}/api"` — substitution happens inside a larger string.
+- `LITERAL = "\\${NOT_LOOKED_UP}"` — backslash-escape passes the placeholder through unchanged.
+
+If a referenced variable isn't set, the server fails to start with a clear error (`environment variable \`X\` is not set ...`) logged at server level. Substitution is one-pass — values pulled from env aren't re-scanned for further placeholders.
+
+Substitution is **not** applied to `command` or `args` — only the `env` map. If you need a path resolved from env, set it via env on arawn's side and read it inside the server.
 
 ## Tool naming convention
 
