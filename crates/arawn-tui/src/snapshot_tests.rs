@@ -228,6 +228,7 @@ mod tests {
                 status: "open".into(),
                 workstreams_scanned: serde_json::json!([]),
                 priorities_confirmed_at: None,
+            recovered: false,
             },
             items: vec![
                 arawn_ceremonies::service::ItemDto {
@@ -298,6 +299,7 @@ mod tests {
                 status: "open".into(),
                 workstreams_scanned: serde_json::json!([]),
                 priorities_confirmed_at: None,
+            recovered: false,
             },
             items: vec![
                 mk_item("attn-1", "attention", 0, "Reply Alice RFC-0042"),

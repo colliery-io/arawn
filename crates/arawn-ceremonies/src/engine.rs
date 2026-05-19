@@ -88,12 +88,27 @@ impl EngineDispatcher {
 #[async_trait]
 impl CeremonyDispatcher for EngineDispatcher {
     async fn dispatch(&self, kind: &str) -> Result<DispatchOutcome, CeremonyError> {
-        // 1–2: plugin + period
+        self.dispatch_for(kind, Utc::now().date_naive()).await
+    }
+
+    async fn dispatch_for(
+        &self,
+        kind: &str,
+        target: chrono::NaiveDate,
+    ) -> Result<DispatchOutcome, CeremonyError> {
+        // 1–2: plugin + period (derived from target, not from "now").
         let plugin = self.registry.get(kind).ok_or_else(|| {
             CeremonyError::Other(format!("no plugin registered for kind '{kind}'"))
         })?;
         let now = Utc::now();
-        let period_key = plugin.period_key(now);
+        let period_key = plugin.period_key_for_date(target);
+        // `recovered` is set when the target date's period_key
+        // differs from today's. Using period_key equivalence (not
+        // raw date equality) means a weekly back-fill for a
+        // mid-week date doesn't get flagged when "today" is also
+        // in the same ISO week.
+        let live_period_key = plugin.period_key(now);
+        let recovered = period_key != live_period_key;
 
         // 3: idempotency — skip if tablet already exists with non-`open` status.
         if let Some(status) = current_tablet_status(&self.conn, kind, &period_key)? {
@@ -122,7 +137,9 @@ impl CeremonyDispatcher for EngineDispatcher {
         begin(&self.conn)?;
 
         // Wrap the rest in a closure so we can ROLLBACK on any err.
-        let result = self.run_pipeline(plugin.as_ref(), &period_key, now).await;
+        let result = self
+            .run_pipeline(plugin.as_ref(), &period_key, now, recovered)
+            .await;
         match result {
             Ok(tablet_id) => {
                 commit(&self.conn)?;
@@ -152,10 +169,11 @@ impl EngineDispatcher {
         plugin: &dyn Ceremony,
         period_key: &str,
         now: chrono::DateTime<Utc>,
+        recovered: bool,
     ) -> Result<String, CeremonyError> {
         // 5: insert the tablet.
         let tablet_id = format!("{}-{period_key}", plugin.kind());
-        insert_tablet(&self.conn, &tablet_id, plugin.kind(), period_key, now)?;
+        insert_tablet(&self.conn, &tablet_id, plugin.kind(), period_key, now, recovered)?;
 
         // 6: construct ctx. Pin the gather window now so gather/
         // compose see a stable [start, end) regardless of when this
@@ -355,15 +373,16 @@ fn insert_tablet(
     kind: &str,
     period_key: &str,
     now: chrono::DateTime<Utc>,
+    recovered: bool,
 ) -> Result<(), CeremonyError> {
     let conn = conn
         .0
         .lock()
         .map_err(|_| CeremonyError::Storage("connection mutex poisoned".to_string()))?;
     conn.execute(
-        "INSERT INTO ceremony_tablets (id, kind, period_key, generated_at, status, workstreams_scanned) \
-         VALUES (?1, ?2, ?3, ?4, 'open', '[]')",
-        params![tablet_id, kind, period_key, now.to_rfc3339()],
+        "INSERT INTO ceremony_tablets (id, kind, period_key, generated_at, status, workstreams_scanned, recovered) \
+         VALUES (?1, ?2, ?3, ?4, 'open', '[]', ?5)",
+        params![tablet_id, kind, period_key, now.to_rfc3339(), recovered as i64],
     )
     .map_err(|e| CeremonyError::Storage(format!("insert tablet: {e}")))?;
     Ok(())
@@ -665,6 +684,99 @@ mod tests {
         let disp = EngineDispatcher::new(conn, reg);
         let err = disp.dispatch("nope").await.unwrap_err();
         assert!(matches!(err, CeremonyError::Other(_)));
+    }
+
+    #[tokio::test]
+    async fn dispatch_for_today_marks_not_recovered() {
+        // Live dispatch path: target == today → recovered should be 0.
+        let (_tmp, conn) = open_test_db();
+        let reg = PluginRegistry::new();
+        reg.register(Arc::new(ScriptedPlugin::new("retro", vec![])))
+            .unwrap();
+        let disp = EngineDispatcher::new(conn.clone(), reg);
+        let outcome = disp
+            .dispatch_for("retro", Utc::now().date_naive())
+            .await
+            .unwrap();
+        assert!(matches!(outcome, DispatchOutcome::Generated { .. }));
+        let c = conn.0.lock().unwrap();
+        let recovered: i64 = c
+            .query_row(
+                "SELECT recovered FROM ceremony_tablets LIMIT 1",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(recovered, 0, "today's dispatch must not be flagged recovered");
+    }
+
+    // A test stub whose period_key is date-sensitive — needed for
+    // dispatch_for tests where historical dispatch must produce a
+    // different period_key than the live one.
+    struct DateAwarePlugin;
+    #[async_trait]
+    impl Ceremony for DateAwarePlugin {
+        fn kind(&self) -> &'static str {
+            "daily"
+        }
+        fn period_key(&self, now: chrono::DateTime<Utc>) -> String {
+            now.format("%Y-%m-%d").to_string()
+        }
+        fn period_window(
+            &self,
+            _period_key: &str,
+        ) -> Result<(chrono::DateTime<Utc>, chrono::DateTime<Utc>), CeremonyError> {
+            let now = Utc::now();
+            Ok((now, now + chrono::Duration::days(1)))
+        }
+        fn default_schedule(&self) -> CronSchedule {
+            CronSchedule::local("0 7 * * *")
+        }
+        async fn gather(&self, _ctx: &dyn CeremonyCtx) -> Result<GatheredFacts, CeremonyError> {
+            Ok(GatheredFacts::new(json!({})))
+        }
+        async fn compose(
+            &self,
+            _ctx: &dyn CeremonyCtx,
+            _facts: GatheredFacts,
+        ) -> Result<Vec<NewItem>, CeremonyError> {
+            Ok(Vec::new())
+        }
+    }
+
+    #[tokio::test]
+    async fn dispatch_for_historical_marks_recovered() {
+        let (_tmp, conn) = open_test_db();
+        let reg = PluginRegistry::new();
+        reg.register(Arc::new(DateAwarePlugin)).unwrap();
+        let disp = EngineDispatcher::new(conn.clone(), reg);
+        let target = (Utc::now() - chrono::Duration::days(90)).date_naive();
+        let outcome = disp.dispatch_for("daily", target).await.unwrap();
+        assert!(matches!(outcome, DispatchOutcome::Generated { .. }));
+        let c = conn.0.lock().unwrap();
+        let (period_key, recovered): (String, i64) = c
+            .query_row(
+                "SELECT period_key, recovered FROM ceremony_tablets LIMIT 1",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .unwrap();
+        assert_eq!(period_key, target.format("%Y-%m-%d").to_string());
+        assert_eq!(recovered, 1, "historical dispatch must set recovered=1");
+    }
+
+    #[tokio::test]
+    async fn dispatch_for_historical_idempotent() {
+        let (_tmp, conn) = open_test_db();
+        let reg = PluginRegistry::new();
+        reg.register(Arc::new(DateAwarePlugin)).unwrap();
+        let disp = EngineDispatcher::new(conn.clone(), reg);
+        let target = (Utc::now() - chrono::Duration::days(30)).date_naive();
+        let first = disp.dispatch_for("daily", target).await.unwrap();
+        assert!(matches!(first, DispatchOutcome::Generated { .. }));
+        let second = disp.dispatch_for("daily", target).await.unwrap();
+        assert!(matches!(second, DispatchOutcome::Skipped { .. }));
+        assert_eq!(count_rows(&conn, "ceremony_tablets"), 1);
     }
 
     #[tokio::test]

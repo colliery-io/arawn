@@ -1368,6 +1368,7 @@ mod tests {
                 status: "open".into(),
                 workstreams_scanned: serde_json::json!([]),
                 priorities_confirmed_at: None,
+            recovered: false,
             },
             items,
         }
@@ -1532,6 +1533,7 @@ mod tests {
                 status: "open".into(),
                 workstreams_scanned: serde_json::json!([]),
                 priorities_confirmed_at: None,
+            recovered: false,
             },
             items,
         }

@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-19T19:47:03Z | 369 files | Python, Rust
+> Generated: 2026-05-19T19:59:43Z | 369 files | Python, Rust
 
 ## Project Structure
 
@@ -989,53 +989,65 @@
 - pub `EngineDispatcher` struct L61-68 — `{ conn: ConnHandle, registry: PluginRegistry, events: Option<CeremonyEventSender...` — The concrete [`CeremonyDispatcher`].
 - pub `new` function L71-77 — `(conn: ConnHandle, registry: PluginRegistry) -> Self` — step 9.
 - pub `with_events` function L82-85 — `(mut self, sender: CeremonyEventSender) -> Self` — Attach the event sender.
-- pub `EngineCtx` struct L241-246 — `{ conn: ConnHandle, tablet_id: String, period_key: String, period_window: (DateT...` — Per-run [`CeremonyCtx`].
-- pub `new` function L253-265 — `( conn: ConnHandle, tablet_id: String, period_key: String, period_window: (DateT...` — Construct an EngineCtx with an explicit pinned window.
-- pub `for_test` function L273-281 — `(conn: ConnHandle, tablet_id: String, period_key: String) -> Self` — Test-only constructor that synthesises a placeholder window
-- pub `conn` function L287-289 — `(&self) -> &ConnHandle` — Access to the underlying connection for plugins that need to
+- pub `EngineCtx` struct L259-264 — `{ conn: ConnHandle, tablet_id: String, period_key: String, period_window: (DateT...` — Per-run [`CeremonyCtx`].
+- pub `new` function L271-283 — `( conn: ConnHandle, tablet_id: String, period_key: String, period_window: (DateT...` — Construct an EngineCtx with an explicit pinned window.
+- pub `for_test` function L291-299 — `(conn: ConnHandle, tablet_id: String, period_key: String) -> Self` — Test-only constructor that synthesises a placeholder window
+- pub `conn` function L305-307 — `(&self) -> &ConnHandle` — Access to the underlying connection for plugins that need to
 -  `ConnHandle` type L53-57 — `= ConnHandle` — step 9.
 -  `EngineDispatcher` type L70-86 — `= EngineDispatcher` — step 9.
--  `EngineDispatcher` type L89-147 — `impl CeremonyDispatcher for EngineDispatcher` — step 9.
--  `dispatch` function L90-146 — `(&self, kind: &str) -> Result<DispatchOutcome, CeremonyError>` — step 9.
--  `EngineDispatcher` type L149-236 — `= EngineDispatcher` — step 9.
--  `run_pipeline` function L150-235 — `( &self, plugin: &dyn Ceremony, period_key: &str, now: chrono::DateTime<Utc>, ) ...` — step 9.
--  `EngineCtx` type L248-290 — `= EngineCtx` — step 9.
--  `EngineCtx` type L293-323 — `impl CeremonyCtx for EngineCtx` — step 9.
--  `period_key` function L294-296 — `(&self) -> &str` — step 9.
--  `tablet_id` function L297-299 — `(&self) -> &str` — step 9.
--  `period_window` function L300-302 — `(&self) -> (DateTime<Utc>, DateTime<Utc>)` — step 9.
--  `conn_handle` function L303-305 — `(&self) -> Option<&ConnHandle>` — step 9.
--  `write_pattern_row` function L307-322 — `(&self, pattern: DetectedPattern) -> Result<String, CeremonyError>` — step 9.
--  `current_tablet_status` function L327-350 — `( conn: &ConnHandle, kind: &str, period_key: &str, ) -> Result<Option<TabletStat...` — step 9.
--  `insert_tablet` function L352-370 — `( conn: &ConnHandle, tablet_id: &str, kind: &str, period_key: &str, now: chrono:...` — step 9.
--  `next_ordinal` function L372-381 — `( ordinal_by_section: &mut std::collections::HashMap<String, i32>, section_key: ...` — step 9.
--  `write_composed_item` function L383-416 — `( conn: &ConnHandle, item: &ComposedItem, ordinal_by_section: &mut std::collecti...` — step 9.
--  `write_user_item` function L418-444 — `( conn: &ConnHandle, item: &UserItem, ordinal_by_section: &mut std::collections:...` — step 9.
--  `begin` function L446-454 — `(conn: &ConnHandle) -> Result<(), CeremonyError>` — step 9.
--  `commit` function L456-464 — `(conn: &ConnHandle) -> Result<(), CeremonyError>` — step 9.
--  `rollback` function L466-474 — `(conn: &ConnHandle) -> Result<(), CeremonyError>` — step 9.
--  `kind_str` function L476-486 — `(k: &ItemKind) -> &'static str` — step 9.
--  `tests` module L489-690 — `-` — step 9.
--  `open_test_db` function L499-509 — `() -> (TempDir, ConnHandle)` — step 9.
--  `ScriptedPlugin` struct L512-515 — `{ kind: &'static str, items: std::sync::Mutex<Vec<NewItem>> }` — step 9.
--  `ScriptedPlugin` type L516-523 — `= ScriptedPlugin` — step 9.
--  `new` function L517-522 — `(kind: &'static str, items: Vec<NewItem>) -> Self` — step 9.
--  `ScriptedPlugin` type L525-552 — `impl Ceremony for ScriptedPlugin` — step 9.
--  `kind` function L526-528 — `(&self) -> &'static str` — step 9.
--  `period_key` function L529-531 — `(&self, _now: chrono::DateTime<Utc>) -> String` — step 9.
--  `period_window` function L532-538 — `( &self, _period_key: &str, ) -> Result<(DateTime<Utc>, DateTime<Utc>), Ceremony...` — step 9.
--  `default_schedule` function L539-541 — `(&self) -> CronSchedule` — step 9.
--  `gather` function L542-544 — `(&self, _ctx: &dyn CeremonyCtx) -> Result<GatheredFacts, CeremonyError>` — step 9.
--  `compose` function L545-551 — `( &self, _ctx: &dyn CeremonyCtx, _facts: GatheredFacts, ) -> Result<Vec<NewItem>...` — step 9.
--  `item_composed` function L554-563 — `(tablet_id: &str, section: &str, citation: &str) -> NewItem` — step 9.
--  `item_user` function L565-573 — `(tablet_id: &str, section: &str) -> NewItem` — step 9.
--  `count_rows` function L575-581 — `(conn: &ConnHandle, table: &str) -> i64` — step 9.
--  `happy_path_writes_tablet_and_composed_item_with_citation` function L586-603 — `()` — step 9.
--  `composed_item_missing_citation_rolls_back_whole_run` function L606-621 — `()` — step 9.
--  `user_item_without_citation_is_accepted` function L624-644 — `()` — step 9.
--  `idempotency_skips_when_open_tablet_exists` function L647-659 — `()` — step 9.
--  `unknown_kind_errors` function L662-668 — `()` — step 9.
--  `write_pattern_row_returns_id_and_writes` function L671-689 — `()` — step 9.
+-  `EngineDispatcher` type L89-164 — `impl CeremonyDispatcher for EngineDispatcher` — step 9.
+-  `dispatch` function L90-92 — `(&self, kind: &str) -> Result<DispatchOutcome, CeremonyError>` — step 9.
+-  `dispatch_for` function L94-163 — `( &self, kind: &str, target: chrono::NaiveDate, ) -> Result<DispatchOutcome, Cer...` — step 9.
+-  `EngineDispatcher` type L166-254 — `= EngineDispatcher` — step 9.
+-  `run_pipeline` function L167-253 — `( &self, plugin: &dyn Ceremony, period_key: &str, now: chrono::DateTime<Utc>, re...` — step 9.
+-  `EngineCtx` type L266-308 — `= EngineCtx` — step 9.
+-  `EngineCtx` type L311-341 — `impl CeremonyCtx for EngineCtx` — step 9.
+-  `period_key` function L312-314 — `(&self) -> &str` — step 9.
+-  `tablet_id` function L315-317 — `(&self) -> &str` — step 9.
+-  `period_window` function L318-320 — `(&self) -> (DateTime<Utc>, DateTime<Utc>)` — step 9.
+-  `conn_handle` function L321-323 — `(&self) -> Option<&ConnHandle>` — step 9.
+-  `write_pattern_row` function L325-340 — `(&self, pattern: DetectedPattern) -> Result<String, CeremonyError>` — step 9.
+-  `current_tablet_status` function L345-368 — `( conn: &ConnHandle, kind: &str, period_key: &str, ) -> Result<Option<TabletStat...` — step 9.
+-  `insert_tablet` function L370-389 — `( conn: &ConnHandle, tablet_id: &str, kind: &str, period_key: &str, now: chrono:...` — step 9.
+-  `next_ordinal` function L391-400 — `( ordinal_by_section: &mut std::collections::HashMap<String, i32>, section_key: ...` — step 9.
+-  `write_composed_item` function L402-435 — `( conn: &ConnHandle, item: &ComposedItem, ordinal_by_section: &mut std::collecti...` — step 9.
+-  `write_user_item` function L437-463 — `( conn: &ConnHandle, item: &UserItem, ordinal_by_section: &mut std::collections:...` — step 9.
+-  `begin` function L465-473 — `(conn: &ConnHandle) -> Result<(), CeremonyError>` — step 9.
+-  `commit` function L475-483 — `(conn: &ConnHandle) -> Result<(), CeremonyError>` — step 9.
+-  `rollback` function L485-493 — `(conn: &ConnHandle) -> Result<(), CeremonyError>` — step 9.
+-  `kind_str` function L495-505 — `(k: &ItemKind) -> &'static str` — step 9.
+-  `tests` module L508-802 — `-` — step 9.
+-  `open_test_db` function L518-528 — `() -> (TempDir, ConnHandle)` — step 9.
+-  `ScriptedPlugin` struct L531-534 — `{ kind: &'static str, items: std::sync::Mutex<Vec<NewItem>> }` — step 9.
+-  `ScriptedPlugin` type L535-542 — `= ScriptedPlugin` — step 9.
+-  `new` function L536-541 — `(kind: &'static str, items: Vec<NewItem>) -> Self` — step 9.
+-  `ScriptedPlugin` type L544-571 — `impl Ceremony for ScriptedPlugin` — step 9.
+-  `kind` function L545-547 — `(&self) -> &'static str` — step 9.
+-  `period_key` function L548-550 — `(&self, _now: chrono::DateTime<Utc>) -> String` — step 9.
+-  `period_window` function L551-557 — `( &self, _period_key: &str, ) -> Result<(DateTime<Utc>, DateTime<Utc>), Ceremony...` — step 9.
+-  `default_schedule` function L558-560 — `(&self) -> CronSchedule` — step 9.
+-  `gather` function L561-563 — `(&self, _ctx: &dyn CeremonyCtx) -> Result<GatheredFacts, CeremonyError>` — step 9.
+-  `compose` function L564-570 — `( &self, _ctx: &dyn CeremonyCtx, _facts: GatheredFacts, ) -> Result<Vec<NewItem>...` — step 9.
+-  `item_composed` function L573-582 — `(tablet_id: &str, section: &str, citation: &str) -> NewItem` — step 9.
+-  `item_user` function L584-592 — `(tablet_id: &str, section: &str) -> NewItem` — step 9.
+-  `count_rows` function L594-600 — `(conn: &ConnHandle, table: &str) -> i64` — step 9.
+-  `happy_path_writes_tablet_and_composed_item_with_citation` function L605-622 — `()` — step 9.
+-  `composed_item_missing_citation_rolls_back_whole_run` function L625-640 — `()` — step 9.
+-  `user_item_without_citation_is_accepted` function L643-663 — `()` — step 9.
+-  `idempotency_skips_when_open_tablet_exists` function L666-678 — `()` — step 9.
+-  `unknown_kind_errors` function L681-687 — `()` — step 9.
+-  `dispatch_for_today_marks_not_recovered` function L690-711 — `()` — step 9.
+-  `DateAwarePlugin` struct L716 — `-` — step 9.
+-  `DateAwarePlugin` type L718-745 — `impl Ceremony for DateAwarePlugin` — step 9.
+-  `kind` function L719-721 — `(&self) -> &'static str` — step 9.
+-  `period_key` function L722-724 — `(&self, now: chrono::DateTime<Utc>) -> String` — step 9.
+-  `period_window` function L725-731 — `( &self, _period_key: &str, ) -> Result<(chrono::DateTime<Utc>, chrono::DateTime...` — step 9.
+-  `default_schedule` function L732-734 — `(&self) -> CronSchedule` — step 9.
+-  `gather` function L735-737 — `(&self, _ctx: &dyn CeremonyCtx) -> Result<GatheredFacts, CeremonyError>` — step 9.
+-  `compose` function L738-744 — `( &self, _ctx: &dyn CeremonyCtx, _facts: GatheredFacts, ) -> Result<Vec<NewItem>...` — step 9.
+-  `dispatch_for_historical_marks_recovered` function L748-766 — `()` — step 9.
+-  `dispatch_for_historical_idempotent` function L769-780 — `()` — step 9.
+-  `write_pattern_row_returns_id_and_writes` function L783-801 — `()` — step 9.
 
 #### crates/arawn-ceremonies/src/error.rs
 
@@ -1156,14 +1168,15 @@
 - pub `tablet_id` function L114-119 — `(&self) -> &str` — enforcement, RPC, broadcast events) lives in the engine.
 - pub `CeremonyCtx` interface L127-166 — `{ fn period_key(), fn tablet_id(), fn period_window(), fn write_pattern_row(), f...` — Context handed to a plugin during gather + compose.
 - pub `PatternDetector` interface L175-180 — `{ fn detect() }` — Pattern detector framework hook.
-- pub `Ceremony` interface L184-235 — `{ fn kind(), fn period_key(), fn period_window(), fn default_schedule(), fn gath...` — Contract every ceremony plugin implements.
+- pub `Ceremony` interface L184-250 — `{ fn kind(), fn period_key(), fn period_key_for_date(), fn period_window(), fn d...` — Contract every ceremony plugin implements.
 -  `CronSchedule` type L33-50 — `= CronSchedule` — enforcement, RPC, broadcast events) lives in the engine.
 -  `CronSchedule` type L52-56 — `= CronSchedule` — enforcement, RPC, broadcast events) lives in the engine.
 -  `fmt` function L53-55 — `(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result` — enforcement, RPC, broadcast events) lives in the engine.
 -  `NewItem` type L107-120 — `= NewItem` — enforcement, RPC, broadcast events) lives in the engine.
 -  `conn_handle` function L163-165 — `(&self) -> Option<&crate::engine::ConnHandle>` — Capability check — does this ctx have a SQL connection
--  `interactive_actions` function L226-228 — `(&self) -> Vec<InteractiveAction>` — Plugin-contributed interactive actions (e.g.
--  `patterns` function L232-234 — `(&self) -> Option<&dyn PatternDetector>` — Optional pattern detector.
+-  `period_key_for_date` function L199-207 — `(&self, date: chrono::NaiveDate) -> String` — Compute the period key for a target *date* (rather than a
+-  `interactive_actions` function L241-243 — `(&self) -> Vec<InteractiveAction>` — Plugin-contributed interactive actions (e.g.
+-  `patterns` function L247-249 — `(&self) -> Option<&dyn PatternDetector>` — Optional pattern detector.
 
 #### crates/arawn-ceremonies/src/registry.rs
 
@@ -1207,36 +1220,36 @@
 -  `render_priority_bullet` function L370-396 — `(out: &mut String, p: &PriorityDto)` — shipped here is the contract.
 -  `render_footnotes` function L398-408 — `(out: &mut String, citations: I)` — shipped here is the contract.
 -  `render_item_bullet` function L410-423 — `(out: &mut String, item: &ItemDto)` — shipped here is the contract.
--  `tests` module L426-931 — `-` — shipped here is the contract.
--  `tablet` function L430-440 — `(iso_week: &str, status: &str) -> TabletDto` — shipped here is the contract.
--  `item` function L442-454 — `(section: &str, ordinal: i32, text: &str, citation: Option<&str>) -> ItemDto` — shipped here is the contract.
--  `full_retro_renders_with_all_three_sections` function L457-488 — `()` — shipped here is the contract.
--  `empty_what_happened_renders_placeholder` function L491-499 — `()` — shipped here is the contract.
--  `empty_patterns_renders_bootstrap_message` function L502-512 — `()` — shipped here is the contract.
--  `missing_diary_renders_placeholder` function L515-523 — `()` — shipped here is the contract.
--  `blank_diary_renders_placeholder` function L526-534 — `()` — shipped here is the contract.
--  `items_are_sorted_by_ordinal` function L537-553 — `()` — shipped here is the contract.
--  `footnotes_deduplicate_repeated_citations` function L556-569 — `()` — shipped here is the contract.
--  `missing_citation_just_omits_marker` function L572-581 — `()` — shipped here is the contract.
--  `daily_tablet` function L583-593 — `(date: &str, status: &str) -> TabletDto` — shipped here is the contract.
--  `weekly_tablet` function L595-605 — `(iso_week: &str, status: &str, confirmed: Option<&str>) -> TabletDto` — shipped here is the contract.
--  `priority` function L607-629 — `( ordinal: i32, source: &str, text: &str, rationale: &str, citation: Option<&str...` — shipped here is the contract.
--  `daily_renders_all_four_sections_in_order` function L632-655 — `()` — shipped here is the contract.
--  `daily_empty_sections_render_placeholders` function L658-668 — `()` — shipped here is the contract.
--  `daily_footnotes_deduplicate` function L671-683 — `()` — shipped here is the contract.
--  `weekly_renders_priorities_and_five_sections` function L686-730 — `()` — shipped here is the contract.
--  `weekly_unconfirmed_status_shows_no` function L733-741 — `()` — shipped here is the contract.
--  `weekly_empty_sections_render_placeholders` function L744-756 — `()` — shipped here is the contract.
--  `weekly_footnotes_dedupe_across_items_and_priorities` function L759-768 — `()` — shipped here is the contract.
--  `body_falls_back_to_raw_json_when_text_missing` function L771-789 — `()` — shipped here is the contract.
--  `daily_view_with_calendar_item` function L793-817 — `() -> DailyView` — shipped here is the contract.
--  `weekly_view_with_priority` function L819-844 — `() -> WeeklyView` — shipped here is the contract.
--  `brief_now` function L846-850 — `() -> chrono::DateTime<chrono::Utc>` — shipped here is the contract.
--  `render_brief_with_both_tablets` function L853-864 — `()` — shipped here is the contract.
--  `render_brief_missing_daily` function L867-878 — `()` — shipped here is the contract.
--  `render_brief_missing_weekly` function L881-890 — `()` — shipped here is the contract.
--  `render_brief_missing_both` function L893-903 — `()` — shipped here is the contract.
--  `render_brief_demotes_inner_headings` function L906-930 — `()` — shipped here is the contract.
+-  `tests` module L426-936 — `-` — shipped here is the contract.
+-  `tablet` function L430-441 — `(iso_week: &str, status: &str) -> TabletDto` — shipped here is the contract.
+-  `item` function L443-455 — `(section: &str, ordinal: i32, text: &str, citation: Option<&str>) -> ItemDto` — shipped here is the contract.
+-  `full_retro_renders_with_all_three_sections` function L458-489 — `()` — shipped here is the contract.
+-  `empty_what_happened_renders_placeholder` function L492-500 — `()` — shipped here is the contract.
+-  `empty_patterns_renders_bootstrap_message` function L503-513 — `()` — shipped here is the contract.
+-  `missing_diary_renders_placeholder` function L516-524 — `()` — shipped here is the contract.
+-  `blank_diary_renders_placeholder` function L527-535 — `()` — shipped here is the contract.
+-  `items_are_sorted_by_ordinal` function L538-554 — `()` — shipped here is the contract.
+-  `footnotes_deduplicate_repeated_citations` function L557-570 — `()` — shipped here is the contract.
+-  `missing_citation_just_omits_marker` function L573-582 — `()` — shipped here is the contract.
+-  `daily_tablet` function L584-595 — `(date: &str, status: &str) -> TabletDto` — shipped here is the contract.
+-  `weekly_tablet` function L597-608 — `(iso_week: &str, status: &str, confirmed: Option<&str>) -> TabletDto` — shipped here is the contract.
+-  `priority` function L610-632 — `( ordinal: i32, source: &str, text: &str, rationale: &str, citation: Option<&str...` — shipped here is the contract.
+-  `daily_renders_all_four_sections_in_order` function L635-658 — `()` — shipped here is the contract.
+-  `daily_empty_sections_render_placeholders` function L661-671 — `()` — shipped here is the contract.
+-  `daily_footnotes_deduplicate` function L674-686 — `()` — shipped here is the contract.
+-  `weekly_renders_priorities_and_five_sections` function L689-733 — `()` — shipped here is the contract.
+-  `weekly_unconfirmed_status_shows_no` function L736-744 — `()` — shipped here is the contract.
+-  `weekly_empty_sections_render_placeholders` function L747-759 — `()` — shipped here is the contract.
+-  `weekly_footnotes_dedupe_across_items_and_priorities` function L762-771 — `()` — shipped here is the contract.
+-  `body_falls_back_to_raw_json_when_text_missing` function L774-792 — `()` — shipped here is the contract.
+-  `daily_view_with_calendar_item` function L796-821 — `() -> DailyView` — shipped here is the contract.
+-  `weekly_view_with_priority` function L823-849 — `() -> WeeklyView` — shipped here is the contract.
+-  `brief_now` function L851-855 — `() -> chrono::DateTime<chrono::Utc>` — shipped here is the contract.
+-  `render_brief_with_both_tablets` function L858-869 — `()` — shipped here is the contract.
+-  `render_brief_missing_daily` function L872-883 — `()` — shipped here is the contract.
+-  `render_brief_missing_weekly` function L886-895 — `()` — shipped here is the contract.
+-  `render_brief_missing_both` function L898-908 — `()` — shipped here is the contract.
+-  `render_brief_demotes_inner_headings` function L911-935 — `()` — shipped here is the contract.
 
 #### crates/arawn-ceremonies/src/rollup.rs
 
@@ -1265,121 +1278,122 @@
 
 #### crates/arawn-ceremonies/src/runner.rs
 
-- pub `CeremonyDispatcher` interface L39-52 — `{ fn dispatch() }` — Trait the runner calls into when a workflow fires (cron-driven)
-- pub `DispatchOutcome` enum L57-63 — `Generated | Skipped` — What happened during a `dispatch` call.
-- pub `CeremonyRunner` struct L68-72 — `{ registry: PluginRegistry, cloacina: Arc<DefaultRunner>, dispatcher: Arc<dyn Ce...` — Process-wide runner.
-- pub `new` function L75-85 — `( registry: PluginRegistry, cloacina: Arc<DefaultRunner>, dispatcher: Arc<dyn Ce...` — contract; T-0282 implements the dispatcher.
-- pub `registry` function L87-89 — `(&self) -> &PluginRegistry` — contract; T-0282 implements the dispatcher.
-- pub `start` function L96-101 — `(&self) -> Result<(), CeremonyError>` — Register every plugin in the registry with cloacina: one
-- pub `register_one` function L105-107 — `(&self, kind: &str) -> Result<(), CeremonyError>` — Register a single plugin by kind.
-- pub `register_one_with_schedule` function L113-179 — `( &self, kind: &str, schedule_override: Option<crate::plugin::CronSchedule>, ) -...` — Like [`register_one`] but lets the caller override the cron
-- pub `run_once` function L186-189 — `(&self, kind: &str) -> Result<DispatchOutcome, CeremonyError>` — Manual trigger for a ceremony.
-- pub `CeremonyDispatchTask` struct L194-198 — `{ kind: String, dispatcher: Arc<dyn CeremonyDispatcher>, deps: Vec<TaskNamespace...` — Cloacina `Task` impl.
-- pub `new` function L201-207 — `(kind: impl Into<String>, dispatcher: Arc<dyn CeremonyDispatcher>) -> Self` — contract; T-0282 implements the dispatcher.
--  `CeremonyRunner` type L74-190 — `= CeremonyRunner` — contract; T-0282 implements the dispatcher.
--  `CeremonyDispatchTask` type L200-208 — `= CeremonyDispatchTask` — contract; T-0282 implements the dispatcher.
--  `CeremonyDispatchTask` type L211-240 — `impl Task for CeremonyDispatchTask` — contract; T-0282 implements the dispatcher.
--  `id` function L212-214 — `(&self) -> &str` — contract; T-0282 implements the dispatcher.
--  `dependencies` function L216-218 — `(&self) -> &[TaskNamespace]` — contract; T-0282 implements the dispatcher.
--  `execute` function L220-239 — `(&self, context: Context<Value>) -> Result<Context<Value>, TaskError>` — contract; T-0282 implements the dispatcher.
--  `workflow_name` function L245-247 — `(kind: &str) -> String` — Format the cloacina workflow name for a ceremony kind.
--  `delete_schedule_for` function L253-269 — `( _runner: &DefaultRunner, workflow_name: &str, ) -> Result<(), CeremonyError>` — Idempotent cron-schedule cleanup.
--  `tests` module L272-463 — `-` — contract; T-0282 implements the dispatcher.
--  `StubCeremony` struct L280-282 — `{ kind: &'static str }` — contract; T-0282 implements the dispatcher.
--  `StubCeremony` type L284-311 — `impl Ceremony for StubCeremony` — contract; T-0282 implements the dispatcher.
--  `kind` function L285-287 — `(&self) -> &'static str` — contract; T-0282 implements the dispatcher.
--  `period_key` function L288-290 — `(&self, _now: chrono::DateTime<Utc>) -> String` — contract; T-0282 implements the dispatcher.
--  `period_window` function L291-297 — `( &self, _period_key: &str, ) -> Result<(chrono::DateTime<Utc>, chrono::DateTime...` — contract; T-0282 implements the dispatcher.
--  `default_schedule` function L298-300 — `(&self) -> CronSchedule` — contract; T-0282 implements the dispatcher.
--  `gather` function L301-303 — `(&self, _ctx: &dyn CeremonyCtx) -> Result<GatheredFacts, CeremonyError>` — contract; T-0282 implements the dispatcher.
--  `compose` function L304-310 — `( &self, _ctx: &dyn CeremonyCtx, _facts: GatheredFacts, ) -> Result<Vec<NewItem>...` — contract; T-0282 implements the dispatcher.
--  `RecordingDispatcher` struct L317-320 — `{ calls: Mutex<Vec<String>>, already_generated: Mutex<Vec<String>> }` — Records every dispatch + simulates the idempotency contract
--  `RecordingDispatcher` type L321-339 — `= RecordingDispatcher` — contract; T-0282 implements the dispatcher.
--  `new` function L322-327 — `() -> Arc<Self>` — contract; T-0282 implements the dispatcher.
--  `call_count` function L328-330 — `(&self) -> usize` — contract; T-0282 implements the dispatcher.
--  `called` function L331-338 — `(&self, kind: &str) -> usize` — contract; T-0282 implements the dispatcher.
--  `RecordingDispatcher` type L341-355 — `impl CeremonyDispatcher for RecordingDispatcher` — contract; T-0282 implements the dispatcher.
--  `dispatch` function L342-354 — `(&self, kind: &str) -> Result<DispatchOutcome, CeremonyError>` — contract; T-0282 implements the dispatcher.
--  `registry_with` function L357-363 — `(kinds: &[&'static str]) -> PluginRegistry` — contract; T-0282 implements the dispatcher.
--  `TestRunner` struct L384-387 — `{ registry: PluginRegistry, dispatcher: Arc<dyn CeremonyDispatcher> }` — Test-only constructor that bypasses cloacina, since the
--  `TestRunner` type L388-403 — `= TestRunner` — contract; T-0282 implements the dispatcher.
--  `new` function L389-394 — `(registry: PluginRegistry, dispatcher: Arc<dyn CeremonyDispatcher>) -> Self` — contract; T-0282 implements the dispatcher.
--  `run_once` function L395-402 — `(&self, kind: &str) -> Result<DispatchOutcome, CeremonyError>` — contract; T-0282 implements the dispatcher.
--  `run_once_invokes_dispatcher` function L406-414 — `()` — contract; T-0282 implements the dispatcher.
--  `second_run_once_for_same_period_skips` function L417-429 — `()` — contract; T-0282 implements the dispatcher.
--  `run_once_unknown_kind_errors` function L432-438 — `()` — contract; T-0282 implements the dispatcher.
--  `workflow_name_is_deterministic` function L441-444 — `()` — contract; T-0282 implements the dispatcher.
--  `dispatch_task_propagates_error_as_task_error` function L447-462 — `()` — contract; T-0282 implements the dispatcher.
--  `FailingDispatcher` struct L451 — `-` — contract; T-0282 implements the dispatcher.
--  `FailingDispatcher` type L453-457 — `impl CeremonyDispatcher for FailingDispatcher` — contract; T-0282 implements the dispatcher.
--  `dispatch` function L454-456 — `(&self, _kind: &str) -> Result<DispatchOutcome, CeremonyError>` — contract; T-0282 implements the dispatcher.
+- pub `CeremonyDispatcher` interface L39-70 — `{ fn dispatch(), fn dispatch_for() }` — Trait the runner calls into when a workflow fires (cron-driven)
+- pub `DispatchOutcome` enum L75-81 — `Generated | Skipped` — What happened during a `dispatch` call.
+- pub `CeremonyRunner` struct L86-90 — `{ registry: PluginRegistry, cloacina: Arc<DefaultRunner>, dispatcher: Arc<dyn Ce...` — Process-wide runner.
+- pub `new` function L93-103 — `( registry: PluginRegistry, cloacina: Arc<DefaultRunner>, dispatcher: Arc<dyn Ce...` — contract; T-0282 implements the dispatcher.
+- pub `registry` function L105-107 — `(&self) -> &PluginRegistry` — contract; T-0282 implements the dispatcher.
+- pub `start` function L114-119 — `(&self) -> Result<(), CeremonyError>` — Register every plugin in the registry with cloacina: one
+- pub `register_one` function L123-125 — `(&self, kind: &str) -> Result<(), CeremonyError>` — Register a single plugin by kind.
+- pub `register_one_with_schedule` function L131-197 — `( &self, kind: &str, schedule_override: Option<crate::plugin::CronSchedule>, ) -...` — Like [`register_one`] but lets the caller override the cron
+- pub `run_once` function L204-207 — `(&self, kind: &str) -> Result<DispatchOutcome, CeremonyError>` — Manual trigger for a ceremony.
+- pub `CeremonyDispatchTask` struct L212-216 — `{ kind: String, dispatcher: Arc<dyn CeremonyDispatcher>, deps: Vec<TaskNamespace...` — Cloacina `Task` impl.
+- pub `new` function L219-225 — `(kind: impl Into<String>, dispatcher: Arc<dyn CeremonyDispatcher>) -> Self` — contract; T-0282 implements the dispatcher.
+-  `dispatch_for` function L63-69 — `( &self, kind: &str, _target: chrono::NaiveDate, ) -> Result<DispatchOutcome, Ce...` — Dispatch a ceremony for a *historical* date.
+-  `CeremonyRunner` type L92-208 — `= CeremonyRunner` — contract; T-0282 implements the dispatcher.
+-  `CeremonyDispatchTask` type L218-226 — `= CeremonyDispatchTask` — contract; T-0282 implements the dispatcher.
+-  `CeremonyDispatchTask` type L229-258 — `impl Task for CeremonyDispatchTask` — contract; T-0282 implements the dispatcher.
+-  `id` function L230-232 — `(&self) -> &str` — contract; T-0282 implements the dispatcher.
+-  `dependencies` function L234-236 — `(&self) -> &[TaskNamespace]` — contract; T-0282 implements the dispatcher.
+-  `execute` function L238-257 — `(&self, context: Context<Value>) -> Result<Context<Value>, TaskError>` — contract; T-0282 implements the dispatcher.
+-  `workflow_name` function L263-265 — `(kind: &str) -> String` — Format the cloacina workflow name for a ceremony kind.
+-  `delete_schedule_for` function L271-287 — `( _runner: &DefaultRunner, workflow_name: &str, ) -> Result<(), CeremonyError>` — Idempotent cron-schedule cleanup.
+-  `tests` module L290-481 — `-` — contract; T-0282 implements the dispatcher.
+-  `StubCeremony` struct L298-300 — `{ kind: &'static str }` — contract; T-0282 implements the dispatcher.
+-  `StubCeremony` type L302-329 — `impl Ceremony for StubCeremony` — contract; T-0282 implements the dispatcher.
+-  `kind` function L303-305 — `(&self) -> &'static str` — contract; T-0282 implements the dispatcher.
+-  `period_key` function L306-308 — `(&self, _now: chrono::DateTime<Utc>) -> String` — contract; T-0282 implements the dispatcher.
+-  `period_window` function L309-315 — `( &self, _period_key: &str, ) -> Result<(chrono::DateTime<Utc>, chrono::DateTime...` — contract; T-0282 implements the dispatcher.
+-  `default_schedule` function L316-318 — `(&self) -> CronSchedule` — contract; T-0282 implements the dispatcher.
+-  `gather` function L319-321 — `(&self, _ctx: &dyn CeremonyCtx) -> Result<GatheredFacts, CeremonyError>` — contract; T-0282 implements the dispatcher.
+-  `compose` function L322-328 — `( &self, _ctx: &dyn CeremonyCtx, _facts: GatheredFacts, ) -> Result<Vec<NewItem>...` — contract; T-0282 implements the dispatcher.
+-  `RecordingDispatcher` struct L335-338 — `{ calls: Mutex<Vec<String>>, already_generated: Mutex<Vec<String>> }` — Records every dispatch + simulates the idempotency contract
+-  `RecordingDispatcher` type L339-357 — `= RecordingDispatcher` — contract; T-0282 implements the dispatcher.
+-  `new` function L340-345 — `() -> Arc<Self>` — contract; T-0282 implements the dispatcher.
+-  `call_count` function L346-348 — `(&self) -> usize` — contract; T-0282 implements the dispatcher.
+-  `called` function L349-356 — `(&self, kind: &str) -> usize` — contract; T-0282 implements the dispatcher.
+-  `RecordingDispatcher` type L359-373 — `impl CeremonyDispatcher for RecordingDispatcher` — contract; T-0282 implements the dispatcher.
+-  `dispatch` function L360-372 — `(&self, kind: &str) -> Result<DispatchOutcome, CeremonyError>` — contract; T-0282 implements the dispatcher.
+-  `registry_with` function L375-381 — `(kinds: &[&'static str]) -> PluginRegistry` — contract; T-0282 implements the dispatcher.
+-  `TestRunner` struct L402-405 — `{ registry: PluginRegistry, dispatcher: Arc<dyn CeremonyDispatcher> }` — Test-only constructor that bypasses cloacina, since the
+-  `TestRunner` type L406-421 — `= TestRunner` — contract; T-0282 implements the dispatcher.
+-  `new` function L407-412 — `(registry: PluginRegistry, dispatcher: Arc<dyn CeremonyDispatcher>) -> Self` — contract; T-0282 implements the dispatcher.
+-  `run_once` function L413-420 — `(&self, kind: &str) -> Result<DispatchOutcome, CeremonyError>` — contract; T-0282 implements the dispatcher.
+-  `run_once_invokes_dispatcher` function L424-432 — `()` — contract; T-0282 implements the dispatcher.
+-  `second_run_once_for_same_period_skips` function L435-447 — `()` — contract; T-0282 implements the dispatcher.
+-  `run_once_unknown_kind_errors` function L450-456 — `()` — contract; T-0282 implements the dispatcher.
+-  `workflow_name_is_deterministic` function L459-462 — `()` — contract; T-0282 implements the dispatcher.
+-  `dispatch_task_propagates_error_as_task_error` function L465-480 — `()` — contract; T-0282 implements the dispatcher.
+-  `FailingDispatcher` struct L469 — `-` — contract; T-0282 implements the dispatcher.
+-  `FailingDispatcher` type L471-475 — `impl CeremonyDispatcher for FailingDispatcher` — contract; T-0282 implements the dispatcher.
+-  `dispatch` function L472-474 — `(&self, _kind: &str) -> Result<DispatchOutcome, CeremonyError>` — contract; T-0282 implements the dispatcher.
 
 #### crates/arawn-ceremonies/src/service.rs
 
-- pub `TabletDto` struct L34-42 — `{ id: String, kind: String, period_key: String, generated_at: String, status: St...` — One tablet as the RPC clients see it.
-- pub `ItemDto` struct L46-56 — `{ id: String, tablet_id: String, section_key: String, ordinal: i32, kind: String...` — One item row.
-- pub `NotificationDto` struct L60-66 — `{ tablet_id: String, kind: String, period_key: String, status: String, generated...` — Notification surface: tablets the user has yet to interact with.
-- pub `ItemPatch` struct L71-79 — `{ done: Option<bool>, body: Option<serde_json::Value> }` — Mutation payload for `patch_item`.
-- pub `AddItemRequest` struct L83-88 — `{ tablet_id: String, section_key: String, kind: ItemKind, body: serde_json::Valu...` — Payload for `add_item`.
-- pub `PriorityDto` struct L95-105 — `{ id: String, tablet_id: String, body: serde_json::Value, rationale: String, cit...` — One priority row in `ceremony_priorities` or a yet-unconfirmed
-- pub `AddPriorityRequest` struct L109-113 — `{ tablet_id: String, body: serde_json::Value, rationale: String }` — Payload for `add_priority`.
-- pub `CeremonyService` struct L119-123 — `{ conn: ConnHandle, dispatcher: Arc<dyn CeremonyDispatcher>, events: Option<Cere...` — The methods correspond 1:1 to the `ceremonies.*` WS-RPC method
-- pub `new` function L126-132 — `(conn: ConnHandle, dispatcher: Arc<dyn CeremonyDispatcher>) -> Self` — Filed as a follow-up.
-- pub `with_events` function L137-140 — `(mut self, sender: CeremonyEventSender) -> Self` — Attach the event sender.
-- pub `get_today` function L145-148 — `(&self) -> Result<Option<TabletDto>, CeremonyError>` — `ceremonies.get_today` — today's daily tablet, if any.
-- pub `get_by_period` function L151-169 — `( &self, kind: &str, period_key: &str, ) -> Result<Option<TabletDto>, CeremonyEr...` — `ceremonies.get_by_period` — specific tablet.
-- pub `list_items` function L173-199 — `( &self, tablet_id: &str, section_key: Option<&str>, ) -> Result<Vec<ItemDto>, C...` — `ceremonies.list_items` — items in a tablet, optionally
-- pub `patch_item` function L203-247 — `(&self, item_id: &str, patch: ItemPatch) -> Result<ItemDto, CeremonyError>` — `ceremonies.patch_item` — toggle done, edit body.
-- pub `add_item` function L252-304 — `(&self, req: AddItemRequest) -> Result<ItemDto, CeremonyError>` — `ceremonies.add_item` — user-write path.
-- pub `run` function L307-309 — `(&self, kind: &str) -> Result<DispatchOutcome, CeremonyError>` — `ceremonies.run` — manual trigger; idempotent per period_key.
-- pub `add_rolling_todo` function L319-347 — `( &self, body: &str, origin_tablet_id: &str, ) -> Result<String, CeremonyError>` — User-write helper used by `daily_add_todo`: insert a row into
-- pub `confirm_priority` function L353-494 — `(&self, item_id: &str) -> Result<PriorityDto, CeremonyError>` — `ceremonies.confirm_priority` — promote a priority candidate
-- pub `reject_priority` function L499-536 — `(&self, item_id: &str) -> Result<(), CeremonyError>` — `ceremonies.reject_priority` — delete a priority candidate item.
-- pub `add_priority` function L541-592 — `(&self, req: AddPriorityRequest) -> Result<PriorityDto, CeremonyError>` — `ceremonies.add_priority` — user-write path.
-- pub `list_priorities` function L597-697 — `(&self, tablet_id: &str) -> Result<Vec<PriorityDto>, CeremonyError>` — `ceremonies.list_priorities` — union of confirmed priorities
-- pub `get_diary` function L713-726 — `(&self, tablet_id: &str) -> Result<Option<String>, CeremonyError>` — `ceremonies.upsert_diary` — writes (or replaces) the user's
-- pub `upsert_diary` function L728-784 — `(&self, tablet_id: &str, body: &str) -> Result<(), CeremonyError>` — Filed as a follow-up.
-- pub `list_notifications` function L790-820 — `(&self) -> Result<Vec<NotificationDto>, CeremonyError>` — `ceremonies.list_notifications` — tablets the user has not
--  `CeremonyService` type L125-821 — `= CeremonyService` — Filed as a follow-up.
--  `row_to_tablet` function L825-838 — `(row: &rusqlite::Row<'_>) -> rusqlite::Result<TabletDto>` — Filed as a follow-up.
--  `row_to_item` function L840-854 — `(row: &rusqlite::Row<'_>) -> rusqlite::Result<ItemDto>` — Filed as a follow-up.
--  `kind_str` function L856-866 — `(k: &ItemKind) -> &'static str` — Filed as a follow-up.
--  `status_str` function L872-874 — `(s: TabletStatus) -> &'static str` — Tiny use-once helper so callers that only need to render a
--  `tests` module L877-1528 — `-` — Filed as a follow-up.
--  `open_test_db` function L888-895 — `() -> (TempDir, ConnHandle)` — Filed as a follow-up.
--  `ScriptedPlugin` struct L897-901 — `{ kind: &'static str, items: std::sync::Mutex<Vec<NewItem>>, period: String }` — Filed as a follow-up.
--  `ScriptedPlugin` type L903-930 — `impl Ceremony for ScriptedPlugin` — Filed as a follow-up.
--  `kind` function L904-906 — `(&self) -> &'static str` — Filed as a follow-up.
--  `period_key` function L907-909 — `(&self, _now: chrono::DateTime<Utc>) -> String` — Filed as a follow-up.
--  `period_window` function L910-916 — `( &self, _period_key: &str, ) -> Result<(chrono::DateTime<Utc>, chrono::DateTime...` — Filed as a follow-up.
--  `default_schedule` function L917-919 — `(&self) -> CronSchedule` — Filed as a follow-up.
--  `gather` function L920-922 — `(&self, _ctx: &dyn CeremonyCtx) -> Result<GatheredFacts, CeremonyError>` — Filed as a follow-up.
--  `compose` function L923-929 — `( &self, _ctx: &dyn CeremonyCtx, _facts: GatheredFacts, ) -> Result<Vec<NewItem>...` — Filed as a follow-up.
--  `build_service_with_items` function L932-968 — `( kind: &'static str, period: &str, tablet_id_prefix: &str, ) -> (TempDir, Cerem...` — Filed as a follow-up.
--  `run_generates_and_get_by_period_reads_back` function L971-978 — `()` — Filed as a follow-up.
--  `list_items_filters_by_section` function L981-990 — `()` — Filed as a follow-up.
--  `patch_item_toggles_done` function L993-1022 — `()` — Filed as a follow-up.
--  `add_item_inserts_user_row_with_null_citation_and_next_ordinal` function L1025-1042 — `()` — Filed as a follow-up.
--  `list_notifications_surfaces_open_tablets` function L1045-1052 — `()` — Filed as a follow-up.
--  `get_today_returns_none_when_no_daily_tablet` function L1055-1061 — `()` — Filed as a follow-up.
--  `dispatch_emits_tablet_generated_event` function L1064-1098 — `()` — Filed as a follow-up.
--  `upsert_diary_writes_row_and_flips_status` function L1101-1129 — `()` — Filed as a follow-up.
--  `upsert_diary_is_idempotent_and_replaces_body` function L1132-1153 — `()` — Filed as a follow-up.
--  `upsert_diary_rejects_non_retro_tablet` function L1156-1173 — `()` — Filed as a follow-up.
--  `upsert_diary_rejects_unknown_tablet` function L1176-1182 — `()` — Filed as a follow-up.
--  `upsert_diary_emits_diary_updated_event` function L1185-1200 — `()` — Filed as a follow-up.
--  `service_internals` function L1206-1211 — `(service: &CeremonyService) -> (ConnHandle, (), ())` — Tiny accessor for the in-test connection so the diary tests
--  `build_weekly_with_priority_candidates` function L1217-1254 — `( n: usize, ) -> (TempDir, CeremonyService, String, Vec<String>)` — Build a weekly tablet with N priority candidate items via raw
--  `confirm_priority_happy_path_inserts_row_and_copies_citation` function L1257-1275 — `()` — Filed as a follow-up.
--  `confirm_priority_preserves_rationale_from_body` function L1278-1323 — `()` — Filed as a follow-up.
--  `confirm_priority_leaves_rationale_null_when_body_has_none` function L1326-1344 — `()` — Filed as a follow-up.
--  `confirm_priority_is_idempotent` function L1347-1362 — `()` — Filed as a follow-up.
--  `confirm_priority_rejects_non_priority_item` function L1365-1392 — `()` — Filed as a follow-up.
--  `reject_priority_deletes_item_and_priority_row` function L1395-1417 — `()` — Filed as a follow-up.
--  `add_priority_inserts_with_null_citation` function L1420-1443 — `()` — Filed as a follow-up.
--  `list_priorities_unions_confirmed_and_candidates_deduped` function L1446-1475 — `()` — Filed as a follow-up.
--  `confirm_priority_emits_priority_confirmed_event` function L1478-1495 — `()` — Filed as a follow-up.
--  `patch_item_emits_item_updated_event` function L1498-1527 — `()` — Filed as a follow-up.
+- pub `TabletDto` struct L34-47 — `{ id: String, kind: String, period_key: String, generated_at: String, status: St...` — One tablet as the RPC clients see it.
+- pub `ItemDto` struct L51-61 — `{ id: String, tablet_id: String, section_key: String, ordinal: i32, kind: String...` — One item row.
+- pub `NotificationDto` struct L65-71 — `{ tablet_id: String, kind: String, period_key: String, status: String, generated...` — Notification surface: tablets the user has yet to interact with.
+- pub `ItemPatch` struct L76-84 — `{ done: Option<bool>, body: Option<serde_json::Value> }` — Mutation payload for `patch_item`.
+- pub `AddItemRequest` struct L88-93 — `{ tablet_id: String, section_key: String, kind: ItemKind, body: serde_json::Valu...` — Payload for `add_item`.
+- pub `PriorityDto` struct L100-110 — `{ id: String, tablet_id: String, body: serde_json::Value, rationale: String, cit...` — One priority row in `ceremony_priorities` or a yet-unconfirmed
+- pub `AddPriorityRequest` struct L114-118 — `{ tablet_id: String, body: serde_json::Value, rationale: String }` — Payload for `add_priority`.
+- pub `CeremonyService` struct L124-128 — `{ conn: ConnHandle, dispatcher: Arc<dyn CeremonyDispatcher>, events: Option<Cere...` — The methods correspond 1:1 to the `ceremonies.*` WS-RPC method
+- pub `new` function L131-137 — `(conn: ConnHandle, dispatcher: Arc<dyn CeremonyDispatcher>) -> Self` — Filed as a follow-up.
+- pub `with_events` function L142-145 — `(mut self, sender: CeremonyEventSender) -> Self` — Attach the event sender.
+- pub `get_today` function L150-153 — `(&self) -> Result<Option<TabletDto>, CeremonyError>` — `ceremonies.get_today` — today's daily tablet, if any.
+- pub `get_by_period` function L156-174 — `( &self, kind: &str, period_key: &str, ) -> Result<Option<TabletDto>, CeremonyEr...` — `ceremonies.get_by_period` — specific tablet.
+- pub `list_items` function L178-204 — `( &self, tablet_id: &str, section_key: Option<&str>, ) -> Result<Vec<ItemDto>, C...` — `ceremonies.list_items` — items in a tablet, optionally
+- pub `patch_item` function L208-252 — `(&self, item_id: &str, patch: ItemPatch) -> Result<ItemDto, CeremonyError>` — `ceremonies.patch_item` — toggle done, edit body.
+- pub `add_item` function L257-309 — `(&self, req: AddItemRequest) -> Result<ItemDto, CeremonyError>` — `ceremonies.add_item` — user-write path.
+- pub `run` function L312-314 — `(&self, kind: &str) -> Result<DispatchOutcome, CeremonyError>` — `ceremonies.run` — manual trigger; idempotent per period_key.
+- pub `add_rolling_todo` function L324-352 — `( &self, body: &str, origin_tablet_id: &str, ) -> Result<String, CeremonyError>` — User-write helper used by `daily_add_todo`: insert a row into
+- pub `confirm_priority` function L358-499 — `(&self, item_id: &str) -> Result<PriorityDto, CeremonyError>` — `ceremonies.confirm_priority` — promote a priority candidate
+- pub `reject_priority` function L504-541 — `(&self, item_id: &str) -> Result<(), CeremonyError>` — `ceremonies.reject_priority` — delete a priority candidate item.
+- pub `add_priority` function L546-597 — `(&self, req: AddPriorityRequest) -> Result<PriorityDto, CeremonyError>` — `ceremonies.add_priority` — user-write path.
+- pub `list_priorities` function L602-702 — `(&self, tablet_id: &str) -> Result<Vec<PriorityDto>, CeremonyError>` — `ceremonies.list_priorities` — union of confirmed priorities
+- pub `get_diary` function L718-731 — `(&self, tablet_id: &str) -> Result<Option<String>, CeremonyError>` — `ceremonies.upsert_diary` — writes (or replaces) the user's
+- pub `upsert_diary` function L733-789 — `(&self, tablet_id: &str, body: &str) -> Result<(), CeremonyError>` — Filed as a follow-up.
+- pub `list_notifications` function L795-825 — `(&self) -> Result<Vec<NotificationDto>, CeremonyError>` — `ceremonies.list_notifications` — tablets the user has not
+-  `CeremonyService` type L130-826 — `= CeremonyService` — Filed as a follow-up.
+-  `row_to_tablet` function L830-845 — `(row: &rusqlite::Row<'_>) -> rusqlite::Result<TabletDto>` — Filed as a follow-up.
+-  `row_to_item` function L847-861 — `(row: &rusqlite::Row<'_>) -> rusqlite::Result<ItemDto>` — Filed as a follow-up.
+-  `kind_str` function L863-873 — `(k: &ItemKind) -> &'static str` — Filed as a follow-up.
+-  `status_str` function L879-881 — `(s: TabletStatus) -> &'static str` — Tiny use-once helper so callers that only need to render a
+-  `tests` module L884-1535 — `-` — Filed as a follow-up.
+-  `open_test_db` function L895-902 — `() -> (TempDir, ConnHandle)` — Filed as a follow-up.
+-  `ScriptedPlugin` struct L904-908 — `{ kind: &'static str, items: std::sync::Mutex<Vec<NewItem>>, period: String }` — Filed as a follow-up.
+-  `ScriptedPlugin` type L910-937 — `impl Ceremony for ScriptedPlugin` — Filed as a follow-up.
+-  `kind` function L911-913 — `(&self) -> &'static str` — Filed as a follow-up.
+-  `period_key` function L914-916 — `(&self, _now: chrono::DateTime<Utc>) -> String` — Filed as a follow-up.
+-  `period_window` function L917-923 — `( &self, _period_key: &str, ) -> Result<(chrono::DateTime<Utc>, chrono::DateTime...` — Filed as a follow-up.
+-  `default_schedule` function L924-926 — `(&self) -> CronSchedule` — Filed as a follow-up.
+-  `gather` function L927-929 — `(&self, _ctx: &dyn CeremonyCtx) -> Result<GatheredFacts, CeremonyError>` — Filed as a follow-up.
+-  `compose` function L930-936 — `( &self, _ctx: &dyn CeremonyCtx, _facts: GatheredFacts, ) -> Result<Vec<NewItem>...` — Filed as a follow-up.
+-  `build_service_with_items` function L939-975 — `( kind: &'static str, period: &str, tablet_id_prefix: &str, ) -> (TempDir, Cerem...` — Filed as a follow-up.
+-  `run_generates_and_get_by_period_reads_back` function L978-985 — `()` — Filed as a follow-up.
+-  `list_items_filters_by_section` function L988-997 — `()` — Filed as a follow-up.
+-  `patch_item_toggles_done` function L1000-1029 — `()` — Filed as a follow-up.
+-  `add_item_inserts_user_row_with_null_citation_and_next_ordinal` function L1032-1049 — `()` — Filed as a follow-up.
+-  `list_notifications_surfaces_open_tablets` function L1052-1059 — `()` — Filed as a follow-up.
+-  `get_today_returns_none_when_no_daily_tablet` function L1062-1068 — `()` — Filed as a follow-up.
+-  `dispatch_emits_tablet_generated_event` function L1071-1105 — `()` — Filed as a follow-up.
+-  `upsert_diary_writes_row_and_flips_status` function L1108-1136 — `()` — Filed as a follow-up.
+-  `upsert_diary_is_idempotent_and_replaces_body` function L1139-1160 — `()` — Filed as a follow-up.
+-  `upsert_diary_rejects_non_retro_tablet` function L1163-1180 — `()` — Filed as a follow-up.
+-  `upsert_diary_rejects_unknown_tablet` function L1183-1189 — `()` — Filed as a follow-up.
+-  `upsert_diary_emits_diary_updated_event` function L1192-1207 — `()` — Filed as a follow-up.
+-  `service_internals` function L1213-1218 — `(service: &CeremonyService) -> (ConnHandle, (), ())` — Tiny accessor for the in-test connection so the diary tests
+-  `build_weekly_with_priority_candidates` function L1224-1261 — `( n: usize, ) -> (TempDir, CeremonyService, String, Vec<String>)` — Build a weekly tablet with N priority candidate items via raw
+-  `confirm_priority_happy_path_inserts_row_and_copies_citation` function L1264-1282 — `()` — Filed as a follow-up.
+-  `confirm_priority_preserves_rationale_from_body` function L1285-1330 — `()` — Filed as a follow-up.
+-  `confirm_priority_leaves_rationale_null_when_body_has_none` function L1333-1351 — `()` — Filed as a follow-up.
+-  `confirm_priority_is_idempotent` function L1354-1369 — `()` — Filed as a follow-up.
+-  `confirm_priority_rejects_non_priority_item` function L1372-1399 — `()` — Filed as a follow-up.
+-  `reject_priority_deletes_item_and_priority_row` function L1402-1424 — `()` — Filed as a follow-up.
+-  `add_priority_inserts_with_null_citation` function L1427-1450 — `()` — Filed as a follow-up.
+-  `list_priorities_unions_confirmed_and_candidates_deduped` function L1453-1482 — `()` — Filed as a follow-up.
+-  `confirm_priority_emits_priority_confirmed_event` function L1485-1502 — `()` — Filed as a follow-up.
+-  `patch_item_emits_item_updated_event` function L1505-1534 — `()` — Filed as a follow-up.
 
 #### crates/arawn-ceremonies/src/types.rs
 
@@ -9620,63 +9634,63 @@
 -  `truncate_to` function L1296-1298 — `(s: &str, max_cells: usize) -> String` — Truncate a string to fit within a display width, adding "…" if needed.
 -  `compact_tool_summary` function L1301-1306 — `(content: &str) -> String` — Extract a compact summary from tool call content for inline display.
 -  `truncate_for_display` function L1308-1312 — `(s: &str, max: usize) -> String`
--  `tests` module L1315-2424 — `-`
+-  `tests` module L1315-2426 — `-`
 -  `truncate_for_display_handles_utf8_at_boundary` function L1322-1332 — `()`
 -  `truncate_for_display_passes_through_short_strings` function L1335-1337 — `()`
 -  `cal_item` function L1341-1357 — `(text: &str, start: &str, end: &str) -> arawn_ceremonies::service::ItemDto`
--  `daily_view_with_items` function L1359-1374 — `( items: Vec<arawn_ceremonies::service::ItemDto>, ) -> arawn_ceremonies::DailyVi...`
--  `dashboard_brief_renders_today_with_calendar` function L1377-1408 — `()`
--  `dashboard_brief_flags_conflict` function L1411-1422 — `()`
--  `dashboard_brief_no_conflict_when_separated` function L1425-1432 — `()`
--  `dashboard_brief_empty_state_no_tablet` function L1435-1453 — `()`
--  `dashboard_brief_empty_state_no_calendar_items` function L1456-1474 — `()`
--  `format_brief_date_line_includes_weekday` function L1477-1480 — `()`
--  `format_brief_date_line_fallback_on_garbage` function L1483-1485 — `()`
--  `attn_item` function L1489-1504 — `( ordinal: i32, text: &str, ) -> arawn_ceremonies::service::ItemDto`
--  `todo_item` function L1506-1521 — `( ordinal: i32, text: &str, ) -> arawn_ceremonies::service::ItemDto`
--  `daily_view_for_actions` function L1523-1538 — `( items: Vec<arawn_ceremonies::service::ItemDto>, ) -> arawn_ceremonies::DailyVi...`
--  `draw_actions` function L1540-1549 — `(app: &App, w: u16, h: u16) -> Terminal<TestBackend>`
--  `buffer_contains` function L1551-1558 — `(terminal: &Terminal<TestBackend>, needle: &str) -> bool`
--  `dashboard_actions_renders_attention_items` function L1561-1573 — `()`
--  `dashboard_actions_empty_state_no_tablet` function L1576-1582 — `()`
--  `dashboard_actions_empty_state_no_attention_items` function L1585-1590 — `()`
--  `dashboard_actions_truncates_long_titles` function L1593-1607 — `()`
--  `dashboard_actions_overflow_footer` function L1610-1622 — `()`
--  `post_toast_enqueues_message` function L1627-1634 — `()`
--  `expired_toast_is_dropped_on_render` function L1637-1654 — `()`
--  `toast_truncates_long_message` function L1657-1675 — `()`
--  `dashboard_actions_carried_over_separator` function L1678-1688 — `()`
--  `buffer_to_string` function L1690-1705 — `(terminal: &Terminal<TestBackend>, row: u16) -> String`
--  `render_empty_app_has_status_bar` function L1708-1717 — `()`
--  `render_with_messages_shows_content` function L1720-1746 — `()`
--  `render_with_input_text` function L1749-1764 — `()`
--  `render_streaming_shows_cursor` function L1767-1790 — `()`
--  `render_small_terminal` function L1793-1798 — `()`
--  `render_large_terminal` function L1801-1806 — `()`
--  `region_text` function L1811-1823 — `(terminal: &Terminal<TestBackend>, x: u16, y: u16, w: u16, h: u16) -> String` — Extract text from a rectangular region of the buffer.
--  `chat_region_for` function L1827-1840 — `(terminal: &Terminal<TestBackend>, sidebar_visible: bool) -> String` — Extract the chat area text.
--  `chat_region` function L1843-1845 — `(terminal: &Terminal<TestBackend>) -> String` — Convenience: chat region for default app (sidebar hidden).
--  `sidebar_region` function L1849-1857 — `(terminal: &Terminal<TestBackend>) -> String` — Extract the sidebar text (left 20%, rows 1..height-3).
--  `input_region` function L1860-1865 — `(terminal: &Terminal<TestBackend>) -> String` — Extract the input bar text (second from bottom row).
--  `chat_renders_user_message_with_prefix` function L1870-1884 — `()`
--  `chat_renders_assistant_message_with_prefix` function L1887-1901 — `()`
--  `chat_renders_tool_call_with_icon` function L1904-1934 — `()`
--  `chat_renders_tool_result_collapsed` function L1937-1965 — `()`
--  `chat_renders_tool_error_result` function L1968-1991 — `()`
--  `chat_renders_tool_result_truncated` function L1994-2021 — `()`
--  `chat_streaming_text_appears_in_chat_area` function L2024-2042 — `()`
--  `sidebar_renders_workstream_names` function L2045-2081 — `()`
--  `sidebar_does_not_leak_into_chat` function L2084-2118 — `()`
--  `input_shows_placeholder_when_empty` function L2121-2132 — `()`
--  `input_shows_generating_when_active` function L2135-2148 — `()`
--  `status_bar_shows_generating_indicator` function L2151-2165 — `()`
--  `status_bar_shows_workstream_name` function L2168-2192 — `()`
--  `messages_do_not_appear_in_input_area` function L2195-2218 — `()`
--  `chat_auto_scrolls_to_bottom_with_many_messages` function L2223-2253 — `()`
--  `chat_scroll_up_reveals_older_messages` function L2256-2284 — `()`
--  `chat_few_messages_all_visible` function L2287-2301 — `()`
--  `last_message_visible_above_input` function L2304-2357 — `()`
--  `last_tool_result_visible_above_input` function L2360-2423 — `()`
+-  `daily_view_with_items` function L1359-1375 — `( items: Vec<arawn_ceremonies::service::ItemDto>, ) -> arawn_ceremonies::DailyVi...`
+-  `dashboard_brief_renders_today_with_calendar` function L1378-1409 — `()`
+-  `dashboard_brief_flags_conflict` function L1412-1423 — `()`
+-  `dashboard_brief_no_conflict_when_separated` function L1426-1433 — `()`
+-  `dashboard_brief_empty_state_no_tablet` function L1436-1454 — `()`
+-  `dashboard_brief_empty_state_no_calendar_items` function L1457-1475 — `()`
+-  `format_brief_date_line_includes_weekday` function L1478-1481 — `()`
+-  `format_brief_date_line_fallback_on_garbage` function L1484-1486 — `()`
+-  `attn_item` function L1490-1505 — `( ordinal: i32, text: &str, ) -> arawn_ceremonies::service::ItemDto`
+-  `todo_item` function L1507-1522 — `( ordinal: i32, text: &str, ) -> arawn_ceremonies::service::ItemDto`
+-  `daily_view_for_actions` function L1524-1540 — `( items: Vec<arawn_ceremonies::service::ItemDto>, ) -> arawn_ceremonies::DailyVi...`
+-  `draw_actions` function L1542-1551 — `(app: &App, w: u16, h: u16) -> Terminal<TestBackend>`
+-  `buffer_contains` function L1553-1560 — `(terminal: &Terminal<TestBackend>, needle: &str) -> bool`
+-  `dashboard_actions_renders_attention_items` function L1563-1575 — `()`
+-  `dashboard_actions_empty_state_no_tablet` function L1578-1584 — `()`
+-  `dashboard_actions_empty_state_no_attention_items` function L1587-1592 — `()`
+-  `dashboard_actions_truncates_long_titles` function L1595-1609 — `()`
+-  `dashboard_actions_overflow_footer` function L1612-1624 — `()`
+-  `post_toast_enqueues_message` function L1629-1636 — `()`
+-  `expired_toast_is_dropped_on_render` function L1639-1656 — `()`
+-  `toast_truncates_long_message` function L1659-1677 — `()`
+-  `dashboard_actions_carried_over_separator` function L1680-1690 — `()`
+-  `buffer_to_string` function L1692-1707 — `(terminal: &Terminal<TestBackend>, row: u16) -> String`
+-  `render_empty_app_has_status_bar` function L1710-1719 — `()`
+-  `render_with_messages_shows_content` function L1722-1748 — `()`
+-  `render_with_input_text` function L1751-1766 — `()`
+-  `render_streaming_shows_cursor` function L1769-1792 — `()`
+-  `render_small_terminal` function L1795-1800 — `()`
+-  `render_large_terminal` function L1803-1808 — `()`
+-  `region_text` function L1813-1825 — `(terminal: &Terminal<TestBackend>, x: u16, y: u16, w: u16, h: u16) -> String` — Extract text from a rectangular region of the buffer.
+-  `chat_region_for` function L1829-1842 — `(terminal: &Terminal<TestBackend>, sidebar_visible: bool) -> String` — Extract the chat area text.
+-  `chat_region` function L1845-1847 — `(terminal: &Terminal<TestBackend>) -> String` — Convenience: chat region for default app (sidebar hidden).
+-  `sidebar_region` function L1851-1859 — `(terminal: &Terminal<TestBackend>) -> String` — Extract the sidebar text (left 20%, rows 1..height-3).
+-  `input_region` function L1862-1867 — `(terminal: &Terminal<TestBackend>) -> String` — Extract the input bar text (second from bottom row).
+-  `chat_renders_user_message_with_prefix` function L1872-1886 — `()`
+-  `chat_renders_assistant_message_with_prefix` function L1889-1903 — `()`
+-  `chat_renders_tool_call_with_icon` function L1906-1936 — `()`
+-  `chat_renders_tool_result_collapsed` function L1939-1967 — `()`
+-  `chat_renders_tool_error_result` function L1970-1993 — `()`
+-  `chat_renders_tool_result_truncated` function L1996-2023 — `()`
+-  `chat_streaming_text_appears_in_chat_area` function L2026-2044 — `()`
+-  `sidebar_renders_workstream_names` function L2047-2083 — `()`
+-  `sidebar_does_not_leak_into_chat` function L2086-2120 — `()`
+-  `input_shows_placeholder_when_empty` function L2123-2134 — `()`
+-  `input_shows_generating_when_active` function L2137-2150 — `()`
+-  `status_bar_shows_generating_indicator` function L2153-2167 — `()`
+-  `status_bar_shows_workstream_name` function L2170-2194 — `()`
+-  `messages_do_not_appear_in_input_area` function L2197-2220 — `()`
+-  `chat_auto_scrolls_to_bottom_with_many_messages` function L2225-2255 — `()`
+-  `chat_scroll_up_reveals_older_messages` function L2258-2286 — `()`
+-  `chat_few_messages_all_visible` function L2289-2303 — `()`
+-  `last_message_visible_above_input` function L2306-2359 — `()`
+-  `last_tool_result_visible_above_input` function L2362-2425 — `()`
 
 #### crates/arawn-tui/src/snapshot.rs
 
@@ -9686,7 +9700,7 @@
 
 #### crates/arawn-tui/src/snapshot_tests.rs
 
--  `tests` module L2-628 — `-`
+-  `tests` module L2-630 — `-`
 -  `make_terminal` function L16-18 — `(w: u16, h: u16) -> Terminal<TestBackend>`
 -  `draw` function L20-23 — `(app: &mut App, terminal: &mut Terminal<TestBackend>) -> String`
 -  `draw_styled` function L25-28 — `(app: &mut App, terminal: &mut Terminal<TestBackend>) -> String`
@@ -9701,22 +9715,22 @@
 -  `snapshot_input_generating` function L170-177 — `()`
 -  `snapshot_idle_hero` function L182-196 — `()`
 -  `snapshot_layout_three_pane` function L201-212 — `()`
--  `snapshot_dashboard_brief_with_calendar` function L217-269 — `()`
--  `snapshot_dashboard_actions_with_items` function L274-313 — `()`
--  `snapshot_toast_visible` function L317-330 — `()`
--  `snapshot_layout_narrow_fallback` function L335-346 — `()`
--  `snapshot_idle_hero_with_brief` function L351-372 — `()`
--  `snapshot_idle_hero_partial_brief_only_placeholders` function L376-396 — `()`
--  `snapshot_unicode_chrome_alignment` function L399-424 — `()`
--  `snapshot_speaker_gutters` function L427-457 — `()`
--  `snapshot_ten_tool_calls_collapsed` function L460-485 — `()`
--  `snapshot_error_in_chat` function L488-498 — `()`
--  `styled_snapshot_conversation` function L503-526 — `()`
--  `styled_snapshot_focus_borders` function L529-538 — `()`
--  `styled_snapshot_sidebar_focused` function L541-549 — `()`
--  `snapshot_rich_markdown` function L552-584 — `()`
--  `styled_snapshot_rich_markdown` function L587-615 — `()`
--  `styled_snapshot_generating_state` function L618-627 — `()`
+-  `snapshot_dashboard_brief_with_calendar` function L217-270 — `()`
+-  `snapshot_dashboard_actions_with_items` function L275-315 — `()`
+-  `snapshot_toast_visible` function L319-332 — `()`
+-  `snapshot_layout_narrow_fallback` function L337-348 — `()`
+-  `snapshot_idle_hero_with_brief` function L353-374 — `()`
+-  `snapshot_idle_hero_partial_brief_only_placeholders` function L378-398 — `()`
+-  `snapshot_unicode_chrome_alignment` function L401-426 — `()`
+-  `snapshot_speaker_gutters` function L429-459 — `()`
+-  `snapshot_ten_tool_calls_collapsed` function L462-487 — `()`
+-  `snapshot_error_in_chat` function L490-500 — `()`
+-  `styled_snapshot_conversation` function L505-528 — `()`
+-  `styled_snapshot_focus_borders` function L531-540 — `()`
+-  `styled_snapshot_sidebar_focused` function L543-551 — `()`
+-  `snapshot_rich_markdown` function L554-586 — `()`
+-  `styled_snapshot_rich_markdown` function L589-617 — `()`
+-  `styled_snapshot_generating_state` function L620-629 — `()`
 
 #### crates/arawn-tui/src/theme.rs
 

@@ -436,6 +436,7 @@ mod tests {
             status: status.into(),
             workstreams_scanned: json!([]),
             priorities_confirmed_at: None,
+            recovered: false,
         }
     }
 
@@ -589,6 +590,7 @@ mod tests {
             status: status.into(),
             workstreams_scanned: json!([]),
             priorities_confirmed_at: None,
+            recovered: false,
         }
     }
 
@@ -601,6 +603,7 @@ mod tests {
             status: status.into(),
             workstreams_scanned: json!([]),
             priorities_confirmed_at: confirmed.map(String::from),
+            recovered: false,
         }
     }
 
@@ -799,6 +802,7 @@ mod tests {
             status: "open".into(),
             workstreams_scanned: json!([]),
             priorities_confirmed_at: None,
+            recovered: false,
         };
         DailyView {
             tablet,
@@ -825,6 +829,7 @@ mod tests {
             status: "open".into(),
             workstreams_scanned: json!([]),
             priorities_confirmed_at: Some("2026-05-18T07:30:00Z".into()),
+            recovered: false,
         };
         WeeklyView {
             tablet,

@@ -191,6 +191,21 @@ pub trait Ceremony: Send + Sync {
     /// date; weekly + retro return the ISO week.
     fn period_key(&self, now: DateTime<Utc>) -> String;
 
+    /// Compute the period key for a target *date* (rather than a
+    /// moment). Used by [`crate::engine::EngineDispatcher::dispatch_for`]
+    /// to back-date a tablet. Default impl synthesises noon UTC on
+    /// the date and delegates to `period_key`; plugins whose period
+    /// semantics aren't expressible via "noon UTC" should override.
+    fn period_key_for_date(&self, date: chrono::NaiveDate) -> String {
+        // Noon UTC is a safe midpoint: never crosses a date boundary
+        // in UTC and avoids DST edges at midnight.
+        let noon = date
+            .and_hms_opt(12, 0, 0)
+            .map(|ndt| DateTime::<Utc>::from_naive_utc_and_offset(ndt, Utc))
+            .unwrap_or_else(Utc::now);
+        self.period_key(noon)
+    }
+
     /// Compute the pinned UTC window `[start, end)` covering the
     /// `period_key`'s canonical period. Daily returns local midnight
     /// → next local midnight; weekly returns local Monday midnight

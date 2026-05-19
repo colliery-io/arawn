@@ -39,6 +39,11 @@ pub struct TabletDto {
     pub status: String,
     pub workstreams_scanned: serde_json::Value,
     pub priorities_confirmed_at: Option<String>,
+    /// True when the tablet was composed for a historical date
+    /// (back-fill on boot, manual dispatch_for), rather than by
+    /// the live cron tick. UI can surface a "recovered" badge.
+    #[serde(default)]
+    pub recovered: bool,
 }
 
 /// One item row.
@@ -159,7 +164,7 @@ impl CeremonyService {
             .lock()
             .map_err(|_| CeremonyError::Storage("connection mutex poisoned".into()))?;
         conn.query_row(
-            "SELECT id, kind, period_key, generated_at, status, workstreams_scanned, priorities_confirmed_at \
+            "SELECT id, kind, period_key, generated_at, status, workstreams_scanned, priorities_confirmed_at, recovered \
              FROM ceremony_tablets WHERE kind = ?1 AND period_key = ?2",
             params![kind, period_key],
             row_to_tablet,
@@ -826,6 +831,7 @@ fn row_to_tablet(row: &rusqlite::Row<'_>) -> rusqlite::Result<TabletDto> {
     let workstreams_str: String = row.get(5)?;
     let workstreams_scanned = serde_json::from_str(&workstreams_str)
         .unwrap_or_else(|_| serde_json::Value::Array(Vec::new()));
+    let recovered_i: i64 = row.get(7)?;
     Ok(TabletDto {
         id: row.get(0)?,
         kind: row.get(1)?,
@@ -834,6 +840,7 @@ fn row_to_tablet(row: &rusqlite::Row<'_>) -> rusqlite::Result<TabletDto> {
         status: row.get(4)?,
         workstreams_scanned,
         priorities_confirmed_at: row.get(6)?,
+        recovered: recovered_i != 0,
     })
 }
 

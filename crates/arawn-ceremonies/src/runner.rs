@@ -49,6 +49,24 @@ pub trait CeremonyDispatcher: Send + Sync {
     /// The contract here is on inputs/outputs; the implementation
     /// is intentionally hidden from the runner.
     async fn dispatch(&self, kind: &str) -> Result<DispatchOutcome, CeremonyError>;
+
+    /// Dispatch a ceremony for a *historical* date. The dispatcher
+    /// derives the period_key from `target` via the plugin and
+    /// stamps the resulting tablet with `recovered = true` when
+    /// `target` is not today. Used by the boot-time back-fill loop
+    /// (T-0366).
+    ///
+    /// Default impl delegates to `dispatch(kind)` for backwards
+    /// compatibility with stub dispatchers that don't know about
+    /// back-dating — the result is "live dispatch only", which is
+    /// the safe answer.
+    async fn dispatch_for(
+        &self,
+        kind: &str,
+        _target: chrono::NaiveDate,
+    ) -> Result<DispatchOutcome, CeremonyError> {
+        self.dispatch(kind).await
+    }
 }
 
 /// What happened during a `dispatch` call. The runner logs this; the
