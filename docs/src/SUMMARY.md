@@ -5,7 +5,8 @@
 # Tutorials
 
 - [Overview](./tutorials/index.md)
-- [Getting Started](./getting-started.md)
+- [Your first chat session](./tutorials/first-chat.md)
+- [Your first workstream](./tutorials/first-workstream.md)
 
 # How-to guides
 

@@ -4,14 +4,14 @@ level: task
 title: "Phase C-2: Tutorials — trim first-chat, write first-workstream"
 short_code: "ARAWN-T-0334"
 created_at: 2026-05-19T01:39:35.221362+00:00
-updated_at: 2026-05-19T01:39:35.221362+00:00
+updated_at: 2026-05-19T02:20:22.914885+00:00
 parent: ARAWN-I-0051
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -62,73 +62,24 @@ Trim `docs/src/getting-started.md` to its tutorial core (~200 lines) at `tutoria
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
 
-## Acceptance Criteria **[REQUIRED]**
+## Acceptance Criteria
 
-- [ ] {Specific, testable requirement 1}
-- [ ] {Specific, testable requirement 2}
-- [ ] {Specific, testable requirement 3}
+- [x] `tutorials/first-chat.md` written — ~125 lines, build → configure (Groq) → server → TUI → first message + tool call. No OAuth detours.
+- [x] `tutorials/first-workstream.md` written — ~140 lines, end-to-end `/workstream create` → ontology → `/workstream bind` → `/feeds run` → `signal_search` / `signal_query` / `signal_timeline` + steward proposal preview.
+- [x] `intro.md` updated to point at the new tutorials and the four-quadrant structure.
+- [x] `SUMMARY.md` updated — Tutorials section lists first-chat then first-workstream.
+- [x] `getting-started.md` deleted (`git rm`). Source prose recoverable via `git show HEAD~1:docs/src/getting-started.md` if C-3/C-4/C-5 want it.
+- [x] `angreal docs build` clean.
 
-## Test Cases **[CONDITIONAL: Testing Task]**
+## Status Updates
 
-{Delete unless this is a testing task}
+### 2026-05-18 — Completed (uncommitted)
 
-### Test Case 1: {Test Case Name}
-- **Test ID**: TC-001
-- **Preconditions**: {What must be true before testing}
-- **Steps**: 
-  1. {Step 1}
-  2. {Step 2}
-  3. {Step 3}
-- **Expected Results**: {What should happen}
-- **Actual Results**: {To be filled during execution}
-- **Status**: {Pass/Fail/Blocked}
+Wrote both tutorials. Decisions worth noting:
 
-### Test Case 2: {Test Case Name}
-- **Test ID**: TC-002
-- **Preconditions**: {What must be true before testing}
-- **Steps**: 
-  1. {Step 1}
-  2. {Step 2}
-- **Expected Results**: {What should happen}
-- **Actual Results**: {To be filled during execution}
-- **Status**: {Pass/Fail/Blocked}
+- **`first-chat.md` uses Groq as the default example.** Free tier + fast warmup is the lowest-friction first session. Other providers (Ollama Cloud, local Ollama, OpenAI, Anthropic) get a one-line mention with a pointer to `config-schema.md`.
+- **`first-workstream.md` assumes Gmail.** The Phase A audit found that arawn auto-creates a `gmail/inbox-archive` feed on `/connect gmail` — that's the lowest-friction "real data" path for a tutorial. Other providers and the `github:repo:` / `github:org:` URI schemes get pointers to `bind-a-workstream-to-a-feed.md` (C-4).
+- **`getting-started.md` deleted outright** rather than parked as a "legacy" transitional file (per operator preference). Original prose lives at HEAD~1. C-3 will rebuild OAuth recipes from code + provider docs + that git ref; C-4 will rebuild the `/watch` recipe similarly; C-5 will rebuild the troubleshooting tables.
+- **No accuracy drift introduced.** Used `/feeds rm` (not the stale `/unwatch` from the original), didn't repeat the WIP disclaimers on `/remember`/`/memory`/`/forget`, used real tool names.
 
-## Documentation Sections **[CONDITIONAL: Documentation Task]**
-
-{Delete unless this is a documentation task}
-
-### User Guide Content
-- **Feature Description**: {What this feature does and why it's useful}
-- **Prerequisites**: {What users need before using this feature}
-- **Step-by-Step Instructions**:
-  1. {Step 1 with screenshots/examples}
-  2. {Step 2 with screenshots/examples}
-  3. {Step 3 with screenshots/examples}
-
-### Troubleshooting Guide
-- **Common Issue 1**: {Problem description and solution}
-- **Common Issue 2**: {Problem description and solution}
-- **Error Messages**: {List of error messages and what they mean}
-
-### API Documentation **[CONDITIONAL: API Documentation]**
-- **Endpoint**: {API endpoint description}
-- **Parameters**: {Required and optional parameters}
-- **Example Request**: {Code example}
-- **Example Response**: {Expected response format}
-
-## Implementation Notes **[CONDITIONAL: Technical Task]**
-
-{Keep for technical tasks, delete for non-technical. Technical details, approach, or important considerations}
-
-### Technical Approach
-{How this will be implemented}
-
-### Dependencies
-{Other tasks or systems this depends on}
-
-### Risk Considerations
-{Technical risks and mitigation strategies}
-
-## Status Updates **[REQUIRED]**
-
-*To be added during implementation*
+Forward references to pages that don't exist yet (`how-to/connect-google.md`, `how-to/recover-from-llm-warmup-failure.md`, `how-to/curate-a-workstream.md`, `reference/config-schema.md`, etc.) are intentional — they'll resolve as later C-tasks land. mdbook doesn't fail on them since they're inline markdown links, not `SUMMARY.md` entries.
