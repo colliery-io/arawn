@@ -4,14 +4,14 @@ level: task
 title: "Phase C-9: Reference — extensibility (plugins, MCP, skills, sub-agents)"
 short_code: "ARAWN-T-0341"
 created_at: 2026-05-19T01:39:46.364535+00:00
-updated_at: 2026-05-19T01:39:46.364535+00:00
+updated_at: 2026-05-19T02:48:33.671420+00:00
 parent: ARAWN-I-0051
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -62,73 +62,27 @@ Reference pages for the four extensibility surfaces — plugins, MCP, skills, su
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
 
-## Acceptance Criteria **[REQUIRED]**
+## Acceptance Criteria
 
-- [ ] {Specific, testable requirement 1}
-- [ ] {Specific, testable requirement 2}
-- [ ] {Specific, testable requirement 3}
+## Acceptance Criteria
 
-## Test Cases **[CONDITIONAL: Testing Task]**
+- [x] `reference/plugins.md` — manifest format + 3 marketplace source types + user/project scopes + components (tools/agents/skills/mcp/commands) + hot-reload + on-disk layout. ~125 lines.
+- [x] `reference/mcp.md` — `[[mcp.servers]]` schema + stdio model + tool naming convention + plugin-declared servers + permission behavior + caveats. ~95 lines.
+- [x] `reference/skills.md` — markdown+frontmatter format + 2 invocation paths (agent `skill` tool, user `/skill-name`) + 3 sources (built-in, user, plugin) + the 2 built-in skills. ~85 lines.
+- [x] `reference/sub-agents.md` — `agent` tool + 3 built-in types (`general-purpose`, `Explore`, `Plan`) + user-defined agents in `<data_dir>/agents/` + 3-level nesting cap + `task_*` background-task family. ~120 lines.
+- [x] `SUMMARY.md` updated with all four new pages.
+- [x] `angreal docs build` clean.
 
-{Delete unless this is a testing task}
+## Status Updates
 
-### Test Case 1: {Test Case Name}
-- **Test ID**: TC-001
-- **Preconditions**: {What must be true before testing}
-- **Steps**: 
-  1. {Step 1}
-  2. {Step 2}
-  3. {Step 3}
-- **Expected Results**: {What should happen}
-- **Actual Results**: {To be filled during execution}
-- **Status**: {Pass/Fail/Blocked}
+### 2026-05-18 — Completed (uncommitted)
 
-### Test Case 2: {Test Case Name}
-- **Test ID**: TC-002
-- **Preconditions**: {What must be true before testing}
-- **Steps**: 
-  1. {Step 1}
-  2. {Step 2}
-- **Expected Results**: {What should happen}
-- **Actual Results**: {To be filled during execution}
-- **Status**: {Pass/Fail/Blocked}
+Resolves the audit's "plugin/MCP/skill/sub-agent condensed to one bullet in intro.md" finding — each subsystem now has a dedicated reference page with the manifest schema, the user surface, and the on-disk locations.
 
-## Documentation Sections **[CONDITIONAL: Documentation Task]**
+Source: `crates/arawn-engine/src/{plugins,skills,agent_defs.rs,background.rs,tools/{agent,task_list,task_output,task_stop,skill}.rs}` plus `crates/arawn/src/plugin_cmd.rs` plus `crates/arawn-mcp/`.
 
-{Delete unless this is a documentation task}
-
-### User Guide Content
-- **Feature Description**: {What this feature does and why it's useful}
-- **Prerequisites**: {What users need before using this feature}
-- **Step-by-Step Instructions**:
-  1. {Step 1 with screenshots/examples}
-  2. {Step 2 with screenshots/examples}
-  3. {Step 3 with screenshots/examples}
-
-### Troubleshooting Guide
-- **Common Issue 1**: {Problem description and solution}
-- **Common Issue 2**: {Problem description and solution}
-- **Error Messages**: {List of error messages and what they mean}
-
-### API Documentation **[CONDITIONAL: API Documentation]**
-- **Endpoint**: {API endpoint description}
-- **Parameters**: {Required and optional parameters}
-- **Example Request**: {Code example}
-- **Example Response**: {Expected response format}
-
-## Implementation Notes **[CONDITIONAL: Technical Task]**
-
-{Keep for technical tasks, delete for non-technical. Technical details, approach, or important considerations}
-
-### Technical Approach
-{How this will be implemented}
-
-### Dependencies
-{Other tasks or systems this depends on}
-
-### Risk Considerations
-{Technical risks and mitigation strategies}
-
-## Status Updates **[REQUIRED]**
-
-*To be added during implementation*
+Decisions worth noting:
+- Plugin component types listed exhaustively (tools, agents, skills, MCP servers, commands) so future plugin authors know what shapes the manifest can declare.
+- MCP page documents the `mcp__<name>__<tool>` naming convention because users will see those tool names in `/tools` output but the convention isn't obvious.
+- Sub-agents page calls out the 3-level nesting cap as a hard constraint — users hitting it will hit a clear error from `tools/agent.rs`.
+- Skills page distinguishes `user-invocable: true` (`/skill-name` slash) vs default (agent-only via `skill` tool).

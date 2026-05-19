@@ -49,6 +49,10 @@
 - [Palace types](./reference/palace-types.md)
 - [Memory model](./reference/memory-model.md)
 - [Workflow tools](./reference/workflow-tools.md)
+- [Plugins](./reference/plugins.md)
+- [MCP](./reference/mcp.md)
+- [Skills](./reference/skills.md)
+- [Sub-agents](./reference/sub-agents.md)
 
 # Explanation
 
