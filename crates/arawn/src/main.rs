@@ -1529,14 +1529,32 @@ async fn main() -> Result<()> {
                     let conn_handle = arawn_ceremonies::ConnHandle::new(conn);
                     let plugin_reg = arawn_ceremonies::PluginRegistry::new();
 
-                    // Retro plugin construction (gated).
+                    // Retro plugin construction (gated). Defer the
+                    // resolve_ceremony_tz fn definition below; inline
+                    // the resolution to avoid forward-ref churn.
                     if retro_enabled {
                         let model_hint = retro_cfg
                             .and_then(|c| c.model.clone())
                             .unwrap_or_else(|| arawn_llm::ModelHint::Medium.as_hint());
                         let (retro_client, retro_model) = llm_pool.resolve_hint(&model_hint);
+                        let retro_tz_raw = retro_cfg.and_then(|c| c.timezone.as_deref());
+                        let retro_tz: chrono_tz::Tz = {
+                            use std::str::FromStr;
+                            match retro_tz_raw {
+                                None => chrono_tz::UTC,
+                                Some(s) => {
+                                    let t = s.trim();
+                                    if t.is_empty() || t.eq_ignore_ascii_case("local") {
+                                        chrono_tz::UTC
+                                    } else {
+                                        chrono_tz::Tz::from_str(t).unwrap_or(chrono_tz::UTC)
+                                    }
+                                }
+                            }
+                        };
                         let retro = arawn_ceremonies::RetroCeremony::new(retro_client, retro_model)
-                            .with_detectors(arawn_ceremonies::retro_v1_catalog());
+                            .with_detectors(arawn_ceremonies::retro_v1_catalog())
+                            .with_timezone(retro_tz);
                         if let Err(e) = plugin_reg.register(Arc::new(retro)) {
                             warn!(error = %e, "ceremony retro plugin registration failed");
                         }
@@ -1644,7 +1662,8 @@ async fn main() -> Result<()> {
                             daily_model,
                             Arc::clone(calendar),
                             Arc::clone(attention),
-                        );
+                        )
+                        .with_timezone(daily_tz);
                         if let Err(e) = plugin_reg.register(Arc::new(daily)) {
                             warn!(error = %e, "ceremony daily plugin registration failed");
                         }
@@ -1669,7 +1688,8 @@ async fn main() -> Result<()> {
                             weekly_model,
                             Arc::clone(calendar),
                             Arc::clone(attention),
-                        );
+                        )
+                        .with_timezone(weekly_tz);
                         if let Err(e) = plugin_reg.register(Arc::new(weekly)) {
                             warn!(error = %e, "ceremony weekly plugin registration failed");
                         }

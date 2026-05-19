@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-19T17:59:15Z | 368 files | Python, Rust
+> Generated: 2026-05-19T19:47:03Z | 369 files | Python, Rust
 
 ## Project Structure
 
@@ -32,6 +32,7 @@
 │   │   │   ├── error.rs
 │   │   │   ├── events.rs
 │   │   │   ├── lib.rs
+│   │   │   ├── local_window.rs
 │   │   │   ├── nightly.rs
 │   │   │   ├── patterns.rs
 │   │   │   ├── plugin.rs
@@ -789,7 +790,7 @@
 -  `embed_batch` function L16-25 — `( &'a self, texts: &'a [&'a str], ) -> std::pin::Pin< Box<dyn std::future::Futur...`
 -  `DEFAULT_MODEL` variable L33 — `: &str`
 -  `FILE_LOG_FILTER` variable L36 — `: &str` — Default file log filter: debug for arawn crates, warn for third-party.
--  `main` function L39-2021 — `() -> Result<()>`
+-  `main` function L39-2041 — `() -> Result<()>`
 -  `Cli` struct L49-68 — `{ command: Option<Command>, data_dir: Option<String>, session: Option<Uuid>, lis...`
 -  `Command` enum L71-111 — `Serve | Tui | Plugin | Doctor | Usage`
 -  `ExtractorBindHook` struct L842-853 — `{ runner: Arc<arawn_extractor::ExtractorRunner>, store: Arc<std::sync::Mutex<ara...`
@@ -798,16 +799,16 @@
 -  `FeedRuntimeUnbindHook` struct L965-968 — `{ feed_runtime: Arc<std::sync::RwLock<Option<Arc<arawn_feeds::FeedRuntime>>>> }`
 -  `FeedRuntimeUnbindHook` type L969-984 — `= FeedRuntimeUnbindHook`
 -  `on_unbind` function L970-983 — `(&self, removed_feed_ids: &[String])`
--  `resolve_ceremony_tz` function L1562-1586 — `(kind: &str, raw: Option<&str>) -> chrono_tz::Tz`
--  `run_cli_via_server` function L2024-2126 — `(url: &str, prompt: &str, session_id: Option<Uuid>) -> Result<()>` — Run a CLI prompt by connecting to the running server via WebSocket.
--  `build_llm_client` function L2129-2150 — `(config: &arawn_bin::LlmConfig) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
--  `register_default_tools` function L2153-2195 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &arawn_bin::ArawnConfig, d...` — Register all default tools into the registry.
--  `connect_mcp_servers` function L2198-2242 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
--  `register_workflow_tools` function L2245-2262 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
--  `build_engine_config` function L2264-2307 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
--  `expand_github_org` function L2317-2380 — `( github: Arc<arawn_integrations::github::GithubIntegration>, store: Arc<std::sy...` — I-0050 T-0327 — list every repo under `owner` (via the github
--  `register_one_feed` function L2386-2418 — `( feed_runtime: Arc<arawn_feeds::FeedRuntime>, store: Arc<std::sync::Mutex<arawn...` — T-0329 — fetch a feed record by id and register its cron schedule
--  `dirs_path` function L2420-2429 — `() -> Option<String>`
+-  `resolve_ceremony_tz` function L1580-1604 — `(kind: &str, raw: Option<&str>) -> chrono_tz::Tz`
+-  `run_cli_via_server` function L2044-2146 — `(url: &str, prompt: &str, session_id: Option<Uuid>) -> Result<()>` — Run a CLI prompt by connecting to the running server via WebSocket.
+-  `build_llm_client` function L2149-2170 — `(config: &arawn_bin::LlmConfig) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
+-  `register_default_tools` function L2173-2215 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &arawn_bin::ArawnConfig, d...` — Register all default tools into the registry.
+-  `connect_mcp_servers` function L2218-2262 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
+-  `register_workflow_tools` function L2265-2282 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
+-  `build_engine_config` function L2284-2327 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
+-  `expand_github_org` function L2337-2400 — `( github: Arc<arawn_integrations::github::GithubIntegration>, store: Arc<std::sy...` — I-0050 T-0327 — list every repo under `owner` (via the github
+-  `register_one_feed` function L2406-2438 — `( feed_runtime: Arc<arawn_feeds::FeedRuntime>, store: Arc<std::sync::Mutex<arawn...` — T-0329 — fetch a feed record by id and register its cron schedule
+-  `dirs_path` function L2440-2449 — `() -> Option<String>`
 
 #### crates/arawn/src/plugin_cmd.rs
 
@@ -988,50 +989,53 @@
 - pub `EngineDispatcher` struct L61-68 — `{ conn: ConnHandle, registry: PluginRegistry, events: Option<CeremonyEventSender...` — The concrete [`CeremonyDispatcher`].
 - pub `new` function L71-77 — `(conn: ConnHandle, registry: PluginRegistry) -> Self` — step 9.
 - pub `with_events` function L82-85 — `(mut self, sender: CeremonyEventSender) -> Self` — Attach the event sender.
-- pub `EngineCtx` struct L233-237 — `{ conn: ConnHandle, tablet_id: String, period_key: String }` — Per-run [`CeremonyCtx`].
-- pub `new` function L240-246 — `(conn: ConnHandle, tablet_id: String, period_key: String) -> Self` — step 9.
-- pub `conn` function L252-254 — `(&self) -> &ConnHandle` — Access to the underlying connection for plugins that need to
+- pub `EngineCtx` struct L241-246 — `{ conn: ConnHandle, tablet_id: String, period_key: String, period_window: (DateT...` — Per-run [`CeremonyCtx`].
+- pub `new` function L253-265 — `( conn: ConnHandle, tablet_id: String, period_key: String, period_window: (DateT...` — Construct an EngineCtx with an explicit pinned window.
+- pub `for_test` function L273-281 — `(conn: ConnHandle, tablet_id: String, period_key: String) -> Self` — Test-only constructor that synthesises a placeholder window
+- pub `conn` function L287-289 — `(&self) -> &ConnHandle` — Access to the underlying connection for plugins that need to
 -  `ConnHandle` type L53-57 — `= ConnHandle` — step 9.
 -  `EngineDispatcher` type L70-86 — `= EngineDispatcher` — step 9.
 -  `EngineDispatcher` type L89-147 — `impl CeremonyDispatcher for EngineDispatcher` — step 9.
 -  `dispatch` function L90-146 — `(&self, kind: &str) -> Result<DispatchOutcome, CeremonyError>` — step 9.
--  `EngineDispatcher` type L149-228 — `= EngineDispatcher` — step 9.
--  `run_pipeline` function L150-227 — `( &self, plugin: &dyn Ceremony, period_key: &str, now: chrono::DateTime<Utc>, ) ...` — step 9.
--  `EngineCtx` type L239-255 — `= EngineCtx` — step 9.
--  `EngineCtx` type L258-285 — `impl CeremonyCtx for EngineCtx` — step 9.
--  `period_key` function L259-261 — `(&self) -> &str` — step 9.
--  `tablet_id` function L262-264 — `(&self) -> &str` — step 9.
--  `conn_handle` function L265-267 — `(&self) -> Option<&ConnHandle>` — step 9.
--  `write_pattern_row` function L269-284 — `(&self, pattern: DetectedPattern) -> Result<String, CeremonyError>` — step 9.
--  `current_tablet_status` function L289-312 — `( conn: &ConnHandle, kind: &str, period_key: &str, ) -> Result<Option<TabletStat...` — step 9.
--  `insert_tablet` function L314-332 — `( conn: &ConnHandle, tablet_id: &str, kind: &str, period_key: &str, now: chrono:...` — step 9.
--  `next_ordinal` function L334-343 — `( ordinal_by_section: &mut std::collections::HashMap<String, i32>, section_key: ...` — step 9.
--  `write_composed_item` function L345-378 — `( conn: &ConnHandle, item: &ComposedItem, ordinal_by_section: &mut std::collecti...` — step 9.
--  `write_user_item` function L380-406 — `( conn: &ConnHandle, item: &UserItem, ordinal_by_section: &mut std::collections:...` — step 9.
--  `begin` function L408-416 — `(conn: &ConnHandle) -> Result<(), CeremonyError>` — step 9.
--  `commit` function L418-426 — `(conn: &ConnHandle) -> Result<(), CeremonyError>` — step 9.
--  `rollback` function L428-436 — `(conn: &ConnHandle) -> Result<(), CeremonyError>` — step 9.
--  `kind_str` function L438-448 — `(k: &ItemKind) -> &'static str` — step 9.
--  `tests` module L451-645 — `-` — step 9.
--  `open_test_db` function L461-471 — `() -> (TempDir, ConnHandle)` — step 9.
--  `ScriptedPlugin` struct L474-477 — `{ kind: &'static str, items: std::sync::Mutex<Vec<NewItem>> }` — step 9.
--  `ScriptedPlugin` type L478-485 — `= ScriptedPlugin` — step 9.
--  `new` function L479-484 — `(kind: &'static str, items: Vec<NewItem>) -> Self` — step 9.
--  `ScriptedPlugin` type L487-507 — `impl Ceremony for ScriptedPlugin` — step 9.
--  `kind` function L488-490 — `(&self) -> &'static str` — step 9.
--  `period_key` function L491-493 — `(&self, _now: chrono::DateTime<Utc>) -> String` — step 9.
--  `default_schedule` function L494-496 — `(&self) -> CronSchedule` — step 9.
--  `gather` function L497-499 — `(&self, _ctx: &dyn CeremonyCtx) -> Result<GatheredFacts, CeremonyError>` — step 9.
--  `compose` function L500-506 — `( &self, _ctx: &dyn CeremonyCtx, _facts: GatheredFacts, ) -> Result<Vec<NewItem>...` — step 9.
--  `item_composed` function L509-518 — `(tablet_id: &str, section: &str, citation: &str) -> NewItem` — step 9.
--  `item_user` function L520-528 — `(tablet_id: &str, section: &str) -> NewItem` — step 9.
--  `count_rows` function L530-536 — `(conn: &ConnHandle, table: &str) -> i64` — step 9.
--  `happy_path_writes_tablet_and_composed_item_with_citation` function L541-558 — `()` — step 9.
--  `composed_item_missing_citation_rolls_back_whole_run` function L561-576 — `()` — step 9.
--  `user_item_without_citation_is_accepted` function L579-599 — `()` — step 9.
--  `idempotency_skips_when_open_tablet_exists` function L602-614 — `()` — step 9.
--  `unknown_kind_errors` function L617-623 — `()` — step 9.
--  `write_pattern_row_returns_id_and_writes` function L626-644 — `()` — step 9.
+-  `EngineDispatcher` type L149-236 — `= EngineDispatcher` — step 9.
+-  `run_pipeline` function L150-235 — `( &self, plugin: &dyn Ceremony, period_key: &str, now: chrono::DateTime<Utc>, ) ...` — step 9.
+-  `EngineCtx` type L248-290 — `= EngineCtx` — step 9.
+-  `EngineCtx` type L293-323 — `impl CeremonyCtx for EngineCtx` — step 9.
+-  `period_key` function L294-296 — `(&self) -> &str` — step 9.
+-  `tablet_id` function L297-299 — `(&self) -> &str` — step 9.
+-  `period_window` function L300-302 — `(&self) -> (DateTime<Utc>, DateTime<Utc>)` — step 9.
+-  `conn_handle` function L303-305 — `(&self) -> Option<&ConnHandle>` — step 9.
+-  `write_pattern_row` function L307-322 — `(&self, pattern: DetectedPattern) -> Result<String, CeremonyError>` — step 9.
+-  `current_tablet_status` function L327-350 — `( conn: &ConnHandle, kind: &str, period_key: &str, ) -> Result<Option<TabletStat...` — step 9.
+-  `insert_tablet` function L352-370 — `( conn: &ConnHandle, tablet_id: &str, kind: &str, period_key: &str, now: chrono:...` — step 9.
+-  `next_ordinal` function L372-381 — `( ordinal_by_section: &mut std::collections::HashMap<String, i32>, section_key: ...` — step 9.
+-  `write_composed_item` function L383-416 — `( conn: &ConnHandle, item: &ComposedItem, ordinal_by_section: &mut std::collecti...` — step 9.
+-  `write_user_item` function L418-444 — `( conn: &ConnHandle, item: &UserItem, ordinal_by_section: &mut std::collections:...` — step 9.
+-  `begin` function L446-454 — `(conn: &ConnHandle) -> Result<(), CeremonyError>` — step 9.
+-  `commit` function L456-464 — `(conn: &ConnHandle) -> Result<(), CeremonyError>` — step 9.
+-  `rollback` function L466-474 — `(conn: &ConnHandle) -> Result<(), CeremonyError>` — step 9.
+-  `kind_str` function L476-486 — `(k: &ItemKind) -> &'static str` — step 9.
+-  `tests` module L489-690 — `-` — step 9.
+-  `open_test_db` function L499-509 — `() -> (TempDir, ConnHandle)` — step 9.
+-  `ScriptedPlugin` struct L512-515 — `{ kind: &'static str, items: std::sync::Mutex<Vec<NewItem>> }` — step 9.
+-  `ScriptedPlugin` type L516-523 — `= ScriptedPlugin` — step 9.
+-  `new` function L517-522 — `(kind: &'static str, items: Vec<NewItem>) -> Self` — step 9.
+-  `ScriptedPlugin` type L525-552 — `impl Ceremony for ScriptedPlugin` — step 9.
+-  `kind` function L526-528 — `(&self) -> &'static str` — step 9.
+-  `period_key` function L529-531 — `(&self, _now: chrono::DateTime<Utc>) -> String` — step 9.
+-  `period_window` function L532-538 — `( &self, _period_key: &str, ) -> Result<(DateTime<Utc>, DateTime<Utc>), Ceremony...` — step 9.
+-  `default_schedule` function L539-541 — `(&self) -> CronSchedule` — step 9.
+-  `gather` function L542-544 — `(&self, _ctx: &dyn CeremonyCtx) -> Result<GatheredFacts, CeremonyError>` — step 9.
+-  `compose` function L545-551 — `( &self, _ctx: &dyn CeremonyCtx, _facts: GatheredFacts, ) -> Result<Vec<NewItem>...` — step 9.
+-  `item_composed` function L554-563 — `(tablet_id: &str, section: &str, citation: &str) -> NewItem` — step 9.
+-  `item_user` function L565-573 — `(tablet_id: &str, section: &str) -> NewItem` — step 9.
+-  `count_rows` function L575-581 — `(conn: &ConnHandle, table: &str) -> i64` — step 9.
+-  `happy_path_writes_tablet_and_composed_item_with_citation` function L586-603 — `()` — step 9.
+-  `composed_item_missing_citation_rolls_back_whole_run` function L606-621 — `()` — step 9.
+-  `user_item_without_citation_is_accepted` function L624-644 — `()` — step 9.
+-  `idempotency_skips_when_open_tablet_exists` function L647-659 — `()` — step 9.
+-  `unknown_kind_errors` function L662-668 — `()` — step 9.
+-  `write_pattern_row_returns_id_and_writes` function L671-689 — `()` — step 9.
 
 #### crates/arawn-ceremonies/src/error.rs
 
@@ -1061,16 +1065,28 @@
 - pub `engine` module L14 — `-` — Each ceremony (daily prep, weekly prep, retro, future user-defined
 - pub `error` module L15 — `-` — changes, no RPC plumbing.
 - pub `events` module L16 — `-` — changes, no RPC plumbing.
-- pub `nightly` module L17 — `-` — changes, no RPC plumbing.
-- pub `patterns` module L18 — `-` — changes, no RPC plumbing.
-- pub `plugin` module L19 — `-` — changes, no RPC plumbing.
-- pub `plugins` module L20 — `-` — changes, no RPC plumbing.
-- pub `registry` module L21 — `-` — changes, no RPC plumbing.
-- pub `render` module L22 — `-` — changes, no RPC plumbing.
-- pub `rollup` module L23 — `-` — changes, no RPC plumbing.
-- pub `runner` module L24 — `-` — changes, no RPC plumbing.
-- pub `service` module L25 — `-` — changes, no RPC plumbing.
-- pub `types` module L26 — `-` — changes, no RPC plumbing.
+- pub `local_window` module L17 — `-` — changes, no RPC plumbing.
+- pub `nightly` module L18 — `-` — changes, no RPC plumbing.
+- pub `patterns` module L19 — `-` — changes, no RPC plumbing.
+- pub `plugin` module L20 — `-` — changes, no RPC plumbing.
+- pub `plugins` module L21 — `-` — changes, no RPC plumbing.
+- pub `registry` module L22 — `-` — changes, no RPC plumbing.
+- pub `render` module L23 — `-` — changes, no RPC plumbing.
+- pub `rollup` module L24 — `-` — changes, no RPC plumbing.
+- pub `runner` module L25 — `-` — changes, no RPC plumbing.
+- pub `service` module L26 — `-` — changes, no RPC plumbing.
+- pub `types` module L27 — `-` — changes, no RPC plumbing.
+
+#### crates/arawn-ceremonies/src/local_window.rs
+
+- pub `local_midnight_utc` function L23-43 — `(date: NaiveDate, tz: Tz) -> Result<DateTime<Utc>, CeremonyError>` — Resolve `date 00:00` in `tz` to a UTC instant.
+- pub `day_window_utc` function L46-56 — `( date: NaiveDate, tz: Tz, ) -> Result<(DateTime<Utc>, DateTime<Utc>), CeremonyE...` — Convenience for daily plugin: window covering one local day.
+- pub `iso_week_window_utc` function L60-68 — `( monday: NaiveDate, tz: Tz, ) -> Result<(DateTime<Utc>, DateTime<Utc>), Ceremon...` — Convenience for weekly/retro plugins: window covering one local
+-  `tests` module L71-113 — `-` — ARAWN-I-0052.
+-  `day_window_utc_zone` function L76-81 — `()` — ARAWN-I-0052.
+-  `day_window_pacific` function L84-90 — `()` — ARAWN-I-0052.
+-  `iso_week_window_pacific` function L93-99 — `()` — ARAWN-I-0052.
+-  `dst_spring_forward_ambiguity_resolved` function L102-112 — `()` — ARAWN-I-0052.
 
 #### crates/arawn-ceremonies/src/nightly.rs
 
@@ -1103,7 +1119,7 @@
 -  `DetectorRegistry` type L150-163 — `= DetectorRegistry` — without the patterns section.
 -  `DetectorRegistry` type L174-202 — `impl PatternDetector for DetectorRegistry` — The PatternDetector impl that the engine calls.
 -  `detect` function L175-201 — `(&self, ctx: &dyn CeremonyCtx) -> Result<Vec<DetectedPattern>, CeremonyError>` — without the patterns section.
--  `tests` module L205-408 — `-` — without the patterns section.
+-  `tests` module L205-412 — `-` — without the patterns section.
 -  `open_test_db` function L211-218 — `() -> (TempDir, ConnHandle)` — without the patterns section.
 -  `seed_rollup` function L220-233 — `( conn: &ConnHandle, rows: &[(&str, &str, &str, f64)], // (iso_week, workstream,...` — without the patterns section.
 -  `weeks_of_history_counts_distinct_prior_weeks` function L238-251 — `()` — without the patterns section.
@@ -1118,12 +1134,13 @@
 -  `registry_aggregates_multiple_detectors` function L321-338 — `()` — without the patterns section.
 -  `registry_skips_detectors_with_insufficient_history` function L341-359 — `()` — without the patterns section.
 -  `registry_with_enough_history_fires_all` function L362-379 — `()` — without the patterns section.
--  `registry_errors_when_ctx_is_not_engine_ctx` function L382-407 — `()` — without the patterns section.
+-  `registry_errors_when_ctx_is_not_engine_ctx` function L382-411 — `()` — without the patterns section.
 -  `DummyCtx` struct L385 — `-` — without the patterns section.
--  `DummyCtx` type L387-400 — `impl CeremonyCtx for DummyCtx` — without the patterns section.
+-  `DummyCtx` type L387-404 — `impl CeremonyCtx for DummyCtx` — without the patterns section.
 -  `period_key` function L388-390 — `(&self) -> &str` — without the patterns section.
 -  `tablet_id` function L391-393 — `(&self) -> &str` — without the patterns section.
--  `write_pattern_row` function L394-399 — `( &self, _pattern: DetectedPattern, ) -> Result<String, CeremonyError>` — without the patterns section.
+-  `period_window` function L394-397 — `(&self) -> (chrono::DateTime<chrono::Utc>, chrono::DateTime<chrono::Utc>)` — without the patterns section.
+-  `write_pattern_row` function L398-403 — `( &self, _pattern: DetectedPattern, ) -> Result<String, CeremonyError>` — without the patterns section.
 
 #### crates/arawn-ceremonies/src/plugin.rs
 
@@ -1137,16 +1154,16 @@
 - pub `composed` function L108-110 — `(item: ComposedItem) -> Self` — enforcement, RPC, broadcast events) lives in the engine.
 - pub `user` function L111-113 — `(item: UserItem) -> Self` — enforcement, RPC, broadcast events) lives in the engine.
 - pub `tablet_id` function L114-119 — `(&self) -> &str` — enforcement, RPC, broadcast events) lives in the engine.
-- pub `CeremonyCtx` interface L127-154 — `{ fn period_key(), fn tablet_id(), fn write_pattern_row(), fn conn_handle() }` — Context handed to a plugin during gather + compose.
-- pub `PatternDetector` interface L163-168 — `{ fn detect() }` — Pattern detector framework hook.
-- pub `Ceremony` interface L172-210 — `{ fn kind(), fn period_key(), fn default_schedule(), fn gather(), fn compose(), ...` — Contract every ceremony plugin implements.
+- pub `CeremonyCtx` interface L127-166 — `{ fn period_key(), fn tablet_id(), fn period_window(), fn write_pattern_row(), f...` — Context handed to a plugin during gather + compose.
+- pub `PatternDetector` interface L175-180 — `{ fn detect() }` — Pattern detector framework hook.
+- pub `Ceremony` interface L184-235 — `{ fn kind(), fn period_key(), fn period_window(), fn default_schedule(), fn gath...` — Contract every ceremony plugin implements.
 -  `CronSchedule` type L33-50 — `= CronSchedule` — enforcement, RPC, broadcast events) lives in the engine.
 -  `CronSchedule` type L52-56 — `= CronSchedule` — enforcement, RPC, broadcast events) lives in the engine.
 -  `fmt` function L53-55 — `(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result` — enforcement, RPC, broadcast events) lives in the engine.
 -  `NewItem` type L107-120 — `= NewItem` — enforcement, RPC, broadcast events) lives in the engine.
--  `conn_handle` function L151-153 — `(&self) -> Option<&crate::engine::ConnHandle>` — Capability check — does this ctx have a SQL connection
--  `interactive_actions` function L201-203 — `(&self) -> Vec<InteractiveAction>` — Plugin-contributed interactive actions (e.g.
--  `patterns` function L207-209 — `(&self) -> Option<&dyn PatternDetector>` — Optional pattern detector.
+-  `conn_handle` function L163-165 — `(&self) -> Option<&crate::engine::ConnHandle>` — Capability check — does this ctx have a SQL connection
+-  `interactive_actions` function L226-228 — `(&self) -> Vec<InteractiveAction>` — Plugin-contributed interactive actions (e.g.
+-  `patterns` function L232-234 — `(&self) -> Option<&dyn PatternDetector>` — Optional pattern detector.
 
 #### crates/arawn-ceremonies/src/registry.rs
 
@@ -1158,21 +1175,22 @@
 - pub `len` function L64-66 — `(&self) -> usize` — Number of registered plugins.
 - pub `is_empty` function L68-70 — `(&self) -> bool` — and you register it here — no other plumbing touches it.
 -  `PluginRegistry` type L22-71 — `= PluginRegistry` — and you register it here — no other plumbing touches it.
--  `tests` module L74-166 — `-` — and you register it here — no other plumbing touches it.
+-  `tests` module L74-173 — `-` — and you register it here — no other plumbing touches it.
 -  `StubCeremony` struct L81-83 — `{ kind: &'static str }` — and you register it here — no other plumbing touches it.
--  `StubCeremony` type L86-109 — `impl Ceremony for StubCeremony` — and you register it here — no other plumbing touches it.
+-  `StubCeremony` type L86-116 — `impl Ceremony for StubCeremony` — and you register it here — no other plumbing touches it.
 -  `kind` function L87-89 — `(&self) -> &'static str` — and you register it here — no other plumbing touches it.
 -  `period_key` function L90-92 — `(&self, _now: DateTime<Utc>) -> String` — and you register it here — no other plumbing touches it.
--  `default_schedule` function L93-95 — `(&self) -> CronSchedule` — and you register it here — no other plumbing touches it.
--  `gather` function L96-101 — `( &self, _ctx: &dyn crate::plugin::CeremonyCtx, ) -> Result<GatheredFacts, Cerem...` — and you register it here — no other plumbing touches it.
--  `compose` function L102-108 — `( &self, _ctx: &dyn crate::plugin::CeremonyCtx, _facts: GatheredFacts, ) -> Resu...` — and you register it here — no other plumbing touches it.
--  `stub` function L111-113 — `(kind: &'static str) -> Arc<dyn Ceremony>` — and you register it here — no other plumbing touches it.
--  `register_and_get_by_kind` function L116-122 — `()` — and you register it here — no other plumbing touches it.
--  `unknown_kind_returns_none` function L125-129 — `()` — and you register it here — no other plumbing touches it.
--  `duplicate_kind_is_rejected` function L132-137 — `()` — and you register it here — no other plumbing touches it.
--  `all_returns_every_registered_plugin` function L140-148 — `()` — and you register it here — no other plumbing touches it.
--  `empty_registry` function L151-156 — `()` — and you register it here — no other plumbing touches it.
--  `registry_is_clone_share` function L159-165 — `()` — and you register it here — no other plumbing touches it.
+-  `period_window` function L93-99 — `( &self, _period_key: &str, ) -> Result<(DateTime<Utc>, DateTime<Utc>), Ceremony...` — and you register it here — no other plumbing touches it.
+-  `default_schedule` function L100-102 — `(&self) -> CronSchedule` — and you register it here — no other plumbing touches it.
+-  `gather` function L103-108 — `( &self, _ctx: &dyn crate::plugin::CeremonyCtx, ) -> Result<GatheredFacts, Cerem...` — and you register it here — no other plumbing touches it.
+-  `compose` function L109-115 — `( &self, _ctx: &dyn crate::plugin::CeremonyCtx, _facts: GatheredFacts, ) -> Resu...` — and you register it here — no other plumbing touches it.
+-  `stub` function L118-120 — `(kind: &'static str) -> Arc<dyn Ceremony>` — and you register it here — no other plumbing touches it.
+-  `register_and_get_by_kind` function L123-129 — `()` — and you register it here — no other plumbing touches it.
+-  `unknown_kind_returns_none` function L132-136 — `()` — and you register it here — no other plumbing touches it.
+-  `duplicate_kind_is_rejected` function L139-144 — `()` — and you register it here — no other plumbing touches it.
+-  `all_returns_every_registered_plugin` function L147-155 — `()` — and you register it here — no other plumbing touches it.
+-  `empty_registry` function L158-163 — `()` — and you register it here — no other plumbing touches it.
+-  `registry_is_clone_share` function L166-172 — `()` — and you register it here — no other plumbing touches it.
 
 #### crates/arawn-ceremonies/src/render.rs
 
@@ -1266,34 +1284,35 @@
 -  `execute` function L220-239 — `(&self, context: Context<Value>) -> Result<Context<Value>, TaskError>` — contract; T-0282 implements the dispatcher.
 -  `workflow_name` function L245-247 — `(kind: &str) -> String` — Format the cloacina workflow name for a ceremony kind.
 -  `delete_schedule_for` function L253-269 — `( _runner: &DefaultRunner, workflow_name: &str, ) -> Result<(), CeremonyError>` — Idempotent cron-schedule cleanup.
--  `tests` module L272-456 — `-` — contract; T-0282 implements the dispatcher.
+-  `tests` module L272-463 — `-` — contract; T-0282 implements the dispatcher.
 -  `StubCeremony` struct L280-282 — `{ kind: &'static str }` — contract; T-0282 implements the dispatcher.
--  `StubCeremony` type L284-304 — `impl Ceremony for StubCeremony` — contract; T-0282 implements the dispatcher.
+-  `StubCeremony` type L284-311 — `impl Ceremony for StubCeremony` — contract; T-0282 implements the dispatcher.
 -  `kind` function L285-287 — `(&self) -> &'static str` — contract; T-0282 implements the dispatcher.
 -  `period_key` function L288-290 — `(&self, _now: chrono::DateTime<Utc>) -> String` — contract; T-0282 implements the dispatcher.
--  `default_schedule` function L291-293 — `(&self) -> CronSchedule` — contract; T-0282 implements the dispatcher.
--  `gather` function L294-296 — `(&self, _ctx: &dyn CeremonyCtx) -> Result<GatheredFacts, CeremonyError>` — contract; T-0282 implements the dispatcher.
--  `compose` function L297-303 — `( &self, _ctx: &dyn CeremonyCtx, _facts: GatheredFacts, ) -> Result<Vec<NewItem>...` — contract; T-0282 implements the dispatcher.
--  `RecordingDispatcher` struct L310-313 — `{ calls: Mutex<Vec<String>>, already_generated: Mutex<Vec<String>> }` — Records every dispatch + simulates the idempotency contract
--  `RecordingDispatcher` type L314-332 — `= RecordingDispatcher` — contract; T-0282 implements the dispatcher.
--  `new` function L315-320 — `() -> Arc<Self>` — contract; T-0282 implements the dispatcher.
--  `call_count` function L321-323 — `(&self) -> usize` — contract; T-0282 implements the dispatcher.
--  `called` function L324-331 — `(&self, kind: &str) -> usize` — contract; T-0282 implements the dispatcher.
--  `RecordingDispatcher` type L334-348 — `impl CeremonyDispatcher for RecordingDispatcher` — contract; T-0282 implements the dispatcher.
--  `dispatch` function L335-347 — `(&self, kind: &str) -> Result<DispatchOutcome, CeremonyError>` — contract; T-0282 implements the dispatcher.
--  `registry_with` function L350-356 — `(kinds: &[&'static str]) -> PluginRegistry` — contract; T-0282 implements the dispatcher.
--  `TestRunner` struct L377-380 — `{ registry: PluginRegistry, dispatcher: Arc<dyn CeremonyDispatcher> }` — Test-only constructor that bypasses cloacina, since the
--  `TestRunner` type L381-396 — `= TestRunner` — contract; T-0282 implements the dispatcher.
--  `new` function L382-387 — `(registry: PluginRegistry, dispatcher: Arc<dyn CeremonyDispatcher>) -> Self` — contract; T-0282 implements the dispatcher.
--  `run_once` function L388-395 — `(&self, kind: &str) -> Result<DispatchOutcome, CeremonyError>` — contract; T-0282 implements the dispatcher.
--  `run_once_invokes_dispatcher` function L399-407 — `()` — contract; T-0282 implements the dispatcher.
--  `second_run_once_for_same_period_skips` function L410-422 — `()` — contract; T-0282 implements the dispatcher.
--  `run_once_unknown_kind_errors` function L425-431 — `()` — contract; T-0282 implements the dispatcher.
--  `workflow_name_is_deterministic` function L434-437 — `()` — contract; T-0282 implements the dispatcher.
--  `dispatch_task_propagates_error_as_task_error` function L440-455 — `()` — contract; T-0282 implements the dispatcher.
--  `FailingDispatcher` struct L444 — `-` — contract; T-0282 implements the dispatcher.
--  `FailingDispatcher` type L446-450 — `impl CeremonyDispatcher for FailingDispatcher` — contract; T-0282 implements the dispatcher.
--  `dispatch` function L447-449 — `(&self, _kind: &str) -> Result<DispatchOutcome, CeremonyError>` — contract; T-0282 implements the dispatcher.
+-  `period_window` function L291-297 — `( &self, _period_key: &str, ) -> Result<(chrono::DateTime<Utc>, chrono::DateTime...` — contract; T-0282 implements the dispatcher.
+-  `default_schedule` function L298-300 — `(&self) -> CronSchedule` — contract; T-0282 implements the dispatcher.
+-  `gather` function L301-303 — `(&self, _ctx: &dyn CeremonyCtx) -> Result<GatheredFacts, CeremonyError>` — contract; T-0282 implements the dispatcher.
+-  `compose` function L304-310 — `( &self, _ctx: &dyn CeremonyCtx, _facts: GatheredFacts, ) -> Result<Vec<NewItem>...` — contract; T-0282 implements the dispatcher.
+-  `RecordingDispatcher` struct L317-320 — `{ calls: Mutex<Vec<String>>, already_generated: Mutex<Vec<String>> }` — Records every dispatch + simulates the idempotency contract
+-  `RecordingDispatcher` type L321-339 — `= RecordingDispatcher` — contract; T-0282 implements the dispatcher.
+-  `new` function L322-327 — `() -> Arc<Self>` — contract; T-0282 implements the dispatcher.
+-  `call_count` function L328-330 — `(&self) -> usize` — contract; T-0282 implements the dispatcher.
+-  `called` function L331-338 — `(&self, kind: &str) -> usize` — contract; T-0282 implements the dispatcher.
+-  `RecordingDispatcher` type L341-355 — `impl CeremonyDispatcher for RecordingDispatcher` — contract; T-0282 implements the dispatcher.
+-  `dispatch` function L342-354 — `(&self, kind: &str) -> Result<DispatchOutcome, CeremonyError>` — contract; T-0282 implements the dispatcher.
+-  `registry_with` function L357-363 — `(kinds: &[&'static str]) -> PluginRegistry` — contract; T-0282 implements the dispatcher.
+-  `TestRunner` struct L384-387 — `{ registry: PluginRegistry, dispatcher: Arc<dyn CeremonyDispatcher> }` — Test-only constructor that bypasses cloacina, since the
+-  `TestRunner` type L388-403 — `= TestRunner` — contract; T-0282 implements the dispatcher.
+-  `new` function L389-394 — `(registry: PluginRegistry, dispatcher: Arc<dyn CeremonyDispatcher>) -> Self` — contract; T-0282 implements the dispatcher.
+-  `run_once` function L395-402 — `(&self, kind: &str) -> Result<DispatchOutcome, CeremonyError>` — contract; T-0282 implements the dispatcher.
+-  `run_once_invokes_dispatcher` function L406-414 — `()` — contract; T-0282 implements the dispatcher.
+-  `second_run_once_for_same_period_skips` function L417-429 — `()` — contract; T-0282 implements the dispatcher.
+-  `run_once_unknown_kind_errors` function L432-438 — `()` — contract; T-0282 implements the dispatcher.
+-  `workflow_name_is_deterministic` function L441-444 — `()` — contract; T-0282 implements the dispatcher.
+-  `dispatch_task_propagates_error_as_task_error` function L447-462 — `()` — contract; T-0282 implements the dispatcher.
+-  `FailingDispatcher` struct L451 — `-` — contract; T-0282 implements the dispatcher.
+-  `FailingDispatcher` type L453-457 — `impl CeremonyDispatcher for FailingDispatcher` — contract; T-0282 implements the dispatcher.
+-  `dispatch` function L454-456 — `(&self, _kind: &str) -> Result<DispatchOutcome, CeremonyError>` — contract; T-0282 implements the dispatcher.
 
 #### crates/arawn-ceremonies/src/service.rs
 
@@ -1326,40 +1345,41 @@
 -  `row_to_item` function L840-854 — `(row: &rusqlite::Row<'_>) -> rusqlite::Result<ItemDto>` — Filed as a follow-up.
 -  `kind_str` function L856-866 — `(k: &ItemKind) -> &'static str` — Filed as a follow-up.
 -  `status_str` function L872-874 — `(s: TabletStatus) -> &'static str` — Tiny use-once helper so callers that only need to render a
--  `tests` module L877-1521 — `-` — Filed as a follow-up.
+-  `tests` module L877-1528 — `-` — Filed as a follow-up.
 -  `open_test_db` function L888-895 — `() -> (TempDir, ConnHandle)` — Filed as a follow-up.
 -  `ScriptedPlugin` struct L897-901 — `{ kind: &'static str, items: std::sync::Mutex<Vec<NewItem>>, period: String }` — Filed as a follow-up.
--  `ScriptedPlugin` type L903-923 — `impl Ceremony for ScriptedPlugin` — Filed as a follow-up.
+-  `ScriptedPlugin` type L903-930 — `impl Ceremony for ScriptedPlugin` — Filed as a follow-up.
 -  `kind` function L904-906 — `(&self) -> &'static str` — Filed as a follow-up.
 -  `period_key` function L907-909 — `(&self, _now: chrono::DateTime<Utc>) -> String` — Filed as a follow-up.
--  `default_schedule` function L910-912 — `(&self) -> CronSchedule` — Filed as a follow-up.
--  `gather` function L913-915 — `(&self, _ctx: &dyn CeremonyCtx) -> Result<GatheredFacts, CeremonyError>` — Filed as a follow-up.
--  `compose` function L916-922 — `( &self, _ctx: &dyn CeremonyCtx, _facts: GatheredFacts, ) -> Result<Vec<NewItem>...` — Filed as a follow-up.
--  `build_service_with_items` function L925-961 — `( kind: &'static str, period: &str, tablet_id_prefix: &str, ) -> (TempDir, Cerem...` — Filed as a follow-up.
--  `run_generates_and_get_by_period_reads_back` function L964-971 — `()` — Filed as a follow-up.
--  `list_items_filters_by_section` function L974-983 — `()` — Filed as a follow-up.
--  `patch_item_toggles_done` function L986-1015 — `()` — Filed as a follow-up.
--  `add_item_inserts_user_row_with_null_citation_and_next_ordinal` function L1018-1035 — `()` — Filed as a follow-up.
--  `list_notifications_surfaces_open_tablets` function L1038-1045 — `()` — Filed as a follow-up.
--  `get_today_returns_none_when_no_daily_tablet` function L1048-1054 — `()` — Filed as a follow-up.
--  `dispatch_emits_tablet_generated_event` function L1057-1091 — `()` — Filed as a follow-up.
--  `upsert_diary_writes_row_and_flips_status` function L1094-1122 — `()` — Filed as a follow-up.
--  `upsert_diary_is_idempotent_and_replaces_body` function L1125-1146 — `()` — Filed as a follow-up.
--  `upsert_diary_rejects_non_retro_tablet` function L1149-1166 — `()` — Filed as a follow-up.
--  `upsert_diary_rejects_unknown_tablet` function L1169-1175 — `()` — Filed as a follow-up.
--  `upsert_diary_emits_diary_updated_event` function L1178-1193 — `()` — Filed as a follow-up.
--  `service_internals` function L1199-1204 — `(service: &CeremonyService) -> (ConnHandle, (), ())` — Tiny accessor for the in-test connection so the diary tests
--  `build_weekly_with_priority_candidates` function L1210-1247 — `( n: usize, ) -> (TempDir, CeremonyService, String, Vec<String>)` — Build a weekly tablet with N priority candidate items via raw
--  `confirm_priority_happy_path_inserts_row_and_copies_citation` function L1250-1268 — `()` — Filed as a follow-up.
--  `confirm_priority_preserves_rationale_from_body` function L1271-1316 — `()` — Filed as a follow-up.
--  `confirm_priority_leaves_rationale_null_when_body_has_none` function L1319-1337 — `()` — Filed as a follow-up.
--  `confirm_priority_is_idempotent` function L1340-1355 — `()` — Filed as a follow-up.
--  `confirm_priority_rejects_non_priority_item` function L1358-1385 — `()` — Filed as a follow-up.
--  `reject_priority_deletes_item_and_priority_row` function L1388-1410 — `()` — Filed as a follow-up.
--  `add_priority_inserts_with_null_citation` function L1413-1436 — `()` — Filed as a follow-up.
--  `list_priorities_unions_confirmed_and_candidates_deduped` function L1439-1468 — `()` — Filed as a follow-up.
--  `confirm_priority_emits_priority_confirmed_event` function L1471-1488 — `()` — Filed as a follow-up.
--  `patch_item_emits_item_updated_event` function L1491-1520 — `()` — Filed as a follow-up.
+-  `period_window` function L910-916 — `( &self, _period_key: &str, ) -> Result<(chrono::DateTime<Utc>, chrono::DateTime...` — Filed as a follow-up.
+-  `default_schedule` function L917-919 — `(&self) -> CronSchedule` — Filed as a follow-up.
+-  `gather` function L920-922 — `(&self, _ctx: &dyn CeremonyCtx) -> Result<GatheredFacts, CeremonyError>` — Filed as a follow-up.
+-  `compose` function L923-929 — `( &self, _ctx: &dyn CeremonyCtx, _facts: GatheredFacts, ) -> Result<Vec<NewItem>...` — Filed as a follow-up.
+-  `build_service_with_items` function L932-968 — `( kind: &'static str, period: &str, tablet_id_prefix: &str, ) -> (TempDir, Cerem...` — Filed as a follow-up.
+-  `run_generates_and_get_by_period_reads_back` function L971-978 — `()` — Filed as a follow-up.
+-  `list_items_filters_by_section` function L981-990 — `()` — Filed as a follow-up.
+-  `patch_item_toggles_done` function L993-1022 — `()` — Filed as a follow-up.
+-  `add_item_inserts_user_row_with_null_citation_and_next_ordinal` function L1025-1042 — `()` — Filed as a follow-up.
+-  `list_notifications_surfaces_open_tablets` function L1045-1052 — `()` — Filed as a follow-up.
+-  `get_today_returns_none_when_no_daily_tablet` function L1055-1061 — `()` — Filed as a follow-up.
+-  `dispatch_emits_tablet_generated_event` function L1064-1098 — `()` — Filed as a follow-up.
+-  `upsert_diary_writes_row_and_flips_status` function L1101-1129 — `()` — Filed as a follow-up.
+-  `upsert_diary_is_idempotent_and_replaces_body` function L1132-1153 — `()` — Filed as a follow-up.
+-  `upsert_diary_rejects_non_retro_tablet` function L1156-1173 — `()` — Filed as a follow-up.
+-  `upsert_diary_rejects_unknown_tablet` function L1176-1182 — `()` — Filed as a follow-up.
+-  `upsert_diary_emits_diary_updated_event` function L1185-1200 — `()` — Filed as a follow-up.
+-  `service_internals` function L1206-1211 — `(service: &CeremonyService) -> (ConnHandle, (), ())` — Tiny accessor for the in-test connection so the diary tests
+-  `build_weekly_with_priority_candidates` function L1217-1254 — `( n: usize, ) -> (TempDir, CeremonyService, String, Vec<String>)` — Build a weekly tablet with N priority candidate items via raw
+-  `confirm_priority_happy_path_inserts_row_and_copies_citation` function L1257-1275 — `()` — Filed as a follow-up.
+-  `confirm_priority_preserves_rationale_from_body` function L1278-1323 — `()` — Filed as a follow-up.
+-  `confirm_priority_leaves_rationale_null_when_body_has_none` function L1326-1344 — `()` — Filed as a follow-up.
+-  `confirm_priority_is_idempotent` function L1347-1362 — `()` — Filed as a follow-up.
+-  `confirm_priority_rejects_non_priority_item` function L1365-1392 — `()` — Filed as a follow-up.
+-  `reject_priority_deletes_item_and_priority_row` function L1395-1417 — `()` — Filed as a follow-up.
+-  `add_priority_inserts_with_null_citation` function L1420-1443 — `()` — Filed as a follow-up.
+-  `list_priorities_unions_confirmed_and_candidates_deduped` function L1446-1475 — `()` — Filed as a follow-up.
+-  `confirm_priority_emits_priority_confirmed_event` function L1478-1495 — `()` — Filed as a follow-up.
+-  `patch_item_emits_item_updated_event` function L1498-1527 — `()` — Filed as a follow-up.
 
 #### crates/arawn-ceremonies/src/types.rs
 
@@ -1378,59 +1398,65 @@
 
 #### crates/arawn-ceremonies/src/plugins/daily.rs
 
-- pub `DailyCeremony` struct L44-52 — `{ llm: Arc<dyn arawn_llm::LlmClient>, model: String, calendar_source: Arc<dyn Ca...` — The daily plugin.
-- pub `new` function L55-67 — `( llm: Arc<dyn arawn_llm::LlmClient>, model: impl Into<String>, calendar_source:...` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
-- pub `period_date` function L72-74 — `(now: DateTime<Utc>) -> String` — Format a `DateTime<Utc>` as the `YYYY-MM-DD` period key used
-- pub `iso_week` function L78-81 — `(now: DateTime<Utc>) -> String` — Format the current ISO week (`YYYY-Www`) for a moment.
+- pub `DailyCeremony` struct L44-56 — `{ llm: Arc<dyn arawn_llm::LlmClient>, model: String, calendar_source: Arc<dyn Ca...` — The daily plugin.
+- pub `new` function L59-72 — `( llm: Arc<dyn arawn_llm::LlmClient>, model: impl Into<String>, calendar_source:...` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+- pub `with_timezone` function L76-79 — `(mut self, tz: chrono_tz::Tz) -> Self` — Override the timezone used for `period_window` boundary math.
+- pub `period_date` function L84-86 — `(now: DateTime<Utc>) -> String` — Format a `DateTime<Utc>` as the `YYYY-MM-DD` period key used
+- pub `iso_week` function L90-93 — `(now: DateTime<Utc>) -> String` — Format the current ISO week (`YYYY-Www`) for a moment.
 -  `CAP_CALENDAR` variable L38 — `: usize` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
 -  `CAP_ATTENTION` variable L39 — `: usize` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
 -  `CAP_TODOS` variable L40 — `: usize` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
 -  `CAP_PRIORITIES` variable L41 — `: usize` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
--  `DailyCeremony` type L54-82 — `= DailyCeremony` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
--  `DailyGather` struct L87-94 — `{ date: String, iso_week: String, calendar_events: Vec<CalEvent>, rolling_todos:...` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
--  `TodoRow` struct L97-101 — `{ todo_id: String, body: String, created_at: String }` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
--  `PriorityRow` struct L104-108 — `{ id: String, body: String, rationale: String }` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
--  `DailyCeremony` type L111-328 — `impl Ceremony for DailyCeremony` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
--  `kind` function L112-114 — `(&self) -> &'static str` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
--  `period_key` function L116-118 — `(&self, now: DateTime<Utc>) -> String` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
--  `default_schedule` function L120-124 — `(&self) -> CronSchedule` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
--  `interactive_actions` function L126-128 — `(&self) -> Vec<InteractiveAction>` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
--  `patterns` function L130-132 — `(&self) -> Option<&dyn PatternDetector>` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
--  `gather` function L134-248 — `(&self, ctx: &dyn CeremonyCtx) -> Result<GatheredFacts, CeremonyError>` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
--  `compose` function L250-327 — `( &self, ctx: &dyn CeremonyCtx, facts: GatheredFacts, ) -> Result<Vec<NewItem>, ...` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
--  `SYSTEM_PROMPT` variable L330-336 — `: &str` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
--  `build_compose_prompt` function L338-351 — `(facts: &GatheredFacts, valid_ids: &HashSet<String>) -> String` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
--  `ComposedItemSpec` struct L354-358 — `{ section_key: String, citation_id: String, body: serde_json::Value }` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
--  `is_valid_section` function L360-362 — `(s: &str) -> bool` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
--  `collect_valid_ids` function L368-385 — `(payload: &serde_json::Value) -> HashSet<String>` — Walk the gather payload and collect every id field the compose
--  `parse_llm_items` function L388-411 — `(text: &str) -> Option<Vec<ComposedItemSpec>>` — Pull the first balanced JSON array out of the LLM's response.
--  `tests` module L414-679 — `-` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
--  `open_test_db` function L425-432 — `() -> (TempDir, ConnHandle)` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
--  `make_llm_with_response` function L434-438 — `(text: &str) -> Arc<dyn arawn_llm::LlmClient>` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
--  `seed_daily_history` function L440-495 — `(conn: &ConnHandle, period_key: &str, iso_week: &str)` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
--  `sample_calendar_events` function L497-524 — `() -> Vec<CalEvent>` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
--  `sample_signals` function L526-537 — `() -> Vec<SignalRow>` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
--  `period_key_formats_yyyy_mm_dd` function L540-545 — `()` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
--  `gather_collects_four_section_payload` function L548-583 — `()` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
--  `compose_rejects_unknown_citation` function L586-603 — `()` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
--  `compose_rejects_empty_citation` function L606-623 — `()` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
--  `end_to_end_dispatch_writes_tablet_and_items` function L626-678 — `()` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `DailyCeremony` type L58-94 — `= DailyCeremony` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `DailyGather` struct L99-106 — `{ date: String, iso_week: String, calendar_events: Vec<CalEvent>, rolling_todos:...` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `TodoRow` struct L109-113 — `{ todo_id: String, body: String, created_at: String }` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `PriorityRow` struct L116-120 — `{ id: String, body: String, rationale: String }` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `DailyCeremony` type L123-334 — `impl Ceremony for DailyCeremony` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `kind` function L124-126 — `(&self) -> &'static str` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `period_key` function L128-130 — `(&self, now: DateTime<Utc>) -> String` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `period_window` function L132-140 — `( &self, period_key: &str, ) -> Result<(DateTime<Utc>, DateTime<Utc>), CeremonyE...` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `default_schedule` function L142-146 — `(&self) -> CronSchedule` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `interactive_actions` function L148-150 — `(&self) -> Vec<InteractiveAction>` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `patterns` function L152-154 — `(&self) -> Option<&dyn PatternDetector>` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `gather` function L156-254 — `(&self, ctx: &dyn CeremonyCtx) -> Result<GatheredFacts, CeremonyError>` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `compose` function L256-333 — `( &self, ctx: &dyn CeremonyCtx, facts: GatheredFacts, ) -> Result<Vec<NewItem>, ...` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `SYSTEM_PROMPT` variable L336-342 — `: &str` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `build_compose_prompt` function L344-357 — `(facts: &GatheredFacts, valid_ids: &HashSet<String>) -> String` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `ComposedItemSpec` struct L360-364 — `{ section_key: String, citation_id: String, body: serde_json::Value }` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `is_valid_section` function L366-368 — `(s: &str) -> bool` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `collect_valid_ids` function L374-391 — `(payload: &serde_json::Value) -> HashSet<String>` — Walk the gather payload and collect every id field the compose
+-  `parse_llm_items` function L394-417 — `(text: &str) -> Option<Vec<ComposedItemSpec>>` — Pull the first balanced JSON array out of the LLM's response.
+-  `tests` module L420-725 — `-` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `open_test_db` function L431-438 — `() -> (TempDir, ConnHandle)` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `make_llm_with_response` function L440-444 — `(text: &str) -> Arc<dyn arawn_llm::LlmClient>` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `seed_daily_history` function L446-501 — `(conn: &ConnHandle, period_key: &str, iso_week: &str)` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `sample_calendar_events` function L503-530 — `() -> Vec<CalEvent>` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `sample_signals` function L532-543 — `() -> Vec<SignalRow>` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `period_key_formats_yyyy_mm_dd` function L546-551 — `()` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `gather_collects_four_section_payload` function L554-589 — `()` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `compose_rejects_unknown_citation` function L592-609 — `()` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `compose_rejects_empty_citation` function L612-629 — `()` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `end_to_end_dispatch_writes_tablet_and_items` function L632-684 — `()` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `period_window_utc_matches_calendar_day` function L687-697 — `()` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `period_window_pacific_offsets_correctly` function L700-712 — `()` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `period_window_rejects_non_date` function L715-724 — `()` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
 
 #### crates/arawn-ceremonies/src/plugins/gather_sources.rs
 
 - pub `CalEvent` struct L21-28 — `{ id: String, title: String, start: DateTime<Utc>, end: DateTime<Utc>, attendees...` — One calendar event surfaced to the daily plugin's gather payload.
 - pub `SignalRow` struct L33-40 — `{ id: String, source_kind: String, source_id: String, ts: DateTime<Utc>, summary...` — One attention signal (cross-feed unread/important item) the daily
 - pub `CalendarSource` interface L44-46 — `{ fn events_for() }` — Read interface the daily plugin uses to pull today's calendar.
-- pub `AttentionSource` interface L51-57 — `{ fn since() }` — Read interface the daily plugin uses to pull attention signals
-- pub `NoopCalendarSource` struct L62 — `-` — No-op calendar source.
-- pub `StaticCalendarSource` struct L73 — `-` — Calendar source that returns a fixed set of events regardless of
-- pub `StaticAttentionSource` struct L84 — `-` — Attention source that returns a fixed set of signals.
--  `NoopCalendarSource` type L65-69 — `impl CalendarSource for NoopCalendarSource` — work.
--  `events_for` function L66-68 — `(&self, _date: NaiveDate) -> Result<Vec<CalEvent>, CeremonyError>` — work.
--  `StaticCalendarSource` type L76-80 — `impl CalendarSource for StaticCalendarSource` — work.
--  `events_for` function L77-79 — `(&self, _date: NaiveDate) -> Result<Vec<CalEvent>, CeremonyError>` — work.
--  `StaticAttentionSource` type L87-95 — `impl AttentionSource for StaticAttentionSource` — work.
--  `since` function L88-94 — `( &self, _cursor: DateTime<Utc>, cap: usize, ) -> Result<Vec<SignalRow>, Ceremon...` — work.
+- pub `AttentionSource` interface L57-81 — `{ fn since(), fn between() }` — Read interface the daily/weekly plugins use to pull attention
+- pub `NoopCalendarSource` struct L86 — `-` — No-op calendar source.
+- pub `StaticCalendarSource` struct L97 — `-` — Calendar source that returns a fixed set of events regardless of
+- pub `StaticAttentionSource` struct L108 — `-` — Attention source that returns a fixed set of signals.
+-  `between` function L68-80 — `( &self, start: DateTime<Utc>, end: DateTime<Utc>, cap: usize, ) -> Result<Vec<S...` — Return up to `cap` signals with `source_ts` in `[start, end)`.
+-  `NoopCalendarSource` type L89-93 — `impl CalendarSource for NoopCalendarSource` — work.
+-  `events_for` function L90-92 — `(&self, _date: NaiveDate) -> Result<Vec<CalEvent>, CeremonyError>` — work.
+-  `StaticCalendarSource` type L100-104 — `impl CalendarSource for StaticCalendarSource` — work.
+-  `events_for` function L101-103 — `(&self, _date: NaiveDate) -> Result<Vec<CalEvent>, CeremonyError>` — work.
+-  `StaticAttentionSource` type L111-119 — `impl AttentionSource for StaticAttentionSource` — work.
+-  `since` function L112-118 — `( &self, _cursor: DateTime<Utc>, cap: usize, ) -> Result<Vec<SignalRow>, Ceremon...` — work.
 
 #### crates/arawn-ceremonies/src/plugins/mod.rs
 
@@ -1442,41 +1468,46 @@
 
 #### crates/arawn-ceremonies/src/plugins/retro.rs
 
-- pub `RetroCeremony` struct L40-50 — `{ llm: Arc<dyn arawn_llm::LlmClient>, model: String, detectors: DetectorRegistry...` — The retro plugin.
-- pub `new` function L53-59 — `(llm: Arc<dyn arawn_llm::LlmClient>, model: impl Into<String>) -> Self` — does not gate again.
-- pub `with_detectors` function L63-66 — `(mut self, detectors: DetectorRegistry) -> Self` — Attach the detector registry (typically the v1 catalog
-- pub `iso_week` function L71-74 — `(now: DateTime<Utc>) -> String` — Compute the ISO-week string (`YYYY-Www`) for a given moment.
--  `RetroCeremony` type L52-75 — `= RetroCeremony` — does not gate again.
--  `GatherPayload` struct L80-86 — `{ iso_week: String, daily_tablets: Vec<DailyTabletSummary>, confirmed_priorities...` — does not gate again.
--  `DailyTabletSummary` struct L89-93 — `{ tablet_id: String, period_key: String, item_count: i64 }` — does not gate again.
--  `PrioritySummary` struct L96-100 — `{ id: String, body: String, done: bool }` — does not gate again.
--  `RollupRow` struct L103-107 — `{ workstream: String, metric_key: String, value: f64 }` — does not gate again.
--  `PriorRetro` struct L110-113 — `{ iso_week: String, diary_excerpt: Option<String> }` — does not gate again.
--  `RetroCeremony` type L116-343 — `impl Ceremony for RetroCeremony` — does not gate again.
--  `kind` function L117-119 — `(&self) -> &'static str` — does not gate again.
--  `period_key` function L121-123 — `(&self, now: DateTime<Utc>) -> String` — does not gate again.
--  `default_schedule` function L125-129 — `(&self) -> CronSchedule` — does not gate again.
--  `interactive_actions` function L131-136 — `(&self) -> Vec<InteractiveAction>` — does not gate again.
--  `patterns` function L138-140 — `(&self) -> Option<&dyn PatternDetector>` — does not gate again.
--  `gather` function L142-273 — `(&self, ctx: &dyn CeremonyCtx) -> Result<GatheredFacts, CeremonyError>` — does not gate again.
--  `compose` function L275-342 — `( &self, ctx: &dyn CeremonyCtx, facts: GatheredFacts, ) -> Result<Vec<NewItem>, ...` — does not gate again.
--  `SYSTEM_PROMPT` variable L345-353 — `: &str` — does not gate again.
--  `build_compose_prompt` function L355-365 — `(facts: &GatheredFacts) -> String` — does not gate again.
--  `ComposedItemSpec` struct L368-372 — `{ section: String, citation_id: String, body: serde_json::Value }` — does not gate again.
--  `parse_llm_items` function L377-400 — `(text: &str) -> Option<Vec<ComposedItemSpec>>` — Pull the first balanced JSON array out of the LLM's response.
--  `monday_sunday_for_iso_week_public` function L406-408 — `(iso_week: &str) -> Option<(String, String)>` — Re-export the iso-week date helper so the catalog (T-0288) can
--  `monday_sunday_for_iso_week` function L413-427 — `(iso_week: &str) -> Option<(String, String)>` — Compute Monday and Sunday `YYYY-MM-DD` strings that bracket an
--  `tests` module L430-650 — `-` — does not gate again.
--  `open_test_db` function L438-445 — `() -> (TempDir, ConnHandle)` — does not gate again.
--  `make_llm_with_response` function L447-451 — `(text: &str) -> Arc<dyn arawn_llm::LlmClient>` — does not gate again.
--  `seed_minimal_history` function L453-505 — `(conn: &ConnHandle, iso_week: &str)` — does not gate again.
--  `iso_week_format_is_yyyy_w_ww` function L508-514 — `()` — does not gate again.
--  `monday_sunday_brackets_iso_week_20` function L517-521 — `()` — does not gate again.
--  `gather_collects_week_payload` function L524-551 — `()` — does not gate again.
--  `compose_parses_llm_array_into_composed_items` function L554-575 — `()` — does not gate again.
--  `compose_rejects_empty_citation_with_missing_citation_error` function L578-590 — `()` — does not gate again.
--  `compose_parses_array_with_surrounding_prose` function L593-609 — `()` — does not gate again.
--  `end_to_end_dispatch_against_real_engine` function L612-649 — `()` — does not gate again.
+- pub `RetroCeremony` struct L40-54 — `{ llm: Arc<dyn arawn_llm::LlmClient>, model: String, detectors: DetectorRegistry...` — The retro plugin.
+- pub `new` function L57-64 — `(llm: Arc<dyn arawn_llm::LlmClient>, model: impl Into<String>) -> Self` — does not gate again.
+- pub `with_detectors` function L68-71 — `(mut self, detectors: DetectorRegistry) -> Self` — Attach the detector registry (typically the v1 catalog
+- pub `with_timezone` function L74-77 — `(mut self, tz: chrono_tz::Tz) -> Self` — Override the timezone used for `period_window` boundary math.
+- pub `iso_week` function L82-85 — `(now: DateTime<Utc>) -> String` — Compute the ISO-week string (`YYYY-Www`) for a given moment.
+-  `RetroCeremony` type L56-86 — `= RetroCeremony` — does not gate again.
+-  `GatherPayload` struct L91-97 — `{ iso_week: String, daily_tablets: Vec<DailyTabletSummary>, confirmed_priorities...` — does not gate again.
+-  `DailyTabletSummary` struct L100-104 — `{ tablet_id: String, period_key: String, item_count: i64 }` — does not gate again.
+-  `PrioritySummary` struct L107-111 — `{ id: String, body: String, done: bool }` — does not gate again.
+-  `RollupRow` struct L114-118 — `{ workstream: String, metric_key: String, value: f64 }` — does not gate again.
+-  `PriorRetro` struct L121-124 — `{ iso_week: String, diary_excerpt: Option<String> }` — does not gate again.
+-  `RetroCeremony` type L127-380 — `impl Ceremony for RetroCeremony` — does not gate again.
+-  `kind` function L128-130 — `(&self) -> &'static str` — does not gate again.
+-  `period_window` function L132-156 — `( &self, period_key: &str, ) -> Result<(DateTime<Utc>, DateTime<Utc>), CeremonyE...` — does not gate again.
+-  `period_key` function L158-160 — `(&self, now: DateTime<Utc>) -> String` — does not gate again.
+-  `default_schedule` function L162-166 — `(&self) -> CronSchedule` — does not gate again.
+-  `interactive_actions` function L168-173 — `(&self) -> Vec<InteractiveAction>` — does not gate again.
+-  `patterns` function L175-177 — `(&self) -> Option<&dyn PatternDetector>` — does not gate again.
+-  `gather` function L179-310 — `(&self, ctx: &dyn CeremonyCtx) -> Result<GatheredFacts, CeremonyError>` — does not gate again.
+-  `compose` function L312-379 — `( &self, ctx: &dyn CeremonyCtx, facts: GatheredFacts, ) -> Result<Vec<NewItem>, ...` — does not gate again.
+-  `SYSTEM_PROMPT` variable L382-390 — `: &str` — does not gate again.
+-  `build_compose_prompt` function L392-402 — `(facts: &GatheredFacts) -> String` — does not gate again.
+-  `ComposedItemSpec` struct L405-409 — `{ section: String, citation_id: String, body: serde_json::Value }` — does not gate again.
+-  `parse_llm_items` function L414-437 — `(text: &str) -> Option<Vec<ComposedItemSpec>>` — Pull the first balanced JSON array out of the LLM's response.
+-  `monday_sunday_for_iso_week_public` function L443-445 — `(iso_week: &str) -> Option<(String, String)>` — Re-export the iso-week date helper so the catalog (T-0288) can
+-  `monday_sunday_for_iso_week` function L450-464 — `(iso_week: &str) -> Option<(String, String)>` — Compute Monday and Sunday `YYYY-MM-DD` strings that bracket an
+-  `tests` module L467-711 — `-` — does not gate again.
+-  `open_test_db` function L475-482 — `() -> (TempDir, ConnHandle)` — does not gate again.
+-  `make_llm_with_response` function L484-488 — `(text: &str) -> Arc<dyn arawn_llm::LlmClient>` — does not gate again.
+-  `seed_minimal_history` function L490-542 — `(conn: &ConnHandle, iso_week: &str)` — does not gate again.
+-  `iso_week_format_is_yyyy_w_ww` function L545-551 — `()` — does not gate again.
+-  `monday_sunday_brackets_iso_week_20` function L554-558 — `()` — does not gate again.
+-  `gather_collects_week_payload` function L561-588 — `()` — does not gate again.
+-  `compose_parses_llm_array_into_composed_items` function L591-612 — `()` — does not gate again.
+-  `compose_rejects_empty_citation_with_missing_citation_error` function L615-627 — `()` — does not gate again.
+-  `compose_parses_array_with_surrounding_prose` function L630-646 — `()` — does not gate again.
+-  `end_to_end_dispatch_against_real_engine` function L649-686 — `()` — does not gate again.
+-  `period_window_utc_iso_week` function L689-694 — `()` — does not gate again.
+-  `period_window_pacific_iso_week` function L697-703 — `()` — does not gate again.
+-  `period_window_rejects_non_iso_week` function L706-710 — `()` — does not gate again.
 
 #### crates/arawn-ceremonies/src/plugins/retro_detectors.rs
 
@@ -1516,9 +1547,10 @@
 
 #### crates/arawn-ceremonies/src/plugins/weekly.rs
 
-- pub `WeeklyCeremony` struct L51-59 — `{ llm: Arc<dyn arawn_llm::LlmClient>, model: String, calendar_source: Arc<dyn Ca...` — The weekly plugin.
-- pub `new` function L62-74 — `( llm: Arc<dyn arawn_llm::LlmClient>, model: impl Into<String>, calendar_source:...` — `NewItem::Composed` is constructed.
-- pub `iso_week` function L80-83 — `(now: DateTime<Utc>) -> String` — Format the ISO-week string (`YYYY-Www`) for a moment.
+- pub `WeeklyCeremony` struct L51-63 — `{ llm: Arc<dyn arawn_llm::LlmClient>, model: String, calendar_source: Arc<dyn Ca...` — The weekly plugin.
+- pub `new` function L66-79 — `( llm: Arc<dyn arawn_llm::LlmClient>, model: impl Into<String>, calendar_source:...` — `NewItem::Composed` is constructed.
+- pub `with_timezone` function L82-85 — `(mut self, tz: chrono_tz::Tz) -> Self` — Override the timezone used for `period_window` boundary math.
+- pub `iso_week` function L91-94 — `(now: DateTime<Utc>) -> String` — Format the ISO-week string (`YYYY-Www`) for a moment.
 -  `CAP_DEADLINES` variable L42 — `: usize` — `NewItem::Composed` is constructed.
 -  `CAP_LAST_RETRO` variable L43 — `: usize` — `NewItem::Composed` is constructed.
 -  `CAP_PRIOR_WEEKLY` variable L44 — `: usize` — `NewItem::Composed` is constructed.
@@ -1526,40 +1558,44 @@
 -  `ROLLING_HOT_AGE_DAYS` variable L46 — `: i64` — `NewItem::Composed` is constructed.
 -  `WORKDAY_HOURS_PER_DAY` variable L47 — `: f64` — `NewItem::Composed` is constructed.
 -  `AFTERNOON_HOUR_UTC` variable L48 — `: u32` — `NewItem::Composed` is constructed.
--  `WeeklyCeremony` type L61-75 — `= WeeklyCeremony` — `NewItem::Composed` is constructed.
--  `WeeklyGather` struct L88-95 — `{ iso_week: String, calendar_summary: Vec<CalendarSummary>, deadlines: Vec<Signa...` — `NewItem::Composed` is constructed.
--  `CalendarSummary` struct L98-105 — `{ id: String, iso_week: String, meeting_count: u32, deep_work_hours: f64, busies...` — `NewItem::Composed` is constructed.
--  `RetroExcerpt` struct L108-112 — `{ id: String, kind: &'static str, body: String }` — `NewItem::Composed` is constructed.
--  `InboundRow` struct L115-118 — `{ id: String, body: String }` — `NewItem::Composed` is constructed.
--  `HotTodoRow` struct L121-124 — `{ todo_id: String, body: String }` — `NewItem::Composed` is constructed.
--  `WeeklyCeremony` type L127-456 — `impl Ceremony for WeeklyCeremony` — `NewItem::Composed` is constructed.
--  `kind` function L128-130 — `(&self) -> &'static str` — `NewItem::Composed` is constructed.
--  `period_key` function L132-134 — `(&self, now: DateTime<Utc>) -> String` — `NewItem::Composed` is constructed.
--  `default_schedule` function L136-138 — `(&self) -> CronSchedule` — `NewItem::Composed` is constructed.
--  `interactive_actions` function L140-142 — `(&self) -> Vec<InteractiveAction>` — `NewItem::Composed` is constructed.
--  `patterns` function L144-146 — `(&self) -> Option<&dyn PatternDetector>` — `NewItem::Composed` is constructed.
--  `gather` function L148-381 — `(&self, ctx: &dyn CeremonyCtx) -> Result<GatheredFacts, CeremonyError>` — `NewItem::Composed` is constructed.
--  `compose` function L383-455 — `( &self, ctx: &dyn CeremonyCtx, facts: GatheredFacts, ) -> Result<Vec<NewItem>, ...` — `NewItem::Composed` is constructed.
--  `SYSTEM_PROMPT` variable L458-468 — `: &str` — `NewItem::Composed` is constructed.
--  `build_compose_prompt` function L470-483 — `(facts: &GatheredFacts, valid_ids: &HashSet<String>) -> String` — `NewItem::Composed` is constructed.
--  `ComposedItemSpec` struct L486-490 — `{ section: String, citation_id: String, body: serde_json::Value }` — `NewItem::Composed` is constructed.
--  `is_valid_section` function L492-497 — `(s: &str) -> bool` — `NewItem::Composed` is constructed.
--  `is_deadline_flavoured` function L499-506 — `(summary: &str) -> bool` — `NewItem::Composed` is constructed.
--  `weekday_label` function L508-518 — `(wd: Weekday) -> &'static str` — `NewItem::Composed` is constructed.
--  `collect_valid_ids` function L522-540 — `(payload: &serde_json::Value) -> HashSet<String>` — Walk the gather payload and collect every id the compose phase may
--  `parse_llm_items` function L543-566 — `(text: &str) -> Option<Vec<ComposedItemSpec>>` — Pull the first balanced JSON array out of the LLM's response.
--  `monday_sunday_for_iso_week` function L570-580 — `(iso_week_str: &str) -> Option<(NaiveDate, NaiveDate)>` — Compute Monday and Sunday `YYYY-MM-DD` dates bracketing an ISO
--  `tests` module L586-801 — `-` — `NewItem::Composed` is constructed.
--  `open_test_db` function L595-602 — `() -> (TempDir, ConnHandle)` — `NewItem::Composed` is constructed.
--  `make_llm_with_response` function L604-608 — `(text: &str) -> Arc<dyn arawn_llm::LlmClient>` — `NewItem::Composed` is constructed.
--  `sample_calendar_events_for` function L610-627 — `(date: NaiveDate) -> Vec<CalEvent>` — `NewItem::Composed` is constructed.
--  `PerDayCalendar` struct L630 — `-` — Calendar source that returns one afternoon event per day.
--  `PerDayCalendar` type L633-637 — `impl CalendarSource for PerDayCalendar` — `NewItem::Composed` is constructed.
--  `events_for` function L634-636 — `(&self, date: NaiveDate) -> Result<Vec<CalEvent>, CeremonyError>` — `NewItem::Composed` is constructed.
--  `sample_signals` function L639-652 — `(monday: NaiveDate) -> Vec<SignalRow>` — `NewItem::Composed` is constructed.
--  `seed_weekly_history` function L654-718 — `(conn: &ConnHandle, this_iso_week: &str)` — `NewItem::Composed` is constructed.
--  `iso_week_format_is_yyyy_w_ww` function L721-726 — `()` — `NewItem::Composed` is constructed.
--  `end_to_end_dispatch_writes_tablet_and_items` function L729-800 — `()` — `NewItem::Composed` is constructed.
+-  `WeeklyCeremony` type L65-86 — `= WeeklyCeremony` — `NewItem::Composed` is constructed.
+-  `WeeklyGather` struct L99-106 — `{ iso_week: String, calendar_summary: Vec<CalendarSummary>, deadlines: Vec<Signa...` — `NewItem::Composed` is constructed.
+-  `CalendarSummary` struct L109-116 — `{ id: String, iso_week: String, meeting_count: u32, deep_work_hours: f64, busies...` — `NewItem::Composed` is constructed.
+-  `RetroExcerpt` struct L119-123 — `{ id: String, kind: &'static str, body: String }` — `NewItem::Composed` is constructed.
+-  `InboundRow` struct L126-129 — `{ id: String, body: String }` — `NewItem::Composed` is constructed.
+-  `HotTodoRow` struct L132-135 — `{ todo_id: String, body: String }` — `NewItem::Composed` is constructed.
+-  `WeeklyCeremony` type L138-477 — `impl Ceremony for WeeklyCeremony` — `NewItem::Composed` is constructed.
+-  `kind` function L139-141 — `(&self) -> &'static str` — `NewItem::Composed` is constructed.
+-  `period_key` function L143-145 — `(&self, now: DateTime<Utc>) -> String` — `NewItem::Composed` is constructed.
+-  `period_window` function L147-155 — `( &self, period_key: &str, ) -> Result<(DateTime<Utc>, DateTime<Utc>), CeremonyE...` — `NewItem::Composed` is constructed.
+-  `default_schedule` function L157-159 — `(&self) -> CronSchedule` — `NewItem::Composed` is constructed.
+-  `interactive_actions` function L161-163 — `(&self) -> Vec<InteractiveAction>` — `NewItem::Composed` is constructed.
+-  `patterns` function L165-167 — `(&self) -> Option<&dyn PatternDetector>` — `NewItem::Composed` is constructed.
+-  `gather` function L169-402 — `(&self, ctx: &dyn CeremonyCtx) -> Result<GatheredFacts, CeremonyError>` — `NewItem::Composed` is constructed.
+-  `compose` function L404-476 — `( &self, ctx: &dyn CeremonyCtx, facts: GatheredFacts, ) -> Result<Vec<NewItem>, ...` — `NewItem::Composed` is constructed.
+-  `SYSTEM_PROMPT` variable L479-489 — `: &str` — `NewItem::Composed` is constructed.
+-  `build_compose_prompt` function L491-504 — `(facts: &GatheredFacts, valid_ids: &HashSet<String>) -> String` — `NewItem::Composed` is constructed.
+-  `ComposedItemSpec` struct L507-511 — `{ section: String, citation_id: String, body: serde_json::Value }` — `NewItem::Composed` is constructed.
+-  `is_valid_section` function L513-518 — `(s: &str) -> bool` — `NewItem::Composed` is constructed.
+-  `is_deadline_flavoured` function L520-527 — `(summary: &str) -> bool` — `NewItem::Composed` is constructed.
+-  `weekday_label` function L529-539 — `(wd: Weekday) -> &'static str` — `NewItem::Composed` is constructed.
+-  `collect_valid_ids` function L543-561 — `(payload: &serde_json::Value) -> HashSet<String>` — Walk the gather payload and collect every id the compose phase may
+-  `parse_llm_items` function L564-587 — `(text: &str) -> Option<Vec<ComposedItemSpec>>` — Pull the first balanced JSON array out of the LLM's response.
+-  `monday_sunday_for_iso_week` function L591-601 — `(iso_week_str: &str) -> Option<(NaiveDate, NaiveDate)>` — Compute Monday and Sunday `YYYY-MM-DD` dates bracketing an ISO
+-  `tests` module L607-862 — `-` — `NewItem::Composed` is constructed.
+-  `open_test_db` function L616-623 — `() -> (TempDir, ConnHandle)` — `NewItem::Composed` is constructed.
+-  `make_llm_with_response` function L625-629 — `(text: &str) -> Arc<dyn arawn_llm::LlmClient>` — `NewItem::Composed` is constructed.
+-  `sample_calendar_events_for` function L631-648 — `(date: NaiveDate) -> Vec<CalEvent>` — `NewItem::Composed` is constructed.
+-  `PerDayCalendar` struct L651 — `-` — Calendar source that returns one afternoon event per day.
+-  `PerDayCalendar` type L654-658 — `impl CalendarSource for PerDayCalendar` — `NewItem::Composed` is constructed.
+-  `events_for` function L655-657 — `(&self, date: NaiveDate) -> Result<Vec<CalEvent>, CeremonyError>` — `NewItem::Composed` is constructed.
+-  `sample_signals` function L660-673 — `(monday: NaiveDate) -> Vec<SignalRow>` — `NewItem::Composed` is constructed.
+-  `seed_weekly_history` function L675-739 — `(conn: &ConnHandle, this_iso_week: &str)` — `NewItem::Composed` is constructed.
+-  `iso_week_format_is_yyyy_w_ww` function L742-747 — `()` — `NewItem::Composed` is constructed.
+-  `end_to_end_dispatch_writes_tablet_and_items` function L750-821 — `()` — `NewItem::Composed` is constructed.
+-  `period_window_utc_iso_week` function L824-835 — `()` — `NewItem::Composed` is constructed.
+-  `period_window_pacific_iso_week` function L838-849 — `()` — `NewItem::Composed` is constructed.
+-  `period_window_rejects_non_iso_week` function L852-861 — `()` — `NewItem::Composed` is constructed.
 
 ### crates/arawn-ceremonies/tests
 
@@ -1908,18 +1944,20 @@
 -  `events_for` function L83-185 — `(&self, date: NaiveDate) -> Result<Vec<CalEvent>, CeremonyError>` — and stale name values are acceptable until process restart.
 -  `ProjectionsAttentionSource` type L202-240 — `= ProjectionsAttentionSource` — and stale name values are acceptable until process restart.
 -  `workstream_for_feed` function L215-239 — `(&self, feed_id: &str) -> Result<Option<String>, CeremonyError>` — Cached `feed_id → workstream name` lookup.
--  `ProjectionsAttentionSource` type L243-356 — `impl AttentionSource for ProjectionsAttentionSource` — and stale name values are acceptable until process restart.
+-  `ProjectionsAttentionSource` type L243-466 — `impl AttentionSource for ProjectionsAttentionSource` — and stale name values are acceptable until process restart.
 -  `since` function L244-355 — `( &self, cursor: DateTime<Utc>, cap: usize, ) -> Result<Vec<SignalRow>, Ceremony...` — and stale name values are acceptable until process restart.
 -  `Raw` struct L288-295 — `{ id: String, source_id: String, ts: DateTime<Utc>, summary: String, kind: Strin...` — and stale name values are acceptable until process restart.
--  `tests` module L359-591 — `-` — and stale name values are acceptable until process restart.
--  `make_store_pair` function L368-377 — `() -> (Arc<ProjectionStore>, Arc<Mutex<Store>>, tempfile::TempDir)` — and stale name values are acceptable until process restart.
--  `cal_event` function L379-401 — `( id_seed: &str, start: DateTime<Utc>, end: DateTime<Utc>, ) -> CalendarEventPro...` — and stale name values are acceptable until process restart.
--  `calendar_returns_events_for_day` function L404-432 — `()` — and stale name values are acceptable until process restart.
--  `gmail_signal` function L434-447 — `(id_seed: &str, ts: DateTime<Utc>) -> GmailMessageProjection` — and stale name values are acceptable until process restart.
--  `slack_signal` function L449-462 — `(id_seed: &str, ts: DateTime<Utc>) -> SlackMessageProjection` — and stale name values are acceptable until process restart.
--  `attention_returns_recent_capped` function L465-507 — `()` — and stale name values are acceptable until process restart.
--  `calendar_respects_configured_timezone` function L513-542 — `()` — 2026-05-17T01:30:00Z is "May 17" in UTC but "May 16 18:30" in
--  `attention_tags_workstream_from_feed_registry` function L548-590 — `()` — Rows whose `feed_id` is bound to a workstream tag with that
+-  `between` function L357-465 — `( &self, start: DateTime<Utc>, end: DateTime<Utc>, cap: usize, ) -> Result<Vec<S...` — and stale name values are acceptable until process restart.
+-  `Raw` struct L398-405 — `{ id: String, source_id: String, ts: DateTime<Utc>, summary: String, kind: Strin...` — and stale name values are acceptable until process restart.
+-  `tests` module L469-701 — `-` — and stale name values are acceptable until process restart.
+-  `make_store_pair` function L478-487 — `() -> (Arc<ProjectionStore>, Arc<Mutex<Store>>, tempfile::TempDir)` — and stale name values are acceptable until process restart.
+-  `cal_event` function L489-511 — `( id_seed: &str, start: DateTime<Utc>, end: DateTime<Utc>, ) -> CalendarEventPro...` — and stale name values are acceptable until process restart.
+-  `calendar_returns_events_for_day` function L514-542 — `()` — and stale name values are acceptable until process restart.
+-  `gmail_signal` function L544-557 — `(id_seed: &str, ts: DateTime<Utc>) -> GmailMessageProjection` — and stale name values are acceptable until process restart.
+-  `slack_signal` function L559-572 — `(id_seed: &str, ts: DateTime<Utc>) -> SlackMessageProjection` — and stale name values are acceptable until process restart.
+-  `attention_returns_recent_capped` function L575-617 — `()` — and stale name values are acceptable until process restart.
+-  `calendar_respects_configured_timezone` function L623-652 — `()` — 2026-05-17T01:30:00Z is "May 17" in UTC but "May 16 18:30" in
+-  `attention_tags_workstream_from_feed_registry` function L658-700 — `()` — Rows whose `feed_id` is bound to a workstream tag with that
 
 #### crates/arawn-engine/src/compact_prompt.rs
 

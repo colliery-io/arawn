@@ -907,6 +907,13 @@ mod tests {
         fn period_key(&self, _now: chrono::DateTime<Utc>) -> String {
             self.period.clone()
         }
+        fn period_window(
+            &self,
+            _period_key: &str,
+        ) -> Result<(chrono::DateTime<Utc>, chrono::DateTime<Utc>), CeremonyError> {
+            let now = chrono::Utc::now();
+            Ok((now, now + chrono::Duration::days(7)))
+        }
         fn default_schedule(&self) -> CronSchedule {
             CronSchedule::local("0 0 * * *")
         }

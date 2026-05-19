@@ -353,6 +353,116 @@ impl AttentionSource for ProjectionsAttentionSource {
         }
         Ok(out)
     }
+
+    async fn between(
+        &self,
+        start: DateTime<Utc>,
+        end: DateTime<Utc>,
+        cap: usize,
+    ) -> Result<Vec<SignalRow>, CeremonyError> {
+        if cap == 0 || end <= start {
+            return Ok(Vec::new());
+        }
+        self.projections
+            .ensure_feed_type("gmail_messages")
+            .map_err(|e| storage_err(format!("ensure gmail_messages: {e}")))?;
+        self.projections
+            .ensure_feed_type("slack_messages")
+            .map_err(|e| storage_err(format!("ensure slack_messages: {e}")))?;
+
+        let start_str = start.to_rfc3339();
+        let end_str = end.to_rfc3339();
+
+        let conn = self
+            .projections
+            .conn()
+            .lock()
+            .map_err(|_| storage_err("projection connection mutex poisoned"))?;
+
+        let sql = "SELECT id, source_id, source_ts, title, body_text, kind, feed_id FROM ( \
+                       SELECT id, source_id, source_ts, title, body_text, 'gmail' AS kind, feed_id \
+                         FROM gmail_messages WHERE source_ts >= ?1 AND source_ts < ?2 \
+                       UNION ALL \
+                       SELECT id, source_id, source_ts, title, body_text, 'slack' AS kind, feed_id \
+                         FROM slack_messages WHERE source_ts >= ?1 AND source_ts < ?2 \
+                   ) ORDER BY source_ts DESC LIMIT ?3";
+
+        let mut stmt = conn
+            .prepare(sql)
+            .map_err(|e| storage_err(format!("prepare attention between: {e}")))?;
+
+        let mut rows = stmt
+            .query(params![start_str, end_str, cap as i64])
+            .map_err(|e| storage_err(format!("query attention between: {e}")))?;
+
+        struct Raw {
+            id: String,
+            source_id: String,
+            ts: DateTime<Utc>,
+            summary: String,
+            kind: String,
+            feed_id: String,
+        }
+        let mut raws: Vec<Raw> = Vec::new();
+        while let Some(row) = rows
+            .next()
+            .map_err(|e| storage_err(format!("attention between row: {e}")))?
+        {
+            let id: String = row
+                .get(0)
+                .map_err(|e| storage_err(format!("col id: {e}")))?;
+            let source_id: String = row
+                .get(1)
+                .map_err(|e| storage_err(format!("col source_id: {e}")))?;
+            let source_ts_str: String = row
+                .get(2)
+                .map_err(|e| storage_err(format!("col source_ts: {e}")))?;
+            let title: String = row
+                .get(3)
+                .map_err(|e| storage_err(format!("col title: {e}")))?;
+            let body_text: String = row
+                .get(4)
+                .map_err(|e| storage_err(format!("col body_text: {e}")))?;
+            let kind: String = row
+                .get(5)
+                .map_err(|e| storage_err(format!("col kind: {e}")))?;
+            let feed_id: String = row
+                .get(6)
+                .map_err(|e| storage_err(format!("col feed_id: {e}")))?;
+
+            let ts = parse_rfc3339(&source_ts_str)?;
+            let summary = if !title.is_empty() {
+                truncate_excerpt(&title)
+            } else {
+                truncate_excerpt(&body_text)
+            };
+            raws.push(Raw {
+                id,
+                source_id,
+                ts,
+                summary,
+                kind,
+                feed_id,
+            });
+        }
+        drop(rows);
+        drop(stmt);
+        drop(conn);
+
+        let mut out = Vec::with_capacity(raws.len());
+        for r in raws {
+            let workstream = self.workstream_for_feed(&r.feed_id)?;
+            out.push(SignalRow {
+                id: r.id,
+                source_kind: r.kind,
+                source_id: r.source_id,
+                ts: r.ts,
+                summary: r.summary,
+                workstream,
+            });
+        }
+        Ok(out)
+    }
 }
 
 #[cfg(test)]

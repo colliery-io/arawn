@@ -34,7 +34,7 @@
 use std::sync::{Arc, Mutex};
 
 use async_trait::async_trait;
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use rusqlite::{Connection, OptionalExtension, params};
 use uuid::Uuid;
 
@@ -157,8 +157,16 @@ impl EngineDispatcher {
         let tablet_id = format!("{}-{period_key}", plugin.kind());
         insert_tablet(&self.conn, &tablet_id, plugin.kind(), period_key, now)?;
 
-        // 6: construct ctx.
-        let ctx = EngineCtx::new(self.conn.clone(), tablet_id.clone(), period_key.to_string());
+        // 6: construct ctx. Pin the gather window now so gather/
+        // compose see a stable [start, end) regardless of when this
+        // dispatch fires (live cron, manual run, or back-fill).
+        let period_window = plugin.period_window(period_key)?;
+        let ctx = EngineCtx::new(
+            self.conn.clone(),
+            tablet_id.clone(),
+            period_key.to_string(),
+            period_window,
+        );
 
         // 7: gather (deterministic).
         let mut facts: GatheredFacts = plugin.gather(&ctx).await?;
@@ -234,15 +242,42 @@ pub struct EngineCtx {
     conn: ConnHandle,
     tablet_id: String,
     period_key: String,
+    period_window: (DateTime<Utc>, DateTime<Utc>),
 }
 
 impl EngineCtx {
-    pub fn new(conn: ConnHandle, tablet_id: String, period_key: String) -> Self {
+    /// Construct an EngineCtx with an explicit pinned window.
+    /// The dispatcher passes the plugin-computed window so gather
+    /// queries see a stable `[start, end)` regardless of when the
+    /// dispatch actually fires.
+    pub fn new(
+        conn: ConnHandle,
+        tablet_id: String,
+        period_key: String,
+        period_window: (DateTime<Utc>, DateTime<Utc>),
+    ) -> Self {
         Self {
             conn,
             tablet_id,
             period_key,
+            period_window,
         }
+    }
+
+    /// Test-only constructor that synthesises a placeholder window
+    /// `(now, now + 1d)`. Tests that exercise gather paths should
+    /// use [`Self::new`] with a real window; this helper exists so
+    /// detector and write-path tests don't need to invent timestamps
+    /// they don't care about.
+    #[doc(hidden)]
+    pub fn for_test(conn: ConnHandle, tablet_id: String, period_key: String) -> Self {
+        let now = Utc::now();
+        Self::new(
+            conn,
+            tablet_id,
+            period_key,
+            (now, now + chrono::Duration::days(1)),
+        )
     }
 
     /// Access to the underlying connection for plugins that need to
@@ -261,6 +296,9 @@ impl CeremonyCtx for EngineCtx {
     }
     fn tablet_id(&self) -> &str {
         &self.tablet_id
+    }
+    fn period_window(&self) -> (DateTime<Utc>, DateTime<Utc>) {
+        self.period_window
     }
     fn conn_handle(&self) -> Option<&ConnHandle> {
         Some(&self.conn)
@@ -491,6 +529,13 @@ mod tests {
         fn period_key(&self, _now: chrono::DateTime<Utc>) -> String {
             "2026-W20".into()
         }
+        fn period_window(
+            &self,
+            _period_key: &str,
+        ) -> Result<(DateTime<Utc>, DateTime<Utc>), CeremonyError> {
+            let now = Utc::now();
+            Ok((now, now + chrono::Duration::days(7)))
+        }
         fn default_schedule(&self) -> CronSchedule {
             CronSchedule::local("0 16 * * FRI")
         }
@@ -625,7 +670,7 @@ mod tests {
     #[tokio::test]
     async fn write_pattern_row_returns_id_and_writes() {
         let (_tmp, conn) = open_test_db();
-        let ctx = EngineCtx::new(conn.clone(), "retro-2026-W20".into(), "2026-W20".into());
+        let ctx = EngineCtx::for_test(conn.clone(), "retro-2026-W20".into(), "2026-W20".into());
         // Wrap in BEGIN/COMMIT so the insert isn't auto-committed in
         // isolation (mimics how dispatch() actually runs).
         begin(&conn).unwrap();

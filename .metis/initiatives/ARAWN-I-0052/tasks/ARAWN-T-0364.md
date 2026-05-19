@@ -4,7 +4,7 @@ level: task
 title: "Ceremony gather: pinned date windows derived from period_key"
 short_code: "ARAWN-T-0364"
 created_at: 2026-05-19T18:55:47.326211+00:00
-updated_at: 2026-05-19T18:55:47.326211+00:00
+updated_at: 2026-05-19T19:49:29.839430+00:00
 parent: ARAWN-I-0052
 blocked_by: []
 archived: false
@@ -13,7 +13,7 @@ tags:
   - "#task"
   - "#refactor"
   - "#ceremonies"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -53,18 +53,52 @@ when running on the canonical cron tick.
 
 ## Acceptance criteria
 
-- [ ] `Ceremony::period_window` exists on the trait and is
+- [x] `Ceremony::period_window` exists on the trait and is
   implemented by all three plugins.
-- [ ] `EngineCtx::period_window()` exposed; gather paths read
+- [x] `EngineCtx::period_window()` exposed; gather paths read
   from it.
-- [ ] No `Utc::now() - Duration` calls remain in `daily.rs`
-  or `weekly.rs` gather logic.
-- [ ] Unit tests verify each plugin's window is correct for an
-  arbitrary `period_key` (not just "today").
-- [ ] Existing daily/weekly gather tests pass unchanged when
-  `period_key` corresponds to "today" — proves no behavior
-  drift on the canonical cron path.
-- [ ] `angreal test unit` green. `angreal check workspace` green.
+- [x] No `Utc::now() - Duration` calls remain in `daily.rs`
+  or `weekly.rs` gather logic (verified via grep — remaining
+  `Utc::now()` references are in test helpers).
+- [x] Unit tests verify each plugin's window is correct for an
+  arbitrary `period_key` (not just "today"). 9 new tests across
+  `local_window`, `daily`, `weekly`, `retro` covering UTC +
+  Pacific + DST + error paths.
+- [x] Existing daily/weekly gather tests pass unchanged.
+- [x] `angreal test unit` green. `angreal check workspace` green.
+
+## Status Updates — 2026-05-19
+
+Landed. Implementation summary:
+
+- New `local_window` module with `day_window_utc` /
+  `iso_week_window_utc` / `local_midnight_utc` and DST-aware
+  resolution.
+- `Ceremony::period_window` on trait; implemented by daily
+  (NaiveDate), weekly (ISO week → Monday), retro (mirrors
+  weekly; T-0367 will broaden).
+- `CeremonyCtx::period_window()` exposed; `EngineCtx` stores
+  the dispatcher-computed window so gather sees a stable
+  `[start, end)`.
+- `AttentionSource::between(start, end, cap)` added.
+  `ProjectionsAttentionSource` overrides with a bounded SQL
+  query (`source_ts >= start AND source_ts < end`); default
+  impl wraps `since` + filter for static test sources.
+- `EngineCtx::for_test` added so detector/write-path tests
+  don't have to invent windows they don't care about.
+- DailyCeremony/WeeklyCeremony/RetroCeremony got `tz: Tz` +
+  `with_timezone()`; the binary wires from existing
+  `[ceremonies.<kind>] timezone` config.
+- Daily gather: dropped the "since previous tablet OR
+  `Utc::now() - 24h`" cursor in favour of `between(win_start,
+  win_end, ...)`.
+- Weekly gather: deadlines query → `between(...)`;
+  rolling-todo-hot cutoff → `win_start - 7d`.
+- Dispatcher computes `period_window` once and freezes on the
+  ctx.
+
+121 ceremonies tests pass; full workspace unit suite + cargo
+check are green. Ready for review.
 
 ## Implementation notes
 

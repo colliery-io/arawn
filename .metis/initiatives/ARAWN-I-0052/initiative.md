@@ -4,7 +4,7 @@ level: initiative
 title: "Ceremony reliability — pinned date windows, back-fill, configurable retro cadence"
 short_code: "ARAWN-I-0052"
 created_at: 2026-05-19T18:53:27.575521+00:00
-updated_at: 2026-05-19T18:55:25.937293+00:00
+updated_at: 2026-05-19T19:28:00.098435+00:00
 parent: 
 blocked_by: []
 archived: false
@@ -13,7 +13,7 @@ tags:
   - "#initiative"
   - "#feature"
   - "#ceremonies"
-  - "#phase/decompose"
+  - "#phase/active"
 
 
 exit_criteria_met: false
@@ -207,6 +207,8 @@ created — Metis auto-assigns.)
   history and produces tablets the user can't act on.
 - **Boot recovery for *today only*.** Rejected — the 14-day cap
   is a more honest answer.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

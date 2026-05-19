@@ -133,6 +133,18 @@ pub trait CeremonyCtx: Send + Sync {
     /// this on every `NewItem` they construct.
     fn tablet_id(&self) -> &str;
 
+    /// Pinned UTC window `[start, end)` covering the tablet's
+    /// canonical period (e.g. local midnight → next local midnight
+    /// for daily). Gather queries should bound their lookups by
+    /// this range rather than reading "now ± duration", so a back-
+    /// dated dispatch produces a back-dated window rather than
+    /// shifting under cron jitter.
+    ///
+    /// Computed by the dispatcher from the plugin's
+    /// [`Ceremony::period_window`] at the start of the run and
+    /// frozen on the ctx for the rest of the pipeline.
+    fn period_window(&self) -> (DateTime<Utc>, DateTime<Utc>);
+
     /// Write the pattern row eagerly during pattern detection so
     /// dependent composed items can cite its returned id. T-0282
     /// implements; this trait method ships now so the surface is
@@ -178,6 +190,19 @@ pub trait Ceremony: Send + Sync {
     /// Compute the period key for the given clock. Daily returns the
     /// date; weekly + retro return the ISO week.
     fn period_key(&self, now: DateTime<Utc>) -> String;
+
+    /// Compute the pinned UTC window `[start, end)` covering the
+    /// `period_key`'s canonical period. Daily returns local midnight
+    /// → next local midnight; weekly returns local Monday midnight
+    /// → next local Monday midnight; retro mirrors weekly today and
+    /// will broaden once cadence is configurable.
+    ///
+    /// Returns `Err` when `period_key` is malformed for this plugin
+    /// (e.g. a non-date string for daily).
+    fn period_window(
+        &self,
+        period_key: &str,
+    ) -> Result<(DateTime<Utc>, DateTime<Utc>), CeremonyError>;
 
     /// Cron schedule the engine should register. Users can override
     /// via the RPC config surface (T-0283).

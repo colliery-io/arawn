@@ -23,7 +23,7 @@ use std::collections::HashSet;
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use chrono::{DateTime, Datelike, Duration, NaiveDate, Utc};
+use chrono::{DateTime, Datelike, NaiveDate, Utc};
 use futures::StreamExt;
 use rusqlite::params;
 use serde::Serialize;
@@ -49,6 +49,10 @@ pub struct DailyCeremony {
     model: String,
     calendar_source: Arc<dyn CalendarSource>,
     attention_source: Arc<dyn AttentionSource>,
+    /// Timezone used to interpret `period_key` dates when computing
+    /// pinned windows. Defaults to UTC; the binary overrides with
+    /// the configured ceremony tz via [`Self::with_timezone`].
+    tz: chrono_tz::Tz,
 }
 
 impl DailyCeremony {
@@ -63,7 +67,15 @@ impl DailyCeremony {
             model: model.into(),
             calendar_source,
             attention_source,
+            tz: chrono_tz::UTC,
         }
+    }
+
+    /// Override the timezone used for `period_window` boundary math.
+    /// The binary feeds this from `[ceremonies.daily] timezone`.
+    pub fn with_timezone(mut self, tz: chrono_tz::Tz) -> Self {
+        self.tz = tz;
+        self
     }
 
     /// Format a `DateTime<Utc>` as the `YYYY-MM-DD` period key used
@@ -117,6 +129,16 @@ impl Ceremony for DailyCeremony {
         Self::period_date(now)
     }
 
+    fn period_window(
+        &self,
+        period_key: &str,
+    ) -> Result<(DateTime<Utc>, DateTime<Utc>), CeremonyError> {
+        let date = NaiveDate::parse_from_str(period_key, "%Y-%m-%d").map_err(|e| {
+            CeremonyError::Other(format!("daily period_key '{period_key}' not a date: {e}"))
+        })?;
+        crate::local_window::day_window_utc(date, self.tz)
+    }
+
     fn default_schedule(&self) -> CronSchedule {
         // Mon–Fri 07:00 local time. Engine wires cloacina with this
         // verbatim.
@@ -144,33 +166,17 @@ impl Ceremony for DailyCeremony {
         let mut calendar_events = self.calendar_source.events_for(date).await?;
         calendar_events.truncate(CAP_CALENDAR);
 
-        // 2. Attention signals since the previous daily tablet's
-        //    generated_at, or 24h ago if no prior daily run.
+        // 2. Attention signals inside the day's pinned window.
+        //    Bounded query so back-dated dispatch gathers the correct
+        //    day's signals rather than "the last 24h from now".
         let conn_handle = ctx
             .conn_handle()
             .ok_or_else(|| CeremonyError::Other("daily plugin requires EngineCtx".into()))?;
-        let cursor: DateTime<Utc> = {
-            let conn = conn_handle
-                .0
-                .lock()
-                .map_err(|_| CeremonyError::Storage("connection mutex poisoned".into()))?;
-            let prior: Option<String> = conn
-                .query_row(
-                    "SELECT generated_at FROM ceremony_tablets \
-                     WHERE kind = 'daily' AND period_key < ?1 \
-                     ORDER BY period_key DESC LIMIT 1",
-                    params![&period_key],
-                    |row| row.get(0),
-                )
-                .ok();
-            match prior {
-                Some(ts) => DateTime::parse_from_rfc3339(&ts)
-                    .map(|dt| dt.with_timezone(&Utc))
-                    .unwrap_or_else(|_| Utc::now() - Duration::hours(24)),
-                None => Utc::now() - Duration::hours(24),
-            }
-        };
-        let attention_signals = self.attention_source.since(cursor, CAP_ATTENTION).await?;
+        let (win_start, win_end) = ctx.period_window();
+        let attention_signals = self
+            .attention_source
+            .between(win_start, win_end, CAP_ATTENTION)
+            .await?;
 
         // 3. Rolling todos — straight SQL.
         let rolling_todos: Vec<TodoRow> = {
@@ -554,7 +560,7 @@ mod tests {
             Arc::new(StaticCalendarSource(sample_calendar_events())),
             Arc::new(StaticAttentionSource(sample_signals())),
         );
-        let ctx = EngineCtx::new(conn.clone(), "daily-2026-05-15".into(), "2026-05-15".into());
+        let ctx = EngineCtx::for_test(conn.clone(), "daily-2026-05-15".into(), "2026-05-15".into());
         let facts = plugin.gather(&ctx).await.unwrap();
         let p = &facts.payload;
         assert_eq!(p.get("date").unwrap().as_str().unwrap(), "2026-05-15");
@@ -596,7 +602,7 @@ mod tests {
             Arc::new(NoopCalendarSource),
             Arc::new(StaticAttentionSource(Vec::new())),
         );
-        let ctx = EngineCtx::new(conn.clone(), "daily-2026-05-15".into(), "2026-05-15".into());
+        let ctx = EngineCtx::for_test(conn.clone(), "daily-2026-05-15".into(), "2026-05-15".into());
         let facts = plugin.gather(&ctx).await.unwrap();
         let err = plugin.compose(&ctx, facts).await.unwrap_err();
         assert!(matches!(err, CeremonyError::MissingCitation(_)));
@@ -616,7 +622,7 @@ mod tests {
             Arc::new(NoopCalendarSource),
             Arc::new(StaticAttentionSource(Vec::new())),
         );
-        let ctx = EngineCtx::new(conn.clone(), "daily-2026-05-15".into(), "2026-05-15".into());
+        let ctx = EngineCtx::for_test(conn.clone(), "daily-2026-05-15".into(), "2026-05-15".into());
         let facts = plugin.gather(&ctx).await.unwrap();
         let err = plugin.compose(&ctx, facts).await.unwrap_err();
         assert!(matches!(err, CeremonyError::MissingCitation(_)));
@@ -675,5 +681,45 @@ mod tests {
                 .unwrap();
             assert_eq!(n, 1, "expected one item in section {section}");
         }
+    }
+
+    #[test]
+    fn period_window_utc_matches_calendar_day() {
+        let daily = DailyCeremony::new(
+            make_llm_with_response("{}"),
+            "stub-model",
+            Arc::new(crate::plugins::NoopCalendarSource),
+            Arc::new(crate::plugins::StaticAttentionSource(Vec::new())),
+        );
+        let (start, end) = daily.period_window("2026-05-19").unwrap();
+        assert_eq!(start.to_rfc3339(), "2026-05-19T00:00:00+00:00");
+        assert_eq!(end.to_rfc3339(), "2026-05-20T00:00:00+00:00");
+    }
+
+    #[test]
+    fn period_window_pacific_offsets_correctly() {
+        let daily = DailyCeremony::new(
+            make_llm_with_response("{}"),
+            "stub-model",
+            Arc::new(crate::plugins::NoopCalendarSource),
+            Arc::new(crate::plugins::StaticAttentionSource(Vec::new())),
+        )
+        .with_timezone(chrono_tz::America::Los_Angeles);
+        let (start, end) = daily.period_window("2026-05-19").unwrap();
+        // PDT = UTC-7 in May.
+        assert_eq!(start.to_rfc3339(), "2026-05-19T07:00:00+00:00");
+        assert_eq!(end.to_rfc3339(), "2026-05-20T07:00:00+00:00");
+    }
+
+    #[test]
+    fn period_window_rejects_non_date() {
+        let daily = DailyCeremony::new(
+            make_llm_with_response("{}"),
+            "stub-model",
+            Arc::new(crate::plugins::NoopCalendarSource),
+            Arc::new(crate::plugins::StaticAttentionSource(Vec::new())),
+        );
+        assert!(daily.period_window("not-a-date").is_err());
+        assert!(daily.period_window("2026-W20").is_err());
     }
 }

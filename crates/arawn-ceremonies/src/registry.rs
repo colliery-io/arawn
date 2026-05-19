@@ -90,6 +90,13 @@ mod tests {
         fn period_key(&self, _now: DateTime<Utc>) -> String {
             "stub-period".into()
         }
+        fn period_window(
+            &self,
+            _period_key: &str,
+        ) -> Result<(DateTime<Utc>, DateTime<Utc>), CeremonyError> {
+            let now = Utc::now();
+            Ok((now, now + chrono::Duration::days(1)))
+        }
         fn default_schedule(&self) -> CronSchedule {
             CronSchedule::local("0 0 * * *")
         }

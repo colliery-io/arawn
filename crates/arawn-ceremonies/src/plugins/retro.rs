@@ -47,6 +47,10 @@ pub struct RetroCeremony {
     /// Detector registry that runs during pattern detect. Defaults
     /// to empty in this task; T-0288's catalog populates it.
     detectors: DetectorRegistry,
+    /// Timezone used to interpret `period_key` weeks when computing
+    /// pinned windows. Defaults to UTC; T-0367 will broaden this
+    /// surface for biweekly/monthly cadences.
+    tz: chrono_tz::Tz,
 }
 
 impl RetroCeremony {
@@ -55,6 +59,7 @@ impl RetroCeremony {
             llm,
             model: model.into(),
             detectors: DetectorRegistry::new(),
+            tz: chrono_tz::UTC,
         }
     }
 
@@ -62,6 +67,12 @@ impl RetroCeremony {
     /// from T-0288). Chainable.
     pub fn with_detectors(mut self, detectors: DetectorRegistry) -> Self {
         self.detectors = detectors;
+        self
+    }
+
+    /// Override the timezone used for `period_window` boundary math.
+    pub fn with_timezone(mut self, tz: chrono_tz::Tz) -> Self {
+        self.tz = tz;
         self
     }
 
@@ -116,6 +127,32 @@ struct PriorRetro {
 impl Ceremony for RetroCeremony {
     fn kind(&self) -> &'static str {
         "retro"
+    }
+
+    fn period_window(
+        &self,
+        period_key: &str,
+    ) -> Result<(DateTime<Utc>, DateTime<Utc>), CeremonyError> {
+        // Retro's period_key is an ISO week ("YYYY-Www"); window is
+        // the same Mon→next-Mon range as weekly. T-0367 will extend
+        // this for biweekly/monthly cadences.
+        let parts: Vec<&str> = period_key.split("-W").collect();
+        if parts.len() != 2 {
+            return Err(CeremonyError::Other(format!(
+                "retro period_key '{period_key}' not 'YYYY-Www'"
+            )));
+        }
+        let year: i32 = parts[0]
+            .parse()
+            .map_err(|e| CeremonyError::Other(format!("retro period_key year: {e}")))?;
+        let week: u32 = parts[1]
+            .parse()
+            .map_err(|e| CeremonyError::Other(format!("retro period_key week: {e}")))?;
+        let monday = chrono::NaiveDate::from_isoywd_opt(year, week, chrono::Weekday::Mon)
+            .ok_or_else(|| {
+                CeremonyError::Other(format!("retro period_key '{period_key}' invalid iso week"))
+            })?;
+        crate::local_window::iso_week_window_utc(monday, self.tz)
     }
 
     fn period_key(&self, now: DateTime<Utc>) -> String {
@@ -525,7 +562,7 @@ mod tests {
         let (_tmp, conn) = open_test_db();
         seed_minimal_history(&conn, "2026-W20");
         let plugin = RetroCeremony::new(make_llm_with_response("[]"), "test-model");
-        let ctx = EngineCtx::new(conn.clone(), "retro-2026-W20".into(), "2026-W20".into());
+        let ctx = EngineCtx::for_test(conn.clone(), "retro-2026-W20".into(), "2026-W20".into());
         let facts = plugin.gather(&ctx).await.unwrap();
         let payload = facts.payload;
         assert_eq!(
@@ -561,7 +598,7 @@ mod tests {
              "body": {"text": "Shipped the doc."}}
         ]"#;
         let plugin = RetroCeremony::new(make_llm_with_response(llm_response), "test-model");
-        let ctx = EngineCtx::new(conn.clone(), "retro-2026-W20".into(), "2026-W20".into());
+        let ctx = EngineCtx::for_test(conn.clone(), "retro-2026-W20".into(), "2026-W20".into());
         let facts = plugin.gather(&ctx).await.unwrap();
         let items = plugin.compose(&ctx, facts).await.unwrap();
         assert_eq!(items.len(), 1);
@@ -583,7 +620,7 @@ mod tests {
              "body": {"text": "Made stuff up."}}
         ]"#;
         let plugin = RetroCeremony::new(make_llm_with_response(llm_response), "test-model");
-        let ctx = EngineCtx::new(conn.clone(), "retro-2026-W20".into(), "2026-W20".into());
+        let ctx = EngineCtx::for_test(conn.clone(), "retro-2026-W20".into(), "2026-W20".into());
         let facts = plugin.gather(&ctx).await.unwrap();
         let err = plugin.compose(&ctx, facts).await.unwrap_err();
         assert!(matches!(err, CeremonyError::MissingCitation(_)));
@@ -602,7 +639,7 @@ mod tests {
 ]
 Hope that helps."#;
         let plugin = RetroCeremony::new(make_llm_with_response(llm_response), "test-model");
-        let ctx = EngineCtx::new(conn.clone(), "retro-2026-W20".into(), "2026-W20".into());
+        let ctx = EngineCtx::for_test(conn.clone(), "retro-2026-W20".into(), "2026-W20".into());
         let facts = plugin.gather(&ctx).await.unwrap();
         let items = plugin.compose(&ctx, facts).await.unwrap();
         assert_eq!(items.len(), 1);
@@ -646,5 +683,29 @@ Hope that helps."#;
             )
             .unwrap();
         assert_eq!(n_items, 1);
+    }
+
+    #[test]
+    fn period_window_utc_iso_week() {
+        let retro = RetroCeremony::new(make_llm_with_response("{}"), "stub-model");
+        let (start, end) = retro.period_window("2026-W21").unwrap();
+        assert_eq!(start.to_rfc3339(), "2026-05-18T00:00:00+00:00");
+        assert_eq!(end.to_rfc3339(), "2026-05-25T00:00:00+00:00");
+    }
+
+    #[test]
+    fn period_window_pacific_iso_week() {
+        let retro = RetroCeremony::new(make_llm_with_response("{}"), "stub-model")
+            .with_timezone(chrono_tz::America::Los_Angeles);
+        let (start, end) = retro.period_window("2026-W21").unwrap();
+        assert_eq!(start.to_rfc3339(), "2026-05-18T07:00:00+00:00");
+        assert_eq!(end.to_rfc3339(), "2026-05-25T07:00:00+00:00");
+    }
+
+    #[test]
+    fn period_window_rejects_non_iso_week() {
+        let retro = RetroCeremony::new(make_llm_with_response("{}"), "stub-model");
+        assert!(retro.period_window("not-a-week").is_err());
+        assert!(retro.period_window("2026-05-19").is_err());
     }
 }

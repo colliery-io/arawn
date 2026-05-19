@@ -320,7 +320,7 @@ mod tests {
     #[tokio::test]
     async fn registry_aggregates_multiple_detectors() {
         let (_tmp, conn) = open_test_db();
-        let ctx = EngineCtx::new(conn.clone(), "retro-2026-W20".into(), "2026-W20".into());
+        let ctx = EngineCtx::for_test(conn.clone(), "retro-2026-W20".into(), "2026-W20".into());
         let reg = DetectorRegistry::new()
             .with(Arc::new(AlwaysFiresDetector {
                 key: "a",
@@ -342,7 +342,7 @@ mod tests {
         // No rollup history seeded → weeks_of_history = 0.
         // Detector requires 4 → should be skipped.
         let (_tmp, conn) = open_test_db();
-        let ctx = EngineCtx::new(conn.clone(), "retro-2026-W20".into(), "2026-W20".into());
+        let ctx = EngineCtx::for_test(conn.clone(), "retro-2026-W20".into(), "2026-W20".into());
         let reg = DetectorRegistry::new()
             .with(Arc::new(AlwaysFiresDetector {
                 key: "needs_history",
@@ -369,7 +369,7 @@ mod tests {
                 ("2026-W19", "proj-a", "x", 1.0),
             ],
         );
-        let ctx = EngineCtx::new(conn.clone(), "retro-2026-W20".into(), "2026-W20".into());
+        let ctx = EngineCtx::for_test(conn.clone(), "retro-2026-W20".into(), "2026-W20".into());
         let reg = DetectorRegistry::new().with(Arc::new(AlwaysFiresDetector {
             key: "needs_3_weeks",
             history: 3,
@@ -390,6 +390,10 @@ mod tests {
             }
             fn tablet_id(&self) -> &str {
                 "retro-2026-W20"
+            }
+            fn period_window(&self) -> (chrono::DateTime<chrono::Utc>, chrono::DateTime<chrono::Utc>) {
+                let now = chrono::Utc::now();
+                (now, now + chrono::Duration::days(7))
             }
             async fn write_pattern_row(
                 &self,

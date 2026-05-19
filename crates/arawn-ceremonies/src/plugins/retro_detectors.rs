@@ -351,7 +351,7 @@ mod tests {
         insert_priority(&conn, "p2", "weekly-W20", true, false);
         insert_priority(&conn, "p3", "weekly-W20", true, true);
         // 1 / 3 = 0.33 < 0.5 → fire.
-        let ctx = EngineCtx::new(conn.clone(), "retro-2026-W20".into(), "2026-W20".into());
+        let ctx = EngineCtx::for_test(conn.clone(), "retro-2026-W20".into(), "2026-W20".into());
         let dctx = DetectorCtx::new("2026-W20".into(), &conn);
         let _ = ctx;
         let rows = PriorityCompletionDetector.detect(&dctx).await.unwrap();
@@ -554,7 +554,7 @@ mod tests {
         insert_rollup(&conn, "2026-W19", "proj-a", "emails", 5.0);
         // Current week: proj-a active.
         insert_rollup(&conn, "2026-W20", "proj-a", "emails", 5.0);
-        let ctx = EngineCtx::new(conn.clone(), "retro-2026-W20".into(), "2026-W20".into());
+        let ctx = EngineCtx::for_test(conn.clone(), "retro-2026-W20".into(), "2026-W20".into());
         let registry = v1_catalog();
         // No priorities, no rollover todos → only priority+rollover
         // detectors run + return empty. workstream_neglect runs + returns
@@ -571,7 +571,7 @@ mod tests {
         // priority_completion_ratio and rollover_heat have
         // require_history_weeks=0 so they still run (and return
         // empty).
-        let ctx = EngineCtx::new(conn.clone(), "retro-2026-W20".into(), "2026-W20".into());
+        let ctx = EngineCtx::for_test(conn.clone(), "retro-2026-W20".into(), "2026-W20".into());
         let registry = v1_catalog();
         let rows = registry.detect(&ctx).await.unwrap();
         assert!(rows.is_empty());

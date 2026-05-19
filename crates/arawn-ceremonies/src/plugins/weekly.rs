@@ -56,6 +56,10 @@ pub struct WeeklyCeremony {
     model: String,
     calendar_source: Arc<dyn CalendarSource>,
     attention_source: Arc<dyn AttentionSource>,
+    /// Timezone used to interpret `period_key` weeks when computing
+    /// pinned windows. Defaults to UTC; the binary overrides via
+    /// [`Self::with_timezone`].
+    tz: chrono_tz::Tz,
 }
 
 impl WeeklyCeremony {
@@ -70,7 +74,14 @@ impl WeeklyCeremony {
             model: model.into(),
             calendar_source,
             attention_source,
+            tz: chrono_tz::UTC,
         }
+    }
+
+    /// Override the timezone used for `period_window` boundary math.
+    pub fn with_timezone(mut self, tz: chrono_tz::Tz) -> Self {
+        self.tz = tz;
+        self
     }
 }
 
@@ -131,6 +142,16 @@ impl Ceremony for WeeklyCeremony {
 
     fn period_key(&self, now: DateTime<Utc>) -> String {
         iso_week(now)
+    }
+
+    fn period_window(
+        &self,
+        period_key: &str,
+    ) -> Result<(DateTime<Utc>, DateTime<Utc>), CeremonyError> {
+        let (mon_date, _sun_date) = monday_sunday_for_iso_week(period_key).ok_or_else(|| {
+            CeremonyError::Other(format!("weekly period_key '{period_key}' not an iso week"))
+        })?;
+        crate::local_window::iso_week_window_utc(mon_date, self.tz)
     }
 
     fn default_schedule(&self) -> CronSchedule {
@@ -206,15 +227,13 @@ impl Ceremony for WeeklyCeremony {
             free_afternoons,
         }];
 
-        // 2. Deadlines — attention signals since Monday, filtered to
-        //    deadline-flavoured summaries (fallback: most recent).
-        let monday_dt: DateTime<Utc> = mon_date
-            .and_hms_opt(0, 0, 0)
-            .map(|ndt| DateTime::<Utc>::from_naive_utc_and_offset(ndt, Utc))
-            .unwrap_or_else(|| Utc::now() - Duration::days(7));
+        // 2. Deadlines — attention signals inside the week's pinned
+        //    window, filtered to deadline-flavoured summaries
+        //    (fallback: most recent inside the window).
+        let (win_start, win_end) = ctx.period_window();
         let raw_signals = self
             .attention_source
-            .since(monday_dt, CAP_DEADLINES * 4)
+            .between(win_start, win_end, CAP_DEADLINES * 4)
             .await?;
         let mut filtered: Vec<SignalRow> = raw_signals
             .iter()
@@ -337,8 +356,10 @@ impl Ceremony for WeeklyCeremony {
             out
         };
 
-        // 5. Rolling todo hot — open, created > 7d ago.
-        let cutoff = Utc::now() - Duration::days(ROLLING_HOT_AGE_DAYS);
+        // 5. Rolling todo hot — open, created at least 7d before
+        //    the week's start (pinned to the window so a back-dated
+        //    weekly tablet sees the right cohort).
+        let cutoff = win_start - Duration::days(ROLLING_HOT_AGE_DAYS);
         let cutoff_str = cutoff.to_rfc3339();
         let rolling_todo_hot: Vec<HotTodoRow> = {
             let conn = conn_handle
@@ -797,5 +818,45 @@ mod tests {
                 .unwrap();
             assert_eq!(n, 1, "expected one item in section {section}");
         }
+    }
+
+    #[test]
+    fn period_window_utc_iso_week() {
+        let weekly = WeeklyCeremony::new(
+            make_llm_with_response("{}"),
+            "stub-model",
+            Arc::new(crate::plugins::NoopCalendarSource),
+            Arc::new(crate::plugins::StaticAttentionSource(Vec::new())),
+        );
+        // ISO week 2026-W21 starts Monday 2026-05-18.
+        let (start, end) = weekly.period_window("2026-W21").unwrap();
+        assert_eq!(start.to_rfc3339(), "2026-05-18T00:00:00+00:00");
+        assert_eq!(end.to_rfc3339(), "2026-05-25T00:00:00+00:00");
+    }
+
+    #[test]
+    fn period_window_pacific_iso_week() {
+        let weekly = WeeklyCeremony::new(
+            make_llm_with_response("{}"),
+            "stub-model",
+            Arc::new(crate::plugins::NoopCalendarSource),
+            Arc::new(crate::plugins::StaticAttentionSource(Vec::new())),
+        )
+        .with_timezone(chrono_tz::America::Los_Angeles);
+        let (start, end) = weekly.period_window("2026-W21").unwrap();
+        assert_eq!(start.to_rfc3339(), "2026-05-18T07:00:00+00:00");
+        assert_eq!(end.to_rfc3339(), "2026-05-25T07:00:00+00:00");
+    }
+
+    #[test]
+    fn period_window_rejects_non_iso_week() {
+        let weekly = WeeklyCeremony::new(
+            make_llm_with_response("{}"),
+            "stub-model",
+            Arc::new(crate::plugins::NoopCalendarSource),
+            Arc::new(crate::plugins::StaticAttentionSource(Vec::new())),
+        );
+        assert!(weekly.period_window("not-a-week").is_err());
+        assert!(weekly.period_window("2026-05-19").is_err());
     }
 }

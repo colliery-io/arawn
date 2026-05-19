@@ -14,6 +14,7 @@
 pub mod engine;
 pub mod error;
 pub mod events;
+pub mod local_window;
 pub mod nightly;
 pub mod patterns;
 pub mod plugin;
