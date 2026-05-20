@@ -362,7 +362,7 @@
     "crates/arawn/src/lib.rs": "c08a5e22bce722186dba2dfb8819dbbb476aed759805331f39b7b1f3f47044b6",
     "crates/arawn/src/llm_pool.rs": "22545a0c1bc428db32ba7c00f0bee2863dc0b5599c926a62413c4e556b9fe02c",
     "crates/arawn/src/local_service.rs": "179bfb3b07ae0f339c05dd5f9c290cb5dc562d5e78fa21bed63d128ee4d9374d",
-    "crates/arawn/src/main.rs": "606fc87ee14a31bb66c4643ac910d09e37704a974c8c86032d9a5e733e0b5d78",
+    "crates/arawn/src/main.rs": "0b4b6c33a9bbe08be0c064c45d47f6c89d2d7872674126a3a6092687a091a60c",
     "crates/arawn/src/plugin_cmd.rs": "2c6b542aa6e65eca0606d9e2de995adf890da80515ee69020946c5d093be5186",
     "crates/arawn/src/ws_server.rs": "63b49482902d304dd9a510dd770fe6377807eb14312ce86ab35fd3373d209d8d",
     "examples/workflows/daily-pr-summary/build.rs": "7c3f20f9df59c2d379a5f797a5bc506c2d54e671d04ed67daf5de3baac7eb873",

@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-19T22:25:34Z | 370 files | Python, Rust
+> Generated: 2026-05-19T23:27:04Z | 370 files | Python, Rust
 
 ## Project Structure
 
@@ -795,7 +795,7 @@
 -  `embed_batch` function L16-25 — `( &'a self, texts: &'a [&'a str], ) -> std::pin::Pin< Box<dyn std::future::Futur...`
 -  `DEFAULT_MODEL` variable L33 — `: &str`
 -  `FILE_LOG_FILTER` variable L36 — `: &str` — Default file log filter: debug for arawn crates, warn for third-party.
--  `main` function L39-2099 — `() -> Result<()>`
+-  `main` function L39-2105 — `() -> Result<()>`
 -  `Cli` struct L49-68 — `{ command: Option<Command>, data_dir: Option<String>, session: Option<Uuid>, lis...`
 -  `Command` enum L71-111 — `Serve | Tui | Plugin | Doctor | Usage`
 -  `ExtractorBindHook` struct L842-853 — `{ runner: Arc<arawn_extractor::ExtractorRunner>, store: Arc<std::sync::Mutex<ara...`
@@ -805,15 +805,15 @@
 -  `FeedRuntimeUnbindHook` type L969-984 — `= FeedRuntimeUnbindHook`
 -  `on_unbind` function L970-983 — `(&self, removed_feed_ids: &[String])`
 -  `resolve_ceremony_tz` function L1612-1636 — `(kind: &str, raw: Option<&str>) -> chrono_tz::Tz`
--  `run_cli_via_server` function L2102-2204 — `(url: &str, prompt: &str, session_id: Option<Uuid>) -> Result<()>` — Run a CLI prompt by connecting to the running server via WebSocket.
--  `build_llm_client` function L2207-2228 — `(config: &arawn_bin::LlmConfig) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
--  `register_default_tools` function L2231-2273 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &arawn_bin::ArawnConfig, d...` — Register all default tools into the registry.
--  `connect_mcp_servers` function L2276-2320 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
--  `register_workflow_tools` function L2323-2340 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
--  `build_engine_config` function L2342-2385 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
--  `expand_github_org` function L2395-2458 — `( github: Arc<arawn_integrations::github::GithubIntegration>, store: Arc<std::sy...` — I-0050 T-0327 — list every repo under `owner` (via the github
--  `register_one_feed` function L2464-2496 — `( feed_runtime: Arc<arawn_feeds::FeedRuntime>, store: Arc<std::sync::Mutex<arawn...` — T-0329 — fetch a feed record by id and register its cron schedule
--  `dirs_path` function L2498-2507 — `() -> Option<String>`
+-  `run_cli_via_server` function L2108-2210 — `(url: &str, prompt: &str, session_id: Option<Uuid>) -> Result<()>` — Run a CLI prompt by connecting to the running server via WebSocket.
+-  `build_llm_client` function L2213-2234 — `(config: &arawn_bin::LlmConfig) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
+-  `register_default_tools` function L2237-2279 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &arawn_bin::ArawnConfig, d...` — Register all default tools into the registry.
+-  `connect_mcp_servers` function L2282-2326 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
+-  `register_workflow_tools` function L2329-2346 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
+-  `build_engine_config` function L2348-2391 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
+-  `expand_github_org` function L2401-2464 — `( github: Arc<arawn_integrations::github::GithubIntegration>, store: Arc<std::sy...` — I-0050 T-0327 — list every repo under `owner` (via the github
+-  `register_one_feed` function L2470-2502 — `( feed_runtime: Arc<arawn_feeds::FeedRuntime>, store: Arc<std::sync::Mutex<arawn...` — T-0329 — fetch a feed record by id and register its cron schedule
+-  `dirs_path` function L2504-2513 — `() -> Option<String>`
 
 #### crates/arawn/src/plugin_cmd.rs
 

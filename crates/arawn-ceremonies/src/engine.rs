@@ -36,6 +36,7 @@ use std::sync::{Arc, Mutex};
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use rusqlite::{Connection, OptionalExtension, params};
+use tracing::warn;
 use uuid::Uuid;
 
 use crate::CeremonyError;
@@ -132,17 +133,26 @@ impl CeremonyDispatcher for EngineDispatcher {
             });
         }
 
-        // 4: BEGIN. Everything below either commits at the end or
-        // rolls back on the way out.
-        begin(&self.conn)?;
-
-        // Wrap the rest in a closure so we can ROLLBACK on any err.
+        // 4: Run the pipeline with auto-commit writes. Earlier
+        // revisions wrapped the whole pipeline in BEGIN IMMEDIATE
+        // …COMMIT, which held a SQLite write lock across the LLM
+        // compose call (up to several seconds) and starved every
+        // other writer on `arawn.db` — including `create_session`
+        // via WS-RPC. UAT exposed this when boot-time back-fill
+        // composed 15 tablets in sequence and the test client's
+        // first `create_session` hit `busy_timeout` (5s) and
+        // failed.
+        //
+        // Each insert below is its own SQLite auto-commit
+        // transaction; the LLM compose call sits between writes
+        // with no lock held. On any error after the tablet row is
+        // inserted we clean up by deleting that row so the next
+        // dispatch can retry.
         let result = self
             .run_pipeline(plugin.as_ref(), &period_key, now, recovered)
             .await;
         match result {
             Ok(tablet_id) => {
-                commit(&self.conn)?;
                 if let Some(events) = &self.events {
                     emit_event(
                         events,
@@ -156,7 +166,17 @@ impl CeremonyDispatcher for EngineDispatcher {
                 Ok(DispatchOutcome::Generated { tablet_id })
             }
             Err(e) => {
-                let _ = rollback(&self.conn);
+                // Best-effort cleanup so a failed compose doesn't
+                // leave an `open`-status tablet that idempotency
+                // would later refuse to overwrite.
+                let tablet_id = format!("{}-{period_key}", kind);
+                if let Err(cleanup_err) = delete_tablet(&self.conn, &tablet_id) {
+                    warn!(
+                        tablet_id,
+                        error = %cleanup_err,
+                        "failed to clean up tablet after pipeline error"
+                    );
+                }
                 Err(e)
             }
         }
@@ -367,6 +387,21 @@ fn current_tablet_status(
     }))
 }
 
+/// Delete a tablet row by id. Used by the dispatcher's error path
+/// to roll back a failed pipeline so the next dispatch can retry.
+fn delete_tablet(conn: &ConnHandle, tablet_id: &str) -> Result<(), CeremonyError> {
+    let conn = conn
+        .0
+        .lock()
+        .map_err(|_| CeremonyError::Storage("connection mutex poisoned".to_string()))?;
+    conn.execute(
+        "DELETE FROM ceremony_tablets WHERE id = ?1",
+        params![tablet_id],
+    )
+    .map_err(|e| CeremonyError::Storage(format!("delete tablet: {e}")))?;
+    Ok(())
+}
+
 fn insert_tablet(
     conn: &ConnHandle,
     tablet_id: &str,
@@ -462,6 +497,11 @@ fn write_user_item(
     Ok(())
 }
 
+/// Manual transaction control. Production dispatch no longer
+/// wraps the pipeline in a single transaction (see `dispatch_for`
+/// for the reasoning), but the tests below still use these helpers
+/// to exercise individual write paths in isolation.
+#[allow(dead_code)]
 fn begin(conn: &ConnHandle) -> Result<(), CeremonyError> {
     let conn = conn
         .0
@@ -472,6 +512,7 @@ fn begin(conn: &ConnHandle) -> Result<(), CeremonyError> {
     Ok(())
 }
 
+#[allow(dead_code)]
 fn commit(conn: &ConnHandle) -> Result<(), CeremonyError> {
     let conn = conn
         .0
@@ -482,6 +523,7 @@ fn commit(conn: &ConnHandle) -> Result<(), CeremonyError> {
     Ok(())
 }
 
+#[allow(dead_code)]
 fn rollback(conn: &ConnHandle) -> Result<(), CeremonyError> {
     let conn = conn
         .0
