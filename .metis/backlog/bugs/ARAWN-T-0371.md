@@ -60,11 +60,19 @@ hold long write locks).
 
 ## Acceptance criteria
 
-- [ ] `fts_search` calls `ensure_feed_type_tables` before its
-  query.
-- [ ] Unit test: searching a freshly-opened store on a feed
-  type with no writes returns an empty result, not an error.
-- [ ] `angreal test unit` green. `angreal check workspace` green.
+- [x] `fts_search` calls `ensure_feed_type_tables` before its
+  query (matching `vector_search` and the other read paths).
+- [x] Regression test `search_unwritten_feed_type_returns_empty_not_error`
+  searches a never-written feed type (`jira_history` — the
+  exact UAT failure mode) and asserts empty result without
+  error.
+- [x] `angreal test unit` green. `angreal check workspace` green.
+
+## Status Updates — 2026-05-20
+
+Landed in `4d1afc3`. One-line fix in `ProjectionStore::fts_search`
+matching `vector_search`'s pattern. 11/11 fts_escape tests pass
+(+1 regression).
 
 Surfaced during ARAWN-I-0052 UAT post-T-0370 re-run
 (2026-05-20).
