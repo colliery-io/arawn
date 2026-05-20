@@ -4,14 +4,14 @@ level: initiative
 title: "Integration setup docs — first-run OAuth walkthroughs that actually work"
 short_code: "ARAWN-I-0038"
 created_at: 2026-05-06T13:44:20.906686+00:00
-updated_at: 2026-05-06T13:44:20.906686+00:00
+updated_at: 2026-05-20T20:21:52.671071+00:00
 parent: 
 blocked_by: []
 archived: false
 
 tags:
   - "#initiative"
-  - "#phase/discovery"
+  - "#phase/decompose"
 
 
 exit_criteria_met: false
@@ -116,19 +116,29 @@ The Drive UAT we just walked through together exercised every one of these gotch
 
 ### Information architecture
 
+**Diátaxis convention** — the existing docs split by purpose
+(`explanation/`, `how-to/`, `reference/`). Filing this initiative
+under the same convention rather than the flat
+`docs/src/integrations/` the original draft proposed:
+
 ```
-docs/src/integrations/
-├── README.md              ← hub: concepts + decision tree + provider matrix
-├── oauth-primer.md        ← "what's OAuth, what's a scope, why this is annoying"
-├── arawn-config.md        ← env var vs [integrations.<svc>] vs [integrations.google]
-├── google.md              ← shared Google project setup (used by gmail/calendar/drive)
-├── gmail.md               ← Gmail-specific scopes + tools
-├── calendar.md            ← Calendar-specific scopes + tools
-├── drive.md               ← Drive-specific scopes + tools (incl. full-scope default warning)
-├── slack.md               ← Slack-specific app creation, scopes, dual-token model
-├── atlassian.md           ← Atlassian 3LO walkthrough + cloud_id explanation
-└── troubleshooting.md     ← error → cause → fix
+docs/src/
+├── explanation/
+│   ├── integrations-overview.md     ← NEW: hub, concepts, decision tree, provider matrix
+│   └── oauth-primer.md              ← NEW: OAuth model in plain English
+├── reference/
+│   ├── integrations.md              ← existing reference table — extend
+│   └── integrations-config.md       ← NEW: env-var vs `[integrations.<svc>]` vs `[integrations.google]` resolution
+└── how-to/
+    ├── connect-google.md            ← rewrite — single page covering Gmail + Calendar + Drive (matches the singular Google Cloud Console entry point)
+    ├── connect-slack.md             ← rewrite — full app creation, dual-token, scopes, fixed-port redirect
+    ├── connect-atlassian.md         ← rewrite — 3LO + accessible-resources / cloud_id
+    └── debug-oauth-failures.md      ← extend — symptom-keyed error matrix
 ```
+
+Plus a maintainer-facing guide at
+`docs/src/contributing/integration-docs.md` (NEW) and updates to
+`docs/src/SUMMARY.md` to surface the new entries.
 
 The **hub README** is the entry point linked from the main docs landing page. It does:
 
@@ -267,36 +277,59 @@ A short maintainer-facing doc at `docs/contributing/integration-docs.md`:
 
 Phased so each task ships independently usable docs — readers can use the hub + Google walkthrough on day one, even before Slack/Atlassian docs are rewritten.
 
-### Phase 1 — Hub + concept docs (T-TBD)
-- `docs/src/integrations/README.md` — entry point with framing + decision tree.
-- `docs/src/integrations/oauth-primer.md` — OAuth concepts in plain English.
-- `docs/src/integrations/arawn-config.md` — env var vs TOML resolution explained.
-- Update mdbook `SUMMARY.md` to surface the new structure.
+### Correctness mandate (applies to every task)
 
-**Acceptance:** a new user reading just the hub + primer can answer "what do I need before I start" without opening a per-provider doc.
+The user runs each phase through a docs-only UAT — following
+the prose to its conclusion on the actual provider UIs. Every
+task's acceptance criteria includes:
 
-### Phase 2 — Google walkthrough (T-TBD)
-- `docs/src/integrations/google.md` — shared Google project setup, current UI navigation (Google Auth Platform), API enable flow, scope picker quirks, manual scope entry.
-- Per-service docs: `gmail.md`, `calendar.md`, `drive.md` — thin wrappers on top of `google.md` covering tool list + scope-specific notes (Drive's full-scope default warning, Gmail's three-scope split, Calendar's events-only scope).
-- Screenshots dated 2026-05-06.
+- **Anchor every code-referenceable claim in the source.** Tool
+  names, scope strings, error messages, config keys, redirect
+  URI format — grep the integration crate first; do not
+  paraphrase.
+- **Mark unverifiable provider-UI navigation as
+  `<!-- VERIFY: <date> -->`** so the docs-UAT walkthrough
+  spots them as candidates for live confirmation.
+- **No invented errors.** Every entry in the troubleshooting
+  matrix comes from a captured incident or a `tracing::warn!` /
+  `tracing::error!` string in the codebase.
+- **No screenshots in this initiative.** Captions only. The
+  spec asks for screenshots later; this round is prose.
 
-**Acceptance:** UAT a fresh `/connect gmail` (or drive/calendar) on a clean macOS account using only the docs. No web search permitted during UAT.
+### Phase 1 — Hub + concept docs
 
-### Phase 3 — Slack walkthrough (T-TBD)
-- `docs/src/integrations/slack.md` — full rewrite covering Slack's app creation, the dual-token model (bot + user), the redirect URI host quirk (`localhost`, not `127.0.0.1`), the fixed-port mode, and the precise scope list including the workspace-admin caveat.
+Files:
+- NEW `docs/src/explanation/integrations-overview.md` — hub, decision tree, provider matrix.
+- NEW `docs/src/explanation/oauth-primer.md` — OAuth in plain English.
+- NEW `docs/src/reference/integrations-config.md` — env-var vs `[integrations.<svc>]` vs `[integrations.google]` resolution.
+- Update `docs/src/SUMMARY.md` to surface them.
 
-**Acceptance:** UAT a fresh `/connect slack` using only the docs.
+**Acceptance:** a new user reading just the hub + primer can answer "what do I need before I start" without opening a how-to. `mdbook build` clean.
 
-### Phase 4 — Atlassian walkthrough (T-TBD)
-- `docs/src/integrations/atlassian.md` — covering 3LO setup, accessible-resources / cloud_id discovery, scope additions for Jira + Confluence, tool list.
+### Phase 2 — Google how-to rewrite
 
-**Acceptance:** UAT a fresh `/connect atlassian` using only the docs.
+Files:
+- REWRITE `docs/src/how-to/connect-google.md` — single page covering Gmail + Calendar + Drive (matches the singular Google Cloud Console entry point). Current UI navigation (Google Auth Platform), API enable flow, scope picker quirks, manual scope entry, Drive's full-scope default warning.
 
-### Phase 5 — Troubleshooting + maintainer guide (T-TBD)
-- `docs/src/integrations/troubleshooting.md` — symptom-keyed error matrix.
-- `docs/contributing/integration-docs.md` — how/when to update screenshots and gotchas.
+**Acceptance:** prose covers every gotcha enumerated in the Context section; provider-UI nav lines are `VERIFY`-tagged where I can't confirm from code.
 
-**Acceptance:** for each known error message in the engine logs and TUI, a row exists in the matrix with cause + fix.
+### Phase 3 — Slack how-to rewrite
+
+Files:
+- REWRITE `docs/src/how-to/connect-slack.md` — app creation, dual-token (bot + user) model, redirect URI host quirk, fixed-port mode, scope list with the workspace-admin caveat.
+
+### Phase 4 — Atlassian how-to rewrite
+
+Files:
+- REWRITE `docs/src/how-to/connect-atlassian.md` — 3LO setup, accessible-resources / cloud_id discovery, scope additions for Jira + Confluence.
+
+### Phase 5 — Troubleshooting + maintainer guide
+
+Files:
+- EXTEND `docs/src/how-to/debug-oauth-failures.md` — symptom-keyed matrix covering every `tracing::warn!`/`error!` string in `arawn-integrations` + `arawn-auth`.
+- NEW `docs/src/contributing/integration-docs.md` — when to update, what to grep, how to date `VERIFY` markers.
+
+**Acceptance:** every grep-able warn/error in the integration code has a matrix entry.
 
 ### Sequencing
 
