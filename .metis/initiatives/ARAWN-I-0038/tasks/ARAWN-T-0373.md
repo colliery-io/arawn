@@ -4,16 +4,16 @@ level: task
 title: "Integration docs Phase 2 — Google how-to rewrite (Gmail/Calendar/Drive)"
 short_code: "ARAWN-T-0373"
 created_at: 2026-05-20T16:00:00+00:00
-updated_at: 2026-05-20T16:00:00+00:00
+updated_at: 2026-05-20T20:36:15.339559+00:00
 parent: ARAWN-I-0038
-blocked_by: ["ARAWN-T-0372"]
+blocked_by: [ARAWN-T-0372]
 archived: false
 
 tags:
   - "#task"
   - "#docs"
   - "#integrations"
-  - "#phase/todo"
+  - "#phase/active"
 
 
 exit_criteria_met: false
@@ -85,21 +85,30 @@ docs-UAT walkthrough catches it.
 
 ## Acceptance criteria
 
-- [ ] `connect-google.md` rewritten as a single page covering
-  Gmail + Calendar + Drive.
-- [ ] Every scope string is grep-able in the integration
-  crates.
-- [ ] Every tool name listed is registered in code.
-- [ ] Drive's full-scope default warning is called out
-  explicitly.
-- [ ] Scope picker filtering quirk + manual-textarea path are
-  documented.
-- [ ] Unverified-app warning + 100-test-user cap are noted.
-- [ ] All provider-UI nav lines that can't be verified from
-  code are `VERIFY`-tagged with today's date.
-- [ ] `angreal docs build` clean.
-- [ ] User docs-UAT: follow the rewritten page on a clean
-  Google account to a working `/connect gmail` — flag every
-  `VERIFY` mismatch.
+- [x] `connect-google.md` rewritten as a single page covering
+  Gmail + Calendar + Drive (one Google Cloud project, one
+  OAuth client default).
+- [x] All five scope strings (`gmail.readonly`, `gmail.send`,
+  `gmail.modify`, `calendar.events`, `drive`) grep-verified
+  against the integration crates.
+- [x] Service names (`gmail`, `google_calendar`, `google_drive`)
+  match the `SERVICE_NAME` constants in each integration crate.
+- [x] Drive full-scope default warning called out as a
+  separate boxed note with the rationale (v1 surface includes
+  upload/update/delete).
+- [x] Scope picker filtering + manual-textarea path
+  documented in step 2 + step 4.
+- [x] Unverified-app warning + 100-test-user cap noted in
+  step 3 with the click-through path (Advanced → Go to app).
+- [x] Three `<!-- VERIFY: 2026-05-20 -->` markers on the
+  Google Auth Platform menu navigation (steps 3, 4, 5) for
+  the docs-UAT to scrutinise.
+- [x] Cross-links added to oauth-primer (concept),
+  integrations-config (other config shapes), and
+  debug-oauth-failures (troubleshooting).
+- [x] Scope-cache-vs-revoke gotcha added to the
+  troubleshooting section.
+- [x] `angreal docs build` clean.
+- [ ] User docs-UAT pending (tonight).
 
 Parent: [[ARAWN-I-0038]].
