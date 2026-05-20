@@ -4,16 +4,16 @@ level: task
 title: "Integration docs Phase 4 — Atlassian how-to rewrite"
 short_code: "ARAWN-T-0375"
 created_at: 2026-05-20T16:00:00+00:00
-updated_at: 2026-05-20T16:00:00+00:00
+updated_at: 2026-05-20T20:40:41.512736+00:00
 parent: ARAWN-I-0038
-blocked_by: ["ARAWN-T-0372"]
+blocked_by: [ARAWN-T-0372]
 archived: false
 
 tags:
   - "#task"
   - "#docs"
   - "#integrations"
-  - "#phase/todo"
+  - "#phase/active"
 
 
 exit_criteria_met: false
@@ -69,14 +69,47 @@ Phase 2 template:
 
 ## Acceptance criteria
 
-- [ ] `connect-atlassian.md` rewritten following Phase 2
-  template.
-- [ ] Scope list grep-able in the Atlassian integration crate.
-- [ ] `accessible-resources` / cloud_id flow explained
-  accurately, anchored in code.
-- [ ] Both Jira and Confluence tool lists are present.
-- [ ] `angreal docs build` clean.
-- [ ] User docs-UAT: follow on a fresh Atlassian site to a
-  working `/connect atlassian`.
+- [x] `connect-atlassian.md` rewritten with the full scope set
+  and the cloud_id discovery flow accurately documented.
+- [x] All 13 scopes grep-verified against
+  `crates/arawn-integrations/src/atlassian/integration.rs:29-47`
+  (`ATLASSIAN_OAUTH_SCOPES`):
+  - 3 Jira (`read:jira-work`, `write:jira-work`, `read:jira-user`)
+  - 5 Confluence classic (incl. `search:confluence`)
+  - 4 Confluence granular v2 (`read:space:confluence`,
+    `read:page:confluence`, `write:page:confluence`,
+    `read:content-details:confluence`)
+  - 1 `offline_access` for refresh tokens
+- [x] `accessible-resources` discovery flow explained in step 7
+  with the right URL (`https://api.atlassian.com/oauth/token/accessible-resources`)
+  and what gets persisted (cloud_id list in the encrypted token
+  store's `extras` field).
+- [x] Tool counts noted (6 Jira + 5 Confluence = 11) matching the
+  per-tool `*_SCOPES` constants in `jira.rs` / `confluence.rs`.
+- [x] Redirect URI `http://localhost:8080/oauth/callback` —
+  `localhost` not `127.0.0.1`, code-anchored.
+- [x] Classic-vs-granular Confluence scope distinction explained
+  prominently — this is the correctness fix that matters most for
+  the docs-UAT.
+- [x] `audience=api.atlassian.com` extra param + `offline_access`
+  refresh-token requirement called out so users understand why so
+  many scopes.
+- [x] Five `VERIFY` markers on developer.atlassian.com console UI
+  navigation paths.
+- [x] `angreal docs build` clean.
+- [ ] User docs-UAT pending (tonight).
+
+## Correctness fix worth flagging in commit
+
+The previous `connect-atlassian.md` listed **7 scopes**; arawn
+actually requests **13**. Users following the old doc were
+silently missing:
+- 4 granular Confluence v2 scopes → v2 page tools 401.
+- `search:confluence` → Confluence search broken.
+- `offline_access` → no refresh token issued → connection breaks
+  after ~1 hour.
+
+That's the single biggest doc-vs-code drift the I-0038 audit
+caught.
 
 Parent: [[ARAWN-I-0038]].
