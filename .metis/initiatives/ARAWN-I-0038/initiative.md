@@ -4,14 +4,14 @@ level: initiative
 title: "Integration setup docs — first-run OAuth walkthroughs that actually work"
 short_code: "ARAWN-I-0038"
 created_at: 2026-05-06T13:44:20.906686+00:00
-updated_at: 2026-05-20T20:30:21.356068+00:00
+updated_at: 2026-05-20T21:02:48.788909+00:00
 parent: 
 blocked_by: []
 archived: false
 
 tags:
   - "#initiative"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
