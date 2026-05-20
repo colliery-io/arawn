@@ -47,13 +47,17 @@ impl Tool for DailyRunTool {
     }
 
     fn description(&self) -> &str {
-        "Fire the daily ceremony for today (UTC date). Pulls \
-         rolling todos, scans recent activity, and writes today's \
-         daily tablet. Idempotent — if a tablet for today already \
-         exists in a non-`open` state the call returns \
-         `status: skipped` with a reason. On success returns \
-         `{ status: \"generated\", tablet_id }`. Call this before \
-         `daily_current` if no daily has been generated yet today."
+        "Compose today's **daily ceremony tablet** — a pre-curated \
+         per-day brief: a few attention items, calendar highlights, \
+         and rolling todos. Idempotent — returns `status: skipped` \
+         when today's tablet already exists in a non-`open` state. \
+         On success returns `{ status: \"generated\", tablet_id }`. \
+         \n\nNOT a substitute for raw inbox/feed reads. If the user \
+         asks to \"summarize my inbox\", \"read my gmail\", or \
+         \"what's in slack\", use `feed_search` / `signal_search` \
+         / `gmail_inbox_read` instead — the tablet only contains \
+         items the ceremony already filtered + composed, which \
+         won't include every inbox row."
     }
 
     fn category(&self) -> ToolCategory {
@@ -106,11 +110,13 @@ impl Tool for DailyCurrentTool {
     }
 
     fn description(&self) -> &str {
-        "Return today's daily tablet, or `null` if one has not been \
-         generated yet. Use `daily_run` to generate one. The \
-         returned object has `id`, `kind`, `period_key` (today's \
-         UTC date, e.g. `2026-05-16`), `generated_at`, `status` \
-         (`open` | `reviewed` | `unreviewed`), and other metadata."
+        "Return today's **daily ceremony tablet** metadata (id, \
+         period_key, status, …), or `null` if one has not been \
+         generated yet. Use `daily_run` to generate. \
+         \n\nThe tablet is a per-day *brief*, not the full inbox. \
+         For \"summarize my inbox / gmail / slack\" intents, use \
+         `feed_search` or `signal_search` instead — those read the \
+         raw projection rows the ceremony filtered down."
     }
 
     fn category(&self) -> ToolCategory {
@@ -166,15 +172,20 @@ impl Tool for DailyListItemsTool {
     }
 
     fn description(&self) -> &str {
-        "List items in a daily tablet, optionally filtered by \
-         section. Sections include `todos`, `attention`, `calendar`. \
-         Each item has `id`, `section_key`, `ordinal`, `kind`, \
-         `body` (JSON), `citation_id` (the source signal/event/todo \
-         id — non-null for engine-composed items, null for user- \
-         added items), `done_at`, `created_at`. When summarising \
-         the daily to the user, **always quote citation_id values \
-         verbatim** so the user can trace each claim back to the \
-         source row."
+        "List items the daily ceremony already composed into \
+         today's tablet, optionally filtered by section (`todos`, \
+         `attention`, `calendar`). Each item has `id`, \
+         `section_key`, `ordinal`, `kind`, `body` (JSON), \
+         `citation_id` (the source signal/event/todo id — non-null \
+         for engine-composed items, null for user-added items), \
+         `done_at`, `created_at`. When summarising the daily to \
+         the user, **always quote citation_id values verbatim** so \
+         the user can trace each claim back to the source row. \
+         \n\n**Not for raw inbox reads.** This returns only the \
+         tablet's curated subset (typically 3–6 rows). For \
+         \"summarize my inbox\", \"what's in gmail today\", etc., \
+         use `feed_search` / `signal_search` / `gmail_inbox_read` \
+         to read the underlying rows."
     }
 
     fn category(&self) -> ToolCategory {

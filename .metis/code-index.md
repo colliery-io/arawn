@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-20T12:02:12Z | 370 files | Python, Rust
+> Generated: 2026-05-20T13:56:02Z | 370 files | Python, Rust
 
 ## Project Structure
 
@@ -8104,33 +8104,34 @@
 - pub `missing_source_ids` function L118-161 — `( &self, feed_type: &str, feed_id: &str, candidate_source_ids: &[String], ) -> R...` — Returns ids that are NOT yet projected for a given feed.
 - pub `count` function L164-173 — `(&self, feed_type: &str) -> Result<usize, ProjectionError>` — Total rows for a feed_type — useful for tests and ops.
 - pub `vector_search` function L179-210 — `( &self, feed_type: &str, query_vec: &[f32], limit: usize, ) -> Result<Vec<Strin...` — Vector similarity search over a single feed type.
-- pub `fts_search` function L220-246 — `( &self, feed_type: &str, query: &str, limit: usize, ) -> Result<Vec<String>, Pr...` — FTS search over a single feed type.
-- pub `get_row` function L249-292 — `( &self, feed_type: &str, projection_id: &str, ) -> Result<Option<ProjectionRow>...` — Get a single projection row by primary key.
-- pub `WriteOutcome` struct L296-300 — `{ inserted: usize, updated: usize, unchanged: usize }` — detect stale entries cheaply.
-- pub `escape_fts5` function L328-337 — `(query: &str) -> String` — Escape a user-supplied query for safe inclusion in an FTS5
--  `ProjectionStore` type L28-293 — `= ProjectionStore` — detect stale entries cheaply.
--  `WriteAction` enum L302-306 — `Inserted | Updated | Unchanged` — detect stale entries cheaply.
--  `body_hash` function L339-344 — `(body_text: &str) -> String` — detect stale entries cheaply.
--  `write_row` function L346-440 — `( tx: &rusqlite::Transaction<'_>, feed_type: &str, row: &ProjectionRow, ) -> Res...` — detect stale entries cheaply.
--  `fts_upsert` function L442-458 — `( tx: &rusqlite::Transaction<'_>, feed_type: &str, projection_id: &str, title: &...` — detect stale entries cheaply.
--  `embedding_invalidate` function L463-483 — `( tx: &rusqlite::Transaction<'_>, feed_type: &str, projection_id: &str, body_has...` — Mark a projection row's embedding as pending re-compute.
--  `fts_escape_tests` module L486-631 — `-` — detect stale entries cheaply.
--  `escape_empty_returns_empty` function L494-498 — `()` — detect stale entries cheaply.
--  `escape_quotes_each_token` function L501-504 — `()` — detect stale entries cheaply.
--  `escape_neutralises_hyphen` function L507-515 — `()` — detect stale entries cheaply.
--  `escape_neutralises_colon_and_parens` function L518-521 — `()` — detect stale entries cheaply.
--  `escape_doubles_embedded_quotes` function L524-527 — `()` — detect stale entries cheaply.
--  `TestProj` struct L533-540 — `{ id: String, feed_id: String, source_id: String, ts: chrono::DateTime<chrono::U...` — Test-only projection that targets the `slack_messages` table
--  `TestProj` type L541-557 — `impl Projection for TestProj` — detect stale entries cheaply.
--  `feed_type` function L542-544 — `(&self) -> &'static str` — detect stale entries cheaply.
--  `row` function L545-556 — `(&self) -> ProjectionRow` — detect stale entries cheaply.
--  `open_store` function L559-566 — `() -> ProjectionStore` — detect stale entries cheaply.
--  `seed` function L568-578 — `(store: &ProjectionStore, id: &str, title: &str, body: &str)` — detect stale entries cheaply.
--  `hyphenated_identifier_matches_post_fix` function L581-588 — `()` — detect stale entries cheaply.
--  `hyphenated_phrase_matches` function L591-598 — `()` — detect stale entries cheaply.
--  `multi_token_is_implicit_and` function L601-610 — `()` — detect stale entries cheaply.
--  `colon_in_query_does_not_trigger_column_lookup` function L613-620 — `()` — detect stale entries cheaply.
--  `empty_query_returns_empty_without_error` function L623-630 — `()` — detect stale entries cheaply.
+- pub `fts_search` function L220-251 — `( &self, feed_type: &str, query: &str, limit: usize, ) -> Result<Vec<String>, Pr...` — FTS search over a single feed type.
+- pub `get_row` function L254-297 — `( &self, feed_type: &str, projection_id: &str, ) -> Result<Option<ProjectionRow>...` — Get a single projection row by primary key.
+- pub `WriteOutcome` struct L301-305 — `{ inserted: usize, updated: usize, unchanged: usize }` — detect stale entries cheaply.
+- pub `escape_fts5` function L333-342 — `(query: &str) -> String` — Escape a user-supplied query for safe inclusion in an FTS5
+-  `ProjectionStore` type L28-298 — `= ProjectionStore` — detect stale entries cheaply.
+-  `WriteAction` enum L307-311 — `Inserted | Updated | Unchanged` — detect stale entries cheaply.
+-  `body_hash` function L344-349 — `(body_text: &str) -> String` — detect stale entries cheaply.
+-  `write_row` function L351-445 — `( tx: &rusqlite::Transaction<'_>, feed_type: &str, row: &ProjectionRow, ) -> Res...` — detect stale entries cheaply.
+-  `fts_upsert` function L447-463 — `( tx: &rusqlite::Transaction<'_>, feed_type: &str, projection_id: &str, title: &...` — detect stale entries cheaply.
+-  `embedding_invalidate` function L468-488 — `( tx: &rusqlite::Transaction<'_>, feed_type: &str, projection_id: &str, body_has...` — Mark a projection row's embedding as pending re-compute.
+-  `fts_escape_tests` module L491-654 — `-` — detect stale entries cheaply.
+-  `escape_empty_returns_empty` function L499-503 — `()` — detect stale entries cheaply.
+-  `escape_quotes_each_token` function L506-509 — `()` — detect stale entries cheaply.
+-  `escape_neutralises_hyphen` function L512-520 — `()` — detect stale entries cheaply.
+-  `escape_neutralises_colon_and_parens` function L523-526 — `()` — detect stale entries cheaply.
+-  `escape_doubles_embedded_quotes` function L529-532 — `()` — detect stale entries cheaply.
+-  `TestProj` struct L538-545 — `{ id: String, feed_id: String, source_id: String, ts: chrono::DateTime<chrono::U...` — Test-only projection that targets the `slack_messages` table
+-  `TestProj` type L546-562 — `impl Projection for TestProj` — detect stale entries cheaply.
+-  `feed_type` function L547-549 — `(&self) -> &'static str` — detect stale entries cheaply.
+-  `row` function L550-561 — `(&self) -> ProjectionRow` — detect stale entries cheaply.
+-  `open_store` function L564-571 — `() -> ProjectionStore` — detect stale entries cheaply.
+-  `seed` function L573-583 — `(store: &ProjectionStore, id: &str, title: &str, body: &str)` — detect stale entries cheaply.
+-  `hyphenated_identifier_matches_post_fix` function L586-593 — `()` — detect stale entries cheaply.
+-  `hyphenated_phrase_matches` function L596-603 — `()` — detect stale entries cheaply.
+-  `multi_token_is_implicit_and` function L606-615 — `()` — detect stale entries cheaply.
+-  `colon_in_query_does_not_trigger_column_lookup` function L618-625 — `()` — detect stale entries cheaply.
+-  `empty_query_returns_empty_without_error` function L628-635 — `()` — detect stale entries cheaply.
+-  `search_unwritten_feed_type_returns_empty_not_error` function L641-653 — `()` — T-0371: searching a feed type that has never been written
 
 #### crates/arawn-projections/src/types.rs
 

@@ -66,7 +66,11 @@ impl Tool for FeedSearchTool {
         "Search across continual data feeds (gmail, slack, drive, jira, confluence, calendar). \
          Use this for cross-feed lookups when no workstream is declared. Ranks by hybrid \
          FTS5 + semantic similarity (RRF-fused) when an embedder is configured.\n\n\
-         Use `feed_types` to scope (e.g. just slack), `since`/`until` (RFC3339) for time windows."
+         **Use this (not `daily_list_items`) when the user asks to \"summarize my inbox\", \
+         \"read my gmail\", \"what's in slack today\", etc.** — `feed_search` reads the raw \
+         projection rows; the daily tablet is a curated brief that only covers a few items.\n\n\
+         Use `feed_types` to scope (e.g. `[\"gmail_messages\"]` for inbox-only), \
+         `since`/`until` (RFC3339) for time windows."
     }
 
     fn is_read_only(&self) -> bool {

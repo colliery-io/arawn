@@ -19,6 +19,63 @@ use arawn_steward::{ClusterMode, DustEngine, DustOpts, Journal, accept, rollback
 use crate::tool::{Tool, ToolCategory, ToolError, ToolOutput};
 use crate::workstream_router::{MemoryHandle, WorkstreamMemoryRouter};
 
+/// Return the closest tag in `candidates` to `needle` if any candidate
+/// is within edit distance 4 OR shares a common prefix/suffix of length ≥4.
+/// Used by `workstream_dust` to nudge the agent toward the right ontology
+/// tag when the user-supplied wording diverges (e.g. `falcon-project`
+/// vs ontology `falcon`).
+fn closest_tag(needle: &str, candidates: &[String]) -> Option<String> {
+    let n = needle.to_ascii_lowercase();
+    let mut best: Option<(usize, &String)> = None;
+    for c in candidates {
+        let cl = c.to_ascii_lowercase();
+        // Substring match in either direction → strong signal that
+        // this is the right tag (canonical case: user added or
+        // dropped a suffix, e.g. `falcon-project` vs `falcon`).
+        // Treat as distance 0 regardless of length delta.
+        // Otherwise fall back to Levenshtein with a ≤4 cap.
+        let dist = if cl.contains(&n) || n.contains(&cl) {
+            0
+        } else {
+            let d = edit_distance(&n, &cl);
+            if d > 4 {
+                continue;
+            }
+            d
+        };
+        if best.map(|(d, _)| dist < d).unwrap_or(true) {
+            best = Some((dist, c));
+        }
+    }
+    best.map(|(_, c)| c.clone())
+}
+
+/// Levenshtein distance, classic two-row DP. Small enough not to need
+/// a dependency. Caller bounds candidate size before invoking.
+fn edit_distance(a: &str, b: &str) -> usize {
+    let a: Vec<char> = a.chars().collect();
+    let b: Vec<char> = b.chars().collect();
+    if a.is_empty() {
+        return b.len();
+    }
+    if b.is_empty() {
+        return a.len();
+    }
+    let mut prev: Vec<usize> = (0..=b.len()).collect();
+    let mut curr = vec![0; b.len() + 1];
+    for (i, ca) in a.iter().enumerate() {
+        curr[0] = i + 1;
+        for (j, cb) in b.iter().enumerate() {
+            let cost = if ca == cb { 0 } else { 1 };
+            curr[j + 1] = (curr[j] + 1)
+                .min(prev[j + 1] + 1)
+                .min(prev[j] + cost);
+        }
+        std::mem::swap(&mut prev, &mut curr);
+    }
+    prev[b.len()]
+}
+
 fn open_journal(data_dir: &PathBuf, workstream: &str) -> Result<Journal, ToolError> {
     Journal::open(data_dir, workstream)
         .map_err(|e| ToolError::ExecutionFailed(format!("open journal `{workstream}`: {e}")))
@@ -475,6 +532,32 @@ impl Tool for WorkstreamDustTool {
                     .and_then(|s| s.tags())
                     .unwrap_or_default();
             let mut suggestions = Vec::new();
+            // Fuzzy-match every passed tag against the ontology so
+            // the agent gets `did_you_mean` candidates instead of
+            // having to re-discover the correct spelling itself.
+            // Surfaced during I-0052 UAT — agent passed
+            // `falcon-project` (the user's wording), tool returned
+            // 0 clusters with a hint, agent acknowledged but never
+            // retried. A concrete did_you_mean nudge makes the
+            // retry obvious.
+            let did_you_mean: Vec<serde_json::Value> = opts
+                .tag_filter
+                .as_ref()
+                .map(|requested| {
+                    requested
+                        .iter()
+                        .filter(|r| !available_tags.iter().any(|a| a == *r))
+                        .filter_map(|r| {
+                            closest_tag(r, &available_tags).map(|m| {
+                                json!({
+                                    "you_passed": r,
+                                    "did_you_mean": m,
+                                })
+                            })
+                        })
+                        .collect()
+                })
+                .unwrap_or_default();
             if !opts
                 .tag_filter
                 .as_ref()
@@ -499,12 +582,15 @@ impl Tool for WorkstreamDustTool {
             if let Value::Object(ref mut m) = payload {
                 m.insert("available_tags".into(), json!(available_tags));
                 m.insert("suggestions".into(), json!(suggestions));
-                m.insert(
-                    "hint".into(),
-                    json!(
-                        "no clusters formed — pick a tag from `available_tags` (these are the workstream's declared ontology), or retry without a `tags` filter. The literal string you passed must match exactly."
-                    ),
-                );
+                let hint = if !did_you_mean.is_empty() {
+                    "no clusters formed — your `tags` filter contains values that aren't in the workstream's declared ontology. **Retry now** with the `did_you_mean` value(s) below, do not stop to ask the user.".to_string()
+                } else {
+                    "no clusters formed — pick a tag from `available_tags` (these are the workstream's declared ontology), or retry without a `tags` filter. The literal string you passed must match exactly.".to_string()
+                };
+                m.insert("hint".into(), json!(hint));
+                if !did_you_mean.is_empty() {
+                    m.insert("did_you_mean".into(), json!(did_you_mean));
+                }
             }
         }
         Ok(ToolOutput::success(payload.to_string()))
@@ -1085,5 +1171,51 @@ mod tests {
         let tool = WorkstreamRollbackTool::new(tmp.path(), Arc::clone(&router));
         let r = tool.execute(&ctx, json!({"id": 9999})).await;
         assert!(r.is_err());
+    }
+
+    // --- closest_tag (dust did_you_mean nudge) ---
+
+    #[test]
+    fn closest_tag_matches_substring_user_added_suffix() {
+        // The UAT failure: user said "falcon-project", ontology has "falcon".
+        let candidates = vec![
+            "code-review".to_string(),
+            "falcon".to_string(),
+            "infrastructure".to_string(),
+            "ledger".to_string(),
+        ];
+        assert_eq!(
+            super::closest_tag("falcon-project", &candidates),
+            Some("falcon".to_string())
+        );
+    }
+
+    #[test]
+    fn closest_tag_matches_typo() {
+        let candidates = vec!["falcon".to_string(), "ledger".to_string()];
+        assert_eq!(
+            super::closest_tag("falcom", &candidates),
+            Some("falcon".to_string())
+        );
+    }
+
+    #[test]
+    fn closest_tag_returns_none_when_unrelated() {
+        let candidates = vec!["falcon".to_string(), "ledger".to_string()];
+        // "platypus" has no candidate within 4 edits and no substring overlap.
+        assert!(super::closest_tag("platypus", &candidates).is_none());
+    }
+
+    #[test]
+    fn closest_tag_picks_shortest_distance() {
+        let candidates = vec![
+            "falcon".to_string(),
+            "falcon-project-archive".to_string(),
+        ];
+        // "falcon-prj" is closer to "falcon" (4 edits) than to the long form (12+).
+        assert_eq!(
+            super::closest_tag("falcon-prj", &candidates),
+            Some("falcon".to_string())
+        );
     }
 }

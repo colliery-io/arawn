@@ -268,7 +268,7 @@
     "crates/arawn-projections/src/lib.rs": "9b5a6c66400079b04033da83680347ee77972a1622357a28c89585093f451251",
     "crates/arawn-projections/src/schema.rs": "8132eb21d66b8ee147e398d6f14e4a399a4d64e4b284871d3a2760fe0137efa5",
     "crates/arawn-projections/src/slack.rs": "8a6e3b515c4610bd61c9276d92edaf955837ce81398cabfff9f87045e01a9c3e",
-    "crates/arawn-projections/src/store.rs": "aeae9895b752c649265b65b5de32d487e464f09e08e88252acd7b7c5b8b80b82",
+    "crates/arawn-projections/src/store.rs": "047ef48b90bece582f112fd29f2ea140ef88fc22595a6f9073dd7d6e6e39dae7",
     "crates/arawn-projections/src/types.rs": "6e2ab6619f21e08f6bd5f6b6e3277d9ea321eb818dbd39c070c43313bf77ed2c",
     "crates/arawn-projections/tests/embed_pass.rs": "43709e5d29a479e9e49610d787d8aa3e12432480bd6d7d3c09386fb9a58531dd",
     "crates/arawn-projections/tests/github_projections.rs": "4d0014341bfa670fdc84ce0553c1057c43912a562e6cf904fe6e9d791386dd67",

@@ -108,9 +108,13 @@ impl Tool for SignalSearchTool {
 
     fn description(&self) -> &str {
         "Semantic + FTS5 search over the active workstream's curated knowledge \
-         base. Returns entities (decisions, facts, notes, conventions) extracted \
-         from feeds and ranked by hybrid similarity. Pair with `feed_search` when \
-         you need the raw projection rows behind a finding."
+         base. Returns **entities** (decisions, facts, notes, conventions) extracted \
+         from feeds and ranked by hybrid similarity.\n\n\
+         For \"what did we decide / agree / observe about X\" questions, this is the \
+         right tool. For \"summarize my inbox / read my gmail / what's in slack\" — \
+         use `feed_search` instead; that returns raw projection rows. The daily \
+         ceremony tablet (`daily_list_items`) is a curated brief, not a substitute \
+         for either."
     }
 
     fn is_read_only(&self) -> bool {
