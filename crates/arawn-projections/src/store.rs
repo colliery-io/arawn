@@ -228,6 +228,11 @@ impl ProjectionStore {
             return Ok(Vec::new());
         }
         let conn = self.conn.lock().unwrap();
+        // Ensure schema exists — `vector_search` and the other read
+        // methods do the same. Without this, searching a feed type
+        // that has never been written fails with
+        // `no such table: <feed_type>_fts` (ARAWN-T-0371).
+        schema::ensure_feed_type_tables(&conn, feed_type)?;
         let sql = format!(
             "SELECT projection_id FROM {feed_type}_fts \
              WHERE {feed_type}_fts MATCH ?1 ORDER BY rank LIMIT ?2"
@@ -627,5 +632,23 @@ mod fts_escape_tests {
         assert!(hits.is_empty());
         let hits2 = store.fts_search("slack_messages", "   ", 10).expect("ok");
         assert!(hits2.is_empty());
+    }
+
+    /// T-0371: searching a feed type that has never been written
+    /// must not error with `no such table`. The schema is lazily
+    /// created on first search just like every other read path.
+    #[test]
+    fn search_unwritten_feed_type_returns_empty_not_error() {
+        // Open store, but do NOT seed anything for the queried feed
+        // type. `open_store` ensures `slack_messages`, so pick a
+        // different never-touched feed type for this test.
+        let path = tempfile::NamedTempFile::new().unwrap().into_temp_path();
+        let store = ProjectionStore::open(&path).expect("open store");
+        // No ensure_feed_type, no writes — exactly the UAT failure
+        // mode where jira_history had no rows.
+        let hits = store
+            .fts_search("jira_history", "RFC-0042", 10)
+            .expect("must not error on unwritten feed type");
+        assert!(hits.is_empty());
     }
 }
