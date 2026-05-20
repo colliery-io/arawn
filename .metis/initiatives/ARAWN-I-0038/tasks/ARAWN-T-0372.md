@@ -4,7 +4,7 @@ level: task
 title: "Integration docs Phase 1 — hub, oauth-primer, integrations-config"
 short_code: "ARAWN-T-0372"
 created_at: 2026-05-20T16:00:00+00:00
-updated_at: 2026-05-20T20:30:43.306182+00:00
+updated_at: 2026-05-20T21:02:31.935914+00:00
 parent: ARAWN-I-0038
 blocked_by: []
 archived: false
@@ -13,7 +13,7 @@ tags:
   - "#task"
   - "#docs"
   - "#integrations"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false

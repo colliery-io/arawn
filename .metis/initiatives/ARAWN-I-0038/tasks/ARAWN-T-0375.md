@@ -4,7 +4,7 @@ level: task
 title: "Integration docs Phase 4 — Atlassian how-to rewrite"
 short_code: "ARAWN-T-0375"
 created_at: 2026-05-20T16:00:00+00:00
-updated_at: 2026-05-20T20:40:41.512736+00:00
+updated_at: 2026-05-20T21:02:34.881165+00:00
 parent: ARAWN-I-0038
 blocked_by: [ARAWN-T-0372]
 archived: false
@@ -13,7 +13,7 @@ tags:
   - "#task"
   - "#docs"
   - "#integrations"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false

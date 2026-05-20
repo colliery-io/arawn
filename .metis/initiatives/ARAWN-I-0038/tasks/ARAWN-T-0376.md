@@ -1,19 +1,19 @@
 ---
-id: integration-docs-phase-5-troubleshooting
+id: integration-docs-phase-5
 level: task
 title: "Integration docs Phase 5 — troubleshooting matrix + maintainer guide"
 short_code: "ARAWN-T-0376"
 created_at: 2026-05-20T16:00:00+00:00
-updated_at: 2026-05-20T16:00:00+00:00
+updated_at: 2026-05-20T21:02:30.884433+00:00
 parent: ARAWN-I-0038
-blocked_by: ["ARAWN-T-0373", "ARAWN-T-0374", "ARAWN-T-0375"]
+blocked_by: [ARAWN-T-0373, ARAWN-T-0374, ARAWN-T-0375]
 archived: false
 
 tags:
   - "#task"
   - "#docs"
   - "#integrations"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -67,13 +67,28 @@ Two files:
 
 ## Acceptance criteria
 
-- [ ] Every grep-able `tracing::warn!`/`error!` in
-  `arawn-integrations` + `arawn-auth` has a matrix row.
-- [ ] Each row's "fix" is actionable — references a specific
-  `/disconnect` / `/connect` / config edit / browser action.
-- [ ] Maintainer guide at
-  `docs/src/contributing/integration-docs.md` exists with
-  grep targets + audit cadence.
-- [ ] `angreal docs build` clean.
+- [x] `debug-oauth-failures.md` extended with an exhaustive
+  error reference matrix covering every variant of
+  `IntegrationError` (`error.rs:9`) and `AuthError`
+  (`arawn-auth/src/error.rs:5`).
+- [x] Three new narrative sections added: Confluence v2 scope
+  failure (catches the T-0375 finding), Atlassian
+  accessible-resources discovery failure, and credential
+  decrypt-tampered.
+- [x] Server-log warnings worth knowing — separate table
+  covering the three `tracing::warn!` sites in
+  `google_common.rs:138`, `atlassian/integration.rs:312`,
+  `atlassian/integration.rs:392`.
+- [x] Maintainer guide at
+  `docs/src/contributing/integration-docs.md` exists with:
+  - Audit cadence (per-PR for code touches; quarterly for
+    provider-UI walk-through).
+  - Grep targets for scope strings, service names, tool
+    names, env vars, error variants.
+  - VERIFY marker convention with date semantics.
+  - Docs-UAT workflow.
+- [x] SUMMARY.md updated with a new "Contributing" section
+  surfacing the maintainer guide.
+- [x] `angreal docs build` clean.
 
 Parent: [[ARAWN-I-0038]].

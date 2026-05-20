@@ -74,3 +74,7 @@
 - [Ceremonies](./explanation/ceremonies.md)
 - [Integrations overview](./explanation/integrations-overview.md)
 - [OAuth primer](./explanation/oauth-primer.md)
+
+# Contributing
+
+- [Maintaining integration docs](./contributing/integration-docs.md)
