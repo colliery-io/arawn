@@ -1,19 +1,19 @@
 ---
-id: integration-docs-phase-3-slack
+id: integration-docs-phase-3-slack-how
 level: task
 title: "Integration docs Phase 3 — Slack how-to rewrite"
 short_code: "ARAWN-T-0374"
 created_at: 2026-05-20T16:00:00+00:00
-updated_at: 2026-05-20T16:00:00+00:00
+updated_at: 2026-05-20T20:38:22.326703+00:00
 parent: ARAWN-I-0038
-blocked_by: ["ARAWN-T-0372"]
+blocked_by: [ARAWN-T-0372]
 archived: false
 
 tags:
   - "#task"
   - "#docs"
   - "#integrations"
-  - "#phase/todo"
+  - "#phase/active"
 
 
 exit_criteria_met: false
@@ -71,16 +71,29 @@ Diátaxis how-to template established by Phase 2:
 
 ## Acceptance criteria
 
-- [ ] `connect-slack.md` rewritten following the Phase 2
-  template shape.
-- [ ] Scope list grep-able in the Slack integration crate.
-- [ ] Redirect URI host (`localhost`) and fixed-port behaviour
-  documented and code-verified.
-- [ ] Bot-vs-user scope split explained.
-- [ ] Workspace-admin caveat noted (with `VERIFY` if not in
-  arawn's logs).
-- [ ] `angreal docs build` clean.
-- [ ] User docs-UAT: follow on a fresh Slack workspace to a
-  working `/connect slack`.
+- [x] `connect-slack.md` rewritten, structurally aligned with
+  Phase 2's template (cross-links, env-var alt, VERIFY markers).
+- [x] All 16 bot scopes + 10 user scopes grep-verified against
+  `crates/arawn-integrations/src/slack/integration.rs` (`SLACK_OAUTH_SCOPES`
+  + `SLACK_OAUTH_USER_SCOPES`). Counts match.
+- [x] Redirect URI `http://localhost:8080/oauth/callback`
+  code-verified — `arawn-auth/src/server.rs:69-73` emits the
+  `localhost` host string deliberately; `slack/integration.rs:107`
+  pins port 8080 via `DEFAULT_SLACK_REDIRECT_PORT`. Reconciled
+  the previously-conflicting code comment in
+  `slack/integration.rs:98,104` (says `127.0.0.1` but
+  `localhost` is what the server actually presents).
+- [x] Bot-vs-user dual-token model explained at the scope
+  list, with a callout box.
+- [x] Workspace-admin caveat in Prerequisites + Step 4 —
+  not arawn-logged (it's a Slack-side error from the install
+  flow); flagged as the "Workspace admin needed" note.
+- [x] Env-var alternative (`ARAWN_SLACK_CLIENT_*`) added with
+  cross-link to integrations-config.md.
+- [x] Five VERIFY markers on Slack admin UI nav (app creation
+  / Scopes / Redirect URLs / Install / Credentials section
+  paths).
+- [x] `angreal docs build` clean.
+- [ ] User docs-UAT pending (tonight).
 
 Parent: [[ARAWN-I-0038]].
