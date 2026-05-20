@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-19T23:27:04Z | 370 files | Python, Rust
+> Generated: 2026-05-20T12:02:12Z | 370 files | Python, Rust
 
 ## Project Structure
 
@@ -1024,70 +1024,71 @@
 
 #### crates/arawn-ceremonies/src/engine.rs
 
-- pub `ConnHandle` struct L51 — `-` — Wraps a shared SQLite connection.
-- pub `new` function L54-56 — `(conn: Connection) -> Self` — step 9.
-- pub `EngineDispatcher` struct L61-68 — `{ conn: ConnHandle, registry: PluginRegistry, events: Option<CeremonyEventSender...` — The concrete [`CeremonyDispatcher`].
-- pub `new` function L71-77 — `(conn: ConnHandle, registry: PluginRegistry) -> Self` — step 9.
-- pub `with_events` function L82-85 — `(mut self, sender: CeremonyEventSender) -> Self` — Attach the event sender.
-- pub `EngineCtx` struct L259-264 — `{ conn: ConnHandle, tablet_id: String, period_key: String, period_window: (DateT...` — Per-run [`CeremonyCtx`].
-- pub `new` function L271-283 — `( conn: ConnHandle, tablet_id: String, period_key: String, period_window: (DateT...` — Construct an EngineCtx with an explicit pinned window.
-- pub `for_test` function L291-299 — `(conn: ConnHandle, tablet_id: String, period_key: String) -> Self` — Test-only constructor that synthesises a placeholder window
-- pub `conn` function L305-307 — `(&self) -> &ConnHandle` — Access to the underlying connection for plugins that need to
--  `ConnHandle` type L53-57 — `= ConnHandle` — step 9.
--  `EngineDispatcher` type L70-86 — `= EngineDispatcher` — step 9.
--  `EngineDispatcher` type L89-164 — `impl CeremonyDispatcher for EngineDispatcher` — step 9.
--  `dispatch` function L90-92 — `(&self, kind: &str) -> Result<DispatchOutcome, CeremonyError>` — step 9.
--  `dispatch_for` function L94-163 — `( &self, kind: &str, target: chrono::NaiveDate, ) -> Result<DispatchOutcome, Cer...` — step 9.
--  `EngineDispatcher` type L166-254 — `= EngineDispatcher` — step 9.
--  `run_pipeline` function L167-253 — `( &self, plugin: &dyn Ceremony, period_key: &str, now: chrono::DateTime<Utc>, re...` — step 9.
--  `EngineCtx` type L266-308 — `= EngineCtx` — step 9.
--  `EngineCtx` type L311-341 — `impl CeremonyCtx for EngineCtx` — step 9.
--  `period_key` function L312-314 — `(&self) -> &str` — step 9.
--  `tablet_id` function L315-317 — `(&self) -> &str` — step 9.
--  `period_window` function L318-320 — `(&self) -> (DateTime<Utc>, DateTime<Utc>)` — step 9.
--  `conn_handle` function L321-323 — `(&self) -> Option<&ConnHandle>` — step 9.
--  `write_pattern_row` function L325-340 — `(&self, pattern: DetectedPattern) -> Result<String, CeremonyError>` — step 9.
--  `current_tablet_status` function L345-368 — `( conn: &ConnHandle, kind: &str, period_key: &str, ) -> Result<Option<TabletStat...` — step 9.
--  `insert_tablet` function L370-389 — `( conn: &ConnHandle, tablet_id: &str, kind: &str, period_key: &str, now: chrono:...` — step 9.
--  `next_ordinal` function L391-400 — `( ordinal_by_section: &mut std::collections::HashMap<String, i32>, section_key: ...` — step 9.
--  `write_composed_item` function L402-435 — `( conn: &ConnHandle, item: &ComposedItem, ordinal_by_section: &mut std::collecti...` — step 9.
--  `write_user_item` function L437-463 — `( conn: &ConnHandle, item: &UserItem, ordinal_by_section: &mut std::collections:...` — step 9.
--  `begin` function L465-473 — `(conn: &ConnHandle) -> Result<(), CeremonyError>` — step 9.
--  `commit` function L475-483 — `(conn: &ConnHandle) -> Result<(), CeremonyError>` — step 9.
--  `rollback` function L485-493 — `(conn: &ConnHandle) -> Result<(), CeremonyError>` — step 9.
--  `kind_str` function L495-505 — `(k: &ItemKind) -> &'static str` — step 9.
--  `tests` module L508-802 — `-` — step 9.
--  `open_test_db` function L518-528 — `() -> (TempDir, ConnHandle)` — step 9.
--  `ScriptedPlugin` struct L531-534 — `{ kind: &'static str, items: std::sync::Mutex<Vec<NewItem>> }` — step 9.
--  `ScriptedPlugin` type L535-542 — `= ScriptedPlugin` — step 9.
--  `new` function L536-541 — `(kind: &'static str, items: Vec<NewItem>) -> Self` — step 9.
--  `ScriptedPlugin` type L544-571 — `impl Ceremony for ScriptedPlugin` — step 9.
--  `kind` function L545-547 — `(&self) -> &'static str` — step 9.
--  `period_key` function L548-550 — `(&self, _now: chrono::DateTime<Utc>) -> String` — step 9.
--  `period_window` function L551-557 — `( &self, _period_key: &str, ) -> Result<(DateTime<Utc>, DateTime<Utc>), Ceremony...` — step 9.
--  `default_schedule` function L558-560 — `(&self) -> CronSchedule` — step 9.
--  `gather` function L561-563 — `(&self, _ctx: &dyn CeremonyCtx) -> Result<GatheredFacts, CeremonyError>` — step 9.
--  `compose` function L564-570 — `( &self, _ctx: &dyn CeremonyCtx, _facts: GatheredFacts, ) -> Result<Vec<NewItem>...` — step 9.
--  `item_composed` function L573-582 — `(tablet_id: &str, section: &str, citation: &str) -> NewItem` — step 9.
--  `item_user` function L584-592 — `(tablet_id: &str, section: &str) -> NewItem` — step 9.
--  `count_rows` function L594-600 — `(conn: &ConnHandle, table: &str) -> i64` — step 9.
--  `happy_path_writes_tablet_and_composed_item_with_citation` function L605-622 — `()` — step 9.
--  `composed_item_missing_citation_rolls_back_whole_run` function L625-640 — `()` — step 9.
--  `user_item_without_citation_is_accepted` function L643-663 — `()` — step 9.
--  `idempotency_skips_when_open_tablet_exists` function L666-678 — `()` — step 9.
--  `unknown_kind_errors` function L681-687 — `()` — step 9.
--  `dispatch_for_today_marks_not_recovered` function L690-711 — `()` — step 9.
--  `DateAwarePlugin` struct L716 — `-` — step 9.
--  `DateAwarePlugin` type L718-745 — `impl Ceremony for DateAwarePlugin` — step 9.
--  `kind` function L719-721 — `(&self) -> &'static str` — step 9.
--  `period_key` function L722-724 — `(&self, now: chrono::DateTime<Utc>) -> String` — step 9.
--  `period_window` function L725-731 — `( &self, _period_key: &str, ) -> Result<(chrono::DateTime<Utc>, chrono::DateTime...` — step 9.
--  `default_schedule` function L732-734 — `(&self) -> CronSchedule` — step 9.
--  `gather` function L735-737 — `(&self, _ctx: &dyn CeremonyCtx) -> Result<GatheredFacts, CeremonyError>` — step 9.
--  `compose` function L738-744 — `( &self, _ctx: &dyn CeremonyCtx, _facts: GatheredFacts, ) -> Result<Vec<NewItem>...` — step 9.
--  `dispatch_for_historical_marks_recovered` function L748-766 — `()` — step 9.
--  `dispatch_for_historical_idempotent` function L769-780 — `()` — step 9.
--  `write_pattern_row_returns_id_and_writes` function L783-801 — `()` — step 9.
+- pub `ConnHandle` struct L52 — `-` — Wraps a shared SQLite connection.
+- pub `new` function L55-57 — `(conn: Connection) -> Self` — step 9.
+- pub `EngineDispatcher` struct L62-69 — `{ conn: ConnHandle, registry: PluginRegistry, events: Option<CeremonyEventSender...` — The concrete [`CeremonyDispatcher`].
+- pub `new` function L72-78 — `(conn: ConnHandle, registry: PluginRegistry) -> Self` — step 9.
+- pub `with_events` function L83-86 — `(mut self, sender: CeremonyEventSender) -> Self` — Attach the event sender.
+- pub `EngineCtx` struct L279-284 — `{ conn: ConnHandle, tablet_id: String, period_key: String, period_window: (DateT...` — Per-run [`CeremonyCtx`].
+- pub `new` function L291-303 — `( conn: ConnHandle, tablet_id: String, period_key: String, period_window: (DateT...` — Construct an EngineCtx with an explicit pinned window.
+- pub `for_test` function L311-319 — `(conn: ConnHandle, tablet_id: String, period_key: String) -> Self` — Test-only constructor that synthesises a placeholder window
+- pub `conn` function L325-327 — `(&self) -> &ConnHandle` — Access to the underlying connection for plugins that need to
+-  `ConnHandle` type L54-58 — `= ConnHandle` — step 9.
+-  `EngineDispatcher` type L71-87 — `= EngineDispatcher` — step 9.
+-  `EngineDispatcher` type L90-184 — `impl CeremonyDispatcher for EngineDispatcher` — step 9.
+-  `dispatch` function L91-93 — `(&self, kind: &str) -> Result<DispatchOutcome, CeremonyError>` — step 9.
+-  `dispatch_for` function L95-183 — `( &self, kind: &str, target: chrono::NaiveDate, ) -> Result<DispatchOutcome, Cer...` — step 9.
+-  `EngineDispatcher` type L186-274 — `= EngineDispatcher` — step 9.
+-  `run_pipeline` function L187-273 — `( &self, plugin: &dyn Ceremony, period_key: &str, now: chrono::DateTime<Utc>, re...` — step 9.
+-  `EngineCtx` type L286-328 — `= EngineCtx` — step 9.
+-  `EngineCtx` type L331-361 — `impl CeremonyCtx for EngineCtx` — step 9.
+-  `period_key` function L332-334 — `(&self) -> &str` — step 9.
+-  `tablet_id` function L335-337 — `(&self) -> &str` — step 9.
+-  `period_window` function L338-340 — `(&self) -> (DateTime<Utc>, DateTime<Utc>)` — step 9.
+-  `conn_handle` function L341-343 — `(&self) -> Option<&ConnHandle>` — step 9.
+-  `write_pattern_row` function L345-360 — `(&self, pattern: DetectedPattern) -> Result<String, CeremonyError>` — step 9.
+-  `current_tablet_status` function L365-388 — `( conn: &ConnHandle, kind: &str, period_key: &str, ) -> Result<Option<TabletStat...` — step 9.
+-  `delete_tablet` function L392-403 — `(conn: &ConnHandle, tablet_id: &str) -> Result<(), CeremonyError>` — Delete a tablet row by id.
+-  `insert_tablet` function L405-424 — `( conn: &ConnHandle, tablet_id: &str, kind: &str, period_key: &str, now: chrono:...` — step 9.
+-  `next_ordinal` function L426-435 — `( ordinal_by_section: &mut std::collections::HashMap<String, i32>, section_key: ...` — step 9.
+-  `write_composed_item` function L437-470 — `( conn: &ConnHandle, item: &ComposedItem, ordinal_by_section: &mut std::collecti...` — step 9.
+-  `write_user_item` function L472-498 — `( conn: &ConnHandle, item: &UserItem, ordinal_by_section: &mut std::collections:...` — step 9.
+-  `begin` function L505-513 — `(conn: &ConnHandle) -> Result<(), CeremonyError>` — Manual transaction control.
+-  `commit` function L516-524 — `(conn: &ConnHandle) -> Result<(), CeremonyError>` — step 9.
+-  `rollback` function L527-535 — `(conn: &ConnHandle) -> Result<(), CeremonyError>` — step 9.
+-  `kind_str` function L537-547 — `(k: &ItemKind) -> &'static str` — step 9.
+-  `tests` module L550-844 — `-` — step 9.
+-  `open_test_db` function L560-570 — `() -> (TempDir, ConnHandle)` — step 9.
+-  `ScriptedPlugin` struct L573-576 — `{ kind: &'static str, items: std::sync::Mutex<Vec<NewItem>> }` — step 9.
+-  `ScriptedPlugin` type L577-584 — `= ScriptedPlugin` — step 9.
+-  `new` function L578-583 — `(kind: &'static str, items: Vec<NewItem>) -> Self` — step 9.
+-  `ScriptedPlugin` type L586-613 — `impl Ceremony for ScriptedPlugin` — step 9.
+-  `kind` function L587-589 — `(&self) -> &'static str` — step 9.
+-  `period_key` function L590-592 — `(&self, _now: chrono::DateTime<Utc>) -> String` — step 9.
+-  `period_window` function L593-599 — `( &self, _period_key: &str, ) -> Result<(DateTime<Utc>, DateTime<Utc>), Ceremony...` — step 9.
+-  `default_schedule` function L600-602 — `(&self) -> CronSchedule` — step 9.
+-  `gather` function L603-605 — `(&self, _ctx: &dyn CeremonyCtx) -> Result<GatheredFacts, CeremonyError>` — step 9.
+-  `compose` function L606-612 — `( &self, _ctx: &dyn CeremonyCtx, _facts: GatheredFacts, ) -> Result<Vec<NewItem>...` — step 9.
+-  `item_composed` function L615-624 — `(tablet_id: &str, section: &str, citation: &str) -> NewItem` — step 9.
+-  `item_user` function L626-634 — `(tablet_id: &str, section: &str) -> NewItem` — step 9.
+-  `count_rows` function L636-642 — `(conn: &ConnHandle, table: &str) -> i64` — step 9.
+-  `happy_path_writes_tablet_and_composed_item_with_citation` function L647-664 — `()` — step 9.
+-  `composed_item_missing_citation_rolls_back_whole_run` function L667-682 — `()` — step 9.
+-  `user_item_without_citation_is_accepted` function L685-705 — `()` — step 9.
+-  `idempotency_skips_when_open_tablet_exists` function L708-720 — `()` — step 9.
+-  `unknown_kind_errors` function L723-729 — `()` — step 9.
+-  `dispatch_for_today_marks_not_recovered` function L732-753 — `()` — step 9.
+-  `DateAwarePlugin` struct L758 — `-` — step 9.
+-  `DateAwarePlugin` type L760-787 — `impl Ceremony for DateAwarePlugin` — step 9.
+-  `kind` function L761-763 — `(&self) -> &'static str` — step 9.
+-  `period_key` function L764-766 — `(&self, now: chrono::DateTime<Utc>) -> String` — step 9.
+-  `period_window` function L767-773 — `( &self, _period_key: &str, ) -> Result<(chrono::DateTime<Utc>, chrono::DateTime...` — step 9.
+-  `default_schedule` function L774-776 — `(&self) -> CronSchedule` — step 9.
+-  `gather` function L777-779 — `(&self, _ctx: &dyn CeremonyCtx) -> Result<GatheredFacts, CeremonyError>` — step 9.
+-  `compose` function L780-786 — `( &self, _ctx: &dyn CeremonyCtx, _facts: GatheredFacts, ) -> Result<Vec<NewItem>...` — step 9.
+-  `dispatch_for_historical_marks_recovered` function L790-808 — `()` — step 9.
+-  `dispatch_for_historical_idempotent` function L811-822 — `()` — step 9.
+-  `write_pattern_row_returns_id_and_writes` function L825-843 — `()` — step 9.
 
 #### crates/arawn-ceremonies/src/error.rs
 
@@ -8103,15 +8104,33 @@
 - pub `missing_source_ids` function L118-161 — `( &self, feed_type: &str, feed_id: &str, candidate_source_ids: &[String], ) -> R...` — Returns ids that are NOT yet projected for a given feed.
 - pub `count` function L164-173 — `(&self, feed_type: &str) -> Result<usize, ProjectionError>` — Total rows for a feed_type — useful for tests and ops.
 - pub `vector_search` function L179-210 — `( &self, feed_type: &str, query_vec: &[f32], limit: usize, ) -> Result<Vec<Strin...` — Vector similarity search over a single feed type.
-- pub `fts_search` function L214-236 — `( &self, feed_type: &str, query: &str, limit: usize, ) -> Result<Vec<String>, Pr...` — FTS search over a single feed type.
-- pub `get_row` function L239-282 — `( &self, feed_type: &str, projection_id: &str, ) -> Result<Option<ProjectionRow>...` — Get a single projection row by primary key.
-- pub `WriteOutcome` struct L286-290 — `{ inserted: usize, updated: usize, unchanged: usize }` — detect stale entries cheaply.
--  `ProjectionStore` type L28-283 — `= ProjectionStore` — detect stale entries cheaply.
--  `WriteAction` enum L292-296 — `Inserted | Updated | Unchanged` — detect stale entries cheaply.
--  `body_hash` function L298-303 — `(body_text: &str) -> String` — detect stale entries cheaply.
--  `write_row` function L305-399 — `( tx: &rusqlite::Transaction<'_>, feed_type: &str, row: &ProjectionRow, ) -> Res...` — detect stale entries cheaply.
--  `fts_upsert` function L401-417 — `( tx: &rusqlite::Transaction<'_>, feed_type: &str, projection_id: &str, title: &...` — detect stale entries cheaply.
--  `embedding_invalidate` function L422-442 — `( tx: &rusqlite::Transaction<'_>, feed_type: &str, projection_id: &str, body_has...` — Mark a projection row's embedding as pending re-compute.
+- pub `fts_search` function L220-246 — `( &self, feed_type: &str, query: &str, limit: usize, ) -> Result<Vec<String>, Pr...` — FTS search over a single feed type.
+- pub `get_row` function L249-292 — `( &self, feed_type: &str, projection_id: &str, ) -> Result<Option<ProjectionRow>...` — Get a single projection row by primary key.
+- pub `WriteOutcome` struct L296-300 — `{ inserted: usize, updated: usize, unchanged: usize }` — detect stale entries cheaply.
+- pub `escape_fts5` function L328-337 — `(query: &str) -> String` — Escape a user-supplied query for safe inclusion in an FTS5
+-  `ProjectionStore` type L28-293 — `= ProjectionStore` — detect stale entries cheaply.
+-  `WriteAction` enum L302-306 — `Inserted | Updated | Unchanged` — detect stale entries cheaply.
+-  `body_hash` function L339-344 — `(body_text: &str) -> String` — detect stale entries cheaply.
+-  `write_row` function L346-440 — `( tx: &rusqlite::Transaction<'_>, feed_type: &str, row: &ProjectionRow, ) -> Res...` — detect stale entries cheaply.
+-  `fts_upsert` function L442-458 — `( tx: &rusqlite::Transaction<'_>, feed_type: &str, projection_id: &str, title: &...` — detect stale entries cheaply.
+-  `embedding_invalidate` function L463-483 — `( tx: &rusqlite::Transaction<'_>, feed_type: &str, projection_id: &str, body_has...` — Mark a projection row's embedding as pending re-compute.
+-  `fts_escape_tests` module L486-631 — `-` — detect stale entries cheaply.
+-  `escape_empty_returns_empty` function L494-498 — `()` — detect stale entries cheaply.
+-  `escape_quotes_each_token` function L501-504 — `()` — detect stale entries cheaply.
+-  `escape_neutralises_hyphen` function L507-515 — `()` — detect stale entries cheaply.
+-  `escape_neutralises_colon_and_parens` function L518-521 — `()` — detect stale entries cheaply.
+-  `escape_doubles_embedded_quotes` function L524-527 — `()` — detect stale entries cheaply.
+-  `TestProj` struct L533-540 — `{ id: String, feed_id: String, source_id: String, ts: chrono::DateTime<chrono::U...` — Test-only projection that targets the `slack_messages` table
+-  `TestProj` type L541-557 — `impl Projection for TestProj` — detect stale entries cheaply.
+-  `feed_type` function L542-544 — `(&self) -> &'static str` — detect stale entries cheaply.
+-  `row` function L545-556 — `(&self) -> ProjectionRow` — detect stale entries cheaply.
+-  `open_store` function L559-566 — `() -> ProjectionStore` — detect stale entries cheaply.
+-  `seed` function L568-578 — `(store: &ProjectionStore, id: &str, title: &str, body: &str)` — detect stale entries cheaply.
+-  `hyphenated_identifier_matches_post_fix` function L581-588 — `()` — detect stale entries cheaply.
+-  `hyphenated_phrase_matches` function L591-598 — `()` — detect stale entries cheaply.
+-  `multi_token_is_implicit_and` function L601-610 — `()` — detect stale entries cheaply.
+-  `colon_in_query_does_not_trigger_column_lookup` function L613-620 — `()` — detect stale entries cheaply.
+-  `empty_query_returns_empty_without_error` function L623-630 — `()` — detect stale entries cheaply.
 
 #### crates/arawn-projections/src/types.rs
 

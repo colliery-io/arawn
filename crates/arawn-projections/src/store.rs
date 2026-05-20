@@ -211,12 +211,22 @@ impl ProjectionStore {
 
     /// FTS search over a single feed type. Returns `(projection_id,
     /// rank)`. Caller hydrates the full row via `get_row`.
+    ///
+    /// The user-supplied `query` is passed through [`escape_fts5`]
+    /// so natural identifiers like `RFC-0042` or `sign-off` don't
+    /// trigger FTS5's column-scoped or operator grammar (ARAWN-T-0370).
+    /// Empty / whitespace-only queries return an empty result
+    /// without touching SQLite — FTS5 rejects an empty MATCH.
     pub fn fts_search(
         &self,
         feed_type: &str,
         query: &str,
         limit: usize,
     ) -> Result<Vec<String>, ProjectionError> {
+        let escaped = escape_fts5(query);
+        if escaped.is_empty() {
+            return Ok(Vec::new());
+        }
         let conn = self.conn.lock().unwrap();
         let sql = format!(
             "SELECT projection_id FROM {feed_type}_fts \
@@ -226,7 +236,7 @@ impl ProjectionStore {
             .prepare(&sql)
             .map_err(|e| ProjectionError::Storage(format!("prepare fts: {e}")))?;
         let rows = stmt
-            .query_map(params![query, limit as i64], |r| r.get::<_, String>(0))
+            .query_map(params![escaped, limit as i64], |r| r.get::<_, String>(0))
             .map_err(|e| ProjectionError::Storage(format!("fts: {e}")))?;
         let mut ids = Vec::new();
         for r in rows {
@@ -293,6 +303,37 @@ enum WriteAction {
     Inserted,
     Updated,
     Unchanged,
+}
+
+/// Escape a user-supplied query for safe inclusion in an FTS5
+/// `MATCH` expression.
+///
+/// FTS5 grammar gives special meaning to `:`, `-`, `(`, `)`,
+/// double-quotes, and the keywords `AND`/`OR`/`NOT`/`NEAR`. A
+/// natural identifier like `RFC-0042` is interpreted as a
+/// column-scoped query and fails with `no such column: 0042`.
+///
+/// Strategy: split on whitespace, wrap each token in
+/// double-quotes (FTS5 treats `"…"` as a literal phrase with no
+/// internal operator parsing), and escape any embedded `"` by
+/// doubling per FTS5 quoting rules.
+///
+/// Implicit AND between tokens is preserved (it's the FTS5
+/// default), so multi-word queries behave the same as before
+/// for content that has no special characters.
+///
+/// Returns an empty string for empty / whitespace-only input;
+/// callers should treat that as "no query, no results" rather
+/// than passing to FTS5 (an empty MATCH is a syntax error).
+pub fn escape_fts5(query: &str) -> String {
+    query
+        .split_whitespace()
+        .map(|tok| {
+            let escaped = tok.replace('"', "\"\"");
+            format!("\"{escaped}\"")
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 fn body_hash(body_text: &str) -> String {
@@ -439,4 +480,152 @@ fn embedding_invalidate(
     tx.execute(&vec_sql, params![projection_id])
         .map_err(|e| ProjectionError::Storage(format!("embed vec drop: {e}")))?;
     Ok(())
+}
+
+#[cfg(test)]
+mod fts_escape_tests {
+    use super::*;
+    use crate::types::{Projection, ProjectionRow};
+    use chrono::TimeZone;
+
+    // --- escape_fts5 unit tests ---
+
+    #[test]
+    fn escape_empty_returns_empty() {
+        assert_eq!(escape_fts5(""), "");
+        assert_eq!(escape_fts5("   "), "");
+        assert_eq!(escape_fts5("\t\n"), "");
+    }
+
+    #[test]
+    fn escape_quotes_each_token() {
+        assert_eq!(escape_fts5("foo"), r#""foo""#);
+        assert_eq!(escape_fts5("foo bar"), r#""foo" "bar""#);
+    }
+
+    #[test]
+    fn escape_neutralises_hyphen() {
+        // The bug-triggering tokens from the UAT failure.
+        assert_eq!(escape_fts5("RFC-0042"), r#""RFC-0042""#);
+        assert_eq!(escape_fts5("sign-off"), r#""sign-off""#);
+        assert_eq!(
+            escape_fts5("RFC-0042 sign-off Alice"),
+            r#""RFC-0042" "sign-off" "Alice""#
+        );
+    }
+
+    #[test]
+    fn escape_neutralises_colon_and_parens() {
+        assert_eq!(escape_fts5("foo:bar"), r#""foo:bar""#);
+        assert_eq!(escape_fts5("(foo OR bar)"), r#""(foo" "OR" "bar)""#);
+    }
+
+    #[test]
+    fn escape_doubles_embedded_quotes() {
+        // FTS5 phrase quoting: " inside "..." is "" (two doubles).
+        assert_eq!(escape_fts5(r#"say "hi""#), r#""say" """hi""""#);
+    }
+
+    // --- fts_search end-to-end tests against real SQLite FTS5 ---
+
+    /// Test-only projection that targets the `slack_messages` table
+    /// (one of the schemas registered by `ensure_feed_type_tables`).
+    struct TestProj {
+        id: String,
+        feed_id: String,
+        source_id: String,
+        ts: chrono::DateTime<chrono::Utc>,
+        title: String,
+        body: String,
+    }
+    impl Projection for TestProj {
+        fn feed_type(&self) -> &'static str {
+            "slack_messages"
+        }
+        fn row(&self) -> ProjectionRow {
+            ProjectionRow {
+                id: self.id.clone(),
+                feed_id: self.feed_id.clone(),
+                source_id: self.source_id.clone(),
+                source_ts: self.ts,
+                title: self.title.clone(),
+                body_text: self.body.clone(),
+                feed_type: "slack_messages".into(),
+                metadata: serde_json::json!({}),
+            }
+        }
+    }
+
+    fn open_store() -> ProjectionStore {
+        let path = tempfile::NamedTempFile::new().unwrap().into_temp_path();
+        let store = ProjectionStore::open(&path).expect("open store");
+        // Ensure feed type table exists so subsequent searches don't
+        // race the lazy creation in write_batch.
+        store.ensure_feed_type("slack_messages").unwrap();
+        store
+    }
+
+    fn seed(store: &ProjectionStore, id: &str, title: &str, body: &str) {
+        let p = TestProj {
+            id: id.into(),
+            feed_id: "feed-1".into(),
+            source_id: id.into(),
+            ts: chrono::Utc.with_ymd_and_hms(2026, 5, 19, 12, 0, 0).unwrap(),
+            title: title.into(),
+            body: body.into(),
+        };
+        store.write_batch(&[p]).expect("write");
+    }
+
+    #[test]
+    fn hyphenated_identifier_matches_post_fix() {
+        let store = open_store();
+        seed(&store, "m1", "Re: RFC-0042 sign-off", "Alice asked about the doc");
+        let hits = store
+            .fts_search("slack_messages", "RFC-0042", 10)
+            .expect("search must not error");
+        assert_eq!(hits, vec!["m1".to_string()]);
+    }
+
+    #[test]
+    fn hyphenated_phrase_matches() {
+        let store = open_store();
+        seed(&store, "m1", "Sign-off needed", "review-comments-pending");
+        let hits = store
+            .fts_search("slack_messages", "sign-off", 10)
+            .expect("search");
+        assert_eq!(hits, vec!["m1".to_string()]);
+    }
+
+    #[test]
+    fn multi_token_is_implicit_and() {
+        let store = open_store();
+        seed(&store, "m1", "RFC-0042 by Alice", "sign-off requested");
+        seed(&store, "m2", "Random other thread", "no RFC here");
+        let hits = store
+            .fts_search("slack_messages", "RFC-0042 Alice", 10)
+            .expect("search");
+        // m1 contains both tokens; m2 contains neither.
+        assert_eq!(hits, vec!["m1".to_string()]);
+    }
+
+    #[test]
+    fn colon_in_query_does_not_trigger_column_lookup() {
+        let store = open_store();
+        seed(&store, "m1", "label:work-mode", "tagging convention");
+        let hits = store
+            .fts_search("slack_messages", "label:work-mode", 10)
+            .expect("search");
+        assert_eq!(hits, vec!["m1".to_string()]);
+    }
+
+    #[test]
+    fn empty_query_returns_empty_without_error() {
+        let store = open_store();
+        seed(&store, "m1", "anything", "anywhere");
+        let hits = store.fts_search("slack_messages", "", 10).expect("ok");
+        assert!(hits.is_empty());
+        let hits2 = store.fts_search("slack_messages", "   ", 10).expect("ok");
+        assert!(hits2.is_empty());
+    }
 }
