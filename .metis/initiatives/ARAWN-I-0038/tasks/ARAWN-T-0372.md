@@ -1,8 +1,10 @@
 ---
-id: integration-docs-phase-1-hub
+id: integration-docs-phase-1-hub-oauth
 level: task
 title: "Integration docs Phase 1 — hub, oauth-primer, integrations-config"
 short_code: "ARAWN-T-0372"
+created_at: 2026-05-20T16:00:00+00:00
+updated_at: 2026-05-20T20:30:43.306182+00:00
 parent: ARAWN-I-0038
 blocked_by: []
 archived: false
@@ -11,7 +13,7 @@ tags:
   - "#task"
   - "#docs"
   - "#integrations"
-  - "#phase/todo"
+  - "#phase/active"
 
 
 exit_criteria_met: false
@@ -62,18 +64,61 @@ under their respective Diátaxis sections.
 
 ## Acceptance criteria
 
-- [ ] Three new files exist at the paths above.
-- [ ] `docs/src/SUMMARY.md` includes entries for all three.
-- [ ] Config-resolution order in `integrations-config.md`
-  matches the code (cite the function name + file:line in a
-  hidden comment if helpful for future maintainers).
-- [ ] OAuth primer covers the four pieces (client_id,
-  client_secret, scope, redirect URI) and the
-  unverified-app warning.
-- [ ] `angreal docs build` clean, no broken links.
-- [ ] User-runnable UAT: open the rendered overview page,
-  follow links to oauth-primer and integrations-config —
-  reader understands what they need before opening any
-  per-provider how-to.
+- [x] Three new files exist at the Diátaxis-aligned paths.
+- [x] `docs/src/SUMMARY.md` surfaces all three
+  (`integrations-config` under Reference;
+  `integrations-overview` and `oauth-primer` under
+  Explanation).
+- [x] Resolution order in `integrations-config.md` matches
+  the actual `resolve` closure at
+  `crates/arawn/src/main.rs:1043-1078` — including per-field
+  independence and the Google-only shared fallback. Worked
+  examples cover every combination.
+- [x] OAuth primer covers the four pieces, the localhost
+  callback flow, the unverified-app warning + 100-test-user
+  cap, and the ChaCha20-Poly1305 encrypted token store
+  (`arawn-auth/src/token_store.rs`).
+- [x] `angreal docs build` clean. Cross-links verified
+  (every linked file exists).
+- [ ] User docs-UAT pending (planned tonight).
+
+## Status Updates — 2026-05-20
+
+Landed.
+
+**Fact anchoring done before drafting prose:**
+
+- Resolution algorithm: `crates/arawn/src/main.rs:1043-1078`
+  (`resolve` closure + `or_else` fallback to `ARAWN_GOOGLE_*`
+  / `[integrations.google]` per Google service).
+- Env var catalog: cross-referenced against main.rs greps —
+  Gmail `_GMAIL_`, Calendar `_GCAL_`, Drive `_GDRIVE_`,
+  shared `_GOOGLE_`, Slack `_SLACK_`, Atlassian
+  `_ATLASSIAN_`, GitHub App fields.
+- Config struct: `crates/arawn/src/config.rs::IntegrationsConfig`
+  with sub-blocks slack / google / gmail / calendar / drive /
+  atlassian / github.
+- Token store: `crates/arawn-auth/src/token_store.rs` —
+  `{data_dir}/tokens/<provider>.json.enc` + `key.bin`,
+  ChaCha20-Poly1305, restricted dir perms.
+- Redirect URI: `crates/arawn-auth/src/server.rs:74` —
+  `http://localhost:{bound_port}/{path}` uniformly (not
+  `127.0.0.1`).
+
+**No invented claims.** Tool counts, provider list, and
+reference cross-links match the existing
+`docs/src/reference/integrations.md` content.
+
+**Cross-links verified.** Every `(../<path>.md)` reference
+resolves to an existing file.
+
+Three files shipped (~270 lines total):
+- `docs/src/reference/integrations-config.md`
+- `docs/src/explanation/oauth-primer.md`
+- `docs/src/explanation/integrations-overview.md`
+
+SUMMARY.md updated with both Reference and Explanation entries.
+
+Ready for user docs-UAT.
 
 Parent: [[ARAWN-I-0038]].

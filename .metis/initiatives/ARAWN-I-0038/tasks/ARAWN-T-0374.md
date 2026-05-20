@@ -3,6 +3,8 @@ id: integration-docs-phase-3-slack
 level: task
 title: "Integration docs Phase 3 — Slack how-to rewrite"
 short_code: "ARAWN-T-0374"
+created_at: 2026-05-20T16:00:00+00:00
+updated_at: 2026-05-20T16:00:00+00:00
 parent: ARAWN-I-0038
 blocked_by: ["ARAWN-T-0372"]
 archived: false

@@ -37,6 +37,7 @@
 - [Permission model](./reference/permissions.md)
 - [Shell sandbox](./reference/shell-sandbox.md)
 - [Integrations](./reference/integrations.md)
+- [Integrations config](./reference/integrations-config.md)
 - [Workstream CLI](./reference/workstream-cli.md)
 - [Workstream tools](./reference/workstream-tools.md)
 - [Steward subroutines](./reference/steward-subroutines.md)
@@ -71,3 +72,5 @@
 - [Workflows](./explanation/workflows.md)
 - [Permission model](./explanation/permission-model.md)
 - [Ceremonies](./explanation/ceremonies.md)
+- [Integrations overview](./explanation/integrations-overview.md)
+- [OAuth primer](./explanation/oauth-primer.md)

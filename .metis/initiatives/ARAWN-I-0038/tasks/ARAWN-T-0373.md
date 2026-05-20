@@ -3,6 +3,8 @@ id: integration-docs-phase-2-google
 level: task
 title: "Integration docs Phase 2 — Google how-to rewrite (Gmail/Calendar/Drive)"
 short_code: "ARAWN-T-0373"
+created_at: 2026-05-20T16:00:00+00:00
+updated_at: 2026-05-20T16:00:00+00:00
 parent: ARAWN-I-0038
 blocked_by: ["ARAWN-T-0372"]
 archived: false

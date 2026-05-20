@@ -3,6 +3,8 @@ id: integration-docs-phase-5-troubleshooting
 level: task
 title: "Integration docs Phase 5 — troubleshooting matrix + maintainer guide"
 short_code: "ARAWN-T-0376"
+created_at: 2026-05-20T16:00:00+00:00
+updated_at: 2026-05-20T16:00:00+00:00
 parent: ARAWN-I-0038
 blocked_by: ["ARAWN-T-0373", "ARAWN-T-0374", "ARAWN-T-0375"]
 archived: false
