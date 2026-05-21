@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-20T17:58:18Z | 370 files | Python, Rust
+> Generated: 2026-05-21T13:00:09Z | 370 files | Python, Rust
 
 ## Project Structure
 
@@ -1327,48 +1327,53 @@
 - pub `registry` function L105-107 — `(&self) -> &PluginRegistry` — contract; T-0282 implements the dispatcher.
 - pub `start` function L114-119 — `(&self) -> Result<(), CeremonyError>` — Register every plugin in the registry with cloacina: one
 - pub `register_one` function L123-125 — `(&self, kind: &str) -> Result<(), CeremonyError>` — Register a single plugin by kind.
-- pub `register_one_with_schedule` function L131-197 — `( &self, kind: &str, schedule_override: Option<crate::plugin::CronSchedule>, ) -...` — Like [`register_one`] but lets the caller override the cron
-- pub `run_once` function L204-207 — `(&self, kind: &str) -> Result<DispatchOutcome, CeremonyError>` — Manual trigger for a ceremony.
-- pub `CeremonyDispatchTask` struct L212-216 — `{ kind: String, dispatcher: Arc<dyn CeremonyDispatcher>, deps: Vec<TaskNamespace...` — Cloacina `Task` impl.
-- pub `new` function L219-225 — `(kind: impl Into<String>, dispatcher: Arc<dyn CeremonyDispatcher>) -> Self` — contract; T-0282 implements the dispatcher.
+- pub `register_one_with_schedule` function L131-205 — `( &self, kind: &str, schedule_override: Option<crate::plugin::CronSchedule>, ) -...` — Like [`register_one`] but lets the caller override the cron
+- pub `run_once` function L212-215 — `(&self, kind: &str) -> Result<DispatchOutcome, CeremonyError>` — Manual trigger for a ceremony.
+- pub `CeremonyDispatchTask` struct L220-224 — `{ kind: String, dispatcher: Arc<dyn CeremonyDispatcher>, deps: Vec<TaskNamespace...` — Cloacina `Task` impl.
+- pub `new` function L227-233 — `(kind: impl Into<String>, dispatcher: Arc<dyn CeremonyDispatcher>) -> Self` — contract; T-0282 implements the dispatcher.
 -  `dispatch_for` function L63-69 — `( &self, kind: &str, _target: chrono::NaiveDate, ) -> Result<DispatchOutcome, Ce...` — Dispatch a ceremony for a *historical* date.
--  `CeremonyRunner` type L92-208 — `= CeremonyRunner` — contract; T-0282 implements the dispatcher.
--  `CeremonyDispatchTask` type L218-226 — `= CeremonyDispatchTask` — contract; T-0282 implements the dispatcher.
--  `CeremonyDispatchTask` type L229-258 — `impl Task for CeremonyDispatchTask` — contract; T-0282 implements the dispatcher.
--  `id` function L230-232 — `(&self) -> &str` — contract; T-0282 implements the dispatcher.
--  `dependencies` function L234-236 — `(&self) -> &[TaskNamespace]` — contract; T-0282 implements the dispatcher.
--  `execute` function L238-257 — `(&self, context: Context<Value>) -> Result<Context<Value>, TaskError>` — contract; T-0282 implements the dispatcher.
--  `workflow_name` function L263-265 — `(kind: &str) -> String` — Format the cloacina workflow name for a ceremony kind.
--  `delete_schedule_for` function L271-287 — `( _runner: &DefaultRunner, workflow_name: &str, ) -> Result<(), CeremonyError>` — Idempotent cron-schedule cleanup.
--  `tests` module L290-481 — `-` — contract; T-0282 implements the dispatcher.
--  `StubCeremony` struct L298-300 — `{ kind: &'static str }` — contract; T-0282 implements the dispatcher.
--  `StubCeremony` type L302-329 — `impl Ceremony for StubCeremony` — contract; T-0282 implements the dispatcher.
--  `kind` function L303-305 — `(&self) -> &'static str` — contract; T-0282 implements the dispatcher.
--  `period_key` function L306-308 — `(&self, _now: chrono::DateTime<Utc>) -> String` — contract; T-0282 implements the dispatcher.
--  `period_window` function L309-315 — `( &self, _period_key: &str, ) -> Result<(chrono::DateTime<Utc>, chrono::DateTime...` — contract; T-0282 implements the dispatcher.
--  `default_schedule` function L316-318 — `(&self) -> CronSchedule` — contract; T-0282 implements the dispatcher.
--  `gather` function L319-321 — `(&self, _ctx: &dyn CeremonyCtx) -> Result<GatheredFacts, CeremonyError>` — contract; T-0282 implements the dispatcher.
--  `compose` function L322-328 — `( &self, _ctx: &dyn CeremonyCtx, _facts: GatheredFacts, ) -> Result<Vec<NewItem>...` — contract; T-0282 implements the dispatcher.
--  `RecordingDispatcher` struct L335-338 — `{ calls: Mutex<Vec<String>>, already_generated: Mutex<Vec<String>> }` — Records every dispatch + simulates the idempotency contract
--  `RecordingDispatcher` type L339-357 — `= RecordingDispatcher` — contract; T-0282 implements the dispatcher.
--  `new` function L340-345 — `() -> Arc<Self>` — contract; T-0282 implements the dispatcher.
--  `call_count` function L346-348 — `(&self) -> usize` — contract; T-0282 implements the dispatcher.
--  `called` function L349-356 — `(&self, kind: &str) -> usize` — contract; T-0282 implements the dispatcher.
--  `RecordingDispatcher` type L359-373 — `impl CeremonyDispatcher for RecordingDispatcher` — contract; T-0282 implements the dispatcher.
--  `dispatch` function L360-372 — `(&self, kind: &str) -> Result<DispatchOutcome, CeremonyError>` — contract; T-0282 implements the dispatcher.
--  `registry_with` function L375-381 — `(kinds: &[&'static str]) -> PluginRegistry` — contract; T-0282 implements the dispatcher.
--  `TestRunner` struct L402-405 — `{ registry: PluginRegistry, dispatcher: Arc<dyn CeremonyDispatcher> }` — Test-only constructor that bypasses cloacina, since the
--  `TestRunner` type L406-421 — `= TestRunner` — contract; T-0282 implements the dispatcher.
--  `new` function L407-412 — `(registry: PluginRegistry, dispatcher: Arc<dyn CeremonyDispatcher>) -> Self` — contract; T-0282 implements the dispatcher.
--  `run_once` function L413-420 — `(&self, kind: &str) -> Result<DispatchOutcome, CeremonyError>` — contract; T-0282 implements the dispatcher.
--  `run_once_invokes_dispatcher` function L424-432 — `()` — contract; T-0282 implements the dispatcher.
--  `second_run_once_for_same_period_skips` function L435-447 — `()` — contract; T-0282 implements the dispatcher.
--  `run_once_unknown_kind_errors` function L450-456 — `()` — contract; T-0282 implements the dispatcher.
--  `workflow_name_is_deterministic` function L459-462 — `()` — contract; T-0282 implements the dispatcher.
--  `dispatch_task_propagates_error_as_task_error` function L465-480 — `()` — contract; T-0282 implements the dispatcher.
--  `FailingDispatcher` struct L469 — `-` — contract; T-0282 implements the dispatcher.
--  `FailingDispatcher` type L471-475 — `impl CeremonyDispatcher for FailingDispatcher` — contract; T-0282 implements the dispatcher.
--  `dispatch` function L472-474 — `(&self, _kind: &str) -> Result<DispatchOutcome, CeremonyError>` — contract; T-0282 implements the dispatcher.
+-  `CeremonyRunner` type L92-216 — `= CeremonyRunner` — contract; T-0282 implements the dispatcher.
+-  `CeremonyDispatchTask` type L226-234 — `= CeremonyDispatchTask` — contract; T-0282 implements the dispatcher.
+-  `CeremonyDispatchTask` type L237-266 — `impl Task for CeremonyDispatchTask` — contract; T-0282 implements the dispatcher.
+-  `id` function L238-240 — `(&self) -> &str` — contract; T-0282 implements the dispatcher.
+-  `dependencies` function L242-244 — `(&self) -> &[TaskNamespace]` — contract; T-0282 implements the dispatcher.
+-  `execute` function L246-265 — `(&self, context: Context<Value>) -> Result<Context<Value>, TaskError>` — contract; T-0282 implements the dispatcher.
+-  `workflow_name` function L271-273 — `(kind: &str) -> String` — Format the cloacina workflow name for a ceremony kind.
+-  `resolve_cron_timezone` function L291-315 — `(raw: &str) -> String` — Normalise a `CronSchedule.timezone` string for cloacina.
+-  `delete_schedule_for` function L321-337 — `( _runner: &DefaultRunner, workflow_name: &str, ) -> Result<(), CeremonyError>` — Idempotent cron-schedule cleanup.
+-  `tests` module L340-586 — `-` — contract; T-0282 implements the dispatcher.
+-  `StubCeremony` struct L348-350 — `{ kind: &'static str }` — contract; T-0282 implements the dispatcher.
+-  `StubCeremony` type L352-379 — `impl Ceremony for StubCeremony` — contract; T-0282 implements the dispatcher.
+-  `kind` function L353-355 — `(&self) -> &'static str` — contract; T-0282 implements the dispatcher.
+-  `period_key` function L356-358 — `(&self, _now: chrono::DateTime<Utc>) -> String` — contract; T-0282 implements the dispatcher.
+-  `period_window` function L359-365 — `( &self, _period_key: &str, ) -> Result<(chrono::DateTime<Utc>, chrono::DateTime...` — contract; T-0282 implements the dispatcher.
+-  `default_schedule` function L366-368 — `(&self) -> CronSchedule` — contract; T-0282 implements the dispatcher.
+-  `gather` function L369-371 — `(&self, _ctx: &dyn CeremonyCtx) -> Result<GatheredFacts, CeremonyError>` — contract; T-0282 implements the dispatcher.
+-  `compose` function L372-378 — `( &self, _ctx: &dyn CeremonyCtx, _facts: GatheredFacts, ) -> Result<Vec<NewItem>...` — contract; T-0282 implements the dispatcher.
+-  `RecordingDispatcher` struct L385-388 — `{ calls: Mutex<Vec<String>>, already_generated: Mutex<Vec<String>> }` — Records every dispatch + simulates the idempotency contract
+-  `RecordingDispatcher` type L389-407 — `= RecordingDispatcher` — contract; T-0282 implements the dispatcher.
+-  `new` function L390-395 — `() -> Arc<Self>` — contract; T-0282 implements the dispatcher.
+-  `call_count` function L396-398 — `(&self) -> usize` — contract; T-0282 implements the dispatcher.
+-  `called` function L399-406 — `(&self, kind: &str) -> usize` — contract; T-0282 implements the dispatcher.
+-  `RecordingDispatcher` type L409-423 — `impl CeremonyDispatcher for RecordingDispatcher` — contract; T-0282 implements the dispatcher.
+-  `dispatch` function L410-422 — `(&self, kind: &str) -> Result<DispatchOutcome, CeremonyError>` — contract; T-0282 implements the dispatcher.
+-  `registry_with` function L425-431 — `(kinds: &[&'static str]) -> PluginRegistry` — contract; T-0282 implements the dispatcher.
+-  `TestRunner` struct L452-455 — `{ registry: PluginRegistry, dispatcher: Arc<dyn CeremonyDispatcher> }` — Test-only constructor that bypasses cloacina, since the
+-  `TestRunner` type L456-471 — `= TestRunner` — contract; T-0282 implements the dispatcher.
+-  `new` function L457-462 — `(registry: PluginRegistry, dispatcher: Arc<dyn CeremonyDispatcher>) -> Self` — contract; T-0282 implements the dispatcher.
+-  `run_once` function L463-470 — `(&self, kind: &str) -> Result<DispatchOutcome, CeremonyError>` — contract; T-0282 implements the dispatcher.
+-  `run_once_invokes_dispatcher` function L474-482 — `()` — contract; T-0282 implements the dispatcher.
+-  `second_run_once_for_same_period_skips` function L485-497 — `()` — contract; T-0282 implements the dispatcher.
+-  `run_once_unknown_kind_errors` function L500-506 — `()` — contract; T-0282 implements the dispatcher.
+-  `workflow_name_is_deterministic` function L509-512 — `()` — contract; T-0282 implements the dispatcher.
+-  `resolve_explicit_iana_passes_through` function L517-525 — `()` — contract; T-0282 implements the dispatcher.
+-  `resolve_local_yields_real_iana_not_local` function L528-545 — `()` — contract; T-0282 implements the dispatcher.
+-  `resolve_empty_or_whitespace_yields_real_iana` function L548-559 — `()` — contract; T-0282 implements the dispatcher.
+-  `resolve_local_case_insensitive` function L562-567 — `()` — contract; T-0282 implements the dispatcher.
+-  `dispatch_task_propagates_error_as_task_error` function L570-585 — `()` — contract; T-0282 implements the dispatcher.
+-  `FailingDispatcher` struct L574 — `-` — contract; T-0282 implements the dispatcher.
+-  `FailingDispatcher` type L576-580 — `impl CeremonyDispatcher for FailingDispatcher` — contract; T-0282 implements the dispatcher.
+-  `dispatch` function L577-579 — `(&self, _kind: &str) -> Result<DispatchOutcome, CeremonyError>` — contract; T-0282 implements the dispatcher.
 
 #### crates/arawn-ceremonies/src/service.rs
 

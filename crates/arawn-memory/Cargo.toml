@@ -20,6 +20,5 @@ tracing = { workspace = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }
-arawn-embed = { path = "../arawn-embed" }
 tokio = { workspace = true }
 ureq = "3"

@@ -34,7 +34,6 @@ reqwest = { workspace = true }
 globwalk = { workspace = true }
 htmd = { workspace = true }
 lru = { workspace = true }
-ignore = { workspace = true }
 uuid = { workspace = true }
 rusqlite = { version = "0.37", features = ["bundled"] }
 

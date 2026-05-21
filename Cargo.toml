@@ -59,7 +59,6 @@ notify = { version = "8", features = ["macos_fsevent"] }
 
 # Glob / file discovery
 globwalk = "0.9"
-ignore = "0.4"
 
 # HTML processing & caching
 htmd = "0.5"

@@ -276,7 +276,6 @@ dependencies = [
  "futures",
  "globwalk",
  "htmd",
- "ignore",
  "insta",
  "lru 0.16.3",
  "notify",

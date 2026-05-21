@@ -1,0 +1,83 @@
+---
+id: t-f-tier-1-small-crate-cleanup
+level: task
+title: "T-F: Tier 1 — small-crate cleanup (steward, extractor, llm)"
+short_code: "ARAWN-T-0383"
+created_at: 2026-05-21T14:53:23.121729+00:00
+updated_at: 2026-05-21T14:53:23.121729+00:00
+parent: ARAWN-I-0053
+blocked_by: []
+archived: false
+
+tags:
+  - "#task"
+  - "#phase/todo"
+
+
+exit_criteria_met: false
+initiative_id: ARAWN-I-0053
+---
+
+# T-F: Tier 1 — small-crate cleanup (steward, extractor, llm)
+
+## Parent Initiative
+
+[[ARAWN-I-0053]]
+
+## Objective
+
+Mop-up task: delete `_ts` fake-use in arawn-steward, delete `push_classify`
+dead test helper in arawn-extractor, and fix the pre-existing
+`error_type` dead-field warning in arawn-llm's retry test fixture.
+
+## Acceptance Criteria
+
+### arawn-steward
+
+- [ ] Delete `fn _ts() -> DateTime<Utc>` at `crates/arawn-steward/src/dust.rs:309-312` and its `#[allow(dead_code)]`.
+- [ ] After deletion, verify `chrono::Utc` (or `DateTime<Utc>`) is still used elsewhere in `dust.rs`. If not, remove the chrono imports from this file.
+
+### arawn-extractor
+
+- [ ] Delete `fn push_classify(&self, v: Value)` at `crates/arawn-extractor/src/cot.rs:629-632` and its `#[allow(dead_code)]`. This is in a `#[cfg(test)]` module; verified zero test callers.
+
+### arawn-llm
+
+- [ ] Fix pre-existing dead-code warning at `crates/arawn-llm/src/retry.rs:96-98`: the `error_type: LlmError` field on `struct FailThenSucceed` is never read. Either use it in the test's behavior assertion (e.g., to vary which error type is returned) or remove the field.
+
+### Validation
+
+- [ ] `cargo check --workspace` clean.
+- [ ] `cargo build --workspace --release` clean.
+- [ ] `cargo test --workspace --no-run` clean.
+- [ ] `angreal test unit` passes (specifically arawn-extractor and arawn-llm tests).
+- [ ] `angreal test integration` passes.
+
+## Implementation Notes
+
+### Technical Approach
+
+Three independent small deletions/fixes. Order doesn't matter.
+
+### Dependencies
+
+None internal to the initiative.
+
+### Risk Considerations
+
+Minimal. The `_ts` function is a `_`-prefixed no-op; deleting it is safe.
+`push_classify` is in a test mod and confirmed unused. The `error_type`
+field fix is small.
+
+## Verification
+
+Per the initiative's dead-code methodology:
+- `angreal check workspace`
+- `cargo build --workspace --release`
+- `cargo test --workspace --no-run`
+- `angreal test unit`
+- `angreal test integration`
+
+## Status Updates
+
+*To be added during implementation*
