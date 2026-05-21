@@ -223,8 +223,9 @@ mod tests {
             command: String::new(), // empty command
             timeout: Some(2),
         };
-        let result = CommandHookExecutor::execute(&hook, &sample_input(), &cwd()).await;
-        // Empty command in sh -c "" exits 0, so this is actually Allow
+        // Empty command in sh -c "" exits 0, so this is actually Allow.
+        // We don't assert on it here — the meaningful case is below.
+        let _ = CommandHookExecutor::execute(&hook, &sample_input(), &cwd()).await;
         // Let's test with a truly bad scenario — nonexistent directory
         let hook = make_hook("exit 0", None);
         let result =

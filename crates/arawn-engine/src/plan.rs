@@ -14,7 +14,6 @@ use serde::{Deserialize, Serialize};
 use tracing::{debug, info};
 
 use crate::permissions::PermissionMode;
-use crate::permissions::PermissionRule;
 
 /// State for plan mode within a session.
 #[derive(Debug)]
@@ -27,10 +26,6 @@ struct PlanModeInner {
     active: bool,
     /// The permission mode that was active before entering plan mode.
     pre_plan_mode: Option<PermissionMode>,
-    /// Permission rules that were stripped on entering plan mode (for restoration).
-    /// Reserved for future use when auto-mode rule stripping is implemented.
-    #[allow(dead_code)]
-    stripped_rules: Vec<PermissionRule>,
     /// Path to the current plan file.
     plan_file: Option<PathBuf>,
     /// Human-friendly slug for the plan, cached per session.
@@ -51,7 +46,6 @@ impl PlanModeState {
             inner: RwLock::new(PlanModeInner {
                 active: false,
                 pre_plan_mode: None,
-                stripped_rules: Vec::new(),
                 plan_file: None,
                 plan_slug: None,
             }),

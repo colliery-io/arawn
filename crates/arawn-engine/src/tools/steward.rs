@@ -17,7 +17,7 @@ use arawn_llm::LlmClient;
 use arawn_steward::{ClusterMode, DustEngine, DustOpts, Journal, accept, rollback};
 
 use crate::tool::{Tool, ToolCategory, ToolError, ToolOutput};
-use crate::workstream_router::{MemoryHandle, WorkstreamMemoryRouter};
+use crate::workstream_router::WorkstreamMemoryRouter;
 
 /// Return the closest tag in `candidates` to `needle` if any candidate
 /// is within edit distance 4 OR shares a common prefix/suffix of length ≥4.
@@ -81,22 +81,6 @@ fn open_journal(data_dir: &PathBuf, workstream: &str) -> Result<Journal, ToolErr
         .map_err(|e| ToolError::ExecutionFailed(format!("open journal `{workstream}`: {e}")))
 }
 
-fn resolve_workstream(memory: &MemoryHandle, explicit: Option<&str>) -> Result<String, ToolError> {
-    if let Some(name) = explicit {
-        return Ok(name.to_string());
-    }
-    match memory {
-        MemoryHandle::Routed(r) => Ok(r
-            .current()
-            .map_err(|e| ToolError::ExecutionFailed(format!("memory routing: {e}")))?
-            .embedder()
-            .map(|_| String::new()) // unused; we only want the workstream name through the session
-            .unwrap_or_default()),
-        MemoryHandle::Fixed(_) => Err(ToolError::ExecutionFailed(
-            "workstream arg required when memory handle is fixed".into(),
-        )),
-    }
-}
 
 /// Lightweight summary of one journal row for tool output.
 fn row_summary(row: &arawn_steward::JournalRow) -> Value {
@@ -373,13 +357,6 @@ impl Tool for WorkstreamRollbackTool {
             json!({"id": id, "status": "reverted"}).to_string(),
         ))
     }
-}
-
-// Suppress unused-import warning while resolve_workstream stays for
-// future callers — currently each tool inlines its routing.
-#[allow(dead_code)]
-fn _unused(memory: &MemoryHandle, explicit: Option<&str>) -> Result<String, ToolError> {
-    resolve_workstream(memory, explicit)
 }
 
 // ─────────────────────────────────────────────────────────────────────────

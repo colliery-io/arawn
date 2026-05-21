@@ -203,9 +203,7 @@ const STATIC_SECTION_PRIORITIES: &[u8] = &[
 ];
 
 /// A section in the assembled prompt.
-#[allow(dead_code)]
 struct PromptSection {
-    name: String,
     content: String,
     priority: u8,
 }
@@ -247,7 +245,6 @@ impl SystemPromptBuilder {
     {
         let formatted = now.format("%Y-%m-%d %H:%M %Z (%a)").to_string();
         self.sections.push(PromptSection {
-            name: "current_time".into(),
             content: format!("Current time: {formatted}"),
             // Priority 0 so this lands above every other section
             // in the sorted output. Cheap and the first thing the
@@ -281,7 +278,6 @@ impl SystemPromptBuilder {
             let content = load_section(name, default, prompts_dir);
             if !content.is_empty() {
                 self.sections.push(PromptSection {
-                    name: name.to_string(),
                     content,
                     priority: STATIC_SECTION_PRIORITIES[i],
                 });
@@ -296,7 +292,6 @@ impl SystemPromptBuilder {
     /// carries it now (in the user's local zone instead of UTC).
     pub fn environment(mut self, os: &str, shell: &str, cwd: &Path, model: &str) -> Self {
         self.sections.push(PromptSection {
-            name: "environment".into(),
             content: format!(
                 "# Environment\n- Platform: {os}\n- Shell: {shell}\n- Working directory: {}\n- Model: {model}",
                 cwd.display()
@@ -309,7 +304,6 @@ impl SystemPromptBuilder {
     /// Add the workstream section.
     pub fn workstream(mut self, name: &str, root_dir: &Path) -> Self {
         self.sections.push(PromptSection {
-            name: "workstream".into(),
             content: format!(
                 "# Workstream\n- Name: {name}\n- Root: {}",
                 root_dir.display()
@@ -337,7 +331,6 @@ impl SystemPromptBuilder {
             tool_defs.len()
         );
         self.sections.push(PromptSection {
-            name: "tools".into(),
             content,
             priority: 2,
         });
@@ -363,7 +356,6 @@ impl SystemPromptBuilder {
             }
         }
         self.sections.push(PromptSection {
-            name: "context_files".into(),
             content,
             priority: 5,
         });
@@ -381,7 +373,6 @@ impl SystemPromptBuilder {
             content.push_str(&format!("- {memory}\n"));
         }
         self.sections.push(PromptSection {
-            name: "memories".into(),
             content,
             priority: 6,
         });
@@ -395,7 +386,6 @@ impl SystemPromptBuilder {
         }
 
         self.sections.push(PromptSection {
-            name: "session_context".into(),
             content: format!("# Session Context\n{summary}"),
             priority: 3,
         });
@@ -421,7 +411,6 @@ impl SystemPromptBuilder {
             content.push_str(&format!("- {summary}\n"));
         }
         self.sections.push(PromptSection {
-            name: "integrations".into(),
             content,
             // Mid-priority — informational, but useful before tool listings.
             priority: 4,
@@ -441,7 +430,6 @@ impl SystemPromptBuilder {
             content.push('\n');
         }
         self.sections.push(PromptSection {
-            name: "plugin_prompts".into(),
             content,
             priority: 7,
         });
@@ -571,7 +559,6 @@ fn load_section(name: &str, default: &str, prompts_dir: Option<&Path>) -> String
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::path::PathBuf;
     use tempfile::TempDir;
 
     // --- I-0035: persona-scoped sections ---
@@ -979,7 +966,6 @@ mod tests {
 
         // Add environment manually to avoid date drift
         builder.sections.push(PromptSection {
-            name: "environment".into(),
             content: "# Environment\n- Platform: macOS\n- Shell: zsh\n- Working directory: /tmp/arawn\n- Date: 2026-04-01 12:00 UTC\n- Model: test-model".into(),
             priority: 1,
         });

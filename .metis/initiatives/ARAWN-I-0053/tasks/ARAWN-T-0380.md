@@ -4,14 +4,14 @@ level: task
 title: "T-C: Tier 1 — arawn-engine mechanical cruft removal"
 short_code: "ARAWN-T-0380"
 created_at: 2026-05-21T14:53:18.441560+00:00
-updated_at: 2026-05-21T14:53:18.441560+00:00
+updated_at: 2026-05-21T15:16:32.621738+00:00
 parent: ARAWN-I-0053
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/active"
 
 
 exit_criteria_met: false
@@ -29,6 +29,8 @@ initiative_id: ARAWN-I-0053
 Delete confirmed-dead symbols, fake-use functions, and unused fields in
 `arawn-engine`. Fix pre-existing dead-code warnings surfaced by the
 discovery experiment. No behavior change.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
@@ -89,4 +91,26 @@ Per the initiative's dead-code methodology:
 
 ## Status Updates
 
-*To be added during implementation*
+### 2026-05-21 — landed
+
+**Symbol removals:**
+- Deleted `fn _unused(...)` in `crates/arawn-engine/src/tools/steward.rs:378-383` (fake-use of `resolve_workstream`).
+- Deleted `fn resolve_workstream(...)` in `crates/arawn-engine/src/tools/steward.rs:84-99` (zero non-test callers).
+- Deleted `fn _add_item_unused(_: AddItemRequest) {}` in `crates/arawn-engine/src/tools/ceremony.rs:362-367`. The `AddItemRequest` import at line 17 was now unused — the inline test mod at line 439 has its own `use ...::{AddItemRequest, ...}` — so I also dropped `AddItemRequest` from the top-level import (preserving the test's own import).
+- Dropped `name: String` field from `struct PromptSection` in `system_prompt.rs:208` and the `#[allow(dead_code)]` at 206. Removed `name:` initialization from all 12 PromptSection construction sites (used Python helper to walk PromptSection blocks safely — initial sed pass overshot into ToolDefinition constructions, so I reverted and reran with a structural matcher).
+- Dropped `stripped_rules: Vec<PermissionRule>` field from `PlanModeInner` in `plan.rs:32-33` and the empty-vec init at `plan.rs:54`. Removed `use crate::permissions::PermissionRule` import (now unused).
+- Removed `MemoryHandle` from steward.rs's `use crate::workstream_router::{...}` import (no longer needed after `resolve_workstream` deletion).
+
+**Comment improvement:**
+- Updated `BackgroundTask.handle` comment in `crates/arawn-engine/src/background.rs:119-125` to explain precisely why `#[allow(dead_code)]` is necessary: Rust's lint can't see Drop semantics as a "read", so the allow is genuinely required. Comment now points future maintainers at `.handle.as_ref()` for the future `abort()` use site.
+
+**Pre-existing warnings cleaned up:**
+- `crates/arawn-engine/src/hooks/executor.rs:226` — changed `let result = ...` to `let _ = ...` (the first call's return value was shadowed by a second `let result` at line 230 and never used).
+- `crates/arawn-engine/src/system_prompt.rs:574` — removed unused `use std::path::PathBuf;` in `mod tests`.
+
+**Validation:**
+- `cargo check --workspace`: ✅ clean, no warnings on arawn-engine code I touched.
+- `cargo build --workspace --release`: ✅ clean (1m 08s).
+- `cargo test --workspace --no-run`: ✅ clean (14.66s, all test targets compile).
+- `cargo test --workspace --lib`: ✅ **1,756 tests pass, 0 fail** across all crates.
+- Remaining workspace warnings are all pre-existing and slated for other tasks: `error_type` field in `arawn-llm/retry.rs` (T-F), arawn-memory benchmark unused funcs/fields (T-3.7-followup), snake_case naming warnings in feeds tests (pre-existing, out of scope), `PluginComponents`/`ToolContext`/`SidebarSection` unused imports in test files (out of scope).

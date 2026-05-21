@@ -14,7 +14,7 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use serde_json::{Value, json};
 
-use arawn_ceremonies::{AddItemRequest, CeremonyService, DispatchOutcome, ItemPatch};
+use arawn_ceremonies::{CeremonyService, DispatchOutcome, ItemPatch};
 
 use crate::tool::{Tool, ToolCategory, ToolError, ToolOutput};
 
@@ -358,13 +358,6 @@ impl Tool for RetroPatchItemTool {
         }
     }
 }
-
-// `AddItemRequest` is re-used by the user-write surface so the engine
-// can grow a `retro_add_item` later without changing the underlying
-// type. Keep the import even though only the patch tool is shipped
-// in v1.
-#[allow(dead_code)]
-fn _add_item_unused(_: AddItemRequest) {}
 
 // ============================================================================
 // retro_set_cadence

@@ -116,9 +116,11 @@ pub struct BackgroundTask {
     output: Arc<RwLock<String>>,
     /// Cancellation token for cooperative shutdown.
     pub cancel_token: CancellationToken,
-    /// JoinHandle for the spawned tokio task. Kept to prevent the task from
-    /// being detached — dropping the handle doesn't cancel the task in tokio,
-    /// but holding it ensures we can abort if needed in the future.
+    /// JoinHandle for the spawned tokio task. Held for Drop semantics — Rust's
+    /// `dead_code` lint can't see Drop usage as a read, so the `#[allow]` is
+    /// genuinely required. The handle is set when the task is spawned and kept
+    /// alive so the task isn't detached; a future `abort()` call site can reach
+    /// it via `.handle.as_ref()`.
     #[allow(dead_code)]
     handle: Option<JoinHandle<()>>,
     /// Whether a notification has been sent for this task.
