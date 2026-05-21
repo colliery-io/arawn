@@ -219,15 +219,6 @@ impl<'a> WorkstreamStore<'a> {
         Ok(())
     }
 
-    /// Hard-delete by id. Retained for backward compatibility with the
-    /// V1 surface; new code paths should prefer `soft_delete(name)`.
-    pub fn delete(&self, id: Uuid) -> Result<bool, StorageError> {
-        let affected = self
-            .db
-            .conn()
-            .execute("DELETE FROM workstreams WHERE id = ?1", [id.to_string()])?;
-        Ok(affected > 0)
-    }
 }
 
 const SELECT_COLS_WHERE_ID: &str = "SELECT id, name, root_dir, created_at, display_name, description, \

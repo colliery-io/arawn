@@ -4,14 +4,14 @@ level: task
 title: "T-J: Delete `WorkstreamStore::delete` hard-delete API"
 short_code: "ARAWN-T-0387"
 created_at: 2026-05-21T14:53:29.377601+00:00
-updated_at: 2026-05-21T14:53:29.377601+00:00
+updated_at: 2026-05-21T16:21:58.431474+00:00
 parent: ARAWN-I-0053
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/active"
 
 
 exit_criteria_met: false
@@ -29,6 +29,8 @@ initiative_id: ARAWN-I-0053
 Remove `WorkstreamStore::delete(id: Uuid)` — the V1-era hard-delete method.
 Per operator decision (Tier 3 candidate 3.5): kill it. `soft_delete(name)` is
 the canonical API and Agent 4 found zero external callers.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
@@ -75,4 +77,15 @@ run after T-I/T-J/T-K all land.
 
 ## Status Updates
 
-*To be added during implementation*
+### 2026-05-21 — landed
+
+- Deleted `pub fn delete(&self, id: Uuid) -> Result<bool, StorageError>` and its "Retained for backward compatibility" doc comment from `crates/arawn-storage/src/workstream_store.rs:222-230`.
+- Grep workspace-wide confirmed zero callers of `WorkstreamStore::delete`. The other `.delete(...)` invocations (`SessionStore::delete`, `TokenStore::delete`, `FeedStore::delete`, `CredentialStore::delete`, `delete_entity`) target different types and are unaffected.
+- `soft_delete(name)` remains as the canonical workstream-removal API.
+- `Uuid` is still used elsewhere in the file (for the `id` field type and other methods), so the import stays.
+
+**Validation:**
+- `cargo check --workspace`: ✅ clean, no warnings.
+- `cargo build --workspace --release`: ✅ clean (1m 17s).
+- `cargo test --workspace --no-run`: ✅ clean.
+- `cargo test -p arawn-storage`: ✅ **76 tests pass**, 0 fail.

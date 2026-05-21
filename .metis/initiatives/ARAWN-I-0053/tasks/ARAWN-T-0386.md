@@ -4,14 +4,14 @@ level: task
 title: "T-I: Delete pre-T-0276 wildcard permission API (`grant`, `is_granted`)"
 short_code: "ARAWN-T-0386"
 created_at: 2026-05-21T14:53:27.878327+00:00
-updated_at: 2026-05-21T16:16:38.972206+00:00
+updated_at: 2026-05-21T16:21:57.520885+00:00
 parent: ARAWN-I-0053
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -30,6 +30,8 @@ Remove the two wildcard-grant backward-compat methods on `SessionGrants`
 that pre-date T-0276's shape-aware permission API. Per operator decision
 (Tier 3 candidate 3.2): drop — no deprecation cycle. Replaced by the
 shape-aware `grant_shape()` / `is_granted_shape()` API.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
