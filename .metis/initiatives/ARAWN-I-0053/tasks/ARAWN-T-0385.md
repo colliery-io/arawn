@@ -4,14 +4,14 @@ level: task
 title: "T-H: Drop `EngineToolContext as ToolContext` backward-compat alias"
 short_code: "ARAWN-T-0385"
 created_at: 2026-05-21T14:53:26.235890+00:00
-updated_at: 2026-05-21T16:10:35.061557+00:00
+updated_at: 2026-05-21T16:16:38.027224+00:00
 parent: ARAWN-I-0053
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -29,6 +29,8 @@ initiative_id: ARAWN-I-0053
 Remove the backward-compat alias `pub use context::EngineToolContext as ToolContext;`
 in `crates/arawn-engine/src/lib.rs:32-34`. Per operator decision (Tier 3
 candidate 3.4): kill backward compats. Agent 1 verified zero internal callers.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

@@ -4,14 +4,14 @@ level: task
 title: "T-I: Delete pre-T-0276 wildcard permission API (`grant`, `is_granted`)"
 short_code: "ARAWN-T-0386"
 created_at: 2026-05-21T14:53:27.878327+00:00
-updated_at: 2026-05-21T14:53:27.878327+00:00
+updated_at: 2026-05-21T16:16:38.972206+00:00
 parent: ARAWN-I-0053
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/active"
 
 
 exit_criteria_met: false
@@ -30,6 +30,8 @@ Remove the two wildcard-grant backward-compat methods on `SessionGrants`
 that pre-date T-0276's shape-aware permission API. Per operator decision
 (Tier 3 candidate 3.2): drop — no deprecation cycle. Replaced by the
 shape-aware `grant_shape()` / `is_granted_shape()` API.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
@@ -82,4 +84,19 @@ run after T-I/T-J/T-K all land.
 
 ## Status Updates
 
-*To be added during implementation*
+### 2026-05-21 — landed
+
+- Deleted `SessionGrants::grant(tool_name: String)` and `SessionGrants::is_granted(tool_name: &str)` from `crates/arawn-engine/src/permissions/checker.rs:132-149` (the pre-T-0276 wildcard variants).
+- Updated the `SessionGrants` doc comment to drop the "historical zero-arg ... API survives" wording and instead document the wildcard `"<tool>:*"` shape convention that `is_granted_shape` falls back to.
+- `is_granted_shape` was already self-contained (its wildcard fallback constructs an `ArgShape` directly rather than calling the deleted methods) — no logic changes needed there.
+- Migrated 5 test call sites in `checker.rs`:
+  - `.is_granted("Bash")` → `.is_granted_shape("Bash", &crate::approval::ArgShape("Bash:*".into()))` (lines 645, 658)
+  - `.grant("Bash".to_string())` → `.grant_shape("Bash".to_string(), crate::approval::ArgShape("Bash:*".into()))` (lines 805, 879)
+  - `.grant("think".to_string())` → `.grant_shape("think".to_string(), crate::approval::ArgShape("think:*".into()))` (line 819)
+- Verified zero remaining non-`_shape` callers via grep (the only `.grant(...)` / `.is_granted(...)` calls left are on the inner `SessionAllowlist`, a different type with a 2-arg signature).
+
+**Validation:**
+- `cargo check --workspace`: ✅ clean.
+- `cargo build --workspace --release`: ✅ clean (1m 27s).
+- `cargo test --workspace --no-run`: ✅ clean.
+- `cargo test -p arawn-engine --lib`: ✅ **681 tests pass**, including the permission checker tests that exercise the migrated wildcard semantic.

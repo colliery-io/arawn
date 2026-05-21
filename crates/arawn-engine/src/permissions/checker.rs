@@ -113,12 +113,11 @@ pub trait ModalPrompt: Send + Sync {
 /// [`crate::approval::allowlist`] — see that module for the
 /// normalisation rules.
 ///
-/// Previously this type was keyed by tool name alone; T-0276 changed
-/// the key to `(tool, shape)` so an approved `file_write` to
-/// `~/Desktop/proj/foo.rs` does not also auto-approve `file_write`
-/// to `/etc/`. The historical zero-arg `grant(tool_name)` /
-/// `is_granted(tool_name)` API survives as a shape-agnostic
-/// wildcard.
+/// Grants are keyed by `(tool, shape)` (T-0276) so an approved
+/// `file_write` to `~/Desktop/proj/foo.rs` does not auto-approve
+/// `file_write` to `/etc/`. A shape of `"<tool>:*"` acts as a
+/// wildcard — `is_granted_shape` falls back to the wildcard if no
+/// exact shape match is found.
 #[derive(Debug, Default)]
 pub struct SessionGrants {
     inner: crate::approval::SessionAllowlist,
@@ -129,28 +128,13 @@ impl SessionGrants {
         Self::default()
     }
 
-    /// Wildcard grant — matches any input on this tool. Kept for
-    /// backwards-compat with the pre-T-0276 API.
-    pub fn grant(&mut self, tool_name: String) {
-        let shape = crate::approval::ArgShape(format!("{tool_name}:*"));
-        self.inner.grant(tool_name, shape);
-    }
-
-    /// Shape-aware grant. New preferred API.
+    /// Shape-aware grant.
     pub fn grant_shape(&mut self, tool_name: String, shape: crate::approval::ArgShape) {
         self.inner.grant(tool_name, shape);
     }
 
-    /// Wildcard check — true if a wildcard grant exists for this
-    /// tool. Kept for backwards-compat.
-    pub fn is_granted(&self, tool_name: &str) -> bool {
-        let wildcard = crate::approval::ArgShape(format!("{tool_name}:*"));
-        self.inner.is_granted(tool_name, &wildcard)
-    }
-
-    /// Shape-aware check. New preferred API. Falls back to wildcard
-    /// when no exact shape match is found, so legacy `grant(tool)`
-    /// calls still honour shape-aware lookups.
+    /// Shape-aware check. Falls back to the `"<tool>:*"` wildcard
+    /// entry when no exact shape match is found.
     pub fn is_granted_shape(&self, tool_name: &str, shape: &crate::approval::ArgShape) -> bool {
         if self.inner.is_granted(tool_name, shape) {
             return true;
@@ -658,7 +642,7 @@ mod tests {
             PermissionDecision::Allowed
         );
         // Not granted for session — next call should ask again
-        assert!(!checker.grants.lock().unwrap().is_granted("Bash"));
+        assert!(!checker.grants.lock().unwrap().is_granted_shape("Bash", &crate::approval::ArgShape("Bash:*".into())));
     }
 
     #[tokio::test]
@@ -671,7 +655,7 @@ mod tests {
             PermissionDecision::Allowed
         );
         // Session grant recorded — subsequent calls skip prompting
-        assert!(checker.grants.lock().unwrap().is_granted("Bash"));
+        assert!(checker.grants.lock().unwrap().is_granted_shape("Bash", &crate::approval::ArgShape("Bash:*".into())));
         assert_eq!(
             checker
                 .check("Bash", "cargo test", PermissionCategory::Shell)
@@ -818,7 +802,7 @@ mod tests {
         let rules = vec![PermissionRule::new(RuleKind::Deny, "Bash")];
         let checker = PermissionChecker::new(rules);
         // Manually grant — deny rule should still win
-        checker.grants.lock().unwrap().grant("Bash".to_string());
+        checker.grants.lock().unwrap().grant_shape("Bash".to_string(), crate::approval::ArgShape("Bash:*".into()));
         assert_eq!(
             checker
                 .check("Bash", "rm -rf /", PermissionCategory::Shell)
@@ -832,7 +816,7 @@ mod tests {
         // Allow rule + grant: grant should short-circuit
         let rules = vec![PermissionRule::new(RuleKind::Ask, "think")];
         let checker = PermissionChecker::new(rules);
-        checker.grants.lock().unwrap().grant("think".to_string());
+        checker.grants.lock().unwrap().grant_shape("think".to_string(), crate::approval::ArgShape("think:*".into()));
         assert_eq!(
             checker
                 .check("think", "", PermissionCategory::ReadOnly)
@@ -892,7 +876,7 @@ mod tests {
     async fn clear_grants_resets() {
         let rules = vec![PermissionRule::new(RuleKind::Deny, "Bash")];
         let checker = PermissionChecker::new(rules);
-        checker.grants.lock().unwrap().grant("Bash".to_string());
+        checker.grants.lock().unwrap().grant_shape("Bash".to_string(), crate::approval::ArgShape("Bash:*".into()));
         checker.clear_grants();
         assert_eq!(
             checker.check("Bash", "ls", PermissionCategory::Shell).await,
