@@ -4,14 +4,14 @@ level: task
 title: "T-E: Tier 1 — arawn-feeds mechanical cruft removal"
 short_code: "ARAWN-T-0382"
 created_at: 2026-05-21T14:53:21.578365+00:00
-updated_at: 2026-05-21T14:53:21.578365+00:00
+updated_at: 2026-05-21T15:39:21.644005+00:00
 parent: ARAWN-I-0053
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/active"
 
 
 exit_criteria_met: false
@@ -30,6 +30,8 @@ Delete the dead `JsonValue` re-export, the paired `_value_marker` fake-use,
 and the `_force_use_traits` fake-use in the github repo_mirror template.
 Verify whether the `#[allow(deprecated)]` annotation on the Atlassian
 `get_all_projects` call is necessary.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
@@ -87,4 +89,16 @@ Per the initiative's dead-code methodology:
 
 ## Status Updates
 
-*To be added during implementation*
+### 2026-05-21 — landed
+
+- Deleted `pub use serde_json::Value as JsonValue;` + `#[allow(unused_imports)]` and the paired `fn _value_marker(_: Value) {}` + `#[allow(unused)]` in `crates/arawn-feeds/src/store.rs:175-179`. Grep confirmed zero `arawn_feeds::JsonValue` callers anywhere (the only other `JsonValue` references in the workspace are arawn-memory's own local alias, unrelated).
+- Removed the now-unused `use serde_json::Value;` from store.rs (line 10) — it was only there because `_value_marker` referenced it.
+- Deleted `fn _force_use_traits()` + its `#[allow(dead_code)]` in `crates/arawn-feeds/src/templates/github/repo_mirror.rs:374-379`.
+- Removed the now-unused `use crate::clients::GithubFeedClient;` from repo_mirror.rs:25 — same reason as above. The test mod has its own `use crate::clients::{FeedClients, GithubFeedClient as Gh};` so test code is unaffected. Production code accesses the GitHub client via `TemplateCtx`, not via this trait import.
+- Stripped `#[allow(deprecated)]` at `crates/arawn-feeds/src/clients/atlassian.rs:525`. Rebuilt on debug/release/test — **no deprecation warning fired in any profile**, confirming the annotation was redundant. Updated the surrounding comment to drop the now-stale reference to the allow ("get_all_projects is deprecated upstream but still works...").
+
+**Validation:**
+- `cargo check --workspace`: ✅ clean.
+- `cargo build --workspace --release`: ✅ clean (48.62s incremental).
+- `cargo test --workspace --no-run`: ✅ clean.
+- `cargo test -p arawn-feeds`: ✅ all tests pass across all targets (cloacina_fire, discovery, gmail_archive, github_repo_mirror_smoke, jira_trackers, slack_*, drive_*, calendar_*, confluence_space_archive, dynamic_register, plus the lib unit tests).

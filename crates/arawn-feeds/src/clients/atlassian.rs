@@ -518,11 +518,10 @@ impl AtlassianFeedClient for RealAtlassianClient {
     async fn list_jira_projects(&self) -> Result<Vec<JiraProjectMeta>, FeedError> {
         let client = AtlassianClient::new(Arc::clone(&self.integration));
         let cfg = client.jira_config(None).await.map_err(integ_err)?;
-        // get_all_projects is deprecated but still works; the
+        // get_all_projects is deprecated upstream but still works; the
         // search-projects endpoint is paginated and harder to mock.
         // For picker ergonomics this is fine — projects list is
         // O(tens) for any real workspace.
-        #[allow(deprecated)]
         let projects = projects_api::get_all_projects(&cfg, None, None, None)
             .await
             .map_err(jira_err)?;

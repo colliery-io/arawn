@@ -7,7 +7,6 @@
 
 use chrono::{DateTime, Utc};
 use rusqlite::{Connection, OptionalExtension, params};
-use serde_json::Value;
 
 use crate::error::FeedError;
 use crate::types::TemplateParams;
@@ -171,12 +170,6 @@ pub fn new_record(
         updated_at: now,
     }
 }
-
-/// Re-export so callers can `use arawn_feeds::Value` if they want.
-#[allow(unused_imports)]
-pub use serde_json::Value as JsonValue;
-#[allow(unused)]
-fn _value_marker(_: Value) {}
 
 #[cfg(test)]
 mod tests {

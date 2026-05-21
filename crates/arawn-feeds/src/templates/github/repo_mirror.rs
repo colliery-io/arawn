@@ -22,7 +22,6 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use tracing::warn;
 
-use crate::clients::GithubFeedClient;
 use crate::error::FeedError;
 use crate::template::{DiscoveryRow, FeedTemplate, RunOutcome, TemplateCtx};
 use crate::types::{FeedDefaults, RunSummary, TemplateParams};
@@ -369,13 +368,6 @@ fn write_json(path: &PathBuf, v: &Value) -> Result<u64, FeedError> {
     std::fs::rename(&tmp, path)
         .map_err(|e| FeedError::Storage(format!("rename {}: {e}", path.display())))?;
     Ok(len)
-}
-
-#[allow(dead_code)]
-fn _force_use_traits() {
-    // Reference imports so removing them from this file breaks the
-    // build deliberately.
-    let _: Option<Box<dyn GithubFeedClient>> = None;
 }
 
 #[cfg(test)]
