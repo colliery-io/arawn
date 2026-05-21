@@ -626,10 +626,6 @@ mod integration {
             *self.link_default.lock().unwrap() = Some(v);
             self
         }
-        #[allow(dead_code)]
-        fn push_classify(&self, v: Value) {
-            self.classify.lock().unwrap().push_back(v);
-        }
     }
 
     fn classify_stage(sys: &str) -> bool {

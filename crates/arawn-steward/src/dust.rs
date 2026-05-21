@@ -11,7 +11,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use chrono::{DateTime, Duration, Utc};
+use chrono::{Duration, Utc};
 use serde::Deserialize;
 use serde_json::json;
 use tracing::{debug, warn};
@@ -302,13 +302,6 @@ fn cluster_by_provenance(
         .into_iter()
         .map(|(target, ents)| (target.to_string(), ents))
         .collect())
-}
-
-// Touch warn-unused: chrono is used; this helper is a no-op alias to
-// keep the import set obvious to readers.
-#[allow(dead_code)]
-fn _ts() -> DateTime<Utc> {
-    Utc::now()
 }
 
 #[cfg(test)]

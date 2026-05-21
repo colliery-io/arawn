@@ -95,7 +95,6 @@ mod tests {
     /// A mock that fails N times then succeeds.
     struct FailThenSucceed {
         failures_remaining: Mutex<u32>,
-        error_type: LlmError,
         success_response: Vec<ChatChunk>,
     }
 
@@ -144,7 +143,6 @@ mod tests {
     async fn retries_on_server_error_then_succeeds() {
         let inner = Arc::new(FailThenSucceed {
             failures_remaining: Mutex::new(2),
-            error_type: LlmError::ServerError("500".into()),
             success_response: vec![
                 ChatChunk::TextDelta {
                     text: "recovered".into(),
@@ -167,7 +165,6 @@ mod tests {
     async fn gives_up_after_max_retries() {
         let inner = Arc::new(FailThenSucceed {
             failures_remaining: Mutex::new(10), // will never succeed
-            error_type: LlmError::ServerError("500".into()),
             success_response: vec![],
         });
 
@@ -212,7 +209,6 @@ mod tests {
     async fn retries_rate_limit_errors() {
         let inner = Arc::new(FailThenSucceed {
             failures_remaining: Mutex::new(1),
-            error_type: LlmError::RateLimited("429".into()),
             success_response: vec![
                 ChatChunk::TextDelta {
                     text: "after rate limit".into(),
@@ -248,7 +244,6 @@ mod tests {
             Arc::new(RateLimitThenSucceed {
                 inner: FailThenSucceed {
                     failures_remaining: Mutex::new(1),
-                    error_type: LlmError::RateLimited("429".into()),
                     success_response: vec![
                         ChatChunk::TextDelta {
                             text: "after rate limit".into(),
