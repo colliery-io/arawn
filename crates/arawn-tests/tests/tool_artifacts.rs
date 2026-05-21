@@ -6,7 +6,7 @@
 
 use arawn_core::Workstream;
 use arawn_engine::Tool; // re-exported from arawn_tool
-use arawn_engine::ToolContext as EngineToolContext;
+use arawn_engine::EngineToolContext;
 use arawn_tool::ToolContext; // the trait — needed for method dispatch
 use serde_json::json;
 use tempfile::TempDir;

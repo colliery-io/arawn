@@ -28,9 +28,6 @@ pub use background::{
 };
 pub use compactor::Compactor;
 pub use context::EngineToolContext;
-/// Backward-compatible alias: downstream code that used `arawn_engine::ToolContext`
-/// continues to work via this re-export.
-pub use context::EngineToolContext as ToolContext;
 pub use error::EngineError;
 pub use hooks::{
     HookConfig, HookEvent, HookFileWatcher, HookInput, HookRunner, load_hooks_from_file,

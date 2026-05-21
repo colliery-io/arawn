@@ -7,7 +7,7 @@ use tempfile::TempDir;
 
 use arawn_core::{Message, Session, Workstream};
 use arawn_engine::{
-    FileReadTool, QueryEngine, QueryEngineConfig, ShellTool, ThinkTool, ToolContext, ToolRegistry,
+    FileReadTool, QueryEngine, QueryEngineConfig, ShellTool, ThinkTool, EngineToolContext, ToolRegistry,
 };
 use arawn_llm::{MockLlmClient, MockResponse};
 use arawn_storage::Store;
@@ -47,8 +47,8 @@ impl Fixture {
         session
     }
 
-    fn context(&self, session: &Session) -> ToolContext {
-        ToolContext::new(&self.workstream, session.id)
+    fn context(&self, session: &Session) -> EngineToolContext {
+        EngineToolContext::new(&self.workstream, session.id)
     }
 
     fn registry(&self) -> Arc<ToolRegistry> {

@@ -12,7 +12,7 @@ use std::sync::Mutex;
 use tracing::info;
 
 use arawn_core::Message;
-use arawn_engine::{QueryEngine, QueryEngineConfig, ToolContext, ToolRegistry};
+use arawn_engine::{EngineToolContext, QueryEngine, QueryEngineConfig, ToolRegistry};
 use arawn_llm::LlmClient;
 use arawn_storage::Store;
 
@@ -111,7 +111,7 @@ impl DecisionService {
 
         // Build engine and run
         let session_id = session.id;
-        let tool_ctx = ToolContext::new(&workstream, session_id);
+        let tool_ctx = EngineToolContext::new(&workstream, session_id);
         let mut engine = QueryEngine::with_config(
             Arc::clone(&self.llm),
             Arc::clone(&self.registry),

@@ -7,7 +7,7 @@ use tempfile::TempDir;
 
 use arawn_core::{Message, Session, Workstream};
 use arawn_engine::{
-    Compactor, ModelLimits, QueryEngine, QueryEngineConfig, ToolContext, ToolRegistry,
+    Compactor, ModelLimits, QueryEngine, QueryEngineConfig, EngineToolContext, ToolRegistry,
 };
 use arawn_llm::{MockLlmClient, MockResponse};
 use arawn_storage::Store;
@@ -19,7 +19,7 @@ async fn engine_with_compactor_compacts_when_over_threshold() {
     // Create a session with many large messages that exceed a tiny context window
     let ws = Workstream::new("test", "/tmp/compact-test");
     let mut session = Session::new(ws.id);
-    let ctx = ToolContext::new(&ws, session.id);
+    let ctx = EngineToolContext::new(&ws, session.id);
 
     let filler = "x".repeat(1000);
     for i in 0..20 {
@@ -76,7 +76,7 @@ async fn engine_with_compactor_compacts_when_over_threshold() {
 async fn engine_without_compactor_no_compaction() {
     let ws = Workstream::new("test", "/tmp/no-compact");
     let mut session = Session::new(ws.id);
-    let ctx = ToolContext::new(&ws, session.id);
+    let ctx = EngineToolContext::new(&ws, session.id);
 
     session.add_message(Message::User {
         content: "hello".into(),
@@ -95,7 +95,7 @@ async fn engine_without_compactor_no_compaction() {
 async fn engine_under_threshold_no_compaction() {
     let ws = Workstream::new("test", "/tmp/under-threshold");
     let mut session = Session::new(ws.id);
-    let ctx = ToolContext::new(&ws, session.id);
+    let ctx = EngineToolContext::new(&ws, session.id);
 
     session.add_message(Message::User {
         content: "short message".into(),
@@ -282,7 +282,7 @@ async fn persistence_resume_after_compaction() {
     )]));
     let registry = Arc::new(ToolRegistry::new());
     let mut engine = QueryEngine::new(mock, registry);
-    let ctx = ToolContext::new(&ws, loaded.id);
+    let ctx = EngineToolContext::new(&ws, loaded.id);
 
     let result = engine.run(&mut loaded, &ctx).await.unwrap();
     assert_eq!(result, "Answer to follow-up");

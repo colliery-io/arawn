@@ -4,14 +4,14 @@ level: task
 title: "T-G: Drop `arawn_engine::tool` re-export shim — migrate to arawn-tool"
 short_code: "ARAWN-T-0384"
 created_at: 2026-05-21T14:53:24.695899+00:00
-updated_at: 2026-05-21T15:48:59.289852+00:00
+updated_at: 2026-05-21T16:10:34.533498+00:00
 parent: ARAWN-I-0053
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -32,6 +32,8 @@ home for `Tool`/`ToolCategory`/`ToolError`/`ToolOutput`/`ToolRegistry` is
 compatibility with old import paths.
 
 Per operator decision (Tier 3 candidate 3.3): update callers and drop.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

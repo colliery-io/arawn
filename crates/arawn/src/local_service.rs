@@ -11,7 +11,7 @@ use uuid::Uuid;
 use arawn_core::{Message, Session, Workstream};
 use arawn_engine::{
     BackgroundTaskManager, Compactor, PermissionChecker, PermissionRule, PlanModeState,
-    QueryEngine, QueryEngineConfig, ToolContext, ToolRegistry,
+    QueryEngine, QueryEngineConfig, EngineToolContext, ToolRegistry,
 };
 use arawn_llm::LlmClient;
 use arawn_service::{
@@ -345,7 +345,7 @@ impl LocalService {
         Ok((meta, workstream, ws_dir, Vec::new()))
     }
 
-    /// Build a ToolContext and per-session PromptContext for the engine.
+    /// Build a EngineToolContext and per-session PromptContext for the engine.
     #[instrument(skip_all, fields(%session_id))]
     fn build_session_context(
         &self,
@@ -354,7 +354,7 @@ impl LocalService {
         ws_dir: &str,
         workspace_dir: &std::path::Path,
         content: &str,
-    ) -> (ToolContext, Option<arawn_engine::PromptContext>) {
+    ) -> (EngineToolContext, Option<arawn_engine::PromptContext>) {
         let mut ws_for_ctx = workstream.clone();
         ws_for_ctx.root_dir = workspace_dir.to_path_buf();
 
@@ -366,7 +366,7 @@ impl LocalService {
             .join("arawn.md");
         let pool = Arc::clone(&self.llm_pool);
         let resolver: Arc<arawn_tool::LlmResolverFn> = Arc::new(move |pref| pool.resolve(pref));
-        let ctx = ToolContext::new(&ws_for_ctx, session_id)
+        let ctx = EngineToolContext::new(&ws_for_ctx, session_id)
             .with_allowed_paths(vec![global_arawn_md, workstream_arawn_md])
             .with_llm(self.llm_pool.engine(), self.config.model.clone())
             .with_llm_resolver(resolver)
