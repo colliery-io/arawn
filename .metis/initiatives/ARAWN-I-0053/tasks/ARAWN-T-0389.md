@@ -4,14 +4,14 @@ level: task
 title: "T-L: Trim Slack `search:read` scope reservation comment"
 short_code: "ARAWN-T-0389"
 created_at: 2026-05-21T14:53:31.955716+00:00
-updated_at: 2026-05-21T14:53:31.955716+00:00
+updated_at: 2026-05-21T16:41:12.170864+00:00
 parent: ARAWN-I-0053
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/active"
 
 
 exit_criteria_met: false
@@ -31,6 +31,8 @@ block in the Slack integration. Per operator decision (Tier 3 candidate 3.9):
 since there is no Metis task for a `slack_search` template, the
 multi-paragraph reservation comment is more cruft than signal. Implementation
 behavior (`search:read` not requested) stays unchanged.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
@@ -65,4 +67,10 @@ Negligible.
 
 ## Status Updates
 
-*To be added during implementation*
+### 2026-05-21 — landed
+
+- Trimmed the multi-paragraph "Re-add when `slack_search` lands" comment at `crates/arawn-integrations/src/slack/integration.rs:17-23` to a tighter explanation focused on the actual constraint (Slack rejects OAuth flows with unused scopes). Dropped the speculative `slack_search` task reference since no Metis task exists for it.
+- Behavior unchanged: `SLACK_OAUTH_SCOPES` list still excludes `search:read`.
+
+**Validation:**
+- `cargo check --workspace`: ✅ clean.

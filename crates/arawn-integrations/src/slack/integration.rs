@@ -16,11 +16,10 @@ pub const SERVICE_NAME: &str = "slack";
 
 /// Bot scopes requested at OAuth time. Per ADR-0001 § 4.
 ///
-/// `search:read` was in the original scope list but is dropped: `slack_search`
-/// is deferred (slack-morphism doesn't typed-expose `search.messages`), and
-/// requesting an unused scope causes Slack to reject the OAuth flow with
-/// "Invalid permissions requested" if the workspace admin hasn't pre-approved
-/// it. Re-add when `slack_search` lands.
+/// Note: `search:read` is intentionally absent. Requesting an unused scope
+/// causes Slack to reject the OAuth flow with "Invalid permissions requested"
+/// when the workspace admin hasn't pre-approved it, so the scope list stays
+/// minimal until a feature actually needs `search.messages`.
 pub const SLACK_OAUTH_SCOPES: &[&str] = &[
     "channels:read",
     "channels:history",
