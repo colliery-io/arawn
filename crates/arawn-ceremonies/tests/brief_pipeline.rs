@@ -21,7 +21,7 @@
 use std::sync::{Arc, Mutex};
 
 use async_trait::async_trait;
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Duration, Utc};
 use rusqlite::Connection;
 use serde_json::json;
 use tempfile::TempDir;
@@ -62,6 +62,13 @@ impl Ceremony for ScriptedPlugin {
     }
     fn period_key(&self, _now: DateTime<Utc>) -> String {
         self.period.clone()
+    }
+    fn period_window(
+        &self,
+        _period_key: &str,
+    ) -> Result<(DateTime<Utc>, DateTime<Utc>), arawn_ceremonies::CeremonyError> {
+        let now = Utc::now();
+        Ok((now, now + Duration::days(1)))
     }
     fn default_schedule(&self) -> CronSchedule {
         CronSchedule::local("0 0 * * *")

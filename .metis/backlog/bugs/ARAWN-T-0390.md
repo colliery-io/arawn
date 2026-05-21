@@ -4,15 +4,15 @@ level: task
 title: "Fix broken `brief_pipeline.rs` ScriptedPlugin — missing `period_window` trait method"
 short_code: "ARAWN-T-0390"
 created_at: 2026-05-21T14:53:33.521653+00:00
-updated_at: 2026-05-21T14:53:33.521653+00:00
+updated_at: 2026-05-21T15:11:41.613038+00:00
 parent: 
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/backlog"
   - "#bug"
+  - "#phase/active"
 
 
 exit_criteria_met: false
@@ -52,6 +52,10 @@ cargo exit-code handling to ensure pipeline failures of this kind are caught.
 
 ## Acceptance Criteria
 
+## Acceptance Criteria
+
+## Acceptance Criteria
+
 - [ ] Add the missing `period_window(&self, period_key: &str) -> Result<(DateTime<Utc>, DateTime<Utc>), CeremonyError>` method to `impl Ceremony for ScriptedPlugin` at `crates/arawn-ceremonies/tests/brief_pipeline.rs:59-82`. Reasonable behavior: return a synthetic 1-day window derived from `self.period` (parse it as ISO date or week), or return a fixed window if the test only needs a stable value.
 - [ ] `cargo test -p arawn-ceremonies --test brief_pipeline --no-run` returns clean (no E0046 error, exit code 0).
 - [ ] `cargo test -p arawn-ceremonies --test brief_pipeline` runs all tests in the file; all pass.
@@ -82,4 +86,11 @@ investigating.
 
 ## Status Updates
 
-*To be added during implementation*
+### 2026-05-21 — landed
+
+- Added `period_window` method to `impl Ceremony for ScriptedPlugin` at `crates/arawn-ceremonies/tests/brief_pipeline.rs:66-72`. Used the same synthetic 1-day window pattern as `PluginStub` in `backfill.rs` — `Utc::now()` and `Utc::now() + Duration::days(1)`. Added `Duration` to the chrono import on line 24.
+- Verification:
+  - `cargo test -p arawn-ceremonies --test brief_pipeline --no-run`: ✅ clean (was E0046).
+  - `cargo test -p arawn-ceremonies --test brief_pipeline`: ✅ **2 tests pass** (`brief_pipeline_missing_weekly_renders_placeholder`, `brief_pipeline_renders_daily_and_weekly_content`). Both were silently dead before this fix.
+  - `cargo test --workspace --no-run`: ✅ clean (35.74s, all test targets compile).
+- **Bonus / CI audit:** the angreal test wrapper (`.angreal/task_test.py`) uses `subprocess.run(..., check=True)` without piping through a shell. Python's subprocess captures cargo's real exit code, so `check=True` raises on non-zero. **CI was correctly catching the failure** — the bash-pipe quirk (`$?` returning the last pipeline command's exit code, not cargo's) is only a hazard when developers run `cargo test 2>&1 | tee ...` interactively. No CI fix needed. Documented inline here for posterity.
