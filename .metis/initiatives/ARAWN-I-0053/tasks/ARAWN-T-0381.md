@@ -4,14 +4,14 @@ level: task
 title: "T-D: Tier 1 — arawn-ceremonies mechanical cruft removal"
 short_code: "ARAWN-T-0381"
 created_at: 2026-05-21T14:53:19.953836+00:00
-updated_at: 2026-05-21T14:53:19.953836+00:00
+updated_at: 2026-05-21T15:33:29.878314+00:00
 parent: ARAWN-I-0053
 blocked_by: [ARAWN-T-0390]
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/active"
 
 
 exit_criteria_met: false
@@ -33,6 +33,8 @@ parameter in `arawn-ceremonies`.
 **Blocked by [[ARAWN-T-0390]]**: the broken `brief_pipeline.rs` integration
 test must be fixed first so lint analysis runs cleanly on this crate
 (see initiative inventory Tier 4 for context).
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
@@ -100,4 +102,16 @@ Per the initiative's dead-code methodology:
 
 ## Status Updates
 
-*To be added during implementation*
+### 2026-05-21 — landed
+
+- Deleted `fn rollback` in `crates/arawn-ceremonies/src/engine.rs:526` (truly dead — no callers anywhere).
+- Converted `fn begin` and `fn commit` in engine.rs:504/515 from `#[allow(dead_code)]` to `#[cfg(test)]`. They're used by the inline test at engine.rs:830/840.
+- Deleted `fn status_str` in `crates/arawn-ceremonies/src/service.rs:910` and its `#[allow(dead_code)]`. Removed now-unused `TabletStatus` import from line 30.
+- Collapsed the `monday_sunday_for_iso_week_public` alias: deleted the wrapper at `plugins/retro.rs:687-693`; made the underlying `fn monday_sunday_for_iso_week` `pub(crate)` and updated its doc-comment to reference the catalog re-use. Updated the import in `plugins/retro_detectors.rs:26` from `... as monday_sunday_for_iso_week` to a direct import.
+- Removed `tablet_id_prefix: &str` parameter from `build_service_with_items` in service.rs:963-967. Updated all 9 call sites via sed (verified `tablet_id_prefix` no longer appears in the file). Removed the `let _ = tablet_id_prefix;` line.
+
+**Validation:**
+- `cargo check --workspace`: ✅ clean.
+- `cargo build --workspace --release`: ✅ clean (1m 08s).
+- `cargo test --workspace --no-run`: ✅ clean.
+- `cargo test -p arawn-ceremonies`: ✅ **149 tests pass** (145 lib + 2 brief_pipeline + 2 retro_uat), 0 fail.

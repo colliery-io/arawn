@@ -27,7 +27,7 @@ use crate::CeremonyError;
 use crate::engine::ConnHandle;
 use crate::events::{CeremonyEvent, CeremonyEventSender, emit as emit_event};
 use crate::runner::{CeremonyDispatcher, DispatchOutcome};
-use crate::types::{ItemKind, TabletStatus};
+use crate::types::ItemKind;
 
 /// One tablet as the RPC clients see it.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -904,14 +904,6 @@ fn kind_str(k: &ItemKind) -> &'static str {
     }
 }
 
-/// Tiny use-once helper so callers that only need to render a
-/// status enum back into the wire-string don't have to pull
-/// `kind_str` into scope.
-#[allow(dead_code)]
-fn status_str(s: TabletStatus) -> &'static str {
-    s.as_str()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -971,7 +963,6 @@ mod tests {
     fn build_service_with_items(
         kind: &'static str,
         period: &str,
-        tablet_id_prefix: &str,
     ) -> (TempDir, CeremonyService, String) {
         let (tmp, conn) = open_test_db();
         let reg = PluginRegistry::new();
@@ -1002,13 +993,12 @@ mod tests {
         .unwrap();
         let dispatcher = Arc::new(EngineDispatcher::new(conn.clone(), reg));
         let service = CeremonyService::new(conn, dispatcher.clone());
-        let _ = tablet_id_prefix; // unused but kept for naming intent
         (tmp, service, tablet_id)
     }
 
     #[tokio::test]
     async fn run_generates_and_get_by_period_reads_back() {
-        let (_tmp, service, tablet_id) = build_service_with_items("retro", "2026-W20", "retro");
+        let (_tmp, service, tablet_id) = build_service_with_items("retro", "2026-W20");
         let outcome = service.run("retro").await.unwrap();
         assert!(matches!(outcome, DispatchOutcome::Generated { .. }));
         let dto = service.get_by_period("retro", "2026-W20").unwrap().unwrap();
@@ -1018,7 +1008,7 @@ mod tests {
 
     #[tokio::test]
     async fn list_items_filters_by_section() {
-        let (_tmp, service, tablet_id) = build_service_with_items("retro", "2026-W20", "retro");
+        let (_tmp, service, tablet_id) = build_service_with_items("retro", "2026-W20");
         service.run("retro").await.unwrap();
         let all = service.list_items(&tablet_id, None).unwrap();
         assert_eq!(all.len(), 2);
@@ -1030,7 +1020,7 @@ mod tests {
 
     #[tokio::test]
     async fn patch_item_toggles_done() {
-        let (_tmp, service, tablet_id) = build_service_with_items("retro", "2026-W20", "retro");
+        let (_tmp, service, tablet_id) = build_service_with_items("retro", "2026-W20");
         service.run("retro").await.unwrap();
         let items = service
             .list_items(&tablet_id, Some("what_happened"))
@@ -1062,7 +1052,7 @@ mod tests {
 
     #[tokio::test]
     async fn add_item_inserts_user_row_with_null_citation_and_next_ordinal() {
-        let (_tmp, service, tablet_id) = build_service_with_items("retro", "2026-W20", "retro");
+        let (_tmp, service, tablet_id) = build_service_with_items("retro", "2026-W20");
         service.run("retro").await.unwrap();
         // The retro tablet has one "diary" item at ordinal 0. Adding
         // another should land at ordinal 1.
@@ -1082,7 +1072,7 @@ mod tests {
 
     #[tokio::test]
     async fn list_notifications_surfaces_open_tablets() {
-        let (_tmp, service, _tablet_id) = build_service_with_items("retro", "2026-W20", "retro");
+        let (_tmp, service, _tablet_id) = build_service_with_items("retro", "2026-W20");
         service.run("retro").await.unwrap();
         let notes = service.list_notifications().unwrap();
         assert_eq!(notes.len(), 1);
@@ -1138,7 +1128,7 @@ mod tests {
 
     #[tokio::test]
     async fn upsert_diary_writes_row_and_flips_status() {
-        let (_tmp, service, tablet_id) = build_service_with_items("retro", "2026-W20", "retro");
+        let (_tmp, service, tablet_id) = build_service_with_items("retro", "2026-W20");
         service.run("retro").await.unwrap();
         service
             .upsert_diary(&tablet_id, "Felt productive.")
@@ -1169,7 +1159,7 @@ mod tests {
 
     #[tokio::test]
     async fn upsert_diary_is_idempotent_and_replaces_body() {
-        let (_tmp, service, tablet_id) = build_service_with_items("retro", "2026-W20", "retro");
+        let (_tmp, service, tablet_id) = build_service_with_items("retro", "2026-W20");
         service.run("retro").await.unwrap();
         service.upsert_diary(&tablet_id, "first version").unwrap();
         service.upsert_diary(&tablet_id, "rewritten").unwrap();
@@ -1224,7 +1214,7 @@ mod tests {
     async fn upsert_diary_emits_diary_updated_event() {
         use crate::CeremonyEvent;
         let (tx, mut rx) = crate::event_channel();
-        let (_tmp, service, tablet_id) = build_service_with_items("retro", "2026-W20", "retro");
+        let (_tmp, service, tablet_id) = build_service_with_items("retro", "2026-W20");
         let service = service.with_events(tx);
         service.run("retro").await.unwrap();
         service.upsert_diary(&tablet_id, "thoughts").unwrap();
@@ -1537,7 +1527,7 @@ mod tests {
     async fn patch_item_emits_item_updated_event() {
         use crate::CeremonyEvent;
         let (tx, mut rx) = crate::event_channel();
-        let (_tmp, service, tablet_id) = build_service_with_items("retro", "2026-W20", "retro");
+        let (_tmp, service, tablet_id) = build_service_with_items("retro", "2026-W20");
         // Replace service with one that has events wired.
         let service = service.with_events(tx);
         service.run("retro").await.unwrap();

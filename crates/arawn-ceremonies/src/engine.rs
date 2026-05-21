@@ -501,7 +501,7 @@ fn write_user_item(
 /// wraps the pipeline in a single transaction (see `dispatch_for`
 /// for the reasoning), but the tests below still use these helpers
 /// to exercise individual write paths in isolation.
-#[allow(dead_code)]
+#[cfg(test)]
 fn begin(conn: &ConnHandle) -> Result<(), CeremonyError> {
     let conn = conn
         .0
@@ -512,7 +512,7 @@ fn begin(conn: &ConnHandle) -> Result<(), CeremonyError> {
     Ok(())
 }
 
-#[allow(dead_code)]
+#[cfg(test)]
 fn commit(conn: &ConnHandle) -> Result<(), CeremonyError> {
     let conn = conn
         .0
@@ -520,17 +520,6 @@ fn commit(conn: &ConnHandle) -> Result<(), CeremonyError> {
         .map_err(|_| CeremonyError::Storage("connection mutex poisoned".to_string()))?;
     conn.execute("COMMIT", [])
         .map_err(|e| CeremonyError::Storage(format!("COMMIT: {e}")))?;
-    Ok(())
-}
-
-#[allow(dead_code)]
-fn rollback(conn: &ConnHandle) -> Result<(), CeremonyError> {
-    let conn = conn
-        .0
-        .lock()
-        .map_err(|_| CeremonyError::Storage("connection mutex poisoned".to_string()))?;
-    conn.execute("ROLLBACK", [])
-        .map_err(|e| CeremonyError::Storage(format!("ROLLBACK: {e}")))?;
     Ok(())
 }
 

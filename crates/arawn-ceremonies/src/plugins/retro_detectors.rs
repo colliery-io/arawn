@@ -23,7 +23,7 @@ use serde_json::json;
 
 use crate::CeremonyError;
 use crate::patterns::{Detector, DetectorCtx, DetectorRegistry};
-use crate::plugins::retro::monday_sunday_for_iso_week_public as monday_sunday_for_iso_week;
+use crate::plugins::retro::monday_sunday_for_iso_week;
 use crate::types::DetectedPattern;
 
 // --- priority_completion_ratio ---
