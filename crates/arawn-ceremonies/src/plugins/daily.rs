@@ -529,14 +529,12 @@ mod tests {
         ]
     }
 
-    fn sample_signals() -> Vec<SignalRow> {
+    fn sample_signals(ts: DateTime<Utc>) -> Vec<SignalRow> {
         vec![SignalRow {
             id: "sig-1".into(),
             source_kind: "email".into(),
             source_id: "msg-42".into(),
-            ts: DateTime::parse_from_rfc3339("2026-05-15T06:00:00Z")
-                .unwrap()
-                .with_timezone(&Utc),
+            ts,
             summary: "Urgent reply requested".into(),
             workstream: Some("proj-a".into()),
         }]
@@ -554,13 +552,25 @@ mod tests {
     async fn gather_collects_four_section_payload() {
         let (_tmp, conn) = open_test_db();
         seed_daily_history(&conn, "2026-05-15", "2026-W20");
+        let sig_ts = DateTime::parse_from_rfc3339("2026-05-15T06:00:00Z")
+            .unwrap()
+            .with_timezone(&Utc);
         let plugin = DailyCeremony::new(
             make_llm_with_response("[]"),
             "test-model",
             Arc::new(StaticCalendarSource(sample_calendar_events())),
-            Arc::new(StaticAttentionSource(sample_signals())),
+            Arc::new(StaticAttentionSource(sample_signals(sig_ts))),
         );
-        let ctx = EngineCtx::for_test(conn.clone(), "daily-2026-05-15".into(), "2026-05-15".into());
+        let day_start = DateTime::parse_from_rfc3339("2026-05-15T00:00:00Z")
+            .unwrap()
+            .with_timezone(&Utc);
+        let day_end = day_start + chrono::Duration::days(1);
+        let ctx = EngineCtx::new(
+            conn.clone(),
+            "daily-2026-05-15".into(),
+            "2026-05-15".into(),
+            (day_start, day_end),
+        );
         let facts = plugin.gather(&ctx).await.unwrap();
         let p = &facts.payload;
         assert_eq!(p.get("date").unwrap().as_str().unwrap(), "2026-05-15");
@@ -646,11 +656,16 @@ mod tests {
             {"section_key": "attention", "citation_id": "sig-1",  "body": {"text": "Respond to urgent email."}},
             {"section_key": "alignment", "citation_id": "prio-1", "body": {"text": "Ties to weekly priority."}}
         ]"#;
+        // Pin the attention signal inside today's window so the
+        // bounded `between` query picks it up. The dispatcher derives
+        // the window from `period_window(today)`.
         let plugin = Arc::new(DailyCeremony::new(
             make_llm_with_response(llm_response),
             "test-model",
             Arc::new(StaticCalendarSource(sample_calendar_events())),
-            Arc::new(StaticAttentionSource(sample_signals())),
+            Arc::new(StaticAttentionSource(sample_signals(
+                today - chrono::Duration::minutes(5),
+            ))),
         ));
         let reg = PluginRegistry::new();
         reg.register(plugin).unwrap();

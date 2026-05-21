@@ -4,14 +4,14 @@ level: task
 title: "T-K: Delete `AttentionSource::since()` legacy cursor method"
 short_code: "ARAWN-T-0388"
 created_at: 2026-05-21T14:53:30.914168+00:00
-updated_at: 2026-05-21T14:53:30.914168+00:00
+updated_at: 2026-05-21T16:24:33.256537+00:00
 parent: ARAWN-I-0053
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/active"
 
 
 exit_criteria_met: false
@@ -29,6 +29,8 @@ initiative_id: ARAWN-I-0053
 Remove the legacy `since=` open-ended cursor method from the `AttentionSource`
 trait, used by ceremony gather paths. Per operator decision (Tier 3 candidate
 3.6): kill it. The `between(start, end)` method is the modern surface.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
@@ -85,4 +87,33 @@ generation — if `since` was alive somewhere, that's where it manifested.
 
 ## Status Updates
 
-*To be added during implementation*
+### 2026-05-21 — landed
+
+**Audit:** zero production callers of `AttentionSource::since()`. The daily/weekly plugins already use `between(start, end, cap)` (daily.rs:178, weekly.rs:236). The only callers of `since` were:
+- The default `between` impl in the trait (which oversampled via `since` then filtered) — gone.
+- 3 test sites in `arawn-engine/src/ceremony_sources.rs:485/495/570` — migrated.
+
+**Trait change:**
+- Deleted `AttentionSource::since` method from the trait (`gather_sources.rs:58-62`).
+- Removed the default `between` impl (it was the only remaining caller of `since`). `between` is now a required trait method.
+- Tightened the trait doc to describe `between` as the canonical pinned-window query.
+
+**Impl changes:**
+- `StaticAttentionSource::between` (test stub): rewritten to filter by `[start, end)` (previously it ignored the cursor and returned the first `cap` items via `since`). Doc updated to match.
+- `ProjectionsAttentionSource::since` (production-quality 120-line SQL impl): deleted entirely — only its `between` impl remains.
+
+**Test migration in `arawn-engine/src/ceremony_sources.rs`:**
+- `.since(cursor, 10)` → `.between(cursor, now + Duration::days(1), 10)` and `.since(cursor, 2)` → `.between(cursor, now + Duration::days(1), 2)` at lines 485/495/570.
+
+**Test fix in `arawn-ceremonies/src/plugins/daily.rs`:**
+- The new bounded `between` semantic surfaced two daily tests that were silently relying on the old "since ignores cursor" misbehavior. The old default `between` impl swallowed time mismatches between fixed-date fixtures and a `now`-based window from `EngineCtx::for_test`.
+- `sample_signals` now takes a `ts: DateTime<Utc>` parameter, so the signal timestamp can be aligned to the window each test uses.
+- `gather_collects_four_section_payload`: switched from `EngineCtx::for_test` to `EngineCtx::new` with an explicit `[2026-05-15T00:00:00Z, 2026-05-16T00:00:00Z)` window matching the period_key. Signal pinned to `2026-05-15T06:00:00Z`.
+- `end_to_end_dispatch_writes_tablet_and_items`: signal pinned to `today - Duration::minutes(5)` so it falls inside the dispatcher's `period_window(today)` range.
+
+**Validation:**
+- `cargo check --workspace`: ✅ clean.
+- `cargo build --workspace --release`: ✅ clean (1m 05s).
+- `cargo test --workspace --no-run`: ✅ clean.
+- `cargo test -p arawn-ceremonies --lib plugins::daily`: ✅ 8 tests pass (was 6/8 failing during the migration intermediate).
+- Workspace lib tests across all crates: ✅ all pass.

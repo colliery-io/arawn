@@ -48,36 +48,19 @@ pub trait CalendarSource: Send + Sync {
 /// Read interface the daily/weekly plugins use to pull attention
 /// signals into a gather payload.
 ///
-/// `since` is the legacy "everything newer than this cursor"
-/// query. `between` is the pinned-window variant added in I-0052
-/// so back-dated dispatches see the correct range. New gather
-/// paths should use `between`; `since` is kept for callers that
-/// genuinely want an open-ended tail.
+/// Pinned-window query: return up to `cap` signals with `source_ts`
+/// in `[start, end)`. Production impls (`ProjectionsAttentionSource`)
+/// implement this with a bounded SQL query so the cap applies after
+/// the end filter; test stubs filter in memory.
 #[async_trait]
 pub trait AttentionSource: Send + Sync {
-    async fn since(
-        &self,
-        cursor: DateTime<Utc>,
-        cap: usize,
-    ) -> Result<Vec<SignalRow>, CeremonyError>;
-
     /// Return up to `cap` signals with `source_ts` in `[start, end)`.
-    /// Default impl wraps `since` and filters; production impls
-    /// should override with a properly bounded query so the cap
-    /// applies after the end filter.
     async fn between(
         &self,
         start: DateTime<Utc>,
         end: DateTime<Utc>,
         cap: usize,
-    ) -> Result<Vec<SignalRow>, CeremonyError> {
-        // Defensive default: oversample then filter. Production
-        // ProjectionsAttentionSource overrides with a bounded SQL
-        // query so this branch is only ever hit by static test
-        // sources or callers that haven't migrated yet.
-        let raw = self.since(start, cap.saturating_mul(2)).await?;
-        Ok(raw.into_iter().filter(|r| r.ts < end).take(cap).collect())
-    }
+    ) -> Result<Vec<SignalRow>, CeremonyError>;
 }
 
 /// No-op calendar source. Returns an empty Vec — used in tests that
@@ -103,17 +86,24 @@ impl CalendarSource for StaticCalendarSource {
     }
 }
 
-/// Attention source that returns a fixed set of signals. The cursor
-/// is ignored; the cap is applied. Useful for in-crate tests.
+/// Attention source that returns a fixed set of signals filtered to
+/// `[start, end)`. Useful for in-crate tests.
 pub struct StaticAttentionSource(pub Vec<SignalRow>);
 
 #[async_trait]
 impl AttentionSource for StaticAttentionSource {
-    async fn since(
+    async fn between(
         &self,
-        _cursor: DateTime<Utc>,
+        start: DateTime<Utc>,
+        end: DateTime<Utc>,
         cap: usize,
     ) -> Result<Vec<SignalRow>, CeremonyError> {
-        Ok(self.0.iter().take(cap).cloned().collect())
+        Ok(self
+            .0
+            .iter()
+            .filter(|r| r.ts >= start && r.ts < end)
+            .take(cap)
+            .cloned()
+            .collect())
     }
 }

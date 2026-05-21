@@ -4,14 +4,14 @@ level: task
 title: "T-J: Delete `WorkstreamStore::delete` hard-delete API"
 short_code: "ARAWN-T-0387"
 created_at: 2026-05-21T14:53:29.377601+00:00
-updated_at: 2026-05-21T16:21:58.431474+00:00
+updated_at: 2026-05-21T16:24:32.255589+00:00
 parent: ARAWN-I-0053
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -29,6 +29,8 @@ initiative_id: ARAWN-I-0053
 Remove `WorkstreamStore::delete(id: Uuid)` — the V1-era hard-delete method.
 Per operator decision (Tier 3 candidate 3.5): kill it. `soft_delete(name)` is
 the canonical API and Agent 4 found zero external callers.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
