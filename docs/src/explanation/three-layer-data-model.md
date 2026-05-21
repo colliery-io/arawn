@@ -109,7 +109,7 @@ The dispatcher (`arawn_feeds::dispatch::run_feed`) is the only writer for projec
 
 Palaces aren't free — extraction costs LLM calls. They pay off when you'll ask the agent about a workstream's state *repeatedly*. A one-off "what did X mean by Y" is a feeds question; a recurring "what's the state of our migration to Postgres" is a palace question.
 
-[When palaces make sense](./palaces.md#when-to-bother) has the trade-off table.
+[When palaces make sense](./palaces.md#when-a-palace-makes-sense) has the trade-off table.
 
 ## Related
 

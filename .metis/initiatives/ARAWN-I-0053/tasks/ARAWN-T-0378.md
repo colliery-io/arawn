@@ -4,14 +4,14 @@ level: task
 title: "T-A: Workspace dependency cleanup — drop dead `ignore` dep + dedupe arawn-embed"
 short_code: "ARAWN-T-0378"
 created_at: 2026-05-21T14:53:15.347580+00:00
-updated_at: 2026-05-21T15:07:16.386262+00:00
+updated_at: 2026-05-21T15:10:27.332060+00:00
 parent: ARAWN-I-0053
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -28,6 +28,8 @@ initiative_id: ARAWN-I-0053
 
 Remove a workspace dependency that no code imports and deduplicate a redundant
 dev-dependency declaration. Pure Cargo.toml cleanup with no Rust code changes.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

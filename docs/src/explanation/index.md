@@ -27,6 +27,11 @@ Explanation pages answer "why does arawn work this way?" They're not how-tos (no
 - **[Workflows](./workflows.md)** — when to workflow vs. converse; why a DAG; cloacina rationale.
 - **[Ceremonies](./ceremonies.md)** — morning brief / weekly / retro; the "watch, check, summarize, nudge" thesis.
 
+## Integrations
+
+- **[Integrations overview](./integrations-overview.md)** — how arawn connects to external providers (Slack, Google, Atlassian, GitHub); credential model; per-provider scopes.
+- **[OAuth primer](./oauth-primer.md)** — why OAuth, BYO app vs shared client, token encryption, refresh flow.
+
 ## When explanation isn't what you need
 
 - If you want to learn from zero, see **[Tutorials](../tutorials/index.md)**.
