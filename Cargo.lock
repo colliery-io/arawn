@@ -215,6 +215,7 @@ dependencies = [
  "chrono-tz",
  "cloacina",
  "futures",
+ "iana-time-zone",
  "rusqlite",
  "serde",
  "serde_json",

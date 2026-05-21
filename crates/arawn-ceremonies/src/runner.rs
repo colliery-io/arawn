@@ -178,8 +178,15 @@ impl CeremonyRunner {
         // pre-existing schedule for this workflow first.
         delete_schedule_for(&self.cloacina, &workflow_name).await?;
 
+        // Cloacina/chrono-tz only accept IANA zone strings
+        // (`America/Los_Angeles`, `UTC`, …) — the convenience
+        // string `"Local"` is rejected. Resolve it to the OS's
+        // actual IANA zone before passing to cloacina; fall back
+        // to UTC if detection fails (ARAWN-T-0377).
+        let resolved_tz = resolve_cron_timezone(&schedule.timezone);
+
         self.cloacina
-            .register_cron_workflow(&workflow_name, &schedule.expression, &schedule.timezone)
+            .register_cron_workflow(&workflow_name, &schedule.expression, &resolved_tz)
             .await
             .map_err(|e| {
                 CeremonyError::Other(format!(
@@ -190,6 +197,7 @@ impl CeremonyRunner {
         info!(
             kind = kind,
             schedule = %schedule,
+            resolved_timezone = %resolved_tz,
             workflow = %workflow_name,
             "ceremony registered"
         );
@@ -262,6 +270,48 @@ impl Task for CeremonyDispatchTask {
 /// namespace delimiters.
 fn workflow_name(kind: &str) -> String {
     format!("ceremony_{kind}")
+}
+
+/// Normalise a `CronSchedule.timezone` string for cloacina.
+///
+/// Cloacina (and `chrono-tz` underneath) only accept IANA zone
+/// names like `UTC`, `America/Los_Angeles`. The plugin defaults
+/// and the arawn.toml fallback use the literal string `"Local"`,
+/// which cloacina rejects outright — silently disabling every
+/// ceremony's scheduled run.
+///
+/// When the input is `"Local"` (case-insensitive) or empty, query
+/// the OS for its IANA zone via `iana_time_zone::get_timezone()`.
+/// If that detection fails (rare; mostly Docker-without-tz-data
+/// or unusual Linux setups), fall back to `"UTC"` with a logged
+/// warning.
+///
+/// Explicit IANA strings pass through unchanged — caller asked
+/// for `America/New_York`, they get it.
+fn resolve_cron_timezone(raw: &str) -> String {
+    let trimmed = raw.trim();
+    if trimmed.is_empty() || trimmed.eq_ignore_ascii_case("local") {
+        match iana_time_zone::get_timezone() {
+            Ok(zone) if !zone.is_empty() => zone,
+            Ok(_) => {
+                warn!(
+                    raw = %trimmed,
+                    "system timezone detection returned an empty string — falling back to UTC for ceremony cron"
+                );
+                "UTC".to_string()
+            }
+            Err(e) => {
+                warn!(
+                    raw = %trimmed,
+                    error = %e,
+                    "could not detect system timezone — falling back to UTC for ceremony cron"
+                );
+                "UTC".to_string()
+            }
+        }
+    } else {
+        trimmed.to_string()
+    }
 }
 
 /// Idempotent cron-schedule cleanup. cloacina's
@@ -459,6 +509,61 @@ mod tests {
     fn workflow_name_is_deterministic() {
         assert_eq!(workflow_name("retro"), "ceremony_retro");
         assert_eq!(workflow_name("daily"), "ceremony_daily");
+    }
+
+    // --- T-0377: resolve_cron_timezone ---
+
+    #[test]
+    fn resolve_explicit_iana_passes_through() {
+        assert_eq!(super::resolve_cron_timezone("UTC"), "UTC");
+        assert_eq!(
+            super::resolve_cron_timezone("America/Los_Angeles"),
+            "America/Los_Angeles"
+        );
+        // Trims whitespace.
+        assert_eq!(super::resolve_cron_timezone("  Europe/Berlin  "), "Europe/Berlin");
+    }
+
+    #[test]
+    fn resolve_local_yields_real_iana_not_local() {
+        // Either the OS reports a valid IANA zone, or we fall back
+        // to UTC. Either way we never return the literal "Local"
+        // that cloacina rejects.
+        let resolved = super::resolve_cron_timezone("Local");
+        assert_ne!(resolved.to_ascii_lowercase(), "local");
+        assert!(
+            !resolved.is_empty(),
+            "resolver must never return an empty string"
+        );
+        // Must be parseable as a chrono-tz zone (which is what
+        // cloacina ultimately consumes).
+        use std::str::FromStr;
+        assert!(
+            chrono_tz::Tz::from_str(&resolved).is_ok(),
+            "resolved zone '{resolved}' must parse as a chrono-tz zone"
+        );
+    }
+
+    #[test]
+    fn resolve_empty_or_whitespace_yields_real_iana() {
+        for input in ["", "   ", "\t\n"] {
+            let resolved = super::resolve_cron_timezone(input);
+            assert_ne!(resolved.to_ascii_lowercase(), "local");
+            assert!(!resolved.is_empty());
+            use std::str::FromStr;
+            assert!(
+                chrono_tz::Tz::from_str(&resolved).is_ok(),
+                "input '{input}' resolved to non-IANA '{resolved}'"
+            );
+        }
+    }
+
+    #[test]
+    fn resolve_local_case_insensitive() {
+        for variant in ["Local", "local", "LOCAL", "LoCaL"] {
+            let resolved = super::resolve_cron_timezone(variant);
+            assert_ne!(resolved.to_ascii_lowercase(), "local");
+        }
     }
 
     #[tokio::test]
