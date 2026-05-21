@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use serde_json::{Value, json};
 
 use crate::plan::{PlanModeState, generate_slug};
-use crate::tool::{Tool, ToolCategory, ToolError, ToolOutput};
+use arawn_tool::{Tool, ToolCategory, ToolError, ToolOutput};
 
 /// Tool that enters plan mode — restricts the agent to observation-only tools
 /// while it researches and designs an approach. The plan is written to a file

@@ -14,8 +14,8 @@ use crate::background::{
 use crate::compactor::Compactor;
 use crate::error::EngineError;
 use crate::query_engine::{QueryEngine, QueryEngineConfig};
-use crate::tool::ToolError;
-use crate::tool::{Tool, ToolCategory, ToolOutput, ToolRegistry};
+use arawn_tool::ToolError;
+use arawn_tool::{Tool, ToolCategory, ToolOutput, ToolRegistry};
 
 const DEFAULT_MAX_TURNS: usize = 20;
 

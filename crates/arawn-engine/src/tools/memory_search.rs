@@ -8,7 +8,7 @@ use tracing::debug;
 use arawn_embed::Embedder;
 use arawn_memory::{Entity, EntityType, MemoryStore, RelationType};
 
-use crate::tool::{Tool, ToolCategory, ToolError, ToolOutput};
+use arawn_tool::{Tool, ToolCategory, ToolError, ToolOutput};
 use crate::workstream_router::MemoryHandle;
 
 /// Tool that searches the knowledge base using composite retrieval:

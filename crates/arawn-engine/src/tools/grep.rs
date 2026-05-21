@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use serde_json::{Value, json};
 use tokio::process::Command;
 
-use crate::tool::{Tool, ToolError, ToolOutput};
+use arawn_tool::{Tool, ToolError, ToolOutput};
 use crate::tools::sensitive_paths::{is_sensitive_path, is_token_path};
 
 /// Default cap on grep results when head_limit is unspecified.

@@ -4,14 +4,14 @@ level: task
 title: "T-F: Tier 1 — small-crate cleanup (steward, extractor, llm)"
 short_code: "ARAWN-T-0383"
 created_at: 2026-05-21T14:53:23.121729+00:00
-updated_at: 2026-05-21T15:43:28.806812+00:00
+updated_at: 2026-05-21T15:48:58.492303+00:00
 parent: ARAWN-I-0053
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -29,6 +29,8 @@ initiative_id: ARAWN-I-0053
 Mop-up task: delete `_ts` fake-use in arawn-steward, delete `push_classify`
 dead test helper in arawn-extractor, and fix the pre-existing
 `error_type` dead-field warning in arawn-llm's retry test fixture.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

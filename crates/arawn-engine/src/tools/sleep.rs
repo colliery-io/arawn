@@ -3,7 +3,7 @@ use std::time::Duration;
 use async_trait::async_trait;
 use serde_json::{Value, json};
 
-use crate::tool::{Tool, ToolCategory, ToolError, ToolOutput};
+use arawn_tool::{Tool, ToolCategory, ToolError, ToolOutput};
 
 /// Maximum sleep duration in seconds.
 const MAX_SLEEP_SECS: u64 = 300; // 5 minutes

@@ -12,7 +12,7 @@ use tokio::sync::{Mutex, mpsc};
 use tracing::{info, warn};
 
 use arawn_engine::PermissionRule;
-use arawn_engine::tool::ToolRegistry;
+use arawn_engine::ToolRegistry;
 use arawn_mcp::McpManager;
 
 use crate::config::ArawnConfig;

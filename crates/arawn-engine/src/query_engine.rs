@@ -13,7 +13,7 @@ use crate::hooks::{HookInput, HookRunner};
 use crate::permissions::{PermissionChecker, PermissionDecision};
 use crate::plan::PlanModeState;
 use crate::token_estimator::{ModelLimits, TokenEstimator};
-use crate::tool::ToolRegistry;
+use arawn_tool::ToolRegistry;
 use crate::tool_timeout;
 
 const DEFAULT_MAX_ITERATIONS: usize = 200;
@@ -543,7 +543,7 @@ impl QueryEngine {
 
                 let limited = if let Some(ref data_dir) = self.config.data_dir {
                     crate::tool_result_limiter::limit_tool_result(
-                        crate::tool::ToolOutput {
+                        arawn_tool::ToolOutput {
                             content: tool_result.content,
                             is_error: tool_result.is_error,
                         },
@@ -553,7 +553,7 @@ impl QueryEngine {
                     )
                     .await
                 } else {
-                    crate::tool::ToolOutput {
+                    arawn_tool::ToolOutput {
                         content: tool_result.content,
                         is_error: tool_result.is_error,
                     }
@@ -1024,7 +1024,7 @@ fn filter_tools_for_context(
     session: &Session,
     registry: &ToolRegistry,
 ) -> Vec<arawn_llm::ToolDefinition> {
-    use crate::tool::ToolCategory;
+    use arawn_tool::ToolCategory;
 
     // On first turn or very short sessions, send all tools (no context to filter on)
     if session.messages().len() <= 2 {

@@ -16,7 +16,7 @@ use serde_json::{Value, json};
 use arawn_llm::LlmClient;
 use arawn_steward::{ClusterMode, DustEngine, DustOpts, Journal, accept, rollback};
 
-use crate::tool::{Tool, ToolCategory, ToolError, ToolOutput};
+use arawn_tool::{Tool, ToolCategory, ToolError, ToolOutput};
 use crate::workstream_router::WorkstreamMemoryRouter;
 
 /// Return the closest tag in `candidates` to `needle` if any candidate

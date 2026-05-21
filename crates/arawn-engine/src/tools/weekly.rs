@@ -24,7 +24,7 @@ use arawn_ceremonies::{
     AddPriorityRequest, CeremonyService, DispatchOutcome, plugins::weekly::iso_week,
 };
 
-use crate::tool::{Tool, ToolCategory, ToolError, ToolOutput};
+use arawn_tool::{Tool, ToolCategory, ToolError, ToolOutput};
 
 fn map_err(e: arawn_ceremonies::CeremonyError) -> ToolOutput {
     ToolOutput::error(format!("ceremony_error: {e}"))

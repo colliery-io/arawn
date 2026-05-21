@@ -8,7 +8,7 @@ use serde_json::{Value, json};
 
 use arawn_llm::{ChatContent, ChatMessage, ChatRequest};
 
-use crate::tool::{Tool, ToolCategory, ToolError, ToolOutput};
+use arawn_tool::{Tool, ToolCategory, ToolError, ToolOutput};
 
 /// Cache TTL: 15 minutes.
 const CACHE_TTL: Duration = Duration::from_secs(15 * 60);

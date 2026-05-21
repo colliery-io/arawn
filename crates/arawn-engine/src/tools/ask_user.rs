@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use serde_json::{Value, json};
 
-use crate::tool::{Tool, ToolCategory, ToolError, ToolOutput};
+use arawn_tool::{Tool, ToolCategory, ToolError, ToolOutput};
 
 /// Asks the user structured multiple-choice questions to gather requirements
 /// or clarify ambiguity. Returns the user's selected answers.

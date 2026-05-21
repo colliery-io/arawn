@@ -16,7 +16,7 @@ use serde_json::{Value, json};
 
 use arawn_ceremonies::{CeremonyService, DispatchOutcome, ItemPatch};
 
-use crate::tool::{Tool, ToolCategory, ToolError, ToolOutput};
+use arawn_tool::{Tool, ToolCategory, ToolError, ToolOutput};
 
 fn map_err(e: arawn_ceremonies::CeremonyError) -> ToolOutput {
     ToolOutput::error(format!("ceremony_error: {e}"))

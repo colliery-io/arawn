@@ -3,7 +3,7 @@ use std::path::Path;
 use tracing::{debug, info};
 use uuid::Uuid;
 
-use crate::tool::ToolOutput;
+use arawn_tool::ToolOutput;
 
 /// Default maximum characters per tool result before persisting to disk.
 pub const DEFAULT_MAX_RESULT_SIZE_CHARS: usize = 50_000;

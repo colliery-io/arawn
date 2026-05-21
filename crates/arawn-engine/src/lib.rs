@@ -17,7 +17,6 @@ pub mod skills;
 pub mod system_prompt;
 pub mod testing;
 pub mod token_estimator;
-pub mod tool;
 pub mod tool_result_limiter;
 pub mod tool_timeout;
 pub mod tools;
@@ -42,9 +41,9 @@ pub use permissions::{
     PermissionConfig, PermissionDecision, PermissionMode, PermissionResponse, PermissionRule,
     RuleKind, SessionGrants,
 };
-// The top-level ToolCategory re-export below is tool::ToolCategory
+// The top-level `ToolCategory` re-export below is `arawn_tool::ToolCategory`
 // (Core/Task/Agent/Web/etc.) for context filtering. Permission-risk classes
-// now live on the Tool trait itself as arawn_tool::PermissionCategory.
+// live on the Tool trait itself as `arawn_tool::PermissionCategory`.
 pub use ceremony_sources::{ProjectionsAttentionSource, ProjectionsCalendarSource};
 pub use plan::{PlanModeSnapshot, PlanModeState, generate_slug};
 pub use query_engine::{
@@ -53,7 +52,7 @@ pub use query_engine::{
 pub use skills::{SkillDefinition, SkillRegistry, format_skill_listing, load_merged_skills};
 pub use system_prompt::{ContextFile, SystemPromptBuilder, find_context_files};
 pub use token_estimator::{ModelLimits, TokenEstimator};
-pub use tool::{Tool, ToolCategory, ToolError, ToolOutput, ToolRegistry};
+pub use arawn_tool::{Tool, ToolCategory, ToolError, ToolOutput, ToolRegistry};
 pub use tools::{
     AgentTool, AskUserTool, BindBackfillHook, EnterPlanModeTool, ExitPlanModeTool, FeedSearchTool,
     FileEditTool, FileReadTool, FileWriteTool, GlobTool, GrepTool, MemorySearchTool,

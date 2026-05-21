@@ -10,7 +10,7 @@ use crate::permissions::PermissionChecker;
 use crate::plan::PlanModeState;
 use crate::query_engine::{ProgressEvent, QueryEngine, QueryEngineConfig};
 use crate::skills::SkillRegistry;
-use crate::tool::{Tool, ToolRegistry};
+use arawn_tool::{Tool, ToolRegistry};
 
 /// Result from running the test harness.
 pub struct HarnessResult {

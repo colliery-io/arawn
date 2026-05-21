@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use serde_json::{Value, json};
 
 use crate::background::{BackgroundTaskManager, BackgroundTaskStatus};
-use crate::tool::{Tool, ToolCategory, ToolError, ToolOutput};
+use arawn_tool::{Tool, ToolCategory, ToolError, ToolOutput};
 
 /// Read the output and status of a background task.
 /// Can block/poll until the task completes or return immediately.

@@ -17,7 +17,7 @@ use serde_json::{Value, json};
 use arawn_core::{SCRATCH_NAME, Workstream};
 use arawn_storage::Store;
 
-use crate::tool::{Tool, ToolCategory, ToolError, ToolOutput};
+use arawn_tool::{Tool, ToolCategory, ToolError, ToolOutput};
 
 /// Holder for the session-active workstream name. Cheap to clone
 /// (`Arc<Mutex<String>>`). T-0250 will retire this in favor of the

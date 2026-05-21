@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use serde_json::{Value, json};
 
-use crate::tool::{Tool, ToolError, ToolOutput};
+use arawn_tool::{Tool, ToolError, ToolOutput};
 use crate::tools::sensitive_paths::{is_secret_file, is_token_path};
 
 /// Write content to a file within the workstream's working directory.

@@ -4,14 +4,14 @@ level: task
 title: "T-D: Tier 1 — arawn-ceremonies mechanical cruft removal"
 short_code: "ARAWN-T-0381"
 created_at: 2026-05-21T14:53:19.953836+00:00
-updated_at: 2026-05-21T15:33:29.878314+00:00
+updated_at: 2026-05-21T15:39:20.871777+00:00
 parent: ARAWN-I-0053
 blocked_by: [ARAWN-T-0390]
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -33,6 +33,8 @@ parameter in `arawn-ceremonies`.
 **Blocked by [[ARAWN-T-0390]]**: the broken `brief_pipeline.rs` integration
 test must be fixed first so lint analysis runs cleanly on this crate
 (see initiative inventory Tier 4 for context).
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

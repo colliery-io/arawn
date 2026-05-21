@@ -22,7 +22,7 @@ use uuid::Uuid;
 use arawn_embed::Embedder;
 use arawn_memory::{Entity, EntityType, MemoryManager, MemoryStore};
 
-use crate::tool::{Tool, ToolCategory, ToolError, ToolOutput};
+use arawn_tool::{Tool, ToolCategory, ToolError, ToolOutput};
 use crate::workstream_router::{MemoryHandle, WorkstreamMemoryRouter};
 
 /// RRF constant — same value `feed_search` uses.

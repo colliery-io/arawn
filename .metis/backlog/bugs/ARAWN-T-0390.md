@@ -4,7 +4,7 @@ level: task
 title: "Fix broken `brief_pipeline.rs` ScriptedPlugin — missing `period_window` trait method"
 short_code: "ARAWN-T-0390"
 created_at: 2026-05-21T14:53:33.521653+00:00
-updated_at: 2026-05-21T15:11:41.613038+00:00
+updated_at: 2026-05-21T15:16:19.786379+00:00
 parent: 
 blocked_by: []
 archived: false
@@ -12,7 +12,7 @@ archived: false
 tags:
   - "#task"
   - "#bug"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -49,6 +49,8 @@ initiative_id: NULL
 Restore compilation of the `brief_pipeline.rs` integration test by implementing
 the missing `period_window` trait method on `ScriptedPlugin`. Then audit CI's
 cargo exit-code handling to ensure pipeline failures of this kind are caught.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

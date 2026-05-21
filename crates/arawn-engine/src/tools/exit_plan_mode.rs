@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use serde_json::{Value, json};
 
 use crate::plan::PlanModeState;
-use crate::tool::{Tool, ToolCategory, ToolError, ToolOutput};
+use arawn_tool::{Tool, ToolCategory, ToolError, ToolOutput};
 
 /// Tool that exits plan mode — writes the plan to disk and deactivates plan mode
 /// so all tools become available again. The plan content is returned for the user

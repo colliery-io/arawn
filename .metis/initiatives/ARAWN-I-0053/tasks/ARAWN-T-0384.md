@@ -4,14 +4,14 @@ level: task
 title: "T-G: Drop `arawn_engine::tool` re-export shim — migrate to arawn-tool"
 short_code: "ARAWN-T-0384"
 created_at: 2026-05-21T14:53:24.695899+00:00
-updated_at: 2026-05-21T14:53:24.695899+00:00
+updated_at: 2026-05-21T15:48:59.289852+00:00
 parent: ARAWN-I-0053
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/active"
 
 
 exit_criteria_met: false
@@ -32,6 +32,8 @@ home for `Tool`/`ToolCategory`/`ToolError`/`ToolOutput`/`ToolRegistry` is
 compatibility with old import paths.
 
 Per operator decision (Tier 3 candidate 3.3): update callers and drop.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
@@ -87,4 +89,20 @@ Per the initiative's dead-code methodology:
 
 ## Status Updates
 
-*To be added during implementation*
+### 2026-05-21 — landed
+
+- **Moved tool registry tests:** the 12 `ToolRegistry`-behavior tests in `crates/arawn-engine/src/tool.rs` were relocated to a new `mod registry_tests` in `crates/arawn-tool/src/registry.rs` (alongside the existing `mod injection_tests`). Adapted imports: `arawn_tool::ToolContext` → `crate::ToolContext`. Tests cover: empty registry, register/get, unregister, hot-reload cycle, tool_definitions roundtrip, Send+Sync, concurrent access, prefix unregister, ToolOutput success/error.
+- **Deleted shim file:** `rm crates/arawn-engine/src/tool.rs` (entire 209-line file gone).
+- **Updated `crates/arawn-engine/src/lib.rs`:**
+  - Removed `pub mod tool;` declaration.
+  - Changed `pub use tool::{Tool, ToolCategory, ToolError, ToolOutput, ToolRegistry};` → `pub use arawn_tool::{Tool, ToolCategory, ToolError, ToolOutput, ToolRegistry};` (re-export remains at the engine level so external consumers can keep `arawn_engine::ToolRegistry` etc.).
+  - Updated the comment that referenced `tool::ToolCategory` to reference `arawn_tool::ToolCategory` directly.
+- **Bulk-migrated internal callers:** sed-replaced `use crate::tool::` → `use arawn_tool::` and `crate::tool::` → `arawn_tool::` across all `crates/arawn-engine/src/**/*.rs` files (30+ files affected, including agent_defs, query_engine, testing, tool_result_limiter, and every tool in `tools/`). The `crate::tools::` (plural — different module), `crate::tool_timeout`, and `crate::tool_result_limiter` paths were untouched (they target separate modules whose names happen to begin with `tool`).
+- **Updated external caller:** `crates/arawn/src/config_watcher.rs:15` changed `use arawn_engine::tool::ToolRegistry;` → `use arawn_engine::ToolRegistry;`. Grep workspace-wide confirmed zero remaining `arawn_engine::tool::` references.
+
+**Validation:**
+- `cargo check --workspace`: ✅ clean.
+- `cargo build --workspace --release`: ✅ clean (1m 51s).
+- `cargo test --workspace --no-run`: ✅ clean.
+- `cargo test -p arawn-tool --lib`: ✅ **24 tests pass** (12 pre-existing + 12 relocated ToolRegistry tests).
+- `cargo test -p arawn-engine --lib`: ✅ **681 tests pass**.

@@ -10,7 +10,7 @@ use tracing::{debug, info, warn};
 use crate::background::{
     BackgroundTaskKind, BackgroundTaskManager, BackgroundTaskStatus, append_output,
 };
-use crate::tool::{Tool, ToolError, ToolOutput};
+use arawn_tool::{Tool, ToolError, ToolOutput};
 use crate::tools::safe_env::safe_env;
 use crate::tools::sensitive_paths::sensitive_deny_read_paths;
 

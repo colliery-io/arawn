@@ -16,7 +16,7 @@ use serde_json::{Value, json};
 use arawn_embed::Embedder;
 use arawn_projections::ProjectionStore;
 
-use crate::tool::{Tool, ToolCategory, ToolError, ToolOutput};
+use arawn_tool::{Tool, ToolCategory, ToolError, ToolOutput};
 
 const KNOWN_FEED_TYPES: &[&str] = &[
     "gmail_messages",

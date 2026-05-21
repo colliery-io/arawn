@@ -19,7 +19,7 @@ use serde_json::{Value, json};
 
 use arawn_storage::{ListFilter, NewTodo, Store, TodoEventSender, TodoPatch, TodoService};
 
-use crate::tool::{Tool, ToolCategory, ToolError, ToolOutput};
+use arawn_tool::{Tool, ToolCategory, ToolError, ToolOutput};
 
 fn build_service<'a>(
     store: &'a Store,

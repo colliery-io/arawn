@@ -5,7 +5,7 @@ use serde_json::{Value, json};
 use tracing::info;
 
 use crate::background::{BackgroundTaskManager, BackgroundTaskStatus};
-use crate::tool::{Tool, ToolCategory, ToolError, ToolOutput};
+use arawn_tool::{Tool, ToolCategory, ToolError, ToolOutput};
 
 /// Stop a running background task.
 pub struct TaskStopTool {

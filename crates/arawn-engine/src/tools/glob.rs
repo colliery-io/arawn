@@ -3,7 +3,7 @@ use std::time::Instant;
 use async_trait::async_trait;
 use serde_json::{Value, json};
 
-use crate::tool::{Tool, ToolError, ToolOutput};
+use arawn_tool::{Tool, ToolError, ToolOutput};
 use crate::tools::sensitive_paths::{is_sensitive_path, is_token_path};
 
 /// Maximum number of files to return before truncating.

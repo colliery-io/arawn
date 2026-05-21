@@ -4,14 +4,14 @@ level: task
 title: "T-E: Tier 1 — arawn-feeds mechanical cruft removal"
 short_code: "ARAWN-T-0382"
 created_at: 2026-05-21T14:53:21.578365+00:00
-updated_at: 2026-05-21T15:39:21.644005+00:00
+updated_at: 2026-05-21T15:43:27.823081+00:00
 parent: ARAWN-I-0053
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -30,6 +30,8 @@ Delete the dead `JsonValue` re-export, the paired `_value_marker` fake-use,
 and the `_force_use_traits` fake-use in the github repo_mirror template.
 Verify whether the `#[allow(deprecated)]` annotation on the Atlassian
 `get_all_projects` call is necessary.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

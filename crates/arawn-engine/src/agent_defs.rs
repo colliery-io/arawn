@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use tracing::{info, warn};
 
-use crate::tool::ToolRegistry;
+use arawn_tool::ToolRegistry;
 
 /// An agent definition — controls system prompt, tool access, and behavior.
 #[derive(Debug, Clone)]

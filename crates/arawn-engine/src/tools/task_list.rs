@@ -11,7 +11,7 @@ use async_trait::async_trait;
 use serde_json::{Value, json};
 
 use crate::background::{BackgroundTaskManager, BackgroundTaskStatus};
-use crate::tool::{Tool, ToolCategory, ToolError, ToolOutput};
+use arawn_tool::{Tool, ToolCategory, ToolError, ToolOutput};
 
 /// List all background sub-agent tasks tracked in the current session.
 pub struct TaskListTool {

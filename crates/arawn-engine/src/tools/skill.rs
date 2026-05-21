@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use serde_json::Value;
 
 use crate::skills::SkillRegistry;
-use crate::tool::{Tool, ToolError, ToolOutput};
+use arawn_tool::{Tool, ToolError, ToolOutput};
 
 /// Tool that executes skills (reusable prompt-based workflows).
 ///
