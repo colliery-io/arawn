@@ -4,135 +4,63 @@ level: task
 title: "T-C: Split `arawn/src/local_service.rs` — `LocalService` impl by feature group"
 short_code: "ARAWN-T-0399"
 created_at: 2026-05-22T01:46:55.944278+00:00
-updated_at: 2026-05-22T02:18:42.125763+00:00
+updated_at: 2026-05-22T02:45:57.075418+00:00
 parent: ARAWN-I-0054
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
 initiative_id: ARAWN-I-0054
 ---
 
-# T-C: Split `arawn/src/local_service.rs` — `LocalService` impl by feature group
+# T-C: Split `arawn/src/local_service.rs`
 
-*This template includes sections for various types of tasks. Delete sections that don't apply to your specific use case.*
-
-## Parent Initiative **[CONDITIONAL: Assigned Task]**
+## Parent Initiative
 
 [[ARAWN-I-0054]]
 
-## Objective **[REQUIRED]**
+## Direction
 
-{Clear statement of what this task accomplishes}
+Rust forbids splitting a single trait impl across files. Pattern used:
+**inherent impl + `_inner` suffix + trait shell that delegates.**
 
-## Backlog Item Details **[CONDITIONAL: Backlog Item]**
+- Each sub-module has `impl LocalService { ... }` blocks with the trait method bodies renamed with `_inner` suffix and made `pub(super)`.
+- `mod.rs` keeps a single `#[async_trait] impl ArawnService for LocalService { ... }` where each trait method body is just `self.NAME_inner(args).await`.
 
-{Delete this section when task is assigned to an initiative}
+## Status Updates
 
-### Type
-- [ ] Bug - Production issue that needs fixing
-- [ ] Feature - New functionality or enhancement  
-- [ ] Tech Debt - Code improvement or refactoring
-- [ ] Chore - Maintenance or setup work
+### 2026-05-22 — landed
 
-### Priority
-- [ ] P0 - Critical (blocks users/revenue)
-- [ ] P1 - High (important for user experience)
-- [ ] P2 - Medium (nice to have)
-- [ ] P3 - Low (when time permits)
+**Split executed via Python helper.** The original 1,815-line `local_service.rs` became 8 files under `local_service/`:
 
-### Impact Assessment **[CONDITIONAL: Bug]**
-- **Affected Users**: {Number/percentage of users affected}
-- **Reproduction Steps**: 
-  1. {Step 1}
-  2. {Step 2}
-  3. {Step 3}
-- **Expected vs Actual**: {What should happen vs what happens}
+| File | Lines | Contents |
+|---|---|---|
+| `mod.rs` | 863 | struct + initial `impl LocalService` + delegation shell + standalone helpers + tests |
+| `workstreams.rs` | 45 | 2 methods |
+| `sessions.rs` | 419 | 8 methods (`send_message_inner` dominates) |
+| `commands.rs` | 126 | 3 methods |
+| `memory.rs` | 162 | 3 methods |
+| `permissions.rs` | 106 | 4 methods |
+| `integrations.rs` | 188 | 3 methods |
+| `feeds.rs` | 153 | 7 methods |
 
-### Business Justification **[CONDITIONAL: Feature]**
-- **User Value**: {Why users need this}
-- **Business Value**: {Impact on metrics/revenue}
-- **Effort Estimate**: {Rough size - S/M/L/XL}
+**Cross-module visibility:**
+- Each sub-module's `*_inner` method is `pub(super)` so the trait shell can call it.
+- `mod.rs` helpers (`default_feed_for_service`, `feed_err`, `feed_summary_to_dto`, `resolve_ws_dir_from_store`, `first_sentence`, `current_summary`, `OAuthFlowCtx`, `infer_entity_type`) promoted to `pub(super)`.
 
-### Technical Debt Impact **[CONDITIONAL: Tech Debt]**
-- **Current Problems**: {What's difficult/slow/buggy now}
-- **Benefits of Fixing**: {What improves after refactoring}
-- **Risk Assessment**: {Risks of not addressing this}
+**Off-by-six fix during execution:** the first script run set `TRAIT_END_LINE = 1666`, but the trait impl actually closes at line 1660. Reverted and re-ran with auto-detection (brace-counting from the last method's start).
 
-## Acceptance Criteria
+`cargo fix --lib -p arawn` cleaned 105 unused-import warnings → 0.
 
-## Acceptance Criteria **[REQUIRED]**
+**Validation:**
+- `cargo check --workspace`: ✅ clean, zero warnings.
+- `cargo build --workspace --release`: ✅ clean (1m 02s).
+- `cargo test --workspace --no-run`: ✅ clean.
+- `cargo test --workspace --lib`: ✅ **1,758 tests pass**, 0 fail.
 
-- [ ] {Specific, testable requirement 1}
-- [ ] {Specific, testable requirement 2}
-- [ ] {Specific, testable requirement 3}
-
-## Test Cases **[CONDITIONAL: Testing Task]**
-
-{Delete unless this is a testing task}
-
-### Test Case 1: {Test Case Name}
-- **Test ID**: TC-001
-- **Preconditions**: {What must be true before testing}
-- **Steps**: 
-  1. {Step 1}
-  2. {Step 2}
-  3. {Step 3}
-- **Expected Results**: {What should happen}
-- **Actual Results**: {To be filled during execution}
-- **Status**: {Pass/Fail/Blocked}
-
-### Test Case 2: {Test Case Name}
-- **Test ID**: TC-002
-- **Preconditions**: {What must be true before testing}
-- **Steps**: 
-  1. {Step 1}
-  2. {Step 2}
-- **Expected Results**: {What should happen}
-- **Actual Results**: {To be filled during execution}
-- **Status**: {Pass/Fail/Blocked}
-
-## Documentation Sections **[CONDITIONAL: Documentation Task]**
-
-{Delete unless this is a documentation task}
-
-### User Guide Content
-- **Feature Description**: {What this feature does and why it's useful}
-- **Prerequisites**: {What users need before using this feature}
-- **Step-by-Step Instructions**:
-  1. {Step 1 with screenshots/examples}
-  2. {Step 2 with screenshots/examples}
-  3. {Step 3 with screenshots/examples}
-
-### Troubleshooting Guide
-- **Common Issue 1**: {Problem description and solution}
-- **Common Issue 2**: {Problem description and solution}
-- **Error Messages**: {List of error messages and what they mean}
-
-### API Documentation **[CONDITIONAL: API Documentation]**
-- **Endpoint**: {API endpoint description}
-- **Parameters**: {Required and optional parameters}
-- **Example Request**: {Code example}
-- **Example Response**: {Expected response format}
-
-## Implementation Notes **[CONDITIONAL: Technical Task]**
-
-{Keep for technical tasks, delete for non-technical. Technical details, approach, or important considerations}
-
-### Technical Approach
-{How this will be implemented}
-
-### Dependencies
-{Other tasks or systems this depends on}
-
-### Risk Considerations
-{Technical risks and mitigation strategies}
-
-## Status Updates **[REQUIRED]**
-
-*To be added during implementation*
+**Caveat:** `mod.rs` at 863 lines is slightly over the 800-line target. Sub-cap could be hit by extracting standalone helpers (`current_summary`, `OAuthFlowCtx` + its `ConnectContext` impl) to a sibling module. Leaving as-is — close enough; the per-feature splits are the structural win.
