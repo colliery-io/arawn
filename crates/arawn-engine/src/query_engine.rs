@@ -1094,9 +1094,15 @@ fn filter_tools_for_context(
     // Determine which categories to include based on keywords
     let mut active_categories = std::collections::HashSet::new();
 
-    // Always include Core and Utility
+    // Always include Core and Utility, plus the two ambient categories
+    // (Workstream + Memory) promoted in I-0055 T-D. Both have small
+    // surface area (~5 + ~3 tools), high frequency of legitimate use,
+    // and no semantic reason to keyword-gate — the agent should never
+    // lose access to context-switching or recall mid-turn.
     active_categories.insert(ToolCategory::Core);
     active_categories.insert(ToolCategory::Utility);
+    active_categories.insert(ToolCategory::Workstream);
+    active_categories.insert(ToolCategory::Memory);
 
     // Per-service integration categories — capability-gated, not keyword-gated.
     // Service names come from `Integration::name()` (lowercase snake_case):
@@ -1157,16 +1163,8 @@ fn filter_tools_for_context(
         active_categories.insert(ToolCategory::BackgroundTask);
     }
 
-    // Memory: remember/recall/memory/forget mentions.
-    // Slated for always-on promotion in I-0055 T-D; keyword gate retained
-    // until that lands.
-    if last_user_msg.contains("remember")
-        || last_user_msg.contains("recall")
-        || last_user_msg.contains("memory")
-        || last_user_msg.contains("forget")
-    {
-        active_categories.insert(ToolCategory::Memory);
-    }
+    // Memory: promoted to always-on in I-0055 T-D — see the unconditional
+    // insert at the top of the function. Keyword branch removed.
 
     // Agent: agent/delegate/subagent/spawn mentions. `subagent` and `spawn`
     // added in I-0055 T-C — both are natural ways to ask for delegation
@@ -1179,12 +1177,9 @@ fn filter_tools_for_context(
         active_categories.insert(ToolCategory::Agent);
     }
 
-    // Workstream: workstream/workspace mentions.
-    // Slated for always-on promotion in I-0055 T-D; keyword gate retained
-    // until that lands.
-    if last_user_msg.contains("workstream") || last_user_msg.contains("workspace") {
-        active_categories.insert(ToolCategory::Workstream);
-    }
+    // Workstream: promoted to always-on in I-0055 T-D — see the
+    // unconditional insert at the top of the function. Keyword branch
+    // removed.
 
     // Ceremony: retro/ceremony/standup/diary mentions, plus the
     // generic todo surface (I-0049) which lives under the same
@@ -1827,18 +1822,19 @@ mod tests {
         assert_tool_hidden(arawn_tool::ToolCategory::Task, "task_list", "hello");
     }
 
-    // Memory — original keyword set. (Will be always-on after T-D.)
+    // Memory — promoted to always-on in T-D. Tools must surface even when
+    // the user message contains no memory keywords.
     #[test]
-    fn memory_visible_on_recall_keyword() {
-        assert_tool_visible(
-            arawn_tool::ToolCategory::Memory,
-            "memory_search",
-            "recall what we discussed",
-        );
+    fn memory_tools_visible_with_empty_user_message() {
+        assert_tool_visible(arawn_tool::ToolCategory::Memory, "memory_recall", "x");
     }
     #[test]
-    fn memory_hidden_without_keyword() {
-        assert_tool_hidden(arawn_tool::ToolCategory::Memory, "memory_search", "hello");
+    fn memory_tools_visible_with_unrelated_user_message() {
+        assert_tool_visible(
+            arawn_tool::ToolCategory::Memory,
+            "memory_recall",
+            "fetch the URL", // a Web-keyword prompt — Memory still surfaces
+        );
     }
 
     // Agent — `agent`, `delegat`, plus T-C `subagent` and `spawn`.
@@ -1859,21 +1855,22 @@ mod tests {
         assert_tool_hidden(arawn_tool::ToolCategory::Agent, "agent", "hello");
     }
 
-    // Workstream — `workstream`, `workspace`. (Will be always-on after T-D.)
+    // Workstream — promoted to always-on in T-D. Tools must surface even
+    // when the user message contains no workstream keywords.
     #[test]
-    fn workstream_visible_on_keyword() {
+    fn workstream_tools_visible_with_empty_user_message() {
         assert_tool_visible(
             arawn_tool::ToolCategory::Workstream,
             "workstream_switch",
-            "switch to the personal workstream",
+            "x",
         );
     }
     #[test]
-    fn workstream_hidden_without_keyword() {
-        assert_tool_hidden(
+    fn workstream_tools_visible_with_unrelated_user_message() {
+        assert_tool_visible(
             arawn_tool::ToolCategory::Workstream,
             "workstream_switch",
-            "hello",
+            "what's on my agenda", // Ceremony-keyword prompt — Workstream still surfaces
         );
     }
 
