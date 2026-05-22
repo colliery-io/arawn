@@ -52,6 +52,21 @@ const DEFAULT_SYSTEM_PROMPT: &str = "You are Arawn, a helpful assistant. When yo
 /// Default behavior (no provider) is no integrations section emitted.
 pub type IntegrationCapabilitiesFn = std::sync::Arc<dyn Fn() -> Vec<String> + Send + Sync>;
 
+/// Provider for the set of currently-connected integration service names.
+///
+/// Returns canonical `Integration::name()` values (lowercase snake_case:
+/// `"gmail"`, `"google_calendar"`, `"google_drive"`, `"slack"`,
+/// `"atlassian"`, `"github"`). Used by the tool-catalog filter to gate
+/// per-service tool categories (I-0055): a Calendar tool is only shown
+/// to the model when `"google_calendar"` is in the connected set.
+///
+/// Distinct from `IntegrationCapabilitiesFn` — that one returns prose
+/// summaries for the system prompt; this one returns clean tokens for
+/// authoritative filter decisions. Both query the same source of truth
+/// (`Integration::is_connected().await` on the registry); the closures
+/// are split because the consumers want different shapes.
+pub type ConnectedServicesFn = std::sync::Arc<dyn Fn() -> Vec<String> + Send + Sync>;
+
 /// Cached context for building system prompts per-turn.
 #[derive(Clone)]
 pub struct PromptContext {
@@ -74,6 +89,12 @@ pub struct PromptContext {
     /// summaries. Lets `/connect <service>` reflect into the next LLM
     /// call with no restart.
     pub integration_capabilities: Option<IntegrationCapabilitiesFn>,
+    /// Optional callback queried each turn for connected-integration
+    /// service names. Authoritative source for the tool-catalog filter's
+    /// per-service gating (I-0055). `None` → filter conservatively drops
+    /// every per-service category (no provider == we don't know what's
+    /// connected, default to deny).
+    pub connected_services: Option<ConnectedServicesFn>,
 }
 
 /// Configuration for the query engine.
@@ -629,9 +650,19 @@ impl QueryEngine {
             .collect();
 
         // Query registry fresh each turn, then filter to contextually relevant tools.
-        // Core tools always included; specialty tools included when conversation signals need them.
+        // Core tools always included; per-service integration tools gated by
+        // `connected_services` (authoritative); other specialty tools gated by
+        // keyword mentions in the latest user message.
         let all_tools = self.registry.tool_definitions();
-        let tools = filter_tools_for_context(&all_tools, session, &self.registry);
+        let connected_services: Vec<String> = self
+            .config
+            .prompt_context
+            .as_ref()
+            .and_then(|pc| pc.connected_services.as_ref())
+            .map(|f| f())
+            .unwrap_or_default();
+        let tools =
+            filter_tools_for_context(&all_tools, session, &self.registry, &connected_services);
 
         // Build system prompt fresh each turn (tools/skills may have changed via hot-reload)
         let system_prompt = if let Some(ref prompt_ctx) = self.config.prompt_context {
@@ -1018,11 +1049,16 @@ struct ToolResult {
 
 /// Filter tool definitions to only contextually relevant ones for this turn.
 /// Uses ToolCategory from the registry instead of string constants.
-/// Core and Utility categories are always included. Others are triggered by keywords.
+/// Core and Utility categories are always included. Per-service integration
+/// categories (Calendar, Gmail, Drive, Slack, Atlassian, GitHub) are
+/// gated by `connected_services` — the authoritative source for "is the
+/// integration connected." All other categories are still triggered by
+/// keywords in the latest user message.
 fn filter_tools_for_context(
     all_tools: &[arawn_llm::ToolDefinition],
     session: &Session,
     registry: &ToolRegistry,
+    connected_services: &[String],
 ) -> Vec<arawn_llm::ToolDefinition> {
     use arawn_tool::ToolCategory;
 
@@ -1062,15 +1098,38 @@ fn filter_tools_for_context(
     active_categories.insert(ToolCategory::Core);
     active_categories.insert(ToolCategory::Utility);
 
-    // Web: URL patterns, web/search/fetch/http/api mentions
+    // Per-service integration categories — capability-gated, not keyword-gated.
+    // Service names come from `Integration::name()` (lowercase snake_case):
+    // gmail, google_calendar, google_drive, slack, atlassian, github.
+    let is_connected = |service: &str| connected_services.iter().any(|s| s == service);
+    if is_connected("google_calendar") {
+        active_categories.insert(ToolCategory::Calendar);
+    }
+    if is_connected("gmail") {
+        active_categories.insert(ToolCategory::Gmail);
+    }
+    if is_connected("google_drive") {
+        active_categories.insert(ToolCategory::Drive);
+    }
+    if is_connected("slack") {
+        active_categories.insert(ToolCategory::Slack);
+    }
+    if is_connected("atlassian") {
+        active_categories.insert(ToolCategory::Atlassian);
+    }
+    if is_connected("github") {
+        active_categories.insert(ToolCategory::GitHub);
+    }
+
+    // Web: URL patterns, web/search/fetch/http/api mentions.
+    // `github` and `google` keywords dropped — those used to be proxies
+    // for integration tools, which are now capability-gated above.
     if last_user_msg.contains("http")
         || last_user_msg.contains("url")
         || last_user_msg.contains("web")
         || last_user_msg.contains("search")
         || last_user_msg.contains("fetch")
         || last_user_msg.contains("api")
-        || last_user_msg.contains("github")
-        || last_user_msg.contains("google")
     {
         active_categories.insert(ToolCategory::Web);
     }
@@ -1508,6 +1567,131 @@ mod tests {
         assert!(
             tool_result.contains("timeout_secs"),
             "expected error to name the bad arg, got: {tool_result}"
+        );
+    }
+
+    // ─── I-0055 T-B — capability-driven filter tests ─────────────────────
+
+    /// Tool stub used in filter tests. Returns a configurable category.
+    struct CategorizedStub {
+        name_: &'static str,
+        category_: arawn_tool::ToolCategory,
+    }
+
+    #[async_trait]
+    impl Tool for CategorizedStub {
+        fn name(&self) -> &str {
+            self.name_
+        }
+        fn description(&self) -> &str {
+            "test stub"
+        }
+        fn parameters_schema(&self) -> serde_json::Value {
+            serde_json::json!({"type": "object"})
+        }
+        fn category(&self) -> arawn_tool::ToolCategory {
+            self.category_
+        }
+        async fn execute(
+            &self,
+            _: &dyn arawn_tool::ToolContext,
+            _: serde_json::Value,
+        ) -> Result<ToolOutput, arawn_tool::ToolError> {
+            Ok(ToolOutput::success("ok"))
+        }
+    }
+
+    /// Build a session deep enough to trip the post-iter-1 filter
+    /// activation: messages.len() must be > 2.
+    fn session_past_iter_1(last_user_msg: &str) -> Session {
+        let mut s = Session::new(uuid::Uuid::new_v4());
+        s.add_message(Message::User {
+            content: "kickoff".into(),
+        });
+        s.add_message(Message::Assistant {
+            content: "ok".into(),
+            tool_uses: vec![],
+        });
+        s.add_message(Message::User {
+            content: last_user_msg.into(),
+        });
+        s
+    }
+
+    fn tool_def(name: &str) -> arawn_llm::ToolDefinition {
+        arawn_llm::ToolDefinition {
+            name: name.into(),
+            description: "test".into(),
+            parameters: serde_json::json!({"type": "object"}),
+        }
+    }
+
+    #[test]
+    fn calendar_tool_visible_when_calendar_capability_present_no_keywords() {
+        let registry = ToolRegistry::new();
+        registry.register(Box::new(CategorizedStub {
+            name_: "calendar_upcoming",
+            category_: arawn_tool::ToolCategory::Calendar,
+        }));
+        let all = vec![tool_def("calendar_upcoming")];
+        // User message contains zero calendar/web/scheduling keywords.
+        let session = session_past_iter_1("Bob is free Tue mornings");
+        let connected = vec!["google_calendar".to_string()];
+        let filtered = filter_tools_for_context(&all, &session, &registry, &connected);
+        assert!(
+            filtered.iter().any(|t| t.name == "calendar_upcoming"),
+            "calendar_upcoming should be visible when google_calendar capability is connected"
+        );
+    }
+
+    #[test]
+    fn calendar_tool_hidden_when_calendar_capability_absent() {
+        let registry = ToolRegistry::new();
+        registry.register(Box::new(CategorizedStub {
+            name_: "calendar_upcoming",
+            category_: arawn_tool::ToolCategory::Calendar,
+        }));
+        let all = vec![tool_def("calendar_upcoming")];
+        let session = session_past_iter_1("Bob is free Tue mornings");
+        let connected: Vec<String> = vec![]; // capability absent
+        let filtered = filter_tools_for_context(&all, &session, &registry, &connected);
+        assert!(
+            filtered.iter().all(|t| t.name != "calendar_upcoming"),
+            "calendar_upcoming should be dropped when google_calendar capability is absent"
+        );
+    }
+
+    #[test]
+    fn slack_tool_visible_when_slack_capability_present_no_keywords() {
+        let registry = ToolRegistry::new();
+        registry.register(Box::new(CategorizedStub {
+            name_: "slack_post",
+            category_: arawn_tool::ToolCategory::Slack,
+        }));
+        let all = vec![tool_def("slack_post")];
+        let session = session_past_iter_1("Tell Pat we're shipping");
+        let connected = vec!["slack".to_string()];
+        let filtered = filter_tools_for_context(&all, &session, &registry, &connected);
+        assert!(
+            filtered.iter().any(|t| t.name == "slack_post"),
+            "slack_post should be visible when slack capability is connected"
+        );
+    }
+
+    #[test]
+    fn slack_tool_hidden_when_slack_capability_absent() {
+        let registry = ToolRegistry::new();
+        registry.register(Box::new(CategorizedStub {
+            name_: "slack_post",
+            category_: arawn_tool::ToolCategory::Slack,
+        }));
+        let all = vec![tool_def("slack_post")];
+        let session = session_past_iter_1("Tell Pat we're shipping");
+        let connected: Vec<String> = vec![];
+        let filtered = filter_tools_for_context(&all, &session, &registry, &connected);
+        assert!(
+            filtered.iter().all(|t| t.name != "slack_post"),
+            "slack_post should be dropped when slack capability is absent"
         );
     }
 }

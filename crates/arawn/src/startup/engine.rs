@@ -42,6 +42,8 @@ pub fn build_engine_config(
             // Filled in by LocalService per-query (it has access to the
             // integration registry); the template stays None.
             integration_capabilities: None,
+            // Same as above — filled in by LocalService per-query.
+            connected_services: None,
         }),
         tool_timeout_secs: config.engine.tool_timeout_secs,
     }

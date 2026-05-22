@@ -449,6 +449,37 @@ impl LocalService {
                         out
                     }) as arawn_engine::IntegrationCapabilitiesFn
                 }),
+                connected_services: Some({
+                    let registry = Arc::clone(&self.integration_registry);
+                    Arc::new(move || -> Vec<String> {
+                        // Returns canonical Integration::name() values for
+                        // every integration that reports `is_connected() ==
+                        // true`. Feeds the I-0055 capability-driven tool
+                        // filter. Sync-disk-only impls — block_in_place is
+                        // the same pattern integration_capabilities uses.
+                        let map = match registry.read() {
+                            Ok(g) => g,
+                            Err(_) => return Vec::new(),
+                        };
+                        let integrations: Vec<_> = map.values().map(Arc::clone).collect();
+                        drop(map);
+                        let mut out = Vec::new();
+                        let handle = tokio::runtime::Handle::try_current().ok();
+                        for integ in integrations {
+                            let connected = match &handle {
+                                Some(h) => tokio::task::block_in_place(|| {
+                                    h.block_on(integ.is_connected())
+                                }),
+                                None => false,
+                            };
+                            if connected {
+                                out.push(integ.name().to_string());
+                            }
+                        }
+                        out.sort();
+                        out
+                    }) as arawn_engine::ConnectedServicesFn
+                }),
             }
         });
 

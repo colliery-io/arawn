@@ -44,7 +44,8 @@ pub use permissions::{
 pub use ceremony_sources::{ProjectionsAttentionSource, ProjectionsCalendarSource};
 pub use plan::{PlanModeSnapshot, PlanModeState, generate_slug};
 pub use query_engine::{
-    IntegrationCapabilitiesFn, ProgressEvent, PromptContext, QueryEngine, QueryEngineConfig,
+    ConnectedServicesFn, IntegrationCapabilitiesFn, ProgressEvent, PromptContext, QueryEngine,
+    QueryEngineConfig,
 };
 pub use skills::{SkillDefinition, SkillRegistry, format_skill_listing, load_merged_skills};
 pub use system_prompt::{ContextFile, SystemPromptBuilder, find_context_files};
