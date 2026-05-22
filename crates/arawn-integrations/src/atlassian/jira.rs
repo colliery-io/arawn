@@ -221,7 +221,7 @@ impl Tool for JiraSearchTool {
         &self.description
     }
     fn category(&self) -> ToolCategory {
-        ToolCategory::Web
+        ToolCategory::Atlassian
     }
     fn permission_category(&self) -> PermissionCategory {
         PermissionCategory::ReadOnly
@@ -332,7 +332,7 @@ impl Tool for JiraGetIssueTool {
         &self.description
     }
     fn category(&self) -> ToolCategory {
-        ToolCategory::Web
+        ToolCategory::Atlassian
     }
     fn permission_category(&self) -> PermissionCategory {
         PermissionCategory::ReadOnly
@@ -511,7 +511,7 @@ impl Tool for JiraCreateIssueTool {
         &self.description
     }
     fn category(&self) -> ToolCategory {
-        ToolCategory::Web
+        ToolCategory::Atlassian
     }
     fn permission_category(&self) -> PermissionCategory {
         PermissionCategory::Other
@@ -616,7 +616,7 @@ impl Tool for JiraUpdateIssueTool {
         &self.description
     }
     fn category(&self) -> ToolCategory {
-        ToolCategory::Web
+        ToolCategory::Atlassian
     }
     fn permission_category(&self) -> PermissionCategory {
         PermissionCategory::FileWrite
@@ -718,7 +718,7 @@ impl Tool for JiraAddCommentTool {
         &self.description
     }
     fn category(&self) -> ToolCategory {
-        ToolCategory::Web
+        ToolCategory::Atlassian
     }
     fn permission_category(&self) -> PermissionCategory {
         PermissionCategory::Other
@@ -801,7 +801,7 @@ impl Tool for JiraTransitionIssueTool {
         &self.description
     }
     fn category(&self) -> ToolCategory {
-        ToolCategory::Web
+        ToolCategory::Atlassian
     }
     fn permission_category(&self) -> PermissionCategory {
         PermissionCategory::Other

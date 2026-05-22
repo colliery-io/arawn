@@ -390,7 +390,7 @@ impl Tool for ConfluenceSearchTool {
         &self.description
     }
     fn category(&self) -> ToolCategory {
-        ToolCategory::Web
+        ToolCategory::Atlassian
     }
     fn permission_category(&self) -> PermissionCategory {
         PermissionCategory::ReadOnly
@@ -494,7 +494,7 @@ impl Tool for ConfluenceGetPageTool {
         &self.description
     }
     fn category(&self) -> ToolCategory {
-        ToolCategory::Web
+        ToolCategory::Atlassian
     }
     fn permission_category(&self) -> PermissionCategory {
         PermissionCategory::ReadOnly
@@ -611,7 +611,7 @@ impl Tool for ConfluenceCreatePageTool {
         &self.description
     }
     fn category(&self) -> ToolCategory {
-        ToolCategory::Web
+        ToolCategory::Atlassian
     }
     fn permission_category(&self) -> PermissionCategory {
         PermissionCategory::Other
@@ -726,7 +726,7 @@ impl Tool for ConfluenceUpdatePageTool {
         &self.description
     }
     fn category(&self) -> ToolCategory {
-        ToolCategory::Web
+        ToolCategory::Atlassian
     }
     fn permission_category(&self) -> PermissionCategory {
         PermissionCategory::Other
@@ -833,7 +833,7 @@ impl Tool for ConfluenceListSpacesTool {
         &self.description
     }
     fn category(&self) -> ToolCategory {
-        ToolCategory::Web
+        ToolCategory::Atlassian
     }
     fn permission_category(&self) -> PermissionCategory {
         PermissionCategory::ReadOnly

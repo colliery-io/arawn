@@ -110,7 +110,7 @@ impl Tool for GmailInboxReadTool {
          with the message id when you need the full text."
     }
     fn category(&self) -> ToolCategory {
-        ToolCategory::Web
+        ToolCategory::Gmail
     }
     fn permission_category(&self) -> PermissionCategory {
         PermissionCategory::ReadOnly
@@ -192,7 +192,7 @@ impl Tool for GmailSearchTool {
          Returns the same shape as gmail_inbox_read with body_truncated=true."
     }
     fn category(&self) -> ToolCategory {
-        ToolCategory::Web
+        ToolCategory::Gmail
     }
     fn permission_category(&self) -> PermissionCategory {
         PermissionCategory::ReadOnly
@@ -275,7 +275,7 @@ impl Tool for GmailGetMessageTool {
          gmail_search returns a snippet you want to expand. Returns headers + decoded body."
     }
     fn category(&self) -> ToolCategory {
-        ToolCategory::Web
+        ToolCategory::Gmail
     }
     fn permission_category(&self) -> PermissionCategory {
         PermissionCategory::ReadOnly
@@ -372,7 +372,7 @@ impl Tool for GmailSendTool {
          Returns the new message id on success."
     }
     fn category(&self) -> ToolCategory {
-        ToolCategory::Web
+        ToolCategory::Gmail
     }
     fn permission_category(&self) -> PermissionCategory {
         // Mode-default in `default` mode is Ask, which is the right gate for
@@ -479,7 +479,7 @@ impl Tool for GmailMarkReadTool {
         "Strip the UNREAD label from a Gmail message, marking it as read."
     }
     fn category(&self) -> ToolCategory {
-        ToolCategory::Web
+        ToolCategory::Gmail
     }
     fn permission_category(&self) -> PermissionCategory {
         // Modifies state but reversible; FileWrite is the closest match

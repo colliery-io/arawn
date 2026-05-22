@@ -111,7 +111,7 @@ impl Tool for DriveSearchTool {
          files by default (the query is `and`-joined with `trashed=false`)."
     }
     fn category(&self) -> ToolCategory {
-        ToolCategory::Web
+        ToolCategory::Drive
     }
     fn permission_category(&self) -> PermissionCategory {
         PermissionCategory::ReadOnly
@@ -217,7 +217,7 @@ impl Tool for DriveListTool {
          Excludes trashed files by default."
     }
     fn category(&self) -> ToolCategory {
-        ToolCategory::Web
+        ToolCategory::Drive
     }
     fn permission_category(&self) -> PermissionCategory {
         PermissionCategory::ReadOnly
@@ -309,7 +309,7 @@ impl Tool for DriveGetMetadataTool {
          parents, trashed."
     }
     fn category(&self) -> ToolCategory {
-        ToolCategory::Web
+        ToolCategory::Drive
     }
     fn permission_category(&self) -> PermissionCategory {
         PermissionCategory::ReadOnly
@@ -387,7 +387,7 @@ impl Tool for DriveReadTool {
          response at 1MB by default (configurable up to 5MB)."
     }
     fn category(&self) -> ToolCategory {
-        ToolCategory::Web
+        ToolCategory::Drive
     }
     fn permission_category(&self) -> PermissionCategory {
         PermissionCategory::ReadOnly
@@ -530,7 +530,7 @@ impl Tool for DriveUploadTool {
          `parent_folder_id` defaults to the user's root."
     }
     fn category(&self) -> ToolCategory {
-        ToolCategory::Web
+        ToolCategory::Drive
     }
     fn permission_category(&self) -> PermissionCategory {
         PermissionCategory::Other
@@ -642,7 +642,7 @@ impl Tool for DriveUpdateTool {
          utf-8; pass 'base64' for binary content."
     }
     fn category(&self) -> ToolCategory {
-        ToolCategory::Web
+        ToolCategory::Drive
     }
     fn permission_category(&self) -> PermissionCategory {
         PermissionCategory::Other
@@ -741,7 +741,7 @@ impl Tool for DriveDeleteTool {
          permadelete user data."
     }
     fn category(&self) -> ToolCategory {
-        ToolCategory::Web
+        ToolCategory::Drive
     }
     fn permission_category(&self) -> PermissionCategory {
         PermissionCategory::FileWrite

@@ -237,7 +237,7 @@ impl Tool for SlackListChannelsTool {
         &self.description
     }
     fn category(&self) -> ToolCategory {
-        ToolCategory::Web
+        ToolCategory::Slack
     }
     fn permission_category(&self) -> PermissionCategory {
         PermissionCategory::ReadOnly
@@ -353,7 +353,7 @@ impl Tool for SlackHistoryTool {
         &self.description
     }
     fn category(&self) -> ToolCategory {
-        ToolCategory::Web
+        ToolCategory::Slack
     }
     fn permission_category(&self) -> PermissionCategory {
         PermissionCategory::ReadOnly
@@ -477,7 +477,7 @@ impl Tool for SlackPostTool {
         &self.description
     }
     fn category(&self) -> ToolCategory {
-        ToolCategory::Web
+        ToolCategory::Slack
     }
     fn permission_category(&self) -> PermissionCategory {
         PermissionCategory::Other
@@ -573,7 +573,7 @@ impl Tool for SlackReactTool {
         &self.description
     }
     fn category(&self) -> ToolCategory {
-        ToolCategory::Web
+        ToolCategory::Slack
     }
     fn permission_category(&self) -> PermissionCategory {
         PermissionCategory::FileWrite
@@ -697,7 +697,7 @@ impl Tool for SlackUsersListTool {
         &self.description
     }
     fn category(&self) -> ToolCategory {
-        ToolCategory::Web
+        ToolCategory::Slack
     }
     fn permission_category(&self) -> PermissionCategory {
         PermissionCategory::ReadOnly
@@ -800,7 +800,7 @@ impl Tool for SlackOpenDmTool {
         &self.description
     }
     fn category(&self) -> ToolCategory {
-        ToolCategory::Web
+        ToolCategory::Slack
     }
     fn permission_category(&self) -> PermissionCategory {
         // Opens a conversation — Slack treats this as a write but it's

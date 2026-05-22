@@ -30,6 +30,18 @@ pub enum ToolCategory {
     BackgroundTask,
     /// Scheduled introspection ceremonies (retro_*, daily prep, etc.)
     Ceremony,
+    /// Google Calendar integration tools (calendar_upcoming, calendar_create_event, calendar_find_conflicts).
+    Calendar,
+    /// Gmail integration tools (gmail_search, gmail_read, gmail_send, etc.).
+    Gmail,
+    /// Google Drive integration tools (drive_list, drive_read, drive_search, etc.).
+    Drive,
+    /// Slack integration tools (slack_list_channels, slack_history, slack_post, etc.).
+    Slack,
+    /// Atlassian integration tools (Jira + Confluence: issue/page CRUD, search, etc.).
+    Atlassian,
+    /// GitHub integration tools.
+    GitHub,
 }
 
 /// Risk class of a tool — used by the permission system to decide fallback

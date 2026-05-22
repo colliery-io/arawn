@@ -93,7 +93,7 @@ impl Tool for CalendarUpcomingTool {
          All times are wire-format RFC3339; do timezone reasoning in your response, not here."
     }
     fn category(&self) -> ToolCategory {
-        ToolCategory::Web
+        ToolCategory::Calendar
     }
     fn permission_category(&self) -> PermissionCategory {
         PermissionCategory::ReadOnly
@@ -180,7 +180,7 @@ impl Tool for CalendarCreateEventTool {
          '2026-05-08T10:00:00-04:00'). Returns the new event id and a calendar URL."
     }
     fn category(&self) -> ToolCategory {
-        ToolCategory::Web
+        ToolCategory::Calendar
     }
     fn permission_category(&self) -> PermissionCategory {
         // Mode-default in `default` is Ask — right gate for "agent wants to
@@ -317,7 +317,7 @@ impl Tool for CalendarFindConflictsTool {
          busy-block detection. Returns busy intervals as RFC3339 start/end pairs."
     }
     fn category(&self) -> ToolCategory {
-        ToolCategory::Web
+        ToolCategory::Calendar
     }
     fn permission_category(&self) -> PermissionCategory {
         PermissionCategory::ReadOnly
