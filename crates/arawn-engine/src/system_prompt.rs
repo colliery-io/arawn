@@ -117,6 +117,7 @@ Examples of risky actions warranting confirmation:
 When you encounter an obstacle, do not use destructive actions as a shortcut. Identify root causes and fix underlying issues rather than bypassing safety checks."#;
 
 const DEFAULT_USING_TOOLS: &str = r#"# Using your tools
+- Prefer specialized integration tools (calendar_*, gmail_*, drive_*, slack_*, atlassian_*, github_*) over `feed_search` for interactive queries. Feeds mirror signal into a queryable corpus for organization and recall — they are NOT a source of immediate truth. Use `feed_search` for "what did I see across X/Y/Z over the last N days" — broad, retrospective. Use integration tools for "what's on my calendar right now" or "send this message" — point-in-time, authoritative, side-effect-capable.
 - Do NOT use shell to run commands when a dedicated tool exists. Using dedicated tools allows the user to better understand and review your work. This is CRITICAL:
   - To read files: use file_read (NOT cat/head/tail)
   - To write files: use file_write (NOT echo/cat heredoc)
