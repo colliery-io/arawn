@@ -661,8 +661,13 @@ impl QueryEngine {
             .and_then(|pc| pc.connected_services.as_ref())
             .map(|f| f())
             .unwrap_or_default();
-        let tools =
-            filter_tools_for_context(&all_tools, session, &self.registry, &connected_services);
+        let tools = filter_tools_for_context(
+            &all_tools,
+            session,
+            &self.registry,
+            &connected_services,
+            &self.config.model_limits,
+        );
 
         // Build system prompt fresh each turn (tools/skills may have changed via hot-reload)
         let system_prompt = if let Some(ref prompt_ctx) = self.config.prompt_context {
@@ -1054,13 +1059,28 @@ struct ToolResult {
 /// gated by `connected_services` — the authoritative source for "is the
 /// integration connected." All other categories are still triggered by
 /// keywords in the latest user message.
+/// Models with this much context (or more) skip the filter entirely.
+/// Rationale: 102 tools × ~250 tokens ≈ 25K tokens for the full catalog.
+/// On a 100K-window model, that's 25% of context — comfortable. The
+/// filter exists for small models (≤64K) where 25K tokens is most of
+/// the window. Above the threshold, the brittleness of keyword/capability
+/// gating isn't worth the savings.
+const FILTER_BYPASS_CONTEXT_THRESHOLD: u32 = 100_000;
+
 fn filter_tools_for_context(
     all_tools: &[arawn_llm::ToolDefinition],
     session: &Session,
     registry: &ToolRegistry,
     connected_services: &[String],
+    model_limits: &ModelLimits,
 ) -> Vec<arawn_llm::ToolDefinition> {
     use arawn_tool::ToolCategory;
+
+    // Large-context bypass: models with ≥100K context can afford the
+    // full catalog. See I-0055 T-E.
+    if model_limits.context_window >= FILTER_BYPASS_CONTEXT_THRESHOLD {
+        return all_tools.to_vec();
+    }
 
     // On first turn or very short sessions, send all tools (no context to filter on)
     if session.messages().len() <= 2 {
@@ -1595,6 +1615,16 @@ mod tests {
 
     // ─── I-0055 T-B — capability-driven filter tests ─────────────────────
 
+    /// 32K-context limits — forces the filter to be active (below the
+    /// 100K T-E bypass threshold). Use this for tests that exercise the
+    /// keyword / capability gating rather than the large-context bypass.
+    fn small_model_limits() -> ModelLimits {
+        ModelLimits {
+            context_window: 32_000,
+            compaction_threshold: 0.8,
+        }
+    }
+
     /// Tool stub used in filter tests. Returns a configurable category.
     struct CategorizedStub {
         name_: &'static str,
@@ -1660,7 +1690,7 @@ mod tests {
         // User message contains zero calendar/web/scheduling keywords.
         let session = session_past_iter_1("Bob is free Tue mornings");
         let connected = vec!["google_calendar".to_string()];
-        let filtered = filter_tools_for_context(&all, &session, &registry, &connected);
+        let filtered = filter_tools_for_context(&all, &session, &registry, &connected, &small_model_limits());
         assert!(
             filtered.iter().any(|t| t.name == "calendar_upcoming"),
             "calendar_upcoming should be visible when google_calendar capability is connected"
@@ -1677,7 +1707,7 @@ mod tests {
         let all = vec![tool_def("calendar_upcoming")];
         let session = session_past_iter_1("Bob is free Tue mornings");
         let connected: Vec<String> = vec![]; // capability absent
-        let filtered = filter_tools_for_context(&all, &session, &registry, &connected);
+        let filtered = filter_tools_for_context(&all, &session, &registry, &connected, &small_model_limits());
         assert!(
             filtered.iter().all(|t| t.name != "calendar_upcoming"),
             "calendar_upcoming should be dropped when google_calendar capability is absent"
@@ -1694,7 +1724,7 @@ mod tests {
         let all = vec![tool_def("slack_post")];
         let session = session_past_iter_1("Tell Pat we're shipping");
         let connected = vec!["slack".to_string()];
-        let filtered = filter_tools_for_context(&all, &session, &registry, &connected);
+        let filtered = filter_tools_for_context(&all, &session, &registry, &connected, &small_model_limits());
         assert!(
             filtered.iter().any(|t| t.name == "slack_post"),
             "slack_post should be visible when slack capability is connected"
@@ -1711,7 +1741,7 @@ mod tests {
         let all = vec![tool_def("slack_post")];
         let session = session_past_iter_1("Tell Pat we're shipping");
         let connected: Vec<String> = vec![];
-        let filtered = filter_tools_for_context(&all, &session, &registry, &connected);
+        let filtered = filter_tools_for_context(&all, &session, &registry, &connected, &small_model_limits());
         assert!(
             filtered.iter().all(|t| t.name != "slack_post"),
             "slack_post should be dropped when slack capability is absent"
@@ -1736,7 +1766,7 @@ mod tests {
         }));
         let all = vec![tool_def(tool_name)];
         let session = session_past_iter_1(user_msg);
-        let filtered = filter_tools_for_context(&all, &session, &registry, &[]);
+        let filtered = filter_tools_for_context(&all, &session, &registry, &[], &small_model_limits());
         assert!(
             filtered.iter().any(|t| t.name == tool_name),
             "{tool_name} should be visible for category {cat:?} given user_msg = {user_msg:?}",
@@ -1755,7 +1785,7 @@ mod tests {
         }));
         let all = vec![tool_def(tool_name)];
         let session = session_past_iter_1(user_msg);
-        let filtered = filter_tools_for_context(&all, &session, &registry, &[]);
+        let filtered = filter_tools_for_context(&all, &session, &registry, &[], &small_model_limits());
         assert!(
             filtered.iter().all(|t| t.name != tool_name),
             "{tool_name} should be hidden for category {cat:?} given user_msg = {user_msg:?}",
@@ -1903,5 +1933,56 @@ mod tests {
     #[test]
     fn ceremony_hidden_without_keyword() {
         assert_tool_hidden(arawn_tool::ToolCategory::Ceremony, "daily_current", "hello");
+    }
+
+    // ─── I-0055 T-E — large-context bypass tests ─────────────────────────
+
+    fn large_model_limits() -> ModelLimits {
+        ModelLimits {
+            context_window: 200_000,
+            compaction_threshold: 0.8,
+        }
+    }
+
+    /// On a ≥100K-context model, every tool ships regardless of the filter's
+    /// keyword/capability gates. Setup: integration tool whose capability is
+    /// NOT connected. Under the small-model filter this tool is dropped; the
+    /// bypass means it survives.
+    #[test]
+    fn filter_bypasses_for_large_context_model() {
+        let registry = ToolRegistry::new();
+        registry.register(Box::new(CategorizedStub {
+            name_: "calendar_upcoming",
+            category_: arawn_tool::ToolCategory::Calendar,
+        }));
+        let all = vec![tool_def("calendar_upcoming")];
+        let session = session_past_iter_1("Bob is free Tue mornings");
+        let connected: Vec<String> = vec![]; // capability absent
+        let filtered =
+            filter_tools_for_context(&all, &session, &registry, &connected, &large_model_limits());
+        assert!(
+            filtered.iter().any(|t| t.name == "calendar_upcoming"),
+            "calendar_upcoming should be visible on large-context model even without capability"
+        );
+    }
+
+    /// Companion: on a small-context model the same call drops the tool.
+    /// Asserts the filter is still active when bypass doesn't fire.
+    #[test]
+    fn filter_active_for_small_context_model() {
+        let registry = ToolRegistry::new();
+        registry.register(Box::new(CategorizedStub {
+            name_: "calendar_upcoming",
+            category_: arawn_tool::ToolCategory::Calendar,
+        }));
+        let all = vec![tool_def("calendar_upcoming")];
+        let session = session_past_iter_1("Bob is free Tue mornings");
+        let connected: Vec<String> = vec![];
+        let filtered =
+            filter_tools_for_context(&all, &session, &registry, &connected, &small_model_limits());
+        assert!(
+            filtered.iter().all(|t| t.name != "calendar_upcoming"),
+            "calendar_upcoming should be dropped on small-context model without capability"
+        );
     }
 }
