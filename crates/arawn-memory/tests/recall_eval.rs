@@ -1,7 +1,50 @@
 //! Recall evaluation suite for the arawn-memory knowledge base.
 //!
 //! Measures retrieval quality across FTS search, MemoryStack L1/L2, and
-//! topical retrieval. Reports recall@K, precision@K, and MRR metrics.
+//! topical retrieval against an in-tree fixture (no external downloads,
+//! no model calls except where explicitly marked). Reports recall@K,
+//! precision@K, and MRR metrics. Companion to the external-corpus
+//! benchmark in `longmemeval_bench.rs`.
+//!
+//! ## Scenarios covered
+//!
+//! Each `#[test]` here maps to one or more representative arawn memory
+//! use cases:
+//!
+//! | Test                                            | Use case                                    |
+//! | ----------------------------------------------- | ------------------------------------------- |
+//! | `fts_recall_evaluation`                         | Personal-note retrieval — operator drops a  |
+//! |                                                 | fact, asks about it later by keyword.       |
+//! | `memory_stack_l1_coverage`                      | Recent / high-signal recall (L1 hot tier).  |
+//! | `memory_stack_l2_topical_retrieval`             | Ontology-tagged retrieval — asking by tag   |
+//! |                                                 | concept (`#design-decision`, `#person`,…).  |
+//! | `superseded_entities_excluded_from_all_searches`| Steward's prune-stale-entity contract.      |
+//! | `reinforcement_boosts_ranking`                  | Frequency-of-mention ranking signal.        |
+//! | `vector_search_recall_real_embeddings`          | Vector retrieval against the local ONNX     |
+//! |                                                 | embedder (the only real-embedding case).    |
+//! | `edge_case_very_short_query`                    | 1-2 char queries — degenerate inputs.       |
+//! | `edge_case_no_matches`                          | Empty-result honesty (no fabrication).      |
+//!
+//! Implicit cross-cutting coverage:
+//! - **Cross-workstream retrieval**: `build_query_corpus` includes queries
+//!   targeted at specific workstreams and at the global scope.
+//! - **Decision-vs-fact disambiguation**: queries differentiate
+//!   `EntityType::Decision` (rationale-bearing) from `EntityType::Fact`
+//!   (atomic claim) and assert the right kind ranks higher.
+//! - **Time-aware retrieval**: not currently exercised here — see backlog
+//!   if you want to add a temporal-bias scenario.
+//!
+//! ## Running
+//!
+//! Default profile runs at workspace test time:
+//!
+//! ```text
+//! cargo test -p arawn-memory --test recall_eval
+//! ```
+//!
+//! The `vector_search_recall_real_embeddings` test downloads the
+//! all-MiniLM-L6-v2 ONNX model on first run (~90 MB cached under
+//! `target/.embed-models/`); subsequent runs are fast.
 
 use std::collections::HashSet;
 use std::sync::Arc;

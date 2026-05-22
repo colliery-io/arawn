@@ -1,87 +1,51 @@
 //! LongMemEval Benchmark for arawn-memory
 //!
 //! Evaluates our vector search (sqlite-vec + all-MiniLM-L6-v2) against the
-//! LongMemEval dataset — the same benchmark used by MemPalace.
+//! LongMemEval dataset — the same external benchmark used by MemPalace.
+//! Provides a comparable, reproducible vector-retrieval quality baseline
+//! against a public corpus.
 //!
-//! Dataset: 500 questions across ~19K conversation sessions
-//! Metrics: Recall@5, Recall@10, NDCG@10
+//! **What this measures**: per-question retrieval quality. For each question,
+//! arawn embeds the ~50-session haystack, embeds the query, ranks by cosine
+//! similarity, and computes Recall@5 / Recall@10 / NDCG@10 against the
+//! provided ground-truth session ids. Aggregated across all 500 questions.
 //!
-//! Run with: cargo test -p arawn-memory --test longmemeval_bench -- --nocapture --ignored
-//! (ignored by default since it requires model download and takes ~5 minutes)
+//! **What this does NOT measure**: anything arawn-specific — workstream
+//! scoping, ontology-tagged retrieval, FTS interplay, MemoryStack L1/L2, or
+//! the steward's role in pruning stale entities. For those, see
+//! `recall_eval.rs` (sibling file, runs by default with arawn-shaped
+//! fixtures).
+//!
+//! **Dataset**: LongMemEval — 500 questions across ~19K conversation
+//! sessions, downloaded on first run. Cached under
+//! `arawn-memory/tests/fixtures/longmemeval/` once fetched.
+//!
+//! **Cost**: requires the all-MiniLM-L6-v2 ONNX model (~90 MB) and
+//! ~5 minutes wall-clock. Ignored by default.
+//!
+//! Run with:
+//!
+//! ```text
+//! cargo test -p arawn-memory --test longmemeval_bench -- --nocapture --ignored
+//! ```
 
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
-use std::sync::Arc;
 
 use arawn_memory::*;
 
-// ============================================================================
-// Hybrid Retrieval
-// ============================================================================
-
-/// Reciprocal Rank Fusion: merge multiple ranked lists into one.
-/// score(doc) = sum over lists: 1 / (k + rank_in_list)
-/// k=60 is standard (Cormack et al. 2009).
-fn reciprocal_rank_fusion(ranked_lists: &[Vec<&str>], k: f64) -> Vec<(String, f64)> {
-    let mut scores: HashMap<String, f64> = HashMap::new();
-    for list in ranked_lists {
-        for (rank, id) in list.iter().enumerate() {
-            *scores.entry(id.to_string()).or_default() += 1.0 / (k + rank as f64 + 1.0);
-        }
-    }
-    let mut sorted: Vec<(String, f64)> = scores.into_iter().collect();
-    sorted.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-    sorted
-}
-
-/// Parse a LongMemEval date string like "2023/01/15 (Sun) 10:20" into days-since-epoch.
-fn parse_date_to_days(date_str: &str) -> Option<f64> {
-    // Format: "2023/01/15 (Sun) 10:20" — extract YYYY/MM/DD
-    let parts: Vec<&str> = date_str.split_whitespace().next()?.split('/').collect();
-    if parts.len() != 3 {
-        return None;
-    }
-    let year: i64 = parts[0].parse().ok()?;
-    let month: i64 = parts[1].parse().ok()?;
-    let day: i64 = parts[2].parse().ok()?;
-    // Rough days since epoch (good enough for relative comparisons)
-    Some((year * 365 + month * 30 + day) as f64)
-}
-
 /// Temporal proximity score: higher for sessions closer in time to the question.
-/// Returns a multiplier in [0.5, 1.5] — recent sessions get boosted, old ones dampened.
-fn temporal_score(question_days: f64, session_days: f64) -> f64 {
-    let diff = (question_days - session_days).abs();
-    if diff < 7.0 {
-        1.5 // within a week — strong boost
-    } else if diff < 30.0 {
-        1.3 // within a month
-    } else if diff < 90.0 {
-        1.1 // within a quarter
-    } else if diff < 365.0 {
-        1.0 // within a year — neutral
-    } else {
-        0.7 // over a year old — dampen
-    }
-}
-
 // ============================================================================
 // Dataset types
 // ============================================================================
 
 #[derive(Debug, serde::Deserialize)]
 struct LongMemEvalEntry {
-    #[serde(default)]
-    question_id: Option<String>,
     question: String,
-    #[serde(default)]
-    question_date: Option<String>,
     #[serde(default)]
     question_type: Option<String>,
     haystack_sessions: Vec<Vec<Turn>>,
     haystack_session_ids: Vec<String>,
-    #[serde(default)]
-    haystack_dates: Vec<String>,
     #[serde(default)]
     ground_truth_session_ids: Vec<String>,
     // Some versions use "answer_session_ids" instead
@@ -310,7 +274,7 @@ fn longmemeval_benchmark() {
         let mut uuid_to_session: HashMap<uuid::Uuid, String> = HashMap::new();
         let mut indexed = 0;
 
-        for (i, session_id) in entry.haystack_session_ids.iter().enumerate() {
+        for session_id in entry.haystack_session_ids.iter() {
             if let Some(emb) = session_embeddings.get(session_id) {
                 let entity_uuid = uuid::Uuid::new_v4();
                 store.store_embedding(entity_uuid, emb).unwrap();

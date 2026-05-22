@@ -4,14 +4,14 @@ level: task
 title: "Wire `IntelligentRoutingProvider` into engine agent loop — finish T-0278 deferred wiring"
 short_code: "ARAWN-T-0393"
 created_at: 2026-05-21T14:53:38.031637+00:00
-updated_at: 2026-05-22T00:06:10.240031+00:00
+updated_at: 2026-05-22T00:12:47.792268+00:00
 parent: ARAWN-I-0053
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -50,6 +50,8 @@ the [wiring lands]."
 
 Per ARAWN-I-0053 discovery (Tier 3 candidate 3.9 audit): this is a real
 pending-wiring follow-up.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
