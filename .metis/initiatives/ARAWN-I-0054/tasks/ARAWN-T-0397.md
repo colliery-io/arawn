@@ -4,14 +4,14 @@ level: task
 title: "T-A: Restructure `arawn-engine/src/testing.rs` — inline vs split (direction decided at task start)"
 short_code: "ARAWN-T-0397"
 created_at: 2026-05-22T01:46:52.952848+00:00
-updated_at: 2026-05-22T01:47:23.233225+00:00
+updated_at: 2026-05-22T01:55:35.119797+00:00
 parent: ARAWN-I-0054
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -41,6 +41,8 @@ Create `crates/arawn-engine/src/testing/` directory with four files:
 - `harness.rs` — `TestHarness` struct (fields `pub(super)` so builder can construct) + impl + the inline `#[cfg(test)] mod tests` block.
 
 Delete the old `testing.rs`.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

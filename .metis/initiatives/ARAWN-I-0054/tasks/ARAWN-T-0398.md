@@ -4,133 +4,74 @@ level: task
 title: "T-B: Split `arawn-engine/src/tools/workstream.rs` — one file per Tool struct"
 short_code: "ARAWN-T-0398"
 created_at: 2026-05-22T01:46:54.449837+00:00
-updated_at: 2026-05-22T01:46:54.449837+00:00
+updated_at: 2026-05-22T01:55:43.256889+00:00
 parent: ARAWN-I-0054
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/active"
 
 
 exit_criteria_met: false
 initiative_id: ARAWN-I-0054
 ---
 
-# T-B: Split `arawn-engine/src/tools/workstream.rs` — one file per Tool struct
+# T-B: Split `arawn-engine/src/tools/workstream.rs`
 
-*This template includes sections for various types of tasks. Delete sections that don't apply to your specific use case.*
-
-## Parent Initiative **[CONDITIONAL: Assigned Task]**
+## Parent Initiative
 
 [[ARAWN-I-0054]]
 
-## Objective **[REQUIRED]**
+## Acceptance Criteria
 
-{Clear statement of what this task accomplishes}
+- [ ] `crates/arawn-engine/src/tools/workstream.rs` deleted; replaced by `crates/arawn-engine/src/tools/workstream/` directory.
+- [ ] One file per Tool struct under `tools/workstream/`.
+- [ ] Public API of `arawn_engine::tools::Workstream*Tool` unchanged.
+- [ ] `cargo check --workspace` clean.
+- [ ] `cargo build --workspace --release` clean.
+- [ ] `cargo test --workspace --no-run` clean.
+- [ ] All workspace lib tests pass.
 
-## Backlog Item Details **[CONDITIONAL: Backlog Item]**
+## Status Updates
 
-{Delete this section when task is assigned to an initiative}
+### 2026-05-22 — landed
 
-### Type
-- [ ] Bug - Production issue that needs fixing
-- [ ] Feature - New functionality or enhancement  
-- [ ] Tech Debt - Code improvement or refactoring
-- [ ] Chore - Maintenance or setup work
+**Split executed via Python helper.** The original 2,316-line file split into 13 files under `tools/workstream/`:
 
-### Priority
-- [ ] P0 - Critical (blocks users/revenue)
-- [ ] P1 - High (important for user experience)
-- [ ] P2 - Medium (nice to have)
-- [ ] P3 - Low (when time permits)
+| File | Lines | Contents |
+|---|---|---|
+| `mod.rs` | 917 | orchestrator + re-exports + inline tests (`#[cfg(test)] mod tests` block) |
+| `session.rs` | 38 | `SessionWorkstream` + Default impl |
+| `create.rs` | 177 | `WorkstreamCreateTool` |
+| `list.rs` | 92 | `WorkstreamListTool` |
+| `switch.rs` | 101 | `WorkstreamSwitchTool` |
+| `show.rs` | 101 | `WorkstreamShowTool` |
+| `describe.rs` | 69 | `WorkstreamDescribeTool` |
+| `bind.rs` | 174 | `BindBackfillHook` trait + `WorkstreamBindTool` |
+| `unbind.rs` | 144 | `UnbindHook` trait + `WorkstreamUnbindTool` + `collect_child_feed_ids` helper |
+| `promote.rs` | 164 | `WorkstreamPromoteTool` |
+| `delete.rs` | 72 | `WorkstreamDeleteTool` |
+| `propose_ontology.rs` | 180 | `WorkstreamProposeOntologyTool` |
+| `util.rs` | 167 | github-scope parsing (`GithubScope`, `parse_github_scope`, `is_github_scope_binding`, `validate_github_scope_scheme`) + feed-binding helpers (`find_workstreams_binding`, `upsert_repo_mirror_feed`, `delete_feed`, `extract_json_block`) |
 
-### Impact Assessment **[CONDITIONAL: Bug]**
-- **Affected Users**: {Number/percentage of users affected}
-- **Reproduction Steps**: 
-  1. {Step 1}
-  2. {Step 2}
-  3. {Step 3}
-- **Expected vs Actual**: {What should happen vs what happens}
+The private helpers in `util.rs` were promoted to `pub(super)` so siblings can use them. Public functions kept `pub` and re-exported from `mod.rs`.
 
-### Business Justification **[CONDITIONAL: Feature]**
-- **User Value**: {Why users need this}
-- **Business Value**: {Impact on metrics/revenue}
-- **Effort Estimate**: {Rough size - S/M/L/XL}
+**Approach:** Python script extracted lines per block, prepended a common import preamble, then trimmed trailing leading-comments-for-next-block. `cargo fix --lib -p arawn-engine` cleaned up unused-import warnings from the over-broad preamble (10 fixes across 4 files).
 
-### Technical Debt Impact **[CONDITIONAL: Tech Debt]**
-- **Current Problems**: {What's difficult/slow/buggy now}
-- **Benefits of Fixing**: {What improves after refactoring}
-- **Risk Assessment**: {Risks of not addressing this}
+**Cross-module visibility:**
+- `util.rs` private helpers → `pub(super)` so siblings can import.
+- Trait imports adjusted in `bind.rs` and `unbind.rs` to avoid colliding with the traits they DEFINE.
+- `GithubScope` enum added to the per-tool imports where it's referenced.
 
-## Acceptance Criteria **[REQUIRED]**
+**Inline tests in `mod.rs`** needed explicit imports (the file previously had top-level `use std::sync::{Arc, Mutex}`; now those are encapsulated in submodules). Added `use super::util::*; use std::sync::{Arc, Mutex}; use arawn_core::{SCRATCH_NAME, Workstream}; use arawn_storage::Store; use arawn_tool::Tool; use serde_json::json; use uuid::Uuid;` to the test mod.
 
-- [ ] {Specific, testable requirement 1}
-- [ ] {Specific, testable requirement 2}
-- [ ] {Specific, testable requirement 3}
+**Validation:**
+- `cargo check --workspace`: ✅ clean (no new warnings).
+- `cargo build --workspace --release`: ✅ clean.
+- `cargo test --workspace --no-run`: ✅ clean.
+- `cargo test -p arawn-engine --lib tools::workstream`: ✅ **36 tests pass**, 0 fail.
+- `cargo test --workspace --lib`: ✅ **1,758 tests pass**, 0 fail.
 
-## Test Cases **[CONDITIONAL: Testing Task]**
-
-{Delete unless this is a testing task}
-
-### Test Case 1: {Test Case Name}
-- **Test ID**: TC-001
-- **Preconditions**: {What must be true before testing}
-- **Steps**: 
-  1. {Step 1}
-  2. {Step 2}
-  3. {Step 3}
-- **Expected Results**: {What should happen}
-- **Actual Results**: {To be filled during execution}
-- **Status**: {Pass/Fail/Blocked}
-
-### Test Case 2: {Test Case Name}
-- **Test ID**: TC-002
-- **Preconditions**: {What must be true before testing}
-- **Steps**: 
-  1. {Step 1}
-  2. {Step 2}
-- **Expected Results**: {What should happen}
-- **Actual Results**: {To be filled during execution}
-- **Status**: {Pass/Fail/Blocked}
-
-## Documentation Sections **[CONDITIONAL: Documentation Task]**
-
-{Delete unless this is a documentation task}
-
-### User Guide Content
-- **Feature Description**: {What this feature does and why it's useful}
-- **Prerequisites**: {What users need before using this feature}
-- **Step-by-Step Instructions**:
-  1. {Step 1 with screenshots/examples}
-  2. {Step 2 with screenshots/examples}
-  3. {Step 3 with screenshots/examples}
-
-### Troubleshooting Guide
-- **Common Issue 1**: {Problem description and solution}
-- **Common Issue 2**: {Problem description and solution}
-- **Error Messages**: {List of error messages and what they mean}
-
-### API Documentation **[CONDITIONAL: API Documentation]**
-- **Endpoint**: {API endpoint description}
-- **Parameters**: {Required and optional parameters}
-- **Example Request**: {Code example}
-- **Example Response**: {Expected response format}
-
-## Implementation Notes **[CONDITIONAL: Technical Task]**
-
-{Keep for technical tasks, delete for non-technical. Technical details, approach, or important considerations}
-
-### Technical Approach
-{How this will be implemented}
-
-### Dependencies
-{Other tasks or systems this depends on}
-
-### Risk Considerations
-{Technical risks and mitigation strategies}
-
-## Status Updates **[REQUIRED]**
-
-*To be added during implementation*
+**Net result:** the 2,316-line god-file is gone. Largest remaining file in the cluster is `mod.rs` at 917 lines, but ~800 of those are inline tests; the operative orchestration is ~117 lines.
