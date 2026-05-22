@@ -32,8 +32,8 @@ initiative_id: NULL
 ### Priority
 - [ ] P0
 - [ ] P1
-- [x] P2 — quality issue, single scenario, doesn't block I-0053 close
-- [ ] P3
+- [ ] P2
+- [x] P3 — downgraded 2026-05-22 after follow-up UAT pass. The scenario passed cleanly at I-0054 close with the same `gemma4:31b-cloud` and same I-0053-fixed code (I-0054 was pure restructuring). The failure is non-deterministic — model flakiness, not a code regression. Track and address only if the flake rate becomes high enough to matter.
 
 ### Impact Assessment
 
@@ -88,4 +88,13 @@ None. Standalone backlog bug.
 
 ## Status Updates
 
-*To be added during implementation*
+### 2026-05-22 — UAT re-run: PASS (flaky, not regressed)
+
+At I-0054 close (module restructuring — pure code reorganization, no behavioral changes), the same scenario ran with the same `gemma4:31b-cloud` and **passed clean**:
+- `completion=4/5`, `quality=4/5`, `pass=true`
+- Judge summary: "Switched to personal, searched feeds/calendar, proposed specific 30-min slot (Tue May 26 9-9:30 AM) and asked for confirmation before booking."
+- Judge artifact: `/tmp/arawn-uat-20260522-124911/schedule-with-confirmation/uat-results/schedule-with-confirmation/gemma4:31b-cloud/judge.json`
+
+This confirms hypothesis #2 from the bug doc: the failure mode is **non-deterministic model behavior**, not a tool-filtering bug. The small model sometimes hallucinates `gcal` and sometimes picks `calendar_upcoming` correctly — there's no fix at the engine layer until we either (a) richen the calendar tool descriptions to make pattern-matching more reliable, (b) sharpen the system prompt, or (c) swap to a larger model that doesn't hallucinate.
+
+Downgraded P2 → P3. Track flake rate across future UAT runs; promote back to P2 if the scenario fails ≥2 of next 5 runs.
