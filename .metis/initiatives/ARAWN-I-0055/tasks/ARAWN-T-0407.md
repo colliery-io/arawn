@@ -1,17 +1,17 @@
 ---
-id: t-c-audit-expand-keyword-sets
+id: t-c-audit-expand-non-integration
 level: task
 title: "T-C: Audit + expand non-integration keyword sets"
 short_code: "ARAWN-T-0407"
-created_at: 2026-05-22T16:36:02.000000+00:00
-updated_at: 2026-05-22T16:36:02.000000+00:00
+created_at: 2026-05-22T16:36:02+00:00
+updated_at: 2026-05-22T18:08:32.954117+00:00
 parent: ARAWN-I-0055
 blocked_by: [ARAWN-T-0406]
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/active"
 
 
 exit_criteria_met: false
@@ -27,6 +27,8 @@ initiative_id: ARAWN-I-0055
 ## Objective
 
 Walk each non-integration `ToolCategory`'s keyword list in `filter_tools_for_context` and expand to cover legitimate prompts that the current set misses. Add a negative-test per category asserting expected routing behavior.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
@@ -50,4 +52,36 @@ Walk each non-integration `ToolCategory`'s keyword list in `filter_tools_for_con
 
 ## Status Updates
 
-*To be added during implementation*
+### 2026-05-22 — landed
+
+**Keyword expansions in `filter_tools_for_context`:**
+
+| Category | Original | T-C additions |
+|---|---|---|
+| Plan | `plan` | `design`, `approach`, `strategy` |
+| Task | `task`, `todo`, `background` | `queue` |
+| Agent | `agent`, `delegat` | `subagent`, `spawn` |
+| Ceremony | `retro`, `ceremony`, `standup`, `diary`, `daily`, `today`, `brief`, `weekly`, `week`, `priorities`, `priority`, `todo`, `reminder`, `remind me` | `agenda`, `morning`, `afternoon`, `tomorrow`, `yesterday` |
+| Web | `http`, `url`, `web`, `search`, `fetch`, `api` (already narrowed in T-B — `github`, `google` dropped because those were proxies for integration tools now capability-gated) | — |
+| Memory | `remember`, `recall`, `memory`, `forget` | — (will go always-on in T-D) |
+| Workstream | `workstream`, `workspace` | — (will go always-on in T-D) |
+
+Each category now has an inline comment naming the T-C additions and the reasoning ("read as X without the literal word Y").
+
+**Unit tests (19 new):**
+- Two helpers — `assert_tool_visible(cat, name, user_msg)` and `assert_tool_hidden(...)` — that build a registry with one stub tool, run the filter against a session past iter-1, and assert membership. Keeps the tests DRY.
+- Web: positive (`fetch the URL`), negative (`say hi to Bob`), explicit regression (`open the github repo` → hidden, since `github` was dropped as a Web trigger).
+- Plan: positive on `plan`, positive on T-C `design`, negative.
+- Task: positive on T-C `queue`, negative.
+- Memory: positive on `recall`, negative.
+- Agent: positive on T-C `subagent`, positive on T-C `spawn`, negative.
+- Workstream: positive on `workstream`, negative.
+- Ceremony: positive on T-C `agenda`, positive on T-C `tomorrow`, positive on T-C `morning`, negative.
+
+**Validation:**
+- `cargo check --workspace`: ✅ clean.
+- `cargo build --workspace --release`: ✅ clean (1m 13s).
+- `cargo test -p arawn-engine --lib query_engine`: ✅ **32 tests pass** (was 9 pre-T-B; 13 after T-B; 32 after T-C).
+- `cargo test --workspace --lib`: ✅ **1,781 tests pass**, 0 fail (1,758 baseline + 4 T-B + 19 T-C).
+
+Side-effect of the test isolation: noticed one harness test (`testing::harness::tests::harness_shell_tool_receives_arguments`) is order-sensitive — it failed on one workspace run but passed on a re-run and in isolation. Not introduced by T-C; pre-existing flake worth noting.

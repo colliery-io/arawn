@@ -1134,21 +1134,32 @@ fn filter_tools_for_context(
         active_categories.insert(ToolCategory::Web);
     }
 
-    // Plan: plan/planning mentions
-    if last_user_msg.contains("plan") {
+    // Plan: plan/planning mentions, plus design/approach/strategy
+    // (I-0055 T-C addition — these read as planning intent without the
+    // literal word "plan").
+    if last_user_msg.contains("plan")
+        || last_user_msg.contains("design")
+        || last_user_msg.contains("approach")
+        || last_user_msg.contains("strategy")
+    {
         active_categories.insert(ToolCategory::Plan);
     }
 
-    // Task + BackgroundTask: task/todo/background mentions
+    // Task + BackgroundTask: task/todo/background mentions.
+    // `queue` added in I-0055 T-C — "queue this for later" is a common
+    // task-creation framing.
     if last_user_msg.contains("task")
         || last_user_msg.contains("todo")
         || last_user_msg.contains("background")
+        || last_user_msg.contains("queue")
     {
         active_categories.insert(ToolCategory::Task);
         active_categories.insert(ToolCategory::BackgroundTask);
     }
 
-    // Memory: remember/recall/memory/forget mentions
+    // Memory: remember/recall/memory/forget mentions.
+    // Slated for always-on promotion in I-0055 T-D; keyword gate retained
+    // until that lands.
     if last_user_msg.contains("remember")
         || last_user_msg.contains("recall")
         || last_user_msg.contains("memory")
@@ -1157,12 +1168,20 @@ fn filter_tools_for_context(
         active_categories.insert(ToolCategory::Memory);
     }
 
-    // Agent: agent/delegate/subagent mentions
-    if last_user_msg.contains("agent") || last_user_msg.contains("delegat") {
+    // Agent: agent/delegate/subagent/spawn mentions. `subagent` and `spawn`
+    // added in I-0055 T-C — both are natural ways to ask for delegation
+    // without the literal word "agent".
+    if last_user_msg.contains("agent")
+        || last_user_msg.contains("delegat")
+        || last_user_msg.contains("subagent")
+        || last_user_msg.contains("spawn")
+    {
         active_categories.insert(ToolCategory::Agent);
     }
 
-    // Workstream: workstream/workspace mentions
+    // Workstream: workstream/workspace mentions.
+    // Slated for always-on promotion in I-0055 T-D; keyword gate retained
+    // until that lands.
     if last_user_msg.contains("workstream") || last_user_msg.contains("workspace") {
         active_categories.insert(ToolCategory::Workstream);
     }
@@ -1171,6 +1190,10 @@ fn filter_tools_for_context(
     // generic todo surface (I-0049) which lives under the same
     // category. `todo` / `reminder` / `remind me` route the agent
     // to the todo_* tool family.
+    // I-0055 T-C additions: `agenda`, `morning`, `afternoon`, `tomorrow`,
+    // `yesterday`, `this week`, `next week` — calendar/ceremony framings
+    // the original set missed. `week` already matches "next week" by
+    // substring; the explicit terms keep intent readable here.
     if last_user_msg.contains("retro")
         || last_user_msg.contains("ceremony")
         || last_user_msg.contains("standup")
@@ -1185,6 +1208,11 @@ fn filter_tools_for_context(
         || last_user_msg.contains("todo")
         || last_user_msg.contains("reminder")
         || last_user_msg.contains("remind me")
+        || last_user_msg.contains("agenda")
+        || last_user_msg.contains("morning")
+        || last_user_msg.contains("afternoon")
+        || last_user_msg.contains("tomorrow")
+        || last_user_msg.contains("yesterday")
     {
         active_categories.insert(ToolCategory::Ceremony);
     }
@@ -1693,5 +1721,190 @@ mod tests {
             filtered.iter().all(|t| t.name != "slack_post"),
             "slack_post should be dropped when slack capability is absent"
         );
+    }
+
+    // ─── I-0055 T-C — non-integration keyword routing tests ──────────────
+    //
+    // One positive + one negative per non-integration category that's still
+    // keyword-gated. Memory + Workstream are slated for always-on promotion
+    // in T-D, so only their CURRENT keyword behavior is asserted here.
+
+    fn assert_tool_visible(
+        cat: arawn_tool::ToolCategory,
+        tool_name: &'static str,
+        user_msg: &str,
+    ) {
+        let registry = ToolRegistry::new();
+        registry.register(Box::new(CategorizedStub {
+            name_: tool_name,
+            category_: cat,
+        }));
+        let all = vec![tool_def(tool_name)];
+        let session = session_past_iter_1(user_msg);
+        let filtered = filter_tools_for_context(&all, &session, &registry, &[]);
+        assert!(
+            filtered.iter().any(|t| t.name == tool_name),
+            "{tool_name} should be visible for category {cat:?} given user_msg = {user_msg:?}",
+        );
+    }
+
+    fn assert_tool_hidden(
+        cat: arawn_tool::ToolCategory,
+        tool_name: &'static str,
+        user_msg: &str,
+    ) {
+        let registry = ToolRegistry::new();
+        registry.register(Box::new(CategorizedStub {
+            name_: tool_name,
+            category_: cat,
+        }));
+        let all = vec![tool_def(tool_name)];
+        let session = session_past_iter_1(user_msg);
+        let filtered = filter_tools_for_context(&all, &session, &registry, &[]);
+        assert!(
+            filtered.iter().all(|t| t.name != tool_name),
+            "{tool_name} should be hidden for category {cat:?} given user_msg = {user_msg:?}",
+        );
+    }
+
+    // Web — narrow keyword set (http/url/web/search/fetch/api).
+    #[test]
+    fn web_visible_on_keyword() {
+        assert_tool_visible(arawn_tool::ToolCategory::Web, "web_fetch", "fetch the URL");
+    }
+    #[test]
+    fn web_hidden_without_keyword() {
+        assert_tool_hidden(arawn_tool::ToolCategory::Web, "web_fetch", "say hi to Bob");
+    }
+    #[test]
+    fn web_no_longer_triggered_by_github_keyword() {
+        // I-0055 T-B/T-C dropped `github` and `google` from Web triggers
+        // (they were proxies for integration tools now capability-gated).
+        assert_tool_hidden(
+            arawn_tool::ToolCategory::Web,
+            "web_fetch",
+            "open the github repo",
+        );
+    }
+
+    // Plan — original `plan` plus T-C additions (design/approach/strategy).
+    #[test]
+    fn plan_visible_on_plan_keyword() {
+        assert_tool_visible(
+            arawn_tool::ToolCategory::Plan,
+            "enter_plan_mode",
+            "let's plan the migration",
+        );
+    }
+    #[test]
+    fn plan_visible_on_design_keyword() {
+        assert_tool_visible(
+            arawn_tool::ToolCategory::Plan,
+            "enter_plan_mode",
+            "what's the right design",
+        );
+    }
+    #[test]
+    fn plan_hidden_without_keyword() {
+        assert_tool_hidden(
+            arawn_tool::ToolCategory::Plan,
+            "enter_plan_mode",
+            "hello there",
+        );
+    }
+
+    // Task — `task`, `todo`, `background`, and T-C `queue`.
+    #[test]
+    fn task_visible_on_queue_keyword() {
+        assert_tool_visible(
+            arawn_tool::ToolCategory::Task,
+            "task_list",
+            "queue this for later",
+        );
+    }
+    #[test]
+    fn task_hidden_without_keyword() {
+        assert_tool_hidden(arawn_tool::ToolCategory::Task, "task_list", "hello");
+    }
+
+    // Memory — original keyword set. (Will be always-on after T-D.)
+    #[test]
+    fn memory_visible_on_recall_keyword() {
+        assert_tool_visible(
+            arawn_tool::ToolCategory::Memory,
+            "memory_search",
+            "recall what we discussed",
+        );
+    }
+    #[test]
+    fn memory_hidden_without_keyword() {
+        assert_tool_hidden(arawn_tool::ToolCategory::Memory, "memory_search", "hello");
+    }
+
+    // Agent — `agent`, `delegat`, plus T-C `subagent` and `spawn`.
+    #[test]
+    fn agent_visible_on_subagent_keyword() {
+        assert_tool_visible(
+            arawn_tool::ToolCategory::Agent,
+            "agent",
+            "spin up a subagent",
+        );
+    }
+    #[test]
+    fn agent_visible_on_spawn_keyword() {
+        assert_tool_visible(arawn_tool::ToolCategory::Agent, "agent", "spawn a worker");
+    }
+    #[test]
+    fn agent_hidden_without_keyword() {
+        assert_tool_hidden(arawn_tool::ToolCategory::Agent, "agent", "hello");
+    }
+
+    // Workstream — `workstream`, `workspace`. (Will be always-on after T-D.)
+    #[test]
+    fn workstream_visible_on_keyword() {
+        assert_tool_visible(
+            arawn_tool::ToolCategory::Workstream,
+            "workstream_switch",
+            "switch to the personal workstream",
+        );
+    }
+    #[test]
+    fn workstream_hidden_without_keyword() {
+        assert_tool_hidden(
+            arawn_tool::ToolCategory::Workstream,
+            "workstream_switch",
+            "hello",
+        );
+    }
+
+    // Ceremony — original set plus T-C additions (agenda, morning, afternoon,
+    // tomorrow, yesterday).
+    #[test]
+    fn ceremony_visible_on_agenda_keyword() {
+        assert_tool_visible(
+            arawn_tool::ToolCategory::Ceremony,
+            "daily_current",
+            "what's on my agenda",
+        );
+    }
+    #[test]
+    fn ceremony_visible_on_tomorrow_keyword() {
+        assert_tool_visible(
+            arawn_tool::ToolCategory::Ceremony,
+            "daily_current",
+            "anything on for tomorrow",
+        );
+    }
+    #[test]
+    fn ceremony_visible_on_morning_keyword() {
+        assert_tool_visible(
+            arawn_tool::ToolCategory::Ceremony,
+            "daily_current",
+            "free in the morning",
+        );
+    }
+    #[test]
+    fn ceremony_hidden_without_keyword() {
+        assert_tool_hidden(arawn_tool::ToolCategory::Ceremony, "daily_current", "hello");
     }
 }
