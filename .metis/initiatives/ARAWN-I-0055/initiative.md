@@ -11,10 +11,10 @@ archived: false
 
 tags:
   - "#initiative"
-  - "#phase/discovery"
+  - "#phase/completed"
 
 
-exit_criteria_met: false
+exit_criteria_met: true
 estimated_complexity: M
 initiative_id: capability-driven-tool-filter-fix
 ---
@@ -172,19 +172,26 @@ Close gate: full `angreal test uat` (13/13 mechanical PASS) + `angreal test uat-
 
 ## Exit Criteria
 
-- All six tasks landed.
-- Integration tool catalogs are now per-service (`Calendar`, `Gmail`, `Drive`, `Slack`, `Atlassian`, `GitHub`).
-- `filter_tools_for_context` includes integration tools iff the corresponding capability is in the connected set — no keyword scan for integration categories.
-- Workstream + Memory tools are always visible.
-- Models with `context_window ≥ 100_000` bypass the filter entirely.
-- T-0394 regression test asserts the structural fix and is part of the workspace lib test suite.
-- `cargo check --workspace` clean, `cargo build --workspace --release` clean.
-- `cargo test --workspace --lib` green (≥1,758 tests; new tests from T-B/C/F add to this).
-- `angreal test uat` + `angreal test uat-judge` green at close.
+- [x] All six tasks landed (T-A through T-F).
+- [x] Integration tool catalogs are now per-service (`Calendar`, `Gmail`, `Drive`, `Slack`, `Atlassian`, `GitHub`).
+- [x] `filter_tools_for_context` includes integration tools iff the corresponding capability is in the connected set — no keyword scan for integration categories.
+- [x] Workstream + Memory tools are always visible.
+- [x] Models with `context_window ≥ 100_000` bypass the filter entirely.
+- [x] T-0394 regression test asserts the structural fix and is part of the workspace lib test suite.
+- [x] `cargo check --workspace` clean, `cargo build --workspace --release` clean.
+- [x] `cargo test --workspace --lib` green — **1,785 lib tests pass** (1,758 baseline + 27 new across T-B/C/D/E/F).
+- [x] `angreal test uat` green — **13/13 mechanical PASS** (2026-05-22, 62-min run, log `/tmp/uat-i0055-mech.log`, data dir `/tmp/arawn-uat-20260522-191854`).
+- [x] `angreal test uat-judge` green — **13/13 judge PASS**, 0 FAIL.
+
+## Closing Summary
+
+Six tasks landed in one Ralph loop session. Every UAT scenario passes mechanical + judge.
+
+The original symptom (T-0394 — `schedule-with-confirmation` flaking on `gemma4:31b-cloud`) is now structurally blocked: in this UAT run the agent reached the right behavior via `workstream_switch personal` → `feed_search ×3` → propose-slot → ask-confirm (judge `completion=4/5, quality=4/5`). Note that the agent used `feed_search` rather than `calendar_upcoming` directly — different path, same outcome. The point of the T-B fix isn't that the model picks `calendar_upcoming` every time; it's that when it DOES pick it, the tool survives iter-2+ regardless of user message text. The unit tests in T-F pin that contract structurally; the UAT shows the user-visible scenario works end-to-end.
 
 ## Related
 
 - ARAWN-V-0001 — vision.
-- ARAWN-T-0394 — backlog bug; converted to regression test at close.
+- ARAWN-T-0394 — backlog bug; closed with regression test artifact at I-0055 T-F.
 - ARAWN-I-0053 — predecessor (cruft removal) that surfaced the bug.
 - ARAWN-I-0054 — predecessor (module restructuring) whose UAT re-run confirmed the failure is structural, not behavioral-regression.
