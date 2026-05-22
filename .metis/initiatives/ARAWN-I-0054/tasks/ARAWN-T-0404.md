@@ -11,126 +11,58 @@ archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
 initiative_id: ARAWN-I-0054
 ---
 
-# T-H: Split `arawn-tui/src/event_loop.rs` — event loop by event kind
+# T-H: Split `arawn-tui/src/event_loop.rs`
 
-*This template includes sections for various types of tasks. Delete sections that don't apply to your specific use case.*
-
-## Parent Initiative **[CONDITIONAL: Assigned Task]**
+## Parent Initiative
 
 [[ARAWN-I-0054]]
 
-## Objective **[REQUIRED]**
+## Direction (decided at task start)
 
-{Clear statement of what this task accomplishes}
+`event_loop.rs` was 2,280 lines: 33 top-level items dominated by `run_tui` (1,178-line `loop { select! { ... } }`). Like the `handle_connection` in T-D and the serve_mode block in T-E, the main loop is too coupled to extract without a context-struct rewrite. Scope-trimmed accordingly: extract helpers grouped by kind, leave `run_tui` intact in `mod.rs`.
 
-## Backlog Item Details **[CONDITIONAL: Backlog Item]**
+## Acceptance Criteria
 
-{Delete this section when task is assigned to an initiative}
+- [x] `crates/arawn-tui/src/event_loop.rs` deleted; replaced by `crates/arawn-tui/src/event_loop/` directory.
+- [x] Helpers grouped by event kind (notices, ceremonies, brief, usage, todo) + formatting.
+- [x] `run_tui` stays in `mod.rs`.
+- [x] All workspace lib tests pass.
 
-### Type
-- [ ] Bug - Production issue that needs fixing
-- [ ] Feature - New functionality or enhancement  
-- [ ] Tech Debt - Code improvement or refactoring
-- [ ] Chore - Maintenance or setup work
+## Status Updates
 
-### Priority
-- [ ] P0 - Critical (blocks users/revenue)
-- [ ] P1 - High (important for user experience)
-- [ ] P2 - Medium (nice to have)
-- [ ] P3 - Low (when time permits)
+### 2026-05-22 — landed (scope-trimmed)
 
-### Impact Assessment **[CONDITIONAL: Bug]**
-- **Affected Users**: {Number/percentage of users affected}
-- **Reproduction Steps**: 
-  1. {Step 1}
-  2. {Step 2}
-  3. {Step 3}
-- **Expected vs Actual**: {What should happen vs what happens}
+**Split executed via Python helper.** Original 2,280-line file became 7 files under `event_loop/`:
 
-### Business Justification **[CONDITIONAL: Feature]**
-- **User Value**: {Why users need this}
-- **Business Value**: {Impact on metrics/revenue}
-- **Effort Estimate**: {Rough size - S/M/L/XL}
+| File | Lines | Contents |
+|---|---|---|
+| `mod.rs` | 1,400 | `run_tui` (1,178-line main loop) + `maybe_draw` / `force_draw` / `rect_contains` + inline tests |
+| `ceremony.rs` | 408 | 13 fns: `current_iso_week`, `render_ceremony_today/week/retro`, `fetch_daily_view`, `fetch_weekly_view`, `fetch_tablet_id_and_status`, `fetch_diary_body`, `handle_ceremony_overlay_key`, `apply_priority_rpc_result`, `refresh_active_ceremony_overlay`, `fetch_items`, `fetch_priorities` |
+| `formats.rs` | 257 | `format_integrations_list`, `OpenAttempt` enum, `try_open_url`, `format_permissions_status`, `format_feed_registered/list/discover`, `human_size`, `format_known_templates` |
+| `todo.rs` | 119 | `fetch_open_todos`, `handle_todo_overlay_key` |
+| `notices.rs` | 77 | `apply_system_notice`, `ceremony_event_should_refresh` |
+| `brief.rs` | 44 | `refresh_brief_cache`, `render_brief_combined` |
+| `usage.rs` | 33 | `render_usage` |
 
-### Technical Debt Impact **[CONDITIONAL: Tech Debt]**
-- **Current Problems**: {What's difficult/slow/buggy now}
-- **Benefits of Fixing**: {What improves after refactoring}
-- **Risk Assessment**: {Risks of not addressing this}
+**Net reduction on the hotspot:** `event_loop.rs` was 2,280 lines; `mod.rs` is now 1,400 (-880, -39%). Doesn't hit the 800-line target — `run_tui` alone is 1,178 lines — but the helpers are out and the file's structure is cleaner.
 
-## Acceptance Criteria **[REQUIRED]**
+**Cross-module wiring:**
+- All extracted fns promoted to `pub(super)`.
+- `mod.rs` re-imports submodule fns via `use brief::*; use ceremony::*; ...` so `run_tui` calls them unqualified (no source changes inside the giant loop).
+- `brief.rs` cross-imports `current_iso_week`, `fetch_daily_view`, `fetch_weekly_view` from `super::ceremony` (the only cross-submodule dependency).
 
-- [ ] {Specific, testable requirement 1}
-- [ ] {Specific, testable requirement 2}
-- [ ] {Specific, testable requirement 3}
+**Deferred:**
+- Breaking up `run_tui` itself would require a `TuiContext` struct holding all the locals + a `dispatch_event(ctx, evt)` rewrite. Out of scope for I-0054.
 
-## Test Cases **[CONDITIONAL: Testing Task]**
-
-{Delete unless this is a testing task}
-
-### Test Case 1: {Test Case Name}
-- **Test ID**: TC-001
-- **Preconditions**: {What must be true before testing}
-- **Steps**: 
-  1. {Step 1}
-  2. {Step 2}
-  3. {Step 3}
-- **Expected Results**: {What should happen}
-- **Actual Results**: {To be filled during execution}
-- **Status**: {Pass/Fail/Blocked}
-
-### Test Case 2: {Test Case Name}
-- **Test ID**: TC-002
-- **Preconditions**: {What must be true before testing}
-- **Steps**: 
-  1. {Step 1}
-  2. {Step 2}
-- **Expected Results**: {What should happen}
-- **Actual Results**: {To be filled during execution}
-- **Status**: {Pass/Fail/Blocked}
-
-## Documentation Sections **[CONDITIONAL: Documentation Task]**
-
-{Delete unless this is a documentation task}
-
-### User Guide Content
-- **Feature Description**: {What this feature does and why it's useful}
-- **Prerequisites**: {What users need before using this feature}
-- **Step-by-Step Instructions**:
-  1. {Step 1 with screenshots/examples}
-  2. {Step 2 with screenshots/examples}
-  3. {Step 3 with screenshots/examples}
-
-### Troubleshooting Guide
-- **Common Issue 1**: {Problem description and solution}
-- **Common Issue 2**: {Problem description and solution}
-- **Error Messages**: {List of error messages and what they mean}
-
-### API Documentation **[CONDITIONAL: API Documentation]**
-- **Endpoint**: {API endpoint description}
-- **Parameters**: {Required and optional parameters}
-- **Example Request**: {Code example}
-- **Example Response**: {Expected response format}
-
-## Implementation Notes **[CONDITIONAL: Technical Task]**
-
-{Keep for technical tasks, delete for non-technical. Technical details, approach, or important considerations}
-
-### Technical Approach
-{How this will be implemented}
-
-### Dependencies
-{Other tasks or systems this depends on}
-
-### Risk Considerations
-{Technical risks and mitigation strategies}
-
-## Status Updates **[REQUIRED]**
-
-*To be added during implementation*
+**Validation:**
+- `cargo check --workspace`: ✅ clean.
+- `cargo build --workspace --release`: ✅ clean (42s).
+- `cargo test --workspace --no-run`: ✅ clean.
+- `cargo test --workspace --lib`: ✅ **1,758 tests pass**, 0 fail.
