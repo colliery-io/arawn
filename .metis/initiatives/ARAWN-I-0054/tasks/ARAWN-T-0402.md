@@ -11,126 +11,59 @@ archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
 initiative_id: ARAWN-I-0054
 ---
 
-# T-F: Split `arawn-tui/src/app.rs` — App state by concern
+# T-F: Split `arawn-tui/src/app.rs`
 
-*This template includes sections for various types of tasks. Delete sections that don't apply to your specific use case.*
-
-## Parent Initiative **[CONDITIONAL: Assigned Task]**
+## Parent Initiative
 
 [[ARAWN-I-0054]]
 
-## Objective **[REQUIRED]**
+## Direction
 
-{Clear statement of what this task accomplishes}
+`App` is the central TUI state. The `impl App` block was 895 lines holding 16 methods spanning many concerns (action dispatch, history recall, autocomplete, engine events, session load, conversation export). Split into per-concern inherent impl blocks under `app/`.
 
-## Backlog Item Details **[CONDITIONAL: Backlog Item]**
+## Acceptance Criteria
 
-{Delete this section when task is assigned to an initiative}
+- [x] `crates/arawn-tui/src/app.rs` deleted; replaced by `crates/arawn-tui/src/app/` directory.
+- [x] One file per concern under `app/`.
+- [x] Public API of `arawn_tui::app::*` unchanged.
+- [x] `cargo check --workspace` clean.
+- [x] `cargo build --workspace --release` clean.
+- [x] `cargo test --workspace --no-run` clean.
+- [x] All workspace lib tests pass.
 
-### Type
-- [ ] Bug - Production issue that needs fixing
-- [ ] Feature - New functionality or enhancement  
-- [ ] Tech Debt - Code improvement or refactoring
-- [ ] Chore - Maintenance or setup work
+## Status Updates
 
-### Priority
-- [ ] P0 - Critical (blocks users/revenue)
-- [ ] P1 - High (important for user experience)
-- [ ] P2 - Medium (nice to have)
-- [ ] P3 - Low (when time permits)
+### 2026-05-22 — landed
 
-### Impact Assessment **[CONDITIONAL: Bug]**
-- **Affected Users**: {Number/percentage of users affected}
-- **Reproduction Steps**: 
-  1. {Step 1}
-  2. {Step 2}
-  3. {Step 3}
-- **Expected vs Actual**: {What should happen vs what happens}
+**Split executed via Python helper.** The original 1,887-line `app.rs` became 5 files under `app/`:
 
-### Business Justification **[CONDITIONAL: Feature]**
-- **User Value**: {Why users need this}
-- **Business Value**: {Impact on metrics/revenue}
-- **Effort Estimate**: {Rough size - S/M/L/XL}
+| File | Lines | Contents |
+|---|---|---|
+| `mod.rs` | 1,078 | Type declarations (`LayoutRegions`, `Focus`, `SidebarSection`, `ChatMessage`, `ChatRole`, `App`, `HistoryEntry`, `DOUBLE_ESC_WINDOW`) + `App::new` + `post_toast` + `should_show_brief_in_empty_chat` + `prev/next_char_boundary` + module-level helpers (`default_export_path`, `shellexpand_tilde`, `render_conversation_markdown`, `format_tool_input`) + `Default for App` + inline `#[cfg(test)] mod tests` block |
+| `actions.rs` | 534 | `handle_action` (412-line dispatch) + `handle_export_conversation` + `handle_copy_last_response` |
+| `events.rs` | 158 | `apply_engine_event` + `load_session_messages` |
+| `history.rs` | 121 | `record_input_history` + `history_recall_prev/next` + `open_history_modal` |
+| `autocomplete.rs` | 48 | `update_autocomplete` + `accept_autocomplete` |
 
-### Technical Debt Impact **[CONDITIONAL: Tech Debt]**
-- **Current Problems**: {What's difficult/slow/buggy now}
-- **Benefits of Fixing**: {What improves after refactoring}
-- **Risk Assessment**: {Risks of not addressing this}
+**Cross-module visibility:**
+- Methods called from `actions.rs` but defined in `history.rs` / `autocomplete.rs` promoted to `pub(super)`.
+- Free helpers (`default_export_path`, `shellexpand_tilde`, `render_conversation_markdown`, `format_tool_input`) promoted to `pub(super)`.
+- `DOUBLE_ESC_WINDOW` stayed `pub const` (already was).
+- All `App` fields stayed `pub` (already pub before split).
 
-## Acceptance Criteria **[REQUIRED]**
+**Inline tests stayed in `mod.rs`** per `feedback_inline_tests`. The test block uses `use super::*; use crate::action::Action;` — `cargo fix` had removed the now-unused top-level `Action` import, so the test mod re-imports it explicitly.
 
-- [ ] {Specific, testable requirement 1}
-- [ ] {Specific, testable requirement 2}
-- [ ] {Specific, testable requirement 3}
+**Caveat:** `mod.rs` at 1,078 lines is over the 800-line target, but ~600 of those are inline tests. The operative code is ~470 lines. Per `feedback_inline_tests`, tests stay inline.
 
-## Test Cases **[CONDITIONAL: Testing Task]**
-
-{Delete unless this is a testing task}
-
-### Test Case 1: {Test Case Name}
-- **Test ID**: TC-001
-- **Preconditions**: {What must be true before testing}
-- **Steps**: 
-  1. {Step 1}
-  2. {Step 2}
-  3. {Step 3}
-- **Expected Results**: {What should happen}
-- **Actual Results**: {To be filled during execution}
-- **Status**: {Pass/Fail/Blocked}
-
-### Test Case 2: {Test Case Name}
-- **Test ID**: TC-002
-- **Preconditions**: {What must be true before testing}
-- **Steps**: 
-  1. {Step 1}
-  2. {Step 2}
-- **Expected Results**: {What should happen}
-- **Actual Results**: {To be filled during execution}
-- **Status**: {Pass/Fail/Blocked}
-
-## Documentation Sections **[CONDITIONAL: Documentation Task]**
-
-{Delete unless this is a documentation task}
-
-### User Guide Content
-- **Feature Description**: {What this feature does and why it's useful}
-- **Prerequisites**: {What users need before using this feature}
-- **Step-by-Step Instructions**:
-  1. {Step 1 with screenshots/examples}
-  2. {Step 2 with screenshots/examples}
-  3. {Step 3 with screenshots/examples}
-
-### Troubleshooting Guide
-- **Common Issue 1**: {Problem description and solution}
-- **Common Issue 2**: {Problem description and solution}
-- **Error Messages**: {List of error messages and what they mean}
-
-### API Documentation **[CONDITIONAL: API Documentation]**
-- **Endpoint**: {API endpoint description}
-- **Parameters**: {Required and optional parameters}
-- **Example Request**: {Code example}
-- **Example Response**: {Expected response format}
-
-## Implementation Notes **[CONDITIONAL: Technical Task]**
-
-{Keep for technical tasks, delete for non-technical. Technical details, approach, or important considerations}
-
-### Technical Approach
-{How this will be implemented}
-
-### Dependencies
-{Other tasks or systems this depends on}
-
-### Risk Considerations
-{Technical risks and mitigation strategies}
-
-## Status Updates **[REQUIRED]**
-
-*To be added during implementation*
+**Validation:**
+- `cargo check --workspace`: ✅ clean.
+- `cargo build --workspace --release`: ✅ clean (35s).
+- `cargo test --workspace --no-run`: ✅ clean.
+- `cargo test --workspace --lib`: ✅ **1,758 tests pass**, 0 fail.
