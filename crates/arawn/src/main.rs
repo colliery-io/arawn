@@ -24,7 +24,6 @@ impl arawn_projections::Embedder for EmbedderBridge {
         Box::pin(async move { inner.embed_batch(&texts).await.map_err(|e| e.to_string()) })
     }
 }
-use arawn_engine::QueryEngineConfig;
 use arawn_engine::SkillTool;
 use arawn_engine::plugins::PluginRuntime;
 use arawn_engine::skills::SkillRegistry;
@@ -118,7 +117,7 @@ async fn main() -> Result<()> {
             .data_dir
             .as_deref()
             .map(String::from)
-            .or_else(dirs_path)
+            .or_else(arawn_bin::startup::dirs_path)
             .unwrap_or_else(|| ".arawn".into());
         let plugins_root = std::path::PathBuf::from(base).join("plugins");
         match arawn_bin::plugin_cmd::run_plugin_command(plugin_args, &plugins_root) {
@@ -138,7 +137,7 @@ async fn main() -> Result<()> {
             .data_dir
             .as_deref()
             .map(String::from)
-            .or_else(dirs_path)
+            .or_else(arawn_bin::startup::dirs_path)
             .unwrap_or_else(|| ".arawn".into());
         let data_dir = std::path::PathBuf::from(base);
         let report = arawn_bin::doctor::run(&data_dir).await;
@@ -164,7 +163,7 @@ async fn main() -> Result<()> {
             .data_dir
             .as_deref()
             .map(String::from)
-            .or_else(dirs_path)
+            .or_else(arawn_bin::startup::dirs_path)
             .unwrap_or_else(|| ".arawn".into());
         let data_dir = std::path::PathBuf::from(base);
         let period = match period.to_ascii_lowercase().as_str() {
@@ -204,7 +203,7 @@ async fn main() -> Result<()> {
     // Resolve data directory: --data-dir flag > ARAWN_DATA_DIR env > ~/.arawn
     let bootstrap_dir = cli
         .data_dir
-        .unwrap_or_else(|| dirs_path().unwrap_or_else(|| ".arawn".into()));
+        .unwrap_or_else(|| arawn_bin::startup::dirs_path().unwrap_or_else(|| ".arawn".into()));
     let config = arawn_bin::ArawnConfig::load(std::path::Path::new(&bootstrap_dir));
     let data_dir = config.data_dir().to_string_lossy().to_string();
 
@@ -342,7 +341,7 @@ async fn main() -> Result<()> {
         // entry surfaces here, not mid-session.
         let llm_pool = Arc::new(arawn_bin::LlmClientPool::from_config(
             &config,
-            build_llm_client,
+            arawn_bin::startup::build_llm_client,
         )?);
         info!(
             entries = llm_pool.len(),
@@ -425,7 +424,7 @@ async fn main() -> Result<()> {
         let registry = Arc::new(arawn_engine::ToolRegistry::new());
         let bg_manager = Arc::new(arawn_engine::BackgroundTaskManager::new());
         let plan_state = Arc::new(arawn_engine::PlanModeState::new());
-        register_default_tools(
+        arawn_bin::startup::register_default_tools(
             &registry,
             &config,
             &data_dir,
@@ -561,9 +560,9 @@ async fn main() -> Result<()> {
         // surface reload outcomes in the TUI.
 
         // Connect MCP servers (config + plugins)
-        let mcp_manager = connect_mcp_servers(&data_dir, &plugin_result, &registry).await;
+        let mcp_manager = arawn_bin::startup::connect_mcp_servers(&data_dir, &plugin_result, &registry).await;
 
-        let mut engine_config = build_engine_config(&config, &workstream, &data_dir);
+        let mut engine_config = arawn_bin::startup::build_engine_config(&config, &workstream, &data_dir);
 
         // Inject KB memories into the system prompt
         if let Some(ref mgr) = memory_manager {
@@ -895,7 +894,7 @@ async fn main() -> Result<()> {
                                         let frt = self.feed_runtime.read().unwrap().clone();
                                         let ws = workstream_name.to_string();
                                         tokio::spawn(async move {
-                                            expand_github_org(gh, store, frt, ws, owner).await;
+                                            arawn_bin::startup::expand_github_org(gh, store, frt, ws, owner).await;
                                         });
                                     } else {
                                         debug!(
@@ -919,7 +918,7 @@ async fn main() -> Result<()> {
                                         let feed_id_full =
                                             format!("github-repo:{owner}/{name}");
                                         tokio::spawn(async move {
-                                            register_one_feed(frt, store, &feed_id_full).await;
+                                            arawn_bin::startup::register_one_feed(frt, store, &feed_id_full).await;
                                         });
                                     }
                                 }
@@ -1048,372 +1047,17 @@ async fn main() -> Result<()> {
             )));
         }
 
-        // Resolve OAuth credentials with precedence:
-        //   env var → arawn.toml `[integrations.<service>]` → empty (skip).
-        // This lets users persist creds in config without exporting env
-        // vars on every shell, while keeping env-var override for ad-hoc
-        // testing (different OAuth client per run, etc.).
-        let resolve = |env_id: &str,
-                       env_secret: &str,
-                       cfg: &arawn_bin::config::IntegrationCredentials|
-         -> Option<(String, String)> {
-            let id = std::env::var(env_id)
-                .ok()
-                .filter(|s| !s.is_empty())
-                .or_else(|| Some(cfg.client_id.clone()).filter(|s| !s.is_empty()))?;
-            let secret = std::env::var(env_secret)
-                .ok()
-                .filter(|s| !s.is_empty())
-                .or_else(|| Some(cfg.client_secret.clone()).filter(|s| !s.is_empty()))?;
-            Some((id, secret))
-        };
-
-        // Register Gmail integration if creds are present (env or config).
-        // Skipped silently otherwise — users without Gmail credentials still
-        // get a working server. See docs/src/integrations/gmail.md.
-        let gmail_creds = resolve(
-            "ARAWN_GMAIL_CLIENT_ID",
-            "ARAWN_GMAIL_CLIENT_SECRET",
-            &config.integrations.gmail,
-        )
-        .or_else(|| {
-            // Fall back to the shared Google credentials.
-            resolve(
-                "ARAWN_GOOGLE_CLIENT_ID",
-                "ARAWN_GOOGLE_CLIENT_SECRET",
-                &config.integrations.google,
-            )
-        });
-        let gmail_integration_for_feeds: Option<Arc<arawn_integrations::gmail::GmailIntegration>>;
-        if let Some((client_id, client_secret)) = gmail_creds {
-            let gmail = Arc::new(arawn_integrations::gmail::GmailIntegration::new(
-                std::path::PathBuf::from(&data_dir),
-                client_id,
-                client_secret,
-            ));
-            service.register_integration(
-                Arc::clone(&gmail) as Arc<dyn arawn_integrations::Integration>
-            );
-            registry.register(Box::new(
-                arawn_integrations::gmail::GmailInboxReadTool::new(Arc::clone(&gmail)),
-            ));
-            registry.register(Box::new(arawn_integrations::gmail::GmailSearchTool::new(
-                Arc::clone(&gmail),
-            )));
-            registry.register(Box::new(
-                arawn_integrations::gmail::GmailGetMessageTool::new(Arc::clone(&gmail)),
-            ));
-            registry.register(Box::new(arawn_integrations::gmail::GmailSendTool::new(
-                Arc::clone(&gmail),
-            )));
-            registry.register(Box::new(arawn_integrations::gmail::GmailMarkReadTool::new(
-                Arc::clone(&gmail),
-            )));
-            info!("Gmail integration registered (5 tools)");
-            gmail_integration_for_feeds = Some(gmail);
-        } else {
-            gmail_integration_for_feeds = None;
-            debug!(
-                "Gmail integration skipped — set ARAWN_GMAIL_CLIENT_ID + \
-                 ARAWN_GMAIL_CLIENT_SECRET (env) or [integrations.gmail] (config) \
-                 to enable. See docs/src/integrations/gmail.md."
-            );
-        }
-
-        // Register Google Calendar. Service-specific creds first; falls back
-        // to the shared Google credentials so one OAuth project covers both.
-        let gcal_creds = resolve(
-            "ARAWN_GCAL_CLIENT_ID",
-            "ARAWN_GCAL_CLIENT_SECRET",
-            &config.integrations.calendar,
-        )
-        .or_else(|| {
-            resolve(
-                "ARAWN_GOOGLE_CLIENT_ID",
-                "ARAWN_GOOGLE_CLIENT_SECRET",
-                &config.integrations.google,
-            )
-        });
-        let calendar_integration_for_feeds: Option<
-            Arc<arawn_integrations::calendar::GoogleCalendarIntegration>,
-        >;
-        if let Some((client_id, client_secret)) = gcal_creds {
-            let calendar = Arc::new(
-                arawn_integrations::calendar::GoogleCalendarIntegration::new(
-                    std::path::PathBuf::from(&data_dir),
-                    client_id,
-                    client_secret,
-                ),
-            );
-            service.register_integration(
-                Arc::clone(&calendar) as Arc<dyn arawn_integrations::Integration>
-            );
-            registry.register(Box::new(
-                arawn_integrations::calendar::CalendarUpcomingTool::new(Arc::clone(&calendar)),
-            ));
-            registry.register(Box::new(
-                arawn_integrations::calendar::CalendarCreateEventTool::new(Arc::clone(&calendar)),
-            ));
-            registry.register(Box::new(
-                arawn_integrations::calendar::CalendarFindConflictsTool::new(Arc::clone(&calendar)),
-            ));
-            info!("Google Calendar integration registered (3 tools)");
-            calendar_integration_for_feeds = Some(calendar);
-        } else {
-            calendar_integration_for_feeds = None;
-            debug!(
-                "Google Calendar integration skipped — set ARAWN_GCAL_CLIENT_ID + \
-                 ARAWN_GCAL_CLIENT_SECRET (env) or [integrations.calendar] / \
-                 [integrations.google] (config) to enable."
-            );
-        }
-
-        // Register Google Drive. Same fallback chain as Calendar — service-specific
-        // creds first, then the shared Google credentials.
-        let drive_creds = resolve(
-            "ARAWN_GDRIVE_CLIENT_ID",
-            "ARAWN_GDRIVE_CLIENT_SECRET",
-            &config.integrations.drive,
-        )
-        .or_else(|| {
-            resolve(
-                "ARAWN_GOOGLE_CLIENT_ID",
-                "ARAWN_GOOGLE_CLIENT_SECRET",
-                &config.integrations.google,
-            )
-        });
-        let drive_integration_for_feeds: Option<
-            Arc<arawn_integrations::drive::GoogleDriveIntegration>,
-        >;
-        if let Some((client_id, client_secret)) = drive_creds {
-            let drive = Arc::new(arawn_integrations::drive::GoogleDriveIntegration::new(
-                std::path::PathBuf::from(&data_dir),
-                client_id,
-                client_secret,
-            ));
-            service.register_integration(
-                Arc::clone(&drive) as Arc<dyn arawn_integrations::Integration>
-            );
-            registry.register(Box::new(arawn_integrations::drive::DriveSearchTool::new(
-                Arc::clone(&drive),
-            )));
-            registry.register(Box::new(arawn_integrations::drive::DriveListTool::new(
-                Arc::clone(&drive),
-            )));
-            registry.register(Box::new(
-                arawn_integrations::drive::DriveGetMetadataTool::new(Arc::clone(&drive)),
-            ));
-            registry.register(Box::new(arawn_integrations::drive::DriveReadTool::new(
-                Arc::clone(&drive),
-            )));
-            registry.register(Box::new(arawn_integrations::drive::DriveUploadTool::new(
-                Arc::clone(&drive),
-            )));
-            registry.register(Box::new(arawn_integrations::drive::DriveUpdateTool::new(
-                Arc::clone(&drive),
-            )));
-            registry.register(Box::new(arawn_integrations::drive::DriveDeleteTool::new(
-                Arc::clone(&drive),
-            )));
-            info!("Google Drive integration registered (7 tools)");
-            drive_integration_for_feeds = Some(drive);
-        } else {
-            drive_integration_for_feeds = None;
-            debug!(
-                "Google Drive integration skipped — set ARAWN_GDRIVE_CLIENT_ID + \
-                 ARAWN_GDRIVE_CLIENT_SECRET (env) or [integrations.drive] / \
-                 [integrations.google] (config) to enable."
-            );
-        }
-
-        // Register Atlassian (Jira + Confluence). One OAuth client, one
-        // token; both tool families register together.
-        let atlassian_integration_for_feeds: Option<
-            Arc<arawn_integrations::atlassian::AtlassianIntegration>,
-        >;
-        if let Some((client_id, client_secret)) = resolve(
-            "ARAWN_ATLASSIAN_CLIENT_ID",
-            "ARAWN_ATLASSIAN_CLIENT_SECRET",
-            &config.integrations.atlassian,
-        ) {
-            let atlassian = Arc::new(arawn_integrations::atlassian::AtlassianIntegration::new(
-                std::path::PathBuf::from(&data_dir),
-                client_id,
-                client_secret,
-            ));
-            service.register_integration(
-                Arc::clone(&atlassian) as Arc<dyn arawn_integrations::Integration>
-            );
-            registry.register(Box::new(
-                arawn_integrations::atlassian::JiraSearchTool::new(Arc::clone(&atlassian)),
-            ));
-            registry.register(Box::new(
-                arawn_integrations::atlassian::JiraGetIssueTool::new(Arc::clone(&atlassian)),
-            ));
-            registry.register(Box::new(
-                arawn_integrations::atlassian::JiraCreateIssueTool::new(Arc::clone(&atlassian)),
-            ));
-            registry.register(Box::new(
-                arawn_integrations::atlassian::JiraUpdateIssueTool::new(Arc::clone(&atlassian)),
-            ));
-            registry.register(Box::new(
-                arawn_integrations::atlassian::JiraAddCommentTool::new(Arc::clone(&atlassian)),
-            ));
-            registry.register(Box::new(
-                arawn_integrations::atlassian::JiraTransitionIssueTool::new(Arc::clone(&atlassian)),
-            ));
-            registry.register(Box::new(
-                arawn_integrations::atlassian::ConfluenceSearchTool::new(Arc::clone(&atlassian)),
-            ));
-            registry.register(Box::new(
-                arawn_integrations::atlassian::ConfluenceGetPageTool::new(Arc::clone(&atlassian)),
-            ));
-            registry.register(Box::new(
-                arawn_integrations::atlassian::ConfluenceCreatePageTool::new(Arc::clone(
-                    &atlassian,
-                )),
-            ));
-            registry.register(Box::new(
-                arawn_integrations::atlassian::ConfluenceUpdatePageTool::new(Arc::clone(
-                    &atlassian,
-                )),
-            ));
-            registry.register(Box::new(
-                arawn_integrations::atlassian::ConfluenceListSpacesTool::new(Arc::clone(
-                    &atlassian,
-                )),
-            ));
-            info!("Atlassian integration registered (11 tools — 6 Jira, 5 Confluence)");
-            // If the persisted token was minted by an older arawn
-            // build that requested fewer scopes, surface that now —
-            // confluence feeds will 401 with "scope does not match"
-            // until the user re-runs /connect atlassian.
-            if let Some(missing) = atlassian.missing_scopes() {
-                warn!(
-                    missing = ?missing,
-                    "Atlassian token is missing scopes from the current build. \
-                     Run `/disconnect atlassian` then `/connect atlassian` to \
-                     mint a fresh token. Affected feeds (e.g. confluence/space-archive) \
-                     will fail with 401 'scope does not match' until then."
-                );
-            }
-            atlassian_integration_for_feeds = Some(atlassian);
-        } else {
-            atlassian_integration_for_feeds = None;
-            debug!(
-                "Atlassian integration skipped — set ARAWN_ATLASSIAN_CLIENT_ID + \
-                 ARAWN_ATLASSIAN_CLIENT_SECRET (env) or [integrations.atlassian] (config) \
-                 to enable."
-            );
-        }
-
-        // Register GitHub (I-0045). Read-only v1 — the connect flow
-        // captures an installation_id; tools/feed templates downstream
-        // mint short-lived access tokens via the cached App config.
-        let github_integration_for_feeds: Option<
-            Arc<arawn_integrations::github::GithubIntegration>,
-        >;
-        let resolve_github = || -> Option<arawn_integrations::github::GithubAppConfig> {
-            let cfg = &config.integrations.github;
-            let app_id = std::env::var("ARAWN_GITHUB_APP_ID")
-                .ok()
-                .filter(|s| !s.is_empty())
-                .or_else(|| Some(cfg.app_id.clone()).filter(|s| !s.is_empty()))?;
-            let app_slug = std::env::var("ARAWN_GITHUB_APP_SLUG")
-                .ok()
-                .filter(|s| !s.is_empty())
-                .or_else(|| Some(cfg.app_slug.clone()).filter(|s| !s.is_empty()))?;
-            let private_key_pem = std::env::var("ARAWN_GITHUB_PRIVATE_KEY_PEM")
-                .ok()
-                .filter(|s| !s.is_empty())
-                .or_else(|| {
-                    let path = std::env::var("ARAWN_GITHUB_PRIVATE_KEY_PATH")
-                        .ok()
-                        .filter(|s| !s.is_empty())
-                        .or_else(|| {
-                            Some(cfg.private_key_path.clone()).filter(|s| !s.is_empty())
-                        })?;
-                    match std::fs::read_to_string(&path) {
-                        Ok(pem) => Some(pem),
-                        Err(e) => {
-                            warn!(path = %path, error = %e,
-                                "GitHub App private key path unreadable; skipping integration");
-                            None
-                        }
-                    }
-                })?;
-            Some(arawn_integrations::github::GithubAppConfig {
-                app_id,
-                app_slug,
-                private_key_pem,
-            })
-        };
-        if let Some(app_cfg) = resolve_github() {
-            let github = Arc::new(arawn_integrations::github::GithubIntegration::new(
-                std::path::PathBuf::from(&data_dir),
-                app_cfg,
-            ));
-            service.register_integration(
-                Arc::clone(&github) as Arc<dyn arawn_integrations::Integration>,
-            );
-            info!("GitHub integration registered (read-only — no tools yet, feeds land in T-0319+)");
-            // I-0050 T-0327 — wire the late-bound cell so the bind hook
-            // can run list_org_repos expansion when github:org:owner
-            // bindings land.
-            *github_for_bind_hook.write().unwrap() = Some(Arc::clone(&github));
-            github_integration_for_feeds = Some(github);
-        } else {
-            github_integration_for_feeds = None;
-            debug!(
-                "GitHub integration skipped — set ARAWN_GITHUB_APP_ID + \
-                 ARAWN_GITHUB_APP_SLUG + ARAWN_GITHUB_PRIVATE_KEY_PATH (env) or \
-                 [integrations.github] (config) to enable. See \
-                 docs/src/integrations/github.md."
-            );
-        }
-        // Register Slack. No sharing with Google — different OAuth ecosystem.
-        let slack_integration_for_feeds: Option<Arc<arawn_integrations::slack::SlackIntegration>>;
-        if let Some((client_id, client_secret)) = resolve(
-            "ARAWN_SLACK_CLIENT_ID",
-            "ARAWN_SLACK_CLIENT_SECRET",
-            &config.integrations.slack,
-        ) {
-            let slack = Arc::new(arawn_integrations::slack::SlackIntegration::new(
-                std::path::PathBuf::from(&data_dir),
-                client_id,
-                client_secret,
-            ));
-            service.register_integration(
-                Arc::clone(&slack) as Arc<dyn arawn_integrations::Integration>
-            );
-            registry.register(Box::new(
-                arawn_integrations::slack::SlackListChannelsTool::new(Arc::clone(&slack)),
-            ));
-            registry.register(Box::new(arawn_integrations::slack::SlackHistoryTool::new(
-                Arc::clone(&slack),
-            )));
-            registry.register(Box::new(arawn_integrations::slack::SlackPostTool::new(
-                Arc::clone(&slack),
-            )));
-            registry.register(Box::new(arawn_integrations::slack::SlackReactTool::new(
-                Arc::clone(&slack),
-            )));
-            registry.register(Box::new(
-                arawn_integrations::slack::SlackUsersListTool::new(Arc::clone(&slack)),
-            ));
-            registry.register(Box::new(arawn_integrations::slack::SlackOpenDmTool::new(
-                Arc::clone(&slack),
-            )));
-            info!("Slack integration registered (6 tools)");
-            slack_integration_for_feeds = Some(slack);
-        } else {
-            slack_integration_for_feeds = None;
-            debug!(
-                "Slack integration skipped — set ARAWN_SLACK_CLIENT_ID + \
-                 ARAWN_SLACK_CLIENT_SECRET (env) or [integrations.slack] (config) \
-                 to enable. See docs/src/integrations/slack.md."
-            );
-        }
+        // OAuth integrations (Gmail, Calendar, Drive, Atlassian, GitHub, Slack).
+        // See `startup::integrations`.
+        let integrations_for_feeds = arawn_bin::startup::integrations::wire_integrations(
+            &config,
+            &data_dir,
+            &mut service,
+            &registry,
+            &github_for_bind_hook,
+        );
+        // Field-by-field destructuring removed — `integrations_for_feeds` is
+        // passed by reference into `startup::feeds::wire_continual_feeds`.
 
         // Start workflow engine (cloacina DefaultRunner — background services start on construction)
         let workflow_config =
@@ -1436,562 +1080,29 @@ async fn main() -> Result<()> {
         }
 
         // Register workflow tools (before config watcher takes registry ownership)
-        register_workflow_tools(&registry, workflows_dir, Arc::clone(&shared_runner));
+        arawn_bin::startup::register_workflow_tools(&registry, workflows_dir, Arc::clone(&shared_runner));
 
-        // Continual data feeds (I-0039). Registers per-feed cloacina
-        // cron schedules that route through arawn-feeds' template
-        // dispatcher. Skipped if the workflow runner failed to start —
-        // feeds need cloacina to schedule them.
-        if let Some(workflow_runner) = workflow_runner_handle.as_ref() {
-            let feeds_db_path = std::path::PathBuf::from(&data_dir).join("arawn.db");
-            match rusqlite::Connection::open(&feeds_db_path) {
-                Ok(conn) => {
-                    // arawn-feeds expects the schema to already be in
-                    // place (V2 feeds migration is owned by
-                    // arawn-storage and was applied when `Store::open`
-                    // ran above).
-                    let feeds_conn = Arc::new(tokio::sync::Mutex::new(conn));
-                    let feeds_layout = Arc::new(arawn_feeds::DataLayout::new(&data_dir));
-                    let feeds_registry = Arc::new(arawn_feeds::default_registry());
+        // Continual data feeds (I-0039). See `startup::feeds`.
+        arawn_bin::startup::feeds::wire_continual_feeds(
+            workflow_runner_handle.as_ref(),
+            &data_dir,
+            &integrations_for_feeds,
+            projections.as_ref(),
+            extractor_runner.as_ref(),
+            &mut service,
+            &feed_runtime_for_hooks,
+        ).await;
 
-                    let mut clients = arawn_feeds::RealClients::new();
-                    if let Some(slack) = slack_integration_for_feeds.as_ref() {
-                        clients = clients.with_slack(Arc::clone(slack));
-                    }
-                    if let Some(cal) = calendar_integration_for_feeds.as_ref() {
-                        clients = clients.with_calendar(Arc::clone(cal));
-                    }
-                    if let Some(gm) = gmail_integration_for_feeds.as_ref() {
-                        clients = clients.with_gmail(Arc::clone(gm));
-                    }
-                    if let Some(dr) = drive_integration_for_feeds.as_ref() {
-                        clients = clients.with_drive(Arc::clone(dr));
-                    }
-                    if let Some(at) = atlassian_integration_for_feeds.as_ref() {
-                        clients = clients.with_atlassian(Arc::clone(at));
-                    }
-                    if let Some(gh) = github_integration_for_feeds.as_ref() {
-                        clients = clients.with_github(Arc::clone(gh));
-                    }
-                    let clients: Arc<dyn arawn_feeds::FeedClients> = Arc::new(clients);
-
-                    // Reuse the outer projection store + extractor runner
-                    // built earlier so the bind hook, feed_search, embed
-                    // pass, and feed dispatch all share one instance.
-                    let feeds_projections = projections.clone();
-                    let feeds_extractor = extractor_runner.clone();
-
-                    match arawn_feeds::start(
-                        workflow_runner.cloacina_runner(),
-                        feeds_conn,
-                        feeds_layout,
-                        feeds_registry,
-                        clients,
-                        feeds_projections,
-                        feeds_extractor,
-                    )
-                    .await
-                    {
-                        Ok(runtime) => {
-                            // Hand the live runtime to the service so
-                            // `/watch` and `/feeds` route through it.
-                            let runtime = Arc::new(runtime);
-                            service.set_feed_runtime(Arc::clone(&runtime));
-                            // T-0329 — also expose the runtime to the
-                            // bind/unbind hooks so they can hot-add or
-                            // hot-remove cron schedules.
-                            *feed_runtime_for_hooks.write().unwrap() =
-                                Some(Arc::clone(&runtime));
-                            info!("feed runtime started");
-                        }
-                        Err(e) => warn!(error = %e, "feed runtime failed to start"),
-                    }
-                }
-                Err(e) => warn!(error = %e, db = %feeds_db_path.display(),
-                    "feed runtime unavailable — could not open arawn.db"),
-            }
-        } else {
-            debug!("feed runtime skipped — workflow runner not available");
-        }
-
-        // Ceremony engine (I-0043 + I-0041). The shared infra
-        // (connection, plugin registry, dispatcher, service, runner)
-        // is built when the cloacina workflow runner is available.
-        // Per-plugin enablement is gated on `[ceremonies.<kind>]`
-        // in arawn.toml: retro and daily each have their own
-        // enabled-flag and override surface. Absent table or
-        // missing fields → use the plugin's compiled-in defaults.
-        let retro_cfg = config.ceremonies.get("retro");
-        let retro_enabled = retro_cfg.is_none_or(arawn_bin::CeremonyConfig::is_enabled);
-        let daily_cfg = config.ceremonies.get("daily");
-        let daily_enabled = daily_cfg.is_none_or(arawn_bin::CeremonyConfig::is_enabled);
-        let weekly_cfg = config.ceremonies.get("weekly");
-        let weekly_enabled = weekly_cfg.is_none_or(arawn_bin::CeremonyConfig::is_enabled);
-
-        if let Some(workflow_runner) = workflow_runner_handle.as_ref()
-            && (retro_enabled || daily_enabled || weekly_enabled)
-        {
-            let cer_db_path = std::path::PathBuf::from(&data_dir).join("arawn.db");
-            match rusqlite::Connection::open(&cer_db_path) {
-                Ok(conn) => {
-                    let conn_handle = arawn_ceremonies::ConnHandle::new(conn);
-                    let plugin_reg = arawn_ceremonies::PluginRegistry::new();
-
-                    // Retro plugin construction (gated). Defer the
-                    // resolve_ceremony_tz fn definition below; inline
-                    // the resolution to avoid forward-ref churn.
-                    if retro_enabled {
-                        let model_hint = retro_cfg
-                            .and_then(|c| c.model.clone())
-                            .unwrap_or_else(|| arawn_llm::ModelHint::Medium.as_hint());
-                        let (retro_client, retro_model) = llm_pool.resolve_hint(&model_hint);
-                        let retro_tz_raw = retro_cfg.and_then(|c| c.timezone.as_deref());
-                        let retro_tz: chrono_tz::Tz = {
-                            use std::str::FromStr;
-                            match retro_tz_raw {
-                                None => chrono_tz::UTC,
-                                Some(s) => {
-                                    let t = s.trim();
-                                    if t.is_empty() || t.eq_ignore_ascii_case("local") {
-                                        chrono_tz::UTC
-                                    } else {
-                                        chrono_tz::Tz::from_str(t).unwrap_or(chrono_tz::UTC)
-                                    }
-                                }
-                            }
-                        };
-                        // Cadence resolution (T-0367):
-                        //   1. DB row in ceremony_config (live tool writes)
-                        //   2. [ceremonies.retro] cadence in arawn.toml
-                        //   3. Weekly default.
-                        let toml_cadence = retro_cfg
-                            .and_then(|c| c.cadence.as_deref())
-                            .and_then(arawn_ceremonies::RetroCadence::parse);
-                        let (cadence, mut anchor) =
-                            arawn_ceremonies::RetroCeremony::load_persisted_cadence(
-                                &conn_handle,
-                                toml_cadence,
-                            );
-                        // Biweekly needs an anchor. If absent (first
-                        // boot on this cadence), initialise to "this
-                        // Monday" and persist so the cycle is stable.
-                        if cadence == arawn_ceremonies::RetroCadence::Biweekly && anchor.is_none() {
-                            use chrono::Datelike;
-                            let today = chrono::Utc::now().date_naive();
-                            let weekday_offset =
-                                today.weekday().num_days_from_monday() as i64;
-                            let this_monday =
-                                today - chrono::Duration::days(weekday_offset);
-                            anchor = Some(this_monday);
-                            if let Err(e) = arawn_ceremonies::RetroCeremony::save_cadence(
-                                &conn_handle,
-                                cadence,
-                                anchor,
-                            ) {
-                                warn!(error = %e, "failed to persist initial retro cadence anchor");
-                            }
-                        }
-                        let retro = arawn_ceremonies::RetroCeremony::new(retro_client, retro_model)
-                            .with_detectors(arawn_ceremonies::retro_v1_catalog())
-                            .with_timezone(retro_tz)
-                            .with_cadence(cadence, anchor);
-                        if let Err(e) = plugin_reg.register(Arc::new(retro)) {
-                            warn!(error = %e, "ceremony retro plugin registration failed");
-                        }
-                    }
-
-                    // Daily + weekly both depend on the projection
-                    // store for calendar + attention sources. The
-                    // attention source is timezone-agnostic and can
-                    // be shared; the calendar source brackets day
-                    // windows in the configured ceremony timezone, so
-                    // daily and weekly each need their own instance
-                    // when their `[ceremonies.<kind>].timezone` strings
-                    // differ. We resolve the tz strings up-front and
-                    // build per-plugin calendar handles below.
-                    let daily_actually_enabled = daily_enabled && projections.is_some();
-                    let weekly_actually_enabled = weekly_enabled && projections.is_some();
-
-                    // Local helper: parse a CeremonyConfig.timezone
-                    // into a chrono_tz::Tz, defaulting to UTC for
-                    // "local"/missing values and warn-falling-back on
-                    // unknown IANA zones. Kept inline because it's
-                    // only used here.
-                    fn resolve_ceremony_tz(kind: &str, raw: Option<&str>) -> chrono_tz::Tz {
-                        use std::str::FromStr;
-                        match raw {
-                            None => chrono_tz::UTC,
-                            Some(s) => {
-                                let trimmed = s.trim();
-                                if trimmed.is_empty() || trimmed.eq_ignore_ascii_case("local") {
-                                    tracing::debug!(
-                                        kind,
-                                        "ceremony timezone '{trimmed}' → UTC fallback"
-                                    );
-                                    chrono_tz::UTC
-                                } else {
-                                    chrono_tz::Tz::from_str(trimmed).unwrap_or_else(|_| {
-                                        warn!(
-                                            kind,
-                                            raw = %trimmed,
-                                            "unknown ceremony timezone — falling back to UTC"
-                                        );
-                                        chrono_tz::UTC
-                                    })
-                                }
-                            }
-                        }
-                    }
-
-                    let daily_tz =
-                        resolve_ceremony_tz("daily", daily_cfg.and_then(|c| c.timezone.as_deref()));
-                    let weekly_tz = resolve_ceremony_tz(
-                        "weekly",
-                        weekly_cfg.and_then(|c| c.timezone.as_deref()),
-                    );
-
-                    let attention_source: Option<Arc<dyn arawn_ceremonies::AttentionSource>> =
-                        if (daily_actually_enabled || weekly_actually_enabled)
-                            && let Some(projections) = projections.as_ref()
-                        {
-                            Some(Arc::new(arawn_engine::ProjectionsAttentionSource::new(
-                                Arc::clone(projections),
-                                service.shared_store(),
-                            )))
-                        } else {
-                            None
-                        };
-
-                    let daily_calendar: Option<Arc<dyn arawn_ceremonies::CalendarSource>> =
-                        if daily_actually_enabled && let Some(projections) = projections.as_ref() {
-                            Some(Arc::new(
-                                arawn_engine::ProjectionsCalendarSource::new(Arc::clone(
-                                    projections,
-                                ))
-                                .with_tz(daily_tz),
-                            ))
-                        } else {
-                            None
-                        };
-                    let weekly_calendar: Option<Arc<dyn arawn_ceremonies::CalendarSource>> =
-                        if weekly_actually_enabled && let Some(projections) = projections.as_ref() {
-                            Some(Arc::new(
-                                arawn_engine::ProjectionsCalendarSource::new(Arc::clone(
-                                    projections,
-                                ))
-                                .with_tz(weekly_tz),
-                            ))
-                        } else {
-                            None
-                        };
-
-                    // Daily plugin construction (gated). Requires the
-                    // projection store for calendar + attention
-                    // sources; degrades to "daily disabled" if it
-                    // isn't available.
-                    if daily_actually_enabled
-                        && let (Some(calendar), Some(attention)) =
-                            (daily_calendar.as_ref(), attention_source.as_ref())
-                    {
-                        let model_hint = daily_cfg
-                            .and_then(|c| c.model.clone())
-                            .unwrap_or_else(|| arawn_llm::ModelHint::Medium.as_hint());
-                        let (daily_client, daily_model) = llm_pool.resolve_hint(&model_hint);
-                        let daily = arawn_ceremonies::DailyCeremony::new(
-                            daily_client,
-                            daily_model,
-                            Arc::clone(calendar),
-                            Arc::clone(attention),
-                        )
-                        .with_timezone(daily_tz);
-                        if let Err(e) = plugin_reg.register(Arc::new(daily)) {
-                            warn!(error = %e, "ceremony daily plugin registration failed");
-                        }
-                    } else if daily_enabled {
-                        warn!(
-                            "daily ceremony enabled in config but projection store unavailable — skipping"
-                        );
-                    }
-
-                    // Weekly plugin construction (gated). Same
-                    // projection-store dependency as daily.
-                    if weekly_actually_enabled
-                        && let (Some(calendar), Some(attention)) =
-                            (weekly_calendar.as_ref(), attention_source.as_ref())
-                    {
-                        let model_hint = weekly_cfg
-                            .and_then(|c| c.model.clone())
-                            .unwrap_or_else(|| arawn_llm::ModelHint::Medium.as_hint());
-                        let (weekly_client, weekly_model) = llm_pool.resolve_hint(&model_hint);
-                        let weekly = arawn_ceremonies::WeeklyCeremony::new(
-                            weekly_client,
-                            weekly_model,
-                            Arc::clone(calendar),
-                            Arc::clone(attention),
-                        )
-                        .with_timezone(weekly_tz);
-                        if let Err(e) = plugin_reg.register(Arc::new(weekly)) {
-                            warn!(error = %e, "ceremony weekly plugin registration failed");
-                        }
-                    } else if weekly_enabled {
-                        warn!(
-                            "weekly ceremony enabled in config but projection store unavailable — skipping"
-                        );
-                    }
-
-                    let (event_tx, mut event_rx) = arawn_ceremonies::event_channel();
-                    // Forward ceremony events onto the existing notice
-                    // broadcast so the TUI's read loop can react (see
-                    // T-0308 slice 3). Drop-stale (lagged) errors are
-                    // silently ignored — the receiver re-subscribes on
-                    // the next event.
-                    {
-                        let notice_tx_cer = service.notice_sender();
-                        tokio::spawn(async move {
-                            loop {
-                                match event_rx.recv().await {
-                                    Ok(ev) => {
-                                        // Side-by-side notices: the legacy
-                                        // `ceremony_event` category carries the
-                                        // raw JSON for existing TUI handlers
-                                        // (priority modal refresh, etc.); the
-                                        // I-0035 Phase 4 `briefing_ready`
-                                        // category fires only on
-                                        // `TabletGenerated` and triggers the
-                                        // brief-cache refresh in the TUI.
-                                        let message = serde_json::to_string(&ev)
-                                            .unwrap_or_else(|_| "{}".to_string());
-                                        let now = chrono::Utc::now().to_rfc3339();
-                                        let _ = notice_tx_cer.send(
-                                            arawn_service::ServerNotice {
-                                                level: "info".into(),
-                                                category: "ceremony_event".into(),
-                                                message: message.clone(),
-                                                timestamp: now.clone(),
-                                            },
-                                        );
-                                        if let arawn_ceremonies::CeremonyEvent::TabletGenerated {
-                                            kind,
-                                            period_key,
-                                            ..
-                                        } = &ev
-                                        {
-                                            let _ = notice_tx_cer.send(
-                                                arawn_service::ServerNotice {
-                                                    level: "info".into(),
-                                                    category: "briefing_ready".into(),
-                                                    message: format!(
-                                                        "Brief updated — {kind} tablet for {period_key}"
-                                                    ),
-                                                    timestamp: now,
-                                                },
-                                            );
-                                        }
-                                    }
-                                    Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => {
-                                        continue;
-                                    }
-                                    Err(_) => break,
-                                }
-                            }
-                        });
-                    }
-                    let dispatcher = Arc::new(
-                        arawn_ceremonies::EngineDispatcher::new(
-                            conn_handle.clone(),
-                            plugin_reg.clone(),
-                        )
-                        .with_events(event_tx.clone()),
-                    );
-                    // Back-fill missed daily/weekly ceremonies (T-0366).
-                    // Spawned as a background task so server-ready is
-                    // not gated on potentially-many LLM compose calls
-                    // (UAT regression: 14 days × 2 ceremonies blew
-                    // through the 60s ready timeout). The cron loop
-                    // attaches immediately below; if a freshly-fired
-                    // cron tick collides with a still-running back-fill
-                    // on the same period_key, dispatcher idempotency
-                    // makes whichever loses return Skipped.
-                    let backfill_lookback = config.backfill.ceremony_lookback_days;
-                    let backfill_registry = plugin_reg.clone();
-                    let backfill_dispatcher: Arc<dyn arawn_ceremonies::CeremonyDispatcher> =
-                        Arc::clone(&dispatcher)
-                            as Arc<dyn arawn_ceremonies::CeremonyDispatcher>;
-                    tokio::spawn(async move {
-                        match arawn_ceremonies::backfill::run(
-                            &backfill_registry,
-                            backfill_dispatcher.as_ref(),
-                            backfill_lookback,
-                        )
-                        .await
-                        {
-                            Ok(_report) => {}
-                            Err(e) => {
-                                warn!(error = %e, "ceremony back-fill failed");
-                            }
-                        }
-                    });
-
-                    let runner = arawn_ceremonies::CeremonyRunner::new(
-                        plugin_reg,
-                        workflow_runner.cloacina_runner(),
-                        Arc::clone(&dispatcher) as Arc<dyn arawn_ceremonies::CeremonyDispatcher>,
-                    );
-                    let cer_service = Arc::new(
-                        arawn_ceremonies::CeremonyService::new(
-                            conn_handle.clone(),
-                            Arc::clone(&dispatcher)
-                                as Arc<dyn arawn_ceremonies::CeremonyDispatcher>,
-                        )
-                        .with_events(event_tx),
-                    );
-
-                    // Cron registration per enabled plugin. Each
-                    // `[ceremonies.<kind>]` schedule override applied
-                    // here; invalid expressions log a warn and fall
-                    // back to plugin default rather than abort.
-                    if retro_enabled {
-                        let sched = retro_cfg.and_then(|c| {
-                            c.schedule.as_ref().map(|expr| {
-                                arawn_ceremonies::CronSchedule::new(
-                                    expr.clone(),
-                                    c.timezone.clone().unwrap_or_else(|| "Local".to_string()),
-                                )
-                            })
-                        });
-                        if let Err(e) = runner.register_one_with_schedule("retro", sched).await {
-                            warn!(error = %e, "ceremony runner failed to register retro cron — manual runs still work");
-                        }
-                    }
-                    if daily_actually_enabled {
-                        let sched = daily_cfg.and_then(|c| {
-                            c.schedule.as_ref().map(|expr| {
-                                arawn_ceremonies::CronSchedule::new(
-                                    expr.clone(),
-                                    c.timezone.clone().unwrap_or_else(|| "Local".to_string()),
-                                )
-                            })
-                        });
-                        if let Err(e) = runner.register_one_with_schedule("daily", sched).await {
-                            warn!(error = %e, "ceremony runner failed to register daily cron — manual runs still work");
-                        }
-                    }
-                    if weekly_actually_enabled {
-                        let sched = weekly_cfg.and_then(|c| {
-                            c.schedule.as_ref().map(|expr| {
-                                arawn_ceremonies::CronSchedule::new(
-                                    expr.clone(),
-                                    c.timezone.clone().unwrap_or_else(|| "Local".to_string()),
-                                )
-                            })
-                        });
-                        if let Err(e) = runner.register_one_with_schedule("weekly", sched).await {
-                            warn!(error = %e, "ceremony runner failed to register weekly cron — manual runs still work");
-                        }
-                    }
-
-                    // Sunday-night sweep — retro-only.
-                    if retro_enabled {
-                        let sweep_handle = conn_handle.clone();
-                        tokio::spawn(async move {
-                            let mut interval =
-                                tokio::time::interval(std::time::Duration::from_secs(3600));
-                            interval
-                                .set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
-                            loop {
-                                interval.tick().await;
-                                match arawn_ceremonies::sweep_unreviewed_retros(&sweep_handle) {
-                                    Ok(0) => {}
-                                    Ok(n) => info!(transitioned = n, "retro sweep"),
-                                    Err(e) => warn!(error = %e, "retro sweep failed"),
-                                }
-                            }
-                        });
-                    }
-
-                    service.set_ceremony_service(Arc::clone(&cer_service));
-
-                    // Retro agent tools (gated on retro_enabled).
-                    if retro_enabled {
-                        registry.register(Box::new(arawn_engine::RetroRunTool::new(Arc::clone(
-                            &cer_service,
-                        ))));
-                        registry.register(Box::new(arawn_engine::RetroCurrentTool::new(
-                            Arc::clone(&cer_service),
-                        )));
-                        registry.register(Box::new(arawn_engine::RetroListItemsTool::new(
-                            Arc::clone(&cer_service),
-                        )));
-                        registry.register(Box::new(arawn_engine::RetroSaveDiaryTool::new(
-                            Arc::clone(&cer_service),
-                        )));
-                        registry.register(Box::new(arawn_engine::RetroPatchItemTool::new(
-                            Arc::clone(&cer_service),
-                        )));
-                        registry.register(Box::new(arawn_engine::RetroSetCadenceTool::new(
-                            Arc::clone(&cer_service),
-                        )));
-                    }
-
-                    // Daily agent tools (gated on daily_actually_enabled).
-                    if daily_actually_enabled {
-                        registry.register(Box::new(arawn_engine::DailyRunTool::new(Arc::clone(
-                            &cer_service,
-                        ))));
-                        registry.register(Box::new(arawn_engine::DailyCurrentTool::new(
-                            Arc::clone(&cer_service),
-                        )));
-                        registry.register(Box::new(arawn_engine::DailyListItemsTool::new(
-                            Arc::clone(&cer_service),
-                        )));
-                        registry.register(Box::new(arawn_engine::DailyPatchItemTool::new(
-                            Arc::clone(&cer_service),
-                        )));
-                        registry.register(Box::new(arawn_engine::DailyAddTodoTool::new(
-                            Arc::clone(&cer_service),
-                        )));
-                    }
-
-                    // Weekly agent tools (gated on weekly_actually_enabled).
-                    if weekly_actually_enabled {
-                        registry.register(Box::new(arawn_engine::WeeklyRunTool::new(Arc::clone(
-                            &cer_service,
-                        ))));
-                        registry.register(Box::new(arawn_engine::WeeklyCurrentTool::new(
-                            Arc::clone(&cer_service),
-                        )));
-                        registry.register(Box::new(arawn_engine::WeeklyListItemsTool::new(
-                            Arc::clone(&cer_service),
-                        )));
-                        registry.register(Box::new(arawn_engine::WeeklyListPrioritiesTool::new(
-                            Arc::clone(&cer_service),
-                        )));
-                        registry.register(Box::new(arawn_engine::WeeklyConfirmPriorityTool::new(
-                            Arc::clone(&cer_service),
-                        )));
-                        registry.register(Box::new(arawn_engine::WeeklyRejectPriorityTool::new(
-                            Arc::clone(&cer_service),
-                        )));
-                        registry.register(Box::new(arawn_engine::WeeklyAddPriorityTool::new(
-                            Arc::clone(&cer_service),
-                        )));
-                    }
-
-                    info!(
-                        retro = retro_enabled,
-                        daily = daily_actually_enabled,
-                        weekly = weekly_actually_enabled,
-                        "ceremony engine wired"
-                    );
-                }
-                Err(e) => warn!(error = %e, db = %cer_db_path.display(),
-                    "ceremony engine unavailable — could not open arawn.db"),
-            }
-        } else {
-            debug!(
-                "ceremony engine skipped — workflow runner not available or all ceremonies disabled"
-            );
-        }
+        // Ceremony engine (I-0043 + I-0041). See `startup::ceremonies`.
+        arawn_bin::startup::ceremonies::wire_ceremony_engine(
+            &config,
+            workflow_runner_handle.as_ref(),
+            &data_dir,
+            &llm_pool,
+            projections.as_ref(),
+            &registry,
+            &mut service,
+        ).await;
 
         // Forward TodoEvents onto the notice broadcast so the TUI and
         // any other notice subscriber can react. Mirrors the ceremony
@@ -2109,413 +1220,18 @@ async fn main() -> Result<()> {
     // CLI prompt mode: connect to the running server via WebSocket.
     // The server handles the engine, tools, persistence — we just send/receive.
     let server_url = format!("ws://127.0.0.1:{}/ws", config.server.port);
-    run_cli_via_server(&server_url, &user_input, session_id).await
+    arawn_bin::startup::run_cli_via_server(&server_url, &user_input, session_id).await
 }
 
-/// Run a CLI prompt by connecting to the running server via WebSocket.
-async fn run_cli_via_server(url: &str, prompt: &str, session_id: Option<Uuid>) -> Result<()> {
-    use arawn_tui::ws_client::{EventUpdate, WsClient, engine_event_to_update, parse_engine_event};
 
-    let mut client = WsClient::connect(url).await.map_err(|e| {
-        anyhow::anyhow!(
-            "Could not connect to arawn server at {url}: {e}\n\
-             Start the server first: arawn serve"
-        )
-    })?;
 
-    // Create or resume session
-    let session_uuid = match session_id {
-        Some(id) => {
-            eprintln!("Resuming session {id}");
-            id
-        }
-        None => {
-            let s = client
-                .create_session(None)
-                .await
-                .map_err(|e| anyhow::anyhow!("Failed to create session: {e}"))?;
-            eprintln!("Session: {}", s.id);
-            s.id
-        }
-    };
 
-    // Send the prompt
-    if prompt.is_empty() {
-        eprintln!("No prompt provided");
-        std::process::exit(1);
-    }
 
-    // request_response awaits the JSON-RPC ack via the dedicated reader
-    // task — it can fail synchronously if the server rejected the request.
-    let ack = client
-        .request_response(
-            "send_message",
-            serde_json::json!({
-                "session_id": session_uuid.to_string(),
-                "content": prompt,
-            }),
-        )
-        .await
-        .map_err(|e| anyhow::anyhow!("Failed to send message: {e}"))?;
-    if let Some(err) = ack.get("error") {
-        let msg = err
-            .get("message")
-            .and_then(|m| m.as_str())
-            .unwrap_or("unknown error");
-        eprintln!("Server error: {msg}");
-        std::process::exit(1);
-    }
 
-    eprintln!("Thinking...\n");
-
-    let mut events = client
-        .events_take()
-        .ok_or_else(|| anyhow::anyhow!("ws events channel already taken"))?;
-
-    // Stream events until Complete or Error
-    let final_text = 'stream: loop {
-        let ev = events.recv().await;
-        match ev {
-            Some(arawn_tui::ws_client::WsEvent::Text(text)) => {
-                if let Some(event) = parse_engine_event(&text) {
-                    match engine_event_to_update(event) {
-                        EventUpdate::AddToolCall { name, .. } => {
-                            eprintln!("  [{name}]");
-                        }
-                        EventUpdate::AddToolResult { is_error, .. } => {
-                            if is_error {
-                                eprintln!("  [error]");
-                            }
-                        }
-                        EventUpdate::Complete(text) => {
-                            break 'stream text;
-                        }
-                        EventUpdate::Error(message) => {
-                            eprintln!("Error: {message}");
-                            std::process::exit(1);
-                        }
-                        _ => {}
-                    }
-                }
-            }
-            Some(arawn_tui::ws_client::WsEvent::Closed) => {
-                eprintln!("Server closed connection");
-                std::process::exit(1);
-            }
-            Some(arawn_tui::ws_client::WsEvent::Error(e)) => {
-                eprintln!("WebSocket error: {e}");
-                std::process::exit(1);
-            }
-            None => {
-                eprintln!("Connection lost");
-                std::process::exit(1);
-            }
-        }
-    };
-
-    println!("{final_text}");
-    Ok(())
-}
-
-/// Build the appropriate LLM client based on provider config.
-fn build_llm_client(config: &arawn_bin::LlmConfig) -> Result<Arc<dyn arawn_llm::LlmClient>> {
-    let resolved_key = arawn_bin::ArawnConfig::resolve_api_key(config);
-    match config.provider.as_str() {
-        "anthropic" => {
-            let api_key = resolved_key.ok_or_else(|| {
-                anyhow::anyhow!(
-                    "Anthropic provider requires an API key — set `api_key` in [llm.<name>] or export {}",
-                    config.api_key_env
-                )
-            })?;
-            Ok(Arc::new(arawn_llm::AnthropicClient::new(api_key)))
-        }
-        _ => {
-            // All other providers use OpenAI-compatible client
-            Ok(Arc::new(arawn_llm::OpenAICompatibleClient::from_config(
-                &config.provider,
-                config.base_url.as_deref(),
-                resolved_key,
-            )?))
-        }
-    }
-}
-
-/// Register all default tools into the registry.
-fn register_default_tools(
-    registry: &Arc<arawn_engine::ToolRegistry>,
-    config: &arawn_bin::ArawnConfig,
-    data_dir: &str,
-    bg_manager: Arc<arawn_engine::BackgroundTaskManager>,
-    plan_state: Arc<arawn_engine::PlanModeState>,
-) {
-    use arawn_engine::{
-        AgentTool, AskUserTool, EnterPlanModeTool, ExitPlanModeTool, FileEditTool, FileReadTool,
-        FileWriteTool, GlobTool, GrepTool, ShellTool, SleepTool, TaskGetTool, TaskListTool,
-        TaskOutputTool, TaskStopTool, ThinkTool, WebFetchTool, WebSearchTool,
-    };
-
-    registry.register(Box::new(ThinkTool));
-    registry.register(Box::new(
-        ShellTool::with_network_tools(config.sandbox.network_tools.clone())
-            .with_background_manager(Arc::clone(&bg_manager)),
-    ));
-    registry.register(Box::new(FileReadTool));
-    registry.register(Box::new(FileWriteTool));
-    registry.register(Box::new(FileEditTool));
-    registry.register(Box::new(GlobTool));
-    registry.register(Box::new(GrepTool));
-    registry.register(Box::new(WebFetchTool::new()));
-    registry.register(Box::new(WebSearchTool));
-    registry.register(Box::new(AskUserTool));
-
-    let agents_dir = std::path::PathBuf::from(data_dir).join("agents");
-    let agent_defs = arawn_engine::agent_defs::get_all_agents(Some(&agents_dir));
-    registry.register(Box::new(
-        AgentTool::new(Arc::clone(registry), agent_defs)
-            .with_background_manager(Arc::clone(&bg_manager)),
-    ));
-
-    registry.register(Box::new(SleepTool));
-    registry.register(Box::new(TaskListTool::new(Arc::clone(&bg_manager))));
-    registry.register(Box::new(TaskGetTool::new(Arc::clone(&bg_manager))));
-    registry.register(Box::new(TaskOutputTool::new(Arc::clone(&bg_manager))));
-    registry.register(Box::new(TaskStopTool::new(Arc::clone(&bg_manager))));
-
-    registry.register(Box::new(EnterPlanModeTool::new(Arc::clone(&plan_state))));
-    registry.register(Box::new(ExitPlanModeTool::new(Arc::clone(&plan_state))));
-}
-
-/// Connect to MCP servers from config and plugins.
-async fn connect_mcp_servers(
-    data_dir: &str,
-    plugin_result: &arawn_engine::plugins::PluginLoadResult,
-    registry: &Arc<arawn_engine::ToolRegistry>,
-) -> arawn_mcp::McpManager {
-    let mcp_config =
-        arawn_mcp::load_mcp_config(&std::path::PathBuf::from(data_dir).join("arawn.toml"));
-    let mut mcp_manager = arawn_mcp::McpManager::new();
-    if !mcp_config.servers.is_empty() {
-        info!(
-            servers = mcp_config.servers.len(),
-            "connecting to config MCP servers"
-        );
-        mcp_manager.connect_all(&mcp_config.servers, registry).await;
-    }
-
-    if !plugin_result.mcp_servers.is_empty() {
-        let plugin_mcp_configs: Vec<arawn_mcp::McpServerConfig> = plugin_result
-            .mcp_servers
-            .iter()
-            .map(|s| arawn_mcp::McpServerConfig {
-                name: s.name.clone(),
-                command: s.command.clone(),
-                args: s.args.clone(),
-                env: s.env.clone(),
-                enabled: true,
-            })
-            .collect();
-        info!(
-            servers = plugin_mcp_configs.len(),
-            "connecting to plugin MCP servers"
-        );
-        mcp_manager.connect_all(&plugin_mcp_configs, registry).await;
-    }
-
-    if mcp_manager.tool_count() > 0 {
-        info!(
-            tools = mcp_manager.tool_count(),
-            servers = mcp_manager.connected_servers().len(),
-            "MCP servers connected"
-        );
-    }
-
-    mcp_manager
-}
-
-/// Register workflow management tools.
-fn register_workflow_tools(
-    registry: &Arc<arawn_engine::ToolRegistry>,
-    workflows_dir: std::path::PathBuf,
-    shared_runner: arawn_workflow::SharedWorkflowRunner,
-) {
-    registry.register(Box::new(arawn_workflow::WorkflowCreateTool::new(
-        workflows_dir.clone(),
-    )));
-    registry.register(Box::new(arawn_workflow::WorkflowListTool::new(
-        workflows_dir.clone(),
-    )));
-    registry.register(Box::new(arawn_workflow::WorkflowDeleteTool::new(
-        workflows_dir,
-    )));
-    registry.register(Box::new(arawn_workflow::WorkflowStatusTool::new(
-        shared_runner,
-    )));
-}
-
-fn build_engine_config(
-    config: &arawn_bin::ArawnConfig,
-    workstream: &arawn_core::Workstream,
-    data_dir: &str,
-) -> QueryEngineConfig {
-    let engine_llm = config.engine_llm();
-    QueryEngineConfig {
-        // Emit a hint instead of a concrete model name. The pool resolves
-        // this at engine-construction time in `local_service`. T-0278 will
-        // promote this to per-call resolution.
-        model: arawn_llm::ModelHint::Heavy.as_hint(),
-        max_iterations: config.engine.max_iterations,
-        system_prompt: String::new(),
-        max_tokens: Some(engine_llm.max_tokens),
-        model_limits: arawn_engine::ModelLimits::new(
-            engine_llm.context_window,
-            config.compactor.compaction_threshold,
-        ),
-        data_dir: Some(std::path::PathBuf::from(data_dir)),
-        prompt_context: Some(arawn_engine::PromptContext {
-            prompts_dir: Some(config.prompts_dir()),
-            os: std::env::consts::OS.to_string(),
-            shell: std::env::var("SHELL").unwrap_or_else(|_| "sh".into()),
-            cwd: workstream.root_dir.clone(),
-            workstream_name: workstream.name.clone(),
-            workstream_root: workstream.root_dir.clone(),
-            context_files: arawn_engine::find_context_files(
-                &workstream.root_dir,
-                &std::path::PathBuf::from(data_dir),
-            ),
-            memories: vec![],
-            session_context: String::new(),
-            plugin_prompts: vec![],
-            // Overridden per-session in `LocalService` from the active
-            // workstream's column; the template carries the boot workstream's
-            // value so single-shot CLI flows pick the right persona too.
-            identity_profile: workstream.identity_profile,
-            // Filled in by LocalService per-query (it has access to the
-            // integration registry); the template stays None.
-            integration_capabilities: None,
-        }),
-        tool_timeout_secs: config.engine.tool_timeout_secs,
-    }
-}
 
 // T-0362: `render_usage_human` moved to
 // `arawn_llm::usage::render_usage_human` so the TUI `/usage`
 // slash command and the `arawn usage` CLI share a renderer.
 
-/// I-0050 T-0327 — list every repo under `owner` (via the github
-/// integration's authenticated client) and register one
-/// `github/repo-mirror` feed per repo against `workstream`.
-/// Idempotent: existing feeds are skipped.
-async fn expand_github_org(
-    github: Arc<arawn_integrations::github::GithubIntegration>,
-    store: Arc<std::sync::Mutex<arawn_storage::Store>>,
-    feed_runtime: Option<Arc<arawn_feeds::FeedRuntime>>,
-    workstream: String,
-    owner: String,
-) {
-    use arawn_feeds::GithubFeedClient;
-    let real_client = arawn_feeds::clients::RealGithubClient::new(github);
-    let repos = match real_client.list_org_repos(&owner, 10).await {
-        Ok(v) => v,
-        Err(e) => {
-            warn!(owner = %owner, error = %e, "org-expand: list_org_repos failed");
-            return;
-        }
-    };
-    info!(owner = %owner, count = repos.len(), workstream = %workstream,
-          "org-expand: registering per-repo feeds");
-    let now = chrono::Utc::now().to_rfc3339();
-    let mut new_feed_ids: Vec<String> = Vec::new();
-    {
-        let store_guard = match store.lock() {
-            Ok(g) => g,
-            Err(_) => {
-                warn!("org-expand: store mutex poisoned");
-                return;
-            }
-        };
-        let conn = store_guard.database().conn();
-        for repo in repos {
-            let name = repo
-                .get("name")
-                .and_then(|n| n.as_str())
-                .unwrap_or("")
-                .to_string();
-            if name.is_empty() {
-                continue;
-            }
-            let feed_id = format!("github-repo:{owner}/{name}");
-            let params_json =
-                serde_json::json!({"owner": &owner, "name": &name}).to_string();
-            // Idempotent insert — skip if already exists.
-            match conn.execute(
-                "INSERT OR IGNORE INTO feeds \
-                 (id, template, params, cadence, enabled, created_at, updated_at) \
-                 VALUES (?1, 'github/repo-mirror', ?2, '*/30 * * * *', 1, ?3, ?3)",
-                rusqlite::params![&feed_id, &params_json, &now],
-            ) {
-                Ok(rows) if rows > 0 => new_feed_ids.push(feed_id),
-                Ok(_) => {} // already existed → no cron register
-                Err(e) => warn!(feed_id = %feed_id, error = %e,
-                                "org-expand: insert failed"),
-            }
-        }
-    }
-    // T-0329 — hot-register cron for each newly-inserted feed so the
-    // org expand becomes live without a restart.
-    if let Some(frt) = feed_runtime {
-        for id in new_feed_ids {
-            register_one_feed(Arc::clone(&frt), Arc::clone(&store), &id).await;
-        }
-    }
-    let _ = workstream; // future: persist which workstream owns these
-}
 
-/// T-0329 — fetch a feed record by id and register its cron schedule
-/// with the live runtime. Idempotent: cloacina's `register_one`
-/// deletes any pre-existing schedule for the same workflow_name
-/// before inserting a new one.
-async fn register_one_feed(
-    feed_runtime: Arc<arawn_feeds::FeedRuntime>,
-    store: Arc<std::sync::Mutex<arawn_storage::Store>>,
-    feed_id: &str,
-) {
-    let record = {
-        let s = match store.lock() {
-            Ok(g) => g,
-            Err(_) => {
-                warn!(feed_id = %feed_id, "register_one_feed: store mutex poisoned");
-                return;
-            }
-        };
-        let feed_store = arawn_feeds::FeedStore::new(s.database().conn());
-        match feed_store.get(feed_id) {
-            Ok(Some(r)) => r,
-            Ok(None) => {
-                debug!(feed_id = %feed_id,
-                       "register_one_feed: row not found; skipping");
-                return;
-            }
-            Err(e) => {
-                warn!(feed_id = %feed_id, error = %e,
-                      "register_one_feed: lookup failed");
-                return;
-            }
-        }
-    };
-    if let Err(e) = feed_runtime.register_feed_runtime(&record).await {
-        warn!(feed_id = %feed_id, error = %e,
-              "register_one_feed: cron registration failed");
-    }
-}
 
-fn dirs_path() -> Option<String> {
-    #[cfg(target_os = "macos")]
-    {
-        std::env::var("HOME").ok().map(|h| format!("{h}/.arawn"))
-    }
-    #[cfg(not(target_os = "macos"))]
-    {
-        std::env::var("HOME").ok().map(|h| format!("{h}/.arawn"))
-    }
-}
