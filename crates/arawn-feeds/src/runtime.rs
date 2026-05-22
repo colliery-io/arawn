@@ -160,6 +160,14 @@ impl FeedRuntime {
         // call never touches disk or DB.
         let tmpl = self.runtime_ctx.registry.require(template)?;
         tmpl.validate(&params)?;
+        // Provider-backed check: hits the upstream API to verify
+        // referenced entities exist. Default impl is a no-op; only
+        // templates with resolvable references (e.g. jira/project-
+        // tracker resolving the `project` key against Jira) override
+        // this. Failures here surface as a clear "project doesn't
+        // exist" message instead of a silent first-fetch failure.
+        let ctx = TemplateCtx::new(self.runtime_ctx.clients.clone());
+        tmpl.register_check(&ctx, &params).await?;
         let defaults = tmpl.defaults(&params);
         let cadence = cadence_override.unwrap_or(defaults.cadence);
         validate_cadence(&cadence)?;

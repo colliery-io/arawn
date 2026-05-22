@@ -45,6 +45,32 @@ impl FeedTemplate for ProjectTrackerTemplate {
         Ok(())
     }
 
+    async fn register_check(
+        &self,
+        ctx: &TemplateCtx,
+        params: &TemplateParams,
+    ) -> Result<(), FeedError> {
+        // `validate` confirmed the param exists; here we hit Jira to
+        // verify the key/id resolves to a real project, so a typo
+        // surfaces at register time instead of as a confused "no
+        // issues" run later. Discards the resolved id — the run path
+        // re-passes the user-provided key into JQL, which Jira accepts
+        // for both keys and ids.
+        let project = params
+            .0
+            .get("project")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| FeedError::InvalidParams("missing required param: project".into()))?;
+        let atlassian = ctx.clients().atlassian().ok_or_else(|| {
+            FeedError::InvalidParams(
+                "Atlassian integration is not connected — connect it before registering a jira/project-tracker feed"
+                    .into(),
+            )
+        })?;
+        atlassian.resolve_project(project).await?;
+        Ok(())
+    }
+
     fn defaults(&self, _params: &TemplateParams) -> FeedDefaults {
         FeedDefaults {
             cadence: "*/30 * * * *".into(),

@@ -5,18 +5,17 @@ title: "Wire `IntelligentRoutingProvider` into engine agent loop — finish T-02
 short_code: "ARAWN-T-0393"
 created_at: 2026-05-21T14:53:38.031637+00:00
 updated_at: 2026-05-21T14:53:38.031637+00:00
-parent: 
+parent: ARAWN-I-0053
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/backlog"
-  - "#feature"
+  - "#phase/todo"
 
 
 exit_criteria_met: false
-initiative_id: NULL
+initiative_id: ARAWN-I-0053
 ---
 
 # Wire `IntelligentRoutingProvider` into engine agent loop — finish T-0278 deferred wiring

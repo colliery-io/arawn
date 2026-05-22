@@ -121,7 +121,12 @@ this initiative also covers:
   is a separate follow-on initiative once we see what's left after this clean.)
 - I-0048 §A (typed per-domain config refactor) / §B (typed cross-module event
   bus) — those are architectural decisions, intentionally out of scope here.
-- Adding new abstractions, helper layers, or APIs.
+- ~~Adding new abstractions, helper layers, or APIs.~~ *(2026-05-21 scope
+  expansion: operator pulled three follow-up wiring tasks under this
+  initiative — T-0391 wire `resolve_project`, T-0393 wire `RoutingProvider`,
+  T-0392 refresh memory benchmarks. These add new behavior but only wire up
+  dormant code that already shipped; they land after the cleanup work is
+  verified green.)*
 - Crate-graph dependency reorganization.
 - Behavior or feature redesign — removals must preserve all current
   user-visible behavior that we choose to keep. Anything we *choose* to remove

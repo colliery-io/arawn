@@ -5,18 +5,17 @@ title: "Refresh arawn-memory benchmark scenarios — update longmemeval/recall_e
 short_code: "ARAWN-T-0392"
 created_at: 2026-05-21T14:53:37.162614+00:00
 updated_at: 2026-05-21T14:53:37.162614+00:00
-parent: 
+parent: ARAWN-I-0053
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/backlog"
-  - "#feature"
+  - "#phase/todo"
 
 
 exit_criteria_met: false
-initiative_id: NULL
+initiative_id: ARAWN-I-0053
 ---
 
 # Refresh arawn-memory benchmark scenarios — update longmemeval/recall_eval to current use cases

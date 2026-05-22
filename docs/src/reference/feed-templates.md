@@ -199,9 +199,14 @@ overwritten; comments and history are append-only logs.
 
 | Field | Value |
 |---|---|
-| Required | `project: string` (key like `"ENG"`) |
+| Required | `project: string` (key like `"ENG"` or numeric id) |
 | Default cadence | `*/30 * * * *` |
 | Auto-create | No |
+
+At registration time arawn calls `resolve_project` against your Jira
+instance to verify the key/id exists. A typo (`"EGN"` instead of
+`"ENG"`) fails fast with a clear error instead of silently producing
+empty runs.
 
 ```text
 jira/project-tracker/<feed_id>/

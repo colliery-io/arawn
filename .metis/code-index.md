@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-21T13:00:09Z | 370 files | Python, Rust
+> Generated: 2026-05-21T17:01:19Z | 370 files | Python, Rust
 
 ## Project Structure
 
@@ -739,7 +739,7 @@
 -  `LocalService` type L99-514 — `= LocalService`
 -  `feed_runtime_or_err` function L173-177 — `(&self) -> Result<Arc<arawn_feeds::FeedRuntime>, ServiceError>`
 -  `load_session_state` function L308-346 — `( &self, session_id: Uuid, ) -> Result<(arawn_storage::SessionMeta, Workstream, ...` — Load session metadata, resolve workstream, and load message history.
--  `build_session_context` function L350-456 — `( &self, session_id: Uuid, workstream: &Workstream, ws_dir: &str, workspace_dir:...` — Build a ToolContext and per-session PromptContext for the engine.
+-  `build_session_context` function L350-456 — `( &self, session_id: Uuid, workstream: &Workstream, ws_dir: &str, workspace_dir:...` — Build a EngineToolContext and per-session PromptContext for the engine.
 -  `build_engine` function L460-513 — `( &self, prompt_context: Option<arawn_engine::PromptContext>, event_tx: &mpsc::S...` — Build a QueryEngine configured with compactor, skills, plugins, and plan state.
 -  `infer_entity_type` function L517-538 — `(text: &str) -> (arawn_memory::EntityType, String)` — Infer entity type from text patterns.
 -  `LocalService` type L543-1646 — `impl ArawnService for LocalService`
@@ -1055,40 +1055,39 @@
 -  `write_user_item` function L472-498 — `( conn: &ConnHandle, item: &UserItem, ordinal_by_section: &mut std::collections:...` — step 9.
 -  `begin` function L505-513 — `(conn: &ConnHandle) -> Result<(), CeremonyError>` — Manual transaction control.
 -  `commit` function L516-524 — `(conn: &ConnHandle) -> Result<(), CeremonyError>` — step 9.
--  `rollback` function L527-535 — `(conn: &ConnHandle) -> Result<(), CeremonyError>` — step 9.
--  `kind_str` function L537-547 — `(k: &ItemKind) -> &'static str` — step 9.
--  `tests` module L550-844 — `-` — step 9.
--  `open_test_db` function L560-570 — `() -> (TempDir, ConnHandle)` — step 9.
--  `ScriptedPlugin` struct L573-576 — `{ kind: &'static str, items: std::sync::Mutex<Vec<NewItem>> }` — step 9.
--  `ScriptedPlugin` type L577-584 — `= ScriptedPlugin` — step 9.
--  `new` function L578-583 — `(kind: &'static str, items: Vec<NewItem>) -> Self` — step 9.
--  `ScriptedPlugin` type L586-613 — `impl Ceremony for ScriptedPlugin` — step 9.
--  `kind` function L587-589 — `(&self) -> &'static str` — step 9.
--  `period_key` function L590-592 — `(&self, _now: chrono::DateTime<Utc>) -> String` — step 9.
--  `period_window` function L593-599 — `( &self, _period_key: &str, ) -> Result<(DateTime<Utc>, DateTime<Utc>), Ceremony...` — step 9.
--  `default_schedule` function L600-602 — `(&self) -> CronSchedule` — step 9.
--  `gather` function L603-605 — `(&self, _ctx: &dyn CeremonyCtx) -> Result<GatheredFacts, CeremonyError>` — step 9.
--  `compose` function L606-612 — `( &self, _ctx: &dyn CeremonyCtx, _facts: GatheredFacts, ) -> Result<Vec<NewItem>...` — step 9.
--  `item_composed` function L615-624 — `(tablet_id: &str, section: &str, citation: &str) -> NewItem` — step 9.
--  `item_user` function L626-634 — `(tablet_id: &str, section: &str) -> NewItem` — step 9.
--  `count_rows` function L636-642 — `(conn: &ConnHandle, table: &str) -> i64` — step 9.
--  `happy_path_writes_tablet_and_composed_item_with_citation` function L647-664 — `()` — step 9.
--  `composed_item_missing_citation_rolls_back_whole_run` function L667-682 — `()` — step 9.
--  `user_item_without_citation_is_accepted` function L685-705 — `()` — step 9.
--  `idempotency_skips_when_open_tablet_exists` function L708-720 — `()` — step 9.
--  `unknown_kind_errors` function L723-729 — `()` — step 9.
--  `dispatch_for_today_marks_not_recovered` function L732-753 — `()` — step 9.
--  `DateAwarePlugin` struct L758 — `-` — step 9.
--  `DateAwarePlugin` type L760-787 — `impl Ceremony for DateAwarePlugin` — step 9.
--  `kind` function L761-763 — `(&self) -> &'static str` — step 9.
--  `period_key` function L764-766 — `(&self, now: chrono::DateTime<Utc>) -> String` — step 9.
--  `period_window` function L767-773 — `( &self, _period_key: &str, ) -> Result<(chrono::DateTime<Utc>, chrono::DateTime...` — step 9.
--  `default_schedule` function L774-776 — `(&self) -> CronSchedule` — step 9.
--  `gather` function L777-779 — `(&self, _ctx: &dyn CeremonyCtx) -> Result<GatheredFacts, CeremonyError>` — step 9.
--  `compose` function L780-786 — `( &self, _ctx: &dyn CeremonyCtx, _facts: GatheredFacts, ) -> Result<Vec<NewItem>...` — step 9.
--  `dispatch_for_historical_marks_recovered` function L790-808 — `()` — step 9.
--  `dispatch_for_historical_idempotent` function L811-822 — `()` — step 9.
--  `write_pattern_row_returns_id_and_writes` function L825-843 — `()` — step 9.
+-  `kind_str` function L526-536 — `(k: &ItemKind) -> &'static str` — step 9.
+-  `tests` module L539-833 — `-` — step 9.
+-  `open_test_db` function L549-559 — `() -> (TempDir, ConnHandle)` — step 9.
+-  `ScriptedPlugin` struct L562-565 — `{ kind: &'static str, items: std::sync::Mutex<Vec<NewItem>> }` — step 9.
+-  `ScriptedPlugin` type L566-573 — `= ScriptedPlugin` — step 9.
+-  `new` function L567-572 — `(kind: &'static str, items: Vec<NewItem>) -> Self` — step 9.
+-  `ScriptedPlugin` type L575-602 — `impl Ceremony for ScriptedPlugin` — step 9.
+-  `kind` function L576-578 — `(&self) -> &'static str` — step 9.
+-  `period_key` function L579-581 — `(&self, _now: chrono::DateTime<Utc>) -> String` — step 9.
+-  `period_window` function L582-588 — `( &self, _period_key: &str, ) -> Result<(DateTime<Utc>, DateTime<Utc>), Ceremony...` — step 9.
+-  `default_schedule` function L589-591 — `(&self) -> CronSchedule` — step 9.
+-  `gather` function L592-594 — `(&self, _ctx: &dyn CeremonyCtx) -> Result<GatheredFacts, CeremonyError>` — step 9.
+-  `compose` function L595-601 — `( &self, _ctx: &dyn CeremonyCtx, _facts: GatheredFacts, ) -> Result<Vec<NewItem>...` — step 9.
+-  `item_composed` function L604-613 — `(tablet_id: &str, section: &str, citation: &str) -> NewItem` — step 9.
+-  `item_user` function L615-623 — `(tablet_id: &str, section: &str) -> NewItem` — step 9.
+-  `count_rows` function L625-631 — `(conn: &ConnHandle, table: &str) -> i64` — step 9.
+-  `happy_path_writes_tablet_and_composed_item_with_citation` function L636-653 — `()` — step 9.
+-  `composed_item_missing_citation_rolls_back_whole_run` function L656-671 — `()` — step 9.
+-  `user_item_without_citation_is_accepted` function L674-694 — `()` — step 9.
+-  `idempotency_skips_when_open_tablet_exists` function L697-709 — `()` — step 9.
+-  `unknown_kind_errors` function L712-718 — `()` — step 9.
+-  `dispatch_for_today_marks_not_recovered` function L721-742 — `()` — step 9.
+-  `DateAwarePlugin` struct L747 — `-` — step 9.
+-  `DateAwarePlugin` type L749-776 — `impl Ceremony for DateAwarePlugin` — step 9.
+-  `kind` function L750-752 — `(&self) -> &'static str` — step 9.
+-  `period_key` function L753-755 — `(&self, now: chrono::DateTime<Utc>) -> String` — step 9.
+-  `period_window` function L756-762 — `( &self, _period_key: &str, ) -> Result<(chrono::DateTime<Utc>, chrono::DateTime...` — step 9.
+-  `default_schedule` function L763-765 — `(&self) -> CronSchedule` — step 9.
+-  `gather` function L766-768 — `(&self, _ctx: &dyn CeremonyCtx) -> Result<GatheredFacts, CeremonyError>` — step 9.
+-  `compose` function L769-775 — `( &self, _ctx: &dyn CeremonyCtx, _facts: GatheredFacts, ) -> Result<Vec<NewItem>...` — step 9.
+-  `dispatch_for_historical_marks_recovered` function L779-797 — `()` — step 9.
+-  `dispatch_for_historical_idempotent` function L800-811 — `()` — step 9.
+-  `write_pattern_row_returns_id_and_writes` function L814-832 — `()` — step 9.
 
 #### crates/arawn-ceremonies/src/error.rs
 
@@ -1406,42 +1405,41 @@
 -  `row_to_tablet` function L862-877 — `(row: &rusqlite::Row<'_>) -> rusqlite::Result<TabletDto>` — Filed as a follow-up.
 -  `row_to_item` function L879-893 — `(row: &rusqlite::Row<'_>) -> rusqlite::Result<ItemDto>` — Filed as a follow-up.
 -  `kind_str` function L895-905 — `(k: &ItemKind) -> &'static str` — Filed as a follow-up.
--  `status_str` function L911-913 — `(s: TabletStatus) -> &'static str` — Tiny use-once helper so callers that only need to render a
--  `tests` module L916-1567 — `-` — Filed as a follow-up.
--  `open_test_db` function L927-934 — `() -> (TempDir, ConnHandle)` — Filed as a follow-up.
--  `ScriptedPlugin` struct L936-940 — `{ kind: &'static str, items: std::sync::Mutex<Vec<NewItem>>, period: String }` — Filed as a follow-up.
--  `ScriptedPlugin` type L942-969 — `impl Ceremony for ScriptedPlugin` — Filed as a follow-up.
--  `kind` function L943-945 — `(&self) -> &'static str` — Filed as a follow-up.
--  `period_key` function L946-948 — `(&self, _now: chrono::DateTime<Utc>) -> String` — Filed as a follow-up.
--  `period_window` function L949-955 — `( &self, _period_key: &str, ) -> Result<(chrono::DateTime<Utc>, chrono::DateTime...` — Filed as a follow-up.
--  `default_schedule` function L956-958 — `(&self) -> CronSchedule` — Filed as a follow-up.
--  `gather` function L959-961 — `(&self, _ctx: &dyn CeremonyCtx) -> Result<GatheredFacts, CeremonyError>` — Filed as a follow-up.
--  `compose` function L962-968 — `( &self, _ctx: &dyn CeremonyCtx, _facts: GatheredFacts, ) -> Result<Vec<NewItem>...` — Filed as a follow-up.
--  `build_service_with_items` function L971-1007 — `( kind: &'static str, period: &str, tablet_id_prefix: &str, ) -> (TempDir, Cerem...` — Filed as a follow-up.
--  `run_generates_and_get_by_period_reads_back` function L1010-1017 — `()` — Filed as a follow-up.
--  `list_items_filters_by_section` function L1020-1029 — `()` — Filed as a follow-up.
--  `patch_item_toggles_done` function L1032-1061 — `()` — Filed as a follow-up.
--  `add_item_inserts_user_row_with_null_citation_and_next_ordinal` function L1064-1081 — `()` — Filed as a follow-up.
--  `list_notifications_surfaces_open_tablets` function L1084-1091 — `()` — Filed as a follow-up.
--  `get_today_returns_none_when_no_daily_tablet` function L1094-1100 — `()` — Filed as a follow-up.
--  `dispatch_emits_tablet_generated_event` function L1103-1137 — `()` — Filed as a follow-up.
--  `upsert_diary_writes_row_and_flips_status` function L1140-1168 — `()` — Filed as a follow-up.
--  `upsert_diary_is_idempotent_and_replaces_body` function L1171-1192 — `()` — Filed as a follow-up.
--  `upsert_diary_rejects_non_retro_tablet` function L1195-1212 — `()` — Filed as a follow-up.
--  `upsert_diary_rejects_unknown_tablet` function L1215-1221 — `()` — Filed as a follow-up.
--  `upsert_diary_emits_diary_updated_event` function L1224-1239 — `()` — Filed as a follow-up.
--  `service_internals` function L1245-1250 — `(service: &CeremonyService) -> (ConnHandle, (), ())` — Tiny accessor for the in-test connection so the diary tests
--  `build_weekly_with_priority_candidates` function L1256-1293 — `( n: usize, ) -> (TempDir, CeremonyService, String, Vec<String>)` — Build a weekly tablet with N priority candidate items via raw
--  `confirm_priority_happy_path_inserts_row_and_copies_citation` function L1296-1314 — `()` — Filed as a follow-up.
--  `confirm_priority_preserves_rationale_from_body` function L1317-1362 — `()` — Filed as a follow-up.
--  `confirm_priority_leaves_rationale_null_when_body_has_none` function L1365-1383 — `()` — Filed as a follow-up.
--  `confirm_priority_is_idempotent` function L1386-1401 — `()` — Filed as a follow-up.
--  `confirm_priority_rejects_non_priority_item` function L1404-1431 — `()` — Filed as a follow-up.
--  `reject_priority_deletes_item_and_priority_row` function L1434-1456 — `()` — Filed as a follow-up.
--  `add_priority_inserts_with_null_citation` function L1459-1482 — `()` — Filed as a follow-up.
--  `list_priorities_unions_confirmed_and_candidates_deduped` function L1485-1514 — `()` — Filed as a follow-up.
--  `confirm_priority_emits_priority_confirmed_event` function L1517-1534 — `()` — Filed as a follow-up.
--  `patch_item_emits_item_updated_event` function L1537-1566 — `()` — Filed as a follow-up.
+-  `tests` module L908-1557 — `-` — Filed as a follow-up.
+-  `open_test_db` function L919-926 — `() -> (TempDir, ConnHandle)` — Filed as a follow-up.
+-  `ScriptedPlugin` struct L928-932 — `{ kind: &'static str, items: std::sync::Mutex<Vec<NewItem>>, period: String }` — Filed as a follow-up.
+-  `ScriptedPlugin` type L934-961 — `impl Ceremony for ScriptedPlugin` — Filed as a follow-up.
+-  `kind` function L935-937 — `(&self) -> &'static str` — Filed as a follow-up.
+-  `period_key` function L938-940 — `(&self, _now: chrono::DateTime<Utc>) -> String` — Filed as a follow-up.
+-  `period_window` function L941-947 — `( &self, _period_key: &str, ) -> Result<(chrono::DateTime<Utc>, chrono::DateTime...` — Filed as a follow-up.
+-  `default_schedule` function L948-950 — `(&self) -> CronSchedule` — Filed as a follow-up.
+-  `gather` function L951-953 — `(&self, _ctx: &dyn CeremonyCtx) -> Result<GatheredFacts, CeremonyError>` — Filed as a follow-up.
+-  `compose` function L954-960 — `( &self, _ctx: &dyn CeremonyCtx, _facts: GatheredFacts, ) -> Result<Vec<NewItem>...` — Filed as a follow-up.
+-  `build_service_with_items` function L963-997 — `( kind: &'static str, period: &str, ) -> (TempDir, CeremonyService, String)` — Filed as a follow-up.
+-  `run_generates_and_get_by_period_reads_back` function L1000-1007 — `()` — Filed as a follow-up.
+-  `list_items_filters_by_section` function L1010-1019 — `()` — Filed as a follow-up.
+-  `patch_item_toggles_done` function L1022-1051 — `()` — Filed as a follow-up.
+-  `add_item_inserts_user_row_with_null_citation_and_next_ordinal` function L1054-1071 — `()` — Filed as a follow-up.
+-  `list_notifications_surfaces_open_tablets` function L1074-1081 — `()` — Filed as a follow-up.
+-  `get_today_returns_none_when_no_daily_tablet` function L1084-1090 — `()` — Filed as a follow-up.
+-  `dispatch_emits_tablet_generated_event` function L1093-1127 — `()` — Filed as a follow-up.
+-  `upsert_diary_writes_row_and_flips_status` function L1130-1158 — `()` — Filed as a follow-up.
+-  `upsert_diary_is_idempotent_and_replaces_body` function L1161-1182 — `()` — Filed as a follow-up.
+-  `upsert_diary_rejects_non_retro_tablet` function L1185-1202 — `()` — Filed as a follow-up.
+-  `upsert_diary_rejects_unknown_tablet` function L1205-1211 — `()` — Filed as a follow-up.
+-  `upsert_diary_emits_diary_updated_event` function L1214-1229 — `()` — Filed as a follow-up.
+-  `service_internals` function L1235-1240 — `(service: &CeremonyService) -> (ConnHandle, (), ())` — Tiny accessor for the in-test connection so the diary tests
+-  `build_weekly_with_priority_candidates` function L1246-1283 — `( n: usize, ) -> (TempDir, CeremonyService, String, Vec<String>)` — Build a weekly tablet with N priority candidate items via raw
+-  `confirm_priority_happy_path_inserts_row_and_copies_citation` function L1286-1304 — `()` — Filed as a follow-up.
+-  `confirm_priority_preserves_rationale_from_body` function L1307-1352 — `()` — Filed as a follow-up.
+-  `confirm_priority_leaves_rationale_null_when_body_has_none` function L1355-1373 — `()` — Filed as a follow-up.
+-  `confirm_priority_is_idempotent` function L1376-1391 — `()` — Filed as a follow-up.
+-  `confirm_priority_rejects_non_priority_item` function L1394-1421 — `()` — Filed as a follow-up.
+-  `reject_priority_deletes_item_and_priority_row` function L1424-1446 — `()` — Filed as a follow-up.
+-  `add_priority_inserts_with_null_citation` function L1449-1472 — `()` — Filed as a follow-up.
+-  `list_priorities_unions_confirmed_and_candidates_deduped` function L1475-1504 — `()` — Filed as a follow-up.
+-  `confirm_priority_emits_priority_confirmed_event` function L1507-1524 — `()` — Filed as a follow-up.
+-  `patch_item_emits_item_updated_event` function L1527-1556 — `()` — Filed as a follow-up.
 
 #### crates/arawn-ceremonies/src/types.rs
 
@@ -1488,37 +1486,36 @@
 -  `is_valid_section` function L366-368 — `(s: &str) -> bool` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
 -  `collect_valid_ids` function L374-391 — `(payload: &serde_json::Value) -> HashSet<String>` — Walk the gather payload and collect every id field the compose
 -  `parse_llm_items` function L394-417 — `(text: &str) -> Option<Vec<ComposedItemSpec>>` — Pull the first balanced JSON array out of the LLM's response.
--  `tests` module L420-725 — `-` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `tests` module L420-740 — `-` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
 -  `open_test_db` function L431-438 — `() -> (TempDir, ConnHandle)` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
 -  `make_llm_with_response` function L440-444 — `(text: &str) -> Arc<dyn arawn_llm::LlmClient>` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
 -  `seed_daily_history` function L446-501 — `(conn: &ConnHandle, period_key: &str, iso_week: &str)` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
 -  `sample_calendar_events` function L503-530 — `() -> Vec<CalEvent>` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
--  `sample_signals` function L532-543 — `() -> Vec<SignalRow>` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
--  `period_key_formats_yyyy_mm_dd` function L546-551 — `()` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
--  `gather_collects_four_section_payload` function L554-589 — `()` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
--  `compose_rejects_unknown_citation` function L592-609 — `()` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
--  `compose_rejects_empty_citation` function L612-629 — `()` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
--  `end_to_end_dispatch_writes_tablet_and_items` function L632-684 — `()` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
--  `period_window_utc_matches_calendar_day` function L687-697 — `()` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
--  `period_window_pacific_offsets_correctly` function L700-712 — `()` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
--  `period_window_rejects_non_date` function L715-724 — `()` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `sample_signals` function L532-541 — `(ts: DateTime<Utc>) -> Vec<SignalRow>` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `period_key_formats_yyyy_mm_dd` function L544-549 — `()` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `gather_collects_four_section_payload` function L552-599 — `()` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `compose_rejects_unknown_citation` function L602-619 — `()` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `compose_rejects_empty_citation` function L622-639 — `()` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `end_to_end_dispatch_writes_tablet_and_items` function L642-699 — `()` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `period_window_utc_matches_calendar_day` function L702-712 — `()` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `period_window_pacific_offsets_correctly` function L715-727 — `()` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
+-  `period_window_rejects_non_date` function L730-739 — `()` — attention ≤ 10, todos ≤ 20, priorities ≤ 5.
 
 #### crates/arawn-ceremonies/src/plugins/gather_sources.rs
 
 - pub `CalEvent` struct L21-28 — `{ id: String, title: String, start: DateTime<Utc>, end: DateTime<Utc>, attendees...` — One calendar event surfaced to the daily plugin's gather payload.
 - pub `SignalRow` struct L33-40 — `{ id: String, source_kind: String, source_id: String, ts: DateTime<Utc>, summary...` — One attention signal (cross-feed unread/important item) the daily
 - pub `CalendarSource` interface L44-46 — `{ fn events_for() }` — Read interface the daily plugin uses to pull today's calendar.
-- pub `AttentionSource` interface L57-81 — `{ fn since(), fn between() }` — Read interface the daily/weekly plugins use to pull attention
-- pub `NoopCalendarSource` struct L86 — `-` — No-op calendar source.
-- pub `StaticCalendarSource` struct L97 — `-` — Calendar source that returns a fixed set of events regardless of
-- pub `StaticAttentionSource` struct L108 — `-` — Attention source that returns a fixed set of signals.
--  `between` function L68-80 — `( &self, start: DateTime<Utc>, end: DateTime<Utc>, cap: usize, ) -> Result<Vec<S...` — Return up to `cap` signals with `source_ts` in `[start, end)`.
--  `NoopCalendarSource` type L89-93 — `impl CalendarSource for NoopCalendarSource` — work.
--  `events_for` function L90-92 — `(&self, _date: NaiveDate) -> Result<Vec<CalEvent>, CeremonyError>` — work.
--  `StaticCalendarSource` type L100-104 — `impl CalendarSource for StaticCalendarSource` — work.
--  `events_for` function L101-103 — `(&self, _date: NaiveDate) -> Result<Vec<CalEvent>, CeremonyError>` — work.
--  `StaticAttentionSource` type L111-119 — `impl AttentionSource for StaticAttentionSource` — work.
--  `since` function L112-118 — `( &self, _cursor: DateTime<Utc>, cap: usize, ) -> Result<Vec<SignalRow>, Ceremon...` — work.
+- pub `AttentionSource` interface L56-64 — `{ fn between() }` — Read interface the daily/weekly plugins use to pull attention
+- pub `NoopCalendarSource` struct L69 — `-` — No-op calendar source.
+- pub `StaticCalendarSource` struct L80 — `-` — Calendar source that returns a fixed set of events regardless of
+- pub `StaticAttentionSource` struct L91 — `-` — Attention source that returns a fixed set of signals filtered to
+-  `NoopCalendarSource` type L72-76 — `impl CalendarSource for NoopCalendarSource` — work.
+-  `events_for` function L73-75 — `(&self, _date: NaiveDate) -> Result<Vec<CalEvent>, CeremonyError>` — work.
+-  `StaticCalendarSource` type L83-87 — `impl CalendarSource for StaticCalendarSource` — work.
+-  `events_for` function L84-86 — `(&self, _date: NaiveDate) -> Result<Vec<CalEvent>, CeremonyError>` — work.
+-  `StaticAttentionSource` type L94-109 — `impl AttentionSource for StaticAttentionSource` — work.
+-  `between` function L95-108 — `( &self, start: DateTime<Utc>, end: DateTime<Utc>, cap: usize, ) -> Result<Vec<S...` — work.
 
 #### crates/arawn-ceremonies/src/plugins/mod.rs
 
@@ -1567,31 +1564,30 @@
 -  `build_compose_prompt` function L640-650 — `(facts: &GatheredFacts) -> String` — does not gate again.
 -  `ComposedItemSpec` struct L653-657 — `{ section: String, citation_id: String, body: serde_json::Value }` — does not gate again.
 -  `parse_llm_items` function L662-685 — `(text: &str) -> Option<Vec<ComposedItemSpec>>` — Pull the first balanced JSON array out of the LLM's response.
--  `monday_sunday_for_iso_week_public` function L691-693 — `(iso_week: &str) -> Option<(String, String)>` — Re-export the iso-week date helper so the catalog (T-0288) can
--  `monday_sunday_for_iso_week` function L698-712 — `(iso_week: &str) -> Option<(String, String)>` — Compute Monday and Sunday `YYYY-MM-DD` strings that bracket an
--  `tests` module L715-1110 — `-` — does not gate again.
--  `open_test_db` function L723-730 — `() -> (TempDir, ConnHandle)` — does not gate again.
--  `make_llm_with_response` function L732-736 — `(text: &str) -> Arc<dyn arawn_llm::LlmClient>` — does not gate again.
--  `seed_minimal_history` function L738-790 — `(conn: &ConnHandle, iso_week: &str)` — does not gate again.
--  `iso_week_format_is_yyyy_w_ww` function L793-799 — `()` — does not gate again.
--  `monday_sunday_brackets_iso_week_20` function L802-806 — `()` — does not gate again.
--  `gather_collects_week_payload` function L809-836 — `()` — does not gate again.
--  `compose_parses_llm_array_into_composed_items` function L839-860 — `()` — does not gate again.
--  `compose_rejects_empty_citation_with_missing_citation_error` function L863-875 — `()` — does not gate again.
--  `compose_parses_array_with_surrounding_prose` function L878-894 — `()` — does not gate again.
--  `end_to_end_dispatch_against_real_engine` function L897-934 — `()` — does not gate again.
--  `period_window_utc_iso_week` function L937-942 — `()` — does not gate again.
--  `period_window_pacific_iso_week` function L945-951 — `()` — does not gate again.
--  `period_window_rejects_non_iso_week` function L954-958 — `()` — does not gate again.
--  `cadence_parse_accepts_aliases` function L961-970 — `()` — does not gate again.
--  `biweekly_period_key_counts_from_anchor` function L973-1000 — `()` — does not gate again.
--  `biweekly_period_window_covers_two_weeks` function L1003-1013 — `()` — does not gate again.
--  `biweekly_period_window_errors_without_anchor` function L1016-1020 — `()` — does not gate again.
--  `biweekly_idempotency_skips_within_window` function L1023-1038 — `()` — does not gate again.
--  `monthly_period_key_and_window` function L1041-1053 — `()` — does not gate again.
--  `monthly_idempotency_skips_within_month` function L1056-1065 — `()` — does not gate again.
--  `save_and_load_cadence_round_trips` function L1068-1090 — `()` — does not gate again.
--  `load_falls_back_to_config_default_then_weekly` function L1093-1109 — `()` — does not gate again.
+-  `monday_sunday_for_iso_week` function L691-705 — `(iso_week: &str) -> Option<(String, String)>` — Compute Monday and Sunday `YYYY-MM-DD` strings that bracket an
+-  `tests` module L708-1103 — `-` — does not gate again.
+-  `open_test_db` function L716-723 — `() -> (TempDir, ConnHandle)` — does not gate again.
+-  `make_llm_with_response` function L725-729 — `(text: &str) -> Arc<dyn arawn_llm::LlmClient>` — does not gate again.
+-  `seed_minimal_history` function L731-783 — `(conn: &ConnHandle, iso_week: &str)` — does not gate again.
+-  `iso_week_format_is_yyyy_w_ww` function L786-792 — `()` — does not gate again.
+-  `monday_sunday_brackets_iso_week_20` function L795-799 — `()` — does not gate again.
+-  `gather_collects_week_payload` function L802-829 — `()` — does not gate again.
+-  `compose_parses_llm_array_into_composed_items` function L832-853 — `()` — does not gate again.
+-  `compose_rejects_empty_citation_with_missing_citation_error` function L856-868 — `()` — does not gate again.
+-  `compose_parses_array_with_surrounding_prose` function L871-887 — `()` — does not gate again.
+-  `end_to_end_dispatch_against_real_engine` function L890-927 — `()` — does not gate again.
+-  `period_window_utc_iso_week` function L930-935 — `()` — does not gate again.
+-  `period_window_pacific_iso_week` function L938-944 — `()` — does not gate again.
+-  `period_window_rejects_non_iso_week` function L947-951 — `()` — does not gate again.
+-  `cadence_parse_accepts_aliases` function L954-963 — `()` — does not gate again.
+-  `biweekly_period_key_counts_from_anchor` function L966-993 — `()` — does not gate again.
+-  `biweekly_period_window_covers_two_weeks` function L996-1006 — `()` — does not gate again.
+-  `biweekly_period_window_errors_without_anchor` function L1009-1013 — `()` — does not gate again.
+-  `biweekly_idempotency_skips_within_window` function L1016-1031 — `()` — does not gate again.
+-  `monthly_period_key_and_window` function L1034-1046 — `()` — does not gate again.
+-  `monthly_idempotency_skips_within_month` function L1049-1058 — `()` — does not gate again.
+-  `save_and_load_cadence_round_trips` function L1061-1083 — `()` — does not gate again.
+-  `load_falls_back_to_config_default_then_weekly` function L1086-1102 — `()` — does not gate again.
 
 #### crates/arawn-ceremonies/src/plugins/retro_detectors.rs
 
@@ -1689,24 +1685,25 @@
 
 -  `open_test_db` function L39-46 — `() -> (TempDir, ConnHandle)` — values, sidestepping `compose()`'s LLM dependency.
 -  `ScriptedPlugin` struct L52-56 — `{ kind: &'static str, period: String, items: Mutex<Vec<NewItem>> }` — Minimal Ceremony impl: `compose()` returns whatever pre-loaded
--  `ScriptedPlugin` type L59-82 — `impl Ceremony for ScriptedPlugin` — values, sidestepping `compose()`'s LLM dependency.
+-  `ScriptedPlugin` type L59-89 — `impl Ceremony for ScriptedPlugin` — values, sidestepping `compose()`'s LLM dependency.
 -  `kind` function L60-62 — `(&self) -> &'static str` — values, sidestepping `compose()`'s LLM dependency.
 -  `period_key` function L63-65 — `(&self, _now: DateTime<Utc>) -> String` — values, sidestepping `compose()`'s LLM dependency.
--  `default_schedule` function L66-68 — `(&self) -> CronSchedule` — values, sidestepping `compose()`'s LLM dependency.
--  `gather` function L69-74 — `( &self, _ctx: &dyn CeremonyCtx, ) -> Result<GatheredFacts, arawn_ceremonies::Ce...` — values, sidestepping `compose()`'s LLM dependency.
--  `compose` function L75-81 — `( &self, _ctx: &dyn CeremonyCtx, _facts: GatheredFacts, ) -> Result<Vec<NewItem>...` — values, sidestepping `compose()`'s LLM dependency.
--  `DAILY_PERIOD` variable L84 — `: &str` — values, sidestepping `compose()`'s LLM dependency.
--  `WEEKLY_PERIOD` variable L85 — `: &str` — values, sidestepping `compose()`'s LLM dependency.
--  `daily_tablet_id` function L87-89 — `() -> String` — values, sidestepping `compose()`'s LLM dependency.
--  `weekly_tablet_id` function L91-93 — `() -> String` — values, sidestepping `compose()`'s LLM dependency.
--  `composed` function L95-104 — `(tablet_id: &str, section: &str, ordinal: i32, text: &str, citation: &str) -> Ne...` — values, sidestepping `compose()`'s LLM dependency.
--  `user_item` function L106-114 — `(tablet_id: &str, section: &str) -> NewItem` — values, sidestepping `compose()`'s LLM dependency.
--  `daily_seed_items` function L116-126 — `() -> Vec<NewItem>` — values, sidestepping `compose()`'s LLM dependency.
--  `weekly_seed_items` function L128-142 — `() -> Vec<NewItem>` — values, sidestepping `compose()`'s LLM dependency.
--  `build_service` function L144-162 — `() -> (TempDir, CeremonyService)` — values, sidestepping `compose()`'s LLM dependency.
--  `brief_now` function L164-168 — `() -> DateTime<Utc>` — values, sidestepping `compose()`'s LLM dependency.
--  `brief_pipeline_renders_daily_and_weekly_content` function L171-266 — `()` — values, sidestepping `compose()`'s LLM dependency.
--  `brief_pipeline_missing_weekly_renders_placeholder` function L269-304 — `()` — values, sidestepping `compose()`'s LLM dependency.
+-  `period_window` function L66-72 — `( &self, _period_key: &str, ) -> Result<(DateTime<Utc>, DateTime<Utc>), arawn_ce...` — values, sidestepping `compose()`'s LLM dependency.
+-  `default_schedule` function L73-75 — `(&self) -> CronSchedule` — values, sidestepping `compose()`'s LLM dependency.
+-  `gather` function L76-81 — `( &self, _ctx: &dyn CeremonyCtx, ) -> Result<GatheredFacts, arawn_ceremonies::Ce...` — values, sidestepping `compose()`'s LLM dependency.
+-  `compose` function L82-88 — `( &self, _ctx: &dyn CeremonyCtx, _facts: GatheredFacts, ) -> Result<Vec<NewItem>...` — values, sidestepping `compose()`'s LLM dependency.
+-  `DAILY_PERIOD` variable L91 — `: &str` — values, sidestepping `compose()`'s LLM dependency.
+-  `WEEKLY_PERIOD` variable L92 — `: &str` — values, sidestepping `compose()`'s LLM dependency.
+-  `daily_tablet_id` function L94-96 — `() -> String` — values, sidestepping `compose()`'s LLM dependency.
+-  `weekly_tablet_id` function L98-100 — `() -> String` — values, sidestepping `compose()`'s LLM dependency.
+-  `composed` function L102-111 — `(tablet_id: &str, section: &str, ordinal: i32, text: &str, citation: &str) -> Ne...` — values, sidestepping `compose()`'s LLM dependency.
+-  `user_item` function L113-121 — `(tablet_id: &str, section: &str) -> NewItem` — values, sidestepping `compose()`'s LLM dependency.
+-  `daily_seed_items` function L123-133 — `() -> Vec<NewItem>` — values, sidestepping `compose()`'s LLM dependency.
+-  `weekly_seed_items` function L135-149 — `() -> Vec<NewItem>` — values, sidestepping `compose()`'s LLM dependency.
+-  `build_service` function L151-169 — `() -> (TempDir, CeremonyService)` — values, sidestepping `compose()`'s LLM dependency.
+-  `brief_now` function L171-175 — `() -> DateTime<Utc>` — values, sidestepping `compose()`'s LLM dependency.
+-  `brief_pipeline_renders_daily_and_weekly_content` function L178-273 — `()` — values, sidestepping `compose()`'s LLM dependency.
+-  `brief_pipeline_missing_weekly_renders_placeholder` function L276-311 — `()` — values, sidestepping `compose()`'s LLM dependency.
 
 #### crates/arawn-ceremonies/tests/retro_uat.rs
 
@@ -1972,45 +1969,45 @@
 - pub `BackgroundTaskStatus` enum L85-90 — `Running | Completed | Failed | Killed` — Current status of a background task.
 - pub `is_terminal` function L93-95 — `(&self) -> bool` — conversation so the LLM knows what finished.
 - pub `label` function L97-104 — `(&self) -> &str` — conversation so the LLM knows what finished.
-- pub `BackgroundTask` struct L108-126 — `{ id: String, kind: BackgroundTaskKind, description: String, status: BackgroundT...` — A single background task being tracked.
-- pub `read_output` function L141-143 — `(&self) -> String` — Read the current output buffer.
-- pub `output_handle` function L146-148 — `(&self) -> Arc<RwLock<String>>` — Get a shared handle to the output buffer (for the writer task).
-- pub `append_output` function L153-163 — `(buf: &Arc<RwLock<String>>, text: &str)` — Append text to a bounded output buffer.
-- pub `BackgroundTaskManager` struct L166-170 — `{ tasks: RwLock<HashMap<String, BackgroundTask>>, notifications: Mutex<Vec<TaskN...` — Session-scoped manager for background tasks.
-- pub `new` function L173-178 — `() -> Self` — conversation so the LLM knows what finished.
-- pub `register` function L182-208 — `( &self, kind: BackgroundTaskKind, description: String, handle: JoinHandle<()>, ...` — Register a new background task.
-- pub `complete` function L211-254 — `(&self, task_id: &str, status: BackgroundTaskStatus)` — Mark a task as completed and queue a notification.
-- pub `drain_notifications` function L257-260 — `(&self) -> Vec<TaskNotification>` — Drain all pending notifications (called by the engine at each iteration).
-- pub `status` function L263-269 — `(&self, task_id: &str) -> Option<BackgroundTaskStatus>` — Get a task's current status.
-- pub `read_output` function L272-278 — `(&self, task_id: &str) -> Option<String>` — Read a task's captured output.
-- pub `cancel` function L281-291 — `(&self, task_id: &str) -> bool` — Cancel a running task.
-- pub `list` function L294-306 — `(&self) -> Vec<TaskSummary>` — List all tasks (for inventory/status display).
-- pub `running_count` function L309-316 — `(&self) -> usize` — Number of currently running tasks.
-- pub `TaskSummary` struct L327-332 — `{ id: String, description: String, status: String, elapsed_secs: u64 }` — Lightweight summary for listing/display.
+- pub `BackgroundTask` struct L108-128 — `{ id: String, kind: BackgroundTaskKind, description: String, status: BackgroundT...` — A single background task being tracked.
+- pub `read_output` function L143-145 — `(&self) -> String` — Read the current output buffer.
+- pub `output_handle` function L148-150 — `(&self) -> Arc<RwLock<String>>` — Get a shared handle to the output buffer (for the writer task).
+- pub `append_output` function L155-165 — `(buf: &Arc<RwLock<String>>, text: &str)` — Append text to a bounded output buffer.
+- pub `BackgroundTaskManager` struct L168-172 — `{ tasks: RwLock<HashMap<String, BackgroundTask>>, notifications: Mutex<Vec<TaskN...` — Session-scoped manager for background tasks.
+- pub `new` function L175-180 — `() -> Self` — conversation so the LLM knows what finished.
+- pub `register` function L184-210 — `( &self, kind: BackgroundTaskKind, description: String, handle: JoinHandle<()>, ...` — Register a new background task.
+- pub `complete` function L213-256 — `(&self, task_id: &str, status: BackgroundTaskStatus)` — Mark a task as completed and queue a notification.
+- pub `drain_notifications` function L259-262 — `(&self) -> Vec<TaskNotification>` — Drain all pending notifications (called by the engine at each iteration).
+- pub `status` function L265-271 — `(&self, task_id: &str) -> Option<BackgroundTaskStatus>` — Get a task's current status.
+- pub `read_output` function L274-280 — `(&self, task_id: &str) -> Option<String>` — Read a task's captured output.
+- pub `cancel` function L283-293 — `(&self, task_id: &str) -> bool` — Cancel a running task.
+- pub `list` function L296-308 — `(&self) -> Vec<TaskSummary>` — List all tasks (for inventory/status display).
+- pub `running_count` function L311-318 — `(&self) -> usize` — Number of currently running tasks.
+- pub `TaskSummary` struct L329-334 — `{ id: String, description: String, status: String, elapsed_secs: u64 }` — Lightweight summary for listing/display.
 -  `MAX_OUTPUT_BYTES` variable L18 — `: usize` — Maximum output buffer size per task (100 KB).
 -  `generate_task_id` function L21-30 — `() -> String` — Generates a background task ID: "bg_" + 8 hex chars.
 -  `rand_bytes` function L32-45 — `() -> [u8; 4]` — conversation so the LLM knows what finished.
 -  `TaskNotification` type L57-69 — `= TaskNotification` — conversation so the LLM knows what finished.
 -  `BackgroundTaskStatus` type L92-105 — `= BackgroundTaskStatus` — conversation so the LLM knows what finished.
--  `BackgroundTask` type L128-137 — `= BackgroundTask` — conversation so the LLM knows what finished.
--  `fmt` function L129-136 — `(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result` — conversation so the LLM knows what finished.
--  `BackgroundTask` type L139-149 — `= BackgroundTask` — conversation so the LLM knows what finished.
--  `BackgroundTaskManager` type L172-317 — `= BackgroundTaskManager` — conversation so the LLM knows what finished.
--  `BackgroundTaskManager` type L319-323 — `impl Default for BackgroundTaskManager` — conversation so the LLM knows what finished.
--  `default` function L320-322 — `() -> Self` — conversation so the LLM knows what finished.
--  `tests` module L335-521 — `-` — conversation so the LLM knows what finished.
--  `generate_task_id_format` function L340-344 — `()` — conversation so the LLM knows what finished.
--  `task_status_labels` function L347-361 — `()` — conversation so the LLM knows what finished.
--  `task_status_is_terminal` function L364-374 — `()` — conversation so the LLM knows what finished.
--  `notification_to_message_format` function L377-387 — `()` — conversation so the LLM knows what finished.
--  `register_and_complete` function L390-419 — `()` — conversation so the LLM knows what finished.
--  `cancel_running_task` function L422-442 — `()` — conversation so the LLM knows what finished.
--  `output_buffer_bounded` function L445-454 — `()` — conversation so the LLM knows what finished.
--  `output_buffer_small_writes` function L457-463 — `()` — conversation so the LLM knows what finished.
--  `list_tasks` function L466-485 — `()` — conversation so the LLM knows what finished.
--  `complete_unknown_task_is_safe` function L488-492 — `()` — conversation so the LLM knows what finished.
--  `cancel_nonexistent_returns_false` function L495-498 — `()` — conversation so the LLM knows what finished.
--  `duplicate_complete_only_notifies_once` function L501-520 — `()` — conversation so the LLM knows what finished.
+-  `BackgroundTask` type L130-139 — `= BackgroundTask` — conversation so the LLM knows what finished.
+-  `fmt` function L131-138 — `(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result` — conversation so the LLM knows what finished.
+-  `BackgroundTask` type L141-151 — `= BackgroundTask` — conversation so the LLM knows what finished.
+-  `BackgroundTaskManager` type L174-319 — `= BackgroundTaskManager` — conversation so the LLM knows what finished.
+-  `BackgroundTaskManager` type L321-325 — `impl Default for BackgroundTaskManager` — conversation so the LLM knows what finished.
+-  `default` function L322-324 — `() -> Self` — conversation so the LLM knows what finished.
+-  `tests` module L337-523 — `-` — conversation so the LLM knows what finished.
+-  `generate_task_id_format` function L342-346 — `()` — conversation so the LLM knows what finished.
+-  `task_status_labels` function L349-363 — `()` — conversation so the LLM knows what finished.
+-  `task_status_is_terminal` function L366-376 — `()` — conversation so the LLM knows what finished.
+-  `notification_to_message_format` function L379-389 — `()` — conversation so the LLM knows what finished.
+-  `register_and_complete` function L392-421 — `()` — conversation so the LLM knows what finished.
+-  `cancel_running_task` function L424-444 — `()` — conversation so the LLM knows what finished.
+-  `output_buffer_bounded` function L447-456 — `()` — conversation so the LLM knows what finished.
+-  `output_buffer_small_writes` function L459-465 — `()` — conversation so the LLM knows what finished.
+-  `list_tasks` function L468-487 — `()` — conversation so the LLM knows what finished.
+-  `complete_unknown_task_is_safe` function L490-494 — `()` — conversation so the LLM knows what finished.
+-  `cancel_nonexistent_returns_false` function L497-500 — `()` — conversation so the LLM knows what finished.
+-  `duplicate_complete_only_notifies_once` function L503-522 — `()` — conversation so the LLM knows what finished.
 
 #### crates/arawn-engine/src/ceremony_sources.rs
 
@@ -2028,20 +2025,18 @@
 -  `events_for` function L83-185 — `(&self, date: NaiveDate) -> Result<Vec<CalEvent>, CeremonyError>` — and stale name values are acceptable until process restart.
 -  `ProjectionsAttentionSource` type L202-240 — `= ProjectionsAttentionSource` — and stale name values are acceptable until process restart.
 -  `workstream_for_feed` function L215-239 — `(&self, feed_id: &str) -> Result<Option<String>, CeremonyError>` — Cached `feed_id → workstream name` lookup.
--  `ProjectionsAttentionSource` type L243-466 — `impl AttentionSource for ProjectionsAttentionSource` — and stale name values are acceptable until process restart.
--  `since` function L244-355 — `( &self, cursor: DateTime<Utc>, cap: usize, ) -> Result<Vec<SignalRow>, Ceremony...` — and stale name values are acceptable until process restart.
--  `Raw` struct L288-295 — `{ id: String, source_id: String, ts: DateTime<Utc>, summary: String, kind: Strin...` — and stale name values are acceptable until process restart.
--  `between` function L357-465 — `( &self, start: DateTime<Utc>, end: DateTime<Utc>, cap: usize, ) -> Result<Vec<S...` — and stale name values are acceptable until process restart.
--  `Raw` struct L398-405 — `{ id: String, source_id: String, ts: DateTime<Utc>, summary: String, kind: Strin...` — and stale name values are acceptable until process restart.
--  `tests` module L469-701 — `-` — and stale name values are acceptable until process restart.
--  `make_store_pair` function L478-487 — `() -> (Arc<ProjectionStore>, Arc<Mutex<Store>>, tempfile::TempDir)` — and stale name values are acceptable until process restart.
--  `cal_event` function L489-511 — `( id_seed: &str, start: DateTime<Utc>, end: DateTime<Utc>, ) -> CalendarEventPro...` — and stale name values are acceptable until process restart.
--  `calendar_returns_events_for_day` function L514-542 — `()` — and stale name values are acceptable until process restart.
--  `gmail_signal` function L544-557 — `(id_seed: &str, ts: DateTime<Utc>) -> GmailMessageProjection` — and stale name values are acceptable until process restart.
--  `slack_signal` function L559-572 — `(id_seed: &str, ts: DateTime<Utc>) -> SlackMessageProjection` — and stale name values are acceptable until process restart.
--  `attention_returns_recent_capped` function L575-617 — `()` — and stale name values are acceptable until process restart.
--  `calendar_respects_configured_timezone` function L623-652 — `()` — 2026-05-17T01:30:00Z is "May 17" in UTC but "May 16 18:30" in
--  `attention_tags_workstream_from_feed_registry` function L658-700 — `()` — Rows whose `feed_id` is bound to a workstream tag with that
+-  `ProjectionsAttentionSource` type L243-353 — `impl AttentionSource for ProjectionsAttentionSource` — and stale name values are acceptable until process restart.
+-  `between` function L244-352 — `( &self, start: DateTime<Utc>, end: DateTime<Utc>, cap: usize, ) -> Result<Vec<S...` — and stale name values are acceptable until process restart.
+-  `Raw` struct L285-292 — `{ id: String, source_id: String, ts: DateTime<Utc>, summary: String, kind: Strin...` — and stale name values are acceptable until process restart.
+-  `tests` module L356-590 — `-` — and stale name values are acceptable until process restart.
+-  `make_store_pair` function L365-374 — `() -> (Arc<ProjectionStore>, Arc<Mutex<Store>>, tempfile::TempDir)` — and stale name values are acceptable until process restart.
+-  `cal_event` function L376-398 — `( id_seed: &str, start: DateTime<Utc>, end: DateTime<Utc>, ) -> CalendarEventPro...` — and stale name values are acceptable until process restart.
+-  `calendar_returns_events_for_day` function L401-429 — `()` — and stale name values are acceptable until process restart.
+-  `gmail_signal` function L431-444 — `(id_seed: &str, ts: DateTime<Utc>) -> GmailMessageProjection` — and stale name values are acceptable until process restart.
+-  `slack_signal` function L446-459 — `(id_seed: &str, ts: DateTime<Utc>) -> SlackMessageProjection` — and stale name values are acceptable until process restart.
+-  `attention_returns_recent_capped` function L462-505 — `()` — and stale name values are acceptable until process restart.
+-  `calendar_respects_configured_timezone` function L511-540 — `()` — 2026-05-17T01:30:00Z is "May 17" in UTC but "May 16 18:30" in
+-  `attention_tags_workstream_from_feed_registry` function L546-589 — `()` — Rows whose `feed_id` is bound to a workstream tag with that
 
 #### crates/arawn-engine/src/compact_prompt.rs
 
@@ -2162,39 +2157,38 @@
 - pub `system_prompt` module L17 — `-`
 - pub `testing` module L18 — `-`
 - pub `token_estimator` module L19 — `-`
-- pub `tool` module L20 — `-`
-- pub `tool_result_limiter` module L21 — `-`
-- pub `tool_timeout` module L22 — `-`
-- pub `tools` module L23 — `-`
-- pub `workstream_router` module L24 — `-`
+- pub `tool_result_limiter` module L20 — `-`
+- pub `tool_timeout` module L21 — `-`
+- pub `tools` module L22 — `-`
+- pub `workstream_router` module L23 — `-`
 
 #### crates/arawn-engine/src/plan.rs
 
-- pub `PlanModeState` struct L21-23 — `{ inner: RwLock<PlanModeInner> }` — State for plan mode within a session.
-- pub `PlanModeSnapshot` struct L42-46 — `{ active: bool, plan_file: Option<PathBuf>, plan_slug: Option<String> }` — Snapshot of plan mode state for tools to read without holding a lock.
-- pub `new` function L49-59 — `() -> Self` — keeping them contextual to the work being done.
-- pub `is_active` function L62-64 — `(&self) -> bool` — Whether plan mode is currently active.
-- pub `snapshot` function L67-74 — `(&self) -> PlanModeSnapshot` — Get a snapshot of the current state.
-- pub `enter` function L79-100 — `( &self, current_mode: PermissionMode, slug: &str, working_dir: &Path, ) -> std:...` — Enter plan mode.
-- pub `exit` function L103-112 — `(&self) -> Option<PermissionMode>` — Exit plan mode.
-- pub `plan_file` function L115-117 — `(&self) -> Option<PathBuf>` — Get the current plan file path (if in plan mode).
-- pub `read_plan` function L120-123 — `(&self) -> Option<String>` — Read the current plan content from disk.
-- pub `write_plan` function L126-133 — `(&self, content: &str) -> std::io::Result<()>` — Write plan content to disk.
-- pub `is_plan_file` function L136-143 — `(&self, path: &Path) -> bool` — Check if a given file path is the current plan file (for write exceptions).
-- pub `generate_slug` function L154-183 — `(description: &str) -> String` — Generate a human-friendly slug from a task description.
--  `PlanModeInner` struct L26-38 — `{ active: bool, pre_plan_mode: Option<PermissionMode>, stripped_rules: Vec<Permi...` — keeping them contextual to the work being done.
--  `PlanModeState` type L48-144 — `= PlanModeState` — keeping them contextual to the work being done.
--  `PlanModeState` type L146-150 — `impl Default for PlanModeState` — keeping them contextual to the work being done.
--  `default` function L147-149 — `() -> Self` — keeping them contextual to the work being done.
--  `tests` module L186-277 — `-` — keeping them contextual to the work being done.
--  `generate_slug_basic` function L191-196 — `()` — keeping them contextual to the work being done.
--  `generate_slug_strips_stop_words` function L199-204 — `()` — keeping them contextual to the work being done.
--  `generate_slug_max_four_words` function L207-212 — `()` — keeping them contextual to the work being done.
--  `generate_slug_empty` function L215-218 — `()` — keeping them contextual to the work being done.
--  `generate_slug_special_chars` function L221-223 — `()` — keeping them contextual to the work being done.
--  `plan_mode_lifecycle` function L226-253 — `()` — keeping them contextual to the work being done.
--  `exit_when_not_active_returns_none` function L256-259 — `()` — keeping them contextual to the work being done.
--  `snapshot_reflects_state` function L262-276 — `()` — keeping them contextual to the work being done.
+- pub `PlanModeState` struct L20-22 — `{ inner: RwLock<PlanModeInner> }` — State for plan mode within a session.
+- pub `PlanModeSnapshot` struct L37-41 — `{ active: bool, plan_file: Option<PathBuf>, plan_slug: Option<String> }` — Snapshot of plan mode state for tools to read without holding a lock.
+- pub `new` function L44-53 — `() -> Self` — keeping them contextual to the work being done.
+- pub `is_active` function L56-58 — `(&self) -> bool` — Whether plan mode is currently active.
+- pub `snapshot` function L61-68 — `(&self) -> PlanModeSnapshot` — Get a snapshot of the current state.
+- pub `enter` function L73-94 — `( &self, current_mode: PermissionMode, slug: &str, working_dir: &Path, ) -> std:...` — Enter plan mode.
+- pub `exit` function L97-106 — `(&self) -> Option<PermissionMode>` — Exit plan mode.
+- pub `plan_file` function L109-111 — `(&self) -> Option<PathBuf>` — Get the current plan file path (if in plan mode).
+- pub `read_plan` function L114-117 — `(&self) -> Option<String>` — Read the current plan content from disk.
+- pub `write_plan` function L120-127 — `(&self, content: &str) -> std::io::Result<()>` — Write plan content to disk.
+- pub `is_plan_file` function L130-137 — `(&self, path: &Path) -> bool` — Check if a given file path is the current plan file (for write exceptions).
+- pub `generate_slug` function L148-177 — `(description: &str) -> String` — Generate a human-friendly slug from a task description.
+-  `PlanModeInner` struct L25-33 — `{ active: bool, pre_plan_mode: Option<PermissionMode>, plan_file: Option<PathBuf...` — keeping them contextual to the work being done.
+-  `PlanModeState` type L43-138 — `= PlanModeState` — keeping them contextual to the work being done.
+-  `PlanModeState` type L140-144 — `impl Default for PlanModeState` — keeping them contextual to the work being done.
+-  `default` function L141-143 — `() -> Self` — keeping them contextual to the work being done.
+-  `tests` module L180-271 — `-` — keeping them contextual to the work being done.
+-  `generate_slug_basic` function L185-190 — `()` — keeping them contextual to the work being done.
+-  `generate_slug_strips_stop_words` function L193-198 — `()` — keeping them contextual to the work being done.
+-  `generate_slug_max_four_words` function L201-206 — `()` — keeping them contextual to the work being done.
+-  `generate_slug_empty` function L209-212 — `()` — keeping them contextual to the work being done.
+-  `generate_slug_special_chars` function L215-217 — `()` — keeping them contextual to the work being done.
+-  `plan_mode_lifecycle` function L220-247 — `()` — keeping them contextual to the work being done.
+-  `exit_when_not_active_returns_none` function L250-253 — `()` — keeping them contextual to the work being done.
+-  `snapshot_reflects_state` function L256-270 — `()` — keeping them contextual to the work being done.
 
 #### crates/arawn-engine/src/query_engine.rs
 
@@ -2264,23 +2258,23 @@
 
 #### crates/arawn-engine/src/system_prompt.rs
 
-- pub `SystemPromptBuilder` struct L214-218 — `{ sections: Vec<PromptSection>, token_budget: u32, identity_profile: IdentityPro...` — Builds a system prompt from static defaults (overridable) + dynamic context.
-- pub `new` function L221-227 — `() -> Self`
-- pub `with_token_budget` function L230-233 — `(mut self, budget: u32) -> Self` — Set a custom token budget.
-- pub `current_time` function L243-258 — `(mut self, now: chrono::DateTime<Tz>) -> Self` — Pin the current local time at the top of the prompt so the
-- pub `with_identity_profile` function L263-266 — `(mut self, profile: IdentityProfile) -> Self` — Select which persona's identity / doing_tasks / work_protocol
-- pub `load_static_sections` function L273-291 — `(mut self, prompts_dir: Option<&Path>) -> Self` — Load all 7 static sections, checking for user overrides in `prompts_dir`.
-- pub `environment` function L297-307 — `(mut self, os: &str, shell: &str, cwd: &Path, model: &str) -> Self` — Add the environment section.
-- pub `workstream` function L310-320 — `(mut self, name: &str, root_dir: &Path) -> Self` — Add the workstream section.
-- pub `tools` function L330-345 — `(mut self, tool_defs: &[ToolDefinition]) -> Self` — Acknowledge tool availability in the system prompt.
-- pub `context_files` function L348-371 — `(mut self, files: &[ContextFile]) -> Self` — Add context files (arawn.md at workstream and global levels).
-- pub `memories` function L374-389 — `(mut self, memories: &[String]) -> Self` — Add relevant memories (future — currently a no-op if empty).
-- pub `session_context` function L392-403 — `(mut self, summary: &str) -> Self` — Add session context (for resumed sessions).
-- pub `integrations` function L411-430 — `(mut self, summaries: &[String]) -> Self` — Add a section listing connected integrations and their granted
-- pub `plugin_prompts` function L433-449 — `(mut self, prompts: &[String]) -> Self` — Add plugin-contributed prompt fragments.
-- pub `build` function L452-474 — `(mut self) -> String` — Build the final system prompt string, enforcing token budget.
-- pub `ContextFile` struct L487-491 — `{ path: std::path::PathBuf, content: String, truncated: bool }` — A context file loaded from disk.
-- pub `find_context_files` function L494-510 — `(workstream_root: &Path, global_dir: &Path) -> Vec<ContextFile>` — Load context files from workstream root and global config dir.
+- pub `SystemPromptBuilder` struct L212-216 — `{ sections: Vec<PromptSection>, token_budget: u32, identity_profile: IdentityPro...` — Builds a system prompt from static defaults (overridable) + dynamic context.
+- pub `new` function L219-225 — `() -> Self`
+- pub `with_token_budget` function L228-231 — `(mut self, budget: u32) -> Self` — Set a custom token budget.
+- pub `current_time` function L241-255 — `(mut self, now: chrono::DateTime<Tz>) -> Self` — Pin the current local time at the top of the prompt so the
+- pub `with_identity_profile` function L260-263 — `(mut self, profile: IdentityProfile) -> Self` — Select which persona's identity / doing_tasks / work_protocol
+- pub `load_static_sections` function L270-287 — `(mut self, prompts_dir: Option<&Path>) -> Self` — Load all 7 static sections, checking for user overrides in `prompts_dir`.
+- pub `environment` function L293-302 — `(mut self, os: &str, shell: &str, cwd: &Path, model: &str) -> Self` — Add the environment section.
+- pub `workstream` function L305-314 — `(mut self, name: &str, root_dir: &Path) -> Self` — Add the workstream section.
+- pub `tools` function L324-338 — `(mut self, tool_defs: &[ToolDefinition]) -> Self` — Acknowledge tool availability in the system prompt.
+- pub `context_files` function L341-363 — `(mut self, files: &[ContextFile]) -> Self` — Add context files (arawn.md at workstream and global levels).
+- pub `memories` function L366-380 — `(mut self, memories: &[String]) -> Self` — Add relevant memories (future — currently a no-op if empty).
+- pub `session_context` function L383-393 — `(mut self, summary: &str) -> Self` — Add session context (for resumed sessions).
+- pub `integrations` function L401-419 — `(mut self, summaries: &[String]) -> Self` — Add a section listing connected integrations and their granted
+- pub `plugin_prompts` function L422-437 — `(mut self, prompts: &[String]) -> Self` — Add plugin-contributed prompt fragments.
+- pub `build` function L440-462 — `(mut self) -> String` — Build the final system prompt string, enforcing token budget.
+- pub `ContextFile` struct L475-479 — `{ path: std::path::PathBuf, content: String, truncated: bool }` — A context file loaded from disk.
+- pub `find_context_files` function L482-498 — `(workstream_root: &Path, global_dir: &Path) -> Vec<ContextFile>` — Load context files from workstream root and global config dir.
 -  `DEFAULT_TOKEN_BUDGET` variable L7 — `: u32` — Default token budget for the system prompt (~24k chars).
 -  `MAX_CONTEXT_FILE_CHARS` variable L10 — `: usize` — Max chars for a context file before truncation.
 -  `ASSISTANT_IDENTITY` variable L20 — `: &str`
@@ -2298,39 +2292,39 @@
 -  `STATIC_SECTION_DEFAULTS_NEUTRAL` variable L169-178 — `: &[&str]` — Compiled-in defaults for the persona-neutral sections.
 -  `persona_default_for` function L181-191 — `(name: &str, profile: IdentityProfile) -> &'static str` — Resolve the compiled-in default for `name` under `profile`.
 -  `STATIC_SECTION_PRIORITIES` variable L194-203 — `: &[u8]` — Priority levels for sections.
--  `PromptSection` struct L207-211 — `{ name: String, content: String, priority: u8 }` — A section in the assembled prompt.
--  `SystemPromptBuilder` type L220-475 — `= SystemPromptBuilder`
--  `SystemPromptBuilder` type L477-481 — `impl Default for SystemPromptBuilder`
--  `default` function L478-480 — `() -> Self`
--  `load_context_file` function L512-531 — `(path: &Path, max_chars: usize) -> Option<ContextFile>`
--  `truncate_70_20` function L534-557 — `(content: &str, max_chars: usize) -> String` — Truncate keeping 70% from the head and 20% from the tail, with a marker in between.
--  `load_section` function L561-569 — `(name: &str, default: &str, prompts_dir: Option<&Path>) -> String`
--  `tests` module L572-1003 — `-`
--  `assistant_profile_emits_assistant_constants` function L579-607 — `()`
--  `coding_profile_emits_coding_constants` function L610-633 — `()`
--  `default_profile_is_assistant` function L636-641 — `()`
--  `default_assembly_includes_all_static_sections` function L645-661 — `()`
--  `sections_have_headers` function L665-676 — `()`
--  `empty_optional_sections_omitted` function L680-691 — `()`
--  `single_section_override` function L695-706 — `()`
--  `partial_overrides_other_sections_use_defaults` function L710-722 — `()`
--  `missing_override_dir_uses_defaults` function L726-732 — `()`
--  `empty_override_file_produces_empty_section` function L736-746 — `()`
--  `under_budget_all_sections_included` function L750-761 — `()`
--  `over_budget_drops_low_priority_sections` function L765-775 — `()`
--  `identity_survives_budget_cuts` function L779-788 — `()`
--  `truncation_produces_clean_sections` function L792-804 — `()`
--  `context_file_injected` function L808-819 — `()`
--  `context_file_missing_section_omitted` function L823-830 — `()`
--  `large_context_file_truncated` function L834-845 — `()`
--  `tools_section_reflects_tool_list` function L849-868 — `()`
--  `per_turn_freshness_different_tools` function L872-896 — `()`
--  `environment_section_contains_info` function L900-909 — `()`
--  `current_time_appears_at_the_top` function L914-934 — `()`
--  `current_time_uses_provided_timezone` function L937-946 — `()`
--  `environment_no_longer_emits_date_line` function L949-956 — `()`
--  `workstream_section_contains_info` function L960-967 — `()`
--  `snapshot_full_build` function L971-1002 — `()`
+-  `PromptSection` struct L206-209 — `{ content: String, priority: u8 }` — A section in the assembled prompt.
+-  `SystemPromptBuilder` type L218-463 — `= SystemPromptBuilder`
+-  `SystemPromptBuilder` type L465-469 — `impl Default for SystemPromptBuilder`
+-  `default` function L466-468 — `() -> Self`
+-  `load_context_file` function L500-519 — `(path: &Path, max_chars: usize) -> Option<ContextFile>`
+-  `truncate_70_20` function L522-545 — `(content: &str, max_chars: usize) -> String` — Truncate keeping 70% from the head and 20% from the tail, with a marker in between.
+-  `load_section` function L549-557 — `(name: &str, default: &str, prompts_dir: Option<&Path>) -> String`
+-  `tests` module L560-989 — `-`
+-  `assistant_profile_emits_assistant_constants` function L566-594 — `()`
+-  `coding_profile_emits_coding_constants` function L597-620 — `()`
+-  `default_profile_is_assistant` function L623-628 — `()`
+-  `default_assembly_includes_all_static_sections` function L632-648 — `()`
+-  `sections_have_headers` function L652-663 — `()`
+-  `empty_optional_sections_omitted` function L667-678 — `()`
+-  `single_section_override` function L682-693 — `()`
+-  `partial_overrides_other_sections_use_defaults` function L697-709 — `()`
+-  `missing_override_dir_uses_defaults` function L713-719 — `()`
+-  `empty_override_file_produces_empty_section` function L723-733 — `()`
+-  `under_budget_all_sections_included` function L737-748 — `()`
+-  `over_budget_drops_low_priority_sections` function L752-762 — `()`
+-  `identity_survives_budget_cuts` function L766-775 — `()`
+-  `truncation_produces_clean_sections` function L779-791 — `()`
+-  `context_file_injected` function L795-806 — `()`
+-  `context_file_missing_section_omitted` function L810-817 — `()`
+-  `large_context_file_truncated` function L821-832 — `()`
+-  `tools_section_reflects_tool_list` function L836-855 — `()`
+-  `per_turn_freshness_different_tools` function L859-883 — `()`
+-  `environment_section_contains_info` function L887-896 — `()`
+-  `current_time_appears_at_the_top` function L901-921 — `()`
+-  `current_time_uses_provided_timezone` function L924-933 — `()`
+-  `environment_no_longer_emits_date_line` function L936-943 — `()`
+-  `workstream_section_contains_info` function L947-954 — `()`
+-  `snapshot_full_build` function L958-988 — `()`
 
 #### crates/arawn-engine/src/testing.rs
 
@@ -2645,7 +2639,7 @@
 - pub `execute` function L27-123 — `(hook: &CommandHookDef, input: &HookInput, cwd: &Path) -> HookResult` — Execute a command hook with the given input.
 -  `DEFAULT_TIMEOUT_SECS` variable L12 — `: u64` — Default timeout for hook execution (10 seconds).
 -  `CommandHookExecutor` type L23-124 — `= CommandHookExecutor`
--  `tests` module L127-249 — `-`
+-  `tests` module L127-250 — `-`
 -  `make_hook` function L130-136 — `(command: &str, timeout: Option<u64>) -> CommandHookDef`
 -  `sample_input` function L138-143 — `() -> HookInput`
 -  `cwd` function L145-147 — `() -> std::path::PathBuf`
@@ -2655,8 +2649,8 @@
 -  `captures_stdout` function L181-190 — `()`
 -  `receives_json_on_stdin` function L193-204 — `()`
 -  `timeout_blocks` function L207-216 — `()`
--  `spawn_failure_warns` function L219-236 — `()`
--  `block_with_empty_stderr_uses_default_message` function L239-248 — `()`
+-  `spawn_failure_warns` function L219-237 — `()`
+-  `block_with_empty_stderr_uses_default_message` function L240-249 — `()`
 
 #### crates/arawn-engine/src/hooks/file_watcher.rs
 
@@ -2765,81 +2759,79 @@
 - pub `with_description` function L87-90 — `(mut self, desc: impl Into<String>) -> Self`
 - pub `ModalRequest` struct L95-99 — `{ title: String, subtitle: Option<String>, options: Vec<ModalOption> }` — A request to show a modal to the user and get a selection.
 - pub `ModalPrompt` interface L105-107 — `{ fn prompt() }` — Generic trait for prompting the user with a modal dialog.
-- pub `SessionGrants` struct L123-125 — `{ inner: crate::approval::SessionAllowlist }` — In-memory store for session-scoped permission grants.
-- pub `new` function L128-130 — `() -> Self`
-- pub `grant` function L134-137 — `(&mut self, tool_name: String)` — Wildcard grant — matches any input on this tool.
-- pub `grant_shape` function L140-142 — `(&mut self, tool_name: String, shape: crate::approval::ArgShape)` — Shape-aware grant.
-- pub `is_granted` function L146-149 — `(&self, tool_name: &str) -> bool` — Wildcard check — true if a wildcard grant exists for this
-- pub `is_granted_shape` function L154-160 — `(&self, tool_name: &str, shape: &crate::approval::ArgShape) -> bool` — Shape-aware check.
-- pub `clear` function L163-165 — `(&mut self)` — Clear all session grants.
-- pub `DecisionReason` enum L172-184 — `MatchedRule | SessionGrant | ModeFallback | Prompted | NoChecker` — Why a permission decision came out the way it did.
-- pub `display` function L188-208 — `(&self) -> String` — One-line human-readable form for error messages and audit display.
-- pub `AuditEntry` struct L213-219 — `{ timestamp: std::time::SystemTime, tool_name: String, tool_input_summary: Strin...` — One row of the audit log — what was checked, when, and how it was decided.
-- pub `PermissionSnapshot` struct L225-231 — `{ mode: PermissionMode, allow_rules: Vec<String>, deny_rules: Vec<String>, ask_r...` — Read-only snapshot of the current permission state — exposed via the
-- pub `SharedAudit` type L241 — `= std::sync::Arc<std::sync::Mutex<std::collections::VecDeque<AuditEntry>>>` — Shareable audit buffer — held in an Arc so callers (e.g.
-- pub `new_shared_audit` function L244-248 — `() -> SharedAudit` — Construct a fresh shared audit buffer with the standard cap.
-- pub `PermissionChecker` struct L252-262 — `{ rules: std::sync::RwLock<Vec<PermissionRule>>, mode: std::sync::RwLock<Permiss...` — The central permission checker.
-- pub `new` function L267-276 — `(rules: Vec<PermissionRule>) -> Self` — Create a new permission checker with the given rules and default mode.
-- pub `with_audit` function L281-284 — `(mut self, audit: SharedAudit) -> Self` — Wire an externally-owned audit buffer so per-message checkers can
-- pub `with_approval_audit` function L287-293 — `( mut self, audit: Option<std::sync::Arc<crate::approval::ApprovalAudit>>, ) -> ...` — Wire the on-disk approval audit log.
-- pub `snapshot` function L298-325 — `(&self) -> PermissionSnapshot` — Capture a read-only snapshot of the current rules, mode, and recent
-- pub `with_mode` function L350-356 — `(self, mode: PermissionMode) -> Self` — Set the permission mode (Default, AcceptEdits, BypassPermissions).
-- pub `with_prompter` function L359-362 — `(mut self, prompter: Box<dyn ModalPrompt>) -> Self` — Set the modal prompter for interactive permission requests.
-- pub `update_rules` function L365-368 — `(&self, rules: Vec<PermissionRule>)` — Hot-reload: replace the current rules with new ones.
-- pub `update_mode` function L371-374 — `(&self, mode: PermissionMode)` — Hot-reload: update the permission mode.
-- pub `check` function L387-396 — `( &self, tool_name: &str, tool_input: &str, category: PermissionCategory, ) -> P...` — Check if a tool call is permitted.
-- pub `check_explained` function L401-484 — `( &self, tool_name: &str, tool_input: &str, category: PermissionCategory, ) -> (...` — Same as [`check`] but also returns *why* the decision was made.
-- pub `mode` function L568-570 — `(&self) -> PermissionMode` — Get the current permission mode.
-- pub `clear_grants` function L573-575 — `(&self)` — Clear all session grants.
+- pub `SessionGrants` struct L122-124 — `{ inner: crate::approval::SessionAllowlist }` — In-memory store for session-scoped permission grants.
+- pub `new` function L127-129 — `() -> Self`
+- pub `grant_shape` function L132-134 — `(&mut self, tool_name: String, shape: crate::approval::ArgShape)` — Shape-aware grant.
+- pub `is_granted_shape` function L138-144 — `(&self, tool_name: &str, shape: &crate::approval::ArgShape) -> bool` — Shape-aware check.
+- pub `clear` function L147-149 — `(&mut self)` — Clear all session grants.
+- pub `DecisionReason` enum L156-168 — `MatchedRule | SessionGrant | ModeFallback | Prompted | NoChecker` — Why a permission decision came out the way it did.
+- pub `display` function L172-192 — `(&self) -> String` — One-line human-readable form for error messages and audit display.
+- pub `AuditEntry` struct L197-203 — `{ timestamp: std::time::SystemTime, tool_name: String, tool_input_summary: Strin...` — One row of the audit log — what was checked, when, and how it was decided.
+- pub `PermissionSnapshot` struct L209-215 — `{ mode: PermissionMode, allow_rules: Vec<String>, deny_rules: Vec<String>, ask_r...` — Read-only snapshot of the current permission state — exposed via the
+- pub `SharedAudit` type L225 — `= std::sync::Arc<std::sync::Mutex<std::collections::VecDeque<AuditEntry>>>` — Shareable audit buffer — held in an Arc so callers (e.g.
+- pub `new_shared_audit` function L228-232 — `() -> SharedAudit` — Construct a fresh shared audit buffer with the standard cap.
+- pub `PermissionChecker` struct L236-246 — `{ rules: std::sync::RwLock<Vec<PermissionRule>>, mode: std::sync::RwLock<Permiss...` — The central permission checker.
+- pub `new` function L251-260 — `(rules: Vec<PermissionRule>) -> Self` — Create a new permission checker with the given rules and default mode.
+- pub `with_audit` function L265-268 — `(mut self, audit: SharedAudit) -> Self` — Wire an externally-owned audit buffer so per-message checkers can
+- pub `with_approval_audit` function L271-277 — `( mut self, audit: Option<std::sync::Arc<crate::approval::ApprovalAudit>>, ) -> ...` — Wire the on-disk approval audit log.
+- pub `snapshot` function L282-309 — `(&self) -> PermissionSnapshot` — Capture a read-only snapshot of the current rules, mode, and recent
+- pub `with_mode` function L334-340 — `(self, mode: PermissionMode) -> Self` — Set the permission mode (Default, AcceptEdits, BypassPermissions).
+- pub `with_prompter` function L343-346 — `(mut self, prompter: Box<dyn ModalPrompt>) -> Self` — Set the modal prompter for interactive permission requests.
+- pub `update_rules` function L349-352 — `(&self, rules: Vec<PermissionRule>)` — Hot-reload: replace the current rules with new ones.
+- pub `update_mode` function L355-358 — `(&self, mode: PermissionMode)` — Hot-reload: update the permission mode.
+- pub `check` function L371-380 — `( &self, tool_name: &str, tool_input: &str, category: PermissionCategory, ) -> P...` — Check if a tool call is permitted.
+- pub `check_explained` function L385-468 — `( &self, tool_name: &str, tool_input: &str, category: PermissionCategory, ) -> (...` — Same as [`check`] but also returns *why* the decision was made.
+- pub `mode` function L552-554 — `(&self) -> PermissionMode` — Get the current permission mode.
+- pub `clear_grants` function L557-559 — `(&self)` — Clear all session grants.
 -  `PermissionMode` type L30-62 — `= PermissionMode`
 -  `ModalOption` type L79-91 — `= ModalOption`
--  `SessionGrants` type L127-166 — `= SessionGrants`
--  `DecisionReason` type L186-209 — `= DecisionReason`
--  `AUDIT_CAP` variable L236 — `: usize` — Cap on the audit ring buffer — newest decisions evict oldest.
--  `PermissionChecker` type L264-576 — `= PermissionChecker`
--  `record_audit` function L327-347 — `( &self, tool_name: &str, tool_input: &str, decision: PermissionDecision, reason...`
--  `prompt_user` function L487-546 — `(&self, tool_name: &str, tool_input: &str) -> PermissionDecision` — Prompt the user for permission (or deny if no prompter is configured).
--  `record_approval` function L548-565 — `( &self, tool_name: &str, shape: &crate::approval::ArgShape, tier: crate::approv...`
--  `truncate_input` function L578-586 — `(input: &str, max_len: usize) -> String`
--  `tests` module L589-1179 — `-`
--  `MockPrompter` struct L594-596 — `{ index: Option<usize> }` — Mock prompter that returns a fixed index (0=AllowOnce, 1=AllowAlways, 2/None=Deny).
--  `MockPrompter` type L598-608 — `= MockPrompter`
--  `allow_once` function L599-601 — `() -> Self`
--  `allow_always` function L602-604 — `() -> Self`
--  `deny` function L605-607 — `() -> Self`
--  `MockPrompter` type L611-615 — `impl ModalPrompt for MockPrompter`
--  `prompt` function L612-614 — `(&self, _request: ModalRequest) -> Option<usize>`
--  `allowed_by_rule` function L618-627 — `()`
--  `denied_by_rule` function L630-639 — `()`
--  `ask_without_prompter_denies` function L642-649 — `()`
--  `ask_with_allow_once` function L652-662 — `()`
--  `ask_with_allow_always_grants_session` function L665-681 — `()`
--  `ask_with_deny` function L684-693 — `()`
--  `default_mode_allows_read_only` function L696-723 — `()`
--  `default_mode_asks_for_writes` function L726-745 — `()`
--  `accept_edits_mode_allows_file_ops` function L748-774 — `()`
--  `bypass_mode_allows_everything` function L777-803 — `()`
--  `explicit_rules_override_mode` function L806-814 — `()`
--  `deny_rules_override_session_grants` function L817-828 — `()`
--  `session_grant_works_for_non_denied_tools` function L831-842 — `()`
--  `shape_aware_grant_only_allows_matching_shape` function L845-876 — `()`
--  `fail_closed_when_no_prompter` function L879-889 — `()`
--  `clear_grants_resets` function L892-901 — `()`
--  `truncate_input_short` function L904-906 — `()`
--  `truncate_input_long` function L909-913 — `()`
--  `truncate_input_multibyte_utf8_no_panic` function L916-924 — `()`
--  `update_rules_hot_reload` function L927-948 — `()`
--  `update_mode_hot_reload` function L951-973 — `()`
--  `permission_mode_serde` function L979-991 — `()`
--  `permission_mode_legacy_strings_fail` function L994-1002 — `()`
--  `plan_mode_allows_read_only` function L1005-1031 — `()`
--  `plan_mode_denies_writes` function L1034-1058 — `()`
--  `plan_mode_allows_plan_meta_tools` function L1061-1075 — `()`
--  `check_explained_attributes_deny_to_matching_rule` function L1082-1101 — `()`
--  `check_explained_attributes_no_match_to_mode_fallback` function L1104-1116 — `()`
--  `audit_log_records_decisions_in_order_and_caps` function L1119-1135 — `()`
--  `shared_audit_aggregates_across_checkers` function L1138-1158 — `()`
--  `snapshot_partitions_rules_by_kind_with_display_specs` function L1161-1178 — `()`
+-  `SessionGrants` type L126-150 — `= SessionGrants`
+-  `DecisionReason` type L170-193 — `= DecisionReason`
+-  `AUDIT_CAP` variable L220 — `: usize` — Cap on the audit ring buffer — newest decisions evict oldest.
+-  `PermissionChecker` type L248-560 — `= PermissionChecker`
+-  `record_audit` function L311-331 — `( &self, tool_name: &str, tool_input: &str, decision: PermissionDecision, reason...`
+-  `prompt_user` function L471-530 — `(&self, tool_name: &str, tool_input: &str) -> PermissionDecision` — Prompt the user for permission (or deny if no prompter is configured).
+-  `record_approval` function L532-549 — `( &self, tool_name: &str, shape: &crate::approval::ArgShape, tier: crate::approv...`
+-  `truncate_input` function L562-570 — `(input: &str, max_len: usize) -> String`
+-  `tests` module L573-1163 — `-`
+-  `MockPrompter` struct L578-580 — `{ index: Option<usize> }` — Mock prompter that returns a fixed index (0=AllowOnce, 1=AllowAlways, 2/None=Deny).
+-  `MockPrompter` type L582-592 — `= MockPrompter`
+-  `allow_once` function L583-585 — `() -> Self`
+-  `allow_always` function L586-588 — `() -> Self`
+-  `deny` function L589-591 — `() -> Self`
+-  `MockPrompter` type L595-599 — `impl ModalPrompt for MockPrompter`
+-  `prompt` function L596-598 — `(&self, _request: ModalRequest) -> Option<usize>`
+-  `allowed_by_rule` function L602-611 — `()`
+-  `denied_by_rule` function L614-623 — `()`
+-  `ask_without_prompter_denies` function L626-633 — `()`
+-  `ask_with_allow_once` function L636-646 — `()`
+-  `ask_with_allow_always_grants_session` function L649-665 — `()`
+-  `ask_with_deny` function L668-677 — `()`
+-  `default_mode_allows_read_only` function L680-707 — `()`
+-  `default_mode_asks_for_writes` function L710-729 — `()`
+-  `accept_edits_mode_allows_file_ops` function L732-758 — `()`
+-  `bypass_mode_allows_everything` function L761-787 — `()`
+-  `explicit_rules_override_mode` function L790-798 — `()`
+-  `deny_rules_override_session_grants` function L801-812 — `()`
+-  `session_grant_works_for_non_denied_tools` function L815-826 — `()`
+-  `shape_aware_grant_only_allows_matching_shape` function L829-860 — `()`
+-  `fail_closed_when_no_prompter` function L863-873 — `()`
+-  `clear_grants_resets` function L876-885 — `()`
+-  `truncate_input_short` function L888-890 — `()`
+-  `truncate_input_long` function L893-897 — `()`
+-  `truncate_input_multibyte_utf8_no_panic` function L900-908 — `()`
+-  `update_rules_hot_reload` function L911-932 — `()`
+-  `update_mode_hot_reload` function L935-957 — `()`
+-  `permission_mode_serde` function L963-975 — `()`
+-  `permission_mode_legacy_strings_fail` function L978-986 — `()`
+-  `plan_mode_allows_read_only` function L989-1015 — `()`
+-  `plan_mode_denies_writes` function L1018-1042 — `()`
+-  `plan_mode_allows_plan_meta_tools` function L1045-1059 — `()`
+-  `check_explained_attributes_deny_to_matching_rule` function L1066-1085 — `()`
+-  `check_explained_attributes_no_match_to_mode_fallback` function L1088-1100 — `()`
+-  `audit_log_records_decisions_in_order_and_caps` function L1103-1119 — `()`
+-  `shared_audit_aggregates_across_checkers` function L1122-1142 — `()`
+-  `snapshot_partitions_rules_by_kind_with_display_specs` function L1145-1162 — `()`
 
 #### crates/arawn-engine/src/permissions/config.rs
 
@@ -3400,8 +3392,8 @@
 - pub `new` function L227-229 — `(svc: Arc<CeremonyService>) -> Self` — that the agent surfaces those ids when summarising what happened.
 - pub `RetroPatchItemTool` struct L289-291 — `{ svc: Arc<CeremonyService> }` — that the agent surfaces those ids when summarising what happened.
 - pub `new` function L294-296 — `(svc: Arc<CeremonyService>) -> Self` — that the agent surfaces those ids when summarising what happened.
-- pub `RetroSetCadenceTool` struct L376-378 — `{ svc: Arc<CeremonyService> }` — Persist a new retro cadence (`weekly` / `biweekly` / `monthly`).
-- pub `new` function L381-383 — `(svc: Arc<CeremonyService>) -> Self` — that the agent surfaces those ids when summarising what happened.
+- pub `RetroSetCadenceTool` struct L369-371 — `{ svc: Arc<CeremonyService> }` — Persist a new retro cadence (`weekly` / `biweekly` / `monthly`).
+- pub `new` function L374-376 — `(svc: Arc<CeremonyService>) -> Self` — that the agent surfaces those ids when summarising what happened.
 -  `map_err` function L21-23 — `(e: arawn_ceremonies::CeremonyError) -> ToolOutput` — that the agent surfaces those ids when summarising what happened.
 -  `RetroRunTool` type L33-37 — `= RetroRunTool` — that the agent surfaces those ids when summarising what happened.
 -  `RetroRunTool` type L40-83 — `impl Tool for RetroRunTool` — that the agent surfaces those ids when summarising what happened.
@@ -3440,29 +3432,28 @@
 -  `category` function L313-315 — `(&self) -> ToolCategory` — that the agent surfaces those ids when summarising what happened.
 -  `parameters_schema` function L317-334 — `(&self) -> Value` — that the agent surfaces those ids when summarising what happened.
 -  `execute` function L336-359 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — that the agent surfaces those ids when summarising what happened.
--  `_add_item_unused` function L367 — `(_: AddItemRequest)` — that the agent surfaces those ids when summarising what happened.
--  `RetroSetCadenceTool` type L380-384 — `= RetroSetCadenceTool` — that the agent surfaces those ids when summarising what happened.
--  `RetroSetCadenceTool` type L387-440 — `impl Tool for RetroSetCadenceTool` — that the agent surfaces those ids when summarising what happened.
--  `name` function L388-390 — `(&self) -> &str` — that the agent surfaces those ids when summarising what happened.
--  `description` function L392-398 — `(&self) -> &str` — that the agent surfaces those ids when summarising what happened.
--  `category` function L400-402 — `(&self) -> ToolCategory` — that the agent surfaces those ids when summarising what happened.
--  `parameters_schema` function L404-417 — `(&self) -> Value` — that the agent surfaces those ids when summarising what happened.
--  `execute` function L419-439 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — that the agent surfaces those ids when summarising what happened.
--  `tests` module L443-599 — `-` — that the agent surfaces those ids when summarising what happened.
--  `StubDispatcher` struct L454 — `-` — that the agent surfaces those ids when summarising what happened.
--  `StubDispatcher` type L457-463 — `impl CeremonyDispatcher for StubDispatcher` — that the agent surfaces those ids when summarising what happened.
--  `dispatch` function L458-462 — `(&self, _kind: &str) -> Result<DispatchOutcome, CeremonyError>` — that the agent surfaces those ids when summarising what happened.
--  `open_svc` function L465-476 — `() -> (TempDir, Arc<CeremonyService>)` — that the agent surfaces those ids when summarising what happened.
--  `seed_retro_tablet` function L478-488 — `(svc: &CeremonyService, id: &str, week: &str)` — that the agent surfaces those ids when summarising what happened.
--  `ctx` function L493-496 — `() -> crate::context::EngineToolContext` — that the agent surfaces those ids when summarising what happened.
--  `retro_run_returns_generated_payload` function L499-506 — `()` — that the agent surfaces those ids when summarising what happened.
--  `retro_current_returns_null_when_no_tablet` function L509-515 — `()` — that the agent surfaces those ids when summarising what happened.
--  `retro_list_items_rejects_missing_tablet_id` function L518-524 — `()` — that the agent surfaces those ids when summarising what happened.
--  `retro_save_diary_rejects_missing_tablet_id` function L527-533 — `()` — that the agent surfaces those ids when summarising what happened.
--  `retro_save_diary_rejects_non_retro_tablet` function L536-555 — `()` — that the agent surfaces those ids when summarising what happened.
--  `retro_patch_item_validates_input` function L558-564 — `()` — that the agent surfaces those ids when summarising what happened.
--  `schemas_have_required_field_arrays` function L567-586 — `()` — that the agent surfaces those ids when summarising what happened.
--  `add_item_request_compiles` function L591-598 — `()` — that the agent surfaces those ids when summarising what happened.
+-  `RetroSetCadenceTool` type L373-377 — `= RetroSetCadenceTool` — that the agent surfaces those ids when summarising what happened.
+-  `RetroSetCadenceTool` type L380-433 — `impl Tool for RetroSetCadenceTool` — that the agent surfaces those ids when summarising what happened.
+-  `name` function L381-383 — `(&self) -> &str` — that the agent surfaces those ids when summarising what happened.
+-  `description` function L385-391 — `(&self) -> &str` — that the agent surfaces those ids when summarising what happened.
+-  `category` function L393-395 — `(&self) -> ToolCategory` — that the agent surfaces those ids when summarising what happened.
+-  `parameters_schema` function L397-410 — `(&self) -> Value` — that the agent surfaces those ids when summarising what happened.
+-  `execute` function L412-432 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — that the agent surfaces those ids when summarising what happened.
+-  `tests` module L436-592 — `-` — that the agent surfaces those ids when summarising what happened.
+-  `StubDispatcher` struct L447 — `-` — that the agent surfaces those ids when summarising what happened.
+-  `StubDispatcher` type L450-456 — `impl CeremonyDispatcher for StubDispatcher` — that the agent surfaces those ids when summarising what happened.
+-  `dispatch` function L451-455 — `(&self, _kind: &str) -> Result<DispatchOutcome, CeremonyError>` — that the agent surfaces those ids when summarising what happened.
+-  `open_svc` function L458-469 — `() -> (TempDir, Arc<CeremonyService>)` — that the agent surfaces those ids when summarising what happened.
+-  `seed_retro_tablet` function L471-481 — `(svc: &CeremonyService, id: &str, week: &str)` — that the agent surfaces those ids when summarising what happened.
+-  `ctx` function L486-489 — `() -> crate::context::EngineToolContext` — that the agent surfaces those ids when summarising what happened.
+-  `retro_run_returns_generated_payload` function L492-499 — `()` — that the agent surfaces those ids when summarising what happened.
+-  `retro_current_returns_null_when_no_tablet` function L502-508 — `()` — that the agent surfaces those ids when summarising what happened.
+-  `retro_list_items_rejects_missing_tablet_id` function L511-517 — `()` — that the agent surfaces those ids when summarising what happened.
+-  `retro_save_diary_rejects_missing_tablet_id` function L520-526 — `()` — that the agent surfaces those ids when summarising what happened.
+-  `retro_save_diary_rejects_non_retro_tablet` function L529-548 — `()` — that the agent surfaces those ids when summarising what happened.
+-  `retro_patch_item_validates_input` function L551-557 — `()` — that the agent surfaces those ids when summarising what happened.
+-  `schemas_have_required_field_arrays` function L560-579 — `()` — that the agent surfaces those ids when summarising what happened.
+-  `add_item_request_compiles` function L584-591 — `()` — that the agent surfaces those ids when summarising what happened.
 
 #### crates/arawn-engine/src/tools/daily.rs
 
@@ -3961,89 +3952,87 @@
 
 #### crates/arawn-engine/src/tools/steward.rs
 
-- pub `WorkstreamJournalTool` struct L120-123 — `{ data_dir: PathBuf, router: Arc<WorkstreamMemoryRouter> }` — via `arawn_steward::rollback::apply_inverse`.
-- pub `new` function L126-131 — `(data_dir: impl Into<PathBuf>, router: Arc<WorkstreamMemoryRouter>) -> Self` — via `arawn_steward::rollback::apply_inverse`.
-- pub `WorkstreamRefineTool` struct L200-203 — `{ data_dir: PathBuf, router: Arc<WorkstreamMemoryRouter> }` — via `arawn_steward::rollback::apply_inverse`.
-- pub `new` function L206-211 — `(data_dir: impl Into<PathBuf>, router: Arc<WorkstreamMemoryRouter>) -> Self` — via `arawn_steward::rollback::apply_inverse`.
-- pub `WorkstreamRollbackTool` struct L280-283 — `{ data_dir: PathBuf, router: Arc<WorkstreamMemoryRouter> }` — via `arawn_steward::rollback::apply_inverse`.
-- pub `new` function L286-291 — `(data_dir: impl Into<PathBuf>, router: Arc<WorkstreamMemoryRouter>) -> Self` — via `arawn_steward::rollback::apply_inverse`.
-- pub `WorkstreamDustTool` struct L389-394 — `{ data_dir: PathBuf, router: Arc<WorkstreamMemoryRouter>, client: Arc<dyn LlmCli...` — via `arawn_steward::rollback::apply_inverse`.
-- pub `new` function L397-409 — `( data_dir: impl Into<PathBuf>, router: Arc<WorkstreamMemoryRouter>, client: Arc...` — via `arawn_steward::rollback::apply_inverse`.
-- pub `WorkstreamApplyTool` struct L604-607 — `{ data_dir: PathBuf, router: Arc<WorkstreamMemoryRouter> }` — via `arawn_steward::rollback::apply_inverse`.
-- pub `new` function L610-615 — `(data_dir: impl Into<PathBuf>, router: Arc<WorkstreamMemoryRouter>) -> Self` — via `arawn_steward::rollback::apply_inverse`.
-- pub `WorkstreamTagTool` struct L713-716 — `{ data_dir: PathBuf, router: Arc<WorkstreamMemoryRouter> }` — Direct CRUD on the workstream's tag ontology.
-- pub `new` function L719-724 — `(data_dir: impl Into<PathBuf>, router: Arc<WorkstreamMemoryRouter>) -> Self` — via `arawn_steward::rollback::apply_inverse`.
+- pub `WorkstreamJournalTool` struct L104-107 — `{ data_dir: PathBuf, router: Arc<WorkstreamMemoryRouter> }` — via `arawn_steward::rollback::apply_inverse`.
+- pub `new` function L110-115 — `(data_dir: impl Into<PathBuf>, router: Arc<WorkstreamMemoryRouter>) -> Self` — via `arawn_steward::rollback::apply_inverse`.
+- pub `WorkstreamRefineTool` struct L184-187 — `{ data_dir: PathBuf, router: Arc<WorkstreamMemoryRouter> }` — via `arawn_steward::rollback::apply_inverse`.
+- pub `new` function L190-195 — `(data_dir: impl Into<PathBuf>, router: Arc<WorkstreamMemoryRouter>) -> Self` — via `arawn_steward::rollback::apply_inverse`.
+- pub `WorkstreamRollbackTool` struct L264-267 — `{ data_dir: PathBuf, router: Arc<WorkstreamMemoryRouter> }` — via `arawn_steward::rollback::apply_inverse`.
+- pub `new` function L270-275 — `(data_dir: impl Into<PathBuf>, router: Arc<WorkstreamMemoryRouter>) -> Self` — via `arawn_steward::rollback::apply_inverse`.
+- pub `WorkstreamDustTool` struct L366-371 — `{ data_dir: PathBuf, router: Arc<WorkstreamMemoryRouter>, client: Arc<dyn LlmCli...` — via `arawn_steward::rollback::apply_inverse`.
+- pub `new` function L374-386 — `( data_dir: impl Into<PathBuf>, router: Arc<WorkstreamMemoryRouter>, client: Arc...` — via `arawn_steward::rollback::apply_inverse`.
+- pub `WorkstreamApplyTool` struct L581-584 — `{ data_dir: PathBuf, router: Arc<WorkstreamMemoryRouter> }` — via `arawn_steward::rollback::apply_inverse`.
+- pub `new` function L587-592 — `(data_dir: impl Into<PathBuf>, router: Arc<WorkstreamMemoryRouter>) -> Self` — via `arawn_steward::rollback::apply_inverse`.
+- pub `WorkstreamTagTool` struct L690-693 — `{ data_dir: PathBuf, router: Arc<WorkstreamMemoryRouter> }` — Direct CRUD on the workstream's tag ontology.
+- pub `new` function L696-701 — `(data_dir: impl Into<PathBuf>, router: Arc<WorkstreamMemoryRouter>) -> Self` — via `arawn_steward::rollback::apply_inverse`.
 -  `closest_tag` function L27-51 — `(needle: &str, candidates: &[String]) -> Option<String>` — Return the closest tag in `candidates` to `needle` if any candidate
 -  `edit_distance` function L55-77 — `(a: &str, b: &str) -> usize` — Levenshtein distance, classic two-row DP.
 -  `open_journal` function L79-82 — `(data_dir: &PathBuf, workstream: &str) -> Result<Journal, ToolError>` — via `arawn_steward::rollback::apply_inverse`.
--  `resolve_workstream` function L84-99 — `(memory: &MemoryHandle, explicit: Option<&str>) -> Result<String, ToolError>` — via `arawn_steward::rollback::apply_inverse`.
--  `row_summary` function L102-114 — `(row: &arawn_steward::JournalRow) -> Value` — Lightweight summary of one journal row for tool output.
--  `WorkstreamJournalTool` type L125-132 — `= WorkstreamJournalTool` — via `arawn_steward::rollback::apply_inverse`.
--  `WorkstreamJournalTool` type L135-194 — `impl Tool for WorkstreamJournalTool` — via `arawn_steward::rollback::apply_inverse`.
--  `name` function L136-138 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
--  `description` function L140-144 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
--  `is_read_only` function L146-148 — `(&self) -> bool` — via `arawn_steward::rollback::apply_inverse`.
--  `category` function L150-157 — `(&self) -> ToolCategory` — via `arawn_steward::rollback::apply_inverse`.
--  `parameters_schema` function L159-167 — `(&self) -> Value` — via `arawn_steward::rollback::apply_inverse`.
--  `execute` function L169-193 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — via `arawn_steward::rollback::apply_inverse`.
--  `WorkstreamRefineTool` type L205-212 — `= WorkstreamRefineTool` — via `arawn_steward::rollback::apply_inverse`.
--  `WorkstreamRefineTool` type L215-274 — `impl Tool for WorkstreamRefineTool` — via `arawn_steward::rollback::apply_inverse`.
--  `name` function L216-218 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
--  `description` function L220-224 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
--  `is_read_only` function L226-228 — `(&self) -> bool` — via `arawn_steward::rollback::apply_inverse`.
--  `category` function L230-237 — `(&self) -> ToolCategory` — via `arawn_steward::rollback::apply_inverse`.
--  `parameters_schema` function L239-247 — `(&self) -> Value` — via `arawn_steward::rollback::apply_inverse`.
--  `execute` function L249-273 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — via `arawn_steward::rollback::apply_inverse`.
--  `WorkstreamRollbackTool` type L285-292 — `= WorkstreamRollbackTool` — via `arawn_steward::rollback::apply_inverse`.
--  `WorkstreamRollbackTool` type L295-376 — `impl Tool for WorkstreamRollbackTool` — via `arawn_steward::rollback::apply_inverse`.
--  `name` function L296-298 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
--  `description` function L300-304 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
--  `is_read_only` function L306-308 — `(&self) -> bool` — via `arawn_steward::rollback::apply_inverse`.
--  `category` function L310-317 — `(&self) -> ToolCategory` — via `arawn_steward::rollback::apply_inverse`.
--  `parameters_schema` function L319-328 — `(&self) -> Value` — via `arawn_steward::rollback::apply_inverse`.
--  `execute` function L330-375 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — via `arawn_steward::rollback::apply_inverse`.
--  `_unused` function L381-383 — `(memory: &MemoryHandle, explicit: Option<&str>) -> Result<String, ToolError>` — via `arawn_steward::rollback::apply_inverse`.
--  `WorkstreamDustTool` type L396-410 — `= WorkstreamDustTool` — via `arawn_steward::rollback::apply_inverse`.
--  `WorkstreamDustTool` type L413-598 — `impl Tool for WorkstreamDustTool` — via `arawn_steward::rollback::apply_inverse`.
--  `name` function L414-416 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
--  `description` function L418-424 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
--  `is_read_only` function L426-429 — `(&self) -> bool` — via `arawn_steward::rollback::apply_inverse`.
--  `category` function L431-438 — `(&self) -> ToolCategory` — via `arawn_steward::rollback::apply_inverse`.
--  `parameters_schema` function L440-460 — `(&self) -> Value` — via `arawn_steward::rollback::apply_inverse`.
--  `execute` function L462-597 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — via `arawn_steward::rollback::apply_inverse`.
--  `WorkstreamApplyTool` type L609-616 — `= WorkstreamApplyTool` — via `arawn_steward::rollback::apply_inverse`.
--  `WorkstreamApplyTool` type L619-702 — `impl Tool for WorkstreamApplyTool` — via `arawn_steward::rollback::apply_inverse`.
--  `name` function L620-622 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
--  `description` function L624-629 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
--  `is_read_only` function L631-633 — `(&self) -> bool` — via `arawn_steward::rollback::apply_inverse`.
--  `category` function L635-642 — `(&self) -> ToolCategory` — via `arawn_steward::rollback::apply_inverse`.
--  `parameters_schema` function L644-653 — `(&self) -> Value` — via `arawn_steward::rollback::apply_inverse`.
--  `execute` function L655-701 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — via `arawn_steward::rollback::apply_inverse`.
--  `WorkstreamTagTool` type L718-725 — `= WorkstreamTagTool` — via `arawn_steward::rollback::apply_inverse`.
--  `WorkstreamTagTool` type L728-859 — `impl Tool for WorkstreamTagTool` — via `arawn_steward::rollback::apply_inverse`.
--  `name` function L729-731 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
--  `description` function L733-739 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
--  `is_read_only` function L741-743 — `(&self) -> bool` — via `arawn_steward::rollback::apply_inverse`.
--  `category` function L745-747 — `(&self) -> ToolCategory` — via `arawn_steward::rollback::apply_inverse`.
--  `parameters_schema` function L749-769 — `(&self) -> Value` — via `arawn_steward::rollback::apply_inverse`.
--  `execute` function L771-858 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — via `arawn_steward::rollback::apply_inverse`.
--  `tests` module L862-1221 — `-` — via `arawn_steward::rollback::apply_inverse`.
--  `setup` function L870-881 — `() -> ( TempDir, Arc<WorkstreamMemoryRouter>, crate::context::EngineToolContext,...` — via `arawn_steward::rollback::apply_inverse`.
--  `write_proposal_row` function L883-896 — `(j: &Journal) -> i64` — via `arawn_steward::rollback::apply_inverse`.
--  `write_delete_row` function L898-909 — `(j: &Journal, e: &Entity) -> i64` — via `arawn_steward::rollback::apply_inverse`.
--  `journal_lists_recent_rows` function L912-922 — `()` — via `arawn_steward::rollback::apply_inverse`.
--  `refine_returns_pending_proposals_only` function L925-946 — `()` — via `arawn_steward::rollback::apply_inverse`.
--  `rollback_reverts_delete_action_end_to_end` function L949-967 — `()` — via `arawn_steward::rollback::apply_inverse`.
--  `rollback_is_idempotent` function L970-983 — `()` — via `arawn_steward::rollback::apply_inverse`.
--  `apply_then_rollback_round_trip_for_map_proposal` function L986-1030 — `()` — via `arawn_steward::rollback::apply_inverse`.
--  `apply_refuses_reverted_row` function L1033-1053 — `()` — via `arawn_steward::rollback::apply_inverse`.
--  `workstream_tag_list_add_remove_round_trip` function L1056-1118 — `()` — via `arawn_steward::rollback::apply_inverse`.
--  `workstream_apply_promotes_tag_into_ontology` function L1121-1166 — `()` — via `arawn_steward::rollback::apply_inverse`.
--  `rollback_unknown_id_errors` function L1169-1174 — `()` — via `arawn_steward::rollback::apply_inverse`.
--  `closest_tag_matches_substring_user_added_suffix` function L1179-1191 — `()` — via `arawn_steward::rollback::apply_inverse`.
--  `closest_tag_matches_typo` function L1194-1200 — `()` — via `arawn_steward::rollback::apply_inverse`.
--  `closest_tag_returns_none_when_unrelated` function L1203-1207 — `()` — via `arawn_steward::rollback::apply_inverse`.
--  `closest_tag_picks_shortest_distance` function L1210-1220 — `()` — via `arawn_steward::rollback::apply_inverse`.
+-  `row_summary` function L86-98 — `(row: &arawn_steward::JournalRow) -> Value` — Lightweight summary of one journal row for tool output.
+-  `WorkstreamJournalTool` type L109-116 — `= WorkstreamJournalTool` — via `arawn_steward::rollback::apply_inverse`.
+-  `WorkstreamJournalTool` type L119-178 — `impl Tool for WorkstreamJournalTool` — via `arawn_steward::rollback::apply_inverse`.
+-  `name` function L120-122 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
+-  `description` function L124-128 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
+-  `is_read_only` function L130-132 — `(&self) -> bool` — via `arawn_steward::rollback::apply_inverse`.
+-  `category` function L134-141 — `(&self) -> ToolCategory` — via `arawn_steward::rollback::apply_inverse`.
+-  `parameters_schema` function L143-151 — `(&self) -> Value` — via `arawn_steward::rollback::apply_inverse`.
+-  `execute` function L153-177 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — via `arawn_steward::rollback::apply_inverse`.
+-  `WorkstreamRefineTool` type L189-196 — `= WorkstreamRefineTool` — via `arawn_steward::rollback::apply_inverse`.
+-  `WorkstreamRefineTool` type L199-258 — `impl Tool for WorkstreamRefineTool` — via `arawn_steward::rollback::apply_inverse`.
+-  `name` function L200-202 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
+-  `description` function L204-208 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
+-  `is_read_only` function L210-212 — `(&self) -> bool` — via `arawn_steward::rollback::apply_inverse`.
+-  `category` function L214-221 — `(&self) -> ToolCategory` — via `arawn_steward::rollback::apply_inverse`.
+-  `parameters_schema` function L223-231 — `(&self) -> Value` — via `arawn_steward::rollback::apply_inverse`.
+-  `execute` function L233-257 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — via `arawn_steward::rollback::apply_inverse`.
+-  `WorkstreamRollbackTool` type L269-276 — `= WorkstreamRollbackTool` — via `arawn_steward::rollback::apply_inverse`.
+-  `WorkstreamRollbackTool` type L279-360 — `impl Tool for WorkstreamRollbackTool` — via `arawn_steward::rollback::apply_inverse`.
+-  `name` function L280-282 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
+-  `description` function L284-288 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
+-  `is_read_only` function L290-292 — `(&self) -> bool` — via `arawn_steward::rollback::apply_inverse`.
+-  `category` function L294-301 — `(&self) -> ToolCategory` — via `arawn_steward::rollback::apply_inverse`.
+-  `parameters_schema` function L303-312 — `(&self) -> Value` — via `arawn_steward::rollback::apply_inverse`.
+-  `execute` function L314-359 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — via `arawn_steward::rollback::apply_inverse`.
+-  `WorkstreamDustTool` type L373-387 — `= WorkstreamDustTool` — via `arawn_steward::rollback::apply_inverse`.
+-  `WorkstreamDustTool` type L390-575 — `impl Tool for WorkstreamDustTool` — via `arawn_steward::rollback::apply_inverse`.
+-  `name` function L391-393 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
+-  `description` function L395-401 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
+-  `is_read_only` function L403-406 — `(&self) -> bool` — via `arawn_steward::rollback::apply_inverse`.
+-  `category` function L408-415 — `(&self) -> ToolCategory` — via `arawn_steward::rollback::apply_inverse`.
+-  `parameters_schema` function L417-437 — `(&self) -> Value` — via `arawn_steward::rollback::apply_inverse`.
+-  `execute` function L439-574 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — via `arawn_steward::rollback::apply_inverse`.
+-  `WorkstreamApplyTool` type L586-593 — `= WorkstreamApplyTool` — via `arawn_steward::rollback::apply_inverse`.
+-  `WorkstreamApplyTool` type L596-679 — `impl Tool for WorkstreamApplyTool` — via `arawn_steward::rollback::apply_inverse`.
+-  `name` function L597-599 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
+-  `description` function L601-606 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
+-  `is_read_only` function L608-610 — `(&self) -> bool` — via `arawn_steward::rollback::apply_inverse`.
+-  `category` function L612-619 — `(&self) -> ToolCategory` — via `arawn_steward::rollback::apply_inverse`.
+-  `parameters_schema` function L621-630 — `(&self) -> Value` — via `arawn_steward::rollback::apply_inverse`.
+-  `execute` function L632-678 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — via `arawn_steward::rollback::apply_inverse`.
+-  `WorkstreamTagTool` type L695-702 — `= WorkstreamTagTool` — via `arawn_steward::rollback::apply_inverse`.
+-  `WorkstreamTagTool` type L705-836 — `impl Tool for WorkstreamTagTool` — via `arawn_steward::rollback::apply_inverse`.
+-  `name` function L706-708 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
+-  `description` function L710-716 — `(&self) -> &str` — via `arawn_steward::rollback::apply_inverse`.
+-  `is_read_only` function L718-720 — `(&self) -> bool` — via `arawn_steward::rollback::apply_inverse`.
+-  `category` function L722-724 — `(&self) -> ToolCategory` — via `arawn_steward::rollback::apply_inverse`.
+-  `parameters_schema` function L726-746 — `(&self) -> Value` — via `arawn_steward::rollback::apply_inverse`.
+-  `execute` function L748-835 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — via `arawn_steward::rollback::apply_inverse`.
+-  `tests` module L839-1198 — `-` — via `arawn_steward::rollback::apply_inverse`.
+-  `setup` function L847-858 — `() -> ( TempDir, Arc<WorkstreamMemoryRouter>, crate::context::EngineToolContext,...` — via `arawn_steward::rollback::apply_inverse`.
+-  `write_proposal_row` function L860-873 — `(j: &Journal) -> i64` — via `arawn_steward::rollback::apply_inverse`.
+-  `write_delete_row` function L875-886 — `(j: &Journal, e: &Entity) -> i64` — via `arawn_steward::rollback::apply_inverse`.
+-  `journal_lists_recent_rows` function L889-899 — `()` — via `arawn_steward::rollback::apply_inverse`.
+-  `refine_returns_pending_proposals_only` function L902-923 — `()` — via `arawn_steward::rollback::apply_inverse`.
+-  `rollback_reverts_delete_action_end_to_end` function L926-944 — `()` — via `arawn_steward::rollback::apply_inverse`.
+-  `rollback_is_idempotent` function L947-960 — `()` — via `arawn_steward::rollback::apply_inverse`.
+-  `apply_then_rollback_round_trip_for_map_proposal` function L963-1007 — `()` — via `arawn_steward::rollback::apply_inverse`.
+-  `apply_refuses_reverted_row` function L1010-1030 — `()` — via `arawn_steward::rollback::apply_inverse`.
+-  `workstream_tag_list_add_remove_round_trip` function L1033-1095 — `()` — via `arawn_steward::rollback::apply_inverse`.
+-  `workstream_apply_promotes_tag_into_ontology` function L1098-1143 — `()` — via `arawn_steward::rollback::apply_inverse`.
+-  `rollback_unknown_id_errors` function L1146-1151 — `()` — via `arawn_steward::rollback::apply_inverse`.
+-  `closest_tag_matches_substring_user_added_suffix` function L1156-1168 — `()` — via `arawn_steward::rollback::apply_inverse`.
+-  `closest_tag_matches_typo` function L1171-1177 — `()` — via `arawn_steward::rollback::apply_inverse`.
+-  `closest_tag_returns_none_when_unrelated` function L1180-1184 — `()` — via `arawn_steward::rollback::apply_inverse`.
+-  `closest_tag_picks_shortest_distance` function L1187-1197 — `()` — via `arawn_steward::rollback::apply_inverse`.
 
 #### crates/arawn-engine/src/tools/task_list.rs
 
@@ -4585,35 +4574,34 @@
 -  `relation_type_lowercased_for_parse` function L539-543 — `()` — steward (Phase 5) refines vocabulary later.
 -  `projection_id_to_uuid_is_deterministic` function L546-552 — `()` — steward (Phase 5) refines vocabulary later.
 -  `truncate_preserves_short_input` function L555-561 — `()` — steward (Phase 5) refines vocabulary later.
--  `integration` module L570-1062 — `-` — steward (Phase 5) refines vocabulary later.
+-  `integration` module L570-1058 — `-` — steward (Phase 5) refines vocabulary later.
 -  `KeyedMockLlm` struct L596-603 — `{ classify: Mutex<VecDeque<Value>>, extract: Mutex<VecDeque<Value>>, link: Mutex...` — Inspects the system prompt to detect which CoT stage is calling
--  `KeyedMockLlm` type L605-633 — `= KeyedMockLlm` — steward (Phase 5) refines vocabulary later.
+-  `KeyedMockLlm` type L605-629 — `= KeyedMockLlm` — steward (Phase 5) refines vocabulary later.
 -  `new` function L606-615 — `() -> Self` — steward (Phase 5) refines vocabulary later.
 -  `default_classify` function L617-620 — `(self, v: Value) -> Self` — steward (Phase 5) refines vocabulary later.
 -  `default_extract` function L621-624 — `(self, v: Value) -> Self` — steward (Phase 5) refines vocabulary later.
 -  `default_link` function L625-628 — `(self, v: Value) -> Self` — steward (Phase 5) refines vocabulary later.
--  `push_classify` function L630-632 — `(&self, v: Value)` — steward (Phase 5) refines vocabulary later.
--  `classify_stage` function L635-637 — `(sys: &str) -> bool` — steward (Phase 5) refines vocabulary later.
--  `extract_stage` function L638-640 — `(sys: &str) -> bool` — steward (Phase 5) refines vocabulary later.
--  `link_stage` function L641-643 — `(sys: &str) -> bool` — steward (Phase 5) refines vocabulary later.
--  `KeyedMockLlm` type L646-686 — `= KeyedMockLlm` — steward (Phase 5) refines vocabulary later.
--  `stream` function L647-685 — `( &self, request: ChatRequest, ) -> Result< Pin<Box<dyn futures::Stream<Item = R...` — steward (Phase 5) refines vocabulary later.
--  `ws` function L690-694 — `(name: &str, desc: &str) -> Workstream` — steward (Phase 5) refines vocabulary later.
--  `fixture_proj` function L696-709 — `(id: &str, body: &str, ts_offset: i64) -> GmailMessageProjection` — steward (Phase 5) refines vocabulary later.
--  `Fixture` struct L711-717 — `{ _tmp: tempfile::TempDir, store: Arc<std::sync::Mutex<Store>>, proj: Arc<Projec...` — steward (Phase 5) refines vocabulary later.
--  `setup` function L719-754 — `() -> Fixture` — steward (Phase 5) refines vocabulary later.
--  `Fixture` type L756-771 — `= Fixture` — steward (Phase 5) refines vocabulary later.
--  `kb` function L757-762 — `(&self, name: &str) -> Arc<MemoryManager>` — steward (Phase 5) refines vocabulary later.
--  `cursor` function L764-770 — `(&self, ws_name: &str, feed_type: &str) -> Option<chrono::DateTime<chrono::Utc>>` — steward (Phase 5) refines vocabulary later.
--  `runner_with` function L773-785 — `(fx: &Fixture, mock: Arc<KeyedMockLlm>, batch_size: usize) -> ExtractorRunner` — steward (Phase 5) refines vocabulary later.
--  `happy_path_extracts_into_workstream` function L790-822 — `()` — steward (Phase 5) refines vocabulary later.
--  `out_of_scope_skips_but_advances_cursor` function L825-846 — `()` — steward (Phase 5) refines vocabulary later.
--  `link_by_name_resolves_to_existing_kb_entity` function L849-888 — `()` — steward (Phase 5) refines vocabulary later.
--  `link_to_missing_target_is_dropped_without_panic` function L891-916 — `()` — steward (Phase 5) refines vocabulary later.
--  `backfill_walks_existing_rows` function L919-945 — `()` — steward (Phase 5) refines vocabulary later.
--  `rerun_is_idempotent_via_cursor` function L948-975 — `()` — steward (Phase 5) refines vocabulary later.
--  `two_workstreams_each_get_the_entity` function L978-1018 — `()` — steward (Phase 5) refines vocabulary later.
--  `entity_dates_inherit_source_ts_not_extraction_time` function L1021-1061 — `()` — steward (Phase 5) refines vocabulary later.
+-  `classify_stage` function L631-633 — `(sys: &str) -> bool` — steward (Phase 5) refines vocabulary later.
+-  `extract_stage` function L634-636 — `(sys: &str) -> bool` — steward (Phase 5) refines vocabulary later.
+-  `link_stage` function L637-639 — `(sys: &str) -> bool` — steward (Phase 5) refines vocabulary later.
+-  `KeyedMockLlm` type L642-682 — `= KeyedMockLlm` — steward (Phase 5) refines vocabulary later.
+-  `stream` function L643-681 — `( &self, request: ChatRequest, ) -> Result< Pin<Box<dyn futures::Stream<Item = R...` — steward (Phase 5) refines vocabulary later.
+-  `ws` function L686-690 — `(name: &str, desc: &str) -> Workstream` — steward (Phase 5) refines vocabulary later.
+-  `fixture_proj` function L692-705 — `(id: &str, body: &str, ts_offset: i64) -> GmailMessageProjection` — steward (Phase 5) refines vocabulary later.
+-  `Fixture` struct L707-713 — `{ _tmp: tempfile::TempDir, store: Arc<std::sync::Mutex<Store>>, proj: Arc<Projec...` — steward (Phase 5) refines vocabulary later.
+-  `setup` function L715-750 — `() -> Fixture` — steward (Phase 5) refines vocabulary later.
+-  `Fixture` type L752-767 — `= Fixture` — steward (Phase 5) refines vocabulary later.
+-  `kb` function L753-758 — `(&self, name: &str) -> Arc<MemoryManager>` — steward (Phase 5) refines vocabulary later.
+-  `cursor` function L760-766 — `(&self, ws_name: &str, feed_type: &str) -> Option<chrono::DateTime<chrono::Utc>>` — steward (Phase 5) refines vocabulary later.
+-  `runner_with` function L769-781 — `(fx: &Fixture, mock: Arc<KeyedMockLlm>, batch_size: usize) -> ExtractorRunner` — steward (Phase 5) refines vocabulary later.
+-  `happy_path_extracts_into_workstream` function L786-818 — `()` — steward (Phase 5) refines vocabulary later.
+-  `out_of_scope_skips_but_advances_cursor` function L821-842 — `()` — steward (Phase 5) refines vocabulary later.
+-  `link_by_name_resolves_to_existing_kb_entity` function L845-884 — `()` — steward (Phase 5) refines vocabulary later.
+-  `link_to_missing_target_is_dropped_without_panic` function L887-912 — `()` — steward (Phase 5) refines vocabulary later.
+-  `backfill_walks_existing_rows` function L915-941 — `()` — steward (Phase 5) refines vocabulary later.
+-  `rerun_is_idempotent_via_cursor` function L944-971 — `()` — steward (Phase 5) refines vocabulary later.
+-  `two_workstreams_each_get_the_entity` function L974-1014 — `()` — steward (Phase 5) refines vocabulary later.
+-  `entity_dates_inherit_source_ts_not_extraction_time` function L1017-1057 — `()` — steward (Phase 5) refines vocabulary later.
 
 #### crates/arawn-extractor/src/error.rs
 
@@ -4812,25 +4800,24 @@
 
 #### crates/arawn-feeds/src/store.rs
 
-- pub `FeedRecord` struct L17-25 — `{ id: String, template: String, params: TemplateParams, cadence: String, enabled...` — One row from the `feeds` table.
-- pub `FeedStore` struct L29-31 — `{ conn: &'a Connection }` — CRUD over the `feeds` table.
-- pub `new` function L34-36 — `(conn: &'a Connection) -> Self` — source of truth for *what we've fetched* (cursor + last_run).
-- pub `insert` function L38-57 — `(&self, rec: &FeedRecord) -> Result<(), FeedError>` — source of truth for *what we've fetched* (cursor + last_run).
-- pub `get` function L59-71 — `(&self, id: &str) -> Result<Option<FeedRecord>, FeedError>` — source of truth for *what we've fetched* (cursor + last_run).
-- pub `list_enabled` function L73-86 — `(&self) -> Result<Vec<FeedRecord>, FeedError>` — source of truth for *what we've fetched* (cursor + last_run).
-- pub `list_all` function L88-101 — `(&self) -> Result<Vec<FeedRecord>, FeedError>` — source of truth for *what we've fetched* (cursor + last_run).
-- pub `set_enabled` function L103-116 — `(&self, id: &str, enabled: bool) -> Result<(), FeedError>` — source of truth for *what we've fetched* (cursor + last_run).
-- pub `delete` function L118-123 — `(&self, id: &str) -> Result<(), FeedError>` — source of truth for *what we've fetched* (cursor + last_run).
-- pub `new_record` function L157-173 — `( id: impl Into<String>, template: impl Into<String>, params: TemplateParams, ca...` — Convenience builder for tests / `/watch` registration.
--  `row_to_record` function L126-154 — `(row: &rusqlite::Row) -> rusqlite::Result<Result<FeedRecord, FeedError>>` — source of truth for *what we've fetched* (cursor + last_run).
--  `_value_marker` function L179 — `(_: Value)` — source of truth for *what we've fetched* (cursor + last_run).
--  `tests` module L182-279 — `-` — source of truth for *what we've fetched* (cursor + last_run).
--  `open_test_db` function L186-203 — `() -> Connection` — source of truth for *what we've fetched* (cursor + last_run).
--  `insert_get_round_trip` function L206-221 — `()` — source of truth for *what we've fetched* (cursor + last_run).
--  `list_enabled_omits_disabled` function L224-246 — `()` — source of truth for *what we've fetched* (cursor + last_run).
--  `set_enabled_round_trips` function L249-260 — `()` — source of truth for *what we've fetched* (cursor + last_run).
--  `set_enabled_errors_for_unknown_id` function L263-268 — `()` — source of truth for *what we've fetched* (cursor + last_run).
--  `delete_removes_row` function L271-278 — `()` — source of truth for *what we've fetched* (cursor + last_run).
+- pub `FeedRecord` struct L16-24 — `{ id: String, template: String, params: TemplateParams, cadence: String, enabled...` — One row from the `feeds` table.
+- pub `FeedStore` struct L28-30 — `{ conn: &'a Connection }` — CRUD over the `feeds` table.
+- pub `new` function L33-35 — `(conn: &'a Connection) -> Self` — source of truth for *what we've fetched* (cursor + last_run).
+- pub `insert` function L37-56 — `(&self, rec: &FeedRecord) -> Result<(), FeedError>` — source of truth for *what we've fetched* (cursor + last_run).
+- pub `get` function L58-70 — `(&self, id: &str) -> Result<Option<FeedRecord>, FeedError>` — source of truth for *what we've fetched* (cursor + last_run).
+- pub `list_enabled` function L72-85 — `(&self) -> Result<Vec<FeedRecord>, FeedError>` — source of truth for *what we've fetched* (cursor + last_run).
+- pub `list_all` function L87-100 — `(&self) -> Result<Vec<FeedRecord>, FeedError>` — source of truth for *what we've fetched* (cursor + last_run).
+- pub `set_enabled` function L102-115 — `(&self, id: &str, enabled: bool) -> Result<(), FeedError>` — source of truth for *what we've fetched* (cursor + last_run).
+- pub `delete` function L117-122 — `(&self, id: &str) -> Result<(), FeedError>` — source of truth for *what we've fetched* (cursor + last_run).
+- pub `new_record` function L156-172 — `( id: impl Into<String>, template: impl Into<String>, params: TemplateParams, ca...` — Convenience builder for tests / `/watch` registration.
+-  `row_to_record` function L125-153 — `(row: &rusqlite::Row) -> rusqlite::Result<Result<FeedRecord, FeedError>>` — source of truth for *what we've fetched* (cursor + last_run).
+-  `tests` module L175-272 — `-` — source of truth for *what we've fetched* (cursor + last_run).
+-  `open_test_db` function L179-196 — `() -> Connection` — source of truth for *what we've fetched* (cursor + last_run).
+-  `insert_get_round_trip` function L199-214 — `()` — source of truth for *what we've fetched* (cursor + last_run).
+-  `list_enabled_omits_disabled` function L217-239 — `()` — source of truth for *what we've fetched* (cursor + last_run).
+-  `set_enabled_round_trips` function L242-253 — `()` — source of truth for *what we've fetched* (cursor + last_run).
+-  `set_enabled_errors_for_unknown_id` function L256-261 — `()` — source of truth for *what we've fetched* (cursor + last_run).
+-  `delete_removes_row` function L264-271 — `()` — source of truth for *what we've fetched* (cursor + last_run).
 
 #### crates/arawn-feeds/src/template.rs
 
@@ -4885,17 +4872,17 @@
 -  `V2Body` struct L248-250 — `{ storage: Option<V2BodyStorage> }` — Confluence/Jira tools use.
 -  `V2BodyStorage` struct L253-255 — `{ value: Option<String> }` — Confluence/Jira tools use.
 -  `V2Version` struct L258-260 — `{ number: Option<i64> }` — Confluence/Jira tools use.
--  `RealAtlassianClient` type L263-555 — `impl AtlassianFeedClient for RealAtlassianClient` — Confluence/Jira tools use.
+-  `RealAtlassianClient` type L263-554 — `impl AtlassianFeedClient for RealAtlassianClient` — Confluence/Jira tools use.
 -  `space_pages_modified_since` function L264-342 — `( &self, space_key: &str, since: Option<DateTime<Utc>>, ) -> Result<Vec<Confluen...` — Confluence/Jira tools use.
 -  `page_body_storage` function L344-359 — `(&self, page_id: &str) -> Result<ConfluencePageBody, FeedError>` — Confluence/Jira tools use.
 -  `jql_search` function L361-403 — `( &self, jql: &str, max_results: u32, ) -> Result<Vec<JiraIssueMeta>, FeedError>` — Confluence/Jira tools use.
 -  `issue_full` function L405-500 — `( &self, key: &str, want_changelog: bool, want_comments: bool, ) -> Result<JiraI...` — Confluence/Jira tools use.
 -  `resolve_project` function L502-516 — `(&self, key_or_id: &str) -> Result<String, FeedError>` — Confluence/Jira tools use.
--  `list_jira_projects` function L518-538 — `(&self) -> Result<Vec<JiraProjectMeta>, FeedError>` — Confluence/Jira tools use.
--  `list_confluence_spaces` function L540-554 — `(&self) -> Result<Vec<ConfluenceSpaceMeta>, FeedError>` — Confluence/Jira tools use.
--  `V2SpacesResp` struct L558-561 — `{ results: Vec<V2Space> }` — Confluence/Jira tools use.
--  `V2Space` struct L564-568 — `{ key: String, name: Option<String> }` — Confluence/Jira tools use.
--  `jira_err` function L570-582 — `(e: jira_v3_openapi::apis::Error<E>) -> FeedError` — Confluence/Jira tools use.
+-  `list_jira_projects` function L518-537 — `(&self) -> Result<Vec<JiraProjectMeta>, FeedError>` — Confluence/Jira tools use.
+-  `list_confluence_spaces` function L539-553 — `(&self) -> Result<Vec<ConfluenceSpaceMeta>, FeedError>` — Confluence/Jira tools use.
+-  `V2SpacesResp` struct L557-560 — `{ results: Vec<V2Space> }` — Confluence/Jira tools use.
+-  `V2Space` struct L563-567 — `{ key: String, name: Option<String> }` — Confluence/Jira tools use.
+-  `jira_err` function L569-581 — `(e: jira_v3_openapi::apis::Error<E>) -> FeedError` — Confluence/Jira tools use.
 
 #### crates/arawn-feeds/src/clients/calendar.rs
 
@@ -5263,59 +5250,58 @@
 
 #### crates/arawn-feeds/src/templates/github/repo_mirror.rs
 
-- pub `RepoMirrorTemplate` struct L30 — `-` — other kinds still write and advance.
--  `NAME` variable L32 — `: &str` — other kinds still write and advance.
--  `MAX_PAGES_PER_KIND` variable L37 — `: u32` — Conservative pagination cap per kind per tick.
--  `CursorState` struct L40-49 — `{ commits_since: Option<String>, issues_since: Option<String>, prs_since: Option...` — other kinds still write and advance.
--  `CursorState` type L51-64 — `= CursorState` — other kinds still write and advance.
--  `from_value` function L52-54 — `(v: &Value) -> Self` — other kinds still write and advance.
--  `into_value` function L56-63 — `(self) -> Value` — other kinds still write and advance.
--  `RepoMirrorTemplate` type L67-288 — `impl FeedTemplate for RepoMirrorTemplate` — other kinds still write and advance.
--  `name` function L68-70 — `(&self) -> &'static str` — other kinds still write and advance.
--  `validate` function L72-89 — `(&self, params: &TemplateParams) -> Result<(), FeedError>` — other kinds still write and advance.
--  `defaults` function L91-96 — `(&self, _params: &TemplateParams) -> FeedDefaults` — other kinds still write and advance.
--  `run` function L98-283 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &V...` — other kinds still write and advance.
--  `discover` function L285-287 — `(&self, _ctx: &TemplateCtx) -> Result<Option<Vec<DiscoveryRow>>, FeedError>` — other kinds still write and advance.
--  `write_batch` function L292-331 — `( kind_dir: &Path, batch: &[Value], id_of: impl Fn(&Value) -> Option<String>, ts...` — Write each row of `batch` to `<kind_dir>/<id_extractor(row)>.json`
--  `parse_iso` function L333-337 — `(s: &str) -> Option<chrono::DateTime<chrono::Utc>>` — other kinds still write and advance.
--  `advance` function L341-354 — `(prev: Option<String>, latest: Option<String>) -> Option<String>` — Pick the later of the previous cursor and the latest seen this
--  `sanitize` function L356-360 — `(s: &str) -> String` — other kinds still write and advance.
--  `write_json` function L362-372 — `(path: &PathBuf, v: &Value) -> Result<u64, FeedError>` — other kinds still write and advance.
--  `_force_use_traits` function L375-379 — `()` — other kinds still write and advance.
--  `tests` module L382-729 — `-` — other kinds still write and advance.
--  `FakeGithub` struct L391-405 — `{ commits: Mutex<Vec<Value>>, issues: Mutex<Vec<Value>>, prs: Mutex<Vec<Value>>,...` — Fake that returns canned responses per kind.
--  `FakeGithub` type L407-422 — `impl Default for FakeGithub` — other kinds still write and advance.
--  `default` function L408-421 — `() -> Self` — other kinds still write and advance.
--  `FakeGithub` type L425-503 — `impl Gh for FakeGithub` — other kinds still write and advance.
--  `list_notifications` function L426-433 — `( &self, _since: Option<chrono::DateTime<chrono::Utc>>, _per_page: u32, _all: bo...` — other kinds still write and advance.
--  `search_issues` function L434-441 — `( &self, _query: &str, _per_page: u32, _max_pages: u32, ) -> Result<Vec<Value>, ...` — other kinds still write and advance.
--  `list_repo_commits` function L442-451 — `( &self, _owner: &str, _repo: &str, since: Option<chrono::DateTime<chrono::Utc>>...` — other kinds still write and advance.
--  `list_repo_issues` function L452-465 — `( &self, _owner: &str, _repo: &str, _state: &str, since: Option<chrono::DateTime...` — other kinds still write and advance.
--  `list_repo_prs` function L466-476 — `( &self, _owner: &str, _repo: &str, _state: &str, since: Option<chrono::DateTime...` — other kinds still write and advance.
--  `list_issue_comments` function L477-486 — `( &self, _owner: &str, _repo: &str, since: Option<chrono::DateTime<chrono::Utc>>...` — other kinds still write and advance.
--  `list_pr_review_comments` function L487-495 — `( &self, _owner: &str, _repo: &str, _since: Option<chrono::DateTime<chrono::Utc>...` — other kinds still write and advance.
--  `list_org_repos` function L496-502 — `( &self, _owner: &str, _max_pages: u32, ) -> Result<Vec<Value>, FeedError>` — other kinds still write and advance.
--  `WithFakeGithub` struct L505-507 — `{ gh: Arc<dyn Gh> }` — other kinds still write and advance.
--  `WithFakeGithub` type L508-527 — `impl FeedClients for WithFakeGithub` — other kinds still write and advance.
--  `slack` function L509-511 — `(&self) -> Option<Arc<dyn crate::clients::SlackFeedClient>>` — other kinds still write and advance.
--  `calendar` function L512-514 — `(&self) -> Option<Arc<dyn crate::clients::CalendarFeedClient>>` — other kinds still write and advance.
--  `gmail` function L515-517 — `(&self) -> Option<Arc<dyn crate::clients::GmailFeedClient>>` — other kinds still write and advance.
--  `drive` function L518-520 — `(&self) -> Option<Arc<dyn crate::clients::DriveFeedClient>>` — other kinds still write and advance.
--  `atlassian` function L521-523 — `(&self) -> Option<Arc<dyn crate::clients::AtlassianFeedClient>>` — other kinds still write and advance.
--  `github` function L524-526 — `(&self) -> Option<Arc<dyn Gh>>` — other kinds still write and advance.
--  `params` function L529-531 — `() -> TemplateParams` — other kinds still write and advance.
--  `commit` function L533-543 — `(sha: &str, date: &str) -> Value` — other kinds still write and advance.
--  `issue` function L545-556 — `(number: i64, updated: &str) -> Value` — other kinds still write and advance.
--  `pr` function L558-571 — `(number: i64, updated: &str) -> Value` — other kinds still write and advance.
--  `comment` function L573-583 — `(id: i64, updated: &str, parent_url: &str) -> Value` — other kinds still write and advance.
--  `validate_requires_owner_and_name` function L586-594 — `()` — other kinds still write and advance.
--  `defaults_use_30min_cadence` function L597-599 — `()` — other kinds still write and advance.
--  `writes_each_kind_under_owner_repo_layout` function L602-636 — `()` — other kinds still write and advance.
--  `one_kind_4xx_doesnt_block_others` function L639-659 — `()` — other kinds still write and advance.
--  `empty_response_yields_no_new_items_and_preserves_cursor` function L662-682 — `()` — other kinds still write and advance.
--  `passes_since_floors_from_cursor_to_client` function L685-700 — `()` — other kinds still write and advance.
--  `missing_clients_returns_auth_error` function L703-713 — `()` — other kinds still write and advance.
--  `advance_picks_newer_string` function L716-728 — `()` — other kinds still write and advance.
+- pub `RepoMirrorTemplate` struct L29 — `-` — other kinds still write and advance.
+-  `NAME` variable L31 — `: &str` — other kinds still write and advance.
+-  `MAX_PAGES_PER_KIND` variable L36 — `: u32` — Conservative pagination cap per kind per tick.
+-  `CursorState` struct L39-48 — `{ commits_since: Option<String>, issues_since: Option<String>, prs_since: Option...` — other kinds still write and advance.
+-  `CursorState` type L50-63 — `= CursorState` — other kinds still write and advance.
+-  `from_value` function L51-53 — `(v: &Value) -> Self` — other kinds still write and advance.
+-  `into_value` function L55-62 — `(self) -> Value` — other kinds still write and advance.
+-  `RepoMirrorTemplate` type L66-287 — `impl FeedTemplate for RepoMirrorTemplate` — other kinds still write and advance.
+-  `name` function L67-69 — `(&self) -> &'static str` — other kinds still write and advance.
+-  `validate` function L71-88 — `(&self, params: &TemplateParams) -> Result<(), FeedError>` — other kinds still write and advance.
+-  `defaults` function L90-95 — `(&self, _params: &TemplateParams) -> FeedDefaults` — other kinds still write and advance.
+-  `run` function L97-282 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &V...` — other kinds still write and advance.
+-  `discover` function L284-286 — `(&self, _ctx: &TemplateCtx) -> Result<Option<Vec<DiscoveryRow>>, FeedError>` — other kinds still write and advance.
+-  `write_batch` function L291-330 — `( kind_dir: &Path, batch: &[Value], id_of: impl Fn(&Value) -> Option<String>, ts...` — Write each row of `batch` to `<kind_dir>/<id_extractor(row)>.json`
+-  `parse_iso` function L332-336 — `(s: &str) -> Option<chrono::DateTime<chrono::Utc>>` — other kinds still write and advance.
+-  `advance` function L340-353 — `(prev: Option<String>, latest: Option<String>) -> Option<String>` — Pick the later of the previous cursor and the latest seen this
+-  `sanitize` function L355-359 — `(s: &str) -> String` — other kinds still write and advance.
+-  `write_json` function L361-371 — `(path: &PathBuf, v: &Value) -> Result<u64, FeedError>` — other kinds still write and advance.
+-  `tests` module L374-721 — `-` — other kinds still write and advance.
+-  `FakeGithub` struct L383-397 — `{ commits: Mutex<Vec<Value>>, issues: Mutex<Vec<Value>>, prs: Mutex<Vec<Value>>,...` — Fake that returns canned responses per kind.
+-  `FakeGithub` type L399-414 — `impl Default for FakeGithub` — other kinds still write and advance.
+-  `default` function L400-413 — `() -> Self` — other kinds still write and advance.
+-  `FakeGithub` type L417-495 — `impl Gh for FakeGithub` — other kinds still write and advance.
+-  `list_notifications` function L418-425 — `( &self, _since: Option<chrono::DateTime<chrono::Utc>>, _per_page: u32, _all: bo...` — other kinds still write and advance.
+-  `search_issues` function L426-433 — `( &self, _query: &str, _per_page: u32, _max_pages: u32, ) -> Result<Vec<Value>, ...` — other kinds still write and advance.
+-  `list_repo_commits` function L434-443 — `( &self, _owner: &str, _repo: &str, since: Option<chrono::DateTime<chrono::Utc>>...` — other kinds still write and advance.
+-  `list_repo_issues` function L444-457 — `( &self, _owner: &str, _repo: &str, _state: &str, since: Option<chrono::DateTime...` — other kinds still write and advance.
+-  `list_repo_prs` function L458-468 — `( &self, _owner: &str, _repo: &str, _state: &str, since: Option<chrono::DateTime...` — other kinds still write and advance.
+-  `list_issue_comments` function L469-478 — `( &self, _owner: &str, _repo: &str, since: Option<chrono::DateTime<chrono::Utc>>...` — other kinds still write and advance.
+-  `list_pr_review_comments` function L479-487 — `( &self, _owner: &str, _repo: &str, _since: Option<chrono::DateTime<chrono::Utc>...` — other kinds still write and advance.
+-  `list_org_repos` function L488-494 — `( &self, _owner: &str, _max_pages: u32, ) -> Result<Vec<Value>, FeedError>` — other kinds still write and advance.
+-  `WithFakeGithub` struct L497-499 — `{ gh: Arc<dyn Gh> }` — other kinds still write and advance.
+-  `WithFakeGithub` type L500-519 — `impl FeedClients for WithFakeGithub` — other kinds still write and advance.
+-  `slack` function L501-503 — `(&self) -> Option<Arc<dyn crate::clients::SlackFeedClient>>` — other kinds still write and advance.
+-  `calendar` function L504-506 — `(&self) -> Option<Arc<dyn crate::clients::CalendarFeedClient>>` — other kinds still write and advance.
+-  `gmail` function L507-509 — `(&self) -> Option<Arc<dyn crate::clients::GmailFeedClient>>` — other kinds still write and advance.
+-  `drive` function L510-512 — `(&self) -> Option<Arc<dyn crate::clients::DriveFeedClient>>` — other kinds still write and advance.
+-  `atlassian` function L513-515 — `(&self) -> Option<Arc<dyn crate::clients::AtlassianFeedClient>>` — other kinds still write and advance.
+-  `github` function L516-518 — `(&self) -> Option<Arc<dyn Gh>>` — other kinds still write and advance.
+-  `params` function L521-523 — `() -> TemplateParams` — other kinds still write and advance.
+-  `commit` function L525-535 — `(sha: &str, date: &str) -> Value` — other kinds still write and advance.
+-  `issue` function L537-548 — `(number: i64, updated: &str) -> Value` — other kinds still write and advance.
+-  `pr` function L550-563 — `(number: i64, updated: &str) -> Value` — other kinds still write and advance.
+-  `comment` function L565-575 — `(id: i64, updated: &str, parent_url: &str) -> Value` — other kinds still write and advance.
+-  `validate_requires_owner_and_name` function L578-586 — `()` — other kinds still write and advance.
+-  `defaults_use_30min_cadence` function L589-591 — `()` — other kinds still write and advance.
+-  `writes_each_kind_under_owner_repo_layout` function L594-628 — `()` — other kinds still write and advance.
+-  `one_kind_4xx_doesnt_block_others` function L631-651 — `()` — other kinds still write and advance.
+-  `empty_response_yields_no_new_items_and_preserves_cursor` function L654-674 — `()` — other kinds still write and advance.
+-  `passes_since_floors_from_cursor_to_client` function L677-692 — `()` — other kinds still write and advance.
+-  `missing_clients_returns_auth_error` function L695-705 — `()` — other kinds still write and advance.
+-  `advance_picks_newer_string` function L708-720 — `()` — other kinds still write and advance.
 
 #### crates/arawn-feeds/src/templates/github/review_queue.rs
 
@@ -6840,37 +6826,37 @@
 #### crates/arawn-integrations/src/slack/integration.rs
 
 - pub `SERVICE_NAME` variable L15 — `: &str` — Stable service name.
-- pub `SLACK_OAUTH_SCOPES` variable L24-51 — `: &[&str]` — Bot scopes requested at OAuth time.
-- pub `SLACK_OAUTH_USER_SCOPES` variable L77-88 — `: &[&str]` — User-token scopes — the second leg of Slack's dual-token OAuth model.
-- pub `SlackProviderConfig` struct L92-101 — `{ auth_url: Url, token_url: Url, scopes: Vec<String>, redirect_port: u16 }` — Slack OAuth v2 provider config.
-- pub `DEFAULT_SLACK_REDIRECT_PORT` variable L107 — `: u16` — Default callback port for Slack.
-- pub `into_oauth_provider` function L121-139 — `( self, client_id: String, client_secret: String, ) -> OAuthProviderConfig`
-- pub `SlackIntegration` struct L143-148 — `{ data_dir: PathBuf, client_id: String, client_secret: String, provider_config: ...` — Slack integration.
-- pub `new` function L151-158 — `(data_dir: PathBuf, client_id: String, client_secret: String) -> Self`
-- pub `with_provider_config` function L160-163 — `(mut self, config: SlackProviderConfig) -> Self`
-- pub `context` function L168-170 — `(&self) -> Result<SlackContext, IntegrationError>` — Build a `SlackContext` backed by the **bot** token.
-- pub `bot_context` function L174-177 — `(&self) -> Result<SlackContext, IntegrationError>` — Same as [`Self::context`] — kept as the canonical name for the
-- pub `user_context` function L189-217 — `(&self) -> Result<SlackContext, IntegrationError>` — Build a `SlackContext` backed by the **user** token (the half of
-- pub `granted_scopes` function L230-233 — `(&self) -> Result<std::collections::HashSet<String>, IntegrationError>` — Bot-token scope set from the persisted token's `scope` field.
-- pub `granted_user_scopes` function L238-249 — `( &self, ) -> Result<std::collections::HashSet<String>, IntegrationError>` — User-token scope set from `extras.authed_user.scope`.
--  `parse_scope_string` function L55-60 — `(s: &str) -> std::collections::HashSet<String>` — Split a Slack-style scope string (comma- or whitespace-delimited)
--  `SlackProviderConfig` type L109-118 — `impl Default for SlackProviderConfig`
--  `default` function L110-117 — `() -> Self`
--  `SlackProviderConfig` type L120-140 — `= SlackProviderConfig`
--  `SlackIntegration` type L150-271 — `= SlackIntegration`
--  `load_token` function L219-224 — `(&self) -> Result<arawn_auth::Token, IntegrationError>`
--  `oauth_config` function L251-254 — `(&self) -> OAuthProviderConfig`
--  `provider` function L256-266 — `(&self) -> SlackProviderConfig`
--  `token_store` function L268-270 — `(&self) -> Result<TokenStore, IntegrationError>`
--  `SlackIntegration` type L274-343 — `impl Integration for SlackIntegration`
--  `name` function L275-277 — `(&self) -> &str`
--  `is_connected` function L279-284 — `(&self) -> bool`
--  `connect` function L286-300 — `(&self, ctx: &dyn ConnectContext) -> Result<(), IntegrationError>`
--  `disconnect` function L302-306 — `(&self) -> Result<(), IntegrationError>`
--  `capabilities_summary` function L308-342 — `(&self) -> Option<String>`
--  `tests` module L346-380 — `-`
--  `default_provider_carries_sixteen_bot_scopes` function L350-363 — `()`
--  `provider_lifts_into_oauth_config` function L366-379 — `()`
+- pub `SLACK_OAUTH_SCOPES` variable L23-50 — `: &[&str]` — Bot scopes requested at OAuth time.
+- pub `SLACK_OAUTH_USER_SCOPES` variable L76-87 — `: &[&str]` — User-token scopes — the second leg of Slack's dual-token OAuth model.
+- pub `SlackProviderConfig` struct L91-100 — `{ auth_url: Url, token_url: Url, scopes: Vec<String>, redirect_port: u16 }` — Slack OAuth v2 provider config.
+- pub `DEFAULT_SLACK_REDIRECT_PORT` variable L106 — `: u16` — Default callback port for Slack.
+- pub `into_oauth_provider` function L120-138 — `( self, client_id: String, client_secret: String, ) -> OAuthProviderConfig`
+- pub `SlackIntegration` struct L142-147 — `{ data_dir: PathBuf, client_id: String, client_secret: String, provider_config: ...` — Slack integration.
+- pub `new` function L150-157 — `(data_dir: PathBuf, client_id: String, client_secret: String) -> Self`
+- pub `with_provider_config` function L159-162 — `(mut self, config: SlackProviderConfig) -> Self`
+- pub `context` function L167-169 — `(&self) -> Result<SlackContext, IntegrationError>` — Build a `SlackContext` backed by the **bot** token.
+- pub `bot_context` function L173-176 — `(&self) -> Result<SlackContext, IntegrationError>` — Same as [`Self::context`] — kept as the canonical name for the
+- pub `user_context` function L188-216 — `(&self) -> Result<SlackContext, IntegrationError>` — Build a `SlackContext` backed by the **user** token (the half of
+- pub `granted_scopes` function L229-232 — `(&self) -> Result<std::collections::HashSet<String>, IntegrationError>` — Bot-token scope set from the persisted token's `scope` field.
+- pub `granted_user_scopes` function L237-248 — `( &self, ) -> Result<std::collections::HashSet<String>, IntegrationError>` — User-token scope set from `extras.authed_user.scope`.
+-  `parse_scope_string` function L54-59 — `(s: &str) -> std::collections::HashSet<String>` — Split a Slack-style scope string (comma- or whitespace-delimited)
+-  `SlackProviderConfig` type L108-117 — `impl Default for SlackProviderConfig`
+-  `default` function L109-116 — `() -> Self`
+-  `SlackProviderConfig` type L119-139 — `= SlackProviderConfig`
+-  `SlackIntegration` type L149-270 — `= SlackIntegration`
+-  `load_token` function L218-223 — `(&self) -> Result<arawn_auth::Token, IntegrationError>`
+-  `oauth_config` function L250-253 — `(&self) -> OAuthProviderConfig`
+-  `provider` function L255-265 — `(&self) -> SlackProviderConfig`
+-  `token_store` function L267-269 — `(&self) -> Result<TokenStore, IntegrationError>`
+-  `SlackIntegration` type L273-342 — `impl Integration for SlackIntegration`
+-  `name` function L274-276 — `(&self) -> &str`
+-  `is_connected` function L278-283 — `(&self) -> bool`
+-  `connect` function L285-299 — `(&self, ctx: &dyn ConnectContext) -> Result<(), IntegrationError>`
+-  `disconnect` function L301-305 — `(&self) -> Result<(), IntegrationError>`
+-  `capabilities_summary` function L307-341 — `(&self) -> Option<String>`
+-  `tests` module L345-379 — `-`
+-  `default_provider_carries_sixteen_bot_scopes` function L349-362 — `()`
+-  `provider_lifts_into_oauth_config` function L365-378 — `()`
 
 #### crates/arawn-integrations/src/slack/mod.rs
 
@@ -7194,22 +7180,22 @@
 -  `delay_for_attempt` function L40-42 — `(&self, attempt: u32) -> Duration`
 -  `RetryClient` type L46-84 — `impl LlmClient for RetryClient`
 -  `stream` function L47-83 — `( &self, request: ChatRequest, ) -> Result<Pin<Box<dyn Stream<Item = Result<Chat...`
--  `tests` module L87-271 — `-`
--  `FailThenSucceed` struct L96-100 — `{ failures_remaining: Mutex<u32>, error_type: LlmError, success_response: Vec<Ch...` — A mock that fails N times then succeeds.
--  `FailThenSucceed` type L103-118 — `impl LlmClient for FailThenSucceed`
--  `stream` function L104-117 — `( &self, _request: ChatRequest, ) -> Result<Pin<Box<dyn Stream<Item = Result<Cha...`
--  `dummy_request` function L120-128 — `() -> ChatRequest`
--  `succeeds_on_first_try` function L131-141 — `()`
--  `retries_on_server_error_then_succeeds` function L144-164 — `()`
--  `gives_up_after_max_retries` function L167-182 — `()`
--  `does_not_retry_terminal_errors` function L185-209 — `()`
--  `AlwaysBadRequest` struct L187 — `-`
--  `AlwaysBadRequest` type L190-198 — `impl LlmClient for AlwaysBadRequest`
--  `stream` function L191-197 — `( &self, _request: ChatRequest, ) -> Result<Pin<Box<dyn Stream<Item = Result<Cha...`
--  `retries_rate_limit_errors` function L212-270 — `()`
--  `RateLimitThenSucceed` struct L225-227 — `{ inner: FailThenSucceed }`
--  `RateLimitThenSucceed` type L230-245 — `impl LlmClient for RateLimitThenSucceed`
--  `stream` function L231-244 — `( &self, request: ChatRequest, ) -> Result<Pin<Box<dyn Stream<Item = Result<Chat...`
+-  `tests` module L87-266 — `-`
+-  `FailThenSucceed` struct L96-99 — `{ failures_remaining: Mutex<u32>, success_response: Vec<ChatChunk> }` — A mock that fails N times then succeeds.
+-  `FailThenSucceed` type L102-117 — `impl LlmClient for FailThenSucceed`
+-  `stream` function L103-116 — `( &self, _request: ChatRequest, ) -> Result<Pin<Box<dyn Stream<Item = Result<Cha...`
+-  `dummy_request` function L119-127 — `() -> ChatRequest`
+-  `succeeds_on_first_try` function L130-140 — `()`
+-  `retries_on_server_error_then_succeeds` function L143-162 — `()`
+-  `gives_up_after_max_retries` function L165-179 — `()`
+-  `does_not_retry_terminal_errors` function L182-206 — `()`
+-  `AlwaysBadRequest` struct L184 — `-`
+-  `AlwaysBadRequest` type L187-195 — `impl LlmClient for AlwaysBadRequest`
+-  `stream` function L188-194 — `( &self, _request: ChatRequest, ) -> Result<Pin<Box<dyn Stream<Item = Result<Cha...`
+-  `retries_rate_limit_errors` function L209-265 — `()`
+-  `RateLimitThenSucceed` struct L221-223 — `{ inner: FailThenSucceed }`
+-  `RateLimitThenSucceed` type L226-241 — `impl LlmClient for RateLimitThenSucceed`
+-  `stream` function L227-240 — `( &self, request: ChatRequest, ) -> Result<Pin<Box<dyn Stream<Item = Result<Chat...`
 
 #### crates/arawn-llm/src/types.rs
 
@@ -8353,20 +8339,19 @@
 -  `ProposedSummary` struct L247-253 — `{ title: String, content: String, tags: Vec<String> }` — SUMMARIZES edges.
 -  `cluster_by_tag` function L255-279 — `(active: &[Entity], opts: &DustOpts) -> Vec<(String, Vec<Entity>)>` — SUMMARIZES edges.
 -  `cluster_by_provenance` function L281-305 — `( active: &[Entity], kb: &Arc<MemoryManager>, _opts: &DustOpts, ) -> Result<Vec<...` — SUMMARIZES edges.
--  `_ts` function L310-312 — `() -> DateTime<Utc>` — SUMMARIZES edges.
--  `tests` module L315-491 — `-` — SUMMARIZES edges.
--  `ScriptedMock` struct L329-331 — `{ responses: Mutex<VecDeque<Value>> }` — SUMMARIZES edges.
--  `ScriptedMock` type L332-338 — `= ScriptedMock` — SUMMARIZES edges.
--  `new` function L333-337 — `(v: Vec<Value>) -> Self` — SUMMARIZES edges.
--  `ScriptedMock` type L340-361 — `impl LlmClient for ScriptedMock` — SUMMARIZES edges.
--  `stream` function L341-360 — `( &self, _req: ChatRequest, ) -> Result< Pin<Box<dyn futures::Stream<Item = Resu...` — SUMMARIZES edges.
--  `make_stale_entity` function L363-369 — `(title: &str, tag: &str, days_old: i64) -> Entity` — SUMMARIZES edges.
--  `setup` function L371-376 — `() -> (tempfile::TempDir, Arc<MemoryManager>, Journal)` — SUMMARIZES edges.
--  `tag_cluster_writes_proposal_when_all_idle` function L379-397 — `()` — SUMMARIZES edges.
--  `cluster_with_one_fresh_member_is_skipped` function L400-416 — `()` — SUMMARIZES edges.
--  `min_cluster_size_filters_out_small_clusters` function L419-435 — `()` — SUMMARIZES edges.
--  `limit_caps_proposals_per_run` function L438-459 — `()` — SUMMARIZES edges.
--  `prior_dust_summaries_are_excluded_from_new_clusters` function L462-490 — `()` — SUMMARIZES edges.
+-  `tests` module L308-484 — `-` — SUMMARIZES edges.
+-  `ScriptedMock` struct L322-324 — `{ responses: Mutex<VecDeque<Value>> }` — SUMMARIZES edges.
+-  `ScriptedMock` type L325-331 — `= ScriptedMock` — SUMMARIZES edges.
+-  `new` function L326-330 — `(v: Vec<Value>) -> Self` — SUMMARIZES edges.
+-  `ScriptedMock` type L333-354 — `impl LlmClient for ScriptedMock` — SUMMARIZES edges.
+-  `stream` function L334-353 — `( &self, _req: ChatRequest, ) -> Result< Pin<Box<dyn futures::Stream<Item = Resu...` — SUMMARIZES edges.
+-  `make_stale_entity` function L356-362 — `(title: &str, tag: &str, days_old: i64) -> Entity` — SUMMARIZES edges.
+-  `setup` function L364-369 — `() -> (tempfile::TempDir, Arc<MemoryManager>, Journal)` — SUMMARIZES edges.
+-  `tag_cluster_writes_proposal_when_all_idle` function L372-390 — `()` — SUMMARIZES edges.
+-  `cluster_with_one_fresh_member_is_skipped` function L393-409 — `()` — SUMMARIZES edges.
+-  `min_cluster_size_filters_out_small_clusters` function L412-428 — `()` — SUMMARIZES edges.
+-  `limit_caps_proposals_per_run` function L431-452 — `()` — SUMMARIZES edges.
+-  `prior_dust_summaries_are_excluded_from_new_clusters` function L455-483 — `()` — SUMMARIZES edges.
 
 #### crates/arawn-steward/src/error.rs
 
@@ -8846,29 +8831,28 @@
 - pub `add_binding` function L182-191 — `(&self, name: &str, feed_id: &str) -> Result<(), StorageError>` — for users.
 - pub `remove_binding` function L193-199 — `(&self, name: &str, feed_id: &str) -> Result<(), StorageError>` — for users.
 - pub `soft_delete` function L204-220 — `(&self, name: &str) -> Result<(), StorageError>` — Soft-delete: sets `archived = 1`.
-- pub `delete` function L224-230 — `(&self, id: Uuid) -> Result<bool, StorageError>` — Hard-delete by id.
 -  `insert_row` function L60-87 — `(&self, ws: &Workstream) -> Result<(), StorageError>` — for users.
 -  `list_with_archived` function L119-135 — `(&self, include_archived: bool) -> Result<Vec<Workstream>, StorageError>` — for users.
--  `SELECT_COLS_WHERE_ID` variable L233-235 — `: &str` — for users.
--  `SELECT_COLS_WHERE_NAME` variable L237-239 — `: &str` — for users.
--  `row_to_workstream` function L241-281 — `(row: &rusqlite::Row<'_>) -> Result<Workstream, StorageError>` — for users.
--  `parse_dt` function L283-287 — `(s: &str) -> Result<DateTime<Utc>, StorageError>` — for users.
--  `rusqlite_map_err` function L289-291 — `(e: StorageError) -> rusqlite::Error` — for users.
--  `name_err` function L293-295 — `(e: WorkstreamNameError) -> StorageError` — for users.
--  `tests` module L298-450 — `-` — for users.
--  `setup` function L301-303 — `() -> Database` — for users.
--  `create_and_roundtrip` function L306-318 — `()` — for users.
--  `create_rejects_scratch` function L321-327 — `()` — for users.
--  `create_rejects_invalid_slug` function L330-341 — `()` — for users.
--  `create_rejects_duplicate` function L344-352 — `()` — for users.
--  `ensure_scratch_idempotent` function L355-362 — `()` — for users.
--  `update_description` function L365-372 — `()` — for users.
--  `bindings_add_and_remove` function L375-387 — `()` — for users.
--  `soft_delete_marks_archived` function L390-401 — `()` — for users.
--  `soft_delete_refuses_scratch` function L404-410 — `()` — for users.
--  `new_workstream_defaults_to_assistant_profile` function L413-419 — `()` — for users.
--  `update_identity_profile_round_trips` function L422-437 — `()` — for users.
--  `list_orders_by_updated_at_desc` function L440-449 — `()` — for users.
+-  `SELECT_COLS_WHERE_ID` variable L224-226 — `: &str` — for users.
+-  `SELECT_COLS_WHERE_NAME` variable L228-230 — `: &str` — for users.
+-  `row_to_workstream` function L232-272 — `(row: &rusqlite::Row<'_>) -> Result<Workstream, StorageError>` — for users.
+-  `parse_dt` function L274-278 — `(s: &str) -> Result<DateTime<Utc>, StorageError>` — for users.
+-  `rusqlite_map_err` function L280-282 — `(e: StorageError) -> rusqlite::Error` — for users.
+-  `name_err` function L284-286 — `(e: WorkstreamNameError) -> StorageError` — for users.
+-  `tests` module L289-441 — `-` — for users.
+-  `setup` function L292-294 — `() -> Database` — for users.
+-  `create_and_roundtrip` function L297-309 — `()` — for users.
+-  `create_rejects_scratch` function L312-318 — `()` — for users.
+-  `create_rejects_invalid_slug` function L321-332 — `()` — for users.
+-  `create_rejects_duplicate` function L335-343 — `()` — for users.
+-  `ensure_scratch_idempotent` function L346-353 — `()` — for users.
+-  `update_description` function L356-363 — `()` — for users.
+-  `bindings_add_and_remove` function L366-378 — `()` — for users.
+-  `soft_delete_marks_archived` function L381-392 — `()` — for users.
+-  `soft_delete_refuses_scratch` function L395-401 — `()` — for users.
+-  `new_workstream_defaults_to_assistant_profile` function L404-410 — `()` — for users.
+-  `update_identity_profile_round_trips` function L413-428 — `()` — for users.
+-  `list_orders_by_updated_at_desc` function L431-440 — `()` — for users.
 
 ### crates/arawn-tests
 
@@ -8913,7 +8897,7 @@
 -  `new` function L24-36 — `() -> Self` — These test the full stack: MockLLM → QueryEngine → Tools → Store → JSONL/SQLite.
 -  `new_session` function L38-42 — `(&self) -> Session` — These test the full stack: MockLLM → QueryEngine → Tools → Store → JSONL/SQLite.
 -  `scratch_session` function L44-48 — `(&self) -> Session` — These test the full stack: MockLLM → QueryEngine → Tools → Store → JSONL/SQLite.
--  `context` function L50-52 — `(&self, session: &Session) -> ToolContext` — These test the full stack: MockLLM → QueryEngine → Tools → Store → JSONL/SQLite.
+-  `context` function L50-52 — `(&self, session: &Session) -> EngineToolContext` — These test the full stack: MockLLM → QueryEngine → Tools → Store → JSONL/SQLite.
 -  `registry` function L54-60 — `(&self) -> Arc<ToolRegistry>` — These test the full stack: MockLLM → QueryEngine → Tools → Store → JSONL/SQLite.
 -  `engine` function L62-71 — `(&self, mock: Arc<MockLlmClient>, registry: Arc<ToolRegistry>) -> QueryEngine` — These test the full stack: MockLLM → QueryEngine → Tools → Store → JSONL/SQLite.
 -  `engine_run_persists_all_messages` function L75-116 — `()` — These test the full stack: MockLLM → QueryEngine → Tools → Store → JSONL/SQLite.
@@ -9320,6 +9304,30 @@
 -  `does_not_overwrite_existing_timeout_secs` function L176-189 — `()`
 -  `relaxes_additional_properties_false` function L192-201 — `()`
 -  `non_object_schema_passes_through` function L204-209 — `()`
+-  `registry_tests` module L213-415 — `-`
+-  `DummyTool` struct L222-224 — `{ tool_name: String }` — A minimal test tool for unit testing the registry.
+-  `DummyTool` type L226-232 — `= DummyTool`
+-  `new` function L227-231 — `(name: &str) -> Self`
+-  `DummyTool` type L235-255 — `impl Tool for DummyTool`
+-  `name` function L236-238 — `(&self) -> &str`
+-  `description` function L240-242 — `(&self) -> &str`
+-  `parameters_schema` function L244-246 — `(&self) -> Value`
+-  `execute` function L248-254 — `( &self, _ctx: &dyn crate::ToolContext, _params: Value, ) -> Result<ToolOutput, ...`
+-  `registry_starts_empty` function L258-262 — `()`
+-  `register_and_get_tool` function L265-275 — `()`
+-  `get_nonexistent_tool_returns_none` function L278-281 — `()`
+-  `unregister_tool` function L284-293 — `()`
+-  `unregister_nonexistent_returns_none` function L296-299 — `()`
+-  `hot_reload_register_unregister_cycle` function L302-320 — `()`
+-  `tool_definitions_reflects_registered_tools` function L323-334 — `()`
+-  `tool_definitions_updates_after_unregister` function L337-346 — `()`
+-  `registry_is_send_sync` function L349-352 — `()`
+-  `assert_send_sync` function L350 — `()`
+-  `concurrent_access` function L355-373 — `()`
+-  `unregister_by_prefix_removes_matching` function L376-391 — `()`
+-  `unregister_by_prefix_no_match` function L394-400 — `()`
+-  `tool_output_success` function L403-407 — `()`
+-  `tool_output_error` function L410-414 — `()`
 
 #### crates/arawn-tool/src/tool.rs
 

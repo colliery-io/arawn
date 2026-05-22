@@ -72,7 +72,31 @@ pub trait FeedTemplate: Send + Sync {
     /// params, unresolvable references (e.g. a Slack channel that
     /// doesn't exist), and anything that's guaranteed to fail at run
     /// time.
+    ///
+    /// This is the synchronous, no-network gate. For checks that need
+    /// provider calls (e.g. "does this Jira project key actually
+    /// exist?"), override [`Self::register_check`].
     fn validate(&self, params: &TemplateParams) -> Result<(), FeedError>;
+
+    /// Provider-backed check run at first-time registration, after
+    /// `validate`. Default impl is a no-op. Override to call into
+    /// `ctx.clients()` and verify that referenced entities (Jira
+    /// project, Slack channel, etc.) actually exist on the provider.
+    /// Failures should return `FeedError::InvalidParams` (or
+    /// `FeedError::Schema` for shape mismatches) so the user sees a
+    /// clear "this project doesn't exist" message instead of an
+    /// opaque first-fetch failure.
+    ///
+    /// Only called from the dynamic `/watch` / `feed_register` path,
+    /// NOT on every boot — feeds already in the DB are trusted to
+    /// have been checked when they were registered.
+    async fn register_check(
+        &self,
+        _ctx: &TemplateCtx,
+        _params: &TemplateParams,
+    ) -> Result<(), FeedError> {
+        Ok(())
+    }
 
     /// Sensible default cadence + initial cursor for the given params.
     /// Used when arawn.toml / `/watch` doesn't specify one.
