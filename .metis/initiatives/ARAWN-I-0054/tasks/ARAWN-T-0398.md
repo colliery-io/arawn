@@ -4,14 +4,14 @@ level: task
 title: "T-B: Split `arawn-engine/src/tools/workstream.rs` — one file per Tool struct"
 short_code: "ARAWN-T-0398"
 created_at: 2026-05-22T01:46:54.449837+00:00
-updated_at: 2026-05-22T01:55:43.256889+00:00
+updated_at: 2026-05-22T02:18:18.253326+00:00
 parent: ARAWN-I-0054
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -23,6 +23,8 @@ initiative_id: ARAWN-I-0054
 ## Parent Initiative
 
 [[ARAWN-I-0054]]
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

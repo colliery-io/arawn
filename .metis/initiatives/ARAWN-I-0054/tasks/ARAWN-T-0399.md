@@ -4,14 +4,14 @@ level: task
 title: "T-C: Split `arawn/src/local_service.rs` — `LocalService` impl by feature group"
 short_code: "ARAWN-T-0399"
 created_at: 2026-05-22T01:46:55.944278+00:00
-updated_at: 2026-05-22T01:46:55.944278+00:00
+updated_at: 2026-05-22T02:18:42.125763+00:00
 parent: ARAWN-I-0054
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/active"
 
 
 exit_criteria_met: false
@@ -63,6 +63,8 @@ initiative_id: ARAWN-I-0054
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
 
 ## Acceptance Criteria **[REQUIRED]**
 
