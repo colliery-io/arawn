@@ -11,126 +11,60 @@ archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
 initiative_id: ARAWN-I-0054
 ---
 
-# T-G: Split `arawn-tui/src/render.rs` — render by visual area
+# T-G: Split `arawn-tui/src/render.rs`
 
-*This template includes sections for various types of tasks. Delete sections that don't apply to your specific use case.*
-
-## Parent Initiative **[CONDITIONAL: Assigned Task]**
+## Parent Initiative
 
 [[ARAWN-I-0054]]
 
-## Objective **[REQUIRED]**
+## Direction
 
-{Clear statement of what this task accomplishes}
+23 free fns + tests in one 2,426-line file. Split into per-visual-area submodules under `render/`. The `render()` orchestrator stays in `mod.rs` and dispatches.
 
-## Backlog Item Details **[CONDITIONAL: Backlog Item]**
+## Acceptance Criteria
 
-{Delete this section when task is assigned to an initiative}
+- [x] `crates/arawn-tui/src/render.rs` deleted; replaced by `crates/arawn-tui/src/render/` directory.
+- [x] One file per visual area.
+- [x] `render()` orchestrator dispatches to submodule functions.
+- [x] All workspace lib tests pass.
 
-### Type
-- [ ] Bug - Production issue that needs fixing
-- [ ] Feature - New functionality or enhancement  
-- [ ] Tech Debt - Code improvement or refactoring
-- [ ] Chore - Maintenance or setup work
+## Status Updates
 
-### Priority
-- [ ] P0 - Critical (blocks users/revenue)
-- [ ] P1 - High (important for user experience)
-- [ ] P2 - Medium (nice to have)
-- [ ] P3 - Low (when time permits)
+### 2026-05-22 — landed
 
-### Impact Assessment **[CONDITIONAL: Bug]**
-- **Affected Users**: {Number/percentage of users affected}
-- **Reproduction Steps**: 
-  1. {Step 1}
-  2. {Step 2}
-  3. {Step 3}
-- **Expected vs Actual**: {What should happen vs what happens}
+**Split executed via Python helper.** The 2,426-line file became 7 files under `render/`:
 
-### Business Justification **[CONDITIONAL: Feature]**
-- **User Value**: {Why users need this}
-- **Business Value**: {Impact on metrics/revenue}
-- **Effort Estimate**: {Rough size - S/M/L/XL}
+| File | Lines | Contents |
+|---|---|---|
+| `mod.rs` | 1,317 | `render()` orchestrator + `truncate_to` / `compact_tool_summary` / `truncate_for_display` helpers + `SPINNER_FRAMES` / `DASHBOARD_WIDTH` / `MIN_FOR_THREE_PANE` consts + inline `#[cfg(test)] mod tests` (1,113 test lines) |
+| `chat.rs` | 482 | `render_chat` + `render_separator` + `render_empty_chat_brief` + `render_idle_hero` |
+| `dashboard.rs` | 323 | `render_dashboard_pane` + `render_dashboard_brief` + `render_dashboard_actions` + 5 helpers (`push_action_rows`, `format_action_row`, `format_brief_date_line`, `format_calendar_row`, `detect_conflict`) |
+| `input.rs` | 137 | `render_input` + `render_autocomplete` |
+| `status_bar.rs` | 119 | `render_status_bar` + `format_tokens` |
+| `sidebar.rs` | 74 | `render_sidebar` + `render_sidebar_tab` |
+| `overlays.rs` | 50 | `render_toast_bar` + `render_oauth_heartbeat` |
 
-### Technical Debt Impact **[CONDITIONAL: Tech Debt]**
-- **Current Problems**: {What's difficult/slow/buggy now}
-- **Benefits of Fixing**: {What improves after refactoring}
-- **Risk Assessment**: {Risks of not addressing this}
+**Cross-module visibility:**
+- All submodule fns promoted to `pub(super)` so `mod.rs::render` can dispatch.
+- Helpers (`truncate_to`, `compact_tool_summary`, `truncate_for_display`) → `pub(super)`.
+- `SPINNER_FRAMES` const stayed `const` (accessed via `super::SPINNER_FRAMES`).
+- `mod.rs` re-imports submodule fns via `use chat::*; use dashboard::*; ...` so the orchestrator can call them unqualified.
 
-## Acceptance Criteria **[REQUIRED]**
+**Inline tests** (per `feedback_inline_tests`) stayed in `mod.rs`. They reference functions now in submodules — added explicit `use super::dashboard::{detect_conflict, format_brief_date_line, render_dashboard_actions, render_dashboard_brief}` to the test mod.
 
-- [ ] {Specific, testable requirement 1}
-- [ ] {Specific, testable requirement 2}
-- [ ] {Specific, testable requirement 3}
+`cargo fix --lib -p arawn-tui` cleaned 36 over-broad import warnings across the submodules.
 
-## Test Cases **[CONDITIONAL: Testing Task]**
+**Caveat:** `mod.rs` at 1,317 lines is over the 800-line target — but 1,113 of those are inline tests, leaving ~200 lines of operative code (orchestrator + small helpers).
 
-{Delete unless this is a testing task}
-
-### Test Case 1: {Test Case Name}
-- **Test ID**: TC-001
-- **Preconditions**: {What must be true before testing}
-- **Steps**: 
-  1. {Step 1}
-  2. {Step 2}
-  3. {Step 3}
-- **Expected Results**: {What should happen}
-- **Actual Results**: {To be filled during execution}
-- **Status**: {Pass/Fail/Blocked}
-
-### Test Case 2: {Test Case Name}
-- **Test ID**: TC-002
-- **Preconditions**: {What must be true before testing}
-- **Steps**: 
-  1. {Step 1}
-  2. {Step 2}
-- **Expected Results**: {What should happen}
-- **Actual Results**: {To be filled during execution}
-- **Status**: {Pass/Fail/Blocked}
-
-## Documentation Sections **[CONDITIONAL: Documentation Task]**
-
-{Delete unless this is a documentation task}
-
-### User Guide Content
-- **Feature Description**: {What this feature does and why it's useful}
-- **Prerequisites**: {What users need before using this feature}
-- **Step-by-Step Instructions**:
-  1. {Step 1 with screenshots/examples}
-  2. {Step 2 with screenshots/examples}
-  3. {Step 3 with screenshots/examples}
-
-### Troubleshooting Guide
-- **Common Issue 1**: {Problem description and solution}
-- **Common Issue 2**: {Problem description and solution}
-- **Error Messages**: {List of error messages and what they mean}
-
-### API Documentation **[CONDITIONAL: API Documentation]**
-- **Endpoint**: {API endpoint description}
-- **Parameters**: {Required and optional parameters}
-- **Example Request**: {Code example}
-- **Example Response**: {Expected response format}
-
-## Implementation Notes **[CONDITIONAL: Technical Task]**
-
-{Keep for technical tasks, delete for non-technical. Technical details, approach, or important considerations}
-
-### Technical Approach
-{How this will be implemented}
-
-### Dependencies
-{Other tasks or systems this depends on}
-
-### Risk Considerations
-{Technical risks and mitigation strategies}
-
-## Status Updates **[REQUIRED]**
-
-*To be added during implementation*
+**Validation:**
+- `cargo check --workspace`: ✅ clean.
+- `cargo build --workspace --release`: ✅ clean (35s).
+- `cargo test --workspace --no-run`: ✅ clean.
+- `cargo test --workspace --lib`: ✅ **1,758 tests pass**, 0 fail.
