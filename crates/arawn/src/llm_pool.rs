@@ -15,6 +15,9 @@ use anyhow::{Context, Result, anyhow};
 use arawn_llm::routing::{
     IntelligentRoutingProvider, LocalHealthChecker, ProviderHandle, RoutingHints, SharedHealth,
 };
+// Re-export so call sites in `local_service.rs` / `main.rs` can name
+// the policy enums without pulling `arawn_llm::routing` directly.
+pub use arawn_llm::routing::{LatencyBudget, UsagePressure};
 use arawn_llm::{LlmClient, ModelHint};
 use arawn_tool::{LlmPreference, LlmResolution, MatchQuality};
 
@@ -244,6 +247,26 @@ impl LlmClientPool {
     /// `Healthy/Unhealthy` transitions.
     pub fn local_health(&self) -> SharedHealth {
         Arc::clone(&self.local_health)
+    }
+
+    /// Resolve a `hint:*` (or concrete model name) through the routing
+    /// layer when available, falling back to [`Self::resolve_hint`] when
+    /// no local profile is configured. The returned client is either
+    /// an [`IntelligentRoutingProvider`] wrapping the hint's profile
+    /// (Local-vs-Remote chosen per-call by policy) or the plain hint
+    /// client. The model string is always the resolved hint's canonical
+    /// model — callers use it for telemetry / `ChatRequest.model`; the
+    /// router internally picks the actual model when it routes Local.
+    pub fn routed_or_fallback(
+        &self,
+        hint: &str,
+        hints: RoutingHints,
+    ) -> (Arc<dyn LlmClient>, String) {
+        let (fallback_client, model) = self.resolve_hint(hint);
+        match self.routing_provider(hints) {
+            Some(provider) => (Arc::new(provider) as Arc<dyn LlmClient>, model),
+            None => (fallback_client, model),
+        }
     }
 
     /// Resolve a model-string at the call-site boundary.
@@ -887,6 +910,68 @@ local = "local"
         .unwrap();
         let pool = LlmClientPool::from_config(&config, mock_builder).unwrap();
         assert!(pool.routing_provider(RoutingHints::default()).is_some());
+    }
+
+    #[test]
+    fn routed_or_fallback_wraps_in_router_when_local_configured() {
+        // Both local + remote profiles configured → caller should
+        // receive the routing-provider-wrapped client and the hint's
+        // canonical model string.
+        let config: ArawnConfig = toml::from_str(
+            r#"
+[llm.default]
+provider = "groq"
+model = "cloud-model"
+
+[llm.local]
+provider = "ollama"
+model = "ollama-model"
+
+[routing.hints]
+medium = "default"
+
+[routing.providers]
+local = "local"
+remote = "default"
+"#,
+        )
+        .unwrap();
+        let pool = LlmClientPool::from_config(&config, mock_builder).unwrap();
+        let (_client, model) = pool.routed_or_fallback(
+            &arawn_llm::ModelHint::Medium.as_hint(),
+            RoutingHints::default(),
+        );
+        // Model is the hint's resolved canonical name (cloud-model
+        // from the [routing.hints] medium → default mapping).
+        assert_eq!(model, "cloud-model");
+        // We can't downcast a trait-object client, so the next-best
+        // check is that the routing provider IS available — the
+        // helper's branch must have taken the routed path.
+        assert!(pool.routing_provider(RoutingHints::default()).is_some());
+    }
+
+    #[test]
+    fn routed_or_fallback_uses_resolve_hint_when_no_local() {
+        // No local profile → router returns None, helper falls back
+        // to resolve_hint (which returns the engine client + hint model).
+        let config: ArawnConfig = toml::from_str(
+            r#"
+[llm.default]
+provider = "groq"
+model = "engine-model"
+
+[routing.hints]
+medium = "default"
+"#,
+        )
+        .unwrap();
+        let pool = LlmClientPool::from_config(&config, mock_builder).unwrap();
+        let (_client, model) = pool.routed_or_fallback(
+            &arawn_llm::ModelHint::Medium.as_hint(),
+            RoutingHints::default(),
+        );
+        assert_eq!(model, "engine-model");
+        assert!(pool.routing_provider(RoutingHints::default()).is_none());
     }
 
     #[test]

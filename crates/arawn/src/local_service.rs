@@ -462,14 +462,28 @@ impl LocalService {
         prompt_context: Option<arawn_engine::PromptContext>,
         event_tx: &mpsc::Sender<EngineEvent>,
     ) -> QueryEngine {
-        // Resolve `hint:*` at the engine/compactor boundary. The pool maps
-        // each hint to a concrete model via `[routing.hints]`; passing
-        // anything else through unchanged.
-        let (compactor_client, compactor_model) = self
-            .llm_pool
-            .resolve_hint(&arawn_llm::ModelHint::Medium.as_hint());
+        // Resolve `hint:*` at the engine/compactor boundary. The pool
+        // maps each hint to a concrete model via `[routing.hints]`,
+        // and wraps the client in an `IntelligentRoutingProvider`
+        // when a local profile is configured (so the policy can
+        // route Lightweight/Medium to Local when healthy).
+        //
+        // Compactor: background work during a turn — `Normal` latency
+        // is fine; no privacy required.
+        let (compactor_client, compactor_model) = self.llm_pool.routed_or_fallback(
+            &arawn_llm::ModelHint::Medium.as_hint(),
+            arawn_llm::routing::RoutingHints::default(),
+        );
         let compactor = Compactor::new(compactor_client, compactor_model);
-        let (engine_client, engine_model) = self.llm_pool.resolve_hint(&self.config.model);
+        // Engine: user is watching, so prefer low-latency. Still
+        // non-private — the agent loop calls remote providers by design.
+        let engine_hints = arawn_llm::routing::RoutingHints {
+            latency_budget: arawn_llm::routing::LatencyBudget::Low,
+            ..Default::default()
+        };
+        let (engine_client, engine_model) = self
+            .llm_pool
+            .routed_or_fallback(&self.config.model, engine_hints);
         let mut engine = QueryEngine::with_config(
             engine_client,
             self.registry.clone(),

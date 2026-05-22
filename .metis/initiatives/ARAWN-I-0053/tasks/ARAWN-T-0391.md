@@ -4,14 +4,14 @@ level: task
 title: "Wire `AtlassianFeedClient::resolve_project()` into Jira/Confluence templates"
 short_code: "ARAWN-T-0391"
 created_at: 2026-05-21T14:53:35.066449+00:00
-updated_at: 2026-05-22T00:00:14.089530+00:00
+updated_at: 2026-05-22T00:06:00.147555+00:00
 parent: ARAWN-I-0053
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -50,6 +50,8 @@ resolve_project landed in T-0223" — but the integration never followed.
 
 Per operator decision during ARAWN-I-0053 discovery (Tier 3 candidate 3.1):
 keep the method and wire it where it should be used.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

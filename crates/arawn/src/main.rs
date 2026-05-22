@@ -668,16 +668,22 @@ async fn main() -> Result<()> {
             > = Arc::new(move |name: &str| arawn_steward::CursorStore::open(&data_dir_clone, name));
             // Steward subroutines are focused summarisation/extraction
             // tasks — `hint:medium` is the right tier. Resolved through
-            // the pool so future-T-0278 routing changes pick up here.
-            let (reshelve_client, reshelve_model) =
-                llm_pool.resolve_hint(&arawn_llm::ModelHint::Medium.as_hint());
+            // the pool's routing layer (T-0278); background-batch work
+            // so default `Normal` latency / no privacy required is fine.
+            let steward_hints = arawn_llm::routing::RoutingHints::default();
+            let (reshelve_client, reshelve_model) = llm_pool.routed_or_fallback(
+                &arawn_llm::ModelHint::Medium.as_hint(),
+                steward_hints.clone(),
+            );
             let reshelve = Arc::new(arawn_steward::ReshelveSubroutine::new(
                 reshelve_client,
                 reshelve_model,
                 Arc::clone(&cursor_factory),
             ));
-            let (map_client, map_model) =
-                llm_pool.resolve_hint(&arawn_llm::ModelHint::Medium.as_hint());
+            let (map_client, map_model) = llm_pool.routed_or_fallback(
+                &arawn_llm::ModelHint::Medium.as_hint(),
+                steward_hints.clone(),
+            );
             let map_sub = Arc::new(arawn_steward::MapSubroutine::new(
                 map_client,
                 map_model,
@@ -693,8 +699,10 @@ async fn main() -> Result<()> {
                         .map_err(|e| arawn_steward::StewardError::Memory(e.to_string()))
                 })
             };
-            let (dw_client, dw_model) =
-                llm_pool.resolve_hint(&arawn_llm::ModelHint::Medium.as_hint());
+            let (dw_client, dw_model) = llm_pool.routed_or_fallback(
+                &arawn_llm::ModelHint::Medium.as_hint(),
+                steward_hints,
+            );
             let doorwatch = Arc::new(arawn_steward::DoorWatchSubroutine::new(
                 dw_client,
                 dw_model,

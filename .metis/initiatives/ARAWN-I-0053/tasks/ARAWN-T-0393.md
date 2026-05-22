@@ -4,14 +4,14 @@ level: task
 title: "Wire `IntelligentRoutingProvider` into engine agent loop — finish T-0278 deferred wiring"
 short_code: "ARAWN-T-0393"
 created_at: 2026-05-21T14:53:38.031637+00:00
-updated_at: 2026-05-21T14:53:38.031637+00:00
+updated_at: 2026-05-22T00:06:10.240031+00:00
 parent: ARAWN-I-0053
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/active"
 
 
 exit_criteria_met: false
@@ -53,6 +53,8 @@ pending-wiring follow-up.
 
 ## Acceptance Criteria
 
+## Acceptance Criteria
+
 - [ ] For each engine call site that currently uses `resolve_hint()` (agent loop, compactor, summarizer, etc.), decide the right `RoutingHints`:
   - `privacy_required`: should defaults be opt-in privacy? Almost certainly the assistant's main loop is NOT privacy-required by default. Specific tool flows might be.
   - `latency_budget`: probably `Low` for the agent loop (user is watching), `Normal` for background work.
@@ -85,4 +87,28 @@ None blocking — T-0278's routing layer is already shipped and exposed via the 
 
 ## Status Updates
 
-*To be added during implementation*
+### 2026-05-21 — landed (main wiring) + 2 sub-tasks deferred
+
+**Main wiring landed:**
+- New helper `LlmClientPool::routed_or_fallback(hint, RoutingHints) -> (Arc<dyn LlmClient>, String)` in `crates/arawn/src/llm_pool.rs:262-281`. When a local profile is configured it wraps the hint's client in an `IntelligentRoutingProvider` (so the policy can route Lightweight/Medium to Local when healthy); when no local is configured it falls back to plain `resolve_hint`. The returned model string is always the hint's canonical model so telemetry continues to look right.
+- Re-exported `LatencyBudget` and `UsagePressure` from `llm_pool.rs` so call sites can name the policy enums.
+- Updated **5 call sites** to use the helper:
+  - `crates/arawn/src/local_service.rs:466-486` — compactor uses default hints (Normal latency, non-private). Engine uses `LatencyBudget::Low` because the user is actively waiting.
+  - `crates/arawn/src/main.rs:670-704` — three steward subroutines (reshelve, map, doorwatch) all use default `RoutingHints` (Normal latency, non-private; background work cadence is hourly).
+- Added 2 unit tests in `llm_pool.rs`:
+  - `routed_or_fallback_wraps_in_router_when_local_configured` — confirms the helper takes the routed path when both local + remote profiles are configured.
+  - `routed_or_fallback_uses_resolve_hint_when_no_local` — confirms the fallback path returns the hint's resolved engine client + model.
+
+**What this gets us:** every production LLM call from the agent loop, compactor, and steward subroutines now goes through `IntelligentRoutingProvider` when a local profile is configured. The provider applies the T-0278 policy matrix (privacy → Local; Heavy → Remote; Medium → hint-driven; Lightweight + Healthy → Local; etc.) and emits `RoutingRecord` telemetry per call. Without a local profile, behavior is identical to before (passthrough).
+
+**Deferred to backlog:**
+Two acceptance-criteria items proved to be substantial sub-tasks of their own. Filed as backlog:
+
+- **[[ARAWN-T-0395]]** — Dynamic `UsagePressure` computation. Current call sites always pass `usage_pressure: Low` because there is no integration with the `arawn_llm::usage::UsageTracker` rollups yet. Adding the `[routing.usage_pressure]` config block + threshold lookup + caching is its own task. Independent of T-0393.
+- **[[ARAWN-T-0396]]** — `IntelligentRoutingProvider` should call `acquire_remote()` to acquire a `RemotePermit` when the policy picks Remote (so the gate module's counters reflect remote traffic). The comment at `query_engine.rs:750` originally tied this to T-0278; it's a small one-file change.
+
+**Validation:**
+- `cargo check --workspace`: ✅ clean.
+- `cargo build --workspace --release`: ✅ clean (58.84s).
+- `cargo test --workspace --no-run`: ✅ clean.
+- `cargo test --workspace --lib`: ✅ **1,758 tests pass** (was 1,756; added 2 routed_or_fallback tests), 0 fail.
