@@ -4,15 +4,15 @@ level: task
 title: "UAT scenario `schedule-with-confirmation` FAILs judge — agent hallucinates `gcal` instead of using `calendar_upcoming`"
 short_code: "ARAWN-T-0394"
 created_at: 2026-05-21T23:59:14.478883+00:00
-updated_at: 2026-05-21T23:59:14.478883+00:00
+updated_at: 2026-05-22T18:28:27.506346+00:00
 parent: 
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/backlog"
   - "#bug"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -53,6 +53,12 @@ First surfaced during the UAT run at the close of ARAWN-I-0053 (post-iteration c
 ## Objective
 
 Diagnose and fix the failure mode so the `schedule-with-confirmation` scenario passes judge with `gemma4:31b-cloud` (or document why it can't, and migrate to a model that can).
+
+## Acceptance Criteria
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
@@ -98,3 +104,19 @@ At I-0054 close (module restructuring — pure code reorganization, no behaviora
 This confirms hypothesis #2 from the bug doc: the failure mode is **non-deterministic model behavior**, not a tool-filtering bug. The small model sometimes hallucinates `gcal` and sometimes picks `calendar_upcoming` correctly — there's no fix at the engine layer until we either (a) richen the calendar tool descriptions to make pattern-matching more reliable, (b) sharpen the system prompt, or (c) swap to a larger model that doesn't hallucinate.
 
 Downgraded P2 → P3. Track flake rate across future UAT runs; promote back to P2 if the scenario fails ≥2 of next 5 runs.
+
+### 2026-05-22 — closed via I-0055 T-F regression test
+
+**Root cause reassessment:** the flake was NOT just non-deterministic model behavior. Per investigation under ARAWN-I-0055:
+
+1. On iter-1 of turn 1, the agent saw all tools (filter early-return at `session.messages().len() <= 2`). Sometimes it picked `calendar_upcoming` correctly; sometimes it picked `shell("gcal")` — that's the flaky model-decision part.
+2. From iter-2 onward, the filter activated. Calendar tools were tagged `ToolCategory::Web` and the Web keyword set didn't match a calendar prompt, so calendar tools got **dropped from the catalog**.
+3. The agent had no recovery path. Once iter-1 misfired, every subsequent iteration scanned a catalog that no longer contained `calendar_upcoming`, so it flailed into `weekly_run` or `shell` and never recovered.
+
+**Fix landed in I-0055 T-A + T-B:**
+- T-A re-categorized calendar tools off `Web` onto a new `ToolCategory::Calendar` (plus 5 sibling per-service categories).
+- T-B made integration tools capability-gated: when `google_calendar` is in the connected capabilities set, calendar tools survive iter-2+ unconditionally regardless of user message text.
+
+**Regression test:** `query_engine::tests::t_0394_calendar_tools_survive_filter_after_iter_1_when_calendar_capability_connected` in `crates/arawn-engine/src/query_engine.rs`. Uses the literal failing user prompt from the original transcript. Companion negative test `t_0394_calendar_tools_hidden_when_capability_absent` confirms the capability gate works both ways.
+
+Closing this backlog bug. The flake mode is structurally blocked.

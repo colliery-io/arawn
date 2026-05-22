@@ -1985,4 +1985,102 @@ mod tests {
             "calendar_upcoming should be dropped on small-context model without capability"
         );
     }
+
+    // ─── I-0055 T-F — ARAWN-T-0394 regression test ───────────────────────
+    //
+    // Original failure (2026-05-21): the UAT scenario `schedule-with-confirmation`
+    // failed because `calendar_upcoming` was dropped from the catalog on
+    // iter-2+ of the agent loop. The user prompt contained zero `Web`-category
+    // keywords (calendar tools were mis-categorized as Web), so the filter
+    // dropped them. With no recovery path, the agent hallucinated `shell("gcal")`
+    // and ended without proposing a slot.
+    //
+    // Post-I-0055-T-B fix: calendar tools are now in `ToolCategory::Calendar`
+    // and gated by the `google_calendar` connected capability — NOT by user
+    // message text. Once the integration is connected, the tool survives
+    // every iteration regardless of what the user types. The two tests
+    // below exercise this contract using the literal failing prompt from
+    // the original UAT transcript.
+
+    /// The exact scenario that failed in ARAWN-T-0394: filter activated
+    /// (messages.len() > 2), no calendar keywords in the user message, small
+    /// context window (32K, so T-E bypass doesn't fire). With
+    /// `google_calendar` connected, `calendar_upcoming` MUST be in the
+    /// filtered catalog.
+    #[test]
+    fn t_0394_calendar_tools_survive_filter_after_iter_1_when_calendar_capability_connected() {
+        let registry = ToolRegistry::new();
+        registry.register(Box::new(CategorizedStub {
+            name_: "calendar_upcoming",
+            category_: arawn_tool::ToolCategory::Calendar,
+        }));
+        registry.register(Box::new(CategorizedStub {
+            name_: "weekly_run",
+            category_: arawn_tool::ToolCategory::Ceremony,
+        }));
+        registry.register(Box::new(CategorizedStub {
+            name_: "web_fetch",
+            category_: arawn_tool::ToolCategory::Web,
+        }));
+        let all = vec![
+            tool_def("calendar_upcoming"),
+            tool_def("weekly_run"),
+            tool_def("web_fetch"),
+        ];
+        // Literal user prompt from the failing UAT transcript.
+        let session = session_past_iter_1(
+            "Switch to `personal`. Bob replied to my catch-up email — he's open \
+             Tue/Wed mornings or Thu after 2 next week. Pick a 30-min slot that \
+             doesn't conflict with anything on my calendar and propose it to me. \
+             Don't book it without asking.",
+        );
+        let connected = vec!["google_calendar".to_string()];
+        let filtered =
+            filter_tools_for_context(&all, &session, &registry, &connected, &small_model_limits());
+        assert!(
+            filtered.iter().any(|t| t.name == "calendar_upcoming"),
+            "T-0394 regression: calendar_upcoming MUST be visible on iter-2+ \
+             when google_calendar capability is connected, regardless of user message text"
+        );
+    }
+
+    /// Companion: same scenario, capability not connected. The tool must
+    /// NOT appear — confirms the capability gate works both ways. Without
+    /// this, the positive test alone could pass via the early-return path
+    /// or by some other accident; the negative pins down the contract.
+    #[test]
+    fn t_0394_calendar_tools_hidden_when_capability_absent() {
+        let registry = ToolRegistry::new();
+        registry.register(Box::new(CategorizedStub {
+            name_: "calendar_upcoming",
+            category_: arawn_tool::ToolCategory::Calendar,
+        }));
+        registry.register(Box::new(CategorizedStub {
+            name_: "weekly_run",
+            category_: arawn_tool::ToolCategory::Ceremony,
+        }));
+        registry.register(Box::new(CategorizedStub {
+            name_: "web_fetch",
+            category_: arawn_tool::ToolCategory::Web,
+        }));
+        let all = vec![
+            tool_def("calendar_upcoming"),
+            tool_def("weekly_run"),
+            tool_def("web_fetch"),
+        ];
+        let session = session_past_iter_1(
+            "Switch to `personal`. Bob replied to my catch-up email — he's open \
+             Tue/Wed mornings or Thu after 2 next week. Pick a 30-min slot that \
+             doesn't conflict with anything on my calendar and propose it to me. \
+             Don't book it without asking.",
+        );
+        let connected: Vec<String> = vec![];
+        let filtered =
+            filter_tools_for_context(&all, &session, &registry, &connected, &small_model_limits());
+        assert!(
+            filtered.iter().all(|t| t.name != "calendar_upcoming"),
+            "T-0394 negative: calendar_upcoming MUST be dropped when google_calendar \
+             capability is absent (otherwise the gate is vacuous)"
+        );
+    }
 }
