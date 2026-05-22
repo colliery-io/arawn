@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-21T17:01:19Z | 370 files | Python, Rust
+> Generated: 2026-05-22T00:18:37Z | 370 files | Python, Rust
 
 ## Project Structure
 
@@ -652,59 +652,62 @@
 
 #### crates/arawn/src/llm_pool.rs
 
-- pub `LlmClientPool` struct L24-43 — `{ clients: HashMap<String, Arc<dyn LlmClient>>, configs: HashMap<String, LlmConf...` — A pool of named LLM clients built from an [`ArawnConfig`].
-- pub `from_config` function L59-111 — `(config: &ArawnConfig, build: F) -> Result<Self>` — Build the pool from the given config.
-- pub `from_clients` function L115-135 — `( clients: HashMap<String, Arc<dyn LlmClient>>, configs: HashMap<String, LlmConf...` — Construct a pool from a pre-built map of clients.
-- pub `single` function L139-158 — `(client: Arc<dyn LlmClient>, model: impl Into<String>) -> Self` — Build a single-entry pool wrapping `client` as both engine and
-- pub `get` function L161-163 — `(&self, name: &str) -> Option<Arc<dyn LlmClient>>` — Look up a client by name (e.g., "default", "cheap", "judge").
-- pub `config` function L166-168 — `(&self, name: &str) -> Option<&LlmConfig>` — Get the [`LlmConfig`] for a named entry.
-- pub `engine` function L171-177 — `(&self) -> Arc<dyn LlmClient>` — Engine LLM — never fails; falls back to whatever `engine_llm()` resolved.
-- pub `engine_config` function L179-183 — `(&self) -> &LlmConfig` — surfaces here, not mid-session.
-- pub `engine_name` function L185-187 — `(&self) -> &str` — surfaces here, not mid-session.
-- pub `compactor` function L191-197 — `(&self) -> Arc<dyn LlmClient>` — Compactor LLM — never fails; falls back to engine LLM if `[compactor]`
-- pub `compactor_config` function L199-203 — `(&self) -> &LlmConfig` — surfaces here, not mid-session.
-- pub `compactor_name` function L205-207 — `(&self) -> &str` — surfaces here, not mid-session.
-- pub `routing_provider` function L218-240 — `(&self, hints: RoutingHints) -> Option<IntelligentRoutingProvider>` — Build an [`IntelligentRoutingProvider`] from the configured
-- pub `local_health` function L245-247 — `(&self) -> SharedHealth` — Shared handle to the local-health checker.
-- pub `resolve_hint` function L262-285 — `(&self, model_str: &str) -> (Arc<dyn LlmClient>, String)` — Resolve a model-string at the call-site boundary.
-- pub `entries` function L288-290 — `(&self) -> impl Iterator<Item = (&String, &LlmConfig)>` — Iterator over (name, config) pairs.
-- pub `warmup_all` function L295-312 — `(&self) -> Vec<(String, Result<(), arawn_llm::LlmError>)>` — Warm up every entry concurrently.
-- pub `resolve` function L322-382 — `(&self, preference: &LlmPreference) -> LlmResolution` — Resolve an [`LlmPreference`] against the pool.
-- pub `len` function L384-386 — `(&self) -> usize` — surfaces here, not mid-session.
-- pub `is_empty` function L388-390 — `(&self) -> bool` — surfaces here, not mid-session.
--  `LlmClientPool` type L45-53 — `= LlmClientPool` — surfaces here, not mid-session.
--  `fmt` function L46-52 — `(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result` — surfaces here, not mid-session.
--  `LlmClientPool` type L55-391 — `= LlmClientPool` — surfaces here, not mid-session.
--  `resolve_hint_names` function L393-415 — `( cfg: &HintRoutingConfig, clients: &HashMap<String, Arc<dyn LlmClient>>, ) -> H...` — surfaces here, not mid-session.
--  `resolve_routing_provider_names` function L417-449 — `( cfg: &ProvidersRoutingConfig, clients: &HashMap<String, Arc<dyn LlmClient>>, e...` — surfaces here, not mid-session.
--  `resolve_engine_name` function L451-465 — `( config: &ArawnConfig, clients: &HashMap<String, Arc<dyn LlmClient>>, ) -> Resu...` — surfaces here, not mid-session.
--  `resolve_compactor_name` function L467-475 — `(config: &ArawnConfig, engine_name: &str) -> String` — surfaces here, not mid-session.
--  `tests` module L478-913 — `-` — surfaces here, not mid-session.
--  `mock_builder` function L482-484 — `(_cfg: &LlmConfig) -> Result<Arc<dyn LlmClient>>` — surfaces here, not mid-session.
--  `cfg_from_toml` function L486-488 — `(toml_str: &str) -> ArawnConfig` — surfaces here, not mid-session.
--  `pool_builds_every_named_entry` function L491-511 — `()` — surfaces here, not mid-session.
--  `engine_and_compactor_resolve_distinct_clients_when_configured` function L514-538 — `()` — surfaces here, not mid-session.
--  `compactor_falls_back_to_engine_when_unconfigured` function L541-553 — `()` — surfaces here, not mid-session.
--  `compactor_falls_back_to_engine_when_pointing_at_missing_entry` function L556-569 — `()` — surfaces here, not mid-session.
--  `resolve_named_exact_match` function L572-588 — `()` — surfaces here, not mid-session.
--  `resolve_named_missing_falls_back` function L591-603 — `()` — surfaces here, not mid-session.
--  `resolve_provider_model_exact` function L606-625 — `()` — surfaces here, not mid-session.
--  `resolve_capability_match_when_no_exact` function L628-653 — `()` — surfaces here, not mid-session.
--  `resolve_capability_too_strict_falls_back` function L656-675 — `()` — surfaces here, not mid-session.
--  `resolve_empty_preference_is_fallback` function L678-689 — `()` — surfaces here, not mid-session.
--  `resolve_provider_only_uses_capability_path` function L692-712 — `()` — surfaces here, not mid-session.
--  `pool_construction_fails_fast_when_builder_errors` function L715-740 — `()` — surfaces here, not mid-session.
--  `build_two_profile_pool` function L742-762 — `() -> LlmClientPool` — surfaces here, not mid-session.
--  `resolve_hint_uses_configured_profile_for_lightweight` function L765-769 — `()` — surfaces here, not mid-session.
--  `resolve_hint_uses_configured_profile_for_medium` function L772-776 — `()` — surfaces here, not mid-session.
--  `resolve_hint_falls_back_to_engine_when_unconfigured` function L779-791 — `()` — surfaces here, not mid-session.
--  `resolve_hint_unknown_hint_falls_back_to_engine` function L794-798 — `()` — surfaces here, not mid-session.
--  `resolve_hint_concrete_model_passes_through` function L801-805 — `()` — surfaces here, not mid-session.
--  `resolve_hint_with_missing_profile_falls_back_silently` function L808-826 — `()` — surfaces here, not mid-session.
--  `routing_provider_is_none_when_unconfigured` function L829-840 — `()` — surfaces here, not mid-session.
--  `routing_provider_resolves_local_and_remote_from_config` function L843-868 — `()` — surfaces here, not mid-session.
--  `routing_provider_local_only_still_works_with_remote_engine_fallback` function L871-890 — `()` — surfaces here, not mid-session.
--  `missing_local_profile_disables_routing_local_path` function L893-912 — `()` — surfaces here, not mid-session.
+- pub `LlmClientPool` struct L27-46 — `{ clients: HashMap<String, Arc<dyn LlmClient>>, configs: HashMap<String, LlmConf...` — A pool of named LLM clients built from an [`ArawnConfig`].
+- pub `from_config` function L62-114 — `(config: &ArawnConfig, build: F) -> Result<Self>` — Build the pool from the given config.
+- pub `from_clients` function L118-138 — `( clients: HashMap<String, Arc<dyn LlmClient>>, configs: HashMap<String, LlmConf...` — Construct a pool from a pre-built map of clients.
+- pub `single` function L142-161 — `(client: Arc<dyn LlmClient>, model: impl Into<String>) -> Self` — Build a single-entry pool wrapping `client` as both engine and
+- pub `get` function L164-166 — `(&self, name: &str) -> Option<Arc<dyn LlmClient>>` — Look up a client by name (e.g., "default", "cheap", "judge").
+- pub `config` function L169-171 — `(&self, name: &str) -> Option<&LlmConfig>` — Get the [`LlmConfig`] for a named entry.
+- pub `engine` function L174-180 — `(&self) -> Arc<dyn LlmClient>` — Engine LLM — never fails; falls back to whatever `engine_llm()` resolved.
+- pub `engine_config` function L182-186 — `(&self) -> &LlmConfig` — surfaces here, not mid-session.
+- pub `engine_name` function L188-190 — `(&self) -> &str` — surfaces here, not mid-session.
+- pub `compactor` function L194-200 — `(&self) -> Arc<dyn LlmClient>` — Compactor LLM — never fails; falls back to engine LLM if `[compactor]`
+- pub `compactor_config` function L202-206 — `(&self) -> &LlmConfig` — surfaces here, not mid-session.
+- pub `compactor_name` function L208-210 — `(&self) -> &str` — surfaces here, not mid-session.
+- pub `routing_provider` function L221-243 — `(&self, hints: RoutingHints) -> Option<IntelligentRoutingProvider>` — Build an [`IntelligentRoutingProvider`] from the configured
+- pub `local_health` function L248-250 — `(&self) -> SharedHealth` — Shared handle to the local-health checker.
+- pub `routed_or_fallback` function L260-270 — `( &self, hint: &str, hints: RoutingHints, ) -> (Arc<dyn LlmClient>, String)` — Resolve a `hint:*` (or concrete model name) through the routing
+- pub `resolve_hint` function L285-308 — `(&self, model_str: &str) -> (Arc<dyn LlmClient>, String)` — Resolve a model-string at the call-site boundary.
+- pub `entries` function L311-313 — `(&self) -> impl Iterator<Item = (&String, &LlmConfig)>` — Iterator over (name, config) pairs.
+- pub `warmup_all` function L318-335 — `(&self) -> Vec<(String, Result<(), arawn_llm::LlmError>)>` — Warm up every entry concurrently.
+- pub `resolve` function L345-405 — `(&self, preference: &LlmPreference) -> LlmResolution` — Resolve an [`LlmPreference`] against the pool.
+- pub `len` function L407-409 — `(&self) -> usize` — surfaces here, not mid-session.
+- pub `is_empty` function L411-413 — `(&self) -> bool` — surfaces here, not mid-session.
+-  `LlmClientPool` type L48-56 — `= LlmClientPool` — surfaces here, not mid-session.
+-  `fmt` function L49-55 — `(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result` — surfaces here, not mid-session.
+-  `LlmClientPool` type L58-414 — `= LlmClientPool` — surfaces here, not mid-session.
+-  `resolve_hint_names` function L416-438 — `( cfg: &HintRoutingConfig, clients: &HashMap<String, Arc<dyn LlmClient>>, ) -> H...` — surfaces here, not mid-session.
+-  `resolve_routing_provider_names` function L440-472 — `( cfg: &ProvidersRoutingConfig, clients: &HashMap<String, Arc<dyn LlmClient>>, e...` — surfaces here, not mid-session.
+-  `resolve_engine_name` function L474-488 — `( config: &ArawnConfig, clients: &HashMap<String, Arc<dyn LlmClient>>, ) -> Resu...` — surfaces here, not mid-session.
+-  `resolve_compactor_name` function L490-498 — `(config: &ArawnConfig, engine_name: &str) -> String` — surfaces here, not mid-session.
+-  `tests` module L501-998 — `-` — surfaces here, not mid-session.
+-  `mock_builder` function L505-507 — `(_cfg: &LlmConfig) -> Result<Arc<dyn LlmClient>>` — surfaces here, not mid-session.
+-  `cfg_from_toml` function L509-511 — `(toml_str: &str) -> ArawnConfig` — surfaces here, not mid-session.
+-  `pool_builds_every_named_entry` function L514-534 — `()` — surfaces here, not mid-session.
+-  `engine_and_compactor_resolve_distinct_clients_when_configured` function L537-561 — `()` — surfaces here, not mid-session.
+-  `compactor_falls_back_to_engine_when_unconfigured` function L564-576 — `()` — surfaces here, not mid-session.
+-  `compactor_falls_back_to_engine_when_pointing_at_missing_entry` function L579-592 — `()` — surfaces here, not mid-session.
+-  `resolve_named_exact_match` function L595-611 — `()` — surfaces here, not mid-session.
+-  `resolve_named_missing_falls_back` function L614-626 — `()` — surfaces here, not mid-session.
+-  `resolve_provider_model_exact` function L629-648 — `()` — surfaces here, not mid-session.
+-  `resolve_capability_match_when_no_exact` function L651-676 — `()` — surfaces here, not mid-session.
+-  `resolve_capability_too_strict_falls_back` function L679-698 — `()` — surfaces here, not mid-session.
+-  `resolve_empty_preference_is_fallback` function L701-712 — `()` — surfaces here, not mid-session.
+-  `resolve_provider_only_uses_capability_path` function L715-735 — `()` — surfaces here, not mid-session.
+-  `pool_construction_fails_fast_when_builder_errors` function L738-763 — `()` — surfaces here, not mid-session.
+-  `build_two_profile_pool` function L765-785 — `() -> LlmClientPool` — surfaces here, not mid-session.
+-  `resolve_hint_uses_configured_profile_for_lightweight` function L788-792 — `()` — surfaces here, not mid-session.
+-  `resolve_hint_uses_configured_profile_for_medium` function L795-799 — `()` — surfaces here, not mid-session.
+-  `resolve_hint_falls_back_to_engine_when_unconfigured` function L802-814 — `()` — surfaces here, not mid-session.
+-  `resolve_hint_unknown_hint_falls_back_to_engine` function L817-821 — `()` — surfaces here, not mid-session.
+-  `resolve_hint_concrete_model_passes_through` function L824-828 — `()` — surfaces here, not mid-session.
+-  `resolve_hint_with_missing_profile_falls_back_silently` function L831-849 — `()` — surfaces here, not mid-session.
+-  `routing_provider_is_none_when_unconfigured` function L852-863 — `()` — surfaces here, not mid-session.
+-  `routing_provider_resolves_local_and_remote_from_config` function L866-891 — `()` — surfaces here, not mid-session.
+-  `routing_provider_local_only_still_works_with_remote_engine_fallback` function L894-913 — `()` — surfaces here, not mid-session.
+-  `routed_or_fallback_wraps_in_router_when_local_configured` function L916-951 — `()` — surfaces here, not mid-session.
+-  `routed_or_fallback_uses_resolve_hint_when_no_local` function L954-975 — `()` — surfaces here, not mid-session.
+-  `missing_local_profile_disables_routing_local_path` function L978-997 — `()` — surfaces here, not mid-session.
 
 #### crates/arawn/src/local_service.rs
 
@@ -736,57 +739,57 @@
 - pub `with_plan_state` function L291-294 — `(mut self, state: Arc<PlanModeState>) -> Self`
 - pub `with_background_tasks` function L296-299 — `(mut self, manager: Arc<BackgroundTaskManager>) -> Self`
 - pub `with_memory_manager` function L301-304 — `(mut self, mgr: Arc<arawn_memory::MemoryManager>) -> Self`
--  `LocalService` type L99-514 — `= LocalService`
+-  `LocalService` type L99-528 — `= LocalService`
 -  `feed_runtime_or_err` function L173-177 — `(&self) -> Result<Arc<arawn_feeds::FeedRuntime>, ServiceError>`
 -  `load_session_state` function L308-346 — `( &self, session_id: Uuid, ) -> Result<(arawn_storage::SessionMeta, Workstream, ...` — Load session metadata, resolve workstream, and load message history.
 -  `build_session_context` function L350-456 — `( &self, session_id: Uuid, workstream: &Workstream, ws_dir: &str, workspace_dir:...` — Build a EngineToolContext and per-session PromptContext for the engine.
--  `build_engine` function L460-513 — `( &self, prompt_context: Option<arawn_engine::PromptContext>, event_tx: &mpsc::S...` — Build a QueryEngine configured with compactor, skills, plugins, and plan state.
--  `infer_entity_type` function L517-538 — `(text: &str) -> (arawn_memory::EntityType, String)` — Infer entity type from text patterns.
--  `LocalService` type L543-1646 — `impl ArawnService for LocalService`
--  `list_workstreams` function L544-557 — `(&self) -> Result<Vec<WorkstreamInfo>, ServiceError>`
--  `create_workstream` function L559-574 — `( &self, name: String, root_dir: PathBuf, ) -> Result<WorkstreamInfo, ServiceErr...`
--  `list_sessions` function L576-594 — `( &self, workstream_id: Option<Uuid>, ) -> Result<Vec<SessionInfo>, ServiceError...`
--  `create_session` function L596-615 — `( &self, workstream_id: Option<Uuid>, ) -> Result<SessionInfo, ServiceError>`
--  `load_session` function L617-640 — `(&self, id: Uuid) -> Result<SessionDetail, ServiceError>`
--  `truncate_session_at_user_message` function L642-690 — `( &self, id: Uuid, user_message_index: usize, ) -> Result<SessionDetail, Service...`
--  `send_message` function L693-890 — `( &self, session_id: Uuid, content: String, ) -> Result<Pin<Box<dyn futures::Str...`
--  `cancel` function L892-905 — `(&self, session_id: Uuid) -> Result<(), ServiceError>`
--  `promote_session` function L907-957 — `( &self, session_id: Uuid, workstream_name: &str, ) -> Result<PromotionResult, S...`
--  `resolve_user_input` function L959-973 — `( &self, request_id: &str, selected_index: Option<usize>, ) -> Result<(), Servic...`
--  `query_inventory` function L975-1040 — `(&self, kind: &str) -> Result<Vec<InventoryItem>, ServiceError>`
--  `list_available_commands` function L1042-1054 — `(&self) -> Result<Vec<CommandInfo>, ServiceError>`
--  `list_workflows` function L1056-1086 — `(&self) -> Result<Vec<WorkflowInfo>, ServiceError>`
--  `remember_fact` function L1088-1130 — `(&self, text: &str) -> Result<MemoryStoreResult, ServiceError>`
--  `memory_summary` function L1132-1179 — `(&self) -> Result<MemorySummary, ServiceError>`
--  `forget_entity` function L1181-1234 — `(&self, query: &str) -> Result<ForgetResult, ServiceError>`
--  `get_permission_mode` function L1236-1244 — `(&self) -> Result<PermissionModeInfo, ServiceError>`
--  `set_permission_mode` function L1246-1261 — `( &self, mode_str: &str, ) -> Result<PermissionModeInfo, ServiceError>`
--  `get_capabilities` function L1263-1273 — `(&self) -> Result<arawn_service::ServerCapabilities, ServiceError>`
--  `get_permissions_status` function L1275-1326 — `( &self, ) -> Result<arawn_service::PermissionsStatus, ServiceError>`
--  `list_integrations` function L1328-1348 — `( &self, ) -> Result<Vec<arawn_service::IntegrationStatus>, ServiceError>`
--  `start_oauth_flow` function L1350-1477 — `( &self, service: &str, ) -> Result<arawn_service::OAuthFlowStarted, ServiceErro...`
--  `disconnect_integration` function L1479-1502 — `(&self, service: &str) -> Result<(), ServiceError>`
--  `feed_register` function L1504-1537 — `( &self, spec: arawn_service::FeedRegisterSpec, ) -> Result<arawn_service::FeedS...`
--  `feed_list` function L1539-1543 — `(&self) -> Result<Vec<arawn_service::FeedSummaryDto>, ServiceError>`
--  `feed_pause` function L1545-1559 — `( &self, feed_id: &str, ) -> Result<arawn_service::FeedSummaryDto, ServiceError>`
--  `feed_resume` function L1561-1575 — `( &self, feed_id: &str, ) -> Result<arawn_service::FeedSummaryDto, ServiceError>`
--  `feed_run` function L1577-1592 — `(&self, feed_id: &str) -> Result<arawn_service::FeedSummaryDto, ServiceError>`
--  `feed_discover` function L1594-1622 — `( &self, template: &str, ) -> Result<arawn_service::FeedDiscoverDto, ServiceErro...`
--  `feed_remove` function L1624-1645 — `( &self, feed_id: &str, ) -> Result<arawn_service::FeedRemoveDto, ServiceError>`
--  `default_feed_for_service` function L1653-1662 — `(service: &str) -> Option<(&'static str, &'static str)>` — Personal default feed registered automatically the first time
--  `current_summary` function L1664-1674 — `( runtime: &arawn_feeds::FeedRuntime, feed_id: &str, ) -> Result<arawn_service::...`
--  `feed_err` function L1676-1683 — `(e: arawn_feeds::FeedError) -> ServiceError`
--  `feed_summary_to_dto` function L1685-1699 — `(s: arawn_feeds::FeedSummary) -> arawn_service::FeedSummaryDto`
--  `OAuthFlowCtx` struct L1704-1708 — `{ service: String, url_tx: tokio::sync::Mutex<Option<tokio::sync::oneshot::Sende...` — Glue that lets `LocalService::start_oauth_flow` bridge the integration's
--  `OAuthFlowCtx` type L1711-1733 — `= OAuthFlowCtx`
--  `service` function L1712-1714 — `(&self) -> &str`
--  `publish_auth_url` function L1716-1723 — `(&self, url: &url::Url)`
--  `publish_progress` function L1725-1732 — `(&self, message: &str)`
--  `resolve_ws_dir_from_store` function L1736-1746 — `(store: &Store, ws_id: Option<Uuid>) -> Result<String, ServiceError>` — Resolve workstream directory name from store.
--  `first_sentence` function L1750-1761 — `(s: &str) -> String` — Extract the first sentence and sanitize for use in a markdown table cell.
--  `feed_default_tests` module L1764-1801 — `-`
--  `known_services_each_have_a_default_feed` function L1768-1794 — `()`
--  `unknown_service_has_no_default_feed` function L1797-1800 — `()`
+-  `build_engine` function L460-527 — `( &self, prompt_context: Option<arawn_engine::PromptContext>, event_tx: &mpsc::S...` — Build a QueryEngine configured with compactor, skills, plugins, and plan state.
+-  `infer_entity_type` function L531-552 — `(text: &str) -> (arawn_memory::EntityType, String)` — Infer entity type from text patterns.
+-  `LocalService` type L557-1660 — `impl ArawnService for LocalService`
+-  `list_workstreams` function L558-571 — `(&self) -> Result<Vec<WorkstreamInfo>, ServiceError>`
+-  `create_workstream` function L573-588 — `( &self, name: String, root_dir: PathBuf, ) -> Result<WorkstreamInfo, ServiceErr...`
+-  `list_sessions` function L590-608 — `( &self, workstream_id: Option<Uuid>, ) -> Result<Vec<SessionInfo>, ServiceError...`
+-  `create_session` function L610-629 — `( &self, workstream_id: Option<Uuid>, ) -> Result<SessionInfo, ServiceError>`
+-  `load_session` function L631-654 — `(&self, id: Uuid) -> Result<SessionDetail, ServiceError>`
+-  `truncate_session_at_user_message` function L656-704 — `( &self, id: Uuid, user_message_index: usize, ) -> Result<SessionDetail, Service...`
+-  `send_message` function L707-904 — `( &self, session_id: Uuid, content: String, ) -> Result<Pin<Box<dyn futures::Str...`
+-  `cancel` function L906-919 — `(&self, session_id: Uuid) -> Result<(), ServiceError>`
+-  `promote_session` function L921-971 — `( &self, session_id: Uuid, workstream_name: &str, ) -> Result<PromotionResult, S...`
+-  `resolve_user_input` function L973-987 — `( &self, request_id: &str, selected_index: Option<usize>, ) -> Result<(), Servic...`
+-  `query_inventory` function L989-1054 — `(&self, kind: &str) -> Result<Vec<InventoryItem>, ServiceError>`
+-  `list_available_commands` function L1056-1068 — `(&self) -> Result<Vec<CommandInfo>, ServiceError>`
+-  `list_workflows` function L1070-1100 — `(&self) -> Result<Vec<WorkflowInfo>, ServiceError>`
+-  `remember_fact` function L1102-1144 — `(&self, text: &str) -> Result<MemoryStoreResult, ServiceError>`
+-  `memory_summary` function L1146-1193 — `(&self) -> Result<MemorySummary, ServiceError>`
+-  `forget_entity` function L1195-1248 — `(&self, query: &str) -> Result<ForgetResult, ServiceError>`
+-  `get_permission_mode` function L1250-1258 — `(&self) -> Result<PermissionModeInfo, ServiceError>`
+-  `set_permission_mode` function L1260-1275 — `( &self, mode_str: &str, ) -> Result<PermissionModeInfo, ServiceError>`
+-  `get_capabilities` function L1277-1287 — `(&self) -> Result<arawn_service::ServerCapabilities, ServiceError>`
+-  `get_permissions_status` function L1289-1340 — `( &self, ) -> Result<arawn_service::PermissionsStatus, ServiceError>`
+-  `list_integrations` function L1342-1362 — `( &self, ) -> Result<Vec<arawn_service::IntegrationStatus>, ServiceError>`
+-  `start_oauth_flow` function L1364-1491 — `( &self, service: &str, ) -> Result<arawn_service::OAuthFlowStarted, ServiceErro...`
+-  `disconnect_integration` function L1493-1516 — `(&self, service: &str) -> Result<(), ServiceError>`
+-  `feed_register` function L1518-1551 — `( &self, spec: arawn_service::FeedRegisterSpec, ) -> Result<arawn_service::FeedS...`
+-  `feed_list` function L1553-1557 — `(&self) -> Result<Vec<arawn_service::FeedSummaryDto>, ServiceError>`
+-  `feed_pause` function L1559-1573 — `( &self, feed_id: &str, ) -> Result<arawn_service::FeedSummaryDto, ServiceError>`
+-  `feed_resume` function L1575-1589 — `( &self, feed_id: &str, ) -> Result<arawn_service::FeedSummaryDto, ServiceError>`
+-  `feed_run` function L1591-1606 — `(&self, feed_id: &str) -> Result<arawn_service::FeedSummaryDto, ServiceError>`
+-  `feed_discover` function L1608-1636 — `( &self, template: &str, ) -> Result<arawn_service::FeedDiscoverDto, ServiceErro...`
+-  `feed_remove` function L1638-1659 — `( &self, feed_id: &str, ) -> Result<arawn_service::FeedRemoveDto, ServiceError>`
+-  `default_feed_for_service` function L1667-1676 — `(service: &str) -> Option<(&'static str, &'static str)>` — Personal default feed registered automatically the first time
+-  `current_summary` function L1678-1688 — `( runtime: &arawn_feeds::FeedRuntime, feed_id: &str, ) -> Result<arawn_service::...`
+-  `feed_err` function L1690-1697 — `(e: arawn_feeds::FeedError) -> ServiceError`
+-  `feed_summary_to_dto` function L1699-1713 — `(s: arawn_feeds::FeedSummary) -> arawn_service::FeedSummaryDto`
+-  `OAuthFlowCtx` struct L1718-1722 — `{ service: String, url_tx: tokio::sync::Mutex<Option<tokio::sync::oneshot::Sende...` — Glue that lets `LocalService::start_oauth_flow` bridge the integration's
+-  `OAuthFlowCtx` type L1725-1747 — `= OAuthFlowCtx`
+-  `service` function L1726-1728 — `(&self) -> &str`
+-  `publish_auth_url` function L1730-1737 — `(&self, url: &url::Url)`
+-  `publish_progress` function L1739-1746 — `(&self, message: &str)`
+-  `resolve_ws_dir_from_store` function L1750-1760 — `(store: &Store, ws_id: Option<Uuid>) -> Result<String, ServiceError>` — Resolve workstream directory name from store.
+-  `first_sentence` function L1764-1775 — `(s: &str) -> String` — Extract the first sentence and sanitize for use in a markdown table cell.
+-  `feed_default_tests` module L1778-1815 — `-`
+-  `known_services_each_have_a_default_feed` function L1782-1808 — `()`
+-  `unknown_service_has_no_default_feed` function L1811-1814 — `()`
 
 #### crates/arawn/src/main.rs
 
@@ -795,25 +798,25 @@
 -  `embed_batch` function L16-25 — `( &'a self, texts: &'a [&'a str], ) -> std::pin::Pin< Box<dyn std::future::Futur...`
 -  `DEFAULT_MODEL` variable L33 — `: &str`
 -  `FILE_LOG_FILTER` variable L36 — `: &str` — Default file log filter: debug for arawn crates, warn for third-party.
--  `main` function L39-2105 — `() -> Result<()>`
+-  `main` function L39-2113 — `() -> Result<()>`
 -  `Cli` struct L49-68 — `{ command: Option<Command>, data_dir: Option<String>, session: Option<Uuid>, lis...`
 -  `Command` enum L71-111 — `Serve | Tui | Plugin | Doctor | Usage`
--  `ExtractorBindHook` struct L842-853 — `{ runner: Arc<arawn_extractor::ExtractorRunner>, store: Arc<std::sync::Mutex<ara...`
--  `ExtractorBindHook` type L854-949 — `= ExtractorBindHook`
--  `on_bind` function L855-948 — `(&self, workstream_name: &str, feed_id: &str)`
--  `FeedRuntimeUnbindHook` struct L965-968 — `{ feed_runtime: Arc<std::sync::RwLock<Option<Arc<arawn_feeds::FeedRuntime>>>> }`
--  `FeedRuntimeUnbindHook` type L969-984 — `= FeedRuntimeUnbindHook`
--  `on_unbind` function L970-983 — `(&self, removed_feed_ids: &[String])`
--  `resolve_ceremony_tz` function L1612-1636 — `(kind: &str, raw: Option<&str>) -> chrono_tz::Tz`
--  `run_cli_via_server` function L2108-2210 — `(url: &str, prompt: &str, session_id: Option<Uuid>) -> Result<()>` — Run a CLI prompt by connecting to the running server via WebSocket.
--  `build_llm_client` function L2213-2234 — `(config: &arawn_bin::LlmConfig) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
--  `register_default_tools` function L2237-2279 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &arawn_bin::ArawnConfig, d...` — Register all default tools into the registry.
--  `connect_mcp_servers` function L2282-2326 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
--  `register_workflow_tools` function L2329-2346 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
--  `build_engine_config` function L2348-2391 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
--  `expand_github_org` function L2401-2464 — `( github: Arc<arawn_integrations::github::GithubIntegration>, store: Arc<std::sy...` — I-0050 T-0327 — list every repo under `owner` (via the github
--  `register_one_feed` function L2470-2502 — `( feed_runtime: Arc<arawn_feeds::FeedRuntime>, store: Arc<std::sync::Mutex<arawn...` — T-0329 — fetch a feed record by id and register its cron schedule
--  `dirs_path` function L2504-2513 — `() -> Option<String>`
+-  `ExtractorBindHook` struct L850-861 — `{ runner: Arc<arawn_extractor::ExtractorRunner>, store: Arc<std::sync::Mutex<ara...`
+-  `ExtractorBindHook` type L862-957 — `= ExtractorBindHook`
+-  `on_bind` function L863-956 — `(&self, workstream_name: &str, feed_id: &str)`
+-  `FeedRuntimeUnbindHook` struct L973-976 — `{ feed_runtime: Arc<std::sync::RwLock<Option<Arc<arawn_feeds::FeedRuntime>>>> }`
+-  `FeedRuntimeUnbindHook` type L977-992 — `= FeedRuntimeUnbindHook`
+-  `on_unbind` function L978-991 — `(&self, removed_feed_ids: &[String])`
+-  `resolve_ceremony_tz` function L1620-1644 — `(kind: &str, raw: Option<&str>) -> chrono_tz::Tz`
+-  `run_cli_via_server` function L2116-2218 — `(url: &str, prompt: &str, session_id: Option<Uuid>) -> Result<()>` — Run a CLI prompt by connecting to the running server via WebSocket.
+-  `build_llm_client` function L2221-2242 — `(config: &arawn_bin::LlmConfig) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
+-  `register_default_tools` function L2245-2287 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &arawn_bin::ArawnConfig, d...` — Register all default tools into the registry.
+-  `connect_mcp_servers` function L2290-2334 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
+-  `register_workflow_tools` function L2337-2354 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
+-  `build_engine_config` function L2356-2399 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
+-  `expand_github_org` function L2409-2472 — `( github: Arc<arawn_integrations::github::GithubIntegration>, store: Arc<std::sy...` — I-0050 T-0327 — list every repo under `owner` (via the github
+-  `register_one_feed` function L2478-2510 — `( feed_runtime: Arc<arawn_feeds::FeedRuntime>, store: Arc<std::sync::Mutex<arawn...` — T-0329 — fetch a feed record by id and register its cron schedule
+-  `dirs_path` function L2512-2521 — `() -> Option<String>`
 
 #### crates/arawn/src/plugin_cmd.rs
 
@@ -4769,34 +4772,34 @@
 - pub `register_feed_runtime` function L120-122 — `(&self, record: &FeedRecord) -> Result<(), FeedError>` — Register an additional feed without a server restart.
 - pub `unregister_cron` function L132-134 — `(&self, feed_id: &str) -> Result<(), FeedError>` — Unregister the cloacina cron schedule for `feed_id`.
 - pub `runtime_ctx` function L136-138 — `(&self) -> &FeedRuntimeContext` — audit are all inherited from cloacina.
-- pub `register_feed_dynamic` function L152-229 — `( &self, template: &str, feed_id: &str, params: TemplateParams, cadence_override...` — Full dynamic-registration flow used by the `/watch` command.
-- pub `run_feed_once` function L240-245 — `( &self, feed_id: &str, ) -> Result<crate::template::RunOutcome, FeedError>` — Trigger a one-off run of an enabled feed, outside the cron
-- pub `pause_feed` function L253-273 — `(&self, feed_id: &str) -> Result<FeedRecord, FeedError>` — Pause a feed: drop its cloacina cron schedule and flip the row
-- pub `resume_feed` function L278-296 — `(&self, feed_id: &str) -> Result<FeedRecord, FeedError>` — Resume a previously-paused feed: re-register the cloacina
-- pub `remove_feed` function L305-333 — `(&self, feed_id: &str) -> Result<RemoveOutcome, FeedError>` — Decommission: drop the cloacina cron schedule, delete the DB
-- pub `discover_template` function L341-348 — `( &self, template_name: &str, ) -> Result<Option<Vec<DiscoveryRow>>, FeedError>` — Run the template's discovery hook.
-- pub `list_summaries` function L352-383 — `(&self) -> Result<Vec<FeedSummary>, FeedError>` — List every feed in the DB (enabled or paused) with on-disk
-- pub `resume_pending_backfills` function L642-667 — `( runner: Arc<CloacinaRunner>, runtime_ctx: FeedRuntimeContext, records: &[FeedR...` — On boot, find feeds whose `meta.json.last_status == "backfilling"`
-- pub `RemoveOutcome` struct L673-676 — `{ record: FeedRecord, bytes_wiped: u64 }` — Outcome of a successful `remove_feed` — the row that was deleted
--  `FeedRuntime` type L117-384 — `= FeedRuntime` — audit are all inherited from cloacina.
--  `BACKFILL_PAGE_CAP` variable L390 — `: u32` — Hard cap on backfill loop iterations.
--  `BASE_BACKOFF` variable L394 — `: std::time::Duration` — Base delay used when a provider rate-limits us without a Retry-After
--  `MAX_RATE_LIMIT_WAIT` variable L399 — `: std::time::Duration` — Wall-clock cap on cumulative rate-limit waits inside a single
--  `TRANSIENT_MAX_ATTEMPTS` variable L403 — `: u32` — How many consecutive transient errors (Provider/Storage) we'll
--  `transient_backoff` function L409-412 — `(attempt: u32) -> std::time::Duration` — Pure helper: backoff for the Nth consecutive transient retry
--  `BackfillExit` enum L417-423 — `Complete | RateLimitDeferred` — How a backfill ended.
--  `spawn_backfill_task` function L437-490 — `( runner: Arc<CloacinaRunner>, runtime_ctx: FeedRuntimeContext, feed_id: String,...` — Spawn the backfill loop as a detached tokio task.
--  `BackfillStats` struct L493-496 — `{ pages: u32, items: u64 }` — audit are all inherited from cloacina.
--  `run_backfill_loop` function L498-577 — `( _runner: &Arc<CloacinaRunner>, runtime_ctx: &FeedRuntimeContext, feed_id: &str...` — audit are all inherited from cloacina.
--  `finalize_backfill_success` function L579-616 — `( runner: &Arc<CloacinaRunner>, runtime_ctx: &FeedRuntimeContext, feed_id: &str,...` — audit are all inherited from cloacina.
--  `mark_backfill_failed` function L618-637 — `( runtime_ctx: &FeedRuntimeContext, feed_id: &str, err: &str, ) -> Result<(), Fe...` — audit are all inherited from cloacina.
--  `delete_schedule_for` function L680-700 — `( runner: &CloacinaRunner, workflow_name: &str, ) -> Result<(), FeedError>` — Look up cloacina's cron schedule by workflow name and delete it
--  `dir_size_bytes` function L702-723 — `(path: &std::path::Path) -> u64` — audit are all inherited from cloacina.
--  `walk` function L703-719 — `(p: &std::path::Path, acc: &mut u64)` — audit are all inherited from cloacina.
--  `register_one` function L725-806 — `( runner: &CloacinaRunner, ctx: &FeedRuntimeContext, record: &FeedRecord, ) -> R...` — audit are all inherited from cloacina.
--  `tests` module L809-827 — `-` — audit are all inherited from cloacina.
--  `transient_backoff_doubles_per_attempt` function L814-818 — `()` — audit are all inherited from cloacina.
--  `transient_backoff_clamps` function L821-826 — `()` — audit are all inherited from cloacina.
+- pub `register_feed_dynamic` function L152-237 — `( &self, template: &str, feed_id: &str, params: TemplateParams, cadence_override...` — Full dynamic-registration flow used by the `/watch` command.
+- pub `run_feed_once` function L248-253 — `( &self, feed_id: &str, ) -> Result<crate::template::RunOutcome, FeedError>` — Trigger a one-off run of an enabled feed, outside the cron
+- pub `pause_feed` function L261-281 — `(&self, feed_id: &str) -> Result<FeedRecord, FeedError>` — Pause a feed: drop its cloacina cron schedule and flip the row
+- pub `resume_feed` function L286-304 — `(&self, feed_id: &str) -> Result<FeedRecord, FeedError>` — Resume a previously-paused feed: re-register the cloacina
+- pub `remove_feed` function L313-341 — `(&self, feed_id: &str) -> Result<RemoveOutcome, FeedError>` — Decommission: drop the cloacina cron schedule, delete the DB
+- pub `discover_template` function L349-356 — `( &self, template_name: &str, ) -> Result<Option<Vec<DiscoveryRow>>, FeedError>` — Run the template's discovery hook.
+- pub `list_summaries` function L360-391 — `(&self) -> Result<Vec<FeedSummary>, FeedError>` — List every feed in the DB (enabled or paused) with on-disk
+- pub `resume_pending_backfills` function L650-675 — `( runner: Arc<CloacinaRunner>, runtime_ctx: FeedRuntimeContext, records: &[FeedR...` — On boot, find feeds whose `meta.json.last_status == "backfilling"`
+- pub `RemoveOutcome` struct L681-684 — `{ record: FeedRecord, bytes_wiped: u64 }` — Outcome of a successful `remove_feed` — the row that was deleted
+-  `FeedRuntime` type L117-392 — `= FeedRuntime` — audit are all inherited from cloacina.
+-  `BACKFILL_PAGE_CAP` variable L398 — `: u32` — Hard cap on backfill loop iterations.
+-  `BASE_BACKOFF` variable L402 — `: std::time::Duration` — Base delay used when a provider rate-limits us without a Retry-After
+-  `MAX_RATE_LIMIT_WAIT` variable L407 — `: std::time::Duration` — Wall-clock cap on cumulative rate-limit waits inside a single
+-  `TRANSIENT_MAX_ATTEMPTS` variable L411 — `: u32` — How many consecutive transient errors (Provider/Storage) we'll
+-  `transient_backoff` function L417-420 — `(attempt: u32) -> std::time::Duration` — Pure helper: backoff for the Nth consecutive transient retry
+-  `BackfillExit` enum L425-431 — `Complete | RateLimitDeferred` — How a backfill ended.
+-  `spawn_backfill_task` function L445-498 — `( runner: Arc<CloacinaRunner>, runtime_ctx: FeedRuntimeContext, feed_id: String,...` — Spawn the backfill loop as a detached tokio task.
+-  `BackfillStats` struct L501-504 — `{ pages: u32, items: u64 }` — audit are all inherited from cloacina.
+-  `run_backfill_loop` function L506-585 — `( _runner: &Arc<CloacinaRunner>, runtime_ctx: &FeedRuntimeContext, feed_id: &str...` — audit are all inherited from cloacina.
+-  `finalize_backfill_success` function L587-624 — `( runner: &Arc<CloacinaRunner>, runtime_ctx: &FeedRuntimeContext, feed_id: &str,...` — audit are all inherited from cloacina.
+-  `mark_backfill_failed` function L626-645 — `( runtime_ctx: &FeedRuntimeContext, feed_id: &str, err: &str, ) -> Result<(), Fe...` — audit are all inherited from cloacina.
+-  `delete_schedule_for` function L688-708 — `( runner: &CloacinaRunner, workflow_name: &str, ) -> Result<(), FeedError>` — Look up cloacina's cron schedule by workflow name and delete it
+-  `dir_size_bytes` function L710-731 — `(path: &std::path::Path) -> u64` — audit are all inherited from cloacina.
+-  `walk` function L711-727 — `(p: &std::path::Path, acc: &mut u64)` — audit are all inherited from cloacina.
+-  `register_one` function L733-814 — `( runner: &CloacinaRunner, ctx: &FeedRuntimeContext, record: &FeedRecord, ) -> R...` — audit are all inherited from cloacina.
+-  `tests` module L817-835 — `-` — audit are all inherited from cloacina.
+-  `transient_backoff_doubles_per_attempt` function L822-826 — `()` — audit are all inherited from cloacina.
+-  `transient_backoff_clamps` function L829-834 — `()` — audit are all inherited from cloacina.
 
 #### crates/arawn-feeds/src/store.rs
 
@@ -4826,10 +4829,11 @@
 - pub `new` function L41-43 — `(clients: Arc<dyn FeedClients>) -> Self` — use to reach providers and emit logs).
 - pub `noop` function L48-52 — `() -> Self` — Test-only convenience: a ctx where every provider client returns
 - pub `clients` function L54-56 — `(&self) -> &Arc<dyn FeedClients>` — use to reach providers and emit logs).
-- pub `FeedTemplate` interface L65-114 — `{ fn name(), fn validate(), fn defaults(), fn run(), fn discover() }` — One named, parameterized fetch+write recipe owned by an integration.
-- pub `DiscoveryRow` struct L124-129 — `{ label: String, hint: Option<String>, params: Value }` — One pickable choice surfaced by `FeedTemplate::discover`.
+- pub `FeedTemplate` interface L65-138 — `{ fn name(), fn validate(), fn register_check(), fn defaults(), fn run(), fn dis...` — One named, parameterized fetch+write recipe owned by an integration.
+- pub `DiscoveryRow` struct L148-153 — `{ label: String, hint: Option<String>, params: Value }` — One pickable choice surfaced by `FeedTemplate::discover`.
 -  `TemplateCtx` type L40-57 — `= TemplateCtx` — use to reach providers and emit logs).
--  `discover` function L111-113 — `(&self, _ctx: &TemplateCtx) -> Result<Option<Vec<DiscoveryRow>>, FeedError>` — Optional discovery hook for the `/watch` picker.
+-  `register_check` function L93-99 — `( &self, _ctx: &TemplateCtx, _params: &TemplateParams, ) -> Result<(), FeedError...` — Provider-backed check run at first-time registration, after
+-  `discover` function L135-137 — `(&self, _ctx: &TemplateCtx) -> Result<Option<Vec<DiscoveryRow>>, FeedError>` — Optional discovery hook for the `/watch` picker.
 
 #### crates/arawn-feeds/src/types.rs
 
@@ -5461,18 +5465,19 @@
 - pub `ProjectTrackerTemplate` struct L25 — `-` — plus a per-issue `{ last_comment_id, last_history_id }` map.
 -  `NAME` variable L27 — `: &str` — plus a per-issue `{ last_comment_id, last_history_id }` map.
 -  `MAX_RESULTS_PER_RUN` variable L28 — `: u32` — plus a per-issue `{ last_comment_id, last_history_id }` map.
--  `ProjectTrackerTemplate` type L31-168 — `impl FeedTemplate for ProjectTrackerTemplate` — plus a per-issue `{ last_comment_id, last_history_id }` map.
+-  `ProjectTrackerTemplate` type L31-194 — `impl FeedTemplate for ProjectTrackerTemplate` — plus a per-issue `{ last_comment_id, last_history_id }` map.
 -  `name` function L32-34 — `(&self) -> &'static str` — plus a per-issue `{ last_comment_id, last_history_id }` map.
 -  `validate` function L36-46 — `(&self, params: &TemplateParams) -> Result<(), FeedError>` — plus a per-issue `{ last_comment_id, last_history_id }` map.
--  `defaults` function L48-56 — `(&self, _params: &TemplateParams) -> FeedDefaults` — plus a per-issue `{ last_comment_id, last_history_id }` map.
--  `run` function L58-149 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &V...` — plus a per-issue `{ last_comment_id, last_history_id }` map.
--  `discover` function L151-167 — `(&self, ctx: &TemplateCtx) -> Result<Option<Vec<DiscoveryRow>>, FeedError>` — plus a per-issue `{ last_comment_id, last_history_id }` map.
--  `effective_since` function L180-195 — `( cursor_iso: Option<&str>, params_since: Option<&str>, ) -> Option<String>` — Resolve the JQL time-floor for this run.
--  `build_jql` function L197-207 — `(project: &str, since: Option<&str>) -> String` — plus a per-issue `{ last_comment_id, last_history_id }` map.
--  `tests` module L210-262 — `-` — plus a per-issue `{ last_comment_id, last_history_id }` map.
--  `validate_requires_project` function L214-224 — `()` — plus a per-issue `{ last_comment_id, last_history_id }` map.
--  `effective_since_prefers_cursor_then_falls_back_to_params` function L227-252 — `()` — plus a per-issue `{ last_comment_id, last_history_id }` map.
--  `jql_includes_since_when_present` function L255-261 — `()` — plus a per-issue `{ last_comment_id, last_history_id }` map.
+-  `register_check` function L48-72 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, ) -> Result<(), FeedError>` — plus a per-issue `{ last_comment_id, last_history_id }` map.
+-  `defaults` function L74-82 — `(&self, _params: &TemplateParams) -> FeedDefaults` — plus a per-issue `{ last_comment_id, last_history_id }` map.
+-  `run` function L84-175 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &V...` — plus a per-issue `{ last_comment_id, last_history_id }` map.
+-  `discover` function L177-193 — `(&self, ctx: &TemplateCtx) -> Result<Option<Vec<DiscoveryRow>>, FeedError>` — plus a per-issue `{ last_comment_id, last_history_id }` map.
+-  `effective_since` function L206-221 — `( cursor_iso: Option<&str>, params_since: Option<&str>, ) -> Option<String>` — Resolve the JQL time-floor for this run.
+-  `build_jql` function L223-233 — `(project: &str, since: Option<&str>) -> String` — plus a per-issue `{ last_comment_id, last_history_id }` map.
+-  `tests` module L236-288 — `-` — plus a per-issue `{ last_comment_id, last_history_id }` map.
+-  `validate_requires_project` function L240-250 — `()` — plus a per-issue `{ last_comment_id, last_history_id }` map.
+-  `effective_since_prefers_cursor_then_falls_back_to_params` function L253-278 — `()` — plus a per-issue `{ last_comment_id, last_history_id }` map.
+-  `jql_includes_since_when_present` function L281-287 — `()` — plus a per-issue `{ last_comment_id, last_history_id }` map.
 
 ### crates/arawn-feeds/src/templates
 
@@ -7805,40 +7810,37 @@
 
 #### crates/arawn-memory/tests/longmemeval_bench.rs
 
--  `reciprocal_rank_fusion` function L25-35 — `(ranked_lists: &[Vec<&str>], k: f64) -> Vec<(String, f64)>` — Reciprocal Rank Fusion: merge multiple ranked lists into one.
--  `parse_date_to_days` function L38-49 — `(date_str: &str) -> Option<f64>` — Parse a LongMemEval date string like "2023/01/15 (Sun) 10:20" into days-since-epoch.
--  `temporal_score` function L53-66 — `(question_days: f64, session_days: f64) -> f64` — Temporal proximity score: higher for sessions closer in time to the question.
--  `LongMemEvalEntry` struct L73-90 — `{ question_id: Option<String>, question: String, question_date: Option<String>, ...` — (ignored by default since it requires model download and takes ~5 minutes)
--  `LongMemEvalEntry` type L92-100 — `= LongMemEvalEntry` — (ignored by default since it requires model download and takes ~5 minutes)
--  `ground_truth_ids` function L93-99 — `(&self) -> &[String]` — (ignored by default since it requires model download and takes ~5 minutes)
--  `Turn` struct L103-106 — `{ role: String, content: String }` — (ignored by default since it requires model download and takes ~5 minutes)
--  `recall_any_at_k` function L113-119 — `(retrieved_ids: &[&str], ground_truth_ids: &[String], k: usize) -> f64` — Recall@K (any): at least one ground-truth session appears in top-K.
--  `recall_all_at_k` function L122-128 — `(retrieved_ids: &[&str], ground_truth_ids: &[String], k: usize) -> f64` — Recall@K (all): all ground-truth sessions appear in top-K.
--  `ndcg_at_k` function L131-151 — `(retrieved_ids: &[&str], ground_truth_ids: &[String], k: usize) -> f64` — NDCG@K: Normalized Discounted Cumulative Gain.
--  `DATASET_URL` variable L157 — `: &str` — (ignored by default since it requires model download and takes ~5 minutes)
--  `dataset_path` function L159-162 — `() -> PathBuf` — (ignored by default since it requires model download and takes ~5 minutes)
--  `download_dataset` function L164-183 — `() -> Result<PathBuf, String>` — (ignored by default since it requires model download and takes ~5 minutes)
--  `load_dataset` function L185-188 — `(path: &PathBuf) -> Vec<LongMemEvalEntry>` — (ignored by default since it requires model download and takes ~5 minutes)
--  `longmemeval_benchmark` function L196-429 — `()` — (ignored by default since it requires model download and takes ~5 minutes)
+-  `LongMemEvalEntry` struct L43-54 — `{ question: String, question_type: Option<String>, haystack_sessions: Vec<Vec<Tu...` — ```
+-  `LongMemEvalEntry` type L56-64 — `= LongMemEvalEntry` — ```
+-  `ground_truth_ids` function L57-63 — `(&self) -> &[String]` — ```
+-  `Turn` struct L67-70 — `{ role: String, content: String }` — ```
+-  `recall_any_at_k` function L77-83 — `(retrieved_ids: &[&str], ground_truth_ids: &[String], k: usize) -> f64` — Recall@K (any): at least one ground-truth session appears in top-K.
+-  `recall_all_at_k` function L86-92 — `(retrieved_ids: &[&str], ground_truth_ids: &[String], k: usize) -> f64` — Recall@K (all): all ground-truth sessions appear in top-K.
+-  `ndcg_at_k` function L95-115 — `(retrieved_ids: &[&str], ground_truth_ids: &[String], k: usize) -> f64` — NDCG@K: Normalized Discounted Cumulative Gain.
+-  `DATASET_URL` variable L121 — `: &str` — ```
+-  `dataset_path` function L123-126 — `() -> PathBuf` — ```
+-  `download_dataset` function L128-147 — `() -> Result<PathBuf, String>` — ```
+-  `load_dataset` function L149-152 — `(path: &PathBuf) -> Vec<LongMemEvalEntry>` — ```
+-  `longmemeval_benchmark` function L160-393 — `()` — ```
 
 #### crates/arawn-memory/tests/recall_eval.rs
 
--  `recall_at_k` function L16-26 — `(results: &[Entity], expected_titles: &[&str], k: usize) -> f64` — Recall@K: fraction of expected entities found in the top-K results.
--  `precision_at_k` function L29-37 — `(results: &[Entity], expected_titles: &[&str], k: usize) -> f64` — Precision@K: fraction of top-K results that are in the expected set.
--  `mrr` function L40-48 — `(results: &[Entity], expected_titles: &[&str]) -> f64` — Mean Reciprocal Rank: 1/rank of the first relevant result.
--  `build_fixture_store` function L55-312 — `() -> Arc<MemoryStore>` — Build a populated MemoryStore with realistic entities for evaluation.
--  `build_fixture_manager` function L315-322 — `() -> (Arc<MemoryStore>, MemoryManager)` — Build a MemoryManager for stack tests using the fixture store.
--  `QueryCase` struct L328-333 — `{ description: &'static str, query: &'static str, expected: Vec<&'static str>, c...` — topical retrieval.
--  `QueryCategory` enum L336-342 — `ExactTitle | KeywordOverlap | ContentSearch | Paraphrase | Negative` — topical retrieval.
--  `build_query_corpus` function L344-496 — `() -> Vec<QueryCase>` — topical retrieval.
--  `fts_recall_evaluation` function L503-601 — `()` — topical retrieval.
--  `memory_stack_l1_coverage` function L604-640 — `()` — topical retrieval.
--  `memory_stack_l2_topical_retrieval` function L643-694 — `()` — topical retrieval.
--  `superseded_entities_excluded_from_all_searches` function L697-717 — `()` — topical retrieval.
--  `reinforcement_boosts_ranking` function L720-745 — `()` — topical retrieval.
--  `edge_case_very_short_query` function L748-760 — `()` — topical retrieval.
--  `edge_case_no_matches` function L763-773 — `()` — topical retrieval.
--  `vector_search_recall_real_embeddings` function L780-1110 — `()` — topical retrieval.
+-  `recall_at_k` function L59-69 — `(results: &[Entity], expected_titles: &[&str], k: usize) -> f64` — Recall@K: fraction of expected entities found in the top-K results.
+-  `precision_at_k` function L72-80 — `(results: &[Entity], expected_titles: &[&str], k: usize) -> f64` — Precision@K: fraction of top-K results that are in the expected set.
+-  `mrr` function L83-91 — `(results: &[Entity], expected_titles: &[&str]) -> f64` — Mean Reciprocal Rank: 1/rank of the first relevant result.
+-  `build_fixture_store` function L98-355 — `() -> Arc<MemoryStore>` — Build a populated MemoryStore with realistic entities for evaluation.
+-  `build_fixture_manager` function L358-365 — `() -> (Arc<MemoryStore>, MemoryManager)` — Build a MemoryManager for stack tests using the fixture store.
+-  `QueryCase` struct L371-376 — `{ description: &'static str, query: &'static str, expected: Vec<&'static str>, c...` — `target/.embed-models/`); subsequent runs are fast.
+-  `QueryCategory` enum L379-385 — `ExactTitle | KeywordOverlap | ContentSearch | Paraphrase | Negative` — `target/.embed-models/`); subsequent runs are fast.
+-  `build_query_corpus` function L387-539 — `() -> Vec<QueryCase>` — `target/.embed-models/`); subsequent runs are fast.
+-  `fts_recall_evaluation` function L546-644 — `()` — `target/.embed-models/`); subsequent runs are fast.
+-  `memory_stack_l1_coverage` function L647-683 — `()` — `target/.embed-models/`); subsequent runs are fast.
+-  `memory_stack_l2_topical_retrieval` function L686-737 — `()` — `target/.embed-models/`); subsequent runs are fast.
+-  `superseded_entities_excluded_from_all_searches` function L740-760 — `()` — `target/.embed-models/`); subsequent runs are fast.
+-  `reinforcement_boosts_ranking` function L763-788 — `()` — `target/.embed-models/`); subsequent runs are fast.
+-  `edge_case_very_short_query` function L791-803 — `()` — `target/.embed-models/`); subsequent runs are fast.
+-  `edge_case_no_matches` function L806-816 — `()` — `target/.embed-models/`); subsequent runs are fast.
+-  `vector_search_recall_real_embeddings` function L823-1153 — `()` — `target/.embed-models/`); subsequent runs are fast.
 
 ### crates/arawn-projections/src
 

@@ -4,14 +4,14 @@ level: initiative
 title: "Post-iteration cruft removal — dead code, backward-compat aliases, stale concepts"
 short_code: "ARAWN-I-0053"
 created_at: 2026-05-21T13:08:02.500626+00:00
-updated_at: 2026-05-21T15:07:16.194161+00:00
+updated_at: 2026-05-22T01:29:17.605148+00:00
 parent: ARAWN-V-0001
 blocked_by: []
 archived: false
 
 tags:
   - "#initiative"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false

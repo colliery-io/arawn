@@ -4,14 +4,14 @@ level: task
 title: "Refresh arawn-memory benchmark scenarios — update longmemeval/recall_eval to current use cases"
 short_code: "ARAWN-T-0392"
 created_at: 2026-05-21T14:53:37.162614+00:00
-updated_at: 2026-05-22T00:12:48.236251+00:00
+updated_at: 2026-05-22T00:17:04.201181+00:00
 parent: ARAWN-I-0053
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -46,6 +46,8 @@ but their scenarios were authored before arawn's current usage patterns
 crystallized. Per operator (during ARAWN-I-0053 discovery, Tier 3 candidate
 3.7): the benchmarks should be kept and updated to reflect current use cases
 and the data we actually load.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
