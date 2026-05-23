@@ -5,19 +5,18 @@
 //! ARAWN-A-0003 codifies the bounded-blast-radius contract every
 //! subroutine respects.
 //!
-//! This crate (T-0256) ships the *scaffolding* only:
+//! Public surface:
 //!
-//! - `Journal`: append-only `steward_journal` table colocated with each
-//!   workstream's KB; write-ahead + rollback API.
+//! - `Journal` / `JournalRecord` / `JournalRow`: append-only journal
+//!   colocated with each workstream's KB; write-ahead + rollback API.
 //! - `StewardSubroutine`: trait every subroutine implements.
-//! - `IdentitySubroutine`: a no-op subroutine that writes a journal row
-//!   so the scaffolding is exercisable end-to-end.
+//! - Four production subroutines: `DoorWatchSubroutine`, `MapSubroutine`,
+//!   `ReshelveSubroutine`, `TagPromoterSubroutine`, plus `DustEngine` /
+//!   `ClusterMode` for the dust pass.
 //! - `StewardRunner`: walks the list of active workstreams and runs
 //!   each subroutine sequentially against each KB.
-//!
-//! T-0257 lands re-shelve + dust (the mutating subroutines).
-//! T-0258 lands map + door-watch (proposal-only).
-//! T-0259 wires the /workstream refine / journal / rollback commands.
+//! - `AcceptCtx` / `RollbackCtx`: bridge structs for the /workstream
+//!   accept / rollback tool surfaces.
 
 pub mod accept;
 pub mod cursor;
@@ -35,13 +34,13 @@ pub mod tag_promoter;
 
 pub use accept::AcceptCtx;
 pub use cursor::CursorStore;
-pub use doorwatch::{DoorWatchConfig, DoorWatchSubroutine};
-pub use dust::{ClusterMode, DustEngine, DustOpts, DustOutcome};
+pub use doorwatch::DoorWatchSubroutine;
+pub use dust::{ClusterMode, DustEngine, DustOpts};
 pub use error::StewardError;
-pub use journal::{AppliedResult, Journal, JournalGate, JournalRecord, JournalRow, RevertResult};
-pub use map::{MapConfig, MapSubroutine};
-pub use reshelve::{ReshelveConfig, ReshelveSubroutine};
+pub use journal::{Journal, JournalRecord, JournalRow};
+pub use map::MapSubroutine;
+pub use reshelve::ReshelveSubroutine;
 pub use rollback::RollbackCtx;
-pub use runner::{StewardRunner, StewardStats, SubroutineCaps};
-pub use subroutine::{IdentitySubroutine, StewardSubroutine, SubroutineCtx, SubroutineOutcome};
-pub use tag_promoter::{TagPromoterConfig, TagPromoterSubroutine};
+pub use runner::StewardRunner;
+pub use subroutine::StewardSubroutine;
+pub use tag_promoter::TagPromoterSubroutine;

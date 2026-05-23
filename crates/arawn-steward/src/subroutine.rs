@@ -9,13 +9,14 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
+#[cfg(test)]
 use tracing::debug;
 
 use arawn_core::Workstream;
 use arawn_memory::MemoryManager;
 
 use crate::error::StewardError;
-use crate::journal::{Journal, JournalGate, JournalRecord};
+use crate::journal::JournalGate;
 
 /// Per-pass context handed to a subroutine. The runner constructs one
 /// before each subroutine run.
@@ -61,25 +62,29 @@ pub trait StewardSubroutine: Send + Sync {
     async fn run(&self, ctx: &SubroutineCtx) -> Result<SubroutineOutcome, StewardError>;
 }
 
-/// No-op subroutine that writes exactly one journal row per invocation
-/// — used to prove the scaffolding works end-to-end before T-0257
-/// lands the real subroutines.
-pub struct IdentitySubroutine {
+/// No-op subroutine for test scaffolding — writes one journal row per
+/// invocation. Test-only; the production subroutines (reshelve, map,
+/// doorwatch, tag-promoter) replace this in actual deployments.
+#[cfg(test)]
+pub(crate) struct IdentitySubroutine {
     name: String,
 }
 
+#[cfg(test)]
 impl Default for IdentitySubroutine {
     fn default() -> Self {
         Self::new("identity")
     }
 }
 
+#[cfg(test)]
 impl IdentitySubroutine {
     pub fn new(name: impl Into<String>) -> Self {
         Self { name: name.into() }
     }
 }
 
+#[cfg(test)]
 #[async_trait]
 impl StewardSubroutine for IdentitySubroutine {
     fn name(&self) -> &str {
@@ -89,7 +94,7 @@ impl StewardSubroutine for IdentitySubroutine {
     fn is_mutating(&self) -> bool {
         // The identity subroutine never touches the KB graph; treating
         // it as non-mutating exercises the proposal-shaped journal path
-        // by default. T-0256 tests assert this contract.
+        // by default.
         false
     }
 
@@ -100,13 +105,13 @@ impl StewardSubroutine for IdentitySubroutine {
             cap = ctx.cap,
             "identity steward subroutine running"
         );
-        let record = JournalRecord {
+        let record = crate::journal::JournalRecord {
             subroutine: self.name.clone(),
             action: "noop".into(),
             inputs_json: serde_json::json!({"cap": ctx.cap}).to_string(),
             outputs_json: "{}".into(),
             model: "n/a".into(),
-            prompt_hash: Journal::prompt_hash("identity"),
+            prompt_hash: crate::journal::Journal::prompt_hash("identity"),
             applied: false,
         };
         ctx.journal.write_ahead(&record)?;
