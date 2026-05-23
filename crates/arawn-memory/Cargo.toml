@@ -1,0 +1,24 @@
+[package]
+name = "arawn-memory"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+arawn-embed = { path = "../arawn-embed" }
+async-trait = { workspace = true }
+rusqlite = { version = "0.37", features = ["bundled"] }
+graphqlite = { workspace = true }
+sqlite-vec = "0.1.6"
+tokio = { workspace = true }
+zerocopy = { version = "0.8", features = ["derive"] }
+uuid = { workspace = true }
+chrono = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+tokio = { workspace = true }
+ureq = "3"

@@ -1,0 +1,1198 @@
+//! `/workstream journal`, `/workstream refine`, `/workstream rollback`
+//! — agent-facing surface over the steward's journal. Phase 5 of I-0040
+//! (T-0259).
+//!
+//! All three operate on the active workstream by default and accept an
+//! optional `workstream` arg to target a named one. Rollback is the
+//! only one that mutates state; it dispatches per-subroutine inverse
+//! via `arawn_steward::rollback::apply_inverse`.
+
+use std::path::PathBuf;
+use std::sync::Arc;
+
+use async_trait::async_trait;
+use serde_json::{Value, json};
+
+use arawn_llm::LlmClient;
+use arawn_steward::{ClusterMode, DustEngine, DustOpts, Journal, accept, rollback};
+
+use arawn_tool::{Tool, ToolCategory, ToolError, ToolOutput};
+use crate::workstream_router::WorkstreamMemoryRouter;
+
+/// Return the closest tag in `candidates` to `needle` if any candidate
+/// is within edit distance 4 OR shares a common prefix/suffix of length ≥4.
+/// Used by `workstream_dust` to nudge the agent toward the right ontology
+/// tag when the user-supplied wording diverges (e.g. `falcon-project`
+/// vs ontology `falcon`).
+fn closest_tag(needle: &str, candidates: &[String]) -> Option<String> {
+    let n = needle.to_ascii_lowercase();
+    let mut best: Option<(usize, &String)> = None;
+    for c in candidates {
+        let cl = c.to_ascii_lowercase();
+        // Substring match in either direction → strong signal that
+        // this is the right tag (canonical case: user added or
+        // dropped a suffix, e.g. `falcon-project` vs `falcon`).
+        // Treat as distance 0 regardless of length delta.
+        // Otherwise fall back to Levenshtein with a ≤4 cap.
+        let dist = if cl.contains(&n) || n.contains(&cl) {
+            0
+        } else {
+            let d = edit_distance(&n, &cl);
+            if d > 4 {
+                continue;
+            }
+            d
+        };
+        if best.map(|(d, _)| dist < d).unwrap_or(true) {
+            best = Some((dist, c));
+        }
+    }
+    best.map(|(_, c)| c.clone())
+}
+
+/// Levenshtein distance, classic two-row DP. Small enough not to need
+/// a dependency. Caller bounds candidate size before invoking.
+fn edit_distance(a: &str, b: &str) -> usize {
+    let a: Vec<char> = a.chars().collect();
+    let b: Vec<char> = b.chars().collect();
+    if a.is_empty() {
+        return b.len();
+    }
+    if b.is_empty() {
+        return a.len();
+    }
+    let mut prev: Vec<usize> = (0..=b.len()).collect();
+    let mut curr = vec![0; b.len() + 1];
+    for (i, ca) in a.iter().enumerate() {
+        curr[0] = i + 1;
+        for (j, cb) in b.iter().enumerate() {
+            let cost = if ca == cb { 0 } else { 1 };
+            curr[j + 1] = (curr[j] + 1)
+                .min(prev[j + 1] + 1)
+                .min(prev[j] + cost);
+        }
+        std::mem::swap(&mut prev, &mut curr);
+    }
+    prev[b.len()]
+}
+
+fn open_journal(data_dir: &PathBuf, workstream: &str) -> Result<Journal, ToolError> {
+    Journal::open(data_dir, workstream)
+        .map_err(|e| ToolError::ExecutionFailed(format!("open journal `{workstream}`: {e}")))
+}
+
+
+/// Lightweight summary of one journal row for tool output.
+fn row_summary(row: &arawn_steward::JournalRow) -> Value {
+    json!({
+        "id": row.id,
+        "ts": row.ts.to_rfc3339(),
+        "subroutine": row.subroutine,
+        "action": row.action,
+        "applied": row.applied,
+        "reverted_at": row.reverted_at.map(|t| t.to_rfc3339()),
+        "model": row.model,
+        "inputs": serde_json::from_str::<Value>(&row.inputs_json).unwrap_or(Value::Null),
+        "outputs": serde_json::from_str::<Value>(&row.outputs_json).unwrap_or(Value::Null),
+    })
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// /workstream journal
+// ─────────────────────────────────────────────────────────────────────────
+
+pub struct WorkstreamJournalTool {
+    data_dir: PathBuf,
+    router: Arc<WorkstreamMemoryRouter>,
+}
+
+impl WorkstreamJournalTool {
+    pub fn new(data_dir: impl Into<PathBuf>, router: Arc<WorkstreamMemoryRouter>) -> Self {
+        Self {
+            data_dir: data_dir.into(),
+            router,
+        }
+    }
+}
+
+#[async_trait]
+impl Tool for WorkstreamJournalTool {
+    fn name(&self) -> &str {
+        "workstream_journal"
+    }
+
+    fn description(&self) -> &str {
+        "List recent steward actions for the active workstream (or one passed via `workstream`). \
+         Shows merges, deletes, and pending proposals with enough payload to inspect what the \
+         steward did."
+    }
+
+    fn is_read_only(&self) -> bool {
+        true
+    }
+
+    fn category(&self) -> ToolCategory {
+        // Workstream-scoped curation tools (journal/refine/rollback/
+        // dust/apply) belong to the Workstream category. Memory used
+        // to be the home which caused the query-engine's keyword
+        // filter to drop them from the tool list whenever the user
+        // didn't say "remember"/"recall"/etc. See signal.rs comment.
+        ToolCategory::Workstream
+    }
+
+    fn parameters_schema(&self) -> Value {
+        json!({
+            "type": "object",
+            "properties": {
+                "workstream": { "type": "string" },
+                "limit": { "type": "integer", "description": "Default 20, max 200" }
+            }
+        })
+    }
+
+    async fn execute(
+        &self,
+        _ctx: &dyn arawn_tool::ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
+        let workstream = match params.get("workstream").and_then(|v| v.as_str()) {
+            Some(s) => s.to_string(),
+            None => self.router.current_name(),
+        };
+        let limit = params
+            .get("limit")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(20)
+            .min(200) as usize;
+        let j = open_journal(&self.data_dir, &workstream)?;
+        let rows = j
+            .recent(limit)
+            .map_err(|e| ToolError::ExecutionFailed(format!("journal recent: {e}")))?;
+        let payload = json!({
+            "workstream": workstream,
+            "count": rows.len(),
+            "rows": rows.iter().map(row_summary).collect::<Vec<_>>(),
+        });
+        Ok(ToolOutput::success(payload.to_string()))
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// /workstream refine — pending proposals only
+// ─────────────────────────────────────────────────────────────────────────
+
+pub struct WorkstreamRefineTool {
+    data_dir: PathBuf,
+    router: Arc<WorkstreamMemoryRouter>,
+}
+
+impl WorkstreamRefineTool {
+    pub fn new(data_dir: impl Into<PathBuf>, router: Arc<WorkstreamMemoryRouter>) -> Self {
+        Self {
+            data_dir: data_dir.into(),
+            router,
+        }
+    }
+}
+
+#[async_trait]
+impl Tool for WorkstreamRefineTool {
+    fn name(&self) -> &str {
+        "workstream_refine"
+    }
+
+    fn description(&self) -> &str {
+        "List pending steward proposals (map + door-watch) for the active workstream. \
+         Proposals are not applied automatically — the user reviews them. Reject via \
+         `workstream_rollback <id>`. Accept/apply is a future v2."
+    }
+
+    fn is_read_only(&self) -> bool {
+        true
+    }
+
+    fn category(&self) -> ToolCategory {
+        // Workstream-scoped curation tools (journal/refine/rollback/
+        // dust/apply) belong to the Workstream category. Memory used
+        // to be the home which caused the query-engine's keyword
+        // filter to drop them from the tool list whenever the user
+        // didn't say "remember"/"recall"/etc. See signal.rs comment.
+        ToolCategory::Workstream
+    }
+
+    fn parameters_schema(&self) -> Value {
+        json!({
+            "type": "object",
+            "properties": {
+                "workstream": { "type": "string" },
+                "limit": { "type": "integer", "description": "Default 20, max 200" }
+            }
+        })
+    }
+
+    async fn execute(
+        &self,
+        _ctx: &dyn arawn_tool::ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
+        let workstream = match params.get("workstream").and_then(|v| v.as_str()) {
+            Some(s) => s.to_string(),
+            None => self.router.current_name(),
+        };
+        let limit = params
+            .get("limit")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(20)
+            .min(200) as usize;
+        let j = open_journal(&self.data_dir, &workstream)?;
+        let rows = j
+            .pending_proposals(limit)
+            .map_err(|e| ToolError::ExecutionFailed(format!("journal pending: {e}")))?;
+        let payload = json!({
+            "workstream": workstream,
+            "count": rows.len(),
+            "proposals": rows.iter().map(row_summary).collect::<Vec<_>>(),
+        });
+        Ok(ToolOutput::success(payload.to_string()))
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// /workstream rollback ID
+// ─────────────────────────────────────────────────────────────────────────
+
+pub struct WorkstreamRollbackTool {
+    data_dir: PathBuf,
+    router: Arc<WorkstreamMemoryRouter>,
+}
+
+impl WorkstreamRollbackTool {
+    pub fn new(data_dir: impl Into<PathBuf>, router: Arc<WorkstreamMemoryRouter>) -> Self {
+        Self {
+            data_dir: data_dir.into(),
+            router,
+        }
+    }
+}
+
+#[async_trait]
+impl Tool for WorkstreamRollbackTool {
+    fn name(&self) -> &str {
+        "workstream_rollback"
+    }
+
+    fn description(&self) -> &str {
+        "Revert one steward action by journal id. For reshelve merges/deletes the inverse \
+         mutation is applied to the KB; for map/door-watch proposals the rollback is a \
+         metadata flip. Idempotent. Returns a confirmation by id."
+    }
+
+    fn is_read_only(&self) -> bool {
+        false
+    }
+
+    fn category(&self) -> ToolCategory {
+        // Workstream-scoped curation tools (journal/refine/rollback/
+        // dust/apply) belong to the Workstream category. Memory used
+        // to be the home which caused the query-engine's keyword
+        // filter to drop them from the tool list whenever the user
+        // didn't say "remember"/"recall"/etc. See signal.rs comment.
+        ToolCategory::Workstream
+    }
+
+    fn parameters_schema(&self) -> Value {
+        json!({
+            "type": "object",
+            "properties": {
+                "id": { "type": "integer", "description": "Journal row id" },
+                "workstream": { "type": "string" }
+            },
+            "required": ["id"]
+        })
+    }
+
+    async fn execute(
+        &self,
+        _ctx: &dyn arawn_tool::ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
+        let id = params
+            .get("id")
+            .and_then(|v| v.as_i64())
+            .ok_or_else(|| ToolError::ExecutionFailed("missing 'id'".into()))?;
+        let workstream = match params.get("workstream").and_then(|v| v.as_str()) {
+            Some(s) => s.to_string(),
+            None => self.router.current_name(),
+        };
+        let j = open_journal(&self.data_dir, &workstream)?;
+        let row = j
+            .get(id)
+            .map_err(|e| ToolError::ExecutionFailed(format!("journal get: {e}")))?
+            .ok_or_else(|| ToolError::ExecutionFailed(format!("no journal row {id}")))?;
+        if row.reverted_at.is_some() {
+            return Ok(ToolOutput::success(
+                json!({"id": id, "status": "already_reverted"}).to_string(),
+            ));
+        }
+        // Apply the per-subroutine inverse mutation against the
+        // workstream's KB, then flip the metadata. Pass the workstream
+        // root so tag-promoter reversals can reach the ontology table.
+        let kb = self
+            .router
+            .for_workstream(&workstream)
+            .map_err(|e| ToolError::ExecutionFailed(format!("memory routing: {e}")))?;
+        let ws_root = self.data_dir.join("workstreams").join(&workstream);
+        rollback::apply_inverse(
+            &row,
+            &arawn_steward::RollbackCtx {
+                kb: &kb,
+                workstream_root: &ws_root,
+            },
+        )
+        .map_err(|e| ToolError::ExecutionFailed(format!("rollback: {e}")))?;
+        let _ = j
+            .revert(id)
+            .map_err(|e| ToolError::ExecutionFailed(format!("journal revert: {e}")))?;
+        Ok(ToolOutput::success(
+            json!({"id": id, "status": "reverted"}).to_string(),
+        ))
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// /workstream dust — manual trigger; writes proposals only
+// ─────────────────────────────────────────────────────────────────────────
+
+pub struct WorkstreamDustTool {
+    data_dir: PathBuf,
+    router: Arc<WorkstreamMemoryRouter>,
+    client: Arc<dyn LlmClient>,
+    model: String,
+}
+
+impl WorkstreamDustTool {
+    pub fn new(
+        data_dir: impl Into<PathBuf>,
+        router: Arc<WorkstreamMemoryRouter>,
+        client: Arc<dyn LlmClient>,
+        model: impl Into<String>,
+    ) -> Self {
+        Self {
+            data_dir: data_dir.into(),
+            router,
+            client,
+            model: model.into(),
+        }
+    }
+}
+
+#[async_trait]
+impl Tool for WorkstreamDustTool {
+    fn name(&self) -> &str {
+        "workstream_dust"
+    }
+
+    fn description(&self) -> &str {
+        "Manually trigger the steward's `dust` subroutine on the active workstream — \
+         clusters cold entities (default by shared tag) and proposes a summary entity \
+         per cluster. Proposals are journaled with `applied=false`; review with \
+         `workstream_refine`, commit with `workstream_apply <id>`, reject with \
+         `workstream_rollback <id>`."
+    }
+
+    fn is_read_only(&self) -> bool {
+        // Writes journal rows (proposals); does not mutate the KB graph.
+        false
+    }
+
+    fn category(&self) -> ToolCategory {
+        // Workstream-scoped curation tools (journal/refine/rollback/
+        // dust/apply) belong to the Workstream category. Memory used
+        // to be the home which caused the query-engine's keyword
+        // filter to drop them from the tool list whenever the user
+        // didn't say "remember"/"recall"/etc. See signal.rs comment.
+        ToolCategory::Workstream
+    }
+
+    fn parameters_schema(&self) -> Value {
+        json!({
+            "type": "object",
+            "properties": {
+                "workstream": { "type": "string" },
+                "cluster_by": {
+                    "type": "string",
+                    "enum": ["tag", "provenance"],
+                    "description": "Default: tag"
+                },
+                "min_cluster_size": { "type": "integer", "description": "Default 3" },
+                "idle_days": { "type": "integer", "description": "Default 30" },
+                "limit": { "type": "integer", "description": "Max proposals (default 5)" },
+                "tags": {
+                    "type": "array",
+                    "items": { "type": "string" },
+                    "description": "Restrict tag-mode clusters to these tag keys"
+                }
+            }
+        })
+    }
+
+    async fn execute(
+        &self,
+        _ctx: &dyn arawn_tool::ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
+        let workstream = match params.get("workstream").and_then(|v| v.as_str()) {
+            Some(s) => s.to_string(),
+            None => self.router.current_name(),
+        };
+        let cluster_by = params
+            .get("cluster_by")
+            .and_then(|v| v.as_str())
+            .and_then(ClusterMode::from_str)
+            .unwrap_or(ClusterMode::Tag);
+        let mut opts = DustOpts {
+            cluster_by,
+            ..DustOpts::default()
+        };
+        if let Some(n) = params.get("min_cluster_size").and_then(|v| v.as_u64()) {
+            opts.min_cluster_size = n as usize;
+        }
+        if let Some(d) = params.get("idle_days").and_then(|v| v.as_i64()) {
+            opts.idle_days = d;
+        }
+        if let Some(l) = params.get("limit").and_then(|v| v.as_u64()) {
+            opts.limit = l as usize;
+        }
+        if let Some(tags) = params.get("tags").and_then(|v| v.as_array()) {
+            opts.tag_filter = Some(
+                tags.iter()
+                    .filter_map(|v| v.as_str().map(String::from))
+                    .collect(),
+            );
+        }
+
+        let kb = self
+            .router
+            .for_workstream(&workstream)
+            .map_err(|e| ToolError::ExecutionFailed(format!("memory routing: {e}")))?;
+        let journal = open_journal(&self.data_dir, &workstream)?;
+        let engine = DustEngine::new(Arc::clone(&self.client), self.model.clone());
+        let outcome = engine
+            .run(&kb, &journal, &opts)
+            .await
+            .map_err(|e| ToolError::ExecutionFailed(format!("dust: {e}")))?;
+
+        // Hydrate proposed rows so the agent shows the user the actual
+        // summary text it can apply.
+        let mut proposals: Vec<Value> = Vec::new();
+        for pid in &outcome.proposal_ids {
+            if let Ok(Some(row)) = journal.get(*pid) {
+                proposals.push(row_summary(&row));
+            }
+        }
+
+        // When we found zero clusters, give the agent a self-recovery
+        // hint: surface the workstream's available ontology tags and a
+        // small set of suggested retry parameters. Most "I picked the
+        // wrong tag string" failures resolve on the very next call once
+        // the agent can see what tags actually exist.
+        let mut payload = json!({
+            "workstream": workstream,
+            "clusters_found": outcome.clusters_found,
+            "proposals_written": outcome.proposals_written,
+            "limit_hit": outcome.limit_hit,
+            "proposals": proposals,
+        });
+        if outcome.clusters_found == 0 {
+            let available_tags: Vec<String> =
+                arawn_memory::TagOntologyStore::open(&self.data_dir, &workstream)
+                    .and_then(|s| s.tags())
+                    .unwrap_or_default();
+            let mut suggestions = Vec::new();
+            // Fuzzy-match every passed tag against the ontology so
+            // the agent gets `did_you_mean` candidates instead of
+            // having to re-discover the correct spelling itself.
+            // Surfaced during I-0052 UAT — agent passed
+            // `falcon-project` (the user's wording), tool returned
+            // 0 clusters with a hint, agent acknowledged but never
+            // retried. A concrete did_you_mean nudge makes the
+            // retry obvious.
+            let did_you_mean: Vec<serde_json::Value> = opts
+                .tag_filter
+                .as_ref()
+                .map(|requested| {
+                    requested
+                        .iter()
+                        .filter(|r| !available_tags.iter().any(|a| a == *r))
+                        .filter_map(|r| {
+                            closest_tag(r, &available_tags).map(|m| {
+                                json!({
+                                    "you_passed": r,
+                                    "did_you_mean": m,
+                                })
+                            })
+                        })
+                        .collect()
+                })
+                .unwrap_or_default();
+            if !opts
+                .tag_filter
+                .as_ref()
+                .map(|v| v.is_empty())
+                .unwrap_or(true)
+            {
+                suggestions
+                    .push("retry without the `tags` filter to scan all ontology tags".to_string());
+            }
+            if opts.min_cluster_size > 2 {
+                suggestions.push(format!(
+                    "lower `min_cluster_size` (current default {}) — small clusters often miss the default 3-member floor",
+                    opts.min_cluster_size
+                ));
+            }
+            if opts.idle_days > 7 {
+                suggestions.push(format!(
+                    "lower `idle_days` (current {}) — entities may not all be stale enough",
+                    opts.idle_days
+                ));
+            }
+            if let Value::Object(ref mut m) = payload {
+                m.insert("available_tags".into(), json!(available_tags));
+                m.insert("suggestions".into(), json!(suggestions));
+                let hint = if !did_you_mean.is_empty() {
+                    "no clusters formed — your `tags` filter contains values that aren't in the workstream's declared ontology. **Retry now** with the `did_you_mean` value(s) below, do not stop to ask the user.".to_string()
+                } else {
+                    "no clusters formed — pick a tag from `available_tags` (these are the workstream's declared ontology), or retry without a `tags` filter. The literal string you passed must match exactly.".to_string()
+                };
+                m.insert("hint".into(), json!(hint));
+                if !did_you_mean.is_empty() {
+                    m.insert("did_you_mean".into(), json!(did_you_mean));
+                }
+            }
+        }
+        Ok(ToolOutput::success(payload.to_string()))
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// /workstream apply — commit a pending proposal
+// ─────────────────────────────────────────────────────────────────────────
+
+pub struct WorkstreamApplyTool {
+    data_dir: PathBuf,
+    router: Arc<WorkstreamMemoryRouter>,
+}
+
+impl WorkstreamApplyTool {
+    pub fn new(data_dir: impl Into<PathBuf>, router: Arc<WorkstreamMemoryRouter>) -> Self {
+        Self {
+            data_dir: data_dir.into(),
+            router,
+        }
+    }
+}
+
+#[async_trait]
+impl Tool for WorkstreamApplyTool {
+    fn name(&self) -> &str {
+        "workstream_apply"
+    }
+
+    fn description(&self) -> &str {
+        "Commit a pending steward proposal by journal id. Dust summaries are written to \
+         the KB (summary entity + SUMMARIZES edges); map relations are added; door-watch \
+         identity matches are recorded by flipping `applied=true` (no graph change yet). \
+         Idempotent. Returns a confirmation by id."
+    }
+
+    fn is_read_only(&self) -> bool {
+        false
+    }
+
+    fn category(&self) -> ToolCategory {
+        // Workstream-scoped curation tools (journal/refine/rollback/
+        // dust/apply) belong to the Workstream category. Memory used
+        // to be the home which caused the query-engine's keyword
+        // filter to drop them from the tool list whenever the user
+        // didn't say "remember"/"recall"/etc. See signal.rs comment.
+        ToolCategory::Workstream
+    }
+
+    fn parameters_schema(&self) -> Value {
+        json!({
+            "type": "object",
+            "properties": {
+                "id": { "type": "integer", "description": "Journal row id" },
+                "workstream": { "type": "string" }
+            },
+            "required": ["id"]
+        })
+    }
+
+    async fn execute(
+        &self,
+        _ctx: &dyn arawn_tool::ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
+        let id = params
+            .get("id")
+            .and_then(|v| v.as_i64())
+            .ok_or_else(|| ToolError::ExecutionFailed("missing 'id'".into()))?;
+        let workstream = match params.get("workstream").and_then(|v| v.as_str()) {
+            Some(s) => s.to_string(),
+            None => self.router.current_name(),
+        };
+        let j = open_journal(&self.data_dir, &workstream)?;
+        let row = j
+            .get(id)
+            .map_err(|e| ToolError::ExecutionFailed(format!("journal get: {e}")))?
+            .ok_or_else(|| ToolError::ExecutionFailed(format!("no journal row {id}")))?;
+        if row.applied {
+            return Ok(ToolOutput::success(
+                json!({"id": id, "status": "already_applied"}).to_string(),
+            ));
+        }
+        if row.reverted_at.is_some() {
+            return Err(ToolError::ExecutionFailed(format!(
+                "row {id} is reverted; cannot apply"
+            )));
+        }
+        let kb = self
+            .router
+            .for_workstream(&workstream)
+            .map_err(|e| ToolError::ExecutionFailed(format!("memory routing: {e}")))?;
+        let ws_root = self.data_dir.join("workstreams").join(&workstream);
+        accept::apply_forward(
+            &row,
+            &arawn_steward::AcceptCtx {
+                kb: &kb,
+                workstream_root: &ws_root,
+            },
+        )
+        .map_err(|e| ToolError::ExecutionFailed(format!("apply: {e}")))?;
+        j.mark_applied(id)
+            .map_err(|e| ToolError::ExecutionFailed(format!("journal mark_applied: {e}")))?;
+        Ok(ToolOutput::success(
+            json!({"id": id, "status": "applied"}).to_string(),
+        ))
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// workstream_tag — manual ontology management
+// ─────────────────────────────────────────────────────────────────────────
+
+/// Direct CRUD on the workstream's tag ontology. The agent reaches for
+/// this when the user wants to add or remove tags outside the propose-
+/// accept cycle (or to inspect the current vocabulary). For automated
+/// growth, the `tag-promoter` steward subroutine + `workstream_apply`
+/// is the preferred path.
+pub struct WorkstreamTagTool {
+    data_dir: PathBuf,
+    router: Arc<WorkstreamMemoryRouter>,
+}
+
+impl WorkstreamTagTool {
+    pub fn new(data_dir: impl Into<PathBuf>, router: Arc<WorkstreamMemoryRouter>) -> Self {
+        Self {
+            data_dir: data_dir.into(),
+            router,
+        }
+    }
+}
+
+#[async_trait]
+impl Tool for WorkstreamTagTool {
+    fn name(&self) -> &str {
+        "workstream_tag"
+    }
+
+    fn description(&self) -> &str {
+        "Manage the active workstream's tag ontology directly. `op: list` \
+         returns every tag with `added_via` provenance. `op: add` inserts a \
+         new tag (idempotent). `op: remove` deletes a tag. Use this for \
+         curation outside the propose-accept cycle — for organic growth, \
+         let `tag-promoter` propose and `workstream_apply` commit."
+    }
+
+    fn is_read_only(&self) -> bool {
+        false
+    }
+
+    fn category(&self) -> ToolCategory {
+        ToolCategory::Workstream
+    }
+
+    fn parameters_schema(&self) -> Value {
+        json!({
+            "type": "object",
+            "properties": {
+                "op": {
+                    "type": "string",
+                    "enum": ["list", "add", "remove"],
+                    "description": "Which ontology operation to perform."
+                },
+                "tag": {
+                    "type": "string",
+                    "description": "Required for add / remove."
+                },
+                "workstream": {
+                    "type": "string",
+                    "description": "Override the active workstream."
+                }
+            },
+            "required": ["op"]
+        })
+    }
+
+    async fn execute(
+        &self,
+        _ctx: &dyn arawn_tool::ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
+        let op = match params.get("op").and_then(|v| v.as_str()) {
+            Some(s) => s.to_string(),
+            None => {
+                return Ok(ToolOutput::error("op is required".to_string()));
+            }
+        };
+        let workstream = match params.get("workstream").and_then(|v| v.as_str()) {
+            Some(s) => s.to_string(),
+            None => self.router.current_name(),
+        };
+        let ws_root = self.data_dir.join("workstreams").join(&workstream);
+        let ontology = arawn_memory::TagOntologyStore::open_at(&ws_root)
+            .map_err(|e| ToolError::ExecutionFailed(format!("open ontology: {e}")))?;
+
+        match op.as_str() {
+            "list" => {
+                let entries = ontology
+                    .list()
+                    .map_err(|e| ToolError::ExecutionFailed(format!("list: {e}")))?;
+                let rows: Vec<Value> = entries
+                    .iter()
+                    .map(|e| {
+                        json!({
+                            "tag": e.tag,
+                            "added_at": e.added_at.to_rfc3339(),
+                            "added_via": e.added_via.as_str(),
+                        })
+                    })
+                    .collect();
+                Ok(ToolOutput::success(
+                    json!({
+                        "workstream": workstream,
+                        "count": rows.len(),
+                        "tags": rows,
+                    })
+                    .to_string(),
+                ))
+            }
+            "add" => {
+                let tag = match params.get("tag").and_then(|v| v.as_str()) {
+                    Some(s) if !s.trim().is_empty() => s.to_string(),
+                    _ => {
+                        return Ok(ToolOutput::error("tag is required for op=add".to_string()));
+                    }
+                };
+                ontology
+                    .add(&tag, arawn_memory::AddedVia::Manual)
+                    .map_err(|e| ToolError::ExecutionFailed(format!("add: {e}")))?;
+                Ok(ToolOutput::success(
+                    json!({
+                        "workstream": workstream,
+                        "tag": arawn_memory::normalize_tag(&tag),
+                        "status": "added",
+                    })
+                    .to_string(),
+                ))
+            }
+            "remove" => {
+                let tag = match params.get("tag").and_then(|v| v.as_str()) {
+                    Some(s) if !s.trim().is_empty() => s.to_string(),
+                    _ => {
+                        return Ok(ToolOutput::error(
+                            "tag is required for op=remove".to_string(),
+                        ));
+                    }
+                };
+                let removed = ontology
+                    .remove(&tag)
+                    .map_err(|e| ToolError::ExecutionFailed(format!("remove: {e}")))?;
+                Ok(ToolOutput::success(
+                    json!({
+                        "workstream": workstream,
+                        "tag": arawn_memory::normalize_tag(&tag),
+                        "status": if removed { "removed" } else { "not_found" },
+                    })
+                    .to_string(),
+                ))
+            }
+            other => Ok(ToolOutput::error(format!(
+                "unknown op `{other}` — must be one of: list, add, remove"
+            ))),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use arawn_core::Workstream;
+    use arawn_memory::{Entity, EntityType};
+    use arawn_steward::{Journal, JournalRecord};
+    use tempfile::TempDir;
+    use uuid::Uuid;
+
+    fn setup() -> (
+        TempDir,
+        Arc<WorkstreamMemoryRouter>,
+        crate::context::EngineToolContext,
+    ) {
+        let tmp = TempDir::new().unwrap();
+        let session = crate::tools::SessionWorkstream::new("ws-pat");
+        let router = Arc::new(WorkstreamMemoryRouter::new(tmp.path(), None, None, session));
+        let ws = Workstream::scratch(tmp.path());
+        let ctx = crate::context::EngineToolContext::new(&ws, Uuid::new_v4());
+        (tmp, router, ctx)
+    }
+
+    fn write_proposal_row(j: &Journal) -> i64 {
+        let rec = JournalRecord {
+            subroutine: "map".into(),
+            action: "propose_relation".into(),
+            inputs_json: "{}".into(),
+            outputs_json:
+                json!({"from_id": Uuid::new_v4(), "rel": "relates_to", "to_id": Uuid::new_v4()})
+                    .to_string(),
+            model: "test".into(),
+            prompt_hash: "h".into(),
+            applied: false,
+        };
+        j.write_ahead(&rec).unwrap()
+    }
+
+    fn write_delete_row(j: &Journal, e: &Entity) -> i64 {
+        let rec = JournalRecord {
+            subroutine: "reshelve".into(),
+            action: "delete".into(),
+            inputs_json: "{}".into(),
+            outputs_json: json!({"entity": e}).to_string(),
+            model: "test".into(),
+            prompt_hash: "h".into(),
+            applied: true,
+        };
+        j.write_ahead(&rec).unwrap()
+    }
+
+    #[tokio::test]
+    async fn journal_lists_recent_rows() {
+        let (tmp, router, ctx) = setup();
+        let j = Journal::open(tmp.path(), "ws-pat").unwrap();
+        let _ = write_proposal_row(&j);
+        let _ = write_proposal_row(&j);
+        let tool = WorkstreamJournalTool::new(tmp.path(), Arc::clone(&router));
+        let r = tool.execute(&ctx, json!({})).await.unwrap();
+        let v: Value = serde_json::from_str(&r.content).unwrap();
+        assert_eq!(v["count"], 2);
+        assert_eq!(v["workstream"], "ws-pat");
+    }
+
+    #[tokio::test]
+    async fn refine_returns_pending_proposals_only() {
+        let (tmp, router, ctx) = setup();
+        let j = Journal::open(tmp.path(), "ws-pat").unwrap();
+        let _pid = write_proposal_row(&j);
+        // Add an applied row that should NOT appear.
+        let rec = JournalRecord {
+            subroutine: "reshelve".into(),
+            action: "delete".into(),
+            inputs_json: "{}".into(),
+            outputs_json: json!({"entity": Entity::new(EntityType::Fact, "x")}).to_string(),
+            model: "test".into(),
+            prompt_hash: "h".into(),
+            applied: true,
+        };
+        j.write_ahead(&rec).unwrap();
+
+        let tool = WorkstreamRefineTool::new(tmp.path(), Arc::clone(&router));
+        let r = tool.execute(&ctx, json!({})).await.unwrap();
+        let v: Value = serde_json::from_str(&r.content).unwrap();
+        assert_eq!(v["count"], 1);
+        assert_eq!(v["proposals"][0]["action"], "propose_relation");
+    }
+
+    #[tokio::test]
+    async fn rollback_reverts_delete_action_end_to_end() {
+        let (tmp, router, ctx) = setup();
+        // Open the KB through the router so the entity lives in the
+        // same db the tool will reach.
+        let kb = router.for_workstream("ws-pat").unwrap();
+        let e = Entity::new(EntityType::Fact, "important fact").with_content("v1");
+        // Pretend reshelve already deleted this entity — we journal the
+        // delete with the full snapshot and remove it from the KB.
+        let j = Journal::open(tmp.path(), "ws-pat").unwrap();
+        let id = write_delete_row(&j, &e);
+
+        let tool = WorkstreamRollbackTool::new(tmp.path(), Arc::clone(&router));
+        let r = tool.execute(&ctx, json!({"id": id})).await.unwrap();
+        let v: Value = serde_json::from_str(&r.content).unwrap();
+        assert_eq!(v["status"], "reverted");
+        // Entity restored
+        let restored = kb.workstream.get_entity(e.id).unwrap().unwrap();
+        assert_eq!(restored.title, "important fact");
+    }
+
+    #[tokio::test]
+    async fn rollback_is_idempotent() {
+        let (tmp, router, ctx) = setup();
+        let j = Journal::open(tmp.path(), "ws-pat").unwrap();
+        let id = write_proposal_row(&j);
+        let tool = WorkstreamRollbackTool::new(tmp.path(), Arc::clone(&router));
+        let r1: Value =
+            serde_json::from_str(&tool.execute(&ctx, json!({"id": id})).await.unwrap().content)
+                .unwrap();
+        assert_eq!(r1["status"], "reverted");
+        let r2: Value =
+            serde_json::from_str(&tool.execute(&ctx, json!({"id": id})).await.unwrap().content)
+                .unwrap();
+        assert_eq!(r2["status"], "already_reverted");
+    }
+
+    #[tokio::test]
+    async fn apply_then_rollback_round_trip_for_map_proposal() {
+        let (tmp, router, ctx) = setup();
+        // Seed two entities and a map-style proposal between them.
+        let kb = router.for_workstream("ws-pat").unwrap();
+        let a = Entity::new(EntityType::Fact, "a");
+        let b = Entity::new(EntityType::Fact, "b");
+        kb.workstream.insert_entity(&a).unwrap();
+        kb.workstream.insert_entity(&b).unwrap();
+        let j = Journal::open(tmp.path(), "ws-pat").unwrap();
+        let rec = JournalRecord {
+            subroutine: "map".into(),
+            action: "propose_relation".into(),
+            inputs_json: "{}".into(),
+            outputs_json: json!({"from_id": a.id, "rel": "relates_to", "to_id": b.id}).to_string(),
+            model: "test".into(),
+            prompt_hash: "h".into(),
+            applied: false,
+        };
+        let id = j.write_ahead(&rec).unwrap();
+
+        // Apply → relation should now exist.
+        let apply_tool = WorkstreamApplyTool::new(tmp.path(), Arc::clone(&router));
+        let r: Value = serde_json::from_str(
+            &apply_tool
+                .execute(&ctx, json!({"id": id}))
+                .await
+                .unwrap()
+                .content,
+        )
+        .unwrap();
+        assert_eq!(r["status"], "applied");
+        let rels = kb.workstream.get_relations(a.id).unwrap();
+        assert!(rels.iter().any(|x| x.target_id == b.id));
+
+        // Idempotency: second apply returns already_applied.
+        let r2: Value = serde_json::from_str(
+            &apply_tool
+                .execute(&ctx, json!({"id": id}))
+                .await
+                .unwrap()
+                .content,
+        )
+        .unwrap();
+        assert_eq!(r2["status"], "already_applied");
+    }
+
+    #[tokio::test]
+    async fn apply_refuses_reverted_row() {
+        let (tmp, router, ctx) = setup();
+        let j = Journal::open(tmp.path(), "ws-pat").unwrap();
+        let rec = JournalRecord {
+            subroutine: "map".into(),
+            action: "propose_relation".into(),
+            inputs_json: "{}".into(),
+            outputs_json: "{}".into(),
+            model: "t".into(),
+            prompt_hash: "h".into(),
+            applied: false,
+        };
+        let id = j.write_ahead(&rec).unwrap();
+        // Reject first
+        let rollback = WorkstreamRollbackTool::new(tmp.path(), Arc::clone(&router));
+        let _ = rollback.execute(&ctx, json!({"id": id})).await.unwrap();
+        // Apply must now refuse
+        let apply_tool = WorkstreamApplyTool::new(tmp.path(), Arc::clone(&router));
+        let err = apply_tool.execute(&ctx, json!({"id": id})).await;
+        assert!(err.is_err());
+    }
+
+    #[tokio::test]
+    async fn workstream_tag_list_add_remove_round_trip() {
+        let (tmp, router, ctx) = setup();
+        let tool = WorkstreamTagTool::new(tmp.path(), Arc::clone(&router));
+
+        // list on empty ontology
+        let r: Value = serde_json::from_str(
+            &tool
+                .execute(&ctx, json!({"op": "list"}))
+                .await
+                .unwrap()
+                .content,
+        )
+        .unwrap();
+        assert_eq!(r["count"], 0);
+
+        // add
+        let r: Value = serde_json::from_str(
+            &tool
+                .execute(&ctx, json!({"op": "add", "tag": "Falcon "}))
+                .await
+                .unwrap()
+                .content,
+        )
+        .unwrap();
+        // Normalized form lands in payload.
+        assert_eq!(r["tag"], "falcon");
+        assert_eq!(r["status"], "added");
+
+        // list shows it
+        let r: Value = serde_json::from_str(
+            &tool
+                .execute(&ctx, json!({"op": "list"}))
+                .await
+                .unwrap()
+                .content,
+        )
+        .unwrap();
+        assert_eq!(r["count"], 1);
+        assert_eq!(r["tags"][0]["tag"], "falcon");
+        assert_eq!(r["tags"][0]["added_via"], "manual");
+
+        // remove
+        let r: Value = serde_json::from_str(
+            &tool
+                .execute(&ctx, json!({"op": "remove", "tag": "falcon"}))
+                .await
+                .unwrap()
+                .content,
+        )
+        .unwrap();
+        assert_eq!(r["status"], "removed");
+
+        // remove again → not_found
+        let r: Value = serde_json::from_str(
+            &tool
+                .execute(&ctx, json!({"op": "remove", "tag": "falcon"}))
+                .await
+                .unwrap()
+                .content,
+        )
+        .unwrap();
+        assert_eq!(r["status"], "not_found");
+    }
+
+    #[tokio::test]
+    async fn workstream_apply_promotes_tag_into_ontology() {
+        let (tmp, router, ctx) = setup();
+        // Write a pending tag-promoter proposal.
+        let j = Journal::open(tmp.path(), "ws-pat").unwrap();
+        let rec = JournalRecord {
+            subroutine: "tag-promoter".into(),
+            action: "promote_tag".into(),
+            inputs_json: json!({"tag": "calidor"}).to_string(),
+            outputs_json: json!({"tag": "calidor", "count": 5}).to_string(),
+            model: "n/a".into(),
+            prompt_hash: "h".into(),
+            applied: false,
+        };
+        let id = j.write_ahead(&rec).unwrap();
+
+        let apply_tool = WorkstreamApplyTool::new(tmp.path(), Arc::clone(&router));
+        let r: Value = serde_json::from_str(
+            &apply_tool
+                .execute(&ctx, json!({"id": id}))
+                .await
+                .unwrap()
+                .content,
+        )
+        .unwrap();
+        assert_eq!(r["status"], "applied");
+
+        // Ontology now has `calidor` with added_via=promotion.
+        let ws_root = tmp.path().join("workstreams").join("ws-pat");
+        let ont = arawn_memory::TagOntologyStore::open_at(&ws_root).unwrap();
+        let entry = ont.get("calidor").unwrap().unwrap();
+        assert_eq!(entry.added_via, arawn_memory::AddedVia::Promotion);
+
+        // Rollback removes it.
+        let rollback = WorkstreamRollbackTool::new(tmp.path(), Arc::clone(&router));
+        let r: Value = serde_json::from_str(
+            &rollback
+                .execute(&ctx, json!({"id": id}))
+                .await
+                .unwrap()
+                .content,
+        )
+        .unwrap();
+        assert_eq!(r["status"], "reverted");
+        let ont = arawn_memory::TagOntologyStore::open_at(&ws_root).unwrap();
+        assert!(!ont.contains("calidor").unwrap());
+    }
+
+    #[tokio::test]
+    async fn rollback_unknown_id_errors() {
+        let (tmp, router, ctx) = setup();
+        let tool = WorkstreamRollbackTool::new(tmp.path(), Arc::clone(&router));
+        let r = tool.execute(&ctx, json!({"id": 9999})).await;
+        assert!(r.is_err());
+    }
+
+    // --- closest_tag (dust did_you_mean nudge) ---
+
+    #[test]
+    fn closest_tag_matches_substring_user_added_suffix() {
+        // The UAT failure: user said "falcon-project", ontology has "falcon".
+        let candidates = vec![
+            "code-review".to_string(),
+            "falcon".to_string(),
+            "infrastructure".to_string(),
+            "ledger".to_string(),
+        ];
+        assert_eq!(
+            super::closest_tag("falcon-project", &candidates),
+            Some("falcon".to_string())
+        );
+    }
+
+    #[test]
+    fn closest_tag_matches_typo() {
+        let candidates = vec!["falcon".to_string(), "ledger".to_string()];
+        assert_eq!(
+            super::closest_tag("falcom", &candidates),
+            Some("falcon".to_string())
+        );
+    }
+
+    #[test]
+    fn closest_tag_returns_none_when_unrelated() {
+        let candidates = vec!["falcon".to_string(), "ledger".to_string()];
+        // "platypus" has no candidate within 4 edits and no substring overlap.
+        assert!(super::closest_tag("platypus", &candidates).is_none());
+    }
+
+    #[test]
+    fn closest_tag_picks_shortest_distance() {
+        let candidates = vec![
+            "falcon".to_string(),
+            "falcon-project-archive".to_string(),
+        ];
+        // "falcon-prj" is closer to "falcon" (4 edits) than to the long form (12+).
+        assert_eq!(
+            super::closest_tag("falcon-prj", &candidates),
+            Some("falcon".to_string())
+        );
+    }
+}

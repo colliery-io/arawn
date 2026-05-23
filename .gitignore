@@ -1,0 +1,75 @@
+# Build artifacts
+**/target/
+**/*.rs.bk
+
+# Test artifacts
+proptest-regressions/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Claude Code local session state
+.claude/
+
+# Environment
+.env
+.env.local
+
+# Test secrets — only the `.enc.*` (sops-encrypted) form is ever
+# committed. Block any accidental plaintext drop next to it.
+/tests/secrets/*.yaml
+/tests/secrets/*.json
+/tests/secrets/*.toml
+!/tests/secrets/*.enc.yaml
+!/tests/secrets/*.enc.json
+!/tests/secrets/*.enc.toml
+!/tests/secrets/README.md
+
+# AGE keypairs should never land in the repo. Standard sops install
+# puts them at ~/.config/sops/age/keys.txt; if anyone copies one in
+# here by mistake this blocks it.
+*.age
+*.age-key
+keys.txt
+
+# Data (keep structure, ignore contents)
+/data/
+*.db
+*.db-shm
+*.db-wal
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Model files (large)
+*.onnx
+*.bin
+models/
+
+# Python (angreal)
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Coverage
+coverage/
+
+# WASM binaries
+*.wasm
+/openclaw/
+
+# Backup / scratch
+/backup/
+
+# mdbook build output
+/docs/book/

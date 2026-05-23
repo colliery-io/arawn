@@ -1,0 +1,8 @@
+[package]
+name = "daily-pr-summary"
+version = "0.1.0"
+
+[metadata]
+workflow_name = "daily_pr_summary"
+language = "rust"
+description = "Every weekday morning, fetch open PRs from a GitHub org and write a markdown briefing."

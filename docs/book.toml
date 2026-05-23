@@ -1,0 +1,12 @@
+[book]
+title = "Arawn"
+description = "A self-hosted personal agentic assistant in a single Rust binary."
+authors = ["arawn contributors"]
+language = "en"
+src = "src"
+
+[output.html]
+default-theme = "ayu"
+preferred-dark-theme = "ayu"
+git-repository-url = "https://github.com/dstorey/arawn"
+edit-url-template = "https://github.com/dstorey/arawn/edit/main/docs/{path}"

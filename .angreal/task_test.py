@@ -1,0 +1,396 @@
+"""Test commands for Arawn."""
+
+import os
+import pathlib
+import subprocess
+import sys
+
+import angreal
+from angreal.integrations.flox import Flox
+
+test = angreal.command_group(name="test", about="Run tests")
+
+
+@test()
+@angreal.command(name="all", about="Run all tests (workspace)")
+def test_all():
+    """Run workspace tests."""
+    with Flox("."):
+        _run_unit()
+
+
+@test()
+@angreal.command(name="unit", about="Run workspace unit tests")
+def test_unit():
+    """Run cargo test across the workspace."""
+    with Flox("."):
+        _run_unit()
+
+
+
+@test()
+@angreal.command(name="integration", about="Run integration tests (ignored tests)")
+def test_integration():
+    """Run tests marked with #[ignore]."""
+    with Flox("."):
+        subprocess.run(
+            ["cargo", "test", "--workspace", "--", "--ignored", "--test-threads=1"],
+            check=True,
+        )
+
+
+@test()
+@angreal.command(name="coverage", about="Generate code coverage report")
+@angreal.argument(
+    name="open_report",
+    long="open",
+    is_flag=True,
+    takes_value=False,
+    help="Open HTML report in browser after generation",
+)
+def test_coverage(open_report=False):
+    """Generate code coverage report with branch coverage using cargo-llvm-cov.
+
+    Uses nightly toolchain for branch coverage support. Generates per-crate
+    reports to work around an LLVM bug with --branch on large workspaces,
+    then produces a combined HTML report without --branch for browsing.
+    """
+    with Flox("."):
+        # Generate per-crate branch coverage (nightly required for --branch)
+        crates = _find_workspace_crates()
+        combined_lcov = os.path.join("coverage", "branch-combined.info")
+        os.makedirs("coverage", exist_ok=True)
+
+        # Clear previous combined file
+        if os.path.exists(combined_lcov):
+            os.remove(combined_lcov)
+
+        print("=== Generating per-crate branch coverage ===\n")
+        for crate in crates:
+            lcov_path = os.path.join("coverage", f"branch-{crate}.info")
+            result = subprocess.run(
+                [
+                    "cargo", "+nightly", "llvm-cov",
+                    "-p", crate,
+                    "--branch", "--lcov",
+                    "--output-path", lcov_path,
+                ],
+                capture_output=True,
+            )
+            if result.returncode == 0 and os.path.exists(lcov_path):
+                with open(combined_lcov, "a") as combined, open(lcov_path) as src:
+                    combined.write(src.read())
+                print(f"  {crate}: OK")
+            else:
+                print(f"  {crate}: SKIPPED (nightly compile issue)")
+
+        # Print branch summary from LCOV data
+        _print_branch_summary(combined_lcov)
+
+        # Generate HTML report (stable, without --branch to avoid LLVM crash)
+        print("\n=== Generating HTML report ===\n")
+        subprocess.run(
+            [
+                "cargo", "llvm-cov",
+                "--workspace", "--html",
+                "--output-dir", "coverage/",
+                "--", "--test-threads=1",
+            ],
+            check=True,
+        )
+        print("\nCoverage report generated in coverage/html/index.html")
+        print(f"Branch coverage LCOV data in {combined_lcov}")
+        if open_report:
+            subprocess.run(["open", "coverage/html/index.html"], check=False)
+
+
+def _find_workspace_crates():
+    """Find all workspace crate names from crates/ directory."""
+    crates_dir = os.path.join(os.getcwd(), "crates")
+    crates = []
+    for entry in sorted(os.listdir(crates_dir)):
+        cargo_toml = os.path.join(crates_dir, entry, "Cargo.toml")
+        if os.path.exists(cargo_toml):
+            crates.append(entry)
+    return crates
+
+
+def _print_branch_summary(lcov_path):
+    """Parse LCOV file and print branch coverage summary."""
+    if not os.path.exists(lcov_path):
+        print("\nNo branch coverage data generated.")
+        return
+
+    print("\n=== Branch Coverage Summary ===\n")
+    current_file = None
+    crate_stats = {}
+
+    with open(lcov_path) as f:
+        for line in f:
+            line = line.strip()
+            if line.startswith("SF:"):
+                current_file = line[3:]
+                # Extract crate name from path
+                parts = current_file.split("/crates/")
+                if len(parts) > 1:
+                    crate_name = parts[1].split("/")[0]
+                else:
+                    crate_name = "other"
+                if crate_name not in crate_stats:
+                    crate_stats[crate_name] = {"br_total": 0, "br_hit": 0, "ln_total": 0, "ln_hit": 0}
+            elif line.startswith("BRDA:"):
+                parts = line[5:].split(",")
+                if len(parts) >= 4 and crate_name in crate_stats:
+                    crate_stats[crate_name]["br_total"] += 1
+                    if parts[3] not in ("0", "-"):
+                        crate_stats[crate_name]["br_hit"] += 1
+            elif line.startswith("LF:"):
+                if crate_name in crate_stats:
+                    crate_stats[crate_name]["ln_total"] += int(line[3:])
+            elif line.startswith("LH:"):
+                if crate_name in crate_stats:
+                    crate_stats[crate_name]["ln_hit"] += int(line[3:])
+
+    total_br = total_br_hit = total_ln = total_ln_hit = 0
+    for crate_name in sorted(crate_stats):
+        s = crate_stats[crate_name]
+        total_br += s["br_total"]
+        total_br_hit += s["br_hit"]
+        total_ln += s["ln_total"]
+        total_ln_hit += s["ln_hit"]
+        ln_pct = f"{s['ln_hit'] * 100 / s['ln_total']:.1f}" if s["ln_total"] > 0 else "N/A"
+        br_pct = f"{s['br_hit'] * 100 / s['br_total']:.1f}" if s["br_total"] > 0 else "N/A"
+        print(f"  {crate_name:<25s} Lines: {s['ln_hit']:>4d}/{s['ln_total']:<4d} ({ln_pct:>5s}%)  Branches: {s['br_hit']:>4d}/{s['br_total']:<4d} ({br_pct:>5s}%)")
+
+    if total_br > 0:
+        ln_pct = f"{total_ln_hit * 100 / total_ln:.1f}" if total_ln > 0 else "N/A"
+        br_pct = f"{total_br_hit * 100 / total_br:.1f}"
+        print(f"\n  {'TOTAL':<25s} Lines: {total_ln_hit:>4d}/{total_ln:<4d} ({ln_pct:>5s}%)  Branches: {total_br_hit:>4d}/{total_br:<4d} ({br_pct:>5s}%)")
+
+
+@test()
+@angreal.command(name="uat", about="Run end-to-end UAT against a real LLM")
+@angreal.argument(name="model", long="model", help="LLM model name (default: gemma4:31b-cloud)", default="gemma4:31b-cloud")
+@angreal.argument(name="provider", long="provider", help="LLM provider or base URL (default: https://ollama.com/v1)", default="https://ollama.com/v1")
+@angreal.argument(name="api_key_env", long="api-key-env", help="Env var for API key (empty for no auth)", default="OLLAMA_API_KEY")
+@angreal.argument(name="scenario", long="scenario", help="Run only this scenario (name filter)")
+def test_uat(model="gemma4:31b-cloud", provider="https://ollama.com/v1", api_key_env="OLLAMA_API_KEY", scenario=None):
+    """Run end-to-end UAT scenarios against a real LLM.
+
+    Starts an isolated arawn server, drives multi-turn conversations,
+    collects artifacts for judge review.
+
+    Examples:
+        angreal test uat
+        angreal test uat --model llama-3.3-70b --provider groq --api-key-env GROQ_API_KEY
+        angreal test uat --scenario github-monitor
+    """
+    # Apply defaults defensively — angreal may pass None for unspecified
+    # args depending on how the argparse layer is wired, and subprocess
+    # rejects None env values with a confusing TypeError.
+    model = model or "gemma4:31b-cloud"
+    provider = provider or "https://ollama.com/v1"
+    api_key_env = api_key_env if api_key_env is not None else "OLLAMA_API_KEY"
+
+    with Flox("."):
+        env = {
+            **os.environ,
+            "UAT_MODEL": model,
+            "UAT_PROVIDER": provider,
+            "UAT_API_KEY_ENV": api_key_env,
+        }
+        if scenario:
+            env["UAT_SCENARIO"] = scenario
+        # Final guard: drop anything that's still None — subprocess
+        # refuses to inherit a None-valued env entry.
+        env = {k: v for k, v in env.items() if v is not None}
+
+        # Resolve repo root. `__file__` isn't reliable under angreal's
+        # task loader (may be a cached path), so prefer the CWD, which
+        # angreal sets to the project root.
+        repo_root = pathlib.Path.cwd()
+        secrets_file = repo_root / "tests" / "secrets" / "uat.enc.yaml"
+
+        cargo_cmd = ["cargo", "test", "-p", "arawn-tests", "--test", "uat", "--", "--ignored", "--nocapture"]
+
+        if secrets_file.exists():
+            # `sops exec-env` decrypts the file, exports every key as
+            # an env var, then execs the inner command. Failures bubble
+            # up (e.g. SOPS_AGE_KEY_FILE not set, missing recipient).
+            cmd = ["sops", "exec-env", str(secrets_file), " ".join(cargo_cmd)]
+            print(f"  Using sops-encrypted secrets from {secrets_file.relative_to(repo_root)}")
+        else:
+            # No encrypted bundle — fall back to whatever's already in
+            # the shell env. This is the legacy path and is fine for
+            # developers who haven't onboarded to sops yet.
+            cmd = cargo_cmd
+            print(f"  No {secrets_file} — relying on shell env vars")
+
+        subprocess.run(cmd, env=env, check=True)
+
+
+@test()
+@angreal.command(name="secrets-edit", about="Open the UAT secrets bundle in $EDITOR via sops")
+@angreal.argument(name="file", long="file", help="Encrypted file under tests/secrets/", default="uat.enc.yaml")
+def test_secrets_edit(file="uat.enc.yaml"):
+    """Edit a sops-encrypted secrets bundle in place.
+
+    Requires SOPS_AGE_KEY_FILE to point at your AGE private key
+    (typically ~/.config/sops/age/keys.txt). See tests/secrets/README.md
+    for onboarding.
+    """
+    repo_root = pathlib.Path(__file__).resolve().parent.parent
+    target = repo_root / "tests" / "secrets" / file
+    rel = target.relative_to(repo_root)
+
+    # sops 3.10+ `edit` only operates on existing encrypted files. For
+    # a new bundle: write a one-line placeholder at the target path
+    # (which matches .sops.yaml's path_regex so the creation_rule
+    # resolves), then encrypt-in-place. After that the file has sops
+    # metadata and `edit` works for all subsequent updates.
+    if not target.exists():
+        print(f"  Creating new encrypted bundle at {rel}")
+        target.parent.mkdir(parents=True, exist_ok=True)
+        # Stub content the dev should immediately replace via sops edit.
+        target.write_text(
+            "# Replace with real keys. Names should match the env var\n"
+            "# the UAT harness reads (e.g. OLLAMA_API_KEY).\n"
+            "PLACEHOLDER_KEY: \"replace-me\"\n"
+        )
+        subprocess.run(
+            ["sops", "--encrypt", "--in-place", str(rel)],
+            cwd=repo_root,
+            check=True,
+        )
+        print("  Bundle created; opening for edit so you can replace the placeholder.")
+    subprocess.run(["sops", "edit", str(rel)], cwd=repo_root, check=True)
+
+
+@test()
+@angreal.command(name="secrets-updatekeys", about="Re-encrypt UAT secrets to the current .sops.yaml recipient list")
+def test_secrets_updatekeys():
+    """Refresh every sops-encrypted file under tests/secrets/ so it
+    matches the current recipient list in `.sops.yaml`.
+
+    Run this after adding or removing a recipient.
+    """
+    repo_root = pathlib.Path(__file__).resolve().parent.parent
+    secrets_dir = repo_root / "tests" / "secrets"
+    encrypted = list(secrets_dir.glob("*.enc.yaml")) + list(secrets_dir.glob("*.enc.json")) + list(secrets_dir.glob("*.enc.toml"))
+    if not encrypted:
+        print("  No encrypted files under tests/secrets/ — nothing to do.")
+        return
+    for f in encrypted:
+        print(f"  updatekeys {f.relative_to(repo_root)}")
+        subprocess.run(["sops", "updatekeys", "--yes", str(f)], check=True)
+
+
+@test()
+@angreal.command(name="uat-judge", about="Judge UAT results using Claude Code")
+@angreal.argument(name="results", long="results", help="Path to UAT results directory", required=True)
+def test_uat_judge(results=None):
+    """Evaluate UAT scenario artifacts using Claude Code as judge.
+
+    Reads transcript, workspace files, and scenario rubric from the
+    results directory and produces structured evaluation scores.
+
+    Example:
+        angreal test uat-judge --results /tmp/arawn-uat-20260411-103000/
+    """
+    import glob as globmod
+
+    if not os.path.isdir(results):
+        print(f"Error: {results} is not a directory")
+        return
+
+    # Find all scenario/model result dirs
+    scenario_dirs = []
+    for scenario_md in globmod.glob(os.path.join(results, "**/scenario.md"), recursive=True):
+        scenario_dirs.append(os.path.dirname(scenario_md))
+
+    if not scenario_dirs:
+        print(f"No scenario results found in {results}")
+        return
+
+    print(f"Found {len(scenario_dirs)} scenario result(s) to judge\n")
+
+    for result_dir in sorted(scenario_dirs):
+        rel = os.path.relpath(result_dir, results)
+        print(f"  Judging: {rel}")
+
+        prompt = f"""You are evaluating an AI coding assistant's UAT performance.
+
+Read ALL files in {result_dir}/:
+1. scenario.md — the objective and per-turn expectations (your rubric)
+2. transcript.jsonl — the full conversation (one JSON object per turn)
+3. mechanical.json — automated check results
+4. workspace/ — all files the agent created (read each one)
+
+For each turn, score 1-5:
+- Task adherence: Did the agent address what was asked?
+- Tool appropriateness: Did it use the right tools?
+- Output quality: Is the produced artifact useful?
+- Coherence: Does it build on previous turns logically?
+
+Overall:
+- Completion (1-5): Did the agent achieve the stated objective?
+- Artifact quality (1-5): Could a human use the produced files?
+
+Output ONLY valid JSON (no markdown, no explanation):
+{{"turns": [{{"turn": 1, "adherence": N, "tools": N, "quality": N, "coherence": N, "notes": "..."}}], "overall_completion": N, "artifact_quality": N, "pass": true/false, "summary": "one paragraph"}}
+
+Pass criteria: completion >= 3, artifact_quality >= 3, no turn adherence < 2."""
+
+        result = subprocess.run(
+            ["claude", "--print", "-p", prompt, "--allowedTools", "Read,Glob,Grep"],
+            capture_output=True,
+            text=True,
+        )
+
+        if result.returncode == 0 and result.stdout.strip():
+            judge_output = result.stdout.strip()
+            # Write judge result
+            judge_path = os.path.join(result_dir, "judge.json")
+            with open(judge_path, "w") as f:
+                f.write(judge_output)
+            print(f"    Judge output: {judge_path}")
+
+            # Try to parse and summarize (strip markdown fences if present)
+            try:
+                import json
+                cleaned = judge_output
+                if "```json" in cleaned:
+                    cleaned = cleaned.split("```json", 1)[1]
+                if "```" in cleaned:
+                    cleaned = cleaned.split("```", 1)[0]
+                cleaned = cleaned.strip()
+                # Also try extracting just the JSON object if there's preamble text
+                if not cleaned.startswith("{"):
+                    brace_idx = cleaned.find("{")
+                    if brace_idx >= 0:
+                        cleaned = cleaned[brace_idx:]
+                scores = json.loads(cleaned)
+                # Rewrite with clean JSON
+                with open(judge_path, "w") as f:
+                    f.write(json.dumps(scores, indent=2))
+                status = "PASS" if scores.get("pass") else "FAIL"
+                completion = scores.get("overall_completion", "?")
+                quality = scores.get("artifact_quality", "?")
+                summary = scores.get("summary", "")[:100]
+                print(f"    Result: {status} (completion={completion}/5, quality={quality}/5)")
+                print(f"    Summary: {summary}...")
+            except json.JSONDecodeError:
+                print(f"    (could not parse judge output as JSON)")
+        else:
+            print(f"    Judge failed: {result.stderr[:200] if result.stderr else 'no output'}")
+
+        print()
+
+
+def _run_unit():
+    subprocess.run(
+        ["cargo", "test", "--workspace", "--", "--test-threads=1"],
+        check=True,
+    )
+
+

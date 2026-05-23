@@ -1,0 +1,127 @@
+---
+id: 001-credential-storage-and-oauth-ux
+level: adr
+title: "Credential storage and OAuth UX for external integrations"
+number: 1
+short_code: "ARAWN-A-0001"
+created_at: 2026-05-03T12:41:26.990405+00:00
+updated_at: 2026-05-03T12:41:26.990405+00:00
+decision_date: 2026-05-03
+decision_maker: dstorey
+
+tags:
+  - "#adr"
+  - "#phase/decided"
+
+initiative_id: ARAWN-I-0033
+---
+
+# ARAWN-A-0001: Credential storage and OAuth UX for external integrations
+
+## Status
+
+Decided 2026-05-03.
+
+## Context
+
+ARAWN-I-0033 introduces external integrations (Gmail, Calendar, Slack/notifications). Each integration needs:
+
+1. A way to store and refresh OAuth credentials safely.
+2. A user flow for granting access in the first place — the TUI runs in a terminal, the OAuth provider expects a browser callback.
+
+The `arawn-auth` crate already exists with token storage, an OAuth2 helper, and a localhost callback server (used by an earlier provider). The decision below extends that pattern to multiple integrations rather than re-litigating it per service.
+
+## Decision
+
+### 1. Credential storage: reuse `arawn-auth::TokenStore` (ChaCha20Poly1305 + per-datadir master key)
+
+Credentials for external integrations live under `~/.arawn/integrations/<service>/`, encrypted at rest using the same scheme `arawn-auth::TokenStore` already uses for OAuth tokens: ChaCha20Poly1305 AEAD with a per-data-dir 32-byte master key (`.master.key`) generated on first use, atomic writes via rename, 0600 file permissions.
+
+OAuth tokens specifically use `TokenStore` directly (it's designed for `Token` structs). Non-OAuth credentials use a small `CredentialStore<T: Serialize + DeserializeOwned>` wrapper sharing the same encryption — this exists in the codebase but no integration currently uses it (Slack moved to OAuth in T-0204; see decision-4 below).
+
+Rationale:
+- **Matches what already exists.** An earlier draft of this ADR specified `~/.arawn/identity.age` + age encryption, mirroring "the existing secrets.age pattern." On survey, neither identity.age nor secrets.age actually exist in the codebase — the live encryption scheme is ChaCha20Poly1305 in `arawn-auth::TokenStore`. Introducing age would be a parallel system, not a continuation of an existing one.
+- The specific cipher is incidental — "encrypted at rest, not in arawn.toml" is the actual goal, and ChaCha20Poly1305 satisfies that.
+- Filesystem (vs OS keychain) keeps the "your data lives in `~/.arawn`" mental model.
+- Refresh tokens are durable; access tokens are derived/cached in-memory only.
+
+Revisit when: a use case for inspectable credentials emerges (age would let users `age -d` from the command line; ChaCha20Poly1305 is opaque), or multi-user mode ships and per-user keys become necessary.
+
+### 2. OAuth flow: in-TUI, browser callback to localhost
+
+The TUI gets a `/connect <service>` slash-command. On invocation:
+
+1. The agent or TUI calls `start_oauth_flow(service)` RPC on the server.
+2. Server starts a localhost callback listener on a high port and returns the authorization URL.
+3. TUI prints the URL and attempts `open` (macOS) / `xdg-open` (Linux) / equivalent. Falls back to "open this URL in your browser" copy-pasteable text if no opener is available.
+4. User completes the flow in the browser. Provider redirects to the localhost callback with the auth code.
+5. Server exchanges the code for tokens, encrypts and stores them, shuts down the callback listener, sends a `ServerNotice` to the TUI confirming success.
+6. TUI shows the confirmation as a system message and the integration becomes usable.
+
+Rationale:
+- Keeps the TUI as the single user surface. No separate `arawn auth gmail` CLI subcommand to discover.
+- The TUI-as-broker model means an SSH user (no local browser) can still complete the flow by copying the URL to a browser elsewhere — the localhost callback works as long as port forwarding or tunneling is set up. Document this caveat.
+- Reuses the existing `arawn-auth::server` callback handling.
+- A `ServerNotice` post-flow piggybacks on the broadcast plumbing landed in T-0199.
+
+Revisit when: a use case for non-interactive credential setup emerges (e.g. headless automation) — at which point a `arawn auth import-tokens` CLI becomes the right addition, *complementing* the TUI flow rather than replacing it.
+
+### 3. Integration trait shape (for consumers)
+
+Each integration crate exposes:
+
+```rust
+#[async_trait]
+pub trait Integration: Send + Sync {
+    /// Stable service name — "gmail", "google_calendar", "slack".
+    fn name(&self) -> &str;
+
+    /// True if credentials are present and (probably) valid.
+    /// Cheap check — does NOT round-trip to the provider.
+    async fn is_connected(&self) -> bool;
+
+    /// Drive the OAuth flow end-to-end. Used by `/connect <service>`.
+    /// Returns when tokens have been stored or the flow was abandoned.
+    async fn connect(&self, ctx: &dyn ConnectContext) -> Result<(), IntegrationError>;
+
+    /// Drop stored credentials. Used by `/disconnect <service>`.
+    async fn disconnect(&self) -> Result<(), IntegrationError>;
+}
+```
+
+Tools that wrap an integration are normal `arawn-engine::Tool` impls — they receive the engine context, look up the integration by name, and use whatever provider-specific client it exposes. The `Integration` trait is for *connection lifecycle*, not for the tool surface.
+
+Rationale: keeps the agent-facing tool API identical to today. Integrations are a behind-the-scenes concept that tools depend on; the agent never sees them directly.
+
+### 4. Slack: OAuth bot, full read/write (revised 2026-05-04)
+
+**Original decision (now superseded):** Slack via incoming webhook only — outbound notifications, simpler than full OAuth. The framing was "agent can ping me" rather than "manage Slack."
+
+**Revised decision:** Slack via OAuth v2 bot tokens. The agent needs to *read* channel history and search to gain context, not just post — restricting to webhooks artificially confines it to "notification sink" when its real value is being a participant.
+
+Auth shape:
+- `https://slack.com/oauth/v2/authorize` for the consent flow (same `/connect <service>` UX as Google).
+- `https://slack.com/api/oauth.v2.access` for the code exchange.
+- Bot scopes requested: `channels:read`, `channels:history`, `groups:read`, `groups:history`, `im:read`, `im:history`, `mpim:history`, `chat:write`, `reactions:write`, `search:read`, `users:read`.
+- Token model: bot tokens, stored via `TokenStore` keyed `slack`. Slack bot tokens **don't expire** by default — refresh is opt-in per Slack app and not enabled for our reference setup. If a Slack workspace turns on token rotation, we surface the resulting "invalid_auth" through the engine error chain so the user knows to reconnect; we don't currently auto-refresh.
+
+Rationale:
+- Read access is the leverage. "Watch the engineering channel and surface what I missed" is a bigger win than "post to #foo when a workflow finishes."
+- The `NotificationChannel` trait abstraction the original decision implied (one trait, many channels) is overengineering before we know we want a second outbound-only channel. Drop it for now; future Discord etc. follow the Gmail pattern (a full integration with its own scope set).
+- `CredentialStore<T>` (decision-1) stays in the codebase as the right tool for non-OAuth credentials; no current integration uses it.
+
+Revisit when: a real notification-only use case appears (e.g. a webhook-only Discord channel where read access isn't possible). At that point, add a webhook-style integration as a sibling, not as a replacement.
+
+## Consequences
+
+- New crate `arawn-integrations` (or similar) hosts the trait + the OAuth UX plumbing. Each service is a sub-module or sibling crate.
+- `LocalService` gains an `integration_registry: HashMap<String, Arc<dyn Integration>>` field plus `start_oauth_flow(service)` and `disconnect_integration(service)` RPCs.
+- Tools that need an integration (e.g. `gmail_inbox_read`) take `Arc<GmailIntegration>` at construction time, just like memory tools take `Arc<MemoryManager>`.
+- Per-service credential paths under `~/.arawn/integrations/<service>/`. The same per-data-dir master key (`~/.arawn/tokens/.master.key`, generated by `TokenStore::open` on first use) decrypts all of them.
+- Tokens are NOT in `arawn.toml` — keeps the design call from T-0194 ("TOML for config, env vars for secrets, credentials encrypted at rest in `~/.arawn/`") consistent.
+
+## Alternatives considered
+
+- **OS keychain via `keyring` crate.** Better security; per-platform variability and "where did my data go?" UX cost outweigh it for v1.
+- **Out-of-band CLI for OAuth (`arawn auth gmail`).** Simpler to implement (no TUI ↔ server dance) but discoverable only by reading docs. Rejected for v1; can be added later as a complement.
+- **Per-integration trait that subsumes the tool layer.** Considered exposing tools via the integration trait directly. Rejected — integrations and tools have different lifetimes (integrations connect once, tools fire many times) and different audiences (integrations are operator concerns, tools are agent concerns).

@@ -1,0 +1,38 @@
+[package]
+name = "arawn-integrations"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+arawn-auth = { path = "../arawn-auth" }
+arawn-service = { workspace = true }
+arawn-tool = { workspace = true }
+async-trait = { workspace = true }
+base64 = "0.22"
+chacha20poly1305 = "0.10"
+chrono = { workspace = true }
+google-apis-common = { version = "8", default-features = false, features = ["ring"] }
+http-body-util = "0.1"
+google-calendar3 = { version = "7", default-features = false, features = ["ring"] }
+google-drive3 = { version = "7", default-features = false, features = ["ring"] }
+google-gmail1 = { version = "7", default-features = false, features = ["ring"] }
+hyper-rustls = "0.27"
+hyper-util = { version = "0.1", features = ["client", "client-legacy", "tokio"] }
+mime = "0.3"
+rand = "0.8"
+reqwest = { workspace = true }
+rustls = { version = "0.23", default-features = false, features = ["ring"] }
+rvstruct = "0.3"
+serde = { workspace = true }
+serde_json = { workspace = true }
+slack-morphism = { version = "2.20", features = ["hyper"] }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+url = "2"
+jira_v3_openapi = { version = "1.6.1", features = ["all"] }
+jsonwebtoken = "9"
+pulldown-cmark = "0.12"
+
+[dev-dependencies]
+tempfile = { workspace = true }

@@ -1,0 +1,80 @@
+{
+  "$comment": "T-0300 UAT fixture for the daily ceremony. Three workstreams with seeded gmail rows whose source_ts is recent (relative to today=2026-05-16 pinned via MEMORY) — the attention adapter's cursor logic (24h fallback, or since prior daily tablet) will surface them via ProjectionsAttentionSource. Ceremony-side state (rolling todos, weekly priorities, calendar events, placeholder daily tablet) is seeded by uat_daily_seed::apply after this fixture lands; it computes times from chrono::Utc::now() so dates stay synced with the test run.",
+  "workstreams": [
+    {
+      "name": "proj-a",
+      "description": "Postgres migration workstream — active this week.",
+      "tags_ontology": ["postgres", "migration"],
+      "rows": [
+        {
+          "feed_type": "gmail_messages",
+          "source_id": "pa-daily-001",
+          "source_ts": "2026-05-16T08:00:00Z",
+          "sender": "platform-eng@acme.com",
+          "recipients": ["pat@acme.com"],
+          "subject": "Postgres cutover scheduled for tomorrow",
+          "body_text": "Final go/no-go this afternoon. Need the runbook approval ASAP."
+        },
+        {
+          "feed_type": "gmail_messages",
+          "source_id": "pa-daily-002",
+          "source_ts": "2026-05-16T09:15:00Z",
+          "sender": "dba@acme.com",
+          "recipients": ["pat@acme.com"],
+          "subject": "Re: replication lag during dry-run",
+          "body_text": "Lag spiked to 12s on the staging cutover — worth a look before prod."
+        }
+      ]
+    },
+    {
+      "name": "proj-b",
+      "description": "On-call rotation cleanup — active this week.",
+      "tags_ontology": ["on-call", "rotation"],
+      "rows": [
+        {
+          "feed_type": "gmail_messages",
+          "source_id": "pb-daily-001",
+          "source_ts": "2026-05-16T07:30:00Z",
+          "sender": "sre@acme.com",
+          "recipients": ["pat@acme.com"],
+          "subject": "Pager storm post-mortem draft",
+          "body_text": "Draft is in the doc — please review actions assigned to you."
+        },
+        {
+          "feed_type": "gmail_messages",
+          "source_id": "pb-daily-002",
+          "source_ts": "2026-05-16T10:00:00Z",
+          "sender": "ops-bot@acme.com",
+          "recipients": ["pat@acme.com"],
+          "subject": "Weekly on-call coverage gap detected",
+          "body_text": "No primary assigned for Saturday next week."
+        }
+      ]
+    },
+    {
+      "name": "proj-c",
+      "description": "Shared-schema RFC — needs attention this week.",
+      "tags_ontology": ["rfc", "schema"],
+      "rows": [
+        {
+          "feed_type": "gmail_messages",
+          "source_id": "pc-daily-001",
+          "source_ts": "2026-05-16T06:45:00Z",
+          "sender": "rfc-bot@acme.com",
+          "recipients": ["pat@acme.com"],
+          "subject": "Shared schema RFC: new comment from SRE",
+          "body_text": "SRE pushed back on the migration timeline — wants async sync this week."
+        },
+        {
+          "feed_type": "gmail_messages",
+          "source_id": "pc-daily-002",
+          "source_ts": "2026-05-16T11:20:00Z",
+          "sender": "architect@acme.com",
+          "recipients": ["pat@acme.com"],
+          "subject": "RFC-0042 review needed",
+          "body_text": "Can we get a decision by end of week? Blocking proj-c rollout."
+        }
+      ]
+    }
+  ]
+}

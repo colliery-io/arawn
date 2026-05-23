@@ -1,0 +1,28 @@
+---
+source: crates/arawn-tui/src/snapshot_tests.rs
+expression: snap
+---
+  │
+  │
+  │
+  │
+  │
+  │
+  │                               ╭─────────────╮
+  │                               │    arawn    │
+  │                               ╰─────────────╯
+  │
+ ▸│                 Welcome — your personal agentic assistant.
+  │           I watch, check, summarize, and nudge across your tools.
+  │
+  │                 Type / for commands · Tab to toggle sidebar
+  │                        /connect <service> · ↑ recall
+  │
+  │
+  │
+  │
+  │
+  │
+────────────────────────────────────────────────────────────────────────────────
+> Type your message...
+ no model │ no workstream Ready

@@ -1,0 +1,39 @@
+//! Concrete `FeedTemplate` impls organized per provider.
+
+pub mod calendar;
+pub mod confluence;
+pub mod drive;
+pub mod github;
+pub mod gmail;
+pub mod jira;
+pub mod slack;
+pub mod stub;
+
+use std::sync::Arc;
+
+use crate::registry::FeedTemplateRegistry;
+
+/// Build the registry of every template the binary supports. Wire all
+/// new templates here. Order doesn't matter — registry is keyed by
+/// template name.
+pub fn default_registry() -> FeedTemplateRegistry {
+    let mut r = FeedTemplateRegistry::new();
+    r.register(Arc::new(stub::EchoTemplate));
+    r.register(Arc::new(slack::ChannelArchiveTemplate));
+    r.register(Arc::new(slack::DmArchiveTemplate));
+    r.register(Arc::new(slack::MyMentionsTemplate));
+    r.register(Arc::new(calendar::UpcomingArchiveTemplate));
+    r.register(Arc::new(gmail::InboxArchiveTemplate));
+    r.register(Arc::new(gmail::SenderFilterTemplate));
+    r.register(Arc::new(gmail::LabelArchiveTemplate));
+    r.register(Arc::new(drive::FolderSyncTemplate));
+    r.register(Arc::new(drive::RecentTemplate));
+    r.register(Arc::new(confluence::SpaceArchiveTemplate));
+    r.register(Arc::new(jira::ProjectTrackerTemplate));
+    r.register(Arc::new(jira::AssigneeTrackerTemplate));
+    r.register(Arc::new(github::NotificationsTemplate));
+    r.register(Arc::new(github::IssuesAndPrsTemplate));
+    r.register(Arc::new(github::ReviewQueueTemplate));
+    r.register(Arc::new(github::RepoMirrorTemplate));
+    r
+}

@@ -1,0 +1,183 @@
+---
+id: wire-server-host-from-config-or
+level: task
+title: "Wire [server].host from config or drop the unused field"
+short_code: "ARAWN-T-0348"
+created_at: 2026-05-19T12:07:46.161045+00:00
+updated_at: 2026-05-19T15:05:55.321756+00:00
+parent: 
+blocked_by: []
+archived: false
+
+tags:
+  - "#task"
+  - "#bug"
+  - "#phase/completed"
+
+
+exit_criteria_met: false
+initiative_id: NULL
+---
+
+# Wire [server].host from config or drop the unused field
+
+## Objective
+
+Wire `[server].host` from `arawn.toml` through to the bind address (or drop the unused field from `ServerConfig`). Today the config field is parsed but never read at bind time.
+
+## Impact
+
+- **Severity:** P3 — a config knob the docs (and config struct) imply exists but doesn't take effect.
+- **Affected users:** anyone trying to bind arawn to `0.0.0.0` or a specific interface other than `127.0.0.1`.
+
+## Implementation notes
+
+- `ServerConfig` defines `host: String` with default `"127.0.0.1"` at `crates/arawn/src/config.rs:158-178`.
+- `crates/arawn/src/ws_server.rs:261` hardcodes `let addr = format!("127.0.0.1:{port}");` and never reads `config.server.host`.
+- Two valid fixes:
+  - **Wire it:** read `config.server.host` for the bind address. Add a startup warning if `host != "127.0.0.1"` since exposing the WS endpoint over the network has security implications (no auth layer yet).
+  - **Drop it:** remove `host` from `ServerConfig` and any references; document that arawn always binds to loopback.
+- Decision: probably wire it with a warn-on-non-loopback. Useful for running arawn on a homelab box accessed from a phone TUI.
+
+## Acceptance criteria
+
+- [ ] Either `[server].host` is honored at bind time (with a startup warn if non-loopback), or the field is removed.
+- [ ] `docs/src/reference/config-schema.md` updated.
+
+Surfaced during ARAWN-I-0051 doc triple-check.
+
+## Backlog Item Details **[CONDITIONAL: Backlog Item]**
+
+{Delete this section when task is assigned to an initiative}
+
+### Type
+- [ ] Bug - Production issue that needs fixing
+- [ ] Feature - New functionality or enhancement  
+- [ ] Tech Debt - Code improvement or refactoring
+- [ ] Chore - Maintenance or setup work
+
+### Priority
+- [ ] P0 - Critical (blocks users/revenue)
+- [ ] P1 - High (important for user experience)
+- [ ] P2 - Medium (nice to have)
+- [ ] P3 - Low (when time permits)
+
+### Impact Assessment **[CONDITIONAL: Bug]**
+- **Affected Users**: {Number/percentage of users affected}
+- **Reproduction Steps**: 
+  1. {Step 1}
+  2. {Step 2}
+  3. {Step 3}
+- **Expected vs Actual**: {What should happen vs what happens}
+
+### Business Justification **[CONDITIONAL: Feature]**
+- **User Value**: {Why users need this}
+- **Business Value**: {Impact on metrics/revenue}
+- **Effort Estimate**: {Rough size - S/M/L/XL}
+
+### Technical Debt Impact **[CONDITIONAL: Tech Debt]**
+- **Current Problems**: {What's difficult/slow/buggy now}
+- **Benefits of Fixing**: {What improves after refactoring}
+- **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
+
+## Acceptance Criteria
+
+## Acceptance Criteria
+
+## Acceptance Criteria **[REQUIRED]**
+
+- [ ] {Specific, testable requirement 1}
+- [ ] {Specific, testable requirement 2}
+- [ ] {Specific, testable requirement 3}
+
+## Test Cases **[CONDITIONAL: Testing Task]**
+
+{Delete unless this is a testing task}
+
+### Test Case 1: {Test Case Name}
+- **Test ID**: TC-001
+- **Preconditions**: {What must be true before testing}
+- **Steps**: 
+  1. {Step 1}
+  2. {Step 2}
+  3. {Step 3}
+- **Expected Results**: {What should happen}
+- **Actual Results**: {To be filled during execution}
+- **Status**: {Pass/Fail/Blocked}
+
+### Test Case 2: {Test Case Name}
+- **Test ID**: TC-002
+- **Preconditions**: {What must be true before testing}
+- **Steps**: 
+  1. {Step 1}
+  2. {Step 2}
+- **Expected Results**: {What should happen}
+- **Actual Results**: {To be filled during execution}
+- **Status**: {Pass/Fail/Blocked}
+
+## Documentation Sections **[CONDITIONAL: Documentation Task]**
+
+{Delete unless this is a documentation task}
+
+### User Guide Content
+- **Feature Description**: {What this feature does and why it's useful}
+- **Prerequisites**: {What users need before using this feature}
+- **Step-by-Step Instructions**:
+  1. {Step 1 with screenshots/examples}
+  2. {Step 2 with screenshots/examples}
+  3. {Step 3 with screenshots/examples}
+
+### Troubleshooting Guide
+- **Common Issue 1**: {Problem description and solution}
+- **Common Issue 2**: {Problem description and solution}
+- **Error Messages**: {List of error messages and what they mean}
+
+### API Documentation **[CONDITIONAL: API Documentation]**
+- **Endpoint**: {API endpoint description}
+- **Parameters**: {Required and optional parameters}
+- **Example Request**: {Code example}
+- **Example Response**: {Expected response format}
+
+## Implementation Notes **[CONDITIONAL: Technical Task]**
+
+{Keep for technical tasks, delete for non-technical. Technical details, approach, or important considerations}
+
+### Technical Approach
+{How this will be implemented}
+
+### Dependencies
+{Other tasks or systems this depends on}
+
+### Risk Considerations
+{Technical risks and mitigation strategies}
+
+## Status Updates
+
+### 2026-05-19 — `[server].host` wired with non-loopback warning
+
+- `run_server` in `crates/arawn/src/ws_server.rs` takes a new
+  `host: &str` parameter; the bind addr is
+  `format!("{host}:{port}")` instead of the previous hardcoded
+  `127.0.0.1:{port}`.
+- Call site in `crates/arawn/src/main.rs` passes
+  `&config.server.host` so the existing `[server].host` TOML
+  key takes effect.
+- `is_loopback_host(host)` helper recognises `127.0.0.0/8`,
+  `::1`, and the symbolic `localhost`. Anything else triggers
+  a `tracing::warn!` + an `eprintln!` on startup noting arawn
+  has no auth layer and a non-loopback bind requires a
+  trusted network. The bind itself still happens — this is a
+  foot-gun for trusted homelab use, not a hard refusal.
+- **Tests** (in `ws_server::tests`):
+  - `loopback_hosts_are_recognized` — 127.0.0.1, 127.0.0.2,
+    ::1, localhost all true.
+  - `non_loopback_hosts_flagged` — 0.0.0.0, ::, 192.168.1.5,
+    homelab.local, garbage all false.
+- **Doc fix** in `docs/src/reference/config-schema.md`:
+  stripped the "host key exists but is not read" note; added
+  the new `host` row to the `[server]` table with the
+  non-loopback warning behavior documented.
+- `cargo test -p arawn --lib ws_server` 5/0 (3 prior + 2 new).
+  `angreal check workspace` green.

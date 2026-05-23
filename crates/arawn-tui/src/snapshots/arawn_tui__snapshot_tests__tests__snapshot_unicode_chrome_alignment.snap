@@ -1,0 +1,28 @@
+---
+source: crates/arawn-tui/src/snapshot_tests.rs
+expression: snap
+---
+  │❯ search for 日 本 語  docs                                             ┌ Today ───────────────────┐
+  │  ⏵ 🔥 shell · grep -r 日 本 語  docs/ · 0.0s                            │Brief                     │
+  │  ▸ 🔥 shell result                                                   │(no brief yet — run /day t│
+  │    docs/日 本 語 /intro.md                                             │                          │
+  │    docs/日 本 語 /usage.md                                             │                          │
+  │                                                                     │                          │
+  │  ───────────────────────────────────────────────────────────────────│                          │
+  │                                                                     │                          │
+  │                                                                     │                          │
+  │                                                                     │                          │
+ ▸│                                                                     │                          │
+  │                                                                     │                          │
+  │                                                                     │                          │
+  │                                                                     │Action items              │
+  │                                                                     │(no action items)         │
+  │                                                                     │                          │
+  │                                                                     │                          │
+  │                                                                     │                          │
+  │                                                                     │                          │
+  │                                                                     │                          │
+  │                                                                     └──────────────────────────┘
+────────────────────────────────────────────────────────────────────────────────────────────────────
+> Type your message...
+ no model │ no workstream Ready

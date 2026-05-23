@@ -1,0 +1,19 @@
+[package]
+name = "arawn-projections"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+rusqlite = { version = "0.37", features = ["bundled"] }
+sqlite-vec = "0.1.6"
+zerocopy = { version = "0.8", features = ["derive"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt", "rt-multi-thread"] }

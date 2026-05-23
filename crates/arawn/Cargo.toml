@@ -1,0 +1,58 @@
+[package]
+name = "arawn"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "arawn_bin"
+path = "src/lib.rs"
+
+[[bin]]
+name = "arawn"
+path = "src/main.rs"
+
+[dependencies]
+async-trait = { workspace = true }
+arawn-core = { workspace = true }
+arawn-embed = { path = "../arawn-embed" }
+arawn-mcp = { path = "../arawn-mcp" }
+arawn-tui = { path = "../arawn-tui" }
+arawn-auth = { workspace = true }
+arawn-engine = { workspace = true }
+arawn-llm = { workspace = true }
+arawn-memory = { path = "../arawn-memory" }
+arawn-tool = { workspace = true }
+arawn-service = { workspace = true }
+arawn-workflow = { path = "../arawn-workflow" }
+arawn-storage = { workspace = true }
+arawn-integrations = { path = "../arawn-integrations" }
+arawn-feeds = { path = "../arawn-feeds" }
+arawn-projections = { path = "../arawn-projections" }
+arawn-extractor = { path = "../arawn-extractor" }
+arawn-steward = { path = "../arawn-steward" }
+arawn-ceremonies = { path = "../arawn-ceremonies" }
+rusqlite = { version = "0.37", features = ["bundled"] }
+axum = { version = "0.8", features = ["ws"] }
+chrono = { workspace = true }
+chrono-tz = "0.10"
+url = "2"
+futures = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
+anyhow = { workspace = true }
+clap = { version = "4", features = ["derive", "env"] }
+notify = { workspace = true }
+tempfile = { workspace = true }
+tokio = { workspace = true }
+tokio-util = { workspace = true }
+toml = "0.8"
+tokio-stream = "0.1"
+tokio-tungstenite = "0.26"
+futures-util = "0.3"
+tracing = { workspace = true }
+tracing-appender = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+[build-dependencies]
+cloacina-build = "0.6"

@@ -1,0 +1,31 @@
+[package]
+name = "arawn-feeds"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+arawn-core = { workspace = true }
+arawn-integrations = { path = "../arawn-integrations" }
+arawn-storage = { workspace = true }
+arawn-projections = { path = "../arawn-projections" }
+arawn-extractor = { path = "../arawn-extractor" }
+slack-morphism = { version = "2.20", features = ["hyper"] }
+google-drive3 = { version = "7", default-features = false, features = ["ring"] }
+http-body-util = "0.1"
+jira_v3_openapi = { version = "1.6.1", features = ["all"] }
+reqwest = { workspace = true }
+rvstruct = "0.3"
+urlencoding = "2"
+async-trait = { workspace = true }
+chrono = { workspace = true }
+cloacina = { version = "0.6", features = ["sqlite"] }
+rusqlite = { version = "0.37", features = ["bundled"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt"] }

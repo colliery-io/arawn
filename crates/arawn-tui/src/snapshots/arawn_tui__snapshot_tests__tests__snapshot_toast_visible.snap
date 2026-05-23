@@ -1,0 +1,20 @@
+---
+source: crates/arawn-tui/src/snapshot_tests.rs
+expression: snap
+---
+  │                                                                     ┌ Today ───────────────────┐
+  │                           ╭─────────────╮                           │Brief                     │
+  │                           │    arawn    │                           │(no brief yet — run /day t│
+  │                           ╰─────────────╯                           │                          │
+  │                                                                     │                          │
+  │             Welcome — your personal agentic assistant.              │                          │
+ ▸│       I watch, check, summarize, and nudge across your tools.       │                          │
+  │                                                                     │                          │
+  │             Type / for commands · Tab to toggle sidebar             │                          │
+  │                    /connect <service> · ↑ recall                    │                          │
+  │                                                                     │                          │
+  │                                                                     └──────────────────────────┘
+────────────────────────────────────────────────────────────────────────────────────────────────────
+> Type your message...
+ Brief updated — daily tablet for 2026-05-19
+ no model │ no workstream Ready
