@@ -122,10 +122,11 @@ pub trait ToolContext: Send + Sync {
     fn allowed_paths(&self) -> &[PathBuf];
 
     /// Resolve an [`LlmPreference`] against the runtime's LLM pool. Returns
-    /// `None` if no resolver is wired (e.g., test contexts). Tools that
-    /// declare an `llm_preference()` typically call this from inside
-    /// `execute()` and use the resolved client + match quality to decide
-    /// whether to proceed normally or degrade.
+    /// `None` if no resolver is wired (e.g., test contexts). Tools call
+    /// this from inside `execute()` when they have a runtime preference
+    /// (e.g., the agent tool's `llm` param for sub-agent pinning) and use
+    /// the resolved client + match quality to decide whether to proceed
+    /// normally or fall back to the default.
     fn resolve_llm(&self, _preference: &LlmPreference) -> Option<LlmResolution> {
         None
     }

@@ -76,8 +76,9 @@ impl EngineToolContext {
     }
 
     /// Attach an LLM resolver closure (typically wrapping `arawn-bin`'s
-    /// `LlmClientPool`). Tools that declare an `llm_preference()` will be
-    /// resolved through it.
+    /// `LlmClientPool`). Tools that have a runtime LLM preference
+    /// (e.g., the agent tool's `llm` param) call `ctx.resolve_llm(&pref)`
+    /// to look it up at execute time.
     pub fn with_llm_resolver(mut self, resolver: Arc<LlmResolverFn>) -> Self {
         self.llm_resolver = Some(resolver);
         self
