@@ -281,6 +281,90 @@ async fn user_prompt_submit_allowing_hook_does_not_block_turn() {
 }
 
 #[tokio::test]
+async fn permission_request_hook_fires_when_prompting() {
+    // I-0056 T-C: PermissionRequest hook fires before the user is prompted.
+    // Use an Ask rule + a MockModalPrompt that denies, so the prompt is
+    // exercised and the hook should also fire.
+    use arawn_engine::permissions::{MockModalPrompt, PermissionChecker, PermissionRule, RuleKind};
+
+    let tmp = TempDir::new().unwrap();
+    let marker = tmp.path().join("request_fired");
+    let touch_cmd = format!("touch {}", marker.display());
+
+    let config = make_hook_config(serde_json::json!({
+        "PermissionRequest": [{
+            "hooks": [{"type": "command", "command": touch_cmd}]
+        }]
+    }));
+    let runner = Arc::new(HookRunner::new(config, tmp.path().to_path_buf()));
+
+    let checker = Arc::new(
+        PermissionChecker::new(vec![PermissionRule::new(RuleKind::Ask, "think")])
+            .with_prompter(Box::new(MockModalPrompt::always(Some(0)))) // Allow Once
+            .with_hook_runner(Arc::clone(&runner)),
+    );
+
+    let harness = TestHarness::builder()
+        .with_tool(Box::new(ThinkTool))
+        .with_permission_checker(checker)
+        .with_script(vec![
+            MockResponse::tool_call("c1", "think", r#"{"thought":"prompted"}"#),
+            MockResponse::text("ok"),
+        ])
+        .build();
+
+    let _ = harness.run("think").await;
+    assert!(
+        marker.exists(),
+        "expected PermissionRequest hook to have created {}",
+        marker.display()
+    );
+}
+
+#[tokio::test]
+async fn permission_denied_hook_fires_on_deny_rule() {
+    // I-0056 T-C: PermissionDenied hook fires when a deny rule rejects a
+    // tool call. Marker file proves the hook ran.
+    use arawn_engine::permissions::{
+        PermissionChecker, PermissionMode, PermissionRule, RuleKind,
+    };
+
+    let tmp = TempDir::new().unwrap();
+    let marker = tmp.path().join("denied_fired");
+    let touch_cmd = format!("touch {}", marker.display());
+
+    let config = make_hook_config(serde_json::json!({
+        "PermissionDenied": [{
+            "hooks": [{"type": "command", "command": touch_cmd}]
+        }]
+    }));
+    let runner = Arc::new(HookRunner::new(config, tmp.path().to_path_buf()));
+
+    let checker = Arc::new(
+        PermissionChecker::new(vec![PermissionRule::new(RuleKind::Deny, "shell")])
+            .with_mode(PermissionMode::Full)
+            .with_hook_runner(Arc::clone(&runner)),
+    );
+
+    let harness = TestHarness::builder()
+        .with_tool(Box::new(ShellTool::default()))
+        .with_permission_checker(checker)
+        .with_script(vec![
+            MockResponse::tool_call("c1", "shell", r#"{"command":"echo hi"}"#),
+            MockResponse::text("blocked"),
+        ])
+        .build();
+
+    let result = harness.run("run shell").await;
+    assert_eq!(result.final_text(), "blocked");
+    assert!(
+        marker.exists(),
+        "expected PermissionDenied hook to have created {}",
+        marker.display()
+    );
+}
+
+#[tokio::test]
 async fn stop_hook_fires_on_final_response() {
     // I-0056 T-B: Stop hook fires when model returns a final response
     // (no more tool calls). Marker file proves the hook ran.

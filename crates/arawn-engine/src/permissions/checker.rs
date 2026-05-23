@@ -243,6 +243,10 @@ pub struct PermissionChecker {
     /// persistence; the in-memory `audit` field still records
     /// rule/prompt decisions for the `/permissions` UI.
     approval_audit: Option<std::sync::Arc<crate::approval::ApprovalAudit>>,
+    /// Optional hook runner — fires `PermissionRequest` before a modal
+    /// prompt is raised and `PermissionDenied` when a tool call is
+    /// rejected (by rule or by user denial). Both non-blocking in V1.
+    hook_runner: Option<std::sync::Arc<crate::hooks::HookRunner>>,
 }
 
 impl PermissionChecker {
@@ -256,6 +260,7 @@ impl PermissionChecker {
             prompter: None,
             audit: new_shared_audit(),
             approval_audit: None,
+            hook_runner: None,
         }
     }
 
@@ -273,6 +278,17 @@ impl PermissionChecker {
         audit: Option<std::sync::Arc<crate::approval::ApprovalAudit>>,
     ) -> Self {
         self.approval_audit = audit;
+        self
+    }
+
+    /// Wire a hook runner. When set, the checker fires
+    /// `PermissionRequest` before a modal prompt and `PermissionDenied`
+    /// when a tool call is rejected. Both non-blocking.
+    pub fn with_hook_runner(
+        mut self,
+        runner: std::sync::Arc<crate::hooks::HookRunner>,
+    ) -> Self {
+        self.hook_runner = Some(runner);
         self
     }
 
@@ -407,6 +423,8 @@ impl PermissionChecker {
                 },
             );
             self.record_audit(tool_name, tool_input, PermissionDecision::Denied, &reason);
+            self.fire_permission_denied_hook(tool_name, tool_input, &reason.display())
+                .await;
             return (PermissionDecision::Denied, reason);
         }
 
@@ -437,7 +455,12 @@ impl PermissionChecker {
             ),
             PermissionDecision::Denied => unreachable!("handled above"),
             PermissionDecision::Ask => {
+                self.fire_permission_request_hook(tool_name, tool_input).await;
                 let prompted = self.prompt_user(tool_name, tool_input).await;
+                if prompted == PermissionDecision::Denied {
+                    self.fire_permission_denied_hook(tool_name, tool_input, "user prompt")
+                        .await;
+                }
                 (prompted, DecisionReason::Prompted)
             }
             // NoMatch = no explicit rule applies. Fall back to permission mode.
@@ -448,7 +471,16 @@ impl PermissionChecker {
                 let reason = DecisionReason::ModeFallback { mode };
                 let final_decision = match fallback {
                     PermissionDecision::Ask => {
+                        self.fire_permission_request_hook(tool_name, tool_input).await;
                         let prompted = self.prompt_user(tool_name, tool_input).await;
+                        if prompted == PermissionDecision::Denied {
+                            self.fire_permission_denied_hook(
+                                tool_name,
+                                tool_input,
+                                &reason.display(),
+                            )
+                            .await;
+                        }
                         // Prompted from a NoMatch path — still prefer reporting the
                         // fallback mode rather than "user prompt", since a future
                         // re-evaluation against a stable rule set should hit the
@@ -460,6 +492,10 @@ impl PermissionChecker {
                     }
                     other => other,
                 };
+                if final_decision == PermissionDecision::Denied {
+                    self.fire_permission_denied_hook(tool_name, tool_input, &reason.display())
+                        .await;
+                }
                 (final_decision, reason)
             }
         };
@@ -556,6 +592,41 @@ impl PermissionChecker {
     /// Clear all session grants.
     pub fn clear_grants(&self) {
         self.grants.lock().unwrap().clear();
+    }
+
+    /// Fire the `PermissionRequest` hook before a user prompt is raised.
+    /// Non-blocking; result is ignored.
+    async fn fire_permission_request_hook(&self, tool_name: &str, tool_input: &str) {
+        if let Some(ref runner) = self.hook_runner {
+            let parsed: serde_json::Value =
+                serde_json::from_str(tool_input).unwrap_or(serde_json::Value::Null);
+            let hook_input = crate::hooks::HookInput::PermissionRequest {
+                tool_name: tool_name.to_string(),
+                tool_input: parsed,
+                rule: "ask".to_string(),
+            };
+            let _ = runner.run(&hook_input).await;
+        }
+    }
+
+    /// Fire the `PermissionDenied` hook when a tool call is rejected.
+    /// Non-blocking; result is ignored.
+    async fn fire_permission_denied_hook(
+        &self,
+        tool_name: &str,
+        tool_input: &str,
+        reason: &str,
+    ) {
+        if let Some(ref runner) = self.hook_runner {
+            let parsed: serde_json::Value =
+                serde_json::from_str(tool_input).unwrap_or(serde_json::Value::Null);
+            let hook_input = crate::hooks::HookInput::PermissionDenied {
+                tool_name: tool_name.to_string(),
+                tool_input: parsed,
+                reason: reason.to_string(),
+            };
+            let _ = runner.run(&hook_input).await;
+        }
     }
 }
 

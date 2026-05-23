@@ -1,17 +1,17 @@
 ---
-id: t-c-session-permission-compaction-fires
+id: t-c-session-permission-compaction
 level: task
 title: "T-C: Session, permission, compaction fires — 7 events in LocalService + Compactor"
 short_code: "ARAWN-T-0414"
-created_at: 2026-05-23T03:31:02.000000+00:00
-updated_at: 2026-05-23T03:31:02.000000+00:00
+created_at: 2026-05-23T03:31:02+00:00
+updated_at: 2026-05-23T03:57:02.392674+00:00
 parent: ARAWN-I-0056
 blocked_by: [ARAWN-T-0412]
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/active"
 
 
 exit_criteria_met: false
@@ -27,6 +27,8 @@ initiative_id: ARAWN-I-0056
 ## Objective
 
 Add fire sites for the seven session / permission / compaction events. All non-blocking for V1.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
@@ -61,4 +63,39 @@ Add fire sites for the seven session / permission / compaction events. All non-b
 
 ## Status Updates
 
-*To be added during implementation*
+### 2026-05-23 — landed
+
+**Discovery (continuation from T-B):** `PreCompact` and `PostCompact` were also already wired (lines 341 and 369 in `query_engine.rs`). So T-C's real delta covers 5 events.
+
+**Fire sites added:**
+
+| Event | Site | How |
+|---|---|---|
+| `PreCompact` | `query_engine.rs` (already wired) | — |
+| `PostCompact` | `query_engine.rs` (already wired) | — |
+| `SessionStart` | `local_service/sessions.rs::create_session_inner` | Fires after `store.create_session()` succeeds. `source = "startup"` (vs "resume" / "clear" / "compact" — fresh creates are startup). |
+| `PermissionRequest` | `arawn-engine/src/permissions/checker.rs` | Fires in both `Ask` branches (rule-Ask path and NoMatch→Mode::Ask fallback path) before `prompt_user`. |
+| `PermissionDenied` | Same file | Fires on three paths: deny-rule short-circuit, user-prompted Deny response, mode-fallback Denied (Plan mode dangerous tool). |
+| `Notification` | `main.rs` notice-forwarder task | New detached task subscribes to `notice_tx` and fires `Notification` for every broadcast. Decouples from the 30+ notice-send sites — zero changes to existing senders. |
+
+**SessionEnd: deferred from V1.**
+
+arawn sessions are persistent across WebSocket reconnects — clients can list/load/resume sessions hours later. There's no "session end" concept that maps cleanly to Claude Code's transient-process semantics. The closest signals (WS disconnect, session truncate) aren't true endings. Two options for V2: (a) fire `SessionEnd` on WS disconnect with `reason: "client_disconnected"` — but the conversation continues, which feels wrong; (b) add an explicit `/session close` command that archives a session and fires `SessionEnd`. Option (b) is cleaner but requires UX work. Left deferred until a real user need.
+
+**New wiring:**
+- `PermissionChecker` gets `hook_runner: Option<Arc<HookRunner>>` field + `with_hook_runner` builder + two private async helpers (`fire_permission_request_hook`, `fire_permission_denied_hook`).
+- `LocalService::build_engine` chains `.with_hook_runner(...)` into the checker construction when the service has a runner.
+- `LocalService::hook_runner_clone()` — new accessor for the main.rs notice-forwarder task.
+- main.rs Notification-forwarder task spawned right before the existing TodoEvent forwarder; subscribes to `service.subscribe_notices()` and fires `Notification` for every notice.
+
+**New tests (2 in `crates/arawn-tests/tests/hooks.rs`):**
+- `permission_request_hook_fires_when_prompting` — Ask rule + MockModalPrompt(Allow Once); marker file proves the hook fired before the prompt was answered.
+- `permission_denied_hook_fires_on_deny_rule` — Deny rule + Full permission mode; marker file proves the hook fired on the deny short-circuit.
+
+**Coverage tradeoff:** SessionStart and Notification are wired but covered only transitively by the upcoming T-E UAT scenario. Adding inline unit tests for them would require constructing a LocalService in test scope (and a notice-forwarder lifecycle), which is heavier than the V1 budget warrants. The wiring is small and inspectable.
+
+**Validation:**
+- `cargo test --test hooks`: ✅ **11 tests pass** (was 9, +2 new).
+- `cargo check --workspace`: ✅ clean.
+- `cargo build --workspace --release`: ✅ clean (1m 03s).
+- `cargo test --workspace --lib`: ✅ **1,742 tests pass**.

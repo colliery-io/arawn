@@ -1107,6 +1107,33 @@ async fn main() -> Result<()> {
             &mut service,
         ).await;
 
+        // I-0056 T-C: Notification hook forwarder. Subscribes to the
+        // shared `notice_tx` broadcast; for every notice, fires the
+        // `Notification` hook. Non-blocking; runs as a detached task.
+        // Lets users tap into the notice surface without subscribing
+        // to the WS feed.
+        {
+            let hook_runner_for_notices = service.hook_runner_clone();
+            if let Some(hook_runner) = hook_runner_for_notices {
+                let mut notice_rx = service.subscribe_notices();
+                tokio::spawn(async move {
+                    loop {
+                        match notice_rx.recv().await {
+                            Ok(notice) => {
+                                let hook_input = arawn_engine::hooks::HookInput::Notification {
+                                    notification_type: notice.category.clone(),
+                                    message: notice.message.clone(),
+                                };
+                                let _ = hook_runner.run(&hook_input).await;
+                            }
+                            Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => continue,
+                            Err(_) => break,
+                        }
+                    }
+                });
+            }
+        }
+
         // Forward TodoEvents onto the notice broadcast so the TUI and
         // any other notice subscriber can react. Mirrors the ceremony
         // event forwarder pattern (T-0308).

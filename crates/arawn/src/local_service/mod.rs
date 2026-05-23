@@ -147,6 +147,12 @@ impl LocalService {
         self
     }
 
+    /// Get a clone of the optional hook runner. Main uses this to spawn
+    /// the Notification-forwarder task (T-C).
+    pub fn hook_runner_clone(&self) -> Option<Arc<arawn_engine::hooks::HookRunner>> {
+        self.hook_runner.clone()
+    }
+
     /// Sender for todo events — RPC handlers clone this when
     /// constructing a `TodoService` so mutations propagate.
     pub fn todo_event_sender(&self) -> arawn_storage::TodoEventSender {
@@ -549,10 +555,13 @@ impl LocalService {
             if !rules.is_empty() {
                 let prompt = ChannelModalPrompt::new(event_tx.clone(), self.pending_modals.clone());
                 let mode = *self.permission_mode.read().unwrap();
-                let checker = PermissionChecker::new(rules)
+                let mut checker = PermissionChecker::new(rules)
                     .with_mode(mode)
                     .with_prompter(Box::new(prompt))
                     .with_audit(Arc::clone(&self.permission_audit));
+                if let Some(ref hook_runner) = self.hook_runner {
+                    checker = checker.with_hook_runner(Arc::clone(hook_runner));
+                }
                 engine = engine.with_permission_checker(Arc::new(checker));
             }
         }

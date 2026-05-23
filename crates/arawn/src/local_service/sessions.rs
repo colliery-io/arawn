@@ -46,10 +46,26 @@ impl LocalService {
             None => Session::scratch(),
         };
 
-        let store = self.store.lock().unwrap();
-        store.create_session(&session)?;
+        {
+            let store = self.store.lock().unwrap();
+            store.create_session(&session)?;
+        }
 
         info!(session_id = %session.id, "session created via service");
+
+        // SessionStart hook — I-0056 T-C. Source = "startup" since this
+        // is a fresh session create (vs "resume" on load_session). The
+        // hook fires after the session is persisted but before the
+        // response goes back to the caller.
+        if let Some(ref runner) = self.hook_runner {
+            let hook_input = arawn_engine::hooks::HookInput::SessionStart {
+                session_id: session.id.to_string(),
+                cwd: self.data_dir.display().to_string(),
+                source: "startup".to_string(),
+                metadata: std::collections::HashMap::new(),
+            };
+            let _ = runner.run(&hook_input).await;
+        }
 
         Ok(SessionInfo {
             id: session.id,
