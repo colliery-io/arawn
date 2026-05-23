@@ -424,12 +424,24 @@ async fn main() -> Result<()> {
         let registry = Arc::new(arawn_engine::ToolRegistry::new());
         let bg_manager = Arc::new(arawn_engine::BackgroundTaskManager::new());
         let plan_state = Arc::new(arawn_engine::PlanModeState::new());
+
+        // I-0056 T-A: build the hook runner here (after workstream is
+        // known, before tools register). T-D needs it during
+        // register_default_tools to attach to AgentTool + BackgroundTaskManager;
+        // T-A/B/C use the same Arc for LocalService + QueryEngine attachment
+        // further down.
+        let hook_runner = arawn_bin::startup::load_and_build_hook_runner(
+            std::path::Path::new(&data_dir),
+            &workstream.root_dir,
+        );
+
         arawn_bin::startup::register_default_tools(
             &registry,
             &config,
             &data_dir,
             Arc::clone(&bg_manager),
             Arc::clone(&plan_state),
+            Some(Arc::clone(&hook_runner)),
         );
 
         // Active-workstream shim shared between workstream slash
@@ -597,15 +609,6 @@ async fn main() -> Result<()> {
 
         // Wrap MCP manager for sharing with config watcher
         let mcp_manager = Arc::new(tokio::sync::Mutex::new(mcp_manager));
-
-        // I-0056 T-A: load hook config from user settings + project
-        // settings and build a shared HookRunner. Fire sites in T-B/C/D
-        // will exercise it; for now the runner is just attached so every
-        // QueryEngine built by the service inherits it.
-        let hook_runner = arawn_bin::startup::load_and_build_hook_runner(
-            std::path::Path::new(&data_dir),
-            &workstream.root_dir,
-        );
 
         let mut service = arawn_bin::LocalService::new(
             store,

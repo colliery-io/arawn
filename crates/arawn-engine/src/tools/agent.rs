@@ -29,6 +29,11 @@ pub struct AgentTool {
     registry: Arc<ToolRegistry>,
     definitions: Vec<AgentDefinition>,
     bg_manager: Option<Arc<BackgroundTaskManager>>,
+    /// Optional hook runner — fires `SubagentStart` before the inner
+    /// engine runs and `SubagentStop` after. Both non-blocking. Held
+    /// behind a `RwLock` for interior mutability so startup can attach
+    /// the runner after the tool is registered in the shared registry.
+    hook_runner: std::sync::RwLock<Option<Arc<crate::hooks::HookRunner>>>,
 }
 
 impl AgentTool {
@@ -37,6 +42,7 @@ impl AgentTool {
             registry,
             definitions,
             bg_manager: None,
+            hook_runner: std::sync::RwLock::new(None),
         }
     }
 
@@ -44,6 +50,17 @@ impl AgentTool {
     pub fn with_background_manager(mut self, mgr: Arc<BackgroundTaskManager>) -> Self {
         self.bg_manager = Some(mgr);
         self
+    }
+
+    /// Attach a hook runner via interior mutability. Idempotent — the
+    /// most recent call wins. Called from startup after the tool is in
+    /// the registry, since `Box<dyn Tool>` doesn't allow `&mut` access.
+    pub fn set_hook_runner(&self, runner: Arc<crate::hooks::HookRunner>) {
+        *self.hook_runner.write().unwrap() = Some(runner);
+    }
+
+    fn hook_runner_clone(&self) -> Option<Arc<crate::hooks::HookRunner>> {
+        self.hook_runner.read().unwrap().clone()
     }
 }
 
@@ -214,9 +231,23 @@ impl Tool for AgentTool {
         let compactor = Compactor::new(llm.clone(), model.clone());
         let mut engine =
             QueryEngine::with_config(llm.clone(), agent_registry, config).with_compactor(compactor);
+        if let Some(runner) = self.hook_runner_clone() {
+            engine = engine.with_hook_runner(runner);
+        }
 
         // Create child context with incremented depth
         let child_ctx = ctx.for_sub_agent();
+
+        // I-0056 T-D: SubagentStart hook fires before the inner engine runs.
+        // Non-blocking; result is logged on block but not honored (V1).
+        if let Some(runner) = self.hook_runner_clone() {
+            let hook_input = crate::hooks::HookInput::SubagentStart {
+                agent_name: definition.name.clone(),
+                agent_type: subagent_type.to_string(),
+                prompt: prompt.to_string(),
+            };
+            let _ = runner.run(&hook_input).await;
+        }
 
         // Background execution: spawn and return immediately
         if run_in_background {
@@ -245,6 +276,8 @@ impl Tool for AgentTool {
             );
 
             let task_id_clone = task_id.clone();
+            let agent_name = definition.name.clone();
+            let hook_runner_for_bg = self.hook_runner_clone();
             tokio::spawn(async move {
                 let mut session = Session::new(child_ctx.session_id());
                 session.add_message(Message::User {
@@ -252,6 +285,20 @@ impl Tool for AgentTool {
                 });
 
                 let result = engine.run(&mut session, &*child_ctx).await;
+
+                let result_summary = match &result {
+                    Ok(response) => truncate_for_hook(response),
+                    Err(e) => truncate_for_hook(&format!("Error: {e}")),
+                };
+
+                // SubagentStop hook fires regardless of success/failure.
+                if let Some(ref runner) = hook_runner_for_bg {
+                    let hook_input = crate::hooks::HookInput::SubagentStop {
+                        agent_name: agent_name.clone(),
+                        result_summary: result_summary.clone(),
+                    };
+                    let _ = runner.run(&hook_input).await;
+                }
 
                 match result {
                     Ok(response) => {
@@ -285,10 +332,15 @@ impl Tool for AgentTool {
             content: prompt.to_string(),
         });
 
-        match engine.run(&mut session, &*child_ctx).await {
+        let run_result = engine.run(&mut session, &*child_ctx).await;
+
+        // Build the result summary BEFORE consuming `run_result` so we can
+        // fire SubagentStop on every exit path.
+        let (subagent_result, summary): (Result<ToolOutput, ToolError>, String) = match run_result {
             Ok(response) => {
                 info!(description, agent_type = %definition.name, "sub-agent completed");
-                Ok(ToolOutput::success(response))
+                let s = truncate_for_hook(&response);
+                (Ok(ToolOutput::success(response)), s)
             }
             Err(EngineError::MaxIterations { .. }) => {
                 let last_text = session
@@ -304,11 +356,43 @@ impl Tool for AgentTool {
                     .unwrap_or_else(|| {
                         "Sub-agent reached maximum turns without a final response.".to_string()
                     });
-                Ok(ToolOutput::success(last_text))
+                let s = truncate_for_hook(&last_text);
+                (Ok(ToolOutput::success(last_text)), s)
             }
-            Err(e) => Err(ToolError::ExecutionFailed(format!("sub-agent error: {e}"))),
+            Err(e) => {
+                let s = truncate_for_hook(&format!("Error: {e}"));
+                (
+                    Err(ToolError::ExecutionFailed(format!("sub-agent error: {e}"))),
+                    s,
+                )
+            }
+        };
+
+        // SubagentStop hook fires regardless of success/failure path.
+        if let Some(runner) = self.hook_runner_clone() {
+            let hook_input = crate::hooks::HookInput::SubagentStop {
+                agent_name: definition.name.clone(),
+                result_summary: summary,
+            };
+            let _ = runner.run(&hook_input).await;
         }
+
+        subagent_result
     }
+}
+
+/// Truncate a result-summary string to ~500 bytes for hook payloads.
+/// UTF-8-safe: walks back to a char boundary.
+fn truncate_for_hook(s: &str) -> String {
+    const MAX: usize = 500;
+    if s.len() <= MAX {
+        return s.to_string();
+    }
+    let mut cut = MAX;
+    while cut > 0 && !s.is_char_boundary(cut) {
+        cut -= 1;
+    }
+    format!("{}…[truncated]", &s[..cut])
 }
 
 #[cfg(test)]

@@ -38,12 +38,20 @@ pub fn register_default_tools(
     data_dir: &str,
     bg_manager: Arc<arawn_engine::BackgroundTaskManager>,
     plan_state: Arc<arawn_engine::PlanModeState>,
+    hook_runner: Option<Arc<arawn_engine::hooks::HookRunner>>,
 ) {
     use arawn_engine::{
         AgentTool, AskUserTool, EnterPlanModeTool, ExitPlanModeTool, FileEditTool, FileReadTool,
         FileWriteTool, GlobTool, GrepTool, ShellTool, SleepTool, TaskGetTool, TaskListTool,
         TaskOutputTool, TaskStopTool, ThinkTool, WebFetchTool, WebSearchTool,
     };
+
+    // I-0056 T-D: attach hook runner to subsystems that fire lifecycle
+    // events via internal sites (BackgroundTaskManager for TaskCreated/
+    // Completed; AgentTool for SubagentStart/Stop).
+    if let Some(ref runner) = hook_runner {
+        bg_manager.set_hook_runner(Arc::clone(runner));
+    }
 
     registry.register(Box::new(ThinkTool));
     registry.register(Box::new(
@@ -61,10 +69,12 @@ pub fn register_default_tools(
 
     let agents_dir = std::path::PathBuf::from(data_dir).join("agents");
     let agent_defs = arawn_engine::agent_defs::get_all_agents(Some(&agents_dir));
-    registry.register(Box::new(
-        AgentTool::new(Arc::clone(registry), agent_defs)
-            .with_background_manager(Arc::clone(&bg_manager)),
-    ));
+    let agent_tool =
+        AgentTool::new(Arc::clone(registry), agent_defs).with_background_manager(Arc::clone(&bg_manager));
+    if let Some(ref runner) = hook_runner {
+        agent_tool.set_hook_runner(Arc::clone(runner));
+    }
+    registry.register(Box::new(agent_tool));
 
     registry.register(Box::new(SleepTool));
     registry.register(Box::new(TaskListTool::new(Arc::clone(&bg_manager))));

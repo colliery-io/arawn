@@ -169,6 +169,10 @@ pub struct BackgroundTaskManager {
     tasks: RwLock<HashMap<String, BackgroundTask>>,
     /// Completed task notifications waiting to be drained by the engine.
     notifications: Mutex<Vec<TaskNotification>>,
+    /// Optional hook runner — fires `TaskCreated` on `register` and
+    /// `TaskCompleted` on `complete`. Both non-blocking; hook calls run
+    /// in detached tokio tasks since `register` / `complete` are sync.
+    hook_runner: RwLock<Option<Arc<crate::hooks::HookRunner>>>,
 }
 
 impl BackgroundTaskManager {
@@ -176,7 +180,15 @@ impl BackgroundTaskManager {
         Self {
             tasks: RwLock::new(HashMap::new()),
             notifications: Mutex::new(Vec::new()),
+            hook_runner: RwLock::new(None),
         }
+    }
+
+    /// Attach a hook runner. Subsequent `register`/`complete` calls will
+    /// fire `TaskCreated`/`TaskCompleted` hooks. Idempotent — the manager
+    /// stores at most one runner.
+    pub fn set_hook_runner(&self, runner: Arc<crate::hooks::HookRunner>) {
+        *self.hook_runner.write().unwrap() = Some(runner);
     }
 
     /// Register a new background task. Returns the task ID and a shared output
@@ -205,7 +217,22 @@ impl BackgroundTaskManager {
         };
 
         info!(task_id = %id, "background task registered");
+        let description_for_hook = task.description.clone();
         self.tasks.write().unwrap().insert(id.clone(), task);
+
+        // I-0056 T-D: TaskCreated hook fires in a detached task since
+        // register() is sync. Non-blocking.
+        if let Some(runner) = self.hook_runner.read().unwrap().clone() {
+            let task_id_for_hook = id.clone();
+            tokio::spawn(async move {
+                let hook_input = crate::hooks::HookInput::TaskCreated {
+                    task_id: task_id_for_hook,
+                    description: description_for_hook,
+                };
+                let _ = runner.run(&hook_input).await;
+            });
+        }
+
         (id, output)
     }
 
@@ -245,10 +272,25 @@ impl BackgroundTaskManager {
                     task_id: task_id.to_string(),
                     description: task.description.clone(),
                     status: task.status.label().to_string(),
-                    summary,
+                    summary: summary.clone(),
                 };
                 info!(task_id, status = %notification.status, "background task completed");
                 self.notifications.lock().unwrap().push(notification);
+
+                // I-0056 T-D: TaskCompleted hook fires in a detached task
+                // since complete() is sync. Non-blocking. `result` carries
+                // the human-readable summary (status + description).
+                if let Some(runner) = self.hook_runner.read().unwrap().clone() {
+                    let task_id_for_hook = task_id.to_string();
+                    let summary_for_hook = summary;
+                    tokio::spawn(async move {
+                        let hook_input = crate::hooks::HookInput::TaskCompleted {
+                            task_id: task_id_for_hook,
+                            result: summary_for_hook,
+                        };
+                        let _ = runner.run(&hook_input).await;
+                    });
+                }
             }
         } else {
             warn!(task_id, "complete called for unknown task");
@@ -519,5 +561,69 @@ mod tests {
 
         let notifs = mgr.drain_notifications();
         assert_eq!(notifs.len(), 1);
+    }
+
+    /// I-0056 T-D: TaskCreated + TaskCompleted hooks fire from BackgroundTaskManager.
+    /// Uses a marker-file pattern: the hook touches a sentinel; we assert the
+    /// file exists after a short wait (hook fires from a detached tokio task).
+    #[tokio::test]
+    async fn task_created_and_completed_hooks_fire() {
+        use crate::hooks::{HookConfig, HookRunner};
+        use tempfile::TempDir;
+
+        let tmp = TempDir::new().unwrap();
+        let created_marker = tmp.path().join("created");
+        let completed_marker = tmp.path().join("completed");
+
+        let config_json = serde_json::json!({
+            "TaskCreated": [{
+                "hooks": [{"type": "command", "command": format!("touch {}", created_marker.display())}]
+            }],
+            "TaskCompleted": [{
+                "hooks": [{"type": "command", "command": format!("touch {}", completed_marker.display())}]
+            }],
+        });
+        let config: HookConfig = serde_json::from_value(config_json).unwrap();
+        let runner = Arc::new(HookRunner::new(config, tmp.path().to_path_buf()));
+
+        let mgr = BackgroundTaskManager::new();
+        mgr.set_hook_runner(Arc::clone(&runner));
+
+        let token = CancellationToken::new();
+        let handle = tokio::spawn(async {});
+        let (id, _output) = mgr.register(
+            BackgroundTaskKind::Shell {
+                command: "echo hi".into(),
+            },
+            "echo hi".into(),
+            handle,
+            token,
+        );
+
+        // TaskCreated fires from a detached task — wait briefly for it to run.
+        for _ in 0..20 {
+            if created_marker.exists() {
+                break;
+            }
+            sleep(Duration::from_millis(25)).await;
+        }
+        assert!(
+            created_marker.exists(),
+            "expected TaskCreated hook to have touched {}",
+            created_marker.display()
+        );
+
+        mgr.complete(&id, BackgroundTaskStatus::Completed { exit_code: Some(0) });
+        for _ in 0..20 {
+            if completed_marker.exists() {
+                break;
+            }
+            sleep(Duration::from_millis(25)).await;
+        }
+        assert!(
+            completed_marker.exists(),
+            "expected TaskCompleted hook to have touched {}",
+            completed_marker.display()
+        );
     }
 }
