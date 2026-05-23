@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-23T05:10:38Z | 411 files | Python, Rust
+> Generated: 2026-05-23T17:10:30Z | 410 files | Python, Rust
 
 ## Project Structure
 
@@ -94,7 +94,6 @@
 │   │       ├── agent_defs.rs
 │   │       ├── approval/
 │   │       │   ├── allowlist.rs
-│   │       │   ├── audit.rs
 │   │       │   └── mod.rs
 │   │       ├── background.rs
 │   │       ├── ceremony_sources.rs
@@ -2682,30 +2681,9 @@
 -  `allowlist_grant_is_specific_to_shape` function L214-221 — `()` — module lives in memory.
 -  `allowlist_clear_drops_entries` function L224-231 — `()` — module lives in memory.
 
-#### crates/arawn-engine/src/approval/audit.rs
-
-- pub `ApprovalTier` enum L21-27 — `AllowOnce | AllowForSession | Deny | FailedClosed` — Tier the user picked at the prompt (or the system picked on their
-- pub `as_str` function L30-37 — `(self) -> &'static str` — decisions were made, not a source of truth for future allows.
-- pub `AuditRecord` struct L42-56 — `{ ts: u64, session_id: Option<String>, tool_name: String, shape: String, tier: A...` — One row of the audit log.
-- pub `ApprovalAudit` enum L64-67 — `Enabled | Disabled` — Append-only on-disk audit log.
-- pub `open` function L72-88 — `(data_dir: Option<&Path>) -> Self` — Open / create the audit log at `<data_dir>/approval-audit.jsonl`.
-- pub `record` function L92-102 — `(&self, record: AuditRecord)` — Append one record.
-- pub `read_all` function L107-119 — `(&self) -> Vec<AuditRecord>` — Read the entire log back as a `Vec<AuditRecord>`.
-- pub `now_secs` function L135-140 — `() -> u64` — Build the current unix epoch seconds.
--  `ApprovalTier` type L29-38 — `= ApprovalTier` — decisions were made, not a source of truth for future allows.
--  `ApprovalAudit` type L69-120 — `= ApprovalAudit` — decisions were made, not a source of truth for future allows.
--  `append_record` function L122-131 — `(path: &Path, record: &AuditRecord) -> std::io::Result<()>` — decisions were made, not a source of truth for future allows.
--  `tests` module L143-195 — `-` — decisions were made, not a source of truth for future allows.
--  `record` function L147-156 — `(tier: ApprovalTier) -> AuditRecord` — decisions were made, not a source of truth for future allows.
--  `disabled_is_silent` function L159-163 — `()` — decisions were made, not a source of truth for future allows.
--  `enabled_round_trips_records` function L166-177 — `()` — decisions were made, not a source of truth for future allows.
--  `append_creates_parent_dir` function L180-186 — `()` — decisions were made, not a source of truth for future allows.
--  `audit_handles_missing_file` function L189-194 — `()` — decisions were made, not a source of truth for future allows.
-
 #### crates/arawn-engine/src/approval/mod.rs
 
-- pub `allowlist` module L17 — `-` — This module composes with `permissions/`.
-- pub `audit` module L18 — `-` — at session boundaries.
+- pub `allowlist` module L18 — `-` — This module composes with `permissions/`.
 
 ### crates/arawn-engine/src/hooks
 
@@ -2905,74 +2883,69 @@
 - pub `DecisionReason` enum L156-168 — `MatchedRule | SessionGrant | ModeFallback | Prompted | NoChecker` — Why a permission decision came out the way it did.
 - pub `display` function L172-192 — `(&self) -> String` — One-line human-readable form for error messages and audit display.
 - pub `AuditEntry` struct L197-203 — `{ timestamp: std::time::SystemTime, tool_name: String, tool_input_summary: Strin...` — One row of the audit log — what was checked, when, and how it was decided.
-- pub `PermissionSnapshot` struct L209-215 — `{ mode: PermissionMode, allow_rules: Vec<String>, deny_rules: Vec<String>, ask_r...` — Read-only snapshot of the current permission state — exposed via the
-- pub `SharedAudit` type L225 — `= std::sync::Arc<std::sync::Mutex<std::collections::VecDeque<AuditEntry>>>` — Shareable audit buffer — held in an Arc so callers (e.g.
-- pub `new_shared_audit` function L228-232 — `() -> SharedAudit` — Construct a fresh shared audit buffer with the standard cap.
-- pub `PermissionChecker` struct L236-250 — `{ rules: std::sync::RwLock<Vec<PermissionRule>>, mode: std::sync::RwLock<Permiss...` — The central permission checker.
-- pub `new` function L255-265 — `(rules: Vec<PermissionRule>) -> Self` — Create a new permission checker with the given rules and default mode.
-- pub `with_audit` function L270-273 — `(mut self, audit: SharedAudit) -> Self` — Wire an externally-owned audit buffer so per-message checkers can
-- pub `with_approval_audit` function L276-282 — `( mut self, audit: Option<std::sync::Arc<crate::approval::ApprovalAudit>>, ) -> ...` — Wire the on-disk approval audit log.
-- pub `with_hook_runner` function L287-293 — `( mut self, runner: std::sync::Arc<crate::hooks::HookRunner>, ) -> Self` — Wire a hook runner.
-- pub `snapshot` function L298-325 — `(&self) -> PermissionSnapshot` — Capture a read-only snapshot of the current rules, mode, and recent
-- pub `with_mode` function L350-356 — `(self, mode: PermissionMode) -> Self` — Set the permission mode (Default, AcceptEdits, BypassPermissions).
-- pub `with_prompter` function L359-362 — `(mut self, prompter: Box<dyn ModalPrompt>) -> Self` — Set the modal prompter for interactive permission requests.
-- pub `update_rules` function L365-368 — `(&self, rules: Vec<PermissionRule>)` — Hot-reload: replace the current rules with new ones.
-- pub `update_mode` function L371-374 — `(&self, mode: PermissionMode)` — Hot-reload: update the permission mode.
-- pub `check` function L387-396 — `( &self, tool_name: &str, tool_input: &str, category: PermissionCategory, ) -> P...` — Check if a tool call is permitted.
-- pub `check_explained` function L401-504 — `( &self, tool_name: &str, tool_input: &str, category: PermissionCategory, ) -> (...` — Same as [`check`] but also returns *why* the decision was made.
-- pub `mode` function L588-590 — `(&self) -> PermissionMode` — Get the current permission mode.
-- pub `clear_grants` function L593-595 — `(&self)` — Clear all session grants.
+- pub `SharedAudit` type L213 — `= std::sync::Arc<std::sync::Mutex<std::collections::VecDeque<AuditEntry>>>` — Shareable audit buffer — held in an Arc so callers (e.g.
+- pub `new_shared_audit` function L216-220 — `() -> SharedAudit` — Construct a fresh shared audit buffer with the standard cap.
+- pub `PermissionChecker` struct L224-234 — `{ rules: std::sync::RwLock<Vec<PermissionRule>>, mode: std::sync::RwLock<Permiss...` — The central permission checker.
+- pub `new` function L239-248 — `(rules: Vec<PermissionRule>) -> Self` — Create a new permission checker with the given rules and default mode.
+- pub `with_audit` function L253-256 — `(mut self, audit: SharedAudit) -> Self` — Wire an externally-owned audit buffer so per-message checkers can
+- pub `with_hook_runner` function L261-267 — `( mut self, runner: std::sync::Arc<crate::hooks::HookRunner>, ) -> Self` — Wire a hook runner.
+- pub `with_mode` function L292-298 — `(self, mode: PermissionMode) -> Self` — Set the permission mode (Default, AcceptEdits, BypassPermissions).
+- pub `with_prompter` function L301-304 — `(mut self, prompter: Box<dyn ModalPrompt>) -> Self` — Set the modal prompter for interactive permission requests.
+- pub `update_rules` function L307-310 — `(&self, rules: Vec<PermissionRule>)` — Hot-reload: replace the current rules with new ones.
+- pub `update_mode` function L313-316 — `(&self, mode: PermissionMode)` — Hot-reload: update the permission mode.
+- pub `check` function L329-338 — `( &self, tool_name: &str, tool_input: &str, category: PermissionCategory, ) -> P...` — Check if a tool call is permitted.
+- pub `check_explained` function L343-446 — `( &self, tool_name: &str, tool_input: &str, category: PermissionCategory, ) -> (...` — Same as [`check`] but also returns *why* the decision was made.
+- pub `mode` function L492-494 — `(&self) -> PermissionMode` — Get the current permission mode.
+- pub `clear_grants` function L497-499 — `(&self)` — Clear all session grants.
 -  `PermissionMode` type L30-62 — `= PermissionMode`
 -  `ModalOption` type L79-91 — `= ModalOption`
 -  `SessionGrants` type L126-150 — `= SessionGrants`
 -  `DecisionReason` type L170-193 — `= DecisionReason`
--  `AUDIT_CAP` variable L220 — `: usize` — Cap on the audit ring buffer — newest decisions evict oldest.
--  `PermissionChecker` type L252-631 — `= PermissionChecker`
--  `record_audit` function L327-347 — `( &self, tool_name: &str, tool_input: &str, decision: PermissionDecision, reason...`
--  `prompt_user` function L507-566 — `(&self, tool_name: &str, tool_input: &str) -> PermissionDecision` — Prompt the user for permission (or deny if no prompter is configured).
--  `record_approval` function L568-585 — `( &self, tool_name: &str, shape: &crate::approval::ArgShape, tier: crate::approv...`
--  `fire_permission_request_hook` function L599-610 — `(&self, tool_name: &str, tool_input: &str)` — Fire the `PermissionRequest` hook before a user prompt is raised.
--  `fire_permission_denied_hook` function L614-630 — `( &self, tool_name: &str, tool_input: &str, reason: &str, )` — Fire the `PermissionDenied` hook when a tool call is rejected.
--  `truncate_input` function L633-641 — `(input: &str, max_len: usize) -> String`
--  `tests` module L644-1234 — `-`
--  `MockPrompter` struct L649-651 — `{ index: Option<usize> }` — Mock prompter that returns a fixed index (0=AllowOnce, 1=AllowAlways, 2/None=Deny).
--  `MockPrompter` type L653-663 — `= MockPrompter`
--  `allow_once` function L654-656 — `() -> Self`
--  `allow_always` function L657-659 — `() -> Self`
--  `deny` function L660-662 — `() -> Self`
--  `MockPrompter` type L666-670 — `impl ModalPrompt for MockPrompter`
--  `prompt` function L667-669 — `(&self, _request: ModalRequest) -> Option<usize>`
--  `allowed_by_rule` function L673-682 — `()`
--  `denied_by_rule` function L685-694 — `()`
--  `ask_without_prompter_denies` function L697-704 — `()`
--  `ask_with_allow_once` function L707-717 — `()`
--  `ask_with_allow_always_grants_session` function L720-736 — `()`
--  `ask_with_deny` function L739-748 — `()`
--  `default_mode_allows_read_only` function L751-778 — `()`
--  `default_mode_asks_for_writes` function L781-800 — `()`
--  `accept_edits_mode_allows_file_ops` function L803-829 — `()`
--  `bypass_mode_allows_everything` function L832-858 — `()`
--  `explicit_rules_override_mode` function L861-869 — `()`
--  `deny_rules_override_session_grants` function L872-883 — `()`
--  `session_grant_works_for_non_denied_tools` function L886-897 — `()`
--  `shape_aware_grant_only_allows_matching_shape` function L900-931 — `()`
--  `fail_closed_when_no_prompter` function L934-944 — `()`
--  `clear_grants_resets` function L947-956 — `()`
--  `truncate_input_short` function L959-961 — `()`
--  `truncate_input_long` function L964-968 — `()`
--  `truncate_input_multibyte_utf8_no_panic` function L971-979 — `()`
--  `update_rules_hot_reload` function L982-1003 — `()`
--  `update_mode_hot_reload` function L1006-1028 — `()`
--  `permission_mode_serde` function L1034-1046 — `()`
--  `permission_mode_legacy_strings_fail` function L1049-1057 — `()`
--  `plan_mode_allows_read_only` function L1060-1086 — `()`
--  `plan_mode_denies_writes` function L1089-1113 — `()`
--  `plan_mode_allows_plan_meta_tools` function L1116-1130 — `()`
--  `check_explained_attributes_deny_to_matching_rule` function L1137-1156 — `()`
--  `check_explained_attributes_no_match_to_mode_fallback` function L1159-1171 — `()`
--  `audit_log_records_decisions_in_order_and_caps` function L1174-1190 — `()`
--  `shared_audit_aggregates_across_checkers` function L1193-1213 — `()`
--  `snapshot_partitions_rules_by_kind_with_display_specs` function L1216-1233 — `()`
+-  `AUDIT_CAP` variable L208 — `: usize` — Cap on the audit ring buffer — newest decisions evict oldest.
+-  `PermissionChecker` type L236-535 — `= PermissionChecker`
+-  `record_audit` function L269-289 — `( &self, tool_name: &str, tool_input: &str, decision: PermissionDecision, reason...`
+-  `prompt_user` function L449-489 — `(&self, tool_name: &str, tool_input: &str) -> PermissionDecision` — Prompt the user for permission (or deny if no prompter is configured).
+-  `fire_permission_request_hook` function L503-514 — `(&self, tool_name: &str, tool_input: &str)` — Fire the `PermissionRequest` hook before a user prompt is raised.
+-  `fire_permission_denied_hook` function L518-534 — `( &self, tool_name: &str, tool_input: &str, reason: &str, )` — Fire the `PermissionDenied` hook when a tool call is rejected.
+-  `truncate_input` function L537-545 — `(input: &str, max_len: usize) -> String`
+-  `tests` module L548-1117 — `-`
+-  `MockPrompter` struct L553-555 — `{ index: Option<usize> }` — Mock prompter that returns a fixed index (0=AllowOnce, 1=AllowAlways, 2/None=Deny).
+-  `MockPrompter` type L557-567 — `= MockPrompter`
+-  `allow_once` function L558-560 — `() -> Self`
+-  `allow_always` function L561-563 — `() -> Self`
+-  `deny` function L564-566 — `() -> Self`
+-  `MockPrompter` type L570-574 — `impl ModalPrompt for MockPrompter`
+-  `prompt` function L571-573 — `(&self, _request: ModalRequest) -> Option<usize>`
+-  `allowed_by_rule` function L577-586 — `()`
+-  `denied_by_rule` function L589-598 — `()`
+-  `ask_without_prompter_denies` function L601-608 — `()`
+-  `ask_with_allow_once` function L611-621 — `()`
+-  `ask_with_allow_always_grants_session` function L624-640 — `()`
+-  `ask_with_deny` function L643-652 — `()`
+-  `default_mode_allows_read_only` function L655-682 — `()`
+-  `default_mode_asks_for_writes` function L685-704 — `()`
+-  `accept_edits_mode_allows_file_ops` function L707-733 — `()`
+-  `bypass_mode_allows_everything` function L736-762 — `()`
+-  `explicit_rules_override_mode` function L765-773 — `()`
+-  `deny_rules_override_session_grants` function L776-787 — `()`
+-  `session_grant_works_for_non_denied_tools` function L790-801 — `()`
+-  `shape_aware_grant_only_allows_matching_shape` function L804-835 — `()`
+-  `fail_closed_when_no_prompter` function L838-848 — `()`
+-  `clear_grants_resets` function L851-860 — `()`
+-  `truncate_input_short` function L863-865 — `()`
+-  `truncate_input_long` function L868-872 — `()`
+-  `truncate_input_multibyte_utf8_no_panic` function L875-883 — `()`
+-  `update_rules_hot_reload` function L886-907 — `()`
+-  `update_mode_hot_reload` function L910-932 — `()`
+-  `permission_mode_serde` function L938-950 — `()`
+-  `permission_mode_legacy_strings_fail` function L953-961 — `()`
+-  `plan_mode_allows_read_only` function L964-990 — `()`
+-  `plan_mode_denies_writes` function L993-1017 — `()`
+-  `plan_mode_allows_plan_meta_tools` function L1020-1034 — `()`
+-  `check_explained_attributes_deny_to_matching_rule` function L1041-1060 — `()`
+-  `check_explained_attributes_no_match_to_mode_fallback` function L1063-1075 — `()`
+-  `audit_log_records_decisions_in_order_and_caps` function L1078-1096 — `()`
+-  `shared_audit_aggregates_across_checkers` function L1099-1116 — `()`
 
 #### crates/arawn-engine/src/permissions/config.rs
 
@@ -2981,20 +2954,17 @@
 - pub `merge` function L53-61 — `(self, other: PermissionConfig) -> PermissionConfig` — Merge two configs: `self` is higher priority (e.g., user-level),
 - pub `PermissionsSection` struct L67-70 — `{ permissions: PermissionConfig }` — Wrapper for the permissions section in the top-level config.
 - pub `load_permissions_from_file` function L74-92 — `(path: &std::path::Path) -> PermissionConfig` — Load permission config from a TOML file, returning defaults if the file
-- pub `load_merged_permissions` function L97-110 — `( user_config_path: Option<&std::path::Path>, project_config_path: Option<&std::...` — Load and merge permission configs from user-level and project-level files.
 -  `PermissionConfig` type L29-62 — `= PermissionConfig`
--  `tests` module L113-327 — `-`
--  `empty_config_produces_no_rules` function L119-122 — `()`
--  `config_parses_rules` function L125-145 — `()`
--  `merge_preserves_priority` function L148-175 — `()`
--  `load_from_toml_file` function L178-195 — `()`
--  `load_autonomy_from_toml` function L199-215 — `()`
--  `load_autonomy_absent_is_none` function L218-227 — `()`
--  `load_autonomy_invalid_value_falls_back_to_default` function L230-244 — `()`
--  `load_missing_file_returns_defaults` function L247-252 — `()`
--  `load_file_without_permissions_section` function L255-268 — `()`
--  `load_merged_both_sources` function L271-307 — `()`
--  `load_merged_missing_user_config` function L310-326 — `()`
+-  `tests` module L95-252 — `-`
+-  `empty_config_produces_no_rules` function L101-104 — `()`
+-  `config_parses_rules` function L107-127 — `()`
+-  `merge_preserves_priority` function L130-157 — `()`
+-  `load_from_toml_file` function L160-177 — `()`
+-  `load_autonomy_from_toml` function L181-197 — `()`
+-  `load_autonomy_absent_is_none` function L200-209 — `()`
+-  `load_autonomy_invalid_value_falls_back_to_default` function L212-226 — `()`
+-  `load_missing_file_returns_defaults` function L229-234 — `()`
+-  `load_file_without_permissions_section` function L237-250 — `()`
 
 #### crates/arawn-engine/src/permissions/mod.rs
 
@@ -3005,24 +2975,17 @@
 
 #### crates/arawn-engine/src/permissions/prompt.rs
 
-- pub `CliModalPrompt` struct L9 — `-` — CLI-based modal prompt.
-- pub `new` function L18-20 — `() -> Self`
-- pub `MockModalPrompt` struct L71-74 — `{ responses: std::sync::Mutex<std::collections::VecDeque<Option<usize>>>, defaul...` — Mock modal prompt for tests.
-- pub `always` function L78-83 — `(index: Option<usize>) -> Self` — Create a mock that always returns the given index.
-- pub `with_responses` function L86-91 — `(responses: Vec<Option<usize>>, default: Option<usize>) -> Self` — Create a mock with queued responses.
--  `CliModalPrompt` type L11-15 — `impl Default for CliModalPrompt`
--  `default` function L12-14 — `() -> Self`
--  `CliModalPrompt` type L17-21 — `= CliModalPrompt`
--  `CliModalPrompt` type L24-68 — `impl ModalPrompt for CliModalPrompt`
--  `prompt` function L25-67 — `(&self, request: ModalRequest) -> Option<usize>`
--  `MockModalPrompt` type L76-92 — `= MockModalPrompt`
--  `MockModalPrompt` type L95-100 — `impl ModalPrompt for MockModalPrompt`
--  `prompt` function L96-99 — `(&self, _request: ModalRequest) -> Option<usize>`
--  `tests` module L103-141 — `-`
--  `test_request` function L107-117 — `() -> ModalRequest`
--  `mock_always_returns_index` function L120-124 — `()`
--  `mock_always_cancel` function L127-130 — `()`
--  `mock_queued_responses` function L133-140 — `()`
+- pub `MockModalPrompt` struct L13-16 — `{ responses: std::sync::Mutex<std::collections::VecDeque<Option<usize>>>, defaul...` — Mock modal prompt for tests.
+- pub `always` function L20-25 — `(index: Option<usize>) -> Self` — Create a mock that always returns the given index.
+- pub `with_responses` function L28-33 — `(responses: Vec<Option<usize>>, default: Option<usize>) -> Self` — Create a mock with queued responses.
+-  `MockModalPrompt` type L18-34 — `= MockModalPrompt` — removed in the YAGNI pass — nothing constructed it.
+-  `MockModalPrompt` type L37-42 — `impl ModalPrompt for MockModalPrompt` — removed in the YAGNI pass — nothing constructed it.
+-  `prompt` function L38-41 — `(&self, _request: ModalRequest) -> Option<usize>` — removed in the YAGNI pass — nothing constructed it.
+-  `tests` module L45-83 — `-` — removed in the YAGNI pass — nothing constructed it.
+-  `test_request` function L49-59 — `() -> ModalRequest` — removed in the YAGNI pass — nothing constructed it.
+-  `mock_always_returns_index` function L62-66 — `()` — removed in the YAGNI pass — nothing constructed it.
+-  `mock_always_cancel` function L69-72 — `()` — removed in the YAGNI pass — nothing constructed it.
+-  `mock_queued_responses` function L75-82 — `()` — removed in the YAGNI pass — nothing constructed it.
 
 #### crates/arawn-engine/src/permissions/rules.rs
 
@@ -8543,19 +8506,19 @@
 
 #### crates/arawn-steward/src/lib.rs
 
-- pub `accept` module L22 — `-` — The steward continuously re-reads each workstream's KB and applies
-- pub `cursor` module L23 — `-` — T-0259 wires the /workstream refine / journal / rollback commands.
-- pub `doorwatch` module L24 — `-` — T-0259 wires the /workstream refine / journal / rollback commands.
-- pub `dust` module L25 — `-` — T-0259 wires the /workstream refine / journal / rollback commands.
-- pub `error` module L26 — `-` — T-0259 wires the /workstream refine / journal / rollback commands.
-- pub `journal` module L27 — `-` — T-0259 wires the /workstream refine / journal / rollback commands.
-- pub `llm_text` module L28 — `-` — T-0259 wires the /workstream refine / journal / rollback commands.
-- pub `map` module L29 — `-` — T-0259 wires the /workstream refine / journal / rollback commands.
-- pub `reshelve` module L30 — `-` — T-0259 wires the /workstream refine / journal / rollback commands.
-- pub `rollback` module L31 — `-` — T-0259 wires the /workstream refine / journal / rollback commands.
-- pub `runner` module L32 — `-` — T-0259 wires the /workstream refine / journal / rollback commands.
-- pub `subroutine` module L33 — `-` — T-0259 wires the /workstream refine / journal / rollback commands.
-- pub `tag_promoter` module L34 — `-` — T-0259 wires the /workstream refine / journal / rollback commands.
+- pub `accept` module L21 — `-` — The steward continuously re-reads each workstream's KB and applies
+- pub `cursor` module L22 — `-` — accept / rollback tool surfaces.
+- pub `doorwatch` module L23 — `-` — accept / rollback tool surfaces.
+- pub `dust` module L24 — `-` — accept / rollback tool surfaces.
+- pub `error` module L25 — `-` — accept / rollback tool surfaces.
+- pub `journal` module L26 — `-` — accept / rollback tool surfaces.
+- pub `llm_text` module L27 — `-` — accept / rollback tool surfaces.
+- pub `map` module L28 — `-` — accept / rollback tool surfaces.
+- pub `reshelve` module L29 — `-` — accept / rollback tool surfaces.
+- pub `rollback` module L30 — `-` — accept / rollback tool surfaces.
+- pub `runner` module L31 — `-` — accept / rollback tool surfaces.
+- pub `subroutine` module L32 — `-` — accept / rollback tool surfaces.
+- pub `tag_promoter` module L33 — `-` — accept / rollback tool surfaces.
 
 #### crates/arawn-steward/src/llm_text.rs
 
@@ -8678,18 +8641,18 @@
 
 #### crates/arawn-steward/src/subroutine.rs
 
-- pub `SubroutineCtx` struct L22-33 — `{ workstream: Workstream, memory: Arc<MemoryManager>, journal: Arc<JournalGate>,...` — Per-pass context handed to a subroutine.
-- pub `SubroutineOutcome` struct L39-44 — `{ actions_journaled: usize, mutations_applied: usize, proposals_recorded: usize,...` — What a subroutine did.
-- pub `StewardSubroutine` interface L47-62 — `{ fn name(), fn is_mutating(), fn run() }` — subroutine on this pass.
-- pub `IdentitySubroutine` struct L67-69 — `{ name: String }` — No-op subroutine that writes exactly one journal row per invocation
-- pub `new` function L78-80 — `(name: impl Into<String>) -> Self` — subroutine on this pass.
--  `IdentitySubroutine` type L71-75 — `impl Default for IdentitySubroutine` — subroutine on this pass.
--  `default` function L72-74 — `() -> Self` — subroutine on this pass.
--  `IdentitySubroutine` type L77-81 — `= IdentitySubroutine` — subroutine on this pass.
--  `IdentitySubroutine` type L84-120 — `impl StewardSubroutine for IdentitySubroutine` — subroutine on this pass.
--  `name` function L85-87 — `(&self) -> &str` — subroutine on this pass.
--  `is_mutating` function L89-94 — `(&self) -> bool` — subroutine on this pass.
--  `run` function L96-119 — `(&self, ctx: &SubroutineCtx) -> Result<SubroutineOutcome, StewardError>` — subroutine on this pass.
+- pub `SubroutineCtx` struct L23-34 — `{ workstream: Workstream, memory: Arc<MemoryManager>, journal: Arc<JournalGate>,...` — Per-pass context handed to a subroutine.
+- pub `SubroutineOutcome` struct L40-45 — `{ actions_journaled: usize, mutations_applied: usize, proposals_recorded: usize,...` — What a subroutine did.
+- pub `StewardSubroutine` interface L48-63 — `{ fn name(), fn is_mutating(), fn run() }` — subroutine on this pass.
+- pub `new` function L82-84 — `(name: impl Into<String>) -> Self` — subroutine on this pass.
+-  `IdentitySubroutine` struct L69-71 — `{ name: String }` — No-op subroutine for test scaffolding — writes one journal row per
+-  `IdentitySubroutine` type L74-78 — `impl Default for IdentitySubroutine` — subroutine on this pass.
+-  `default` function L75-77 — `() -> Self` — subroutine on this pass.
+-  `IdentitySubroutine` type L81-85 — `= IdentitySubroutine` — subroutine on this pass.
+-  `IdentitySubroutine` type L89-125 — `impl StewardSubroutine for IdentitySubroutine` — subroutine on this pass.
+-  `name` function L90-92 — `(&self) -> &str` — subroutine on this pass.
+-  `is_mutating` function L94-99 — `(&self) -> bool` — subroutine on this pass.
+-  `run` function L101-124 — `(&self, ctx: &SubroutineCtx) -> Result<SubroutineOutcome, StewardError>` — subroutine on this pass.
 
 #### crates/arawn-steward/src/tag_promoter.rs
 
