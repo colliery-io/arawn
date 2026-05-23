@@ -4,14 +4,14 @@ level: task
 title: "T-D: Subagent + task lifecycle fires — SubagentStart/Stop, TaskCreated/Completed"
 short_code: "ARAWN-T-0415"
 created_at: 2026-05-23T03:31:03+00:00
-updated_at: 2026-05-23T04:06:19.355686+00:00
+updated_at: 2026-05-23T04:19:49.282864+00:00
 parent: ARAWN-I-0056
 blocked_by: [ARAWN-T-0412]
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -27,6 +27,8 @@ initiative_id: ARAWN-I-0056
 ## Objective
 
 Add fire sites for the four subagent + background-task lifecycle events. All non-blocking.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

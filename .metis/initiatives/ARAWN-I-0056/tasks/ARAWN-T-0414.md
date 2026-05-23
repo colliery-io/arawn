@@ -4,14 +4,14 @@ level: task
 title: "T-C: Session, permission, compaction fires — 7 events in LocalService + Compactor"
 short_code: "ARAWN-T-0414"
 created_at: 2026-05-23T03:31:02+00:00
-updated_at: 2026-05-23T03:57:02.392674+00:00
+updated_at: 2026-05-23T04:06:11.616872+00:00
 parent: ARAWN-I-0056
 blocked_by: [ARAWN-T-0412]
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -27,6 +27,8 @@ initiative_id: ARAWN-I-0056
 ## Objective
 
 Add fire sites for the seven session / permission / compaction events. All non-blocking for V1.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

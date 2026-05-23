@@ -23,6 +23,7 @@
 - [Author a workflow by hand](./how-to/author-a-workflow-by-hand.md)
 - [Debug OAuth failures](./how-to/debug-oauth-failures.md)
 - [Recover from LLM warmup failure](./how-to/recover-from-llm-warmup-failure.md)
+- [Configure hooks](./how-to/configure-hooks.md)
 
 # Reference
 

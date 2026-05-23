@@ -4,14 +4,14 @@ level: task
 title: "T-B: Tool & turn lifecycle fires — PreToolUse, PostToolUse, PostToolUseFailure, Stop, StopFailure, UserPromptSubmit"
 short_code: "ARAWN-T-0413"
 created_at: 2026-05-23T03:31:01+00:00
-updated_at: 2026-05-23T03:50:56.601371+00:00
+updated_at: 2026-05-23T03:56:54.655983+00:00
 parent: ARAWN-I-0056
 blocked_by: [ARAWN-T-0412]
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -27,6 +27,8 @@ initiative_id: ARAWN-I-0056
 ## Objective
 
 Add `.fire_hook(...)` call sites in `QueryEngine` for the six tool-and-turn lifecycle events. Implement block semantics for the two events where it's meaningful.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

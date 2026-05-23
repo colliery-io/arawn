@@ -11,10 +11,10 @@ archived: false
 
 tags:
   - "#initiative"
-  - "#phase/discovery"
+  - "#phase/completed"
 
 
-exit_criteria_met: false
+exit_criteria_met: true
 estimated_complexity: M
 initiative_id: hooks-integration-wire-the-engine
 ---
