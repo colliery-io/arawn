@@ -242,16 +242,14 @@ impl LlmClientPool {
         join_all(probes).await
     }
 
-    /// Resolve an [`LlmPreference`] against the pool. Always succeeds — the
-    /// engine LLM is the unconditional fallback.
+    /// Resolve an [`LlmPreference`] against the pool. Always succeeds —
+    /// the engine LLM is the unconditional fallback.
     ///
-    /// Resolution order:
-    /// 1. Named match — `preference.named` is set and exists in the pool → `Exact`.
-    /// 2. Provider+model match — both fields set and an entry matches → `Exact`.
-    /// 3. Capability match — first entry satisfying `preference.capabilities` → `Capability`.
-    /// 4. Fallback — engine default → `Fallback`.
+    /// Resolution: named match (`preference.named` exists in the pool) →
+    /// `Exact`; otherwise engine default → `Fallback`. Provider+model
+    /// matching and capability-based matching were removed in the YAGNI
+    /// pass — production never constructed anything beyond `named`.
     pub fn resolve(&self, preference: &LlmPreference) -> LlmResolution {
-        // 1. Named match
         if let Some(name) = &preference.named
             && let (Some(client), Some(cfg)) = (self.clients.get(name), self.configs.get(name))
         {
@@ -261,50 +259,6 @@ impl LlmClientPool {
                 match_quality: MatchQuality::Exact,
             };
         }
-
-        // 2. Provider+model exact match (both fields required for "exact")
-        if let (Some(provider), Some(model)) = (&preference.provider, &preference.model) {
-            for (name, cfg) in &self.configs {
-                if cfg.provider == *provider && cfg.model == *model {
-                    return LlmResolution {
-                        client: Arc::clone(&self.clients[name]),
-                        info: cfg.to_resolved_info(),
-                        match_quality: MatchQuality::Exact,
-                    };
-                }
-            }
-        }
-
-        // 3. Capability match (also catches provider-only or model-only requests)
-        let want_provider = preference.provider.as_deref();
-        let want_model = preference.model.as_deref();
-        let need_caps =
-            !preference.capabilities.is_empty() || want_provider.is_some() || want_model.is_some();
-        if need_caps {
-            for (name, cfg) in &self.configs {
-                let info = cfg.to_resolved_info();
-                if let Some(p) = want_provider
-                    && cfg.provider != p
-                {
-                    continue;
-                }
-                if let Some(m) = want_model
-                    && cfg.model != m
-                {
-                    continue;
-                }
-                if !preference.capabilities.satisfied_by(&info) {
-                    continue;
-                }
-                return LlmResolution {
-                    client: Arc::clone(&self.clients[name]),
-                    info,
-                    match_quality: MatchQuality::Capability,
-                };
-            }
-        }
-
-        // 4. Fallback to engine
         LlmResolution {
             client: self.engine(),
             info: self.engine_config().to_resolved_info(),
@@ -500,78 +454,6 @@ model = "openai/gpt-oss-20b"
     }
 
     #[test]
-    fn resolve_provider_model_exact() {
-        let config = cfg_from_toml(
-            r#"
-[llm.default]
-provider = "groq"
-model = "openai/gpt-oss-20b"
-
-[llm.fast]
-provider = "groq"
-model = "llama-3.3-70b-versatile"
-"#,
-        );
-        let pool = LlmClientPool::from_config(&config, mock_builder).unwrap();
-        let res = pool.resolve(&LlmPreference::provider_model(
-            "groq",
-            "llama-3.3-70b-versatile",
-        ));
-        assert_eq!(res.match_quality, MatchQuality::Exact);
-        assert_eq!(res.info.model, "llama-3.3-70b-versatile");
-    }
-
-    #[test]
-    fn resolve_capability_match_when_no_exact() {
-        let config = cfg_from_toml(
-            r#"
-[llm.default]
-provider = "groq"
-model = "openai/gpt-oss-20b"
-context_window = 128000
-
-[llm.huge]
-provider = "anthropic"
-model = "claude-sonnet-4"
-context_window = 200000
-"#,
-        );
-        let pool = LlmClientPool::from_config(&config, mock_builder).unwrap();
-        let pref = LlmPreference {
-            capabilities: arawn_tool::LlmCapabilities {
-                min_context_window: Some(150_000),
-                ..Default::default()
-            },
-            ..Default::default()
-        };
-        let res = pool.resolve(&pref);
-        assert_eq!(res.match_quality, MatchQuality::Capability);
-        assert_eq!(res.info.model, "claude-sonnet-4");
-    }
-
-    #[test]
-    fn resolve_capability_too_strict_falls_back() {
-        let config = cfg_from_toml(
-            r#"
-[llm.default]
-provider = "groq"
-model = "openai/gpt-oss-20b"
-context_window = 128000
-"#,
-        );
-        let pool = LlmClientPool::from_config(&config, mock_builder).unwrap();
-        let pref = LlmPreference {
-            capabilities: arawn_tool::LlmCapabilities {
-                min_context_window: Some(1_000_000),
-                ..Default::default()
-            },
-            ..Default::default()
-        };
-        let res = pool.resolve(&pref);
-        assert_eq!(res.match_quality, MatchQuality::Fallback);
-    }
-
-    #[test]
     fn resolve_empty_preference_is_fallback() {
         let config = cfg_from_toml(
             r#"
@@ -581,31 +463,8 @@ model = "openai/gpt-oss-20b"
 "#,
         );
         let pool = LlmClientPool::from_config(&config, mock_builder).unwrap();
-        let res = pool.resolve(&LlmPreference::any());
+        let res = pool.resolve(&LlmPreference::default());
         assert_eq!(res.match_quality, MatchQuality::Fallback);
-    }
-
-    #[test]
-    fn resolve_provider_only_uses_capability_path() {
-        let config = cfg_from_toml(
-            r#"
-[llm.default]
-provider = "groq"
-model = "openai/gpt-oss-20b"
-
-[llm.anth]
-provider = "anthropic"
-model = "claude-sonnet-4"
-"#,
-        );
-        let pool = LlmClientPool::from_config(&config, mock_builder).unwrap();
-        let pref = LlmPreference {
-            provider: Some("anthropic".into()),
-            ..Default::default()
-        };
-        let res = pool.resolve(&pref);
-        assert_eq!(res.match_quality, MatchQuality::Capability);
-        assert_eq!(res.info.provider, "anthropic");
     }
 
     #[test]

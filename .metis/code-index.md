@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-23T02:37:22Z | 413 files | Python, Rust
+> Generated: 2026-05-23T03:02:46Z | 410 files | Python, Rust
 
 ## Project Structure
 
@@ -322,10 +322,7 @@
 │   │       ├── client.rs
 │   │       ├── error.rs
 │   │       ├── gate/
-│   │       │   ├── mod.rs
-│   │       │   ├── policy.rs
-│   │       │   └── signals.rs
-│   │       ├── groq.rs
+│   │       │   └── mod.rs
 │   │       ├── hints.rs
 │   │       ├── lib.rs
 │   │       ├── mock.rs
@@ -2245,36 +2242,36 @@
 
 - pub `EngineToolContext` struct L22-46 — `{ session_id: Uuid, working_dir: PathBuf, workstream_name: String, allowed_paths...` — Concrete execution context provided to tools within the engine.
 - pub `new` function L62-76 — `(workstream: &Workstream, session_id: Uuid) -> Self`
-- pub `with_llm_resolver` function L81-84 — `(mut self, resolver: Arc<LlmResolverFn>) -> Self` — Attach an LLM resolver closure (typically wrapping `arawn-bin`'s
-- pub `with_allowed_paths` function L87-90 — `(mut self, paths: Vec<PathBuf>) -> Self` — Set allowed paths that file tools can access outside the sandbox.
-- pub `with_llm` function L93-97 — `(mut self, llm: Arc<dyn LlmClient>, model: String) -> Self` — Attach an LLM client and model for tools that need sub-queries.
-- pub `with_model_limits` function L100-103 — `(mut self, limits: ModelLimits) -> Self` — Set model limits for sub-agent compaction.
-- pub `with_data_dir` function L106-109 — `(mut self, dir: PathBuf) -> Self` — Set data directory for persisting large tool results.
+- pub `with_llm_resolver` function L82-85 — `(mut self, resolver: Arc<LlmResolverFn>) -> Self` — Attach an LLM resolver closure (typically wrapping `arawn-bin`'s
+- pub `with_allowed_paths` function L88-91 — `(mut self, paths: Vec<PathBuf>) -> Self` — Set allowed paths that file tools can access outside the sandbox.
+- pub `with_llm` function L94-98 — `(mut self, llm: Arc<dyn LlmClient>, model: String) -> Self` — Attach an LLM client and model for tools that need sub-queries.
+- pub `with_model_limits` function L101-104 — `(mut self, limits: ModelLimits) -> Self` — Set model limits for sub-agent compaction.
+- pub `with_data_dir` function L107-110 — `(mut self, dir: PathBuf) -> Self` — Set data directory for persisting large tool results.
 -  `MAX_AGENT_DEPTH` variable L13 — `: u8` — Maximum sub-agent nesting depth.
 -  `EngineToolContext` type L48-59 — `= EngineToolContext`
 -  `fmt` function L49-58 — `(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result`
--  `EngineToolContext` type L61-110 — `= EngineToolContext`
--  `EngineToolContext` type L116-211 — `= EngineToolContext`
--  `working_dir` function L117-119 — `(&self) -> &Path`
--  `session_id` function L121-123 — `(&self) -> Uuid`
--  `validate_path` function L125-148 — `(&self, path_str: &str) -> Result<PathBuf, String>`
--  `is_allowed_path` function L150-159 — `(&self, path: &Path) -> bool`
--  `mark_file_read` function L161-163 — `(&self, path: PathBuf)`
--  `has_read_file` function L165-167 — `(&self, path: &Path) -> bool`
--  `llm` function L169-171 — `(&self) -> Option<&Arc<dyn LlmClient>>`
--  `model` function L173-175 — `(&self) -> Option<&str>`
--  `model_limits` function L177-179 — `(&self) -> &ModelLimits`
--  `data_dir` function L181-183 — `(&self) -> Option<&PathBuf>`
--  `agent_depth` function L185-187 — `(&self) -> u8`
--  `can_spawn_agent` function L189-191 — `(&self) -> bool`
--  `for_sub_agent` function L193-198 — `(&self) -> Box<dyn arawn_tool::ToolContext>`
--  `workstream_name` function L200-202 — `(&self) -> &str`
--  `allowed_paths` function L204-206 — `(&self) -> &[PathBuf]`
--  `resolve_llm` function L208-210 — `(&self, preference: &LlmPreference) -> Option<LlmResolution>`
--  `tests` module L214-237 — `-`
--  `context_from_workstream` function L219-227 — `()`
--  `context_is_clone` function L230-236 — `()`
--  `normalize_path_components` function L240-253 — `(path: &Path) -> PathBuf` — Normalize a path by resolving .
+-  `EngineToolContext` type L61-111 — `= EngineToolContext`
+-  `EngineToolContext` type L117-212 — `= EngineToolContext`
+-  `working_dir` function L118-120 — `(&self) -> &Path`
+-  `session_id` function L122-124 — `(&self) -> Uuid`
+-  `validate_path` function L126-149 — `(&self, path_str: &str) -> Result<PathBuf, String>`
+-  `is_allowed_path` function L151-160 — `(&self, path: &Path) -> bool`
+-  `mark_file_read` function L162-164 — `(&self, path: PathBuf)`
+-  `has_read_file` function L166-168 — `(&self, path: &Path) -> bool`
+-  `llm` function L170-172 — `(&self) -> Option<&Arc<dyn LlmClient>>`
+-  `model` function L174-176 — `(&self) -> Option<&str>`
+-  `model_limits` function L178-180 — `(&self) -> &ModelLimits`
+-  `data_dir` function L182-184 — `(&self) -> Option<&PathBuf>`
+-  `agent_depth` function L186-188 — `(&self) -> u8`
+-  `can_spawn_agent` function L190-192 — `(&self) -> bool`
+-  `for_sub_agent` function L194-199 — `(&self) -> Box<dyn arawn_tool::ToolContext>`
+-  `workstream_name` function L201-203 — `(&self) -> &str`
+-  `allowed_paths` function L205-207 — `(&self) -> &[PathBuf]`
+-  `resolve_llm` function L209-211 — `(&self, preference: &LlmPreference) -> Option<LlmResolution>`
+-  `tests` module L215-238 — `-`
+-  `context_from_workstream` function L220-228 — `()`
+-  `context_is_clone` function L231-237 — `()`
+-  `normalize_path_components` function L241-254 — `(path: &Path) -> PathBuf` — Normalize a path by resolving .
 
 #### crates/arawn-engine/src/diff.rs
 
@@ -7314,43 +7311,6 @@
 -  `config_error_user_message` function L328-331 — `()`
 -  `stream_error_user_message` function L334-337 — `()`
 
-#### crates/arawn-llm/src/groq.rs
-
-- pub `GroqClient` struct L17-20 — `{ http: Client, api_key: String }` — Groq LLM client using the OpenAI-compatible API.
-- pub `new` function L23-28 — `(api_key: impl Into<String>) -> Self`
-- pub `from_env` function L30-34 — `() -> Result<Self, LlmError>`
--  `GROQ_API_URL` variable L14 — `: &str`
--  `GroqClient` type L22-56 — `= GroqClient`
--  `build_request_body` function L36-55 — `(&self, request: &ChatRequest) -> Value`
--  `GroqClient` type L59-90 — `impl LlmClient for GroqClient`
--  `stream` function L60-89 — `( &self, request: ChatRequest, ) -> Result<Pin<Box<dyn Stream<Item = Result<Chat...`
--  `SseParser` struct L95-99 — `{ inner: S, buffer: String, pending_chunks: Vec<ChatChunk> }` — Parses Server-Sent Events from a byte stream into ChatChunks.
--  `new` function L102-108 — `(inner: S) -> Self`
--  `Item` type L115 — `= Result<ChatChunk, LlmError>`
--  `poll_next` function L117-158 — `( mut self: Pin<&mut Self>, cx: &mut std::task::Context<'_>, ) -> std::task::Pol...`
--  `try_parse_buffer` function L162-214 — `(&mut self) -> Option<Result<ChatChunk, LlmError>>`
--  `parse_groq_chunk` function L217-265 — `(chunk: &GroqStreamChunk) -> Vec<ChatChunk>`
--  `build_messages` function L269-334 — `(system_prompt: &Option<String>, messages: &[ChatMessage]) -> Vec<Value>`
--  `build_tools` function L336-350 — `(tools: &[ToolDefinition]) -> Vec<Value>`
--  `GroqErrorResponse` struct L355-357 — `{ error: Option<GroqError> }`
--  `GroqError` struct L360-364 — `{ message: String, code: Option<String> }`
--  `GroqStreamChunk` struct L369-374 — `{ choices: Vec<GroqChoice>, usage: Option<GroqUsage> }`
--  `GroqChoice` struct L377-379 — `{ delta: GroqDelta }`
--  `GroqDelta` struct L382-385 — `{ content: Option<String>, tool_calls: Option<Vec<GroqToolCall>> }`
--  `GroqToolCall` struct L388-391 — `{ id: Option<String>, function: Option<GroqFunction> }`
--  `GroqFunction` struct L394-397 — `{ name: Option<String>, arguments: Option<String> }`
--  `GroqUsage` struct L400-403 — `{ prompt_tokens: u32, completion_tokens: u32 }`
--  `tests` module L406-619 — `-`
--  `build_messages_with_system_prompt` function L411-425 — `()`
--  `build_messages_with_tool_calls` function L428-445 — `()`
--  `build_tools_format` function L448-463 — `()`
--  `parse_text_delta_chunk` function L466-482 — `()`
--  `parse_tool_use_start_chunk` function L485-510 — `()`
--  `parse_tool_call_with_name_and_args_in_same_chunk` function L513-545 — `()`
--  `parse_tool_use_input_delta_chunk` function L548-572 — `()`
--  `parse_usage_chunk` function L575-592 — `()`
--  `build_request_body_includes_tools` function L595-618 — `()`
-
 #### crates/arawn-llm/src/hints.rs
 
 - pub `ModelHint` enum L28-35 — `Lightweight | Medium | Heavy` — Tier description for a model call.
@@ -7374,14 +7334,13 @@
 - pub `client` module L2 — `-`
 - pub `error` module L3 — `-`
 - pub `gate` module L4 — `-`
-- pub `groq` module L5 — `-`
-- pub `hints` module L6 — `-`
-- pub `mock` module L7 — `-`
-- pub `openai_compat` module L8 — `-`
-- pub `retry` module L9 — `-`
-- pub `types` module L10 — `-`
-- pub `usage` module L11 — `-`
-- pub `warming` module L12 — `-`
+- pub `hints` module L5 — `-`
+- pub `mock` module L6 — `-`
+- pub `openai_compat` module L7 — `-`
+- pub `retry` module L8 — `-`
+- pub `types` module L9 — `-`
+- pub `usage` module L10 — `-`
+- pub `warming` module L11 — `-`
 
 #### crates/arawn-llm/src/mock.rs
 
@@ -7530,48 +7489,19 @@
 
 #### crates/arawn-llm/src/gate/mod.rs
 
-- pub `policy` module L34 — `-` — and a fresh semaphore.
-- pub `signals` module L35 — `-` — and a fresh semaphore.
-- pub `AcquireError` enum L41-47 — `Paused | Busy` — Errors returned when an acquire cannot proceed immediately.
-- pub `LocalPermit` struct L52-54 — `{ _inner: OwnedSemaphorePermit }` — RAII permit for a local-bound LLM call.
-- pub `set_policy` function L81-89 — `(policy: Policy)` — Replace the active policy.
-- pub `set_signals` function L94-96 — `(signals: Signals)` — Replace the in-memory signals snapshot.
-- pub `current_policy` function L99-101 — `() -> Policy` — Read the active policy (cheap clone).
-- pub `current_signals` function L104-106 — `() -> Signals` — Read the most recent signals snapshot (cheap clone).
-- pub `acquire_local` function L110-129 — `() -> Result<LocalPermit, AcquireError>` — Acquire a `LocalPermit`, waiting if every slot is full.
-- pub `try_acquire_local` function L133-144 — `() -> Result<LocalPermit, AcquireError>` — Non-blocking variant.
-- pub `reset_for_test` function L150-153 — `()` — Test-only: reset policy, signals, and semaphore to default.
-- pub `TEST_LOCK` variable L159 — `: std::sync::Mutex<()>` — Test-only: a process-wide mutex that gate-mutating tests should
--  `GateState` struct L56-60 — `{ semaphore: RwLock<Arc<Semaphore>>, policy: RwLock<Policy>, signals: RwLock<Sig...` — and a fresh semaphore.
--  `GateState` type L62-70 — `= GateState` — and a fresh semaphore.
--  `new` function L63-69 — `(policy: Policy) -> Self` — and a fresh semaphore.
--  `STATE` variable L72 — `: OnceLock<GateState>` — and a fresh semaphore.
--  `state` function L74-76 — `() -> &'static GateState` — and a fresh semaphore.
--  `tests` module L162-234 — `-` — and a fresh semaphore.
--  `lock_and_reset` function L165-169 — `() -> std::sync::MutexGuard<'static, ()>` — and a fresh semaphore.
--  `local_acquires_serialise_behind_one_slot` function L172-179 — `()` — and a fresh semaphore.
--  `local_acquire_proceeds_after_first_drops` function L182-187 — `()` — and a fresh semaphore.
--  `pause_blocks_local_acquires` function L190-205 — `()` — and a fresh semaphore.
--  `current_policy_round_trips` function L208-216 — `()` — and a fresh semaphore.
--  `set_policy_resizes_semaphore` function L219-233 — `()` — and a fresh semaphore.
-
-#### crates/arawn-llm/src/gate/policy.rs
-
-- pub `Signals` struct L20-26 — `{ free_ram_bytes: Option<u64>, on_battery: Option<bool> }` — Live host signals fed into the policy decision.
-- pub `Capacity` enum L30-37 — `Available | Pause` — The decision the policy hands back to the gate.
-- pub `Policy` struct L43-55 — `{ local_slots: usize, free_ram_pause_bytes: Option<u64>, on_battery_extra_pause_...` — Policy configuration.
-- pub `decide` function L68-86 — `(policy: &Policy, signals: &Signals) -> Capacity` — Decide whether the policy currently allows local-slot acquires.
--  `Policy` type L57-65 — `impl Default for Policy` — `Signals` setter on the gate state.
--  `default` function L58-64 — `() -> Self` — `Signals` setter on the gate state.
--  `tests` module L89-150 — `-` — `Signals` setter on the gate state.
--  `default_policy_always_available_without_signals` function L93-97 — `()` — `Signals` setter on the gate state.
--  `pause_when_free_ram_below_threshold` function L100-114 — `()` — `Signals` setter on the gate state.
--  `no_pause_when_ram_above_threshold` function L117-128 — `()` — `Signals` setter on the gate state.
--  `on_battery_tightens_when_configured` function L131-149 — `()` — `Signals` setter on the gate state.
-
-#### crates/arawn-llm/src/gate/signals.rs
-
-- pub `sample` function L20-22 — `() -> Signals` — Snapshot the current host signals.
+- pub `AcquireError` enum L30-34 — `Busy` — Errors returned when an acquire cannot proceed immediately.
+- pub `LocalPermit` struct L39-41 — `{ _inner: OwnedSemaphorePermit }` — RAII permit for a local-bound LLM call.
+- pub `acquire_local` function L53-59 — `() -> Result<LocalPermit, AcquireError>` — Acquire a `LocalPermit`, waiting if every slot is full.
+- pub `try_acquire_local` function L63-68 — `() -> Result<LocalPermit, AcquireError>` — Non-blocking variant.
+- pub `reset_for_test` function L74-77 — `()` — Test-only: reset the semaphore to a fresh `LOCAL_SLOTS`-permit
+- pub `TEST_LOCK` variable L83 — `: std::sync::Mutex<()>` — Test-only: a process-wide mutex that gate-mutating tests should
+-  `LOCAL_SLOTS` variable L26 — `: usize` — Number of concurrent `LocalPermit`s allowed across the process.
+-  `SEMAPHORE` variable L43 — `: OnceLock<std::sync::RwLock<std::sync::Arc<Semaphore>>>` — [`AcquireError::Busy`] instead of waiting when the slot is full.
+-  `semaphore` function L45-47 — `() -> &'static std::sync::RwLock<std::sync::Arc<Semaphore>>` — [`AcquireError::Busy`] instead of waiting when the slot is full.
+-  `tests` module L86-112 — `-` — [`AcquireError::Busy`] instead of waiting when the slot is full.
+-  `lock_and_reset` function L89-93 — `() -> std::sync::MutexGuard<'static, ()>` — [`AcquireError::Busy`] instead of waiting when the slot is full.
+-  `local_acquires_serialise_behind_one_slot` function L96-103 — `()` — [`AcquireError::Busy`] instead of waiting when the slot is full.
+-  `local_acquire_proceeds_after_first_drops` function L106-111 — `()` — [`AcquireError::Busy`] instead of waiting when the slot is full.
 
 ### crates/arawn-llm/src/usage
 
@@ -9429,11 +9359,11 @@
 - pub `for_model` function L27-42 — `(model: &str) -> Self` — Get default limits for a known model name.
 - pub `should_compact` function L45-54 — `( &self, session_tokens: u32, tool_tokens: u32, system_tokens: u32, ) -> bool` — Check if the total estimated tokens exceed the compaction threshold.
 - pub `available_for_messages` function L57-62 — `(&self, tool_tokens: u32, system_tokens: u32) -> u32` — The token budget available after accounting for tools and system prompt.
-- pub `ToolContext` interface L78-132 — `{ fn working_dir(), fn session_id(), fn validate_path(), fn is_allowed_path(), f...` — Execution context provided to tools.
+- pub `ToolContext` interface L78-133 — `{ fn working_dir(), fn session_id(), fn validate_path(), fn is_allowed_path(), f...` — Execution context provided to tools.
 -  `ModelLimits` type L18-63 — `= ModelLimits`
 -  `ModelLimits` type L65-72 — `impl Default for ModelLimits`
 -  `default` function L66-71 — `() -> Self`
--  `resolve_llm` function L129-131 — `(&self, _preference: &LlmPreference) -> Option<LlmResolution>` — Resolve an [`LlmPreference`] against the runtime's LLM pool.
+-  `resolve_llm` function L130-132 — `(&self, _preference: &LlmPreference) -> Option<LlmResolution>` — Resolve an [`LlmPreference`] against the runtime's LLM pool.
 
 #### crates/arawn-tool/src/error.rs
 
@@ -9523,17 +9453,16 @@
 
 #### crates/arawn-tool/src/tool.rs
 
-- pub `ToolCategory` enum L12-45 — `Core | Task | Agent | Web | Memory | Plan | Workstream | Utility | BackgroundTas...` — Category of a tool — used for permission checking, context filtering, and
-- pub `PermissionCategory` enum L51-62 — `ReadOnly | FileWrite | Shell | Other` — Risk class of a tool — used by the permission system to decide fallback
-- pub `ToolOutput` struct L66-69 — `{ content: String, is_error: bool }` — Output from a tool execution.
-- pub `success` function L72-77 — `(content: impl Into<String>) -> Self`
-- pub `error` function L79-84 — `(content: impl Into<String>) -> Self`
-- pub `Tool` interface L89-128 — `{ fn name(), fn description(), fn parameters_schema(), fn execute(), fn is_read_...` — A tool that can be invoked by the LLM.
--  `ToolOutput` type L71-85 — `= ToolOutput`
--  `is_read_only` function L96-98 — `(&self) -> bool` — Whether this tool is side-effect-free (observation only).
--  `category` function L101-103 — `(&self) -> ToolCategory` — Tool category for context filtering and feature-area grouping.
--  `permission_category` function L110-119 — `(&self) -> PermissionCategory` — Permission risk class for permission-mode fallback decisions.
--  `llm_preference` function L125-127 — `(&self) -> Option<LlmPreference>` — Optional preferred LLM for this tool.
+- pub `ToolCategory` enum L11-44 — `Core | Task | Agent | Web | Memory | Plan | Workstream | Utility | BackgroundTas...` — Category of a tool — used for permission checking, context filtering, and
+- pub `PermissionCategory` enum L50-61 — `ReadOnly | FileWrite | Shell | Other` — Risk class of a tool — used by the permission system to decide fallback
+- pub `ToolOutput` struct L65-68 — `{ content: String, is_error: bool }` — Output from a tool execution.
+- pub `success` function L71-76 — `(content: impl Into<String>) -> Self`
+- pub `error` function L78-83 — `(content: impl Into<String>) -> Self`
+- pub `Tool` interface L88-120 — `{ fn name(), fn description(), fn parameters_schema(), fn execute(), fn is_read_...` — A tool that can be invoked by the LLM.
+-  `ToolOutput` type L70-84 — `= ToolOutput`
+-  `is_read_only` function L95-97 — `(&self) -> bool` — Whether this tool is side-effect-free (observation only).
+-  `category` function L100-102 — `(&self) -> ToolCategory` — Tool category for context filtering and feature-area grouping.
+-  `permission_category` function L109-118 — `(&self) -> PermissionCategory` — Permission risk class for permission-mode fallback decisions.
 
 ### crates/arawn-tui/src
 

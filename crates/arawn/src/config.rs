@@ -23,14 +23,6 @@ pub struct LlmConfig {
     pub context_window: u32,
     #[serde(default = "default_max_tokens")]
     pub max_tokens: u32,
-    /// Whether this model supports tool/function calling. Defaults to true —
-    /// every modern model supported by arawn does.
-    #[serde(default = "default_tool_use")]
-    pub tool_use: bool,
-    /// Whether this model supports vision/image input. Defaults to false —
-    /// must be opted into per entry.
-    #[serde(default)]
-    pub vision: bool,
 }
 
 fn default_api_key_env() -> String {
@@ -41,9 +33,6 @@ fn default_context_window() -> u32 {
 }
 fn default_max_tokens() -> u32 {
     4096
-}
-fn default_tool_use() -> bool {
-    true
 }
 
 impl Default for LlmConfig {
@@ -56,22 +45,17 @@ impl Default for LlmConfig {
             base_url: None,
             context_window: default_context_window(),
             max_tokens: default_max_tokens(),
-            tool_use: true,
-            vision: false,
         }
     }
 }
 
 impl LlmConfig {
-    /// Project this config into the capability metadata used by
-    /// `LlmPreference` resolution.
+    /// Project this config into the metadata used by `LlmPreference`
+    /// resolution (provider + model name for logs/display).
     pub fn to_resolved_info(&self) -> arawn_tool::ResolvedLlmInfo {
         arawn_tool::ResolvedLlmInfo {
             provider: self.provider.clone(),
             model: self.model.clone(),
-            context_window: self.context_window,
-            tool_use: self.tool_use,
-            vision: self.vision,
         }
     }
 }

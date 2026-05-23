@@ -36,8 +36,6 @@ A named LLM profile. Multiple entries allowed; the `[engine].llm` key picks whic
 | `base_url` | string | none | Override the provider's default API base URL. |
 | `context_window` | u32 | `128000` | Context window in tokens. |
 | `max_tokens` | u32 | `4096` | Max tokens per response. |
-| `tool_use` | bool | `true` | Whether this model supports tool calling. |
-| `vision` | bool | `false` | Whether this model supports image input. |
 
 ## `[engine]`
 

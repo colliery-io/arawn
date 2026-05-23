@@ -383,9 +383,6 @@ mod tests {
                 info: arawn_tool::ResolvedLlmInfo {
                     provider: "mock".into(),
                     model: named_model.clone(),
-                    context_window: 128_000,
-                    tool_use: true,
-                    vision: false,
                 },
                 match_quality,
             }
