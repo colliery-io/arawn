@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-22T00:18:37Z | 370 files | Python, Rust
+> Generated: 2026-05-23T02:16:08Z | 418 files | Python, Rust
 
 ## Project Structure
 
@@ -15,10 +15,30 @@
 │   │       ├── doctor.rs
 │   │       ├── lib.rs
 │   │       ├── llm_pool.rs
-│   │       ├── local_service.rs
+│   │       ├── local_service/
+│   │       │   ├── commands.rs
+│   │       │   ├── feeds.rs
+│   │       │   ├── integrations.rs
+│   │       │   ├── memory.rs
+│   │       │   ├── mod.rs
+│   │       │   ├── permissions.rs
+│   │       │   ├── sessions.rs
+│   │       │   └── workstreams.rs
 │   │       ├── main.rs
 │   │       ├── plugin_cmd.rs
-│   │       └── ws_server.rs
+│   │       ├── startup/
+│   │       │   ├── ceremonies.rs
+│   │       │   ├── cli.rs
+│   │       │   ├── engine.rs
+│   │       │   ├── feeds.rs
+│   │       │   ├── feeds_helpers.rs
+│   │       │   ├── helpers.rs
+│   │       │   ├── integrations.rs
+│   │       │   └── mod.rs
+│   │       └── ws_server/
+│   │           ├── ceremonies.rs
+│   │           ├── mod.rs
+│   │           └── todos.rs
 │   ├── arawn-auth/
 │   │   └── src/
 │   │       ├── error.rs
@@ -120,7 +140,11 @@
 │   │       │   ├── loader.rs
 │   │       │   └── mod.rs
 │   │       ├── system_prompt.rs
-│   │       ├── testing.rs
+│   │       ├── testing/
+│   │       │   ├── builder.rs
+│   │       │   ├── harness.rs
+│   │       │   ├── mod.rs
+│   │       │   └── result.rs
 │   │       ├── token_estimator.rs
 │   │       ├── tool.rs
 │   │       ├── tool_result_limiter.rs
@@ -156,7 +180,20 @@
 │   │       │   ├── web_fetch.rs
 │   │       │   ├── web_search.rs
 │   │       │   ├── weekly.rs
-│   │       │   └── workstream.rs
+│   │       │   └── workstream/
+│   │       │       ├── bind.rs
+│   │       │       ├── create.rs
+│   │       │       ├── delete.rs
+│   │       │       ├── describe.rs
+│   │       │       ├── list.rs
+│   │       │       ├── mod.rs
+│   │       │       ├── promote.rs
+│   │       │       ├── propose_ontology.rs
+│   │       │       ├── session.rs
+│   │       │       ├── show.rs
+│   │       │       ├── switch.rs
+│   │       │       ├── unbind.rs
+│   │       │       └── util.rs
 │   │       └── workstream_router.rs
 │   ├── arawn-extractor/
 │   │   └── src/
@@ -416,15 +453,34 @@
 │   ├── arawn-tui/
 │   │   └── src/
 │   │       ├── action.rs
-│   │       ├── app.rs
+│   │       ├── app/
+│   │       │   ├── actions.rs
+│   │       │   ├── autocomplete.rs
+│   │       │   ├── events.rs
+│   │       │   ├── history.rs
+│   │       │   └── mod.rs
 │   │       ├── ceremony_modal.rs
 │   │       ├── command.rs
 │   │       ├── event.rs
-│   │       ├── event_loop.rs
+│   │       ├── event_loop/
+│   │       │   ├── brief.rs
+│   │       │   ├── ceremony.rs
+│   │       │   ├── formats.rs
+│   │       │   ├── mod.rs
+│   │       │   ├── notices.rs
+│   │       │   ├── todo.rs
+│   │       │   └── usage.rs
 │   │       ├── lib.rs
 │   │       ├── markdown.rs
 │   │       ├── modal.rs
-│   │       ├── render.rs
+│   │       ├── render/
+│   │       │   ├── chat.rs
+│   │       │   ├── dashboard.rs
+│   │       │   ├── input.rs
+│   │       │   ├── mod.rs
+│   │       │   ├── overlays.rs
+│   │       │   ├── sidebar.rs
+│   │       │   └── status_bar.rs
 │   │       ├── snapshot.rs
 │   │       ├── snapshot_tests.rs
 │   │       ├── theme.rs
@@ -648,7 +704,8 @@
 - pub `llm_pool` module L5 — `-`
 - pub `local_service` module L6 — `-`
 - pub `plugin_cmd` module L7 — `-`
-- pub `ws_server` module L8 — `-`
+- pub `startup` module L8 — `-`
+- pub `ws_server` module L9 — `-`
 
 #### crates/arawn/src/llm_pool.rs
 
@@ -709,7 +766,84 @@
 -  `routed_or_fallback_uses_resolve_hint_when_no_local` function L954-975 — `()` — surfaces here, not mid-session.
 -  `missing_local_profile_disables_routing_local_path` function L978-997 — `()` — surfaces here, not mid-session.
 
-#### crates/arawn/src/local_service.rs
+#### crates/arawn/src/main.rs
+
+-  `EmbedderBridge` struct L11-13 — `{ inner: Arc<dyn arawn_embed::Embedder> }` — Adapter from `arawn_embed::Embedder` to the trait
+-  `EmbedderBridge` type L15-26 — `= EmbedderBridge`
+-  `embed_batch` function L16-25 — `( &'a self, texts: &'a [&'a str], ) -> std::pin::Pin< Box<dyn std::future::Futur...`
+-  `DEFAULT_MODEL` variable L32 — `: &str`
+-  `FILE_LOG_FILTER` variable L35 — `: &str` — Default file log filter: debug for arawn crates, warn for third-party.
+-  `main` function L38-1224 — `() -> Result<()>`
+-  `Cli` struct L48-67 — `{ command: Option<Command>, data_dir: Option<String>, session: Option<Uuid>, lis...`
+-  `Command` enum L70-110 — `Serve | Tui | Plugin | Doctor | Usage`
+-  `ExtractorBindHook` struct L849-860 — `{ runner: Arc<arawn_extractor::ExtractorRunner>, store: Arc<std::sync::Mutex<ara...`
+-  `ExtractorBindHook` type L861-956 — `= ExtractorBindHook`
+-  `on_bind` function L862-955 — `(&self, workstream_name: &str, feed_id: &str)`
+-  `FeedRuntimeUnbindHook` struct L972-975 — `{ feed_runtime: Arc<std::sync::RwLock<Option<Arc<arawn_feeds::FeedRuntime>>>> }`
+-  `FeedRuntimeUnbindHook` type L976-991 — `= FeedRuntimeUnbindHook`
+-  `on_unbind` function L977-990 — `(&self, removed_feed_ids: &[String])`
+
+#### crates/arawn/src/plugin_cmd.rs
+
+- pub `run_plugin_command` function L11-28 — `(args: &[String], plugins_root: &Path) -> Result<(), String>` — Handle the `arawn plugin` subcommand.
+-  `cmd_install` function L30-46 — `(args: &[String], plugins_root: &Path) -> Result<(), String>` — Plugin CLI commands — arawn plugin install/uninstall/enable/disable/list/marketplace.
+-  `cmd_uninstall` function L48-60 — `(args: &[String], plugins_root: &Path) -> Result<(), String>` — Plugin CLI commands — arawn plugin install/uninstall/enable/disable/list/marketplace.
+-  `cmd_enable` function L62-71 — `(args: &[String], plugins_root: &Path) -> Result<(), String>` — Plugin CLI commands — arawn plugin install/uninstall/enable/disable/list/marketplace.
+-  `cmd_disable` function L73-81 — `(args: &[String], plugins_root: &Path) -> Result<(), String>` — Plugin CLI commands — arawn plugin install/uninstall/enable/disable/list/marketplace.
+-  `cmd_list` function L83-111 — `(plugins_root: &Path) -> Result<(), String>` — Plugin CLI commands — arawn plugin install/uninstall/enable/disable/list/marketplace.
+-  `cmd_marketplace` function L113-123 — `(args: &[String], plugins_root: &Path) -> Result<(), String>` — Plugin CLI commands — arawn plugin install/uninstall/enable/disable/list/marketplace.
+-  `cmd_marketplace_add` function L125-145 — `(args: &[String], plugins_root: &Path) -> Result<(), String>` — Plugin CLI commands — arawn plugin install/uninstall/enable/disable/list/marketplace.
+-  `cmd_marketplace_list` function L147-167 — `(plugins_root: &Path) -> Result<(), String>` — Plugin CLI commands — arawn plugin install/uninstall/enable/disable/list/marketplace.
+-  `parse_scope` function L170-182 — `(args: &[String]) -> Result<InstallScope, String>` — Parse --scope flag from args.
+-  `parse_marketplace_source` function L189-236 — `(s: &str) -> Result<(String, MarketplaceSource), String>` — Parse a marketplace source string.
+-  `update_enabled_plugins` function L239-275 — `( plugins_root: &Path, identifier: &str, enabled: bool, ) -> Result<(), String>` — Update enabledPlugins in settings.json at the plugins root.
+-  `print_plugin_help` function L277-303 — `() -> Result<(), String>` — Plugin CLI commands — arawn plugin install/uninstall/enable/disable/list/marketplace.
+-  `tests` module L306-357 — `-` — Plugin CLI commands — arawn plugin install/uninstall/enable/disable/list/marketplace.
+-  `parse_github_source` function L310-316 — `()` — Plugin CLI commands — arawn plugin install/uninstall/enable/disable/list/marketplace.
+-  `parse_url_source` function L319-324 — `()` — Plugin CLI commands — arawn plugin install/uninstall/enable/disable/list/marketplace.
+-  `parse_directory_source` function L327-331 — `()` — Plugin CLI commands — arawn plugin install/uninstall/enable/disable/list/marketplace.
+-  `parse_relative_directory` function L334-338 — `()` — Plugin CLI commands — arawn plugin install/uninstall/enable/disable/list/marketplace.
+-  `parse_scope_default` function L341-344 — `()` — Plugin CLI commands — arawn plugin install/uninstall/enable/disable/list/marketplace.
+-  `parse_scope_project` function L347-350 — `()` — Plugin CLI commands — arawn plugin install/uninstall/enable/disable/list/marketplace.
+-  `parse_scope_invalid` function L353-356 — `()` — Plugin CLI commands — arawn plugin install/uninstall/enable/disable/list/marketplace.
+
+### crates/arawn/src/local_service
+
+> *Semantic summary to be generated by AI agent.*
+
+#### crates/arawn/src/local_service/commands.rs
+
+-  `LocalService` type L12-126 — `= LocalService` — `ArawnService`.
+-  `query_inventory_inner` function L13-78 — `(&self, kind: &str) -> Result<Vec<InventoryItem>, ServiceError>` — `ArawnService`.
+-  `list_available_commands_inner` function L80-92 — `(&self) -> Result<Vec<CommandInfo>, ServiceError>` — `ArawnService`.
+-  `list_workflows_inner` function L94-124 — `(&self) -> Result<Vec<WorkflowInfo>, ServiceError>` — `ArawnService`.
+
+#### crates/arawn/src/local_service/feeds.rs
+
+-  `LocalService` type L10-153 — `= LocalService` — `ArawnService`.
+-  `feed_register_inner` function L11-44 — `( &self, spec: arawn_service::FeedRegisterSpec, ) -> Result<arawn_service::FeedS...` — `ArawnService`.
+-  `feed_list_inner` function L46-50 — `(&self) -> Result<Vec<arawn_service::FeedSummaryDto>, ServiceError>` — `ArawnService`.
+-  `feed_pause_inner` function L52-66 — `( &self, feed_id: &str, ) -> Result<arawn_service::FeedSummaryDto, ServiceError>` — `ArawnService`.
+-  `feed_resume_inner` function L68-82 — `( &self, feed_id: &str, ) -> Result<arawn_service::FeedSummaryDto, ServiceError>` — `ArawnService`.
+-  `feed_run_inner` function L84-99 — `(&self, feed_id: &str) -> Result<arawn_service::FeedSummaryDto, ServiceError>` — `ArawnService`.
+-  `feed_discover_inner` function L101-129 — `( &self, template: &str, ) -> Result<arawn_service::FeedDiscoverDto, ServiceErro...` — `ArawnService`.
+-  `feed_remove_inner` function L131-152 — `( &self, feed_id: &str, ) -> Result<arawn_service::FeedRemoveDto, ServiceError>` — `ArawnService`.
+
+#### crates/arawn/src/local_service/integrations.rs
+
+-  `LocalService` type L11-188 — `= LocalService` — `ArawnService`.
+-  `list_integrations_inner` function L12-32 — `( &self, ) -> Result<Vec<arawn_service::IntegrationStatus>, ServiceError>` — `ArawnService`.
+-  `start_oauth_flow_inner` function L34-161 — `( &self, service: &str, ) -> Result<arawn_service::OAuthFlowStarted, ServiceErro...` — `ArawnService`.
+-  `disconnect_integration_inner` function L163-186 — `(&self, service: &str) -> Result<(), ServiceError>` — `ArawnService`.
+
+#### crates/arawn/src/local_service/memory.rs
+
+-  `LocalService` type L13-162 — `= LocalService` — `ArawnService`.
+-  `remember_fact_inner` function L14-56 — `(&self, text: &str) -> Result<MemoryStoreResult, ServiceError>` — `ArawnService`.
+-  `memory_summary_inner` function L58-105 — `(&self) -> Result<MemorySummary, ServiceError>` — `ArawnService`.
+-  `forget_entity_inner` function L107-160 — `(&self, query: &str) -> Result<ForgetResult, ServiceError>` — `ArawnService`.
+
+#### crates/arawn/src/local_service/mod.rs
 
 - pub `LocalService` struct L31-97 — `{ store: Arc<Mutex<Store>>, data_dir: PathBuf, llm_pool: Arc<LlmClientPool>, reg...` — In-process implementation of ArawnService.
 - pub `new` function L100-133 — `( store: Store, data_dir: PathBuf, llm_pool: Arc<LlmClientPool>, registry: Arc<T...`
@@ -739,141 +873,186 @@
 - pub `with_plan_state` function L291-294 — `(mut self, state: Arc<PlanModeState>) -> Self`
 - pub `with_background_tasks` function L296-299 — `(mut self, manager: Arc<BackgroundTaskManager>) -> Self`
 - pub `with_memory_manager` function L301-304 — `(mut self, mgr: Arc<arawn_memory::MemoryManager>) -> Self`
--  `LocalService` type L99-528 — `= LocalService`
+-  `LocalService` type L99-559 — `= LocalService`
 -  `feed_runtime_or_err` function L173-177 — `(&self) -> Result<Arc<arawn_feeds::FeedRuntime>, ServiceError>`
 -  `load_session_state` function L308-346 — `( &self, session_id: Uuid, ) -> Result<(arawn_storage::SessionMeta, Workstream, ...` — Load session metadata, resolve workstream, and load message history.
--  `build_session_context` function L350-456 — `( &self, session_id: Uuid, workstream: &Workstream, ws_dir: &str, workspace_dir:...` — Build a EngineToolContext and per-session PromptContext for the engine.
--  `build_engine` function L460-527 — `( &self, prompt_context: Option<arawn_engine::PromptContext>, event_tx: &mpsc::S...` — Build a QueryEngine configured with compactor, skills, plugins, and plan state.
--  `infer_entity_type` function L531-552 — `(text: &str) -> (arawn_memory::EntityType, String)` — Infer entity type from text patterns.
--  `LocalService` type L557-1660 — `impl ArawnService for LocalService`
--  `list_workstreams` function L558-571 — `(&self) -> Result<Vec<WorkstreamInfo>, ServiceError>`
--  `create_workstream` function L573-588 — `( &self, name: String, root_dir: PathBuf, ) -> Result<WorkstreamInfo, ServiceErr...`
--  `list_sessions` function L590-608 — `( &self, workstream_id: Option<Uuid>, ) -> Result<Vec<SessionInfo>, ServiceError...`
--  `create_session` function L610-629 — `( &self, workstream_id: Option<Uuid>, ) -> Result<SessionInfo, ServiceError>`
--  `load_session` function L631-654 — `(&self, id: Uuid) -> Result<SessionDetail, ServiceError>`
--  `truncate_session_at_user_message` function L656-704 — `( &self, id: Uuid, user_message_index: usize, ) -> Result<SessionDetail, Service...`
--  `send_message` function L707-904 — `( &self, session_id: Uuid, content: String, ) -> Result<Pin<Box<dyn futures::Str...`
--  `cancel` function L906-919 — `(&self, session_id: Uuid) -> Result<(), ServiceError>`
--  `promote_session` function L921-971 — `( &self, session_id: Uuid, workstream_name: &str, ) -> Result<PromotionResult, S...`
--  `resolve_user_input` function L973-987 — `( &self, request_id: &str, selected_index: Option<usize>, ) -> Result<(), Servic...`
--  `query_inventory` function L989-1054 — `(&self, kind: &str) -> Result<Vec<InventoryItem>, ServiceError>`
--  `list_available_commands` function L1056-1068 — `(&self) -> Result<Vec<CommandInfo>, ServiceError>`
--  `list_workflows` function L1070-1100 — `(&self) -> Result<Vec<WorkflowInfo>, ServiceError>`
--  `remember_fact` function L1102-1144 — `(&self, text: &str) -> Result<MemoryStoreResult, ServiceError>`
--  `memory_summary` function L1146-1193 — `(&self) -> Result<MemorySummary, ServiceError>`
--  `forget_entity` function L1195-1248 — `(&self, query: &str) -> Result<ForgetResult, ServiceError>`
--  `get_permission_mode` function L1250-1258 — `(&self) -> Result<PermissionModeInfo, ServiceError>`
--  `set_permission_mode` function L1260-1275 — `( &self, mode_str: &str, ) -> Result<PermissionModeInfo, ServiceError>`
--  `get_capabilities` function L1277-1287 — `(&self) -> Result<arawn_service::ServerCapabilities, ServiceError>`
--  `get_permissions_status` function L1289-1340 — `( &self, ) -> Result<arawn_service::PermissionsStatus, ServiceError>`
--  `list_integrations` function L1342-1362 — `( &self, ) -> Result<Vec<arawn_service::IntegrationStatus>, ServiceError>`
--  `start_oauth_flow` function L1364-1491 — `( &self, service: &str, ) -> Result<arawn_service::OAuthFlowStarted, ServiceErro...`
--  `disconnect_integration` function L1493-1516 — `(&self, service: &str) -> Result<(), ServiceError>`
--  `feed_register` function L1518-1551 — `( &self, spec: arawn_service::FeedRegisterSpec, ) -> Result<arawn_service::FeedS...`
--  `feed_list` function L1553-1557 — `(&self) -> Result<Vec<arawn_service::FeedSummaryDto>, ServiceError>`
--  `feed_pause` function L1559-1573 — `( &self, feed_id: &str, ) -> Result<arawn_service::FeedSummaryDto, ServiceError>`
--  `feed_resume` function L1575-1589 — `( &self, feed_id: &str, ) -> Result<arawn_service::FeedSummaryDto, ServiceError>`
--  `feed_run` function L1591-1606 — `(&self, feed_id: &str) -> Result<arawn_service::FeedSummaryDto, ServiceError>`
--  `feed_discover` function L1608-1636 — `( &self, template: &str, ) -> Result<arawn_service::FeedDiscoverDto, ServiceErro...`
--  `feed_remove` function L1638-1659 — `( &self, feed_id: &str, ) -> Result<arawn_service::FeedRemoveDto, ServiceError>`
--  `default_feed_for_service` function L1667-1676 — `(service: &str) -> Option<(&'static str, &'static str)>` — Personal default feed registered automatically the first time
--  `current_summary` function L1678-1688 — `( runtime: &arawn_feeds::FeedRuntime, feed_id: &str, ) -> Result<arawn_service::...`
--  `feed_err` function L1690-1697 — `(e: arawn_feeds::FeedError) -> ServiceError`
--  `feed_summary_to_dto` function L1699-1713 — `(s: arawn_feeds::FeedSummary) -> arawn_service::FeedSummaryDto`
--  `OAuthFlowCtx` struct L1718-1722 — `{ service: String, url_tx: tokio::sync::Mutex<Option<tokio::sync::oneshot::Sende...` — Glue that lets `LocalService::start_oauth_flow` bridge the integration's
--  `OAuthFlowCtx` type L1725-1747 — `= OAuthFlowCtx`
--  `service` function L1726-1728 — `(&self) -> &str`
--  `publish_auth_url` function L1730-1737 — `(&self, url: &url::Url)`
--  `publish_progress` function L1739-1746 — `(&self, message: &str)`
--  `resolve_ws_dir_from_store` function L1750-1760 — `(store: &Store, ws_id: Option<Uuid>) -> Result<String, ServiceError>` — Resolve workstream directory name from store.
--  `first_sentence` function L1764-1775 — `(s: &str) -> String` — Extract the first sentence and sanitize for use in a markdown table cell.
--  `feed_default_tests` module L1778-1815 — `-`
--  `known_services_each_have_a_default_feed` function L1782-1808 — `()`
--  `unknown_service_has_no_default_feed` function L1811-1814 — `()`
+-  `build_session_context` function L350-487 — `( &self, session_id: Uuid, workstream: &Workstream, ws_dir: &str, workspace_dir:...` — Build a EngineToolContext and per-session PromptContext for the engine.
+-  `build_engine` function L491-558 — `( &self, prompt_context: Option<arawn_engine::PromptContext>, event_tx: &mpsc::S...` — Build a QueryEngine configured with compactor, skills, plugins, and plan state.
+-  `infer_entity_type` function L562-583 — `(text: &str) -> (arawn_memory::EntityType, String)` — Infer entity type from text patterns.
+-  `commands` module L588 — `-`
+-  `feeds` module L589 — `-`
+-  `integrations` module L590 — `-`
+-  `memory` module L591 — `-`
+-  `permissions` module L592 — `-`
+-  `sessions` module L593 — `-`
+-  `workstreams` module L594 — `-`
+-  `LocalService` type L597-739 — `impl ArawnService for LocalService`
+-  `list_workstreams` function L598-600 — `(&self) -> Result<Vec<WorkstreamInfo>, ServiceError>`
+-  `create_workstream` function L601-607 — `( &self, name: String, root_dir: PathBuf, ) -> Result<WorkstreamInfo, ServiceErr...`
+-  `list_sessions` function L608-613 — `( &self, workstream_id: Option<Uuid>, ) -> Result<Vec<SessionInfo>, ServiceError...`
+-  `create_session` function L614-619 — `( &self, workstream_id: Option<Uuid>, ) -> Result<SessionInfo, ServiceError>`
+-  `load_session` function L620-622 — `(&self, id: Uuid) -> Result<SessionDetail, ServiceError>`
+-  `truncate_session_at_user_message` function L623-629 — `( &self, id: Uuid, user_message_index: usize, ) -> Result<SessionDetail, Service...`
+-  `send_message` function L630-636 — `( &self, session_id: Uuid, content: String, ) -> Result<Pin<Box<dyn futures::Str...`
+-  `cancel` function L637-639 — `(&self, session_id: Uuid) -> Result<(), ServiceError>`
+-  `promote_session` function L640-646 — `( &self, session_id: Uuid, workstream_name: &str, ) -> Result<PromotionResult, S...`
+-  `resolve_user_input` function L647-653 — `( &self, request_id: &str, selected_index: Option<usize>, ) -> Result<(), Servic...`
+-  `query_inventory` function L654-656 — `(&self, kind: &str) -> Result<Vec<InventoryItem>, ServiceError>`
+-  `list_available_commands` function L657-659 — `(&self) -> Result<Vec<CommandInfo>, ServiceError>`
+-  `list_workflows` function L660-662 — `(&self) -> Result<Vec<WorkflowInfo>, ServiceError>`
+-  `remember_fact` function L663-665 — `(&self, text: &str) -> Result<MemoryStoreResult, ServiceError>`
+-  `memory_summary` function L666-668 — `(&self) -> Result<MemorySummary, ServiceError>`
+-  `forget_entity` function L669-671 — `(&self, query: &str) -> Result<ForgetResult, ServiceError>`
+-  `get_permission_mode` function L672-674 — `(&self) -> Result<PermissionModeInfo, ServiceError>`
+-  `set_permission_mode` function L675-680 — `( &self, mode_str: &str, ) -> Result<PermissionModeInfo, ServiceError>`
+-  `get_capabilities` function L681-683 — `(&self) -> Result<arawn_service::ServerCapabilities, ServiceError>`
+-  `get_permissions_status` function L684-688 — `( &self, ) -> Result<arawn_service::PermissionsStatus, ServiceError>`
+-  `list_integrations` function L689-693 — `( &self, ) -> Result<Vec<arawn_service::IntegrationStatus>, ServiceError>`
+-  `start_oauth_flow` function L694-699 — `( &self, service: &str, ) -> Result<arawn_service::OAuthFlowStarted, ServiceErro...`
+-  `disconnect_integration` function L700-702 — `(&self, service: &str) -> Result<(), ServiceError>`
+-  `feed_register` function L703-708 — `( &self, spec: arawn_service::FeedRegisterSpec, ) -> Result<arawn_service::FeedS...`
+-  `feed_list` function L709-711 — `(&self) -> Result<Vec<arawn_service::FeedSummaryDto>, ServiceError>`
+-  `feed_pause` function L712-717 — `( &self, feed_id: &str, ) -> Result<arawn_service::FeedSummaryDto, ServiceError>`
+-  `feed_resume` function L718-723 — `( &self, feed_id: &str, ) -> Result<arawn_service::FeedSummaryDto, ServiceError>`
+-  `feed_run` function L724-726 — `(&self, feed_id: &str) -> Result<arawn_service::FeedSummaryDto, ServiceError>`
+-  `feed_discover` function L727-732 — `( &self, template: &str, ) -> Result<arawn_service::FeedDiscoverDto, ServiceErro...`
+-  `feed_remove` function L733-738 — `( &self, feed_id: &str, ) -> Result<arawn_service::FeedRemoveDto, ServiceError>`
+-  `default_feed_for_service` function L746-755 — `(service: &str) -> Option<(&'static str, &'static str)>` — Personal default feed registered automatically the first time
+-  `current_summary` function L757-767 — `( runtime: &arawn_feeds::FeedRuntime, feed_id: &str, ) -> Result<arawn_service::...`
+-  `feed_err` function L769-776 — `(e: arawn_feeds::FeedError) -> ServiceError`
+-  `feed_summary_to_dto` function L778-792 — `(s: arawn_feeds::FeedSummary) -> arawn_service::FeedSummaryDto`
+-  `OAuthFlowCtx` struct L797-801 — `{ service: String, url_tx: tokio::sync::Mutex<Option<tokio::sync::oneshot::Sende...` — Glue that lets `LocalService::start_oauth_flow` bridge the integration's
+-  `OAuthFlowCtx` type L804-826 — `= OAuthFlowCtx`
+-  `service` function L805-807 — `(&self) -> &str`
+-  `publish_auth_url` function L809-816 — `(&self, url: &url::Url)`
+-  `publish_progress` function L818-825 — `(&self, message: &str)`
+-  `resolve_ws_dir_from_store` function L829-839 — `(store: &Store, ws_id: Option<Uuid>) -> Result<String, ServiceError>` — Resolve workstream directory name from store.
+-  `first_sentence` function L843-854 — `(s: &str) -> String` — Extract the first sentence and sanitize for use in a markdown table cell.
+-  `feed_default_tests` module L857-894 — `-`
+-  `known_services_each_have_a_default_feed` function L861-887 — `()`
+-  `unknown_service_has_no_default_feed` function L890-893 — `()`
 
-#### crates/arawn/src/main.rs
+#### crates/arawn/src/local_service/permissions.rs
 
--  `EmbedderBridge` struct L11-13 — `{ inner: Arc<dyn arawn_embed::Embedder> }` — Adapter from `arawn_embed::Embedder` to the trait
--  `EmbedderBridge` type L15-26 — `= EmbedderBridge`
--  `embed_batch` function L16-25 — `( &'a self, texts: &'a [&'a str], ) -> std::pin::Pin< Box<dyn std::future::Futur...`
--  `DEFAULT_MODEL` variable L33 — `: &str`
--  `FILE_LOG_FILTER` variable L36 — `: &str` — Default file log filter: debug for arawn crates, warn for third-party.
--  `main` function L39-2113 — `() -> Result<()>`
--  `Cli` struct L49-68 — `{ command: Option<Command>, data_dir: Option<String>, session: Option<Uuid>, lis...`
--  `Command` enum L71-111 — `Serve | Tui | Plugin | Doctor | Usage`
--  `ExtractorBindHook` struct L850-861 — `{ runner: Arc<arawn_extractor::ExtractorRunner>, store: Arc<std::sync::Mutex<ara...`
--  `ExtractorBindHook` type L862-957 — `= ExtractorBindHook`
--  `on_bind` function L863-956 — `(&self, workstream_name: &str, feed_id: &str)`
--  `FeedRuntimeUnbindHook` struct L973-976 — `{ feed_runtime: Arc<std::sync::RwLock<Option<Arc<arawn_feeds::FeedRuntime>>>> }`
--  `FeedRuntimeUnbindHook` type L977-992 — `= FeedRuntimeUnbindHook`
--  `on_unbind` function L978-991 — `(&self, removed_feed_ids: &[String])`
--  `resolve_ceremony_tz` function L1620-1644 — `(kind: &str, raw: Option<&str>) -> chrono_tz::Tz`
--  `run_cli_via_server` function L2116-2218 — `(url: &str, prompt: &str, session_id: Option<Uuid>) -> Result<()>` — Run a CLI prompt by connecting to the running server via WebSocket.
--  `build_llm_client` function L2221-2242 — `(config: &arawn_bin::LlmConfig) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
--  `register_default_tools` function L2245-2287 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &arawn_bin::ArawnConfig, d...` — Register all default tools into the registry.
--  `connect_mcp_servers` function L2290-2334 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
--  `register_workflow_tools` function L2337-2354 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
--  `build_engine_config` function L2356-2399 — `( config: &arawn_bin::ArawnConfig, workstream: &arawn_core::Workstream, data_dir...`
--  `expand_github_org` function L2409-2472 — `( github: Arc<arawn_integrations::github::GithubIntegration>, store: Arc<std::sy...` — I-0050 T-0327 — list every repo under `owner` (via the github
--  `register_one_feed` function L2478-2510 — `( feed_runtime: Arc<arawn_feeds::FeedRuntime>, store: Arc<std::sync::Mutex<arawn...` — T-0329 — fetch a feed record by id and register its cron schedule
--  `dirs_path` function L2512-2521 — `() -> Option<String>`
+-  `LocalService` type L13-106 — `= LocalService` — `ArawnService`.
+-  `get_permission_mode_inner` function L14-22 — `(&self) -> Result<PermissionModeInfo, ServiceError>` — `ArawnService`.
+-  `set_permission_mode_inner` function L24-39 — `( &self, mode_str: &str, ) -> Result<PermissionModeInfo, ServiceError>` — `ArawnService`.
+-  `get_capabilities_inner` function L41-51 — `(&self) -> Result<arawn_service::ServerCapabilities, ServiceError>` — `ArawnService`.
+-  `get_permissions_status_inner` function L53-104 — `( &self, ) -> Result<arawn_service::PermissionsStatus, ServiceError>` — `ArawnService`.
 
-#### crates/arawn/src/plugin_cmd.rs
+#### crates/arawn/src/local_service/sessions.rs
 
-- pub `run_plugin_command` function L11-28 — `(args: &[String], plugins_root: &Path) -> Result<(), String>` — Handle the `arawn plugin` subcommand.
--  `cmd_install` function L30-46 — `(args: &[String], plugins_root: &Path) -> Result<(), String>` — Plugin CLI commands — arawn plugin install/uninstall/enable/disable/list/marketplace.
--  `cmd_uninstall` function L48-60 — `(args: &[String], plugins_root: &Path) -> Result<(), String>` — Plugin CLI commands — arawn plugin install/uninstall/enable/disable/list/marketplace.
--  `cmd_enable` function L62-71 — `(args: &[String], plugins_root: &Path) -> Result<(), String>` — Plugin CLI commands — arawn plugin install/uninstall/enable/disable/list/marketplace.
--  `cmd_disable` function L73-81 — `(args: &[String], plugins_root: &Path) -> Result<(), String>` — Plugin CLI commands — arawn plugin install/uninstall/enable/disable/list/marketplace.
--  `cmd_list` function L83-111 — `(plugins_root: &Path) -> Result<(), String>` — Plugin CLI commands — arawn plugin install/uninstall/enable/disable/list/marketplace.
--  `cmd_marketplace` function L113-123 — `(args: &[String], plugins_root: &Path) -> Result<(), String>` — Plugin CLI commands — arawn plugin install/uninstall/enable/disable/list/marketplace.
--  `cmd_marketplace_add` function L125-145 — `(args: &[String], plugins_root: &Path) -> Result<(), String>` — Plugin CLI commands — arawn plugin install/uninstall/enable/disable/list/marketplace.
--  `cmd_marketplace_list` function L147-167 — `(plugins_root: &Path) -> Result<(), String>` — Plugin CLI commands — arawn plugin install/uninstall/enable/disable/list/marketplace.
--  `parse_scope` function L170-182 — `(args: &[String]) -> Result<InstallScope, String>` — Parse --scope flag from args.
--  `parse_marketplace_source` function L189-236 — `(s: &str) -> Result<(String, MarketplaceSource), String>` — Parse a marketplace source string.
--  `update_enabled_plugins` function L239-275 — `( plugins_root: &Path, identifier: &str, enabled: bool, ) -> Result<(), String>` — Update enabledPlugins in settings.json at the plugins root.
--  `print_plugin_help` function L277-303 — `() -> Result<(), String>` — Plugin CLI commands — arawn plugin install/uninstall/enable/disable/list/marketplace.
--  `tests` module L306-357 — `-` — Plugin CLI commands — arawn plugin install/uninstall/enable/disable/list/marketplace.
--  `parse_github_source` function L310-316 — `()` — Plugin CLI commands — arawn plugin install/uninstall/enable/disable/list/marketplace.
--  `parse_url_source` function L319-324 — `()` — Plugin CLI commands — arawn plugin install/uninstall/enable/disable/list/marketplace.
--  `parse_directory_source` function L327-331 — `()` — Plugin CLI commands — arawn plugin install/uninstall/enable/disable/list/marketplace.
--  `parse_relative_directory` function L334-338 — `()` — Plugin CLI commands — arawn plugin install/uninstall/enable/disable/list/marketplace.
--  `parse_scope_default` function L341-344 — `()` — Plugin CLI commands — arawn plugin install/uninstall/enable/disable/list/marketplace.
--  `parse_scope_project` function L347-350 — `()` — Plugin CLI commands — arawn plugin install/uninstall/enable/disable/list/marketplace.
--  `parse_scope_invalid` function L353-356 — `()` — Plugin CLI commands — arawn plugin install/uninstall/enable/disable/list/marketplace.
+-  `LocalService` type L19-419 — `= LocalService` — `ArawnService`.
+-  `list_sessions_inner` function L20-38 — `( &self, workstream_id: Option<Uuid>, ) -> Result<Vec<SessionInfo>, ServiceError...` — `ArawnService`.
+-  `create_session_inner` function L40-59 — `( &self, workstream_id: Option<Uuid>, ) -> Result<SessionInfo, ServiceError>` — `ArawnService`.
+-  `load_session_inner` function L61-84 — `(&self, id: Uuid) -> Result<SessionDetail, ServiceError>` — `ArawnService`.
+-  `truncate_session_at_user_message_inner` function L86-134 — `( &self, id: Uuid, user_message_index: usize, ) -> Result<SessionDetail, Service...` — `ArawnService`.
+-  `send_message_inner` function L137-334 — `( &self, session_id: Uuid, content: String, ) -> Result<Pin<Box<dyn futures::Str...` — `ArawnService`.
+-  `cancel_inner` function L336-349 — `(&self, session_id: Uuid) -> Result<(), ServiceError>` — `ArawnService`.
+-  `promote_session_inner` function L351-401 — `( &self, session_id: Uuid, workstream_name: &str, ) -> Result<PromotionResult, S...` — `ArawnService`.
+-  `resolve_user_input_inner` function L403-417 — `( &self, request_id: &str, selected_index: Option<usize>, ) -> Result<(), Servic...` — `ArawnService`.
 
-#### crates/arawn/src/ws_server.rs
+#### crates/arawn/src/local_service/workstreams.rs
 
-- pub `read_token_file` function L243-254 — `() -> Option<String>` — Read the auth token from {data_dir}/server.token.
-- pub `run_server` function L257-313 — `( service: LocalService, host: &str, port: u16, ) -> anyhow::Result<()>` — Start the WebSocket server on the given port.
-- pub `handle_connection_public` function L403-405 — `(socket: WebSocket, service: Arc<LocalService>)` — Handle a single WebSocket connection.
--  `PROTOCOL_VERSION` variable L24 — `: &str` — Protocol version reported by the `hello` handshake.
--  `RPC_METHODS` variable L27-82 — `: &[&str]` — Canonical RPC method names (returned by `hello`).
--  `Request` struct L86-91 — `{ id: u64, method: String, params: Value }` — JSON-RPC style request from client.
--  `Response` struct L95-101 — `{ id: u64, result: Option<Value>, error: Option<ErrorBody> }` — JSON-RPC style response to client.
--  `ErrorBody` struct L104-109 — `{ code: String, message: String, details: Option<Value> }`
--  `Response` type L111-195 — `= Response`
--  `success` function L112-118 — `(id: u64, result: Value) -> Self`
--  `error` function L120-130 — `(id: u64, code: &str, message: String) -> Self`
--  `from_ceremony_error` function L136-155 — `(id: u64, e: &arawn_ceremonies::CeremonyError) -> Self` — Build an error response from a `CeremonyError`.
--  `from_todo_error` function L160-178 — `(id: u64, e: &arawn_storage::StorageError) -> Self` — Build an error response from a `StorageError` raised by
--  `from_service_error` function L184-194 — `(id: u64, e: &arawn_service::ServiceError) -> Self` — Build an error response from a [`ServiceError`].
--  `AppState` struct L199-204 — `{ service: Arc<LocalService>, auth_token: Option<String> }` — Shared app state for the WebSocket server.
--  `is_loopback_host` function L211-219 — `(host: &str) -> bool` — Generate a random auth token for WebSocket connections.
--  `generate_auth_token` function L221-228 — `() -> String`
--  `write_token_file` function L231-239 — `( data_dir: &std::path::Path, token: &str, ) -> std::io::Result<std::path::PathB...` — Write the auth token to {data_dir}/server.token for clients to read.
--  `shutdown_signal` function L316-338 — `()` — Wait for a shutdown signal (Ctrl-C / SIGTERM).
--  `decision_handler` function L343-362 — `( State(AppState { service, .. }): State<AppState>, Json(req): Json<arawn_workfl...` — HTTP endpoint for workflow decision tasks.
--  `WsQueryParams` struct L366-368 — `{ token: Option<String> }` — Query parameters for WebSocket connection.
--  `ws_handler` function L370-400 — `( ws: WebSocketUpgrade, Query(params): Query<WsQueryParams>, State(state): State...`
--  `handle_connection` function L407-1636 — `(socket: WebSocket, service: Arc<LocalService>)`
--  `handle_todo_rpc` function L1642-1760 — `(id: u64, method: &str, params: &Value, service: &LocalService) -> Response` — Dispatch a `todos.*` RPC method.
--  `tests` module L1763-1835 — `-`
--  `from_service_error_preserves_structured_detail_for_typed_variants` function L1770-1784 — `()` — Typed Storage error should round-trip through the wire payload with
--  `from_service_error_omits_details_for_string_only_variants` function L1790-1801 — `()` — String-only variants (NotFound, InvalidOperation, Internal) keep
--  `loopback_hosts_are_recognized` function L1808-1813 — `()`
--  `non_loopback_hosts_flagged` function L1816-1822 — `()`
--  `from_service_error_preserves_engine_error_kind` function L1825-1834 — `()`
+-  `LocalService` type L12-45 — `= LocalService` — `ArawnService`.
+-  `list_workstreams_inner` function L13-26 — `(&self) -> Result<Vec<WorkstreamInfo>, ServiceError>` — `ArawnService`.
+-  `create_workstream_inner` function L28-43 — `( &self, name: String, root_dir: PathBuf, ) -> Result<WorkstreamInfo, ServiceErr...` — `ArawnService`.
+
+### crates/arawn/src/startup
+
+> *Semantic summary to be generated by AI agent.*
+
+#### crates/arawn/src/startup/ceremonies.rs
+
+- pub `wire_ceremony_engine` function L17-505 — `( config: &ArawnConfig, workflow_runner_handle: Option<&Arc<arawn_workflow::Work...` — Wire the ceremony engine: build the connection, plugin registry, dispatcher,
+-  `resolve_ceremony_tz` function L129-153 — `(kind: &str, raw: Option<&str>) -> chrono_tz::Tz` — the ceremony service) and registers tools on the shared `registry`.
+
+#### crates/arawn/src/startup/cli.rs
+
+- pub `run_cli_via_server` function L10-112 — `(url: &str, prompt: &str, session_id: Option<Uuid>) -> Result<()>` — Run a CLI prompt by connecting to the running server via WebSocket.
+
+#### crates/arawn/src/startup/engine.rs
+
+- pub `build_engine_config` function L5-50 — `( config: &crate::ArawnConfig, workstream: &arawn_core::Workstream, data_dir: &s...` — Engine config builder.
+
+#### crates/arawn/src/startup/feeds.rs
+
+- pub `wire_continual_feeds` function L15-100 — `( workflow_runner_handle: Option<&Arc<arawn_workflow::WorkflowRunner>>, data_dir...` — Wire the continual data-feed runtime.
+
+#### crates/arawn/src/startup/feeds_helpers.rs
+
+- pub `expand_github_org` function L11-74 — `( github: Arc<arawn_integrations::github::GithubIntegration>, store: Arc<std::sy...` — I-0050 T-0327 — list every repo under `owner` (via the github
+- pub `register_one_feed` function L80-112 — `( feed_runtime: Arc<arawn_feeds::FeedRuntime>, store: Arc<std::sync::Mutex<arawn...` — T-0329 — fetch a feed record by id and register its cron schedule
+
+#### crates/arawn/src/startup/helpers.rs
+
+- pub `build_llm_client` function L11-32 — `(config: &crate::LlmConfig) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
+- pub `register_default_tools` function L35-77 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &crate::ArawnConfig, data_...` — Register all default tools into the registry.
+- pub `connect_mcp_servers` function L80-124 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
+- pub `register_workflow_tools` function L127-144 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
+- pub `dirs_path` function L146-155 — `() -> Option<String>` — main hotspot file.
+
+#### crates/arawn/src/startup/integrations.rs
+
+- pub `IntegrationsForFeeds` struct L16-23 — `{ atlassian: Option<Arc<arawn_integrations::atlassian::AtlassianIntegration>>, c...` — Handles to the integrations that the continual-feeds setup needs.
+- pub `wire_integrations` function L27-409 — `( config: &ArawnConfig, data_dir: &str, service: &mut LocalService, registry: &A...` — Register Gmail, Calendar, Drive, Atlassian, GitHub, and Slack integrations.
+
+#### crates/arawn/src/startup/mod.rs
+
+- pub `ceremonies` module L4 — `-` — Grouped by concern; each submodule is `pub` so `main` can use them.
+- pub `cli` module L5 — `-` — Grouped by concern; each submodule is `pub` so `main` can use them.
+- pub `engine` module L6 — `-` — Grouped by concern; each submodule is `pub` so `main` can use them.
+- pub `feeds` module L7 — `-` — Grouped by concern; each submodule is `pub` so `main` can use them.
+- pub `feeds_helpers` module L8 — `-` — Grouped by concern; each submodule is `pub` so `main` can use them.
+- pub `helpers` module L9 — `-` — Grouped by concern; each submodule is `pub` so `main` can use them.
+- pub `integrations` module L10 — `-` — Grouped by concern; each submodule is `pub` so `main` can use them.
+
+### crates/arawn/src/ws_server
+
+> *Semantic summary to be generated by AI agent.*
+
+#### crates/arawn/src/ws_server/ceremonies.rs
+
+-  `dispatch` function L17-299 — `( id: u64, method: &str, params: &Value, service: &Arc<LocalService>, sender: &m...` — Dispatch a `ceremonies.*` RPC method.
+
+#### crates/arawn/src/ws_server/mod.rs
+
+- pub `read_token_file` function L246-257 — `() -> Option<String>` — Read the auth token from {data_dir}/server.token.
+- pub `run_server` function L260-316 — `( service: LocalService, host: &str, port: u16, ) -> anyhow::Result<()>` — Start the WebSocket server on the given port.
+- pub `handle_connection_public` function L406-408 — `(socket: WebSocket, service: Arc<LocalService>)` — Handle a single WebSocket connection.
+-  `ceremonies` module L23 — `-`
+-  `todos` module L24 — `-`
+-  `PROTOCOL_VERSION` variable L27 — `: &str` — Protocol version reported by the `hello` handshake.
+-  `RPC_METHODS` variable L30-85 — `: &[&str]` — Canonical RPC method names (returned by `hello`).
+-  `Request` struct L89-94 — `{ id: u64, method: String, params: Value }` — JSON-RPC style request from client.
+-  `Response` struct L98-104 — `{ id: u64, result: Option<Value>, error: Option<ErrorBody> }` — JSON-RPC style response to client.
+-  `ErrorBody` struct L107-112 — `{ code: String, message: String, details: Option<Value> }`
+-  `Response` type L114-198 — `= Response`
+-  `success` function L115-121 — `(id: u64, result: Value) -> Self`
+-  `error` function L123-133 — `(id: u64, code: &str, message: String) -> Self`
+-  `from_ceremony_error` function L139-158 — `(id: u64, e: &arawn_ceremonies::CeremonyError) -> Self` — Build an error response from a `CeremonyError`.
+-  `from_todo_error` function L163-181 — `(id: u64, e: &arawn_storage::StorageError) -> Self` — Build an error response from a `StorageError` raised by
+-  `from_service_error` function L187-197 — `(id: u64, e: &arawn_service::ServiceError) -> Self` — Build an error response from a [`ServiceError`].
+-  `AppState` struct L202-207 — `{ service: Arc<LocalService>, auth_token: Option<String> }` — Shared app state for the WebSocket server.
+-  `is_loopback_host` function L214-222 — `(host: &str) -> bool` — Generate a random auth token for WebSocket connections.
+-  `generate_auth_token` function L224-231 — `() -> String`
+-  `write_token_file` function L234-242 — `( data_dir: &std::path::Path, token: &str, ) -> std::io::Result<std::path::PathB...` — Write the auth token to {data_dir}/server.token for clients to read.
+-  `shutdown_signal` function L319-341 — `()` — Wait for a shutdown signal (Ctrl-C / SIGTERM).
+-  `decision_handler` function L346-365 — `( State(AppState { service, .. }): State<AppState>, Json(req): Json<arawn_workfl...` — HTTP endpoint for workflow decision tasks.
+-  `WsQueryParams` struct L369-371 — `{ token: Option<String> }` — Query parameters for WebSocket connection.
+-  `ws_handler` function L373-403 — `( ws: WebSocketUpgrade, Query(params): Query<WsQueryParams>, State(state): State...`
+-  `handle_connection` function L410-1366 — `(socket: WebSocket, service: Arc<LocalService>)`
+-  `tests` module L1370-1442 — `-`
+-  `from_service_error_preserves_structured_detail_for_typed_variants` function L1377-1391 — `()` — Typed Storage error should round-trip through the wire payload with
+-  `from_service_error_omits_details_for_string_only_variants` function L1397-1408 — `()` — String-only variants (NotFound, InvalidOperation, Internal) keep
+-  `loopback_hosts_are_recognized` function L1415-1420 — `()`
+-  `non_loopback_hosts_flagged` function L1423-1429 — `()`
+-  `from_service_error_preserves_engine_error_kind` function L1432-1441 — `()`
+
+#### crates/arawn/src/ws_server/todos.rs
+
+-  `handle_todo_rpc` function L11-129 — `(id: u64, method: &str, params: &Value, service: &LocalService) -> Response` — Dispatch a `todos.*` RPC method.
+-  `dispatch` function L131-133 — `(id: u64, method: &str, params: &Value, service: &LocalService) -> Response`
 
 ### crates/arawn-auth/src
 
@@ -2197,87 +2376,129 @@
 
 - pub `ProgressEvent` enum L25-40 — `AssistantText | ToolCallStart | ToolCallResult` — Live progress events emitted during the engine loop.
 - pub `IntegrationCapabilitiesFn` type L53 — `= std::sync::Arc<dyn Fn() -> Vec<String> + Send + Sync>` — Provider for dynamic integration capability summaries.
-- pub `PromptContext` struct L57-77 — `{ prompts_dir: Option<std::path::PathBuf>, os: String, shell: String, cwd: std::...` — Cached context for building system prompts per-turn.
-- pub `QueryEngineConfig` struct L81-96 — `{ model: String, max_iterations: usize, system_prompt: String, max_tokens: Optio...` — Configuration for the query engine.
-- pub `QueryEngine` struct L114-135 — `{ llm: Arc<dyn LlmClient>, registry: Arc<ToolRegistry>, config: QueryEngineConfi...` — The agentic loop: prompt → LLM → tool_use → execute → feed result → loop.
-- pub `new` function L138-155 — `(llm: Arc<dyn LlmClient>, registry: Arc<ToolRegistry>) -> Self`
-- pub `with_config` function L157-178 — `( llm: Arc<dyn LlmClient>, registry: Arc<ToolRegistry>, config: QueryEngineConfi...`
-- pub `with_compactor` function L180-183 — `(mut self, compactor: Compactor) -> Self`
-- pub `with_permission_checker` function L185-188 — `(mut self, checker: Arc<PermissionChecker>) -> Self`
-- pub `with_hook_runner` function L190-193 — `(mut self, runner: Arc<HookRunner>) -> Self`
-- pub `with_skill_registry` function L195-198 — `(mut self, registry: Arc<crate::skills::SkillRegistry>) -> Self`
-- pub `with_plugin_registry` function L200-203 — `(mut self, registry: Arc<crate::plugins::PluginRegistry>) -> Self`
-- pub `with_plan_state` function L205-208 — `(mut self, plan_state: Arc<PlanModeState>) -> Self`
-- pub `plan_state` function L211-213 — `(&self) -> Option<&Arc<PlanModeState>>` — Get the plan mode state (if configured).
-- pub `with_background_tasks` function L215-218 — `(mut self, manager: Arc<BackgroundTaskManager>) -> Self`
-- pub `with_progress_sender` function L221-224 — `(mut self, tx: tokio::sync::mpsc::Sender<ProgressEvent>) -> Self` — Set a channel for live progress events during the engine loop.
-- pub `with_cancel_token` function L227-230 — `(mut self, token: tokio_util::sync::CancellationToken) -> Self` — Set a cancellation token — checked at each loop iteration and before tool execution.
-- pub `fire_hook` function L249-255 — `(&self, input: &HookInput) -> Option<crate::hooks::AggregatedHookResult>` — Fire a hook event.
-- pub `run` function L258-586 — `( &mut self, session: &mut Session, ctx: &dyn arawn_tool::ToolContext, ) -> Resu...` — Run the agentic loop for a session.
+- pub `ConnectedServicesFn` type L68 — `= std::sync::Arc<dyn Fn() -> Vec<String> + Send + Sync>` — Provider for the set of currently-connected integration service names.
+- pub `PromptContext` struct L72-98 — `{ prompts_dir: Option<std::path::PathBuf>, os: String, shell: String, cwd: std::...` — Cached context for building system prompts per-turn.
+- pub `QueryEngineConfig` struct L102-117 — `{ model: String, max_iterations: usize, system_prompt: String, max_tokens: Optio...` — Configuration for the query engine.
+- pub `QueryEngine` struct L135-156 — `{ llm: Arc<dyn LlmClient>, registry: Arc<ToolRegistry>, config: QueryEngineConfi...` — The agentic loop: prompt → LLM → tool_use → execute → feed result → loop.
+- pub `new` function L159-176 — `(llm: Arc<dyn LlmClient>, registry: Arc<ToolRegistry>) -> Self`
+- pub `with_config` function L178-199 — `( llm: Arc<dyn LlmClient>, registry: Arc<ToolRegistry>, config: QueryEngineConfi...`
+- pub `with_compactor` function L201-204 — `(mut self, compactor: Compactor) -> Self`
+- pub `with_permission_checker` function L206-209 — `(mut self, checker: Arc<PermissionChecker>) -> Self`
+- pub `with_hook_runner` function L211-214 — `(mut self, runner: Arc<HookRunner>) -> Self`
+- pub `with_skill_registry` function L216-219 — `(mut self, registry: Arc<crate::skills::SkillRegistry>) -> Self`
+- pub `with_plugin_registry` function L221-224 — `(mut self, registry: Arc<crate::plugins::PluginRegistry>) -> Self`
+- pub `with_plan_state` function L226-229 — `(mut self, plan_state: Arc<PlanModeState>) -> Self`
+- pub `plan_state` function L232-234 — `(&self) -> Option<&Arc<PlanModeState>>` — Get the plan mode state (if configured).
+- pub `with_background_tasks` function L236-239 — `(mut self, manager: Arc<BackgroundTaskManager>) -> Self`
+- pub `with_progress_sender` function L242-245 — `(mut self, tx: tokio::sync::mpsc::Sender<ProgressEvent>) -> Self` — Set a channel for live progress events during the engine loop.
+- pub `with_cancel_token` function L248-251 — `(mut self, token: tokio_util::sync::CancellationToken) -> Self` — Set a cancellation token — checked at each loop iteration and before tool execution.
+- pub `fire_hook` function L270-276 — `(&self, input: &HookInput) -> Option<crate::hooks::AggregatedHookResult>` — Fire a hook event.
+- pub `run` function L279-607 — `( &mut self, session: &mut Session, ctx: &dyn arawn_tool::ToolContext, ) -> Resu...` — Run the agentic loop for a session.
 -  `DEFAULT_MAX_ITERATIONS` variable L19 — `: usize`
 -  `MAX_COMPACT_FAILURES` variable L20 — `: u32`
 -  `DEFAULT_SYSTEM_PROMPT` variable L41 — `: &str`
--  `QueryEngineConfig` type L98-111 — `impl Default for QueryEngineConfig`
--  `default` function L99-110 — `() -> Self`
--  `QueryEngine` type L137-988 — `= QueryEngine`
--  `is_cancelled` function L233-235 — `(&self) -> bool` — Check if cancellation has been requested.
--  `emit_progress` function L238-242 — `(&self, event: ProgressEvent)` — Emit a progress event if a sender is configured.
--  `build_request` function L588-689 — `(&self, session: &Session) -> ChatRequest`
--  `stream_response_with_retry` function L709-743 — `( &self, session: &Session, _ctx: &dyn arawn_tool::ToolContext, ) -> Result<Asse...` — Retry the request-build-and-stream cycle when the stream fails mid-flight.
--  `MAX_RETRIES` variable L714 — `: u32`
--  `BASE_DELAY_MS` variable L715 — `: u64`
--  `stream_response` function L745-812 — `( &self, request: ChatRequest, ) -> Result<AssembledResponse, EngineError>`
--  `execute_tool` function L814-987 — `( &self, ctx: &dyn arawn_tool::ToolContext, tool_use_id: &str, name: &str, argum...`
--  `parse_arguments` function L990-999 — `(raw: &str) -> serde_json::Value`
--  `AssembledResponse` struct L1002-1006 — `{ text: String, tool_calls: Vec<AssembledToolCall>, usage: Option<arawn_llm::Usa...`
--  `AssembledToolCall` struct L1008-1012 — `{ id: String, name: String, arguments: serde_json::Value }`
--  `ToolResult` struct L1014-1017 — `{ content: String, is_error: bool }`
--  `filter_tools_for_context` function L1022-1156 — `( all_tools: &[arawn_llm::ToolDefinition], session: &Session, registry: &ToolReg...` — Filter tool definitions to only contextually relevant ones for this turn.
--  `tests` module L1159-1513 — `-`
--  `MockLlm` struct L1172-1174 — `{ responses: Mutex<Vec<Vec<ChatChunk>>> }` — Mock LLM that returns pre-scripted responses.
--  `MockLlm` type L1176-1206 — `= MockLlm`
--  `new` function L1177-1181 — `(responses: Vec<Vec<ChatChunk>>) -> Self`
--  `text` function L1184-1191 — `(text: &str) -> Vec<ChatChunk>` — Convenience: text-only response
--  `tool_call` function L1194-1205 — `(id: &str, name: &str, args: &str) -> Vec<ChatChunk>` — Convenience: tool call then done
--  `MockLlm` type L1209-1225 — `impl LlmClient for MockLlm`
--  `stream` function L1210-1224 — `( &self, _request: ChatRequest, ) -> Result< Pin<Box<dyn futures::Stream<Item = ...`
--  `setup` function L1227-1232 — `() -> (Workstream, Session, EngineToolContext)`
--  `text_only_response` function L1235-1248 — `()`
--  `single_tool_call` function L1251-1269 — `()`
--  `tool_not_found` function L1272-1294 — `()`
--  `max_iterations_exceeded` function L1297-1324 — `()`
--  `multi_turn_tool_chain` function L1327-1346 — `()`
--  `SlowTool` struct L1350-1352 — `{ sleep_ms: u64 }` — Tool that intentionally sleeps for a duration so timeout tests can
--  `SlowTool` type L1355-1376 — `impl Tool for SlowTool`
--  `name` function L1356-1358 — `(&self) -> &str`
--  `description` function L1359-1361 — `(&self) -> &str`
--  `parameters_schema` function L1362-1364 — `(&self) -> serde_json::Value`
--  `execute` function L1365-1372 — `( &self, _ctx: &dyn arawn_tool::ToolContext, _params: serde_json::Value, ) -> Re...`
--  `is_read_only` function L1373-1375 — `(&self) -> bool`
--  `tool_completes_when_default_budget_is_large` function L1379-1400 — `()`
--  `slow_tool_times_out_under_short_default` function L1403-1437 — `()`
--  `agent_override_fires_before_default_would` function L1440-1478 — `()`
--  `invalid_override_surfaces_as_tool_error` function L1481-1512 — `()`
+-  `QueryEngineConfig` type L119-132 — `impl Default for QueryEngineConfig`
+-  `default` function L120-131 — `() -> Self`
+-  `QueryEngine` type L158-1024 — `= QueryEngine`
+-  `is_cancelled` function L254-256 — `(&self) -> bool` — Check if cancellation has been requested.
+-  `emit_progress` function L259-263 — `(&self, event: ProgressEvent)` — Emit a progress event if a sender is configured.
+-  `build_request` function L609-725 — `(&self, session: &Session) -> ChatRequest`
+-  `stream_response_with_retry` function L745-779 — `( &self, session: &Session, _ctx: &dyn arawn_tool::ToolContext, ) -> Result<Asse...` — Retry the request-build-and-stream cycle when the stream fails mid-flight.
+-  `MAX_RETRIES` variable L750 — `: u32`
+-  `BASE_DELAY_MS` variable L751 — `: u64`
+-  `stream_response` function L781-848 — `( &self, request: ChatRequest, ) -> Result<AssembledResponse, EngineError>`
+-  `execute_tool` function L850-1023 — `( &self, ctx: &dyn arawn_tool::ToolContext, tool_use_id: &str, name: &str, argum...`
+-  `parse_arguments` function L1026-1035 — `(raw: &str) -> serde_json::Value`
+-  `AssembledResponse` struct L1038-1042 — `{ text: String, tool_calls: Vec<AssembledToolCall>, usage: Option<arawn_llm::Usa...`
+-  `AssembledToolCall` struct L1044-1048 — `{ id: String, name: String, arguments: serde_json::Value }`
+-  `ToolResult` struct L1050-1053 — `{ content: String, is_error: bool }`
+-  `FILTER_BYPASS_CONTEXT_THRESHOLD` variable L1068 — `: u32` — Filter tool definitions to only contextually relevant ones for this turn.
+-  `filter_tools_for_context` function L1070-1258 — `( all_tools: &[arawn_llm::ToolDefinition], session: &Session, registry: &ToolReg...`
+-  `tests` module L1261-2086 — `-`
+-  `MockLlm` struct L1274-1276 — `{ responses: Mutex<Vec<Vec<ChatChunk>>> }` — Mock LLM that returns pre-scripted responses.
+-  `MockLlm` type L1278-1308 — `= MockLlm`
+-  `new` function L1279-1283 — `(responses: Vec<Vec<ChatChunk>>) -> Self`
+-  `text` function L1286-1293 — `(text: &str) -> Vec<ChatChunk>` — Convenience: text-only response
+-  `tool_call` function L1296-1307 — `(id: &str, name: &str, args: &str) -> Vec<ChatChunk>` — Convenience: tool call then done
+-  `MockLlm` type L1311-1327 — `impl LlmClient for MockLlm`
+-  `stream` function L1312-1326 — `( &self, _request: ChatRequest, ) -> Result< Pin<Box<dyn futures::Stream<Item = ...`
+-  `setup` function L1329-1334 — `() -> (Workstream, Session, EngineToolContext)`
+-  `text_only_response` function L1337-1350 — `()`
+-  `single_tool_call` function L1353-1371 — `()`
+-  `tool_not_found` function L1374-1396 — `()`
+-  `max_iterations_exceeded` function L1399-1426 — `()`
+-  `multi_turn_tool_chain` function L1429-1448 — `()`
+-  `SlowTool` struct L1452-1454 — `{ sleep_ms: u64 }` — Tool that intentionally sleeps for a duration so timeout tests can
+-  `SlowTool` type L1457-1478 — `impl Tool for SlowTool`
+-  `name` function L1458-1460 — `(&self) -> &str`
+-  `description` function L1461-1463 — `(&self) -> &str`
+-  `parameters_schema` function L1464-1466 — `(&self) -> serde_json::Value`
+-  `execute` function L1467-1474 — `( &self, _ctx: &dyn arawn_tool::ToolContext, _params: serde_json::Value, ) -> Re...`
+-  `is_read_only` function L1475-1477 — `(&self) -> bool`
+-  `tool_completes_when_default_budget_is_large` function L1481-1502 — `()`
+-  `slow_tool_times_out_under_short_default` function L1505-1539 — `()`
+-  `agent_override_fires_before_default_would` function L1542-1580 — `()`
+-  `invalid_override_surfaces_as_tool_error` function L1583-1614 — `()`
+-  `small_model_limits` function L1621-1626 — `() -> ModelLimits` — 32K-context limits — forces the filter to be active (below the
+-  `CategorizedStub` struct L1629-1632 — `{ name_: &'static str, category_: arawn_tool::ToolCategory }` — Tool stub used in filter tests.
+-  `CategorizedStub` type L1635-1655 — `impl Tool for CategorizedStub`
+-  `name` function L1636-1638 — `(&self) -> &str`
+-  `description` function L1639-1641 — `(&self) -> &str`
+-  `parameters_schema` function L1642-1644 — `(&self) -> serde_json::Value`
+-  `category` function L1645-1647 — `(&self) -> arawn_tool::ToolCategory`
+-  `execute` function L1648-1654 — `( &self, _: &dyn arawn_tool::ToolContext, _: serde_json::Value, ) -> Result<Tool...`
+-  `session_past_iter_1` function L1659-1672 — `(last_user_msg: &str) -> Session` — Build a session deep enough to trip the post-iter-1 filter
+-  `tool_def` function L1674-1680 — `(name: &str) -> arawn_llm::ToolDefinition`
+-  `calendar_tool_visible_when_calendar_capability_present_no_keywords` function L1683-1698 — `()`
+-  `calendar_tool_hidden_when_calendar_capability_absent` function L1701-1715 — `()`
+-  `slack_tool_visible_when_slack_capability_present_no_keywords` function L1718-1732 — `()`
+-  `slack_tool_hidden_when_slack_capability_absent` function L1735-1749 — `()`
+-  `assert_tool_visible` function L1757-1774 — `( cat: arawn_tool::ToolCategory, tool_name: &'static str, user_msg: &str, )`
+-  `assert_tool_hidden` function L1776-1793 — `( cat: arawn_tool::ToolCategory, tool_name: &'static str, user_msg: &str, )`
+-  `web_visible_on_keyword` function L1797-1799 — `()`
+-  `web_hidden_without_keyword` function L1801-1803 — `()`
+-  `web_no_longer_triggered_by_github_keyword` function L1805-1813 — `()`
+-  `plan_visible_on_plan_keyword` function L1817-1823 — `()`
+-  `plan_visible_on_design_keyword` function L1825-1831 — `()`
+-  `plan_hidden_without_keyword` function L1833-1839 — `()`
+-  `task_visible_on_queue_keyword` function L1843-1849 — `()`
+-  `task_hidden_without_keyword` function L1851-1853 — `()`
+-  `memory_tools_visible_with_empty_user_message` function L1858-1860 — `()`
+-  `memory_tools_visible_with_unrelated_user_message` function L1862-1868 — `()`
+-  `agent_visible_on_subagent_keyword` function L1872-1878 — `()`
+-  `agent_visible_on_spawn_keyword` function L1880-1882 — `()`
+-  `agent_hidden_without_keyword` function L1884-1886 — `()`
+-  `workstream_tools_visible_with_empty_user_message` function L1891-1897 — `()`
+-  `workstream_tools_visible_with_unrelated_user_message` function L1899-1905 — `()`
+-  `ceremony_visible_on_agenda_keyword` function L1910-1916 — `()`
+-  `ceremony_visible_on_tomorrow_keyword` function L1918-1924 — `()`
+-  `ceremony_visible_on_morning_keyword` function L1926-1932 — `()`
+-  `ceremony_hidden_without_keyword` function L1934-1936 — `()`
+-  `large_model_limits` function L1940-1945 — `() -> ModelLimits`
+-  `filter_bypasses_for_large_context_model` function L1952-1967 — `()` — On a ≥100K-context model, every tool ships regardless of the filter's
+-  `filter_active_for_small_context_model` function L1972-1987 — `()` — Companion: on a small-context model the same call drops the tool.
+-  `t_0394_calendar_tools_survive_filter_after_iter_1_when_calendar_capability_connected` function L2011-2045 — `()` — The exact scenario that failed in ARAWN-T-0394: filter activated
+-  `t_0394_calendar_tools_hidden_when_capability_absent` function L2052-2085 — `()` — Companion: same scenario, capability not connected.
 
 #### crates/arawn-engine/src/system_prompt.rs
 
-- pub `SystemPromptBuilder` struct L212-216 — `{ sections: Vec<PromptSection>, token_budget: u32, identity_profile: IdentityPro...` — Builds a system prompt from static defaults (overridable) + dynamic context.
-- pub `new` function L219-225 — `() -> Self`
-- pub `with_token_budget` function L228-231 — `(mut self, budget: u32) -> Self` — Set a custom token budget.
-- pub `current_time` function L241-255 — `(mut self, now: chrono::DateTime<Tz>) -> Self` — Pin the current local time at the top of the prompt so the
-- pub `with_identity_profile` function L260-263 — `(mut self, profile: IdentityProfile) -> Self` — Select which persona's identity / doing_tasks / work_protocol
-- pub `load_static_sections` function L270-287 — `(mut self, prompts_dir: Option<&Path>) -> Self` — Load all 7 static sections, checking for user overrides in `prompts_dir`.
-- pub `environment` function L293-302 — `(mut self, os: &str, shell: &str, cwd: &Path, model: &str) -> Self` — Add the environment section.
-- pub `workstream` function L305-314 — `(mut self, name: &str, root_dir: &Path) -> Self` — Add the workstream section.
-- pub `tools` function L324-338 — `(mut self, tool_defs: &[ToolDefinition]) -> Self` — Acknowledge tool availability in the system prompt.
-- pub `context_files` function L341-363 — `(mut self, files: &[ContextFile]) -> Self` — Add context files (arawn.md at workstream and global levels).
-- pub `memories` function L366-380 — `(mut self, memories: &[String]) -> Self` — Add relevant memories (future — currently a no-op if empty).
-- pub `session_context` function L383-393 — `(mut self, summary: &str) -> Self` — Add session context (for resumed sessions).
-- pub `integrations` function L401-419 — `(mut self, summaries: &[String]) -> Self` — Add a section listing connected integrations and their granted
-- pub `plugin_prompts` function L422-437 — `(mut self, prompts: &[String]) -> Self` — Add plugin-contributed prompt fragments.
-- pub `build` function L440-462 — `(mut self) -> String` — Build the final system prompt string, enforcing token budget.
-- pub `ContextFile` struct L475-479 — `{ path: std::path::PathBuf, content: String, truncated: bool }` — A context file loaded from disk.
-- pub `find_context_files` function L482-498 — `(workstream_root: &Path, global_dir: &Path) -> Vec<ContextFile>` — Load context files from workstream root and global config dir.
+- pub `SystemPromptBuilder` struct L213-217 — `{ sections: Vec<PromptSection>, token_budget: u32, identity_profile: IdentityPro...` — Builds a system prompt from static defaults (overridable) + dynamic context.
+- pub `new` function L220-226 — `() -> Self`
+- pub `with_token_budget` function L229-232 — `(mut self, budget: u32) -> Self` — Set a custom token budget.
+- pub `current_time` function L242-256 — `(mut self, now: chrono::DateTime<Tz>) -> Self` — Pin the current local time at the top of the prompt so the
+- pub `with_identity_profile` function L261-264 — `(mut self, profile: IdentityProfile) -> Self` — Select which persona's identity / doing_tasks / work_protocol
+- pub `load_static_sections` function L271-288 — `(mut self, prompts_dir: Option<&Path>) -> Self` — Load all 7 static sections, checking for user overrides in `prompts_dir`.
+- pub `environment` function L294-303 — `(mut self, os: &str, shell: &str, cwd: &Path, model: &str) -> Self` — Add the environment section.
+- pub `workstream` function L306-315 — `(mut self, name: &str, root_dir: &Path) -> Self` — Add the workstream section.
+- pub `tools` function L325-339 — `(mut self, tool_defs: &[ToolDefinition]) -> Self` — Acknowledge tool availability in the system prompt.
+- pub `context_files` function L342-364 — `(mut self, files: &[ContextFile]) -> Self` — Add context files (arawn.md at workstream and global levels).
+- pub `memories` function L367-381 — `(mut self, memories: &[String]) -> Self` — Add relevant memories (future — currently a no-op if empty).
+- pub `session_context` function L384-394 — `(mut self, summary: &str) -> Self` — Add session context (for resumed sessions).
+- pub `integrations` function L402-420 — `(mut self, summaries: &[String]) -> Self` — Add a section listing connected integrations and their granted
+- pub `plugin_prompts` function L423-438 — `(mut self, prompts: &[String]) -> Self` — Add plugin-contributed prompt fragments.
+- pub `build` function L441-463 — `(mut self) -> String` — Build the final system prompt string, enforcing token budget.
+- pub `ContextFile` struct L476-480 — `{ path: std::path::PathBuf, content: String, truncated: bool }` — A context file loaded from disk.
+- pub `find_context_files` function L483-499 — `(workstream_root: &Path, global_dir: &Path) -> Vec<ContextFile>` — Load context files from workstream root and global config dir.
 -  `DEFAULT_TOKEN_BUDGET` variable L7 — `: u32` — Default token budget for the system prompt (~24k chars).
 -  `MAX_CONTEXT_FILE_CHARS` variable L10 — `: usize` — Max chars for a context file before truncation.
 -  `ASSISTANT_IDENTITY` variable L20 — `: &str`
@@ -2288,124 +2509,46 @@
 -  `ASSISTANT_WORK_PROTOCOL` variable L83-93 — `: &str`
 -  `CODING_WORK_PROTOCOL` variable L95-107 — `: &str`
 -  `DEFAULT_ACTIONS` variable L109-117 — `: &str`
--  `DEFAULT_USING_TOOLS` variable L119-130 — `: &str`
--  `DEFAULT_TONE` variable L132-136 — `: &str`
--  `DEFAULT_OUTPUT_EFFICIENCY` variable L138-152 — `: &str`
--  `STATIC_SECTION_NAMES` variable L155-164 — `: &[&str]` — Names of the overridable static sections.
--  `STATIC_SECTION_DEFAULTS_NEUTRAL` variable L169-178 — `: &[&str]` — Compiled-in defaults for the persona-neutral sections.
--  `persona_default_for` function L181-191 — `(name: &str, profile: IdentityProfile) -> &'static str` — Resolve the compiled-in default for `name` under `profile`.
--  `STATIC_SECTION_PRIORITIES` variable L194-203 — `: &[u8]` — Priority levels for sections.
--  `PromptSection` struct L206-209 — `{ content: String, priority: u8 }` — A section in the assembled prompt.
--  `SystemPromptBuilder` type L218-463 — `= SystemPromptBuilder`
--  `SystemPromptBuilder` type L465-469 — `impl Default for SystemPromptBuilder`
--  `default` function L466-468 — `() -> Self`
--  `load_context_file` function L500-519 — `(path: &Path, max_chars: usize) -> Option<ContextFile>`
--  `truncate_70_20` function L522-545 — `(content: &str, max_chars: usize) -> String` — Truncate keeping 70% from the head and 20% from the tail, with a marker in between.
--  `load_section` function L549-557 — `(name: &str, default: &str, prompts_dir: Option<&Path>) -> String`
--  `tests` module L560-989 — `-`
--  `assistant_profile_emits_assistant_constants` function L566-594 — `()`
--  `coding_profile_emits_coding_constants` function L597-620 — `()`
--  `default_profile_is_assistant` function L623-628 — `()`
--  `default_assembly_includes_all_static_sections` function L632-648 — `()`
--  `sections_have_headers` function L652-663 — `()`
--  `empty_optional_sections_omitted` function L667-678 — `()`
--  `single_section_override` function L682-693 — `()`
--  `partial_overrides_other_sections_use_defaults` function L697-709 — `()`
--  `missing_override_dir_uses_defaults` function L713-719 — `()`
--  `empty_override_file_produces_empty_section` function L723-733 — `()`
--  `under_budget_all_sections_included` function L737-748 — `()`
--  `over_budget_drops_low_priority_sections` function L752-762 — `()`
--  `identity_survives_budget_cuts` function L766-775 — `()`
--  `truncation_produces_clean_sections` function L779-791 — `()`
--  `context_file_injected` function L795-806 — `()`
--  `context_file_missing_section_omitted` function L810-817 — `()`
--  `large_context_file_truncated` function L821-832 — `()`
--  `tools_section_reflects_tool_list` function L836-855 — `()`
--  `per_turn_freshness_different_tools` function L859-883 — `()`
--  `environment_section_contains_info` function L887-896 — `()`
--  `current_time_appears_at_the_top` function L901-921 — `()`
--  `current_time_uses_provided_timezone` function L924-933 — `()`
--  `environment_no_longer_emits_date_line` function L936-943 — `()`
--  `workstream_section_contains_info` function L947-954 — `()`
--  `snapshot_full_build` function L958-988 — `()`
-
-#### crates/arawn-engine/src/testing.rs
-
-- pub `HarnessResult` struct L16-19 — `{ final_text: String, session: Session }` — Result from running the test harness.
-- pub `final_text` function L22-24 — `(&self) -> &str`
-- pub `tool_calls` function L26-38 — `(&self) -> Vec<(&str, &serde_json::Value)>`
-- pub `session_messages` function L40-42 — `(&self) -> &[Message]`
-- pub `message_count` function L44-46 — `(&self) -> usize`
-- pub `TestHarness` struct L50-62 — `{ _temp_dir: TempDir, workstream: Workstream, registry: Arc<ToolRegistry>, mock_...` — Builder for assembling a full engine test fixture.
-- pub `TestHarnessBuilder` struct L65-76 — `{ temp_dir: TempDir, files: Vec<(String, String)>, tools: Vec<Box<dyn Tool>>, sc...` — Builder for constructing a TestHarness.
-- pub `new` function L79-92 — `() -> Self`
-- pub `with_workstream_file` function L95-102 — `( mut self, path: impl Into<String>, content: impl Into<String>, ) -> Self` — Pre-populate a file in the workstream directory.
-- pub `with_tool` function L105-108 — `(mut self, tool: Box<dyn Tool>) -> Self` — Register a tool in the registry.
-- pub `with_tools` function L111-114 — `(mut self, tools: impl IntoIterator<Item = Box<dyn Tool>>) -> Self` — Register multiple tools.
-- pub `with_script` function L117-120 — `(mut self, script: Vec<MockResponse>) -> Self` — Set the scripted LLM responses.
-- pub `with_max_iterations` function L123-126 — `(mut self, max: usize) -> Self` — Set max iterations for the engine.
-- pub `with_permission_checker` function L129-132 — `(mut self, checker: Arc<PermissionChecker>) -> Self` — Wire a permission checker into the engine.
-- pub `with_hook_runner` function L135-138 — `(mut self, runner: Arc<HookRunner>) -> Self` — Wire a hook runner into the engine.
-- pub `with_skill_registry` function L141-144 — `(mut self, registry: Arc<SkillRegistry>) -> Self` — Wire a skill registry into the engine.
-- pub `with_plan_active` function L147-150 — `(mut self) -> Self` — Enable plan mode on the engine (blocks write tools, allows read-only).
-- pub `with_progress_channel` function L154-157 — `(mut self) -> Self` — Enable progress event capture.
-- pub `build` function L160-222 — `(self) -> TestHarness` — Build the harness.
-- pub `builder` function L232-234 — `() -> TestHarnessBuilder`
-- pub `mock_llm` function L237-239 — `(&self) -> &Arc<MockLlmClient>` — Access the underlying mock LLM client for assertions (call_count, captured_requests).
-- pub `take_progress_rx` function L242-244 — `(&self) -> Option<tokio::sync::mpsc::Receiver<ProgressEvent>>` — Take the progress event receiver.
-- pub `run` function L247-266 — `(&self, user_input: impl Into<String>) -> HarnessResult` — Run the engine with the given user input and return results.
-- pub `run_expect_error` function L269-286 — `( &self, user_input: impl Into<String>, ) -> crate::error::EngineError` — Run expecting an error (e.g., max iterations).
--  `HarnessResult` type L21-47 — `= HarnessResult`
--  `TestHarnessBuilder` type L78-223 — `= TestHarnessBuilder`
--  `TestHarnessBuilder` type L225-229 — `impl Default for TestHarnessBuilder`
--  `default` function L226-228 — `() -> Self`
--  `TestHarness` type L231-316 — `= TestHarness`
--  `build_engine` function L289-315 — `(&self) -> QueryEngine` — Build a QueryEngine with all configured subsystems wired in.
--  `tests` module L319-1904 — `-`
--  `harness_text_only` function L325-334 — `()`
--  `harness_single_tool_call` function L337-353 — `()`
--  `harness_multi_step_tool_chain` function L356-374 — `()`
--  `harness_tool_not_found` function L377-399 — `()`
--  `harness_max_iterations` function L402-418 — `()`
--  `harness_shell_tool_receives_arguments` function L421-448 — `()`
--  `harness_raw_chunks_split_arguments` function L451-494 — `()`
--  `harness_tool_arguments_passed_correctly` function L497-520 — `()`
--  `harness_permission_checker_blocks_tool` function L523-557 — `()`
--  `harness_permission_checker_allows_tool` function L560-588 — `()`
--  `harness_file_read_with_real_filesystem` function L591-615 — `()`
--  `harness_parallel_tool_calls_in_single_turn` function L618-683 — `()`
--  `harness_mixed_text_and_tool_call_in_same_turn` function L686-722 — `()`
--  `harness_stream_without_done_chunk` function L725-763 — `()`
--  `harness_empty_stream_done_only` function L766-779 — `()`
--  `harness_empty_text_deltas_assembled_correctly` function L782-801 — `()`
--  `harness_text_after_tool_start_both_captured` function L804-848 — `()`
--  `harness_malformed_json_args_falls_back_to_empty_object` function L851-881 — `()`
--  `harness_non_object_json_args_rejected` function L884-919 — `()`
--  `harness_string_json_args_rejected` function L922-953 — `()`
--  `harness_empty_tool_args_no_delta` function L956-983 — `()`
--  `harness_repeated_failure_circuit_breaker` function L986-1031 — `()`
--  `harness_empty_text_response_returns_cleanly` function L1034-1046 — `()`
--  `harness_token_usage_accumulation` function L1049-1092 — `()`
--  `harness_fatal_llm_error_no_retry` function L1095-1117 — `()`
--  `harness_transient_error_then_success` function L1120-1137 — `()`
--  `harness_transient_error_exhausts_retries` function L1140-1162 — `()`
--  `harness_mid_stream_error_during_text` function L1165-1192 — `()`
--  `harness_mid_stream_error_during_tool_call` function L1195-1224 — `()`
--  `harness_server_error_is_transient` function L1227-1241 — `()`
--  `harness_model_not_found_is_not_transient` function L1244-1261 — `()`
--  `harness_permission_denial_then_llm_recovery` function L1264-1319 — `()`
--  `harness_plan_mode_blocks_write_tool` function L1322-1350 — `()`
--  `harness_plan_mode_allows_read_only_tool` function L1353-1377 — `()`
--  `harness_hook_and_permission_both_wired` function L1380-1433 — `()`
--  `harness_long_tool_chain_five_steps` function L1438-1482 — `()`
--  `harness_tool_error_recovery_mid_chain` function L1485-1538 — `()`
--  `harness_parallel_reads_then_sequential_think` function L1541-1592 — `()`
--  `harness_narration_text_across_multiple_tool_turns` function L1595-1662 — `()`
--  `harness_retry_recovery_mid_conversation` function L1665-1693 — `()`
--  `harness_large_argument_reassembly_many_deltas` function L1696-1744 — `()`
--  `harness_alternating_success_and_failure_chain` function L1747-1778 — `()`
--  `harness_permission_denial_cascade_then_success` function L1781-1839 — `()`
--  `harness_plan_mode_parallel_mixed_tools` function L1842-1903 — `()`
+-  `DEFAULT_USING_TOOLS` variable L119-131 — `: &str`
+-  `DEFAULT_TONE` variable L133-137 — `: &str`
+-  `DEFAULT_OUTPUT_EFFICIENCY` variable L139-153 — `: &str`
+-  `STATIC_SECTION_NAMES` variable L156-165 — `: &[&str]` — Names of the overridable static sections.
+-  `STATIC_SECTION_DEFAULTS_NEUTRAL` variable L170-179 — `: &[&str]` — Compiled-in defaults for the persona-neutral sections.
+-  `persona_default_for` function L182-192 — `(name: &str, profile: IdentityProfile) -> &'static str` — Resolve the compiled-in default for `name` under `profile`.
+-  `STATIC_SECTION_PRIORITIES` variable L195-204 — `: &[u8]` — Priority levels for sections.
+-  `PromptSection` struct L207-210 — `{ content: String, priority: u8 }` — A section in the assembled prompt.
+-  `SystemPromptBuilder` type L219-464 — `= SystemPromptBuilder`
+-  `SystemPromptBuilder` type L466-470 — `impl Default for SystemPromptBuilder`
+-  `default` function L467-469 — `() -> Self`
+-  `load_context_file` function L501-520 — `(path: &Path, max_chars: usize) -> Option<ContextFile>`
+-  `truncate_70_20` function L523-546 — `(content: &str, max_chars: usize) -> String` — Truncate keeping 70% from the head and 20% from the tail, with a marker in between.
+-  `load_section` function L550-558 — `(name: &str, default: &str, prompts_dir: Option<&Path>) -> String`
+-  `tests` module L561-990 — `-`
+-  `assistant_profile_emits_assistant_constants` function L567-595 — `()`
+-  `coding_profile_emits_coding_constants` function L598-621 — `()`
+-  `default_profile_is_assistant` function L624-629 — `()`
+-  `default_assembly_includes_all_static_sections` function L633-649 — `()`
+-  `sections_have_headers` function L653-664 — `()`
+-  `empty_optional_sections_omitted` function L668-679 — `()`
+-  `single_section_override` function L683-694 — `()`
+-  `partial_overrides_other_sections_use_defaults` function L698-710 — `()`
+-  `missing_override_dir_uses_defaults` function L714-720 — `()`
+-  `empty_override_file_produces_empty_section` function L724-734 — `()`
+-  `under_budget_all_sections_included` function L738-749 — `()`
+-  `over_budget_drops_low_priority_sections` function L753-763 — `()`
+-  `identity_survives_budget_cuts` function L767-776 — `()`
+-  `truncation_produces_clean_sections` function L780-792 — `()`
+-  `context_file_injected` function L796-807 — `()`
+-  `context_file_missing_section_omitted` function L811-818 — `()`
+-  `large_context_file_truncated` function L822-833 — `()`
+-  `tools_section_reflects_tool_list` function L837-856 — `()`
+-  `per_turn_freshness_different_tools` function L860-884 — `()`
+-  `environment_section_contains_info` function L888-897 — `()`
+-  `current_time_appears_at_the_top` function L902-922 — `()`
+-  `current_time_uses_provided_timezone` function L925-934 — `()`
+-  `environment_no_longer_emits_date_line` function L937-944 — `()`
+-  `workstream_section_contains_info` function L948-955 — `()`
+-  `snapshot_full_build` function L959-989 — `()`
 
 #### crates/arawn-engine/src/token_estimator.rs
 
@@ -3316,6 +3459,100 @@
 
 -  `definition` module L7 — `-` — Skills are markdown files with YAML frontmatter that define prompt templates
 -  `loader` module L8 — `-` — execute a skill, which injects the skill's prompt into the conversation.
+
+### crates/arawn-engine/src/testing
+
+> *Semantic summary to be generated by AI agent.*
+
+#### crates/arawn-engine/src/testing/builder.rs
+
+- pub `TestHarnessBuilder` struct L17-28 — `{ temp_dir: TempDir, files: Vec<(String, String)>, tools: Vec<Box<dyn Tool>>, sc...` — Builder for constructing a TestHarness.
+- pub `new` function L31-44 — `() -> Self`
+- pub `with_workstream_file` function L47-54 — `( mut self, path: impl Into<String>, content: impl Into<String>, ) -> Self` — Pre-populate a file in the workstream directory.
+- pub `with_tool` function L57-60 — `(mut self, tool: Box<dyn Tool>) -> Self` — Register a tool in the registry.
+- pub `with_tools` function L63-66 — `(mut self, tools: impl IntoIterator<Item = Box<dyn Tool>>) -> Self` — Register multiple tools.
+- pub `with_script` function L69-72 — `(mut self, script: Vec<MockResponse>) -> Self` — Set the scripted LLM responses.
+- pub `with_max_iterations` function L75-78 — `(mut self, max: usize) -> Self` — Set max iterations for the engine.
+- pub `with_permission_checker` function L81-84 — `(mut self, checker: Arc<PermissionChecker>) -> Self` — Wire a permission checker into the engine.
+- pub `with_hook_runner` function L87-90 — `(mut self, runner: Arc<HookRunner>) -> Self` — Wire a hook runner into the engine.
+- pub `with_skill_registry` function L93-96 — `(mut self, registry: Arc<SkillRegistry>) -> Self` — Wire a skill registry into the engine.
+- pub `with_plan_active` function L99-102 — `(mut self) -> Self` — Enable plan mode on the engine (blocks write tools, allows read-only).
+- pub `with_progress_channel` function L106-109 — `(mut self) -> Self` — Enable progress event capture.
+- pub `build` function L112-174 — `(self) -> TestHarness` — Build the harness.
+-  `TestHarnessBuilder` type L30-175 — `= TestHarnessBuilder`
+-  `TestHarnessBuilder` type L177-181 — `impl Default for TestHarnessBuilder`
+-  `default` function L178-180 — `() -> Self`
+
+#### crates/arawn-engine/src/testing/harness.rs
+
+- pub `TestHarness` struct L18-30 — `{ _temp_dir: TempDir, workstream: Workstream, registry: Arc<ToolRegistry>, mock_...` — Builder for assembling a full engine test fixture.
+- pub `builder` function L33-35 — `() -> TestHarnessBuilder`
+- pub `mock_llm` function L38-40 — `(&self) -> &Arc<MockLlmClient>` — Access the underlying mock LLM client for assertions (call_count, captured_requests).
+- pub `take_progress_rx` function L43-45 — `(&self) -> Option<tokio::sync::mpsc::Receiver<ProgressEvent>>` — Take the progress event receiver.
+- pub `run` function L48-67 — `(&self, user_input: impl Into<String>) -> HarnessResult` — Run the engine with the given user input and return results.
+- pub `run_expect_error` function L70-87 — `( &self, user_input: impl Into<String>, ) -> crate::error::EngineError` — Run expecting an error (e.g., max iterations).
+-  `TestHarness` type L32-117 — `= TestHarness`
+-  `build_engine` function L90-116 — `(&self) -> QueryEngine` — Build a QueryEngine with all configured subsystems wired in.
+-  `tests` module L120-1705 — `-`
+-  `harness_text_only` function L126-135 — `()`
+-  `harness_single_tool_call` function L138-154 — `()`
+-  `harness_multi_step_tool_chain` function L157-175 — `()`
+-  `harness_tool_not_found` function L178-200 — `()`
+-  `harness_max_iterations` function L203-219 — `()`
+-  `harness_shell_tool_receives_arguments` function L222-249 — `()`
+-  `harness_raw_chunks_split_arguments` function L252-295 — `()`
+-  `harness_tool_arguments_passed_correctly` function L298-321 — `()`
+-  `harness_permission_checker_blocks_tool` function L324-358 — `()`
+-  `harness_permission_checker_allows_tool` function L361-389 — `()`
+-  `harness_file_read_with_real_filesystem` function L392-416 — `()`
+-  `harness_parallel_tool_calls_in_single_turn` function L419-484 — `()`
+-  `harness_mixed_text_and_tool_call_in_same_turn` function L487-523 — `()`
+-  `harness_stream_without_done_chunk` function L526-564 — `()`
+-  `harness_empty_stream_done_only` function L567-580 — `()`
+-  `harness_empty_text_deltas_assembled_correctly` function L583-602 — `()`
+-  `harness_text_after_tool_start_both_captured` function L605-649 — `()`
+-  `harness_malformed_json_args_falls_back_to_empty_object` function L652-682 — `()`
+-  `harness_non_object_json_args_rejected` function L685-720 — `()`
+-  `harness_string_json_args_rejected` function L723-754 — `()`
+-  `harness_empty_tool_args_no_delta` function L757-784 — `()`
+-  `harness_repeated_failure_circuit_breaker` function L787-832 — `()`
+-  `harness_empty_text_response_returns_cleanly` function L835-847 — `()`
+-  `harness_token_usage_accumulation` function L850-893 — `()`
+-  `harness_fatal_llm_error_no_retry` function L896-918 — `()`
+-  `harness_transient_error_then_success` function L921-938 — `()`
+-  `harness_transient_error_exhausts_retries` function L941-963 — `()`
+-  `harness_mid_stream_error_during_text` function L966-993 — `()`
+-  `harness_mid_stream_error_during_tool_call` function L996-1025 — `()`
+-  `harness_server_error_is_transient` function L1028-1042 — `()`
+-  `harness_model_not_found_is_not_transient` function L1045-1062 — `()`
+-  `harness_permission_denial_then_llm_recovery` function L1065-1120 — `()`
+-  `harness_plan_mode_blocks_write_tool` function L1123-1151 — `()`
+-  `harness_plan_mode_allows_read_only_tool` function L1154-1178 — `()`
+-  `harness_hook_and_permission_both_wired` function L1181-1234 — `()`
+-  `harness_long_tool_chain_five_steps` function L1239-1283 — `()`
+-  `harness_tool_error_recovery_mid_chain` function L1286-1339 — `()`
+-  `harness_parallel_reads_then_sequential_think` function L1342-1393 — `()`
+-  `harness_narration_text_across_multiple_tool_turns` function L1396-1463 — `()`
+-  `harness_retry_recovery_mid_conversation` function L1466-1494 — `()`
+-  `harness_large_argument_reassembly_many_deltas` function L1497-1545 — `()`
+-  `harness_alternating_success_and_failure_chain` function L1548-1579 — `()`
+-  `harness_permission_denial_cascade_then_success` function L1582-1640 — `()`
+-  `harness_plan_mode_parallel_mixed_tools` function L1643-1704 — `()`
+
+#### crates/arawn-engine/src/testing/mod.rs
+
+-  `builder` module L16 — `-` — Public API:
+-  `harness` module L17 — `-` — `result.rs`, `builder.rs`, `harness.rs`.
+-  `result` module L18 — `-` — `result.rs`, `builder.rs`, `harness.rs`.
+
+#### crates/arawn-engine/src/testing/result.rs
+
+- pub `HarnessResult` struct L4-7 — `{ final_text: String, session: Session }` — Result from running the test harness.
+- pub `final_text` function L10-12 — `(&self) -> &str`
+- pub `tool_calls` function L14-26 — `(&self) -> Vec<(&str, &serde_json::Value)>`
+- pub `session_messages` function L28-30 — `(&self) -> &[Message]`
+- pub `message_count` function L32-34 — `(&self) -> usize`
+-  `HarnessResult` type L9-35 — `= HarnessResult`
 
 ### crates/arawn-engine/src/tools
 
@@ -4363,168 +4600,220 @@
 -  `weekly_add_priority_inserts_row` function L722-752 — `()` — confirmed priority directly into `ceremony_priorities`.
 -  `schemas_have_required_field_arrays` function L755-775 — `()` — confirmed priority directly into `ceremony_priorities`.
 
-#### crates/arawn-engine/src/tools/workstream.rs
+### crates/arawn-engine/src/tools/workstream
 
-- pub `SessionWorkstream` struct L26-28 — `{ inner: Arc<Mutex<String>> }` — Holder for the session-active workstream name.
-- pub `new` function L31-35 — `(initial: impl Into<String>) -> Self` — the shim is enough to make `switch` / `show` work.
-- pub `scratch` function L37-39 — `() -> Self` — the shim is enough to make `switch` / `show` work.
-- pub `current` function L41-43 — `(&self) -> String` — the shim is enough to make `switch` / `show` work.
-- pub `set` function L45-47 — `(&self, name: impl Into<String>)` — the shim is enough to make `switch` / `show` work.
-- pub `WorkstreamCreateTool` struct L60-62 — `{ store: Arc<Mutex<Store>> }` — the shim is enough to make `switch` / `show` work.
-- pub `new` function L65-67 — `(store: Arc<Mutex<Store>>) -> Self` — the shim is enough to make `switch` / `show` work.
-- pub `WorkstreamListTool` struct L227-230 — `{ store: Arc<Mutex<Store>>, active: SessionWorkstream }` — the shim is enough to make `switch` / `show` work.
-- pub `new` function L233-238 — `(store: Arc<Mutex<Store>>) -> Self` — the shim is enough to make `switch` / `show` work.
-- pub `with_active` function L240-243 — `(mut self, active: SessionWorkstream) -> Self` — the shim is enough to make `switch` / `show` work.
-- pub `WorkstreamSwitchTool` struct L313-316 — `{ store: Arc<Mutex<Store>>, active: SessionWorkstream }` — the shim is enough to make `switch` / `show` work.
-- pub `new` function L319-321 — `(store: Arc<Mutex<Store>>, active: SessionWorkstream) -> Self` — the shim is enough to make `switch` / `show` work.
-- pub `WorkstreamShowTool` struct L408-411 — `{ store: Arc<Mutex<Store>>, active: SessionWorkstream }` — the shim is enough to make `switch` / `show` work.
-- pub `new` function L414-416 — `(store: Arc<Mutex<Store>>, active: SessionWorkstream) -> Self` — the shim is enough to make `switch` / `show` work.
-- pub `WorkstreamDescribeTool` struct L503-505 — `{ store: Arc<Mutex<Store>> }` — the shim is enough to make `switch` / `show` work.
-- pub `new` function L508-510 — `(store: Arc<Mutex<Store>>) -> Self` — the shim is enough to make `switch` / `show` work.
-- pub `BindBackfillHook` interface L570-572 — `{ fn on_bind() }` — Side-channel that fires when `/workstream bind` lands a new
-- pub `WorkstreamBindTool` struct L574-577 — `{ store: Arc<Mutex<Store>>, hook: Option<Arc<dyn BindBackfillHook>> }` — the shim is enough to make `switch` / `show` work.
-- pub `new` function L580-582 — `(store: Arc<Mutex<Store>>) -> Self` — the shim is enough to make `switch` / `show` work.
-- pub `with_backfill_hook` function L584-587 — `(mut self, hook: Arc<dyn BindBackfillHook>) -> Self` — the shim is enough to make `switch` / `show` work.
-- pub `UnbindHook` interface L738-740 — `{ fn on_unbind() }` — Optional teardown hook for `WorkstreamUnbindTool`.
-- pub `WorkstreamUnbindTool` struct L742-745 — `{ store: Arc<Mutex<Store>>, hook: Option<Arc<dyn UnbindHook>> }` — the shim is enough to make `switch` / `show` work.
-- pub `new` function L748-750 — `(store: Arc<Mutex<Store>>) -> Self` — the shim is enough to make `switch` / `show` work.
-- pub `with_unbind_hook` function L752-755 — `(mut self, hook: Arc<dyn UnbindHook>) -> Self` — the shim is enough to make `switch` / `show` work.
-- pub `WorkstreamPromoteTool` struct L877-880 — `{ store: Arc<Mutex<Store>>, router: Arc<crate::workstream_router::WorkstreamMemo...` — Move one entity from the `scratch` workstream into a named target.
-- pub `new` function L883-888 — `( store: Arc<Mutex<Store>>, router: Arc<crate::workstream_router::WorkstreamMemo...` — the shim is enough to make `switch` / `show` work.
-- pub `WorkstreamDeleteTool` struct L1035-1038 — `{ store: Arc<Mutex<Store>>, active: SessionWorkstream }` — the shim is enough to make `switch` / `show` work.
-- pub `new` function L1041-1043 — `(store: Arc<Mutex<Store>>, active: SessionWorkstream) -> Self` — the shim is enough to make `switch` / `show` work.
-- pub `WorkstreamProposeOntologyTool` struct L1105-1108 — `{ client: Arc<dyn arawn_llm::LlmClient>, model: String }` — LLM-backed tool: take a workstream description, return a proposed
-- pub `new` function L1111-1116 — `(client: Arc<dyn arawn_llm::LlmClient>, model: impl Into<String>) -> Self` — the shim is enough to make `switch` / `show` work.
-- pub `validate_github_scope_scheme` function L1280-1301 — `(feed_id: &str) -> Result<(), String>` — Same balanced-bracket scan as `arawn-extractor::llm_text::extract_json_block`.
-- pub `is_github_scope_binding` function L1307-1309 — `(feed_id: &str) -> bool` — Returns true if `feed_id` is a github scope-binding (either
-- pub `GithubScope` enum L1313-1316 — `Repo | Org` — Parsed github scope binding.
-- pub `parse_github_scope` function L1318-1337 — `(feed_id: &str) -> Option<GithubScope>` — the shim is enough to make `switch` / `show` work.
--  `SessionWorkstream` type L30-48 — `= SessionWorkstream` — the shim is enough to make `switch` / `show` work.
--  `SessionWorkstream` type L50-54 — `impl Default for SessionWorkstream` — the shim is enough to make `switch` / `show` work.
--  `default` function L51-53 — `() -> Self` — the shim is enough to make `switch` / `show` work.
--  `WorkstreamCreateTool` type L64-68 — `= WorkstreamCreateTool` — the shim is enough to make `switch` / `show` work.
--  `WorkstreamCreateTool` type L71-221 — `impl Tool for WorkstreamCreateTool` — the shim is enough to make `switch` / `show` work.
--  `name` function L72-74 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
--  `description` function L76-83 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
--  `category` function L85-87 — `(&self) -> ToolCategory` — the shim is enough to make `switch` / `show` work.
--  `parameters_schema` function L89-104 — `(&self) -> Value` — the shim is enough to make `switch` / `show` work.
--  `execute` function L106-220 — `( &self, ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutpu...` — the shim is enough to make `switch` / `show` work.
--  `WorkstreamListTool` type L232-244 — `= WorkstreamListTool` — the shim is enough to make `switch` / `show` work.
--  `WorkstreamListTool` type L247-307 — `impl Tool for WorkstreamListTool` — the shim is enough to make `switch` / `show` work.
--  `name` function L248-250 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
--  `description` function L252-254 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
--  `is_read_only` function L256-258 — `(&self) -> bool` — the shim is enough to make `switch` / `show` work.
--  `category` function L260-262 — `(&self) -> ToolCategory` — the shim is enough to make `switch` / `show` work.
--  `parameters_schema` function L264-272 — `(&self) -> Value` — the shim is enough to make `switch` / `show` work.
--  `execute` function L274-306 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — the shim is enough to make `switch` / `show` work.
--  `WorkstreamSwitchTool` type L318-322 — `= WorkstreamSwitchTool` — the shim is enough to make `switch` / `show` work.
--  `WorkstreamSwitchTool` type L325-402 — `impl Tool for WorkstreamSwitchTool` — the shim is enough to make `switch` / `show` work.
--  `name` function L326-328 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
--  `description` function L330-334 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
--  `category` function L336-338 — `(&self) -> ToolCategory` — the shim is enough to make `switch` / `show` work.
--  `parameters_schema` function L340-346 — `(&self) -> Value` — the shim is enough to make `switch` / `show` work.
--  `execute` function L348-401 — `( &self, ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutpu...` — the shim is enough to make `switch` / `show` work.
--  `WorkstreamShowTool` type L413-417 — `= WorkstreamShowTool` — the shim is enough to make `switch` / `show` work.
--  `WorkstreamShowTool` type L420-497 — `impl Tool for WorkstreamShowTool` — the shim is enough to make `switch` / `show` work.
--  `name` function L421-423 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
--  `description` function L425-432 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
--  `is_read_only` function L434-436 — `(&self) -> bool` — the shim is enough to make `switch` / `show` work.
--  `category` function L438-440 — `(&self) -> ToolCategory` — the shim is enough to make `switch` / `show` work.
--  `parameters_schema` function L442-450 — `(&self) -> Value` — the shim is enough to make `switch` / `show` work.
--  `execute` function L452-496 — `( &self, ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutpu...` — the shim is enough to make `switch` / `show` work.
--  `WorkstreamDescribeTool` type L507-511 — `= WorkstreamDescribeTool` — the shim is enough to make `switch` / `show` work.
--  `WorkstreamDescribeTool` type L514-561 — `impl Tool for WorkstreamDescribeTool` — the shim is enough to make `switch` / `show` work.
--  `name` function L515-517 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
--  `description` function L519-522 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
--  `category` function L524-526 — `(&self) -> ToolCategory` — the shim is enough to make `switch` / `show` work.
--  `parameters_schema` function L528-537 — `(&self) -> Value` — the shim is enough to make `switch` / `show` work.
--  `execute` function L539-560 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — the shim is enough to make `switch` / `show` work.
--  `WorkstreamBindTool` type L579-588 — `= WorkstreamBindTool` — the shim is enough to make `switch` / `show` work.
--  `WorkstreamBindTool` type L591-729 — `impl Tool for WorkstreamBindTool` — the shim is enough to make `switch` / `show` work.
--  `name` function L592-594 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
--  `description` function L596-610 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
--  `category` function L612-614 — `(&self) -> ToolCategory` — the shim is enough to make `switch` / `show` work.
--  `parameters_schema` function L616-625 — `(&self) -> Value` — the shim is enough to make `switch` / `show` work.
--  `execute` function L627-728 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — the shim is enough to make `switch` / `show` work.
--  `WorkstreamUnbindTool` type L747-756 — `= WorkstreamUnbindTool` — the shim is enough to make `switch` / `show` work.
--  `WorkstreamUnbindTool` type L759-855 — `impl Tool for WorkstreamUnbindTool` — the shim is enough to make `switch` / `show` work.
--  `name` function L760-762 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
--  `description` function L764-766 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
--  `category` function L768-770 — `(&self) -> ToolCategory` — the shim is enough to make `switch` / `show` work.
--  `parameters_schema` function L772-781 — `(&self) -> Value` — the shim is enough to make `switch` / `show` work.
--  `execute` function L783-854 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — the shim is enough to make `switch` / `show` work.
--  `collect_child_feed_ids` function L857-867 — `(conn: &rusqlite::Connection, pattern: &str) -> Vec<String>` — the shim is enough to make `switch` / `show` work.
--  `WorkstreamPromoteTool` type L882-889 — `= WorkstreamPromoteTool` — the shim is enough to make `switch` / `show` work.
--  `WorkstreamPromoteTool` type L892-1029 — `impl Tool for WorkstreamPromoteTool` — the shim is enough to make `switch` / `show` work.
--  `name` function L893-895 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
--  `description` function L897-902 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
--  `category` function L904-906 — `(&self) -> ToolCategory` — the shim is enough to make `switch` / `show` work.
--  `parameters_schema` function L908-917 — `(&self) -> Value` — the shim is enough to make `switch` / `show` work.
--  `execute` function L919-1028 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — the shim is enough to make `switch` / `show` work.
--  `WorkstreamDeleteTool` type L1040-1044 — `= WorkstreamDeleteTool` — the shim is enough to make `switch` / `show` work.
--  `WorkstreamDeleteTool` type L1047-1095 — `impl Tool for WorkstreamDeleteTool` — the shim is enough to make `switch` / `show` work.
--  `name` function L1048-1050 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
--  `description` function L1052-1055 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
--  `category` function L1057-1059 — `(&self) -> ToolCategory` — the shim is enough to make `switch` / `show` work.
--  `parameters_schema` function L1061-1067 — `(&self) -> Value` — the shim is enough to make `switch` / `show` work.
--  `execute` function L1069-1094 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — the shim is enough to make `switch` / `show` work.
--  `WorkstreamProposeOntologyTool` type L1110-1117 — `= WorkstreamProposeOntologyTool` — the shim is enough to make `switch` / `show` work.
--  `WorkstreamProposeOntologyTool` type L1120-1238 — `impl Tool for WorkstreamProposeOntologyTool` — the shim is enough to make `switch` / `show` work.
--  `name` function L1121-1123 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
--  `description` function L1125-1135 — `(&self) -> &str` — the shim is enough to make `switch` / `show` work.
--  `is_read_only` function L1137-1139 — `(&self) -> bool` — the shim is enough to make `switch` / `show` work.
--  `category` function L1141-1143 — `(&self) -> ToolCategory` — the shim is enough to make `switch` / `show` work.
--  `parameters_schema` function L1145-1156 — `(&self) -> Value` — the shim is enough to make `switch` / `show` work.
--  `execute` function L1158-1237 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — the shim is enough to make `switch` / `show` work.
--  `Proposal` struct L1208-1212 — `{ tags: Vec<String>, rationale: String }` — the shim is enough to make `switch` / `show` work.
--  `propose_llm_call` function L1243-1274 — `( client: &Arc<dyn arawn_llm::LlmClient>, model: &str, system: &str, user: &str,...` — Tiny streaming-drain helper.
--  `find_workstreams_binding` function L1341-1355 — `( store: &Store, matcher: impl Fn(&str) -> bool, ) -> Vec<(String, String)>` — Walk active workstreams, return `(workstream_name, binding)` for
--  `upsert_repo_mirror_feed` function L1364-1407 — `( store: &Store, feed_id: &str, owner: &str, repo: &str, ) -> Result<(), arawn_s...` — Insert (or refresh) a `github/repo-mirror` feed record by writing
--  `delete_feed` function L1410-1417 — `(store: &Store, feed_id: &str) -> Result<(), arawn_storage::StorageError>` — Drop a feed record by raw SQL.
--  `extract_json_block` function L1419-1443 — `(raw: &str) -> Option<&str>` — the shim is enough to make `switch` / `show` work.
--  `tests` module L1446-2316 — `-` — the shim is enough to make `switch` / `show` work.
--  `setup` function L1450-1459 — `() -> (tempfile::TempDir, Arc<Mutex<Store>>, SessionWorkstream)` — the shim is enough to make `switch` / `show` work.
--  `test_ctx` function L1461-1465 — `(tmp: &tempfile::TempDir) -> crate::context::EngineToolContext` — the shim is enough to make `switch` / `show` work.
--  `create_succeeds_with_valid_slug_description_and_ontology` function L1468-1489 — `()` — the shim is enough to make `switch` / `show` work.
--  `create_refuses_scratch` function L1492-1507 — `()` — the shim is enough to make `switch` / `show` work.
--  `create_refuses_missing_description` function L1510-1522 — `()` — the shim is enough to make `switch` / `show` work.
--  `create_refuses_empty_ontology` function L1525-1541 — `()` — the shim is enough to make `switch` / `show` work.
--  `create_dedupes_and_normalizes_ontology` function L1544-1563 — `()` — the shim is enough to make `switch` / `show` work.
--  `switch_updates_active` function L1566-1580 — `()` — the shim is enough to make `switch` / `show` work.
--  `switch_unknown_errors` function L1583-1592 — `()` — the shim is enough to make `switch` / `show` work.
--  `show_defaults_to_active` function L1595-1601 — `()` — the shim is enough to make `switch` / `show` work.
--  `describe_updates_description` function L1604-1627 — `()` — the shim is enough to make `switch` / `show` work.
--  `github_repo_scheme_accepts_owner_slash_name` function L1632-1634 — `()` — the shim is enough to make `switch` / `show` work.
--  `github_repo_scheme_rejects_missing_slash` function L1637-1640 — `()` — the shim is enough to make `switch` / `show` work.
--  `github_repo_scheme_rejects_empty_owner_or_name` function L1643-1646 — `()` — the shim is enough to make `switch` / `show` work.
--  `github_org_scheme_accepts_owner` function L1649-1651 — `()` — the shim is enough to make `switch` / `show` work.
--  `github_org_scheme_rejects_empty_or_with_slash` function L1654-1657 — `()` — the shim is enough to make `switch` / `show` work.
--  `non_github_feed_ids_pass_through_unchanged` function L1660-1665 — `()` — the shim is enough to make `switch` / `show` work.
--  `is_github_scope_binding_recognises_both_schemes` function L1668-1673 — `()` — the shim is enough to make `switch` / `show` work.
--  `bind_accepts_github_repo_scheme_and_stores_it` function L1676-1699 — `()` — the shim is enough to make `switch` / `show` work.
--  `parse_github_scope_handles_both_schemes` function L1704-1722 — `()` — the shim is enough to make `switch` / `show` work.
--  `count_feeds` function L1724-1733 — `(store: &Arc<Mutex<Store>>, feed_id: &str) -> i64` — the shim is enough to make `switch` / `show` work.
--  `repo_bind_registers_feed_record` function L1736-1767 — `()` — the shim is enough to make `switch` / `show` work.
--  `repo_bind_is_idempotent_no_duplicate_feed` function L1770-1793 — `()` — the shim is enough to make `switch` / `show` work.
--  `repo_bind_rejected_when_org_already_bound` function L1796-1837 — `()` — the shim is enough to make `switch` / `show` work.
--  `org_bind_supersedes_existing_repo_binds` function L1840-1896 — `()` — the shim is enough to make `switch` / `show` work.
--  `CapturingUnbindHook` struct L1900-1902 — `{ captured: Mutex<Vec<Vec<String>>> }` — the shim is enough to make `switch` / `show` work.
--  `CapturingUnbindHook` type L1903-1907 — `impl UnbindHook for CapturingUnbindHook` — the shim is enough to make `switch` / `show` work.
--  `on_unbind` function L1904-1906 — `(&self, removed_feed_ids: &[String])` — the shim is enough to make `switch` / `show` work.
--  `unbind_hook_fires_with_repo_feed_id` function L1910-1945 — `()` — the shim is enough to make `switch` / `show` work.
--  `unbind_hook_fires_with_all_org_child_ids` function L1948-1993 — `()` — the shim is enough to make `switch` / `show` work.
--  `unbind_hook_not_fired_for_plain_feed_id` function L1996-2023 — `()` — the shim is enough to make `switch` / `show` work.
--  `unbind_org_scope_sweeps_all_child_feeds` function L2026-2069 — `()` — the shim is enough to make `switch` / `show` work.
--  `unbind_repo_scope_drops_feed` function L2072-2097 — `()` — the shim is enough to make `switch` / `show` work.
--  `bind_rejects_malformed_github_repo_scheme` function L2100-2117 — `()` — the shim is enough to make `switch` / `show` work.
--  `bind_and_unbind_round_trip` function L2120-2150 — `()` — the shim is enough to make `switch` / `show` work.
--  `delete_refuses_scratch` function L2153-2162 — `()` — the shim is enough to make `switch` / `show` work.
--  `delete_refuses_currently_active` function L2165-2180 — `()` — the shim is enough to make `switch` / `show` work.
--  `delete_soft_marks_archived` function L2183-2200 — `()` — the shim is enough to make `switch` / `show` work.
--  `promote_moves_entity_from_scratch_to_target` function L2203-2249 — `()` — the shim is enough to make `switch` / `show` work.
--  `promote_refuses_unknown_target` function L2252-2271 — `()` — the shim is enough to make `switch` / `show` work.
--  `show_includes_ontology` function L2274-2299 — `()` — the shim is enough to make `switch` / `show` work.
--  `list_marks_active` function L2302-2315 — `()` — the shim is enough to make `switch` / `show` work.
+> *Semantic summary to be generated by AI agent.*
+
+#### crates/arawn-engine/src/tools/workstream/bind.rs
+
+- pub `BindBackfillHook` interface L14-16 — `{ fn on_bind() }`
+- pub `WorkstreamBindTool` struct L18-21 — `{ store: Arc<Mutex<Store>>, hook: Option<Arc<dyn BindBackfillHook>> }`
+- pub `new` function L24-26 — `(store: Arc<Mutex<Store>>) -> Self`
+- pub `with_backfill_hook` function L28-31 — `(mut self, hook: Arc<dyn BindBackfillHook>) -> Self`
+-  `WorkstreamBindTool` type L23-32 — `= WorkstreamBindTool`
+-  `WorkstreamBindTool` type L35-173 — `impl Tool for WorkstreamBindTool`
+-  `name` function L36-38 — `(&self) -> &str`
+-  `description` function L40-54 — `(&self) -> &str`
+-  `category` function L56-58 — `(&self) -> ToolCategory`
+-  `parameters_schema` function L60-69 — `(&self) -> Value`
+-  `execute` function L71-172 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...`
+
+#### crates/arawn-engine/src/tools/workstream/create.rs
+
+- pub `WorkstreamCreateTool` struct L15-17 — `{ store: Arc<Mutex<Store>> }`
+- pub `new` function L20-22 — `(store: Arc<Mutex<Store>>) -> Self`
+-  `WorkstreamCreateTool` type L19-23 — `= WorkstreamCreateTool`
+-  `WorkstreamCreateTool` type L26-176 — `impl Tool for WorkstreamCreateTool`
+-  `name` function L27-29 — `(&self) -> &str`
+-  `description` function L31-38 — `(&self) -> &str`
+-  `category` function L40-42 — `(&self) -> ToolCategory`
+-  `parameters_schema` function L44-59 — `(&self) -> Value`
+-  `execute` function L61-175 — `( &self, ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutpu...`
+
+#### crates/arawn-engine/src/tools/workstream/delete.rs
+
+- pub `WorkstreamDeleteTool` struct L11-14 — `{ store: Arc<Mutex<Store>>, active: SessionWorkstream }`
+- pub `new` function L17-19 — `(store: Arc<Mutex<Store>>, active: SessionWorkstream) -> Self`
+-  `WorkstreamDeleteTool` type L16-20 — `= WorkstreamDeleteTool`
+-  `WorkstreamDeleteTool` type L23-71 — `impl Tool for WorkstreamDeleteTool`
+-  `name` function L24-26 — `(&self) -> &str`
+-  `description` function L28-31 — `(&self) -> &str`
+-  `category` function L33-35 — `(&self) -> ToolCategory`
+-  `parameters_schema` function L37-43 — `(&self) -> Value`
+-  `execute` function L45-70 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...`
+
+#### crates/arawn-engine/src/tools/workstream/describe.rs
+
+- pub `WorkstreamDescribeTool` struct L10-12 — `{ store: Arc<Mutex<Store>> }`
+- pub `new` function L15-17 — `(store: Arc<Mutex<Store>>) -> Self`
+-  `WorkstreamDescribeTool` type L14-18 — `= WorkstreamDescribeTool`
+-  `WorkstreamDescribeTool` type L21-68 — `impl Tool for WorkstreamDescribeTool`
+-  `name` function L22-24 — `(&self) -> &str`
+-  `description` function L26-29 — `(&self) -> &str`
+-  `category` function L31-33 — `(&self) -> ToolCategory`
+-  `parameters_schema` function L35-44 — `(&self) -> Value`
+-  `execute` function L46-67 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...`
+
+#### crates/arawn-engine/src/tools/workstream/list.rs
+
+- pub `WorkstreamListTool` struct L11-14 — `{ store: Arc<Mutex<Store>>, active: SessionWorkstream }`
+- pub `new` function L17-22 — `(store: Arc<Mutex<Store>>) -> Self`
+- pub `with_active` function L24-27 — `(mut self, active: SessionWorkstream) -> Self`
+-  `WorkstreamListTool` type L16-28 — `= WorkstreamListTool`
+-  `WorkstreamListTool` type L31-91 — `impl Tool for WorkstreamListTool`
+-  `name` function L32-34 — `(&self) -> &str`
+-  `description` function L36-38 — `(&self) -> &str`
+-  `is_read_only` function L40-42 — `(&self) -> bool`
+-  `category` function L44-46 — `(&self) -> ToolCategory`
+-  `parameters_schema` function L48-56 — `(&self) -> Value`
+-  `execute` function L58-90 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...`
+
+#### crates/arawn-engine/src/tools/workstream/mod.rs
+
+-  `bind` module L11 — `-` — Eight tools that cover the workstream lifecycle: new, list, switch,
+-  `create` module L12 — `-` — `Session::workstream_name` field once sessions gain it.
+-  `delete` module L13 — `-` — `Session::workstream_name` field once sessions gain it.
+-  `describe` module L14 — `-` — `Session::workstream_name` field once sessions gain it.
+-  `list` module L15 — `-` — `Session::workstream_name` field once sessions gain it.
+-  `promote` module L16 — `-` — `Session::workstream_name` field once sessions gain it.
+-  `propose_ontology` module L17 — `-` — `Session::workstream_name` field once sessions gain it.
+-  `session` module L18 — `-` — `Session::workstream_name` field once sessions gain it.
+-  `show` module L19 — `-` — `Session::workstream_name` field once sessions gain it.
+-  `switch` module L20 — `-` — `Session::workstream_name` field once sessions gain it.
+-  `unbind` module L21 — `-` — `Session::workstream_name` field once sessions gain it.
+-  `util` module L22 — `-` — `Session::workstream_name` field once sessions gain it.
+-  `tests` module L41-917 — `-` — `Session::workstream_name` field once sessions gain it.
+-  `setup` function L51-60 — `() -> (tempfile::TempDir, Arc<Mutex<Store>>, SessionWorkstream)` — `Session::workstream_name` field once sessions gain it.
+-  `test_ctx` function L62-66 — `(tmp: &tempfile::TempDir) -> crate::context::EngineToolContext` — `Session::workstream_name` field once sessions gain it.
+-  `create_succeeds_with_valid_slug_description_and_ontology` function L69-90 — `()` — `Session::workstream_name` field once sessions gain it.
+-  `create_refuses_scratch` function L93-108 — `()` — `Session::workstream_name` field once sessions gain it.
+-  `create_refuses_missing_description` function L111-123 — `()` — `Session::workstream_name` field once sessions gain it.
+-  `create_refuses_empty_ontology` function L126-142 — `()` — `Session::workstream_name` field once sessions gain it.
+-  `create_dedupes_and_normalizes_ontology` function L145-164 — `()` — `Session::workstream_name` field once sessions gain it.
+-  `switch_updates_active` function L167-181 — `()` — `Session::workstream_name` field once sessions gain it.
+-  `switch_unknown_errors` function L184-193 — `()` — `Session::workstream_name` field once sessions gain it.
+-  `show_defaults_to_active` function L196-202 — `()` — `Session::workstream_name` field once sessions gain it.
+-  `describe_updates_description` function L205-228 — `()` — `Session::workstream_name` field once sessions gain it.
+-  `github_repo_scheme_accepts_owner_slash_name` function L233-235 — `()` — `Session::workstream_name` field once sessions gain it.
+-  `github_repo_scheme_rejects_missing_slash` function L238-241 — `()` — `Session::workstream_name` field once sessions gain it.
+-  `github_repo_scheme_rejects_empty_owner_or_name` function L244-247 — `()` — `Session::workstream_name` field once sessions gain it.
+-  `github_org_scheme_accepts_owner` function L250-252 — `()` — `Session::workstream_name` field once sessions gain it.
+-  `github_org_scheme_rejects_empty_or_with_slash` function L255-258 — `()` — `Session::workstream_name` field once sessions gain it.
+-  `non_github_feed_ids_pass_through_unchanged` function L261-266 — `()` — `Session::workstream_name` field once sessions gain it.
+-  `is_github_scope_binding_recognises_both_schemes` function L269-274 — `()` — `Session::workstream_name` field once sessions gain it.
+-  `bind_accepts_github_repo_scheme_and_stores_it` function L277-300 — `()` — `Session::workstream_name` field once sessions gain it.
+-  `parse_github_scope_handles_both_schemes` function L305-323 — `()` — `Session::workstream_name` field once sessions gain it.
+-  `count_feeds` function L325-334 — `(store: &Arc<Mutex<Store>>, feed_id: &str) -> i64` — `Session::workstream_name` field once sessions gain it.
+-  `repo_bind_registers_feed_record` function L337-368 — `()` — `Session::workstream_name` field once sessions gain it.
+-  `repo_bind_is_idempotent_no_duplicate_feed` function L371-394 — `()` — `Session::workstream_name` field once sessions gain it.
+-  `repo_bind_rejected_when_org_already_bound` function L397-438 — `()` — `Session::workstream_name` field once sessions gain it.
+-  `org_bind_supersedes_existing_repo_binds` function L441-497 — `()` — `Session::workstream_name` field once sessions gain it.
+-  `CapturingUnbindHook` struct L501-503 — `{ captured: Mutex<Vec<Vec<String>>> }` — `Session::workstream_name` field once sessions gain it.
+-  `CapturingUnbindHook` type L504-508 — `impl UnbindHook for CapturingUnbindHook` — `Session::workstream_name` field once sessions gain it.
+-  `on_unbind` function L505-507 — `(&self, removed_feed_ids: &[String])` — `Session::workstream_name` field once sessions gain it.
+-  `unbind_hook_fires_with_repo_feed_id` function L511-546 — `()` — `Session::workstream_name` field once sessions gain it.
+-  `unbind_hook_fires_with_all_org_child_ids` function L549-594 — `()` — `Session::workstream_name` field once sessions gain it.
+-  `unbind_hook_not_fired_for_plain_feed_id` function L597-624 — `()` — `Session::workstream_name` field once sessions gain it.
+-  `unbind_org_scope_sweeps_all_child_feeds` function L627-670 — `()` — `Session::workstream_name` field once sessions gain it.
+-  `unbind_repo_scope_drops_feed` function L673-698 — `()` — `Session::workstream_name` field once sessions gain it.
+-  `bind_rejects_malformed_github_repo_scheme` function L701-718 — `()` — `Session::workstream_name` field once sessions gain it.
+-  `bind_and_unbind_round_trip` function L721-751 — `()` — `Session::workstream_name` field once sessions gain it.
+-  `delete_refuses_scratch` function L754-763 — `()` — `Session::workstream_name` field once sessions gain it.
+-  `delete_refuses_currently_active` function L766-781 — `()` — `Session::workstream_name` field once sessions gain it.
+-  `delete_soft_marks_archived` function L784-801 — `()` — `Session::workstream_name` field once sessions gain it.
+-  `promote_moves_entity_from_scratch_to_target` function L804-850 — `()` — `Session::workstream_name` field once sessions gain it.
+-  `promote_refuses_unknown_target` function L853-872 — `()` — `Session::workstream_name` field once sessions gain it.
+-  `show_includes_ontology` function L875-900 — `()` — `Session::workstream_name` field once sessions gain it.
+-  `list_marks_active` function L903-916 — `()` — `Session::workstream_name` field once sessions gain it.
+
+#### crates/arawn-engine/src/tools/workstream/promote.rs
+
+- pub `WorkstreamPromoteTool` struct L11-14 — `{ store: Arc<Mutex<Store>>, router: Arc<crate::workstream_router::WorkstreamMemo...`
+- pub `new` function L17-22 — `( store: Arc<Mutex<Store>>, router: Arc<crate::workstream_router::WorkstreamMemo...`
+-  `WorkstreamPromoteTool` type L16-23 — `= WorkstreamPromoteTool`
+-  `WorkstreamPromoteTool` type L26-163 — `impl Tool for WorkstreamPromoteTool`
+-  `name` function L27-29 — `(&self) -> &str`
+-  `description` function L31-36 — `(&self) -> &str`
+-  `category` function L38-40 — `(&self) -> ToolCategory`
+-  `parameters_schema` function L42-51 — `(&self) -> Value`
+-  `execute` function L53-162 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...`
+
+#### crates/arawn-engine/src/tools/workstream/propose_ontology.rs
+
+- pub `WorkstreamProposeOntologyTool` struct L10-13 — `{ client: Arc<dyn arawn_llm::LlmClient>, model: String }`
+- pub `new` function L16-21 — `(client: Arc<dyn arawn_llm::LlmClient>, model: impl Into<String>) -> Self`
+-  `WorkstreamProposeOntologyTool` type L15-22 — `= WorkstreamProposeOntologyTool`
+-  `WorkstreamProposeOntologyTool` type L25-143 — `impl Tool for WorkstreamProposeOntologyTool`
+-  `name` function L26-28 — `(&self) -> &str`
+-  `description` function L30-40 — `(&self) -> &str`
+-  `is_read_only` function L42-44 — `(&self) -> bool`
+-  `category` function L46-48 — `(&self) -> ToolCategory`
+-  `parameters_schema` function L50-61 — `(&self) -> Value`
+-  `execute` function L63-142 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...`
+-  `Proposal` struct L113-117 — `{ tags: Vec<String>, rationale: String }`
+-  `propose_llm_call` function L148-179 — `( client: &Arc<dyn arawn_llm::LlmClient>, model: &str, system: &str, user: &str,...` — Tiny streaming-drain helper.
+
+#### crates/arawn-engine/src/tools/workstream/session.rs
+
+- pub `SessionWorkstream` struct L9-11 — `{ inner: Arc<Mutex<String>> }` — Holder for the session-active workstream name.
+- pub `new` function L14-18 — `(initial: impl Into<String>) -> Self`
+- pub `scratch` function L20-22 — `() -> Self`
+- pub `current` function L24-26 — `(&self) -> String`
+- pub `set` function L28-30 — `(&self, name: impl Into<String>)`
+-  `SessionWorkstream` type L13-31 — `= SessionWorkstream`
+-  `SessionWorkstream` type L33-37 — `impl Default for SessionWorkstream`
+-  `default` function L34-36 — `() -> Self`
+
+#### crates/arawn-engine/src/tools/workstream/show.rs
+
+- pub `WorkstreamShowTool` struct L11-14 — `{ store: Arc<Mutex<Store>>, active: SessionWorkstream }`
+- pub `new` function L17-19 — `(store: Arc<Mutex<Store>>, active: SessionWorkstream) -> Self`
+-  `WorkstreamShowTool` type L16-20 — `= WorkstreamShowTool`
+-  `WorkstreamShowTool` type L23-100 — `impl Tool for WorkstreamShowTool`
+-  `name` function L24-26 — `(&self) -> &str`
+-  `description` function L28-35 — `(&self) -> &str`
+-  `is_read_only` function L37-39 — `(&self) -> bool`
+-  `category` function L41-43 — `(&self) -> ToolCategory`
+-  `parameters_schema` function L45-53 — `(&self) -> Value`
+-  `execute` function L55-99 — `( &self, ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutpu...`
+
+#### crates/arawn-engine/src/tools/workstream/switch.rs
+
+- pub `WorkstreamSwitchTool` struct L11-14 — `{ store: Arc<Mutex<Store>>, active: SessionWorkstream }`
+- pub `new` function L17-19 — `(store: Arc<Mutex<Store>>, active: SessionWorkstream) -> Self`
+-  `WorkstreamSwitchTool` type L16-20 — `= WorkstreamSwitchTool`
+-  `WorkstreamSwitchTool` type L23-100 — `impl Tool for WorkstreamSwitchTool`
+-  `name` function L24-26 — `(&self) -> &str`
+-  `description` function L28-32 — `(&self) -> &str`
+-  `category` function L34-36 — `(&self) -> ToolCategory`
+-  `parameters_schema` function L38-44 — `(&self) -> Value`
+-  `execute` function L46-99 — `( &self, ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutpu...`
+
+#### crates/arawn-engine/src/tools/workstream/unbind.rs
+
+- pub `UnbindHook` interface L14-16 — `{ fn on_unbind() }`
+- pub `WorkstreamUnbindTool` struct L18-21 — `{ store: Arc<Mutex<Store>>, hook: Option<Arc<dyn UnbindHook>> }`
+- pub `new` function L24-26 — `(store: Arc<Mutex<Store>>) -> Self`
+- pub `with_unbind_hook` function L28-31 — `(mut self, hook: Arc<dyn UnbindHook>) -> Self`
+-  `WorkstreamUnbindTool` type L23-32 — `= WorkstreamUnbindTool`
+-  `WorkstreamUnbindTool` type L35-131 — `impl Tool for WorkstreamUnbindTool`
+-  `name` function L36-38 — `(&self) -> &str`
+-  `description` function L40-42 — `(&self) -> &str`
+-  `category` function L44-46 — `(&self) -> ToolCategory`
+-  `parameters_schema` function L48-57 — `(&self) -> Value`
+-  `execute` function L59-130 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...`
+-  `collect_child_feed_ids` function L133-143 — `(conn: &rusqlite::Connection, pattern: &str) -> Vec<String>`
+
+#### crates/arawn-engine/src/tools/workstream/util.rs
+
+- pub `validate_github_scope_scheme` function L4-25 — `(feed_id: &str) -> Result<(), String>`
+- pub `is_github_scope_binding` function L31-33 — `(feed_id: &str) -> bool` — Returns true if `feed_id` is a github scope-binding (either
+- pub `GithubScope` enum L37-40 — `Repo | Org` — Parsed github scope binding.
+- pub `parse_github_scope` function L42-61 — `(feed_id: &str) -> Option<GithubScope>`
+-  `find_workstreams_binding` function L65-79 — `( store: &Store, matcher: impl Fn(&str) -> bool, ) -> Vec<(String, String)>` — Walk active workstreams, return `(workstream_name, binding)` for
+-  `upsert_repo_mirror_feed` function L88-131 — `( store: &Store, feed_id: &str, owner: &str, repo: &str, ) -> Result<(), arawn_s...` — Insert (or refresh) a `github/repo-mirror` feed record by writing
+-  `delete_feed` function L134-141 — `(store: &Store, feed_id: &str) -> Result<(), arawn_storage::StorageError>` — Drop a feed record by raw SQL.
+-  `extract_json_block` function L143-167 — `(raw: &str) -> Option<&str>`
 
 ### crates/arawn-extractor/src
 
@@ -7016,22 +7305,31 @@
 #### crates/arawn-llm/src/error.rs
 
 - pub `LlmError` enum L4-31 — `Api | Auth | ModelNotFound | RateLimited | ServerError | Stream | Config | Reque...`
-- pub `is_retryable` function L35-52 — `(&self) -> bool` — Returns true if this error is transient and the request should be retried.
-- pub `from_status` function L55-67 — `(status: u16, body: String) -> Self` — Create from an HTTP status code + body.
-- pub `user_message` function L70-122 — `(&self) -> String` — Return a user-facing error message with actionable guidance.
--  `LlmError` type L33-123 — `= LlmError`
--  `extract_api_message` function L127-134 — `(body: &str) -> Option<String>` — Try to extract a clean message from a JSON error body.
--  `tests` module L137-211 — `-`
--  `from_status_401_is_auth` function L141-146 — `()`
--  `from_status_403_is_auth` function L149-152 — `()`
--  `from_status_404_is_model_not_found` function L155-163 — `()`
--  `from_status_429_is_rate_limited` function L166-171 — `()`
--  `from_status_500_is_server_error` function L174-179 — `()`
--  `from_status_400_is_api_error` function L182-186 — `()`
--  `extract_message_from_json_body` function L189-193 — `()`
--  `extract_message_from_plain_text_returns_none` function L196-198 — `()`
--  `config_error_user_message` function L201-204 — `()`
--  `stream_error_user_message` function L207-210 — `()`
+- pub `is_retryable` function L35-64 — `(&self) -> bool` — Returns true if this error is transient and the request should be retried.
+- pub `from_status` function L67-79 — `(status: u16, body: String) -> Self` — Create from an HTTP status code + body.
+- pub `user_message` function L82-134 — `(&self) -> String` — Return a user-facing error message with actionable guidance.
+-  `LlmError` type L33-135 — `= LlmError`
+-  `FAILED_GENERATION_TRUNCATE_BYTES` variable L140 — `: usize` — Maximum length of `failed_generation` content to include in error
+-  `extract_api_message` function L153-178 — `(body: &str) -> Option<String>` — Try to extract a clean message from a JSON error body.
+-  `tests` module L181-338 — `-`
+-  `from_status_401_is_auth` function L185-190 — `()`
+-  `from_status_403_is_auth` function L193-196 — `()`
+-  `from_status_404_is_model_not_found` function L199-207 — `()`
+-  `from_status_429_is_rate_limited` function L210-215 — `()`
+-  `from_status_500_is_server_error` function L218-223 — `()`
+-  `from_status_400_is_api_error` function L226-230 — `()`
+-  `extract_message_from_json_body` function L233-237 — `()`
+-  `extract_message_from_plain_text_returns_none` function L240-242 — `()`
+-  `extract_message_includes_failed_generation_when_present` function L247-258 — `()`
+-  `extract_message_truncates_long_failed_generation` function L261-279 — `()`
+-  `extract_message_handles_empty_failed_generation` function L282-288 — `()`
+-  `extract_message_without_failed_generation_preserves_old_behavior` function L291-295 — `()`
+-  `api_error_failed_to_call_a_function_is_retryable` function L300-305 — `()`
+-  `api_error_failed_to_parse_tool_call_arguments_is_retryable` function L308-311 — `()`
+-  `api_error_invalid_model_is_not_retryable` function L314-318 — `()`
+-  `api_error_failed_to_call_case_insensitive` function L321-325 — `()`
+-  `config_error_user_message` function L328-331 — `()`
+-  `stream_error_user_message` function L334-337 — `()`
 
 #### crates/arawn-llm/src/groq.rs
 
@@ -9333,17 +9631,17 @@
 
 #### crates/arawn-tool/src/tool.rs
 
-- pub `ToolCategory` enum L12-33 — `Core | Task | Agent | Web | Memory | Plan | Workstream | Utility | BackgroundTas...` — Category of a tool — used for permission checking, context filtering, and
-- pub `PermissionCategory` enum L39-50 — `ReadOnly | FileWrite | Shell | Other` — Risk class of a tool — used by the permission system to decide fallback
-- pub `ToolOutput` struct L54-57 — `{ content: String, is_error: bool }` — Output from a tool execution.
-- pub `success` function L60-65 — `(content: impl Into<String>) -> Self`
-- pub `error` function L67-72 — `(content: impl Into<String>) -> Self`
-- pub `Tool` interface L77-116 — `{ fn name(), fn description(), fn parameters_schema(), fn execute(), fn is_read_...` — A tool that can be invoked by the LLM.
--  `ToolOutput` type L59-73 — `= ToolOutput`
--  `is_read_only` function L84-86 — `(&self) -> bool` — Whether this tool is side-effect-free (observation only).
--  `category` function L89-91 — `(&self) -> ToolCategory` — Tool category for context filtering and feature-area grouping.
--  `permission_category` function L98-107 — `(&self) -> PermissionCategory` — Permission risk class for permission-mode fallback decisions.
--  `llm_preference` function L113-115 — `(&self) -> Option<LlmPreference>` — Optional preferred LLM for this tool.
+- pub `ToolCategory` enum L12-45 — `Core | Task | Agent | Web | Memory | Plan | Workstream | Utility | BackgroundTas...` — Category of a tool — used for permission checking, context filtering, and
+- pub `PermissionCategory` enum L51-62 — `ReadOnly | FileWrite | Shell | Other` — Risk class of a tool — used by the permission system to decide fallback
+- pub `ToolOutput` struct L66-69 — `{ content: String, is_error: bool }` — Output from a tool execution.
+- pub `success` function L72-77 — `(content: impl Into<String>) -> Self`
+- pub `error` function L79-84 — `(content: impl Into<String>) -> Self`
+- pub `Tool` interface L89-128 — `{ fn name(), fn description(), fn parameters_schema(), fn execute(), fn is_read_...` — A tool that can be invoked by the LLM.
+-  `ToolOutput` type L71-85 — `= ToolOutput`
+-  `is_read_only` function L96-98 — `(&self) -> bool` — Whether this tool is side-effect-free (observation only).
+-  `category` function L101-103 — `(&self) -> ToolCategory` — Tool category for context filtering and feature-area grouping.
+-  `permission_category` function L110-119 — `(&self) -> PermissionCategory` — Permission risk class for permission-mode fallback decisions.
+-  `llm_preference` function L125-127 — `(&self) -> Option<LlmPreference>` — Optional preferred LLM for this tool.
 
 ### crates/arawn-tui/src
 
@@ -9366,82 +9664,6 @@
 #### crates/arawn-tui/src/action.rs
 
 - pub `Action` enum L3-66 — `TypeChar | Backspace | Delete | CursorLeft | CursorRight | CursorHome | CursorEn...`
-
-#### crates/arawn-tui/src/app.rs
-
-- pub `LayoutRegions` struct L13-26 — `{ sidebar: Option<Rect>, chat: Rect, input: Rect, sidebar_ws: Option<Rect>, side...` — Tracks the screen regions of each panel from the last render.
-- pub `Focus` enum L30-34 — `Main | Sidebar` — Which panel has focus.
-- pub `SidebarSection` enum L45-47 — `Workstreams` — Which sidebar section is active.
-- pub `ChatMessage` struct L51-60 — `{ role: ChatRole, content: String, created_at: std::time::Instant, rendered_cach...` — A message displayed in the chat area.
-- pub `new` function L63-71 — `(role: ChatRole, content: impl Into<String>) -> Self`
-- pub `rendered_lines` function L75-88 — `(&mut self, width: usize) -> &[ratatui::text::Line<'static>]` — Get or compute the cached markdown rendering for assistant messages.
-- pub `ChatRole` enum L92-98 — `User | Assistant | ToolCall | ToolResult | System`
-- pub `App` struct L101-218 — `{ focus: Focus, input_buffer: String, cursor_pos: usize, messages: Vec<ChatMessa...` — All mutable TUI state.
-- pub `DOUBLE_ESC_WINDOW` variable L223 — `: std::time::Duration` — Window for double-Esc detection.
-- pub `HistoryEntry` struct L227-234 — `{ text: String, is_chat: bool }` — One entry in the per-session input history.
-- pub `new` function L237-286 — `() -> Self`
-- pub `post_toast` function L376-386 — `( &mut self, message: impl Into<String>, level: crate::toast::ToastLevel, )` — I-0035 Phase 4 (T-0359): enqueue a 1-line toast to surface
-- pub `should_show_brief_in_empty_chat` function L392-396 — `(&self) -> bool` — True iff the empty-chat surface should render the cached brief
-- pub `handle_action` function L399-809 — `(&mut self, action: Action) -> bool` — Process an action and mutate state.
-- pub `apply_engine_event` function L966-1046 — `(&mut self, event: crate::ws_client::EventUpdate)` — Apply a streaming engine event to the app state (testable without network).
-- pub `load_session_messages` function L1050-1113 — `(&mut self, detail: &serde_json::Value)` — Load messages from a session detail JSON response into the chat.
-- pub `format_tool_input` function L1133-1181 — `(tool_name: &str, input: &serde_json::Value) -> String` — Format tool input args into a compact display string.
--  `ChatMessage` type L62-89 — `= ChatMessage`
--  `App` type L236-1130 — `= App`
--  `handle_export_conversation` function L293-329 — `(&mut self, path: Option<String>)` — T-0363: handle `/export [path]` — write the current
--  `handle_copy_last_response` function L340-371 — `(&mut self)` — T-0361: handle `/copy` — walk `messages` backwards for the
--  `record_input_history` function L815-824 — `(&mut self, text: &str, is_chat: bool)` — Append `text` to input history, skipping empty input and deduping
--  `history_recall_prev` function L828-843 — `(&mut self)` — Move backward in input history.
--  `history_recall_next` function L847-862 — `(&mut self)` — Move forward in input history.
--  `open_history_modal` function L869-923 — `(&mut self)` — Open a modal listing branchable history entries (chat prompts only,
--  `update_autocomplete` function L926-952 — `(&mut self)` — Update autocomplete suggestions based on current input buffer.
--  `accept_autocomplete` function L955-963 — `(&mut self)` — Accept the currently selected autocomplete suggestion.
--  `prev_char_boundary` function L1115-1121 — `(&self) -> usize`
--  `next_char_boundary` function L1123-1129 — `(&self) -> usize`
--  `App` type L1183-1187 — `impl Default for App`
--  `default` function L1184-1186 — `() -> Self`
--  `default_export_path` function L1193-1211 — `(app: &App) -> std::path::PathBuf` — T-0363 — pick the default `/export` path when the user invokes
--  `shellexpand_tilde` function L1216-1228 — `(input: &str) -> String` — T-0363 — expand a leading `~` in a path to `$HOME`.
--  `render_conversation_markdown` function L1236-1269 — `(app: &App) -> String` — T-0363 — render the full transcript as a markdown document.
--  `tests` module L1272-1887 — `-`
--  `type_chars_updates_buffer` function L1276-1282 — `()`
--  `backspace_removes_char` function L1285-1292 — `()`
--  `submit_moves_to_messages` function L1295-1307 — `()`
--  `submit_blocked_when_empty` function L1310-1316 — `()`
--  `submit_blocked_while_generating` function L1319-1325 — `()`
--  `tab_toggles_focus` function L1328-1335 — `()`
--  `scroll_updates_offset` function L1338-1346 — `()`
--  `cancel_stops_generation` function L1349-1358 — `()`
--  `quit_sets_flag` function L1361-1365 — `()`
--  `cursor_movement` function L1368-1389 — `()`
--  `full_conversation_flow` function L1394-1424 — `()`
--  `tool_call_flow` function L1427-1458 — `()`
--  `error_event_clears_generating` function L1461-1475 — `()`
--  `sidebar_navigation` function L1478-1509 — `()`
--  `submit_via_input` function L1511-1518 — `(app: &mut App, text: &str)`
--  `history_text` function L1520-1522 — `(app: &App) -> Vec<&str>`
--  `history_records_submitted_prompts` function L1525-1531 — `()`
--  `history_records_slash_commands_with_is_chat_false` function L1534-1544 — `()`
--  `history_dedupes_consecutive_duplicates` function L1547-1554 — `()`
--  `branch_modal_filters_out_slash_commands` function L1557-1571 — `()`
--  `branch_modal_skipped_when_no_chat_history` function L1574-1582 — `()`
--  `up_arrow_recalls_most_recent_when_input_empty` function L1585-1600 — `()`
--  `down_arrow_restores_draft_past_newest` function L1603-1621 — `()`
--  `double_esc_within_window_opens_history_modal` function L1624-1636 — `()`
--  `double_esc_outside_window_does_not_open_modal` function L1639-1647 — `()`
--  `history_recall_at_loads_entry_into_input` function L1650-1658 — `()`
--  `empty_history_modal_is_a_no_op` function L1661-1667 — `()`
--  `modal_select_index_picks_option_directly` function L1670-1692 — `()`
--  `cancel_marks_session_for_stale_event_drop` function L1695-1722 — `()`
--  `next_submit_clears_cancelled_session_marker` function L1725-1739 — `()`
--  `modal_select_out_of_range_is_no_op` function L1742-1755 — `()`
--  `copy_last_response_posts_toast_with_assistant_text` function L1760-1774 — `()`
--  `copy_last_response_warns_when_no_assistant_messages` function L1777-1786 — `()`
--  `export_warns_on_empty_transcript` function L1791-1798 — `()`
--  `export_writes_markdown_to_explicit_path` function L1801-1826 — `()`
--  `export_skips_tool_call_and_tool_result_rows` function L1829-1855 — `()`
--  `shellexpand_tilde_expands_home` function L1858-1871 — `()`
--  `copy_last_response_picks_most_recent_assistant_turn` function L1874-1886 — `()`
 
 #### crates/arawn-tui/src/ceremony_modal.rs
 
@@ -9585,55 +9807,6 @@
 -  `ctrl_e_toggles_tool_results` function L196-207 — `()`
 -  `sidebar_focus_navigation` function L210-227 — `()`
 
-#### crates/arawn-tui/src/event_loop.rs
-
-- pub `run_tui` function L64-1240 — `(url: &str, model_name: &str) -> Result<(), Box<dyn std::error::Error>>` — Run the TUI connected to the given WebSocket server URL.
--  `MIN_FRAME_INTERVAL` variable L29 — `: Duration` — Minimum interval between renders driven by streaming/event traffic.
--  `maybe_draw` function L33-45 — `( terminal: &mut Terminal<B>, app: &mut App, ) -> io::Result<()>` — Render if enough time has elapsed since the last draw.
--  `force_draw` function L49-57 — `( terminal: &mut Terminal<B>, app: &mut App, ) -> io::Result<()>` — Render now regardless of frame budget.
--  `rect_contains` function L59-61 — `(rect: Rect, col: u16, row: u16) -> bool`
--  `format_integrations_list` function L1243-1263 — `(items: &[serde_json::Value]) -> String` — Render a `list_integrations` response as a markdown table the user can scan.
--  `OpenAttempt` enum L1267-1271 — `Opened | NoOpener | Failed` — What `try_open_url` did.
--  `try_open_url` function L1275-1308 — `(url: &str) -> OpenAttempt` — Best-effort browser open.
--  `apply_system_notice` function L1313-1360 — `(notice: &arawn_service::ServerNotice, app: &mut crate::app::App)` — Push a server-side notice (plugin/config hot-reload outcome) into the
--  `ceremony_event_should_refresh` function L1365-1384 — `(notice: &arawn_service::ServerNotice, app: &mut crate::app::App)` — If a ceremony_event notice targets the tablet the user is currently
--  `format_permissions_status` function L1387-1436 — `(status: &serde_json::Value) -> String` — Render `get_permissions_status` JSON as a human-readable system message.
--  `format_feed_registered` function L1439-1450 — `(dto: &serde_json::Value) -> String` — Render a freshly-registered feed into a chat-ready system message.
--  `format_feed_list` function L1455-1481 — `(list: &[serde_json::Value]) -> String` — Render the `/feeds` listing as a markdown table-ish block.
--  `human_size` function L1483-1496 — `(bytes: u64) -> String`
--  `KB` variable L1484 — `: u64`
--  `MB` variable L1485 — `: u64`
--  `GB` variable L1486 — `: u64`
--  `format_feed_discover` function L1501-1555 — `(dto: &serde_json::Value) -> String` — Render `feed_discover` results into a chat-pane block.
--  `format_known_templates` function L1559-1572 — `() -> String` — Static help for `/watch list` with no template — points the user
--  `current_iso_week` function L1577-1581 — `() -> String` — ISO-week period key in the canonical `YYYY-WNN` form used by the
--  `render_ceremony_today` function L1585-1617 — `(client: &mut crate::ws_client::WsClient, today: &str) -> String` — Fetch the daily tablet for `today`, then list its items, then
--  `render_ceremony_week` function L1621-1658 — `(client: &mut crate::ws_client::WsClient, iso_week: &str) -> String` — Fetch the weekly tablet for the current ISO week, then items, then
--  `render_ceremony_retro` function L1663-1699 — `(client: &mut crate::ws_client::WsClient, iso_week: &str) -> String` — Fetch the retro tablet for the current ISO week, then items, then
--  `fetch_daily_view` function L1705-1721 — `( client: &mut crate::ws_client::WsClient, today: &str, ) -> Option<arawn_ceremo...` — Fetch the daily tablet + items for `today` and return a
--  `fetch_weekly_view` function L1725-1746 — `( client: &mut crate::ws_client::WsClient, iso_week: &str, ) -> Option<arawn_cer...` — Fetch the weekly tablet + items + priorities for `iso_week`.
--  `render_usage` function L1753-1778 — `(client: &mut crate::ws_client::WsClient, period: &str) -> String` — T-0362: TUI `/usage` slash command — call the server-side
--  `refresh_brief_cache` function L1785-1803 — `(client: &mut crate::ws_client::WsClient, app: &mut App)` — I-0035 Phase 2 / 3 / 4: refresh the cached brief markdown +
--  `render_brief_combined` function L1809-1819 — `(client: &mut crate::ws_client::WsClient) -> String` — I-0035 Phase 2 (T-0354): fetch today's daily tablet + this week's
--  `fetch_tablet_id_and_status` function L1824-1840 — `( client: &mut crate::ws_client::WsClient, kind: &str, period_key: &str, ) -> Op...` — Re-fetch the tablet for `(kind, period_key)` and return its id +
--  `fetch_diary_body` function L1845-1861 — `(client: &mut crate::ws_client::WsClient, tablet_id: &str) -> String` — Pull any existing diary body from the retro tablet by listing its
--  `handle_ceremony_overlay_key` function L1866-1958 — `( client: &mut crate::ws_client::WsClient, app: &mut App, key: crossterm::event:...` — Drive the active ceremony overlay from a raw key event.
--  `apply_priority_rpc_result` function L1962-1982 — `( app: &mut App, tablet_id: &str, client: &mut crate::ws_client::WsClient, res: ...` — After a priority RPC, refresh the modal's priorities list (or stash
--  `refresh_active_ceremony_overlay` function L1988-2013 — `(client: &mut crate::ws_client::WsClient, app: &mut App)` — Re-pull underlying data for whichever ceremony overlay is active so
--  `fetch_open_todos` function L2021-2052 — `(client: &mut crate::ws_client::WsClient) -> Vec<crate::todo_modal::TodoRow>` — Fetch all open todos for the overlay.
--  `handle_todo_overlay_key` function L2054-2134 — `( client: &mut crate::ws_client::WsClient, app: &mut App, key: crossterm::event:...`
--  `ceremony_refresh_tests` module L2137-2242 — `-`
--  `notice_for` function L2142-2153 — `(tablet_id: &str) -> arawn_service::ServerNotice`
--  `ceremony_event_for_active_tablet_flags_refresh` function L2156-2167 — `()`
--  `ceremony_event_for_other_tablet_is_ignored` function L2170-2178 — `()`
--  `ceremony_event_with_no_overlay_is_ignored` function L2181-2187 — `()`
--  `non_ceremony_notices_still_render_into_chat` function L2190-2201 — `()`
--  `briefing_ready_notice` function L2205-2212 — `() -> arawn_service::ServerNotice`
--  `briefing_ready_flags_refresh_and_posts_toast` function L2215-2231 — `()`
--  `briefing_ready_does_not_affect_ceremony_refresh` function L2234-2241 — `()`
--  `fetch_items` function L2244-2261 — `( client: &mut crate::ws_client::WsClient, tablet_id: &str, ) -> Vec<arawn_cerem...`
--  `fetch_priorities` function L2263-2280 — `( client: &mut crate::ws_client::WsClient, tablet_id: &str, ) -> Vec<arawn_cerem...`
-
 #### crates/arawn-tui/src/lib.rs
 
 - pub `action` module L1 — `-`
@@ -9720,95 +9893,6 @@
 -  `cancel_sends_none` function L255-261 — `()` — questions, and any future tool that needs user input.
 -  `confirm_only_sends_once` function L264-271 — `()` — questions, and any future tool that needs user input.
 -  `centered_rect_calculation` function L274-281 — `()` — questions, and any future tool that needs user input.
-
-#### crates/arawn-tui/src/render.rs
-
-- pub `render` function L24-152 — `(app: &mut App, frame: &mut Frame)` — Render function.
--  `SPINNER_FRAMES` variable L10 — `: &[char]`
--  `DASHBOARD_WIDTH` variable L14 — `: u16` — I-0035 Phase 3 (T-0356) — fixed width for the right-pane
--  `MIN_FOR_THREE_PANE` variable L21 — `: u16` — Minimum terminal width to render the three-pane layout.
--  `render_sidebar_tab` function L154-178 — `(frame: &mut Frame, area: ratatui::layout::Rect)`
--  `render_status_bar` function L180-277 — `(app: &App, frame: &mut Frame, area: ratatui::layout::Rect)`
--  `format_tokens` function L280-288 — `(n: u64) -> String` — Format a token count for display: 1234 → "1.2k", 12345 → "12.3k", 500 → "500"
--  `render_sidebar` function L290-328 — `(app: &App, frame: &mut Frame, area: ratatui::layout::Rect)`
--  `render_dashboard_pane` function L335-358 — `(app: &App, frame: &mut Frame, area: ratatui::layout::Rect)` — I-0035 Phase 3 dashboard pane.
--  `BRIEF_HEIGHT` variable L347 — `: u16`
--  `render_dashboard_brief` function L364-422 — `(app: &App, frame: &mut Frame, area: ratatui::layout::Rect)` — I-0035 Phase 3 T-B (T-0357) — compact brief summary in the
--  `MAX_CAL` variable L399 — `: usize`
--  `render_dashboard_actions` function L430-502 — `(app: &App, frame: &mut Frame, area: ratatui::layout::Rect)` — I-0035 Phase 3 T-C (T-0358) — read-only action items list in
--  `push_action_rows` function L507-538 — `( lines: &mut Vec<Line<'static>>, items: &[&arawn_ceremonies::service::ItemDto],...` — Push action rows (checkbox + truncated body) into `lines`,
--  `format_action_row` function L540-560 — `(item: &arawn_ceremonies::service::ItemDto, budget: usize) -> String`
--  `format_brief_date_line` function L564-580 — `(period_key: &str) -> String` — Format the brief's date line: `YYYY-MM-DD · Wed` when the
--  `format_calendar_row` function L584-608 — `(item: &arawn_ceremonies::service::ItemDto, budget: usize) -> String` — Render one calendar row: `HH:MM <title>` when body has a
--  `detect_conflict` function L614-647 — `(items: &[&arawn_ceremonies::service::ItemDto]) -> Option<String>` — Pure conflict detection over calendar items.
--  `render_chat` function L649-1046 — `(app: &mut App, frame: &mut Frame, area: ratatui::layout::Rect)`
--  `render_separator` function L1048-1052 — `(frame: &mut Frame, area: ratatui::layout::Rect)`
--  `render_input` function L1054-1119 — `(app: &App, frame: &mut Frame, area: ratatui::layout::Rect)`
--  `render_autocomplete` function L1122-1180 — `( ac: &crate::command::AutocompleteState, frame: &mut Frame, input_area: ratatui...` — Render the autocomplete dropdown above the input line.
--  `render_toast_bar` function L1185-1200 — `(app: &App, frame: &mut Frame, area: ratatui::layout::Rect)` — I-0035 Phase 4 T-A — render the toast at the head of the queue
--  `render_oauth_heartbeat` function L1202-1225 — `(app: &App, frame: &mut Frame, area: ratatui::layout::Rect)`
--  `render_empty_chat_brief` function L1231-1251 — `(app: &App, frame: &mut Frame, area: ratatui::layout::Rect)` — I-0035 Phase 2 (T-0354): render the cached brief markdown in the
--  `render_idle_hero` function L1253-1293 — `(frame: &mut Frame, area: ratatui::layout::Rect)`
--  `truncate_to` function L1296-1298 — `(s: &str, max_cells: usize) -> String` — Truncate a string to fit within a display width, adding "…" if needed.
--  `compact_tool_summary` function L1301-1306 — `(content: &str) -> String` — Extract a compact summary from tool call content for inline display.
--  `truncate_for_display` function L1308-1312 — `(s: &str, max: usize) -> String`
--  `tests` module L1315-2426 — `-`
--  `truncate_for_display_handles_utf8_at_boundary` function L1322-1332 — `()`
--  `truncate_for_display_passes_through_short_strings` function L1335-1337 — `()`
--  `cal_item` function L1341-1357 — `(text: &str, start: &str, end: &str) -> arawn_ceremonies::service::ItemDto`
--  `daily_view_with_items` function L1359-1375 — `( items: Vec<arawn_ceremonies::service::ItemDto>, ) -> arawn_ceremonies::DailyVi...`
--  `dashboard_brief_renders_today_with_calendar` function L1378-1409 — `()`
--  `dashboard_brief_flags_conflict` function L1412-1423 — `()`
--  `dashboard_brief_no_conflict_when_separated` function L1426-1433 — `()`
--  `dashboard_brief_empty_state_no_tablet` function L1436-1454 — `()`
--  `dashboard_brief_empty_state_no_calendar_items` function L1457-1475 — `()`
--  `format_brief_date_line_includes_weekday` function L1478-1481 — `()`
--  `format_brief_date_line_fallback_on_garbage` function L1484-1486 — `()`
--  `attn_item` function L1490-1505 — `( ordinal: i32, text: &str, ) -> arawn_ceremonies::service::ItemDto`
--  `todo_item` function L1507-1522 — `( ordinal: i32, text: &str, ) -> arawn_ceremonies::service::ItemDto`
--  `daily_view_for_actions` function L1524-1540 — `( items: Vec<arawn_ceremonies::service::ItemDto>, ) -> arawn_ceremonies::DailyVi...`
--  `draw_actions` function L1542-1551 — `(app: &App, w: u16, h: u16) -> Terminal<TestBackend>`
--  `buffer_contains` function L1553-1560 — `(terminal: &Terminal<TestBackend>, needle: &str) -> bool`
--  `dashboard_actions_renders_attention_items` function L1563-1575 — `()`
--  `dashboard_actions_empty_state_no_tablet` function L1578-1584 — `()`
--  `dashboard_actions_empty_state_no_attention_items` function L1587-1592 — `()`
--  `dashboard_actions_truncates_long_titles` function L1595-1609 — `()`
--  `dashboard_actions_overflow_footer` function L1612-1624 — `()`
--  `post_toast_enqueues_message` function L1629-1636 — `()`
--  `expired_toast_is_dropped_on_render` function L1639-1656 — `()`
--  `toast_truncates_long_message` function L1659-1677 — `()`
--  `dashboard_actions_carried_over_separator` function L1680-1690 — `()`
--  `buffer_to_string` function L1692-1707 — `(terminal: &Terminal<TestBackend>, row: u16) -> String`
--  `render_empty_app_has_status_bar` function L1710-1719 — `()`
--  `render_with_messages_shows_content` function L1722-1748 — `()`
--  `render_with_input_text` function L1751-1766 — `()`
--  `render_streaming_shows_cursor` function L1769-1792 — `()`
--  `render_small_terminal` function L1795-1800 — `()`
--  `render_large_terminal` function L1803-1808 — `()`
--  `region_text` function L1813-1825 — `(terminal: &Terminal<TestBackend>, x: u16, y: u16, w: u16, h: u16) -> String` — Extract text from a rectangular region of the buffer.
--  `chat_region_for` function L1829-1842 — `(terminal: &Terminal<TestBackend>, sidebar_visible: bool) -> String` — Extract the chat area text.
--  `chat_region` function L1845-1847 — `(terminal: &Terminal<TestBackend>) -> String` — Convenience: chat region for default app (sidebar hidden).
--  `sidebar_region` function L1851-1859 — `(terminal: &Terminal<TestBackend>) -> String` — Extract the sidebar text (left 20%, rows 1..height-3).
--  `input_region` function L1862-1867 — `(terminal: &Terminal<TestBackend>) -> String` — Extract the input bar text (second from bottom row).
--  `chat_renders_user_message_with_prefix` function L1872-1886 — `()`
--  `chat_renders_assistant_message_with_prefix` function L1889-1903 — `()`
--  `chat_renders_tool_call_with_icon` function L1906-1936 — `()`
--  `chat_renders_tool_result_collapsed` function L1939-1967 — `()`
--  `chat_renders_tool_error_result` function L1970-1993 — `()`
--  `chat_renders_tool_result_truncated` function L1996-2023 — `()`
--  `chat_streaming_text_appears_in_chat_area` function L2026-2044 — `()`
--  `sidebar_renders_workstream_names` function L2047-2083 — `()`
--  `sidebar_does_not_leak_into_chat` function L2086-2120 — `()`
--  `input_shows_placeholder_when_empty` function L2123-2134 — `()`
--  `input_shows_generating_when_active` function L2137-2150 — `()`
--  `status_bar_shows_generating_indicator` function L2153-2167 — `()`
--  `status_bar_shows_workstream_name` function L2170-2194 — `()`
--  `messages_do_not_appear_in_input_area` function L2197-2220 — `()`
--  `chat_auto_scrolls_to_bottom_with_many_messages` function L2225-2255 — `()`
--  `chat_scroll_up_reveals_older_messages` function L2258-2286 — `()`
--  `chat_few_messages_all_visible` function L2289-2303 — `()`
--  `last_message_visible_above_input` function L2306-2359 — `()`
--  `last_tool_result_visible_above_input` function L2362-2425 — `()`
 
 #### crates/arawn-tui/src/snapshot.rs
 
@@ -10045,6 +10129,300 @@
 -  `rejects_engine_event_envelope` function L642-649 — `()`
 -  `rejects_response_envelope` function L652-655 — `()`
 -  `rejects_malformed_json` function L658-661 — `()`
+
+### crates/arawn-tui/src/app
+
+> *Semantic summary to be generated by AI agent.*
+
+#### crates/arawn-tui/src/app/actions.rs
+
+- pub `post_toast` function L100-110 — `( &mut self, message: impl Into<String>, level: crate::toast::ToastLevel, )` — I-0035 Phase 4 (T-0359): enqueue a 1-line toast to surface
+- pub `should_show_brief_in_empty_chat` function L116-120 — `(&self) -> bool` — True iff the empty-chat surface should render the cached brief
+- pub `handle_action` function L123-533 — `(&mut self, action: Action) -> bool` — Process an action and mutate state.
+-  `App` type L11-534 — `= App`
+-  `handle_export_conversation` function L17-53 — `(&mut self, path: Option<String>)` — T-0363: handle `/export [path]` — write the current
+-  `handle_copy_last_response` function L64-95 — `(&mut self)` — T-0361: handle `/copy` — walk `messages` backwards for the
+
+#### crates/arawn-tui/src/app/autocomplete.rs
+
+-  `App` type L8-48 — `= App`
+-  `update_autocomplete` function L10-36 — `(&mut self)` — Update autocomplete suggestions based on current input buffer.
+-  `accept_autocomplete` function L39-47 — `(&mut self)` — Accept the currently selected autocomplete suggestion.
+
+#### crates/arawn-tui/src/app/events.rs
+
+- pub `apply_engine_event` function L10-90 — `(&mut self, event: crate::ws_client::EventUpdate)` — Apply a streaming engine event to the app state (testable without network).
+- pub `load_session_messages` function L94-157 — `(&mut self, detail: &serde_json::Value)` — Load messages from a session detail JSON response into the chat.
+-  `App` type L8-158 — `= App`
+
+#### crates/arawn-tui/src/app/history.rs
+
+-  `App` type L7-121 — `= App`
+-  `record_input_history` function L12-21 — `(&mut self, text: &str, is_chat: bool)` — Append `text` to input history, skipping empty input and deduping
+-  `history_recall_prev` function L25-40 — `(&mut self)` — Move backward in input history.
+-  `history_recall_next` function L44-59 — `(&mut self)` — Move forward in input history.
+-  `open_history_modal` function L66-120 — `(&mut self)` — Open a modal listing branchable history entries (chat prompts only,
+
+#### crates/arawn-tui/src/app/mod.rs
+
+- pub `LayoutRegions` struct L17-30 — `{ sidebar: Option<Rect>, chat: Rect, input: Rect, sidebar_ws: Option<Rect>, side...` — Tracks the screen regions of each panel from the last render.
+- pub `Focus` enum L34-38 — `Main | Sidebar` — Which panel has focus.
+- pub `SidebarSection` enum L49-51 — `Workstreams` — Which sidebar section is active.
+- pub `ChatMessage` struct L55-64 — `{ role: ChatRole, content: String, created_at: std::time::Instant, rendered_cach...` — A message displayed in the chat area.
+- pub `new` function L67-75 — `(role: ChatRole, content: impl Into<String>) -> Self`
+- pub `rendered_lines` function L79-92 — `(&mut self, width: usize) -> &[ratatui::text::Line<'static>]` — Get or compute the cached markdown rendering for assistant messages.
+- pub `ChatRole` enum L96-102 — `User | Assistant | ToolCall | ToolResult | System`
+- pub `App` struct L105-222 — `{ focus: Focus, input_buffer: String, cursor_pos: usize, messages: Vec<ChatMessa...` — All mutable TUI state.
+- pub `DOUBLE_ESC_WINDOW` variable L227 — `: std::time::Duration` — Window for double-Esc detection.
+- pub `HistoryEntry` struct L231-238 — `{ text: String, is_chat: bool }` — One entry in the per-session input history.
+- pub `new` function L241-290 — `() -> Self`
+- pub `format_tool_input` function L323-371 — `(tool_name: &str, input: &serde_json::Value) -> String` — Format tool input args into a compact display string.
+-  `actions` module L1 — `-`
+-  `autocomplete` module L2 — `-`
+-  `events` module L3 — `-`
+-  `history` module L4 — `-`
+-  `ChatMessage` type L66-93 — `= ChatMessage`
+-  `App` type L240-320 — `= App`
+-  `prev_char_boundary` function L305-311 — `(&self) -> usize`
+-  `next_char_boundary` function L313-319 — `(&self) -> usize`
+-  `App` type L373-377 — `impl Default for App`
+-  `default` function L374-376 — `() -> Self`
+-  `default_export_path` function L383-401 — `(app: &App) -> std::path::PathBuf` — T-0363 — pick the default `/export` path when the user invokes
+-  `shellexpand_tilde` function L406-418 — `(input: &str) -> String` — T-0363 — expand a leading `~` in a path to `$HOME`.
+-  `render_conversation_markdown` function L426-459 — `(app: &App) -> String` — T-0363 — render the full transcript as a markdown document.
+-  `tests` module L462-1078 — `-`
+-  `type_chars_updates_buffer` function L467-473 — `()`
+-  `backspace_removes_char` function L476-483 — `()`
+-  `submit_moves_to_messages` function L486-498 — `()`
+-  `submit_blocked_when_empty` function L501-507 — `()`
+-  `submit_blocked_while_generating` function L510-516 — `()`
+-  `tab_toggles_focus` function L519-526 — `()`
+-  `scroll_updates_offset` function L529-537 — `()`
+-  `cancel_stops_generation` function L540-549 — `()`
+-  `quit_sets_flag` function L552-556 — `()`
+-  `cursor_movement` function L559-580 — `()`
+-  `full_conversation_flow` function L585-615 — `()`
+-  `tool_call_flow` function L618-649 — `()`
+-  `error_event_clears_generating` function L652-666 — `()`
+-  `sidebar_navigation` function L669-700 — `()`
+-  `submit_via_input` function L702-709 — `(app: &mut App, text: &str)`
+-  `history_text` function L711-713 — `(app: &App) -> Vec<&str>`
+-  `history_records_submitted_prompts` function L716-722 — `()`
+-  `history_records_slash_commands_with_is_chat_false` function L725-735 — `()`
+-  `history_dedupes_consecutive_duplicates` function L738-745 — `()`
+-  `branch_modal_filters_out_slash_commands` function L748-762 — `()`
+-  `branch_modal_skipped_when_no_chat_history` function L765-773 — `()`
+-  `up_arrow_recalls_most_recent_when_input_empty` function L776-791 — `()`
+-  `down_arrow_restores_draft_past_newest` function L794-812 — `()`
+-  `double_esc_within_window_opens_history_modal` function L815-827 — `()`
+-  `double_esc_outside_window_does_not_open_modal` function L830-838 — `()`
+-  `history_recall_at_loads_entry_into_input` function L841-849 — `()`
+-  `empty_history_modal_is_a_no_op` function L852-858 — `()`
+-  `modal_select_index_picks_option_directly` function L861-883 — `()`
+-  `cancel_marks_session_for_stale_event_drop` function L886-913 — `()`
+-  `next_submit_clears_cancelled_session_marker` function L916-930 — `()`
+-  `modal_select_out_of_range_is_no_op` function L933-946 — `()`
+-  `copy_last_response_posts_toast_with_assistant_text` function L951-965 — `()`
+-  `copy_last_response_warns_when_no_assistant_messages` function L968-977 — `()`
+-  `export_warns_on_empty_transcript` function L982-989 — `()`
+-  `export_writes_markdown_to_explicit_path` function L992-1017 — `()`
+-  `export_skips_tool_call_and_tool_result_rows` function L1020-1046 — `()`
+-  `shellexpand_tilde_expands_home` function L1049-1062 — `()`
+-  `copy_last_response_picks_most_recent_assistant_turn` function L1065-1077 — `()`
+
+### crates/arawn-tui/src/event_loop
+
+> *Semantic summary to be generated by AI agent.*
+
+#### crates/arawn-tui/src/event_loop/brief.rs
+
+-  `refresh_brief_cache` function L9-27 — `(client: &mut crate::ws_client::WsClient, app: &mut App)` — I-0035 Phase 2 / 3 / 4: refresh the cached brief markdown +
+-  `render_brief_combined` function L33-43 — `(client: &mut crate::ws_client::WsClient) -> String` — I-0035 Phase 2 (T-0354): fetch today's daily tablet + this week's
+
+#### crates/arawn-tui/src/event_loop/ceremony.rs
+
+-  `current_iso_week` function L6-10 — `() -> String` — ISO-week period key in the canonical `YYYY-WNN` form used by the
+-  `render_ceremony_today` function L14-46 — `(client: &mut crate::ws_client::WsClient, today: &str) -> String` — Fetch the daily tablet for `today`, then list its items, then
+-  `render_ceremony_week` function L50-87 — `(client: &mut crate::ws_client::WsClient, iso_week: &str) -> String` — Fetch the weekly tablet for the current ISO week, then items, then
+-  `render_ceremony_retro` function L92-128 — `(client: &mut crate::ws_client::WsClient, iso_week: &str) -> String` — Fetch the retro tablet for the current ISO week, then items, then
+-  `fetch_daily_view` function L134-150 — `( client: &mut crate::ws_client::WsClient, today: &str, ) -> Option<arawn_ceremo...` — Fetch the daily tablet + items for `today` and return a
+-  `fetch_weekly_view` function L154-175 — `( client: &mut crate::ws_client::WsClient, iso_week: &str, ) -> Option<arawn_cer...` — Fetch the weekly tablet + items + priorities for `iso_week`.
+-  `fetch_tablet_id_and_status` function L180-196 — `( client: &mut crate::ws_client::WsClient, kind: &str, period_key: &str, ) -> Op...` — Re-fetch the tablet for `(kind, period_key)` and return its id +
+-  `fetch_diary_body` function L201-217 — `(client: &mut crate::ws_client::WsClient, tablet_id: &str) -> String` — Pull any existing diary body from the retro tablet by listing its
+-  `handle_ceremony_overlay_key` function L222-314 — `( client: &mut crate::ws_client::WsClient, app: &mut App, key: crossterm::event:...` — Drive the active ceremony overlay from a raw key event.
+-  `apply_priority_rpc_result` function L318-338 — `( app: &mut App, tablet_id: &str, client: &mut crate::ws_client::WsClient, res: ...` — After a priority RPC, refresh the modal's priorities list (or stash
+-  `refresh_active_ceremony_overlay` function L344-369 — `(client: &mut crate::ws_client::WsClient, app: &mut App)` — Re-pull underlying data for whichever ceremony overlay is active so
+-  `fetch_items` function L371-388 — `( client: &mut crate::ws_client::WsClient, tablet_id: &str, ) -> Vec<arawn_cerem...`
+-  `fetch_priorities` function L390-407 — `( client: &mut crate::ws_client::WsClient, tablet_id: &str, ) -> Vec<arawn_cerem...`
+
+#### crates/arawn-tui/src/event_loop/formats.rs
+
+-  `format_integrations_list` function L3-23 — `(items: &[serde_json::Value]) -> String` — Render a `list_integrations` response as a markdown table the user can scan.
+-  `OpenAttempt` enum L27-31 — `Opened | NoOpener | Failed` — What `try_open_url` did.
+-  `try_open_url` function L35-68 — `(url: &str) -> OpenAttempt` — Best-effort browser open.
+-  `format_permissions_status` function L71-120 — `(status: &serde_json::Value) -> String` — Render `get_permissions_status` JSON as a human-readable system message.
+-  `format_feed_registered` function L123-134 — `(dto: &serde_json::Value) -> String` — Render a freshly-registered feed into a chat-ready system message.
+-  `format_feed_list` function L139-165 — `(list: &[serde_json::Value]) -> String` — Render the `/feeds` listing as a markdown table-ish block.
+-  `human_size` function L167-180 — `(bytes: u64) -> String`
+-  `KB` variable L168 — `: u64`
+-  `MB` variable L169 — `: u64`
+-  `GB` variable L170 — `: u64`
+-  `format_feed_discover` function L185-239 — `(dto: &serde_json::Value) -> String` — Render `feed_discover` results into a chat-pane block.
+-  `format_known_templates` function L243-256 — `() -> String` — Static help for `/watch list` with no template — points the user
+
+#### crates/arawn-tui/src/event_loop/mod.rs
+
+- pub `run_tui` function L83-1259 — `(url: &str, model_name: &str) -> Result<(), Box<dyn std::error::Error>>` — Run the TUI connected to the given WebSocket server URL.
+-  `MIN_FRAME_INTERVAL` variable L29 — `: Duration` — Minimum interval between renders driven by streaming/event traffic.
+-  `brief` module L32 — `-`
+-  `ceremony` module L33 — `-`
+-  `formats` module L34 — `-`
+-  `notices` module L35 — `-`
+-  `todo` module L36 — `-`
+-  `usage` module L37 — `-`
+-  `maybe_draw` function L52-64 — `( terminal: &mut Terminal<B>, app: &mut App, ) -> io::Result<()>` — Render if enough time has elapsed since the last draw.
+-  `force_draw` function L68-76 — `( terminal: &mut Terminal<B>, app: &mut App, ) -> io::Result<()>` — Render now regardless of frame budget.
+-  `rect_contains` function L78-80 — `(rect: Rect, col: u16, row: u16) -> bool`
+-  `ceremony_refresh_tests` module L1293-1398 — `-`
+-  `notice_for` function L1298-1309 — `(tablet_id: &str) -> arawn_service::ServerNotice`
+-  `ceremony_event_for_active_tablet_flags_refresh` function L1312-1323 — `()`
+-  `ceremony_event_for_other_tablet_is_ignored` function L1326-1334 — `()`
+-  `ceremony_event_with_no_overlay_is_ignored` function L1337-1343 — `()`
+-  `non_ceremony_notices_still_render_into_chat` function L1346-1357 — `()`
+-  `briefing_ready_notice` function L1361-1368 — `() -> arawn_service::ServerNotice`
+-  `briefing_ready_flags_refresh_and_posts_toast` function L1371-1387 — `()`
+-  `briefing_ready_does_not_affect_ceremony_refresh` function L1390-1397 — `()`
+
+#### crates/arawn-tui/src/event_loop/notices.rs
+
+-  `apply_system_notice` function L5-52 — `(notice: &arawn_service::ServerNotice, app: &mut crate::app::App)` — Push a server-side notice (plugin/config hot-reload outcome) into the
+-  `ceremony_event_should_refresh` function L57-76 — `(notice: &arawn_service::ServerNotice, app: &mut crate::app::App)` — If a ceremony_event notice targets the tablet the user is currently
+
+#### crates/arawn-tui/src/event_loop/todo.rs
+
+-  `fetch_open_todos` function L5-36 — `(client: &mut crate::ws_client::WsClient) -> Vec<crate::todo_modal::TodoRow>` — Fetch all open todos for the overlay.
+-  `handle_todo_overlay_key` function L38-118 — `( client: &mut crate::ws_client::WsClient, app: &mut App, key: crossterm::event:...`
+
+#### crates/arawn-tui/src/event_loop/usage.rs
+
+-  `render_usage` function L7-32 — `(client: &mut crate::ws_client::WsClient, period: &str) -> String` — T-0362: TUI `/usage` slash command — call the server-side
+
+### crates/arawn-tui/src/render
+
+> *Semantic summary to be generated by AI agent.*
+
+#### crates/arawn-tui/src/render/chat.rs
+
+-  `render_chat` function L10-407 — `(app: &mut App, frame: &mut Frame, area: ratatui::layout::Rect)`
+-  `render_separator` function L409-413 — `(frame: &mut Frame, area: ratatui::layout::Rect)`
+-  `render_empty_chat_brief` function L419-439 — `(app: &App, frame: &mut Frame, area: ratatui::layout::Rect)` — I-0035 Phase 2 (T-0354): render the cached brief markdown in the
+-  `render_idle_hero` function L441-481 — `(frame: &mut Frame, area: ratatui::layout::Rect)`
+
+#### crates/arawn-tui/src/render/dashboard.rs
+
+-  `render_dashboard_pane` function L10-33 — `(app: &App, frame: &mut Frame, area: ratatui::layout::Rect)`
+-  `BRIEF_HEIGHT` variable L22 — `: u16`
+-  `render_dashboard_brief` function L39-97 — `(app: &App, frame: &mut Frame, area: ratatui::layout::Rect)` — I-0035 Phase 3 T-B (T-0357) — compact brief summary in the
+-  `MAX_CAL` variable L74 — `: usize`
+-  `render_dashboard_actions` function L105-177 — `(app: &App, frame: &mut Frame, area: ratatui::layout::Rect)` — I-0035 Phase 3 T-C (T-0358) — read-only action items list in
+-  `push_action_rows` function L182-213 — `( lines: &mut Vec<Line<'static>>, items: &[&arawn_ceremonies::service::ItemDto],...` — Push action rows (checkbox + truncated body) into `lines`,
+-  `format_action_row` function L215-235 — `(item: &arawn_ceremonies::service::ItemDto, budget: usize) -> String`
+-  `format_brief_date_line` function L239-255 — `(period_key: &str) -> String` — Format the brief's date line: `YYYY-MM-DD · Wed` when the
+-  `format_calendar_row` function L259-283 — `(item: &arawn_ceremonies::service::ItemDto, budget: usize) -> String` — Render one calendar row: `HH:MM <title>` when body has a
+-  `detect_conflict` function L289-322 — `(items: &[&arawn_ceremonies::service::ItemDto]) -> Option<String>` — Pure conflict detection over calendar items.
+
+#### crates/arawn-tui/src/render/input.rs
+
+-  `render_input` function L10-75 — `(app: &App, frame: &mut Frame, area: ratatui::layout::Rect)`
+-  `render_autocomplete` function L78-136 — `( ac: &crate::command::AutocompleteState, frame: &mut Frame, input_area: ratatui...` — Render the autocomplete dropdown above the input line.
+
+#### crates/arawn-tui/src/render/mod.rs
+
+- pub `render` function L35-163 — `(app: &mut App, frame: &mut Frame)`
+-  `SPINNER_FRAMES` variable L6 — `: &[char]`
+-  `DASHBOARD_WIDTH` variable L10 — `: u16` — I-0035 Phase 3 (T-0356) — fixed width for the right-pane
+-  `MIN_FOR_THREE_PANE` variable L17 — `: u16` — Minimum terminal width to render the three-pane layout.
+-  `chat` module L21 — `-` — Render function.
+-  `dashboard` module L22 — `-`
+-  `input` module L23 — `-`
+-  `overlays` module L24 — `-`
+-  `sidebar` module L25 — `-`
+-  `status_bar` module L26 — `-`
+-  `truncate_to` function L186-188 — `(s: &str, max_cells: usize) -> String` — Truncate a string to fit within a display width, adding "…" if needed.
+-  `compact_tool_summary` function L191-196 — `(content: &str) -> String` — Extract a compact summary from tool call content for inline display.
+-  `truncate_for_display` function L198-202 — `(s: &str, max: usize) -> String`
+-  `tests` module L205-1317 — `-`
+-  `truncate_for_display_handles_utf8_at_boundary` function L213-223 — `()`
+-  `truncate_for_display_passes_through_short_strings` function L226-228 — `()`
+-  `cal_item` function L232-248 — `(text: &str, start: &str, end: &str) -> arawn_ceremonies::service::ItemDto`
+-  `daily_view_with_items` function L250-266 — `( items: Vec<arawn_ceremonies::service::ItemDto>, ) -> arawn_ceremonies::DailyVi...`
+-  `dashboard_brief_renders_today_with_calendar` function L269-300 — `()`
+-  `dashboard_brief_flags_conflict` function L303-314 — `()`
+-  `dashboard_brief_no_conflict_when_separated` function L317-324 — `()`
+-  `dashboard_brief_empty_state_no_tablet` function L327-345 — `()`
+-  `dashboard_brief_empty_state_no_calendar_items` function L348-366 — `()`
+-  `format_brief_date_line_includes_weekday` function L369-372 — `()`
+-  `format_brief_date_line_fallback_on_garbage` function L375-377 — `()`
+-  `attn_item` function L381-396 — `( ordinal: i32, text: &str, ) -> arawn_ceremonies::service::ItemDto`
+-  `todo_item` function L398-413 — `( ordinal: i32, text: &str, ) -> arawn_ceremonies::service::ItemDto`
+-  `daily_view_for_actions` function L415-431 — `( items: Vec<arawn_ceremonies::service::ItemDto>, ) -> arawn_ceremonies::DailyVi...`
+-  `draw_actions` function L433-442 — `(app: &App, w: u16, h: u16) -> Terminal<TestBackend>`
+-  `buffer_contains` function L444-451 — `(terminal: &Terminal<TestBackend>, needle: &str) -> bool`
+-  `dashboard_actions_renders_attention_items` function L454-466 — `()`
+-  `dashboard_actions_empty_state_no_tablet` function L469-475 — `()`
+-  `dashboard_actions_empty_state_no_attention_items` function L478-483 — `()`
+-  `dashboard_actions_truncates_long_titles` function L486-500 — `()`
+-  `dashboard_actions_overflow_footer` function L503-515 — `()`
+-  `post_toast_enqueues_message` function L520-527 — `()`
+-  `expired_toast_is_dropped_on_render` function L530-547 — `()`
+-  `toast_truncates_long_message` function L550-568 — `()`
+-  `dashboard_actions_carried_over_separator` function L571-581 — `()`
+-  `buffer_to_string` function L583-598 — `(terminal: &Terminal<TestBackend>, row: u16) -> String`
+-  `render_empty_app_has_status_bar` function L601-610 — `()`
+-  `render_with_messages_shows_content` function L613-639 — `()`
+-  `render_with_input_text` function L642-657 — `()`
+-  `render_streaming_shows_cursor` function L660-683 — `()`
+-  `render_small_terminal` function L686-691 — `()`
+-  `render_large_terminal` function L694-699 — `()`
+-  `region_text` function L704-716 — `(terminal: &Terminal<TestBackend>, x: u16, y: u16, w: u16, h: u16) -> String` — Extract text from a rectangular region of the buffer.
+-  `chat_region_for` function L720-733 — `(terminal: &Terminal<TestBackend>, sidebar_visible: bool) -> String` — Extract the chat area text.
+-  `chat_region` function L736-738 — `(terminal: &Terminal<TestBackend>) -> String` — Convenience: chat region for default app (sidebar hidden).
+-  `sidebar_region` function L742-750 — `(terminal: &Terminal<TestBackend>) -> String` — Extract the sidebar text (left 20%, rows 1..height-3).
+-  `input_region` function L753-758 — `(terminal: &Terminal<TestBackend>) -> String` — Extract the input bar text (second from bottom row).
+-  `chat_renders_user_message_with_prefix` function L763-777 — `()`
+-  `chat_renders_assistant_message_with_prefix` function L780-794 — `()`
+-  `chat_renders_tool_call_with_icon` function L797-827 — `()`
+-  `chat_renders_tool_result_collapsed` function L830-858 — `()`
+-  `chat_renders_tool_error_result` function L861-884 — `()`
+-  `chat_renders_tool_result_truncated` function L887-914 — `()`
+-  `chat_streaming_text_appears_in_chat_area` function L917-935 — `()`
+-  `sidebar_renders_workstream_names` function L938-974 — `()`
+-  `sidebar_does_not_leak_into_chat` function L977-1011 — `()`
+-  `input_shows_placeholder_when_empty` function L1014-1025 — `()`
+-  `input_shows_generating_when_active` function L1028-1041 — `()`
+-  `status_bar_shows_generating_indicator` function L1044-1058 — `()`
+-  `status_bar_shows_workstream_name` function L1061-1085 — `()`
+-  `messages_do_not_appear_in_input_area` function L1088-1111 — `()`
+-  `chat_auto_scrolls_to_bottom_with_many_messages` function L1116-1146 — `()`
+-  `chat_scroll_up_reveals_older_messages` function L1149-1177 — `()`
+-  `chat_few_messages_all_visible` function L1180-1194 — `()`
+-  `last_message_visible_above_input` function L1197-1250 — `()`
+-  `last_tool_result_visible_above_input` function L1253-1316 — `()`
+
+#### crates/arawn-tui/src/render/overlays.rs
+
+-  `render_toast_bar` function L9-24 — `(app: &App, frame: &mut Frame, area: ratatui::layout::Rect)`
+-  `render_oauth_heartbeat` function L26-49 — `(app: &App, frame: &mut Frame, area: ratatui::layout::Rect)`
+
+#### crates/arawn-tui/src/render/sidebar.rs
+
+-  `render_sidebar_tab` function L9-33 — `(frame: &mut Frame, area: ratatui::layout::Rect)`
+-  `render_sidebar` function L35-73 — `(app: &App, frame: &mut Frame, area: ratatui::layout::Rect)`
+
+#### crates/arawn-tui/src/render/status_bar.rs
+
+-  `render_status_bar` function L10-107 — `(app: &App, frame: &mut Frame, area: ratatui::layout::Rect)`
+-  `format_tokens` function L110-118 — `(n: u64) -> String` — Format a token count for display: 1234 → "1.2k", 12345 → "12.3k", 500 → "500"
 
 ### crates/arawn-workflow
 

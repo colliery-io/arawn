@@ -783,9 +783,13 @@ impl QueryEngine {
         request: ChatRequest,
     ) -> Result<AssembledResponse, EngineError> {
         // Acquire a local-bound permit before issuing the request.
-        // T-0278 will switch the agent loop to RemotePermit when the
-        // routing policy picks Remote; until then everything goes
-        // through the 1-slot local gate for laptop-RAM safety.
+        // The 1-slot gate exists for laptop-RAM safety — local Ollama
+        // is effectively serial and concurrent requests have crashed
+        // user machines in practice. Cloud-bound calls still flow
+        // through this gate today; the original "differentiate Remote
+        // via RemotePermit" plan (T-0278) was reverted because the
+        // hybrid-dispatch routing layer it was built for turned out
+        // to be premature scaffolding (no real hybrid users).
         let _gate = arawn_llm::gate::acquire_local()
             .await
             .map_err(|e| EngineError::Other(anyhow::anyhow!("llm gate refused acquire: {e:?}")))?;

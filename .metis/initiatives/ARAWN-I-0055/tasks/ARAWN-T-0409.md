@@ -4,14 +4,14 @@ level: task
 title: "T-E: Model-context-aware filter bypass (≥100K context)"
 short_code: "ARAWN-T-0409"
 created_at: 2026-05-22T16:36:04+00:00
-updated_at: 2026-05-22T18:16:23.713338+00:00
+updated_at: 2026-05-22T18:25:02.456032+00:00
 parent: ARAWN-I-0055
 blocked_by: [ARAWN-T-0406]
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -27,6 +27,8 @@ initiative_id: ARAWN-I-0055
 ## Objective
 
 When the configured model's context window is ≥100K tokens, bypass `filter_tools_for_context` entirely and ship the full catalog. The filter is only justified for small models; for Claude/GPT-4 the brittleness is not worth the catalog savings.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

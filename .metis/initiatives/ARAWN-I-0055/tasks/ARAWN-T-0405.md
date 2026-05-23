@@ -4,14 +4,14 @@ level: task
 title: "T-A: Add per-service ToolCategory variants + re-categorize integration tools"
 short_code: "ARAWN-T-0405"
 created_at: 2026-05-22T16:36:00+00:00
-updated_at: 2026-05-22T17:54:07.697255+00:00
+updated_at: 2026-05-22T18:00:08.131710+00:00
 parent: ARAWN-I-0055
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -27,6 +27,8 @@ initiative_id: ARAWN-I-0055
 ## Objective
 
 Add `Calendar`, `Gmail`, `Drive`, `Slack`, `Atlassian`, `GitHub` variants to `arawn_tool::ToolCategory` and move every integration tool impl off the `Web` category onto its per-service variant. Leaves `Web` for actual web tools (`web_fetch`, `web_search`).
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

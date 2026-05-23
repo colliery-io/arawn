@@ -4,14 +4,14 @@ level: task
 title: "T-B: Capability-driven filter branch for integration categories"
 short_code: "ARAWN-T-0406"
 created_at: 2026-05-22T16:36:01+00:00
-updated_at: 2026-05-22T18:00:15.150731+00:00
+updated_at: 2026-05-22T18:08:28.697684+00:00
 parent: ARAWN-I-0055
 blocked_by: [ARAWN-T-0405]
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -27,6 +27,8 @@ initiative_id: ARAWN-I-0055
 ## Objective
 
 Rewrite the integration-category branch of `filter_tools_for_context` so integration tools are included iff the corresponding capability is in the connected set. No keyword scan for integration categories.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

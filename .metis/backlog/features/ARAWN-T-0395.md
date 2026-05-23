@@ -4,15 +4,15 @@ level: task
 title: "Dynamic `UsagePressure` computation — wire usage tracker into RoutingHints"
 short_code: "ARAWN-T-0395"
 created_at: 2026-05-22T00:11:25.708104+00:00
-updated_at: 2026-05-22T00:11:25.708104+00:00
+updated_at: 2026-05-23T02:36:05.263262+00:00
 parent: 
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/backlog"
   - "#feature"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -42,6 +42,12 @@ initiative_id: NULL
 ## Objective
 
 T-0393 wired `IntelligentRoutingProvider` into the engine/compactor/steward call sites but only with `RoutingHints::default()` (or `LatencyBudget::Low` for the engine). The third hint dimension — `usage_pressure: UsagePressure::Low|High` — is always `Low`. This task makes it dynamic by reading the `arawn-llm::usage::UsageTracker` rollups and comparing against a configurable threshold.
+
+## Acceptance Criteria
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
@@ -82,4 +88,10 @@ T-0393 wired `IntelligentRoutingProvider` into the engine/compactor/steward call
 
 ## Status Updates
 
-*To be added during implementation*
+### 2026-05-23 — closed as wontfix
+
+The whole `arawn-llm::routing` layer that this task depended on was ripped out. The decision: capabilities are assigned to specific models via `[routing.hints]` config (lightweight/medium/heavy → `[llm.NAME]`), not via runtime per-call dispatch policy. With no `RoutingHints` / `IntelligentRoutingProvider` / `UsagePressure` types, there's nothing to wire `usage_pressure` into.
+
+If hybrid local+remote dispatch becomes a real user need later, rebuilding the routing layer from scratch is cheaper than maintaining premature scaffolding through every refactor. This task should be re-filed with fresh requirements at that point, not resurrected.
+
+Commit: see the routing-layer removal in the current session.

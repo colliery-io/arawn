@@ -15,9 +15,6 @@
 //!   dropping it releases the slot.
 //! - [`try_acquire_local`] — synchronous; returns
 //!   [`AcquireError::Busy`] instead of waiting when the slot is full.
-//! - [`acquire_remote`] — synchronous, never blocks, never fails.
-//!   Returns a [`RemotePermit`] that does not count against the slot
-//!   budget but does mark the call for telemetry symmetry.
 //! - [`current_policy`] / [`current_signals`] — cheap reads for
 //!   diagnostics and tests.
 //!
@@ -54,14 +51,6 @@ pub enum AcquireError {
 #[derive(Debug)]
 pub struct LocalPermit {
     _inner: OwnedSemaphorePermit,
-}
-
-/// Cheap permit for a remote-bound LLM call. Does not count against
-/// the slot budget. Today this is a marker type only; future
-/// telemetry (T-0278) can read it to attribute calls.
-#[derive(Debug)]
-pub struct RemotePermit {
-    _private: (),
 }
 
 struct GateState {
@@ -154,11 +143,6 @@ pub fn try_acquire_local() -> Result<LocalPermit, AcquireError> {
     }
 }
 
-/// Acquire a `RemotePermit`. Always succeeds, never blocks.
-pub fn acquire_remote() -> RemotePermit {
-    RemotePermit { _private: () }
-}
-
 /// Test-only: reset policy, signals, and semaphore to default.
 /// Production callers never touch this — the gate is sticky for the
 /// life of the process.
@@ -182,14 +166,6 @@ mod tests {
         let guard = TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         reset_for_test();
         guard
-    }
-
-    #[tokio::test]
-    async fn remote_permit_never_blocks() {
-        let _guard = lock_and_reset();
-        let _r1 = acquire_remote();
-        let _r2 = acquire_remote();
-        let _r3 = acquire_remote();
     }
 
     #[tokio::test]
@@ -226,21 +202,6 @@ mod tests {
             Err(AcquireError::Paused(reason)) => assert!(reason.contains("RAM")),
             other => panic!("expected Paused, got {other:?}"),
         }
-    }
-
-    #[tokio::test]
-    async fn pause_does_not_block_remote() {
-        let _guard = lock_and_reset();
-        set_policy(Policy {
-            local_slots: 1,
-            free_ram_pause_bytes: Some(500_000_000),
-            on_battery_extra_pause_bytes: None,
-        });
-        set_signals(Signals {
-            free_ram_bytes: Some(100_000_000),
-            on_battery: Some(false),
-        });
-        let _remote = acquire_remote();
     }
 
     #[tokio::test]

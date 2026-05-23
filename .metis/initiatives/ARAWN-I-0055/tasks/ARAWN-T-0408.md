@@ -4,14 +4,14 @@ level: task
 title: "T-D: Promote Workstream + Memory to always-on"
 short_code: "ARAWN-T-0408"
 created_at: 2026-05-22T16:36:03+00:00
-updated_at: 2026-05-22T18:12:49.943171+00:00
+updated_at: 2026-05-22T18:16:18.598149+00:00
 parent: ARAWN-I-0055
 blocked_by: [ARAWN-T-0406]
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -27,6 +27,8 @@ initiative_id: ARAWN-I-0055
 ## Objective
 
 Move `ToolCategory::Workstream` and `ToolCategory::Memory` into the always-on set in `filter_tools_for_context` — same treatment as `Core` and `Utility`. The agent should never lose access to context-switching (workstream_*) or recall (memory_*) mid-turn.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

@@ -4,7 +4,7 @@ level: task
 title: "Groq backend hardening — surface failed_generation, expand is_retryable, document model selection"
 short_code: "ARAWN-T-0411"
 created_at: 2026-05-22T16:50:00+00:00
-updated_at: 2026-05-23T02:11:20.965156+00:00
+updated_at: 2026-05-23T02:16:02.208633+00:00
 parent: 
 blocked_by: []
 archived: false
@@ -12,7 +12,7 @@ archived: false
 tags:
   - "#task"
   - "#bug"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -54,6 +54,8 @@ Pattern lifted from a sister project (muninn — `../muninn/crates/muninn-rlm/sr
 ## Objective
 
 Bring arawn's Groq backend to parity with muninn's hardened path for the three lessons that apply (lessons #1, #2, and #4 from the muninn writeup; lesson #3 — `tool_choice` forwarding — doesn't apply because arawn doesn't use forced tool calls).
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

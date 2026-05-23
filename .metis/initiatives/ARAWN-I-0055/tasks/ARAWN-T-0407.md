@@ -4,14 +4,14 @@ level: task
 title: "T-C: Audit + expand non-integration keyword sets"
 short_code: "ARAWN-T-0407"
 created_at: 2026-05-22T16:36:02+00:00
-updated_at: 2026-05-22T18:08:32.954117+00:00
+updated_at: 2026-05-22T18:12:46.003985+00:00
 parent: ARAWN-I-0055
 blocked_by: [ARAWN-T-0406]
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -27,6 +27,8 @@ initiative_id: ARAWN-I-0055
 ## Objective
 
 Walk each non-integration `ToolCategory`'s keyword list in `filter_tools_for_context` and expand to cover legitimate prompts that the current set misses. Add a negative-test per category asserting expected routing behavior.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

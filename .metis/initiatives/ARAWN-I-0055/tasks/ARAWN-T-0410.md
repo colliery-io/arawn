@@ -4,14 +4,14 @@ level: task
 title: "T-F: T-0394 regression test — assert calendar tools survive iter-2+ filter"
 short_code: "ARAWN-T-0410"
 created_at: 2026-05-22T16:36:05+00:00
-updated_at: 2026-05-22T18:25:06.294241+00:00
+updated_at: 2026-05-22T18:28:40.511325+00:00
 parent: ARAWN-I-0055
 blocked_by: [ARAWN-T-0406]
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -27,6 +27,8 @@ initiative_id: ARAWN-I-0055
 ## Objective
 
 Write a unit test that reproduces the structural failure mode from ARAWN-T-0394 and asserts the post-T-B fix holds. Close T-0394 against this test as the artifact.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

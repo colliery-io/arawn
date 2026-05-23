@@ -4,15 +4,15 @@ level: task
 title: "`IntelligentRoutingProvider` should acquire `RemotePermit` on Remote routing decisions"
 short_code: "ARAWN-T-0396"
 created_at: 2026-05-22T00:11:26.674623+00:00
-updated_at: 2026-05-22T00:11:26.674623+00:00
+updated_at: 2026-05-23T02:36:24.146878+00:00
 parent: 
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/backlog"
   - "#feature"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -45,6 +45,12 @@ When `IntelligentRoutingProvider::stream` resolves to a Remote target (whether p
 
 ## Acceptance Criteria
 
+## Acceptance Criteria
+
+## Acceptance Criteria
+
+## Acceptance Criteria
+
 - [ ] Modify `crates/arawn-llm/src/routing/provider.rs` so each Remote dispatch path acquires a `RemotePermit` via `acquire_remote()` and holds it through the stream's lifetime.
 - [ ] When the routing policy picks `Local` as primary and `Remote` as fallback, acquire the permit only when the fallback fires.
 - [ ] Per-call cost is negligible (`acquire_remote` is sync + zero-allocation per its docstring); add a small unit test that verifies the permit-count increments on a Remote decision via a mock policy.
@@ -72,4 +78,10 @@ When `IntelligentRoutingProvider::stream` resolves to a Remote target (whether p
 
 ## Status Updates
 
-*To be added during implementation*
+### 2026-05-23 — closed as wontfix
+
+The `arawn-llm::routing` layer was ripped out (premature scaffolding — no real hybrid local+remote users). `RemotePermit` + `acquire_remote()` were also removed from `arawn-llm::gate`. The agent loop continues to use `acquire_local()` for laptop-RAM safety on the 1-slot semaphore; cloud-bound calls flow through the same gate today, which is fine because nobody runs arawn in a configuration where Remote-call serialization matters.
+
+If hybrid dispatch comes back, rebuild from scratch with concrete requirements; don't resurrect this task.
+
+Commit: see the routing-layer removal in the current session.
