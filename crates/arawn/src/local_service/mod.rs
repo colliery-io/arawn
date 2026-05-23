@@ -94,6 +94,11 @@ pub struct LocalService {
     /// task in main.rs translates events onto `notice_tx` with
     /// `category="todo_event"`.
     todo_event_tx: arawn_storage::TodoEventSender,
+    /// Optional hook runner — fires lifecycle events to user-configured
+    /// shell commands. Wired by main.rs at startup via T-A's
+    /// `startup::hooks::load_and_build_hook_runner`. `None` when no
+    /// `settings.json` has been written; downstream fire sites no-op.
+    hook_runner: Option<Arc<arawn_engine::hooks::HookRunner>>,
 }
 
 impl LocalService {
@@ -129,7 +134,17 @@ impl LocalService {
             active_workstream: None,
             ceremony_service: Arc::new(std::sync::RwLock::new(None)),
             todo_event_tx: arawn_storage::todo_event_channel().0,
+            hook_runner: None,
         }
+    }
+
+    /// Attach a hook runner. Every `QueryEngine` built by this service
+    /// will receive the same runner via `with_hook_runner`. Wired at
+    /// startup from `~/.arawn/settings.json` merged with the project's
+    /// `.arawn/settings.json` — see `startup::hooks`.
+    pub fn with_hook_runner(mut self, runner: Arc<arawn_engine::hooks::HookRunner>) -> Self {
+        self.hook_runner = Some(runner);
+        self
     }
 
     /// Sender for todo events — RPC handlers clone this when
@@ -523,6 +538,9 @@ impl LocalService {
         }
         if let Some(ref plugin_reg) = self.plugin_registry {
             engine = engine.with_plugin_registry(Arc::clone(plugin_reg));
+        }
+        if let Some(ref hook_runner) = self.hook_runner {
+            engine = engine.with_hook_runner(Arc::clone(hook_runner));
         }
 
         // Attach permission checker

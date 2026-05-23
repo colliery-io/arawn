@@ -1,17 +1,17 @@
 ---
-id: t-a-startup-loader-attach-hookrunner
+id: t-a-startup-loader-load-merged
 level: task
 title: "T-A: Startup loader — load merged hooks + attach HookRunner"
 short_code: "ARAWN-T-0412"
-created_at: 2026-05-23T03:31:00.000000+00:00
-updated_at: 2026-05-23T03:31:00.000000+00:00
+created_at: 2026-05-23T03:31:00+00:00
+updated_at: 2026-05-23T03:44:30.652707+00:00
 parent: ARAWN-I-0056
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/active"
 
 
 exit_criteria_met: false
@@ -27,6 +27,8 @@ initiative_id: ARAWN-I-0056
 ## Objective
 
 Load hook config at startup from `~/.arawn/settings.json` (user-level) merged with `<workstream_root>/.arawn/settings.json` (project-level) and attach a `HookRunner` to both `QueryEngine` and `LocalService` for downstream fire-site tasks. No fire sites in this task — just the wire-up.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
@@ -54,4 +56,28 @@ Load hook config at startup from `~/.arawn/settings.json` (user-level) merged wi
 
 ## Status Updates
 
-*To be added during implementation*
+### 2026-05-23 — landed
+
+**New module:** `crates/arawn/src/startup/hooks.rs` (~125 lines) with `load_and_build_hook_runner(data_dir, workstream_root) -> Arc<HookRunner>`. Resolves `<data_dir>/settings.json` and `<workstream_root>/.arawn/settings.json`, calls `arawn_engine::hooks::load_merged_hooks`, constructs `HookRunner::new(config, workstream_root)`, logs total hook groups at INFO. Missing files silently treated as empty config.
+
+**LocalService:**
+- New field `hook_runner: Option<Arc<HookRunner>>`.
+- New builder method `with_hook_runner(self, runner) -> Self`.
+- `build_engine` attaches the runner to every `QueryEngine` instance via the existing `QueryEngine::with_hook_runner` setter (guarded `if let Some(ref hook_runner)`).
+
+**Startup wire-up:** `main.rs` at serve-mode setup loads the runner just before constructing `LocalService` and chains `.with_hook_runner(hook_runner)` into the builder. `cwd = workstream.root_dir` per the operator-confirmed cwd choice.
+
+**Module exports:** `startup/mod.rs` declares `pub mod hooks` and re-exports `load_and_build_hook_runner`.
+
+**Unit tests (4 in `startup/hooks.rs`):**
+- `returns_empty_runner_when_no_settings_files_exist` — neither path present.
+- `loads_user_only_settings` — only user file present.
+- `loads_project_only_settings` — only project file present.
+- `merges_user_and_project_settings` — both present.
+
+**Behavior change scope:** zero. Hooks still don't fire — the runner is attached but no `.fire_hook(...)` call sites exist yet (that's T-B/C/D).
+
+**Validation:**
+- `cargo check --workspace`: ✅ clean.
+- `cargo build --workspace --release`: ✅ clean (1m 04s).
+- `cargo test --workspace --lib`: ✅ **1,742 tests pass** (was 1,738; +4 T-A loader tests). Pre-existing harness flake `testing::harness::tests::harness_shell_tool_receives_arguments` fired once but cleared on re-run; not caused by T-A.

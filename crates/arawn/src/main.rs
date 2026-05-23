@@ -598,6 +598,15 @@ async fn main() -> Result<()> {
         // Wrap MCP manager for sharing with config watcher
         let mcp_manager = Arc::new(tokio::sync::Mutex::new(mcp_manager));
 
+        // I-0056 T-A: load hook config from user settings + project
+        // settings and build a shared HookRunner. Fire sites in T-B/C/D
+        // will exercise it; for now the runner is just attached so every
+        // QueryEngine built by the service inherits it.
+        let hook_runner = arawn_bin::startup::load_and_build_hook_runner(
+            std::path::Path::new(&data_dir),
+            &workstream.root_dir,
+        );
+
         let mut service = arawn_bin::LocalService::new(
             store,
             std::path::PathBuf::from(&data_dir),
@@ -611,7 +620,8 @@ async fn main() -> Result<()> {
         .with_plugin_registry(Arc::clone(&plugin_runtime.registry))
         .with_plan_state(plan_state)
         .with_background_tasks(bg_manager)
-        .with_active_workstream(active_workstream.clone());
+        .with_active_workstream(active_workstream.clone())
+        .with_hook_runner(hook_runner);
 
         if let Some(ref mgr) = memory_manager {
             service = service.with_memory_manager(Arc::clone(mgr));
