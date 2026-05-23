@@ -34,9 +34,8 @@ pub use hooks::{
     load_merged_hooks,
 };
 pub use permissions::{
-    CliModalPrompt, MockModalPrompt, ModalOption, ModalPrompt, ModalRequest, PermissionChecker,
-    PermissionConfig, PermissionDecision, PermissionMode, PermissionResponse, PermissionRule,
-    RuleKind, SessionGrants,
+    MockModalPrompt, ModalOption, ModalPrompt, ModalRequest, PermissionChecker, PermissionConfig,
+    PermissionDecision, PermissionMode, PermissionResponse, PermissionRule, RuleKind,
 };
 // The top-level `ToolCategory` re-export below is `arawn_tool::ToolCategory`
 // (Core/Task/Agent/Web/etc.) for context filtering. Permission-risk classes

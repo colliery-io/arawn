@@ -202,18 +202,6 @@ pub struct AuditEntry {
     pub reason: String,
 }
 
-/// Read-only snapshot of the current permission state — exposed via the
-/// `get_permissions_status` RPC so the TUI's `/permissions` command can
-/// render it without holding the checker's internal locks.
-#[derive(Debug, Clone)]
-pub struct PermissionSnapshot {
-    pub mode: PermissionMode,
-    pub allow_rules: Vec<String>,
-    pub deny_rules: Vec<String>,
-    pub ask_rules: Vec<String>,
-    pub recent_decisions: Vec<AuditEntry>,
-}
-
 /// Cap on the audit ring buffer — newest decisions evict oldest. Sized so a
 /// chatty session doesn't crowd out everything older but a long session
 /// doesn't grow memory unbounded.
@@ -239,10 +227,6 @@ pub struct PermissionChecker {
     grants: std::sync::Mutex<SessionGrants>,
     prompter: Option<Box<dyn ModalPrompt>>,
     audit: SharedAudit,
-    /// Optional on-disk approval audit log. None disables disk
-    /// persistence; the in-memory `audit` field still records
-    /// rule/prompt decisions for the `/permissions` UI.
-    approval_audit: Option<std::sync::Arc<crate::approval::ApprovalAudit>>,
     /// Optional hook runner — fires `PermissionRequest` before a modal
     /// prompt is raised and `PermissionDenied` when a tool call is
     /// rejected (by rule or by user denial). Both non-blocking in V1.
@@ -259,7 +243,6 @@ impl PermissionChecker {
             grants: std::sync::Mutex::new(SessionGrants::new()),
             prompter: None,
             audit: new_shared_audit(),
-            approval_audit: None,
             hook_runner: None,
         }
     }
@@ -272,15 +255,6 @@ impl PermissionChecker {
         self
     }
 
-    /// Wire the on-disk approval audit log. Pass `None` to disable.
-    pub fn with_approval_audit(
-        mut self,
-        audit: Option<std::sync::Arc<crate::approval::ApprovalAudit>>,
-    ) -> Self {
-        self.approval_audit = audit;
-        self
-    }
-
     /// Wire a hook runner. When set, the checker fires
     /// `PermissionRequest` before a modal prompt and `PermissionDenied`
     /// when a tool call is rejected. Both non-blocking.
@@ -290,38 +264,6 @@ impl PermissionChecker {
     ) -> Self {
         self.hook_runner = Some(runner);
         self
-    }
-
-    /// Capture a read-only snapshot of the current rules, mode, and recent
-    /// decisions. Intended for the `/permissions` UI command — does not hold
-    /// internal locks across await points.
-    pub fn snapshot(&self) -> PermissionSnapshot {
-        let rules = self.rules.read().unwrap();
-        let mut allow_rules = Vec::new();
-        let mut deny_rules = Vec::new();
-        let mut ask_rules = Vec::new();
-        for r in rules.iter() {
-            let spec = r.display_spec();
-            match r.kind {
-                crate::permissions::rules::RuleKind::Allow => allow_rules.push(spec),
-                crate::permissions::rules::RuleKind::Deny => deny_rules.push(spec),
-                crate::permissions::rules::RuleKind::Ask => ask_rules.push(spec),
-            }
-        }
-        let recent_decisions = self
-            .audit
-            .lock()
-            .unwrap()
-            .iter()
-            .cloned()
-            .collect::<Vec<_>>();
-        PermissionSnapshot {
-            mode: *self.mode.read().unwrap(),
-            allow_rules,
-            deny_rules,
-            ask_rules,
-            recent_decisions,
-        }
     }
 
     fn record_audit(
@@ -524,63 +466,25 @@ impl PermissionChecker {
                 };
                 let response = prompter.prompt(request).await;
                 let shape = crate::approval::ArgShape::for_tool(tool_name, tool_input);
-                let (decision, tier) = match response {
-                    Some(0) => (
-                        PermissionDecision::Allowed,
-                        crate::approval::ApprovalTier::AllowOnce,
-                    ),
+                match response {
+                    Some(0) => PermissionDecision::Allowed,
                     Some(1) => {
                         self.grants
                             .lock()
                             .unwrap()
-                            .grant_shape(tool_name.to_string(), shape.clone());
-                        (
-                            PermissionDecision::Allowed,
-                            crate::approval::ApprovalTier::AllowForSession,
-                        )
+                            .grant_shape(tool_name.to_string(), shape);
+                        PermissionDecision::Allowed
                     }
-                    _ => (
-                        PermissionDecision::Denied,
-                        crate::approval::ApprovalTier::Deny,
-                    ),
-                };
-                // Append to the on-disk approval audit if it is wired.
-                self.record_approval(tool_name, &shape, tier, tool_input);
-                decision
+                    _ => PermissionDecision::Denied,
+                }
             }
             None => {
                 warn!(
                     tool_name,
                     "ask decision but no prompter — denying (fail closed)"
                 );
-                let shape = crate::approval::ArgShape::for_tool(tool_name, tool_input);
-                self.record_approval(
-                    tool_name,
-                    &shape,
-                    crate::approval::ApprovalTier::FailedClosed,
-                    tool_input,
-                );
                 PermissionDecision::Denied
             }
-        }
-    }
-
-    fn record_approval(
-        &self,
-        tool_name: &str,
-        shape: &crate::approval::ArgShape,
-        tier: crate::approval::ApprovalTier,
-        tool_input: &str,
-    ) {
-        if let Some(audit) = self.approval_audit.as_ref() {
-            audit.record(crate::approval::AuditRecord {
-                ts: crate::approval::now_secs(),
-                session_id: None,
-                tool_name: tool_name.to_string(),
-                shape: shape.as_str().to_string(),
-                tier,
-                reason: Some(truncate_input(tool_input, 200)),
-            });
         }
     }
 
@@ -1172,21 +1076,23 @@ mod tests {
 
     #[tokio::test]
     async fn audit_log_records_decisions_in_order_and_caps() {
-        let checker = PermissionChecker::new(vec![]);
+        let audit = super::new_shared_audit();
+        let checker = PermissionChecker::new(vec![]).with_audit(std::sync::Arc::clone(&audit));
         // Drive AUDIT_CAP + 5 distinct decisions; oldest should evict.
         for i in 0..(super::AUDIT_CAP + 5) {
             let _ = checker
                 .check(&format!("tool_{i}"), "", PermissionCategory::ReadOnly)
                 .await;
         }
-        let snapshot = checker.snapshot();
-        assert_eq!(snapshot.recent_decisions.len(), super::AUDIT_CAP);
+        let buf = audit.lock().unwrap();
+        assert_eq!(buf.len(), super::AUDIT_CAP);
         // Oldest entries (tool_0..tool_4) should have evicted; first remaining is tool_5.
-        let first_remaining = &snapshot.recent_decisions[0];
-        assert_eq!(first_remaining.tool_name, "tool_5");
+        assert_eq!(buf.front().unwrap().tool_name, "tool_5");
         // Last entry should be the most recent (tool_AUDIT_CAP+4).
-        let last = snapshot.recent_decisions.last().unwrap();
-        assert_eq!(last.tool_name, format!("tool_{}", super::AUDIT_CAP + 4));
+        assert_eq!(
+            buf.back().unwrap().tool_name,
+            format!("tool_{}", super::AUDIT_CAP + 4)
+        );
     }
 
     #[tokio::test]
@@ -1203,32 +1109,9 @@ mod tests {
         let _ = checker_b
             .check("tool_b", "", PermissionCategory::ReadOnly)
             .await;
-        // snapshot() reads from whichever checker — both share the buffer.
-        let snap_a = checker_a.snapshot();
-        let snap_b = checker_b.snapshot();
-        assert_eq!(snap_a.recent_decisions.len(), 2);
-        assert_eq!(snap_b.recent_decisions.len(), 2);
-        assert_eq!(snap_a.recent_decisions[0].tool_name, "tool_a");
-        assert_eq!(snap_a.recent_decisions[1].tool_name, "tool_b");
-    }
-
-    #[test]
-    fn snapshot_partitions_rules_by_kind_with_display_specs() {
-        use crate::permissions::rules::RuleKind;
-        let rules = vec![
-            PermissionRule::parse(RuleKind::Deny, "shell(rm -rf *)"),
-            PermissionRule::parse(RuleKind::Allow, "Read"),
-            PermissionRule::parse(RuleKind::Allow, "shell(cargo *)"),
-            PermissionRule::parse(RuleKind::Ask, "web_fetch"),
-        ];
-        let checker = PermissionChecker::new(rules);
-        let snap = checker.snapshot();
-        assert_eq!(snap.deny_rules, vec!["shell(rm -rf *)".to_string()]);
-        assert_eq!(
-            snap.allow_rules,
-            vec!["Read".to_string(), "shell(cargo *)".to_string()]
-        );
-        assert_eq!(snap.ask_rules, vec!["web_fetch".to_string()]);
-        assert_eq!(snap.recent_decisions.len(), 0);
+        let buf = audit.lock().unwrap();
+        assert_eq!(buf.len(), 2);
+        assert_eq!(buf[0].tool_name, "tool_a");
+        assert_eq!(buf[1].tool_name, "tool_b");
     }
 }

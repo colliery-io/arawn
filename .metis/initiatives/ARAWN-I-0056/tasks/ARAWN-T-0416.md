@@ -4,14 +4,14 @@ level: task
 title: "T-E: Docs + UAT close gate — configure-hooks.md, end-to-end scenario, full UAT+judge"
 short_code: "ARAWN-T-0416"
 created_at: 2026-05-23T03:31:04+00:00
-updated_at: 2026-05-23T04:19:54.229644+00:00
+updated_at: 2026-05-23T10:49:19.824406+00:00
 parent: ARAWN-I-0056
 blocked_by: [ARAWN-T-0413, ARAWN-T-0414, ARAWN-T-0415]
 archived: false
 
 tags:
   - "#task"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -27,6 +27,8 @@ initiative_id: ARAWN-I-0056
 ## Objective
 
 Land the user-facing docs for hooks configuration, add a UAT scenario that proves end-to-end integration, and run the full UAT + judge as the initiative's close gate.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 

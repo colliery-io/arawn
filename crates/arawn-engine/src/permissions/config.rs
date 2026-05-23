@@ -91,24 +91,6 @@ pub fn load_permissions_from_file(path: &std::path::Path) -> PermissionConfig {
     }
 }
 
-/// Load and merge permission configs from user-level and project-level files.
-///
-/// User config (`~/.arawn/arawn.toml`) takes priority over project config (`.arawn/arawn.toml`).
-pub fn load_merged_permissions(
-    user_config_path: Option<&std::path::Path>,
-    project_config_path: Option<&std::path::Path>,
-) -> Vec<PermissionRule> {
-    let user_config = user_config_path
-        .map(load_permissions_from_file)
-        .unwrap_or_default();
-
-    let project_config = project_config_path
-        .map(load_permissions_from_file)
-        .unwrap_or_default();
-
-    user_config.merge(project_config).into_rules()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -267,61 +249,4 @@ max_iterations = 10
         assert!(config.allow.is_empty());
     }
 
-    #[test]
-    fn load_merged_both_sources() {
-        let user_tmp = tempfile::NamedTempFile::new().unwrap();
-        write!(
-            user_tmp.as_file(),
-            r#"
-[permissions]
-deny = ["Bash(rm *)"]
-"#
-        )
-        .unwrap();
-
-        let project_tmp = tempfile::NamedTempFile::new().unwrap();
-        write!(
-            project_tmp.as_file(),
-            r#"
-[permissions]
-allow = ["Read", "Bash"]
-"#
-        )
-        .unwrap();
-
-        let rules = load_merged_permissions(Some(user_tmp.path()), Some(project_tmp.path()));
-
-        // User deny + project allow = deny wins for "rm"
-        assert_eq!(
-            RuleMatcher::evaluate(&rules, "Bash", "rm foo"),
-            PermissionDecision::Denied
-        );
-        assert_eq!(
-            RuleMatcher::evaluate(&rules, "Bash", "ls"),
-            PermissionDecision::Allowed
-        );
-        assert_eq!(
-            RuleMatcher::evaluate(&rules, "Read", "/foo"),
-            PermissionDecision::Allowed
-        );
-    }
-
-    #[test]
-    fn load_merged_missing_user_config() {
-        let project_tmp = tempfile::NamedTempFile::new().unwrap();
-        write!(
-            project_tmp.as_file(),
-            r#"
-[permissions]
-allow = ["Read"]
-"#
-        )
-        .unwrap();
-
-        let rules = load_merged_permissions(None, Some(project_tmp.path()));
-        assert_eq!(
-            RuleMatcher::evaluate(&rules, "Read", "/foo"),
-            PermissionDecision::Allowed
-        );
-    }
 }

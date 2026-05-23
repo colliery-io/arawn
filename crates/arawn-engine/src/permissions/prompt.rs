@@ -1,71 +1,13 @@
-use std::io::{self, BufRead, IsTerminal, Write};
+//! Modal-prompt implementations of `ModalPrompt`.
+//!
+//! Production wires `ChannelModalPrompt` (in `arawn/src/channel_prompt.rs`)
+//! that bridges the WS event loop. Tests use `MockModalPrompt`. A
+//! `CliModalPrompt` used to live here for a stdio-driven flow but was
+//! removed in the YAGNI pass — nothing constructed it.
 
 use async_trait::async_trait;
 
 use super::checker::{ModalPrompt, ModalRequest};
-
-/// CLI-based modal prompt. Prints options to stderr, reads selection from stdin.
-/// Falls back to None (cancel) when stdin is not a TTY (non-interactive mode).
-pub struct CliModalPrompt;
-
-impl Default for CliModalPrompt {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl CliModalPrompt {
-    pub fn new() -> Self {
-        Self
-    }
-}
-
-#[async_trait]
-impl ModalPrompt for CliModalPrompt {
-    async fn prompt(&self, request: ModalRequest) -> Option<usize> {
-        if !io::stdin().is_terminal() {
-            eprintln!(
-                "[modal] {} — auto-cancelled (non-interactive)",
-                request.title
-            );
-            return None;
-        }
-
-        eprintln!();
-        eprintln!("─── {} ───", request.title);
-        if let Some(ref subtitle) = request.subtitle {
-            eprintln!("  {subtitle}");
-        }
-        eprintln!();
-        for (i, opt) in request.options.iter().enumerate() {
-            eprint!("  {}. {}", i + 1, opt.label);
-            if let Some(ref desc) = opt.description {
-                eprint!("  ({desc})");
-            }
-            eprintln!();
-        }
-        eprintln!();
-        eprint!("  Select [1-{}] or 'c' to cancel: ", request.options.len());
-        io::stderr().flush().ok();
-
-        let mut input = String::new();
-        if io::stdin().lock().read_line(&mut input).is_err() {
-            return None;
-        }
-
-        let trimmed = input.trim();
-        if trimmed.eq_ignore_ascii_case("c") {
-            return None;
-        }
-        trimmed.parse::<usize>().ok().and_then(|n| {
-            if n >= 1 && n <= request.options.len() {
-                Some(n - 1)
-            } else {
-                None
-            }
-        })
-    }
-}
 
 /// Mock modal prompt for tests. Returns responses from a queue, or a default.
 pub struct MockModalPrompt {

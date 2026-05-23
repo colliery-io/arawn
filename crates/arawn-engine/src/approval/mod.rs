@@ -8,14 +8,13 @@
 //!   "Allow Once" the call proceeds for this one invocation. "Allow
 //!   For Session" populates the [`allowlist::SessionAllowlist`]
 //!   keyed by `(tool_name, ArgShape)`. "Deny" blocks the call.
-//!   Every decision appends to the on-disk audit log.
 //!
-//! Out of scope (per T-0276): cross-session allowlists. The audit
-//! log persists, but the *allowlist* lives in memory and is cleared
-//! at session boundaries.
+//! The on-disk audit log (`audit.rs`) was ripped — it was wired into
+//! `PermissionChecker::with_approval_audit` but the setter was never
+//! called with `Some(...)` in production. The in-memory audit on
+//! `PermissionChecker` (`SharedAudit`/`AuditEntry`) backs the
+//! `/permissions` UI; that's what stayed.
 
 pub mod allowlist;
-pub mod audit;
 
 pub use allowlist::{ArgShape, SessionAllowlist};
-pub use audit::{ApprovalAudit, ApprovalTier, AuditRecord, now_secs};
