@@ -1,18 +1,18 @@
 ---
-id: groq-backend-hardening-failed-generation
+id: groq-backend-hardening-surface
 level: task
 title: "Groq backend hardening — surface failed_generation, expand is_retryable, document model selection"
 short_code: "ARAWN-T-0411"
-created_at: 2026-05-22T16:50:00.000000+00:00
-updated_at: 2026-05-22T16:50:00.000000+00:00
+created_at: 2026-05-22T16:50:00+00:00
+updated_at: 2026-05-23T02:11:20.965156+00:00
 parent: 
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/backlog"
   - "#bug"
+  - "#phase/active"
 
 
 exit_criteria_met: false
@@ -54,6 +54,10 @@ Pattern lifted from a sister project (muninn — `../muninn/crates/muninn-rlm/sr
 ## Objective
 
 Bring arawn's Groq backend to parity with muninn's hardened path for the three lessons that apply (lessons #1, #2, and #4 from the muninn writeup; lesson #3 — `tool_choice` forwarding — doesn't apply because arawn doesn't use forced tool calls).
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
@@ -117,4 +121,39 @@ The `failed_generation` gap is an *active* diagnostic blindspot: when Groq fails
 
 ## Status Updates
 
-*To be added during implementation*
+### 2026-05-23 — landed
+
+**Three pieces, one PR:**
+
+**1. `failed_generation` surfaced in error messages** (`crates/arawn-llm/src/error.rs::extract_api_message`):
+- Function now pulls `error.failed_generation` from the JSON body in addition to `error.message`.
+- When present and non-empty, format is `"{message} | failed_generation: {raw}"`.
+- 2 KB truncation with `…[truncated]` suffix; UTF-8-safe (truncates on char boundary, never splits a multi-byte sequence).
+- `FAILED_GENERATION_TRUNCATE_BYTES = 2048` const for the threshold.
+- Lands transparently in both `groq.rs` and `openai_compat.rs` — both call through `from_status` which calls through `extract_api_message`.
+
+**2. `is_retryable` expanded** (`LlmError::is_retryable`):
+- The `Api(_)` branch now matches `"failed to call a function"` and `"failed to parse tool call arguments"` (case-insensitive via `to_lowercase()`).
+- Existing `"tool_use_failed"` (Anthropic) and `"overloaded"` patterns preserved.
+- Today the 502 case already retries via `LlmError::ServerError` — this is belt-and-suspenders for any code path where Groq surfaces these failures as 4xx instead.
+- Inline doc comment names ARAWN-T-0411 and the muninn writeup for future readers.
+
+**3. Docs** (`docs/src/reference/llm-providers.md`, new):
+- Full Groq quirk explainer (server-side tool-call validation, format-bias mechanism).
+- Model stability table from muninn's findings: `qwen/qwen3-32b` recommended default; `openai/gpt-oss-20b` flagged as avoid.
+- "What does NOT help" callouts (temperature=0, tool_choice pinning, max_tokens) — same negative results we'd otherwise have to re-discover.
+- Brief sections on Anthropic, Ollama, OpenAI for completeness.
+- Linked from `docs/src/SUMMARY.md` under Reference.
+
+**Unit tests added (8):**
+- 4 for `extract_api_message`: with `failed_generation`, long `failed_generation` triggers truncation, empty `failed_generation` doesn't produce a hanging suffix, body without the field preserves old behavior (backward compat).
+- 4 for `is_retryable`: positive on `"failed to call a function"`, positive on `"failed to parse tool call arguments"`, negative on random `"invalid model"` 4xx, case-insensitive variant `"FAILED TO CALL A FUNCTION"` still retryable.
+
+**Validation:**
+- `cargo check --workspace`: ✅ clean.
+- `cargo build --workspace --release`: ✅ clean (1m 11s).
+- `cargo test -p arawn-llm`: ✅ **111 tests pass** (was 102; +9 new — 8 new T-0411 tests + 1 added during the prior session).
+- `cargo test --workspace --lib`: ✅ **1,793 tests pass** (was 1,785; +8 new T-0411 tests).
+- `angreal docs build`: ✅ clean.
+
+**Manual smoke deferred:** would require a Groq API key + a deterministic native-format prompt. The unit tests cover the parse + retry behavior; production exposure is the next time someone runs against Groq and hits the failure mode.

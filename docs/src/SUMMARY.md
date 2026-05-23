@@ -31,6 +31,7 @@
 - [Slash commands](./reference/slash-commands.md)
 - [Configuration schema](./reference/config-schema.md)
 - [Environment variables](./reference/env-vars.md)
+- [LLM providers](./reference/llm-providers.md)
 - [Data directory layout](./reference/data-directory.md)
 - [Troubleshooting](./reference/troubleshooting.md)
 - [Agent tools](./reference/agent-tools.md)
