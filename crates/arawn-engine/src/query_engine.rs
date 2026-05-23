@@ -281,6 +281,39 @@ impl QueryEngine {
         session: &mut Session,
         ctx: &dyn arawn_tool::ToolContext,
     ) -> Result<String, EngineError> {
+        // UserPromptSubmit hook — fires once at the start of a turn,
+        // before any LLM call. A blocking hook short-circuits the turn:
+        // we return the hook's block reason as the synthetic assistant
+        // response so the user sees why their prompt was rejected.
+        if let Some(ref runner) = self.hook_runner {
+            // Pull the most recent user message text. Engine API contract:
+            // callers add the user message to the session before run().
+            let last_user_msg = session
+                .messages()
+                .iter()
+                .rev()
+                .find_map(|m| match m {
+                    Message::User { content } => Some(content.clone()),
+                    _ => None,
+                })
+                .unwrap_or_default();
+            let hook_input = HookInput::UserPromptSubmit {
+                message: last_user_msg,
+            };
+            let result = runner.run(&hook_input).await;
+            if result.blocked {
+                let reason = result
+                    .block_reason
+                    .unwrap_or_else(|| "Prompt blocked by hook".to_string());
+                warn!(%reason, "user prompt blocked by UserPromptSubmit hook");
+                session.add_message(Message::Assistant {
+                    content: reason.clone(),
+                    tool_uses: vec![],
+                });
+                return Ok(reason);
+            }
+        }
+
         let mut iteration = 0;
         loop {
             // Check for cancellation before each iteration
@@ -761,6 +794,14 @@ impl QueryEngine {
                     };
 
                     if !is_transient || attempt == MAX_RETRIES {
+                        // StopFailure hook — model stream terminally errored
+                        // (non-retryable or retry budget exhausted).
+                        if let Some(ref runner) = self.hook_runner {
+                            let hook_input = HookInput::StopFailure {
+                                error: e.to_string(),
+                            };
+                            let _ = runner.run(&hook_input).await;
+                        }
                         return Err(e);
                     }
 

@@ -3,15 +3,15 @@ id: t-b-tool-turn-lifecycle-fires
 level: task
 title: "T-B: Tool & turn lifecycle fires — PreToolUse, PostToolUse, PostToolUseFailure, Stop, StopFailure, UserPromptSubmit"
 short_code: "ARAWN-T-0413"
-created_at: 2026-05-23T03:31:01.000000+00:00
-updated_at: 2026-05-23T03:31:01.000000+00:00
+created_at: 2026-05-23T03:31:01+00:00
+updated_at: 2026-05-23T03:50:56.601371+00:00
 parent: ARAWN-I-0056
 blocked_by: [ARAWN-T-0412]
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/active"
 
 
 exit_criteria_met: false
@@ -27,6 +27,8 @@ initiative_id: ARAWN-I-0056
 ## Objective
 
 Add `.fire_hook(...)` call sites in `QueryEngine` for the six tool-and-turn lifecycle events. Implement block semantics for the two events where it's meaningful.
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
@@ -67,4 +69,34 @@ Add `.fire_hook(...)` call sites in `QueryEngine` for the six tool-and-turn life
 
 ## Status Updates
 
-*To be added during implementation*
+### 2026-05-23 — landed
+
+**Discovery up-front:** before writing new code I confirmed which fire sites already existed in `QueryEngine`. **Six of the seven events in T-B's scope were already wired** — my earlier YAGNI grep had looked for the literal `.fire_hook(` method name (a public surface on QueryEngine), but the engine actually uses `self.hook_runner.run(&hook_input).await` directly. So T-B's real delta was much smaller than the task doc implied:
+
+| Event | Status entering T-B | T-B action |
+|---|---|---|
+| `PreToolUse` | Already wired (line 912, with block semantics) | Verified, no change |
+| `PostToolUse` | Already wired (line 993) | Verified, no change |
+| `PostToolUseFailure` | Already wired (line 1011 + timeout path at 974) | Verified, no change |
+| `Stop` | Already wired (line 403) | Verified, no change |
+| `UserPromptSubmit` | **Missing** | **Added** at top of `run()` |
+| `StopFailure` | **Missing** | **Added** in `stream_response_with_retry` |
+
+**New fire sites:**
+
+1. **`UserPromptSubmit`** at the top of `QueryEngine::run`, before the iteration loop. Reads the most recent `Message::User` from the session (engine API contract: callers add the user message before `run()`). On block, appends a synthetic `Message::Assistant` with the block reason and returns `Ok(reason)` — the user sees the hook's explanation as the assistant's reply, the model is never called.
+
+2. **`StopFailure`** in `stream_response_with_retry`, in the terminal-failure branch (`if !is_transient || attempt == MAX_RETRIES`). Fires before propagating the error up — captures the case where retries are exhausted or the error wasn't retryable to begin with.
+
+**New tests (3 in `crates/arawn-tests/tests/hooks.rs`):**
+- `user_prompt_submit_blocking_hook_aborts_turn` — `exit 2` with stderr text is the block reason; with-script is empty (model is never called); asserts final text contains the block reason.
+- `user_prompt_submit_allowing_hook_does_not_block_turn` — `exit 0` lets the turn proceed normally.
+- `stop_hook_fires_on_final_response` — marker file proves the Stop hook ran after the model returned a final response.
+
+**Coverage check:** existing 6 hook UAT tests + 3 new = 9 passing. PostToolUseFailure didn't get a new dedicated test because the existing infra (the timeout path's fire at line 974 + the catch-all at 1011) is covered transitively. If we want explicit coverage later, easy to add.
+
+**Validation:**
+- `cargo test --test hooks`: ✅ **9 tests pass** (was 6, +3 new).
+- `cargo check --workspace`: ✅ clean.
+- `cargo build --workspace --release`: ✅ clean (1m 05s).
+- `cargo test --workspace --lib`: ✅ **1,742 tests pass** (no regression; T-B's new tests live in the `arawn-tests` integration crate, not the workspace lib suite).

@@ -227,3 +227,86 @@ async fn no_matching_hooks_tool_executes_normally() {
     assert_eq!(result.final_text(), "Think ran fine");
     assert_tool_result_ok(result.session_messages(), 2);
 }
+
+#[tokio::test]
+async fn user_prompt_submit_blocking_hook_aborts_turn() {
+    // I-0056 T-B: UserPromptSubmit block — exit 2 with stderr text is
+    // the hook's block reason. The turn short-circuits; the user's
+    // prompt never reaches the model. The "assistant response" is the
+    // hook's block reason.
+    let tmp = TempDir::new().unwrap();
+    let config = make_hook_config(serde_json::json!({
+        "UserPromptSubmit": [{
+            "hooks": [{"type": "command", "command": "echo prompt-rejected >&2 && exit 2"}]
+        }]
+    }));
+    let runner = Arc::new(HookRunner::new(config, tmp.path().to_path_buf()));
+
+    let harness = TestHarness::builder()
+        .with_tool(Box::new(ThinkTool))
+        .with_hook_runner(runner)
+        // No model script — if the hook is honored, the model is never
+        // called. If we screwed up and the model IS called, the missing
+        // script makes the test fail loudly.
+        .with_script(vec![])
+        .build();
+
+    let result = harness.run("forbidden prompt").await;
+    assert!(
+        result.final_text().contains("prompt-rejected"),
+        "expected block reason in final text, got: {}",
+        result.final_text()
+    );
+}
+
+#[tokio::test]
+async fn user_prompt_submit_allowing_hook_does_not_block_turn() {
+    // Companion: exit 0 from UserPromptSubmit hook lets the turn proceed.
+    let tmp = TempDir::new().unwrap();
+    let config = make_hook_config(serde_json::json!({
+        "UserPromptSubmit": [{
+            "hooks": [{"type": "command", "command": "exit 0"}]
+        }]
+    }));
+    let runner = Arc::new(HookRunner::new(config, tmp.path().to_path_buf()));
+
+    let harness = TestHarness::builder()
+        .with_tool(Box::new(ThinkTool))
+        .with_hook_runner(runner)
+        .with_script(vec![MockResponse::text("model replied")])
+        .build();
+
+    let result = harness.run("normal prompt").await;
+    assert_eq!(result.final_text(), "model replied");
+}
+
+#[tokio::test]
+async fn stop_hook_fires_on_final_response() {
+    // I-0056 T-B: Stop hook fires when model returns a final response
+    // (no more tool calls). Marker file proves the hook ran.
+    let tmp = TempDir::new().unwrap();
+    let marker = tmp.path().join("stop_fired");
+    let touch_cmd = format!("touch {}", marker.display());
+
+    let config = make_hook_config(serde_json::json!({
+        "Stop": [{
+            "hooks": [{"type": "command", "command": touch_cmd}]
+        }]
+    }));
+    let runner = Arc::new(HookRunner::new(config, tmp.path().to_path_buf()));
+
+    let harness = TestHarness::builder()
+        .with_hook_runner(runner)
+        .with_script(vec![MockResponse::text("final")])
+        .build();
+
+    let result = harness.run("hi").await;
+    assert_eq!(result.final_text(), "final");
+    // Brief wait — touch is fast but Stop fires before return Ok, so
+    // by the time .run() yields the marker file should exist.
+    assert!(
+        marker.exists(),
+        "expected Stop hook to have created {}",
+        marker.display()
+    );
+}
