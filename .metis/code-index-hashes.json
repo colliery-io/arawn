@@ -323,7 +323,7 @@
     "crates/arawn-tests/tests/tool_artifacts.rs": "6d1d8a5d6397e1820c6aace820a4cad714628ef68bfcdf407b77adf9a1b02a60",
     "crates/arawn-tests/tests/uat.rs": "4af75e0801d03b2faf24e9d3fef6bae35e21f0cbbd89d51e25bdfe525d62a4c3",
     "crates/arawn-tests/tests/uat_daily_seed.rs": "4490c618441c49370055bd8595cd462c973134d36d840c64712c5e7179749c30",
-    "crates/arawn-tests/tests/uat_fixture.rs": "a67d197a2f27238c24b92dd9f478d6e3f7a543d1dd77034c2d1f575b42d8bea1",
+    "crates/arawn-tests/tests/uat_fixture.rs": "94a05514cd1cbf24572235c4c7d212cba0178b9b5e723e859eda6747e5e22035",
     "crates/arawn-tests/tests/uat_fixture_smoke.rs": "a26475a842708ed9d5187adba5e89bfd011bfa62ad9e1dfd2218146456e005ee",
     "crates/arawn-tests/tests/uat_retro_seed.rs": "aaca6283590b1fc9fc5a2dfdf519009b1c0ff63861f1f981dfd3d65703d59d5e",
     "crates/arawn-tests/tests/uat_weekly_seed.rs": "05194e80ac24bcf06f497b2c247e495396d82e5f6728dabec64182d8e2bd1992",

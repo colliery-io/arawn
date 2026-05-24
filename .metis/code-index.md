@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-23T17:10:30Z | 410 files | Python, Rust
+> Generated: 2026-05-24T13:06:14Z | 410 files | Python, Rust
 
 ## Project Structure
 
