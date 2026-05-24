@@ -545,10 +545,10 @@ pub async fn drive_extraction(
 /// workstreams. Cap per workstream is generous (50) since this is for
 /// UAT scenarios — production caps live in `arawn.toml`.
 pub async fn drive_tag_promoter(applied: &Applied, data_dir: &Path) -> Result<usize, String> {
-    use arawn_steward::{
-        Journal, JournalGate, StewardSubroutine, SubroutineCtx, TagPromoterConfig,
-        TagPromoterSubroutine,
-    };
+    use arawn_steward::journal::JournalGate;
+    use arawn_steward::subroutine::SubroutineCtx;
+    use arawn_steward::tag_promoter::TagPromoterConfig;
+    use arawn_steward::{Journal, StewardSubroutine, TagPromoterSubroutine};
     // Lower `min_count` to 2 for UAT — production default is 3, but
     // LLM-nondeterminism in seed extraction means recurring discovered
     // tags often land at count=2 within a single fixture, not 3+.

@@ -74,7 +74,7 @@ similar = "2"
 tempfile = "3"
 
 # Graph + Cypher over SQLite
-graphqlite = { path = "../graphqlite/bindings/rust" }
+graphqlite = "0.5"
 
 # Internal crates
 arawn-auth = { path = "crates/arawn-auth" }
