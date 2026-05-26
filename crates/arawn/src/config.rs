@@ -478,13 +478,32 @@ impl ArawnConfig {
                         c
                     }
                     Err(e) => {
-                        tracing::warn!(error = %e, "failed to parse arawn.toml, using defaults");
-                        Self::default()
+                        // A config file that exists but doesn't parse is almost
+                        // never what the user wants — silently falling back to
+                        // the Groq defaults here is how "why is it hitting groq?"
+                        // happens. Abort loudly instead. NOTE: this runs before
+                        // tracing is initialized (see main.rs), so the message
+                        // MUST go to stderr to be visible.
+                        eprintln!(
+                            "FATAL: failed to parse {}: {e}\n\
+                             Refusing to start with the built-in defaults (which use the \
+                             Groq provider). Fix the TOML error above, or remove/rename the \
+                             file to intentionally use defaults.",
+                            config_path.display()
+                        );
+                        std::process::exit(1);
                     }
                 },
                 Err(e) => {
-                    tracing::warn!(error = %e, "failed to read arawn.toml, using defaults");
-                    Self::default()
+                    // Likewise: the file is there but we can't read it
+                    // (permissions, etc.). Don't pretend it's absent.
+                    eprintln!(
+                        "FATAL: failed to read {}: {e}\n\
+                         Refusing to start with the built-in defaults (which use the \
+                         Groq provider).",
+                        config_path.display()
+                    );
+                    std::process::exit(1);
                 }
             }
         } else {

@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-26T12:05:44Z | 412 files | Python, Rust
+> Generated: 2026-05-26T15:59:09Z | 412 files | Python, Rust
 
 ## Project Structure
 
@@ -575,15 +575,15 @@
 - pub `is_enabled` function L412-414 — `(&self) -> bool` — `enabled` field defaulting to `true`.
 - pub `RoutingConfig` struct L423-426 — `{ hints: HintRoutingConfig }` — Routing configuration.
 - pub `HintRoutingConfig` struct L432-442 — `{ lightweight: Option<String>, medium: Option<String>, heavy: Option<String> }` — Maps each `ModelHint` tier to a named `[llm.NAME]` profile.
-- pub `load` function L471-504 — `(data_dir: &Path) -> Self` — Load config from `data_dir/arawn.toml`, merging with env var overrides and defaults.
-- pub `engine_llm` function L527-532 — `(&self) -> &LlmConfig` — Resolve the LLM config for the engine.
-- pub `compactor_llm` function L535-542 — `(&self) -> &LlmConfig` — Resolve the LLM config for the compactor.
-- pub `extraction_llm` function L547-554 — `(&self) -> &LlmConfig` — Resolve the LLM config for the per-workstream extractor.
-- pub `extraction_llm_name` function L559-564 — `(&self) -> &str` — The configured name of the extraction LLM (or the engine's
-- pub `data_dir` function L567-569 — `(&self) -> PathBuf` — Resolve the data directory with ~ expansion.
-- pub `prompts_dir` function L572-574 — `(&self) -> PathBuf` — Resolve the prompts directory.
-- pub `resolve_api_key` function L578-585 — `(llm: &LlmConfig) -> Option<String>` — Resolve API key for an LLM config.
-- pub `generate_default_toml` function L588-698 — `() -> String` — Generate a default config file string with comments.
+- pub `load` function L471-523 — `(data_dir: &Path) -> Self` — Load config from `data_dir/arawn.toml`, merging with env var overrides and defaults.
+- pub `engine_llm` function L546-551 — `(&self) -> &LlmConfig` — Resolve the LLM config for the engine.
+- pub `compactor_llm` function L554-561 — `(&self) -> &LlmConfig` — Resolve the LLM config for the compactor.
+- pub `extraction_llm` function L566-573 — `(&self) -> &LlmConfig` — Resolve the LLM config for the per-workstream extractor.
+- pub `extraction_llm_name` function L578-583 — `(&self) -> &str` — The configured name of the extraction LLM (or the engine's
+- pub `data_dir` function L586-588 — `(&self) -> PathBuf` — Resolve the data directory with ~ expansion.
+- pub `prompts_dir` function L591-593 — `(&self) -> PathBuf` — Resolve the prompts directory.
+- pub `resolve_api_key` function L597-604 — `(llm: &LlmConfig) -> Option<String>` — Resolve API key for an LLM config.
+- pub `generate_default_toml` function L607-717 — `() -> String` — Generate a default config file string with comments.
 -  `default_api_key_env` function L28-30 — `() -> String`
 -  `default_context_window` function L31-33 — `() -> u32`
 -  `default_max_tokens` function L34-36 — `() -> u32`
@@ -619,23 +619,23 @@
 -  `default_llm_configs` function L444-448 — `() -> HashMap<String, LlmConfig>`
 -  `ArawnConfig` type L450-467 — `impl Default for ArawnConfig`
 -  `default` function L451-466 — `() -> Self`
--  `ArawnConfig` type L469-699 — `= ArawnConfig`
--  `apply_env_overrides` function L506-524 — `(&mut self)`
--  `expand_tilde` function L701-708 — `(path: &str) -> PathBuf`
--  `tests` module L711-894 — `-`
--  `default_config_has_working_values` function L715-724 — `()`
--  `load_from_toml_string` function L727-747 — `()`
--  `compactor_falls_back_to_engine_llm` function L750-755 — `()`
--  `compactor_uses_own_llm_when_specified` function L758-777 — `()`
--  `missing_llm_name_falls_back_to_default_via_load` function L780-796 — `()`
--  `load_missing_file_uses_defaults` function L799-803 — `()`
--  `load_from_tempdir` function L806-824 — `()`
--  `generate_default_toml_is_parseable` function L827-831 — `()`
--  `tilde_expansion` function L834-837 — `()`
--  `empty_config_has_no_ceremony_overrides` function L840-846 — `()`
--  `ceremonies_table_parses_full_block` function L849-864 — `()`
--  `ceremonies_disabled_observed` function L867-879 — `()`
--  `ceremonies_partial_block_keeps_other_fields_none` function L882-893 — `()`
+-  `ArawnConfig` type L469-718 — `= ArawnConfig`
+-  `apply_env_overrides` function L525-543 — `(&mut self)`
+-  `expand_tilde` function L720-727 — `(path: &str) -> PathBuf`
+-  `tests` module L730-913 — `-`
+-  `default_config_has_working_values` function L734-743 — `()`
+-  `load_from_toml_string` function L746-766 — `()`
+-  `compactor_falls_back_to_engine_llm` function L769-774 — `()`
+-  `compactor_uses_own_llm_when_specified` function L777-796 — `()`
+-  `missing_llm_name_falls_back_to_default_via_load` function L799-815 — `()`
+-  `load_missing_file_uses_defaults` function L818-822 — `()`
+-  `load_from_tempdir` function L825-843 — `()`
+-  `generate_default_toml_is_parseable` function L846-850 — `()`
+-  `tilde_expansion` function L853-856 — `()`
+-  `empty_config_has_no_ceremony_overrides` function L859-865 — `()`
+-  `ceremonies_table_parses_full_block` function L868-883 — `()`
+-  `ceremonies_disabled_observed` function L886-898 — `()`
+-  `ceremonies_partial_block_keeps_other_fields_none` function L901-912 — `()`
 
 #### crates/arawn/src/config_watcher.rs
 
@@ -965,11 +965,11 @@
 
 #### crates/arawn/src/startup/helpers.rs
 
-- pub `build_llm_client` function L11-32 — `(config: &crate::LlmConfig) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
-- pub `register_default_tools` function L35-87 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &crate::ArawnConfig, data_...` — Register all default tools into the registry.
-- pub `connect_mcp_servers` function L90-134 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
-- pub `register_workflow_tools` function L137-154 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
-- pub `dirs_path` function L156-165 — `() -> Option<String>` — main hotspot file.
+- pub `build_llm_client` function L11-45 — `(config: &crate::LlmConfig) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
+- pub `register_default_tools` function L48-100 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &crate::ArawnConfig, data_...` — Register all default tools into the registry.
+- pub `connect_mcp_servers` function L103-147 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
+- pub `register_workflow_tools` function L150-167 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
+- pub `dirs_path` function L169-178 — `() -> Option<String>` — main hotspot file.
 
 #### crates/arawn/src/startup/hooks.rs
 

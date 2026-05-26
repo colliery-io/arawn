@@ -10,6 +10,19 @@ use tracing::info;
 /// Build the appropriate LLM client based on provider config.
 pub fn build_llm_client(config: &crate::LlmConfig) -> Result<Arc<dyn arawn_llm::LlmClient>> {
     let resolved_key = crate::ArawnConfig::resolve_api_key(config);
+    // Log the resolved provider/endpoint so "why is it hitting <provider>?"
+    // is answerable from the startup log. The endpoint is either the explicit
+    // base_url override or the provider's compiled-in default.
+    info!(
+        provider = %config.provider,
+        model = %config.model,
+        endpoint = %config
+            .base_url
+            .clone()
+            .unwrap_or_else(|| format!("<{} default>", config.provider)),
+        api_key = if resolved_key.is_some() { "present" } else { "absent" },
+        "building LLM client",
+    );
     match config.provider.as_str() {
         "anthropic" => {
             let api_key = resolved_key.ok_or_else(|| {
