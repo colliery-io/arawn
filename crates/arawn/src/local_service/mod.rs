@@ -750,6 +750,15 @@ impl ArawnService for LocalService {
     ) -> Result<arawn_service::FeedSchemaDto, ServiceError> {
         self.feed_schema_inner(template).await
     }
+    async fn feed_templates(&self) -> Result<Vec<arawn_service::FeedTemplateInfo>, ServiceError> {
+        Ok(arawn_feeds::template_catalog()
+            .into_iter()
+            .map(|(name, description)| arawn_service::FeedTemplateInfo {
+                name: name.to_string(),
+                description: description.to_string(),
+            })
+            .collect())
+    }
     async fn feed_remove(
         &self,
         feed_id: &str,

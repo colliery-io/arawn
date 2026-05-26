@@ -56,5 +56,5 @@ pub use registry::FeedTemplateRegistry;
 pub use runtime::{CloacinaRunner, FeedRuntime, RemoveOutcome, feed_workflow_name, start};
 pub use store::{FeedRecord, FeedStore, new_record};
 pub use template::{DiscoveryRow, FeedTemplate, RunOutcome, TemplateCtx};
-pub use templates::default_registry;
+pub use templates::{default_registry, template_blurb, template_catalog};
 pub use types::{FeedDefaults, FeedMeta, FeedSummary, RunSummary, TemplateParams};

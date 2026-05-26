@@ -39,6 +39,42 @@ pub fn default_registry() -> FeedTemplateRegistry {
     r
 }
 
+/// One-line, human-readable blurb for a template name — shown in the
+/// `/watch` modal's stage-1 picker. Centralized here (rather than a trait
+/// method) so the descriptions live in one place; `""` for an unknown name.
+pub fn template_blurb(name: &str) -> &'static str {
+    match name {
+        "stub/echo" => "Test feed — echoes a message to the run log",
+        "slack/channel-archive" => "Archive a Slack channel's messages",
+        "slack/dm-archive" => "Archive a Slack DM thread",
+        "slack/my-mentions" => "Slack messages that mention you",
+        "calendar/upcoming-archive" => "Upcoming Google Calendar events",
+        "gmail/inbox-archive" => "Recent Gmail inbox messages",
+        "gmail/sender-filter" => "Gmail messages from a sender pattern",
+        "gmail/label-archive" => "Gmail messages under a label",
+        "drive/folder-sync" => "Mirror a Google Drive folder",
+        "drive/recent" => "Recently changed Google Drive files",
+        "confluence/space-archive" => "Pages in a Confluence space",
+        "jira/project-tracker" => "Issues in a Jira project",
+        "jira/assignee-tracker" => "Jira issues assigned to you",
+        "github/notifications" => "Your GitHub notifications",
+        "github/issues-and-prs" => "GitHub issues and PRs you're involved in",
+        "github/review-queue" => "GitHub PRs awaiting your review",
+        "github/repo-mirror" => "Mirror a GitHub repo's activity",
+        "filesystem/folder" => "Watch a local folder for text-file changes",
+        _ => "",
+    }
+}
+
+/// The full picker catalog: `(name, blurb)` for every registered template,
+/// sorted by name. Backs the `feed_templates` RPC.
+pub fn template_catalog() -> Vec<(&'static str, &'static str)> {
+    let reg = default_registry();
+    let mut names: Vec<&'static str> = reg.names().collect();
+    names.sort_unstable();
+    names.into_iter().map(|n| (n, template_blurb(n))).collect()
+}
+
 #[cfg(test)]
 mod param_schema_tests {
     use super::*;
@@ -107,6 +143,21 @@ mod param_schema_tests {
         assert!(matches!(root.kind, ParamKind::Path));
         let recursive = schema.iter().find(|s| s.key == "recursive").unwrap();
         assert_eq!(recursive.default, Some(serde_json::json!(true)));
+    }
+
+    /// Every registered template must have a non-empty picker blurb, and the
+    /// catalog must cover exactly the registry.
+    #[test]
+    fn template_catalog_covers_registry_with_blurbs() {
+        let reg = default_registry();
+        let reg_names: std::collections::HashSet<&str> = reg.names().collect();
+        let catalog = super::template_catalog();
+        let cat_names: std::collections::HashSet<&str> =
+            catalog.iter().map(|(n, _)| *n).collect();
+        assert_eq!(cat_names, reg_names, "catalog must match the registry");
+        for (name, blurb) in &catalog {
+            assert!(!blurb.is_empty(), "{name} has no picker blurb");
+        }
     }
 
     /// Spot-check that genuinely param-less feeds return empty schemas (so the

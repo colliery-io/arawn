@@ -4,14 +4,14 @@ level: task
 title: "T-D: Event-loop wiring — /watch opens modal, submit via feed_register"
 short_code: "ARAWN-T-0424"
 created_at: 2026-05-26T17:28:06.717620+00:00
-updated_at: 2026-05-26T17:28:06.717620+00:00
+updated_at: 2026-05-26T18:50:32.406472+00:00
 parent: ARAWN-I-0058
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -58,19 +58,32 @@ Feature — `arawn-tui` event loop + `App` state.
 
 ## Acceptance Criteria
 
-- [ ] `/watch` with no args opens the modal; `/watch <template> <id> k=v` still
-      works unchanged (regression).
-- [ ] Picking a template fetches its schema and renders the form; cadence
-      pre-filled from the template default.
-- [ ] Valid submit calls `feed_register` with a payload identical to the text
-      path; the new feed appears in `/feeds`.
-- [ ] Server validation error keeps the modal open and shows the message;
-      `Esc` cancels cleanly.
-- [ ] A discoverable field (e.g. `slack/channel-archive` `channel`) offers the
-      discovered choices instead of requiring a raw id.
-- [ ] Key routing doesn't leak to the chat input while the modal is open.
-- [ ] `angreal check workspace` + `arawn-tui` tests pass (outcome-dispatch unit
-      tests where practical; full interactivity covered by T-E).
+## Acceptance Criteria
+
+- [x] `/watch` with no args opens the modal (`CommandResult::FeedWatchModal`);
+      `/watch <template> <id> k=v` and `/watch list …` unchanged.
+- [x] Picking a template fetches its schema (`feed_schema`) and renders the form
+      via `enter_form`; cadence pre-filled from the returned default.
+- [x] Valid submit calls `feed_register` with the same payload shape as the text
+      path; on success the modal closes and reports via `format_feed_registered`.
+- [x] Server validation error keeps the modal open with the message in
+      `last_error`; `Esc` cancels cleanly (no side effects).
+- [ ] **DEFERRED** — field-level discovery picker (offering discovered Slack
+      channels/Jira projects in-field). The modal works without it: discoverable
+      params are typed as text today. Tracked as a follow-up (see Status); not a
+      blocker for the modal's core value. New `feed_templates` RPC + catalog were
+      added for stage 1, but the per-field discovery integration is out of this
+      slice.
+- [x] Key routing: a `watch_overlay.is_some()` branch routes all keys to the
+      modal (mirrors the todo-overlay branch) — no leakage to chat input.
+- [x] `angreal check workspace` clean; `arawn-tui` tests pass (239). Modal
+      outcome logic is unit-tested in T-C; the live dispatch glue is exercised
+      end-to-end in T-E.
+
+**Scope add (needed for stage 1):** a `feed_templates` RPC + `arawn-feeds`
+`template_catalog()`/`template_blurb()` (one-line descriptions, covered by a
+registry-coverage test) — the old `format_known_templates` text was hardcoded
+and stale, so the picker needed a real, complete source.
 
 ## Dependencies
 Depends on [[ARAWN-T-0421]], [[ARAWN-T-0422]] (schema RPC), and [[ARAWN-T-0423]]
@@ -84,4 +97,21 @@ Depends on [[ARAWN-T-0421]], [[ARAWN-T-0422]] (schema RPC), and [[ARAWN-T-0423]]
 
 ## Status Updates
 
-*To be added during implementation*
+**2026-05-26 — Core wired + building.**
+- `App.watch_overlay: Option<WatchModalState>` + init; render branch in
+  `render/mod.rs`; key-routing branch in `event_loop/mod.rs` (mirrors todo).
+- `command.rs`: `/watch` with empty args → `CommandResult::FeedWatchModal`
+  (typed/`list` forms unchanged); exhaustive match arm added in `app/actions.rs`.
+- New `event_loop/watch.rs`: `open_watch_modal` (fetch `feed_templates`, open
+  stage 1) + `handle_watch_overlay_key` (TemplatePicked→`feed_schema`+enter_form;
+  Submit→`feed_register`, close+report on ok, keep-open+last_error on err;
+  Cancel→close).
+- Stage-1 source: new `feed_templates` RPC backed by `arawn-feeds::template_catalog()`
+  (+ `template_blurb`), replacing the stale hardcoded `format_known_templates`
+  text. Registry-coverage test added.
+- `angreal check workspace` clean; 239 arawn-tui tests pass.
+
+**Deferred (follow-up):** field-level discovery picker (REQ-007) — a focused
+discoverable field offering `feed_discover` choices inline. Out of this slice;
+discoverable params are typed as text for now. Suggest a new task under I-0058
+(e.g. T-F) rather than expanding this one. Will note in the initiative.

@@ -35,6 +35,7 @@ mod formats;
 mod notices;
 mod todo;
 mod usage;
+mod watch;
 
 use brief::{refresh_brief_cache, render_brief_combined};
 use ceremony::{current_iso_week, fetch_diary_body, fetch_priorities, fetch_tablet_id_and_status,
@@ -45,6 +46,7 @@ use formats::{OpenAttempt, format_feed_discover, format_feed_list, format_feed_r
               human_size, try_open_url};
 use notices::apply_system_notice;
 use todo::{fetch_open_todos, handle_todo_overlay_key};
+use watch::{handle_watch_overlay_key, open_watch_modal};
 use usage::render_usage;
 
 /// Render if enough time has elapsed since the last draw. Otherwise mark
@@ -238,6 +240,15 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                     && app.todo_overlay.is_some()
                 {
                     handle_todo_overlay_key(&mut client, &mut app, key).await;
+                    if app.dirty {
+                        force_draw(&mut terminal, &mut app)?;
+                    }
+                    continue;
+                }
+                if let CEvent::Key(key) = event
+                    && app.watch_overlay.is_some()
+                {
+                    handle_watch_overlay_key(&mut client, &mut app, key).await;
                     if app.dirty {
                         force_draw(&mut terminal, &mut app)?;
                     }
@@ -890,6 +901,10 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                                 app.todo_overlay = Some(
                                     crate::todo_modal::TodoModalState::new(todos),
                                 );
+                                app.dirty = true;
+                            }
+                            crate::command::CommandResult::FeedWatchModal => {
+                                open_watch_modal(&mut client, &mut app).await;
                                 app.dirty = true;
                             }
                             _ => {} // Other command results handled in app.handle_action

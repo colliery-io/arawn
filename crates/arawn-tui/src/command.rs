@@ -360,6 +360,9 @@ pub enum CommandResult {
     /// Register a continual data feed via `/watch <template> <feed_id> [k=v]...`.
     /// Slice 1 of T-0219: non-interactive form only — pickers land later.
     FeedRegister(WatchSpec),
+    /// Open the interactive `/watch` registration modal (ARAWN-I-0058) —
+    /// triggered by `/watch` with no arguments.
+    FeedWatchModal,
     /// List configured feeds via `/feeds` (read-only).
     FeedList,
     /// Pause a feed via `/feeds pause <id>`.
@@ -779,12 +782,17 @@ pub fn execute_command(cmd: &ParsedCommand, registry: &CommandRegistry) -> Comma
                     }
                 }
                 "watch" => {
+                    // `/watch` with no args opens the interactive modal
+                    // (ARAWN-I-0058). The typed forms below still work.
+                    let trimmed = cmd.args.trim();
+                    if trimmed.is_empty() {
+                        return CommandResult::FeedWatchModal;
+                    }
                     // `/watch list [template]` is the discovery form;
                     // shares the verb with `/watch <template> <id>`.
                     // Only `list` followed by whitespace (or end of
                     // args) counts — `list-something` keeps the
                     // normal-form path.
-                    let trimmed = cmd.args.trim();
                     let mut tokens = trimmed.split_whitespace();
                     let first = tokens.next().unwrap_or("");
                     if first == "list" {

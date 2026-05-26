@@ -160,6 +160,9 @@ pub fn render(app: &mut App, frame: &mut Frame) {
     if let Some(ref overlay) = app.todo_overlay {
         crate::todo_modal::render_todo_modal(overlay, frame);
     }
+    if let Some(ref overlay) = app.watch_overlay {
+        crate::watch_modal::render_watch_modal(overlay, frame);
+    }
 }
 
 

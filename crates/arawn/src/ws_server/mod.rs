@@ -59,6 +59,7 @@ const RPC_METHODS: &[&str] = &[
     "feed_remove",
     "feed_discover",
     "feed_schema",
+    "feed_templates",
     "feed_run",
     "ceremonies.get_retro_current",
     "ceremonies.get_by_period",
@@ -1324,6 +1325,19 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                 debug!(id, %tpl, "feed_schema");
                 let resp = match service.feed_schema(tpl).await {
                     Ok(dto) => Response::success(id, serde_json::to_value(&dto).unwrap()),
+                    Err(e) => Response::from_service_error(id, &e),
+                };
+                let _ = sender
+                    .send(WsMessage::Text(
+                        serde_json::to_string(&resp).unwrap().into(),
+                    ))
+                    .await;
+            }
+
+            "feed_templates" => {
+                debug!(id, "feed_templates");
+                let resp = match service.feed_templates().await {
+                    Ok(list) => Response::success(id, serde_json::to_value(&list).unwrap()),
                     Err(e) => Response::from_service_error(id, &e),
                 };
                 let _ = sender

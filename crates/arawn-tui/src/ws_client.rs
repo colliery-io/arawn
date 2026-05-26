@@ -326,6 +326,19 @@ impl WsClient {
         Ok(result.clone())
     }
 
+    /// List registered feed templates for the `/watch` modal picker.
+    /// Deserialize the result into `Vec<arawn_service::FeedTemplateInfo>`.
+    pub async fn feed_templates(
+        &mut self,
+    ) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
+        let resp = self.request_response("feed_templates", json!({})).await?;
+        if let Some(err) = resp.get("error") {
+            return Err(err["message"].as_str().unwrap_or("unknown error").into());
+        }
+        let result = resp.get("result").ok_or("no result")?;
+        Ok(result.clone())
+    }
+
     /// Decommission a feed by id. Backs `/feeds rm <id>`.
     pub async fn feed_remove(
         &mut self,

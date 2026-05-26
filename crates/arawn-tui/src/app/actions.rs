@@ -255,6 +255,7 @@ impl App {
                             | CommandResult::FeedResume(_)
                             | CommandResult::FeedRemove { .. }
                             | CommandResult::FeedDiscover(_)
+                            | CommandResult::FeedWatchModal
                             | CommandResult::FeedRun(_)
                             | CommandResult::CeremonyShowToday
                             | CommandResult::CeremonyShowWeek

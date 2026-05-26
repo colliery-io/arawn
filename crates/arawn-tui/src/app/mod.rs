@@ -199,6 +199,9 @@ pub struct App {
     /// Set when a `todo_event` ServerNotice arrives. Triggers a
     /// re-fetch of the open todo list and re-render.
     pub pending_todo_refresh: bool,
+    /// `/watch` (no args) registration modal (ARAWN-I-0058). Mutually
+    /// exclusive with the other overlays — one at a time.
+    pub watch_overlay: Option<crate::watch_modal::WatchModalState>,
     /// I-0035 Phase 2 (T-0354): cached markdown for the empty-chat
     /// brief surface. Populated by the event loop on session
     /// start / switch via the same fetch path the `/brief` command
@@ -282,6 +285,7 @@ impl App {
             pending_ceremony_refresh: false,
             todo_overlay: None,
             pending_todo_refresh: false,
+            watch_overlay: None,
             brief_markdown: None,
             daily_view: None,
             toast_queue: std::collections::VecDeque::new(),

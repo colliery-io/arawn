@@ -381,6 +381,13 @@ pub struct FeedParamSpecDto {
     pub help: String,
 }
 
+/// One template in the `/watch` modal's stage-1 picker.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct FeedTemplateInfo {
+    pub name: String,
+    pub description: String,
+}
+
 /// Response from `feed_schema`: the form definition for one template. The
 /// `/watch` modal renders one field per `params` entry and pre-fills the
 /// advanced cadence field with `default_cadence`.
