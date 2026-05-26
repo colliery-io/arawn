@@ -454,6 +454,18 @@ pub fn parse_watch_args(args: &str) -> Result<WatchSpec, String> {
     if feed_id.is_empty() {
         return Err("/watch: feed_id cannot be empty".into());
     }
+    // A feed_id that looks like `key=value` is almost always the omitted-feed_id
+    // mistake: `/watch filesystem/folder root=…` makes `root=…` the positional
+    // feed_id, the params come out empty, and the template then reports a missing
+    // required param. Catch it here with a message that points at the real cause.
+    if feed_id.contains('=') {
+        return Err(format!(
+            "/watch: '{feed_id}' looks like a key=value, not a feed_id. The form is \
+             `/watch <provider/template> <feed_id> [key=value ...]` — you likely \
+             omitted the feed_id (a short name you choose for this feed), e.g. \
+             `/watch {template} mynotes {feed_id}`."
+        ));
+    }
 
     let mut params = serde_json::Map::new();
     let mut cadence: Option<String> = None;
@@ -882,6 +894,23 @@ mod tests {
         let err = parse_watch_args("filesystem/folder notes root=/Users/me/My Drive/Meet")
             .expect_err("unquoted spaces cannot be tokenized");
         assert!(err.contains("quote it"), "error should hint at quoting: {err}");
+    }
+
+    /// Omitting the feed_id makes the first `key=value` get consumed as the
+    /// positional feed_id, leaving params empty so the template reports a missing
+    /// required param ("missing root" for filesystem/folder). The parser should
+    /// catch the `key=value`-shaped feed_id and explain the real cause.
+    #[test]
+    fn watch_rejects_keyvalue_shaped_feed_id() {
+        let err = parse_watch_args("filesystem/folder root=\"/Users/me/My Drive\"")
+            .expect_err("key=value feed_id should be rejected");
+        assert!(err.contains("looks like a key=value"), "got: {err}");
+        assert!(err.contains("omitted the feed_id"), "got: {err}");
+        // The correct form still parses and carries root in params.
+        let ok = parse_watch_args("filesystem/folder mynotes root=\"/Users/me/My Drive\"")
+            .expect("with feed_id it parses");
+        assert_eq!(ok.feed_id, "mynotes");
+        assert_eq!(ok.params["root"], "/Users/me/My Drive");
     }
 
     #[test]
