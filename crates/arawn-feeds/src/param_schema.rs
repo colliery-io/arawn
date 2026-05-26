@@ -60,6 +60,11 @@ pub struct ParamSpec {
     pub default: Option<Value>,
     /// One-line guidance shown beneath the field (purpose, ranges, examples).
     pub help: String,
+    /// When `true`, this param's value is enumerable from the provider via the
+    /// template's `discover()` — the `/watch` modal offers a pick-list instead
+    /// of a raw text field. Defaults to `false`.
+    #[serde(default)]
+    pub discoverable: bool,
 }
 
 impl ParamSpec {
@@ -72,6 +77,7 @@ impl ParamSpec {
             required: true,
             default: None,
             help: help.to_string(),
+            discoverable: false,
         }
     }
 
@@ -84,6 +90,7 @@ impl ParamSpec {
             required: false,
             default: Some(default),
             help: help.to_string(),
+            discoverable: false,
         }
     }
 
@@ -96,7 +103,15 @@ impl ParamSpec {
             required: false,
             default: None,
             help: help.to_string(),
+            discoverable: false,
         }
+    }
+
+    /// Mark this param as provider-discoverable (the `/watch` modal offers a
+    /// pick-list). Builder form: `ParamSpec::required(...).discoverable()`.
+    pub fn discoverable(mut self) -> Self {
+        self.discoverable = true;
+        self
     }
 
     /// The shared first-run backfill `since` field. Every template that

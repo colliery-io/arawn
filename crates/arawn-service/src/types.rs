@@ -379,6 +379,10 @@ pub struct FeedParamSpecDto {
     #[serde(default)]
     pub default: Option<serde_json::Value>,
     pub help: String,
+    /// When `true`, the `/watch` modal offers a provider-backed pick-list for
+    /// this field (via `feed_discover`) instead of a raw text input.
+    #[serde(default)]
+    pub discoverable: bool,
 }
 
 /// One template in the `/watch` modal's stage-1 picker.

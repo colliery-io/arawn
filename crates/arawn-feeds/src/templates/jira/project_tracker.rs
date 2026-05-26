@@ -79,7 +79,8 @@ impl FeedTemplate for ProjectTrackerTemplate {
                 "Project",
                 ParamKind::Text,
                 "Jira project key (e.g. ENG) or numeric ID.",
-            ),
+            )
+            .discoverable(),
             ParamSpec::since(),
         ]
     }

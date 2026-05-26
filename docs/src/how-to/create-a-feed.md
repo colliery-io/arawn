@@ -34,7 +34,10 @@ Type `/watch` with **no arguments** to open the registration form:
    takes, with types, defaults pre-filled, and required fields marked `*`. You
    always choose a **Feed ID** (your handle for this instance). The cadence sits
    under an "advanced" line, pre-filled with the template's default — leave it
-   alone unless you want to override it.
+   alone unless you want to override it. Fields backed by the provider (a Slack
+   channel, a Jira project, a Confluence space) show `↵ choose…`: press Enter to
+   pick from a live list instead of typing an id. If the list can't be fetched
+   (offline, missing scope), just type the value.
 3. Press **Enter** to register. Validation errors keep the form open so you can
    fix the offending field; `Esc` cancels.
 

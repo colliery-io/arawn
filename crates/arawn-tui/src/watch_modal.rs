@@ -43,6 +43,15 @@ pub enum WatchStage {
     FillForm,
 }
 
+/// One provider-discovered choice for a discoverable field (T-F). `value` is
+/// what gets written into the field (extracted from the discover row's params).
+#[derive(Debug, Clone, PartialEq)]
+pub struct DiscoveryChoice {
+    pub label: String,
+    pub hint: Option<String>,
+    pub value: String,
+}
+
 /// A single editable form row. Holds the spec it renders from and the current
 /// raw edit buffer (for `Bool` the buffer is `"true"`/`"false"`; for `List`
 /// it's the space-separated source text).
@@ -50,6 +59,9 @@ pub enum WatchStage {
 pub struct FieldState {
     pub spec: FeedParamSpecDto,
     pub value: String,
+    /// Cached provider choices for a discoverable field. `None` = not fetched
+    /// yet; `Some(vec)` = fetched (possibly empty → fall back to free text).
+    pub choices: Option<Vec<DiscoveryChoice>>,
 }
 
 impl FieldState {
@@ -65,7 +77,11 @@ impl FieldState {
             Some(Value::Number(n)) => n.to_string(),
             _ => String::new(),
         };
-        Self { spec, value }
+        Self {
+            spec,
+            value,
+            choices: None,
+        }
     }
 
     fn synthetic(key: &str, label: &str, required: bool, value: String, help: &str) -> Self {
@@ -77,8 +93,10 @@ impl FieldState {
                 required,
                 default: None,
                 help: help.to_string(),
+                discoverable: false,
             },
             value,
+            choices: None,
         }
     }
 
@@ -92,6 +110,13 @@ impl FieldState {
             _ => None,
         }
     }
+}
+
+/// Active discovery sub-screen: which field it's choosing for + cursor.
+#[derive(Debug, Clone, PartialEq)]
+pub struct PickerState {
+    pub field: usize,
+    pub index: usize,
 }
 
 /// State for the `/watch` registration modal.
@@ -109,6 +134,8 @@ pub struct WatchModalState {
     pub fields: Vec<FieldState>,
     pub focus: usize,
     pub last_error: Option<String>,
+    /// When `Some`, the discovery pick-list sub-screen is open for a field.
+    pub picker: Option<PickerState>,
 }
 
 /// What the event loop should do after a key press.
@@ -125,6 +152,10 @@ pub enum WatchOutcome {
         params: Value,
         cadence: Option<String>,
     },
+    /// Open the discovery pick-list for a field whose choices aren't cached
+    /// yet — the event loop calls `feed_discover` and feeds rows back via
+    /// [`WatchModalState::set_field_choices`].
+    Discover { template: String, field_key: String },
     /// Close the overlay with no side effects.
     Cancel,
 }
@@ -142,6 +173,7 @@ impl WatchModalState {
             fields: Vec::new(),
             focus: 0,
             last_error: None,
+            picker: None,
         }
     }
 
@@ -176,7 +208,26 @@ impl WatchModalState {
         self.fields = fields;
         self.focus = 0;
         self.last_error = None;
+        self.picker = None;
         self.stage = WatchStage::FillForm;
+    }
+
+    /// Feed provider-discovered rows into a field (called by the event loop
+    /// after `feed_discover`). Caches them and — if non-empty — opens the
+    /// pick-list. An empty list falls back to free text with a hint.
+    pub fn set_field_choices(&mut self, field_key: &str, choices: Vec<DiscoveryChoice>) {
+        let Some(idx) = self.fields.iter().position(|f| f.spec.key == field_key) else {
+            return;
+        };
+        let empty = choices.is_empty();
+        self.fields[idx].choices = Some(choices);
+        if empty {
+            self.last_error =
+                Some("No choices found — type the value instead.".to_string());
+            self.picker = None;
+        } else {
+            self.picker = Some(PickerState { field: idx, index: 0 });
+        }
     }
 
     fn focused_field(&mut self) -> Option<&mut FieldState> {
@@ -212,7 +263,11 @@ impl WatchModalState {
     }
 
     fn handle_form_key(&mut self, key: KeyEvent) -> WatchOutcome {
-        // Ctrl-C / Esc always cancel.
+        // The discovery pick-list, when open, captures all keys.
+        if self.picker.is_some() {
+            return self.handle_picker_key(key);
+        }
+        // Esc cancels the whole modal (no picker to back out of).
         if key.code == KeyCode::Esc {
             return WatchOutcome::Cancel;
         }
@@ -228,6 +283,10 @@ impl WatchModalState {
                 self.focus = self.focus.saturating_sub(1);
                 WatchOutcome::None
             }
+            // Enter on a discoverable field opens its pick-list (cached → open
+            // now; otherwise ask the event loop to fetch). Elsewhere Enter
+            // submits the form.
+            KeyCode::Enter if self.focused_is_discoverable() => self.open_picker(),
             KeyCode::Enter => self.build_submit(),
             KeyCode::Left | KeyCode::Right => {
                 self.cycle_focused(key.code == KeyCode::Right);
@@ -287,6 +346,72 @@ impl WatchModalState {
             };
             f.value = values[next].clone();
         }
+    }
+
+    fn focused_is_discoverable(&self) -> bool {
+        self.fields
+            .get(self.focus)
+            .is_some_and(|f| f.spec.discoverable)
+    }
+
+    /// Open the discovery pick-list for the focused field: use cached choices
+    /// if present, otherwise ask the event loop to fetch them.
+    fn open_picker(&mut self) -> WatchOutcome {
+        let idx = self.focus;
+        match self.fields.get(idx).and_then(|f| f.choices.as_ref()) {
+            Some(choices) if !choices.is_empty() => {
+                self.picker = Some(PickerState { field: idx, index: 0 });
+                WatchOutcome::None
+            }
+            Some(_) => {
+                // Already fetched, came back empty — free-text fallback.
+                self.last_error =
+                    Some("No choices found — type the value instead.".to_string());
+                WatchOutcome::None
+            }
+            None => WatchOutcome::Discover {
+                template: self.template.clone(),
+                field_key: self.fields[idx].spec.key.clone(),
+            },
+        }
+    }
+
+    /// Keys while the discovery pick-list is open.
+    fn handle_picker_key(&mut self, key: KeyEvent) -> WatchOutcome {
+        let Some(picker) = self.picker.as_mut() else {
+            return WatchOutcome::None;
+        };
+        let n = self
+            .fields
+            .get(picker.field)
+            .and_then(|f| f.choices.as_ref())
+            .map(|c| c.len())
+            .unwrap_or(0);
+        match key.code {
+            KeyCode::Esc => {
+                self.picker = None;
+            }
+            KeyCode::Up => picker.index = picker.index.saturating_sub(1),
+            KeyCode::Down => {
+                if picker.index + 1 < n {
+                    picker.index += 1;
+                }
+            }
+            KeyCode::Enter => {
+                let (field, index) = (picker.field, picker.index);
+                if let Some(choice) = self.fields[field]
+                    .choices
+                    .as_ref()
+                    .and_then(|c| c.get(index))
+                    .cloned()
+                {
+                    self.fields[field].value = choice.value;
+                }
+                self.picker = None;
+            }
+            _ => {}
+        }
+        WatchOutcome::None
     }
 
     /// Validate + coerce all fields into a `feed_register` payload, or return
@@ -387,9 +512,13 @@ pub fn render_watch_modal(state: &WatchModalState, frame: &mut Frame) {
     let rect = centered_rect(modal_width, modal_height, area);
 
     frame.render_widget(Clear, rect);
-    let title = match state.stage {
-        WatchStage::PickTemplate => " Watch — pick a feed ",
-        WatchStage::FillForm => " Watch — configure feed ",
+    let title = if state.picker.is_some() {
+        " Watch — choose a value "
+    } else {
+        match state.stage {
+            WatchStage::PickTemplate => " Watch — pick a feed ",
+            WatchStage::FillForm => " Watch — configure feed ",
+        }
     };
     let block = Block::default()
         .borders(Borders::ALL)
@@ -403,12 +532,63 @@ pub fn render_watch_modal(state: &WatchModalState, frame: &mut Frame) {
     let inner = block.inner(rect);
     frame.render_widget(block, rect);
 
-    let lines = match state.stage {
-        WatchStage::PickTemplate => render_pick_lines(state),
-        WatchStage::FillForm => render_form_lines(state),
+    let lines = if state.picker.is_some() {
+        render_picker_lines(state)
+    } else {
+        match state.stage {
+            WatchStage::PickTemplate => render_pick_lines(state),
+            WatchStage::FillForm => render_form_lines(state),
+        }
     };
     let para = Paragraph::new(lines).wrap(Wrap { trim: false });
     frame.render_widget(para, inner);
+}
+
+/// The discovery pick-list sub-screen (a focused field's provider choices).
+fn render_picker_lines(state: &WatchModalState) -> Vec<Line<'static>> {
+    let mut lines = Vec::new();
+    let Some(picker) = state.picker.as_ref() else {
+        return lines;
+    };
+    let field = state.fields.get(picker.field);
+    let label = field.map(|f| f.spec.label.clone()).unwrap_or_default();
+    lines.push(Line::from(Span::styled(
+        format!("Choose {label}:"),
+        Style::default().fg(theme::SUBTEXT0),
+    )));
+    lines.push(Line::from(""));
+
+    let choices = field.and_then(|f| f.choices.as_ref());
+    if let Some(choices) = choices {
+        for (i, c) in choices.iter().enumerate() {
+            let focused = i == picker.index;
+            let indicator = if focused { "▸ " } else { "  " };
+            let style = if focused {
+                Style::default()
+                    .fg(theme::TEXT)
+                    .bg(theme::SURFACE0)
+                    .add_modifier(Modifier::BOLD)
+            } else {
+                Style::default().fg(theme::SUBTEXT1)
+            };
+            lines.push(Line::from(vec![
+                Span::styled(indicator, Style::default().fg(Color::Yellow)),
+                Span::styled(c.label.clone(), style),
+                Span::styled(
+                    c.hint.as_deref().map(|h| format!("  {h}")).unwrap_or_default(),
+                    Style::default().fg(theme::OVERLAY1),
+                ),
+            ]));
+        }
+    }
+    lines.push(Line::from(""));
+    lines.push(Line::from(Span::styled(
+        " ↑↓ move · Enter choose · Esc back",
+        Style::default()
+            .fg(theme::OVERLAY1)
+            .add_modifier(Modifier::ITALIC),
+    )));
+    lines
 }
 
 fn render_pick_lines(state: &WatchModalState) -> Vec<Line<'static>> {
@@ -516,6 +696,8 @@ fn render_field_value(f: &FieldState) -> String {
             }
         }
         FeedParamKindDto::Enum(_) => format!("< {} >", f.value),
+        // Discoverable + empty: prompt the user to open the pick-list.
+        _ if f.spec.discoverable && f.value.is_empty() => "↵ choose…".into(),
         _ if f.value.is_empty() => "_".into(),
         _ => format!("{}_", f.value),
     }
@@ -554,6 +736,19 @@ mod tests {
             required,
             default,
             help: String::new(),
+            discoverable: false,
+        }
+    }
+
+    fn spec_discoverable(key: &str) -> FeedParamSpecDto {
+        FeedParamSpecDto {
+            key: key.into(),
+            label: key.into(),
+            kind: FeedParamKindDto::Text,
+            required: true,
+            default: None,
+            help: String::new(),
+            discoverable: true,
         }
     }
 
@@ -762,6 +957,80 @@ mod tests {
         assert_eq!(spec.feed_id, "mynotes");
         assert_eq!(spec.params["root"], "/Users/me/My Drive/Notes");
         assert!(spec.cadence.is_none(), "unchanged cadence is not overridden");
+    }
+
+    fn discoverable_form() -> WatchModalState {
+        let mut s = WatchModalState::new(vec![]);
+        s.enter_form(
+            "slack/channel-archive",
+            vec![spec_discoverable("channel")],
+            "*/15 * * * *",
+        );
+        s
+    }
+
+    fn choices() -> Vec<DiscoveryChoice> {
+        vec![
+            DiscoveryChoice { label: "#design".into(), hint: Some("C1".into()), value: "C1".into() },
+            DiscoveryChoice { label: "#eng".into(), hint: Some("C2".into()), value: "C2".into() },
+        ]
+    }
+
+    #[test]
+    fn enter_on_discoverable_field_requests_discovery_then_picks() {
+        let mut s = discoverable_form();
+        s.focus = 1; // the `channel` field
+        // No cached choices yet → ask the event loop to fetch.
+        assert_eq!(
+            s.handle_key(key(KeyCode::Enter)),
+            WatchOutcome::Discover {
+                template: "slack/channel-archive".into(),
+                field_key: "channel".into(),
+            }
+        );
+        // Event loop feeds choices back → picker opens.
+        s.set_field_choices("channel", choices());
+        assert!(s.picker.is_some());
+        // Navigate + choose fills the field's value from the row's param.
+        s.handle_key(key(KeyCode::Down));
+        s.handle_key(key(KeyCode::Enter));
+        assert!(s.picker.is_none());
+        assert_eq!(s.fields[1].value, "C2");
+    }
+
+    #[test]
+    fn cached_choices_open_picker_without_refetch() {
+        let mut s = discoverable_form();
+        s.focus = 1;
+        s.set_field_choices("channel", choices()); // caches + opens
+        s.picker = None; // pretend the user backed out
+        // Enter now opens directly from cache — no Discover outcome.
+        assert_eq!(s.handle_key(key(KeyCode::Enter)), WatchOutcome::None);
+        assert!(s.picker.is_some());
+    }
+
+    #[test]
+    fn empty_discovery_falls_back_to_free_text() {
+        let mut s = discoverable_form();
+        s.focus = 1;
+        s.set_field_choices("channel", Vec::new());
+        assert!(s.picker.is_none(), "no picker for empty choices");
+        assert!(s.last_error.as_deref().unwrap().contains("type the value"));
+        // The field still accepts typed input.
+        typ(&mut s, "C9");
+        assert_eq!(s.fields[1].value, "C9");
+    }
+
+    #[test]
+    fn esc_in_picker_returns_to_form_without_cancelling() {
+        let mut s = discoverable_form();
+        s.focus = 1;
+        s.set_field_choices("channel", choices());
+        assert!(s.picker.is_some());
+        assert_eq!(s.handle_key(key(KeyCode::Esc)), WatchOutcome::None);
+        assert!(s.picker.is_none(), "Esc closes the picker");
+        // A second Esc (now in the form) cancels the modal.
+        assert_eq!(s.handle_key(key(KeyCode::Esc)), WatchOutcome::Cancel);
     }
 
     #[test]

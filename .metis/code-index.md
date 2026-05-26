@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-26T18:07:16Z | 413 files | Python, Rust
+> Generated: 2026-05-26T18:56:27Z | 415 files | Python, Rust
 
 ## Project Structure
 
@@ -463,7 +463,8 @@
 │   │       │   ├── mod.rs
 │   │       │   ├── notices.rs
 │   │       │   ├── todo.rs
-│   │       │   └── usage.rs
+│   │       │   ├── usage.rs
+│   │       │   └── watch.rs
 │   │       ├── lib.rs
 │   │       ├── markdown.rs
 │   │       ├── modal.rs
@@ -481,6 +482,7 @@
 │   │       ├── toast.rs
 │   │       ├── todo_modal.rs
 │   │       ├── tui_prompt.rs
+│   │       ├── watch_modal.rs
 │   │       ├── width.rs
 │   │       ├── wrap.rs
 │   │       └── ws_client.rs
@@ -798,14 +800,19 @@
 
 #### crates/arawn/src/local_service/feeds.rs
 
--  `LocalService` type L10-153 — `= LocalService` — `ArawnService`.
+-  `LocalService` type L10-166 — `= LocalService` — `ArawnService`.
 -  `feed_register_inner` function L11-44 — `( &self, spec: arawn_service::FeedRegisterSpec, ) -> Result<arawn_service::FeedS...` — `ArawnService`.
 -  `feed_list_inner` function L46-50 — `(&self) -> Result<Vec<arawn_service::FeedSummaryDto>, ServiceError>` — `ArawnService`.
 -  `feed_pause_inner` function L52-66 — `( &self, feed_id: &str, ) -> Result<arawn_service::FeedSummaryDto, ServiceError>` — `ArawnService`.
 -  `feed_resume_inner` function L68-82 — `( &self, feed_id: &str, ) -> Result<arawn_service::FeedSummaryDto, ServiceError>` — `ArawnService`.
 -  `feed_run_inner` function L84-99 — `(&self, feed_id: &str) -> Result<arawn_service::FeedSummaryDto, ServiceError>` — `ArawnService`.
 -  `feed_discover_inner` function L101-129 — `( &self, template: &str, ) -> Result<arawn_service::FeedDiscoverDto, ServiceErro...` — `ArawnService`.
--  `feed_remove_inner` function L131-152 — `( &self, feed_id: &str, ) -> Result<arawn_service::FeedRemoveDto, ServiceError>` — `ArawnService`.
+-  `feed_schema_inner` function L131-142 — `( &self, template: &str, ) -> Result<arawn_service::FeedSchemaDto, ServiceError>` — `ArawnService`.
+-  `feed_remove_inner` function L144-165 — `( &self, feed_id: &str, ) -> Result<arawn_service::FeedRemoveDto, ServiceError>` — `ArawnService`.
+-  `param_spec_to_dto` function L170-190 — `(spec: arawn_feeds::ParamSpec) -> arawn_service::FeedParamSpecDto` — Map a feeds-crate `ParamSpec` onto the service-layer DTO (the service
+-  `tests` module L193-241 — `-` — `ArawnService`.
+-  `param_spec_to_dto_maps_every_kind` function L199-218 — `()` — `ArawnService`.
+-  `filesystem_schema_dto_shape` function L224-240 — `()` — What `feed_schema` returns for filesystem/folder — exercised via the
 
 #### crates/arawn/src/local_service/integrations.rs
 
@@ -866,7 +873,7 @@
 -  `permissions` module L606 — `-`
 -  `sessions` module L607 — `-`
 -  `workstreams` module L608 — `-`
--  `LocalService` type L611-753 — `impl ArawnService for LocalService`
+-  `LocalService` type L611-768 — `impl ArawnService for LocalService`
 -  `list_workstreams` function L612-614 — `(&self) -> Result<Vec<WorkstreamInfo>, ServiceError>`
 -  `create_workstream` function L615-621 — `( &self, name: String, root_dir: PathBuf, ) -> Result<WorkstreamInfo, ServiceErr...`
 -  `list_sessions` function L622-627 — `( &self, workstream_id: Option<Uuid>, ) -> Result<Vec<SessionInfo>, ServiceError...`
@@ -896,21 +903,23 @@
 -  `feed_resume` function L732-737 — `( &self, feed_id: &str, ) -> Result<arawn_service::FeedSummaryDto, ServiceError>`
 -  `feed_run` function L738-740 — `(&self, feed_id: &str) -> Result<arawn_service::FeedSummaryDto, ServiceError>`
 -  `feed_discover` function L741-746 — `( &self, template: &str, ) -> Result<arawn_service::FeedDiscoverDto, ServiceErro...`
--  `feed_remove` function L747-752 — `( &self, feed_id: &str, ) -> Result<arawn_service::FeedRemoveDto, ServiceError>`
--  `default_feed_for_service` function L760-769 — `(service: &str) -> Option<(&'static str, &'static str)>` — Personal default feed registered automatically the first time
--  `current_summary` function L771-781 — `( runtime: &arawn_feeds::FeedRuntime, feed_id: &str, ) -> Result<arawn_service::...`
--  `feed_err` function L783-790 — `(e: arawn_feeds::FeedError) -> ServiceError`
--  `feed_summary_to_dto` function L792-806 — `(s: arawn_feeds::FeedSummary) -> arawn_service::FeedSummaryDto`
--  `OAuthFlowCtx` struct L811-815 — `{ service: String, url_tx: tokio::sync::Mutex<Option<tokio::sync::oneshot::Sende...` — Glue that lets `LocalService::start_oauth_flow` bridge the integration's
--  `OAuthFlowCtx` type L818-840 — `= OAuthFlowCtx`
--  `service` function L819-821 — `(&self) -> &str`
--  `publish_auth_url` function L823-830 — `(&self, url: &url::Url)`
--  `publish_progress` function L832-839 — `(&self, message: &str)`
--  `resolve_ws_dir_from_store` function L843-853 — `(store: &Store, ws_id: Option<Uuid>) -> Result<String, ServiceError>` — Resolve workstream directory name from store.
--  `first_sentence` function L857-868 — `(s: &str) -> String` — Extract the first sentence and sanitize for use in a markdown table cell.
--  `feed_default_tests` module L871-908 — `-`
--  `known_services_each_have_a_default_feed` function L875-901 — `()`
--  `unknown_service_has_no_default_feed` function L904-907 — `()`
+-  `feed_schema` function L747-752 — `( &self, template: &str, ) -> Result<arawn_service::FeedSchemaDto, ServiceError>`
+-  `feed_templates` function L753-761 — `(&self) -> Result<Vec<arawn_service::FeedTemplateInfo>, ServiceError>`
+-  `feed_remove` function L762-767 — `( &self, feed_id: &str, ) -> Result<arawn_service::FeedRemoveDto, ServiceError>`
+-  `default_feed_for_service` function L775-784 — `(service: &str) -> Option<(&'static str, &'static str)>` — Personal default feed registered automatically the first time
+-  `current_summary` function L786-796 — `( runtime: &arawn_feeds::FeedRuntime, feed_id: &str, ) -> Result<arawn_service::...`
+-  `feed_err` function L798-805 — `(e: arawn_feeds::FeedError) -> ServiceError`
+-  `feed_summary_to_dto` function L807-821 — `(s: arawn_feeds::FeedSummary) -> arawn_service::FeedSummaryDto`
+-  `OAuthFlowCtx` struct L826-830 — `{ service: String, url_tx: tokio::sync::Mutex<Option<tokio::sync::oneshot::Sende...` — Glue that lets `LocalService::start_oauth_flow` bridge the integration's
+-  `OAuthFlowCtx` type L833-855 — `= OAuthFlowCtx`
+-  `service` function L834-836 — `(&self) -> &str`
+-  `publish_auth_url` function L838-845 — `(&self, url: &url::Url)`
+-  `publish_progress` function L847-854 — `(&self, message: &str)`
+-  `resolve_ws_dir_from_store` function L858-868 — `(store: &Store, ws_id: Option<Uuid>) -> Result<String, ServiceError>` — Resolve workstream directory name from store.
+-  `first_sentence` function L872-883 — `(s: &str) -> String` — Extract the first sentence and sanitize for use in a markdown table cell.
+-  `feed_default_tests` module L886-923 — `-`
+-  `known_services_each_have_a_default_feed` function L890-916 — `()`
+-  `unknown_service_has_no_default_feed` function L919-922 — `()`
 
 #### crates/arawn/src/local_service/permissions.rs
 
@@ -1009,37 +1018,37 @@
 
 #### crates/arawn/src/ws_server/mod.rs
 
-- pub `read_token_file` function L246-257 — `() -> Option<String>` — Read the auth token from {data_dir}/server.token.
-- pub `run_server` function L260-316 — `( service: LocalService, host: &str, port: u16, ) -> anyhow::Result<()>` — Start the WebSocket server on the given port.
-- pub `handle_connection_public` function L406-408 — `(socket: WebSocket, service: Arc<LocalService>)` — Handle a single WebSocket connection.
+- pub `read_token_file` function L248-259 — `() -> Option<String>` — Read the auth token from {data_dir}/server.token.
+- pub `run_server` function L262-318 — `( service: LocalService, host: &str, port: u16, ) -> anyhow::Result<()>` — Start the WebSocket server on the given port.
+- pub `handle_connection_public` function L408-410 — `(socket: WebSocket, service: Arc<LocalService>)` — Handle a single WebSocket connection.
 -  `ceremonies` module L23 — `-`
 -  `todos` module L24 — `-`
 -  `PROTOCOL_VERSION` variable L27 — `: &str` — Protocol version reported by the `hello` handshake.
--  `RPC_METHODS` variable L30-85 — `: &[&str]` — Canonical RPC method names (returned by `hello`).
--  `Request` struct L89-94 — `{ id: u64, method: String, params: Value }` — JSON-RPC style request from client.
--  `Response` struct L98-104 — `{ id: u64, result: Option<Value>, error: Option<ErrorBody> }` — JSON-RPC style response to client.
--  `ErrorBody` struct L107-112 — `{ code: String, message: String, details: Option<Value> }`
--  `Response` type L114-198 — `= Response`
--  `success` function L115-121 — `(id: u64, result: Value) -> Self`
--  `error` function L123-133 — `(id: u64, code: &str, message: String) -> Self`
--  `from_ceremony_error` function L139-158 — `(id: u64, e: &arawn_ceremonies::CeremonyError) -> Self` — Build an error response from a `CeremonyError`.
--  `from_todo_error` function L163-181 — `(id: u64, e: &arawn_storage::StorageError) -> Self` — Build an error response from a `StorageError` raised by
--  `from_service_error` function L187-197 — `(id: u64, e: &arawn_service::ServiceError) -> Self` — Build an error response from a [`ServiceError`].
--  `AppState` struct L202-207 — `{ service: Arc<LocalService>, auth_token: Option<String> }` — Shared app state for the WebSocket server.
--  `is_loopback_host` function L214-222 — `(host: &str) -> bool` — Generate a random auth token for WebSocket connections.
--  `generate_auth_token` function L224-231 — `() -> String`
--  `write_token_file` function L234-242 — `( data_dir: &std::path::Path, token: &str, ) -> std::io::Result<std::path::PathB...` — Write the auth token to {data_dir}/server.token for clients to read.
--  `shutdown_signal` function L319-341 — `()` — Wait for a shutdown signal (Ctrl-C / SIGTERM).
--  `decision_handler` function L346-365 — `( State(AppState { service, .. }): State<AppState>, Json(req): Json<arawn_workfl...` — HTTP endpoint for workflow decision tasks.
--  `WsQueryParams` struct L369-371 — `{ token: Option<String> }` — Query parameters for WebSocket connection.
--  `ws_handler` function L373-403 — `( ws: WebSocketUpgrade, Query(params): Query<WsQueryParams>, State(state): State...`
--  `handle_connection` function L410-1366 — `(socket: WebSocket, service: Arc<LocalService>)`
--  `tests` module L1370-1442 — `-`
--  `from_service_error_preserves_structured_detail_for_typed_variants` function L1377-1391 — `()` — Typed Storage error should round-trip through the wire payload with
--  `from_service_error_omits_details_for_string_only_variants` function L1397-1408 — `()` — String-only variants (NotFound, InvalidOperation, Internal) keep
--  `loopback_hosts_are_recognized` function L1415-1420 — `()`
--  `non_loopback_hosts_flagged` function L1423-1429 — `()`
--  `from_service_error_preserves_engine_error_kind` function L1432-1441 — `()`
+-  `RPC_METHODS` variable L30-87 — `: &[&str]` — Canonical RPC method names (returned by `hello`).
+-  `Request` struct L91-96 — `{ id: u64, method: String, params: Value }` — JSON-RPC style request from client.
+-  `Response` struct L100-106 — `{ id: u64, result: Option<Value>, error: Option<ErrorBody> }` — JSON-RPC style response to client.
+-  `ErrorBody` struct L109-114 — `{ code: String, message: String, details: Option<Value> }`
+-  `Response` type L116-200 — `= Response`
+-  `success` function L117-123 — `(id: u64, result: Value) -> Self`
+-  `error` function L125-135 — `(id: u64, code: &str, message: String) -> Self`
+-  `from_ceremony_error` function L141-160 — `(id: u64, e: &arawn_ceremonies::CeremonyError) -> Self` — Build an error response from a `CeremonyError`.
+-  `from_todo_error` function L165-183 — `(id: u64, e: &arawn_storage::StorageError) -> Self` — Build an error response from a `StorageError` raised by
+-  `from_service_error` function L189-199 — `(id: u64, e: &arawn_service::ServiceError) -> Self` — Build an error response from a [`ServiceError`].
+-  `AppState` struct L204-209 — `{ service: Arc<LocalService>, auth_token: Option<String> }` — Shared app state for the WebSocket server.
+-  `is_loopback_host` function L216-224 — `(host: &str) -> bool` — Generate a random auth token for WebSocket connections.
+-  `generate_auth_token` function L226-233 — `() -> String`
+-  `write_token_file` function L236-244 — `( data_dir: &std::path::Path, token: &str, ) -> std::io::Result<std::path::PathB...` — Write the auth token to {data_dir}/server.token for clients to read.
+-  `shutdown_signal` function L321-343 — `()` — Wait for a shutdown signal (Ctrl-C / SIGTERM).
+-  `decision_handler` function L348-367 — `( State(AppState { service, .. }): State<AppState>, Json(req): Json<arawn_workfl...` — HTTP endpoint for workflow decision tasks.
+-  `WsQueryParams` struct L371-373 — `{ token: Option<String> }` — Query parameters for WebSocket connection.
+-  `ws_handler` function L375-405 — `( ws: WebSocketUpgrade, Query(params): Query<WsQueryParams>, State(state): State...`
+-  `handle_connection` function L412-1399 — `(socket: WebSocket, service: Arc<LocalService>)`
+-  `tests` module L1403-1475 — `-`
+-  `from_service_error_preserves_structured_detail_for_typed_variants` function L1410-1424 — `()` — Typed Storage error should round-trip through the wire payload with
+-  `from_service_error_omits_details_for_string_only_variants` function L1430-1441 — `()` — String-only variants (NotFound, InvalidOperation, Internal) keep
+-  `loopback_hosts_are_recognized` function L1448-1453 — `()`
+-  `non_loopback_hosts_flagged` function L1456-1462 — `()`
+-  `from_service_error_preserves_engine_error_kind` function L1465-1474 — `()`
 
 #### crates/arawn/src/ws_server/todos.rs
 
@@ -5051,28 +5060,29 @@
 - pub `resume_feed` function L286-304 — `(&self, feed_id: &str) -> Result<FeedRecord, FeedError>` — Resume a previously-paused feed: re-register the cloacina
 - pub `remove_feed` function L313-341 — `(&self, feed_id: &str) -> Result<RemoveOutcome, FeedError>` — Decommission: drop the cloacina cron schedule, delete the DB
 - pub `discover_template` function L349-356 — `( &self, template_name: &str, ) -> Result<Option<Vec<DiscoveryRow>>, FeedError>` — Run the template's discovery hook.
-- pub `list_summaries` function L360-391 — `(&self) -> Result<Vec<FeedSummary>, FeedError>` — List every feed in the DB (enabled or paused) with on-disk
-- pub `resume_pending_backfills` function L650-675 — `( runner: Arc<CloacinaRunner>, runtime_ctx: FeedRuntimeContext, records: &[FeedR...` — On boot, find feeds whose `meta.json.last_status == "backfilling"`
-- pub `RemoveOutcome` struct L681-684 — `{ record: FeedRecord, bytes_wiped: u64 }` — Outcome of a successful `remove_feed` — the row that was deleted
--  `FeedRuntime` type L117-392 — `= FeedRuntime` — audit are all inherited from cloacina.
--  `BACKFILL_PAGE_CAP` variable L398 — `: u32` — Hard cap on backfill loop iterations.
--  `BASE_BACKOFF` variable L402 — `: std::time::Duration` — Base delay used when a provider rate-limits us without a Retry-After
--  `MAX_RATE_LIMIT_WAIT` variable L407 — `: std::time::Duration` — Wall-clock cap on cumulative rate-limit waits inside a single
--  `TRANSIENT_MAX_ATTEMPTS` variable L411 — `: u32` — How many consecutive transient errors (Provider/Storage) we'll
--  `transient_backoff` function L417-420 — `(attempt: u32) -> std::time::Duration` — Pure helper: backoff for the Nth consecutive transient retry
--  `BackfillExit` enum L425-431 — `Complete | RateLimitDeferred` — How a backfill ended.
--  `spawn_backfill_task` function L445-498 — `( runner: Arc<CloacinaRunner>, runtime_ctx: FeedRuntimeContext, feed_id: String,...` — Spawn the backfill loop as a detached tokio task.
--  `BackfillStats` struct L501-504 — `{ pages: u32, items: u64 }` — audit are all inherited from cloacina.
--  `run_backfill_loop` function L506-585 — `( _runner: &Arc<CloacinaRunner>, runtime_ctx: &FeedRuntimeContext, feed_id: &str...` — audit are all inherited from cloacina.
--  `finalize_backfill_success` function L587-624 — `( runner: &Arc<CloacinaRunner>, runtime_ctx: &FeedRuntimeContext, feed_id: &str,...` — audit are all inherited from cloacina.
--  `mark_backfill_failed` function L626-645 — `( runtime_ctx: &FeedRuntimeContext, feed_id: &str, err: &str, ) -> Result<(), Fe...` — audit are all inherited from cloacina.
--  `delete_schedule_for` function L688-708 — `( runner: &CloacinaRunner, workflow_name: &str, ) -> Result<(), FeedError>` — Look up cloacina's cron schedule by workflow name and delete it
--  `dir_size_bytes` function L710-731 — `(path: &std::path::Path) -> u64` — audit are all inherited from cloacina.
--  `walk` function L711-727 — `(p: &std::path::Path, acc: &mut u64)` — audit are all inherited from cloacina.
--  `register_one` function L733-814 — `( runner: &CloacinaRunner, ctx: &FeedRuntimeContext, record: &FeedRecord, ) -> R...` — audit are all inherited from cloacina.
--  `tests` module L817-835 — `-` — audit are all inherited from cloacina.
--  `transient_backoff_doubles_per_attempt` function L822-826 — `()` — audit are all inherited from cloacina.
--  `transient_backoff_clamps` function L829-834 — `()` — audit are all inherited from cloacina.
+- pub `template_schema` function L362-371 — `( &self, template_name: &str, ) -> Result<(Vec<crate::param_schema::ParamSpec>, ...` — The parameter schema + default cadence for a template, for the
+- pub `list_summaries` function L375-406 — `(&self) -> Result<Vec<FeedSummary>, FeedError>` — List every feed in the DB (enabled or paused) with on-disk
+- pub `resume_pending_backfills` function L665-690 — `( runner: Arc<CloacinaRunner>, runtime_ctx: FeedRuntimeContext, records: &[FeedR...` — On boot, find feeds whose `meta.json.last_status == "backfilling"`
+- pub `RemoveOutcome` struct L696-699 — `{ record: FeedRecord, bytes_wiped: u64 }` — Outcome of a successful `remove_feed` — the row that was deleted
+-  `FeedRuntime` type L117-407 — `= FeedRuntime` — audit are all inherited from cloacina.
+-  `BACKFILL_PAGE_CAP` variable L413 — `: u32` — Hard cap on backfill loop iterations.
+-  `BASE_BACKOFF` variable L417 — `: std::time::Duration` — Base delay used when a provider rate-limits us without a Retry-After
+-  `MAX_RATE_LIMIT_WAIT` variable L422 — `: std::time::Duration` — Wall-clock cap on cumulative rate-limit waits inside a single
+-  `TRANSIENT_MAX_ATTEMPTS` variable L426 — `: u32` — How many consecutive transient errors (Provider/Storage) we'll
+-  `transient_backoff` function L432-435 — `(attempt: u32) -> std::time::Duration` — Pure helper: backoff for the Nth consecutive transient retry
+-  `BackfillExit` enum L440-446 — `Complete | RateLimitDeferred` — How a backfill ended.
+-  `spawn_backfill_task` function L460-513 — `( runner: Arc<CloacinaRunner>, runtime_ctx: FeedRuntimeContext, feed_id: String,...` — Spawn the backfill loop as a detached tokio task.
+-  `BackfillStats` struct L516-519 — `{ pages: u32, items: u64 }` — audit are all inherited from cloacina.
+-  `run_backfill_loop` function L521-600 — `( _runner: &Arc<CloacinaRunner>, runtime_ctx: &FeedRuntimeContext, feed_id: &str...` — audit are all inherited from cloacina.
+-  `finalize_backfill_success` function L602-639 — `( runner: &Arc<CloacinaRunner>, runtime_ctx: &FeedRuntimeContext, feed_id: &str,...` — audit are all inherited from cloacina.
+-  `mark_backfill_failed` function L641-660 — `( runtime_ctx: &FeedRuntimeContext, feed_id: &str, err: &str, ) -> Result<(), Fe...` — audit are all inherited from cloacina.
+-  `delete_schedule_for` function L703-723 — `( runner: &CloacinaRunner, workflow_name: &str, ) -> Result<(), FeedError>` — Look up cloacina's cron schedule by workflow name and delete it
+-  `dir_size_bytes` function L725-746 — `(path: &std::path::Path) -> u64` — audit are all inherited from cloacina.
+-  `walk` function L726-742 — `(p: &std::path::Path, acc: &mut u64)` — audit are all inherited from cloacina.
+-  `register_one` function L748-829 — `( runner: &CloacinaRunner, ctx: &FeedRuntimeContext, record: &FeedRecord, ) -> R...` — audit are all inherited from cloacina.
+-  `tests` module L832-850 — `-` — audit are all inherited from cloacina.
+-  `transient_backoff_doubles_per_attempt` function L837-841 — `()` — audit are all inherited from cloacina.
+-  `transient_backoff_clamps` function L844-849 — `()` — audit are all inherited from cloacina.
 
 #### crates/arawn-feeds/src/store.rs
 
@@ -5831,10 +5841,13 @@
 - pub `slack` module L9 — `-` — Concrete `FeedTemplate` impls organized per provider.
 - pub `stub` module L10 — `-` — Concrete `FeedTemplate` impls organized per provider.
 - pub `default_registry` function L19-40 — `() -> FeedTemplateRegistry` — Build the registry of every template the binary supports.
--  `param_schema_tests` module L43-125 — `-` — Concrete `FeedTemplate` impls organized per provider.
--  `every_template_schema_is_self_consistent` function L52-89 — `()` — Every registered template's `param_schema()` must be self-consistent:
--  `filesystem_schema_matches_its_params` function L95-110 — `()` — The filesystem template's schema must describe exactly the params its
--  `paramless_feeds_have_empty_schema` function L115-124 — `()` — Spot-check that genuinely param-less feeds return empty schemas (so the
+- pub `template_blurb` function L45-67 — `(name: &str) -> &'static str` — One-line, human-readable blurb for a template name — shown in the
+- pub `template_catalog` function L71-76 — `() -> Vec<(&'static str, &'static str)>` — The full picker catalog: `(name, blurb)` for every registered template,
+-  `param_schema_tests` module L79-176 — `-` — Concrete `FeedTemplate` impls organized per provider.
+-  `every_template_schema_is_self_consistent` function L88-125 — `()` — Every registered template's `param_schema()` must be self-consistent:
+-  `filesystem_schema_matches_its_params` function L131-146 — `()` — The filesystem template's schema must describe exactly the params its
+-  `template_catalog_covers_registry_with_blurbs` function L151-161 — `()` — Every registered template must have a non-empty picker blurb, and the
+-  `paramless_feeds_have_empty_schema` function L166-175 — `()` — Spot-check that genuinely param-less feeds return empty schemas (so the
 
 #### crates/arawn-feeds/src/templates/stub.rs
 
@@ -8447,7 +8460,7 @@
 
 - pub `error` module L1 — `-`
 - pub `types` module L2 — `-`
-- pub `ArawnService` interface L26-192 — `{ fn list_workstreams(), fn create_workstream(), fn list_sessions(), fn create_s...` — The service contract between any UI client and the Arawn backend.
+- pub `ArawnService` interface L27-201 — `{ fn list_workstreams(), fn create_workstream(), fn list_sessions(), fn create_s...` — The service contract between any UI client and the Arawn backend.
 
 #### crates/arawn-service/src/types.rs
 
@@ -8478,6 +8491,10 @@
 - pub `FeedRemoveDto` struct L326-330 — `{ id: String, template: String, bytes_wiped: u64 }` — Returned by `feed_remove` so the TUI can confirm the wipe with a
 - pub `FeedDiscoverRow` struct L334-343 — `{ label: String, hint: Option<String>, params: serde_json::Value }` — One pickable row from `feed_discover`.
 - pub `FeedDiscoverDto` struct L349-353 — `{ template: String, picker_supported: bool, rows: Vec<FeedDiscoverRow> }` — Response from `feed_discover`.
+- pub `FeedParamKindDto` enum L361-369 — `Text | Int | Bool | Path | List | Since | Enum` — The kind of a feed parameter — drives which widget the `/watch` modal
+- pub `FeedParamSpecDto` struct L374-382 — `{ key: String, label: String, kind: FeedParamKindDto, required: bool, default: O...` — One declared parameter of a feed template.
+- pub `FeedTemplateInfo` struct L386-389 — `{ name: String, description: String }` — One template in the `/watch` modal's stage-1 picker.
+- pub `FeedSchemaDto` struct L395-399 — `{ template: String, params: Vec<FeedParamSpecDto>, default_cadence: String }` — Response from `feed_schema`: the form definition for one template.
 
 ### crates/arawn-steward/src
 
@@ -9645,73 +9662,73 @@
 - pub `prev` function L295-303 — `(&mut self)` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
 - pub `selected_command` function L305-307 — `(&self) -> Option<&CommandInfo>` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
 - pub `is_empty` function L309-311 — `(&self) -> bool` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
-- pub `CommandResult` enum L316-407 — `SystemMessage | ClearChat | EnterPlan | QueryInventory | InvokeSkill | RememberF...` — The result of executing a built-in command.
-- pub `WatchSpec` struct L420-425 — `{ template: String, feed_id: String, params: serde_json::Value, cadence: Option<...` — Parsed args for the non-interactive form of `/watch`.
-- pub `parse_watch_args` function L437-511 — `(args: &str) -> Result<WatchSpec, String>` — Parse the args body of `/watch`.
-- pub `parse_feeds_args` function L622-662 — `(args: &str) -> CommandResult` — Parse the args of `/feeds` into a CommandResult.
-- pub `execute_command` function L665-854 — `(cmd: &ParsedCommand, registry: &CommandRegistry) -> CommandResult` — Execute a parsed slash command against the registry.
+- pub `CommandResult` enum L316-410 — `SystemMessage | ClearChat | EnterPlan | QueryInventory | InvokeSkill | RememberF...` — The result of executing a built-in command.
+- pub `WatchSpec` struct L423-428 — `{ template: String, feed_id: String, params: serde_json::Value, cadence: Option<...` — Parsed args for the non-interactive form of `/watch`.
+- pub `parse_watch_args` function L440-514 — `(args: &str) -> Result<WatchSpec, String>` — Parse the args body of `/watch`.
+- pub `parse_feeds_args` function L625-665 — `(args: &str) -> CommandResult` — Parse the args of `/feeds` into a CommandResult.
+- pub `execute_command` function L668-862 — `(cmd: &ParsedCommand, registry: &CommandRegistry) -> CommandResult` — Execute a parsed slash command against the registry.
 -  `CommandRegistry` type L65-270 — `= CommandRegistry` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
 -  `register_builtins` function L72-234 — `(&mut self)` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
 -  `AutocompleteState` type L281-312 — `= AutocompleteState` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `parse_since` function L519-551 — `(s: &str) -> Result<String, String>` — Parse a `since=` value into a canonical RFC3339 UTC string.
--  `parse_relative_duration` function L555-567 — `(s: &str) -> Option<(i64, &str)>` — Pull `<digits><unit>` out of the input.
--  `tokenize_kv` function L577-612 — `(s: &str) -> Result<Vec<String>, String>` — Tokenizer that respects quoted runs so a param value can include
--  `tests` module L857-1542 — `-` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `parse_simple_command` function L861-865 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `watch_spaced_path_honors_both_quote_styles` function L873-897 — `()` — Filesystem-feed paths routinely contain spaces ("My Drive",
--  `WANT` variable L874 — `: &str` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `watch_rejects_keyvalue_shaped_feed_id` function L904-914 — `()` — Omitting the feed_id makes the first `key=value` get consumed as the
--  `watch_parses_template_id_and_string_param` function L917-924 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `watch_parses_typed_and_quoted_params_and_cadence_override` function L927-938 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `watch_parses_since_relative_duration` function L941-949 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `watch_parses_since_iso_date` function L952-959 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `watch_parses_since_rfc3339` function L962-970 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `watch_rejects_garbage_since` function L973-980 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `watch_rejects_missing_args_and_bad_template` function L983-990 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `watch_command_dispatch_returns_feed_register` function L993-1004 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `feeds_command_dispatch_returns_feed_list` function L1007-1014 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `feeds_pause_and_resume_dispatch` function L1017-1027 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `feeds_rm_requires_confirm_flag` function L1030-1043 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `feeds_pause_without_id_is_a_usage_message` function L1046-1052 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `watch_list_dispatches_to_feed_discover` function L1055-1073 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `watch_list_rejects_extra_args_with_hint` function L1076-1088 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `watch_list_doesnt_swallow_a_template_named_listed` function L1091-1107 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `feeds_unknown_subcommand_lists_usage` function L1110-1116 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `parse_command_with_args` function L1119-1123 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `parse_not_a_command` function L1126-1130 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `parse_slash_only` function L1133-1135 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `parse_with_leading_whitespace` function L1138-1141 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `registry_has_builtins` function L1144-1153 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `registry_matching_prefix` function L1156-1162 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `registry_matching_empty_returns_all` function L1165-1169 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `registry_skills` function L1172-1181 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `autocomplete_navigation` function L1184-1214 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_help` function L1217-1224 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_clear` function L1227-1234 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_unknown` function L1237-1244 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_inventory` function L1247-1254 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_skill` function L1257-1268 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_remember_with_text_returns_remember_fact` function L1275-1284 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_remember_without_text_returns_usage_message` function L1287-1300 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_memory_returns_memory_summary` function L1303-1310 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_forget_with_query_returns_forget_entity` function L1313-1322 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_forget_without_query_returns_usage_message` function L1325-1334 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_workflows_list_returns_workflow_list` function L1337-1347 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `every_advertised_builtin_dispatches_or_explains` function L1355-1381 — `()` — Audit: every built-in command in /help must dispatch to a CommandResult
--  `execute_integrations_returns_list_variant` function L1386-1393 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_connect_with_service_returns_connect_variant` function L1396-1403 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_connect_without_service_returns_usage_message` function L1406-1416 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_disconnect_with_service_returns_disconnect_variant` function L1419-1426 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_autonomy_each_valid_mode` function L1430-1439 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_autonomy_invalid_value_returns_usage_message` function L1442-1453 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_autonomy_no_arg_returns_usage_message` function L1456-1463 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `legacy_slash_commands_no_longer_resolve` function L1466-1486 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_usage_default_period_is_day` function L1490-1497 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_usage_with_week_arg` function L1500-1507 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_usage_lowercases_args` function L1510-1517 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `execute_disconnect_without_service_returns_usage_message` function L1520-1527 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
--  `capabilities_banner_doc_path_pinned` function L1532-1541 — `()` — Capabilities banner copy in event_loop.rs points users at this docs
--  `PINNED` variable L1535 — `: &str` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `parse_since` function L522-554 — `(s: &str) -> Result<String, String>` — Parse a `since=` value into a canonical RFC3339 UTC string.
+-  `parse_relative_duration` function L558-570 — `(s: &str) -> Option<(i64, &str)>` — Pull `<digits><unit>` out of the input.
+-  `tokenize_kv` function L580-615 — `(s: &str) -> Result<Vec<String>, String>` — Tokenizer that respects quoted runs so a param value can include
+-  `tests` module L865-1550 — `-` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `parse_simple_command` function L869-873 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `watch_spaced_path_honors_both_quote_styles` function L881-905 — `()` — Filesystem-feed paths routinely contain spaces ("My Drive",
+-  `WANT` variable L882 — `: &str` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `watch_rejects_keyvalue_shaped_feed_id` function L912-922 — `()` — Omitting the feed_id makes the first `key=value` get consumed as the
+-  `watch_parses_template_id_and_string_param` function L925-932 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `watch_parses_typed_and_quoted_params_and_cadence_override` function L935-946 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `watch_parses_since_relative_duration` function L949-957 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `watch_parses_since_iso_date` function L960-967 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `watch_parses_since_rfc3339` function L970-978 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `watch_rejects_garbage_since` function L981-988 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `watch_rejects_missing_args_and_bad_template` function L991-998 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `watch_command_dispatch_returns_feed_register` function L1001-1012 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `feeds_command_dispatch_returns_feed_list` function L1015-1022 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `feeds_pause_and_resume_dispatch` function L1025-1035 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `feeds_rm_requires_confirm_flag` function L1038-1051 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `feeds_pause_without_id_is_a_usage_message` function L1054-1060 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `watch_list_dispatches_to_feed_discover` function L1063-1081 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `watch_list_rejects_extra_args_with_hint` function L1084-1096 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `watch_list_doesnt_swallow_a_template_named_listed` function L1099-1115 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `feeds_unknown_subcommand_lists_usage` function L1118-1124 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `parse_command_with_args` function L1127-1131 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `parse_not_a_command` function L1134-1138 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `parse_slash_only` function L1141-1143 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `parse_with_leading_whitespace` function L1146-1149 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `registry_has_builtins` function L1152-1161 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `registry_matching_prefix` function L1164-1170 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `registry_matching_empty_returns_all` function L1173-1177 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `registry_skills` function L1180-1189 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `autocomplete_navigation` function L1192-1222 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_help` function L1225-1232 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_clear` function L1235-1242 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_unknown` function L1245-1252 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_inventory` function L1255-1262 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_skill` function L1265-1276 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_remember_with_text_returns_remember_fact` function L1283-1292 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_remember_without_text_returns_usage_message` function L1295-1308 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_memory_returns_memory_summary` function L1311-1318 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_forget_with_query_returns_forget_entity` function L1321-1330 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_forget_without_query_returns_usage_message` function L1333-1342 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_workflows_list_returns_workflow_list` function L1345-1355 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `every_advertised_builtin_dispatches_or_explains` function L1363-1389 — `()` — Audit: every built-in command in /help must dispatch to a CommandResult
+-  `execute_integrations_returns_list_variant` function L1394-1401 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_connect_with_service_returns_connect_variant` function L1404-1411 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_connect_without_service_returns_usage_message` function L1414-1424 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_disconnect_with_service_returns_disconnect_variant` function L1427-1434 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_autonomy_each_valid_mode` function L1438-1447 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_autonomy_invalid_value_returns_usage_message` function L1450-1461 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_autonomy_no_arg_returns_usage_message` function L1464-1471 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `legacy_slash_commands_no_longer_resolve` function L1474-1494 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_usage_default_period_is_day` function L1498-1505 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_usage_with_week_arg` function L1508-1515 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_usage_lowercases_args` function L1518-1525 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `execute_disconnect_without_service_returns_usage_message` function L1528-1535 — `()` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
+-  `capabilities_banner_doc_path_pinned` function L1540-1549 — `()` — Capabilities banner copy in event_loop.rs points users at this docs
+-  `PINNED` variable L1543 — `: &str` — - **Skill**: /skill-name — invoke a user-invocable skill via the server
 
 #### crates/arawn-tui/src/event.rs
 
@@ -9745,9 +9762,10 @@
 - pub `toast` module L15 — `-`
 - pub `todo_modal` module L16 — `-`
 - pub `tui_prompt` module L17 — `-`
-- pub `width` module L18 — `-`
-- pub `wrap` module L19 — `-`
-- pub `ws_client` module L20 — `-`
+- pub `watch_modal` module L18 — `-`
+- pub `width` module L19 — `-`
+- pub `wrap` module L20 — `-`
+- pub `ws_client` module L21 — `-`
 -  `snapshot` module L11 — `-`
 -  `snapshot_tests` module L13 — `-`
 
@@ -9983,6 +10001,51 @@
 -  `TuiModalPrompt` type L32-61 — `impl ModalPrompt for TuiModalPrompt` — via a oneshot channel.
 -  `prompt` function L33-60 — `(&self, request: ModalRequest) -> Option<usize>` — via a oneshot channel.
 
+#### crates/arawn-tui/src/watch_modal.rs
+
+- pub `TemplateChoice` struct L34-37 — `{ name: String, description: String }` — One template the user can pick in stage 1.
+- pub `WatchStage` enum L41-44 — `PickTemplate | FillForm` — Which stage of the flow the modal is in.
+- pub `FieldState` struct L50-53 — `{ spec: FeedParamSpecDto, value: String }` — A single editable form row.
+- pub `WatchModalState` struct L98-112 — `{ stage: WatchStage, templates: Vec<TemplateChoice>, template_index: usize, temp...` — State for the `/watch` registration modal.
+- pub `WatchOutcome` enum L116-130 — `None | TemplatePicked | Submit | Cancel` — What the event loop should do after a key press.
+- pub `new` function L134-146 — `(mut templates: Vec<TemplateChoice>) -> Self` — Open at stage 1 with the given template list.
+- pub `enter_form` function L151-180 — `( &mut self, template: &str, params: Vec<FeedParamSpecDto>, default_cadence: &st...` — Transition into the form once the schema has been fetched.
+- pub `handle_key` function L186-191 — `(&mut self, key: KeyEvent) -> WatchOutcome` — `feed_register` RPCs.
+- pub `render_watch_modal` function L381-412 — `(state: &WatchModalState, frame: &mut Frame)` — `feed_register` RPCs.
+-  `FEED_ID_KEY` variable L29 — `: &str` — Sentinel keys for the two synthetic fields that aren't template params.
+-  `CADENCE_KEY` variable L30 — `: &str` — `feed_register` RPCs.
+-  `FieldState` type L55-95 — `= FieldState` — `feed_register` RPCs.
+-  `from_spec` function L56-69 — `(spec: FeedParamSpecDto) -> Self` — `feed_register` RPCs.
+-  `synthetic` function L71-83 — `(key: &str, label: &str, required: bool, value: String, help: &str) -> Self` — `feed_register` RPCs.
+-  `is_bool` function L85-87 — `(&self) -> bool` — `feed_register` RPCs.
+-  `enum_values` function L89-94 — `(&self) -> Option<&[String]>` — `feed_register` RPCs.
+-  `WatchModalState` type L132-344 — `= WatchModalState` — `feed_register` RPCs.
+-  `focused_field` function L182-184 — `(&mut self) -> Option<&mut FieldState>` — `feed_register` RPCs.
+-  `handle_pick_key` function L193-212 — `(&mut self, key: KeyEvent) -> WatchOutcome` — `feed_register` RPCs.
+-  `handle_form_key` function L214-268 — `(&mut self, key: KeyEvent) -> WatchOutcome` — `feed_register` RPCs.
+-  `cycle_focused` function L271-290 — `(&mut self, forward: bool)` — Advance a bool toggle or enum selector on the focused field.
+-  `build_submit` function L294-343 — `(&mut self) -> WatchOutcome` — Validate + coerce all fields into a `feed_register` payload, or return
+-  `coerce_param` function L348-379 — `(spec: &FeedParamSpecDto, raw: &str) -> Result<Option<Value>, String>` — Coerce a raw field value into JSON per its kind.
+-  `render_pick_lines` function L414-444 — `(state: &WatchModalState) -> Vec<Line<'static>>` — `feed_register` RPCs.
+-  `render_form_lines` function L446-506 — `(state: &WatchModalState) -> Vec<Line<'static>>` — `feed_register` RPCs.
+-  `render_field_value` function L509-522 — `(f: &FieldState) -> String` — How a field's current value reads on screen (with a caret on text fields).
+-  `centered_rect` function L524-533 — `(width: u16, height: u16, area: Rect) -> Rect` — `feed_register` RPCs.
+-  `tests` module L536-774 — `-` — `feed_register` RPCs.
+-  `key` function L539-541 — `(code: KeyCode) -> KeyEvent` — `feed_register` RPCs.
+-  `typ` function L543-547 — `(state: &mut WatchModalState, s: &str)` — `feed_register` RPCs.
+-  `spec` function L549-558 — `(key: &str, kind: FeedParamKindDto, required: bool, default: Option<Value>) -> F...` — `feed_register` RPCs.
+-  `fs_form` function L560-580 — `() -> WatchModalState` — `feed_register` RPCs.
+-  `pick_stage_navigates_and_selects` function L583-594 — `()` — `feed_register` RPCs.
+-  `enter_form_seeds_feed_id_params_and_cadence` function L597-608 — `()` — `feed_register` RPCs.
+-  `submit_blocked_until_required_filled` function L611-621 — `()` — `feed_register` RPCs.
+-  `submit_payload_matches_text_command_shape` function L624-642 — `()` — `feed_register` RPCs.
+-  `bool_field_toggles_on_space_and_arrows` function L645-652 — `()` — `feed_register` RPCs.
+-  `list_field_splits_on_whitespace_and_commas` function L655-673 — `()` — `feed_register` RPCs.
+-  `int_validation_rejects_non_numbers` function L676-691 — `()` — `feed_register` RPCs.
+-  `changed_cadence_becomes_override` function L694-710 — `()` — `feed_register` RPCs.
+-  `submit_is_wire_compatible_with_feed_register` function L718-765 — `()` — End-to-end shape check (ARAWN-I-0058 T-E): a full modal flow — pick a
+-  `esc_cancels_in_both_stages` function L768-773 — `()` — `feed_register` RPCs.
+
 #### crates/arawn-tui/src/width.rs
 
 - pub `display_width` function L11-13 — `(s: &str) -> usize` — Display width (cells) of `s` in a fixed-width terminal.
@@ -10028,30 +10091,32 @@
 - pub `feed_resume` function L267-279 — `( &mut self, feed_id: &str, ) -> Result<serde_json::Value, Box<dyn std::error::E...` — Resume a paused feed by id.
 - pub `feed_run` function L282-294 — `( &mut self, feed_id: &str, ) -> Result<serde_json::Value, Box<dyn std::error::E...` — Trigger a one-off run of a feed by id.
 - pub `feed_discover` function L298-310 — `( &mut self, template: &str, ) -> Result<serde_json::Value, Box<dyn std::error::...` — Fetch discoverable params for a template.
-- pub `feed_remove` function L313-325 — `( &mut self, feed_id: &str, ) -> Result<serde_json::Value, Box<dyn std::error::E...` — Decommission a feed by id.
-- pub `get_permission_mode` function L327-333 — `(&mut self) -> Result<String, Box<dyn std::error::Error>>`
-- pub `set_permission_mode` function L335-347 — `( &mut self, mode: &str, ) -> Result<String, Box<dyn std::error::Error>>`
-- pub `list_sessions` function L349-360 — `( &mut self, ws_id: Option<uuid::Uuid>, ) -> Result<Vec<SessionInfo>, Box<dyn st...`
-- pub `create_session` function L362-373 — `( &mut self, ws_id: Option<uuid::Uuid>, ) -> Result<SessionInfo, Box<dyn std::er...`
-- pub `load_session` function L375-387 — `( &mut self, session_id: uuid::Uuid, ) -> Result<serde_json::Value, Box<dyn std:...`
-- pub `truncate_session_at_user_message` function L392-411 — `( &mut self, session_id: uuid::Uuid, user_message_index: usize, ) -> Result<serd...` — Rewind a session back to before the Nth user message.
-- pub `send_message` function L413-428 — `( &mut self, session_id: uuid::Uuid, content: &str, ) -> Result<(), Box<dyn std:...`
-- pub `cancel` function L435-446 — `( &mut self, session_id: uuid::Uuid, ) -> Result<(), Box<dyn std::error::Error>>` — Tell the server to abort an in-flight generation on this session.
-- pub `parse_engine_event` function L502-526 — `(text: &str) -> Option<EngineEvent>` — Parse a WS message as an EngineEvent.
-- pub `EventUpdate` enum L529-559 — `AppendStreamingText | AddToolCall | AddToolResult | Complete | Error | Warning |...` — Convert an EngineEvent into App state updates.
-- pub `parse_system_notice` function L565-571 — `(text: &str) -> Option<arawn_service::ServerNotice>` — Parse a server-wide notice (plugin/config hot-reload) from a raw WS text
-- pub `engine_event_to_update` function L573-614 — `(event: EngineEvent) -> EventUpdate`
+- pub `feed_schema` function L315-327 — `( &mut self, template: &str, ) -> Result<serde_json::Value, Box<dyn std::error::...` — Fetch a template's parameter schema + default cadence.
+- pub `feed_templates` function L331-340 — `( &mut self, ) -> Result<serde_json::Value, Box<dyn std::error::Error>>` — List registered feed templates for the `/watch` modal picker.
+- pub `feed_remove` function L343-355 — `( &mut self, feed_id: &str, ) -> Result<serde_json::Value, Box<dyn std::error::E...` — Decommission a feed by id.
+- pub `get_permission_mode` function L357-363 — `(&mut self) -> Result<String, Box<dyn std::error::Error>>`
+- pub `set_permission_mode` function L365-377 — `( &mut self, mode: &str, ) -> Result<String, Box<dyn std::error::Error>>`
+- pub `list_sessions` function L379-390 — `( &mut self, ws_id: Option<uuid::Uuid>, ) -> Result<Vec<SessionInfo>, Box<dyn st...`
+- pub `create_session` function L392-403 — `( &mut self, ws_id: Option<uuid::Uuid>, ) -> Result<SessionInfo, Box<dyn std::er...`
+- pub `load_session` function L405-417 — `( &mut self, session_id: uuid::Uuid, ) -> Result<serde_json::Value, Box<dyn std:...`
+- pub `truncate_session_at_user_message` function L422-441 — `( &mut self, session_id: uuid::Uuid, user_message_index: usize, ) -> Result<serd...` — Rewind a session back to before the Nth user message.
+- pub `send_message` function L443-458 — `( &mut self, session_id: uuid::Uuid, content: &str, ) -> Result<(), Box<dyn std:...`
+- pub `cancel` function L465-476 — `( &mut self, session_id: uuid::Uuid, ) -> Result<(), Box<dyn std::error::Error>>` — Tell the server to abort an in-flight generation on this session.
+- pub `parse_engine_event` function L532-556 — `(text: &str) -> Option<EngineEvent>` — Parse a WS message as an EngineEvent.
+- pub `EventUpdate` enum L559-589 — `AppendStreamingText | AddToolCall | AddToolResult | Complete | Error | Warning |...` — Convert an EngineEvent into App state updates.
+- pub `parse_system_notice` function L595-601 — `(text: &str) -> Option<arawn_service::ServerNotice>` — Parse a server-wide notice (plugin/config hot-reload) from a raw WS text
+- pub `engine_event_to_update` function L603-644 — `(event: EngineEvent) -> EventUpdate`
 -  `REQUEST_ID` variable L13 — `: AtomicU64`
 -  `next_id` function L15-17 — `() -> u64`
 -  `Pending` type L31 — `= Arc<Mutex<HashMap<u64, oneshot::Sender<Value>>>>`
--  `WsClient` type L51-447 — `= WsClient`
+-  `WsClient` type L51-477 — `= WsClient`
 -  `read_server_token` function L86-98 — `() -> Option<String>` — Read the server auth token from {data_dir}/server.token.
--  `spawn_reader` function L451-499 — `( mut read: futures_util::stream::SplitStream< tokio_tungstenite::WebSocketStrea...` — Spawn the reader task.
--  `tests` module L617-662 — `-`
--  `parses_well_formed_system_notice` function L624-639 — `()`
--  `rejects_engine_event_envelope` function L642-649 — `()`
--  `rejects_response_envelope` function L652-655 — `()`
--  `rejects_malformed_json` function L658-661 — `()`
+-  `spawn_reader` function L481-529 — `( mut read: futures_util::stream::SplitStream< tokio_tungstenite::WebSocketStrea...` — Spawn the reader task.
+-  `tests` module L647-692 — `-`
+-  `parses_well_formed_system_notice` function L654-669 — `()`
+-  `rejects_engine_event_envelope` function L672-679 — `()`
+-  `rejects_response_envelope` function L682-685 — `()`
+-  `rejects_malformed_json` function L688-691 — `()`
 
 ### crates/arawn-tui/src/app
 
@@ -10061,8 +10126,8 @@
 
 - pub `post_toast` function L100-110 — `( &mut self, message: impl Into<String>, level: crate::toast::ToastLevel, )` — I-0035 Phase 4 (T-0359): enqueue a 1-line toast to surface
 - pub `should_show_brief_in_empty_chat` function L116-120 — `(&self) -> bool` — True iff the empty-chat surface should render the cached brief
-- pub `handle_action` function L123-533 — `(&mut self, action: Action) -> bool` — Process an action and mutate state.
--  `App` type L11-534 — `= App`
+- pub `handle_action` function L123-534 — `(&mut self, action: Action) -> bool` — Process an action and mutate state.
+-  `App` type L11-535 — `= App`
 -  `handle_export_conversation` function L17-53 — `(&mut self, path: Option<String>)` — T-0363: handle `/export [path]` — write the current
 -  `handle_copy_last_response` function L64-95 — `(&mut self)` — T-0361: handle `/copy` — walk `messages` backwards for the
 
@@ -10095,63 +10160,63 @@
 - pub `new` function L67-75 — `(role: ChatRole, content: impl Into<String>) -> Self`
 - pub `rendered_lines` function L79-92 — `(&mut self, width: usize) -> &[ratatui::text::Line<'static>]` — Get or compute the cached markdown rendering for assistant messages.
 - pub `ChatRole` enum L96-102 — `User | Assistant | ToolCall | ToolResult | System`
-- pub `App` struct L105-222 — `{ focus: Focus, input_buffer: String, cursor_pos: usize, messages: Vec<ChatMessa...` — All mutable TUI state.
-- pub `DOUBLE_ESC_WINDOW` variable L227 — `: std::time::Duration` — Window for double-Esc detection.
-- pub `HistoryEntry` struct L231-238 — `{ text: String, is_chat: bool }` — One entry in the per-session input history.
-- pub `new` function L241-290 — `() -> Self`
-- pub `format_tool_input` function L323-371 — `(tool_name: &str, input: &serde_json::Value) -> String` — Format tool input args into a compact display string.
+- pub `App` struct L105-225 — `{ focus: Focus, input_buffer: String, cursor_pos: usize, messages: Vec<ChatMessa...` — All mutable TUI state.
+- pub `DOUBLE_ESC_WINDOW` variable L230 — `: std::time::Duration` — Window for double-Esc detection.
+- pub `HistoryEntry` struct L234-241 — `{ text: String, is_chat: bool }` — One entry in the per-session input history.
+- pub `new` function L244-294 — `() -> Self`
+- pub `format_tool_input` function L327-375 — `(tool_name: &str, input: &serde_json::Value) -> String` — Format tool input args into a compact display string.
 -  `actions` module L1 — `-`
 -  `autocomplete` module L2 — `-`
 -  `events` module L3 — `-`
 -  `history` module L4 — `-`
 -  `ChatMessage` type L66-93 — `= ChatMessage`
--  `App` type L240-320 — `= App`
--  `prev_char_boundary` function L305-311 — `(&self) -> usize`
--  `next_char_boundary` function L313-319 — `(&self) -> usize`
--  `App` type L373-377 — `impl Default for App`
--  `default` function L374-376 — `() -> Self`
--  `default_export_path` function L383-401 — `(app: &App) -> std::path::PathBuf` — T-0363 — pick the default `/export` path when the user invokes
--  `shellexpand_tilde` function L406-418 — `(input: &str) -> String` — T-0363 — expand a leading `~` in a path to `$HOME`.
--  `render_conversation_markdown` function L426-459 — `(app: &App) -> String` — T-0363 — render the full transcript as a markdown document.
--  `tests` module L462-1078 — `-`
--  `type_chars_updates_buffer` function L467-473 — `()`
--  `backspace_removes_char` function L476-483 — `()`
--  `submit_moves_to_messages` function L486-498 — `()`
--  `submit_blocked_when_empty` function L501-507 — `()`
--  `submit_blocked_while_generating` function L510-516 — `()`
--  `tab_toggles_focus` function L519-526 — `()`
--  `scroll_updates_offset` function L529-537 — `()`
--  `cancel_stops_generation` function L540-549 — `()`
--  `quit_sets_flag` function L552-556 — `()`
--  `cursor_movement` function L559-580 — `()`
--  `full_conversation_flow` function L585-615 — `()`
--  `tool_call_flow` function L618-649 — `()`
--  `error_event_clears_generating` function L652-666 — `()`
--  `sidebar_navigation` function L669-700 — `()`
--  `submit_via_input` function L702-709 — `(app: &mut App, text: &str)`
--  `history_text` function L711-713 — `(app: &App) -> Vec<&str>`
--  `history_records_submitted_prompts` function L716-722 — `()`
--  `history_records_slash_commands_with_is_chat_false` function L725-735 — `()`
--  `history_dedupes_consecutive_duplicates` function L738-745 — `()`
--  `branch_modal_filters_out_slash_commands` function L748-762 — `()`
--  `branch_modal_skipped_when_no_chat_history` function L765-773 — `()`
--  `up_arrow_recalls_most_recent_when_input_empty` function L776-791 — `()`
--  `down_arrow_restores_draft_past_newest` function L794-812 — `()`
--  `double_esc_within_window_opens_history_modal` function L815-827 — `()`
--  `double_esc_outside_window_does_not_open_modal` function L830-838 — `()`
--  `history_recall_at_loads_entry_into_input` function L841-849 — `()`
--  `empty_history_modal_is_a_no_op` function L852-858 — `()`
--  `modal_select_index_picks_option_directly` function L861-883 — `()`
--  `cancel_marks_session_for_stale_event_drop` function L886-913 — `()`
--  `next_submit_clears_cancelled_session_marker` function L916-930 — `()`
--  `modal_select_out_of_range_is_no_op` function L933-946 — `()`
--  `copy_last_response_posts_toast_with_assistant_text` function L951-965 — `()`
--  `copy_last_response_warns_when_no_assistant_messages` function L968-977 — `()`
--  `export_warns_on_empty_transcript` function L982-989 — `()`
--  `export_writes_markdown_to_explicit_path` function L992-1017 — `()`
--  `export_skips_tool_call_and_tool_result_rows` function L1020-1046 — `()`
--  `shellexpand_tilde_expands_home` function L1049-1062 — `()`
--  `copy_last_response_picks_most_recent_assistant_turn` function L1065-1077 — `()`
+-  `App` type L243-324 — `= App`
+-  `prev_char_boundary` function L309-315 — `(&self) -> usize`
+-  `next_char_boundary` function L317-323 — `(&self) -> usize`
+-  `App` type L377-381 — `impl Default for App`
+-  `default` function L378-380 — `() -> Self`
+-  `default_export_path` function L387-405 — `(app: &App) -> std::path::PathBuf` — T-0363 — pick the default `/export` path when the user invokes
+-  `shellexpand_tilde` function L410-422 — `(input: &str) -> String` — T-0363 — expand a leading `~` in a path to `$HOME`.
+-  `render_conversation_markdown` function L430-463 — `(app: &App) -> String` — T-0363 — render the full transcript as a markdown document.
+-  `tests` module L466-1082 — `-`
+-  `type_chars_updates_buffer` function L471-477 — `()`
+-  `backspace_removes_char` function L480-487 — `()`
+-  `submit_moves_to_messages` function L490-502 — `()`
+-  `submit_blocked_when_empty` function L505-511 — `()`
+-  `submit_blocked_while_generating` function L514-520 — `()`
+-  `tab_toggles_focus` function L523-530 — `()`
+-  `scroll_updates_offset` function L533-541 — `()`
+-  `cancel_stops_generation` function L544-553 — `()`
+-  `quit_sets_flag` function L556-560 — `()`
+-  `cursor_movement` function L563-584 — `()`
+-  `full_conversation_flow` function L589-619 — `()`
+-  `tool_call_flow` function L622-653 — `()`
+-  `error_event_clears_generating` function L656-670 — `()`
+-  `sidebar_navigation` function L673-704 — `()`
+-  `submit_via_input` function L706-713 — `(app: &mut App, text: &str)`
+-  `history_text` function L715-717 — `(app: &App) -> Vec<&str>`
+-  `history_records_submitted_prompts` function L720-726 — `()`
+-  `history_records_slash_commands_with_is_chat_false` function L729-739 — `()`
+-  `history_dedupes_consecutive_duplicates` function L742-749 — `()`
+-  `branch_modal_filters_out_slash_commands` function L752-766 — `()`
+-  `branch_modal_skipped_when_no_chat_history` function L769-777 — `()`
+-  `up_arrow_recalls_most_recent_when_input_empty` function L780-795 — `()`
+-  `down_arrow_restores_draft_past_newest` function L798-816 — `()`
+-  `double_esc_within_window_opens_history_modal` function L819-831 — `()`
+-  `double_esc_outside_window_does_not_open_modal` function L834-842 — `()`
+-  `history_recall_at_loads_entry_into_input` function L845-853 — `()`
+-  `empty_history_modal_is_a_no_op` function L856-862 — `()`
+-  `modal_select_index_picks_option_directly` function L865-887 — `()`
+-  `cancel_marks_session_for_stale_event_drop` function L890-917 — `()`
+-  `next_submit_clears_cancelled_session_marker` function L920-934 — `()`
+-  `modal_select_out_of_range_is_no_op` function L937-950 — `()`
+-  `copy_last_response_posts_toast_with_assistant_text` function L955-969 — `()`
+-  `copy_last_response_warns_when_no_assistant_messages` function L972-981 — `()`
+-  `export_warns_on_empty_transcript` function L986-993 — `()`
+-  `export_writes_markdown_to_explicit_path` function L996-1021 — `()`
+-  `export_skips_tool_call_and_tool_result_rows` function L1024-1050 — `()`
+-  `shellexpand_tilde_expands_home` function L1053-1066 — `()`
+-  `copy_last_response_picks_most_recent_assistant_turn` function L1069-1081 — `()`
 
 ### crates/arawn-tui/src/event_loop
 
@@ -10195,7 +10260,7 @@
 
 #### crates/arawn-tui/src/event_loop/mod.rs
 
-- pub `run_tui` function L83-1259 — `(url: &str, model_name: &str) -> Result<(), Box<dyn std::error::Error>>` — Run the TUI connected to the given WebSocket server URL.
+- pub `run_tui` function L85-1274 — `(url: &str, model_name: &str) -> Result<(), Box<dyn std::error::Error>>` — Run the TUI connected to the given WebSocket server URL.
 -  `MIN_FRAME_INTERVAL` variable L29 — `: Duration` — Minimum interval between renders driven by streaming/event traffic.
 -  `brief` module L32 — `-`
 -  `ceremony` module L33 — `-`
@@ -10203,18 +10268,19 @@
 -  `notices` module L35 — `-`
 -  `todo` module L36 — `-`
 -  `usage` module L37 — `-`
--  `maybe_draw` function L52-64 — `( terminal: &mut Terminal<B>, app: &mut App, ) -> io::Result<()>` — Render if enough time has elapsed since the last draw.
--  `force_draw` function L68-76 — `( terminal: &mut Terminal<B>, app: &mut App, ) -> io::Result<()>` — Render now regardless of frame budget.
--  `rect_contains` function L78-80 — `(rect: Rect, col: u16, row: u16) -> bool`
--  `ceremony_refresh_tests` module L1293-1398 — `-`
--  `notice_for` function L1298-1309 — `(tablet_id: &str) -> arawn_service::ServerNotice`
--  `ceremony_event_for_active_tablet_flags_refresh` function L1312-1323 — `()`
--  `ceremony_event_for_other_tablet_is_ignored` function L1326-1334 — `()`
--  `ceremony_event_with_no_overlay_is_ignored` function L1337-1343 — `()`
--  `non_ceremony_notices_still_render_into_chat` function L1346-1357 — `()`
--  `briefing_ready_notice` function L1361-1368 — `() -> arawn_service::ServerNotice`
--  `briefing_ready_flags_refresh_and_posts_toast` function L1371-1387 — `()`
--  `briefing_ready_does_not_affect_ceremony_refresh` function L1390-1397 — `()`
+-  `watch` module L38 — `-`
+-  `maybe_draw` function L54-66 — `( terminal: &mut Terminal<B>, app: &mut App, ) -> io::Result<()>` — Render if enough time has elapsed since the last draw.
+-  `force_draw` function L70-78 — `( terminal: &mut Terminal<B>, app: &mut App, ) -> io::Result<()>` — Render now regardless of frame budget.
+-  `rect_contains` function L80-82 — `(rect: Rect, col: u16, row: u16) -> bool`
+-  `ceremony_refresh_tests` module L1308-1413 — `-`
+-  `notice_for` function L1313-1324 — `(tablet_id: &str) -> arawn_service::ServerNotice`
+-  `ceremony_event_for_active_tablet_flags_refresh` function L1327-1338 — `()`
+-  `ceremony_event_for_other_tablet_is_ignored` function L1341-1349 — `()`
+-  `ceremony_event_with_no_overlay_is_ignored` function L1352-1358 — `()`
+-  `non_ceremony_notices_still_render_into_chat` function L1361-1372 — `()`
+-  `briefing_ready_notice` function L1376-1383 — `() -> arawn_service::ServerNotice`
+-  `briefing_ready_flags_refresh_and_posts_toast` function L1386-1402 — `()`
+-  `briefing_ready_does_not_affect_ceremony_refresh` function L1405-1412 — `()`
 
 #### crates/arawn-tui/src/event_loop/notices.rs
 
@@ -10229,6 +10295,12 @@
 #### crates/arawn-tui/src/event_loop/usage.rs
 
 -  `render_usage` function L7-32 — `(client: &mut crate::ws_client::WsClient, period: &str) -> String` — T-0362: TUI `/usage` slash command — call the server-side
+
+#### crates/arawn-tui/src/event_loop/watch.rs
+
+-  `open_watch_modal` function L17-38 — `(client: &mut WsClient, app: &mut App)` — Fetch the template catalog and open the modal at stage 1.
+-  `handle_watch_overlay_key` function L40-106 — `( client: &mut WsClient, app: &mut App, key: crossterm::event::KeyEvent, )` — is pure state — all I/O lives here.
+-  `close_with_message` function L108-111 — `(app: &mut App, msg: String)` — is pure state — all I/O lives here.
 
 ### crates/arawn-tui/src/render
 
@@ -10261,7 +10333,7 @@
 
 #### crates/arawn-tui/src/render/mod.rs
 
-- pub `render` function L35-163 — `(app: &mut App, frame: &mut Frame)`
+- pub `render` function L35-166 — `(app: &mut App, frame: &mut Frame)`
 -  `SPINNER_FRAMES` variable L6 — `: &[char]`
 -  `DASHBOARD_WIDTH` variable L10 — `: u16` — I-0035 Phase 3 (T-0356) — fixed width for the right-pane
 -  `MIN_FOR_THREE_PANE` variable L17 — `: u16` — Minimum terminal width to render the three-pane layout.
@@ -10271,66 +10343,66 @@
 -  `overlays` module L24 — `-`
 -  `sidebar` module L25 — `-`
 -  `status_bar` module L26 — `-`
--  `truncate_to` function L186-188 — `(s: &str, max_cells: usize) -> String` — Truncate a string to fit within a display width, adding "…" if needed.
--  `compact_tool_summary` function L191-196 — `(content: &str) -> String` — Extract a compact summary from tool call content for inline display.
--  `truncate_for_display` function L198-202 — `(s: &str, max: usize) -> String`
--  `tests` module L205-1317 — `-`
--  `truncate_for_display_handles_utf8_at_boundary` function L213-223 — `()`
--  `truncate_for_display_passes_through_short_strings` function L226-228 — `()`
--  `cal_item` function L232-248 — `(text: &str, start: &str, end: &str) -> arawn_ceremonies::service::ItemDto`
--  `daily_view_with_items` function L250-266 — `( items: Vec<arawn_ceremonies::service::ItemDto>, ) -> arawn_ceremonies::DailyVi...`
--  `dashboard_brief_renders_today_with_calendar` function L269-300 — `()`
--  `dashboard_brief_flags_conflict` function L303-314 — `()`
--  `dashboard_brief_no_conflict_when_separated` function L317-324 — `()`
--  `dashboard_brief_empty_state_no_tablet` function L327-345 — `()`
--  `dashboard_brief_empty_state_no_calendar_items` function L348-366 — `()`
--  `format_brief_date_line_includes_weekday` function L369-372 — `()`
--  `format_brief_date_line_fallback_on_garbage` function L375-377 — `()`
--  `attn_item` function L381-396 — `( ordinal: i32, text: &str, ) -> arawn_ceremonies::service::ItemDto`
--  `todo_item` function L398-413 — `( ordinal: i32, text: &str, ) -> arawn_ceremonies::service::ItemDto`
--  `daily_view_for_actions` function L415-431 — `( items: Vec<arawn_ceremonies::service::ItemDto>, ) -> arawn_ceremonies::DailyVi...`
--  `draw_actions` function L433-442 — `(app: &App, w: u16, h: u16) -> Terminal<TestBackend>`
--  `buffer_contains` function L444-451 — `(terminal: &Terminal<TestBackend>, needle: &str) -> bool`
--  `dashboard_actions_renders_attention_items` function L454-466 — `()`
--  `dashboard_actions_empty_state_no_tablet` function L469-475 — `()`
--  `dashboard_actions_empty_state_no_attention_items` function L478-483 — `()`
--  `dashboard_actions_truncates_long_titles` function L486-500 — `()`
--  `dashboard_actions_overflow_footer` function L503-515 — `()`
--  `post_toast_enqueues_message` function L520-527 — `()`
--  `expired_toast_is_dropped_on_render` function L530-547 — `()`
--  `toast_truncates_long_message` function L550-568 — `()`
--  `dashboard_actions_carried_over_separator` function L571-581 — `()`
--  `buffer_to_string` function L583-598 — `(terminal: &Terminal<TestBackend>, row: u16) -> String`
--  `render_empty_app_has_status_bar` function L601-610 — `()`
--  `render_with_messages_shows_content` function L613-639 — `()`
--  `render_with_input_text` function L642-657 — `()`
--  `render_streaming_shows_cursor` function L660-683 — `()`
--  `render_small_terminal` function L686-691 — `()`
--  `render_large_terminal` function L694-699 — `()`
--  `region_text` function L704-716 — `(terminal: &Terminal<TestBackend>, x: u16, y: u16, w: u16, h: u16) -> String` — Extract text from a rectangular region of the buffer.
--  `chat_region_for` function L720-733 — `(terminal: &Terminal<TestBackend>, sidebar_visible: bool) -> String` — Extract the chat area text.
--  `chat_region` function L736-738 — `(terminal: &Terminal<TestBackend>) -> String` — Convenience: chat region for default app (sidebar hidden).
--  `sidebar_region` function L742-750 — `(terminal: &Terminal<TestBackend>) -> String` — Extract the sidebar text (left 20%, rows 1..height-3).
--  `input_region` function L753-758 — `(terminal: &Terminal<TestBackend>) -> String` — Extract the input bar text (second from bottom row).
--  `chat_renders_user_message_with_prefix` function L763-777 — `()`
--  `chat_renders_assistant_message_with_prefix` function L780-794 — `()`
--  `chat_renders_tool_call_with_icon` function L797-827 — `()`
--  `chat_renders_tool_result_collapsed` function L830-858 — `()`
--  `chat_renders_tool_error_result` function L861-884 — `()`
--  `chat_renders_tool_result_truncated` function L887-914 — `()`
--  `chat_streaming_text_appears_in_chat_area` function L917-935 — `()`
--  `sidebar_renders_workstream_names` function L938-974 — `()`
--  `sidebar_does_not_leak_into_chat` function L977-1011 — `()`
--  `input_shows_placeholder_when_empty` function L1014-1025 — `()`
--  `input_shows_generating_when_active` function L1028-1041 — `()`
--  `status_bar_shows_generating_indicator` function L1044-1058 — `()`
--  `status_bar_shows_workstream_name` function L1061-1085 — `()`
--  `messages_do_not_appear_in_input_area` function L1088-1111 — `()`
--  `chat_auto_scrolls_to_bottom_with_many_messages` function L1116-1146 — `()`
--  `chat_scroll_up_reveals_older_messages` function L1149-1177 — `()`
--  `chat_few_messages_all_visible` function L1180-1194 — `()`
--  `last_message_visible_above_input` function L1197-1250 — `()`
--  `last_tool_result_visible_above_input` function L1253-1316 — `()`
+-  `truncate_to` function L189-191 — `(s: &str, max_cells: usize) -> String` — Truncate a string to fit within a display width, adding "…" if needed.
+-  `compact_tool_summary` function L194-199 — `(content: &str) -> String` — Extract a compact summary from tool call content for inline display.
+-  `truncate_for_display` function L201-205 — `(s: &str, max: usize) -> String`
+-  `tests` module L208-1320 — `-`
+-  `truncate_for_display_handles_utf8_at_boundary` function L216-226 — `()`
+-  `truncate_for_display_passes_through_short_strings` function L229-231 — `()`
+-  `cal_item` function L235-251 — `(text: &str, start: &str, end: &str) -> arawn_ceremonies::service::ItemDto`
+-  `daily_view_with_items` function L253-269 — `( items: Vec<arawn_ceremonies::service::ItemDto>, ) -> arawn_ceremonies::DailyVi...`
+-  `dashboard_brief_renders_today_with_calendar` function L272-303 — `()`
+-  `dashboard_brief_flags_conflict` function L306-317 — `()`
+-  `dashboard_brief_no_conflict_when_separated` function L320-327 — `()`
+-  `dashboard_brief_empty_state_no_tablet` function L330-348 — `()`
+-  `dashboard_brief_empty_state_no_calendar_items` function L351-369 — `()`
+-  `format_brief_date_line_includes_weekday` function L372-375 — `()`
+-  `format_brief_date_line_fallback_on_garbage` function L378-380 — `()`
+-  `attn_item` function L384-399 — `( ordinal: i32, text: &str, ) -> arawn_ceremonies::service::ItemDto`
+-  `todo_item` function L401-416 — `( ordinal: i32, text: &str, ) -> arawn_ceremonies::service::ItemDto`
+-  `daily_view_for_actions` function L418-434 — `( items: Vec<arawn_ceremonies::service::ItemDto>, ) -> arawn_ceremonies::DailyVi...`
+-  `draw_actions` function L436-445 — `(app: &App, w: u16, h: u16) -> Terminal<TestBackend>`
+-  `buffer_contains` function L447-454 — `(terminal: &Terminal<TestBackend>, needle: &str) -> bool`
+-  `dashboard_actions_renders_attention_items` function L457-469 — `()`
+-  `dashboard_actions_empty_state_no_tablet` function L472-478 — `()`
+-  `dashboard_actions_empty_state_no_attention_items` function L481-486 — `()`
+-  `dashboard_actions_truncates_long_titles` function L489-503 — `()`
+-  `dashboard_actions_overflow_footer` function L506-518 — `()`
+-  `post_toast_enqueues_message` function L523-530 — `()`
+-  `expired_toast_is_dropped_on_render` function L533-550 — `()`
+-  `toast_truncates_long_message` function L553-571 — `()`
+-  `dashboard_actions_carried_over_separator` function L574-584 — `()`
+-  `buffer_to_string` function L586-601 — `(terminal: &Terminal<TestBackend>, row: u16) -> String`
+-  `render_empty_app_has_status_bar` function L604-613 — `()`
+-  `render_with_messages_shows_content` function L616-642 — `()`
+-  `render_with_input_text` function L645-660 — `()`
+-  `render_streaming_shows_cursor` function L663-686 — `()`
+-  `render_small_terminal` function L689-694 — `()`
+-  `render_large_terminal` function L697-702 — `()`
+-  `region_text` function L707-719 — `(terminal: &Terminal<TestBackend>, x: u16, y: u16, w: u16, h: u16) -> String` — Extract text from a rectangular region of the buffer.
+-  `chat_region_for` function L723-736 — `(terminal: &Terminal<TestBackend>, sidebar_visible: bool) -> String` — Extract the chat area text.
+-  `chat_region` function L739-741 — `(terminal: &Terminal<TestBackend>) -> String` — Convenience: chat region for default app (sidebar hidden).
+-  `sidebar_region` function L745-753 — `(terminal: &Terminal<TestBackend>) -> String` — Extract the sidebar text (left 20%, rows 1..height-3).
+-  `input_region` function L756-761 — `(terminal: &Terminal<TestBackend>) -> String` — Extract the input bar text (second from bottom row).
+-  `chat_renders_user_message_with_prefix` function L766-780 — `()`
+-  `chat_renders_assistant_message_with_prefix` function L783-797 — `()`
+-  `chat_renders_tool_call_with_icon` function L800-830 — `()`
+-  `chat_renders_tool_result_collapsed` function L833-861 — `()`
+-  `chat_renders_tool_error_result` function L864-887 — `()`
+-  `chat_renders_tool_result_truncated` function L890-917 — `()`
+-  `chat_streaming_text_appears_in_chat_area` function L920-938 — `()`
+-  `sidebar_renders_workstream_names` function L941-977 — `()`
+-  `sidebar_does_not_leak_into_chat` function L980-1014 — `()`
+-  `input_shows_placeholder_when_empty` function L1017-1028 — `()`
+-  `input_shows_generating_when_active` function L1031-1044 — `()`
+-  `status_bar_shows_generating_indicator` function L1047-1061 — `()`
+-  `status_bar_shows_workstream_name` function L1064-1088 — `()`
+-  `messages_do_not_appear_in_input_area` function L1091-1114 — `()`
+-  `chat_auto_scrolls_to_bottom_with_many_messages` function L1119-1149 — `()`
+-  `chat_scroll_up_reveals_older_messages` function L1152-1180 — `()`
+-  `chat_few_messages_all_visible` function L1183-1197 — `()`
+-  `last_message_visible_above_input` function L1200-1253 — `()`
+-  `last_tool_result_visible_above_input` function L1256-1319 — `()`
 
 #### crates/arawn-tui/src/render/overlays.rs
 

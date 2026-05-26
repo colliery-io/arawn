@@ -74,12 +74,15 @@ impl FeedTemplate for SpaceArchiveTemplate {
 
     fn param_schema(&self) -> Vec<crate::param_schema::ParamSpec> {
         use crate::param_schema::{ParamKind, ParamSpec};
-        vec![ParamSpec::required(
-            "space_key",
-            "Space key",
-            ParamKind::Text,
-            "Confluence space key (e.g. ENG).",
-        )]
+        vec![
+            ParamSpec::required(
+                "space_key",
+                "Space key",
+                ParamKind::Text,
+                "Confluence space key (e.g. ENG).",
+            )
+            .discoverable(),
+        ]
     }
 
     fn defaults(&self, _params: &TemplateParams) -> FeedDefaults {

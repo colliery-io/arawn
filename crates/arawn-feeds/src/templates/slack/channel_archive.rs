@@ -73,7 +73,8 @@ impl FeedTemplate for ChannelArchiveTemplate {
                 "Channel",
                 ParamKind::Text,
                 "Slack channel name (e.g. #design) or ID (e.g. C0123ABCD).",
-            ),
+            )
+            .discoverable(),
             ParamSpec::since(),
         ]
     }

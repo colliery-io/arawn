@@ -186,6 +186,7 @@ fn param_spec_to_dto(spec: arawn_feeds::ParamSpec) -> arawn_service::FeedParamSp
         required: spec.required,
         default: spec.default,
         help: spec.help,
+        discoverable: spec.discoverable,
     }
 }
 
