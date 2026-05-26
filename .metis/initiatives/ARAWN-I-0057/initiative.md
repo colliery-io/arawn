@@ -4,14 +4,14 @@ level: initiative
 title: "Local filesystem feed — watch a folder, emit signals on text-file changes"
 short_code: "ARAWN-I-0057"
 created_at: 2026-05-25T15:44:24.377793+00:00
-updated_at: 2026-05-25T16:30:09.594652+00:00
+updated_at: 2026-05-26T17:36:22.595280+00:00
 parent: ARAWN-V-0001
 blocked_by: []
 archived: false
 
 tags:
   - "#initiative"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
