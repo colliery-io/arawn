@@ -17,6 +17,7 @@ pub mod calendar;
 pub mod dispatch;
 pub mod drive;
 pub mod embed;
+pub mod filesystem;
 pub mod error;
 pub mod github;
 pub mod gmail;

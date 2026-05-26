@@ -1120,6 +1120,37 @@ fn no_fabrication_scenario() -> Scenario {
     }
 }
 
+/// ARAWN-I-0057: local filesystem feed round-trip. The seed loader
+/// pre-populates `filesystem_signals` with synthetic transcript files
+/// (as if a `filesystem/folder` feed had scanned a notes folder), so
+/// the agent can find the content via `feed_search`. Mechanical pass =
+/// the agent's answer references content that exists ONLY in the
+/// seeded transcripts (the Postgres-16 / Operation Bluefin decision),
+/// proving the scan → project → search path is reachable end-to-end.
+fn filesystem_watch_roundtrip_scenario() -> Scenario {
+    Scenario {
+        name: "filesystem-watch-roundtrip".to_string(),
+        objective: "Drive the I-0057 filesystem feed read path. The seed loader writes `filesystem_signals` projection rows from synthetic meeting transcripts into a watched-notes folder mirror, so feed_search should surface their content with no workstream required.".to_string(),
+        turns: vec![
+            ScenarioTurn {
+                user_message: "Use feed_search to dig up my Project Falcon meeting notes. What did we decide about the database migration, and what's the codename for the dual-write phase?".to_string(),
+                judge_expectation: "Agent should call feed_search with a query like \"Falcon\" or \"migration\". It must surface content that exists only in the seeded transcripts: the decision to migrate the ledger service to Postgres 16 (target end of Q3), and the dual-write codename \"Operation Bluefin\". PASS if the response references the Postgres-16 migration AND Operation Bluefin (both only present in the transcript files). FAIL if it fabricates a different database/codename or claims it found nothing.".to_string(),
+            },
+        ],
+        mechanical: MechanicalThresholds {
+            min_files_created: 0,
+            min_workflows_created: 0,
+            min_memory_entities: 0,
+            max_tool_errors: 2,
+        },
+        seed_fixture: Some("tests/fixtures/uat/filesystem-watch-roundtrip.json".to_string()),
+        seed_tag_promoter: false,
+        seed_retro_ceremony: false,
+        seed_daily_ceremony: false,
+        seed_weekly_ceremony: false,
+    }
+}
+
 fn all_scenarios() -> Vec<Scenario> {
     vec![
         work_signal_pipeline_scenario(),
@@ -1138,6 +1169,8 @@ fn all_scenarios() -> Vec<Scenario> {
         schedule_with_confirmation_scenario(),
         mention_scan_scenario(),
         no_fabrication_scenario(),
+        // ARAWN-I-0057: local filesystem feed.
+        filesystem_watch_roundtrip_scenario(),
     ]
 }
 

@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-24T13:06:14Z | 410 files | Python, Rust
+> Generated: 2026-05-26T12:05:44Z | 412 files | Python, Rust
 
 ## Project Structure
 
@@ -210,6 +210,7 @@
 │   │   │   │   ├── atlassian.rs
 │   │   │   │   ├── calendar.rs
 │   │   │   │   ├── drive.rs
+│   │   │   │   ├── filesystem.rs
 │   │   │   │   ├── github.rs
 │   │   │   │   ├── gmail.rs
 │   │   │   │   ├── mod.rs
@@ -363,6 +364,7 @@
 │   │   │   ├── drive.rs
 │   │   │   ├── embed.rs
 │   │   │   ├── error.rs
+│   │   │   ├── filesystem.rs
 │   │   │   ├── github.rs
 │   │   │   ├── gmail.rs
 │   │   │   ├── lib.rs
@@ -3765,28 +3767,28 @@
 
 #### crates/arawn-engine/src/tools/feed_search.rs
 
-- pub `FeedSearchTool` struct L46-51 — `{ store: Arc<ProjectionStore>, embedder: Option<Arc<dyn Embedder>> }` — fusion, no API change.
-- pub `new` function L54-56 — `(store: Arc<ProjectionStore>, embedder: Option<Arc<dyn Embedder>>) -> Self` — fusion, no API change.
--  `KNOWN_FEED_TYPES` variable L21-39 — `: &[&str]` — fusion, no API change.
--  `RRF_K` variable L44 — `: f32` — RRF constant (Cormack et al.
--  `FeedSearchTool` type L53-57 — `= FeedSearchTool` — fusion, no API change.
--  `FeedSearchTool` type L60-272 — `impl Tool for FeedSearchTool` — fusion, no API change.
--  `name` function L61-63 — `(&self) -> &str` — fusion, no API change.
--  `description` function L65-74 — `(&self) -> &str` — fusion, no API change.
--  `is_read_only` function L76-78 — `(&self) -> bool` — fusion, no API change.
--  `category` function L80-82 — `(&self) -> ToolCategory` — fusion, no API change.
--  `parameters_schema` function L84-112 — `(&self) -> Value` — fusion, no API change.
--  `execute` function L114-271 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — fusion, no API change.
--  `Hit` struct L274-277 — `{ score: f32, row: arawn_projections::ProjectionRow }` — fusion, no API change.
--  `FusedHit` struct L280-284 — `{ feed_type: String, projection_id: String, score: f32 }` — Per-(feed_type, projection_id) accumulator for RRF scores.
--  `FusedHit` type L286-294 — `= FusedHit` — fusion, no API change.
--  `new` function L287-293 — `(feed_type: String, projection_id: String) -> Self` — fusion, no API change.
--  `key` function L296-298 — `(feed_type: &str, projection_id: &str) -> String` — fusion, no API change.
--  `rrf_score` function L301-303 — `(rank: usize) -> f32` — Reciprocal rank fusion contribution from a single ranked list.
--  `snippet` function L305-311 — `(text: &str, cap: usize) -> String` — fusion, no API change.
--  `tests` module L314-381 — `-` — fusion, no API change.
--  `known_feed_types_contains_all_github_tables` function L321-337 — `()` — T-0345: cross-feed search must include every GitHub projection
--  `known_feed_types_match_projection_constants` function L342-380 — `()` — Guard rail: the projection table names in `arawn-projections`
+- pub `FeedSearchTool` struct L48-53 — `{ store: Arc<ProjectionStore>, embedder: Option<Arc<dyn Embedder>> }` — fusion, no API change.
+- pub `new` function L56-58 — `(store: Arc<ProjectionStore>, embedder: Option<Arc<dyn Embedder>>) -> Self` — fusion, no API change.
+-  `KNOWN_FEED_TYPES` variable L21-41 — `: &[&str]` — fusion, no API change.
+-  `RRF_K` variable L46 — `: f32` — RRF constant (Cormack et al.
+-  `FeedSearchTool` type L55-59 — `= FeedSearchTool` — fusion, no API change.
+-  `FeedSearchTool` type L62-274 — `impl Tool for FeedSearchTool` — fusion, no API change.
+-  `name` function L63-65 — `(&self) -> &str` — fusion, no API change.
+-  `description` function L67-76 — `(&self) -> &str` — fusion, no API change.
+-  `is_read_only` function L78-80 — `(&self) -> bool` — fusion, no API change.
+-  `category` function L82-84 — `(&self) -> ToolCategory` — fusion, no API change.
+-  `parameters_schema` function L86-114 — `(&self) -> Value` — fusion, no API change.
+-  `execute` function L116-273 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — fusion, no API change.
+-  `Hit` struct L276-279 — `{ score: f32, row: arawn_projections::ProjectionRow }` — fusion, no API change.
+-  `FusedHit` struct L282-286 — `{ feed_type: String, projection_id: String, score: f32 }` — Per-(feed_type, projection_id) accumulator for RRF scores.
+-  `FusedHit` type L288-296 — `= FusedHit` — fusion, no API change.
+-  `new` function L289-295 — `(feed_type: String, projection_id: String) -> Self` — fusion, no API change.
+-  `key` function L298-300 — `(feed_type: &str, projection_id: &str) -> String` — fusion, no API change.
+-  `rrf_score` function L303-305 — `(rank: usize) -> f32` — Reciprocal rank fusion contribution from a single ranked list.
+-  `snippet` function L307-313 — `(text: &str, cap: usize) -> String` — fusion, no API change.
+-  `tests` module L316-383 — `-` — fusion, no API change.
+-  `known_feed_types_contains_all_github_tables` function L323-339 — `()` — T-0345: cross-feed search must include every GitHub projection
+-  `known_feed_types_match_projection_constants` function L344-382 — `()` — Guard rail: the projection table names in `arawn-projections`
 
 #### crates/arawn-engine/src/tools/file_edit.rs
 
@@ -4933,21 +4935,22 @@
 - pub `new` function L71-77 — `(feed_id: impl Into<String>, runtime: FeedRuntimeContext) -> Self` — retry/audit machinery handles the rest.
 - pub `run_feed` function L110-115 — `( feed_id: &str, runtime: &FeedRuntimeContext, ) -> Result<crate::template::RunO...` — The actual fetch+write cycle.
 - pub `run_feed_force` function L120-125 — `( feed_id: &str, runtime: &FeedRuntimeContext, ) -> Result<crate::template::RunO...` — Variant that ignores the `enabled` flag — used by the backfill
-- pub `projection_feed_types_for` function L280-295 — `(template_name: &str) -> Vec<String>` — Map a feed template name to the projection feed_types it produces.
+- pub `projection_feed_types_for` function L280-296 — `(template_name: &str) -> Vec<String>` — Map a feed template name to the projection feed_types it produces.
 -  `FeedDispatchTask` type L70-78 — `= FeedDispatchTask` — retry/audit machinery handles the rest.
 -  `FeedDispatchTask` type L81-100 — `impl Task for FeedDispatchTask` — retry/audit machinery handles the rest.
 -  `id` function L82-84 — `(&self) -> &str` — retry/audit machinery handles the rest.
 -  `dependencies` function L86-88 — `(&self) -> &[TaskNamespace]` — retry/audit machinery handles the rest.
 -  `execute` function L90-99 — `(&self, context: Context<Value>) -> Result<Context<Value>, TaskError>` — retry/audit machinery handles the rest.
 -  `run_feed_inner` function L127-274 — `( feed_id: &str, runtime: &FeedRuntimeContext, force: bool, ) -> Result<crate::t...` — retry/audit machinery handles the rest.
--  `persist_meta_failure` function L297-310 — `( feed_dir: &std::path::Path, template: &str, params: &crate::types::TemplatePar...` — retry/audit machinery handles the rest.
--  `tests` module L313-447 — `-` — retry/audit machinery handles the rest.
--  `open_test_db` function L322-337 — `() -> Connection` — retry/audit machinery handles the rest.
--  `build_runtime` function L339-348 — `(tmp_root: &std::path::Path, conn: Connection) -> FeedRuntimeContext` — retry/audit machinery handles the rest.
--  `run_feed_executes_stub_template_and_persists_meta` function L351-377 — `()` — retry/audit machinery handles the rest.
--  `run_feed_increments_cursor_across_invocations` function L380-411 — `()` — retry/audit machinery handles the rest.
--  `run_feed_skips_disabled_feed` function L414-434 — `()` — retry/audit machinery handles the rest.
--  `run_feed_returns_storage_error_for_missing_id` function L437-446 — `()` — retry/audit machinery handles the rest.
+-  `persist_meta_failure` function L298-311 — `( feed_dir: &std::path::Path, template: &str, params: &crate::types::TemplatePar...` — retry/audit machinery handles the rest.
+-  `tests` module L314-497 — `-` — retry/audit machinery handles the rest.
+-  `open_test_db` function L323-338 — `() -> Connection` — retry/audit machinery handles the rest.
+-  `build_runtime` function L340-349 — `(tmp_root: &std::path::Path, conn: Connection) -> FeedRuntimeContext` — retry/audit machinery handles the rest.
+-  `run_feed_projects_filesystem_signals` function L352-398 — `()` — retry/audit machinery handles the rest.
+-  `run_feed_executes_stub_template_and_persists_meta` function L401-427 — `()` — retry/audit machinery handles the rest.
+-  `run_feed_increments_cursor_across_invocations` function L430-461 — `()` — retry/audit machinery handles the rest.
+-  `run_feed_skips_disabled_feed` function L464-484 — `()` — retry/audit machinery handles the rest.
+-  `run_feed_returns_storage_error_for_missing_id` function L487-496 — `()` — retry/audit machinery handles the rest.
 
 #### crates/arawn-feeds/src/error.rs
 
@@ -5181,6 +5184,55 @@
 -  `is_not_found_recognizes_drive_404_shapes` function L397-408 — `()` — Drive tools use.
 -  `unsupported_native_excludes_folders_and_known_exports` function L411-420 — `()` — Drive tools use.
 
+#### crates/arawn-feeds/src/clients/filesystem.rs
+
+- pub `FilesystemFeedParams` struct L53-61 — `{ root: PathBuf, recursive: bool, include: Vec<String>, exclude: Vec<String> }` — Parameters for the `filesystem/folder` template.
+- pub `FileFingerprint` struct L103-108 — `{ mtime: i64, size: u64 }` — Per-file fingerprint used to detect change without reading contents.
+- pub `FilesystemFeedCursor` struct L114-117 — `{ files: BTreeMap<PathBuf, FileFingerprint> }` — Cursor persisted between runs: the fingerprint map from the previous
+- pub `FilesystemFeedTemplate` struct L120 — `-` — The `filesystem/folder` template.
+-  `DEFAULT_CADENCE` variable L44 — `: &str` — Default cadence for a filesystem feed.
+-  `default_recursive` function L63-65 — `() -> bool` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `default_include` function L67-69 — `() -> Vec<String>` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `default_exclude` function L71-83 — `() -> Vec<String>` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `FilesystemFeedParams` type L85-94 — `impl Default for FilesystemFeedParams` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `default` function L86-93 — `() -> Self` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `FilesystemFeedTemplate` type L123-199 — `impl FeedTemplate for FilesystemFeedTemplate` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `name` function L124-126 — `(&self) -> &'static str` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `validate` function L128-132 — `(&self, params: &TemplateParams) -> Result<(), FeedError>` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `defaults` function L134-139 — `(&self, _params: &TemplateParams) -> FeedDefaults` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `run` function L141-198 — `( &self, _ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &...` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `parse_cursor` function L205-209 — `(cursor: &Value) -> BTreeMap<PathBuf, FileFingerprint>` — Parse a persisted cursor into its fingerprint map.
+-  `build_matcher` function L214-225 — `(patterns: &[String]) -> Result<GlobSet, FeedError>` — Compile a list of glob patterns into a [`GlobSet`].
+-  `scan` function L230-276 — `( root: &Path, recursive: bool, include: &GlobSet, exclude: &GlobSet, ) -> Resul...` — Walk `root` and build the current fingerprint map for every file
+-  `diff` function L282-303 — `( root: &Path, prev: &BTreeMap<PathBuf, FileFingerprint>, curr: &BTreeMap<PathBu...` — Diff the previous fingerprint map against the current one and emit
+-  `signal` function L307-322 — `(root: &Path, path: &Path, event: &str, fp: Option<&FileFingerprint>) -> Value` — Build one signal record in the documented shape.
+-  `validate_params` function L330-364 — `(p: &FilesystemFeedParams) -> Result<(), FeedError>` — Synchronous, no-IO-beyond-stat validation of filesystem params.
+-  `tests` module L367-657 — `-` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `params_for` function L370-375 — `(root: PathBuf) -> FilesystemFeedParams` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `defaults_match_documented_shape` function L378-385 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `params_round_trip_through_serde` function L388-396 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `params_apply_defaults_when_only_root_given` function L399-405 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `cursor_round_trips` function L408-425 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `defaults_use_the_cadence_floor` function L428-432 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `validate_accepts_a_real_deep_directory` function L435-441 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `validate_rejects_relative_root` function L444-450 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `validate_rejects_too_shallow_root` function L453-460 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `validate_rejects_nonexistent_root` function L463-469 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `validate_rejects_non_directory_root` function L472-479 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `validate_rejects_malformed_include_glob` function L482-490 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `validate_rejects_malformed_exclude_glob` function L493-501 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `write_file` function L505-511 — `(dir: &Path, rel: &str, contents: &str)` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `matchers` function L513-517 — `(include: &[&str], exclude: &[&str]) -> (GlobSet, GlobSet)` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `default_matchers` function L519-524 — `() -> (GlobSet, GlobSet)` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `empty_cursor_emits_created_for_each_match` function L527-536 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `unchanged_file_emits_nothing` function L539-546 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `modified_file_emits_modified` function L549-561 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `deleted_file_emits_deleted` function L564-576 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `exclude_glob_skips_matching_files` function L579-587 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `recursive_false_ignores_subdirs` function L590-598 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `cursor_diff_round_trip_through_serde` function L601-612 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `run_writes_signal_jsonl_and_advances_cursor` function L615-656 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+
 #### crates/arawn-feeds/src/clients/github.rs
 
 - pub `GithubFeedClient` interface L30-117 — `{ fn list_notifications(), fn search_issues(), fn list_repo_commits(), fn list_r...` — Authenticated GitHub REST calls templates rely on.
@@ -5229,34 +5281,35 @@
 - pub `atlassian` module L20 — `-` — `slack-morphism` directly — keeps templates mock-testable.
 - pub `calendar` module L21 — `-` — `slack-morphism` directly — keeps templates mock-testable.
 - pub `drive` module L22 — `-` — `slack-morphism` directly — keeps templates mock-testable.
-- pub `github` module L23 — `-` — `slack-morphism` directly — keeps templates mock-testable.
-- pub `gmail` module L24 — `-` — `slack-morphism` directly — keeps templates mock-testable.
-- pub `slack` module L25 — `-` — `slack-morphism` directly — keeps templates mock-testable.
-- pub `FeedClients` interface L45-52 — `{ fn slack(), fn calendar(), fn gmail(), fn drive(), fn atlassian(), fn github()...` — Bundle of every provider client a template might want to use.
-- pub `NoopClients` struct L57 — `-` — No-op `FeedClients`: every provider returns `None`.
-- pub `RealClients` struct L84-91 — `{ slack: Option<Arc<dyn SlackFeedClient>>, calendar: Option<Arc<dyn CalendarFeed...` — Production bundle.
-- pub `new` function L94-96 — `() -> Self` — `slack-morphism` directly — keeps templates mock-testable.
-- pub `with_slack` function L98-104 — `( mut self, integration: Arc<arawn_integrations::slack::SlackIntegration>, ) -> ...` — `slack-morphism` directly — keeps templates mock-testable.
-- pub `with_calendar` function L106-112 — `( mut self, integration: Arc<arawn_integrations::calendar::GoogleCalendarIntegra...` — `slack-morphism` directly — keeps templates mock-testable.
-- pub `with_gmail` function L114-120 — `( mut self, integration: Arc<arawn_integrations::gmail::GmailIntegration>, ) -> ...` — `slack-morphism` directly — keeps templates mock-testable.
-- pub `with_drive` function L122-128 — `( mut self, integration: Arc<arawn_integrations::drive::GoogleDriveIntegration>,...` — `slack-morphism` directly — keeps templates mock-testable.
-- pub `with_atlassian` function L130-136 — `( mut self, integration: Arc<arawn_integrations::atlassian::AtlassianIntegration...` — `slack-morphism` directly — keeps templates mock-testable.
-- pub `with_github` function L138-144 — `( mut self, integration: Arc<arawn_integrations::github::GithubIntegration>, ) -...` — `slack-morphism` directly — keeps templates mock-testable.
--  `NoopClients` type L59-78 — `impl FeedClients for NoopClients` — `slack-morphism` directly — keeps templates mock-testable.
--  `slack` function L60-62 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
--  `calendar` function L63-65 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
--  `gmail` function L66-68 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
--  `drive` function L69-71 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
--  `atlassian` function L72-74 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
--  `github` function L75-77 — `(&self) -> Option<Arc<dyn GithubFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
--  `RealClients` type L93-145 — `= RealClients` — `slack-morphism` directly — keeps templates mock-testable.
--  `RealClients` type L147-166 — `impl FeedClients for RealClients` — `slack-morphism` directly — keeps templates mock-testable.
--  `slack` function L148-150 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
--  `calendar` function L151-153 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
--  `gmail` function L154-156 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
--  `drive` function L157-159 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
--  `atlassian` function L160-162 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
--  `github` function L163-165 — `(&self) -> Option<Arc<dyn GithubFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
+- pub `filesystem` module L23 — `-` — `slack-morphism` directly — keeps templates mock-testable.
+- pub `github` module L24 — `-` — `slack-morphism` directly — keeps templates mock-testable.
+- pub `gmail` module L25 — `-` — `slack-morphism` directly — keeps templates mock-testable.
+- pub `slack` module L26 — `-` — `slack-morphism` directly — keeps templates mock-testable.
+- pub `FeedClients` interface L49-56 — `{ fn slack(), fn calendar(), fn gmail(), fn drive(), fn atlassian(), fn github()...` — Bundle of every provider client a template might want to use.
+- pub `NoopClients` struct L61 — `-` — No-op `FeedClients`: every provider returns `None`.
+- pub `RealClients` struct L88-95 — `{ slack: Option<Arc<dyn SlackFeedClient>>, calendar: Option<Arc<dyn CalendarFeed...` — Production bundle.
+- pub `new` function L98-100 — `() -> Self` — `slack-morphism` directly — keeps templates mock-testable.
+- pub `with_slack` function L102-108 — `( mut self, integration: Arc<arawn_integrations::slack::SlackIntegration>, ) -> ...` — `slack-morphism` directly — keeps templates mock-testable.
+- pub `with_calendar` function L110-116 — `( mut self, integration: Arc<arawn_integrations::calendar::GoogleCalendarIntegra...` — `slack-morphism` directly — keeps templates mock-testable.
+- pub `with_gmail` function L118-124 — `( mut self, integration: Arc<arawn_integrations::gmail::GmailIntegration>, ) -> ...` — `slack-morphism` directly — keeps templates mock-testable.
+- pub `with_drive` function L126-132 — `( mut self, integration: Arc<arawn_integrations::drive::GoogleDriveIntegration>,...` — `slack-morphism` directly — keeps templates mock-testable.
+- pub `with_atlassian` function L134-140 — `( mut self, integration: Arc<arawn_integrations::atlassian::AtlassianIntegration...` — `slack-morphism` directly — keeps templates mock-testable.
+- pub `with_github` function L142-148 — `( mut self, integration: Arc<arawn_integrations::github::GithubIntegration>, ) -...` — `slack-morphism` directly — keeps templates mock-testable.
+-  `NoopClients` type L63-82 — `impl FeedClients for NoopClients` — `slack-morphism` directly — keeps templates mock-testable.
+-  `slack` function L64-66 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
+-  `calendar` function L67-69 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
+-  `gmail` function L70-72 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
+-  `drive` function L73-75 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
+-  `atlassian` function L76-78 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
+-  `github` function L79-81 — `(&self) -> Option<Arc<dyn GithubFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
+-  `RealClients` type L97-149 — `= RealClients` — `slack-morphism` directly — keeps templates mock-testable.
+-  `RealClients` type L151-170 — `impl FeedClients for RealClients` — `slack-morphism` directly — keeps templates mock-testable.
+-  `slack` function L152-154 — `(&self) -> Option<Arc<dyn SlackFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
+-  `calendar` function L155-157 — `(&self) -> Option<Arc<dyn CalendarFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
+-  `gmail` function L158-160 — `(&self) -> Option<Arc<dyn GmailFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
+-  `drive` function L161-163 — `(&self) -> Option<Arc<dyn DriveFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
+-  `atlassian` function L164-166 — `(&self) -> Option<Arc<dyn AtlassianFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
+-  `github` function L167-169 — `(&self) -> Option<Arc<dyn GithubFeedClient>>` — `slack-morphism` directly — keeps templates mock-testable.
 
 #### crates/arawn-feeds/src/clients/slack.rs
 
@@ -5744,7 +5797,7 @@
 - pub `jira` module L8 — `-` — Concrete `FeedTemplate` impls organized per provider.
 - pub `slack` module L9 — `-` — Concrete `FeedTemplate` impls organized per provider.
 - pub `stub` module L10 — `-` — Concrete `FeedTemplate` impls organized per provider.
-- pub `default_registry` function L19-39 — `() -> FeedTemplateRegistry` — Build the registry of every template the binary supports.
+- pub `default_registry` function L19-40 — `() -> FeedTemplateRegistry` — Build the registry of every template the binary supports.
 
 #### crates/arawn-feeds/src/templates/stub.rs
 
@@ -8003,11 +8056,11 @@
 
 #### crates/arawn-projections/src/dispatch.rs
 
-- pub `project_feed_dir` function L28-219 — `( store: &ProjectionStore, template_name: &str, feed_id: &str, feed_dir: &Path, ...` — Project every item under the on-disk mirror for `feed_id`, walking
--  `SubBatch` enum L221-225 — `Issues | Comments | History` — and after backfill.
--  `SubKind` enum L227-231 — `IssueKey | CommentId | HistoryId` — and after backfill.
--  `atlassian_write_subbatch` function L233-251 — `( store: &ProjectionStore, feed_type: &str, feed_id: &str, sub: SubBatch, _kind:...` — and after backfill.
--  `dedup_and_write_single_type` function L253-277 — `( store: &ProjectionStore, feed_type: &str, feed_id: &str, parsed: Vec<P>, sourc...` — and after backfill.
+- pub `project_feed_dir` function L29-226 — `( store: &ProjectionStore, template_name: &str, feed_id: &str, feed_dir: &Path, ...` — Project every item under the on-disk mirror for `feed_id`, walking
+-  `SubBatch` enum L228-232 — `Issues | Comments | History` — and after backfill.
+-  `SubKind` enum L234-238 — `IssueKey | CommentId | HistoryId` — and after backfill.
+-  `atlassian_write_subbatch` function L240-258 — `( store: &ProjectionStore, feed_type: &str, feed_id: &str, sub: SubBatch, _kind:...` — and after backfill.
+-  `dedup_and_write_single_type` function L260-284 — `( store: &ProjectionStore, feed_type: &str, feed_id: &str, parsed: Vec<P>, sourc...` — and after backfill.
 
 #### crates/arawn-projections/src/drive.rs
 
@@ -8050,6 +8103,30 @@
 -  `from` function L22-24 — `(value: std::io::Error) -> Self`
 -  `ProjectionError` type L27-31 — `= ProjectionError`
 -  `from` function L28-30 — `(value: serde_json::Error) -> Self`
+
+#### crates/arawn-projections/src/filesystem.rs
+
+- pub `FEED_TYPE` variable L25 — `: &str` — out via `missing_source_ids` and only newly-appended events insert.
+- pub `FilesystemSignalProjection` struct L28-50 — `{ id: String, feed_id: String, source_id: String, source_ts: DateTime<Utc>, rel_...` — out via `missing_source_ids` and only newly-appended events insert.
+- pub `projection_id` function L111-118 — `(feed_id: &str, source_id: &str) -> String` — Stable projection id from `feed_id` + the event's `source_id`.
+- pub `walk_feed_dir` function L136-214 — `( feed_id: &str, feed_dir: &Path, ) -> Result<Vec<FilesystemSignalProjection>, P...` — out via `missing_source_ids` and only newly-appended events insert.
+-  `MAX_BODY_BYTES` variable L55 — `: usize` — Cap on the indexed body.
+-  `FilesystemSignalProjection` type L57-85 — `impl Projection for FilesystemSignalProjection` — out via `missing_source_ids` and only newly-appended events insert.
+-  `feed_type` function L58-60 — `(&self) -> &'static str` — out via `missing_source_ids` and only newly-appended events insert.
+-  `row` function L62-84 — `(&self) -> ProjectionRow` — out via `missing_source_ids` and only newly-appended events insert.
+-  `read_text_body` function L90-108 — `(path: &Path) -> String` — Read a file as UTF-8 text, truncated to [`MAX_BODY_BYTES`].
+-  `event_source_id` function L125-134 — `(path: &str, event: &str, ts: &str, mtime: Option<i64>, size: Option<u64>) -> St...` — Stable per-event source id: a hash over the immutable identifying
+-  `tests` module L217-353 — `-` — out via `missing_source_ids` and only newly-appended events insert.
+-  `write_signals` function L220-227 — `(dir: &Path, lines: &[Value])` — out via `missing_source_ids` and only newly-appended events insert.
+-  `signal` function L229-239 — `(path: &str, rel: &str, event: &str, ts: &str) -> Value` — out via `missing_source_ids` and only newly-appended events insert.
+-  `missing_log_returns_empty` function L242-245 — `()` — out via `missing_source_ids` and only newly-appended events insert.
+-  `projects_one_row_per_event` function L248-263 — `()` — out via `missing_source_ids` and only newly-appended events insert.
+-  `distinct_events_for_same_path_get_distinct_source_ids` function L266-278 — `()` — out via `missing_source_ids` and only newly-appended events insert.
+-  `same_line_hashes_stably` function L281-291 — `()` — out via `missing_source_ids` and only newly-appended events insert.
+-  `deleted_event_has_null_size_and_mtime` function L294-304 — `()` — out via `missing_source_ids` and only newly-appended events insert.
+-  `reads_file_content_into_body_text` function L307-328 — `()` — out via `missing_source_ids` and only newly-appended events insert.
+-  `deleted_event_carries_no_body` function L331-339 — `()` — out via `missing_source_ids` and only newly-appended events insert.
+-  `corrupt_line_is_skipped` function L342-352 — `()` — out via `missing_source_ids` and only newly-appended events insert.
 
 #### crates/arawn-projections/src/github.rs
 
@@ -8158,13 +8235,14 @@
 - pub `dispatch` module L17 — `-` — - Decouples feed-side fidelity (raw mirror) from query-side shape.
 - pub `drive` module L18 — `-` — - Decouples feed-side fidelity (raw mirror) from query-side shape.
 - pub `embed` module L19 — `-` — - Decouples feed-side fidelity (raw mirror) from query-side shape.
-- pub `error` module L20 — `-` — - Decouples feed-side fidelity (raw mirror) from query-side shape.
-- pub `github` module L21 — `-` — - Decouples feed-side fidelity (raw mirror) from query-side shape.
-- pub `gmail` module L22 — `-` — - Decouples feed-side fidelity (raw mirror) from query-side shape.
-- pub `schema` module L23 — `-` — - Decouples feed-side fidelity (raw mirror) from query-side shape.
-- pub `slack` module L24 — `-` — - Decouples feed-side fidelity (raw mirror) from query-side shape.
-- pub `store` module L25 — `-` — - Decouples feed-side fidelity (raw mirror) from query-side shape.
-- pub `types` module L26 — `-` — - Decouples feed-side fidelity (raw mirror) from query-side shape.
+- pub `filesystem` module L20 — `-` — - Decouples feed-side fidelity (raw mirror) from query-side shape.
+- pub `error` module L21 — `-` — - Decouples feed-side fidelity (raw mirror) from query-side shape.
+- pub `github` module L22 — `-` — - Decouples feed-side fidelity (raw mirror) from query-side shape.
+- pub `gmail` module L23 — `-` — - Decouples feed-side fidelity (raw mirror) from query-side shape.
+- pub `schema` module L24 — `-` — - Decouples feed-side fidelity (raw mirror) from query-side shape.
+- pub `slack` module L25 — `-` — - Decouples feed-side fidelity (raw mirror) from query-side shape.
+- pub `store` module L26 — `-` — - Decouples feed-side fidelity (raw mirror) from query-side shape.
+- pub `types` module L27 — `-` — - Decouples feed-side fidelity (raw mirror) from query-side shape.
 
 #### crates/arawn-projections/src/schema.rs
 
@@ -9201,20 +9279,21 @@
 -  `schedule_with_confirmation_scenario` function L1051-1073 — `() -> Scenario` — Or via angreal: angreal test uat --model gemma4
 -  `mention_scan_scenario` function L1075-1097 — `() -> Scenario` — Or via angreal: angreal test uat --model gemma4
 -  `no_fabrication_scenario` function L1099-1121 — `() -> Scenario` — Or via angreal: angreal test uat --model gemma4
--  `all_scenarios` function L1123-1142 — `() -> Vec<Scenario>` — Or via angreal: angreal test uat --model gemma4
--  `uat_run` function L1150-1350 — `()` — Or via angreal: angreal test uat --model gemma4
--  `tests` module L1358-1508 — `-` — Or via angreal: angreal test uat --model gemma4
--  `count_workflows_returns_zero_for_missing_dir` function L1364-1367 — `()` — Or via angreal: angreal test uat --model gemma4
--  `count_workflows_returns_zero_for_empty_dir` function L1370-1373 — `()` — Or via angreal: angreal test uat --model gemma4
--  `count_workflows_counts_subdirs_only` function L1376-1384 — `()` — Or via angreal: angreal test uat --model gemma4
--  `apply_event_captures_error_message` function L1389-1405 — `()` — Or via angreal: angreal test uat --model gemma4
--  `apply_event_error_with_missing_message_field_keeps_none` function L1408-1414 — `()` — Or via angreal: angreal test uat --model gemma4
--  `apply_event_complete_sets_final_text` function L1417-1424 — `()` — Or via angreal: angreal test uat --model gemma4
--  `apply_event_streaming_text_appends` function L1427-1435 — `()` — Or via angreal: angreal test uat --model gemma4
--  `apply_event_ignores_rpc_ack` function L1438-1445 — `()` — Or via angreal: angreal test uat --model gemma4
--  `apply_event_records_tool_calls_and_results` function L1448-1468 — `()` — Or via angreal: angreal test uat --model gemma4
--  `turn_result_serializes_error_message_when_present` function L1473-1490 — `()` — Or via angreal: angreal test uat --model gemma4
--  `turn_result_omits_error_message_when_none` function L1493-1507 — `()` — Or via angreal: angreal test uat --model gemma4
+-  `filesystem_watch_roundtrip_scenario` function L1130-1152 — `() -> Scenario` — ARAWN-I-0057: local filesystem feed round-trip.
+-  `all_scenarios` function L1154-1175 — `() -> Vec<Scenario>` — Or via angreal: angreal test uat --model gemma4
+-  `uat_run` function L1183-1383 — `()` — Or via angreal: angreal test uat --model gemma4
+-  `tests` module L1391-1541 — `-` — Or via angreal: angreal test uat --model gemma4
+-  `count_workflows_returns_zero_for_missing_dir` function L1397-1400 — `()` — Or via angreal: angreal test uat --model gemma4
+-  `count_workflows_returns_zero_for_empty_dir` function L1403-1406 — `()` — Or via angreal: angreal test uat --model gemma4
+-  `count_workflows_counts_subdirs_only` function L1409-1417 — `()` — Or via angreal: angreal test uat --model gemma4
+-  `apply_event_captures_error_message` function L1422-1438 — `()` — Or via angreal: angreal test uat --model gemma4
+-  `apply_event_error_with_missing_message_field_keeps_none` function L1441-1447 — `()` — Or via angreal: angreal test uat --model gemma4
+-  `apply_event_complete_sets_final_text` function L1450-1457 — `()` — Or via angreal: angreal test uat --model gemma4
+-  `apply_event_streaming_text_appends` function L1460-1468 — `()` — Or via angreal: angreal test uat --model gemma4
+-  `apply_event_ignores_rpc_ack` function L1471-1478 — `()` — Or via angreal: angreal test uat --model gemma4
+-  `apply_event_records_tool_calls_and_results` function L1481-1501 — `()` — Or via angreal: angreal test uat --model gemma4
+-  `turn_result_serializes_error_message_when_present` function L1506-1523 — `()` — Or via angreal: angreal test uat --model gemma4
+-  `turn_result_omits_error_message_when_none` function L1526-1540 — `()` — Or via angreal: angreal test uat --model gemma4
 
 #### crates/arawn-tests/tests/uat_daily_seed.rs
 
@@ -9227,40 +9306,43 @@
 
 #### crates/arawn-tests/tests/uat_fixture.rs
 
-- pub `Fixture` struct L45-47 — `{ workstreams: Vec<WorkstreamFixture> }` — Top-level fixture file.
-- pub `WorkstreamFixture` struct L50-67 — `{ name: String, description: String, tags_ontology: Vec<String>, identity_profil...` — warm KB on the first turn.
-- pub `FixtureRow` enum L74-80 — `GmailMessages | SlackMessages | CalendarEvents | JiraIssues | JiraComments` — Discriminated row variants by `feed_type`.
-- pub `GmailFixtureRow` struct L83-99 — `{ source_id: String, source_ts: DateTime<Utc>, sender: Option<String>, recipient...` — warm KB on the first turn.
-- pub `CalendarFixtureRow` struct L102-125 — `{ source_id: String, source_ts: DateTime<Utc>, calendar_id: Option<String>, summ...` — warm KB on the first turn.
-- pub `JiraIssueFixtureRow` struct L128-148 — `{ source_id: String, source_ts: DateTime<Utc>, project_key: Option<String>, summ...` — warm KB on the first turn.
-- pub `JiraCommentFixtureRow` struct L151-160 — `{ source_id: String, source_ts: DateTime<Utc>, issue_key: String, author: Option...` — warm KB on the first turn.
-- pub `SlackFixtureRow` struct L163-177 — `{ source_id: String, source_ts: DateTime<Utc>, channel_id: Option<String>, sende...` — warm KB on the first turn.
-- pub `load` function L191-196 — `(path: impl AsRef<Path>) -> Result<Fixture, String>` — Read a fixture from disk, substituting time placeholders so the
-- pub `resolve_time_placeholders` function L199-220 — `(raw: &str, now: DateTime<Utc>) -> String` — Pure substitution helper — exposed for testability.
-- pub `Applied` struct L225-229 — `{ store: Arc<std::sync::Mutex<Store>>, projections: Arc<ProjectionStore>, per_wo...` — Apply a fixture against `data_dir`.
-- pub `AppliedWorkstream` struct L231-235 — `{ workstream: Workstream, feed_types: Vec<String> }` — warm KB on the first turn.
-- pub `apply` function L237-364 — `(fixture: &Fixture, data_dir: &Path) -> Result<Applied, String>` — warm KB on the first turn.
-- pub `build_seed_llm_client` function L475-500 — `( provider: &str, model: &str, api_key_env: &str, ) -> Result<Arc<dyn LlmClient>...` — Build an `LlmClient` for the seed-time extractor using the same
-- pub `drive_extraction` function L505-537 — `( applied: &Applied, data_dir: &Path, client: Arc<dyn LlmClient>, model: String,...` — Drive `ExtractorRunner::run_for_workstream_until_exhausted` for each
-- pub `drive_tag_promoter` function L547-586 — `(applied: &Applied, data_dir: &Path) -> Result<usize, String>` — Drive the `tag-promoter` steward subroutine across every workstream
--  `synthetic_feed_id` function L366-370 — `(workstream: &str, override_: &Option<String>) -> String` — warm KB on the first turn.
--  `gmail_to_projection` function L372-386 — `(workstream: &str, row: &GmailFixtureRow) -> GmailMessageProjection` — warm KB on the first turn.
--  `calendar_to_projection` function L388-410 — `(workstream: &str, row: &CalendarFixtureRow) -> CalendarEventProjection` — warm KB on the first turn.
--  `jira_issue_to_projection` function L412-431 — `(workstream: &str, row: &JiraIssueFixtureRow) -> JiraIssueProjection` — warm KB on the first turn.
--  `jira_comment_to_projection` function L433-450 — `( workstream: &str, row: &JiraCommentFixtureRow, ) -> JiraCommentProjection` — warm KB on the first turn.
--  `slack_to_projection` function L452-469 — `(workstream: &str, row: &SlackFixtureRow) -> SlackMessageProjection` — warm KB on the first turn.
--  `tests` module L593-685 — `-` — warm KB on the first turn.
--  `sample_fixture` function L596-629 — `() -> Fixture` — warm KB on the first turn.
--  `time_placeholders_substituted` function L632-641 — `()` — warm KB on the first turn.
--  `fixture_roundtrips_through_json` function L644-650 — `()` — warm KB on the first turn.
--  `apply_creates_workstream_and_writes_rows` function L653-671 — `()` — warm KB on the first turn.
--  `load_from_disk_round_trip` function L674-684 — `()` — warm KB on the first turn.
+- pub `Fixture` struct L46-48 — `{ workstreams: Vec<WorkstreamFixture> }` — Top-level fixture file.
+- pub `WorkstreamFixture` struct L51-68 — `{ name: String, description: String, tags_ontology: Vec<String>, identity_profil...` — warm KB on the first turn.
+- pub `FixtureRow` enum L75-82 — `GmailMessages | SlackMessages | CalendarEvents | JiraIssues | JiraComments | Fil...` — Discriminated row variants by `feed_type`.
+- pub `FilesystemFixtureRow` struct L91-104 — `{ source_id: String, source_ts: DateTime<Utc>, rel_path: String, event: String, ...` — A filesystem-feed change signal, as seeded into the
+- pub `GmailFixtureRow` struct L111-127 — `{ source_id: String, source_ts: DateTime<Utc>, sender: Option<String>, recipient...` — warm KB on the first turn.
+- pub `CalendarFixtureRow` struct L130-153 — `{ source_id: String, source_ts: DateTime<Utc>, calendar_id: Option<String>, summ...` — warm KB on the first turn.
+- pub `JiraIssueFixtureRow` struct L156-176 — `{ source_id: String, source_ts: DateTime<Utc>, project_key: Option<String>, summ...` — warm KB on the first turn.
+- pub `JiraCommentFixtureRow` struct L179-188 — `{ source_id: String, source_ts: DateTime<Utc>, issue_key: String, author: Option...` — warm KB on the first turn.
+- pub `SlackFixtureRow` struct L191-205 — `{ source_id: String, source_ts: DateTime<Utc>, channel_id: Option<String>, sende...` — warm KB on the first turn.
+- pub `load` function L219-224 — `(path: impl AsRef<Path>) -> Result<Fixture, String>` — Read a fixture from disk, substituting time placeholders so the
+- pub `resolve_time_placeholders` function L227-248 — `(raw: &str, now: DateTime<Utc>) -> String` — Pure substitution helper — exposed for testability.
+- pub `Applied` struct L253-257 — `{ store: Arc<std::sync::Mutex<Store>>, projections: Arc<ProjectionStore>, per_wo...` — Apply a fixture against `data_dir`.
+- pub `AppliedWorkstream` struct L259-263 — `{ workstream: Workstream, feed_types: Vec<String> }` — warm KB on the first turn.
+- pub `apply` function L265-404 — `(fixture: &Fixture, data_dir: &Path) -> Result<Applied, String>` — warm KB on the first turn.
+- pub `build_seed_llm_client` function L546-571 — `( provider: &str, model: &str, api_key_env: &str, ) -> Result<Arc<dyn LlmClient>...` — Build an `LlmClient` for the seed-time extractor using the same
+- pub `drive_extraction` function L576-608 — `( applied: &Applied, data_dir: &Path, client: Arc<dyn LlmClient>, model: String,...` — Drive `ExtractorRunner::run_for_workstream_until_exhausted` for each
+- pub `drive_tag_promoter` function L618-657 — `(applied: &Applied, data_dir: &Path) -> Result<usize, String>` — Drive the `tag-promoter` steward subroutine across every workstream
+-  `default_fs_event` function L106-108 — `() -> String` — warm KB on the first turn.
+-  `synthetic_feed_id` function L406-410 — `(workstream: &str, override_: &Option<String>) -> String` — warm KB on the first turn.
+-  `gmail_to_projection` function L412-426 — `(workstream: &str, row: &GmailFixtureRow) -> GmailMessageProjection` — warm KB on the first turn.
+-  `calendar_to_projection` function L428-450 — `(workstream: &str, row: &CalendarFixtureRow) -> CalendarEventProjection` — warm KB on the first turn.
+-  `jira_issue_to_projection` function L452-471 — `(workstream: &str, row: &JiraIssueFixtureRow) -> JiraIssueProjection` — warm KB on the first turn.
+-  `jira_comment_to_projection` function L473-490 — `( workstream: &str, row: &JiraCommentFixtureRow, ) -> JiraCommentProjection` — warm KB on the first turn.
+-  `filesystem_to_projection` function L492-521 — `( workstream: &str, row: &FilesystemFixtureRow, ) -> FilesystemSignalProjection` — warm KB on the first turn.
+-  `slack_to_projection` function L523-540 — `(workstream: &str, row: &SlackFixtureRow) -> SlackMessageProjection` — warm KB on the first turn.
+-  `tests` module L664-756 — `-` — warm KB on the first turn.
+-  `sample_fixture` function L667-700 — `() -> Fixture` — warm KB on the first turn.
+-  `time_placeholders_substituted` function L703-712 — `()` — warm KB on the first turn.
+-  `fixture_roundtrips_through_json` function L715-721 — `()` — warm KB on the first turn.
+-  `apply_creates_workstream_and_writes_rows` function L724-742 — `()` — warm KB on the first turn.
+-  `load_from_disk_round_trip` function L745-755 — `()` — warm KB on the first turn.
 
 #### crates/arawn-tests/tests/uat_fixture_smoke.rs
 
 -  `uat_fixture` module L4 — `-` — row counts match what the UAT scenario expects.
 -  `signal_extraction_e2e_fixture_parses` function L7-35 — `()` — row counts match what the UAT scenario expects.
--  `personal_day_fixture_parses` function L41-75 — `()` — T-0332: the synthetic life-assistant fixture must parse, have a
+-  `personal_day_fixture_parses` function L41-76 — `()` — T-0332: the synthetic life-assistant fixture must parse, have a
 
 #### crates/arawn-tests/tests/uat_retro_seed.rs
 

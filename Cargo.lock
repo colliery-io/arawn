@@ -330,6 +330,7 @@ dependencies = [
  "async-trait",
  "chrono",
  "cloacina",
+ "globset",
  "google-drive3",
  "http-body-util",
  "jira_v3_openapi",
@@ -344,6 +345,7 @@ dependencies = [
  "tokio",
  "tracing",
  "urlencoding",
+ "walkdir",
 ]
 
 [[package]]

@@ -62,6 +62,7 @@ fn personal_day_fixture_parses() {
             uat_fixture::FixtureRow::CalendarEvents(_) => calendar += 1,
             uat_fixture::FixtureRow::JiraIssues(_) => jira_issues += 1,
             uat_fixture::FixtureRow::JiraComments(_) => jira_comments += 1,
+            uat_fixture::FixtureRow::FilesystemSignals(_) => {}
         }
     }
     assert!(gmail >= 8, "gmail rows: {gmail} (want >=8)");

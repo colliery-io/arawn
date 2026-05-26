@@ -37,7 +37,8 @@ pub mod types;
 pub use cadence::{MIN_CADENCE, validate_cadence};
 pub use clients::{
     AtlassianFeedClient, CalendarFeedClient, ChannelKind, ConfluencePageBody, ConfluencePageMeta,
-    ConfluenceSpaceMeta, DriveFeedClient, DriveFile, FeedClients, GithubFeedClient,
+    ConfluenceSpaceMeta, DriveFeedClient, DriveFile, FeedClients, FileFingerprint,
+    FilesystemFeedCursor, FilesystemFeedParams, FilesystemFeedTemplate, GithubFeedClient,
     GmailFeedClient, JiraIssueDetail, JiraIssueMeta, JiraProjectMeta, NoopClients,
     RealAtlassianClient, RealCalendarClient, RealClients, RealDriveClient, RealGithubClient,
     RealGmailClient, RealSlackClient, SlackAuthInfo, SlackChannel, SlackFeedClient,

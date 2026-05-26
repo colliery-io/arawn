@@ -36,6 +36,8 @@ const KNOWN_FEED_TYPES: &[&str] = &[
     "github_repo_issues",
     "github_repo_prs",
     "github_issue_or_pr_comments",
+    // I-0057 local filesystem feed — T-0419.
+    "filesystem_signals",
 ];
 
 /// RRF constant (Cormack et al. 2009). Same value the memory bench

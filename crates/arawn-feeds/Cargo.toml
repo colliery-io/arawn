@@ -18,6 +18,8 @@ rvstruct = "0.3"
 urlencoding = "2"
 async-trait = { workspace = true }
 chrono = { workspace = true }
+globset = { workspace = true }
+walkdir = { workspace = true }
 cloacina = { version = "0.6", features = ["sqlite"] }
 rusqlite = { version = "0.37", features = ["bundled"] }
 serde = { workspace = true }

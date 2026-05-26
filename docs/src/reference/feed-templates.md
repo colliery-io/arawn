@@ -2,9 +2,9 @@
 
 *Reference. Every shipped feed template with parameters, cadence, and on-disk layout.*
 
-Sixteen templates ship today across seven providers. This page is the contract the agent reads — what params each takes, what cadence it runs on, and what lands on disk.
+Seventeen templates ship today across eight providers. This page is the contract the agent reads — what params each takes, what cadence it runs on, and what lands on disk.
 
-(A 17th "stub/echo" template is registered as a test fixture and isn't user-facing.)
+(An 18th "stub/echo" template is registered as a test fixture and isn't user-facing.)
 
 > Paths below are shown relative to `~/.arawn/data/`. So
 > `slack/channel-archive/design/...` means
@@ -342,6 +342,47 @@ github/repo-mirror/<feed_id>/<owner>/<name>/
 
 Per-row JSON files in nested kind directories — not flat JSONL. The on-disk layout is shared by single-repo and org-expanded variants; the org URI just creates N feeds, each with one repo's worth of state.
 
+## Filesystem
+
+### `filesystem/folder`
+
+Watch a local folder and emit a signal whenever a text file is created, modified, or deleted. Built for raw text drops — meeting transcripts, exported notes — **not** for code trees (hence the default excludes). It needs no provider connection; it reads the local disk directly.
+
+| Field | Value |
+|---|---|
+| Required | `root: string` (absolute path to the folder to watch) |
+| Optional | `recursive: bool` (default `true`), `include: [string]` (glob list, default `["**/*"]`), `exclude: [string]` (glob list, default below) |
+| Default cadence | `*/15 * * * *` |
+| Auto-create | No — use `/watch filesystem/folder root=/path/to/notes` |
+
+Default excludes: `.git/**`, `target/**`, `node_modules/**`, `.venv/**`, `__pycache__/**`, `.DS_Store`.
+
+```text
+filesystem/folder/<feed_id>/
+  ├── meta.json          # cursor: { files: { <abs_path>: { mtime, size } } }
+  └── signals.jsonl      # append-only, one change event per line
+```
+
+Each `signals.jsonl` line is one change event:
+
+```json
+{ "source": "/Users/me/notes", "path": "/Users/me/notes/standup.md",
+  "rel_path": "standup.md", "event": "created",
+  "ts": "2026-05-25T10:00:00+00:00", "size_bytes": 812, "mtime": 1748160000 }
+```
+
+**How change is detected.** Each scan walks `root`, builds a `(mtime, size)` fingerprint per matching file, and diffs it against the cursor's map from the previous scan. New path → `created`; changed fingerprint → `modified`; gone → `deleted` (with `size_bytes` and `mtime` as `null`). Unchanged files emit nothing. The first scan after registration has an empty cursor, so every matching file is emitted as `created` — an automatic initial index.
+
+**Caveats.**
+
+- **Fingerprint, not content hash.** A pathological in-place edit that preserves *both* mtime and size is not detected. Normal editor saves bump mtime, so this is rare in practice.
+- **Renames are delete + create.** A rename surfaces as a `deleted` event for the old path and a `created` event for the new one — there is no rename correlation.
+- **Path-depth restriction.** `root` must be an absolute path at least two levels deep (3+ path components). Watching `/`, `/Users`, or another volume/home root is rejected at registration.
+- **Glob matching is relative to `root`.** `exclude` always wins over `include`.
+- **Polling, not push.** Detection latency is one cadence tick. The 15-minute floor (shared by all feeds) is the fastest available; sub-minute "live" watching is out of scope for this surface.
+
+`include` / `exclude` globs are matched against the path relative to `root`, so `exclude = ["drafts/**"]` skips everything under `<root>/drafts/`.
+
 ## Quick reference: cadence + auto-create
 
 | Template | Cadence | Auto-create |
@@ -362,6 +403,7 @@ Per-row JSON files in nested kind directories — not flat JSONL. The on-disk la
 | `github/issues-and-prs` | every 30 min | No |
 | `github/review-queue` | every 30 min | No |
 | `github/repo-mirror` | every 30 min | No (registered by workstream bind) |
+| `filesystem/folder` | every 15 min | No |
 
 ## Related
 

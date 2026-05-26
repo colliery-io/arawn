@@ -20,6 +20,7 @@ use std::sync::Arc;
 pub mod atlassian;
 pub mod calendar;
 pub mod drive;
+pub mod filesystem;
 pub mod github;
 pub mod gmail;
 pub mod slack;
@@ -29,6 +30,9 @@ pub use atlassian::{
     JiraIssueDetail, JiraIssueMeta, JiraProjectMeta, RealAtlassianClient,
 };
 pub use calendar::{CalendarFeedClient, RealCalendarClient};
+pub use filesystem::{
+    FileFingerprint, FilesystemFeedCursor, FilesystemFeedParams, FilesystemFeedTemplate,
+};
 pub use drive::{
     DriveFeedClient, DriveFile, RealDriveClient, export_for, is_unsupported_google_native,
 };

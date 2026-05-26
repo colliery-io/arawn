@@ -36,6 +36,7 @@ use arawn_memory::{AddedVia, MemoryManager, TagOntologyStore};
 use arawn_projections::ProjectionStore;
 use arawn_projections::atlassian::{JiraCommentProjection, JiraIssueProjection};
 use arawn_projections::calendar::CalendarEventProjection;
+use arawn_projections::filesystem::FilesystemSignalProjection;
 use arawn_projections::gmail::GmailMessageProjection;
 use arawn_projections::slack::SlackMessageProjection;
 use arawn_storage::Store;
@@ -77,6 +78,33 @@ pub enum FixtureRow {
     CalendarEvents(CalendarFixtureRow),
     JiraIssues(JiraIssueFixtureRow),
     JiraComments(JiraCommentFixtureRow),
+    FilesystemSignals(FilesystemFixtureRow),
+}
+
+/// A filesystem-feed change signal, as seeded into the
+/// `filesystem_signals` projection. Mirrors what
+/// `arawn-feeds::clients::filesystem` would emit + project, but lets a
+/// fixture supply the indexed `body_text` directly (the harness can't
+/// fire a 15-min cron during a test, so we seed the projected row
+/// rather than scanning a live folder).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FilesystemFixtureRow {
+    pub source_id: String,
+    pub source_ts: DateTime<Utc>,
+    /// Path relative to the watched root, e.g. `standup-2026-05-25.md`.
+    pub rel_path: String,
+    /// `created` / `modified` / `deleted`.
+    #[serde(default = "default_fs_event")]
+    pub event: String,
+    /// The watched-folder text content — what `feed_search` indexes.
+    #[serde(default)]
+    pub body_text: String,
+    #[serde(default)]
+    pub feed_id: Option<String>,
+}
+
+fn default_fs_event() -> String {
+    "created".to_string()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -282,6 +310,7 @@ pub fn apply(fixture: &Fixture, data_dir: &Path) -> Result<Applied, String> {
         let mut calendar_rows: Vec<CalendarEventProjection> = Vec::new();
         let mut jira_issue_rows: Vec<JiraIssueProjection> = Vec::new();
         let mut jira_comment_rows: Vec<JiraCommentProjection> = Vec::new();
+        let mut filesystem_rows: Vec<FilesystemSignalProjection> = Vec::new();
         for row in &ws_def.rows {
             match row {
                 FixtureRow::GmailMessages(g) => {
@@ -298,6 +327,9 @@ pub fn apply(fixture: &Fixture, data_dir: &Path) -> Result<Applied, String> {
                 }
                 FixtureRow::JiraComments(j) => {
                     jira_comment_rows.push(jira_comment_to_projection(&ws_def.name, j))
+                }
+                FixtureRow::FilesystemSignals(f) => {
+                    filesystem_rows.push(filesystem_to_projection(&ws_def.name, f))
                 }
             }
         }
@@ -326,6 +358,11 @@ pub fn apply(fixture: &Fixture, data_dir: &Path) -> Result<Applied, String> {
                 .write_batch(&jira_comment_rows)
                 .map_err(|e| format!("write jira comments batch: {e}"))?;
         }
+        if !filesystem_rows.is_empty() {
+            projections
+                .write_batch(&filesystem_rows)
+                .map_err(|e| format!("write filesystem batch: {e}"))?;
+        }
 
         let mut feed_types = Vec::new();
         if !gmail_rows.is_empty() {
@@ -348,6 +385,9 @@ pub fn apply(fixture: &Fixture, data_dir: &Path) -> Result<Applied, String> {
         }
         if !jira_comment_rows.is_empty() {
             feed_types.push("jira_comments".to_string());
+        }
+        if !filesystem_rows.is_empty() {
+            feed_types.push("filesystem_signals".to_string());
         }
 
         applied.push(AppliedWorkstream {
@@ -445,6 +485,37 @@ fn jira_comment_to_projection(
         source_ts: row.source_ts,
         issue_key: row.issue_key.clone(),
         author: row.author.clone(),
+        body_text: row.body_text.clone(),
+    }
+}
+
+fn filesystem_to_projection(
+    workstream: &str,
+    row: &FilesystemFixtureRow,
+) -> FilesystemSignalProjection {
+    let feed_id = row
+        .feed_id
+        .clone()
+        .unwrap_or_else(|| format!("fixture-{workstream}-filesystem"));
+    let name = std::path::Path::new(&row.rel_path)
+        .file_name()
+        .and_then(|s| s.to_str())
+        .unwrap_or(&row.rel_path)
+        .to_string();
+    FilesystemSignalProjection {
+        id: arawn_projections::filesystem::projection_id(&feed_id, &row.source_id),
+        feed_id,
+        source_id: row.source_id.clone(),
+        source_ts: row.source_ts,
+        rel_path: row.rel_path.clone(),
+        name,
+        event: row.event.clone(),
+        // Synthetic absolute path under a notional watched root; the
+        // fixture supplies body_text directly so we never read disk.
+        path: format!("/fixture/{workstream}/{}", row.rel_path),
+        source: format!("/fixture/{workstream}"),
+        size_bytes: Some(row.body_text.len() as u64),
+        mtime: Some(row.source_ts.timestamp()),
         body_text: row.body_text.clone(),
     }
 }

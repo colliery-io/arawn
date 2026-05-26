@@ -59,6 +59,8 @@ notify = { version = "8", features = ["macos_fsevent"] }
 
 # Glob / file discovery
 globwalk = "0.9"
+globset = "0.4"
+walkdir = "2"
 
 # HTML processing & caching
 htmd = "0.5"

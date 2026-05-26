@@ -14,6 +14,7 @@ use crate::atlassian;
 use crate::calendar;
 use crate::drive;
 use crate::error::ProjectionError;
+use crate::filesystem;
 use crate::github;
 use crate::gmail;
 use crate::slack;
@@ -87,6 +88,12 @@ pub fn project_feed_dir(
         "drive" => {
             let parsed = drive::walk_feed_dir(feed_id, feed_dir)?;
             dedup_and_write_single_type(store, drive::FEED_TYPE, feed_id, parsed, |p| {
+                p.source_id.clone()
+            })?
+        }
+        "filesystem" => {
+            let parsed = filesystem::walk_feed_dir(feed_id, feed_dir)?;
+            dedup_and_write_single_type(store, filesystem::FEED_TYPE, feed_id, parsed, |p| {
                 p.source_id.clone()
             })?
         }

@@ -290,6 +290,7 @@ pub fn projection_feed_types_for(template_name: &str) -> Vec<String> {
         ],
         "confluence" => vec!["confluence_pages".into()],
         "calendar" => vec!["calendar_events".into()],
+        "filesystem" => vec!["filesystem_signals".into()],
         _ => Vec::new(),
     }
 }
@@ -345,6 +346,55 @@ mod tests {
             projections: None,
             extractor: None,
         }
+    }
+
+    #[tokio::test]
+    async fn run_feed_projects_filesystem_signals() {
+        use std::fs;
+
+        let data_root = tempdir().unwrap();
+        let watched = tempdir().unwrap();
+        fs::write(watched.path().join("alpha.txt"), "one").unwrap();
+        fs::write(watched.path().join("beta.txt"), "two").unwrap();
+
+        let conn = open_test_db();
+        {
+            let store = FeedStore::new(&conn);
+            store
+                .insert(&new_record(
+                    "fs-1",
+                    "filesystem/folder",
+                    TemplateParams::new(json!({ "root": watched.path() })),
+                    "*/15 * * * *",
+                ))
+                .unwrap();
+        }
+
+        let projections = Arc::new(arawn_projections::ProjectionStore::in_memory().unwrap());
+        let mut runtime = build_runtime(data_root.path(), conn);
+        runtime.projections = Some(projections.clone());
+
+        // First run: both files appear as `created` and project to rows.
+        let outcome = run_feed("fs-1", &runtime).await.unwrap();
+        assert_eq!(outcome.summary.items_written, 2);
+        assert_eq!(projections.count("filesystem_signals").unwrap(), 2);
+
+        // Re-running with no changes adds no signals and no new rows.
+        let outcome = run_feed("fs-1", &runtime).await.unwrap();
+        assert_eq!(outcome.summary.items_written, 0);
+        assert_eq!(projections.count("filesystem_signals").unwrap(), 2);
+
+        // A new file produces exactly one more signal → one more row.
+        fs::write(watched.path().join("gamma.txt"), "three").unwrap();
+        let outcome = run_feed("fs-1", &runtime).await.unwrap();
+        assert_eq!(outcome.summary.items_written, 1);
+        assert_eq!(projections.count("filesystem_signals").unwrap(), 3);
+
+        // The new file is findable by name via FTS search.
+        let hits = projections
+            .fts_search("filesystem_signals", "gamma", 10)
+            .unwrap();
+        assert_eq!(hits.len(), 1);
     }
 
     #[tokio::test]
