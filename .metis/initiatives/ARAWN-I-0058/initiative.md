@@ -4,14 +4,14 @@ level: initiative
 title: "/watch modal — schema-driven feed registration form"
 short_code: "ARAWN-I-0058"
 created_at: 2026-05-26T17:14:31.449214+00:00
-updated_at: 2026-05-26T17:27:58.369642+00:00
+updated_at: 2026-05-26T17:43:38.846818+00:00
 parent: ARAWN-V-0001
 blocked_by: []
 archived: false
 
 tags:
   - "#initiative"
-  - "#phase/decompose"
+  - "#phase/active"
 
 
 exit_criteria_met: false

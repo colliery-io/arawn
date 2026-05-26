@@ -34,6 +34,17 @@ impl FeedTemplate for EchoTemplate {
         Ok(())
     }
 
+    fn param_schema(&self) -> Vec<crate::param_schema::ParamSpec> {
+        use crate::param_schema::{ParamKind, ParamSpec};
+        vec![ParamSpec::optional(
+            "message",
+            "Message",
+            ParamKind::Text,
+            serde_json::json!(""),
+            "Optional text echoed to the run log on each run; for testing.",
+        )]
+    }
+
     fn defaults(&self, _params: &TemplateParams) -> FeedDefaults {
         FeedDefaults {
             cadence: "*/15 * * * *".into(),

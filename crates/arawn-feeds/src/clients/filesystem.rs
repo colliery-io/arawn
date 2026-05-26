@@ -131,6 +131,47 @@ impl FeedTemplate for FilesystemFeedTemplate {
         validate_params(&parsed)
     }
 
+    fn param_schema(&self) -> Vec<crate::param_schema::ParamSpec> {
+        use crate::param_schema::{ParamKind, ParamSpec};
+        vec![
+            ParamSpec::required(
+                "root",
+                "Folder to watch",
+                ParamKind::Path,
+                "Absolute path to the folder to watch. Must be a real directory at least \
+                 three path components deep.",
+            ),
+            ParamSpec::optional(
+                "recursive",
+                "Recursive",
+                ParamKind::Bool,
+                serde_json::json!(true),
+                "Descend into subdirectories.",
+            ),
+            ParamSpec::optional(
+                "include",
+                "Include globs",
+                ParamKind::List,
+                serde_json::json!(["**/*"]),
+                "Glob patterns a file must match (relative to root).",
+            ),
+            ParamSpec::optional(
+                "exclude",
+                "Exclude globs",
+                ParamKind::List,
+                serde_json::json!([
+                    ".git/**",
+                    "target/**",
+                    "node_modules/**",
+                    ".venv/**",
+                    "__pycache__/**",
+                    ".DS_Store"
+                ]),
+                "Glob patterns that exclude matches; exclude wins over include.",
+            ),
+        ]
+    }
+
     fn defaults(&self, _params: &TemplateParams) -> FeedDefaults {
         FeedDefaults {
             cadence: DEFAULT_CADENCE.to_string(),

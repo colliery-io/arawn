@@ -9,6 +9,7 @@ use serde_json::Value;
 
 use crate::clients::{FeedClients, NoopClients};
 use crate::error::FeedError;
+use crate::param_schema::ParamSpec;
 use crate::types::{FeedDefaults, RunSummary, TemplateParams};
 
 /// Result returned from a single feed run.
@@ -101,6 +102,17 @@ pub trait FeedTemplate: Send + Sync {
     /// Sensible default cadence + initial cursor for the given params.
     /// Used when arawn.toml / `/watch` doesn't specify one.
     fn defaults(&self, params: &TemplateParams) -> FeedDefaults;
+
+    /// Machine-readable description of this template's accepted parameters.
+    ///
+    /// Required (no default impl) so the compiler refuses any template that
+    /// hasn't described its config. The `/watch` modal renders a form from
+    /// this; it must agree with [`Self::validate`] (which stays the
+    /// server-side source of truth). An **empty** vec is valid — some feeds
+    /// are genuinely param-less (e.g. `slack/my-mentions`,
+    /// `github/review-queue`). Declare it next to `validate` so the two stay
+    /// in sync.
+    fn param_schema(&self) -> Vec<ParamSpec>;
 
     /// Run one fetch+write cycle.
     ///

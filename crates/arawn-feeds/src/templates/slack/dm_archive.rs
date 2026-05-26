@@ -52,6 +52,19 @@ impl FeedTemplate for DmArchiveTemplate {
         Ok(())
     }
 
+    fn param_schema(&self) -> Vec<crate::param_schema::ParamSpec> {
+        use crate::param_schema::{ParamKind, ParamSpec};
+        vec![
+            ParamSpec::required(
+                "user",
+                "User",
+                ParamKind::Text,
+                "Slack user ID (e.g. U0123ABCD) or username (e.g. alice / @alice).",
+            ),
+            ParamSpec::since(),
+        ]
+    }
+
     fn defaults(&self, _params: &TemplateParams) -> FeedDefaults {
         FeedDefaults {
             // DMs are usually lower-volume than channels — hourly is

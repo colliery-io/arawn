@@ -63,6 +63,26 @@ impl FeedTemplate for LabelArchiveTemplate {
         Ok(())
     }
 
+    fn param_schema(&self) -> Vec<crate::param_schema::ParamSpec> {
+        use crate::param_schema::{ParamKind, ParamSpec};
+        vec![
+            ParamSpec::required(
+                "label",
+                "Label",
+                ParamKind::Text,
+                "Gmail label — built-in (e.g. STARRED) or user label (e.g. Projects/Arawn).",
+            ),
+            ParamSpec::optional(
+                "days_back",
+                "Days back",
+                ParamKind::Int,
+                serde_json::json!(30),
+                "How far back to look on each run (1–180).",
+            ),
+            ParamSpec::since(),
+        ]
+    }
+
     fn defaults(&self, _params: &TemplateParams) -> FeedDefaults {
         FeedDefaults {
             cadence: "*/30 * * * *".into(),

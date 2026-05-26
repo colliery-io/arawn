@@ -38,6 +38,11 @@ impl FeedTemplate for ReviewQueueTemplate {
         Ok(())
     }
 
+    /// No params — open PRs where the current user is requested as a reviewer.
+    fn param_schema(&self) -> Vec<crate::param_schema::ParamSpec> {
+        Vec::new()
+    }
+
     fn defaults(&self, _params: &TemplateParams) -> FeedDefaults {
         FeedDefaults {
             cadence: "*/30 * * * *".into(),

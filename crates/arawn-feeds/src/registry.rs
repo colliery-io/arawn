@@ -61,6 +61,9 @@ mod tests {
         fn validate(&self, _params: &TemplateParams) -> Result<(), FeedError> {
             Ok(())
         }
+        fn param_schema(&self) -> Vec<crate::param_schema::ParamSpec> {
+            Vec::new()
+        }
         fn defaults(&self, _params: &TemplateParams) -> FeedDefaults {
             FeedDefaults {
                 cadence: "*/15 * * * *".into(),

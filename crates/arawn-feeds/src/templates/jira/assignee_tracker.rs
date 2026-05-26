@@ -36,6 +36,12 @@ impl FeedTemplate for AssigneeTrackerTemplate {
         Ok(())
     }
 
+    /// Singleton feed (issues assigned to the current user). Only the shared
+    /// first-run `since` backfill knob applies.
+    fn param_schema(&self) -> Vec<crate::param_schema::ParamSpec> {
+        vec![crate::param_schema::ParamSpec::since()]
+    }
+
     fn defaults(&self, _params: &TemplateParams) -> FeedDefaults {
         FeedDefaults {
             cadence: "*/30 * * * *".into(),

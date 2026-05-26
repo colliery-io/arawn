@@ -70,6 +70,20 @@ impl FeedTemplate for RecentTemplate {
         Ok(())
     }
 
+    fn param_schema(&self) -> Vec<crate::param_schema::ParamSpec> {
+        use crate::param_schema::{ParamKind, ParamSpec};
+        vec![
+            ParamSpec::optional(
+                "days_back",
+                "Days back",
+                ParamKind::Int,
+                serde_json::json!(7),
+                "How far back to look on first run (1–90); ignored once the cursor advances.",
+            ),
+            ParamSpec::since(),
+        ]
+    }
+
     fn defaults(&self, _params: &TemplateParams) -> FeedDefaults {
         FeedDefaults {
             cadence: "*/30 * * * *".into(),

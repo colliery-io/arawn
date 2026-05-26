@@ -71,6 +71,19 @@ impl FeedTemplate for ProjectTrackerTemplate {
         Ok(())
     }
 
+    fn param_schema(&self) -> Vec<crate::param_schema::ParamSpec> {
+        use crate::param_schema::{ParamKind, ParamSpec};
+        vec![
+            ParamSpec::required(
+                "project",
+                "Project",
+                ParamKind::Text,
+                "Jira project key (e.g. ENG) or numeric ID.",
+            ),
+            ParamSpec::since(),
+        ]
+    }
+
     fn defaults(&self, _params: &TemplateParams) -> FeedDefaults {
         FeedDefaults {
             cadence: "*/30 * * * *".into(),

@@ -99,6 +99,16 @@ impl FeedTemplate for FolderSyncTemplate {
         Ok(())
     }
 
+    fn param_schema(&self) -> Vec<crate::param_schema::ParamSpec> {
+        use crate::param_schema::{ParamKind, ParamSpec};
+        vec![ParamSpec::required(
+            "folder",
+            "Folder",
+            ParamKind::Text,
+            "Drive folder ID, \"root\", or a slash path under My Drive (e.g. Reports/2026).",
+        )]
+    }
+
     fn defaults(&self, _params: &TemplateParams) -> FeedDefaults {
         FeedDefaults {
             cadence: "0 * * * *".into(), // hourly

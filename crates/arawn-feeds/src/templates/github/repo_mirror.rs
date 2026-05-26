@@ -87,6 +87,14 @@ impl FeedTemplate for RepoMirrorTemplate {
         Ok(())
     }
 
+    fn param_schema(&self) -> Vec<crate::param_schema::ParamSpec> {
+        use crate::param_schema::{ParamKind, ParamSpec};
+        vec![
+            ParamSpec::required("owner", "Owner", ParamKind::Text, "GitHub repo owner (user or org)."),
+            ParamSpec::required("name", "Repo name", ParamKind::Text, "GitHub repository name."),
+        ]
+    }
+
     fn defaults(&self, _params: &TemplateParams) -> FeedDefaults {
         FeedDefaults {
             cadence: "*/30 * * * *".into(),

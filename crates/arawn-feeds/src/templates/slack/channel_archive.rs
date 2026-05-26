@@ -65,6 +65,19 @@ impl FeedTemplate for ChannelArchiveTemplate {
         Ok(())
     }
 
+    fn param_schema(&self) -> Vec<crate::param_schema::ParamSpec> {
+        use crate::param_schema::{ParamKind, ParamSpec};
+        vec![
+            ParamSpec::required(
+                "channel",
+                "Channel",
+                ParamKind::Text,
+                "Slack channel name (e.g. #design) or ID (e.g. C0123ABCD).",
+            ),
+            ParamSpec::since(),
+        ]
+    }
+
     fn defaults(&self, _params: &TemplateParams) -> FeedDefaults {
         FeedDefaults {
             cadence: "*/15 * * * *".into(),

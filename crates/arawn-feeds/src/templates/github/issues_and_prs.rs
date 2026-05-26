@@ -49,6 +49,12 @@ impl FeedTemplate for IssuesAndPrsTemplate {
         Ok(())
     }
 
+    /// No params — a personal feed of issues/PRs assigned to, authored by, or
+    /// recently closed for the current user.
+    fn param_schema(&self) -> Vec<crate::param_schema::ParamSpec> {
+        Vec::new()
+    }
+
     fn defaults(&self, _params: &TemplateParams) -> FeedDefaults {
         FeedDefaults {
             cadence: "*/30 * * * *".into(),

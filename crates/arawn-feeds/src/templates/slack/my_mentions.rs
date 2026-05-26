@@ -60,6 +60,11 @@ impl FeedTemplate for MyMentionsTemplate {
         Ok(())
     }
 
+    /// No params — a singleton feed of the current user's mentions.
+    fn param_schema(&self) -> Vec<crate::param_schema::ParamSpec> {
+        Vec::new()
+    }
+
     fn defaults(&self, _params: &TemplateParams) -> FeedDefaults {
         FeedDefaults {
             cadence: "*/15 * * * *".into(),

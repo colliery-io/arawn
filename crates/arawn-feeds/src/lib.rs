@@ -27,6 +27,7 @@ pub mod dispatch;
 pub mod error;
 pub mod layout;
 pub mod meta;
+pub mod param_schema;
 pub mod registry;
 pub mod runtime;
 pub mod store;
@@ -50,6 +51,7 @@ pub use dispatch::{
 pub use error::FeedError;
 pub use layout::DataLayout;
 pub use meta::MetaStore;
+pub use param_schema::{ParamKind, ParamSpec};
 pub use registry::FeedTemplateRegistry;
 pub use runtime::{CloacinaRunner, FeedRuntime, RemoveOutcome, feed_workflow_name, start};
 pub use store::{FeedRecord, FeedStore, new_record};

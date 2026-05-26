@@ -82,6 +82,26 @@ impl FeedTemplate for UpcomingArchiveTemplate {
         Ok(())
     }
 
+    fn param_schema(&self) -> Vec<crate::param_schema::ParamSpec> {
+        use crate::param_schema::{ParamKind, ParamSpec};
+        vec![
+            ParamSpec::optional(
+                "calendar_id",
+                "Calendar",
+                ParamKind::Text,
+                serde_json::json!("primary"),
+                "Google Calendar ID, or \"primary\" for your main calendar.",
+            ),
+            ParamSpec::optional(
+                "window_days",
+                "Window (days)",
+                ParamKind::Int,
+                serde_json::json!(7),
+                "How many days ahead to include (1–60).",
+            ),
+        ]
+    }
+
     fn defaults(&self, _params: &TemplateParams) -> FeedDefaults {
         FeedDefaults {
             // Calendar changes far less often than chat. 30 min is a

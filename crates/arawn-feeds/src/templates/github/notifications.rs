@@ -60,6 +60,26 @@ impl FeedTemplate for NotificationsTemplate {
         Ok(())
     }
 
+    fn param_schema(&self) -> Vec<crate::param_schema::ParamSpec> {
+        use crate::param_schema::{ParamKind, ParamSpec};
+        vec![
+            ParamSpec::optional(
+                "all",
+                "Include read",
+                ParamKind::Bool,
+                serde_json::json!(false),
+                "Include already-read notifications.",
+            ),
+            ParamSpec::optional(
+                "per_page",
+                "Per page",
+                ParamKind::Int,
+                serde_json::json!(50),
+                "Results per page (capped at 50).",
+            ),
+        ]
+    }
+
     fn defaults(&self, _params: &TemplateParams) -> FeedDefaults {
         FeedDefaults {
             // I-0045 locked at 30 min for all GitHub feeds. User can
