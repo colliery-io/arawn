@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-26T18:56:27Z | 415 files | Python, Rust
+> Generated: 2026-05-26T19:51:23Z | 415 files | Python, Rust
 
 ## Project Structure
 
@@ -809,10 +809,10 @@
 -  `feed_discover_inner` function L101-129 — `( &self, template: &str, ) -> Result<arawn_service::FeedDiscoverDto, ServiceErro...` — `ArawnService`.
 -  `feed_schema_inner` function L131-142 — `( &self, template: &str, ) -> Result<arawn_service::FeedSchemaDto, ServiceError>` — `ArawnService`.
 -  `feed_remove_inner` function L144-165 — `( &self, feed_id: &str, ) -> Result<arawn_service::FeedRemoveDto, ServiceError>` — `ArawnService`.
--  `param_spec_to_dto` function L170-190 — `(spec: arawn_feeds::ParamSpec) -> arawn_service::FeedParamSpecDto` — Map a feeds-crate `ParamSpec` onto the service-layer DTO (the service
--  `tests` module L193-241 — `-` — `ArawnService`.
--  `param_spec_to_dto_maps_every_kind` function L199-218 — `()` — `ArawnService`.
--  `filesystem_schema_dto_shape` function L224-240 — `()` — What `feed_schema` returns for filesystem/folder — exercised via the
+-  `param_spec_to_dto` function L170-191 — `(spec: arawn_feeds::ParamSpec) -> arawn_service::FeedParamSpecDto` — Map a feeds-crate `ParamSpec` onto the service-layer DTO (the service
+-  `tests` module L194-242 — `-` — `ArawnService`.
+-  `param_spec_to_dto_maps_every_kind` function L200-219 — `()` — `ArawnService`.
+-  `filesystem_schema_dto_shape` function L225-241 — `()` — What `feed_schema` returns for filesystem/folder — exercised via the
 
 #### crates/arawn/src/local_service/integrations.rs
 
@@ -5012,18 +5012,19 @@
 #### crates/arawn-feeds/src/param_schema.rs
 
 - pub `ParamKind` enum L22-46 — `Text | Int | Bool | Path | List | Since | Enum` — The kind of a single parameter — drives which widget the form renders and
-- pub `ParamSpec` struct L50-63 — `{ key: String, label: String, kind: ParamKind, required: bool, default: Option<V...` — One declared parameter of a feed template.
-- pub `required` function L67-76 — `(key: &str, label: &str, kind: ParamKind, help: &str) -> Self` — A required parameter (no default).
-- pub `optional` function L79-88 — `(key: &str, label: &str, kind: ParamKind, default: Value, help: &str) -> Self` — An optional parameter with a pre-filled default.
-- pub `optional_no_default` function L91-100 — `(key: &str, label: &str, kind: ParamKind, help: &str) -> Self` — An optional parameter with no pre-filled default (e.g.
-- pub `since` function L105-113 — `() -> Self` — The shared first-run backfill `since` field.
-- pub `default_matches_kind` function L117-130 — `(&self) -> bool` — True when `default` (if present) is type-consistent with `kind`.
--  `ParamSpec` type L65-131 — `= ParamSpec` — validation.
--  `tests` module L134-205 — `-` — validation.
--  `constructors_set_required_and_default` function L139-153 — `()` — validation.
--  `default_type_consistency` function L156-177 — `()` — validation.
--  `param_spec_roundtrips_json` function L180-191 — `()` — validation.
--  `enum_kind_roundtrips_json` function L194-204 — `()` — validation.
+- pub `ParamSpec` struct L50-68 — `{ key: String, label: String, kind: ParamKind, required: bool, default: Option<V...` — One declared parameter of a feed template.
+- pub `required` function L72-82 — `(key: &str, label: &str, kind: ParamKind, help: &str) -> Self` — A required parameter (no default).
+- pub `optional` function L85-95 — `(key: &str, label: &str, kind: ParamKind, default: Value, help: &str) -> Self` — An optional parameter with a pre-filled default.
+- pub `optional_no_default` function L98-108 — `(key: &str, label: &str, kind: ParamKind, help: &str) -> Self` — An optional parameter with no pre-filled default (e.g.
+- pub `discoverable` function L112-115 — `(mut self) -> Self` — Mark this param as provider-discoverable (the `/watch` modal offers a
+- pub `since` function L120-128 — `() -> Self` — The shared first-run backfill `since` field.
+- pub `default_matches_kind` function L132-145 — `(&self) -> bool` — True when `default` (if present) is type-consistent with `kind`.
+-  `ParamSpec` type L70-146 — `= ParamSpec` — validation.
+-  `tests` module L149-220 — `-` — validation.
+-  `constructors_set_required_and_default` function L154-168 — `()` — validation.
+-  `default_type_consistency` function L171-192 — `()` — validation.
+-  `param_spec_roundtrips_json` function L195-206 — `()` — validation.
+-  `enum_kind_roundtrips_json` function L209-219 — `()` — validation.
 
 #### crates/arawn-feeds/src/registry.rs
 
@@ -5419,18 +5420,18 @@
 
 - pub `SpaceArchiveTemplate` struct L51 — `-` — - Attachments.
 -  `NAME` variable L53 — `: &str` — - Attachments.
--  `SpaceArchiveTemplate` type L56-204 — `impl FeedTemplate for SpaceArchiveTemplate` — - Attachments.
+-  `SpaceArchiveTemplate` type L56-207 — `impl FeedTemplate for SpaceArchiveTemplate` — - Attachments.
 -  `name` function L57-59 — `(&self) -> &'static str` — - Attachments.
 -  `validate` function L61-73 — `(&self, params: &TemplateParams) -> Result<(), FeedError>` — - Attachments.
--  `param_schema` function L75-83 — `(&self) -> Vec<crate::param_schema::ParamSpec>` — - Attachments.
--  `defaults` function L85-90 — `(&self, _params: &TemplateParams) -> FeedDefaults` — - Attachments.
--  `run` function L92-181 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &V...` — - Attachments.
--  `discover` function L183-203 — `(&self, ctx: &TemplateCtx) -> Result<Option<Vec<DiscoveryRow>>, FeedError>` — - Attachments.
--  `write_meta` function L206-217 — `(page_dir: &Path, page: &ConfluencePageMeta) -> Result<u64, FeedError>` — - Attachments.
--  `write_body` function L219-229 — `(page_dir: &Path, storage_xml: Option<&str>) -> Result<u64, FeedError>` — - Attachments.
--  `tests` module L232-253 — `-` — - Attachments.
--  `validate_requires_space_key` function L236-246 — `()` — - Attachments.
--  `defaults_use_30min_cadence` function L249-252 — `()` — - Attachments.
+-  `param_schema` function L75-86 — `(&self) -> Vec<crate::param_schema::ParamSpec>` — - Attachments.
+-  `defaults` function L88-93 — `(&self, _params: &TemplateParams) -> FeedDefaults` — - Attachments.
+-  `run` function L95-184 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &V...` — - Attachments.
+-  `discover` function L186-206 — `(&self, ctx: &TemplateCtx) -> Result<Option<Vec<DiscoveryRow>>, FeedError>` — - Attachments.
+-  `write_meta` function L209-220 — `(page_dir: &Path, page: &ConfluencePageMeta) -> Result<u64, FeedError>` — - Attachments.
+-  `write_body` function L222-232 — `(page_dir: &Path, storage_xml: Option<&str>) -> Result<u64, FeedError>` — - Attachments.
+-  `tests` module L235-256 — `-` — - Attachments.
+-  `validate_requires_space_key` function L239-249 — `()` — - Attachments.
+-  `defaults_use_30min_cadence` function L252-255 — `()` — - Attachments.
 
 ### crates/arawn-feeds/src/templates/drive
 
@@ -5811,20 +5812,20 @@
 - pub `ProjectTrackerTemplate` struct L25 — `-` — plus a per-issue `{ last_comment_id, last_history_id }` map.
 -  `NAME` variable L27 — `: &str` — plus a per-issue `{ last_comment_id, last_history_id }` map.
 -  `MAX_RESULTS_PER_RUN` variable L28 — `: u32` — plus a per-issue `{ last_comment_id, last_history_id }` map.
--  `ProjectTrackerTemplate` type L31-207 — `impl FeedTemplate for ProjectTrackerTemplate` — plus a per-issue `{ last_comment_id, last_history_id }` map.
+-  `ProjectTrackerTemplate` type L31-208 — `impl FeedTemplate for ProjectTrackerTemplate` — plus a per-issue `{ last_comment_id, last_history_id }` map.
 -  `name` function L32-34 — `(&self) -> &'static str` — plus a per-issue `{ last_comment_id, last_history_id }` map.
 -  `validate` function L36-46 — `(&self, params: &TemplateParams) -> Result<(), FeedError>` — plus a per-issue `{ last_comment_id, last_history_id }` map.
 -  `register_check` function L48-72 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, ) -> Result<(), FeedError>` — plus a per-issue `{ last_comment_id, last_history_id }` map.
--  `param_schema` function L74-85 — `(&self) -> Vec<crate::param_schema::ParamSpec>` — plus a per-issue `{ last_comment_id, last_history_id }` map.
--  `defaults` function L87-95 — `(&self, _params: &TemplateParams) -> FeedDefaults` — plus a per-issue `{ last_comment_id, last_history_id }` map.
--  `run` function L97-188 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &V...` — plus a per-issue `{ last_comment_id, last_history_id }` map.
--  `discover` function L190-206 — `(&self, ctx: &TemplateCtx) -> Result<Option<Vec<DiscoveryRow>>, FeedError>` — plus a per-issue `{ last_comment_id, last_history_id }` map.
--  `effective_since` function L219-234 — `( cursor_iso: Option<&str>, params_since: Option<&str>, ) -> Option<String>` — Resolve the JQL time-floor for this run.
--  `build_jql` function L236-246 — `(project: &str, since: Option<&str>) -> String` — plus a per-issue `{ last_comment_id, last_history_id }` map.
--  `tests` module L249-301 — `-` — plus a per-issue `{ last_comment_id, last_history_id }` map.
--  `validate_requires_project` function L253-263 — `()` — plus a per-issue `{ last_comment_id, last_history_id }` map.
--  `effective_since_prefers_cursor_then_falls_back_to_params` function L266-291 — `()` — plus a per-issue `{ last_comment_id, last_history_id }` map.
--  `jql_includes_since_when_present` function L294-300 — `()` — plus a per-issue `{ last_comment_id, last_history_id }` map.
+-  `param_schema` function L74-86 — `(&self) -> Vec<crate::param_schema::ParamSpec>` — plus a per-issue `{ last_comment_id, last_history_id }` map.
+-  `defaults` function L88-96 — `(&self, _params: &TemplateParams) -> FeedDefaults` — plus a per-issue `{ last_comment_id, last_history_id }` map.
+-  `run` function L98-189 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &V...` — plus a per-issue `{ last_comment_id, last_history_id }` map.
+-  `discover` function L191-207 — `(&self, ctx: &TemplateCtx) -> Result<Option<Vec<DiscoveryRow>>, FeedError>` — plus a per-issue `{ last_comment_id, last_history_id }` map.
+-  `effective_since` function L220-235 — `( cursor_iso: Option<&str>, params_since: Option<&str>, ) -> Option<String>` — Resolve the JQL time-floor for this run.
+-  `build_jql` function L237-247 — `(project: &str, since: Option<&str>) -> String` — plus a per-issue `{ last_comment_id, last_history_id }` map.
+-  `tests` module L250-302 — `-` — plus a per-issue `{ last_comment_id, last_history_id }` map.
+-  `validate_requires_project` function L254-264 — `()` — plus a per-issue `{ last_comment_id, last_history_id }` map.
+-  `effective_since_prefers_cursor_then_falls_back_to_params` function L267-292 — `()` — plus a per-issue `{ last_comment_id, last_history_id }` map.
+-  `jql_includes_since_when_present` function L295-301 — `()` — plus a per-issue `{ last_comment_id, last_history_id }` map.
 
 ### crates/arawn-feeds/src/templates
 
@@ -5868,17 +5869,17 @@
 
 - pub `ChannelArchiveTemplate` struct L43 — `-` — on one thread doesn't drop the channel cursor or block other threads.
 -  `NAME` variable L45 — `: &str` — on one thread doesn't drop the channel cursor or block other threads.
--  `ChannelArchiveTemplate` type L48-148 — `impl FeedTemplate for ChannelArchiveTemplate` — on one thread doesn't drop the channel cursor or block other threads.
+-  `ChannelArchiveTemplate` type L48-149 — `impl FeedTemplate for ChannelArchiveTemplate` — on one thread doesn't drop the channel cursor or block other threads.
 -  `name` function L49-51 — `(&self) -> &'static str` — on one thread doesn't drop the channel cursor or block other threads.
 -  `validate` function L53-66 — `(&self, params: &TemplateParams) -> Result<(), FeedError>` — on one thread doesn't drop the channel cursor or block other threads.
--  `param_schema` function L68-79 — `(&self) -> Vec<crate::param_schema::ParamSpec>` — on one thread doesn't drop the channel cursor or block other threads.
--  `defaults` function L81-86 — `(&self, _params: &TemplateParams) -> FeedDefaults` — on one thread doesn't drop the channel cursor or block other threads.
--  `run` function L88-114 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &V...` — on one thread doesn't drop the channel cursor or block other threads.
--  `discover` function L116-147 — `(&self, ctx: &TemplateCtx) -> Result<Option<Vec<DiscoveryRow>>, FeedError>` — on one thread doesn't drop the channel cursor or block other threads.
--  `tests` module L151-179 — `-` — on one thread doesn't drop the channel cursor or block other threads.
--  `validate_rejects_missing_channel` function L156-160 — `()` — on one thread doesn't drop the channel cursor or block other threads.
--  `validate_rejects_empty_channel` function L163-169 — `()` — on one thread doesn't drop the channel cursor or block other threads.
--  `validate_accepts_named_or_id_channel` function L172-178 — `()` — on one thread doesn't drop the channel cursor or block other threads.
+-  `param_schema` function L68-80 — `(&self) -> Vec<crate::param_schema::ParamSpec>` — on one thread doesn't drop the channel cursor or block other threads.
+-  `defaults` function L82-87 — `(&self, _params: &TemplateParams) -> FeedDefaults` — on one thread doesn't drop the channel cursor or block other threads.
+-  `run` function L89-115 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &V...` — on one thread doesn't drop the channel cursor or block other threads.
+-  `discover` function L117-148 — `(&self, ctx: &TemplateCtx) -> Result<Option<Vec<DiscoveryRow>>, FeedError>` — on one thread doesn't drop the channel cursor or block other threads.
+-  `tests` module L152-180 — `-` — on one thread doesn't drop the channel cursor or block other threads.
+-  `validate_rejects_missing_channel` function L157-161 — `()` — on one thread doesn't drop the channel cursor or block other threads.
+-  `validate_rejects_empty_channel` function L164-170 — `()` — on one thread doesn't drop the channel cursor or block other threads.
+-  `validate_accepts_named_or_id_channel` function L173-179 — `()` — on one thread doesn't drop the channel cursor or block other threads.
 
 #### crates/arawn-feeds/src/templates/slack/common.rs
 
@@ -8492,9 +8493,9 @@
 - pub `FeedDiscoverRow` struct L334-343 — `{ label: String, hint: Option<String>, params: serde_json::Value }` — One pickable row from `feed_discover`.
 - pub `FeedDiscoverDto` struct L349-353 — `{ template: String, picker_supported: bool, rows: Vec<FeedDiscoverRow> }` — Response from `feed_discover`.
 - pub `FeedParamKindDto` enum L361-369 — `Text | Int | Bool | Path | List | Since | Enum` — The kind of a feed parameter — drives which widget the `/watch` modal
-- pub `FeedParamSpecDto` struct L374-382 — `{ key: String, label: String, kind: FeedParamKindDto, required: bool, default: O...` — One declared parameter of a feed template.
-- pub `FeedTemplateInfo` struct L386-389 — `{ name: String, description: String }` — One template in the `/watch` modal's stage-1 picker.
-- pub `FeedSchemaDto` struct L395-399 — `{ template: String, params: Vec<FeedParamSpecDto>, default_cadence: String }` — Response from `feed_schema`: the form definition for one template.
+- pub `FeedParamSpecDto` struct L374-386 — `{ key: String, label: String, kind: FeedParamKindDto, required: bool, default: O...` — One declared parameter of a feed template.
+- pub `FeedTemplateInfo` struct L390-393 — `{ name: String, description: String }` — One template in the `/watch` modal's stage-1 picker.
+- pub `FeedSchemaDto` struct L399-403 — `{ template: String, params: Vec<FeedParamSpecDto>, default_cadence: String }` — Response from `feed_schema`: the form definition for one template.
 
 ### crates/arawn-steward/src
 
@@ -10005,46 +10006,60 @@
 
 - pub `TemplateChoice` struct L34-37 — `{ name: String, description: String }` — One template the user can pick in stage 1.
 - pub `WatchStage` enum L41-44 — `PickTemplate | FillForm` — Which stage of the flow the modal is in.
-- pub `FieldState` struct L50-53 — `{ spec: FeedParamSpecDto, value: String }` — A single editable form row.
-- pub `WatchModalState` struct L98-112 — `{ stage: WatchStage, templates: Vec<TemplateChoice>, template_index: usize, temp...` — State for the `/watch` registration modal.
-- pub `WatchOutcome` enum L116-130 — `None | TemplatePicked | Submit | Cancel` — What the event loop should do after a key press.
-- pub `new` function L134-146 — `(mut templates: Vec<TemplateChoice>) -> Self` — Open at stage 1 with the given template list.
-- pub `enter_form` function L151-180 — `( &mut self, template: &str, params: Vec<FeedParamSpecDto>, default_cadence: &st...` — Transition into the form once the schema has been fetched.
-- pub `handle_key` function L186-191 — `(&mut self, key: KeyEvent) -> WatchOutcome` — `feed_register` RPCs.
-- pub `render_watch_modal` function L381-412 — `(state: &WatchModalState, frame: &mut Frame)` — `feed_register` RPCs.
+- pub `DiscoveryChoice` struct L49-53 — `{ label: String, hint: Option<String>, value: String }` — One provider-discovered choice for a discoverable field (T-F).
+- pub `FieldState` struct L59-65 — `{ spec: FeedParamSpecDto, value: String, choices: Option<Vec<DiscoveryChoice>> }` — A single editable form row.
+- pub `PickerState` struct L117-120 — `{ field: usize, index: usize }` — Active discovery sub-screen: which field it's choosing for + cursor.
+- pub `WatchModalState` struct L123-139 — `{ stage: WatchStage, templates: Vec<TemplateChoice>, template_index: usize, temp...` — State for the `/watch` registration modal.
+- pub `WatchOutcome` enum L143-161 — `None | TemplatePicked | Submit | Discover | Cancel` — What the event loop should do after a key press.
+- pub `new` function L165-178 — `(mut templates: Vec<TemplateChoice>) -> Self` — Open at stage 1 with the given template list.
+- pub `enter_form` function L183-213 — `( &mut self, template: &str, params: Vec<FeedParamSpecDto>, default_cadence: &st...` — Transition into the form once the schema has been fetched.
+- pub `set_field_choices` function L218-231 — `(&mut self, field_key: &str, choices: Vec<DiscoveryChoice>)` — Feed provider-discovered rows into a field (called by the event loop
+- pub `handle_key` function L237-242 — `(&mut self, key: KeyEvent) -> WatchOutcome` — `feed_register` RPCs.
+- pub `render_watch_modal` function L506-545 — `(state: &WatchModalState, frame: &mut Frame)` — `feed_register` RPCs.
 -  `FEED_ID_KEY` variable L29 — `: &str` — Sentinel keys for the two synthetic fields that aren't template params.
 -  `CADENCE_KEY` variable L30 — `: &str` — `feed_register` RPCs.
--  `FieldState` type L55-95 — `= FieldState` — `feed_register` RPCs.
--  `from_spec` function L56-69 — `(spec: FeedParamSpecDto) -> Self` — `feed_register` RPCs.
--  `synthetic` function L71-83 — `(key: &str, label: &str, required: bool, value: String, help: &str) -> Self` — `feed_register` RPCs.
--  `is_bool` function L85-87 — `(&self) -> bool` — `feed_register` RPCs.
--  `enum_values` function L89-94 — `(&self) -> Option<&[String]>` — `feed_register` RPCs.
--  `WatchModalState` type L132-344 — `= WatchModalState` — `feed_register` RPCs.
--  `focused_field` function L182-184 — `(&mut self) -> Option<&mut FieldState>` — `feed_register` RPCs.
--  `handle_pick_key` function L193-212 — `(&mut self, key: KeyEvent) -> WatchOutcome` — `feed_register` RPCs.
--  `handle_form_key` function L214-268 — `(&mut self, key: KeyEvent) -> WatchOutcome` — `feed_register` RPCs.
--  `cycle_focused` function L271-290 — `(&mut self, forward: bool)` — Advance a bool toggle or enum selector on the focused field.
--  `build_submit` function L294-343 — `(&mut self) -> WatchOutcome` — Validate + coerce all fields into a `feed_register` payload, or return
--  `coerce_param` function L348-379 — `(spec: &FeedParamSpecDto, raw: &str) -> Result<Option<Value>, String>` — Coerce a raw field value into JSON per its kind.
--  `render_pick_lines` function L414-444 — `(state: &WatchModalState) -> Vec<Line<'static>>` — `feed_register` RPCs.
--  `render_form_lines` function L446-506 — `(state: &WatchModalState) -> Vec<Line<'static>>` — `feed_register` RPCs.
--  `render_field_value` function L509-522 — `(f: &FieldState) -> String` — How a field's current value reads on screen (with a caret on text fields).
--  `centered_rect` function L524-533 — `(width: u16, height: u16, area: Rect) -> Rect` — `feed_register` RPCs.
--  `tests` module L536-774 — `-` — `feed_register` RPCs.
--  `key` function L539-541 — `(code: KeyCode) -> KeyEvent` — `feed_register` RPCs.
--  `typ` function L543-547 — `(state: &mut WatchModalState, s: &str)` — `feed_register` RPCs.
--  `spec` function L549-558 — `(key: &str, kind: FeedParamKindDto, required: bool, default: Option<Value>) -> F...` — `feed_register` RPCs.
--  `fs_form` function L560-580 — `() -> WatchModalState` — `feed_register` RPCs.
--  `pick_stage_navigates_and_selects` function L583-594 — `()` — `feed_register` RPCs.
--  `enter_form_seeds_feed_id_params_and_cadence` function L597-608 — `()` — `feed_register` RPCs.
--  `submit_blocked_until_required_filled` function L611-621 — `()` — `feed_register` RPCs.
--  `submit_payload_matches_text_command_shape` function L624-642 — `()` — `feed_register` RPCs.
--  `bool_field_toggles_on_space_and_arrows` function L645-652 — `()` — `feed_register` RPCs.
--  `list_field_splits_on_whitespace_and_commas` function L655-673 — `()` — `feed_register` RPCs.
--  `int_validation_rejects_non_numbers` function L676-691 — `()` — `feed_register` RPCs.
--  `changed_cadence_becomes_override` function L694-710 — `()` — `feed_register` RPCs.
--  `submit_is_wire_compatible_with_feed_register` function L718-765 — `()` — End-to-end shape check (ARAWN-I-0058 T-E): a full modal flow — pick a
--  `esc_cancels_in_both_stages` function L768-773 — `()` — `feed_register` RPCs.
+-  `FieldState` type L67-113 — `= FieldState` — `feed_register` RPCs.
+-  `from_spec` function L68-85 — `(spec: FeedParamSpecDto) -> Self` — `feed_register` RPCs.
+-  `synthetic` function L87-101 — `(key: &str, label: &str, required: bool, value: String, help: &str) -> Self` — `feed_register` RPCs.
+-  `is_bool` function L103-105 — `(&self) -> bool` — `feed_register` RPCs.
+-  `enum_values` function L107-112 — `(&self) -> Option<&[String]>` — `feed_register` RPCs.
+-  `WatchModalState` type L163-469 — `= WatchModalState` — `feed_register` RPCs.
+-  `focused_field` function L233-235 — `(&mut self) -> Option<&mut FieldState>` — `feed_register` RPCs.
+-  `handle_pick_key` function L244-263 — `(&mut self, key: KeyEvent) -> WatchOutcome` — `feed_register` RPCs.
+-  `handle_form_key` function L265-327 — `(&mut self, key: KeyEvent) -> WatchOutcome` — `feed_register` RPCs.
+-  `cycle_focused` function L330-349 — `(&mut self, forward: bool)` — Advance a bool toggle or enum selector on the focused field.
+-  `focused_is_discoverable` function L351-355 — `(&self) -> bool` — `feed_register` RPCs.
+-  `open_picker` function L359-377 — `(&mut self) -> WatchOutcome` — Open the discovery pick-list for the focused field: use cached choices
+-  `handle_picker_key` function L380-415 — `(&mut self, key: KeyEvent) -> WatchOutcome` — Keys while the discovery pick-list is open.
+-  `build_submit` function L419-468 — `(&mut self) -> WatchOutcome` — Validate + coerce all fields into a `feed_register` payload, or return
+-  `coerce_param` function L473-504 — `(spec: &FeedParamSpecDto, raw: &str) -> Result<Option<Value>, String>` — Coerce a raw field value into JSON per its kind.
+-  `render_picker_lines` function L548-592 — `(state: &WatchModalState) -> Vec<Line<'static>>` — The discovery pick-list sub-screen (a focused field's provider choices).
+-  `render_pick_lines` function L594-624 — `(state: &WatchModalState) -> Vec<Line<'static>>` — `feed_register` RPCs.
+-  `render_form_lines` function L626-686 — `(state: &WatchModalState) -> Vec<Line<'static>>` — `feed_register` RPCs.
+-  `render_field_value` function L689-704 — `(f: &FieldState) -> String` — How a field's current value reads on screen (with a caret on text fields).
+-  `centered_rect` function L706-715 — `(width: u16, height: u16, area: Rect) -> Rect` — `feed_register` RPCs.
+-  `tests` module L718-1043 — `-` — `feed_register` RPCs.
+-  `key` function L721-723 — `(code: KeyCode) -> KeyEvent` — `feed_register` RPCs.
+-  `typ` function L725-729 — `(state: &mut WatchModalState, s: &str)` — `feed_register` RPCs.
+-  `spec` function L731-741 — `(key: &str, kind: FeedParamKindDto, required: bool, default: Option<Value>) -> F...` — `feed_register` RPCs.
+-  `spec_discoverable` function L743-753 — `(key: &str) -> FeedParamSpecDto` — `feed_register` RPCs.
+-  `fs_form` function L755-775 — `() -> WatchModalState` — `feed_register` RPCs.
+-  `pick_stage_navigates_and_selects` function L778-789 — `()` — `feed_register` RPCs.
+-  `enter_form_seeds_feed_id_params_and_cadence` function L792-803 — `()` — `feed_register` RPCs.
+-  `submit_blocked_until_required_filled` function L806-816 — `()` — `feed_register` RPCs.
+-  `submit_payload_matches_text_command_shape` function L819-837 — `()` — `feed_register` RPCs.
+-  `bool_field_toggles_on_space_and_arrows` function L840-847 — `()` — `feed_register` RPCs.
+-  `list_field_splits_on_whitespace_and_commas` function L850-868 — `()` — `feed_register` RPCs.
+-  `int_validation_rejects_non_numbers` function L871-886 — `()` — `feed_register` RPCs.
+-  `changed_cadence_becomes_override` function L889-905 — `()` — `feed_register` RPCs.
+-  `submit_is_wire_compatible_with_feed_register` function L913-960 — `()` — End-to-end shape check (ARAWN-I-0058 T-E): a full modal flow — pick a
+-  `discoverable_form` function L962-970 — `() -> WatchModalState` — `feed_register` RPCs.
+-  `choices` function L972-977 — `() -> Vec<DiscoveryChoice>` — `feed_register` RPCs.
+-  `enter_on_discoverable_field_requests_discovery_then_picks` function L980-999 — `()` — `feed_register` RPCs.
+-  `cached_choices_open_picker_without_refetch` function L1002-1010 — `()` — `feed_register` RPCs.
+-  `empty_discovery_falls_back_to_free_text` function L1013-1022 — `()` — `feed_register` RPCs.
+-  `esc_in_picker_returns_to_form_without_cancelling` function L1025-1034 — `()` — `feed_register` RPCs.
+-  `esc_cancels_in_both_stages` function L1037-1042 — `()` — `feed_register` RPCs.
 
 #### crates/arawn-tui/src/width.rs
 
@@ -10298,9 +10313,13 @@
 
 #### crates/arawn-tui/src/event_loop/watch.rs
 
--  `open_watch_modal` function L17-38 — `(client: &mut WsClient, app: &mut App)` — Fetch the template catalog and open the modal at stage 1.
--  `handle_watch_overlay_key` function L40-106 — `( client: &mut WsClient, app: &mut App, key: crossterm::event::KeyEvent, )` — is pure state — all I/O lives here.
--  `close_with_message` function L108-111 — `(app: &mut App, msg: String)` — is pure state — all I/O lives here.
+-  `discovery_choices` function L18-37 — `(value: &serde_json::Value, field_key: &str) -> Vec<DiscoveryChoice>` — Map a `feed_discover` response into pick-list choices for `field_key`: each
+-  `open_watch_modal` function L41-62 — `(client: &mut WsClient, app: &mut App)` — Fetch the template catalog and open the modal at stage 1.
+-  `handle_watch_overlay_key` function L64-145 — `( client: &mut WsClient, app: &mut App, key: crossterm::event::KeyEvent, )` — is pure state — all I/O lives here.
+-  `close_with_message` function L147-150 — `(app: &mut App, msg: String)` — is pure state — all I/O lives here.
+-  `tests` module L153-181 — `-` — is pure state — all I/O lives here.
+-  `maps_discover_rows_to_choices_for_the_field` function L158-174 — `()` — is pure state — all I/O lives here.
+-  `non_picker_supported_yields_no_choices` function L177-180 — `()` — is pure state — all I/O lives here.
 
 ### crates/arawn-tui/src/render
 

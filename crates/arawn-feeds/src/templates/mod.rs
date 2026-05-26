@@ -135,7 +135,7 @@ mod param_schema_tests {
         let keys: HashSet<&str> = schema.iter().map(|s| s.key.as_str()).collect();
         assert_eq!(
             keys,
-            HashSet::from(["root", "recursive", "include", "exclude"]),
+            HashSet::from(["root", "recursive", "include", "exclude", "copy_files"]),
             "filesystem schema keys drifted from FilesystemFeedParams"
         );
         let root = schema.iter().find(|s| s.key == "root").unwrap();

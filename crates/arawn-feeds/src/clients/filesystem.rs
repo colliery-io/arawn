@@ -58,11 +58,26 @@ pub struct FilesystemFeedParams {
     pub include: Vec<String>,
     #[serde(default = "default_exclude")]
     pub exclude: Vec<String>,
+    /// When true, each ingested file is mirrored into `<feed_dir>/files/` so
+    /// watched content stays available even if the source (Google Drive,
+    /// external disk) is later evicted/unplugged. Deletions are mirrored.
+    /// Defaults to true — durability is the point of watching a folder.
+    #[serde(default = "default_copy_files")]
+    pub copy_files: bool,
 }
 
 fn default_recursive() -> bool {
     true
 }
+
+fn default_copy_files() -> bool {
+    true
+}
+
+/// Files larger than this are not copied (a signal is still emitted). Keeps a
+/// stray large/binary file from blowing up the feed dir; the feed is designed
+/// for raw text drops.
+const MAX_COPY_BYTES: u64 = 25 * 1024 * 1024;
 
 fn default_include() -> Vec<String> {
     vec!["**/*".to_string()]
@@ -89,6 +104,7 @@ impl Default for FilesystemFeedParams {
             recursive: default_recursive(),
             include: default_include(),
             exclude: default_exclude(),
+            copy_files: default_copy_files(),
         }
     }
 }
@@ -169,6 +185,14 @@ impl FeedTemplate for FilesystemFeedTemplate {
                 ]),
                 "Glob patterns that exclude matches; exclude wins over include.",
             ),
+            ParamSpec::optional(
+                "copy_files",
+                "Keep a local copy",
+                ParamKind::Bool,
+                serde_json::json!(true),
+                "Mirror ingested files into arawn so they stay available if the source \
+                 (Drive, external disk) goes away. Deletions are mirrored.",
+            ),
         ]
     }
 
@@ -216,6 +240,16 @@ impl FeedTemplate for FilesystemFeedTemplate {
                     FeedError::Storage(format!("write {}: {e}", log_path.display()))
                 })?;
                 bytes_written += body.len() as u64;
+            }
+        }
+
+        // Durable mirror: copy created/modified files into <feed_dir>/files/,
+        // remove the copy on delete. Only the per-file diff drives this — a
+        // fully-unavailable root makes `scan` error out above, so an
+        // unplugged/evicted source never reaches here and copies are retained.
+        if parsed.copy_files {
+            for s in &signals {
+                bytes_written += sync_copy(feed_dir, s);
             }
         }
 
@@ -360,6 +394,58 @@ fn signal(root: &Path, path: &Path, event: &str, fp: Option<&FileFingerprint>) -
         "size_bytes": fp.map(|f| f.size),
         "mtime": fp.map(|f| f.mtime),
     })
+}
+
+/// Apply one signal to the durable mirror under `<feed_dir>/files/`.
+///
+/// - `created` / `modified`: copy the source file to `files/<rel_path>` (skip +
+///   warn if it exceeds [`MAX_COPY_BYTES`]). Returns bytes copied.
+/// - `deleted`: remove `files/<rel_path>` (mirror the deletion).
+///
+/// All failures are non-fatal: a copy that can't be made is logged and the
+/// scan/signal still stands. Returns the number of bytes copied (0 otherwise).
+fn sync_copy(feed_dir: &Path, signal: &Value) -> u64 {
+    let event = signal.get("event").and_then(Value::as_str).unwrap_or("");
+    let rel = signal.get("rel_path").and_then(Value::as_str).unwrap_or("");
+    if rel.is_empty() {
+        return 0;
+    }
+    let dest = feed_dir.join("files").join(rel);
+    match event {
+        "created" | "modified" => {
+            let size = signal.get("size_bytes").and_then(Value::as_u64).unwrap_or(0);
+            if size > MAX_COPY_BYTES {
+                tracing::warn!(rel, size, cap = MAX_COPY_BYTES, "filesystem feed: skipping oversize file copy");
+                return 0;
+            }
+            let Some(src) = signal.get("path").and_then(Value::as_str) else {
+                return 0;
+            };
+            if let Some(parent) = dest.parent()
+                && let Err(e) = std::fs::create_dir_all(parent)
+            {
+                tracing::warn!(error = %e, rel, "filesystem feed: could not create copy dir");
+                return 0;
+            }
+            match std::fs::copy(src, &dest) {
+                Ok(n) => n,
+                Err(e) => {
+                    tracing::warn!(error = %e, src, "filesystem feed: file copy failed");
+                    0
+                }
+            }
+        }
+        "deleted" => {
+            // Mirror the deletion. Missing copy is fine (idempotent).
+            if let Err(e) = std::fs::remove_file(&dest)
+                && e.kind() != std::io::ErrorKind::NotFound
+            {
+                tracing::warn!(error = %e, rel, "filesystem feed: could not remove mirrored copy");
+            }
+            0
+        }
+        _ => 0,
+    }
 }
 
 /// Synchronous, no-IO-beyond-stat validation of filesystem params.
@@ -694,5 +780,88 @@ mod tests {
             .unwrap();
         assert_eq!(outcome2.summary.items_written, 0);
         assert_eq!(outcome2.status, "no-changes");
+    }
+
+    #[tokio::test]
+    async fn run_copies_files_into_feed_dir_by_default() {
+        let watched = tempfile::tempdir().unwrap();
+        write_file(watched.path(), "sub/note.txt", "hello world");
+        let feed_dir = tempfile::tempdir().unwrap();
+        let template = FilesystemFeedTemplate;
+        let params = TemplateParams::new(
+            serde_json::to_value(params_for(watched.path().to_path_buf())).unwrap(),
+        );
+        let ctx = TemplateCtx::noop();
+
+        template
+            .run(&ctx, &params, feed_dir.path(), &Value::Null)
+            .await
+            .unwrap();
+
+        let copied = feed_dir.path().join("files").join("sub/note.txt");
+        assert!(copied.exists(), "file should be mirrored into the feed dir");
+        assert_eq!(std::fs::read_to_string(&copied).unwrap(), "hello world");
+    }
+
+    #[tokio::test]
+    async fn run_mirrors_source_deletion() {
+        let watched = tempfile::tempdir().unwrap();
+        write_file(watched.path(), "note.txt", "data");
+        let feed_dir = tempfile::tempdir().unwrap();
+        let template = FilesystemFeedTemplate;
+        let params = TemplateParams::new(
+            serde_json::to_value(params_for(watched.path().to_path_buf())).unwrap(),
+        );
+        let ctx = TemplateCtx::noop();
+
+        let outcome = template
+            .run(&ctx, &params, feed_dir.path(), &Value::Null)
+            .await
+            .unwrap();
+        let copied = feed_dir.path().join("files").join("note.txt");
+        assert!(copied.exists());
+
+        // Delete at source; the root is still present so this is a genuine
+        // per-file deletion → the mirror copy is removed.
+        std::fs::remove_file(watched.path().join("note.txt")).unwrap();
+        template
+            .run(&ctx, &params, feed_dir.path(), &outcome.cursor)
+            .await
+            .unwrap();
+        assert!(!copied.exists(), "deletion should be mirrored");
+    }
+
+    #[tokio::test]
+    async fn run_skips_copy_when_disabled() {
+        let watched = tempfile::tempdir().unwrap();
+        write_file(watched.path(), "note.txt", "data");
+        let feed_dir = tempfile::tempdir().unwrap();
+        let template = FilesystemFeedTemplate;
+        let mut p = params_for(watched.path().to_path_buf());
+        p.copy_files = false;
+        let params = TemplateParams::new(serde_json::to_value(p).unwrap());
+        let ctx = TemplateCtx::noop();
+
+        template
+            .run(&ctx, &params, feed_dir.path(), &Value::Null)
+            .await
+            .unwrap();
+        assert!(
+            !feed_dir.path().join("files").exists(),
+            "no copy dir when copy_files = false"
+        );
+    }
+
+    #[test]
+    fn sync_copy_skips_oversize_files() {
+        let feed_dir = tempfile::tempdir().unwrap();
+        let sig = json!({
+            "event": "created",
+            "rel_path": "big.bin",
+            "path": "/nonexistent/big.bin",
+            "size_bytes": MAX_COPY_BYTES + 1,
+        });
+        assert_eq!(sync_copy(feed_dir.path(), &sig), 0);
+        assert!(!feed_dir.path().join("files").join("big.bin").exists());
     }
 }

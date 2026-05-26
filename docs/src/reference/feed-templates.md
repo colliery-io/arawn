@@ -351,7 +351,7 @@ Watch a local folder and emit a signal whenever a text file is created, modified
 | Field | Value |
 |---|---|
 | Required | `root: string` (absolute path to the folder to watch) |
-| Optional | `recursive: bool` (default `true`), `include: [string]` (glob list, default `["**/*"]`), `exclude: [string]` (glob list, default below) |
+| Optional | `recursive: bool` (default `true`), `include: [string]` (glob list, default `["**/*"]`), `exclude: [string]` (glob list, default below), `copy_files: bool` (default `true`) |
 | Default cadence | `*/15 * * * *` |
 | Auto-create | No — use `/watch filesystem/folder root=/path/to/notes` |
 
@@ -360,8 +360,23 @@ Default excludes: `.git/**`, `target/**`, `node_modules/**`, `.venv/**`, `__pyca
 ```text
 filesystem/folder/<feed_id>/
   ├── meta.json          # cursor: { files: { <abs_path>: { mtime, size } } }
-  └── signals.jsonl      # append-only, one change event per line
+  ├── signals.jsonl      # append-only, one change event per line
+  └── files/<rel_path>   # durable copy of each ingested file (copy_files)
 ```
+
+**Durable local copy (`copy_files`, default on).** Each created/modified file is
+mirrored into `<feed_dir>/files/<rel_path>` so watched content stays available
+even if the source goes away — the common case being detachable / sync-backed
+storage (Google Drive, Dropbox, an external disk). Notes:
+
+- Deletions are **mirrored**: when a file is genuinely removed while the root is
+  still readable, its copy is removed too.
+- An **unavailable root** (drive unplugged, volume unmounted) makes the scan
+  error out *before* diffing, so it is **not** seen as mass deletion — existing
+  copies are retained until the source returns.
+- Files larger than 25 MB are skipped (a signal still fires); the feed targets
+  raw text drops, not large binaries.
+- Set `copy_files=false` to index in place without keeping a copy.
 
 Each `signals.jsonl` line is one change event:
 

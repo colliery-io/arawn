@@ -231,7 +231,7 @@ mod tests {
             .map(param_spec_to_dto)
             .collect();
         let keys: Vec<&str> = params.iter().map(|p| p.key.as_str()).collect();
-        assert_eq!(keys, ["root", "recursive", "include", "exclude"]);
+        assert_eq!(keys, ["root", "recursive", "include", "exclude", "copy_files"]);
         assert!(params[0].required && matches!(params[0].kind, K::Path));
 
         let cadence = tpl

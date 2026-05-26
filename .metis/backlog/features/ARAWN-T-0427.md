@@ -4,15 +4,15 @@ level: task
 title: "filesystem/folder: keep a durable local copy of ingested files"
 short_code: "ARAWN-T-0427"
 created_at: 2026-05-26T18:55:22.839540+00:00
-updated_at: 2026-05-26T18:55:22.839540+00:00
+updated_at: 2026-05-26T21:54:14.391486+00:00
 parent: 
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/backlog"
   - "#feature"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -63,37 +63,39 @@ availability.
 
 ## Acceptance Criteria
 
-- [ ] On created/modified signals, the feed writes a copy of the file under the
-      feed's data dir (e.g. `<feed_dir>/files/<rel_path>` or a content-addressed
-      store) before/alongside emitting the signal.
-- [ ] Copies survive the source disappearing: after the watched root is
-      unmounted/evicted/deleted, previously-ingested files are still readable
-      from arawn's copy.
-- [ ] Deterministic, bounded behavior: a configurable max file size and/or total
-      cap so a huge tree can't fill the disk; oversize files are skipped with a
-      logged reason (and still produce a signal).
-- [ ] Deletion policy decided + implemented: when the source file is deleted,
-      does the local copy stay (archival) or get removed? (Lean: **retain** —
-      durability is the whole point — but make it explicit and tested.)
-- [ ] Re-copy is idempotent / fingerprint-gated: unchanged files aren't recopied
-      each scan.
-- [ ] Opt-out or opt-in decided (see Open Questions) and documented in
+## Acceptance Criteria
+
+- [x] On created/modified signals, the feed copies the file to
+      `<feed_dir>/files/<rel_path>` (`sync_copy`), parent dirs created as needed.
+- [x] Copies survive source **unavailability**: an unmounted/unplugged root
+      makes `scan()` error out before diffing, so no deletions fire and copies
+      are retained until the source returns. (Genuine per-file deletion while the
+      root is readable is mirrored — see below.)
+- [x] Bounded: per-file `MAX_COPY_BYTES` = 25 MB; oversize files are skipped with
+      a `warn!` and still produce a signal. (No total cap in v1.)
+- [x] Deletion policy: **mirror** (user decision) — a deleted source file removes
+      its copy; idempotent if the copy is already gone.
+- [x] Re-copy is signal-gated: only files that produced a created/modified signal
+      this scan are copied; unchanged files emit nothing → no recopy.
+- [x] Default: `copy_files` **on**, opt-out via `copy_files=false`; declared in
+      `param_schema()` (shows in the `/watch` modal); documented in
       `feed-templates.md`.
-- [ ] Unit tests: copy-on-create, no-recopy-on-unchanged, oversize-skip,
-      survives-source-deletion.
+- [x] Tests: copy-on-create (nested path), mirror-delete, copy-disabled,
+      oversize-skip.
 
-## Open Questions / Decisions Needed
+## Decisions (locked with user 2026-05-26)
 
-- **On by default, or a `copy_files` param?** Durability-by-default is friendlier
-  but uses disk; a bool param (default on?) gives control. Needs a `ParamSpec`
-  entry either way (ties into ARAWN-I-0058 schema).
-- **Layout**: mirror the tree (`files/<rel_path>`) — human-browsable — vs
-  content-addressed (`blobs/<hash>`) with the path map in the cursor —
-  dedups identical content, immune to renames. Lean mirror for transcripts.
-- **Relationship to the projection**: should `body_text` read from the local
-  copy (removing the 256 KB / text-only limitation), making the copy the
-  source of truth for indexing too? Likely yes — unifies the two.
-- **Size cap defaults** and whether to cap total feed-dir size.
+- **On by default, opt-out** via `copy_files: bool` (serde default true) +
+  a `ParamKind::Bool` schema entry.
+- **Layout**: mirror the tree (`files/<rel_path>`); content-addressed store
+  rejected as overkill for v1.
+- **Deletion**: mirror. The unplug/evict resilience comes from `scan()` erroring
+  on an absent root, not from retention.
+- **Size cap**: per-file 25 MB const, skip + warn; no param, no total cap in v1.
+- **Projection unification** (read `body_text` from the copy, lifting the 256 KB
+  cap): **deferred** — `body_text` already persists in the DB at ingest, so
+  indexing isn't what's at risk; this task is about serving the bytes. Possible
+  follow-up.
 
 ## Dependencies
 Extends the `filesystem/folder` template from ARAWN-I-0057 (completed). The
@@ -109,4 +111,19 @@ Extends the `filesystem/folder` template from ARAWN-I-0057 (completed). The
 
 ## Status Updates
 
-*Filed 2026-05-26 from a user request; not yet scheduled.*
+*Filed 2026-05-26 from a user request.*
+
+**2026-05-26 — Implemented + tested.**
+- `FilesystemFeedParams.copy_files: bool` (serde default true) + `param_schema()`
+  entry (`ParamKind::Bool`, default true) → shows in the `/watch` modal.
+- `run()` mirrors created/modified files into `<feed_dir>/files/<rel_path>` and
+  removes the copy on `deleted`, via `sync_copy()`. `MAX_COPY_BYTES` = 25 MB
+  (skip + warn). Copy failures are non-fatal (logged; signal still stands).
+- Unplug/evict safety: a missing root errors in `scan()` before the diff, so
+  copies are retained rather than mass-deleted.
+- Tests: `run_copies_files_into_feed_dir_by_default`, `run_mirrors_source_deletion`,
+  `run_skips_copy_when_disabled`, `sync_copy_skips_oversize_files`. Updated the
+  two schema-key tests (filesystem now has 5 params). Docs updated in
+  `feed-templates.md`.
+- `angreal check workspace` clean; `cargo test -p arawn-feeds` + service tests
+  green; `angreal docs build` clean.
