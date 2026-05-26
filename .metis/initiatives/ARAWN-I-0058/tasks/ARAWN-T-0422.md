@@ -4,14 +4,14 @@ level: task
 title: "T-B: feed_schema RPC + ws_client wiring"
 short_code: "ARAWN-T-0422"
 created_at: 2026-05-26T17:28:03.896868+00:00
-updated_at: 2026-05-26T17:28:03.896868+00:00
+updated_at: 2026-05-26T18:34:40.206905+00:00
 parent: ARAWN-I-0058
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -51,15 +51,25 @@ Feature — `arawn-service`, RPC dispatch, `arawn-tui/ws_client`.
 
 ## Acceptance Criteria
 
-- [ ] `feed_schema(template)` returns the template's param schema + default
-      cadence; unknown template returns a clean error.
-- [ ] `FeedSchemaDto` serializes/deserializes; `ParamSpec` is shared with
-      `arawn-feeds` (not duplicated).
-- [ ] RPC method registered and reachable; `WsClient::feed_schema` added.
-- [ ] A service-level test fetches the schema for `filesystem/folder` and asserts
-      the expected param keys + default cadence come back.
-- [ ] `feed_discover` and `feed_register` behavior unchanged.
-- [ ] `angreal check workspace` + tests pass.
+## Acceptance Criteria
+
+- [x] `feed_schema(template)` returns the template's param schema + default
+      cadence; unknown template returns a clean error (via `feed_err` mapping of
+      `FeedError`, like `feed_discover`).
+- [x] `FeedSchemaDto` serializes/deserializes. **Deviation:** `ParamSpec` is
+      *mirrored* as `FeedParamSpecDto`/`FeedParamKindDto` in `arawn-service`, not
+      reused — `arawn-service` deliberately doesn't depend on `arawn-feeds`
+      (same pattern as `FeedSummaryDto` mirrors `FeedSummary`). The `arawn` crate
+      maps between them in `param_spec_to_dto`. `arawn-tui` depends on
+      `arawn-service`, not `arawn-feeds`, so this keeps the layering intact.
+- [x] RPC method `feed_schema` registered in ws_server dispatch + methods list;
+      `WsClient::feed_schema` added (returns raw JSON `result`, like the other
+      feed_* client methods).
+- [x] Test asserts the filesystem/folder schema DTO shape (keys root/recursive/
+      include/exclude, root=Path+required) and default cadence `*/15 * * * *`,
+      plus a mapping test covering every `ParamKind` → DTO variant incl. Enum.
+- [x] `feed_discover` and `feed_register` untouched.
+- [x] `angreal check workspace` clean; `cargo test -p arawn` feeds tests pass.
 
 ## Dependencies
 Depends on [[ARAWN-T-0421]] (`ParamSpec`/`param_schema()` must exist). Blocks
@@ -71,4 +81,20 @@ Depends on [[ARAWN-T-0421]] (`ParamSpec`/`param_schema()` must exist). Blocks
 
 ## Status Updates
 
-*To be added during implementation*
+**2026-05-26 — Implemented + tested.**
+- `arawn-feeds/runtime.rs`: added `FeedRuntime::template_schema(name) -> (Vec<ParamSpec>, cadence)`
+  — registry lookup + `param_schema()` + `defaults(empty).cadence`.
+- `arawn-service`: added mirror DTOs `FeedParamKindDto`, `FeedParamSpecDto`,
+  `FeedSchemaDto` (types.rs + lib.rs exports) and the trait method
+  `feed_schema(&str) -> FeedSchemaDto`.
+- `arawn` (local_service): `feed_schema_inner` + trait shell delegate;
+  `param_spec_to_dto` maps feeds→service types. ws_server: `feed_schema`
+  dispatch arm + methods-list entry.
+- `arawn-tui/ws_client.rs`: `WsClient::feed_schema(template)`.
+- Tests in `local_service/feeds.rs`: every-ParamKind mapping (incl. Enum) +
+  filesystem schema DTO shape & default cadence.
+
+**Deviation:** mirrored `ParamSpec` in arawn-service rather than reusing the
+feeds type — arawn-service doesn't depend on arawn-feeds (consistent with
+`FeedSummaryDto`); arawn-tui depends on arawn-service, not arawn-feeds. Keeps
+the layering clean; the `arawn` crate owns the mapping.

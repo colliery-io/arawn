@@ -351,3 +351,42 @@ pub struct FeedDiscoverDto {
     pub picker_supported: bool,
     pub rows: Vec<FeedDiscoverRow>,
 }
+
+/// The kind of a feed parameter — drives which widget the `/watch` modal
+/// renders. Mirror of `arawn_feeds::ParamKind`; the `arawn` crate maps
+/// between them, the same way [`FeedSummaryDto`] mirrors the feeds crate's
+/// `FeedSummary` so the service layer doesn't re-export feeds types.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case", tag = "kind", content = "values")]
+pub enum FeedParamKindDto {
+    Text,
+    Int,
+    Bool,
+    Path,
+    List,
+    Since,
+    Enum(Vec<String>),
+}
+
+/// One declared parameter of a feed template. Mirror of
+/// `arawn_feeds::ParamSpec`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct FeedParamSpecDto {
+    pub key: String,
+    pub label: String,
+    pub kind: FeedParamKindDto,
+    pub required: bool,
+    #[serde(default)]
+    pub default: Option<serde_json::Value>,
+    pub help: String,
+}
+
+/// Response from `feed_schema`: the form definition for one template. The
+/// `/watch` modal renders one field per `params` entry and pre-fills the
+/// advanced cadence field with `default_cadence`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FeedSchemaDto {
+    pub template: String,
+    pub params: Vec<FeedParamSpecDto>,
+    pub default_cadence: String,
+}

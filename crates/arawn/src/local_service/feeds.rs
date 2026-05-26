@@ -128,6 +128,19 @@ impl LocalService {
         })
     }
 
+    pub(super) async fn feed_schema_inner(
+        &self,
+        template: &str,
+    ) -> Result<arawn_service::FeedSchemaDto, ServiceError> {
+        let runtime = self.feed_runtime_or_err()?;
+        let (schema, default_cadence) = runtime.template_schema(template).map_err(feed_err)?;
+        Ok(arawn_service::FeedSchemaDto {
+            template: template.into(),
+            params: schema.into_iter().map(param_spec_to_dto).collect(),
+            default_cadence,
+        })
+    }
+
     pub(super) async fn feed_remove_inner(
         &self,
         feed_id: &str,
@@ -149,5 +162,80 @@ impl LocalService {
             timestamp: chrono::Utc::now().to_rfc3339(),
         });
         Ok(dto)
+    }
+}
+
+/// Map a feeds-crate `ParamSpec` onto the service-layer DTO (the service
+/// layer deliberately doesn't depend on arawn-feeds).
+fn param_spec_to_dto(spec: arawn_feeds::ParamSpec) -> arawn_service::FeedParamSpecDto {
+    use arawn_feeds::ParamKind;
+    use arawn_service::FeedParamKindDto;
+    let kind = match spec.kind {
+        ParamKind::Text => FeedParamKindDto::Text,
+        ParamKind::Int => FeedParamKindDto::Int,
+        ParamKind::Bool => FeedParamKindDto::Bool,
+        ParamKind::Path => FeedParamKindDto::Path,
+        ParamKind::List => FeedParamKindDto::List,
+        ParamKind::Since => FeedParamKindDto::Since,
+        ParamKind::Enum(values) => FeedParamKindDto::Enum(values),
+    };
+    arawn_service::FeedParamSpecDto {
+        key: spec.key,
+        label: spec.label,
+        kind,
+        required: spec.required,
+        default: spec.default,
+        help: spec.help,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::param_spec_to_dto;
+    use arawn_feeds::{ParamKind, ParamSpec, TemplateParams, default_registry};
+    use arawn_service::FeedParamKindDto as K;
+
+    #[test]
+    fn param_spec_to_dto_maps_every_kind() {
+        for (kind, expect) in [
+            (ParamKind::Text, K::Text),
+            (ParamKind::Int, K::Int),
+            (ParamKind::Bool, K::Bool),
+            (ParamKind::Path, K::Path),
+            (ParamKind::List, K::List),
+            (ParamKind::Since, K::Since),
+        ] {
+            let dto = param_spec_to_dto(ParamSpec::required("k", "L", kind, "h"));
+            assert_eq!(dto.kind, expect);
+        }
+        let dto = param_spec_to_dto(ParamSpec::required(
+            "m",
+            "M",
+            ParamKind::Enum(vec!["a".into(), "b".into()]),
+            "h",
+        ));
+        assert_eq!(dto.kind, K::Enum(vec!["a".into(), "b".into()]));
+    }
+
+    /// What `feed_schema` returns for filesystem/folder — exercised via the
+    /// same registry + defaults path `FeedRuntime::template_schema` uses,
+    /// without standing up a full runtime.
+    #[test]
+    fn filesystem_schema_dto_shape() {
+        let reg = default_registry();
+        let tpl = reg.get("filesystem/folder").expect("registered");
+        let params: Vec<_> = tpl
+            .param_schema()
+            .into_iter()
+            .map(param_spec_to_dto)
+            .collect();
+        let keys: Vec<&str> = params.iter().map(|p| p.key.as_str()).collect();
+        assert_eq!(keys, ["root", "recursive", "include", "exclude"]);
+        assert!(params[0].required && matches!(params[0].kind, K::Path));
+
+        let cadence = tpl
+            .defaults(&TemplateParams::new(serde_json::json!({})))
+            .cadence;
+        assert_eq!(cadence, "*/15 * * * *");
     }
 }

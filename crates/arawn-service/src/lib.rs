@@ -10,8 +10,9 @@ use uuid::Uuid;
 
 pub use error::ServiceError;
 pub use types::{
-    CommandInfo, EngineEvent, FeedDiscoverDto, FeedDiscoverRow, FeedRegisterSpec, FeedRemoveDto,
-    FeedSummaryDto, ForgetCandidate, ForgetResult, IntegrationStatus, InventoryItem,
+    CommandInfo, EngineEvent, FeedDiscoverDto, FeedDiscoverRow, FeedParamKindDto, FeedParamSpecDto,
+    FeedRegisterSpec, FeedRemoveDto, FeedSchemaDto, FeedSummaryDto, ForgetCandidate, ForgetResult,
+    IntegrationStatus, InventoryItem,
     MemoryStoreResult, MemoryStoreSummary, MemorySummary, MemoryTypeCount, ModalPromptOption,
     OAuthFlowStarted, PermissionAuditEntry, PermissionModeInfo, PermissionsStatus, PromotionResult,
     ServerCapabilities, ServerNotice, SessionDetail, SessionInfo, WorkflowInfo, WorkstreamInfo,
@@ -189,4 +190,8 @@ pub trait ArawnService: Send + Sync {
     /// (rendered as an empty list with a `picker_supported=false`
     /// flag) when the template doesn't support discovery.
     async fn feed_discover(&self, template: &str) -> Result<FeedDiscoverDto, ServiceError>;
+
+    /// Fetch a template's parameter schema + default cadence. Backs the
+    /// `/watch` modal form (no args). Errors if the template is unknown.
+    async fn feed_schema(&self, template: &str) -> Result<FeedSchemaDto, ServiceError>;
 }

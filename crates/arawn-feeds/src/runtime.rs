@@ -355,6 +355,21 @@ impl FeedRuntime {
         template.discover(&ctx).await
     }
 
+    /// The parameter schema + default cadence for a template, for the
+    /// `/watch` modal form. Errors if the template name isn't registered.
+    /// The cadence is computed from `defaults()` with empty params (every
+    /// template ignores params when picking its default cadence).
+    pub fn template_schema(
+        &self,
+        template_name: &str,
+    ) -> Result<(Vec<crate::param_schema::ParamSpec>, String), FeedError> {
+        let template = self.runtime_ctx.registry.require(template_name)?;
+        let schema = template.param_schema();
+        let params = crate::types::TemplateParams::new(serde_json::json!({}));
+        let cadence = template.defaults(&params).cadence;
+        Ok((schema, cadence))
+    }
+
     /// List every feed in the DB (enabled or paused) with on-disk
     /// status info.
     pub async fn list_summaries(&self) -> Result<Vec<FeedSummary>, FeedError> {

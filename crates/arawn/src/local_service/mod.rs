@@ -744,6 +744,12 @@ impl ArawnService for LocalService {
     ) -> Result<arawn_service::FeedDiscoverDto, ServiceError> {
         self.feed_discover_inner(template).await
     }
+    async fn feed_schema(
+        &self,
+        template: &str,
+    ) -> Result<arawn_service::FeedSchemaDto, ServiceError> {
+        self.feed_schema_inner(template).await
+    }
     async fn feed_remove(
         &self,
         feed_id: &str,

@@ -309,6 +309,23 @@ impl WsClient {
         Ok(result.clone())
     }
 
+    /// Fetch a template's parameter schema + default cadence. Backs the
+    /// `/watch` modal form. Deserialize the result into
+    /// `arawn_service::FeedSchemaDto`.
+    pub async fn feed_schema(
+        &mut self,
+        template: &str,
+    ) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
+        let resp = self
+            .request_response("feed_schema", json!({"template": template}))
+            .await?;
+        if let Some(err) = resp.get("error") {
+            return Err(err["message"].as_str().unwrap_or("unknown error").into());
+        }
+        let result = resp.get("result").ok_or("no result")?;
+        Ok(result.clone())
+    }
+
     /// Decommission a feed by id. Backs `/feeds rm <id>`.
     pub async fn feed_remove(
         &mut self,

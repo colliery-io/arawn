@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-26T17:40:37Z | 412 files | Python, Rust
+> Generated: 2026-05-26T18:07:16Z | 413 files | Python, Rust
 
 ## Project Structure
 
@@ -220,6 +220,7 @@
 │   │   │   ├── layout.rs
 │   │   │   ├── lib.rs
 │   │   │   ├── meta.rs
+│   │   │   ├── param_schema.rs
 │   │   │   ├── registry.rs
 │   │   │   ├── runtime.rs
 │   │   │   ├── store.rs
@@ -4977,12 +4978,13 @@
 - pub `error` module L27 — `-` — retry, audit, single-instance enforcement.
 - pub `layout` module L28 — `-` — retry, audit, single-instance enforcement.
 - pub `meta` module L29 — `-` — retry, audit, single-instance enforcement.
-- pub `registry` module L30 — `-` — retry, audit, single-instance enforcement.
-- pub `runtime` module L31 — `-` — retry, audit, single-instance enforcement.
-- pub `store` module L32 — `-` — retry, audit, single-instance enforcement.
-- pub `template` module L33 — `-` — retry, audit, single-instance enforcement.
-- pub `templates` module L34 — `-` — retry, audit, single-instance enforcement.
-- pub `types` module L35 — `-` — retry, audit, single-instance enforcement.
+- pub `param_schema` module L30 — `-` — retry, audit, single-instance enforcement.
+- pub `registry` module L31 — `-` — retry, audit, single-instance enforcement.
+- pub `runtime` module L32 — `-` — retry, audit, single-instance enforcement.
+- pub `store` module L33 — `-` — retry, audit, single-instance enforcement.
+- pub `template` module L34 — `-` — retry, audit, single-instance enforcement.
+- pub `templates` module L35 — `-` — retry, audit, single-instance enforcement.
+- pub `types` module L36 — `-` — retry, audit, single-instance enforcement.
 
 #### crates/arawn-feeds/src/meta.rs
 
@@ -4998,6 +5000,22 @@
 -  `write_creates_feed_dir_if_missing` function L93-99 — `()` — filesystem.
 -  `atomic_write_does_not_corrupt_on_replace` function L102-116 — `()` — filesystem.
 
+#### crates/arawn-feeds/src/param_schema.rs
+
+- pub `ParamKind` enum L22-46 — `Text | Int | Bool | Path | List | Since | Enum` — The kind of a single parameter — drives which widget the form renders and
+- pub `ParamSpec` struct L50-63 — `{ key: String, label: String, kind: ParamKind, required: bool, default: Option<V...` — One declared parameter of a feed template.
+- pub `required` function L67-76 — `(key: &str, label: &str, kind: ParamKind, help: &str) -> Self` — A required parameter (no default).
+- pub `optional` function L79-88 — `(key: &str, label: &str, kind: ParamKind, default: Value, help: &str) -> Self` — An optional parameter with a pre-filled default.
+- pub `optional_no_default` function L91-100 — `(key: &str, label: &str, kind: ParamKind, help: &str) -> Self` — An optional parameter with no pre-filled default (e.g.
+- pub `since` function L105-113 — `() -> Self` — The shared first-run backfill `since` field.
+- pub `default_matches_kind` function L117-130 — `(&self) -> bool` — True when `default` (if present) is type-consistent with `kind`.
+-  `ParamSpec` type L65-131 — `= ParamSpec` — validation.
+-  `tests` module L134-205 — `-` — validation.
+-  `constructors_set_required_and_default` function L139-153 — `()` — validation.
+-  `default_type_consistency` function L156-177 — `()` — validation.
+-  `param_spec_roundtrips_json` function L180-191 — `()` — validation.
+-  `enum_kind_roundtrips_json` function L194-204 — `()` — validation.
+
 #### crates/arawn-feeds/src/registry.rs
 
 - pub `FeedTemplateRegistry` struct L16-18 — `{ inner: HashMap<&'static str, Arc<dyn FeedTemplate>> }` — Maps template name (`<provider>/<name>`) → impl.
@@ -5007,15 +5025,16 @@
 - pub `require` function L35-39 — `(&self, name: &str) -> Result<Arc<dyn FeedTemplate>, FeedError>` — Look up or return a structured error so callers don't have to
 - pub `names` function L41-43 — `(&self) -> impl Iterator<Item = &'static str> + '_` — name when firing.
 -  `FeedTemplateRegistry` type L20-44 — `= FeedTemplateRegistry` — name when firing.
--  `tests` module L47-99 — `-` — name when firing.
+-  `tests` module L47-102 — `-` — name when firing.
 -  `DummyTemplate` struct L54 — `-` — name when firing.
--  `DummyTemplate` type L57-79 — `impl FeedTemplate for DummyTemplate` — name when firing.
+-  `DummyTemplate` type L57-82 — `impl FeedTemplate for DummyTemplate` — name when firing.
 -  `name` function L58-60 — `(&self) -> &'static str` — name when firing.
 -  `validate` function L61-63 — `(&self, _params: &TemplateParams) -> Result<(), FeedError>` — name when firing.
--  `defaults` function L64-69 — `(&self, _params: &TemplateParams) -> FeedDefaults` — name when firing.
--  `run` function L70-78 — `( &self, _ctx: &crate::template::TemplateCtx, _params: &TemplateParams, _feed_di...` — name when firing.
--  `register_and_lookup_round_trips` function L82-88 — `()` — name when firing.
--  `require_returns_invalid_params_for_unknown_name` function L91-98 — `()` — name when firing.
+-  `param_schema` function L64-66 — `(&self) -> Vec<crate::param_schema::ParamSpec>` — name when firing.
+-  `defaults` function L67-72 — `(&self, _params: &TemplateParams) -> FeedDefaults` — name when firing.
+-  `run` function L73-81 — `( &self, _ctx: &crate::template::TemplateCtx, _params: &TemplateParams, _feed_di...` — name when firing.
+-  `register_and_lookup_round_trips` function L85-91 — `()` — name when firing.
+-  `require_returns_invalid_params_for_unknown_name` function L94-101 — `()` — name when firing.
 
 #### crates/arawn-feeds/src/runtime.rs
 
@@ -5078,16 +5097,16 @@
 
 #### crates/arawn-feeds/src/template.rs
 
-- pub `RunOutcome` struct L20-29 — `{ cursor: Value, summary: RunSummary, status: String }` — Result returned from a single feed run.
-- pub `TemplateCtx` struct L36-38 — `{ clients: Arc<dyn FeedClients> }` — Per-run handle a template uses to reach providers and emit metadata.
-- pub `new` function L41-43 — `(clients: Arc<dyn FeedClients>) -> Self` — use to reach providers and emit logs).
-- pub `noop` function L48-52 — `() -> Self` — Test-only convenience: a ctx where every provider client returns
-- pub `clients` function L54-56 — `(&self) -> &Arc<dyn FeedClients>` — use to reach providers and emit logs).
-- pub `FeedTemplate` interface L65-138 — `{ fn name(), fn validate(), fn register_check(), fn defaults(), fn run(), fn dis...` — One named, parameterized fetch+write recipe owned by an integration.
-- pub `DiscoveryRow` struct L148-153 — `{ label: String, hint: Option<String>, params: Value }` — One pickable choice surfaced by `FeedTemplate::discover`.
--  `TemplateCtx` type L40-57 — `= TemplateCtx` — use to reach providers and emit logs).
--  `register_check` function L93-99 — `( &self, _ctx: &TemplateCtx, _params: &TemplateParams, ) -> Result<(), FeedError...` — Provider-backed check run at first-time registration, after
--  `discover` function L135-137 — `(&self, _ctx: &TemplateCtx) -> Result<Option<Vec<DiscoveryRow>>, FeedError>` — Optional discovery hook for the `/watch` picker.
+- pub `RunOutcome` struct L21-30 — `{ cursor: Value, summary: RunSummary, status: String }` — Result returned from a single feed run.
+- pub `TemplateCtx` struct L37-39 — `{ clients: Arc<dyn FeedClients> }` — Per-run handle a template uses to reach providers and emit metadata.
+- pub `new` function L42-44 — `(clients: Arc<dyn FeedClients>) -> Self` — use to reach providers and emit logs).
+- pub `noop` function L49-53 — `() -> Self` — Test-only convenience: a ctx where every provider client returns
+- pub `clients` function L55-57 — `(&self) -> &Arc<dyn FeedClients>` — use to reach providers and emit logs).
+- pub `FeedTemplate` interface L66-150 — `{ fn name(), fn validate(), fn register_check(), fn defaults(), fn param_schema(...` — One named, parameterized fetch+write recipe owned by an integration.
+- pub `DiscoveryRow` struct L160-165 — `{ label: String, hint: Option<String>, params: Value }` — One pickable choice surfaced by `FeedTemplate::discover`.
+-  `TemplateCtx` type L41-58 — `= TemplateCtx` — use to reach providers and emit logs).
+-  `register_check` function L94-100 — `( &self, _ctx: &TemplateCtx, _params: &TemplateParams, ) -> Result<(), FeedError...` — Provider-backed check run at first-time registration, after
+-  `discover` function L147-149 — `(&self, _ctx: &TemplateCtx) -> Result<Option<Vec<DiscoveryRow>>, FeedError>` — Optional discovery hook for the `/watch` picker.
 
 #### crates/arawn-feeds/src/types.rs
 
@@ -5196,42 +5215,43 @@
 -  `default_exclude` function L71-83 — `() -> Vec<String>` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
 -  `FilesystemFeedParams` type L85-94 — `impl Default for FilesystemFeedParams` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
 -  `default` function L86-93 — `() -> Self` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
--  `FilesystemFeedTemplate` type L123-199 — `impl FeedTemplate for FilesystemFeedTemplate` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `FilesystemFeedTemplate` type L123-240 — `impl FeedTemplate for FilesystemFeedTemplate` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
 -  `name` function L124-126 — `(&self) -> &'static str` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
 -  `validate` function L128-132 — `(&self, params: &TemplateParams) -> Result<(), FeedError>` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
--  `defaults` function L134-139 — `(&self, _params: &TemplateParams) -> FeedDefaults` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
--  `run` function L141-198 — `( &self, _ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &...` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
--  `parse_cursor` function L205-209 — `(cursor: &Value) -> BTreeMap<PathBuf, FileFingerprint>` — Parse a persisted cursor into its fingerprint map.
--  `build_matcher` function L214-225 — `(patterns: &[String]) -> Result<GlobSet, FeedError>` — Compile a list of glob patterns into a [`GlobSet`].
--  `scan` function L230-276 — `( root: &Path, recursive: bool, include: &GlobSet, exclude: &GlobSet, ) -> Resul...` — Walk `root` and build the current fingerprint map for every file
--  `diff` function L282-303 — `( root: &Path, prev: &BTreeMap<PathBuf, FileFingerprint>, curr: &BTreeMap<PathBu...` — Diff the previous fingerprint map against the current one and emit
--  `signal` function L307-322 — `(root: &Path, path: &Path, event: &str, fp: Option<&FileFingerprint>) -> Value` — Build one signal record in the documented shape.
--  `validate_params` function L330-364 — `(p: &FilesystemFeedParams) -> Result<(), FeedError>` — Synchronous, no-IO-beyond-stat validation of filesystem params.
--  `tests` module L367-657 — `-` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
--  `params_for` function L370-375 — `(root: PathBuf) -> FilesystemFeedParams` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
--  `defaults_match_documented_shape` function L378-385 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
--  `params_round_trip_through_serde` function L388-396 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
--  `params_apply_defaults_when_only_root_given` function L399-405 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
--  `cursor_round_trips` function L408-425 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
--  `defaults_use_the_cadence_floor` function L428-432 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
--  `validate_accepts_a_real_deep_directory` function L435-441 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
--  `validate_rejects_relative_root` function L444-450 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
--  `validate_rejects_too_shallow_root` function L453-460 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
--  `validate_rejects_nonexistent_root` function L463-469 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
--  `validate_rejects_non_directory_root` function L472-479 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
--  `validate_rejects_malformed_include_glob` function L482-490 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
--  `validate_rejects_malformed_exclude_glob` function L493-501 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
--  `write_file` function L505-511 — `(dir: &Path, rel: &str, contents: &str)` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
--  `matchers` function L513-517 — `(include: &[&str], exclude: &[&str]) -> (GlobSet, GlobSet)` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
--  `default_matchers` function L519-524 — `() -> (GlobSet, GlobSet)` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
--  `empty_cursor_emits_created_for_each_match` function L527-536 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
--  `unchanged_file_emits_nothing` function L539-546 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
--  `modified_file_emits_modified` function L549-561 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
--  `deleted_file_emits_deleted` function L564-576 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
--  `exclude_glob_skips_matching_files` function L579-587 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
--  `recursive_false_ignores_subdirs` function L590-598 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
--  `cursor_diff_round_trip_through_serde` function L601-612 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
--  `run_writes_signal_jsonl_and_advances_cursor` function L615-656 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `param_schema` function L134-173 — `(&self) -> Vec<crate::param_schema::ParamSpec>` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `defaults` function L175-180 — `(&self, _params: &TemplateParams) -> FeedDefaults` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `run` function L182-239 — `( &self, _ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &...` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `parse_cursor` function L246-250 — `(cursor: &Value) -> BTreeMap<PathBuf, FileFingerprint>` — Parse a persisted cursor into its fingerprint map.
+-  `build_matcher` function L255-266 — `(patterns: &[String]) -> Result<GlobSet, FeedError>` — Compile a list of glob patterns into a [`GlobSet`].
+-  `scan` function L271-317 — `( root: &Path, recursive: bool, include: &GlobSet, exclude: &GlobSet, ) -> Resul...` — Walk `root` and build the current fingerprint map for every file
+-  `diff` function L323-344 — `( root: &Path, prev: &BTreeMap<PathBuf, FileFingerprint>, curr: &BTreeMap<PathBu...` — Diff the previous fingerprint map against the current one and emit
+-  `signal` function L348-363 — `(root: &Path, path: &Path, event: &str, fp: Option<&FileFingerprint>) -> Value` — Build one signal record in the documented shape.
+-  `validate_params` function L371-405 — `(p: &FilesystemFeedParams) -> Result<(), FeedError>` — Synchronous, no-IO-beyond-stat validation of filesystem params.
+-  `tests` module L408-698 — `-` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `params_for` function L411-416 — `(root: PathBuf) -> FilesystemFeedParams` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `defaults_match_documented_shape` function L419-426 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `params_round_trip_through_serde` function L429-437 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `params_apply_defaults_when_only_root_given` function L440-446 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `cursor_round_trips` function L449-466 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `defaults_use_the_cadence_floor` function L469-473 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `validate_accepts_a_real_deep_directory` function L476-482 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `validate_rejects_relative_root` function L485-491 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `validate_rejects_too_shallow_root` function L494-501 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `validate_rejects_nonexistent_root` function L504-510 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `validate_rejects_non_directory_root` function L513-520 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `validate_rejects_malformed_include_glob` function L523-531 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `validate_rejects_malformed_exclude_glob` function L534-542 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `write_file` function L546-552 — `(dir: &Path, rel: &str, contents: &str)` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `matchers` function L554-558 — `(include: &[&str], exclude: &[&str]) -> (GlobSet, GlobSet)` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `default_matchers` function L560-565 — `() -> (GlobSet, GlobSet)` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `empty_cursor_emits_created_for_each_match` function L568-577 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `unchanged_file_emits_nothing` function L580-587 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `modified_file_emits_modified` function L590-602 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `deleted_file_emits_deleted` function L605-617 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `exclude_glob_skips_matching_files` function L620-628 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `recursive_false_ignores_subdirs` function L631-639 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `cursor_diff_round_trip_through_serde` function L642-653 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `run_writes_signal_jsonl_and_advances_cursor` function L656-697 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
 
 #### crates/arawn-feeds/src/clients/github.rs
 
@@ -5363,18 +5383,19 @@
 -  `NAME` variable L52 — `: &str` — - `window_days` (optional, default `7`)
 -  `DEFAULT_CALENDAR_ID` variable L53 — `: &str` — - `window_days` (optional, default `7`)
 -  `DEFAULT_WINDOW_DAYS` variable L54 — `: i64` — - `window_days` (optional, default `7`)
--  `UpcomingArchiveTemplate` type L57-163 — `impl FeedTemplate for UpcomingArchiveTemplate` — - `window_days` (optional, default `7`)
+-  `UpcomingArchiveTemplate` type L57-183 — `impl FeedTemplate for UpcomingArchiveTemplate` — - `window_days` (optional, default `7`)
 -  `name` function L58-60 — `(&self) -> &'static str` — - `window_days` (optional, default `7`)
 -  `validate` function L62-83 — `(&self, params: &TemplateParams) -> Result<(), FeedError>` — - `window_days` (optional, default `7`)
--  `defaults` function L85-93 — `(&self, _params: &TemplateParams) -> FeedDefaults` — - `window_days` (optional, default `7`)
--  `run` function L95-162 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, _cursor: &...` — - `window_days` (optional, default `7`)
--  `sanitize_event_id` function L165-172 — `(id: &str) -> String` — - `window_days` (optional, default `7`)
--  `write_event_file` function L174-186 — `(path: &Path, event: &Value) -> Result<u64, FeedError>` — - `window_days` (optional, default `7`)
--  `tests` module L189-221 — `-` — - `window_days` (optional, default `7`)
--  `validate_accepts_default_params` function L193-197 — `()` — - `window_days` (optional, default `7`)
--  `validate_rejects_bad_window_days` function L200-207 — `()` — - `window_days` (optional, default `7`)
--  `defaults_use_30min_cadence` function L210-213 — `()` — - `window_days` (optional, default `7`)
--  `sanitize_keeps_safe_chars` function L216-220 — `()` — - `window_days` (optional, default `7`)
+-  `param_schema` function L85-103 — `(&self) -> Vec<crate::param_schema::ParamSpec>` — - `window_days` (optional, default `7`)
+-  `defaults` function L105-113 — `(&self, _params: &TemplateParams) -> FeedDefaults` — - `window_days` (optional, default `7`)
+-  `run` function L115-182 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, _cursor: &...` — - `window_days` (optional, default `7`)
+-  `sanitize_event_id` function L185-192 — `(id: &str) -> String` — - `window_days` (optional, default `7`)
+-  `write_event_file` function L194-206 — `(path: &Path, event: &Value) -> Result<u64, FeedError>` — - `window_days` (optional, default `7`)
+-  `tests` module L209-241 — `-` — - `window_days` (optional, default `7`)
+-  `validate_accepts_default_params` function L213-217 — `()` — - `window_days` (optional, default `7`)
+-  `validate_rejects_bad_window_days` function L220-227 — `()` — - `window_days` (optional, default `7`)
+-  `defaults_use_30min_cadence` function L230-233 — `()` — - `window_days` (optional, default `7`)
+-  `sanitize_keeps_safe_chars` function L236-240 — `()` — - `window_days` (optional, default `7`)
 
 ### crates/arawn-feeds/src/templates/confluence
 
@@ -5388,17 +5409,18 @@
 
 - pub `SpaceArchiveTemplate` struct L51 — `-` — - Attachments.
 -  `NAME` variable L53 — `: &str` — - Attachments.
--  `SpaceArchiveTemplate` type L56-194 — `impl FeedTemplate for SpaceArchiveTemplate` — - Attachments.
+-  `SpaceArchiveTemplate` type L56-204 — `impl FeedTemplate for SpaceArchiveTemplate` — - Attachments.
 -  `name` function L57-59 — `(&self) -> &'static str` — - Attachments.
 -  `validate` function L61-73 — `(&self, params: &TemplateParams) -> Result<(), FeedError>` — - Attachments.
--  `defaults` function L75-80 — `(&self, _params: &TemplateParams) -> FeedDefaults` — - Attachments.
--  `run` function L82-171 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &V...` — - Attachments.
--  `discover` function L173-193 — `(&self, ctx: &TemplateCtx) -> Result<Option<Vec<DiscoveryRow>>, FeedError>` — - Attachments.
--  `write_meta` function L196-207 — `(page_dir: &Path, page: &ConfluencePageMeta) -> Result<u64, FeedError>` — - Attachments.
--  `write_body` function L209-219 — `(page_dir: &Path, storage_xml: Option<&str>) -> Result<u64, FeedError>` — - Attachments.
--  `tests` module L222-243 — `-` — - Attachments.
--  `validate_requires_space_key` function L226-236 — `()` — - Attachments.
--  `defaults_use_30min_cadence` function L239-242 — `()` — - Attachments.
+-  `param_schema` function L75-83 — `(&self) -> Vec<crate::param_schema::ParamSpec>` — - Attachments.
+-  `defaults` function L85-90 — `(&self, _params: &TemplateParams) -> FeedDefaults` — - Attachments.
+-  `run` function L92-181 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &V...` — - Attachments.
+-  `discover` function L183-203 — `(&self, ctx: &TemplateCtx) -> Result<Option<Vec<DiscoveryRow>>, FeedError>` — - Attachments.
+-  `write_meta` function L206-217 — `(page_dir: &Path, page: &ConfluencePageMeta) -> Result<u64, FeedError>` — - Attachments.
+-  `write_body` function L219-229 — `(page_dir: &Path, storage_xml: Option<&str>) -> Result<u64, FeedError>` — - Attachments.
+-  `tests` module L232-253 — `-` — - Attachments.
+-  `validate_requires_space_key` function L236-246 — `()` — - Attachments.
+-  `defaults_use_30min_cadence` function L249-252 — `()` — - Attachments.
 
 ### crates/arawn-feeds/src/templates/drive
 
@@ -5422,19 +5444,20 @@
 -  `MAX_DEPTH` variable L65 — `: usize` — Cap recursion to keep a misbehaving folder graph from spinning
 -  `Cursor` struct L68-73 — `{ files: BTreeMap<String, FileEntry> }` — the API ever surprises us.
 -  `FileEntry` struct L76-82 — `{ token: String, path: String }` — the API ever surprises us.
--  `FolderSyncTemplate` type L85-271 — `impl FeedTemplate for FolderSyncTemplate` — the API ever surprises us.
+-  `FolderSyncTemplate` type L85-281 — `impl FeedTemplate for FolderSyncTemplate` — the API ever surprises us.
 -  `name` function L86-88 — `(&self) -> &'static str` — the API ever surprises us.
 -  `validate` function L90-100 — `(&self, params: &TemplateParams) -> Result<(), FeedError>` — the API ever surprises us.
--  `defaults` function L102-107 — `(&self, _params: &TemplateParams) -> FeedDefaults` — the API ever surprises us.
--  `run` function L109-270 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &V...` — the API ever surprises us.
--  `RemoteFile` struct L274-278 — `{ file: DriveFile, relative_path: String }` — the API ever surprises us.
--  `walk` function L282-332 — `( drive: Arc<dyn DriveFeedClient>, folder_id: &'a str, rel_prefix: PathBuf, dept...` — Recursively walk a Drive folder, collecting every file (not
--  `atomic_write` function L334-341 — `(path: &Path, body: &[u8]) -> Result<(), FeedError>` — the API ever surprises us.
--  `safe_remove_file` function L343-355 — `(feed_dir: &Path, path: &Path) -> Result<(), FeedError>` — the API ever surprises us.
--  `prune_empty_dirs` function L357-374 — `(root: &Path)` — the API ever surprises us.
--  `tests` module L377-398 — `-` — the API ever surprises us.
--  `validate_requires_folder` function L381-391 — `()` — the API ever surprises us.
--  `defaults_use_hourly_cadence` function L394-397 — `()` — the API ever surprises us.
+-  `param_schema` function L102-110 — `(&self) -> Vec<crate::param_schema::ParamSpec>` — the API ever surprises us.
+-  `defaults` function L112-117 — `(&self, _params: &TemplateParams) -> FeedDefaults` — the API ever surprises us.
+-  `run` function L119-280 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &V...` — the API ever surprises us.
+-  `RemoteFile` struct L284-288 — `{ file: DriveFile, relative_path: String }` — the API ever surprises us.
+-  `walk` function L292-342 — `( drive: Arc<dyn DriveFeedClient>, folder_id: &'a str, rel_prefix: PathBuf, dept...` — Recursively walk a Drive folder, collecting every file (not
+-  `atomic_write` function L344-351 — `(path: &Path, body: &[u8]) -> Result<(), FeedError>` — the API ever surprises us.
+-  `safe_remove_file` function L353-365 — `(feed_dir: &Path, path: &Path) -> Result<(), FeedError>` — the API ever surprises us.
+-  `prune_empty_dirs` function L367-384 — `(root: &Path)` — the API ever surprises us.
+-  `tests` module L387-408 — `-` — the API ever surprises us.
+-  `validate_requires_folder` function L391-401 — `()` — the API ever surprises us.
+-  `defaults_use_hourly_cadence` function L404-407 — `()` — the API ever surprises us.
 
 #### crates/arawn-feeds/src/templates/drive/mod.rs
 
@@ -5449,16 +5472,17 @@
 -  `DEFAULT_DAYS_BACK` variable L46 — `: i64` — the first run, when the cursor is null.
 -  `MAX_RESULTS_PER_RUN` variable L47 — `: u32` — the first run, when the cursor is null.
 -  `BACKFILL_MAX_RESULTS` variable L51 — `: u32` — Cap used when in backfill mode (cursor null + `since` present).
--  `RecentTemplate` type L54-189 — `impl FeedTemplate for RecentTemplate` — the first run, when the cursor is null.
+-  `RecentTemplate` type L54-203 — `impl FeedTemplate for RecentTemplate` — the first run, when the cursor is null.
 -  `name` function L55-57 — `(&self) -> &'static str` — the first run, when the cursor is null.
 -  `validate` function L59-71 — `(&self, params: &TemplateParams) -> Result<(), FeedError>` — the first run, when the cursor is null.
--  `defaults` function L73-78 — `(&self, _params: &TemplateParams) -> FeedDefaults` — the first run, when the cursor is null.
--  `run` function L80-188 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &V...` — the first run, when the cursor is null.
--  `write_file_metadata` function L191-201 — `(path: &Path, file: &DriveFile) -> Result<u64, FeedError>` — the first run, when the cursor is null.
--  `tests` module L204-225 — `-` — the first run, when the cursor is null.
--  `validate_default_params` function L208-210 — `()` — the first run, when the cursor is null.
--  `validate_rejects_bad_days_back` function L213-218 — `()` — the first run, when the cursor is null.
--  `defaults_use_30min_cadence` function L221-224 — `()` — the first run, when the cursor is null.
+-  `param_schema` function L73-85 — `(&self) -> Vec<crate::param_schema::ParamSpec>` — the first run, when the cursor is null.
+-  `defaults` function L87-92 — `(&self, _params: &TemplateParams) -> FeedDefaults` — the first run, when the cursor is null.
+-  `run` function L94-202 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &V...` — the first run, when the cursor is null.
+-  `write_file_metadata` function L205-215 — `(path: &Path, file: &DriveFile) -> Result<u64, FeedError>` — the first run, when the cursor is null.
+-  `tests` module L218-239 — `-` — the first run, when the cursor is null.
+-  `validate_default_params` function L222-224 — `()` — the first run, when the cursor is null.
+-  `validate_rejects_bad_days_back` function L227-232 — `()` — the first run, when the cursor is null.
+-  `defaults_use_30min_cadence` function L235-238 — `()` — the first run, when the cursor is null.
 
 ### crates/arawn-feeds/src/templates/github
 
@@ -5471,39 +5495,40 @@
 -  `DEFAULT_PER_PAGE` variable L38 — `: u32` — body-hash comparison.
 -  `MAX_PAGES_PER_QUERY` variable L39 — `: u32` — body-hash comparison.
 -  `CLOSED_WINDOW_DAYS` variable L40 — `: i64` — body-hash comparison.
--  `IssuesAndPrsTemplate` type L43-157 — `impl FeedTemplate for IssuesAndPrsTemplate` — body-hash comparison.
+-  `IssuesAndPrsTemplate` type L43-163 — `impl FeedTemplate for IssuesAndPrsTemplate` — body-hash comparison.
 -  `name` function L44-46 — `(&self) -> &'static str` — body-hash comparison.
 -  `validate` function L48-50 — `(&self, _params: &TemplateParams) -> Result<(), FeedError>` — body-hash comparison.
--  `defaults` function L52-57 — `(&self, _params: &TemplateParams) -> FeedDefaults` — body-hash comparison.
--  `run` function L59-152 — `( &self, ctx: &TemplateCtx, _params: &TemplateParams, feed_dir: &Path, _cursor: ...` — body-hash comparison.
--  `discover` function L154-156 — `(&self, _ctx: &TemplateCtx) -> Result<Option<Vec<DiscoveryRow>>, FeedError>` — body-hash comparison.
--  `path_for_item` function L162-178 — `(item: &Value, dir: &Path) -> Option<PathBuf>` — Build the on-disk filename for a `/search/issues` row.
--  `sanitize` function L180-184 — `(s: &str) -> String` — body-hash comparison.
--  `write_json` function L186-196 — `(path: &PathBuf, v: &Value) -> Result<u64, FeedError>` — body-hash comparison.
--  `tests` module L199-409 — `-` — body-hash comparison.
--  `FakeGithub` struct L207-210 — `{ queries: Mutex<Vec<String>>, responses: Mutex<Vec<Vec<Value>>> }` — Fake that records each search query and returns canned items.
--  `FakeGithub` type L213-290 — `impl GithubFeedClient for FakeGithub` — body-hash comparison.
--  `list_notifications` function L214-221 — `( &self, _since: Option<chrono::DateTime<chrono::Utc>>, _per_page: u32, _all: bo...` — body-hash comparison.
--  `search_issues` function L222-234 — `( &self, query: &str, _per_page: u32, _max_pages: u32, ) -> Result<Vec<Value>, F...` — body-hash comparison.
--  `list_repo_commits` function L236-244 — `( &self, _owner: &str, _repo: &str, _since: Option<chrono::DateTime<chrono::Utc>...` — body-hash comparison.
--  `list_repo_issues` function L245-254 — `( &self, _owner: &str, _repo: &str, _state: &str, _since: Option<chrono::DateTim...` — body-hash comparison.
--  `list_repo_prs` function L255-264 — `( &self, _owner: &str, _repo: &str, _state: &str, _since: Option<chrono::DateTim...` — body-hash comparison.
--  `list_issue_comments` function L265-273 — `( &self, _owner: &str, _repo: &str, _since: Option<chrono::DateTime<chrono::Utc>...` — body-hash comparison.
--  `list_pr_review_comments` function L274-282 — `( &self, _owner: &str, _repo: &str, _since: Option<chrono::DateTime<chrono::Utc>...` — body-hash comparison.
--  `list_org_repos` function L283-289 — `( &self, _owner: &str, _max_pages: u32, ) -> Result<Vec<Value>, FeedError>` — body-hash comparison.
--  `WithFakeGithub` struct L292-294 — `{ gh: Arc<dyn GithubFeedClient> }` — body-hash comparison.
--  `WithFakeGithub` type L295-314 — `impl FeedClients for WithFakeGithub` — body-hash comparison.
--  `slack` function L296-298 — `(&self) -> Option<Arc<dyn crate::clients::SlackFeedClient>>` — body-hash comparison.
--  `calendar` function L299-301 — `(&self) -> Option<Arc<dyn crate::clients::CalendarFeedClient>>` — body-hash comparison.
--  `gmail` function L302-304 — `(&self) -> Option<Arc<dyn crate::clients::GmailFeedClient>>` — body-hash comparison.
--  `drive` function L305-307 — `(&self) -> Option<Arc<dyn crate::clients::DriveFeedClient>>` — body-hash comparison.
--  `atlassian` function L308-310 — `(&self) -> Option<Arc<dyn crate::clients::AtlassianFeedClient>>` — body-hash comparison.
--  `github` function L311-313 — `(&self) -> Option<Arc<dyn GithubFeedClient>>` — body-hash comparison.
--  `issue` function L316-326 — `(number: u64) -> Value` — body-hash comparison.
--  `runs_all_three_queries_and_dedupes_by_path` function L329-365 — `()` — body-hash comparison.
--  `empty_results_yield_no_new_items_status` function L368-383 — `()` — body-hash comparison.
--  `defaults_have_30min_cadence` function L386-391 — `()` — body-hash comparison.
--  `path_parser_handles_issues_and_prs_paths` function L394-408 — `()` — body-hash comparison.
+-  `param_schema` function L54-56 — `(&self) -> Vec<crate::param_schema::ParamSpec>` — No params — a personal feed of issues/PRs assigned to, authored by, or
+-  `defaults` function L58-63 — `(&self, _params: &TemplateParams) -> FeedDefaults` — body-hash comparison.
+-  `run` function L65-158 — `( &self, ctx: &TemplateCtx, _params: &TemplateParams, feed_dir: &Path, _cursor: ...` — body-hash comparison.
+-  `discover` function L160-162 — `(&self, _ctx: &TemplateCtx) -> Result<Option<Vec<DiscoveryRow>>, FeedError>` — body-hash comparison.
+-  `path_for_item` function L168-184 — `(item: &Value, dir: &Path) -> Option<PathBuf>` — Build the on-disk filename for a `/search/issues` row.
+-  `sanitize` function L186-190 — `(s: &str) -> String` — body-hash comparison.
+-  `write_json` function L192-202 — `(path: &PathBuf, v: &Value) -> Result<u64, FeedError>` — body-hash comparison.
+-  `tests` module L205-415 — `-` — body-hash comparison.
+-  `FakeGithub` struct L213-216 — `{ queries: Mutex<Vec<String>>, responses: Mutex<Vec<Vec<Value>>> }` — Fake that records each search query and returns canned items.
+-  `FakeGithub` type L219-296 — `impl GithubFeedClient for FakeGithub` — body-hash comparison.
+-  `list_notifications` function L220-227 — `( &self, _since: Option<chrono::DateTime<chrono::Utc>>, _per_page: u32, _all: bo...` — body-hash comparison.
+-  `search_issues` function L228-240 — `( &self, query: &str, _per_page: u32, _max_pages: u32, ) -> Result<Vec<Value>, F...` — body-hash comparison.
+-  `list_repo_commits` function L242-250 — `( &self, _owner: &str, _repo: &str, _since: Option<chrono::DateTime<chrono::Utc>...` — body-hash comparison.
+-  `list_repo_issues` function L251-260 — `( &self, _owner: &str, _repo: &str, _state: &str, _since: Option<chrono::DateTim...` — body-hash comparison.
+-  `list_repo_prs` function L261-270 — `( &self, _owner: &str, _repo: &str, _state: &str, _since: Option<chrono::DateTim...` — body-hash comparison.
+-  `list_issue_comments` function L271-279 — `( &self, _owner: &str, _repo: &str, _since: Option<chrono::DateTime<chrono::Utc>...` — body-hash comparison.
+-  `list_pr_review_comments` function L280-288 — `( &self, _owner: &str, _repo: &str, _since: Option<chrono::DateTime<chrono::Utc>...` — body-hash comparison.
+-  `list_org_repos` function L289-295 — `( &self, _owner: &str, _max_pages: u32, ) -> Result<Vec<Value>, FeedError>` — body-hash comparison.
+-  `WithFakeGithub` struct L298-300 — `{ gh: Arc<dyn GithubFeedClient> }` — body-hash comparison.
+-  `WithFakeGithub` type L301-320 — `impl FeedClients for WithFakeGithub` — body-hash comparison.
+-  `slack` function L302-304 — `(&self) -> Option<Arc<dyn crate::clients::SlackFeedClient>>` — body-hash comparison.
+-  `calendar` function L305-307 — `(&self) -> Option<Arc<dyn crate::clients::CalendarFeedClient>>` — body-hash comparison.
+-  `gmail` function L308-310 — `(&self) -> Option<Arc<dyn crate::clients::GmailFeedClient>>` — body-hash comparison.
+-  `drive` function L311-313 — `(&self) -> Option<Arc<dyn crate::clients::DriveFeedClient>>` — body-hash comparison.
+-  `atlassian` function L314-316 — `(&self) -> Option<Arc<dyn crate::clients::AtlassianFeedClient>>` — body-hash comparison.
+-  `github` function L317-319 — `(&self) -> Option<Arc<dyn GithubFeedClient>>` — body-hash comparison.
+-  `issue` function L322-332 — `(number: u64) -> Value` — body-hash comparison.
+-  `runs_all_three_queries_and_dedupes_by_path` function L335-371 — `()` — body-hash comparison.
+-  `empty_results_yield_no_new_items_status` function L374-389 — `()` — body-hash comparison.
+-  `defaults_have_30min_cadence` function L392-397 — `()` — body-hash comparison.
+-  `path_parser_handles_issues_and_prs_paths` function L400-414 — `()` — body-hash comparison.
 
 #### crates/arawn-feeds/src/templates/github/mod.rs
 
@@ -5521,40 +5546,41 @@
 -  `CursorState` type L41-51 — `= CursorState` — `updated_at` we wrote.
 -  `from_value` function L42-46 — `(v: &Value) -> Self` — `updated_at` we wrote.
 -  `into_value` function L48-50 — `(self) -> Value` — `updated_at` we wrote.
--  `NotificationsTemplate` type L54-177 — `impl FeedTemplate for NotificationsTemplate` — `updated_at` we wrote.
+-  `NotificationsTemplate` type L54-197 — `impl FeedTemplate for NotificationsTemplate` — `updated_at` we wrote.
 -  `name` function L55-57 — `(&self) -> &'static str` — `updated_at` we wrote.
 -  `validate` function L59-61 — `(&self, _params: &TemplateParams) -> Result<(), FeedError>` — `updated_at` we wrote.
--  `defaults` function L63-70 — `(&self, _params: &TemplateParams) -> FeedDefaults` — `updated_at` we wrote.
--  `run` function L72-170 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &V...` — `updated_at` we wrote.
--  `discover` function L172-176 — `(&self, _ctx: &TemplateCtx) -> Result<Option<Vec<DiscoveryRow>>, FeedError>` — `updated_at` we wrote.
--  `sanitize_for_path` function L179-183 — `(s: &str) -> String` — `updated_at` we wrote.
--  `write_json` function L185-195 — `(path: &PathBuf, v: &Value) -> Result<u64, FeedError>` — `updated_at` we wrote.
--  `tests` module L198-410 — `-` — `updated_at` we wrote.
--  `FakeGithub` struct L205-207 — `{ pages: Vec<Vec<Value>> }` — `updated_at` we wrote.
--  `FakeGithub` type L210-282 — `impl GithubFeedClient for FakeGithub` — `updated_at` we wrote.
--  `list_notifications` function L211-218 — `( &self, _since: Option<chrono::DateTime<chrono::Utc>>, _per_page: u32, _all: bo...` — `updated_at` we wrote.
--  `search_issues` function L219-226 — `( &self, _query: &str, _per_page: u32, _max_pages: u32, ) -> Result<Vec<Value>, ...` — `updated_at` we wrote.
--  `list_repo_commits` function L228-236 — `( &self, _owner: &str, _repo: &str, _since: Option<chrono::DateTime<chrono::Utc>...` — `updated_at` we wrote.
--  `list_repo_issues` function L237-246 — `( &self, _owner: &str, _repo: &str, _state: &str, _since: Option<chrono::DateTim...` — `updated_at` we wrote.
--  `list_repo_prs` function L247-256 — `( &self, _owner: &str, _repo: &str, _state: &str, _since: Option<chrono::DateTim...` — `updated_at` we wrote.
--  `list_issue_comments` function L257-265 — `( &self, _owner: &str, _repo: &str, _since: Option<chrono::DateTime<chrono::Utc>...` — `updated_at` we wrote.
--  `list_pr_review_comments` function L266-274 — `( &self, _owner: &str, _repo: &str, _since: Option<chrono::DateTime<chrono::Utc>...` — `updated_at` we wrote.
--  `list_org_repos` function L275-281 — `( &self, _owner: &str, _max_pages: u32, ) -> Result<Vec<Value>, FeedError>` — `updated_at` we wrote.
--  `WithFakeGithub` struct L284-286 — `{ gh: Arc<dyn GithubFeedClient> }` — `updated_at` we wrote.
--  `WithFakeGithub` type L287-306 — `impl FeedClients for WithFakeGithub` — `updated_at` we wrote.
--  `slack` function L288-290 — `(&self) -> Option<Arc<dyn crate::clients::SlackFeedClient>>` — `updated_at` we wrote.
--  `calendar` function L291-293 — `(&self) -> Option<Arc<dyn crate::clients::CalendarFeedClient>>` — `updated_at` we wrote.
--  `gmail` function L294-296 — `(&self) -> Option<Arc<dyn crate::clients::GmailFeedClient>>` — `updated_at` we wrote.
--  `drive` function L297-299 — `(&self) -> Option<Arc<dyn crate::clients::DriveFeedClient>>` — `updated_at` we wrote.
--  `atlassian` function L300-302 — `(&self) -> Option<Arc<dyn crate::clients::AtlassianFeedClient>>` — `updated_at` we wrote.
--  `github` function L303-305 — `(&self) -> Option<Arc<dyn GithubFeedClient>>` — `updated_at` we wrote.
--  `notif_json` function L308-322 — `(id: &str, updated: &str) -> Value` — `updated_at` we wrote.
--  `runs_with_no_clients_returns_auth_error` function L325-338 — `()` — `updated_at` we wrote.
--  `writes_notification_files_and_advances_cursor` function L341-370 — `()` — `updated_at` we wrote.
--  `empty_batch_returns_no_new_items_and_preserves_cursor` function L373-390 — `()` — `updated_at` we wrote.
--  `defaults_have_30min_cadence` function L393-396 — `()` — `updated_at` we wrote.
--  `validate_accepts_empty_params` function L399-403 — `()` — `updated_at` we wrote.
--  `sanitize_replaces_unsafe_chars` function L406-409 — `()` — `updated_at` we wrote.
+-  `param_schema` function L63-81 — `(&self) -> Vec<crate::param_schema::ParamSpec>` — `updated_at` we wrote.
+-  `defaults` function L83-90 — `(&self, _params: &TemplateParams) -> FeedDefaults` — `updated_at` we wrote.
+-  `run` function L92-190 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &V...` — `updated_at` we wrote.
+-  `discover` function L192-196 — `(&self, _ctx: &TemplateCtx) -> Result<Option<Vec<DiscoveryRow>>, FeedError>` — `updated_at` we wrote.
+-  `sanitize_for_path` function L199-203 — `(s: &str) -> String` — `updated_at` we wrote.
+-  `write_json` function L205-215 — `(path: &PathBuf, v: &Value) -> Result<u64, FeedError>` — `updated_at` we wrote.
+-  `tests` module L218-430 — `-` — `updated_at` we wrote.
+-  `FakeGithub` struct L225-227 — `{ pages: Vec<Vec<Value>> }` — `updated_at` we wrote.
+-  `FakeGithub` type L230-302 — `impl GithubFeedClient for FakeGithub` — `updated_at` we wrote.
+-  `list_notifications` function L231-238 — `( &self, _since: Option<chrono::DateTime<chrono::Utc>>, _per_page: u32, _all: bo...` — `updated_at` we wrote.
+-  `search_issues` function L239-246 — `( &self, _query: &str, _per_page: u32, _max_pages: u32, ) -> Result<Vec<Value>, ...` — `updated_at` we wrote.
+-  `list_repo_commits` function L248-256 — `( &self, _owner: &str, _repo: &str, _since: Option<chrono::DateTime<chrono::Utc>...` — `updated_at` we wrote.
+-  `list_repo_issues` function L257-266 — `( &self, _owner: &str, _repo: &str, _state: &str, _since: Option<chrono::DateTim...` — `updated_at` we wrote.
+-  `list_repo_prs` function L267-276 — `( &self, _owner: &str, _repo: &str, _state: &str, _since: Option<chrono::DateTim...` — `updated_at` we wrote.
+-  `list_issue_comments` function L277-285 — `( &self, _owner: &str, _repo: &str, _since: Option<chrono::DateTime<chrono::Utc>...` — `updated_at` we wrote.
+-  `list_pr_review_comments` function L286-294 — `( &self, _owner: &str, _repo: &str, _since: Option<chrono::DateTime<chrono::Utc>...` — `updated_at` we wrote.
+-  `list_org_repos` function L295-301 — `( &self, _owner: &str, _max_pages: u32, ) -> Result<Vec<Value>, FeedError>` — `updated_at` we wrote.
+-  `WithFakeGithub` struct L304-306 — `{ gh: Arc<dyn GithubFeedClient> }` — `updated_at` we wrote.
+-  `WithFakeGithub` type L307-326 — `impl FeedClients for WithFakeGithub` — `updated_at` we wrote.
+-  `slack` function L308-310 — `(&self) -> Option<Arc<dyn crate::clients::SlackFeedClient>>` — `updated_at` we wrote.
+-  `calendar` function L311-313 — `(&self) -> Option<Arc<dyn crate::clients::CalendarFeedClient>>` — `updated_at` we wrote.
+-  `gmail` function L314-316 — `(&self) -> Option<Arc<dyn crate::clients::GmailFeedClient>>` — `updated_at` we wrote.
+-  `drive` function L317-319 — `(&self) -> Option<Arc<dyn crate::clients::DriveFeedClient>>` — `updated_at` we wrote.
+-  `atlassian` function L320-322 — `(&self) -> Option<Arc<dyn crate::clients::AtlassianFeedClient>>` — `updated_at` we wrote.
+-  `github` function L323-325 — `(&self) -> Option<Arc<dyn GithubFeedClient>>` — `updated_at` we wrote.
+-  `notif_json` function L328-342 — `(id: &str, updated: &str) -> Value` — `updated_at` we wrote.
+-  `runs_with_no_clients_returns_auth_error` function L345-358 — `()` — `updated_at` we wrote.
+-  `writes_notification_files_and_advances_cursor` function L361-390 — `()` — `updated_at` we wrote.
+-  `empty_batch_returns_no_new_items_and_preserves_cursor` function L393-410 — `()` — `updated_at` we wrote.
+-  `defaults_have_30min_cadence` function L413-416 — `()` — `updated_at` we wrote.
+-  `validate_accepts_empty_params` function L419-423 — `()` — `updated_at` we wrote.
+-  `sanitize_replaces_unsafe_chars` function L426-429 — `()` — `updated_at` we wrote.
 
 #### crates/arawn-feeds/src/templates/github/repo_mirror.rs
 
@@ -5565,51 +5591,52 @@
 -  `CursorState` type L50-63 — `= CursorState` — other kinds still write and advance.
 -  `from_value` function L51-53 — `(v: &Value) -> Self` — other kinds still write and advance.
 -  `into_value` function L55-62 — `(self) -> Value` — other kinds still write and advance.
--  `RepoMirrorTemplate` type L66-287 — `impl FeedTemplate for RepoMirrorTemplate` — other kinds still write and advance.
+-  `RepoMirrorTemplate` type L66-295 — `impl FeedTemplate for RepoMirrorTemplate` — other kinds still write and advance.
 -  `name` function L67-69 — `(&self) -> &'static str` — other kinds still write and advance.
 -  `validate` function L71-88 — `(&self, params: &TemplateParams) -> Result<(), FeedError>` — other kinds still write and advance.
--  `defaults` function L90-95 — `(&self, _params: &TemplateParams) -> FeedDefaults` — other kinds still write and advance.
--  `run` function L97-282 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &V...` — other kinds still write and advance.
--  `discover` function L284-286 — `(&self, _ctx: &TemplateCtx) -> Result<Option<Vec<DiscoveryRow>>, FeedError>` — other kinds still write and advance.
--  `write_batch` function L291-330 — `( kind_dir: &Path, batch: &[Value], id_of: impl Fn(&Value) -> Option<String>, ts...` — Write each row of `batch` to `<kind_dir>/<id_extractor(row)>.json`
--  `parse_iso` function L332-336 — `(s: &str) -> Option<chrono::DateTime<chrono::Utc>>` — other kinds still write and advance.
--  `advance` function L340-353 — `(prev: Option<String>, latest: Option<String>) -> Option<String>` — Pick the later of the previous cursor and the latest seen this
--  `sanitize` function L355-359 — `(s: &str) -> String` — other kinds still write and advance.
--  `write_json` function L361-371 — `(path: &PathBuf, v: &Value) -> Result<u64, FeedError>` — other kinds still write and advance.
--  `tests` module L374-721 — `-` — other kinds still write and advance.
--  `FakeGithub` struct L383-397 — `{ commits: Mutex<Vec<Value>>, issues: Mutex<Vec<Value>>, prs: Mutex<Vec<Value>>,...` — Fake that returns canned responses per kind.
--  `FakeGithub` type L399-414 — `impl Default for FakeGithub` — other kinds still write and advance.
--  `default` function L400-413 — `() -> Self` — other kinds still write and advance.
--  `FakeGithub` type L417-495 — `impl Gh for FakeGithub` — other kinds still write and advance.
--  `list_notifications` function L418-425 — `( &self, _since: Option<chrono::DateTime<chrono::Utc>>, _per_page: u32, _all: bo...` — other kinds still write and advance.
--  `search_issues` function L426-433 — `( &self, _query: &str, _per_page: u32, _max_pages: u32, ) -> Result<Vec<Value>, ...` — other kinds still write and advance.
--  `list_repo_commits` function L434-443 — `( &self, _owner: &str, _repo: &str, since: Option<chrono::DateTime<chrono::Utc>>...` — other kinds still write and advance.
--  `list_repo_issues` function L444-457 — `( &self, _owner: &str, _repo: &str, _state: &str, since: Option<chrono::DateTime...` — other kinds still write and advance.
--  `list_repo_prs` function L458-468 — `( &self, _owner: &str, _repo: &str, _state: &str, since: Option<chrono::DateTime...` — other kinds still write and advance.
--  `list_issue_comments` function L469-478 — `( &self, _owner: &str, _repo: &str, since: Option<chrono::DateTime<chrono::Utc>>...` — other kinds still write and advance.
--  `list_pr_review_comments` function L479-487 — `( &self, _owner: &str, _repo: &str, _since: Option<chrono::DateTime<chrono::Utc>...` — other kinds still write and advance.
--  `list_org_repos` function L488-494 — `( &self, _owner: &str, _max_pages: u32, ) -> Result<Vec<Value>, FeedError>` — other kinds still write and advance.
--  `WithFakeGithub` struct L497-499 — `{ gh: Arc<dyn Gh> }` — other kinds still write and advance.
--  `WithFakeGithub` type L500-519 — `impl FeedClients for WithFakeGithub` — other kinds still write and advance.
--  `slack` function L501-503 — `(&self) -> Option<Arc<dyn crate::clients::SlackFeedClient>>` — other kinds still write and advance.
--  `calendar` function L504-506 — `(&self) -> Option<Arc<dyn crate::clients::CalendarFeedClient>>` — other kinds still write and advance.
--  `gmail` function L507-509 — `(&self) -> Option<Arc<dyn crate::clients::GmailFeedClient>>` — other kinds still write and advance.
--  `drive` function L510-512 — `(&self) -> Option<Arc<dyn crate::clients::DriveFeedClient>>` — other kinds still write and advance.
--  `atlassian` function L513-515 — `(&self) -> Option<Arc<dyn crate::clients::AtlassianFeedClient>>` — other kinds still write and advance.
--  `github` function L516-518 — `(&self) -> Option<Arc<dyn Gh>>` — other kinds still write and advance.
--  `params` function L521-523 — `() -> TemplateParams` — other kinds still write and advance.
--  `commit` function L525-535 — `(sha: &str, date: &str) -> Value` — other kinds still write and advance.
--  `issue` function L537-548 — `(number: i64, updated: &str) -> Value` — other kinds still write and advance.
--  `pr` function L550-563 — `(number: i64, updated: &str) -> Value` — other kinds still write and advance.
--  `comment` function L565-575 — `(id: i64, updated: &str, parent_url: &str) -> Value` — other kinds still write and advance.
--  `validate_requires_owner_and_name` function L578-586 — `()` — other kinds still write and advance.
--  `defaults_use_30min_cadence` function L589-591 — `()` — other kinds still write and advance.
--  `writes_each_kind_under_owner_repo_layout` function L594-628 — `()` — other kinds still write and advance.
--  `one_kind_4xx_doesnt_block_others` function L631-651 — `()` — other kinds still write and advance.
--  `empty_response_yields_no_new_items_and_preserves_cursor` function L654-674 — `()` — other kinds still write and advance.
--  `passes_since_floors_from_cursor_to_client` function L677-692 — `()` — other kinds still write and advance.
--  `missing_clients_returns_auth_error` function L695-705 — `()` — other kinds still write and advance.
--  `advance_picks_newer_string` function L708-720 — `()` — other kinds still write and advance.
+-  `param_schema` function L90-96 — `(&self) -> Vec<crate::param_schema::ParamSpec>` — other kinds still write and advance.
+-  `defaults` function L98-103 — `(&self, _params: &TemplateParams) -> FeedDefaults` — other kinds still write and advance.
+-  `run` function L105-290 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &V...` — other kinds still write and advance.
+-  `discover` function L292-294 — `(&self, _ctx: &TemplateCtx) -> Result<Option<Vec<DiscoveryRow>>, FeedError>` — other kinds still write and advance.
+-  `write_batch` function L299-338 — `( kind_dir: &Path, batch: &[Value], id_of: impl Fn(&Value) -> Option<String>, ts...` — Write each row of `batch` to `<kind_dir>/<id_extractor(row)>.json`
+-  `parse_iso` function L340-344 — `(s: &str) -> Option<chrono::DateTime<chrono::Utc>>` — other kinds still write and advance.
+-  `advance` function L348-361 — `(prev: Option<String>, latest: Option<String>) -> Option<String>` — Pick the later of the previous cursor and the latest seen this
+-  `sanitize` function L363-367 — `(s: &str) -> String` — other kinds still write and advance.
+-  `write_json` function L369-379 — `(path: &PathBuf, v: &Value) -> Result<u64, FeedError>` — other kinds still write and advance.
+-  `tests` module L382-729 — `-` — other kinds still write and advance.
+-  `FakeGithub` struct L391-405 — `{ commits: Mutex<Vec<Value>>, issues: Mutex<Vec<Value>>, prs: Mutex<Vec<Value>>,...` — Fake that returns canned responses per kind.
+-  `FakeGithub` type L407-422 — `impl Default for FakeGithub` — other kinds still write and advance.
+-  `default` function L408-421 — `() -> Self` — other kinds still write and advance.
+-  `FakeGithub` type L425-503 — `impl Gh for FakeGithub` — other kinds still write and advance.
+-  `list_notifications` function L426-433 — `( &self, _since: Option<chrono::DateTime<chrono::Utc>>, _per_page: u32, _all: bo...` — other kinds still write and advance.
+-  `search_issues` function L434-441 — `( &self, _query: &str, _per_page: u32, _max_pages: u32, ) -> Result<Vec<Value>, ...` — other kinds still write and advance.
+-  `list_repo_commits` function L442-451 — `( &self, _owner: &str, _repo: &str, since: Option<chrono::DateTime<chrono::Utc>>...` — other kinds still write and advance.
+-  `list_repo_issues` function L452-465 — `( &self, _owner: &str, _repo: &str, _state: &str, since: Option<chrono::DateTime...` — other kinds still write and advance.
+-  `list_repo_prs` function L466-476 — `( &self, _owner: &str, _repo: &str, _state: &str, since: Option<chrono::DateTime...` — other kinds still write and advance.
+-  `list_issue_comments` function L477-486 — `( &self, _owner: &str, _repo: &str, since: Option<chrono::DateTime<chrono::Utc>>...` — other kinds still write and advance.
+-  `list_pr_review_comments` function L487-495 — `( &self, _owner: &str, _repo: &str, _since: Option<chrono::DateTime<chrono::Utc>...` — other kinds still write and advance.
+-  `list_org_repos` function L496-502 — `( &self, _owner: &str, _max_pages: u32, ) -> Result<Vec<Value>, FeedError>` — other kinds still write and advance.
+-  `WithFakeGithub` struct L505-507 — `{ gh: Arc<dyn Gh> }` — other kinds still write and advance.
+-  `WithFakeGithub` type L508-527 — `impl FeedClients for WithFakeGithub` — other kinds still write and advance.
+-  `slack` function L509-511 — `(&self) -> Option<Arc<dyn crate::clients::SlackFeedClient>>` — other kinds still write and advance.
+-  `calendar` function L512-514 — `(&self) -> Option<Arc<dyn crate::clients::CalendarFeedClient>>` — other kinds still write and advance.
+-  `gmail` function L515-517 — `(&self) -> Option<Arc<dyn crate::clients::GmailFeedClient>>` — other kinds still write and advance.
+-  `drive` function L518-520 — `(&self) -> Option<Arc<dyn crate::clients::DriveFeedClient>>` — other kinds still write and advance.
+-  `atlassian` function L521-523 — `(&self) -> Option<Arc<dyn crate::clients::AtlassianFeedClient>>` — other kinds still write and advance.
+-  `github` function L524-526 — `(&self) -> Option<Arc<dyn Gh>>` — other kinds still write and advance.
+-  `params` function L529-531 — `() -> TemplateParams` — other kinds still write and advance.
+-  `commit` function L533-543 — `(sha: &str, date: &str) -> Value` — other kinds still write and advance.
+-  `issue` function L545-556 — `(number: i64, updated: &str) -> Value` — other kinds still write and advance.
+-  `pr` function L558-571 — `(number: i64, updated: &str) -> Value` — other kinds still write and advance.
+-  `comment` function L573-583 — `(id: i64, updated: &str, parent_url: &str) -> Value` — other kinds still write and advance.
+-  `validate_requires_owner_and_name` function L586-594 — `()` — other kinds still write and advance.
+-  `defaults_use_30min_cadence` function L597-599 — `()` — other kinds still write and advance.
+-  `writes_each_kind_under_owner_repo_layout` function L602-636 — `()` — other kinds still write and advance.
+-  `one_kind_4xx_doesnt_block_others` function L639-659 — `()` — other kinds still write and advance.
+-  `empty_response_yields_no_new_items_and_preserves_cursor` function L662-682 — `()` — other kinds still write and advance.
+-  `passes_since_floors_from_cursor_to_client` function L685-700 — `()` — other kinds still write and advance.
+-  `missing_clients_returns_auth_error` function L703-713 — `()` — other kinds still write and advance.
+-  `advance_picks_newer_string` function L716-728 — `()` — other kinds still write and advance.
 
 #### crates/arawn-feeds/src/templates/github/review_queue.rs
 
@@ -5618,38 +5645,39 @@
 -  `DEFAULT_PER_PAGE` variable L27 — `: u32` — ```
 -  `MAX_PAGES` variable L28 — `: u32` — ```
 -  `QUERY` variable L29 — `: &str` — ```
--  `ReviewQueueTemplate` type L32-117 — `impl FeedTemplate for ReviewQueueTemplate` — ```
+-  `ReviewQueueTemplate` type L32-122 — `impl FeedTemplate for ReviewQueueTemplate` — ```
 -  `name` function L33-35 — `(&self) -> &'static str` — ```
 -  `validate` function L37-39 — `(&self, _params: &TemplateParams) -> Result<(), FeedError>` — ```
--  `defaults` function L41-46 — `(&self, _params: &TemplateParams) -> FeedDefaults` — ```
--  `run` function L48-112 — `( &self, ctx: &TemplateCtx, _params: &TemplateParams, feed_dir: &Path, _cursor: ...` — ```
--  `discover` function L114-116 — `(&self, _ctx: &TemplateCtx) -> Result<Option<Vec<DiscoveryRow>>, FeedError>` — ```
--  `path_for_item` function L119-135 — `(item: &Value, dir: &Path) -> Option<PathBuf>` — ```
--  `sanitize` function L137-141 — `(s: &str) -> String` — ```
--  `write_json` function L143-153 — `(path: &PathBuf, v: &Value) -> Result<u64, FeedError>` — ```
--  `tests` module L156-326 — `-` — ```
--  `FakeGithub` struct L163-166 — `{ queries: Mutex<Vec<String>>, response: Mutex<Vec<Value>> }` — ```
--  `FakeGithub` type L169-242 — `impl GithubFeedClient for FakeGithub` — ```
--  `list_notifications` function L170-177 — `( &self, _since: Option<chrono::DateTime<chrono::Utc>>, _per_page: u32, _all: bo...` — ```
--  `search_issues` function L178-186 — `( &self, query: &str, _per_page: u32, _max_pages: u32, ) -> Result<Vec<Value>, F...` — ```
--  `list_repo_commits` function L188-196 — `( &self, _owner: &str, _repo: &str, _since: Option<chrono::DateTime<chrono::Utc>...` — ```
--  `list_repo_issues` function L197-206 — `( &self, _owner: &str, _repo: &str, _state: &str, _since: Option<chrono::DateTim...` — ```
--  `list_repo_prs` function L207-216 — `( &self, _owner: &str, _repo: &str, _state: &str, _since: Option<chrono::DateTim...` — ```
--  `list_issue_comments` function L217-225 — `( &self, _owner: &str, _repo: &str, _since: Option<chrono::DateTime<chrono::Utc>...` — ```
--  `list_pr_review_comments` function L226-234 — `( &self, _owner: &str, _repo: &str, _since: Option<chrono::DateTime<chrono::Utc>...` — ```
--  `list_org_repos` function L235-241 — `( &self, _owner: &str, _max_pages: u32, ) -> Result<Vec<Value>, FeedError>` — ```
--  `WithFakeGithub` struct L244-246 — `{ gh: Arc<dyn GithubFeedClient> }` — ```
--  `WithFakeGithub` type L247-266 — `impl FeedClients for WithFakeGithub` — ```
--  `slack` function L248-250 — `(&self) -> Option<Arc<dyn crate::clients::SlackFeedClient>>` — ```
--  `calendar` function L251-253 — `(&self) -> Option<Arc<dyn crate::clients::CalendarFeedClient>>` — ```
--  `gmail` function L254-256 — `(&self) -> Option<Arc<dyn crate::clients::GmailFeedClient>>` — ```
--  `drive` function L257-259 — `(&self) -> Option<Arc<dyn crate::clients::DriveFeedClient>>` — ```
--  `atlassian` function L260-262 — `(&self) -> Option<Arc<dyn crate::clients::AtlassianFeedClient>>` — ```
--  `github` function L263-265 — `(&self) -> Option<Arc<dyn GithubFeedClient>>` — ```
--  `pr` function L268-276 — `(number: u64, draft: bool) -> Value` — ```
--  `writes_review_queue_files` function L279-299 — `()` — ```
--  `empty_response_is_no_new_items` function L302-317 — `()` — ```
--  `defaults_have_30min_cadence` function L320-325 — `()` — ```
+-  `param_schema` function L42-44 — `(&self) -> Vec<crate::param_schema::ParamSpec>` — No params — open PRs where the current user is requested as a reviewer.
+-  `defaults` function L46-51 — `(&self, _params: &TemplateParams) -> FeedDefaults` — ```
+-  `run` function L53-117 — `( &self, ctx: &TemplateCtx, _params: &TemplateParams, feed_dir: &Path, _cursor: ...` — ```
+-  `discover` function L119-121 — `(&self, _ctx: &TemplateCtx) -> Result<Option<Vec<DiscoveryRow>>, FeedError>` — ```
+-  `path_for_item` function L124-140 — `(item: &Value, dir: &Path) -> Option<PathBuf>` — ```
+-  `sanitize` function L142-146 — `(s: &str) -> String` — ```
+-  `write_json` function L148-158 — `(path: &PathBuf, v: &Value) -> Result<u64, FeedError>` — ```
+-  `tests` module L161-331 — `-` — ```
+-  `FakeGithub` struct L168-171 — `{ queries: Mutex<Vec<String>>, response: Mutex<Vec<Value>> }` — ```
+-  `FakeGithub` type L174-247 — `impl GithubFeedClient for FakeGithub` — ```
+-  `list_notifications` function L175-182 — `( &self, _since: Option<chrono::DateTime<chrono::Utc>>, _per_page: u32, _all: bo...` — ```
+-  `search_issues` function L183-191 — `( &self, query: &str, _per_page: u32, _max_pages: u32, ) -> Result<Vec<Value>, F...` — ```
+-  `list_repo_commits` function L193-201 — `( &self, _owner: &str, _repo: &str, _since: Option<chrono::DateTime<chrono::Utc>...` — ```
+-  `list_repo_issues` function L202-211 — `( &self, _owner: &str, _repo: &str, _state: &str, _since: Option<chrono::DateTim...` — ```
+-  `list_repo_prs` function L212-221 — `( &self, _owner: &str, _repo: &str, _state: &str, _since: Option<chrono::DateTim...` — ```
+-  `list_issue_comments` function L222-230 — `( &self, _owner: &str, _repo: &str, _since: Option<chrono::DateTime<chrono::Utc>...` — ```
+-  `list_pr_review_comments` function L231-239 — `( &self, _owner: &str, _repo: &str, _since: Option<chrono::DateTime<chrono::Utc>...` — ```
+-  `list_org_repos` function L240-246 — `( &self, _owner: &str, _max_pages: u32, ) -> Result<Vec<Value>, FeedError>` — ```
+-  `WithFakeGithub` struct L249-251 — `{ gh: Arc<dyn GithubFeedClient> }` — ```
+-  `WithFakeGithub` type L252-271 — `impl FeedClients for WithFakeGithub` — ```
+-  `slack` function L253-255 — `(&self) -> Option<Arc<dyn crate::clients::SlackFeedClient>>` — ```
+-  `calendar` function L256-258 — `(&self) -> Option<Arc<dyn crate::clients::CalendarFeedClient>>` — ```
+-  `gmail` function L259-261 — `(&self) -> Option<Arc<dyn crate::clients::GmailFeedClient>>` — ```
+-  `drive` function L262-264 — `(&self) -> Option<Arc<dyn crate::clients::DriveFeedClient>>` — ```
+-  `atlassian` function L265-267 — `(&self) -> Option<Arc<dyn crate::clients::AtlassianFeedClient>>` — ```
+-  `github` function L268-270 — `(&self) -> Option<Arc<dyn GithubFeedClient>>` — ```
+-  `pr` function L273-281 — `(number: u64, draft: bool) -> Value` — ```
+-  `writes_review_queue_files` function L284-304 — `()` — ```
+-  `empty_response_is_no_new_items` function L307-322 — `()` — ```
+-  `defaults_have_30min_cadence` function L325-330 — `()` — ```
 
 ### crates/arawn-feeds/src/templates/gmail
 
@@ -5678,28 +5706,30 @@
 - pub `InboxArchiveTemplate` struct L25 — `-` — pause.
 -  `NAME` variable L27 — `: &str` — pause.
 -  `DEFAULT_DAYS_BACK` variable L28 — `: u32` — pause.
--  `InboxArchiveTemplate` type L31-81 — `impl FeedTemplate for InboxArchiveTemplate` — pause.
+-  `InboxArchiveTemplate` type L31-95 — `impl FeedTemplate for InboxArchiveTemplate` — pause.
 -  `name` function L32-34 — `(&self) -> &'static str` — pause.
 -  `validate` function L36-48 — `(&self, params: &TemplateParams) -> Result<(), FeedError>` — pause.
--  `defaults` function L50-55 — `(&self, _params: &TemplateParams) -> FeedDefaults` — pause.
--  `run` function L57-80 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &V...` — pause.
--  `tests` module L84-109 — `-` — pause.
--  `validate_default_params` function L88-92 — `()` — pause.
--  `validate_rejects_bad_days_back` function L95-102 — `()` — pause.
--  `defaults_use_15min_cadence` function L105-108 — `()` — pause.
+-  `param_schema` function L50-62 — `(&self) -> Vec<crate::param_schema::ParamSpec>` — pause.
+-  `defaults` function L64-69 — `(&self, _params: &TemplateParams) -> FeedDefaults` — pause.
+-  `run` function L71-94 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &V...` — pause.
+-  `tests` module L98-123 — `-` — pause.
+-  `validate_default_params` function L102-106 — `()` — pause.
+-  `validate_rejects_bad_days_back` function L109-116 — `()` — pause.
+-  `defaults_use_15min_cadence` function L119-122 — `()` — pause.
 
 #### crates/arawn-feeds/src/templates/gmail/label_archive.rs
 
 - pub `LabelArchiveTemplate` struct L33 — `-` — the feed run as a no-op than to bind validity at registration time.
 -  `NAME` variable L35 — `: &str` — the feed run as a no-op than to bind validity at registration time.
 -  `DEFAULT_DAYS_BACK` variable L36 — `: u32` — the feed run as a no-op than to bind validity at registration time.
--  `LabelArchiveTemplate` type L39-102 — `impl FeedTemplate for LabelArchiveTemplate` — the feed run as a no-op than to bind validity at registration time.
+-  `LabelArchiveTemplate` type L39-122 — `impl FeedTemplate for LabelArchiveTemplate` — the feed run as a no-op than to bind validity at registration time.
 -  `name` function L40-42 — `(&self) -> &'static str` — the feed run as a no-op than to bind validity at registration time.
 -  `validate` function L44-64 — `(&self, params: &TemplateParams) -> Result<(), FeedError>` — the feed run as a no-op than to bind validity at registration time.
--  `defaults` function L66-71 — `(&self, _params: &TemplateParams) -> FeedDefaults` — the feed run as a no-op than to bind validity at registration time.
--  `run` function L73-101 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &V...` — the feed run as a no-op than to bind validity at registration time.
--  `tests` module L105-120 — `-` — the feed run as a no-op than to bind validity at registration time.
--  `validate_requires_label` function L109-119 — `()` — the feed run as a no-op than to bind validity at registration time.
+-  `param_schema` function L66-84 — `(&self) -> Vec<crate::param_schema::ParamSpec>` — the feed run as a no-op than to bind validity at registration time.
+-  `defaults` function L86-91 — `(&self, _params: &TemplateParams) -> FeedDefaults` — the feed run as a no-op than to bind validity at registration time.
+-  `run` function L93-121 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &V...` — the feed run as a no-op than to bind validity at registration time.
+-  `tests` module L125-140 — `-` — the feed run as a no-op than to bind validity at registration time.
+-  `validate_requires_label` function L129-139 — `()` — the feed run as a no-op than to bind validity at registration time.
 
 #### crates/arawn-feeds/src/templates/gmail/mod.rs
 
@@ -5713,14 +5743,15 @@
 - pub `SenderFilterTemplate` struct L28 — `-` — [`super::common`].
 -  `NAME` variable L30 — `: &str` — [`super::common`].
 -  `DEFAULT_DAYS_BACK` variable L31 — `: u32` — [`super::common`].
--  `SenderFilterTemplate` type L34-103 — `impl FeedTemplate for SenderFilterTemplate` — [`super::common`].
+-  `SenderFilterTemplate` type L34-123 — `impl FeedTemplate for SenderFilterTemplate` — [`super::common`].
 -  `name` function L35-37 — `(&self) -> &'static str` — [`super::common`].
 -  `validate` function L39-63 — `(&self, params: &TemplateParams) -> Result<(), FeedError>` — [`super::common`].
--  `defaults` function L65-70 — `(&self, _params: &TemplateParams) -> FeedDefaults` — [`super::common`].
--  `run` function L72-102 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &V...` — [`super::common`].
--  `tests` module L106-130 — `-` — [`super::common`].
--  `validate_requires_sender_pattern` function L110-120 — `()` — [`super::common`].
--  `validate_rejects_bad_days_back` function L123-129 — `()` — [`super::common`].
+-  `param_schema` function L65-83 — `(&self) -> Vec<crate::param_schema::ParamSpec>` — [`super::common`].
+-  `defaults` function L85-90 — `(&self, _params: &TemplateParams) -> FeedDefaults` — [`super::common`].
+-  `run` function L92-122 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &V...` — [`super::common`].
+-  `tests` module L126-150 — `-` — [`super::common`].
+-  `validate_requires_sender_pattern` function L130-140 — `()` — [`super::common`].
+-  `validate_rejects_bad_days_back` function L143-149 — `()` — [`super::common`].
 
 ### crates/arawn-feeds/src/templates/jira
 
@@ -5731,15 +5762,16 @@
 - pub `AssigneeTrackerTemplate` struct L24 — `-` — are no append-only logs to advance independently of the snapshot.
 -  `NAME` variable L26 — `: &str` — are no append-only logs to advance independently of the snapshot.
 -  `MAX_RESULTS_PER_RUN` variable L27 — `: u32` — are no append-only logs to advance independently of the snapshot.
--  `AssigneeTrackerTemplate` type L30-122 — `impl FeedTemplate for AssigneeTrackerTemplate` — are no append-only logs to advance independently of the snapshot.
+-  `AssigneeTrackerTemplate` type L30-128 — `impl FeedTemplate for AssigneeTrackerTemplate` — are no append-only logs to advance independently of the snapshot.
 -  `name` function L31-33 — `(&self) -> &'static str` — are no append-only logs to advance independently of the snapshot.
 -  `validate` function L35-37 — `(&self, _params: &TemplateParams) -> Result<(), FeedError>` — are no append-only logs to advance independently of the snapshot.
--  `defaults` function L39-47 — `(&self, _params: &TemplateParams) -> FeedDefaults` — are no append-only logs to advance independently of the snapshot.
--  `run` function L49-121 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &V...` — are no append-only logs to advance independently of the snapshot.
--  `build_jql` function L124-131 — `(since: Option<&str>) -> String` — are no append-only logs to advance independently of the snapshot.
--  `tests` module L134-155 — `-` — are no append-only logs to advance independently of the snapshot.
--  `validate_takes_no_params` function L138-142 — `()` — are no append-only logs to advance independently of the snapshot.
--  `jql_uses_currentUser` function L145-154 — `()` — are no append-only logs to advance independently of the snapshot.
+-  `param_schema` function L41-43 — `(&self) -> Vec<crate::param_schema::ParamSpec>` — Singleton feed (issues assigned to the current user).
+-  `defaults` function L45-53 — `(&self, _params: &TemplateParams) -> FeedDefaults` — are no append-only logs to advance independently of the snapshot.
+-  `run` function L55-127 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &V...` — are no append-only logs to advance independently of the snapshot.
+-  `build_jql` function L130-137 — `(since: Option<&str>) -> String` — are no append-only logs to advance independently of the snapshot.
+-  `tests` module L140-161 — `-` — are no append-only logs to advance independently of the snapshot.
+-  `validate_takes_no_params` function L144-148 — `()` — are no append-only logs to advance independently of the snapshot.
+-  `jql_uses_currentUser` function L151-160 — `()` — are no append-only logs to advance independently of the snapshot.
 
 #### crates/arawn-feeds/src/templates/jira/common.rs
 
@@ -5769,19 +5801,20 @@
 - pub `ProjectTrackerTemplate` struct L25 — `-` — plus a per-issue `{ last_comment_id, last_history_id }` map.
 -  `NAME` variable L27 — `: &str` — plus a per-issue `{ last_comment_id, last_history_id }` map.
 -  `MAX_RESULTS_PER_RUN` variable L28 — `: u32` — plus a per-issue `{ last_comment_id, last_history_id }` map.
--  `ProjectTrackerTemplate` type L31-194 — `impl FeedTemplate for ProjectTrackerTemplate` — plus a per-issue `{ last_comment_id, last_history_id }` map.
+-  `ProjectTrackerTemplate` type L31-207 — `impl FeedTemplate for ProjectTrackerTemplate` — plus a per-issue `{ last_comment_id, last_history_id }` map.
 -  `name` function L32-34 — `(&self) -> &'static str` — plus a per-issue `{ last_comment_id, last_history_id }` map.
 -  `validate` function L36-46 — `(&self, params: &TemplateParams) -> Result<(), FeedError>` — plus a per-issue `{ last_comment_id, last_history_id }` map.
 -  `register_check` function L48-72 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, ) -> Result<(), FeedError>` — plus a per-issue `{ last_comment_id, last_history_id }` map.
--  `defaults` function L74-82 — `(&self, _params: &TemplateParams) -> FeedDefaults` — plus a per-issue `{ last_comment_id, last_history_id }` map.
--  `run` function L84-175 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &V...` — plus a per-issue `{ last_comment_id, last_history_id }` map.
--  `discover` function L177-193 — `(&self, ctx: &TemplateCtx) -> Result<Option<Vec<DiscoveryRow>>, FeedError>` — plus a per-issue `{ last_comment_id, last_history_id }` map.
--  `effective_since` function L206-221 — `( cursor_iso: Option<&str>, params_since: Option<&str>, ) -> Option<String>` — Resolve the JQL time-floor for this run.
--  `build_jql` function L223-233 — `(project: &str, since: Option<&str>) -> String` — plus a per-issue `{ last_comment_id, last_history_id }` map.
--  `tests` module L236-288 — `-` — plus a per-issue `{ last_comment_id, last_history_id }` map.
--  `validate_requires_project` function L240-250 — `()` — plus a per-issue `{ last_comment_id, last_history_id }` map.
--  `effective_since_prefers_cursor_then_falls_back_to_params` function L253-278 — `()` — plus a per-issue `{ last_comment_id, last_history_id }` map.
--  `jql_includes_since_when_present` function L281-287 — `()` — plus a per-issue `{ last_comment_id, last_history_id }` map.
+-  `param_schema` function L74-85 — `(&self) -> Vec<crate::param_schema::ParamSpec>` — plus a per-issue `{ last_comment_id, last_history_id }` map.
+-  `defaults` function L87-95 — `(&self, _params: &TemplateParams) -> FeedDefaults` — plus a per-issue `{ last_comment_id, last_history_id }` map.
+-  `run` function L97-188 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &V...` — plus a per-issue `{ last_comment_id, last_history_id }` map.
+-  `discover` function L190-206 — `(&self, ctx: &TemplateCtx) -> Result<Option<Vec<DiscoveryRow>>, FeedError>` — plus a per-issue `{ last_comment_id, last_history_id }` map.
+-  `effective_since` function L219-234 — `( cursor_iso: Option<&str>, params_since: Option<&str>, ) -> Option<String>` — Resolve the JQL time-floor for this run.
+-  `build_jql` function L236-246 — `(project: &str, since: Option<&str>) -> String` — plus a per-issue `{ last_comment_id, last_history_id }` map.
+-  `tests` module L249-301 — `-` — plus a per-issue `{ last_comment_id, last_history_id }` map.
+-  `validate_requires_project` function L253-263 — `()` — plus a per-issue `{ last_comment_id, last_history_id }` map.
+-  `effective_since_prefers_cursor_then_falls_back_to_params` function L266-291 — `()` — plus a per-issue `{ last_comment_id, last_history_id }` map.
+-  `jql_includes_since_when_present` function L294-300 — `()` — plus a per-issue `{ last_comment_id, last_history_id }` map.
 
 ### crates/arawn-feeds/src/templates
 
@@ -5798,16 +5831,21 @@
 - pub `slack` module L9 — `-` — Concrete `FeedTemplate` impls organized per provider.
 - pub `stub` module L10 — `-` — Concrete `FeedTemplate` impls organized per provider.
 - pub `default_registry` function L19-40 — `() -> FeedTemplateRegistry` — Build the registry of every template the binary supports.
+-  `param_schema_tests` module L43-125 — `-` — Concrete `FeedTemplate` impls organized per provider.
+-  `every_template_schema_is_self_consistent` function L52-89 — `()` — Every registered template's `param_schema()` must be self-consistent:
+-  `filesystem_schema_matches_its_params` function L95-110 — `()` — The filesystem template's schema must describe exactly the params its
+-  `paramless_feeds_have_empty_schema` function L115-124 — `()` — Spot-check that genuinely param-less feeds return empty schemas (so the
 
 #### crates/arawn-feeds/src/templates/stub.rs
 
 - pub `EchoTemplate` struct L21 — `-` — integration without involving any real provider client.
 -  `NAME` variable L23 — `: &str` — integration without involving any real provider client.
--  `EchoTemplate` type L26-90 — `impl FeedTemplate for EchoTemplate` — integration without involving any real provider client.
+-  `EchoTemplate` type L26-101 — `impl FeedTemplate for EchoTemplate` — integration without involving any real provider client.
 -  `name` function L27-29 — `(&self) -> &'static str` — integration without involving any real provider client.
 -  `validate` function L31-35 — `(&self, _params: &TemplateParams) -> Result<(), FeedError>` — integration without involving any real provider client.
--  `defaults` function L37-42 — `(&self, _params: &TemplateParams) -> FeedDefaults` — integration without involving any real provider client.
--  `run` function L44-89 — `( &self, _ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &...` — integration without involving any real provider client.
+-  `param_schema` function L37-46 — `(&self) -> Vec<crate::param_schema::ParamSpec>` — integration without involving any real provider client.
+-  `defaults` function L48-53 — `(&self, _params: &TemplateParams) -> FeedDefaults` — integration without involving any real provider client.
+-  `run` function L55-100 — `( &self, _ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &...` — integration without involving any real provider client.
 
 ### crates/arawn-feeds/src/templates/slack
 
@@ -5817,16 +5855,17 @@
 
 - pub `ChannelArchiveTemplate` struct L43 — `-` — on one thread doesn't drop the channel cursor or block other threads.
 -  `NAME` variable L45 — `: &str` — on one thread doesn't drop the channel cursor or block other threads.
--  `ChannelArchiveTemplate` type L48-135 — `impl FeedTemplate for ChannelArchiveTemplate` — on one thread doesn't drop the channel cursor or block other threads.
+-  `ChannelArchiveTemplate` type L48-148 — `impl FeedTemplate for ChannelArchiveTemplate` — on one thread doesn't drop the channel cursor or block other threads.
 -  `name` function L49-51 — `(&self) -> &'static str` — on one thread doesn't drop the channel cursor or block other threads.
 -  `validate` function L53-66 — `(&self, params: &TemplateParams) -> Result<(), FeedError>` — on one thread doesn't drop the channel cursor or block other threads.
--  `defaults` function L68-73 — `(&self, _params: &TemplateParams) -> FeedDefaults` — on one thread doesn't drop the channel cursor or block other threads.
--  `run` function L75-101 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &V...` — on one thread doesn't drop the channel cursor or block other threads.
--  `discover` function L103-134 — `(&self, ctx: &TemplateCtx) -> Result<Option<Vec<DiscoveryRow>>, FeedError>` — on one thread doesn't drop the channel cursor or block other threads.
--  `tests` module L138-166 — `-` — on one thread doesn't drop the channel cursor or block other threads.
--  `validate_rejects_missing_channel` function L143-147 — `()` — on one thread doesn't drop the channel cursor or block other threads.
--  `validate_rejects_empty_channel` function L150-156 — `()` — on one thread doesn't drop the channel cursor or block other threads.
--  `validate_accepts_named_or_id_channel` function L159-165 — `()` — on one thread doesn't drop the channel cursor or block other threads.
+-  `param_schema` function L68-79 — `(&self) -> Vec<crate::param_schema::ParamSpec>` — on one thread doesn't drop the channel cursor or block other threads.
+-  `defaults` function L81-86 — `(&self, _params: &TemplateParams) -> FeedDefaults` — on one thread doesn't drop the channel cursor or block other threads.
+-  `run` function L88-114 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &V...` — on one thread doesn't drop the channel cursor or block other threads.
+-  `discover` function L116-147 — `(&self, ctx: &TemplateCtx) -> Result<Option<Vec<DiscoveryRow>>, FeedError>` — on one thread doesn't drop the channel cursor or block other threads.
+-  `tests` module L151-179 — `-` — on one thread doesn't drop the channel cursor or block other threads.
+-  `validate_rejects_missing_channel` function L156-160 — `()` — on one thread doesn't drop the channel cursor or block other threads.
+-  `validate_rejects_empty_channel` function L163-169 — `()` — on one thread doesn't drop the channel cursor or block other threads.
+-  `validate_accepts_named_or_id_channel` function L172-178 — `()` — on one thread doesn't drop the channel cursor or block other threads.
 
 #### crates/arawn-feeds/src/templates/slack/common.rs
 
@@ -5846,15 +5885,16 @@
 
 - pub `DmArchiveTemplate` struct L30 — `-` — ```
 -  `NAME` variable L32 — `: &str` — ```
--  `DmArchiveTemplate` type L35-86 — `impl FeedTemplate for DmArchiveTemplate` — ```
+-  `DmArchiveTemplate` type L35-99 — `impl FeedTemplate for DmArchiveTemplate` — ```
 -  `name` function L36-38 — `(&self) -> &'static str` — ```
 -  `validate` function L40-53 — `(&self, params: &TemplateParams) -> Result<(), FeedError>` — ```
--  `defaults` function L55-63 — `(&self, _params: &TemplateParams) -> FeedDefaults` — ```
--  `run` function L65-85 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &V...` — ```
--  `tests` module L89-119 — `-` — ```
--  `validate_rejects_missing_user` function L94-98 — `()` — ```
--  `validate_rejects_empty_user` function L101-107 — `()` — ```
--  `validate_accepts_user_id_or_name` function L110-118 — `()` — ```
+-  `param_schema` function L55-66 — `(&self) -> Vec<crate::param_schema::ParamSpec>` — ```
+-  `defaults` function L68-76 — `(&self, _params: &TemplateParams) -> FeedDefaults` — ```
+-  `run` function L78-98 — `( &self, ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &V...` — ```
+-  `tests` module L102-132 — `-` — ```
+-  `validate_rejects_missing_user` function L107-111 — `()` — ```
+-  `validate_rejects_empty_user` function L114-120 — `()` — ```
+-  `validate_accepts_user_id_or_name` function L123-131 — `()` — ```
 
 #### crates/arawn-feeds/src/templates/slack/mod.rs
 
@@ -5867,16 +5907,17 @@
 
 - pub `MyMentionsTemplate` struct L48 — `-` — - Custom alert keywords.
 -  `NAME` variable L50 — `: &str` — - Custom alert keywords.
--  `MyMentionsTemplate` type L53-146 — `impl FeedTemplate for MyMentionsTemplate` — - Custom alert keywords.
+-  `MyMentionsTemplate` type L53-151 — `impl FeedTemplate for MyMentionsTemplate` — - Custom alert keywords.
 -  `name` function L54-56 — `(&self) -> &'static str` — - Custom alert keywords.
 -  `validate` function L58-61 — `(&self, _params: &TemplateParams) -> Result<(), FeedError>` — - Custom alert keywords.
--  `defaults` function L63-68 — `(&self, _params: &TemplateParams) -> FeedDefaults` — - Custom alert keywords.
--  `run` function L70-145 — `( &self, ctx: &TemplateCtx, _params: &TemplateParams, feed_dir: &Path, cursor: &...` — - Custom alert keywords.
--  `append_message_to_day` function L150-165 — `(feed_dir: &Path, msg: &Value, ts: &str) -> Result<u64, FeedError>` — - Custom alert keywords.
--  `ts_to_yyyy_mm_dd` function L167-177 — `(ts: &str) -> Result<String, FeedError>` — - Custom alert keywords.
--  `tests` module L180-197 — `-` — - Custom alert keywords.
--  `validate_accepts_no_params` function L184-187 — `()` — - Custom alert keywords.
--  `defaults_provide_cursor_with_null_user_id` function L190-196 — `()` — - Custom alert keywords.
+-  `param_schema` function L64-66 — `(&self) -> Vec<crate::param_schema::ParamSpec>` — No params — a singleton feed of the current user's mentions.
+-  `defaults` function L68-73 — `(&self, _params: &TemplateParams) -> FeedDefaults` — - Custom alert keywords.
+-  `run` function L75-150 — `( &self, ctx: &TemplateCtx, _params: &TemplateParams, feed_dir: &Path, cursor: &...` — - Custom alert keywords.
+-  `append_message_to_day` function L155-170 — `(feed_dir: &Path, msg: &Value, ts: &str) -> Result<u64, FeedError>` — - Custom alert keywords.
+-  `ts_to_yyyy_mm_dd` function L172-182 — `(ts: &str) -> Result<String, FeedError>` — - Custom alert keywords.
+-  `tests` module L185-202 — `-` — - Custom alert keywords.
+-  `validate_accepts_no_params` function L189-192 — `()` — - Custom alert keywords.
+-  `defaults_provide_cursor_with_null_user_id` function L195-201 — `()` — - Custom alert keywords.
 
 ### crates/arawn-feeds/tests
 
