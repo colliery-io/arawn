@@ -709,6 +709,61 @@ mod tests {
         }
     }
 
+    /// End-to-end shape check (ARAWN-I-0058 T-E): a full modal flow — pick a
+    /// template, seed the form from the schema the server would send, fill the
+    /// required fields, submit — must produce a payload that deserializes into
+    /// `arawn_service::FeedRegisterSpec` (the exact type `feed_register` takes).
+    /// A filesystem path with spaces is typed verbatim, no quoting.
+    #[test]
+    fn submit_is_wire_compatible_with_feed_register() {
+        use arawn_service::FeedRegisterSpec;
+
+        // Stage 1 → pick filesystem/folder.
+        let mut s = WatchModalState::new(vec![TemplateChoice {
+            name: "filesystem/folder".into(),
+            description: "watch a folder".into(),
+        }]);
+        assert_eq!(
+            s.handle_key(key(KeyCode::Enter)),
+            WatchOutcome::TemplatePicked("filesystem/folder".into())
+        );
+
+        // The event loop would fetch feed_schema; emulate its result.
+        s.enter_form(
+            "filesystem/folder",
+            vec![
+                spec("root", FeedParamKindDto::Path, true, None),
+                spec("recursive", FeedParamKindDto::Bool, false, Some(json!(true))),
+                spec("include", FeedParamKindDto::List, false, Some(json!(["**/*"]))),
+            ],
+            "*/15 * * * *",
+        );
+
+        typ(&mut s, "mynotes"); // feed_id
+        s.focus = 1;
+        typ(&mut s, "/Users/me/My Drive/Notes"); // spaced path, no quoting
+
+        let outcome = s.handle_key(key(KeyCode::Enter));
+        let WatchOutcome::Submit { template, feed_id, params, cadence } = outcome else {
+            panic!("expected Submit, got {outcome:?}");
+        };
+
+        // Assemble the payload exactly as event_loop/watch.rs does, then prove
+        // it round-trips through the real RPC arg type.
+        let payload = json!({
+            "template": template,
+            "feed_id": feed_id,
+            "params": params,
+            "cadence": cadence,
+        });
+        let spec: FeedRegisterSpec =
+            serde_json::from_value(payload).expect("payload is a valid FeedRegisterSpec");
+        assert_eq!(spec.template, "filesystem/folder");
+        assert_eq!(spec.feed_id, "mynotes");
+        assert_eq!(spec.params["root"], "/Users/me/My Drive/Notes");
+        assert!(spec.cadence.is_none(), "unchanged cadence is not overridden");
+    }
+
     #[test]
     fn esc_cancels_in_both_stages() {
         let mut s = WatchModalState::new(vec![]);

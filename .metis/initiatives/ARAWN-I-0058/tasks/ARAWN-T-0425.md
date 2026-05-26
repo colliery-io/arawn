@@ -4,14 +4,14 @@ level: task
 title: "T-E: Docs + UAT for /watch modal registration"
 short_code: "ARAWN-T-0425"
 created_at: 2026-05-26T17:28:07.575295+00:00
-updated_at: 2026-05-26T17:28:07.575295+00:00
+updated_at: 2026-05-26T18:55:04.553339+00:00
 parent: ARAWN-I-0058
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -51,14 +51,23 @@ Documentation + Testing — `docs/`, `arawn-tui` / `arawn-tests`.
 
 ## Acceptance Criteria
 
-- [ ] Watch/feed docs describe the modal flow and still document the one-line
-      command; param-schema requirement for template authors is noted.
-- [ ] A test registers `filesystem/folder` through the modal state machine and
-      asserts the resulting `feed_register` payload (incl. a spaced path typed
-      into the field with no quoting).
-- [ ] A test covers a discovery-backed template's field picker.
-- [ ] `angreal docs build` passes; `angreal check workspace` + tests pass.
-- [ ] Initiative [[ARAWN-I-0058]] exit criteria reviewed and met.
+## Acceptance Criteria
+
+- [x] Watch/feed docs describe the modal flow and still document the one-line
+      command; param-schema requirement for template authors is noted
+      (`docs/src/how-to/create-a-feed.md` + `reference/slash-commands.md`).
+- [x] A test registers `filesystem/folder` through the modal state machine and
+      asserts the resulting payload — and that it deserializes into the real
+      `FeedRegisterSpec` (incl. a spaced path typed with no quoting):
+      `submit_is_wire_compatible_with_feed_register`.
+- [~] Discovery-backed field picker test — **moved to [[ARAWN-T-0426]]** (the
+      picker itself was deferred from T-D). T-E covers the free-form path
+      end-to-end; the discovery path lands with T-F.
+- [x] `angreal docs build` passes; `angreal check workspace` + `arawn-tui` tests
+      pass (10 watch_modal tests).
+- [x] Initiative exit criteria reviewed: core flow done; REQ-007 tracked as
+      [[ARAWN-T-0426]] so I-0058 stays open until that lands (or is explicitly
+      descoped).
 
 ## Test Cases
 
@@ -85,4 +94,16 @@ Depends on [[ARAWN-T-0424]] (full flow must work). Final task of the initiative.
 
 ## Status Updates
 
-*To be added during implementation*
+**2026-05-26 — Docs + test done.**
+- Docs: `create-a-feed.md` now leads `/watch` with the guided form (pick →
+  fill → Enter; feed-id always asked; cadence advanced; spaced paths need no
+  quoting), keeps the one-line form as the power-user path, and adds a
+  template-author note about the required `param_schema()`. `slash-commands.md`
+  `/watch` entry updated. `angreal docs build` clean.
+- Test: `submit_is_wire_compatible_with_feed_register` drives the full modal
+  flow (pick → enter_form with the server's filesystem schema → fill → submit)
+  and proves the payload deserializes into the real `arawn_service::FeedRegisterSpec`,
+  with a spaced path intact and unchanged cadence not overridden.
+- Chose a deterministic state-machine test over a real-LLM UAT: this is
+  mechanical UI, not agent behavior (right-layer testing).
+- Discovery-picker test deferred with the feature to [[ARAWN-T-0426]].

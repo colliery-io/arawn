@@ -23,7 +23,25 @@ No further setup. After `/connect`, `/feeds` will list these as running.
 
 ## Option B: `/watch` a specific source
 
-For everything else — a particular Slack channel, a Drive folder, a Jira project, a Gmail label:
+For everything else — a particular Slack channel, a Drive folder, a Jira project, a Gmail label.
+
+### Guided form (recommended)
+
+Type `/watch` with **no arguments** to open the registration form:
+
+1. **Pick a template** from the list (each shows a one-line description).
+2. **Fill the fields** — the form shows exactly the parameters that template
+   takes, with types, defaults pre-filled, and required fields marked `*`. You
+   always choose a **Feed ID** (your handle for this instance). The cadence sits
+   under an "advanced" line, pre-filled with the template's default — leave it
+   alone unless you want to override it.
+3. Press **Enter** to register. Validation errors keep the form open so you can
+   fix the offending field; `Esc` cancels.
+
+Because each value goes in its own field, things that are awkward to type on one
+line just work — e.g. a **filesystem path containing spaces** needs no quoting.
+
+### One-line form (power users / scripts)
 
 ```
 /watch <template> <feed_id> [param=value ...]
@@ -31,18 +49,23 @@ For everything else — a particular Slack channel, a Drive folder, a Jira proje
 
 - `<template>` is `<provider>/<template-name>`, e.g. `slack/channel-archive`.
 - `<feed_id>` is your handle for the instance — the channel slug, project key, folder name.
-- `[param=value]` is template-specific (the channel ID, the Jira project key, etc.). `/watch list <template>` shows what each template needs.
+- `[param=value]` is template-specific (the channel ID, the Jira project key, etc.). `/watch list <template>` shows what each template needs. Quote values with spaces: `root="/Users/me/My Notes"`.
 
 Examples:
 
 ```
-/watch slack/channel-archive design                # mirrors #design
-/watch jira/project-tracker ENG                    # mirrors the ENG project
-/watch drive/folder-sync Reports/2026              # mirrors a Drive folder by name
-/watch gmail/sender-filter alerts                  # filter=alerts@example.com
+/watch slack/channel-archive design channel=C0123ABCD   # mirrors #design
+/watch jira/project-tracker ENG project=ENG             # mirrors the ENG project
+/watch drive/folder-sync Reports folder=Reports/2026    # mirrors a Drive folder by name
+/watch gmail/sender-filter alerts sender_pattern=alerts@example.com
 ```
 
 For the full list of templates and their parameters, see [feed templates reference](../reference/feed-templates.md).
+
+> **For template authors:** the form is generated from each template's
+> `FeedTemplate::param_schema()` — a required trait method. A new template won't
+> compile until it declares its parameters there, so the modal stays in sync
+> automatically.
 
 ## Discovering what's available
 

@@ -119,11 +119,15 @@ Open the todo list modal — create, mark done, archive. See [todos tools refere
 
 List available agent tools. See [agent tools reference](./agent-tools.md).
 
-### `/watch <template> <feed_id> [k=v ...] | /watch list <template>`
+### `/watch [<template> <feed_id> [k=v ...]] | /watch list <template>`
 
 Register a continual data feed.
 
-- `/watch <template> <feed_id> [params]` — register the feed.
+- `/watch` (no args) — open the guided registration form: pick a template, fill
+  its fields (types + defaults shown, required marked `*`, feed-id always asked,
+  cadence under "advanced"), Enter to register.
+- `/watch <template> <feed_id> [params]` — register directly from the command
+  line. Quote values with spaces: `root="/Users/me/My Notes"`.
 - `/watch list <template>` — show what's available for that template (channels for Slack, projects for Jira, etc.).
 
 Supports `since=<rfc3339>` for backfill. See [create a feed how-to](../how-to/create-a-feed.md).
