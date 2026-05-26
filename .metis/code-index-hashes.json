@@ -344,7 +344,7 @@
     "crates/arawn-tui/src/app/history.rs": "f0817700ca0d7f8ecec9e236e6f6da3d18d5957210cde2ee91446808dfa85cf4",
     "crates/arawn-tui/src/app/mod.rs": "c67978862e12fc3d924b38a74f40ac7d0cb5eda65ebfb4aa96473c94e8fbb898",
     "crates/arawn-tui/src/ceremony_modal.rs": "d7e9aab8fdf1bc26be0ea8a2e8e929ba9dd0a7c1348add773eae91edc31027ea",
-    "crates/arawn-tui/src/command.rs": "8146f942a1e0b157592477d1aee4961718f64869f5e05e8c5a5f5725e301cd4b",
+    "crates/arawn-tui/src/command.rs": "d467afa569e92f7ae86436bd84cf5cdc11851050596148a551b34df564bd6cb1",
     "crates/arawn-tui/src/event.rs": "1e6be20e8e652617c73f7a312f816f7ccfeedd1104c581c0abbc455c1e1ff007",
     "crates/arawn-tui/src/event_loop/brief.rs": "c93a15b6683114b87cf4e4741beed69d10b14ea7e2d7cc4d31677915d41d3913",
     "crates/arawn-tui/src/event_loop/ceremony.rs": "ec2f0ad36aef0a4617501f5ccbe67a08147bc98cd5e708a8c9ebd9da3e1218f8",

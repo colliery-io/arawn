@@ -458,9 +458,13 @@ pub fn parse_watch_args(args: &str) -> Result<WatchSpec, String> {
     let mut params = serde_json::Map::new();
     let mut cadence: Option<String> = None;
     for tok in &tokens[2..] {
-        let (k, v) = tok
-            .split_once('=')
-            .ok_or_else(|| format!("/watch: '{tok}' is not key=value"))?;
+        let (k, v) = tok.split_once('=').ok_or_else(|| {
+            format!(
+                "/watch: '{tok}' is not key=value. If this is part of a value \
+                 containing spaces (e.g. a path), quote it: root=\"/path/with spaces\" \
+                 or root='/path/with spaces'."
+            )
+        })?;
         if k == "@cadence" {
             cadence = Some(v.to_string());
             continue;
@@ -550,18 +554,27 @@ fn parse_relative_duration(s: &str) -> Option<(i64, &str)> {
     }
 }
 
-/// Tokenizer that respects double-quoted runs so a param value can
-/// include spaces. Doesn't try to be a full shell parser — just
-/// enough for the `/watch` use case.
+/// Tokenizer that respects quoted runs so a param value can include
+/// spaces — e.g. a filesystem path like `root="/Users/me/My Drive"`.
+/// Both `"double"` and `'single'` quotes are honored (single quotes are
+/// what most people reach for, and a shell would strip them before we
+/// ever saw the string; in the TUI we get the raw line, so we strip them
+/// here). Backslash escapes (`\"`) are only meaningful inside double
+/// quotes, matching shell semantics. Doesn't try to be a full shell
+/// parser — just enough for the `/watch` use case.
 fn tokenize_kv(s: &str) -> Result<Vec<String>, String> {
     let mut out: Vec<String> = Vec::new();
     let mut cur = String::new();
-    let mut in_quotes = false;
+    // `None` = unquoted; `Some(q)` = inside a run opened by quote char `q`.
+    // Only the matching quote char closes the run, so a `'` inside a
+    // double-quoted value (or vice-versa) is a literal.
+    let mut quote: Option<char> = None;
     let mut chars = s.chars().peekable();
     while let Some(c) = chars.next() {
         match c {
-            '"' => in_quotes = !in_quotes,
-            '\\' if in_quotes => match chars.next() {
+            '"' | '\'' if quote.is_none() => quote = Some(c),
+            c if Some(c) == quote => quote = None,
+            '\\' if quote == Some('"') => match chars.next() {
                 Some('"') => cur.push('"'),
                 Some(other) => {
                     cur.push('\\');
@@ -569,7 +582,7 @@ fn tokenize_kv(s: &str) -> Result<Vec<String>, String> {
                 }
                 None => return Err("trailing backslash".into()),
             },
-            c if c.is_whitespace() && !in_quotes => {
+            c if c.is_whitespace() && quote.is_none() => {
                 if !cur.is_empty() {
                     out.push(std::mem::take(&mut cur));
                 }
@@ -577,8 +590,8 @@ fn tokenize_kv(s: &str) -> Result<Vec<String>, String> {
             c => cur.push(c),
         }
     }
-    if in_quotes {
-        return Err("unterminated double-quote".into());
+    if quote.is_some() {
+        return Err("unterminated quote".into());
     }
     if !cur.is_empty() {
         out.push(cur);
@@ -837,6 +850,38 @@ mod tests {
         let cmd = parse_command("/help").unwrap();
         assert_eq!(cmd.name, "help");
         assert_eq!(cmd.args, "");
+    }
+
+    /// Filesystem-feed paths routinely contain spaces ("My Drive",
+    /// "Google Drive"). Both quote styles must protect the space so the
+    /// value survives as a single token; an unquoted space cannot (there
+    /// is no delimiter to recover), and that case must surface a helpful
+    /// error rather than silently mangling the path.
+    #[test]
+    fn watch_spaced_path_honors_both_quote_styles() {
+        const WANT: &str = "/Users/me/My Drive/Meet";
+
+        // Double quotes around the value.
+        let dq = parse_watch_args("filesystem/folder notes root=\"/Users/me/My Drive/Meet\"")
+            .expect("double-quoted value");
+        assert_eq!(dq.params["root"], WANT);
+
+        // Double quotes around the whole key=value token.
+        let dqw = parse_watch_args("filesystem/folder notes \"root=/Users/me/My Drive/Meet\"")
+            .expect("double-quoted token");
+        assert_eq!(dqw.params["root"], WANT);
+
+        // Single quotes — what most people reach for, and previously a
+        // hard error (regression guard for the reported bug).
+        let sq = parse_watch_args("filesystem/folder notes root='/Users/me/My Drive/Meet'")
+            .expect("single-quoted value");
+        assert_eq!(sq.params["root"], WANT);
+
+        // Unquoted spaces are unrecoverable — but the error must point at
+        // the fix instead of just "is not key=value".
+        let err = parse_watch_args("filesystem/folder notes root=/Users/me/My Drive/Meet")
+            .expect_err("unquoted spaces cannot be tokenized");
+        assert!(err.contains("quote it"), "error should hint at quoting: {err}");
     }
 
     #[test]
