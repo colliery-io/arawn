@@ -15,6 +15,7 @@ pub mod theme;
 pub mod toast;
 pub mod todo_modal;
 pub mod tui_prompt;
+pub mod watch_modal;
 pub mod width;
 pub mod wrap;
 pub mod ws_client;

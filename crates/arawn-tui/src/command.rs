@@ -516,7 +516,7 @@ pub fn parse_watch_args(args: &str) -> Result<WatchSpec, String> {
 /// - `2026-01-01T12:00:00Z` — RFC3339 datetime, returned as-is.
 /// - `2026-01-01` — ISO date, expanded to that day's midnight UTC.
 /// - `Nd` / `Nh` / `Nw` / `Nmo` — relative duration walked back from now.
-fn parse_since(s: &str) -> Result<String, String> {
+pub(crate) fn parse_since(s: &str) -> Result<String, String> {
     let s = s.trim();
     if s.is_empty() {
         return Err("empty value".into());

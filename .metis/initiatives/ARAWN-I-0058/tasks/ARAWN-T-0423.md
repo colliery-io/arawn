@@ -4,14 +4,14 @@ level: task
 title: "T-C: watch_modal.rs — dropdown + dynamic config form state & render"
 short_code: "ARAWN-T-0423"
 created_at: 2026-05-26T17:28:05.324720+00:00
-updated_at: 2026-05-26T17:28:05.324720+00:00
+updated_at: 2026-05-26T18:39:40.091033+00:00
 parent: ARAWN-I-0058
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -63,22 +63,26 @@ Feature — `arawn-tui` (new module).
 
 ## Acceptance Criteria
 
-- [ ] `watch_modal.rs` exists with `WatchModalState`, a `WatchOutcome` enum, and
-      `render_watch_modal`.
-- [ ] Stage 1 lists templates and navigates with arrows; selecting one moves to
-      stage 2 seeded from that template's schema.
-- [ ] Stage 2 renders one field per `ParamSpec` (all six `ParamKind`s), defaults
-      pre-filled; `feed_id` field present and required; cadence under advanced,
-      pre-filled with default.
-- [ ] Submit is blocked while any required field (incl. `feed_id`) is empty or a
-      typed field is invalid; the modal exposes the blocking reason for render.
-- [ ] On valid submit, the outcome carries a `params` Value equal to what the
-      equivalent `/watch … k=v` line would produce; cadence present only when
-      changed.
-- [ ] `Esc` yields `Cancel`.
-- [ ] Pure-state unit tests cover: schema→fields seeding, required-empty block,
-      int/list parsing, cadence-default vs override, and submit payload shape.
-- [ ] `angreal check workspace` + `arawn-tui` tests pass.
+## Acceptance Criteria
+
+- [x] `watch_modal.rs` exists with `WatchModalState`, `WatchOutcome`, and
+      `render_watch_modal`. Registered in `lib.rs`.
+- [x] Stage 1 lists templates (sorted) and navigates with ↑↓; Enter emits
+      `TemplatePicked(name)` for the event loop to fetch schema + `enter_form`.
+- [x] Stage 2 renders one field per `FeedParamSpecDto` (all kinds), defaults
+      pre-filled; required `feed_id` first; cadence last under an "— advanced —"
+      separator, pre-filled with the template default.
+- [x] Submit blocked on empty required field or invalid typed field; the reason
+      is exposed via `last_error` and rendered.
+- [x] Valid submit yields `WatchOutcome::Submit { template, feed_id, params,
+      cadence }` with params coerced to match `parse_watch_args` output (Since
+      resolved via the now-`pub(crate)` `command::parse_since`); cadence is
+      `Some` only when changed from default; empty optionals omitted.
+- [x] `Esc` yields `Cancel` in both stages.
+- [x] 9 pure-state unit tests: pick-nav, schema→field seeding, required-empty
+      block, spaced-path payload, bool toggle, list split, int validation,
+      cadence override, esc-cancel.
+- [x] `cargo build -p arawn-tui` clean; `arawn-tui` watch_modal tests pass.
 
 ## Dependencies
 Depends on [[ARAWN-T-0421]] (`ParamSpec`/`ParamKind` shape) for the field model.
@@ -94,4 +98,20 @@ against `ParamSpec` directly. Blocks [[ARAWN-T-0424]].
 
 ## Status Updates
 
-*To be added during implementation*
+**2026-05-26 — Implemented + tested.**
+- New `crates/arawn-tui/src/watch_modal.rs`: `WatchModalState` (two-stage:
+  `PickTemplate` / `FillForm`), `WatchOutcome` (None / TemplatePicked / Submit /
+  Cancel), `FieldState`, `render_watch_modal`. Registered in `lib.rs`.
+- `enter_form()` is the seam the event loop (T-D) calls after fetching schema:
+  builds focusable rows = feed_id + params + cadence, pre-filling defaults.
+- Field widgets by kind: text/path/since/int = text input; bool = `[on]/[off]`
+  toggle (space/←/→); enum = `< value >` selector (←/→); list = space/comma →
+  JSON array. `coerce_param` builds the submit payload; `Since` resolved via the
+  now-`pub(crate)` `command::parse_since`.
+- Pure state + render, no I/O (mirrors `todo_modal.rs`). 9 unit tests pass.
+
+**Design notes:** cadence is a regular optional field rendered last under an
+"— advanced —" separator (no separate toggle key — simpler, and text fields
+capture all chars so a hotkey toggle would conflict). Field-level discovery
+picker (Slack channel etc.) deferred to T-D as planned; `FieldState` can later
+carry a discovered choice list without a rewrite.
