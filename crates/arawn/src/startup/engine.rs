@@ -35,10 +35,11 @@ pub fn build_engine_config(
             memories: vec![],
             session_context: String::new(),
             plugin_prompts: vec![],
-            // Overridden per-session in `LocalService` from the active
-            // lens's column; the template carries the boot lens's
-            // value so single-shot CLI flows pick the right persona too.
-            identity_profile: lens.identity_profile,
+            // ARAWN-I-0060: chat is lens-agnostic, so it doesn't take its
+            // persona from any one lens — always the default `assistant`.
+            // (The lens's `identity_profile` column still exists and is
+            // settable; it just no longer drives the chat system prompt.)
+            identity_profile: arawn_core::IdentityProfile::Assistant,
             // Filled in by LocalService per-query (it has access to the
             // integration registry); the template stays None.
             integration_capabilities: None,

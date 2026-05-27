@@ -424,7 +424,9 @@ impl LocalService {
                     .unwrap_or_else(|| pc.memories.clone()),
                 session_context: pc.session_context.clone(),
                 plugin_prompts: pc.plugin_prompts.clone(),
-                identity_profile: lens.identity_profile,
+                // ARAWN-I-0060: lens-agnostic chat → always the default
+                // `assistant` persona, never flipped by the active lens.
+                identity_profile: arawn_core::IdentityProfile::Assistant,
                 // Closure captures the registry Arc; queries it fresh each
                 // turn so /connect and /disconnect reflect immediately.
                 integration_capabilities: Some({
