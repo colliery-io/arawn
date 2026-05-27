@@ -1,4 +1,4 @@
-l---
+---
 id: status-bar-redesign-model-tokens
 level: task
 title: "Status bar redesign — model, tokens, session info, generating indicator"

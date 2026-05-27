@@ -1,4 +1,4 @@
-to ---
+---
 id: localservice-arawnservice-impl
 level: task
 title: "LocalService — ArawnService impl with engine + store + streaming bridge"

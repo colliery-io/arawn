@@ -1,4 +1,3 @@
-
 ---
 id: unified-store-session-promotion
 level: task

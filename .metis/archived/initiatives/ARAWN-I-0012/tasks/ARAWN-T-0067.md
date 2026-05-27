@@ -1,4 +1,4 @@
-i---
+---
 id: markdown-rendering-in-assistant
 level: task
 title: "Markdown rendering in assistant chat messages — headings, code blocks, lists, emphasis"

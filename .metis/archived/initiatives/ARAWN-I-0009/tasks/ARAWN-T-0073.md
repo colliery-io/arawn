@@ -1,4 +1,4 @@
-s---
+---
 id: permission-config-loading-user
 level: task
 title: "Permission config loading — user + project settings merge with priority"

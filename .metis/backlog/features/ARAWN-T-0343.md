@@ -1,7 +1,7 @@
 ---
 id: refine-inbox-email-retrieval-first
 level: task
-title: "Refine inbox/email retrieval — first-class tool path for "summarize my inbox""
+title: 'Refine inbox/email retrieval — first-class tool path for "summarize my inbox"'
 short_code: "ARAWN-T-0343"
 created_at: 2026-05-19T02:30:00+00:00
 updated_at: 2026-05-20T20:10:24.183668+00:00

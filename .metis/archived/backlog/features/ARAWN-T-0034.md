@@ -1,4 +1,4 @@
-u---
+---
 id: permission-system-user-approval
 level: task
 title: "Permission system — user approval gates for tool execution"
