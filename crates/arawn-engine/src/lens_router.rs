@@ -55,6 +55,30 @@ impl LensMemoryRouter {
         self.session.current()
     }
 
+    /// Every lens's memory manager (name → manager), for cross-lens reads
+    /// (ARAWN-I-0060). Enumerates the on-disk lens KB directories under
+    /// `<data_dir>/lenses/` — the dir name *is* the lens name
+    /// (`lens_dir_name` returns the bare name) — and opens/caches each via
+    /// [`Self::for_lens`]. Lenses with no KB yet (no writes) don't appear,
+    /// which is correct: there's nothing to read. Errors opening any one lens
+    /// are skipped, not fatal.
+    pub fn all_lens_managers(&self) -> Vec<(String, Arc<MemoryManager>)> {
+        let mut out = Vec::new();
+        let dir = self.data_dir.join("lenses");
+        let Ok(rd) = std::fs::read_dir(&dir) else {
+            return out;
+        };
+        for entry in rd.flatten() {
+            if entry.file_type().map(|t| t.is_dir()).unwrap_or(false)
+                && let Some(name) = entry.file_name().to_str()
+                && let Ok(mgr) = self.for_lens(name)
+            {
+                out.push((name.to_string(), mgr));
+            }
+        }
+        out
+    }
+
     pub fn for_lens(&self, name: &str) -> Result<Arc<MemoryManager>, MemoryError> {
         if let Some(existing) = self.cache.lock().unwrap().get(name).cloned() {
             return Ok(existing);

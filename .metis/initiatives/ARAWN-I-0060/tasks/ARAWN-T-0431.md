@@ -11,10 +11,10 @@ archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
-exit_criteria_met: false
+exit_criteria_met: true
 initiative_id: ARAWN-I-0060
 ---
 
@@ -62,4 +62,20 @@ Depends on [[ARAWN-T-0430]]. Pairs with [[ARAWN-T-0432]] (shim demotion).
 
 ## Status Updates
 
-*To be added during implementation*
+**2026-05-27 — Done.** Branch `feat/lens-agnostic-chat`.
+- `LensMemoryRouter::all_lens_managers()` enumerates on-disk lens KBs
+  (`<data_dir>/lenses/*`, dir name == lens name) and opens/caches each.
+- `signal_search`: default now roams **all** lens stores via
+  `arawn_memory::search_labeled_stores`; `lens=` narrows to one; each result row
+  carries a `lens` label. Removed the local rrf/FusedHit (uses the crate
+  primitive). Description/schema updated.
+- `memory_search`: `scope` reconciled to `all` (default = global + every lens) /
+  `global` / `lens` (all lenses, no global) / `<lens-name>` (narrow). Routed
+  handle roams; Fixed handle (tests) keeps legacy single-manager tiers. Each hit
+  shows its source `lens` in output. `ScoredEntity` gained a `lens` field.
+- Updated the signal explicit-lens test to the roam model (no-override now finds
+  cross-lens hits, labeled by source). `arawn-engine` lib: 702 passed / 0 failed;
+  `angreal check workspace` clean.
+
+Behavior change to flag: `memory_search` default went from "both" (global +
+*active* lens) to "all" (global + *every* lens).

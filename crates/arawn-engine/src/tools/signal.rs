@@ -10,27 +10,18 @@
 //! lens scope, Convention, etc.). The global tier (Preference,
 //! Person) is reachable via the existing `memory_search` tool.
 
-use std::collections::HashMap;
 use std::sync::Arc;
 
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde_json::{Value, json};
 use tracing::debug;
-use uuid::Uuid;
 
 use arawn_embed::Embedder;
 use arawn_memory::{Entity, EntityType, MemoryManager, MemoryStore};
 
 use crate::lens_router::{LensMemoryRouter, MemoryHandle};
 use arawn_tool::{Tool, ToolCategory, ToolError, ToolOutput};
-
-/// RRF constant — same value `feed_search` uses.
-const RRF_K: f32 = 60.0;
-
-fn rrf(rank: usize) -> f32 {
-    1.0 / (RRF_K + rank as f32 + 1.0)
-}
 
 /// Resolve the manager for the active lens, or the explicit
 /// `lens` arg when provided. `Fixed` handles always return the
@@ -107,9 +98,10 @@ impl Tool for SignalSearchTool {
     }
 
     fn description(&self) -> &str {
-        "Semantic + FTS5 search over the active lens's curated knowledge \
-         base. Returns **entities** (decisions, facts, notes, conventions) extracted \
-         from feeds and ranked by hybrid similarity.\n\n\
+        "Semantic + FTS5 search over your curated knowledge base **across all \
+         lenses**. Returns **entities** (decisions, facts, notes, conventions) \
+         extracted from feeds and ranked by hybrid similarity; each hit is labeled \
+         with the `lens` it came from. Pass `lens` to restrict to one.\n\n\
          For \"what did we decide / agree / observe about X\" questions, this is the \
          right tool. For \"summarize my inbox / read my gmail / what's in slack\" — \
          use `feed_search` instead; that returns raw projection rows. The daily \
@@ -138,7 +130,7 @@ impl Tool for SignalSearchTool {
                 "query": { "type": "string", "description": "Free-text search query" },
                 "lens": {
                     "type": "string",
-                    "description": "Override the active lens; defaults to current"
+                    "description": "Restrict to one lens by name; omit to search across all lenses"
                 },
                 "limit": { "type": "integer", "description": "Max results (default 10, max 50)" }
             },
@@ -162,57 +154,56 @@ impl Tool for SignalSearchTool {
             .unwrap_or(10)
             .min(50) as usize;
 
-        let mgr = resolve_manager(&self.memory, explicit, self.router.as_ref())?;
-        let store: &Arc<MemoryStore> = &mgr.lens;
-
-        // FTS5 ranks
-        let fts_hits = store
-            .search(query, limit * 4)
-            .map_err(|e| ToolError::ExecutionFailed(format!("fts: {e}")))?;
-        let mut fused: HashMap<Uuid, FusedHit> = HashMap::new();
-        for (rank, ent) in fts_hits.into_iter().enumerate() {
-            fused
-                .entry(ent.id)
-                .or_insert_with(|| FusedHit::new(ent.clone()))
-                .score += rrf(rank);
-        }
-
-        // Vector ranks (when an embedder is configured)
-        if let Some(emb) = self.embedder.as_ref() {
-            match emb.embed(query).await {
-                Ok(qv) => {
-                    let hits = store
-                        .search_similar(&qv, limit * 4)
-                        .map_err(|e| ToolError::ExecutionFailed(format!("vec: {e}")))?;
-                    for (rank, sim) in hits.into_iter().enumerate() {
-                        if let Ok(Some(ent)) = store.get_entity(sim.entity_id) {
-                            if ent.superseded {
-                                continue;
-                            }
-                            fused
-                                .entry(ent.id)
-                                .or_insert_with(|| FusedHit::new(ent))
-                                .score += rrf(rank);
-                        }
-                    }
-                }
-                Err(e) => debug!(error = %e, "signal_search: embed failed; FTS-only"),
+        // Build the set of lens stores to search. ARAWN-I-0060: read across
+        // ALL lenses by default; an explicit `lens` narrows to one. Each hit is
+        // labeled with its source lens. signal_* is lens-tier only (the global
+        // tier of preferences/people is `memory_search`'s job).
+        let stores: Vec<(String, Arc<MemoryStore>)> = match (explicit, self.router.as_ref()) {
+            // Narrow to a named lens.
+            (Some(name), Some(router)) => {
+                let mgr = router
+                    .for_lens(name)
+                    .map_err(|e| ToolError::ExecutionFailed(format!("lens `{name}`: {e}")))?;
+                vec![(name.to_string(), Arc::clone(&mgr.lens))]
             }
-        }
+            // Roam: every lens's KB.
+            (None, Some(router)) => router
+                .all_lens_managers()
+                .into_iter()
+                .map(|(name, mgr)| (name, Arc::clone(&mgr.lens)))
+                .collect(),
+            // Fixed handle (tests / non-routed): the single manager's lens tier.
+            _ => {
+                let mgr = resolve_manager(&self.memory, explicit, self.router.as_ref())?;
+                vec![("lens".to_string(), Arc::clone(&mgr.lens))]
+            }
+        };
 
-        let mut hits: Vec<FusedHit> = fused.into_values().collect();
-        hits.sort_by(|a, b| {
-            b.score
-                .partial_cmp(&a.score)
-                .unwrap_or(std::cmp::Ordering::Equal)
-        });
-        hits.truncate(limit);
+        // Embed once (caller-side); the fusion primitive is synchronous.
+        let query_embedding = match self.embedder.as_ref() {
+            Some(emb) => match emb.embed(query).await {
+                Ok(qv) => Some(qv),
+                Err(e) => {
+                    debug!(error = %e, "signal_search: embed failed; FTS-only");
+                    None
+                }
+            },
+            None => None,
+        };
+
+        let hits = arawn_memory::search_labeled_stores(
+            &stores,
+            query,
+            query_embedding.as_deref(),
+            limit,
+        );
 
         let results: Vec<Value> = hits
             .iter()
             .map(|h| {
                 let mut row = entity_summary(&h.entity);
                 if let Value::Object(ref mut m) = row {
+                    m.insert("lens".into(), json!(h.lens));
                     m.insert("score".into(), json!(h.score));
                 }
                 row
@@ -225,17 +216,6 @@ impl Tool for SignalSearchTool {
             })
             .to_string(),
         ))
-    }
-}
-
-struct FusedHit {
-    entity: Entity,
-    score: f32,
-}
-
-impl FusedHit {
-    fn new(entity: Entity) -> Self {
-        Self { entity, score: 0.0 }
     }
 }
 
@@ -522,6 +502,7 @@ mod tests {
     use arawn_core::Lens;
     use arawn_memory::{ConfidenceSource, Entity, EntityType, MemoryManager};
     use tempfile::TempDir;
+    use uuid::Uuid;
 
     fn setup() -> (
         TempDir,
@@ -686,20 +667,33 @@ mod tests {
         let ctx = crate::context::EngineToolContext::new(&ws, Uuid::new_v4());
         let tool = SignalSearchTool::new(router, None);
 
-        // No override: scratch (active) has nothing.
+        // No override now ROAMS across all lenses (I-0060) — so it finds the
+        // entity living in `other`, labeled with its source lens.
         let r = tool
             .execute(&ctx, json!({"query": "secret"}))
             .await
             .unwrap();
         let v: Value = serde_json::from_str(&r.content).unwrap();
-        assert_eq!(v["count"], 0, "scratch ws should be empty");
+        assert_eq!(v["count"], 1, "roam-all should find the `other` lens entity");
+        assert_eq!(
+            v["results"][0]["lens"], "other",
+            "hit should be labeled with its source lens"
+        );
 
-        // Explicit override routes to "other".
+        // Explicit `lens` narrows to one store.
         let r = tool
             .execute(&ctx, json!({"query": "secret", "lens": "other"}))
             .await
             .unwrap();
         let v: Value = serde_json::from_str(&r.content).unwrap();
-        assert_eq!(v["count"], 1, "override should route to `other`");
+        assert_eq!(v["count"], 1, "narrow to `other` finds it");
+
+        // Narrowing to the empty scratch lens finds nothing.
+        let r = tool
+            .execute(&ctx, json!({"query": "secret", "lens": "scratch"}))
+            .await
+            .unwrap();
+        let v: Value = serde_json::from_str(&r.content).unwrap();
+        assert_eq!(v["count"], 0, "narrow to empty scratch is empty");
     }
 }

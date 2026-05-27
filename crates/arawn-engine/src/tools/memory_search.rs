@@ -8,20 +8,27 @@ use tracing::debug;
 use arawn_embed::Embedder;
 use arawn_memory::{Entity, EntityType, MemoryStore, RelationType};
 
-use crate::lens_router::MemoryHandle;
+use crate::lens_router::{LensMemoryRouter, MemoryHandle};
 use arawn_tool::{Tool, ToolCategory, ToolError, ToolOutput};
 
 /// Tool that searches the knowledge base using composite retrieval:
 /// semantic similarity + FTS5 text search + tag filtering + graph expansion.
 pub struct MemorySearchTool {
     memory: MemoryHandle,
+    router: Option<Arc<LensMemoryRouter>>,
     embedder: Option<Arc<dyn Embedder>>,
 }
 
 impl MemorySearchTool {
     pub fn new(memory: impl Into<MemoryHandle>, embedder: Option<Arc<dyn Embedder>>) -> Self {
+        let memory = memory.into();
+        let router = match &memory {
+            MemoryHandle::Routed(r) => Some(Arc::clone(r)),
+            MemoryHandle::Fixed(_) => None,
+        };
         Self {
-            memory: memory.into(),
+            memory,
+            router,
             embedder,
         }
     }
@@ -67,8 +74,9 @@ impl Tool for MemorySearchTool {
                 },
                 "scope": {
                     "type": "string",
-                    "enum": ["global", "lens", "both"],
-                    "description": "Which KB tier to search (default: both)"
+                    "description": "What to search: 'all' (global + every lens, default), \
+                                    'global' (shared tier only), 'lens' (every lens, no global), \
+                                    or a lens name to restrict to one"
                 },
                 "limit": {
                     "type": "integer",
@@ -107,7 +115,7 @@ impl Tool for MemorySearchTool {
         let scope = params
             .get("scope")
             .and_then(|v| v.as_str())
-            .unwrap_or("both");
+            .unwrap_or("all");
 
         let limit = params.get("limit").and_then(|v| v.as_u64()).unwrap_or(10) as usize;
 
@@ -116,24 +124,63 @@ impl Tool for MemorySearchTool {
             .and_then(|v| v.as_bool())
             .unwrap_or(false);
 
-        // Resolve the active lens's memory manager. With a
-        // `MemoryHandle::Routed`, this picks the manager for the
-        // session's currently-active lens.
-        let manager = self
-            .memory
-            .manager()
-            .map_err(|e| ToolError::ExecutionFailed(format!("memory routing: {e}")))?;
-
         // Collect results from each store, keyed by entity ID to deduplicate
         let mut scored: HashMap<uuid::Uuid, ScoredEntity> = HashMap::new();
 
-        let stores_to_search: Vec<&Arc<MemoryStore>> = match scope {
-            "global" => vec![&manager.global],
-            "lens" => vec![&manager.lens],
-            _ => vec![&manager.global, &manager.lens],
-        };
+        // Resolve which stores to search (ARAWN-I-0060: lens-agnostic reads).
+        //   "global"        → global tier only
+        //   "lens"          → every lens KB (no global)
+        //   "all" | "both"  → global + every lens  (default)
+        //   <lens-name>     → that one lens's KB
+        // Routed handles enumerate all lenses; a Fixed handle (tests) falls back
+        // to its single manager's tiers.
+        let stores_to_search: Vec<(String, Arc<MemoryStore>)> =
+            if let Some(router) = self.router.as_ref() {
+                let global = || -> Result<Arc<MemoryStore>, ToolError> {
+                    router
+                        .current()
+                        .map(|m| Arc::clone(&m.global))
+                        .map_err(|e| ToolError::ExecutionFailed(format!("memory routing: {e}")))
+                };
+                let all_lenses = || {
+                    router
+                        .all_lens_managers()
+                        .into_iter()
+                        .map(|(name, mgr)| (name, Arc::clone(&mgr.lens)))
+                        .collect::<Vec<_>>()
+                };
+                match scope {
+                    "global" => vec![("global".to_string(), global()?)],
+                    "lens" => all_lenses(),
+                    "all" | "both" => {
+                        let mut v = vec![("global".to_string(), global()?)];
+                        v.extend(all_lenses());
+                        v
+                    }
+                    name => {
+                        let mgr = router.for_lens(name).map_err(|e| {
+                            ToolError::ExecutionFailed(format!("lens `{name}`: {e}"))
+                        })?;
+                        vec![(name.to_string(), Arc::clone(&mgr.lens))]
+                    }
+                }
+            } else {
+                // Fixed handle (tests / non-routed): legacy single-manager tiers.
+                let manager = self
+                    .memory
+                    .manager()
+                    .map_err(|e| ToolError::ExecutionFailed(format!("memory routing: {e}")))?;
+                match scope {
+                    "global" => vec![("global".to_string(), Arc::clone(&manager.global))],
+                    "lens" => vec![("lens".to_string(), Arc::clone(&manager.lens))],
+                    _ => vec![
+                        ("global".to_string(), Arc::clone(&manager.global)),
+                        ("lens".to_string(), Arc::clone(&manager.lens)),
+                    ],
+                }
+            };
 
-        for store in &stores_to_search {
+        for (lens_label, store) in &stores_to_search {
             // FTS5 search
             let fts_results = if let Some(et) = entity_type {
                 store.search_by_type(query, et, limit * 2)
@@ -147,6 +194,7 @@ impl Tool for MemorySearchTool {
                 let confidence = entity.confidence_score();
                 let entry = scored.entry(entity.id).or_insert_with(|| ScoredEntity {
                     entity: entity.clone(),
+                    lens: lens_label.clone(),
                     fts_score: 0.0,
                     semantic_score: 0.0,
                     confidence,
@@ -180,6 +228,7 @@ impl Tool for MemorySearchTool {
                                 let entry =
                                     scored.entry(entity.id).or_insert_with(|| ScoredEntity {
                                         entity: entity.clone(),
+                                        lens: lens_label.clone(),
                                         fts_score: 0.0,
                                         semantic_score: 0.0,
                                         confidence,
@@ -220,7 +269,7 @@ impl Tool for MemorySearchTool {
         // Graph expansion
         if include_related && !results.is_empty() {
             for result in &mut results {
-                for store in &stores_to_search {
+                for (_lens, store) in &stores_to_search {
                     if let Ok(relations) = store.get_relations(result.entity.id) {
                         for rel in relations {
                             let neighbor_id = if rel.source_id == result.entity.id {
@@ -257,10 +306,11 @@ impl Tool for MemorySearchTool {
             };
 
             output.push_str(&format!(
-                "{}. **[{}]** {} (score: {:.2}, confidence: {:.2}, reinforced: {}x){}\n",
+                "{}. **[{}]** {} (lens: {}, score: {:.2}, confidence: {:.2}, reinforced: {}x){}\n",
                 i + 1,
                 r.entity.entity_type.as_str(),
                 r.entity.title,
+                r.lens,
                 r.composite(),
                 r.confidence,
                 r.entity.reinforcement_count,
@@ -283,6 +333,8 @@ impl Tool for MemorySearchTool {
 
 struct ScoredEntity {
     entity: Entity,
+    /// Source lens for this hit ("global" for the shared tier).
+    lens: String,
     fts_score: f32,
     semantic_score: f32,
     confidence: f32,
