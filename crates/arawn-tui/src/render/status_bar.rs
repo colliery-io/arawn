@@ -33,14 +33,16 @@ pub(super) fn render_status_bar(app: &App, frame: &mut Frame, area: ratatui::lay
         spans.push(Span::styled(format_tokens(out), bar_style));
     }
 
-    // Lens
+    // Write-target lens (ARAWN-I-0060): the status bar shows where new
+    // learnings file, not a read scope — reads always span all lenses. The
+    // `✎` marks it as the filing target.
     spans.push(Span::styled(" │ ", dim));
     let ws_name = app
         .current_lens
         .as_ref()
         .map(|ws| ws.name.as_str())
-        .unwrap_or("no lens");
-    spans.push(Span::styled(ws_name.to_string(), bar_style));
+        .unwrap_or("scratch");
+    spans.push(Span::styled(format!("✎ {ws_name}"), bar_style));
 
     // Permission mode (T-0347: renamed to /autonomy vocabulary —
     // ask | edits | full | plan).
